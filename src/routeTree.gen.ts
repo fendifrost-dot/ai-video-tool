@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ArtistsIndexRouteImport } from './routes/artists.index'
 import { Route as ProjectsNewRouteImport } from './routes/projects.new'
 import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
 import { Route as ArtistsIdRouteImport } from './routes/artists.$id'
@@ -37,6 +38,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ArtistsIndexRoute = ArtistsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ArtistsRoute,
 } as any)
 const ProjectsNewRoute = ProjectsNewRouteImport.update({
   id: '/projects/new',
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/artists/$id': typeof ArtistsIdRoute
   '/projects/$id': typeof ProjectsIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
+  '/artists/': typeof ArtistsIndexRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
@@ -106,10 +113,10 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/artists': typeof ArtistsRouteWithChildren
   '/settings': typeof SettingsRoute
   '/artists/$id': typeof ArtistsIdRoute
   '/projects/new': typeof ProjectsNewRoute
+  '/artists': typeof ArtistsIndexRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
@@ -126,6 +133,7 @@ export interface FileRoutesById {
   '/artists/$id': typeof ArtistsIdRoute
   '/projects/$id': typeof ProjectsIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
+  '/artists/': typeof ArtistsIndexRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
@@ -143,6 +151,7 @@ export interface FileRouteTypes {
     | '/artists/$id'
     | '/projects/$id'
     | '/projects/new'
+    | '/artists/'
     | '/projects/$id/assets'
     | '/projects/$id/export'
     | '/projects/$id/review'
@@ -153,10 +162,10 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/artists'
     | '/settings'
     | '/artists/$id'
     | '/projects/new'
+    | '/artists'
     | '/projects/$id/assets'
     | '/projects/$id/export'
     | '/projects/$id/review'
@@ -172,6 +181,7 @@ export interface FileRouteTypes {
     | '/artists/$id'
     | '/projects/$id'
     | '/projects/new'
+    | '/artists/'
     | '/projects/$id/assets'
     | '/projects/$id/export'
     | '/projects/$id/review'
@@ -211,6 +221,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/artists/': {
+      id: '/artists/'
+      path: '/'
+      fullPath: '/artists/'
+      preLoaderRoute: typeof ArtistsIndexRouteImport
+      parentRoute: typeof ArtistsRoute
     }
     '/projects/new': {
       id: '/projects/new'
@@ -287,10 +304,12 @@ declare module '@tanstack/react-router' {
 
 interface ArtistsRouteChildren {
   ArtistsIdRoute: typeof ArtistsIdRoute
+  ArtistsIndexRoute: typeof ArtistsIndexRoute
 }
 
 const ArtistsRouteChildren: ArtistsRouteChildren = {
   ArtistsIdRoute: ArtistsIdRoute,
+  ArtistsIndexRoute: ArtistsIndexRoute,
 }
 
 const ArtistsRouteWithChildren =
@@ -340,3 +359,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
