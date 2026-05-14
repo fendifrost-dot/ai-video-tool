@@ -4,12 +4,20 @@ import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
-const nav = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/artists", label: "Artists", icon: Users },
-  { to: "/projects", label: "Projects", icon: FolderKanban, match: "/projects" },
-  { to: "/settings", label: "Settings", icon: Settings },
-] as const;
+type NavItem = {
+  label: string;
+  icon: typeof LayoutDashboard;
+  to: "/" | "/artists" | "/projects/new" | "/settings";
+  match: string;
+  exact?: boolean;
+};
+
+const nav: NavItem[] = [
+  { to: "/", label: "Dashboard", icon: LayoutDashboard, match: "/", exact: true },
+  { to: "/artists", label: "Artists", icon: Users, match: "/artists" },
+  { to: "/projects/new", label: "Projects", icon: FolderKanban, match: "/projects" },
+  { to: "/settings", label: "Settings", icon: Settings, match: "/settings" },
+];
 
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -22,27 +30,9 @@ export function AppShell() {
         </div>
         <nav className="flex-1 space-y-0.5 p-2">
           {nav.map((item) => {
-            const active = item.exact
-              ? pathname === item.to
-              : "match" in item && item.match
-                ? pathname.startsWith(item.match)
-                : pathname.startsWith(item.to);
+            const active = item.exact ? pathname === item.match : pathname.startsWith(item.match);
             const Icon = item.icon;
-            return item.to === "/projects" ? (
-              <Link
-                key={item.to}
-                to="/projects/new"
-                className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                  active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {item.label}
-              </Link>
-            ) : (
+            return (
               <Link
                 key={item.to}
                 to={item.to}
@@ -88,7 +78,5 @@ export function PageHeader({ title, subtitle }: { title: string; subtitle?: stri
 }
 
 export function ComingSoon() {
-  return (
-    <div className="px-8 py-12 text-sm text-muted-foreground">Coming soon.</div>
-  );
+  return <div className="px-8 py-12 text-sm text-muted-foreground">Coming soon.</div>;
 }

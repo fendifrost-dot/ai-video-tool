@@ -3,11 +3,11 @@ import { FileText, Clapperboard, Image as ImageIcon, Eye, Upload } from "lucide-
 import { cn } from "@/lib/utils";
 
 const items = [
-  { slug: "treatment", label: "Treatment", icon: FileText },
-  { slug: "shots", label: "Shots", icon: Clapperboard },
-  { slug: "assets", label: "Assets", icon: ImageIcon },
-  { slug: "review", label: "Review", icon: Eye },
-  { slug: "export", label: "Export", icon: Upload },
+  { to: "/projects/$id/treatment", label: "Treatment", icon: FileText, key: "treatment" },
+  { to: "/projects/$id/shots", label: "Shots", icon: Clapperboard, key: "shots" },
+  { to: "/projects/$id/assets", label: "Assets", icon: ImageIcon, key: "assets" },
+  { to: "/projects/$id/review", label: "Review", icon: Eye, key: "review" },
+  { to: "/projects/$id/export", label: "Export", icon: Upload, key: "export" },
 ] as const;
 
 export function ProjectSidebar({ projectId }: { projectId: string }) {
@@ -21,14 +21,13 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
       </div>
       <nav className="space-y-0.5 px-2 pb-4">
         {items.map((item) => {
-          const to = `/projects/${projectId}/${item.slug}`;
-          const active = pathname.startsWith(to);
+          const active = pathname.startsWith(`/projects/${projectId}/${item.key}`);
           const Icon = item.icon;
           return (
             <Link
-              key={item.slug}
-              to="/projects/$id/$section"
-              params={{ id: projectId, section: item.slug }}
+              key={item.key}
+              to={item.to}
+              params={{ id: projectId }}
               className={cn(
                 "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
                 active
