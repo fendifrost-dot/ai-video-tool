@@ -8,7 +8,6 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthGate } from "@/components/AuthGate";
 import { AppShell } from "@/components/AppShell";
 
 import appCss from "../styles.css?url";
@@ -84,9 +83,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthGate>
-        <AppShell />
-      </AuthGate>
+      <AppShell />
       <Toaster />
     </QueryClientProvider>
   );
