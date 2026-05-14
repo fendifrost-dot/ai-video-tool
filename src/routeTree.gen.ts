@@ -9,38 +9,212 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ArtistsIndexRouteImport } from './routes/artists.index'
+import { Route as ProjectsNewRouteImport } from './routes/projects.new'
+import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
+import { Route as ArtistsIdRouteImport } from './routes/artists.$id'
+import { Route as ProjectsIdIndexRouteImport } from './routes/projects.$id.index'
+import { Route as ProjectsIdTreatmentRouteImport } from './routes/projects.$id.treatment'
+import { Route as ProjectsIdShotsRouteImport } from './routes/projects.$id.shots'
+import { Route as ProjectsIdReviewRouteImport } from './routes/projects.$id.review'
+import { Route as ProjectsIdExportRouteImport } from './routes/projects.$id.export'
+import { Route as ProjectsIdAssetsRouteImport } from './routes/projects.$id.assets'
+import { Route as ProjectsIdShotsShotIdRouteImport } from './routes/projects.$id.shots.$shotId'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtistsRoute = ArtistsRouteImport.update({
+  id: '/artists',
+  path: '/artists',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ArtistsIndexRoute = ArtistsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ArtistsRoute,
+} as any)
+const ProjectsNewRoute = ProjectsNewRouteImport.update({
+  id: '/projects/new',
+  path: '/projects/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjectsIdRoute = ProjectsIdRouteImport.update({
+  id: '/projects/$id',
+  path: '/projects/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtistsIdRoute = ArtistsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ArtistsRoute,
+} as any)
+const ProjectsIdIndexRoute = ProjectsIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdTreatmentRoute = ProjectsIdTreatmentRouteImport.update({
+  id: '/treatment',
+  path: '/treatment',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdShotsRoute = ProjectsIdShotsRouteImport.update({
+  id: '/shots',
+  path: '/shots',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdReviewRoute = ProjectsIdReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdExportRoute = ProjectsIdExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdAssetsRoute = ProjectsIdAssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdShotsShotIdRoute = ProjectsIdShotsShotIdRouteImport.update({
+  id: '/$shotId',
+  path: '/$shotId',
+  getParentRoute: () => ProjectsIdShotsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/artists': typeof ArtistsRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/artists/$id': typeof ArtistsIdRoute
+  '/projects/$id': typeof ProjectsIdRouteWithChildren
+  '/projects/new': typeof ProjectsNewRoute
+  '/artists/': typeof ArtistsIndexRoute
+  '/projects/$id/assets': typeof ProjectsIdAssetsRoute
+  '/projects/$id/export': typeof ProjectsIdExportRoute
+  '/projects/$id/review': typeof ProjectsIdReviewRoute
+  '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
+  '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
+  '/projects/$id/': typeof ProjectsIdIndexRoute
+  '/projects/$id/shots/$shotId': typeof ProjectsIdShotsShotIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/settings': typeof SettingsRoute
+  '/artists/$id': typeof ArtistsIdRoute
+  '/projects/new': typeof ProjectsNewRoute
+  '/artists': typeof ArtistsIndexRoute
+  '/projects/$id/assets': typeof ProjectsIdAssetsRoute
+  '/projects/$id/export': typeof ProjectsIdExportRoute
+  '/projects/$id/review': typeof ProjectsIdReviewRoute
+  '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
+  '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
+  '/projects/$id': typeof ProjectsIdIndexRoute
+  '/projects/$id/shots/$shotId': typeof ProjectsIdShotsShotIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/artists': typeof ArtistsRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/artists/$id': typeof ArtistsIdRoute
+  '/projects/$id': typeof ProjectsIdRouteWithChildren
+  '/projects/new': typeof ProjectsNewRoute
+  '/artists/': typeof ArtistsIndexRoute
+  '/projects/$id/assets': typeof ProjectsIdAssetsRoute
+  '/projects/$id/export': typeof ProjectsIdExportRoute
+  '/projects/$id/review': typeof ProjectsIdReviewRoute
+  '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
+  '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
+  '/projects/$id/': typeof ProjectsIdIndexRoute
+  '/projects/$id/shots/$shotId': typeof ProjectsIdShotsShotIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/artists'
+    | '/settings'
+    | '/artists/$id'
+    | '/projects/$id'
+    | '/projects/new'
+    | '/artists/'
+    | '/projects/$id/assets'
+    | '/projects/$id/export'
+    | '/projects/$id/review'
+    | '/projects/$id/shots'
+    | '/projects/$id/treatment'
+    | '/projects/$id/'
+    | '/projects/$id/shots/$shotId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/settings'
+    | '/artists/$id'
+    | '/projects/new'
+    | '/artists'
+    | '/projects/$id/assets'
+    | '/projects/$id/export'
+    | '/projects/$id/review'
+    | '/projects/$id/shots'
+    | '/projects/$id/treatment'
+    | '/projects/$id'
+    | '/projects/$id/shots/$shotId'
+  id:
+    | '__root__'
+    | '/'
+    | '/artists'
+    | '/settings'
+    | '/artists/$id'
+    | '/projects/$id'
+    | '/projects/new'
+    | '/artists/'
+    | '/projects/$id/assets'
+    | '/projects/$id/export'
+    | '/projects/$id/review'
+    | '/projects/$id/shots'
+    | '/projects/$id/treatment'
+    | '/projects/$id/'
+    | '/projects/$id/shots/$shotId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ArtistsRoute: typeof ArtistsRouteWithChildren
+  SettingsRoute: typeof SettingsRoute
+  ProjectsIdRoute: typeof ProjectsIdRouteWithChildren
+  ProjectsNewRoute: typeof ProjectsNewRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artists': {
+      id: '/artists'
+      path: '/artists'
+      fullPath: '/artists'
+      preLoaderRoute: typeof ArtistsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +222,140 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/artists/': {
+      id: '/artists/'
+      path: '/'
+      fullPath: '/artists/'
+      preLoaderRoute: typeof ArtistsIndexRouteImport
+      parentRoute: typeof ArtistsRoute
+    }
+    '/projects/new': {
+      id: '/projects/new'
+      path: '/projects/new'
+      fullPath: '/projects/new'
+      preLoaderRoute: typeof ProjectsNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projects/$id': {
+      id: '/projects/$id'
+      path: '/projects/$id'
+      fullPath: '/projects/$id'
+      preLoaderRoute: typeof ProjectsIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artists/$id': {
+      id: '/artists/$id'
+      path: '/$id'
+      fullPath: '/artists/$id'
+      preLoaderRoute: typeof ArtistsIdRouteImport
+      parentRoute: typeof ArtistsRoute
+    }
+    '/projects/$id/': {
+      id: '/projects/$id/'
+      path: '/'
+      fullPath: '/projects/$id/'
+      preLoaderRoute: typeof ProjectsIdIndexRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/treatment': {
+      id: '/projects/$id/treatment'
+      path: '/treatment'
+      fullPath: '/projects/$id/treatment'
+      preLoaderRoute: typeof ProjectsIdTreatmentRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/shots': {
+      id: '/projects/$id/shots'
+      path: '/shots'
+      fullPath: '/projects/$id/shots'
+      preLoaderRoute: typeof ProjectsIdShotsRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/review': {
+      id: '/projects/$id/review'
+      path: '/review'
+      fullPath: '/projects/$id/review'
+      preLoaderRoute: typeof ProjectsIdReviewRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/export': {
+      id: '/projects/$id/export'
+      path: '/export'
+      fullPath: '/projects/$id/export'
+      preLoaderRoute: typeof ProjectsIdExportRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/assets': {
+      id: '/projects/$id/assets'
+      path: '/assets'
+      fullPath: '/projects/$id/assets'
+      preLoaderRoute: typeof ProjectsIdAssetsRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/shots/$shotId': {
+      id: '/projects/$id/shots/$shotId'
+      path: '/$shotId'
+      fullPath: '/projects/$id/shots/$shotId'
+      preLoaderRoute: typeof ProjectsIdShotsShotIdRouteImport
+      parentRoute: typeof ProjectsIdShotsRoute
+    }
   }
 }
 
+interface ArtistsRouteChildren {
+  ArtistsIdRoute: typeof ArtistsIdRoute
+  ArtistsIndexRoute: typeof ArtistsIndexRoute
+}
+
+const ArtistsRouteChildren: ArtistsRouteChildren = {
+  ArtistsIdRoute: ArtistsIdRoute,
+  ArtistsIndexRoute: ArtistsIndexRoute,
+}
+
+const ArtistsRouteWithChildren =
+  ArtistsRoute._addFileChildren(ArtistsRouteChildren)
+
+interface ProjectsIdShotsRouteChildren {
+  ProjectsIdShotsShotIdRoute: typeof ProjectsIdShotsShotIdRoute
+}
+
+const ProjectsIdShotsRouteChildren: ProjectsIdShotsRouteChildren = {
+  ProjectsIdShotsShotIdRoute: ProjectsIdShotsShotIdRoute,
+}
+
+const ProjectsIdShotsRouteWithChildren = ProjectsIdShotsRoute._addFileChildren(
+  ProjectsIdShotsRouteChildren,
+)
+
+interface ProjectsIdRouteChildren {
+  ProjectsIdAssetsRoute: typeof ProjectsIdAssetsRoute
+  ProjectsIdExportRoute: typeof ProjectsIdExportRoute
+  ProjectsIdReviewRoute: typeof ProjectsIdReviewRoute
+  ProjectsIdShotsRoute: typeof ProjectsIdShotsRouteWithChildren
+  ProjectsIdTreatmentRoute: typeof ProjectsIdTreatmentRoute
+  ProjectsIdIndexRoute: typeof ProjectsIdIndexRoute
+}
+
+const ProjectsIdRouteChildren: ProjectsIdRouteChildren = {
+  ProjectsIdAssetsRoute: ProjectsIdAssetsRoute,
+  ProjectsIdExportRoute: ProjectsIdExportRoute,
+  ProjectsIdReviewRoute: ProjectsIdReviewRoute,
+  ProjectsIdShotsRoute: ProjectsIdShotsRouteWithChildren,
+  ProjectsIdTreatmentRoute: ProjectsIdTreatmentRoute,
+  ProjectsIdIndexRoute: ProjectsIdIndexRoute,
+}
+
+const ProjectsIdRouteWithChildren = ProjectsIdRoute._addFileChildren(
+  ProjectsIdRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ArtistsRoute: ArtistsRouteWithChildren,
+  SettingsRoute: SettingsRoute,
+  ProjectsIdRoute: ProjectsIdRouteWithChildren,
+  ProjectsNewRoute: ProjectsNewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
