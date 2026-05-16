@@ -196,6 +196,30 @@ describe("tidy", () => {
     // The trailing ", ." gets normalised down to a single period.
     expect(tidy("a, b, c, .")).toBe("a, b, c.");
   });
+
+  it("drops orphan unit labels when the numeric placeholder was empty", () => {
+    // The seed templates use "Duration: {{shot.duration}}s." — when duration
+    // is empty, the substituted text is "Duration: s." which is meaningless.
+    // tidy() should drop the whole label including the orphan unit.
+    expect(tidy("Duration: s. Continuity: always wears gold chain.")).toBe(
+      "Continuity: always wears gold chain.",
+    );
+    expect(tidy("FPS: fps. Camera: dolly in.")).toBe("Camera: dolly in.");
+    expect(tidy("Tempo: bpm.")).toBe("");
+    // Inline mid-sentence
+    expect(tidy("intro shot, Duration: s, mood: grimy.")).toBe(
+      "intro shot, mood: grimy.",
+    );
+  });
+
+  it("does NOT touch valid labels that include real numeric values", () => {
+    // The unit is preceded by digits or a real value — must be left alone.
+    expect(tidy("Duration: 5s. Continuity: rule.")).toBe(
+      "Duration: 5s. Continuity: rule.",
+    );
+    expect(tidy("Tempo: 142 bpm.")).toBe("Tempo: 142 bpm.");
+    expect(tidy("Lighting: warm key.")).toBe("Lighting: warm key.");
+  });
 });
 
 // ---------------------------------------------------------------------------

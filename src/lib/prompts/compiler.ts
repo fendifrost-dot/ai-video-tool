@@ -210,16 +210,31 @@ export function mergeNegative(input: {
 // Tidy: clean up obvious artifacts from missing values
 // ---------------------------------------------------------------------------
 /**
+ * Units that appear directly after a numeric placeholder in seed templates
+ * (e.g. `Duration: {{shot.duration}}s` becomes `Duration: s` when empty).
+ * When the placeholder is unfilled, the orphan unit + label should be dropped.
+ *
+ * Word-boundary matched, case-insensitive. Keep tight to avoid false positives
+ * — these are *only* the suffixes used in our seed templates.
+ */
+const ORPHAN_UNIT_RE =
+  /\b[A-Za-z][A-Za-z _-]{1,30}:\s*(?:s|ms|sec|secs|seconds|fps|hz|bpm|%)\b\s*([.,;]?)/gi;
+
+/**
  * Collapse runs caused by empty placeholder substitution:
  *   "Lighting: . Wardrobe: black"       -> "Wardrobe: black"
  *   "Camera: , Lighting: warm"          -> "Lighting: warm"
  *   "wearing  , distinguishing: X"      -> "distinguishing: X"
+ *   "Duration: s. Continuity: rule"     -> "Continuity: rule"   (orphan unit)
  * Plus generic whitespace collapse.
  */
 export function tidy(text: string): string {
   let out = text;
   // Empty "Label: ." / "Label: ," — drop the label
   out = out.replace(/\b[A-Za-z][A-Za-z _-]{1,30}:\s*([.,;])/g, "$1");
+  // Orphan unit: "Duration: s." / "FPS: fps." — drop label + unit, keep the
+  // trailing punctuation so downstream rules can collapse it cleanly.
+  out = out.replace(ORPHAN_UNIT_RE, "$1");
   // Empty "wearing , " / "wearing . "
   out = out.replace(/\b(wearing|with|in|featuring)\s+([.,;])/gi, "$2");
   // Repeated punctuation

@@ -44,13 +44,21 @@ export function PromptOutputView({
   return (
     <div className="space-y-3">
       <Tabs value={active} onValueChange={(v) => setActive(v as ProviderName)}>
-        <TabsList className="grid grid-cols-7">
-          {PROVIDER_ORDER.map((id) => (
-            <TabsTrigger key={id} value={id} className="text-xs">
-              {getProvider(id).displayName}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        {/*
+          Horizontal scroll instead of a fixed grid so the 7 provider tabs
+          stay legible when the PromptOutputView is embedded in a narrow
+          column (e.g. shot detail page). On wide screens they fit without
+          scrolling.
+        */}
+        <div className="-mx-1 overflow-x-auto px-1 pb-1">
+          <TabsList className="inline-flex w-max gap-1 whitespace-nowrap">
+            {PROVIDER_ORDER.map((id) => (
+              <TabsTrigger key={id} value={id} className="shrink-0 px-3 text-xs">
+                {getProvider(id).displayName}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {PROVIDER_ORDER.map((id) => {
           const formatted = formattedByProvider[id];
