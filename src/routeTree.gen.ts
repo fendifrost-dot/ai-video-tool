@@ -23,6 +23,7 @@ import { Route as ProjectsIdShotsRouteImport } from './routes/projects.$id.shots
 import { Route as ProjectsIdReviewRouteImport } from './routes/projects.$id.review'
 import { Route as ProjectsIdPromptRouteImport } from './routes/projects.$id.prompt'
 import { Route as ProjectsIdExportRouteImport } from './routes/projects.$id.export'
+import { Route as ProjectsIdContinuityRouteImport } from './routes/projects.$id.continuity'
 import { Route as ProjectsIdAssetsRouteImport } from './routes/projects.$id.assets'
 import { Route as ProjectsIdShotsShotIdRouteImport } from './routes/projects.$id.shots.$shotId'
 
@@ -96,6 +97,11 @@ const ProjectsIdExportRoute = ProjectsIdExportRouteImport.update({
   path: '/export',
   getParentRoute: () => ProjectsIdRoute,
 } as any)
+const ProjectsIdContinuityRoute = ProjectsIdContinuityRouteImport.update({
+  id: '/continuity',
+  path: '/continuity',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
 const ProjectsIdAssetsRoute = ProjectsIdAssetsRouteImport.update({
   id: '/assets',
   path: '/assets',
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/projects/new': typeof ProjectsNewRoute
   '/artists/': typeof ArtistsIndexRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
+  '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
@@ -133,6 +140,7 @@ export interface FileRoutesByTo {
   '/projects/new': typeof ProjectsNewRoute
   '/artists': typeof ArtistsIndexRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
+  '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/projects/new': typeof ProjectsNewRoute
   '/artists/': typeof ArtistsIndexRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
+  '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
@@ -172,6 +181,7 @@ export interface FileRouteTypes {
     | '/projects/new'
     | '/artists/'
     | '/projects/$id/assets'
+    | '/projects/$id/continuity'
     | '/projects/$id/export'
     | '/projects/$id/prompt'
     | '/projects/$id/review'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/projects/new'
     | '/artists'
     | '/projects/$id/assets'
+    | '/projects/$id/continuity'
     | '/projects/$id/export'
     | '/projects/$id/prompt'
     | '/projects/$id/review'
@@ -206,6 +217,7 @@ export interface FileRouteTypes {
     | '/projects/new'
     | '/artists/'
     | '/projects/$id/assets'
+    | '/projects/$id/continuity'
     | '/projects/$id/export'
     | '/projects/$id/prompt'
     | '/projects/$id/review'
@@ -323,6 +335,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsIdExportRouteImport
       parentRoute: typeof ProjectsIdRoute
     }
+    '/projects/$id/continuity': {
+      id: '/projects/$id/continuity'
+      path: '/continuity'
+      fullPath: '/projects/$id/continuity'
+      preLoaderRoute: typeof ProjectsIdContinuityRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
     '/projects/$id/assets': {
       id: '/projects/$id/assets'
       path: '/assets'
@@ -369,6 +388,7 @@ const ProjectsIdShotsRouteWithChildren = ProjectsIdShotsRoute._addFileChildren(
 
 interface ProjectsIdRouteChildren {
   ProjectsIdAssetsRoute: typeof ProjectsIdAssetsRoute
+  ProjectsIdContinuityRoute: typeof ProjectsIdContinuityRoute
   ProjectsIdExportRoute: typeof ProjectsIdExportRoute
   ProjectsIdPromptRoute: typeof ProjectsIdPromptRoute
   ProjectsIdReviewRoute: typeof ProjectsIdReviewRoute
@@ -379,6 +399,7 @@ interface ProjectsIdRouteChildren {
 
 const ProjectsIdRouteChildren: ProjectsIdRouteChildren = {
   ProjectsIdAssetsRoute: ProjectsIdAssetsRoute,
+  ProjectsIdContinuityRoute: ProjectsIdContinuityRoute,
   ProjectsIdExportRoute: ProjectsIdExportRoute,
   ProjectsIdPromptRoute: ProjectsIdPromptRoute,
   ProjectsIdReviewRoute: ProjectsIdReviewRoute,

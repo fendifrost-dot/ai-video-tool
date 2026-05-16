@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Info } from "lucide-react";
 import { toast } from "sonner";
 import type {
   ProviderName,
@@ -13,6 +14,13 @@ import {
   SHOT_TYPE_OPTIONS,
   useUpdateShot,
 } from "@/lib/queries/shots";
+import { useArtist } from "@/lib/queries/artists";
+import { useProject } from "@/lib/queries/projects";
+import {
+  lintShotContinuity,
+  type ContinuityField,
+  type ContinuityWarning,
+} from "@/lib/continuity/lint";
 import { PROVIDER_ORDER, getProvider } from "@/lib/providers/registry";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,8 +72,35 @@ function fromShot(s: Shot): FormState {
 
 export function ShotForm({ shot }: { shot: Shot }) {
   const update = useUpdateShot();
+  const projectQuery = useProject(shot.project_id);
+  const artistQuery = useArtist(projectQuery.data?.artist_id ?? undefined);
   const [state, setState] = useState<FormState>(() => fromShot(shot));
   const [dirty, setDirty] = useState(false);
+
+  // Lint runs against the LIVE form state, not the persisted shot — the user
+  // sees warnings as soon as they type "no jewelry" in wardrobe, before
+  // saving. We build a synthetic Shot from the form state for the lint.
+  const lintWarnings = useMemo<ContinuityWarning[]>(() => {
+    const synthetic: Shot = {
+      ...shot,
+      scene_description: state.scene_description,
+      camera_direction: state.camera_direction,
+      lighting: state.lighting,
+      wardrobe: state.wardrobe,
+      environment: state.environment,
+    };
+    return lintShotContinuity(artistQuery.data ?? null, synthetic);
+  }, [shot, state, artistQuery.data]);
+
+  const warningsByField = useMemo(() => {
+    const map = new Map<ContinuityField, ContinuityWarning[]>();
+    for (const w of lintWarnings) {
+      const arr = map.get(w.field) ?? [];
+      arr.push(w);
+      map.set(w.field, arr);
+    }
+    return map;
+  }, [lintWarnings]);
 
   useEffect(() => {
     setState(fromShot(shot));
@@ -110,6 +145,30 @@ export function ShotForm({ shot }: { shot: Shot }) {
 
   return (
     <div className="space-y-6">
+      {lintWarnings.length > 0 && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+          <div className="flex items-center gap-2 text-xs font-semibold text-amber-200">
+            <AlertTriangle className="h-3.5 w-3.5" />
+            Continuity check: {lintWarnings.length}{" "}
+            {lintWarnings.length === 1 ? "issue" : "issues"} found
+          </div>
+          <div className="mt-2 space-y-1">
+            {lintWarnings.map((w, i) => (
+              <div
+                key={i}
+                className={`text-[11px] ${
+                  w.severity === "error" ? "text-rose-200" : "text-amber-200/90"
+                }`}
+              >
+                <span className="font-mono uppercase tracking-wider opacity-70">
+                  {w.field.replace("_", " ")}
+                </span>{" "}
+                — {w.message}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <section className="space-y-3">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Basics
@@ -318,6 +377,34 @@ function Field({
         {label}
       </Label>
       {children}
+    </div>
+  );
+}
+
+// =============================================================================
+// Continuity-lint inline warnings
+// =============================================================================
+function FieldWarnings({ warnings }: { warnings: ContinuityWarning[] }) {
+  if (warnings.length === 0) return null;
+  return (
+    <div className="mt-1.5 space-y-1">
+      {warnings.map((w, i) => (
+        <div
+          key={i}
+          className={`flex items-start gap-1.5 rounded-sm border px-2 py-1 text-[11px] ${
+            w.severity === "error"
+              ? "border-rose-500/40 bg-rose-500/10 text-rose-200"
+              : "border-amber-500/40 bg-amber-500/10 text-amber-200"
+          }`}
+        >
+          {w.severity === "error" ? (
+            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+          ) : (
+            <Info className="mt-0.5 h-3 w-3 shrink-0" />
+          )}
+          <span>{w.message}</span>
+        </div>
+      ))}
     </div>
   );
 }

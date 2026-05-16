@@ -4,6 +4,7 @@ import {
   Clapperboard,
   Image as ImageIcon,
   Eye,
+  Lock,
   Upload,
   Wand2,
 } from "lucide-react";
@@ -15,6 +16,7 @@ const items = [
   { to: "/projects/$id/prompt", label: "Prompt", icon: Wand2, key: "prompt" },
   { to: "/projects/$id/assets", label: "Assets", icon: ImageIcon, key: "assets" },
   { to: "/projects/$id/review", label: "Review", icon: Eye, key: "review" },
+  { to: "/projects/$id/continuity", label: "Continuity", icon: Lock, key: "continuity" },
   { to: "/projects/$id/export", label: "Export", icon: Upload, key: "export" },
 ] as const;
 
