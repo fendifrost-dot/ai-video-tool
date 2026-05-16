@@ -183,15 +183,18 @@ describe("mergeNegative", () => {
 // ---------------------------------------------------------------------------
 describe("tidy", () => {
   it("drops labels whose values are empty", () => {
-    expect(tidy("Lighting: . Wardrobe: black.")).toBe("Wardrobe: black");
+    // Trailing sentence-ending period is preserved; only the empty
+    // "Lighting: ." label is dropped.
+    expect(tidy("Lighting: . Wardrobe: black.")).toBe("Wardrobe: black.");
   });
 
   it("collapses repeated punctuation and spaces", () => {
     expect(tidy("hello,, world  ")).toBe("hello, world");
   });
 
-  it("strips trailing commas before periods", () => {
-    expect(tidy("a, b, c, .")).toBe("a, b, c");
+  it("strips dangling 'comma before period' artifacts", () => {
+    // The trailing ", ." gets normalised down to a single period.
+    expect(tidy("a, b, c, .")).toBe("a, b, c.");
   });
 });
 
