@@ -1,642 +1,962 @@
-// Manually maintained until Lovable auto-regen catches up.
-// Mirrors supabase/migrations/20260514210000_initial_schema.sql.
-// If Lovable regenerates this file, the auto-generated version should be
-// functionally identical — overwrite freely.
-
 export type Json =
   | string
   | number
   | boolean
   | null
   | { [key: string]: Json | undefined }
-  | Json[];
+  | Json[]
 
-// ---------------------------------------------------------------------------
-// Enum types
-// ---------------------------------------------------------------------------
-export type ProjectStatus =
-  | "draft"
-  | "in_production"
-  | "editing"
-  | "complete"
-  | "archived";
-
-export type ArtistAssetType =
-  | "face_front"
-  | "face_left"
-  | "face_right"
-  | "face_3q_left"
-  | "face_3q_right"
-  | "face_top"
-  | "face_bottom"
-  | "mouth_open"
-  | "mouth_closed"
-  | "expression"
-  | "body"
-  | "wardrobe"
-  | "jewelry"
-  | "tattoo"
-  | "hair"
-  | "other";
-
-export type ShotType =
-  | "performance"
-  | "b_roll"
-  | "narrative"
-  | "vfx"
-  | "transition"
-  | "lyric_visual";
-
-export type ShotStatus =
-  | "planned"
-  | "generated"
-  | "approved"
-  | "rejected"
-  | "needs_regen";
-
-export type ShotPriority = "low" | "normal" | "high" | "hero";
-
-export type ProviderName =
-  | "runway"
-  | "veo"
-  | "gemini"
-  | "grok"
-  | "higgsfield"
-  | "pika"
-  | "fal"
-  | "openai"
-  | "firefly"
-  | "frame_io"
-  | "manual"
-  | "other";
-
-export type PromptTemplateCategory =
-  | "text_to_video"
-  | "image_to_video"
-  | "lipsync"
-  | "greenscreen"
-  | "vfx"
-  | "b_roll"
-  | "transition"
-  | "performance"
-  | "universal";
-
-export type ProjectAssetType =
-  | "reference_image"
-  | "reference_video"
-  | "audio"
-  | "lyrics_doc"
-  | "generated_still"
-  | "generated_clip"
-  | "edited_clip"
-  | "premiere_export"
-  | "ae_asset"
-  | "lut"
-  | "overlay"
-  | "sfx"
-  | "thumbnail"
-  | "social_cutdown"
-  | "other";
-
-export type ApprovalStatus = "pending" | "approved" | "rejected" | "archived";
-
-export type ExportType =
-  | "premiere_ready"
-  | "after_effects"
-  | "full_package"
-  | "approved_clips_only"
-  | "review_pack";
-
-export type ExportStatus = "pending" | "building" | "complete" | "failed";
-
-export type ProviderJobStatus =
-  | "queued"
-  | "running"
-  | "succeeded"
-  | "failed"
-  | "cancelled";
-
-// ---------------------------------------------------------------------------
-// Database tables
-// ---------------------------------------------------------------------------
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5";
-  };
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
-      artists: {
-        Row: {
-          id: string;
-          user_id: string;
-          name: string;
-          bio: string | null;
-          identity_profile_json: Json;
-          continuity_rules: string | null;
-          forbidden_inaccuracies: string | null;
-          preferred_lighting: string | null;
-          camera_rules: string | null;
-          notes: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          name: string;
-          bio?: string | null;
-          identity_profile_json?: Json;
-          continuity_rules?: string | null;
-          forbidden_inaccuracies?: string | null;
-          preferred_lighting?: string | null;
-          camera_rules?: string | null;
-          notes?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: {
-          id?: string;
-          user_id?: string;
-          name?: string;
-          bio?: string | null;
-          identity_profile_json?: Json;
-          continuity_rules?: string | null;
-          forbidden_inaccuracies?: string | null;
-          preferred_lighting?: string | null;
-          camera_rules?: string | null;
-          notes?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
-      };
-
       artist_assets: {
         Row: {
-          id: string;
-          user_id: string;
-          artist_id: string;
-          asset_type: ArtistAssetType;
-          file_url: string;
-          description: string | null;
-          tags: string[];
-          is_primary_reference: boolean;
-          metadata_json: Json;
-          created_at: string;
-        };
+          artist_id: string
+          asset_type: Database["public"]["Enums"]["artist_asset_type"]
+          created_at: string
+          description: string | null
+          file_url: string
+          id: string
+          is_primary_reference: boolean
+          metadata_json: Json
+          tags: string[]
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          artist_id: string;
-          asset_type: ArtistAssetType;
-          file_url: string;
-          description?: string | null;
-          tags?: string[];
-          is_primary_reference?: boolean;
-          metadata_json?: Json;
-          created_at?: string;
-        };
+          artist_id: string
+          asset_type: Database["public"]["Enums"]["artist_asset_type"]
+          created_at?: string
+          description?: string | null
+          file_url: string
+          id?: string
+          is_primary_reference?: boolean
+          metadata_json?: Json
+          tags?: string[]
+          user_id: string
+        }
         Update: {
-          id?: string;
-          user_id?: string;
-          artist_id?: string;
-          asset_type?: ArtistAssetType;
-          file_url?: string;
-          description?: string | null;
-          tags?: string[];
-          is_primary_reference?: boolean;
-          metadata_json?: Json;
-          created_at?: string;
-        };
+          artist_id?: string
+          asset_type?: Database["public"]["Enums"]["artist_asset_type"]
+          created_at?: string
+          description?: string | null
+          file_url?: string
+          id?: string
+          is_primary_reference?: boolean
+          metadata_json?: Json
+          tags?: string[]
+          user_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "artist_assets_artist_id_fkey";
-            columns: ["artist_id"];
-            referencedRelation: "artists";
-            referencedColumns: ["id"];
+            foreignKeyName: "artist_assets_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-
-      video_projects: {
+        ]
+      }
+      artists: {
         Row: {
-          id: string;
-          user_id: string;
-          artist_id: string | null;
-          title: string;
-          song_title: string | null;
-          genre: string | null;
-          bpm: number | null;
-          mood: string | null;
-          visual_style: string | null;
-          color_palette: string[];
-          wardrobe_notes: string | null;
-          lyrics: string | null;
-          song_structure_json: Json;
-          treatment_json: Json;
-          status: ProjectStatus;
-          notes: string | null;
-          created_at: string;
-          updated_at: string;
-        };
+          bio: string | null
+          camera_rules: string | null
+          continuity_rules: string | null
+          created_at: string
+          forbidden_inaccuracies: string | null
+          id: string
+          identity_profile_json: Json
+          name: string
+          notes: string | null
+          preferred_lighting: string | null
+          updated_at: string
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          artist_id?: string | null;
-          title: string;
-          song_title?: string | null;
-          genre?: string | null;
-          bpm?: number | null;
-          mood?: string | null;
-          visual_style?: string | null;
-          color_palette?: string[];
-          wardrobe_notes?: string | null;
-          lyrics?: string | null;
-          song_structure_json?: Json;
-          treatment_json?: Json;
-          status?: ProjectStatus;
-          notes?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["video_projects"]["Insert"]>;
-        Relationships: [
-          {
-            foreignKeyName: "video_projects_artist_id_fkey";
-            columns: ["artist_id"];
-            referencedRelation: "artists";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-
-      shots: {
-        Row: {
-          id: string;
-          user_id: string;
-          project_id: string;
-          shot_number: number;
-          song_section: string | null;
-          timestamp_start: number | null;
-          timestamp_end: number | null;
-          duration_seconds: number | null;
-          shot_type: ShotType | null;
-          scene_description: string | null;
-          camera_direction: string | null;
-          lighting: string | null;
-          wardrobe: string | null;
-          environment: string | null;
-          recommended_tool: ProviderName | null;
-          priority: ShotPriority;
-          status: ShotStatus;
-          notes: string | null;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          project_id: string;
-          shot_number: number;
-          song_section?: string | null;
-          timestamp_start?: number | null;
-          timestamp_end?: number | null;
-          shot_type?: ShotType | null;
-          scene_description?: string | null;
-          camera_direction?: string | null;
-          lighting?: string | null;
-          wardrobe?: string | null;
-          environment?: string | null;
-          recommended_tool?: ProviderName | null;
-          priority?: ShotPriority;
-          status?: ShotStatus;
-          notes?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["shots"]["Insert"]>;
-        Relationships: [
-          {
-            foreignKeyName: "shots_project_id_fkey";
-            columns: ["project_id"];
-            referencedRelation: "video_projects";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-
-      prompt_templates: {
-        Row: {
-          id: string;
-          user_id: string | null;
-          name: string;
-          description: string | null;
-          provider: ProviderName | null;
-          category: PromptTemplateCategory;
-          template_body: string;
-          default_negative_prompt: string | null;
-          default_settings_json: Json;
-          is_seed: boolean;
-          created_at: string;
-          updated_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id?: string | null;
-          name: string;
-          description?: string | null;
-          provider?: ProviderName | null;
-          category?: PromptTemplateCategory;
-          template_body: string;
-          default_negative_prompt?: string | null;
-          default_settings_json?: Json;
-          is_seed?: boolean;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["prompt_templates"]["Insert"]>;
-        Relationships: [];
-      };
-
-      prompts: {
-        Row: {
-          id: string;
-          user_id: string;
-          project_id: string;
-          shot_id: string | null;
-          template_id: string | null;
-          provider: ProviderName;
-          prompt_text: string;
-          negative_prompt: string | null;
-          settings_json: Json;
-          version_number: number;
-          parent_prompt_id: string | null;
-          result_asset_id: string | null;
-          notes: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          project_id: string;
-          shot_id?: string | null;
-          template_id?: string | null;
-          provider: ProviderName;
-          prompt_text: string;
-          negative_prompt?: string | null;
-          settings_json?: Json;
-          version_number?: number;
-          parent_prompt_id?: string | null;
-          result_asset_id?: string | null;
-          notes?: string | null;
-          created_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["prompts"]["Insert"]>;
-        Relationships: [
-          {
-            foreignKeyName: "prompts_project_id_fkey";
-            columns: ["project_id"];
-            referencedRelation: "video_projects";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "prompts_shot_id_fkey";
-            columns: ["shot_id"];
-            referencedRelation: "shots";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "prompts_template_id_fkey";
-            columns: ["template_id"];
-            referencedRelation: "prompt_templates";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-
-      project_assets: {
-        Row: {
-          id: string;
-          user_id: string;
-          project_id: string;
-          shot_id: string | null;
-          prompt_id: string | null;
-          asset_type: ProjectAssetType;
-          file_url: string;
-          source_tool: ProviderName | null;
-          approval_status: ApprovalStatus;
-          version_number: number;
-          parent_asset_id: string | null;
-          metadata_json: Json;
-          notes: string | null;
-          created_at: string;
-        };
-        Insert: {
-          id?: string;
-          user_id: string;
-          project_id: string;
-          shot_id?: string | null;
-          prompt_id?: string | null;
-          asset_type: ProjectAssetType;
-          file_url: string;
-          source_tool?: ProviderName | null;
-          approval_status?: ApprovalStatus;
-          version_number?: number;
-          parent_asset_id?: string | null;
-          metadata_json?: Json;
-          notes?: string | null;
-          created_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["project_assets"]["Insert"]>;
-        Relationships: [
-          {
-            foreignKeyName: "project_assets_project_id_fkey";
-            columns: ["project_id"];
-            referencedRelation: "video_projects";
-            referencedColumns: ["id"];
-          },
-          {
-            foreignKeyName: "project_assets_shot_id_fkey";
-            columns: ["shot_id"];
-            referencedRelation: "shots";
-            referencedColumns: ["id"];
-          },
-        ];
-      };
-
+          bio?: string | null
+          camera_rules?: string | null
+          continuity_rules?: string | null
+          created_at?: string
+          forbidden_inaccuracies?: string | null
+          id?: string
+          identity_profile_json?: Json
+          name: string
+          notes?: string | null
+          preferred_lighting?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bio?: string | null
+          camera_rules?: string | null
+          continuity_rules?: string | null
+          created_at?: string
+          forbidden_inaccuracies?: string | null
+          id?: string
+          identity_profile_json?: Json
+          name?: string
+          notes?: string | null
+          preferred_lighting?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       clip_reviews: {
         Row: {
-          id: string;
-          user_id: string;
-          asset_id: string;
-          face_consistency_score: number | null;
-          realism_score: number | null;
-          lighting_score: number | null;
-          wardrobe_score: number | null;
-          camera_score: number | null;
-          lipsync_score: number | null;
-          final_usefulness: boolean | null;
-          notes: string | null;
-          created_at: string;
-        };
+          asset_id: string
+          camera_score: number | null
+          created_at: string
+          face_consistency_score: number | null
+          final_usefulness: boolean | null
+          id: string
+          lighting_score: number | null
+          lipsync_score: number | null
+          notes: string | null
+          realism_score: number | null
+          user_id: string
+          wardrobe_score: number | null
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          asset_id: string;
-          face_consistency_score?: number | null;
-          realism_score?: number | null;
-          lighting_score?: number | null;
-          wardrobe_score?: number | null;
-          camera_score?: number | null;
-          lipsync_score?: number | null;
-          final_usefulness?: boolean | null;
-          notes?: string | null;
-          created_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["clip_reviews"]["Insert"]>;
+          asset_id: string
+          camera_score?: number | null
+          created_at?: string
+          face_consistency_score?: number | null
+          final_usefulness?: boolean | null
+          id?: string
+          lighting_score?: number | null
+          lipsync_score?: number | null
+          notes?: string | null
+          realism_score?: number | null
+          user_id: string
+          wardrobe_score?: number | null
+        }
+        Update: {
+          asset_id?: string
+          camera_score?: number | null
+          created_at?: string
+          face_consistency_score?: number | null
+          final_usefulness?: boolean | null
+          id?: string
+          lighting_score?: number | null
+          lipsync_score?: number | null
+          notes?: string | null
+          realism_score?: number | null
+          user_id?: string
+          wardrobe_score?: number | null
+        }
         Relationships: [
           {
-            foreignKeyName: "clip_reviews_asset_id_fkey";
-            columns: ["asset_id"];
-            referencedRelation: "project_assets";
-            referencedColumns: ["id"];
+            foreignKeyName: "clip_reviews_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-
+        ]
+      }
       export_packages: {
         Row: {
-          id: string;
-          user_id: string;
-          project_id: string;
-          export_type: ExportType;
-          file_url: string | null;
-          manifest_json: Json;
-          status: ExportStatus;
-          error_text: string | null;
-          created_at: string;
-        };
+          created_at: string
+          error_text: string | null
+          export_type: Database["public"]["Enums"]["export_type"]
+          file_url: string | null
+          id: string
+          manifest_json: Json
+          project_id: string
+          status: Database["public"]["Enums"]["export_status"]
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          project_id: string;
-          export_type: ExportType;
-          file_url?: string | null;
-          manifest_json?: Json;
-          status?: ExportStatus;
-          error_text?: string | null;
-          created_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["export_packages"]["Insert"]>;
+          created_at?: string
+          error_text?: string | null
+          export_type: Database["public"]["Enums"]["export_type"]
+          file_url?: string | null
+          id?: string
+          manifest_json?: Json
+          project_id: string
+          status?: Database["public"]["Enums"]["export_status"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_text?: string | null
+          export_type?: Database["public"]["Enums"]["export_type"]
+          file_url?: string | null
+          id?: string
+          manifest_json?: Json
+          project_id?: string
+          status?: Database["public"]["Enums"]["export_status"]
+          user_id?: string
+        }
         Relationships: [
           {
-            foreignKeyName: "export_packages_project_id_fkey";
-            columns: ["project_id"];
-            referencedRelation: "video_projects";
-            referencedColumns: ["id"];
+            foreignKeyName: "export_packages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
           },
-        ];
-      };
-
+        ]
+      }
+      project_assets: {
+        Row: {
+          approval_status: Database["public"]["Enums"]["approval_status"]
+          asset_type: Database["public"]["Enums"]["project_asset_type"]
+          created_at: string
+          file_url: string
+          id: string
+          metadata_json: Json
+          notes: string | null
+          parent_asset_id: string | null
+          project_id: string
+          prompt_id: string | null
+          shot_id: string | null
+          source_tool: Database["public"]["Enums"]["provider_name"] | null
+          user_id: string
+          version_number: number
+        }
+        Insert: {
+          approval_status?: Database["public"]["Enums"]["approval_status"]
+          asset_type: Database["public"]["Enums"]["project_asset_type"]
+          created_at?: string
+          file_url: string
+          id?: string
+          metadata_json?: Json
+          notes?: string | null
+          parent_asset_id?: string | null
+          project_id: string
+          prompt_id?: string | null
+          shot_id?: string | null
+          source_tool?: Database["public"]["Enums"]["provider_name"] | null
+          user_id: string
+          version_number?: number
+        }
+        Update: {
+          approval_status?: Database["public"]["Enums"]["approval_status"]
+          asset_type?: Database["public"]["Enums"]["project_asset_type"]
+          created_at?: string
+          file_url?: string
+          id?: string
+          metadata_json?: Json
+          notes?: string | null
+          parent_asset_id?: string | null
+          project_id?: string
+          prompt_id?: string | null
+          shot_id?: string | null
+          source_tool?: Database["public"]["Enums"]["provider_name"] | null
+          user_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_assets_parent_asset_id_fkey"
+            columns: ["parent_asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_assets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_assets_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "prompts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_assets_shot_id_fkey"
+            columns: ["shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prompt_templates: {
+        Row: {
+          category: Database["public"]["Enums"]["prompt_template_category"]
+          created_at: string
+          default_negative_prompt: string | null
+          default_settings_json: Json
+          description: string | null
+          id: string
+          is_seed: boolean
+          name: string
+          provider: Database["public"]["Enums"]["provider_name"] | null
+          template_body: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          category?: Database["public"]["Enums"]["prompt_template_category"]
+          created_at?: string
+          default_negative_prompt?: string | null
+          default_settings_json?: Json
+          description?: string | null
+          id?: string
+          is_seed?: boolean
+          name: string
+          provider?: Database["public"]["Enums"]["provider_name"] | null
+          template_body: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["prompt_template_category"]
+          created_at?: string
+          default_negative_prompt?: string | null
+          default_settings_json?: Json
+          description?: string | null
+          id?: string
+          is_seed?: boolean
+          name?: string
+          provider?: Database["public"]["Enums"]["provider_name"] | null
+          template_body?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      prompts: {
+        Row: {
+          created_at: string
+          id: string
+          negative_prompt: string | null
+          notes: string | null
+          parent_prompt_id: string | null
+          project_id: string
+          prompt_text: string
+          provider: Database["public"]["Enums"]["provider_name"]
+          result_asset_id: string | null
+          settings_json: Json
+          shot_id: string | null
+          template_id: string | null
+          user_id: string
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          negative_prompt?: string | null
+          notes?: string | null
+          parent_prompt_id?: string | null
+          project_id: string
+          prompt_text: string
+          provider: Database["public"]["Enums"]["provider_name"]
+          result_asset_id?: string | null
+          settings_json?: Json
+          shot_id?: string | null
+          template_id?: string | null
+          user_id: string
+          version_number?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          negative_prompt?: string | null
+          notes?: string | null
+          parent_prompt_id?: string | null
+          project_id?: string
+          prompt_text?: string
+          provider?: Database["public"]["Enums"]["provider_name"]
+          result_asset_id?: string | null
+          settings_json?: Json
+          shot_id?: string | null
+          template_id?: string | null
+          user_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prompts_parent_prompt_id_fkey"
+            columns: ["parent_prompt_id"]
+            isOneToOne: false
+            referencedRelation: "prompts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompts_result_asset_fk"
+            columns: ["result_asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompts_shot_id_fkey"
+            columns: ["shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prompts_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "prompt_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       provider_jobs: {
         Row: {
-          id: string;
-          user_id: string;
-          project_id: string;
-          prompt_id: string | null;
-          provider: ProviderName;
-          external_job_id: string | null;
-          status: ProviderJobStatus;
-          result_asset_id: string | null;
-          request_payload_json: Json;
-          response_payload_json: Json;
-          error_text: string | null;
-          created_at: string;
-          updated_at: string;
-        };
+          created_at: string
+          error_text: string | null
+          external_job_id: string | null
+          id: string
+          project_id: string
+          prompt_id: string | null
+          provider: Database["public"]["Enums"]["provider_name"]
+          request_payload_json: Json
+          response_payload_json: Json
+          result_asset_id: string | null
+          status: Database["public"]["Enums"]["provider_job_status"]
+          updated_at: string
+          user_id: string
+        }
         Insert: {
-          id?: string;
-          user_id: string;
-          project_id: string;
-          prompt_id?: string | null;
-          provider: ProviderName;
-          external_job_id?: string | null;
-          status?: ProviderJobStatus;
-          result_asset_id?: string | null;
-          request_payload_json?: Json;
-          response_payload_json?: Json;
-          error_text?: string | null;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: Partial<Database["public"]["Tables"]["provider_jobs"]["Insert"]>;
-        Relationships: [];
-      };
-    };
+          created_at?: string
+          error_text?: string | null
+          external_job_id?: string | null
+          id?: string
+          project_id: string
+          prompt_id?: string | null
+          provider: Database["public"]["Enums"]["provider_name"]
+          request_payload_json?: Json
+          response_payload_json?: Json
+          result_asset_id?: string | null
+          status?: Database["public"]["Enums"]["provider_job_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_text?: string | null
+          external_job_id?: string | null
+          id?: string
+          project_id?: string
+          prompt_id?: string | null
+          provider?: Database["public"]["Enums"]["provider_name"]
+          request_payload_json?: Json
+          response_payload_json?: Json
+          result_asset_id?: string | null
+          status?: Database["public"]["Enums"]["provider_job_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_jobs_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "prompts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "provider_jobs_result_asset_id_fkey"
+            columns: ["result_asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shots: {
+        Row: {
+          camera_direction: string | null
+          created_at: string
+          duration_seconds: number | null
+          environment: string | null
+          id: string
+          lighting: string | null
+          notes: string | null
+          priority: Database["public"]["Enums"]["shot_priority"]
+          project_id: string
+          recommended_tool: Database["public"]["Enums"]["provider_name"] | null
+          scene_description: string | null
+          shot_number: number
+          shot_type: Database["public"]["Enums"]["shot_type"] | null
+          song_section: string | null
+          status: Database["public"]["Enums"]["shot_status"]
+          timestamp_end: number | null
+          timestamp_start: number | null
+          updated_at: string
+          user_id: string
+          wardrobe: string | null
+        }
+        Insert: {
+          camera_direction?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          environment?: string | null
+          id?: string
+          lighting?: string | null
+          notes?: string | null
+          priority?: Database["public"]["Enums"]["shot_priority"]
+          project_id: string
+          recommended_tool?: Database["public"]["Enums"]["provider_name"] | null
+          scene_description?: string | null
+          shot_number: number
+          shot_type?: Database["public"]["Enums"]["shot_type"] | null
+          song_section?: string | null
+          status?: Database["public"]["Enums"]["shot_status"]
+          timestamp_end?: number | null
+          timestamp_start?: number | null
+          updated_at?: string
+          user_id: string
+          wardrobe?: string | null
+        }
+        Update: {
+          camera_direction?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          environment?: string | null
+          id?: string
+          lighting?: string | null
+          notes?: string | null
+          priority?: Database["public"]["Enums"]["shot_priority"]
+          project_id?: string
+          recommended_tool?: Database["public"]["Enums"]["provider_name"] | null
+          scene_description?: string | null
+          shot_number?: number
+          shot_type?: Database["public"]["Enums"]["shot_type"] | null
+          song_section?: string | null
+          status?: Database["public"]["Enums"]["shot_status"]
+          timestamp_end?: number | null
+          timestamp_start?: number | null
+          updated_at?: string
+          user_id?: string
+          wardrobe?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shots_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_projects: {
+        Row: {
+          artist_id: string | null
+          bpm: number | null
+          color_palette: string[]
+          created_at: string
+          genre: string | null
+          id: string
+          lyrics: string | null
+          mood: string | null
+          notes: string | null
+          song_structure_json: Json
+          song_title: string | null
+          status: Database["public"]["Enums"]["project_status"]
+          title: string
+          treatment_json: Json
+          updated_at: string
+          user_id: string
+          visual_style: string | null
+          wardrobe_notes: string | null
+        }
+        Insert: {
+          artist_id?: string | null
+          bpm?: number | null
+          color_palette?: string[]
+          created_at?: string
+          genre?: string | null
+          id?: string
+          lyrics?: string | null
+          mood?: string | null
+          notes?: string | null
+          song_structure_json?: Json
+          song_title?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          title: string
+          treatment_json?: Json
+          updated_at?: string
+          user_id: string
+          visual_style?: string | null
+          wardrobe_notes?: string | null
+        }
+        Update: {
+          artist_id?: string | null
+          bpm?: number | null
+          color_palette?: string[]
+          created_at?: string
+          genre?: string | null
+          id?: string
+          lyrics?: string | null
+          mood?: string | null
+          notes?: string | null
+          song_structure_json?: Json
+          song_title?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          title?: string
+          treatment_json?: Json
+          updated_at?: string
+          user_id?: string
+          visual_style?: string | null
+          wardrobe_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_projects_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
     Views: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     Functions: {
-      [_ in never]: never;
-    };
+      [_ in never]: never
+    }
     Enums: {
-      project_status: ProjectStatus;
-      artist_asset_type: ArtistAssetType;
-      shot_type: ShotType;
-      shot_status: ShotStatus;
-      shot_priority: ShotPriority;
-      provider_name: ProviderName;
-      prompt_template_category: PromptTemplateCategory;
-      project_asset_type: ProjectAssetType;
-      approval_status: ApprovalStatus;
-      export_type: ExportType;
-      export_status: ExportStatus;
-      provider_job_status: ProviderJobStatus;
-    };
+      approval_status: "pending" | "approved" | "rejected" | "archived"
+      artist_asset_type:
+        | "face_front"
+        | "face_left"
+        | "face_right"
+        | "face_3q_left"
+        | "face_3q_right"
+        | "face_top"
+        | "face_bottom"
+        | "mouth_open"
+        | "mouth_closed"
+        | "expression"
+        | "body"
+        | "wardrobe"
+        | "jewelry"
+        | "tattoo"
+        | "hair"
+        | "other"
+      export_status: "pending" | "building" | "complete" | "failed"
+      export_type:
+        | "premiere_ready"
+        | "after_effects"
+        | "full_package"
+        | "approved_clips_only"
+        | "review_pack"
+      project_asset_type:
+        | "reference_image"
+        | "reference_video"
+        | "audio"
+        | "lyrics_doc"
+        | "generated_still"
+        | "generated_clip"
+        | "edited_clip"
+        | "premiere_export"
+        | "ae_asset"
+        | "lut"
+        | "overlay"
+        | "sfx"
+        | "thumbnail"
+        | "social_cutdown"
+        | "other"
+      project_status:
+        | "draft"
+        | "in_production"
+        | "editing"
+        | "complete"
+        | "archived"
+      prompt_template_category:
+        | "text_to_video"
+        | "image_to_video"
+        | "lipsync"
+        | "greenscreen"
+        | "vfx"
+        | "b_roll"
+        | "transition"
+        | "performance"
+        | "universal"
+      provider_job_status:
+        | "queued"
+        | "running"
+        | "succeeded"
+        | "failed"
+        | "cancelled"
+      provider_name:
+        | "runway"
+        | "veo"
+        | "gemini"
+        | "grok"
+        | "higgsfield"
+        | "pika"
+        | "fal"
+        | "openai"
+        | "firefly"
+        | "frame_io"
+        | "manual"
+        | "other"
+      shot_priority: "low" | "normal" | "high" | "hero"
+      shot_status:
+        | "planned"
+        | "generated"
+        | "approved"
+        | "rejected"
+        | "needs_regen"
+      shot_type:
+        | "performance"
+        | "b_roll"
+        | "narrative"
+        | "vfx"
+        | "transition"
+        | "lyric_visual"
+    }
     CompositeTypes: {
-      [_ in never]: never;
-    };
-  };
-};
+      [_ in never]: never
+    }
+  }
+}
 
-// ---------------------------------------------------------------------------
-// Convenience helpers (same shape as Lovable's auto-generated file)
-// ---------------------------------------------------------------------------
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-export type Tables<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T]["Row"];
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-export type TablesInsert<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T]["Insert"];
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-export type TablesUpdate<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T]["Update"];
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
-export type Enums<T extends keyof DefaultSchema["Enums"]> =
-  DefaultSchema["Enums"][T];
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
-// Concrete row aliases for ergonomic imports
-export type Artist = Tables<"artists">;
-export type ArtistAsset = Tables<"artist_assets">;
-export type VideoProject = Tables<"video_projects">;
-export type Shot = Tables<"shots">;
-export type PromptTemplate = Tables<"prompt_templates">;
-export type Prompt = Tables<"prompts">;
-export type ProjectAsset = Tables<"project_assets">;
-export type ClipReview = Tables<"clip_reviews">;
-export type ExportPackage = Tables<"export_packages">;
-export type ProviderJob = Tables<"provider_jobs">;
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
-// Common helpers
-export type ArtistIdentityProfile = {
-  face?: string;
-  body?: string;
-  skin?: string;
-  hair?: string;
-  tattoos?: string;
-  jewelry?: string;
-  wardrobe_defaults?: string;
-  distinguishing_features?: string;
-};
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {
+      approval_status: ["pending", "approved", "rejected", "archived"],
+      artist_asset_type: [
+        "face_front",
+        "face_left",
+        "face_right",
+        "face_3q_left",
+        "face_3q_right",
+        "face_top",
+        "face_bottom",
+        "mouth_open",
+        "mouth_closed",
+        "expression",
+        "body",
+        "wardrobe",
+        "jewelry",
+        "tattoo",
+        "hair",
+        "other",
+      ],
+      export_status: ["pending", "building", "complete", "failed"],
+      export_type: [
+        "premiere_ready",
+        "after_effects",
+        "full_package",
+        "approved_clips_only",
+        "review_pack",
+      ],
+      project_asset_type: [
+        "reference_image",
+        "reference_video",
+        "audio",
+        "lyrics_doc",
+        "generated_still",
+        "generated_clip",
+        "edited_clip",
+        "premiere_export",
+        "ae_asset",
+        "lut",
+        "overlay",
+        "sfx",
+        "thumbnail",
+        "social_cutdown",
+        "other",
+      ],
+      project_status: [
+        "draft",
+        "in_production",
+        "editing",
+        "complete",
+        "archived",
+      ],
+      prompt_template_category: [
+        "text_to_video",
+        "image_to_video",
+        "lipsync",
+        "greenscreen",
+        "vfx",
+        "b_roll",
+        "transition",
+        "performance",
+        "universal",
+      ],
+      provider_job_status: [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled",
+      ],
+      provider_name: [
+        "runway",
+        "veo",
+        "gemini",
+        "grok",
+        "higgsfield",
+        "pika",
+        "fal",
+        "openai",
+        "firefly",
+        "frame_io",
+        "manual",
+        "other",
+      ],
+      shot_priority: ["low", "normal", "high", "hero"],
+      shot_status: [
+        "planned",
+        "generated",
+        "approved",
+        "rejected",
+        "needs_regen",
+      ],
+      shot_type: [
+        "performance",
+        "b_roll",
+        "narrative",
+        "vfx",
+        "transition",
+        "lyric_visual",
+      ],
+    },
+  },
+} as const
