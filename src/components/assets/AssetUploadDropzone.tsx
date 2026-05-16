@@ -49,13 +49,25 @@ export function AssetUploadDropzone({
   const [uploading, setUploading] = useState(false);
   const create = useCreateProjectAsset();
 
-  function stageFiles(files: FileList | null) {
+  async function stageFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
-    const next: StagedFile[] = [];
-    for (const file of Array.from(files)) {
-      next.push({ file, assetType: guessAssetType(file) });
-    }
-    setStaged((prev) => [...prev, ...next]);
+    // Materialise each File into an in-memory copy (fresh File backed by an
+    // ArrayBuffer) inside the same async tick. The input's `value=""` reset
+    // that follows the change event can detach the underlying file source
+    // for File objects injected by browser-automation tools — once detached,
+    // file.arrayBuffer() at upload time hangs forever with no error. Reading
+    // bytes here, while the source is still live, sidesteps the issue.
+    const incoming = Array.from(files);
+    const captured: StagedFile[] = await Promise.all(
+      incoming.map(async (file) => {
+        const bytes = await file.arrayBuffer();
+        return {
+          file: new File([bytes], file.name, { type: file.type }),
+          assetType: guessAssetType(file),
+        };
+      }),
+    );
+    setStaged((prev) => [...prev, ...captured]);
   }
 
   function updateType(index: number, type: ProjectAssetType) {
@@ -69,7 +81,7 @@ export function AssetUploadDropzone({
   function handleDrop(e: DragEvent<HTMLDivElement>) {
     e.preventDefault();
     setDragOver(false);
-    stageFiles(e.dataTransfer.files);
+    void stageFiles(e.dataTransfer.files);
   }
 
   async function handleUpload() {
@@ -166,8 +178,11 @@ export function AssetUploadDropzone({
           type="file"
           multiple
           className="hidden"
-          onChange={(e) => {
-            stageFiles(e.target.files);
+          onChange={async (e) => {
+            // Stage (which materialises bytes) MUST complete before we clear
+            // the input value, otherwise the File's backing source can detach
+            // and later .arrayBuffer() calls will hang.
+            await stageFiles(e.target.files);
             if (inputRef.current) inputRef.current.value = "";
           }}
         />
