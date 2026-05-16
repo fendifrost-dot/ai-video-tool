@@ -504,6 +504,15 @@ export type Database = {
           status: Database["public"]["Enums"]["shot_status"]
           timestamp_end: number | null
           timestamp_start: number | null
+          transition_duration: number | null
+          transition_in_type:
+            | Database["public"]["Enums"]["shot_transition_type"]
+            | null
+          transition_out_type:
+            | Database["public"]["Enums"]["shot_transition_type"]
+            | null
+          trim_in_seconds: number | null
+          trim_out_seconds: number | null
           updated_at: string
           user_id: string
           wardrobe: string | null
@@ -526,6 +535,15 @@ export type Database = {
           status?: Database["public"]["Enums"]["shot_status"]
           timestamp_end?: number | null
           timestamp_start?: number | null
+          transition_duration?: number | null
+          transition_in_type?:
+            | Database["public"]["Enums"]["shot_transition_type"]
+            | null
+          transition_out_type?:
+            | Database["public"]["Enums"]["shot_transition_type"]
+            | null
+          trim_in_seconds?: number | null
+          trim_out_seconds?: number | null
           updated_at?: string
           user_id: string
           wardrobe?: string | null
@@ -548,6 +566,15 @@ export type Database = {
           status?: Database["public"]["Enums"]["shot_status"]
           timestamp_end?: number | null
           timestamp_start?: number | null
+          transition_duration?: number | null
+          transition_in_type?:
+            | Database["public"]["Enums"]["shot_transition_type"]
+            | null
+          transition_out_type?:
+            | Database["public"]["Enums"]["shot_transition_type"]
+            | null
+          trim_in_seconds?: number | null
+          trim_out_seconds?: number | null
           updated_at?: string
           user_id?: string
           wardrobe?: string | null
@@ -724,6 +751,14 @@ export type Database = {
         | "approved"
         | "rejected"
         | "needs_regen"
+      shot_transition_type:
+        | "cut"
+        | "crossfade"
+        | "fade_black"
+        | "fade_white"
+        | "whip_pan"
+        | "glitch"
+        | "flash"
       shot_type:
         | "performance"
         | "b_roll"
@@ -949,6 +984,15 @@ export const Constants = {
         "rejected",
         "needs_regen",
       ],
+      shot_transition_type: [
+        "cut",
+        "crossfade",
+        "fade_black",
+        "fade_white",
+        "whip_pan",
+        "glitch",
+        "flash",
+      ],
       shot_type: [
         "performance",
         "b_roll",
@@ -960,59 +1004,3 @@ export const Constants = {
     },
   },
 } as const
-
-// =============================================================================
-// Domain type aliases — manually curated re-exports of Tables<>/Enums<>
-// =============================================================================
-// The generated `Tables<>` / `Enums<>` indirections work but are noisy to read
-// at every call site. These aliases give pages and queries a clean, named
-// shape to import. Keep in sync with the SQL schema (migrations/) when
-// columns or enum values change.
-//
-// Note: these are TYPE-ONLY exports. If you add a new table here, regenerate
-// the `Database` type below first (Lovable Cloud → Database → Generate Types).
-
-export type Artist = Tables<"artists">;
-export type ArtistAsset = Tables<"artist_assets">;
-export type ArtistAssetType = Enums<"artist_asset_type">;
-export type VideoProject = Tables<"video_projects">;
-export type ProjectStatus = Enums<"project_status">;
-export type Shot = Tables<"shots">;
-export type ShotStatus = Enums<"shot_status">;
-export type ShotType = Enums<"shot_type">;
-export type ShotPriority = Enums<"shot_priority">;
-export type Prompt = Tables<"prompts">;
-export type PromptTemplate = Tables<"prompt_templates">;
-export type PromptTemplateCategory = Enums<"prompt_template_category">;
-export type ProviderName = Enums<"provider_name">;
-export type ProjectAsset = Tables<"project_assets">;
-export type ProjectAssetType = Enums<"project_asset_type">;
-export type ApprovalStatus = Enums<"approval_status">;
-export type ClipReview = Tables<"clip_reviews">;
-export type ExportPackage = Tables<"export_packages">;
-export type ExportType = Enums<"export_type">;
-export type ExportStatus = Enums<"export_status">;
-export type ProviderJob = Tables<"provider_jobs">;
-export type ProviderJobStatus = Enums<"provider_job_status">;
-
-/**
- * Structured artist identity profile stored in `artists.identity_profile_json`.
- * Schema comment in the SQL says:
- *   { face, body, skin, hair, tattoos, jewelry, wardrobe_defaults,
- *     distinguishing_features }
- * — but it's a `jsonb` column so all keys are nominally optional. The compiler
- * tolerates missing fields and only injects what's present.
- */
-export type ArtistIdentityProfile = {
-  face?: string;
-  body?: string;
-  skin?: string;
-  hair?: string;
-  tattoos?: string;
-  jewelry?: string;
-  wardrobe_defaults?: string;
-  distinguishing_features?: string;
-  // Free-form extension slot — additional fields are preserved by the
-  // compiler but treated as opaque strings.
-  [key: string]: string | undefined;
-};
