@@ -27,9 +27,15 @@ function sanitizeSegment(segment: string): string {
 }
 
 /**
- * Upload a single file to a bucket.
- * Caller is responsible for building the path. Returns the storage path that
- * was used (relative to the bucket) — store this in the `file_url` column.
+ * Upload a single file to a bucket via direct fetch to Supabase's storage REST
+ * endpoint. We previously used `supabase.storage.from(bucket).upload(...)` but
+ * the SDK call hangs on certain payloads (observed: video/mp4 + project-clips
+ * bucket — POST fires but the response promise never resolves, button stays
+ * "Uploading..." indefinitely). Plain fetch with the same headers + raw File
+ * body returns 200 in milliseconds. Same endpoint, same auth, same path.
+ *
+ * Returns the storage path that was used (relative to the bucket) — store
+ * this in the `file_url` column.
  */
 export async function uploadToBucket(
   bucket: StorageBucket,
@@ -37,12 +43,36 @@ export async function uploadToBucket(
   file: File,
   options?: { upsert?: boolean },
 ): Promise<string> {
-  const { error } = await supabase.storage.from(bucket).upload(path, file, {
-    cacheControl: "3600",
-    upsert: options?.upsert ?? false,
-    contentType: file.type || undefined,
+  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+  if (sessionErr) throw sessionErr;
+  const session = sessionData.session;
+  if (!session) throw new Error("Not signed in");
+
+  const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!baseUrl) {
+    throw new Error("Missing VITE_SUPABASE_URL in env");
+  }
+
+  const upsert = options?.upsert ?? false;
+  const url = `${baseUrl.replace(/\/$/, "")}/storage/v1/object/${bucket}/${path}`;
+
+  const resp = await fetch(url, {
+    method: upsert ? "PUT" : "POST",
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+      "Content-Type": file.type || "application/octet-stream",
+      "cache-control": "max-age=3600",
+      "x-upsert": String(upsert),
+    },
+    body: file,
   });
-  if (error) throw error;
+
+  if (!resp.ok) {
+    const text = await resp.text().catch(() => "");
+    throw new Error(
+      `Storage upload failed: ${resp.status} ${resp.statusText} — ${text.slice(0, 200)}`,
+    );
+  }
   return path;
 }
 
