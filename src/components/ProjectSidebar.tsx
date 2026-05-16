@@ -1,10 +1,18 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { FileText, Clapperboard, Image as ImageIcon, Eye, Upload } from "lucide-react";
+import {
+  FileText,
+  Clapperboard,
+  Image as ImageIcon,
+  Eye,
+  Upload,
+  Wand2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { to: "/projects/$id/treatment", label: "Treatment", icon: FileText, key: "treatment" },
   { to: "/projects/$id/shots", label: "Shots", icon: Clapperboard, key: "shots" },
+  { to: "/projects/$id/prompt", label: "Prompt", icon: Wand2, key: "prompt" },
   { to: "/projects/$id/assets", label: "Assets", icon: ImageIcon, key: "assets" },
   { to: "/projects/$id/review", label: "Review", icon: Eye, key: "review" },
   { to: "/projects/$id/export", label: "Export", icon: Upload, key: "export" },
