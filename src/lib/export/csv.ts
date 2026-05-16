@@ -108,7 +108,7 @@ export function buildPromptLogCsv(
       p.negative_prompt,
       compactSettings(p.settings_json),
       asset ? approvedFilename(asset, shot?.shot_number) : null,
-      asset?.approval_status === "approved",
+      asset?.approval_status === "approved" ? "yes" : "no",
       p.created_at,
     ]);
   }

@@ -174,7 +174,7 @@ describe("buildPromptLogCsv", () => {
     expect(lines[0]).toBe(PROMPT_LOG_HEADER.join(","));
     expect(lines[1]).toContain("Runway — Performance");
     expect(lines[1]).toContain("shot_001_generated_clip.mp4");
-    expect(lines[1]).toContain("true"); // approved boolean
+    expect(lines[1]).toContain("yes"); // approved -> yes/no
   });
 
   it("compacts settings into k=v; pairs", () => {
