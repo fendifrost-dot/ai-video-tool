@@ -53,12 +53,18 @@ export function ArtistAssetGrid({ artistId }: { artistId: string }) {
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
+    // Snapshot synchronously: the caller clears `inputRef.current.value = ""`
+    // immediately after invoking handleFiles, which empties the FileList we
+    // hold a live reference to. Materialising into a plain Array<File> here
+    // detaches us from the input lifecycle so the for-loop below has stable
+    // input across the awaits.
+    const snapshot = Array.from(files);
     try {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
 
-      for (const file of Array.from(files)) {
+      for (const file of snapshot) {
         const filename = makeUploadFilename(file.name);
         const path = buildStoragePath(user.id, artistId, `${assetType}_${filename}`);
         await uploadToBucket("artist-assets", path, file);
@@ -76,7 +82,9 @@ export function ArtistAssetGrid({ artistId }: { artistId: string }) {
           },
         });
       }
-      toast.success(`Uploaded ${files.length} ${files.length === 1 ? "asset" : "assets"}`);
+      toast.success(
+        `Uploaded ${snapshot.length} ${snapshot.length === 1 ? "asset" : "assets"}`,
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Upload failed");
     }
