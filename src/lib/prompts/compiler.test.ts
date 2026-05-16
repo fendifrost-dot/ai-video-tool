@@ -343,4 +343,25 @@ describe("compilePrompt", () => {
     expect(result.negativePrompt).toContain("no text overlay");
     expect(result.negativePrompt).toContain("no logos");
   });
+  it("threads the locked reference asset path onto the output", () => {
+    const result = compilePrompt({
+      template: makeTemplate(),
+      project: makeProject(),
+      artist: makeArtist(),
+      shot: makeShot(),
+      lockedReferenceAssetPath: "u1/a1/face_front_lock.png",
+    });
+    expect(result.referenceImagePath).toBe("u1/a1/face_front_lock.png");
+  });
+
+  it("returns null referenceImagePath when no locked asset is supplied", () => {
+    const result = compilePrompt({
+      template: makeTemplate(),
+      project: makeProject(),
+      artist: makeArtist(),
+      shot: makeShot(),
+    });
+    expect(result.referenceImagePath).toBeNull();
+  });
+
 });

@@ -207,6 +207,50 @@ export function useUpdateArtistAsset() {
   });
 }
 
+
+/**
+ * Atomically set ONE artist_asset as the primary reference, clearing the
+ * flag on all sibling assets for the same artist. Used by the "Lock as
+ * primary reference" toggle in the artist UI. The locked asset is what the
+ * prompt compiler picks up as the canonical character identity to attach
+ * to every image-to-video generation.
+ */
+export function useSetPrimaryArtistAsset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      assetId,
+      artistId,
+    }: {
+      assetId: string;
+      artistId: string;
+    }): Promise<ArtistAsset> => {
+      // Clear flag on all sibling assets for this artist. We do this first
+      // so a transient state where no asset is "primary" is briefly visible
+      // — preferable to a transient state where TWO are primary, which would
+      // make the compiler's read non-deterministic.
+      const { error: clearErr } = await supabase
+        .from("artist_assets")
+        .update({ is_primary_reference: false })
+        .eq("artist_id", artistId)
+        .neq("id", assetId);
+      if (clearErr) throw clearErr;
+
+      const { data, error } = await supabase
+        .from("artist_assets")
+        .update({ is_primary_reference: true })
+        .eq("id", assetId)
+        .select("*")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (asset) => {
+      qc.invalidateQueries({ queryKey: artistsKeys.assets(asset.artist_id) });
+    },
+  });
+}
+
 export function useDeleteArtistAsset() {
   const qc = useQueryClient();
   return useMutation({

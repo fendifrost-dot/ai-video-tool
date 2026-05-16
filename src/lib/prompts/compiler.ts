@@ -54,6 +54,7 @@ export function compilePrompt(input: CompileInput): CompiledPrompt {
     negativePrompt,
     settings,
     unfilledPlaceholders: unfilled,
+    referenceImagePath: input.lockedReferenceAssetPath ?? null,
     context: {
       projectId: project.id,
       artistId: artist?.id ?? null,

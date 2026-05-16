@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Check, Copy, Lock, LockOpen } from "lucide-react";
+import { signedUrl } from "@/lib/storage";
 import { toast } from "sonner";
 import type { ProviderName } from "@/integrations/supabase/types";
 import type { CompiledPrompt, FormattedPrompt } from "@/lib/prompts/types";
@@ -43,6 +44,7 @@ export function PromptOutputView({
 
   return (
     <div className="space-y-3">
+      <LockedReferenceBadge path={compiled.referenceImagePath} />
       <Tabs value={active} onValueChange={(v) => setActive(v as ProviderName)}>
         {/*
           Horizontal scroll instead of a fixed grid so the 7 provider tabs
@@ -86,6 +88,60 @@ export function PromptOutputView({
       {compiled.unfilledPlaceholders.length > 0 && (
         <UnfilledWarning placeholders={compiled.unfilledPlaceholders} />
       )}
+    </div>
+  );
+}
+
+function LockedReferenceBadge({ path }: { path: string | null }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!path) {
+      setUrl(null);
+      return;
+    }
+    signedUrl("artist-assets", path, 3600)
+      .then((u) => {
+        if (!cancelled) setUrl(u);
+      })
+      .catch(() => {
+        if (!cancelled) setUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [path]);
+
+  if (!path) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-dashed border-border bg-card/30 p-2 text-xs text-muted-foreground">
+        <LockOpen className="h-3.5 w-3.5" />
+        <span>
+          No locked reference — providers that support image-to-video will
+          use text-only prompting. Lock an image on the artist page to attach
+          a canonical reference to every prompt.
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/5 p-2 text-xs text-emerald-200">
+      {url ? (
+        <img
+          src={url}
+          alt="Locked reference"
+          loading="lazy"
+          className="h-8 w-8 rounded object-cover"
+        />
+      ) : (
+        <div className="h-8 w-8 rounded bg-emerald-500/10" />
+      )}
+      <Lock className="h-3.5 w-3.5 shrink-0" />
+      <span className="truncate">
+        Locked reference attached: <code className="font-mono">{path.split("/").pop()}</code>
+      </span>
     </div>
   );
 }

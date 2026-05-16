@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Camera, Upload, X } from "lucide-react";
+import { Camera, Lock, Upload, X } from "lucide-react";
 import type { ArtistAsset, ArtistAssetType } from "@/integrations/supabase/types";
 import {
   FACE_360_SLOTS,
   useArtistAssets,
   useCreateArtistAsset,
   useDeleteArtistAsset,
+  useSetPrimaryArtistAsset,
 } from "@/lib/queries/artists";
 import {
   buildStoragePath,
@@ -41,6 +42,7 @@ export function Reference360Uploader({ artistId }: { artistId: string }) {
   const assetsQuery = useArtistAssets(artistId);
   const createAsset = useCreateArtistAsset();
   const deleteAsset = useDeleteArtistAsset();
+  const setPrimary = useSetPrimaryArtistAsset();
 
   const slotAssets = useMemo(() => {
     const map: Partial<Record<ArtistAssetType, ArtistAsset>> = {};
@@ -82,7 +84,18 @@ export function Reference360Uploader({ artistId }: { artistId: string }) {
             slot={slot}
             asset={slotAssets[slot]}
             signedUrl={slotAssets[slot] ? urls[slotAssets[slot]!.file_url] : undefined}
-            disabled={createAsset.isPending || deleteAsset.isPending}
+            disabled={createAsset.isPending || deleteAsset.isPending || setPrimary.isPending}
+            isPrimary={!!slotAssets[slot]?.is_primary_reference}
+            onLock={async () => {
+              const asset = slotAssets[slot];
+              if (!asset) return;
+              try {
+                await setPrimary.mutateAsync({ assetId: asset.id, artistId });
+                toast.success(`Locked ${SLOT_LABELS[slot]} as primary reference`);
+              } catch (err) {
+                toast.error(err instanceof Error ? err.message : "Lock failed");
+              }
+            }}
             onUpload={async (file) => {
               try {
                 const { data: userData } = await supabase.auth.getUser();
@@ -133,21 +146,34 @@ function SlotCard({
   asset,
   signedUrl,
   disabled,
+  isPrimary,
   onUpload,
   onDelete,
+  onLock,
 }: {
   slot: ArtistAssetType;
   asset?: ArtistAsset;
   signedUrl?: string;
   disabled?: boolean;
+  isPrimary?: boolean;
   onUpload: (file: File) => Promise<void>;
   onDelete: () => Promise<void>;
+  onLock: () => Promise<void>;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const filled = !!asset;
 
   return (
     <div className="group relative aspect-square overflow-hidden rounded-md border border-border bg-muted/30">
+      {isPrimary && (
+        <div
+          className="absolute left-1.5 top-1.5 z-10 flex items-center gap-1 rounded-sm bg-emerald-500/90 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white"
+          title="Primary reference — attached to every prompt"
+        >
+          <Lock className="h-2.5 w-2.5" />
+          Locked
+        </div>
+      )}
       {filled && signedUrl ? (
         <img
           src={signedUrl}
@@ -167,6 +193,17 @@ function SlotCard({
           {SLOT_LABELS[slot]}
         </span>
         <div className="flex gap-1">
+          {filled && !isPrimary && (
+            <button
+              type="button"
+              onClick={onLock}
+              disabled={disabled}
+              className="rounded-sm bg-white/10 p-1 text-white hover:bg-emerald-500/60 disabled:opacity-50"
+              title="Lock as primary reference"
+            >
+              <Lock className="h-3 w-3" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => inputRef.current?.click()}

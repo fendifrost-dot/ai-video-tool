@@ -13,7 +13,7 @@ import type {
   CompiledPrompt,
   PromptOverrides,
 } from "@/lib/prompts/types";
-import { useArtist } from "@/lib/queries/artists";
+import { useArtist, useArtistAssets } from "@/lib/queries/artists";
 import { useProjectShots } from "@/lib/queries/shots";
 import { usePromptTemplates } from "@/lib/queries/promptTemplates";
 import { useSavePrompt } from "@/lib/queries/prompts";
@@ -43,6 +43,22 @@ export function PromptBuilder({
   const templatesQuery = usePromptTemplates();
   const shotsQuery = useProjectShots(project.id);
   const artistQuery = useArtist(project.artist_id ?? undefined);
+  const artistAssetsQuery = useArtistAssets(project.artist_id ?? undefined);
+
+  // The "lock-in-character" asset — whichever artist_asset has
+  // is_primary_reference = true gets attached to every prompt as the
+  // canonical character identity. If the artist has no locked asset, fall
+  // back to the face_front 360 slot (a sensible default for the most common
+  // image-to-video case).
+  const lockedAsset = useMemo(() => {
+    const assets = artistAssetsQuery.data ?? [];
+    return (
+      assets.find((a) => a.is_primary_reference) ??
+      assets.find((a) => a.asset_type === "face_front") ??
+      null
+    );
+  }, [artistAssetsQuery.data]);
+
   const savePrompt = useSavePrompt();
 
   const [templateId, setTemplateId] = useState<string | null>(null);
@@ -86,8 +102,9 @@ export function PromptBuilder({
         ...overrides,
         extra_negative: extraNegative.trim() || undefined,
       },
+      lockedReferenceAssetPath: lockedAsset?.file_url ?? null,
     });
-  }, [template, project, artistQuery.data, shot, overrides, extraNegative]);
+  }, [template, project, artistQuery.data, shot, overrides, extraNegative, lockedAsset]);
 
   async function handleSave() {
     if (!compiled || !template) return;

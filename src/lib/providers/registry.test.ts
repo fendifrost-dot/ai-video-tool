@@ -16,6 +16,7 @@ const baseCompiled: CompiledPrompt = {
   negativePrompt: "blurry, watermark",
   settings: { duration_seconds: 5 },
   unfilledPlaceholders: [],
+  referenceImagePath: null,
   context: { projectId: "p1", artistId: null, shotId: null },
 };
 

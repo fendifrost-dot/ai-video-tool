@@ -22,6 +22,13 @@ export type CompileInput = {
    * iterating on a one-off variation without writing it back to the shot row.
    */
   overrides?: PromptOverrides;
+  /**
+   * The artist's locked reference asset (is_primary_reference = true on
+   * artist_assets). The compiler reads this to populate `referenceImagePath`
+   * on the output. May be null/undefined; in that case `referenceImagePath`
+   * is null and providers fall back to text-only prompting.
+   */
+  lockedReferenceAssetPath?: string | null;
 };
 
 export type PromptOverrides = {
@@ -55,6 +62,14 @@ export type CompiledPrompt = {
 
   /** Placeholders that had no matching value. */
   unfilledPlaceholders: string[];
+
+  /**
+   * Path (within the artist-assets bucket) of the artist's locked reference
+   * image, if one exists. Providers that support image-to-video should
+   * resolve this to a signed URL and attach it to their API request. Null
+   * = text-only generation.
+   */
+  referenceImagePath: string | null;
 
   /** Bookkeeping so the UI can store result back to the prompts table. */
   context: {
