@@ -15,6 +15,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { GenerateButton } from "./GenerateButton";
 
 export function PromptOutputView({
   compiled,
@@ -71,6 +72,13 @@ export function PromptOutputView({
                 label="Prompt"
                 value={formatted.promptText}
                 providerDisplay={getProvider(id).displayName}
+              />
+              <GenerateButton
+                compiled={compiled}
+                formatted={formatted}
+                provider={id}
+                providerDisplay={getProvider(id).displayName}
+                apiReady={getProvider(id).apiReady}
               />
               {formatted.negativePrompt && (
                 <PromptBlock

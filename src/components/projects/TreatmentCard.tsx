@@ -1,0 +1,150 @@
+import { useMemo, useState } from "react";
+import { Sparkles, Loader2, Save } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { useArtist } from "@/lib/queries/artists";
+import { supabase } from "@/lib/supabase";
+import {
+  draftTreatment,
+  parseSavedTreatment,
+  type TreatmentEnvelope,
+} from "@/lib/treatment/api";
+import type { VideoProject, ArtistIdentityProfile } from "@/integrations/supabase/types";
+
+/**
+ * Treatment card for the project page.
+ *
+ * - Shows current treatment text if present (rendered as paragraphs).
+ * - "Generate Treatment with AI" button if empty, "Regenerate" if present.
+ * - Inline edit affordance when the user wants to tweak the AI output.
+ */
+export function TreatmentCard({ project }: { project: VideoProject }) {
+  const saved = useMemo(() => parseSavedTreatment(project.treatment_json), [project.treatment_json]);
+  const [draft, setDraft] = useState<TreatmentEnvelope | null>(saved);
+  const [isEditing, setIsEditing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [editText, setEditText] = useState(saved?.text ?? "");
+
+  const artistQuery = useArtist(project.artist_id ?? undefined);
+
+  async function handleGenerate() {
+    setBusy(true);
+    try {
+      const profile = artistQuery.data?.identity_profile_json as ArtistIdentityProfile | undefined;
+      const artistProfile = profile
+        ? Object.entries(profile)
+            .filter(([, v]) => typeof v === "string" && v.length > 0)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join("\n")
+        : null;
+      const envelope = await draftTreatment({
+        projectId: project.id,
+        songTitle: project.song_title,
+        lyrics: project.lyrics,
+        artistProfile: artistProfile,
+        visualStyle: project.visual_style,
+        mood: project.mood,
+        additionalNotes: project.notes,
+      });
+      setDraft(envelope);
+      setEditText(envelope.text);
+      toast.success("Treatment drafted");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Treatment failed: ${msg}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleSaveEdit() {
+    if (!draft) return;
+    const envelope: TreatmentEnvelope = { ...draft, text: editText.trim() };
+    setBusy(true);
+    try {
+      const { error } = await supabase
+        .from("video_projects")
+        .update({ treatment_json: envelope as unknown as never })
+        .eq("id", project.id);
+      if (error) throw error;
+      setDraft(envelope);
+      setIsEditing(false);
+      toast.success("Treatment saved");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Save failed: ${msg}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="space-y-3 rounded-md border border-border bg-card/30 p-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          Treatment
+        </h2>
+        <div className="flex items-center gap-2">
+          {draft && !isEditing && (
+            <Button size="sm" variant="outline" onClick={() => setIsEditing(true)}>
+              Edit
+            </Button>
+          )}
+          {isEditing && (
+            <Button size="sm" variant="outline" onClick={handleSaveEdit} disabled={busy}>
+              <Save className="mr-1 h-3 w-3" />
+              Save
+            </Button>
+          )}
+          <Button size="sm" onClick={handleGenerate} disabled={busy}>
+            {busy ? (
+              <>
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                Drafting…
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-1 h-3 w-3" />
+                {draft ? "Regenerate with AI" : "Generate with AI"}
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      {!draft && !busy && (
+        <p className="text-xs text-muted-foreground">
+          No treatment yet. The AI draft uses this project's lyrics, mood,
+          visual style, and the locked artist profile to write a ~350-word
+          director's treatment you can edit.
+        </p>
+      )}
+
+      {isEditing ? (
+        <Textarea
+          rows={16}
+          value={editText}
+          onChange={(e) => setEditText(e.target.value)}
+          className="text-sm"
+        />
+      ) : (
+        draft && (
+          <div className="space-y-3">
+            <div className="space-y-3 text-sm leading-relaxed">
+              {draft.text.split(/\n\n+/).map((para, i) => (
+                <p key={i}>{para}</p>
+              ))}
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Generated by {draft.model} at {new Date(draft.generated_at).toLocaleString()}
+              {draft.input_tokens && draft.output_tokens
+                ? ` · ${draft.input_tokens}→${draft.output_tokens} tokens`
+                : ""}
+            </p>
+          </div>
+        )
+      )}
+    </section>
+  );
+}

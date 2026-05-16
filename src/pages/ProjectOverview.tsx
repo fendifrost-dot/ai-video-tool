@@ -21,6 +21,8 @@ import {
 } from "@/lib/queries/projects";
 import { useArtist } from "@/lib/queries/artists";
 import type { ProjectStatus } from "@/integrations/supabase/types";
+import { TreatmentCard } from "@/components/projects/TreatmentCard";
+import { ProjectCostCard } from "@/components/projects/ProjectCostCard";
 
 export default function ProjectOverview({ id }: { id: string }) {
   const navigate = useNavigate();
@@ -119,6 +121,8 @@ export default function ProjectOverview({ id }: { id: string }) {
 
         <MetaGrid project={project} />
         <ProjectAudioCard projectId={project.id} />
+        <TreatmentCard project={project} />
+        <ProjectCostCard projectId={project.id} />
         <VisualCard project={project} />
         <LyricsCard lyrics={project.lyrics} />
         <SongStructureCard structureJson={project.song_structure_json} />

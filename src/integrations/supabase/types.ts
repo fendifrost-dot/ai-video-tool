@@ -1004,3 +1004,49 @@ export const Constants = {
     },
   },
 } as const
+
+// =============================================================================
+// Domain type aliases — DO NOT REMOVE
+// =============================================================================
+// Lovable's "Generate Types" regenerates this file from scratch and silently
+// drops these aliases (last seen wiped in commit c139281). Pages and queries
+// throughout the app import these names; tsc --noEmit fails without them.
+// Re-add after any types.ts regeneration.
+
+export type Artist = Tables<"artists">;
+export type ArtistAsset = Tables<"artist_assets">;
+export type ArtistAssetType = Enums<"artist_asset_type">;
+export type VideoProject = Tables<"video_projects">;
+export type ProjectStatus = Enums<"project_status">;
+export type Shot = Tables<"shots">;
+export type ShotStatus = Enums<"shot_status">;
+export type ShotType = Enums<"shot_type">;
+export type ShotPriority = Enums<"shot_priority">;
+export type Prompt = Tables<"prompts">;
+export type PromptTemplate = Tables<"prompt_templates">;
+export type PromptTemplateCategory = Enums<"prompt_template_category">;
+export type ProviderName = Enums<"provider_name">;
+export type ProjectAsset = Tables<"project_assets">;
+export type ProjectAssetType = Enums<"project_asset_type">;
+export type ApprovalStatus = Enums<"approval_status">;
+export type ClipReview = Tables<"clip_reviews">;
+export type ExportPackage = Tables<"export_packages">;
+export type ExportType = Enums<"export_type">;
+export type ExportStatus = Enums<"export_status">;
+export type ProviderJob = Tables<"provider_jobs">;
+export type ProviderJobStatus = Enums<"provider_job_status">;
+
+/**
+ * Structured artist identity profile stored in `artists.identity_profile_json`.
+ */
+export type ArtistIdentityProfile = {
+  face?: string;
+  body?: string;
+  skin?: string;
+  hair?: string;
+  tattoos?: string;
+  jewelry?: string;
+  wardrobe_defaults?: string;
+  distinguishing_features?: string;
+  [key: string]: string | undefined;
+};
