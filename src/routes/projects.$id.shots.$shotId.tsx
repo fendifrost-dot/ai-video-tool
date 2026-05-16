@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ShotDetail } from "@/pages/ProjectSections";
+import ShotDetailPage from "@/pages/ShotDetailPage";
+
 export const Route = createFileRoute("/projects/$id/shots/$shotId")({
   component: () => {
-    const { shotId } = Route.useParams();
-    return <ShotDetail shotId={shotId} />;
+    const { id, shotId } = Route.useParams();
+    return <ShotDetailPage projectId={id} shotId={shotId} />;
   },
 });
