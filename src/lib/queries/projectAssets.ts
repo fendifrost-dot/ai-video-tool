@@ -1,0 +1,230 @@
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { supabase } from "@/lib/supabase";
+import type {
+  ApprovalStatus,
+  Json,
+  ProjectAsset,
+  ProjectAssetType,
+  TablesInsert,
+  TablesUpdate,
+} from "@/integrations/supabase/types";
+
+export const projectAssetsKeys = {
+  all: ["project_assets"] as const,
+  forProject: (projectId: string) => [...projectAssetsKeys.all, "project", projectId] as const,
+  forShot: (shotId: string) => [...projectAssetsKeys.all, "shot", shotId] as const,
+  detail: (id: string) => [...projectAssetsKeys.all, "detail", id] as const,
+};
+
+/**
+ * All project assets (excludes the audio asset, which is queried separately
+ * for the project header).
+ */
+export function useProjectAssets(projectId: string | undefined) {
+  return useQuery<ProjectAsset[]>({
+    queryKey: projectId
+      ? projectAssetsKeys.forProject(projectId)
+      : [...projectAssetsKeys.all, "project", "_none_"],
+    queryFn: async () => {
+      if (!projectId) return [];
+      const { data, error } = await supabase
+        .from("project_assets")
+        .select("*")
+        .eq("project_id", projectId)
+        .neq("asset_type", "audio")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!projectId,
+  });
+}
+
+/**
+ * Insert a new project asset row. Storage upload happens in the caller; this
+ * just records metadata + file_url.
+ */
+export function useCreateProjectAsset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (
+      payload: Omit<TablesInsert<"project_assets">, "user_id">,
+    ): Promise<ProjectAsset> => {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+      if (!user) throw new Error("Not signed in");
+
+      const { data, error } = await supabase
+        .from("project_assets")
+        .insert({ ...payload, user_id: user.id })
+        .select("*")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (asset) => {
+      qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(asset.project_id) });
+      if (asset.shot_id) {
+        qc.invalidateQueries({ queryKey: projectAssetsKeys.forShot(asset.shot_id) });
+      }
+    },
+  });
+}
+
+export function useUpdateProjectAsset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      patch,
+    }: {
+      id: string;
+      patch: TablesUpdate<"project_assets">;
+    }): Promise<ProjectAsset> => {
+      const { data, error } = await supabase
+        .from("project_assets")
+        .update(patch)
+        .eq("id", id)
+        .select("*")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (asset) => {
+      qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(asset.project_id) });
+      if (asset.shot_id) {
+        qc.invalidateQueries({ queryKey: projectAssetsKeys.forShot(asset.shot_id) });
+      }
+    },
+  });
+}
+
+export function useDeleteProjectAsset() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+    }: {
+      id: string;
+      projectId: string;
+    }): Promise<void> => {
+      const { error } = await supabase.from("project_assets").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_void, { projectId }) => {
+      qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(projectId) });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Static metadata
+// ---------------------------------------------------------------------------
+export const PROJECT_ASSET_TYPE_OPTIONS: {
+  value: ProjectAssetType;
+  label: string;
+  group: "input" | "generated" | "edit" | "export";
+}[] = [
+  { value: "reference_image", label: "Reference image", group: "input" },
+  { value: "reference_video", label: "Reference video", group: "input" },
+  { value: "lyrics_doc", label: "Lyrics document", group: "input" },
+  { value: "generated_still", label: "Generated still", group: "generated" },
+  { value: "generated_clip", label: "Generated clip", group: "generated" },
+  { value: "edited_clip", label: "Edited clip", group: "edit" },
+  { value: "lut", label: "LUT", group: "edit" },
+  { value: "overlay", label: "Overlay", group: "edit" },
+  { value: "sfx", label: "SFX", group: "edit" },
+  { value: "thumbnail", label: "Thumbnail", group: "export" },
+  { value: "premiere_export", label: "Premiere export", group: "export" },
+  { value: "ae_asset", label: "After Effects asset", group: "export" },
+  { value: "social_cutdown", label: "Social cutdown", group: "export" },
+  { value: "other", label: "Other", group: "input" },
+];
+
+export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
+  pending: "Pending review",
+  approved: "Approved",
+  rejected: "Rejected",
+  archived: "Archived",
+};
+
+/**
+ * Best-guess asset type from a File. Used to set a sensible default in the
+ * uploader; the user can override before saving.
+ */
+export function guessAssetType(file: File): ProjectAssetType {
+  const type = file.type;
+  if (type.startsWith("video/")) return "generated_clip";
+  if (type.startsWith("image/")) return "generated_still";
+  if (type.startsWith("audio/")) return "sfx";
+  if (type === "application/pdf" || file.name.endsWith(".txt") || file.name.endsWith(".md")) {
+    return "lyrics_doc";
+  }
+  return "other";
+}
+
+/**
+ * Which storage bucket to use for a given asset_type.
+ */
+export function bucketForAssetType(t: ProjectAssetType) {
+  switch (t) {
+    case "reference_image":
+    case "reference_video":
+    case "lyrics_doc":
+      return "project-references" as const;
+    case "ae_asset":
+    case "premiere_export":
+      return "project-exports" as const;
+    case "generated_still":
+    case "generated_clip":
+    case "edited_clip":
+    case "thumbnail":
+    case "social_cutdown":
+    case "lut":
+    case "overlay":
+    case "sfx":
+    case "other":
+    default:
+      return "project-clips" as const;
+  }
+}
+
+/** Whether a file_url is renderable as an image preview. */
+export function isImageAsset(asset: ProjectAsset): boolean {
+  const meta = asset.metadata_json as { mime_type?: string } | null;
+  const mime = meta?.mime_type ?? "";
+  if (mime.startsWith("image/")) return true;
+  return /\.(png|jpe?g|gif|webp|avif|bmp)$/i.test(asset.file_url);
+}
+
+/** Whether a file_url is renderable as a video preview. */
+export function isVideoAsset(asset: ProjectAsset): boolean {
+  const meta = asset.metadata_json as { mime_type?: string } | null;
+  const mime = meta?.mime_type ?? "";
+  if (mime.startsWith("video/")) return true;
+  return /\.(mp4|mov|webm|m4v|mkv)$/i.test(asset.file_url);
+}
+
+/** Read mp4/mov duration from a File via a temporary <video>. */
+export function readVideoDuration(file: File): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      const d = video.duration;
+      URL.revokeObjectURL(url);
+      if (Number.isFinite(d)) resolve(d);
+      else reject(new Error("Couldn't read duration"));
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Couldn't decode video"));
+    };
+    video.src = url;
+  });
+}
