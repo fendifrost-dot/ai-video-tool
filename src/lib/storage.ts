@@ -56,6 +56,15 @@ export async function uploadToBucket(
   const upsert = options?.upsert ?? false;
   const url = `${baseUrl.replace(/\/$/, "")}/storage/v1/object/${bucket}/${path}`;
 
+  // Read the File into a fresh ArrayBuffer/Blob before posting. Passing the
+  // raw File directly to fetch lets the browser stream it via ReadableStream,
+  // which can hang indefinitely on file objects whose backing source has
+  // detached or been GC'd (observed in Chrome with files injected by browser
+  // automation tools). Reading into an ArrayBuffer materialises all bytes
+  // up front and detaches us from the original file handle entirely.
+  const buffer = await file.arrayBuffer();
+  const body = new Blob([buffer], { type: file.type || "application/octet-stream" });
+
   const resp = await fetch(url, {
     method: upsert ? "PUT" : "POST",
     headers: {
@@ -64,7 +73,7 @@ export async function uploadToBucket(
       "cache-control": "max-age=3600",
       "x-upsert": String(upsert),
     },
-    body: file,
+    body,
   });
 
   if (!resp.ok) {
