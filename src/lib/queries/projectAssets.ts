@@ -209,20 +209,43 @@ export function isVideoAsset(asset: ProjectAsset): boolean {
   return /\.(mp4|mov|webm|m4v|mkv)$/i.test(asset.file_url);
 }
 
-/** Read mp4/mov duration from a File via a temporary <video>. */
+/**
+ * Read mp4/mov duration from a File via a temporary <video>.
+ * Hard timeout: some containers cause the metadata loader to hang silently
+ * (neither onloadedmetadata nor onerror fires). The 5 s cap ensures uploads
+ * never block on duration probing.
+ */
 export function readVideoDuration(file: File): Promise<number> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const video = document.createElement("video");
     video.preload = "metadata";
-    video.onloadedmetadata = () => {
-      const d = video.duration;
+    let settled = false;
+    const cleanup = () => {
       URL.revokeObjectURL(url);
+      video.removeAttribute("src");
+      video.load();
+    };
+    const timeout = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error("Video metadata probe timed out"));
+    }, 5000);
+    video.onloadedmetadata = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      const d = video.duration;
+      cleanup();
       if (Number.isFinite(d)) resolve(d);
       else reject(new Error("Couldn't read duration"));
     };
     video.onerror = () => {
-      URL.revokeObjectURL(url);
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      cleanup();
       reject(new Error("Couldn't decode video"));
     };
     video.src = url;

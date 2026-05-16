@@ -35,9 +35,19 @@ export function AudioUploader({
     return () => URL.revokeObjectURL(url);
   }, [staged]);
 
-  async function handleFile(file: File) {
-    const duration = await readAudioDuration(file).catch(() => null);
-    onChange({ file, durationSeconds: duration });
+  function handleFile(file: File) {
+    // Stage the file immediately so the UI shows the preview without waiting
+    // on the duration probe. Some audio containers (e.g. ALAC inside a
+    // .wav-named file) hang the <audio> metadata loader indefinitely with
+    // neither onloadedmetadata nor onerror firing — we don't want that to
+    // block staging.
+    onChange({ file, durationSeconds: null });
+    // Best-effort duration probe in the background with a hard timeout.
+    readAudioDuration(file)
+      .then((duration) => onChange({ file, durationSeconds: duration }))
+      .catch(() => {
+        /* duration unread — non-fatal, file is already staged */
+      });
   }
 
   // If already uploaded, show that. Otherwise show staged preview or empty state.
@@ -134,14 +144,32 @@ function readAudioDuration(file: File): Promise<number> {
     const url = URL.createObjectURL(file);
     const audio = new Audio();
     audio.preload = "metadata";
-    audio.onloadedmetadata = () => {
-      const d = audio.duration;
+    let settled = false;
+    const cleanup = () => {
       URL.revokeObjectURL(url);
+      audio.removeAttribute("src");
+      audio.load();
+    };
+    const timeout = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error("Audio metadata probe timed out"));
+    }, 5000);
+    audio.onloadedmetadata = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      const d = audio.duration;
+      cleanup();
       if (Number.isFinite(d)) resolve(d);
       else reject(new Error("Couldn't read duration"));
     };
     audio.onerror = () => {
-      URL.revokeObjectURL(url);
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      cleanup();
       reject(new Error("Couldn't decode audio"));
     };
     audio.src = url;
