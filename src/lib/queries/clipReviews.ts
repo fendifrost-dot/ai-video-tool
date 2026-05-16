@@ -15,6 +15,8 @@ export const clipReviewsKeys = {
   all: ["clip_reviews"] as const,
   forProject: (projectId: string) => [...clipReviewsKeys.all, "project", projectId] as const,
   forAsset: (assetId: string) => [...clipReviewsKeys.all, "asset", assetId] as const,
+  byAssetBatch: (stableKey: string) =>
+    [...clipReviewsKeys.all, "by_asset", stableKey] as const,
 };
 
 /**
@@ -25,7 +27,7 @@ export const clipReviewsKeys = {
 export function useClipReviewsByAsset(assetIds: string[]) {
   const stableKey = [...assetIds].sort().join(",");
   return useQuery<Record<string, ClipReview>>({
-    queryKey: ["clip_reviews", "by_asset", stableKey],
+    queryKey: clipReviewsKeys.byAssetBatch(stableKey),
     queryFn: async () => {
       if (assetIds.length === 0) return {};
       const { data, error } = await supabase

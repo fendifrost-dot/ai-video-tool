@@ -196,7 +196,8 @@ function Preview({
   if (isImageAsset(asset)) {
     return (
       <a href={url} target="_blank" rel="noreferrer noopener" className="block">
-        <img src={url} alt={asset.asset_type} className="aspect-video w-full rounded-md object-cover" />
+        <img src={url}
+          loading="lazy" alt={asset.asset_type} className="aspect-video w-full rounded-md object-cover" />
       </a>
     );
   }

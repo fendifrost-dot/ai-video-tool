@@ -177,6 +177,7 @@ function PreviewBlock({
       <a href={url} target="_blank" rel="noreferrer noopener" className="block">
         <img
           src={url}
+          loading="lazy"
           alt={asset.asset_type}
           className="aspect-video w-full object-cover"
         />

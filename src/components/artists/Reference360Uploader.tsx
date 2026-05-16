@@ -151,6 +151,7 @@ function SlotCard({
       {filled && signedUrl ? (
         <img
           src={signedUrl}
+          loading="lazy"
           alt={SLOT_LABELS[slot]}
           className="h-full w-full object-cover"
         />
