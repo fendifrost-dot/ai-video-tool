@@ -73,63 +73,98 @@ async function ingestOne(
     throw new Error("no external_job_id on row — nothing to fetch upstream");
   }
 
-  // 2. Build CC query. Fal/Pika need modelPath so the queue URL resolves.
+  // 2. Resolve the upstream resultUrl via CC. We prefer this over the
+  //    legacy inline=1 path because Supabase Edge functions cap responses
+  //    near 6 MB — clips >~4 MB raw exceed that once base64-encoded,
+  //    causing the upstream "CC job-result returned 546: unknown" failure
+  //    that Higgsfield (~11 MB) and Veo (~6-10 MB) routinely trip. By
+  //    asking CC only for the URL and then streaming bytes from the CDN
+  //    directly to this function, we sidestep the response-size ceiling.
   const modelVariant =
     (row.request_payload_json?.modelVariant as string | undefined) ?? "";
   const shotId = (row.request_payload_json?.shotId as string | undefined) ?? null;
 
-  const params = new URLSearchParams({
+  const urlParams = new URLSearchParams({
     provider: row.provider,
     id: row.external_job_id,
-    inline: "1",
   });
   if ((row.provider === "fal" || row.provider === "pika") && modelVariant) {
-    params.set("modelPath", modelVariant);
+    urlParams.set("modelPath", modelVariant);
   }
 
-  // 3. Call CC server-to-server. Use 90s timeout — Veo downloads can take a while.
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 90_000);
-  let ccBody: {
-    ok?: boolean;
-    contentType?: string;
-    bytes_base64?: string;
-    sizeBytes?: number;
-    errorCode?: string;
-    errorMessage?: string;
-  };
+  // 3. Fetch resultUrl (small JSON envelope, never hits the size ceiling).
+  const ctrlMeta = new AbortController();
+  const metaTimer = setTimeout(() => ctrlMeta.abort(), 30_000);
+  let resultUrl: string;
   try {
-    const ccResp = await fetch(
-      `${ccUrl.replace(/\/$/, "")}/functions/v1/video-providers-job-result?${params.toString()}`,
-      {
-        method: "GET",
-        headers: { "x-api-key": ccKey },
-        signal: ctrl.signal,
-      },
+    const metaResp = await fetch(
+      `${ccUrl.replace(/\/$/, "")}/functions/v1/video-providers-job-result?${urlParams.toString()}`,
+      { method: "GET", headers: { "x-api-key": ccKey }, signal: ctrlMeta.signal },
     );
-    const text = await ccResp.text();
+    const metaText = await metaResp.text();
+    let metaBody: { ok?: boolean; resultUrl?: string; errorMessage?: string };
+    try { metaBody = metaText ? JSON.parse(metaText) : {}; }
+    catch { throw new Error(`CC job-result returned non-JSON: ${metaText.slice(0, 200)}`); }
+    if (!metaResp.ok || metaBody.ok === false || !metaBody.resultUrl) {
+      throw new Error(`CC job-result returned ${metaResp.status}: ${metaBody.errorMessage ?? "no_result_url"}`);
+    }
+    resultUrl = metaBody.resultUrl;
+  } finally { clearTimeout(metaTimer); }
+
+  // 4. Stream bytes. Most providers serve unauthenticated CDN URLs
+  //    (Runway → CloudFront, Fal → fal.media, Higgsfield → higgsfield CDN,
+  //    Grok → x.ai CDN, Pika → fal.media) and AVT can hit them directly.
+  //    Veo's :download URL is the exception — it needs the Gemini API key.
+  //    For Veo we fall back to the legacy CC inline path; size is usually
+  //    under the ceiling for 5s/720p clips. Larger Veo outputs will still
+  //    need a follow-up (CC-side direct-to-storage upload).
+  const veoNeedsAuth =
+    row.provider === "veo" && resultUrl.includes("generativelanguage.googleapis.com");
+
+  let bytes: Uint8Array;
+  let contentType = "video/mp4";
+
+  if (veoNeedsAuth) {
+    // Legacy path: ask CC to base64 the bytes for us (key stays server-side
+    // on CC). Will fail for clips that exceed Supabase's response limit.
+    const inlineParams = new URLSearchParams(urlParams);
+    inlineParams.set("inline", "1");
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 90_000);
     try {
-      ccBody = text ? JSON.parse(text) : {};
-    } catch {
-      ccBody = { errorCode: "BAD_RESPONSE", errorMessage: text.slice(0, 300) };
-    }
-    if (!ccResp.ok || ccBody.ok === false) {
-      throw new Error(
-        `CC job-result returned ${ccResp.status}: ${ccBody.errorMessage ?? "unknown"}`,
+      const ccResp = await fetch(
+        `${ccUrl.replace(/\/$/, "")}/functions/v1/video-providers-job-result?${inlineParams.toString()}`,
+        { method: "GET", headers: { "x-api-key": ccKey }, signal: ctrl.signal },
       );
-    }
-  } finally {
-    clearTimeout(timer);
+      const ccText = await ccResp.text();
+      let ccBody: { ok?: boolean; bytes_base64?: string; contentType?: string; sizeBytes?: number; errorMessage?: string };
+      try { ccBody = ccText ? JSON.parse(ccText) : {}; }
+      catch { throw new Error(`CC job-result returned non-JSON: ${ccText.slice(0, 200)}`); }
+      if (!ccResp.ok || ccBody.ok === false || !ccBody.bytes_base64) {
+        throw new Error(
+          `CC job-result (inline) returned ${ccResp.status}: ${ccBody.errorMessage ?? "no_bytes"}` +
+            ` — Veo clip likely exceeds Supabase 6MB response limit; ` +
+            `needs CC-side direct-to-storage upload (tracked).`,
+        );
+      }
+      bytes = decodeBase64(ccBody.bytes_base64);
+      contentType = ccBody.contentType || contentType;
+    } finally { clearTimeout(timer); }
+  } else {
+    const dlCtrl = new AbortController();
+    const dlTimer = setTimeout(() => dlCtrl.abort(), 90_000);
+    try {
+      const dl = await fetch(resultUrl, { signal: dlCtrl.signal });
+      if (!dl.ok) {
+        throw new Error(`direct download from ${row.provider} CDN returned ${dl.status}`);
+      }
+      const buf = await dl.arrayBuffer();
+      bytes = new Uint8Array(buf);
+      contentType = dl.headers.get("content-type") ?? contentType;
+    } finally { clearTimeout(dlTimer); }
   }
 
-  if (!ccBody.bytes_base64) {
-    throw new Error("CC returned no bytes_base64");
-  }
-
-  // 4. Decode and upload. decodeBase64 returns Uint8Array directly — no
-  //    browser-side atob loop, no stack overflow.
-  const bytes = decodeBase64(ccBody.bytes_base64);
-  const contentType = ccBody.contentType || "video/mp4";
+  // 4b. Upload to project-clips.
   const filename = `generated_${row.provider}_${row.external_job_id.slice(0, 12)}.mp4`;
   const path = `${row.user_id}/${row.project_id}/${row.id}/${filename}`;
 
@@ -154,7 +189,7 @@ async function ingestOne(
       approval_status: "pending",
       metadata_json: {
         bucket: "project-clips",
-        file_size_bytes: ccBody.sizeBytes ?? bytes.byteLength,
+        file_size_bytes: bytes.byteLength,
         mime_type: contentType,
         provider_job_id: row.id,
         external_job_id: row.external_job_id,
