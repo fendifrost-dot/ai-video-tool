@@ -161,6 +161,7 @@ export type Database = {
           asset_id: string
           camera_score: number | null
           created_at: string
+          drift_flags: Json
           face_consistency_score: number | null
           final_usefulness: boolean | null
           id: string
@@ -175,6 +176,7 @@ export type Database = {
           asset_id: string
           camera_score?: number | null
           created_at?: string
+          drift_flags?: Json
           face_consistency_score?: number | null
           final_usefulness?: boolean | null
           id?: string
@@ -189,6 +191,7 @@ export type Database = {
           asset_id?: string
           camera_score?: number | null
           created_at?: string
+          drift_flags?: Json
           face_consistency_score?: number | null
           final_usefulness?: boolean | null
           id?: string
