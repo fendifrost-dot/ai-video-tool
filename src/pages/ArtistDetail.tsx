@@ -1,17 +1,20 @@
+import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { ArtistIdentityForm } from "@/components/artists/ArtistIdentityForm";
 import { Reference360Uploader } from "@/components/artists/Reference360Uploader";
 import { ArtistAssetGrid } from "@/components/artists/ArtistAssetGrid";
+import { CharacterDNATabs } from "@/components/artists/CharacterDNATabs";
 import { useArtist, useDeleteArtist } from "@/lib/queries/artists";
 
 export default function ArtistDetail({ id }: { id: string }) {
   const navigate = useNavigate();
   const { data: artist, isLoading, error } = useArtist(id);
   const del = useDeleteArtist();
+  const [legacyOpen, setLegacyOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -81,8 +84,34 @@ export default function ArtistDetail({ id }: { id: string }) {
         </div>
 
         <ArtistIdentityForm artist={artist} />
-        <Reference360Uploader artistId={artist.id} />
-        <ArtistAssetGrid artistId={artist.id} />
+
+        <CharacterDNATabs artistId={artist.id} />
+
+        <div className="rounded-md border border-border">
+          <button
+            type="button"
+            onClick={() => setLegacyOpen((v) => !v)}
+            className="flex w-full items-center justify-between p-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground hover:bg-muted/30"
+          >
+            <span className="flex items-center gap-1.5">
+              {legacyOpen ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )}
+              Legacy reference library
+            </span>
+            <span className="text-[10px] opacity-60">
+              superseded by Character DNA — kept for migration
+            </span>
+          </button>
+          {legacyOpen && (
+            <div className="space-y-8 border-t border-border p-4">
+              <Reference360Uploader artistId={artist.id} />
+              <ArtistAssetGrid artistId={artist.id} />
+            </div>
+          )}
+        </div>
       </div>
     </>
   );

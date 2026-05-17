@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { compilePrompt, mergeNegative, substitute, tidy, buildVariables } from "./compiler";
+import {
+  buildVariables,
+  compilePrompt,
+  mergeNegative,
+  pickReferencePaths,
+  substitute,
+  tidy,
+} from "./compiler";
 import type {
   Artist,
   PromptTemplate,
@@ -188,8 +195,6 @@ describe("mergeNegative", () => {
 // ---------------------------------------------------------------------------
 describe("tidy", () => {
   it("drops labels whose values are empty", () => {
-    // Trailing sentence-ending period is preserved; only the empty
-    // "Lighting: ." label is dropped.
     expect(tidy("Lighting: . Wardrobe: black.")).toBe("Wardrobe: black.");
   });
 
@@ -198,27 +203,21 @@ describe("tidy", () => {
   });
 
   it("strips dangling 'comma before period' artifacts", () => {
-    // The trailing ", ." gets normalised down to a single period.
     expect(tidy("a, b, c, .")).toBe("a, b, c.");
   });
 
   it("drops orphan unit labels when the numeric placeholder was empty", () => {
-    // The seed templates use "Duration: {{shot.duration}}s." — when duration
-    // is empty, the substituted text is "Duration: s." which is meaningless.
-    // tidy() should drop the whole label including the orphan unit.
     expect(tidy("Duration: s. Continuity: always wears gold chain.")).toBe(
       "Continuity: always wears gold chain.",
     );
     expect(tidy("FPS: fps. Camera: dolly in.")).toBe("Camera: dolly in.");
     expect(tidy("Tempo: bpm.")).toBe("");
-    // Inline mid-sentence
     expect(tidy("intro shot, Duration: s, mood: grimy.")).toBe(
       "intro shot, mood: grimy.",
     );
   });
 
   it("does NOT touch valid labels that include real numeric values", () => {
-    // The unit is preceded by digits or a real value — must be left alone.
     expect(tidy("Duration: 5s. Continuity: rule.")).toBe(
       "Duration: 5s. Continuity: rule.",
     );
@@ -263,6 +262,75 @@ describe("buildVariables", () => {
 });
 
 // ---------------------------------------------------------------------------
+// pickReferencePaths — Phase A
+// ---------------------------------------------------------------------------
+describe("pickReferencePaths", () => {
+  const t = makeTemplate();
+  const p = makeProject();
+  const a = makeArtist();
+  const s = makeShot();
+  const base = { template: t, project: p, artist: a, shot: s };
+
+  it("returns empty when no inputs are supplied", () => {
+    expect(pickReferencePaths(base)).toEqual([]);
+  });
+
+  it("returns just the legacy locked asset when no character features exist", () => {
+    expect(
+      pickReferencePaths({ ...base, lockedReferenceAssetPath: "u/a/legacy.png" }),
+    ).toEqual(["u/a/legacy.png"]);
+  });
+
+  it("returns character feature paths in priority order, dropping duplicates", () => {
+    expect(
+      pickReferencePaths({
+        ...base,
+        lockedCharacterFeaturePaths: [
+          "u/a/face_neutral.png",
+          "u/a/hands_left.png",
+          "u/a/face_neutral.png",
+          "u/a/jewelry_chain.png",
+        ],
+      }),
+    ).toEqual([
+      "u/a/face_neutral.png",
+      "u/a/hands_left.png",
+      "u/a/jewelry_chain.png",
+    ]);
+  });
+
+  it("appends legacy locked asset after character features, de-duped", () => {
+    expect(
+      pickReferencePaths({
+        ...base,
+        lockedCharacterFeaturePaths: ["u/a/face_neutral.png"],
+        lockedReferenceAssetPath: "u/a/legacy.png",
+      }),
+    ).toEqual(["u/a/face_neutral.png", "u/a/legacy.png"]);
+  });
+
+  it("does not append the legacy path when it duplicates a feature path", () => {
+    expect(
+      pickReferencePaths({
+        ...base,
+        lockedCharacterFeaturePaths: ["u/a/face.png", "u/a/hands.png"],
+        lockedReferenceAssetPath: "u/a/face.png",
+      }),
+    ).toEqual(["u/a/face.png", "u/a/hands.png"]);
+  });
+
+  it("drops empty / whitespace entries", () => {
+    expect(
+      pickReferencePaths({
+        ...base,
+        lockedCharacterFeaturePaths: ["", "   ", "u/a/face.png"],
+        lockedReferenceAssetPath: "",
+      }),
+    ).toEqual(["u/a/face.png"]);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // compilePrompt — integration
 // ---------------------------------------------------------------------------
 describe("compilePrompt", () => {
@@ -303,7 +371,6 @@ describe("compilePrompt", () => {
     });
     expect(result.settings).toEqual({ duration_seconds: 5, aspect_ratio: "9:16" });
     (result.settings as Record<string, unknown>).duration_seconds = 99;
-    // Original template should not have been mutated
     const t = makeTemplate();
     expect((t.default_settings_json as { duration_seconds: number }).duration_seconds).toBe(5);
   });
@@ -348,7 +415,11 @@ describe("compilePrompt", () => {
     expect(result.negativePrompt).toContain("no text overlay");
     expect(result.negativePrompt).toContain("no logos");
   });
-  it("threads the locked reference asset path onto the output", () => {
+
+  // -------------------------------------------------------------------------
+  // Phase A: reference image handling
+  // -------------------------------------------------------------------------
+  it("threads the legacy locked reference asset path onto both singular and plural", () => {
     const result = compilePrompt({
       template: makeTemplate(),
       project: makeProject(),
@@ -357,9 +428,10 @@ describe("compilePrompt", () => {
       lockedReferenceAssetPath: "u1/a1/face_front_lock.png",
     });
     expect(result.referenceImagePath).toBe("u1/a1/face_front_lock.png");
+    expect(result.referenceImagePaths).toEqual(["u1/a1/face_front_lock.png"]);
   });
 
-  it("returns null referenceImagePath when no locked asset is supplied", () => {
+  it("returns null singular + empty plural when no references are supplied", () => {
     const result = compilePrompt({
       template: makeTemplate(),
       project: makeProject(),
@@ -367,6 +439,54 @@ describe("compilePrompt", () => {
       shot: makeShot(),
     });
     expect(result.referenceImagePath).toBeNull();
+    expect(result.referenceImagePaths).toEqual([]);
   });
 
+  it("emits the full referenceImagePaths array from locked character features", () => {
+    const result = compilePrompt({
+      template: makeTemplate(),
+      project: makeProject(),
+      artist: makeArtist(),
+      shot: makeShot(),
+      lockedCharacterFeaturePaths: [
+        "u1/a1/face_neutral.png",
+        "u1/a1/hands_left.png",
+        "u1/a1/jewelry_chain.png",
+      ],
+    });
+    expect(result.referenceImagePaths).toEqual([
+      "u1/a1/face_neutral.png",
+      "u1/a1/hands_left.png",
+      "u1/a1/jewelry_chain.png",
+    ]);
+    expect(result.referenceImagePath).toBe("u1/a1/face_neutral.png");
+  });
+
+  it("merges character features and legacy locked asset without duplication", () => {
+    const result = compilePrompt({
+      template: makeTemplate(),
+      project: makeProject(),
+      artist: makeArtist(),
+      shot: makeShot(),
+      lockedCharacterFeaturePaths: ["u1/a1/face_neutral.png"],
+      lockedReferenceAssetPath: "u1/a1/legacy_face_front.png",
+    });
+    expect(result.referenceImagePaths).toEqual([
+      "u1/a1/face_neutral.png",
+      "u1/a1/legacy_face_front.png",
+    ]);
+    expect(result.referenceImagePath).toBe("u1/a1/face_neutral.png");
+  });
+
+  it("prefers character feature paths over the legacy locked asset for the singular field", () => {
+    const result = compilePrompt({
+      template: makeTemplate(),
+      project: makeProject(),
+      artist: makeArtist(),
+      shot: makeShot(),
+      lockedCharacterFeaturePaths: ["u1/a1/feature_face.png"],
+      lockedReferenceAssetPath: "u1/a1/legacy_face.png",
+    });
+    expect(result.referenceImagePath).toBe("u1/a1/feature_face.png");
+  });
 });

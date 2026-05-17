@@ -10,6 +10,7 @@ import type {
   TablesUpdate,
 } from "@/integrations/supabase/types";
 import { projectAssetsKeys } from "./projectAssets";
+import { computeDriftFlags } from "@/lib/clipReviews/driftFlags";
 
 export const clipReviewsKeys = {
   all: ["clip_reviews"] as const,
@@ -50,6 +51,10 @@ export function useClipReviewsByAsset(assetIds: string[]) {
 /**
  * Upsert a clip review. We always insert a new row (history) rather than
  * updating in place — the UI surfaces the most-recent one.
+ *
+ * Phase A: drift_flags is computed from the scores in the payload (see
+ * `computeDriftFlags`) and attached to the insert. If the caller passes an
+ * explicit drift_flags array, we honour that — useful for backfill.
  */
 export function useSaveClipReview() {
   const qc = useQueryClient();
@@ -61,9 +66,26 @@ export function useSaveClipReview() {
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
 
+      const explicitFlags = (payload as { drift_flags?: unknown }).drift_flags;
+      const driftFlags =
+        explicitFlags ??
+        computeDriftFlags({
+          face_consistency_score: payload.face_consistency_score ?? null,
+          wardrobe_score: payload.wardrobe_score ?? null,
+          lighting_score: payload.lighting_score ?? null,
+        });
+
+      const insertPayload = {
+        ...payload,
+        user_id: user.id,
+        drift_flags: driftFlags,
+        // Cast to any at the seam — the generated Database type doesn't yet
+        // know about the drift_flags column (Lovable's typegen lags by a beat).
+      } as unknown as TablesInsert<"clip_reviews">;
+
       const { data, error } = await supabase
         .from("clip_reviews")
-        .insert({ ...payload, user_id: user.id })
+        .insert(insertPayload)
         .select("*")
         .single();
       if (error) throw error;
@@ -86,9 +108,28 @@ export function useUpdateClipReview() {
       id: string;
       patch: TablesUpdate<"clip_reviews">;
     }): Promise<ClipReview> => {
+      const touchesScores =
+        "face_consistency_score" in patch ||
+        "wardrobe_score" in patch ||
+        "lighting_score" in patch;
+      const hasExplicitFlags = "drift_flags" in (patch as Record<string, unknown>);
+      const nextPatch: Record<string, unknown> = { ...patch };
+      if (touchesScores && !hasExplicitFlags) {
+        const { data: current } = await supabase
+          .from("clip_reviews")
+          .select("face_consistency_score,wardrobe_score,lighting_score")
+          .eq("id", id)
+          .maybeSingle();
+        const merged = { ...(current ?? {}), ...patch } as {
+          face_consistency_score: number | null;
+          wardrobe_score: number | null;
+          lighting_score: number | null;
+        };
+        nextPatch.drift_flags = computeDriftFlags(merged);
+      }
       const { data, error } = await supabase
         .from("clip_reviews")
-        .update(patch)
+        .update(nextPatch as unknown as TablesUpdate<"clip_reviews">)
         .eq("id", id)
         .select("*")
         .single();

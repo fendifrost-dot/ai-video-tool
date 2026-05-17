@@ -28,6 +28,15 @@ import type {
  *
  * The compiler does not know about providers — provider-specific tweaks happen
  * in each provider's `formatPrompt()` (see src/lib/providers/*.ts).
+ *
+ * Phase A reference handling:
+ *  - `lockedCharacterFeaturePaths` (plural) drives the new `referenceImagePaths`
+ *    output array. When non-empty, `referenceImagePath` (singular) is set to
+ *    its first entry so legacy consumers behave the same.
+ *  - When the plural list is empty, the compiler falls back to the legacy
+ *    `lockedReferenceAssetPath` for the singular field. `referenceImagePaths`
+ *    is then a single-entry array (or empty if that's also null) so
+ *    multi-image consumers can iterate without a special case.
  */
 export function compilePrompt(input: CompileInput): CompiledPrompt {
   const { template, project, artist, shot, overrides } = input;
@@ -45,6 +54,10 @@ export function compilePrompt(input: CompileInput): CompiledPrompt {
 
   const settings = cloneSettings(template.default_settings_json);
 
+  const referenceImagePaths = pickReferencePaths(input);
+  const referenceImagePath =
+    referenceImagePaths[0] ?? input.lockedReferenceAssetPath ?? null;
+
   return {
     templateId: template.id,
     templateName: template.name,
@@ -54,13 +67,38 @@ export function compilePrompt(input: CompileInput): CompiledPrompt {
     negativePrompt,
     settings,
     unfilledPlaceholders: unfilled,
-    referenceImagePath: input.lockedReferenceAssetPath ?? null,
+    referenceImagePath,
+    referenceImagePaths,
     context: {
       projectId: project.id,
       artistId: artist?.id ?? null,
       shotId: shot?.id ?? null,
     },
   };
+}
+
+/**
+ * Build the de-duped, ordered list of reference image paths from the compile
+ * input. Priority: explicit `lockedCharacterFeaturePaths` (already in feature
+ * priority order) first; then the legacy `lockedReferenceAssetPath` appended
+ * if not already present. Empty strings and falsy entries are dropped.
+ */
+export function pickReferencePaths(input: CompileInput): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const append = (p: string | null | undefined) => {
+    if (!p) return;
+    const t = p.trim();
+    if (!t) return;
+    if (seen.has(t)) return;
+    seen.add(t);
+    out.push(t);
+  };
+  for (const p of input.lockedCharacterFeaturePaths ?? []) {
+    append(p);
+  }
+  append(input.lockedReferenceAssetPath ?? null);
+  return out;
 }
 
 // ---------------------------------------------------------------------------

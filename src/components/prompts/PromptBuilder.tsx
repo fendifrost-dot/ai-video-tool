@@ -14,6 +14,10 @@ import type {
   PromptOverrides,
 } from "@/lib/prompts/types";
 import { useArtist, useArtistAssets } from "@/lib/queries/artists";
+import {
+  pickLockedFeaturePaths,
+  useCharacterFeatures,
+} from "@/lib/queries/characterFeatures";
 import { useProjectShots } from "@/lib/queries/shots";
 import { usePromptTemplates } from "@/lib/queries/promptTemplates";
 import { useSavePrompt } from "@/lib/queries/prompts";
@@ -44,12 +48,19 @@ export function PromptBuilder({
   const shotsQuery = useProjectShots(project.id);
   const artistQuery = useArtist(project.artist_id ?? undefined);
   const artistAssetsQuery = useArtistAssets(project.artist_id ?? undefined);
+  const characterFeaturesQuery = useCharacterFeatures(project.artist_id ?? undefined);
 
-  // The "lock-in-character" asset — whichever artist_asset has
-  // is_primary_reference = true gets attached to every prompt as the
-  // canonical character identity. If the artist has no locked asset, fall
-  // back to the face_front 360 slot (a sensible default for the most common
-  // image-to-video case).
+  // Phase A: the canonical locked-feature paths from character_features, in
+  // priority order (face → hands → jewelry → tattoos → hair → teeth → body).
+  // Each path is inside the artist-assets bucket.
+  const lockedFeaturePaths = useMemo(() => {
+    return pickLockedFeaturePaths(characterFeaturesQuery.data ?? []);
+  }, [characterFeaturesQuery.data]);
+
+  // Legacy single-asset fallback: whichever artist_asset has
+  // is_primary_reference = true, or the face_front 360 slot otherwise. Used
+  // only when no locked Character DNA features exist yet — keeps existing
+  // artist profiles working through the dual-write window.
   const lockedAsset = useMemo(() => {
     const assets = artistAssetsQuery.data ?? [];
     return (
@@ -103,8 +114,18 @@ export function PromptBuilder({
         extra_negative: extraNegative.trim() || undefined,
       },
       lockedReferenceAssetPath: lockedAsset?.file_url ?? null,
+      lockedCharacterFeaturePaths: lockedFeaturePaths,
     });
-  }, [template, project, artistQuery.data, shot, overrides, extraNegative, lockedAsset]);
+  }, [
+    template,
+    project,
+    artistQuery.data,
+    shot,
+    overrides,
+    extraNegative,
+    lockedAsset,
+    lockedFeaturePaths,
+  ]);
 
   async function handleSave() {
     if (!compiled || !template) return;
