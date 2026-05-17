@@ -1,5 +1,14 @@
 import { useState } from "react";
-import { Play, Loader2, RefreshCw, CheckCircle2, AlertCircle, CloudDownload } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import {
+  Play,
+  Loader2,
+  RefreshCw,
+  CheckCircle2,
+  AlertCircle,
+  CloudDownload,
+  ExternalLink,
+} from "lucide-react";
 import { toast } from "sonner";
 import type { ProviderName } from "@/integrations/supabase/types";
 import type { CompiledPrompt, FormattedPrompt } from "@/lib/prompts/types";
@@ -16,7 +25,10 @@ import { Button } from "@/components/ui/button";
  *
  * - First click: creates a provider_jobs row, calls Control Center.
  * - While running: shows a spinner with the live status (queued/running).
- * - On success: shows a checkmark + link to the new clip in Assets.
+ * - On upstream success: spins as "Saving clip" while server-side ingest
+ *   fetches the bytes into project_assets.
+ * - When the clip is fully landed: button becomes a "Done — open in Assets"
+ *   link so users know the clip is reachable, not just that the job finished.
  * - On failure: shows the error + a Retry button.
  *
  * Ingest is driven by a separate hook (`useIngestOnSuccess`) that watches the
@@ -94,9 +106,10 @@ export function GenerateButton({
   const isIngesting = ingesting || (status === "succeeded" && !hasAsset);
   const isDone = status === "succeeded" && hasAsset;
   const isFailed = status === "failed";
+  const projectId = compiled?.context.projectId ?? job?.project_id ?? null;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Button
         type="button"
         size="sm"
@@ -119,7 +132,7 @@ export function GenerateButton({
         ) : isDone ? (
           <>
             <CheckCircle2 className="mr-1 h-3 w-3" />
-            Done
+            Done — generate again
           </>
         ) : isFailed ? (
           <>
@@ -133,6 +146,17 @@ export function GenerateButton({
           </>
         )}
       </Button>
+      {isDone && projectId && (
+        <Link
+          to="/projects/$id/assets"
+          params={{ id: projectId }}
+          className="flex items-center gap-1 rounded-md border border-emerald-400/40 bg-emerald-400/10 px-2 py-1 text-xs font-medium text-emerald-200 hover:bg-emerald-400/20 hover:text-emerald-100 transition-colors"
+          title="Jump to this clip in the project's Assets tab"
+        >
+          Open in Assets
+          <ExternalLink className="h-3 w-3" />
+        </Link>
+      )}
       {isFailed && job?.error_text && (
         <span className="flex items-center gap-1 text-xs text-amber-300" title={job.error_text}>
           <AlertCircle className="h-3 w-3" />

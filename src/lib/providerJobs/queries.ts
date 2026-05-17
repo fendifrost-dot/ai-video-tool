@@ -164,7 +164,24 @@ export function useIngestOnSuccess(
           errorRef.current = detail;
           toast.error(`Ingest failed: ${detail.slice(0, 160)}`);
         } else if (out.ingested.length > 0) {
-          toast.success("Clip saved to Assets");
+          // Surface the asset landing with a tap-through to the Assets tab,
+          // so users know the clip is reachable — not just that the upstream
+          // job "succeeded" (the source of confusion before this iteration).
+          const pid = providerJob.project_id;
+          toast.success("Clip saved to Assets", {
+            description: "Available now in this project's Assets tab.",
+            action: pid
+              ? {
+                  label: "View",
+                  onClick: () => {
+                    if (typeof window !== "undefined") {
+                      window.location.href = `/projects/${pid}/assets`;
+                    }
+                  },
+                }
+              : undefined,
+            duration: 8000,
+          });
         }
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
