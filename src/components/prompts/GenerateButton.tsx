@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Play, Loader2, RefreshCw, CheckCircle2, AlertCircle } from "lucide-react";
+import { Play, Loader2, RefreshCw, CheckCircle2, AlertCircle, CloudDownload } from "lucide-react";
 import { toast } from "sonner";
 import type { ProviderName } from "@/integrations/supabase/types";
 import type { CompiledPrompt, FormattedPrompt } from "@/lib/prompts/types";
@@ -7,6 +7,7 @@ import {
   useGenerateClip,
   useProviderJob,
   useJobPoller,
+  useIngestOnSuccess,
 } from "@/lib/providerJobs/queries";
 import { Button } from "@/components/ui/button";
 
@@ -17,6 +18,10 @@ import { Button } from "@/components/ui/button";
  * - While running: shows a spinner with the live status (queued/running).
  * - On success: shows a checkmark + link to the new clip in Assets.
  * - On failure: shows the error + a Retry button.
+ *
+ * Ingest is driven by a separate hook (`useIngestOnSuccess`) that watches the
+ * row and fires the server-side `ingest-provider-job` edge function. So even
+ * if the user refreshes after the row hits succeeded, the asset still lands.
  *
  * Only providers with apiReady=true (or that have a CC proxy endpoint)
  * accept clicks. Manual-only providers (and providers we don't yet have
@@ -39,6 +44,10 @@ export function GenerateButton({
   const generate = useGenerateClip();
   const jobQuery = useProviderJob(activeJobId ?? undefined);
   useJobPoller(activeJobId ?? undefined, jobQuery.data);
+  const { ingesting, error: ingestError } = useIngestOnSuccess(
+    activeJobId ?? undefined,
+    jobQuery.data,
+  );
 
   const SUPPORTED: ProviderName[] = ["runway", "veo", "gemini", "pika", "fal", "grok", "higgsfield"];
   const supported = SUPPORTED.includes(provider);
@@ -77,8 +86,13 @@ export function GenerateButton({
 
   const job = jobQuery.data;
   const status = job?.status;
+  const hasAsset = !!job?.result_asset_id;
   const isRunning = generate.isPending || status === "queued" || status === "running";
-  const isSuccess = status === "succeeded";
+  // "succeeded" without an asset yet means the ingest hook is fetching the
+  // bytes server-side — surface that as its own state so users don't think
+  // Done means saved.
+  const isIngesting = ingesting || (status === "succeeded" && !hasAsset);
+  const isDone = status === "succeeded" && hasAsset;
   const isFailed = status === "failed";
 
   return (
@@ -86,9 +100,9 @@ export function GenerateButton({
       <Button
         type="button"
         size="sm"
-        variant={isSuccess ? "secondary" : "default"}
+        variant={isDone ? "secondary" : "default"}
         onClick={handleGenerate}
-        disabled={!supported || !compiled || isRunning}
+        disabled={!supported || !compiled || isRunning || isIngesting}
         className="h-7 text-xs"
         title={!supported ? `${providerDisplay} doesn't have a Control Center proxy endpoint yet — Copy Prompt and run manually.` : undefined}
       >
@@ -97,7 +111,12 @@ export function GenerateButton({
             <Loader2 className="mr-1 h-3 w-3 animate-spin" />
             {status === "queued" ? "Queued" : status === "running" ? "Generating" : "Sending"}
           </>
-        ) : isSuccess ? (
+        ) : isIngesting ? (
+          <>
+            <CloudDownload className="mr-1 h-3 w-3 animate-pulse" />
+            Saving clip
+          </>
+        ) : isDone ? (
           <>
             <CheckCircle2 className="mr-1 h-3 w-3" />
             Done
@@ -120,7 +139,13 @@ export function GenerateButton({
           {truncate(job.error_text, 60)}
         </span>
       )}
-      {!apiReady && supported && !isRunning && !isSuccess && !isFailed && (
+      {ingestError && !isDone && (
+        <span className="flex items-center gap-1 text-xs text-rose-300" title={ingestError}>
+          <AlertCircle className="h-3 w-3" />
+          Ingest failed — retry
+        </span>
+      )}
+      {!apiReady && supported && !isRunning && !isDone && !isFailed && !isIngesting && (
         <span className="text-[10px] text-muted-foreground" title="The Control Center proxy will fail-clean if the upstream key is missing.">
           (proxy active)
         </span>

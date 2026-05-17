@@ -461,3 +461,103 @@ describe("ProviderCallError", () => {
     }
   });
 });
+
+// Add the new export aliases under test. Imported lazily to keep the existing
+// import block stable for legacy tests above.
+import { triggerServerIngest, triggerServerIngestBackfill } from "./api";
+
+describe("triggerServerIngest", () => {
+  it("invokes the ingest-provider-job edge function with the jobId and returns the result envelope", async () => {
+    mocks.invokeMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        examined: 1,
+        ingested: [{ jobId: "row-1", assetId: "asset-1", sizeBytes: 12345 }],
+        errors: [],
+      },
+      error: null,
+    });
+
+    const result = await triggerServerIngest("row-1");
+
+    expect(mocks.invokeMock).toHaveBeenCalledWith(
+      "ingest-provider-job",
+      expect.objectContaining({
+        body: { jobId: "row-1" },
+      }),
+    );
+    expect(result.ok).toBe(true);
+    expect(result.ingested[0].assetId).toBe("asset-1");
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it("throws ProviderCallError when the edge function returns ok=false", async () => {
+    mocks.invokeMock.mockResolvedValueOnce({
+      data: { ok: false, error: "boom" },
+      error: null,
+    });
+
+    try {
+      await triggerServerIngest("row-1");
+      throw new Error("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(ProviderCallError);
+      expect((e as ProviderCallError).message).toContain("boom");
+    }
+  });
+
+  it("throws when supabase.functions.invoke errors at the transport layer", async () => {
+    mocks.invokeMock.mockResolvedValueOnce({
+      data: null,
+      error: { message: "network down" },
+    });
+    try {
+      await triggerServerIngest("row-1");
+      throw new Error("should have thrown");
+    } catch (e) {
+      expect(e).toBeInstanceOf(ProviderCallError);
+      expect((e as ProviderCallError).message).toContain("network down");
+    }
+  });
+});
+
+describe("triggerServerIngestBackfill", () => {
+  it("invokes the backfill mode with all=true and the configured limit", async () => {
+    mocks.invokeMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        examined: 3,
+        ingested: [
+          { jobId: "j1", assetId: "a1", sizeBytes: 1 },
+          { jobId: "j2", assetId: "a2", sizeBytes: 2 },
+        ],
+        errors: [{ jobId: "j3", error: "upstream 404" }],
+      },
+      error: null,
+    });
+
+    const result = await triggerServerIngestBackfill({ limit: 17 });
+
+    expect(mocks.invokeMock).toHaveBeenCalledWith(
+      "ingest-provider-job",
+      expect.objectContaining({
+        body: { all: true, limit: 17 },
+      }),
+    );
+    expect(result.examined).toBe(3);
+    expect(result.ingested).toHaveLength(2);
+    expect(result.errors[0].jobId).toBe("j3");
+  });
+
+  it("defaults limit to 50 when not provided", async () => {
+    mocks.invokeMock.mockResolvedValueOnce({
+      data: { ok: true, examined: 0, ingested: [], errors: [] },
+      error: null,
+    });
+    await triggerServerIngestBackfill();
+    expect(mocks.invokeMock).toHaveBeenCalledWith(
+      "ingest-provider-job",
+      expect.objectContaining({ body: { all: true, limit: 50 } }),
+    );
+  });
+});

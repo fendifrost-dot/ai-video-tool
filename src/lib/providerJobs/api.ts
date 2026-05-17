@@ -8,13 +8,15 @@
  *      with the upstream providerJobId.
  *   2. pollJobStatus() — GETs CC's video-providers-job-status?provider=&id=
  *      via the same proxy. Updates the provider_jobs row.
- *   3. fetchAndIngestResult() — when status=succeeded, downloads the result
- *      bytes (via CC's job-result endpoint with inline=1) and re-uploads to
- *      AVT's project-clips bucket using the existing upload-asset function;
- *      creates a project_assets row and links it back to the job.
+ *   3. triggerServerIngest() — when status=succeeded, asks AVT's
+ *      `ingest-provider-job` edge function to download the bytes from CC and
+ *      write the project_assets row server-side. Avoids piping 5-10 MB base64
+ *      payloads through the browser, which is where the previous
+ *      `fetchAndIngestResult` path silently failed.
  *
- * The proxy endpoint shape matches the documentation in
- * docs/control_center_provider_proxy.md.
+ * `fetchAndIngestResult()` is kept as a browser-side fallback (and to keep the
+ * existing test suite covering the same code path), but `useIngestOnSuccess`
+ * now prefers the server-side path.
  */
 
 import { supabase } from "@/lib/supabase";
@@ -76,6 +78,13 @@ export type GenerationEnvelope = {
   provider: string;
   modelVariant: string;
   providerMetadata: Record<string, unknown>;
+};
+
+export type IngestServerResult = {
+  ok: boolean;
+  examined: number;
+  ingested: Array<{ jobId: string; assetId: string; sizeBytes: number }>;
+  errors: Array<{ jobId: string; error: string }>;
 };
 
 async function callProxy<T = Record<string, unknown>>(
@@ -271,12 +280,69 @@ export async function pollJobStatus(
 }
 
 /**
+ * Server-side ingest — preferred path. Hands off to the
+ * `ingest-provider-job` edge function which does the bytes round-trip in
+ * Deno (no browser memory pressure, no atob stack overflow). Returns the
+ * envelope including the per-row outcome so the UI can report failures
+ * without burying them in a console.error.
+ */
+export async function triggerServerIngest(
+  providerJobRowId: string,
+): Promise<IngestServerResult> {
+  const { data, error } = await supabase.functions.invoke<IngestServerResult>(
+    "ingest-provider-job",
+    { body: { jobId: providerJobRowId } },
+  );
+  if (error) {
+    throw new ProviderCallError(
+      "INTERNAL",
+      `ingest-provider-job invoke failed: ${error.message}`,
+    );
+  }
+  if (!data || data.ok === false) {
+    const detail = (data as unknown as Record<string, unknown>)?.error
+      ?? "ingest-provider-job returned no payload";
+    throw new ProviderCallError("INTERNAL", String(detail));
+  }
+  return data;
+}
+
+/**
+ * Backfill mode — sweep every succeeded-but-not-ingested row owned by the
+ * caller. Limit defaults to 25 server-side; pass `limit` to raise to the
+ * server-side cap (100). Returns the same envelope shape as the single-row
+ * trigger.
+ */
+export async function triggerServerIngestBackfill(
+  params?: { limit?: number },
+): Promise<IngestServerResult> {
+  const { data, error } = await supabase.functions.invoke<IngestServerResult>(
+    "ingest-provider-job",
+    { body: { all: true, limit: params?.limit ?? 50 } },
+  );
+  if (error) {
+    throw new ProviderCallError(
+      "INTERNAL",
+      `ingest-provider-job backfill invoke failed: ${error.message}`,
+    );
+  }
+  if (!data || data.ok === false) {
+    const detail = (data as unknown as Record<string, unknown>)?.error
+      ?? "ingest-provider-job returned no payload";
+    throw new ProviderCallError("INTERNAL", String(detail));
+  }
+  return data;
+}
+
+/**
+ * Browser-side fallback ingest. Kept for the existing test suite and as a
+ * last-resort manual trigger; the server-side `triggerServerIngest` is the
+ * primary path.
+ *
  * After a job has status=succeeded, fetch the result video bytes via CC's
  * job-result endpoint (inline=1 to get base64), re-upload to AVT's
  * project-clips bucket via upload-asset, and create a project_assets row
- * linked back to the job.
- *
- * Returns the new project_assets.id.
+ * linked back to the job. Returns the new project_assets.id.
  */
 export async function fetchAndIngestResult(
   providerJobRowId: string,
@@ -340,10 +406,6 @@ export async function fetchAndIngestResult(
     throw new ProviderCallError("INTERNAL", `upload-asset failed: ${uploadResp.status} ${text.slice(0, 200)}`);
   }
 
-  // Create the project_assets row tying the clip to the shot + prompt.
-  // file_url stores the bucket-relative path; UI components signedUrl() over
-  // "project-clips" + this path. Storage metadata (size, mime, bucket) lives
-  // inside metadata_json since the schema doesn't have dedicated columns.
   const { data: assetRow, error: assetError } = await supabase
     .from("project_assets")
     .insert({
