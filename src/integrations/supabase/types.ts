@@ -687,6 +687,56 @@ export type Database = {
           },
         ]
       }
+      song_analyses: {
+        Row: {
+          analysis_provider: string | null
+          analyzed_at: string
+          beat_map_json: Json
+          bpm: number | null
+          drops_json: Json
+          duration_seconds: number | null
+          energy_curve_json: Json
+          hooks_json: Json
+          id: string
+          project_id: string
+          sections_json: Json
+        }
+        Insert: {
+          analysis_provider?: string | null
+          analyzed_at?: string
+          beat_map_json?: Json
+          bpm?: number | null
+          drops_json?: Json
+          duration_seconds?: number | null
+          energy_curve_json?: Json
+          hooks_json?: Json
+          id?: string
+          project_id: string
+          sections_json?: Json
+        }
+        Update: {
+          analysis_provider?: string | null
+          analyzed_at?: string
+          beat_map_json?: Json
+          bpm?: number | null
+          drops_json?: Json
+          duration_seconds?: number | null
+          energy_curve_json?: Json
+          hooks_json?: Json
+          id?: string
+          project_id?: string
+          sections_json?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "song_analyses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_projects: {
         Row: {
           artist_id: string | null
