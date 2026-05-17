@@ -106,6 +106,56 @@ export type Database = {
         }
         Relationships: []
       }
+      character_features: {
+        Row: {
+          artist_id: string
+          feature_type: string
+          file_url: string | null
+          id: string
+          is_locked: boolean
+          is_primary: boolean
+          label: string
+          metadata_json: Json
+          reinforce_on_drift: boolean
+          storage_path: string | null
+          uploaded_at: string
+        }
+        Insert: {
+          artist_id: string
+          feature_type: string
+          file_url?: string | null
+          id?: string
+          is_locked?: boolean
+          is_primary?: boolean
+          label: string
+          metadata_json?: Json
+          reinforce_on_drift?: boolean
+          storage_path?: string | null
+          uploaded_at?: string
+        }
+        Update: {
+          artist_id?: string
+          feature_type?: string
+          file_url?: string | null
+          id?: string
+          is_locked?: boolean
+          is_primary?: boolean
+          label?: string
+          metadata_json?: Json
+          reinforce_on_drift?: boolean
+          storage_path?: string | null
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_features_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clip_reviews: {
         Row: {
           asset_id: string
