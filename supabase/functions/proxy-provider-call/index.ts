@@ -52,6 +52,7 @@ const ALLOWED_ENDPOINTS = new Set([
   "video-providers-job-status",
   "video-providers-job-result",
   "ai-draft-treatment",
+  "research-provider-docs",
 ]);
 
 function jsonResponse(status: number, body: Record<string, unknown>): Response {
