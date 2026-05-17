@@ -415,6 +415,54 @@ export type Database = {
           },
         ]
       }
+      provider_capabilities: {
+        Row: {
+          api_status: string
+          last_verified_at: string
+          max_duration_seconds: number | null
+          notes: string | null
+          optimal_prompt_style: string | null
+          prompt_length_max_words: number | null
+          provider: string
+          recommended_shot_types: string[]
+          strengths: string[]
+          supported_aspect_ratios: string[]
+          supports_negative_prompt: boolean
+          supports_reference_image: boolean
+          weaknesses: string[]
+        }
+        Insert: {
+          api_status: string
+          last_verified_at?: string
+          max_duration_seconds?: number | null
+          notes?: string | null
+          optimal_prompt_style?: string | null
+          prompt_length_max_words?: number | null
+          provider: string
+          recommended_shot_types?: string[]
+          strengths?: string[]
+          supported_aspect_ratios?: string[]
+          supports_negative_prompt?: boolean
+          supports_reference_image?: boolean
+          weaknesses?: string[]
+        }
+        Update: {
+          api_status?: string
+          last_verified_at?: string
+          max_duration_seconds?: number | null
+          notes?: string | null
+          optimal_prompt_style?: string | null
+          prompt_length_max_words?: number | null
+          provider?: string
+          recommended_shot_types?: string[]
+          strengths?: string[]
+          supported_aspect_ratios?: string[]
+          supports_negative_prompt?: boolean
+          supports_reference_image?: boolean
+          weaknesses?: string[]
+        }
+        Relationships: []
+      }
       provider_jobs: {
         Row: {
           created_at: string
