@@ -737,6 +737,152 @@ export type Database = {
           },
         ]
       }
+      storyboard_nodes: {
+        Row: {
+          camera_motion: string | null
+          camera_type: string | null
+          continuity_dependencies_json: Json
+          created_at: string
+          duration_seconds: number | null
+          emotional_purpose: string | null
+          environment: string | null
+          estimated_cost_cents: number | null
+          estimated_drift_risk: number | null
+          generation_difficulty: string | null
+          generation_strategy: string | null
+          id: string
+          lighting_style: string | null
+          node_order: number
+          notes: string | null
+          realism_target: string | null
+          recommended_model: string | null
+          scene_purpose: string | null
+          shot_id: string | null
+          shot_type: string | null
+          status: string
+          storyboard_id: string
+          timestamp_end_seconds: number
+          timestamp_start_seconds: number
+          updated_at: string
+          wardrobe: string | null
+        }
+        Insert: {
+          camera_motion?: string | null
+          camera_type?: string | null
+          continuity_dependencies_json?: Json
+          created_at?: string
+          duration_seconds?: number | null
+          emotional_purpose?: string | null
+          environment?: string | null
+          estimated_cost_cents?: number | null
+          estimated_drift_risk?: number | null
+          generation_difficulty?: string | null
+          generation_strategy?: string | null
+          id?: string
+          lighting_style?: string | null
+          node_order: number
+          notes?: string | null
+          realism_target?: string | null
+          recommended_model?: string | null
+          scene_purpose?: string | null
+          shot_id?: string | null
+          shot_type?: string | null
+          status?: string
+          storyboard_id: string
+          timestamp_end_seconds: number
+          timestamp_start_seconds: number
+          updated_at?: string
+          wardrobe?: string | null
+        }
+        Update: {
+          camera_motion?: string | null
+          camera_type?: string | null
+          continuity_dependencies_json?: Json
+          created_at?: string
+          duration_seconds?: number | null
+          emotional_purpose?: string | null
+          environment?: string | null
+          estimated_cost_cents?: number | null
+          estimated_drift_risk?: number | null
+          generation_difficulty?: string | null
+          generation_strategy?: string | null
+          id?: string
+          lighting_style?: string | null
+          node_order?: number
+          notes?: string | null
+          realism_target?: string | null
+          recommended_model?: string | null
+          scene_purpose?: string | null
+          shot_id?: string | null
+          shot_type?: string | null
+          status?: string
+          storyboard_id?: string
+          timestamp_end_seconds?: number
+          timestamp_start_seconds?: number
+          updated_at?: string
+          wardrobe?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storyboard_nodes_shot_id_fkey"
+            columns: ["shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "storyboard_nodes_storyboard_id_fkey"
+            columns: ["storyboard_id"]
+            isOneToOne: false
+            referencedRelation: "storyboards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      storyboards: {
+        Row: {
+          created_at: string
+          id: string
+          mood_profile_json: Json
+          notes: string | null
+          project_id: string
+          title: string | null
+          total_duration_seconds: number | null
+          updated_at: string
+          waveform_json: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mood_profile_json?: Json
+          notes?: string | null
+          project_id: string
+          title?: string | null
+          total_duration_seconds?: number | null
+          updated_at?: string
+          waveform_json?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mood_profile_json?: Json
+          notes?: string | null
+          project_id?: string
+          title?: string | null
+          total_duration_seconds?: number | null
+          updated_at?: string
+          waveform_json?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "storyboards_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_projects: {
         Row: {
           artist_id: string | null
