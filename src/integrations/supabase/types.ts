@@ -253,6 +253,53 @@ export type Database = {
           },
         ]
       }
+      generation_feasibility: {
+        Row: {
+          alternative_suggestion: string | null
+          computed_at: string
+          continuity_probability: number | null
+          drift_probability: number | null
+          estimated_retry_count: number | null
+          id: string
+          lipsync_probability: number | null
+          realism_probability: number | null
+          recommended_workflow: string | null
+          storyboard_node_id: string
+        }
+        Insert: {
+          alternative_suggestion?: string | null
+          computed_at?: string
+          continuity_probability?: number | null
+          drift_probability?: number | null
+          estimated_retry_count?: number | null
+          id?: string
+          lipsync_probability?: number | null
+          realism_probability?: number | null
+          recommended_workflow?: string | null
+          storyboard_node_id: string
+        }
+        Update: {
+          alternative_suggestion?: string | null
+          computed_at?: string
+          continuity_probability?: number | null
+          drift_probability?: number | null
+          estimated_retry_count?: number | null
+          id?: string
+          lipsync_probability?: number | null
+          realism_probability?: number | null
+          recommended_workflow?: string | null
+          storyboard_node_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_feasibility_storyboard_node_id_fkey"
+            columns: ["storyboard_node_id"]
+            isOneToOne: false
+            referencedRelation: "storyboard_nodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_assets: {
         Row: {
           approval_status: Database["public"]["Enums"]["approval_status"]
