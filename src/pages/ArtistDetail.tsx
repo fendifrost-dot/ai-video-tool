@@ -8,6 +8,7 @@ import { ArtistIdentityForm } from "@/components/artists/ArtistIdentityForm";
 import { Reference360Uploader } from "@/components/artists/Reference360Uploader";
 import { ArtistAssetGrid } from "@/components/artists/ArtistAssetGrid";
 import { CharacterDNATabs } from "@/components/artists/CharacterDNATabs";
+import { WardrobeTab } from "@/components/wardrobe/WardrobeTab";
 import { useArtist, useDeleteArtist } from "@/lib/queries/artists";
 
 export default function ArtistDetail({ id }: { id: string }) {
@@ -86,6 +87,8 @@ export default function ArtistDetail({ id }: { id: string }) {
         <ArtistIdentityForm artist={artist} />
 
         <CharacterDNATabs artistId={artist.id} />
+
+        <WardrobeTab artistId={artist.id} />
 
         <div className="rounded-md border border-border">
           <button
