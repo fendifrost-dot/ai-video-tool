@@ -1,5 +1,5 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Users, FolderKanban, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, FolderKanban, Settings, LogOut, MapPin, Package } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
