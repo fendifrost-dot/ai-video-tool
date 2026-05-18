@@ -117,7 +117,9 @@ export type Database = {
           label: string
           metadata_json: Json
           reinforce_on_drift: boolean
+          source_url: string | null
           storage_path: string | null
+          tags: string[]
           uploaded_at: string
         }
         Insert: {
@@ -130,7 +132,9 @@ export type Database = {
           label: string
           metadata_json?: Json
           reinforce_on_drift?: boolean
+          source_url?: string | null
           storage_path?: string | null
+          tags?: string[]
           uploaded_at?: string
         }
         Update: {
@@ -143,7 +147,9 @@ export type Database = {
           label?: string
           metadata_json?: Json
           reinforce_on_drift?: boolean
+          source_url?: string | null
           storage_path?: string | null
+          tags?: string[]
           uploaded_at?: string
         }
         Relationships: [
@@ -303,6 +309,45 @@ export type Database = {
           },
         ]
       }
+      location_library: {
+        Row: {
+          category: string | null
+          file_url: string
+          id: string
+          name: string
+          notes: string | null
+          source_url: string | null
+          storage_path: string | null
+          tags: string[]
+          uploaded_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          file_url: string
+          id?: string
+          name: string
+          notes?: string | null
+          source_url?: string | null
+          storage_path?: string | null
+          tags?: string[]
+          uploaded_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          file_url?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          source_url?: string | null
+          storage_path?: string | null
+          tags?: string[]
+          uploaded_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       project_assets: {
         Row: {
           approval_status: Database["public"]["Enums"]["approval_status"]
@@ -379,6 +424,72 @@ export type Database = {
             columns: ["shot_id"]
             isOneToOne: false
             referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_location_picks: {
+        Row: {
+          location_id: string
+          pinned_at: string
+          project_id: string
+        }
+        Insert: {
+          location_id: string
+          pinned_at?: string
+          project_id: string
+        }
+        Update: {
+          location_id?: string
+          pinned_at?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_location_picks_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "location_library"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_location_picks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_prop_picks: {
+        Row: {
+          pinned_at: string
+          project_id: string
+          prop_id: string
+        }
+        Insert: {
+          pinned_at?: string
+          project_id: string
+          prop_id: string
+        }
+        Update: {
+          pinned_at?: string
+          project_id?: string
+          prop_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_prop_picks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_prop_picks_prop_id_fkey"
+            columns: ["prop_id"]
+            isOneToOne: false
+            referencedRelation: "prop_library"
             referencedColumns: ["id"]
           },
         ]
@@ -514,6 +625,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      prop_library: {
+        Row: {
+          category: string | null
+          file_url: string
+          id: string
+          name: string
+          notes: string | null
+          source_url: string | null
+          storage_path: string | null
+          tags: string[]
+          uploaded_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          file_url: string
+          id?: string
+          name: string
+          notes?: string | null
+          source_url?: string | null
+          storage_path?: string | null
+          tags?: string[]
+          uploaded_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          file_url?: string
+          id?: string
+          name?: string
+          notes?: string | null
+          source_url?: string | null
+          storage_path?: string | null
+          tags?: string[]
+          uploaded_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       provider_capabilities: {
         Row: {
