@@ -182,24 +182,30 @@ serve(async (req) => {
   }
 
   // ---- forward to CC ------------------------------------------------
+  // CC contract (pure Fal orchestrator):
+  //   Input:  { recipe, signedUrls, loraUrl?, triggerWord? }
+  //   Output: { fal_image_url, pipeline_used, cost_cents, generation_metadata }
+  //   Header: X-Proxy-Secret
   const ccPayload = {
-    signed_urls: {
+    recipe: {
+      basePrompt: body.basePrompt,
+      stylingNotes: body.stylingNotes ?? null,
+      pipelinePreference: body.pipelinePreference ?? "auto",
+      wardrobeLabels: wardrobeFeatures.map((f) => f.label),
+      jewelryLabels: jewelryFeatures.map((f) => f.label),
+      hasLocation: !!locationFeature,
+      hasFace: !!faceFeature,
+      propCount: propsFeatures.length,
+    },
+    signedUrls: {
       face: faceUrl,
       wardrobe: wardrobeUrls,
       jewelry: jewelryUrls,
       location: locationUrl,
       props: propUrls,
     },
-    recipe: {
-      wardrobe_labels: wardrobeFeatures.map((f) => f.label),
-      jewelry_labels: jewelryFeatures.map((f) => f.label),
-      has_location: !!locationFeature,
-    },
-    lora_url: loraUrl,
-    trigger_word: triggerWord,
-    base_prompt: body.basePrompt,
-    styling_notes: body.stylingNotes ?? null,
-    pipeline_preference: body.pipelinePreference ?? "auto",
+    loraUrl: loraUrl ?? undefined,
+    triggerWord: triggerWord || undefined,
   };
 
   let ccResp: Response;
@@ -208,7 +214,7 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Internal-Proxy-Secret": proxySecret,
+        "X-Proxy-Secret": proxySecret,
       },
       body: JSON.stringify(ccPayload),
     });
@@ -232,7 +238,6 @@ serve(async (req) => {
   const falImageUrl: string | undefined = ccJson?.fal_image_url;
   const pipelineUsed: string = ccJson?.pipeline_used ?? "unknown";
   const costCents: number = Number(ccJson?.cost_cents ?? 0);
-  const stages: any[] = Array.isArray(ccJson?.stages) ? ccJson.stages : [];
   const generationMetadata = ccJson?.generation_metadata ?? null;
   if (!falImageUrl) return json(502, { error: "cc_missing_fal_url" });
 
@@ -279,7 +284,6 @@ serve(async (req) => {
     styling_notes: body.stylingNotes ?? null,
     lora_url: loraUrl,
     lora_trigger: triggerWord,
-    stages,
     generation_metadata: generationMetadata,
   };
 
@@ -314,7 +318,6 @@ serve(async (req) => {
     signed_url: signedResult,
     pipeline_used: pipelineUsed,
     cost_cents: costCents,
-    stages,
     generation_metadata: generationMetadata,
   });
 });
