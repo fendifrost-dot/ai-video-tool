@@ -4,7 +4,7 @@ import type {
   Prompt,
   Shot,
   VideoProject,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 import { parseSongStructure } from "@/lib/queries/projects";
 import { approvedFilename } from "./csv";
 

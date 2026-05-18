@@ -11,7 +11,7 @@ import type {
   ShotType,
   TablesInsert,
   TablesUpdate,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 
 export const shotsKeys = {
   all: ["shots"] as const,

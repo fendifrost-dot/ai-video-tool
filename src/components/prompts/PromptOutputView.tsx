@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Check, Copy, Lock, LockOpen, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { signedUrl } from "@/lib/storage";
 import { toast } from "sonner";
-import type { ProviderName } from "@/integrations/supabase/types";
+import type { ProviderName } from "@/integrations/supabase/aliases";
 import type { CompiledPrompt, FormattedPrompt } from "@/lib/prompts/types";
 import {
   getProvider,

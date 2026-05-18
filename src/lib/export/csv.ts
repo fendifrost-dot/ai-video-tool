@@ -23,7 +23,7 @@ import type {
   Prompt,
   PromptTemplate,
   Shot,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 
 export const SHOT_LIST_HEADER = [
   "shot_number",

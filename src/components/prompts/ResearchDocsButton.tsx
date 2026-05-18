@@ -10,7 +10,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { supabase } from "@/lib/supabase";
-import type { ProviderName } from "@/integrations/supabase/types";
+import type { ProviderName } from "@/integrations/supabase/aliases";
 import { useQueryClient } from "@tanstack/react-query";
 
 type ResearchResult = {

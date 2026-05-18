@@ -18,7 +18,7 @@ import type {
   ApprovalStatus,
   ProjectAsset,
   ProjectAssetType,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 
 const TYPE_FILTERS: { value: ProjectAssetType | "all"; label: string }[] = [
   { value: "all", label: "All types" },

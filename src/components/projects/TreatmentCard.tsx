@@ -10,7 +10,7 @@ import {
   parseSavedTreatment,
   type TreatmentEnvelope,
 } from "@/lib/treatment/api";
-import type { VideoProject, ArtistIdentityProfile } from "@/integrations/supabase/types";
+import type { VideoProject, ArtistIdentityProfile } from "@/integrations/supabase/aliases";
 
 /**
  * Treatment card for the project page.

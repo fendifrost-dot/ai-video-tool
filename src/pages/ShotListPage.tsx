@@ -26,7 +26,7 @@ import {
   useDeleteShot,
   useProjectShots,
 } from "@/lib/queries/shots";
-import type { ShotStatus } from "@/integrations/supabase/types";
+import type { ShotStatus } from "@/integrations/supabase/aliases";
 
 type FilterMode = "all" | ShotStatus;
 

@@ -13,7 +13,7 @@ import {
 import type {
   ApprovalStatus,
   ProjectAsset,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 import {
   APPROVAL_STATUS_LABELS,
   bucketForAssetType,

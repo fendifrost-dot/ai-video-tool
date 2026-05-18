@@ -5,7 +5,7 @@ import type {
   PromptTemplate,
   Shot,
   VideoProject,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 
 /**
  * Input passed to the compiler. Any of artist/shot may be null — the compiler

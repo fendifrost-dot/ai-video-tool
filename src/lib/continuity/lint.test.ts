@@ -5,7 +5,7 @@ import {
   lintShotContinuity,
   splitPhrases,
 } from "./lint";
-import type { Artist, Shot } from "@/integrations/supabase/types";
+import type { Artist, Shot } from "@/integrations/supabase/aliases";
 
 function makeArtist(overrides: Partial<Artist> = {}): Artist {
   return {

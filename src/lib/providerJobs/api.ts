@@ -25,7 +25,7 @@ import type {
   ProviderName,
   ProviderJobStatus,
   ProviderJob,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 
 /**
  * Endpoint slug for each provider on Control Center. Matches the

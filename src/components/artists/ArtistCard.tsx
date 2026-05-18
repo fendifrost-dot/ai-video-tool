@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import type { Artist } from "@/integrations/supabase/types";
+import type { Artist } from "@/integrations/supabase/aliases";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { User } from "lucide-react";
 

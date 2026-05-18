@@ -1,4 +1,4 @@
-import type { ShotStatus } from "@/integrations/supabase/types";
+import type { ShotStatus } from "@/integrations/supabase/aliases";
 import { SHOT_STATUS_OPTIONS, SHOT_STATUS_STYLES } from "@/lib/queries/shots";
 
 const LABEL = Object.fromEntries(SHOT_STATUS_OPTIONS.map((o) => [o.value, o.label])) as Record<

@@ -4,7 +4,7 @@ import type {
   Json,
   Shot,
   VideoProject,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 import type {
   CompileInput,
   CompiledPrompt,

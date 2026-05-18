@@ -9,7 +9,7 @@ import type {
   ProjectAsset,
   TablesInsert,
   TablesUpdate,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 
 // ---------------------------------------------------------------------------
 // Query keys

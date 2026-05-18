@@ -22,7 +22,7 @@ import type {
   ClipReview,
   ProjectAsset,
   Shot,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 import { lintShotContinuity } from "@/lib/continuity/lint";
 
 // =============================================================================

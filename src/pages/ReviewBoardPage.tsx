@@ -26,7 +26,7 @@ import { signedUrl } from "@/lib/storage";
 import type {
   ProjectAsset,
   ProjectAssetType,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 
 const REVIEWABLE_TYPES: ProjectAssetType[] = [
   "generated_clip",
@@ -142,7 +142,7 @@ function AssetReviewRow({
   prior,
 }: {
   asset: ProjectAsset;
-  prior: import("@/integrations/supabase/types").ClipReview | null;
+  prior: import("@/integrations/supabase/aliases").ClipReview | null;
 }) {
   const [url, setUrl] = useState<string | null>(null);
 

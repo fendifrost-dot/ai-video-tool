@@ -35,7 +35,7 @@ import { supabase } from "@/lib/supabase";
 import type {
   Json,
   ProjectStatus,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 
 type FormState = {
   title: string;

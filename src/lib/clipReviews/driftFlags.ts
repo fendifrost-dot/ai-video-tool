@@ -11,7 +11,7 @@
  * the reviewer didn't rate that dimension, not that the dimension drifted).
  */
 
-import type { ClipReview } from "@/integrations/supabase/types";
+import type { ClipReview } from "@/integrations/supabase/aliases";
 
 export type DriftFlag = "face" | "wardrobe" | "lighting";
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Camera, Lock, Upload, X } from "lucide-react";
-import type { ArtistAsset, ArtistAssetType } from "@/integrations/supabase/types";
+import type { ArtistAsset, ArtistAssetType } from "@/integrations/supabase/aliases";
 import {
   FACE_360_SLOTS,
   useArtistAssets,

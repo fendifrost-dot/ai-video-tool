@@ -1,4 +1,4 @@
-import type { ProviderName } from "@/integrations/supabase/types";
+import type { ProviderName } from "@/integrations/supabase/aliases";
 import type { CompiledPrompt, FormattedPrompt } from "@/lib/prompts/types";
 import {
   NotImplementedError,

@@ -8,7 +8,7 @@ import type {
   Json,
   Prompt,
   TablesInsert,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 import type { FormattedPrompt } from "@/lib/prompts/types";
 
 export const promptsKeys = {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
-import type { ArtistAsset, ArtistAssetType } from "@/integrations/supabase/types";
+import type { ArtistAsset, ArtistAssetType } from "@/integrations/supabase/aliases";
 import {
   ARTIST_ASSET_TYPES,
   FACE_360_SLOTS,
