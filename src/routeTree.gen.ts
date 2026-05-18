@@ -29,6 +29,7 @@ import { Route as ProjectsIdExportRouteImport } from './routes/projects.$id.expo
 import { Route as ProjectsIdContinuityRouteImport } from './routes/projects.$id.continuity'
 import { Route as ProjectsIdAssetsRouteImport } from './routes/projects.$id.assets'
 import { Route as ArtistsIdLooksRouteImport } from './routes/artists.$id.looks'
+import { Route as ArtistsIdLooksIndexRouteImport } from './routes/artists.$id.looks.index'
 import { Route as ProjectsIdShotsShotIdRouteImport } from './routes/projects.$id.shots.$shotId'
 import { Route as ArtistsIdLooksNewRouteImport } from './routes/artists.$id.looks.new'
 import { Route as ArtistsIdLooksLookIdRouteImport } from './routes/artists.$id.looks.$lookId'
@@ -133,6 +134,11 @@ const ArtistsIdLooksRoute = ArtistsIdLooksRouteImport.update({
   path: '/looks',
   getParentRoute: () => ArtistsIdRoute,
 } as any)
+const ArtistsIdLooksIndexRoute = ArtistsIdLooksIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ArtistsIdLooksRoute,
+} as any)
 const ProjectsIdShotsShotIdRoute = ProjectsIdShotsShotIdRouteImport.update({
   id: '/$shotId',
   path: '/$shotId',
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/artists/$id/looks/$lookId': typeof ArtistsIdLooksLookIdRoute
   '/artists/$id/looks/new': typeof ArtistsIdLooksNewRoute
   '/projects/$id/shots/$shotId': typeof ProjectsIdShotsShotIdRoute
+  '/artists/$id/looks/': typeof ArtistsIdLooksIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -182,7 +189,6 @@ export interface FileRoutesByTo {
   '/library/props': typeof LibraryPropsRoute
   '/projects/new': typeof ProjectsNewRoute
   '/artists': typeof ArtistsIndexRoute
-  '/artists/$id/looks': typeof ArtistsIdLooksRouteWithChildren
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
@@ -195,6 +201,7 @@ export interface FileRoutesByTo {
   '/artists/$id/looks/$lookId': typeof ArtistsIdLooksLookIdRoute
   '/artists/$id/looks/new': typeof ArtistsIdLooksNewRoute
   '/projects/$id/shots/$shotId': typeof ProjectsIdShotsShotIdRoute
+  '/artists/$id/looks': typeof ArtistsIdLooksIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -221,6 +228,7 @@ export interface FileRoutesById {
   '/artists/$id/looks/$lookId': typeof ArtistsIdLooksLookIdRoute
   '/artists/$id/looks/new': typeof ArtistsIdLooksNewRoute
   '/projects/$id/shots/$shotId': typeof ProjectsIdShotsShotIdRoute
+  '/artists/$id/looks/': typeof ArtistsIdLooksIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -248,6 +256,7 @@ export interface FileRouteTypes {
     | '/artists/$id/looks/$lookId'
     | '/artists/$id/looks/new'
     | '/projects/$id/shots/$shotId'
+    | '/artists/$id/looks/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -257,7 +266,6 @@ export interface FileRouteTypes {
     | '/library/props'
     | '/projects/new'
     | '/artists'
-    | '/artists/$id/looks'
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
     | '/projects/$id/export'
@@ -270,6 +278,7 @@ export interface FileRouteTypes {
     | '/artists/$id/looks/$lookId'
     | '/artists/$id/looks/new'
     | '/projects/$id/shots/$shotId'
+    | '/artists/$id/looks'
   id:
     | '__root__'
     | '/'
@@ -295,6 +304,7 @@ export interface FileRouteTypes {
     | '/artists/$id/looks/$lookId'
     | '/artists/$id/looks/new'
     | '/projects/$id/shots/$shotId'
+    | '/artists/$id/looks/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -449,6 +459,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArtistsIdLooksRouteImport
       parentRoute: typeof ArtistsIdRoute
     }
+    '/artists/$id/looks/': {
+      id: '/artists/$id/looks/'
+      path: '/'
+      fullPath: '/artists/$id/looks/'
+      preLoaderRoute: typeof ArtistsIdLooksIndexRouteImport
+      parentRoute: typeof ArtistsIdLooksRoute
+    }
     '/projects/$id/shots/$shotId': {
       id: '/projects/$id/shots/$shotId'
       path: '/$shotId'
@@ -476,11 +493,13 @@ declare module '@tanstack/react-router' {
 interface ArtistsIdLooksRouteChildren {
   ArtistsIdLooksLookIdRoute: typeof ArtistsIdLooksLookIdRoute
   ArtistsIdLooksNewRoute: typeof ArtistsIdLooksNewRoute
+  ArtistsIdLooksIndexRoute: typeof ArtistsIdLooksIndexRoute
 }
 
 const ArtistsIdLooksRouteChildren: ArtistsIdLooksRouteChildren = {
   ArtistsIdLooksLookIdRoute: ArtistsIdLooksLookIdRoute,
   ArtistsIdLooksNewRoute: ArtistsIdLooksNewRoute,
+  ArtistsIdLooksIndexRoute: ArtistsIdLooksIndexRoute,
 }
 
 const ArtistsIdLooksRouteWithChildren = ArtistsIdLooksRoute._addFileChildren(
