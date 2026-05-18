@@ -42,6 +42,7 @@ function shot(over: Partial<Shot> = {}): Shot {
     priority: "hero",
     status: "approved",
     notes: null,
+    locked_look_id: null,
     created_at: "2026-05-15T00:00:00Z",
     updated_at: "2026-05-15T00:00:00Z",
     ...over,
@@ -63,6 +64,7 @@ function asset(over: Partial<ProjectAsset> = {}): ProjectAsset {
     parent_asset_id: null,
     metadata_json: { original_filename: "take_001.mp4", size_bytes: 1024 },
     notes: null,
+    locked_look_id: null,
     created_at: "2026-05-15T00:00:00Z",
     ...over,
   };
@@ -83,6 +85,7 @@ function prompt(over: Partial<Prompt> = {}): Prompt {
     parent_prompt_id: null,
     result_asset_id: "a1",
     notes: null,
+    locked_look_id: null,
     created_at: "2026-05-15T00:00:00Z",
     ...over,
   };

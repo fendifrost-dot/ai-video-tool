@@ -27,7 +27,10 @@ import { Route as ProjectsIdPromptRouteImport } from './routes/projects.$id.prom
 import { Route as ProjectsIdExportRouteImport } from './routes/projects.$id.export'
 import { Route as ProjectsIdContinuityRouteImport } from './routes/projects.$id.continuity'
 import { Route as ProjectsIdAssetsRouteImport } from './routes/projects.$id.assets'
+import { Route as ArtistsIdLooksRouteImport } from './routes/artists.$id.looks'
 import { Route as ProjectsIdShotsShotIdRouteImport } from './routes/projects.$id.shots.$shotId'
+import { Route as ArtistsIdLooksNewRouteImport } from './routes/artists.$id.looks.new'
+import { Route as ArtistsIdLooksLookIdRouteImport } from './routes/artists.$id.looks.$lookId'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -119,23 +122,39 @@ const ProjectsIdAssetsRoute = ProjectsIdAssetsRouteImport.update({
   path: '/assets',
   getParentRoute: () => ProjectsIdRoute,
 } as any)
+const ArtistsIdLooksRoute = ArtistsIdLooksRouteImport.update({
+  id: '/looks',
+  path: '/looks',
+  getParentRoute: () => ArtistsIdRoute,
+} as any)
 const ProjectsIdShotsShotIdRoute = ProjectsIdShotsShotIdRouteImport.update({
   id: '/$shotId',
   path: '/$shotId',
   getParentRoute: () => ProjectsIdShotsRoute,
+} as any)
+const ArtistsIdLooksNewRoute = ArtistsIdLooksNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ArtistsIdLooksRoute,
+} as any)
+const ArtistsIdLooksLookIdRoute = ArtistsIdLooksLookIdRouteImport.update({
+  id: '/$lookId',
+  path: '/$lookId',
+  getParentRoute: () => ArtistsIdLooksRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/artists': typeof ArtistsRouteWithChildren
   '/settings': typeof SettingsRoute
-  '/artists/$id': typeof ArtistsIdRoute
+  '/artists/$id': typeof ArtistsIdRouteWithChildren
   '/artists/new': typeof ArtistsNewRoute
   '/library/locations': typeof LibraryLocationsRoute
   '/library/props': typeof LibraryPropsRoute
   '/projects/$id': typeof ProjectsIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
   '/artists/': typeof ArtistsIndexRoute
+  '/artists/$id/looks': typeof ArtistsIdLooksRouteWithChildren
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
@@ -144,17 +163,20 @@ export interface FileRoutesByFullPath {
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
   '/projects/$id/': typeof ProjectsIdIndexRoute
+  '/artists/$id/looks/$lookId': typeof ArtistsIdLooksLookIdRoute
+  '/artists/$id/looks/new': typeof ArtistsIdLooksNewRoute
   '/projects/$id/shots/$shotId': typeof ProjectsIdShotsShotIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
-  '/artists/$id': typeof ArtistsIdRoute
+  '/artists/$id': typeof ArtistsIdRouteWithChildren
   '/artists/new': typeof ArtistsNewRoute
   '/library/locations': typeof LibraryLocationsRoute
   '/library/props': typeof LibraryPropsRoute
   '/projects/new': typeof ProjectsNewRoute
   '/artists': typeof ArtistsIndexRoute
+  '/artists/$id/looks': typeof ArtistsIdLooksRouteWithChildren
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
@@ -163,6 +185,8 @@ export interface FileRoutesByTo {
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
   '/projects/$id': typeof ProjectsIdIndexRoute
+  '/artists/$id/looks/$lookId': typeof ArtistsIdLooksLookIdRoute
+  '/artists/$id/looks/new': typeof ArtistsIdLooksNewRoute
   '/projects/$id/shots/$shotId': typeof ProjectsIdShotsShotIdRoute
 }
 export interface FileRoutesById {
@@ -170,13 +194,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/artists': typeof ArtistsRouteWithChildren
   '/settings': typeof SettingsRoute
-  '/artists/$id': typeof ArtistsIdRoute
+  '/artists/$id': typeof ArtistsIdRouteWithChildren
   '/artists/new': typeof ArtistsNewRoute
   '/library/locations': typeof LibraryLocationsRoute
   '/library/props': typeof LibraryPropsRoute
   '/projects/$id': typeof ProjectsIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
   '/artists/': typeof ArtistsIndexRoute
+  '/artists/$id/looks': typeof ArtistsIdLooksRouteWithChildren
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
@@ -185,6 +210,8 @@ export interface FileRoutesById {
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
   '/projects/$id/': typeof ProjectsIdIndexRoute
+  '/artists/$id/looks/$lookId': typeof ArtistsIdLooksLookIdRoute
+  '/artists/$id/looks/new': typeof ArtistsIdLooksNewRoute
   '/projects/$id/shots/$shotId': typeof ProjectsIdShotsShotIdRoute
 }
 export interface FileRouteTypes {
@@ -200,6 +227,7 @@ export interface FileRouteTypes {
     | '/projects/$id'
     | '/projects/new'
     | '/artists/'
+    | '/artists/$id/looks'
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
     | '/projects/$id/export'
@@ -208,6 +236,8 @@ export interface FileRouteTypes {
     | '/projects/$id/shots'
     | '/projects/$id/treatment'
     | '/projects/$id/'
+    | '/artists/$id/looks/$lookId'
+    | '/artists/$id/looks/new'
     | '/projects/$id/shots/$shotId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -219,6 +249,7 @@ export interface FileRouteTypes {
     | '/library/props'
     | '/projects/new'
     | '/artists'
+    | '/artists/$id/looks'
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
     | '/projects/$id/export'
@@ -227,6 +258,8 @@ export interface FileRouteTypes {
     | '/projects/$id/shots'
     | '/projects/$id/treatment'
     | '/projects/$id'
+    | '/artists/$id/looks/$lookId'
+    | '/artists/$id/looks/new'
     | '/projects/$id/shots/$shotId'
   id:
     | '__root__'
@@ -240,6 +273,7 @@ export interface FileRouteTypes {
     | '/projects/$id'
     | '/projects/new'
     | '/artists/'
+    | '/artists/$id/looks'
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
     | '/projects/$id/export'
@@ -248,6 +282,8 @@ export interface FileRouteTypes {
     | '/projects/$id/shots'
     | '/projects/$id/treatment'
     | '/projects/$id/'
+    | '/artists/$id/looks/$lookId'
+    | '/artists/$id/looks/new'
     | '/projects/$id/shots/$shotId'
   fileRoutesById: FileRoutesById
 }
@@ -389,6 +425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsIdAssetsRouteImport
       parentRoute: typeof ProjectsIdRoute
     }
+    '/artists/$id/looks': {
+      id: '/artists/$id/looks'
+      path: '/looks'
+      fullPath: '/artists/$id/looks'
+      preLoaderRoute: typeof ArtistsIdLooksRouteImport
+      parentRoute: typeof ArtistsIdRoute
+    }
     '/projects/$id/shots/$shotId': {
       id: '/projects/$id/shots/$shotId'
       path: '/$shotId'
@@ -396,17 +439,57 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsIdShotsShotIdRouteImport
       parentRoute: typeof ProjectsIdShotsRoute
     }
+    '/artists/$id/looks/new': {
+      id: '/artists/$id/looks/new'
+      path: '/new'
+      fullPath: '/artists/$id/looks/new'
+      preLoaderRoute: typeof ArtistsIdLooksNewRouteImport
+      parentRoute: typeof ArtistsIdLooksRoute
+    }
+    '/artists/$id/looks/$lookId': {
+      id: '/artists/$id/looks/$lookId'
+      path: '/$lookId'
+      fullPath: '/artists/$id/looks/$lookId'
+      preLoaderRoute: typeof ArtistsIdLooksLookIdRouteImport
+      parentRoute: typeof ArtistsIdLooksRoute
+    }
   }
 }
 
+interface ArtistsIdLooksRouteChildren {
+  ArtistsIdLooksLookIdRoute: typeof ArtistsIdLooksLookIdRoute
+  ArtistsIdLooksNewRoute: typeof ArtistsIdLooksNewRoute
+}
+
+const ArtistsIdLooksRouteChildren: ArtistsIdLooksRouteChildren = {
+  ArtistsIdLooksLookIdRoute: ArtistsIdLooksLookIdRoute,
+  ArtistsIdLooksNewRoute: ArtistsIdLooksNewRoute,
+}
+
+const ArtistsIdLooksRouteWithChildren = ArtistsIdLooksRoute._addFileChildren(
+  ArtistsIdLooksRouteChildren,
+)
+
+interface ArtistsIdRouteChildren {
+  ArtistsIdLooksRoute: typeof ArtistsIdLooksRouteWithChildren
+}
+
+const ArtistsIdRouteChildren: ArtistsIdRouteChildren = {
+  ArtistsIdLooksRoute: ArtistsIdLooksRouteWithChildren,
+}
+
+const ArtistsIdRouteWithChildren = ArtistsIdRoute._addFileChildren(
+  ArtistsIdRouteChildren,
+)
+
 interface ArtistsRouteChildren {
-  ArtistsIdRoute: typeof ArtistsIdRoute
+  ArtistsIdRoute: typeof ArtistsIdRouteWithChildren
   ArtistsNewRoute: typeof ArtistsNewRoute
   ArtistsIndexRoute: typeof ArtistsIndexRoute
 }
 
 const ArtistsRouteChildren: ArtistsRouteChildren = {
-  ArtistsIdRoute: ArtistsIdRoute,
+  ArtistsIdRoute: ArtistsIdRouteWithChildren,
   ArtistsNewRoute: ArtistsNewRoute,
   ArtistsIndexRoute: ArtistsIndexRoute,
 }
