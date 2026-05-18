@@ -71,5 +71,4 @@ export type ArtistIdentityProfile = {
   jewelry?: string;
   wardrobe_defaults?: string;
   distinguishing_features?: string;
-  [key: string]: string | undefined;
 };
