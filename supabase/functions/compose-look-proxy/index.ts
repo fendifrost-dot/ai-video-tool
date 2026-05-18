@@ -284,7 +284,6 @@ serve(async (req) => {
     styling_notes: body.stylingNotes ?? null,
     lora_url: loraUrl,
     lora_trigger: triggerWord,
-    stages,
     generation_metadata: generationMetadata,
   };
 
