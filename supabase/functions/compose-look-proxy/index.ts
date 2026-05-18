@@ -188,6 +188,12 @@ serve(async (req) => {
   //   Header: X-Proxy-Secret
   const ccPayload = {
     recipe: {
+      artistId: body.artistId,
+      faceFeatureId: body.faceFeatureId ?? undefined,
+      wardrobeFeatureIds: body.wardrobeFeatureIds ?? [],
+      jewelryFeatureIds: body.jewelryFeatureIds ?? [],
+      locationId: body.locationId ?? undefined,
+      propIds: body.propIds ?? [],
       basePrompt: body.basePrompt,
       stylingNotes: body.stylingNotes ?? null,
       pipelinePreference: body.pipelinePreference ?? "auto",
