@@ -4,6 +4,7 @@ import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { ShotStatusPill } from "@/components/shots/ShotStatusPill";
 import { ShotForm } from "@/components/shots/ShotForm";
+import { ShotLockedLookPicker } from "@/components/shots/ShotLockedLookPicker";
 import { PromptBuilder } from "@/components/prompts/PromptBuilder";
 import { useProject } from "@/lib/queries/projects";
 import { useShot } from "@/lib/queries/shots";
@@ -75,6 +76,12 @@ export default function ShotDetailPage({
         </div>
 
         <ShotForm shot={shot} />
+
+        <ShotLockedLookPicker
+          shotId={shot.id}
+          projectId={projectId}
+          artistId={project.artist_id ?? null}
+        />
 
         <section className="space-y-3">
           <div className="flex items-center gap-2 border-t border-border pt-6">

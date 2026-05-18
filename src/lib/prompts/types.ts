@@ -5,7 +5,7 @@ import type {
   PromptTemplate,
   Shot,
   VideoProject,
-} from "@/integrations/supabase/aliases";
+} from "@/integrations/supabase/types";
 
 /**
  * Input passed to the compiler. Any of artist/shot may be null — the compiler
@@ -36,6 +36,16 @@ export type CompileInput = {
    * conditioning consume the full list. Pre-de-duped by the caller.
    */
   lockedCharacterFeaturePaths?: string[];
+  /**
+   * Phase 2: when a shot is bound to a saved `artist_looks` row, the look's
+   * generated image is the strongest reference we have — it already encodes
+   * face, body, outfit, jewelry. The compiler prepends this to
+   * `referenceImagePaths` so image-to-video providers (Runway gen4_turbo,
+   * Higgsfield, Veo, etc.) pull it as the primary subject reference.
+   *
+   * Stored as a path inside the `look-composites` bucket.
+   */
+  lockedLookImagePath?: string | null;
 };
 
 export type PromptOverrides = {

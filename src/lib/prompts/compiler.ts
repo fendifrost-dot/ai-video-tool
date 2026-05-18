@@ -4,7 +4,7 @@ import type {
   Json,
   Shot,
   VideoProject,
-} from "@/integrations/supabase/aliases";
+} from "@/integrations/supabase/types";
 import type {
   CompileInput,
   CompiledPrompt,
@@ -79,9 +79,14 @@ export function compilePrompt(input: CompileInput): CompiledPrompt {
 
 /**
  * Build the de-duped, ordered list of reference image paths from the compile
- * input. Priority: explicit `lockedCharacterFeaturePaths` (already in feature
- * priority order) first; then the legacy `lockedReferenceAssetPath` appended
- * if not already present. Empty strings and falsy entries are dropped.
+ * input. Priority order:
+ *   1. `lockedLookImagePath` — Phase 2 composed look. Strongest single
+ *      reference (encodes face, body, outfit, jewelry in one frame).
+ *   2. `lockedCharacterFeaturePaths` — Phase A Character DNA, in feature
+ *      priority order (face, hands, jewelry, tattoos, hair, teeth, body).
+ *   3. `lockedReferenceAssetPath` — legacy single-asset fallback.
+ *
+ * Empty strings and falsy entries are dropped, duplicates are de-duped.
  */
 export function pickReferencePaths(input: CompileInput): string[] {
   const out: string[] = [];
@@ -94,6 +99,7 @@ export function pickReferencePaths(input: CompileInput): string[] {
     seen.add(t);
     out.push(t);
   };
+  append(input.lockedLookImagePath ?? null);
   for (const p of input.lockedCharacterFeaturePaths ?? []) {
     append(p);
   }

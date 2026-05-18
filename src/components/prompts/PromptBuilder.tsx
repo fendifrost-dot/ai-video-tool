@@ -6,7 +6,7 @@ import type {
   ProviderName,
   Shot,
   VideoProject,
-} from "@/integrations/supabase/aliases";
+} from "@/integrations/supabase/types";
 import { compilePrompt } from "@/lib/prompts/compiler";
 import { getProvider, PROVIDER_ORDER } from "@/lib/providers/registry";
 import type {
@@ -19,6 +19,7 @@ import {
   useCharacterFeatures,
 } from "@/lib/queries/characterFeatures";
 import { useProjectShots } from "@/lib/queries/shots";
+import { useShotLockedLook } from "@/lib/queries/shotLockedLook";
 import { usePromptTemplates } from "@/lib/queries/promptTemplates";
 import { useSavePrompt } from "@/lib/queries/prompts";
 import { Button } from "@/components/ui/button";
@@ -102,6 +103,16 @@ export function PromptBuilder({
     return "runway";
   }, [providerOverride, template]);
 
+  // Phase 2: if the picked shot has a locked_look_id, fetch the look so we
+  // can prepend its composed image to the reference list. The composed image
+  // already encodes face + body + outfit + jewelry, so it's the strongest
+  // single reference for image-to-video providers.
+  const lockedLookQuery = useShotLockedLook(shot?.id ?? undefined);
+  const lockedLookImagePath = useMemo(
+    () => lockedLookQuery.data?.generated_storage_path ?? null,
+    [lockedLookQuery.data],
+  );
+
   const compiled: CompiledPrompt | null = useMemo(() => {
     if (!template) return null;
     return compilePrompt({
@@ -113,6 +124,7 @@ export function PromptBuilder({
         ...overrides,
         extra_negative: extraNegative.trim() || undefined,
       },
+      lockedLookImagePath,
       lockedReferenceAssetPath: lockedAsset?.file_url ?? null,
       lockedCharacterFeaturePaths: lockedFeaturePaths,
     });
@@ -123,6 +135,7 @@ export function PromptBuilder({
     shot,
     overrides,
     extraNegative,
+    lockedLookImagePath,
     lockedAsset,
     lockedFeaturePaths,
   ]);

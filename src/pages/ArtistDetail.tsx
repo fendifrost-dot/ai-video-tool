@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, ChevronDown, ChevronRight, Trash2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Sparkles, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
@@ -73,15 +73,26 @@ export default function ArtistDetail({ id }: { id: string }) {
               All artists
             </Link>
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDelete}
-            disabled={del.isPending}
-          >
-            <Trash2 className="mr-1.5 h-4 w-4" />
-            Delete
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild size="sm">
+              <Link
+                to="/artists/$id/looks"
+                params={{ id: artist.id }}
+              >
+                <Sparkles className="mr-1.5 h-4 w-4" />
+                Looks
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDelete}
+              disabled={del.isPending}
+            >
+              <Trash2 className="mr-1.5 h-4 w-4" />
+              Delete
+            </Button>
+          </div>
         </div>
 
         <ArtistIdentityForm artist={artist} />

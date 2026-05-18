@@ -12,7 +12,7 @@ import type {
   PromptTemplate,
   Shot,
   VideoProject,
-} from "@/integrations/supabase/aliases";
+} from "@/integrations/supabase/types";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -488,5 +488,51 @@ describe("compilePrompt", () => {
       lockedReferenceAssetPath: "u1/a1/legacy_face.png",
     });
     expect(result.referenceImagePath).toBe("u1/a1/feature_face.png");
+  });
+
+  // -------------------------------------------------------------------------
+  // Phase 2: lockedLookImagePath takes priority over everything else
+  // -------------------------------------------------------------------------
+  it("prepends lockedLookImagePath to referenceImagePaths and uses it as the singular path", () => {
+    const result = compilePrompt({
+      template: makeTemplate(),
+      project: makeProject(),
+      artist: makeArtist(),
+      shot: makeShot(),
+      lockedLookImagePath: "u1/a1/look_chrome_luxe.png",
+      lockedCharacterFeaturePaths: ["u1/a1/face_neutral.png"],
+      lockedReferenceAssetPath: "u1/a1/legacy.png",
+    });
+    expect(result.referenceImagePath).toBe("u1/a1/look_chrome_luxe.png");
+    expect(result.referenceImagePaths).toEqual([
+      "u1/a1/look_chrome_luxe.png",
+      "u1/a1/face_neutral.png",
+      "u1/a1/legacy.png",
+    ]);
+  });
+
+  it("does not duplicate the look path when it also appears in feature paths", () => {
+    const result = compilePrompt({
+      template: makeTemplate(),
+      project: makeProject(),
+      artist: makeArtist(),
+      shot: makeShot(),
+      lockedLookImagePath: "u1/a1/look.png",
+      lockedCharacterFeaturePaths: ["u1/a1/look.png", "u1/a1/face.png"],
+    });
+    expect(result.referenceImagePaths).toEqual(["u1/a1/look.png", "u1/a1/face.png"]);
+  });
+
+  it("falls back gracefully when lockedLookImagePath is null", () => {
+    const result = compilePrompt({
+      template: makeTemplate(),
+      project: makeProject(),
+      artist: makeArtist(),
+      shot: makeShot(),
+      lockedLookImagePath: null,
+      lockedCharacterFeaturePaths: ["u1/a1/face.png"],
+    });
+    expect(result.referenceImagePaths).toEqual(["u1/a1/face.png"]);
+    expect(result.referenceImagePath).toBe("u1/a1/face.png");
   });
 });
