@@ -17,7 +17,12 @@ export type DriftFlag = "face" | "wardrobe" | "lighting";
 
 export const DRIFT_THRESHOLD = 7;
 
-const DRIFT_RULES: ReadonlyArray<{ flag: DriftFlag; key: keyof ClipReview }> = [
+type DriftReviewKey =
+  | "face_consistency_score"
+  | "wardrobe_score"
+  | "lighting_score";
+
+const DRIFT_RULES: ReadonlyArray<{ flag: DriftFlag; key: DriftReviewKey }> = [
   { flag: "face", key: "face_consistency_score" },
   { flag: "wardrobe", key: "wardrobe_score" },
   { flag: "lighting", key: "lighting_score" },
