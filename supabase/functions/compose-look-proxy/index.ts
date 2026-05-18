@@ -238,7 +238,6 @@ serve(async (req) => {
   const falImageUrl: string | undefined = ccJson?.fal_image_url;
   const pipelineUsed: string = ccJson?.pipeline_used ?? "unknown";
   const costCents: number = Number(ccJson?.cost_cents ?? 0);
-  const stages: any[] = Array.isArray(ccJson?.stages) ? ccJson.stages : [];
   const generationMetadata = ccJson?.generation_metadata ?? null;
   if (!falImageUrl) return json(502, { error: "cc_missing_fal_url" });
 
