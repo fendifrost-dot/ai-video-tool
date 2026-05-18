@@ -182,24 +182,30 @@ serve(async (req) => {
   }
 
   // ---- forward to CC ------------------------------------------------
+  // CC contract (pure Fal orchestrator):
+  //   Input:  { recipe, signedUrls, loraUrl?, triggerWord? }
+  //   Output: { fal_image_url, pipeline_used, cost_cents, generation_metadata }
+  //   Header: X-Proxy-Secret
   const ccPayload = {
-    signed_urls: {
+    recipe: {
+      basePrompt: body.basePrompt,
+      stylingNotes: body.stylingNotes ?? null,
+      pipelinePreference: body.pipelinePreference ?? "auto",
+      wardrobeLabels: wardrobeFeatures.map((f) => f.label),
+      jewelryLabels: jewelryFeatures.map((f) => f.label),
+      hasLocation: !!locationFeature,
+      hasFace: !!faceFeature,
+      propCount: propsFeatures.length,
+    },
+    signedUrls: {
       face: faceUrl,
       wardrobe: wardrobeUrls,
       jewelry: jewelryUrls,
       location: locationUrl,
       props: propUrls,
     },
-    recipe: {
-      wardrobe_labels: wardrobeFeatures.map((f) => f.label),
-      jewelry_labels: jewelryFeatures.map((f) => f.label),
-      has_location: !!locationFeature,
-    },
-    lora_url: loraUrl,
-    trigger_word: triggerWord,
-    base_prompt: body.basePrompt,
-    styling_notes: body.stylingNotes ?? null,
-    pipeline_preference: body.pipelinePreference ?? "auto",
+    loraUrl: loraUrl ?? undefined,
+    triggerWord: triggerWord || undefined,
   };
 
   let ccResp: Response;
@@ -208,7 +214,7 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Internal-Proxy-Secret": proxySecret,
+        "X-Proxy-Secret": proxySecret,
       },
       body: JSON.stringify(ccPayload),
     });
