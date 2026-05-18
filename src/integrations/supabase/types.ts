@@ -61,6 +61,81 @@ export type Database = {
           },
         ]
       }
+      artist_looks: {
+        Row: {
+          artist_id: string
+          composition_recipe_json: Json
+          cost_cents: number
+          created_at: string
+          description: string | null
+          generated_image_url: string | null
+          generated_storage_path: string | null
+          id: string
+          iterations: number
+          name: string
+          notes: string | null
+          parent_look_id: string | null
+          pipeline_used: string | null
+          status: string
+          thumbnail_url: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          artist_id: string
+          composition_recipe_json?: Json
+          cost_cents?: number
+          created_at?: string
+          description?: string | null
+          generated_image_url?: string | null
+          generated_storage_path?: string | null
+          id?: string
+          iterations?: number
+          name: string
+          notes?: string | null
+          parent_look_id?: string | null
+          pipeline_used?: string | null
+          status?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          artist_id?: string
+          composition_recipe_json?: Json
+          cost_cents?: number
+          created_at?: string
+          description?: string | null
+          generated_image_url?: string | null
+          generated_storage_path?: string | null
+          id?: string
+          iterations?: number
+          name?: string
+          notes?: string | null
+          parent_look_id?: string | null
+          pipeline_used?: string | null
+          status?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artist_looks_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "artist_looks_parent_look_id_fkey"
+            columns: ["parent_look_id"]
+            isOneToOne: false
+            referencedRelation: "artist_looks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       artists: {
         Row: {
           bio: string | null
@@ -461,6 +536,45 @@ export type Database = {
           },
         ]
       }
+      project_look_picks: {
+        Row: {
+          id: string
+          look_id: string
+          picked_at: string
+          project_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          look_id: string
+          picked_at?: string
+          project_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          look_id?: string
+          picked_at?: string
+          project_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_look_picks_look_id_fkey"
+            columns: ["look_id"]
+            isOneToOne: false
+            referencedRelation: "artist_looks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_look_picks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_prop_picks: {
         Row: {
           pinned_at: string
@@ -791,6 +905,7 @@ export type Database = {
           environment: string | null
           id: string
           lighting: string | null
+          locked_look_id: string | null
           notes: string | null
           priority: Database["public"]["Enums"]["shot_priority"]
           project_id: string
@@ -822,6 +937,7 @@ export type Database = {
           environment?: string | null
           id?: string
           lighting?: string | null
+          locked_look_id?: string | null
           notes?: string | null
           priority?: Database["public"]["Enums"]["shot_priority"]
           project_id: string
@@ -853,6 +969,7 @@ export type Database = {
           environment?: string | null
           id?: string
           lighting?: string | null
+          locked_look_id?: string | null
           notes?: string | null
           priority?: Database["public"]["Enums"]["shot_priority"]
           project_id?: string
@@ -878,6 +995,13 @@ export type Database = {
           wardrobe?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "shots_locked_look_id_fkey"
+            columns: ["locked_look_id"]
+            isOneToOne: false
+            referencedRelation: "artist_looks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shots_project_id_fkey"
             columns: ["project_id"]
