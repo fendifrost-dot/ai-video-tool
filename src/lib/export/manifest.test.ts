@@ -29,7 +29,6 @@ function project(over: Partial<VideoProject> = {}): VideoProject {
     treatment_json: {},
     status: "in_production",
     notes: null,
-    locked_look_id: null,
     created_at: "2026-05-15T00:00:00Z",
     updated_at: "2026-05-15T00:00:00Z",
     ...over,
@@ -48,7 +47,6 @@ function artist(over: Partial<Artist> = {}): Artist {
     preferred_lighting: null,
     camera_rules: null,
     notes: null,
-    locked_look_id: null,
     created_at: "2026-05-15T00:00:00Z",
     updated_at: "2026-05-15T00:00:00Z",
     ...over,
@@ -102,7 +100,6 @@ function asset(over: Partial<ProjectAsset> = {}): ProjectAsset {
     parent_asset_id: null,
     metadata_json: { original_filename: "take.mp4", size_bytes: 5_000_000 },
     notes: null,
-    locked_look_id: null,
     created_at: "2026-05-15T00:00:00Z",
     ...over,
   };

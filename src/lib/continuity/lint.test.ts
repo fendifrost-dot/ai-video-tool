@@ -19,7 +19,6 @@ function makeArtist(overrides: Partial<Artist> = {}): Artist {
     preferred_lighting: null,
     camera_rules: null,
     notes: null,
-    locked_look_id: null,
     created_at: "2026-05-15T00:00:00Z",
     updated_at: "2026-05-15T00:00:00Z",
     ...overrides,

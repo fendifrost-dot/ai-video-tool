@@ -92,6 +92,7 @@ function makeShot(overrides: Partial<Shot> = {}): Shot {
     priority: "hero",
     status: "planned",
     notes: null,
+    locked_look_id: null,
     created_at: "2026-05-15T00:00:00Z",
     updated_at: "2026-05-15T00:00:00Z",
     ...overrides,
