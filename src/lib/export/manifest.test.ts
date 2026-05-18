@@ -6,7 +6,7 @@ import type {
   Prompt,
   Shot,
   VideoProject,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 
 function project(over: Partial<VideoProject> = {}): VideoProject {
   return {

@@ -34,7 +34,7 @@ export const WARDROBE_FEATURE_TYPES: WardrobeFeatureType[] = [
 export const isWardrobeFeatureType = (t: string): t is WardrobeFeatureType =>
   WARDROBE_FEATURE_TYPES.includes(t as WardrobeFeatureType);
 
-export type WardrobeItem = CharacterFeature & {
+export type WardrobeItem = Omit<CharacterFeature, "feature_type"> & {
   feature_type: WardrobeFeatureType;
   tags: string[];
   source_url: string | null;

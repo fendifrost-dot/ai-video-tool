@@ -6,7 +6,7 @@ import type {
   ClipReview,
   Json,
   ProjectAsset,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 import {
   SCORE_METRICS,
   averageScore,

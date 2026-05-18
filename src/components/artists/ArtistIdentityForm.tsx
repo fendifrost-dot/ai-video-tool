@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { Artist, ArtistIdentityProfile, Json } from "@/integrations/supabase/types";
+import type { Artist, ArtistIdentityProfile, Json } from "@/integrations/supabase/aliases";
 import { useUpdateArtist } from "@/lib/queries/artists";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

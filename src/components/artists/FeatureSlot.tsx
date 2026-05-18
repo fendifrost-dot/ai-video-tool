@@ -51,12 +51,13 @@ export function FeatureSlot({
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!current?.file_url) {
+    const url = current?.file_url;
+    if (!url) {
       setSignedUrl(null);
       return;
     }
-    signedUrls("artist-assets", [current.file_url], 3600)
-      .then((map) => setSignedUrl(map[current.file_url] ?? null))
+    signedUrls("artist-assets", [url], 3600)
+      .then((map) => setSignedUrl(map[url] ?? null))
       .catch((err) => console.error("signedUrl failed", err));
   }, [current?.file_url]);
 

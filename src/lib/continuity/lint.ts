@@ -1,4 +1,4 @@
-import type { Artist, Shot } from "@/integrations/supabase/types";
+import type { Artist, Shot } from "@/integrations/supabase/aliases";
 
 /**
  * Severity levels for continuity lint warnings.

@@ -7,7 +7,7 @@ import type {
   ShotPriority,
   ShotStatus,
   ShotType,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 import {
   SHOT_PRIORITY_OPTIONS,
   SHOT_STATUS_OPTIONS,

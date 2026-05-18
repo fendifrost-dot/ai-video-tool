@@ -1,4 +1,4 @@
-import type { ProviderName } from "@/integrations/supabase/types";
+import type { ProviderName } from "@/integrations/supabase/aliases";
 import type { IGenerationProvider } from "./types";
 import { ManualProvider } from "./manual";
 import { RunwayProvider } from "./runway";

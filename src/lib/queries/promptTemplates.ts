@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { PromptTemplate } from "@/integrations/supabase/types";
+import type { PromptTemplate } from "@/integrations/supabase/aliases";
 
 export const promptTemplatesKeys = {
   all: ["prompt_templates"] as const,

@@ -8,7 +8,7 @@ import type {
   ClipReview,
   TablesInsert,
   TablesUpdate,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 import { projectAssetsKeys } from "./projectAssets";
 import { computeDriftFlags } from "@/lib/clipReviews/driftFlags";
 

@@ -9,7 +9,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { ProviderName } from "@/integrations/supabase/types";
+import type { ProviderName } from "@/integrations/supabase/aliases";
 import type { FormattedPrompt } from "@/lib/prompts/types";
 
 export type ProviderCapability = {

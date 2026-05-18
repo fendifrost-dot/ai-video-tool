@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { useProjects } from "@/lib/queries/projects";
 import { useArtists } from "@/lib/queries/artists";
-import type { VideoProject, ProjectStatus } from "@/integrations/supabase/types";
+import type { VideoProject, ProjectStatus } from "@/integrations/supabase/aliases";
 
 export default function Dashboard() {
   const { data: projects, isLoading } = useProjects();

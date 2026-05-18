@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import type {
   PromptTemplate,
   ProviderName,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 import {
   Select,
   SelectContent,

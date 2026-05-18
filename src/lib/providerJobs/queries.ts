@@ -28,7 +28,7 @@ import {
 import { useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
-import type { ProviderJob } from "@/integrations/supabase/types";
+import type { ProviderJob } from "@/integrations/supabase/aliases";
 import {
   createGenerationJob,
   pollJobStatus,

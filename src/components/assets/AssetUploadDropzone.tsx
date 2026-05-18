@@ -4,7 +4,7 @@ import { Upload, X } from "lucide-react";
 import type {
   Json,
   ProjectAssetType,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 import {
   bucketForAssetType,
   guessAssetType,

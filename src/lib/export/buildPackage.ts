@@ -8,7 +8,7 @@ import type {
   PromptTemplate,
   Shot,
   VideoProject,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 import { bucketForAssetType } from "@/lib/queries/projectAssets";
 import { signedUrl } from "@/lib/storage";
 import {

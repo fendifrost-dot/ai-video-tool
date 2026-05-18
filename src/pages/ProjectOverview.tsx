@@ -22,7 +22,7 @@ import {
 import { useArtist } from "@/lib/queries/artists";
 import { SongAnalysisCard } from "@/components/projects/SongAnalysisCard";
 import { ProjectLibraryPicker } from "@/components/projects/ProjectLibraryPicker";
-import type { ProjectStatus } from "@/integrations/supabase/types";
+import type { ProjectStatus } from "@/integrations/supabase/aliases";
 
 export default function ProjectOverview({ id }: { id: string }) {
   const navigate = useNavigate();

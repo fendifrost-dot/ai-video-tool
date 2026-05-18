@@ -11,7 +11,7 @@ import type {
   ProjectAssetType,
   TablesInsert,
   TablesUpdate,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 
 export const projectAssetsKeys = {
   all: ["project_assets"] as const,
