@@ -1,5 +1,5 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Users, FolderKanban, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, FolderKanban, Settings, LogOut, MapPin, Package } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 type NavItem = {
   label: string;
   icon: typeof LayoutDashboard;
-  to: "/" | "/artists" | "/projects/new" | "/settings";
+  to: "/" | "/artists" | "/projects/new" | "/settings" | "/library/locations" | "/library/props";
   match: string;
   exact?: boolean;
 };
@@ -16,6 +16,8 @@ const nav: NavItem[] = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, match: "/", exact: true },
   { to: "/artists", label: "Artists", icon: Users, match: "/artists" },
   { to: "/projects/new", label: "Projects", icon: FolderKanban, match: "/projects" },
+  { to: "/library/locations", label: "Locations", icon: MapPin, match: "/library/locations" },
+  { to: "/library/props", label: "Props", icon: Package, match: "/library/props" },
   { to: "/settings", label: "Settings", icon: Settings, match: "/settings" },
 ];
 
