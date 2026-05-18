@@ -17,6 +17,7 @@ const baseCompiled: CompiledPrompt = {
   settings: { duration_seconds: 5 },
   unfilledPlaceholders: [],
   referenceImagePath: null,
+  referenceImagePaths: [],
   context: { projectId: "p1", artistId: null, shotId: null },
 };
 
