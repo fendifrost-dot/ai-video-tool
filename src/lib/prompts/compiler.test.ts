@@ -12,7 +12,7 @@ import type {
   PromptTemplate,
   Shot,
   VideoProject,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 
 // ---------------------------------------------------------------------------
 // Fixtures

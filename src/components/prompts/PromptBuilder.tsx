@@ -6,7 +6,7 @@ import type {
   ProviderName,
   Shot,
   VideoProject,
-} from "@/integrations/supabase/types";
+} from "@/integrations/supabase/aliases";
 import { compilePrompt } from "@/lib/prompts/compiler";
 import { getProvider, PROVIDER_ORDER } from "@/lib/providers/registry";
 import type {
