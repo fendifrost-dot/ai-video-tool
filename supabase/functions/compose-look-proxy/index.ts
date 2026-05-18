@@ -160,24 +160,24 @@ serve(async (req) => {
 
   // ---- sign URLs (for CC to feed into Fal) -------------------------
   const faceUrl = faceFeature
-    ? await signUrl(admin, faceFeature.bucket, faceFeature.storage_path ?? faceFeature.file_url, SIGN_TTL_INPUT)
+    ? await signUrl(userClient, faceFeature.bucket, faceFeature.storage_path ?? faceFeature.file_url, SIGN_TTL_INPUT)
     : null;
   const wardrobeUrls: string[] = [];
   for (const w of wardrobeFeatures) {
-    const u = await signUrl(admin, w.bucket, w.storage_path ?? w.file_url, SIGN_TTL_INPUT);
+    const u = await signUrl(userClient, w.bucket, w.storage_path ?? w.file_url, SIGN_TTL_INPUT);
     if (u) wardrobeUrls.push(u);
   }
   const jewelryUrls: string[] = [];
   for (const j of jewelryFeatures) {
-    const u = await signUrl(admin, j.bucket, j.storage_path ?? j.file_url, SIGN_TTL_INPUT);
+    const u = await signUrl(userClient, j.bucket, j.storage_path ?? j.file_url, SIGN_TTL_INPUT);
     if (u) jewelryUrls.push(u);
   }
   const locationUrl = locationFeature
-    ? await signUrl(admin, locationFeature.bucket, locationFeature.storage_path ?? locationFeature.file_url, SIGN_TTL_INPUT)
+    ? await signUrl(userClient, locationFeature.bucket, locationFeature.storage_path ?? locationFeature.file_url, SIGN_TTL_INPUT)
     : null;
   const propUrls: string[] = [];
   for (const p of propsFeatures) {
-    const u = await signUrl(admin, p.bucket, p.storage_path ?? p.file_url, SIGN_TTL_INPUT);
+    const u = await signUrl(userClient, p.bucket, p.storage_path ?? p.file_url, SIGN_TTL_INPUT);
     if (u) propUrls.push(u);
   }
 
