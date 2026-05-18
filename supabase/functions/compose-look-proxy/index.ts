@@ -318,7 +318,6 @@ serve(async (req) => {
     signed_url: signedResult,
     pipeline_used: pipelineUsed,
     cost_cents: costCents,
-    stages,
     generation_metadata: generationMetadata,
   });
 });
