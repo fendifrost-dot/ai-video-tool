@@ -20,6 +20,7 @@ import { Route as LibraryLocationsRouteImport } from './routes/library.locations
 import { Route as ArtistsNewRouteImport } from './routes/artists.new'
 import { Route as ArtistsIdRouteImport } from './routes/artists.$id'
 import { Route as ProjectsIdIndexRouteImport } from './routes/projects.$id.index'
+import { Route as ArtistsIdIndexRouteImport } from './routes/artists.$id.index'
 import { Route as ProjectsIdTreatmentRouteImport } from './routes/projects.$id.treatment'
 import { Route as ProjectsIdShotsRouteImport } from './routes/projects.$id.shots'
 import { Route as ProjectsIdReviewRouteImport } from './routes/projects.$id.review'
@@ -86,6 +87,11 @@ const ProjectsIdIndexRoute = ProjectsIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ArtistsIdIndexRoute = ArtistsIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ArtistsIdRoute,
 } as any)
 const ProjectsIdTreatmentRoute = ProjectsIdTreatmentRouteImport.update({
   id: '/treatment',
@@ -162,6 +168,7 @@ export interface FileRoutesByFullPath {
   '/projects/$id/review': typeof ProjectsIdReviewRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
+  '/artists/$id/': typeof ArtistsIdIndexRoute
   '/projects/$id/': typeof ProjectsIdIndexRoute
   '/artists/$id/looks/$lookId': typeof ArtistsIdLooksLookIdRoute
   '/artists/$id/looks/new': typeof ArtistsIdLooksNewRoute
@@ -170,7 +177,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
-  '/artists/$id': typeof ArtistsIdRouteWithChildren
   '/artists/new': typeof ArtistsNewRoute
   '/library/locations': typeof LibraryLocationsRoute
   '/library/props': typeof LibraryPropsRoute
@@ -184,6 +190,7 @@ export interface FileRoutesByTo {
   '/projects/$id/review': typeof ProjectsIdReviewRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
+  '/artists/$id': typeof ArtistsIdIndexRoute
   '/projects/$id': typeof ProjectsIdIndexRoute
   '/artists/$id/looks/$lookId': typeof ArtistsIdLooksLookIdRoute
   '/artists/$id/looks/new': typeof ArtistsIdLooksNewRoute
@@ -209,6 +216,7 @@ export interface FileRoutesById {
   '/projects/$id/review': typeof ProjectsIdReviewRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
+  '/artists/$id/': typeof ArtistsIdIndexRoute
   '/projects/$id/': typeof ProjectsIdIndexRoute
   '/artists/$id/looks/$lookId': typeof ArtistsIdLooksLookIdRoute
   '/artists/$id/looks/new': typeof ArtistsIdLooksNewRoute
@@ -235,6 +243,7 @@ export interface FileRouteTypes {
     | '/projects/$id/review'
     | '/projects/$id/shots'
     | '/projects/$id/treatment'
+    | '/artists/$id/'
     | '/projects/$id/'
     | '/artists/$id/looks/$lookId'
     | '/artists/$id/looks/new'
@@ -243,7 +252,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/settings'
-    | '/artists/$id'
     | '/artists/new'
     | '/library/locations'
     | '/library/props'
@@ -257,6 +265,7 @@ export interface FileRouteTypes {
     | '/projects/$id/review'
     | '/projects/$id/shots'
     | '/projects/$id/treatment'
+    | '/artists/$id'
     | '/projects/$id'
     | '/artists/$id/looks/$lookId'
     | '/artists/$id/looks/new'
@@ -281,6 +290,7 @@ export interface FileRouteTypes {
     | '/projects/$id/review'
     | '/projects/$id/shots'
     | '/projects/$id/treatment'
+    | '/artists/$id/'
     | '/projects/$id/'
     | '/artists/$id/looks/$lookId'
     | '/artists/$id/looks/new'
@@ -375,6 +385,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/projects/$id/'
       preLoaderRoute: typeof ProjectsIdIndexRouteImport
       parentRoute: typeof ProjectsIdRoute
+    }
+    '/artists/$id/': {
+      id: '/artists/$id/'
+      path: '/'
+      fullPath: '/artists/$id/'
+      preLoaderRoute: typeof ArtistsIdIndexRouteImport
+      parentRoute: typeof ArtistsIdRoute
     }
     '/projects/$id/treatment': {
       id: '/projects/$id/treatment'
@@ -472,10 +489,12 @@ const ArtistsIdLooksRouteWithChildren = ArtistsIdLooksRoute._addFileChildren(
 
 interface ArtistsIdRouteChildren {
   ArtistsIdLooksRoute: typeof ArtistsIdLooksRouteWithChildren
+  ArtistsIdIndexRoute: typeof ArtistsIdIndexRoute
 }
 
 const ArtistsIdRouteChildren: ArtistsIdRouteChildren = {
   ArtistsIdLooksRoute: ArtistsIdLooksRouteWithChildren,
+  ArtistsIdIndexRoute: ArtistsIdIndexRoute,
 }
 
 const ArtistsIdRouteWithChildren = ArtistsIdRoute._addFileChildren(

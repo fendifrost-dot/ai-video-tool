@@ -1,8 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import ArtistDetail from "@/pages/ArtistDetail";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
+
 export const Route = createFileRoute("/artists/$id")({
-  component: () => {
-    const { id } = Route.useParams();
-    return <ArtistDetail id={id} />;
-  },
+  component: () => <Outlet />,
 });
