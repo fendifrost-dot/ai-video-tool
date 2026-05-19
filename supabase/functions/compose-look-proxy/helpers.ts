@@ -92,6 +92,14 @@ export function buildIdentityPreamble(
     }
   }
 
+  // Eyewear: per-artist frame description (e.g. "Cazal MOD octagonal aviator
+  // frames..."). Reference images alone shifted shape ~70% of the way from
+  // round wireframes toward squared/gold; adding a prompt cue closes the gap.
+  pushField("Eyewear", id.eyewear);
+  if (typeof id.eyewear === "string" && id.eyewear.trim()) {
+    parts.push("Glasses always-on per continuity rules.");
+  }
+
   if (typeof continuityRules === "string" && continuityRules.trim()) {
     const rules = continuityRules
       .split(/\r?\n/)
