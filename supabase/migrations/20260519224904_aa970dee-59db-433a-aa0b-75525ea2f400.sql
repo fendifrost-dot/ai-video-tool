@@ -1,0 +1,1 @@
+ALTER TABLE public.character_features ADD COLUMN dimensions_description text;
