@@ -129,7 +129,13 @@ serve(async (req) => {
   const identity = (artist.identity_profile_json ?? {}) as Record<string, any>;
   const loraInfo = identity.lora ?? null;
   const loraUrl: string | null = typeof loraInfo?.url === "string" ? loraInfo.url : null;
-  const triggerWord: string = typeof loraInfo?.trigger === "string" ? loraInfo.trigger : "";
+  // Accept both `trigger` and `trigger_word` keys — the LoRA trainer writes
+  // `trigger_word` into identity_profile_json.lora, while older code paths
+  // expected `trigger`. Without this fallback the trigger arrives at CC as
+  // undefined, hasLora collapses to false, and explicit "lora_seedream"
+  // requests silently fall back to seedream_only (decidePipeline in CC).
+  const triggerRaw = loraInfo?.trigger ?? loraInfo?.trigger_word;
+  const triggerWord: string = typeof triggerRaw === "string" ? triggerRaw : "";
 
   // ---- resolve features --------------------------------------------
   const allFeatureIds = [
