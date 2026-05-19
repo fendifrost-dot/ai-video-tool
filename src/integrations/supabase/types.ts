@@ -184,6 +184,7 @@ export type Database = {
       character_features: {
         Row: {
           artist_id: string
+          dimensions_description: string | null
           feature_type: string
           file_url: string | null
           id: string
@@ -199,6 +200,7 @@ export type Database = {
         }
         Insert: {
           artist_id: string
+          dimensions_description?: string | null
           feature_type: string
           file_url?: string | null
           id?: string
@@ -214,6 +216,7 @@ export type Database = {
         }
         Update: {
           artist_id?: string
+          dimensions_description?: string | null
           feature_type?: string
           file_url?: string | null
           id?: string
