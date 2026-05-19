@@ -28,3 +28,65 @@ export type PipelineMode =
   | "lora_seedream"
   | "seedream_only"
   | "kontext_multi";
+
+// ---------------------------------------------------------------------------
+// buildIdentityPreamble
+//
+// Compiles the artist's identity_profile_json + continuity_rules into a
+// natural-language preamble that prepends every prompt sent to CC's
+// compose-look (which feeds both Stage 1 / FLUX_LoRA and Stage 2 / Seedream
+// — CC's buildBasePhotoPrompt and buildComposePrompt both consume the same
+// `base` param, so a single preamble lands in both stages).
+//
+// Diagnostic context: the UI promises "These fields are merged into every
+// prompt by the compiler — keep them precise", but the compiler never ran.
+// As a result, identity-critical traits (e.g. "shaved/bald appearance") were
+// absent from the prompt and the model defaulted to FLUX's male-portrait
+// hair prior. This helper closes that gap.
+//
+// Intentionally NOT injected:
+//   - forbidden_inaccuracies — those are negatives, separate concern.
+//   - identity.lora — handled via trigger word + lora_url out-of-band.
+//   - identity.jewelry / wardrobe_defaults — per-look refs/labels carry that.
+//   - any "no X" phrasing — never inject negatives that could contradict
+//     positive identity (e.g. "no tattoos" while identity.tattoos lists them).
+// ---------------------------------------------------------------------------
+export function buildIdentityPreamble(
+  name: string | null | undefined,
+  identity: Record<string, unknown> | null | undefined,
+  continuityRules: string | null | undefined,
+): string {
+  const id = (identity ?? {}) as Record<string, unknown>;
+  const parts: string[] = [];
+
+  const pushField = (label: string, value: unknown) => {
+    if (typeof value !== "string") return;
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    // Strip a trailing period so we control punctuation uniformly.
+    const cleaned = trimmed.replace(/\.+$/, "");
+    parts.push(`${label}: ${cleaned}.`);
+  };
+
+  if (typeof name === "string" && name.trim()) {
+    parts.push(`Subject: ${name.trim()}.`);
+  }
+  pushField("Hair", id.hair);
+  pushField("Beard", id.beard);
+  pushField("Body", id.body);
+  pushField("Face", id.face);
+  pushField("Skin", id.skin);
+  pushField("Tattoos", id.tattoos);
+
+  if (typeof continuityRules === "string" && continuityRules.trim()) {
+    const rules = continuityRules
+      .split(/\r?\n/)
+      .map((r) => r.trim().replace(/\.+$/, ""))
+      .filter((r) => r.length > 0);
+    if (rules.length > 0) {
+      parts.push(`Always-on traits: ${rules.join(", ")}.`);
+    }
+  }
+
+  return parts.join(" ");
+}
