@@ -26,7 +26,12 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { defaultLookName, type PipelineMode, sniffMime } from "./helpers.ts";
+import {
+  buildIdentityPreamble,
+  defaultLookName,
+  type PipelineMode,
+  sniffMime,
+} from "./helpers.ts";
 
 type Body = {
   artistId: string;
@@ -119,7 +124,7 @@ serve(async (req) => {
   // ---- artist + LoRA info -------------------------------------------
   const { data: artist, error: artistErr } = await admin
     .from("artists")
-    .select("id, user_id, name, identity_profile_json")
+    .select("id, user_id, name, identity_profile_json, continuity_rules")
     .eq("id", body.artistId)
     .maybeSingle();
   if (artistErr) return json(500, { error: "artist_query_failed", detail: artistErr.message });
@@ -136,6 +141,22 @@ serve(async (req) => {
   // requests silently fall back to seedream_only (decidePipeline in CC).
   const triggerRaw = loraInfo?.trigger ?? loraInfo?.trigger_word;
   const triggerWord: string = typeof triggerRaw === "string" ? triggerRaw : "";
+
+  // ---- compile identity preamble -----------------------------------
+  // Prepends the artist's identity fields + continuity rules to every
+  // prompt. CC's buildBasePhotoPrompt and buildComposePrompt both consume
+  // the same `base` param, so prepending here lands the preamble in BOTH
+  // Stage 1 (FLUX_LoRA) and Stage 2 (Seedream). See helpers.ts for the
+  // intentionally-excluded fields.
+  const identityPreamble = buildIdentityPreamble(
+    artist.name,
+    identity,
+    (artist as any).continuity_rules ?? null,
+  );
+  const userBasePrompt = body.basePrompt;
+  const compiledBasePrompt = identityPreamble
+    ? `${identityPreamble}\n\n${userBasePrompt}`
+    : userBasePrompt;
 
   // ---- resolve features --------------------------------------------
   const allFeatureIds = [
@@ -200,7 +221,7 @@ serve(async (req) => {
       jewelryFeatureIds: body.jewelryFeatureIds ?? [],
       locationId: body.locationId ?? undefined,
       propIds: body.propIds ?? [],
-      basePrompt: body.basePrompt,
+      basePrompt: compiledBasePrompt,
       stylingNotes: body.stylingNotes ?? null,
       pipelinePreference: body.pipelinePreference ?? "auto",
       wardrobeLabels: wardrobeFeatures.map((f) => f.label),
@@ -292,7 +313,9 @@ serve(async (req) => {
     jewelry_feature_ids: jewelryFeatures.map((f) => f.id),
     location_id: locationFeature?.id ?? null,
     prop_ids: propsFeatures.map((p) => p.id),
-    base_prompt: body.basePrompt,
+    base_prompt: compiledBasePrompt,
+    base_prompt_user: userBasePrompt,
+    identity_preamble: identityPreamble || null,
     styling_notes: body.stylingNotes ?? null,
     lora_url: loraUrl,
     lora_trigger: triggerWord,
