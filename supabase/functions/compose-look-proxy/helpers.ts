@@ -100,6 +100,36 @@ export function buildIdentityPreamble(
     parts.push("Glasses always-on per continuity rules.");
   }
 
+  // Body measurements: structured measurements compiled into a natural-
+  // language line. Image models respond to phrases like "torso 20.5in,
+  // arms 27.25in" better than to raw JSON. Skip a declared height — the
+  // proportions carry the build read on their own.
+  if (id.body_measurements && typeof id.body_measurements === "object") {
+    const bm = id.body_measurements as Record<string, unknown>;
+    const bits: string[] = [];
+    const torso = bm.torso_length_in;
+    const arms = bm.arm_length_in;
+    const legs = bm.leg_length_in;
+    const waist = bm.waist_in;
+    const waistPant = bm.waist_pant_size_in;
+    const neck = bm.neck_circumference_in;
+    const shoe = bm.shoe_size_us;
+    if (typeof torso === "number") bits.push(`torso ${torso}in`);
+    if (typeof arms === "number") bits.push(`arms ${arms}in`);
+    if (typeof legs === "number") bits.push(`legs ${legs}in`);
+    if (typeof waist === "number") {
+      const pantNote = typeof waistPant === "string" && waistPant.trim()
+        ? ` (wears ${waistPant.trim()})`
+        : "";
+      bits.push(`waist ${waist}in${pantNote}`);
+    }
+    if (typeof neck === "number") bits.push(`neck ${neck}in`);
+    if (typeof shoe === "number") bits.push(`US shoe ${shoe}`);
+    if (bits.length > 0) {
+      parts.push(`Build measurements: lean frame, ${bits.join(", ")}.`);
+    }
+  }
+
   if (typeof continuityRules === "string" && continuityRules.trim()) {
     const rules = continuityRules
       .split(/\r?\n/)
