@@ -5,6 +5,12 @@ import {
 } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { fetchReferenceImage } from "./wardrobe";
+import {
+  buildPrimaryReferenceImage,
+  createReferenceImageHooks,
+  normaliseReferenceImages,
+  type ReferenceImage,
+} from "./referenceImages";
 
 // ---------------------------------------------------------------------------
 // Location library — user-scoped, project-agnostic
@@ -37,6 +43,8 @@ export type LocationItem = {
   category: LocationCategory | null;
   notes: string | null;
   uploaded_at: string;
+  /** Multi-angle gallery (Phase 4). NULL on rows that predate the migration. */
+  reference_images: ReferenceImage[] | null;
 };
 
 export type LocationItemInsert = {
@@ -73,7 +81,10 @@ export function useLocations(category?: LocationCategory) {
       q = q.order("uploaded_at", { ascending: false });
       const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as LocationItem[];
+      return ((data ?? []) as LocationItem[]).map((r) => ({
+        ...r,
+        reference_images: normaliseReferenceImages(r.reference_images),
+      }));
     },
   });
 }
@@ -85,6 +96,10 @@ export function useCreateLocation() {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
+      const seedRefImg = buildPrimaryReferenceImage({
+        url: payload.file_url,
+        storage_path: payload.storage_path ?? null,
+      });
       const row = {
         user_id: user.id,
         name: payload.name,
@@ -94,6 +109,7 @@ export function useCreateLocation() {
         source_url: payload.source_url ?? null,
         category: payload.category ?? null,
         notes: payload.notes ?? null,
+        reference_images: [seedRefImg],
       };
       const { data, error } = await (supabase as any)
         .from("location_library")
@@ -170,6 +186,10 @@ export function useImportLocationFromUrl() {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
+      const seedRefImg = buildPrimaryReferenceImage({
+        url: fetched.storage_path,
+        storage_path: fetched.storage_path,
+      });
       const { data, error } = await (supabase as any)
         .from("location_library")
         .insert({
@@ -181,6 +201,7 @@ export function useImportLocationFromUrl() {
           source_url: url,
           category: category ?? null,
           notes: notes ?? null,
+          reference_images: [seedRefImg],
         })
         .select("*")
         .single();
@@ -192,3 +213,15 @@ export function useImportLocationFromUrl() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Reference-image hooks (Phase 4)
+// ---------------------------------------------------------------------------
+const locationRefImageHooks = createReferenceImageHooks({
+  table: "location_library",
+  invalidateKeys: () => [locationsKeys.all],
+});
+
+export const useAppendLocationReferenceImage = locationRefImageHooks.useAppend;
+export const useRemoveLocationReferenceImage = locationRefImageHooks.useRemove;
+export const useUpdateLocationReferenceImageAngle = locationRefImageHooks.useUpdateAngle;

@@ -5,6 +5,12 @@ import {
 } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import { fetchReferenceImage } from "./wardrobe";
+import {
+  buildPrimaryReferenceImage,
+  createReferenceImageHooks,
+  normaliseReferenceImages,
+  type ReferenceImage,
+} from "./referenceImages";
 
 // ---------------------------------------------------------------------------
 // Prop library — user-scoped, project-agnostic
@@ -37,6 +43,8 @@ export type PropItem = {
   category: PropCategory | null;
   notes: string | null;
   uploaded_at: string;
+  /** Multi-angle gallery (Phase 4). NULL on rows that predate the migration. */
+  reference_images: ReferenceImage[] | null;
 };
 
 export type PropItemInsert = {
@@ -73,7 +81,10 @@ export function useProps(category?: PropCategory) {
       q = q.order("uploaded_at", { ascending: false });
       const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as PropItem[];
+      return ((data ?? []) as PropItem[]).map((r) => ({
+        ...r,
+        reference_images: normaliseReferenceImages(r.reference_images),
+      }));
     },
   });
 }
@@ -85,6 +96,10 @@ export function useCreateProp() {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
+      const seedRefImg = buildPrimaryReferenceImage({
+        url: payload.file_url,
+        storage_path: payload.storage_path ?? null,
+      });
       const row = {
         user_id: user.id,
         name: payload.name,
@@ -94,6 +109,7 @@ export function useCreateProp() {
         source_url: payload.source_url ?? null,
         category: payload.category ?? null,
         notes: payload.notes ?? null,
+        reference_images: [seedRefImg],
       };
       const { data, error } = await (supabase as any)
         .from("prop_library")
@@ -170,6 +186,10 @@ export function useImportPropFromUrl() {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
+      const seedRefImg = buildPrimaryReferenceImage({
+        url: fetched.storage_path,
+        storage_path: fetched.storage_path,
+      });
       const { data, error } = await (supabase as any)
         .from("prop_library")
         .insert({
@@ -181,6 +201,7 @@ export function useImportPropFromUrl() {
           source_url: url,
           category: category ?? null,
           notes: notes ?? null,
+          reference_images: [seedRefImg],
         })
         .select("*")
         .single();
@@ -192,3 +213,15 @@ export function useImportPropFromUrl() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Reference-image hooks (Phase 4)
+// ---------------------------------------------------------------------------
+const propRefImageHooks = createReferenceImageHooks({
+  table: "prop_library",
+  invalidateKeys: () => [propsKeys.all],
+});
+
+export const useAppendPropReferenceImage = propRefImageHooks.useAppend;
+export const useRemovePropReferenceImage = propRefImageHooks.useRemove;
+export const useUpdatePropReferenceImageAngle = propRefImageHooks.useUpdateAngle;

@@ -6,8 +6,15 @@ import {
 import { supabase } from "@/lib/supabase";
 import {
   characterFeaturesKeys,
+  useAppendFeatureReferenceImage,
+  useRemoveFeatureReferenceImage,
+  useUpdateFeatureReferenceImageAngle,
   type CharacterFeature,
 } from "./characterFeatures";
+import {
+  buildPrimaryReferenceImage,
+  normaliseReferenceImages,
+} from "./referenceImages";
 
 // ---------------------------------------------------------------------------
 // Wardrobe = a subset of character_features where feature_type ∈ wardrobe_*
@@ -84,19 +91,28 @@ export function useWardrobe(artistId: string | undefined) {
         .in("feature_type", WARDROBE_FEATURE_TYPES)
         .order("uploaded_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as WardrobeItem[];
+      return ((data ?? []) as WardrobeItem[]).map((r) => ({
+        ...r,
+        reference_images: normaliseReferenceImages(r.reference_images),
+      }));
     },
     enabled: !!artistId,
   });
 }
 
 // ---------------------------------------------------------------------------
-// Create
+// Create — also seeds reference_images[0] so the multi-angle column stays
+// consistent with file_url from the first write. See referenceImages.ts for
+// the back-compat rationale.
 // ---------------------------------------------------------------------------
 export function useCreateWardrobeItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: WardrobeItemInsert): Promise<WardrobeItem> => {
+      const seedRefImg = buildPrimaryReferenceImage({
+        url: payload.file_url,
+        storage_path: payload.storage_path,
+      });
       const row = {
         artist_id: payload.artist_id,
         feature_type: payload.feature_type,
@@ -109,6 +125,7 @@ export function useCreateWardrobeItem() {
         is_locked: payload.is_locked ?? false,
         reinforce_on_drift: payload.reinforce_on_drift ?? true,
         metadata_json: payload.metadata_json ?? {},
+        reference_images: [seedRefImg],
       };
       const { data, error } = await (supabase as any)
         .from("character_features")
@@ -177,6 +194,19 @@ export function useDeleteWardrobeItem() {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Reference-image hooks — wardrobe shares character_features with Jewelry +
+// Character DNA, so we re-export the bound hooks from characterFeatures.ts.
+// Wardrobe-scoped invalidation happens automatically via the all-
+// character_features invalidate prefix.
+//
+// Wardrobe-specific re-exports under aliased names so call sites read
+// naturally inside wardrobe UI components.
+// ---------------------------------------------------------------------------
+export const useAppendWardrobeReferenceImage = useAppendFeatureReferenceImage;
+export const useRemoveWardrobeReferenceImage = useRemoveFeatureReferenceImage;
+export const useUpdateWardrobeReferenceImageAngle = useUpdateFeatureReferenceImageAngle;
 
 // ---------------------------------------------------------------------------
 // URL fetch — calls the fetch-reference-image edge function then inserts a row
@@ -252,6 +282,10 @@ export function useImportWardrobeFromUrl() {
       tags?: string[];
     }): Promise<WardrobeItem> => {
       const fetched = await fetchReferenceImage(url, "wardrobe", artistId);
+      const seedRefImg = buildPrimaryReferenceImage({
+        url: fetched.storage_path,
+        storage_path: fetched.storage_path,
+      });
       const { data, error } = await (supabase as any)
         .from("character_features")
         .insert({
@@ -270,6 +304,7 @@ export function useImportWardrobeFromUrl() {
             size_bytes: fetched.size_bytes,
             imported_from_url: true,
           },
+          reference_images: [seedRefImg],
         })
         .select("*")
         .single();
