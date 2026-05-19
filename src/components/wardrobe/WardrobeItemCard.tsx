@@ -3,22 +3,40 @@ import { ExternalLink, Lock, Star, Trash2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { signedUrls } from "@/lib/storage";
+import {
+  buildStoragePath,
+  makeUploadFilename,
+  signedUrls,
+  uploadToBucket,
+} from "@/lib/storage";
 import {
   type WardrobeItem,
+  useAppendWardrobeReferenceImage,
   useDeleteWardrobeItem,
+  useRemoveWardrobeReferenceImage,
   useUpdateWardrobeItem,
+  useUpdateWardrobeReferenceImageAngle,
 } from "@/lib/queries/wardrobe";
+import {
+  normaliseReferenceImages,
+  type AngleLabel,
+} from "@/lib/queries/referenceImages";
 import { supabase } from "@/lib/supabase";
+import { MultiAngleGallery } from "@/components/library/MultiAngleGallery";
 
 /**
- * Single wardrobe-item tile. Renders the signed image, name, tag chips,
- * source URL, and the three lock/primary/reinforce toggles inherited from
- * Character DNA.
+ * Single wardrobe-item tile. Renders the primary signed image, name, tag
+ * chips, source URL, and the three lock/primary/reinforce toggles inherited
+ * from Character DNA. In editing mode the user also gets a MultiAngleGallery
+ * — Phase 4 of the fidelity roadmap — for adding side / three-quarter /
+ * detail shots that the composer can feed to Seedream under the 4-URL cap.
  */
 export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
   const update = useUpdateWardrobeItem();
   const del = useDeleteWardrobeItem();
+  const appendRef = useAppendWardrobeReferenceImage();
+  const removeRef = useRemoveWardrobeReferenceImage();
+  const updateAngleRef = useUpdateWardrobeReferenceImageAngle();
 
   const [signed, setSigned] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -87,6 +105,61 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
     }
   }
 
+  // -------------------------------------------------------------------------
+  // Multi-angle gallery wiring. The gallery passes raw File[]s (already HEIC-
+  // normalised) and lets us own the bucket / path layout — wardrobe lives at
+  // `{user_id}/{artist_id}/{filename}` in `wardrobe-refs`, matching the
+  // create flow in WardrobeTab.
+  // -------------------------------------------------------------------------
+  async function handleAddAngles(files: File[]) {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+      if (!user) throw new Error("Not signed in");
+      const entries = [] as { url: string; storage_path: string }[];
+      for (const file of files) {
+        const filename = makeUploadFilename(file.name);
+        const path = buildStoragePath(user.id, item.artist_id, filename);
+        await uploadToBucket("wardrobe-refs" as any, path, file);
+        entries.push({ url: path, storage_path: path });
+      }
+      await appendRef.mutateAsync({
+        rowId: item.id,
+        entries,
+      });
+      toast.success(
+        `${entries.length} angle${entries.length === 1 ? "" : "s"} added`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Add angle failed");
+    }
+  }
+
+  async function handleRemoveAngle(refId: string) {
+    try {
+      await removeRef.mutateAsync({
+        rowId: item.id,
+        referenceImageId: refId,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Remove failed");
+    }
+  }
+
+  async function handleAngleLabel(refId: string, angle: AngleLabel | null) {
+    try {
+      await updateAngleRef.mutateAsync({
+        rowId: item.id,
+        referenceImageId: refId,
+        angle,
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Label update failed");
+    }
+  }
+
+  const refImages = normaliseReferenceImages(item.reference_images);
+
   return (
     <div className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-2">
       <div className="aspect-square overflow-hidden rounded-sm border border-border bg-muted/30">
@@ -100,7 +173,7 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
       </div>
 
       {editing ? (
-        <div className="space-y-1">
+        <div className="space-y-2">
           <Input
             type="text"
             value={name}
@@ -115,6 +188,26 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
             placeholder="tags, comma, separated"
             className="h-7 text-xs"
           />
+
+          {/* Multi-angle gallery — Phase 4 fidelity */}
+          <div className="rounded-sm border border-border/60 p-2">
+            <p className="mb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+              Reference angles
+            </p>
+            <MultiAngleGallery
+              images={refImages}
+              bucket={"wardrobe-refs" as any}
+              onAdd={handleAddAngles}
+              onRemove={handleRemoveAngle}
+              onLabelChange={handleAngleLabel}
+              disabled={
+                appendRef.isPending ||
+                removeRef.isPending ||
+                updateAngleRef.isPending
+              }
+            />
+          </div>
+
           <div className="flex gap-1">
             <Button
               type="button"
@@ -146,9 +239,17 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
             type="button"
             onClick={() => setEditing(true)}
             className="text-left text-xs font-medium text-foreground hover:underline"
-            title="Edit name + tags"
+            title="Edit name + tags + reference angles"
           >
             {item.label}
+            {refImages.length > 1 && (
+              <span
+                className="ml-1 rounded-sm bg-muted/40 px-1 py-0.5 text-[9px] text-muted-foreground"
+                title={`${refImages.length} reference angles`}
+              >
+                +{refImages.length - 1}
+              </span>
+            )}
           </button>
           {item.tags.length > 0 && (
             <div className="flex flex-wrap gap-1">

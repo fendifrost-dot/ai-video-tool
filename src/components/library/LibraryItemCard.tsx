@@ -4,6 +4,11 @@ import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { signedUrls, type StorageBucket } from "@/lib/storage";
+import {
+  MultiAngleGallery,
+  type ReferenceImage,
+} from "@/components/library/MultiAngleGallery";
+import type { AngleLabel } from "@/lib/queries/referenceImages";
 
 export type LibraryCardItem = {
   id: string;
@@ -13,17 +18,27 @@ export type LibraryCardItem = {
   source_url: string | null;
   category?: string | null;
   notes?: string | null;
+  reference_images?: ReferenceImage[] | null;
 };
 
 /**
  * Generic library card used by both /library/locations and /library/props.
  * The bucket is whichever bucket holds the underlying image.
+ *
+ * Phase 4 — multi-angle gallery. When the user opens the edit panel they get
+ * the MultiAngleGallery, wired via the on*ReferenceImage callbacks the
+ * parent (LocationsLibraryPage / PropsLibraryPage) supplies from the bound
+ * react-query hooks. The list grid still renders only the primary image
+ * (file_url) so the gallery stays scoped to the edit affordance.
  */
 export function LibraryItemCard({
   item,
   bucket,
   onDelete,
   onUpdateMeta,
+  onAddReferenceImages,
+  onRemoveReferenceImage,
+  onUpdateReferenceImageAngle,
 }: {
   item: LibraryCardItem;
   bucket: StorageBucket | "location-refs" | "prop-refs" | "wardrobe-refs";
@@ -31,6 +46,17 @@ export function LibraryItemCard({
   onUpdateMeta: (
     id: string,
     patch: { name?: string; tags?: string[]; notes?: string | null },
+  ) => Promise<void>;
+  /**
+   * Add additional reference angles. Parent handles bucket upload + the
+   * append-to-jsonb-column call. Files are pre-HEIC-normalised by the
+   * gallery.
+   */
+  onAddReferenceImages?: (files: File[]) => Promise<void>;
+  onRemoveReferenceImage?: (referenceImageId: string) => Promise<void>;
+  onUpdateReferenceImageAngle?: (
+    referenceImageId: string,
+    angle: AngleLabel | null,
   ) => Promise<void>;
 }) {
   const [signed, setSigned] = useState<string | null>(null);
@@ -75,6 +101,13 @@ export function LibraryItemCard({
     }
   }
 
+  const refImages: ReferenceImage[] = Array.isArray(item.reference_images)
+    ? (item.reference_images as ReferenceImage[])
+    : [];
+  const galleryEnabled =
+    !!onAddReferenceImages &&
+    !!onRemoveReferenceImage;
+
   return (
     <div className="flex flex-col gap-1.5 rounded-md border border-border bg-card p-2">
       <div className="aspect-square overflow-hidden rounded-sm border border-border bg-muted/30">
@@ -88,7 +121,7 @@ export function LibraryItemCard({
       </div>
 
       {editing ? (
-        <div className="space-y-1">
+        <div className="space-y-2">
           <Input
             type="text"
             value={name}
@@ -103,6 +136,23 @@ export function LibraryItemCard({
             placeholder="tags, comma, separated"
             className="h-7 text-xs"
           />
+
+          {galleryEnabled && (
+            <div className="rounded-sm border border-border/60 p-2">
+              <p className="mb-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                Reference angles
+              </p>
+              <MultiAngleGallery
+                images={refImages}
+                bucket={bucket}
+                onAdd={onAddReferenceImages!}
+                onRemove={onRemoveReferenceImage!}
+                onLabelChange={onUpdateReferenceImageAngle}
+                disabled={busy}
+              />
+            </div>
+          )}
+
           <div className="flex gap-1">
             <Button
               type="button"
@@ -134,9 +184,17 @@ export function LibraryItemCard({
             type="button"
             onClick={() => setEditing(true)}
             className="text-left text-xs font-medium text-foreground hover:underline"
-            title="Edit name + tags"
+            title="Edit name + tags + reference angles"
           >
             {item.name}
+            {refImages.length > 1 && (
+              <span
+                className="ml-1 rounded-sm bg-muted/40 px-1 py-0.5 text-[9px] text-muted-foreground"
+                title={`${refImages.length} reference angles`}
+              >
+                +{refImages.length - 1}
+              </span>
+            )}
           </button>
           {item.category && (
             <span className="self-start rounded-sm bg-muted/40 px-1 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">

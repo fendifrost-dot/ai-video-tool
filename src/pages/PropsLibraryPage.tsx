@@ -14,11 +14,14 @@ import { supabase } from "@/lib/supabase";
 import {
   PROP_CATEGORIES,
   type PropCategory,
+  useAppendPropReferenceImage,
   useCreateProp,
   useDeleteProp,
   useImportPropFromUrl,
   useProps,
+  useRemovePropReferenceImage,
   useUpdateProp,
+  useUpdatePropReferenceImageAngle,
 } from "@/lib/queries/props";
 import { LibraryItemCard } from "@/components/library/LibraryItemCard";
 import { UrlImportPanel, parseTagsCsv } from "@/components/wardrobe/UrlImportPanel";
@@ -36,6 +39,9 @@ export default function PropsLibraryPage() {
   const update = useUpdateProp();
   const del = useDeleteProp();
   const importFromUrl = useImportPropFromUrl();
+  const appendRefImg = useAppendPropReferenceImage();
+  const removeRefImg = useRemovePropReferenceImage();
+  const updateRefImgAngle = useUpdatePropReferenceImageAngle();
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -93,6 +99,24 @@ export default function PropsLibraryPage() {
       category: category ?? undefined,
     });
     toast.success("Imported from URL");
+  }
+
+  /** See LocationsLibraryPage for the equivalent comment. */
+  async function handleAddAngles(rowId: string, files: File[]) {
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
+    if (!user) throw new Error("Not signed in");
+    const entries: { url: string; storage_path: string }[] = [];
+    for (const file of files) {
+      const filename = makeUploadFilename(file.name);
+      const path = buildStoragePath(user.id, filename);
+      await uploadToBucket("prop-refs" as any, path, file);
+      entries.push({ url: path, storage_path: path });
+    }
+    await appendRefImg.mutateAsync({ rowId, entries });
+    toast.success(
+      `${entries.length} angle${entries.length === 1 ? "" : "s"} added`,
+    );
   }
 
   return (
@@ -221,6 +245,7 @@ export default function PropsLibraryPage() {
                   source_url: item.source_url,
                   category: item.category,
                   notes: item.notes,
+                  reference_images: item.reference_images,
                 }}
                 onDelete={async (id) => {
                   await del.mutateAsync({ id });
@@ -228,6 +253,17 @@ export default function PropsLibraryPage() {
                 onUpdateMeta={async (id, patch) => {
                   await update.mutateAsync({ id, patch });
                 }}
+                onAddReferenceImages={(files) => handleAddAngles(item.id, files)}
+                onRemoveReferenceImage={(referenceImageId) =>
+                  removeRefImg
+                    .mutateAsync({ rowId: item.id, referenceImageId })
+                    .then(() => undefined)
+                }
+                onUpdateReferenceImageAngle={(referenceImageId, angle) =>
+                  updateRefImgAngle
+                    .mutateAsync({ rowId: item.id, referenceImageId, angle })
+                    .then(() => undefined)
+                }
               />
             ))}
           </div>
