@@ -54,6 +54,7 @@ type ResolvedFeature = {
   storage_path: string | null;
   file_url: string | null;
   bucket: string;
+  dimensions_description: string | null;
 };
 
 const corsHeaders = {
@@ -157,6 +158,9 @@ serve(async (req) => {
   const compiledBasePrompt = identityPreamble
     ? `${identityPreamble}\n\n${userBasePrompt}`
     : userBasePrompt;
+  // composeWithFitDetails is assembled after wardrobe features resolve below;
+  // it appends a "Garment fit details:" block listing each wardrobe item's
+  // dimensions_description so silhouette/fit is encoded in the prompt.
 
   // ---- resolve features --------------------------------------------
   const allFeatureIds = [
@@ -175,6 +179,24 @@ serve(async (req) => {
   const jewelryFeatures = (body.jewelryFeatureIds ?? [])
     .map((id) => features.find((f) => f.id === id))
     .filter((f): f is ResolvedFeature => !!f);
+
+  // Build a "Garment fit details:" block from each wardrobe item's
+  // dimensions_description. Items without a description are skipped. The
+  // block is appended to compiledBasePrompt to form composeWithFitDetails,
+  // which is what we actually send to CC and persist as
+  // composition_recipe_json.compose_prompt for audit.
+  const fitLines = wardrobeFeatures
+    .map((w) => {
+      const desc = (w.dimensions_description ?? "").trim();
+      return desc ? `- ${w.label}: ${desc}` : null;
+    })
+    .filter((s): s is string => !!s);
+  const fitDetailsBlock = fitLines.length > 0
+    ? `Garment fit details:\n${fitLines.join("\n")}`
+    : "";
+  const composeWithFitDetails = fitDetailsBlock
+    ? `${compiledBasePrompt}\n\n${fitDetailsBlock}`
+    : compiledBasePrompt;
 
   const locationFeature = body.locationId
     ? await resolveLibraryItem(admin, "location_library", body.locationId, userId, "location-refs")
@@ -221,7 +243,7 @@ serve(async (req) => {
       jewelryFeatureIds: body.jewelryFeatureIds ?? [],
       locationId: body.locationId ?? undefined,
       propIds: body.propIds ?? [],
-      basePrompt: compiledBasePrompt,
+      basePrompt: composeWithFitDetails,
       stylingNotes: body.stylingNotes ?? null,
       pipelinePreference: body.pipelinePreference ?? "auto",
       wardrobeLabels: wardrobeFeatures.map((f) => f.label),
@@ -316,6 +338,8 @@ serve(async (req) => {
     base_prompt: compiledBasePrompt,
     base_prompt_user: userBasePrompt,
     identity_preamble: identityPreamble || null,
+    compose_prompt: composeWithFitDetails,
+    fit_details_block: fitDetailsBlock || null,
     styling_notes: body.stylingNotes ?? null,
     lora_url: loraUrl,
     lora_trigger: triggerWord,
@@ -366,7 +390,7 @@ async function resolveFeatures(
   if (ids.length === 0) return [];
   const { data, error } = await client
     .from("character_features")
-    .select("id, feature_type, label, storage_path, file_url")
+    .select("id, feature_type, label, storage_path, file_url, dimensions_description")
     .in("id", ids)
     .eq("artist_id", artistId);
   if (error) throw new Error(`features_query_failed: ${error.message}`);
@@ -377,6 +401,7 @@ async function resolveFeatures(
     storage_path: r.storage_path ?? null,
     file_url: r.file_url ?? null,
     bucket: r.feature_type?.startsWith?.("wardrobe_") ? "wardrobe-refs" : "artist-assets",
+    dimensions_description: r.dimensions_description ?? null,
   }));
 }
 
@@ -402,6 +427,7 @@ async function defaultFaceFeature(
     storage_path: r.storage_path ?? null,
     file_url: r.file_url ?? null,
     bucket: "artist-assets",
+    dimensions_description: null,
   };
 }
 
@@ -426,6 +452,7 @@ async function resolveLibraryItem(
     storage_path: data.storage_path ?? null,
     file_url: data.file_url ?? null,
     bucket,
+    dimensions_description: null,
   };
 }
 
