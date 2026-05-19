@@ -47,6 +47,20 @@ type Body = {
   name?: string;
 };
 
+// ---------------------------------------------------------------------------
+// reference_images jsonb column (Phase 4 — multi-angle galleries)
+// ---------------------------------------------------------------------------
+// Each library row optionally carries an array of reference images. The
+// proxy reads them, signs each storage_path, and feeds the URLs into the
+// 4-URL cap allocator below. Items that predate the migration have NULL and
+// fall back to the legacy single `file_url`/`storage_path` pair.
+type ReferenceImage = {
+  id: string;
+  url: string | null;
+  storage_path: string | null;
+  angle: string | null;
+};
+
 type ResolvedFeature = {
   id: string;
   feature_type: string;
@@ -55,6 +69,7 @@ type ResolvedFeature = {
   file_url: string | null;
   bucket: string;
   dimensions_description: string | null;
+  reference_images: ReferenceImage[];
 };
 
 const corsHeaders = {
@@ -66,6 +81,66 @@ const corsHeaders = {
 
 const SIGN_TTL_INPUT = 2700; // 45 min — Fal pulls quickly
 const SIGN_TTL_RESULT = 3600;
+
+// ---------------------------------------------------------------------------
+// 4-URL cap allocation (Phase 4)
+// ---------------------------------------------------------------------------
+// Seedream's image-to-image input cap is 4 URLs. With multi-angle galleries
+// the proxy can now hand it many more candidates per item, so we have to
+// pick which angles to forward. The rough split, mirroring the priority the
+// prompt actually uses:
+//
+//     face       : 1 URL  (identity anchor — locked face from the artist)
+//     wardrobe   : up to 2 URLs (silhouette / fit refs — distributed across picks)
+//     jewelry    : up to 1 URL  (detail closeup — first picked)
+//     location   : up to 1 URL  (backdrop frame)
+//     props      : 0 URLs by default (room only if categories above don't fill)
+//
+// The cap is a HARD 4. If face is absent (artist has no locked face but a
+// LoRA), we re-flow its slot into wardrobe. Props fill any remaining slot
+// last. Within a category, items get one URL each (front view) before any
+// item gets a second angle — keeps the pick set diverse rather than
+// over-weighting one item's gallery.
+const HARD_CAP = 4;
+
+/**
+ * Pick up to `budget` storage paths from a set of resolved features. Round-
+ * robin across items so each picked item contributes its front view before
+ * any one item contributes a second angle. Falls back to `file_url`/
+ * `storage_path` for items that have no `reference_images` populated.
+ */
+function pickPathsForCategory(
+  features: ResolvedFeature[],
+  budget: number,
+): string[] {
+  if (budget <= 0 || features.length === 0) return [];
+  // Each feature's candidate list, in priority order.
+  const queues: string[][] = features.map((f) => {
+    const fromArray = f.reference_images
+      .map((r) => r.storage_path ?? r.url)
+      .filter((p): p is string => !!p);
+    if (fromArray.length > 0) return fromArray;
+    const fallback = f.storage_path ?? f.file_url;
+    return fallback ? [fallback] : [];
+  });
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+  let progress = true;
+  while (out.length < budget && progress) {
+    progress = false;
+    for (const q of queues) {
+      if (out.length >= budget) break;
+      const p = q.shift();
+      if (!p) continue;
+      if (seen.has(p)) continue;
+      seen.add(p);
+      out.push(p);
+      progress = true;
+    }
+  }
+  return out;
+}
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -207,28 +282,91 @@ serve(async (req) => {
     if (p) propsFeatures.push(p);
   }
 
-  // ---- sign URLs (for CC to feed into Fal) -------------------------
-  const faceUrl = faceFeature
-    ? await signUrl(userClient, faceFeature.bucket, faceFeature.storage_path ?? faceFeature.file_url, SIGN_TTL_INPUT)
+  // ---- 4-URL cap allocation ----------------------------------------
+  // Per the doc comment near HARD_CAP, distribute up to 4 signed URLs
+  // across categories. Strategy: reserve 1 slot each for face / jewelry /
+  // location when they're present, then give *all remaining slots* to
+  // wardrobe — that lets a multi-angle wardrobe item (e.g. the Cazal
+  // octagonal frames with 5 angles) actually use more than one angle when
+  // there's headroom. Props pick up any leftover at the very end (rare —
+  // usually wardrobe will have soaked up everything).
+  const faceBudget = faceFeature ? 1 : 0;
+  const jewelryBudget = jewelryFeatures.length > 0 ? 1 : 0;
+  const locationBudget = locationFeature ? 1 : 0;
+  let wardrobeBudget = Math.max(
+    0,
+    HARD_CAP - faceBudget - jewelryBudget - locationBudget,
+  );
+  // Wardrobe still needs a floor of 1 if there are wardrobe picks at all.
+  // Without this, a face+jewelry+location+1-wardrobe pick set with HARD_CAP=4
+  // would zero out wardrobe — but wardrobe is required by the body schema.
+  if (wardrobeFeatures.length > 0 && wardrobeBudget < 1) {
+    wardrobeBudget = 1;
+  }
+  // Don't allocate more wardrobe URLs than the picks can supply across all
+  // their angles — keeps the recipe honest about what was actually signed.
+  wardrobeBudget = Math.min(wardrobeBudget, sumAvailable(wardrobeFeatures));
+
+  // Props grab whatever headroom remains under the cap.
+  const used =
+    faceBudget +
+    wardrobeBudget +
+    jewelryBudget +
+    locationBudget;
+  const propsBudget = Math.max(
+    0,
+    Math.min(HARD_CAP - used, sumAvailable(propsFeatures)),
+  );
+
+  // ---- pick storage paths per category, then sign ------------------
+  const facePath = faceFeature
+    ? faceFeature.storage_path ?? faceFeature.file_url
     : null;
+  const faceUrl = facePath && faceBudget > 0
+    ? await signUrl(userClient, faceFeature!.bucket, facePath, SIGN_TTL_INPUT)
+    : null;
+
+  const wardrobePaths = pickPathsForCategory(wardrobeFeatures, wardrobeBudget);
   const wardrobeUrls: string[] = [];
-  for (const w of wardrobeFeatures) {
-    const u = await signUrl(userClient, w.bucket, w.storage_path ?? w.file_url, SIGN_TTL_INPUT);
+  for (const p of wardrobePaths) {
+    const u = await signUrl(userClient, "wardrobe-refs", p, SIGN_TTL_INPUT);
     if (u) wardrobeUrls.push(u);
   }
+
+  const jewelryPaths = pickPathsForCategory(jewelryFeatures, jewelryBudget);
   const jewelryUrls: string[] = [];
-  for (const j of jewelryFeatures) {
-    const u = await signUrl(userClient, j.bucket, j.storage_path ?? j.file_url, SIGN_TTL_INPUT);
+  for (const p of jewelryPaths) {
+    // Jewelry features live in artist-assets (see resolveFeatures).
+    const u = await signUrl(userClient, "artist-assets", p, SIGN_TTL_INPUT);
     if (u) jewelryUrls.push(u);
   }
-  const locationUrl = locationFeature
-    ? await signUrl(userClient, locationFeature.bucket, locationFeature.storage_path ?? locationFeature.file_url, SIGN_TTL_INPUT)
+
+  const locationPath = locationFeature
+    ? locationFeature.storage_path ?? locationFeature.file_url
     : null;
+  const locationUrl = locationPath && locationBudget > 0
+    ? await signUrl(userClient, locationFeature!.bucket, locationPath, SIGN_TTL_INPUT)
+    : null;
+
+  const propPaths = pickPathsForCategory(propsFeatures, propsBudget);
   const propUrls: string[] = [];
-  for (const p of propsFeatures) {
-    const u = await signUrl(userClient, p.bucket, p.storage_path ?? p.file_url, SIGN_TTL_INPUT);
+  for (const p of propPaths) {
+    const u = await signUrl(userClient, "prop-refs", p, SIGN_TTL_INPUT);
     if (u) propUrls.push(u);
   }
+
+  // Final guard: defensively cap the total signed URLs in case the math
+  // above missed an edge case. Drop in priority order: props → wardrobe
+  // extras → jewelry extras → location → face (face is the most important
+  // to preserve when present).
+  capSignedUrlsInPlace({
+    face: { current: faceUrl ? 1 : 0 },
+    wardrobeUrls,
+    jewelryUrls,
+    location: { current: locationUrl ? 1 : 0 },
+    propUrls,
+    hardCap: HARD_CAP,
+  });
 
   // ---- forward to CC ------------------------------------------------
   // CC contract (pure Fal orchestrator):
@@ -329,6 +467,10 @@ serve(async (req) => {
   }
 
   // ---- insert artist_looks as the user -----------------------------
+  // composition_recipe_json snapshots the picks AND the actual signed-URL
+  // allocation so post-hoc debugging can answer "did multi-angle kick in
+  // for that look?" without replaying the resolver. The signed URLs are
+  // ephemeral so we persist the paths instead.
   const recipe = {
     face_feature_id: faceFeature?.id ?? null,
     wardrobe_feature_ids: wardrobeFeatures.map((f) => f.id),
@@ -344,6 +486,23 @@ serve(async (req) => {
     lora_url: loraUrl,
     lora_trigger: triggerWord,
     generation_metadata: generationMetadata,
+    // Phase 4 — snapshot the per-category signedUrls so the recipe captures
+    // which angles were actually used, even after the URLs expire.
+    signedUrls: {
+      face: faceUrl,
+      wardrobe: wardrobeUrls,
+      jewelry: jewelryUrls,
+      location: locationUrl,
+      props: propUrls,
+    },
+    signedUrlsAllocation: {
+      face: faceBudget,
+      wardrobe: wardrobeBudget,
+      jewelry: jewelryBudget,
+      location: locationBudget,
+      props: propsBudget,
+      hardCap: HARD_CAP,
+    },
   };
 
   const { data: lookRow, error: insertErr } = await userClient
@@ -382,6 +541,69 @@ serve(async (req) => {
 });
 
 // ---------------------------------------------------------------------------
+// reference_images helpers
+// ---------------------------------------------------------------------------
+function normaliseRefImages(raw: unknown): ReferenceImage[] {
+  if (!Array.isArray(raw)) return [];
+  const out: ReferenceImage[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const r = item as Record<string, unknown>;
+    if (typeof r.id !== "string") continue;
+    const url = typeof r.url === "string" ? r.url : null;
+    const sp = typeof r.storage_path === "string" ? r.storage_path : null;
+    if (!url && !sp) continue;
+    out.push({
+      id: r.id,
+      url,
+      storage_path: sp,
+      angle: typeof r.angle === "string" ? r.angle : null,
+    });
+  }
+  return out;
+}
+
+function sumAvailable(features: ResolvedFeature[]): number {
+  let s = 0;
+  for (const f of features) {
+    if (f.reference_images.length > 0) s += f.reference_images.length;
+    else if (f.storage_path || f.file_url) s += 1;
+  }
+  return s;
+}
+
+/**
+ * Defensive final cap. Trims URL arrays in priority order until the total
+ * fits under `hardCap`. Mutates wardrobeUrls / jewelryUrls / propUrls in
+ * place.
+ */
+function capSignedUrlsInPlace(args: {
+  face: { current: number };
+  wardrobeUrls: string[];
+  jewelryUrls: string[];
+  location: { current: number };
+  propUrls: string[];
+  hardCap: number;
+}) {
+  const total = () =>
+    args.face.current +
+    args.wardrobeUrls.length +
+    args.jewelryUrls.length +
+    args.location.current +
+    args.propUrls.length;
+
+  // Drop props first.
+  while (total() > args.hardCap && args.propUrls.length > 0) args.propUrls.pop();
+  // Then wardrobe extras (keep at least 1).
+  while (total() > args.hardCap && args.wardrobeUrls.length > 1) args.wardrobeUrls.pop();
+  // Then jewelry extras (keep at least 1).
+  while (total() > args.hardCap && args.jewelryUrls.length > 1) args.jewelryUrls.pop();
+  // Final fallbacks — drop the rest if still over (unlikely).
+  while (total() > args.hardCap && args.wardrobeUrls.length > 0) args.wardrobeUrls.pop();
+  while (total() > args.hardCap && args.jewelryUrls.length > 0) args.jewelryUrls.pop();
+}
+
+// ---------------------------------------------------------------------------
 async function resolveFeatures(
   client: any,
   ids: string[],
@@ -390,7 +612,7 @@ async function resolveFeatures(
   if (ids.length === 0) return [];
   const { data, error } = await client
     .from("character_features")
-    .select("id, feature_type, label, storage_path, file_url, dimensions_description")
+    .select("id, feature_type, label, storage_path, file_url, dimensions_description, reference_images")
     .in("id", ids)
     .eq("artist_id", artistId);
   if (error) throw new Error(`features_query_failed: ${error.message}`);
@@ -402,6 +624,7 @@ async function resolveFeatures(
     file_url: r.file_url ?? null,
     bucket: r.feature_type?.startsWith?.("wardrobe_") ? "wardrobe-refs" : "artist-assets",
     dimensions_description: r.dimensions_description ?? null,
+    reference_images: normaliseRefImages(r.reference_images),
   }));
 }
 
@@ -411,7 +634,7 @@ async function defaultFaceFeature(
 ): Promise<ResolvedFeature | null> {
   const { data, error } = await client
     .from("character_features")
-    .select("id, feature_type, label, storage_path, file_url, is_locked, is_primary, uploaded_at")
+    .select("id, feature_type, label, storage_path, file_url, is_locked, is_primary, uploaded_at, reference_images")
     .eq("artist_id", artistId)
     .eq("feature_type", "face")
     .order("is_locked", { ascending: false })
@@ -428,6 +651,7 @@ async function defaultFaceFeature(
     file_url: r.file_url ?? null,
     bucket: "artist-assets",
     dimensions_description: null,
+    reference_images: normaliseRefImages(r.reference_images),
   };
 }
 
@@ -440,7 +664,7 @@ async function resolveLibraryItem(
 ): Promise<ResolvedFeature | null> {
   const { data, error } = await client
     .from(table)
-    .select("id, name, storage_path, file_url")
+    .select("id, name, storage_path, file_url, reference_images")
     .eq("id", id)
     .eq("user_id", userId)
     .maybeSingle();
@@ -453,6 +677,7 @@ async function resolveLibraryItem(
     file_url: data.file_url ?? null,
     bucket,
     dimensions_description: null,
+    reference_images: normaliseRefImages(data.reference_images),
   };
 }
 
