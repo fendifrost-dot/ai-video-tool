@@ -192,6 +192,7 @@ export type Database = {
           is_primary: boolean
           label: string
           metadata_json: Json
+          reference_images: Json | null
           reinforce_on_drift: boolean
           source_url: string | null
           storage_path: string | null
@@ -208,6 +209,7 @@ export type Database = {
           is_primary?: boolean
           label: string
           metadata_json?: Json
+          reference_images?: Json | null
           reinforce_on_drift?: boolean
           source_url?: string | null
           storage_path?: string | null
@@ -224,6 +226,7 @@ export type Database = {
           is_primary?: boolean
           label?: string
           metadata_json?: Json
+          reference_images?: Json | null
           reinforce_on_drift?: boolean
           source_url?: string | null
           storage_path?: string | null
@@ -394,6 +397,7 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          reference_images: Json | null
           source_url: string | null
           storage_path: string | null
           tags: string[]
@@ -406,6 +410,7 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          reference_images?: Json | null
           source_url?: string | null
           storage_path?: string | null
           tags?: string[]
@@ -418,6 +423,7 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          reference_images?: Json | null
           source_url?: string | null
           storage_path?: string | null
           tags?: string[]
@@ -750,6 +756,7 @@ export type Database = {
           id: string
           name: string
           notes: string | null
+          reference_images: Json | null
           source_url: string | null
           storage_path: string | null
           tags: string[]
@@ -762,6 +769,7 @@ export type Database = {
           id?: string
           name: string
           notes?: string | null
+          reference_images?: Json | null
           source_url?: string | null
           storage_path?: string | null
           tags?: string[]
@@ -774,6 +782,7 @@ export type Database = {
           id?: string
           name?: string
           notes?: string | null
+          reference_images?: Json | null
           source_url?: string | null
           storage_path?: string | null
           tags?: string[]
