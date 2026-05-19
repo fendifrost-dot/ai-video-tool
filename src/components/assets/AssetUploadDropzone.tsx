@@ -17,6 +17,7 @@ import {
   makeUploadFilename,
   uploadToBucket,
 } from "@/lib/storage";
+import { normalizeImageForUpload } from "@/lib/image-normalize";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
@@ -98,23 +99,24 @@ export function AssetUploadDropzone({
 
       for (const item of staged) {
         try {
+          const file = await normalizeImageForUpload(item.file);
           const bucket = bucketForAssetType(item.assetType);
-          const filename = makeUploadFilename(item.file.name);
+          const filename = makeUploadFilename(file.name);
           const path = shotId
             ? buildStoragePath(user.id, projectId, shotId, filename)
             : buildStoragePath(user.id, projectId, filename);
 
-          await uploadToBucket(bucket, path, item.file);
+          await uploadToBucket(bucket, path, file);
 
           const metadata: Record<string, unknown> = {
-            original_filename: item.file.name,
-            size_bytes: item.file.size,
-            mime_type: item.file.type,
+            original_filename: file.name,
+            size_bytes: file.size,
+            mime_type: file.type,
           };
 
-          if (item.file.type.startsWith("video/")) {
+          if (file.type.startsWith("video/")) {
             try {
-              metadata.duration_seconds = await readVideoDuration(item.file);
+              metadata.duration_seconds = await readVideoDuration(file);
             } catch {
               /* duration unread — non-fatal */
             }

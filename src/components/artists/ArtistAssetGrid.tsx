@@ -16,6 +16,7 @@ import {
   signedUrls,
   uploadToBucket,
 } from "@/lib/storage";
+import { normalizeImageForUpload } from "@/lib/image-normalize";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
@@ -64,7 +65,8 @@ export function ArtistAssetGrid({ artistId }: { artistId: string }) {
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
 
-      for (const file of snapshot) {
+      for (const rawFile of snapshot) {
+        const file = await normalizeImageForUpload(rawFile);
         const filename = makeUploadFilename(file.name);
         const path = buildStoragePath(user.id, artistId, `${assetType}_${filename}`);
         await uploadToBucket("artist-assets", path, file);

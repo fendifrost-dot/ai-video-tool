@@ -9,6 +9,7 @@ import {
   makeUploadFilename,
   uploadToBucket,
 } from "@/lib/storage";
+import { normalizeImageForUpload } from "@/lib/image-normalize";
 import { supabase } from "@/lib/supabase";
 import {
   PROP_CATEGORIES,
@@ -59,8 +60,9 @@ export default function PropsLibraryPage() {
 
   async function handleUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
-    const file = files[0];
+    const rawFile = files[0];
     try {
+      const file = await normalizeImageForUpload(rawFile);
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
       if (!user) throw new Error("Not signed in");

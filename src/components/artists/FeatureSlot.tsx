@@ -9,6 +9,7 @@ import {
   signedUrls,
   uploadToBucket,
 } from "@/lib/storage";
+import { normalizeImageForUpload } from "@/lib/image-normalize";
 import {
   type CharacterFeature,
   type FeatureType,
@@ -63,8 +64,9 @@ export function FeatureSlot({
 
   async function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
-    const file = files[0]; // one per slot
+    const rawFile = files[0]; // one per slot
     try {
+      const file = await normalizeImageForUpload(rawFile);
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
       if (!user) throw new Error("Not signed in");

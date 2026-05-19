@@ -16,6 +16,7 @@ import {
   uploadToBucket,
   deleteFromBucket,
 } from "@/lib/storage";
+import { normalizeImageForUpload } from "@/lib/image-normalize";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 
@@ -96,8 +97,9 @@ export function Reference360Uploader({ artistId }: { artistId: string }) {
                 toast.error(err instanceof Error ? err.message : "Lock failed");
               }
             }}
-            onUpload={async (file) => {
+            onUpload={async (rawFile) => {
               try {
+                const file = await normalizeImageForUpload(rawFile);
                 const { data: userData } = await supabase.auth.getUser();
                 const user = userData.user;
                 if (!user) throw new Error("Not signed in");
