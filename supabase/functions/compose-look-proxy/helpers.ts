@@ -76,7 +76,21 @@ export function buildIdentityPreamble(
   pushField("Body", id.body);
   pushField("Face", id.face);
   pushField("Skin", id.skin);
-  pushField("Tattoos", id.tattoos);
+
+  // Tattoos: scope explicitly to skin to prevent the model from leaking
+  // tattoo text/imagery onto clothing graphics, jacket wordmarks, etc.
+  // (e.g. a "FENDI" forearm tattoo bleeding onto a YSL jacket chest stripe).
+  if (typeof id.tattoos === "string") {
+    const tattoosRaw = id.tattoos.trim().replace(/\.+$/, "");
+    if (tattoosRaw) {
+      parts.push(
+        `Tattoos located on skin only (forearm and body, never clothing): ${tattoosRaw}.`,
+      );
+      parts.push(
+        `Tattoo text appears only on skin, never as clothing graphics, jacket text, or wardrobe wordmarks.`,
+      );
+    }
+  }
 
   if (typeof continuityRules === "string" && continuityRules.trim()) {
     const rules = continuityRules
