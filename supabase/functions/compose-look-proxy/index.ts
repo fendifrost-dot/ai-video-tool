@@ -346,11 +346,21 @@ serve(async (req) => {
     "with the hem clearly visible AT OR BELOW the navel and FULLY COVERING the waistband of any pants. " +
     "Do NOT crop the hem above the navel. Do NOT render a short-bodied or crop-style version. " +
     "The reference photo's apparent length is not the target length — render the full intended silhouette.";
+  // Clear-lens cue — Round 5. Repeated at the very tail of compose_prompt
+  // because Seedream regressed to tinted/sunglasses in the top-only and
+  // bottom-only smoke tests, even with the eyewear LOCK in LOCKED ATTRIBUTES.
+  // Tail position gives this cue maximum weight against the visual prior that
+  // gold-frame aviators imply dark lenses.
+  const clearLensCue =
+    "CRITICAL: glasses must have CLEAR prescription lenses, not tinted, not sunglasses, not mirrored, not dark. " +
+    "The wearer's eyes must be fully visible through transparent lenses. " +
+    "If sunglasses or tinted lenses appear in the output, this is a generation error.";
   const composeWithFitDetails = [
     compiledBasePromptForCompose,
     fitDetailsBlock,
     antiCropCue,
     antiHallucinationCue,
+    clearLensCue,
   ]
     .filter((s) => s && s.length > 0)
     .join("\n\n");

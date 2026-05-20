@@ -121,10 +121,11 @@ export function buildIdentityPreamble(
   // Eyewear: per-artist frame description (e.g. "Cazal MOD octagonal aviator
   // frames..."). Reference images alone shifted shape ~70% of the way from
   // round wireframes toward squared/gold; adding a prompt cue closes the gap.
-  pushField("Eyewear", id.eyewear);
-  if (typeof id.eyewear === "string" && id.eyewear.trim()) {
-    parts.push("Glasses always-on per continuity rules.");
-  }
+  //
+  // The actual eyewear emission has moved into the LOCKED ATTRIBUTES section
+  // below so it sits near the LoRA trigger token at the end of the preamble
+  // (image models weight prompt tail most heavily). This block is intentionally
+  // empty here — see LOCKED ATTRIBUTES for the eyewear lines.
 
   // Body proportions + measurements:
   //
@@ -252,6 +253,16 @@ export function buildIdentityPreamble(
   parts.push(
     "LOCKED ATTRIBUTES (these constraints are non-negotiable and override any visual interpretation from reference images; they apply equally to Stage 1 and Stage 2):",
   );
+  // Eyewear field push, hoisted to the TOP of LOCKED ATTRIBUTES so it sits
+  // adjacent to the LoRA trigger token at the preamble tail. Putting the
+  // Eyewear: ... description and the always-on cue here, immediately before
+  // the glasses LOCK, lets the clear-lens identity bind tightly to the
+  // trigger-token-anchored identity in Stage 1 and gets maximum tail-weight
+  // in Stage 2.
+  pushField("Eyewear", id.eyewear);
+  if (typeof id.eyewear === "string" && id.eyewear.trim()) {
+    parts.push("Glasses always-on per continuity rules.");
+  }
   parts.push(
     "LOCK: glasses are CLEAR prescription eyeglasses. The lenses are TRANSPARENT — the eyes are fully visible through the lenses. NOT sunglasses. NOT tinted. NOT dark. NOT mirrored. NOT shaded. The frame may be gold or black, but the lenses themselves transmit light like normal eyeglasses.",
   );
