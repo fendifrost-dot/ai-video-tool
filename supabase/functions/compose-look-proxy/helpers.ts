@@ -51,11 +51,24 @@ export type PipelineMode =
 //   - any "no X" phrasing — never inject negatives that could contradict
 //     positive identity (e.g. "no tattoos" while identity.tattoos lists them).
 // ---------------------------------------------------------------------------
+export type BuildIdentityPreambleOptions = {
+  // When false, omit the tattoos section AND filter any continuity-rules
+  // entries that mention tattoos. Used by the compose_prompt (Stage 2 /
+  // Seedream) builder because Seedream was reading tattoo descriptions —
+  // "FENDI", "Modest Bear", "Chicago Blackhawks", "Warrior Blood" — as
+  // graphic inspiration and painting those wordmarks onto jacket fabric.
+  // Stage 1 (FLUX_LoRA / base_prompt) still needs tattoos to render them on
+  // skin, so the default stays true.
+  includeTattoos?: boolean;
+};
+
 export function buildIdentityPreamble(
   name: string | null | undefined,
   identity: Record<string, unknown> | null | undefined,
   continuityRules: string | null | undefined,
+  options: BuildIdentityPreambleOptions = {},
 ): string {
+  const { includeTattoos = true } = options;
   const id = (identity ?? {}) as Record<string, unknown>;
   const parts: string[] = [];
 
@@ -80,7 +93,14 @@ export function buildIdentityPreamble(
   // Tattoos: scope explicitly to skin to prevent the model from leaking
   // tattoo text/imagery onto clothing graphics, jacket wordmarks, etc.
   // (e.g. a "FENDI" forearm tattoo bleeding onto a YSL jacket chest stripe).
-  if (typeof id.tattoos === "string") {
+  //
+  // includeTattoos=false skips this block entirely. The skin-scoping copy
+  // wasn't enough — Seedream was still ingesting the tattoo names as
+  // graphic inspiration. The cleanest fix is to keep the tattoo description
+  // out of compose_prompt and rely on Stage 1 (FLUX_LoRA) to paint the
+  // tattoos on skin, then Stage 2 (Seedream) only sees the rendered pixels
+  // and the wardrobe brief.
+  if (includeTattoos && typeof id.tattoos === "string") {
     const tattoosRaw = id.tattoos.trim().replace(/\.+$/, "");
     if (tattoosRaw) {
       parts.push(
@@ -161,7 +181,12 @@ export function buildIdentityPreamble(
     const rules = continuityRules
       .split(/\r?\n/)
       .map((r) => r.trim().replace(/\.+$/, ""))
-      .filter((r) => r.length > 0);
+      .filter((r) => r.length > 0)
+      // When tattoos are stripped, also drop any continuity entry that
+      // mentions tattoos — otherwise a line like "tattoos must remain
+      // asymmetrical" would still leak the word "tattoo" into compose_prompt
+      // and Seedream would treat it as a presence mandate.
+      .filter((r) => includeTattoos || !/tattoo/i.test(r));
     if (rules.length > 0) {
       parts.push(`Always-on traits: ${rules.join(", ")}.`);
     }

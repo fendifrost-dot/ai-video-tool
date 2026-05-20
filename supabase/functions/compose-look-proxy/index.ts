@@ -229,6 +229,19 @@ serve(async (req) => {
     identity,
     (artist as any).continuity_rules ?? null,
   );
+  // Compose-prompt variant: same preamble but with tattoos stripped (skin
+  // descriptions + any continuity entries that mention tattoos). Seedream
+  // was reading the tattoo wordmarks ("FENDI", "Modest Bear", "Chicago
+  // Blackhawks", "Warrior Blood") as graphic inspiration and painting them
+  // onto the YSL jacket. Stage 1 (base_prompt) still needs tattoos to
+  // render them on skin; Stage 2 (compose_prompt) does not — it only needs
+  // to know identity + wardrobe rules.
+  const identityPreambleForCompose = buildIdentityPreamble(
+    artist.name,
+    identity,
+    (artist as any).continuity_rules ?? null,
+    { includeTattoos: false },
+  );
   const userBasePrompt = body.basePrompt;
   // compiledBasePrompt is finalized after wardrobe features resolve below —
   // we insert a "Wearing: full-length ... " cue between the identity preamble
@@ -287,6 +300,17 @@ serve(async (req) => {
     ? `${preambleWithWearing}\n\n${userBasePrompt}`
     : userBasePrompt;
 
+  // Compose-prompt variant of the wearing-line preamble. Same structure as
+  // compiledBasePrompt, but built from the tattoo-stripped preamble so
+  // Seedream never sees tattoo-graphic inspiration.
+  const preambleWithWearingForCompose =
+    [identityPreambleForCompose, wardrobeLengthCue]
+      .filter((s) => s && s.length > 0)
+      .join("\n\n");
+  const compiledBasePromptForCompose = preambleWithWearingForCompose
+    ? `${preambleWithWearingForCompose}\n\n${userBasePrompt}`
+    : userBasePrompt;
+
   // Build a "Garment fit details:" block from each wardrobe item's
   // dimensions_description. Items without a description are skipped. The
   // block is appended to compiledBasePrompt to form composeWithFitDetails,
@@ -301,9 +325,22 @@ serve(async (req) => {
   const fitDetailsBlock = fitLines.length > 0
     ? `Garment fit details:\n${fitLines.join("\n")}`
     : "";
-  const composeWithFitDetails = fitDetailsBlock
-    ? `${compiledBasePrompt}\n\n${fitDetailsBlock}`
-    : compiledBasePrompt;
+  // Anti-hallucination cue appended to compose_prompt only. Seedream was
+  // inventing tattoos on visible skin and printing tattoo wordmarks onto
+  // jacket fabric. This is the explicit negative — pair it with the
+  // tattoo-stripped preamble so the model has no inspiration AND a direct
+  // prohibition.
+  const antiHallucinationCue =
+    "Do not add any tattoos, logos, text, or graphic prints to clothing. " +
+    "Do not invent new tattoos on the subject's body. " +
+    "Render the wardrobe items exactly as the reference photos show, without graphic additions.";
+  const composeWithFitDetails = [
+    compiledBasePromptForCompose,
+    fitDetailsBlock,
+    antiHallucinationCue,
+  ]
+    .filter((s) => s && s.length > 0)
+    .join("\n\n");
 
   const locationFeature = body.locationId
     ? await resolveLibraryItem(admin, "location_library", body.locationId, userId, "location-refs")
