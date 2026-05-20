@@ -89,6 +89,12 @@ export function buildIdentityPreamble(
       parts.push(
         `Tattoo text appears only on skin, never as clothing graphics, jacket text, or wardrobe wordmarks.`,
       );
+      // Coverage rule: a tattoo on a body part isn't visible when a garment
+      // covers that part. Without this, the model paints tattoos on top of
+      // clothing or shows them "through" sleeves — both wrong.
+      parts.push(
+        `Tattoos are visible only on exposed skin. If a garment, jacket, or layer covers the body region (forearm under long sleeves, torso under a shirt, neck under a collar), no tattoo appears on that area. Never paint tattoos onto clothing fabric or through clothing.`,
+      );
     }
   }
 
