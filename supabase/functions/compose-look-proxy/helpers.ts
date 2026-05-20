@@ -214,8 +214,23 @@ export function buildIdentityPreamble(
   // counteracts FLUX_LoRA's tendency to render an enlarged "portrait" head
   // (the "alien" / bobblehead failure mode) by anchoring the framing and
   // the head-to-body ratio for both Stage 1 and Stage 2.
+  //
+  // Note: framing is intentionally NOT "three-quarter body" — that tight
+  // crop was pulling the bottom edge up to the mid-ribs and giving the
+  // model permission to shorten the jacket. Asking for full body framing
+  // gives the model vertical room to render the jacket at its real length.
   parts.push(
-    "Framing: three-quarter body framing showing head and torso at realistic adult proportions. The head fits naturally on the body — do not enlarge the head, do not zoom in on the face, do not distort the head-to-body ratio. Render at standard 7.5-head-tall human anatomy.",
+    "Framing: full-body or wide three-quarter framing with the entire torso, hips, and ideally legs in frame. The head is rendered at natural adult size on the body — do not enlarge the head, do not zoom in on the face, do not crop tightly above the hips. Render at standard 7.5-head-tall human anatomy with a normal-sized head on a proportionate body.",
+  );
+
+  // End-of-prompt anti-crop fit emphasis. Recency bias matters: image
+  // models weight the tail of the prompt more, and the existing
+  // `default_jacket_length` / `never_cropped` rules buried mid-prompt
+  // were being overridden by the visual reference's apparent silhouette.
+  // This block sits AFTER the framing line so it's the last fit-related
+  // instruction the model sees before generating.
+  parts.push(
+    "CRITICAL JACKET-HEM FIT: any jacket, bomber, or outerwear hem must fully overlap the pants waistband — there is NO bare skin, NO exposed stomach, NO visible midriff, and NO gap between the jacket hem and the top of the pants. Render the jacket as a full-length men's jacket extending past the natural waist. Even if the reference photo shows the garment flat or styled short, render the worn hem at the natural waist or hip. NEVER render a crop-top, crop-jacket, midriff-baring, or above-waist silhouette.",
   );
 
   return parts.join(" ");
