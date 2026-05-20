@@ -126,12 +126,30 @@ export function buildIdentityPreamble(
     parts.push("Glasses always-on per continuity rules.");
   }
 
-  // Body measurements: structured measurements compiled into a natural-
-  // language line. Image models respond to phrases like "torso 20.5in,
-  // arms 27.25in" better than to raw JSON. Skip a declared height — the
-  // proportions carry the build read on their own.
+  // Body proportions + measurements:
+  //
+  // Diagnostic context: FLUX_LoRA Stage 1 was rendering the head clearly
+  // oversized relative to the body ("alien" / bobblehead look). Root causes
+  // we identified:
+  //   1. The Body field copy emphasized "ectomorphic / narrow torso / narrow
+  //      hips / fashion-model proportions" which nudged the model to shrink
+  //      the body while keeping FLUX's default male-portrait head size.
+  //   2. The raw-inch measurements line ("torso 20.5in, arms 27.25in, ...")
+  //      gave the model dimensions but no head-to-body anchor, so it filled
+  //      the gap with its own prior.
+  //
+  // Fix: prepend a proportion_summary line (when present in
+  // body_measurements) BEFORE the raw inches, so the head-to-body ratio is
+  // anchored explicitly. Keep the inches line too — Seedream + FLUX both
+  // respond to the structured measurements.
   if (id.body_measurements && typeof id.body_measurements === "object") {
     const bm = id.body_measurements as Record<string, unknown>;
+    // proportion_summary first — sets the head-to-body anchor before
+    // any specific dimensions land.
+    const propSummary = bm.proportion_summary;
+    if (typeof propSummary === "string" && propSummary.trim()) {
+      parts.push(propSummary.trim().replace(/\.+$/, "") + ".");
+    }
     const bits: string[] = [];
     const torso = bm.torso_length_in;
     const arms = bm.arm_length_in;
@@ -191,6 +209,14 @@ export function buildIdentityPreamble(
       parts.push(`Always-on traits: ${rules.join(", ")}.`);
     }
   }
+
+  // Framing block: always emitted, regardless of identity content. This
+  // counteracts FLUX_LoRA's tendency to render an enlarged "portrait" head
+  // (the "alien" / bobblehead failure mode) by anchoring the framing and
+  // the head-to-body ratio for both Stage 1 and Stage 2.
+  parts.push(
+    "Framing: three-quarter body framing showing head and torso at realistic adult proportions. The head fits naturally on the body — do not enlarge the head, do not zoom in on the face, do not distort the head-to-body ratio. Render at standard 7.5-head-tall human anatomy.",
+  );
 
   return parts.join(" ");
 }
