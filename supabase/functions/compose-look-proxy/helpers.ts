@@ -223,14 +223,46 @@ export function buildIdentityPreamble(
     "Framing: full-body or wide three-quarter framing with the entire torso, hips, and ideally legs in frame. The head is rendered at natural adult size on the body — do not enlarge the head, do not zoom in on the face, do not crop tightly above the hips. Render at standard 7.5-head-tall human anatomy with a normal-sized head on a proportionate body.",
   );
 
-  // End-of-prompt anti-crop fit emphasis. Recency bias matters: image
-  // models weight the tail of the prompt more, and the existing
-  // `default_jacket_length` / `never_cropped` rules buried mid-prompt
-  // were being overridden by the visual reference's apparent silhouette.
-  // This block sits AFTER the framing line so it's the last fit-related
-  // instruction the model sees before generating.
+  // ----- LOCKED ATTRIBUTES (end-of-prompt) ---------------------------------
+  //
+  // Single unified tail block. Image models weight the tail of the prompt
+  // most heavily, and the existing field-specific rules buried mid-prompt
+  // were being overridden by visual priors and reference-photo bias. This
+  // block consolidates the non-negotiable attribute locks into one place so
+  // every generation sees the same identity-critical constraints last.
+  //
+  // Failure modes this block targets, observed across iterations:
+  //   - Cazal aviator frames rendering as DARK sunglasses (model assumes
+  //     gold-rim aviator → sunglasses). The eyewear field already says
+  //     "clear prescription lenses (not tinted, never sunglasses)" — the
+  //     mid-prompt copy is being ignored, so we restate it at the tail.
+  //   - Asymmetric sleeves (one wrist-length, one bicep-length). Image
+  //     models often "complete" a partially-visible arm independently per
+  //     side. Restating sleeve symmetry at the tail forces the model to
+  //     treat the two sleeves as a paired attribute.
+  //   - Cropped jacket / exposed midriff. Already addressed in R2; kept
+  //     verbatim in the unified block.
+  //   - Enlarged head ("alien" look). Already addressed in R1; restated
+  //     here for tail-weight reinforcement.
+  //
+  // Wordmark/brand spelling on fabric (e.g. "SAINT LAURENT") is a known
+  // limitation of image models that text prompts cannot reliably fix; we
+  // intentionally do NOT add a wordmark-accuracy lock here because
+  // promising spelling we can't deliver wastes prompt tokens.
   parts.push(
-    "CRITICAL JACKET-HEM FIT: any jacket, bomber, or outerwear hem must fully overlap the pants waistband — there is NO bare skin, NO exposed stomach, NO visible midriff, and NO gap between the jacket hem and the top of the pants. Render the jacket as a full-length men's jacket extending past the natural waist. Even if the reference photo shows the garment flat or styled short, render the worn hem at the natural waist or hip. NEVER render a crop-top, crop-jacket, midriff-baring, or above-waist silhouette.",
+    "LOCKED ATTRIBUTES (these constraints are non-negotiable and override any visual interpretation from reference images; they apply equally to Stage 1 and Stage 2):",
+  );
+  parts.push(
+    "LOCK: glasses are CLEAR prescription eyeglasses. The lenses are TRANSPARENT — the eyes are fully visible through the lenses. NOT sunglasses. NOT tinted. NOT dark. NOT mirrored. NOT shaded. The frame may be gold or black, but the lenses themselves transmit light like normal eyeglasses.",
+  );
+  parts.push(
+    "LOCK: sleeves are SYMMETRIC. Both the left sleeve and the right sleeve are the SAME length. If the garment is long-sleeved, BOTH sleeves extend all the way to the wrist crease and cover the entire forearm — neither sleeve is rolled, pushed up, shortened, missing, or rendered as a short sleeve. If the garment is short-sleeved, BOTH sleeves stop at the same point on the upper arm. NEVER render one long sleeve and one short sleeve on the same garment.",
+  );
+  parts.push(
+    "LOCK: jacket hem fully overlaps the pants waistband — NO bare skin, NO exposed stomach, NO visible midriff, NO gap between hem and waistband. The jacket is a full-length men's jacket extending past the natural waist. Even if the reference photo shows the garment flat or styled short, render the worn hem at the natural waist or hip. NEVER a crop-top, crop-jacket, midriff-baring, or above-waist silhouette.",
+  );
+  parts.push(
+    "LOCK: head and body proportions are realistic adult human — head approximately 1/7.5 of total height, head naturally sized on the shoulders. Do not enlarge the head. Do not bobblehead. Do not exaggerate the face.",
   );
 
   return parts.join(" ");
