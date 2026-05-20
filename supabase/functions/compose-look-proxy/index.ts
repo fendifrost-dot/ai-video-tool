@@ -230,12 +230,13 @@ serve(async (req) => {
     (artist as any).continuity_rules ?? null,
   );
   const userBasePrompt = body.basePrompt;
-  const compiledBasePrompt = identityPreamble
-    ? `${identityPreamble}\n\n${userBasePrompt}`
-    : userBasePrompt;
-  // composeWithFitDetails is assembled after wardrobe features resolve below;
-  // it appends a "Garment fit details:" block listing each wardrobe item's
-  // dimensions_description so silhouette/fit is encoded in the prompt.
+  // compiledBasePrompt is finalized after wardrobe features resolve below —
+  // we insert a "Wearing: full-length ... " cue between the identity preamble
+  // and the user prompt so Stage 1 (FLUX_LoRA) generates a body with garment
+  // proportions roughly correct *before* Stage 2 (Seedream) overlays the
+  // jacket. Without this, Stage 1 tends toward bare torso / default fashion
+  // crop and Stage 2 inherits the crop.
+  // composeWithFitDetails is then compiledBasePrompt + fit-details block.
 
   // ---- resolve features --------------------------------------------
   const allFeatureIds = [
@@ -254,6 +255,21 @@ serve(async (req) => {
   const jewelryFeatures = (body.jewelryFeatureIds ?? [])
     .map((id) => features.find((f) => f.id === id))
     .filter((f): f is ResolvedFeature => !!f);
+
+  // Wardrobe-length cue. Appended to the identity preamble so Stage 1 emits
+  // a body with the right garment proportions (full-length jacket covering
+  // torso + sleeves to wrist) before Stage 2 overlays the jacket image. The
+  // cue is intentionally generic — concrete measurements live in the
+  // dimensions_description block below.
+  const wardrobeLengthCue = wardrobeFeatures.length > 0
+    ? `Wearing: full-length ${wardrobeFeatures.map((w) => w.label).join(", ")} covering torso to hip and sleeves to wrist.`
+    : "";
+  const preambleWithWearing = [identityPreamble, wardrobeLengthCue]
+    .filter((s) => s && s.length > 0)
+    .join("\n\n");
+  const compiledBasePrompt = preambleWithWearing
+    ? `${preambleWithWearing}\n\n${userBasePrompt}`
+    : userBasePrompt;
 
   // Build a "Garment fit details:" block from each wardrobe item's
   // dimensions_description. Items without a description are skipped. The
