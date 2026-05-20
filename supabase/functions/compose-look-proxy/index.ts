@@ -261,8 +261,24 @@ serve(async (req) => {
   // torso + sleeves to wrist) before Stage 2 overlays the jacket image. The
   // cue is intentionally generic — concrete measurements live in the
   // dimensions_description block below.
-  const wardrobeLengthCue = wardrobeFeatures.length > 0
-    ? `Wearing: full-length ${wardrobeFeatures.map((w) => w.label).join(", ")} covering torso to hip and sleeves to wrist.`
+  //
+  // Filter to clothing only — exclude accessories (e.g. glasses) so the
+  // "full-length ... covering torso to hip and sleeves to wrist" phrasing
+  // doesn't get mis-applied to non-garment picks. Without this filter the
+  // line was reading e.g. "full-length Glasses — Cazal..., YSL cotton
+  // jacket..." and the internal contradiction was pushing Seedream off the
+  // YSL reference (color drift to brown, jacket opening in front).
+  const WEARING_CLOTHING_TYPES = new Set([
+    "wardrobe_outerwear",
+    "wardrobe_top",
+    "wardrobe_bottom",
+    "wardrobe_footwear",
+  ]);
+  const wearingClothingFeatures = wardrobeFeatures.filter((w) =>
+    WEARING_CLOTHING_TYPES.has(w.feature_type),
+  );
+  const wardrobeLengthCue = wearingClothingFeatures.length > 0
+    ? `Wearing: full-length ${wearingClothingFeatures.map((w) => w.label).join(", ")} covering torso to hip and sleeves to wrist.`
     : "";
   const preambleWithWearing = [identityPreamble, wardrobeLengthCue]
     .filter((s) => s && s.length > 0)
@@ -527,7 +543,7 @@ serve(async (req) => {
       id: lookId,
       artist_id: body.artistId,
       user_id: userId,
-      name: body.name ?? defaultLookName(wardrobeFeatures.map((f) => f.label)),
+      name: body.name ?? defaultLookName(wearingClothingFeatures.map((f) => f.label)),
       description: body.basePrompt,
       status: "draft",
       generated_image_url: storagePath,
