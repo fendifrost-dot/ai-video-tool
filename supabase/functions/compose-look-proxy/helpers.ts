@@ -220,7 +220,7 @@ export function buildIdentityPreamble(
   // model permission to shorten the jacket. Asking for full body framing
   // gives the model vertical room to render the jacket at its real length.
   parts.push(
-    "Framing: full-body or wide three-quarter framing with the entire torso, hips, and ideally legs in frame. The head is rendered at natural adult size on the body — do not enlarge the head, do not zoom in on the face, do not crop tightly above the hips. Render at standard 7.5-head-tall human anatomy with a normal-sized head on a proportionate body.",
+    "Framing: full-body or upper-body photograph showing the subject from head to at least mid-thigh, with the entire jacket/top hem visible in frame. The head fits naturally on the body at realistic adult proportions — head approximately 1/7.5 of total height, do not enlarge the head. Editorial portrait or three-quarter crops are NOT acceptable when wardrobe is shown — wardrobe must be fully visible. Avoid sunglasses styling, fashion-editorial framing, or any composition that crops above the natural waist.",
   );
 
   // ----- LOCKED ATTRIBUTES (end-of-prompt) ---------------------------------
