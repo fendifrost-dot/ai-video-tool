@@ -334,9 +334,22 @@ serve(async (req) => {
     "Do not add any tattoos, logos, text, or graphic prints to clothing. " +
     "Do not invent new tattoos on the subject's body. " +
     "Render the wardrobe items exactly as the reference photos show, without graphic additions.";
+  // Anti-crop cue — Round 2. The wardrobe_rules paragraph in the preamble
+  // tells Seedream not to crop, but Seedream still anchors on the visual
+  // silhouette of the reference photo (which is often product-cropped) and
+  // produces a short-bodied jacket. This is a more imperative, anatomically
+  // specific override: name the navel as the anchor point, prohibit the
+  // short-bodied/crop interpretation in language that doesn't rely on the
+  // model interpreting "natural waist" loosely.
+  const antiCropCue =
+    "CRITICAL: Render this jacket extending fully to the natural waist line at minimum, " +
+    "with the hem clearly visible AT OR BELOW the navel and FULLY COVERING the waistband of any pants. " +
+    "Do NOT crop the hem above the navel. Do NOT render a short-bodied or crop-style version. " +
+    "The reference photo's apparent length is not the target length — render the full intended silhouette.";
   const composeWithFitDetails = [
     compiledBasePromptForCompose,
     fitDetailsBlock,
+    antiCropCue,
     antiHallucinationCue,
   ]
     .filter((s) => s && s.length > 0)
