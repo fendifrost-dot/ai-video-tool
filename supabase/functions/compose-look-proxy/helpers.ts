@@ -136,6 +136,27 @@ export function buildIdentityPreamble(
     }
   }
 
+  // Wardrobe rules: per-artist silhouette guardrails so we don't need an
+  // on-body photo per wardrobe item. Each value in identity.wardrobe_rules
+  // is already a full natural-language sentence (e.g. "Jackets and outerwear
+  // extend at minimum to the natural waist and ideally to the hip"), so we
+  // just concatenate them under a single "Wardrobe rules:" header rather
+  // than emitting the raw JSON. Unknown keys are accepted as-is so artists
+  // can extend the ruleset (e.g. fabric_default, footwear_default) without a
+  // code change.
+  if (id.wardrobe_rules && typeof id.wardrobe_rules === "object") {
+    const wr = id.wardrobe_rules as Record<string, unknown>;
+    const sentences: string[] = [];
+    for (const value of Object.values(wr)) {
+      if (typeof value !== "string") continue;
+      const cleaned = value.trim().replace(/\.+$/, "");
+      if (cleaned) sentences.push(cleaned);
+    }
+    if (sentences.length > 0) {
+      parts.push(`Wardrobe rules for this subject: ${sentences.join(". ")}.`);
+    }
+  }
+
   if (typeof continuityRules === "string" && continuityRules.trim()) {
     const rules = continuityRules
       .split(/\r?\n/)
