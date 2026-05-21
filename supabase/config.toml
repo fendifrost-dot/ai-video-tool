@@ -1,1 +1,9 @@
 project_id = "qoyxgnkvjukovkrvdaiq"
+
+# compose-look-callback is a server-to-server endpoint: CC POSTs the
+# rendered pipeline result here after running the async pipeline. There is
+# no user JWT to validate at the edge — authentication happens inside the
+# function via the X-Proxy-Secret header (shared with CC). Mark it public
+# so Supabase doesn't reject CC's requests at the platform layer.
+[functions.compose-look-callback]
+verify_jwt = false
