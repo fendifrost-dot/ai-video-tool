@@ -200,6 +200,10 @@ export function StatusPill({ status }: { status: Look["status"] }) {
     approved: "bg-emerald-500/15 text-emerald-400",
     locked: "bg-blue-500/15 text-blue-400",
     archived: "bg-muted/20 text-muted-foreground/60 line-through",
+    failed: "bg-red-500/15 text-red-400",
+    complete: "bg-violet-500/15 text-violet-400",
+    error: "bg-red-500/15 text-red-400",
+    pending: "bg-amber-500/15 text-amber-400",
   };
   return (
     <span

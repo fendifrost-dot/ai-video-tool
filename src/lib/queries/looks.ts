@@ -12,13 +12,17 @@ import { supabase } from "@/lib/supabase";
 // list page filters; composition_recipe_json is the source-of-truth for
 // regenerate-with-tweaks (we send it back to compose-look as the new payload).
 
-export type LookStatus = "draft" | "approved" | "locked" | "archived";
+export type LookStatus = "draft" | "approved" | "locked" | "archived" | "failed" | "complete" | "error" | "pending";
 
 export const LOOK_STATUSES: LookStatus[] = [
   "draft",
   "approved",
   "locked",
   "archived",
+  "failed",
+  "complete",
+  "error",
+  "pending",
 ];
 
 export type LookPipeline =

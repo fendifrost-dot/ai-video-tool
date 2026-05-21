@@ -42,6 +42,10 @@ export default function LooksListPage({ artistId }: { artistId: string }) {
       approved: looks.filter((l) => l.status === "approved").length,
       locked: looks.filter((l) => l.status === "locked").length,
       archived: looks.filter((l) => l.status === "archived").length,
+      failed: looks.filter((l) => l.status === "failed").length,
+      complete: looks.filter((l) => l.status === "complete").length,
+      error: looks.filter((l) => l.status === "error").length,
+      pending: looks.filter((l) => l.status === "pending").length,
     };
   }, [looksQuery.data]);
 
