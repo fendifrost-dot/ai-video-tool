@@ -68,6 +68,7 @@ export type Database = {
           cost_cents: number
           created_at: string
           description: string | null
+          error_message: string | null
           generated_image_url: string | null
           generated_storage_path: string | null
           id: string
@@ -87,6 +88,7 @@ export type Database = {
           cost_cents?: number
           created_at?: string
           description?: string | null
+          error_message?: string | null
           generated_image_url?: string | null
           generated_storage_path?: string | null
           id?: string
@@ -106,6 +108,7 @@ export type Database = {
           cost_cents?: number
           created_at?: string
           description?: string | null
+          error_message?: string | null
           generated_image_url?: string | null
           generated_storage_path?: string | null
           id?: string
