@@ -27,7 +27,8 @@ export type PipelineMode =
   | "auto"
   | "lora_seedream"
   | "seedream_only"
-  | "kontext_multi";
+  | "kontext_multi"
+  | "lora_idm_vton";
 
 // ---------------------------------------------------------------------------
 // buildIdentityPreamble

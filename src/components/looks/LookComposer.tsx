@@ -47,6 +47,7 @@ const PIPELINE_LABELS = {
   lora_seedream: "LoRA + Seedream",
   seedream_only: "Seedream only",
   kontext_multi: "Kontext multi-image",
+  lora_idm_vton: "LoRA + IDM-VTON (experimental)",
 } as const;
 
 type PipelinePref = keyof typeof PIPELINE_LABELS;
@@ -442,7 +443,7 @@ export function LookComposer({
                   {(Object.entries(PIPELINE_LABELS) as [PipelinePref, string][]).map(([k, v]) => (
                     <SelectItem key={k} value={k} className="text-xs">
                       {v}
-                      {k === "lora_seedream" && !hasLora && (
+                      {(k === "lora_seedream" || k === "lora_idm_vton") && !hasLora && (
                         <span className="ml-1 text-[10px] text-muted-foreground">(no LoRA — will downgrade)</span>
                       )}
                     </SelectItem>

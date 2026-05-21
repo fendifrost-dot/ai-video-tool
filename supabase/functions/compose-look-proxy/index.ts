@@ -460,6 +460,45 @@ serve(async (req) => {
     hardCap: HARD_CAP,
   });
 
+  // ---- wardrobeItems passthrough for lora_idm_vton ------------------
+  // The IDM-VTON pipeline overlays ONE garment per VTON call and chains
+  // them. The flat signedUrls.wardrobe array (capped at 4 across all
+  // categories) doesn't carry per-item feature_type, which IDM-VTON
+  // needs to map outerwear/top → upper_body and bottom → lower_body. So
+  // we build a parallel per-pick list here: one entry per wardrobe item,
+  // each carrying the FRONT-most signed reference URL + feature_type +
+  // label. CC ignores this field for the seedream/kontext pipelines and
+  // reads it only when pipeline === 'lora_idm_vton'.
+  //
+  // Signing is independent of the HARD_CAP cap above — these URLs feed
+  // a separate Fal endpoint (queue.fal.run/fal-ai/idm-vton) that takes
+  // ONE garment per call. The 4-URL cap is irrelevant.
+  const wardrobeItemsPayload: Array<{
+    feature_type: string;
+    label: string;
+    signed_url: string;
+    dimensions_description?: string | null;
+  }> = [];
+  for (const w of wardrobeFeatures) {
+    // Pick the front-most reference image: first entry in reference_images,
+    // fallback to the legacy storage_path / file_url pair.
+    let frontPath: string | null = null;
+    if (w.reference_images.length > 0) {
+      const first = w.reference_images[0];
+      frontPath = first.storage_path ?? first.url ?? null;
+    }
+    if (!frontPath) frontPath = w.storage_path ?? w.file_url ?? null;
+    if (!frontPath) continue;
+    const signed = await signUrl(userClient, w.bucket, frontPath, SIGN_TTL_INPUT);
+    if (!signed) continue;
+    wardrobeItemsPayload.push({
+      feature_type: w.feature_type,
+      label: w.label,
+      signed_url: signed,
+      dimensions_description: w.dimensions_description ?? null,
+    });
+  }
+
   // ---- forward to CC ------------------------------------------------
   // CC contract (pure Fal orchestrator):
   //   Input:  { recipe, signedUrls, loraUrl?, triggerWord? }
@@ -477,6 +516,7 @@ serve(async (req) => {
       stylingNotes: body.stylingNotes ?? null,
       pipelinePreference: body.pipelinePreference ?? "auto",
       wardrobeLabels: wardrobeFeatures.map((f) => f.label),
+      wardrobeItems: wardrobeItemsPayload,
       jewelryLabels: jewelryFeatures.map((f) => f.label),
       hasLocation: !!locationFeature,
       hasFace: !!faceFeature,

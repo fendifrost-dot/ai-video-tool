@@ -24,7 +24,8 @@ export const LOOK_STATUSES: LookStatus[] = [
 export type LookPipeline =
   | "lora_seedream"
   | "seedream_only"
-  | "kontext_multi";
+  | "kontext_multi"
+  | "lora_idm_vton";
 
 export type CompositionRecipe = {
   face_feature_id: string | null;
@@ -262,7 +263,7 @@ export type ComposeLookInput = {
   propIds?: string[];
   basePrompt: string;
   stylingNotes?: string;
-  pipelinePreference?: "auto" | "lora_seedream" | "seedream_only" | "kontext_multi";
+  pipelinePreference?: "auto" | "lora_seedream" | "seedream_only" | "kontext_multi" | "lora_idm_vton";
   parentLookId?: string;
   name?: string;
 };
@@ -329,11 +330,15 @@ export function formatCost(cents: number): string {
 }
 
 export function pipelineEstimateCents(
-  pref: "auto" | "lora_seedream" | "seedream_only" | "kontext_multi" | null | undefined,
+  pref: "auto" | "lora_seedream" | "seedream_only" | "kontext_multi" | "lora_idm_vton" | null | undefined,
   hasLora: boolean,
 ): number {
   const mode = pref === "auto" || !pref ? (hasLora ? "lora_seedream" : "seedream_only") : pref;
   if (mode === "lora_seedream") return 7;
   if (mode === "seedream_only") return 4;
+  // lora_idm_vton: 5c for LoRA + ~5c per VTON garment overlay. Most looks
+  // pick 1–2 VTON-eligible wardrobe items, so estimate at 15c (covers up
+  // to two garments comfortably; underestimates slightly if 3+ picks).
+  if (mode === "lora_idm_vton") return 15;
   return 5;
 }
