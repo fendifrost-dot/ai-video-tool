@@ -499,11 +499,88 @@ serve(async (req) => {
     });
   }
 
-  // ---- forward to CC ------------------------------------------------
-  // CC contract (pure Fal orchestrator):
-  //   Input:  { recipe, signedUrls, loraUrl?, triggerWord? }
-  //   Output: { fal_image_url, pipeline_used, cost_cents, generation_metadata }
-  //   Header: X-Proxy-Secret
+  // ---- INSERT pending look row IMMEDIATELY (async refactor) ----------
+  //
+  // Async architecture:
+  //   1. Pre-allocate a look_id, insert artist_looks with status='pending'.
+  //   2. Build CC payload including a callback_url that points back to AVT's
+  //      compose-look-callback edge function.
+  //   3. Fire CC in the background via EdgeRuntime.waitUntil — do NOT await.
+  //   4. Return { look_id, status: 'pending' } to the UI in <1s.
+  //   5. UI polls artist_looks by id until status flips to 'complete' or
+  //      'failed'. CC eventually POSTs the rendered result to the callback,
+  //      which downloads + uploads + updates the row.
+  //
+  // The composition_recipe_json snapshot is persisted on this initial insert
+  // so the callback can do its work without re-resolving anything.
+  const lookId = crypto.randomUUID();
+  const recipe = {
+    face_feature_id: faceFeature?.id ?? null,
+    wardrobe_feature_ids: wardrobeFeatures.map((f) => f.id),
+    jewelry_feature_ids: jewelryFeatures.map((f) => f.id),
+    location_id: locationFeature?.id ?? null,
+    prop_ids: propsFeatures.map((p) => p.id),
+    base_prompt: compiledBasePrompt,
+    base_prompt_user: userBasePrompt,
+    identity_preamble: identityPreamble || null,
+    compose_prompt: composeWithFitDetails,
+    fit_details_block: fitDetailsBlock || null,
+    styling_notes: body.stylingNotes ?? null,
+    lora_url: loraUrl,
+    lora_trigger: triggerWord,
+    generation_metadata: null as any,
+    signedUrls: {
+      face: faceUrl,
+      wardrobe: wardrobeUrls,
+      jewelry: jewelryUrls,
+      location: locationUrl,
+      props: propUrls,
+    },
+    signedUrlsAllocation: {
+      face: faceBudget,
+      wardrobe: wardrobeBudget,
+      jewelry: jewelryBudget,
+      location: locationBudget,
+      props: propsBudget,
+      hardCap: HARD_CAP,
+    },
+  };
+
+  const { data: lookRow, error: insertErr } = await userClient
+    .from("artist_looks")
+    .insert({
+      id: lookId,
+      artist_id: body.artistId,
+      user_id: userId,
+      name: body.name ?? defaultLookName(wearingClothingFeatures.map((f) => f.label)),
+      description: body.basePrompt,
+      // Pre-Phase-1-refactor this was 'draft' (review workflow). The async
+      // refactor adds a generation lifecycle that lives on the same `status`
+      // column: pending → complete | failed. The CHECK constraint was
+      // extended in Phase 1 to allow these values.
+      status: "pending",
+      generated_image_url: null,
+      generated_storage_path: null,
+      composition_recipe_json: recipe,
+      pipeline_used: null,
+      cost_cents: 0,
+      iterations: body.parentLookId ? 2 : 1,
+      parent_look_id: body.parentLookId ?? null,
+    })
+    .select("*")
+    .single();
+  if (insertErr) {
+    return json(500, { error: "insert_failed", detail: insertErr.message });
+  }
+
+  // ---- build CC payload with callback_url -----------------------------
+  // The callback_url is an AVT edge function (compose-look-callback) that CC
+  // POSTs the final result to once the pipeline completes. The look_id is in
+  // the query string so the callback knows which row to update. The
+  // X-Proxy-Secret check on the callback side prevents arbitrary callers from
+  // writing into artist_looks.
+  const callbackUrl =
+    `${supabaseUrl.replace(/\/$/, "")}/functions/v1/compose-look-callback?look_id=${lookId}`;
   const ccPayload = {
     recipe: {
       artistId: body.artistId,
@@ -531,144 +608,76 @@ serve(async (req) => {
     },
     loraUrl: loraUrl ?? undefined,
     triggerWord: triggerWord || undefined,
+    callback_url: callbackUrl,
   };
 
-  let ccResp: Response;
+  // ---- fire CC in the BACKGROUND (no await) ---------------------------
+  // EdgeRuntime.waitUntil lets the function return to the UI while the
+  // background fetch keeps running for up to the platform's idle timeout
+  // (Supabase edge functions can sustain ~150–400s of background work
+  // depending on the plan; this is the key bit that removes the 150s
+  // synchronous wall we kept hitting with the chained VTON pipeline).
+  //
+  // Failure semantics: if the fetch itself rejects synchronously (network
+  // error before CC accepts the request), mark the row failed. Failures
+  // that happen DURING the pipeline are reported by CC posting to the
+  // callback with status='failed', so they're handled over there.
+  const fireCc = (async () => {
+    try {
+      const resp = await fetch(ccUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Proxy-Secret": proxySecret,
+        },
+        body: JSON.stringify(ccPayload),
+      });
+      if (!resp.ok) {
+        // CC rejected the submission before queueing the background work.
+        // Mark the row failed so the UI's poll resolves with the error.
+        const text = await resp.text().catch(() => "");
+        await admin
+          .from("artist_looks")
+          .update({ status: "failed", error_message: `cc_submit_${resp.status}: ${text.slice(0, 500)}` })
+          .eq("id", lookId);
+      }
+    } catch (err) {
+      await admin
+        .from("artist_looks")
+        .update({ status: "failed", error_message: `cc_unreachable: ${String(err).slice(0, 500)}` })
+        .eq("id", lookId);
+    }
+  })();
+  // EdgeRuntime is the Supabase Edge Functions global; waitUntil keeps the
+  // function alive after we return the response so the background promise
+  // can finish. Fall back to a no-op if the global isn't present (Deno test
+  // runs, local dev).
   try {
-    ccResp = await fetch(ccUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Proxy-Secret": proxySecret,
-      },
-      body: JSON.stringify(ccPayload),
-    });
-  } catch (err) {
-    return json(502, { error: "cc_unreachable", detail: String(err) });
-  }
-  const ccText = await ccResp.text();
-  if (!ccResp.ok) {
-    return new Response(ccText, {
-      status: ccResp.status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-  let ccJson: any;
-  try {
-    ccJson = JSON.parse(ccText);
+    // deno-lint-ignore no-explicit-any
+    const er = (globalThis as any).EdgeRuntime;
+    if (er && typeof er.waitUntil === "function") {
+      er.waitUntil(fireCc);
+    } else {
+      // Best-effort fallback — don't block the response on it. The browser
+      // may close the connection but Deno will usually still run the promise
+      // to completion in-process.
+      fireCc.catch(() => {});
+    }
   } catch {
-    return json(502, { error: "cc_bad_response" });
+    fireCc.catch(() => {});
   }
 
-  const falImageUrl: string | undefined = ccJson?.fal_image_url;
-  const pipelineUsed: string = ccJson?.pipeline_used ?? "unknown";
-  const costCents: number = Number(ccJson?.cost_cents ?? 0);
-  const generationMetadata = ccJson?.generation_metadata ?? null;
-  if (!falImageUrl) return json(502, { error: "cc_missing_fal_url" });
-
-  // ---- download bytes from Fal -------------------------------------
-  let composedBytes: Uint8Array;
-  let mime: "image/png" | "image/jpeg" | "image/webp";
-  try {
-    const dlResp = await fetch(falImageUrl, {
-      headers: { Accept: "image/png, image/jpeg, image/webp" },
-    });
-    if (!dlResp.ok) throw new Error(`download_${dlResp.status}`);
-    const buf = new Uint8Array(await dlResp.arrayBuffer());
-    const sniffed = sniffMime(buf);
-    if (!sniffed) throw new Error("unknown_mime");
-    composedBytes = buf;
-    mime = sniffed;
-  } catch (err) {
-    return json(502, { error: "fal_download_failed", detail: String(err) });
-  }
-
-  // ---- upload to look-composites as the user (RLS-scoped) ----------
-  const lookId = crypto.randomUUID();
-  const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
-  const storagePath = `${userId}/${body.artistId}/${lookId}.${ext}`;
-  const { error: uploadErr } = await userClient.storage
-    .from("look-composites")
-    .upload(storagePath, composedBytes, {
-      contentType: mime,
-      cacheControl: "3600",
-      upsert: false,
-    });
-  if (uploadErr) {
-    return json(500, { error: "upload_failed", detail: uploadErr.message });
-  }
-
-  // ---- insert artist_looks as the user -----------------------------
-  // composition_recipe_json snapshots the picks AND the actual signed-URL
-  // allocation so post-hoc debugging can answer "did multi-angle kick in
-  // for that look?" without replaying the resolver. The signed URLs are
-  // ephemeral so we persist the paths instead.
-  const recipe = {
-    face_feature_id: faceFeature?.id ?? null,
-    wardrobe_feature_ids: wardrobeFeatures.map((f) => f.id),
-    jewelry_feature_ids: jewelryFeatures.map((f) => f.id),
-    location_id: locationFeature?.id ?? null,
-    prop_ids: propsFeatures.map((p) => p.id),
-    base_prompt: compiledBasePrompt,
-    base_prompt_user: userBasePrompt,
-    identity_preamble: identityPreamble || null,
-    compose_prompt: composeWithFitDetails,
-    fit_details_block: fitDetailsBlock || null,
-    styling_notes: body.stylingNotes ?? null,
-    lora_url: loraUrl,
-    lora_trigger: triggerWord,
-    generation_metadata: generationMetadata,
-    // Phase 4 — snapshot the per-category signedUrls so the recipe captures
-    // which angles were actually used, even after the URLs expire.
-    signedUrls: {
-      face: faceUrl,
-      wardrobe: wardrobeUrls,
-      jewelry: jewelryUrls,
-      location: locationUrl,
-      props: propUrls,
-    },
-    signedUrlsAllocation: {
-      face: faceBudget,
-      wardrobe: wardrobeBudget,
-      jewelry: jewelryBudget,
-      location: locationBudget,
-      props: propsBudget,
-      hardCap: HARD_CAP,
-    },
-  };
-
-  const { data: lookRow, error: insertErr } = await userClient
-    .from("artist_looks")
-    .insert({
-      id: lookId,
-      artist_id: body.artistId,
-      user_id: userId,
-      name: body.name ?? defaultLookName(wearingClothingFeatures.map((f) => f.label)),
-      description: body.basePrompt,
-      status: "draft",
-      generated_image_url: storagePath,
-      generated_storage_path: storagePath,
-      composition_recipe_json: recipe,
-      pipeline_used: pipelineUsed,
-      cost_cents: costCents,
-      iterations: body.parentLookId ? 2 : 1,
-      parent_look_id: body.parentLookId ?? null,
-    })
-    .select("*")
-    .single();
-  if (insertErr) {
-    return json(500, { error: "insert_failed", detail: insertErr.message });
-  }
-
-  // ---- sign preview URL --------------------------------------------
-  const signedResult = await signUrl(userClient as any, "look-composites", storagePath, SIGN_TTL_RESULT);
-
+  // ---- return immediately with look_id --------------------------------
   return json(200, {
     look: lookRow,
-    signed_url: signedResult,
-    pipeline_used: pipelineUsed,
-    cost_cents: costCents,
-    generation_metadata: generationMetadata,
+    look_id: lookId,
+    status: "pending",
+    // Kept for backwards compat with older UI codepaths that read these
+    // fields directly off the proxy response (e.g. toast/cost display).
+    signed_url: null,
+    pipeline_used: null,
+    cost_cents: 0,
+    generation_metadata: null,
   });
 });
 
