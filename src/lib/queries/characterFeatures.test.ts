@@ -17,6 +17,7 @@ function f(partial: Partial<CharacterFeature>): CharacterFeature {
     reinforce_on_drift: partial.reinforce_on_drift ?? true,
     metadata_json: partial.metadata_json ?? {},
     uploaded_at: partial.uploaded_at ?? "2026-05-17T00:00:00Z",
+    reference_images: partial.reference_images ?? null,
   };
 }
 
