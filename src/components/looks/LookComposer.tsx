@@ -420,26 +420,33 @@ export function LookComposer({
           <h2 className="border-b border-border px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
             Preview
           </h2>
-          <div className="flex aspect-[3/4] items-center justify-center bg-muted/10 p-4">
+          <div className="relative flex aspect-[3/4] items-center justify-center overflow-hidden bg-muted/10 p-4">
             {(compose.isPending || pollProgress) && (
-              <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>
-                  Composing — {pipelinePref === "auto" ? (hasLora ? "LoRA + Seedream" : "Seedream") : PIPELINE_LABELS[pipelinePref]}
-                </span>
-                {pollProgress ? (
-                  <>
-                    <span className="text-[10px]">
-                      {pollProgress.elapsedSec}s elapsed · {pollProgress.status}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground/70">
-                      Background pipeline — usually 1–3 minutes.
-                    </span>
-                  </>
-                ) : (
-                  <span className="text-[10px]">Submitting…</span>
-                )}
-              </div>
+              <>
+                {/* Shimmer skeleton background so the pending preview feels
+                    alive instead of a static spinner panel. Matches the card
+                    skeleton in LookCard for visual consistency. */}
+                <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.6s_infinite] bg-gradient-to-r from-transparent via-foreground/10 to-transparent" />
+                <style>{`@keyframes shimmer { 100% { transform: translateX(100%); } }`}</style>
+                <div className="relative z-10 flex flex-col items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>
+                    Composing — {pipelinePref === "auto" ? (hasLora ? "LoRA + Seedream" : "Seedream") : PIPELINE_LABELS[pipelinePref]}
+                  </span>
+                  {pollProgress ? (
+                    <>
+                      <span className="text-[10px]">
+                        {pollProgress.elapsedSec}s elapsed · {pollProgress.status}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground/70">
+                        Background pipeline — usually 1–3 minutes.
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-[10px]">Submitting…</span>
+                  )}
+                </div>
+              </>
             )}
             {!compose.isPending && !pollProgress && result && (
               <ResultPreview result={result} artistId={artistId} navigate={navigate} />

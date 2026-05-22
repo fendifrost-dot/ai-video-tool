@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Archive, Check, Copy, Edit, Lock, MoreHorizontal } from "lucide-react";
+import { Archive, Check, Copy, Edit, Loader2, Lock, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,6 +55,8 @@ export function LookCard({ look }: { look: Look }) {
               alt={look.name}
               className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
             />
+          ) : look.status === "pending" ? (
+            <LookCardPendingSkeleton />
           ) : (
             <div className="flex h-full items-center justify-center text-[10px] text-muted-foreground">
               {look.generated_storage_path ? "Loading…" : "No image"}
@@ -186,6 +188,30 @@ export function LookCard({ look }: { look: Look }) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// LookCardPendingSkeleton — gradient shimmer + spinner + "Generating…" caption.
+// Rendered in place of the static "No image" text while the async pipeline
+// runs (status === 'pending'). Reused by the composer's pending preview so
+// the two surfaces stay visually consistent.
+// ---------------------------------------------------------------------------
+export function LookCardPendingSkeleton({
+  caption = "Generating…",
+}: {
+  caption?: string;
+}) {
+  return (
+    <div className="relative flex h-full w-full items-center justify-center overflow-hidden bg-muted/30">
+      {/* Animated gradient shimmer */}
+      <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.6s_infinite] bg-gradient-to-r from-transparent via-foreground/10 to-transparent" />
+      <style>{`@keyframes shimmer { 100% { transform: translateX(100%); } }`}</style>
+      <div className="relative z-10 flex flex-col items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span>{caption}</span>
       </div>
     </div>
   );
