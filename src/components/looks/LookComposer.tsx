@@ -37,6 +37,8 @@ import {
   type Look,
   formatCost,
   pipelineEstimateCents,
+  pollArtistLook,
+  signLookPreviewUrl,
   useComposeLook,
   useLook,
 } from "@/lib/queries/looks";
@@ -99,6 +101,16 @@ export function LookComposer({
     signedUrl: string | null;
   } | null>(null);
 
+  // Async-pipeline poll progress. While the look is being composed in the
+  // background, we show "Composing… N seconds" and the current status.
+  // Cleared when the poll resolves (success or failure) or when the user
+  // navigates away.
+  const [pollProgress, setPollProgress] = useState<{
+    lookId: string;
+    elapsedSec: number;
+    status: string;
+  } | null>(null);
+
   // -------------------------------------------------------------------------
   // Pre-fill from parent (for iterations / variants)
   // -------------------------------------------------------------------------
@@ -147,7 +159,7 @@ export function LookComposer({
   // Validation + cost
   // -------------------------------------------------------------------------
   const canGenerate =
-    wardrobeIds.length > 0 && basePrompt.trim().length >= 4 && !compose.isPending;
+    wardrobeIds.length > 0 && basePrompt.trim().length >= 4 && !compose.isPending && !pollProgress;
   const estCents = pipelineEstimateCents(pipelinePref, hasLora);
 
   // -------------------------------------------------------------------------
@@ -174,8 +186,11 @@ export function LookComposer({
   // -------------------------------------------------------------------------
   async function handleGenerate() {
     if (!canGenerate) return;
+    setResult(null);
+    setPollProgress(null);
+    let submitRes: Awaited<ReturnType<typeof compose.mutateAsync>> | null = null;
     try {
-      const res = await compose.mutateAsync({
+      submitRes = await compose.mutateAsync({
         artistId,
         faceFeatureId: faceFeatureId ?? undefined,
         wardrobeFeatureIds: wardrobeIds,
@@ -188,12 +203,55 @@ export function LookComposer({
         parentLookId: parentLookId ?? undefined,
         name: name.trim() || undefined,
       });
-      setResult({ look: res.look, signedUrl: res.signed_url });
-      toast.success(
-        `Look generated — ${res.pipeline_used} pipeline, ${formatCost(res.cost_cents)}`,
-      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Generate failed");
+      return;
+    }
+
+    // Async pipeline (Phase 2-5 refactor): the proxy returns a pending
+    // row immediately. If the response already carries a complete look
+    // (e.g. legacy synchronous response from an older proxy), short-circuit.
+    if (submitRes.status === "complete" && submitRes.signed_url) {
+      setResult({ look: submitRes.look, signedUrl: submitRes.signed_url });
+      toast.success(
+        `Look generated — ${submitRes.pipeline_used ?? "unknown"} pipeline, ${formatCost(submitRes.cost_cents)}`,
+      );
+      return;
+    }
+
+    // Otherwise poll artist_looks until status flips to complete / failed
+    // or the 5-minute timeout elapses.
+    const lookId = submitRes.look_id ?? submitRes.look.id;
+    setPollProgress({ lookId, elapsedSec: 0, status: "pending" });
+    try {
+      const finalLook = await pollArtistLook(lookId, {
+        onTick: ({ elapsedMs, status }) => {
+          setPollProgress({
+            lookId,
+            elapsedSec: Math.floor(elapsedMs / 1000),
+            status,
+          });
+        },
+      });
+      setPollProgress(null);
+      if (finalLook.status === "pending") {
+        // Hit the 5-minute hard timeout. Show a friendly notice and keep
+        // the row in the gallery — it may still complete server-side.
+        toast.message("Still generating", {
+          description: "Refresh in a moment to see the result.",
+        });
+        return;
+      }
+      // status='complete' — sign a preview URL and render.
+      const path = finalLook.generated_storage_path ?? finalLook.generated_image_url;
+      const signedUrl = path ? await signLookPreviewUrl(path) : null;
+      setResult({ look: finalLook, signedUrl });
+      toast.success(
+        `Look generated — ${finalLook.pipeline_used ?? "unknown"} pipeline, ${formatCost(finalLook.cost_cents)}`,
+      );
+    } catch (err) {
+      setPollProgress(null);
+      toast.error(err instanceof Error ? err.message : "Pipeline failed");
     }
   }
 
@@ -363,19 +421,30 @@ export function LookComposer({
             Preview
           </h2>
           <div className="flex aspect-[3/4] items-center justify-center bg-muted/10 p-4">
-            {compose.isPending && (
+            {(compose.isPending || pollProgress) && (
               <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span>
                   Composing — {pipelinePref === "auto" ? (hasLora ? "LoRA + Seedream" : "Seedream") : PIPELINE_LABELS[pipelinePref]}
                 </span>
-                <span className="text-[10px]">~30 seconds</span>
+                {pollProgress ? (
+                  <>
+                    <span className="text-[10px]">
+                      {pollProgress.elapsedSec}s elapsed · {pollProgress.status}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground/70">
+                      Background pipeline — usually 1–3 minutes.
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[10px]">Submitting…</span>
+                )}
               </div>
             )}
-            {!compose.isPending && result && (
+            {!compose.isPending && !pollProgress && result && (
               <ResultPreview result={result} artistId={artistId} navigate={navigate} />
             )}
-            {!compose.isPending && !result && (
+            {!compose.isPending && !pollProgress && !result && (
               <div className="text-center text-sm text-muted-foreground">
                 <Sparkles className="mx-auto h-6 w-6 text-muted-foreground/40" />
                 <p className="mt-2">Pick references and write a prompt to generate.</p>
@@ -471,10 +540,10 @@ export function LookComposer({
             disabled={!canGenerate}
             onClick={handleGenerate}
           >
-            {compose.isPending ? (
+            {(compose.isPending || pollProgress) ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Composing…
+                {pollProgress ? `Composing… ${pollProgress.elapsedSec}s` : "Composing…"}
               </>
             ) : (
               <>

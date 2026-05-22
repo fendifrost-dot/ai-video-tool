@@ -272,12 +272,21 @@ export type ComposeLookInput = {
   name?: string;
 };
 
+// Async-pipeline response shape (Phase 2/5 refactor). The proxy inserts a
+// pending look row immediately and returns the look_id; pipeline_used /
+// cost_cents / signed_url are filled in later by the callback once the
+// background pipeline finishes. The caller polls artist_looks by id (via
+// pollArtistLook below) to learn when status flips to 'complete' / 'failed'.
 export type ComposeLookResult = {
   look: Look;
+  look_id: string;
+  status: "pending" | "complete" | "failed";
+  // Kept optional / nullable for backwards-compat with older proxy
+  // responses that returned the full sync payload up-front.
   signed_url: string | null;
-  pipeline_used: LookPipeline;
+  pipeline_used: LookPipeline | null;
   cost_cents: number;
-  stages: Array<{ stage: string; request_id: string; image_url: string }>;
+  stages?: Array<{ stage: string; request_id: string; image_url: string }>;
 };
 
 export async function callComposeLook(input: ComposeLookInput): Promise<ComposeLookResult> {
@@ -323,6 +332,101 @@ export function useComposeLook() {
       qc.setQueryData(looksKeys.detail(result.look.id), result.look);
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// pollArtistLook — Phase 5 of the async refactor.
+//
+// After compose-look-proxy returns `{ look_id, status: 'pending' }`, the UI
+// polls this helper to learn when CC's background pipeline finishes — the
+// compose-look-callback edge function updates the row to status='complete'
+// or 'failed' with an error_message. The helper resolves with the final
+// Look row, or rejects with an Error carrying the error_message text.
+//
+// Schedule (per task spec):
+//   - 3s ticks for the first 30s,
+//   - then 5s → 8s → 15s, cap at 15s,
+//   - hard timeout at 5 minutes. On timeout we resolve with the last-known
+//     row (still in 'pending') so the caller can show "still generating,
+//     refresh in a moment" rather than burning the look as failed.
+// ---------------------------------------------------------------------------
+export type PollArtistLookOptions = {
+  signal?: AbortSignal;
+  // Called every poll tick so the UI can render a "Composing… Ns" string.
+  // The Look row is passed when available so the caller can read partial
+  // state (status, error_message) before the pipeline completes.
+  onTick?: (info: { elapsedMs: number; look: Look | null; status: string }) => void;
+  // Override total timeout (default 5 minutes).
+  timeoutMs?: number;
+};
+
+const DEFAULT_POLL_TIMEOUT_MS = 5 * 60 * 1000;
+
+function pollIntervalForElapsed(elapsedMs: number): number {
+  // 0–30s: 3s ticks (fast first impression)
+  if (elapsedMs < 30_000) return 3_000;
+  // 30–60s: 5s
+  if (elapsedMs < 60_000) return 5_000;
+  // 60–120s: 8s
+  if (elapsedMs < 120_000) return 8_000;
+  // 120s+: 15s (cap)
+  return 15_000;
+}
+
+export async function pollArtistLook(
+  lookId: string,
+  opts: PollArtistLookOptions = {},
+): Promise<Look> {
+  const startedAt = Date.now();
+  const timeoutMs = opts.timeoutMs ?? DEFAULT_POLL_TIMEOUT_MS;
+  // Loop until terminal status or hard timeout.
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    if (opts.signal?.aborted) throw new Error("aborted");
+    const elapsedMs = Date.now() - startedAt;
+
+    const { data, error } = await (supabase as any)
+      .from("artist_looks")
+      .select("*")
+      .eq("id", lookId)
+      .maybeSingle();
+    if (error) throw error;
+    const row = (data ?? null) as Look | null;
+    const status = row?.status ?? "pending";
+    opts.onTick?.({ elapsedMs, look: row, status });
+
+    if (row && status === "complete") return row;
+    if (row && status === "failed") {
+      const msg = (row as any).error_message ?? "Pipeline failed";
+      const err = new Error(msg);
+      (err as any).look = row;
+      throw err;
+    }
+
+    if (elapsedMs >= timeoutMs) {
+      if (row) return row;
+      throw new Error("poll_timeout_no_row");
+    }
+
+    const wait = pollIntervalForElapsed(elapsedMs);
+    await new Promise((r) => setTimeout(r, wait));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// signLookPreviewUrl — convenience wrapper to create a short-lived signed
+// URL for the rendered composite. Used by LookComposer's poll-success
+// handler so the UI can show the result image without a full page reload.
+// ---------------------------------------------------------------------------
+export async function signLookPreviewUrl(
+  storagePath: string,
+  expiresIn: number = 3600,
+): Promise<string | null> {
+  const { data, error } = await (supabase as any).storage
+    .from("look-composites")
+    .createSignedUrl(storagePath, expiresIn);
+  if (error) return null;
+  return data?.signedUrl ?? null;
 }
 
 // ---------------------------------------------------------------------------
