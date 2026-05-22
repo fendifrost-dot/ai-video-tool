@@ -19,6 +19,12 @@ import {
 } from "@/lib/queries/characterFeatures";
 import { formatLabel } from "./featureTaxonomy";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 /**
  * A single slot in the Character DNA tab — one (feature_type, label) pair.
@@ -199,38 +205,64 @@ export function FeatureSlot({
       </div>
 
       {current && (
-        <div className="flex flex-wrap gap-1">
-          <Button
-            type="button"
-            size="sm"
-            variant={current.is_locked ? "default" : "outline"}
-            className="h-6 px-1.5 text-[10px]"
-            onClick={() => toggle("is_locked")}
-            disabled={update.isPending}
-          >
-            Lock
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={current.is_primary ? "default" : "outline"}
-            className="h-6 px-1.5 text-[10px]"
-            onClick={() => toggle("is_primary")}
-            disabled={update.isPending}
-          >
-            Primary
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={current.reinforce_on_drift ? "default" : "outline"}
-            className="h-6 px-1.5 text-[10px]"
-            onClick={() => toggle("reinforce_on_drift")}
-            disabled={update.isPending}
-          >
-            Reinforce
-          </Button>
-        </div>
+        <TooltipProvider delayDuration={200}>
+          <div className="flex flex-wrap gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={current.is_locked ? "default" : "outline"}
+                  className="h-6 px-1.5 text-[10px]"
+                  onClick={() => toggle("is_locked")}
+                  disabled={update.isPending}
+                >
+                  Lock
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[240px] text-xs">
+                Locks this reference into Character DNA — the prompt
+                compiler injects it into every look generation
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={current.is_primary ? "default" : "outline"}
+                  className="h-6 px-1.5 text-[10px]"
+                  onClick={() => toggle("is_primary")}
+                  disabled={update.isPending}
+                >
+                  Primary
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[240px] text-xs">
+                Marks this image as the default for this feature — e.g.
+                the default face used across all looks for this artist
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={current.reinforce_on_drift ? "default" : "outline"}
+                  className="h-6 px-1.5 text-[10px]"
+                  onClick={() => toggle("reinforce_on_drift")}
+                  disabled={update.isPending}
+                >
+                  Reinforce
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-[240px] text-xs">
+                Adds this image to the reinforcement pool so it's re-used
+                to pull identity back when face drift is detected
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </TooltipProvider>
       )}
 
       <input

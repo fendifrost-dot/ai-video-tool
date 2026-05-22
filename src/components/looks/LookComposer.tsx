@@ -56,6 +56,21 @@ const PIPELINE_LABELS = {
   lora_idm_vton: "LoRA + IDM-VTON (experimental)",
 } as const;
 
+// One-line plain-English descriptions for each pipeline option — surfaced
+// as a hover tooltip (native `title` + sub-line in the dropdown) so a user
+// without ML domain knowledge can pick the right one.
+const PIPELINE_DESCRIPTIONS: Record<keyof typeof PIPELINE_LABELS, string> = {
+  auto: "Picks the best pipeline based on what you've selected",
+  lora_seedream:
+    "Identity LoRA generates a base photo, Seedream overlays wardrobe — fast, sometimes loses garment length",
+  lora_idm_vton:
+    "Identity LoRA + dedicated virtual try-on model for accurate garment fit and closure",
+  seedream_only:
+    "Skip the LoRA step, use only Seedream for editing — cheapest, weaker identity match",
+  kontext_multi:
+    "FLUX Kontext with multiple references — alternative if Seedream is misbehaving",
+};
+
 type PipelinePref = keyof typeof PIPELINE_LABELS;
 
 // ---------------------------------------------------------------------------
@@ -509,11 +524,23 @@ export function LookComposer({
                 </SelectTrigger>
                 <SelectContent>
                   {(Object.entries(PIPELINE_LABELS) as [PipelinePref, string][]).map(([k, v]) => (
-                    <SelectItem key={k} value={k} className="text-xs">
-                      {v}
-                      {(k === "lora_seedream" || k === "lora_idm_vton") && !hasLora && (
-                        <span className="ml-1 text-[10px] text-muted-foreground">(no LoRA — will downgrade)</span>
-                      )}
+                    <SelectItem
+                      key={k}
+                      value={k}
+                      className="text-xs"
+                      title={PIPELINE_DESCRIPTIONS[k]}
+                    >
+                      <div className="flex flex-col gap-0.5 py-0.5">
+                        <span>
+                          {v}
+                          {(k === "lora_seedream" || k === "lora_idm_vton") && !hasLora && (
+                            <span className="ml-1 text-[10px] text-muted-foreground">(no LoRA — will downgrade)</span>
+                          )}
+                        </span>
+                        <span className="max-w-[300px] text-[10px] leading-snug text-muted-foreground">
+                          {PIPELINE_DESCRIPTIONS[k]}
+                        </span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
