@@ -43,8 +43,6 @@ import {
   type Look,
   formatCost,
   pipelineEstimateCents,
-  pollArtistLook,
-  signLookPreviewUrl,
   useComposeLook,
   useLook,
 } from "@/lib/queries/looks";
@@ -201,6 +199,12 @@ export function LookComposer({
 
   // -------------------------------------------------------------------------
   // Generate
+  //
+  // Phase-2 UX refactor: as soon as the proxy returns a look_id we
+  // navigate to /artists/$id/looks/$lookId so the URL reflects the active
+  // look and a browser refresh resumes the pending preview correctly. The
+  // LookDetailPage owns the polling loop from that point on (so closing /
+  // re-opening the tab keeps working).
   // -------------------------------------------------------------------------
   async function handleGenerate() {
     if (!canGenerate) return;
@@ -226,51 +230,21 @@ export function LookComposer({
       return;
     }
 
-    // Async pipeline (Phase 2-5 refactor): the proxy returns a pending
-    // row immediately. If the response already carries a complete look
-    // (e.g. legacy synchronous response from an older proxy), short-circuit.
+    const lookId = submitRes.look_id ?? submitRes.look.id;
+
+    // If the legacy synchronous proxy already returned a complete look,
+    // still go to the detail page — it knows how to render a complete row
+    // and we keep the URL semantics consistent.
     if (submitRes.status === "complete" && submitRes.signed_url) {
-      setResult({ look: submitRes.look, signedUrl: submitRes.signed_url });
       toast.success(
         `Look generated — ${submitRes.pipeline_used ?? "unknown"} pipeline, ${formatCost(submitRes.cost_cents)}`,
       );
-      return;
     }
 
-    // Otherwise poll artist_looks until status flips to complete / failed
-    // or the 5-minute timeout elapses.
-    const lookId = submitRes.look_id ?? submitRes.look.id;
-    setPollProgress({ lookId, elapsedSec: 0, status: "pending" });
-    try {
-      const finalLook = await pollArtistLook(lookId, {
-        onTick: ({ elapsedMs, status }) => {
-          setPollProgress({
-            lookId,
-            elapsedSec: Math.floor(elapsedMs / 1000),
-            status,
-          });
-        },
-      });
-      setPollProgress(null);
-      if (finalLook.status === "pending") {
-        // Hit the 5-minute hard timeout. Show a friendly notice and keep
-        // the row in the gallery — it may still complete server-side.
-        toast.message("Still generating", {
-          description: "Refresh in a moment to see the result.",
-        });
-        return;
-      }
-      // status='complete' — sign a preview URL and render.
-      const path = finalLook.generated_storage_path ?? finalLook.generated_image_url;
-      const signedUrl = path ? await signLookPreviewUrl(path) : null;
-      setResult({ look: finalLook, signedUrl });
-      toast.success(
-        `Look generated — ${finalLook.pipeline_used ?? "unknown"} pipeline, ${formatCost(finalLook.cost_cents)}`,
-      );
-    } catch (err) {
-      setPollProgress(null);
-      toast.error(err instanceof Error ? err.message : "Pipeline failed");
-    }
+    navigate({
+      to: "/artists/$id/looks/$lookId",
+      params: { id: artistId, lookId },
+    });
   }
 
   // -------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Archive,
   ArrowLeft,
@@ -10,6 +11,7 @@ import {
   Loader2,
   Lock,
   Save,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/AppShell";
@@ -25,13 +27,16 @@ import { useLocations } from "@/lib/queries/locations";
 import { useProps } from "@/lib/queries/props";
 import {
   formatCost,
+  looksKeys,
+  pollArtistLook,
+  useDeleteLook,
   useLook,
   useLockLookAsPrimary,
   useLookIterations,
   useUpdateLook,
 } from "@/lib/queries/looks";
 import { AssetThumb } from "@/components/looks/AssetThumb";
-import { StatusPill } from "@/components/looks/LookCard";
+import { LookCardPendingSkeleton, StatusPill } from "@/components/looks/LookCard";
 
 export default function LookDetailPage({
   artistId,
@@ -40,6 +45,8 @@ export default function LookDetailPage({
   artistId: string;
   lookId: string;
 }) {
+  const navigate = useNavigate();
+  const qc = useQueryClient();
   const artistQuery = useArtist(artistId);
   const lookQuery = useLook(lookId);
   const featuresQuery = useCharacterFeatures(artistId);
@@ -49,11 +56,18 @@ export default function LookDetailPage({
   const iterationsQuery = useLookIterations(lookId);
   const update = useUpdateLook();
   const lock = useLockLookAsPrimary();
+  const del = useDeleteLook();
 
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [notesDraft, setNotesDraft] = useState("");
   const [signed, setSigned] = useState<string | null>(null);
+  // Live pending-poll progress, populated while this look is generating
+  // in the background. Cleared on terminal status or unmount.
+  const [pollProgress, setPollProgress] = useState<{
+    elapsedSec: number;
+    status: string;
+  } | null>(null);
 
   useEffect(() => {
     if (!lookQuery.data) return;
@@ -71,6 +85,45 @@ export default function LookDetailPage({
       .then((m) => setSigned(m[path] ?? null))
       .catch(() => setSigned(null));
   }, [lookQuery.data?.generated_storage_path]);
+
+  // Background poll while the look is generating. The LookComposer
+  // navigates here immediately after kicking off the pipeline, so this
+  // page owns the wait-loop. On terminal status we update the react-query
+  // caches in place so the rest of the UI re-renders without a refetch.
+  useEffect(() => {
+    const look = lookQuery.data;
+    if (!look || look.status !== "pending") {
+      setPollProgress(null);
+      return;
+    }
+    const controller = new AbortController();
+    setPollProgress({ elapsedSec: 0, status: "pending" });
+    pollArtistLook(look.id, {
+      signal: controller.signal,
+      onTick: ({ elapsedMs, status }) => {
+        setPollProgress({
+          elapsedSec: Math.floor(elapsedMs / 1000),
+          status,
+        });
+      },
+    })
+      .then((finalLook) => {
+        setPollProgress(null);
+        qc.setQueryData(looksKeys.detail(finalLook.id), finalLook);
+        qc.invalidateQueries({ queryKey: looksKeys.forArtist(finalLook.artist_id) });
+        if (finalLook.status === "complete") {
+          toast.success(
+            `Look generated — ${finalLook.pipeline_used ?? "unknown"} pipeline, ${formatCost(finalLook.cost_cents)}`,
+          );
+        }
+      })
+      .catch((err: any) => {
+        setPollProgress(null);
+        if (err?.message === "aborted") return;
+        toast.error(err instanceof Error ? err.message : "Pipeline failed");
+      });
+    return () => controller.abort();
+  }, [lookQuery.data?.id, lookQuery.data?.status, qc]);
 
   if (lookQuery.isLoading) {
     return (
@@ -141,13 +194,23 @@ export default function LookDetailPage({
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
           {/* ===================== LEFT — preview ===================== */}
           <div className="space-y-4">
-            <div className="rounded-md border border-border bg-card/30 p-2">
+            <div className="overflow-hidden rounded-md border border-border bg-card/30 p-2">
               {signed ? (
                 <img
                   src={signed}
                   alt={look.name}
                   className="mx-auto max-h-[600px] rounded-sm object-contain"
                 />
+              ) : isPending ? (
+                <div className="h-[600px] w-full overflow-hidden rounded-sm">
+                  <LookCardPendingSkeleton
+                    caption={
+                      pollProgress
+                        ? `Composing… ${pollProgress.elapsedSec}s · ${pollProgress.status}`
+                        : "Composing…"
+                    }
+                  />
+                </div>
               ) : (
                 <div className="flex h-[600px] items-center justify-center text-xs text-muted-foreground">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -270,11 +333,48 @@ export default function LookDetailPage({
                 Status
               </h2>
               {isPending && (
-                <p className="flex items-start gap-1.5 rounded-sm bg-muted/40 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
-                  <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin" />
-                  Generating — these actions will become available when the
-                  look completes.
-                </p>
+                <>
+                  <p className="flex items-start gap-1.5 rounded-sm bg-muted/40 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
+                    <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin" />
+                    Generating — these actions will become available when the
+                    look completes.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    disabled={del.isPending}
+                    onClick={async () => {
+                      // Cancel = delete the pending placeholder row. The
+                      // background pipeline may still finish server-side
+                      // (callback will be a no-op once the row is gone),
+                      // but the UI immediately stops polling and returns
+                      // the user to the looks list.
+                      if (
+                        !confirm(
+                          "Cancel this generation? The pending look will be removed.",
+                        )
+                      ) {
+                        return;
+                      }
+                      try {
+                        await del.mutateAsync({ id: look.id, artistId });
+                        toast.success("Generation cancelled");
+                        navigate({
+                          to: "/artists/$id/looks",
+                          params: { id: artistId },
+                        });
+                      } catch (err) {
+                        toast.error(
+                          err instanceof Error ? err.message : "Cancel failed",
+                        );
+                      }
+                    }}
+                  >
+                    <X className="mr-1.5 h-3.5 w-3.5" />
+                    Cancel generation
+                  </Button>
+                </>
               )}
               <div className="flex flex-col gap-2">
                 <Button
