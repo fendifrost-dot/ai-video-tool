@@ -24,6 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { signedUrls } from "@/lib/storage";
 import { useArtist } from "@/lib/queries/artists";
 import {
@@ -161,6 +167,18 @@ export function LookComposer({
   const canGenerate =
     wardrobeIds.length > 0 && basePrompt.trim().length >= 4 && !compose.isPending && !pollProgress;
   const estCents = pipelineEstimateCents(pipelinePref, hasLora);
+
+  // Dynamic tooltip / hint reason for why the Generate button is disabled.
+  // Matches the canGenerate predicate so the user knows exactly what's
+  // missing before they click anything.
+  const generateBlockedReason: string | null =
+    compose.isPending || pollProgress
+      ? "Generation in progress — wait for the current run to finish"
+      : wardrobeIds.length === 0
+        ? "Add at least one wardrobe item to generate"
+        : basePrompt.trim().length < 4
+          ? "Add a description to generate (4+ characters)"
+          : null;
 
   // -------------------------------------------------------------------------
   // Toggle helpers
@@ -541,31 +559,44 @@ export function LookComposer({
               <span className="font-mono">{parentQuery.data?.name ?? "…"}</span>
             </div>
           )}
-          <Button
-            size="lg"
-            className="w-full"
-            disabled={!canGenerate}
-            onClick={handleGenerate}
-          >
-            {(compose.isPending || pollProgress) ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {pollProgress ? `Composing… ${pollProgress.elapsedSec}s` : "Composing…"}
-              </>
-            ) : (
-              <>
-                <Wand2 className="mr-2 h-4 w-4" />
-                Generate look
-              </>
-            )}
-          </Button>
-          {!canGenerate && !compose.isPending && (
+          {/* Wrap Generate in a Tooltip so users hovering the disabled
+              button learn exactly which requirement is missing. The
+              tooltip is suppressed once `canGenerate` is true so we don't
+              show stale messaging on the happy path. The trigger wraps a
+              span because Radix tooltips need a non-disabled hover
+              surface — disabled buttons swallow pointer events. */}
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={!canGenerate ? "block w-full cursor-not-allowed" : "block w-full"}>
+                  <Button
+                    size="lg"
+                    className="w-full"
+                    disabled={!canGenerate}
+                    onClick={handleGenerate}
+                  >
+                    {(compose.isPending || pollProgress) ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        {pollProgress ? `Composing… ${pollProgress.elapsedSec}s` : "Composing…"}
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="mr-2 h-4 w-4" />
+                        Generate look
+                      </>
+                    )}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {generateBlockedReason && (
+                <TooltipContent side="top">{generateBlockedReason}</TooltipContent>
+              )}
+            </Tooltip>
+          </TooltipProvider>
+          {!canGenerate && !compose.isPending && generateBlockedReason && (
             <p className="text-[10px] text-muted-foreground">
-              {wardrobeIds.length === 0
-                ? "Pick at least one wardrobe item."
-                : basePrompt.trim().length < 4
-                  ? "Add a description / mood (4+ chars)."
-                  : ""}
+              {generateBlockedReason}
             </p>
           )}
         </div>
