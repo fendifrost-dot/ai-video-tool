@@ -30,7 +30,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { signedUrls } from "@/lib/storage";
 import { useArtist } from "@/lib/queries/artists";
 import {
   useCharacterFeatures,
@@ -40,7 +39,6 @@ import { useWardrobe, type WardrobeItem } from "@/lib/queries/wardrobe";
 import { useLocations, type LocationItem } from "@/lib/queries/locations";
 import { useProps, type PropItem } from "@/lib/queries/props";
 import {
-  type Look,
   formatCost,
   pipelineEstimateCents,
   useComposeLook,
@@ -115,21 +113,6 @@ export function LookComposer({
   const [stylingNotes, setStylingNotes] = useState("");
   const [pipelinePref, setPipelinePref] = useState<PipelinePref>("auto");
 
-  const [result, setResult] = useState<{
-    look: Look;
-    signedUrl: string | null;
-  } | null>(null);
-
-  // Async-pipeline poll progress. While the look is being composed in the
-  // background, we show "Composing… N seconds" and the current status.
-  // Cleared when the poll resolves (success or failure) or when the user
-  // navigates away.
-  const [pollProgress, setPollProgress] = useState<{
-    lookId: string;
-    elapsedSec: number;
-    status: string;
-  } | null>(null);
-
   // -------------------------------------------------------------------------
   // Pre-fill from parent (for iterations / variants)
   // -------------------------------------------------------------------------
@@ -178,20 +161,19 @@ export function LookComposer({
   // Validation + cost
   // -------------------------------------------------------------------------
   const canGenerate =
-    wardrobeIds.length > 0 && basePrompt.trim().length >= 4 && !compose.isPending && !pollProgress;
+    wardrobeIds.length > 0 && basePrompt.trim().length >= 4 && !compose.isPending;
   const estCents = pipelineEstimateCents(pipelinePref, hasLora);
 
   // Dynamic tooltip / hint reason for why the Generate button is disabled.
   // Matches the canGenerate predicate so the user knows exactly what's
   // missing before they click anything.
-  const generateBlockedReason: string | null =
-    compose.isPending || pollProgress
-      ? "Generation in progress — wait for the current run to finish"
-      : wardrobeIds.length === 0
-        ? "Add at least one wardrobe item to generate"
-        : basePrompt.trim().length < 4
-          ? "Add a description to generate (4+ characters)"
-          : null;
+  const generateBlockedReason: string | null = compose.isPending
+    ? "Generation in progress — wait for the current run to finish"
+    : wardrobeIds.length === 0
+      ? "Add at least one wardrobe item to generate"
+      : basePrompt.trim().length < 4
+        ? "Add a description to generate (4+ characters)"
+        : null;
 
   // -------------------------------------------------------------------------
   // Toggle helpers
@@ -223,8 +205,6 @@ export function LookComposer({
   // -------------------------------------------------------------------------
   async function handleGenerate() {
     if (!canGenerate) return;
-    setResult(null);
-    setPollProgress(null);
     let submitRes: Awaited<ReturnType<typeof compose.mutateAsync>> | null = null;
     try {
       submitRes = await compose.mutateAsync({
@@ -428,11 +408,12 @@ export function LookComposer({
             Preview
           </h2>
           <div className="relative flex aspect-[3/4] items-center justify-center overflow-hidden bg-muted/10 p-4">
-            {(compose.isPending || pollProgress) && (
+            {compose.isPending ? (
               <>
-                {/* Shimmer skeleton background so the pending preview feels
-                    alive instead of a static spinner panel. Matches the card
-                    skeleton in LookCard for visual consistency. */}
+                {/* Shimmer skeleton background while the proxy is accepting
+                    the submission. As soon as it returns a look_id we
+                    navigate to the look detail page, which owns the rest of
+                    the wait loop. Matches LookCard's skeleton visually. */}
                 <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.6s_infinite] bg-gradient-to-r from-transparent via-foreground/10 to-transparent" />
                 <style>{`@keyframes shimmer { 100% { transform: translateX(100%); } }`}</style>
                 <div className="relative z-10 flex flex-col items-center gap-2 text-sm text-muted-foreground">
@@ -440,25 +421,10 @@ export function LookComposer({
                   <span>
                     Composing — {pipelinePref === "auto" ? (hasLora ? "LoRA + Seedream" : "Seedream") : PIPELINE_LABELS[pipelinePref]}
                   </span>
-                  {pollProgress ? (
-                    <>
-                      <span className="text-[10px]">
-                        {pollProgress.elapsedSec}s elapsed · {pollProgress.status}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground/70">
-                        Background pipeline — usually 1–3 minutes.
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-[10px]">Submitting…</span>
-                  )}
+                  <span className="text-[10px]">Submitting…</span>
                 </div>
               </>
-            )}
-            {!compose.isPending && !pollProgress && result && (
-              <ResultPreview result={result} artistId={artistId} navigate={navigate} />
-            )}
-            {!compose.isPending && !pollProgress && !result && (
+            ) : (
               <div className="text-center text-sm text-muted-foreground">
                 <Sparkles className="mx-auto h-6 w-6 text-muted-foreground/40" />
                 <p className="mt-2">Pick references and write a prompt to generate.</p>
@@ -576,10 +542,10 @@ export function LookComposer({
                     disabled={!canGenerate}
                     onClick={handleGenerate}
                   >
-                    {(compose.isPending || pollProgress) ? (
+                    {compose.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {pollProgress ? `Composing… ${pollProgress.elapsedSec}s` : "Composing…"}
+                        Composing…
                       </>
                     ) : (
                       <>
@@ -833,57 +799,3 @@ function CanvasStrip({
   );
 }
 
-// ===========================================================================
-// ResultPreview — render the generated look + post-action buttons
-// ===========================================================================
-function ResultPreview({
-  result,
-  artistId,
-  navigate,
-}: {
-  result: { look: Look; signedUrl: string | null };
-  artistId: string;
-  navigate: ReturnType<typeof useNavigate>;
-}) {
-  return (
-    <div className="flex h-full w-full flex-col items-center gap-3">
-      {result.signedUrl ? (
-        <img
-          src={result.signedUrl}
-          alt={result.look.name}
-          className="max-h-[420px] max-w-full rounded-md border border-border object-contain"
-        />
-      ) : (
-        <div className="rounded-md border border-border bg-muted/10 px-8 py-12 text-xs text-muted-foreground">
-          Generated, but no preview available
-        </div>
-      )}
-      <div className="flex gap-2">
-        <Button
-          size="sm"
-          variant="default"
-          onClick={() =>
-            navigate({
-              to: "/artists/$id/looks/$lookId",
-              params: { id: artistId, lookId: result.look.id },
-            })
-          }
-        >
-          Open look
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() =>
-            navigate({
-              to: "/artists/$id/looks",
-              params: { id: artistId },
-            })
-          }
-        >
-          Back to looks
-        </Button>
-      </div>
-    </div>
-  );
-}
