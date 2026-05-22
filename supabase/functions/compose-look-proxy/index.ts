@@ -528,6 +528,9 @@ serve(async (req) => {
     styling_notes: body.stylingNotes ?? null,
     lora_url: loraUrl,
     lora_trigger: triggerWord,
+    // Persisted on the pending row so the UI can show the chosen pipeline
+    // label immediately, before the callback fills in pipeline_used.
+    pipeline_preference: body.pipelinePreference ?? "auto",
     generation_metadata: null as any,
     signedUrls: {
       face: faceUrl,

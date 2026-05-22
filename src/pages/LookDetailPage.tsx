@@ -106,6 +106,16 @@ export default function LookDetailPage({
 
   const look = lookQuery.data;
   const recipe = look.composition_recipe_json;
+  const isPending = look.status === "pending";
+  // Pipeline label: prefer the actual `pipeline_used` once the callback
+  // fills it in, otherwise fall back to the preference stored on the recipe
+  // at insert time (proxy sets `pipeline_preference` even for pending rows).
+  const pipelinePreference = (recipe as any)?.pipeline_preference as
+    | string
+    | undefined;
+  const pipelineLabel =
+    look.pipeline_used ??
+    (pipelinePreference ? `${pipelinePreference} · pending` : null);
 
   return (
     <>
@@ -218,7 +228,7 @@ export default function LookDetailPage({
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Pipeline</span>
-                    <span className="font-mono text-[10px]">{look.pipeline_used ?? "—"}</span>
+                    <span className="font-mono text-[10px]">{pipelineLabel ?? "—"}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">Cost</span>
@@ -259,6 +269,13 @@ export default function LookDetailPage({
               <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Status
               </h2>
+              {isPending && (
+                <p className="flex items-start gap-1.5 rounded-sm bg-muted/40 px-2 py-1.5 text-[11px] leading-snug text-muted-foreground">
+                  <Loader2 className="mt-0.5 h-3 w-3 shrink-0 animate-spin" />
+                  Generating — these actions will become available when the
+                  look completes.
+                </p>
+              )}
               <div className="flex flex-col gap-2">
                 <Button
                   size="sm"
@@ -276,6 +293,7 @@ export default function LookDetailPage({
                     }
                   }}
                   disabled={
+                    isPending ||
                     look.status === "approved" ||
                     look.status === "locked" ||
                     update.isPending
@@ -295,7 +313,7 @@ export default function LookDetailPage({
                       toast.error(err instanceof Error ? err.message : "Lock failed");
                     }
                   }}
-                  disabled={look.status === "locked" || lock.isPending}
+                  disabled={isPending || look.status === "locked" || lock.isPending}
                 >
                   <Lock className="mr-1.5 h-3.5 w-3.5" />
                   Lock as primary
@@ -315,7 +333,7 @@ export default function LookDetailPage({
                       toast.error(err instanceof Error ? err.message : "Archive failed");
                     }
                   }}
-                  disabled={look.status === "archived" || update.isPending}
+                  disabled={isPending || look.status === "archived" || update.isPending}
                 >
                   <Archive className="mr-1.5 h-3.5 w-3.5" />
                   Archive
