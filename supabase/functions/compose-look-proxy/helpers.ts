@@ -30,6 +30,50 @@ export type PipelineMode =
   | "kontext_multi"
   | "lora_idm_vton";
 
+// VTON chain order: bottoms first, then inner top, then outerwear last so the
+// jacket overlays with full context of shirt + pants underneath.
+const WARDROBE_VTON_ORDER: Record<string, number> = {
+  wardrobe_bottom: 0,
+  wardrobe_top: 1,
+  wardrobe_outerwear: 2,
+  wardrobe_footwear: 3,
+  wardrobe_accessory: 4,
+};
+
+export function sortWardrobeForVtonChain<T extends { feature_type: string }>(
+  items: T[],
+): T[] {
+  return [...items].sort(
+    (a, b) =>
+      (WARDROBE_VTON_ORDER[a.feature_type] ?? 99) -
+      (WARDROBE_VTON_ORDER[b.feature_type] ?? 99),
+  );
+}
+
+/** Narrow Seedream brief for jewelry/eyewear polish only — no wardrobe rules. */
+export function buildJewelryPolishPrompt(
+  jewelryLabels: string[],
+  eyewearField: string | null | undefined,
+): string {
+  const labels = jewelryLabels.filter(Boolean);
+  const parts: string[] = [
+    "Apply only the eyewear or jewelry shown in the reference image(s) to the subject.",
+  ];
+  if (labels.length > 0) {
+    parts.push(`Items: ${labels.join(", ")}.`);
+  }
+  const eyewear = typeof eyewearField === "string" ? eyewearField.trim() : "";
+  if (eyewear) {
+    parts.push(`Eyewear detail: ${eyewear.replace(/\.+$/, "")}.`);
+  }
+  parts.push(
+    "Preserve face shape, skin, hair, beard, body, clothing, pose, and background exactly.",
+    "Change ONLY the jewelry or eyewear on the subject — do not alter garment length, closure, or fit.",
+    "CRITICAL: if the item is glasses, lenses must be CLEAR prescription — transparent, not tinted, not sunglasses, not dark, not mirrored. The wearer's eyes must be fully visible through the lenses.",
+  );
+  return parts.join(" ");
+}
+
 // ---------------------------------------------------------------------------
 // buildIdentityPreamble
 //

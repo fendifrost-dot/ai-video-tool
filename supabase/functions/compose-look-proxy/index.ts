@@ -28,7 +28,9 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   buildIdentityPreamble,
+  buildJewelryPolishPrompt,
   defaultLookName,
+  sortWardrobeForVtonChain,
   type PipelineMode,
   sniffMime,
 } from "./helpers.ts";
@@ -334,18 +336,19 @@ serve(async (req) => {
     "Do not add any tattoos, logos, text, or graphic prints to clothing. " +
     "Do not invent new tattoos on the subject's body. " +
     "Render the wardrobe items exactly as the reference photos show, without graphic additions.";
-  // Anti-crop cue — Round 2. The wardrobe_rules paragraph in the preamble
-  // tells Seedream not to crop, but Seedream still anchors on the visual
-  // silhouette of the reference photo (which is often product-cropped) and
-  // produces a short-bodied jacket. This is a more imperative, anatomically
-  // specific override: name the navel as the anchor point, prohibit the
-  // short-bodied/crop interpretation in language that doesn't rely on the
-  // model interpreting "natural waist" loosely.
-  const antiCropCue =
-    "CRITICAL: Render this jacket extending fully to the natural waist line at minimum, " +
-    "with the hem clearly visible AT OR BELOW the navel and FULLY COVERING the waistband of any pants. " +
-    "Do NOT crop the hem above the navel. Do NOT render a short-bodied or crop-style version. " +
-    "The reference photo's apparent length is not the target length — render the full intended silhouette.";
+  // Anti-crop cue — only when an outerwear/top with fit dimensions is picked.
+  // Omit for pants-only / footwear-only runs so Seedream isn't pushed to
+  // reinterpret non-jacket garments.
+  const hasOuterTopWithDimensions = wearingClothingFeatures.some((w) =>
+    (w.feature_type === "wardrobe_outerwear" || w.feature_type === "wardrobe_top") &&
+    (w.dimensions_description ?? "").trim().length > 0
+  );
+  const antiCropCue = hasOuterTopWithDimensions
+    ? "CRITICAL: Render this jacket extending fully to the natural waist line at minimum, " +
+      "with the hem clearly visible AT OR BELOW the navel and FULLY COVERING the waistband of any pants. " +
+      "Do NOT crop the hem above the navel. Do NOT render a short-bodied or crop-style version. " +
+      "The reference photo's apparent length is not the target length — render the full intended silhouette."
+    : "";
   // Clear-lens cue — Round 5. Repeated at the very tail of compose_prompt
   // because Seedream regressed to tinted/sunglasses in the top-only and
   // bottom-only smoke tests, even with the eyewear LOCK in LOCKED ATTRIBUTES.
@@ -479,7 +482,13 @@ serve(async (req) => {
     signed_url: string;
     dimensions_description?: string | null;
   }> = [];
-  for (const w of wardrobeFeatures) {
+  const jewelryPolishPrompt = jewelryFeatures.length > 0
+    ? buildJewelryPolishPrompt(
+      jewelryFeatures.map((j) => j.label),
+      typeof identity.eyewear === "string" ? identity.eyewear : null,
+    )
+    : null;
+  for (const w of sortWardrobeForVtonChain(wardrobeFeatures)) {
     // Pick the front-most reference image: first entry in reference_images,
     // fallback to the legacy storage_path / file_url pair.
     let frontPath: string | null = null;
@@ -524,6 +533,7 @@ serve(async (req) => {
     base_prompt_user: userBasePrompt,
     identity_preamble: identityPreamble || null,
     compose_prompt: composeWithFitDetails,
+    jewelry_polish_prompt: jewelryPolishPrompt,
     fit_details_block: fitDetailsBlock || null,
     styling_notes: body.stylingNotes ?? null,
     lora_url: loraUrl,
@@ -592,7 +602,11 @@ serve(async (req) => {
       jewelryFeatureIds: body.jewelryFeatureIds ?? [],
       locationId: body.locationId ?? undefined,
       propIds: body.propIds ?? [],
-      basePrompt: composeWithFitDetails,
+      // Stage 1 (FLUX LoRA): tattoos + full identity preamble.
+      basePrompt: compiledBasePrompt,
+      // Stage 2 (Seedream / polish): tattoo-stripped compose brief.
+      composePrompt: composeWithFitDetails,
+      jewelryPolishPrompt: jewelryPolishPrompt ?? undefined,
       stylingNotes: body.stylingNotes ?? null,
       pipelinePreference: body.pipelinePreference ?? "auto",
       wardrobeLabels: wardrobeFeatures.map((f) => f.label),
