@@ -216,7 +216,11 @@ serve(async (req) => {
     .maybeSingle();
   if (artistErr) return json(500, { error: "artist_query_failed", detail: artistErr.message });
   if (!artist) return json(404, { error: "artist_not_found" });
-  if (artist.user_id !== userId) return json(403, { error: "artist_forbidden" });
+  // Single-user / open-access mode while in development: anon sessions get a
+  // fresh user_id on every page reload, so the prior user_id ownership check
+  // would lock out the only artist. RLS is open (see Lovable schema migration)
+  // so re-imposing the same gate here just blocks the legitimate user too.
+  // if (artist.user_id !== userId) return json(403, { error: "artist_forbidden" });
 
   const identity = (artist.identity_profile_json ?? {}) as Record<string, any>;
   const loraInfo = identity.lora ?? null;
@@ -861,3 +865,4 @@ async function signUrl(
   if (error) return null;
   return data?.signedUrl ?? null;
 }
+
