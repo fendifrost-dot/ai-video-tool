@@ -29,7 +29,8 @@ export type LookPipeline =
   | "lora_seedream"
   | "seedream_only"
   | "kontext_multi"
-  | "lora_idm_vton";
+  | "lora_idm_vton"
+  | "lora_segmented_inpaint";
 
 export type CompositionRecipe = {
   face_feature_id: string | null;
@@ -267,7 +268,7 @@ export type ComposeLookInput = {
   propIds?: string[];
   basePrompt: string;
   stylingNotes?: string;
-  pipelinePreference?: "auto" | "lora_seedream" | "seedream_only" | "kontext_multi" | "lora_idm_vton";
+  pipelinePreference?: "auto" | "lora_seedream" | "seedream_only" | "kontext_multi" | "lora_idm_vton" | "lora_segmented_inpaint";
   parentLookId?: string;
   name?: string;
 };
@@ -438,7 +439,7 @@ export function formatCost(cents: number): string {
 }
 
 export function pipelineEstimateCents(
-  pref: "auto" | "lora_seedream" | "seedream_only" | "kontext_multi" | "lora_idm_vton" | null | undefined,
+  pref: "auto" | "lora_seedream" | "seedream_only" | "kontext_multi" | "lora_idm_vton" | "lora_segmented_inpaint" | null | undefined,
   hasLora: boolean,
 ): number {
   const mode = pref === "auto" || !pref ? (hasLora ? "lora_seedream" : "seedream_only") : pref;
@@ -448,5 +449,7 @@ export function pipelineEstimateCents(
   // pick 1–2 VTON-eligible wardrobe items, so estimate at 15c (covers up
   // to two garments comfortably; underestimates slightly if 3+ picks).
   if (mode === "lora_idm_vton") return 15;
+  // LoRA + SAM-3 per garment + FLUX fill + jewelry polish (~$0.35–0.45).
+  if (mode === "lora_segmented_inpaint") return 39;
   return 5;
 }

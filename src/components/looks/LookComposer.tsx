@@ -52,6 +52,7 @@ const PIPELINE_LABELS = {
   seedream_only: "Seedream only",
   kontext_multi: "Kontext multi-image",
   lora_idm_vton: "LoRA + IDM-VTON (experimental)",
+  lora_segmented_inpaint: "LoRA + segmented inpaint (experimental)",
 } as const;
 
 // One-line plain-English descriptions for each pipeline option — surfaced
@@ -63,6 +64,8 @@ const PIPELINE_DESCRIPTIONS: Record<keyof typeof PIPELINE_LABELS, string> = {
     "Identity LoRA generates a base photo, Seedream overlays wardrobe — fast, sometimes loses garment length",
   lora_idm_vton:
     "Identity LoRA + dedicated virtual try-on model for accurate garment fit and closure",
+  lora_segmented_inpaint:
+    "Identity-locked LoRA base, SAM-3 masks, and regional FLUX fill per garment — best for multi-layer outfits",
   seedream_only:
     "Skip the LoRA step, use only Seedream for editing — cheapest, weaker identity match",
   kontext_multi:
@@ -499,7 +502,7 @@ export function LookComposer({
                       <div className="flex flex-col gap-0.5 py-0.5">
                         <span>
                           {v}
-                          {(k === "lora_seedream" || k === "lora_idm_vton") && !hasLora && (
+                          {(k === "lora_seedream" || k === "lora_idm_vton" || k === "lora_segmented_inpaint") && !hasLora && (
                             <span className="ml-1 text-[10px] text-muted-foreground">(no LoRA — will downgrade)</span>
                           )}
                         </span>

@@ -98,12 +98,21 @@ const SIGN_TTL_RESULT = 3600;
 //     location   : up to 1 URL  (backdrop frame)
 //     props      : 0 URLs by default (room only if categories above don't fill)
 //
-// The cap is a HARD 4. If face is absent (artist has no locked face but a
-// LoRA), we re-flow its slot into wardrobe. Props fill any remaining slot
-// last. Within a category, items get one URL each (front view) before any
-// item gets a second angle — keeps the pick set diverse rather than
-// over-weighting one item's gallery.
-const HARD_CAP = 4;
+// Default signed-URL cap for Seedream / Kontext compose passes.
+const HARD_CAP_DEFAULT = 4;
+// lora_seedream spike: Seedream v4 edit accepts up to 10 refs; use 8 so
+// multi-garment looks can pass one ref per picked item (+ LoRA base in CC).
+const HARD_CAP_LORA_SEEDREAM = 8;
+
+function inputSignedUrlCap(pipelinePreference?: PipelineMode): number {
+  if (
+    pipelinePreference === "lora_seedream" ||
+    pipelinePreference === "lora_segmented_inpaint"
+  ) {
+    return HARD_CAP_LORA_SEEDREAM;
+  }
+  return HARD_CAP_DEFAULT;
+}
 
 /**
  * Pick up to `budget` storage paths from a set of resolved features. Round-
@@ -368,6 +377,8 @@ serve(async (req) => {
     .filter((s) => s && s.length > 0)
     .join("\n\n");
 
+  const hardCap = inputSignedUrlCap(body.pipelinePreference);
+
   const locationFeature = body.locationId
     ? await resolveLibraryItem(admin, "location_library", body.locationId, userId, "location-refs")
     : null;
@@ -390,11 +401,11 @@ serve(async (req) => {
   const locationBudget = locationFeature ? 1 : 0;
   let wardrobeBudget = Math.max(
     0,
-    HARD_CAP - faceBudget - jewelryBudget - locationBudget,
+    hardCap - faceBudget - jewelryBudget - locationBudget,
   );
   // Wardrobe still needs a floor of 1 if there are wardrobe picks at all.
-  // Without this, a face+jewelry+location+1-wardrobe pick set with HARD_CAP=4
-  // would zero out wardrobe — but wardrobe is required by the body schema.
+  // Without this, a face+jewelry+location+1-wardrobe pick set would zero out
+  // wardrobe — but wardrobe is required by the body schema.
   if (wardrobeFeatures.length > 0 && wardrobeBudget < 1) {
     wardrobeBudget = 1;
   }
@@ -410,7 +421,7 @@ serve(async (req) => {
     locationBudget;
   const propsBudget = Math.max(
     0,
-    Math.min(HARD_CAP - used, sumAvailable(propsFeatures)),
+    Math.min(hardCap - used, sumAvailable(propsFeatures)),
   );
 
   // ---- pick storage paths per category, then sign ------------------
@@ -460,7 +471,7 @@ serve(async (req) => {
     jewelryUrls,
     location: { current: locationUrl ? 1 : 0 },
     propUrls,
-    hardCap: HARD_CAP,
+    hardCap,
   });
 
   // ---- wardrobeItems passthrough for lora_idm_vton ------------------
@@ -555,7 +566,7 @@ serve(async (req) => {
       jewelry: jewelryBudget,
       location: locationBudget,
       props: propsBudget,
-      hardCap: HARD_CAP,
+      hardCap,
     },
   };
 
