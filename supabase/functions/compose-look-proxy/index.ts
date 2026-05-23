@@ -433,13 +433,13 @@ serve(async (req) => {
     ? faceFeature.storage_path ?? faceFeature.file_url
     : null;
   const faceUrl = facePath && faceBudget > 0
-    ? await signUrl(userClient, faceFeature!.bucket, facePath, SIGN_TTL_INPUT)
+    ? await signUrl(admin, faceFeature!.bucket, facePath, SIGN_TTL_INPUT)
     : null;
 
   const wardrobePaths = pickPathsForCategory(wardrobeFeatures, wardrobeBudget);
   const wardrobeUrls: string[] = [];
   for (const p of wardrobePaths) {
-    const u = await signUrl(userClient, "wardrobe-refs", p, SIGN_TTL_INPUT);
+    const u = await signUrl(admin, "wardrobe-refs", p, SIGN_TTL_INPUT);
     if (u) wardrobeUrls.push(u);
   }
 
@@ -447,7 +447,7 @@ serve(async (req) => {
   const jewelryUrls: string[] = [];
   for (const p of jewelryPaths) {
     // Jewelry features live in artist-assets (see resolveFeatures).
-    const u = await signUrl(userClient, "artist-assets", p, SIGN_TTL_INPUT);
+    const u = await signUrl(admin, "artist-assets", p, SIGN_TTL_INPUT);
     if (u) jewelryUrls.push(u);
   }
 
@@ -455,13 +455,13 @@ serve(async (req) => {
     ? locationFeature.storage_path ?? locationFeature.file_url
     : null;
   const locationUrl = locationPath && locationBudget > 0
-    ? await signUrl(userClient, locationFeature!.bucket, locationPath, SIGN_TTL_INPUT)
+    ? await signUrl(admin, locationFeature!.bucket, locationPath, SIGN_TTL_INPUT)
     : null;
 
   const propPaths = pickPathsForCategory(propsFeatures, propsBudget);
   const propUrls: string[] = [];
   for (const p of propPaths) {
-    const u = await signUrl(userClient, "prop-refs", p, SIGN_TTL_INPUT);
+    const u = await signUrl(admin, "prop-refs", p, SIGN_TTL_INPUT);
     if (u) propUrls.push(u);
   }
 
@@ -513,7 +513,7 @@ serve(async (req) => {
     }
     if (!frontPath) frontPath = w.storage_path ?? w.file_url ?? null;
     if (!frontPath) continue;
-    const signed = await signUrl(userClient, w.bucket, frontPath, SIGN_TTL_INPUT);
+    const signed = await signUrl(admin, w.bucket, frontPath, SIGN_TTL_INPUT);
     if (!signed) continue;
     wardrobeItemsPayload.push({
       feature_type: w.feature_type,
@@ -865,4 +865,5 @@ async function signUrl(
   if (error) return null;
   return data?.signedUrl ?? null;
 }
+
 
