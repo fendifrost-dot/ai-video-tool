@@ -7,3 +7,9 @@ project_id = "qoyxgnkvjukovkrvdaiq"
 # so Supabase doesn't reject CC's requests at the platform layer.
 [functions.compose-look-callback]
 verify_jwt = false
+
+[functions.train-style-lora-proxy]
+verify_jwt = false
+
+[functions.train-style-lora-callback]
+verify_jwt = false

@@ -5,7 +5,8 @@ export type StorageBucket =
   | "project-audio"
   | "project-references"
   | "project-clips"
-  | "project-exports";
+  | "project-exports"
+  | "style-references";
 
 /**
  * Build the canonical storage path for a bucket. The first segment MUST be the

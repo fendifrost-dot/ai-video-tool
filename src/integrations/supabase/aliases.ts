@@ -62,6 +62,12 @@ export type ShotType = Enums<"shot_type">;
  * `artists.identity_profile_json`. All fields are optional — the UI lets the
  * user fill in whichever apply.
  */
+export type ArtistLoraInfo = {
+  url?: string;
+  trigger?: string;
+  trigger_word?: string;
+};
+
 export type ArtistIdentityProfile = {
   face?: string;
   body?: string;
@@ -71,4 +77,15 @@ export type ArtistIdentityProfile = {
   jewelry?: string;
   wardrobe_defaults?: string;
   distinguishing_features?: string;
+  lora?: ArtistLoraInfo;
+  lora_legacy_face?: ArtistLoraInfo;
+  style_lora_training?: {
+    status?: "pending" | "complete" | "failed";
+    started_at?: string;
+    completed_at?: string;
+    error?: string;
+    image_count?: number;
+    trigger_word?: string;
+    lora_url?: string;
+  };
 };
