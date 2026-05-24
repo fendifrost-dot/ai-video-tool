@@ -133,13 +133,13 @@ export function ArtistIdentityForm({ artist }: { artist: Artist }) {
                 <Textarea
                   rows={3}
                   placeholder={f.placeholder}
-                  value={state.identity[f.key] ?? ""}
+                  value={(state.identity[f.key] as string | undefined) ?? ""}
                   onChange={(e) => setIdentity(f.key, e.target.value)}
                 />
               ) : (
                 <Input
                   placeholder={f.placeholder}
-                  value={state.identity[f.key] ?? ""}
+                  value={(state.identity[f.key] as string | undefined) ?? ""}
                   onChange={(e) => setIdentity(f.key, e.target.value)}
                 />
               )}

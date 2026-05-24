@@ -6,9 +6,9 @@ import {
 import { supabase } from "@/lib/supabase";
 import {
   buildPrimaryReferenceImage,
-  characterFeaturesKeys,
   normaliseReferenceImages,
-} from "./characterFeatures";
+} from "./referenceImages";
+import { characterFeaturesKeys } from "./characterFeatures";
 import { artistsKeys } from "./artists";
 
 export type StyleReferenceItem = {
