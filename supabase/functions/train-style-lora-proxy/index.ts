@@ -1,4 +1,10 @@
 // AVT — start personal style LoRA training (Fal flux-lora-fast-training via CC)
+//
+// Webhook flow: builds callback URL with ?artist_id=<id>, forwards it to CC
+// as `callback_url`. CC submits to Fal with fal_webhook and returns
+// `{ status: 'queued', request_id }`. We persist the request_id onto the
+// artist row so the UI can show which Fal job is in flight. Fal POSTs the
+// finished result directly to train-style-lora-callback.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -171,6 +177,45 @@ serve(async (req) => {
         const text = await ccResp.text().catch(() => "");
         throw new Error(`cc_submit_${ccResp.status}: ${text.slice(0, 300)}`);
       }
+
+      // Persist request_id so the UI can show which Fal job is in flight.
+      let requestId: string | undefined;
+      try {
+        const ccJson = await ccResp.json();
+        if (typeof ccJson?.request_id === "string") {
+          requestId = ccJson.request_id;
+        }
+      } catch {
+        // ignore — request_id is nice-to-have, not required
+      }
+
+      // Re-read the row before merging in case anything else touched it.
+      const { data: cur } = await admin
+        .from("artists")
+        .select("identity_profile_json")
+        .eq("id", artistId)
+        .maybeSingle();
+      const curIdentity =
+        (cur?.identity_profile_json ?? nextIdentity) as Record<string, unknown>;
+      const curTraining =
+        (curIdentity.style_lora_training ?? {}) as Record<string, unknown>;
+
+      const mergedIdentity = {
+        ...curIdentity,
+        style_lora_training: {
+          ...curTraining,
+          status: curTraining.status ?? "pending",
+          request_id: requestId ?? curTraining.request_id,
+          zip_url: zipPublicUrl,
+          callback_url: callbackUrl,
+          submitted_at: new Date().toISOString(),
+        },
+      };
+
+      await admin
+        .from("artists")
+        .update({ identity_profile_json: mergedIdentity })
+        .eq("id", artistId);
     } catch (err) {
       const failIdentity = {
         ...nextIdentity,
