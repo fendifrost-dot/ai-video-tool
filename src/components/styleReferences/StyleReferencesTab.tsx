@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AlertCircle, CheckCircle2, Images, Loader2, RotateCw, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { uploadToBucket } from "@/lib/storage";
 import { normalizeImageForUpload } from "@/lib/image-normalize";
 import type { Artist } from "@/integrations/supabase/aliases";
+import { useArtist } from "@/lib/queries/artists";
 import {
   styleReferencePublicUrl,
   useCreateStyleReference,
@@ -25,7 +26,17 @@ function parseIdentityTraining(artist: Artist) {
   return training;
 }
 
-export function StyleReferencesTab({ artist }: { artist: Artist }) {
+function trainingElapsedMinutes(startedAt?: string): number | null {
+  if (!startedAt) return null;
+  const ms = Date.now() - Date.parse(startedAt);
+  if (Number.isNaN(ms) || ms < 0) return null;
+  return Math.floor(ms / 60_000);
+}
+
+export function StyleReferencesTab({ artist: initialArtist }: { artist: Artist }) {
+  const artistQuery = useArtist(initialArtist.id);
+  const artist = artistQuery.data ?? initialArtist;
+  const refetchArtist = artistQuery.refetch;
   const query = useStyleReferences(artist.id);
   const items = useMemo(() => query.data ?? [], [query.data]);
   const create = useCreateStyleReference();
@@ -47,6 +58,31 @@ export function StyleReferencesTab({ artist }: { artist: Artist }) {
 
   const training = parseIdentityTraining(artist);
   const trainingPending = training?.status === "pending";
+  const trainingStartedAt =
+    typeof training?.started_at === "string" ? training.started_at : undefined;
+  const elapsedMin = trainingElapsedMinutes(trainingStartedAt);
+  const prevTrainingStatus = useRef<string | undefined>(training?.status);
+
+  useEffect(() => {
+    const status = training?.status;
+    const prev = prevTrainingStatus.current;
+    if (prev === "pending" && status === "complete") {
+      toast.success(`Style LoRA ready — trigger ${STYLE_LORA_TRIGGER}`);
+    } else if (prev === "pending" && status === "failed") {
+      toast.error(
+        `Style LoRA training failed: ${String(training?.error ?? "unknown")}`,
+      );
+    }
+    prevTrainingStatus.current = status;
+  }, [training?.status, training?.error]);
+
+  useEffect(() => {
+    if (!trainingPending) return;
+    const id = window.setInterval(() => {
+      void refetchArtist();
+    }, 5000);
+    return () => window.clearInterval(id);
+  }, [trainingPending, refetchArtist]);
 
   const selectedItems = useMemo(
     () => items.filter((it) => selected.has(it.id)),
@@ -194,7 +230,12 @@ export function StyleReferencesTab({ artist }: { artist: Artist }) {
       });
       toast.success("Style LoRA training started — this takes a few minutes");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Training failed to start");
+      const msg = err instanceof Error ? err.message : "Training failed to start";
+      if (msg.includes("already_training")) {
+        toast.error("Style LoRA training is already in progress");
+      } else {
+        toast.error(msg);
+      }
     }
   }
 
@@ -312,7 +353,10 @@ export function StyleReferencesTab({ artist }: { artist: Artist }) {
 
       {trainingPending && (
         <div className="rounded-md border border-primary/30 bg-primary/5 p-4 text-sm">
-          Training style LoRA ({STYLE_LORA_TRIGGER})… usually 2–3 minutes. Refresh when complete.
+          Training style LoRA ({STYLE_LORA_TRIGGER})… usually 2–3 minutes.
+          {elapsedMin != null && elapsedMin > 0
+            ? ` Started ${elapsedMin}m ago — checking for completion.`
+            : " Checking for completion."}
         </div>
       )}
 

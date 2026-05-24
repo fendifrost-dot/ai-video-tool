@@ -6,6 +6,7 @@ import { zipSync } from "https://esm.sh/fflate@0.8.2?target=deno";
 
 const STYLE_LORA_TRIGGER = "FENDIFITS";
 const MIN_IMAGES = 4;
+const TRAINING_COOLDOWN_MS = 30 * 60 * 1000;
 
 type Body = {
   artistId?: string;
@@ -93,6 +94,20 @@ serve(async (req) => {
   if (!artist) return json(404, { error: "artist_not_found" });
 
   const identity = (artist.identity_profile_json ?? {}) as Record<string, unknown>;
+  const existingTraining = identity.style_lora_training as
+    | { status?: string; started_at?: string }
+    | undefined;
+  if (
+    existingTraining?.status === "pending" &&
+    existingTraining.started_at &&
+    Date.now() - Date.parse(existingTraining.started_at) < TRAINING_COOLDOWN_MS
+  ) {
+    return json(409, {
+      error: "already_training",
+      detail: "Style LoRA training is already in progress",
+    });
+  }
+
   const nextIdentity = {
     ...identity,
     style_lora_training: {
