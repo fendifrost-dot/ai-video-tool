@@ -35,7 +35,6 @@ function sanitizeSegment(segment: string): string {
 // step with explicit deadlines so a hang surfaces as a clear, actionable error
 // rather than an infinite spinner.
 
-const DEFAULT_BYTES_READ_TIMEOUT_MS = 30_000; // File -> ArrayBuffer materialisation
 const DEFAULT_NETWORK_TIMEOUT_MS = 120_000; // PUT/POST to Storage REST
 
 /**
@@ -182,10 +181,20 @@ export async function uploadBytesToBucket(
 // File-based upload — convenience wrapper for browser UI callers
 // =============================================================================
 /**
- * Upload a browser `File` to a bucket. Reads the file into an ArrayBuffer
- * (with timeout) and hands off to `uploadBytesToBucket`. Prefer this for
- * normal drag-and-drop / file-picker flows. For programmatic uploads where
- * you already have bytes, use `uploadBytesToBucket` directly.
+ * Upload a browser `File` to a bucket. Streams the File/Blob body directly to
+ * the Storage REST endpoint without materialising it into an ArrayBuffer
+ * first. iOS Safari detaches FileSystem-backed File handles aggressively when
+ * memory is tight (notably during bulk HEIC picks where each heic2any decode
+ * spikes RAM), and any subsequent `.arrayBuffer()` on a detached handle hangs
+ * forever — the 30s timeout we used to wrap that read would fire, but the
+ * rejection could be silently swallowed by callers that batched uploads with
+ * Promise.all, so the UI claimed success while individual files vanished. By
+ * handing the File straight to fetch as the body we sidestep the read entirely;
+ * the browser streams the bytes on demand, and the network timeout is the only
+ * deadline we need.
+ *
+ * The `bytesReadTimeoutMs` option is retained for backwards compatibility but
+ * is ignored — there is no separate read step to time out.
  */
 export async function uploadToBucket(
   bucket: StorageBucket,
@@ -194,22 +203,14 @@ export async function uploadToBucket(
   options?: {
     upsert?: boolean;
     networkTimeoutMs?: number;
-    /** Time allowed for File -> ArrayBuffer materialisation. Default 30s. */
+    /** @deprecated No-op; the File is streamed directly without a separate read step. */
     bytesReadTimeoutMs?: number;
   },
 ): Promise<string> {
-  const bytesReadTimeoutMs = options?.bytesReadTimeoutMs ?? DEFAULT_BYTES_READ_TIMEOUT_MS;
-
-  const buffer = await withTimeout(
-    file.arrayBuffer(),
-    bytesReadTimeoutMs,
-    `Reading "${file.name}" into memory`,
-  );
-
   return uploadBytesToBucket(
     bucket,
     path,
-    buffer,
+    file,
     file.type || "application/octet-stream",
     {
       upsert: options?.upsert,

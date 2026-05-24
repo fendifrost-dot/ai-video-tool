@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Images, Sparkles, Trash2, Upload } from "lucide-react";
+import { AlertCircle, CheckCircle2, Images, Loader2, RotateCw, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -33,10 +33,17 @@ export function StyleReferencesTab({ artist }: { artist: Artist }) {
   const train = useTrainStyleLora();
 
   const fileRef = useRef<HTMLInputElement>(null);
-  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  // Each pending file carries its own status so a per-file failure surfaces in
+  // the UI with a retry path instead of disappearing into an aggregated catch.
+  type PendingStatus =
+    | { kind: "idle" }
+    | { kind: "uploading" }
+    | { kind: "succeeded" }
+    | { kind: "failed"; error: string };
+  type PendingFile = { id: string; file: File; status: PendingStatus };
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({ done: 0, total: 0 });
 
   const training = parseIdentityTraining(artist);
   const trainingPending = training?.status === "pending";
@@ -57,41 +64,102 @@ export function StyleReferencesTab({ artist }: { artist: Artist }) {
 
   function onFilesPicked(files: FileList | null) {
     if (!files?.length) return;
-    setPendingFiles(Array.from(files));
+    setPendingFiles(
+      Array.from(files).map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        status: { kind: "idle" as const },
+      })),
+    );
+  }
+
+  function updateStatus(pendingId: string, status: PendingStatus) {
+    setPendingFiles((list) =>
+      list.map((p) => (p.id === pendingId ? { ...p, status } : p)),
+    );
+  }
+
+  async function uploadOne(entry: PendingFile): Promise<boolean> {
+    updateStatus(entry.id, { kind: "uploading" });
+    try {
+      // normalizeImageForUpload is a pass-through for non-HEIC files and
+      // returns a JPEG File for HEIC/HEIF input. We let any decoder error
+      // bubble up so it surfaces in the per-file status.
+      const file = await normalizeImageForUpload(entry.file);
+      const id = crypto.randomUUID();
+      const path = `${artist.id}/${id}.jpg`;
+      await uploadToBucket("style-references" as any, path, file);
+      await create.mutateAsync({
+        artist_id: artist.id,
+        label:
+          entry.file.name.replace(/\.[^.]+$/, "").slice(0, 60) ||
+          "Style reference",
+        file_url: path,
+        storage_path: path,
+        metadata_json: {
+          original_filename: entry.file.name,
+          size_bytes: file.size,
+          mime_type: file.type,
+        },
+      });
+      updateStatus(entry.id, { kind: "succeeded" });
+      return true;
+    } catch (err) {
+      updateStatus(entry.id, {
+        kind: "failed",
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return false;
+    }
   }
 
   async function commitUpload() {
-    if (pendingFiles.length === 0) return;
+    // Snapshot the entries that still need a run (idle or previously failed).
+    // Succeeded entries are skipped so a retry pass after a partial failure
+    // doesn't double-upload the survivors.
+    const queue = pendingFiles.filter(
+      (p) => p.status.kind === "idle" || p.status.kind === "failed",
+    );
+    if (queue.length === 0) return;
     setUploading(true);
-    setUploadProgress({ done: 0, total: pendingFiles.length });
     try {
-      for (let i = 0; i < pendingFiles.length; i++) {
-        const raw = pendingFiles[i]!;
-        const file = await normalizeImageForUpload(raw);
-        const id = crypto.randomUUID();
-        const path = `${artist.id}/${id}.jpg`;
-        await uploadToBucket("style-references" as any, path, file);
-        await create.mutateAsync({
-          artist_id: artist.id,
-          label: raw.name.replace(/\.[^.]+$/, "").slice(0, 60) || "Style reference",
-          file_url: path,
-          storage_path: path,
-          metadata_json: {
-            original_filename: raw.name,
-            size_bytes: file.size,
-            mime_type: file.type,
-          },
-        });
-        setUploadProgress({ done: i + 1, total: pendingFiles.length });
+      // Promise.allSettled — never let one rejection short-circuit the batch
+      // and never let a rejection vanish. uploadOne never throws (catches
+      // internally) and returns a boolean for the outcome.
+      const outcomes = await Promise.all(queue.map((entry) => uploadOne(entry)));
+      const succeeded = outcomes.filter(Boolean).length;
+      const failed = outcomes.length - succeeded;
+      if (failed === 0) {
+        toast.success(
+          `Uploaded ${succeeded} photo${succeeded === 1 ? "" : "s"}`,
+        );
+      } else if (succeeded === 0) {
+        toast.error(
+          `All ${queue.length} upload${queue.length === 1 ? "" : "s"} failed — tap Retry on each photo`,
+        );
+      } else {
+        toast.error(
+          `${queue.length} selected -> ${succeeded} succeeded, ${failed} failed. Tap Retry on the red ones.`,
+        );
       }
-      toast.success(`Uploaded ${pendingFiles.length} photo${pendingFiles.length === 1 ? "" : "s"}`);
-      setPendingFiles([]);
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Upload failed");
     } finally {
       setUploading(false);
-      setUploadProgress({ done: 0, total: 0 });
     }
+  }
+
+  async function retryOne(pendingId: string) {
+    const entry = pendingFiles.find((p) => p.id === pendingId);
+    if (!entry) return;
+    setUploading(true);
+    try {
+      await uploadOne(entry);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function clearSucceeded() {
+    setPendingFiles((list) => list.filter((p) => p.status.kind !== "succeeded"));
   }
 
   async function handleBulkDelete() {
@@ -168,7 +236,9 @@ export function StyleReferencesTab({ artist }: { artist: Artist }) {
           <Upload className="mr-2 h-5 w-5" />
           Upload from Photos
         </Button>
-        {pendingFiles.length > 0 && (
+        {pendingFiles.some(
+          (p) => p.status.kind === "idle" || p.status.kind === "failed",
+        ) && (
           <Button
             type="button"
             size="lg"
@@ -176,7 +246,23 @@ export function StyleReferencesTab({ artist }: { artist: Artist }) {
             onClick={commitUpload}
             disabled={uploading}
           >
-            Upload {pendingFiles.length} selected
+            Upload {
+              pendingFiles.filter(
+                (p) => p.status.kind === "idle" || p.status.kind === "failed",
+              ).length
+            }{" "}
+            selected
+          </Button>
+        )}
+        {pendingFiles.some((p) => p.status.kind === "succeeded") && !uploading && (
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="min-h-11"
+            onClick={clearSucceeded}
+          >
+            Clear {pendingFiles.filter((p) => p.status.kind === "succeeded").length} done
           </Button>
         )}
         <Button
@@ -209,12 +295,18 @@ export function StyleReferencesTab({ artist }: { artist: Artist }) {
         )}
       </div>
 
-      {uploading && uploadProgress.total > 0 && (
+      {uploading && pendingFiles.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
-            Uploading {uploadProgress.done} of {uploadProgress.total}…
+            Uploading {pendingFiles.filter((p) => p.status.kind === "succeeded").length} of {pendingFiles.length}…
           </p>
-          <Progress value={(uploadProgress.done / uploadProgress.total) * 100} />
+          <Progress
+            value={
+              (pendingFiles.filter((p) => p.status.kind === "succeeded").length /
+                Math.max(pendingFiles.length, 1)) *
+              100
+            }
+          />
         </div>
       )}
 
@@ -239,27 +331,84 @@ export function StyleReferencesTab({ artist }: { artist: Artist }) {
       {pendingFiles.length > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Ready to upload ({pendingFiles.length})
+            Staged ({pendingFiles.length}) — {
+              pendingFiles.filter((p) => p.status.kind === "succeeded").length
+            } done, {
+              pendingFiles.filter((p) => p.status.kind === "failed").length
+            } failed
           </p>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-            {pendingFiles.map((f, idx) => (
-              <div key={`${f.name}-${idx}`} className="relative aspect-[3/4] overflow-hidden rounded-md border">
-                <img
-                  src={URL.createObjectURL(f)}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-                <button
-                  type="button"
-                  className="absolute right-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white"
-                  onClick={() =>
-                    setPendingFiles((list) => list.filter((_, i) => i !== idx))
-                  }
+            {pendingFiles.map((p) => {
+              const status = p.status.kind;
+              const ring =
+                status === "succeeded"
+                  ? "ring-2 ring-emerald-500"
+                  : status === "failed"
+                  ? "ring-2 ring-destructive"
+                  : status === "uploading"
+                  ? "ring-2 ring-primary"
+                  : "";
+              return (
+                <div
+                  key={p.id}
+                  className={`relative aspect-[3/4] overflow-hidden rounded-md border ${ring}`}
                 >
-                  Remove
-                </button>
-              </div>
-            ))}
+                  <img
+                    src={URL.createObjectURL(p.file)}
+                    alt=""
+                    className={`h-full w-full object-cover ${
+                      status === "failed" ? "opacity-50" : ""
+                    }`}
+                  />
+                  {status === "uploading" && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <Loader2 className="h-6 w-6 animate-spin text-white" />
+                    </div>
+                  )}
+                  {status === "succeeded" && (
+                    <div className="absolute right-1 top-1 rounded-full bg-emerald-600 p-0.5 text-white">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </div>
+                  )}
+                  {status === "failed" && (
+                    <>
+                      <div className="absolute right-1 top-1 rounded-full bg-destructive p-0.5 text-white">
+                        <AlertCircle className="h-4 w-4" />
+                      </div>
+                      <div className="absolute inset-x-0 bottom-0 bg-black/70 px-1 py-1">
+                        <p
+                          className="truncate text-[10px] text-white"
+                          title={p.status.kind === "failed" ? p.status.error : undefined}
+                        >
+                          {p.status.kind === "failed" ? p.status.error : ""}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => retryOne(p.id)}
+                          disabled={uploading}
+                          className="mt-1 flex w-full items-center justify-center gap-1 rounded bg-white/90 px-1.5 py-1 text-[10px] font-medium text-black disabled:opacity-50"
+                        >
+                          <RotateCw className="h-3 w-3" /> Retry
+                        </button>
+                      </div>
+                    </>
+                  )}
+                  {(status === "idle" || status === "failed") && !uploading && (
+                    <button
+                      type="button"
+                      className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white"
+                      onClick={() =>
+                        setPendingFiles((list) =>
+                          list.filter((x) => x.id !== p.id),
+                        )
+                      }
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
