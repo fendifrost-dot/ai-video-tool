@@ -1,22 +1,21 @@
 // AVT — start personal style LoRA training (Fal flux-lora-fast-training via CC)
 //
-// Webhook flow: builds callback URL with ?artist_id=<id>, forwards it to CC
-// as `callback_url`. CC submits to Fal with fal_webhook and returns
-// `{ status: 'queued', request_id }`. We persist the request_id onto the
-// artist row so the UI can show which Fal job is in flight. Fal POSTs the
-// finished result directly to train-style-lora-callback.
+// Thin shim: client builds the training zip and uploads to `training-zips`.
+// This handler validates input, guards duplicate runs, marks pending on the
+// artist row, forwards zip_url to CC with callback_url, and persists Fal
+// request_id when CC returns `{ status: 'queued', request_id }`.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { zipSync } from "https://esm.sh/fflate@0.8.2?target=deno";
 
-const STYLE_LORA_TRIGGER = "FENDIFITS";
 const MIN_IMAGES = 4;
 const TRAINING_COOLDOWN_MS = 30 * 60 * 1000;
 
 type Body = {
-  artistId?: string;
-  featureIds?: string[] | null;
+  artist_id?: string;
+  zip_url?: string;
+  trigger_word?: string;
+  image_count?: number;
 };
 
 const corsHeaders = {
@@ -31,10 +30,6 @@ function json(status: number, body: unknown) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
-}
-
-function publicUrl(supabaseUrl: string, path: string): string {
-  return `${supabaseUrl.replace(/\/$/, "")}/storage/v1/object/public/style-references/${path}`;
 }
 
 serve(async (req) => {
@@ -58,38 +53,24 @@ serve(async (req) => {
     return json(400, { error: "invalid_json" });
   }
 
-  const artistId = body.artistId ?? "";
+  const artistId = body.artist_id ?? "";
+  const zipUrl = body.zip_url ?? "";
+  const triggerWord = body.trigger_word ?? "";
+  const imageCount = body.image_count ?? 0;
+
   if (!artistId) return json(400, { error: "missing_artist_id" });
-
-  const admin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: { persistSession: false },
-  });
-
-  let q = admin
-    .from("character_features")
-    .select("id, storage_path, file_url")
-    .eq("artist_id", artistId)
-    .eq("feature_type", "style_reference");
-
-  if (body.featureIds?.length) {
-    q = q.in("id", body.featureIds);
-  }
-
-  const { data: rows, error: fetchErr } = await q;
-  if (fetchErr) return json(500, { error: "fetch_failed", detail: fetchErr.message });
-
-  const paths = (rows ?? [])
-    .map((r: { storage_path: string | null; file_url: string | null }) =>
-      r.storage_path ?? r.file_url
-    )
-    .filter((p: string | null): p is string => !!p);
-
-  if (paths.length < MIN_IMAGES) {
+  if (!zipUrl) return json(400, { error: "missing_zip_url" });
+  if (!triggerWord) return json(400, { error: "missing_trigger_word" });
+  if (imageCount < MIN_IMAGES) {
     return json(400, {
       error: "not_enough_images",
       detail: `Need at least ${MIN_IMAGES} style reference photos`,
     });
   }
+
+  const admin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: { persistSession: false },
+  });
 
   const { data: artist, error: artistErr } = await admin
     .from("artists")
@@ -114,136 +95,95 @@ serve(async (req) => {
     });
   }
 
+  const startedAt = new Date().toISOString();
+  const callbackUrl =
+    `${supabaseUrl.replace(/\/$/, "")}/functions/v1/train-style-lora-callback?artist_id=${artistId}`;
+
   const nextIdentity = {
     ...identity,
     style_lora_training: {
       status: "pending",
-      started_at: new Date().toISOString(),
-      image_count: paths.length,
-      trigger_word: STYLE_LORA_TRIGGER,
+      started_at: startedAt,
+      image_count: imageCount,
+      trigger_word: triggerWord,
+      zip_url: zipUrl,
+      callback_url: callbackUrl,
+    },
+  };
+
+  const { error: pendingErr } = await admin
+    .from("artists")
+    .update({ identity_profile_json: nextIdentity })
+    .eq("id", artistId);
+  if (pendingErr) return json(500, { error: "artist_update_failed" });
+
+  const ccResp = await fetch(ccUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Proxy-Secret": proxySecret,
+    },
+    body: JSON.stringify({
+      images_data_url: zipUrl,
+      trigger_word: triggerWord,
+      is_style: true,
+      callback_url: callbackUrl,
+      artist_id: artistId,
+    }),
+  });
+
+  if (!ccResp.ok) {
+    const text = await ccResp.text().catch(() => "");
+    const failIdentity = {
+      ...nextIdentity,
+      style_lora_training: {
+        status: "failed",
+        started_at: startedAt,
+        completed_at: new Date().toISOString(),
+        error: `cc_submit_${ccResp.status}: ${text.slice(0, 500)}`,
+        image_count: imageCount,
+        trigger_word: triggerWord,
+        zip_url: zipUrl,
+      },
+    };
+    await admin
+      .from("artists")
+      .update({ identity_profile_json: failIdentity })
+      .eq("id", artistId);
+    return json(502, {
+      error: "cc_submit_failed",
+      detail: text.slice(0, 300),
+    });
+  }
+
+  let requestId: string | undefined;
+  try {
+    const ccJson = await ccResp.json();
+    if (typeof ccJson?.request_id === "string") {
+      requestId = ccJson.request_id;
+    }
+  } catch {
+    // request_id is nice-to-have
+  }
+
+  const mergedIdentity = {
+    ...nextIdentity,
+    style_lora_training: {
+      ...(nextIdentity.style_lora_training as Record<string, unknown>),
+      request_id: requestId,
+      submitted_at: new Date().toISOString(),
     },
   };
 
   await admin
     .from("artists")
-    .update({ identity_profile_json: nextIdentity })
+    .update({ identity_profile_json: mergedIdentity })
     .eq("id", artistId);
-
-  const callbackUrl =
-    `${supabaseUrl.replace(/\/$/, "")}/functions/v1/train-style-lora-callback?artist_id=${artistId}`;
-
-  const background = async () => {
-    try {
-      const zipEntries: Record<string, Uint8Array> = {};
-      let idx = 0;
-      for (const path of paths) {
-        const url = publicUrl(supabaseUrl, path);
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error(`fetch_image_${resp.status}:${path}`);
-        const buf = new Uint8Array(await resp.arrayBuffer());
-        const name = `img_${String(idx).padStart(3, "0")}.jpg`;
-        zipEntries[name] = buf;
-        idx++;
-      }
-
-      const zipped = zipSync(zipEntries);
-      const zipPath = `${artistId}/training/${crypto.randomUUID()}.zip`;
-      const { error: upErr } = await admin.storage
-        .from("style-references")
-        .upload(zipPath, zipped, {
-          contentType: "application/zip",
-          upsert: true,
-        });
-      if (upErr) throw new Error(`zip_upload_failed: ${upErr.message}`);
-
-      const zipPublicUrl = publicUrl(supabaseUrl, zipPath);
-
-      const ccResp = await fetch(ccUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Proxy-Secret": proxySecret,
-        },
-        body: JSON.stringify({
-          images_data_url: zipPublicUrl,
-          trigger_word: STYLE_LORA_TRIGGER,
-          is_style: true,
-          callback_url: callbackUrl,
-          artist_id: artistId,
-        }),
-      });
-
-      if (!ccResp.ok) {
-        const text = await ccResp.text().catch(() => "");
-        throw new Error(`cc_submit_${ccResp.status}: ${text.slice(0, 300)}`);
-      }
-
-      // Persist request_id so the UI can show which Fal job is in flight.
-      let requestId: string | undefined;
-      try {
-        const ccJson = await ccResp.json();
-        if (typeof ccJson?.request_id === "string") {
-          requestId = ccJson.request_id;
-        }
-      } catch {
-        // ignore — request_id is nice-to-have, not required
-      }
-
-      // Re-read the row before merging in case anything else touched it.
-      const { data: cur } = await admin
-        .from("artists")
-        .select("identity_profile_json")
-        .eq("id", artistId)
-        .maybeSingle();
-      const curIdentity =
-        (cur?.identity_profile_json ?? nextIdentity) as Record<string, unknown>;
-      const curTraining =
-        (curIdentity.style_lora_training ?? {}) as Record<string, unknown>;
-
-      const mergedIdentity = {
-        ...curIdentity,
-        style_lora_training: {
-          ...curTraining,
-          status: curTraining.status ?? "pending",
-          request_id: requestId ?? curTraining.request_id,
-          zip_url: zipPublicUrl,
-          callback_url: callbackUrl,
-          submitted_at: new Date().toISOString(),
-        },
-      };
-
-      await admin
-        .from("artists")
-        .update({ identity_profile_json: mergedIdentity })
-        .eq("id", artistId);
-    } catch (err) {
-      const failIdentity = {
-        ...nextIdentity,
-        style_lora_training: {
-          status: "failed",
-          completed_at: new Date().toISOString(),
-          error: String(err?.message ?? err).slice(0, 500),
-          image_count: paths.length,
-          trigger_word: STYLE_LORA_TRIGGER,
-        },
-      };
-      await admin
-        .from("artists")
-        .update({ identity_profile_json: failIdentity })
-        .eq("id", artistId);
-    }
-  };
-
-  // @ts-ignore EdgeRuntime.waitUntil
-  if (typeof EdgeRuntime !== "undefined" && EdgeRuntime.waitUntil) {
-    EdgeRuntime.waitUntil(background());
-  } else {
-    background();
-  }
 
   return json(200, {
     status: "training_started",
-    image_count: paths.length,
-    trigger_word: STYLE_LORA_TRIGGER,
+    image_count: imageCount,
+    trigger_word: triggerWord,
+    request_id: requestId,
   });
 });
