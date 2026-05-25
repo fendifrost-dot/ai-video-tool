@@ -151,13 +151,22 @@ export function useTrainStyleLora() {
   return useMutation({
     mutationFn: async ({
       artistId,
-      featureIds,
+      zipUrl,
+      triggerWord,
+      imageCount,
     }: {
       artistId: string;
-      featureIds?: string[];
+      zipUrl: string;
+      triggerWord: string;
+      imageCount: number;
     }) => {
       const { data, error } = await supabase.functions.invoke("train-style-lora-proxy", {
-        body: { artistId, featureIds: featureIds ?? null },
+        body: {
+          artist_id: artistId,
+          zip_url: zipUrl,
+          trigger_word: triggerWord,
+          image_count: imageCount,
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(String(data.error));

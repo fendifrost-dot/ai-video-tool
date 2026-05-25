@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import JSZip from "jszip";
 import { AlertCircle, CheckCircle2, Images, Loader2, RotateCw, Sparkles, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { uploadToBucket } from "@/lib/storage";
 import { normalizeImageForUpload } from "@/lib/image-normalize";
 import type { Artist } from "@/integrations/supabase/aliases";
 import { useArtist } from "@/lib/queries/artists";
+import { supabase } from "@/lib/supabase";
 import {
   styleReferencePublicUrl,
   useCreateStyleReference,
@@ -19,6 +21,31 @@ import {
 
 const MIN_TRAIN_PHOTOS = 4;
 const STYLE_LORA_TRIGGER = "FENDIFITS";
+const TRAINING_ZIPS_BUCKET = "training-zips";
+
+type TrainPrepPhase =
+  | { kind: "fetching"; current: number; total: number }
+  | { kind: "zipping" }
+  | { kind: "uploading" }
+  | { kind: "starting" };
+
+function trainingStorageNotConfiguredMessage(err: unknown): string | null {
+  const statusCode =
+    err && typeof err === "object" && "statusCode" in err
+      ? (err as { statusCode?: number }).statusCode
+      : undefined;
+  const msg = err instanceof Error ? err.message : String(err);
+  const lower = msg.toLowerCase();
+  if (
+    statusCode === 404 ||
+    lower.includes("bucket not found") ||
+    (lower.includes("not found") && lower.includes("bucket")) ||
+    msg.includes("404")
+  ) {
+    return "Training storage not configured yet — ping Claude to create the bucket.";
+  }
+  return null;
+}
 
 function parseIdentityTraining(artist: Artist) {
   const identity = (artist.identity_profile_json ?? {}) as Record<string, unknown>;
@@ -55,6 +82,8 @@ export function StyleReferencesTab({ artist: initialArtist }: { artist: Artist }
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [uploading, setUploading] = useState(false);
+  const [trainPrepPhase, setTrainPrepPhase] = useState<TrainPrepPhase | null>(null);
+  const trainingLocally = trainPrepPhase !== null;
 
   const training = parseIdentityTraining(artist);
   const trainingPending = training?.status === "pending";
@@ -223,19 +252,78 @@ export function StyleReferencesTab({ artist: initialArtist }: { artist: Artist }
       toast.error(`Select at least ${MIN_TRAIN_PHOTOS} photos for training`);
       return;
     }
+
+    const urls = trainSet
+      .map((item) => {
+        const path = item.storage_path ?? item.file_url;
+        return path ? styleReferencePublicUrl(path) : null;
+      })
+      .filter((u): u is string => !!u);
+
+    if (urls.length < MIN_TRAIN_PHOTOS) {
+      toast.error(`Need at least ${MIN_TRAIN_PHOTOS} photos with valid URLs`);
+      return;
+    }
+
+    setTrainPrepPhase({ kind: "fetching", current: 0, total: urls.length });
     try {
+      const blobs: Blob[] = [];
+      for (let i = 0; i < urls.length; i++) {
+        setTrainPrepPhase({ kind: "fetching", current: i + 1, total: urls.length });
+        const resp = await fetch(urls[i]);
+        if (!resp.ok) {
+          throw new Error(`Failed to fetch photo ${i + 1} (${resp.status})`);
+        }
+        blobs.push(await resp.blob());
+      }
+
+      setTrainPrepPhase({ kind: "zipping" });
+      const zip = new JSZip();
+      blobs.forEach((blob, i) => {
+        zip.file(`image_${String(i).padStart(3, "0")}.jpg`, blob);
+      });
+      const zipBlob = await zip.generateAsync({
+        type: "blob",
+        compression: "STORE",
+      });
+
+      setTrainPrepPhase({ kind: "uploading" });
+      const path = `${artist.id}/${Date.now()}.zip`;
+      const { error: uploadError } = await supabase.storage
+        .from(TRAINING_ZIPS_BUCKET)
+        .upload(path, zipBlob, {
+          contentType: "application/zip",
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
+
+      const { data: publicData } = supabase.storage
+        .from(TRAINING_ZIPS_BUCKET)
+        .getPublicUrl(path);
+      const publicUrl = publicData.publicUrl;
+
+      setTrainPrepPhase({ kind: "starting" });
       await train.mutateAsync({
         artistId: artist.id,
-        featureIds: selectedItems.length > 0 ? Array.from(selected) : undefined,
+        zipUrl: publicUrl,
+        triggerWord: STYLE_LORA_TRIGGER,
+        imageCount: blobs.length,
       });
       toast.success("Style LoRA training started — this takes a few minutes");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Training failed to start";
-      if (msg.includes("already_training")) {
-        toast.error("Style LoRA training is already in progress");
+      const storageMsg = trainingStorageNotConfiguredMessage(err);
+      if (storageMsg) {
+        toast.error(storageMsg);
       } else {
-        toast.error(msg);
+        const msg = err instanceof Error ? err.message : "Training failed to start";
+        if (msg.includes("already_training")) {
+          toast.error("Style LoRA training is already in progress");
+        } else {
+          toast.error(msg);
+        }
       }
+    } finally {
+      setTrainPrepPhase(null);
     }
   }
 
@@ -313,7 +401,11 @@ export function StyleReferencesTab({ artist: initialArtist }: { artist: Artist }
           className="min-h-11"
           onClick={handleTrain}
           disabled={
-            items.length < MIN_TRAIN_PHOTOS || train.isPending || trainingPending || uploading
+            items.length < MIN_TRAIN_PHOTOS ||
+            train.isPending ||
+            trainingPending ||
+            uploading ||
+            trainingLocally
           }
         >
           <Sparkles className="mr-2 h-5 w-5" />
@@ -348,6 +440,19 @@ export function StyleReferencesTab({ artist: initialArtist }: { artist: Artist }
               100
             }
           />
+        </div>
+      )}
+
+      {trainPrepPhase && (
+        <div className="rounded-md border border-primary/30 bg-primary/5 p-4 text-sm">
+          {trainPrepPhase.kind === "fetching" && (
+            <>
+              Fetching photos ({trainPrepPhase.current}/{trainPrepPhase.total})…
+            </>
+          )}
+          {trainPrepPhase.kind === "zipping" && <>Zipping…</>}
+          {trainPrepPhase.kind === "uploading" && <>Uploading zip…</>}
+          {trainPrepPhase.kind === "starting" && <>Starting training…</>}
         </div>
       )}
 
