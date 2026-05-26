@@ -94,27 +94,24 @@ export function buildJewelryPolishPrompt(
 //   - forbidden_inaccuracies — those are negatives, separate concern.
 //   - identity.lora — handled via trigger word + lora_url out-of-band.
 //   - identity.jewelry / wardrobe_defaults — per-look refs/labels carry that.
+//   - identity.tattoos — every Fendi outfit fully covers the body (long
+//     sleeves, full jackets), so naming the tattoos in the prompt was
+//     causing two failure modes: (a) shirtless Stage 1 renders where FLUX
+//     felt obligated to display the enumerated tattoos, and (b) Stage 2
+//     inpaint where tattoo wordmarks ("FENDI", "Modest Bear", "Chicago
+//     Blackhawks", "Warrior Blood") bled onto jacket fabric. The
+//     identity_profile_json.tattoos field stays in the DB but is no longer
+//     emitted anywhere in prompt text. The prior BuildIdentityPreambleOptions
+//     {includeTattoos} toggle is removed — there is no longer a stage that
+//     wants tattoo language.
 //   - any "no X" phrasing — never inject negatives that could contradict
-//     positive identity (e.g. "no tattoos" while identity.tattoos lists them).
+//     positive identity.
 // ---------------------------------------------------------------------------
-export type BuildIdentityPreambleOptions = {
-  // When false, omit the tattoos section AND filter any continuity-rules
-  // entries that mention tattoos. Used by the compose_prompt (Stage 2 /
-  // Seedream) builder because Seedream was reading tattoo descriptions —
-  // "FENDI", "Modest Bear", "Chicago Blackhawks", "Warrior Blood" — as
-  // graphic inspiration and painting those wordmarks onto jacket fabric.
-  // Stage 1 (FLUX_LoRA / base_prompt) still needs tattoos to render them on
-  // skin, so the default stays true.
-  includeTattoos?: boolean;
-};
-
 export function buildIdentityPreamble(
   name: string | null | undefined,
   identity: Record<string, unknown> | null | undefined,
   continuityRules: string | null | undefined,
-  options: BuildIdentityPreambleOptions = {},
 ): string {
-  const { includeTattoos = true } = options;
   const id = (identity ?? {}) as Record<string, unknown>;
   const parts: string[] = [];
 
@@ -136,33 +133,11 @@ export function buildIdentityPreamble(
   pushField("Face", id.face);
   pushField("Skin", id.skin);
 
-  // Tattoos: scope explicitly to skin to prevent the model from leaking
-  // tattoo text/imagery onto clothing graphics, jacket wordmarks, etc.
-  // (e.g. a "FENDI" forearm tattoo bleeding onto a YSL jacket chest stripe).
-  //
-  // includeTattoos=false skips this block entirely. The skin-scoping copy
-  // wasn't enough — Seedream was still ingesting the tattoo names as
-  // graphic inspiration. The cleanest fix is to keep the tattoo description
-  // out of compose_prompt and rely on Stage 1 (FLUX_LoRA) to paint the
-  // tattoos on skin, then Stage 2 (Seedream) only sees the rendered pixels
-  // and the wardrobe brief.
-  if (includeTattoos && typeof id.tattoos === "string") {
-    const tattoosRaw = id.tattoos.trim().replace(/\.+$/, "");
-    if (tattoosRaw) {
-      parts.push(
-        `Tattoos located on skin only (forearm and body, never clothing): ${tattoosRaw}.`,
-      );
-      parts.push(
-        `Tattoo text appears only on skin, never as clothing graphics, jacket text, or wardrobe wordmarks.`,
-      );
-      // Coverage rule: a tattoo on a body part isn't visible when a garment
-      // covers that part. Without this, the model paints tattoos on top of
-      // clothing or shows them "through" sleeves — both wrong.
-      parts.push(
-        `Tattoos are visible only on exposed skin. If a garment, jacket, or layer covers the body region (forearm under long sleeves, torso under a shirt, neck under a collar), no tattoo appears on that area. Never paint tattoos onto clothing fabric or through clothing.`,
-      );
-    }
-  }
+  // Tattoos: intentionally NOT emitted. See header comment — every Fendi
+  // outfit covers the body, and naming tattoos here was causing shirtless
+  // Stage 1 renders + tattoo-wordmark bleed onto clothing in Stage 2. The
+  // identity_profile_json.tattoos field stays in the DB but is dropped from
+  // the prompt entirely.
 
   // Eyewear: per-artist frame description (e.g. "Cazal MOD octagonal aviator
   // frames..."). Reference images alone shifted shape ~70% of the way from
@@ -247,11 +222,11 @@ export function buildIdentityPreamble(
       .split(/\r?\n/)
       .map((r) => r.trim().replace(/\.+$/, ""))
       .filter((r) => r.length > 0)
-      // When tattoos are stripped, also drop any continuity entry that
-      // mentions tattoos — otherwise a line like "tattoos must remain
-      // asymmetrical" would still leak the word "tattoo" into compose_prompt
-      // and Seedream would treat it as a presence mandate.
-      .filter((r) => includeTattoos || !/tattoo/i.test(r));
+      // Always drop continuity entries that mention tattoos — they would
+      // re-introduce the word "tattoo" into the prompt and re-trigger the
+      // shirtless / wordmark-bleed failure modes the tattoo-strip refactor
+      // is meant to fix.
+      .filter((r) => !/tattoo/i.test(r));
     if (rules.length > 0) {
       parts.push(`Always-on traits: ${rules.join(", ")}.`);
     }
