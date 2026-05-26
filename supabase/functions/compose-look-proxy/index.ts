@@ -239,23 +239,15 @@ serve(async (req) => {
   // the same `base` param, so prepending here lands the preamble in BOTH
   // Stage 1 (FLUX_LoRA) and Stage 2 (Seedream). See helpers.ts for the
   // intentionally-excluded fields.
+  // Single preamble — Stage 1 and Stage 2 now consume the same identity
+  // text. The prior dual-preamble (tattoo-stripped variant for Stage 2)
+  // was retired: tattoo language is no longer emitted anywhere because
+  // every Fendi outfit covers the body and naming tattoos was causing
+  // shirtless Stage 1 renders + wordmark bleed onto clothing in Stage 2.
   const identityPreamble = buildIdentityPreamble(
     artist.name,
     identity,
     (artist as any).continuity_rules ?? null,
-  );
-  // Compose-prompt variant: same preamble but with tattoos stripped (skin
-  // descriptions + any continuity entries that mention tattoos). Seedream
-  // was reading the tattoo wordmarks ("FENDI", "Modest Bear", "Chicago
-  // Blackhawks", "Warrior Blood") as graphic inspiration and painting them
-  // onto the YSL jacket. Stage 1 (base_prompt) still needs tattoos to
-  // render them on skin; Stage 2 (compose_prompt) does not — it only needs
-  // to know identity + wardrobe rules.
-  const identityPreambleForCompose = buildIdentityPreamble(
-    artist.name,
-    identity,
-    (artist as any).continuity_rules ?? null,
-    { includeTattoos: false },
   );
   const userBasePrompt = body.basePrompt;
   // compiledBasePrompt is finalized after wardrobe features resolve below —
@@ -315,17 +307,6 @@ serve(async (req) => {
     ? `${preambleWithWearing}\n\n${userBasePrompt}`
     : userBasePrompt;
 
-  // Compose-prompt variant of the wearing-line preamble. Same structure as
-  // compiledBasePrompt, but built from the tattoo-stripped preamble so
-  // Seedream never sees tattoo-graphic inspiration.
-  const preambleWithWearingForCompose =
-    [identityPreambleForCompose, wardrobeLengthCue]
-      .filter((s) => s && s.length > 0)
-      .join("\n\n");
-  const compiledBasePromptForCompose = preambleWithWearingForCompose
-    ? `${preambleWithWearingForCompose}\n\n${userBasePrompt}`
-    : userBasePrompt;
-
   // Build a "Garment fit details:" block from each wardrobe item's
   // dimensions_description. Items without a description are skipped. The
   // block is appended to compiledBasePrompt to form composeWithFitDetails,
@@ -340,14 +321,13 @@ serve(async (req) => {
   const fitDetailsBlock = fitLines.length > 0
     ? `Garment fit details:\n${fitLines.join("\n")}`
     : "";
-  // Anti-hallucination cue appended to compose_prompt only. Seedream was
-  // inventing tattoos on visible skin and printing tattoo wordmarks onto
-  // jacket fabric. This is the explicit negative — pair it with the
-  // tattoo-stripped preamble so the model has no inspiration AND a direct
-  // prohibition.
+  // Anti-hallucination cue appended to compose_prompt. Targets stray
+  // logos / text / graphic prints that Seedream sometimes invents on
+  // clothing. Tattoo language is intentionally absent from this cue —
+  // mentioning tattoos (even as a negative) was re-introducing the word
+  // and triggering shirtless renders / wordmark bleed.
   const antiHallucinationCue =
-    "Do not add any tattoos, logos, text, or graphic prints to clothing. " +
-    "Do not invent new tattoos on the subject's body. " +
+    "Do not add any logos, text, or graphic prints to clothing. " +
     "Render the wardrobe items exactly as the reference photos show, without graphic additions.";
   // Anti-crop cue — only when an outerwear/top with fit dimensions is picked.
   // Omit for pants-only / footwear-only runs so Seedream isn't pushed to
@@ -372,7 +352,7 @@ serve(async (req) => {
     "The wearer's eyes must be fully visible through transparent lenses. " +
     "If sunglasses or tinted lenses appear in the output, this is a generation error.";
   const composeWithFitDetails = [
-    compiledBasePromptForCompose,
+    compiledBasePrompt,
     fitDetailsBlock,
     antiCropCue,
     antiHallucinationCue,
@@ -617,9 +597,9 @@ serve(async (req) => {
       jewelryFeatureIds: body.jewelryFeatureIds ?? [],
       locationId: body.locationId ?? undefined,
       propIds: body.propIds ?? [],
-      // Stage 1 (FLUX LoRA): tattoos + full identity preamble.
+      // Stage 1 (FLUX LoRA): identity preamble + wearing-line.
       basePrompt: compiledBasePrompt,
-      // Stage 2 (Seedream / polish): tattoo-stripped compose brief.
+      // Stage 2 (Seedream / polish): same preamble + fit details + cues.
       composePrompt: composeWithFitDetails,
       jewelryPolishPrompt: jewelryPolishPrompt ?? undefined,
       stylingNotes: body.stylingNotes ?? null,
