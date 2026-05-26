@@ -589,6 +589,18 @@ serve(async (req) => {
   // writing into artist_looks.
   const callbackUrl =
     `${supabaseUrl.replace(/\/$/, "")}/functions/v1/compose-look-callback?look_id=${lookId}`;
+
+  // Canonical-base architecture: when the artist has a locked identity image
+  // saved at identity_profile_json.canonical_base_image_url, forward it to
+  // CC. CC's lora_segmented_inpaint pipeline will skip the probabilistic
+  // Stage 1 FLUX_LoRA call and use this image directly as the canvas. The
+  // wardrobe inpaint stages then operate on a stable identity, eliminating
+  // per-look face/body drift.
+  const canonicalBaseImageUrl =
+    typeof (identity as Record<string, unknown>).canonical_base_image_url === "string"
+      ? ((identity as Record<string, unknown>).canonical_base_image_url as string).trim() || null
+      : null;
+
   const ccPayload = {
     recipe: {
       artistId: body.artistId,
@@ -610,6 +622,7 @@ serve(async (req) => {
       hasLocation: !!locationFeature,
       hasFace: !!faceFeature,
       propCount: propsFeatures.length,
+      canonicalBaseImageUrl: canonicalBaseImageUrl ?? undefined,
     },
     signedUrls: {
       face: faceUrl,
