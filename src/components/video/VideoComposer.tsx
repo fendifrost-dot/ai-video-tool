@@ -1,15 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import type { ProviderName } from "@/integrations/supabase/aliases";
 import type { Look } from "@/lib/queries/looks";
-import { useArtistLooks } from "@/lib/queries/looks";
+import {
+  signLookPreviewUrl,
+  useArtistLooks,
+} from "@/lib/queries/looks";
 import {
   useGenerateClip,
   useIngestOnSuccess,
   useJobPoller,
   useProviderJob,
 } from "@/lib/providerJobs/queries";
+import { useProviderCapabilities } from "@/lib/providers/capabilities";
 import { LookSelector } from "@/components/looks/LookSelector";
 import { ProviderSelector } from "@/components/providers/ProviderSelector";
 import { Button } from "@/components/ui/button";
@@ -39,6 +43,66 @@ function byId(items: Look[]) {
   return map;
 }
 
+function parseSubmitError(err: unknown): string {
+  if (!(err instanceof Error)) return "Video generation failed.";
+  const msg = err.message || "Video generation failed.";
+  if (msg.includes("UNAUTHORISED") || msg.toLowerCase().includes("not signed in")) {
+    return "You are not signed in. Please refresh and sign in again.";
+  }
+  if (msg.includes("INVALID_INPUT") || msg.toLowerCase().includes("prompt")) {
+    return "Invalid generation settings. Check prompt, duration, and motion fields.";
+  }
+  if (msg.includes("not supported")) {
+    return "Selected provider is not available for this generation mode.";
+  }
+  return msg;
+}
+
+function JobProgress({
+  status,
+  ingesting,
+  hasAsset,
+}: {
+  status: string;
+  ingesting: boolean;
+  hasAsset: boolean;
+}) {
+  const steps = [
+    { key: "queued", label: "Queued" },
+    { key: "running", label: "Processing" },
+    { key: "ingesting", label: "Ingesting" },
+    { key: "ready", label: "Ready" },
+  ] as const;
+
+  const activeIdx = hasAsset
+    ? 3
+    : ingesting
+      ? 2
+      : status === "running"
+        ? 1
+        : 0;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-medium text-muted-foreground">Progress</p>
+      <div className="grid grid-cols-4 gap-2 text-[11px]">
+        {steps.map((step, idx) => (
+          <div
+            key={step.key}
+            className={
+              idx <= activeIdx
+                ? "rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-emerald-200"
+                : "rounded border border-border bg-card/30 px-2 py-1 text-muted-foreground"
+            }
+          >
+            {step.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function VideoComposer({
   artistId,
   projectId,
@@ -47,6 +111,7 @@ export function VideoComposer({
   projectId: string;
 }) {
   const looksQuery = useArtistLooks(artistId);
+  const capsQuery = useProviderCapabilities();
   const looks = useMemo(() => looksQuery.data ?? [], [looksQuery.data]);
   const looksById = useMemo(() => byId(looks), [looks]);
 
@@ -58,6 +123,8 @@ export function VideoComposer({
   const [cameraMove, setCameraMove] = useState<string>("static");
   const [selectedProvider, setSelectedProvider] = useState<ProviderName>("veo");
   const [promptText, setPromptText] = useState("");
+  const [firstPreviewUrl, setFirstPreviewUrl] = useState<string | null>(null);
+  const [lastPreviewUrl, setLastPreviewUrl] = useState<string | null>(null);
 
   const generate = useGenerateClip();
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
@@ -72,19 +139,76 @@ export function VideoComposer({
     ? looksById.get(lastFrameLookId) ?? null
     : null;
 
+  const providerCap = capsQuery.data?.[selectedProvider] ?? null;
+  const maxDuration = providerCap?.max_duration_seconds ?? 12;
+
+  useEffect(() => {
+    if (duration > maxDuration) {
+      setDuration(maxDuration);
+      toast.info(`Duration clamped to ${maxDuration}s for ${selectedProvider}.`);
+    }
+  }, [duration, maxDuration, selectedProvider]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!firstFrameLook?.generated_storage_path) {
+      setFirstPreviewUrl(firstFrameLook?.generated_image_url ?? null);
+      return;
+    }
+    signLookPreviewUrl(firstFrameLook.generated_storage_path, 3600).then((url) => {
+      if (!cancelled) setFirstPreviewUrl(url ?? firstFrameLook.generated_image_url ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [firstFrameLook]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!lastFrameLook?.generated_storage_path) {
+      setLastPreviewUrl(lastFrameLook?.generated_image_url ?? null);
+      return;
+    }
+    signLookPreviewUrl(lastFrameLook.generated_storage_path, 3600).then((url) => {
+      if (!cancelled) setLastPreviewUrl(url ?? lastFrameLook.generated_image_url ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [lastFrameLook]);
+
   const canSubmit =
     !!firstFrameLook &&
     !generate.isPending &&
     !ingestState.ingesting &&
     promptText.trim().length >= 12;
 
+  const validationWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    if (providerCap?.max_duration_seconds && duration > providerCap.max_duration_seconds) {
+      warnings.push(
+        `Duration ${duration}s exceeds ${selectedProvider} max of ${providerCap.max_duration_seconds}s.`,
+      );
+    }
+    if (
+      firstFrameLook?.generated_storage_path &&
+      providerCap &&
+      !providerCap.supports_reference_image
+    ) {
+      warnings.push(
+        `${selectedProvider} may ignore first-frame image references.`,
+      );
+    }
+    return warnings;
+  }, [providerCap, duration, selectedProvider, firstFrameLook]);
+
   async function handleSubmit() {
     if (!firstFrameLook) {
-      toast.error("Pick a first-frame look");
+      toast.error("Pick a first-frame look.");
       return;
     }
     if (promptText.trim().length < 12) {
-      toast.error("Add a prompt with at least 12 characters");
+      toast.error("Add a prompt with at least 12 characters.");
       return;
     }
     try {
@@ -99,7 +223,7 @@ export function VideoComposer({
         promptText: promptText.trim(),
         mode,
         referenceImagePath: firstFrameLook.generated_storage_path ?? null,
-        duration,
+        duration: Math.min(duration, maxDuration),
         settings: {
           motionStrength,
           cameraMove,
@@ -109,9 +233,9 @@ export function VideoComposer({
         },
       });
       setActiveJobId(result.providerJobRowId);
-      toast.success(`Submitted to ${selectedProvider} (${result.envelope.status})`);
+      toast.success(`Submitted to ${selectedProvider} (${result.envelope.status}).`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Video generation failed");
+      toast.error(parseSubmitError(err));
     }
   }
 
@@ -130,6 +254,14 @@ export function VideoComposer({
           )}
         </Button>
       </div>
+
+      {validationWarnings.length > 0 && (
+        <Card className="space-y-1 border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-200">
+          {validationWarnings.map((warning) => (
+            <p key={warning}>{warning}</p>
+          ))}
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="space-y-4 p-5">
@@ -185,15 +317,43 @@ export function VideoComposer({
             )}
           </div>
 
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">First frame</p>
+              <div className="aspect-video overflow-hidden rounded-md border border-border bg-muted/20">
+                {firstPreviewUrl ? (
+                  <img src={firstPreviewUrl} alt="First frame preview" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="grid h-full place-content-center text-xs text-muted-foreground">No preview</div>
+                )}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">Last frame</p>
+              <div className="aspect-video overflow-hidden rounded-md border border-border bg-muted/20">
+                {lastPreviewUrl ? (
+                  <img src={lastPreviewUrl} alt="Last frame preview" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="grid h-full place-content-center text-xs text-muted-foreground">Optional</div>
+                )}
+              </div>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label>Duration: {duration}s</Label>
             <Slider
               value={[duration]}
               onValueChange={([v]) => setDuration(v)}
               min={3}
-              max={12}
+              max={Math.max(3, maxDuration)}
               step={1}
             />
+            {providerCap?.max_duration_seconds && (
+              <p className="text-xs text-muted-foreground">
+                {selectedProvider} max: {providerCap.max_duration_seconds}s
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -254,11 +414,16 @@ export function VideoComposer({
       </div>
 
       {jobQuery.data && (
-        <Card className="space-y-1 p-4 text-sm">
+        <Card className="space-y-3 p-4 text-sm">
           <p>
             <span className="text-muted-foreground">Job status:</span>{" "}
             <span className="font-medium">{jobQuery.data.status}</span>
           </p>
+          <JobProgress
+            status={jobQuery.data.status}
+            ingesting={ingestState.ingesting}
+            hasAsset={!!jobQuery.data.result_asset_id}
+          />
           {jobQuery.data.error_text && (
             <p className="text-destructive">{jobQuery.data.error_text}</p>
           )}
