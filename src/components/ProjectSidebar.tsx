@@ -7,6 +7,7 @@ import {
   Lock,
   Upload,
   Wand2,
+  Video,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +15,7 @@ const items = [
   { to: "/projects/$id/treatment", label: "Treatment", icon: FileText, key: "treatment" },
   { to: "/projects/$id/shots", label: "Shots", icon: Clapperboard, key: "shots" },
   { to: "/projects/$id/prompt", label: "Prompt", icon: Wand2, key: "prompt" },
+  { to: "/projects/$id/video", label: "Video", icon: Video, key: "video" },
   { to: "/projects/$id/assets", label: "Assets", icon: ImageIcon, key: "assets" },
   { to: "/projects/$id/review", label: "Review", icon: Eye, key: "review" },
   { to: "/projects/$id/continuity", label: "Continuity", icon: Lock, key: "continuity" },
