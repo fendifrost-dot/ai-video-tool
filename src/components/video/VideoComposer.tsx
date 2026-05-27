@@ -10,9 +10,10 @@ import {
   useJobPoller,
   useProviderJob,
 } from "@/lib/providerJobs/queries";
+import { LookSelector } from "@/components/looks/LookSelector";
+import { ProviderSelector } from "@/components/providers/ProviderSelector";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -23,15 +24,6 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
-
-const PROVIDERS: ProviderName[] = [
-  "veo",
-  "higgsfield",
-  "runway",
-  "grok",
-  "pika",
-  "fal",
-];
 
 const CAMERA_MOVE_OPTIONS = [
   { value: "static", label: "Static shot" },
@@ -73,21 +65,18 @@ export function VideoComposer({
   useJobPoller(activeJobId ?? undefined, jobQuery.data);
   const ingestState = useIngestOnSuccess(activeJobId ?? undefined, jobQuery.data);
 
-  const firstFrameLook = firstFrameLookId ? looksById.get(firstFrameLookId) ?? null : null;
-  const lastFrameLook = lastFrameLookId ? looksById.get(lastFrameLookId) ?? null : null;
+  const firstFrameLook = firstFrameLookId
+    ? looksById.get(firstFrameLookId) ?? null
+    : null;
+  const lastFrameLook = lastFrameLookId
+    ? looksById.get(lastFrameLookId) ?? null
+    : null;
 
   const canSubmit =
     !!firstFrameLook &&
     !generate.isPending &&
     !ingestState.ingesting &&
     promptText.trim().length >= 12;
-
-  function toggleLookId(lookId: string, checked: boolean) {
-    setSelectedLookIds((curr) => {
-      if (checked) return curr.includes(lookId) ? curr : [...curr, lookId];
-      return curr.filter((id) => id !== lookId);
-    });
-  }
 
   async function handleSubmit() {
     if (!firstFrameLook) {
@@ -99,7 +88,9 @@ export function VideoComposer({
       return;
     }
     try {
-      const mode = firstFrameLook.generated_storage_path ? "image_to_video" : "text_to_video";
+      const mode = firstFrameLook.generated_storage_path
+        ? "image_to_video"
+        : "text_to_video";
       const result = await generate.mutateAsync({
         provider: selectedProvider,
         projectId,
@@ -150,25 +141,13 @@ export function VideoComposer({
               No looks found for this artist yet.
             </p>
           ) : (
-            <div className="max-h-80 space-y-2 overflow-y-auto pr-1">
-              {looks.map((look) => (
-                <label
-                  key={look.id}
-                  className="flex cursor-pointer items-start gap-2 rounded-md border border-border bg-card/30 px-3 py-2"
-                >
-                  <Checkbox
-                    checked={selectedLookIds.includes(look.id)}
-                    onCheckedChange={(checked) => toggleLookId(look.id, checked === true)}
-                  />
-                  <span className="min-w-0 text-sm">
-                    <span className="block truncate font-medium">{look.name}</span>
-                    <span className="block text-xs text-muted-foreground">
-                      {look.status}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </div>
+            <LookSelector
+              artistId={artistId}
+              selected={looks.filter((look) => selectedLookIds.includes(look.id))}
+              onChange={(next) => setSelectedLookIds(next.map((look) => look.id))}
+              multiSelect
+              placeholder="Select looks for style guidance..."
+            />
           )}
         </Card>
 
@@ -178,42 +157,32 @@ export function VideoComposer({
           </h3>
           <div className="space-y-2">
             <Label>First frame look</Label>
-            <Select
-              value={firstFrameLookId ?? "_none_"}
-              onValueChange={(v) => setFirstFrameLookId(v === "_none_" ? null : v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Choose a look" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_none_">Choose a look</SelectItem>
-                {looks.map((look) => (
-                  <SelectItem key={look.id} value={look.id}>
-                    {look.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <LookSelector
+              artistId={artistId}
+              selected={firstFrameLook ? [firstFrameLook] : []}
+              onChange={(next) => setFirstFrameLookId(next[0]?.id ?? null)}
+              placeholder="Choose a look"
+            />
           </div>
 
           <div className="space-y-2">
             <Label>Last frame look (optional)</Label>
-            <Select
-              value={lastFrameLookId ?? "_none_"}
-              onValueChange={(v) => setLastFrameLookId(v === "_none_" ? null : v)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Optional transition target" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_none_">None</SelectItem>
-                {looks.map((look) => (
-                  <SelectItem key={look.id} value={look.id}>
-                    {look.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <LookSelector
+              artistId={artistId}
+              selected={lastFrameLook ? [lastFrameLook] : []}
+              onChange={(next) => setLastFrameLookId(next[0]?.id ?? null)}
+              placeholder="Optional transition target"
+            />
+            {lastFrameLook && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="px-1 text-xs text-muted-foreground"
+                onClick={() => setLastFrameLookId(null)}
+              >
+                Clear last-frame look
+              </Button>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -245,21 +214,11 @@ export function VideoComposer({
           </h3>
           <div className="space-y-2">
             <Label>Provider</Label>
-            <Select
+            <ProviderSelector
               value={selectedProvider}
-              onValueChange={(v) => setSelectedProvider(v as ProviderName)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PROVIDERS.map((provider) => (
-                  <SelectItem key={provider} value={provider}>
-                    {provider}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={(v) => setSelectedProvider(v as ProviderName)}
+              capabilitiesFilter="video"
+            />
           </div>
 
           <div className="space-y-2">
@@ -287,7 +246,8 @@ export function VideoComposer({
               placeholder="Describe the clip, action, camera language, lighting, and style."
             />
             <p className="text-xs text-muted-foreground">
-              Use at least 12 characters. First-frame look is used as image reference when available.
+              Use at least 12 characters. First-frame look is used as image
+              reference when available.
             </p>
           </div>
         </Card>
