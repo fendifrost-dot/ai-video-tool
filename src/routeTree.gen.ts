@@ -21,6 +21,7 @@ import { Route as ArtistsNewRouteImport } from './routes/artists.new'
 import { Route as ArtistsIdRouteImport } from './routes/artists.$id'
 import { Route as ProjectsIdIndexRouteImport } from './routes/projects.$id.index'
 import { Route as ArtistsIdIndexRouteImport } from './routes/artists.$id.index'
+import { Route as ProjectsIdVideoRouteImport } from './routes/projects.$id.video'
 import { Route as ProjectsIdTreatmentRouteImport } from './routes/projects.$id.treatment'
 import { Route as ProjectsIdShotsRouteImport } from './routes/projects.$id.shots'
 import { Route as ProjectsIdReviewRouteImport } from './routes/projects.$id.review'
@@ -93,6 +94,11 @@ const ArtistsIdIndexRoute = ArtistsIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ArtistsIdRoute,
+} as any)
+const ProjectsIdVideoRoute = ProjectsIdVideoRouteImport.update({
+  id: '/video',
+  path: '/video',
+  getParentRoute: () => ProjectsIdRoute,
 } as any)
 const ProjectsIdTreatmentRoute = ProjectsIdTreatmentRouteImport.update({
   id: '/treatment',
@@ -174,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/projects/$id/review': typeof ProjectsIdReviewRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
+  '/projects/$id/video': typeof ProjectsIdVideoRoute
   '/artists/$id/': typeof ArtistsIdIndexRoute
   '/projects/$id/': typeof ProjectsIdIndexRoute
   '/artists/$id/looks/$lookId': typeof ArtistsIdLooksLookIdRoute
@@ -196,6 +203,7 @@ export interface FileRoutesByTo {
   '/projects/$id/review': typeof ProjectsIdReviewRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
+  '/projects/$id/video': typeof ProjectsIdVideoRoute
   '/artists/$id': typeof ArtistsIdIndexRoute
   '/projects/$id': typeof ProjectsIdIndexRoute
   '/artists/$id/looks/$lookId': typeof ArtistsIdLooksLookIdRoute
@@ -223,6 +231,7 @@ export interface FileRoutesById {
   '/projects/$id/review': typeof ProjectsIdReviewRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
+  '/projects/$id/video': typeof ProjectsIdVideoRoute
   '/artists/$id/': typeof ArtistsIdIndexRoute
   '/projects/$id/': typeof ProjectsIdIndexRoute
   '/artists/$id/looks/$lookId': typeof ArtistsIdLooksLookIdRoute
@@ -251,6 +260,7 @@ export interface FileRouteTypes {
     | '/projects/$id/review'
     | '/projects/$id/shots'
     | '/projects/$id/treatment'
+    | '/projects/$id/video'
     | '/artists/$id/'
     | '/projects/$id/'
     | '/artists/$id/looks/$lookId'
@@ -273,6 +283,7 @@ export interface FileRouteTypes {
     | '/projects/$id/review'
     | '/projects/$id/shots'
     | '/projects/$id/treatment'
+    | '/projects/$id/video'
     | '/artists/$id'
     | '/projects/$id'
     | '/artists/$id/looks/$lookId'
@@ -299,6 +310,7 @@ export interface FileRouteTypes {
     | '/projects/$id/review'
     | '/projects/$id/shots'
     | '/projects/$id/treatment'
+    | '/projects/$id/video'
     | '/artists/$id/'
     | '/projects/$id/'
     | '/artists/$id/looks/$lookId'
@@ -402,6 +414,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/artists/$id/'
       preLoaderRoute: typeof ArtistsIdIndexRouteImport
       parentRoute: typeof ArtistsIdRoute
+    }
+    '/projects/$id/video': {
+      id: '/projects/$id/video'
+      path: '/video'
+      fullPath: '/projects/$id/video'
+      preLoaderRoute: typeof ProjectsIdVideoRouteImport
+      parentRoute: typeof ProjectsIdRoute
     }
     '/projects/$id/treatment': {
       id: '/projects/$id/treatment'
@@ -555,6 +574,7 @@ interface ProjectsIdRouteChildren {
   ProjectsIdReviewRoute: typeof ProjectsIdReviewRoute
   ProjectsIdShotsRoute: typeof ProjectsIdShotsRouteWithChildren
   ProjectsIdTreatmentRoute: typeof ProjectsIdTreatmentRoute
+  ProjectsIdVideoRoute: typeof ProjectsIdVideoRoute
   ProjectsIdIndexRoute: typeof ProjectsIdIndexRoute
 }
 
@@ -566,6 +586,7 @@ const ProjectsIdRouteChildren: ProjectsIdRouteChildren = {
   ProjectsIdReviewRoute: ProjectsIdReviewRoute,
   ProjectsIdShotsRoute: ProjectsIdShotsRouteWithChildren,
   ProjectsIdTreatmentRoute: ProjectsIdTreatmentRoute,
+  ProjectsIdVideoRoute: ProjectsIdVideoRoute,
   ProjectsIdIndexRoute: ProjectsIdIndexRoute,
 }
 
