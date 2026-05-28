@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCost, pipelineEstimateCents } from "./looks";
+import { formatCost, getLookPublicImageUrl, pipelineEstimateCents } from "./looks";
 
 // ---------------------------------------------------------------------------
 // formatCost
@@ -33,5 +33,28 @@ describe("pipelineEstimateCents", () => {
   it("defaults to auto when given null / undefined", () => {
     expect(pipelineEstimateCents(null, true)).toBe(7);
     expect(pipelineEstimateCents(undefined, false)).toBe(4);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// getLookPublicImageUrl — used by the "Save as Canonical Base" button
+// ---------------------------------------------------------------------------
+describe("getLookPublicImageUrl", () => {
+  it("returns the generated_image_url when set", () => {
+    expect(
+      getLookPublicImageUrl({
+        generated_image_url: "https://v3b.fal.media/files/foo.png",
+      }),
+    ).toBe("https://v3b.fal.media/files/foo.png");
+  });
+  it("returns null when generated_image_url is null", () => {
+    expect(getLookPublicImageUrl({ generated_image_url: null })).toBeNull();
+  });
+  it("returns null when generated_image_url is empty string", () => {
+    expect(getLookPublicImageUrl({ generated_image_url: "" })).toBeNull();
+  });
+  it("returns null for null/undefined look", () => {
+    expect(getLookPublicImageUrl(null)).toBeNull();
+    expect(getLookPublicImageUrl(undefined)).toBeNull();
   });
 });

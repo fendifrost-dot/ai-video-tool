@@ -471,3 +471,28 @@ export function useAllLooks() {
     },
   });
 }
+
+
+// ---------------------------------------------------------------------------
+// Public image URL resolution
+//
+// Looks store both `generated_image_url` (the Fal-hosted URL we get back
+// from the pipeline — publicly fetchable, never expires) and
+// `generated_storage_path` (an internal Supabase storage path that requires
+// a signed URL with a TTL). The canonical_base pipeline needs a URL that
+// CC can fetch server-side later, possibly hours/days after the look was
+// created, so we must use the persistent Fal URL — signed URLs expire.
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolve a publicly-fetchable image URL for a look, suitable for storing
+ * in `identity_profile_json.canonical_base_image_url`. Returns null when
+ * the look has no persistent URL (only a storage path that needs signing).
+ */
+export function getLookPublicImageUrl(
+  look: Pick<Look, "generated_image_url"> | null | undefined,
+): string | null {
+  if (!look) return null;
+  const url = look.generated_image_url;
+  return typeof url === "string" && url.length > 0 ? url : null;
+}

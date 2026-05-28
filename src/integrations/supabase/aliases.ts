@@ -88,4 +88,15 @@ export type ArtistIdentityProfile = {
     trigger_word?: string;
     lora_url?: string;
   };
+  /**
+   * Locked identity photo for the canonical_base pipeline. When set, the
+   * compose-look pipeline short-circuits Stage 1 and reuses this image as
+   * the identity base instead of regenerating from the LoRA. Must be a
+   * publicly fetchable URL (e.g. a Fal-hosted `v3b.fal.media` URL) — signed
+   * Supabase URLs expire and won't work downstream on the CC backend.
+   *
+   * Set via the "Save as Canonical Base" button on the Look Detail page;
+   * read by the AVT compose-look-proxy and forwarded to the CC backend.
+   */
+  canonical_base_image_url?: string | null;
 };

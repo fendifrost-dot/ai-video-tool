@@ -11,6 +11,7 @@ import {
   Loader2,
   Lock,
   Save,
+  Star,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,13 +21,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { signedUrls } from "@/lib/storage";
-import { useArtist } from "@/lib/queries/artists";
+import {
+  getCanonicalBaseImageUrl,
+  useArtist,
+  useSetArtistCanonicalBase,
+} from "@/lib/queries/artists";
 import { useCharacterFeatures } from "@/lib/queries/characterFeatures";
 import { useWardrobe } from "@/lib/queries/wardrobe";
 import { useLocations } from "@/lib/queries/locations";
 import { useProps } from "@/lib/queries/props";
 import {
   formatCost,
+  getLookPublicImageUrl,
   looksKeys,
   pollArtistLook,
   useDeleteLook,
@@ -57,6 +63,7 @@ export default function LookDetailPage({
   const update = useUpdateLook();
   const lock = useLockLookAsPrimary();
   const del = useDeleteLook();
+  const setCanonicalBase = useSetArtistCanonicalBase();
 
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
@@ -160,6 +167,14 @@ export default function LookDetailPage({
   const look = lookQuery.data;
   const recipe = look.composition_recipe_json;
   const isPending = look.status === "pending";
+  // Canonical-base state. `publicImageUrl` is the Fal-hosted URL we'd write
+  // into identity_profile_json if Fendi taps the button. When null the
+  // look has no persistent URL (only a signed Supabase one) and the
+  // affordance disables itself with an inline explanation.
+  const publicImageUrl = getLookPublicImageUrl(look);
+  const currentCanonical = getCanonicalBaseImageUrl(artistQuery.data);
+  const isCurrentCanonical =
+    !!publicImageUrl && currentCanonical === publicImageUrl;
   // Pipeline label: prefer the actual `pipeline_used` once the callback
   // fills it in, otherwise fall back to the preference stored on the recipe
   // at insert time (proxy sets `pipeline_preference` even for pending rows).
@@ -188,7 +203,18 @@ export default function LookDetailPage({
               All looks
             </Link>
           </Button>
-          <StatusPill status={look.status} />
+          <div className="flex items-center gap-2">
+            {isCurrentCanonical && (
+              <span
+                className="flex items-center gap-1 rounded-sm bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-400"
+                title="Saved as the artist's canonical base identity photo"
+              >
+                <Star className="h-2.5 w-2.5 fill-current" />
+                Canonical base
+              </span>
+            )}
+            <StatusPill status={look.status} />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
@@ -439,6 +465,97 @@ export default function LookDetailPage({
                   Archive
                 </Button>
               </div>
+            </div>
+
+            <div className="space-y-2 rounded-md border border-border bg-card/30 p-4">
+              <h2 className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <Star className="h-3 w-3" />
+                Canonical base
+              </h2>
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                {isCurrentCanonical
+                  ? "This look is the saved identity photo. Compose-look will short-circuit Stage 1 and reuse this image."
+                  : "Use this look as the locked identity photo for the canonical_base pipeline."}
+              </p>
+              {isCurrentCanonical ? (
+                <div className="flex flex-col gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="w-full min-h-[44px] justify-start"
+                    disabled
+                  >
+                    <Star className="mr-1.5 h-3.5 w-3.5 fill-current" />
+                    Currently canonical base
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="w-full min-h-[44px] text-muted-foreground hover:text-destructive"
+                    disabled={setCanonicalBase.isPending}
+                    onClick={async () => {
+                      try {
+                        await setCanonicalBase.mutateAsync({
+                          artistId,
+                          imageUrl: null,
+                        });
+                        toast.success("Cleared canonical base");
+                      } catch (err) {
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : "Clear failed",
+                        );
+                      }
+                    }}
+                  >
+                    <X className="mr-1.5 h-3.5 w-3.5" />
+                    Clear
+                  </Button>
+                </div>
+              ) : !publicImageUrl ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full min-h-[44px]"
+                    disabled
+                  >
+                    <Star className="mr-1.5 h-3.5 w-3.5" />
+                    Save as canonical base
+                  </Button>
+                  <p className="text-[10px] leading-snug text-muted-foreground/70">
+                    This look only has a signed Supabase URL which would
+                    expire. Re-generate to get a persistent Fal URL before
+                    setting it as canonical.
+                  </p>
+                </>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="default"
+                  className="w-full min-h-[44px]"
+                  disabled={isPending || setCanonicalBase.isPending}
+                  onClick={async () => {
+                    try {
+                      await setCanonicalBase.mutateAsync({
+                        artistId,
+                        imageUrl: publicImageUrl,
+                      });
+                      toast.success("Saved as canonical base");
+                    } catch (err) {
+                      toast.error(
+                        err instanceof Error
+                          ? err.message
+                          : "Save failed",
+                      );
+                    }
+                  }}
+                >
+                  <Star className="mr-1.5 h-3.5 w-3.5" />
+                  Save as canonical base
+                </Button>
+              )}
             </div>
 
             <div className="space-y-2 rounded-md border border-border bg-card/30 p-4">

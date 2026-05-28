@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Archive, Check, Copy, Edit, Loader2, Lock, MoreHorizontal } from "lucide-react";
+import { Archive, Check, Copy, Edit, Loader2, Lock, MoreHorizontal, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,10 +14,15 @@ import { signedUrls } from "@/lib/storage";
 import {
   type Look,
   formatCost,
+  getLookPublicImageUrl,
   useDeleteLook,
   useLockLookAsPrimary,
   useUpdateLook,
 } from "@/lib/queries/looks";
+import {
+  getCanonicalBaseImageUrl,
+  useArtist,
+} from "@/lib/queries/artists";
 
 // ---------------------------------------------------------------------------
 // LookCard — single tile in the artist Looks grid.
@@ -40,9 +45,26 @@ export function LookCard({ look }: { look: Look }) {
 
   const isLocked = look.status === "locked";
   const isArchived = look.status === "archived";
+  // Read the artist row to surface the canonical-base badge. The cached
+  // query is shared with the rest of the app so this doesn't add a fetch
+  // when the user navigates between the library and detail page.
+  const artistQuery = useArtist(look.artist_id);
+  const lookPublicUrl = getLookPublicImageUrl(look);
+  const isCanonicalBase =
+    !!lookPublicUrl &&
+    getCanonicalBaseImageUrl(artistQuery.data) === lookPublicUrl;
 
   return (
     <div className="group relative flex flex-col rounded-md border border-border bg-card/30">
+      {isCanonicalBase && (
+        <span
+          className="pointer-events-none absolute right-2 top-2 z-10 flex items-center gap-1 rounded-sm bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-50 shadow"
+          title="Saved as the artist's canonical base identity photo"
+        >
+          <Star className="h-2.5 w-2.5 fill-current" />
+          Canonical
+        </span>
+      )}
       <Link
         to="/artists/$id/looks/$lookId"
         params={{ id: look.artist_id, lookId: look.id }}
