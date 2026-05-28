@@ -453,3 +453,21 @@ export function pipelineEstimateCents(
   if (mode === "lora_segmented_inpaint") return 39;
   return 5;
 }
+
+// ---------------------------------------------------------------------------
+// Fetch — all looks across all of the current user's artists.
+// RLS scopes results to auth.uid() naturally; no client-side user_id filter.
+// ---------------------------------------------------------------------------
+export function useAllLooks() {
+  return useQuery<Look[]>({
+    queryKey: [...looksKeys.all, "list"] as const,
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("artist_looks")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as Look[];
+    },
+  });
+}

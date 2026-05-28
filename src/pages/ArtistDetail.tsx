@@ -74,24 +74,28 @@ export default function ArtistDetail({ id }: { id: string }) {
               All artists
             </Link>
           </Button>
-          <div className="flex items-center gap-2">
-            <Button asChild size="sm">
+          <div className="flex items-center gap-3">
+            {/* Primary action: cross-link to this artist's looks library.
+                Previously this lived next to Delete which was easy to mistap. */}
+            <Button asChild>
               <Link
                 to="/artists/$id/looks"
                 params={{ id: artist.id }}
               >
                 <Sparkles className="mr-1.5 h-4 w-4" />
-                Looks
+                View looks
               </Link>
             </Button>
             <Button
-              variant="outline"
-              size="sm"
+              variant="ghost"
+              size="icon"
               onClick={handleDelete}
               disabled={del.isPending}
+              aria-label="Delete artist"
+              title="Delete artist"
+              className="text-muted-foreground hover:text-destructive ml-1"
             >
-              <Trash2 className="mr-1.5 h-4 w-4" />
-              Delete
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         </div>

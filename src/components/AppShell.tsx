@@ -1,28 +1,111 @@
+import { useState } from "react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Users, FolderKanban, Settings, LogOut, MapPin, Package } from "lucide-react";
+import {
+  LayoutDashboard,
+  Users,
+  FolderKanban,
+  Sparkles,
+  MoreHorizontal,
+  Settings,
+  LogOut,
+  MapPin,
+  Package,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
-type NavItem = {
+// ---------------------------------------------------------------------------
+// AppShell — top-level layout (sidebar on desktop, top bar + bottom tabs on
+// mobile). The primary nav surfaces 5 items: Dashboard, Artists, Projects,
+// Looks, More. "More" opens a shadcn Sheet drawer with the secondary nav
+// (Locations, Props, Settings) so the bottom bar stays mobile-friendly.
+// ---------------------------------------------------------------------------
+
+type PrimaryRouteTo =
+  | "/"
+  | "/artists"
+  | "/projects"
+  | "/looks";
+
+type PrimaryNavItem = {
+  kind: "link";
   label: string;
   icon: typeof LayoutDashboard;
-  to: "/" | "/artists" | "/projects/new" | "/settings" | "/library/locations" | "/library/props";
+  to: PrimaryRouteTo;
   match: string;
   exact?: boolean;
 };
 
-const nav: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, match: "/", exact: true },
-  { to: "/artists", label: "Artists", icon: Users, match: "/artists" },
-  { to: "/projects/new", label: "Projects", icon: FolderKanban, match: "/projects" },
-  { to: "/library/locations", label: "Locations", icon: MapPin, match: "/library/locations" },
-  { to: "/library/props", label: "Props", icon: Package, match: "/library/props" },
-  { to: "/settings", label: "Settings", icon: Settings, match: "/settings" },
+type MoreNavTrigger = {
+  kind: "more";
+  label: string;
+  icon: typeof LayoutDashboard;
+};
+
+type NavItem = PrimaryNavItem | MoreNavTrigger;
+
+const primaryNav: PrimaryNavItem[] = [
+  { kind: "link", to: "/", label: "Dashboard", icon: LayoutDashboard, match: "/", exact: true },
+  { kind: "link", to: "/artists", label: "Artists", icon: Users, match: "/artists" },
+  { kind: "link", to: "/projects", label: "Projects", icon: FolderKanban, match: "/projects" },
+  { kind: "link", to: "/looks", label: "Looks", icon: Sparkles, match: "/looks" },
 ];
+
+const moreTrigger: MoreNavTrigger = {
+  kind: "more",
+  label: "More",
+  icon: MoreHorizontal,
+};
+
+type SecondaryNavItem = {
+  label: string;
+  description: string;
+  icon: typeof LayoutDashboard;
+  to: "/library/locations" | "/library/props" | "/settings";
+};
+
+const secondaryNav: SecondaryNavItem[] = [
+  {
+    to: "/library/locations",
+    label: "Locations",
+    description: "Reusable shoot environments and place references.",
+    icon: MapPin,
+  },
+  {
+    to: "/library/props",
+    label: "Props",
+    description: "Reusable physical items and accessory references.",
+    icon: Package,
+  },
+  {
+    to: "/settings",
+    label: "Settings",
+    description: "App preferences and account.",
+    icon: Settings,
+  },
+];
+
+function isMoreActive(pathname: string): boolean {
+  return secondaryNav.some((s) => pathname.startsWith(s.to));
+}
+
+function isPrimaryActive(item: PrimaryNavItem, pathname: string): boolean {
+  return item.exact ? pathname === item.match : pathname.startsWith(item.match);
+}
 
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  const navItems: NavItem[] = [...primaryNav, moreTrigger];
 
   return (
     <div className="relative flex min-h-[100dvh] text-foreground">
@@ -61,9 +144,34 @@ export function AppShell() {
             </span>
           </div>
           <nav className="flex-1 space-y-1 px-3">
-            {nav.map((item) => {
-              const active = item.exact ? pathname === item.match : pathname.startsWith(item.match);
+            {navItems.map((item) => {
               const Icon = item.icon;
+              if (item.kind === "more") {
+                const active = isMoreActive(pathname);
+                return (
+                  <button
+                    key="more"
+                    type="button"
+                    onClick={() => setMoreOpen(true)}
+                    className={cn(
+                      "group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all",
+                      active
+                        ? "glass-raised text-foreground"
+                        : "text-foreground/60 hover:text-foreground hover:bg-white/5",
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "h-4 w-4 transition-transform",
+                        active && "text-primary",
+                        "group-hover:scale-110",
+                      )}
+                    />
+                    {item.label}
+                  </button>
+                );
+              }
+              const active = isPrimaryActive(item, pathname);
               return (
                 <Link
                   key={item.to}
@@ -144,9 +252,34 @@ export function AppShell() {
           className="glass-float mx-3 mb-3 flex items-center justify-around rounded-2xl px-2 py-2"
           style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
         >
-          {nav.map((item) => {
-            const active = item.exact ? pathname === item.match : pathname.startsWith(item.match);
+          {navItems.map((item) => {
             const Icon = item.icon;
+            if (item.kind === "more") {
+              const active = isMoreActive(pathname);
+              return (
+                <button
+                  key="more"
+                  type="button"
+                  onClick={() => setMoreOpen(true)}
+                  className={cn(
+                    "relative flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2 text-[10px] font-medium transition-all",
+                    active ? "text-foreground" : "text-foreground/55",
+                  )}
+                  aria-label="More options"
+                >
+                  <span
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-xl transition-all",
+                      active && "glass-raised ring-glow -translate-y-1",
+                    )}
+                  >
+                    <Icon className={cn("h-4 w-4", active && "text-primary")} />
+                  </span>
+                  <span className="tracking-wide">{item.label}</span>
+                </button>
+              );
+            }
+            const active = isPrimaryActive(item, pathname);
             return (
               <Link
                 key={item.to}
@@ -170,6 +303,45 @@ export function AppShell() {
           })}
         </div>
       </nav>
+
+      {/* More drawer — collapses the secondary nav for both mobile + desktop */}
+      <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-sm">
+          <SheetHeader>
+            <SheetTitle>More</SheetTitle>
+            <SheetDescription>
+              Library, settings, and other less-used sections.
+            </SheetDescription>
+          </SheetHeader>
+          <nav className="mt-6 space-y-1">
+            {secondaryNav.map((item) => {
+              const Icon = item.icon;
+              const active = pathname.startsWith(item.to);
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => setMoreOpen(false)}
+                  className={cn(
+                    "flex items-start gap-3 rounded-xl border border-transparent px-3 py-3 text-sm transition-colors",
+                    active
+                      ? "border-border bg-muted/40 text-foreground"
+                      : "text-foreground/80 hover:bg-muted/30 hover:text-foreground",
+                  )}
+                >
+                  <Icon className={cn("mt-0.5 h-4 w-4 shrink-0", active && "text-primary")} />
+                  <span className="flex flex-col gap-0.5">
+                    <span className="font-medium">{item.label}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {item.description}
+                    </span>
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
