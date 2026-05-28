@@ -132,19 +132,21 @@ describe("validateUrl — IPv6", () => {
 
 describe("validateUrl — obfuscation attempts", () => {
   it("rejects octal-form IP (leading zero)", () => {
-    // 0177.0.0.1 == 127.0.0.1 in libc resolvers. We reject leading-zero
-    // octets in isIpv4Literal, so the parser sees it as a plain hostname
-    // and... well, "0177.0.0.1" doesn't look like a hostname (ends with
-    // digits) but our blocked-TLD list doesn't match. It WILL pass through.
-    // The defense in depth is that DNS won't resolve it, and the public-IP
-    // classifier still applies on the resolved address (which we don't do
-    // here — we rely on the runtime to fail the fetch).
+    // 0177.0.0.1 == 127.0.0.1 in libc resolvers, and Node's WHATWG URL parser
+    // since v20 normalizes obfuscated IPv4 forms on `new URL()`. validateUrl
+    // now also runs an explicit normalizeIpv4Host pass before the class check
+    // so that environments whose URL parser does NOT auto-normalize (Deno,
+    // which actually runs this edge function in prod) get the same defense.
     //
-    // What this test pins: we do NOT treat 0177.0.0.1 as ipv4_loopback. If
-    // we ever switch to permissive octet parsing we'd need to also block
-    // those forms.
+    // Net result: octal/hex/integer-form loopback URLs are now actively
+    // rejected as host_blocked rather than slipping through as "DNS will fail
+    // it anyway" defense-in-depth.
     const r = validateUrl("https://0177.0.0.1/x.jpg");
-    expect(r.ok).toBe(true); // parses as hostname, not IP literal
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.reason).toBe("host_blocked");
+      expect(r.detail).toMatch(/loopback/);
+    }
   });
   it("rejects userinfo URLs with embedded credentials and private host", () => {
     const r = validateUrl("https://user:pass@127.0.0.1/x.jpg");

@@ -70,9 +70,17 @@ export function validateUrl(input: string): UrlValidationResult {
     }
   }
 
-  // IPv4 literal?
-  if (isIpv4Literal(host)) {
-    const v = ipv4Class(host);
+  // IPv4 literal — any form. We deliberately go through normalizeIpv4Host
+  // (which handles decimal, octal, hex, and single-integer forms) before
+  // checking the class, so an attacker can't slip a loopback or private IP
+  // past us by writing it as "0177.0.0.1" / "0x7f.0.0.1" / "2130706433".
+  //
+  // Node 22's URL parser already normalizes these forms on `new URL()`, but
+  // Deno (which actually runs this edge function in prod) does not — so we
+  // re-normalize here for portability.
+  const normalizedIpv4 = normalizeIpv4Host(host);
+  if (normalizedIpv4) {
+    const v = ipv4Class(normalizedIpv4);
     if (v !== "public") {
       return { ok: false, reason: "host_blocked", detail: `ipv4:${v}` };
     }
@@ -200,4 +208,105 @@ export function extForMime(mime: string): "jpg" | "png" | "webp" {
     default:
       throw new Error(`unsupported mime: ${mime}`);
   }
+}
+
+
+/**
+ * Normalize an IPv4 host expressed in any of the common alternate forms to its
+ * canonical decimal dotted-quad. Returns null if `host` is not a valid IPv4
+ * literal in any form. The defenses in validateUrl rely on this — we want to
+ * catch obfuscation attempts (octal `0177.0.0.1`, hex `0x7f.0.0.1`, integer
+ * `2130706433`) and classify them through ipv4Class as if they were written
+ * in decimal.
+ *
+ * Forms accepted (matching the historic Berkeley inet_aton behavior that
+ * libc resolvers and most browsers still honor):
+ *   - 4-part dotted quad: a.b.c.d   each 8 bits
+ *   - 3-part:             a.b.c     a,b are 8-bit; c is 16-bit
+ *   - 2-part:             a.b       a is 8-bit; b is 24-bit
+ *   - 1-part:             a         32-bit integer (e.g. 2130706433 == 127.0.0.1)
+ *
+ * Within each part: leading "0x"/"0X" → hex; leading "0" → octal; otherwise
+ * decimal. Any digit outside the radix → reject the whole host.
+ */
+export function normalizeIpv4Host(host: string): string | null {
+  if (host.length === 0 || host.length > 64) return null;
+
+  const parts = host.split(".");
+  if (parts.length < 1 || parts.length > 4) return null;
+
+  const values: number[] = [];
+  for (const part of parts) {
+    const n = parseIpv4Segment(part);
+    if (n === null) return null;
+    values.push(n);
+  }
+
+  // Per-part max widths (in bits) for each form length.
+  const maxByLen: Record<number, number[]> = {
+    1: [32],
+    2: [8, 24],
+    3: [8, 8, 16],
+    4: [8, 8, 8, 8],
+  };
+  const widths = maxByLen[values.length];
+  for (let i = 0; i < values.length; i++) {
+    const w = widths[i];
+    const max = w === 32 ? 0xffffffff : (1 << w) - 1;
+    if (values[i] < 0 || values[i] > max) return null;
+  }
+
+  // Pack into a single 32-bit big-endian integer.
+  let packed = 0;
+  if (values.length === 1) {
+    packed = values[0] >>> 0;
+  } else if (values.length === 2) {
+    packed = (((values[0] & 0xff) << 24) | (values[1] & 0xffffff)) >>> 0;
+  } else if (values.length === 3) {
+    packed =
+      (((values[0] & 0xff) << 24) |
+        ((values[1] & 0xff) << 16) |
+        (values[2] & 0xffff)) >>>
+      0;
+  } else {
+    packed =
+      (((values[0] & 0xff) << 24) |
+        ((values[1] & 0xff) << 16) |
+        ((values[2] & 0xff) << 8) |
+        (values[3] & 0xff)) >>>
+      0;
+  }
+
+  const a = (packed >>> 24) & 0xff;
+  const b = (packed >>> 16) & 0xff;
+  const c = (packed >>> 8) & 0xff;
+  const d = packed & 0xff;
+  return `${a}.${b}.${c}.${d}`;
+}
+
+function parseIpv4Segment(s: string): number | null {
+  if (s.length === 0) return null;
+  // Hex: 0x... / 0X...
+  if (s.length >= 3 && (s[0] === "0") && (s[1] === "x" || s[1] === "X")) {
+    const body = s.slice(2);
+    if (!/^[0-9a-fA-F]+$/.test(body)) return null;
+    // Cap reasonable length — 32-bit hex is 8 chars; allow leading zeros.
+    if (body.length > 16) return null;
+    const n = parseInt(body, 16);
+    if (!Number.isFinite(n)) return null;
+    return n;
+  }
+  // Octal: leading 0 with more digits, all 0-7
+  if (s.length > 1 && s[0] === "0") {
+    if (!/^[0-7]+$/.test(s)) return null;
+    const n = parseInt(s, 8);
+    if (!Number.isFinite(n)) return null;
+    return n;
+  }
+  // Decimal
+  if (!/^[0-9]+$/.test(s)) return null;
+  // Single "0" is a valid decimal zero.
+  const n = parseInt(s, 10);
+  if (!Number.isFinite(n)) return null;
+  return n;
 }
