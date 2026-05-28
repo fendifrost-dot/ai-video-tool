@@ -87,6 +87,40 @@ export type IngestServerResult = {
   errors: Array<{ jobId: string; error: string }>;
 };
 
+function clampNumber(v: unknown, min: number, max: number): number | null {
+  if (typeof v !== "number" || Number.isNaN(v)) return null;
+  if (v < min) return min;
+  if (v > max) return max;
+  return v;
+}
+
+function sanitizeGenerationInput(input: GenerationInput): GenerationInput {
+  const trimmedPrompt = input.promptText.trim();
+  if (trimmedPrompt.length === 0) {
+    throw new ProviderCallError("INVALID_INPUT", "Prompt must not be empty.");
+  }
+
+  const clampedDuration = clampNumber(input.duration, 1, 30);
+  const settings = { ...(input.settings ?? {}) };
+  const clampedMotion = clampNumber(settings.motionStrength, 0, 1);
+  if (clampedMotion !== null) settings.motionStrength = clampedMotion;
+
+  const allowedCameraMoves = new Set(["static", "slow_pan", "orbit", "dolly", "dynamic"]);
+  if (
+    typeof settings.cameraMove === "string" &&
+    !allowedCameraMoves.has(settings.cameraMove)
+  ) {
+    settings.cameraMove = "static";
+  }
+
+  return {
+    ...input,
+    promptText: trimmedPrompt,
+    duration: clampedDuration ?? undefined,
+    settings,
+  };
+}
+
 async function callProxy<T = Record<string, unknown>>(
   endpoint: string,
   init: { method?: "POST" | "GET"; query?: Record<string, string>; body?: Record<string, unknown> },
@@ -132,11 +166,12 @@ export async function createGenerationJob(input: GenerationInput): Promise<{
   providerJobRowId: string;
   envelope: GenerationEnvelope;
 }> {
-  const endpoint = ENDPOINT_BY_PROVIDER[input.provider];
+  const safeInput = sanitizeGenerationInput(input);
+  const endpoint = ENDPOINT_BY_PROVIDER[safeInput.provider];
   if (!endpoint) {
     throw new ProviderCallError(
       "INVALID_INPUT",
-      `Provider ${input.provider} is not supported by the Control Center proxy yet.`,
+      `Provider ${safeInput.provider} is not supported by the Control Center proxy yet.`,
     );
   }
 
@@ -160,20 +195,20 @@ export async function createGenerationJob(input: GenerationInput): Promise<{
     .from("provider_jobs")
     .insert({
       user_id: user.id,
-      project_id: input.projectId,
-      prompt_id: input.promptId ?? null,
-      provider: input.provider,
+      project_id: safeInput.projectId,
+      prompt_id: safeInput.promptId ?? null,
+      provider: safeInput.provider,
       status: "queued",
       request_payload_json: ({
-        promptText: input.promptText,
-        mode: input.mode ?? null,
-        referenceImagePath: input.referenceImagePath ?? null,
-        modelVariant: input.modelVariant ?? null,
-        duration: input.duration ?? null,
-        aspectRatio: input.aspectRatio ?? null,
-        seed: input.seed ?? null,
-        shotId: input.shotId ?? null,
-        settings: (input.settings ?? null) as unknown,
+        promptText: safeInput.promptText,
+        mode: safeInput.mode ?? null,
+        referenceImagePath: safeInput.referenceImagePath ?? null,
+        modelVariant: safeInput.modelVariant ?? null,
+        duration: safeInput.duration ?? null,
+        aspectRatio: safeInput.aspectRatio ?? null,
+        seed: safeInput.seed ?? null,
+        shotId: safeInput.shotId ?? null,
+        settings: (safeInput.settings ?? null) as unknown,
       } as unknown) as never,
     })
     .select("id")
@@ -189,17 +224,17 @@ export async function createGenerationJob(input: GenerationInput): Promise<{
     const envelope = await callProxy<GenerationEnvelope>(endpoint, {
       method: "POST",
       body: {
-        avt_project_id: input.projectId,
-        avt_prompt_id: input.promptId ?? null,
-        avt_shot_id: input.shotId ?? null,
-        promptText: input.promptText,
-        mode: input.mode,
+        avt_project_id: safeInput.projectId,
+        avt_prompt_id: safeInput.promptId ?? null,
+        avt_shot_id: safeInput.shotId ?? null,
+        promptText: safeInput.promptText,
+        mode: safeInput.mode,
         referenceImageUrl,
-        modelVariant: input.modelVariant,
-        duration: input.duration,
-        aspectRatio: input.aspectRatio,
-        seed: input.seed,
-        settings: input.settings,
+        modelVariant: safeInput.modelVariant,
+        duration: safeInput.duration,
+        aspectRatio: safeInput.aspectRatio,
+        seed: safeInput.seed,
+        settings: safeInput.settings,
       },
     });
 
