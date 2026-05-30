@@ -12,11 +12,22 @@ import {
   Lock,
   Save,
   Star,
+  Trash2,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,6 +77,7 @@ export default function LookDetailPage({
   const setCanonicalBase = useSetArtistCanonicalBase();
 
   const [editing, setEditing] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [notesDraft, setNotesDraft] = useState("");
   const [signed, setSigned] = useState<string | null>(null);
@@ -464,6 +476,24 @@ export default function LookDetailPage({
                   <Archive className="mr-1.5 h-3.5 w-3.5" />
                   Archive
                 </Button>
+                {/* Delete — destructive, mobile-friendly tap target.
+                    Blocked when this look is the canonical base (clear it
+                    on the panel below before deleting). */}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="min-h-[44px] text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  disabled={isPending || isCurrentCanonical || del.isPending}
+                  title={
+                    isCurrentCanonical
+                      ? "This is the artist's canonical base. Clear it first."
+                      : undefined
+                  }
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+                  {isCurrentCanonical ? "Delete (clear canonical first)" : "Delete look"}
+                </Button>
               </div>
             </div>
 
@@ -611,6 +641,44 @@ export default function LookDetailPage({
           </aside>
         </div>
       </div>
+
+      {/* Delete confirmation — replaces native confirm() for mobile reliability. */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this look?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-medium">{look.name}</span> will be
+              removed from your library. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-[44px]" disabled={del.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="min-h-[44px] bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={del.isPending}
+              onClick={async (e) => {
+                e.preventDefault();
+                try {
+                  await del.mutateAsync({ id: look.id, artistId });
+                  toast.success("Deleted");
+                  setDeleteOpen(false);
+                  navigate({
+                    to: "/artists/$id/looks",
+                    params: { id: artistId },
+                  });
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Delete failed");
+                }
+              }}
+            >
+              {del.isPending ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

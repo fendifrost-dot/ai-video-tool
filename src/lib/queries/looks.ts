@@ -217,6 +217,11 @@ export function useLockLookAsPrimary() {
 
 // ---------------------------------------------------------------------------
 // Delete
+//
+// NOTE: this currently only removes the DB row. The composite image in
+// the `look-composites` storage bucket is left behind. Cleaning it up is
+// a TODO — see `useBulkDeleteSummary` callsites. Not a blocker because
+// storage is cheap and orphaned files are recoverable later via a sweep.
 // ---------------------------------------------------------------------------
 export function useDeleteLook() {
   const qc = useQueryClient();
@@ -229,9 +234,71 @@ export function useDeleteLook() {
       if (error) throw error;
     },
     onSuccess: (_v, vars) => {
+      // Invalidate the artist-scoped grid AND the cross-artist /looks
+      // library list. `looksKeys.all` is the shared prefix so React
+      // Query's hierarchical match catches both. Without this, /looks
+      // looked stuck after delete (the only place the user can see
+      // every look at once).
       qc.invalidateQueries({ queryKey: looksKeys.forArtist(vars.artistId) });
+      qc.invalidateQueries({ queryKey: looksKeys.all });
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Bulk-delete helpers
+//
+// Pure helpers used by the /looks library's multi-select bulk delete.
+// Kept as standalone functions (rather than tucked inside the mutation)
+// so the friction-threshold and result-summary logic stay unit-testable
+// without needing a React tree or Supabase mock.
+// ---------------------------------------------------------------------------
+
+/**
+ * The size at which the bulk-delete confirm dialog escalates from "delete X"
+ * to "you're about to delete X — this cannot be undone". Friction-on-quantity,
+ * not friction-on-action.
+ */
+export const BULK_DELETE_FRICTION_THRESHOLD = 10;
+
+export function shouldFrictionWarn(count: number): boolean {
+  return count >= BULK_DELETE_FRICTION_THRESHOLD;
+}
+
+export type BulkDeleteSummary = {
+  total: number;
+  succeeded: number;
+  failed: number;
+};
+
+/**
+ * Reduce a `Promise.allSettled` result over per-look deletes into a
+ * count summary used by the bulk-delete toast. Per-item resilience:
+ * one failing row should not prevent the rest from being reported as
+ * successful.
+ */
+export function summarizeBulkDeleteResults(
+  results: PromiseSettledResult<unknown>[],
+): BulkDeleteSummary {
+  const total = results.length;
+  let succeeded = 0;
+  let failed = 0;
+  for (const r of results) {
+    if (r.status === "fulfilled") succeeded += 1;
+    else failed += 1;
+  }
+  return { total, succeeded, failed };
+}
+
+/**
+ * Compose the toast string for a bulk-delete completion. Pulled out so
+ * tests can pin the exact wording without rendering the component.
+ */
+export function formatBulkDeleteToast(summary: BulkDeleteSummary): string {
+  if (summary.failed === 0) {
+    return `Deleted ${summary.succeeded} look${summary.succeeded === 1 ? "" : "s"}.`;
+  }
+  return `Deleted ${summary.succeeded} of ${summary.total} looks. ${summary.failed} failed.`;
 }
 
 // ---------------------------------------------------------------------------

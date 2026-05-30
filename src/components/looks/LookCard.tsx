@@ -1,8 +1,29 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Archive, Check, Copy, Edit, Loader2, Lock, MoreHorizontal, Star } from "lucide-react";
+import {
+  Archive,
+  Check,
+  Copy,
+  Edit,
+  Loader2,
+  Lock,
+  MoreHorizontal,
+  Star,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,9 +47,25 @@ import {
 
 // ---------------------------------------------------------------------------
 // LookCard — single tile in the artist Looks grid.
+//
+// Supports an optional select-mode (used by the cross-artist /looks library
+// for bulk delete). When `selectMode` is true the card becomes a tap target
+// for toggling selection rather than a link to the detail page, and a
+// checkbox overlays the top-left corner.
 // ---------------------------------------------------------------------------
-export function LookCard({ look }: { look: Look }) {
+export function LookCard({
+  look,
+  selectMode = false,
+  selected = false,
+  onToggleSelect,
+}: {
+  look: Look;
+  selectMode?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (lookId: string) => void;
+}) {
   const [signed, setSigned] = useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const update = useUpdateLook();
   const lock = useLockLookAsPrimary();
   const del = useDeleteLook();
@@ -54,8 +91,45 @@ export function LookCard({ look }: { look: Look }) {
     !!lookPublicUrl &&
     getCanonicalBaseImageUrl(artistQuery.data) === lookPublicUrl;
 
+  const onSelectTap = () => onToggleSelect?.(look.id);
+
+  const handleDelete = async () => {
+    try {
+      await del.mutateAsync({ id: look.id, artistId: look.artist_id });
+      toast.success("Deleted");
+      setDeleteOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Delete failed");
+    }
+  };
+
+  // ---- image element (re-used inside Link or button wrapper) ------------
+  const imageEl = (
+    <div className="aspect-[3/4] overflow-hidden rounded-t-md bg-muted/30">
+      {signed ? (
+        <img
+          src={signed}
+          alt={look.name}
+          className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+        />
+      ) : look.status === "pending" ? (
+        <LookCardPendingSkeleton />
+      ) : (
+        <div className="flex h-full items-center justify-center text-[10px] text-muted-foreground">
+          {look.generated_storage_path ? "Loading…" : "No image"}
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="group relative flex flex-col rounded-md border border-border bg-card/30">
+    <div
+      className={`group relative flex flex-col rounded-md border bg-card/30 ${
+        selectMode && selected
+          ? "border-primary ring-2 ring-primary/60"
+          : "border-border"
+      }`}
+    >
       {isCanonicalBase && (
         <span
           className="pointer-events-none absolute right-2 top-2 z-10 flex items-center gap-1 rounded-sm bg-amber-500/90 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-amber-50 shadow"
@@ -65,27 +139,48 @@ export function LookCard({ look }: { look: Look }) {
           Canonical
         </span>
       )}
-      <Link
-        to="/artists/$id/looks/$lookId"
-        params={{ id: look.artist_id, lookId: look.id }}
-        className="block"
-      >
-        <div className="aspect-[3/4] overflow-hidden rounded-t-md bg-muted/30">
-          {signed ? (
-            <img
-              src={signed}
-              alt={look.name}
-              className="h-full w-full object-cover transition-transform group-hover:scale-[1.02]"
+
+      {/* Select-mode overlay: large tap target with checkbox in the corner.
+          We intentionally cover the whole image so finger taps anywhere on
+          the thumbnail toggle selection on mobile. */}
+      {selectMode && (
+        <button
+          type="button"
+          onClick={onSelectTap}
+          aria-label={selected ? "Deselect look" : "Select look"}
+          aria-pressed={selected}
+          className="absolute inset-x-0 top-0 z-20 flex aspect-[3/4] items-start justify-start p-2"
+        >
+          <span
+            className={`flex h-11 w-11 items-center justify-center rounded-full shadow-md ${
+              selected
+                ? "bg-primary text-primary-foreground"
+                : "bg-background/80 backdrop-blur"
+            }`}
+          >
+            <Checkbox
+              checked={selected}
+              tabIndex={-1}
+              className="pointer-events-none h-5 w-5"
             />
-          ) : look.status === "pending" ? (
-            <LookCardPendingSkeleton />
-          ) : (
-            <div className="flex h-full items-center justify-center text-[10px] text-muted-foreground">
-              {look.generated_storage_path ? "Loading…" : "No image"}
-            </div>
-          )}
-        </div>
-      </Link>
+          </span>
+        </button>
+      )}
+
+      {selectMode ? (
+        // In select mode the image is decorative; the overlay button owns
+        // taps. Render the same imageEl but without a Link so accidental
+        // navigation can't happen mid-bulk-select.
+        <div className="block">{imageEl}</div>
+      ) : (
+        <Link
+          to="/artists/$id/looks/$lookId"
+          params={{ id: look.artist_id, lookId: look.id }}
+          className="block"
+        >
+          {imageEl}
+        </Link>
+      )}
 
       <div className="flex items-start justify-between gap-2 p-3">
         <div className="min-w-0">
@@ -105,112 +200,143 @@ export function LookCard({ look }: { look: Look }) {
           </div>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 opacity-60 hover:opacity-100"
-              aria-label="Look actions"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="text-xs">
-            <DropdownMenuItem asChild>
-              <Link
-                to="/artists/$id/looks/$lookId"
-                params={{ id: look.artist_id, lookId: look.id }}
+        {/* Action menu is hidden in select mode to keep the UI focused on
+            the bulk-delete affordance and avoid a double-confirm flow. */}
+        {!selectMode && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                // 44px touch target — mobile-friendly, replaces the old
+                // 28px hover-fade trigger.
+                className="h-11 w-11 shrink-0"
+                aria-label="Look actions"
               >
-                <Edit className="mr-2 h-3.5 w-3.5" />
-                View / edit
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={async () => {
-                try {
-                  await update.mutateAsync({
-                    id: look.id,
-                    artistId: look.artist_id,
-                    patch: { status: "approved" },
-                  });
-                  toast.success("Approved");
-                } catch (err) {
-                  toast.error(err instanceof Error ? err.message : "Approve failed");
-                }
-              }}
-              disabled={isArchived || look.status === "approved" || isLocked}
-            >
-              <Check className="mr-2 h-3.5 w-3.5" />
-              Approve
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={async () => {
-                try {
-                  await lock.mutateAsync({ id: look.id, artistId: look.artist_id });
-                  toast.success("Locked as primary look");
-                } catch (err) {
-                  toast.error(err instanceof Error ? err.message : "Lock failed");
-                }
-              }}
-              disabled={isArchived || isLocked}
-            >
-              <Lock className="mr-2 h-3.5 w-3.5" />
-              Lock as primary
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link
-                to="/artists/$id/looks/new"
-                params={{ id: look.artist_id }}
-                search={{ parentLookId: look.id } as any}
+                <MoreHorizontal className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="text-xs">
+              <DropdownMenuItem asChild>
+                <Link
+                  to="/artists/$id/looks/$lookId"
+                  params={{ id: look.artist_id, lookId: look.id }}
+                >
+                  <Edit className="mr-2 h-3.5 w-3.5" />
+                  View / edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={async () => {
+                  try {
+                    await update.mutateAsync({
+                      id: look.id,
+                      artistId: look.artist_id,
+                      patch: { status: "approved" },
+                    });
+                    toast.success("Approved");
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Approve failed");
+                  }
+                }}
+                disabled={isArchived || look.status === "approved" || isLocked}
               >
-                <Copy className="mr-2 h-3.5 w-3.5" />
-                Duplicate / iterate
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={async () => {
-                try {
-                  await update.mutateAsync({
-                    id: look.id,
-                    artistId: look.artist_id,
-                    patch: { status: "archived" },
-                  });
-                  toast.success("Archived");
-                } catch (err) {
-                  toast.error(err instanceof Error ? err.message : "Archive failed");
-                }
-              }}
-              disabled={isArchived}
-            >
-              <Archive className="mr-2 h-3.5 w-3.5" />
-              Archive
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
-              onSelect={async () => {
-                if (
-                  !confirm(
-                    `Delete look "${look.name}"? This cannot be undone.`,
-                  )
-                ) {
-                  return;
-                }
-                try {
-                  await del.mutateAsync({ id: look.id, artistId: look.artist_id });
-                  toast.success("Deleted");
-                } catch (err) {
-                  toast.error(err instanceof Error ? err.message : "Delete failed");
-                }
-              }}
-            >
-              Delete permanently
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+                <Check className="mr-2 h-3.5 w-3.5" />
+                Approve
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={async () => {
+                  try {
+                    await lock.mutateAsync({ id: look.id, artistId: look.artist_id });
+                    toast.success("Locked as primary look");
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Lock failed");
+                  }
+                }}
+                disabled={isArchived || isLocked}
+              >
+                <Lock className="mr-2 h-3.5 w-3.5" />
+                Lock as primary
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link
+                  to="/artists/$id/looks/new"
+                  params={{ id: look.artist_id }}
+                  search={{ parentLookId: look.id } as any}
+                >
+                  <Copy className="mr-2 h-3.5 w-3.5" />
+                  Duplicate / iterate
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={async () => {
+                  try {
+                    await update.mutateAsync({
+                      id: look.id,
+                      artistId: look.artist_id,
+                      patch: { status: "archived" },
+                    });
+                    toast.success("Archived");
+                  } catch (err) {
+                    toast.error(err instanceof Error ? err.message : "Archive failed");
+                  }
+                }}
+                disabled={isArchived}
+              >
+                <Archive className="mr-2 h-3.5 w-3.5" />
+                Archive
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive focus:text-destructive"
+                // Block delete on the canonical base — it's a one-step
+                // recovery (clear the canonical, then delete) vs. an
+                // irreversible mistake (delete the photo CC pipelines
+                // reference).
+                disabled={isCanonicalBase}
+                onSelect={(e) => {
+                  // Defer dialog open until the menu has fully closed so
+                  // Radix's focus management doesn't race with the new
+                  // dialog's focus trap on mobile.
+                  e.preventDefault();
+                  setTimeout(() => setDeleteOpen(true), 0);
+                }}
+              >
+                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                {isCanonicalBase ? "Delete (clear canonical first)" : "Delete permanently"}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
+
+      {/* Confirm dialog — replaces native confirm() which can be unreliable
+          on mobile browsers (especially when wrapped in a Radix menu). */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this look?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-medium">{look.name}</span> will be removed
+              from your library. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="min-h-[44px]">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="min-h-[44px] bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={del.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDelete();
+              }}
+            >
+              {del.isPending ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

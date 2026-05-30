@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatCost, getLookPublicImageUrl, pipelineEstimateCents } from "./looks";
+import {
+  BULK_DELETE_FRICTION_THRESHOLD,
+  formatBulkDeleteToast,
+  formatCost,
+  getLookPublicImageUrl,
+  pipelineEstimateCents,
+  shouldFrictionWarn,
+  summarizeBulkDeleteResults,
+} from "./looks";
 
 // ---------------------------------------------------------------------------
 // formatCost
@@ -56,5 +64,85 @@ describe("getLookPublicImageUrl", () => {
   it("returns null for null/undefined look", () => {
     expect(getLookPublicImageUrl(null)).toBeNull();
     expect(getLookPublicImageUrl(undefined)).toBeNull();
+  });
+});
+
+
+// ---------------------------------------------------------------------------
+// shouldFrictionWarn — gates the "you're about to delete X" copy when the
+// user has selected a chunky batch (≥10 by default).
+// ---------------------------------------------------------------------------
+describe("shouldFrictionWarn", () => {
+  it("does not warn for small selections", () => {
+    expect(shouldFrictionWarn(0)).toBe(false);
+    expect(shouldFrictionWarn(1)).toBe(false);
+    expect(shouldFrictionWarn(9)).toBe(false);
+  });
+  it("warns at the threshold and above", () => {
+    expect(shouldFrictionWarn(BULK_DELETE_FRICTION_THRESHOLD)).toBe(true);
+    expect(shouldFrictionWarn(12)).toBe(true);
+    expect(shouldFrictionWarn(66)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// summarizeBulkDeleteResults — collapses a Promise.allSettled bulk into
+// counts the toast uses. Per-item resilience: a single failure must not
+// hide the rest of the successes from the report.
+// ---------------------------------------------------------------------------
+describe("summarizeBulkDeleteResults", () => {
+  it("reports zeros for empty input", () => {
+    expect(summarizeBulkDeleteResults([])).toEqual({
+      total: 0,
+      succeeded: 0,
+      failed: 0,
+    });
+  });
+  it("counts only successes when nothing rejects", () => {
+    const results: PromiseSettledResult<void>[] = [
+      { status: "fulfilled", value: undefined },
+      { status: "fulfilled", value: undefined },
+      { status: "fulfilled", value: undefined },
+    ];
+    expect(summarizeBulkDeleteResults(results)).toEqual({
+      total: 3,
+      succeeded: 3,
+      failed: 0,
+    });
+  });
+  it("separates successes from failures so the toast can shame the failures", () => {
+    const results: PromiseSettledResult<void>[] = [
+      { status: "fulfilled", value: undefined },
+      { status: "rejected", reason: new Error("boom") },
+      { status: "fulfilled", value: undefined },
+      { status: "rejected", reason: new Error("nope") },
+    ];
+    expect(summarizeBulkDeleteResults(results)).toEqual({
+      total: 4,
+      succeeded: 2,
+      failed: 2,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// formatBulkDeleteToast — copy is pinned by this test so a UX change to
+// the toast string is a deliberate edit, not an accidental rephrasing.
+// ---------------------------------------------------------------------------
+describe("formatBulkDeleteToast", () => {
+  it("uses singular when exactly one look succeeded", () => {
+    expect(
+      formatBulkDeleteToast({ total: 1, succeeded: 1, failed: 0 }),
+    ).toBe("Deleted 1 look.");
+  });
+  it("uses plural for clean multi-success batches", () => {
+    expect(
+      formatBulkDeleteToast({ total: 12, succeeded: 12, failed: 0 }),
+    ).toBe("Deleted 12 looks.");
+  });
+  it("calls out the failure count when anything rejected", () => {
+    expect(
+      formatBulkDeleteToast({ total: 5, succeeded: 3, failed: 2 }),
+    ).toBe("Deleted 3 of 5 looks. 2 failed.");
   });
 });
