@@ -16,16 +16,32 @@ import {
   buildPromptLogCsv,
   approvedFilename,
 } from "./csv";
+import { approvedClipsByShot, isClipAsset } from "./approvedClips";
+import { buildEdl } from "./edl";
+import { buildFcpxml } from "./fcpxml";
 import {
   buildEditDecisionNotes,
   buildManifest,
 } from "./manifest";
+import {
+  buildRemotionCompositionScaffold,
+  buildRemotionManifest,
+  buildRemotionMusicVideoComponent,
+} from "./remotion/buildRemotionExport";
+import type { TimelineManifestJson } from "./timelineManifest";
+import type { TimelineRenderTarget } from "@/lib/timeline/types";
 
 export type ExportOptions = {
   includeApprovedClips: boolean;
   includeRejectedClips: boolean;
   includeReferences: boolean;
   includeAudio: boolean;
+};
+
+export type TimelineExportBundle = {
+  manifest: TimelineManifestJson;
+  targets: Record<TimelineRenderTarget, boolean>;
+  includeEdl?: boolean;
 };
 
 export type ExportProgress = {
@@ -51,6 +67,7 @@ export async function buildAndDownloadPackage(input: {
   assets: ProjectAsset[];
   audioAsset: ProjectAsset | null;
   options: ExportOptions;
+  timeline?: TimelineExportBundle;
   onProgress?: (p: ExportProgress) => void;
 }): Promise<void> {
   const {
@@ -62,6 +79,7 @@ export async function buildAndDownloadPackage(input: {
     assets,
     audioAsset,
     options,
+    timeline,
     onProgress,
   } = input;
 
@@ -78,29 +96,21 @@ export async function buildAndDownloadPackage(input: {
   const assetsById: Record<string, ProjectAsset> = {};
   for (const a of assets) assetsById[a.id] = a;
 
-  // Approved clips per shot (most-recent per shot)
-  const approvedClipsByShot: Record<string, ProjectAsset> = {};
-  for (const a of assets) {
-    if (a.approval_status === "approved" && a.shot_id && isClipAsset(a)) {
-      const prior = approvedClipsByShot[a.shot_id];
-      if (!prior || a.created_at > prior.created_at) {
-        approvedClipsByShot[a.shot_id] = a;
-      }
-    }
-  }
+  const clipsByShot = approvedClipsByShot(assets);
+  const clipPathByAssetId = buildClipPathByAssetId(clipsByShot, shotsById);
 
   // ---- Build text artifacts ----
   progress("manifest", 0.1, "Writing project manifest");
   const manifest = buildManifest({ project, artist, shots, prompts, assets });
 
   progress("csv", 0.18, "Generating shot list + prompt log CSVs");
-  const shotListCsv = buildShotListCsv(shots, approvedClipsByShot);
+  const shotListCsv = buildShotListCsv(shots, clipsByShot);
   const promptLogCsv = buildPromptLogCsv(prompts, shotsById, templatesById, assetsById);
   const editNotes = buildEditDecisionNotes({
     project,
     artist,
     shots,
-    approvedClipsByShot,
+    approvedClipsByShot: clipsByShot,
   });
 
   // ---- Initialise zip ----
@@ -110,7 +120,46 @@ export async function buildAndDownloadPackage(input: {
   root.file("shot_list.csv", shotListCsv);
   root.file("prompt_log.csv", promptLogCsv);
   root.file("edit_decision_notes.md", editNotes);
-  root.file("README.md", buildReadme(project, options));
+  root.file("README.md", buildReadme(project, options, timeline));
+
+  if (timeline) {
+    progress("manifest", 0.14, "Writing timeline manifest + NLE targets");
+    const tm = timeline.manifest;
+    root.file("timeline_manifest.json", JSON.stringify(tm, null, 2));
+    const fcpxml = buildFcpxml(tm, clipPathByAssetId);
+    const edl = timeline.includeEdl ? buildEdl(tm, clipPathByAssetId) : null;
+
+    if (timeline.targets.premiere) {
+      const premiere = root.folder("premiere_ready")!;
+      premiere.file("timeline_manifest.json", JSON.stringify(tm, null, 2));
+      premiere.file("shot_list.csv", shotListCsv);
+      premiere.file("edit_decision_notes.md", editNotes);
+      premiere.file("timeline.fcpxml", fcpxml);
+      if (edl) premiere.file("timeline.edl", edl);
+      premiere.file("README.md", premiereReadme());
+    }
+
+    if (timeline.targets.resolve) {
+      const resolve = root.folder("resolve_ready")!;
+      resolve.file("timeline_manifest.json", JSON.stringify(tm, null, 2));
+      resolve.file("timeline.fcpxml", fcpxml);
+      resolve.file("color_notes.md", buildResolveColorNotes(tm));
+      resolve.folder("luts")!.file(
+        "README.md",
+        "Place project LUT .cube files here before import.\n",
+      );
+      if (edl) resolve.file("timeline.edl", edl);
+    }
+
+    if (timeline.targets.remotion) {
+      const remotion = root.folder("remotion")!;
+      const remotionManifest = buildRemotionManifest(tm, clipPathByAssetId);
+      remotion.file("remotion_manifest.json", JSON.stringify(remotionManifest, null, 2));
+      remotion.file("index.ts", buildRemotionCompositionScaffold(project.title));
+      remotion.file("MusicVideo.tsx", buildRemotionMusicVideoComponent());
+      remotion.file("README.md", remotionReadme());
+    }
+  }
 
   // ---- Collect binaries to fetch ----
   const binaries: { folder: string; filename: string; asset: ProjectAsset }[] = [];
@@ -125,7 +174,7 @@ export async function buildAndDownloadPackage(input: {
   }
 
   if (options.includeApprovedClips) {
-    for (const [shotId, asset] of Object.entries(approvedClipsByShot)) {
+    for (const [shotId, asset] of Object.entries(clipsByShot)) {
       binaries.push({
         folder: "approved_clips",
         filename: approvedFilename(asset, shotsById[shotId]?.shot_number),
@@ -223,12 +272,56 @@ export async function buildAndDownloadPackage(input: {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-function isClipAsset(a: ProjectAsset): boolean {
-  return (
-    a.asset_type === "generated_clip" ||
-    a.asset_type === "edited_clip" ||
-    a.asset_type === "social_cutdown"
-  );
+function buildClipPathByAssetId(
+  clipsByShot: Record<string, ProjectAsset>,
+  shotsById: Record<string, Shot>,
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const [shotId, asset] of Object.entries(clipsByShot)) {
+    const shot = shotsById[shotId];
+    map[asset.id] = `approved_clips/${approvedFilename(asset, shot?.shot_number)}`;
+  }
+  return map;
+}
+
+function buildResolveColorNotes(manifest: TimelineManifestJson): string {
+  const lines = [
+    `# ${manifest.project_title} — Resolve color notes`,
+    "",
+    `**Global:** ${manifest.global_style.color_direction || "—"}`,
+    `**Grain:** ${manifest.global_style.grain || "—"}`,
+    `**Lens:** ${manifest.global_style.lens_language || "—"}`,
+    "",
+    "## Per-clip profiles",
+    "",
+  ];
+  for (const item of manifest.timeline) {
+    if (!item.color_profile_id && !item.vfx_profile_id) continue;
+    lines.push(
+      `- ${item.clip_filename ?? item.id}: color=${item.color_profile_id ?? "—"} vfx=${item.vfx_profile_id ?? "—"}`,
+    );
+  }
+  if (lines.length === 8) lines.push("_No per-clip color/VFX profiles assigned._");
+  return lines.join("\n");
+}
+
+function premiereReadme(): string {
+  return [
+    "# Premiere-ready",
+    "",
+    "Import `timeline.fcpxml` (File → Import). Clips reference `../approved_clips/`.",
+    "Optional `timeline.edl` is a lossy fallback — prefer FCPXML when possible.",
+  ].join("\n");
+}
+
+function remotionReadme(): string {
+  return [
+    "# Remotion draft preview",
+    "",
+    "Copy this folder into a Remotion project. Install `@remotion/cli`, then run studio.",
+    "This path supersedes the legacy in-app ffmpeg assembly on `shots.*` seconds fields.",
+    "Edit decisions live in `timeline_manifest.json` (regenerate from the app timeline).",
+  ].join("\n");
 }
 
 function slug(input: string): string {
@@ -240,7 +333,11 @@ function slug(input: string): string {
     .slice(0, 60) || "project";
 }
 
-function buildReadme(project: VideoProject, options: ExportOptions): string {
+function buildReadme(
+  project: VideoProject,
+  options: ExportOptions,
+  timeline?: TimelineExportBundle,
+): string {
   return [
     `# ${project.title}`,
     "",
@@ -249,9 +346,13 @@ function buildReadme(project: VideoProject, options: ExportOptions): string {
     "## Folder structure",
     "",
     "- `project_manifest.json` — canonical project metadata + counts",
+    timeline ? "- `timeline_manifest.json` — universal edit timeline (frame-based)" : "",
     "- `shot_list.csv` — editor-friendly shot list",
     "- `prompt_log.csv` — every prompt sent to a provider, with versions",
     "- `edit_decision_notes.md` — ordered list of approved clips for the cut",
+    timeline?.targets.premiere ? "- `premiere_ready/` — FCPXML + notes for Premiere" : "",
+    timeline?.targets.resolve ? "- `resolve_ready/` — FCPXML + color notes + LUT folder" : "",
+    timeline?.targets.remotion ? "- `remotion/` — JSON manifest + composition scaffold" : "",
     options.includeApprovedClips ? "- `approved_clips/` — clips marked Approved" : "",
     options.includeRejectedClips ? "- `rejected_clips/` — for reference, not for edit" : "",
     options.includeReferences ? "- `references/` — input references uploaded to the project" : "",

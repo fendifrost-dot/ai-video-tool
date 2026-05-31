@@ -1,11 +1,16 @@
 # Timeline Assembly — Phase 2 Architecture
 
+> **2026-05 update:** Frame-based `timeline_items` + the Remotion export scaffold
+> are the preferred path for **draft preview**. The seconds-based `shots.*` trim/
+> transition fields below remain for reference but are **deprecated** for new
+> edit work — do not build a second in-app ffmpeg renderer alongside Remotion.
+
 Capability C from the AI Music Video OS brief: produce a full music video,
 transitions and all, as a finished MP4 — not just a handoff to Premiere.
 
 This document maps the path from where we are today to a rendered-in-tool
-final video. Nothing in this document is implemented yet. It exists so when
-Fendi reaches this milestone, the path is mapped out, not a blank page.
+final video. Server-side ffmpeg assembly described below is **not scheduled**
+while Remotion draft export is active.
 
 ## Current state (read first)
 

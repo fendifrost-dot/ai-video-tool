@@ -18,12 +18,32 @@ import {
   type ExportOptions,
   type ExportProgress,
 } from "@/lib/export/buildPackage";
+import { buildTimelineManifest } from "@/lib/export/timelineManifest";
+import { assertTimelineValid } from "@/lib/export/timelineValidation";
+import { useProjectTimelineManifests, useTimelineManifest } from "@/lib/queries/timelineManifests";
+import { useTimelineItems } from "@/lib/queries/timelineItems";
+import { useProjectStoryboard } from "@/lib/queries/storyboards";
+import { useSongAnalysis } from "@/lib/queries/songAnalyses";
+import type { TimelineRenderTarget } from "@/lib/timeline/types";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const DEFAULT_OPTIONS: ExportOptions = {
   includeApprovedClips: true,
   includeRejectedClips: false,
   includeReferences: false,
   includeAudio: true,
+};
+
+const DEFAULT_TARGETS: Record<TimelineRenderTarget, boolean> = {
+  premiere: true,
+  resolve: true,
+  remotion: true,
 };
 
 export default function ExportPage({ projectId }: { projectId: string }) {
@@ -34,6 +54,14 @@ export default function ExportPage({ projectId }: { projectId: string }) {
   const assetsQuery = useProjectAssets(projectId);
   const audioQuery = useProjectAudio(projectId);
   const templatesQuery = usePromptTemplates();
+  const manifestsQuery = useProjectTimelineManifests(projectId);
+  const songQuery = useSongAnalysis(projectId);
+  const storyboardQuery = useProjectStoryboard(projectId);
+  const [manifestId, setManifestId] = useState<string | null>(null);
+  const manifestQuery = useTimelineManifest(manifestId ?? undefined);
+  const timelineItemsQuery = useTimelineItems(manifestId ?? undefined);
+  const [targets, setTargets] = useState(DEFAULT_TARGETS);
+  const [includeEdl, setIncludeEdl] = useState(false);
 
   const [options, setOptions] = useState<ExportOptions>(DEFAULT_OPTIONS);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
@@ -72,6 +100,60 @@ export default function ExportPage({ projectId }: { projectId: string }) {
       toast.error("Still loading project data — try again in a moment.");
       return;
     }
+
+    let timelineBundle: Parameters<typeof buildAndDownloadPackage>[0]["timeline"];
+    if (manifestId && manifestQuery.data) {
+      const items = timelineItemsQuery.data ?? [];
+      if (items.length === 0) {
+        toast.error("Selected timeline has no items — seed or edit on the Timeline page.");
+        return;
+      }
+      const nodes = storyboardQuery.data?.nodes ?? [];
+      const nodesById: Record<string, (typeof nodes)[0]> = {};
+      for (const n of nodes) nodesById[n.id] = n;
+      const shotsById: Record<string, (typeof shotsQuery.data)[number]> = {};
+      for (const s of shotsQuery.data) shotsById[s.id] = s;
+
+      const duration =
+        manifestQuery.data.duration_frames ??
+        Math.max(...items.map((i) => i.end_frame), 0);
+
+      try {
+        assertTimelineValid(items, duration);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Timeline validation failed");
+        return;
+      }
+
+      const json = buildTimelineManifest({
+        project: projectQuery.data,
+        manifest: {
+          id: manifestQuery.data.id,
+          aspect_ratio: manifestQuery.data.aspect_ratio,
+          frame_rate: manifestQuery.data.frame_rate,
+          resolution: manifestQuery.data.resolution,
+          duration_frames: duration,
+        },
+        items,
+        songAnalysis: songQuery.data ?? null,
+        nodesById,
+        shotsById,
+        assets: assetsQuery.data,
+        exportTargets: targets,
+      });
+
+      if (!targets.premiere && !targets.resolve && !targets.remotion) {
+        toast.error("Select at least one render target.");
+        return;
+      }
+
+      timelineBundle = {
+        manifest: json,
+        targets,
+        includeEdl,
+      };
+    }
+
     setBuilding(true);
     setProgress({ phase: "preparing", ratio: 0, message: "Preparing…" });
     try {
@@ -84,6 +166,7 @@ export default function ExportPage({ projectId }: { projectId: string }) {
         assets: assetsQuery.data,
         audioAsset: audioQuery.data ?? null,
         options,
+        timeline: timelineBundle,
         onProgress: setProgress,
       });
       toast.success("Package downloaded");
@@ -146,6 +229,67 @@ export default function ExportPage({ projectId }: { projectId: string }) {
           <TotalCard label="References" value={totals.references} />
           <TotalCard label="Audio file" value={totals.audio ? "yes" : "no"} />
         </div>
+
+        <section className="rounded-md border border-border bg-card/30 p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Timeline export
+          </h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Optional frame-based cut.{" "}
+            <Link
+              to="/projects/$id/timeline"
+              params={{ id: projectId }}
+              className="text-primary underline"
+            >
+              Edit on Timeline
+            </Link>
+            .
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Select
+              value={manifestId ?? "_none"}
+              onValueChange={(v) => setManifestId(v === "_none" ? null : v)}
+            >
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="No timeline" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">Project package only</SelectItem>
+                {(manifestsQuery.data ?? []).map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.title ?? m.id.slice(0, 8)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {manifestId && (
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <TargetToggle
+                label="Premiere"
+                checked={targets.premiere}
+                onChange={(v) => setTargets((t) => ({ ...t, premiere: v }))}
+              />
+              <TargetToggle
+                label="Resolve"
+                checked={targets.resolve}
+                onChange={(v) => setTargets((t) => ({ ...t, resolve: v }))}
+              />
+              <TargetToggle
+                label="Remotion"
+                hint="Draft preview (supersedes ffmpeg assembly)"
+                checked={targets.remotion}
+                onChange={(v) => setTargets((t) => ({ ...t, remotion: v }))}
+              />
+              <Toggle
+                checked={includeEdl}
+                onChange={setIncludeEdl}
+                label="Include EDL fallback (lossy)"
+                hint="Optional CMX3600"
+              />
+            </div>
+          )}
+        </section>
 
         <section className="rounded-md border border-border bg-card/30 p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -229,6 +373,22 @@ export default function ExportPage({ projectId }: { projectId: string }) {
         </div>
       </div>
     </>
+  );
+}
+
+function TargetToggle({
+  label,
+  checked,
+  onChange,
+  hint,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  hint?: string;
+}) {
+  return (
+    <Toggle checked={checked} onChange={onChange} label={label} hint={hint} />
   );
 }
 

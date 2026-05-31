@@ -309,6 +309,7 @@ export type Database = {
           export_type: Database["public"]["Enums"]["export_type"]
           file_url: string | null
           id: string
+          manifest_id: string | null
           manifest_json: Json
           project_id: string
           status: Database["public"]["Enums"]["export_status"]
@@ -320,6 +321,7 @@ export type Database = {
           export_type: Database["public"]["Enums"]["export_type"]
           file_url?: string | null
           id?: string
+          manifest_id?: string | null
           manifest_json?: Json
           project_id: string
           status?: Database["public"]["Enums"]["export_status"]
@@ -331,12 +333,20 @@ export type Database = {
           export_type?: Database["public"]["Enums"]["export_type"]
           file_url?: string | null
           id?: string
+          manifest_id?: string | null
           manifest_json?: Json
           project_id?: string
           status?: Database["public"]["Enums"]["export_status"]
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "export_packages_manifest_id_fkey"
+            columns: ["manifest_id"]
+            isOneToOne: false
+            referencedRelation: "timeline_manifests"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "export_packages_project_id_fkey"
             columns: ["project_id"]
@@ -1326,6 +1336,9 @@ export type Database = {
         | "full_package"
         | "approved_clips_only"
         | "review_pack"
+        | "premiere"
+        | "resolve"
+        | "remotion"
       project_asset_type:
         | "reference_image"
         | "reference_video"
@@ -1552,6 +1565,9 @@ export const Constants = {
         "full_package",
         "approved_clips_only",
         "review_pack",
+        "premiere",
+        "resolve",
+        "remotion",
       ],
       project_asset_type: [
         "reference_image",

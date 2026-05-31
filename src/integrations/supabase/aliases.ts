@@ -34,6 +34,16 @@ export type Storyboard = Tables<"storyboards">;
 export type StoryboardNode = Tables<"storyboard_nodes">;
 export type VideoProject = Tables<"video_projects">;
 
+export type {
+  CutType,
+  StyleProfile,
+  StyleProfileKind,
+  TimelineItem,
+  TimelineManifest,
+  TimelineRenderTarget,
+  TextOverlay,
+} from "@/lib/timeline/types";
+
 // Convenience: VideoProject was historically also referenced as `Project`.
 export type Project = VideoProject;
 

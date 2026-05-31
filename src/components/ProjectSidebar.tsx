@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   FileText,
   Clapperboard,
+  Film,
   Image as ImageIcon,
   Eye,
   Lock,
@@ -18,6 +19,7 @@ const items = [
   { to: "/projects/$id/video", label: "Video", icon: Video, key: "video" },
   { to: "/projects/$id/assets", label: "Assets", icon: ImageIcon, key: "assets" },
   { to: "/projects/$id/review", label: "Review", icon: Eye, key: "review" },
+  { to: "/projects/$id/timeline", label: "Timeline", icon: Film, key: "timeline" },
   { to: "/projects/$id/continuity", label: "Continuity", icon: Lock, key: "continuity" },
   { to: "/projects/$id/export", label: "Export", icon: Upload, key: "export" },
 ] as const;

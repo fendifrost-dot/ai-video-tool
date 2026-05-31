@@ -7,6 +7,7 @@ import type {
 } from "@/integrations/supabase/aliases";
 import { parseSongStructure } from "@/lib/queries/projects";
 import { approvedFilename } from "./csv";
+import { approvedClipsByShot } from "./approvedClips";
 
 export type ProjectManifest = {
   schema_version: 1;
@@ -68,16 +69,7 @@ export function buildManifest(input: {
   const shotsById: Record<string, Shot> = {};
   for (const s of shots) shotsById[s.id] = s;
 
-  const approvedClipsByShot: Record<string, ProjectAsset> = {};
-  for (const a of assets) {
-    if (a.approval_status === "approved" && a.shot_id && isClip(a)) {
-      // pick most-recent if multiple
-      const prior = approvedClipsByShot[a.shot_id];
-      if (!prior || a.created_at > prior.created_at) {
-        approvedClipsByShot[a.shot_id] = a;
-      }
-    }
-  }
+  const clipsByShot = approvedClipsByShot(assets);
 
   const manifestShots: ManifestShot[] = shots.map((s) => ({
     shot_number: s.shot_number,
@@ -87,12 +79,12 @@ export function buildManifest(input: {
     shot_type: s.shot_type,
     scene_description: s.scene_description,
     status: s.status,
-    approved_clip_filename: approvedClipsByShot[s.id]
-      ? approvedFilename(approvedClipsByShot[s.id], s.shot_number)
+    approved_clip_filename: clipsByShot[s.id]
+      ? approvedFilename(clipsByShot[s.id], s.shot_number)
       : null,
   }));
 
-  const approvedRefs: ManifestAssetRef[] = Object.entries(approvedClipsByShot).map(
+  const approvedRefs: ManifestAssetRef[] = Object.entries(clipsByShot).map(
     ([shotId, asset]) => {
       const shot = shotsById[shotId];
       return {
@@ -110,7 +102,7 @@ export function buildManifest(input: {
     shots: shots.length,
     prompts: prompts.length,
     references: assets.filter((a) => a.asset_type === "reference_image" || a.asset_type === "reference_video").length,
-    approved_clips: Object.keys(approvedClipsByShot).length,
+    approved_clips: Object.keys(clipsByShot).length,
     rejected_clips: assets.filter((a) => a.approval_status === "rejected").length,
     other_assets: assets.length,
   };
@@ -135,14 +127,6 @@ export function buildManifest(input: {
     shots: manifestShots,
     approved_clips: approvedRefs,
   };
-}
-
-function isClip(a: ProjectAsset): boolean {
-  return (
-    a.asset_type === "generated_clip" ||
-    a.asset_type === "edited_clip" ||
-    a.asset_type === "social_cutdown"
-  );
 }
 
 // ---------------------------------------------------------------------------
