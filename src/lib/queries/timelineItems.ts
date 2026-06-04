@@ -128,6 +128,24 @@ export function useUpdateTimelineItem() {
   });
 }
 
+export function useResetTimelineItems() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { manifestId: string }): Promise<void> => {
+      const { error } = await (supabase as any)
+        .from("timeline_items")
+        .delete()
+        .eq("manifest_id", input.manifestId);
+      if (error) throw error;
+    },
+    onSuccess: (_v, vars) => {
+      qc.invalidateQueries({
+        queryKey: timelineItemsKeys.forManifest(vars.manifestId),
+      });
+    },
+  });
+}
+
 export function useReorderTimelineItems() {
   const qc = useQueryClient();
   return useMutation({
@@ -135,14 +153,17 @@ export function useReorderTimelineItems() {
       manifestId: string;
       orderedIds: string[];
     }): Promise<void> => {
-      for (let i = 0; i < input.orderedIds.length; i++) {
-        const { error } = await (supabase as any)
-          .from("timeline_items")
-          .update({ item_order: i })
-          .eq("id", input.orderedIds[i]!)
-          .eq("manifest_id", input.manifestId);
-        if (error) throw error;
-      }
+      // Atomic batch — single request, all-or-nothing instead of N round-trips.
+      const updates = input.orderedIds.map((id, i) => ({
+        id,
+        manifest_id: input.manifestId,
+        item_order: i,
+      }));
+      if (updates.length === 0) return;
+      const { error } = await (supabase as any)
+        .from("timeline_items")
+        .upsert(updates, { onConflict: "id", defaultToNull: false });
+      if (error) throw error;
     },
     onSuccess: (_v, vars) => {
       qc.invalidateQueries({

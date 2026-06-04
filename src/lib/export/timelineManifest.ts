@@ -27,6 +27,7 @@ export type TimelineManifestJson = {
     duration_seconds: number;
     beat_markers: SongAnalysis["beat_map_json"];
     song_sections: Section[];
+    file_url: string | null;
   } | null;
   timeline: TimelineManifestItemJson[];
   global_style: {
@@ -181,6 +182,7 @@ export function buildTimelineManifest(input: {
           duration_seconds: songAnalysis.duration_seconds ?? 0,
           beat_markers: songAnalysis.beat_map_json,
           song_sections: songAnalysis.sections_json,
+          file_url: null,
         }
       : null,
     timeline,

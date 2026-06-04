@@ -7,6 +7,7 @@ export type RemotionManifest = {
   width: number;
   height: number;
   sequences: RemotionSequence[];
+  audio: { fileUrl: string | null } | null;
 };
 
 export type RemotionSequence = {
@@ -39,6 +40,9 @@ export function buildRemotionManifest(
       speed: item.speed,
       textOverlays: item.text_overlays,
     })),
+    audio: timelineManifest.audio
+      ? { fileUrl: timelineManifest.audio.file_url }
+      : null,
   };
 }
 
@@ -74,7 +78,7 @@ export const RemotionRoot: React.FC = () => {
 }
 
 export function buildRemotionMusicVideoComponent(): string {
-  return `import { AbsoluteFill, Sequence, Video, staticFile } from "remotion";
+  return `import { AbsoluteFill, Audio, Sequence, Video, staticFile } from "remotion";
 import manifest from "./remotion_manifest.json";
 
 export const MusicVideo: React.FC = () => {
@@ -87,6 +91,7 @@ export const MusicVideo: React.FC = () => {
           </Sequence>
         ) : null,
       )}
+      {manifest.audio?.fileUrl ? <Audio src={manifest.audio.fileUrl} /> : null}
     </AbsoluteFill>
   );
 };

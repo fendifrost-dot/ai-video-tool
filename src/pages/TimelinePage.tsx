@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowDown, ArrowUp, Film, RefreshCw, Save } from "lucide-react";
+import { ArrowLeft, ArrowDown, ArrowUp, Film, RefreshCw, RotateCcw, Save } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useProject } from "@/lib/queries/projects";
 import { useProjectShots } from "@/lib/queries/shots";
 import { useProjectAssets } from "@/lib/queries/projectAssets";
@@ -26,6 +37,7 @@ import {
 } from "@/lib/queries/timelineManifests";
 import {
   useReorderTimelineItems,
+  useResetTimelineItems,
   useSeedTimelineItems,
   useTimelineItems,
   useUpdateTimelineItem,
@@ -56,6 +68,7 @@ export default function TimelinePage({ projectId }: { projectId: string }) {
   const seedItems = useSeedTimelineItems();
   const updateItem = useUpdateTimelineItem();
   const reorderItems = useReorderTimelineItems();
+  const resetItems = useResetTimelineItems();
   const persistSnapshot = usePersistTimelineManifestSnapshot();
 
   useEffect(() => {
@@ -103,6 +116,24 @@ export default function TimelinePage({ projectId }: { projectId: string }) {
     }
   }
 
+  async function handleReset() {
+    if (!manifestId || !manifestQuery.data) return;
+    try {
+      await resetItems.mutateAsync({ manifestId });
+      await seedItems.mutateAsync({
+        manifestId,
+        projectId,
+        frameRate: manifestQuery.data.frame_rate,
+        nodes: storyboardQuery.data?.nodes ?? [],
+        shots: shotsQuery.data ?? [],
+        assets: assetsQuery.data ?? [],
+      });
+      toast.success("Timeline reset and regenerated from storyboard");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Reset failed");
+    }
+  }
+
   async function handleSaveSnapshot() {
     if (!manifestId || !projectQuery.data || !manifestQuery.data) return;
     try {
@@ -138,7 +169,7 @@ export default function TimelinePage({ projectId }: { projectId: string }) {
   if (projectQuery.isLoading) {
     return (
       <>
-        <PageHeader title="Timeline" />
+        <PageHeader title="Music Video Editor" />
         <div className="px-8 py-6">
           <div className="h-24 animate-pulse rounded-md border border-border bg-muted/20" />
         </div>
@@ -149,7 +180,7 @@ export default function TimelinePage({ projectId }: { projectId: string }) {
   return (
     <>
       <PageHeader
-        title="Timeline"
+        title="Music Video Editor"
         subtitle="Edit frame-based cuts. Rows are source of truth — JSON regenerates on save."
       />
       <div className="space-y-6 px-8 py-6">
@@ -200,6 +231,38 @@ export default function TimelinePage({ projectId }: { projectId: string }) {
                 <Save className="mr-1.5 h-4 w-4" />
                 Save manifest snapshot
               </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={
+                      resetItems.isPending ||
+                      seedItems.isPending ||
+                      (itemsQuery.data?.length ?? 0) === 0
+                    }
+                  >
+                    <RotateCcw className="mr-1.5 h-4 w-4" />
+                    Reset timeline
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Reset Timeline</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This clears all timeline_items for this project and you'll
+                      regenerate from storyboard. Are you sure?
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleReset}>
+                      Reset
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </>
           )}
         </div>
