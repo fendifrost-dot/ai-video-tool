@@ -1232,6 +1232,231 @@ export type Database = {
           },
         ]
       }
+      style_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          params_json: Json
+          project_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          name: string
+          params_json?: Json
+          project_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          params_json?: Json
+          project_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "style_profiles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timeline_items: {
+        Row: {
+          approved: boolean
+          asset_id: string | null
+          color_profile_id: string | null
+          created_at: string
+          cut_type: string | null
+          end_frame: number
+          id: string
+          item_order: number
+          manifest_id: string
+          notes: string | null
+          shot_id: string | null
+          song_section: string | null
+          speed: number
+          start_frame: number
+          storyboard_node_id: string | null
+          text_overlays_json: Json
+          track: string
+          transition_in_json: Json
+          transition_out_json: Json
+          trim_in_frame: number
+          trim_out_frame: number | null
+          updated_at: string
+          vfx_profile_id: string | null
+        }
+        Insert: {
+          approved?: boolean
+          asset_id?: string | null
+          color_profile_id?: string | null
+          created_at?: string
+          cut_type?: string | null
+          end_frame: number
+          id?: string
+          item_order: number
+          manifest_id: string
+          notes?: string | null
+          shot_id?: string | null
+          song_section?: string | null
+          speed?: number
+          start_frame: number
+          storyboard_node_id?: string | null
+          text_overlays_json?: Json
+          track?: string
+          transition_in_json?: Json
+          transition_out_json?: Json
+          trim_in_frame?: number
+          trim_out_frame?: number | null
+          updated_at?: string
+          vfx_profile_id?: string | null
+        }
+        Update: {
+          approved?: boolean
+          asset_id?: string | null
+          color_profile_id?: string | null
+          created_at?: string
+          cut_type?: string | null
+          end_frame?: number
+          id?: string
+          item_order?: number
+          manifest_id?: string
+          notes?: string | null
+          shot_id?: string | null
+          song_section?: string | null
+          speed?: number
+          start_frame?: number
+          storyboard_node_id?: string | null
+          text_overlays_json?: Json
+          track?: string
+          transition_in_json?: Json
+          transition_out_json?: Json
+          trim_in_frame?: number
+          trim_out_frame?: number | null
+          updated_at?: string
+          vfx_profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_items_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_items_color_profile_id_fkey"
+            columns: ["color_profile_id"]
+            isOneToOne: false
+            referencedRelation: "style_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_items_manifest_id_fkey"
+            columns: ["manifest_id"]
+            isOneToOne: false
+            referencedRelation: "timeline_manifests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_items_shot_id_fkey"
+            columns: ["shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_items_storyboard_node_id_fkey"
+            columns: ["storyboard_node_id"]
+            isOneToOne: false
+            referencedRelation: "storyboard_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_items_vfx_profile_id_fkey"
+            columns: ["vfx_profile_id"]
+            isOneToOne: false
+            referencedRelation: "style_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timeline_manifests: {
+        Row: {
+          aspect_ratio: string | null
+          created_at: string
+          duration_frames: number | null
+          export_status: Database["public"]["Enums"]["export_status"]
+          frame_rate: number
+          id: string
+          manifest_json: Json
+          project_id: string
+          resolution: string | null
+          song_analysis_id: string | null
+          title: string | null
+          updated_at: string
+          version_number: number
+        }
+        Insert: {
+          aspect_ratio?: string | null
+          created_at?: string
+          duration_frames?: number | null
+          export_status?: Database["public"]["Enums"]["export_status"]
+          frame_rate?: number
+          id?: string
+          manifest_json?: Json
+          project_id: string
+          resolution?: string | null
+          song_analysis_id?: string | null
+          title?: string | null
+          updated_at?: string
+          version_number?: number
+        }
+        Update: {
+          aspect_ratio?: string | null
+          created_at?: string
+          duration_frames?: number | null
+          export_status?: Database["public"]["Enums"]["export_status"]
+          frame_rate?: number
+          id?: string
+          manifest_json?: Json
+          project_id?: string
+          resolution?: string | null
+          song_analysis_id?: string | null
+          title?: string | null
+          updated_at?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_manifests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_manifests_song_analysis_id_fkey"
+            columns: ["song_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "song_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_projects: {
         Row: {
           artist_id: string | null
