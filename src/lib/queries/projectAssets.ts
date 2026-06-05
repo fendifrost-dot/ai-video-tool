@@ -193,8 +193,17 @@ export function bucketForAssetType(t: ProjectAssetType) {
   }
 }
 
+const IMAGE_ASSET_TYPES: ProjectAssetType[] = [
+  "reference_image",
+  "generated_still",
+  "thumbnail",
+];
+
 /** Whether a file_url is renderable as an image preview. */
 export function isImageAsset(asset: ProjectAsset): boolean {
+  // Trust asset_type for known image rows — generated/API assets often lack
+  // mime_type metadata and extensionless storage paths.
+  if (IMAGE_ASSET_TYPES.includes(asset.asset_type)) return true;
   const meta = asset.metadata_json as { mime_type?: string } | null;
   const mime = meta?.mime_type ?? "";
   if (mime.startsWith("image/")) return true;

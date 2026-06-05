@@ -102,6 +102,12 @@ export default function AssetLibraryPage({ projectId }: { projectId: string }) {
         subtitle="Every reference, generated take, approved clip, and export tied to this project."
       />
       <div className="space-y-6 px-8 py-6">
+        {!projectQuery.data.artist_id && (
+          <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200/90">
+            Link an artist to this project to enable <strong>Apply My Face</strong> on
+            image assets. Edit the project and choose an artist under Project settings.
+          </div>
+        )}
         <AssetUploadDropzone projectId={projectId} />
 
         <div className="flex flex-wrap items-center gap-3">
