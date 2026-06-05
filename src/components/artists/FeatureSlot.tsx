@@ -56,16 +56,35 @@ export function FeatureSlot({
   const del = useDeleteCharacterFeature();
 
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     const url = current?.file_url;
+    setImgError(false);
     if (!url) {
       setSignedUrl(null);
       return;
     }
+    // Legacy/migrated rows may store a fully-qualified URL — use as-is.
+    if (/^https?:\/\//i.test(url)) {
+      setSignedUrl(url);
+      return;
+    }
+    let cancelled = false;
     signedUrls("artist-assets", [url], 3600)
-      .then((map) => setSignedUrl(map[url] ?? null))
-      .catch((err) => console.error("signedUrl failed", err));
+      .then((map) => {
+        if (!cancelled) setSignedUrl(map[url] ?? null);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error("signedUrl failed", err);
+          setSignedUrl(null);
+          setImgError(true);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [current?.file_url]);
 
   async function handleFiles(files: FileList | null) {
@@ -136,12 +155,23 @@ export function FeatureSlot({
   return (
     <div className="group relative flex flex-col gap-1.5">
       <div className="aspect-square overflow-hidden rounded-md border border-border bg-muted/30">
-        {current && signedUrl ? (
+        {current && signedUrl && !imgError ? (
           <img
             src={signedUrl}
             alt={`${featureType} ${label}`}
             className="h-full w-full object-cover"
+            onError={() => setImgError(true)}
           />
+        ) : current && imgError ? (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="flex h-full w-full flex-col items-center justify-center gap-1 text-[10px] text-destructive hover:bg-muted/50"
+            title="The stored image could not be loaded — click to re-upload"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="uppercase tracking-wider">Re-upload</span>
+          </button>
         ) : current ? (
           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
             Loading…

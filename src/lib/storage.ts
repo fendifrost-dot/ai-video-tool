@@ -252,9 +252,18 @@ export async function signedUrls(
     .createSignedUrls(paths, expiresInSeconds);
   if (error) throw error;
   const map: Record<string, string> = {};
-  for (const item of data ?? []) {
-    if (item.path && item.signedUrl) map[item.path] = item.signedUrl;
-  }
+  // Pair results to the INPUT paths by index: createSignedUrls returns items in
+  // the same order as the request. item.path can come back null/normalised and
+  // never match the caller's key; and across @supabase/storage-js versions the
+  // URL is exposed as either `signedUrl` (newer) or `signedURL` (older). Reading
+  // item.path/item.signedUrl directly left the map empty -> every thumbnail
+  // stuck on "Loading…" despite the sign request returning 200.
+  (data ?? []).forEach((item, i) => {
+    const rec = item as { signedUrl?: string | null; signedURL?: string | null };
+    const url = rec?.signedUrl ?? rec?.signedURL ?? null;
+    const key = paths[i];
+    if (key && url) map[key] = url;
+  });
   return map;
 }
 
