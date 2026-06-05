@@ -156,7 +156,7 @@ export default function AssetLibraryPage({ projectId }: { projectId: string }) {
                 </h2>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {assets.map((a) => (
-                    <AssetCard key={a.id} asset={a} />
+                    <AssetCard key={a.id} asset={a} artistId={projectQuery.data?.artist_id} />
                   ))}
                 </div>
               </section>

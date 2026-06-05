@@ -7,6 +7,7 @@ import {
   ExternalLink,
   File as FileIcon,
   Trash2,
+  Wand2,
   X,
   XCircle,
 } from "lucide-react";
@@ -22,6 +23,7 @@ import {
   useDeleteProjectAsset,
   useUpdateProjectAsset,
 } from "@/lib/queries/projectAssets";
+import { useApplyIdentity } from "@/lib/queries/faceswap";
 import { deleteFromBucket, signedUrl } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,10 +33,34 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function AssetCard({ asset }: { asset: ProjectAsset }) {
+export function AssetCard({
+  asset,
+  artistId,
+}: {
+  asset: ProjectAsset;
+  artistId?: string | null;
+}) {
   const [url, setUrl] = useState<string | null>(null);
   const update = useUpdateProjectAsset();
   const del = useDeleteProjectAsset();
+  const applyFace = useApplyIdentity();
+
+  async function handleApplyFace() {
+    if (!artistId) return;
+    try {
+      await applyFace.mutateAsync({
+        artistId,
+        projectId: asset.project_id,
+        scenePath: asset.file_url,
+        sceneBucket: bucketForAssetType(asset.asset_type),
+        sceneAssetId: asset.id,
+        shotId: asset.shot_id ?? undefined,
+      });
+      toast.success("Face applied — new still added (pending review)");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Face-swap failed");
+    }
+  }
 
   useEffect(() => {
     const bucket = bucketForAssetType(asset.asset_type);
@@ -117,6 +143,20 @@ export function AssetCard({ asset }: { asset: ProjectAsset }) {
               <X className="mr-1 h-3 w-3" />
               Reject
             </Button>
+            {artistId && isImageAsset(asset) && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handleApplyFace}
+                disabled={applyFace.isPending}
+                className="h-7 px-2 text-xs"
+                title="Swap the artist's face onto this image (Fal · ~$0.05/image)"
+              >
+                <Wand2 className="mr-1 h-3 w-3" />
+                {applyFace.isPending ? "Applying…" : "Apply My Face"}
+              </Button>
+            )}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
