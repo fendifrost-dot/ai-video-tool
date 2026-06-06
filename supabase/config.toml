@@ -8,6 +8,12 @@ project_id = "qoyxgnkvjukovkrvdaiq"
 [functions.compose-look-callback]
 verify_jwt = false
 
+# faceswap-callback is a server-to-server webhook from CC (which subscribed to
+# Fal's webhook for the async face-swap job). Same auth model as
+# compose-look-callback: shared X-Proxy-Secret validated inside the function.
+[functions.faceswap-callback]
+verify_jwt = false
+
 [functions.train-style-lora-proxy]
 verify_jwt = false
 
