@@ -143,20 +143,6 @@ export function AssetCard({
               <X className="mr-1 h-3 w-3" />
               Reject
             </Button>
-            {artistId && isImageAsset(asset) && (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={handleApplyFace}
-                disabled={applyFace.isPending}
-                className="h-7 px-2 text-xs"
-                title="Swap the artist's face onto this image (Fal · ~$0.05/image)"
-              >
-                <Wand2 className="mr-1 h-3 w-3" />
-                {applyFace.isPending ? "Applying…" : "Apply My Face"}
-              </Button>
-            )}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -190,6 +176,21 @@ export function AssetCard({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {artistId && isImageAsset(asset) && (
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={handleApplyFace}
+            disabled={applyFace.isPending}
+            className="h-8 w-full text-xs"
+            title="Swap the artist's face onto this image (Fal · ~$0.05/image)"
+          >
+            <Wand2 className="mr-1.5 h-3.5 w-3.5" />
+            {applyFace.isPending ? "Applying your face…" : "Apply My Face"}
+          </Button>
+        )}
       </div>
     </div>
   );
