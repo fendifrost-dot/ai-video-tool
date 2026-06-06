@@ -152,7 +152,7 @@ export async function callApplyIdentity(
     model:
       typeof (cb as Record<string, unknown>).model === "string"
         ? ((cb as Record<string, unknown>).model as string)
-        : "easel-ai/advanced-face-swap",
+        : "fal-ai/face-swap",
   };
 }
 
