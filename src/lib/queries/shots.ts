@@ -173,3 +173,51 @@ export const SHOT_STATUS_STYLES: Record<ShotStatus, string> = {
   rejected: "bg-destructive/15 text-destructive",
   needs_regen: "bg-amber-500/15 text-amber-400",
 };
+
+/**
+ * Bulk insert for the Treatment Builder commit step.
+ * `replace: true` deletes the project's existing shots first.
+ */
+export function useBulkCreateShots() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      projectId: string;
+      replace: boolean;
+      rows: Array<Omit<TablesInsert<"shots">, "user_id" | "project_id" | "shot_number">>;
+    }): Promise<number> => {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+      if (!user) throw new Error("Not signed in");
+
+      let startNumber = 1;
+      if (input.replace) {
+        const { error: delErr } = await supabase
+          .from("shots")
+          .delete()
+          .eq("project_id", input.projectId);
+        if (delErr) throw delErr;
+      } else {
+        const { data: priors, error: priorsErr } = await supabase
+          .from("shots")
+          .select("shot_number")
+          .eq("project_id", input.projectId);
+        if (priorsErr) throw priorsErr;
+        startNumber = (priors ?? []).reduce((m, r) => Math.max(m, r.shot_number ?? 0), 0) + 1;
+      }
+
+      const rows = input.rows.map((r, i) => ({
+        ...r,
+        project_id: input.projectId,
+        user_id: user.id,
+        shot_number: startNumber + i,
+      }));
+      const { error } = await supabase.from("shots").insert(rows);
+      if (error) throw error;
+      return rows.length;
+    },
+    onSuccess: (_n, vars) => {
+      qc.invalidateQueries({ queryKey: shotsKeys.forProject(vars.projectId) });
+    },
+  });
+}

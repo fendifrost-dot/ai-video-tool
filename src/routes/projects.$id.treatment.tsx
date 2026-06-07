@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Treatment } from "@/pages/ProjectSections";
+import { TreatmentBuilderPage } from "@/pages/TreatmentBuilderPage";
 
 export const Route = createFileRoute("/projects/$id/treatment")({
   component: () => {
     const { id } = Route.useParams();
-    return <Treatment projectId={id} />;
+    return <TreatmentBuilderPage projectId={id} />;
   },
 });

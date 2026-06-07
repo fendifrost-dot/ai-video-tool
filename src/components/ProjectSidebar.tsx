@@ -24,7 +24,8 @@ import {
 import { Button } from "@/components/ui/button";
 
 const items = [
-  { to: "/projects/$id/shots", label: "Shots", icon: Clapperboard, key: "shots" },
+  { to: "/projects/$id/treatment", label: "Treatment", icon: FileText, key: "treatment" },
+  { to: "/projects/$id/shots", label: "Shot List", icon: Clapperboard, key: "shots" },
   { to: "/projects/$id/assets", label: "Assets", icon: ImageIcon, key: "assets" },
   { to: "/projects/$id/prompt", label: "Prompt Lab", icon: Wand2, key: "prompt" },
   { to: "/projects/$id/video", label: "Video", icon: Video, key: "video" },
@@ -32,7 +33,6 @@ const items = [
   { to: "/projects/$id/timeline", label: "Music Video Editor", icon: Film, key: "timeline" },
   { to: "/projects/$id/continuity", label: "Continuity", icon: Lock, key: "continuity" },
   { to: "/projects/$id/export", label: "Export", icon: Upload, key: "export" },
-  { to: "/projects/$id/treatment", label: "Treatment", icon: FileText, key: "treatment", soon: true },
 ] as const;
 
 export function ProjectSidebar({ projectId }: { projectId: string }) {
@@ -117,11 +117,6 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                     {!collapsed && (
                       <span className="flex min-w-0 flex-1 items-center gap-2">
                         <span className="truncate">{item.label}</span>
-                        {"soon" in item && item.soon && (
-                          <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-muted-foreground">
-                            Soon
-                          </span>
-                        )}
                       </span>
                     )}
                   </Link>
@@ -134,7 +129,6 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                     <TooltipTrigger asChild>{link}</TooltipTrigger>
                     <TooltipContent side="right">
                       {item.label}
-                      {"soon" in item && item.soon ? " (soon)" : ""}
                     </TooltipContent>
                   </Tooltip>
                 );
@@ -165,9 +159,6 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                 >
                   <Icon className={cn("h-3.5 w-3.5", active && "text-primary")} />
                   {item.label}
-                  {"soon" in item && item.soon && (
-                    <span className="rounded-full bg-muted px-1 py-0.5 text-[8px] uppercase">Soon</span>
-                  )}
                 </Link>
               );
             })}
