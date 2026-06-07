@@ -1,7 +1,21 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+function parseUrlFieldError(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return "URL must start with http:// or https://";
+    }
+    return null;
+  } catch {
+    return "Enter a valid URL (e.g. https://example.com/image.jpg)";
+  }
+}
 
 /**
  * URL-paste panel for importing a reference image. Generic — used by the
@@ -33,10 +47,21 @@ export function UrlImportPanel({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const urlParseError = useMemo(() => parseUrlFieldError(url), [url]);
+  const canSubmit =
+    !busy &&
+    url.trim().length > 0 &&
+    !urlParseError &&
+    (!showName || name.trim().length > 0);
+
   async function handleSubmit() {
     setError(null);
     if (!url.trim()) {
       setError("URL required");
+      return;
+    }
+    if (urlParseError) {
+      setError(urlParseError);
       return;
     }
     if (showName && !name.trim()) {
@@ -67,15 +92,25 @@ export function UrlImportPanel({
         <span>{label}</span>
       </div>
       {helpText && <p className="text-[11px] text-muted-foreground">{helpText}</p>}
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          type="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          placeholder={placeholder}
-          className="min-w-[260px] flex-1"
-          disabled={busy}
-        />
+      <div className="flex flex-wrap items-start gap-2">
+        <div className="min-w-[260px] flex-1 space-y-1">
+          <Input
+            type="url"
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              if (error) setError(null);
+            }}
+            placeholder={placeholder}
+            disabled={busy}
+            aria-invalid={!!urlParseError || !!error}
+          />
+          {urlParseError && (
+            <p className="text-xs text-destructive" role="alert">
+              {urlParseError}
+            </p>
+          )}
+        </div>
         {showName && (
           <Input
             type="text"
@@ -96,12 +131,12 @@ export function UrlImportPanel({
             disabled={busy}
           />
         )}
-        <Button type="button" onClick={handleSubmit} disabled={busy}>
+        <Button type="button" onClick={handleSubmit} disabled={!canSubmit}>
           {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
           {submitLabel}
         </Button>
       </div>
-      {error && (
+      {error && !urlParseError && (
         <p className="text-xs text-destructive" role="alert">
           {error}
         </p>

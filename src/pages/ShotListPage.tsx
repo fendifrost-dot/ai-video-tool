@@ -49,6 +49,20 @@ export default function ShotListPage({ projectId }: { projectId: string }) {
   async function handleAdd() {
     try {
       const shot = await createShot.mutateAsync({ project_id: projectId });
+      toast.success(`Shot #${shot.shot_number} created`, {
+        duration: 10_000,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            void deleteShot
+              .mutateAsync({ id: shot.id, projectId })
+              .then(() => toast.success("Shot removed"))
+              .catch((err) =>
+                toast.error(err instanceof Error ? err.message : "Couldn't undo"),
+              );
+          },
+        },
+      });
       navigate({
         to: "/projects/$id/shots/$shotId",
         params: { id: projectId, shotId: shot.id },

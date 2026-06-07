@@ -1,9 +1,14 @@
-import { ComingSoon, PageHeader } from "@/components/AppShell";
+import { PageHeader, SoonPlaceholder } from "@/components/AppShell";
+
 export default function Settings() {
   return (
     <>
       <PageHeader title="Settings" />
-      <ComingSoon />
+      <SoonPlaceholder
+        message="Account and app preferences aren't available yet."
+        backTo={{ to: "/projects" }}
+        backLabel="Back to Projects"
+      />
     </>
   );
 }

@@ -8,8 +8,6 @@ import type { VideoProject, ProjectStatus } from "@/integrations/supabase/aliase
 
 // ---------------------------------------------------------------------------
 // /projects — full list of the user's projects (cross-artist).
-// Mirrors the Dashboard project grid but lives at its own route so the mobile
-// Projects nav tab has a real destination.
 // ---------------------------------------------------------------------------
 export default function ProjectsPage() {
   const { data: projects, isLoading, error } = useProjects();

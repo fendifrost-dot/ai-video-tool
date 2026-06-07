@@ -1,12 +1,17 @@
-import { ComingSoon, PageHeader } from "@/components/AppShell";
-export function Treatment() {
+import { ComingSoon, PageHeader, SoonPlaceholder } from "@/components/AppShell";
+
+export function Treatment({ projectId }: { projectId: string }) {
   return (
-    <div className="flex-1">
+    <>
       <PageHeader title="Treatment" />
-      <ComingSoon />
-    </div>
+      <SoonPlaceholder
+        message="Treatment generation isn't built yet — plan shots on the Shots tab for now."
+        backTo={{ to: "/projects/$id/shots", params: { id: projectId } }}
+      />
+    </>
   );
 }
+
 export function Shots() {
   return (
     <div className="flex-1">
@@ -15,6 +20,7 @@ export function Shots() {
     </div>
   );
 }
+
 export function ShotDetail({ shotId }: { shotId: string }) {
   return (
     <div className="flex-1">
@@ -23,6 +29,7 @@ export function ShotDetail({ shotId }: { shotId: string }) {
     </div>
   );
 }
+
 export function Assets() {
   return (
     <div className="flex-1">
@@ -31,6 +38,7 @@ export function Assets() {
     </div>
   );
 }
+
 export function Review() {
   return (
     <div className="flex-1">
@@ -39,6 +47,7 @@ export function Review() {
     </div>
   );
 }
+
 export function ExportPage() {
   return (
     <div className="flex-1">

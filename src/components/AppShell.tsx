@@ -340,7 +340,30 @@ export function AppShell() {
   );
 }
 
-export function PageHeader({ title, subtitle }: { title: string; subtitle?: string }) {
+export function PageHeader({
+  title,
+  subtitle,
+  variant = "default",
+}: {
+  title: string;
+  subtitle?: string;
+  variant?: "default" | "compact";
+}) {
+  if (variant === "compact") {
+    return (
+      <header className="border-b border-border px-4 py-2 md:px-8">
+        <div className="flex min-h-10 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          <h1 className="font-display text-lg font-semibold tracking-tight text-foreground">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="text-sm text-foreground/60">{subtitle}</p>
+          )}
+        </div>
+      </header>
+    );
+  }
+
   return (
     <header className="px-4 pt-4 pb-6 md:px-8 md:pt-8">
       <div className="glass-float rounded-2xl px-5 py-5 md:px-7 md:py-6">
@@ -352,6 +375,38 @@ export function PageHeader({ title, subtitle }: { title: string; subtitle?: stri
         )}
       </div>
     </header>
+  );
+}
+
+export function SoonPlaceholder({
+  message,
+  backTo,
+  backLabel = "Back to Shots",
+}: {
+  message: string;
+  backTo?: { to: string; params?: Record<string, string> };
+  backLabel?: string;
+}) {
+  return (
+    <div className="px-4 py-12 md:px-8">
+      <div className="glass rounded-2xl px-6 py-10 text-center">
+        <span className="mb-3 inline-block rounded-full bg-muted px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+          Coming soon
+        </span>
+        <p className="text-sm text-foreground/60">{message}</p>
+        {backTo && (
+          <div className="mt-4">
+            <Link
+              to={backTo.to as never}
+              params={backTo.params as never}
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              {backLabel}
+            </Link>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

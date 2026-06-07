@@ -49,6 +49,7 @@ export default function PromptBuilderPage({
   return (
     <>
       <PageHeader
+        variant="compact"
         title="Prompt builder"
         subtitle="Compile a prompt against this project + an artist + (optionally) a shot. Copy for any provider."
       />

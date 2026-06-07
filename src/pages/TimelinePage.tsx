@@ -180,6 +180,7 @@ export default function TimelinePage({ projectId }: { projectId: string }) {
   return (
     <>
       <PageHeader
+        variant="compact"
         title="Music Video Editor"
         subtitle="Edit frame-based cuts. Rows are source of truth — JSON regenerates on save."
       />

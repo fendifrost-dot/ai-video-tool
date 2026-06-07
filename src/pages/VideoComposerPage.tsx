@@ -56,6 +56,7 @@ export default function VideoComposerPage({ projectId }: { projectId: string }) 
   return (
     <>
       <PageHeader
+        variant="compact"
         title="Video composer"
         subtitle="Build clip prompts from artist looks and submit through provider jobs."
       />

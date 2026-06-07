@@ -14,7 +14,9 @@ import {
   type ScoreMetric,
 } from "@/lib/queries/clipReviews";
 import { useUpdateProjectAsset } from "@/lib/queries/projectAssets";
+import { useProjectRailCollapsed } from "@/lib/projectRail";
 import { Button } from "@/components/ui/button";
+import { ClipDecision } from "@/components/review/ClipDecision";
 import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -130,6 +132,7 @@ export function ScorecardForm({
 
       <ActionBar
         sticky={stickyFooter}
+        approvalStatus={asset.approval_status}
         usefulness={state.final_usefulness}
         onUsefulnessChange={(v) => setState((s) => ({ ...s, final_usefulness: v }))}
         onSave={() => persist()}
@@ -174,6 +177,7 @@ function ScoreRow({
 
 function ActionBar({
   sticky,
+  approvalStatus,
   usefulness,
   onUsefulnessChange,
   onSave,
@@ -182,6 +186,7 @@ function ActionBar({
   submitting,
 }: {
   sticky: boolean;
+  approvalStatus: ApprovalStatus;
   usefulness: boolean | null;
   onUsefulnessChange: (next: boolean | null) => void;
   onSave: () => void;
@@ -189,6 +194,8 @@ function ActionBar({
   onReject: () => void;
   submitting: boolean;
 }) {
+  const railCollapsed = useProjectRailCollapsed();
+
   const inner = (
     <div className="flex flex-wrap items-center justify-between gap-2">
       <div className="flex gap-1.5">
@@ -209,7 +216,7 @@ function ActionBar({
           }
         />
       </div>
-      <div className="flex gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <Button
           type="button"
           variant="outline"
@@ -220,23 +227,14 @@ function ActionBar({
           <Save className="mr-1.5 h-3.5 w-3.5" />
           Save
         </Button>
-        <Button
-          type="button"
-          size="sm"
-          onClick={onApprove}
+        <ClipDecision
+          status={approvalStatus}
+          onApprove={onApprove}
+          onReject={onReject}
           disabled={submitting}
-        >
-          Save + Approve
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={onReject}
-          disabled={submitting}
-        >
-          Save + Reject
-        </Button>
+          approveLabel="Save + Approve"
+          rejectLabel="Save + Reject"
+        />
       </div>
     </div>
   );
@@ -244,7 +242,13 @@ function ActionBar({
   if (!sticky) return inner;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:pl-[calc(16rem+1rem)]">
+    <div
+      className={
+        railCollapsed
+          ? "fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:pl-[calc(4.5rem+1rem)]"
+          : "fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:pl-[calc(16rem+1rem)]"
+      }
+    >
       <div className="mx-auto max-w-5xl">{inner}</div>
     </div>
   );

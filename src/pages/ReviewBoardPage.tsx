@@ -111,6 +111,7 @@ export default function ReviewBoardPage({ projectId }: { projectId: string }) {
   return (
     <>
       <PageHeader
+        variant="compact"
         title="Review"
         subtitle="Score every generated clip on consistency, realism, lighting, wardrobe, camera, and lip-sync. Approve to send to the edit, reject to flag for regeneration."
       />
