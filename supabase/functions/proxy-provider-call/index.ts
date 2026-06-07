@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
   const targetUrl = `${ccUrl.replace(/\/$/, "")}/functions/v1/${endpoint}${qs}`;
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 60_000);
+  const timer = setTimeout(() => ctrl.abort(), 180_000);
   try {
     const fetchInit: RequestInit = {
       method,
