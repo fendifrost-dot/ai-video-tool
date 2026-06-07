@@ -245,8 +245,8 @@ function ActionBar({
     <div
       className={
         railCollapsed
-          ? "fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:pl-[calc(4.5rem+1rem)]"
-          : "fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:pl-[calc(16rem+1rem)]"
+          ? "fixed inset-x-0 bottom-28 z-30 border-t md:bottom-0 border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:pl-[calc(4.5rem+1rem)]"
+          : "fixed inset-x-0 bottom-28 z-30 border-t md:bottom-0 border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:pl-[calc(16rem+1rem)]"
       }
     >
       <div className="mx-auto max-w-5xl">{inner}</div>

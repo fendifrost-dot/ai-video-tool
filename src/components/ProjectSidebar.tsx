@@ -145,7 +145,7 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
       </aside>
 
       {/* Mobile: horizontal scroll chip nav */}
-      <nav className="md:hidden sticky top-20 z-20 -mx-1 px-4">
+      <nav className="md:hidden relative z-20 px-4">
         <div className="glass rounded-2xl p-1.5">
           <div className="flex gap-1 overflow-x-auto scrollbar-none">
             {items.map((item) => {
