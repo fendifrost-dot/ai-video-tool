@@ -10,7 +10,7 @@ function ProjectLayout() {
   const { id } = Route.useParams();
   return (
     <ProjectRailProvider>
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen flex-col md:flex-row">
         <ProjectSidebar projectId={id} />
         <main className="min-w-0 flex-1">
           <Outlet />

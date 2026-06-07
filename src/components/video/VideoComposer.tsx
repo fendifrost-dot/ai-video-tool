@@ -240,9 +240,8 @@ export function VideoComposer({
   }
 
   return (
-    <div className="space-y-6 px-8 py-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Video composer</h2>
+    <div className="space-y-6 px-4 py-4 md:px-8 md:py-6">
+      <div className="flex items-center justify-end">
         <Button onClick={handleSubmit} disabled={!canSubmit}>
           {generate.isPending ? (
             <>
