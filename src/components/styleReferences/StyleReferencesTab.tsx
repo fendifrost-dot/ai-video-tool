@@ -86,14 +86,15 @@ export function StyleReferencesTab({ artist: initialArtist }: { artist: Artist }
   const trainingLocally = trainPrepPhase !== null;
 
   const training = parseIdentityTraining(artist);
-  const trainingPending = training?.status === "pending";
+  const trainingStatus = typeof training?.status === "string" ? training.status : undefined;
+  const trainingPending = trainingStatus === "pending";
   const trainingStartedAt =
     typeof training?.started_at === "string" ? training.started_at : undefined;
   const elapsedMin = trainingElapsedMinutes(trainingStartedAt);
-  const prevTrainingStatus = useRef<string | undefined>(training?.status);
+  const prevTrainingStatus = useRef<string | undefined>(trainingStatus);
 
   useEffect(() => {
-    const status = training?.status;
+    const status = trainingStatus;
     const prev = prevTrainingStatus.current;
     if (prev === "pending" && status === "complete") {
       toast.success(`Style LoRA ready — trigger ${STYLE_LORA_TRIGGER}`);
@@ -103,7 +104,7 @@ export function StyleReferencesTab({ artist: initialArtist }: { artist: Artist }
       );
     }
     prevTrainingStatus.current = status;
-  }, [training?.status, training?.error]);
+  }, [trainingStatus, training?.error]);
 
   useEffect(() => {
     if (!trainingPending) return;

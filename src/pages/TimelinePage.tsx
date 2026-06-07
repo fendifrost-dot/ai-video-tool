@@ -333,7 +333,7 @@ export default function TimelinePage({ projectId }: { projectId: string }) {
                     onValueChange={(v) =>
                       updateItem.mutate({
                         id: item.id,
-                        manifestId,
+                        manifestId: manifestId!,
                         patch: { cut_type: v as CutType },
                       })
                     }
@@ -361,7 +361,7 @@ export default function TimelinePage({ projectId }: { projectId: string }) {
                       if (!Number.isNaN(v))
                         updateItem.mutate({
                           id: item.id,
-                          manifestId,
+                          manifestId: manifestId!,
                           patch: { end_frame: v },
                         });
                     }}
@@ -373,7 +373,7 @@ export default function TimelinePage({ projectId }: { projectId: string }) {
                     onCheckedChange={(c) =>
                       updateItem.mutate({
                         id: item.id,
-                        manifestId,
+                        manifestId: manifestId!,
                         patch: { approved: c === true },
                       })
                     }
