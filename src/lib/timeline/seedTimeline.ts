@@ -13,7 +13,7 @@ export type SeedTimelineInput = {
 
 export type SeedTimelineRow = Omit<
   TimelineItem,
-  "id" | "manifest_id" | "created_at" | "updated_at"
+  "id" | "created_at" | "updated_at"
 >;
 
 /**
