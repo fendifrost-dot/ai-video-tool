@@ -31,6 +31,14 @@ function lookLabel(look: Look): string {
   return name && name.length > 0 ? name : `Look ${look.id.slice(0, 8)}`;
 }
 
+function formatLookDate(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
 export function LookSelector({
   artistId,
   selected,
@@ -138,6 +146,7 @@ export function LookSelector({
                       <span className="truncate text-sm font-medium">{lookLabel(look)}</span>
                       <span className="text-xs text-muted-foreground">
                         {look.pipeline_used ?? look.status}
+                        {look.created_at ? ` · ${formatLookDate(look.created_at)}` : ""}
                       </span>
                     </div>
                   </div>

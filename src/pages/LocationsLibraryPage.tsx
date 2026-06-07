@@ -26,7 +26,7 @@ import {
 import { LibraryItemCard } from "@/components/library/LibraryItemCard";
 import { UrlImportPanel, parseTagsCsv } from "@/components/wardrobe/UrlImportPanel";
 
-export default function LocationsLibraryPage() {
+export default function LocationsLibraryPage({ embedded = false }: { embedded?: boolean }) {
   const [category, setCategory] = useState<LocationCategory | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -125,11 +125,13 @@ export default function LocationsLibraryPage() {
 
   return (
     <>
-      <PageHeader
-        title="Locations library"
-        subtitle="Reusable backdrops and environments — pin to a project when you're ready to use them."
-      />
-      <div className="space-y-5 px-8 py-6">
+      {!embedded && (
+        <PageHeader
+          title="Locations library"
+          subtitle="Reusable backdrops and environments — pin to a project when you're ready to use them."
+        />
+      )}
+      <div className={`space-y-5 ${embedded ? "px-4 py-6 md:px-8" : "px-8 py-6"}`}>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Category:

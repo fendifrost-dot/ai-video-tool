@@ -1,14 +1,12 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  Check,
   CheckCircle2,
   Clock,
   ExternalLink,
   File as FileIcon,
   Trash2,
   Wand2,
-  X,
   XCircle,
 } from "lucide-react";
 import type {
@@ -26,6 +24,7 @@ import {
 import { useApplyIdentity } from "@/lib/queries/faceswap";
 import { deleteFromBucket, signedUrl } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
+import { ClipDecision } from "@/components/review/ClipDecision";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,11 +35,16 @@ import {
 export function AssetCard({
   asset,
   artistId,
+  signedUrl: signedUrlProp,
+  urlLoading = false,
 }: {
   asset: ProjectAsset;
   artistId?: string | null;
+  /** When provided, skips the per-card signedUrl POST on mount. */
+  signedUrl?: string | null;
+  urlLoading?: boolean;
 }) {
-  const [url, setUrl] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(signedUrlProp ?? null);
   const update = useUpdateProjectAsset();
   const del = useDeleteProjectAsset();
   const applyFace = useApplyIdentity();
@@ -63,6 +67,10 @@ export function AssetCard({
   }
 
   useEffect(() => {
+    if (signedUrlProp !== undefined) {
+      setUrl(signedUrlProp);
+      return;
+    }
     const bucket = bucketForAssetType(asset.asset_type);
     signedUrl(bucket, asset.file_url, 3600)
       .then(setUrl)
@@ -70,7 +78,17 @@ export function AssetCard({
         console.error("signedUrl failed:", err);
         setUrl(null);
       });
-  }, [asset.file_url, asset.asset_type]);
+  }, [signedUrlProp, asset.file_url, asset.asset_type]);
+
+  async function refreshSignedUrl() {
+    const bucket = bucketForAssetType(asset.asset_type);
+    try {
+      const next = await signedUrl(bucket, asset.file_url, 3600);
+      setUrl(next);
+    } catch (err) {
+      console.error("signedUrl refresh failed:", err);
+    }
+  }
 
   const meta = asset.metadata_json as
     | { original_filename?: string; duration_seconds?: number; size_bytes?: number }
@@ -100,7 +118,12 @@ export function AssetCard({
 
   return (
     <div className="group overflow-hidden rounded-md border border-border bg-card/30">
-      <PreviewBlock asset={asset} url={url} />
+      <PreviewBlock
+        asset={asset}
+        url={url}
+        loading={urlLoading && !url}
+        onImageError={refreshSignedUrl}
+      />
 
       <div className="space-y-2 p-3">
         <div className="flex items-start justify-between gap-2">
@@ -120,30 +143,12 @@ export function AssetCard({
         </div>
 
         <div className="flex items-center justify-between gap-2">
-          <div className="flex gap-1">
-            <Button
-              type="button"
-              size="sm"
-              variant={asset.approval_status === "approved" ? "default" : "outline"}
-              onClick={() => setStatus("approved")}
-              disabled={update.isPending}
-              className="h-7 px-2 text-xs"
-            >
-              <Check className="mr-1 h-3 w-3" />
-              Approve
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant={asset.approval_status === "rejected" ? "default" : "outline"}
-              onClick={() => setStatus("rejected")}
-              disabled={update.isPending}
-              className="h-7 px-2 text-xs"
-            >
-              <X className="mr-1 h-3 w-3" />
-              Reject
-            </Button>
-          </div>
+          <ClipDecision
+            status={asset.approval_status}
+            onApprove={() => setStatus("approved")}
+            onReject={() => setStatus("rejected")}
+            disabled={update.isPending}
+          />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground">
@@ -199,17 +204,25 @@ export function AssetCard({
 function PreviewBlock({
   asset,
   url,
+  loading = false,
+  onImageError,
 }: {
   asset: ProjectAsset;
   url: string | null;
+  loading?: boolean;
+  onImageError?: () => void;
 }) {
   const isImage = isImageAsset(asset);
   const isVideo = isVideoAsset(asset);
 
-  if (!url) {
+  if (loading || !url) {
     return (
       <div className="flex aspect-video items-center justify-center bg-muted/30">
-        <FileIcon className="h-6 w-6 text-muted-foreground" />
+        {loading ? (
+          <div className="h-8 w-8 animate-pulse rounded-md bg-muted/50" />
+        ) : (
+          <FileIcon className="h-6 w-6 text-muted-foreground" />
+        )}
       </div>
     );
   }
@@ -221,6 +234,7 @@ function PreviewBlock({
           loading="lazy"
           alt={asset.asset_type}
           className="aspect-video w-full object-cover"
+          onError={onImageError}
         />
       </a>
     );

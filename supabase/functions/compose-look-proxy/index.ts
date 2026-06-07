@@ -554,13 +554,25 @@ serve(async (req) => {
     },
   };
 
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const { count: looksToday } = await userClient
+    .from("artist_looks")
+    .select("*", { count: "exact", head: true })
+    .eq("artist_id", body.artistId)
+    .gte("created_at", todayStart.toISOString());
+
   const { data: lookRow, error: insertErr } = await userClient
     .from("artist_looks")
     .insert({
       id: lookId,
       artist_id: body.artistId,
       user_id: userId,
-      name: body.name ?? defaultLookName(wearingClothingFeatures.map((f) => f.label)),
+      name:
+        body.name ??
+        defaultLookName(wearingClothingFeatures.map((f) => f.label), {
+          dailyIndex: (looksToday ?? 0) + 1,
+        }),
       description: body.basePrompt,
       // Pre-Phase-1-refactor this was 'draft' (review workflow). The async
       // refactor adds a generation lifecycle that lives on the same `status`

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Eye, File as FileIcon } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Eye, File as FileIcon } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,6 +17,7 @@ import {
   isImageAsset,
   isVideoAsset,
   useProjectAssets,
+  useBatchAssetSignedUrls,
 } from "@/lib/queries/projectAssets";
 import {
   averageScore,
@@ -41,6 +42,7 @@ export default function ReviewBoardPage({ projectId }: { projectId: string }) {
   const projectQuery = useProject(projectId);
   const assetsQuery = useProjectAssets(projectId);
   const [filter, setFilter] = useState<FilterMode>("needs_review");
+  const [queueIndex, setQueueIndex] = useState(0);
 
   const reviewable = useMemo(
     () => (assetsQuery.data ?? []).filter((a) => REVIEWABLE_TYPES.includes(a.asset_type)),
@@ -58,6 +60,21 @@ export default function ReviewBoardPage({ projectId }: { projectId: string }) {
       return true;
     });
   }, [reviewable, reviewsQuery.data, filter]);
+
+  useEffect(() => {
+    setQueueIndex(0);
+  }, [filter]);
+
+  useEffect(() => {
+    if (filtered.length === 0) {
+      setQueueIndex(0);
+      return;
+    }
+    setQueueIndex((i) => Math.min(i, filtered.length - 1));
+  }, [filtered.length]);
+
+  const currentAsset = filtered[queueIndex] ?? null;
+  const { urls: signedUrls, loading: urlsLoading } = useBatchAssetSignedUrls(filtered);
 
   if (projectQuery.isLoading) {
     return (
@@ -113,25 +130,63 @@ export default function ReviewBoardPage({ projectId }: { projectId: string }) {
             </Select>
           </div>
           <div className="ml-auto text-xs text-muted-foreground">
-            {filtered.length} {filtered.length === 1 ? "clip" : "clips"}
+            {filtered.length} {filtered.length === 1 ? "item" : "items"}
           </div>
         </div>
+
+        {filtered.length > 1 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-card/30 px-3 py-2">
+            <div className="text-xs text-muted-foreground">
+              Queue · {queueIndex + 1} of {filtered.length}
+            </div>
+            <div className="flex gap-1.5">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={queueIndex <= 0}
+                onClick={() => setQueueIndex((i) => Math.max(0, i - 1))}
+              >
+                <ChevronLeft className="mr-1 h-3.5 w-3.5" />
+                Previous
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={queueIndex >= filtered.length - 1}
+                onClick={() =>
+                  setQueueIndex((i) => Math.min(filtered.length - 1, i + 1))
+                }
+              >
+                Next
+                <ChevronRight className="ml-1 h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
 
         {assetsQuery.isLoading ? (
           <div className="h-48 animate-pulse rounded-md border border-border bg-muted/20" />
         ) : filtered.length === 0 ? (
           <EmptyState filter={filter} />
-        ) : (
-          <div className="space-y-4">
-            {filtered.map((asset) => (
-              <AssetReviewRow
-                key={asset.id}
-                asset={asset}
-                prior={reviewsQuery.data?.[asset.id] ?? null}
-              />
-            ))}
+        ) : currentAsset ? (
+          <div className={filtered.length > 1 ? "pb-24" : undefined}>
+            <AssetReviewRow
+              key={currentAsset.id}
+              asset={currentAsset}
+              prior={reviewsQuery.data?.[currentAsset.id] ?? null}
+              signedUrl={signedUrls[currentAsset.id] ?? null}
+              urlLoading={urlsLoading}
+              stickyFooter
+              onSaved={() => {
+                if (queueIndex < filtered.length - 1) {
+                  setQueueIndex((i) => i + 1);
+                }
+              }}
+            />
           </div>
-        )}
+        ) : null}
       </div>
     </>
   );
@@ -140,25 +195,47 @@ export default function ReviewBoardPage({ projectId }: { projectId: string }) {
 function AssetReviewRow({
   asset,
   prior,
+  signedUrl: signedUrlProp,
+  urlLoading = false,
+  stickyFooter = false,
+  onSaved,
 }: {
   asset: ProjectAsset;
   prior: import("@/integrations/supabase/aliases").ClipReview | null;
+  signedUrl?: string | null;
+  urlLoading?: boolean;
+  stickyFooter?: boolean;
+  onSaved?: () => void;
 }) {
-  const [url, setUrl] = useState<string | null>(null);
+  const [url, setUrl] = useState<string | null>(signedUrlProp ?? null);
 
   useEffect(() => {
+    if (signedUrlProp !== undefined) {
+      setUrl(signedUrlProp);
+      return;
+    }
     const bucket = bucketForAssetType(asset.asset_type);
     signedUrl(bucket, asset.file_url, 3600)
       .then(setUrl)
       .catch(console.error);
-  }, [asset.file_url, asset.asset_type]);
+  }, [signedUrlProp, asset.file_url, asset.asset_type]);
+
+  async function refreshSignedUrl() {
+    const bucket = bucketForAssetType(asset.asset_type);
+    try {
+      const next = await signedUrl(bucket, asset.file_url, 3600);
+      setUrl(next);
+    } catch (err) {
+      console.error("signedUrl refresh failed:", err);
+    }
+  }
 
   const meta = asset.metadata_json as { original_filename?: string } | null;
   const filename = meta?.original_filename ?? "Asset";
   const avg = prior ? averageScore(prior) : null;
 
   return (
-    <div className="grid grid-cols-1 gap-4 rounded-md border border-border bg-card/30 p-4 lg:grid-cols-2">
+    <div className="grid min-w-0 grid-cols-1 gap-4 rounded-md border border-border bg-card/30 p-4 lg:grid-cols-2">
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="min-w-0">
@@ -169,9 +246,14 @@ function AssetReviewRow({
             </p>
           </div>
         </div>
-        <Preview asset={asset} url={url} />
+        <Preview asset={asset} url={url} loading={urlLoading && !url} onImageError={refreshSignedUrl} />
       </div>
-      <ScorecardForm asset={asset} prior={prior} />
+      <ScorecardForm
+        asset={asset}
+        prior={prior}
+        stickyFooter={stickyFooter}
+        onSaved={onSaved}
+      />
     </div>
   );
 }
@@ -179,14 +261,22 @@ function AssetReviewRow({
 function Preview({
   asset,
   url,
+  loading = false,
+  onImageError,
 }: {
   asset: ProjectAsset;
   url: string | null;
+  loading?: boolean;
+  onImageError?: () => void;
 }) {
-  if (!url) {
+  if (loading || !url) {
     return (
       <div className="flex aspect-video items-center justify-center rounded-md bg-muted/30">
-        <FileIcon className="h-6 w-6 text-muted-foreground" />
+        {loading ? (
+          <div className="h-10 w-10 animate-pulse rounded-md bg-muted/50" />
+        ) : (
+          <FileIcon className="h-6 w-6 text-muted-foreground" />
+        )}
       </div>
     );
   }
@@ -197,7 +287,7 @@ function Preview({
     return (
       <a href={url} target="_blank" rel="noreferrer noopener" className="block">
         <img src={url}
-          loading="lazy" alt={asset.asset_type} className="aspect-video w-full rounded-md object-cover" />
+          loading="lazy" alt={asset.asset_type} className="aspect-video w-full rounded-md object-cover" onError={onImageError} />
       </a>
     );
   }

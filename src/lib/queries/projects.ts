@@ -67,6 +67,7 @@ export function useProjects() {
       const { data, error } = await supabase
         .from("video_projects")
         .select("*")
+        .neq("status", "archived")
         .order("updated_at", { ascending: false });
       if (error) throw error;
       return data ?? [];

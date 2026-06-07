@@ -9,7 +9,6 @@ import {
   Settings,
   LogOut,
   MapPin,
-  Package,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -30,9 +29,8 @@ import {
 // ---------------------------------------------------------------------------
 
 type PrimaryRouteTo =
-  | "/"
-  | "/artists"
   | "/projects"
+  | "/artists"
   | "/looks";
 
 type PrimaryNavItem = {
@@ -53,9 +51,8 @@ type MoreNavTrigger = {
 type NavItem = PrimaryNavItem | MoreNavTrigger;
 
 const primaryNav: PrimaryNavItem[] = [
-  { kind: "link", to: "/", label: "Dashboard", icon: LayoutDashboard, match: "/", exact: true },
+  { kind: "link", to: "/projects", label: "Projects", icon: FolderKanban, match: "/projects", exact: false },
   { kind: "link", to: "/artists", label: "Artists", icon: Users, match: "/artists" },
-  { kind: "link", to: "/projects", label: "Projects", icon: FolderKanban, match: "/projects" },
   { kind: "link", to: "/looks", label: "Looks", icon: Sparkles, match: "/looks" },
 ];
 
@@ -69,21 +66,15 @@ type SecondaryNavItem = {
   label: string;
   description: string;
   icon: typeof LayoutDashboard;
-  to: "/library/locations" | "/library/props" | "/settings";
+  to: "/library/locations" | "/settings";
 };
 
 const secondaryNav: SecondaryNavItem[] = [
   {
     to: "/library/locations",
-    label: "Locations",
-    description: "Reusable shoot environments and place references.",
+    label: "Library",
+    description: "Reusable locations and props for your shoots.",
     icon: MapPin,
-  },
-  {
-    to: "/library/props",
-    label: "Props",
-    description: "Reusable physical items and accessory references.",
-    icon: Package,
   },
   {
     to: "/settings",
@@ -94,7 +85,10 @@ const secondaryNav: SecondaryNavItem[] = [
 ];
 
 function isMoreActive(pathname: string): boolean {
-  return secondaryNav.some((s) => pathname.startsWith(s.to));
+  return (
+    pathname.startsWith("/library") ||
+    secondaryNav.some((s) => pathname.startsWith(s.to))
+  );
 }
 
 function isPrimaryActive(item: PrimaryNavItem, pathname: string): boolean {

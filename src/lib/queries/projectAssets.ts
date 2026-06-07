@@ -3,7 +3,9 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { signedUrls, type StorageBucket } from "@/lib/storage";
 import type {
   ApprovalStatus,
   Json,
@@ -158,7 +160,15 @@ export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
  */
 export function guessAssetType(file: File): ProjectAssetType {
   const type = file.type;
+  const name = file.name.toLowerCase();
   if (type.startsWith("video/")) return "generated_clip";
+  if (
+    type === "image/webp" ||
+    type === "image/avif" ||
+    /\.(webp|avif)$/i.test(name)
+  ) {
+    return "reference_image";
+  }
   if (type.startsWith("image/")) return "generated_still";
   if (type.startsWith("audio/")) return "sfx";
   if (type === "application/pdf" || file.name.endsWith(".txt") || file.name.endsWith(".md")) {
@@ -250,4 +260,58 @@ export function readVideoDuration(file: File): Promise<number> {
     };
     video.src = url;
   });
+}
+
+/** Batch-sign asset preview URLs once per page instead of N per-card POSTs. */
+export function useBatchAssetSignedUrls(assets: ProjectAsset[]) {
+  const assetKey = useMemo(
+    () => assets.map((a) => `${a.id}:${a.file_url}`).join("|"),
+    [assets],
+  );
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(assets.length > 0);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (assets.length === 0) {
+      setUrls({});
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    const byBucket = new Map<StorageBucket, string[]>();
+    for (const asset of assets) {
+      const bucket = bucketForAssetType(asset.asset_type);
+      const paths = byBucket.get(bucket) ?? [];
+      paths.push(asset.file_url);
+      byBucket.set(bucket, paths);
+    }
+
+    (async () => {
+      const merged: Record<string, string> = {};
+      for (const [bucket, paths] of byBucket) {
+        const unique = [...new Set(paths)];
+        const signed = await signedUrls(bucket, unique, 3600);
+        for (const asset of assets) {
+          if (bucketForAssetType(asset.asset_type) !== bucket) continue;
+          const url = signed[asset.file_url];
+          if (url) merged[asset.id] = url;
+        }
+      }
+      if (!cancelled) {
+        setUrls(merged);
+        setLoading(false);
+      }
+    })().catch((err) => {
+      console.error("batch signedUrls failed:", err);
+      if (!cancelled) setLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [assetKey]);
+
+  return { urls, loading };
 }

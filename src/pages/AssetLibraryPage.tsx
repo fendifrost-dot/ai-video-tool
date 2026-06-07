@@ -13,7 +13,7 @@ import {
 import { AssetCard } from "@/components/assets/AssetCard";
 import { AssetUploadDropzone } from "@/components/assets/AssetUploadDropzone";
 import { useProject } from "@/lib/queries/projects";
-import { useProjectAssets } from "@/lib/queries/projectAssets";
+import { useProjectAssets, useBatchAssetSignedUrls } from "@/lib/queries/projectAssets";
 import type {
   ApprovalStatus,
   ProjectAsset,
@@ -60,6 +60,8 @@ export default function AssetLibraryPage({ projectId }: { projectId: string }) {
         (statusFilter === "all" || a.approval_status === statusFilter),
     );
   }, [assetsQuery.data, typeFilter, statusFilter]);
+
+  const { urls: signedUrls, loading: urlsLoading } = useBatchAssetSignedUrls(filtered);
 
   const grouped = useMemo(() => groupByType(filtered), [filtered]);
 
@@ -156,7 +158,13 @@ export default function AssetLibraryPage({ projectId }: { projectId: string }) {
                 </h2>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {assets.map((a) => (
-                    <AssetCard key={a.id} asset={a} artistId={projectQuery.data?.artist_id} />
+                    <AssetCard
+                      key={a.id}
+                      asset={a}
+                      artistId={projectQuery.data?.artist_id}
+                      signedUrl={signedUrls[a.id] ?? null}
+                      urlLoading={urlsLoading}
+                    />
                   ))}
                 </div>
               </section>

@@ -20,6 +20,8 @@ import {
 import { normalizeImageForUpload } from "@/lib/image-normalize";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -33,6 +35,7 @@ import {
 type StagedFile = {
   file: File;
   assetType: ProjectAssetType;
+  uploadStatus?: "pending" | "uploading" | "done" | "error";
 };
 
 export function AssetUploadDropzone({
@@ -97,7 +100,13 @@ export function AssetUploadDropzone({
       let succeeded = 0;
       let failed = 0;
 
-      for (const item of staged) {
+      for (let i = 0; i < staged.length; i++) {
+        const item = staged[i]!;
+        setStaged((prev) =>
+          prev.map((s, idx) =>
+            idx === i ? { ...s, uploadStatus: "uploading" } : s,
+          ),
+        );
         try {
           const file = await normalizeImageForUpload(item.file);
           const bucket = bucketForAssetType(item.assetType);
@@ -133,8 +142,18 @@ export function AssetUploadDropzone({
           });
 
           succeeded++;
+          setStaged((prev) =>
+            prev.map((s, idx) =>
+              idx === i ? { ...s, uploadStatus: "done" } : s,
+            ),
+          );
         } catch (err) {
           failed++;
+          setStaged((prev) =>
+            prev.map((s, idx) =>
+              idx === i ? { ...s, uploadStatus: "error" } : s,
+            ),
+          );
           console.error("Asset upload failed:", err);
         }
       }
@@ -220,27 +239,41 @@ export function AssetUploadDropzone({
             {staged.map((s, i) => (
               <div
                 key={i}
-                className="flex items-center gap-2 rounded-md bg-muted/20 px-2 py-1.5 text-sm"
+                className="space-y-1.5 rounded-md bg-muted/20 px-2 py-1.5 text-sm"
               >
-                <span className="truncate flex-1">{s.file.name}</span>
-                <span className="whitespace-nowrap text-[10px] text-muted-foreground">
-                  {formatSize(s.file.size)}
-                </span>
-                <div className="w-44">
-                  <AssetTypeSelect
-                    value={s.assetType}
-                    onChange={(v) => updateType(i, v)}
-                  />
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate">{s.file.name}</span>
+                  <span className="whitespace-nowrap text-[10px] text-muted-foreground">
+                    {formatSize(s.file.size)}
+                  </span>
+                  <div className="flex min-w-[11rem] flex-col gap-1">
+                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Asset type
+                    </Label>
+                    <AssetTypeSelect
+                      value={s.assetType}
+                      onChange={(v) => updateType(i, v)}
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeStaged(i)}
+                    disabled={uploading}
+                    className="rounded-sm p-1 text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
+                    aria-label="Remove"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => removeStaged(i)}
-                  disabled={uploading}
-                  className="rounded-sm p-1 text-muted-foreground hover:bg-destructive/20 hover:text-destructive"
-                  aria-label="Remove"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                {s.uploadStatus === "uploading" && (
+                  <Progress value={50} className="h-1" />
+                )}
+                {s.uploadStatus === "done" && (
+                  <p className="text-[10px] text-emerald-400">Uploaded</p>
+                )}
+                {s.uploadStatus === "error" && (
+                  <p className="text-[10px] text-destructive">Upload failed</p>
+                )}
               </div>
             ))}
           </div>

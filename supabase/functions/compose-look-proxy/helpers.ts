@@ -17,10 +17,21 @@ export function sniffMime(
   return null;
 }
 
-export function defaultLookName(wardrobeLabels: string[]): string {
+export function defaultLookName(
+  wardrobeLabels: string[],
+  opts?: { date?: Date; dailyIndex?: number },
+): string {
   const labels = wardrobeLabels.filter(Boolean);
-  if (labels.length === 0) return "Untitled look";
-  return labels.slice(0, 2).join(" + ");
+  const base =
+    labels.length === 0 ? "Untitled look" : labels.slice(0, 2).join(" + ");
+  const d = opts?.date ?? new Date();
+  const month = d.toLocaleString("en-US", { month: "short" });
+  const day = d.getDate();
+  const counter =
+    opts?.dailyIndex != null && opts.dailyIndex > 0
+      ? ` #${opts.dailyIndex}`
+      : "";
+  return `${base} · ${month} ${day}${counter}`;
 }
 
 export type PipelineMode =

@@ -157,7 +157,7 @@ export function PromptBuilder({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+    <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-2">
       {/* LEFT COLUMN — configuration */}
       <div className="space-y-5">
         <Section title="Template">
@@ -291,7 +291,7 @@ export function PromptBuilder({
       </div>
 
       {/* RIGHT COLUMN — output */}
-      <div className="lg:sticky lg:top-4">
+      <div className="min-w-0 lg:sticky lg:top-4">
         <Section title="Compiled output">
           <PromptOutputView compiled={compiled} initialProvider={effectiveProvider} />
         </Section>

@@ -26,7 +26,7 @@ import {
 import { LibraryItemCard } from "@/components/library/LibraryItemCard";
 import { UrlImportPanel, parseTagsCsv } from "@/components/wardrobe/UrlImportPanel";
 
-export default function PropsLibraryPage() {
+export default function PropsLibraryPage({ embedded = false }: { embedded?: boolean }) {
   const [category, setCategory] = useState<PropCategory | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -121,11 +121,13 @@ export default function PropsLibraryPage() {
 
   return (
     <>
-      <PageHeader
-        title="Props library"
-        subtitle="Cars, instruments, animals, and other physical objects that show up across your videos."
-      />
-      <div className="space-y-5 px-8 py-6">
+      {!embedded && (
+        <PageHeader
+          title="Props library"
+          subtitle="Cars, instruments, animals, and other physical objects that show up across your videos."
+        />
+      )}
+      <div className={`space-y-5 ${embedded ? "px-4 py-6 md:px-8" : "px-8 py-6"}`}>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
             Category:

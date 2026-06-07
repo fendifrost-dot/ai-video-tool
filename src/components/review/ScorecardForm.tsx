@@ -40,10 +40,13 @@ export function ScorecardForm({
   asset,
   prior,
   onSaved,
+  stickyFooter = false,
 }: {
   asset: ProjectAsset;
   prior: ClipReview | null;
   onSaved?: () => void;
+  /** Pin Save / Approve / Reject to the viewport bottom (review queue mode). */
+  stickyFooter?: boolean;
 }) {
   const [state, setState] = useState<FormState>(() => makeInitial(prior));
   const save = useSaveClipReview();
@@ -96,7 +99,7 @@ export function ScorecardForm({
 
   return (
     <div className="space-y-3 rounded-md border border-border bg-card/30 p-3">
-      <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-y-3">
         {SCORE_METRICS.map((m) => {
           if (m.key === "lipsync_score" && !isLipsyncRelevant) return null;
           return (
@@ -125,51 +128,15 @@ export function ScorecardForm({
         />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex gap-1.5">
-          <UsefulnessButton
-            active={state.final_usefulness === true}
-            label="Useful"
-            icon={ThumbsUp}
-            onClick={() => setState((s) => ({ ...s, final_usefulness: s.final_usefulness === true ? null : true }))}
-          />
-          <UsefulnessButton
-            active={state.final_usefulness === false}
-            label="Not useful"
-            icon={ThumbsDown}
-            onClick={() => setState((s) => ({ ...s, final_usefulness: s.final_usefulness === false ? null : false }))}
-          />
-        </div>
-        <div className="flex gap-1.5">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => persist()}
-            disabled={submitting}
-          >
-            <Save className="mr-1.5 h-3.5 w-3.5" />
-            Save
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => persist({ promoteStatus: "approved" })}
-            disabled={submitting}
-          >
-            Save + Approve
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => persist({ promoteStatus: "rejected" })}
-            disabled={submitting}
-          >
-            Save + Reject
-          </Button>
-        </div>
-      </div>
+      <ActionBar
+        sticky={stickyFooter}
+        usefulness={state.final_usefulness}
+        onUsefulnessChange={(v) => setState((s) => ({ ...s, final_usefulness: v }))}
+        onSave={() => persist()}
+        onApprove={() => persist({ promoteStatus: "approved" })}
+        onReject={() => persist({ promoteStatus: "rejected" })}
+        submitting={submitting}
+      />
     </div>
   );
 }
@@ -201,6 +168,84 @@ function ScoreRow({
         onValueChange={(v) => onChange(v[0])}
       />
       <p className="text-[10px] text-muted-foreground">{description}</p>
+    </div>
+  );
+}
+
+function ActionBar({
+  sticky,
+  usefulness,
+  onUsefulnessChange,
+  onSave,
+  onApprove,
+  onReject,
+  submitting,
+}: {
+  sticky: boolean;
+  usefulness: boolean | null;
+  onUsefulnessChange: (next: boolean | null) => void;
+  onSave: () => void;
+  onApprove: () => void;
+  onReject: () => void;
+  submitting: boolean;
+}) {
+  const inner = (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex gap-1.5">
+        <UsefulnessButton
+          active={usefulness === true}
+          label="Useful"
+          icon={ThumbsUp}
+          onClick={() =>
+            onUsefulnessChange(usefulness === true ? null : true)
+          }
+        />
+        <UsefulnessButton
+          active={usefulness === false}
+          label="Not useful"
+          icon={ThumbsDown}
+          onClick={() =>
+            onUsefulnessChange(usefulness === false ? null : false)
+          }
+        />
+      </div>
+      <div className="flex gap-1.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onSave}
+          disabled={submitting}
+        >
+          <Save className="mr-1.5 h-3.5 w-3.5" />
+          Save
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={onApprove}
+          disabled={submitting}
+        >
+          Save + Approve
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onReject}
+          disabled={submitting}
+        >
+          Save + Reject
+        </Button>
+      </div>
+    </div>
+  );
+
+  if (!sticky) return inner;
+
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 md:pl-[calc(16rem+1rem)]">
+      <div className="mx-auto max-w-5xl">{inner}</div>
     </div>
   );
 }

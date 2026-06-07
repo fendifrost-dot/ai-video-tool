@@ -72,8 +72,8 @@ export function PromptOutputView({
           column (e.g. shot detail page). On wide screens they fit without
           scrolling.
         */}
-        <div className="-mx-1 overflow-x-auto px-1 pb-1">
-          <TabsList className="inline-flex w-max gap-1 whitespace-nowrap">
+        <div className="-mx-1 px-1 pb-1">
+          <TabsList className="flex h-auto min-h-9 w-full flex-wrap justify-start gap-1">
             {PROVIDER_ORDER.map((id) => {
               const isRecommended = recommended === id;
               return (
@@ -235,7 +235,7 @@ function PromptBlock({
           )}
         </Button>
       </div>
-      <pre className="max-h-72 overflow-y-auto whitespace-pre-wrap rounded-md border border-border bg-card/40 p-3 font-mono text-xs leading-relaxed">
+      <pre className="max-h-72 min-w-0 overflow-y-auto whitespace-pre-wrap break-words rounded-md border border-border bg-card/40 p-3 font-mono text-xs leading-relaxed">
         {value || <span className="italic text-muted-foreground">(empty)</span>}
       </pre>
     </div>

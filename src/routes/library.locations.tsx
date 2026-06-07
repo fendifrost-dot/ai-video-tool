@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import LocationsLibraryPage from "@/pages/LocationsLibraryPage";
+import LibraryPage from "@/pages/LibraryPage";
 
 export const Route = createFileRoute("/library/locations")({
-  component: LocationsLibraryPage,
+  component: () => <LibraryPage kind="locations" />,
 });

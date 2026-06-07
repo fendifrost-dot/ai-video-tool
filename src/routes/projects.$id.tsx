@@ -10,7 +10,9 @@ function ProjectLayout() {
   return (
     <div className="flex min-h-screen">
       <ProjectSidebar projectId={id} />
-      <Outlet />
+      <main className="min-w-0 flex-1">
+        <Outlet />
+      </main>
     </div>
   );
 }

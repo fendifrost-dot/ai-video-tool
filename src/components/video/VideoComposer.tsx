@@ -85,14 +85,14 @@ function JobProgress({
   return (
     <div className="space-y-2">
       <p className="text-xs font-medium text-muted-foreground">Progress</p>
-      <div className="grid grid-cols-4 gap-2 text-[11px]">
+      <div className="grid min-w-0 grid-cols-4 gap-2 text-[11px]">
         {steps.map((step, idx) => (
           <div
             key={step.key}
             className={
               idx <= activeIdx
-                ? "rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-emerald-200"
-                : "rounded border border-border bg-card/30 px-2 py-1 text-muted-foreground"
+                ? "min-w-0 truncate rounded border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-emerald-200"
+                : "min-w-0 truncate rounded border border-border bg-card/30 px-2 py-1 text-muted-foreground"
             }
           >
             {step.label}
@@ -263,7 +263,7 @@ export function VideoComposer({
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-1 xl:grid-cols-3">
         <Card className="space-y-4 p-5">
           <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             1. Select looks
