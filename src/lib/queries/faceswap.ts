@@ -26,6 +26,18 @@ export type ApplyIdentityInput = {
   faceFeatureId?: string;
 };
 
+/** Apply-my-identity on a look canvas — routes through faceswap-proxy → artist_looks child. */
+export type ApplyIdentityToLookInput = {
+  artistId: string;
+  parentLookId: string;
+  sourceImageUrl: string;
+  identityReferenceUrl?: string | null;
+  name?: string;
+  faceFeatureId?: string;
+  gender?: "male" | "female" | "non-binary";
+  workflowType?: "user_hair" | "target_hair";
+};
+
 export type ApplyIdentityResult = {
   ok: true;
   asset: ProjectAsset;
@@ -108,6 +120,54 @@ async function pollJobUntilDone(jobId: string): Promise<{
     await sleep(POLL_INTERVAL_MS);
   }
   throw new Error("face-swap timed out waiting for callback");
+}
+
+export async function callApplyIdentityToLook(
+  input: ApplyIdentityToLookInput,
+): Promise<{ lookId: string }> {
+  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+  if (sessionErr) throw sessionErr;
+  const session = sessionData.session;
+  if (!session) throw new Error("Not signed in");
+
+  const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!baseUrl) throw new Error("Missing VITE_SUPABASE_URL in env");
+
+  const resp = await fetch(
+    `${baseUrl.replace(/\/$/, "")}/functions/v1/faceswap-proxy`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        artistId: input.artistId,
+        parentLookId: input.parentLookId,
+        sourceImageUrl: input.sourceImageUrl,
+        identityReferenceUrl: input.identityReferenceUrl ?? undefined,
+        name: input.name,
+        faceFeatureId: input.faceFeatureId,
+        gender: input.gender,
+        workflowType: input.workflowType,
+      }),
+    },
+  );
+
+  if (!resp.ok) {
+    let detail = "";
+    try {
+      const body = await resp.json();
+      detail = body?.detail ?? body?.error ?? "";
+    } catch {
+      detail = await resp.text().catch(() => "");
+    }
+    throw new Error(`identity face-swap failed: ${resp.status} ${detail || resp.statusText}`);
+  }
+
+  const body = (await resp.json()) as { ok?: boolean; lookId?: string };
+  if (!body?.lookId) throw new Error("face-swap submit returned no lookId");
+  return { lookId: body.lookId };
 }
 
 export async function callApplyIdentity(

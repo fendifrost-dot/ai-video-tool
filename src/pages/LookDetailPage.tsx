@@ -42,6 +42,7 @@ import { useCharacterFeatures } from "@/lib/queries/characterFeatures";
 import { useWardrobe } from "@/lib/queries/wardrobe";
 import { useLocations } from "@/lib/queries/locations";
 import { useProps } from "@/lib/queries/props";
+import { callApplyIdentityToLook } from "@/lib/queries/faceswap";
 import {
   callComposeLook,
   formatCost,
@@ -219,20 +220,19 @@ export default function LookDetailPage({
         toast.error("Couldn't resolve this look's image URL for the canvas.");
         return;
       }
-      const result = await callComposeLook({
+      const identityReferenceUrl = getCanonicalBaseImageUrl(artistQuery.data);
+      const result = await callApplyIdentityToLook({
         artistId,
-        wardrobeFeatureIds: [],
-        basePrompt:
-          "Identity swap: render the artist's exact likeness into the masked head/neck region of the canvas. Keep all clothing untouched.",
-        pipelinePreference: "identity_inpaint",
         parentLookId: look.id,
+        sourceImageUrl: canvasUrl,
+        identityReferenceUrl,
         name: `${(look.name ?? "Look").slice(0, 64)} · my identity`,
-        canvasImageUrl: canvasUrl,
       });
-      toast.success("Identity swap queued — opening the new look");
+      qc.invalidateQueries({ queryKey: looksKeys.forArtist(artistId) });
+      toast.success("Identity face-swap queued — opening the new look");
       navigate({
         to: "/artists/$id/looks/$lookId",
-        params: { id: artistId, lookId: result.look_id },
+        params: { id: artistId, lookId: result.lookId },
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Identity swap failed");
@@ -717,7 +717,7 @@ export default function LookDetailPage({
                 className="w-full"
                 disabled={layerBusy || isPending || look.status !== "complete"}
                 onClick={handleApplyIdentity}
-                title="SAM-3 masks the head/neck; your LoRA renders YOUR likeness into it. Clothing pixels stay untouched. Use on imported stand-in canvases."
+                title="Fal face-swap grafts your canonical identity photo onto this canvas. Outfit, pose, and lighting stay locked. Use on imported stand-in canvases."
               >
                 {layerBusy ? (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />

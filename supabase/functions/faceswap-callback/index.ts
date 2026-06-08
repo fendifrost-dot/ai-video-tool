@@ -71,8 +71,9 @@ serve(async (req) => {
   }
 
   const url = new URL(req.url);
+  const lookId = url.searchParams.get("look_id") ?? "";
   const jobId = url.searchParams.get("job_id") ?? "";
-  if (!jobId) return json(400, { error: "missing_job_id" });
+  if (!lookId && !jobId) return json(400, { error: "missing_job_or_look_id" });
 
   let body: Body;
   try {
@@ -84,6 +85,10 @@ serve(async (req) => {
   const admin = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false },
   });
+
+  if (lookId) {
+    return await handleLookCallback(admin, lookId, body);
+  }
 
   // ---- look up the job row -------------------------------------------
   const { data: jobRow, error: lookupErr } = await admin
@@ -230,6 +235,113 @@ serve(async (req) => {
 
   return json(200, { ok: true, assetId: assetRow.id });
 });
+
+async function handleLookCallback(
+  admin: ReturnType<typeof createClient>,
+  lookId: string,
+  body: Body,
+): Promise<Response> {
+  const { data: existing, error: lookupErr } = await admin
+    .from("artist_looks")
+    .select("id, user_id, artist_id, status, composition_recipe_json")
+    .eq("id", lookId)
+    .maybeSingle();
+  if (lookupErr) return json(500, { error: "lookup_failed", detail: lookupErr.message });
+  if (!existing) return json(404, { error: "look_not_found" });
+  if (existing.status === "complete" || existing.status === "failed") {
+    return json(200, { ok: true, already: existing.status });
+  }
+
+  if (body.status === "failed" || body.error) {
+    const errMsg = String(body.error ?? "cc_reported_failure").slice(0, 500);
+    await admin
+      .from("artist_looks")
+      .update({ status: "failed", error_message: errMsg })
+      .eq("id", lookId);
+    return json(200, { ok: true, marked: "failed" });
+  }
+
+  const falImageUrl = body.fal_image_url;
+  if (!falImageUrl) {
+    await admin
+      .from("artist_looks")
+      .update({ status: "failed", error_message: "callback_missing_fal_url" })
+      .eq("id", lookId);
+    return json(400, { error: "missing_fal_url" });
+  }
+
+  let bytes: Uint8Array;
+  let mime: "image/png" | "image/jpeg" | "image/webp";
+  try {
+    const dl = await fetch(falImageUrl, {
+      headers: { Accept: "image/png, image/jpeg, image/webp" },
+    });
+    if (!dl.ok) throw new Error(`download_${dl.status}`);
+    const buf = new Uint8Array(await dl.arrayBuffer());
+    const sniffed = sniffMime(buf) ??
+      (body.content_type?.includes("png") ? "image/png" :
+       body.content_type?.includes("webp") ? "image/webp" : "image/jpeg");
+    bytes = buf;
+    mime = sniffed;
+  } catch (err) {
+    await admin
+      .from("artist_looks")
+      .update({
+        status: "failed",
+        error_message: `fal_download_failed: ${String(err).slice(0, 300)}`,
+      })
+      .eq("id", lookId);
+    return json(502, { error: "fal_download_failed" });
+  }
+
+  const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
+  const storagePath = `${existing.user_id}/${existing.artist_id}/${lookId}.${ext}`;
+  const { error: uploadErr } = await admin.storage
+    .from("look-composites")
+    .upload(storagePath, bytes, {
+      contentType: mime,
+      cacheControl: "3600",
+      upsert: true,
+    });
+  if (uploadErr) {
+    await admin
+      .from("artist_looks")
+      .update({
+        status: "failed",
+        error_message: `upload_failed: ${uploadErr.message.slice(0, 300)}`,
+      })
+      .eq("id", lookId);
+    return json(500, { error: "upload_failed", detail: uploadErr.message });
+  }
+
+  const recipe = (existing.composition_recipe_json ?? {}) as Record<string, unknown>;
+  recipe.generation_metadata = {
+    model: body.model ?? "easel-ai/advanced-face-swap",
+    provider_job_id: body.provider_job_id ?? null,
+    cost_cents: body.cost_cents ?? null,
+    width: body.width ?? null,
+    height: body.height ?? null,
+    content_type: body.content_type ?? mime,
+  };
+
+  const { error: updateErr } = await admin
+    .from("artist_looks")
+    .update({
+      status: "complete",
+      generated_image_url: storagePath,
+      generated_storage_path: storagePath,
+      pipeline_used: "identity_faceswap",
+      cost_cents: Number(body.cost_cents ?? 0),
+      composition_recipe_json: recipe,
+      error_message: null,
+    })
+    .eq("id", lookId);
+  if (updateErr) {
+    return json(500, { error: "update_failed", detail: updateErr.message });
+  }
+
+  return json(200, { ok: true, lookId });
+}
 
 // ---------------------------------------------------------------------------
 // Helpers (inlined — Supabase edge functions deploy independently).
