@@ -335,7 +335,7 @@ export type ComposeLookInput = {
   propIds?: string[];
   basePrompt: string;
   stylingNotes?: string;
-  pipelinePreference?: "auto" | "lora_seedream" | "seedream_only" | "kontext_multi" | "lora_idm_vton" | "lora_segmented_inpaint";
+  pipelinePreference?: "auto" | "lora_seedream" | "seedream_only" | "kontext_multi" | "lora_idm_vton" | "lora_segmented_inpaint" | "identity_inpaint";
   parentLookId?: string;
   name?: string;
   /** Layered Look Builder: lock this image as the canvas; the proxy forwards

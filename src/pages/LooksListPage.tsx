@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
-import { ArrowLeft, Plus, Sparkles } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, ImageUp, Plus, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 import { PageHeader } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +29,48 @@ export default function LooksListPage({ artistId }: { artistId: string }) {
   const artistQuery = useArtist(artistId);
   const looksQuery = useArtistLooks(artistId);
   const [filter, setFilter] = useState<FilterOption>("all");
+  const navigate = useNavigate();
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  async function handleImportFile(file: File) {
+    setImporting(true);
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const user = userData.user;
+      if (!user) throw new Error("Not signed in");
+      const ext = (file.name.split(".").pop() || "png").toLowerCase();
+      const path = `${user.id}/${artistId}/imported_${Date.now()}.${ext}`;
+      const { error: upErr } = await (supabase as any).storage
+        .from("look-composites")
+        .upload(path, file, { contentType: file.type || "image/png" });
+      if (upErr) throw upErr;
+      const { data: row, error } = await supabase
+        .from("artist_looks")
+        .insert({
+          artist_id: artistId,
+          user_id: user.id,
+          name: `Canvas · ${file.name.replace(/\.[^.]+$/, "").slice(0, 48)}`,
+          status: "complete",
+          generated_image_url: path,
+          generated_storage_path: path,
+          composition_recipe_json: { imported_canvas: true } as never,
+        } as never)
+        .select("*")
+        .single();
+      if (error) throw error;
+      toast.success("Canvas imported — now apply your identity");
+      navigate({
+        to: "/artists/$id/looks/$lookId",
+        params: { id: artistId, lookId: (row as { id: string }).id },
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setImporting(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  }
 
   const visible = useMemo(() => {
     const looks = looksQuery.data ?? [];
@@ -57,6 +101,26 @@ export default function LooksListPage({ artistId }: { artistId: string }) {
       />
       <div className="space-y-6 px-8 py-6">
         <div className="flex items-center justify-between gap-3">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void handleImportFile(f);
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={importing}
+            onClick={() => fileRef.current?.click()}
+            title="Upload a fully-clothed stand-in image (e.g. from Grok) to use as an identity-swap canvas"
+          >
+            <ImageUp className="mr-1.5 h-3.5 w-3.5" />
+            {importing ? "Importing…" : "Import canvas"}
+          </Button>
           <Button asChild variant="outline" size="sm">
             <Link to="/artists">
               <ArrowLeft className="mr-1.5 h-4 w-4" />

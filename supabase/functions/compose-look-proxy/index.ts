@@ -205,7 +205,10 @@ serve(async (req) => {
     return json(400, { error: "invalid_json" });
   }
   if (!body?.artistId) return json(400, { error: "missing_artist_id" });
-  if (!Array.isArray(body.wardrobeFeatureIds) || body.wardrobeFeatureIds.length === 0) {
+  if (
+    body.pipelinePreference !== "identity_inpaint" &&
+    (!Array.isArray(body.wardrobeFeatureIds) || body.wardrobeFeatureIds.length === 0)
+  ) {
     return json(400, { error: "wardrobe_required" });
   }
   if (!body.basePrompt || body.basePrompt.trim().length < 4) {

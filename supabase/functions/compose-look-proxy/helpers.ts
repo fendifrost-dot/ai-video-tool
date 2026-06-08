@@ -40,7 +40,8 @@ export type PipelineMode =
   | "seedream_only"
   | "kontext_multi"
   | "lora_idm_vton"
-  | "lora_segmented_inpaint";
+  | "lora_segmented_inpaint"
+  | "identity_inpaint";
 
 // VTON chain order: bottoms first, then inner top, then outerwear last so the
 // jacket overlays with full context of shirt + pants underneath.

@@ -203,6 +203,44 @@ export default function LookDetailPage({
     (pipelinePreference ? `${pipelinePreference} · pending` : null);
 
 
+  async function handleApplyIdentity() {
+    if (!look) return;
+    setLayerBusy(true);
+    try {
+      let canvasUrl =
+        publicImageUrl && publicImageUrl.startsWith("https://")
+          ? publicImageUrl
+          : null;
+      if (!canvasUrl) {
+        const path = look.generated_storage_path ?? look.generated_image_url;
+        if (path) canvasUrl = await signLookPreviewUrl(path, 3600);
+      }
+      if (!canvasUrl) {
+        toast.error("Couldn't resolve this look's image URL for the canvas.");
+        return;
+      }
+      const result = await callComposeLook({
+        artistId,
+        wardrobeFeatureIds: [],
+        basePrompt:
+          "Identity swap: render the artist's exact likeness into the masked head/neck region of the canvas. Keep all clothing untouched.",
+        pipelinePreference: "identity_inpaint",
+        parentLookId: look.id,
+        name: `${(look.name ?? "Look").slice(0, 64)} · my identity`,
+        canvasImageUrl: canvasUrl,
+      });
+      toast.success("Identity swap queued — opening the new look");
+      navigate({
+        to: "/artists/$id/looks/$lookId",
+        params: { id: artistId, lookId: result.look_id },
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Identity swap failed");
+    } finally {
+      setLayerBusy(false);
+    }
+  }
+
   async function handleAddLayer() {
     if (!look || !layerItemId) return;
     const item = (wardrobeQuery.data ?? []).find((w) => w.id === layerItemId);
@@ -672,6 +710,19 @@ export default function LookDetailPage({
                   <Layers className="mr-1.5 h-3.5 w-3.5" />
                 )}
                 Generate layer (~$0.09)
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full"
+                disabled={layerBusy || isPending || look.status !== "complete"}
+                onClick={handleApplyIdentity}
+                title="SAM-3 masks the head/neck; your LoRA renders YOUR likeness into it. Clothing pixels stay untouched. Use on imported stand-in canvases."
+              >
+                {layerBusy ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : null}
+                Apply my identity (~$0.09)
               </Button>
             </div>
 
