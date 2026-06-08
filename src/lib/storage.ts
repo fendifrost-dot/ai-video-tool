@@ -2,6 +2,7 @@ import { supabase } from "@/lib/supabase";
 
 export type StorageBucket =
   | "artist-assets"
+  | "look-composites"
   | "project-audio"
   | "project-references"
   | "project-clips"
@@ -14,6 +15,7 @@ export type StorageBucket =
  *
  * Examples:
  *   artist-assets       {user_id}/{artist_id}/{filename}
+ *   look-composites     {user_id}/{artist_id}/{look_id}.{ext}
  *   project-audio       {user_id}/{project_id}/{filename}
  *   project-references  {user_id}/{project_id}/{filename}
  *   project-clips       {user_id}/{project_id}/{shot_id?}/{filename}

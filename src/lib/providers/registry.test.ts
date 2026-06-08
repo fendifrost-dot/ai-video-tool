@@ -86,10 +86,8 @@ describe("provider registry", () => {
     expect(out.provider).toBe("manual");
   });
 
-  it("every provider declares apiReady=false in MVP", () => {
-    for (const id of PROVIDER_ORDER) {
-      expect(getProvider(id).apiReady).toBe(false);
-    }
+  it("runway is wired to the Control Center proxy", () => {
+    expect(getProvider("runway").apiReady).toBe(true);
   });
 
   it("async methods reject with NotImplementedError when called", async () => {

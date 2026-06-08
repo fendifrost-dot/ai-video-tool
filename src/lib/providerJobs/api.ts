@@ -121,6 +121,27 @@ function sanitizeGenerationInput(input: GenerationInput): GenerationInput {
   };
 }
 
+function throwProxyEnvelope(errData: Record<string, unknown>, fallbackMessage: string): never {
+  throw new ProviderCallError(
+    String(errData.errorCode ?? "PROVIDER_API_ERROR"),
+    String(errData.errorMessage ?? fallbackMessage),
+    Number(errData.providerStatus) || undefined,
+    Boolean(errData.retryable),
+  );
+}
+
+/** Locked looks live in look-composites; Character DNA refs in artist-assets. */
+async function resolveReferenceSignedUrl(path: string): Promise<string | null> {
+  for (const bucket of ["look-composites", "artist-assets"] as const) {
+    try {
+      return await signedUrl(bucket, path, 3600);
+    } catch {
+      // try the other bucket
+    }
+  }
+  return null;
+}
+
 async function callProxy<T = Record<string, unknown>>(
   endpoint: string,
   init: { method?: "POST" | "GET"; query?: Record<string, string>; body?: Record<string, unknown> },
@@ -141,17 +162,15 @@ async function callProxy<T = Record<string, unknown>>(
       },
     },
   );
+  const errData = (data ?? {}) as Record<string, unknown>;
   if (error) {
+    if (errData.errorCode || errData.errorMessage) {
+      throwProxyEnvelope(errData, "Provider call failed");
+    }
     throw new ProviderCallError("INTERNAL", error.message || "proxy invoke failed");
   }
   if (!data || data.ok === false) {
-    const errData = (data ?? {}) as Record<string, unknown>;
-    throw new ProviderCallError(
-      String(errData.errorCode ?? "PROVIDER_API_ERROR"),
-      String(errData.errorMessage ?? "Provider call failed"),
-      Number(errData.providerStatus) || undefined,
-      Boolean(errData.retryable),
-    );
+    throwProxyEnvelope(errData, "Provider call failed");
   }
   return data as T;
 }
@@ -182,12 +201,18 @@ export async function createGenerationJob(input: GenerationInput): Promise<{
   // Resolve a temporary signed URL for the locked reference if present.
   let referenceImageUrl: string | null = null;
   if (input.referenceImagePath) {
-    try {
-      referenceImageUrl = await signedUrl("artist-assets", input.referenceImagePath, 3600);
-    } catch {
-      referenceImageUrl = null;
+    referenceImageUrl = await resolveReferenceSignedUrl(input.referenceImagePath);
+    if (!referenceImageUrl) {
+      throw new ProviderCallError(
+        "INVALID_INPUT",
+        "Could not sign the reference image — the locked look or asset may be missing.",
+      );
     }
   }
+  const mode =
+    referenceImageUrl != null
+      ? (safeInput.mode ?? "image_to_video")
+      : (safeInput.mode === "image_to_video" ? "text_to_video" : safeInput.mode);
 
   // Insert the queued row up-front so we always have an audit trail even if
   // the CC call errors immediately.
@@ -228,7 +253,7 @@ export async function createGenerationJob(input: GenerationInput): Promise<{
         avt_prompt_id: safeInput.promptId ?? null,
         avt_shot_id: safeInput.shotId ?? null,
         promptText: safeInput.promptText,
-        mode: safeInput.mode,
+        mode,
         referenceImageUrl,
         modelVariant: safeInput.modelVariant,
         duration: safeInput.duration,

@@ -140,7 +140,7 @@ describe("createGenerationJob", () => {
     expect(payload.referenceImagePath).toBe("artist-1/face.png");
     expect(payload.shotId).toBe("shot-1");
 
-    expect(mocks.signedUrlMock).toHaveBeenCalledWith("artist-assets", "artist-1/face.png", 3600);
+    expect(mocks.signedUrlMock).toHaveBeenCalledWith("look-composites", "artist-1/face.png", 3600);
 
     expect(mocks.invokeMock).toHaveBeenCalledWith(
       "proxy-provider-call",

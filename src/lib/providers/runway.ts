@@ -11,9 +11,8 @@ import { BaseProvider } from "./base";
  *     against Runway without re-typing.
  *   - Strips redundant double-spaces around commas.
  *
- * API methods are stubs (apiReady=false). Runway has a real public API
- * (https://docs.dev.runwayml.com/) so capabilities list everything they
- * support; only the stub bodies are deferred.
+ * Generation is routed through Control Center's video-providers-runway-generate
+ * proxy (see src/lib/providerJobs/api.ts).
  */
 export class RunwayProvider extends BaseProvider {
   readonly id = "runway" as const;
@@ -26,7 +25,7 @@ export class RunwayProvider extends BaseProvider {
     "remove_bg",
     "variation",
   ];
-  readonly apiReady = false;
+  readonly apiReady = true;
 
   formatPrompt(compiled: CompiledPrompt): FormattedPrompt {
     const prefixed = ensureCinematicPrefix(compiled.promptText);
