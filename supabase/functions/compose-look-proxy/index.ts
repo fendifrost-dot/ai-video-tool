@@ -88,6 +88,12 @@ const corsHeaders = {
 const SIGN_TTL_INPUT = 2700; // 45 min — Fal pulls quickly
 const SIGN_TTL_RESULT = 3600;
 
+// identity_inpaint must use the face LoRA (FENDIFROST), not the wardrobe LoRA
+// (FENDIFITS) stored as the artist's primary lora in identity_profile_json.
+const IDENTITY_LORA_URL =
+  "https://v3b.fal.media/files/b/0a9aa6fe/JaNHDtLLu91_D7nnOxeY3_pytorch_lora_weights.safetensors";
+const IDENTITY_LORA_TRIGGER = "FENDIFROST";
+
 // ---------------------------------------------------------------------------
 // 4-URL cap allocation (Phase 4)
 // ---------------------------------------------------------------------------
@@ -231,14 +237,18 @@ serve(async (req) => {
 
   const identity = (artist.identity_profile_json ?? {}) as Record<string, any>;
   const loraInfo = identity.lora ?? null;
-  const loraUrl: string | null = typeof loraInfo?.url === "string" ? loraInfo.url : null;
+  let loraUrl: string | null = typeof loraInfo?.url === "string" ? loraInfo.url : null;
   // Accept both `trigger` and `trigger_word` keys — the LoRA trainer writes
   // `trigger_word` into identity_profile_json.lora, while older code paths
   // expected `trigger`. Without this fallback the trigger arrives at CC as
   // undefined, hasLora collapses to false, and explicit "lora_seedream"
   // requests silently fall back to seedream_only (decidePipeline in CC).
   const triggerRaw = loraInfo?.trigger ?? loraInfo?.trigger_word;
-  const triggerWord: string = typeof triggerRaw === "string" ? triggerRaw : "";
+  let triggerWord: string = typeof triggerRaw === "string" ? triggerRaw : "";
+  if (body.pipelinePreference === "identity_inpaint") {
+    loraUrl = IDENTITY_LORA_URL;
+    triggerWord = IDENTITY_LORA_TRIGGER;
+  }
 
   // ---- compile identity preamble -----------------------------------
   // Prepends the artist's identity fields + continuity rules to every
