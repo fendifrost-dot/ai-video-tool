@@ -338,6 +338,9 @@ export type ComposeLookInput = {
   pipelinePreference?: "auto" | "lora_seedream" | "seedream_only" | "kontext_multi" | "lora_idm_vton" | "lora_segmented_inpaint";
   parentLookId?: string;
   name?: string;
+  /** Layered Look Builder: lock this image as the canvas; the proxy forwards
+   *  it as the canonical-base override so only the new garment is inpainted. */
+  canvasImageUrl?: string;
 };
 
 // Async-pipeline response shape (Phase 2/5 refactor). The proxy inserts a

@@ -8,6 +8,7 @@ import {
   Copy,
   Edit3,
   GitBranch,
+  Layers,
   Loader2,
   Lock,
   Save,
@@ -42,6 +43,7 @@ import { useWardrobe } from "@/lib/queries/wardrobe";
 import { useLocations } from "@/lib/queries/locations";
 import { useProps } from "@/lib/queries/props";
 import {
+  callComposeLook,
   formatCost,
   getLookPublicImageUrl,
   looksKeys,
@@ -63,6 +65,8 @@ export default function LookDetailPage({
   lookId: string;
 }) {
   const navigate = useNavigate();
+  const [layerItemId, setLayerItemId] = useState("");
+  const [layerBusy, setLayerBusy] = useState(false);
   const qc = useQueryClient();
   const artistQuery = useArtist(artistId);
   const lookQuery = useLook(lookId);
@@ -196,6 +200,35 @@ export default function LookDetailPage({
   const pipelineLabel =
     look.pipeline_used ??
     (pipelinePreference ? `${pipelinePreference} · pending` : null);
+
+
+  async function handleAddLayer() {
+    if (!look || !layerItemId || !publicImageUrl) return;
+    const item = (wardrobeQuery.data ?? []).find((w) => w.id === layerItemId);
+    if (!item) return;
+    setLayerBusy(true);
+    try {
+      const result = await callComposeLook({
+        artistId,
+        wardrobeFeatureIds: [layerItemId],
+        basePrompt: `Layer pass: dress the subject in ${item.label}. Keep the face, pose, lighting, background, and all other garments exactly as they are.`,
+        pipelinePreference: "lora_segmented_inpaint",
+        parentLookId: look.id,
+        name: `${(look.name ?? "Look").slice(0, 56)} + ${item.label}`.slice(0, 80),
+        canvasImageUrl: publicImageUrl,
+      });
+      toast.success("Layer queued — opening the new look");
+      setLayerItemId("");
+      navigate({
+        to: "/artists/$id/looks/$lookId",
+        params: { id: artistId, lookId: result.look_id },
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Layer generation failed");
+    } finally {
+      setLayerBusy(false);
+    }
+  }
 
   return (
     <>
@@ -586,6 +619,45 @@ export default function LookDetailPage({
                   Save as canonical base
                 </Button>
               )}
+            </div>
+
+            <div className="space-y-2 rounded-md border border-primary/40 bg-card/30 p-4">
+              <h2 className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <Layers className="h-3 w-3" />
+                Add layer
+              </h2>
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                Locks this exact image as the canvas and inpaints ONE new
+                garment on top. Approve the result, then layer the next piece.
+              </p>
+              <select
+                className="w-full rounded-md border border-border bg-background px-2 py-2 text-xs"
+                value={layerItemId}
+                onChange={(e) => setLayerItemId(e.target.value)}
+                disabled={layerBusy}
+              >
+                <option value="">Pick a garment…</option>
+                {(wardrobeQuery.data ?? []).map((w) => (
+                  <option key={w.id} value={w.id}>
+                    {w.label} ({w.feature_type.replace("wardrobe_", "")})
+                  </option>
+                ))}
+              </select>
+              <Button
+                size="sm"
+                className="w-full"
+                disabled={
+                  !layerItemId || layerBusy || isPending || look.status !== "complete"
+                }
+                onClick={handleAddLayer}
+              >
+                {layerBusy ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Layers className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Generate layer (~$0.09)
+              </Button>
             </div>
 
             <div className="space-y-2 rounded-md border border-border bg-card/30 p-4">

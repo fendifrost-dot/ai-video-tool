@@ -47,6 +47,10 @@ type Body = {
   pipelinePreference?: PipelineMode;
   parentLookId?: string;
   name?: string;
+  /** Layered Look Builder: lock this image as the inpaint canvas (overrides
+   *  the artist's canonical base). Must be an https image URL — typically the
+   *  parent look's generated image. */
+  canvasImageUrl?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -613,6 +617,17 @@ serve(async (req) => {
       ? ((identity as Record<string, unknown>).canonical_base_image_url as string).trim() || null
       : null;
 
+  // Layered Look Builder: a per-request canvas override wins over the
+  // artist-level canonical base. This is how "lock the previous layer and
+  // add one garment" works — the client passes the parent look's image.
+  const canvasOverride =
+    typeof body.canvasImageUrl === "string" &&
+    body.canvasImageUrl.trim().startsWith("https://") &&
+    body.canvasImageUrl.trim().length < 600
+      ? body.canvasImageUrl.trim()
+      : null;
+  const effectiveCanvasUrl = canvasOverride ?? canonicalBaseImageUrl;
+
   const ccPayload = {
     recipe: {
       artistId: body.artistId,
@@ -634,7 +649,7 @@ serve(async (req) => {
       hasLocation: !!locationFeature,
       hasFace: !!faceFeature,
       propCount: propsFeatures.length,
-      canonicalBaseImageUrl: canonicalBaseImageUrl ?? undefined,
+      canonicalBaseImageUrl: effectiveCanvasUrl ?? undefined,
     },
     signedUrls: {
       face: faceUrl,
