@@ -48,6 +48,7 @@ import {
   getLookPublicImageUrl,
   looksKeys,
   pollArtistLook,
+  signLookPreviewUrl,
   useDeleteLook,
   useLook,
   useLockLookAsPrimary,
@@ -203,11 +204,25 @@ export default function LookDetailPage({
 
 
   async function handleAddLayer() {
-    if (!look || !layerItemId || !publicImageUrl) return;
+    if (!look || !layerItemId) return;
     const item = (wardrobeQuery.data ?? []).find((w) => w.id === layerItemId);
     if (!item) return;
     setLayerBusy(true);
     try {
+      // The canvas must be a fetchable https URL. generated_image_url is
+      // often a storage PATH (the callback stores paths) — sign it.
+      let canvasUrl =
+        publicImageUrl && publicImageUrl.startsWith("https://")
+          ? publicImageUrl
+          : null;
+      if (!canvasUrl) {
+        const path = look.generated_storage_path ?? look.generated_image_url;
+        if (path) canvasUrl = await signLookPreviewUrl(path, 3600);
+      }
+      if (!canvasUrl) {
+        toast.error("Couldn't resolve this look's image URL for the canvas.");
+        return;
+      }
       const result = await callComposeLook({
         artistId,
         wardrobeFeatureIds: [layerItemId],
@@ -215,7 +230,7 @@ export default function LookDetailPage({
         pipelinePreference: "lora_segmented_inpaint",
         parentLookId: look.id,
         name: `${(look.name ?? "Look").slice(0, 56)} + ${item.label}`.slice(0, 80),
-        canvasImageUrl: publicImageUrl,
+        canvasImageUrl: canvasUrl,
       });
       toast.success("Layer queued — opening the new look");
       setLayerItemId("");
