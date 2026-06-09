@@ -12,7 +12,7 @@
 //      project-clips bucket (service-role), inserts a project_assets row
 //
 // When `look_id` is present (Apply-my-identity / identity_faceswap path), the
-// look callback applies a light film-grain post-process before uploading to
+// look callback applies a full film-treatment post-process before uploading to
 // look-composites. The job_id (VLONE) path is unchanged.
 //      (asset_type='generated_still', source_tool='fal', approval_status
 //      ='pending', parent_asset_id = scene asset), and updates the
@@ -300,17 +300,17 @@ async function handleLookCallback(
   }
 
   try {
-    bytes = await applyFilmGrain(bytes, "light");
+    bytes = await applyFilmTreatment(bytes, "medium");
     mime = "image/jpeg";
   } catch (err) {
     await admin
       .from("artist_looks")
       .update({
         status: "failed",
-        error_message: `grain_postprocess_failed: ${String(err).slice(0, 300)}`,
+        error_message: `film_treatment_failed: ${String(err).slice(0, 300)}`,
       })
       .eq("id", lookId);
-    return json(500, { error: "grain_postprocess_failed" });
+    return json(500, { error: "film_treatment_failed" });
   }
 
   const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
@@ -365,25 +365,229 @@ async function handleLookCallback(
 // ---------------------------------------------------------------------------
 // Helpers (inlined — Supabase edge functions deploy independently).
 // ---------------------------------------------------------------------------
-async function applyFilmGrain(
+type FilmStrength = "light" | "medium" | "heavy";
+
+async function applyFilmTreatment(
   bytes: Uint8Array,
-  strength: "light" | "medium" = "light",
+  strength: FilmStrength = "medium",
 ): Promise<Uint8Array> {
   const img = await Image.decode(bytes);
-  const sigma = strength === "light" ? 6 : 11;
-  const desatPct = strength === "light" ? 0.03 : 0.05;
+  const w = img.width;
+  const h = img.height;
   const bitmap = img.bitmap;
 
+  const params = {
+    light: {
+      blur: 0.4, grainSigma: 6, grainDesat: 0.03, haloIntensity: 0.25, haloSigma: 6,
+      caShift: 1, vignette: 0.05, tonalBlend: 0.6,
+    },
+    medium: {
+      blur: 0.6, grainSigma: 10, grainDesat: 0.05, haloIntensity: 0.40, haloSigma: 8,
+      caShift: 1, vignette: 0.08, tonalBlend: 1.0,
+    },
+    heavy: {
+      blur: 0.9, grainSigma: 14, grainDesat: 0.07, haloIntensity: 0.55, haloSigma: 11,
+      caShift: 2, vignette: 0.12, tonalBlend: 1.0,
+    },
+  }[strength];
+
+  applyGaussianBlur(bitmap, w, h, params.blur);
+  applyGrain(bitmap, params.grainSigma, params.grainDesat);
+  applyHalation(bitmap, w, h, 200, params.haloSigma, params.haloIntensity);
+
+  if (params.tonalBlend < 1.0) {
+    const before = new Uint8ClampedArray(bitmap);
+    applyTonalCurve(bitmap);
+    for (let i = 0; i < bitmap.length; i += 4) {
+      bitmap[i] = Math.round(before[i] * (1 - params.tonalBlend) + bitmap[i] * params.tonalBlend);
+      bitmap[i + 1] = Math.round(before[i + 1] * (1 - params.tonalBlend) + bitmap[i + 1] * params.tonalBlend);
+      bitmap[i + 2] = Math.round(before[i + 2] * (1 - params.tonalBlend) + bitmap[i + 2] * params.tonalBlend);
+    }
+  } else {
+    applyTonalCurve(bitmap);
+  }
+
+  applyPortraColorShift(bitmap);
+  applyChromaticAberration(bitmap, w, h, params.caShift);
+  applyWarmCast(bitmap, 1.02, 0.98);
+  applyVignette(bitmap, w, h, params.vignette);
+
+  return await img.encodeJPEG(95);
+}
+
+function applyGaussianBlur(
+  bitmap: Uint8ClampedArray,
+  w: number,
+  h: number,
+  sigma = 0.6,
+): void {
+  const radius = Math.max(1, Math.round(sigma * 2));
+  const size = radius * 2 + 1;
+  const kernel = new Float32Array(size);
+  let sum = 0;
+  for (let i = 0; i < size; i++) {
+    const x = i - radius;
+    kernel[i] = Math.exp(-(x * x) / (2 * sigma * sigma));
+    sum += kernel[i];
+  }
+  for (let i = 0; i < size; i++) kernel[i] /= sum;
+
+  const tmp = new Float32Array(bitmap.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let r = 0, g = 0, b = 0;
+      for (let k = 0; k < size; k++) {
+        const xx = Math.min(w - 1, Math.max(0, x + k - radius));
+        const idx = (y * w + xx) * 4;
+        r += bitmap[idx] * kernel[k];
+        g += bitmap[idx + 1] * kernel[k];
+        b += bitmap[idx + 2] * kernel[k];
+      }
+      const o = (y * w + x) * 4;
+      tmp[o] = r;
+      tmp[o + 1] = g;
+      tmp[o + 2] = b;
+      tmp[o + 3] = bitmap[o + 3];
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let r = 0, g = 0, b = 0;
+      for (let k = 0; k < size; k++) {
+        const yy = Math.min(h - 1, Math.max(0, y + k - radius));
+        const idx = (yy * w + x) * 4;
+        r += tmp[idx] * kernel[k];
+        g += tmp[idx + 1] * kernel[k];
+        b += tmp[idx + 2] * kernel[k];
+      }
+      const o = (y * w + x) * 4;
+      bitmap[o] = Math.max(0, Math.min(255, Math.round(r)));
+      bitmap[o + 1] = Math.max(0, Math.min(255, Math.round(g)));
+      bitmap[o + 2] = Math.max(0, Math.min(255, Math.round(b)));
+    }
+  }
+}
+
+function applyGrain(bitmap: Uint8ClampedArray, sigma: number, desatPct: number): void {
   for (let i = 0; i < bitmap.length; i += 4) {
     const noise = gaussianRandom(0, sigma);
     const gray = (bitmap[i] + bitmap[i + 1] + bitmap[i + 2]) / 3;
     for (let c = 0; c < 3; c++) {
-      const v = bitmap[i + c] + noise;
-      bitmap[i + c] = Math.max(0, Math.min(255, Math.round(v * (1 - desatPct) + gray * desatPct)));
+      let v = bitmap[i + c] + noise;
+      v = v * (1 - desatPct) + gray * desatPct;
+      bitmap[i + c] = Math.max(0, Math.min(255, Math.round(v)));
     }
   }
+}
 
-  return await img.encodeJPEG(95);
+function applyHalation(
+  bitmap: Uint8ClampedArray,
+  w: number,
+  h: number,
+  threshold = 200,
+  glowSigma = 8,
+  intensity = 0.4,
+): void {
+  const glowBuffer = new Uint8ClampedArray(bitmap.length);
+  for (let i = 0; i < bitmap.length; i += 4) {
+    const luma = bitmap[i] * 0.299 + bitmap[i + 1] * 0.587 + bitmap[i + 2] * 0.114;
+    const factor = Math.max(0, (luma - threshold) / (255 - threshold));
+    glowBuffer[i] = Math.min(255, factor * 255 * 1.0);
+    glowBuffer[i + 1] = Math.min(255, factor * 255 * 0.55);
+    glowBuffer[i + 2] = Math.min(255, factor * 255 * 0.2);
+    glowBuffer[i + 3] = 255;
+  }
+  applyGaussianBlur(glowBuffer, w, h, glowSigma);
+  for (let i = 0; i < bitmap.length; i += 4) {
+    bitmap[i] = Math.min(255, Math.round(bitmap[i] + glowBuffer[i] * intensity));
+    bitmap[i + 1] = Math.min(255, Math.round(bitmap[i + 1] + glowBuffer[i + 1] * intensity));
+    bitmap[i + 2] = Math.min(255, Math.round(bitmap[i + 2] + glowBuffer[i + 2] * intensity));
+  }
+}
+
+function applyTonalCurve(bitmap: Uint8ClampedArray): void {
+  const lut = new Uint8Array(256);
+  for (let v = 0; v < 256; v++) {
+    let out: number;
+    if (v < 40) {
+      out = v + 6 * Math.sin((v / 40) * (Math.PI / 2));
+    } else if (v < 180) {
+      out = 40 + (v - 40) * 1.12;
+    } else {
+      const t = (v - 180) / 75;
+      out = 40 + 140 * 1.12 + (245 - (40 + 140 * 1.12)) * (1 - Math.pow(1 - t, 2));
+    }
+    lut[v] = Math.max(0, Math.min(255, Math.round(out)));
+  }
+  for (let i = 0; i < bitmap.length; i += 4) {
+    bitmap[i] = lut[bitmap[i]];
+    bitmap[i + 1] = lut[bitmap[i + 1]];
+    bitmap[i + 2] = lut[bitmap[i + 2]];
+  }
+}
+
+function applyPortraColorShift(bitmap: Uint8ClampedArray): void {
+  for (let i = 0; i < bitmap.length; i += 4) {
+    let r = bitmap[i], g = bitmap[i + 1], b = bitmap[i + 2];
+    const luma = r * 0.299 + g * 0.587 + b * 0.114;
+    const shadowWeight = Math.max(0, 1 - luma / 80);
+    r = r * (1 - 0.04 * shadowWeight);
+    g = g * (1 - 0.02 * shadowWeight) + 4 * shadowWeight;
+    b = b * (1 - 0.02 * shadowWeight) + 8 * shadowWeight;
+    const midWeight = Math.max(0, 1 - Math.abs(luma - 128) / 80);
+    r += 6 * midWeight;
+    b -= 4 * midWeight;
+    const grey = r * 0.299 + g * 0.587 + b * 0.114;
+    r = grey + (r - grey) * 0.96;
+    g = grey + (g - grey) * 0.96;
+    b = grey + (b - grey) * 0.96;
+    bitmap[i] = Math.max(0, Math.min(255, Math.round(r)));
+    bitmap[i + 1] = Math.max(0, Math.min(255, Math.round(g)));
+    bitmap[i + 2] = Math.max(0, Math.min(255, Math.round(b)));
+  }
+}
+
+function applyChromaticAberration(
+  bitmap: Uint8ClampedArray,
+  w: number,
+  h: number,
+  shiftPx = 1,
+): void {
+  const original = new Uint8ClampedArray(bitmap);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const idx = (y * w + x) * 4;
+      const rx = Math.min(w - 1, x + shiftPx);
+      bitmap[idx] = original[(y * w + rx) * 4];
+      const bx = Math.max(0, x - shiftPx);
+      bitmap[idx + 2] = original[(y * w + bx) * 4 + 2];
+    }
+  }
+}
+
+function applyWarmCast(bitmap: Uint8ClampedArray, rGain = 1.02, bGain = 0.98): void {
+  for (let i = 0; i < bitmap.length; i += 4) {
+    bitmap[i] = Math.min(255, Math.round(bitmap[i] * rGain));
+    bitmap[i + 2] = Math.max(0, Math.round(bitmap[i + 2] * bGain));
+  }
+}
+
+function applyVignette(bitmap: Uint8ClampedArray, w: number, h: number, strength = 0.08): void {
+  const cx = w / 2;
+  const cy = h / 2;
+  const maxR = Math.sqrt(cx * cx + cy * cy);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const dx = x - cx;
+      const dy = y - cy;
+      const r = Math.sqrt(dx * dx + dy * dy) / maxR;
+      const factor = 1 - strength * r * r;
+      const idx = (y * w + x) * 4;
+      bitmap[idx] = Math.max(0, Math.min(255, Math.round(bitmap[idx] * factor)));
+      bitmap[idx + 1] = Math.max(0, Math.min(255, Math.round(bitmap[idx + 1] * factor)));
+      bitmap[idx + 2] = Math.max(0, Math.min(255, Math.round(bitmap[idx + 2] * factor)));
+    }
+  }
 }
 
 function gaussianRandom(mean = 0, stdDev = 1): number {
