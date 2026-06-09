@@ -631,13 +631,15 @@ function applyPortraColorShift(bitmap: Uint8ClampedArray): void {
   for (let i = 0; i < bitmap.length; i += 4) {
     let r = bitmap[i], g = bitmap[i + 1], b = bitmap[i + 2];
     const luma = r * 0.299 + g * 0.587 + b * 0.114;
+    // Gate the color-shifting parts by saturation so neutrals stay neutral
+    const gate = colorPresence(r, g, b) * highlightProtection(luma);
     const shadowWeight = Math.max(0, 1 - luma / 80);
-    r = r * (1 - 0.04 * shadowWeight);
-    g = g * (1 - 0.02 * shadowWeight) + 4 * shadowWeight;
-    b = b * (1 - 0.02 * shadowWeight) + 8 * shadowWeight;
+    r = r * (1 - 0.04 * shadowWeight * gate);
+    g = g * (1 - 0.02 * shadowWeight * gate) + 4 * shadowWeight * gate;
+    b = b * (1 - 0.02 * shadowWeight * gate) + 8 * shadowWeight * gate;
     const midWeight = Math.max(0, 1 - Math.abs(luma - 128) / 80);
-    r += 6 * midWeight;
-    b -= 4 * midWeight;
+    r += 6 * midWeight * gate;
+    b -= 4 * midWeight * gate;
     const grey = r * 0.299 + g * 0.587 + b * 0.114;
     r = grey + (r - grey) * 0.96;
     g = grey + (g - grey) * 0.96;
@@ -678,8 +680,17 @@ function applyChromaticAberration(
 
 function applyWarmCast(bitmap: Uint8ClampedArray, rGain = 1.02, bGain = 0.98): void {
   for (let i = 0; i < bitmap.length; i += 4) {
-    bitmap[i] = Math.min(255, Math.round(bitmap[i] * rGain));
-    bitmap[i + 2] = Math.max(0, Math.round(bitmap[i + 2] * bGain));
+    const r = bitmap[i], g = bitmap[i + 1], b = bitmap[i + 2];
+    const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+
+    const gate = highlightProtection(luma) * colorPresence(r, g, b);
+
+    // Apply the warm shift as a delta scaled by the gate
+    const rDelta = (r * rGain - r) * gate;
+    const bDelta = (b * bGain - b) * gate;
+
+    bitmap[i] = Math.min(255, Math.round(r + rDelta));
+    bitmap[i + 2] = Math.max(0, Math.round(b + bDelta));
   }
 }
 
@@ -699,6 +710,29 @@ function applyVignette(bitmap: Uint8ClampedArray, w: number, h: number, strength
       bitmap[idx + 2] = Math.max(0, Math.min(255, Math.round(bitmap[idx + 2] * factor)));
     }
   }
+}
+
+/**
+ * Returns 1.0 for shadow/midtone pixels, rolls off to 0.0 above luma 180.
+ * Use to multiply the DELTA of a color-shifting stage so highlights stay neutral.
+ */
+function highlightProtection(luma: number): number {
+  if (luma <= 180) return 1.0;
+  if (luma >= 255) return 0.0;
+  return 1.0 - (luma - 180) / 75;
+}
+
+/**
+ * Returns ~0 for neutral pixels (R≈G≈B), ~1 for saturated pixels.
+ * Use to skip warm shifts on white/gray backdrops while still warming skin.
+ */
+function colorPresence(r: number, g: number, b: number): number {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  if (max === 0) return 0;
+  const saturation = (max - min) / max;
+  // Boost moderately saturated pixels to 1.0, leave near-neutral at ~0
+  return Math.min(1.0, saturation * 5);
 }
 
 function gaussianRandom(mean = 0, stdDev = 1): number {
