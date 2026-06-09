@@ -380,7 +380,7 @@ async function applyFilmTreatment(
 
   const params = {
     light: {
-      blur: 0.4, grainSigma: 6, grainDesat: 0.03, haloIntensity: 0.25, haloSigma: 6,
+      blur: 0.4, grainSigma: 4, grainDesat: 0.03, haloIntensity: 0.25, haloSigma: 6,
       caShift: 2, vignette: 0.05, tonalBlend: 0.6, hfStrength: 0.80,
     },
     medium: {
@@ -522,7 +522,7 @@ function applyOrganicGrain(
     const g = bitmap[i + 1];
     const b = bitmap[i + 2];
     const luma = 0.299 * r + 0.587 * g + 0.114 * b;
-    const shadowWeight = Math.pow(1 - luma / 255, 0.5);
+    const shadowWeight = Math.pow(1 - luma / 255, 1.0);
     const noise = noiseFull[p] * shadowWeight;
     const newLuma = Math.max(0, Math.min(255, luma + noise));
     const scale = newLuma / (luma || 1);
