@@ -10,6 +10,10 @@
 //   3. On failure: marks the row failed with error_text.
 //   4. On success: downloads the rendered image from Fal, uploads it to the
 //      project-clips bucket (service-role), inserts a project_assets row
+//
+// When `look_id` is present (Apply-my-identity / identity_faceswap path), the
+// look callback applies a light film-grain post-process before uploading to
+// look-composites. The job_id (VLONE) path is unchanged.
 //      (asset_type='generated_still', source_tool='fal', approval_status
 //      ='pending', parent_asset_id = scene asset), and updates the
 //      provider_jobs row to status='succeeded' with result_asset_id.
@@ -26,6 +30,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { Image } from "https://deno.land/x/imagescript@1.2.15/mod.ts";
 
 type Body = {
   status?: "succeeded" | "completed" | "failed";
@@ -294,6 +299,20 @@ async function handleLookCallback(
     return json(502, { error: "fal_download_failed" });
   }
 
+  try {
+    bytes = await applyFilmGrain(bytes, "light");
+    mime = "image/jpeg";
+  } catch (err) {
+    await admin
+      .from("artist_looks")
+      .update({
+        status: "failed",
+        error_message: `grain_postprocess_failed: ${String(err).slice(0, 300)}`,
+      })
+      .eq("id", lookId);
+    return json(500, { error: "grain_postprocess_failed" });
+  }
+
   const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
   const storagePath = `${existing.user_id}/${existing.artist_id}/${lookId}.${ext}`;
   const { error: uploadErr } = await admin.storage
@@ -346,6 +365,34 @@ async function handleLookCallback(
 // ---------------------------------------------------------------------------
 // Helpers (inlined — Supabase edge functions deploy independently).
 // ---------------------------------------------------------------------------
+async function applyFilmGrain(
+  bytes: Uint8Array,
+  strength: "light" | "medium" = "light",
+): Promise<Uint8Array> {
+  const img = await Image.decode(bytes);
+  const sigma = strength === "light" ? 6 : 11;
+  const desatPct = strength === "light" ? 0.03 : 0.05;
+  const bitmap = img.bitmap;
+
+  for (let i = 0; i < bitmap.length; i += 4) {
+    const noise = gaussianRandom(0, sigma);
+    const gray = (bitmap[i] + bitmap[i + 1] + bitmap[i + 2]) / 3;
+    for (let c = 0; c < 3; c++) {
+      const v = bitmap[i + c] + noise;
+      bitmap[i + c] = Math.max(0, Math.min(255, Math.round(v * (1 - desatPct) + gray * desatPct)));
+    }
+  }
+
+  return await img.encodeJPEG(95);
+}
+
+function gaussianRandom(mean = 0, stdDev = 1): number {
+  const u1 = Math.max(Math.random(), Number.EPSILON);
+  const u2 = Math.random();
+  const z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+  return mean + z * stdDev;
+}
+
 function constantTimeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
