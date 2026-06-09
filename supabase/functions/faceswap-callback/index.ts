@@ -300,7 +300,7 @@ async function handleLookCallback(
   }
 
   try {
-    bytes = await applyFilmTreatment(bytes, "medium");
+    bytes = await applyFilmTreatment(bytes, "light");
     mime = "image/jpeg";
   } catch (err) {
     await admin
@@ -369,30 +369,35 @@ type FilmStrength = "light" | "medium" | "heavy";
 
 async function applyFilmTreatment(
   bytes: Uint8Array,
-  strength: FilmStrength = "medium",
+  strength: FilmStrength = "light",
 ): Promise<Uint8Array> {
   const img = await Image.decode(bytes);
   const w = img.width;
   const h = img.height;
   const bitmap = img.bitmap;
 
+  const original = new Uint8ClampedArray(bitmap);
+
   const params = {
     light: {
       blur: 0.4, grainSigma: 6, grainDesat: 0.03, haloIntensity: 0.25, haloSigma: 6,
-      caShift: 1, vignette: 0.05, tonalBlend: 0.6,
+      caShift: 2, vignette: 0.05, tonalBlend: 0.6, hfStrength: 0.80,
     },
     medium: {
       blur: 0.6, grainSigma: 10, grainDesat: 0.05, haloIntensity: 0.40, haloSigma: 8,
-      caShift: 1, vignette: 0.08, tonalBlend: 1.0,
+      caShift: 2, vignette: 0.08, tonalBlend: 1.0, hfStrength: 0.80,
     },
     heavy: {
       blur: 0.9, grainSigma: 14, grainDesat: 0.07, haloIntensity: 0.55, haloSigma: 11,
-      caShift: 2, vignette: 0.12, tonalBlend: 1.0,
+      caShift: 3, vignette: 0.12, tonalBlend: 1.0, hfStrength: 0.85,
     },
   }[strength];
 
-  applyGaussianBlur(bitmap, w, h, params.blur);
-  applyGrain(bitmap, params.grainSigma, params.grainDesat);
+  const blurred = new Uint8ClampedArray(original);
+  applyGaussianBlur(blurred, w, h, params.blur);
+  bitmap.set(blurred);
+
+  applyOrganicGrain(bitmap, w, h, params.grainSigma, params.grainDesat);
   applyHalation(bitmap, w, h, 200, params.haloSigma, params.haloIntensity);
 
   if (params.tonalBlend < 1.0) {
@@ -411,6 +416,14 @@ async function applyFilmTreatment(
   applyChromaticAberration(bitmap, w, h, params.caShift);
   applyWarmCast(bitmap, 1.02, 0.98);
   applyVignette(bitmap, w, h, params.vignette);
+
+  for (let i = 0; i < bitmap.length; i += 4) {
+    for (let c = 0; c < 3; c++) {
+      const hf = original[i + c] - blurred[i + c];
+      const newValue = bitmap[i + c] + hf * params.hfStrength;
+      bitmap[i + c] = Math.max(0, Math.min(255, Math.round(newValue)));
+    }
+  }
 
   return await img.encodeJPEG(95);
 }
@@ -468,14 +481,102 @@ function applyGaussianBlur(
   }
 }
 
-function applyGrain(bitmap: Uint8ClampedArray, sigma: number, desatPct: number): void {
-  for (let i = 0; i < bitmap.length; i += 4) {
-    const noise = gaussianRandom(0, sigma);
-    const gray = (bitmap[i] + bitmap[i + 1] + bitmap[i + 2]) / 3;
-    for (let c = 0; c < 3; c++) {
-      let v = bitmap[i + c] + noise;
-      v = v * (1 - desatPct) + gray * desatPct;
-      bitmap[i + c] = Math.max(0, Math.min(255, Math.round(v)));
+function applyOrganicGrain(
+  bitmap: Uint8ClampedArray,
+  w: number,
+  h: number,
+  sigma: number,
+  desatPct: number,
+): void {
+  const dw = Math.ceil(w / 4);
+  const dh = Math.ceil(h / 4);
+  const noiseLow = new Float32Array(dw * dh);
+  for (let i = 0; i < noiseLow.length; i++) {
+    noiseLow[i] = gaussianRandom(0, sigma);
+  }
+
+  const noiseFull = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    const sy = y / 4;
+    const y0 = Math.floor(sy);
+    const y1 = Math.min(dh - 1, y0 + 1);
+    const fy = sy - y0;
+    for (let x = 0; x < w; x++) {
+      const sx = x / 4;
+      const x0 = Math.floor(sx);
+      const x1 = Math.min(dw - 1, x0 + 1);
+      const fx = sx - x0;
+      const n00 = noiseLow[y0 * dw + x0];
+      const n10 = noiseLow[y0 * dw + x1];
+      const n01 = noiseLow[y1 * dw + x0];
+      const n11 = noiseLow[y1 * dw + x1];
+      noiseFull[y * w + x] =
+        n00 * (1 - fx) * (1 - fy) + n10 * fx * (1 - fy) + n01 * (1 - fx) * fy + n11 * fx * fy;
+    }
+  }
+
+  applyGaussianBlurScalar(noiseFull, w, h, 0.5);
+
+  for (let i = 0, p = 0; i < bitmap.length; i += 4, p++) {
+    const r = bitmap[i];
+    const g = bitmap[i + 1];
+    const b = bitmap[i + 2];
+    const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+    const shadowWeight = Math.pow(1 - luma / 255, 0.5);
+    const noise = noiseFull[p] * shadowWeight;
+    const newLuma = Math.max(0, Math.min(255, luma + noise));
+    const scale = newLuma / (luma || 1);
+
+    let newR = r * scale;
+    let newG = g * scale;
+    let newB = b * scale;
+    const gray = (newR + newG + newB) / 3;
+    newR = newR * (1 - desatPct) + gray * desatPct;
+    newG = newG * (1 - desatPct) + gray * desatPct;
+    newB = newB * (1 - desatPct) + gray * desatPct;
+
+    bitmap[i] = Math.max(0, Math.min(255, Math.round(newR)));
+    bitmap[i + 1] = Math.max(0, Math.min(255, Math.round(newG)));
+    bitmap[i + 2] = Math.max(0, Math.min(255, Math.round(newB)));
+  }
+}
+
+function applyGaussianBlurScalar(
+  data: Float32Array,
+  w: number,
+  h: number,
+  sigma: number,
+): void {
+  const radius = Math.max(1, Math.round(sigma * 2));
+  const size = radius * 2 + 1;
+  const kernel = new Float32Array(size);
+  let sum = 0;
+  for (let i = 0; i < size; i++) {
+    const x = i - radius;
+    kernel[i] = Math.exp(-(x * x) / (2 * sigma * sigma));
+    sum += kernel[i];
+  }
+  for (let i = 0; i < size; i++) kernel[i] /= sum;
+
+  const tmp = new Float32Array(data.length);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let v = 0;
+      for (let k = 0; k < size; k++) {
+        const xx = Math.min(w - 1, Math.max(0, x + k - radius));
+        v += data[y * w + xx] * kernel[k];
+      }
+      tmp[y * w + x] = v;
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let v = 0;
+      for (let k = 0; k < size; k++) {
+        const yy = Math.min(h - 1, Math.max(0, y + k - radius));
+        v += tmp[yy * w + x] * kernel[k];
+      }
+      data[y * w + x] = v;
     }
   }
 }
@@ -551,15 +652,25 @@ function applyChromaticAberration(
   bitmap: Uint8ClampedArray,
   w: number,
   h: number,
-  shiftPx = 1,
+  maxShiftPx = 2,
 ): void {
+  const cx = w / 2;
+  const cy = h / 2;
+  const maxR = Math.sqrt(cx * cx + cy * cy);
   const original = new Uint8ClampedArray(bitmap);
+
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
+      const dx = x - cx;
+      const dy = y - cy;
+      const r = Math.sqrt(dx * dx + dy * dy) / maxR;
+      const shift = Math.round(maxShiftPx * r * r);
+      if (shift === 0) continue;
+
       const idx = (y * w + x) * 4;
-      const rx = Math.min(w - 1, x + shiftPx);
+      const rx = Math.min(w - 1, x + shift);
       bitmap[idx] = original[(y * w + rx) * 4];
-      const bx = Math.max(0, x - shiftPx);
+      const bx = Math.max(0, x - shift);
       bitmap[idx + 2] = original[(y * w + bx) * 4 + 2];
     }
   }
