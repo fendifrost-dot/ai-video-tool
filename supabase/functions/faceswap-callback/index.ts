@@ -275,10 +275,22 @@ async function handleLookCallback(
     return json(400, { error: "missing_fal_url" });
   }
 
+  // NEW Stage 1: Fal skin-detail restoration (face-fix → clarity-upscaler
+  // fallback). Runs before download so we pull the detail-enhanced result.
+  // Falls back to the original Fal URL on any failure — never blocks the look.
+  const falApiKey = Deno.env.get("FAL_API_KEY") ?? "";
+  let sourceUrl = falImageUrl;
+  try {
+    sourceUrl = await applyFalSkinDetail(falImageUrl, falApiKey);
+  } catch (err) {
+    console.warn(`skin-detail stage failed, using original swap: ${String(err)}`);
+    sourceUrl = falImageUrl;
+  }
+
   let bytes: Uint8Array;
   let mime: "image/png" | "image/jpeg" | "image/webp";
   try {
-    const dl = await fetch(falImageUrl, {
+    const dl = await fetch(sourceUrl, {
       headers: { Accept: "image/png, image/jpeg, image/webp" },
     });
     if (!dl.ok) throw new Error(`download_${dl.status}`);
@@ -297,6 +309,19 @@ async function handleLookCallback(
       })
       .eq("id", lookId);
     return json(502, { error: "fal_download_failed" });
+  }
+
+  // NEW Stages 2 & 3: in-Deno eye catchlights + skin specularity, applied on
+  // the clean swap before film treatment ages it. Non-fatal — on any decode/
+  // encode error we proceed with the un-enhanced bytes.
+  try {
+    const enhImg = await Image.decode(bytes);
+    applyEyeCatchlights(enhImg.bitmap, enhImg.width, enhImg.height);
+    applySkinSpecularity(enhImg.bitmap, enhImg.width, enhImg.height);
+    bytes = await enhImg.encodeJPEG(95);
+    mime = "image/jpeg";
+  } catch (err) {
+    console.warn(`catchlight/specularity stage failed, skipping: ${String(err)}`);
   }
 
   try {
@@ -365,6 +390,190 @@ async function handleLookCallback(
 // ---------------------------------------------------------------------------
 // Helpers (inlined — Supabase edge functions deploy independently).
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Photorealism Phase 2 — skin detail + catchlights + specularity.
+//
+// These three stages run in the look_id branch only, between Fal swap
+// completion and applyFilmTreatment. They close the remaining AI-vs-photo gap
+// on skin texture, eye liveness, and natural skin highlights. All three are
+// graceful: any failure degrades to the un-enhanced swap rather than failing
+// the look. VLONE / job_id path is untouched.
+// ---------------------------------------------------------------------------
+
+// Stage 1: Fal skin-detail restoration. Tries fal-ai/face-fix (purpose-built
+// for portrait pore detail), falls back to fal-ai/clarity-upscaler at low
+// strength, and finally returns the original URL if both fail.
+async function applyFalSkinDetail(imageUrl: string, falApiKey: string): Promise<string> {
+  try {
+    // Try face-fix first — purpose-built for portrait skin detail
+    const response = await fetch("https://queue.fal.run/fal-ai/face-fix", {
+      method: "POST",
+      headers: {
+        "Authorization": `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        image_url: imageUrl,
+        // Conservative settings — we want detail restoration, not aggressive sharpening
+        strength: 0.65,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`face-fix failed: ${response.status}`);
+    }
+
+    const queueData = await response.json();
+    const requestId = queueData.request_id;
+
+    // Poll for completion (typical 10-30s)
+    let result;
+    for (let attempt = 0; attempt < 60; attempt++) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const statusResp = await fetch(`https://queue.fal.run/fal-ai/face-fix/requests/${requestId}`, {
+        headers: { "Authorization": `Key ${falApiKey}` },
+      });
+      const statusData = await statusResp.json();
+      if (statusData.status === "COMPLETED") {
+        result = statusData;
+        break;
+      }
+      if (statusData.status === "FAILED") {
+        throw new Error(`face-fix job failed`);
+      }
+    }
+
+    if (!result?.images?.[0]?.url) {
+      throw new Error("face-fix returned no image URL");
+    }
+
+    return result.images[0].url;
+  } catch (err) {
+    console.warn(`face-fix failed, falling back to clarity-upscaler: ${String(err)}`);
+
+    // Fallback: clarity-upscaler at low strength
+    const fallbackResp = await fetch("https://queue.fal.run/fal-ai/clarity-upscaler", {
+      method: "POST",
+      headers: {
+        "Authorization": `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        image_url: imageUrl,
+        scale: 1, // don't upscale, just enhance
+        creativity: 0.15, // low — we want detail restoration, not generative changes
+        resemblance: 0.85, // high — stay close to source
+      }),
+    });
+
+    if (!fallbackResp.ok) {
+      console.error("Both face-fix and clarity-upscaler failed; returning original");
+      return imageUrl; // graceful degradation
+    }
+
+    const data = await fallbackResp.json();
+    return data.images?.[0]?.url ?? imageUrl;
+  }
+}
+
+// Stage 2: Eye catchlights. Heuristic detection of iris-brightness pixels
+// surrounded by lighter eye-socket pixels, then a small Gaussian specular glow
+// with a slight blue-white (sky-reflection) tint at each. Operates in-place.
+function applyEyeCatchlights(bitmap: Uint8ClampedArray, w: number, h: number): void {
+  // Build a "potential iris" mask: pixels that are dark (luma 30-100) AND have color
+  // (not pure gray) AND are surrounded by lighter pixels (likely eye sockets).
+  // This is a rough heuristic — doesn't need to be perfect, just better than nothing.
+
+  const candidates: { x: number; y: number; score: number }[] = [];
+
+  // Skip border pixels to allow 5x5 sampling
+  for (let y = 5; y < h - 5; y++) {
+    for (let x = 5; x < w - 5; x++) {
+      const idx = (y * w + x) * 4;
+      const r = bitmap[idx], g = bitmap[idx + 1], b = bitmap[idx + 2];
+      const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+
+      if (luma < 30 || luma > 100) continue; // not iris brightness
+      if (Math.abs(r - g) < 5 && Math.abs(g - b) < 5) continue; // too neutral
+
+      // Check that surrounding pixels are brighter (eye socket whites + lashes)
+      let brighterNeighbors = 0;
+      for (let dy = -5; dy <= 5; dy += 5) {
+        for (let dx = -5; dx <= 5; dx += 5) {
+          if (dy === 0 && dx === 0) continue;
+          const nIdx = ((y + dy) * w + (x + dx)) * 4;
+          const nLuma = 0.299 * bitmap[nIdx] + 0.587 * bitmap[nIdx + 1] + 0.114 * bitmap[nIdx + 2];
+          if (nLuma > luma + 30) brighterNeighbors++;
+        }
+      }
+
+      if (brighterNeighbors >= 3) {
+        candidates.push({ x, y, score: brighterNeighbors });
+      }
+    }
+  }
+
+  // Sort by score, take top 2-6 candidates (likely the iris centers of both eyes)
+  candidates.sort((a, b) => b.score - a.score);
+  const catchlights = candidates.slice(0, 6);
+
+  // For each catchlight, add a small bright spot with slight blue-white tint
+  // Gaussian-shaped, 3-5px radius
+  const catchlightRadius = 3;
+  for (const { x, y } of catchlights) {
+    for (let dy = -catchlightRadius; dy <= catchlightRadius; dy++) {
+      for (let dx = -catchlightRadius; dx <= catchlightRadius; dx++) {
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > catchlightRadius) continue;
+        const falloff = Math.exp(-(dist * dist) / (catchlightRadius));
+        const idx = ((y + dy) * w + (x + dx)) * 4;
+        if (idx < 0 || idx >= bitmap.length) continue;
+
+        // Slight blue-white catchlight (mimics sky reflection)
+        const boost = 80 * falloff;
+        bitmap[idx] = Math.min(255, bitmap[idx] + boost * 0.95);
+        bitmap[idx + 1] = Math.min(255, bitmap[idx + 1] + boost * 0.98);
+        bitmap[idx + 2] = Math.min(255, bitmap[idx + 2] + boost * 1.00);
+      }
+    }
+  }
+}
+
+// Stage 3: Skin specularity. Detects warm skin-tone pixels (R > G > B, mid-to-
+// high luma) and adds a very subtle highlight bloom to the brightest of them
+// (forehead, nose bridge, cheekbones) so skin reads as "shot" not "matte".
+function applySkinSpecularity(bitmap: Uint8ClampedArray, w: number, h: number): void {
+  // Find skin-tone pixels (warm hue, mid-to-high luma)
+  // Boost specular highlights subtly within them
+
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const idx = (y * w + x) * 4;
+      const r = bitmap[idx], g = bitmap[idx + 1], b = bitmap[idx + 2];
+      const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+
+      // Skin-tone heuristic: warm hue (R > G > B), mid-to-high luma
+      const isSkinTone =
+        r > g && g > b && // warm hue
+        luma > 100 && luma < 230 && // mid-to-high luma (not deep shadow, not pure white)
+        r - b > 10 && // significant warmth
+        r - g < 60; // not too saturated (would be too red)
+
+      if (!isSkinTone) continue;
+
+      // Within skin tones: brighter pixels get a very subtle additional boost
+      // (mimics specular highlight)
+      const specularBoost = Math.max(0, (luma - 150) / 80); // 0 below luma 150, 1 at luma 230
+      const boost = 8 * specularBoost; // max +8 on bright skin pixels
+
+      bitmap[idx] = Math.min(255, r + boost);
+      bitmap[idx + 1] = Math.min(255, g + boost * 0.95);
+      bitmap[idx + 2] = Math.min(255, b + boost * 0.90); // slightly less blue boost (warm specular)
+    }
+  }
+}
+
 type FilmStrength = "light" | "medium" | "heavy";
 
 async function applyFilmTreatment(
