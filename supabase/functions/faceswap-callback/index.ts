@@ -275,10 +275,22 @@ async function handleLookCallback(
     return json(400, { error: "missing_fal_url" });
   }
 
+  // NEW Stage 1: Fal skin-detail restoration (face-fix → clarity-upscaler
+  // fallback). Runs before download so we pull the detail-enhanced result.
+  // Falls back to the original Fal URL on any failure — never blocks the look.
+  const falApiKey = Deno.env.get("FAL_API_KEY") ?? "";
+  let sourceUrl = falImageUrl;
+  try {
+    sourceUrl = await applyFalSkinDetail(falImageUrl, falApiKey);
+  } catch (err) {
+    console.warn(`skin-detail stage failed, using original swap: ${String(err)}`);
+    sourceUrl = falImageUrl;
+  }
+
   let bytes: Uint8Array;
   let mime: "image/png" | "image/jpeg" | "image/webp";
   try {
-    const dl = await fetch(falImageUrl, {
+    const dl = await fetch(sourceUrl, {
       headers: { Accept: "image/png, image/jpeg, image/webp" },
     });
     if (!dl.ok) throw new Error(`download_${dl.status}`);
@@ -299,9 +311,9 @@ async function handleLookCallback(
     return json(502, { error: "fal_download_failed" });
   }
 
-  // NEW: in-Deno eye catchlights + skin specularity, applied on the clean swap
-  // before film treatment ages it. Non-fatal — on any decode/encode error we
-  // proceed with the un-enhanced bytes.
+  // NEW Stages 2 & 3: in-Deno eye catchlights + skin specularity, applied on
+  // the clean swap before film treatment ages it. Non-fatal — on any decode/
+  // encode error we proceed with the un-enhanced bytes.
   try {
     const enhImg = await Image.decode(bytes);
     applyEyeCatchlights(enhImg.bitmap, enhImg.width, enhImg.height);
@@ -380,21 +392,92 @@ async function handleLookCallback(
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
-// Photorealism Phase 2 — eye catchlights + skin specularity (in-Deno).
+// Photorealism Phase 2 — skin detail + catchlights + specularity.
 //
-// These two stages run in the look_id branch only, between Fal swap completion
-// and applyFilmTreatment. They add eye liveness and natural skin highlights
-// with pure pixel math — no external API, no key. Both are graceful: any
-// failure degrades to the un-enhanced swap rather than failing the look.
-// VLONE / job_id path is untouched.
-//
-// Skin pore-detail restoration (Fal face-fix) is intentionally NOT done here.
-// It lives in CC's faceswap-generate, on the same Fal pathway as the swap
-// itself, so Fal is only ever called from one place. See the CC-side handoff
-// cursor_handoff_cc_faceswap_facefix.md.
+// These three stages run in the look_id branch only, between Fal swap
+// completion and applyFilmTreatment. They close the remaining AI-vs-photo gap
+// on skin texture, eye liveness, and natural skin highlights. All three are
+// graceful: any failure degrades to the un-enhanced swap rather than failing
+// the look. VLONE / job_id path is untouched.
 // ---------------------------------------------------------------------------
 
-// Eye catchlights. Heuristic detection of iris-brightness pixels
+// Stage 1: Fal skin-detail restoration. Tries fal-ai/face-fix (purpose-built
+// for portrait pore detail), falls back to fal-ai/clarity-upscaler at low
+// strength, and finally returns the original URL if both fail.
+async function applyFalSkinDetail(imageUrl: string, falApiKey: string): Promise<string> {
+  try {
+    // Try face-fix first — purpose-built for portrait skin detail
+    const response = await fetch("https://queue.fal.run/fal-ai/face-fix", {
+      method: "POST",
+      headers: {
+        "Authorization": `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        image_url: imageUrl,
+        // Conservative settings — we want detail restoration, not aggressive sharpening
+        strength: 0.65,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`face-fix failed: ${response.status}`);
+    }
+
+    const queueData = await response.json();
+    const requestId = queueData.request_id;
+
+    // Poll for completion (typical 10-30s)
+    let result;
+    for (let attempt = 0; attempt < 60; attempt++) {
+      await new Promise((r) => setTimeout(r, 1000));
+      const statusResp = await fetch(`https://queue.fal.run/fal-ai/face-fix/requests/${requestId}`, {
+        headers: { "Authorization": `Key ${falApiKey}` },
+      });
+      const statusData = await statusResp.json();
+      if (statusData.status === "COMPLETED") {
+        result = statusData;
+        break;
+      }
+      if (statusData.status === "FAILED") {
+        throw new Error(`face-fix job failed`);
+      }
+    }
+
+    if (!result?.images?.[0]?.url) {
+      throw new Error("face-fix returned no image URL");
+    }
+
+    return result.images[0].url;
+  } catch (err) {
+    console.warn(`face-fix failed, falling back to clarity-upscaler: ${String(err)}`);
+
+    // Fallback: clarity-upscaler at low strength
+    const fallbackResp = await fetch("https://queue.fal.run/fal-ai/clarity-upscaler", {
+      method: "POST",
+      headers: {
+        "Authorization": `Key ${falApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        image_url: imageUrl,
+        scale: 1, // don't upscale, just enhance
+        creativity: 0.15, // low — we want detail restoration, not generative changes
+        resemblance: 0.85, // high — stay close to source
+      }),
+    });
+
+    if (!fallbackResp.ok) {
+      console.error("Both face-fix and clarity-upscaler failed; returning original");
+      return imageUrl; // graceful degradation
+    }
+
+    const data = await fallbackResp.json();
+    return data.images?.[0]?.url ?? imageUrl;
+  }
+}
+
+// Stage 2: Eye catchlights. Heuristic detection of iris-brightness pixels
 // surrounded by lighter eye-socket pixels, then a small Gaussian specular glow
 // with a slight blue-white (sky-reflection) tint at each. Operates in-place.
 function applyEyeCatchlights(bitmap: Uint8ClampedArray, w: number, h: number): void {
