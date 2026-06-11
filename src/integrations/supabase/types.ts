@@ -1273,6 +1273,57 @@ export type Database = {
           },
         ]
       }
+      timeline_events: {
+        Row: {
+          actor_name: string | null
+          actor_type: string
+          change_summary: string | null
+          created_at: string
+          event_type: string
+          id: string
+          manifest_id: string
+          payload_json: Json
+          version_id: string | null
+        }
+        Insert: {
+          actor_name?: string | null
+          actor_type: string
+          change_summary?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          manifest_id: string
+          payload_json?: Json
+          version_id?: string | null
+        }
+        Update: {
+          actor_name?: string | null
+          actor_type?: string
+          change_summary?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          manifest_id?: string
+          payload_json?: Json
+          version_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_events_manifest_id_fkey"
+            columns: ["manifest_id"]
+            isOneToOne: false
+            referencedRelation: "timeline_manifests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_events_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "timeline_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       timeline_items: {
         Row: {
           approved: boolean
@@ -1453,6 +1504,47 @@ export type Database = {
             columns: ["song_analysis_id"]
             isOneToOne: false
             referencedRelation: "song_analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      timeline_versions: {
+        Row: {
+          actor_name: string | null
+          actor_type: string
+          change_summary: string
+          created_at: string
+          id: string
+          manifest_id: string
+          manifest_json: Json
+          version_number: number
+        }
+        Insert: {
+          actor_name?: string | null
+          actor_type: string
+          change_summary: string
+          created_at?: string
+          id?: string
+          manifest_id: string
+          manifest_json?: Json
+          version_number: number
+        }
+        Update: {
+          actor_name?: string | null
+          actor_type?: string
+          change_summary?: string
+          created_at?: string
+          id?: string
+          manifest_id?: string
+          manifest_json?: Json
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_versions_manifest_id_fkey"
+            columns: ["manifest_id"]
+            isOneToOne: false
+            referencedRelation: "timeline_manifests"
             referencedColumns: ["id"]
           },
         ]
