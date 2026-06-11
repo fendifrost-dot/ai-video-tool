@@ -14,6 +14,8 @@ import type {
 } from "@/integrations/supabase/aliases";
 import type { SongAnalysis } from "@/lib/songAnalysis/types";
 import type { TimelineItem } from "@/lib/timeline/types";
+import { DEFAULT_USER_ACTOR, persistManifestCommit } from "@/lib/timeline/engine";
+import type { EditorActor } from "@/lib/timeline/engine";
 
 export const timelineManifestsKeys = {
   all: ["timeline_manifests"] as const,
@@ -139,6 +141,8 @@ export function usePersistTimelineManifestSnapshot() {
       nodes: StoryboardNode[];
       shots: Shot[];
       assets: ProjectAsset[];
+      actor?: EditorActor;
+      changeSummary?: string;
     }): Promise<TimelineManifest> => {
       const nodesById: Record<string, StoryboardNode> = {};
       for (const n of input.nodes) nodesById[n.id] = n;
@@ -167,23 +171,28 @@ export function usePersistTimelineManifestSnapshot() {
         assets: input.assets,
       });
 
-      const { data, error } = await (supabase as any)
-        .from("timeline_manifests")
-        .update({
-          manifest_json: json,
-          duration_frames: duration,
-          version_number: input.manifestRow.version_number + 1,
-        })
-        .eq("id", input.manifestRow.id)
-        .select("*")
-        .single();
-      if (error) throw error;
-      return data as TimelineManifest;
+      const actor = input.actor ?? DEFAULT_USER_ACTOR;
+      const { manifest } = await persistManifestCommit(supabase, {
+        manifestId: input.manifestRow.id,
+        currentVersionNumber: input.manifestRow.version_number,
+        manifestJson: json,
+        durationFrames: duration,
+        actor,
+        changeSummary:
+          input.changeSummary ??
+          (actor.name
+            ? `${actor.name} saved manifest snapshot`
+            : "Manifest snapshot saved"),
+      });
+      return manifest;
     },
     onSuccess: (row) => {
       qc.invalidateQueries({ queryKey: timelineManifestsKeys.detail(row.id) });
       qc.invalidateQueries({
         queryKey: timelineManifestsKeys.forProject(row.project_id),
+      });
+      qc.invalidateQueries({
+        queryKey: ["timeline_events", "manifest", row.id],
       });
     },
   });
