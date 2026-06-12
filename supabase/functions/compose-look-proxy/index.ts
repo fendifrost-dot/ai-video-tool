@@ -91,7 +91,7 @@ const SIGN_TTL_RESULT = 3600;
 // identity_inpaint must use the face LoRA (FENDIFROST), not the wardrobe LoRA
 // (FENDIFITS) stored as the artist's primary lora in identity_profile_json.
 const IDENTITY_LORA_URL =
-  "https://v3b.fal.media/files/b/0a9aa6fe/JaNHDtLLu91_D7nnOxeY3_pytorch_lora_weights.safetensors";
+  "https://v3b.fal.media/files/b/0a9e02c8/3xZC2FmwnV_0FzmLPYJAr_pytorch_lora_weights.safetensors";
 const IDENTITY_LORA_TRIGGER = "FENDIFROST";
 
 // ---------------------------------------------------------------------------
