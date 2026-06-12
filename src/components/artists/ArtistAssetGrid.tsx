@@ -16,7 +16,10 @@ import {
   signedUrls,
   uploadToBucket,
 } from "@/lib/storage";
-import { normalizeImageForUpload } from "@/lib/image-normalize";
+import {
+  IMAGE_UPLOAD_ACCEPT,
+  normalizeImageForUpload,
+} from "@/lib/image-normalize";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
@@ -139,7 +142,7 @@ export function ArtistAssetGrid({ artistId }: { artistId: string }) {
             ref={inputRef}
             type="file"
             multiple
-            accept="image/*,.heic,.heif"
+            accept={IMAGE_UPLOAD_ACCEPT}
             className="hidden"
             onChange={(e) => {
               handleFiles(e.target.files);

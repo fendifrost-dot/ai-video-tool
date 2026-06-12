@@ -16,7 +16,10 @@ import {
   uploadToBucket,
   deleteFromBucket,
 } from "@/lib/storage";
-import { normalizeImageForUpload } from "@/lib/image-normalize";
+import {
+  IMAGE_UPLOAD_ACCEPT,
+  normalizeImageForUpload,
+} from "@/lib/image-normalize";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 
@@ -232,7 +235,7 @@ function SlotCard({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*,.heic,.heif"
+        accept={IMAGE_UPLOAD_ACCEPT}
         className="hidden"
         onChange={async (e) => {
           const file = e.target.files?.[0];

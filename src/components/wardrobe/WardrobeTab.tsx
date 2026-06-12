@@ -7,7 +7,10 @@ import {
   makeUploadFilename,
   uploadToBucket,
 } from "@/lib/storage";
-import { normalizeImageForUpload } from "@/lib/image-normalize";
+import {
+  IMAGE_UPLOAD_ACCEPT,
+  normalizeImageForUpload,
+} from "@/lib/image-normalize";
 import { supabase } from "@/lib/supabase";
 import {
   type WardrobeFeatureType,
@@ -171,7 +174,7 @@ export function WardrobeTab({ artistId }: { artistId: string }) {
           <input
             ref={fileRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+            accept={IMAGE_UPLOAD_ACCEPT}
             className="hidden"
             onChange={(e) => {
               handleUpload(e.target.files);

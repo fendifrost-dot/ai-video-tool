@@ -9,7 +9,10 @@ import {
   signedUrls,
   uploadToBucket,
 } from "@/lib/storage";
-import { normalizeImageForUpload } from "@/lib/image-normalize";
+import {
+  IMAGE_UPLOAD_ACCEPT,
+  normalizeImageForUpload,
+} from "@/lib/image-normalize";
 import {
   type CharacterFeature,
   type FeatureType,
@@ -298,7 +301,7 @@ export function FeatureSlot({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*,.heic,.heif"
+        accept={IMAGE_UPLOAD_ACCEPT}
         className="hidden"
         onChange={(e) => {
           handleFiles(e.target.files);

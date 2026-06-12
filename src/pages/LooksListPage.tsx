@@ -19,7 +19,10 @@ import {
   LOOK_STATUSES,
 } from "@/lib/queries/looks";
 import { LookCard } from "@/components/looks/LookCard";
-import { normalizeImageForUpload } from "@/lib/image-normalize";
+import {
+  IMAGE_UPLOAD_ACCEPT,
+  normalizeImageForUpload,
+} from "@/lib/image-normalize";
 
 type FilterOption = "all" | LookStatus;
 
@@ -37,6 +40,7 @@ export default function LooksListPage({ artistId }: { artistId: string }) {
   async function handleImportFile(rawFile: File) {
     setImporting(true);
     try {
+      const file = await normalizeImageForUpload(rawFile);
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
@@ -108,7 +112,7 @@ export default function LooksListPage({ artistId }: { artistId: string }) {
           <input
             ref={fileRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+            accept={IMAGE_UPLOAD_ACCEPT}
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];

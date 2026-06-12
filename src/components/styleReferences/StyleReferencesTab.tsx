@@ -6,7 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import { uploadToBucket } from "@/lib/storage";
-import { normalizeImageForUpload } from "@/lib/image-normalize";
+import {
+  IMAGE_UPLOAD_ACCEPT,
+  normalizeImageForUpload,
+} from "@/lib/image-normalize";
 import type { Artist } from "@/integrations/supabase/aliases";
 import { useArtist } from "@/lib/queries/artists";
 import { supabase } from "@/lib/supabase";
@@ -349,7 +352,7 @@ export function StyleReferencesTab({ artist: initialArtist }: { artist: Artist }
       <input
         ref={fileRef}
         type="file"
-        accept="image/*,.heic,.heif"
+        accept={IMAGE_UPLOAD_ACCEPT}
         multiple
         className="hidden"
         onChange={(e) => onFilesPicked(e.target.files)}

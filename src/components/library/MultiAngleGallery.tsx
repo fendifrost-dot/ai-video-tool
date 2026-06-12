@@ -10,7 +10,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { signedUrls, type StorageBucket } from "@/lib/storage";
-import { normalizeImageForUpload } from "@/lib/image-normalize";
+import {
+  IMAGE_UPLOAD_ACCEPT,
+  normalizeImageForUpload,
+} from "@/lib/image-normalize";
 
 // ---------------------------------------------------------------------------
 // MultiAngleGallery — shared component for managing a gallery of reference
@@ -256,7 +259,7 @@ export function MultiAngleGallery({
         <input
           ref={fileRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+          accept={IMAGE_UPLOAD_ACCEPT}
           multiple
           className="hidden"
           onChange={(e) => handleFiles(e.target.files)}

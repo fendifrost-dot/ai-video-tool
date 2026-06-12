@@ -15,6 +15,8 @@ vi.mock("@/lib/storage", () => ({
 }));
 
 vi.mock("@/lib/image-normalize", () => ({
+  IMAGE_UPLOAD_ACCEPT:
+    "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif",
   normalizeImageForUpload: vi.fn(async (f: File) => f),
 }));
 

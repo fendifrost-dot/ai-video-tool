@@ -28,6 +28,11 @@
 // This helper is a no-op for non-HEIC inputs — JPG/PNG/WEBP/GIF flow through
 // untouched. Safe to call unconditionally on every image upload path.
 
+/** Shared `accept` value for image file pickers. Extension hints matter because
+ *  Safari (pre-17) reports empty `type` for HEIC — only the extension survives. */
+export const IMAGE_UPLOAD_ACCEPT =
+  "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif";
+
 const HEIC_MIME_TYPES = new Set([
   "image/heic",
   "image/heif",

@@ -9,7 +9,10 @@ import {
   makeUploadFilename,
   uploadToBucket,
 } from "@/lib/storage";
-import { normalizeImageForUpload } from "@/lib/image-normalize";
+import {
+  IMAGE_UPLOAD_ACCEPT,
+  normalizeImageForUpload,
+} from "@/lib/image-normalize";
 import { supabase } from "@/lib/supabase";
 import {
   LOCATION_CATEGORIES,
@@ -169,7 +172,7 @@ export default function LocationsLibraryPage({ embedded = false }: { embedded?: 
           <input
             ref={fileRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
+            accept={IMAGE_UPLOAD_ACCEPT}
             className="hidden"
             onChange={(e) => {
               handleUpload(e.target.files);
