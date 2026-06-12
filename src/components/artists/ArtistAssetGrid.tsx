@@ -139,7 +139,7 @@ export function ArtistAssetGrid({ artistId }: { artistId: string }) {
             ref={inputRef}
             type="file"
             multiple
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             className="hidden"
             onChange={(e) => {
               handleFiles(e.target.files);

@@ -19,6 +19,7 @@ import {
   LOOK_STATUSES,
 } from "@/lib/queries/looks";
 import { LookCard } from "@/components/looks/LookCard";
+import { normalizeImageForUpload } from "@/lib/image-normalize";
 
 type FilterOption = "all" | LookStatus;
 
@@ -33,12 +34,15 @@ export default function LooksListPage({ artistId }: { artistId: string }) {
   const fileRef = useRef<HTMLInputElement | null>(null);
   const [importing, setImporting] = useState(false);
 
-  async function handleImportFile(file: File) {
+  async function handleImportFile(rawFile: File) {
     setImporting(true);
     try {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
+      // iPhone canvases arrive as HEIC; transcode to JPEG before Storage so the
+      // imported composite is web-safe for the downstream identity-swap.
+      const file = await normalizeImageForUpload(rawFile);
       const ext = (file.name.split(".").pop() || "png").toLowerCase();
       const path = `${user.id}/${artistId}/imported_${Date.now()}.${ext}`;
       const { error: upErr } = await (supabase as any).storage
@@ -104,7 +108,7 @@ export default function LooksListPage({ artistId }: { artistId: string }) {
           <input
             ref={fileRef}
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0];

@@ -232,7 +232,7 @@ function SlotCard({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         className="hidden"
         onChange={async (e) => {
           const file = e.target.files?.[0];

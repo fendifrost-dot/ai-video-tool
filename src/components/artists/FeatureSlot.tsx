@@ -298,7 +298,7 @@ export function FeatureSlot({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         className="hidden"
         onChange={(e) => {
           handleFiles(e.target.files);

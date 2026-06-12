@@ -349,7 +349,7 @@ export function StyleReferencesTab({ artist: initialArtist }: { artist: Artist }
       <input
         ref={fileRef}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         multiple
         className="hidden"
         onChange={(e) => onFilesPicked(e.target.files)}

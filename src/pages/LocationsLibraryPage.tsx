@@ -169,7 +169,7 @@ export default function LocationsLibraryPage({ embedded = false }: { embedded?: 
           <input
             ref={fileRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
             className="hidden"
             onChange={(e) => {
               handleUpload(e.target.files);
