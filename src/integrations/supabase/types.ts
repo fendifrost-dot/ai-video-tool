@@ -1356,7 +1356,7 @@ export type Database = {
           color_profile_id?: string | null
           created_at?: string
           cut_type?: string | null
-          end_frame: number
+          end_frame?: number
           id?: string
           item_order: number
           manifest_id: string
@@ -1364,7 +1364,7 @@ export type Database = {
           shot_id?: string | null
           song_section?: string | null
           speed?: number
-          start_frame: number
+          start_frame?: number
           storyboard_node_id?: string | null
           text_overlays_json?: Json
           track?: string
