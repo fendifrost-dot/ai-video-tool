@@ -42,7 +42,6 @@ import { useCharacterFeatures } from "@/lib/queries/characterFeatures";
 import { useWardrobe } from "@/lib/queries/wardrobe";
 import { useLocations } from "@/lib/queries/locations";
 import { useProps } from "@/lib/queries/props";
-import { callApplyIdentityToLook } from "@/lib/queries/faceswap";
 import {
   callComposeLook,
   formatCost,
@@ -220,19 +219,27 @@ export default function LookDetailPage({
         toast.error("Couldn't resolve this look's image URL for the canvas.");
         return;
       }
-      const identityReferenceUrl = getCanonicalBaseImageUrl(artistQuery.data);
-      const result = await callApplyIdentityToLook({
+      // Route through compose-look-proxy's identity_inpaint pipeline (NOT the
+      // legacy faceswap-proxy / Fal face-swap). identity_inpaint is what the
+      // proxy special-cases to inject the FENDIFROST identity LoRA
+      // (IDENTITY_LORA_URL + "FENDIFROST" trigger, wired in 294c20f) and run
+      // the masked identity inpaint over the locked canvas. The face-swap path
+      // bypassed that LoRA entirely and produced generic graft output.
+      const result = await callComposeLook({
         artistId,
+        wardrobeFeatureIds: [],
+        basePrompt:
+          "Apply the artist's canonical identity to the subject's face and head. Keep the outfit, pose, lighting, framing, and background exactly as they are.",
+        pipelinePreference: "identity_inpaint",
         parentLookId: look.id,
-        sourceImageUrl: canvasUrl,
-        identityReferenceUrl,
         name: `${(look.name ?? "Look").slice(0, 64)} · my identity`,
+        canvasImageUrl: canvasUrl,
       });
       qc.invalidateQueries({ queryKey: looksKeys.forArtist(artistId) });
-      toast.success("Identity face-swap queued — opening the new look");
+      toast.success("Identity inpaint queued — opening the new look");
       navigate({
         to: "/artists/$id/looks/$lookId",
-        params: { id: artistId, lookId: result.lookId },
+        params: { id: artistId, lookId: result.look_id },
       });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Identity swap failed");
@@ -717,7 +724,7 @@ export default function LookDetailPage({
                 className="w-full"
                 disabled={layerBusy || isPending || look.status !== "complete"}
                 onClick={handleApplyIdentity}
-                title="Fal face-swap grafts your canonical identity photo onto this canvas. Outfit, pose, and lighting stay locked. Use on imported stand-in canvases."
+                title="Identity inpaint re-renders the face/head with your FENDIFROST identity LoRA over a locked canvas. Outfit, pose, and lighting stay fixed. Use on imported stand-in canvases."
               >
                 {layerBusy ? (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
