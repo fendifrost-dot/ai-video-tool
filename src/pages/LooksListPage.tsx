@@ -40,13 +40,12 @@ export default function LooksListPage({ artistId }: { artistId: string }) {
   async function handleImportFile(rawFile: File) {
     setImporting(true);
     try {
+      // iPhone canvases arrive as HEIC; transcode to JPEG before Storage so the
+      // imported composite is web-safe for the downstream identity-swap.
       const file = await normalizeImageForUpload(rawFile);
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
-      // iPhone canvases arrive as HEIC; transcode to JPEG before Storage so the
-      // imported composite is web-safe for the downstream identity-swap.
-      const file = await normalizeImageForUpload(rawFile);
       const ext = (file.name.split(".").pop() || "png").toLowerCase();
       const path = `${user.id}/${artistId}/imported_${Date.now()}.${ext}`;
       const { error: upErr } = await (supabase as any).storage
