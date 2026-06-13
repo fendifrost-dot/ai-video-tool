@@ -361,7 +361,24 @@ export type ComposeLookResult = {
 };
 
 export async function callComposeLook(input: ComposeLookInput): Promise<ComposeLookResult> {
-  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+  // getSession() reads through supabase-js's auth LockManager lock. When that
+  // lock is contended — e.g. an immediately-preceding storage call (the
+  // Apply-my-identity / layer buttons sign the canvas via createSignedUrl right
+  // before calling here) left it held — getSession() can hang indefinitely.
+  // That stalled the caller *before any fetch*, with no resolve and no reject,
+  // so the handler's try/catch never fired: the click silently did nothing,
+  // no proxy request, no toast. Race the lookup against a timeout so a stuck
+  // lock surfaces as a real, retryable error instead of an invisible hang.
+  const sessionResult = await Promise.race([
+    supabase.auth.getSession(),
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error("Auth session lookup timed out — please retry")),
+        8000,
+      ),
+    ),
+  ]);
+  const { data: sessionData, error: sessionErr } = sessionResult;
   if (sessionErr) throw sessionErr;
   const session = sessionData.session;
   if (!session) throw new Error("Not signed in");
