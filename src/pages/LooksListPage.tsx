@@ -103,7 +103,7 @@ export default function LooksListPage({ artistId }: { artistId: string }) {
   return (
     <>
       <PageHeader
-        title={artistQuery.data ? `${artistQuery.data.name} — Looks` : "Looks"}
+        title={artistQuery.data ? `${artistQuery.data.name} — Virtual Samples` : "Virtual Samples"}
         subtitle="Identity-locked outfit composites. Reusable across shots and projects."
       />
       <div className="space-y-6 px-8 py-6">

@@ -14,7 +14,9 @@ import {
 import {
   buildPrimaryReferenceImage,
   normaliseReferenceImages,
+  type ReferenceImage,
 } from "./referenceImages";
+import { isWardrobeDeprecated } from "./products";
 
 // ---------------------------------------------------------------------------
 // Wardrobe = a subset of character_features where feature_type ∈ wardrobe_*
@@ -59,6 +61,7 @@ export type WardrobeItemInsert = {
   is_locked?: boolean;
   reinforce_on_drift?: boolean;
   metadata_json?: Record<string, unknown>;
+  reference_images?: ReferenceImage[];
 };
 
 export type WardrobeItemPatch = Partial<{
@@ -109,23 +112,31 @@ export function useCreateWardrobeItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: WardrobeItemInsert): Promise<WardrobeItem> => {
+      if (isWardrobeDeprecated()) {
+        throw new Error(
+          "New wardrobe items are disabled. Promote existing items to Products or use Design Studio.",
+        );
+      }
       const seedRefImg = buildPrimaryReferenceImage({
         url: payload.file_url,
         storage_path: payload.storage_path,
       });
+      const refImages = payload.reference_images?.length
+        ? payload.reference_images
+        : [seedRefImg];
       const row = {
         artist_id: payload.artist_id,
         feature_type: payload.feature_type,
         label: payload.label,
-        file_url: payload.file_url,
-        storage_path: payload.storage_path,
+        file_url: refImages[0].url,
+        storage_path: refImages[0].storage_path ?? refImages[0].url,
         tags: payload.tags ?? [],
         source_url: payload.source_url ?? null,
         is_primary: payload.is_primary ?? false,
         is_locked: payload.is_locked ?? false,
         reinforce_on_drift: payload.reinforce_on_drift ?? true,
         metadata_json: payload.metadata_json ?? {},
-        reference_images: [seedRefImg],
+        reference_images: refImages,
       };
       const { data, error } = await (supabase as any)
         .from("character_features")
@@ -142,6 +153,11 @@ export function useCreateWardrobeItem() {
       qc.invalidateQueries({ queryKey: characterFeaturesKeys.forArtist(row.artist_id) });
     },
   });
+}
+
+/** Alias for multi-angle garment bundle create (front flat primary). */
+export function useCreateWardrobeBundle() {
+  return useCreateWardrobeItem();
 }
 
 // ---------------------------------------------------------------------------
@@ -281,6 +297,11 @@ export function useImportWardrobeFromUrl() {
       label: string;
       tags?: string[];
     }): Promise<WardrobeItem> => {
+      if (isWardrobeDeprecated()) {
+        throw new Error(
+          "Wardrobe URL import is disabled. Use Design Studio or Product Library instead.",
+        );
+      }
       const fetched = await fetchReferenceImage(url, "wardrobe", artistId);
       const seedRefImg = buildPrimaryReferenceImage({
         url: fetched.storage_path,

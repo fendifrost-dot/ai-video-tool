@@ -47,7 +47,7 @@ Needs these env vars (Supabase Edge Functions sets `SUPABASE_URL` and
 
 - 500 MB body cap (matches the UI). Bumping requires editing `MAX_BYTES`.
 - Bucket whitelist: `artist-assets`, `project-audio`, `project-references`,
-  `project-clips`, `project-exports`.
+  `project-clips`, `project-exports`, `product-assets`.
 
 ## Deployment
 

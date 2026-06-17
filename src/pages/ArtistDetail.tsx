@@ -81,7 +81,7 @@ export default function ArtistDetail({ id }: { id: string }) {
                 params={{ id: artist.id }}
               >
                 <Sparkles className="mr-1.5 h-4 w-4" />
-                View looks
+                View virtual samples
               </Link>
             </Button>
             <Button

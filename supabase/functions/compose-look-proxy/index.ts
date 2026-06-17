@@ -27,6 +27,10 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
+  orderedRefPathsForComposer,
+  pickVtonGarmentPath,
+} from "./garmentReference.ts";
+import {
   buildIdentityPreamble,
   buildJewelryPolishPrompt,
   defaultLookName,
@@ -34,11 +38,13 @@ import {
   type PipelineMode,
   sniffMime,
 } from "./helpers.ts";
+import { resolveProductPicks, type ProductPickInput } from "./productResolve.ts";
 
 type Body = {
   artistId: string;
   faceFeatureId?: string;
-  wardrobeFeatureIds: string[];
+  wardrobeFeatureIds?: string[];
+  productPicks?: ProductPickInput[];
   jewelryFeatureIds?: string[];
   locationId?: string;
   propIds?: string[];
@@ -135,14 +141,13 @@ function pickPathsForCategory(
   budget: number,
 ): string[] {
   if (budget <= 0 || features.length === 0) return [];
-  // Each feature's candidate list, in priority order.
+  // Each feature's candidate list — front/flat angles first, on-model last.
   const queues: string[][] = features.map((f) => {
-    const fromArray = f.reference_images
-      .map((r) => r.storage_path ?? r.url)
-      .filter((p): p is string => !!p);
-    if (fromArray.length > 0) return fromArray;
-    const fallback = f.storage_path ?? f.file_url;
-    return fallback ? [fallback] : [];
+    const ordered = orderedRefPathsForComposer(
+      f.reference_images,
+      f.storage_path ?? f.file_url,
+    );
+    return ordered;
   });
 
   const out: string[] = [];
@@ -161,6 +166,17 @@ function pickPathsForCategory(
     }
   }
   return out;
+}
+
+/** Resolve storage bucket for a path picked from resolved features. */
+function bucketForPath(features: ResolvedFeature[], path: string): string {
+  for (const f of features) {
+    if (f.storage_path === path || f.file_url === path) return f.bucket;
+    for (const r of f.reference_images) {
+      if (r.storage_path === path || r.url === path) return f.bucket;
+    }
+  }
+  return "wardrobe-refs";
 }
 
 function json(status: number, body: unknown) {
@@ -211,11 +227,15 @@ serve(async (req) => {
     return json(400, { error: "invalid_json" });
   }
   if (!body?.artistId) return json(400, { error: "missing_artist_id" });
+  const wardrobeFeatureIds = body.wardrobeFeatureIds ?? [];
+  const productPicks = body.productPicks ?? [];
+  const hasGarments =
+    wardrobeFeatureIds.length > 0 || productPicks.length > 0;
   if (
     body.pipelinePreference !== "identity_inpaint" &&
-    (!Array.isArray(body.wardrobeFeatureIds) || body.wardrobeFeatureIds.length === 0)
+    !hasGarments
   ) {
-    return json(400, { error: "wardrobe_required" });
+    return json(400, { error: "wardrobe_or_products_required" });
   }
   if (!body.basePrompt || body.basePrompt.trim().length < 4) {
     return json(400, { error: "basePrompt_too_short" });
@@ -278,7 +298,7 @@ serve(async (req) => {
   // ---- resolve features --------------------------------------------
   const allFeatureIds = [
     body.faceFeatureId,
-    ...body.wardrobeFeatureIds,
+    ...wardrobeFeatureIds,
     ...(body.jewelryFeatureIds ?? []),
   ].filter(Boolean) as string[];
 
@@ -286,9 +306,18 @@ serve(async (req) => {
   const faceFeature = body.faceFeatureId
     ? features.find((f) => f.id === body.faceFeatureId) ?? null
     : await defaultFaceFeature(admin, body.artistId);
-  const wardrobeFeatures = body.wardrobeFeatureIds
+  const legacyWardrobeFeatures = wardrobeFeatureIds
     .map((id) => features.find((f) => f.id === id))
     .filter((f): f is ResolvedFeature => !!f);
+  const productWardrobeFeatures = await resolveProductPicks(
+    admin,
+    productPicks,
+    userId,
+  );
+  const wardrobeFeatures: ResolvedFeature[] = [
+    ...productWardrobeFeatures,
+    ...legacyWardrobeFeatures,
+  ];
   const jewelryFeatures = (body.jewelryFeatureIds ?? [])
     .map((id) => features.find((f) => f.id === id))
     .filter((f): f is ResolvedFeature => !!f);
@@ -436,7 +465,8 @@ serve(async (req) => {
   const wardrobePaths = pickPathsForCategory(wardrobeFeatures, wardrobeBudget);
   const wardrobeUrls: string[] = [];
   for (const p of wardrobePaths) {
-    const u = await signUrl(admin, "wardrobe-refs", p, SIGN_TTL_INPUT);
+    const bucket = bucketForPath(wardrobeFeatures, p);
+    const u = await signUrl(admin, bucket, p, SIGN_TTL_INPUT);
     if (u) wardrobeUrls.push(u);
   }
 
@@ -501,14 +531,10 @@ serve(async (req) => {
     )
     : null;
   for (const w of sortWardrobeForVtonChain(wardrobeFeatures)) {
-    // Pick the front-most reference image: first entry in reference_images,
-    // fallback to the legacy storage_path / file_url pair.
-    let frontPath: string | null = null;
-    if (w.reference_images.length > 0) {
-      const first = w.reference_images[0];
-      frontPath = first.storage_path ?? first.url ?? null;
-    }
-    if (!frontPath) frontPath = w.storage_path ?? w.file_url ?? null;
+    const frontPath = pickVtonGarmentPath(
+      w.reference_images,
+      w.storage_path ?? w.file_url,
+    );
     if (!frontPath) continue;
     const signed = await signUrl(admin, w.bucket, frontPath, SIGN_TTL_INPUT);
     if (!signed) continue;
@@ -537,7 +563,8 @@ serve(async (req) => {
   const lookId = crypto.randomUUID();
   const recipe = {
     face_feature_id: faceFeature?.id ?? null,
-    wardrobe_feature_ids: wardrobeFeatures.map((f) => f.id),
+    wardrobe_feature_ids: legacyWardrobeFeatures.map((f) => f.id),
+    product_picks: productPicks,
     jewelry_feature_ids: jewelryFeatures.map((f) => f.id),
     location_id: locationFeature?.id ?? null,
     prop_ids: propsFeatures.map((p) => p.id),
@@ -645,7 +672,8 @@ serve(async (req) => {
     recipe: {
       artistId: body.artistId,
       faceFeatureId: body.faceFeatureId ?? undefined,
-      wardrobeFeatureIds: body.wardrobeFeatureIds ?? [],
+      wardrobeFeatureIds: legacyWardrobeFeatures.map((f) => f.id),
+      productPicks: productPicks.length > 0 ? productPicks : undefined,
       jewelryFeatureIds: body.jewelryFeatureIds ?? [],
       locationId: body.locationId ?? undefined,
       propIds: body.propIds ?? [],
