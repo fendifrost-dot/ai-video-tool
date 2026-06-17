@@ -44,9 +44,6 @@ export default function LooksListPage({ artistId }: { artistId: string }) {
       const { data: userData } = await supabase.auth.getUser();
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
-      // iPhone canvases arrive as HEIC; transcode to JPEG before Storage so the
-      // imported composite is web-safe for the downstream identity-swap.
-      const file = await normalizeImageForUpload(rawFile);
       const ext = (file.name.split(".").pop() || "png").toLowerCase();
       const path = `${user.id}/${artistId}/imported_${Date.now()}.${ext}`;
       const { error: upErr } = await (supabase as any).storage
@@ -104,7 +101,7 @@ export default function LooksListPage({ artistId }: { artistId: string }) {
   return (
     <>
       <PageHeader
-        title={artistQuery.data ? `${artistQuery.data.name} — Looks` : "Looks"}
+        title={artistQuery.data ? `${artistQuery.data.name} — Virtual Samples` : "Virtual Samples"}
         subtitle="Identity-locked outfit composites. Reusable across shots and projects."
       />
       <div className="space-y-6 px-8 py-6">

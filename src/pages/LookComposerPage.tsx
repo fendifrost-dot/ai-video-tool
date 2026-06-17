@@ -18,8 +18,8 @@ export default function LookComposerPage({
 }) {
   const artistQuery = useArtist(artistId);
   const title = artistQuery.data
-    ? `Compose look — ${artistQuery.data.name}`
-    : "Compose look";
+    ? `Compose virtual sample — ${artistQuery.data.name}`
+    : "Compose virtual sample";
   return (
     <>
       <PageHeader
@@ -38,7 +38,7 @@ export default function LookComposerPage({
               params={{ id: artistId }}
             >
               <ArrowLeft className="mr-1.5 h-4 w-4" />
-              All looks
+              All virtual samples
             </Link>
           </Button>
         </div>

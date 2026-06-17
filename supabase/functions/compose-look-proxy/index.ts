@@ -34,11 +34,13 @@ import {
   type PipelineMode,
   sniffMime,
 } from "./helpers.ts";
+import { resolveProductPicks, type ProductPickInput } from "./productResolve.ts";
 
 type Body = {
   artistId: string;
   faceFeatureId?: string;
-  wardrobeFeatureIds: string[];
+  wardrobeFeatureIds?: string[];
+  productPicks?: ProductPickInput[];
   jewelryFeatureIds?: string[];
   locationId?: string;
   propIds?: string[];
@@ -163,6 +165,17 @@ function pickPathsForCategory(
   return out;
 }
 
+/** Resolve storage bucket for a path picked from resolved features. */
+function bucketForPath(features: ResolvedFeature[], path: string): string {
+  for (const f of features) {
+    if (f.storage_path === path || f.file_url === path) return f.bucket;
+    for (const r of f.reference_images) {
+      if (r.storage_path === path || r.url === path) return f.bucket;
+    }
+  }
+  return "wardrobe-refs";
+}
+
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
     status,
@@ -211,11 +224,15 @@ serve(async (req) => {
     return json(400, { error: "invalid_json" });
   }
   if (!body?.artistId) return json(400, { error: "missing_artist_id" });
+  const wardrobeFeatureIds = body.wardrobeFeatureIds ?? [];
+  const productPicks = body.productPicks ?? [];
+  const hasGarments =
+    wardrobeFeatureIds.length > 0 || productPicks.length > 0;
   if (
     body.pipelinePreference !== "identity_inpaint" &&
-    (!Array.isArray(body.wardrobeFeatureIds) || body.wardrobeFeatureIds.length === 0)
+    !hasGarments
   ) {
-    return json(400, { error: "wardrobe_required" });
+    return json(400, { error: "wardrobe_or_products_required" });
   }
   if (!body.basePrompt || body.basePrompt.trim().length < 4) {
     return json(400, { error: "basePrompt_too_short" });
@@ -278,7 +295,7 @@ serve(async (req) => {
   // ---- resolve features --------------------------------------------
   const allFeatureIds = [
     body.faceFeatureId,
-    ...body.wardrobeFeatureIds,
+    ...wardrobeFeatureIds,
     ...(body.jewelryFeatureIds ?? []),
   ].filter(Boolean) as string[];
 
@@ -286,9 +303,18 @@ serve(async (req) => {
   const faceFeature = body.faceFeatureId
     ? features.find((f) => f.id === body.faceFeatureId) ?? null
     : await defaultFaceFeature(admin, body.artistId);
-  const wardrobeFeatures = body.wardrobeFeatureIds
+  const legacyWardrobeFeatures = wardrobeFeatureIds
     .map((id) => features.find((f) => f.id === id))
     .filter((f): f is ResolvedFeature => !!f);
+  const productWardrobeFeatures = await resolveProductPicks(
+    admin,
+    productPicks,
+    userId,
+  );
+  const wardrobeFeatures: ResolvedFeature[] = [
+    ...productWardrobeFeatures,
+    ...legacyWardrobeFeatures,
+  ];
   const jewelryFeatures = (body.jewelryFeatureIds ?? [])
     .map((id) => features.find((f) => f.id === id))
     .filter((f): f is ResolvedFeature => !!f);
@@ -436,7 +462,8 @@ serve(async (req) => {
   const wardrobePaths = pickPathsForCategory(wardrobeFeatures, wardrobeBudget);
   const wardrobeUrls: string[] = [];
   for (const p of wardrobePaths) {
-    const u = await signUrl(admin, "wardrobe-refs", p, SIGN_TTL_INPUT);
+    const bucket = bucketForPath(wardrobeFeatures, p);
+    const u = await signUrl(admin, bucket, p, SIGN_TTL_INPUT);
     if (u) wardrobeUrls.push(u);
   }
 
@@ -537,7 +564,8 @@ serve(async (req) => {
   const lookId = crypto.randomUUID();
   const recipe = {
     face_feature_id: faceFeature?.id ?? null,
-    wardrobe_feature_ids: wardrobeFeatures.map((f) => f.id),
+    wardrobe_feature_ids: legacyWardrobeFeatures.map((f) => f.id),
+    product_picks: productPicks,
     jewelry_feature_ids: jewelryFeatures.map((f) => f.id),
     location_id: locationFeature?.id ?? null,
     prop_ids: propsFeatures.map((p) => p.id),
@@ -645,7 +673,8 @@ serve(async (req) => {
     recipe: {
       artistId: body.artistId,
       faceFeatureId: body.faceFeatureId ?? undefined,
-      wardrobeFeatureIds: body.wardrobeFeatureIds ?? [],
+      wardrobeFeatureIds: legacyWardrobeFeatures.map((f) => f.id),
+      productPicks: productPicks.length > 0 ? productPicks : undefined,
       jewelryFeatureIds: body.jewelryFeatureIds ?? [],
       locationId: body.locationId ?? undefined,
       propIds: body.propIds ?? [],

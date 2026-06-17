@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { ExternalLink, Lock, Star, Trash2, Zap } from "lucide-react";
+import { ExternalLink, Lock, Package, Star, Trash2, Zap } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,10 @@ import {
   useUpdateWardrobeItem,
   useUpdateWardrobeReferenceImageAngle,
 } from "@/lib/queries/wardrobe";
+import {
+  usePromoteWardrobeToProduct,
+  useWardrobeProductLink,
+} from "@/lib/queries/promoteWardrobe";
 import {
   normaliseReferenceImages,
   type AngleLabel,
@@ -37,6 +42,8 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
   const appendRef = useAppendWardrobeReferenceImage();
   const removeRef = useRemoveWardrobeReferenceImage();
   const updateAngleRef = useUpdateWardrobeReferenceImageAngle();
+  const promote = usePromoteWardrobeToProduct();
+  const linkQuery = useWardrobeProductLink(item.id);
 
   const [signed, setSigned] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -294,6 +301,33 @@ export function WardrobeItemCard({ item }: { item: WardrobeItem }) {
           </button>
         </div>
         <div className="flex gap-1">
+          {linkQuery.data?.product_id ? (
+            <Link
+              to="/products/$id"
+              params={{ id: linkQuery.data.product_id }}
+              className="rounded-sm p-1 text-primary hover:bg-muted/40"
+              title="View promoted product"
+            >
+              <Package className="h-3 w-3" />
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const product = await promote.mutateAsync(item);
+                  toast.success(`Promoted to ${product.sku}`);
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Promote failed");
+                }
+              }}
+              disabled={promote.isPending}
+              className="rounded-sm p-1 text-muted-foreground hover:bg-muted/40"
+              title="Promote to Product Library"
+            >
+              <Package className="h-3 w-3" />
+            </button>
+          )}
           {item.source_url && (
             <a
               href={item.source_url}

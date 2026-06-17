@@ -11,16 +11,27 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as ProductsRouteImport } from './routes/products'
 import { Route as LooksRouteImport } from './routes/looks'
+import { Route as DesignStudioRouteImport } from './routes/design-studio'
+import { Route as CollectionsRouteImport } from './routes/collections'
 import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
+import { Route as ProductsIndexRouteImport } from './routes/products.index'
 import { Route as LooksIndexRouteImport } from './routes/looks.index'
+import { Route as DesignStudioIndexRouteImport } from './routes/design-studio.index'
+import { Route as CollectionsIndexRouteImport } from './routes/collections.index'
 import { Route as ArtistsIndexRouteImport } from './routes/artists.index'
 import { Route as ProjectsNewRouteImport } from './routes/projects.new'
 import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
+import { Route as ProductsNewRouteImport } from './routes/products.new'
+import { Route as ProductsIdRouteImport } from './routes/products.$id'
 import { Route as LibraryPropsRouteImport } from './routes/library.props'
 import { Route as LibraryLocationsRouteImport } from './routes/library.locations'
+import { Route as DesignStudioNewRouteImport } from './routes/design-studio.new'
+import { Route as DesignStudioProductIdRouteImport } from './routes/design-studio.$productId'
+import { Route as CollectionsIdRouteImport } from './routes/collections.$id'
 import { Route as ArtistsNewRouteImport } from './routes/artists.new'
 import { Route as ArtistsIdRouteImport } from './routes/artists.$id'
 import { Route as ProjectsIdIndexRouteImport } from './routes/projects.$id.index'
@@ -34,6 +45,7 @@ import { Route as ProjectsIdPromptRouteImport } from './routes/projects.$id.prom
 import { Route as ProjectsIdExportRouteImport } from './routes/projects.$id.export'
 import { Route as ProjectsIdContinuityRouteImport } from './routes/projects.$id.continuity'
 import { Route as ProjectsIdAssetsRouteImport } from './routes/projects.$id.assets'
+import { Route as ProductsIdManufacturingRouteImport } from './routes/products.$id.manufacturing'
 import { Route as ArtistsIdLooksRouteImport } from './routes/artists.$id.looks'
 import { Route as ArtistsIdLooksIndexRouteImport } from './routes/artists.$id.looks.index'
 import { Route as ProjectsIdShotsShotIdRouteImport } from './routes/projects.$id.shots.$shotId'
@@ -50,9 +62,24 @@ const ProjectsRoute = ProjectsRouteImport.update({
   path: '/projects',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProductsRoute = ProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LooksRoute = LooksRouteImport.update({
   id: '/looks',
   path: '/looks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DesignStudioRoute = DesignStudioRouteImport.update({
+  id: '/design-studio',
+  path: '/design-studio',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CollectionsRoute = CollectionsRouteImport.update({
+  id: '/collections',
+  path: '/collections',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArtistsRoute = ArtistsRouteImport.update({
@@ -70,10 +97,25 @@ const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ProjectsRoute,
 } as any)
+const ProductsIndexRoute = ProductsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProductsRoute,
+} as any)
 const LooksIndexRoute = LooksIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => LooksRoute,
+} as any)
+const DesignStudioIndexRoute = DesignStudioIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DesignStudioRoute,
+} as any)
+const CollectionsIndexRoute = CollectionsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CollectionsRoute,
 } as any)
 const ArtistsIndexRoute = ArtistsIndexRouteImport.update({
   id: '/',
@@ -90,6 +132,16 @@ const ProjectsIdRoute = ProjectsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ProjectsRoute,
 } as any)
+const ProductsNewRoute = ProductsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ProductsRoute,
+} as any)
+const ProductsIdRoute = ProductsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ProductsRoute,
+} as any)
 const LibraryPropsRoute = LibraryPropsRouteImport.update({
   id: '/library/props',
   path: '/library/props',
@@ -99,6 +151,21 @@ const LibraryLocationsRoute = LibraryLocationsRouteImport.update({
   id: '/library/locations',
   path: '/library/locations',
   getParentRoute: () => rootRouteImport,
+} as any)
+const DesignStudioNewRoute = DesignStudioNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => DesignStudioRoute,
+} as any)
+const DesignStudioProductIdRoute = DesignStudioProductIdRouteImport.update({
+  id: '/$productId',
+  path: '/$productId',
+  getParentRoute: () => DesignStudioRoute,
+} as any)
+const CollectionsIdRoute = CollectionsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => CollectionsRoute,
 } as any)
 const ArtistsNewRoute = ArtistsNewRouteImport.update({
   id: '/new',
@@ -165,6 +232,11 @@ const ProjectsIdAssetsRoute = ProjectsIdAssetsRouteImport.update({
   path: '/assets',
   getParentRoute: () => ProjectsIdRoute,
 } as any)
+const ProductsIdManufacturingRoute = ProductsIdManufacturingRouteImport.update({
+  id: '/manufacturing',
+  path: '/manufacturing',
+  getParentRoute: () => ProductsIdRoute,
+} as any)
 const ArtistsIdLooksRoute = ArtistsIdLooksRouteImport.update({
   id: '/looks',
   path: '/looks',
@@ -194,19 +266,31 @@ const ArtistsIdLooksLookIdRoute = ArtistsIdLooksLookIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/artists': typeof ArtistsRouteWithChildren
+  '/collections': typeof CollectionsRouteWithChildren
+  '/design-studio': typeof DesignStudioRouteWithChildren
   '/looks': typeof LooksRouteWithChildren
+  '/products': typeof ProductsRouteWithChildren
   '/projects': typeof ProjectsRouteWithChildren
   '/settings': typeof SettingsRoute
   '/artists/$id': typeof ArtistsIdRouteWithChildren
   '/artists/new': typeof ArtistsNewRoute
+  '/collections/$id': typeof CollectionsIdRoute
+  '/design-studio/$productId': typeof DesignStudioProductIdRoute
+  '/design-studio/new': typeof DesignStudioNewRoute
   '/library/locations': typeof LibraryLocationsRoute
   '/library/props': typeof LibraryPropsRoute
+  '/products/$id': typeof ProductsIdRouteWithChildren
+  '/products/new': typeof ProductsNewRoute
   '/projects/$id': typeof ProjectsIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
   '/artists/': typeof ArtistsIndexRoute
+  '/collections/': typeof CollectionsIndexRoute
+  '/design-studio/': typeof DesignStudioIndexRoute
   '/looks/': typeof LooksIndexRoute
+  '/products/': typeof ProductsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/artists/$id/looks': typeof ArtistsIdLooksRouteWithChildren
+  '/products/$id/manufacturing': typeof ProductsIdManufacturingRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
@@ -227,12 +311,21 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
   '/artists/new': typeof ArtistsNewRoute
+  '/collections/$id': typeof CollectionsIdRoute
+  '/design-studio/$productId': typeof DesignStudioProductIdRoute
+  '/design-studio/new': typeof DesignStudioNewRoute
   '/library/locations': typeof LibraryLocationsRoute
   '/library/props': typeof LibraryPropsRoute
+  '/products/$id': typeof ProductsIdRouteWithChildren
+  '/products/new': typeof ProductsNewRoute
   '/projects/new': typeof ProjectsNewRoute
   '/artists': typeof ArtistsIndexRoute
+  '/collections': typeof CollectionsIndexRoute
+  '/design-studio': typeof DesignStudioIndexRoute
   '/looks': typeof LooksIndexRoute
+  '/products': typeof ProductsIndexRoute
   '/projects': typeof ProjectsIndexRoute
+  '/products/$id/manufacturing': typeof ProductsIdManufacturingRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
@@ -253,19 +346,31 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/artists': typeof ArtistsRouteWithChildren
+  '/collections': typeof CollectionsRouteWithChildren
+  '/design-studio': typeof DesignStudioRouteWithChildren
   '/looks': typeof LooksRouteWithChildren
+  '/products': typeof ProductsRouteWithChildren
   '/projects': typeof ProjectsRouteWithChildren
   '/settings': typeof SettingsRoute
   '/artists/$id': typeof ArtistsIdRouteWithChildren
   '/artists/new': typeof ArtistsNewRoute
+  '/collections/$id': typeof CollectionsIdRoute
+  '/design-studio/$productId': typeof DesignStudioProductIdRoute
+  '/design-studio/new': typeof DesignStudioNewRoute
   '/library/locations': typeof LibraryLocationsRoute
   '/library/props': typeof LibraryPropsRoute
+  '/products/$id': typeof ProductsIdRouteWithChildren
+  '/products/new': typeof ProductsNewRoute
   '/projects/$id': typeof ProjectsIdRouteWithChildren
   '/projects/new': typeof ProjectsNewRoute
   '/artists/': typeof ArtistsIndexRoute
+  '/collections/': typeof CollectionsIndexRoute
+  '/design-studio/': typeof DesignStudioIndexRoute
   '/looks/': typeof LooksIndexRoute
+  '/products/': typeof ProductsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
   '/artists/$id/looks': typeof ArtistsIdLooksRouteWithChildren
+  '/products/$id/manufacturing': typeof ProductsIdManufacturingRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
@@ -287,19 +392,31 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/artists'
+    | '/collections'
+    | '/design-studio'
     | '/looks'
+    | '/products'
     | '/projects'
     | '/settings'
     | '/artists/$id'
     | '/artists/new'
+    | '/collections/$id'
+    | '/design-studio/$productId'
+    | '/design-studio/new'
     | '/library/locations'
     | '/library/props'
+    | '/products/$id'
+    | '/products/new'
     | '/projects/$id'
     | '/projects/new'
     | '/artists/'
+    | '/collections/'
+    | '/design-studio/'
     | '/looks/'
+    | '/products/'
     | '/projects/'
     | '/artists/$id/looks'
+    | '/products/$id/manufacturing'
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
     | '/projects/$id/export'
@@ -320,12 +437,21 @@ export interface FileRouteTypes {
     | '/'
     | '/settings'
     | '/artists/new'
+    | '/collections/$id'
+    | '/design-studio/$productId'
+    | '/design-studio/new'
     | '/library/locations'
     | '/library/props'
+    | '/products/$id'
+    | '/products/new'
     | '/projects/new'
     | '/artists'
+    | '/collections'
+    | '/design-studio'
     | '/looks'
+    | '/products'
     | '/projects'
+    | '/products/$id/manufacturing'
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
     | '/projects/$id/export'
@@ -345,19 +471,31 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/artists'
+    | '/collections'
+    | '/design-studio'
     | '/looks'
+    | '/products'
     | '/projects'
     | '/settings'
     | '/artists/$id'
     | '/artists/new'
+    | '/collections/$id'
+    | '/design-studio/$productId'
+    | '/design-studio/new'
     | '/library/locations'
     | '/library/props'
+    | '/products/$id'
+    | '/products/new'
     | '/projects/$id'
     | '/projects/new'
     | '/artists/'
+    | '/collections/'
+    | '/design-studio/'
     | '/looks/'
+    | '/products/'
     | '/projects/'
     | '/artists/$id/looks'
+    | '/products/$id/manufacturing'
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
     | '/projects/$id/export'
@@ -378,7 +516,10 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArtistsRoute: typeof ArtistsRouteWithChildren
+  CollectionsRoute: typeof CollectionsRouteWithChildren
+  DesignStudioRoute: typeof DesignStudioRouteWithChildren
   LooksRoute: typeof LooksRouteWithChildren
+  ProductsRoute: typeof ProductsRouteWithChildren
   ProjectsRoute: typeof ProjectsRouteWithChildren
   SettingsRoute: typeof SettingsRoute
   LibraryLocationsRoute: typeof LibraryLocationsRoute
@@ -401,11 +542,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/looks': {
       id: '/looks'
       path: '/looks'
       fullPath: '/looks'
       preLoaderRoute: typeof LooksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/design-studio': {
+      id: '/design-studio'
+      path: '/design-studio'
+      fullPath: '/design-studio'
+      preLoaderRoute: typeof DesignStudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/collections': {
+      id: '/collections'
+      path: '/collections'
+      fullPath: '/collections'
+      preLoaderRoute: typeof CollectionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/artists': {
@@ -429,12 +591,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsIndexRouteImport
       parentRoute: typeof ProjectsRoute
     }
+    '/products/': {
+      id: '/products/'
+      path: '/'
+      fullPath: '/products/'
+      preLoaderRoute: typeof ProductsIndexRouteImport
+      parentRoute: typeof ProductsRoute
+    }
     '/looks/': {
       id: '/looks/'
       path: '/'
       fullPath: '/looks/'
       preLoaderRoute: typeof LooksIndexRouteImport
       parentRoute: typeof LooksRoute
+    }
+    '/design-studio/': {
+      id: '/design-studio/'
+      path: '/'
+      fullPath: '/design-studio/'
+      preLoaderRoute: typeof DesignStudioIndexRouteImport
+      parentRoute: typeof DesignStudioRoute
+    }
+    '/collections/': {
+      id: '/collections/'
+      path: '/'
+      fullPath: '/collections/'
+      preLoaderRoute: typeof CollectionsIndexRouteImport
+      parentRoute: typeof CollectionsRoute
     }
     '/artists/': {
       id: '/artists/'
@@ -457,6 +640,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsIdRouteImport
       parentRoute: typeof ProjectsRoute
     }
+    '/products/new': {
+      id: '/products/new'
+      path: '/new'
+      fullPath: '/products/new'
+      preLoaderRoute: typeof ProductsNewRouteImport
+      parentRoute: typeof ProductsRoute
+    }
+    '/products/$id': {
+      id: '/products/$id'
+      path: '/$id'
+      fullPath: '/products/$id'
+      preLoaderRoute: typeof ProductsIdRouteImport
+      parentRoute: typeof ProductsRoute
+    }
     '/library/props': {
       id: '/library/props'
       path: '/library/props'
@@ -470,6 +667,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/library/locations'
       preLoaderRoute: typeof LibraryLocationsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/design-studio/new': {
+      id: '/design-studio/new'
+      path: '/new'
+      fullPath: '/design-studio/new'
+      preLoaderRoute: typeof DesignStudioNewRouteImport
+      parentRoute: typeof DesignStudioRoute
+    }
+    '/design-studio/$productId': {
+      id: '/design-studio/$productId'
+      path: '/$productId'
+      fullPath: '/design-studio/$productId'
+      preLoaderRoute: typeof DesignStudioProductIdRouteImport
+      parentRoute: typeof DesignStudioRoute
+    }
+    '/collections/$id': {
+      id: '/collections/$id'
+      path: '/$id'
+      fullPath: '/collections/$id'
+      preLoaderRoute: typeof CollectionsIdRouteImport
+      parentRoute: typeof CollectionsRoute
     }
     '/artists/new': {
       id: '/artists/new'
@@ -562,6 +780,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsIdAssetsRouteImport
       parentRoute: typeof ProjectsIdRoute
     }
+    '/products/$id/manufacturing': {
+      id: '/products/$id/manufacturing'
+      path: '/manufacturing'
+      fullPath: '/products/$id/manufacturing'
+      preLoaderRoute: typeof ProductsIdManufacturingRouteImport
+      parentRoute: typeof ProductsIdRoute
+    }
     '/artists/$id/looks': {
       id: '/artists/$id/looks'
       path: '/looks'
@@ -645,6 +870,36 @@ const ArtistsRouteChildren: ArtistsRouteChildren = {
 const ArtistsRouteWithChildren =
   ArtistsRoute._addFileChildren(ArtistsRouteChildren)
 
+interface CollectionsRouteChildren {
+  CollectionsIdRoute: typeof CollectionsIdRoute
+  CollectionsIndexRoute: typeof CollectionsIndexRoute
+}
+
+const CollectionsRouteChildren: CollectionsRouteChildren = {
+  CollectionsIdRoute: CollectionsIdRoute,
+  CollectionsIndexRoute: CollectionsIndexRoute,
+}
+
+const CollectionsRouteWithChildren = CollectionsRoute._addFileChildren(
+  CollectionsRouteChildren,
+)
+
+interface DesignStudioRouteChildren {
+  DesignStudioProductIdRoute: typeof DesignStudioProductIdRoute
+  DesignStudioNewRoute: typeof DesignStudioNewRoute
+  DesignStudioIndexRoute: typeof DesignStudioIndexRoute
+}
+
+const DesignStudioRouteChildren: DesignStudioRouteChildren = {
+  DesignStudioProductIdRoute: DesignStudioProductIdRoute,
+  DesignStudioNewRoute: DesignStudioNewRoute,
+  DesignStudioIndexRoute: DesignStudioIndexRoute,
+}
+
+const DesignStudioRouteWithChildren = DesignStudioRoute._addFileChildren(
+  DesignStudioRouteChildren,
+)
+
 interface LooksRouteChildren {
   LooksIndexRoute: typeof LooksIndexRoute
 }
@@ -654,6 +909,34 @@ const LooksRouteChildren: LooksRouteChildren = {
 }
 
 const LooksRouteWithChildren = LooksRoute._addFileChildren(LooksRouteChildren)
+
+interface ProductsIdRouteChildren {
+  ProductsIdManufacturingRoute: typeof ProductsIdManufacturingRoute
+}
+
+const ProductsIdRouteChildren: ProductsIdRouteChildren = {
+  ProductsIdManufacturingRoute: ProductsIdManufacturingRoute,
+}
+
+const ProductsIdRouteWithChildren = ProductsIdRoute._addFileChildren(
+  ProductsIdRouteChildren,
+)
+
+interface ProductsRouteChildren {
+  ProductsIdRoute: typeof ProductsIdRouteWithChildren
+  ProductsNewRoute: typeof ProductsNewRoute
+  ProductsIndexRoute: typeof ProductsIndexRoute
+}
+
+const ProductsRouteChildren: ProductsRouteChildren = {
+  ProductsIdRoute: ProductsIdRouteWithChildren,
+  ProductsNewRoute: ProductsNewRoute,
+  ProductsIndexRoute: ProductsIndexRoute,
+}
+
+const ProductsRouteWithChildren = ProductsRoute._addFileChildren(
+  ProductsRouteChildren,
+)
 
 interface ProjectsIdShotsRouteChildren {
   ProjectsIdShotsShotIdRoute: typeof ProjectsIdShotsShotIdRoute
@@ -716,7 +999,10 @@ const ProjectsRouteWithChildren = ProjectsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArtistsRoute: ArtistsRouteWithChildren,
+  CollectionsRoute: CollectionsRouteWithChildren,
+  DesignStudioRoute: DesignStudioRouteWithChildren,
   LooksRoute: LooksRouteWithChildren,
+  ProductsRoute: ProductsRouteWithChildren,
   ProjectsRoute: ProjectsRouteWithChildren,
   SettingsRoute: SettingsRoute,
   LibraryLocationsRoute: LibraryLocationsRoute,

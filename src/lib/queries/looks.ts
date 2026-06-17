@@ -35,6 +35,11 @@ export type LookPipeline =
 export type CompositionRecipe = {
   face_feature_id: string | null;
   wardrobe_feature_ids: string[];
+  product_picks?: Array<{
+    product_id: string;
+    variant_id?: string | null;
+    slot: string;
+  }>;
   jewelry_feature_ids: string[];
   location_id: string | null;
   prop_ids: string[];
@@ -326,10 +331,13 @@ export function useLookIterations(parentLookId: string | undefined) {
 // ---------------------------------------------------------------------------
 // Compose-look proxy call — fires the AVT edge function which proxies to CC
 // ---------------------------------------------------------------------------
+import type { ProductPick } from "@/lib/products/slotMap";
+
 export type ComposeLookInput = {
   artistId: string;
   faceFeatureId?: string;
-  wardrobeFeatureIds: string[];
+  wardrobeFeatureIds?: string[];
+  productPicks?: ProductPick[];
   jewelryFeatureIds?: string[];
   locationId?: string;
   propIds?: string[];

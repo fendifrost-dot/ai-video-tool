@@ -36,6 +36,14 @@ import {
   type CharacterFeature,
 } from "@/lib/queries/characterFeatures";
 import { useWardrobe, type WardrobeItem } from "@/lib/queries/wardrobe";
+import {
+  isProductLibraryComposeEnabled,
+  isWardrobeDeprecated,
+  useProducts,
+  type Product,
+} from "@/lib/queries/products";
+import type { ProductPick } from "@/lib/products/slotMap";
+import { ProductGarmentPicker } from "./ProductGarmentPicker";
 import { useLocations, type LocationItem } from "@/lib/queries/locations";
 import { useProps, type PropItem } from "@/lib/queries/props";
 import {
@@ -88,6 +96,9 @@ export function LookComposer({
   const artistQuery = useArtist(artistId);
   const featuresQuery = useCharacterFeatures(artistId);
   const wardrobeQuery = useWardrobe(artistId);
+  const productsQuery = useProducts("approved");
+  const productCompose = isProductLibraryComposeEnabled();
+  const wardrobeDeprecated = isWardrobeDeprecated();
   const locationsQuery = useLocations();
   const propsQuery = useProps();
   const parentQuery = useLook(parentLookId ?? undefined);
@@ -104,6 +115,7 @@ export function LookComposer({
   // -------------------------------------------------------------------------
   const [faceFeatureId, setFaceFeatureId] = useState<string | null>(null);
   const [wardrobeIds, setWardrobeIds] = useState<string[]>([]);
+  const [productIds, setProductIds] = useState<string[]>([]);
   const [jewelryIds, setJewelryIds] = useState<string[]>([]);
   const [locationId, setLocationId] = useState<string | null>(null);
   const [propIds, setPropIds] = useState<string[]>([]);
@@ -125,6 +137,7 @@ export function LookComposer({
     if (!recipe) return;
     setFaceFeatureId(recipe.face_feature_id ?? null);
     setWardrobeIds(recipe.wardrobe_feature_ids ?? []);
+    setProductIds((recipe.product_picks ?? []).map((p) => p.product_id));
     setJewelryIds(recipe.jewelry_feature_ids ?? []);
     setLocationId(recipe.location_id ?? null);
     setPropIds(recipe.prop_ids ?? []);
@@ -163,8 +176,11 @@ export function LookComposer({
   // -------------------------------------------------------------------------
   // Validation + cost
   // -------------------------------------------------------------------------
+  const garmentCount = productCompose
+    ? productIds.length + (wardrobeDeprecated ? 0 : wardrobeIds.length)
+    : wardrobeIds.length;
   const canGenerate =
-    wardrobeIds.length > 0 && basePrompt.trim().length >= 4 && !compose.isPending;
+    garmentCount > 0 && basePrompt.trim().length >= 4 && !compose.isPending;
   const estCents = pipelineEstimateCents(pipelinePref, hasLora);
 
   // Dynamic tooltip / hint reason for why the Generate button is disabled.
@@ -172,8 +188,10 @@ export function LookComposer({
   // missing before they click anything.
   const generateBlockedReason: string | null = compose.isPending
     ? "Generation in progress — wait for the current run to finish"
-    : wardrobeIds.length === 0
-      ? "Add at least one wardrobe item to generate"
+    : garmentCount === 0
+      ? productCompose
+        ? "Add at least one product from the library to generate"
+        : "Add at least one wardrobe item to generate"
       : basePrompt.trim().length < 4
         ? "Add a description to generate (4+ characters)"
         : null;
@@ -206,6 +224,23 @@ export function LookComposer({
   // LookDetailPage owns the polling loop from that point on (so closing /
   // re-opening the tab keeps working).
   // -------------------------------------------------------------------------
+  function toggleProduct(id: string) {
+    setProductIds((curr) =>
+      curr.includes(id) ? curr.filter((x) => x !== id) : [...curr, id],
+    );
+  }
+
+  function buildProductPicks(): ProductPick[] {
+    const products = productsQuery.data ?? [];
+    return productIds
+      .map((id) => products.find((p) => p.id === id))
+      .filter((p): p is Product => !!p)
+      .map((p) => ({
+        product_id: p.id,
+        slot: p.slot,
+      }));
+  }
+
   async function handleGenerate() {
     if (!canGenerate) return;
     let submitRes: Awaited<ReturnType<typeof compose.mutateAsync>> | null = null;
@@ -213,7 +248,8 @@ export function LookComposer({
       submitRes = await compose.mutateAsync({
         artistId,
         faceFeatureId: faceFeatureId ?? undefined,
-        wardrobeFeatureIds: wardrobeIds,
+        ...(productIds.length > 0 ? { productPicks: buildProductPicks() } : {}),
+        ...(wardrobeIds.length > 0 ? { wardrobeFeatureIds: wardrobeIds } : {}),
         jewelryFeatureIds: jewelryIds.length > 0 ? jewelryIds : undefined,
         locationId: locationId ?? undefined,
         propIds: propIds.length > 0 ? propIds : undefined,
@@ -251,8 +287,10 @@ export function LookComposer({
   const noFeaturesAtAll =
     !featuresQuery.isLoading &&
     !wardrobeQuery.isLoading &&
+    (!productCompose || !productsQuery.isLoading) &&
     (featuresQuery.data?.length ?? 0) === 0 &&
-    (wardrobeQuery.data?.length ?? 0) === 0;
+    (wardrobeQuery.data?.length ?? 0) === 0 &&
+    (!productCompose || (productsQuery.data?.length ?? 0) === 0);
 
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr_320px]">
@@ -299,20 +337,38 @@ export function LookComposer({
           </Select>
         </PickerSection>
 
-        {/* Wardrobe accordions */}
-        <PickerSection icon={<Shirt className="h-3.5 w-3.5" />} title="Wardrobe" defaultOpen>
-          {(["wardrobe_outerwear", "wardrobe_top", "wardrobe_bottom", "wardrobe_footwear", "wardrobe_accessory"] as const).map(
-            (cat) => (
-              <WardrobeCategory
-                key={cat}
-                category={cat}
-                items={wardrobeByCategory[cat] ?? []}
-                selectedIds={wardrobeIds}
-                onToggle={toggleWardrobe}
-              />
-            ),
-          )}
-        </PickerSection>
+        {/* Products — canonical garment library (Phase 3) */}
+        {productCompose && (
+          <PickerSection icon={<Package className="h-3.5 w-3.5" />} title="Products" defaultOpen>
+            <ProductGarmentPicker
+              products={productsQuery.data ?? []}
+              selectedIds={productIds}
+              onToggle={toggleProduct}
+            />
+          </PickerSection>
+        )}
+
+        {/* Wardrobe accordions — legacy fallback */}
+        {(!productCompose || !wardrobeDeprecated) && (
+          <PickerSection icon={<Shirt className="h-3.5 w-3.5" />} title={productCompose ? "Legacy wardrobe" : "Wardrobe"} defaultOpen={!productCompose}>
+            {productCompose && (
+              <p className="mb-2 text-[10px] text-amber-200/80">
+                Deprecated — promote items to Products or pick from the library above.
+              </p>
+            )}
+            {(["wardrobe_outerwear", "wardrobe_top", "wardrobe_bottom", "wardrobe_footwear", "wardrobe_accessory"] as const).map(
+              (cat) => (
+                <WardrobeCategory
+                  key={cat}
+                  category={cat}
+                  items={wardrobeByCategory[cat] ?? []}
+                  selectedIds={wardrobeIds}
+                  onToggle={toggleWardrobe}
+                />
+              ),
+            )}
+          </PickerSection>
+        )}
 
         {/* Jewelry */}
         <PickerSection icon={<Gem className="h-3.5 w-3.5" />} title="Jewelry">
@@ -388,6 +444,8 @@ export function LookComposer({
             artistId={artistId}
             faceFeatureId={faceFeatureId}
             wardrobeIds={wardrobeIds}
+            productIds={productCompose ? productIds : []}
+            products={productsQuery.data ?? []}
             jewelryIds={jewelryIds}
             locationId={locationId}
             propIds={propIds}
@@ -397,6 +455,9 @@ export function LookComposer({
             props={propsQuery.data ?? []}
             onRemoveWardrobe={(id) =>
               setWardrobeIds((c) => c.filter((x) => x !== id))
+            }
+            onRemoveProduct={(id) =>
+              setProductIds((c) => c.filter((x) => x !== id))
             }
             onRemoveJewelry={(id) =>
               setJewelryIds((c) => c.filter((x) => x !== id))
@@ -553,7 +614,7 @@ export function LookComposer({
                     ) : (
                       <>
                         <Wand2 className="mr-2 h-4 w-4" />
-                        Generate look
+                        Generate virtual sample
                       </>
                     )}
                   </Button>
@@ -691,6 +752,8 @@ function CanvasStrip({
   artistId,
   faceFeatureId,
   wardrobeIds,
+  productIds,
+  products,
   jewelryIds,
   locationId,
   propIds,
@@ -699,6 +762,7 @@ function CanvasStrip({
   locations,
   props,
   onRemoveWardrobe,
+  onRemoveProduct,
   onRemoveJewelry,
   onClearLocation,
   onRemoveProp,
@@ -706,6 +770,8 @@ function CanvasStrip({
   artistId: string;
   faceFeatureId: string | null;
   wardrobeIds: string[];
+  productIds: string[];
+  products: Product[];
   jewelryIds: string[];
   locationId: string | null;
   propIds: string[];
@@ -714,6 +780,7 @@ function CanvasStrip({
   locations: LocationItem[];
   props: PropItem[];
   onRemoveWardrobe: (id: string) => void;
+  onRemoveProduct: (id: string) => void;
   onRemoveJewelry: (id: string) => void;
   onClearLocation: () => void;
   onRemoveProp: (id: string) => void;
@@ -721,6 +788,9 @@ function CanvasStrip({
   const face = faceFeatureId
     ? features.find((f) => f.id === faceFeatureId) ?? null
     : null;
+  const pickedProducts = productIds
+    .map((id) => products.find((p) => p.id === id))
+    .filter((p): p is Product => !!p);
   const pickedWardrobe = wardrobeIds
     .map((id) => wardrobe.find((w) => w.id === id))
     .filter((w): w is WardrobeItem => !!w);
@@ -737,6 +807,7 @@ function CanvasStrip({
   const totalPicked =
     (face ? 1 : 0) +
     pickedWardrobe.length +
+    pickedProducts.length +
     pickedJewelry.length +
     (location ? 1 : 0) +
     pickedProps.length;
@@ -759,6 +830,22 @@ function CanvasStrip({
           badge="Face"
         />
       )}
+      {pickedProducts.map((p) => (
+        <div
+          key={p.id}
+          className="flex flex-col items-center gap-0.5 rounded-sm border border-primary/40 bg-primary/5 px-2 py-1.5 text-[10px]"
+        >
+          <span className="font-semibold">{p.sku}</span>
+          <span className="max-w-[72px] truncate text-muted-foreground">{p.name}</span>
+          <button
+            type="button"
+            className="text-[9px] text-muted-foreground underline"
+            onClick={() => onRemoveProduct(p.id)}
+          >
+            Remove
+          </button>
+        </div>
+      ))}
       {pickedWardrobe.map((w) => (
         <AssetThumb
           key={w.id}

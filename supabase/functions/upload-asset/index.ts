@@ -12,7 +12,7 @@
 //   Authorization: Bearer <user_jwt>
 //   Content-Type: <file mime-type>
 //   X-Bucket: artist-assets | project-audio | project-references |
-//             project-clips | project-exports
+//             project-clips | project-exports | product-assets
 //   X-Path: <user_id>/<segments>/<filename>     # see buildStoragePath
 //   X-Upsert: true | false                       # optional, default false
 //   Body: raw bytes
@@ -35,6 +35,7 @@ const ALLOWED_BUCKETS = new Set([
   "project-references",
   "project-clips",
   "project-exports",
+  "product-assets",
 ]);
 
 // Match the UI's 500 MB ceiling. The platform-side limit is 5 GB on paid

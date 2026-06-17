@@ -27,18 +27,20 @@ import {
   extForMime,
 } from "../_shared/urlValidator.ts";
 
-type TargetType = "wardrobe" | "location" | "prop";
+type TargetType = "wardrobe" | "location" | "prop" | "product";
 
 type Body = {
   url: string;
   targetType: TargetType;
   artistId?: string;
+  productId?: string;
 };
 
 const BUCKET_BY_TARGET: Record<TargetType, string> = {
   wardrobe: "wardrobe-refs",
   location: "location-refs",
   prop: "prop-refs",
+  product: "product-assets",
 };
 
 const corsHeaders = {
@@ -74,6 +76,9 @@ serve(async (req) => {
   }
   if (body.targetType === "wardrobe" && !body.artistId) {
     return json(400, { error: "missing_artist_id" });
+  }
+  if (body.targetType === "product" && !body.productId) {
+    return json(400, { error: "missing_product_id" });
   }
 
   // 1. Validate URL
@@ -118,7 +123,9 @@ serve(async (req) => {
   const path =
     body.targetType === "wardrobe"
       ? `${userId}/${body.artistId}/${uuid}.${ext}`
-      : `${userId}/${uuid}.${ext}`;
+      : body.targetType === "product"
+        ? `${userId}/${body.productId}/${uuid}.${ext}`
+        : `${userId}/${uuid}.${ext}`;
 
   const adminClient = createClient(supabaseUrl, serviceKey, {
     auth: { persistSession: false },

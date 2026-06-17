@@ -15,6 +15,7 @@ import {
   buildPrimaryReferenceImage,
   normaliseReferenceImages,
 } from "./referenceImages";
+import { isWardrobeDeprecated } from "./products";
 
 // ---------------------------------------------------------------------------
 // Wardrobe = a subset of character_features where feature_type ∈ wardrobe_*
@@ -109,6 +110,11 @@ export function useCreateWardrobeItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (payload: WardrobeItemInsert): Promise<WardrobeItem> => {
+      if (isWardrobeDeprecated()) {
+        throw new Error(
+          "New wardrobe items are disabled. Promote existing items to Products or use Design Studio.",
+        );
+      }
       const seedRefImg = buildPrimaryReferenceImage({
         url: payload.file_url,
         storage_path: payload.storage_path,
@@ -281,6 +287,11 @@ export function useImportWardrobeFromUrl() {
       label: string;
       tags?: string[];
     }): Promise<WardrobeItem> => {
+      if (isWardrobeDeprecated()) {
+        throw new Error(
+          "Wardrobe URL import is disabled. Use Design Studio or Product Library instead.",
+        );
+      }
       const fetched = await fetchReferenceImage(url, "wardrobe", artistId);
       const seedRefImg = buildPrimaryReferenceImage({
         url: fetched.storage_path,

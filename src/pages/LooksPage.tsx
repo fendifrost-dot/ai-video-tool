@@ -187,8 +187,8 @@ export default function LooksPage() {
   return (
     <>
       <PageHeader
-        title="Looks"
-        subtitle="Every saved look across all artists."
+        title="Virtual Samples"
+        subtitle="Every saved virtual sample across all artists."
       />
 
       <div className="space-y-6 px-4 py-6 md:px-8">
@@ -199,7 +199,7 @@ export default function LooksPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All looks ({counts.all})</SelectItem>
+                <SelectItem value="all">All samples ({counts.all})</SelectItem>
                 {LOOK_STATUSES.map((s) => (
                   <SelectItem key={s} value={s} className="capitalize">
                     {s} ({counts[s]})
@@ -244,7 +244,7 @@ export default function LooksPage() {
 
           {!selectMode && (
             <div className="text-xs text-muted-foreground">
-              New looks are composed inside an artist's profile.
+              New virtual samples are composed inside an artist's profile.
             </div>
           )}
         </div>

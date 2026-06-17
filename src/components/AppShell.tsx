@@ -9,8 +9,12 @@ import {
   Settings,
   LogOut,
   MapPin,
+  Lightbulb,
+  Package,
+  Layers,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { isProductCatalogEnabled } from "@/lib/queries/products";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,7 +57,7 @@ type NavItem = PrimaryNavItem | MoreNavTrigger;
 const primaryNav: PrimaryNavItem[] = [
   { kind: "link", to: "/projects", label: "Projects", icon: FolderKanban, match: "/projects", exact: false },
   { kind: "link", to: "/artists", label: "Artists", icon: Users, match: "/artists" },
-  { kind: "link", to: "/looks", label: "Looks", icon: Sparkles, match: "/looks" },
+  { kind: "link", to: "/looks", label: "Virtual Samples", icon: Sparkles, match: "/looks" },
 ];
 
 const moreTrigger: MoreNavTrigger = {
@@ -66,10 +70,32 @@ type SecondaryNavItem = {
   label: string;
   description: string;
   icon: typeof LayoutDashboard;
-  to: "/library/locations" | "/settings";
+  to: "/library/locations" | "/settings" | "/design-studio" | "/products" | "/collections";
 };
 
+const catalogNav: SecondaryNavItem[] = [
+  {
+    to: "/design-studio",
+    label: "Design Studio",
+    description: "Develop garment concepts before they enter the library.",
+    icon: Lightbulb,
+  },
+  {
+    to: "/products",
+    label: "Products",
+    description: "Approved SKUs — MOD-001, MOD-002, and the rest of your line.",
+    icon: Package,
+  },
+  {
+    to: "/collections",
+    label: "Collections",
+    description: "Seasonal drops and campaign groupings for your line.",
+    icon: Layers,
+  },
+];
+
 const secondaryNav: SecondaryNavItem[] = [
+  ...(isProductCatalogEnabled() ? catalogNav : []),
   {
     to: "/library/locations",
     label: "Library",
@@ -87,6 +113,9 @@ const secondaryNav: SecondaryNavItem[] = [
 function isMoreActive(pathname: string): boolean {
   return (
     pathname.startsWith("/library") ||
+    pathname.startsWith("/design-studio") ||
+    pathname.startsWith("/products") ||
+    pathname.startsWith("/collections") ||
     secondaryNav.some((s) => pathname.startsWith(s.to))
   );
 }

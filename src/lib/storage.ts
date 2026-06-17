@@ -7,7 +7,11 @@ export type StorageBucket =
   | "project-references"
   | "project-clips"
   | "project-exports"
-  | "style-references";
+  | "style-references"
+  | "product-assets"
+  | "wardrobe-refs"
+  | "location-refs"
+  | "prop-refs";
 
 /**
  * Build the canonical storage path for a bucket. The first segment MUST be the

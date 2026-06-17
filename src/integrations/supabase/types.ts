@@ -762,6 +762,185 @@ export type Database = {
           },
         ]
       }
+      product_assets: {
+        Row: {
+          asset_role: Database["public"]["Enums"]["product_asset_role"]
+          file_url: string
+          id: string
+          product_id: string
+          reference_images: Json
+          sort_order: number
+          storage_path: string | null
+          uploaded_at: string
+          variant_id: string | null
+        }
+        Insert: {
+          asset_role: Database["public"]["Enums"]["product_asset_role"]
+          file_url: string
+          id?: string
+          product_id: string
+          reference_images?: Json
+          sort_order?: number
+          storage_path?: string | null
+          uploaded_at?: string
+          variant_id?: string | null
+        }
+        Update: {
+          asset_role?: Database["public"]["Enums"]["product_asset_role"]
+          file_url?: string
+          id?: string
+          product_id?: string
+          reference_images?: Json
+          sort_order?: number
+          storage_path?: string | null
+          uploaded_at?: string
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_assets_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_assets_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_variants: {
+        Row: {
+          colorway_json: Json
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          product_id: string
+          sku_suffix: string | null
+          updated_at: string
+        }
+        Insert: {
+          colorway_json?: Json
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          product_id: string
+          sku_suffix?: string | null
+          updated_at?: string
+        }
+        Update: {
+          colorway_json?: Json
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          product_id?: string
+          sku_suffix?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_wardrobe_links: {
+        Row: {
+          character_feature_id: string
+          created_at: string
+          id: string
+          product_id: string
+        }
+        Insert: {
+          character_feature_id: string
+          created_at?: string
+          id?: string
+          product_id: string
+        }
+        Update: {
+          character_feature_id?: string
+          created_at?: string
+          id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_wardrobe_links_character_feature_id_fkey"
+            columns: ["character_feature_id"]
+            isOneToOne: true
+            referencedRelation: "character_features"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_wardrobe_links_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string
+          description: string | null
+          design_prompt: string | null
+          fit_profile_json: Json
+          id: string
+          materials_json: Json
+          metadata_json: Json
+          name: string
+          season: string | null
+          sku: string
+          slot: Database["public"]["Enums"]["product_slot"]
+          status: Database["public"]["Enums"]["product_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          design_prompt?: string | null
+          fit_profile_json?: Json
+          id?: string
+          materials_json?: Json
+          metadata_json?: Json
+          name: string
+          season?: string | null
+          sku: string
+          slot: Database["public"]["Enums"]["product_slot"]
+          status?: Database["public"]["Enums"]["product_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          design_prompt?: string | null
+          fit_profile_json?: Json
+          id?: string
+          materials_json?: Json
+          metadata_json?: Json
+          name?: string
+          season?: string | null
+          sku?: string
+          slot?: Database["public"]["Enums"]["product_slot"]
+          status?: Database["public"]["Enums"]["product_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       prop_library: {
         Row: {
           category: string | null
@@ -1707,6 +1886,29 @@ export type Database = {
         | "frame_io"
         | "manual"
         | "other"
+      product_asset_role:
+        | "design_concept"
+        | "inspiration"
+        | "mood_board"
+        | "logo_placement_experiment"
+        | "front"
+        | "back"
+        | "side"
+        | "detail"
+        | "on_model_reference"
+        | "tech_flat_front"
+        | "tech_flat_back"
+        | "tech_flat_side"
+        | "material_swatch"
+        | "manufacturer_spec"
+      product_slot:
+        | "top"
+        | "bottom"
+        | "outerwear"
+        | "footwear"
+        | "accessory"
+        | "dress"
+      product_status: "concept" | "approved" | "in_production" | "archived"
       shot_priority: "low" | "normal" | "high" | "hero"
       shot_status:
         | "planned"
@@ -1942,6 +2144,31 @@ export const Constants = {
         "manual",
         "other",
       ],
+      product_asset_role: [
+        "design_concept",
+        "inspiration",
+        "mood_board",
+        "logo_placement_experiment",
+        "front",
+        "back",
+        "side",
+        "detail",
+        "on_model_reference",
+        "tech_flat_front",
+        "tech_flat_back",
+        "tech_flat_side",
+        "material_swatch",
+        "manufacturer_spec",
+      ],
+      product_slot: [
+        "top",
+        "bottom",
+        "outerwear",
+        "footwear",
+        "accessory",
+        "dress",
+      ],
+      product_status: ["concept", "approved", "in_production", "archived"],
       shot_priority: ["low", "normal", "high", "hero"],
       shot_status: [
         "planned",

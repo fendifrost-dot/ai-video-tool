@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { Upload } from "lucide-react";
+import { Upload, Package } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +18,8 @@ import {
   useImportWardrobeFromUrl,
   useWardrobe,
 } from "@/lib/queries/wardrobe";
+import { isWardrobeDeprecated } from "@/lib/queries/products";
+import { useBulkPromoteWardrobe } from "@/lib/queries/promoteWardrobe";
 import {
   WARDROBE_TAXONOMY,
   WARDROBE_TYPES_ORDERED,
@@ -40,6 +42,8 @@ export function WardrobeTab({ artistId }: { artistId: string }) {
 
   const create = useCreateWardrobeItem();
   const importFromUrl = useImportWardrobeFromUrl();
+  const bulkPromote = useBulkPromoteWardrobe();
+  const wardrobeDeprecated = isWardrobeDeprecated();
 
   const counts = useMemo(() => {
     const out: Record<WardrobeFeatureType, number> = {
@@ -125,10 +129,25 @@ export function WardrobeTab({ artistId }: { artistId: string }) {
           Wardrobe
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          This artist's clothing library. Lock items to lock them into the prompt
-          compiler the same way Character DNA features lock in.
+          {wardrobeDeprecated
+            ? "Legacy per-artist wardrobe — read-only. Promote items to Products or compose from the Product Library."
+            : "This artist's clothing library. Lock items to lock them into the prompt compiler the same way Character DNA features lock in."}
         </p>
       </div>
+
+      {wardrobeDeprecated && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100/90">
+          Wardrobe is deprecated. Use{" "}
+          <a href="/design-studio" className="underline">
+            Design Studio
+          </a>{" "}
+          and{" "}
+          <a href="/products" className="underline">
+            Products
+          </a>{" "}
+          as the canonical garment catalog.
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-1 rounded-md border border-border bg-muted/20 p-1">
         {WARDROBE_TYPES_ORDERED.map((t) => {
@@ -161,36 +180,59 @@ export function WardrobeTab({ artistId }: { artistId: string }) {
         </p>
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => fileRef.current?.click()}
-            disabled={create.isPending}
-          >
-            <Upload className="mr-1.5 h-4 w-4" />
-            Upload
-          </Button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept={IMAGE_UPLOAD_ACCEPT}
-            className="hidden"
-            onChange={(e) => {
-              handleUpload(e.target.files);
-              if (fileRef.current) fileRef.current.value = "";
-            }}
-          />
-          <span className="text-xs text-muted-foreground">or</span>
-          <div className="flex-1 min-w-[300px]">
-            <UrlImportPanel
-              label={`Paste URL for a ${WARDROBE_TAXONOMY[active].label.toLowerCase().replace(/s$/, "")}`}
-              onSubmit={handleUrlImport}
-              showName
-              showTags
-              helpText="Paste the direct image URL (right-click → 'Copy image address' on a product page)."
-            />
-          </div>
+          {!wardrobeDeprecated && (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => fileRef.current?.click()}
+                disabled={create.isPending}
+              >
+                <Upload className="mr-1.5 h-4 w-4" />
+                Upload
+              </Button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept={IMAGE_UPLOAD_ACCEPT}
+                className="hidden"
+                onChange={(e) => {
+                  handleUpload(e.target.files);
+                  if (fileRef.current) fileRef.current.value = "";
+                }}
+              />
+              <span className="text-xs text-muted-foreground">or</span>
+              <div className="flex-1 min-w-[300px]">
+                <UrlImportPanel
+                  label={`Paste URL for a ${WARDROBE_TAXONOMY[active].label.toLowerCase().replace(/s$/, "")}`}
+                  onSubmit={handleUrlImport}
+                  showName
+                  showTags
+                  helpText="Paste the direct image URL (right-click → 'Copy image address' on a product page)."
+                />
+              </div>
+            </>
+          )}
+          {visible.length > 0 && (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              disabled={bulkPromote.isPending}
+              onClick={async () => {
+                try {
+                  const promoted = await bulkPromote.mutateAsync(visible);
+                  toast.success(`Promoted ${promoted.length} item(s) to Products`);
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : "Bulk promote failed");
+                }
+              }}
+            >
+              <Package className="mr-1.5 h-4 w-4" />
+              Promote visible to Products
+            </Button>
+          )}
         </div>
 
         {allTags.length > 0 && (
