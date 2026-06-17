@@ -17,7 +17,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   pickVtonGarmentPath,
   vtonCategoryForFeatureType,
-} from "../compose-look-proxy/garmentReference.ts";
+} from "../_shared/garmentReference.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
