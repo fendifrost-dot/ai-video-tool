@@ -1,5 +1,7 @@
 # AVT Session Handoff — Full Summary (2026-06-17)
 
+> **Audit complete (Grok + ChatGPT, 2026-06-17):** Architecture and deploy plan validated. Primary action: redeploy the 5 AVT edge functions, then run `AVT_POST_DEPLOY_CHECKLIST.md`. Integration/deploy problem, not a research problem.
+
 **Purpose:** Single document for ChatGPT, Grok, or any fresh reviewer to audit what was done, what shipped, what's blocked, and what remains.  
 **Repo:** https://github.com/fendifrost-dot/ai-video-tool  
 **Live app:** https://aivideotool.lovable.app/  
@@ -43,6 +45,11 @@ Stills:          Garment refs → compose-look-proxy OR wardrobe-vton-proxy → 
 - AVT has **no standalone supabase.com account** — Lovable Cloud only  
 - CC secrets (`FAL_API_KEY`, `SWITCHX_PROXY_SECRET`) live on CC project  
 - AVT secrets (`COMPOSE_LOOK_CC_URL`, `COMPOSE_LOOK_PROXY_SECRET`, optional `SWITCHX_PROXY_SECRET`) live on AVT project  
+
+**Proxy auth for `wardrobe-vton-proxy` / `fal-queue-poll-proxy` (documented in code):**
+- **Preferred:** `SWITCHX_PROXY_SECRET` on AVT (must match CC `switchx-restyle` / `fal-queue-poll`)
+- **Fallback:** `COMPOSE_LOOK_PROXY_SECRET` if `SWITCHX_PROXY_SECRET` unset
+- Both proxies call **CC** endpoints only; they are deployed on **AVT**, not CC
 
 **Lovable ↔ GitHub:** Connected; builds from **`main`**. GitHub commits appear in Lovable timeline. Settings→Git "connect provider" prompt can be misleading — integration works via timeline/sync.
 
@@ -93,6 +100,15 @@ Addresses core clothing-swap gap: multi-angle refs stored but **VTON used wrong 
 | Composer hint for outerwear | `src/components/looks/LookComposer.tsx` |
 
 **Tests:** 224/224 passing at last local run before merge.
+
+**VTON implementation notes (Grok + ChatGPT validated):**
+- **Garment ref priority:** Flat front product shot (e.g. SL `IMG_5432` style) as primary; on-model lifestyle shots secondary only. Smart picker + bundle import enforce this.
+- **Frames with existing jacket:** IDM-VTON masks/replaces upper-body clothing. Optional future: SAM-3 jacket mask via CC `switchx-restyle` `segment-image` if cleaner edges needed — not wired in `wardrobe-vton-proxy` yet.
+- **CC entrypoint:** `switchx-restyle` action `vton-frame` → Fal `fal-ai/idm-vton` (or `cat-vton` via `model` param). Polled via CC `fal-queue-poll`, wrapped by AVT `fal-queue-poll-proxy`.
+
+**Product asset role priority** (`productResolve.ts`): `front` → `design_concept` → `inspiration` → `on_model_reference`. ChatGPT suggested finer labels (`front_flat`, `garment_only`) — valid future enhancement; not in schema today.
+
+**Filename heuristics** (`guessAngleFromFilename`): tokenizes on `_`, `-`, spaces (`jacket_back.png` ✅). Does not yet normalize `jacketFront` camelCase — low priority.
 
 ### 3C. Identity apply path (pre-existing on `main`, preserved in merge)
 
@@ -177,9 +193,10 @@ Addresses core clothing-swap gap: multi-angle refs stored but **VTON used wrong 
 |-----|----------|-------|
 | Edge functions not redeployed on AVT | **Blocker** | Live proxies may lack catalog + VTON code |
 | VTON quality unproven post-deploy | **High** | Prior SL jacket tests (pre-picker) all failed; no post-fix audit yet |
-| Full video frame-by-frame VTON + SwitchX temporal | **High** | Architecture defined; UI/orchestration not wired in AVT |
+| Full video frame-by-frame VTON + SwitchX temporal | **High** | Architecture defined; UI/orchestration not wired. **Minimum next step (ChatGPT):** extract ~10 keyframes → IDM-VTON each → human approval gate → SwitchX propagation → FFmpeg reassembly. Do not run full-video VTON until keyframe quality proven. |
 | `VITE_PRODUCT_CATALOG_ENABLED` not set | Medium | Nav/catalog UI dormant until set |
 | Product compose flag off | Medium | By design until regression |
+| `VITE_VTON_ENABLED` kill switch | **Deferred** | ChatGPT recommends emergency flag for Fal outages/pricing — not implemented; add if needed after first VTON audit |
 | CC `compose-look` `lora_idm_vton` still uses Leffa VTON naming | Low | Still path name `lora_idm_vton`; direct IDM-VTON is via `wardrobe-vton-proxy` → `vton-frame` |
 | HEIC upload support | Parked | Separate handoff exists |
 | Local handoffs not all committed | Low | Docs drift possible |
@@ -225,6 +242,8 @@ Addresses core clothing-swap gap: multi-angle refs stored but **VTON used wrong 
 
 ## 10. Reviewer checklist (for ChatGPT / Grok)
 
+**External review (2026-06-17): Both validated architecture, deploy order, CC/AVT split, identity_inpaint merge, and edge-function redeploy as sole blocker. No major factual errors.**
+
 Please verify we did not miss anything:
 
 - [ ] **Architecture:** Is VTON-first + SwitchX-temporal still coherent with what shipped?  
@@ -244,11 +263,17 @@ Please verify we did not miss anything:
 
 ## 11. Immediate next actions (for Fendi)
 
-1. **Redeploy 5 AVT edge functions for real** — verify timestamps change  
-2. **Set `VITE_PRODUCT_CATALOG_ENABLED=true`** + republish  
-3. **Run checklist Steps 3–5 + 8** (Claude or manual)  
-4. **Explicit go-ahead** before Step 6 (product compose flag) or Step 7 (VTON garment swap test)  
-5. **SL jacket re-test** with garment bundle (front flat as VTON primary) after functions live  
+**Consensus order (Grok + ChatGPT + Cursor):**
+
+1. **Redeploy 5 AVT edge functions** — verify timestamps change; confirm `wardrobe-vton-proxy` + `fal-queue-poll-proxy` exist in list  
+2. **Verify** live `compose-look-proxy` contains `productResolve` / `garmentReference`  
+3. **Set `VITE_PRODUCT_CATALOG_ENABLED=true`** + republish frontend  
+4. **Run checklist Steps 3–5 + 8** (legacy compose regression before catalog compose)  
+5. **Explicit go-ahead** before Step 6 (product compose flag) or Step 7 (VTON)  
+6. **SL jacket re-test** — garment bundle with front flat as VTON primary; audit reference vs output delta list  
+7. **Video (later):** 10-keyframe proof → approval gate → SwitchX propagation  
+
+Do **not** redeploy CC for this release.
 
 ---
 
