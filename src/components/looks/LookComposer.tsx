@@ -173,6 +173,16 @@ export function LookComposer({
     return byCat;
   }, [wardrobeQuery.data]);
 
+  const wardrobeVtonHint = useMemo(() => {
+    const items = (wardrobeQuery.data ?? []).filter((w) =>
+      wardrobeIds.includes(w.id),
+    );
+    if (items.some((i) => i.feature_type === "wardrobe_outerwear")) {
+      return "Jacket/outerwear selected — pick LoRA + IDM-VTON for photoreal garment transfer (uses front-flat ref, not on-model shot).";
+    }
+    return null;
+  }, [wardrobeIds, wardrobeQuery.data]);
+
   // -------------------------------------------------------------------------
   // Validation + cost
   // -------------------------------------------------------------------------
@@ -575,6 +585,11 @@ export function LookComposer({
                   ))}
                 </SelectContent>
               </Select>
+              {wardrobeVtonHint && (
+                <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">
+                  {wardrobeVtonHint}
+                </p>
+              )}
             </div>
           </div>
         </div>

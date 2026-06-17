@@ -43,6 +43,7 @@ import { useWardrobe } from "@/lib/queries/wardrobe";
 import { useLocations } from "@/lib/queries/locations";
 import { useProps } from "@/lib/queries/props";
 import { callApplyIdentityToLook } from "@/lib/queries/faceswap";
+import { applyGarmentVtonAndWait } from "@/lib/queries/wardrobeVton";
 import {
   callComposeLook,
   formatCost,
@@ -203,6 +204,42 @@ export default function LookDetailPage({
     look.pipeline_used ??
     (pipelinePreference ? `${pipelinePreference} · pending` : null);
 
+
+  async function handleApplyGarmentVton() {
+    if (!look || !layerItemId) return;
+    const item = (wardrobeQuery.data ?? []).find((w) => w.id === layerItemId);
+    if (!item) return;
+    setLayerBusy(true);
+    try {
+      const result = await applyGarmentVtonAndWait(
+        {
+          artistId,
+          wardrobeFeatureId: layerItemId,
+          parentLookId: look.id,
+          name: `${(look.name ?? "Look").slice(0, 48)} · ${item.label.slice(0, 32)}`,
+        },
+        {
+          onTick: ({ elapsedMs, status }) => {
+            setPollProgress({
+              elapsedSec: Math.floor(elapsedMs / 1000),
+              status,
+            });
+          },
+        },
+      );
+      qc.invalidateQueries({ queryKey: looksKeys.forArtist(artistId) });
+      toast.success("Garment VTON complete");
+      navigate({
+        to: "/artists/$id/looks/$lookId",
+        params: { id: artistId, lookId: result.id },
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Garment VTON failed");
+    } finally {
+      setLayerBusy(false);
+      setPollProgress(null);
+    }
+  }
 
   async function handleApplyIdentity() {
     if (!look) return;
@@ -680,8 +717,9 @@ export default function LookDetailPage({
                 Add layer
               </h2>
               <p className="text-[11px] leading-snug text-muted-foreground">
-                Locks this exact image as the canvas and inpaints ONE new
-                garment on top. Approve the result, then layer the next piece.
+                Locks this exact image as the canvas. Apply garment (VTON) runs IDM-VTON with
+                the front-flat reference for photoreal designer swaps. Generate layer uses
+                segmented inpaint when stacking pieces.
               </p>
               <select
                 className="w-full rounded-md border border-border bg-background px-2 py-2 text-xs"
@@ -698,7 +736,25 @@ export default function LookDetailPage({
               </select>
               <Button
                 size="sm"
+                variant="default"
                 className="w-full"
+                disabled={
+                  !layerItemId || layerBusy || isPending || look.status !== "complete"
+                }
+                onClick={handleApplyGarmentVton}
+                title="IDM-VTON transfers the selected garment onto this canvas using the front-flat reference angle. Best for designer jacket swaps."
+              >
+                {layerBusy ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Layers className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Apply garment (VTON) (~$0.09)
+              </Button>
+              <Button
+                size="sm"
+                className="w-full"
+                variant="outline"
                 disabled={
                   !layerItemId || layerBusy || isPending || look.status !== "complete"
                 }
@@ -709,7 +765,7 @@ export default function LookDetailPage({
                 ) : (
                   <Layers className="mr-1.5 h-3.5 w-3.5" />
                 )}
-                Generate layer (~$0.09)
+                Generate layer (inpaint) (~$0.09)
               </Button>
               <Button
                 size="sm"

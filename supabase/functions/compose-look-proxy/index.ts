@@ -27,6 +27,10 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
+  orderedRefPathsForComposer,
+  pickVtonGarmentPath,
+} from "./garmentReference.ts";
+import {
   buildIdentityPreamble,
   buildJewelryPolishPrompt,
   defaultLookName,
@@ -137,14 +141,13 @@ function pickPathsForCategory(
   budget: number,
 ): string[] {
   if (budget <= 0 || features.length === 0) return [];
-  // Each feature's candidate list, in priority order.
+  // Each feature's candidate list — front/flat angles first, on-model last.
   const queues: string[][] = features.map((f) => {
-    const fromArray = f.reference_images
-      .map((r) => r.storage_path ?? r.url)
-      .filter((p): p is string => !!p);
-    if (fromArray.length > 0) return fromArray;
-    const fallback = f.storage_path ?? f.file_url;
-    return fallback ? [fallback] : [];
+    const ordered = orderedRefPathsForComposer(
+      f.reference_images,
+      f.storage_path ?? f.file_url,
+    );
+    return ordered;
   });
 
   const out: string[] = [];
@@ -528,14 +531,10 @@ serve(async (req) => {
     )
     : null;
   for (const w of sortWardrobeForVtonChain(wardrobeFeatures)) {
-    // Pick the front-most reference image: first entry in reference_images,
-    // fallback to the legacy storage_path / file_url pair.
-    let frontPath: string | null = null;
-    if (w.reference_images.length > 0) {
-      const first = w.reference_images[0];
-      frontPath = first.storage_path ?? first.url ?? null;
-    }
-    if (!frontPath) frontPath = w.storage_path ?? w.file_url ?? null;
+    const frontPath = pickVtonGarmentPath(
+      w.reference_images,
+      w.storage_path ?? w.file_url,
+    );
     if (!frontPath) continue;
     const signed = await signUrl(admin, w.bucket, frontPath, SIGN_TTL_INPUT);
     if (!signed) continue;

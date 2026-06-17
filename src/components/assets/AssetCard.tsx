@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
   CheckCircle2,
@@ -22,6 +23,8 @@ import {
   useUpdateProjectAsset,
 } from "@/lib/queries/projectAssets";
 import { useApplyIdentity } from "@/lib/queries/faceswap";
+import { applyGarmentVtonAndWait } from "@/lib/queries/wardrobeVton";
+import { useWardrobe } from "@/lib/queries/wardrobe";
 import { deleteFromBucket, signedUrl } from "@/lib/storage";
 import { Button } from "@/components/ui/button";
 import { ClipDecision } from "@/components/review/ClipDecision";
@@ -45,9 +48,36 @@ export function AssetCard({
   urlLoading?: boolean;
 }) {
   const [url, setUrl] = useState<string | null>(signedUrlProp ?? null);
+  const [garmentId, setGarmentId] = useState("");
+  const [garmentBusy, setGarmentBusy] = useState(false);
+  const navigate = useNavigate();
   const update = useUpdateProjectAsset();
   const del = useDeleteProjectAsset();
   const applyFace = useApplyIdentity();
+  const wardrobeQuery = useWardrobe(artistId ?? undefined);
+
+  async function handleApplyGarment() {
+    if (!artistId || !garmentId) return;
+    setGarmentBusy(true);
+    try {
+      const look = await applyGarmentVtonAndWait({
+        artistId,
+        wardrobeFeatureId: garmentId,
+        scenePath: asset.file_url,
+        sceneBucket: bucketForAssetType(asset.asset_type),
+        name: `MV frame · garment swap`,
+      });
+      toast.success("Garment VTON complete — opening new look");
+      navigate({
+        to: "/artists/$id/looks/$lookId",
+        params: { id: artistId, lookId: look.id },
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Garment VTON failed");
+    } finally {
+      setGarmentBusy(false);
+    }
+  }
 
   async function handleApplyFace() {
     if (!artistId) return;
@@ -183,18 +213,48 @@ export function AssetCard({
         </div>
 
         {artistId && isImageAsset(asset) && (
-          <Button
-            type="button"
-            size="sm"
-            variant="secondary"
-            onClick={handleApplyFace}
-            disabled={applyFace.isPending}
-            className="h-8 w-full text-xs"
-            title="Swap the artist's face onto this image (Fal · ~$0.05/image)"
-          >
-            <Wand2 className="mr-1.5 h-3.5 w-3.5" />
-            {applyFace.isPending ? "Applying your face…" : "Apply My Face"}
-          </Button>
+          <div className="space-y-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={handleApplyFace}
+              disabled={applyFace.isPending}
+              className="h-8 w-full text-xs"
+              title="Swap the artist's face onto this image (Fal · ~$0.05/image)"
+            >
+              <Wand2 className="mr-1.5 h-3.5 w-3.5" />
+              {applyFace.isPending ? "Applying your face…" : "Apply My Face"}
+            </Button>
+            {(wardrobeQuery.data ?? []).length > 0 && (
+              <>
+                <select
+                  className="w-full rounded-md border border-border bg-background px-2 py-1.5 text-[11px]"
+                  value={garmentId}
+                  onChange={(e) => setGarmentId(e.target.value)}
+                  disabled={garmentBusy}
+                >
+                  <option value="">Swap garment onto frame…</option>
+                  {(wardrobeQuery.data ?? []).map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.label}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleApplyGarment}
+                  disabled={!garmentId || garmentBusy}
+                  className="h-8 w-full text-xs"
+                  title="IDM-VTON: transfer selected garment onto this MV frame still"
+                >
+                  {garmentBusy ? "Running VTON…" : "Apply Garment (VTON)"}
+                </Button>
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>

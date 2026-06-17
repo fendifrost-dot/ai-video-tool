@@ -25,6 +25,7 @@ import {
   WARDROBE_TYPES_ORDERED,
 } from "./wardrobeTaxonomy";
 import { WardrobeItemCard } from "./WardrobeItemCard";
+import { GarmentBundleImport } from "./GarmentBundleImport";
 import { UrlImportPanel, parseTagsCsv } from "./UrlImportPanel";
 
 /**
@@ -212,6 +213,7 @@ export function WardrobeTab({ artistId }: { artistId: string }) {
                   helpText="Paste the direct image URL (right-click → 'Copy image address' on a product page)."
                 />
               </div>
+              <GarmentBundleImport artistId={artistId} featureType={active} />
             </>
           )}
           {visible.length > 0 && (

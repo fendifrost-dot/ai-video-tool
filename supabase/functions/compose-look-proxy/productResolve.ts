@@ -31,11 +31,17 @@ const SLOT_TO_FEATURE: Record<string, string> = {
   dress: "wardrobe_top",
 };
 
+import {
+  orderedRefPathsForComposer,
+  pickVtonGarmentPath,
+} from "./garmentReference.ts";
+
+// VTON garment URL: flat front beats on-model lifestyle shots.
 const PREFERRED_ASSET_ROLES = [
   "front",
-  "on_model_reference",
   "design_concept",
   "inspiration",
+  "on_model_reference",
 ] as const;
 
 function normaliseRefImages(raw: unknown): ResolvedWardrobeRef["reference_images"] {
@@ -143,7 +149,26 @@ export async function resolveProductPicks(
       fitProfileToDescription(fit) ||
       null;
 
-    const path = (best.storage_path ?? best.file_url) as string | null;
+    const refImages = normaliseRefImages(best.reference_images);
+    const legacyPath = (best.storage_path ?? best.file_url) as string | null;
+    const path = pickVtonGarmentPath(refImages, legacyPath);
+    const allPaths = orderedRefPathsForComposer(refImages, legacyPath);
+    const enrichedRefs =
+      allPaths.length > 0
+        ? allPaths.map((p, i) => {
+          const existing = refImages.find(
+            (r) => r.storage_path === p || r.url === p,
+          );
+          return (
+            existing ?? {
+              id: crypto.randomUUID(),
+              url: p,
+              storage_path: p,
+              angle: i === 0 ? "front" : null,
+            }
+          );
+        })
+        : refImages;
     out.push({
       id: String(product.id),
       feature_type: SLOT_TO_FEATURE[slot] ?? "wardrobe_top",
@@ -152,7 +177,7 @@ export async function resolveProductPicks(
       file_url: path,
       bucket: "product-assets",
       dimensions_description: dimensions,
-      reference_images: normaliseRefImages(best.reference_images),
+      reference_images: enrichedRefs,
     });
   }
 
