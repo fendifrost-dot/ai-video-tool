@@ -172,8 +172,15 @@ async function completeLookFromFalUrl(
         logo_asset_id: resolved.placement.logo_asset_id ?? null,
         band: composite.band,
         target: composite.target,
+        quality: composite.quality,
         placement: resolved.placement,
       };
+      if (composite.quality.quality_warning) {
+        console.warn(
+          "logo_composite_low_res: front_crop upscaled",
+          JSON.stringify(composite.quality),
+        );
+      }
     }
   } catch (logoErr) {
     console.warn("logo_composite_skipped:", String(logoErr).slice(0, 200));

@@ -4,6 +4,7 @@ import {
   coverTargetOnBand,
   detectChestBand,
   keyNavyBackground,
+  logoQuality,
   resizeRgba,
   targetRectForLogo,
   type RgbaImage,
@@ -31,6 +32,26 @@ function paintNavyBand(img: RgbaImage, y0: number, y1: number, x0: number, x1: n
   }
 }
 
+function paintRect(
+  img: RgbaImage,
+  y0: number,
+  y1: number,
+  x0: number,
+  x1: number,
+  r: number,
+  g: number,
+  b: number,
+) {
+  for (let y = y0; y < y1; y++) {
+    for (let x = x0; x < x1; x++) {
+      const i = (y * img.width + x) * 4;
+      img.data[i] = r;
+      img.data[i + 1] = g;
+      img.data[i + 2] = b;
+    }
+  }
+}
+
 describe("detectChestBand", () => {
   it("finds a navy horizontal band in upper torso", () => {
     const img = solid(400, 600, 200, 180, 160);
@@ -49,6 +70,20 @@ describe("detectChestBand", () => {
     expect(band.bottom).toBeLessThanOrEqual(450);
     expect(band.top).toBeGreaterThanOrEqual(300);
     expect(band.bottom - band.top).toBeLessThanOrEqual(120);
+  });
+
+  it("isolates the lower wide stripe when a narrow placket bridges collar→stripe", () => {
+    // Collar lining (wide) + narrow vertical placket + chest stripe (wide).
+    // The placket bridges them into one tall navy run at the weak threshold;
+    // detection must still land on the lower wide stripe, not the collar.
+    const img = solid(768, 1024, 200, 180, 160);
+    paintNavyBand(img, 210, 270, 120, 648); // collar lining (wide)
+    paintNavyBand(img, 270, 360, 360, 408); // narrow placket bridge
+    paintNavyBand(img, 360, 430, 120, 648); // exterior chest stripe (wide)
+    const band = detectChestBand(img)!;
+    expect(band.top).toBeGreaterThanOrEqual(340); // not the collar at ~210
+    expect(band.bottom).toBeLessThanOrEqual(440);
+    expect(band.bottom - band.top).toBeLessThanOrEqual(110);
   });
 });
 
@@ -79,6 +114,18 @@ describe("keyNavyBackground", () => {
     const keyed2 = keyNavyBackground(logo);
     expect(keyed2.data[3]).toBe(255);
   });
+
+  it("feathers the semi-navy fringe but keeps bright letter ink opaque", () => {
+    const logo = solid(5, 5, 25, 30, 95); // navy ground
+    paintRect(logo, 2, 3, 2, 3, 240, 235, 220); // bright letter at center
+    paintRect(logo, 0, 1, 0, 1, 80, 82, 85); // semi-navy edge fringe at corner
+    const keyed = keyNavyBackground(logo);
+    const at = (x: number, y: number) => keyed.data[(y * 5 + x) * 4 + 3];
+    expect(at(2, 2)).toBe(255); // letter ink stays fully opaque
+    expect(at(4, 4)).toBe(0); // pure navy keyed out
+    expect(at(0, 0)).toBeGreaterThan(0); // fringe feathered, not hard-edged
+    expect(at(0, 0)).toBeLessThan(255);
+  });
 });
 
 describe("coverTargetOnBand", () => {
@@ -91,6 +138,20 @@ describe("coverTargetOnBand", () => {
     const i = (50 * 100 + 45) * 4;
     expect(covered.data[i + 2]).toBeGreaterThan(80);
     expect(covered.data[i]).toBeLessThan(50);
+  });
+
+  it("covers the VTON wordmark across the whole stripe, not just the paste target", () => {
+    // VTON renders its own garbled wordmark on the stripe; the clean paste
+    // target may not overlap it exactly, so the cover must erase the full band.
+    const base = solid(100, 100, 200, 180, 160);
+    paintNavyBand(base, 40, 60, 10, 90);
+    paintRect(base, 48, 54, 70, 88, 240, 235, 220); // VTON light text on stripe
+    const band = { left: 10, top: 40, right: 90, bottom: 60 };
+    const target = { left: 30, top: 45, right: 55, bottom: 55 }; // away from VTON text
+    const covered = coverTargetOnBand(base, band, target);
+    const i = (50 * 100 + 80) * 4; // inside band, over the old VTON text
+    expect(covered.data[i + 2]).toBeGreaterThan(80); // now navy
+    expect(covered.data[i]).toBeLessThan(60);
   });
 });
 
@@ -129,5 +190,44 @@ describe("targetRectForLogo", () => {
       80,
     );
     expect(rect.bottom - rect.top).toBeGreaterThanOrEqual(80);
+  });
+
+  it("anchors the logo right-of-center from the source bbox x-center", () => {
+    const img = { width: 800, height: 1024, data: new Uint8Array() };
+    const band = { left: 100, top: 400, right: 700, bottom: 460 };
+    const rect = targetRectForLogo(img, band, 4, "upper_left_chest", null, null, 0.65);
+    const center = (rect.left + rect.right) / 2;
+    expect(center).toBeGreaterThan(img.width / 2); // right-of-center
+    expect(rect.left).toBeGreaterThanOrEqual(band.left);
+    expect(rect.right).toBeLessThanOrEqual(band.right);
+  });
+
+  it("clamps the anchor so the logo stays inside the stripe", () => {
+    const img = { width: 800, height: 1024, data: new Uint8Array() };
+    const band = { left: 100, top: 400, right: 700, bottom: 460 };
+    const rect = targetRectForLogo(img, band, 4, "upper_left_chest", null, null, 0.98);
+    expect(rect.right).toBeLessThanOrEqual(band.right);
+    expect(rect.left).toBeGreaterThanOrEqual(band.left);
+  });
+});
+
+describe("logoQuality", () => {
+  it("flags an upscaled low-res front_crop as a quality warning", () => {
+    const q = logoQuality(20, 80, "front_crop");
+    expect(q.upscaled).toBe(true);
+    expect(q.quality_warning).toBe(true);
+    expect(q.scale_ratio).toBeGreaterThan(1);
+  });
+
+  it("treats a downscaled high-res asset as clean", () => {
+    const q = logoQuality(200, 60, "asset");
+    expect(q.upscaled).toBe(false);
+    expect(q.quality_warning).toBe(false);
+  });
+
+  it("does not warn when an asset is mildly upscaled (still crisp source)", () => {
+    const q = logoQuality(60, 80, "asset");
+    expect(q.upscaled).toBe(true);
+    expect(q.quality_warning).toBe(false);
   });
 });

@@ -35,6 +35,14 @@ const MAX_CHEST_BAND_HEIGHT_FRAC = 0.1;
 const CHEST_SCAN_Y_START_FRAC = 0.18;
 const CHEST_SCAN_Y_END_FRAC = 0.58;
 const NAVY_ROW_THRESHOLD = 0.08;
+/**
+ * Wide exterior chest stripe: a horizontal band where most of the torso width
+ * is navy. A high threshold separates the wide stripe from the narrow vertical
+ * placket / collar lining that otherwise bridge collar→stripe into one tall run.
+ */
+const STRIPE_ROW_THRESHOLD = 0.3;
+/** Below this native cap-height a wordmark upscale reads as soft/merged letters. */
+const MIN_READABLE_CAP_PX = 22;
 
 export function parseLogoPlacement(raw: unknown): LogoPlacement | null {
   if (!raw || typeof raw !== "object") return null;
@@ -96,23 +104,24 @@ function findNavyRuns(rowScores: number[], threshold: number): NavyRun[] {
   return runs;
 }
 
+/**
+ * Pick the chest stripe: the LOWEST thin run. The exterior chest stripe sits
+ * below the collar lining, so among thin horizontal navy runs we prefer the one
+ * with the lowest center (tie-break thinner). Falls back to the lowest run when
+ * none are thin.
+ */
 function pickChestStripeRun(runs: NavyRun[], imgHeight: number): NavyRun | null {
   if (runs.length === 0) return null;
   const maxThin = Math.floor(imgHeight * 0.14);
-  let best: NavyRun | null = null;
-  let bestScore = -Infinity;
-  for (const run of runs) {
-    const runH = run.end - run.start + 1;
-    if (runH > maxThin) continue;
-    const centerY = (run.start + run.end) / 2;
-    const score = centerY + (runH <= 80 ? 50 : 0);
-    if (score > bestScore) {
-      bestScore = score;
-      best = run;
-    }
-  }
-  if (best) return best;
-  return runs.reduce((a, b) => (b.end > a.end ? b : a));
+  const thin = runs.filter((r) => r.end - r.start + 1 <= maxThin);
+  const pool = thin.length > 0 ? thin : runs;
+  return pool.reduce((best, r) => {
+    const c = (r.start + r.end) / 2;
+    const bc = (best.start + best.end) / 2;
+    if (c > bc + 1) return r;
+    if (Math.abs(c - bc) <= 1 && r.end - r.start < best.end - best.start) return r;
+    return best;
+  });
 }
 
 function clampBandHeight(top: number, bottom: number, imgHeight: number): { top: number; bottom: number } {
@@ -155,8 +164,17 @@ export function detectChestBand(img: RgbaImage): PixelRect {
     rowScores.push(samples > 0 ? navy / samples : 0);
   }
 
-  const runs = findNavyRuns(rowScores, NAVY_ROW_THRESHOLD);
-  const picked = pickChestStripeRun(runs, height);
+  // Isolate the wide exterior stripe first: at the strong threshold the narrow
+  // placket/collar bridge drops out, so a merged collar+stripe blob splits into
+  // separate runs and we can target the lower (stripe) one. Fall back to the
+  // weak threshold only when no wide stripe is present (thin trims).
+  let picked = pickChestStripeRun(
+    findNavyRuns(rowScores, STRIPE_ROW_THRESHOLD),
+    height,
+  );
+  if (!picked || picked.end - picked.start < 2) {
+    picked = pickChestStripeRun(findNavyRuns(rowScores, NAVY_ROW_THRESHOLD), height);
+  }
 
   if (!picked || picked.end - picked.start < 2) {
     return {
@@ -190,6 +208,7 @@ function targetRectForLogo(
   hint: LogoPlacementHint = "upper_left_chest",
   manualNorm?: [number, number, number, number] | null,
   minTargetHeightPx?: number | null,
+  anchorXNorm?: number | null,
 ): PixelRect {
   if (manualNorm) {
     const [nx, ny, nw, nh] = manualNorm;
@@ -214,11 +233,24 @@ function targetRectForLogo(
     targetH = maxInBand;
     targetW = Math.round(targetH * logoAspect);
   }
-  const padX = hint === "center_chest"
-    ? Math.round((bandW - targetW) / 2)
-    : Math.round(bandW * 0.06);
+  // Horizontal placement: when the SKU bbox gives a source x-center, anchor the
+  // logo there (VTON roughly preserves horizontal position), clamped into the
+  // stripe — this lands the wordmark right-of-center per the placement data.
+  // Otherwise fall back to the coarse hint (left-padded vs centered).
+  let left: number;
+  if (anchorXNorm != null && Number.isFinite(anchorXNorm)) {
+    const center = anchorXNorm * img.width;
+    const lo = band.left;
+    const hi = Math.max(band.left, band.right - targetW);
+    left = Math.round(center - targetW / 2);
+    left = Math.max(lo, Math.min(hi, left));
+  } else {
+    const padX = hint === "center_chest"
+      ? Math.round((bandW - targetW) / 2)
+      : Math.round(bandW * 0.06);
+    left = band.left + padX;
+  }
   const padY = Math.round((bandH - targetH) / 2);
-  const left = band.left + padX;
   const top = band.top + padY;
   return {
     left,
@@ -258,15 +290,47 @@ function cropRgba(
   return { width, height, data: out };
 }
 
+function isSemiNavyEdge(r: number, g: number, b: number): boolean {
+  if (b <= r + 2 || b <= g) return false;
+  return (r + g + b) / 3 < 130;
+}
+
+/**
+ * Key navy stripe background to transparent for front-flat crops, then feather
+ * the semi-navy fringe so the keyed wordmark blends into the destination stripe
+ * with no hard rectangle. Bright letter ink stays fully opaque.
+ */
 function keyNavyBackground(logo: RgbaImage): RgbaImage {
+  const { width, height } = logo;
   const data = new Uint8Array(logo.data);
-  for (let i = 0; i < logo.width * logo.height; i++) {
+  const keyed = new Uint8Array(width * height);
+  for (let i = 0; i < width * height; i++) {
     const o = i * 4;
     if (isNavyPixel(data[o], data[o + 1], data[o + 2])) {
       data[o + 3] = 0;
+      keyed[i] = 1;
     }
   }
-  return { width: logo.width, height: logo.height, data };
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const i = y * width + x;
+      if (keyed[i]) continue;
+      const o = i * 4;
+      if (data[o + 3] === 0) continue;
+      if (!isSemiNavyEdge(data[o], data[o + 1], data[o + 2])) continue;
+      let adjacent = false;
+      for (let dy = -1; dy <= 1 && !adjacent; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+          if (keyed[ny * width + nx]) { adjacent = true; break; }
+        }
+      }
+      if (adjacent) data[o + 3] = Math.round(data[o + 3] * 0.4);
+    }
+  }
+  return { width, height, data };
 }
 
 function averageNavyInBand(img: RgbaImage, band: PixelRect): [number, number, number] {
@@ -288,6 +352,35 @@ function averageNavyInBand(img: RgbaImage, band: PixelRect): [number, number, nu
   return [Math.round(r / n), Math.round(g / n), Math.round(b / n)];
 }
 
+function fillRectNavy(
+  out: Uint8Array,
+  width: number,
+  height: number,
+  rect: PixelRect,
+  nr: number,
+  ng: number,
+  nb: number,
+): void {
+  for (let y = rect.top; y < rect.bottom; y++) {
+    if (y < 0 || y >= height) continue;
+    for (let x = rect.left; x < rect.right; x++) {
+      if (x < 0 || x >= width) continue;
+      const i = (y * width + x) * 4;
+      out[i] = nr;
+      out[i + 1] = ng;
+      out[i + 2] = nb;
+      out[i + 3] = 255;
+    }
+  }
+}
+
+/**
+ * Repaint the chest stripe with its own average navy before compositing. VTON
+ * renders its own garbled "Saint Laurent" somewhere on the real stripe, so we
+ * flat-fill the whole detected band (the stripe is solid navy → seamless) plus
+ * the target rect, guaranteeing the VTON mark is erased and only ONE clean
+ * wordmark remains after the paste.
+ */
 function coverTargetOnBand(
   base: RgbaImage,
   band: PixelRect,
@@ -295,17 +388,8 @@ function coverTargetOnBand(
 ): RgbaImage {
   const out = new Uint8Array(base.data);
   const [nr, ng, nb] = averageNavyInBand(base, band);
-  for (let y = target.top; y < target.bottom; y++) {
-    if (y < 0 || y >= base.height) continue;
-    for (let x = target.left; x < target.right; x++) {
-      if (x < 0 || x >= base.width) continue;
-      const i = (y * base.width + x) * 4;
-      out[i] = nr;
-      out[i + 1] = ng;
-      out[i + 2] = nb;
-      out[i + 3] = 255;
-    }
-  }
+  fillRectNavy(out, base.width, base.height, band, nr, ng, nb);
+  fillRectNavy(out, base.width, base.height, target, nr, ng, nb);
   return { width: base.width, height: base.height, data: out };
 }
 
@@ -353,6 +437,36 @@ async function encodePng(img: RgbaImage): Promise<Uint8Array> {
   return await out.encode();
 }
 
+export type LogoQuality = {
+  upscaled: boolean;
+  scale_ratio: number;
+  native_height_px: number;
+  target_height_px: number;
+  quality_warning: boolean;
+};
+
+/**
+ * Quality flag for the composite. The high-res transparent asset downscales
+ * cleanly; a front_crop upscaled past its native cap-height (or below the
+ * readable floor) cannot be made crisp and must be flagged for a real asset.
+ */
+function logoQuality(
+  nativeHeightPx: number,
+  targetHeightPx: number,
+  source: "asset" | "front_crop",
+): LogoQuality {
+  const ratio = targetHeightPx / Math.max(1, nativeHeightPx);
+  const upscaled = ratio > 1.05;
+  const lowRes = nativeHeightPx < MIN_READABLE_CAP_PX;
+  return {
+    upscaled,
+    scale_ratio: Math.round(ratio * 100) / 100,
+    native_height_px: nativeHeightPx,
+    target_height_px: targetHeightPx,
+    quality_warning: source === "front_crop" && (upscaled || lowRes),
+  };
+}
+
 function cropNormBbox(img: RgbaImage, norm: [number, number, number, number]): RgbaImage {
   const [nx, ny, nw, nh] = norm;
   const left = Math.round(nx * img.width);
@@ -368,6 +482,7 @@ export type LogoCompositeResult = {
   band: PixelRect;
   target: PixelRect;
   logo_source: "asset" | "front_crop";
+  quality: LogoQuality;
 };
 
 export async function compositeLogoOntoVton(
@@ -383,6 +498,10 @@ export async function compositeLogoOntoVton(
   }
   const logoAspect = logoImg.width / Math.max(logoImg.height, 1);
   const band = detectChestBand(base);
+  // Anchor horizontally on the SKU bbox x-center → wordmark lands right-of-center
+  // on the stripe (the source bbox is right-of-center on the front flat).
+  const [sx, , sw] = placement.source_bbox_norm;
+  const anchorXNorm = sx + sw / 2;
   const target = targetRectForLogo(
     base,
     band,
@@ -390,16 +509,19 @@ export async function compositeLogoOntoVton(
     placement.placement_hint ?? "upper_left_chest",
     placement.target_bbox_norm,
     placement.min_target_height_px,
+    anchorXNorm,
   );
   const covered = coverTargetOnBand(base, band, target);
   const composited = alphaComposite(covered, logoImg, target);
   const bytes = await encodePng(composited);
+  const quality = logoQuality(logoImg.height, target.bottom - target.top, logoSource);
   return {
     bytes,
     method: "bbox_affine_alpha_blend",
     band,
     target,
     logo_source: logoSource,
+    quality,
   };
 }
 
