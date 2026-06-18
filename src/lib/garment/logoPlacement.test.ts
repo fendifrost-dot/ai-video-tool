@@ -13,6 +13,23 @@ describe("parseLogoPlacement", () => {
     expect(p!.logo_asset_id).toBe("abc");
   });
 
+  it("parses min_target_height_px", () => {
+    const p = parseLogoPlacement({
+      source_bbox_norm: [0.1, 0.2, 0.3, 0.15],
+      min_target_height_px: 48,
+    });
+    expect(p?.min_target_height_px).toBe(48);
+  });
+
+  it("rejects out-of-range min_target_height_px", () => {
+    expect(
+      parseLogoPlacement({
+        source_bbox_norm: [0.1, 0.2, 0.3, 0.15],
+        min_target_height_px: 8,
+      })?.min_target_height_px,
+    ).toBeNull();
+  });
+
   it("rejects invalid bbox", () => {
     expect(parseLogoPlacement({ source_bbox_norm: [0, 0, 0, 0] })).toBeNull();
     expect(parseLogoPlacement(null)).toBeNull();

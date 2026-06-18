@@ -149,6 +149,7 @@ async function completeLookFromFalUrl(
   let finalMime = mime;
   let finalExt = ext;
   let logoCompositeMeta: Record<string, unknown> | null = null;
+  let compositeRan = false;
 
   try {
     const resolved = await resolveLogoAssets(admin, wardrobeFeatureId);
@@ -163,9 +164,12 @@ async function completeLookFromFalUrl(
       pipeline = "idm_vton_frame+logo_composite";
       finalMime = "image/png";
       finalExt = "png";
+      compositeRan = true;
       logoCompositeMeta = {
+        composite_method: composite.method,
         method: composite.method,
         logo_source: composite.logo_source,
+        logo_asset_id: resolved.placement.logo_asset_id ?? null,
         band: composite.band,
         target: composite.target,
         placement: resolved.placement,
@@ -175,7 +179,9 @@ async function completeLookFromFalUrl(
     console.warn("logo_composite_skipped:", String(logoErr).slice(0, 200));
   }
 
-  const storagePath = `${userId}/${artistId}/${lookId}.${finalExt}`;
+  const storagePath = compositeRan
+    ? `${userId}/${artistId}/${lookId}_logo_composite.png`
+    : `${userId}/${artistId}/${lookId}.${finalExt}`;
   const { error: uploadErr } = await admin.storage
     .from("look-composites")
     .upload(storagePath, finalBuf, { contentType: finalMime, cacheControl: "3600", upsert: true });
@@ -189,7 +195,10 @@ async function completeLookFromFalUrl(
   const recipe = (existing?.composition_recipe_json ?? {}) as Record<string, unknown>;
   recipe.generation_metadata = meta;
   recipe.vton_raw_storage_path = vtonRawPath;
-  if (logoCompositeMeta) recipe.logo_composite = logoCompositeMeta;
+  if (logoCompositeMeta) {
+    recipe.logo_composite = logoCompositeMeta;
+    recipe.vton_composite_storage_path = storagePath;
+  }
 
   const { error: updateErr } = await admin
     .from("artist_looks")

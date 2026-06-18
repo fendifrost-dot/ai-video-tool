@@ -1,6 +1,12 @@
 /**
  * SKU-level logo placement for post-VTON deterministic composite.
  * Stored on products.metadata_json.logo_placement (and optionally wardrobe).
+ *
+ * Placement strategy (locked):
+ * 1. SKU-defined source_bbox_norm + optional logo_asset_id (manual, once per product)
+ * 2. Chest-band detection refines target on VTON output
+ * 3. Optional target_bbox_norm overrides detection (manual VTON-space bbox)
+ * SAM/segmentation is a future safety boundary — not primary placement.
  */
 
 export type LogoPlacementHint = "upper_left_chest" | "center_chest";
@@ -16,6 +22,8 @@ export type LogoPlacement = {
   placement_hint?: LogoPlacementHint;
   /** Optional manual target on VTON output (0–1); overrides band detection when set */
   target_bbox_norm?: [number, number, number, number] | null;
+  /** Per-SKU minimum logo height in pixels on VTON output (readability floor) */
+  min_target_height_px?: number | null;
 };
 
 export function parseLogoPlacement(raw: unknown): LogoPlacement | null {
@@ -37,6 +45,13 @@ export function parseLogoPlacement(raw: unknown): LogoPlacement | null {
       target_bbox_norm = t as [number, number, number, number];
     }
   }
+  let min_target_height_px: LogoPlacement["min_target_height_px"] = null;
+  if (o.min_target_height_px != null) {
+    const n = Number(o.min_target_height_px);
+    if (Number.isFinite(n) && n >= 16 && n <= 256) {
+      min_target_height_px = Math.round(n);
+    }
+  }
   return {
     logo_asset_id: typeof o.logo_asset_id === "string" ? o.logo_asset_id : null,
     front_asset_id: typeof o.front_asset_id === "string" ? o.front_asset_id : null,
@@ -44,6 +59,7 @@ export function parseLogoPlacement(raw: unknown): LogoPlacement | null {
     target_region: "chest_band",
     placement_hint,
     target_bbox_norm,
+    min_target_height_px,
   };
 }
 

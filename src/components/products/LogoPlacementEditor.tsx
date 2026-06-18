@@ -24,6 +24,7 @@ import { PRODUCT_ASSET_ROLE_LABELS } from "@/components/products/productTaxonomy
 const PRODUCT_ASSETS_BUCKET = "product-assets";
 
 const LOGO_ROLES = new Set(["detail", "logo_placement_experiment"]);
+/** Transparent brand-overlay PNG roles (detail, logo placement) for post-VTON composite. */
 
 type DragState = {
   startX: number;
@@ -180,7 +181,7 @@ export function LogoPlacementEditor({
           Logo placement
         </h2>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          Draw the logo region on the front flat. Post-VTON composites real logo pixels onto the chest band.
+          Set logo placement once per SKU. Post-VTON composites catalog brand pixels onto the chest band — detection only refines position.
         </p>
       </div>
 
@@ -192,7 +193,7 @@ export function LogoPlacementEditor({
         <>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label className="text-xs">Logo PNG (optional)</Label>
+              <Label className="text-xs">Logo PNG (recommended)</Label>
               <Select
                 value={logoAssetId || "__crop__"}
                 onValueChange={(v) => setLogoAssetId(v === "__crop__" ? "" : v)}
@@ -210,8 +211,10 @@ export function LogoPlacementEditor({
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-[10px] text-muted-foreground">
-                Upload a transparent PNG as <em>detail</em> or <em>logo placement</em> for best results.
+              <p className={`text-[10px] ${logoAssetId ? "text-muted-foreground" : "text-amber-600 dark:text-amber-500"}`}>
+                {logoAssetId
+                  ? "Transparent PNG selected — best quality for post-VTON composite."
+                  : "No logo PNG — will crop from front bbox (lower quality). Upload detail or logo placement PNG."}
               </p>
             </div>
             <div className="space-y-1.5">

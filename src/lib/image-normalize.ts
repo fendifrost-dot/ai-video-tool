@@ -17,13 +17,13 @@
 //     native JPG, so the metadata captured in our DB (size, mime_type) matches
 //     what's actually in Storage.
 //
-// We use `heic2any` (browser-side WASM-backed HEIC decoder, ~200KB). It
+// We use `heic2any` (browser-side WASM-backed HEIC decoder, ~1.3MB). It
 // handles Safari-shot iPhone HEICs which is the common case here.
 //
-// The heic2any import is dynamic — the module touches `Worker` at top-level,
-// which is fine in the browser but blows up in jsdom (and would blow up in
-// any SSR pass too). Loading it on demand keeps non-HEIC code paths zero-cost
-// and gives Vite a natural chunk-split for the ~200KB decoder bundle.
+// The heic2any import is dynamic and browser-only — the module touches
+// `Worker` at top-level, which is fine in the browser but blows up in jsdom
+// and SSR. `vite.config.ts` stubs heic2any in Worker builds; the typeof-window
+// guard below is the runtime half of that split.
 //
 // This helper is a no-op for non-HEIC inputs — JPG/PNG/WEBP/GIF flow through
 // untouched. Safe to call unconditionally on every image upload path.
@@ -62,6 +62,9 @@ export async function normalizeImageForUpload(
   options?: { quality?: number },
 ): Promise<File> {
   if (!looksLikeHeic(file)) return file;
+
+  // Upload pickers run client-side only; SSR must not pull in the decoder.
+  if (typeof window === "undefined") return file;
 
   // Lazy-load the decoder. See header comment for why.
   const { default: heic2any } = await import("heic2any");
