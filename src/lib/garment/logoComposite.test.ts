@@ -4,6 +4,7 @@ import {
   coverTargetOnBand,
   detectChestBand,
   keyNavyBackground,
+  logoCompositeMetaCore,
   logoQuality,
   resizeRgba,
   targetRectForLogo,
@@ -52,6 +53,29 @@ function paintRect(
   }
 }
 
+/** Paint a navy stripe of `thickness` whose center line tilts by `slope` (a
+ * turned-pose diagonal). yAtX0 is the center y at x0. */
+function paintDiagonalNavy(
+  img: RgbaImage,
+  x0: number,
+  x1: number,
+  yAtX0: number,
+  slope: number,
+  thickness: number,
+) {
+  for (let x = x0; x < x1; x++) {
+    const cy = Math.round(yAtX0 + (x - x0) * slope);
+    for (let y = cy - thickness / 2; y < cy + thickness / 2; y++) {
+      const yy = Math.round(y);
+      if (yy < 0 || yy >= img.height) continue;
+      const i = (yy * img.width + x) * 4;
+      img.data[i] = 25;
+      img.data[i + 1] = 30;
+      img.data[i + 2] = 95;
+    }
+  }
+}
+
 describe("detectChestBand", () => {
   it("finds a navy horizontal band in upper torso", () => {
     const img = solid(400, 600, 200, 180, 160);
@@ -84,6 +108,32 @@ describe("detectChestBand", () => {
     expect(band.top).toBeGreaterThanOrEqual(340); // not the collar at ~210
     expect(band.bottom).toBeLessThanOrEqual(440);
     expect(band.bottom - band.top).toBeLessThanOrEqual(110);
+  });
+
+  it("locks onto a LOWER diagonal stripe on a turned pose, not the collar above", () => {
+    // Turned pose: wide collar/shoulder navy up top, and the real chest stripe
+    // lower and tilted. The full-width scan would pick the wide collar; anchoring
+    // on the SKU x-center finds the diagonal stripe where the logo belongs.
+    const img = solid(768, 1024, 200, 180, 160);
+    paintNavyBand(img, 250, 300, 150, 620); // wide collar/shoulder distractor
+    paintDiagonalNavy(img, 150, 620, 380, 0.18, 24); // lower diagonal chest stripe
+    const band = detectChestBand(img, 0.65)!; // anchor right-of-center
+    expect(band.top).toBeGreaterThanOrEqual(400); // on the stripe, not collar ~250
+    expect(band.bottom).toBeLessThanOrEqual(520);
+  });
+
+  it("places the target on the stripe at the anchor, not on tan above", () => {
+    const img = solid(768, 1024, 200, 180, 160);
+    paintNavyBand(img, 250, 300, 150, 620);
+    paintDiagonalNavy(img, 150, 620, 380, 0.18, 24);
+    const band = detectChestBand(img, 0.65)!;
+    const rect = targetRectForLogo(img, band, 4, "upper_left_chest", null, null, 0.65);
+    const cy = Math.round((rect.top + rect.bottom) / 2);
+    const cx = Math.round((rect.left + rect.right) / 2);
+    // The pixel under the logo center is navy (on the stripe), not tan.
+    const i = (cy * 768 + cx) * 4;
+    expect(img.data[i + 2]).toBeGreaterThan(80);
+    expect(img.data[i]).toBeLessThan(60);
   });
 });
 
@@ -140,18 +190,32 @@ describe("coverTargetOnBand", () => {
     expect(covered.data[i]).toBeLessThan(50);
   });
 
-  it("covers the VTON wordmark across the whole stripe, not just the paste target", () => {
-    // VTON renders its own garbled wordmark on the stripe; the clean paste
-    // target may not overlap it exactly, so the cover must erase the full band.
+  it("covers the VTON wordmark (light letters with navy gaps) across the stripe", () => {
+    // VTON renders its own garbled wordmark on the stripe: light serif letters
+    // with navy between them. The cover fills between navy extents, bridging the
+    // letter gaps, so the whole word is erased even outside the paste target.
     const base = solid(100, 100, 200, 180, 160);
     paintNavyBand(base, 40, 60, 10, 90);
-    paintRect(base, 48, 54, 70, 88, 240, 235, 220); // VTON light text on stripe
+    for (const lx of [30, 40, 50, 60, 70]) {
+      paintRect(base, 48, 54, lx, lx + 3, 240, 235, 220); // light letter strokes
+    }
     const band = { left: 10, top: 40, right: 90, bottom: 60 };
-    const target = { left: 30, top: 45, right: 55, bottom: 55 }; // away from VTON text
+    const target = { left: 20, top: 45, right: 35, bottom: 55 }; // away from a letter
     const covered = coverTargetOnBand(base, band, target);
-    const i = (50 * 100 + 80) * 4; // inside band, over the old VTON text
-    expect(covered.data[i + 2]).toBeGreaterThan(80); // now navy
-    expect(covered.data[i]).toBeLessThan(60);
+    const hole = (50 * 100 + 71) * 4; // a former letter pixel, now navy
+    expect(covered.data[hole + 2]).toBeGreaterThan(80);
+    expect(covered.data[hole]).toBeLessThan(60);
+  });
+
+  it("does not paint tan beyond the stripe (no halo) when a sleeve sits far off", () => {
+    const base = solid(100, 100, 200, 180, 160);
+    paintNavyBand(base, 40, 60, 10, 70); // stripe
+    paintNavyBand(base, 40, 60, 90, 98); // far navy sleeve, wide tan gap between
+    const band = { left: 10, top: 40, right: 98, bottom: 60 };
+    const target = { left: 30, top: 45, right: 50, bottom: 55 };
+    const covered = coverTargetOnBand(base, band, target, 0.4); // anchor on the stripe
+    const tan = (50 * 100 + 80) * 4; // tan gap between stripe and sleeve
+    expect(covered.data[tan]).toBeGreaterThan(150); // still tan, not navy halo
   });
 });
 
@@ -229,5 +293,22 @@ describe("logoQuality", () => {
     const q = logoQuality(60, 80, "asset");
     expect(q.upscaled).toBe(true);
     expect(q.quality_warning).toBe(false);
+  });
+});
+
+describe("logoCompositeMetaCore", () => {
+  it("persists quality and quality_warning into the recipe metadata", () => {
+    const meta = logoCompositeMetaCore({
+      method: "bbox_affine_alpha_blend",
+      logo_source: "front_crop",
+      band: { left: 1, top: 2, right: 3, bottom: 4 },
+      target: { left: 5, top: 6, right: 7, bottom: 8 },
+      quality: logoQuality(20, 80, "front_crop"),
+    });
+    expect(meta.quality).toBeDefined();
+    expect((meta.quality as { quality_warning: boolean }).quality_warning).toBe(true);
+    expect(meta.quality_warning).toBe(true); // surfaced at top level for easy reads
+    expect(meta.logo_source).toBe("front_crop");
+    expect(meta.band).toEqual({ left: 1, top: 2, right: 3, bottom: 4 });
   });
 });

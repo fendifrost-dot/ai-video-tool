@@ -33,8 +33,14 @@ const LOGO_WIDTH_FRAC = 0.55;
 const MIN_TARGET_HEIGHT_FRAC = 0.065;
 const MAX_CHEST_BAND_HEIGHT_FRAC = 0.1;
 const CHEST_SCAN_Y_START_FRAC = 0.18;
-const CHEST_SCAN_Y_END_FRAC = 0.58;
+// Extends past mid-torso so a LOWER stripe on a turned pose is still scanned,
+// but stops above the waist so navy lower-body garments aren't mistaken for it.
+const CHEST_SCAN_Y_END_FRAC = 0.66;
 const NAVY_ROW_THRESHOLD = 0.08;
+/** Half-width of the anchored scan column (fraction of image width). */
+const ANCHOR_HALF_FRAC = 0.13;
+/** Navy gaps narrower than this (fraction of width) are letter gaps to fill over. */
+const MAX_LETTER_GAP_FRAC = 0.06;
 /**
  * Wide exterior chest stripe: a horizontal band where most of the torso width
  * is navy. A high threshold separates the wide stripe from the narrow vertical
@@ -148,15 +154,43 @@ function horizontalExtents(
   return { left, right };
 }
 
-export function detectChestBand(img: RgbaImage): PixelRect {
+/** Horizontal scan window — narrow column around the anchor, or full torso. */
+function scanWindow(width: number, anchorXNorm?: number | null): { x0: number; x1: number } {
+  if (anchorXNorm != null && Number.isFinite(anchorXNorm)) {
+    const c = Math.max(0, Math.min(1, anchorXNorm));
+    let x0 = Math.floor(width * Math.max(0.04, c - ANCHOR_HALF_FRAC));
+    let x1 = Math.floor(width * Math.min(0.96, c + ANCHOR_HALF_FRAC));
+    const minW = Math.floor(width * 0.12);
+    if (x1 - x0 < minW) {
+      const mid = (x0 + x1) / 2;
+      x0 = Math.max(0, Math.floor(mid - minW / 2));
+      x1 = Math.min(width, Math.floor(mid + minW / 2));
+    }
+    return { x0, x1 };
+  }
+  return { x0: Math.floor(width * 0.15), x1: Math.floor(width * 0.85) };
+}
+
+/**
+ * Find the chest stripe band on the VTON output. Anchoring the scan on a narrow
+ * column at the SKU x-center makes this robust to LOWER and DIAGONAL stripes on
+ * a turned body: the stripe fills the narrow column even when it no longer spans
+ * the full torso width, so we lock onto the actual navy band rather than the
+ * wide collar/shoulder above it. Picks the LOWEST navy run in the column.
+ */
+export function detectChestBand(
+  img: RgbaImage,
+  anchorXNorm?: number | null,
+): PixelRect {
   const { width, height, data } = img;
   const yStart = Math.floor(height * CHEST_SCAN_Y_START_FRAC);
   const yEnd = Math.floor(height * CHEST_SCAN_Y_END_FRAC);
+  const { x0, x1 } = scanWindow(width, anchorXNorm);
   const rowScores: number[] = [];
   for (let y = yStart; y < yEnd; y++) {
     let navy = 0;
     let samples = 0;
-    for (let x = Math.floor(width * 0.15); x < Math.floor(width * 0.85); x++) {
+    for (let x = x0; x < x1; x++) {
       const i = (y * width + x) * 4;
       if (isNavyPixel(data[i], data[i + 1], data[i + 2])) navy++;
       samples++;
@@ -164,10 +198,9 @@ export function detectChestBand(img: RgbaImage): PixelRect {
     rowScores.push(samples > 0 ? navy / samples : 0);
   }
 
-  // Isolate the wide exterior stripe first: at the strong threshold the narrow
-  // placket/collar bridge drops out, so a merged collar+stripe blob splits into
-  // separate runs and we can target the lower (stripe) one. Fall back to the
-  // weak threshold only when no wide stripe is present (thin trims).
+  // Isolate the stripe at the strong threshold first (drops the narrow
+  // placket/collar bridge so a merged blob splits into separate runs); pick the
+  // lowest. Fall back to the weak threshold only when no strong band is present.
   let picked = pickChestStripeRun(
     findNavyRuns(rowScores, STRIPE_ROW_THRESHOLD),
     height,
@@ -374,21 +407,71 @@ function fillRectNavy(
   }
 }
 
+/** Navy runs on one row, restricted to the torso x-span. */
+function rowNavyRuns(base: RgbaImage, y: number, x0: number, x1: number): NavyRun[] {
+  const scores: number[] = [];
+  for (let x = x0; x < x1; x++) {
+    const i = (y * base.width + x) * 4;
+    scores.push(isNavyPixel(base.data[i], base.data[i + 1], base.data[i + 2]) ? 1 : 0);
+  }
+  return findNavyRuns(scores, 1).map((r) => ({ start: r.start + x0, end: r.end + x0 }));
+}
+
 /**
  * Repaint the chest stripe with its own average navy before compositing. VTON
- * renders its own garbled "Saint Laurent" somewhere on the real stripe, so we
- * flat-fill the whole detected band (the stripe is solid navy → seamless) plus
- * the target rect, guaranteeing the VTON mark is erased and only ONE clean
- * wordmark remains after the paste.
+ * renders its own garbled "Saint Laurent" on the real stripe, so we erase it
+ * first. We walk each row of the band and fill the navy SEGMENT nearest the
+ * anchor — merging navy runs across letter-sized gaps (so the VTON wordmark
+ * holes are filled) but NOT across a wide tan gap to a sleeve. This follows a
+ * diagonal/lower stripe and never paints the tan corners of the band bbox, so
+ * there is no hard navy rectangle/halo. The target rect is also filled.
  */
 function coverTargetOnBand(
   base: RgbaImage,
   band: PixelRect,
   target: PixelRect,
+  anchorXNorm?: number | null,
 ): RgbaImage {
   const out = new Uint8Array(base.data);
   const [nr, ng, nb] = averageNavyInBand(base, band);
-  fillRectNavy(out, base.width, base.height, band, nr, ng, nb);
+  const xLo = Math.floor(base.width * 0.08);
+  const xHi = Math.floor(base.width * 0.92);
+  const gap = Math.floor(base.width * MAX_LETTER_GAP_FRAC);
+  const anchorX = anchorXNorm != null && Number.isFinite(anchorXNorm)
+    ? anchorXNorm * base.width
+    : (band.left + band.right) / 2;
+  for (let y = band.top; y < band.bottom; y++) {
+    if (y < 0 || y >= base.height) continue;
+    const runs = rowNavyRuns(base, y, xLo, xHi);
+    if (runs.length === 0) continue;
+    const segs: NavyRun[] = [];
+    for (const run of runs) {
+      const last = segs[segs.length - 1];
+      if (last && run.start - last.end - 1 <= gap) last.end = run.end;
+      else segs.push({ ...run });
+    }
+    let best = segs[0];
+    let bestDist = Infinity;
+    for (const s of segs) {
+      const mid = (s.start + s.end) / 2;
+      const dist = anchorX < s.start ? s.start - anchorX
+        : anchorX > s.end ? anchorX - s.end
+        : 0;
+      const tie = Math.abs(mid - anchorX);
+      if (dist < bestDist - 0.5 || (Math.abs(dist - bestDist) <= 0.5 && tie < Math.abs((best.start + best.end) / 2 - anchorX))) {
+        best = s;
+        bestDist = dist;
+      }
+    }
+    for (let x = best.start; x <= best.end; x++) {
+      if (x < 0 || x >= base.width) continue;
+      const i = (y * base.width + x) * 4;
+      out[i] = nr;
+      out[i + 1] = ng;
+      out[i + 2] = nb;
+      out[i + 3] = 255;
+    }
+  }
   fillRectNavy(out, base.width, base.height, target, nr, ng, nb);
   return { width: base.width, height: base.height, data: out };
 }
@@ -467,6 +550,32 @@ function logoQuality(
   };
 }
 
+export type LogoCompositeResultLike = {
+  method: string;
+  logo_source: "asset" | "front_crop";
+  band: PixelRect;
+  target: PixelRect;
+  quality: LogoQuality;
+};
+
+/**
+ * Build the persisted `logo_composite` audit metadata from a composite result.
+ * The proxy spreads this into composition_recipe_json — keeping it here (and
+ * unit-tested in the Vitest mirror) guards against the recipe silently dropping
+ * `quality` / `quality_warning`, which is exactly what regressed before.
+ */
+export function logoCompositeMetaCore(c: LogoCompositeResultLike): Record<string, unknown> {
+  return {
+    composite_method: c.method,
+    method: c.method,
+    logo_source: c.logo_source,
+    band: c.band,
+    target: c.target,
+    quality: c.quality,
+    quality_warning: c.quality.quality_warning,
+  };
+}
+
 function cropNormBbox(img: RgbaImage, norm: [number, number, number, number]): RgbaImage {
   const [nx, ny, nw, nh] = norm;
   const left = Math.round(nx * img.width);
@@ -497,11 +606,12 @@ export async function compositeLogoOntoVton(
     logoImg = keyNavyBackground(logoImg);
   }
   const logoAspect = logoImg.width / Math.max(logoImg.height, 1);
-  const band = detectChestBand(base);
   // Anchor horizontally on the SKU bbox x-center → wordmark lands right-of-center
-  // on the stripe (the source bbox is right-of-center on the front flat).
+  // on the stripe (the source bbox is right-of-center on the front flat). The
+  // anchor also localizes band detection so a lower/diagonal stripe is found.
   const [sx, , sw] = placement.source_bbox_norm;
   const anchorXNorm = sx + sw / 2;
+  const band = detectChestBand(base, anchorXNorm);
   const target = targetRectForLogo(
     base,
     band,
@@ -511,7 +621,7 @@ export async function compositeLogoOntoVton(
     placement.min_target_height_px,
     anchorXNorm,
   );
-  const covered = coverTargetOnBand(base, band, target);
+  const covered = coverTargetOnBand(base, band, target, anchorXNorm);
   const composited = alphaComposite(covered, logoImg, target);
   const bytes = await encodePng(composited);
   const quality = logoQuality(logoImg.height, target.bottom - target.top, logoSource);

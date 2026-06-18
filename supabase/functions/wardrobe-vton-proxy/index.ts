@@ -20,6 +20,7 @@ import {
 } from "../_shared/garmentReference.ts";
 import {
   compositeLogoOntoVton,
+  logoCompositeMetaCore,
   resolveLogoAssets,
 } from "../_shared/logoComposite.ts";
 
@@ -166,13 +167,8 @@ async function completeLookFromFalUrl(
       finalExt = "png";
       compositeRan = true;
       logoCompositeMeta = {
-        composite_method: composite.method,
-        method: composite.method,
-        logo_source: composite.logo_source,
+        ...logoCompositeMetaCore(composite),
         logo_asset_id: resolved.placement.logo_asset_id ?? null,
-        band: composite.band,
-        target: composite.target,
-        quality: composite.quality,
         placement: resolved.placement,
       };
       if (composite.quality.quality_warning) {
