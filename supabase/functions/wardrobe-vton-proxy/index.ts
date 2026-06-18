@@ -18,6 +18,10 @@ import {
   pickVtonGarmentPath,
   vtonCategoryForFeatureType,
 } from "../_shared/garmentReference.ts";
+import {
+  compositeLogoOntoVton,
+  resolveLogoAssets,
+} from "../_shared/logoComposite.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -124,19 +128,57 @@ async function completeLookFromFalUrl(
   userId: string,
   artistId: string,
   falImageUrl: string,
+  wardrobeFeatureId: string,
   meta: Record<string, unknown>,
 ): Promise<void> {
   const dl = await fetch(falImageUrl, { headers: { Accept: "image/*" } });
   if (!dl.ok) throw new Error(`fal_download_${dl.status}`);
-  const buf = new Uint8Array(await dl.arrayBuffer());
-  const mime = sniffMime(buf);
+  const vtonBuf = new Uint8Array(await dl.arrayBuffer());
+  const mime = sniffMime(vtonBuf);
   if (!mime) throw new Error("unknown_mime");
 
   const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
-  const storagePath = `${userId}/${artistId}/${lookId}.${ext}`;
+  const vtonRawPath = `${userId}/${artistId}/${lookId}_vton_raw.${ext}`;
+  const { error: rawUploadErr } = await admin.storage
+    .from("look-composites")
+    .upload(vtonRawPath, vtonBuf, { contentType: mime, cacheControl: "3600", upsert: true });
+  if (rawUploadErr) throw new Error(`raw_upload_failed: ${rawUploadErr.message}`);
+
+  let finalBuf = vtonBuf;
+  let pipeline = "idm_vton_frame";
+  let finalMime = mime;
+  let finalExt = ext;
+  let logoCompositeMeta: Record<string, unknown> | null = null;
+
+  try {
+    const resolved = await resolveLogoAssets(admin, wardrobeFeatureId);
+    if (resolved) {
+      const composite = await compositeLogoOntoVton(
+        vtonBuf,
+        resolved.logoBytes,
+        resolved.placement,
+        resolved.logoSource,
+      );
+      finalBuf = composite.bytes;
+      pipeline = "idm_vton_frame+logo_composite";
+      finalMime = "image/png";
+      finalExt = "png";
+      logoCompositeMeta = {
+        method: composite.method,
+        logo_source: composite.logo_source,
+        band: composite.band,
+        target: composite.target,
+        placement: resolved.placement,
+      };
+    }
+  } catch (logoErr) {
+    console.warn("logo_composite_skipped:", String(logoErr).slice(0, 200));
+  }
+
+  const storagePath = `${userId}/${artistId}/${lookId}.${finalExt}`;
   const { error: uploadErr } = await admin.storage
     .from("look-composites")
-    .upload(storagePath, buf, { contentType: mime, cacheControl: "3600", upsert: true });
+    .upload(storagePath, finalBuf, { contentType: finalMime, cacheControl: "3600", upsert: true });
   if (uploadErr) throw new Error(`upload_failed: ${uploadErr.message}`);
 
   const { data: existing } = await admin
@@ -146,6 +188,8 @@ async function completeLookFromFalUrl(
     .maybeSingle();
   const recipe = (existing?.composition_recipe_json ?? {}) as Record<string, unknown>;
   recipe.generation_metadata = meta;
+  recipe.vton_raw_storage_path = vtonRawPath;
+  if (logoCompositeMeta) recipe.logo_composite = logoCompositeMeta;
 
   const { error: updateErr } = await admin
     .from("artist_looks")
@@ -153,7 +197,7 @@ async function completeLookFromFalUrl(
       status: "complete",
       generated_image_url: storagePath,
       generated_storage_path: storagePath,
-      pipeline_used: "idm_vton_frame",
+      pipeline_used: pipeline,
       cost_cents: 9,
       composition_recipe_json: recipe,
       error_message: null,
@@ -376,7 +420,7 @@ serve(async (req) => {
         queue.status_url,
         queue.response_url,
       );
-      await completeLookFromFalUrl(admin, childLookId, userId, body.artistId, falUrl, {
+      await completeLookFromFalUrl(admin, childLookId, userId, body.artistId, falUrl, wardrobe.id, {
         vton_model: queue.model ?? "idm-vton",
         garment_path: garmentPath,
         wardrobe_feature_id: wardrobe.id,

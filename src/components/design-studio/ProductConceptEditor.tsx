@@ -46,6 +46,7 @@ import {
   ProductAssetTile,
 } from "@/components/products/ProductAssetTile";
 import { FitProfileEditor } from "@/components/products/FitProfileEditor";
+import { LogoPlacementEditor } from "@/components/products/LogoPlacementEditor";
 import { UrlImportPanel } from "@/components/wardrobe/UrlImportPanel";
 
 const PRODUCT_ASSETS_BUCKET = "product-assets";
@@ -351,6 +352,20 @@ export function ProductConceptEditor({
             </div>
           )}
         </section>
+
+        <LogoPlacementEditor
+          assets={assets}
+          metadataJson={product.metadata_json ?? {}}
+          disabled={disabled}
+          onSave={async (placement) => {
+            await onSave({
+              metadata_json: {
+                ...(product.metadata_json ?? {}),
+                logo_placement: placement,
+              },
+            });
+          }}
+        />
       </div>
 
       <aside className="space-y-4">
