@@ -49,6 +49,20 @@ const MAX_LETTER_GAP_FRAC = 0.06;
 const STRIPE_ROW_THRESHOLD = 0.3;
 /** Below this native cap-height a wordmark upscale reads as soft/merged letters. */
 const MIN_READABLE_CAP_PX = 22;
+// --- Stripe-vs-collar discrimination & confidence (all ratios, not coordinates) ---
+/** A torso-crossing stripe spans at least this fraction of image width; a small
+ *  collar patch is narrower, so this gate drops it from the candidate pool. A
+ *  diagonal stripe only shows a slice of its width in the band, so keep this
+ *  modest — the "pick the lowest band" rule then separates stripe from collar. */
+const STRIPE_MIN_WIDTH_FRAC = 0.25;
+/** Width at/above which the width component of confidence saturates to 1. */
+const STRIPE_WIDTH_REF_FRAC = 0.55;
+/** Below this confidence we don't trust detection and fall back to SKU placement. */
+const MIN_STRIPE_CONFIDENCE = 0.5;
+
+function clamp01(v: number): number {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
 
 export function parseLogoPlacement(raw: unknown): LogoPlacement | null {
   if (!raw || typeof raw !== "object") return null;
@@ -110,26 +124,6 @@ function findNavyRuns(rowScores: number[], threshold: number): NavyRun[] {
   return runs;
 }
 
-/**
- * Pick the chest stripe: the LOWEST thin run. The exterior chest stripe sits
- * below the collar lining, so among thin horizontal navy runs we prefer the one
- * with the lowest center (tie-break thinner). Falls back to the lowest run when
- * none are thin.
- */
-function pickChestStripeRun(runs: NavyRun[], imgHeight: number): NavyRun | null {
-  if (runs.length === 0) return null;
-  const maxThin = Math.floor(imgHeight * 0.14);
-  const thin = runs.filter((r) => r.end - r.start + 1 <= maxThin);
-  const pool = thin.length > 0 ? thin : runs;
-  return pool.reduce((best, r) => {
-    const c = (r.start + r.end) / 2;
-    const bc = (best.start + best.end) / 2;
-    if (c > bc + 1) return r;
-    if (Math.abs(c - bc) <= 1 && r.end - r.start < best.end - best.start) return r;
-    return best;
-  });
-}
-
 function clampBandHeight(top: number, bottom: number, imgHeight: number): { top: number; bottom: number } {
   const maxH = Math.max(24, Math.floor(imgHeight * MAX_CHEST_BAND_HEIGHT_FRAC));
   if (bottom - top <= maxH) return { top, bottom };
@@ -171,17 +165,61 @@ function scanWindow(width: number, anchorXNorm?: number | null): { x0: number; x
   return { x0: Math.floor(width * 0.15), x1: Math.floor(width * 0.85) };
 }
 
+/** A detected band plus a 0–1 confidence that it is a real torso-crossing stripe. */
+export type StripeBand = PixelRect & { confidence: number };
+
+type RunCandidate = {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+  widthPx: number;
+  coverage: number;
+  confidence: number;
+};
+
+/** Evaluate one navy run: clamp its height, measure its full-width navy extent,
+ *  and score how stripe-like it is (wide AND solidly navy). */
+function evaluateRun(
+  img: RgbaImage,
+  rowScores: number[],
+  run: NavyRun,
+  yStart: number,
+): RunCandidate {
+  let top = yStart + run.start;
+  let bottom = yStart + run.end + 1;
+  ({ top, bottom } = clampBandHeight(top, bottom, img.height));
+  const { left, right } = horizontalExtents(img, top, bottom);
+  const widthPx = right > left ? right - left : 0;
+  let sum = 0;
+  let n = 0;
+  for (let i = run.start; i <= run.end; i++) {
+    sum += rowScores[i];
+    n++;
+  }
+  const coverage = n > 0 ? sum / n : 0;
+  const widthScore = clamp01(widthPx / (img.width * STRIPE_WIDTH_REF_FRAC));
+  const confidence = Math.min(widthScore, clamp01(coverage));
+  return { top, bottom, left, right, widthPx, coverage, confidence };
+}
+
 /**
- * Find the chest stripe band on the VTON output. Anchoring the scan on a narrow
- * column at the SKU x-center makes this robust to LOWER and DIAGONAL stripes on
- * a turned body: the stripe fills the narrow column even when it no longer spans
- * the full torso width, so we lock onto the actual navy band rather than the
- * wide collar/shoulder above it. Picks the LOWEST navy run in the column.
+ * Detect the navy chest stripe on the VTON output from the garment pixels —
+ * general across pose, stripe geometry (horizontal/diagonal/curved), and
+ * position (upper or lower chest). Strategy:
+ *  1. Anchor a narrow scan column on the SKU x-center so a stripe that no longer
+ *     spans the body on a turned/angled pose still fills the column.
+ *  2. Take navy row-runs (strong threshold, weak fallback) as band candidates.
+ *  3. Prefer candidates WIDE enough to cross the torso (gate out the small collar
+ *     lining patch); among those pick the LOWEST (chest stripe sits below collar).
+ *  4. Return a confidence (width × navy-density) so the caller can fall back to
+ *     the SKU placement when no stripe is found rather than painting tan.
+ * Returns null only when there is no navy at all in the scan region.
  */
 export function detectChestBand(
   img: RgbaImage,
   anchorXNorm?: number | null,
-): PixelRect {
+): StripeBand | null {
   const { width, height, data } = img;
   const yStart = Math.floor(height * CHEST_SCAN_Y_START_FRAC);
   const yEnd = Math.floor(height * CHEST_SCAN_Y_END_FRAC);
@@ -198,40 +236,41 @@ export function detectChestBand(
     rowScores.push(samples > 0 ? navy / samples : 0);
   }
 
-  // Isolate the stripe at the strong threshold first (drops the narrow
-  // placket/collar bridge so a merged blob splits into separate runs); pick the
-  // lowest. Fall back to the weak threshold only when no strong band is present.
-  let picked = pickChestStripeRun(
-    findNavyRuns(rowScores, STRIPE_ROW_THRESHOLD),
-    height,
-  );
-  if (!picked || picked.end - picked.start < 2) {
-    picked = pickChestStripeRun(findNavyRuns(rowScores, NAVY_ROW_THRESHOLD), height);
+  // Strong threshold first (splits a collar+stripe blob bridged by the placket);
+  // fall back to the weak threshold when no strong band is present (faint navy).
+  let runs = findNavyRuns(rowScores, STRIPE_ROW_THRESHOLD).filter((r) => r.end > r.start);
+  if (runs.length === 0) {
+    runs = findNavyRuns(rowScores, NAVY_ROW_THRESHOLD).filter((r) => r.end > r.start);
   }
+  if (runs.length === 0) return null;
 
-  if (!picked || picked.end - picked.start < 2) {
-    return {
-      left: Math.floor(width * 0.2),
-      top: Math.floor(height * 0.22),
-      right: Math.floor(width * 0.8),
-      bottom: Math.floor(height * 0.42),
-    };
-  }
+  const candidates = runs.map((r) => evaluateRun(img, rowScores, r, yStart));
+  // Torso-crossing stripes only; if none qualify, keep all but damp confidence.
+  const minWidth = width * STRIPE_MIN_WIDTH_FRAC;
+  const wide = candidates.filter((c) => c.widthPx >= minWidth);
+  const pool = wide.length > 0 ? wide : candidates;
+  // Lowest band in the pool (chest stripe is below the collar/shoulder).
+  const chosen = pool.reduce((best, c) => (c.top + c.bottom > best.top + best.bottom ? c : best));
+  const confidence = wide.length > 0 ? chosen.confidence : chosen.confidence * 0.5;
 
-  let top = yStart + picked.start;
-  let bottom = yStart + picked.end + 1;
-  ({ top, bottom } = clampBandHeight(top, bottom, height));
+  const left = chosen.right > chosen.left ? chosen.left : Math.floor(width * 0.2);
+  const right = chosen.right > chosen.left ? chosen.right + 1 : Math.floor(width * 0.8);
+  return { left, top: chosen.top, right, bottom: chosen.bottom, confidence };
+}
 
-  const { left, right } = horizontalExtents(img, top, bottom);
-  if (right <= left) {
-    return {
-      left: Math.floor(width * 0.2),
-      top,
-      right: Math.floor(width * 0.8),
-      bottom,
-    };
-  }
-  return { left, top, right: right + 1, bottom };
+/** Map a normalized [x,y,w,h] bbox (SKU placement) to a pixel band — the
+ *  fallback target region when no confident stripe is detected. */
+export function bandFromNormBbox(
+  img: RgbaImage,
+  norm: [number, number, number, number],
+): PixelRect {
+  const [nx, ny, nw, nh] = norm;
+  return {
+    left: Math.round(nx * img.width),
+    top: Math.round(ny * img.height),
+    right: Math.round((nx + nw) * img.width),
+    bottom: Math.round((ny + nh) * img.height),
+  };
 }
 
 function targetRectForLogo(
@@ -525,28 +564,37 @@ export type LogoQuality = {
   scale_ratio: number;
   native_height_px: number;
   target_height_px: number;
+  stripe_confidence: number | null;
+  placement_fallback: boolean;
   quality_warning: boolean;
 };
 
 /**
  * Quality flag for the composite. The high-res transparent asset downscales
  * cleanly; a front_crop upscaled past its native cap-height (or below the
- * readable floor) cannot be made crisp and must be flagged for a real asset.
+ * readable floor) cannot be made crisp. We also warn when the stripe could not
+ * be confidently located (so the placement fell back to the SKU bbox).
  */
 function logoQuality(
   nativeHeightPx: number,
   targetHeightPx: number,
   source: "asset" | "front_crop",
+  stripeConfidence: number | null = null,
+  placementFallback = false,
 ): LogoQuality {
   const ratio = targetHeightPx / Math.max(1, nativeHeightPx);
   const upscaled = ratio > 1.05;
   const lowRes = nativeHeightPx < MIN_READABLE_CAP_PX;
+  const lowConfidence = stripeConfidence != null && stripeConfidence < MIN_STRIPE_CONFIDENCE;
   return {
     upscaled,
     scale_ratio: Math.round(ratio * 100) / 100,
     native_height_px: nativeHeightPx,
     target_height_px: targetHeightPx,
-    quality_warning: source === "front_crop" && (upscaled || lowRes),
+    stripe_confidence: stripeConfidence,
+    placement_fallback: placementFallback,
+    quality_warning:
+      (source === "front_crop" && (upscaled || lowRes)) || placementFallback || lowConfidence,
   };
 }
 
@@ -611,20 +659,35 @@ export async function compositeLogoOntoVton(
   // anchor also localizes band detection so a lower/diagonal stripe is found.
   const [sx, , sw] = placement.source_bbox_norm;
   const anchorXNorm = sx + sw / 2;
-  const band = detectChestBand(base, anchorXNorm);
+
+  // Detect the actual navy stripe; if we can't find one confidently, fall back to
+  // the SKU placement (manual target_bbox or the source bbox) rather than pasting
+  // the logo onto tan. Either way the per-row cover only paints where navy exists.
+  const detected = detectChestBand(base, anchorXNorm);
+  const confident = !!detected && detected.confidence >= MIN_STRIPE_CONFIDENCE;
+  const fallbackNorm = placement.target_bbox_norm ?? placement.source_bbox_norm;
+  const band = confident ? detected! : bandFromNormBbox(base, fallbackNorm);
+  const manualNorm = confident ? placement.target_bbox_norm : fallbackNorm;
+
   const target = targetRectForLogo(
     base,
     band,
     logoAspect,
     placement.placement_hint ?? "upper_left_chest",
-    placement.target_bbox_norm,
+    manualNorm,
     placement.min_target_height_px,
     anchorXNorm,
   );
   const covered = coverTargetOnBand(base, band, target, anchorXNorm);
   const composited = alphaComposite(covered, logoImg, target);
   const bytes = await encodePng(composited);
-  const quality = logoQuality(logoImg.height, target.bottom - target.top, logoSource);
+  const quality = logoQuality(
+    logoImg.height,
+    target.bottom - target.top,
+    logoSource,
+    detected?.confidence ?? 0,
+    !confident,
+  );
   return {
     bytes,
     method: "bbox_affine_alpha_blend",

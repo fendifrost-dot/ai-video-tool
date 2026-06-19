@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   alphaComposite,
+  bandFromNormBbox,
   coverTargetOnBand,
   detectChestBand,
   keyNavyBackground,
@@ -120,6 +121,41 @@ describe("detectChestBand", () => {
     const band = detectChestBand(img, 0.65)!; // anchor right-of-center
     expect(band.top).toBeGreaterThanOrEqual(400); // on the stripe, not collar ~250
     expect(band.bottom).toBeLessThanOrEqual(520);
+    expect(band.confidence).toBeGreaterThanOrEqual(0.5); // confident → no fallback
+  });
+
+  it("detects a high horizontal stripe front-on (upper chest)", () => {
+    const img = solid(768, 1024, 200, 180, 160);
+    paintNavyBand(img, 320, 360, 140, 628); // wide horizontal stripe, upper chest
+    const band = detectChestBand(img, 0.5)!;
+    expect(band.top).toBeGreaterThanOrEqual(300);
+    expect(band.bottom).toBeLessThanOrEqual(380);
+    expect(band.confidence).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it("reports LOW confidence for a small collar patch with no chest stripe", () => {
+    // Only a small navy collar patch near the neckline — not a torso-crossing
+    // stripe. Detection must NOT confidently place here; the caller falls back.
+    const img = solid(768, 1024, 200, 180, 160);
+    paintNavyBand(img, 200, 235, 320, 450); // small collar patch (~17% width)
+    const band = detectChestBand(img, 0.5);
+    expect(band).not.toBeNull();
+    expect(band!.confidence).toBeLessThan(0.5); // below the fallback threshold
+  });
+
+  it("tolerates partial-arm occlusion across the stripe and stays confident", () => {
+    const img = solid(768, 1024, 200, 180, 160);
+    paintNavyBand(img, 430, 470, 140, 628); // wide chest stripe
+    paintRect(img, 430, 470, 380, 470, 200, 180, 160); // arm occludes a chunk
+    const band = detectChestBand(img, 0.65)!;
+    expect(band.top).toBeGreaterThanOrEqual(410);
+    expect(band.bottom).toBeLessThanOrEqual(490);
+    expect(band.confidence).toBeGreaterThanOrEqual(0.5); // occlusion tolerated
+  });
+
+  it("returns null when there is no navy anywhere in the scan region", () => {
+    const img = solid(768, 1024, 200, 180, 160);
+    expect(detectChestBand(img, 0.5)).toBeNull();
   });
 
   it("places the target on the stripe at the anchor, not on tan above", () => {
@@ -293,6 +329,33 @@ describe("logoQuality", () => {
     const q = logoQuality(60, 80, "asset");
     expect(q.upscaled).toBe(true);
     expect(q.quality_warning).toBe(false);
+  });
+
+  it("warns and records the fallback when the stripe was not confidently found", () => {
+    const q = logoQuality(200, 60, "asset", 0.2, true);
+    expect(q.placement_fallback).toBe(true);
+    expect(q.stripe_confidence).toBe(0.2);
+    expect(q.quality_warning).toBe(true);
+  });
+
+  it("warns on low stripe confidence even without an explicit fallback flag", () => {
+    const q = logoQuality(200, 60, "asset", 0.3, false);
+    expect(q.quality_warning).toBe(true);
+  });
+
+  it("is clean for a confident, well-sized asset placement", () => {
+    const q = logoQuality(200, 60, "asset", 0.85, false);
+    expect(q.stripe_confidence).toBe(0.85);
+    expect(q.placement_fallback).toBe(false);
+    expect(q.quality_warning).toBe(false);
+  });
+});
+
+describe("bandFromNormBbox", () => {
+  it("maps a normalized SKU bbox to a pixel band (fallback target)", () => {
+    const img = { width: 1000, height: 500, data: new Uint8Array() };
+    const band = bandFromNormBbox(img, [0.5, 0.4, 0.2, 0.1]);
+    expect(band).toEqual({ left: 500, top: 200, right: 700, bottom: 250 });
   });
 });
 
