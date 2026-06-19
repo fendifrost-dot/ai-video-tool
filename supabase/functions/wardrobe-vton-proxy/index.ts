@@ -160,6 +160,7 @@ async function completeLookFromFalUrl(
         resolved.logoBytes,
         resolved.placement,
         resolved.logoSource,
+        resolved.productTruthRaw,
       );
       finalBuf = composite.bytes;
       pipeline = "idm_vton_frame+logo_composite";

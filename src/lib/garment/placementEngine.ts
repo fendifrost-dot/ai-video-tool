@@ -60,7 +60,7 @@ export type PlacementTarget =
   | { kind: "path"; points: Point[] }
   | { kind: "point"; point: Point };
 
-export type PlacementSource = "manual" | "metadata" | "detection" | "fallback" | "none";
+export type PlacementSource = "manual_keyframe" | "metadata" | "detection" | "fallback" | "none";
 
 export type FallbackReason =
   | ""
@@ -88,12 +88,20 @@ export type HsvRange = {
 };
 export type ColorProfile = { name?: string; hsv: HsvRange };
 
+/** Four normalized corner points (TL, TR, BR, BL) in [0,1] VTON space. */
+export type QuadNorm = [[number, number], [number, number], [number, number], [number, number]];
+
+/** Manual keyframe entries keyed by keyframe id ("default" for a single still). */
+export type ManualKeyframeMap = Record<string, { target_quad_norm: QuadNorm }>;
+
 export type DetailPlacementSpec = {
   detail_type: DetailType;
   /** SKU placement bbox on the flat ref (normalized x,y,w,h). */
   source_bbox_norm?: [number, number, number, number] | null;
   /** Optional manual target quad in VTON space (normalized points). */
-  target_quad_norm?: [[number, number], [number, number], [number, number], [number, number]] | null;
+  target_quad_norm?: QuadNorm | null;
+  /** Manual keyframe placements (priority 1), keyed by keyframe id / "default". */
+  manual_keyframe?: ManualKeyframeMap | null;
   placement_hint?: string | null;
   /** Colour profile for HSV detection (navy band, gold zipper, …). */
   color_profile?: ColorProfile | null;
@@ -144,6 +152,54 @@ export function manualKeyframeFor(
       (k) => k.keyframe_id === keyframeId && k.detail_type === detailType,
     ) ?? null
   );
+}
+
+function isQuadNorm(v: unknown): v is QuadNorm {
+  return (
+    Array.isArray(v) &&
+    v.length === 4 &&
+    v.every(
+      (p) =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        p.every((n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 1),
+    )
+  );
+}
+
+/**
+ * Lenient parser for the product_truth_json blob stored on product/wardrobe
+ * metadata. Tolerant of partial/legacy shapes — only the fields the engine reads
+ * are extracted (per-detail specs incl. manual_keyframe quads). Returns null for
+ * an unusable blob.
+ */
+export function parseProductTruth(raw: unknown): ProductTruth | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const out: ProductTruth = { version: typeof o.version === "number" ? o.version : 1, details: {} };
+  const detailsRaw = o.details;
+  if (detailsRaw && typeof detailsRaw === "object") {
+    for (const [key, value] of Object.entries(detailsRaw as Record<string, unknown>)) {
+      if (!DETAIL_TYPES.includes(key as DetailType) || !value || typeof value !== "object") continue;
+      const dv = value as Record<string, unknown>;
+      const spec: DetailPlacementSpec = { detail_type: key as DetailType };
+      if (Array.isArray(dv.source_bbox_norm) && dv.source_bbox_norm.length === 4) {
+        spec.source_bbox_norm = dv.source_bbox_norm.map(Number) as [number, number, number, number];
+      }
+      if (isQuadNorm(dv.target_quad_norm)) spec.target_quad_norm = dv.target_quad_norm;
+      if (dv.manual_keyframe && typeof dv.manual_keyframe === "object") {
+        const mkf: ManualKeyframeMap = {};
+        for (const [kfId, entry] of Object.entries(dv.manual_keyframe as Record<string, unknown>)) {
+          const e = entry as Record<string, unknown> | null;
+          if (e && isQuadNorm(e.target_quad_norm)) mkf[kfId] = { target_quad_norm: e.target_quad_norm };
+        }
+        if (Object.keys(mkf).length > 0) spec.manual_keyframe = mkf;
+      }
+      if (typeof dv.min_confidence === "number") spec.min_confidence = dv.min_confidence;
+      out.details![key as DetailType] = spec;
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -467,6 +523,20 @@ function resolveColorProfile(
   return null;
 }
 
+/** Resolve a manual quad from the per-detail manual_keyframe map (by id then
+ *  "default") as a quad PlacementTarget, or null. */
+function manualQuadFromSpec(
+  frame: RgbaImage,
+  spec: DetailPlacementSpec | null,
+  keyframeId?: string | null,
+): PlacementTarget | null {
+  const mkf = spec?.manual_keyframe;
+  if (!mkf) return null;
+  const entry = (keyframeId && mkf[keyframeId]) || mkf["default"] || null;
+  if (!entry?.target_quad_norm) return null;
+  return { kind: "quad", points: quadFromNorm(frame, entry.target_quad_norm) };
+}
+
 function metadataTarget(
   frame: RgbaImage,
   spec: DetailPlacementSpec | null,
@@ -514,13 +584,15 @@ export function placeDetail(input: PlaceDetailInput): PlaceDetailResult {
   const minConfidence = input.minConfidence ?? DEFAULT_MIN_CONFIDENCE;
   const spec = specFor(input.productTruth, detailType);
 
-  // 1) Manual keyframe (explicit, or stored in product_truth_json by id).
+  // 1) Manual keyframe (priority 1): explicit override, then the per-detail
+  // manual_keyframe map (by id or "default"), then the manual_keyframes array.
   const manual =
     input.manualPlacement ??
+    manualQuadFromSpec(frame, spec, input.manualKeyframeId) ??
     manualKeyframeFor(input.productTruth, detailType, input.manualKeyframeId)?.target ??
     null;
   if (manual) {
-    return finish(detailType, frame, manual, 1, "manual", "manual_keyframe", false, "manual keyframe placement");
+    return finish(detailType, frame, manual, 1, "manual_keyframe", "", false, "manual keyframe placement");
   }
 
   // Run detection (precomputed override wins, e.g. SAM-3).

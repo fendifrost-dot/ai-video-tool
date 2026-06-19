@@ -19,16 +19,19 @@ import {
   bandFromNormBbox,
   coverTargetOnBand,
   decodeToRgba,
+  coverTargetQuad,
   detectChestBand,
   encodePng,
   isNavyPixel,
   keyNavyBackground,
   logoQuality,
   targetRectForLogo,
+  warpQuadAlpha,
   type LogoPlacement,
   type LogoQuality,
   type PixelMatch,
   type PixelRect,
+  type QuadPts,
   type RgbaImage,
 } from "./logoComposite.ts";
 
@@ -66,7 +69,7 @@ export type PlacementTarget =
   | { kind: "path"; points: Point[] }
   | { kind: "point"; point: Point };
 
-export type PlacementSource = "manual" | "metadata" | "detection" | "fallback" | "none";
+export type PlacementSource = "manual_keyframe" | "metadata" | "detection" | "fallback" | "none";
 
 export type FallbackReason =
   | ""
@@ -93,10 +96,15 @@ export type HsvRange = {
 };
 export type ColorProfile = { name?: string; hsv: HsvRange };
 
+export type QuadNorm = [[number, number], [number, number], [number, number], [number, number]];
+export type ManualKeyframeMap = Record<string, { target_quad_norm: QuadNorm }>;
+
 export type DetailPlacementSpec = {
   detail_type: DetailType;
   source_bbox_norm?: [number, number, number, number] | null;
-  target_quad_norm?: [[number, number], [number, number], [number, number], [number, number]] | null;
+  target_quad_norm?: QuadNorm | null;
+  /** Manual keyframe placements (priority 1), keyed by keyframe id / "default". */
+  manual_keyframe?: ManualKeyframeMap | null;
   placement_hint?: string | null;
   color_profile?: ColorProfile | null;
   min_confidence?: number | null;
@@ -142,6 +150,53 @@ export function manualKeyframeFor(
       (k) => k.keyframe_id === keyframeId && k.detail_type === detailType,
     ) ?? null
   );
+}
+
+function isQuadNorm(v: unknown): v is QuadNorm {
+  return (
+    Array.isArray(v) &&
+    v.length === 4 &&
+    v.every(
+      (p) =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        p.every((n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 1),
+    )
+  );
+}
+
+/**
+ * Lenient parser for the product_truth_json blob stored on product/wardrobe
+ * metadata. Extracts only the fields the engine reads (per-detail specs incl.
+ * manual_keyframe quads). Returns null for an unusable blob.
+ */
+export function parseProductTruth(raw: unknown): ProductTruth | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const out: ProductTruth = { version: typeof o.version === "number" ? o.version : 1, details: {} };
+  const detailsRaw = o.details;
+  if (detailsRaw && typeof detailsRaw === "object") {
+    for (const [key, value] of Object.entries(detailsRaw as Record<string, unknown>)) {
+      if (!DETAIL_TYPES.includes(key as DetailType) || !value || typeof value !== "object") continue;
+      const dv = value as Record<string, unknown>;
+      const spec: DetailPlacementSpec = { detail_type: key as DetailType };
+      if (Array.isArray(dv.source_bbox_norm) && dv.source_bbox_norm.length === 4) {
+        spec.source_bbox_norm = dv.source_bbox_norm.map(Number) as [number, number, number, number];
+      }
+      if (isQuadNorm(dv.target_quad_norm)) spec.target_quad_norm = dv.target_quad_norm;
+      if (dv.manual_keyframe && typeof dv.manual_keyframe === "object") {
+        const mkf: ManualKeyframeMap = {};
+        for (const [kfId, entry] of Object.entries(dv.manual_keyframe as Record<string, unknown>)) {
+          const e = entry as Record<string, unknown> | null;
+          if (e && isQuadNorm(e.target_quad_norm)) mkf[kfId] = { target_quad_norm: e.target_quad_norm };
+        }
+        if (Object.keys(mkf).length > 0) spec.manual_keyframe = mkf;
+      }
+      if (typeof dv.min_confidence === "number") spec.min_confidence = dv.min_confidence;
+      out.details![key as DetailType] = spec;
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -460,6 +515,18 @@ function resolveColorProfile(
   return null;
 }
 
+function manualQuadFromSpec(
+  frame: RgbaImage,
+  spec: DetailPlacementSpec | null,
+  keyframeId?: string | null,
+): PlacementTarget | null {
+  const mkf = spec?.manual_keyframe;
+  if (!mkf) return null;
+  const entry = (keyframeId && mkf[keyframeId]) || mkf["default"] || null;
+  if (!entry?.target_quad_norm) return null;
+  return { kind: "quad", points: quadFromNorm(frame, entry.target_quad_norm) };
+}
+
 function metadataTarget(frame: RgbaImage, spec: DetailPlacementSpec | null): PlacementTarget | null {
   if (!spec) return null;
   if (spec.target_quad_norm) {
@@ -500,10 +567,11 @@ export function placeDetail(input: PlaceDetailInput): PlaceDetailResult {
 
   const manual =
     input.manualPlacement ??
+    manualQuadFromSpec(frame, spec, input.manualKeyframeId) ??
     manualKeyframeFor(input.productTruth, detailType, input.manualKeyframeId)?.target ??
     null;
   if (manual) {
-    return finish(detailType, frame, manual, 1, "manual", "manual_keyframe", false, "manual keyframe placement");
+    return finish(detailType, frame, manual, 1, "manual_keyframe", "", false, "manual keyframe placement");
   }
 
   const ctx: DetectContext = {
@@ -553,9 +621,12 @@ export function placeDetail(input: PlaceDetailInput): PlaceDetailResult {
 
 export type LogoCompositeResult = {
   bytes: Uint8Array;
-  method: "bbox_affine_alpha_blend";
+  method: "bbox_affine_alpha_blend" | "perspective_quad_warp";
+  warp_mode: "affine" | "perspective";
   band: PixelRect;
   target: PixelRect;
+  /** Resolved 4-corner target quad (pixel coords, TL,TR,BR,BL). */
+  target_quad: [number, number][];
   logo_source: "asset" | "front_crop";
   quality: LogoQuality;
   placement_source: PlacementSource;
@@ -564,19 +635,24 @@ export type LogoCompositeResult = {
   debug_overlay_bytes: Uint8Array | null;
 };
 
+function quadToPairs(q: Quad): [number, number][] {
+  return q.map((p) => [p.x, p.y]) as [number, number][];
+}
+
 /**
  * Composite the brand wordmark onto a VTON frame by asking the placement engine
- * for the logo_zone (manual target_bbox → SKU source_bbox metadata → navy stripe
- * detection → fallback), then rendering the keyed/asset logo there. Live behavior
- * matches the prior direct path: confident detection sub-places the logo inside
- * the detected stripe band (with the per-row cover erasing the VTON mark); a
- * manual/fallback bbox is used as the logo box directly.
+ * for the logo_zone (manual keyframe quad → manual target_bbox → SKU source_bbox
+ * → navy stripe detection → fallback), then rendering the keyed/asset logo there.
+ * A manual quad uses a perspective (inverse-mapped bilinear) warp so the wordmark
+ * follows a diagonal/curved stripe; everything else uses the axis-aligned affine
+ * path (bit-exact with the prior behaviour for the live detection case).
  */
 export async function compositeLogoOntoVton(
   vtonBytes: Uint8Array,
   logoBytes: Uint8Array,
   placement: LogoPlacement,
   logoSource: "asset" | "front_crop",
+  productTruthRaw?: unknown,
 ): Promise<LogoCompositeResult> {
   const base = await decodeToRgba(vtonBytes);
   let logoImg = await decodeToRgba(logoBytes);
@@ -587,17 +663,27 @@ export async function compositeLogoOntoVton(
   const [sx, , sw] = placement.source_bbox_norm;
   const anchorXNorm = sx + sw / 2;
 
+  // Merge the SKU logo placement with any product_truth_json (manual keyframe
+  // quad lives in details.logo_zone.manual_keyframe). The logo_zone spec always
+  // carries source_bbox + navy profile so detection/fallback still work.
+  const pt = parseProductTruth(productTruthRaw);
+  const ptLogo = pt?.details?.logo_zone ?? null;
   const truth: ProductTruth = {
     version: 1,
+    ...(pt ?? {}),
     details: {
+      ...(pt?.details ?? {}),
       logo_zone: {
         detail_type: "logo_zone",
-        source_bbox_norm: placement.source_bbox_norm,
+        source_bbox_norm: ptLogo?.source_bbox_norm ?? placement.source_bbox_norm,
+        target_quad_norm: ptLogo?.target_quad_norm ?? null,
+        manual_keyframe: ptLogo?.manual_keyframe ?? null,
         color_profile: NAVY_PROFILE,
-        min_confidence: MIN_STRIPE_CONFIDENCE,
+        min_confidence: ptLogo?.min_confidence ?? MIN_STRIPE_CONFIDENCE,
       },
     },
   };
+  // Legacy axis target_bbox is treated as an explicit manual quad.
   const manualPlacement: PlacementTarget | null = placement.target_bbox_norm
     ? { kind: "quad", points: quadFromNorm(base, quadNormFromBbox(placement.target_bbox_norm)) }
     : null;
@@ -610,32 +696,49 @@ export async function compositeLogoOntoVton(
     manualPlacement,
   });
 
-  // detection → sub-place the logo inside the detected stripe band;
-  // manual/metadata → the provided bbox IS the logo box.
   let bandRect: PixelRect;
   let target: PixelRect;
-  if (eng.source === "detection" && eng.target) {
+  let targetQuad: Quad;
+  let composited: RgbaImage;
+  let warpMode: "affine" | "perspective";
+
+  if (eng.source === "manual_keyframe" && eng.target && eng.target.kind === "quad") {
+    // Perspective warp onto the manual quad (follows a diagonal/curved stripe).
+    warpMode = "perspective";
+    targetQuad = eng.target.points;
+    const quadPts = targetQuad as unknown as QuadPts;
     bandRect = rectFromTarget(eng.target);
-    target = targetRectForLogo(
-      base,
-      bandRect,
-      logoAspect,
-      placement.placement_hint ?? "upper_left_chest",
-      null,
-      placement.min_target_height_px,
-      anchorXNorm,
-    );
+    target = bandRect;
+    const covered = coverTargetQuad(base, quadPts);
+    composited = warpQuadAlpha(covered, logoImg, quadPts, 3);
   } else {
-    const fallbackNorm = placement.target_bbox_norm ?? placement.source_bbox_norm;
-    target = eng.target ? rectFromTarget(eng.target) : bandFromNormBbox(base, fallbackNorm);
-    bandRect = target;
+    warpMode = "affine";
+    if (eng.source === "detection" && eng.target) {
+      // Sub-place the logo inside the detected stripe band.
+      bandRect = rectFromTarget(eng.target);
+      target = targetRectForLogo(
+        base,
+        bandRect,
+        logoAspect,
+        placement.placement_hint ?? "upper_left_chest",
+        null,
+        placement.min_target_height_px,
+        anchorXNorm,
+      );
+    } else {
+      // Metadata/fallback bbox is the logo box directly.
+      const fallbackNorm = placement.target_bbox_norm ?? placement.source_bbox_norm;
+      target = eng.target ? rectFromTarget(eng.target) : bandFromNormBbox(base, fallbackNorm);
+      bandRect = target;
+    }
+    targetQuad = quadFromRect(target);
+    const covered = coverTargetOnBand(base, bandRect, target, anchorXNorm);
+    composited = alphaComposite(covered, logoImg, target);
   }
 
-  const covered = coverTargetOnBand(base, bandRect, target, anchorXNorm);
-  const composited = alphaComposite(covered, logoImg, target);
   const bytes = await encodePng(composited);
 
-  const placementFallback = eng.source !== "detection" && eng.source !== "manual";
+  const placementFallback = eng.source !== "detection" && eng.source !== "manual_keyframe";
   const quality = logoQuality(
     logoImg.height,
     target.bottom - target.top,
@@ -653,9 +756,11 @@ export async function compositeLogoOntoVton(
 
   return {
     bytes,
-    method: "bbox_affine_alpha_blend",
+    method: warpMode === "perspective" ? "perspective_quad_warp" : "bbox_affine_alpha_blend",
+    warp_mode: warpMode,
     band: bandRect,
     target,
+    target_quad: quadToPairs(targetQuad),
     logo_source: logoSource,
     quality,
     placement_source: eng.source,

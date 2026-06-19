@@ -3,12 +3,17 @@ import {
   alphaComposite,
   bandFromNormBbox,
   coverTargetOnBand,
+  coverTargetQuad,
   detectChestBand,
+  invBilinear,
   keyNavyBackground,
   logoCompositeMetaCore,
   logoQuality,
   resizeRgba,
   targetRectForLogo,
+  warpQuadAlpha,
+  type Point,
+  type QuadPts,
   type RgbaImage,
 } from "./logoComposite";
 
@@ -373,5 +378,100 @@ describe("logoCompositeMetaCore", () => {
     expect(meta.quality_warning).toBe(true); // surfaced at top level for easy reads
     expect(meta.logo_source).toBe("front_crop");
     expect(meta.band).toEqual({ left: 1, top: 2, right: 3, bottom: 4 });
+  });
+});
+
+describe("invBilinear", () => {
+  const tl: Point = { x: 10, y: 10 };
+  const tr: Point = { x: 30, y: 12 };
+  const br: Point = { x: 28, y: 26 };
+  const bl: Point = { x: 8, y: 24 };
+
+  it("maps the four corners to UV (0,0)/(1,0)/(1,1)/(0,1)", () => {
+    const c = (p: Point) => invBilinear(p.x, p.y, tl, tr, br, bl)!;
+    expect(c(tl).u).toBeCloseTo(0, 3);
+    expect(c(tl).v).toBeCloseTo(0, 3);
+    expect(c(tr).u).toBeCloseTo(1, 3);
+    expect(c(tr).v).toBeCloseTo(0, 3);
+    expect(c(br).u).toBeCloseTo(1, 3);
+    expect(c(br).v).toBeCloseTo(1, 3);
+    expect(c(bl).u).toBeCloseTo(0, 3);
+    expect(c(bl).v).toBeCloseTo(1, 3);
+  });
+
+  it("returns null for a point well outside the quad", () => {
+    expect(invBilinear(100, 100, tl, tr, br, bl)).toBeNull();
+  });
+});
+
+describe("warpQuadAlpha", () => {
+  function logoLR(w: number, h: number): RgbaImage {
+    // left half red, right half blue, fully opaque
+    const data = new Uint8Array(w * h * 4);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        if (x < w / 2) { data[i] = 255; } else { data[i + 2] = 255; }
+        data[i + 3] = 255;
+      }
+    }
+    return { width: w, height: h, data };
+  }
+
+  it("warps the logo onto an axis-aligned quad (corners + UV orientation)", () => {
+    const base: RgbaImage = { width: 60, height: 60, data: new Uint8Array(60 * 60 * 4) };
+    const logo = logoLR(8, 8);
+    const quad: QuadPts = [
+      { x: 10, y: 10 }, { x: 50, y: 10 }, { x: 50, y: 30 }, { x: 10, y: 30 },
+    ];
+    const out = warpQuadAlpha(base, logo, quad, 0);
+    const at = (x: number, y: number) => {
+      const i = (y * 60 + x) * 4;
+      return [out.data[i], out.data[i + 1], out.data[i + 2]];
+    };
+    // left of quad → red (u<0.5), right of quad → blue (u>0.5)
+    expect(at(15, 20)[0]).toBeGreaterThan(180);
+    expect(at(45, 20)[2]).toBeGreaterThan(180);
+    // outside the quad is untouched (black)
+    expect(at(55, 55)).toEqual([0, 0, 0]);
+  });
+
+  it("warps onto a diagonal/sheared quad (follows the slant)", () => {
+    const base: RgbaImage = { width: 80, height: 80, data: new Uint8Array(80 * 80 * 4) };
+    const logo = logoLR(8, 8);
+    const quad: QuadPts = [
+      { x: 10, y: 20 }, { x: 60, y: 30 }, { x: 58, y: 50 }, { x: 8, y: 40 },
+    ];
+    const out = warpQuadAlpha(base, logo, quad, 0);
+    // a point on the lower-right of the slanted band is covered (non-black)
+    const i = (40 * 80 + 40) * 4;
+    expect(out.data[i] + out.data[i + 1] + out.data[i + 2]).toBeGreaterThan(0);
+  });
+});
+
+describe("coverTargetQuad", () => {
+  it("fills the quad rows with local navy and leaves tan outside untouched", () => {
+    const base = (() => {
+      const w = 100, h = 100;
+      const data = new Uint8Array(w * h * 4);
+      for (let i = 0; i < w * h; i++) { data[i * 4] = 200; data[i * 4 + 1] = 180; data[i * 4 + 2] = 160; data[i * 4 + 3] = 255; }
+      return { width: w, height: h, data };
+    })();
+    // navy stripe + a light VTON letter on it
+    for (let y = 40; y < 60; y++) for (let x = 20; x < 80; x++) {
+      const i = (y * 100 + x) * 4; base.data[i] = 25; base.data[i + 1] = 30; base.data[i + 2] = 95;
+    }
+    for (let y = 46; y < 54; y++) for (let x = 48; x < 60; x++) {
+      const i = (y * 100 + x) * 4; base.data[i] = 240; base.data[i + 1] = 235; base.data[i + 2] = 220;
+    }
+    const quad: QuadPts = [
+      { x: 20, y: 40 }, { x: 80, y: 40 }, { x: 80, y: 60 }, { x: 20, y: 60 },
+    ];
+    const out = coverTargetQuad(base, quad);
+    const letter = (50 * 100 + 54) * 4; // was light, now navy
+    expect(out.data[letter + 2]).toBeGreaterThan(80);
+    expect(out.data[letter]).toBeLessThan(60);
+    const outside = (10 * 100 + 10) * 4; // tan, outside quad
+    expect(out.data[outside]).toBeGreaterThan(150);
   });
 });

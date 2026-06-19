@@ -10,10 +10,12 @@ import {
   quadFromRect,
   rectFromTarget,
   rgbToHsv,
+  parseProductTruth,
   upsertManualKeyframe,
   type ColorProfile,
   type PlacementTarget,
   type ProductTruth,
+  type QuadNorm,
 } from "./placementEngine";
 
 function solid(w: number, h: number, r: number, g: number, b: number): RgbaImage {
@@ -58,6 +60,34 @@ describe("geometry helpers", () => {
   it("round-trips an axis rect through quad and back", () => {
     const rect = { left: 10, top: 20, right: 50, bottom: 40 };
     expect(rectFromTarget({ kind: "quad", points: quadFromRect(rect) })).toEqual(rect);
+  });
+});
+
+describe("parseProductTruth", () => {
+  it("extracts a logo_zone manual_keyframe quad from a raw blob", () => {
+    const raw = {
+      version: 1,
+      details: {
+        logo_zone: {
+          detail_type: "logo_zone",
+          source_bbox_norm: [0.3, 0.3, 0.4, 0.06],
+          manual_keyframe: { default: { target_quad_norm: [[0.2, 0.4], [0.7, 0.42], [0.72, 0.5], [0.22, 0.48]] } },
+        },
+        bogus_detail: { detail_type: "nope" },
+      },
+    };
+    const truth = parseProductTruth(raw)!;
+    expect(truth.details?.logo_zone?.manual_keyframe?.default.target_quad_norm[1]).toEqual([0.7, 0.42]);
+    expect((truth.details as Record<string, unknown>).bogus_detail).toBeUndefined();
+  });
+
+  it("rejects an out-of-range quad and returns null for junk", () => {
+    const raw = {
+      details: { logo_zone: { detail_type: "logo_zone", manual_keyframe: { default: { target_quad_norm: [[2, 0], [0, 0], [0, 0], [0, 0]] } } } },
+    };
+    expect(parseProductTruth(raw)!.details?.logo_zone?.manual_keyframe).toBeUndefined();
+    expect(parseProductTruth(null)).toBeNull();
+    expect(parseProductTruth(42)).toBeNull();
   });
 });
 
@@ -160,9 +190,31 @@ describe("placeDetail — priority ordering (manual > metadata > detection > fal
   it("manual placement wins over everything", () => {
     const manual: PlacementTarget = { kind: "quad", points: quadFromRect({ left: 1, top: 2, right: 3, bottom: 4 }) };
     const res = placeDetail({ frame: navyFrame(), detailType: "logo_zone", productTruth: logoTruth, manualPlacement: manual, anchorXNorm: 0.5 });
-    expect(res.source).toBe("manual");
+    expect(res.source).toBe("manual_keyframe");
     expect(res.confidence).toBe(1);
+    expect(res.fallbackReason).toBe("");
     expect(res.target).toEqual(manual);
+  });
+
+  it("resolves a manual quad from product_truth details.logo_zone.manual_keyframe (priority 1)", () => {
+    const quad: QuadNorm = [[0.2, 0.4], [0.7, 0.42], [0.72, 0.5], [0.22, 0.48]];
+    const truth: ProductTruth = {
+      version: 1,
+      details: {
+        logo_zone: {
+          detail_type: "logo_zone",
+          source_bbox_norm: [0.3, 0.3, 0.4, 0.06], // would otherwise be metadata
+          manual_keyframe: { default: { target_quad_norm: quad } },
+        },
+      },
+    };
+    const res = placeDetail({ frame: navyFrame(), detailType: "logo_zone", productTruth: truth, anchorXNorm: 0.5 });
+    expect(res.source).toBe("manual_keyframe");
+    expect(res.confidence).toBe(1);
+    expect(res.target?.kind).toBe("quad");
+    if (res.target?.kind === "quad") {
+      expect(res.target.points[0]).toEqual({ x: Math.round(0.2 * 768), y: Math.round(0.4 * 1024) });
+    }
   });
 
   it("confident detection refines metadata", () => {

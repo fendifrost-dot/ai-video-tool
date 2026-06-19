@@ -551,6 +551,177 @@ export function alphaComposite(
   return { width: base.width, height: base.height, data: out };
 }
 
+// ---------------------------------------------------------------------------
+// Perspective (quad) warp — map a logo onto an arbitrary 4-corner target quad
+// (TL, TR, BR, BL). Inverse-map each destination pixel to logo UV and sample
+// bilinearly (ImageScript has no perspective transform).
+// ---------------------------------------------------------------------------
+
+export type Point = { x: number; y: number };
+export type QuadPts = [Point, Point, Point, Point];
+
+function sampleBilinearPt(src: RgbaImage, sx: number, sy: number): [number, number, number, number] {
+  const x0 = Math.max(0, Math.floor(sx));
+  const y0 = Math.max(0, Math.floor(sy));
+  const x1 = Math.min(src.width - 1, x0 + 1);
+  const y1 = Math.min(src.height - 1, y0 + 1);
+  const fx = sx - x0;
+  const fy = sy - y0;
+  const i00 = (y0 * src.width + x0) * 4;
+  const i10 = (y0 * src.width + x1) * 4;
+  const i01 = (y1 * src.width + x0) * 4;
+  const i11 = (y1 * src.width + x1) * 4;
+  const out: [number, number, number, number] = [0, 0, 0, 0];
+  for (let c = 0; c < 4; c++) {
+    const v = src.data[i00 + c] * (1 - fx) * (1 - fy) +
+      src.data[i10 + c] * fx * (1 - fy) +
+      src.data[i01 + c] * (1 - fx) * fy +
+      src.data[i11 + c] * fx * fy;
+    out[c] = Math.round(v);
+  }
+  return out;
+}
+
+/** Inverse bilinear: pixel (px,py) → (u,v) in quad TL,TR,BR,BL, or null when
+ *  outside. u runs TL→TR, v runs TL→BL (Quilez closed form). */
+export function invBilinear(
+  px: number,
+  py: number,
+  tl: Point,
+  tr: Point,
+  br: Point,
+  bl: Point,
+): { u: number; v: number } | null {
+  const ex = tr.x - tl.x;
+  const ey = tr.y - tl.y;
+  const fx = bl.x - tl.x;
+  const fy = bl.y - tl.y;
+  const gx = tl.x - tr.x + br.x - bl.x;
+  const gy = tl.y - tr.y + br.y - bl.y;
+  const hx = px - tl.x;
+  const hy = py - tl.y;
+  const k2 = gx * fy - gy * fx;
+  const k1 = ex * fy - ey * fx + (hx * gy - hy * gx);
+  const k0 = hx * ey - hy * ex;
+  const uFromV = (v: number): number => {
+    const du = ex + gx * v;
+    if (Math.abs(du) > 1e-9) return (hx - fx * v) / du;
+    const dv = ey + gy * v;
+    return Math.abs(dv) > 1e-9 ? (hy - fy * v) / dv : -1;
+  };
+  let u: number;
+  let v: number;
+  if (Math.abs(k2) < 1e-9) {
+    if (Math.abs(k1) < 1e-12) return null;
+    v = -k0 / k1;
+    u = uFromV(v);
+  } else {
+    let w = k1 * k1 - 4 * k0 * k2;
+    if (w < 0) return null;
+    w = Math.sqrt(w);
+    v = (-k1 - w) / (2 * k2);
+    u = uFromV(v);
+    if (u < -0.001 || u > 1.001 || v < -0.001 || v > 1.001) {
+      v = (-k1 + w) / (2 * k2);
+      u = uFromV(v);
+    }
+  }
+  if (u < -0.001 || u > 1.001 || v < -0.001 || v > 1.001) return null;
+  return { u: Math.max(0, Math.min(1, u)), v: Math.max(0, Math.min(1, v)) };
+}
+
+function dist(a: Point, b: Point): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
+
+function quadBbox(q: QuadPts): PixelRect {
+  let left = Infinity;
+  let top = Infinity;
+  let right = -Infinity;
+  let bottom = -Infinity;
+  for (const p of q) {
+    if (p.x < left) left = p.x;
+    if (p.x > right) right = p.x;
+    if (p.y < top) top = p.y;
+    if (p.y > bottom) bottom = p.y;
+  }
+  return { left: Math.floor(left), top: Math.floor(top), right: Math.ceil(right), bottom: Math.ceil(bottom) };
+}
+
+function scanlineSpan(q: QuadPts, y: number): { xL: number; xR: number } | null {
+  const xs: number[] = [];
+  for (let k = 0; k < 4; k++) {
+    const p1 = q[k];
+    const p2 = q[(k + 1) % 4];
+    const ylo = Math.min(p1.y, p2.y);
+    const yhi = Math.max(p1.y, p2.y);
+    if (y < ylo || y > yhi || p1.y === p2.y) continue;
+    xs.push(p1.x + ((y - p1.y) / (p2.y - p1.y)) * (p2.x - p1.x));
+  }
+  if (xs.length === 0) return null;
+  return { xL: Math.round(Math.min(...xs)), xR: Math.round(Math.max(...xs)) };
+}
+
+/** Alpha-blend a logo onto the base mapped to a quad (TL,TR,BR,BL), 2–4px feather. */
+export function warpQuadAlpha(
+  base: RgbaImage,
+  logo: RgbaImage,
+  quad: QuadPts,
+  featherPx = 3,
+): RgbaImage {
+  const out = new Uint8Array(base.data);
+  const [tl, tr, br, bl] = quad;
+  const bbox = quadBbox(quad);
+  const quadW = (dist(tl, tr) + dist(bl, br)) / 2;
+  const quadH = (dist(tl, bl) + dist(tr, br)) / 2;
+  const fu = featherPx > 0 ? featherPx / Math.max(1, quadW) : 0;
+  const fv = featherPx > 0 ? featherPx / Math.max(1, quadH) : 0;
+  for (let y = Math.max(0, bbox.top); y < Math.min(base.height, bbox.bottom); y++) {
+    for (let x = Math.max(0, bbox.left); x < Math.min(base.width, bbox.right); x++) {
+      const uv = invBilinear(x, y, tl, tr, br, bl);
+      if (!uv) continue;
+      const [r, g, b, al] = sampleBilinearPt(logo, uv.u * (logo.width - 1), uv.v * (logo.height - 1));
+      let a = al / 255;
+      if (fu > 0) a *= Math.max(0, Math.min(1, Math.min(uv.u, 1 - uv.u) / fu));
+      if (fv > 0) a *= Math.max(0, Math.min(1, Math.min(uv.v, 1 - uv.v) / fv));
+      if (a <= 0.003) continue;
+      const bi = (y * base.width + x) * 4;
+      const ia = 1 - a;
+      out[bi] = Math.round(r * a + out[bi] * ia);
+      out[bi + 1] = Math.round(g * a + out[bi + 1] * ia);
+      out[bi + 2] = Math.round(b * a + out[bi + 2] * ia);
+      out[bi + 3] = 255;
+    }
+  }
+  return { width: base.width, height: base.height, data: out };
+}
+
+/** Cover the VTON's rendered logo at a manual quad: fill each row of the quad
+ *  with the locally-sampled average navy so the double-logo is erased with no
+ *  tan halo (the quad sits on the real stripe). */
+export function coverTargetQuad(base: RgbaImage, quad: QuadPts): RgbaImage {
+  const out = new Uint8Array(base.data);
+  const bbox = quadBbox(quad);
+  const [nr, ng, nb] = averageNavyInBand(base, {
+    left: Math.max(0, bbox.left),
+    top: Math.max(0, bbox.top),
+    right: Math.min(base.width, bbox.right),
+    bottom: Math.min(base.height, bbox.bottom),
+  });
+  for (let y = Math.max(0, bbox.top); y < Math.min(base.height, bbox.bottom); y++) {
+    const span = scanlineSpan(quad, y);
+    if (!span) continue;
+    for (let x = Math.max(0, span.xL); x <= Math.min(base.width - 1, span.xR); x++) {
+      const i = (y * base.width + x) * 4;
+      out[i] = nr;
+      out[i + 1] = ng;
+      out[i + 2] = nb;
+      out[i + 3] = 255;
+    }
+  }
+  return { width: base.width, height: base.height, data: out };
+}
+
 export async function decodeToRgba(bytes: Uint8Array): Promise<RgbaImage> {
   const img = await Image.decode(bytes);
   return {
@@ -615,6 +786,8 @@ export type LogoCompositeResultLike = {
   placement_source?: string;
   fallback_reason?: string;
   placement_confidence?: number;
+  warp_mode?: string;
+  target_quad?: [number, number][];
 };
 
 /**
@@ -630,6 +803,8 @@ export function logoCompositeMetaCore(c: LogoCompositeResultLike): Record<string
     logo_source: c.logo_source,
     band: c.band,
     target: c.target,
+    target_quad: c.target_quad ?? null,
+    warp_mode: c.warp_mode ?? null,
     quality: c.quality,
     quality_warning: c.quality.quality_warning,
     placement_source: c.placement_source ?? null,
@@ -652,6 +827,8 @@ export type ResolvedLogoAssets = {
   placement: LogoPlacement;
   logoBytes: Uint8Array;
   logoSource: "asset" | "front_crop";
+  /** Raw product_truth_json blob (parsed by the engine) — carries manual quads. */
+  productTruthRaw: unknown;
 };
 
 // deno-lint-ignore no-explicit-any
@@ -682,6 +859,8 @@ export async function resolveLogoAssets(
   let placement = parseLogoPlacement(
     (wardrobe?.metadata_json as Record<string, unknown> | null)?.logo_placement,
   );
+  let productTruthRaw: unknown =
+    (wardrobe?.metadata_json as Record<string, unknown> | null)?.product_truth ?? null;
 
   let productId: string | null = null;
   if (!placement) {
@@ -700,6 +879,8 @@ export async function resolveLogoAssets(
       placement = parseLogoPlacement(
         (product?.metadata_json as Record<string, unknown> | null)?.logo_placement,
       );
+      productTruthRaw = productTruthRaw ??
+        (product?.metadata_json as Record<string, unknown> | null)?.product_truth ?? null;
     }
   } else {
     const { data: link } = await admin
@@ -761,5 +942,17 @@ export async function resolveLogoAssets(
   }
 
   if (!logoBytes) return null;
-  return { placement, logoBytes, logoSource };
+
+  // If the truth blob wasn't on the wardrobe metadata, pull it from the product.
+  if (!productTruthRaw && productId) {
+    const { data: prod } = await admin
+      .from("products")
+      .select("metadata_json")
+      .eq("id", productId)
+      .maybeSingle();
+    productTruthRaw =
+      (prod?.metadata_json as Record<string, unknown> | null)?.product_truth ?? null;
+  }
+
+  return { placement, logoBytes, logoSource, productTruthRaw };
 }
