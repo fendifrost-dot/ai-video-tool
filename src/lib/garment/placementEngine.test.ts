@@ -130,6 +130,20 @@ describe("placeDetail — detection per detail type", () => {
     expect(res.qualityWarning).toBe(true);
     expect(res.source).toBe("none");
   });
+
+  it("zipper detection consumes the product_truth zipper_color_profile slot", () => {
+    // A non-gold zipper: only found when the shared zipper_color_profile slot is
+    // wired through to the zipper detector (the clean extension point).
+    const frame = solid(768, 1024, 200, 180, 160);
+    fill(frame, 200, 900, 380, 392, 200, 30, 160); // magenta zipper hardware
+    const truth: ProductTruth = { version: 1, zipper_color_profile: MAGENTA_PROFILE };
+    const withSlot = placeDetail({ frame, detailType: "zipper_line", productTruth: truth });
+    expect(withSlot.target?.kind).toBe("path");
+    expect(withSlot.confidence).toBeGreaterThan(0.3);
+    // Without the slot, the default gold profile finds nothing magenta → no guess.
+    const withoutSlot = placeDetail({ frame, detailType: "zipper_line" });
+    expect(withoutSlot.fallbackReason).toBe("requires_manual_keyframe");
+  });
 });
 
 describe("placeDetail — priority ordering (manual > metadata > detection > fallback)", () => {

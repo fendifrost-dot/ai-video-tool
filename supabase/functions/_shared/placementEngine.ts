@@ -445,6 +445,21 @@ function specFor(truth: ProductTruth | null | undefined, detailType: DetailType)
   return truth?.details?.[detailType] ?? null;
 }
 
+const ZIPPER_DETAIL_TYPES: DetailType[] = ["zipper_line", "zipper_pull"];
+
+/** Resolve the colour profile for detection: the per-detail spec wins, then —
+ *  for zipper detail types — the shared product_truth_json zipper_color_profile
+ *  slot. This is the clean extension point the zipper detail types plug into. */
+function resolveColorProfile(
+  detailType: DetailType,
+  spec: DetailPlacementSpec | null,
+  truth: ProductTruth | null | undefined,
+): ColorProfile | null {
+  if (spec?.color_profile) return spec.color_profile;
+  if (ZIPPER_DETAIL_TYPES.includes(detailType)) return truth?.zipper_color_profile ?? null;
+  return null;
+}
+
 function metadataTarget(frame: RgbaImage, spec: DetailPlacementSpec | null): PlacementTarget | null {
   if (!spec) return null;
   if (spec.target_quad_norm) {
@@ -493,7 +508,7 @@ export function placeDetail(input: PlaceDetailInput): PlaceDetailResult {
 
   const ctx: DetectContext = {
     anchorXNorm: input.anchorXNorm,
-    colorProfile: spec?.color_profile ?? null,
+    colorProfile: resolveColorProfile(detailType, spec, input.productTruth),
     spec,
   };
   const det = input.detection ?? DETECTION_REGISTRY[detailType](frame, ctx);
