@@ -101,7 +101,7 @@ export function parseLogoPlacement(raw: unknown): LogoPlacement | null {
   };
 }
 
-function isNavyPixel(r: number, g: number, b: number): boolean {
+export function isNavyPixel(r: number, g: number, b: number): boolean {
   if (r > 95 || g > 95) return false;
   if (b < 45) return false;
   return b > r + 8 && b > g + 5;
@@ -130,17 +130,22 @@ function clampBandHeight(top: number, bottom: number, imgHeight: number): { top:
   return { top: bottom - maxH, bottom };
 }
 
+/** A pixel-colour predicate (r,g,b) → matches. Default detection uses navy; the
+ *  placement engine passes HSV-profile predicates for other detail colours. */
+export type PixelMatch = (r: number, g: number, b: number) => boolean;
+
 function horizontalExtents(
   img: RgbaImage,
   top: number,
   bottom: number,
+  match: PixelMatch,
 ): { left: number; right: number } {
   let left = img.width;
   let right = 0;
   for (let y = top; y < bottom; y++) {
     for (let x = 0; x < img.width; x++) {
       const i = (y * img.width + x) * 4;
-      if (!isNavyPixel(img.data[i], img.data[i + 1], img.data[i + 2])) continue;
+      if (!match(img.data[i], img.data[i + 1], img.data[i + 2])) continue;
       if (x < left) left = x;
       if (x > right) right = x;
     }
@@ -185,11 +190,12 @@ function evaluateRun(
   rowScores: number[],
   run: NavyRun,
   yStart: number,
+  match: PixelMatch,
 ): RunCandidate {
   let top = yStart + run.start;
   let bottom = yStart + run.end + 1;
   ({ top, bottom } = clampBandHeight(top, bottom, img.height));
-  const { left, right } = horizontalExtents(img, top, bottom);
+  const { left, right } = horizontalExtents(img, top, bottom, match);
   const widthPx = right > left ? right - left : 0;
   let sum = 0;
   let n = 0;
@@ -219,6 +225,7 @@ function evaluateRun(
 export function detectChestBand(
   img: RgbaImage,
   anchorXNorm?: number | null,
+  match: PixelMatch = isNavyPixel,
 ): StripeBand | null {
   const { width, height, data } = img;
   const yStart = Math.floor(height * CHEST_SCAN_Y_START_FRAC);
@@ -230,7 +237,7 @@ export function detectChestBand(
     let samples = 0;
     for (let x = x0; x < x1; x++) {
       const i = (y * width + x) * 4;
-      if (isNavyPixel(data[i], data[i + 1], data[i + 2])) navy++;
+      if (match(data[i], data[i + 1], data[i + 2])) navy++;
       samples++;
     }
     rowScores.push(samples > 0 ? navy / samples : 0);
@@ -244,7 +251,7 @@ export function detectChestBand(
   }
   if (runs.length === 0) return null;
 
-  const candidates = runs.map((r) => evaluateRun(img, rowScores, r, yStart));
+  const candidates = runs.map((r) => evaluateRun(img, rowScores, r, yStart, match));
   // Torso-crossing stripes only; if none qualify, keep all but damp confidence.
   const minWidth = width * STRIPE_MIN_WIDTH_FRAC;
   const wide = candidates.filter((c) => c.widthPx >= minWidth);
@@ -273,7 +280,7 @@ export function bandFromNormBbox(
   };
 }
 
-function targetRectForLogo(
+export function targetRectForLogo(
   img: RgbaImage,
   band: PixelRect,
   logoAspect: number,
@@ -372,7 +379,7 @@ function isSemiNavyEdge(r: number, g: number, b: number): boolean {
  * the semi-navy fringe so the keyed wordmark blends into the destination stripe
  * with no hard rectangle. Bright letter ink stays fully opaque.
  */
-function keyNavyBackground(logo: RgbaImage): RgbaImage {
+export function keyNavyBackground(logo: RgbaImage): RgbaImage {
   const { width, height } = logo;
   const data = new Uint8Array(logo.data);
   const keyed = new Uint8Array(width * height);
@@ -465,7 +472,7 @@ function rowNavyRuns(base: RgbaImage, y: number, x0: number, x1: number): NavyRu
  * diagonal/lower stripe and never paints the tan corners of the band bbox, so
  * there is no hard navy rectangle/halo. The target rect is also filled.
  */
-function coverTargetOnBand(
+export function coverTargetOnBand(
   base: RgbaImage,
   band: PixelRect,
   target: PixelRect,
@@ -515,7 +522,7 @@ function coverTargetOnBand(
   return { width: base.width, height: base.height, data: out };
 }
 
-function alphaComposite(
+export function alphaComposite(
   base: RgbaImage,
   logo: RgbaImage,
   target: PixelRect,
@@ -544,7 +551,7 @@ function alphaComposite(
   return { width: base.width, height: base.height, data: out };
 }
 
-async function decodeToRgba(bytes: Uint8Array): Promise<RgbaImage> {
+export async function decodeToRgba(bytes: Uint8Array): Promise<RgbaImage> {
   const img = await Image.decode(bytes);
   return {
     width: img.width,
@@ -553,7 +560,7 @@ async function decodeToRgba(bytes: Uint8Array): Promise<RgbaImage> {
   };
 }
 
-async function encodePng(img: RgbaImage): Promise<Uint8Array> {
+export async function encodePng(img: RgbaImage): Promise<Uint8Array> {
   const out = new Image(img.width, img.height);
   out.bitmap.set(img.data);
   return await out.encode();
@@ -575,7 +582,7 @@ export type LogoQuality = {
  * readable floor) cannot be made crisp. We also warn when the stripe could not
  * be confidently located (so the placement fell back to the SKU bbox).
  */
-function logoQuality(
+export function logoQuality(
   nativeHeightPx: number,
   targetHeightPx: number,
   source: "asset" | "front_crop",
@@ -604,13 +611,17 @@ export type LogoCompositeResultLike = {
   band: PixelRect;
   target: PixelRect;
   quality: LogoQuality;
+  /** Placement engine outputs (present once the composite consumes the engine). */
+  placement_source?: string;
+  fallback_reason?: string;
+  placement_confidence?: number;
 };
 
 /**
  * Build the persisted `logo_composite` audit metadata from a composite result.
  * The proxy spreads this into composition_recipe_json — keeping it here (and
  * unit-tested in the Vitest mirror) guards against the recipe silently dropping
- * `quality` / `quality_warning`, which is exactly what regressed before.
+ * `quality` / `quality_warning` (or the engine placement fields).
  */
 export function logoCompositeMetaCore(c: LogoCompositeResultLike): Record<string, unknown> {
   return {
@@ -621,6 +632,9 @@ export function logoCompositeMetaCore(c: LogoCompositeResultLike): Record<string
     target: c.target,
     quality: c.quality,
     quality_warning: c.quality.quality_warning,
+    placement_source: c.placement_source ?? null,
+    fallback_reason: c.fallback_reason ?? null,
+    placement_confidence: c.placement_confidence ?? null,
   };
 }
 
@@ -633,70 +647,6 @@ function cropNormBbox(img: RgbaImage, norm: [number, number, number, number]): R
   return cropRgba(img, left, top, w, h);
 }
 
-export type LogoCompositeResult = {
-  bytes: Uint8Array;
-  method: "bbox_affine_alpha_blend";
-  band: PixelRect;
-  target: PixelRect;
-  logo_source: "asset" | "front_crop";
-  quality: LogoQuality;
-};
-
-export async function compositeLogoOntoVton(
-  vtonBytes: Uint8Array,
-  logoBytes: Uint8Array,
-  placement: LogoPlacement,
-  logoSource: "asset" | "front_crop",
-): Promise<LogoCompositeResult> {
-  const base = await decodeToRgba(vtonBytes);
-  let logoImg = await decodeToRgba(logoBytes);
-  if (logoSource === "front_crop") {
-    logoImg = keyNavyBackground(logoImg);
-  }
-  const logoAspect = logoImg.width / Math.max(logoImg.height, 1);
-  // Anchor horizontally on the SKU bbox x-center → wordmark lands right-of-center
-  // on the stripe (the source bbox is right-of-center on the front flat). The
-  // anchor also localizes band detection so a lower/diagonal stripe is found.
-  const [sx, , sw] = placement.source_bbox_norm;
-  const anchorXNorm = sx + sw / 2;
-
-  // Detect the actual navy stripe; if we can't find one confidently, fall back to
-  // the SKU placement (manual target_bbox or the source bbox) rather than pasting
-  // the logo onto tan. Either way the per-row cover only paints where navy exists.
-  const detected = detectChestBand(base, anchorXNorm);
-  const confident = !!detected && detected.confidence >= MIN_STRIPE_CONFIDENCE;
-  const fallbackNorm = placement.target_bbox_norm ?? placement.source_bbox_norm;
-  const band = confident ? detected! : bandFromNormBbox(base, fallbackNorm);
-  const manualNorm = confident ? placement.target_bbox_norm : fallbackNorm;
-
-  const target = targetRectForLogo(
-    base,
-    band,
-    logoAspect,
-    placement.placement_hint ?? "upper_left_chest",
-    manualNorm,
-    placement.min_target_height_px,
-    anchorXNorm,
-  );
-  const covered = coverTargetOnBand(base, band, target, anchorXNorm);
-  const composited = alphaComposite(covered, logoImg, target);
-  const bytes = await encodePng(composited);
-  const quality = logoQuality(
-    logoImg.height,
-    target.bottom - target.top,
-    logoSource,
-    detected?.confidence ?? 0,
-    !confident,
-  );
-  return {
-    bytes,
-    method: "bbox_affine_alpha_blend",
-    band,
-    target,
-    logo_source: logoSource,
-    quality,
-  };
-}
 
 export type ResolvedLogoAssets = {
   placement: LogoPlacement;

@@ -19,10 +19,10 @@ import {
   vtonCategoryForFeatureType,
 } from "../_shared/garmentReference.ts";
 import {
-  compositeLogoOntoVton,
   logoCompositeMetaCore,
   resolveLogoAssets,
 } from "../_shared/logoComposite.ts";
+import { compositeLogoOntoVton } from "../_shared/placementEngine.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -171,10 +171,22 @@ async function completeLookFromFalUrl(
         logo_asset_id: resolved.placement.logo_asset_id ?? null,
         placement: resolved.placement,
       };
+      // Debug overlay (detected region drawn on the frame) for QA — best-effort.
+      if (composite.debug_overlay_bytes) {
+        const overlayPath = `${userId}/${artistId}/${lookId}_detail_debug.png`;
+        const { error: ovErr } = await admin.storage
+          .from("look-composites")
+          .upload(overlayPath, composite.debug_overlay_bytes, {
+            contentType: "image/png",
+            cacheControl: "3600",
+            upsert: true,
+          });
+        if (!ovErr) logoCompositeMeta.debug_overlay_storage_path = overlayPath;
+      }
       if (composite.quality.quality_warning) {
         console.warn(
-          "logo_composite_low_res: front_crop upscaled",
-          JSON.stringify(composite.quality),
+          "logo_composite_quality_warning:",
+          JSON.stringify({ quality: composite.quality, fallback_reason: composite.fallback_reason }),
         );
       }
     }

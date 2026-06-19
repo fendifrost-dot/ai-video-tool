@@ -83,17 +83,22 @@ function clampBandHeight(top: number, bottom: number, imgHeight: number): { top:
   return { top: bottom - maxH, bottom };
 }
 
+/** A pixel-colour predicate (r,g,b) → matches. Default detection uses navy; the
+ *  placement engine passes HSV-profile predicates for other detail colours. */
+export type PixelMatch = (r: number, g: number, b: number) => boolean;
+
 function horizontalExtents(
   img: RgbaImage,
   top: number,
   bottom: number,
+  match: PixelMatch,
 ): { left: number; right: number } {
   let left = img.width;
   let right = 0;
   for (let y = top; y < bottom; y++) {
     for (let x = 0; x < img.width; x++) {
       const i = (y * img.width + x) * 4;
-      if (!isNavyPixel(img.data[i], img.data[i + 1], img.data[i + 2])) continue;
+      if (!match(img.data[i], img.data[i + 1], img.data[i + 2])) continue;
       if (x < left) left = x;
       if (x > right) right = x;
     }
@@ -138,11 +143,12 @@ function evaluateRun(
   rowScores: number[],
   run: NavyRun,
   yStart: number,
+  match: PixelMatch,
 ): RunCandidate {
   let top = yStart + run.start;
   let bottom = yStart + run.end + 1;
   ({ top, bottom } = clampBandHeight(top, bottom, img.height));
-  const { left, right } = horizontalExtents(img, top, bottom);
+  const { left, right } = horizontalExtents(img, top, bottom, match);
   const widthPx = right > left ? right - left : 0;
   let sum = 0;
   let n = 0;
@@ -174,6 +180,7 @@ function evaluateRun(
 export function detectChestBand(
   img: RgbaImage,
   anchorXNorm?: number | null,
+  match: PixelMatch = isNavyPixel,
 ): StripeBand | null {
   const { width, height, data } = img;
   const yStart = Math.floor(height * CHEST_SCAN_Y_START_FRAC);
@@ -185,7 +192,7 @@ export function detectChestBand(
     let samples = 0;
     for (let x = x0; x < x1; x++) {
       const i = (y * width + x) * 4;
-      if (isNavyPixel(data[i], data[i + 1], data[i + 2])) navy++;
+      if (match(data[i], data[i + 1], data[i + 2])) navy++;
       samples++;
     }
     rowScores.push(samples > 0 ? navy / samples : 0);
@@ -199,7 +206,7 @@ export function detectChestBand(
   }
   if (runs.length === 0) return null;
 
-  const candidates = runs.map((r) => evaluateRun(img, rowScores, r, yStart));
+  const candidates = runs.map((r) => evaluateRun(img, rowScores, r, yStart, match));
   // Torso-crossing stripes only; if none qualify, keep all but damp confidence.
   const minWidth = width * STRIPE_MIN_WIDTH_FRAC;
   const wide = candidates.filter((c) => c.widthPx >= minWidth);
@@ -595,13 +602,17 @@ export type LogoCompositeResultLike = {
   band: PixelRect;
   target: PixelRect;
   quality: LogoQuality;
+  /** Placement engine outputs (present once the composite consumes the engine). */
+  placement_source?: string;
+  fallback_reason?: string;
+  placement_confidence?: number;
 };
 
 /**
  * Build the persisted `logo_composite` audit metadata from a composite result.
  * The edge proxy spreads this into composition_recipe_json — keeping it here
  * (and unit-tested) guards against the recipe silently dropping `quality` /
- * `quality_warning`, which is exactly what regressed before.
+ * `quality_warning` (or the engine placement fields).
  */
 export function logoCompositeMetaCore(c: LogoCompositeResultLike): Record<string, unknown> {
   return {
@@ -612,6 +623,9 @@ export function logoCompositeMetaCore(c: LogoCompositeResultLike): Record<string
     target: c.target,
     quality: c.quality,
     quality_warning: c.quality.quality_warning,
+    placement_source: c.placement_source ?? null,
+    fallback_reason: c.fallback_reason ?? null,
+    placement_confidence: c.placement_confidence ?? null,
   };
 }
 
