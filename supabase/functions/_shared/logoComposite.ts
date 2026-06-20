@@ -3,6 +3,10 @@
  */
 
 import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
+import {
+  resolveLogoPlacementFromMetadata,
+  resolveProductTruthFromMetadata,
+} from "./productDetails.ts";
 
 export type LogoPlacementHint = "upper_left_chest" | "center_chest";
 
@@ -422,12 +426,14 @@ const GLYPH_WARM_HUE_MAX = 70;
 const GLYPH_GOLD_SAT_DROP = 0.4;
 const GLYPH_GOLD_SAT_KEEP = 0.55;
 const GLYPH_GOLD_VAL_MIN = 0.5;
-// Dilate the confirmed-glyph mask outward to rebuild the anti-aliased stroke
-// edges the key strips — grows the GLYPH region (not the luma threshold), so tan
-// fabric with no glyph neighbour is never re-admitted.
-const GLYPH_CONFIRM = 0.5;
-const GLYPH_DILATE_RADIUS = 1;
-const GLYPH_DILATE_FEATHER = 0.7;
+// Warm tan FABRIC key. Keep ALL non-fabric pixels at full alpha (bold, like the
+// original solid fill); drop ONLY warm, desaturated, mid-luma tan fabric. The
+// wordmark's anti-aliased edges on the navy stripe are bluish (navy adds blue) so
+// they are kept — removing the right tan line without eroding stroke weight.
+const FABRIC_WARM_MIN = 18;
+const FABRIC_LUMA_MIN = 120;
+const FABRIC_LUMA_MAX = 215;
+const FABRIC_SAT_MAX = 0.4;
 
 function lumaOf(r: number, g: number, b: number): number {
   return 0.299 * r + 0.587 * g + 0.114 * b;
@@ -480,45 +486,33 @@ export function glyphAlphaFactor(r: number, g: number, b: number): number {
   return Math.max(bright, gold);
 }
 
+/** Warm tan FABRIC: the jacket background of a front-flat crop — warm,
+ *  desaturated, mid-luma. Distinct from navy, bright cream glyphs, saturated gold
+ *  glyphs, and the bluish/neutral glyph AA edges (navy-blended → not warm). */
+export function isWarmFabric(r: number, g: number, b: number): boolean {
+  if (isNavyPixel(r, g, b)) return false;
+  if (r - b <= FABRIC_WARM_MIN) return false; // bluish/neutral glyph edge → keep
+  const l = lumaOf(r, g, b);
+  if (l < FABRIC_LUMA_MIN || l > FABRIC_LUMA_MAX) return false; // bright cream → keep
+  return hsvOf(r, g, b).s <= FABRIC_SAT_MAX; // saturated gold → keep
+}
+
 /**
- * Derive the logo's alpha from the WORDMARK GLYPHS ONLY: keep bright cream/gold
- * glyph pixels opaque and key out BOTH the navy stripe and the tan fabric
- * backgrounds of a front-flat crop, with a feathered edge. After this, no
- * source-background pixel paints regardless of how loose the crop bbox is.
+ * Derive the logo's alpha by keying out the crop BACKGROUND only: the navy stripe
+ * and the warm tan fabric. Everything else — the cream/gold glyphs AND their
+ * anti-aliased edges (bluish on the navy stripe) — is kept at FULL alpha, so the
+ * wordmark renders at its original (bold) stroke weight with no erosion, while a
+ * loose bbox's tan still never paints. (Counters stay open because they are navy.)
  */
-export function keyGlyphForeground(logo: RgbaImage, dilateRadius = GLYPH_DILATE_RADIUS): RgbaImage {
+export function keyGlyphForeground(logo: RgbaImage): RgbaImage {
   const { width, height } = logo;
   const data = new Uint8Array(logo.data);
-  const base = new Float32Array(width * height);
   for (let i = 0; i < width * height; i++) {
     const o = i * 4;
-    base[i] = glyphAlphaFactor(data[o], data[o + 1], data[o + 2]);
-  }
-  const R = Math.max(0, dilateRadius);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const idx = y * width + x;
-      let f = base[idx];
-      if (R > 0 && f < 1) {
-        let best = 0;
-        for (let dy = -R; dy <= R && best < 1; dy++) {
-          for (let dx = -R; dx <= R; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            const nx = x + dx;
-            const ny = y + dy;
-            if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
-            if (base[ny * width + nx] >= GLYPH_CONFIRM) {
-              const d = Math.max(Math.abs(dx), Math.abs(dy));
-              const contrib = GLYPH_DILATE_FEATHER * (1 - (d - 1) / Math.max(1, R));
-              if (contrib > best) best = contrib;
-            }
-          }
-        }
-        if (best > f) f = best;
-      }
-      const o = idx * 4;
-      data[o + 3] = Math.round(data[o + 3] * f);
-    }
+    const r = data[o];
+    const g = data[o + 1];
+    const b = data[o + 2];
+    if (isNavyPixel(r, g, b) || isWarmFabric(r, g, b)) data[o + 3] = 0;
   }
   return { width, height, data };
 }
@@ -1119,11 +1113,9 @@ export async function resolveLogoAssets(
     .eq("id", wardrobeFeatureId)
     .maybeSingle();
 
-  let placement = parseLogoPlacement(
-    (wardrobe?.metadata_json as Record<string, unknown> | null)?.logo_placement,
-  );
-  let productTruthRaw: unknown =
-    (wardrobe?.metadata_json as Record<string, unknown> | null)?.product_truth ?? null;
+  const wardrobeMeta = (wardrobe?.metadata_json as Record<string, unknown> | null) ?? null;
+  let placement = resolveLogoPlacementFromMetadata(wardrobeMeta);
+  let productTruthRaw: unknown = resolveProductTruthFromMetadata(wardrobeMeta);
 
   let productId: string | null = null;
   if (!placement) {
@@ -1139,11 +1131,9 @@ export async function resolveLogoAssets(
         .select("metadata_json")
         .eq("id", productId)
         .maybeSingle();
-      placement = parseLogoPlacement(
-        (product?.metadata_json as Record<string, unknown> | null)?.logo_placement,
-      );
-      productTruthRaw = productTruthRaw ??
-        (product?.metadata_json as Record<string, unknown> | null)?.product_truth ?? null;
+      const productMeta = (product?.metadata_json as Record<string, unknown> | null) ?? null;
+      placement = resolveLogoPlacementFromMetadata(productMeta);
+      productTruthRaw = productTruthRaw ?? resolveProductTruthFromMetadata(productMeta);
     }
   } else {
     const { data: link } = await admin
@@ -1213,8 +1203,9 @@ export async function resolveLogoAssets(
       .select("metadata_json")
       .eq("id", productId)
       .maybeSingle();
-    productTruthRaw =
-      (prod?.metadata_json as Record<string, unknown> | null)?.product_truth ?? null;
+    productTruthRaw = resolveProductTruthFromMetadata(
+      (prod?.metadata_json as Record<string, unknown> | null) ?? null,
+    );
   }
 
   return { placement, logoBytes, logoSource, productTruthRaw };

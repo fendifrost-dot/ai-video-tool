@@ -422,12 +422,14 @@ const GLYPH_WARM_HUE_MAX = 70;
 const GLYPH_GOLD_SAT_DROP = 0.4; // warm + below this saturation → tan background
 const GLYPH_GOLD_SAT_KEEP = 0.55; // warm + at/above → gold glyph
 const GLYPH_GOLD_VAL_MIN = 0.5;
-// Dilate the confirmed-glyph mask outward to rebuild the anti-aliased stroke
-// edges the key strips. We grow the GLYPH region (not lower the luma threshold),
-// so tan fabric — which has no glyph neighbour — is never re-admitted.
-const GLYPH_CONFIRM = 0.5; // factor ≥ this → confirmed glyph (dilation source)
-const GLYPH_DILATE_RADIUS = 1; // px to grow the glyph mask
-const GLYPH_DILATE_FEATHER = 0.7; // alpha rebuilt on a dilated edge ring
+// Warm tan FABRIC key. A wordmark on the navy stripe has bluish/neutral
+// anti-aliased edges (navy contributes blue), so we keep ALL non-fabric pixels at
+// full alpha (bold, like the original solid fill) and drop ONLY warm, desaturated,
+// mid-luma tan fabric. This removes the right tan line without eroding stroke AA.
+const FABRIC_WARM_MIN = 18; // r − b above this → warm (excludes bluish glyph AA)
+const FABRIC_LUMA_MIN = 120; // tan fabric is mid-luma…
+const FABRIC_LUMA_MAX = 215; // …and below cream-glyph brightness
+const FABRIC_SAT_MAX = 0.4; // …and desaturated (excludes saturated gold glyphs)
 
 function lumaOf(r: number, g: number, b: number): number {
   return 0.299 * r + 0.587 * g + 0.114 * b;
@@ -480,48 +482,34 @@ export function glyphAlphaFactor(r: number, g: number, b: number): number {
   return Math.max(bright, gold);
 }
 
+/** Warm tan FABRIC: the jacket background of a front-flat crop — warm,
+ *  desaturated, mid-luma. Distinct from navy, from bright cream glyphs (too
+ *  bright), from saturated gold glyphs, and from the bluish/neutral glyph AA
+ *  edges (navy-blended → not warm). Keyed out so the crop's tan never paints. */
+export function isWarmFabric(r: number, g: number, b: number): boolean {
+  if (isNavyPixel(r, g, b)) return false;
+  if (r - b <= FABRIC_WARM_MIN) return false; // bluish/neutral glyph edge → keep
+  const l = lumaOf(r, g, b);
+  if (l < FABRIC_LUMA_MIN || l > FABRIC_LUMA_MAX) return false; // bright cream → keep
+  return hsvOf(r, g, b).s <= FABRIC_SAT_MAX; // saturated gold → keep
+}
+
 /**
- * Derive the logo's alpha from the WORDMARK GLYPHS ONLY: keep bright cream/gold
- * glyph pixels opaque and key out BOTH the navy stripe and the tan fabric
- * backgrounds of a front-flat crop. The confirmed-glyph mask is then DILATED ~1px
- * (with a feather) to rebuild the anti-aliased stroke edges the hard key strips —
- * restoring stroke weight without re-admitting the tan background (which has no
- * glyph neighbour to dilate from). No source-background pixel paints regardless
- * of how loose the crop bbox is.
+ * Derive the logo's alpha by keying out the crop BACKGROUND only: the navy stripe
+ * and the warm tan fabric. Everything else — the cream/gold glyphs AND their
+ * anti-aliased edges (bluish on the navy stripe) — is kept at FULL alpha, so the
+ * wordmark renders at its original (bold) stroke weight with no erosion, while a
+ * loose bbox's tan still never paints. (Counters stay open because they are navy.)
  */
-export function keyGlyphForeground(logo: RgbaImage, dilateRadius = GLYPH_DILATE_RADIUS): RgbaImage {
+export function keyGlyphForeground(logo: RgbaImage): RgbaImage {
   const { width, height } = logo;
   const data = new Uint8Array(logo.data);
-  const base = new Float32Array(width * height);
   for (let i = 0; i < width * height; i++) {
     const o = i * 4;
-    base[i] = glyphAlphaFactor(data[o], data[o + 1], data[o + 2]);
-  }
-  const R = Math.max(0, dilateRadius);
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      const idx = y * width + x;
-      let f = base[idx];
-      if (R > 0 && f < 1) {
-        let best = 0;
-        for (let dy = -R; dy <= R && best < 1; dy++) {
-          for (let dx = -R; dx <= R; dx++) {
-            if (dx === 0 && dy === 0) continue;
-            const nx = x + dx;
-            const ny = y + dy;
-            if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
-            if (base[ny * width + nx] >= GLYPH_CONFIRM) {
-              const d = Math.max(Math.abs(dx), Math.abs(dy));
-              const contrib = GLYPH_DILATE_FEATHER * (1 - (d - 1) / Math.max(1, R));
-              if (contrib > best) best = contrib;
-            }
-          }
-        }
-        if (best > f) f = best;
-      }
-      const o = idx * 4;
-      data[o + 3] = Math.round(data[o + 3] * f);
-    }
+    const r = data[o];
+    const g = data[o + 1];
+    const b = data[o + 2];
+    if (isNavyPixel(r, g, b) || isWarmFabric(r, g, b)) data[o + 3] = 0;
   }
   return { width, height, data };
 }

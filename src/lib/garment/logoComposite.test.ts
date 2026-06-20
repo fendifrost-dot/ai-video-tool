@@ -509,39 +509,46 @@ describe("keyGlyphForeground / glyphAlphaFactor", () => {
     expect(a(4, 3)).toBeGreaterThan(200); // cream glyph stays opaque
   });
 
-  it("dilation rebuilds stripped AA stroke edges without re-admitting tan", () => {
-    const w = 12, h = 12;
+  it("keeps the full wordmark (glyph + AA edges) at FULL alpha to match solid-fill boldness", () => {
+    const w = 20, h = 16;
     const crop: RgbaImage = { width: w, height: h, data: new Uint8Array(w * h * 4) };
+    // navy stripe background everywhere, with a tan fabric column on the right
     for (let y = 0; y < h; y++) {
       for (let x = 0; x < w; x++) {
         const i = (y * w + x) * 4;
-        if (x >= 10) { crop.data[i] = 200; crop.data[i + 1] = 180; crop.data[i + 2] = 160; } // tan right column
-        else { crop.data[i] = 25; crop.data[i + 1] = 30; crop.data[i + 2] = 95; } // navy bg
+        if (x >= 17) { crop.data[i] = 200; crop.data[i + 1] = 180; crop.data[i + 2] = 160; } // tan fabric
+        else { crop.data[i] = 25; crop.data[i + 1] = 30; crop.data[i + 2] = 95; } // navy
         crop.data[i + 3] = 255;
       }
     }
-    // cream core stroke at x=6, with mid-tone AA blends at x=5 and x=7 (the key
-    // strips these → ~1px thinning that the dilation must rebuild)
-    for (let y = 0; y < h; y++) {
-      let i = (y * w + 6) * 4; crop.data[i] = 245; crop.data[i + 1] = 240; crop.data[i + 2] = 225;
-      i = (y * w + 5) * 4; crop.data[i] = 120; crop.data[i + 1] = 118; crop.data[i + 2] = 125;
-      i = (y * w + 7) * 4; crop.data[i] = 120; crop.data[i + 1] = 118; crop.data[i + 2] = 125;
+    // cream glyph block rows 3..12, x4..13, with a navy counter (hole) rows 6..9 x7..10
+    const isCounter = (x: number, y: number) => x >= 7 && x < 11 && y >= 6 && y < 10;
+    const glyphIdx = new Set<number>();
+    for (let y = 3; y < 13; y++) for (let x = 4; x < 14; x++) {
+      const i = (y * w + x) * 4;
+      if (isCounter(x, y)) continue; // navy hole
+      crop.data[i] = 245; crop.data[i + 1] = 240; crop.data[i + 2] = 225; glyphIdx.add(y * w + x);
     }
-    const countAlpha = (img: RgbaImage) => {
-      let c = 0;
-      for (let i = 3; i < img.data.length; i += 4) if (img.data[i] > 10) c++;
-      return c;
-    };
-    const plain = keyGlyphForeground(crop, 0); // no dilation
-    const dilated = keyGlyphForeground(crop, 1);
-    expect(countAlpha(dilated)).toBeGreaterThan(countAlpha(plain)); // edges rebuilt → bolder
-    const tanA = (img: RgbaImage) => img.data[(3 * w + 11) * 4 + 3];
-    expect(tanA(plain)).toBe(0); // tan column stays out…
-    expect(tanA(dilated)).toBe(0); // …even after dilation (no glyph neighbour)
-    expect(dilated.data[(3 * w + 6) * 4 + 3]).toBeGreaterThan(200); // cream core opaque
-    // the stripped AA edge is rebuilt to a partial (feathered) alpha
-    const edge = dilated.data[(3 * w + 5) * 4 + 3];
-    expect(edge).toBeGreaterThan(0);
+    // bluish anti-aliased ring around the block (navy-blended → r < b)
+    for (const [rx0, rx1, ry0, ry1] of [[3, 14, 2, 3], [3, 14, 13, 14], [3, 4, 3, 13], [14, 15, 3, 13]] as const) {
+      for (let y = ry0; y < ry1; y++) for (let x = rx0; x < rx1; x++) {
+        const i = (y * w + x) * 4;
+        crop.data[i] = 132; crop.data[i + 1] = 134; crop.data[i + 2] = 168; glyphIdx.add(y * w + x);
+      }
+    }
+    const keyed = keyGlyphForeground(crop);
+    const a = (x: number, y: number) => keyed.data[(y * w + x) * 4 + 3];
+    // glyph core + bluish AA kept at FULL alpha (bold, no erosion)
+    expect(a(8, 4)).toBe(255); // cream core
+    expect(a(3, 7)).toBe(255); // bluish AA edge — kept (this is what was eroded)
+    // background keyed out
+    expect(a(18, 8)).toBe(0); // tan fabric column → out (no right line)
+    expect(a(0, 0)).toBe(0); // navy → out
+    expect(a(8, 7)).toBe(0); // navy counter centre stays open
+    // pixel-count restored to the full glyph+AA region (≈ solid-fill baseline)
+    let kept = 0;
+    for (let i = 3; i < keyed.data.length; i += 4) if (keyed.data[i] > 130) kept++;
+    expect(kept).toBe(glyphIdx.size); // every glyph/AA pixel kept, nothing else
   });
 });
 

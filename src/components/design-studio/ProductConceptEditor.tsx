@@ -47,6 +47,11 @@ import {
 } from "@/components/products/ProductAssetTile";
 import { FitProfileEditor } from "@/components/products/FitProfileEditor";
 import { LogoPlacementEditor } from "@/components/products/LogoPlacementEditor";
+import {
+  metadataWithProductDetails,
+  resolveProductDetails,
+  upsertLogoProductDetail,
+} from "@/lib/garment/productDetails";
 import { UrlImportPanel } from "@/components/wardrobe/UrlImportPanel";
 
 const PRODUCT_ASSETS_BUCKET = "product-assets";
@@ -358,11 +363,16 @@ export function ProductConceptEditor({
           metadataJson={product.metadata_json ?? {}}
           disabled={disabled}
           onSave={async (placement) => {
+            const details = upsertLogoProductDetail(
+              resolveProductDetails(product.metadata_json ?? {}),
+              placement,
+            );
             await onSave({
-              metadata_json: {
-                ...(product.metadata_json ?? {}),
-                logo_placement: placement,
-              },
+              metadata_json: metadataWithProductDetails(
+                product.metadata_json ?? {},
+                details,
+                placement,
+              ),
             });
           }}
         />

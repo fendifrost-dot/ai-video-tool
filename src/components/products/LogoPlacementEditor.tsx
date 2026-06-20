@@ -181,7 +181,9 @@ export function LogoPlacementEditor({
           Logo placement
         </h2>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          Set logo placement once per SKU. Post-VTON composites catalog brand pixels onto the chest band — detection only refines position.
+          Set logo placement once per SKU. Upload a transparent PNG (detail role) for production
+          quality — front bbox crop is a fallback only. Manual VTON-frame quads are set on the
+          look after a VTON run.
         </p>
       </div>
 

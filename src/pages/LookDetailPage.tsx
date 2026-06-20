@@ -58,6 +58,17 @@ import {
 } from "@/lib/queries/looks";
 import { AssetThumb } from "@/components/looks/AssetThumb";
 import { LookCardPendingSkeleton, StatusPill } from "@/components/looks/LookCard";
+import { ManualKeyframeQuadEditor } from "@/components/products/ManualKeyframeQuadEditor";
+import { logoPlacementFromMetadata } from "@/lib/garment/logoPlacement";
+import type { QuadNorm } from "@/lib/garment/placementEngine";
+import {
+  manualKeyframeQuadFromDetails,
+  metadataWithProductDetails,
+  resolveProductDetails,
+  upsertLogoProductDetail,
+} from "@/lib/garment/productDetails";
+import { useUpdateProduct } from "@/lib/queries/products";
+import { useWardrobeProductLink } from "@/lib/queries/promoteWardrobe";
 
 export default function LookDetailPage({
   artistId,
@@ -78,6 +89,7 @@ export default function LookDetailPage({
   const propsQuery = useProps();
   const iterationsQuery = useLookIterations(lookId);
   const update = useUpdateLook();
+  const updateProduct = useUpdateProduct();
   const lock = useLockLookAsPrimary();
   const del = useDeleteLook();
   const setCanonicalBase = useSetArtistCanonicalBase();
@@ -87,6 +99,7 @@ export default function LookDetailPage({
   const [nameDraft, setNameDraft] = useState("");
   const [notesDraft, setNotesDraft] = useState("");
   const [signed, setSigned] = useState<string | null>(null);
+  const [vtonRawSigned, setVtonRawSigned] = useState<string | null>(null);
   // Live pending-poll progress, populated while this look is generating
   // in the background. Cleared on terminal status or unmount.
   const [pollProgress, setPollProgress] = useState<{
@@ -110,6 +123,28 @@ export default function LookDetailPage({
       .then((m) => setSigned(m[path] ?? null))
       .catch(() => setSigned(null));
   }, [lookQuery.data?.generated_storage_path]);
+
+  const wardrobeFeatureId = useMemo(() => {
+    const r = lookQuery.data?.composition_recipe_json as Record<string, unknown> | undefined;
+    return typeof r?.wardrobe_feature_id === "string" ? r.wardrobe_feature_id : undefined;
+  }, [lookQuery.data?.composition_recipe_json]);
+
+  const vtonRawPath = useMemo(() => {
+    const r = lookQuery.data?.composition_recipe_json as Record<string, unknown> | undefined;
+    return typeof r?.vton_raw_storage_path === "string" ? r.vton_raw_storage_path : undefined;
+  }, [lookQuery.data?.composition_recipe_json]);
+
+  const productLinkQuery = useWardrobeProductLink(wardrobeFeatureId);
+
+  useEffect(() => {
+    if (!vtonRawPath) {
+      setVtonRawSigned(null);
+      return;
+    }
+    signLookPreviewUrl(vtonRawPath, 3600)
+      .then(setVtonRawSigned)
+      .catch(() => setVtonRawSigned(null));
+  }, [vtonRawPath]);
 
   // Background poll while the look is generating. The LookComposer
   // navigates here immediately after kicking off the pipeline, so this
@@ -203,6 +238,52 @@ export default function LookDetailPage({
     look.pipeline_used ??
     (pipelinePreference ? `${pipelinePreference} · pending` : null);
 
+  const isVtonLook = (look.pipeline_used ?? "").includes("idm_vton");
+  const linkedProduct = productLinkQuery.data?.products ?? null;
+  const manualPlacementImageUrl = vtonRawSigned ?? signed;
+  const manualQuadInitial = linkedProduct
+    ? manualKeyframeQuadFromDetails(
+        resolveProductDetails(linkedProduct.metadata_json ?? {}),
+        `look-${look.id}`,
+      ) ??
+      manualKeyframeQuadFromDetails(
+        resolveProductDetails(linkedProduct.metadata_json ?? {}),
+        "default",
+      )
+    : null;
+  const showManualQuadEditor =
+    isVtonLook &&
+    !isPending &&
+    !!linkedProduct &&
+    !!manualPlacementImageUrl &&
+    !!logoPlacementFromMetadata(linkedProduct.metadata_json);
+
+  async function handleSaveManualQuad(quad: QuadNorm, keyframeId: string) {
+    if (!linkedProduct) return;
+    const placement = logoPlacementFromMetadata(linkedProduct.metadata_json);
+    if (!placement) {
+      toast.error("Set source logo placement on the product in Design Studio first");
+      throw new Error("missing logo placement");
+    }
+    const details = upsertLogoProductDetail(
+      resolveProductDetails(linkedProduct.metadata_json ?? {}),
+      placement,
+      { keyframeId, quad },
+    );
+    await updateProduct.mutateAsync({
+      id: linkedProduct.id,
+      patch: {
+        metadata_json: metadataWithProductDetails(
+          linkedProduct.metadata_json ?? {},
+          details,
+          placement,
+        ),
+      },
+    });
+    qc.invalidateQueries({
+      queryKey: ["product_wardrobe_links", "feature", wardrobeFeatureId],
+    });
+  }
 
   async function handleApplyGarmentVton() {
     if (!look || !layerItemId) return;
@@ -386,6 +467,16 @@ export default function LookDetailPage({
                 </div>
               )}
             </div>
+
+            {showManualQuadEditor && manualPlacementImageUrl ? (
+              <ManualKeyframeQuadEditor
+                imageUrl={manualPlacementImageUrl}
+                initialQuad={manualQuadInitial}
+                keyframeId={`look-${look.id}`}
+                disabled={updateProduct.isPending}
+                onSave={handleSaveManualQuad}
+              />
+            ) : null}
 
             <RecipePanel
               recipe={recipe}
