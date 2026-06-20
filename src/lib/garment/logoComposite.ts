@@ -412,6 +412,74 @@ export function keyNavyBackground(logo: RgbaImage): RgbaImage {
   return { width, height, data };
 }
 
+// --- Glyph-only keying: keep only the bright cream/gold wordmark, drop BOTH the
+//     navy stripe AND the tan fabric background, so a loose source bbox never
+//     paints a background sliver. All thresholds are named ratios, not per-image.
+const GLYPH_BRIGHT_DROP = 188; // luma at/below → background (tan/navy)
+const GLYPH_BRIGHT_KEEP = 212; // luma at/above → cream glyph
+const GLYPH_WARM_HUE_MIN = 18;
+const GLYPH_WARM_HUE_MAX = 70;
+const GLYPH_GOLD_SAT_DROP = 0.4; // warm + below this saturation → tan background
+const GLYPH_GOLD_SAT_KEEP = 0.55; // warm + at/above → gold glyph
+const GLYPH_GOLD_VAL_MIN = 0.5;
+
+function lumaOf(r: number, g: number, b: number): number {
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+function hsvOf(r: number, g: number, b: number): { h: number; s: number; v: number } {
+  const rn = r / 255;
+  const gn = g / 255;
+  const bn = b / 255;
+  const max = Math.max(rn, gn, bn);
+  const min = Math.min(rn, gn, bn);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === rn) h = ((gn - bn) / d) % 6;
+    else if (max === gn) h = (bn - rn) / d + 2;
+    else h = (rn - gn) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s: max === 0 ? 0 : d / max, v: max };
+}
+
+function smoothstep(a: number, b: number, x: number): number {
+  if (a === b) return x >= b ? 1 : 0;
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+/** Per-pixel "glyph-ness" in [0,1]: bright cream OR warm-saturated gold; navy and
+ *  tan score 0. The soft ramps give a feathered alpha at glyph/background edges. */
+export function glyphAlphaFactor(r: number, g: number, b: number): number {
+  const bright = smoothstep(GLYPH_BRIGHT_DROP, GLYPH_BRIGHT_KEEP, lumaOf(r, g, b));
+  const { h, s, v } = hsvOf(r, g, b);
+  const gold =
+    h >= GLYPH_WARM_HUE_MIN && h <= GLYPH_WARM_HUE_MAX && v >= GLYPH_GOLD_VAL_MIN
+      ? smoothstep(GLYPH_GOLD_SAT_DROP, GLYPH_GOLD_SAT_KEEP, s)
+      : 0;
+  return Math.max(bright, gold);
+}
+
+/**
+ * Derive the logo's alpha from the WORDMARK GLYPHS ONLY: keep bright cream/gold
+ * glyph pixels opaque and key out BOTH the navy stripe and the tan fabric
+ * backgrounds of a front-flat crop, with a feathered edge. After this, no
+ * source-background pixel paints regardless of how loose the crop bbox is.
+ */
+export function keyGlyphForeground(logo: RgbaImage): RgbaImage {
+  const { width, height } = logo;
+  const data = new Uint8Array(logo.data);
+  for (let i = 0; i < width * height; i++) {
+    const o = i * 4;
+    const factor = glyphAlphaFactor(data[o], data[o + 1], data[o + 2]);
+    data[o + 3] = Math.round(data[o + 3] * factor);
+  }
+  return { width, height, data };
+}
+
 function averageNavyInBand(img: RgbaImage, band: PixelRect): [number, number, number] {
   let r = 0;
   let g = 0;
@@ -682,26 +750,121 @@ export function warpQuadAlpha(
 /** Cover the VTON's rendered logo at a manual quad location: fill each row of
  *  the quad with the locally-sampled average navy, following the quad so the
  *  double-logo is erased with no tan halo (the quad sits on the real stripe). */
+// Cover expansion: snap the navy cover to the local navy-stripe extent a few px
+// beyond the quad, so the VTON mark's overhang and the navy→tan transition just
+// outside the quad get covered too. Parameterized ratios, pose-general.
+const COVER_ROW_NAVY_FRAC = 0.35; // row counts as stripe if ≥ this navy fraction
+const COVER_MAX_EXPAND_FRAC = 0.03; // max vertical expand beyond quad (×height)
+const COVER_SIDE_MARGIN_FRAC = 0.012; // horizontal margin around quad (×width)
+const COVER_FEATHER_PX = 3; // soft transition rows beyond the navy extent
+
+/** Fraction of navy pixels on row y within [xL,xR]. */
+function rowNavyFrac(base: RgbaImage, y: number, xL: number, xR: number): number {
+  let navy = 0;
+  let n = 0;
+  for (let x = xL; x <= xR; x++) {
+    const i = (y * base.width + x) * 4;
+    if (isNavyPixel(base.data[i], base.data[i + 1], base.data[i + 2])) navy++;
+    n++;
+  }
+  return n > 0 ? navy / n : 0;
+}
+
+/** Leftmost/rightmost navy pixel on row y within [xL,xR], or null. */
+function navyExtentRow(base: RgbaImage, y: number, xL: number, xR: number): { l: number; r: number } | null {
+  let l = -1;
+  let r = -1;
+  for (let x = xL; x <= xR; x++) {
+    const i = (y * base.width + x) * 4;
+    if (isNavyPixel(base.data[i], base.data[i + 1], base.data[i + 2])) {
+      if (l < 0) l = x;
+      r = x;
+    }
+  }
+  return l >= 0 ? { l, r } : null;
+}
+
+/**
+ * Cover the VTON's rendered logo at a manual quad. Snaps the navy cover to the
+ * local navy-stripe band: expands vertically to the actual navy extent a few px
+ * beyond the quad (covering a descender overhang / the stripe transition), fills
+ * each row to the navy horizontal extent unioned with the quad span (following
+ * the stripe shape so no tan halo), and feathers the outer transition rows.
+ */
 export function coverTargetQuad(base: RgbaImage, quad: QuadPts): RgbaImage {
   const out = new Uint8Array(base.data);
   const bbox = quadBbox(quad);
+  const xL = Math.max(0, bbox.left - Math.round(base.width * COVER_SIDE_MARGIN_FRAC));
+  const xR = Math.min(base.width - 1, bbox.right + Math.round(base.width * COVER_SIDE_MARGIN_FRAC));
   const [nr, ng, nb] = averageNavyInBand(base, {
     left: Math.max(0, bbox.left),
     top: Math.max(0, bbox.top),
     right: Math.min(base.width, bbox.right),
     bottom: Math.min(base.height, bbox.bottom),
   });
-  for (let y = Math.max(0, bbox.top); y < Math.min(base.height, bbox.bottom); y++) {
-    const span = scanlineSpan(quad, y);
-    if (!span) continue;
-    for (let x = Math.max(0, span.xL); x <= Math.min(base.width - 1, span.xR); x++) {
+  const maxExpand = Math.round(base.height * COVER_MAX_EXPAND_FRAC);
+
+  // Snap the band top/bottom to the navy extent just beyond the quad.
+  let top = Math.max(0, bbox.top);
+  let bottom = Math.min(base.height, bbox.bottom);
+  for (let y = top - 1; y >= Math.max(0, top - maxExpand); y--) {
+    if (rowNavyFrac(base, y, xL, xR) >= COVER_ROW_NAVY_FRAC) top = y;
+    else break;
+  }
+  for (let y = bottom; y < Math.min(base.height, bottom + maxExpand); y++) {
+    if (rowNavyFrac(base, y, xL, xR) >= COVER_ROW_NAVY_FRAC) bottom = y + 1;
+    else break;
+  }
+
+  const fillRow = (y: number, l: number, r: number, alpha: number) => {
+    for (let x = Math.max(0, l); x <= Math.min(base.width - 1, r); x++) {
       const i = (y * base.width + x) * 4;
-      out[i] = nr;
-      out[i + 1] = ng;
-      out[i + 2] = nb;
+      if (alpha >= 1) {
+        out[i] = nr;
+        out[i + 1] = ng;
+        out[i + 2] = nb;
+      } else {
+        const ia = 1 - alpha;
+        out[i] = Math.round(nr * alpha + out[i] * ia);
+        out[i + 1] = Math.round(ng * alpha + out[i + 1] * ia);
+        out[i + 2] = Math.round(nb * alpha + out[i + 2] * ia);
+      }
       out[i + 3] = 255;
     }
+  };
+
+  for (let y = top; y < bottom; y++) {
+    const insideQuad = y >= bbox.top && y < bbox.bottom;
+    const qspan = insideQuad ? scanlineSpan(quad, y) : null;
+    const nspan = navyExtentRow(base, y, xL, xR);
+    let l = Infinity;
+    let r = -Infinity;
+    if (qspan) {
+      l = Math.min(l, qspan.xL);
+      r = Math.max(r, qspan.xR);
+    }
+    if (nspan) {
+      l = Math.min(l, nspan.l);
+      r = Math.max(r, nspan.r);
+    }
+    if (r >= l) fillRow(y, l, r, 1);
   }
+
+  // Feather the transition just beyond the snapped band (covers a soft overhang).
+  for (let k = 1; k <= COVER_FEATHER_PX; k++) {
+    const alpha = 1 - k / (COVER_FEATHER_PX + 1);
+    const yt = top - k;
+    const yb = bottom - 1 + k;
+    if (yt >= 0) {
+      const s = navyExtentRow(base, yt, xL, xR);
+      if (s) fillRow(yt, s.l, s.r, alpha);
+    }
+    if (yb < base.height) {
+      const s = navyExtentRow(base, yb, xL, xR);
+      if (s) fillRow(yb, s.l, s.r, alpha);
+    }
+  }
+
   return { width: base.width, height: base.height, data: out };
 }
 

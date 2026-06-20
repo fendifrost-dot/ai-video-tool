@@ -5,7 +5,9 @@ import {
   coverTargetOnBand,
   coverTargetQuad,
   detectChestBand,
+  glyphAlphaFactor,
   invBilinear,
+  keyGlyphForeground,
   keyNavyBackground,
   logoCompositeMetaCore,
   logoQuality,
@@ -473,5 +475,60 @@ describe("coverTargetQuad", () => {
     expect(out.data[letter]).toBeLessThan(60);
     const outside = (10 * 100 + 10) * 4; // tan, outside quad
     expect(out.data[outside]).toBeGreaterThan(150);
+  });
+});
+
+describe("keyGlyphForeground / glyphAlphaFactor", () => {
+  it("keeps bright cream and warm gold glyphs, drops navy + tan backgrounds", () => {
+    expect(glyphAlphaFactor(25, 30, 95)).toBe(0); // navy stripe bg
+    expect(glyphAlphaFactor(200, 180, 160)).toBe(0); // tan fabric bg
+    expect(glyphAlphaFactor(245, 240, 225)).toBeGreaterThan(0.95); // cream glyph
+    expect(glyphAlphaFactor(212, 175, 55)).toBeGreaterThan(0.95); // gold glyph
+    const feather = glyphAlphaFactor(200, 200, 200); // mid luma edge
+    expect(feather).toBeGreaterThan(0);
+    expect(feather).toBeLessThan(1);
+  });
+
+  it("zeroes the alpha of a tan right-edge column in a loose crop", () => {
+    const w = 10, h = 8;
+    const crop: RgbaImage = { width: w, height: h, data: new Uint8Array(w * h * 4) };
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        if (x >= 8) { crop.data[i] = 200; crop.data[i + 1] = 180; crop.data[i + 2] = 160; } // tan edge
+        else { crop.data[i] = 25; crop.data[i + 1] = 30; crop.data[i + 2] = 95; } // navy bg
+        crop.data[i + 3] = 255;
+      }
+    }
+    // a cream glyph stroke down the middle
+    for (let y = 0; y < h; y++) { const i = (y * w + 4) * 4; crop.data[i] = 245; crop.data[i + 1] = 240; crop.data[i + 2] = 225; }
+    const keyed = keyGlyphForeground(crop);
+    const a = (x: number, y: number) => keyed.data[(y * w + x) * 4 + 3];
+    expect(a(9, 3)).toBe(0); // tan right edge → transparent (no mastic line)
+    expect(a(0, 3)).toBe(0); // navy bg → transparent
+    expect(a(4, 3)).toBeGreaterThan(200); // cream glyph stays opaque
+  });
+});
+
+describe("coverTargetQuad — snaps to local navy band beyond the quad", () => {
+  it("covers a VTON descender just below the quad and leaves tan outside untouched", () => {
+    const w = 100, h = 100;
+    const base: RgbaImage = { width: w, height: h, data: new Uint8Array(w * h * 4) };
+    for (let i = 0; i < w * h; i++) { base.data[i * 4] = 200; base.data[i * 4 + 1] = 180; base.data[i * 4 + 2] = 160; base.data[i * 4 + 3] = 255; }
+    // navy stripe rows 40..66 (extends below the quad), x 20..80
+    for (let y = 40; y < 66; y++) for (let x = 20; x < 80; x++) {
+      const i = (y * w + x) * 4; base.data[i] = 25; base.data[i + 1] = 30; base.data[i + 2] = 95;
+    }
+    // VTON descender: a light glyph pixel BELOW the quad bottom, on the navy stripe
+    { const i = (62 * w + 50) * 4; base.data[i] = 240; base.data[i + 1] = 235; base.data[i + 2] = 220; }
+    const quad: QuadPts = [
+      { x: 25, y: 42 }, { x: 75, y: 42 }, { x: 75, y: 58 }, { x: 25, y: 58 },
+    ];
+    const out = coverTargetQuad(base, quad);
+    const desc = (62 * w + 50) * 4; // below quad (58), within navy band → covered
+    expect(out.data[desc + 2]).toBeGreaterThan(80);
+    expect(out.data[desc]).toBeLessThan(60);
+    const tan = (90 * w + 90) * 4; // far outside, tan → untouched
+    expect(out.data[tan]).toBeGreaterThan(150);
   });
 });

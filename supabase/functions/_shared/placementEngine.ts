@@ -23,7 +23,7 @@ import {
   detectChestBand,
   encodePng,
   isNavyPixel,
-  keyNavyBackground,
+  keyGlyphForeground,
   logoQuality,
   targetRectForLogo,
   warpQuadAlpha,
@@ -657,7 +657,9 @@ export async function compositeLogoOntoVton(
   const base = await decodeToRgba(vtonBytes);
   let logoImg = await decodeToRgba(logoBytes);
   if (logoSource === "front_crop") {
-    logoImg = keyNavyBackground(logoImg);
+    // Glyph-only key: drop BOTH navy + tan crop backgrounds, keep cream/gold
+    // wordmark — so a loose source bbox never paints a background sliver.
+    logoImg = keyGlyphForeground(logoImg);
   }
   const logoAspect = logoImg.width / Math.max(logoImg.height, 1);
   const [sx, , sw] = placement.source_bbox_norm;
