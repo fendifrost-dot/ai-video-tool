@@ -573,4 +573,36 @@ describe("coverTargetQuad — lower edge follows the per-column stripe bottom", 
     const tan = (550 * w + 60) * 4;
     expect(out.data[tan]).toBeGreaterThan(150);
   });
+
+  it("overwrites an interior fleck (fills to the outer tan-body edge) without a bulge", () => {
+    const w = 120, h = 600;
+    const base: RgbaImage = { width: w, height: h, data: new Uint8Array(w * h * 4) };
+    for (let i = 0; i < w * h; i++) { base.data[i * 4] = 200; base.data[i * 4 + 1] = 180; base.data[i * 4 + 2] = 160; base.data[i * 4 + 3] = 255; } // tan body
+    // main navy band rows 280..340, x 24..96 (so the snapped band bottom ≈ 340)
+    for (let y = 280; y < 340; y++) for (let x = 24; x < 96; x++) {
+      const i = (y * w + x) * 4; base.data[i] = 25; base.data[i + 1] = 30; base.data[i + 2] = 95;
+    }
+    // under the wordmark the stripe dips lower (x 52..68 navy down to 350)
+    for (let y = 340; y < 350; y++) for (let x = 52; x < 68; x++) {
+      const i = (y * w + x) * 4; base.data[i] = 25; base.data[i + 1] = 30; base.data[i + 2] = 95;
+    }
+    // at x=60: a VTON fleck then a non-navy transition sit INSIDE the stripe,
+    // BELOW the snapped band bottom — these used to truncate the column fill.
+    for (let y = 343; y < 348; y++) { const i = (y * w + 60) * 4; base.data[i] = 124; base.data[i + 1] = 112; base.data[i + 2] = 106; } // fleck
+    for (let y = 348; y < 351; y++) { const i = (y * w + 60) * 4; base.data[i] = 90; base.data[i + 1] = 85; base.data[i + 2] = 95; } // transition (not navy, not tan body)
+    const quad: QuadPts = [
+      { x: 30, y: 290 }, { x: 90, y: 290 }, { x: 90, y: 340 }, { x: 30, y: 340 },
+    ];
+    const out = coverTargetQuad(base, quad);
+    // the interior fleck is overwritten (column fills past it to the outer edge)
+    const fleck = (345 * w + 60) * 4;
+    expect(out.data[fleck + 2]).toBeGreaterThan(80);
+    expect(out.data[fleck]).toBeLessThan(60);
+    // the tan body below the stripe stays unpainted (no bulge)
+    const body = (355 * w + 60) * 4;
+    expect(out.data[body]).toBeGreaterThan(150);
+    // a column without the dip is not extended below the main band (no bulge there)
+    const noDip = (345 * w + 40) * 4;
+    expect(out.data[noDip]).toBeGreaterThan(150);
+  });
 });

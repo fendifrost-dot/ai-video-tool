@@ -457,6 +457,17 @@ function smoothstep(a: number, b: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
+/** Jacket tan body: warm, mid-luma, desaturated fabric — distinct from navy, the
+ *  dark VTON fleck (too dark), and the bright/saturated wordmark glyphs. Used to
+ *  find a column's OUTER stripe edge (where the body sustains). */
+export function isTanBody(r: number, g: number, b: number): boolean {
+  if (isNavyPixel(r, g, b)) return false;
+  if (r <= b) return false; // warm
+  const l = lumaOf(r, g, b);
+  if (l < TAN_BODY_LUMA_MIN || l > TAN_BODY_LUMA_MAX) return false;
+  return hsvOf(r, g, b).s <= TAN_BODY_SAT_MAX;
+}
+
 /** Per-pixel "glyph-ness" in [0,1]: bright cream OR warm-saturated gold; navy and
  *  tan score 0. The soft ramps give a feathered alpha at glyph/background edges. */
 export function glyphAlphaFactor(r: number, g: number, b: number): number {
@@ -806,9 +817,12 @@ const COVER_ROW_NAVY_FRAC = 0.35;
 const COVER_MAX_EXPAND_FRAC = 0.03;
 const COVER_SIDE_MARGIN_FRAC = 0.012;
 const COVER_FEATHER_PX = 3; // soft feather rows above the snapped band top
-// Vertical gap (×height) bridged when tracing a column's stripe bottom, so a
-// mid-tone remnant inside the stripe is crossed but the tan body still stops it.
-const COVER_BRIDGE_FRAC = 0.006;
+// A column's outer stripe edge is where the sustained TAN BODY (jacket fabric)
+// begins; interior light flecks/transition above it are crossed and covered.
+const COVER_TAN_SUSTAIN_FRAC = 0.008;
+const TAN_BODY_LUMA_MIN = 130;
+const TAN_BODY_LUMA_MAX = 225;
+const TAN_BODY_SAT_MAX = 0.45;
 
 function rowNavyFrac(base: RgbaImage, y: number, xL: number, xR: number): number {
   let navy = 0;
@@ -923,26 +937,43 @@ export function coverTargetQuad(base: RgbaImage, quad: QuadPts): RgbaImage {
     }
   }
 
-  // Below the band: follow the PER-COLUMN navy-stripe bottom (the stripe's lower
-  // contour — horizontal, diagonal, or curved). For each column, solid-fill navy
-  // only down to that column's true stripe lower edge, bridging a small mid-tone
-  // remnant gap but never crossing into the tan body. This avoids a flat over-
-  // extension / navy bulge below a diagonal stripe.
-  const bridge = Math.max(2, Math.round(base.height * COVER_BRIDGE_FRAC));
+  // Below the band: follow the PER-COLUMN OUTER stripe edge — the row where the
+  // sustained TAN BODY (jacket fabric) begins. Solid-fill navy down to that edge,
+  // OVERWRITING interior light flecks/transition (the VTON's own mark) that would
+  // otherwise truncate the fill early — but never crossing into the tan body, so
+  // the diagonal contour is hugged with no over-extension / navy bulge.
+  const tanSustain = Math.max(4, Math.round(base.height * COVER_TAN_SUSTAIN_FRAC));
   for (let x = spanL; x <= spanR; x++) {
     if (x < 0 || x >= base.width) continue;
-    let lastNavy = -1;
-    let gap = 0;
+    let seenNavy = false;
+    let deepestNavy = -1;
+    let tanRun = 0;
+    let tanStart = -1;
+    let outer = -1;
     for (let y = top; y < downLimit; y++) {
       const i = (y * base.width + x) * 4;
-      if (isNavyPixel(base.data[i], base.data[i + 1], base.data[i + 2])) {
-        lastNavy = y;
-        gap = 0;
-      } else if (lastNavy >= 0 && ++gap > bridge) {
-        break;
+      const r = base.data[i];
+      const g = base.data[i + 1];
+      const b = base.data[i + 2];
+      if (isNavyPixel(r, g, b)) {
+        seenNavy = true;
+        deepestNavy = y;
+        tanRun = 0;
+        continue;
+      }
+      if (!seenNavy) continue;
+      if (isTanBody(r, g, b)) {
+        if (tanRun === 0) tanStart = y;
+        if (++tanRun >= tanSustain) {
+          outer = tanStart - 1; // edge sits just above the sustained body
+          break;
+        }
+      } else {
+        tanRun = 0; // a fleck/transition does not end the stripe
       }
     }
-    for (let y = bottom; y <= lastNavy; y++) {
+    const outerBottom = outer >= 0 ? outer : deepestNavy;
+    for (let y = bottom; y <= outerBottom; y++) {
       const i = (y * base.width + x) * 4;
       out[i] = nr;
       out[i + 1] = ng;
