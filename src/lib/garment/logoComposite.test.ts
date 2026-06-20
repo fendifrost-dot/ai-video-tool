@@ -545,31 +545,30 @@ describe("keyGlyphForeground / glyphAlphaFactor", () => {
   });
 });
 
-describe("coverTargetQuad — solid fill + snap to true navy band bottom", () => {
-  it("solid-fills the band (no skipped light) and extends through the transition", () => {
+describe("coverTargetQuad — lower edge follows the per-column stripe bottom", () => {
+  it("covers a mid-tone remnant inside the band but paints no navy below a diagonal stripe edge", () => {
     const w = 120, h = 600;
     const base: RgbaImage = { width: w, height: h, data: new Uint8Array(w * h * 4) };
     for (let i = 0; i < w * h; i++) { base.data[i * 4] = 200; base.data[i * 4 + 1] = 180; base.data[i * 4 + 2] = 160; base.data[i * 4 + 3] = 255; }
-    // navy stripe rows 240..360 (true band bottom 360), x 24..96
-    for (let y = 240; y < 360; y++) for (let x = 24; x < 96; x++) {
-      const i = (y * w + x) * 4; base.data[i] = 25; base.data[i + 1] = 30; base.data[i + 2] = 95;
-    }
-    // (a) a mid-tone VTON remnant INSIDE the band (already-light) under the letters
-    { const i = (355 * w + 60) * 4; base.data[i] = 124; base.data[i + 1] = 112; base.data[i + 2] = 106; }
-    // (b) a mid-tone remnant in the navy→tan transition just BELOW the band bottom
-    { const i = (363 * w + 60) * 4; base.data[i] = 124; base.data[i + 1] = 112; base.data[i + 2] = 106; }
+    // Diagonal stripe: centre tilts up to the right, so the BOTTOM edge slopes
+    // from y≈320 at x=24 to y≈313 at x=96 (thickness 40).
+    paintDiagonalNavy(base, 24, 96, 300, -0.1, 40);
+    const yBot = (x: number) => Math.round(300 + (x - 24) * -0.1 + 20); // per-column stripe bottom
+    // mid-tone VTON remnant INSIDE the band (above this column's stripe bottom)
+    { const i = (305 * w + 60) * 4; base.data[i] = 124; base.data[i + 1] = 112; base.data[i + 2] = 106; }
     const quad: QuadPts = [
-      { x: 30, y: 252 }, { x: 90, y: 252 }, { x: 90, y: 348 }, { x: 30, y: 348 },
+      { x: 30, y: 285 }, { x: 90, y: 285 }, { x: 90, y: 308 }, { x: 30, y: 308 },
     ];
     const out = coverTargetQuad(base, quad);
-    // (a) light remnant inside the band is solid-filled (not skipped)
-    const inside = (355 * w + 60) * 4;
+    // (a) remnant inside the band → covered (solid fill, not skipped)
+    const inside = (305 * w + 60) * 4;
     expect(out.data[inside + 2]).toBeGreaterThan(80);
     expect(out.data[inside]).toBeLessThan(60);
-    // (b) remnant just below the band, in the transition, is covered by the extension
-    const below = (363 * w + 60) * 4;
-    expect(out.data[below + 2]).toBeGreaterThan(80);
-    expect(out.data[below]).toBeLessThan(60);
+    // (b) no navy painted below each column's true stripe bottom (no flat bulge).
+    for (const x of [36, 60, 84]) {
+      const justBelow = ((yBot(x) + 3) * w + x) * 4; // a few px below the diagonal edge
+      expect(out.data[justBelow]).toBeGreaterThan(150); // still tan, not navy
+    }
     // far tan untouched (no runaway expansion)
     const tan = (550 * w + 60) * 4;
     expect(out.data[tan]).toBeGreaterThan(150);

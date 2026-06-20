@@ -806,7 +806,9 @@ const COVER_ROW_NAVY_FRAC = 0.35;
 const COVER_MAX_EXPAND_FRAC = 0.03;
 const COVER_SIDE_MARGIN_FRAC = 0.012;
 const COVER_FEATHER_PX = 3; // soft feather rows above the snapped band top
-const COVER_TRANSITION_FRAC = 0.01; // solid rows DOWN through the navy→tan transition (×height)
+// Vertical gap (×height) bridged when tracing a column's stripe bottom, so a
+// mid-tone remnant inside the stripe is crossed but the tan body still stops it.
+const COVER_BRIDGE_FRAC = 0.006;
 
 function rowNavyFrac(base: RgbaImage, y: number, xL: number, xR: number): number {
   let navy = 0;
@@ -921,17 +923,33 @@ export function coverTargetQuad(base: RgbaImage, quad: QuadPts): RgbaImage {
     }
   }
 
-  // Below the band: extend DOWN through the navy→tan transition with a SOLID fill
-  // (crisp lower edge) so the VTON mid-tone remnant + transition under the letters
-  // are covered and the tan sits further below the baseline.
-  const transitionPx = Math.round(base.height * COVER_TRANSITION_FRAC);
-  for (let k = 0; k < transitionPx; k++) {
-    const y = bottom + k;
-    if (y >= base.height) break;
-    fillRow(y, spanL, spanR, 1);
+  // Below the band: follow the PER-COLUMN navy-stripe bottom (the stripe's lower
+  // contour — horizontal, diagonal, or curved). For each column, solid-fill navy
+  // only down to that column's true stripe lower edge, bridging a small mid-tone
+  // remnant gap but never crossing into the tan body. This avoids a flat over-
+  // extension / navy bulge below a diagonal stripe.
+  const bridge = Math.max(2, Math.round(base.height * COVER_BRIDGE_FRAC));
+  for (let x = spanL; x <= spanR; x++) {
+    if (x < 0 || x >= base.width) continue;
+    let lastNavy = -1;
+    let gap = 0;
+    for (let y = top; y < downLimit; y++) {
+      const i = (y * base.width + x) * 4;
+      if (isNavyPixel(base.data[i], base.data[i + 1], base.data[i + 2])) {
+        lastNavy = y;
+        gap = 0;
+      } else if (lastNavy >= 0 && ++gap > bridge) {
+        break;
+      }
+    }
+    for (let y = bottom; y <= lastNavy; y++) {
+      const i = (y * base.width + x) * 4;
+      out[i] = nr;
+      out[i + 1] = ng;
+      out[i + 2] = nb;
+      out[i + 3] = 255;
+    }
   }
-  const edgeY = bottom + transitionPx;
-  if (edgeY < base.height) fillRow(edgeY, spanL, spanR, 0.4);
 
   return { width: base.width, height: base.height, data: out };
 }
