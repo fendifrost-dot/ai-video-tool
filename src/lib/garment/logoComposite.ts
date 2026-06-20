@@ -422,6 +422,12 @@ const GLYPH_WARM_HUE_MAX = 70;
 const GLYPH_GOLD_SAT_DROP = 0.4; // warm + below this saturation → tan background
 const GLYPH_GOLD_SAT_KEEP = 0.55; // warm + at/above → gold glyph
 const GLYPH_GOLD_VAL_MIN = 0.5;
+// Dilate the confirmed-glyph mask outward to rebuild the anti-aliased stroke
+// edges the key strips. We grow the GLYPH region (not lower the luma threshold),
+// so tan fabric — which has no glyph neighbour — is never re-admitted.
+const GLYPH_CONFIRM = 0.5; // factor ≥ this → confirmed glyph (dilation source)
+const GLYPH_DILATE_RADIUS = 1; // px to grow the glyph mask
+const GLYPH_DILATE_FEATHER = 0.7; // alpha rebuilt on a dilated edge ring
 
 function lumaOf(r: number, g: number, b: number): number {
   return 0.299 * r + 0.587 * g + 0.114 * b;
@@ -466,16 +472,45 @@ export function glyphAlphaFactor(r: number, g: number, b: number): number {
 /**
  * Derive the logo's alpha from the WORDMARK GLYPHS ONLY: keep bright cream/gold
  * glyph pixels opaque and key out BOTH the navy stripe and the tan fabric
- * backgrounds of a front-flat crop, with a feathered edge. After this, no
- * source-background pixel paints regardless of how loose the crop bbox is.
+ * backgrounds of a front-flat crop. The confirmed-glyph mask is then DILATED ~1px
+ * (with a feather) to rebuild the anti-aliased stroke edges the hard key strips —
+ * restoring stroke weight without re-admitting the tan background (which has no
+ * glyph neighbour to dilate from). No source-background pixel paints regardless
+ * of how loose the crop bbox is.
  */
-export function keyGlyphForeground(logo: RgbaImage): RgbaImage {
+export function keyGlyphForeground(logo: RgbaImage, dilateRadius = GLYPH_DILATE_RADIUS): RgbaImage {
   const { width, height } = logo;
   const data = new Uint8Array(logo.data);
+  const base = new Float32Array(width * height);
   for (let i = 0; i < width * height; i++) {
     const o = i * 4;
-    const factor = glyphAlphaFactor(data[o], data[o + 1], data[o + 2]);
-    data[o + 3] = Math.round(data[o + 3] * factor);
+    base[i] = glyphAlphaFactor(data[o], data[o + 1], data[o + 2]);
+  }
+  const R = Math.max(0, dilateRadius);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = y * width + x;
+      let f = base[idx];
+      if (R > 0 && f < 1) {
+        let best = 0;
+        for (let dy = -R; dy <= R && best < 1; dy++) {
+          for (let dx = -R; dx <= R; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = x + dx;
+            const ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
+            if (base[ny * width + nx] >= GLYPH_CONFIRM) {
+              const d = Math.max(Math.abs(dx), Math.abs(dy));
+              const contrib = GLYPH_DILATE_FEATHER * (1 - (d - 1) / Math.max(1, R));
+              if (contrib > best) best = contrib;
+            }
+          }
+        }
+        if (best > f) f = best;
+      }
+      const o = idx * 4;
+      data[o + 3] = Math.round(data[o + 3] * f);
+    }
   }
   return { width, height, data };
 }
@@ -756,7 +791,8 @@ export function warpQuadAlpha(
 const COVER_ROW_NAVY_FRAC = 0.35; // row counts as stripe if ≥ this navy fraction
 const COVER_MAX_EXPAND_FRAC = 0.03; // max vertical expand beyond quad (×height)
 const COVER_SIDE_MARGIN_FRAC = 0.012; // horizontal margin around quad (×width)
-const COVER_FEATHER_PX = 3; // soft transition rows beyond the navy extent
+const COVER_FEATHER_PX = 3; // soft feather rows above the snapped band top
+const COVER_TRANSITION_FRAC = 0.01; // solid rows DOWN through the navy→tan transition (×height)
 
 /** Fraction of navy pixels on row y within [xL,xR]. */
 function rowNavyFrac(base: RgbaImage, y: number, xL: number, xR: number): number {
@@ -807,11 +843,13 @@ export function coverTargetQuad(base: RgbaImage, quad: QuadPts): RgbaImage {
   // Snap the band top/bottom to the navy extent just beyond the quad.
   let top = Math.max(0, bbox.top);
   let bottom = Math.min(base.height, bbox.bottom);
-  for (let y = top - 1; y >= Math.max(0, top - maxExpand); y--) {
+  const upLimit = Math.max(0, top - maxExpand);
+  const downLimit = Math.min(base.height, bottom + maxExpand);
+  for (let y = top - 1; y >= upLimit; y--) {
     if (rowNavyFrac(base, y, xL, xR) >= COVER_ROW_NAVY_FRAC) top = y;
     else break;
   }
-  for (let y = bottom; y < Math.min(base.height, bottom + maxExpand); y++) {
+  for (let y = bottom; y < downLimit; y++) {
     if (rowNavyFrac(base, y, xL, xR) >= COVER_ROW_NAVY_FRAC) bottom = y + 1;
     else break;
   }
@@ -833,6 +871,10 @@ export function coverTargetQuad(base: RgbaImage, quad: QuadPts): RgbaImage {
     }
   };
 
+  // SOLID-fill the snapped band: paint the full per-row span (navy ∪ quad) with
+  // no per-pixel skipping, so any mid-tone VTON remnant inside the band is covered.
+  let spanL = Infinity;
+  let spanR = -Infinity;
   for (let y = top; y < bottom; y++) {
     const insideQuad = y >= bbox.top && y < bbox.bottom;
     const qspan = insideQuad ? scanlineSpan(quad, y) : null;
@@ -847,23 +889,38 @@ export function coverTargetQuad(base: RgbaImage, quad: QuadPts): RgbaImage {
       l = Math.min(l, nspan.l);
       r = Math.max(r, nspan.r);
     }
-    if (r >= l) fillRow(y, l, r, 1);
+    if (r >= l) {
+      fillRow(y, l, r, 1);
+      spanL = Math.min(spanL, l);
+      spanR = Math.max(spanR, r);
+    }
+  }
+  if (spanR < spanL) {
+    spanL = Math.max(0, bbox.left);
+    spanR = Math.min(base.width - 1, bbox.right);
   }
 
-  // Feather the transition just beyond the snapped band (covers a soft overhang).
+  // Above the band: soft feather into the transition.
   for (let k = 1; k <= COVER_FEATHER_PX; k++) {
     const alpha = 1 - k / (COVER_FEATHER_PX + 1);
     const yt = top - k;
-    const yb = bottom - 1 + k;
     if (yt >= 0) {
       const s = navyExtentRow(base, yt, xL, xR);
       if (s) fillRow(yt, s.l, s.r, alpha);
     }
-    if (yb < base.height) {
-      const s = navyExtentRow(base, yb, xL, xR);
-      if (s) fillRow(yb, s.l, s.r, alpha);
-    }
   }
+
+  // Below the band: extend DOWN through the navy→tan transition with a SOLID fill
+  // (crisp lower edge) so the VTON mid-tone remnant + transition under the letters
+  // are covered and the tan sits further below the baseline.
+  const transitionPx = Math.round(base.height * COVER_TRANSITION_FRAC);
+  for (let k = 0; k < transitionPx; k++) {
+    const y = bottom + k;
+    if (y >= base.height) break;
+    fillRow(y, spanL, spanR, 1);
+  }
+  const edgeY = bottom + transitionPx;
+  if (edgeY < base.height) fillRow(edgeY, spanL, spanR, 0.4);
 
   return { width: base.width, height: base.height, data: out };
 }

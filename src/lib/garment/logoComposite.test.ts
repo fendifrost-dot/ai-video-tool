@@ -508,27 +508,70 @@ describe("keyGlyphForeground / glyphAlphaFactor", () => {
     expect(a(0, 3)).toBe(0); // navy bg → transparent
     expect(a(4, 3)).toBeGreaterThan(200); // cream glyph stays opaque
   });
+
+  it("dilation rebuilds stripped AA stroke edges without re-admitting tan", () => {
+    const w = 12, h = 12;
+    const crop: RgbaImage = { width: w, height: h, data: new Uint8Array(w * h * 4) };
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        if (x >= 10) { crop.data[i] = 200; crop.data[i + 1] = 180; crop.data[i + 2] = 160; } // tan right column
+        else { crop.data[i] = 25; crop.data[i + 1] = 30; crop.data[i + 2] = 95; } // navy bg
+        crop.data[i + 3] = 255;
+      }
+    }
+    // cream core stroke at x=6, with mid-tone AA blends at x=5 and x=7 (the key
+    // strips these → ~1px thinning that the dilation must rebuild)
+    for (let y = 0; y < h; y++) {
+      let i = (y * w + 6) * 4; crop.data[i] = 245; crop.data[i + 1] = 240; crop.data[i + 2] = 225;
+      i = (y * w + 5) * 4; crop.data[i] = 120; crop.data[i + 1] = 118; crop.data[i + 2] = 125;
+      i = (y * w + 7) * 4; crop.data[i] = 120; crop.data[i + 1] = 118; crop.data[i + 2] = 125;
+    }
+    const countAlpha = (img: RgbaImage) => {
+      let c = 0;
+      for (let i = 3; i < img.data.length; i += 4) if (img.data[i] > 10) c++;
+      return c;
+    };
+    const plain = keyGlyphForeground(crop, 0); // no dilation
+    const dilated = keyGlyphForeground(crop, 1);
+    expect(countAlpha(dilated)).toBeGreaterThan(countAlpha(plain)); // edges rebuilt → bolder
+    const tanA = (img: RgbaImage) => img.data[(3 * w + 11) * 4 + 3];
+    expect(tanA(plain)).toBe(0); // tan column stays out…
+    expect(tanA(dilated)).toBe(0); // …even after dilation (no glyph neighbour)
+    expect(dilated.data[(3 * w + 6) * 4 + 3]).toBeGreaterThan(200); // cream core opaque
+    // the stripped AA edge is rebuilt to a partial (feathered) alpha
+    const edge = dilated.data[(3 * w + 5) * 4 + 3];
+    expect(edge).toBeGreaterThan(0);
+  });
 });
 
-describe("coverTargetQuad — snaps to local navy band beyond the quad", () => {
-  it("covers a VTON descender just below the quad and leaves tan outside untouched", () => {
-    const w = 100, h = 100;
+describe("coverTargetQuad — solid fill + snap to true navy band bottom", () => {
+  it("solid-fills the band (no skipped light) and extends through the transition", () => {
+    const w = 120, h = 600;
     const base: RgbaImage = { width: w, height: h, data: new Uint8Array(w * h * 4) };
     for (let i = 0; i < w * h; i++) { base.data[i * 4] = 200; base.data[i * 4 + 1] = 180; base.data[i * 4 + 2] = 160; base.data[i * 4 + 3] = 255; }
-    // navy stripe rows 40..66 (extends below the quad), x 20..80
-    for (let y = 40; y < 66; y++) for (let x = 20; x < 80; x++) {
+    // navy stripe rows 240..360 (true band bottom 360), x 24..96
+    for (let y = 240; y < 360; y++) for (let x = 24; x < 96; x++) {
       const i = (y * w + x) * 4; base.data[i] = 25; base.data[i + 1] = 30; base.data[i + 2] = 95;
     }
-    // VTON descender: a light glyph pixel BELOW the quad bottom, on the navy stripe
-    { const i = (62 * w + 50) * 4; base.data[i] = 240; base.data[i + 1] = 235; base.data[i + 2] = 220; }
+    // (a) a mid-tone VTON remnant INSIDE the band (already-light) under the letters
+    { const i = (355 * w + 60) * 4; base.data[i] = 124; base.data[i + 1] = 112; base.data[i + 2] = 106; }
+    // (b) a mid-tone remnant in the navy→tan transition just BELOW the band bottom
+    { const i = (363 * w + 60) * 4; base.data[i] = 124; base.data[i + 1] = 112; base.data[i + 2] = 106; }
     const quad: QuadPts = [
-      { x: 25, y: 42 }, { x: 75, y: 42 }, { x: 75, y: 58 }, { x: 25, y: 58 },
+      { x: 30, y: 252 }, { x: 90, y: 252 }, { x: 90, y: 348 }, { x: 30, y: 348 },
     ];
     const out = coverTargetQuad(base, quad);
-    const desc = (62 * w + 50) * 4; // below quad (58), within navy band → covered
-    expect(out.data[desc + 2]).toBeGreaterThan(80);
-    expect(out.data[desc]).toBeLessThan(60);
-    const tan = (90 * w + 90) * 4; // far outside, tan → untouched
+    // (a) light remnant inside the band is solid-filled (not skipped)
+    const inside = (355 * w + 60) * 4;
+    expect(out.data[inside + 2]).toBeGreaterThan(80);
+    expect(out.data[inside]).toBeLessThan(60);
+    // (b) remnant just below the band, in the transition, is covered by the extension
+    const below = (363 * w + 60) * 4;
+    expect(out.data[below + 2]).toBeGreaterThan(80);
+    expect(out.data[below]).toBeLessThan(60);
+    // far tan untouched (no runaway expansion)
+    const tan = (550 * w + 60) * 4;
     expect(out.data[tan]).toBeGreaterThan(150);
   });
 });
