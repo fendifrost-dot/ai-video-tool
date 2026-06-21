@@ -83,6 +83,8 @@ import {
   pollJobStatus,
   fetchAndIngestResult,
   ProviderCallError,
+  inferGenerationMode,
+  pickReferencePathsForProvider,
 } from "./api";
 
 beforeEach(() => {
@@ -237,6 +239,85 @@ describe("createGenerationJob", () => {
     expect(callBody.promptText).toMatch(/do not change face/);
     expect(callBody.referenceImageUrl).toBe("https://signed.example/ref.png");
     expect(callBody.mode).toBe("image_to_video");
+  });
+
+  it("posts Grok reference_to_video with up to three signed refs", async () => {
+    mocks.getTable("provider_jobs").insertResult = { id: "row-grok" };
+    mocks.signedUrlMock
+      .mockResolvedValueOnce("https://signed.example/look.png")
+      .mockResolvedValueOnce("https://signed.example/face.png")
+      .mockResolvedValueOnce("https://signed.example/hands.png");
+    mocks.invokeMock.mockResolvedValueOnce({
+      data: {
+        ok: true,
+        providerJobId: "grok-up-1",
+        status: "queued",
+        resultUrl: null,
+        costEstimateCents: 60,
+        costFinalCents: null,
+        provider: "grok",
+        modelVariant: "grok-imagine-video",
+        providerMetadata: {},
+      },
+      error: null,
+    });
+
+    await createGenerationJob({
+      provider: "grok",
+      projectId: "p1",
+      promptText: "performance shot, neon alley, slow push in",
+      referenceImagePaths: [
+        "u1/a1/look.png",
+        "u1/a1/face.png",
+        "u1/a1/hands.png",
+        "u1/a1/extra.png",
+      ],
+    });
+
+    const callBody = mocks.invokeMock.mock.calls[0][1].body.body as Record<string, unknown>;
+    expect(callBody.mode).toBe("reference_to_video");
+    expect(mocks.invokeMock).toHaveBeenCalledWith(
+      "proxy-provider-call",
+      expect.objectContaining({
+        body: expect.objectContaining({
+          endpoint: "video-providers-grok-generate",
+          body: expect.objectContaining({
+            mode: "reference_to_video",
+            modelVariant: "grok-imagine-video",
+            referenceImageUrl: "https://signed.example/look.png",
+            referenceImageUrls: [
+              "https://signed.example/look.png",
+              "https://signed.example/face.png",
+              "https://signed.example/hands.png",
+            ],
+          }),
+        }),
+      }),
+    );
+    expect(mocks.signedUrlMock).toHaveBeenCalledTimes(3);
+
+    const payload = mocks.getTable("provider_jobs").inserts[0]
+      .request_payload_json as Record<string, unknown>;
+    expect(payload.referenceImagePaths).toEqual([
+      "u1/a1/look.png",
+      "u1/a1/face.png",
+      "u1/a1/hands.png",
+    ]);
+  });
+});
+
+describe("generation mode helpers", () => {
+  it("pickReferencePathsForProvider caps Grok at three paths", () => {
+    const paths = pickReferencePathsForProvider("grok", {
+      referenceImagePaths: ["a", "b", "c", "d"],
+    });
+    expect(paths).toEqual(["a", "b", "c"]);
+  });
+
+  it("inferGenerationMode uses reference_to_video for Grok with 2+ refs", () => {
+    expect(inferGenerationMode("grok", 2)).toBe("reference_to_video");
+    expect(inferGenerationMode("grok", 1)).toBe("image_to_video");
+    expect(inferGenerationMode("runway", 2)).toBe("image_to_video");
   });
 });
 

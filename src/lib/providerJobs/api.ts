@@ -21,11 +21,17 @@
 
 import { supabase } from "@/lib/supabase";
 import { signedUrl } from "@/lib/storage";
+import {
+  GROK_DEFAULT_MODEL,
+  GROK_MAX_REFERENCE_IMAGES,
+} from "@/lib/providers/grok";
 import type {
   ProviderName,
   ProviderJobStatus,
   ProviderJob,
 } from "@/integrations/supabase/aliases";
+
+export { GROK_DEFAULT_MODEL, GROK_MAX_REFERENCE_IMAGES };
 
 /**
  * Endpoint slug for each provider on Control Center. Matches the
@@ -53,14 +59,23 @@ export class ProviderCallError extends Error {
   }
 }
 
+export type GenerationMode =
+  | "text_to_video"
+  | "image_to_video"
+  | "reference_to_video"
+  | "lipsync";
+
 export type GenerationInput = {
   provider: ProviderName;
   projectId: string;
   promptId?: string | null;
   shotId?: string | null;
   promptText: string;
-  mode?: "text_to_video" | "image_to_video" | "lipsync";
+  mode?: GenerationMode;
+  /** Primary reference path (legacy single-ref consumers). */
   referenceImagePath?: string | null;
+  /** Multi-ref paths from the compiler (Grok ref-to-video uses up to 3). */
+  referenceImagePaths?: string[];
   modelVariant?: string;
   duration?: number;
   aspectRatio?: string;
@@ -142,6 +157,49 @@ async function resolveReferenceSignedUrl(path: string): Promise<string | null> {
   return null;
 }
 
+async function resolveReferenceSignedUrls(paths: string[]): Promise<string[]> {
+  const urls: string[] = [];
+  for (const path of paths) {
+    const url = await resolveReferenceSignedUrl(path);
+    if (url) urls.push(url);
+  }
+  return urls;
+}
+
+/** De-dupe reference paths; Grok may send up to 3, others use the first only. */
+export function pickReferencePathsForProvider(
+  provider: ProviderName,
+  input: Pick<GenerationInput, "referenceImagePath" | "referenceImagePaths">,
+): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const append = (p: string | null | undefined) => {
+    if (!p) return;
+    const t = p.trim();
+    if (!t || seen.has(t)) return;
+    seen.add(t);
+    out.push(t);
+  };
+  for (const p of input.referenceImagePaths ?? []) append(p);
+  append(input.referenceImagePath ?? null);
+  const max = provider === "grok" ? GROK_MAX_REFERENCE_IMAGES : 1;
+  return out.slice(0, max);
+}
+
+/** Infer CC mode from resolved reference count. Grok uses reference_to_video at 2+. */
+export function inferGenerationMode(
+  provider: ProviderName,
+  referenceCount: number,
+  explicit?: GenerationMode,
+): GenerationMode {
+  if (referenceCount === 0) {
+    return explicit === "lipsync" ? "lipsync" : "text_to_video";
+  }
+  if (provider === "grok" && referenceCount >= 2) return "reference_to_video";
+  if (explicit === "lipsync") return "lipsync";
+  return "image_to_video";
+}
+
 async function callProxy<T = Record<string, unknown>>(
   endpoint: string,
   init: { method?: "POST" | "GET"; query?: Record<string, string>; body?: Record<string, unknown> },
@@ -198,21 +256,24 @@ export async function createGenerationJob(input: GenerationInput): Promise<{
   const user = userData.user;
   if (!user) throw new ProviderCallError("UNAUTHORISED", "Not signed in.");
 
-  // Resolve a temporary signed URL for the locked reference if present.
-  let referenceImageUrl: string | null = null;
-  if (input.referenceImagePath) {
-    referenceImageUrl = await resolveReferenceSignedUrl(input.referenceImagePath);
-    if (!referenceImageUrl) {
-      throw new ProviderCallError(
-        "INVALID_INPUT",
-        "Could not sign the reference image — the locked look or asset may be missing.",
-      );
-    }
+  const referencePaths = pickReferencePathsForProvider(safeInput.provider, safeInput);
+  const referenceImageUrls = await resolveReferenceSignedUrls(referencePaths);
+  if (referencePaths.length > 0 && referenceImageUrls.length === 0) {
+    throw new ProviderCallError(
+      "INVALID_INPUT",
+      "Could not sign the reference image(s) — the locked look or asset may be missing.",
+    );
   }
-  const mode =
-    referenceImageUrl != null
-      ? (safeInput.mode ?? "image_to_video")
-      : (safeInput.mode === "image_to_video" ? "text_to_video" : safeInput.mode);
+  const referenceImageUrl = referenceImageUrls[0] ?? null;
+  const mode = inferGenerationMode(
+    safeInput.provider,
+    referenceImageUrls.length,
+    safeInput.mode,
+  );
+
+  const modelVariant =
+    safeInput.modelVariant ??
+    (safeInput.provider === "grok" ? GROK_DEFAULT_MODEL : undefined);
 
   // Insert the queued row up-front so we always have an audit trail even if
   // the CC call errors immediately.
@@ -227,8 +288,9 @@ export async function createGenerationJob(input: GenerationInput): Promise<{
       request_payload_json: ({
         promptText: safeInput.promptText,
         mode: safeInput.mode ?? null,
-        referenceImagePath: safeInput.referenceImagePath ?? null,
-        modelVariant: safeInput.modelVariant ?? null,
+        referenceImagePath: referencePaths[0] ?? null,
+        referenceImagePaths: referencePaths.length > 0 ? referencePaths : null,
+        modelVariant: modelVariant ?? null,
         duration: safeInput.duration ?? null,
         aspectRatio: safeInput.aspectRatio ?? null,
         seed: safeInput.seed ?? null,
@@ -255,7 +317,10 @@ export async function createGenerationJob(input: GenerationInput): Promise<{
         promptText: safeInput.promptText,
         mode,
         referenceImageUrl,
-        modelVariant: safeInput.modelVariant,
+        ...(referenceImageUrls.length > 1
+          ? { referenceImageUrls }
+          : {}),
+        modelVariant,
         duration: safeInput.duration,
         aspectRatio: safeInput.aspectRatio,
         seed: safeInput.seed,

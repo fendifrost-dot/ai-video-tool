@@ -196,6 +196,15 @@ export function PromptBuilder({
           </Select>
           <p className="text-xs text-muted-foreground">
             Choose a different provider to apply that provider's formatter (e.g. Grok normalizes to comma-tags, Veo to sentences).
+            {effectiveProvider === "grok" &&
+              compiled &&
+              compiled.referenceImagePaths.length >= 2 && (
+                <span className="mt-1 block text-emerald-300/90">
+                  Grok Imagine will use reference-to-video with up to{" "}
+                  {Math.min(compiled.referenceImagePaths.length, 3)} locked refs
+                  (look + Character DNA).
+                </span>
+              )}
           </p>
         </Section>
 

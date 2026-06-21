@@ -18,6 +18,11 @@ import {
   useJobPoller,
   useIngestOnSuccess,
 } from "@/lib/providerJobs/queries";
+import {
+  GROK_DEFAULT_MODEL,
+  inferGenerationMode,
+  pickReferencePathsForProvider,
+} from "@/lib/providerJobs/api";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -70,26 +75,47 @@ export function GenerateButton({
       return;
     }
     try {
+      const referencePaths = pickReferencePathsForProvider(provider, {
+        referenceImagePath: compiled.referenceImagePath,
+        referenceImagePaths: compiled.referenceImagePaths,
+      });
+      const mode = inferGenerationMode(provider, referencePaths.length);
+      const defaultModel =
+        provider === "grok" ? GROK_DEFAULT_MODEL : undefined;
+      const modelFromSettings =
+        typeof formatted.settings.modelVariant === "string"
+          ? (formatted.settings.modelVariant as string)
+          : undefined;
+
       const { providerJobRowId, envelope } = await generate.mutateAsync({
         provider,
         projectId: compiled.context.projectId,
-        promptId: null, // PromptBuilder owner can pass via context if saved
+        promptId: null,
         shotId: compiled.context.shotId ?? null,
         promptText: formatted.promptText,
-        mode: compiled.referenceImagePath ? "image_to_video" : "text_to_video",
-        referenceImagePath: compiled.referenceImagePath,
-        modelVariant: typeof formatted.settings.modelVariant === "string"
-          ? (formatted.settings.modelVariant as string)
-          : undefined,
+        mode,
+        referenceImagePath: referencePaths[0] ?? null,
+        referenceImagePaths:
+          referencePaths.length > 1 ? referencePaths : undefined,
+        modelVariant: modelFromSettings ?? defaultModel,
         duration: typeof formatted.settings.duration === "number"
           ? (formatted.settings.duration as number)
           : undefined,
         aspectRatio: typeof formatted.settings.aspectRatio === "string"
           ? (formatted.settings.aspectRatio as string)
           : undefined,
+        settings:
+          provider === "grok" &&
+          typeof formatted.settings.resolution === "string"
+            ? { resolution: formatted.settings.resolution }
+            : undefined,
       });
       setActiveJobId(providerJobRowId);
-      toast.success(`${providerDisplay}: job ${envelope.status}`);
+      const costHint =
+        envelope.costEstimateCents != null
+          ? ` (~$${(envelope.costEstimateCents / 100).toFixed(2)})`
+          : "";
+      toast.success(`${providerDisplay}: job ${envelope.status}${costHint}`);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error(`${providerDisplay}: ${msg}`);
@@ -170,8 +196,8 @@ export function GenerateButton({
         </span>
       )}
       {!apiReady && supported && !isRunning && !isDone && !isFailed && !isIngesting && (
-        <span className="text-[10px] text-muted-foreground" title="The Control Center proxy will fail-clean if the upstream key is missing.">
-          (proxy active)
+        <span className="text-[10px] text-muted-foreground" title="Provider not marked apiReady — proxy may still work if CC is configured.">
+          (manual workflow)
         </span>
       )}
     </div>

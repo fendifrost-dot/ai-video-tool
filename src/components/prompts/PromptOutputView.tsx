@@ -64,7 +64,11 @@ export function PromptOutputView({
 
   return (
     <div className="space-y-3">
-      <LockedReferenceBadge path={compiled.referenceImagePath} />
+      <LockedReferenceBadge
+        path={compiled.referenceImagePath}
+        pathCount={compiled.referenceImagePaths.length}
+        activeProvider={active}
+      />
       <Tabs value={active} onValueChange={(v) => setActive(v as ProviderName)}>
         {/*
           Horizontal scroll instead of a fixed grid so the 7 provider tabs
@@ -133,7 +137,15 @@ export function PromptOutputView({
   );
 }
 
-function LockedReferenceBadge({ path }: { path: string | null }) {
+function LockedReferenceBadge({
+  path,
+  pathCount,
+  activeProvider,
+}: {
+  path: string | null;
+  pathCount: number;
+  activeProvider: ProviderName;
+}) {
   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -182,6 +194,16 @@ function LockedReferenceBadge({ path }: { path: string | null }) {
       <Lock className="h-3.5 w-3.5 shrink-0" />
       <span className="truncate">
         Locked reference attached: <code className="font-mono">{path.split("/").pop()}</code>
+        {pathCount > 1 && (
+          <span className="text-emerald-300/80">
+            {" "}
+            (+{pathCount - 1} more
+            {activeProvider === "grok"
+              ? ` — Grok ref-to-video uses up to ${Math.min(pathCount, 3)}`
+              : ""}
+            )
+          </span>
+        )}
       </span>
     </div>
   );

@@ -1,57 +1,75 @@
-# Grok / xAI Imagine API status — verified 2026-05-16
+# Grok / xAI Imagine API status — verified 2026-05-16, AVT wiring 2026-06-20
 
-**Status: OPEN.** The Grok Imagine video generation API is publicly
-available to API customers as of May 2026. AVT routes through the
-real API; no browser-automation fallback was built.
+**Upstream API: OPEN** (xAI video generation, May 2026).  
+**AVT client: wired** via Control Center proxy — generation is live when CC has
+`Frost_Grok` (or equivalent) configured.
 
-## Endpoint
+## Architecture
+
+```
+Prompt Builder → providerJobs/api.ts → proxy-provider-call (AVT)
+  → video-providers-grok-generate (Control Center)
+  → xAI POST /v1/videos/generations
+  → poll job-status → ingest-provider-job → project_assets
+```
+
+AVT does **not** host `video-providers-grok-generate` locally — that function
+lives on the **Control Center** Supabase project. AVT whitelists the endpoint
+in `proxy-provider-call` and routes through `CONTROL_CENTER_URL`.
+
+## Endpoint (xAI)
 
 - **Submit:**  `POST https://api.x.ai/v1/videos/generations`
 - **Poll:**    `GET  https://api.x.ai/v1/videos/{request_id}`
 
-Both authenticated with `Authorization: Bearer <Frost_Grok>`.
+Authenticated with `Authorization: Bearer <Frost_Grok>` on the CC side.
 
-## Capabilities (per xAI docs, last verified 2026-05-16)
+## Capabilities (xAI docs, verified 2026-05-16)
 
-| Capability               | Available |
-| ------------------------ | --------- |
-| text-to-video            | yes       |
-| image-to-video (1st frame)| yes      |
-| reference-to-video       | yes (up to 3 ref images) |
-| video editing            | yes (`/v1/videos/edits`) |
-| video extension          | yes (`/v1/videos/extensions`) |
-| max duration             | 15s per gen, 2-10s per extension |
-| aspect ratios            | `1:1`, `16:9`, `9:16`, `4:3`, `3:4`, `3:2`, `2:3` |
-| resolutions              | `480p` (default), `720p` |
+| Capability                | xAI API | AVT client (2026-06-20)        |
+| ------------------------- | ------- | ------------------------------ |
+| text-to-video             | yes     | yes (`apiReady`, Generate btn) |
+| image-to-video (1st frame)| yes     | yes (single locked ref)        |
+| reference-to-video        | yes (≤3)| yes (look + Character DNA refs)|
+| video editing             | yes     | not wired                      |
+| video extension           | yes     | not wired (capability flagged) |
+| max duration              | 15s     | clamped via provider_capabilities |
+| aspect ratios             | 1:1, 16:9, 9:16, 4:3, 3:4, 3:2, 2:3 | via settings |
+| resolutions               | 480p / 720p | default 720p in formatter |
 
 ## Default model: `grok-imagine-video`
 
-Quality Mode is now available for enterprise tiers (higher realism,
-better text rendering). We default to standard mode.
+Set in `src/lib/providers/grok.ts` and passed when no template override exists.
 
-## Wiring on our side
+## AVT wiring (this repo)
 
-- `supabase/functions/video-providers-grok-generate/index.ts` posts to
-  `/v1/videos/generations` and returns the `request_id` as `providerJobId`.
-- `supabase/functions/video-providers-job-status/index.ts` polls
-  `GET /v1/videos/{id}` and maps xAI's status (`pending|done|failed|expired`)
-  onto our normalised status (`queued|running|succeeded|failed`).
-- `supabase/functions/video-providers-job-result/index.ts` fetches the
-  hosted `video.url` (xAI returns a temporary `vidgen.x.ai/...mp4`).
+| File | Role |
+| ---- | ---- |
+| `src/lib/providers/grok.ts` | Comma-tag formatter, `apiReady=true`, default settings |
+| `src/lib/providerJobs/api.ts` | Multi-ref signing, `reference_to_video` mode, CC payload |
+| `supabase/functions/proxy-provider-call/index.ts` | Forwards to CC generate/status/result |
+| `supabase/functions/ingest-provider-job/index.ts` | Downloads xAI CDN clips server-side |
 
-## Notes
+## Manual canvas workflow (separate from video gen)
 
-- Videos are returned at temporary URLs — AVT must download promptly
-  (we ingest into `project-clips` immediately via the standard flow).
-- Cost per generation is not yet exposed in the response; we use a
-  $0.60 placeholder estimate (`GROK_CENTS_PER_GENERATION = 60`).
-  Update against real invoices.
-- No reference-to-video or video-edit endpoints are wired yet — only
-  the basic text-to-video / image-to-video paths.
+Grok **images** imported on LooksListPage still flow through identity swap
+(`faceswap-proxy`) and wardrobe VTON (`wardrobe-vton-proxy`). That path is
+intentionally manual/import-first — video generation is the in-app Generate path.
+
+## Cost
+
+Placeholder estimate: **$0.60** per generation (`GROK_CENTS_PER_GENERATION = 60`
+on CC until invoices confirm). AVT surfaces `costEstimateCents` from the CC
+envelope in toasts and `ProjectCostCard`.
+
+## Not yet wired
+
+- Video edit (`/v1/videos/edits`)
+- Video extension (`/v1/videos/extensions`) — UI modes pending
+- In-app Grok **image** generation for look canvases (import remains primary)
 
 ## Sources
 
-- https://docs.x.ai/developers/model-capabilities/video/generation (May 12, 2026)
+- https://docs.x.ai/developers/model-capabilities/video/generation
 - https://docs.x.ai/developers/model-capabilities/video/image-to-video
 - https://x.ai/api/imagine
-- https://x.ai/news/grok-imagine-api

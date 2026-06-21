@@ -62,13 +62,20 @@ describe("provider registry", () => {
     expect(out.promptText.endsWith(".")).toBe(true);
   });
 
-  it("Grok converts sentences into comma-tag style", () => {
+  it("Grok converts sentences into comma-tag style and folds negatives", () => {
     const out = getProvider("grok").formatPrompt({
       ...baseCompiled,
       promptText: "Iris performing. Warm key light. Narrow alley.",
+      negativePrompt: "blurry, watermark",
     });
     expect(out.promptText).not.toContain(". ");
     expect(out.promptText).toContain(", ");
+    expect(out.promptText).toContain("no blurry");
+    expect(out.settings.modelVariant).toBe("grok-imagine-video");
+  });
+
+  it("Grok is wired to the Control Center proxy", () => {
+    expect(getProvider("grok").apiReady).toBe(true);
   });
 
   it("Pika collapses whitespace", () => {
