@@ -71,6 +71,43 @@ describe("productDetails back-compat", () => {
     expect(p?.source_bbox_norm[2]).toBe(0.2);
   });
 
+  it("resolves an explicit front_asset_id from product_details (high-res link)", () => {
+    const placement = logoPlacementFromProductDetails([
+      {
+        detail_type: "wordmark",
+        asset_id: "logo-png",
+        front_asset_id: "front-hi-res",
+        placement: { source_bbox_norm: [0.2, 0.3, 0.4, 0.05] },
+      },
+    ]);
+    expect(placement?.front_asset_id).toBe("front-hi-res");
+  });
+
+  it("falls back to legacy logo_placement.front_asset_id when product_details omits it", () => {
+    const p = resolveLogoPlacementFromMetadata({
+      product_details: [
+        { detail_type: "wordmark", asset_id: "logo-png", placement: { source_bbox_norm: [0.2, 0.3, 0.4, 0.05] } },
+      ],
+      logo_placement: { source_bbox_norm: [0.2, 0.3, 0.4, 0.05], front_asset_id: "legacy-front" },
+    });
+    expect(p?.front_asset_id).toBe("legacy-front"); // high-res link not lost
+  });
+
+  it("prefers the explicit product_details front_asset_id over the legacy one", () => {
+    const p = resolveLogoPlacementFromMetadata({
+      product_details: [
+        {
+          detail_type: "wordmark",
+          asset_id: "logo-png",
+          front_asset_id: "explicit-front",
+          placement: { source_bbox_norm: [0.2, 0.3, 0.4, 0.05] },
+        },
+      ],
+      logo_placement: { source_bbox_norm: [0.2, 0.3, 0.4, 0.05], front_asset_id: "legacy-front" },
+    });
+    expect(p?.front_asset_id).toBe("explicit-front");
+  });
+
   it("metadataWithProductDetails writes legacy mirrors", () => {
     const placement = {
       source_bbox_norm: [0.1, 0.2, 0.3, 0.04] as [number, number, number, number],

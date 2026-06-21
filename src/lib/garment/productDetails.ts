@@ -53,6 +53,8 @@ export type ProductDetailColorProfile = {
 export type ProductDetail = {
   detail_type: ProductDetailType;
   asset_id?: string | null;
+  /** Explicit high-res flat-front asset to crop the wordmark from (front_crop source). */
+  front_asset_id?: string | null;
   anchor_type?: AnchorType;
   placement?: ProductDetailPlacement;
   render?: ProductDetailRender;
@@ -93,6 +95,7 @@ export function parseProductDetail(raw: unknown): ProductDetail | null {
 
   const detail: ProductDetail = { detail_type: detailType as ProductDetailType };
   if (typeof o.asset_id === "string") detail.asset_id = o.asset_id;
+  if (typeof o.front_asset_id === "string") detail.front_asset_id = o.front_asset_id;
   if (typeof o.anchor_type === "string") detail.anchor_type = o.anchor_type as AnchorType;
   if (typeof o.tracking_mode === "string") {
     detail.tracking_mode = o.tracking_mode as TrackingMode;
@@ -158,6 +161,7 @@ export function migrateLegacyToProductDetails(
     details.push({
       detail_type: "wordmark",
       asset_id: placement.logo_asset_id ?? null,
+      front_asset_id: placement.front_asset_id ?? null,
       anchor_type: "stripe",
       placement: {
         source_bbox_norm: placement.source_bbox_norm,
@@ -206,6 +210,7 @@ export function logoPlacementFromProductDetails(
   if (!logo?.placement?.source_bbox_norm) return null;
   return parseLogoPlacement({
     logo_asset_id: logo.asset_id ?? null,
+    front_asset_id: logo.front_asset_id ?? null,
     source_bbox_norm: logo.placement.source_bbox_norm,
     placement_hint: "upper_left_chest",
     target_region: "chest_band",
@@ -241,10 +246,17 @@ export function resolveLogoPlacementFromMetadata(
   metadata: Record<string, unknown> | null | undefined,
 ): LogoPlacement | null {
   if (!metadata) return null;
-  return (
-    logoPlacementFromProductDetails(resolveProductDetails(metadata)) ??
-    parseLogoPlacement(metadata.logo_placement)
-  );
+  const fromDetails = logoPlacementFromProductDetails(resolveProductDetails(metadata));
+  const legacy = parseLogoPlacement(metadata.logo_placement);
+  if (fromDetails) {
+    // Honor the explicit product_details front_asset_id; fall back to the legacy
+    // logo_placement.front_asset_id so the high-res front link isn't lost.
+    if (!fromDetails.front_asset_id && legacy?.front_asset_id) {
+      return { ...fromDetails, front_asset_id: legacy.front_asset_id };
+    }
+    return fromDetails;
+  }
+  return legacy;
 }
 
 export function resolveProductTruthFromMetadata(
@@ -273,6 +285,7 @@ export function upsertLogoProductDetail(
   const logoDetail: ProductDetail = {
     detail_type: "wordmark",
     asset_id: placement.logo_asset_id ?? null,
+    front_asset_id: placement.front_asset_id ?? null,
     anchor_type: "stripe",
     placement: {
       source_bbox_norm: placement.source_bbox_norm,
