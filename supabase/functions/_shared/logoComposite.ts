@@ -350,6 +350,80 @@ function resizeRgbaBilinear(src: RgbaImage, dstW: number, dstH: number): RgbaIma
   return { width: dstW, height: dstH, data: new Uint8Array(resized.bitmap) };
 }
 
+// --- High-quality downsampling for the logo. The master (~2608px) is shrunk ~10×
+//     to the ~30px target; a single bilinear tap aliases the fine cursive strokes,
+//     so we AREA-AVERAGE (premultiplied-alpha box mipmap) down toward the target
+//     first, then sample. Alpha is preserved; transparent pixels never bleed. ---
+
+/** Average each 2×2 block (premultiplied alpha) → half-size image. */
+function boxHalf(src: RgbaImage): RgbaImage {
+  const w = Math.max(1, src.width >> 1);
+  const h = Math.max(1, src.height >> 1);
+  const out = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let ar = 0, ag = 0, ab = 0, aa = 0;
+      for (let dy = 0; dy < 2; dy++) {
+        for (let dx = 0; dx < 2; dx++) {
+          const px = Math.min(src.width - 1, x * 2 + dx);
+          const py = Math.min(src.height - 1, y * 2 + dy);
+          const i = (py * src.width + px) * 4;
+          const a = src.data[i + 3] / 255;
+          ar += src.data[i] * a;
+          ag += src.data[i + 1] * a;
+          ab += src.data[i + 2] * a;
+          aa += a;
+        }
+      }
+      const o = (y * w + x) * 4;
+      if (aa > 0) {
+        out[o] = Math.round(ar / aa);
+        out[o + 1] = Math.round(ag / aa);
+        out[o + 2] = Math.round(ab / aa);
+      }
+      out[o + 3] = Math.round((aa / 4) * 255);
+    }
+  }
+  return { width: w, height: h, data: out };
+}
+
+/** Box-mipmap the source down until it is < 2× the target on both axes, so the
+ *  subsequent bilinear/supersample step resamples at a near-1× ratio (no alias). */
+function prefilterToTarget(src: RgbaImage, targetW: number, targetH: number): RgbaImage {
+  let cur = src;
+  const tw = Math.max(1, targetW);
+  const th = Math.max(1, targetH);
+  while (cur.width >= tw * 2 && cur.height >= th * 2 && cur.width > 2 && cur.height > 2) {
+    cur = boxHalf(cur);
+  }
+  return cur;
+}
+
+/** Bilinear resize (used only after prefilter → ≤ 2× ratio, so no aliasing). */
+function resizeBilinearPure(src: RgbaImage, dstW: number, dstH: number): RgbaImage {
+  const out = new Uint8Array(dstW * dstH * 4);
+  for (let y = 0; y < dstH; y++) {
+    const sy = ((y + 0.5) / dstH) * src.height - 0.5;
+    for (let x = 0; x < dstW; x++) {
+      const sx = ((x + 0.5) / dstW) * src.width - 0.5;
+      const [r, g, b, a] = sampleBilinearPt(src, sx, sy);
+      const o = (y * dstW + x) * 4;
+      out[o] = r;
+      out[o + 1] = g;
+      out[o + 2] = b;
+      out[o + 3] = a;
+    }
+  }
+  return { width: dstW, height: dstH, data: out };
+}
+
+/** Area-averaging downsample/resize: prefilter (box mipmap) then bilinear. */
+function resizeAreaAverage(src: RgbaImage, dstW: number, dstH: number): RgbaImage {
+  if (dstW <= 0 || dstH <= 0) return { width: Math.max(1, dstW), height: Math.max(1, dstH), data: new Uint8Array(Math.max(1, dstW) * Math.max(1, dstH) * 4) };
+  const pre = prefilterToTarget(src, dstW, dstH);
+  return resizeBilinearPure(pre, dstW, dstH);
+}
+
 function cropRgba(
   img: RgbaImage,
   left: number,
@@ -650,7 +724,8 @@ export function alphaComposite(
   const out = new Uint8Array(base.data);
   const tw = target.right - target.left;
   const th = target.bottom - target.top;
-  const scaled = resizeRgbaBilinear(logo, tw, th);
+  // Area-average (never nearest/single-bilinear) so the downscaled logo anti-aliases.
+  const scaled = resizeAreaAverage(logo, tw, th);
   for (let y = 0; y < th; y++) {
     const dy = target.top + y;
     if (dy < 0 || dy >= base.height) continue;
@@ -783,6 +858,10 @@ function scanlineSpan(q: QuadPts, y: number): { xL: number; xR: number } | null 
 }
 
 /** Alpha-blend a logo onto the base mapped to a quad (TL,TR,BR,BL), 2–4px feather. */
+/** Supersamples per destination pixel — area-averages the source footprint so a
+ *  ~10× downscale anti-aliases instead of aliasing. */
+const WARP_SUPERSAMPLE = 3;
+
 export function warpQuadAlpha(
   base: RgbaImage,
   logo: RgbaImage,
@@ -794,22 +873,37 @@ export function warpQuadAlpha(
   const bbox = quadBbox(quad);
   const quadW = (dist(tl, tr) + dist(bl, br)) / 2;
   const quadH = (dist(tl, bl) + dist(tr, br)) / 2;
+  // Area pre-filter the master ONCE toward the rendered size, then warp it with
+  // supersampling — so the single warp doesn't alias the fine cursive strokes.
+  const src = prefilterToTarget(logo, Math.ceil(quadW), Math.ceil(quadH));
   const fu = featherPx > 0 ? featherPx / Math.max(1, quadW) : 0;
   const fv = featherPx > 0 ? featherPx / Math.max(1, quadH) : 0;
+  const SS = WARP_SUPERSAMPLE;
+  const N = SS * SS;
   for (let y = Math.max(0, bbox.top); y < Math.min(base.height, bbox.bottom); y++) {
     for (let x = Math.max(0, bbox.left); x < Math.min(base.width, bbox.right); x++) {
-      const uv = invBilinear(x, y, tl, tr, br, bl);
-      if (!uv) continue;
-      const [r, g, b, al] = sampleBilinearPt(logo, uv.u * (logo.width - 1), uv.v * (logo.height - 1));
-      let a = al / 255;
-      if (fu > 0) a *= Math.max(0, Math.min(1, Math.min(uv.u, 1 - uv.u) / fu));
-      if (fv > 0) a *= Math.max(0, Math.min(1, Math.min(uv.v, 1 - uv.v) / fv));
-      if (a <= 0.003) continue;
+      let ar = 0, ag = 0, ab = 0, aa = 0;
+      for (let sj = 0; sj < SS; sj++) {
+        for (let si = 0; si < SS; si++) {
+          const uv = invBilinear(x + (si + 0.5) / SS, y + (sj + 0.5) / SS, tl, tr, br, bl);
+          if (!uv) continue; // outside the quad → contributes transparent (AA edge)
+          const [r, g, b, al] = sampleBilinearPt(src, uv.u * (src.width - 1), uv.v * (src.height - 1));
+          let a = al / 255;
+          if (fu > 0) a *= Math.max(0, Math.min(1, Math.min(uv.u, 1 - uv.u) / fu));
+          if (fv > 0) a *= Math.max(0, Math.min(1, Math.min(uv.v, 1 - uv.v) / fv));
+          ar += r * a;
+          ag += g * a;
+          ab += b * a;
+          aa += a;
+        }
+      }
+      const A = aa / N; // coverage = mean alpha over the whole dest pixel
+      if (A <= 0.003) continue;
       const bi = (y * base.width + x) * 4;
-      const ia = 1 - a;
-      out[bi] = Math.round(r * a + out[bi] * ia);
-      out[bi + 1] = Math.round(g * a + out[bi + 1] * ia);
-      out[bi + 2] = Math.round(b * a + out[bi + 2] * ia);
+      const ia = 1 - A;
+      out[bi] = Math.round((ar / aa) * A + out[bi] * ia); // ar/aa = alpha-weighted colour
+      out[bi + 1] = Math.round((ag / aa) * A + out[bi + 1] * ia);
+      out[bi + 2] = Math.round((ab / aa) * A + out[bi + 2] * ia);
       out[bi + 3] = 255;
     }
   }

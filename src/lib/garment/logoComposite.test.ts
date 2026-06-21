@@ -11,6 +11,7 @@ import {
   keyNavyBackground,
   logoCompositeMetaCore,
   logoQuality,
+  resizeAreaAverage,
   resizeRgba,
   targetRectForLogo,
   warpQuadAlpha,
@@ -615,5 +616,103 @@ describe("coverTargetQuad — lower edge follows the per-column stripe bottom", 
     // a column without the dip is not extended below the main band (no bulge there)
     const noDip = (345 * w + 40) * 4;
     expect(out.data[noDip]).toBeGreaterThan(150);
+  });
+});
+
+describe("logo typography rendering — anti-aliased downsampling", () => {
+  // helper: a fine vertical-stripe pattern (period 2*stripe px) at full alpha
+  function stripes(w: number, h: number, stripe: number, c0: [number, number, number], c1: [number, number, number]): RgbaImage {
+    const img = solid(w, h, 0, 0, 0);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const c = Math.floor(x / stripe) % 2 === 0 ? c0 : c1;
+      const i = (y * w + x) * 4;
+      img.data[i] = c[0]; img.data[i + 1] = c[1]; img.data[i + 2] = c[2]; img.data[i + 3] = 255;
+    }
+    return img;
+  }
+  const rowR = (img: RgbaImage, y: number) => {
+    const a: number[] = [];
+    for (let x = 0; x < img.width; x++) a.push(img.data[(y * img.width + x) * 4]);
+    return a;
+  };
+  const range = (a: number[]) => Math.max(...a) - Math.min(...a);
+
+  it("area-averaging smooths fine strokes where point sampling aliases", () => {
+    const src = stripes(100, 100, 3, [255, 255, 255], [0, 0, 0]); // 3px strokes, non-commensurate scale
+    const aa = resizeAreaAverage(src, 8, 8); // prefilter (box mipmap) + bilinear
+    // nearest/point sampling — the aliasing baseline we must beat (never used for the logo)
+    const near = (y: number) => {
+      const a: number[] = [];
+      for (let x = 0; x < 8; x++) {
+        const sx = Math.min(99, Math.round(((x + 0.5) / 8) * 100 - 0.5));
+        const sy = Math.min(99, Math.round(((y + 0.5) / 8) * 100 - 0.5));
+        a.push(src.data[(sy * 100 + sx) * 4]);
+      }
+      return a;
+    };
+    const av = rowR(aa, 4);
+    const nv = near(4);
+    // area-average → smooth, mid-grey (strokes blended, not aliased)
+    for (const v of av) { expect(v).toBeGreaterThan(70); expect(v).toBeLessThan(185); }
+    expect(range(av)).toBeLessThan(70);
+    // point sampling aliases → hard on/off banding (much wider spread)
+    expect(range(nv)).toBeGreaterThan(range(av) + 80);
+  });
+
+  it("box mipmap is premultiplied-alpha: transparent pixels don't bleed colour", () => {
+    const w = 16, h = 16;
+    const src = solid(w, h, 0, 0, 0);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4;
+      if (x < 8) { src.data[i] = 255; src.data[i + 1] = 0; src.data[i + 2] = 0; src.data[i + 3] = 255; } // opaque red
+      else { src.data[i] = 0; src.data[i + 1] = 0; src.data[i + 2] = 255; src.data[i + 3] = 0; } // transparent blue
+    }
+    const out = resizeAreaAverage(src, 4, 4); // prefilter halves (premultiplied)
+    expect(out.data[0]).toBeGreaterThan(240); // left stays red…
+    expect(out.data[2]).toBeLessThan(40); // …with NO blue bleed from the transparent half
+    expect(out.data[3 * 4 + 3]).toBeLessThan(60); // top-right (transparent half) stays transparent
+  });
+
+  it("isolation: fine pattern → transform → FLAT NAVY renders anti-aliased blends", () => {
+    // logo = cream strokes with transparent gaps; no VTON, no cover, no segmentation.
+    const lw = 120, lh = 40;
+    const logo = solid(lw, lh, 245, 240, 225);
+    for (let y = 0; y < lh; y++) for (let x = 0; x < lw; x++) {
+      if (Math.floor(x / 2) % 2 === 1) logo.data[(y * lw + x) * 4 + 3] = 0; // 2px gap → transparent
+    }
+    const navy = solid(80, 80, 25, 30, 95);
+    const quad: QuadPts = [{ x: 30, y: 30 }, { x: 42, y: 30 }, { x: 42, y: 42 }, { x: 30, y: 42 }]; // 12×12 (10× down)
+    const out = warpQuadAlpha(navy, logo, quad, 0);
+    let intermediate = 0, total = 0;
+    for (let y = 31; y < 41; y++) for (let x = 31; x < 41; x++) {
+      const b = out.data[(y * 80 + x) * 4 + 2];
+      total++;
+      if (b > 115 && b < 215) intermediate++; // between navy(95) and cream(225) → AA blend
+    }
+    expect(intermediate).toBeGreaterThan(total * 0.35); // strokes anti-aliased, not hard-edged
+  });
+
+  it("golden: flat colour + alpha preserved; checker downsamples to mid-grey (regression guard)", () => {
+    // 1) flat colour through the AA pipeline is preserved EXACTLY (no corruption)
+    const flat = solid(40, 40, 245, 240, 225);
+    const f = resizeAreaAverage(flat, 8, 8);
+    for (let i = 0; i < f.data.length; i += 4) {
+      expect(f.data[i]).toBe(245);
+      expect(f.data[i + 1]).toBe(240);
+      expect(f.data[i + 2]).toBe(225);
+      expect(f.data[i + 3]).toBe(255);
+    }
+    // 2) a 2px checker MUST average to mid-grey (an aliasing/nearest filter would not)
+    const ck = solid(40, 40, 0, 0, 0);
+    for (let y = 0; y < 40; y++) for (let x = 0; x < 40; x++) {
+      if ((Math.floor(x / 2) + Math.floor(y / 2)) % 2 === 0) {
+        const i = (y * 40 + x) * 4; ck.data[i] = 255; ck.data[i + 1] = 255; ck.data[i + 2] = 255;
+      }
+    }
+    const c = resizeAreaAverage(ck, 4, 4);
+    for (let i = 0; i < c.data.length; i += 4) {
+      expect(c.data[i]).toBeGreaterThan(110);
+      expect(c.data[i]).toBeLessThan(146);
+    }
   });
 });
