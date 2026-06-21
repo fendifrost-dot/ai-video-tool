@@ -15,6 +15,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
+  pickFullLookGarmentPath,
   pickVtonGarmentPath,
   vtonCategoryForFeatureType,
 } from "../_shared/garmentReference.ts";
@@ -47,6 +48,13 @@ type Body = {
   sceneBucket?: string;
   name?: string;
   vtonModel?: "idm-vton" | "cat-vton";
+  /** Hero-frame pivot: full-look uses on-model garment ref; jacket_only uses flat front. */
+  transferMode?: "full_look" | "jacket_only";
+  /** When true, skip post-VTON logo composite (Phase 1 hero judging). */
+  heroFrameCandidate?: boolean;
+  heroFrameSessionId?: string;
+  candidateIndex?: number;
+  projectId?: string;
 };
 
 function json(status: number, body: unknown) {
@@ -152,8 +160,12 @@ async function completeLookFromFalUrl(
   let logoCompositeMeta: Record<string, unknown> | null = null;
   let compositeRan = false;
 
+  const skipLogoComposite = Boolean(
+    (meta as Record<string, unknown>)?.hero_frame_candidate === true,
+  );
+
   try {
-    const resolved = await resolveLogoAssets(admin, wardrobeFeatureId);
+    const resolved = skipLogoComposite ? null : await resolveLogoAssets(admin, wardrobeFeatureId);
     if (resolved) {
       const composite = await compositeLogoOntoVton(
         vtonBuf,
@@ -286,7 +298,10 @@ serve(async (req) => {
   const refImages = Array.isArray(wardrobe.reference_images)
     ? wardrobe.reference_images
     : [];
-  const garmentPath = pickVtonGarmentPath(
+  const transferMode = body.transferMode ?? "jacket_only";
+  const pickGarment =
+    transferMode === "full_look" ? pickFullLookGarmentPath : pickVtonGarmentPath;
+  const garmentPath = pickGarment(
     refImages,
     wardrobe.storage_path ?? wardrobe.file_url,
   );
@@ -352,12 +367,16 @@ serve(async (req) => {
   const childLookId = crypto.randomUUID();
   const category = vtonCategoryForFeatureType(String(wardrobe.feature_type));
   const recipe = {
-    pipeline_preference: "idm_vton_frame",
+    pipeline_preference: transferMode === "full_look" ? "hero_full_look_vton" : "idm_vton_frame",
     parent_look_id: body.parentLookId ?? null,
     wardrobe_feature_id: wardrobe.id,
     garment_path_used: garmentPath,
+    transfer_mode: transferMode,
     vton_category: category,
     human_image_url: humanUrl,
+    hero_frame_session_id: body.heroFrameSessionId ?? null,
+    hero_frame_candidate_index: body.candidateIndex ?? null,
+    hero_frame_project_id: body.projectId ?? null,
     generation_metadata: null,
   };
 
@@ -370,7 +389,10 @@ serve(async (req) => {
       name:
         body.name ??
         `${parentName.slice(0, 48)} · ${String(wardrobe.label).slice(0, 32)} VTON`,
-      description: "IDM-VTON garment swap onto canvas.",
+      description:
+        transferMode === "full_look"
+          ? "Hero full-look garment transfer onto source frame."
+          : "IDM-VTON garment swap onto canvas.",
       status: "pending",
       generated_image_url: null,
       generated_storage_path: null,
@@ -449,7 +471,11 @@ serve(async (req) => {
         vton_model: queue.model ?? "idm-vton",
         garment_path: garmentPath,
         wardrobe_feature_id: wardrobe.id,
+        transfer_mode: transferMode,
         fal_image_url: falUrl,
+        hero_frame_candidate: Boolean(body.heroFrameCandidate),
+        hero_frame_session_id: body.heroFrameSessionId ?? null,
+        candidate_index: body.candidateIndex ?? null,
       });
     } catch (err) {
       await admin

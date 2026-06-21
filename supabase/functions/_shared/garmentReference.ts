@@ -58,6 +58,33 @@ export function pickVtonGarmentPath(
   return fallbackPath ?? null;
 }
 
+export function sortRefsForFullLookGarment<T extends RefImageLike>(refs: T[]): T[] {
+  if (refs.length <= 1) return [...refs];
+  const priority = new Map(
+    VTON_GARMENT_ANGLE_PRIORITY.map((a, i) => [a, i]),
+  );
+  return [...refs].sort((a, b) => {
+    const aOnModel = isOnModelReference(a);
+    const bOnModel = isOnModelReference(b);
+    if (aOnModel !== bOnModel) return aOnModel ? -1 : 1;
+    const aPri = priority.get((a.angle ?? "") as (typeof VTON_GARMENT_ANGLE_PRIORITY)[number]) ?? 50;
+    const bPri = priority.get((b.angle ?? "") as (typeof VTON_GARMENT_ANGLE_PRIORITY)[number]) ?? 50;
+    return aPri - bPri;
+  });
+}
+
+export function pickFullLookGarmentPath(
+  refs: RefImageLike[],
+  fallbackPath?: string | null,
+): string | null {
+  const sorted = sortRefsForFullLookGarment(refs);
+  for (const r of sorted) {
+    const p = pathFromRef(r);
+    if (p) return p;
+  }
+  return fallbackPath ?? null;
+}
+
 export function orderedRefPathsForComposer(
   refs: RefImageLike[],
   fallbackPath?: string | null,

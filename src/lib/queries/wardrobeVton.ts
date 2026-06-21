@@ -9,6 +9,12 @@ export type ApplyGarmentVtonInput = {
   scenePath?: string;
   sceneBucket?: string;
   name?: string;
+  vtonModel?: "idm-vton" | "cat-vton";
+  transferMode?: "full_look" | "jacket_only";
+  heroFrameCandidate?: boolean;
+  heroFrameSessionId?: string;
+  candidateIndex?: number;
+  projectId?: string;
 };
 
 export type ApplyGarmentVtonResult = {

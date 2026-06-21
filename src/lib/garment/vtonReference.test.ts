@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   guessAngleFromFilename,
   orderedRefPathsForComposer,
+  pickFullLookGarmentPath,
   pickVtonGarmentPath,
   sortRefsForVtonGarment,
 } from "./vtonReference";
@@ -25,6 +26,16 @@ describe("pickVtonGarmentPath", () => {
 
   it("falls back to storage_path when refs empty", () => {
     expect(pickVtonGarmentPath([], "legacy/path.jpg")).toBe("legacy/path.jpg");
+  });
+});
+
+describe("pickFullLookGarmentPath", () => {
+  it("prefers on-model over front flat for hero full-look transfer", () => {
+    const refs = [
+      { storage_path: "a/front-flat.jpg", angle: "front" },
+      { storage_path: "a/on-model.jpg", angle: "on_model", label: "SL on model" },
+    ];
+    expect(pickFullLookGarmentPath(refs)).toBe("a/on-model.jpg");
   });
 });
 

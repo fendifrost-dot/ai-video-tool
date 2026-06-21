@@ -42,6 +42,7 @@ import { Route as ProjectsIdTimelineRouteImport } from './routes/projects.$id.ti
 import { Route as ProjectsIdShotsRouteImport } from './routes/projects.$id.shots'
 import { Route as ProjectsIdReviewRouteImport } from './routes/projects.$id.review'
 import { Route as ProjectsIdPromptRouteImport } from './routes/projects.$id.prompt'
+import { Route as ProjectsIdHeroFrameRouteImport } from './routes/projects.$id.hero-frame'
 import { Route as ProjectsIdExportRouteImport } from './routes/projects.$id.export'
 import { Route as ProjectsIdContinuityRouteImport } from './routes/projects.$id.continuity'
 import { Route as ProjectsIdAssetsRouteImport } from './routes/projects.$id.assets'
@@ -217,6 +218,11 @@ const ProjectsIdPromptRoute = ProjectsIdPromptRouteImport.update({
   path: '/prompt',
   getParentRoute: () => ProjectsIdRoute,
 } as any)
+const ProjectsIdHeroFrameRoute = ProjectsIdHeroFrameRouteImport.update({
+  id: '/hero-frame',
+  path: '/hero-frame',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
 const ProjectsIdExportRoute = ProjectsIdExportRouteImport.update({
   id: '/export',
   path: '/export',
@@ -294,6 +300,7 @@ export interface FileRoutesByFullPath {
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
+  '/projects/$id/hero-frame': typeof ProjectsIdHeroFrameRoute
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
@@ -329,6 +336,7 @@ export interface FileRoutesByTo {
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
+  '/projects/$id/hero-frame': typeof ProjectsIdHeroFrameRoute
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
@@ -374,6 +382,7 @@ export interface FileRoutesById {
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
+  '/projects/$id/hero-frame': typeof ProjectsIdHeroFrameRoute
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
@@ -420,6 +429,7 @@ export interface FileRouteTypes {
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
     | '/projects/$id/export'
+    | '/projects/$id/hero-frame'
     | '/projects/$id/prompt'
     | '/projects/$id/review'
     | '/projects/$id/shots'
@@ -455,6 +465,7 @@ export interface FileRouteTypes {
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
     | '/projects/$id/export'
+    | '/projects/$id/hero-frame'
     | '/projects/$id/prompt'
     | '/projects/$id/review'
     | '/projects/$id/shots'
@@ -499,6 +510,7 @@ export interface FileRouteTypes {
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
     | '/projects/$id/export'
+    | '/projects/$id/hero-frame'
     | '/projects/$id/prompt'
     | '/projects/$id/review'
     | '/projects/$id/shots'
@@ -759,6 +771,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsIdPromptRouteImport
       parentRoute: typeof ProjectsIdRoute
     }
+    '/projects/$id/hero-frame': {
+      id: '/projects/$id/hero-frame'
+      path: '/hero-frame'
+      fullPath: '/projects/$id/hero-frame'
+      preLoaderRoute: typeof ProjectsIdHeroFrameRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
     '/projects/$id/export': {
       id: '/projects/$id/export'
       path: '/export'
@@ -954,6 +973,7 @@ interface ProjectsIdRouteChildren {
   ProjectsIdAssetsRoute: typeof ProjectsIdAssetsRoute
   ProjectsIdContinuityRoute: typeof ProjectsIdContinuityRoute
   ProjectsIdExportRoute: typeof ProjectsIdExportRoute
+  ProjectsIdHeroFrameRoute: typeof ProjectsIdHeroFrameRoute
   ProjectsIdPromptRoute: typeof ProjectsIdPromptRoute
   ProjectsIdReviewRoute: typeof ProjectsIdReviewRoute
   ProjectsIdShotsRoute: typeof ProjectsIdShotsRouteWithChildren
@@ -967,6 +987,7 @@ const ProjectsIdRouteChildren: ProjectsIdRouteChildren = {
   ProjectsIdAssetsRoute: ProjectsIdAssetsRoute,
   ProjectsIdContinuityRoute: ProjectsIdContinuityRoute,
   ProjectsIdExportRoute: ProjectsIdExportRoute,
+  ProjectsIdHeroFrameRoute: ProjectsIdHeroFrameRoute,
   ProjectsIdPromptRoute: ProjectsIdPromptRoute,
   ProjectsIdReviewRoute: ProjectsIdReviewRoute,
   ProjectsIdShotsRoute: ProjectsIdShotsRouteWithChildren,
