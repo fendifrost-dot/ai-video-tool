@@ -154,7 +154,8 @@ async function completeLookFromFalUrl(
   if (rawUploadErr) throw new Error(`raw_upload_failed: ${rawUploadErr.message}`);
 
   let finalBuf = vtonBuf;
-  let pipeline = "idm_vton_frame";
+  const vtonModel = String(meta.vton_model ?? "idm-vton");
+  let pipeline = vtonModel === "cat-vton" ? "cat_vton_frame" : "idm_vton_frame";
   let finalMime = mime;
   let finalExt = ext;
   let logoCompositeMeta: Record<string, unknown> | null = null;
@@ -372,6 +373,7 @@ serve(async (req) => {
     wardrobe_feature_id: wardrobe.id,
     garment_path_used: garmentPath,
     transfer_mode: transferMode,
+    vton_model: body.vtonModel ?? "idm-vton",
     vton_category: category,
     human_image_url: humanUrl,
     hero_frame_session_id: body.heroFrameSessionId ?? null,

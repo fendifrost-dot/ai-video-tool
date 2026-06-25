@@ -81,6 +81,28 @@ export function sortRefsForFullLookGarment<T extends RefImageLike>(refs: T[]): T
   });
 }
 
+/** Pick up to N garment reference paths for Grok multi-image edit (on-model first). */
+export function pickGrokGarmentReferencePaths(
+  refs: RefImageLike[],
+  fallbackPath?: string | null,
+  max = 3,
+): string[] {
+  const sorted = sortRefsForFullLookGarment(refs);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const r of sorted) {
+    const p = pathFromRef(r);
+    if (!p || seen.has(p)) continue;
+    seen.add(p);
+    out.push(p);
+    if (out.length >= max) break;
+  }
+  if (out.length === 0 && fallbackPath && !seen.has(fallbackPath)) {
+    out.push(fallbackPath);
+  }
+  return out;
+}
+
 /** Pick garment ref for hero full-look transfer (prefers on-model SL shots). */
 export function pickFullLookGarmentPath(
   refs: RefImageLike[],

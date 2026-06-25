@@ -1,0 +1,72 @@
+const XAI_EDITS_URL = "https://api.x.ai/v1/images/edits";
+
+export type XaiImageInput = { url: string; type: "image_url" };
+
+export type XaiImageEditsRequest = {
+  apiKey: string;
+  model: string;
+  prompt: string;
+  images: XaiImageInput[];
+  responseFormat?: "url" | "b64_json";
+};
+
+function decodeBase64Image(b64: string): Uint8Array {
+  const raw = b64.includes(",") ? b64.split(",")[1]! : b64;
+  const bin = atob(raw);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function extractFromBody(body: Record<string, unknown>): { url?: string; b64?: string } {
+  const data = body?.data as Array<{ url?: string; b64_json?: string }> | undefined;
+  if (Array.isArray(data) && data.length > 0) {
+    const first = data[0]!;
+    if (typeof first.url === "string" && first.url.startsWith("http")) {
+      return { url: first.url };
+    }
+    if (typeof first.b64_json === "string" && first.b64_json.length > 0) {
+      return { b64: first.b64_json };
+    }
+  }
+  const image = body?.image as { url?: string } | undefined;
+  if (typeof image?.url === "string" && image.url.startsWith("http")) {
+    return { url: image.url };
+  }
+  return {};
+}
+
+/** Call xAI multi-image edit; returns raw image bytes. */
+export async function callXaiImageEdits(
+  req: XaiImageEditsRequest,
+): Promise<Uint8Array> {
+  const resp = await fetch(XAI_EDITS_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${req.apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: req.model,
+      prompt: req.prompt,
+      images: req.images,
+      response_format: req.responseFormat ?? "url",
+    }),
+  });
+
+  const body = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    throw new Error(
+      `xai_edits_failed: ${resp.status} ${JSON.stringify(body).slice(0, 300)}`,
+    );
+  }
+
+  const extracted = extractFromBody(body as Record<string, unknown>);
+  if (extracted.url) {
+    const dl = await fetch(extracted.url, { headers: { Accept: "image/*" } });
+    if (!dl.ok) throw new Error(`xai_download_${dl.status}`);
+    return new Uint8Array(await dl.arrayBuffer());
+  }
+  if (extracted.b64) return decodeBase64Image(extracted.b64);
+  throw new Error("xai_no_image_in_response");
+}

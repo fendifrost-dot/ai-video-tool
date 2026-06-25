@@ -172,7 +172,9 @@ export default function HeroFrameStudioPage({
         frameTimeSec: scrubTime,
         sessionId,
         onProgress: ({ phase, index, total, label }) => {
-          setProgress(`${phase === "vton" ? "VTON" : phase === "identity" ? "Identity" : "Done"} ${index + 1}/${total}: ${label}`);
+          const phaseLabel =
+            phase === "garment" ? "Garment" : phase === "identity" ? "Identity" : "Done";
+          setProgress(`${phaseLabel} ${index + 1}/${total}: ${label}`);
         },
       });
       setCandidates(results);
@@ -243,7 +245,7 @@ export default function HeroFrameStudioPage({
       <PageHeader
         variant="compact"
         title="Hero Frame Studio"
-        subtitle="Phase 1 — capture source frame, generate full-look candidates, identity lock, approve one hero still."
+        subtitle="Phase 1 — capture source frame, generate garment-truth candidates (Grok + VTON), identity lock, approve one hero still."
       />
       <div className="space-y-6 px-4 py-6 md:px-8">
         <section className="rounded-md border border-border bg-card/30 p-4 space-y-3">
@@ -339,11 +341,12 @@ export default function HeroFrameStudioPage({
 
         <section className="rounded-md border border-primary/30 bg-card/30 p-4 space-y-3">
           <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            3 · Generate candidates (4 variants)
+            3 · Generate candidates
           </h2>
           <p className="text-xs text-muted-foreground">
-            Full-look + jacket-only × IDM-VTON + CatVTON. Each runs identity lock after transfer.
-            Logo composite is skipped so you judge garment geometry honestly.
+            IDM-VTON baseline, Grok Image-Edit garment-truth (with optional identity pass),
+            and CatVTON full-look. Logo composite is skipped so you judge garment geometry
+            honestly against the on-model reference.
           </p>
           <Button
             onClick={handleGenerateCandidates}

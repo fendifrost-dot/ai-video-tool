@@ -15,6 +15,7 @@ export type ProviderCapability =
   | "upscale"
   | "remove_bg"
   | "variation"
+  | "image_edit"
   | "manual_only";
 
 /**

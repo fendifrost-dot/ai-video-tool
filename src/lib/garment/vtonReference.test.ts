@@ -3,6 +3,7 @@ import {
   guessAngleFromFilename,
   orderedRefPathsForComposer,
   pickFullLookGarmentPath,
+  pickGrokGarmentReferencePaths,
   pickVtonGarmentPath,
   sortRefsForVtonGarment,
 } from "./vtonReference";
@@ -36,6 +37,20 @@ describe("pickFullLookGarmentPath", () => {
       { storage_path: "a/on-model.jpg", angle: "on_model", label: "SL on model" },
     ];
     expect(pickFullLookGarmentPath(refs)).toBe("a/on-model.jpg");
+  });
+});
+
+describe("pickGrokGarmentReferencePaths", () => {
+  it("returns on-model first then detail refs up to max", () => {
+    const refs = [
+      { storage_path: "a/front-flat.jpg", angle: "front" },
+      { storage_path: "a/detail.jpg", angle: "detail" },
+      { storage_path: "a/on-model.jpg", angle: "on_model" },
+    ];
+    expect(pickGrokGarmentReferencePaths(refs, null, 2)).toEqual([
+      "a/on-model.jpg",
+      "a/front-flat.jpg",
+    ]);
   });
 });
 

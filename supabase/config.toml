@@ -19,3 +19,7 @@ verify_jwt = false
 
 [functions.train-style-lora-callback]
 verify_jwt = false
+
+# Hero Frame Grok garment-truth — user JWT required (browser calls with session token).
+[functions.grok-image-garment-proxy]
+verify_jwt = true

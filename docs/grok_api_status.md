@@ -50,6 +50,27 @@ Set in `src/lib/providers/grok.ts` and passed when no template override exists.
 | `supabase/functions/proxy-provider-call/index.ts` | Forwards to CC generate/status/result |
 | `supabase/functions/ingest-provider-job/index.ts` | Downloads xAI CDN clips server-side |
 
+## Hero Frame garment-truth lane (2026-06-24)
+
+Full-outfit hero stills use a dedicated AVT edge function — not the video proxy:
+
+```
+Hero Frame Studio → grok-image-garment-proxy (AVT)
+  → xAI POST /v1/images/edits (grok-imagine-image-quality)
+  → look-composites / artist_looks (pipeline_used: grok_image_edit_garment_truth)
+```
+
+Env on AVT: `XAI_API_KEY` — **same xAI key** as Control Center `Frost_Grok` (one key for image + video). Aliases: `FROST_GROK`, `GROK_API_KEY`.
+
+| File | Role |
+| ---- | ---- |
+| `supabase/functions/grok-image-garment-proxy/index.ts` | Multi-image edit, on-model refs, hero frame |
+| `src/lib/queries/grokImageGarment.ts` | Client submit + poll |
+| `src/lib/heroFrame/grokGarmentPrompt.ts` | Locked full-outfit prompt |
+| `src/lib/providers/grok.ts` | `image_edit` capability, `GROK_DEFAULT_IMAGE_MODEL` |
+
+`proxy-provider-call` whitelists `image-providers-grok-edit` for a future CC mirror; hero lane calls AVT directly today.
+
 ## Manual canvas workflow (separate from video gen)
 
 Grok **images** imported on LooksListPage still flow through identity swap
@@ -66,7 +87,8 @@ envelope in toasts and `ProjectCostCard`.
 
 - Video edit (`/v1/videos/edits`)
 - Video extension (`/v1/videos/extensions`) — UI modes pending
-- In-app Grok **image** generation for look canvases (import remains primary)
+- CC `image-providers-grok-edit` mirror (AVT-native `grok-image-garment-proxy` covers hero lane)
+- In-app Grok **image** generation outside Hero Frame Studio (import remains primary)
 
 ## Sources
 

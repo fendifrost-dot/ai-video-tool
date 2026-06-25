@@ -5,7 +5,10 @@ import { BaseProvider } from "./base";
 /** Default xAI video model — see docs/grok_api_status.md */
 export const GROK_DEFAULT_MODEL = "grok-imagine-video";
 
-/** xAI reference-to-video accepts up to three reference images. */
+/** xAI image edit model for garment-truth hero frames. */
+export const GROK_DEFAULT_IMAGE_MODEL = "grok-imagine-image-quality";
+
+/** xAI reference-to-video / multi-image edit accepts up to three images. */
 export const GROK_MAX_REFERENCE_IMAGES = 3;
 
 /**
@@ -25,6 +28,7 @@ export class GrokProvider extends BaseProvider {
     "text_to_video",
     "image_to_video",
     "extend",
+    "image_edit",
   ];
   readonly apiReady = true;
 

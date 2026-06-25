@@ -5,6 +5,7 @@ import {
   pollArtistLook,
   signLookPreviewUrl,
 } from "@/lib/queries/looks";
+import { applyGrokGarmentTruthAndWait } from "@/lib/queries/grokImageGarment";
 import { applyGarmentVtonAndWait } from "@/lib/queries/wardrobeVton";
 import {
   HERO_CANDIDATE_PLANS,
@@ -69,13 +70,46 @@ export type GenerateHeroCandidatesInput = {
   sessionId: string;
   plans?: HeroCandidatePlan[];
   onProgress?: (info: {
-    phase: "vton" | "identity" | "done";
+    phase: "garment" | "identity" | "done";
     index: number;
     total: number;
     label: string;
   }) => void;
   signal?: AbortSignal;
 };
+
+async function runIdentityPass(input: {
+  artistId: string;
+  plan: HeroCandidatePlan;
+  index: number;
+  garmentLookId: string;
+  garmentLook: Awaited<ReturnType<typeof pollArtistLook>>;
+  signal?: AbortSignal;
+}) {
+  const canvasPath =
+    input.garmentLook.generated_storage_path ?? input.garmentLook.generated_image_url;
+  if (!canvasPath) throw new Error("Garment look missing storage path");
+
+  const canvasUrl = canvasPath.startsWith("http")
+    ? canvasPath
+    : await signLookPreviewUrl(canvasPath, 3600);
+
+  const identitySubmit = await callComposeLook({
+    artistId: input.artistId,
+    wardrobeFeatureIds: [],
+    basePrompt:
+      "Apply the artist's canonical identity to the subject's face and head. Keep the outfit, pose, lighting, framing, and background exactly as they are.",
+    pipelinePreference: "identity_inpaint",
+    parentLookId: input.garmentLookId,
+    name: `Hero ${input.index + 1} · ${input.plan.label} · identity`,
+    canvasImageUrl: canvasUrl,
+  });
+
+  return pollArtistLook(identitySubmit.look_id, {
+    signal: input.signal,
+    timeoutMs: 6 * 60 * 1000,
+  });
+}
 
 export async function generateHeroCandidates(
   input: GenerateHeroCandidatesInput,
@@ -87,66 +121,77 @@ export async function generateHeroCandidates(
     if (input.signal?.aborted) break;
     const plan = plans[index]!;
     input.onProgress?.({
-      phase: "vton",
+      phase: "garment",
       index,
       total: plans.length,
       label: plan.label,
     });
 
     try {
-      const vtonLook = await applyGarmentVtonAndWait(
-        {
+      let garmentLook: Awaited<ReturnType<typeof pollArtistLook>>;
+      let garmentLookId: string;
+
+      if (plan.lane === "grok_image_edit") {
+        garmentLook = await applyGrokGarmentTruthAndWait(
+          {
+            artistId: input.artistId,
+            wardrobeFeatureId: input.wardrobeFeatureId,
+            scenePath: input.scenePath,
+            sceneBucket: input.sceneBucket ?? "project-references",
+            heroFrameSessionId: input.sessionId,
+            candidateIndex: index,
+            projectId: input.projectId,
+            name: `Hero ${index + 1} · ${plan.label}`,
+          },
+          { signal: input.signal },
+        );
+        garmentLookId = garmentLook.id;
+      } else {
+        garmentLook = await applyGarmentVtonAndWait(
+          {
+            artistId: input.artistId,
+            wardrobeFeatureId: input.wardrobeFeatureId,
+            scenePath: input.scenePath,
+            sceneBucket: input.sceneBucket ?? "project-references",
+            transferMode: plan.transferMode,
+            vtonModel: plan.vtonModel,
+            heroFrameCandidate: true,
+            heroFrameSessionId: input.sessionId,
+            candidateIndex: index,
+            projectId: input.projectId,
+            name: `Hero ${index + 1} · ${plan.label}`,
+          },
+          { signal: input.signal },
+        );
+        garmentLookId = garmentLook.id;
+      }
+
+      let identityLook = garmentLook;
+      let identityLookId = garmentLookId;
+
+      if (plan.lane === "grok_image_edit" ? plan.runIdentity : true) {
+        input.onProgress?.({
+          phase: "identity",
+          index,
+          total: plans.length,
+          label: plan.label,
+        });
+        identityLook = await runIdentityPass({
           artistId: input.artistId,
-          wardrobeFeatureId: input.wardrobeFeatureId,
-          scenePath: input.scenePath,
-          sceneBucket: input.sceneBucket ?? "project-references",
-          transferMode: plan.transferMode,
-          vtonModel: plan.vtonModel,
-          heroFrameCandidate: true,
-          heroFrameSessionId: input.sessionId,
-          candidateIndex: index,
-          projectId: input.projectId,
-          name: `Hero ${index + 1} · ${plan.label}`,
-        },
-        { signal: input.signal },
-      );
-
-      input.onProgress?.({
-        phase: "identity",
-        index,
-        total: plans.length,
-        label: plan.label,
-      });
-
-      const canvasPath =
-        vtonLook.generated_storage_path ?? vtonLook.generated_image_url;
-      if (!canvasPath) throw new Error("VTON look missing storage path");
-
-      const canvasUrl = canvasPath.startsWith("http")
-        ? canvasPath
-        : await signLookPreviewUrl(canvasPath, 3600);
-
-      const identitySubmit = await callComposeLook({
-        artistId: input.artistId,
-        wardrobeFeatureIds: [],
-        basePrompt:
-          "Apply the artist's canonical identity to the subject's face and head. Keep the outfit, pose, lighting, framing, and background exactly as they are.",
-        pipelinePreference: "identity_inpaint",
-        parentLookId: vtonLook.id,
-        name: `Hero ${index + 1} · ${plan.label} · identity`,
-        canvasImageUrl: canvasUrl,
-      });
-
-      const identityLook = await pollArtistLook(identitySubmit.look_id, {
-        signal: input.signal,
-        timeoutMs: 6 * 60 * 1000,
-      });
+          plan,
+          index,
+          garmentLookId,
+          garmentLook,
+          signal: input.signal,
+        });
+        identityLookId = identityLook.id;
+      }
 
       results.push({
         plan,
         index,
-        vtonLookId: vtonLook.id,
-        identityLookId: identityLook.id,
+        garmentLookId,
+        identityLookId,
         previewPath:
           identityLook.generated_storage_path ??
           identityLook.generated_image_url ??
@@ -156,7 +201,7 @@ export async function generateHeroCandidates(
       results.push({
         plan,
         index,
-        vtonLookId: "",
+        garmentLookId: "",
         identityLookId: "",
         previewPath: null,
         error: err instanceof Error ? err.message : String(err),
@@ -228,9 +273,13 @@ export function buildSessionMeta(input: {
       .map((c) => ({
         index: c.index,
         label: c.plan.label,
-        transfer_mode: c.plan.transferMode as HeroTransferMode,
-        vton_look_id: c.vtonLookId,
+        lane: c.plan.lane,
+        transfer_mode:
+          c.plan.lane === "vton" ? (c.plan.transferMode as HeroTransferMode) : undefined,
+        garment_look_id: c.garmentLookId,
         identity_look_id: c.identityLookId,
+        identity_restored:
+          c.plan.lane === "grok_image_edit" ? c.plan.runIdentity : true,
       })),
   };
 }

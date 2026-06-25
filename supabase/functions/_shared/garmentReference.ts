@@ -85,6 +85,28 @@ export function pickFullLookGarmentPath(
   return fallbackPath ?? null;
 }
 
+/** Pick up to N garment reference paths for Grok multi-image edit (on-model first). */
+export function pickGrokGarmentReferencePaths(
+  refs: RefImageLike[],
+  fallbackPath?: string | null,
+  max = 2,
+): string[] {
+  const sorted = sortRefsForFullLookGarment(refs);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const r of sorted) {
+    const p = pathFromRef(r);
+    if (!p || seen.has(p)) continue;
+    seen.add(p);
+    out.push(p);
+    if (out.length >= max) break;
+  }
+  if (out.length === 0 && fallbackPath && !seen.has(fallbackPath)) {
+    out.push(fallbackPath);
+  }
+  return out;
+}
+
 export function orderedRefPathsForComposer(
   refs: RefImageLike[],
   fallbackPath?: string | null,

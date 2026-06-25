@@ -1,23 +1,54 @@
 export type HeroTransferMode = "full_look" | "jacket_only";
 
-export type HeroCandidatePlan = {
-  transferMode: HeroTransferMode;
-  vtonModel: "idm-vton" | "cat-vton";
-  label: string;
-};
+export type HeroCandidateLane = "vton" | "grok_image_edit";
 
-/** Default A/B matrix for Phase 1 hero-frame generation. */
+export type HeroCandidatePlan =
+  | {
+      lane: "vton";
+      transferMode: HeroTransferMode;
+      vtonModel: "idm-vton" | "cat-vton";
+      label: string;
+      runIdentity: true;
+    }
+  | {
+      lane: "grok_image_edit";
+      label: string;
+      runIdentity: boolean;
+    };
+
+/** Default candidate matrix — IDM baseline + Grok garment-truth + CatVTON comparison. */
 export const HERO_CANDIDATE_PLANS: HeroCandidatePlan[] = [
-  { transferMode: "full_look", vtonModel: "idm-vton", label: "Full-look · IDM-VTON" },
-  { transferMode: "full_look", vtonModel: "cat-vton", label: "Full-look · CatVTON" },
-  { transferMode: "jacket_only", vtonModel: "idm-vton", label: "Jacket-only · IDM-VTON" },
-  { transferMode: "jacket_only", vtonModel: "cat-vton", label: "Jacket-only · CatVTON" },
+  {
+    lane: "vton",
+    transferMode: "full_look",
+    vtonModel: "idm-vton",
+    label: "Full-look · IDM-VTON (baseline)",
+    runIdentity: true,
+  },
+  {
+    lane: "grok_image_edit",
+    label: "Grok Image-Edit · Garment-Truth",
+    runIdentity: false,
+  },
+  {
+    lane: "grok_image_edit",
+    label: "Grok Image-Edit · + Identity",
+    runIdentity: true,
+  },
+  {
+    lane: "vton",
+    transferMode: "full_look",
+    vtonModel: "cat-vton",
+    label: "Full-look · CatVTON",
+    runIdentity: true,
+  },
 ];
 
 export type HeroCandidateResult = {
   plan: HeroCandidatePlan;
   index: number;
-  vtonLookId: string;
+  /** Garment-transfer look (VTON or Grok) before optional identity pass. */
+  garmentLookId: string;
   identityLookId: string;
   previewPath: string | null;
   error?: string;
@@ -34,8 +65,10 @@ export type HeroFrameSessionMeta = {
   candidates: Array<{
     index: number;
     label: string;
-    transfer_mode: HeroTransferMode;
-    vton_look_id: string;
+    lane: HeroCandidateLane;
+    transfer_mode?: HeroTransferMode;
+    garment_look_id: string;
     identity_look_id: string;
+    identity_restored: boolean;
   }>;
 };
