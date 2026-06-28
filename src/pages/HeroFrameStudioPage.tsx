@@ -31,6 +31,21 @@ import {
   pickFullLookGarmentPath,
   type RefImageLike,
 } from "@/lib/garment/vtonReference";
+import {
+  eyewearRestore,
+  installEyewearRestoreDevHook,
+} from "@/lib/queries/eyewearRestore";
+import { ManualKeyframeQuadEditor } from "@/components/products/ManualKeyframeQuadEditor";
+import type { QuadNorm } from "@/lib/garment/placementEngine";
+
+// Periocular (eye + eyewear) starting quad — upper-centre of the frame. Drag to
+// frame the subject's glasses on each image before restoring.
+const EYE_QUAD_DEFAULT: QuadNorm = [
+  [0.3, 0.32],
+  [0.7, 0.32],
+  [0.7, 0.46],
+  [0.3, 0.46],
+];
 
 export default function HeroFrameStudioPage({
   projectId,
@@ -58,6 +73,10 @@ export default function HeroFrameStudioPage({
   const [candidateUrls, setCandidateUrls] = useState<Record<string, string>>({});
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
   const [approvedLookId, setApprovedLookId] = useState<string | null>(null);
+  const [srcQuad, setSrcQuad] = useState<QuadNorm>(EYE_QUAD_DEFAULT);
+  const [dstQuad, setDstQuad] = useState<QuadNorm>(EYE_QUAD_DEFAULT);
+  const [eyewearBusy, setEyewearBusy] = useState(false);
+  const [eyewearLookId, setEyewearLookId] = useState<string | null>(null);
 
   const videoAssets = useMemo(
     () => (assetsQuery.data ?? []).filter(isVideoAsset),
@@ -125,6 +144,12 @@ export default function HeroFrameStudioPage({
       cancelled = true;
     };
   }, [candidates]);
+
+  // Expose window.__eyewearRestore for precise console-driven verification with
+  // explicit normalized quads (guarded to the running browser app).
+  useEffect(() => {
+    installEyewearRestoreDevHook();
+  }, []);
 
   async function handleCaptureFrame() {
     const video = videoRef.current;
@@ -216,6 +241,39 @@ export default function HeroFrameStudioPage({
       toast.error(err instanceof Error ? err.message : "Approval failed");
     } finally {
       setBusy(false);
+    }
+  }
+
+  const identityCandidate = useMemo(
+    () =>
+      candidates.find(
+        (c) =>
+          c.plan.lane === "grok_image_edit" &&
+          c.plan.runIdentity &&
+          !c.error &&
+          !!candidateUrls[c.identityLookId],
+      ) ?? null,
+    [candidates, candidateUrls],
+  );
+
+  async function handleEyewearRestore() {
+    if (!identityCandidate || !heroScenePath) return;
+    setEyewearBusy(true);
+    setEyewearLookId(null);
+    try {
+      const { lookId } = await eyewearRestore({
+        identityLookId: identityCandidate.identityLookId,
+        heroFramePath: heroScenePath,
+        heroBucket: "project-references",
+        srcQuad,
+        dstQuad,
+      });
+      setEyewearLookId(lookId);
+      toast.success("Real glasses restored — new look created");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Eyewear restore failed");
+    } finally {
+      setEyewearBusy(false);
     }
   }
 
@@ -446,6 +504,63 @@ export default function HeroFrameStudioPage({
                 garment fidelity is visually confirmed against the product reference.
               </p>
             )}
+          </section>
+        )}
+
+        {identityCandidate && heroPreviewUrl && (
+          <section className="rounded-md border border-primary/30 bg-card/30 p-4 space-y-3">
+            <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              5 · Restore real glasses (Grok + Identity)
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Grok reinvents the eyewear; the face-swap keeps it. Frame the subject's glasses
+              on his real hero frame (source) and on the identity candidate (target), then
+              composite his real eyewear back in — deterministic, his own pixels.
+            </p>
+            <div className="grid gap-4 md:grid-cols-2">
+              <ManualKeyframeQuadEditor
+                imageUrl={heroPreviewUrl}
+                initialQuad={srcQuad}
+                keyframeId="eyewear-source-hero"
+                onSave={async (q) => {
+                  setSrcQuad(q);
+                }}
+              />
+              <ManualKeyframeQuadEditor
+                imageUrl={candidateUrls[identityCandidate.identityLookId]!}
+                initialQuad={dstQuad}
+                keyframeId="eyewear-target-final"
+                onSave={async (q) => {
+                  setDstQuad(q);
+                }}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button onClick={handleEyewearRestore} disabled={eyewearBusy}>
+                {eyewearBusy ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-1.5 h-4 w-4" />
+                )}
+                Restore real glasses
+              </Button>
+              {eyewearLookId && (
+                <Button asChild variant="outline" size="sm">
+                  <Link
+                    to="/artists/$id/looks/$lookId"
+                    params={{ id: artistId, lookId: eyewearLookId }}
+                  >
+                    Open corrected look
+                  </Link>
+                </Button>
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              Save each quad (drag the four corners onto the glasses first). Tip: for exact
+              coordinates, call{" "}
+              <span className="font-mono">window.__eyewearRestore(&#123;…&#125;)</span> from the
+              console.
+            </p>
           </section>
         )}
 
