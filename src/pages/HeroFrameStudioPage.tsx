@@ -269,6 +269,12 @@ export default function HeroFrameStudioPage({
             <div className="space-y-2">
               <video
                 ref={videoRef}
+                // crossOrigin must be set before src so decoded frames are
+                // CORS-clean and canvas.toBlob() in captureVideoFrame() doesn't
+                // throw "Tainted canvases may not be exported". Supabase Storage
+                // serves Access-Control-Allow-Origin: * on signed/public object
+                // URLs, so the video still loads.
+                crossOrigin="anonymous"
                 src={videoUrl}
                 className="max-h-64 w-full rounded-md border border-border bg-black object-contain"
                 controls
