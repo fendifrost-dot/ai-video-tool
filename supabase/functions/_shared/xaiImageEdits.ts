@@ -8,7 +8,34 @@ export type XaiImageEditsRequest = {
   prompt: string;
   images: XaiImageInput[];
   responseFormat?: "url" | "b64_json";
+  /** Hard timeout for the xAI edit call (ms). Keeps the background task from
+   *  hanging past the edge wall limit, which would leave the look row stuck
+   *  "pending" forever (catch never runs if the worker is killed mid-fetch). */
+  timeoutMs?: number;
+  /** Hard timeout for downloading the resulting image URL (ms). */
+  downloadTimeoutMs?: number;
 };
+
+/** fetch() with an AbortController-based hard timeout. */
+async function fetchWithTimeout(
+  input: string,
+  init: RequestInit,
+  timeoutMs: number,
+  label: string,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (err) {
+    if ((err as { name?: string })?.name === "AbortError") {
+      throw new Error(`${label}_timeout_${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 function decodeBase64Image(b64: string): Uint8Array {
   const raw = b64.includes(",") ? b64.split(",")[1]! : b64;
@@ -40,19 +67,24 @@ function extractFromBody(body: Record<string, unknown>): { url?: string; b64?: s
 export async function callXaiImageEdits(
   req: XaiImageEditsRequest,
 ): Promise<Uint8Array> {
-  const resp = await fetch(XAI_EDITS_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${req.apiKey}`,
-      "Content-Type": "application/json",
+  const resp = await fetchWithTimeout(
+    XAI_EDITS_URL,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${req.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: req.model,
+        prompt: req.prompt,
+        images: req.images,
+        response_format: req.responseFormat ?? "url",
+      }),
     },
-    body: JSON.stringify({
-      model: req.model,
-      prompt: req.prompt,
-      images: req.images,
-      response_format: req.responseFormat ?? "url",
-    }),
-  });
+    req.timeoutMs ?? 90_000,
+    "xai_edits",
+  );
 
   const body = await resp.json().catch(() => ({}));
   if (!resp.ok) {
@@ -63,7 +95,12 @@ export async function callXaiImageEdits(
 
   const extracted = extractFromBody(body as Record<string, unknown>);
   if (extracted.url) {
-    const dl = await fetch(extracted.url, { headers: { Accept: "image/*" } });
+    const dl = await fetchWithTimeout(
+      extracted.url,
+      { headers: { Accept: "image/*" } },
+      req.downloadTimeoutMs ?? 30_000,
+      "xai_download",
+    );
     if (!dl.ok) throw new Error(`xai_download_${dl.status}`);
     return new Uint8Array(await dl.arrayBuffer());
   }
