@@ -1,5 +1,5 @@
-import { supabase } from "@/lib/supabase";
 import { pollArtistLook } from "@/lib/queries/looks";
+import { getAccessTokenWithTimeout } from "@/lib/authSession";
 import { GROK_DEFAULT_IMAGE_MODEL } from "@/lib/providers/grok";
 import { GROK_GARMENT_TRUTH_PROMPT } from "@/lib/heroFrame/grokGarmentPrompt";
 
@@ -20,21 +20,13 @@ export type ApplyGrokGarmentTruthResult = {
   lookId: string;
 };
 
-async function getAccessToken(): Promise<string> {
-  const { data, error } = await supabase.auth.getSession();
-  if (error) throw error;
-  const token = data.session?.access_token;
-  if (!token) throw new Error("Not signed in");
-  return token;
-}
-
 export async function callApplyGrokGarmentTruth(
   input: ApplyGrokGarmentTruthInput,
 ): Promise<ApplyGrokGarmentTruthResult> {
   const baseUrl = import.meta.env.VITE_SUPABASE_URL;
   if (!baseUrl) throw new Error("Missing VITE_SUPABASE_URL");
 
-  const token = await getAccessToken();
+  const token = await getAccessTokenWithTimeout();
   const resp = await fetch(
     `${baseUrl.replace(/\/$/, "")}/functions/v1/grok-image-garment-proxy`,
     {

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { getSessionWithTimeout } from "@/lib/authSession";
 
 export type StorageBucket =
   | "artist-assets"
@@ -130,10 +131,9 @@ export async function uploadBytesToBucket(
     networkTimeoutMs?: number;
   },
 ): Promise<string> {
-  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-  if (sessionErr) throw sessionErr;
-  const session = sessionData.session;
-  if (!session) throw new Error("Not signed in");
+  // Timeout-guarded: a stuck auth LockManager lock here would hang the upload
+  // forever with no error (see authSession.ts).
+  const session = await getSessionWithTimeout();
 
   const baseUrl = import.meta.env.VITE_SUPABASE_URL;
   if (!baseUrl) {
@@ -329,10 +329,11 @@ export async function uploadViaEdgeFunction(
     networkTimeoutMs?: number;
   },
 ): Promise<{ ok: true; bucket: string; path: string; size_bytes: number }> {
-  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-  if (sessionErr) throw sessionErr;
-  const session = sessionData.session;
-  if (!session) throw new Error("Not signed in");
+  // Timeout-guarded: a stuck auth LockManager lock here would hang the upload
+  // forever with no error (see authSession.ts). This is the hero-frame capture
+  // upload path — a silent hang here means the captured frame never lands in
+  // the bucket and downstream lanes fail to sign a non-existent scenePath.
+  const session = await getSessionWithTimeout();
 
   const baseUrl = import.meta.env.VITE_SUPABASE_URL;
   if (!baseUrl) throw new Error("Missing VITE_SUPABASE_URL in env");

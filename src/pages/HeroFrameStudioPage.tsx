@@ -18,7 +18,7 @@ import {
 } from "@/lib/queries/projectAssets";
 import { useWardrobe } from "@/lib/queries/wardrobe";
 import { signedUrl } from "@/lib/storage";
-import { supabase } from "@/lib/supabase";
+import { getSessionWithTimeout } from "@/lib/authSession";
 import { captureVideoFrame } from "@/lib/video/captureFrame";
 import {
   approveHeroFrameLook,
@@ -131,14 +131,15 @@ export default function HeroFrameStudioPage({
     if (!video || !artistId) return;
     setBusy(true);
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      const user = userData.user;
-      if (!user) throw new Error("Not signed in");
+      // Timeout-guarded session lookup — a stuck auth lock here previously hung
+      // capture forever with no error, leaving no uploaded frame (see
+      // authSession.ts).
+      const session = await getSessionWithTimeout();
 
       const blob = await captureVideoFrame(video, scrubTime);
       const { scenePath } = await uploadHeroSourceFrame({
         projectId,
-        userId: user.id,
+        userId: session.user.id,
         blob,
         frameTimeSec: scrubTime,
         videoAssetId: selectedVideoId || undefined,
