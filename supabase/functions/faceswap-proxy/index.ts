@@ -53,7 +53,11 @@ type Body = {
 };
 
 function isHttpsUrl(value: unknown): value is string {
-  return typeof value === "string" && value.trim().startsWith("https://") && value.trim().length < 600;
+  // Supabase signed URLs carry a JWT in ?token=… and routinely run 600–750+
+  // chars, so the old 600 cap rejected valid signed canvas/face URLs (→ 400
+  // missing_source_image_url). Raise to a safe 2048 ceiling; keep the https
+  // check and an upper bound to guard against absurd payloads.
+  return typeof value === "string" && value.trim().startsWith("https://") && value.trim().length < 2048;
 }
 
 function json(status: number, body: unknown) {
