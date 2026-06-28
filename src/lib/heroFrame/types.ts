@@ -8,7 +8,9 @@ export type HeroCandidatePlan =
       transferMode: HeroTransferMode;
       vtonModel: "idm-vton" | "cat-vton";
       label: string;
-      runIdentity: true;
+      // VTON keeps the hero frame's real face (it only transfers garment), so
+      // no identity pass is needed — running one would only corrupt the face.
+      runIdentity: false;
     }
   | {
       lane: "grok_image_edit";
@@ -23,7 +25,7 @@ export const HERO_CANDIDATE_PLANS: HeroCandidatePlan[] = [
     transferMode: "full_look",
     vtonModel: "idm-vton",
     label: "Full-look · IDM-VTON (baseline)",
-    runIdentity: true,
+    runIdentity: false,
   },
   {
     lane: "grok_image_edit",
@@ -40,7 +42,7 @@ export const HERO_CANDIDATE_PLANS: HeroCandidatePlan[] = [
     transferMode: "full_look",
     vtonModel: "cat-vton",
     label: "Full-look · CatVTON",
-    runIdentity: true,
+    runIdentity: false,
   },
 ];
 

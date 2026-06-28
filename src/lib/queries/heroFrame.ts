@@ -1,10 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { uploadViaEdgeFunction } from "@/lib/storage";
-import {
-  callComposeLook,
-  pollArtistLook,
-  signLookPreviewUrl,
-} from "@/lib/queries/looks";
+import { pollArtistLook, signLookPreviewUrl } from "@/lib/queries/looks";
+import { callApplyIdentityToLook } from "@/lib/queries/faceswap";
 import { applyGrokGarmentTruthAndWait } from "@/lib/queries/grokImageGarment";
 import { applyGarmentVtonAndWait } from "@/lib/queries/wardrobeVton";
 import {
@@ -40,7 +37,12 @@ export async function uploadHeroSourceFrame(
       project_id: input.projectId,
       asset_type: "reference_image",
       file_url: path,
-      source_tool: "hero_frame_studio",
+      // source_tool is the `provider_name` enum — "hero_frame_studio" is NOT a
+      // member, so inserting it threw "invalid input value for enum" at runtime
+      // and failed the capture. Use "manual" (the established value for
+      // user-captured reference images); the hero_frame marker lives in
+      // metadata_json below.
+      source_tool: "manual",
       approval_status: "pending",
       metadata_json: {
         bucket: "project-references",
@@ -93,19 +95,23 @@ async function runIdentityPass(input: {
   const canvasUrl = canvasPath.startsWith("http")
     ? canvasPath
     : await signLookPreviewUrl(canvasPath, 3600);
+  if (!canvasUrl) throw new Error("Could not sign garment-look canvas URL for identity pass");
 
-  const identitySubmit = await callComposeLook({
+  // Identity lock via face-swap (faceswap-proxy → Fal advanced face-swap),
+  // NOT the broken identity_inpaint lane. Face-swap repaints only the face
+  // region, so Grok's faithful garment is preserved while the subject's face
+  // is locked to the artist's real likeness (Character DNA / canonical base).
+  // workflowType "target_hair" keeps the hero-frame/Grok hair and pose; only
+  // the face is grafted.
+  const identitySubmit = await callApplyIdentityToLook({
     artistId: input.artistId,
-    wardrobeFeatureIds: [],
-    basePrompt:
-      "Apply the artist's canonical identity to the subject's face and head. Keep the outfit, pose, lighting, framing, and background exactly as they are.",
-    pipelinePreference: "identity_inpaint",
     parentLookId: input.garmentLookId,
+    sourceImageUrl: canvasUrl,
     name: `Hero ${input.index + 1} · ${input.plan.label} · identity`,
-    canvasImageUrl: canvasUrl,
+    workflowType: "target_hair",
   });
 
-  return pollArtistLook(identitySubmit.look_id, {
+  return pollArtistLook(identitySubmit.lookId, {
     signal: input.signal,
     timeoutMs: 6 * 60 * 1000,
   });
@@ -169,7 +175,7 @@ export async function generateHeroCandidates(
       let identityLook = garmentLook;
       let identityLookId = garmentLookId;
 
-      if (plan.lane === "grok_image_edit" ? plan.runIdentity : true) {
+      if (plan.runIdentity) {
         input.onProgress?.({
           phase: "identity",
           index,
@@ -278,8 +284,7 @@ export function buildSessionMeta(input: {
           c.plan.lane === "vton" ? (c.plan.transferMode as HeroTransferMode) : undefined,
         garment_look_id: c.garmentLookId,
         identity_look_id: c.identityLookId,
-        identity_restored:
-          c.plan.lane === "grok_image_edit" ? c.plan.runIdentity : true,
+        identity_restored: c.plan.runIdentity,
       })),
   };
 }

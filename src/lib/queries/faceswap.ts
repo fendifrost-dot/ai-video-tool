@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { getSessionWithTimeout } from "@/lib/authSession";
 import { projectAssetsKeys } from "@/lib/queries/projectAssets";
 import type { ProjectAsset } from "@/integrations/supabase/aliases";
 
@@ -125,10 +126,9 @@ async function pollJobUntilDone(jobId: string): Promise<{
 export async function callApplyIdentityToLook(
   input: ApplyIdentityToLookInput,
 ): Promise<{ lookId: string }> {
-  const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
-  if (sessionErr) throw sessionErr;
-  const session = sessionData.session;
-  if (!session) throw new Error("Not signed in");
+  // Timeout-guarded: a stuck auth lock here would hang the call forever with no
+  // error (see authSession.ts). This path now runs inside Hero Frame Studio.
+  const session = await getSessionWithTimeout();
 
   const baseUrl = import.meta.env.VITE_SUPABASE_URL;
   if (!baseUrl) throw new Error("Missing VITE_SUPABASE_URL in env");
