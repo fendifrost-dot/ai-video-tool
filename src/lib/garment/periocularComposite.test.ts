@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   colorMatchPatch,
   compositePeriocular,
+  ellipseAlpha,
   extractQuad,
   normQuadToPx,
   patchStats,
@@ -80,6 +81,27 @@ describe("regionStats", () => {
   });
 });
 
+describe("ellipseAlpha", () => {
+  it("is opaque at the centre and zero at the rectangular corners", () => {
+    const w = 20;
+    const h = 24;
+    const mask = ellipseAlpha(w, h, 0); // hard edge
+    expect(mask[Math.floor(h / 2) * w + Math.floor(w / 2)]).toBe(255); // centre
+    expect(mask[0]).toBe(0); // top-left corner
+    expect(mask[w - 1]).toBe(0); // top-right corner
+    expect(mask[(h - 1) * w + (w - 1)]).toBe(0); // bottom-right corner
+  });
+
+  it("feathers a soft ramp toward the boundary", () => {
+    const mask = ellipseAlpha(40, 40, 6);
+    expect(mask[20 * 40 + 20]).toBe(255); // centre still full
+    // a point just inside the right edge of the oval is partially transparent
+    const edge = mask[20 * 40 + 38];
+    expect(edge).toBeGreaterThan(0);
+    expect(edge).toBeLessThan(255);
+  });
+});
+
 describe("compositePeriocular", () => {
   it("composites the source region into the destination quad, leaving the rest untouched", () => {
     const final = solid(20, 20, 255, 0, 0); // red
@@ -95,6 +117,23 @@ describe("compositePeriocular", () => {
     expect(px(out, 10, 10)).toEqual([0, 0, 255, 255]);
     // a corner outside the quad is unchanged (still red)
     expect(px(out, 0, 0)).toEqual([255, 0, 0, 255]);
+  });
+
+  it("ellipse mask keeps the quad corners as base and the centre as source", () => {
+    // 40x40 so the inscribed oval and its corners are unambiguous (a 20px quad
+    // is too small — the corner pixel lands in the oval's edge ramp).
+    const final = solid(40, 40, 255, 0, 0); // red
+    const hero = solid(40, 40, 0, 0, 255); // blue
+    const out = compositePeriocular(final, hero, FULL, CENTER, {
+      featherPx: 0,
+      colorMatch: false,
+      maskShape: "ellipse",
+    });
+    // centre of the oval → source (blue)
+    expect(px(out, 20, 20)).toEqual([0, 0, 255, 255]);
+    // a corner of the dst quad (quad spans ~9.75..29.25) is outside the
+    // inscribed oval → base (red), no halo
+    expect(px(out, 10, 10)).toEqual([255, 0, 0, 255]);
   });
 
   it("colour-matches the patch toward the destination region when enabled", () => {

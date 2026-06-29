@@ -29,11 +29,22 @@ import type { QuadNorm } from "./placementEngine";
 
 export type ColorStats = { mean: [number, number, number]; std: [number, number, number] };
 
+export type MaskShape = "ellipse" | "rect";
+
 export type CompositePeriocularOptions = {
   /** Edge feather of the warped patch, in px (softens the boundary). Default 8. */
   featherPx?: number;
   /** Match the patch's colour distribution to the destination region. Default true. */
   colorMatch?: boolean;
+  /**
+   * Patch alpha shape. "rect" (default, backward-compatible) composites the
+   * whole rectangular patch. "ellipse" masks the patch to an oval inscribed in
+   * the dst quad so a 3/4-view face composites cleanly without the rectangular
+   * corners bleeding a halo into the background.
+   */
+  maskShape?: MaskShape;
+  /** For maskShape "ellipse": pull the oval in from the quad edges, 0..0.5. Default 0. */
+  inset?: number;
 };
 
 function clamp(v: number, lo: number, hi: number): number {
@@ -179,6 +190,47 @@ export function colorMatchPatch(patch: RgbaImage, src: ColorStats, dst: ColorSta
   return { width: patch.width, height: patch.height, data };
 }
 
+/**
+ * Per-pixel alpha (0..255) for an ellipse inscribed in a w×h patch. featherPx is
+ * the soft ramp width (in px, measured at the boundary); inset (0..0.5) pulls
+ * the oval in from the edges. Center → 255, rectangular corners → 0.
+ */
+export function ellipseAlpha(w: number, h: number, featherPx: number, inset = 0): Uint8Array {
+  const insetClamped = clamp(inset, 0, 0.5);
+  const a = (w / 2) * (1 - insetClamped);
+  const b = (h / 2) * (1 - insetClamped);
+  const cx = w / 2;
+  const cy = h / 2;
+  // Normalised ramp width: featherPx relative to the mean semi-axis.
+  const fr = featherPx > 0 && a > 0 && b > 0 ? clamp(featherPx / ((a + b) / 2), 0, 1) : 0;
+  const e0 = 1 - fr; // full alpha inside this normalised radius
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const nx = a > 0 ? (x + 0.5 - cx) / a : 0;
+      const ny = b > 0 ? (y + 0.5 - cy) / b : 0;
+      const d = Math.hypot(nx, ny); // 0 at center, 1 on the ellipse boundary
+      let f: number;
+      if (fr <= 0) f = d <= 1 ? 1 : 0;
+      else if (d <= e0) f = 1;
+      else if (d >= 1) f = 0;
+      else f = 1 - (d - e0) / fr;
+      out[y * w + x] = Math.round(clamp(f, 0, 1) * 255);
+    }
+  }
+  return out;
+}
+
+/** Multiply a patch's alpha channel by an inscribed-ellipse mask. */
+export function applyEllipseAlpha(patch: RgbaImage, featherPx: number, inset = 0): RgbaImage {
+  const mask = ellipseAlpha(patch.width, patch.height, featherPx, inset);
+  const data = new Uint8Array(patch.data);
+  for (let p = 0; p < patch.width * patch.height; p++) {
+    data[p * 4 + 3] = Math.round((data[p * 4 + 3] * mask[p]) / 255);
+  }
+  return { width: patch.width, height: patch.height, data };
+}
+
 function quadAvgDims(quad: QuadPts): { w: number; h: number } {
   const [tl, tr, br, bl] = quad;
   const d = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -200,6 +252,8 @@ export function compositePeriocular(
 ): RgbaImage {
   const featherPx = opts.featherPx ?? 8;
   const colorMatch = opts.colorMatch ?? true;
+  const maskShape = opts.maskShape ?? "rect";
+  const inset = opts.inset ?? 0;
 
   const srcPx = normQuadToPx(srcQuad, heroRgba.width, heroRgba.height);
   const dstPx = normQuadToPx(dstQuad, finalRgba.width, finalRgba.height);
@@ -211,6 +265,13 @@ export function compositePeriocular(
 
   if (colorMatch) {
     patch = colorMatchPatch(patch, patchStats(patch), regionStats(finalRgba, dstPx));
+  }
+
+  // Face-shaped mask: a 3/4-view face doesn't fill a rectangle, so an
+  // inscribed-ellipse alpha keeps the composite to the face oval and fades out
+  // before the rectangular corners (no background halo). featherPx is the ramp.
+  if (maskShape === "ellipse") {
+    patch = applyEllipseAlpha(patch, featherPx, inset);
   }
 
   return warpQuadAlpha(finalRgba, patch, dstPx, featherPx);

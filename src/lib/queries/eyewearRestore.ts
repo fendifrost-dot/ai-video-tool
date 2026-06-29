@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import { getSessionWithTimeout } from "@/lib/authSession";
 import { signedUrl, uploadBytesToBucket } from "@/lib/storage";
-import { compositePeriocular } from "@/lib/garment/periocularComposite";
+import { compositePeriocular, type MaskShape } from "@/lib/garment/periocularComposite";
 import type { RgbaImage } from "@/lib/garment/logoComposite";
 import type { QuadNorm } from "@/lib/garment/placementEngine";
 
@@ -29,6 +29,15 @@ export type EyewearRestoreInput = {
   dstQuad: QuadInput;
   featherPx?: number;
   colorMatch?: boolean;
+  /**
+   * Patch alpha shape. "rect" (default) for the eyewear-only periocular patch;
+   * "ellipse" for the strict-identity FULL-FACE restore (oval-masked so the
+   * real face+glasses pixels composite without rectangular-corner background
+   * halo). See compositePeriocular.
+   */
+  maskShape?: MaskShape;
+  /** For maskShape "ellipse": pull the oval in from the quad edges, 0..0.5. */
+  inset?: number;
 };
 
 export type EyewearRestoreResult = { lookId: string; storagePath: string };
@@ -111,10 +120,14 @@ export async function eyewearRestore(
   const dstQuad = toQuadNorm(input.dstQuad);
   const featherPx = input.featherPx ?? 8;
   const colorMatch = input.colorMatch ?? true;
+  const maskShape: MaskShape = input.maskShape ?? "rect";
+  const inset = input.inset ?? 0;
 
   const result = compositePeriocular(finalRgba, heroRgba, srcQuad, dstQuad, {
     featherPx,
     colorMatch,
+    maskShape,
+    inset,
   });
   const blob = await rgbaToPngBlob(result);
 
@@ -131,6 +144,8 @@ export async function eyewearRestore(
     dst_quad: dstQuad,
     feather_px: featherPx,
     color_match: colorMatch,
+    mask_shape: maskShape,
+    inset,
   };
 
   const { data: child, error: insErr } = await supabase
