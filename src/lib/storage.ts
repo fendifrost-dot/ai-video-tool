@@ -1,3 +1,4 @@
+import * as tus from "tus-js-client";
 import { supabase } from "@/lib/supabase";
 import { getSessionWithTimeout } from "@/lib/authSession";
 
@@ -223,6 +224,138 @@ export async function uploadToBucket(
       networkTimeoutMs: options?.networkTimeoutMs,
     },
   );
+}
+
+// =============================================================================
+// Resumable (TUS) upload — for large files (4K masters, multi-GB video)
+// =============================================================================
+// Streams the File to Supabase Storage's resumable endpoint in fixed 6 MB
+// chunks. Constant memory (one chunk at a time — never the whole file), resumes
+// across network blips, and goes DIRECT to Storage so the `upload-asset` edge
+// body cap never applies. Used only for files above STREAM_THRESHOLD_BYTES; small
+// files stay on the single-shot uploadToBucket path.
+
+/** Supabase's resumable endpoint requires exactly-6 MB chunks. */
+const TUS_CHUNK_SIZE = 6 * 1024 * 1024;
+
+/**
+ * If no upload progress is observed for this long, treat the transfer as stalled
+ * and fail with a clear error. This replaces the flat 120 s wall-clock deadline
+ * used on the single-shot path — a legitimate multi-GB 4K upload can run far
+ * longer than 120 s, so we time out on *lack of progress*, not total duration.
+ */
+const TUS_STALL_TIMEOUT_MS = 90_000;
+
+/**
+ * Upload a large `File` to a bucket via the resumable (TUS) protocol.
+ *
+ * Pass `onProgress(fraction)` (0..1) to drive a real progress bar. Resolves with
+ * the storage path on success; rejects on TUS error or a progress stall.
+ */
+export async function uploadResumableToBucket(
+  bucket: StorageBucket,
+  path: string,
+  file: File,
+  options?: {
+    upsert?: boolean;
+    /** Called with a 0..1 fraction as bytes are acknowledged. */
+    onProgress?: (fraction: number) => void;
+    /** Idle deadline: fail if no progress for this long. Default 90 s. */
+    stallTimeoutMs?: number;
+  },
+): Promise<string> {
+  // Timeout-guarded: a stuck auth LockManager lock here would hang forever with
+  // no error (see authSession.ts).
+  const session = await getSessionWithTimeout();
+
+  const baseUrl = import.meta.env.VITE_SUPABASE_URL;
+  if (!baseUrl) throw new Error("Missing VITE_SUPABASE_URL in env");
+
+  const upsert = options?.upsert ?? false;
+  const stallTimeoutMs = options?.stallTimeoutMs ?? TUS_STALL_TIMEOUT_MS;
+  const contentType = file.type || "application/octet-stream";
+  const endpoint = `${baseUrl.replace(/\/$/, "")}/storage/v1/upload/resumable`;
+
+  return new Promise<string>((resolve, reject) => {
+    let stallTimer: ReturnType<typeof setTimeout> | undefined;
+    let settled = false;
+
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      if (stallTimer) clearTimeout(stallTimer);
+      fn();
+    };
+
+    const armStall = () => {
+      if (stallTimer) clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => {
+        try {
+          void upload.abort();
+        } catch {
+          /* abort best-effort */
+        }
+        finish(() =>
+          reject(
+            new Error(
+              `Resumable upload to ${bucket}/${path} stalled — no progress for ${(
+                stallTimeoutMs / 1000
+              ).toFixed(0)}s. Check your connection and retry.`,
+            ),
+          ),
+        );
+      }, stallTimeoutMs);
+    };
+
+    const upload = new tus.Upload(file, {
+      endpoint,
+      // Retry with backoff on transient network errors — this is what makes the
+      // upload resumable across blips.
+      retryDelays: [0, 3000, 5000, 10000, 20000],
+      headers: {
+        authorization: `Bearer ${session.access_token}`,
+        "x-upsert": String(upsert),
+      },
+      uploadDataDuringCreation: true,
+      removeFingerprintOnSuccess: true,
+      chunkSize: TUS_CHUNK_SIZE,
+      metadata: {
+        bucketName: bucket,
+        objectName: path,
+        contentType,
+        cacheControl: "3600",
+      },
+      onError: (err) =>
+        finish(() =>
+          reject(
+            new Error(`Resumable upload failed: ${err?.message ?? String(err)}`),
+          ),
+        ),
+      onProgress: (sent, total) => {
+        armStall();
+        if (total > 0) options?.onProgress?.(sent / total);
+      },
+      onSuccess: () => finish(() => resolve(path)),
+    });
+
+    // Resume a prior interrupted upload of the same file if one exists.
+    upload
+      .findPreviousUploads()
+      .then((previous) => {
+        if (previous.length > 0) upload.resumeFromPreviousUpload(previous[0]!);
+        armStall();
+        upload.start();
+      })
+      .catch((err) =>
+        finish(() =>
+          reject(
+            new Error(
+              `Resumable upload could not start: ${err?.message ?? String(err)}`,
+            ),
+          ),
+        ),
+      );
+  });
 }
 
 // =============================================================================

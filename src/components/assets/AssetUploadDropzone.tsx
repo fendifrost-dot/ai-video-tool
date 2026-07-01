@@ -15,8 +15,13 @@ import {
 import {
   buildStoragePath,
   makeUploadFilename,
+  uploadResumableToBucket,
   uploadToBucket,
 } from "@/lib/storage";
+import {
+  MAX_UPLOAD_LABEL,
+  STREAM_THRESHOLD_BYTES,
+} from "@/lib/uploadLimits";
 import { normalizeImageForUpload } from "@/lib/image-normalize";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -36,6 +41,8 @@ type StagedFile = {
   file: File;
   assetType: ProjectAssetType;
   uploadStatus?: "pending" | "uploading" | "done" | "error";
+  /** 0..1 upload progress, populated for large (resumable) uploads. */
+  progress?: number;
 };
 
 export function AssetUploadDropzone({
@@ -55,15 +62,23 @@ export function AssetUploadDropzone({
 
   async function stageFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
-    // Materialise each File into an in-memory copy (fresh File backed by an
-    // ArrayBuffer) inside the same async tick. The input's `value=""` reset
-    // that follows the change event can detach the underlying file source
-    // for File objects injected by browser-automation tools — once detached,
-    // file.arrayBuffer() at upload time hangs forever with no error. Reading
-    // bytes here, while the source is still live, sidesteps the issue.
+    // For SMALL files (<= STREAM_THRESHOLD_BYTES) we materialise each File into an
+    // in-memory copy (fresh File backed by an ArrayBuffer) inside the same async
+    // tick. The input's `value=""` reset that follows the change event can detach
+    // the underlying file source for File objects injected by browser-automation
+    // tools — once detached, file.arrayBuffer() at upload time hangs forever with
+    // no error. Reading bytes here, while the source is still live, sidesteps it.
+    //
+    // For LARGE files (multi-GB 4K masters) we MUST NOT materialise — a 1.67 GB
+    // arrayBuffer() copy OOMs the tab. We keep the raw File reference; the
+    // resumable (TUS) upload path streams it in 6 MB chunks without ever holding
+    // the whole file in RAM.
     const incoming = Array.from(files);
     const captured: StagedFile[] = await Promise.all(
       incoming.map(async (file) => {
+        if (file.size > STREAM_THRESHOLD_BYTES) {
+          return { file, assetType: guessAssetType(file) };
+        }
         const bytes = await file.arrayBuffer();
         return {
           file: new File([bytes], file.name, { type: file.type }),
@@ -108,14 +123,34 @@ export function AssetUploadDropzone({
           ),
         );
         try {
-          const file = await normalizeImageForUpload(item.file);
+          // normalizeImageForUpload only transcodes images; large videos pass
+          // through untouched (and must — we never want to buffer a 4K master).
+          const file =
+            item.file.size > STREAM_THRESHOLD_BYTES
+              ? item.file
+              : await normalizeImageForUpload(item.file);
           const bucket = bucketForAssetType(item.assetType);
           const filename = makeUploadFilename(file.name);
           const path = shotId
             ? buildStoragePath(user.id, projectId, shotId, filename)
             : buildStoragePath(user.id, projectId, filename);
 
-          await uploadToBucket(bucket, path, file);
+          if (file.size > STREAM_THRESHOLD_BYTES) {
+            // Large file: resumable, chunked, direct-to-Storage (bypasses the
+            // upload-asset edge body cap). Real progress drives the bar.
+            await uploadResumableToBucket(bucket, path, file, {
+              onProgress: (fraction) => {
+                const idx = i;
+                setStaged((prev) =>
+                  prev.map((s, j) =>
+                    j === idx ? { ...s, progress: fraction } : s,
+                  ),
+                );
+              },
+            });
+          } else {
+            await uploadToBucket(bucket, path, file);
+          }
 
           const metadata: Record<string, unknown> = {
             original_filename: file.name,
@@ -192,7 +227,7 @@ export function AssetUploadDropzone({
           Drop files here, or <span className="text-primary">click to choose</span>
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Images, videos, LUTs, overlays, exports. Up to 500 MB per file.
+          Images, videos, LUTs, overlays, exports. Up to {MAX_UPLOAD_LABEL} per file.
         </p>
         <input
           ref={inputRef}
@@ -266,7 +301,17 @@ export function AssetUploadDropzone({
                   </button>
                 </div>
                 {s.uploadStatus === "uploading" && (
-                  <Progress value={50} className="h-1" />
+                  <div className="space-y-0.5">
+                    <Progress
+                      value={s.progress != null ? Math.round(s.progress * 100) : 50}
+                      className="h-1"
+                    />
+                    {s.progress != null && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {Math.round(s.progress * 100)}%
+                      </p>
+                    )}
+                  </div>
                 )}
                 {s.uploadStatus === "done" && (
                   <p className="text-[10px] text-emerald-400">Uploaded</p>

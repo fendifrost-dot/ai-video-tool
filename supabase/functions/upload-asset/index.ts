@@ -22,7 +22,7 @@
 //   400 invalid input
 //   401 missing/invalid JWT
 //   403 path does not start with caller's user_id (RLS guard)
-//   413 body too large (we cap at 500 MB to match the UI)
+//   413 body too large (we cap at 4 GB to match the UI)
 //   5xx storage error
 // =============================================================================
 
@@ -38,9 +38,13 @@ const ALLOWED_BUCKETS = new Set([
   "product-assets",
 ]);
 
-// Match the UI's 500 MB ceiling. The platform-side limit is 5 GB on paid
-// tiers, but our flows don't need anything close to that yet.
-const MAX_BYTES = 500 * 1024 * 1024;
+// Mirror the client's MAX_UPLOAD_BYTES (src/lib/uploadLimits.ts). Deno modules
+// can't import from src/, so this is a hand-kept copy — change both together.
+// NOTE: large video uploads do NOT traverse this function (the browser streams
+// them resumably direct to Storage); this cap only guards the raw-bytes callers
+// like Hero-Frame capture. Supabase's project/bucket Storage file-size limit is
+// enforced separately server-side and must also be >= this value.
+const MAX_BYTES = 4 * 1024 * 1024 * 1024; // 4 GB
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
