@@ -24,8 +24,9 @@ verify_jwt = false
 [functions.grok-image-garment-proxy]
 verify_jwt = true
 
-# Jacket-only masked inpaint (locked v2 wardrobe-swap primary lane). Calls Fal
-# directly with the server-side FAL_KEY secret; user JWT required (browser calls
-# with session token). See docs/AVT_Wardrobe_Swap_Build_Spec_v2.md §4.
+# Jacket-only masked inpaint (locked v2 wardrobe-swap primary lane). Routes Fal
+# through Control Center via X-Proxy-Secret (same secrets as wardrobe-vton-proxy);
+# user JWT required (browser calls with session token).
+# See docs/AVT_Wardrobe_Swap_Build_Spec_v2.md §4.
 [functions.jacket-inpaint-proxy]
 verify_jwt = true

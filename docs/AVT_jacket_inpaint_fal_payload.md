@@ -185,12 +185,27 @@ Do **not** proceed to the video/motion pipeline until (a)+(b)+(c) pass on one st
 
 ## 7. How the gate gets run (and why not from this sandbox)
 
-Per the locked AVT rules (`claude_code_handoff_avt_hero_frame_phase2_gate.md`): **all model work goes through AVT/CC edge functions — never a Claude sandbox, never secrets in the clear.** So the Fal calls above live inside `jacket-inpaint-proxy` (server-side, reads the `FAL_KEY` edge secret). The run path:
+Per the locked AVT rules (`claude_code_handoff_avt_hero_frame_phase2_gate.md`): **all model work goes through AVT/CC edge functions — never a Claude sandbox, never secrets in the clear.** So the Fal calls above live inside `jacket-inpaint-proxy`, which routes every Fal model through **Control Center** via `X-Proxy-Secret` (the same `COMPOSE_LOOK_CC_URL` + `SWITCHX_PROXY_SECRET` that `wardrobe-vton-proxy` uses) and polls the generic `fal-queue-poll`. The Fal key lives only in CC.
 
-1. Deploy `jacket-inpaint-proxy` (Lovable edge redeploy) with `FAL_KEY` set on the AVT project.
-2. Invoke it once for the hero frame + wardrobe `0feb028f` (app button or an authenticated `curl` with a user JWT).
-3. It saves the still to `look-composites` and returns a signed URL.
-4. That signed URL is downloaded and the still is judged against §5 **first-hand** (topology / pixel-isolation / resolution).
+**CC must expose one small, generic action** (the models themselves are what CC may be missing):
+
+```jsonc
+// CC switchx-restyle — submit-only, same response shape as the vton-frame action
+{ "action": "fal-run", "model": "fal-ai/flux-general/inpainting", "input": { …§4 payload… } }
+   → { "status_url": "...", "response_url": "..." }
+// then the EXISTING generic CC fal-queue-poll drives it to completion:
+{ "status_url": "...", "response_url": "..." } → { "status": "COMPLETED", "result": { … } }
+```
+
+The three model ids this lane submits through that action: `fal-ai/evf-sam`, `fal-ai/imageutils/depth`, `fal-ai/flux-general/inpainting`. If CC only whitelists VTON/faceswap models today, these are exactly what to add.
+
+Run path:
+
+1. Set `COMPOSE_LOOK_CC_URL` + `SWITCHX_PROXY_SECRET` on the AVT project (already present for `wardrobe-vton-proxy`) and ensure CC supports the `fal-run` action + the three models above.
+2. Deploy `jacket-inpaint-proxy` (Lovable edge redeploy).
+3. Invoke it once for the hero frame + wardrobe `0feb028f` (app button or an authenticated `curl` with a user JWT).
+4. It saves the still to `look-composites` and returns a signed URL.
+5. That signed URL is downloaded and the still is judged against §5 **first-hand** (topology / pixel-isolation / resolution).
 
 Every run logs: mask coverage %, `ip_adapter.scale`, `controlnet.conditioning_scale`, `guidance_scale`, `seed`, mask feather — for repeatability (spec §6).
 

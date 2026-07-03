@@ -10,22 +10,35 @@
 // over the real frame so that face / glasses / cap / hands / pants / background
 // remain the exact captured pixels (spec hard rules §3).
 //
-// Pipeline (all model work server-side — key never leaves the edge):
-//   1. fal-ai/evf-sam            → tight jacket mask (text-prompted SAM)
-//   2. fal-ai/imageutils/depth   → depth control map (optional, structure lock)
-//   3. fal-ai/flux-general/inpainting → jacket transferred into the mask
+// Transport (mirrors wardrobe-vton-proxy EXACTLY): every Fal model runs on the
+// Control Center (CC) project. This AVT proxy POSTs to CC's switchx-restyle with
+// the shared X-Proxy-Secret (read from AVT env — never handled/printed here) and
+// polls the generic, model-agnostic CC fal-queue-poll. The Fal key stays in CC.
+//
+// Pipeline:
+//   1. fal-ai/evf-sam            → tight jacket mask (text-prompted SAM)   [via CC]
+//   2. fal-ai/imageutils/depth   → depth control map (optional)           [via CC]
+//   3. fal-ai/flux-general/inpainting → jacket transferred into the mask  [via CC]
 //                                  (IP-Adapter on SL ref + depth ControlNet, FIXED SEED)
-//   4. deterministic feathered masked recomposite (jacketRecomposite.ts)
-//      out = source·(1−α) + inpaint·α  ⇒ only jacket pixels change
-//   5. export unified 1080×1920 still → look-composites, return signed URL
+//   4. deterministic feathered masked recomposite (jacketRecomposite.ts)  [AVT-side,
+//      out = source·(1−α) + inpaint·α  ⇒ only jacket pixels change          like the
+//   5. export unified 1080×1920 still → look-composites, return signed URL  logo composite]
 //
 // Steps 3–4 of the spec (real-pixel face/glasses restore + Tier-1 logo overlay)
 // are NOT required to pass the gate: the recomposite already keeps every
 // non-jacket pixel byte-identical to the source. They are added as polish on
 // the approved still.
 //
-// Env (AVT project qoyxgnkvjukovkrvdaiq):
-//   FAL_KEY                     — Fal server key (server-side only; never printed)
+// CC contract required (see docs/AVT_jacket_inpaint_fal_payload.md §7):
+//   switchx-restyle  { action:"fal-run", model:<fal model id>, input:<fal input> }
+//                    → { status_url, response_url }   (submit-only; same shape as
+//                      the vton-frame action already returns)
+//   fal-queue-poll   { status_url, response_url } → { status, result }  (already
+//                      generic — polls any Fal job; no per-model change needed)
+//
+// Env (AVT project qoyxgnkvjukovkrvdaiq — same secrets wardrobe-vton-proxy uses):
+//   COMPOSE_LOOK_CC_URL
+//   SWITCHX_PROXY_SECRET  (or COMPOSE_LOOK_PROXY_SECRET)
 //   SUPABASE_URL / SUPABASE_ANON_KEY / SUPABASE_SERVICE_ROLE_KEY
 //
 // verify_jwt = true (browser calls with the user session token).
@@ -51,8 +64,7 @@ const corsHeaders = {
 const SIGN_TTL = 2700;
 const OUT_W = 1080;
 const OUT_H = 1920;
-const FAL_QUEUE = "https://queue.fal.run";
-const FAL_POLL_INTERVAL_MS = 3000;
+const FAL_POLL_INTERVAL_MS = 4000;
 const FAL_TIMEOUT_MS = 4 * 60 * 1000;
 
 // Fixed defaults (spec §4 params). All overridable per-call for tuning.
@@ -117,42 +129,52 @@ function firstImageUrl(result: Record<string, unknown>): string | null {
   return null;
 }
 
-// --- Fal queue: submit → poll status → fetch result -----------------------
-async function falRun(
-  falKey: string,
+// --- Fal via Control Center: submit through switchx-restyle, poll fal-queue-poll
+//     (identical mechanism/headers to wardrobe-vton-proxy). The X-Proxy-Secret is
+//     read from AVT env by the caller and passed in; it is never logged.
+function ccSwitchxUrl(composeLookCcUrl: string): string {
+  return composeLookCcUrl.replace(/\/compose-look\/?$/, "/switchx-restyle");
+}
+function ccFalPollUrl(composeLookCcUrl: string): string {
+  return composeLookCcUrl.replace(/\/compose-look\/?$/, "/fal-queue-poll");
+}
+
+type CcCtx = { switchxUrl: string; pollUrl: string; proxySecret: string };
+
+async function falViaCc(
+  cc: CcCtx,
   model: string,
   input: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  const authHeaders = { "Authorization": `Key ${falKey}`, "Content-Type": "application/json" };
-  const submit = await fetch(`${FAL_QUEUE}/${model}`, {
+  // 1. submit-only via CC switchx-restyle (mirrors the vton-frame action shape).
+  const submit = await fetch(cc.switchxUrl, {
     method: "POST",
-    headers: authHeaders,
-    body: JSON.stringify(input),
+    headers: { "Content-Type": "application/json", "X-Proxy-Secret": cc.proxySecret },
+    body: JSON.stringify({ action: "fal-run", model, input }),
   });
-  const submitBody = await submit.json().catch(() => ({}));
-  if (!submit.ok) {
-    throw new Error(`fal_submit_${model}_${submit.status}: ${JSON.stringify(submitBody).slice(0, 240)}`);
+  const sub = await submit.json().catch(() => ({}));
+  const statusUrl = String(sub?.status_url ?? "");
+  const responseUrl = String(sub?.response_url ?? "");
+  if (!submit.ok || !statusUrl || !responseUrl) {
+    throw new Error(
+      `cc_submit_${model}_${submit.status}: ${sub?.error ?? sub?.detail ?? JSON.stringify(sub).slice(0, 200)}`,
+    );
   }
-  const statusUrl = String(submitBody?.status_url ?? "");
-  const responseUrl = String(submitBody?.response_url ?? "");
-  if (!statusUrl || !responseUrl) {
-    // Some sync endpoints return the result inline.
-    if (firstImageUrl(submitBody)) return submitBody;
-    throw new Error(`fal_no_queue_urls_${model}`);
-  }
+  // 2. poll the generic, model-agnostic CC fal-queue-poll until COMPLETED.
   const deadline = Date.now() + FAL_TIMEOUT_MS;
   while (Date.now() < deadline) {
-    const st = await fetch(statusUrl, { headers: { "Authorization": `Key ${falKey}` } });
-    const stBody = await st.json().catch(() => ({}));
-    const status = String(stBody?.status ?? "");
+    const resp = await fetch(cc.pollUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Proxy-Secret": cc.proxySecret },
+      body: JSON.stringify({ status_url: statusUrl, response_url: responseUrl }),
+    });
+    const body = await resp.json().catch(() => ({}));
+    const status = String(body?.status ?? "");
     if (status === "COMPLETED") {
-      const res = await fetch(responseUrl, { headers: { "Authorization": `Key ${falKey}` } });
-      const resBody = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(`fal_result_${model}_${res.status}`);
-      return resBody as Record<string, unknown>;
+      return (body?.result ?? body) as Record<string, unknown>;
     }
-    if (status === "FAILED" || stBody?.error) {
-      throw new Error(`fal_failed_${model}: ${JSON.stringify(stBody).slice(0, 240)}`);
+    if (status === "FAILED" || body?.error) {
+      throw new Error(`fal_failed_${model}: ${body?.error ?? body?.detail ?? status}`);
     }
     await new Promise((r) => setTimeout(r, FAL_POLL_INTERVAL_MS));
   }
@@ -169,20 +191,29 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
 
-  const falKey = Deno.env.get("FAL_KEY")?.trim() || Deno.env.get("FAL_API_KEY")?.trim() || "";
+  const composeCcUrl = Deno.env.get("COMPOSE_LOOK_CC_URL")?.trim() ?? "";
+  const proxySecret =
+    Deno.env.get("SWITCHX_PROXY_SECRET")?.trim() ||
+    Deno.env.get("COMPOSE_LOOK_PROXY_SECRET")?.trim() ||
+    "";
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     return json(500, { error: "server_misconfigured" });
   }
-  if (!falKey) {
+  if (!composeCcUrl || !proxySecret) {
     return json(503, {
-      error: "fal_key_not_configured",
+      error: "cc_not_configured",
       detail:
-        "Set the FAL_KEY Edge Function secret on the AVT project (qoyxgnkvjukovkrvdaiq). The key stays server-side; it is never returned or logged.",
+        "Set COMPOSE_LOOK_CC_URL and SWITCHX_PROXY_SECRET (or COMPOSE_LOOK_PROXY_SECRET) on the AVT project — the same secrets wardrobe-vton-proxy uses. Fal runs on CC; no key is handled here.",
     });
   }
+  const cc: CcCtx = {
+    switchxUrl: ccSwitchxUrl(composeCcUrl),
+    pollUrl: ccFalPollUrl(composeCcUrl),
+    proxySecret,
+  };
 
   const authHeader = req.headers.get("authorization") ?? "";
   if (!authHeader.toLowerCase().startsWith("bearer ")) return json(401, { error: "missing_bearer" });
@@ -253,7 +284,7 @@ serve(async (req) => {
   const startedAt = Date.now();
   try {
     // --- 1. tight jacket mask (evf-sam) --------------------------------
-    const maskRes = await falRun(falKey, "fal-ai/evf-sam", {
+    const maskRes = await falViaCc(cc, "fal-ai/evf-sam", {
       image_url: humanUrl,
       prompt: p.maskPrompt,
       mask_only: true,
@@ -272,7 +303,7 @@ serve(async (req) => {
           : p.controlnet === "canny"
           ? "fal-ai/imageutils/canny"
           : "fal-ai/image-preprocessors/openpose";
-      const cnRes = await falRun(falKey, model, { image_url: humanUrl });
+      const cnRes = await falViaCc(cc, model, { image_url: humanUrl });
       controlImageUrl = firstImageUrl(cnRes);
       if (!controlImageUrl) throw new Error(`control_${p.controlnet}_no_url`);
     }
@@ -309,7 +340,7 @@ serve(async (req) => {
         },
       ];
     }
-    const inpaintRes = await falRun(falKey, "fal-ai/flux-general/inpainting", inpaintInput);
+    const inpaintRes = await falViaCc(cc, "fal-ai/flux-general/inpainting", inpaintInput);
     const inpaintUrl = firstImageUrl(inpaintRes);
     if (!inpaintUrl) throw new Error("inpaint_no_url");
 
