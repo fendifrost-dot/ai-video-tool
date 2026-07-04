@@ -199,6 +199,33 @@ Per the locked AVT rules (`claude_code_handoff_avt_hero_frame_phase2_gate.md`): 
 
 The three model ids this lane submits through that action: `fal-ai/evf-sam`, `fal-ai/imageutils/depth`, `fal-ai/flux-general/inpainting`. If CC only whitelists VTON/faceswap models today, these are exactly what to add.
 
+**Reference `fal-run` handler for CC's `switchx-restyle`** (drop-in; `fal-queue-poll` already handles the rest):
+
+```ts
+// inside switchx-restyle, alongside the existing `vton-frame` action:
+if (action === "fal-run") {
+  const ALLOWED = new Set([
+    "fal-ai/evf-sam",
+    "fal-ai/imageutils/depth",
+    "fal-ai/imageutils/canny",
+    "fal-ai/image-preprocessors/openpose",
+    "fal-ai/flux-general/inpainting",
+  ]);
+  const { model, input } = body;
+  if (!ALLOWED.has(model)) return json(400, { error: "model_not_allowed", model });
+  const submit = await fetch(`https://queue.fal.run/${model}`, {
+    method: "POST",
+    headers: { "Authorization": `Key ${Deno.env.get("FAL_KEY")}`, "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const q = await submit.json();
+  if (!submit.ok || !q.status_url || !q.response_url) {
+    return json(502, { error: "fal_submit_failed", detail: q });
+  }
+  return json(200, { status_url: q.status_url, response_url: q.response_url, model });
+}
+```
+
 Run path:
 
 1. Set `COMPOSE_LOOK_CC_URL` + `SWITCHX_PROXY_SECRET` on the AVT project (already present for `wardrobe-vton-proxy`) and ensure CC supports the `fal-run` action + the three models above.
