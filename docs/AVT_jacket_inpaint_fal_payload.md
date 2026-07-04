@@ -106,7 +106,7 @@ POST https://queue.fal.run/fal-ai/flux-general/inpainting
   "seed": 777,                  // FIXED
   "num_images": 1,
   "output_format": "png",
-  "image_size": { "width": 1080, "height": 1920 },
+  "image_size": { "width": 1088, "height": 1920 }, // see NOTE — must be ÷16
 
   "ip_adapters": [
     {
@@ -129,6 +129,8 @@ POST https://queue.fal.run/fal-ai/flux-general/inpainting
 ```
 
 Output: `{ "images": [ { "url": "<INPAINT_PNG_URL>" } ], "seed": 777 }`.
+
+> **NOTE — dimensions must be multiples of 16.** Flux latents are 16-aligned; **1080 is not** (1080/16 = 67.5), which makes `flux-general/inpainting` FAIL at execution (surfaces via CC as `fal_response_failed`). The edge function therefore **pads** the scene, mask, and depth map to **1088×1920** (edge-replicate for scene/depth, zero for the mask), runs the inpaint at 1088×1920, then **crops the result back to exactly 1080×1920** before the recomposite — so the top-left 1080-wide region stays pixel-aligned to the real source. On any failure the function stores Fal's full raw response body in `artist_looks.error_message` + `composition_recipe_json.generation_metadata.fal_error_raw` (with `failed_step`), so failures are diagnosable without re-running.
 
 **This raw output must NOT be used as-is** — flux re-encodes the whole frame through the VAE, so pixels *outside* the mask drift (face/scene subtly change). Step 4 fixes that.
 

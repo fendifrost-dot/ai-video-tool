@@ -47,10 +47,13 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { pickVtonGarmentPath } from "../_shared/garmentReference.ts";
 import {
+  ceilTo,
+  cropRgba,
   decodeToRgba,
   encodePng,
   featherAlpha,
   maskToAlpha,
+  padRgba,
   recomposite,
   resizeRgba,
 } from "../_shared/jacketRecomposite.ts";
@@ -179,7 +182,10 @@ async function falViaCc(
       return (body?.result ?? body) as Record<string, unknown>;
     }
     if (status === "FAILED" || body?.error) {
-      throw new Error(`fal_failed_${model}: ${body?.error ?? body?.detail ?? status}`);
+      // Surface Fal's REAL validation message, not just CC's "fal_response_failed"
+      // wrapper: capture the entire poll body so the failure is diagnosable.
+      const raw = JSON.stringify(body).slice(0, 1800);
+      throw new Error(`fal_failed_${model}: ${raw}`);
     }
     await new Promise((r) => setTimeout(r, FAL_POLL_INTERVAL_MS));
   }
@@ -190,6 +196,17 @@ async function download(url: string): Promise<Uint8Array> {
   const r = await fetch(url, { headers: { Accept: "image/*" } });
   if (!r.ok) throw new Error(`download_${r.status}`);
   return new Uint8Array(await r.arrayBuffer());
+}
+
+// deno-lint-ignore no-explicit-any
+async function uploadTempSigned(admin: any, path: string, bytes: Uint8Array): Promise<string> {
+  const { error } = await admin.storage
+    .from("look-composites")
+    .upload(path, bytes, { contentType: "image/png", cacheControl: "3600", upsert: true });
+  if (error) throw new Error(`temp_upload_failed(${path}): ${error.message}`);
+  const { data } = await admin.storage.from("look-composites").createSignedUrl(path, SIGN_TTL);
+  if (!data?.signedUrl) throw new Error(`temp_sign_failed(${path})`);
+  return data.signedUrl as string;
 }
 
 serve(async (req) => {
@@ -337,8 +354,17 @@ serve(async (req) => {
 
   const startedAt = Date.now();
   const finish = async () => {
+   let failedStep = "init";
    try {
+    // Flux latents are 16-aligned. 1080 is not a multiple of 16 (→ 1088); an
+    // unaligned width makes flux-general/inpainting FAIL at execution. We run at
+    // a padded 16-aligned size, then crop back to exactly OUT_W×OUT_H so the
+    // deterministic recomposite stays pixel-aligned to the real source.
+    const PAD_W = ceilTo(OUT_W, 16); // 1080 → 1088
+    const PAD_H = ceilTo(OUT_H, 16); // 1920 → 1920 (already aligned)
+
     // --- 1. tight jacket mask (evf-sam) --------------------------------
+    failedStep = "evf-sam";
     const maskRes = await falViaCc(cc, "fal-ai/evf-sam", {
       image_url: humanUrl,
       prompt: p.maskPrompt,
@@ -350,8 +376,9 @@ serve(async (req) => {
     if (!maskUrl) throw new Error("mask_no_url");
 
     // --- 2. depth control map (optional) -------------------------------
-    let controlImageUrl: string | null = null;
+    let depthUrl: string | null = null;
     if (p.controlnet !== "none") {
+      failedStep = `preprocess-${p.controlnet}`;
       const model =
         p.controlnet === "depth"
           ? "fal-ai/imageutils/depth"
@@ -359,14 +386,40 @@ serve(async (req) => {
           ? "fal-ai/imageutils/canny"
           : "fal-ai/image-preprocessors/openpose";
       const cnRes = await falViaCc(cc, model, { image_url: humanUrl });
-      controlImageUrl = firstImageUrl(cnRes);
-      if (!controlImageUrl) throw new Error(`control_${p.controlnet}_no_url`);
+      depthUrl = firstImageUrl(cnRes);
+      if (!depthUrl) throw new Error(`control_${p.controlnet}_no_url`);
     }
 
-    // --- 3. flux-general inpainting into the mask ONLY -----------------
+    // --- 3. pad scene/mask/(depth) to the 16-aligned size --------------
+    // Keep the ORIGINAL OUT_W×OUT_H scene + mask for the recomposite.
+    failedStep = "pad-upload";
+    const source1080 = resizeRgba(await decodeToRgba(await download(humanUrl)), OUT_W, OUT_H);
+    const mask1080 = resizeRgba(await decodeToRgba(await download(maskUrl)), OUT_W, OUT_H);
+    const srcPadUrl = await uploadTempSigned(
+      admin,
+      `${userId}/${body.artistId}/${lookId}_pad_src.png`,
+      await encodePng(padRgba(source1080, PAD_W, PAD_H, "edge")),
+    );
+    const maskPadUrl = await uploadTempSigned(
+      admin,
+      `${userId}/${body.artistId}/${lookId}_pad_mask.png`,
+      await encodePng(padRgba(mask1080, PAD_W, PAD_H, "black")),
+    );
+    let depthPadUrl: string | null = null;
+    if (depthUrl) {
+      const depth1080 = resizeRgba(await decodeToRgba(await download(depthUrl)), OUT_W, OUT_H);
+      depthPadUrl = await uploadTempSigned(
+        admin,
+        `${userId}/${body.artistId}/${lookId}_pad_depth.png`,
+        await encodePng(padRgba(depth1080, PAD_W, PAD_H, "edge")),
+      );
+    }
+
+    // --- 4. flux-general inpainting into the mask ONLY (padded dims) ---
+    failedStep = "flux-inpaint";
     const inpaintInput: Record<string, unknown> = {
-      image_url: humanUrl,
-      mask_url: maskUrl,
+      image_url: srcPadUrl,
+      mask_url: maskPadUrl,
       prompt: p.prompt,
       negative_prompt: p.negativePrompt,
       strength: p.strength,
@@ -375,7 +428,7 @@ serve(async (req) => {
       seed: p.seed,
       num_images: 1,
       output_format: "png",
-      image_size: { width: OUT_W, height: OUT_H },
+      image_size: { width: PAD_W, height: PAD_H },
       ip_adapters: [
         {
           path: p.ipAdapterPath,
@@ -385,11 +438,11 @@ serve(async (req) => {
         },
       ],
     };
-    if (controlImageUrl) {
+    if (depthPadUrl) {
       inpaintInput.controlnets = [
         {
           path: p.controlnet,
-          control_image_url: controlImageUrl,
+          control_image_url: depthPadUrl,
           conditioning_scale: p.conditioningScale,
           end_percentage: 0.8,
         },
@@ -399,25 +452,16 @@ serve(async (req) => {
     const inpaintUrl = firstImageUrl(inpaintRes);
     if (!inpaintUrl) throw new Error("inpaint_no_url");
 
-    // --- 4. deterministic feathered masked recomposite ----------------
-    const [srcBytes, maskBytes, inpaintBytes] = await Promise.all([
-      download(humanUrl),
-      download(maskUrl),
-      download(inpaintUrl),
-    ]);
-    let source = await decodeToRgba(srcBytes);
-    let mask = await decodeToRgba(maskBytes);
-    let inpaint = await decodeToRgba(inpaintBytes);
-    source = resizeRgba(source, OUT_W, OUT_H);
-    mask = resizeRgba(mask, OUT_W, OUT_H);
-    inpaint = resizeRgba(inpaint, OUT_W, OUT_H);
-
-    const rawAlpha = maskToAlpha(mask);
-    const feathered = featherAlpha(rawAlpha, OUT_W, OUT_H, p.featherPx);
-    const result = recomposite(source, inpaint, feathered, OUT_W, OUT_H);
+    // --- 5. crop back to OUT_W×OUT_H + deterministic recomposite ------
+    failedStep = "recomposite";
+    const inpaintPad = resizeRgba(await decodeToRgba(await download(inpaintUrl)), PAD_W, PAD_H);
+    const inpaint1080 = cropRgba(inpaintPad, OUT_W, OUT_H);
+    const feathered = featherAlpha(maskToAlpha(mask1080), OUT_W, OUT_H, p.featherPx);
+    const result = recomposite(source1080, inpaint1080, feathered, OUT_W, OUT_H);
     const outPng = await encodePng(result.image);
 
-    // --- 5. persist to the look row -----------------------------------
+    // --- 6. persist to the look row -----------------------------------
+    failedStep = "persist";
     const storagePath = `${userId}/${body.artistId}/${lookId}.png`;
     const { error: upErr } = await admin.storage
       .from("look-composites")
@@ -426,7 +470,7 @@ serve(async (req) => {
 
     // Persist the mask alongside for QA (best-effort).
     const maskPath = `${userId}/${body.artistId}/${lookId}_mask.png`;
-    await admin.storage.from("look-composites").upload(maskPath, maskBytes, {
+    await admin.storage.from("look-composites").upload(maskPath, await encodePng(mask1080), {
       contentType: "image/png",
       cacheControl: "3600",
       upsert: true,
@@ -435,6 +479,7 @@ serve(async (req) => {
     const meta = {
       lane: "jacket_only_inpaint_masked",
       resolution: { width: OUT_W, height: OUT_H },
+      inpaint_resolution: { width: PAD_W, height: PAD_H },
       seed: p.seed,
       strength: p.strength,
       guidance_scale: p.guidanceScale,
@@ -469,11 +514,21 @@ serve(async (req) => {
       .eq("id", lookId);
     if (updErr) throw new Error(`look_update_failed: ${updErr.message}`);
    } catch (err) {
-    const msg = String(err).slice(0, 500);
-    console.error("jacket_inpaint_gate_failed:", msg);
+    // Preserve the FULL raw error (falViaCc embeds Fal's real validation body)
+    // and which step failed — into both error_message and the recipe metadata,
+    // so failures are diagnosable without re-running.
+    const raw = String(err instanceof Error ? err.message : err);
+    console.error(`jacket_inpaint_gate_failed[${failedStep}]:`, raw.slice(0, 1000));
     await admin
       .from("artist_looks")
-      .update({ status: "failed", error_message: msg })
+      .update({
+        status: "failed",
+        error_message: `[${failedStep}] ${raw}`.slice(0, 1000),
+        composition_recipe_json: {
+          ...recipe,
+          generation_metadata: { failed: true, failed_step: failedStep, fal_error_raw: raw.slice(0, 1800) },
+        },
+      })
       .eq("id", lookId);
    }
   };

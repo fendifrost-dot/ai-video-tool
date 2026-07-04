@@ -41,6 +41,64 @@ export function resizeRgba(src: RgbaImage, dstW: number, dstH: number): RgbaImag
   return { width: dstW, height: dstH, data: new Uint8Array(resized.bitmap) };
 }
 
+/** Next multiple of `m` ≥ n. Flux latents are 16-aligned; 1080 is not (→1088). */
+export function ceilTo(n: number, m: number): number {
+  return Math.ceil(n / m) * m;
+}
+
+/**
+ * Pad `src` into a newW×newH canvas anchored top-left. The original pixels keep
+ * their exact positions (so a later top-left crop is a perfect inverse). The
+ * added right/bottom strip is either edge-replicated ("edge", for the scene /
+ * depth map — avoids a hard seam) or zeroed ("black", for the mask — the pad
+ * must read as NOT-jacket).
+ */
+export function padRgba(
+  src: RgbaImage,
+  newW: number,
+  newH: number,
+  fill: "edge" | "black",
+): RgbaImage {
+  const out = new Uint8Array(newW * newH * 4);
+  for (let y = 0; y < newH; y++) {
+    for (let x = 0; x < newW; x++) {
+      const di = (y * newW + x) * 4;
+      const inside = x < src.width && y < src.height;
+      if (inside || fill === "edge") {
+        const sx = x < src.width ? x : src.width - 1;
+        const sy = y < src.height ? y : src.height - 1;
+        const si = (sy * src.width + sx) * 4;
+        out[di] = src.data[si];
+        out[di + 1] = src.data[si + 1];
+        out[di + 2] = src.data[si + 2];
+        out[di + 3] = 255;
+      } else {
+        out[di] = 0;
+        out[di + 1] = 0;
+        out[di + 2] = 0;
+        out[di + 3] = 255;
+      }
+    }
+  }
+  return { width: newW, height: newH, data: out };
+}
+
+/** Top-left w×h crop — the exact inverse of padRgba for the original region. */
+export function cropRgba(src: RgbaImage, w: number, h: number): RgbaImage {
+  const out = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const di = (y * w + x) * 4;
+      const si = (y * src.width + x) * 4;
+      out[di] = src.data[si];
+      out[di + 1] = src.data[si + 1];
+      out[di + 2] = src.data[si + 2];
+      out[di + 3] = src.data[si + 3];
+    }
+  }
+  return { width: w, height: h, data: out };
+}
+
 /**
  * Build a normalized alpha channel (0..1) from a mask image. evf-sam returns a
  * white-on-black PNG where the jacket is bright; we read luminance and threshold
