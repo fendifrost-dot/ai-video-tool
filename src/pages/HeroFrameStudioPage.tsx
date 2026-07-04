@@ -26,6 +26,8 @@ import {
   generateHeroCandidates,
   uploadHeroSourceFrame,
 } from "@/lib/queries/heroFrame";
+import { applyJacketInpaintAndWait } from "@/lib/queries/jacketInpaint";
+import { signLookPreviewUrl } from "@/lib/queries/looks";
 import type { HeroCandidateResult } from "@/lib/heroFrame/types";
 import {
   pickFullLookGarmentPath,
@@ -77,6 +79,14 @@ export default function HeroFrameStudioPage({
   const [dstQuad, setDstQuad] = useState<QuadNorm>(EYE_QUAD_DEFAULT);
   const [eyewearBusy, setEyewearBusy] = useState(false);
   const [eyewearLookId, setEyewearLookId] = useState<string | null>(null);
+  // Jacket-Only Inpaint (primary v2 lane) — self-contained run + preview.
+  const [jacketBusy, setJacketBusy] = useState(false);
+  const [jacketProgress, setJacketProgress] = useState<string | null>(null);
+  const [jacketLook, setJacketLook] = useState<
+    Awaited<ReturnType<typeof applyJacketInpaintAndWait>> | null
+  >(null);
+  const [jacketUrl, setJacketUrl] = useState<string | null>(null);
+  const [jacketApproved, setJacketApproved] = useState(false);
 
   const videoAssets = useMemo(
     () => (assetsQuery.data ?? []).filter(isVideoAsset),
@@ -211,6 +221,68 @@ export default function HeroFrameStudioPage({
     } finally {
       setBusy(false);
       setProgress(null);
+    }
+  }
+
+  async function handleJacketInpaint() {
+    if (!artistId || !heroScenePath || !garmentId) return;
+    setJacketBusy(true);
+    setJacketProgress("Submitting…");
+    setJacketLook(null);
+    setJacketUrl(null);
+    setJacketApproved(false);
+    try {
+      const look = await applyJacketInpaintAndWait(
+        {
+          artistId,
+          wardrobeFeatureId: garmentId,
+          scenePath: heroScenePath,
+          sceneBucket: "project-references",
+          projectId,
+          heroFrameSessionId: sessionId,
+          name: "Hero · Jacket-Only Inpaint (masked)",
+        },
+        {
+          onTick: ({ elapsedMs, status }) =>
+            setJacketProgress(`${status} · ${Math.round(elapsedMs / 1000)}s`),
+        },
+      );
+      setJacketLook(look);
+      const path = look.generated_storage_path ?? look.generated_image_url;
+      if (path) {
+        const url = path.startsWith("http") ? path : await signLookPreviewUrl(path, 3600);
+        setJacketUrl(url ?? null);
+      }
+      toast.success("Jacket-only inpaint complete");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Jacket inpaint failed");
+    } finally {
+      setJacketBusy(false);
+      setJacketProgress(null);
+    }
+  }
+
+  async function handleApproveJacket() {
+    if (!artistId || !jacketLook || !heroScenePath) return;
+    try {
+      await approveHeroFrameLook({
+        artistId,
+        lookId: jacketLook.id,
+        session: buildSessionMeta({
+          sessionId,
+          projectId,
+          scenePath: heroScenePath,
+          sceneBucket: "project-references",
+          frameTimeSec: scrubTime,
+          wardrobeFeatureId: garmentId,
+          candidates: [],
+          approvedLookId: jacketLook.id,
+        }),
+      });
+      setJacketApproved(true);
+      toast.success("Jacket hero look approved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Approve failed");
     }
   }
 
@@ -426,6 +498,61 @@ export default function HeroFrameStudioPage({
           </Button>
           {progress && (
             <p className="text-xs text-muted-foreground">{progress}</p>
+          )}
+        </section>
+
+        <section className="rounded-md border border-primary/50 bg-card/40 p-4 space-y-3">
+          <h2 className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+            3b · Jacket-Only Inpaint (primary v2 lane)
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Masked IP-Adapter + ControlNet transfer into a tight jacket mask only, then a
+            deterministic real-pixel recomposite. Face, glasses, cap, hands, pants and
+            background stay the captured pixels — only jacket pixels change. Fixed seed.
+          </p>
+          <Button
+            onClick={handleJacketInpaint}
+            disabled={jacketBusy || busy || !heroScenePath || !garmentId}
+          >
+            {jacketBusy ? (
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="mr-1.5 h-4 w-4" />
+            )}
+            Run jacket-only inpaint
+          </Button>
+          {jacketProgress && (
+            <p className="text-xs text-muted-foreground">{jacketProgress}</p>
+          )}
+          {jacketUrl && (
+            <div className="space-y-2">
+              <img
+                src={jacketUrl}
+                alt="Jacket-only inpaint hero still"
+                className="max-h-[520px] w-auto rounded border border-border"
+              />
+              {(() => {
+                const meta = (jacketLook?.composition_recipe_json as
+                  | { generation_metadata?: Record<string, unknown> }
+                  | null)?.generation_metadata;
+                if (!meta) return null;
+                const res = meta.resolution as { width?: number; height?: number } | undefined;
+                return (
+                  <p className="text-[11px] font-mono text-muted-foreground">
+                    {res ? `${res.width}×${res.height}` : "—"} · seed {String(meta.seed)} ·
+                    changed {(((meta.changed_fraction as number) ?? 0) * 100).toFixed(1)}% ·
+                    mask cover {(((meta.mask_coverage as number) ?? 0) * 100).toFixed(1)}% ·
+                    cn {String(meta.controlnet)}
+                  </p>
+                );
+              })()}
+              <Button size="sm" onClick={handleApproveJacket} disabled={jacketApproved}>
+                {jacketApproved ? (
+                  <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                ) : null}
+                {jacketApproved ? "Approved" : "Approve this hero"}
+              </Button>
+            </div>
           )}
         </section>
 

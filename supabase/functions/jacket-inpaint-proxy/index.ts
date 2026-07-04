@@ -94,6 +94,11 @@ type Body = {
   sceneBucket?: string;
   // Optional direct override of the hero frame URL (must be https).
   humanImageUrl?: string;
+  // Look metadata / hero-frame session wiring (mirrors wardrobe-vton-proxy).
+  name?: string;
+  projectId?: string;
+  heroFrameSessionId?: string;
+  candidateIndex?: number;
   // Tuning overrides
   seed?: number;
   strength?: number;
@@ -281,8 +286,58 @@ serve(async (req) => {
   }
   if (!humanUrl) return json(400, { error: "missing_human_image" });
 
+  // --- insert pending look row (async pattern, mirrors wardrobe-vton-proxy) ---
+  const lookId = crypto.randomUUID();
+  const recipe = {
+    pipeline_preference: "jacket_only_inpaint_masked",
+    wardrobe_feature_id: wardrobe.id,
+    garment_path_used: garmentPath,
+    scene_path: body.scenePath ?? null,
+    scene_bucket: body.sceneBucket ?? "project-references",
+    hero_frame_session_id: body.heroFrameSessionId ?? null,
+    hero_frame_candidate_index: body.candidateIndex ?? null,
+    hero_frame_project_id: body.projectId ?? null,
+    params: {
+      seed: p.seed,
+      strength: p.strength,
+      guidance_scale: p.guidanceScale,
+      steps: p.steps,
+      ip_adapter_scale: p.ipAdapterScale,
+      controlnet: p.controlnet,
+      conditioning_scale: p.conditioningScale,
+      feather_px: p.featherPx,
+      mask_expand: p.maskExpand,
+      mask_prompt: p.maskPrompt,
+    },
+    generation_metadata: null as Record<string, unknown> | null,
+  };
+  const { data: childLook, error: insErr } = await userClient
+    .from("artist_looks")
+    .insert({
+      id: lookId,
+      artist_id: body.artistId,
+      user_id: userId,
+      name: body.name ?? `Jacket-Only Inpaint · ${String(wardrobe.label).slice(0, 40)}`,
+      description:
+        "Jacket-only masked inpaint (IP-Adapter + ControlNet) with deterministic real-pixel recomposite.",
+      status: "pending",
+      generated_image_url: null,
+      generated_storage_path: null,
+      composition_recipe_json: recipe,
+      pipeline_used: null,
+      cost_cents: 0,
+      iterations: 1,
+      parent_look_id: null,
+    })
+    .select("*")
+    .single();
+  if (insErr || !childLook) {
+    return json(500, { error: "look_insert_failed", detail: insErr?.message });
+  }
+
   const startedAt = Date.now();
-  try {
+  const finish = async () => {
+   try {
     // --- 1. tight jacket mask (evf-sam) --------------------------------
     const maskRes = await falViaCc(cc, "fal-ai/evf-sam", {
       image_url: humanUrl,
@@ -362,19 +417,15 @@ serve(async (req) => {
     const result = recomposite(source, inpaint, feathered, OUT_W, OUT_H);
     const outPng = await encodePng(result.image);
 
-    // --- 5. persist + sign --------------------------------------------
-    const ts = Date.now();
-    const storagePath = `${userId}/${body.artistId}/jacket_inpaint_gate_${ts}.png`;
+    // --- 5. persist to the look row -----------------------------------
+    const storagePath = `${userId}/${body.artistId}/${lookId}.png`;
     const { error: upErr } = await admin.storage
       .from("look-composites")
       .upload(storagePath, outPng, { contentType: "image/png", cacheControl: "3600", upsert: true });
     if (upErr) throw new Error(`upload_failed: ${upErr.message}`);
-    const { data: signedOut } = await admin.storage
-      .from("look-composites")
-      .createSignedUrl(storagePath, SIGN_TTL);
 
-    // Also persist the raw inpaint + mask for QA (best-effort).
-    const maskPath = `${userId}/${body.artistId}/jacket_inpaint_gate_${ts}_mask.png`;
+    // Persist the mask alongside for QA (best-effort).
+    const maskPath = `${userId}/${body.artistId}/${lookId}_mask.png`;
     await admin.storage.from("look-composites").upload(maskPath, maskBytes, {
       contentType: "image/png",
       cacheControl: "3600",
@@ -397,23 +448,45 @@ serve(async (req) => {
       mask_coverage: Number(result.maskCoverage.toFixed(4)),
       changed_pixels: result.changedPixels,
       changed_fraction: Number((result.changedPixels / (OUT_W * OUT_H)).toFixed(4)),
+      mask_storage_path: maskPath,
       garment_path: garmentPath,
       duration_ms: Date.now() - startedAt,
     };
     console.log("jacket_inpaint_gate_ok:", JSON.stringify(meta));
 
-    return json(200, {
-      ok: true,
-      storagePath,
-      maskStoragePath: maskPath,
-      signedUrl: signedOut?.signedUrl ?? null,
-      meta,
-    });
-  } catch (err) {
+    const updatedRecipe = { ...recipe, generation_metadata: meta };
+    const { error: updErr } = await admin
+      .from("artist_looks")
+      .update({
+        status: "complete",
+        generated_image_url: storagePath,
+        generated_storage_path: storagePath,
+        pipeline_used: "jacket_only_inpaint_masked",
+        cost_cents: 12,
+        composition_recipe_json: updatedRecipe,
+        error_message: null,
+      })
+      .eq("id", lookId);
+    if (updErr) throw new Error(`look_update_failed: ${updErr.message}`);
+   } catch (err) {
     const msg = String(err).slice(0, 500);
     console.error("jacket_inpaint_gate_failed:", msg);
-    return json(502, { error: "jacket_inpaint_failed", detail: msg });
+    await admin
+      .from("artist_looks")
+      .update({ status: "failed", error_message: msg })
+      .eq("id", lookId);
+   }
+  };
+
+  const er = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } })
+    .EdgeRuntime;
+  if (er && typeof er.waitUntil === "function") {
+    er.waitUntil(finish());
+  } else {
+    await finish();
   }
+
+  return json(200, { ok: true, lookId, look: childLook, status: "pending" });
 });
 
 /** Drop undefined keys so DEFAULTS win when a field is omitted. */
