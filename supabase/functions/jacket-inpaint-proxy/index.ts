@@ -77,7 +77,11 @@ const DEFAULTS = {
   guidanceScale: 5.0, // 4–7
   steps: 30, // 25–35
   ipAdapterScale: 0.9, // 0.8–1.0
-  controlnet: "depth" as "depth" | "canny" | "pose" | "none",
+  // Default OFF: flux-general treats controlnets[].path as a HF repo id, NOT a
+  // shorthand ("depth" fails: "not a valid model identifier"). The correct
+  // repo is wired in CONTROLNET_REPOS below and can be enabled per-call once we
+  // have a passing IP-Adapter-only baseline.
+  controlnet: "none" as "depth" | "canny" | "pose" | "none",
   conditioningScale: 0.65,
   featherPx: 12, // 8–16
   maskExpand: 4,
@@ -88,6 +92,21 @@ const DEFAULTS = {
     "face, glasses, hands, cap, orange pants, background, deformation, extra clothing, wrong pose, logo distortion, warped text",
   ipAdapterPath: "XLabs-AI/flux-ip-adapter-v2",
   imageEncoderPath: "openai/clip-vit-large-patch14",
+};
+
+// flux-general/inpainting loads a ControlNet via diffusers
+// FluxControlNetModel.from_pretrained(path) — so `path` MUST be a
+// diffusers-format HF repo id (config.json + diffusion_pytorch_model.safetensors),
+// NOT a shorthand keyword. Verified repos per control type:
+//   depth — jasperai/Flux.1-dev-Controlnet-Depth  (VERIFIED diffusers repo;
+//           consumes Midas/Leres depth maps, matching fal-ai/imageutils/depth;
+//           recommended conditioning_scale 0.3–0.7). Alt: Shakker-Labs/FLUX.1-dev-ControlNet-Depth.
+//   canny — Shakker-Labs/FLUX.1-dev-ControlNet-Canny (diffusers repo; NOT yet
+//           run-verified in this pipeline).
+// A type with no entry here => ControlNet is skipped (never sends an invalid path).
+const CONTROLNET_REPOS: Record<string, string> = {
+  depth: "jasperai/Flux.1-dev-Controlnet-Depth",
+  canny: "Shakker-Labs/FLUX.1-dev-ControlNet-Canny",
 };
 
 type Body = {
@@ -363,6 +382,14 @@ serve(async (req) => {
     const PAD_W = ceilTo(OUT_W, 16); // 1080 → 1088
     const PAD_H = ceilTo(OUT_H, 16); // 1920 → 1920 (already aligned)
 
+    // Resolve the ControlNet repo. Only run preprocess + attach a controlnet
+    // when we have a VERIFIED repo id for the requested type — never send an
+    // invalid path again.
+    const cnRepo = p.controlnet !== "none" ? (CONTROLNET_REPOS[p.controlnet] ?? null) : null;
+    if (p.controlnet !== "none" && !cnRepo) {
+      console.warn(`controlnet_skipped: no verified repo for '${p.controlnet}'`);
+    }
+
     // --- 1. tight jacket mask (evf-sam) --------------------------------
     failedStep = "evf-sam";
     const maskRes = await falViaCc(cc, "fal-ai/evf-sam", {
@@ -375,16 +402,12 @@ serve(async (req) => {
     const maskUrl = firstImageUrl(maskRes);
     if (!maskUrl) throw new Error("mask_no_url");
 
-    // --- 2. depth control map (optional) -------------------------------
+    // --- 2. control map (optional; only when a verified repo exists) ---
     let depthUrl: string | null = null;
-    if (p.controlnet !== "none") {
+    if (cnRepo) {
       failedStep = `preprocess-${p.controlnet}`;
       const model =
-        p.controlnet === "depth"
-          ? "fal-ai/imageutils/depth"
-          : p.controlnet === "canny"
-          ? "fal-ai/imageutils/canny"
-          : "fal-ai/image-preprocessors/openpose";
+        p.controlnet === "canny" ? "fal-ai/imageutils/canny" : "fal-ai/imageutils/depth";
       const cnRes = await falViaCc(cc, model, { image_url: humanUrl });
       depthUrl = firstImageUrl(cnRes);
       if (!depthUrl) throw new Error(`control_${p.controlnet}_no_url`);
@@ -438,10 +461,10 @@ serve(async (req) => {
         },
       ],
     };
-    if (depthPadUrl) {
+    if (depthPadUrl && cnRepo) {
       inpaintInput.controlnets = [
         {
-          path: p.controlnet,
+          path: cnRepo,
           control_image_url: depthPadUrl,
           conditioning_scale: p.conditioningScale,
           end_percentage: 0.8,
@@ -485,8 +508,9 @@ serve(async (req) => {
       guidance_scale: p.guidanceScale,
       steps: p.steps,
       ip_adapter_scale: p.ipAdapterScale,
-      controlnet: p.controlnet,
-      conditioning_scale: p.controlnet === "none" ? null : p.conditioningScale,
+      controlnet: cnRepo ? p.controlnet : "none",
+      controlnet_repo: cnRepo,
+      conditioning_scale: cnRepo ? p.conditioningScale : null,
       feather_px: p.featherPx,
       mask_expand: p.maskExpand,
       mask_prompt: p.maskPrompt,

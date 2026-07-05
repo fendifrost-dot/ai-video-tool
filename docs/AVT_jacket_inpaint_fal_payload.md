@@ -117,9 +117,10 @@ POST https://queue.fal.run/fal-ai/flux-general/inpainting
     }
   ],
 
+  // ControlNet is OPTIONAL and OFF by default (see NOTE below). When enabled:
   "controlnets": [
     {
-      "path": "depth",          // Fal shorthand (also: canny, pose, seg, subject…)
+      "path": "jasperai/Flux.1-dev-Controlnet-Depth",  // HF repo id — NOT "depth"
       "control_image_url": "<DEPTH_MAP_URL from step 2>",
       "conditioning_scale": 0.65,
       "end_percentage": 0.8
@@ -127,6 +128,8 @@ POST https://queue.fal.run/fal-ai/flux-general/inpainting
   ]
 }
 ```
+
+> **NOTE — `controlnets[].path` is a HuggingFace repo id, not a shorthand.** `flux-general/inpainting` loads the ControlNet via diffusers `FluxControlNetModel.from_pretrained(path)`, so `path: "depth"` fails at execution: *"depth is not a valid model identifier listed on huggingface.co/models"* (confirmed live). **Verified repo:** `jasperai/Flux.1-dev-Controlnet-Depth` — a diffusers-format Flux depth ControlNet that consumes Midas/Leres depth maps (matches `fal-ai/imageutils/depth`); recommended `conditioning_scale` 0.3–0.7. Alt: `Shakker-Labs/FLUX.1-dev-ControlNet-Depth`. The edge function keeps ControlNet **OFF by default** (`controlnet:"none"`) so the first pass is IP-Adapter + mask only; enable per-call with `controlnet:"depth"` once the IP-Adapter-only baseline passes. Canny wired to `Shakker-Labs/FLUX.1-dev-ControlNet-Canny` (not yet run-verified).
 
 Output: `{ "images": [ { "url": "<INPAINT_PNG_URL>" } ], "seed": 777 }`.
 
