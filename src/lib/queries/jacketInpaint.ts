@@ -72,15 +72,22 @@ export async function callApplyJacketInpaint(
 export async function applyJacketInpaintAndWait(
   input: ApplyJacketInpaintInput,
   opts?: {
-    onTick?: (info: { elapsedMs: number; status: string }) => void;
+    onTick?: (info: { elapsedMs: number; status: string; phase?: string }) => void;
     signal?: AbortSignal;
   },
 ) {
   const { lookId } = await callApplyJacketInpaint(input);
   const look = await pollArtistLook(lookId, {
     signal: opts?.signal,
-    onTick: (info) => opts?.onTick?.({ elapsedMs: info.elapsedMs, status: info.status }),
-    timeoutMs: 8 * 60 * 1000,
+    onTick: (info) => {
+      const phase = (
+        info.look?.composition_recipe_json as { generation_metadata?: { phase?: string } } | null
+      )?.generation_metadata?.phase;
+      opts?.onTick?.({ elapsedMs: info.elapsedMs, status: info.status, phase });
+    },
+    // Jacket pipeline: evf-sam + flux-inpaint can exceed 10 min cold; poll longer.
+    timeoutMs: 14 * 60 * 1000,
+    requireTerminal: true,
   });
   return look;
 }

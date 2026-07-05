@@ -140,7 +140,20 @@ Task: [Fendi fills in]
 
 ---
 
-## 6. Current open items (not blockers for 502 doc)
+### Jul 2026 — orphaned `pending` + false "complete" toast (3b)
+
+**Symptoms after 502 fix:** Rows like `361b869c` stay `pending` for 15+ min with null `generation_metadata`; UI flashed "Jacket-only inpaint complete" with no image.
+
+**Root causes (verified in code):**
+
+1. **False toast (client bug):** `pollArtistLook` returned the row on **timeout even when still `pending`** (8 min client timeout). Hero Frame treated that as success. Fixed: `requireTerminal: true` for jacket lane + toast gated on `status === 'complete'` + storage path.
+2. **No server heartbeats:** `jacket-inpaint-proxy` only wrote DB at terminal success/failure — so `generation_metadata` stayed null for the whole run. Fixed: `writeProgress(phase)` after each step.
+3. **Pipeline vs platform wall clock:** Sequential Fal polls (5 min + 7 min steps) can exceed Supabase `waitUntil` worker lifetime → worker killed without catch → orphaned `pending`. Fixed: `PIPELINE_DEADLINE_MS` (10 min) writes `failed` with `pipeline_deadline_exceeded` before recycle.
+
+**Fix commits:** see `git log --grep=jacket` on `main` after `0821992`.
+
+**Redeploy:** `jacket-inpaint-proxy` + Lovable **Publish** (UI poll/toast fixes).
+
 
 - `identity_inpaint` canvas preservation bug (handoff §10 in Grok lane doc)
 - CatVTON routing verification (`vton_model` in recipe/logs)

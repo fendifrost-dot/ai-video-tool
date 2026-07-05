@@ -243,10 +243,20 @@ export default function HeroFrameStudioPage({
           name: "Hero · Jacket-Only Inpaint (masked)",
         },
         {
-          onTick: ({ elapsedMs, status }) =>
-            setJacketProgress(`${status} · ${Math.round(elapsedMs / 1000)}s`),
+          onTick: ({ elapsedMs, status, phase }) => {
+            setJacketProgress(
+              phase
+                ? `${phase} · ${Math.round(elapsedMs / 1000)}s`
+                : `${status} · ${Math.round(elapsedMs / 1000)}s`,
+            );
+          },
         },
       );
+      if (look.status !== "complete" || !(look.generated_storage_path ?? look.generated_image_url)) {
+        throw new Error(
+          `Jacket inpaint did not finish (status=${look.status}). Refresh Looks or retry.`,
+        );
+      }
       setJacketLook(look);
       const path = look.generated_storage_path ?? look.generated_image_url;
       if (path) {

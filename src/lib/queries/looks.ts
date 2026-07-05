@@ -454,6 +454,8 @@ export type PollArtistLookOptions = {
   onTick?: (info: { elapsedMs: number; look: Look | null; status: string }) => void;
   // Override total timeout (default 5 minutes).
   timeoutMs?: number;
+  /** When true, timeout throws instead of returning a still-pending row (avoids false "complete" UI). */
+  requireTerminal?: boolean;
 };
 
 const DEFAULT_POLL_TIMEOUT_MS = 5 * 60 * 1000;
@@ -500,6 +502,14 @@ export async function pollArtistLook(
     }
 
     if (elapsedMs >= timeoutMs) {
+      if (row && opts.requireTerminal && status === "pending") {
+        const phase = (row.composition_recipe_json as { generation_metadata?: { phase?: string } } | null)
+          ?.generation_metadata?.phase;
+        const phaseHint = phase ? ` Last server phase: ${phase}.` : "";
+        throw new Error(
+          `Look still pending after ${Math.round(timeoutMs / 1000)}s.${phaseHint} The edge task may still be running — refresh the Looks list or retry.`,
+        );
+      }
       if (row) return row;
       throw new Error("poll_timeout_no_row");
     }

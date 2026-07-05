@@ -461,7 +461,36 @@ serve(async (req) => {
        timings[step] = Date.now() - t0;
      }
    };
+   const assertPipelineDeadline = () => {
+     if (Date.now() - startedAt > PLATFORM_WALL_CLOCK_MS) {
+       throw new Error(
+         `pipeline_deadline_exceeded_after_${Math.round(PLATFORM_WALL_CLOCK_MS / 1000)}s`,
+       );
+     }
+   };
+   const writeProgress = async (phase: string) => {
+     try {
+       await admin
+         .from("artist_looks")
+         .update({
+           composition_recipe_json: {
+             ...recipe,
+             generation_metadata: {
+               phase,
+               step_timings_ms: { ...timings },
+               duration_ms: Date.now() - startedAt,
+               updated_at_ms: Date.now(),
+             },
+           },
+         })
+         .eq("id", lookId);
+     } catch (e) {
+       console.warn("progress_write_failed:", String(e).slice(0, 120));
+     }
+   };
    try {
+    await writeProgress("starting");
+    assertPipelineDeadline();
     // Flux latents are 16-aligned. 1080 is not a multiple of 16 (→ 1088); an
     // unaligned width makes flux-general/inpainting FAIL at execution. We run at
     // a padded 16-aligned size, then crop back to exactly OUT_W×OUT_H so the
@@ -482,6 +511,8 @@ serve(async (req) => {
 
     // --- 1. tight jacket mask (evf-sam) --------------------------------
     failedStep = "evf-sam";
+    await writeProgress("evf-sam");
+    assertPipelineDeadline();
     const maskRes = await timed("evf_sam", () =>
       falViaCc(cc, "fal-ai/evf-sam", {
         image_url: humanUrl,
@@ -497,6 +528,8 @@ serve(async (req) => {
     let depthUrl: string | null = null;
     if (cnRepo) {
       failedStep = `preprocess-${p.controlnet}`;
+      await writeProgress(`preprocess-${p.controlnet}`);
+      assertPipelineDeadline();
       const model =
         p.controlnet === "canny" ? "fal-ai/imageutils/canny" : "fal-ai/imageutils/depth";
       const cnRes = await timed(`control_${p.controlnet}`, () =>
@@ -508,6 +541,8 @@ serve(async (req) => {
     // --- 3. pad scene/mask/(depth) to the 16-aligned size --------------
     // Keep the ORIGINAL OUT_W×OUT_H scene + mask for the recomposite.
     failedStep = "pad-upload";
+    await writeProgress("pad-upload");
+    assertPipelineDeadline();
     const tPad0 = Date.now();
     const source1080 = resizeRgba(await decodeToRgba(await download(humanUrl)), OUT_W, OUT_H);
     const mask1080 = resizeRgba(await decodeToRgba(await download(maskUrl)), OUT_W, OUT_H);
@@ -534,6 +569,8 @@ serve(async (req) => {
 
     // --- 4. flux-general inpainting into the mask ONLY (padded dims) ---
     failedStep = "flux-inpaint";
+    await writeProgress("flux-inpaint");
+    assertPipelineDeadline();
     const inpaintInput: Record<string, unknown> = {
       image_url: srcPadUrl,
       mask_url: maskPadUrl,
@@ -572,6 +609,8 @@ serve(async (req) => {
 
     // --- 5. crop back to OUT_W×OUT_H + deterministic recomposite ------
     failedStep = "recomposite";
+    await writeProgress("recomposite");
+    assertPipelineDeadline();
     const tRecomp0 = Date.now();
     const inpaintPad = resizeRgba(await decodeToRgba(await download(inpaintUrl)), PAD_W, PAD_H);
     const inpaint1080 = cropRgba(inpaintPad, OUT_W, OUT_H);
@@ -582,6 +621,8 @@ serve(async (req) => {
 
     // --- 6. persist to the look row -----------------------------------
     failedStep = "persist";
+    await writeProgress("persist");
+    assertPipelineDeadline();
     const tPersist0 = Date.now();
     const storagePath = `${userId}/${body.artistId}/${lookId}.png`;
     const { error: upErr } = await admin.storage
