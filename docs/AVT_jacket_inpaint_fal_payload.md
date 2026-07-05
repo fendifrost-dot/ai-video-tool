@@ -239,7 +239,11 @@ Run path:
 4. It saves the still to `look-composites` and returns a signed URL.
 5. That signed URL is downloaded and the still is judged against §5 **first-hand** (topology / pixel-isolation / resolution).
 
-Every run logs: mask coverage %, `ip_adapter.scale`, `controlnet.conditioning_scale`, `guidance_scale`, `seed`, mask feather — for repeatability (spec §6).
+Every run logs: mask coverage %, `ip_adapter.scale`, `controlnet.conditioning_scale`, `guidance_scale`, `seed`, mask feather, and **per-step `step_timings_ms`** — for repeatability (spec §6) and latency diagnosis.
+
+### Timeout / queue handling (hard 400s ceiling)
+
+Supabase Edge Functions have a **400s wall-clock limit** on paid plans; `EdgeRuntime.waitUntil` does **not** extend it. So the whole Fal chain races **one shared deadline** (`GLOBAL_FAL_BUDGET_MS = 355s`, reserving ~45s for the CPU-side recomposite + upload) rather than per-step budgets that could individually exceed 400s and leave no time to persist output. Transient CC/Fal gateway blips (the `fal_submit_failed` **502** and 5xx/network drops on submit, poll, and result download) are retried with exponential backoff (`fetchWithRetry`, 2s→4s→8s); a 4xx validation error is permanent and surfaced immediately. On a budget timeout the row records `failed_step` + partial `step_timings_ms`. If cold Flux alone ever blows the 355s budget, the only way past 400s is a **fal-webhook / callback refactor** (submit Flux with a webhook like `faceswap-callback`, finish the crop+recomposite in the callback) — deferred unless the tuned in-function path proves insufficient.
 
 ---
 

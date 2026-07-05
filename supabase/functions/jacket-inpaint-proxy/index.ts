@@ -68,18 +68,15 @@ const SIGN_TTL = 2700;
 const OUT_W = 1080;
 const OUT_H = 1920;
 const FAL_POLL_INTERVAL_MS = 4000;
-// Per-step polling budget. The pipeline is a chain of SEPARATE Fal jobs, each
-// with its own queue wait + cold start; which step is slow varies per run
-// (flux-general/inpainting seen at ~4.9min cold; evf-sam slow even on a warm
-// retry). The whole pipeline runs as a background task (EdgeRuntime.waitUntil),
-// so the edge function's ~55s request wall clock is NOT the ceiling — only these
-// per-step budgets (and the platform worker limit) bound a run. Give each step a
-// generous ceiling so a single cold start never trips a premature fal_timeout_.
-const FAL_TIMEOUT_DEFAULT_MS = 6 * 60 * 1000; // evf-sam, depth/canny preprocess
-const FAL_TIMEOUT_INPAINT_MS = 9 * 60 * 1000; // flux-general/inpainting (slowest cold)
-const FAL_TIMEOUT_BY_MODEL: Record<string, number> = {
-  "fal-ai/flux-general/inpainting": FAL_TIMEOUT_INPAINT_MS,
-};
+// The pipeline is a chain of SEPARATE Fal jobs, each with its own queue wait +
+// cold start; which step is slow varies per run (flux-general/inpainting seen at
+// ~4.9min cold; evf-sam slow even on a warm retry). It runs as a background task
+// (EdgeRuntime.waitUntil), but that does NOT extend the platform's hard 400s
+// wall clock. So instead of per-step budgets that can individually exceed 400s
+// and leave NO time for the CPU-side recomposite, the whole Fal chain races ONE
+// shared deadline that reserves ~45s for recomposite + upload before the ceiling.
+const GLOBAL_FAL_BUDGET_MS = 355 * 1000; // ~5m55s of Fal wall-clock across ALL steps
+const PLATFORM_WALL_CLOCK_MS = 400 * 1000; // Supabase hard limit (waitUntil does NOT extend it)
 // Transient-gateway retry. CC's switchx-restyle returns HTTP 502
 // {error:"fal_submit_failed"} when the upstream Fal queue submit blips, and the
 // CC poll / Fal CDN can likewise return a transient 5xx or drop the connection.
@@ -223,6 +220,7 @@ async function falViaCc(
   cc: CcCtx,
   model: string,
   input: Record<string, unknown>,
+  deadline: number,
 ): Promise<Record<string, unknown>> {
   // 1. submit-only via CC switchx-restyle (mirrors the vton-frame action shape).
   //    Retries transient gateway 5xx (CC's "fal_submit_failed" 502 fires when the
@@ -243,11 +241,11 @@ async function falViaCc(
       `cc_submit_${model}_${submit.status}: ${sub?.error ?? JSON.stringify(sub).slice(0, 200)}${detail}`,
     );
   }
-  // 2. poll the generic, model-agnostic CC fal-queue-poll until COMPLETED.
-  //    Per-step deadline — the slow step (cold flux-inpaint) gets the largest
-  //    budget so a single cold start never trips a premature fal_timeout.
-  const timeoutMs = FAL_TIMEOUT_BY_MODEL[model] ?? FAL_TIMEOUT_DEFAULT_MS;
-  const deadline = Date.now() + timeoutMs;
+  // 2. poll the generic, model-agnostic CC fal-queue-poll until COMPLETED or the
+  //    SHARED chain deadline (passed in) — a slow early step can't starve a later
+  //    one, and the whole chain stays under the 400s platform ceiling with room
+  //    reserved for the recomposite. The Fal job keeps running even if we stop
+  //    polling, so a timeout here is a budget signal, not a Fal cancellation.
   while (Date.now() < deadline) {
     let resp: Response;
     try {
@@ -281,7 +279,10 @@ async function falViaCc(
     }
     await new Promise((r) => setTimeout(r, FAL_POLL_INTERVAL_MS));
   }
-  throw new Error(`fal_timeout_${model}_after_${Math.round(timeoutMs / 1000)}s`);
+  throw new Error(
+    `fal_timeout_${model}: shared Fal budget (${Math.round(GLOBAL_FAL_BUDGET_MS / 1000)}s) ` +
+      `exhausted before completion — job may still be running on Fal`,
+  );
 }
 
 async function download(url: string): Promise<Uint8Array> {
@@ -468,6 +469,9 @@ serve(async (req) => {
     const PAD_W = ceilTo(OUT_W, 16); // 1080 → 1088
     const PAD_H = ceilTo(OUT_H, 16); // 1920 → 1920 (already aligned)
 
+    // Shared deadline for the whole Fal chain — every poll races it.
+    const falDeadline = startedAt + GLOBAL_FAL_BUDGET_MS;
+
     // Resolve the ControlNet repo. Only run preprocess + attach a controlnet
     // when we have a VERIFIED repo id for the requested type — never send an
     // invalid path again.
@@ -485,7 +489,7 @@ serve(async (req) => {
         mask_only: true,
         expand_mask: p.maskExpand,
         fill_holes: true,
-      }));
+      }, falDeadline));
     const maskUrl = firstImageUrl(maskRes);
     if (!maskUrl) throw new Error("mask_no_url");
 
@@ -496,7 +500,7 @@ serve(async (req) => {
       const model =
         p.controlnet === "canny" ? "fal-ai/imageutils/canny" : "fal-ai/imageutils/depth";
       const cnRes = await timed(`control_${p.controlnet}`, () =>
-        falViaCc(cc, model, { image_url: humanUrl }));
+        falViaCc(cc, model, { image_url: humanUrl }, falDeadline));
       depthUrl = firstImageUrl(cnRes);
       if (!depthUrl) throw new Error(`control_${p.controlnet}_no_url`);
     }
@@ -562,7 +566,7 @@ serve(async (req) => {
       ];
     }
     const inpaintRes = await timed("flux_inpaint", () =>
-      falViaCc(cc, "fal-ai/flux-general/inpainting", inpaintInput));
+      falViaCc(cc, "fal-ai/flux-general/inpainting", inpaintInput, falDeadline));
     const inpaintUrl = firstImageUrl(inpaintRes);
     if (!inpaintUrl) throw new Error("inpaint_no_url");
 
