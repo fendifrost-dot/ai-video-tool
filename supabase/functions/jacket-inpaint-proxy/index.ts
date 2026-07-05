@@ -68,7 +68,18 @@ const SIGN_TTL = 2700;
 const OUT_W = 1080;
 const OUT_H = 1920;
 const FAL_POLL_INTERVAL_MS = 4000;
-const FAL_TIMEOUT_MS = 4 * 60 * 1000;
+// Per-step polling budget. The pipeline is a chain of SEPARATE Fal jobs, each
+// with its own queue wait + cold start; which step is slow varies per run
+// (flux-general/inpainting seen at ~4.9min cold; evf-sam slow even on a warm
+// retry). The whole pipeline runs as a background task (EdgeRuntime.waitUntil),
+// so the edge function's ~55s request wall clock is NOT the ceiling — only these
+// per-step budgets (and the platform worker limit) bound a run. Give each step a
+// generous ceiling so a single cold start never trips a premature fal_timeout_.
+const FAL_TIMEOUT_DEFAULT_MS = 6 * 60 * 1000; // evf-sam, depth/canny preprocess
+const FAL_TIMEOUT_INPAINT_MS = 9 * 60 * 1000; // flux-general/inpainting (slowest cold)
+const FAL_TIMEOUT_BY_MODEL: Record<string, number> = {
+  "fal-ai/flux-general/inpainting": FAL_TIMEOUT_INPAINT_MS,
+};
 
 // Fixed defaults (spec §4 params). All overridable per-call for tuning.
 const DEFAULTS = {
@@ -188,7 +199,10 @@ async function falViaCc(
     );
   }
   // 2. poll the generic, model-agnostic CC fal-queue-poll until COMPLETED.
-  const deadline = Date.now() + FAL_TIMEOUT_MS;
+  //    Per-step deadline — the slow step (cold flux-inpaint) gets the largest
+  //    budget so a single cold start never trips a premature fal_timeout.
+  const timeoutMs = FAL_TIMEOUT_BY_MODEL[model] ?? FAL_TIMEOUT_DEFAULT_MS;
+  const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     const resp = await fetch(cc.pollUrl, {
       method: "POST",
@@ -208,7 +222,7 @@ async function falViaCc(
     }
     await new Promise((r) => setTimeout(r, FAL_POLL_INTERVAL_MS));
   }
-  throw new Error(`fal_timeout_${model}`);
+  throw new Error(`fal_timeout_${model}_after_${Math.round(timeoutMs / 1000)}s`);
 }
 
 async function download(url: string): Promise<Uint8Array> {
@@ -374,6 +388,17 @@ serve(async (req) => {
   const startedAt = Date.now();
   const finish = async () => {
    let failedStep = "init";
+   // Per-step wall-clock (ms) so a slow queue/cold-start step is visible in
+   // generation_metadata even on a successful run — and partially on failure.
+   const timings: Record<string, number> = {};
+   const timed = async <T>(step: string, fn: () => Promise<T>): Promise<T> => {
+     const t0 = Date.now();
+     try {
+       return await fn();
+     } finally {
+       timings[step] = Date.now() - t0;
+     }
+   };
    try {
     // Flux latents are 16-aligned. 1080 is not a multiple of 16 (→ 1088); an
     // unaligned width makes flux-general/inpainting FAIL at execution. We run at
@@ -392,13 +417,14 @@ serve(async (req) => {
 
     // --- 1. tight jacket mask (evf-sam) --------------------------------
     failedStep = "evf-sam";
-    const maskRes = await falViaCc(cc, "fal-ai/evf-sam", {
-      image_url: humanUrl,
-      prompt: p.maskPrompt,
-      mask_only: true,
-      expand_mask: p.maskExpand,
-      fill_holes: true,
-    });
+    const maskRes = await timed("evf_sam", () =>
+      falViaCc(cc, "fal-ai/evf-sam", {
+        image_url: humanUrl,
+        prompt: p.maskPrompt,
+        mask_only: true,
+        expand_mask: p.maskExpand,
+        fill_holes: true,
+      }));
     const maskUrl = firstImageUrl(maskRes);
     if (!maskUrl) throw new Error("mask_no_url");
 
@@ -408,7 +434,8 @@ serve(async (req) => {
       failedStep = `preprocess-${p.controlnet}`;
       const model =
         p.controlnet === "canny" ? "fal-ai/imageutils/canny" : "fal-ai/imageutils/depth";
-      const cnRes = await falViaCc(cc, model, { image_url: humanUrl });
+      const cnRes = await timed(`control_${p.controlnet}`, () =>
+        falViaCc(cc, model, { image_url: humanUrl }));
       depthUrl = firstImageUrl(cnRes);
       if (!depthUrl) throw new Error(`control_${p.controlnet}_no_url`);
     }
@@ -416,6 +443,7 @@ serve(async (req) => {
     // --- 3. pad scene/mask/(depth) to the 16-aligned size --------------
     // Keep the ORIGINAL OUT_W×OUT_H scene + mask for the recomposite.
     failedStep = "pad-upload";
+    const tPad0 = Date.now();
     const source1080 = resizeRgba(await decodeToRgba(await download(humanUrl)), OUT_W, OUT_H);
     const mask1080 = resizeRgba(await decodeToRgba(await download(maskUrl)), OUT_W, OUT_H);
     const srcPadUrl = await uploadTempSigned(
@@ -437,6 +465,7 @@ serve(async (req) => {
         await encodePng(padRgba(depth1080, PAD_W, PAD_H, "edge")),
       );
     }
+    timings.pad_upload = Date.now() - tPad0;
 
     // --- 4. flux-general inpainting into the mask ONLY (padded dims) ---
     failedStep = "flux-inpaint";
@@ -471,20 +500,24 @@ serve(async (req) => {
         },
       ];
     }
-    const inpaintRes = await falViaCc(cc, "fal-ai/flux-general/inpainting", inpaintInput);
+    const inpaintRes = await timed("flux_inpaint", () =>
+      falViaCc(cc, "fal-ai/flux-general/inpainting", inpaintInput));
     const inpaintUrl = firstImageUrl(inpaintRes);
     if (!inpaintUrl) throw new Error("inpaint_no_url");
 
     // --- 5. crop back to OUT_W×OUT_H + deterministic recomposite ------
     failedStep = "recomposite";
+    const tRecomp0 = Date.now();
     const inpaintPad = resizeRgba(await decodeToRgba(await download(inpaintUrl)), PAD_W, PAD_H);
     const inpaint1080 = cropRgba(inpaintPad, OUT_W, OUT_H);
     const feathered = featherAlpha(maskToAlpha(mask1080), OUT_W, OUT_H, p.featherPx);
     const result = recomposite(source1080, inpaint1080, feathered, OUT_W, OUT_H);
     const outPng = await encodePng(result.image);
+    timings.recomposite = Date.now() - tRecomp0;
 
     // --- 6. persist to the look row -----------------------------------
     failedStep = "persist";
+    const tPersist0 = Date.now();
     const storagePath = `${userId}/${body.artistId}/${lookId}.png`;
     const { error: upErr } = await admin.storage
       .from("look-composites")
@@ -498,6 +531,7 @@ serve(async (req) => {
       cacheControl: "3600",
       upsert: true,
     }).catch(() => {});
+    timings.persist = Date.now() - tPersist0;
 
     const meta = {
       lane: "jacket_only_inpaint_masked",
@@ -520,6 +554,7 @@ serve(async (req) => {
       mask_storage_path: maskPath,
       garment_path: garmentPath,
       duration_ms: Date.now() - startedAt,
+      step_timings_ms: timings,
     };
     console.log("jacket_inpaint_gate_ok:", JSON.stringify(meta));
 
@@ -550,7 +585,13 @@ serve(async (req) => {
         error_message: `[${failedStep}] ${raw}`.slice(0, 1000),
         composition_recipe_json: {
           ...recipe,
-          generation_metadata: { failed: true, failed_step: failedStep, fal_error_raw: raw.slice(0, 1800) },
+          generation_metadata: {
+            failed: true,
+            failed_step: failedStep,
+            fal_error_raw: raw.slice(0, 1800),
+            step_timings_ms: timings,
+            duration_ms: Date.now() - startedAt,
+          },
         },
       })
       .eq("id", lookId);
