@@ -80,6 +80,12 @@ const FAL_TIMEOUT_INPAINT_MS = 9 * 60 * 1000; // flux-general/inpainting (slowes
 const FAL_TIMEOUT_BY_MODEL: Record<string, number> = {
   "fal-ai/flux-general/inpainting": FAL_TIMEOUT_INPAINT_MS,
 };
+// Transient-gateway retry. CC's switchx-restyle returns HTTP 502
+// {error:"fal_submit_failed"} when the upstream Fal queue submit blips, and the
+// CC poll / Fal CDN can likewise return a transient 5xx or drop the connection.
+// Retry those (5xx or network error) with exponential backoff before giving up;
+// a 4xx (validation) is permanent and is surfaced immediately.
+const RETRY_DELAYS_MS = [2000, 4000, 8000]; // 2s → 4s → 8s (4 total attempts)
 
 // Fixed defaults (spec §4 params). All overridable per-call for tuning.
 const DEFAULTS = {
@@ -179,23 +185,62 @@ function ccFalPollUrl(composeLookCcUrl: string): string {
 
 type CcCtx = { switchxUrl: string; pollUrl: string; proxySecret: string };
 
+// fetch() with exponential-backoff retry for TRANSIENT failures only: a network
+// throw, or an HTTP 5xx (502/503/504 gateway). 2xx/3xx/4xx responses are returned
+// as-is for the caller to interpret (a 4xx is a permanent error, never retried).
+// On a 5xx that persists across all attempts, the final 5xx Response is returned
+// so the caller still surfaces its diagnosable body.
+async function fetchWithRetry(
+  url: string,
+  init: RequestInit,
+  label: string,
+): Promise<Response> {
+  let lastErr: unknown = null;
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt - 1]));
+    }
+    try {
+      const resp = await fetch(url, init);
+      // Retry transient gateway 5xx; return everything else (incl. final 5xx).
+      if (resp.status >= 500 && attempt < RETRY_DELAYS_MS.length) {
+        lastErr = `${label}_http_${resp.status}`;
+        console.warn(`retry ${label}: http ${resp.status} (attempt ${attempt + 1})`);
+        continue;
+      }
+      return resp;
+    } catch (e) {
+      // Network-level error (DNS, connection reset, TLS). Retry until exhausted.
+      lastErr = e;
+      console.warn(`retry ${label}: network ${String(e)} (attempt ${attempt + 1})`);
+      if (attempt >= RETRY_DELAYS_MS.length) break;
+    }
+  }
+  throw new Error(`${label}_network: ${String(lastErr)}`);
+}
+
 async function falViaCc(
   cc: CcCtx,
   model: string,
   input: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   // 1. submit-only via CC switchx-restyle (mirrors the vton-frame action shape).
-  const submit = await fetch(cc.switchxUrl, {
+  //    Retries transient gateway 5xx (CC's "fal_submit_failed" 502 fires when the
+  //    upstream Fal queue submit blips — see AVT_jacket_inpaint_fal_payload §7).
+  const submit = await fetchWithRetry(cc.switchxUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Proxy-Secret": cc.proxySecret },
     body: JSON.stringify({ action: "fal-run", model, input }),
-  });
+  }, `cc_submit_${model}`);
   const sub = await submit.json().catch(() => ({}));
   const statusUrl = String(sub?.status_url ?? "");
   const responseUrl = String(sub?.response_url ?? "");
   if (!submit.ok || !statusUrl || !responseUrl) {
+    // Surface CC's `error` AND `detail` (the real upstream Fal response) — the old
+    // `error ?? detail` hid `detail` whenever `error` was set (e.g. fal_submit_failed).
+    const detail = sub?.detail ? ` detail=${JSON.stringify(sub.detail).slice(0, 400)}` : "";
     throw new Error(
-      `cc_submit_${model}_${submit.status}: ${sub?.error ?? sub?.detail ?? JSON.stringify(sub).slice(0, 200)}`,
+      `cc_submit_${model}_${submit.status}: ${sub?.error ?? JSON.stringify(sub).slice(0, 200)}${detail}`,
     );
   }
   // 2. poll the generic, model-agnostic CC fal-queue-poll until COMPLETED.
@@ -204,11 +249,25 @@ async function falViaCc(
   const timeoutMs = FAL_TIMEOUT_BY_MODEL[model] ?? FAL_TIMEOUT_DEFAULT_MS;
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
-    const resp = await fetch(cc.pollUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Proxy-Secret": cc.proxySecret },
-      body: JSON.stringify({ status_url: statusUrl, response_url: responseUrl }),
-    });
+    let resp: Response;
+    try {
+      resp = await fetchWithRetry(cc.pollUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Proxy-Secret": cc.proxySecret },
+        body: JSON.stringify({ status_url: statusUrl, response_url: responseUrl }),
+      }, `cc_poll_${model}`);
+    } catch (_netErr) {
+      // Network error persisted across retries — transient; a single blip must not
+      // kill an in-flight Fal job. Keep polling until the per-step deadline.
+      await new Promise((r) => setTimeout(r, FAL_POLL_INTERVAL_MS));
+      continue;
+    }
+    // Gateway 5xx persisted across retries — transient too; do NOT interpret it as
+    // a Fal job failure. Keep polling until the deadline.
+    if (resp.status >= 500) {
+      await new Promise((r) => setTimeout(r, FAL_POLL_INTERVAL_MS));
+      continue;
+    }
     const body = await resp.json().catch(() => ({}));
     const status = String(body?.status ?? "");
     if (status === "COMPLETED") {
@@ -226,7 +285,9 @@ async function falViaCc(
 }
 
 async function download(url: string): Promise<Uint8Array> {
-  const r = await fetch(url, { headers: { Accept: "image/*" } });
+  // Same transient-gateway hardening: retry network/5xx when pulling result
+  // images (Fal CDN / signed URLs) so a single blip doesn't fail the whole run.
+  const r = await fetchWithRetry(url, { headers: { Accept: "image/*" } }, "download");
   if (!r.ok) throw new Error(`download_${r.status}`);
   return new Uint8Array(await r.arrayBuffer());
 }
