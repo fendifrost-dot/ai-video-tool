@@ -85,8 +85,8 @@ export async function applyJacketInpaintAndWait(
       )?.generation_metadata?.phase;
       opts?.onTick?.({ elapsedMs: info.elapsedMs, status: info.status, phase });
     },
-    // Jacket pipeline: evf-sam + flux-inpaint can exceed 10 min cold; poll longer.
-    timeoutMs: 14 * 60 * 1000,
+    // Cold flux can span multiple 120s poll slices across continue invocations.
+    timeoutMs: 18 * 60 * 1000,
     requireTerminal: true,
   });
   return look;
