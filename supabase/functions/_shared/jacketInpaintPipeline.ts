@@ -23,6 +23,17 @@ export const FAL_POLL_INTERVAL_MS = 4000;
 export const POLL_SLICE_MS = 120_000;
 /** Safety ceiling per invocation (platform hard limit ~400s). */
 export const INVOCATION_BUDGET_MS = 350_000;
+/**
+ * Upper TOTAL-time cap on flux polling across ALL self-invoked slices. A padded
+ * 1088×1920 flux inpaint at ~30 steps completes in ~1–5min; a job that has not
+ * returned after this is dead/lost, not slow, so we fail it out instead of
+ * self-invoking forever (a runaway once polled for ~5h / ~18,000,000ms). The cap
+ * is evaluated from the MAX of (elapsed since flux_started_at_ms) and the
+ * accumulated `timings_ms.flux_poll`, so it also trips immediately on a run that
+ * was already stuck before this cap was deployed (old state has no
+ * flux_started_at_ms but a huge accumulated flux_poll).
+ */
+export const FLUX_POLL_MAX_MS = 15 * 60_000; // 15 min
 
 export const RETRY_DELAYS_MS = [2000, 4000, 8000];
 
@@ -94,6 +105,12 @@ export type JacketInpaintState = {
   depth_pad_storage_path: string | null;
   inpaint_url: string | null;
   source1080_storage_path: string | null;
+  // --- flux diagnostics + cap (optional; absent on state written before this
+  //     version — read defensively with ?? / falsy fallbacks). ---
+  flux_started_at_ms?: number | null;
+  flux_input_debug?: Record<string, unknown> | null;
+  flux_last_status?: string | null;
+  flux_poll_count?: number;
 };
 
 export type CcCtx = { switchxUrl: string; pollUrl: string; proxySecret: string };
@@ -141,6 +158,10 @@ export function initialState(input: {
     depth_pad_storage_path: null,
     inpaint_url: null,
     source1080_storage_path: null,
+    flux_started_at_ms: null,
+    flux_input_debug: null,
+    flux_last_status: null,
+    flux_poll_count: 0,
   };
 }
 
@@ -206,8 +227,16 @@ export async function falPollSlice(
   cc: CcCtx,
   queue: FalQueueRef,
   sliceMs: number,
-): Promise<{ done: true; result: Record<string, unknown> } | { done: false }> {
+): Promise<
+  | { done: true; result: Record<string, unknown>; lastStatus: string; polls: number }
+  | { done: false; lastStatus: string; polls: number }
+> {
   const deadline = Date.now() + sliceMs;
+  // Diagnostics: the last Fal queue status observed this slice (IN_QUEUE /
+  // IN_PROGRESS / a transient network/5xx marker) and how many polls we made —
+  // so a stuck flux job is diagnosable (queue backlog vs genuinely-long inference).
+  let lastStatus = "";
+  let polls = 0;
   while (Date.now() < deadline) {
     let resp: Response;
     try {
@@ -217,24 +246,28 @@ export async function falPollSlice(
         body: JSON.stringify({ status_url: queue.status_url, response_url: queue.response_url }),
       }, `cc_poll_${queue.model}`);
     } catch {
+      lastStatus = "network_error";
       await new Promise((r) => setTimeout(r, FAL_POLL_INTERVAL_MS));
       continue;
     }
     if (resp.status >= 500) {
+      lastStatus = `http_${resp.status}`;
       await new Promise((r) => setTimeout(r, FAL_POLL_INTERVAL_MS));
       continue;
     }
     const body = await resp.json().catch(() => ({}));
+    polls++;
     const status = String(body?.status ?? "");
+    if (status) lastStatus = status;
     if (status === "COMPLETED") {
-      return { done: true, result: (body?.result ?? body) as Record<string, unknown> };
+      return { done: true, result: (body?.result ?? body) as Record<string, unknown>, lastStatus, polls };
     }
     if (status === "FAILED" || body?.error) {
       throw new Error(`fal_failed_${queue.model}: ${JSON.stringify(body).slice(0, 1800)}`);
     }
     await new Promise((r) => setTimeout(r, FAL_POLL_INTERVAL_MS));
   }
-  return { done: false };
+  return { done: false, lastStatus, polls };
 }
 
 export async function download(url: string): Promise<Uint8Array> {
@@ -311,6 +344,12 @@ export async function persistState(
     fal_queue: state.fal_queue
       ? { model: state.fal_queue.model, step_name: state.fal_queue.step_name }
       : null,
+    // Flux diagnostics (only present once flux_submit has run) — surfaced here so
+    // the exact submitted payload + live queue status are visible on the row.
+    ...(state.flux_input_debug ? { flux_input_debug: state.flux_input_debug } : {}),
+    ...(state.flux_started_at_ms ? { flux_started_at_ms: state.flux_started_at_ms } : {}),
+    ...(state.flux_last_status ? { flux_last_status: state.flux_last_status } : {}),
+    ...(state.flux_poll_count ? { flux_poll_count: state.flux_poll_count } : {}),
     ...extraMeta,
   };
   await ctx.admin
@@ -348,6 +387,11 @@ export async function markFailed(
           step_timings_ms: state.timings_ms,
           duration_ms: Date.now() - state.started_at_ms,
           pipeline_mode: "durable_steps",
+          // Preserve the flux diagnostics so a timeout-fail is diagnosable.
+          ...(state.flux_input_debug ? { flux_input_debug: state.flux_input_debug } : {}),
+          ...(state.flux_started_at_ms ? { flux_started_at_ms: state.flux_started_at_ms } : {}),
+          ...(state.flux_last_status ? { flux_last_status: state.flux_last_status } : {}),
+          ...(state.flux_poll_count ? { flux_poll_count: state.flux_poll_count } : {}),
         },
       },
     })
@@ -502,8 +546,32 @@ export async function runPipelineStep(
           end_percentage: 0.8,
         }];
       }
+      // Diagnostics: record the EXACT flux payload shape (confirm 1088×1920, step
+      // count, guidance/strength, that controlnets is truly empty, and which
+      // src/mask images were sent) so a stuck/slow flux run is diagnosable. Store
+      // storage paths (not signed URLs) to avoid leaking short-lived tokens.
+      const controlnetsArr = Array.isArray(inpaintInput.controlnets)
+        ? (inpaintInput.controlnets as unknown[])
+        : [];
+      state.flux_input_debug = {
+        model: "fal-ai/flux-general/inpainting",
+        image_size: { width: state.pad_w, height: state.pad_h },
+        num_inference_steps: p.steps,
+        guidance_scale: p.guidanceScale,
+        strength: p.strength,
+        seed: p.seed,
+        ip_adapter_scale: p.ipAdapterScale,
+        ip_adapter_path: p.ipAdapterPath,
+        controlnets_count: controlnetsArr.length,
+        controlnet_repo: state.cn_repo,
+        src_pad_storage_path: state.src_pad_storage_path,
+        mask_pad_storage_path: state.mask_pad_storage_path,
+        garment_path: state.garment_path,
+      };
+      console.log("jacket_inpaint_flux_submit:", JSON.stringify(state.flux_input_debug));
       state.fal_queue = await timed("flux_submit", () =>
         falSubmit(cc, "fal-ai/flux-general/inpainting", inpaintInput));
+      state.flux_started_at_ms = Date.now();
       state.step = "flux_poll";
       await persistState(ctx, state.look_id, state);
       return { terminal: false, schedule: true };
@@ -511,9 +579,40 @@ export async function runPipelineStep(
 
     case "flux_poll": {
       if (!state.fal_queue) throw new Error("flux_poll_missing_queue");
+      // --- Upper TOTAL-time cap: fail a hung/dead Fal job cleanly instead of
+      //     self-invoking forever. Evaluate from the MAX of (elapsed since
+      //     flux_started_at_ms) and the accumulated flux_poll timing, so this also
+      //     trips on the FIRST post-deploy self-invoke of a run that was already
+      //     stuck (old state carries a huge timings_ms.flux_poll but no
+      //     flux_started_at_ms). Checked BEFORE polling so a stuck run terminates
+      //     without burning another 120s slice.
+      const fluxElapsedMs = Math.max(
+        state.flux_started_at_ms ? Date.now() - state.flux_started_at_ms : 0,
+        state.timings_ms["flux_poll"] ?? 0,
+      );
+      if (fluxElapsedMs > FLUX_POLL_MAX_MS) {
+        const secs = Math.round(fluxElapsedMs / 1000);
+        console.error(
+          `jacket_inpaint_flux_timeout: ${secs}s > cap ${Math.round(FLUX_POLL_MAX_MS / 1000)}s` +
+            ` (last_status=${state.flux_last_status ?? "?"})`,
+        );
+        await markFailed(
+          ctx,
+          state.look_id,
+          state,
+          "flux-inpaint",
+          `fal_timeout_flux-general/inpainting_after_${secs}s`,
+        );
+        return { terminal: true };
+      }
       const poll = await timed("flux_poll", () => falPollSlice(cc, state.fal_queue!, POLL_SLICE_MS));
+      state.flux_last_status = poll.lastStatus || state.flux_last_status;
+      state.flux_poll_count = (state.flux_poll_count ?? 0) + poll.polls;
       if (!poll.done) {
-        await persistState(ctx, state.look_id, state, { poll_slice_exhausted: true });
+        await persistState(ctx, state.look_id, state, {
+          poll_slice_exhausted: true,
+          flux_elapsed_ms: fluxElapsedMs,
+        });
         return { terminal: false, schedule: true };
       }
       state.inpaint_url = firstImageUrl(poll.result);
@@ -616,7 +715,10 @@ export async function runContinueInvocation(ctx: RunContext, lookId: string): Pr
     .eq("id", lookId)
     .maybeSingle();
   if (error || !row) throw new Error("look_not_found");
-  if (row.status === "complete" || row.status === "failed") return;
+  // Terminal-status bail: if the row is already done, failed, or was cancelled
+  // (a run can be halted out-of-band by setting its status), RETURN immediately —
+  // no poll, no self-invoke. This is the hard backstop against any runaway loop.
+  if (row.status === "complete" || row.status === "failed" || row.status === "cancelled") return;
 
   const recipe = (row.composition_recipe_json ?? {}) as Record<string, unknown>;
   const state = recipe.jacket_inpaint_state as JacketInpaintState | undefined;
