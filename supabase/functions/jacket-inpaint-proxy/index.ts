@@ -12,9 +12,9 @@ import { pickVtonGarmentPath } from "../_shared/garmentReference.ts";
 import {
   DEFAULTS,
   initialState,
-  reapStaleRuns,
   runContinueInvocation,
   scheduleContinue,
+  sweepStaleRuns,
   type PipelineParams,
   type RunContext,
 } from "../_shared/jacketInpaintPipeline.ts";
@@ -165,22 +165,23 @@ serve(async (req) => {
     return json(200, { ok: true, action: "continue", lookId: body.lookId });
   }
 
-  // --- Watchdog reap (service-role, standalone) ------------------------
-  // A dead self-invoke chain can't fail its own row. This action sweeps any
-  // jacket-inpaint row stuck `pending` past the wall-clock deadline and writes it
-  // terminal, INDEPENDENT of the chain. Callable by an external scheduler / pg_cron
-  // (via pg_net) or manually; the same sweep also runs at the head of every submit.
-  if (rawBody.action === "reap") {
+  // --- Watchdog sweep (service-role, standalone) -----------------------
+  // A dead self-invoke chain can't advance or fail its own row. This action sweeps
+  // non-terminal jacket-inpaint rows and, INDEPENDENT of the chain, RESUMES the
+  // stalled ones (re-invokes `continue`) and hard-fails the ones past the 12-min
+  // cap. Callable by pg_cron (via pg_net) or manually; the same sweep also runs at
+  // the head of every submit. Kept reachable under the historical `reap` action too.
+  if (rawBody.action === "reap" || rawBody.action === "sweep") {
     if (!isServiceRoleRequest(req, serviceRoleKey)) {
-      return json(401, { error: "reap_requires_service_role" });
+      return json(401, { error: "sweep_requires_service_role" });
     }
     const cc = {
       switchxUrl: ccSwitchxUrl(composeCcUrl),
       pollUrl: ccFalPollUrl(composeCcUrl),
       proxySecret,
     };
-    const reaped = await reapStaleRuns(reapCtx(admin, supabaseUrl, serviceRoleKey, cc));
-    return json(200, { ok: true, action: "reap", reaped });
+    const result = await sweepStaleRuns(reapCtx(admin, supabaseUrl, serviceRoleKey, cc));
+    return json(200, { ok: true, action: "sweep", ...result });
   }
 
   // --- User submit -----------------------------------------------------
@@ -227,17 +228,17 @@ serve(async (req) => {
     });
   }
 
-  // Watchdog: before starting a new run, reap any predecessor stuck past the
-  // wall-clock deadline — this fires even if that run's self-invoke chain died.
-  // Run in the background (waitUntil) so it never delays the user's submit;
-  // reapStaleRuns is self-contained (never throws).
+  // Watchdog: before starting a new run, sweep predecessors — RESUME any stalled
+  // chain and hard-fail any past the cap. Fires even if that run's self-invoke
+  // chain died. Run in the background (waitUntil) so it never delays the user's
+  // submit; sweepStaleRuns is self-contained (never throws).
   {
     const cc = {
       switchxUrl: ccSwitchxUrl(composeCcUrl),
       pollUrl: ccFalPollUrl(composeCcUrl),
       proxySecret,
     };
-    const sweep = reapStaleRuns(reapCtx(admin, supabaseUrl, serviceRoleKey, cc));
+    const sweep = sweepStaleRuns(reapCtx(admin, supabaseUrl, serviceRoleKey, cc));
     const er = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } })
       .EdgeRuntime;
     if (er?.waitUntil) er.waitUntil(sweep);
@@ -322,7 +323,19 @@ serve(async (req) => {
     },
     recipe,
   };
-  scheduleContinue(ctx, lookId);
+  // Kick off the state machine. scheduleContinue is now awaited internally (with
+  // retry) — run it under waitUntil so the handoff POST completes before this
+  // isolate ends without delaying the user's response. If it still drops, the
+  // watchdog sweep resumes the run from its first checkpoint within a few minutes.
+  {
+    const kickoff = scheduleContinue(ctx, lookId).then((status) =>
+      console.log(`jacket_inpaint_kickoff[${lookId}]: post=${status}`)
+    );
+    const er = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } })
+      .EdgeRuntime;
+    if (er?.waitUntil) er.waitUntil(kickoff);
+    else await kickoff;
+  }
 
   return json(200, { ok: true, lookId, look: childLook, status: "pending" });
 });

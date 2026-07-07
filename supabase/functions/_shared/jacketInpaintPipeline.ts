@@ -60,6 +60,15 @@ export const FLUX_POLL_MAX_MS = 15 * 60_000; // 15 min
  * ~1 MP the whole pipeline completes in a few minutes, so 12 min is generous.
  */
 export const WATCHDOG_STALE_MS = 12 * 60_000; // 12 min
+/**
+ * RESUME threshold. A non-terminal run whose last write (updated_at) is older than
+ * this — but younger than the 12-min hard cap — is presumed STALLED (a self-invoke
+ * handoff was dropped) and is nudged back to life by re-invoking `continue`, which
+ * resumes idempotently from the last checkpoint. Must exceed a full poll slice
+ * (POLL_SLICE_MS = 120s) so a run that is legitimately mid-poll — and only writes
+ * at slice boundaries — is never mistaken for stalled.
+ */
+export const RESUME_STALL_MS = 3 * 60_000; // 3 min
 
 export const RETRY_DELAYS_MS = [2000, 4000, 8000];
 
@@ -147,6 +156,10 @@ export type JacketInpaintState = {
   flux_input_debug?: Record<string, unknown> | null;
   flux_last_status?: string | null;
   flux_poll_count?: number;
+  // --- self-invoke (continuation) diagnostics. Records the result of the last
+  //     handoff POST so a dropped continuation is visible on the row. ---
+  self_invoke_last_status?: string | null;
+  self_invoke_at_ms?: number | null;
 };
 
 export type CcCtx = { switchxUrl: string; pollUrl: string; proxySecret: string };
@@ -208,6 +221,8 @@ export function initialState(input: {
     flux_input_debug: null,
     flux_last_status: null,
     flux_poll_count: 0,
+    self_invoke_last_status: null,
+    self_invoke_at_ms: null,
   };
 }
 
@@ -363,16 +378,45 @@ export async function signGarmentUrl(
   }
 }
 
-export function scheduleContinue(ctx: RunContext, lookId: string): void {
+/**
+ * Fire the self-invoke that advances the state machine to its next step.
+ *
+ * This is the handoff that was silently dropping — the old version fire-and-forgot
+ * the fetch (no await), so when the isolate ended before the outbound connection
+ * completed, the next step NEVER RAN and the row orphaned mid-pipeline (observed:
+ * checkpointed phase=flux_submit, chain died, flux never executed). Now we AWAIT
+ * the POST and RETRY on network/5xx with backoff, and return the terminal status
+ * so the caller can persist it (self_invoke_last_status) — making a dropped handoff
+ * both far less likely AND visible on the row. The continue endpoint returns 200 as
+ * soon as it accepts (the actual step runs under waitUntil), so awaiting is cheap.
+ */
+export async function scheduleContinue(ctx: RunContext, lookId: string): Promise<string> {
   const url = `${ctx.supabaseUrl.replace(/\/$/, "")}/functions/v1/jacket-inpaint-proxy`;
-  fetch(url, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${ctx.serviceRoleKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ action: "continue", lookId }),
-  }).catch((e) => console.error("jacket_continue_schedule_failed:", String(e).slice(0, 200)));
+  let lastStatus = "no_attempt";
+  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt - 1]));
+    try {
+      const resp = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${ctx.serviceRoleKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "continue", lookId }),
+      });
+      lastStatus = `http_${resp.status}`;
+      // Drain/close the body so the connection is released promptly.
+      await resp.body?.cancel().catch(() => {});
+      if (resp.ok) return lastStatus;
+      if (resp.status >= 500 && attempt < RETRY_DELAYS_MS.length) continue;
+      break; // 4xx — retrying won't help
+    } catch (e) {
+      lastStatus = `network_error:${String(e).slice(0, 60)}`;
+      if (attempt >= RETRY_DELAYS_MS.length) break;
+    }
+  }
+  console.error(`jacket_continue_schedule_failed[${lookId}]:`, lastStatus);
+  return lastStatus;
 }
 
 export async function persistState(
@@ -397,6 +441,8 @@ export async function persistState(
     ...(state.flux_runtime_ms ? { flux_runtime_ms: state.flux_runtime_ms } : {}),
     ...(state.flux_last_status ? { flux_last_status: state.flux_last_status } : {}),
     ...(state.flux_poll_count ? { flux_poll_count: state.flux_poll_count } : {}),
+    ...(state.self_invoke_last_status ? { self_invoke_last_status: state.self_invoke_last_status } : {}),
+    ...(state.self_invoke_at_ms ? { self_invoke_at_ms: state.self_invoke_at_ms } : {}),
     ...extraMeta,
   };
   await ctx.admin
@@ -447,55 +493,84 @@ export async function markFailed(
 }
 
 /**
- * WATCHDOG / reaper. Sweeps `artist_looks` rows still `pending` in a
- * jacket-inpaint pipeline whose wall-clock (state.started_at_ms, else the row's
- * created_at) is older than WATCHDOG_STALE_MS, and writes them terminal
- * (`failed` + failed_step + fal_error_raw). This is INDEPENDENT of the
- * self-invoke chain: even if the chain died (dropped waitUntil, crashed slice)
- * the row still gets reaped. Called at the start of every new submit (and
- * exposed as a `reap` action) so a fresh run first clears any dead predecessors.
- * Returns the number of rows reaped. Never throws — a watchdog that crashes the
- * submit it rode in on would be worse than one that logs and moves on.
+ * WATCHDOG / self-healing sweep. Walks non-terminal jacket-inpaint rows and, for
+ * each, does ONE of three things based on wall-clock, INDEPENDENT of whether the
+ * self-invoke chain is still alive:
+ *
+ *   • age > WATCHDOG_STALE_MS (12 min, hard cap): presumed dead beyond recovery →
+ *     write terminal (`failed` + failed_step + fal_error_raw). Final bail.
+ *   • stall > RESUME_STALL_MS (3 min since last write) but under the hard cap:
+ *     presumed STALLED (a handoff was dropped) → RESUME by re-invoking `continue`,
+ *     which picks up idempotently from the last checkpoint. A poll step re-polls
+ *     the stored Fal status_url/response_url (no duplicate Fal job); a step that
+ *     already advanced is a no-op (continue re-reads fresh state / bails if terminal).
+ *   • otherwise: fresh or actively progressing → leave alone.
+ *
+ * Called at the head of every submit AND exposed as the `reap` action (which a
+ * pg_cron job POSTs on a schedule) so stalled runs recover even when no new submit
+ * arrives. Never throws — a watchdog that crashes its host request is worse than
+ * one that logs and moves on. Returns counts for observability.
  */
-export async function reapStaleRuns(ctx: RunContext): Promise<number> {
-  const cutoffMs = Date.now() - WATCHDOG_STALE_MS;
+export async function sweepStaleRuns(
+  ctx: RunContext,
+): Promise<{ resumed: number; reaped: number; scanned: number }> {
+  const now = Date.now();
+  let resumed = 0;
+  let reaped = 0;
+  let scanned = 0;
   try {
     const { data: rows, error } = await ctx.admin
       .from("artist_looks")
-      .select("id, status, created_at, composition_recipe_json")
-      .eq("status", "pending")
+      .select("id, status, created_at, updated_at, composition_recipe_json")
+      .in("status", ["pending", "processing"])
       .limit(100);
-    if (error || !rows) return 0;
-    let reaped = 0;
+    if (error || !rows) return { resumed, reaped, scanned };
     for (const row of rows as Array<Record<string, unknown>>) {
       const recipe = (row.composition_recipe_json ?? {}) as Record<string, unknown>;
       if (recipe.pipeline_preference !== "jacket_only_inpaint_masked") continue;
       const state = recipe.jacket_inpaint_state as JacketInpaintState | undefined;
       if (!state?.step || state.step === "complete" || state.step === "failed") continue;
+      scanned++;
       const startedMs = typeof state.started_at_ms === "number"
         ? state.started_at_ms
         : (row.created_at ? Date.parse(String(row.created_at)) : 0);
-      if (!startedMs || startedMs > cutoffMs) continue; // still within deadline
-      const ageSecs = Math.round((Date.now() - startedMs) / 1000);
-      // markFailed spreads ctx.recipe — point it at THIS row's recipe so we
-      // preserve its own state + flux diagnostics rather than overwriting them.
-      const rowCtx: RunContext = { ...ctx, recipe };
-      await markFailed(
-        rowCtx,
-        String(row.id),
-        state,
-        `watchdog-${state.step}`,
-        `watchdog_reaped_stale_run_after_${ageSecs}s (self-invoke chain presumed dead)`,
-      );
-      reaped++;
-      console.error(
-        `jacket_inpaint_watchdog_reaped: look=${row.id} step=${state.step} age=${ageSecs}s`,
-      );
+      const updatedMs = row.updated_at ? Date.parse(String(row.updated_at)) : startedMs;
+      const ageMs = startedMs ? now - startedMs : 0;
+      const stallMs = updatedMs ? now - updatedMs : ageMs;
+
+      if (startedMs && ageMs > WATCHDOG_STALE_MS) {
+        // Hard cap — write terminal. markFailed spreads ctx.recipe, so point it at
+        // THIS row's recipe to preserve its own state + diagnostics.
+        const rowCtx: RunContext = { ...ctx, recipe };
+        await markFailed(
+          rowCtx,
+          String(row.id),
+          state,
+          `watchdog-${state.step}`,
+          `watchdog_reaped_stale_run_after_${Math.round(ageMs / 1000)}s ` +
+            `(no progress past hard cap; self-invoke chain presumed dead)`,
+        );
+        reaped++;
+        console.error(
+          `jacket_inpaint_watchdog_reaped: look=${row.id} step=${state.step} age=${Math.round(ageMs / 1000)}s`,
+        );
+        continue;
+      }
+
+      if (stallMs > RESUME_STALL_MS) {
+        // Stalled but recoverable — nudge the chain back to life.
+        const status = await scheduleContinue(ctx, String(row.id));
+        resumed++;
+        console.error(
+          `jacket_inpaint_watchdog_resumed: look=${row.id} step=${state.step} ` +
+            `stall=${Math.round(stallMs / 1000)}s post=${status}`,
+        );
+      }
     }
-    return reaped;
+    return { resumed, reaped, scanned };
   } catch (e) {
     console.error("jacket_inpaint_watchdog_error:", String(e).slice(0, 300));
-    return 0;
+    return { resumed, reaped, scanned };
   }
 }
 
@@ -862,7 +937,17 @@ export async function runContinueInvocation(ctx: RunContext, lookId: string): Pr
     }
     const result = await runPipelineStep(ctx, state);
     if (!result.terminal && result.schedule) {
-      scheduleContinue(ctx, lookId);
+      // AWAIT the handoff (with retry) so the outbound POST actually completes
+      // before this isolate ends — the old fire-and-forget dropped it and stranded
+      // the run. Record the result on the row so a dropped handoff is diagnosable.
+      const status = await scheduleContinue(ctx, lookId);
+      state.self_invoke_last_status = status;
+      state.self_invoke_at_ms = Date.now();
+      if (!status.startsWith("http_2")) {
+        // The handoff did NOT land, so no successor invocation will race this write —
+        // safe to persist the failure marker. The watchdog will resume from here.
+        await persistState(ctx, lookId, state, { self_invoke_failed: true }).catch(() => {});
+      }
     }
   } catch (err) {
     const raw = String(err instanceof Error ? err.message : err);
