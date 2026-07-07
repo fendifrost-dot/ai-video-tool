@@ -17,6 +17,22 @@ import {
 
 export const OUT_W = 1080;
 export const OUT_H = 1920;
+/**
+ * Flux inpaint WORKING resolution — ÷16 on both axes, ~1.03 MP, ~9:16.
+ *
+ * flux-general/inpainting HANGS at the padded 1088×1920 (~2.1 MP) — that is far
+ * above flux's ~1 MP sweet spot and the job never returns (observed 16 min → 6.7 h).
+ * We therefore run flux at 768×1344 (1,032,192 px ≈ 1.03 MP), then upscale the flux
+ * OUTPUT back to pad_w×pad_h and feed it to the EXACT SAME deterministic recomposite.
+ * The recomposite still blends only the jacket-mask region onto the real 1080×1920
+ * source, so face/glasses/scene stay sharp and untouched — only the jacket is the
+ * (softer, upscaled) inpaint. A soft jacket is acceptable; the point is flux RETURNING.
+ * Both scene AND mask are downscaled with the identical transform (from the padded
+ * canvas) and the output is upscaled back to the same padded canvas, so mask
+ * alignment is preserved end-to-end.
+ */
+export const FLUX_W = 768;
+export const FLUX_H = 1344;
 export const SIGN_TTL = 2700;
 export const FAL_POLL_INTERVAL_MS = 4000;
 /** Max wall-clock spent polling Fal in a single edge invocation. */
@@ -34,6 +50,16 @@ export const INVOCATION_BUDGET_MS = 350_000;
  * flux_started_at_ms but a huge accumulated flux_poll).
  */
 export const FLUX_POLL_MAX_MS = 15 * 60_000; // 15 min
+/**
+ * WATCHDOG wall-clock deadline. A jacket-inpaint run that has been in a
+ * non-terminal phase this long since started_at_ms is presumed DEAD (the
+ * self-invoke chain was lost — the platform dropped the waitUntil, a slice
+ * crashed before persisting, etc.) and is reaped to `failed` INDEPENDENT of
+ * whether the chain is still alive. The 15-min in-chain flux cap only fires if
+ * the chain survives; this fires even if it died. With flux now returning at
+ * ~1 MP the whole pipeline completes in a few minutes, so 12 min is generous.
+ */
+export const WATCHDOG_STALE_MS = 12 * 60_000; // 12 min
 
 export const RETRY_DELAYS_MS = [2000, 4000, 8000];
 
@@ -103,11 +129,21 @@ export type JacketInpaintState = {
   src_pad_storage_path: string | null;
   mask_pad_storage_path: string | null;
   depth_pad_storage_path: string | null;
+  // Flux-sized (~1 MP) downscales of the padded src/mask/depth — what flux
+  // actually runs on (see FLUX_W/FLUX_H). Optional/absent on pre-this-version state.
+  src_flux_storage_path?: string | null;
+  mask_flux_storage_path?: string | null;
+  depth_flux_storage_path?: string | null;
+  flux_w?: number;
+  flux_h?: number;
   inpaint_url: string | null;
   source1080_storage_path: string | null;
   // --- flux diagnostics + cap (optional; absent on state written before this
   //     version — read defensively with ?? / falsy fallbacks). ---
   flux_started_at_ms?: number | null;
+  /** Measured flux wall-clock from submit → returned. THE number that tells us
+   *  whether lowering resolution fixed the hang. */
+  flux_runtime_ms?: number | null;
   flux_input_debug?: Record<string, unknown> | null;
   flux_last_status?: string | null;
   flux_poll_count?: number;
@@ -116,7 +152,11 @@ export type JacketInpaintState = {
 export type CcCtx = { switchxUrl: string; pollUrl: string; proxySecret: string };
 
 export type RunContext = {
-  admin: ReturnType<typeof import("https://esm.sh/@supabase/supabase-js@2.45.0").createClient>;
+  // NOTE: the bare `SupabaseClient` default generics (`<any, "public", any>`)
+  // match what a concrete `createClient(url, key)` call returns. Using
+  // `ReturnType<typeof createClient>` instead resolves the schema param to
+  // `never` and mis-types every `admin` assignment (deno check TS2322/TS2345).
+  admin: import("https://esm.sh/@supabase/supabase-js@2.45.0").SupabaseClient;
   cc: CcCtx;
   supabaseUrl: string;
   serviceRoleKey: string;
@@ -156,9 +196,15 @@ export function initialState(input: {
     src_pad_storage_path: null,
     mask_pad_storage_path: null,
     depth_pad_storage_path: null,
+    src_flux_storage_path: null,
+    mask_flux_storage_path: null,
+    depth_flux_storage_path: null,
+    flux_w: FLUX_W,
+    flux_h: FLUX_H,
     inpaint_url: null,
     source1080_storage_path: null,
     flux_started_at_ms: null,
+    flux_runtime_ms: null,
     flux_input_debug: null,
     flux_last_status: null,
     flux_poll_count: 0,
@@ -348,6 +394,7 @@ export async function persistState(
     // the exact submitted payload + live queue status are visible on the row.
     ...(state.flux_input_debug ? { flux_input_debug: state.flux_input_debug } : {}),
     ...(state.flux_started_at_ms ? { flux_started_at_ms: state.flux_started_at_ms } : {}),
+    ...(state.flux_runtime_ms ? { flux_runtime_ms: state.flux_runtime_ms } : {}),
     ...(state.flux_last_status ? { flux_last_status: state.flux_last_status } : {}),
     ...(state.flux_poll_count ? { flux_poll_count: state.flux_poll_count } : {}),
     ...extraMeta,
@@ -390,12 +437,66 @@ export async function markFailed(
           // Preserve the flux diagnostics so a timeout-fail is diagnosable.
           ...(state.flux_input_debug ? { flux_input_debug: state.flux_input_debug } : {}),
           ...(state.flux_started_at_ms ? { flux_started_at_ms: state.flux_started_at_ms } : {}),
+          ...(state.flux_runtime_ms ? { flux_runtime_ms: state.flux_runtime_ms } : {}),
           ...(state.flux_last_status ? { flux_last_status: state.flux_last_status } : {}),
           ...(state.flux_poll_count ? { flux_poll_count: state.flux_poll_count } : {}),
         },
       },
     })
     .eq("id", lookId);
+}
+
+/**
+ * WATCHDOG / reaper. Sweeps `artist_looks` rows still `pending` in a
+ * jacket-inpaint pipeline whose wall-clock (state.started_at_ms, else the row's
+ * created_at) is older than WATCHDOG_STALE_MS, and writes them terminal
+ * (`failed` + failed_step + fal_error_raw). This is INDEPENDENT of the
+ * self-invoke chain: even if the chain died (dropped waitUntil, crashed slice)
+ * the row still gets reaped. Called at the start of every new submit (and
+ * exposed as a `reap` action) so a fresh run first clears any dead predecessors.
+ * Returns the number of rows reaped. Never throws — a watchdog that crashes the
+ * submit it rode in on would be worse than one that logs and moves on.
+ */
+export async function reapStaleRuns(ctx: RunContext): Promise<number> {
+  const cutoffMs = Date.now() - WATCHDOG_STALE_MS;
+  try {
+    const { data: rows, error } = await ctx.admin
+      .from("artist_looks")
+      .select("id, status, created_at, composition_recipe_json")
+      .eq("status", "pending")
+      .limit(100);
+    if (error || !rows) return 0;
+    let reaped = 0;
+    for (const row of rows as Array<Record<string, unknown>>) {
+      const recipe = (row.composition_recipe_json ?? {}) as Record<string, unknown>;
+      if (recipe.pipeline_preference !== "jacket_only_inpaint_masked") continue;
+      const state = recipe.jacket_inpaint_state as JacketInpaintState | undefined;
+      if (!state?.step || state.step === "complete" || state.step === "failed") continue;
+      const startedMs = typeof state.started_at_ms === "number"
+        ? state.started_at_ms
+        : (row.created_at ? Date.parse(String(row.created_at)) : 0);
+      if (!startedMs || startedMs > cutoffMs) continue; // still within deadline
+      const ageSecs = Math.round((Date.now() - startedMs) / 1000);
+      // markFailed spreads ctx.recipe — point it at THIS row's recipe so we
+      // preserve its own state + flux diagnostics rather than overwriting them.
+      const rowCtx: RunContext = { ...ctx, recipe };
+      await markFailed(
+        rowCtx,
+        String(row.id),
+        state,
+        `watchdog-${state.step}`,
+        `watchdog_reaped_stale_run_after_${ageSecs}s (self-invoke chain presumed dead)`,
+      );
+      reaped++;
+      console.error(
+        `jacket_inpaint_watchdog_reaped: look=${row.id} step=${state.step} age=${ageSecs}s`,
+      );
+    }
+    return reaped;
+  } catch (e) {
+    console.error("jacket_inpaint_watchdog_error:", String(e).slice(0, 300));
+    return 0;
+  }
 }
 
 export type StepResult = { terminal: true } | { terminal: false; schedule: true };
@@ -482,26 +583,29 @@ export async function runPipelineStep(
       state.source1080_storage_path = `${base}_source1080.png`;
       await timed("pad_upload", async () => {
         await uploadBytes(admin, state.source1080_storage_path!, await encodePng(source1080));
+        // Padded ÷16 canvases (edge-fill scene/depth, black-fill mask). Kept for
+        // diagnostics + as the exact geometry the flux downscale derives from.
+        const srcPad = padRgba(source1080, state.pad_w, state.pad_h, "edge");
+        const maskPad = padRgba(mask1080, state.pad_w, state.pad_h, "black");
         state.src_pad_storage_path = `${base}_pad_src.png`;
         state.mask_pad_storage_path = `${base}_pad_mask.png`;
-        await uploadBytes(
-          admin,
-          state.src_pad_storage_path,
-          await encodePng(padRgba(source1080, state.pad_w, state.pad_h, "edge")),
-        );
-        await uploadBytes(
-          admin,
-          state.mask_pad_storage_path,
-          await encodePng(padRgba(mask1080, state.pad_w, state.pad_h, "black")),
-        );
+        await uploadBytes(admin, state.src_pad_storage_path, await encodePng(srcPad));
+        await uploadBytes(admin, state.mask_pad_storage_path, await encodePng(maskPad));
+        // Flux-sized (~1 MP) downscales — what flux actually inpaints on. Scene and
+        // mask get the IDENTICAL down-transform from the padded canvas, so their
+        // alignment is preserved; the output is upscaled back to pad_w×pad_h before
+        // the crop, so mask alignment survives the full round trip.
+        state.src_flux_storage_path = `${base}_flux_src.png`;
+        state.mask_flux_storage_path = `${base}_flux_mask.png`;
+        await uploadBytes(admin, state.src_flux_storage_path, await encodePng(resizeRgba(srcPad, FLUX_W, FLUX_H)));
+        await uploadBytes(admin, state.mask_flux_storage_path, await encodePng(resizeRgba(maskPad, FLUX_W, FLUX_H)));
         if (state.depth_url) {
           const depth1080 = resizeRgba(await decodeToRgba(await download(state.depth_url)), OUT_W, OUT_H);
+          const depthPad = padRgba(depth1080, state.pad_w, state.pad_h, "edge");
           state.depth_pad_storage_path = `${base}_pad_depth.png`;
-          await uploadBytes(
-            admin,
-            state.depth_pad_storage_path,
-            await encodePng(padRgba(depth1080, state.pad_w, state.pad_h, "edge")),
-          );
+          await uploadBytes(admin, state.depth_pad_storage_path, await encodePng(depthPad));
+          state.depth_flux_storage_path = `${base}_flux_depth.png`;
+          await uploadBytes(admin, state.depth_flux_storage_path, await encodePng(resizeRgba(depthPad, FLUX_W, FLUX_H)));
         }
         state.mask_storage_path = `${base}_mask.png`;
         await uploadBytes(admin, state.mask_storage_path, await encodePng(mask1080));
@@ -512,11 +616,19 @@ export async function runPipelineStep(
     }
 
     case "flux_submit": {
-      if (!state.src_pad_storage_path || !state.mask_pad_storage_path) {
-        throw new Error("flux_submit_missing_pad_paths");
+      // Run flux at the ~1 MP working resolution (FLUX_W×FLUX_H) — the padded
+      // 2.1 MP inpaint HANGS; ~1 MP is flux's sweet spot and RETURNS. Fall back to
+      // the padded images only if the flux downscales are missing (pre-version state).
+      const srcFluxPath = state.src_flux_storage_path ?? state.src_pad_storage_path;
+      const maskFluxPath = state.mask_flux_storage_path ?? state.mask_pad_storage_path;
+      if (!srcFluxPath || !maskFluxPath) {
+        throw new Error("flux_submit_missing_flux_paths");
       }
-      const srcPadUrl = await signPath(admin, "look-composites", state.src_pad_storage_path);
-      const maskPadUrl = await signPath(admin, "look-composites", state.mask_pad_storage_path);
+      const usingFluxSize = !!state.src_flux_storage_path && !!state.mask_flux_storage_path;
+      const fluxW = usingFluxSize ? FLUX_W : state.pad_w;
+      const fluxH = usingFluxSize ? FLUX_H : state.pad_h;
+      const srcPadUrl = await signPath(admin, "look-composites", srcFluxPath);
+      const maskPadUrl = await signPath(admin, "look-composites", maskFluxPath);
       const garmentUrl = await signGarmentUrl(admin, state.garment_path);
       const inpaintInput: Record<string, unknown> = {
         image_url: srcPadUrl,
@@ -529,7 +641,7 @@ export async function runPipelineStep(
         seed: p.seed,
         num_images: 1,
         output_format: "png",
-        image_size: { width: state.pad_w, height: state.pad_h },
+        image_size: { width: fluxW, height: fluxH },
         ip_adapters: [{
           path: p.ipAdapterPath,
           image_encoder_path: p.imageEncoderPath,
@@ -537,8 +649,9 @@ export async function runPipelineStep(
           scale: p.ipAdapterScale,
         }],
       };
-      if (state.depth_pad_storage_path && state.cn_repo) {
-        const depthPadUrl = await signPath(admin, "look-composites", state.depth_pad_storage_path);
+      const depthFluxPath = state.depth_flux_storage_path ?? state.depth_pad_storage_path;
+      if (depthFluxPath && state.cn_repo) {
+        const depthPadUrl = await signPath(admin, "look-composites", depthFluxPath);
         inpaintInput.controlnets = [{
           path: state.cn_repo,
           control_image_url: depthPadUrl,
@@ -546,16 +659,18 @@ export async function runPipelineStep(
           end_percentage: 0.8,
         }];
       }
-      // Diagnostics: record the EXACT flux payload shape (confirm 1088×1920, step
-      // count, guidance/strength, that controlnets is truly empty, and which
-      // src/mask images were sent) so a stuck/slow flux run is diagnosable. Store
-      // storage paths (not signed URLs) to avoid leaking short-lived tokens.
+      // Diagnostics: record the EXACT flux payload shape (confirm the ~1 MP working
+      // size, step count, guidance/strength, that controlnets is truly empty, and
+      // which src/mask images were sent) so a stuck/slow flux run is diagnosable.
+      // Store storage paths (not signed URLs) to avoid leaking short-lived tokens.
       const controlnetsArr = Array.isArray(inpaintInput.controlnets)
         ? (inpaintInput.controlnets as unknown[])
         : [];
       state.flux_input_debug = {
         model: "fal-ai/flux-general/inpainting",
-        image_size: { width: state.pad_w, height: state.pad_h },
+        image_size: { width: fluxW, height: fluxH },
+        flux_working_megapixels: Number(((fluxW * fluxH) / 1_000_000).toFixed(2)),
+        pad_size: { width: state.pad_w, height: state.pad_h },
         num_inference_steps: p.steps,
         guidance_scale: p.guidanceScale,
         strength: p.strength,
@@ -564,8 +679,8 @@ export async function runPipelineStep(
         ip_adapter_path: p.ipAdapterPath,
         controlnets_count: controlnetsArr.length,
         controlnet_repo: state.cn_repo,
-        src_pad_storage_path: state.src_pad_storage_path,
-        mask_pad_storage_path: state.mask_pad_storage_path,
+        src_flux_storage_path: srcFluxPath,
+        mask_flux_storage_path: maskFluxPath,
         garment_path: state.garment_path,
       };
       console.log("jacket_inpaint_flux_submit:", JSON.stringify(state.flux_input_debug));
@@ -617,6 +732,18 @@ export async function runPipelineStep(
       }
       state.inpaint_url = firstImageUrl(poll.result);
       if (!state.inpaint_url) throw new Error("inpaint_no_url");
+      // Record the measured flux wall-clock — THE number that shows whether running
+      // at ~1 MP fixed the hang. Prefer elapsed-since-submit; fall back to the
+      // accumulated poll timing if flux_started_at_ms was absent (pre-version state).
+      state.flux_runtime_ms = state.flux_started_at_ms
+        ? Date.now() - state.flux_started_at_ms
+        : (state.timings_ms["flux_poll"] ?? null);
+      console.log(
+        `jacket_inpaint_flux_returned: runtime_ms=${state.flux_runtime_ms}` +
+          ` (${Math.round((state.flux_runtime_ms ?? 0) / 1000)}s) polls=${state.flux_poll_count}` +
+          ` last_status=${state.flux_last_status ?? "?"}` +
+          ` size=${state.flux_w ?? "?"}x${state.flux_h ?? "?"}`,
+      );
       state.fal_queue = null;
       state.step = "recomposite";
       await persistState(ctx, state.look_id, state);
@@ -657,6 +784,8 @@ export async function runPipelineStep(
         pipeline_mode: "durable_steps",
         resolution: { width: OUT_W, height: OUT_H },
         inpaint_resolution: { width: state.pad_w, height: state.pad_h },
+        flux_working_resolution: { width: state.flux_w ?? FLUX_W, height: state.flux_h ?? FLUX_H },
+        flux_runtime_ms: state.flux_runtime_ms ?? null,
         seed: p.seed,
         strength: p.strength,
         guidance_scale: p.guidanceScale,

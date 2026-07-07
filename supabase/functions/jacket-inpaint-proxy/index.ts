@@ -12,6 +12,7 @@ import { pickVtonGarmentPath } from "../_shared/garmentReference.ts";
 import {
   DEFAULTS,
   initialState,
+  reapStaleRuns,
   runContinueInvocation,
   scheduleContinue,
   type PipelineParams,
@@ -53,6 +54,15 @@ type ContinueBody = {
   action: "continue";
   lookId: string;
 };
+
+function reapCtx(
+  admin: RunContext["admin"],
+  supabaseUrl: string,
+  serviceRoleKey: string,
+  cc: RunContext["cc"],
+): RunContext {
+  return { admin, supabaseUrl, serviceRoleKey, cc, recipe: {} };
+}
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -155,6 +165,24 @@ serve(async (req) => {
     return json(200, { ok: true, action: "continue", lookId: body.lookId });
   }
 
+  // --- Watchdog reap (service-role, standalone) ------------------------
+  // A dead self-invoke chain can't fail its own row. This action sweeps any
+  // jacket-inpaint row stuck `pending` past the wall-clock deadline and writes it
+  // terminal, INDEPENDENT of the chain. Callable by an external scheduler / pg_cron
+  // (via pg_net) or manually; the same sweep also runs at the head of every submit.
+  if (rawBody.action === "reap") {
+    if (!isServiceRoleRequest(req, serviceRoleKey)) {
+      return json(401, { error: "reap_requires_service_role" });
+    }
+    const cc = {
+      switchxUrl: ccSwitchxUrl(composeCcUrl),
+      pollUrl: ccFalPollUrl(composeCcUrl),
+      proxySecret,
+    };
+    const reaped = await reapStaleRuns(reapCtx(admin, supabaseUrl, serviceRoleKey, cc));
+    return json(200, { ok: true, action: "reap", reaped });
+  }
+
   // --- User submit -----------------------------------------------------
   const authHeader = req.headers.get("authorization") ?? "";
   if (!authHeader.toLowerCase().startsWith("bearer ")) {
@@ -197,6 +225,23 @@ serve(async (req) => {
       error: "scene_path_required",
       detail: "Durable pipeline requires scenePath for re-signing across steps.",
     });
+  }
+
+  // Watchdog: before starting a new run, reap any predecessor stuck past the
+  // wall-clock deadline — this fires even if that run's self-invoke chain died.
+  // Run in the background (waitUntil) so it never delays the user's submit;
+  // reapStaleRuns is self-contained (never throws).
+  {
+    const cc = {
+      switchxUrl: ccSwitchxUrl(composeCcUrl),
+      pollUrl: ccFalPollUrl(composeCcUrl),
+      proxySecret,
+    };
+    const sweep = reapStaleRuns(reapCtx(admin, supabaseUrl, serviceRoleKey, cc));
+    const er = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } })
+      .EdgeRuntime;
+    if (er?.waitUntil) er.waitUntil(sweep);
+    else await sweep;
   }
 
   const lookId = crypto.randomUUID();
