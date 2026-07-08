@@ -100,12 +100,60 @@ export const DEFAULTS = {
     "face, glasses, hands, cap, orange pants, background, deformation, extra clothing, wrong pose, logo distortion, warped text",
   ipAdapterPath: "XLabs-AI/flux-ip-adapter-v2",
   imageEncoderPath: "openai/clip-vit-large-patch14",
+  // Which inpaint model flux_submit routes to. Default keeps 746bd07 behavior
+  // EXACTLY (fal-ai/flux-general/inpainting). Flip to an alternate — via the
+  // JACKET_INPAINT_MODEL env var on AVT, or a per-request `inpaintModelKey` — to
+  // swap instantly if flux-general/inpainting keeps 502-ing. See INPAINT_MODELS.
+  inpaintModelKey: "flux-general" as InpaintModelKey,
 };
 
 export const CONTROLNET_REPOS: Record<string, string> = {
   depth: "jasperai/Flux.1-dev-Controlnet-Depth",
   canny: "Shakker-Labs/FLUX.1-dev-ControlNet-Canny",
 };
+
+/**
+ * Inpaint-model registry. ONLY the flux_submit model id + payload capabilities
+ * change between entries — all other plumbing (mask/depth/pad/downscale-to-~1MP/
+ * crop-back/deterministic recomposite, seed 777, tracing, timeouts, resume) is
+ * model-agnostic and untouched.
+ *
+ *   flux-general : CURRENT default. Supports ip_adapters (SL-jacket reference) AND
+ *                  controlnets (depth). This is the endpoint currently 502-ing.
+ *   flux-lora    : INSTANT-SWAP candidate. Same FLUX family → same ÷16 sizing / VAE
+ *                  re-encode behavior, so the recomposite is unchanged and quality
+ *                  profile is closest. Its schema does NOT accept ip_adapters or
+ *                  controlnets, so the garment is carried by the text `prompt`
+ *                  only (acceptable per "soft jacket is fine; final 4K is later").
+ *                  Different Fal worker pool → not subject to flux-general's 502.
+ *
+ * ⚠️ Any non-default id must ALSO be added to CC's fal-run ALLOWED set
+ *    (switchx-restyle, project 7fce9fc6) or CC returns model_not_allowed (400).
+ */
+export type InpaintModelKey = "flux-general" | "flux-lora";
+
+export type InpaintModelSpec = {
+  id: string;
+  supportsIpAdapter: boolean;
+  supportsControlnet: boolean;
+};
+
+export const INPAINT_MODELS: Record<InpaintModelKey, InpaintModelSpec> = {
+  "flux-general": {
+    id: "fal-ai/flux-general/inpainting",
+    supportsIpAdapter: true,
+    supportsControlnet: true,
+  },
+  "flux-lora": {
+    id: "fal-ai/flux-lora/inpainting",
+    supportsIpAdapter: false,
+    supportsControlnet: false,
+  },
+};
+
+export function resolveInpaintModelKey(raw: unknown): InpaintModelKey {
+  return raw === "flux-lora" ? "flux-lora" : "flux-general";
+}
 
 export type PipelineParams = typeof DEFAULTS;
 
@@ -745,9 +793,14 @@ export async function runPipelineStep(
       const usingFluxSize = !!state.src_flux_storage_path && !!state.mask_flux_storage_path;
       const fluxW = usingFluxSize ? FLUX_W : state.pad_w;
       const fluxH = usingFluxSize ? FLUX_H : state.pad_h;
+      // Resolve the inpaint model for THIS run (locked at submit time via
+      // params.inpaintModelKey). Only the model id + which advanced fields are
+      // included change — the rest of the payload is identical across models.
+      const modelKey = resolveInpaintModelKey((p as PipelineParams).inpaintModelKey);
+      const modelSpec = INPAINT_MODELS[modelKey];
+      const modelId = modelSpec.id;
       const srcPadUrl = await signPath(admin, "look-composites", srcFluxPath);
       const maskPadUrl = await signPath(admin, "look-composites", maskFluxPath);
-      const garmentUrl = await signGarmentUrl(admin, state.garment_path);
       const inpaintInput: Record<string, unknown> = {
         image_url: srcPadUrl,
         mask_url: maskPadUrl,
@@ -760,15 +813,20 @@ export async function runPipelineStep(
         num_images: 1,
         output_format: "png",
         image_size: { width: fluxW, height: fluxH },
-        ip_adapters: [{
+      };
+      // IP-Adapter garment reference — only for models that accept it (flux-general).
+      // On models without it (flux-lora) the garment is carried by the text prompt.
+      if (modelSpec.supportsIpAdapter) {
+        const garmentUrl = await signGarmentUrl(admin, state.garment_path);
+        inpaintInput.ip_adapters = [{
           path: p.ipAdapterPath,
           image_encoder_path: p.imageEncoderPath,
           image_url: garmentUrl,
           scale: p.ipAdapterScale,
-        }],
-      };
+        }];
+      }
       const depthFluxPath = state.depth_flux_storage_path ?? state.depth_pad_storage_path;
-      if (depthFluxPath && state.cn_repo) {
+      if (modelSpec.supportsControlnet && depthFluxPath && state.cn_repo) {
         const depthPadUrl = await signPath(admin, "look-composites", depthFluxPath);
         inpaintInput.controlnets = [{
           path: state.cn_repo,
@@ -784,8 +842,12 @@ export async function runPipelineStep(
       const controlnetsArr = Array.isArray(inpaintInput.controlnets)
         ? (inpaintInput.controlnets as unknown[])
         : [];
+      const ipAdaptersArr = Array.isArray(inpaintInput.ip_adapters)
+        ? (inpaintInput.ip_adapters as unknown[])
+        : [];
       state.flux_input_debug = {
-        model: "fal-ai/flux-general/inpainting",
+        model: modelId,
+        inpaint_model_key: modelKey,
         image_size: { width: fluxW, height: fluxH },
         flux_working_megapixels: Number(((fluxW * fluxH) / 1_000_000).toFixed(2)),
         pad_size: { width: state.pad_w, height: state.pad_h },
@@ -793,6 +855,7 @@ export async function runPipelineStep(
         guidance_scale: p.guidanceScale,
         strength: p.strength,
         seed: p.seed,
+        ip_adapters_count: ipAdaptersArr.length,
         ip_adapter_scale: p.ipAdapterScale,
         ip_adapter_path: p.ipAdapterPath,
         controlnets_count: controlnetsArr.length,
@@ -812,7 +875,8 @@ export async function runPipelineStep(
         "flux_submit_calling_cc:",
         JSON.stringify({
           cc_url: cc.switchxUrl,
-          model: "fal-ai/flux-general/inpainting",
+          model: modelId,
+          inpaint_model_key: modelKey,
           image_size: { width: fluxW, height: fluxH },
           src_flux_storage_path: srcFluxPath,
           mask_flux_storage_path: maskFluxPath,
@@ -821,7 +885,7 @@ export async function runPipelineStep(
       );
       const submitDiag: Record<string, unknown> = {};
       state.fal_queue = await timed("flux_submit", () =>
-        falSubmit(cc, "fal-ai/flux-general/inpainting", inpaintInput, {
+        falSubmit(cc, modelId, inpaintInput, {
           timeoutMs: FAL_SUBMIT_TIMEOUT_MS,
           diag: submitDiag,
         }));
@@ -858,12 +922,13 @@ export async function runPipelineStep(
           `jacket_inpaint_flux_timeout: ${secs}s > cap ${Math.round(FLUX_POLL_MAX_MS / 1000)}s` +
             ` (last_status=${state.flux_last_status ?? "?"})`,
         );
+        const timedOutModel = INPAINT_MODELS[resolveInpaintModelKey(state.params.inpaintModelKey)].id;
         await markFailed(
           ctx,
           state.look_id,
           state,
           "flux-inpaint",
-          `fal_timeout_flux-general/inpainting_after_${secs}s`,
+          `fal_timeout_${timedOutModel}_after_${secs}s`,
         );
         return { terminal: true };
       }
@@ -930,6 +995,8 @@ export async function runPipelineStep(
         lane: "jacket_only_inpaint_masked",
         pipeline_mode: "durable_steps",
         resolution: { width: OUT_W, height: OUT_H },
+        inpaint_model: INPAINT_MODELS[resolveInpaintModelKey(p.inpaintModelKey)].id,
+        inpaint_model_key: resolveInpaintModelKey(p.inpaintModelKey),
         inpaint_resolution: { width: state.pad_w, height: state.pad_h },
         flux_working_resolution: { width: state.flux_w ?? FLUX_W, height: state.flux_h ?? FLUX_H },
         flux_runtime_ms: state.flux_runtime_ms ?? null,

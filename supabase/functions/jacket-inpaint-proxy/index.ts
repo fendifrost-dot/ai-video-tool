@@ -12,6 +12,9 @@ import { pickVtonGarmentPath } from "../_shared/garmentReference.ts";
 import {
   DEFAULTS,
   initialState,
+  type InpaintModelKey,
+  INPAINT_MODELS,
+  resolveInpaintModelKey,
   runContinueInvocation,
   scheduleContinue,
   sweepStaleRuns,
@@ -48,6 +51,9 @@ type SubmitBody = {
   maskPrompt?: string;
   prompt?: string;
   negativePrompt?: string;
+  // Optional per-request inpaint-model override ("flux-general" | "flux-lora").
+  // Precedence: request body > JACKET_INPAINT_MODEL env > default (flux-general).
+  inpaintModelKey?: InpaintModelKey;
 };
 
 type ContinueBody = {
@@ -205,7 +211,14 @@ serve(async (req) => {
     return json(400, { error: "missing_scene", detail: "Provide scenePath or humanImageUrl." });
   }
 
-  const p = { ...DEFAULTS, ...clean(body) } as PipelineParams;
+  // Inpaint-model toggle. Precedence: request body > JACKET_INPAINT_MODEL env >
+  // default. Locked into the run's params here so it stays consistent across all
+  // self-invoked steps (env changes affect NEW runs only). Flip the env to swap
+  // instantly if flux-general/inpainting keeps 502-ing — one config step, no code
+  // change. NOTE: the chosen id must also be in CC's fal-run allowlist.
+  const envModel = Deno.env.get("JACKET_INPAINT_MODEL")?.trim();
+  const inpaintModelKey = resolveInpaintModelKey(body.inpaintModelKey ?? envModel);
+  const p = { ...DEFAULTS, ...clean(body), inpaintModelKey } as PipelineParams;
 
   const { data: wardrobe, error: wErr } = await admin
     .from("character_features")
@@ -279,6 +292,8 @@ serve(async (req) => {
       feather_px: p.featherPx,
       mask_expand: p.maskExpand,
       mask_prompt: p.maskPrompt,
+      inpaint_model_key: inpaintModelKey,
+      inpaint_model: INPAINT_MODELS[inpaintModelKey].id,
     },
     jacket_inpaint_state: pipelineState,
     generation_metadata: {
