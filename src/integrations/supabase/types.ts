@@ -1959,7 +1959,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      reap_stale_jacket_inpaints: { Args: never; Returns: number }
+      reap_stale_jacket_inpaints: { Args: never; Returns: Json }
     }
     Enums: {
       approval_status: "pending" | "approved" | "rejected" | "archived"
