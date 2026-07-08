@@ -215,6 +215,7 @@ if (action === "fal-run") {
     "fal-ai/imageutils/canny",
     "fal-ai/image-preprocessors/openpose",
     "fal-ai/flux-general/inpainting",
+    "fal-ai/flux-lora/inpainting",   // SWAP for flux-general/inpainting's persistent 502
   ]);
   const { model, input } = body;
   if (!ALLOWED.has(model)) return json(400, { error: "model_not_allowed", model });

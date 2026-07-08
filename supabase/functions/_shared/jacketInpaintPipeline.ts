@@ -102,9 +102,11 @@ export const DEFAULTS = {
   imageEncoderPath: "openai/clip-vit-large-patch14",
   // Which inpaint model flux_submit routes to. Default keeps 746bd07 behavior
   // EXACTLY (fal-ai/flux-general/inpainting). Flip to an alternate — via the
-  // JACKET_INPAINT_MODEL env var on AVT, or a per-request `inpaintModelKey` — to
-  // swap instantly if flux-general/inpainting keeps 502-ing. See INPAINT_MODELS.
-  inpaintModelKey: "flux-general" as InpaintModelKey,
+  // JACKET_INPAINT_MODEL env var on AVT, or a per-request `inpaintModelKey`. The
+  // ACTIVE default is now flux-lora (the swap for flux-general/inpainting's
+  // persistent 502); set JACKET_INPAINT_MODEL=flux-general to revert. See
+  // INPAINT_MODELS. Kept in sync with DEFAULT_INPAINT_MODEL_KEY.
+  inpaintModelKey: "flux-lora" as InpaintModelKey,
 };
 
 export const CONTROLNET_REPOS: Record<string, string> = {
@@ -113,19 +115,25 @@ export const CONTROLNET_REPOS: Record<string, string> = {
 };
 
 /**
- * Inpaint-model registry. ONLY the flux_submit model id + payload capabilities
- * change between entries — all other plumbing (mask/depth/pad/downscale-to-~1MP/
- * crop-back/deterministic recomposite, seed 777, tracing, timeouts, resume) is
- * model-agnostic and untouched.
+ * Inpaint-model registry. ONLY the flux_submit model id + which payload fields are
+ * included change between entries — all other plumbing (mask/depth/pad/downscale-
+ * to-~1MP/crop-back/deterministic recomposite, seed 777, tracing, timeouts, resume)
+ * is model-agnostic and untouched.
  *
- *   flux-general : CURRENT default. Supports ip_adapters (SL-jacket reference) AND
- *                  controlnets (depth). This is the endpoint currently 502-ing.
- *   flux-lora    : INSTANT-SWAP candidate. Same FLUX family → same ÷16 sizing / VAE
- *                  re-encode behavior, so the recomposite is unchanged and quality
- *                  profile is closest. Its schema does NOT accept ip_adapters or
- *                  controlnets, so the garment is carried by the text `prompt`
- *                  only (acceptable per "soft jacket is fine; final 4K is later").
- *                  Different Fal worker pool → not subject to flux-general's 502.
+ *   flux-general : ORIGINAL endpoint. Supports ip_adapters (SL-jacket reference) +
+ *                  controlnets (depth) + negative_prompt + explicit image_size. This
+ *                  is the endpoint 502-ing 3/3 on the known-good payload.
+ *   flux-lora    : ACTIVE default (the swap). Same FLUX family → same ÷16 sizing /
+ *                  VAE re-encode, so the recomposite is unchanged and quality profile
+ *                  is closest; different Fal worker pool → not subject to
+ *                  flux-general's 502. Its schema does NOT accept ip_adapters /
+ *                  controlnets, so the garment is carried by the text `prompt` only
+ *                  (acceptable per "soft jacket is fine; final 4K is later"). We also
+ *                  send only the minimal, universally-accepted fields (no
+ *                  negative_prompt / output_format / image_size) so the first swap
+ *                  run can't 422 on an unknown field — omitting image_size makes the
+ *                  output follow the 768×1344 input, which the recomposite already
+ *                  upscales back to pad size and crops, so alignment is preserved.
  *
  * ⚠️ Any non-default id must ALSO be added to CC's fal-run ALLOWED set
  *    (switchx-restyle, project 7fce9fc6) or CC returns model_not_allowed (400).
@@ -136,6 +144,9 @@ export type InpaintModelSpec = {
   id: string;
   supportsIpAdapter: boolean;
   supportsControlnet: boolean;
+  supportsNegativePrompt: boolean;
+  supportsImageSize: boolean;
+  supportsOutputFormat: boolean;
 };
 
 export const INPAINT_MODELS: Record<InpaintModelKey, InpaintModelSpec> = {
@@ -143,16 +154,26 @@ export const INPAINT_MODELS: Record<InpaintModelKey, InpaintModelSpec> = {
     id: "fal-ai/flux-general/inpainting",
     supportsIpAdapter: true,
     supportsControlnet: true,
+    supportsNegativePrompt: true,
+    supportsImageSize: true,
+    supportsOutputFormat: true,
   },
   "flux-lora": {
     id: "fal-ai/flux-lora/inpainting",
     supportsIpAdapter: false,
     supportsControlnet: false,
+    supportsNegativePrompt: false,
+    supportsImageSize: false,
+    supportsOutputFormat: false,
   },
 };
 
+/** Active default. flux-lora is the swap for flux-general/inpainting's persistent
+ *  502. Revert instantly with JACKET_INPAINT_MODEL=flux-general (no code change). */
+export const DEFAULT_INPAINT_MODEL_KEY: InpaintModelKey = "flux-lora";
+
 export function resolveInpaintModelKey(raw: unknown): InpaintModelKey {
-  return raw === "flux-lora" ? "flux-lora" : "flux-general";
+  return raw === "flux-general" || raw === "flux-lora" ? raw : DEFAULT_INPAINT_MODEL_KEY;
 }
 
 export type PipelineParams = typeof DEFAULTS;
@@ -801,19 +822,25 @@ export async function runPipelineStep(
       const modelId = modelSpec.id;
       const srcPadUrl = await signPath(admin, "look-composites", srcFluxPath);
       const maskPadUrl = await signPath(admin, "look-composites", maskFluxPath);
+      // Minimal, universally-accepted core fields (safe on every FLUX inpaint
+      // endpoint). Optional fields are added ONLY for models whose schema accepts
+      // them (see INPAINT_MODELS flags) so a swap can't 422 on an unknown field.
       const inpaintInput: Record<string, unknown> = {
         image_url: srcPadUrl,
         mask_url: maskPadUrl,
         prompt: p.prompt,
-        negative_prompt: p.negativePrompt,
         strength: p.strength,
         guidance_scale: p.guidanceScale,
         num_inference_steps: p.steps,
         seed: p.seed,
         num_images: 1,
-        output_format: "png",
-        image_size: { width: fluxW, height: fluxH },
       };
+      if (modelSpec.supportsNegativePrompt) inpaintInput.negative_prompt = p.negativePrompt;
+      if (modelSpec.supportsOutputFormat) inpaintInput.output_format = "png";
+      // Explicit image_size only where accepted; otherwise the output follows the
+      // 768×1344 input (÷16, ~1 MP), which the recomposite upscales back to pad size
+      // and crops — alignment preserved either way.
+      if (modelSpec.supportsImageSize) inpaintInput.image_size = { width: fluxW, height: fluxH };
       // IP-Adapter garment reference — only for models that accept it (flux-general).
       // On models without it (flux-lora) the garment is carried by the text prompt.
       if (modelSpec.supportsIpAdapter) {
@@ -848,7 +875,9 @@ export async function runPipelineStep(
       state.flux_input_debug = {
         model: modelId,
         inpaint_model_key: modelKey,
+        payload_keys: Object.keys(inpaintInput).sort(),
         image_size: { width: fluxW, height: fluxH },
+        image_size_sent: !!modelSpec.supportsImageSize,
         flux_working_megapixels: Number(((fluxW * fluxH) / 1_000_000).toFixed(2)),
         pad_size: { width: state.pad_w, height: state.pad_h },
         num_inference_steps: p.steps,
