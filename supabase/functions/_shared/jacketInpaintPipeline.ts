@@ -35,6 +35,17 @@ export const FLUX_W = 768;
 export const FLUX_H = 1344;
 export const SIGN_TTL = 2700;
 export const FAL_POLL_INTERVAL_MS = 4000;
+// --- Per-fetch bounded timeouts (AbortSignal.timeout). Deno's fetch has NO
+//     default request deadline, so a CC/Fal connection that opens but never
+//     responds hangs forever — the retry loop can't fire (no throw, no 5xx) and
+//     the isolate rides to the ~400s platform kill with no clean error. Each
+//     bounded fetch instead ABORTS → throws → the existing retry engages → the
+//     step fails cleanly with a real error we can see. Submit should return a
+//     queue id near-instantly, so its window is tight.
+export const FAL_SUBMIT_TIMEOUT_MS = 60_000;
+export const FAL_POLL_FETCH_TIMEOUT_MS = 30_000;
+export const DOWNLOAD_TIMEOUT_MS = 60_000;
+export const SELF_INVOKE_TIMEOUT_MS = 30_000;
 /** Max wall-clock spent polling Fal in a single edge invocation. */
 export const POLL_SLICE_MS = 120_000;
 /** Safety ceiling per invocation (platform hard limit ~400s). */
@@ -156,6 +167,10 @@ export type JacketInpaintState = {
   flux_input_debug?: Record<string, unknown> | null;
   flux_last_status?: string | null;
   flux_poll_count?: number;
+  // --- flux submit (CC proxy call) diagnostics — pinpoints whether a stall is
+  //     the CC proxy call vs Fal itself. ---
+  flux_submit_cc_status?: number | null;
+  flux_submit_ms?: number | null;
   // --- self-invoke (continuation) diagnostics. Records the result of the last
   //     handoff POST so a dropped continuation is visible on the row. ---
   self_invoke_last_status?: string | null;
@@ -221,6 +236,8 @@ export function initialState(input: {
     flux_input_debug: null,
     flux_last_status: null,
     flux_poll_count: 0,
+    flux_submit_cc_status: null,
+    flux_submit_ms: null,
     self_invoke_last_status: null,
     self_invoke_at_ms: null,
   };
@@ -243,12 +260,15 @@ export async function fetchWithRetry(
   url: string,
   init: RequestInit,
   label: string,
+  timeoutMs: number = FAL_POLL_FETCH_TIMEOUT_MS,
 ): Promise<Response> {
   let lastErr: unknown = null;
   for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
     if (attempt > 0) await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt - 1]));
     try {
-      const resp = await fetch(url, init);
+      // Fresh per-attempt deadline. A hung connection aborts here (TimeoutError)
+      // instead of blocking indefinitely, so the catch below can retry / fail clean.
+      const resp = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
       if (resp.status >= 500 && attempt < RETRY_DELAYS_MS.length) {
         lastErr = `${label}_http_${resp.status}`;
         continue;
@@ -266,13 +286,27 @@ export async function falSubmit(
   cc: CcCtx,
   model: string,
   input: Record<string, unknown>,
+  opts?: { timeoutMs?: number; diag?: Record<string, unknown> },
 ): Promise<FalQueueRef> {
+  const t0 = Date.now();
   const submit = await fetchWithRetry(cc.switchxUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-Proxy-Secret": cc.proxySecret },
     body: JSON.stringify({ action: "fal-run", model, input }),
-  }, `cc_submit_${model}`);
+  }, `cc_submit_${model}`, opts?.timeoutMs ?? FAL_SUBMIT_TIMEOUT_MS);
+  const ccMs = Date.now() - t0;
   const sub = await submit.json().catch(() => ({}));
+  // Surface the CC proxy response so a submit hang/error is pinpointed to the CC
+  // call (vs the handoff or Fal itself). Truncate the body to keep logs bounded.
+  const bodyPreview = JSON.stringify(sub).slice(0, 300);
+  if (opts?.diag) {
+    opts.diag.cc_status = submit.status;
+    opts.diag.cc_ms = ccMs;
+    opts.diag.body_preview = bodyPreview;
+  }
+  console.log(
+    `cc_submit_responded: model=${model} status=${submit.status} ms=${ccMs} body=${bodyPreview}`,
+  );
   const statusUrl = String(sub?.status_url ?? "");
   const responseUrl = String(sub?.response_url ?? "");
   if (!submit.ok || !statusUrl || !responseUrl) {
@@ -305,20 +339,23 @@ export async function falPollSlice(
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Proxy-Secret": cc.proxySecret },
         body: JSON.stringify({ status_url: queue.status_url, response_url: queue.response_url }),
-      }, `cc_poll_${queue.model}`);
+      }, `cc_poll_${queue.model}`, FAL_POLL_FETCH_TIMEOUT_MS);
     } catch {
       lastStatus = "network_error";
+      console.log(`cc_poll_responded: model=${queue.model} status=network_error`);
       await new Promise((r) => setTimeout(r, FAL_POLL_INTERVAL_MS));
       continue;
     }
     if (resp.status >= 500) {
       lastStatus = `http_${resp.status}`;
+      console.log(`cc_poll_responded: model=${queue.model} status=http_${resp.status}`);
       await new Promise((r) => setTimeout(r, FAL_POLL_INTERVAL_MS));
       continue;
     }
     const body = await resp.json().catch(() => ({}));
     polls++;
     const status = String(body?.status ?? "");
+    console.log(`cc_poll_responded: model=${queue.model} http=${resp.status} fal_status=${status || "?"}`);
     if (status) lastStatus = status;
     if (status === "COMPLETED") {
       return { done: true, result: (body?.result ?? body) as Record<string, unknown>, lastStatus, polls };
@@ -332,7 +369,7 @@ export async function falPollSlice(
 }
 
 export async function download(url: string): Promise<Uint8Array> {
-  const r = await fetchWithRetry(url, { headers: { Accept: "image/*" } }, "download");
+  const r = await fetchWithRetry(url, { headers: { Accept: "image/*" } }, "download", DOWNLOAD_TIMEOUT_MS);
   if (!r.ok) throw new Error(`download_${r.status}`);
   return new Uint8Array(await r.arrayBuffer());
 }
@@ -403,6 +440,8 @@ export async function scheduleContinue(ctx: RunContext, lookId: string): Promise
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ action: "continue", lookId }),
+        // Bounded: a hung self-invoke is itself a way the chain dies silently.
+        signal: AbortSignal.timeout(SELF_INVOKE_TIMEOUT_MS),
       });
       lastStatus = `http_${resp.status}`;
       // Drain/close the body so the connection is released promptly.
@@ -441,6 +480,8 @@ export async function persistState(
     ...(state.flux_runtime_ms ? { flux_runtime_ms: state.flux_runtime_ms } : {}),
     ...(state.flux_last_status ? { flux_last_status: state.flux_last_status } : {}),
     ...(state.flux_poll_count ? { flux_poll_count: state.flux_poll_count } : {}),
+    ...(state.flux_submit_cc_status != null ? { flux_submit_cc_status: state.flux_submit_cc_status } : {}),
+    ...(state.flux_submit_ms != null ? { flux_submit_ms: state.flux_submit_ms } : {}),
     ...(state.self_invoke_last_status ? { self_invoke_last_status: state.self_invoke_last_status } : {}),
     ...(state.self_invoke_at_ms ? { self_invoke_at_ms: state.self_invoke_at_ms } : {}),
     ...extraMeta,
@@ -486,6 +527,8 @@ export async function markFailed(
           ...(state.flux_runtime_ms ? { flux_runtime_ms: state.flux_runtime_ms } : {}),
           ...(state.flux_last_status ? { flux_last_status: state.flux_last_status } : {}),
           ...(state.flux_poll_count ? { flux_poll_count: state.flux_poll_count } : {}),
+          ...(state.flux_submit_cc_status != null ? { flux_submit_cc_status: state.flux_submit_cc_status } : {}),
+          ...(state.flux_submit_ms != null ? { flux_submit_ms: state.flux_submit_ms } : {}),
         },
       },
     })
@@ -759,8 +802,37 @@ export async function runPipelineStep(
         garment_path: state.garment_path,
       };
       console.log("jacket_inpaint_flux_submit:", JSON.stringify(state.flux_input_debug));
+      // Trace the CC call end-to-end so the NEXT run tells us WHY, not just THAT:
+      // (a) calling → the self-invoke handoff fired and we reached the CC call;
+      // (b) responded → the CC proxy answered (status+ms); (c) queued → Fal
+      // accepted and returned a queue id. A gap between (a) and (b) => the CC
+      // proxy call is the hang (now bounded to FAL_SUBMIT_TIMEOUT_MS); (b) with a
+      // bad status => CC/Fal rejected; reaching (c) but never completing => Fal.
+      console.log(
+        "flux_submit_calling_cc:",
+        JSON.stringify({
+          cc_url: cc.switchxUrl,
+          model: "fal-ai/flux-general/inpainting",
+          image_size: { width: fluxW, height: fluxH },
+          src_flux_storage_path: srcFluxPath,
+          mask_flux_storage_path: maskFluxPath,
+          submit_timeout_ms: FAL_SUBMIT_TIMEOUT_MS,
+        }),
+      );
+      const submitDiag: Record<string, unknown> = {};
       state.fal_queue = await timed("flux_submit", () =>
-        falSubmit(cc, "fal-ai/flux-general/inpainting", inpaintInput));
+        falSubmit(cc, "fal-ai/flux-general/inpainting", inpaintInput, {
+          timeoutMs: FAL_SUBMIT_TIMEOUT_MS,
+          diag: submitDiag,
+        }));
+      state.flux_submit_cc_status = typeof submitDiag.cc_status === "number" ? submitDiag.cc_status : null;
+      state.flux_submit_ms = typeof submitDiag.cc_ms === "number"
+        ? submitDiag.cc_ms
+        : (state.timings_ms["flux_submit"] ?? null);
+      console.log(
+        `flux_submit_cc_responded: status=${state.flux_submit_cc_status ?? "?"} ms=${state.flux_submit_ms ?? "?"}`,
+      );
+      console.log(`flux_submit_fal_queued: id=${state.fal_queue.status_url}`);
       state.flux_started_at_ms = Date.now();
       state.step = "flux_poll";
       await persistState(ctx, state.look_id, state);
