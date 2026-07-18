@@ -171,7 +171,10 @@ export default function HeroFrameStudioPage({
       // authSession.ts).
       const session = await getSessionWithTimeout();
 
-      const blob = await captureVideoFrame(video, scrubTime);
+      // Normalize to a true 1080x1920 HD working frame so it matches the Grok
+      // swap output (both legs arrive at HD by downscaling). 4K masters halve
+      // cleanly to 1080x1920; already-HD/SD frames are left untouched.
+      const blob = await captureVideoFrame(video, scrubTime, { maxLongEdgePx: 1920 });
       const { scenePath } = await uploadHeroSourceFrame({
         projectId,
         userId: session.user.id,

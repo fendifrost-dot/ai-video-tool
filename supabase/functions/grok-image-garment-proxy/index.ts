@@ -204,7 +204,10 @@ serve(async (req) => {
         model: body.model ?? DEFAULT_MODEL,
         prompt: body.prompt ?? GROK_GARMENT_TRUTH_PROMPT,
         images: imageInputs,
-        resolution: body.resolution,
+        // Garment/clothing-swap lane defaults to 2K (~1152x2048 at 9:16) so the
+        // swap output lands just above a true 1080x1920 and is downscaled to the
+        // HD working res, rather than upscaled from Grok's ~768 native default.
+        resolution: body.resolution ?? "2k",
       });
 
       const mime = sniffMime(imageBuf);

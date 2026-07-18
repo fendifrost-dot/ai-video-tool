@@ -16,11 +16,11 @@
  *   - Scheme must be https
  *   - Hostname must not be localhost / loopback / private / link-local / reserved
  *   - On redirect, re-validate the new URL before following
- *   - Caller enforces redirect cap (1) and byte cap (20 MB)
+ *   - Caller enforces redirect cap (1) and byte cap (64 MB)
  */
 
 export const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-export const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
+export const MAX_BYTES = 64 * 1024 * 1024; // 64 MB — fits a 4K reference image (JPEG/PNG) while still bounding memory
 export const MAX_REDIRECTS = 1;
 export const FETCH_TIMEOUT_MS = 30_000;
 

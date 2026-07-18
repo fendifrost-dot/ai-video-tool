@@ -2,17 +2,36 @@
  * Capture a single frame from a loaded <video> element at `timeSec`.
  * Browser-only — used by Hero Frame Studio for source-frame selection.
  */
+export type CaptureFrameOptions = {
+  /**
+   * Cap the longest output edge (px), preserving aspect ratio. Used to
+   * normalize a 4K master down to an HD working frame so it matches the Grok
+   * swap output. E.g. a 2160x3840 (9:16) frame with maxLongEdgePx=1920 →
+   * 1080x1920 (an exact integer halving — clean downscale). Omitted → native
+   * resolution, byte-identical to the pre-normalize behaviour.
+   */
+  maxLongEdgePx?: number;
+};
+
 export async function captureVideoFrame(
   video: HTMLVideoElement,
   timeSec: number,
+  opts?: CaptureFrameOptions,
 ): Promise<Blob> {
   const clamped = Math.max(0, Math.min(timeSec, Math.max(0, video.duration - 0.05)));
 
   await seekVideo(video, clamped);
 
-  const w = video.videoWidth;
-  const h = video.videoHeight;
-  if (!w || !h) throw new Error("Video dimensions unavailable — wait for metadata.");
+  const srcW = video.videoWidth;
+  const srcH = video.videoHeight;
+  if (!srcW || !srcH) throw new Error("Video dimensions unavailable — wait for metadata.");
+
+  // Downscale only — never upscale — preserving aspect ratio.
+  const longEdge = Math.max(srcW, srcH);
+  const scale =
+    opts?.maxLongEdgePx && longEdge > opts.maxLongEdgePx ? opts.maxLongEdgePx / longEdge : 1;
+  const w = Math.round(srcW * scale);
+  const h = Math.round(srcH * scale);
 
   const canvas = document.createElement("canvas");
   canvas.width = w;

@@ -244,8 +244,8 @@ describe("extForMime", () => {
 });
 
 describe("constants", () => {
-  it("MAX_BYTES is 20 MB", () => {
-    expect(MAX_BYTES).toBe(20 * 1024 * 1024);
+  it("MAX_BYTES is 64 MB", () => {
+    expect(MAX_BYTES).toBe(64 * 1024 * 1024);
   });
   it("MAX_REDIRECTS is 1", () => {
     expect(MAX_REDIRECTS).toBe(1);
