@@ -178,11 +178,19 @@ serve(async (req) => {
     return json(500, { error: "xai_api_key_missing", detail: xaiKeyMissingMessage() });
   }
 
-  // This function has verify_jwt = false so it can run without a browser
-  // session, so it gates itself on the service-role key instead.
+  // verify_jwt = false so this runs without a browser session. It accepts the
+  // anon/publishable key as well as the service-role key, because the operator
+  // running the verification cannot handle a service-role key.
+  //
+  // The anon key is public (it ships in the frontend bundle), so this endpoint
+  // is effectively open to anyone who knows the URL — and each call spends real
+  // xAI credit. Two guardrails below: a hard cap of 2 edits per request, and
+  // the fact that the function writes nothing. DELETE THIS FUNCTION once the
+  // resolution question is answered; it is not meant to live in production.
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const bearer = (req.headers.get("authorization") ?? "").replace(/^[Bb]earer\s+/, "").trim();
-  if (!bearer || bearer !== serviceRoleKey) {
-    return json(401, { error: "service_role_key_required" });
+  if (!bearer || (bearer !== serviceRoleKey && bearer !== anonKey)) {
+    return json(401, { error: "anon_or_service_role_key_required" });
   }
 
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
@@ -280,7 +288,9 @@ serve(async (req) => {
   }
 
   // ---- the actual comparison ----------------------------------------------
-  const resolutions: Array<string | null> = body.resolutions ?? ["2k", "1k"];
+  // Hard cap: this endpoint is reachable with the public anon key, so a caller
+  // must never be able to run up an unbounded number of billed xAI edits.
+  const resolutions: Array<string | null> = (body.resolutions ?? ["2k", "1k"]).slice(0, 2);
   const results: unknown[] = [];
 
   for (const resolution of resolutions) {
