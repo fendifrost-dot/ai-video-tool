@@ -24,6 +24,12 @@ verify_jwt = false
 [functions.grok-image-garment-proxy]
 verify_jwt = true
 
+# Resolution verification harness (not a product lane). Runs server-side with
+# the service-role key so it needs no browser session — hence verify_jwt = false.
+# It authenticates itself by requiring the service-role key as the bearer token.
+[functions.grok-resolution-test]
+verify_jwt = false
+
 # Jacket-only masked inpaint (locked v2 wardrobe-swap primary lane). Routes Fal
 # through Control Center via X-Proxy-Secret (same secrets as wardrobe-vton-proxy);
 # user JWT required (browser calls with session token).

@@ -67,10 +67,29 @@ function extractFromBody(body: Record<string, unknown>): { url?: string; b64?: s
   return {};
 }
 
+export type XaiImageEditsResult = {
+  bytes: Uint8Array;
+  /** Raw HTTP status of the /v1/images/edits call (200 on success). */
+  status: number;
+  /** The exact `resolution` value forwarded to xAI, or null when omitted. */
+  resolutionSent: string | null;
+  /** How the image came back — url download or inline base64. */
+  delivery: "url" | "b64_json";
+};
+
 /** Call xAI multi-image edit; returns raw image bytes. */
 export async function callXaiImageEdits(
   req: XaiImageEditsRequest,
 ): Promise<Uint8Array> {
+  return (await callXaiImageEditsDetailed(req)).bytes;
+}
+
+/** Same call as {@link callXaiImageEdits}, but also reports the raw xAI HTTP
+ *  status and what `resolution` was actually sent. Used by the resolution
+ *  verification lane; the plain wrapper above keeps existing callers unchanged. */
+export async function callXaiImageEditsDetailed(
+  req: XaiImageEditsRequest,
+): Promise<XaiImageEditsResult> {
   const resp = await fetchWithTimeout(
     XAI_EDITS_URL,
     {
@@ -99,6 +118,11 @@ export async function callXaiImageEdits(
     );
   }
 
+  const meta = {
+    status: resp.status,
+    resolutionSent: req.resolution ?? null,
+  };
+
   const extracted = extractFromBody(body as Record<string, unknown>);
   if (extracted.url) {
     const dl = await fetchWithTimeout(
@@ -108,8 +132,10 @@ export async function callXaiImageEdits(
       "xai_download",
     );
     if (!dl.ok) throw new Error(`xai_download_${dl.status}`);
-    return new Uint8Array(await dl.arrayBuffer());
+    return { ...meta, delivery: "url", bytes: new Uint8Array(await dl.arrayBuffer()) };
   }
-  if (extracted.b64) return decodeBase64Image(extracted.b64);
+  if (extracted.b64) {
+    return { ...meta, delivery: "b64_json", bytes: decodeBase64Image(extracted.b64) };
+  }
   throw new Error("xai_no_image_in_response");
 }
