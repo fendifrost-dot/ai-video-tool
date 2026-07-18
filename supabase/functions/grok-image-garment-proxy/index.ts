@@ -45,6 +45,9 @@ type Body = {
   projectId?: string;
   prompt?: string;
   model?: string;
+  /** Optional xAI output resolution ("1k" | "2k"). Forwarded verbatim to
+   *  /v1/images/edits only when set; absent → today's native-default behaviour. */
+  resolution?: string;
 };
 
 function json(status: number, body: unknown) {
@@ -201,6 +204,7 @@ serve(async (req) => {
         model: body.model ?? DEFAULT_MODEL,
         prompt: body.prompt ?? GROK_GARMENT_TRUTH_PROMPT,
         images: imageInputs,
+        resolution: body.resolution,
       });
 
       const mime = sniffMime(imageBuf);
