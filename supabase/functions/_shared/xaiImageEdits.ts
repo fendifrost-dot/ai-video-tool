@@ -8,6 +8,10 @@ export type XaiImageEditsRequest = {
   prompt: string;
   images: XaiImageInput[];
   responseFormat?: "url" | "b64_json";
+  /** Optional xAI output resolution ("1k" | "2k"). When omitted, the request
+   *  body is byte-identical to before — xAI returns its native default size.
+   *  Only forwarded when explicitly set, so existing callers are unaffected. */
+  resolution?: string;
   /** Hard timeout for the xAI edit call (ms). Keeps the background task from
    *  hanging past the edge wall limit, which would leave the look row stuck
    *  "pending" forever (catch never runs if the worker is killed mid-fetch). */
@@ -80,6 +84,8 @@ export async function callXaiImageEdits(
         prompt: req.prompt,
         images: req.images,
         response_format: req.responseFormat ?? "url",
+        // Only present when a caller opts in — keeps default behaviour identical.
+        ...(req.resolution ? { resolution: req.resolution } : {}),
       }),
     },
     req.timeoutMs ?? 90_000,
