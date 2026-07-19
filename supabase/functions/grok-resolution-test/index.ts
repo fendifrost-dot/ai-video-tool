@@ -348,3 +348,5 @@ serve(async (req) => {
       : "resolution_parameter_IGNORED_same_output_size",
   });
 });
+
+// resync 2026-07-18T00:00:00Z — force Lovable tree-hash change
