@@ -28,13 +28,13 @@ export const HERO_CANDIDATE_PLANS: HeroCandidatePlan[] = [
     runIdentity: false,
   },
   {
+    // Grok re-renders the head even with the pose/identity-locked prompt, so the
+    // identity pass is mandatory for this lane, not an optional variant. The old
+    // matrix ran this plan with runIdentity:false plus a separate "+ Identity"
+    // twin; the un-locked twin is what shipped Fendi a reconstructed face, so it
+    // is gone and the pass is always on here.
     lane: "grok_image_edit",
-    label: "Grok Image-Edit · Garment-Truth",
-    runIdentity: false,
-  },
-  {
-    lane: "grok_image_edit",
-    label: "Grok Image-Edit · + Identity",
+    label: "Grok Image-Edit · Garment-Truth (identity-locked)",
     runIdentity: true,
   },
   {
