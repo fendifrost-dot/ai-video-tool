@@ -9,11 +9,13 @@
 // REAL decoded pixel dimensions of what xAI returns for each resolution value.
 //
 // WARNING: this makes REAL, BILLED xAI image-edit calls (one per entry in
-// `resolutions`, default two). It writes NOTHING — no storage upload, no
-// artist_looks row, no email, no side effects of any kind. Read-only + xAI.
+// `resolutions`, hard-capped at 2). Unless `saveResult: false`, it uploads each
+// output to look-composites under a `resolution-test/` prefix so the swap can be
+// viewed. It creates NO artist_looks row, sends no email, and touches no product
+// table — the uploaded file is inert and safe to delete.
 //
-// Auth: verify_jwt = false, but the caller must present the service-role key as
-// `Authorization: Bearer <SUPABASE_SERVICE_ROLE_KEY>`. No user JWT involved.
+// Auth: verify_jwt = false; the caller must present either the anon/publishable
+// key or the service-role key as the bearer token. No user JWT involved.
 //
 // Required secrets (AVT project qoyxgnkvjukovkrvdaiq):
 //   XAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
@@ -42,12 +44,17 @@ const DEFAULT_WARDROBE_FEATURE_ID = "0feb028f-dc4d-45dc-82ac-e4bbd16054b0";
 // Buckets a hero frame may live in, most likely first.
 const HERO_BUCKETS = ["project-clips", "project-references"];
 
-// Short on purpose: output dimensions do not depend on prompt content, and a
-// terse prompt keeps these verification calls cheap and fast.
+// Mirrors grok-image-garment-proxy's GROK_GARMENT_TRUTH_PROMPT so the output is
+// representative of the real lane and is worth looking at, not just measuring.
 const TEST_PROMPT =
-  "Photorealistic edit of the source frame: keep the exact pose, camera angle, " +
-  "lighting and background, but dress the subject in the garment shown in the " +
-  "reference image. Preserve the subject's own face and identity.";
+  `Photorealistic edit of the source frame: keep the exact pose, camera angle, lighting, and background, but dress Fendi Frost in the COMPLETE OUTFIT worn by the model in the reference — jacket, shirt, tie, pants, and every worn piece, as one full look. EXCLUDE the model's glasses/eyewear.
+
+Priorities, in order:
+1. Full-outfit construction fidelity — exact collar shape/stand, exact stripe width/position/angle, exact zipper/hardware/buttons/pockets/seams, exact shirt + tie, exact trouser cut, exact fabric wash and drape across the whole outfit. Do not invent or simplify any element.
+2. Preserve Fendi's OWN identity — his face, beard, skin tone, head shape, body proportions, and his own glasses. Do NOT copy the model's face or eyewear onto him.
+3. Preserve the original pose, background, and lighting.
+
+<IMAGE_0> is Fendi's real video frame (pose, lighting, background). <IMAGE_1> is the on-model full-look product reference for garment construction. Use the supplied references for construction detail.`;
 
 type Body = {
   projectId?: string;
@@ -61,6 +68,8 @@ type Body = {
   resolutions?: Array<string | null>;
   /** Discover the hero frame and return it without calling xAI (free dry run). */
   dryRun?: boolean;
+  /** Upload each output to look-composites and return a signed URL. Default true. */
+  saveResult?: boolean;
 };
 
 function json(status: number, body: unknown) {
@@ -305,7 +314,36 @@ serve(async (req) => {
         ...(resolution ? { resolution } : {}),
       });
       const dims = readImageDimensions(res.bytes);
+
+      // Save the swap so it can actually be looked at. Goes to a dedicated
+      // resolution-test/ prefix in look-composites — deliberately NOT the
+      // {user}/{artist}/{lookId} layout the real lane uses, and with no
+      // artist_looks row, so nothing here can be mistaken for a real look.
+      let imageUrl: string | null = null;
+      let imagePath: string | null = null;
+      if (body.saveResult !== false) {
+        const ext = dims?.format === "jpeg" ? "jpg" : dims?.format ?? "png";
+        const contentType = dims?.format === "jpeg"
+          ? "image/jpeg"
+          : dims?.format === "webp"
+          ? "image/webp"
+          : "image/png";
+        const path = `resolution-test/${projectId}/${resolution ?? "default"}-${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await admin.storage
+          .from("look-composites")
+          .upload(path, res.bytes, { contentType, upsert: true });
+        if (!upErr) {
+          imagePath = path;
+          const { data: signed } = await admin.storage
+            .from("look-composites")
+            .createSignedUrl(path, 604800); // 7 days
+          imageUrl = signed?.signedUrl ?? null;
+        }
+      }
+
       results.push({
+        imageUrl,
+        imagePath,
         resolutionSent: res.resolutionSent,
         fieldOmitted: res.resolutionSent === null,
         xaiStatus: res.status,
