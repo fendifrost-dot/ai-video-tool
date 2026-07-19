@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
@@ -6,6 +6,7 @@ import {
   Clock,
   ExternalLink,
   File as FileIcon,
+  PlayCircle,
   Trash2,
   Wand2,
   XCircle,
@@ -48,6 +49,7 @@ export function AssetCard({
   urlLoading?: boolean;
 }) {
   const [url, setUrl] = useState<string | null>(signedUrlProp ?? null);
+  const [previewFailed, setPreviewFailed] = useState(false);
   const [garmentId, setGarmentId] = useState("");
   const [garmentBusy, setGarmentBusy] = useState(false);
   const navigate = useNavigate();
@@ -97,6 +99,8 @@ export function AssetCard({
   }
 
   useEffect(() => {
+    resignAttempted.current = false;
+    setPreviewFailed(false);
     if (signedUrlProp !== undefined) {
       setUrl(signedUrlProp);
       return;
@@ -110,13 +114,25 @@ export function AssetCard({
       });
   }, [signedUrlProp, asset.file_url, asset.asset_type]);
 
+  // A broken preview used to re-sign on every <img> error. If the underlying
+  // storage object is missing the fresh URL 400s too, fires onError again, and
+  // the card spins in an endless sign -> load -> fail loop — enough of those
+  // and the page's network never goes idle. Retry exactly once, then give up
+  // and show the generic file tile.
+  const resignAttempted = useRef(false);
   async function refreshSignedUrl() {
+    if (resignAttempted.current) {
+      setPreviewFailed(true);
+      return;
+    }
+    resignAttempted.current = true;
     const bucket = bucketForAssetType(asset.asset_type);
     try {
       const next = await signedUrl(bucket, asset.file_url, 3600);
       setUrl(next);
     } catch (err) {
       console.error("signedUrl refresh failed:", err);
+      setPreviewFailed(true);
     }
   }
 
@@ -150,8 +166,8 @@ export function AssetCard({
     <div className="group overflow-hidden rounded-md border border-border bg-card/30">
       <PreviewBlock
         asset={asset}
-        url={url}
-        loading={urlLoading && !url}
+        url={previewFailed ? null : url}
+        loading={urlLoading && !url && !previewFailed}
         onImageError={refreshSignedUrl}
       />
 
@@ -300,14 +316,7 @@ function PreviewBlock({
     );
   }
   if (isVideo) {
-    return (
-      <video
-        src={url}
-        controls
-        preload="metadata"
-        className="aspect-video w-full bg-black object-contain"
-      />
-    );
+    return <VideoPreview url={url} />;
   }
   return (
     <a
@@ -318,6 +327,65 @@ function PreviewBlock({
     >
       <FileIcon className="h-6 w-6 text-muted-foreground" />
     </a>
+  );
+}
+
+/**
+ * Click-to-load video preview.
+ *
+ * Every video card used to mount a `<video preload="metadata">` on render. A
+ * grid of them opens a connection per clip, saturates Chrome's 6-per-origin
+ * cap, and — for containers the browser can't decode (HEVC .mov straight off
+ * an iPhone) — the element fires neither `loadedmetadata` nor `error`, so the
+ * request just sits there. The page's network never quiesces and automation
+ * waiting on document-idle times out. Loading only on click keeps the grid at
+ * zero media requests, and a clip that won't decode reports it instead of
+ * hanging silently.
+ */
+function VideoPreview({ url }: { url: string }) {
+  const [active, setActive] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  if (!active) {
+    return (
+      <button
+        type="button"
+        onClick={() => setActive(true)}
+        className="flex aspect-video w-full items-center justify-center bg-black/80 text-xs text-muted-foreground hover:bg-black/70"
+      >
+        <PlayCircle className="mr-1.5 h-5 w-5" />
+        Load preview
+      </button>
+    );
+  }
+
+  if (failed) {
+    return (
+      <div className="flex aspect-video w-full flex-col items-center justify-center gap-1 bg-muted/30 px-3 text-center">
+        <p className="text-[11px] text-muted-foreground">
+          This browser can&apos;t decode this clip (HEVC/.mov clips from iPhone
+          need an H.264 version).
+        </p>
+        <a
+          href={url}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="text-[11px] underline"
+        >
+          Download original
+        </a>
+      </div>
+    );
+  }
+
+  return (
+    <video
+      src={url}
+      controls
+      preload="metadata"
+      onError={() => setFailed(true)}
+      className="aspect-video w-full bg-black object-contain"
+    />
   );
 }
 

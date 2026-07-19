@@ -262,6 +262,9 @@ export function readVideoDuration(file: File): Promise<number> {
   });
 }
 
+/** Hard cap on how long a page will wait for storage to sign preview URLs. */
+const SIGN_TIMEOUT_MS = 15_000;
+
 /** Batch-sign asset preview URLs once per page instead of N per-card POSTs. */
 export function useBatchAssetSignedUrls(assets: ProjectAsset[]) {
   const assetKey = useMemo(
@@ -288,25 +291,49 @@ export function useBatchAssetSignedUrls(assets: ProjectAsset[]) {
       byBucket.set(bucket, paths);
     }
 
-    (async () => {
-      const merged: Record<string, string> = {};
-      for (const [bucket, paths] of byBucket) {
-        const unique = [...new Set(paths)];
-        const signed = await signedUrls(bucket, unique, 3600);
+    // Sign every bucket concurrently, and never let one bucket's failure (or
+    // hang) strand the whole page on a spinner. Each bucket is independently
+    // timed out; whatever resolves in time gets rendered, the rest fall back to
+    // the placeholder tile.
+    const signBucket = async (
+      bucket: StorageBucket,
+      paths: string[],
+    ): Promise<Record<string, string>> => {
+      const unique = [...new Set(paths)];
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const signed = await Promise.race([
+          signedUrls(bucket, unique, 3600),
+          new Promise<Record<string, string>>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error(`Signing ${bucket} URLs timed out`)),
+              SIGN_TIMEOUT_MS,
+            );
+          }),
+        ]);
+        const out: Record<string, string> = {};
         for (const asset of assets) {
           if (bucketForAssetType(asset.asset_type) !== bucket) continue;
           const url = signed[asset.file_url];
-          if (url) merged[asset.id] = url;
+          if (url) out[asset.id] = url;
         }
+        return out;
+      } catch (err) {
+        console.error(`batch signedUrls failed for ${bucket}:`, err);
+        return {};
+      } finally {
+        if (timer) clearTimeout(timer);
       }
-      if (!cancelled) {
-        setUrls(merged);
-        setLoading(false);
-      }
-    })().catch((err) => {
-      console.error("batch signedUrls failed:", err);
-      if (!cancelled) setLoading(false);
-    });
+    };
+
+    void (async () => {
+      const results = await Promise.all(
+        [...byBucket].map(([bucket, paths]) => signBucket(bucket, paths)),
+      );
+      if (cancelled) return;
+      setUrls(Object.assign({}, ...results));
+      setLoading(false);
+    })();
 
     return () => {
       cancelled = true;

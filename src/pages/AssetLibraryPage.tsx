@@ -146,6 +146,18 @@ export default function AssetLibraryPage({ projectId }: { projectId: string }) {
 
         {assetsQuery.isLoading ? (
           <LoadingGrid />
+        ) : assetsQuery.error ? (
+          <div className="space-y-3 rounded-md border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
+            <p>
+              Couldn&apos;t load assets:{" "}
+              {assetsQuery.error instanceof Error
+                ? assetsQuery.error.message
+                : "unknown error"}
+            </p>
+            <Button variant="outline" size="sm" onClick={() => assetsQuery.refetch()}>
+              Retry
+            </Button>
+          </div>
         ) : filtered.length === 0 ? (
           <EmptyState />
         ) : (
