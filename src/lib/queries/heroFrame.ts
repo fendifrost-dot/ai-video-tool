@@ -4,6 +4,7 @@ import { pollArtistLook, signLookPreviewUrl } from "@/lib/queries/looks";
 import { callApplyIdentityToLook } from "@/lib/queries/faceswap";
 import { applyGrokGarmentTruthAndWait } from "@/lib/queries/grokImageGarment";
 import { applyGarmentVtonAndWait } from "@/lib/queries/wardrobeVton";
+import { faceRestore } from "@/lib/queries/faceRestore";
 import {
   HERO_CANDIDATE_PLANS,
   type HeroCandidatePlan,
@@ -72,7 +73,7 @@ export type GenerateHeroCandidatesInput = {
   sessionId: string;
   plans?: HeroCandidatePlan[];
   onProgress?: (info: {
-    phase: "garment" | "identity" | "done";
+    phase: "garment" | "identity" | "face" | "done";
     index: number;
     total: number;
     label: string;
@@ -174,6 +175,9 @@ export async function generateHeroCandidates(
 
       let identityLook = garmentLook;
       let identityLookId = garmentLookId;
+      let faceLookId: string | null = null;
+      let facePreviewPath: string | null = null;
+      let faceRestoreError: string | undefined;
 
       if (plan.runIdentity) {
         input.onProgress?.({
@@ -191,6 +195,28 @@ export async function generateHeroCandidates(
           signal: input.signal,
         });
         identityLookId = identityLook.id;
+
+        // The face-swap pass regenerates a face rather than restoring his, so
+        // the candidate still doesn't read as him. Composite his real hero-frame
+        // face over the result. Non-fatal: detection refuses rather than guesses
+        // (see faceRestore), and a refusal must not throw away a good garment.
+        input.onProgress?.({
+          phase: "face",
+          index,
+          total: plans.length,
+          label: plan.label,
+        });
+        try {
+          const restored = await faceRestore({
+            targetLookId: identityLookId,
+            heroFramePath: input.scenePath,
+            heroBucket: input.sceneBucket ?? "project-references",
+          });
+          faceLookId = restored.lookId;
+          facePreviewPath = restored.storagePath;
+        } catch (err) {
+          faceRestoreError = err instanceof Error ? err.message : String(err);
+        }
       }
 
       results.push({
@@ -198,7 +224,10 @@ export async function generateHeroCandidates(
         index,
         garmentLookId,
         identityLookId,
+        faceLookId,
+        faceRestoreError,
         previewPath:
+          facePreviewPath ??
           identityLook.generated_storage_path ??
           identityLook.generated_image_url ??
           null,
@@ -284,7 +313,10 @@ export function buildSessionMeta(input: {
           c.plan.lane === "vton" ? (c.plan.transferMode as HeroTransferMode) : undefined,
         garment_look_id: c.garmentLookId,
         identity_look_id: c.identityLookId,
-        identity_restored: c.plan.runIdentity,
+        face_look_id: c.faceLookId ?? null,
+        // Only true when his real face actually made it back in — a refused
+        // composite must not be recorded as an identity-restored hero.
+        identity_restored: c.plan.runIdentity && Boolean(c.faceLookId),
       })),
   };
 }

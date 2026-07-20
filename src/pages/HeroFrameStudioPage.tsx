@@ -20,6 +20,7 @@ import { useWardrobe } from "@/lib/queries/wardrobe";
 import { signedUrl } from "@/lib/storage";
 import { getSessionWithTimeout } from "@/lib/authSession";
 import { captureVideoFrame } from "@/lib/video/captureFrame";
+import { installFaceRestoreDevHook } from "@/lib/queries/faceRestore";
 import {
   approveHeroFrameLook,
   buildSessionMeta,
@@ -159,6 +160,7 @@ export default function HeroFrameStudioPage({
   // explicit normalized quads (guarded to the running browser app).
   useEffect(() => {
     installEyewearRestoreDevHook();
+    installFaceRestoreDevHook();
   }, []);
 
   async function handleCaptureFrame() {
@@ -209,7 +211,13 @@ export default function HeroFrameStudioPage({
         sessionId,
         onProgress: ({ phase, index, total, label }) => {
           const phaseLabel =
-            phase === "garment" ? "Garment" : phase === "identity" ? "Identity" : "Done";
+            phase === "garment"
+              ? "Garment"
+              : phase === "identity"
+                ? "Identity"
+                : phase === "face"
+                  ? "Face composite"
+                  : "Done";
           setProgress(`${phaseLabel} ${index + 1}/${total}: ${label}`);
         },
       });
@@ -300,6 +308,9 @@ export default function HeroFrameStudioPage({
     if (!artistId || !selectedCandidateId || !heroScenePath || !garmentId) return;
     const picked = candidates.find((c) => c.identityLookId === selectedCandidateId);
     if (!picked) return;
+    // Approve the face-composited child when there is one — that's the image
+    // shown in the card, and the only one carrying his real face.
+    const approveLookId = picked.faceLookId ?? picked.identityLookId;
     setBusy(true);
     try {
       const session = buildSessionMeta({
@@ -310,14 +321,14 @@ export default function HeroFrameStudioPage({
         frameTimeSec: scrubTime,
         wardrobeFeatureId: garmentId,
         candidates,
-        approvedLookId: picked.identityLookId,
+        approvedLookId: approveLookId,
       });
       await approveHeroFrameLook({
         artistId,
-        lookId: picked.identityLookId,
+        lookId: approveLookId,
         session,
       });
-      setApprovedLookId(picked.identityLookId);
+      setApprovedLookId(approveLookId);
       toast.success("Hero frame approved — Phase 1 gate passed for this candidate");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Approval failed");
@@ -590,6 +601,16 @@ export default function HeroFrameStudioPage({
                     ].join(" ")}
                   >
                     <p className="text-xs font-medium">{c.plan.label}</p>
+                    {c.faceLookId && (
+                      <p className="mt-0.5 text-[10px] text-emerald-300">
+                        Real face composited from the hero frame
+                      </p>
+                    )}
+                    {c.faceRestoreError && (
+                      <p className="mt-0.5 text-[10px] text-amber-300">
+                        Face composite skipped — {c.faceRestoreError}
+                      </p>
+                    )}
                     {c.error ? (
                       <p className="mt-2 text-[11px] text-rose-300">{c.error}</p>
                     ) : (

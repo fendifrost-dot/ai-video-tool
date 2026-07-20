@@ -52,6 +52,15 @@ export type HeroCandidateResult = {
   /** Garment-transfer look (VTON or Grok) before optional identity pass. */
   garmentLookId: string;
   identityLookId: string;
+  /**
+   * Face-composite child look, when the deterministic identity lock ran and
+   * succeeded. This is the one to look at — the generative identity pass alone
+   * still hands back a reconstructed face. Null when the lane skips it or when
+   * detection refused (see faceRestoreError).
+   */
+  faceLookId?: string | null;
+  /** Why the face composite was skipped, if it was attempted and refused. */
+  faceRestoreError?: string;
   previewPath: string | null;
   error?: string;
 };
@@ -71,6 +80,7 @@ export type HeroFrameSessionMeta = {
     transfer_mode?: HeroTransferMode;
     garment_look_id: string;
     identity_look_id: string;
+    face_look_id?: string | null;
     identity_restored: boolean;
   }>;
 };
