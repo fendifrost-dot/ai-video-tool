@@ -8,6 +8,8 @@
 
 **Read this file first** when joining mid-stream. It explains recent confusion (repos, deploy, “was the fix built?”) and points to the right docs — not generic memory.
 
+**Disk / workspace (critical):** Also read `claude_code_handoff_avt_workspace_disk_rules.md` before any filesystem search or `--add-dir`. Never open iCloud MODEST / FENDI FILES media — work from the repo + `/Volumes/T7` only.
+
 ---
 
 ## 0. What happened (Jul 2026 — jacket-inpaint evf-sam 502)
