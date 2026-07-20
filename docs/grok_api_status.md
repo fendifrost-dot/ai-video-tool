@@ -71,6 +71,12 @@ Env on AVT: `XAI_API_KEY` — **same xAI key** as Control Center `Frost_Grok` (o
 
 `proxy-provider-call` whitelists `image-providers-grok-edit` for a future CC mirror; hero lane calls AVT directly today.
 
+**Pose conditioning: not available.** `/v1/images/edits` exposes no ControlNet,
+mask, seed, strength or structure-preservation parameter, and multi-image inputs
+carry no per-image roles — the pose and identity locks in the prompt are prose,
+not constraints. Full schema and the realistic alternatives are in
+[grok_pose_conditioning.md](./grok_pose_conditioning.md).
+
 ## Manual canvas workflow (separate from video gen)
 
 Grok **images** imported on LooksListPage still flow through identity swap
