@@ -29,6 +29,14 @@ export type ApplyJacketInpaintInput = {
   maskPrompt?: string;
   prompt?: string;
   negativePrompt?: string;
+  /** Second evf-sam pass over head/hands, dilated and subtracted from the
+   *  garment mask before flux sees it. Defaults on server-side. */
+  faceGuard?: boolean;
+  faceGuardPrompt?: string;
+  faceGuardDilate?: number;
+  /** Inpaint engine. flux-general accepts the IP-Adapter garment reference;
+   *  flux-lora is text-only but runs on a different Fal worker pool. */
+  inpaintModelKey?: "flux-general" | "flux-lora";
 };
 
 export type ApplyJacketInpaintResult = { lookId: string };

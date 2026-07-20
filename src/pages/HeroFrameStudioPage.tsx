@@ -337,17 +337,20 @@ export default function HeroFrameStudioPage({
     }
   }
 
-  const identityCandidate = useMemo(
-    () =>
-      candidates.find(
-        (c) =>
-          c.plan.lane === "grok_image_edit" &&
-          c.plan.runIdentity &&
-          !c.error &&
-          !!candidateUrls[c.identityLookId],
-      ) ?? null,
-    [candidates, candidateUrls],
-  );
+  // Target for the manual eyewear-quad restore. The masked-inpaint lane is the
+  // primary candidate now, so offer it first; the Grok lane stays reachable as
+  // the fallback target for the same panel. (Lanes without a face restore step
+  // have nothing for this panel to correct.)
+  const identityCandidate = useMemo(() => {
+    const usable = candidates.filter(
+      (c) => c.plan.runFaceRestore && !c.error && !!candidateUrls[c.identityLookId],
+    );
+    return (
+      usable.find((c) => c.plan.lane === "masked_inpaint") ??
+      usable.find((c) => c.plan.lane === "grok_image_edit") ??
+      null
+    );
+  }, [candidates, candidateUrls]);
 
   async function handleEyewearRestore() {
     if (!identityCandidate || !heroScenePath) return;

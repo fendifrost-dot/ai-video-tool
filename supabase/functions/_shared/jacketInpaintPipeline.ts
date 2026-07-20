@@ -4,16 +4,26 @@
  */
 
 import {
+  alphaCoverage,
+  alphaToMaskImage,
   ceilTo,
   cropRgba,
   decodeToRgba,
+  dilateAlpha,
   encodePng,
   featherAlpha,
   maskToAlpha,
   padRgba,
   recomposite,
   resizeRgba,
+  subtractAlpha,
 } from "./jacketRecomposite.ts";
+import {
+  MASKED_GARMENT_FACE_GUARD_PROMPT,
+  MASKED_GARMENT_MASK_PROMPT,
+  MASKED_GARMENT_NEGATIVE_PROMPT,
+  MASKED_GARMENT_PROMPT,
+} from "./maskedGarmentPrompt.ts";
 
 export const OUT_W = 1080;
 export const OUT_H = 1920;
@@ -93,11 +103,27 @@ export const DEFAULTS = {
   conditioningScale: 0.65,
   featherPx: 12,
   maskExpand: 4,
-  maskPrompt: "cream off-white track jacket, upper torso clothing, sleeves",
-  prompt:
-    "Saint Laurent Track Jacket, cream off-white body, navy shoulder stripe, precise 'Saint Laurent' chest script, matching collar, sleeve panels, fabric drape and lighting on the body, high garment fidelity",
-  negativePrompt:
-    "face, glasses, hands, cap, orange pants, background, deformation, extra clothing, wrong pose, logo distortion, warped text",
+  maskPrompt: MASKED_GARMENT_MASK_PROMPT,
+  prompt: MASKED_GARMENT_PROMPT,
+  negativePrompt: MASKED_GARMENT_NEGATIVE_PROMPT,
+  /**
+   * FACE GUARD — the second, protective mask. When on, a separate evf-sam pass
+   * segments the head/hands, that mask is dilated by faceGuardDilate px, and it
+   * is SUBTRACTED from the garment mask before anything is padded, downscaled or
+   * sent to flux.
+   *
+   * This is defence in depth, not the defence. The recomposite already makes
+   * every out-of-mask pixel byte-identical to the capture, so a garment mask
+   * that overlaps his jaw can only ever soften HIS OWN jaw — it can't import a
+   * stranger's. The guard exists so that even that doesn't happen, and so the
+   * region flux sees contains no head pixels to anchor a second face on.
+   *
+   * Costs one extra Fal call (~5-10s). Set faceGuard:false to skip it.
+   */
+  faceGuard: true,
+  faceGuardPrompt: MASKED_GARMENT_FACE_GUARD_PROMPT,
+  /** Dilation radius (px, at 1080×1920) applied to the guard before subtraction. */
+  faceGuardDilate: 10,
   ipAdapterPath: "XLabs-AI/flux-ip-adapter-v2",
   imageEncoderPath: "openai/clip-vit-large-patch14",
   // Which inpaint model flux_submit routes to. Default keeps 746bd07 behavior
@@ -188,6 +214,8 @@ export type FalQueueRef = {
 export type JacketInpaintStep =
   | "evf_sam_submit"
   | "evf_sam_poll"
+  | "face_guard_submit"
+  | "face_guard_poll"
   | "depth_submit"
   | "depth_poll"
   | "pad_upload"
@@ -214,6 +242,15 @@ export type JacketInpaintState = {
   fal_queue: FalQueueRef | null;
   mask_url: string | null;
   mask_storage_path: string | null;
+  /** Raw face/hands guard mask from the second evf-sam pass (absent when off). */
+  face_guard_url?: string | null;
+  face_guard_storage_path?: string | null;
+  /** Coverage before/after the guard subtraction — proof the guard did something. */
+  mask_guard_stats?: {
+    coverage_before: number;
+    coverage_after: number;
+    removed_fraction: number;
+  } | null;
   depth_url: string | null;
   src_pad_storage_path: string | null;
   mask_pad_storage_path: string | null;
@@ -289,6 +326,9 @@ export function initialState(input: {
     fal_queue: null,
     mask_url: null,
     mask_storage_path: null,
+    face_guard_url: null,
+    face_guard_storage_path: null,
+    mask_guard_stats: null,
     depth_url: null,
     src_pad_storage_path: null,
     mask_pad_storage_path: null,
@@ -732,6 +772,48 @@ export async function runPipelineStep(
       state.mask_url = firstImageUrl(poll.result);
       if (!state.mask_url) throw new Error("mask_no_url");
       state.fal_queue = null;
+      state.step = p.faceGuard ? "face_guard_submit" : (state.cn_repo ? "depth_submit" : "pad_upload");
+      await persistState(ctx, state.look_id, state);
+      return { terminal: false, schedule: true };
+    }
+
+    // --- FACE GUARD: second evf-sam pass over the head/hands. Its output is
+    //     dilated and subtracted from the garment mask in pad_upload, so the
+    //     region handed to flux provably contains no head pixels. Same model,
+    //     same CC allowlist entry, same queue plumbing as the garment mask —
+    //     only the text prompt differs.
+    case "face_guard_submit": {
+      const humanUrl = await signSceneUrl(admin, state);
+      state.fal_queue = await timed("face_guard_submit", () =>
+        falSubmit(cc, "fal-ai/evf-sam", {
+          image_url: humanUrl,
+          prompt: p.faceGuardPrompt,
+          mask_only: true,
+          // No expand here — the guard is grown deliberately (and measurably)
+          // by dilateAlpha at 1080 in pad_upload, not by an opaque model knob.
+          expand_mask: 0,
+          fill_holes: true,
+        }));
+      state.step = "face_guard_poll";
+      await persistState(ctx, state.look_id, state);
+      return { terminal: false, schedule: true };
+    }
+
+    case "face_guard_poll": {
+      if (!state.fal_queue) throw new Error("face_guard_poll_missing_queue");
+      const poll = await timed("face_guard_poll", () => falPollSlice(cc, state.fal_queue!, POLL_SLICE_MS));
+      if (!poll.done) {
+        await persistState(ctx, state.look_id, state, { poll_slice_exhausted: true });
+        return { terminal: false, schedule: true };
+      }
+      // NON-FATAL. A missing guard degrades to the un-guarded garment mask,
+      // which is still safe (the recomposite is the real guarantee) — failing
+      // the whole run over the optional safety layer would be the wrong trade.
+      state.face_guard_url = firstImageUrl(poll.result);
+      if (!state.face_guard_url) {
+        console.error("face_guard_no_url: proceeding with un-guarded garment mask");
+      }
+      state.fal_queue = null;
       state.step = state.cn_repo ? "depth_submit" : "pad_upload";
       await persistState(ctx, state.look_id, state);
       return { terminal: false, schedule: true };
@@ -766,7 +848,51 @@ export async function runPipelineStep(
       const humanUrl = await signSceneUrl(admin, state);
       if (!state.mask_url) throw new Error("pad_missing_mask_url");
       const source1080 = resizeRgba(await decodeToRgba(await download(humanUrl)), OUT_W, OUT_H);
-      const mask1080 = resizeRgba(await decodeToRgba(await download(state.mask_url)), OUT_W, OUT_H);
+      let mask1080 = resizeRgba(await decodeToRgba(await download(state.mask_url)), OUT_W, OUT_H);
+
+      // --- FACE GUARD SUBTRACTION -------------------------------------------
+      // Clip the head/hands back out of the garment mask BEFORE anything is
+      // padded, downscaled or uploaded, so every downstream artefact (pad, flux
+      // input, recomposite alpha) derives from the already-guarded mask and they
+      // cannot disagree about where the jacket ends.
+      if (state.face_guard_url) {
+        const guard1080 = resizeRgba(
+          await decodeToRgba(await download(state.face_guard_url)),
+          OUT_W,
+          OUT_H,
+        );
+        const garmentAlpha = maskToAlpha(mask1080);
+        const guardAlpha = dilateAlpha(
+          maskToAlpha(guard1080),
+          OUT_W,
+          OUT_H,
+          p.faceGuardDilate,
+        );
+        const guarded = subtractAlpha(garmentAlpha, guardAlpha);
+        const before = alphaCoverage(garmentAlpha);
+        const after = alphaCoverage(guarded);
+        state.mask_guard_stats = {
+          coverage_before: Number(before.toFixed(4)),
+          coverage_after: Number(after.toFixed(4)),
+          removed_fraction: Number(Math.max(0, before - after).toFixed(4)),
+        };
+        console.log("jacket_inpaint_face_guard:", JSON.stringify(state.mask_guard_stats));
+        // Sanity floor: if the guard ate essentially the whole garment mask,
+        // evf-sam grounded the guard prompt on the torso instead of the head.
+        // Keep the un-guarded mask rather than sending flux an empty region.
+        if (after < 0.01 && before >= 0.01) {
+          console.error(
+            "face_guard_rejected: guard removed nearly the entire garment mask " +
+              `(${before} -> ${after}); falling back to un-guarded mask`,
+          );
+          state.mask_guard_stats.removed_fraction = 0;
+        } else {
+          mask1080 = alphaToMaskImage(guarded, OUT_W, OUT_H);
+          state.face_guard_storage_path = `${base}_face_guard.png`;
+          await uploadBytes(admin, state.face_guard_storage_path, await encodePng(guard1080));
+        }
+      }
+
       state.source1080_storage_path = `${base}_source1080.png`;
       await timed("pad_upload", async () => {
         await uploadBytes(admin, state.source1080_storage_path!, await encodePng(source1080));
@@ -1013,6 +1139,16 @@ export async function runPipelineStep(
       const inpaint1080 = cropRgba(inpaintPad, OUT_W, OUT_H);
       const feathered = featherAlpha(maskToAlpha(mask1080), OUT_W, OUT_H, p.featherPx);
       const result = recomposite(source1080, inpaint1080, feathered, OUT_W, OUT_H);
+      // TODO(4k-final-pass): the delivery upscale belongs AFTER the full video
+      // edit is locked, not here. Feeding 4K into evf-sam/flux would push flux
+      // far past the ~1 MP sweet spot that made it return at all (see FLUX_W/
+      // FLUX_H), and every frame would be upscaled independently — which is
+      // exactly how you get a 4K sequence that shimmers. When the edit is
+      // approved, run one clarity/upscale pass over the final rendered
+      // sequence (fal-ai/clarity-upscaler is already wired on the CC side in
+      // compose-look) and composite at 4K there. Nothing in this file should
+      // change to support that; this is the hook, and `upscaled_to_4k: false`
+      // in the metadata below is the marker the final pass reads.
       const outPng = await encodePng(result.image);
       const storagePath = `${base}.png`;
 
@@ -1040,6 +1176,18 @@ export async function runPipelineStep(
         feather_px: p.featherPx,
         mask_expand: p.maskExpand,
         mask_prompt: p.maskPrompt,
+        face_guard: !!p.faceGuard,
+        face_guard_prompt: p.faceGuard ? p.faceGuardPrompt : null,
+        face_guard_dilate_px: p.faceGuard ? p.faceGuardDilate : null,
+        face_guard_applied: !!state.face_guard_storage_path,
+        face_guard_storage_path: state.face_guard_storage_path ?? null,
+        mask_guard_stats: state.mask_guard_stats ?? null,
+        // 4K is a FINAL pass over the finished video edit, not a per-frame step.
+        // Everything here is deliberately unified HD (OUT_W×OUT_H) to match the
+        // engines' native output — upscaling before the models would only give
+        // them more pixels to hallucinate across. See TODO(4k-final-pass) below.
+        working_resolution: { width: OUT_W, height: OUT_H },
+        upscaled_to_4k: false,
         mask_coverage: Number(result.maskCoverage.toFixed(4)),
         changed_pixels: result.changedPixels,
         changed_fraction: Number((result.changedPixels / (OUT_W * OUT_H)).toFixed(4)),

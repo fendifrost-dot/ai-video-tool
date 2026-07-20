@@ -51,6 +51,11 @@ type SubmitBody = {
   maskPrompt?: string;
   prompt?: string;
   negativePrompt?: string;
+  // Face-guard mask (second evf-sam pass, subtracted from the garment mask).
+  // Defaults on; see DEFAULTS.faceGuard.
+  faceGuard?: boolean;
+  faceGuardPrompt?: string;
+  faceGuardDilate?: number;
   // Optional per-request inpaint-model override ("flux-general" | "flux-lora").
   // Precedence: request body > JACKET_INPAINT_MODEL env > default (flux-general).
   inpaintModelKey?: InpaintModelKey;
@@ -292,6 +297,9 @@ serve(async (req) => {
       feather_px: p.featherPx,
       mask_expand: p.maskExpand,
       mask_prompt: p.maskPrompt,
+      face_guard: p.faceGuard,
+      face_guard_prompt: p.faceGuard ? p.faceGuardPrompt : null,
+      face_guard_dilate: p.faceGuard ? p.faceGuardDilate : null,
       inpaint_model_key: inpaintModelKey,
       inpaint_model: INPAINT_MODELS[inpaintModelKey].id,
     },

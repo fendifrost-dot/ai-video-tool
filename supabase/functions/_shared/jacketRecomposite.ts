@@ -167,6 +167,91 @@ export function featherAlpha(
   return src;
 }
 
+/**
+ * Grayscale-max dilation (box structuring element) on an alpha channel.
+ *
+ * Used to GROW the face-guard mask before subtracting it from the garment mask.
+ * evf-sam traces the head tightly, so subtracting it un-grown would leave a
+ * one-to-two-pixel ring of jacket mask lying directly on his jaw and glasses
+ * frames — exactly the pixels the feather then smears. Growing the guard first
+ * pushes the garment mask's boundary clear of the head before any feathering
+ * happens.
+ */
+export function dilateAlpha(
+  alpha: Float32Array,
+  width: number,
+  height: number,
+  radiusPx: number,
+): Float32Array {
+  if (radiusPx <= 0) return alpha;
+  const r = Math.max(1, Math.round(radiusPx));
+  const scratch = new Float32Array(alpha.length);
+  const out = new Float32Array(alpha.length);
+  // Separable: max over a box == max-over-row then max-over-column.
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      let m = 0;
+      for (let dx = -r; dx <= r; dx++) {
+        const xx = x + dx;
+        if (xx < 0 || xx >= width) continue;
+        const v = alpha[row + xx];
+        if (v > m) m = v;
+      }
+      scratch[row + x] = m;
+    }
+  }
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      let m = 0;
+      for (let dy = -r; dy <= r; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= height) continue;
+        const v = scratch[yy * width + x];
+        if (v > m) m = v;
+      }
+      out[y * width + x] = m;
+    }
+  }
+  return out;
+}
+
+/** Per-pixel clamped difference: max(0, base − guard). */
+export function subtractAlpha(base: Float32Array, guard: Float32Array): Float32Array {
+  const out = new Float32Array(base.length);
+  for (let i = 0; i < base.length; i++) {
+    const v = base[i] - guard[i];
+    out[i] = v > 0 ? v : 0;
+  }
+  return out;
+}
+
+/** Re-encode an alpha channel as an opaque white-on-black RGBA mask image. */
+export function alphaToMaskImage(
+  alpha: Float32Array,
+  width: number,
+  height: number,
+): RgbaImage {
+  const data = new Uint8Array(width * height * 4);
+  for (let i = 0; i < alpha.length; i++) {
+    const a = alpha[i] < 0 ? 0 : alpha[i] > 1 ? 1 : alpha[i];
+    const v = Math.round(a * 255);
+    const p = i * 4;
+    data[p] = v;
+    data[p + 1] = v;
+    data[p + 2] = v;
+    data[p + 3] = 255;
+  }
+  return { width, height, data };
+}
+
+/** Fraction of pixels above 0.5 — used to log mask coverage before/after guard. */
+export function alphaCoverage(alpha: Float32Array): number {
+  let n = 0;
+  for (let i = 0; i < alpha.length; i++) if (alpha[i] > 0.5) n++;
+  return n / alpha.length;
+}
+
 export type RecompositeResult = {
   image: RgbaImage;
   /** fraction of pixels with alpha > 0.5 — mask coverage for logging (spec §6). */

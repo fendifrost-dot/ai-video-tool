@@ -14,6 +14,27 @@ import {
 import { toQuadNorm, type QuadInput } from "@/lib/queries/eyewearRestore";
 import type { QuadNorm } from "@/lib/garment/placementEngine";
 
+/**
+ * Padding for a WHOLE-HEAD restore, wider than faceRegionToQuad's face default
+ * (0.30 / 0.35 / 0.55). Reaches past the skin bbox to take hair, cap, ears, the
+ * full glasses frame and the beard/jaw line — the whole head, not the face.
+ *
+ * This is the right padding only when the destination background around his head
+ * is ALREADY his real background, because a wide oval pastes some of it along
+ * with the head. That is true by construction on the masked-inpaint lane (the
+ * recomposite never wrote outside the jacket mask, so the background there IS
+ * the capture) and on the VTON lanes. It is NOT true on the Grok lane, which
+ * re-renders the background — there the wider oval would drop a patch of real
+ * background onto an invented one and show a seam, so that lane keeps the
+ * narrower face default. Hence a named export the caller opts into, rather than
+ * a new global default.
+ */
+export const HEAD_RESTORE_PADDING: FaceQuadOptions = {
+  padX: 0.45,
+  padTop: 0.8,
+  padBottom: 0.6,
+};
+
 export type FaceRestoreInput = {
   /** The look whose face is wrong — the Grok garment look or its identity child. */
   targetLookId: string;
@@ -171,6 +192,8 @@ export async function faceRestore(input: FaceRestoreInput): Promise<FaceRestoreR
     color_match: colorMatch,
     mask_shape: "ellipse",
     inset,
+    padding,
+    restore_scope: padding === HEAD_RESTORE_PADDING ? "head" : "face",
     src_detection: srcDetection,
     dst_detection: dstDetection,
     identity_restored: true,

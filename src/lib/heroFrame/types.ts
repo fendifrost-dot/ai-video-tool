@@ -1,31 +1,86 @@
 export type HeroTransferMode = "full_look" | "jacket_only";
 
-export type HeroCandidateLane = "vton" | "grok_image_edit";
+export type HeroCandidateLane = "masked_inpaint" | "vton" | "grok_image_edit";
 
+/**
+ * Two independent identity mechanisms — do not conflate them:
+ *
+ *   runIdentity     — the GENERATIVE face-swap pass (faceswap-proxy). It puts a
+ *                     different invented face where an invented face was. Only
+ *                     the Grok lane needs it, and only as a stepping stone.
+ *   runFaceRestore  — the DETERMINISTIC composite of his real hero-frame head
+ *                     back onto the result. This is the identity guarantee. It
+ *                     is his own pixels, so it cannot be wrong about who he is.
+ */
 export type HeroCandidatePlan =
+  | {
+      /**
+       * PRIMARY LANE. evf-sam garment mask (minus a dilated head/hands guard) →
+       * Flux masked inpaint over that region only → deterministic feathered
+       * recomposite onto the real capture. Face, glasses, pose and background
+       * are never re-rendered — they are the source bytes, unchanged, because
+       * the recomposite only ever writes inside the mask.
+       */
+      lane: "masked_inpaint";
+      label: string;
+      runIdentity: false;
+      runFaceRestore: boolean;
+      /** Inpaint engine. flux-general accepts the IP-Adapter garment reference. */
+      inpaintModelKey?: "flux-general" | "flux-lora";
+    }
   | {
       lane: "vton";
       transferMode: HeroTransferMode;
       vtonModel: "idm-vton" | "cat-vton";
       label: string;
       // VTON keeps the hero frame's real face (it only transfers garment), so
-      // no identity pass is needed — running one would only corrupt the face.
+      // no generative identity pass is needed — running one would only corrupt
+      // the face. The deterministic restore is still worth running: VTON warps
+      // the whole frame slightly, so his head drifts even though it isn't
+      // re-invented.
       runIdentity: false;
+      runFaceRestore: boolean;
     }
   | {
       lane: "grok_image_edit";
       label: string;
       runIdentity: boolean;
+      runFaceRestore: boolean;
     };
 
-/** Default candidate matrix — IDM baseline + Grok garment-truth + CatVTON comparison. */
+/**
+ * Default candidate matrix, in the order they run.
+ *
+ * 1. MASKED INPAINT is the primary lane — the only one where the face and
+ *    background are preserved by construction rather than by asking a model
+ *    nicely.
+ * 2. IDM-VTON is the declared fallback: pose-preserving try-on, same
+ *    deterministic head restore, for when the masked inpaint underperforms on
+ *    garment fidelity.
+ * 3. GROK is kept as a selectable comparison. It is no longer primary — it
+ *    re-renders every pixel through xAI's /v1/images/edits, which takes no mask,
+ *    so its face is a reconstruction that the restore has to paper over.
+ */
 export const HERO_CANDIDATE_PLANS: HeroCandidatePlan[] = [
+  {
+    lane: "masked_inpaint",
+    label: "Masked Inpaint · Garment-only (primary)",
+    runIdentity: false,
+    runFaceRestore: true,
+    // flux-general is the engine that accepts ip_adapters, i.e. the only one
+    // that can actually see the Saint Laurent reference rather than inferring
+    // the jacket from text. If it starts 502-ing again (its documented failure
+    // mode), set JACKET_INPAINT_MODEL=flux-lora on AVT — the run degrades to a
+    // text-only garment, which is softer but still correctly masked.
+    inpaintModelKey: "flux-general",
+  },
   {
     lane: "vton",
     transferMode: "full_look",
     vtonModel: "idm-vton",
-    label: "Full-look · IDM-VTON (baseline)",
+    label: "Full-look · IDM-VTON (fallback)",
     runIdentity: false,
+    runFaceRestore: true,
   },
   {
     // Grok re-renders the head even with the pose/identity-locked prompt, so the
@@ -36,6 +91,7 @@ export const HERO_CANDIDATE_PLANS: HeroCandidatePlan[] = [
     lane: "grok_image_edit",
     label: "Grok Image-Edit · Garment-Truth (identity-locked)",
     runIdentity: true,
+    runFaceRestore: true,
   },
   {
     lane: "vton",
@@ -43,6 +99,7 @@ export const HERO_CANDIDATE_PLANS: HeroCandidatePlan[] = [
     vtonModel: "cat-vton",
     label: "Full-look · CatVTON",
     runIdentity: false,
+    runFaceRestore: true,
   },
 ];
 
