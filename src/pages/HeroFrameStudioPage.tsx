@@ -27,9 +27,11 @@ import {
   generateHeroCandidates,
   uploadHeroSourceFrame,
 } from "@/lib/queries/heroFrame";
-import { applyJacketInpaintAndWait } from "@/lib/queries/jacketInpaint";
 import { signLookPreviewUrl } from "@/lib/queries/looks";
-import type { HeroCandidateResult } from "@/lib/heroFrame/types";
+import {
+  GUARDED_GROK_PLAN,
+  type HeroCandidateResult,
+} from "@/lib/heroFrame/types";
 import {
   pickFullLookGarmentPath,
   type RefImageLike,
@@ -80,24 +82,30 @@ export default function HeroFrameStudioPage({
   const [dstQuad, setDstQuad] = useState<QuadNorm>(EYE_QUAD_DEFAULT);
   const [eyewearBusy, setEyewearBusy] = useState(false);
   const [eyewearLookId, setEyewearLookId] = useState<string | null>(null);
-  // Jacket-Only Inpaint (primary v2 lane) — self-contained run + preview.
-  const [jacketBusy, setJacketBusy] = useState(false);
-  const [jacketProgress, setJacketProgress] = useState<string | null>(null);
-  const [jacketLook, setJacketLook] = useState<
-    Awaited<ReturnType<typeof applyJacketInpaintAndWait>> | null
-  >(null);
-  const [jacketUrl, setJacketUrl] = useState<string | null>(null);
-  const [jacketApproved, setJacketApproved] = useState(false);
+  // Single-lane Guarded Grok full-outfit run (canonical product path).
+  const [primaryBusy, setPrimaryBusy] = useState(false);
+  const [primaryProgress, setPrimaryProgress] = useState<string | null>(null);
+  const [primaryCandidate, setPrimaryCandidate] = useState<HeroCandidateResult | null>(
+    null,
+  );
+  const [primaryUrl, setPrimaryUrl] = useState<string | null>(null);
+  const [primaryApproved, setPrimaryApproved] = useState(false);
 
   const videoAssets = useMemo(
     () => (assetsQuery.data ?? []).filter(isVideoAsset),
     [assetsQuery.data],
   );
 
-  const outerwear = useMemo(
+  // Full-outfit swaps — show all wardrobe clothing items, not just outerwear.
+  const wardrobeItems = useMemo(
     () =>
       (wardrobeQuery.data ?? []).filter((w) =>
-        ["wardrobe_outerwear", "wardrobe_top"].includes(w.feature_type),
+        [
+          "wardrobe_outerwear",
+          "wardrobe_top",
+          "wardrobe_bottom",
+          "wardrobe_footwear",
+        ].includes(w.feature_type),
       ),
     [wardrobeQuery.data],
   );
@@ -119,7 +127,7 @@ export default function HeroFrameStudioPage({
       setProductRefUrl(null);
       return;
     }
-    const item = outerwear.find((w) => w.id === garmentId);
+    const item = wardrobeItems.find((w) => w.id === garmentId);
     if (!item) return;
     const refs = (item.reference_images ?? []) as RefImageLike[];
     const path = pickFullLookGarmentPath(refs, item.storage_path ?? item.file_url);
@@ -130,7 +138,7 @@ export default function HeroFrameStudioPage({
     } else {
       setProductRefUrl(path);
     }
-  }, [garmentId, outerwear]);
+  }, [garmentId, wardrobeItems]);
 
   useEffect(() => {
     let cancelled = false;
@@ -232,60 +240,54 @@ export default function HeroFrameStudioPage({
     }
   }
 
-  async function handleJacketInpaint() {
+  async function handleGuardedGrokPrimary() {
     if (!artistId || !heroScenePath || !garmentId) return;
-    setJacketBusy(true);
-    setJacketProgress("Submitting…");
-    setJacketLook(null);
-    setJacketUrl(null);
-    setJacketApproved(false);
+    setPrimaryBusy(true);
+    setPrimaryProgress("Submitting…");
+    setPrimaryCandidate(null);
+    setPrimaryUrl(null);
+    setPrimaryApproved(false);
     try {
-      const look = await applyJacketInpaintAndWait(
-        {
-          artistId,
-          wardrobeFeatureId: garmentId,
-          scenePath: heroScenePath,
-          sceneBucket: "project-references",
-          projectId,
-          heroFrameSessionId: sessionId,
-          name: "Hero · Jacket-Only Inpaint (masked)",
+      const results = await generateHeroCandidates({
+        artistId,
+        projectId,
+        wardrobeFeatureId: garmentId,
+        scenePath: heroScenePath,
+        sceneBucket: "project-references",
+        frameTimeSec: scrubTime,
+        sessionId,
+        plans: [GUARDED_GROK_PLAN],
+        onProgress: ({ phase, label }) => {
+          setPrimaryProgress(`${phase}: ${label}`);
         },
-        {
-          onTick: ({ elapsedMs, status, phase }) => {
-            setJacketProgress(
-              phase
-                ? `${phase} · ${Math.round(elapsedMs / 1000)}s`
-                : `${status} · ${Math.round(elapsedMs / 1000)}s`,
-            );
-          },
-        },
-      );
-      if (look.status !== "complete" || !(look.generated_storage_path ?? look.generated_image_url)) {
-        throw new Error(
-          `Jacket inpaint did not finish (status=${look.status}). Refresh Looks or retry.`,
-        );
+      });
+      const result = results[0];
+      if (!result || result.error) {
+        throw new Error(result?.error ?? "Guarded Grok full-outfit run failed");
       }
-      setJacketLook(look);
-      const path = look.generated_storage_path ?? look.generated_image_url;
-      if (path) {
-        const url = path.startsWith("http") ? path : await signLookPreviewUrl(path, 3600);
-        setJacketUrl(url ?? null);
+      setPrimaryCandidate(result);
+      if (result.previewPath) {
+        const url = result.previewPath.startsWith("http")
+          ? result.previewPath
+          : await signLookPreviewUrl(result.previewPath, 3600);
+        setPrimaryUrl(url ?? null);
       }
-      toast.success("Jacket-only inpaint complete");
+      toast.success("Guarded Grok full-outfit swap complete");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Jacket inpaint failed");
+      toast.error(err instanceof Error ? err.message : "Guarded Grok failed");
     } finally {
-      setJacketBusy(false);
-      setJacketProgress(null);
+      setPrimaryBusy(false);
+      setPrimaryProgress(null);
     }
   }
 
-  async function handleApproveJacket() {
-    if (!artistId || !jacketLook || !heroScenePath) return;
+  async function handleApprovePrimary() {
+    if (!artistId || !primaryCandidate || !heroScenePath) return;
+    const lookId = primaryCandidate.faceLookId ?? primaryCandidate.identityLookId;
     try {
       await approveHeroFrameLook({
         artistId,
-        lookId: jacketLook.id,
+        lookId,
         session: buildSessionMeta({
           sessionId,
           projectId,
@@ -293,12 +295,12 @@ export default function HeroFrameStudioPage({
           sceneBucket: "project-references",
           frameTimeSec: scrubTime,
           wardrobeFeatureId: garmentId,
-          candidates: [],
-          approvedLookId: jacketLook.id,
+          candidates: [primaryCandidate],
+          approvedLookId: lookId,
         }),
       });
-      setJacketApproved(true);
-      toast.success("Jacket hero look approved");
+      setPrimaryApproved(true);
+      toast.success("Full-outfit hero look approved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Approve failed");
     }
@@ -403,7 +405,7 @@ export default function HeroFrameStudioPage({
       <PageHeader
         variant="compact"
         title="Hero Frame Studio"
-        subtitle="Phase 1 — capture source frame, generate garment-truth candidates (Grok + VTON), identity lock, approve one hero still."
+        subtitle="Phase 1 — capture source frame, run Guarded Grok full-outfit swap (masked identity), approve one hero still."
       />
       <div className="space-y-6 px-4 py-6 md:px-8">
         <section className="rounded-md border border-border bg-card/30 p-4 space-y-3">
@@ -474,15 +476,15 @@ export default function HeroFrameStudioPage({
 
         <section className="rounded-md border border-border bg-card/30 p-4 space-y-3">
           <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            2 · Garment reference
+            2 · Outfit reference
           </h2>
           <select
             className="w-full rounded-md border border-border bg-background px-2 py-2 text-xs"
             value={garmentId}
             onChange={(e) => setGarmentId(e.target.value)}
           >
-            <option value="">Select garment…</option>
-            {outerwear.map((w) => (
+            <option value="">Select wardrobe / look reference…</option>
+            {wardrobeItems.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.label}
               </option>
@@ -508,13 +510,13 @@ export default function HeroFrameStudioPage({
             3 · Generate candidates
           </h2>
           <p className="text-xs text-muted-foreground">
-            IDM-VTON baseline, Grok Image-Edit garment-truth (with optional identity pass),
-            and CatVTON full-look. Logo composite is skipped so you judge garment geometry
-            honestly against the on-model reference.
+            Runs the candidate matrix. Primary is Guarded Grok full-outfit
+            (Grok appearance + masked identity). Also includes masked full-outfit
+            without Grok, VTON full-look fallbacks, and raw Grok comparison.
           </p>
           <Button
             onClick={handleGenerateCandidates}
-            disabled={busy || !heroScenePath || !garmentId}
+            disabled={busy || primaryBusy || !heroScenePath || !garmentId}
           >
             {busy ? (
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -530,54 +532,50 @@ export default function HeroFrameStudioPage({
 
         <section className="rounded-md border border-primary/50 bg-card/40 p-4 space-y-3">
           <h2 className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-            3b · Jacket-Only Inpaint (primary v2 lane)
+            3b · Guarded Grok · Full outfit (primary)
           </h2>
           <p className="text-xs text-muted-foreground">
-            Masked IP-Adapter + ControlNet transfer into a tight jacket mask only, then a
-            deterministic real-pixel recomposite. Face, glasses, cap, hands, pants and
-            background stay the captured pixels — only jacket pixels change. Fixed seed.
+            Grok swaps the entire look; that render is the IP-Adapter reference for
+            masked full-outfit inpaint. Face, hands, pose and background stay the
+            captured pixels — only clothing changes. Jacket-only is no longer the
+            product path.
           </p>
           <Button
-            onClick={handleJacketInpaint}
-            disabled={jacketBusy || busy || !heroScenePath || !garmentId}
+            onClick={handleGuardedGrokPrimary}
+            disabled={primaryBusy || busy || !heroScenePath || !garmentId}
           >
-            {jacketBusy ? (
+            {primaryBusy ? (
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
             ) : (
               <Sparkles className="mr-1.5 h-4 w-4" />
             )}
-            Run jacket-only inpaint
+            Run Guarded Grok full outfit
           </Button>
-          {jacketProgress && (
-            <p className="text-xs text-muted-foreground">{jacketProgress}</p>
+          {primaryProgress && (
+            <p className="text-xs text-muted-foreground">{primaryProgress}</p>
           )}
-          {jacketUrl && (
+          {primaryUrl && (
             <div className="space-y-2">
               <img
-                src={jacketUrl}
-                alt="Jacket-only inpaint hero still"
+                src={primaryUrl}
+                alt="Guarded Grok full-outfit hero still"
                 className="max-h-[520px] w-auto rounded border border-border"
               />
-              {(() => {
-                const meta = (jacketLook?.composition_recipe_json as
-                  | { generation_metadata?: Record<string, unknown> }
-                  | null)?.generation_metadata;
-                if (!meta) return null;
-                const res = meta.resolution as { width?: number; height?: number } | undefined;
-                return (
-                  <p className="text-[11px] font-mono text-muted-foreground">
-                    {res ? `${res.width}×${res.height}` : "—"} · seed {String(meta.seed)} ·
-                    changed {(((meta.changed_fraction as number) ?? 0) * 100).toFixed(1)}% ·
-                    mask cover {(((meta.mask_coverage as number) ?? 0) * 100).toFixed(1)}% ·
-                    cn {String(meta.controlnet)}
-                  </p>
-                );
-              })()}
-              <Button size="sm" onClick={handleApproveJacket} disabled={jacketApproved}>
-                {jacketApproved ? (
+              {primaryCandidate?.faceLookId && (
+                <p className="text-[10px] text-emerald-300">
+                  Real face composited from the hero frame
+                </p>
+              )}
+              {primaryCandidate?.faceRestoreError && (
+                <p className="text-[10px] text-amber-300">
+                  Face composite skipped — {primaryCandidate.faceRestoreError}
+                </p>
+              )}
+              <Button size="sm" onClick={handleApprovePrimary} disabled={primaryApproved}>
+                {primaryApproved ? (
                   <CheckCircle2 className="mr-1.5 h-4 w-4" />
                 ) : null}
-                {jacketApproved ? "Approved" : "Approve this hero"}
+                {primaryApproved ? "Approved" : "Approve this hero"}
               </Button>
             </div>
           )}

@@ -11,49 +11,37 @@ export type HeroCandidateLane =
  *
  *   runIdentity     — the GENERATIVE face-swap pass (faceswap-proxy). It puts a
  *                     different invented face where an invented face was. Only
- *                     the Grok lane needs it, and only as a stepping stone.
+ *                     the raw Grok comparison lane needs it.
  *   runFaceRestore  — the DETERMINISTIC composite of his real hero-frame head
- *                     back onto the result. This is the identity guarantee. It
- *                     is his own pixels, so it cannot be wrong about who he is.
+ *                     back onto the result. This is the identity guarantee.
  */
 export type HeroCandidatePlan =
   | {
       /**
-       * PRIMARY LANE. evf-sam garment mask (minus a dilated head/hands guard) →
-       * Flux masked inpaint over that region only → deterministic feathered
-       * recomposite onto the real capture. Face, glasses, pose and background
-       * are never re-rendered — they are the source bytes, unchanged, because
-       * the recomposite only ever writes inside the mask.
+       * MASKED FULL-OUTFIT INPAINT. evf-sam clothing mask (minus a dilated
+       * head/hands guard) → Flux masked inpaint over that region → deterministic
+       * recomposite onto the real capture. Face/pose/background stay source
+       * bytes. Scope is the entire outfit, not jacket-only.
        */
       lane: "masked_inpaint";
       label: string;
       runIdentity: false;
       runFaceRestore: boolean;
-      /** Inpaint engine. flux-general accepts the IP-Adapter garment reference. */
       inpaintModelKey?: "flux-general" | "flux-lora";
     }
   | {
       /**
-       * GUARDED GROK. Grok's garment fidelity WITH the masked lane's structural
-       * identity guarantee. Two steps:
+       * PRIMARY — GUARDED GROK FULL OUTFIT.
        *
-       *   1. Grok /v1/images/edits renders the full frame wearing the garment.
-       *      We take NO geometry from this render — Grok has no mask parameter
-       *      and routinely re-poses the subject, so its pixels are not spatially
-       *      aligned to the hero frame and cannot be pasted anywhere.
-       *   2. That render becomes the IP-ADAPTER REFERENCE for the ordinary
-       *      masked inpaint. IP-Adapter conditions on CLIP image embeddings, not
-       *      pixel positions, so Grok's pose drift is irrelevant BY CONSTRUCTION,
-       *      while flux inpaints in place and stays aligned to the real frame.
+       * Grok is strongest at swapping entire looks. We use that strength for
+       * appearance only:
        *
-       * Net: the garment appearance comes from the best garment model available,
-       * and face/pose/background remain the real captured bytes because the
-       * deterministic recomposite still only ever writes inside the mask. The
-       * deterministic head restore runs last, as on every lane.
+       *   1. Grok /v1/images/edits renders the full frame in the target look.
+       *      Geometry is discarded (Grok has no mask and often re-poses).
+       *   2. That render is the IP-ADAPTER REFERENCE for masked full-outfit
+       *      inpaint. Flux paints in place; recomposite keeps face/pose/bg.
        *
-       * REQUIRES flux-general — it is the only engine with an ip_adapters field.
-       * That engine's hang/502 is a live infra issue, so this lane is wired and
-       * correct but gated on it. See docs/AVT_masked_garment_swap_LOCKED.md.
+       * REQUIRES flux-general (only engine with ip_adapters).
        */
       lane: "guarded_grok";
       label: string;
@@ -65,11 +53,6 @@ export type HeroCandidatePlan =
       transferMode: HeroTransferMode;
       vtonModel: "idm-vton" | "cat-vton";
       label: string;
-      // VTON keeps the hero frame's real face (it only transfers garment), so
-      // no generative identity pass is needed — running one would only corrupt
-      // the face. The deterministic restore is still worth running: VTON warps
-      // the whole frame slightly, so his head drifts even though it isn't
-      // re-invented.
       runIdentity: false;
       runFaceRestore: boolean;
     }
@@ -81,54 +64,33 @@ export type HeroCandidatePlan =
     };
 
 /**
- * GUARDED GROK — Grok's garment, the masked lane's identity guarantee.
- *
- * Exported separately so it can be run on its own (or dropped from the default
- * matrix in one line) while `flux-general/inpainting` — the only engine with an
- * ip_adapters field, and therefore the only one that can consume the Grok render
- * as a reference — is still hanging. A failure here is contained: each candidate
- * runs in its own try/catch, so this lane erroring leaves the others intact. The
- * cost of leaving it enabled while flux-general is sick is wall-clock, not
- * correctness — the run burns the 15-minute flux cap before failing that one
- * candidate.
+ * PRIMARY product lane — Grok full-outfit appearance + masked identity guard.
  */
 export const GUARDED_GROK_PLAN: HeroCandidatePlan = {
   lane: "guarded_grok",
-  label: "Guarded Grok · Grok garment + masked identity guard",
+  label: "Guarded Grok · Full outfit (primary)",
   runIdentity: false,
-  // The generative face-swap is NOT needed here, unlike the raw Grok lane: no
-  // Grok pixel ever reaches the output, so there is no reconstructed face to
-  // paper over. The deterministic restore still runs, as it does everywhere.
   runFaceRestore: true,
 };
 
 /**
- * Default candidate matrix, in the order they run.
+ * Default candidate matrix (run order).
  *
- * 1. MASKED INPAINT is the primary lane — the only one where the face and
- *    background are preserved by construction rather than by asking a model
- *    nicely.
- * 2. IDM-VTON is the declared fallback: pose-preserving try-on, same
- *    deterministic head restore, for when the masked inpaint underperforms on
- *    garment fidelity.
- * 3. GROK is kept as a selectable comparison. It is no longer primary — it
- *    re-renders every pixel through xAI's /v1/images/edits, which takes no mask,
- *    so its face is a reconstruction that the restore has to paper over.
+ * 1. GUARDED GROK — canonical: Grok full-look fidelity + structural face/pose
+ * 2. MASKED INPAINT — full-outfit mask without Grok reference (wardrobe still)
+ * 3. IDM-VTON full-look — declared fallback
+ * 4. RAW GROK — comparison only (re-renders every pixel)
+ * 5. CatVTON full-look
  */
 export const HERO_CANDIDATE_PLANS: HeroCandidatePlan[] = [
+  GUARDED_GROK_PLAN,
   {
     lane: "masked_inpaint",
-    label: "Masked Inpaint · Garment-only (primary)",
+    label: "Masked Inpaint · Full outfit (no Grok ref)",
     runIdentity: false,
     runFaceRestore: true,
-    // flux-general is the engine that accepts ip_adapters, i.e. the only one
-    // that can actually see the Saint Laurent reference rather than inferring
-    // the jacket from text. If it starts 502-ing again (its documented failure
-    // mode), set JACKET_INPAINT_MODEL=flux-lora on AVT — the run degrades to a
-    // text-only garment, which is softer but still correctly masked.
     inpaintModelKey: "flux-general",
   },
-  GUARDED_GROK_PLAN,
   {
     lane: "vton",
     transferMode: "full_look",
@@ -138,13 +100,8 @@ export const HERO_CANDIDATE_PLANS: HeroCandidatePlan[] = [
     runFaceRestore: true,
   },
   {
-    // Grok re-renders the head even with the pose/identity-locked prompt, so the
-    // identity pass is mandatory for this lane, not an optional variant. The old
-    // matrix ran this plan with runIdentity:false plus a separate "+ Identity"
-    // twin; the un-locked twin is what shipped Fendi a reconstructed face, so it
-    // is gone and the pass is always on here.
     lane: "grok_image_edit",
-    label: "Grok Image-Edit · Garment-Truth (identity-locked)",
+    label: "Grok Image-Edit · Full look (comparison only)",
     runIdentity: true,
     runFaceRestore: true,
   },
@@ -166,9 +123,7 @@ export type HeroCandidateResult = {
   identityLookId: string;
   /**
    * Face-composite child look, when the deterministic identity lock ran and
-   * succeeded. This is the one to look at — the generative identity pass alone
-   * still hands back a reconstructed face. Null when the lane skips it or when
-   * detection refused (see faceRestoreError).
+   * succeeded. Null when the lane skips it or when detection refused.
    */
   faceLookId?: string | null;
   /** Why the face composite was skipped, if it was attempted and refused. */

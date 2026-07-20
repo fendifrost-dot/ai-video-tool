@@ -71,18 +71,16 @@ export const INVOCATION_BUDGET_MS = 350_000;
  */
 export const FLUX_POLL_MAX_MS = 15 * 60_000; // 15 min
 /**
- * WATCHDOG wall-clock deadline. A jacket-inpaint run that has been in a
- * non-terminal phase this long since started_at_ms is presumed DEAD (the
- * self-invoke chain was lost — the platform dropped the waitUntil, a slice
- * crashed before persisting, etc.) and is reaped to `failed` INDEPENDENT of
- * whether the chain is still alive. The 15-min in-chain flux cap only fires if
- * the chain survives; this fires even if it died. With flux now returning at
- * ~1 MP the whole pipeline completes in a few minutes, so 12 min is generous.
+ * WATCHDOG wall-clock deadline. Must sit ABOVE FLUX_POLL_MAX_MS plus headroom
+ * for evf-sam ×2, pad_upload, and recomposite — otherwise a slow-but-alive
+ * flux_poll is reaped as "dead" while the client still shows flux_poll ticking.
+ * The in-chain flux cap (15 min) is the authority for hung Fal jobs; this cap
+ * only catches chains that lost their self-invoke handoff entirely.
  */
-export const WATCHDOG_STALE_MS = 12 * 60_000; // 12 min
+export const WATCHDOG_STALE_MS = 20 * 60_000; // 20 min (> FLUX_POLL_MAX_MS)
 /**
  * RESUME threshold. A non-terminal run whose last write (updated_at) is older than
- * this — but younger than the 12-min hard cap — is presumed STALLED (a self-invoke
+ * this — but younger than the watchdog hard cap — is presumed STALLED (a self-invoke
  * handoff was dropped) and is nudged back to life by re-invoking `continue`, which
  * resumes idempotently from the last checkpoint. Must exceed a full poll slice
  * (POLL_SLICE_MS = 120s) so a run that is legitimately mid-poll — and only writes
@@ -162,8 +160,13 @@ export const DEFAULTS = {
    */
   faceGuard: true,
   faceGuardPrompt: MASKED_GARMENT_FACE_GUARD_PROMPT,
-  /** Dilation radius (px, at 1080×1920) applied to the guard before subtraction. */
-  faceGuardDilate: 10,
+  /**
+   * Dilation radius (px @1080×1920) on the guard BEFORE subtraction.
+   * Must be ≥ featherPx (and ideally ≥ effective multi-pass feather) so the
+   * recomposite soft edge cannot re-bleed into jaw/glasses after the hard
+   * subtract. featherPx defaults to 12 with 2 box passes ≈ ~17px effective.
+   */
+  faceGuardDilate: 20,
   ipAdapterPath: "XLabs-AI/flux-ip-adapter-v2",
   imageEncoderPath: "openai/clip-vit-large-patch14",
   // Which inpaint model flux_submit routes to. Default keeps 746bd07 behavior
@@ -727,7 +730,7 @@ export async function markFailed(
  * each, does ONE of three things based on wall-clock, INDEPENDENT of whether the
  * self-invoke chain is still alive:
  *
- *   • age > WATCHDOG_STALE_MS (12 min, hard cap): presumed dead beyond recovery →
+ *   • age > WATCHDOG_STALE_MS (20 min, hard cap): presumed dead beyond recovery →
  *     write terminal (`failed` + failed_step + fal_error_raw). Final bail.
  *   • stall > RESUME_STALL_MS (3 min since last write) but under the hard cap:
  *     presumed STALLED (a handoff was dropped) → RESUME by re-invoking `continue`,

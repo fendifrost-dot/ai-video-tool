@@ -1,11 +1,16 @@
-# LOCKED garment-swap architecture — masked inpaint (primary)
+# LOCKED garment-swap architecture — Guarded Grok full outfit (primary)
+
+**Product correction (2026-07-20):** Canonical scope is the **entire outfit**
+(top + bottoms + footwear as worn), not jacket-only. Grok is strongest on full
+looks — do not constrain the mask or UI to a single clothing item.
 
 Supersedes the Grok `/v1/images/edits` full-re-render lane as the primary
-wardrobe swap. Grok remains selectable for comparison.
+wardrobe swap. Raw Grok remains selectable for comparison.
 
 **Core principle:** the face, glasses, pose and background are REAL captured
 pixels preserved by construction — masking plus a deterministic restore — not
-re-rendered and not talked out of a model by prompt.
+re-rendered and not talked out of a model by prompt. Clothing (the full outfit
+region) is the only area flux may rewrite.
 
 ## Why this is a guarantee and not a hope
 
@@ -28,7 +33,7 @@ and hard-fails dead ones.
 
 | Step | Model | What it does |
 |---|---|---|
-| `evf_sam_submit/poll` | `fal-ai/evf-sam` | Garment mask from `MASKED_GARMENT_MASK_PROMPT`. Names only upper-body clothing — evf-sam is text-grounded, so naming the pants is what would mask them. |
+| `evf_sam_submit/poll` | `fal-ai/evf-sam` | Full-outfit clothing mask from `MASK_PROMPT_FULL_OUTFIT` (override via `metadata_json.mask_prompt` / `mask_scope`). |
 | `face_guard_submit/poll` | `fal-ai/evf-sam` | **New.** Second pass over head/face/hair/cap/glasses/hands. Non-fatal: no guard degrades to the un-guarded mask. |
 | `pad_upload` | — | Guard is dilated (10px @1080) and **subtracted** from the garment mask, then everything downstream derives from the guarded mask. Pads to ÷16, downscales to 768×1344 (~1MP). |
 | `flux_submit/poll` | `fal-ai/flux-general/inpainting` | Inpaints the masked region only, conditioned on the garment reference via IP-Adapter. |
@@ -137,15 +142,17 @@ the final pass reads.
 
 ## Candidate matrix (`src/lib/heroFrame/types.ts`)
 
-1. **Masked Inpaint · Garment-only** — primary
-2. **Guarded Grok** — Grok garment fidelity + this lane's identity guarantee
-   (gated on flux-general; see above)
-3. **Full-look · IDM-VTON** — declared fallback, pose-preserving, same restore
+1. **Guarded Grok · Full outfit** — **PRIMARY**
+2. **Masked Inpaint · Full outfit** — no Grok ref (wardrobe still IP-Adapter)
+3. **Full-look · IDM-VTON** — declared fallback
 4. **Grok Image-Edit** — comparison only
 5. **Full-look · CatVTON**
 
-`runIdentity` (generative face-swap, Grok only) and `runFaceRestore`
-(deterministic, every lane) are now separate flags. Do not conflate them.
+`runIdentity` (generative face-swap, raw Grok only) and `runFaceRestore`
+(deterministic, every lane) are separate flags. Do not conflate them.
+
+Jacket-only is **not** the product path. The Hero Studio primary button runs
+Guarded Grok full outfit.
 
 ## Deploy checklist (Cowork / Lovable)
 

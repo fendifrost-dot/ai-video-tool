@@ -14,13 +14,10 @@
  * ---------------------------------------------------------------------------
  *
  *   maskPrompt  → grounds evf-sam on what the subject is WEARING IN THE FRAME
- *                 RIGHT NOW. It is the region to be replaced. It must stay
- *                 source-descriptive and garment-agnostic, because the whole
- *                 point is that the worn garment is NOT the target garment.
- *                 Naming the target here ("cream off-white track jacket") on a
- *                 clip where he is wearing camo grounds on nothing, produces an
- *                 empty mask, and the lane no-ops — that is the failure the
- *                 near-zero-coverage guard now makes impossible to ship silently.
+ *                 RIGHT NOW (the full outfit by default). It is the region to
+ *                 be replaced. It must stay source-descriptive and look-agnostic,
+ *                 because the worn clothing is NOT the target look. Naming the
+ *                 target here on a mismatched clip grounds on nothing.
  *
  *   prompt      → describes the TARGET garment flux paints inside the mask. This
  *                 is the one that must track the selected wardrobe item.
@@ -40,23 +37,27 @@ export type GarmentFeatureLike = {
 };
 
 /**
- * evf-sam text prompt for the GARMENT mask — the region flux may repaint.
+ * evf-sam text prompt for the CLOTHING mask — the region flux may repaint.
  *
- * Deliberately describes CLOTHING BY BODY REGION and names no colour, brand or
- * material. evf-sam is text-grounded: every adjective is a chance to ground on
- * nothing. "upper-body clothing on the torso and arms" matches a cream track
- * jacket, a camo jacket and a hoodie equally well, which is the property we
- * need. Head and hands are excluded a second time by the face-guard subtraction.
+ * Canonical product scope is the ENTIRE OUTFIT (Grok is strongest on full
+ * looks). Describe clothing by body coverage and name no colour, brand or
+ * material — evf-sam is text-grounded and every adjective is a chance to ground
+ * on nothing. Head and hands are excluded again by the face-guard subtraction.
  */
+export const MASK_PROMPT_FULL_OUTFIT =
+  "all clothing worn on the body — tops, jackets, shirts, trousers, pants, " +
+  "shorts, skirts, socks and shoes — covering torso, arms, hips, legs and feet";
+
+/** Upper-body-only override (legacy / metadata_json.mask_prompt experiments). */
 export const MASK_PROMPT_UPPER_BODY =
-  "the jacket and upper-body clothing worn on the torso and arms, sleeves, collar";
+  "the upper-body clothing worn on the torso and arms, sleeves, collar";
 
 /** Lower-body equivalent, for wardrobe_bottom / wardrobe_footwear features. */
 export const MASK_PROMPT_LOWER_BODY =
   "the trousers and lower-body clothing worn on the hips, legs and knees";
 
-/** Back-compat alias — the upper-body mask is the lane's default. */
-export const MASKED_GARMENT_MASK_PROMPT = MASK_PROMPT_UPPER_BODY;
+/** Default mask — full outfit. */
+export const MASKED_GARMENT_MASK_PROMPT = MASK_PROMPT_FULL_OUTFIT;
 
 /**
  * evf-sam text prompt for the FACE GUARD — the protective second mask. Whatever
@@ -88,12 +89,12 @@ export const MASKED_GARMENT_NEGATIVE_PROMPT =
   "extra sleeves, extra collar, blurry, deformed";
 
 /** Region scaffolding — stops flux painting a second head or hand at the mask edge. */
-const REGION_PREFIX = "Clothing only, inside the masked region only. ";
+const REGION_PREFIX = "Full outfit only, inside the masked clothing region only. ";
 
 const REGION_SUFFIX =
   " Lighting, exposure and colour temperature match the surrounding photograph. " +
-  "Fill the entire masked region with garment — no skin, no face, no hands, " +
-  "no background, no second person.";
+  "Fill the entire masked clothing region with the complete look — no skin, no face, " +
+  "no hands, no background, no second person.";
 
 function str(v: unknown): string | null {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : null;
@@ -109,15 +110,19 @@ function isLowerBody(featureType?: string | null): boolean {
  * Resolution order:
  *   1. `metadata_json.mask_prompt` — an explicit per-garment override, for the
  *      rare source frame where the generic region phrase grounds badly.
- *   2. the body-region default implied by `feature_type`.
+ *   2. body-region defaults only when metadata asks for a partial swap
+ *      (`mask_scope: "upper" | "lower"`). Otherwise full outfit.
  *
  * NOTE the label is deliberately NOT consulted. The label names the TARGET
- * garment; the mask must ground on the SOURCE garment. See the header.
+ * look; the mask must ground on the SOURCE clothing. See the header.
  */
 export function buildMaskPrompt(feature: GarmentFeatureLike): string {
   const override = str(feature.metadata_json?.mask_prompt);
   if (override) return override;
-  return isLowerBody(feature.feature_type) ? MASK_PROMPT_LOWER_BODY : MASK_PROMPT_UPPER_BODY;
+  const scope = str(feature.metadata_json?.mask_scope);
+  if (scope === "upper") return MASK_PROMPT_UPPER_BODY;
+  if (scope === "lower" || isLowerBody(feature.feature_type)) return MASK_PROMPT_LOWER_BODY;
+  return MASK_PROMPT_FULL_OUTFIT;
 }
 
 /**
@@ -140,17 +145,21 @@ export function buildGarmentPrompt(feature: GarmentFeatureLike): string {
   const authored = str(feature.metadata_json?.garment_prompt);
   if (authored) return authored;
 
-  const label = str(feature.label) ?? "the garment";
+  const label = str(feature.label) ?? "the outfit";
   const description = str(feature.metadata_json?.garment_description);
-  const region = isLowerBody(feature.feature_type)
-    ? "worn on the lower body"
-    : "worn on the torso";
+  const scope = str(feature.metadata_json?.mask_scope);
+  const region =
+    scope === "lower" || isLowerBody(feature.feature_type)
+      ? "worn as the lower-body garment"
+      : scope === "upper"
+        ? "worn as the upper-body garment"
+        : "worn as a complete outfit (all clothing visible on the body)";
 
   const body = description
     ? `${label} ${region}: ${description}`
     : `${label} ${region}, reproduced exactly as in the reference image — same ` +
-      "colour, pattern, material, construction, closure and trim, with natural " +
-      "fabric drape and soft folds.";
+      "colours, patterns, materials, construction, closures and trim across the " +
+      "full look, with natural fabric drape and soft folds.";
 
   return `${REGION_PREFIX}${body}${REGION_SUFFIX}`;
 }
