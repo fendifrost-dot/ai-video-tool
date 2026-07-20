@@ -104,8 +104,9 @@ Registry: `src/lib/providers/registry.ts`. Job API: `src/lib/providerJobs/`.
 ## Environment
 
 - `.env` exists locally (do not commit secrets).
-- Supabase project: Lovable Cloud managed (`aivideotool.lovable.app`).
-- Do not confuse with Fendi Control Center / compose-look Supabase project.
+- Supabase project: Lovable Cloud managed (`aivideotool.lovable.app`) — id `qoyxgnkvjukovkrvdaiq`.
+- Do not confuse with Fendi Control Center / compose-look Supabase project (`wkzwcfmvnwolgrdpnygc`).
+- **No standalone Supabase / no `supabase` CLI for migrations.** SQL → Lovable SQL editor; frontend → Publish; edge → Lovable redeploy. See root `CLAUDE.md` chain of command.
 
 ## Grok workflow (this repo)
 

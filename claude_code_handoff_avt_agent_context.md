@@ -51,10 +51,11 @@ Edge function code ≠ live until **Lovable redeploy** of `jacket-inpaint-proxy`
 | **CC Supabase project** | `wkzwcfmvnwolgrdpnygc` — Fendi Control Center |
 | **Where is FAL_KEY?** | CC edge secrets only — AVT never holds it |
 | **Where is XAI_API_KEY (Grok image)?** | AVT edge secrets — **same key** as CC `Frost_Grok` / console.x.ai |
-| **SQL migrations** | Lovable **SQL editor** on AVT project — not supabase.com dashboard, not `supabase` CLI (403 wrong account) |
+| **SQL migrations** | Lovable **SQL editor** on AVT project — not supabase.com dashboard, not `supabase` CLI (403 wrong account = FALSE wall) |
 | **Deploy frontend** | Lovable **Publish** from GitHub `main` |
 | **Deploy edge functions** | Lovable **Edge Functions → redeploy** each touched function |
 | **When to redeploy CC** | Only when CC code/secrets change (e.g. new `fal-run` model whitelist) |
+| **Auto-load** | Repo-root `CLAUDE.md` — chain of command + disk rules (do not rely on memory alone) |
 
 ### Request flow — jacket-inpaint (3b)
 
