@@ -22,7 +22,6 @@ import {
   MASKED_GARMENT_FACE_GUARD_PROMPT,
   MASKED_GARMENT_MASK_PROMPT,
   MASKED_GARMENT_NEGATIVE_PROMPT,
-  MASKED_GARMENT_PROMPT,
 } from "./maskedGarmentPrompt.ts";
 
 export const OUT_W = 1080;
@@ -104,8 +103,49 @@ export const DEFAULTS = {
   featherPx: 12,
   maskExpand: 4,
   maskPrompt: MASKED_GARMENT_MASK_PROMPT,
-  prompt: MASKED_GARMENT_PROMPT,
+  /**
+   * EMPTY BY DESIGN. The positive prompt describes the TARGET garment, so it
+   * cannot have a meaningful default — a hardcoded one is how this lane painted
+   * a Saint Laurent track jacket on a run whose selected garment was camo.
+   * jacket-inpaint-proxy always derives it from the wardrobe row via
+   * buildGarmentPrompt(); flux_submit refuses to run on an empty prompt rather
+   * than paint an arbitrary garment. See maskedGarmentPrompt.ts.
+   */
+  prompt: "",
   negativePrompt: MASKED_GARMENT_NEGATIVE_PROMPT,
+  /**
+   * IP-ADAPTER REFERENCE OVERRIDE — the guarded-Grok lane.
+   *
+   * Normally the IP-Adapter reference is the wardrobe still (`state.garment_path`,
+   * in wardrobe-refs/product-assets). The guarded-Grok lane instead points this at
+   * a completed Grok `/v1/images/edits` render in look-composites: Grok has the
+   * best garment fidelity in practice, and a render of HIM already wearing the
+   * garment, in this frame's lighting, is a strictly better appearance reference
+   * than a flat product shot.
+   *
+   * Why a reference and not a paste: Grok takes no mask and re-renders the whole
+   * frame, so its output is frequently NOT spatially aligned to the hero frame —
+   * it re-poses him. IP-Adapter conditions on CLIP IMAGE EMBEDDINGS, not pixel
+   * positions, so Grok's pose drift is irrelevant here by construction, while
+   * flux inpaints IN PLACE and stays aligned to the real frame. Full rationale in
+   * docs/AVT_masked_garment_swap_LOCKED.md.
+   *
+   * Requires an engine with ip_adapters support (flux-general). flux_submit FAILS
+   * LOUDLY if a reference is set on an engine that would silently ignore it —
+   * dropping it would throw away the entire point of the lane without saying so.
+   */
+  ipAdapterImagePath: null as string | null,
+  ipAdapterImageBucket: null as string | null,
+  /**
+   * Minimum guarded-mask coverage (fraction of the 1080×1920 frame) below which
+   * the run FAILS instead of completing. A near-empty mask means evf-sam grounded
+   * the mask prompt on nothing — the recomposite would then blend nothing, upload
+   * a byte-copy of the source, and mark the look `complete` with no swap in it.
+   * That silent no-op is indistinguishable from success in the UI, which is
+   * exactly why it went unnoticed. 0.5% of frame ≈ 10k px — far below any real
+   * jacket (typically 8–20%) and far above segmentation noise.
+   */
+  minMaskCoverage: 0.005,
   /**
    * FACE GUARD — the second, protective mask. When on, a separate evf-sam pass
    * segments the head/hands, that mask is dilated by faceGuardDilate px, and it
@@ -245,6 +285,8 @@ export type JacketInpaintState = {
   /** Raw face/hands guard mask from the second evf-sam pass (absent when off). */
   face_guard_url?: string | null;
   face_guard_storage_path?: string | null;
+  /** Final guarded-mask coverage (fraction of frame) — what the coverage guard checked. */
+  mask_coverage?: number | null;
   /** Coverage before/after the guard subtraction — proof the guard did something. */
   mask_guard_stats?: {
     coverage_before: number;
@@ -893,6 +935,36 @@ export async function runPipelineStep(
         }
       }
 
+      // --- NEAR-ZERO COVERAGE GUARD -----------------------------------------
+      // FAIL LOUDLY rather than complete with an unchanged image. If the mask is
+      // essentially empty, evf-sam grounded `maskPrompt` on nothing — almost
+      // always because the prompt describes the TARGET garment instead of the one
+      // actually worn in the frame (naming a cream track jacket on a camo clip
+      // matches no pixels). Everything downstream would still "succeed": flux
+      // would inpaint a sliver, the recomposite would blend ~nothing, and the look
+      // would go `complete` holding a byte-copy of the source. That reads as a
+      // finished swap in the UI. This is the single check that makes that
+      // impossible — it runs on the GUARDED mask, i.e. what flux actually gets.
+      // `?? DEFAULTS` — a run that was already in flight when this deployed has
+      // params written before minMaskCoverage existed. Without the fallback the
+      // comparison against `undefined` is always false and the guard silently
+      // does nothing, which is the exact failure mode it exists to prevent.
+      const minCoverage = p.minMaskCoverage ?? DEFAULTS.minMaskCoverage;
+      const finalCoverage = alphaCoverage(maskToAlpha(mask1080));
+      state.mask_coverage = Number(finalCoverage.toFixed(4));
+      console.log(
+        `jacket_inpaint_mask_coverage: ${state.mask_coverage} (min ${minCoverage}) ` +
+          `prompt=${JSON.stringify(p.maskPrompt)}`,
+      );
+      if (finalCoverage < minCoverage) {
+        throw new Error(
+          `mask_coverage_too_low: ${finalCoverage.toFixed(4)} < ${minCoverage} — ` +
+            `evf-sam matched almost nothing for maskPrompt ${JSON.stringify(p.maskPrompt)}. ` +
+            "The mask prompt must describe the garment WORN IN THE SOURCE FRAME, " +
+            "not the target garment. Refusing to complete with an unchanged image.",
+        );
+      }
+
       state.source1080_storage_path = `${base}_source1080.png`;
       await timed("pad_upload", async () => {
         await uploadBytes(admin, state.source1080_storage_path!, await encodePng(source1080));
@@ -946,6 +1018,26 @@ export async function runPipelineStep(
       const modelKey = resolveInpaintModelKey((p as PipelineParams).inpaintModelKey);
       const modelSpec = INPAINT_MODELS[modelKey];
       const modelId = modelSpec.id;
+      // The positive prompt describes the TARGET garment and has no safe default
+      // (see DEFAULTS.prompt). Refuse rather than let flux invent one.
+      if (!p.prompt || !p.prompt.trim()) {
+        throw new Error(
+          "flux_submit_missing_prompt: no target-garment prompt was derived for this run. " +
+            "jacket-inpaint-proxy builds it from the wardrobe row; a direct caller must send `prompt`.",
+        );
+      }
+      // A reference the engine would silently ignore is worse than no run at all:
+      // on the guarded-Grok lane the Grok render IS the garment fidelity, so
+      // dropping it would hand back a text-only jacket that LOOKS like the lane
+      // worked. Fail instead, naming the fix.
+      if (p.ipAdapterImagePath && !modelSpec.supportsIpAdapter) {
+        throw new Error(
+          `ip_adapter_reference_requires_flux_general: this run supplied an IP-Adapter ` +
+            `reference (${p.ipAdapterImagePath}) but engine "${modelKey}" (${modelId}) has no ` +
+            "ip_adapters field, so the reference would be silently discarded. Re-run with " +
+            "inpaintModelKey=flux-general (and ensure JACKET_INPAINT_MODEL does not override it).",
+        );
+      }
       const srcPadUrl = await signPath(admin, "look-composites", srcFluxPath);
       const maskPadUrl = await signPath(admin, "look-composites", maskFluxPath);
       // Minimal, universally-accepted core fields (safe on every FLUX inpaint
@@ -969,12 +1061,22 @@ export async function runPipelineStep(
       if (modelSpec.supportsImageSize) inpaintInput.image_size = { width: fluxW, height: fluxH };
       // IP-Adapter garment reference — only for models that accept it (flux-general).
       // On models without it (flux-lora) the garment is carried by the text prompt.
+      // The reference is either the wardrobe still (default) or, on the
+      // guarded-Grok lane, a completed Grok render in look-composites. Same field,
+      // same scale — only the image differs, which is why this lane needed no new
+      // engine, no new model id and no CC allowlist change.
       if (modelSpec.supportsIpAdapter) {
-        const garmentUrl = await signGarmentUrl(admin, state.garment_path);
+        const refUrl = p.ipAdapterImagePath
+          ? await signPath(
+            admin,
+            p.ipAdapterImageBucket ?? "look-composites",
+            p.ipAdapterImagePath,
+          )
+          : await signGarmentUrl(admin, state.garment_path);
         inpaintInput.ip_adapters = [{
           path: p.ipAdapterPath,
           image_encoder_path: p.imageEncoderPath,
-          image_url: garmentUrl,
+          image_url: refUrl,
           scale: p.ipAdapterScale,
         }];
       }
@@ -1018,6 +1120,8 @@ export async function runPipelineStep(
         src_flux_storage_path: srcFluxPath,
         mask_flux_storage_path: maskFluxPath,
         garment_path: state.garment_path,
+        ip_adapter_reference_path: p.ipAdapterImagePath ?? state.garment_path,
+        ip_adapter_reference_source: p.ipAdapterImagePath ? "grok_render" : "wardrobe_reference",
       };
       console.log("jacket_inpaint_flux_submit:", JSON.stringify(state.flux_input_debug));
       // Trace the CC call end-to-end so the NEXT run tells us WHY, not just THAT:
@@ -1139,6 +1243,19 @@ export async function runPipelineStep(
       const inpaint1080 = cropRgba(inpaintPad, OUT_W, OUT_H);
       const feathered = featherAlpha(maskToAlpha(mask1080), OUT_W, OUT_H, p.featherPx);
       const result = recomposite(source1080, inpaint1080, feathered, OUT_W, OUT_H);
+      // BACKSTOP to the pad_upload coverage guard. That one checks the mask; this
+      // one checks the RESULT — if essentially no pixels actually moved, whatever
+      // the cause, the output is the source and this is not a swap. Belt-and-braces
+      // against any future path that reaches here with a degenerate mask.
+      const changedFraction = result.changedPixels / (OUT_W * OUT_H);
+      const minOut = p.minMaskCoverage ?? DEFAULTS.minMaskCoverage;
+      if (result.maskCoverage < minOut || changedFraction < minOut / 2) {
+        throw new Error(
+          `recomposite_no_op: mask_coverage=${result.maskCoverage.toFixed(4)} ` +
+            `changed_fraction=${changedFraction.toFixed(4)} — the composite is ` +
+            "indistinguishable from the source frame. Refusing to mark this look complete.",
+        );
+      }
       // TODO(4k-final-pass): the delivery upscale belongs AFTER the full video
       // edit is locked, not here. Feeding 4K into evf-sam/flux would push flux
       // far past the ~1 MP sweet spot that made it return at all (see FLUX_W/
@@ -1157,7 +1274,9 @@ export async function runPipelineStep(
       });
 
       const meta = {
-        lane: "jacket_only_inpaint_masked",
+        lane: p.ipAdapterImagePath
+          ? "guarded_grok_masked_inpaint"
+          : "jacket_only_inpaint_masked",
         pipeline_mode: "durable_steps",
         resolution: { width: OUT_W, height: OUT_H },
         inpaint_model: INPAINT_MODELS[resolveInpaintModelKey(p.inpaintModelKey)].id,
@@ -1176,6 +1295,14 @@ export async function runPipelineStep(
         feather_px: p.featherPx,
         mask_expand: p.maskExpand,
         mask_prompt: p.maskPrompt,
+        // Recorded verbatim so a look always says which garment it was ASKED for,
+        // now that the prompt is derived per-run rather than being a constant.
+        garment_prompt: p.prompt,
+        min_mask_coverage: p.minMaskCoverage,
+        ip_adapter_reference_path: p.ipAdapterImagePath ?? state.garment_path,
+        ip_adapter_reference_source: p.ipAdapterImagePath ? "grok_render" : "wardrobe_reference",
+        ip_adapter_applied: INPAINT_MODELS[resolveInpaintModelKey(p.inpaintModelKey)]
+          .supportsIpAdapter,
         face_guard: !!p.faceGuard,
         face_guard_prompt: p.faceGuard ? p.faceGuardPrompt : null,
         face_guard_dilate_px: p.faceGuard ? p.faceGuardDilate : null,
@@ -1206,7 +1333,7 @@ export async function runPipelineStep(
           status: "complete",
           generated_image_url: storagePath,
           generated_storage_path: storagePath,
-          pipeline_used: "jacket_only_inpaint_masked",
+          pipeline_used: meta.lane,
           cost_cents: 12,
           composition_recipe_json: {
             ...ctx.recipe,

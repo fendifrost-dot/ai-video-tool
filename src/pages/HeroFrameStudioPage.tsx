@@ -347,6 +347,9 @@ export default function HeroFrameStudioPage({
     );
     return (
       usable.find((c) => c.plan.lane === "masked_inpaint") ??
+      // Guarded Grok is a masked-inpaint output too (Grok only supplies the
+      // IP-Adapter reference), so the same eyewear-quad correction applies.
+      usable.find((c) => c.plan.lane === "guarded_grok") ??
       usable.find((c) => c.plan.lane === "grok_image_edit") ??
       null
     );

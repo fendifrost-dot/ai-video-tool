@@ -26,9 +26,28 @@ export type ApplyJacketInpaintInput = {
   conditioningScale?: number;
   featherPx?: number;
   maskExpand?: number;
+  /**
+   * OMIT THESE unless you specifically want to override. jacket-inpaint-proxy
+   * derives both from the selected wardrobe row, so the prompt always describes
+   * the garment the user actually picked. Sending a constant from the client is
+   * what made every run paint the same jacket regardless of selection.
+   *
+   * `maskPrompt` describes the garment WORN IN THE SOURCE FRAME (the region to
+   * replace); `prompt` describes the TARGET garment. They are not the same thing
+   * and must never be derived from each other.
+   */
   maskPrompt?: string;
   prompt?: string;
   negativePrompt?: string;
+  /**
+   * GUARDED-GROK LANE. Storage path of a completed Grok render, used as the
+   * IP-Adapter reference in place of the wardrobe still. Requires
+   * inpaintModelKey "flux-general" — the proxy fails loudly on an engine that
+   * would discard the reference rather than silently degrading to a text-only
+   * garment. Defaults to the "look-composites" bucket.
+   */
+  ipAdapterImagePath?: string;
+  ipAdapterImageBucket?: string;
   /** Second evf-sam pass over head/hands, dilated and subtracted from the
    *  garment mask before flux sees it. Defaults on server-side. */
   faceGuard?: boolean;

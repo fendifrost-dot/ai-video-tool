@@ -7,12 +7,6 @@ import { applyGarmentVtonAndWait } from "@/lib/queries/wardrobeVton";
 import { faceRestore, HEAD_RESTORE_PADDING } from "@/lib/queries/faceRestore";
 import { applyJacketInpaintAndWait } from "@/lib/queries/jacketInpaint";
 import {
-  MASKED_GARMENT_FACE_GUARD_PROMPT,
-  MASKED_GARMENT_MASK_PROMPT,
-  MASKED_GARMENT_NEGATIVE_PROMPT,
-  MASKED_GARMENT_PROMPT,
-} from "@/lib/heroFrame/maskedGarmentPrompt";
-import {
   HERO_CANDIDATE_PLANS,
   type HeroCandidatePlan,
   type HeroCandidateResult,
@@ -146,10 +140,12 @@ export async function generateHeroCandidates(
       let garmentLookId: string;
 
       if (plan.lane === "masked_inpaint") {
-        // Primary lane. The prompts travel WITH the request rather than relying
-        // on the edge defaults, so the lane and its prompt version stay locked
-        // together — a prompt change ships with the client that produced it and
-        // is recorded verbatim on the look's recipe.
+        // Primary lane. NO PROMPTS ARE SENT. jacket-inpaint-proxy derives them
+        // from the selected wardrobe row and records them verbatim on the look's
+        // recipe, so provenance is kept without the client carrying a constant.
+        // The client used to send a hardcoded Saint Laurent description on every
+        // run — which meant selecting any other garment changed the reference
+        // image but not the instruction, and the lane painted the old jacket.
         garmentLook = await applyJacketInpaintAndWait(
           {
             artistId: input.artistId,
@@ -160,12 +156,64 @@ export async function generateHeroCandidates(
             candidateIndex: index,
             projectId: input.projectId,
             name: `Hero ${index + 1} · ${plan.label}`,
-            prompt: MASKED_GARMENT_PROMPT,
-            negativePrompt: MASKED_GARMENT_NEGATIVE_PROMPT,
-            maskPrompt: MASKED_GARMENT_MASK_PROMPT,
             faceGuard: true,
-            faceGuardPrompt: MASKED_GARMENT_FACE_GUARD_PROMPT,
             inpaintModelKey: plan.inpaintModelKey,
+          },
+          { signal: input.signal },
+        );
+        garmentLookId = garmentLook.id;
+      } else if (plan.lane === "guarded_grok") {
+        // GUARDED GROK — two models, one guarantee.
+        //
+        // Step 1: Grok renders the full frame wearing the garment. This is the
+        // best garment fidelity available to us, and it is rendered on HIM, in
+        // THIS frame's lighting — a far better appearance reference than a flat
+        // product still. We take nothing structural from it.
+        //
+        // Step 2: that render is handed to the ordinary masked inpaint as the
+        // IP-Adapter reference. Grok routinely re-poses the subject (it has no
+        // mask parameter and repaints every pixel), so its output is often NOT
+        // aligned to the hero frame — but IP-Adapter conditions on CLIP image
+        // embeddings rather than pixel positions, so misalignment does not
+        // matter here the way it would for any paste or warp. Flux inpaints in
+        // place against the REAL frame, and the deterministic recomposite writes
+        // only inside the mask. Face, pose and background stay original bytes.
+        const grokLook = await applyGrokGarmentTruthAndWait(
+          {
+            artistId: input.artistId,
+            wardrobeFeatureId: input.wardrobeFeatureId,
+            scenePath: input.scenePath,
+            sceneBucket: input.sceneBucket ?? "project-references",
+            heroFrameSessionId: input.sessionId,
+            candidateIndex: index,
+            projectId: input.projectId,
+            name: `Hero ${index + 1} · ${plan.label} · grok reference`,
+          },
+          { signal: input.signal },
+        );
+        const grokPath = grokLook.generated_storage_path ?? grokLook.generated_image_url;
+        if (!grokPath) {
+          throw new Error("Guarded Grok: reference render produced no storage path");
+        }
+
+        garmentLook = await applyJacketInpaintAndWait(
+          {
+            artistId: input.artistId,
+            wardrobeFeatureId: input.wardrobeFeatureId,
+            scenePath: input.scenePath,
+            sceneBucket: input.sceneBucket ?? "project-references",
+            heroFrameSessionId: input.sessionId,
+            candidateIndex: index,
+            projectId: input.projectId,
+            name: `Hero ${index + 1} · ${plan.label}`,
+            faceGuard: true,
+            ipAdapterImagePath: grokPath,
+            ipAdapterImageBucket: "look-composites",
+            // flux-general is the ONLY engine with an ip_adapters field. Pinned
+            // explicitly (not left to the env default) because the whole lane is
+            // the reference — the proxy fails loudly rather than silently
+            // dropping it if this ever resolves to flux-lora.
+            inpaintModelKey: "flux-general",
           },
           { signal: input.signal },
         );
@@ -235,7 +283,9 @@ export async function generateHeroCandidates(
       //   • grok         — the face-swap pass regenerated a face rather than
       //                    restoring his, so the candidate still doesn't read as
       //                    him without this.
-      //   • masked_inpaint / vton — the head was never re-rendered, so this is
+      //   • masked_inpaint / guarded_grok / vton — the head was never
+      //                    re-rendered (on guarded_grok no Grok pixel reaches the
+      //                    output at all — it is only an IP-Adapter reference), so this is
       //                    belt-and-braces: it re-seats his exact head over any
       //                    drift the engine introduced, and costs nothing when
       //                    there was none (it composites his pixels over his

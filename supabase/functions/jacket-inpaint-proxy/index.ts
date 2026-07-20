@@ -9,6 +9,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { pickVtonGarmentPath } from "../_shared/garmentReference.ts";
+import { buildMaskedGarmentPrompts } from "../_shared/maskedGarmentPrompt.ts";
 import {
   DEFAULTS,
   initialState,
@@ -59,6 +60,16 @@ type SubmitBody = {
   // Optional per-request inpaint-model override ("flux-general" | "flux-lora").
   // Precedence: request body > JACKET_INPAINT_MODEL env > default (flux-general).
   inpaintModelKey?: InpaintModelKey;
+  /**
+   * GUARDED-GROK LANE. Storage path of a completed Grok render to use as the
+   * IP-Adapter reference INSTEAD of the wardrobe still. Grok has the best garment
+   * fidelity but takes no mask and re-poses the subject, so its pixels are used
+   * as an appearance reference only — flux still inpaints in place against the
+   * real hero frame, and the deterministic recomposite still guarantees every
+   * out-of-mask pixel. Requires inpaintModelKey=flux-general.
+   */
+  ipAdapterImagePath?: string;
+  ipAdapterImageBucket?: string;
 };
 
 type ContinueBody = {
@@ -223,11 +234,12 @@ serve(async (req) => {
   // change. NOTE: the chosen id must also be in CC's fal-run allowlist.
   const envModel = Deno.env.get("JACKET_INPAINT_MODEL")?.trim();
   const inpaintModelKey = resolveInpaintModelKey(body.inpaintModelKey ?? envModel);
-  const p = { ...DEFAULTS, ...clean(body), inpaintModelKey } as PipelineParams;
 
   const { data: wardrobe, error: wErr } = await admin
     .from("character_features")
-    .select("id, artist_id, feature_type, label, file_url, storage_path, reference_images")
+    .select(
+      "id, artist_id, feature_type, label, file_url, storage_path, reference_images, metadata_json",
+    )
     .eq("id", body.wardrobeFeatureId)
     .maybeSingle();
   if (wErr) return json(500, { error: "wardrobe_query_failed", detail: wErr.message });
@@ -238,6 +250,27 @@ serve(async (req) => {
   const refImages = Array.isArray(wardrobe.reference_images) ? wardrobe.reference_images : [];
   const garmentPath = pickVtonGarmentPath(refImages, wardrobe.storage_path ?? wardrobe.file_url);
   if (!garmentPath) return json(404, { error: "wardrobe_no_image" });
+
+  // --- PROMPTS DERIVE FROM THE SELECTED GARMENT -------------------------------
+  // Built from the wardrobe row we just loaded, so picking a different item in
+  // the UI actually changes what gets painted. Previously the client sent a
+  // hardcoded Saint Laurent description on EVERY run regardless of selection,
+  // which is how a camo pick came back cream. An explicit body.prompt /
+  // body.maskPrompt still wins (direct callers, experiments); the resolved
+  // values are recorded on the recipe either way, so the look always states
+  // which garment it was asked for. See _shared/maskedGarmentPrompt.ts for why
+  // the mask prompt is derived from the BODY REGION and never from the label.
+  const derived = buildMaskedGarmentPrompts({
+    label: wardrobe.label,
+    feature_type: wardrobe.feature_type,
+    metadata_json: (wardrobe.metadata_json ?? {}) as Record<string, unknown>,
+  });
+  const p = {
+    ...DEFAULTS,
+    ...derived,
+    ...clean(body),
+    inpaintModelKey,
+  } as PipelineParams;
 
   if (!body.scenePath && isHttpsUrl(body.humanImageUrl)) {
     return json(400, {
@@ -278,7 +311,9 @@ serve(async (req) => {
   });
 
   const recipe = {
-    pipeline_preference: "jacket_only_inpaint_masked",
+    pipeline_preference: p.ipAdapterImagePath
+      ? "guarded_grok_masked_inpaint"
+      : "jacket_only_inpaint_masked",
     wardrobe_feature_id: wardrobe.id,
     garment_path_used: garmentPath,
     scene_path: scenePath,
@@ -297,6 +332,18 @@ serve(async (req) => {
       feather_px: p.featherPx,
       mask_expand: p.maskExpand,
       mask_prompt: p.maskPrompt,
+      // Resolved per-run from the wardrobe row (or overridden by the caller).
+      // Recorded so a look is always self-describing about which garment it was
+      // asked for and where that instruction came from.
+      garment_prompt: p.prompt,
+      garment_prompt_source: body.prompt ? "request" : "derived_from_wardrobe",
+      mask_prompt_source: body.maskPrompt ? "request" : "derived_from_wardrobe",
+      min_mask_coverage: p.minMaskCoverage,
+      ip_adapter_image_path: p.ipAdapterImagePath ?? null,
+      ip_adapter_image_bucket: p.ipAdapterImagePath
+        ? (p.ipAdapterImageBucket ?? "look-composites")
+        : null,
+      ip_adapter_reference_source: p.ipAdapterImagePath ? "grok_render" : "wardrobe_reference",
       face_guard: p.faceGuard,
       face_guard_prompt: p.faceGuard ? p.faceGuardPrompt : null,
       face_guard_dilate: p.faceGuard ? p.faceGuardDilate : null,
