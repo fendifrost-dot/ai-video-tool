@@ -4,6 +4,8 @@
 **Audience:** Claude Cowork / Claude Code / any agent with `--add-dir` or machine-wide search  
 **Priority:** Read this **before** searching the filesystem for video, MODEST, FENDI, or face assets.
 
+**Also loaded automatically:** repo-root `CLAUDE.md` (same rules, shorter). Memory alone is not enough — `CLAUDE.md` is the hard session load.
+
 ---
 
 ## What went wrong (do not repeat)
