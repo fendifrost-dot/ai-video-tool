@@ -175,9 +175,45 @@ export const DEFAULTS = {
   inpaintModelKey: "flux-lora" as InpaintModelKey,
 };
 
+/**
+ * HuggingFace repo ids for the control models. These are loaded INSIDE
+ * flux-general via diffusers `FluxControlNetModel.from_pretrained(path)` — they
+ * are NOT Fal model ids and therefore need NO Control Center allowlist entry.
+ * Only the PREPROCESSOR that produces the control image is a Fal call (see
+ * CONTROL_PREPROCESSORS), and that one does need allowlisting.
+ *
+ * `pose` uses Union-Pro-2.0 rather than a pose-only repo: 2.0 removed mode
+ * embedding (so it can be driven as a plain single controlnet with a pose
+ * control image, no `controlnet_unions` restructuring) and its release notes
+ * call out improved pose specifically. Verified 2026-07-20 on the model card.
+ */
 export const CONTROLNET_REPOS: Record<string, string> = {
   depth: "jasperai/Flux.1-dev-Controlnet-Depth",
   canny: "Shakker-Labs/FLUX.1-dev-ControlNet-Canny",
+  pose: "Shakker-Labs/FLUX.1-dev-ControlNet-Union-Pro-2.0",
+};
+
+/**
+ * Fal PREPROCESSOR model id per control type — the call that turns the hero
+ * frame into a control image. These ARE Fal ids and must be in CC's `fal-run`
+ * allowlist or the submit returns `model_not_allowed` (400).
+ *
+ * ⚠️ `pose` → `fal-ai/dwpose` is NOT KNOWN TO BE ALLOWLISTED. Note that
+ * `docs/AVT_jacket_inpaint_fal_payload.md` cites `fal-ai/image-preprocessors/openpose`
+ * in both its §6 upgrade note and its reference ALLOWED set — that endpoint
+ * **404s** (verified 2026-07-20); it does not exist at that path. The real pose
+ * preprocessor is the top-level `fal-ai/dwpose`. So if CC copy-pasted that
+ * reference set, it allowlisted an id that can never resolve. Confirm on the CC
+ * side before relying on `controlnet: "pose"`.
+ *
+ * NOTE dwpose returns a RENDERED SKELETON IMAGE, not keypoint coordinates. That
+ * makes it usable as a ControlNet condition (what we want here) and unusable as
+ * the landmark source for a thin-plate-spline warp.
+ */
+export const CONTROL_PREPROCESSORS: Record<string, string> = {
+  depth: "fal-ai/imageutils/depth",
+  canny: "fal-ai/imageutils/canny",
+  pose: "fal-ai/dwpose",
 };
 
 /**
@@ -863,7 +899,10 @@ export async function runPipelineStep(
 
     case "depth_submit": {
       const humanUrl = await signSceneUrl(admin, state);
-      const model = p.controlnet === "canny" ? "fal-ai/imageutils/canny" : "fal-ai/imageutils/depth";
+      // Pose resolves to fal-ai/dwpose, which is very likely NOT in CC's
+      // allowlist yet — expect `model_not_allowed` (400) until it is added. That
+      // is a clean, immediate failure rather than a silent structural downgrade.
+      const model = CONTROL_PREPROCESSORS[p.controlnet] ?? CONTROL_PREPROCESSORS.depth;
       state.fal_queue = await timed("depth_submit", () =>
         falSubmit(cc, model, { image_url: humanUrl }));
       state.step = "depth_poll";
