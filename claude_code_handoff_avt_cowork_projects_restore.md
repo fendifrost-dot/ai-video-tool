@@ -1,193 +1,104 @@
 # Claude Handoff — Restore Cowork Projects (NOT git worktrees)
 
-**Date:** 2026-07-21  
-**Audience:** Claude Cowork / Claude Code agent with **Terminal access** (needs Full Disk Access or Documents permission — Cursor agents often get `Operation not permitted` on `~/Documents`)  
-**Owner goal:** Make missing projects show again in the Claude Cowork **Projects** sidebar.
+**Date:** 2026-07-21 (updated after Cowork agent investigation)  
+**Audience:** Human + agents. Cowork cannot mount `~/Library/Application Support/Claude`. Cursor/Terminal can.  
+**Owner goal:** Projects sidebar shows expected projects; iCloud trusted folders gone.
 
 ---
 
-## 0. Read this first — two different systems
+## 0. Two different systems
 
-| Thing | What it is | Where it lives | UI location |
-|-------|------------|----------------|-------------|
-| **Cowork Projects** | Chat/project spaces (Family Roots, Control Hub, AI Video Tool, …) | `~/Documents/Claude/Projects/` (+ cloud sync via claude.ai) | Cowork sidebar → **Projects** |
-| **Code git worktrees** | Claude Code session checkouts (`admiring-booth`, `strange-mccarthy`, …) | `~/fendi-control-center/.claude/worktrees/` | Code / sessions for that repo — **NOT** the Projects sidebar |
+| Thing | Where | UI |
+|-------|--------|-----|
+| **Cowork Projects** | `~/Documents/Claude/Projects/` + **app registry / claude.ai account** | Sidebar → Projects |
+| **Code git worktrees** | `~/fendi-control-center/.claude/worktrees/` | Code / sessions — **not** Projects sidebar |
 
-**Already restored (do NOT redo unless broken):**
-- Real folder: `/Users/gocrazyglobal/fendi-control-center` (1.6G, **not** a symlink)
-- 57 worktrees + matching `.git/worktrees` metadata
-- Claude pool rebuilt: `~/Library/Application Support/Claude/git-worktrees.json` (57 entries)
-
-If the user says “worktrees aren’t in Projects,” they usually mean **Cowork Projects**. Fix Documents/Claude + Claude app state — not `.claude/worktrees`.
+**Code worktrees already restored — leave alone:**
+- Real dir `/Users/gocrazyglobal/fendi-control-center` (1.6G, 57 worktrees)
+- `~/Library/Application Support/Claude/git-worktrees.json` (57 entries)
 
 ---
 
-## 1. Failure history (why things broke)
+## 1. Corrected root cause (Cowork agent finding)
 
-1. Agent opened iCloud MODEST → hydrated huge media → disk nearly full.
-2. Cleanup moved home repos to T7: `/Volumes/T7/ARCHIVES_FROM_MAC/…`
-3. Symlinks to T7 **looked** fine (`exists=true`) but macOS TCC made them **unreadable** (`R_OK=false`) to Claude → empty UI.
-4. Git worktrees were later restored correctly to `~/fendi-control-center`.
-5. Cowork **Projects** sidebar still incomplete — separate store under Documents + cloud.
+**Folder-on-disk does NOT register a project in the sidebar.**
 
-**Disk now:** internal ~460GB, ~17GB free (tight). T7 ~547GB free. Prefer T7 for media. Never open iCloud MODEST/MUSIC.
+- Compared visible projects (Control Hub, Family Roots) vs **AI Video Tool**
+- No per-folder marker / `.claude/` required (Family Roots shows with no `.claude/` at all)
+- Sidebar membership = Claude app **project registry** (UUID app-state under `~/Library/Application Support/Claude`) + cloud account
+- Cowork **refuses to mount** Application Support/Claude → cannot edit registry or `claude_desktop_config.json` from Cowork
 
----
-
-## 2. Authoritative paths
-
-### Cowork Projects (sidebar)
-
-| Path | Role |
-|------|------|
-| `/Users/gocrazyglobal/Documents/Claude` | `coworkUserFilesPath` from `claude_desktop_config.json` |
-| `/Users/gocrazyglobal/Documents/Claude/Projects/` | Local project folders |
-| `/Users/gocrazyglobal/Documents/Claude/projects/` | Duplicate/alternate casing — check both |
-
-**Confirmed present on disk (probe `test -e`) as of 2026-07-21:**
-- `…/Projects/Family Roots` ✅ (shows in UI)
-- `…/Projects/Control Hub` ✅ (shows in UI)
-- `…/Projects/EMRANI ALI GLOBAL FUNDING` ✅ (shows in UI)
-- `…/Projects/CONTINUUM CAPITAL GROUP` ✅
-- `…/Projects/AI Video Tool` ✅ **exists on disk but user did not see it in sidebar** ← investigate first
-
-**Seen in UI but missing as exact folder name (may be cloud-only or renamed):**
-- taxgenerator
-- Credit Litigation
-- Apartment search
-- How to use Claude / Example project (built-in?)
-
-### Claude app config
-
-| File | Notes |
-|------|--------|
-| `~/Library/Application Support/Claude/claude_desktop_config.json` | `coworkUserFilesPath`, trusted folders |
-| `~/Library/Application Support/Claude/config.json` | OAuth / account |
-| `~/Library/Application Support/Claude/git-worktrees.json` | **Code** worktree pool (already fixed; leave alone unless empty) |
-| `~/.claude.json` | Claude Code `projects` map (paths including worktrees) |
-| `~/.claude/projects/` | Session transcripts keyed by encoded path |
-
-### Code worktrees (already fixed)
-
-| Path | Notes |
-|------|--------|
-| `/Users/gocrazyglobal/fendi-control-center` | Original home path, real directory |
-| `…/.claude/worktrees/` | 57 checkouts |
-| `…/.git/worktrees/` | 57 git admin dirs |
-| `/Volumes/T7/ARCHIVES_FROM_MAC/fendi-control-center` | Backup copy on T7 |
-
-### Dangerous trusted folders still in config (remove or replace)
-
-In `claude_desktop_config.json` → `preferences.localAgentModeTrustedFolders` still includes:
-
-- `…/iCloud…/FENDI FILES/VIDEO/MODEST Member Only shots` ← **caused disk fill**
-- `…/iCloud…/FENDI FILES/CREDIT`
-- entire iCloud Drive root
-
-**Replace MODEST with T7 path** if user still needs it, e.g. `/Volumes/T7/…` (ask user for exact T7 MODEST path). Never re-add iCloud MODEST.
+So Step “drop folder and rescan” in the earlier draft was **wrong**.
 
 ---
 
-## 3. What to do (Cowork Projects restore)
+## 2. Inventory (2026-07-21, Cowork with Documents access)
 
-Run in **Terminal.app** (or Claude with Documents permission). Cursor sandbox often cannot `listdir` Documents.
+**14 folders intact** under `~/Documents/Claude/Projects/` (macOS case-insensitive: `Projects` ≡ `projects`):
 
-### Step A — Inventory local vs UI
+AI Video Tool, ALONZO WAHEED FUNDING, Apartment Unfair Housing, Boltz Automotive, Buzz Genius, CONTINUUM CAPITAL GROUP, Control Hub, EMRANI ALI GLOBAL FUNDING, Family Roots, Fan Fuel Hub, MODEST STREETWEAR APPAREL INC., Production company build, TERRENCE CLEVELAND, (+ Continuum as above).
+
+**AI Video Tool is fully intact on disk** (files through Jul 20) — nothing lost. It may still be missing from the sidebar until re-added in the UI.
+
+---
+
+## 3. Trusted folders — live config (confirmed)
+
+File: `~/Library/Application Support/Claude/claude_desktop_config.json`  
+Key: `preferences.localAgentModeTrustedFolders`
+
+Was (hazardous):
+
+1. `…/CloudDocs/FENDI FILES/CREDIT`
+2. `…/CloudDocs/FENDI FILES/VIDEO/MODEST Member Only shots` ← disk-fill culprit
+3. `/Users/gocrazyglobal/artistgrowthhub-repo` ← keep
+4. `…/CloudDocs` ← **entire iCloud root** (worst)
+
+Script: `scripts/clean_claude_trusted_folders.py`
 
 ```bash
-ls -la "/Users/gocrazyglobal/Documents/Claude"
-ls -la "/Users/gocrazyglobal/Documents/Claude/Projects"
-ls -la "/Users/gocrazyglobal/Documents/Claude/projects"
+# Fully quit Claude first, then:
+python3 /Users/gocrazyglobal/Projects/ai-video-tool/scripts/clean_claude_trusted_folders.py
+python3 /Users/gocrazyglobal/Projects/ai-video-tool/scripts/clean_claude_trusted_folders.py --apply
 ```
 
-Compare to sidebar. Note:
-- On disk but not in sidebar (e.g. **AI Video Tool**)
-- In sidebar but not on disk (cloud-only)
-- Missing from both (need recreate or recover from backup)
-
-### Step B — Fix “on disk but not in sidebar”
-
-For each orphaned folder under `Documents/Claude/Projects/`:
-
-1. Quit Claude completely.
-2. Check for junk / empty project metadata inside the folder (`.claude`, project json, etc.) — list with `ls -la`.
-3. Reopen Claude → Projects → see if it rescans.
-4. If still missing: **Create project** in UI pointing at that existing folder, or open the folder via Claude’s “open project from folder” if available.
-5. Do **not** delete `AI Video Tool` folder — it exists and is likely the missing AVT project.
-
-### Step C — Cloud / account projects
-
-Some sidebar entries (taxgenerator, Credit Litigation, …) may be **claude.ai remote projects**, not local folders. If local folder missing:
-
-1. Confirm user is logged into the same Anthropic account (`lastKnownAccountUuid` in config).
-2. Check claude.ai projects in browser.
-3. Do not recreate duplicates until you confirm cloud vs local.
-
-### Step D — Clean trusted folders (prevent next disk crisis)
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (quit Claude first):
-
-- Remove iCloud MODEST path from `localAgentModeTrustedFolders`
-- Keep working dirs: `~/fendi-control-center`, `~/Projects/ai-video-tool`, etc.
-- Prefer `/Volumes/T7/...` for media
-
-Also enforce repo `CLAUDE.md` rules: no iCloud hydration; media on T7 only.
-
-### Step E — Verify
-
-1. Restart Claude.
-2. Projects sidebar shows **AI Video Tool** (and any other recovered local projects).
-3. Opening AI Video Tool does **not** crawl iCloud MODEST.
-4. Code worktrees (if needed): open `/Users/gocrazyglobal/fendi-control-center` — expect 57 under Code/sessions, not under Projects.
+Creates timestamped backup next to the config. Prefer Cursor/Terminal for this — Cowork cannot write that path.
 
 ---
 
-## 4. Do NOT do
+## 4. What only the human can do (sidebar)
 
-- Do not move/delete `~/Library/Application Support/Claude/vm_bundles` (~10GB).
-- Do not `brctl` / open iCloud MODEST or MUSIC to “find” projects.
-- Do not treat empty `git-worktrees.json` as the Projects sidebar bug (it’s already rebuilt for Code).
-- Do not symlink home repos back to T7 (TCC makes them unreadable to Claude).
-- Do not run `supabase` CLI — Lovable-managed (see each repo’s `CLAUDE.md`).
-- Do not fill the last ~17GB — copy large recoveries to T7 first if needed.
+Cowork cannot control the Claude app window (OS blocks agents operating Claude itself).
 
----
+1. Glance at Projects sidebar — **AI Video Tool may already appear**; don’t create a duplicate.
+2. If missing: **New Project / +** → point at existing folder:  
+   `/Users/gocrazyglobal/Documents/Claude/Projects/AI Video Tool`
+3. Repeat for any other on-disk folders you want in the sidebar (Fan Fuel Hub, MODEST STREETWEAR, etc.) — only if missing from UI.
 
-## 5. Disk / workspace rules (restate every prompt)
-
-Allowed: `/Users/gocrazyglobal/Projects/ai-video-tool`, `/Users/gocrazyglobal/fendi-control-center`, `/Volumes/T7/...`  
-Forbidden: `~/Library/Mobile Documents/com~apple~CloudDocs/**` (especially MODEST / MUSIC)
-
-Details: `claude_code_handoff_avt_workspace_disk_rules.md` + root `CLAUDE.md`.
+Cloud-only sidebar entries (if any) stay tied to the Anthropic account — check claude.ai if a name isn’t a local folder.
 
 ---
 
-## 6. Paste prompt for the restoring agent
+## 5. Do NOT
 
-```
-You are restoring Claude Cowork PROJECTS (sidebar list), NOT git worktrees.
+- Delete `~/Library/Application Support/Claude/vm_bundles`
+- Open / trust iCloud MODEST, MUSIC, or CloudDocs root
+- Symlink repos to T7 (TCC → unreadable to Claude)
+- Hand-edit `claude_desktop_config.json` while Claude is running (it overwrites; use the script after quit)
+- Redo git worktree restore unless registry is empty again
 
-Context handoff: claude_code_handoff_avt_cowork_projects_restore.md
+---
 
-Facts:
-- coworkUserFilesPath = ~/Documents/Claude
-- Local projects under ~/Documents/Claude/Projects/ (also check projects/)
-- AI Video Tool folder EXISTS on disk but may be missing from sidebar — fix that first
-- Code worktrees already restored at ~/fendi-control-center (57) + git-worktrees.json — leave alone
-- Never open iCloud MODEST; media only on /Volumes/T7
-- Internal disk ~17GB free — don't hydrate large iCloud trees
-- Remove MODEST from localAgentModeTrustedFolders in claude_desktop_config.json
+## 6. Disk / workspace
 
-Inventory Documents/Claude/Projects, compare to sidebar, resurface orphaned local projects, then verify AI Video Tool appears after Claude restart.
-```
+- Internal ~17GB free (tight). T7 ~547GB free.
+- Media: `/Volumes/T7` only. See `CLAUDE.md` + `claude_code_handoff_avt_workspace_disk_rules.md`.
 
 ---
 
 ## 7. Success criteria
 
-- [ ] `ls ~/Documents/Claude/Projects` matches expected local projects  
-- [ ] **AI Video Tool** visible in Cowork Projects sidebar  
-- [ ] Other missing local projects recovered or confirmed cloud-only  
-- [ ] MODEST removed from trusted folders  
-- [ ] Disk still ≥10GB free; no iCloud rematerialization  
-- [ ] Code worktrees at `~/fendi-control-center` still intact (regression check)
+- [ ] `clean_claude_trusted_folders.py --apply` run after Claude quit; no CloudDocs paths remain
+- [ ] **AI Video Tool** (and desired others) visible in Projects sidebar
+- [ ] Opening projects does not hydrate iCloud MODEST
+- [ ] `~/fendi-control-center` worktrees still intact
