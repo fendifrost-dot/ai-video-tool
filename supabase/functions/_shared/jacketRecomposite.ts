@@ -18,6 +18,11 @@
 
 import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
 
+// Grayscale morphology lives in a dependency-free module so it is unit-testable
+// in Vitest (this file's imagescript import is Deno-only). Re-exported here so
+// every existing `./jacketRecomposite.ts` import site keeps working unchanged.
+export { closeAlpha, dilateAlpha, erodeAlpha } from "./maskMorphology.ts";
+
 export type RgbaImage = { width: number; height: number; data: Uint8Array };
 
 export async function decodeToRgba(bytes: Uint8Array): Promise<RgbaImage> {
@@ -165,55 +170,6 @@ export function featherAlpha(
     src = dst;
   }
   return src;
-}
-
-/**
- * Grayscale-max dilation (box structuring element) on an alpha channel.
- *
- * Used to GROW the face-guard mask before subtracting it from the garment mask.
- * evf-sam traces the head tightly, so subtracting it un-grown would leave a
- * one-to-two-pixel ring of jacket mask lying directly on his jaw and glasses
- * frames — exactly the pixels the feather then smears. Growing the guard first
- * pushes the garment mask's boundary clear of the head before any feathering
- * happens.
- */
-export function dilateAlpha(
-  alpha: Float32Array,
-  width: number,
-  height: number,
-  radiusPx: number,
-): Float32Array {
-  if (radiusPx <= 0) return alpha;
-  const r = Math.max(1, Math.round(radiusPx));
-  const scratch = new Float32Array(alpha.length);
-  const out = new Float32Array(alpha.length);
-  // Separable: max over a box == max-over-row then max-over-column.
-  for (let y = 0; y < height; y++) {
-    const row = y * width;
-    for (let x = 0; x < width; x++) {
-      let m = 0;
-      for (let dx = -r; dx <= r; dx++) {
-        const xx = x + dx;
-        if (xx < 0 || xx >= width) continue;
-        const v = alpha[row + xx];
-        if (v > m) m = v;
-      }
-      scratch[row + x] = m;
-    }
-  }
-  for (let x = 0; x < width; x++) {
-    for (let y = 0; y < height; y++) {
-      let m = 0;
-      for (let dy = -r; dy <= r; dy++) {
-        const yy = y + dy;
-        if (yy < 0 || yy >= height) continue;
-        const v = scratch[yy * width + x];
-        if (v > m) m = v;
-      }
-      out[y * width + x] = m;
-    }
-  }
-  return out;
 }
 
 /** Per-pixel clamped difference: max(0, base − guard). */

@@ -49,6 +49,12 @@ type SubmitBody = {
   conditioningScale?: number;
   featherPx?: number;
   maskExpand?: number;
+  /** Morphological close radius (px @1080) on the garment mask; 0 disables. */
+  maskClosePx?: number;
+  /** Guarded (flux-general + IP-Adapter) path only: lighter step count. */
+  guardedSteps?: number;
+  /** Guarded (flux-general + IP-Adapter) path only: lighter denoise strength. */
+  guardedStrength?: number;
   maskPrompt?: string;
   prompt?: string;
   negativePrompt?: string;
@@ -331,6 +337,9 @@ serve(async (req) => {
       conditioning_scale: p.conditioningScale,
       feather_px: p.featherPx,
       mask_expand: p.maskExpand,
+      mask_close_px: p.maskClosePx,
+      guarded_steps: p.guardedSteps,
+      guarded_strength: p.guardedStrength,
       mask_prompt: p.maskPrompt,
       // Resolved per-run from the wardrobe row (or overridden by the caller).
       // Recorded so a look is always self-describing about which garment it was

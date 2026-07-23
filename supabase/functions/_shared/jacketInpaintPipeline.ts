@@ -7,6 +7,7 @@ import {
   alphaCoverage,
   alphaToMaskImage,
   ceilTo,
+  closeAlpha,
   cropRgba,
   decodeToRgba,
   dilateAlpha,
@@ -100,6 +101,18 @@ export const DEFAULTS = {
   conditioningScale: 0.65,
   featherPx: 12,
   maskExpand: 4,
+  /**
+   * Morphological CLOSE radius (px @1080×1920) applied to the garment mask
+   * BEFORE the face-guard subtraction. Bridges the gaps evf-sam leaves across
+   * thin/low-contrast limbs (a forearm, a sleeve behind a hand) so the mask is a
+   * single solid outfit region instead of a torso blob with detached arm
+   * fragments. Without it, the recomposite repaints only the connected part and
+   * leaves the original forearm standing — the "floating arm / doubled jacket"
+   * artefact. A close (dilate→erode) fills gaps up to ~2× this without net-
+   * growing the silhouette, so it does NOT bleed into the guarded head/hands.
+   * 0 disables. See closeAlpha in maskMorphology.ts.
+   */
+  maskClosePx: 8,
   maskPrompt: MASKED_GARMENT_MASK_PROMPT,
   /**
    * EMPTY BY DESIGN. The positive prompt describes the TARGET garment, so it
@@ -176,6 +189,25 @@ export const DEFAULTS = {
   // persistent 502); set JACKET_INPAINT_MODEL=flux-general to revert. See
   // INPAINT_MODELS. Kept in sync with DEFAULT_INPAINT_MODEL_KEY.
   inpaintModelKey: "flux-lora" as InpaintModelKey,
+  /**
+   * GUARDED-LANE FLUX LIGHTENING — steps + denoise strength used ONLY on the
+   * flux-general + IP-Adapter path (the guarded-Grok lane). That call, not the
+   * fast flux-lora lane, is the one that HUNG: the live test's flux-general
+   * inpaint returned at ~955s and was reaped by the 15-min (900s) cap — a
+   * ~55s near-miss, not a dead job.
+   *
+   * NOTE: the timed-out run carried NO ControlNet (controlnet defaults to
+   * "none"; commit 0ed8485 wired pose but left it off), so the cost is
+   * flux-general + IP-Adapter at ~1 MP, full 30 steps / 0.85 strength. The
+   * IP-Adapter reference IS a full render of him already wearing the garment,
+   * so it does the heavy lifting on appearance — a full-denoise 30-step pass is
+   * more compute than the swap needs. Trimming to 22 steps / 0.78 strength cuts
+   * inference ~25% (a ~955s job → ~700s, comfortably under the cap) while the
+   * reference keeps garment fidelity. Both are overridable per request; the
+   * plain flux-lora lane keeps the full `steps`/`strength` above.
+   */
+  guardedSteps: 22,
+  guardedStrength: 0.78,
 };
 
 /**
@@ -934,6 +966,21 @@ export async function runPipelineStep(
       const source1080 = resizeRgba(await decodeToRgba(await download(humanUrl)), OUT_W, OUT_H);
       let mask1080 = resizeRgba(await decodeToRgba(await download(state.mask_url)), OUT_W, OUT_H);
 
+      // --- MASK CLOSE (limb reconnection) -----------------------------------
+      // Seal the gaps evf-sam leaves across thin/low-contrast limbs so the
+      // garment mask is one solid outfit region, not a torso blob with detached
+      // arm fragments. This runs FIRST — before the guard subtraction and before
+      // any pad/downscale — so the reconnected mask is what every downstream
+      // artefact derives from. A close (dilate→erode) reconnects and fills holes
+      // without net-growing the silhouette, so the head/hands the guard is about
+      // to remove are unaffected. See closeAlpha / DEFAULTS.maskClosePx.
+      const closePx = p.maskClosePx ?? DEFAULTS.maskClosePx;
+      if (closePx > 0) {
+        const closed = closeAlpha(maskToAlpha(mask1080), OUT_W, OUT_H, closePx);
+        mask1080 = alphaToMaskImage(closed, OUT_W, OUT_H);
+        console.log(`jacket_inpaint_mask_close: radius_px=${closePx} coverage=${alphaCoverage(closed).toFixed(4)}`);
+      }
+
       // --- FACE GUARD SUBTRACTION -------------------------------------------
       // Clip the head/hands back out of the garment mask BEFORE anything is
       // padded, downscaled or uploaded, so every downstream artefact (pad, flux
@@ -1060,6 +1107,15 @@ export async function runPipelineStep(
       const modelKey = resolveInpaintModelKey((p as PipelineParams).inpaintModelKey);
       const modelSpec = INPAINT_MODELS[modelKey];
       const modelId = modelSpec.id;
+      // GUARDED-LANE LIGHTENING. flux-general (the only engine that carries the
+      // IP-Adapter reference) is the endpoint that HUNG at ~955s — a ~55s
+      // overshoot of the 900s cap, NOT a dead job. Trim steps + denoise strength
+      // on that path only; the IP-Adapter reference (a full render of him in the
+      // garment) carries appearance fidelity, so fewer steps still swaps cleanly
+      // and lands well under the cap. The fast flux-lora lane keeps full values.
+      const heavyFluxPath = modelSpec.supportsIpAdapter;
+      const effSteps = heavyFluxPath ? (p.guardedSteps ?? DEFAULTS.guardedSteps) : p.steps;
+      const effStrength = heavyFluxPath ? (p.guardedStrength ?? DEFAULTS.guardedStrength) : p.strength;
       // The positive prompt describes the TARGET garment and has no safe default
       // (see DEFAULTS.prompt). Refuse rather than let flux invent one.
       if (!p.prompt || !p.prompt.trim()) {
@@ -1089,9 +1145,9 @@ export async function runPipelineStep(
         image_url: srcPadUrl,
         mask_url: maskPadUrl,
         prompt: p.prompt,
-        strength: p.strength,
+        strength: effStrength,
         guidance_scale: p.guidanceScale,
-        num_inference_steps: p.steps,
+        num_inference_steps: effSteps,
         seed: p.seed,
         num_images: 1,
       };
@@ -1150,9 +1206,10 @@ export async function runPipelineStep(
         image_size_sent: !!modelSpec.supportsImageSize,
         flux_working_megapixels: Number(((fluxW * fluxH) / 1_000_000).toFixed(2)),
         pad_size: { width: state.pad_w, height: state.pad_h },
-        num_inference_steps: p.steps,
+        num_inference_steps: effSteps,
         guidance_scale: p.guidanceScale,
-        strength: p.strength,
+        strength: effStrength,
+        heavy_flux_path: heavyFluxPath,
         seed: p.seed,
         ip_adapters_count: ipAdaptersArr.length,
         ip_adapter_scale: p.ipAdapterScale,
@@ -1327,15 +1384,23 @@ export async function runPipelineStep(
         flux_working_resolution: { width: state.flux_w ?? FLUX_W, height: state.flux_h ?? FLUX_H },
         flux_runtime_ms: state.flux_runtime_ms ?? null,
         seed: p.seed,
-        strength: p.strength,
+        // Effective values actually sent to flux: the guarded (flux-general +
+        // IP-Adapter) path runs the lightened steps/strength; the flux-lora lane
+        // runs the full values. Mirrors the heavyFluxPath branch in flux_submit.
+        strength: INPAINT_MODELS[resolveInpaintModelKey(p.inpaintModelKey)].supportsIpAdapter
+          ? (p.guardedStrength ?? DEFAULTS.guardedStrength)
+          : p.strength,
         guidance_scale: p.guidanceScale,
-        steps: p.steps,
+        steps: INPAINT_MODELS[resolveInpaintModelKey(p.inpaintModelKey)].supportsIpAdapter
+          ? (p.guardedSteps ?? DEFAULTS.guardedSteps)
+          : p.steps,
         ip_adapter_scale: p.ipAdapterScale,
         controlnet: state.cn_repo ? p.controlnet : "none",
         controlnet_repo: state.cn_repo,
         conditioning_scale: state.cn_repo ? p.conditioningScale : null,
         feather_px: p.featherPx,
         mask_expand: p.maskExpand,
+        mask_close_px: p.maskClosePx ?? DEFAULTS.maskClosePx,
         mask_prompt: p.maskPrompt,
         // Recorded verbatim so a look always says which garment it was ASKED for,
         // now that the prompt is derived per-run rather than being a constant.
