@@ -112,8 +112,9 @@ export async function applyJacketInpaintAndWait(
       )?.generation_metadata?.phase;
       opts?.onTick?.({ elapsedMs: info.elapsedMs, status: info.status, phase });
     },
-    // Cold flux can span multiple 120s poll slices across continue invocations.
-    timeoutMs: 18 * 60 * 1000,
+    // Cold Guarded Grok can span Grok + pad_prepare/upload + flux (≤15 min) +
+    // recomposite across continue invocations. Stay above edge WATCHDOG_STALE_MS.
+    timeoutMs: 22 * 60 * 1000,
     requireTerminal: true,
   });
   return look;

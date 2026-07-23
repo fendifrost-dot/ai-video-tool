@@ -36,3 +36,7 @@ verify_jwt = false
 # See docs/AVT_Wardrobe_Swap_Build_Spec_v2.md §4.
 [functions.jacket-inpaint-proxy]
 verify_jwt = true
+
+# SAM-3 masking only (CC switchx-restyle segment-image). User JWT required.
+[functions.sam3-segment-proxy]
+verify_jwt = true

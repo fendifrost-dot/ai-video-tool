@@ -72,12 +72,14 @@ Read `AVT_MEMORY_HANDOFF.md` for full context. Summary:
 ### Wardrobe pipeline (locked architecture)
 
 ```
-Source Video → FFmpeg frame extract → VTON per frame (fal-ai/idm-vton) → SwitchX propagation → FFmpeg reassembly
+Hero still: SAM-3 mask (SwitchX segment) → Grok outfit swap → lock onto hero → face restore → (pose restore TBD)
+Video:      approved hero → SwitchX / i2v propagation (Phase 2) → FFmpeg reassembly
 ```
 
-- VTON owns garment transfer and fidelity.
-- SwitchX owns temporal consistency and background lock — not wardrobe creation.
-- Kling v2v is disqualified for wardrobe (identity drift).
+- SAM-3 owns masking only — never wardrobe generation.
+- Grok owns outfit appearance (the only engine that won live swap tests).
+- Restore tools own face / pose after Grok.
+- SwitchX Beeble wardrobe mode is not the outfit engine.
 
 ### Key edge functions
 

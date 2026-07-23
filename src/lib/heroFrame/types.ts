@@ -1,6 +1,7 @@
 export type HeroTransferMode = "full_look" | "jacket_only";
 
 export type HeroCandidateLane =
+  | "sam_grok_restore"
   | "masked_inpaint"
   | "guarded_grok"
   | "vton"
@@ -18,10 +19,24 @@ export type HeroCandidateLane =
 export type HeroCandidatePlan =
   | {
       /**
-       * MASKED FULL-OUTFIT INPAINT. evf-sam clothing mask (minus a dilated
-       * head/hands guard) → Flux masked inpaint over that region → deterministic
-       * recomposite onto the real capture. Face/pose/background stay source
-       * bytes. Scope is the entire outfit, not jacket-only.
+       * PRIMARY — what worked in live tests:
+       *   1. SAM-3 mask (SwitchX segment-image) — masking only
+       *   2. Grok /v1/images/edits — the outfit swap
+       *   3. Masked lock onto hero (clothing from Grok, rest hero bytes)
+       *   4. Deterministic face restore
+       * Pose/body restore is a follow-on stage when Grok drifts stance.
+       */
+      lane: "sam_grok_restore";
+      label: string;
+      runIdentity: false;
+      runFaceRestore: boolean;
+      /** Single-word SAM-3 prompt. Default "clothing". */
+      samPrompt?: string;
+    }
+  | {
+      /**
+       * EXPERIMENTAL — evf-sam + flux masked inpaint. Never won a full-outfit
+       * live swap; kept for comparison only.
        */
       lane: "masked_inpaint";
       label: string;
@@ -31,17 +46,8 @@ export type HeroCandidatePlan =
     }
   | {
       /**
-       * PRIMARY — GUARDED GROK FULL OUTFIT.
-       *
-       * Grok is strongest at swapping entire looks. We use that strength for
-       * appearance only:
-       *
-       *   1. Grok /v1/images/edits renders the full frame in the target look.
-       *      Geometry is discarded (Grok has no mask and often re-poses).
-       *   2. That render is the IP-ADAPTER REFERENCE for masked full-outfit
-       *      inpaint. Flux paints in place; recomposite keeps face/pose/bg.
-       *
-       * REQUIRES flux-general (only engine with ip_adapters).
+       * DEMOTED — Grok as IP-Adapter into flux. Put the swap on flux, which
+       * never succeeded as outfit engine in tests.
        */
       lane: "guarded_grok";
       label: string;
@@ -64,29 +70,39 @@ export type HeroCandidatePlan =
     };
 
 /**
- * PRIMARY product lane — Grok full-outfit appearance + masked identity guard.
+ * PRIMARY product lane — SAM-3 mask → Grok outfit → lock → face restore.
+ * See docs/AVT_masked_garment_swap_LOCKED.md.
  */
-export const GUARDED_GROK_PLAN: HeroCandidatePlan = {
-  lane: "guarded_grok",
-  label: "Guarded Grok · Full outfit (primary)",
+export const SAM_GROK_RESTORE_PLAN: HeroCandidatePlan = {
+  lane: "sam_grok_restore",
+  label: "SAM-3 → Grok · Full outfit (primary)",
   runIdentity: false,
   runFaceRestore: true,
+  samPrompt: "clothing",
 };
+
+/** @deprecated Use SAM_GROK_RESTORE_PLAN. Kept so old UI strings resolve. */
+export const GUARDED_GROK_PLAN: HeroCandidatePlan = SAM_GROK_RESTORE_PLAN;
 
 /**
  * Default candidate matrix (run order).
  *
- * 1. GUARDED GROK — canonical: Grok full-look fidelity + structural face/pose
- * 2. MASKED INPAINT — full-outfit mask without Grok reference (wardrobe still)
- * 3. IDM-VTON full-look — declared fallback
- * 4. RAW GROK — comparison only (re-renders every pixel)
- * 5. CatVTON full-look
+ * 1. SAM-3 → Grok → lock — canonical (tools that worked)
+ * 2. Raw Grok — comparison (no SAM-3 lock)
+ * 3. Masked flux — experimental
+ * 4. IDM-VTON / CatVTON — fallback
  */
 export const HERO_CANDIDATE_PLANS: HeroCandidatePlan[] = [
-  GUARDED_GROK_PLAN,
+  SAM_GROK_RESTORE_PLAN,
+  {
+    lane: "grok_image_edit",
+    label: "Grok Image-Edit · Full look (comparison, no SAM-3 lock)",
+    runIdentity: false,
+    runFaceRestore: true,
+  },
   {
     lane: "masked_inpaint",
-    label: "Masked Inpaint · Full outfit (no Grok ref)",
+    label: "Masked Inpaint · Full outfit (experimental)",
     runIdentity: false,
     runFaceRestore: true,
     inpaintModelKey: "flux-general",
@@ -100,16 +116,10 @@ export const HERO_CANDIDATE_PLANS: HeroCandidatePlan[] = [
     runFaceRestore: true,
   },
   {
-    lane: "grok_image_edit",
-    label: "Grok Image-Edit · Full look (comparison only)",
-    runIdentity: true,
-    runFaceRestore: true,
-  },
-  {
     lane: "vton",
     transferMode: "full_look",
     vtonModel: "cat-vton",
-    label: "Full-look · CatVTON",
+    label: "Full-look · CatVTON (fallback)",
     runIdentity: false,
     runFaceRestore: true,
   },
@@ -128,6 +138,9 @@ export type HeroCandidateResult = {
   faceLookId?: string | null;
   /** Why the face composite was skipped, if it was attempted and refused. */
   faceRestoreError?: string;
+  /** SAM-3 → Grok outfit-lock child, when that step ran. */
+  outfitLockLookId?: string | null;
+  outfitLockError?: string;
   previewPath: string | null;
   error?: string;
 };
@@ -148,6 +161,7 @@ export type HeroFrameSessionMeta = {
     garment_look_id: string;
     identity_look_id: string;
     face_look_id?: string | null;
+    outfit_lock_look_id?: string | null;
     identity_restored: boolean;
   }>;
 };

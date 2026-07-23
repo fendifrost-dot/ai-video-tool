@@ -86,8 +86,30 @@ export const WATCHDOG_STALE_MS = 20 * 60_000; // 20 min (> FLUX_POLL_MAX_MS)
  * resumes idempotently from the last checkpoint. Must exceed a full poll slice
  * (POLL_SLICE_MS = 120s) so a run that is legitimately mid-poll — and only writes
  * at slice boundaries — is never mistaken for stalled.
+ *
+ * Also must exceed a worst-case pad_upload (mask close + PNG encodes + uploads).
+ * Heartbeats inside pad_upload keep updated_at fresh; 4 min is the safety floor.
  */
-export const RESUME_STALL_MS = 3 * 60_000; // 3 min
+export const RESUME_STALL_MS = 4 * 60_000; // 4 min
+
+/** Pipeline preferences owned by jacket-inpaint-proxy (watchdog must cover ALL). */
+export const JACKET_INPAINT_PIPELINE_PREFS = [
+  "jacket_only_inpaint_masked",
+  "guarded_grok_masked_inpaint",
+] as const;
+
+export function isJacketInpaintRecipe(recipe: Record<string, unknown> | null | undefined): boolean {
+  if (!recipe) return false;
+  const pref = recipe.pipeline_preference;
+  if (
+    pref === "jacket_only_inpaint_masked" ||
+    pref === "guarded_grok_masked_inpaint"
+  ) {
+    return true;
+  }
+  // Back-compat: any row that carries durable jacket state is ours.
+  return !!recipe.jacket_inpaint_state;
+}
 
 export const RETRY_DELAYS_MS = [2000, 4000, 8000];
 
@@ -191,23 +213,13 @@ export const DEFAULTS = {
   inpaintModelKey: "flux-lora" as InpaintModelKey,
   /**
    * GUARDED-LANE FLUX LIGHTENING — steps + denoise strength used ONLY on the
-   * flux-general + IP-Adapter path (the guarded-Grok lane). That call, not the
-   * fast flux-lora lane, is the one that HUNG: the live test's flux-general
-   * inpaint returned at ~955s and was reaped by the 15-min (900s) cap — a
-   * ~55s near-miss, not a dead job.
-   *
-   * NOTE: the timed-out run carried NO ControlNet (controlnet defaults to
-   * "none"; commit 0ed8485 wired pose but left it off), so the cost is
-   * flux-general + IP-Adapter at ~1 MP, full 30 steps / 0.85 strength. The
-   * IP-Adapter reference IS a full render of him already wearing the garment,
-   * so it does the heavy lifting on appearance — a full-denoise 30-step pass is
-   * more compute than the swap needs. Trimming to 22 steps / 0.78 strength cuts
-   * inference ~25% (a ~955s job → ~700s, comfortably under the cap) while the
-   * reference keeps garment fidelity. Both are overridable per request; the
-   * plain flux-lora lane keeps the full `steps`/`strength` above.
+   * flux-general + IP-Adapter path (Guarded Grok). Grok's render carries outfit
+   * appearance (the only engine that actually swaps the look in live tests);
+   * flux only needs enough steps to paint that appearance into the mask in place.
+   * 18 / 0.72 targets ~10–12 min wall time under the 15-min poll cap.
    */
-  guardedSteps: 22,
-  guardedStrength: 0.78,
+  guardedSteps: 18,
+  guardedStrength: 0.72,
 };
 
 /**
@@ -329,6 +341,9 @@ export type JacketInpaintStep =
   | "face_guard_poll"
   | "depth_submit"
   | "depth_poll"
+  /** Mask close + face-guard subtract + coverage check + source/mask upload. */
+  | "pad_prepare"
+  /** Flux-sized asset encode/upload only (resumable; skips full pad PNG diagnostics). */
   | "pad_upload"
   | "flux_submit"
   | "flux_poll"
@@ -764,7 +779,7 @@ export async function markFailed(
  *
  *   • age > WATCHDOG_STALE_MS (20 min, hard cap): presumed dead beyond recovery →
  *     write terminal (`failed` + failed_step + fal_error_raw). Final bail.
- *   • stall > RESUME_STALL_MS (3 min since last write) but under the hard cap:
+ *   • stall > RESUME_STALL_MS (4 min since last write) but under the hard cap:
  *     presumed STALLED (a handoff was dropped) → RESUME by re-invoking `continue`,
  *     which picks up idempotently from the last checkpoint. A poll step re-polls
  *     the stored Fal status_url/response_url (no duplicate Fal job); a step that
@@ -792,7 +807,11 @@ export async function sweepStaleRuns(
     if (error || !rows) return { resumed, reaped, scanned };
     for (const row of rows as Array<Record<string, unknown>>) {
       const recipe = (row.composition_recipe_json ?? {}) as Record<string, unknown>;
-      if (recipe.pipeline_preference !== "jacket_only_inpaint_masked") continue;
+      // CRITICAL: Guarded Grok uses pipeline_preference=guarded_grok_masked_inpaint.
+      // The old filter only matched jacket_only_inpaint_masked, so primary-lane
+      // runs were NEVER resumed/reaped — they sat on pad_upload until the client
+      // timed out at 1080s. Cover every durable jacket-inpaint preference.
+      if (!isJacketInpaintRecipe(recipe)) continue;
       const state = recipe.jacket_inpaint_state as JacketInpaintState | undefined;
       if (!state?.step || state.step === "complete" || state.step === "failed") continue;
       scanned++;
@@ -885,13 +904,13 @@ export async function runPipelineStep(
       state.mask_url = firstImageUrl(poll.result);
       if (!state.mask_url) throw new Error("mask_no_url");
       state.fal_queue = null;
-      state.step = p.faceGuard ? "face_guard_submit" : (state.cn_repo ? "depth_submit" : "pad_upload");
+      state.step = p.faceGuard ? "face_guard_submit" : (state.cn_repo ? "depth_submit" : "pad_prepare");
       await persistState(ctx, state.look_id, state);
       return { terminal: false, schedule: true };
     }
 
     // --- FACE GUARD: second evf-sam pass over the head/hands. Its output is
-    //     dilated and subtracted from the garment mask in pad_upload, so the
+    //     dilated and subtracted from the garment mask in pad_prepare, so the
     //     region handed to flux provably contains no head pixels. Same model,
     //     same CC allowlist entry, same queue plumbing as the garment mask —
     //     only the text prompt differs.
@@ -903,7 +922,7 @@ export async function runPipelineStep(
           prompt: p.faceGuardPrompt,
           mask_only: true,
           // No expand here — the guard is grown deliberately (and measurably)
-          // by dilateAlpha at 1080 in pad_upload, not by an opaque model knob.
+          // by dilateAlpha at 1080 in pad_prepare, not by an opaque model knob.
           expand_mask: 0,
           fill_holes: true,
         }));
@@ -927,7 +946,7 @@ export async function runPipelineStep(
         console.error("face_guard_no_url: proceeding with un-guarded garment mask");
       }
       state.fal_queue = null;
-      state.step = state.cn_repo ? "depth_submit" : "pad_upload";
+      state.step = state.cn_repo ? "depth_submit" : "pad_prepare";
       await persistState(ctx, state.look_id, state);
       return { terminal: false, schedule: true };
     }
@@ -955,25 +974,21 @@ export async function runPipelineStep(
       state.depth_url = firstImageUrl(poll.result);
       if (!state.depth_url) throw new Error(`control_${p.controlnet}_no_url`);
       state.fal_queue = null;
-      state.step = "pad_upload";
+      state.step = "pad_prepare";
       await persistState(ctx, state.look_id, state);
       return { terminal: false, schedule: true };
     }
 
-    case "pad_upload": {
+    case "pad_prepare": {
+      // Durable step 1/2 of the old monolithic pad_upload: CPU-heavy mask prep
+      // + source/mask persistence. If the isolate dies here, resume redoes this
+      // step; pad_upload then only encodes the flux-sized assets.
       const humanUrl = await signSceneUrl(admin, state);
       if (!state.mask_url) throw new Error("pad_missing_mask_url");
       const source1080 = resizeRgba(await decodeToRgba(await download(humanUrl)), OUT_W, OUT_H);
       let mask1080 = resizeRgba(await decodeToRgba(await download(state.mask_url)), OUT_W, OUT_H);
 
       // --- MASK CLOSE (limb reconnection) -----------------------------------
-      // Seal the gaps evf-sam leaves across thin/low-contrast limbs so the
-      // garment mask is one solid outfit region, not a torso blob with detached
-      // arm fragments. This runs FIRST — before the guard subtraction and before
-      // any pad/downscale — so the reconnected mask is what every downstream
-      // artefact derives from. A close (dilate→erode) reconnects and fills holes
-      // without net-growing the silhouette, so the head/hands the guard is about
-      // to remove are unaffected. See closeAlpha / DEFAULTS.maskClosePx.
       const closePx = p.maskClosePx ?? DEFAULTS.maskClosePx;
       if (closePx > 0) {
         const closed = closeAlpha(maskToAlpha(mask1080), OUT_W, OUT_H, closePx);
@@ -981,11 +996,10 @@ export async function runPipelineStep(
         console.log(`jacket_inpaint_mask_close: radius_px=${closePx} coverage=${alphaCoverage(closed).toFixed(4)}`);
       }
 
+      // Heartbeat so RESUME_STALL_MS does not mistake a long close for a dead chain.
+      await persistState(ctx, state.look_id, state);
+
       // --- FACE GUARD SUBTRACTION -------------------------------------------
-      // Clip the head/hands back out of the garment mask BEFORE anything is
-      // padded, downscaled or uploaded, so every downstream artefact (pad, flux
-      // input, recomposite alpha) derives from the already-guarded mask and they
-      // cannot disagree about where the jacket ends.
       if (state.face_guard_url) {
         const guard1080 = resizeRgba(
           await decodeToRgba(await download(state.face_guard_url)),
@@ -1008,9 +1022,6 @@ export async function runPipelineStep(
           removed_fraction: Number(Math.max(0, before - after).toFixed(4)),
         };
         console.log("jacket_inpaint_face_guard:", JSON.stringify(state.mask_guard_stats));
-        // Sanity floor: if the guard ate essentially the whole garment mask,
-        // evf-sam grounded the guard prompt on the torso instead of the head.
-        // Keep the un-guarded mask rather than sending flux an empty region.
         if (after < 0.01 && before >= 0.01) {
           console.error(
             "face_guard_rejected: guard removed nearly the entire garment mask " +
@@ -1024,20 +1035,6 @@ export async function runPipelineStep(
         }
       }
 
-      // --- NEAR-ZERO COVERAGE GUARD -----------------------------------------
-      // FAIL LOUDLY rather than complete with an unchanged image. If the mask is
-      // essentially empty, evf-sam grounded `maskPrompt` on nothing — almost
-      // always because the prompt describes the TARGET garment instead of the one
-      // actually worn in the frame (naming a cream track jacket on a camo clip
-      // matches no pixels). Everything downstream would still "succeed": flux
-      // would inpaint a sliver, the recomposite would blend ~nothing, and the look
-      // would go `complete` holding a byte-copy of the source. That reads as a
-      // finished swap in the UI. This is the single check that makes that
-      // impossible — it runs on the GUARDED mask, i.e. what flux actually gets.
-      // `?? DEFAULTS` — a run that was already in flight when this deployed has
-      // params written before minMaskCoverage existed. Without the fallback the
-      // comparison against `undefined` is always false and the guard silently
-      // does nothing, which is the exact failure mode it exists to prevent.
       const minCoverage = p.minMaskCoverage ?? DEFAULTS.minMaskCoverage;
       const finalCoverage = alphaCoverage(maskToAlpha(mask1080));
       state.mask_coverage = Number(finalCoverage.toFixed(4));
@@ -1055,34 +1052,61 @@ export async function runPipelineStep(
       }
 
       state.source1080_storage_path = `${base}_source1080.png`;
-      await timed("pad_upload", async () => {
+      state.mask_storage_path = `${base}_mask.png`;
+      await timed("pad_prepare", async () => {
         await uploadBytes(admin, state.source1080_storage_path!, await encodePng(source1080));
-        // Padded ÷16 canvases (edge-fill scene/depth, black-fill mask). Kept for
-        // diagnostics + as the exact geometry the flux downscale derives from.
+        await uploadBytes(admin, state.mask_storage_path!, await encodePng(mask1080));
+      });
+      state.step = "pad_upload";
+      await persistState(ctx, state.look_id, state);
+      return { terminal: false, schedule: true };
+    }
+
+    case "pad_upload": {
+      // Durable step 2/2: flux-sized (~1 MP) assets only. Full pad PNG diagnostics
+      // were dropped — they doubled encode/upload cost and were the main reason
+      // Guarded Grok died mid-pad_upload with no watchdog resume.
+      // Back-compat: older checkpoints may land here without source/mask paths
+      // (monolithic pad_upload). Fall through by re-running pad_prepare logic via
+      // a one-shot prepare if paths are missing.
+      if (!state.source1080_storage_path || !state.mask_storage_path) {
+        state.step = "pad_prepare";
+        await persistState(ctx, state.look_id, state);
+        return { terminal: false, schedule: true };
+      }
+
+      const source1080 = resizeRgba(
+        await decodeToRgba(
+          await download(await signPath(admin, "look-composites", state.source1080_storage_path)),
+        ),
+        OUT_W,
+        OUT_H,
+      );
+      const mask1080 = resizeRgba(
+        await decodeToRgba(
+          await download(await signPath(admin, "look-composites", state.mask_storage_path)),
+        ),
+        OUT_W,
+        OUT_H,
+      );
+
+      await persistState(ctx, state.look_id, state); // heartbeat before heavy encodes
+
+      await timed("pad_upload", async () => {
+        // In-memory pad → flux downscale. Do NOT upload full pad canvases.
         const srcPad = padRgba(source1080, state.pad_w, state.pad_h, "edge");
         const maskPad = padRgba(mask1080, state.pad_w, state.pad_h, "black");
-        state.src_pad_storage_path = `${base}_pad_src.png`;
-        state.mask_pad_storage_path = `${base}_pad_mask.png`;
-        await uploadBytes(admin, state.src_pad_storage_path, await encodePng(srcPad));
-        await uploadBytes(admin, state.mask_pad_storage_path, await encodePng(maskPad));
-        // Flux-sized (~1 MP) downscales — what flux actually inpaints on. Scene and
-        // mask get the IDENTICAL down-transform from the padded canvas, so their
-        // alignment is preserved; the output is upscaled back to pad_w×pad_h before
-        // the crop, so mask alignment survives the full round trip.
         state.src_flux_storage_path = `${base}_flux_src.png`;
         state.mask_flux_storage_path = `${base}_flux_mask.png`;
         await uploadBytes(admin, state.src_flux_storage_path, await encodePng(resizeRgba(srcPad, FLUX_W, FLUX_H)));
+        await persistState(ctx, state.look_id, state); // heartbeat mid-upload
         await uploadBytes(admin, state.mask_flux_storage_path, await encodePng(resizeRgba(maskPad, FLUX_W, FLUX_H)));
         if (state.depth_url) {
           const depth1080 = resizeRgba(await decodeToRgba(await download(state.depth_url)), OUT_W, OUT_H);
           const depthPad = padRgba(depth1080, state.pad_w, state.pad_h, "edge");
-          state.depth_pad_storage_path = `${base}_pad_depth.png`;
-          await uploadBytes(admin, state.depth_pad_storage_path, await encodePng(depthPad));
           state.depth_flux_storage_path = `${base}_flux_depth.png`;
           await uploadBytes(admin, state.depth_flux_storage_path, await encodePng(resizeRgba(depthPad, FLUX_W, FLUX_H)));
         }
-        state.mask_storage_path = `${base}_mask.png`;
-        await uploadBytes(admin, state.mask_storage_path, await encodePng(mask1080));
       });
       state.step = "flux_submit";
       await persistState(ctx, state.look_id, state);

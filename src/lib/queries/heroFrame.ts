@@ -6,6 +6,8 @@ import { applyGrokGarmentTruthAndWait } from "@/lib/queries/grokImageGarment";
 import { applyGarmentVtonAndWait } from "@/lib/queries/wardrobeVton";
 import { faceRestore, HEAD_RESTORE_PADDING } from "@/lib/queries/faceRestore";
 import { applyJacketInpaintAndWait } from "@/lib/queries/jacketInpaint";
+import { callSam3Segment } from "@/lib/queries/sam3Segment";
+import { grokOutfitLock } from "@/lib/queries/grokOutfitLock";
 import {
   HERO_CANDIDATE_PLANS,
   type HeroCandidatePlan,
@@ -74,7 +76,7 @@ export type GenerateHeroCandidatesInput = {
   sessionId: string;
   plans?: HeroCandidatePlan[];
   onProgress?: (info: {
-    phase: "garment" | "identity" | "face" | "done";
+    phase: "mask" | "garment" | "lock" | "identity" | "face" | "done";
     index: number;
     total: number;
     label: string;
@@ -138,14 +140,96 @@ export async function generateHeroCandidates(
     try {
       let garmentLook: Awaited<ReturnType<typeof pollArtistLook>>;
       let garmentLookId: string;
+      let identityLook: Awaited<ReturnType<typeof pollArtistLook>>;
+      let identityLookId: string;
+      let outfitLockLookId: string | null = null;
+      let outfitLockError: string | undefined;
+      let faceLookId: string | null = null;
+      let facePreviewPath: string | null = null;
+      let faceRestoreError: string | undefined;
 
-      if (plan.lane === "masked_inpaint") {
-        // Primary lane. NO PROMPTS ARE SENT. jacket-inpaint-proxy derives them
-        // from the selected wardrobe row and records them verbatim on the look's
-        // recipe, so provenance is kept without the client carrying a constant.
-        // The client used to send a hardcoded Saint Laurent description on every
-        // run — which meant selecting any other garment changed the reference
-        // image but not the instruction, and the lane painted the old jacket.
+      if (plan.lane === "sam_grok_restore") {
+        // PRIMARY — tools that worked in live tests (see LOCKED.md).
+        // 1) SAM-3 clothing mask  2) Grok outfit swap  3) lock onto hero  4) face restore
+        const samPrompt = plan.samPrompt ?? "clothing";
+        input.onProgress?.({
+          phase: "mask",
+          index,
+          total: plans.length,
+          label: plan.label,
+        });
+        const sam = await callSam3Segment({
+          scenePath: input.scenePath,
+          sceneBucket: input.sceneBucket ?? "project-references",
+          prompt: samPrompt,
+          artistId: input.artistId,
+        });
+
+        input.onProgress?.({
+          phase: "garment",
+          index,
+          total: plans.length,
+          label: plan.label,
+        });
+        const grokLook = await applyGrokGarmentTruthAndWait(
+          {
+            artistId: input.artistId,
+            wardrobeFeatureId: input.wardrobeFeatureId,
+            scenePath: input.scenePath,
+            sceneBucket: input.sceneBucket ?? "project-references",
+            heroFrameSessionId: input.sessionId,
+            candidateIndex: index,
+            projectId: input.projectId,
+            name: `Hero ${index + 1} · ${plan.label} · grok`,
+          },
+          { signal: input.signal },
+        );
+        garmentLookId = grokLook.id;
+        garmentLook = grokLook;
+        identityLook = grokLook;
+        identityLookId = grokLook.id;
+
+        const recipe = (grokLook.composition_recipe_json ?? {}) as Record<string, unknown>;
+        await supabase
+          .from("artist_looks")
+          .update({
+            composition_recipe_json: {
+              ...recipe,
+              pipeline_preference: "sam_grok_restore",
+              sam3_mask_path: sam.maskPath,
+              sam3_prompt: sam.prompt,
+              pose_restore_status: "pending",
+            },
+          })
+          .eq("id", grokLook.id);
+
+        input.onProgress?.({
+          phase: "lock",
+          index,
+          total: plans.length,
+          label: plan.label,
+        });
+        try {
+          const locked = await grokOutfitLock({
+            grokLookId: grokLook.id,
+            heroFramePath: input.scenePath,
+            heroBucket: input.sceneBucket ?? "project-references",
+            sam3MaskPath: sam.maskPath,
+            sam3Prompt: sam.prompt,
+          });
+          outfitLockLookId = locked.lookId;
+          identityLookId = locked.lookId;
+          identityLook = await pollArtistLook(locked.lookId, {
+            signal: input.signal,
+            requireTerminal: true,
+            timeoutMs: 60_000,
+          });
+        } catch (err) {
+          outfitLockError = err instanceof Error ? err.message : String(err);
+        }
+      } else if (plan.lane === "masked_inpaint") {
+        // Experimental. NO PROMPTS ARE SENT — jacket-inpaint-proxy derives them
+        // from the selected wardrobe row.
         garmentLook = await applyJacketInpaintAndWait(
           {
             artistId: input.artistId,
@@ -162,22 +246,10 @@ export async function generateHeroCandidates(
           { signal: input.signal },
         );
         garmentLookId = garmentLook.id;
+        identityLook = garmentLook;
+        identityLookId = garmentLookId;
       } else if (plan.lane === "guarded_grok") {
-        // GUARDED GROK — two models, one guarantee.
-        //
-        // Step 1: Grok renders the full frame wearing the garment. This is the
-        // best garment fidelity available to us, and it is rendered on HIM, in
-        // THIS frame's lighting — a far better appearance reference than a flat
-        // product still. We take nothing structural from it.
-        //
-        // Step 2: that render is handed to the ordinary masked inpaint as the
-        // IP-Adapter reference. Grok routinely re-poses the subject (it has no
-        // mask parameter and repaints every pixel), so its output is often NOT
-        // aligned to the hero frame — but IP-Adapter conditions on CLIP image
-        // embeddings rather than pixel positions, so misalignment does not
-        // matter here the way it would for any paste or warp. Flux inpaints in
-        // place against the REAL frame, and the deterministic recomposite writes
-        // only inside the mask. Face, pose and background stay original bytes.
+        // DEMOTED — Grok as IP-Adapter into flux (kept for comparison).
         const grokLook = await applyGrokGarmentTruthAndWait(
           {
             artistId: input.artistId,
@@ -209,15 +281,13 @@ export async function generateHeroCandidates(
             faceGuard: true,
             ipAdapterImagePath: grokPath,
             ipAdapterImageBucket: "look-composites",
-            // flux-general is the ONLY engine with an ip_adapters field. Pinned
-            // explicitly (not left to the env default) because the whole lane is
-            // the reference — the proxy fails loudly rather than silently
-            // dropping it if this ever resolves to flux-lora.
             inpaintModelKey: "flux-general",
           },
           { signal: input.signal },
         );
         garmentLookId = garmentLook.id;
+        identityLook = garmentLook;
+        identityLookId = garmentLookId;
       } else if (plan.lane === "grok_image_edit") {
         garmentLook = await applyGrokGarmentTruthAndWait(
           {
@@ -233,6 +303,8 @@ export async function generateHeroCandidates(
           { signal: input.signal },
         );
         garmentLookId = garmentLook.id;
+        identityLook = garmentLook;
+        identityLookId = garmentLookId;
       } else {
         garmentLook = await applyGarmentVtonAndWait(
           {
@@ -251,13 +323,9 @@ export async function generateHeroCandidates(
           { signal: input.signal },
         );
         garmentLookId = garmentLook.id;
+        identityLook = garmentLook;
+        identityLookId = garmentLookId;
       }
-
-      let identityLook = garmentLook;
-      let identityLookId = garmentLookId;
-      let faceLookId: string | null = null;
-      let facePreviewPath: string | null = null;
-      let faceRestoreError: string | undefined;
 
       if (plan.runIdentity) {
         input.onProgress?.({
@@ -277,21 +345,9 @@ export async function generateHeroCandidates(
         identityLookId = identityLook.id;
       }
 
-      // DETERMINISTIC IDENTITY LOCK — his real head, his own pixels, composited
-      // back over whatever the garment engine produced. Runs on EVERY lane, not
-      // just the generative one:
-      //   • grok         — the face-swap pass regenerated a face rather than
-      //                    restoring his, so the candidate still doesn't read as
-      //                    him without this.
-      //   • masked_inpaint / guarded_grok / vton — the head was never
-      //                    re-rendered (on guarded_grok no Grok pixel reaches the
-      //                    output at all — it is only an IP-Adapter reference), so this is
-      //                    belt-and-braces: it re-seats his exact head over any
-      //                    drift the engine introduced, and costs nothing when
-      //                    there was none (it composites his pixels over his
-      //                    pixels).
-      // Non-fatal throughout: detection refuses rather than guesses (see
-      // faceRestore), and a refusal must not throw away a good garment.
+      // DETERMINISTIC FACE RESTORE — real hero head onto whatever garment+lock produced.
+      // On sam_grok_restore the outfit lock already kept most of the head as hero
+      // bytes; this reseats any residual Grok face drift. Non-fatal.
       if (plan.runFaceRestore) {
         input.onProgress?.({
           phase: "face",
@@ -304,10 +360,10 @@ export async function generateHeroCandidates(
             targetLookId: identityLookId,
             heroFramePath: input.scenePath,
             heroBucket: input.sceneBucket ?? "project-references",
-            // Whole-head oval where the destination background is already his
-            // real background (see HEAD_RESTORE_PADDING); the narrower face
-            // default on Grok, which re-renders the background behind his head.
-            padding: plan.lane === "grok_image_edit" ? undefined : HEAD_RESTORE_PADDING,
+            // Whole-head oval when destination bg is already his (lock / masked /
+            // vton). Narrower face default on raw Grok (re-rendered background).
+            padding:
+              plan.lane === "grok_image_edit" ? undefined : HEAD_RESTORE_PADDING,
           });
           faceLookId = restored.lookId;
           facePreviewPath = restored.storagePath;
@@ -323,6 +379,8 @@ export async function generateHeroCandidates(
         identityLookId,
         faceLookId,
         faceRestoreError,
+        outfitLockLookId,
+        outfitLockError,
         previewPath:
           facePreviewPath ??
           identityLook.generated_storage_path ??
@@ -411,6 +469,7 @@ export function buildSessionMeta(input: {
         garment_look_id: c.garmentLookId,
         identity_look_id: c.identityLookId,
         face_look_id: c.faceLookId ?? null,
+        outfit_lock_look_id: c.outfitLockLookId ?? null,
         // Only true when his real face actually made it back in — a refused
         // composite must not be recorded as an identity-restored hero.
         identity_restored: c.plan.runFaceRestore && Boolean(c.faceLookId),

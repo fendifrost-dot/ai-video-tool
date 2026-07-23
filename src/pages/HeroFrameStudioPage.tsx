@@ -29,7 +29,7 @@ import {
 } from "@/lib/queries/heroFrame";
 import { signLookPreviewUrl } from "@/lib/queries/looks";
 import {
-  GUARDED_GROK_PLAN,
+  SAM_GROK_RESTORE_PLAN,
   type HeroCandidateResult,
 } from "@/lib/heroFrame/types";
 import {
@@ -82,7 +82,7 @@ export default function HeroFrameStudioPage({
   const [dstQuad, setDstQuad] = useState<QuadNorm>(EYE_QUAD_DEFAULT);
   const [eyewearBusy, setEyewearBusy] = useState(false);
   const [eyewearLookId, setEyewearLookId] = useState<string | null>(null);
-  // Single-lane Guarded Grok full-outfit run (canonical product path).
+  // Single-lane SAM-3 → Grok primary run (canonical product path).
   const [primaryBusy, setPrimaryBusy] = useState(false);
   const [primaryProgress, setPrimaryProgress] = useState<string | null>(null);
   const [primaryCandidate, setPrimaryCandidate] = useState<HeroCandidateResult | null>(
@@ -240,7 +240,7 @@ export default function HeroFrameStudioPage({
     }
   }
 
-  async function handleGuardedGrokPrimary() {
+  async function handleSamGrokPrimary() {
     if (!artistId || !heroScenePath || !garmentId) return;
     setPrimaryBusy(true);
     setPrimaryProgress("Submitting…");
@@ -256,14 +256,14 @@ export default function HeroFrameStudioPage({
         sceneBucket: "project-references",
         frameTimeSec: scrubTime,
         sessionId,
-        plans: [GUARDED_GROK_PLAN],
+        plans: [SAM_GROK_RESTORE_PLAN],
         onProgress: ({ phase, label }) => {
           setPrimaryProgress(`${phase}: ${label}`);
         },
       });
       const result = results[0];
       if (!result || result.error) {
-        throw new Error(result?.error ?? "Guarded Grok full-outfit run failed");
+        throw new Error(result?.error ?? "SAM-3 → Grok full-outfit run failed");
       }
       setPrimaryCandidate(result);
       if (result.previewPath) {
@@ -272,9 +272,9 @@ export default function HeroFrameStudioPage({
           : await signLookPreviewUrl(result.previewPath, 3600);
         setPrimaryUrl(url ?? null);
       }
-      toast.success("Guarded Grok full-outfit swap complete");
+      toast.success("SAM-3 → Grok full-outfit swap complete");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Guarded Grok failed");
+      toast.error(err instanceof Error ? err.message : "SAM-3 → Grok primary failed");
     } finally {
       setPrimaryBusy(false);
       setPrimaryProgress(null);
@@ -283,7 +283,10 @@ export default function HeroFrameStudioPage({
 
   async function handleApprovePrimary() {
     if (!artistId || !primaryCandidate || !heroScenePath) return;
-    const lookId = primaryCandidate.faceLookId ?? primaryCandidate.identityLookId;
+    const lookId =
+      primaryCandidate.faceLookId ??
+      primaryCandidate.outfitLockLookId ??
+      primaryCandidate.identityLookId;
     try {
       await approveHeroFrameLook({
         artistId,
@@ -348,11 +351,9 @@ export default function HeroFrameStudioPage({
       (c) => c.plan.runFaceRestore && !c.error && !!candidateUrls[c.identityLookId],
     );
     return (
-      usable.find((c) => c.plan.lane === "masked_inpaint") ??
-      // Guarded Grok is a masked-inpaint output too (Grok only supplies the
-      // IP-Adapter reference), so the same eyewear-quad correction applies.
-      usable.find((c) => c.plan.lane === "guarded_grok") ??
+      usable.find((c) => c.plan.lane === "sam_grok_restore") ??
       usable.find((c) => c.plan.lane === "grok_image_edit") ??
+      usable.find((c) => c.plan.lane === "masked_inpaint") ??
       null
     );
   }, [candidates, candidateUrls]);
@@ -405,7 +406,7 @@ export default function HeroFrameStudioPage({
       <PageHeader
         variant="compact"
         title="Hero Frame Studio"
-        subtitle="Phase 1 — capture source frame, run Guarded Grok full-outfit swap (masked identity), approve one hero still."
+        subtitle="Phase 1 — capture source frame, run SAM-3 → Grok full-outfit (mask → swap → lock → face), approve one hero still."
       />
       <div className="space-y-6 px-4 py-6 md:px-8">
         <section className="rounded-md border border-border bg-card/30 p-4 space-y-3">
@@ -510,9 +511,8 @@ export default function HeroFrameStudioPage({
             3 · Generate candidates
           </h2>
           <p className="text-xs text-muted-foreground">
-            Runs the candidate matrix. Primary is Guarded Grok full-outfit
-            (Grok appearance + masked identity). Also includes masked full-outfit
-            without Grok, VTON full-look fallbacks, and raw Grok comparison.
+            Primary is SAM-3 mask → Grok outfit swap → lock onto hero → face restore.
+            Matrix also includes raw Grok comparison, experimental flux inpaint, and VTON fallbacks.
           </p>
           <Button
             onClick={handleGenerateCandidates}
@@ -532,16 +532,16 @@ export default function HeroFrameStudioPage({
 
         <section className="rounded-md border border-primary/50 bg-card/40 p-4 space-y-3">
           <h2 className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-            3b · Guarded Grok · Full outfit (primary)
+            3b · SAM-3 → Grok · Full outfit (primary)
           </h2>
           <p className="text-xs text-muted-foreground">
-            Grok swaps the entire look; that render is the IP-Adapter reference for
-            masked full-outfit inpaint. Face, hands, pose and background stay the
-            captured pixels — only clothing changes. Jacket-only is no longer the
-            product path.
+            What worked in tests: SAM-3 (SwitchX segment) masks clothing, Grok
+            swaps the outfit, then we lock Grok clothing into the hero silhouette
+            and restore his real face. Pose/body restore is next when Grok drifts
+            stance — flux is not the outfit engine.
           </p>
           <Button
-            onClick={handleGuardedGrokPrimary}
+            onClick={handleSamGrokPrimary}
             disabled={primaryBusy || busy || !heroScenePath || !garmentId}
           >
             {primaryBusy ? (
@@ -549,7 +549,7 @@ export default function HeroFrameStudioPage({
             ) : (
               <Sparkles className="mr-1.5 h-4 w-4" />
             )}
-            Run Guarded Grok full outfit
+            Run SAM-3 → Grok full outfit
           </Button>
           {primaryProgress && (
             <p className="text-xs text-muted-foreground">{primaryProgress}</p>
@@ -558,9 +558,19 @@ export default function HeroFrameStudioPage({
             <div className="space-y-2">
               <img
                 src={primaryUrl}
-                alt="Guarded Grok full-outfit hero still"
+                alt="SAM-3 → Grok full-outfit hero still"
                 className="max-h-[520px] w-auto rounded border border-border"
               />
+              {primaryCandidate?.outfitLockLookId && (
+                <p className="text-[10px] text-emerald-300">
+                  SAM-3 clothing lock applied onto hero pose/background
+                </p>
+              )}
+              {primaryCandidate?.outfitLockError && (
+                <p className="text-[10px] text-amber-300">
+                  Outfit lock skipped — {primaryCandidate.outfitLockError}
+                </p>
+              )}
               {primaryCandidate?.faceLookId && (
                 <p className="text-[10px] text-emerald-300">
                   Real face composited from the hero frame
