@@ -2,7 +2,8 @@
  * Pure pixel helpers for SAM-3 → Grok outfit lock.
  *
  * SAM-3 `segment-image` (apply_mask:true) returns the source with non-prompted
- * regions blacked out. Luminance of that image is the clothing alpha.
+ * regions blacked out. The mask is MEMBERSHIP, not brightness: any non-black
+ * pixel is inside the clothing region regardless of how dark the garment is.
  *
  *   out = hero·(1 − α) + grok·α
  *
@@ -18,11 +19,16 @@ export function sam3MaskedRgbToAlpha(masked: RgbaImage): Float32Array {
   const n = masked.width * masked.height;
   const alpha = new Float32Array(n);
   const d = masked.data;
+  // Membership, not brightness: SAM-3 blacks out non-clothing to exactly 0, so
+  // ANY non-black pixel is inside the garment and gets full α. Deriving α from
+  // luma collapsed dark garments (camo / dark denim) to near-zero coverage and
+  // silently skipped the outfit lock. A tiny threshold ignores codec noise in
+  // the blacked-out region without trimming genuinely dark garment pixels.
+  const BLACK_EPS = 8; // 0–255 per channel
   for (let i = 0; i < n; i++) {
     const o = i * 4;
-    // Rec. 601 luma; black → 0, garment pixels → high.
-    const y = (0.299 * d[o] + 0.587 * d[o + 1] + 0.114 * d[o + 2]) / 255;
-    alpha[i] = y;
+    const maxCh = Math.max(d[o], d[o + 1], d[o + 2]);
+    alpha[i] = maxCh > BLACK_EPS ? 1 : 0;
   }
   return alpha;
 }
