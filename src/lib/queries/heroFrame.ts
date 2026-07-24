@@ -8,6 +8,7 @@ import { faceRestore, HEAD_RESTORE_PADDING } from "@/lib/queries/faceRestore";
 import { applyJacketInpaintAndWait } from "@/lib/queries/jacketInpaint";
 import { callSam3Segment } from "@/lib/queries/sam3Segment";
 import { grokOutfitLock } from "@/lib/queries/grokOutfitLock";
+import { GROK_GARMENT_SWAP_LOCKED_PROMPT } from "@/lib/heroFrame/grokGarmentPrompt";
 import {
   HERO_CANDIDATE_PLANS,
   type HeroCandidatePlan,
@@ -181,6 +182,11 @@ export async function generateHeroCandidates(
             candidateIndex: index,
             projectId: input.projectId,
             name: `Hero ${index + 1} · ${plan.label} · grok`,
+            // Full-outfit-swap prompt, NOT the preservation-heavy truth prompt.
+            // The truth prompt makes Grok NO-OP on /v1/images/edits (echoes the
+            // original outfit back); identity here is re-imposed by the
+            // downstream deterministic face restore + SAM-3 membership lock.
+            prompt: GROK_GARMENT_SWAP_LOCKED_PROMPT,
           },
           { signal: input.signal },
         );
