@@ -18,6 +18,13 @@ export type XaiImageEditsRequest = {
   timeoutMs?: number;
   /** Hard timeout for downloading the resulting image URL (ms). */
   downloadTimeoutMs?: number;
+  /** Opt-in debug marker. When set, the xAI HTTP status and a short prefix of
+   *  the response body are console.logged under `[${debugLabel}]` so callers
+   *  (e.g. grok-image-garment-proxy) can confirm the edit really executed.
+   *  Never logs the request body, images, or any base64 image data. Callers
+   *  that omit this (e.g. grok-resolution-test) get byte-identical behaviour
+   *  and no extra log output. */
+  debugLabel?: string;
 };
 
 /** fetch() with an AbortController-based hard timeout. */
@@ -112,6 +119,23 @@ export async function callXaiImageEditsDetailed(
   );
 
   const body = await resp.json().catch(() => ({}));
+
+  // Opt-in instrumentation: report exactly what xAI returned so we can tell a
+  // real generated-image response from an echo/error. Base64 image payloads are
+  // truncated by the 300-char slice; only enabled when the caller sets a label.
+  if (req.debugLabel) {
+    let preview: string;
+    try {
+      preview = JSON.stringify(body).slice(0, 300);
+    } catch {
+      preview = "<unserializable body>";
+    }
+    console.log(
+      `[${req.debugLabel}] xai /v1/images/edits status=${resp.status} ` +
+        `imagesSent=${req.images.length} model=${req.model} bodyPreview=${preview}`,
+    );
+  }
+
   if (!resp.ok) {
     throw new Error(
       `xai_edits_failed: ${resp.status} ${JSON.stringify(body).slice(0, 300)}`,

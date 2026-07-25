@@ -171,6 +171,30 @@ serve(async (req) => {
     ...garmentUrls.map((url) => ({ url, type: "image_url" as const })),
   ].slice(0, 3);
 
+  // [grok-proxy-debug] Instrumentation: expose exactly which images the proxy is
+  // about to send to xAI. Logs storage paths + URL lengths only — the query
+  // string (which carries the signed-URL token) is stripped so no credential
+  // leaks. Missing hero/garment inputs are flagged explicitly.
+  const dbgId = (u: string): string => {
+    const q = u.indexOf("?");
+    const path = q >= 0 ? u.slice(0, q) : u;
+    return `${path} (len=${u.length})`;
+  };
+  console.log(
+    `[grok-proxy-debug] imageInputs.length=${imageInputs.length} ` +
+      `garmentPaths=${garmentPaths.length} garmentUrlsSigned=${garmentUrls.length}`,
+  );
+  console.log(
+    `[grok-proxy-debug] IMAGE_0 (source/hero): ${heroUrl ? dbgId(heroUrl) : "SOURCE MISSING"}`,
+  );
+  if (garmentUrls.length === 0) {
+    console.log("[grok-proxy-debug] GARMENT MISSING — no signed garment URLs");
+  } else {
+    garmentUrls.forEach((url, i) =>
+      console.log(`[grok-proxy-debug] IMAGE_${i + 1} (garment): ${dbgId(url)}`)
+    );
+  }
+
   const childLookId = crypto.randomUUID();
   const recipe = {
     pipeline_preference: "grok_image_edit_garment_truth",
@@ -214,12 +238,20 @@ serve(async (req) => {
 
   const finish = async () => {
     try {
+      const promptSent = body.prompt ?? GROK_GARMENT_TRUTH_PROMPT;
+      // [grok-proxy-debug] Which prompt string is going to xAI (client-supplied
+      // vs the built-in fallback), plus a short preview — never the full text.
+      console.log(
+        `[grok-proxy-debug] prompt source=${body.prompt ? "client" : "fallback"} ` +
+          `len=${promptSent.length} preview="${promptSent.slice(0, 120)}"`,
+      );
       const imageBuf = await callXaiImageEdits({
         apiKey: xaiKey,
         model: body.model ?? DEFAULT_MODEL,
-        prompt: body.prompt ?? GROK_GARMENT_TRUTH_PROMPT,
+        prompt: promptSent,
         images: imageInputs,
         resolution: body.resolution,
+        debugLabel: "grok-proxy-debug",
       });
 
       const mime = sniffMime(imageBuf);
