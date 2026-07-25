@@ -82,6 +82,11 @@ export type XaiImageEditsResult = {
   resolutionSent: string | null;
   /** How the image came back — url download or inline base64. */
   delivery: "url" | "b64_json";
+  /** First ~300 chars of the xAI response body (base64 truncated by the slice).
+   *  Only populated when the caller set `debugLabel`; otherwise undefined so
+   *  non-debug callers stay byte-identical. Never contains full image data or
+   *  any API key. Lets a caller persist what xAI returned for later inspection. */
+  bodyPreview?: string;
 };
 
 /** Call xAI multi-image edit; returns raw image bytes. */
@@ -123,16 +128,16 @@ export async function callXaiImageEditsDetailed(
   // Opt-in instrumentation: report exactly what xAI returned so we can tell a
   // real generated-image response from an echo/error. Base64 image payloads are
   // truncated by the 300-char slice; only enabled when the caller sets a label.
+  let bodyPreview: string | undefined;
   if (req.debugLabel) {
-    let preview: string;
     try {
-      preview = JSON.stringify(body).slice(0, 300);
+      bodyPreview = JSON.stringify(body).slice(0, 300);
     } catch {
-      preview = "<unserializable body>";
+      bodyPreview = "<unserializable body>";
     }
     console.log(
       `[${req.debugLabel}] xai /v1/images/edits status=${resp.status} ` +
-        `imagesSent=${req.images.length} model=${req.model} bodyPreview=${preview}`,
+        `imagesSent=${req.images.length} model=${req.model} bodyPreview=${bodyPreview}`,
     );
   }
 
@@ -145,6 +150,7 @@ export async function callXaiImageEditsDetailed(
   const meta = {
     status: resp.status,
     resolutionSent: req.resolution ?? null,
+    bodyPreview,
   };
 
   const extracted = extractFromBody(body as Record<string, unknown>);

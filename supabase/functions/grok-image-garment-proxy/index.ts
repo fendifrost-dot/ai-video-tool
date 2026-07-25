@@ -13,7 +13,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { pickGrokGarmentReferencePaths } from "../_shared/garmentReference.ts";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
-import { callXaiImageEdits } from "../_shared/xaiImageEdits.ts";
+import { callXaiImageEditsDetailed } from "../_shared/xaiImageEdits.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -237,15 +237,31 @@ serve(async (req) => {
   }
 
   const finish = async () => {
+    const promptSent = body.prompt ?? GROK_GARMENT_TRUTH_PROMPT;
+    // [grok-proxy-debug] Same values as the [grok-proxy-debug] console.logs, but
+    // ALSO persisted below into composition_recipe_json.generation_metadata.grok_debug
+    // so they can be read with a read-only SELECT in the Lovable SQL editor —
+    // Lovable's UI does not surface edge-function console output. Storage paths
+    // only (no signed-URL tokens), no API keys, base64 truncated by the slice.
+    const grokDebug: Record<string, unknown> = {
+      imageInputsLength: imageInputs.length,
+      garmentUrls: garmentPaths.length > 0 ? garmentPaths : "GARMENT MISSING",
+      sourcePath: body.scenePath ?? "SOURCE MISSING",
+      promptSource: body.prompt ? "client" : "fallback",
+      promptPreview: promptSent.slice(0, 120),
+      xaiModel: body.model ?? DEFAULT_MODEL,
+      xaiImagesSent: imageInputs.length,
+      xaiStatus: null as number | null,
+      xaiBodyPreview: null as string | null,
+    };
     try {
-      const promptSent = body.prompt ?? GROK_GARMENT_TRUTH_PROMPT;
       // [grok-proxy-debug] Which prompt string is going to xAI (client-supplied
       // vs the built-in fallback), plus a short preview — never the full text.
       console.log(
         `[grok-proxy-debug] prompt source=${body.prompt ? "client" : "fallback"} ` +
           `len=${promptSent.length} preview="${promptSent.slice(0, 120)}"`,
       );
-      const imageBuf = await callXaiImageEdits({
+      const xaiResult = await callXaiImageEditsDetailed({
         apiKey: xaiKey,
         model: body.model ?? DEFAULT_MODEL,
         prompt: promptSent,
@@ -253,6 +269,9 @@ serve(async (req) => {
         resolution: body.resolution,
         debugLabel: "grok-proxy-debug",
       });
+      const imageBuf = xaiResult.bytes;
+      grokDebug.xaiStatus = xaiResult.status;
+      grokDebug.xaiBodyPreview = xaiResult.bodyPreview ?? null;
 
       const mime = sniffMime(imageBuf);
       if (!mime) throw new Error("unknown_mime");
@@ -276,6 +295,7 @@ serve(async (req) => {
         garment_truth_lane: true,
         identity_restored: false,
         xai_image_count: imageInputs.length,
+        grok_debug: grokDebug,
       };
 
       const { data: existing } = await admin
@@ -301,11 +321,27 @@ serve(async (req) => {
         .eq("id", childLookId);
       if (updateErr) throw new Error(`update_failed: ${updateErr.message}`);
     } catch (err) {
+      // Persist the debug values even on failure — a non-200 xAI response throws
+      // here, and the error string carries the status + truncated body, which is
+      // exactly what we want to be able to read back via SELECT.
+      if (grokDebug.xaiBodyPreview == null) {
+        grokDebug.xaiBodyPreview = String(err).slice(0, 300);
+      }
+      const { data: existing } = await admin
+        .from("artist_looks")
+        .select("composition_recipe_json")
+        .eq("id", childLookId)
+        .maybeSingle();
+      const existingRecipe = (existing?.composition_recipe_json ?? {}) as Record<string, unknown>;
+      const genMeta = (existingRecipe.generation_metadata ?? {}) as Record<string, unknown>;
+      genMeta.grok_debug = grokDebug;
+      existingRecipe.generation_metadata = genMeta;
       await admin
         .from("artist_looks")
         .update({
           status: "failed",
           error_message: String(err).slice(0, 500),
+          composition_recipe_json: existingRecipe,
         })
         .eq("id", childLookId);
     }
