@@ -35,6 +35,75 @@ export const HEAD_RESTORE_PADDING: FaceQuadOptions = {
   padBottom: 0.6,
 };
 
+/**
+ * HEAD-ONLY restore, for pasting his real head onto a Grok render we keep AS the
+ * output (the sam_grok_restore primary lane, USE_GROK_RENDER_AS_OUTPUT). Grok's
+ * render already carries the correct garment swap, so the paste must cover ONLY
+ * head/face down to the neck/collar and must never reach the chest — otherwise
+ * it drags a patch of the source garment over Grok's swapped one.
+ *
+ * The skin bbox on a bearded subject is roughly forehead-to-upper-lip, so a
+ * moderate padBottom (0.30) is enough to include the chin/jaw/neckline while
+ * stopping well short of the garment; HEAD_RESTORE_PADDING's 0.60 reaches into
+ * the upper chest and is wrong here. Wide padTop keeps the hairline.
+ */
+export const HEAD_ONLY_RESTORE_PADDING: FaceQuadOptions = {
+  padX: 0.4,
+  padTop: 0.75,
+  padBottom: 0.3,
+};
+
+/**
+ * Conditional-restore threshold for the Grok-render-as-output lane: when a
+ * source-vs-Grok face similarity score is >= this, Grok's rendered face is
+ * trusted and the deterministic head paste is skipped; below it, the head-only
+ * paste runs. Tunable.
+ *
+ * IMPORTANT — no such similarity comparator exists in the stack today.
+ * detectFace() returns a bounding box and compareFaceRegions() only checks head
+ * SIZE/POSITION agreement (co-location), NOT whether two crops are the same
+ * person. A real source-vs-Grok compare needs a face-embedding / verification
+ * model (e.g. a fal ArcFace/InsightFace endpoint) returning cosine similarity of
+ * the source face crop vs the Grok face crop. Until one is wired,
+ * evaluateGrokFaceMatch() reports score:null and the gate falls through to an
+ * ALWAYS-ON head-only restore — the safe interim, no fabricated scoring.
+ */
+export const FACE_MATCH_THRESHOLD = 0.9;
+
+/** Similarity provider: source-vs-Grok face score in 0..1, or null if unknown. */
+export type FaceSimilarityFn = () => number | null | Promise<number | null>;
+
+export type GrokFaceMatch = {
+  /** Similarity in 0..1, or null when no comparator produced a score. */
+  score: number | null;
+  threshold: number;
+  /** True only when a real score cleared the threshold — never on a null score. */
+  skipRestore: boolean;
+  comparatorAvailable: boolean;
+};
+
+/**
+ * Gate the conditional face-restore on the Grok-render-as-output lane. Pass a
+ * `comparator` to score source-vs-Grok face similarity; with none (the current
+ * state of the stack) the score is null, skipRestore is false, and the caller
+ * runs the head-only paste unconditionally. This is the single wiring point for
+ * a future face-embedding comparator — supply it here and the gate activates
+ * with no other change.
+ */
+export async function evaluateGrokFaceMatch(opts?: {
+  threshold?: number;
+  comparator?: FaceSimilarityFn;
+}): Promise<GrokFaceMatch> {
+  const threshold = opts?.threshold ?? FACE_MATCH_THRESHOLD;
+  const score = opts?.comparator ? await opts.comparator() : null;
+  return {
+    score,
+    threshold,
+    skipRestore: score !== null && score >= threshold,
+    comparatorAvailable: Boolean(opts?.comparator),
+  };
+}
+
 export type FaceRestoreInput = {
   /** The look whose face is wrong — the Grok garment look or its identity child. */
   targetLookId: string;
