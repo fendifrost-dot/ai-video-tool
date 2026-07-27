@@ -20,6 +20,7 @@ import { useWardrobe } from "@/lib/queries/wardrobe";
 import { signedUrl } from "@/lib/storage";
 import { getSessionWithTimeout } from "@/lib/authSession";
 import { captureVideoFrame } from "@/lib/video/captureFrame";
+import { resolveScrubSource } from "@/lib/video/scrubProxy";
 import { installFaceRestoreDevHook } from "@/lib/queries/faceRestore";
 import {
   approveHeroFrameLook,
@@ -63,7 +64,15 @@ export default function HeroFrameStudioPage({
   const wardrobeQuery = useWardrobe(artistId);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  // Dedicated full-res master element, mounted only when the scrubber is showing a
+  // lower-res proxy — hero-frame capture must always read the master (pixel
+  // preservation), never the proxy.
+  const captureVideoRef = useRef<HTMLVideoElement>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  // Full-quality master URL, kept separate from the (possibly proxy) scrub URL.
+  const [masterUrl, setMasterUrl] = useState<string | null>(null);
+  // True when videoUrl points at a ~720p scrub proxy rather than the master.
+  const [scrubIsProxy, setScrubIsProxy] = useState(false);
   const [selectedVideoId, setSelectedVideoId] = useState<string>("");
   const [scrubTime, setScrubTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -113,13 +122,39 @@ export default function HeroFrameStudioPage({
   useEffect(() => {
     if (!selectedVideoId) {
       setVideoUrl(null);
+      setMasterUrl(null);
+      setScrubIsProxy(false);
       return;
     }
     const asset = videoAssets.find((a) => a.id === selectedVideoId);
     if (!asset) return;
-    signedUrl(bucketForAssetType(asset.asset_type), asset.file_url, 3600)
-      .then(setVideoUrl)
-      .catch(() => setVideoUrl(null));
+
+    const masterBucket = bucketForAssetType(asset.asset_type);
+    // Scrub off the ~720p proxy when one is ready; else the master (today's path).
+    const scrub = resolveScrubSource(masterBucket, asset.file_url, asset.metadata_json);
+    setScrubIsProxy(scrub.isProxy);
+
+    let cancelled = false;
+    // Master URL is always needed for full-res hero-frame capture.
+    signedUrl(masterBucket, asset.file_url, 3600)
+      .then((url) => !cancelled && setMasterUrl(url))
+      .catch(() => !cancelled && setMasterUrl(null));
+
+    // When there is no proxy the scrub source IS the master — reuse that same
+    // signed URL rather than signing the identical object twice.
+    if (scrub.isProxy) {
+      signedUrl(scrub.bucket as Parameters<typeof signedUrl>[0], scrub.path, 3600)
+        .then((url) => !cancelled && setVideoUrl(url))
+        .catch(() => !cancelled && setVideoUrl(null));
+    } else {
+      signedUrl(masterBucket, asset.file_url, 3600)
+        .then((url) => !cancelled && setVideoUrl(url))
+        .catch(() => !cancelled && setVideoUrl(null));
+    }
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedVideoId, videoAssets]);
 
   useEffect(() => {
@@ -172,7 +207,10 @@ export default function HeroFrameStudioPage({
   }, []);
 
   async function handleCaptureFrame() {
-    const video = videoRef.current;
+    // Capture at FULL resolution from the master: when the scrubber is on a proxy
+    // the master lives in a separate hidden element; otherwise the visible element
+    // already is the master.
+    const video = scrubIsProxy ? captureVideoRef.current : videoRef.current;
     if (!video || !artistId) return;
     setBusy(true);
     try {
@@ -442,6 +480,17 @@ export default function HeroFrameStudioPage({
                 onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
                 onTimeUpdate={(e) => setScrubTime(e.currentTarget.currentTime)}
               />
+              {scrubIsProxy && masterUrl && (
+                // Hidden full-res master — capture reads THIS, never the proxy, so
+                // the hero frame keeps full resolution (pixel-preservation rule).
+                <video
+                  ref={captureVideoRef}
+                  crossOrigin="anonymous"
+                  src={masterUrl}
+                  preload="metadata"
+                  className="hidden"
+                />
+              )}
               <input
                 type="range"
                 min={0}
