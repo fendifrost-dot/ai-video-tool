@@ -6,7 +6,7 @@
 import { demuxMp4Video, selectSampleRange } from "./mp4Demux";
 
 // WebCodecs is absent from the DOM lib in this TS version — declare only what we use.
-interface WcVideoFrame {
+export interface WcVideoFrame {
   readonly timestamp: number;
   readonly displayWidth: number;
   readonly displayHeight: number;
@@ -38,7 +38,10 @@ interface WcVideoDecoder {
 
 interface WcGlobals {
   VideoDecoder?: {
-    new (init: { output: (frame: WcVideoFrame) => void; error: (e: DOMException) => void }): WcVideoDecoder;
+    new (init: {
+      output: (frame: WcVideoFrame) => void;
+      error: (e: DOMException) => void;
+    }): WcVideoDecoder;
     isConfigSupported(config: WcDecoderConfig): Promise<{ supported?: boolean }>;
   };
   EncodedVideoChunk?: new (init: WcChunkInit) => object;
@@ -126,12 +129,15 @@ export async function decodeFrameWithWebCodecs(srcUrl: string, timeSec: number):
  * Orient the drawing context so a coded `w`×`h` frame renders upright under `rotation`
  * degrees clockwise, and return the resulting canvas dimensions. For 90°/270° the canvas
  * axes swap (landscape coded frame → portrait output).
+ *
+ * Exported so the batch extractor (extractFrames.ts) reuses the exact same
+ * rotation geometry as the single-frame hero grab.
  */
-function orientedSize(w: number, h: number, rotation: number): { cw: number; ch: number } {
+export function orientedSize(w: number, h: number, rotation: number): { cw: number; ch: number } {
   return rotation === 90 || rotation === 270 ? { cw: h, ch: w } : { cw: w, ch: h };
 }
 
-function applyRotation(
+export function applyRotation(
   ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   w: number,
   h: number,
@@ -160,7 +166,7 @@ async function frameToJpeg(frame: WcVideoFrame, g: WcGlobals, rotation = 0): Pro
   const h = frame.displayHeight;
   if (!w || !h) throw new Error("Decoded frame has no dimensions.");
 
-  const rot = ((Math.round(rotation / 90) * 90) % 360 + 360) % 360;
+  const rot = (((Math.round(rotation / 90) * 90) % 360) + 360) % 360;
   const { cw, ch } = orientedSize(w, h, rot);
 
   if (g.OffscreenCanvas) {
