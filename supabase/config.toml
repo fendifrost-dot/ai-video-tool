@@ -47,3 +47,11 @@ verify_jwt = true
 # proxy pointer onto the master asset's metadata_json. User JWT required.
 [functions.make-scrub-proxy-proxy]
 verify_jwt = true
+
+# Wardrobe video propagation — Phase 2a encoder roundtrip. Reassembles an
+# ordered frame set (client-extracted) back into a clip via Fal
+# `ffmpeg-api/compose`, routed through Control Center via X-Proxy-Secret (same
+# secrets as wardrobe-vton-proxy). Needs VIDEO_COMPOSE_FAL_MODEL. User JWT
+# required. See docs/AVT_Wardrobe_Swap_Build_Spec_v2.md §7.
+[functions.wardrobe-video-reassemble-proxy]
+verify_jwt = true
