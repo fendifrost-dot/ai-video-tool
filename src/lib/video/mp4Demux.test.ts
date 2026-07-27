@@ -48,6 +48,39 @@ function mdhd(timescale: number): Uint8Array {
   return box("mdhd", FULL, u32(0), u32(0), u32(timescale), u32(0), u16(0x55c4), u16(0));
 }
 
+/** 16.16 fixed-point, signed — the matrix encoding used by tkhd. */
+function s1616(value: number): Uint8Array {
+  return u32(Math.round(value * 65536));
+}
+
+/** 3×3 tkhd matrix from its top-left 2×2 {a,b,c,d}; u,v,x,y = 0, w = 1.0 (2.30). */
+function matrix(a: number, b: number, c: number, d: number): Uint8Array {
+  return concat(
+    s1616(a), s1616(b), u32(0),
+    s1616(c), s1616(d), u32(0),
+    u32(0), u32(0), u32(0x40000000),
+  );
+}
+
+const ROTATION_MATRIX: Record<number, Uint8Array> = {
+  0: matrix(1, 0, 0, 1),
+  90: matrix(0, 1, -1, 0),
+  180: matrix(-1, 0, 0, -1),
+  270: matrix(0, -1, 1, 0),
+};
+
+function tkhd(rotation: number): Uint8Array {
+  return box(
+    "tkhd",
+    FULL,
+    u32(0), u32(0), u32(1), u32(0), u32(0), // times / track_ID / reserved / duration
+    u32(0), u32(0), // reserved
+    u16(0), u16(0), u16(0), u16(0), // layer / alternate_group / volume / reserved
+    ROTATION_MATRIX[rotation],
+    u32(640 * 65536), u32(360 * 65536), // track width / height (16.16)
+  );
+}
+
 function hdlr(handler: string): Uint8Array {
   return box("hdlr", FULL, u32(0), ascii(handler), new Uint8Array(12), u8(0));
 }
@@ -102,6 +135,8 @@ interface FileOpts {
   omitMoov?: boolean;
   fragmented?: boolean;
   extraTrak?: Uint8Array;
+  /** When set, prepend a tkhd carrying this rotation's transformation matrix. */
+  rotation?: number;
 }
 
 function defaultTables(): Uint8Array[] {
@@ -130,7 +165,10 @@ function buildFile(opts: FileOpts = {}): Uint8Array {
   const stbl = box("stbl", stsd(entry), ...tables);
   const minf = box("minf", stbl);
   const mdia = box("mdia", hdlr(handler), mdhd(timescale), minf);
-  const trak = box("trak", mdia);
+  const trak =
+    opts.rotation === undefined
+      ? box("trak", mdia)
+      : box("trak", tkhd(opts.rotation), mdia);
 
   const traks = opts.extraTrak ? concat(opts.extraTrak, trak) : trak;
   return concat(ftyp, box("moov", box("mvhd", FULL), traks));
@@ -241,6 +279,26 @@ describe("demuxMp4Video", () => {
     );
 
     expect(track.codec).toBe("hvc1.1.6.L90.90");
+  });
+
+  it("defaults rotation to 0 when the trak has no tkhd", () => {
+    expect(demuxMp4Video(buildFile()).rotation).toBe(0);
+  });
+
+  it("reads a 0° identity matrix as no rotation", () => {
+    expect(demuxMp4Video(buildFile({ rotation: 0 })).rotation).toBe(0);
+  });
+
+  it("reads a 90° tkhd matrix (iPhone portrait) as 90° rotation", () => {
+    expect(demuxMp4Video(buildFile({ rotation: 90 })).rotation).toBe(90);
+  });
+
+  it("reads a 180° tkhd matrix as 180° rotation", () => {
+    expect(demuxMp4Video(buildFile({ rotation: 180 })).rotation).toBe(180);
+  });
+
+  it("reads a 270° tkhd matrix as 270° rotation", () => {
+    expect(demuxMp4Video(buildFile({ rotation: 270 })).rotation).toBe(270);
   });
 
   it("throws a specific error for a fragmented MP4", () => {

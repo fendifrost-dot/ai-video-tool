@@ -21,6 +21,13 @@ export interface Mp4VideoTrack {
   timescale: number;
   width: number;
   height: number;
+  /**
+   * Container display rotation in degrees clockwise (0/90/180/270), decoded from the
+   * track header (`tkhd`) transformation matrix. WebCodecs decodes the *coded* frame and
+   * carries no rotation, so a consumer drawing decoded frames must re-apply this to stay
+   * upright — an iPhone portrait clip is stored landscape with a 90° flag.
+   */
+  rotation: number;
   samples: Mp4Sample[];
 }
 
@@ -130,6 +137,32 @@ function readFullBoxEntryCount(view: DataView, start: number): { count: number; 
   return { count: view.getUint32(start + 4), pos: start + 8 };
 }
 
+/**
+ * Decode the display rotation from a track header (`tkhd`) box.
+ *
+ * `tkhd` layout after the 4-byte version+flags: a version-dependent times/id/duration
+ * block (20 bytes for v0, 32 for v1), then 8 reserved, then layer/alt-group/volume/reserved
+ * (8 bytes), then the 3×3 transformation matrix (9 × 32-bit fixed-point values). Rotation is
+ * carried by the top-left 2×2 sub-matrix {a, b}, both 16.16 fixed-point:
+ * angle = atan2(b, a). We snap to the nearest right angle and normalise to [0, 360).
+ */
+function readTrackRotation(bytes: Uint8Array, view: DataView, trak: Box): number {
+  const tkhd = findBox(readBoxes(bytes, trak.start, trak.end), "tkhd");
+  if (!tkhd) return 0;
+
+  const version = bytes[tkhd.start];
+  const matrixStart = tkhd.start + 4 + (version === 1 ? 32 : 20) + 8 + 8;
+  // Guard against a truncated tkhd rather than reading past the box.
+  if (matrixStart + 8 > tkhd.end) return 0;
+
+  const a = view.getInt32(matrixStart) / 65536;
+  const b = view.getInt32(matrixStart + 4) / 65536;
+  if (a === 0 && b === 0) return 0;
+
+  const degrees = Math.round((Math.atan2(b, a) * 180) / Math.PI / 90) * 90;
+  return ((degrees % 360) + 360) % 360;
+}
+
 /** Decode stsz or stz2 into per-sample byte sizes. */
 function readSampleSizes(bytes: Uint8Array, view: DataView, stbl: Box): number[] {
   const children = readBoxes(bytes, stbl.start, stbl.end);
@@ -191,6 +224,8 @@ export function demuxMp4Video(buf: ArrayBuffer | Uint8Array): Mp4VideoTrack {
     );
   });
   if (!trak) throw new Error("MP4 demux: no video track found in moov.");
+
+  const rotation = readTrackRotation(bytes, view, trak);
 
   const mdhd = descend(bytes, trak, "mdia/mdhd");
   if (!mdhd) throw new Error("MP4 demux: video track has no mdhd box.");
@@ -315,7 +350,7 @@ export function demuxMp4Video(buf: ArrayBuffer | Uint8Array): Mp4VideoTrack {
 
   if (samples.length === 0) throw new Error("MP4 demux: video track contains no samples.");
 
-  return { codec, description, timescale, width, height, samples };
+  return { codec, description, timescale, width, height, rotation, samples };
 }
 
 /**

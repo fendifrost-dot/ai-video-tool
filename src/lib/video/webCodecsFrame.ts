@@ -112,7 +112,9 @@ export async function decodeFrameWithWebCodecs(srcUrl: string, timeSec: number):
     // Fall back to the last frame emitted if nothing landed at/before the target.
     const frame = held.kept ?? held.last;
     if (!frame) throw new Error("WebCodecs decoded no frames for this timestamp.");
-    return await frameToJpeg(frame, g);
+    // WebCodecs decodes the coded (unrotated) frame; re-apply the container rotation
+    // so an iPhone portrait clip (stored landscape + 90° flag) comes out upright.
+    return await frameToJpeg(frame, g, track.rotation);
   } finally {
     held.kept?.close();
     held.last?.close();
@@ -120,15 +122,52 @@ export async function decodeFrameWithWebCodecs(srcUrl: string, timeSec: number):
   }
 }
 
-async function frameToJpeg(frame: WcVideoFrame, g: WcGlobals): Promise<Blob> {
+/**
+ * Orient the drawing context so a coded `w`×`h` frame renders upright under `rotation`
+ * degrees clockwise, and return the resulting canvas dimensions. For 90°/270° the canvas
+ * axes swap (landscape coded frame → portrait output).
+ */
+function orientedSize(w: number, h: number, rotation: number): { cw: number; ch: number } {
+  return rotation === 90 || rotation === 270 ? { cw: h, ch: w } : { cw: w, ch: h };
+}
+
+function applyRotation(
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+  w: number,
+  h: number,
+  rotation: number,
+): void {
+  switch (rotation) {
+    case 90:
+      ctx.translate(h, 0);
+      ctx.rotate(Math.PI / 2);
+      break;
+    case 180:
+      ctx.translate(w, h);
+      ctx.rotate(Math.PI);
+      break;
+    case 270:
+      ctx.translate(0, w);
+      ctx.rotate((3 * Math.PI) / 2);
+      break;
+    default:
+      break;
+  }
+}
+
+async function frameToJpeg(frame: WcVideoFrame, g: WcGlobals, rotation = 0): Promise<Blob> {
   const w = frame.displayWidth;
   const h = frame.displayHeight;
   if (!w || !h) throw new Error("Decoded frame has no dimensions.");
 
+  const rot = ((Math.round(rotation / 90) * 90) % 360 + 360) % 360;
+  const { cw, ch } = orientedSize(w, h, rot);
+
   if (g.OffscreenCanvas) {
-    const canvas = new g.OffscreenCanvas(w, h);
+    const canvas = new g.OffscreenCanvas(cw, ch);
     const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D | null;
     if (ctx) {
+      applyRotation(ctx, w, h, rot);
       ctx.drawImage(frame as unknown as CanvasImageSource, 0, 0, w, h);
       return await canvas.convertToBlob({ type: "image/jpeg", quality: 0.92 });
     }
@@ -138,10 +177,11 @@ async function frameToJpeg(frame: WcVideoFrame, g: WcGlobals): Promise<Blob> {
     throw new Error("No canvas available to encode the decoded frame.");
   }
   const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
+  canvas.width = cw;
+  canvas.height = ch;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Could not create canvas context");
+  applyRotation(ctx, w, h, rot);
   ctx.drawImage(frame as unknown as CanvasImageSource, 0, 0, w, h);
 
   const blob = await new Promise<Blob | null>((resolve) =>
