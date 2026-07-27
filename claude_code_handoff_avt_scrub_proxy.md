@@ -55,12 +55,15 @@ Nothing else in the client needs to change.
 
 1. **Create + deploy the edge function** `make-scrub-proxy-proxy` on the AVT Lovable
    project (edge redeploy). Publish the frontend for the uploader + client dispatch.
-2. **Set the edge secret `SCRUB_PROXY_FAL_MODEL`** to the Fal ffmpeg/transcode model
-   id CC's `fal-run` should run to produce 720p H.264 faststart. The function fails
-   loud (`missing_SCRUB_PROXY_FAL_MODEL`) rather than guess a model id. The `input`
-   AVT sends (`{ video_url, target_height:720, video_codec:"h264", faststart:true, … }`)
-   is forwarded verbatim by CC to Fal — **confirm it matches the chosen model's schema**
-   and adjust the input keys in the function if the model expects different names.
+2. **Set the edge secret `SCRUB_PROXY_FAL_MODEL` = `fal-ai/workflow-utilities/scale-video`.**
+   The function fails loud (`missing_SCRUB_PROXY_FAL_MODEL`) rather than guess. The
+   `input` AVT sends is shaped for exactly that model's schema and is forwarded
+   verbatim by CC to Fal:
+   `{ video_url, width:1280, height:720, mode:"pad", pad_color:"black", codec:"libx264", preset:"fast", crf:26 }`.
+   `mode:"pad"` preserves the master's aspect ratio (fit-inside 1280×720 + letterbox,
+   never stretch); `libx264` = H.264; the model has no faststart flag so none is sent;
+   both edges are even and inside the model's 512–2048 range. If the secret is ever
+   pointed at a different model, re-shape `falInput` in the function to match.
    Existing CC secrets (`COMPOSE_LOOK_CC_URL`, `SWITCHX_PROXY_SECRET`) are reused as-is.
 
 The two pieces below are the ORIGINAL design notes for this server half; they are now

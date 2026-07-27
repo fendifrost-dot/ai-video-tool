@@ -19,11 +19,17 @@
 // callback endpoint is needed because CC's fal-queue-poll gives us the terminal
 // status; we finish inside the background task.
 //
+// The `falInput` below is shaped for the specific model this is deployed with:
+//   SCRUB_PROXY_FAL_MODEL = fal-ai/workflow-utilities/scale-video
+// (resizes a video to target dimensions; modes stretch|pad|crop; dims 512–2048).
+// If that secret is ever pointed at a different model, the input keys must be
+// re-shaped to match — see the `falInput` comment.
+//
 // Env:
 //   COMPOSE_LOOK_CC_URL           — CC base (…/compose-look); we swap the tail
 //   SWITCHX_PROXY_SECRET | COMPOSE_LOOK_PROXY_SECRET — CC proxy secret
-//   SCRUB_PROXY_FAL_MODEL         — Fal ffmpeg/transcode model id CC's fal-run
-//                                    should run (e.g. a fal ffmpeg endpoint).
+//   SCRUB_PROXY_FAL_MODEL         — Fal model CC's fal-run runs; deployed as
+//                                    fal-ai/workflow-utilities/scale-video.
 //                                    REQUIRED — no model is guessed here.
 //   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
@@ -42,7 +48,11 @@ const corsHeaders = {
 const SIGN_TTL = 3000;
 const POLL_INTERVAL_MS = 5000;
 const POLL_TIMEOUT_MS = 12 * 60 * 1000;
-const TARGET_HEIGHT = 720;
+// ~720p proxy box. scale-video with mode "pad" fits the master INSIDE this box
+// preserving aspect ratio (letterbox), so a portrait or 4:3 master is never
+// stretched. Both edges are even and inside the model's 512–2048 range.
+const PROXY_LONG_EDGE = 1280;
+const PROXY_SHORT_EDGE = 720;
 
 type Body = { assetId?: string };
 
@@ -220,9 +230,14 @@ serve(async (req) => {
   }
 
   const masterBucket = bucketForAssetType(String(asset.asset_type));
+  // INVARIANT — the proxy is VIEW-ONLY. It is written to a SEPARATE object
+  // (`<master>.proxy.mp4`) and we only ever read `fileUrl` (the master) and
+  // append pointer fields to its metadata_json — the master bytes and its
+  // `file_url` are never modified or overwritten. Hero-frame capture and every
+  // downstream/export path continue to read the full-res master.
   const proxyPath = `${fileUrl}.proxy.mp4`;
 
-  // Sign the master so Fal (via CC) can pull it.
+  // Sign the master so Fal (via CC) can pull it. Read-only.
   const { data: masterSigned, error: signErr } = await admin.storage
     .from(masterBucket)
     .createSignedUrl(fileUrl, SIGN_TTL);
@@ -241,17 +256,22 @@ serve(async (req) => {
   const switchxUrl = ccSwitchxUrl(composeCcUrl);
   const pollUrl = ccFalPollUrl(composeCcUrl);
 
-  // Input handed straight to CC `fal-run`, which forwards it to the Fal model.
-  // Keys mirror common Fal ffmpeg/transcode schemas; the live agent confirms
-  // the exact shape for whichever SCRUB_PROXY_FAL_MODEL is configured.
+  // Input handed straight to CC `fal-run`, which forwards it verbatim to the Fal
+  // model. These keys are the ACTUAL fal-ai/workflow-utilities/scale-video input
+  // schema (video_url, width, height, mode∈{stretch,pad,crop}, pad_color,
+  // codec∈{libx264,libx265}, preset, crf 0–51). "pad" preserves the master's
+  // aspect ratio (fit-inside + letterbox) — it never stretches. libx264 keeps
+  // H.264 output; the model exposes no faststart flag, so none is sent. crf 26
+  // keeps the proxy small — it's view-only (scrub/preview), never a deliverable.
   const falInput: Record<string, unknown> = {
     video_url: masterSigned.signedUrl,
-    target_height: TARGET_HEIGHT,
-    height: TARGET_HEIGHT,
-    resolution: "720p",
-    video_codec: "h264",
-    codec: "h264",
-    faststart: true,
+    width: PROXY_LONG_EDGE,
+    height: PROXY_SHORT_EDGE,
+    mode: "pad",
+    pad_color: "black",
+    codec: "libx264",
+    preset: "fast",
+    crf: 26,
   };
 
   let queue: { status_url: string; response_url: string };

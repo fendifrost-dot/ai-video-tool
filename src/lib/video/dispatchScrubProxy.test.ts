@@ -126,4 +126,29 @@ describe("dispatch → resolve round-trip", () => {
       isProxy: true,
     });
   });
+
+  it("is view-only: capture keeps the master even once the proxy is ready", () => {
+    // Hero-frame capture never calls resolveScrubSource — it reads the master
+    // (bucket, file_url) directly. This asserts the invariant at the resolver
+    // boundary: a ready proxy changes ONLY the scrub source; the master
+    // coordinates the caller holds for capture are a separate, untouched pair.
+    const masterBucket = "project-clips";
+    const masterPath = "u/1/proj/master.mov";
+    const proxyPath = `${masterPath}.proxy.mp4`;
+    const readyMeta = {
+      scrub_proxy_path: proxyPath,
+      scrub_proxy_bucket: masterBucket,
+      scrub_proxy_status: "ready",
+    };
+
+    // Scrub source is redirected to the proxy...
+    const scrub = resolveScrubSource(masterBucket, masterPath, readyMeta);
+    expect(scrub).toEqual({ bucket: masterBucket, path: proxyPath, isProxy: true });
+
+    // ...while the master coordinates (what capture uses) are unchanged, and
+    // the resolver never rewrote the master path onto the proxy.
+    expect(masterPath).toBe("u/1/proj/master.mov");
+    expect(scrub.path).not.toBe(masterPath);
+    expect(scrub.isProxy).toBe(true);
+  });
 });
