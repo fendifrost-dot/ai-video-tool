@@ -23,6 +23,7 @@ import {
   STREAM_THRESHOLD_BYTES,
 } from "@/lib/uploadLimits";
 import { normalizeImageForUpload } from "@/lib/image-normalize";
+import { dispatchScrubProxy } from "@/lib/video/dispatchScrubProxy";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -166,7 +167,7 @@ export function AssetUploadDropzone({
             }
           }
 
-          await create.mutateAsync({
+          const created = await create.mutateAsync({
             project_id: projectId,
             shot_id: shotId ?? undefined,
             asset_type: item.assetType,
@@ -175,6 +176,19 @@ export function AssetUploadDropzone({
             approval_status: "pending",
             metadata_json: metadata as Json,
           });
+
+          // Kick off the ~720p scrub-proxy transcode for videos so the Hero
+          // Frame Studio scrubber never has to decode the full master. The
+          // master is untouched; capture stays full-res. Best-effort — a
+          // dispatch failure must not fail the upload (scrubber falls back to
+          // the master until a proxy is ready).
+          if (file.type.startsWith("video/")) {
+            void dispatchScrubProxy(created.id, {
+              mimeType: file.type,
+              fileUrl: path,
+              metadata,
+            });
+          }
 
           succeeded++;
           setStaged((prev) =>
