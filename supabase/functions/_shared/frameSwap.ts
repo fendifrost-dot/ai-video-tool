@@ -35,9 +35,74 @@ export interface FrameSwapArgs {
 }
 
 /**
+ * Which purpose-built Fal try-on family a `FRAME_SWAP_FAL_MODEL` id belongs to.
+ * Each family has DIFFERENT input keys, so the fal-run body must be shaped per
+ * family — sending IDM-VTON's keys to Kolors/FASHN would 422 (or be ignored).
+ *
+ * LANE B NOTE (docs/VIDEO_SWAP_ARCHITECTURE.md §5): all of these are STILL-image
+ * try-on engines — no temporal state. Pointing FRAME_SWAP_FAL_MODEL at one makes
+ * it a per-frame / KEYFRAME MAPPER, NOT a video-native temporal solution. It is a
+ * cleaner garment mapper than switchx-restyle's vton-frame (IDM-VTON), so it's the
+ * benchmark's Lane B keyframe-mapper option that feeds Lane A propagation.
+ */
+export type FalVtonFamily = "kolors" | "fashn" | "idm-generic";
+
+export function falVtonFamily(model: string): FalVtonFamily {
+  const m = model.toLowerCase();
+  // fal-ai/kling/v1-5/kolors-virtual-try-on (and any kolors try-on variant).
+  if (m.includes("kolors")) return "kolors";
+  // fal-ai/fashn/tryon/v1.5 | v1.6 (and fashn/v1.5 aliases).
+  if (m.includes("fashn")) return "fashn";
+  // fal-ai/idm-vton, cat-vton, leffa, and anything else that takes the generic
+  // human/garment/description/category shape.
+  return "idm-generic";
+}
+
+/** FASHN's `category` vocabulary differs from the IDM-VTON `*_body` vocabulary. */
+function fashnCategory(category: string): "tops" | "bottoms" | "one-pieces" | "auto" {
+  if (category === "lower_body") return "bottoms";
+  if (category === "upper_body") return "tops";
+  return "auto";
+}
+
+/**
+ * Shape the `fal-run` `input` object for the selected try-on family. Kept pure so
+ * frameSwap.test.ts exercises every family's exact request shape.
+ */
+export function shapeFalInput(
+  model: string,
+  args: Pick<FrameSwapArgs, "humanImageUrl" | "garmentImageUrl" | "category" | "garmentDescription">,
+): Record<string, unknown> {
+  const { humanImageUrl, garmentImageUrl, category, garmentDescription } = args;
+  switch (falVtonFamily(model)) {
+    case "kolors":
+      // fal-ai/kling/v1-5/kolors-virtual-try-on — minimal 2-URL schema.
+      return {
+        human_image_url: humanImageUrl,
+        garment_image_url: garmentImageUrl,
+      };
+    case "fashn":
+      // fal-ai/fashn/tryon/v1.5|v1.6 — model_image + garment_image + category.
+      return {
+        model_image: humanImageUrl,
+        garment_image: garmentImageUrl,
+        category: fashnCategory(category),
+      };
+    default:
+      // IDM-VTON family (and unknown ids) — the original generic shape.
+      return {
+        human_image_url: humanImageUrl,
+        garment_image_url: garmentImageUrl,
+        description: garmentDescription,
+        category,
+      };
+  }
+}
+
+/**
  * Build the CC POST body for one frame's swap. Either a `fal-run` of an
- * env-selected model, or the `vton-frame` action — both shaped as a
- * garment-onto-human transfer conditioned on the locked reference.
+ * env-selected model — input shaped per try-on family (see shapeFalInput) — or
+ * the `vton-frame` action. Both are conditioned on the LOCKED garment reference.
  */
 export function buildFrameSwapBody(args: FrameSwapArgs): Record<string, unknown> {
   const { humanImageUrl, garmentImageUrl, category, garmentDescription, engine } = args;
@@ -46,18 +111,10 @@ export function buildFrameSwapBody(args: FrameSwapArgs): Record<string, unknown>
   }
   const model = engine.falModel?.trim();
   if (model) {
-    // fal-run path — input shaped for the IDM-VTON family (human + garment +
-    // description). A different model family needs its own input keys (same
-    // caveat as SCRUB_PROXY_FAL_MODEL / VIDEO_COMPOSE_FAL_MODEL).
     return {
       action: "fal-run",
       model,
-      input: {
-        human_image_url: humanImageUrl,
-        garment_image_url: garmentImageUrl,
-        description: garmentDescription,
-        category,
-      },
+      input: shapeFalInput(model, { humanImageUrl, garmentImageUrl, category, garmentDescription }),
     };
   }
   return {

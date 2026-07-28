@@ -43,6 +43,35 @@ as the shipping `sam3-segment-proxy` / `wardrobe-vton-proxy`). Only a *custom*
 `FRAME_SWAP_FAL_MODEL` would need a new CC fal-run allowlist entry — the default
 path does not. Engine is recorded on the asset as `swap_engine`.
 
+### Lane B — purpose-built VTON keyframe mapper
+
+The `fal-run` input is shaped **per try-on family** by `_shared/frameSwap.ts`
+(`shapeFalInput`), so `FRAME_SWAP_FAL_MODEL` can point at a purpose-built engine
+and the body matches that engine's exact schema:
+
+| `FRAME_SWAP_FAL_MODEL` | Family | `input` shape | Output read |
+|------------------------|--------|---------------|-------------|
+| `fal-ai/kling/v1-5/kolors-virtual-try-on` | `kolors` | `{ human_image_url, garment_image_url }` | `{ image: { url } }` |
+| `fal-ai/fashn/tryon/v1.5` \| `…/v1.6` | `fashn` | `{ model_image, garment_image, category }` (`upper_body`→`tops`, `lower_body`→`bottoms`, else `auto`) | `{ images: [{ url }] }` |
+| anything else (e.g. `fal-ai/idm-vton`, `…/leffa/virtual-tryon`) | `idm-generic` | `{ human_image_url, garment_image_url, description, category }` | `{ image \| image_url \| images[] }` |
+
+**Read this before calling it "video-native."** Kolors and FASHN are **still-image**
+try-on engines with **no temporal state** (Fal has no batch video-file→video-file
+try-on as of 2026-07; the only "video" try-on, `decart/lucy2-vton/realtime`, is a
+live WebRTC webcam stream, not a submit/poll file job). Pointing
+`FRAME_SWAP_FAL_MODEL` at Kolors/FASHN therefore makes this a **per-frame /
+KEYFRAME MAPPER** — a *cleaner garment mapper than the default vton-frame
+(IDM-VTON)*, **not** a temporal-consistency solution. In the locked benchmark
+(`docs/VIDEO_SWAP_ARCHITECTURE.md` §5) this is **Lane B's keyframe-mapper option**,
+which still needs **Lane A propagation** for flicker-free video. See
+`docs/LANE_B_VIDEO_VTON_BENCHMARK.md`.
+
+**One-line CC allowlist** (only for the fal-run path): add the chosen id to CC
+`switchx-restyle`'s fal-run model allowlist, e.g.
+`fal-ai/kling/v1-5/kolors-virtual-try-on` — same pattern as
+`SCRUB_PROXY_FAL_MODEL` / `VIDEO_COMPOSE_FAL_MODEL`. The default `vton-frame` path
+needs no allowlist change.
+
 ## Client
 
 `src/lib/queries/wardrobeVideoFrames.ts` → `runFrameSwapRoundtrip()`:

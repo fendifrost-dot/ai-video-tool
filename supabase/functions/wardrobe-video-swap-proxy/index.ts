@@ -23,7 +23,12 @@
 //   SWITCHX_PROXY_SECRET | COMPOSE_LOOK_PROXY_SECRET — CC proxy secret
 //   FRAME_SWAP_FAL_MODEL          — OPTIONAL Fal model for the fal-run path
 //                                    (must be in CC's fal-run allowlist). Unset
-//                                    → the vton-frame action (IDM-VTON).
+//                                    → the vton-frame action (IDM-VTON). Input is
+//                                    shaped PER TRY-ON FAMILY by _shared/frameSwap
+//                                    (Kolors / FASHN / IDM-generic) — this is the
+//                                    LANE B keyframe-mapper path; those engines are
+//                                    still-image (no temporal state), see
+//                                    docs/LANE_B_VIDEO_VTON_BENCHMARK.md.
 //   FRAME_SWAP_CONCURRENCY        — OPTIONAL parallel frames (default 6)
 //   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
