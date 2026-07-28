@@ -93,3 +93,31 @@ Confirm T7: `df -h /Volumes/T7`. If missing → **stop and ask**. Never fall bac
 1. Asset processing runs through AVT / its edge functions — no ad-hoc local image pipelines in the agent sandbox.
 2. No AI-regeneration of garment imagery; pixel preservation is mandatory.
 3. Fix the tool, not workarounds. Minimize scope.
+
+---
+
+## LOCKED: Video garment-swap architecture — keyframe + propagation (do not drift)
+
+**Canonical doc:** [`docs/VIDEO_SWAP_ARCHITECTURE.md`](docs/VIDEO_SWAP_ARCHITECTURE.md) — read it before touching any video-swap code. This section is the short form; the doc is authoritative.
+
+**Provenance:** Confirmed **unanimously** by Grok + Gemini + ChatGPT (2026-07-27). Matches the repo's own earlier pivot handoff [`CURSOR_HANDOFF_video_clothing_swap_pivot.md`](CURSOR_HANDOFF_video_clothing_swap_pivot.md) (**2026-06-21**, commit `228226f`) — the decision Phase 2b drifted from. This re-lock exists so that drift does not recur.
+
+**PRODUCTION PATH = Grok keyframe generation + temporal propagation.** Do **NOT** scale independent per-frame VTON / `switchx-restyle` to full-length videos.
+
+**WHY:** Single-image engines (`switchx-restyle`, `vton-frame`) have **no temporal state** → independent per-frame sampling produces **"boiling"/flicker**. "Reference-lock" fixes only the *target garment*, **not** temporal consistency. Masked-lock (**Phase 2c**) is **ORIGINAL-FOOTAGE PRESERVATION** (pins face/scene/body), **NOT** garment-region stabilization.
+
+**THE LANE:** approve a few product-accurate Grok **hero keyframes** (every ~12–24 frames + at pose changes / scene cuts) → **propagate** the approved garment across intermediate frames via optical flow (RAFT / EbSynth-style) **or** a video-native VTON / video-to-video model → **re-anchor** a new Grok keyframe when flow confidence breaks (large rotations / occlusions) → **composite onto the ORIGINAL footage** + keep the deterministic brand/logo composite for stripe/logo + **face-restore** as safety net.
+
+**Phase 2b (independent per-frame swap) = BASELINE / DIAGNOSTIC ONLY.** Keep its reusable infra (frame extract, ordered storage, Fal routing, bounded concurrency, status tracking, reassembly); **never** make it the full-length production path.
+
+**BENCHMARK before building full** (pick the winner on a short clip):
+- **(a)** Grok keyframe + optical-flow / EbSynth propagation, vs
+- **(b)** video-native VTON (`fal-ai/kling/v1-5/kolors-virtual-try-on`, `fal-ai/fashn/v1.5`, Wan2.1 / Kling video-to-video with pose control).
+
+**ENGINEERING PREREQS before any full-length run:**
+- Replace fail-fast (one bad frame kills the job) with **per-frame/per-chunk persisted status + retries + resume + skip-completed**.
+- Replace `EdgeRuntime.waitUntil` with a **durable chunk job queue**.
+- Normalize output filename/format (code names everything `.jpg`).
+- Record reproducibility metadata: model, version, prompt, reference-asset hash/version, mask version, seed, transfer mode.
+
+**KILL CRITERION (short 2–4s test):** if it cannot hold Fendi's identity + exact jacket construction + stripe/logo placement + natural occlusion **without visible flicker/morphing**, **STOP and redesign before scaling.**
