@@ -1,12 +1,12 @@
-// Phase 2a orchestration — the encoder roundtrip for wardrobe video propagation.
+// Wardrobe video propagation — client orchestration.
 //
-// Extract every frame of a master clip (client-side WebCodecs, full res),
-// upload them to Storage in order, then ask wardrobe-video-reassemble-proxy to
-// mux them back into a clip via Fal `ffmpeg-api/compose` (through Control
-// Center). No garment swap yet — this proves master → frames → video with audio
-// before Phase 2b inserts the per-frame swap between extract and reassemble.
-//
-// See src/lib/video/extractFrames.ts and the reassemble edge function.
+// Phase 2a: extract → upload → reassemble (no swap; proves the encoder roundtrip).
+// Phase 2b: extract → upload → per-frame garment swap → reassemble. The swap is
+// REFERENCE-LOCKED — every frame is conditioned on the same approved garment
+// image (wardrobe-video-swap-proxy), so the outfit is identical frame to frame.
+// switchx-restyle is single-image with no temporal state, so reference-lock is
+// the consistency mechanism (see supabase/functions/_shared/frameSwap.ts and
+// docs/AVT_masked_garment_swap_LOCKED.md for the masked-lock 2c strengthening).
 import { supabase } from "@/lib/supabase";
 import { getSessionWithTimeout, getAccessTokenWithTimeout } from "@/lib/authSession";
 import { bucketForAssetType } from "@/lib/queries/projectAssets";
@@ -16,6 +16,8 @@ import { extractFramesFromUrl, type ExtractFramesOptions } from "@/lib/video/ext
 const FRAME_BUCKET = "project-exports";
 const SIGN_TTL = 3600;
 const UPLOAD_CONCURRENCY = 4;
+const SWAP_POLL_INTERVAL_MS = 5000;
+const SWAP_POLL_TIMEOUT_MS = 12 * 60 * 1000;
 
 export interface RoundtripInput {
   asset: Pick<ProjectAsset, "id" | "asset_type" | "file_url">;
@@ -36,6 +38,19 @@ export interface RoundtripResult {
   truncated: boolean;
   /** Output object path the reassemble job writes to (project-exports bucket). */
   outPath: string;
+}
+
+export interface SwapRoundtripInput extends RoundtripInput {
+  /** Wardrobe item whose garment reference is locked onto every frame. */
+  wardrobeFeatureId: string;
+  artistId: string;
+  transferMode?: "full_look" | "jacket_only";
+  vtonModel?: "idm-vton" | "cat-vton";
+}
+
+export interface SwapRoundtripResult extends RoundtripResult {
+  engine: string;
+  swappedPrefix: string;
 }
 
 /** zero-padded so lexical order == frame order in Storage listings. */
@@ -63,12 +78,17 @@ async function uploadInPool<T>(
   await Promise.all(runners);
 }
 
-/**
- * Run the full extract → upload → reassemble roundtrip. Returns once the
- * reassemble job is DISPATCHED (it finishes in the edge background task; poll
- * the asset's metadata_json.reassemble_status for "ready").
- */
-export async function runFrameRoundtrip(input: RoundtripInput): Promise<RoundtripResult> {
+interface UploadedFrames {
+  userId: string;
+  sessionId: string;
+  framePaths: string[];
+  fps: number;
+  total: number;
+  truncated: boolean;
+}
+
+/** Extract the master's frames (client WebCodecs) and upload them in order. */
+async function extractAndUploadFrames(input: RoundtripInput): Promise<UploadedFrames> {
   const session = await getSessionWithTimeout();
   const userId = session?.user?.id;
   if (!userId) throw new Error("Not authenticated");
@@ -109,25 +129,28 @@ export async function runFrameRoundtrip(input: RoundtripInput): Promise<Roundtri
   const framePaths = extracted.frames.map((f) =>
     framePath(userId, input.asset.id, sessionId, f.index),
   );
+  return {
+    userId,
+    sessionId,
+    framePaths,
+    fps: extracted.fps,
+    total,
+    truncated: extracted.truncated,
+  };
+}
 
+async function postEdge<T = Record<string, unknown>>(
+  fn: string,
+  payload: Record<string, unknown>,
+): Promise<T> {
   const baseUrl = import.meta.env.VITE_SUPABASE_URL;
   if (!baseUrl) throw new Error("Missing VITE_SUPABASE_URL");
   const token = await getAccessTokenWithTimeout();
-  const resp = await fetch(
-    `${baseUrl.replace(/\/$/, "")}/functions/v1/wardrobe-video-reassemble-proxy`,
-    {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        assetId: input.asset.id,
-        sessionId,
-        framePaths,
-        frameBucket: FRAME_BUCKET,
-        fps: extracted.fps,
-        includeAudio: input.includeAudio ?? true,
-      }),
-    },
-  );
+  const resp = await fetch(`${baseUrl.replace(/\/$/, "")}/functions/v1/${fn}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
   if (!resp.ok) {
     let detail = "";
     try {
@@ -136,15 +159,123 @@ export async function runFrameRoundtrip(input: RoundtripInput): Promise<Roundtri
     } catch {
       /* ignore */
     }
-    throw new Error(`reassemble dispatch failed (${resp.status})${detail ? `: ${detail}` : ""}`);
+    throw new Error(`${fn} failed (${resp.status})${detail ? `: ${detail}` : ""}`);
   }
-  const body = (await resp.json()) as { outPath?: string };
+  return (await resp.json()) as T;
+}
+
+async function dispatchReassemble(
+  assetId: string,
+  sessionId: string,
+  framePaths: string[],
+  frameBucket: string,
+  fps: number,
+  includeAudio: boolean,
+): Promise<string> {
+  const body = await postEdge<{ outPath?: string }>("wardrobe-video-reassemble-proxy", {
+    assetId,
+    sessionId,
+    framePaths,
+    frameBucket,
+    fps,
+    includeAudio,
+  });
+  return body.outPath ?? "";
+}
+
+/**
+ * Poll an asset's metadata_json until `key` reaches "ready" (resolves the meta)
+ * or "failed" (throws with the recorded error). Times out.
+ */
+async function pollAssetStatus(
+  assetId: string,
+  key: string,
+  errorKey: string,
+): Promise<Record<string, unknown>> {
+  const deadline = Date.now() + SWAP_POLL_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const { data } = await supabase
+      .from("project_assets")
+      .select("metadata_json")
+      .eq("id", assetId)
+      .maybeSingle();
+    const meta = (data?.metadata_json ?? {}) as Record<string, unknown>;
+    const status = String(meta[key] ?? "");
+    if (status === "ready") return meta;
+    if (status === "failed") throw new Error(String(meta[errorKey] ?? `${key} failed`));
+    await new Promise((r) => setTimeout(r, SWAP_POLL_INTERVAL_MS));
+  }
+  throw new Error(`${key} timed out`);
+}
+
+/**
+ * Phase 2a — extract → upload → reassemble (no swap). Returns once reassemble is
+ * DISPATCHED; poll metadata_json.reassemble_status for "ready".
+ */
+export async function runFrameRoundtrip(input: RoundtripInput): Promise<RoundtripResult> {
+  const up = await extractAndUploadFrames(input);
+  const outPath = await dispatchReassemble(
+    input.asset.id,
+    up.sessionId,
+    up.framePaths,
+    FRAME_BUCKET,
+    up.fps,
+    input.includeAudio ?? true,
+  );
+  return {
+    sessionId: up.sessionId,
+    frameCount: up.total,
+    fps: up.fps,
+    truncated: up.truncated,
+    outPath,
+  };
+}
+
+/**
+ * Phase 2b — extract → upload → per-frame reference-locked swap → reassemble.
+ * Waits for the swap to finish (polls swap_status) before dispatching reassemble
+ * on the swapped frames. Returns once reassemble is dispatched.
+ */
+export async function runFrameSwapRoundtrip(
+  input: SwapRoundtripInput,
+): Promise<SwapRoundtripResult> {
+  const up = await extractAndUploadFrames(input);
+
+  const swap = await postEdge<{ swappedPrefix: string; swappedBucket: string; engine: string }>(
+    "wardrobe-video-swap-proxy",
+    {
+      assetId: input.asset.id,
+      sessionId: up.sessionId,
+      framePaths: up.framePaths,
+      frameBucket: FRAME_BUCKET,
+      artistId: input.artistId,
+      wardrobeFeatureId: input.wardrobeFeatureId,
+      transferMode: input.transferMode ?? "jacket_only",
+      vtonModel: input.vtonModel,
+    },
+  );
+
+  const meta = await pollAssetStatus(input.asset.id, "swap_status", "swap_error");
+  const prefix = String(meta.swap_swapped_prefix ?? swap.swappedPrefix);
+  const swappedBucket = String(meta.swap_swapped_bucket ?? swap.swappedBucket ?? FRAME_BUCKET);
+  const swappedPaths = up.framePaths.map((_, i) => `${prefix}${String(i).padStart(6, "0")}.jpg`);
+
+  const outPath = await dispatchReassemble(
+    input.asset.id,
+    up.sessionId,
+    swappedPaths,
+    swappedBucket,
+    up.fps,
+    input.includeAudio ?? true,
+  );
 
   return {
-    sessionId,
-    frameCount: total,
-    fps: extracted.fps,
-    truncated: extracted.truncated,
-    outPath: body.outPath ?? "",
+    sessionId: up.sessionId,
+    frameCount: up.total,
+    fps: up.fps,
+    truncated: up.truncated,
+    outPath,
+    engine: swap.engine,
+    swappedPrefix: prefix,
   };
 }

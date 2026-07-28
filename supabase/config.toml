@@ -55,3 +55,11 @@ verify_jwt = true
 # required. See docs/AVT_Wardrobe_Swap_Build_Spec_v2.md §7.
 [functions.wardrobe-video-reassemble-proxy]
 verify_jwt = true
+
+# Wardrobe video propagation — Phase 2b per-frame garment swap. Reference-locks
+# one approved garment image onto every extracted frame via CC switchx-restyle
+# (vton-frame action by default, or fal-run FRAME_SWAP_FAL_MODEL), then the
+# swapped frames feed wardrobe-video-reassemble-proxy. User JWT required.
+# See docs/AVT_masked_garment_swap_LOCKED.md.
+[functions.wardrobe-video-swap-proxy]
+verify_jwt = true
