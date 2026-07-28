@@ -12,6 +12,7 @@ import { getSessionWithTimeout, getAccessTokenWithTimeout } from "@/lib/authSess
 import { bucketForAssetType } from "@/lib/queries/projectAssets";
 import type { ProjectAsset } from "@/integrations/supabase/aliases";
 import { extractFramesFromUrl, type ExtractFramesOptions } from "@/lib/video/extractFrames";
+import { applyGrokGarmentTruthAndWait } from "@/lib/queries/grokImageGarment";
 
 const FRAME_BUCKET = "project-exports";
 const SIGN_TTL = 3600;
@@ -184,13 +185,16 @@ async function dispatchReassemble(
 }
 
 /**
- * Poll an asset's metadata_json until `key` reaches "ready" (resolves the meta)
- * or "failed" (throws with the recorded error). Times out.
+ * Poll an asset's metadata_json until `key` reaches a ready state (resolves the
+ * meta) or "failed" (throws with the recorded error). Times out. `terminalReady`
+ * lets a caller also treat other non-failure terminal states as done (Lane A's
+ * propagate step can end "incomplete" when some frames are blocked/re-anchor).
  */
 async function pollAssetStatus(
   assetId: string,
   key: string,
   errorKey: string,
+  terminalReady: string[] = ["ready"],
 ): Promise<Record<string, unknown>> {
   const deadline = Date.now() + SWAP_POLL_TIMEOUT_MS;
   while (Date.now() < deadline) {
@@ -201,7 +205,7 @@ async function pollAssetStatus(
       .maybeSingle();
     const meta = (data?.metadata_json ?? {}) as Record<string, unknown>;
     const status = String(meta[key] ?? "");
-    if (status === "ready") return meta;
+    if (terminalReady.includes(status)) return meta;
     if (status === "failed") throw new Error(String(meta[errorKey] ?? `${key} failed`));
     await new Promise((r) => setTimeout(r, SWAP_POLL_INTERVAL_MS));
   }
@@ -277,5 +281,187 @@ export async function runFrameSwapRoundtrip(
     outPath,
     engine: swap.engine,
     swappedPrefix: prefix,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// LANE A — Grok keyframe generation + temporal propagation.
+// docs/VIDEO_SWAP_ARCHITECTURE.md §3 (the LOCKED production path).
+//
+//   extract → generate approved Grok KEYFRAMES (existing grok-image-garment-
+//   proxy) → PROPAGATE garment across intermediates (wardrobe-video-propagate-
+//   proxy) → reassemble.
+//
+// This is NOT Phase 2b (independent per-frame swap). Only the middle generation
+// step differs: keyframes are the ground truth, intermediates are warp-derived.
+// ---------------------------------------------------------------------------
+
+/** Locked cadence band (mirrors supabase/functions/_shared/keyframePlan.ts — keep in sync). */
+const KEYFRAME_CADENCE_MIN = 12;
+const KEYFRAME_CADENCE_MAX = 24;
+const KEYFRAME_CADENCE_DEFAULT = 18;
+
+/**
+ * Keyframe indices for a clip: first + last always, one every `cadence` frames,
+ * plus any forced anchors (pose changes / scene cuts). Mirrors planKeyframes()
+ * in _shared/keyframePlan.ts (authoritative; the propagate proxy re-derives
+ * segments from these indices server-side).
+ */
+export function planLaneAKeyframeIndices(
+  frameCount: number,
+  cadenceFrames = KEYFRAME_CADENCE_DEFAULT,
+  forcedAnchors: number[] = [],
+): number[] {
+  if (!(frameCount > 0))
+    throw new Error(`planLaneAKeyframeIndices: invalid frameCount ${frameCount}`);
+  if (frameCount === 1) return [0];
+  const cadence = Math.min(
+    KEYFRAME_CADENCE_MAX,
+    Math.max(
+      KEYFRAME_CADENCE_MIN,
+      Math.round(Number.isFinite(cadenceFrames) ? cadenceFrames : KEYFRAME_CADENCE_DEFAULT),
+    ),
+  );
+  const set = new Set<number>([0, frameCount - 1]);
+  for (let i = cadence; i < frameCount - 1; i += cadence) set.add(i);
+  for (const a of forcedAnchors) {
+    const idx = Math.floor(a);
+    if (Number.isFinite(idx) && idx >= 0 && idx < frameCount) set.add(idx);
+  }
+  return [...set].sort((a, b) => a - b);
+}
+
+export interface LaneAKeyframe {
+  index: number;
+  path: string;
+  bucket: string;
+  lookId: string;
+}
+
+export interface LaneARoundtripInput extends RoundtripInput {
+  wardrobeFeatureId: string;
+  artistId: string;
+  projectId?: string;
+  /** Scheduled keyframe cadence (clamped to 12–24). Default 18. */
+  cadenceFrames?: number;
+  /** Extra keyframe indices at detected pose changes / scene cuts. */
+  forcedAnchors?: number[];
+  /**
+   * Human-approval gate for each generated keyframe (the locked lane approves
+   * keyframes before propagation). Return false to reject — rejection aborts the
+   * run so a bad keyframe never propagates. Default: auto-approve.
+   */
+  approveKeyframe?: (kf: LaneAKeyframe) => boolean | Promise<boolean>;
+  /** Progress across keyframe generation. */
+  onKeyframe?: (done: number, total: number, kf: LaneAKeyframe) => void;
+}
+
+export interface LaneARoundtripResult extends RoundtripResult {
+  keyframeIndices: number[];
+  keyframes: LaneAKeyframe[];
+  propagateEngine: string;
+  propagateEngineActive: boolean;
+  /** Non-null when propagation is blocked (e.g. no flow model wired). */
+  propagateBlockReason: string | null;
+  /** Frames still needing a fresh Grok keyframe (flow breaks). */
+  reanchorNeeded: number[];
+  /** propagate rollup: "ready" (all frames) or "incomplete" (some blocked). */
+  propagateStatus: string;
+}
+
+/**
+ * Phase — Lane A. Extract → generate approved Grok keyframes → propagate garment
+ * across intermediates → (if complete) reassemble. Returns the plan + status
+ * even when propagation blocks (no engine wired), so the caller can see exactly
+ * what Lane A needs without faking a video.
+ */
+export async function runLaneARoundtrip(input: LaneARoundtripInput): Promise<LaneARoundtripResult> {
+  const up = await extractAndUploadFrames(input);
+
+  // 1. KEYFRAMES — reuse the proven Grok garment-truth hero pipeline, one call
+  //    per planned keyframe index, using that ORIGINAL frame as the scene.
+  const keyframeIndices = planLaneAKeyframeIndices(
+    up.total,
+    input.cadenceFrames,
+    input.forcedAnchors,
+  );
+  const keyframes: LaneAKeyframe[] = [];
+  for (let n = 0; n < keyframeIndices.length; n++) {
+    const idx = keyframeIndices[n];
+    const look = await applyGrokGarmentTruthAndWait({
+      artistId: input.artistId,
+      wardrobeFeatureId: input.wardrobeFeatureId,
+      scenePath: up.framePaths[idx],
+      sceneBucket: FRAME_BUCKET,
+      projectId: input.projectId,
+      name: `Lane A keyframe · frame ${idx}`,
+    });
+    const path = (look.generated_storage_path ?? look.generated_image_url) as string | null;
+    if (!path) throw new Error(`Keyframe ${idx}: Grok produced no image`);
+    const kf: LaneAKeyframe = { index: idx, path, bucket: "look-composites", lookId: look.id };
+    // Approval gate — a rejected keyframe must not propagate.
+    const approved = input.approveKeyframe ? await input.approveKeyframe(kf) : true;
+    if (!approved) throw new Error(`Keyframe ${idx} rejected — aborting before propagation`);
+    keyframes.push(kf);
+    input.onKeyframe?.(n + 1, keyframeIndices.length, kf);
+  }
+
+  // 2. PROPAGATE — warp the approved keyframe garment across intermediates.
+  const prop = await postEdge<{
+    prefix: string;
+    engine: string;
+    engineActive: boolean;
+    engineBlockReason: string | null;
+    reanchorNeeded: number[];
+  }>("wardrobe-video-propagate-proxy", {
+    assetId: input.asset.id,
+    sessionId: up.sessionId,
+    framePaths: up.framePaths,
+    frameBucket: FRAME_BUCKET,
+    keyframes: keyframes.map((k) => ({ index: k.index, path: k.path, bucket: k.bucket })),
+    artistId: input.artistId,
+    wardrobeFeatureId: input.wardrobeFeatureId,
+    cadenceFrames: input.cadenceFrames ?? KEYFRAME_CADENCE_DEFAULT,
+  });
+
+  const meta = await pollAssetStatus(input.asset.id, "propagate_status", "propagate_error", [
+    "ready",
+    "incomplete",
+  ]);
+  const propagateStatus = String(meta.propagate_status ?? "");
+  const prefix = String(meta.propagate_prefix ?? prop.prefix);
+  const reanchorNeeded = (meta.propagate_reanchor_needed as number[]) ?? prop.reanchorNeeded ?? [];
+
+  // 3. REASSEMBLE — only when every frame is present. Build the exact ordered
+  //    path set from the per-frame record (ext varies: filename normalize).
+  let outPath = "";
+  if (propagateStatus === "ready") {
+    const frameRec = (meta.propagate_frames ?? {}) as Record<string, { ext?: string }>;
+    const propagatedPaths = up.framePaths.map(
+      (_, i) => `${prefix}${String(i).padStart(6, "0")}.${frameRec[String(i)]?.ext ?? "jpg"}`,
+    );
+    outPath = await dispatchReassemble(
+      input.asset.id,
+      up.sessionId,
+      propagatedPaths,
+      FRAME_BUCKET, // propagate proxy writes into project-exports
+      up.fps,
+      input.includeAudio ?? true,
+    );
+  }
+
+  return {
+    sessionId: up.sessionId,
+    frameCount: up.total,
+    fps: up.fps,
+    truncated: up.truncated,
+    outPath,
+    keyframeIndices,
+    keyframes,
+    propagateEngine: String(meta.propagate_engine ?? prop.engine),
+    propagateEngineActive: prop.engineActive,
+    propagateBlockReason: prop.engineBlockReason ?? null,
+    reanchorNeeded,
+    propagateStatus,
   };
 }
