@@ -42,6 +42,7 @@ import {
   installEyewearRestoreDevHook,
 } from "@/lib/queries/eyewearRestore";
 import { ManualKeyframeQuadEditor } from "@/components/products/ManualKeyframeQuadEditor";
+import { WardrobeVideoLaneRunner } from "@/components/video/WardrobeVideoLaneRunner";
 import type { QuadNorm } from "@/lib/garment/placementEngine";
 
 // Periocular (eye + eyewear) starting quad — upper-centre of the frame. Drag to
@@ -784,6 +785,15 @@ export default function HeroFrameStudioPage({
             </p>
           </section>
         )}
+
+        {/* Phase 2 — video garment swap across a short clip (Lane A/B/C). Runs on
+            a SERVER-extracted clip so the browser never decodes the 2 GB master. */}
+        <section className="space-y-2">
+          <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            6 · Phase 2 — video garment swap (short clip)
+          </h2>
+          <WardrobeVideoLaneRunner projectId={projectId} />
+        </section>
 
         {!videoAssets.length && (
           <div className="flex items-center gap-2 rounded-md border border-dashed border-border p-4 text-xs text-muted-foreground">
