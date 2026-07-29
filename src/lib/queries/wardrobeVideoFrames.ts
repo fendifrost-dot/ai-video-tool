@@ -20,6 +20,24 @@ const UPLOAD_CONCURRENCY = 4;
 const SWAP_POLL_INTERVAL_MS = 5000;
 const SWAP_POLL_TIMEOUT_MS = 12 * 60 * 1000;
 
+/**
+ * Explicit clip range to extract SERVER-SIDE (Fal ffmpeg via CC), instead of the
+ * browser downloading + decoding the whole (up to ~2 GB 4K HEVC) master. This is
+ * the PRIMARY path for large masters — see supabase/functions/_shared/frameExtract.ts
+ * and wardrobe-video-frame-extract-proxy. The client WebCodecs path
+ * (extractFramesFromUrl) stays as the fallback for small LOCAL files.
+ */
+export interface ServerExtractConfig {
+  /** Clip start, seconds into the master. >= 0. */
+  startSec: number;
+  /** Clip duration in seconds. > 0. */
+  durationSec: number;
+  /** Optional output frame width (px, even). Omit to keep source width. */
+  width?: number;
+  /** Optional output frame height (px, even). Omit to keep source height. */
+  height?: number;
+}
+
 export interface RoundtripInput {
   asset: Pick<ProjectAsset, "id" | "asset_type" | "file_url">;
   /** Decimate to at most this fps (omit to keep the master's rate). */
@@ -30,6 +48,13 @@ export interface RoundtripInput {
   includeAudio?: boolean;
   /** Progress callback: fraction 0..1 through the frame uploads. */
   onProgress?: (uploaded: number, total: number) => void;
+  /**
+   * When set, the [startSec, startSec+durationSec] frames are extracted on the
+   * SERVER (no whole-master browser download/decode). `targetFps` is required in
+   * this mode (frame i lands at startSec + i/targetFps). Omit to use the legacy
+   * client WebCodecs extractor (small local files only).
+   */
+  serverExtract?: ServerExtractConfig;
 }
 
 export interface RoundtripResult {
@@ -140,6 +165,172 @@ async function extractAndUploadFrames(input: RoundtripInput): Promise<UploadedFr
   };
 }
 
+// Client mirror of the server ExtractionManifest (authoritative copy lives in
+// supabase/functions/_shared/frameExtract.ts). Only the fields the client
+// consumes are typed here.
+interface ClientManifestFrame {
+  index: number;
+  path: string;
+}
+export interface ClientExtractionManifest {
+  extractionId: string;
+  fps: number;
+  frameCount: number;
+  truncated: boolean;
+  frames: ClientManifestFrame[];
+  frameBucket: string;
+  framePrefix: string;
+  /** Trimmed [start, start+duration] clip mp4 — Lane C's whole-clip input. */
+  clipPath: string | null;
+  clipBucket: string | null;
+}
+
+type ServerUploadedFrames = UploadedFrames & {
+  clipPath: string | null;
+  clipBucket: string | null;
+};
+
+function orderedManifestPaths(manifest: ClientExtractionManifest): string[] {
+  return [...manifest.frames].sort((a, b) => a.index - b.index).map((f) => f.path);
+}
+
+/**
+ * SERVER-SIDE clip extraction. Fal has NO server-side full-frame extractor
+ * (confirmed 2026-07-29 — see supabase/functions/_shared/frameExtract.ts), so
+ * the split is:
+ *   • SERVER (edge fn): seek+trim the [start,duration] range out of the master
+ *     on Fal and normalize it to a small H.264 clip. The 2 GB / 4K-HEVC master
+ *     is pulled by FAL, never by the browser — that is the whole point.
+ *   • CLIENT (here): decode that SMALL trimmed clip with WebCodecs (a few MB of
+ *     H.264, not the master) and upload the frames, then finalize the manifest.
+ * Idempotent + resumable: the extraction id keys the clip + every frame path, so
+ * a re-run skips the trim (clip already stored) and skips frames already
+ * uploaded. When the clip already has its frames, this returns WITHOUT any
+ * client download at all.
+ */
+async function extractClipFramesServer(
+  input: RoundtripInput,
+  opts: { clipOnly?: boolean } = {},
+): Promise<ServerUploadedFrames> {
+  const cfg = input.serverExtract!;
+  if (!(input.targetFps && input.targetFps > 0)) {
+    throw new Error("serverExtract requires targetFps (frame i = startSec + i/targetFps)");
+  }
+  const session = await getSessionWithTimeout();
+  const userId = session?.user?.id;
+  if (!userId) throw new Error("Not authenticated");
+
+  // 1. Dispatch the server-side seek+trim (idempotent — skips if the clip exists).
+  await postEdge("wardrobe-video-frame-extract-proxy", {
+    assetId: input.asset.id,
+    startSec: cfg.startSec,
+    durationSec: cfg.durationSec,
+    fps: input.targetFps,
+    width: cfg.width,
+    height: cfg.height,
+    maxFrames: input.maxFrames,
+  });
+
+  // 2. Wait for the trimmed clip. "frames_pending" == clip ready, frames not yet
+  //    uploaded; "ready" == frames already present (idempotent short-circuit).
+  let meta = await pollAssetStatus(input.asset.id, "extract_status", "extract_error", [
+    "ready",
+    "frames_pending",
+  ]);
+  let manifest = meta.extract_manifest as ClientExtractionManifest | undefined;
+  if (!manifest?.framePrefix) throw new Error("Extractor produced no manifest");
+
+  const status = String(meta.extract_status ?? "");
+
+  // Lane C only needs the trimmed CLIP (whole-clip v2v), not decoded frames —
+  // stop as soon as the clip is ready and skip the client decode entirely.
+  if (opts.clipOnly) {
+    if (!manifest.clipPath || !manifest.clipBucket) {
+      throw new Error("Extractor did not produce a trimmed clip");
+    }
+    return {
+      userId,
+      sessionId: manifest.extractionId,
+      framePaths: status === "ready" ? orderedManifestPaths(manifest) : [],
+      fps: manifest.fps,
+      total: manifest.frameCount,
+      truncated: manifest.truncated,
+      clipPath: manifest.clipPath,
+      clipBucket: manifest.clipBucket,
+    };
+  }
+
+  if (status !== "ready") {
+    // 3. Decode the SMALL trimmed clip (not the master) and upload its frames.
+    if (!manifest.clipPath || !manifest.clipBucket) {
+      throw new Error("Extractor did not produce a trimmed clip to decode");
+    }
+    const { data: clipSigned, error: clipErr } = await supabase.storage
+      .from(manifest.clipBucket)
+      .createSignedUrl(manifest.clipPath, SIGN_TTL);
+    if (clipErr || !clipSigned?.signedUrl) {
+      throw new Error(`Could not sign trimmed clip: ${clipErr?.message ?? "no url"}`);
+    }
+    const extracted = await extractFramesFromUrl(clipSigned.signedUrl, {
+      targetFps: input.targetFps,
+      maxFrames: input.maxFrames,
+    });
+    if (extracted.frames.length === 0) throw new Error("No frames decoded from trimmed clip");
+
+    const prefix = manifest.framePrefix;
+    const bucket = manifest.frameBucket;
+    const total = extracted.frames.length;
+    await uploadInPool(
+      extracted.frames,
+      async (frame) => {
+        const path = `${prefix}${String(frame.index).padStart(6, "0")}.jpg`;
+        const { error } = await supabase.storage.from(bucket).upload(path, frame.blob, {
+          contentType: "image/jpeg",
+          cacheControl: "3600",
+          upsert: true, // idempotent re-upload; skip-completed is by the finalize list
+        });
+        if (error) throw new Error(`Frame upload failed (${frame.index}): ${error.message}`);
+      },
+      UPLOAD_CONCURRENCY,
+      (done) => input.onProgress?.(done, total),
+    );
+
+    // 4. Finalize: the edge fn re-lists storage and flips the manifest to ready.
+    await postEdge("wardrobe-video-frame-extract-proxy", {
+      assetId: input.asset.id,
+      startSec: cfg.startSec,
+      durationSec: cfg.durationSec,
+      fps: input.targetFps,
+      width: cfg.width,
+      height: cfg.height,
+      maxFrames: input.maxFrames,
+      finalize: true,
+    });
+    meta = await pollAssetStatus(input.asset.id, "extract_status", "extract_error");
+    manifest = meta.extract_manifest as ClientExtractionManifest | undefined;
+    if (!manifest?.frames?.length) throw new Error("Finalized manifest has no frames");
+  }
+
+  const framePaths = orderedManifestPaths(manifest);
+  input.onProgress?.(framePaths.length, framePaths.length);
+  return {
+    userId,
+    sessionId: manifest.extractionId,
+    framePaths,
+    fps: manifest.fps,
+    total: manifest.frameCount,
+    truncated: manifest.truncated,
+    clipPath: manifest.clipPath,
+    clipBucket: manifest.clipBucket,
+  };
+}
+
+/** Server extractor when a clip range is given; else the client WebCodecs path. */
+async function resolveFrames(input: RoundtripInput): Promise<UploadedFrames> {
+  if (input.serverExtract) return extractClipFramesServer(input);
+  return extractAndUploadFrames(input);
+}
+
 async function postEdge<T = Record<string, unknown>>(
   fn: string,
   payload: Record<string, unknown>,
@@ -217,7 +408,7 @@ async function pollAssetStatus(
  * DISPATCHED; poll metadata_json.reassemble_status for "ready".
  */
 export async function runFrameRoundtrip(input: RoundtripInput): Promise<RoundtripResult> {
-  const up = await extractAndUploadFrames(input);
+  const up = await resolveFrames(input);
   const outPath = await dispatchReassemble(
     input.asset.id,
     up.sessionId,
@@ -243,7 +434,7 @@ export async function runFrameRoundtrip(input: RoundtripInput): Promise<Roundtri
 export async function runFrameSwapRoundtrip(
   input: SwapRoundtripInput,
 ): Promise<SwapRoundtripResult> {
-  const up = await extractAndUploadFrames(input);
+  const up = await resolveFrames(input);
 
   const swap = await postEdge<{ swappedPrefix: string; swappedBucket: string; engine: string }>(
     "wardrobe-video-swap-proxy",
@@ -376,7 +567,7 @@ export interface LaneARoundtripResult extends RoundtripResult {
  * what Lane A needs without faking a video.
  */
 export async function runLaneARoundtrip(input: LaneARoundtripInput): Promise<LaneARoundtripResult> {
-  const up = await extractAndUploadFrames(input);
+  const up = await resolveFrames(input);
 
   // 1. KEYFRAMES — reuse the proven Grok garment-truth hero pipeline, one call
   //    per planned keyframe index, using that ORIGINAL frame as the scene.
@@ -489,6 +680,16 @@ export interface LaneCRoundtripInput {
   transferMode?: "full_look" | "jacket_only";
   /** Override the auto-built garment-edit prompt (benchmark tuning). */
   prompt?: string;
+  /**
+   * Explicit clip range. When set, the shared server extractor seek+trims this
+   * range out of the master first and Lucy edits THAT trimmed clip — so Lane C
+   * runs on exactly the requested seconds, never the whole master. `targetFps`
+   * is required to drive the shared extractor (its frames are reused by Lane
+   * A/B for the same range via the idempotent extraction id).
+   */
+  serverExtract?: ServerExtractConfig;
+  targetFps?: number;
+  maxFrames?: number;
 }
 
 export interface LaneCRoundtripResult {
@@ -506,6 +707,25 @@ export interface LaneCRoundtripResult {
  * once lucy_status reaches "ready" (throws on "failed" with the recorded reason).
  */
 export async function runLaneCRoundtrip(input: LaneCRoundtripInput): Promise<LaneCRoundtripResult> {
+  // Explicit clip range → produce the trimmed clip on the server first (dodges the
+  // whole-master HEVC decode) and hand Lucy that clip, so Lane C edits exactly the
+  // requested seconds. Without a range, Lucy edits the whole master (legacy).
+  let sourceOverride: { sourceBucket: string; sourcePath: string } | undefined;
+  if (input.serverExtract) {
+    const clip = await extractClipFramesServer(
+      {
+        asset: input.asset,
+        targetFps: input.targetFps,
+        maxFrames: input.maxFrames,
+        serverExtract: input.serverExtract,
+      },
+      { clipOnly: true },
+    );
+    if (clip.clipPath && clip.clipBucket) {
+      sourceOverride = { sourceBucket: clip.clipBucket, sourcePath: clip.clipPath };
+    }
+  }
+
   const dispatch = await postEdge<{
     sessionId: string;
     outPath: string;
@@ -518,6 +738,7 @@ export async function runLaneCRoundtrip(input: LaneCRoundtripInput): Promise<Lan
     wardrobeFeatureId: input.wardrobeFeatureId,
     transferMode: input.transferMode ?? "jacket_only",
     prompt: input.prompt,
+    ...sourceOverride,
   });
 
   const meta = await pollAssetStatus(input.asset.id, "lucy_status", "lucy_error");

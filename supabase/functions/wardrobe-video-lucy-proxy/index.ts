@@ -68,6 +68,14 @@ type Body = {
   transferMode?: "full_look" | "jacket_only";
   /** Distinct session id so repeated benchmark runs don't collide. */
   sessionId?: string;
+  /**
+   * Optional pre-trimmed clip to edit INSTEAD of the whole master (e.g. the
+   * seek+trimmed [start,duration] clip that wardrobe-video-frame-extract-proxy
+   * produced). Must be owned by the caller (path under their user id). When set,
+   * Lucy runs on exactly this clip — the requested range, not the whole master.
+   */
+  sourceBucket?: string;
+  sourcePath?: string;
 };
 
 function json(status: number, body: unknown) {
@@ -188,7 +196,8 @@ serve(async (req) => {
   }
 
   const authHeader = req.headers.get("authorization") ?? "";
-  if (!authHeader.toLowerCase().startsWith("bearer ")) return json(401, { error: "missing_bearer" });
+  if (!authHeader.toLowerCase().startsWith("bearer "))
+    return json(401, { error: "missing_bearer" });
   const userClient = createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
     auth: { persistSession: false },
@@ -231,19 +240,34 @@ serve(async (req) => {
     .eq("id", body.wardrobeFeatureId)
     .maybeSingle();
   if (wErr) return json(500, { error: "wardrobe_query_failed", detail: wErr.message });
-  if (!wardrobe || wardrobe.artist_id !== body.artistId) return json(404, { error: "wardrobe_not_found" });
+  if (!wardrobe || wardrobe.artist_id !== body.artistId)
+    return json(404, { error: "wardrobe_not_found" });
 
   const category = vtonCategoryForFeatureType(String(wardrobe.feature_type));
   const prompt =
     (typeof body.prompt === "string" && body.prompt.trim()) ||
     buildGarmentEditPrompt(String(wardrobe.label ?? "garment"), category);
 
+  // Source to edit: a caller-owned pre-trimmed clip when given (the requested
+  // [start,duration] range), else the whole master. A source override MUST sit
+  // under the caller's user id — never sign an arbitrary path from the request.
   const masterBucket = bucketForAssetType(String(asset.asset_type));
+  let srcBucket = masterBucket;
+  let srcPath = fileUrl;
+  let sourceMode: "trimmed_clip" | "whole_master" = "whole_master";
+  if (body.sourcePath && body.sourceBucket) {
+    if (!body.sourcePath.startsWith(`${userId}/`)) {
+      return json(403, { error: "source_path_not_owned" });
+    }
+    srcBucket = body.sourceBucket;
+    srcPath = body.sourcePath;
+    sourceMode = "trimmed_clip";
+  }
   const { data: signed, error: signErr } = await admin.storage
-    .from(masterBucket)
-    .createSignedUrl(fileUrl, SIGN_TTL);
+    .from(srcBucket)
+    .createSignedUrl(srcPath, SIGN_TTL);
   if (signErr || !signed?.signedUrl) {
-    return json(500, { error: "master_sign_failed", detail: signErr?.message });
+    return json(500, { error: "source_sign_failed", detail: signErr?.message });
   }
 
   const sessionId = body.sessionId || crypto.randomUUID();
@@ -278,6 +302,8 @@ serve(async (req) => {
       lane: "lane_c_lucy_v2v",
       garment_source: "text_prompt", // NOT the SL-bomber image — see file header.
       pixel_preserving: false,
+      source_mode: sourceMode, // trimmed_clip (requested range) | whole_master
+      source_path: srcPath,
     },
     lucy_error: null,
   });
@@ -315,7 +341,12 @@ serve(async (req) => {
 
   const finish = async () => {
     try {
-      const videoUrl = await pollFalViaCc(pollUrl, proxySecret, queue.status_url, queue.response_url);
+      const videoUrl = await pollFalViaCc(
+        pollUrl,
+        proxySecret,
+        queue.status_url,
+        queue.response_url,
+      );
       const dl = await fetch(videoUrl, { headers: { Accept: "video/*" } });
       if (!dl.ok) throw new Error(`lucy_download_${dl.status}`);
       const bytes = new Uint8Array(await dl.arrayBuffer());
@@ -337,7 +368,8 @@ serve(async (req) => {
     }
   };
 
-  const er = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } }).EdgeRuntime;
+  const er = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } })
+    .EdgeRuntime;
   if (er && typeof er.waitUntil === "function") er.waitUntil(finish());
   else await finish();
 
