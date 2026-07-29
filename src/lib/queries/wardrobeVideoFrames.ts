@@ -465,3 +465,67 @@ export async function runLaneARoundtrip(input: LaneARoundtripInput): Promise<Lan
     propagateStatus,
   };
 }
+
+// ---------------------------------------------------------------------------
+// LANE C — Decart Lucy video-native video-to-video (BATCH) benchmark lane.
+// docs/LANE_C_LUCY_VIDEO_VTON.md + docs/VIDEO_SWAP_ARCHITECTURE.md §5 (Lane B
+// option b: "video-native VTON / video-to-video model").
+//
+// Whole clip in → whole clip out (no frame extract/swap/reassemble): Lucy is
+// temporally native, so there is no per-frame boiling by construction. That
+// temporal behaviour is exactly what the benchmark measures against Lane A/B.
+//
+// HONEST BOUNDARY: batch Lucy is PROMPT-DRIVEN (no garment image), so it
+// REGENERATES the garment and cannot preserve the SL-bomber construction/stripe.
+// It is EXPECTED to fail the construction half of the kill criterion (arch §7)
+// while passing the flicker half — a diagnostic, not the shippable swap. Off
+// unless LUCY_V2V_FAL_MODEL is set on the server (fully reversible).
+// ---------------------------------------------------------------------------
+
+export interface LaneCRoundtripInput {
+  asset: Pick<ProjectAsset, "id" | "asset_type" | "file_url">;
+  wardrobeFeatureId: string;
+  artistId: string;
+  transferMode?: "full_look" | "jacket_only";
+  /** Override the auto-built garment-edit prompt (benchmark tuning). */
+  prompt?: string;
+}
+
+export interface LaneCRoundtripResult {
+  sessionId: string;
+  /** project-exports object path of the reassembled Lucy clip. */
+  outPath: string;
+  outBucket: string;
+  engine: string;
+  prompt: string;
+}
+
+/**
+ * Phase — Lane C. Dispatch the whole clip to Lucy v2v and wait for the edited
+ * mp4. No client-side extract/reassemble — Lucy returns a finished clip. Returns
+ * once lucy_status reaches "ready" (throws on "failed" with the recorded reason).
+ */
+export async function runLaneCRoundtrip(input: LaneCRoundtripInput): Promise<LaneCRoundtripResult> {
+  const dispatch = await postEdge<{
+    sessionId: string;
+    outPath: string;
+    outBucket: string;
+    engine: string;
+    prompt: string;
+  }>("wardrobe-video-lucy-proxy", {
+    assetId: input.asset.id,
+    artistId: input.artistId,
+    wardrobeFeatureId: input.wardrobeFeatureId,
+    transferMode: input.transferMode ?? "jacket_only",
+    prompt: input.prompt,
+  });
+
+  const meta = await pollAssetStatus(input.asset.id, "lucy_status", "lucy_error");
+  return {
+    sessionId: dispatch.sessionId,
+    outPath: String(meta.lucy_out_path ?? dispatch.outPath),
+    outBucket: String(meta.lucy_out_bucket ?? dispatch.outBucket ?? FRAME_BUCKET),
+    engine: String(meta.lucy_engine ?? dispatch.engine),
+    prompt: dispatch.prompt,
+  };
+}

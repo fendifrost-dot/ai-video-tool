@@ -56,9 +56,12 @@ and the body matches that engine's exact schema:
 | anything else (e.g. `fal-ai/idm-vton`, `…/leffa/virtual-tryon`) | `idm-generic` | `{ human_image_url, garment_image_url, description, category }` | `{ image \| image_url \| images[] }` |
 
 **Read this before calling it "video-native."** Kolors and FASHN are **still-image**
-try-on engines with **no temporal state** (Fal has no batch video-file→video-file
-try-on as of 2026-07; the only "video" try-on, `decart/lucy2-vton/realtime`, is a
-live WebRTC webcam stream, not a submit/poll file job). Pointing
+try-on engines with **no temporal state**. (Fal has no batch *image-accurate*
+video try-on: `decart/lucy2-vton/realtime` — the only garment-*image* video try-on
+— is a live WebRTC stream, not submit/poll. A batch *prompt-driven* video-native
+editor **does** exist — `decart/lucy-edit/*` — wired as **Lane C**; see
+[`docs/LANE_C_LUCY_VIDEO_VTON.md`](../../../docs/LANE_C_LUCY_VIDEO_VTON.md). It's
+not image-accurate, so it doesn't change Lane B's role.) Pointing
 `FRAME_SWAP_FAL_MODEL` at Kolors/FASHN therefore makes this a **per-frame /
 KEYFRAME MAPPER** — a *cleaner garment mapper than the default vton-frame
 (IDM-VTON)*, **not** a temporal-consistency solution. In the locked benchmark
