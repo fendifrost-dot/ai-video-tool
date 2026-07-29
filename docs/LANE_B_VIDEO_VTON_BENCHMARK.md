@@ -18,18 +18,30 @@ on Fal today:
 | Kling Kolors try-on | `fal-ai/kling/v1-5/kolors-virtual-try-on` | **Still-image** try-on (diffusion inpaint). `{human_image_url, garment_image_url}` → `{image:{url}}`. Commercial-cleared, holds pose/skin/body. ~20s, ~$0.07/call. | **No** |
 | FASHN | `fal-ai/fashn/tryon/v1.5` / `…/v1.6` | **Still-image** try-on. `{model_image, garment_image, category, mode, garment_photo_type, seed}` → `{images:[{url}]}`. Renders text/patterns well. | **No** |
 | Kling / Wan v2v w/ pose control | `fal-ai/kling-video/*`, Wan i2v/v2v | General image/video-to-video. **NOT** garment-conditioned try-on; no DensePose/OpenPose *try-on* endpoint on Fal. | v2v yes, but not a try-on |
-| (found in search) Lucy 2 VTON realtime | `decart/lucy2-vton/realtime` | **Real-time WebRTC webcam stream** try-on. Not a batch file (submit/poll) job → **incompatible** with the CC fal-run transport AVT uses. | streaming, not batch |
+| Lucy 2 VTON realtime | `decart/lucy2-vton/realtime` | **Real-time WebRTC signaling proxy** try-on (schema-confirmed: no `video_url`; `fal.realtime.connect` offer/sdp). Takes a garment `reference_image_url` but only a **live frame stream** — not a submit/poll file job. | streaming, not batch |
+| **Lucy edit / restyle (batch v2v)** — see below | `decart/lucy-edit/{pro,dev,fast}`, `decart/lucy-restyle` | **Standard submit/poll video-file→video-file** edit. Temporally native. But **prompt-driven — no garment image** → regenerates pixels (breaks pixel-preservation). | **batch, video-native, but prompt-only** |
 
-**Conclusion (be honest):** As of 2026-07 there is **no batch,
-video-file→video-file, temporally-consistent VTON on Fal** reachable through the
-CC `fal-run` submit/poll transport. The temporally-consistent video try-on work
-(MagicTryOn, ViViD, RealVVT, ChronoTailor, CatV2TON) is **research, not deployed
-Fal endpoints.**
+**Conclusion — CORRECTED 2026-07-28** (see
+[`LANE_C_LUCY_VIDEO_VTON.md`](LANE_C_LUCY_VIDEO_VTON.md), schema-verified). The
+original claim "no batch video-native VTON on Fal" was **half wrong**:
 
-So Lane B's reachable form is a **purpose-built STILL-VTON keyframe mapper**, not a
-video-native solution. That is exactly how it must be framed: a cleaner
-garment mapper for the **hero keyframes** Lane A propagates from — it does **not**
-by itself remove flicker.
+- **A batch, video-native, temporally-consistent v2v model DOES exist on Fal** —
+  Decart's `decart/lucy-edit/*` / `decart/lucy-restyle`, reachable through the CC
+  `fal-run` submit/poll transport. Wired as **Lane C**. The earlier pass never
+  checked the OpenAPI schema and missed this family.
+- **But no batch endpoint does image-accurate try-on.** The only Lucy models that
+  take a garment *image* (`reference_image_url`) are realtime WebRTC
+  (`decart/lucy2-vton/realtime`, `decart/lucy-2-5/realtime`) — a custom wrapper,
+  not submit/poll (Lane C doc §1.5). Batch Lucy is **prompt-driven**, so it
+  regenerates the garment and **fails pixel-preservation** — a temporal-consistency
+  **benchmark**, not a shippable swap.
+- Image-accurate temporally-consistent research try-on (MagicTryOn, ViViD, RealVVT,
+  ChronoTailor, CatV2TON) remains **research, not deployed Fal endpoints.**
+
+So Lane B's reachable form is still a **purpose-built STILL-VTON keyframe mapper**
+(a cleaner garment mapper for the **hero keyframes** Lane A propagates from — it
+does **not** by itself remove flicker). Lane C adds the **video-native temporal
+axis** to the benchmark, at the cost of product accuracy.
 
 ---
 

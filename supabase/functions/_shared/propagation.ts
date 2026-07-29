@@ -16,6 +16,17 @@
 // with a precise "what this needs" error instead of faking temporal
 // consistency. See the deploy report + README for exactly what to wire.
 //
+// CONFIRMED 2026-07-28 (docs/LANE_C_LUCY_VIDEO_VTON.md JOB 2): Fal hosts NO dense
+// optical-flow / warp / EbSynth-style keyframe-propagation endpoint with usable
+// outputs. RIFE/FILM/AMT are frame INTERPOLATION and expose only frames, never a
+// flow field; Wan-VACE / Wan-Motion / Kling motion-control are generative
+// re-synthesis (pose/depth control, not pixel-warp). So the "fal-flow" mode has
+// NO real Fal model to point PROPAGATION_FAL_MODEL at today — the propagation
+// worker must be CUSTOM (RAFT/GMFlow + warp, or EbSynth) OUTSIDE Fal. The
+// "disabled" block below is therefore the honest steady state on Fal, not a gap
+// awaiting a model id. (fal-ai/sam-3/video masks can still feed a region-locked
+// composite; RIFE can only smooth fps AFTER a real propagation pass.)
+//
 // Modes:
 //   "fal-flow"        — Fal-hosted optical-flow / warp / EbSynth-equivalent model
 //                       via CC `fal-run` (PROPAGATION_FAL_MODEL, allowlisted on
