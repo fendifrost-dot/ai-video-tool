@@ -1,0 +1,1531 @@
+{
+  "benchmark_id": "wardrobe-swap-v1",
+  "purpose": "Canonical AVT wardrobe video garment-swap benchmark set. A short, deliberately-hard proxy + near-lossless frame sequence for the LOCKED keyframe+propagation architecture (docs/VIDEO_SWAP_ARCHITECTURE.md) \u2014 Lane A (Grok keyframe + propagation), Lane B (still-VTON keyframe mapper), Lane C (Decart Lucy batch v2v). Bypasses Fal's inability to ingest the 2GB 4K HEVC/HDR/Dolby-Vision master.",
+  "created_utc_date": "2026-07-30",
+  "generated_by": "local ffmpeg (repo + /Volumes/T7 only; no iCloud, no recursive walks)",
+  "source": {
+    "path": "/Volumes/T7/AVT VIDEO CLIPS/YSL VIDEO FILES/IMG_5633.mov",
+    "file_size_bytes": 1975591193,
+    "container": "mov (hvc1)",
+    "video_codec": "hevc",
+    "video_profile": "Main 10",
+    "pix_fmt": "yuv420p10le",
+    "coded_dims": "3840x2160",
+    "display_dims_after_rotation": "2160x3840",
+    "rotation_deg": -90,
+    "color_primaries": "bt2020",
+    "color_transfer": "arib-std-b67",
+    "color_transfer_common_name": "HLG (Hybrid Log-Gamma) HDR",
+    "color_space_matrix": "bt2020nc",
+    "color_range": "tv (limited)",
+    "hdr": "HLG BT.2020 10-bit + Dolby Vision (dv_profile 8, bl_compatibility_id 4, RPU present, no EL)",
+    "r_frame_rate": "60000/1001",
+    "avg_frame_rate": "428100/7141",
+    "nominal_fps": 59.94005994005994,
+    "time_base": "1/600",
+    "duration_s": 190.33,
+    "nb_frames": 11416,
+    "video_bit_rate": 82798805,
+    "audio": "aac LC, 48000 Hz, stereo, ~156 kbps"
+  },
+  "range": {
+    "requested_start_s": 75.0,
+    "requested_duration_s": 4.0,
+    "seek_mode": "input -ss 75.0 with accurate_seek (frame-accurate), re-encode",
+    "actual_first_frame_source_ts_s": 75.011667,
+    "actual_last_frame_source_ts_s": 78.998333,
+    "frame_count": 240,
+    "fps": "60000/1001",
+    "why_this_range": "Continuous single shot (no scene cut) with the deliberately-hard kill-criterion stressors: arm folded ACROSS the chest (garment occluded by forearms), a forward torso BEND with head-down and arm-over-arm SELF-OCCLUSION (~76-78s), then an UNFOLD + re-cross of the hands over the garment. Torso rotation + arm-crossing-chest + garment occlusion + pose change in 4s. Camera is locked-off (near-static tripod), so subject motion is the entire stressor \u2014 chosen over any static frontal shot."
+  },
+  "output_common": {
+    "display_dims": "2160x3840",
+    "orientation": "upright portrait \u2014 source rotation -90 was BAKED IN (autorotate); the display-matrix tag is removed so downstream engines cannot mis-handle it (this is the historical 'sideways-frame' footgun).",
+    "color_primaries": "bt2020",
+    "color_transfer": "arib-std-b67 (HLG) \u2014 carried through, NOT tonemapped",
+    "color_space_matrix": "bt2020nc",
+    "color_range": "tv",
+    "gamma_note": "No tonemap / no gamma remap applied. Primaries/transfer/matrix are preserved as source. Bit depth reduced 10-bit -> 8-bit for the proxy (H.264 processing-friendliness); the frame sequence keeps ~10-bit via 16-bit PNG. Reducing bit depth is a quantization, NOT a gamma shift."
+  },
+  "proxy_clip": {
+    "path": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/proxy/IMG_5633_t75p0_d4p0_h264.mp4",
+    "container": "mp4 (faststart: moov before mdat)",
+    "video_codec": "h264 (High profile)",
+    "pix_fmt": "yuv420p (8-bit)",
+    "crf": 20,
+    "preset": "medium",
+    "dims": "2160x3840",
+    "r_frame_rate": "60000/1001",
+    "nb_frames": 240,
+    "duration_s": 4.004,
+    "file_size_bytes": 15792250,
+    "audio": "aac 128k (trimmed range)",
+    "encoder_flags": "-ss 75.0 -i SRC -frames:v 240 -c:v libx264 -profile:v high -pix_fmt yuv420p -crf 20 -preset medium -color_primaries bt2020 -color_trc arib-std-b67 -colorspace bt2020nc -color_range tv -c:a aac -b:a 128k -movflags +faststart"
+  },
+  "frame_sequence": {
+    "dir": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/frames",
+    "pattern": "frame_%05d.png",
+    "format": "PNG rgb48be (16-bit, near-lossless \u2014 preserves source 10-bit)",
+    "dims": "2160x3840",
+    "count": 240,
+    "first": "frame_00000.png",
+    "last": "frame_00239.png",
+    "ordering": "zero-padded 5-digit, index 0 == range start",
+    "alignment": "1:1 with proxy_clip frames (same source frames, same accurate seek)",
+    "extract_flags": "-ss 75.0 -i SRC -frames:v 240 -map 0:v:0 -an -pix_fmt rgb48be"
+  },
+  "sidecar_files": {
+    "ffprobe_master": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/ffprobe_master.json",
+    "ffprobe_proxy": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/ffprobe_proxy.json",
+    "source_pts_times": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/source_pts_times.txt",
+    "readme": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/README.md"
+  },
+  "caveats": [
+    "Master is HLG BT.2020 10-bit + Dolby Vision. Proxy/frames PRESERVE the HLG/BT.2020 characteristics (no tonemap). Engines that ignore color tags will render it as flat SDR (the standard 'HLG on SDR' look) \u2014 that is expected, not a gamma bug.",
+    "This box's ffmpeg lacks libzimg (zscale) and libplacebo, so a proper HLG->BT.709 SDR tonemapped variant was NOT produced here. If a lane needs true SDR input, generate it explicitly on a zimg-enabled ffmpeg (documented, never a silent swap).",
+    "Dolby Vision RPU 'Multiple RPUs / skipping' warnings during decode are benign (the enhancement/RPU layer is dropped; base HLG layer is used).",
+    "sourceTimestamp values are the TRUE master pts_times (1/600 time_base, ~60fps steps, avg 59.94), not values recomputed from a nominal fps \u2014 robust to any VFR."
+  ],
+  "frames": [
+    {
+      "index": 0,
+      "filename": "frame_00000.png",
+      "sourceTimestamp": 75.011667,
+      "offsetFromStart": 0.0
+    },
+    {
+      "index": 1,
+      "filename": "frame_00001.png",
+      "sourceTimestamp": 75.028333,
+      "offsetFromStart": 0.016666
+    },
+    {
+      "index": 2,
+      "filename": "frame_00002.png",
+      "sourceTimestamp": 75.045,
+      "offsetFromStart": 0.033333
+    },
+    {
+      "index": 3,
+      "filename": "frame_00003.png",
+      "sourceTimestamp": 75.061667,
+      "offsetFromStart": 0.05
+    },
+    {
+      "index": 4,
+      "filename": "frame_00004.png",
+      "sourceTimestamp": 75.078333,
+      "offsetFromStart": 0.066666
+    },
+    {
+      "index": 5,
+      "filename": "frame_00005.png",
+      "sourceTimestamp": 75.095,
+      "offsetFromStart": 0.083333
+    },
+    {
+      "index": 6,
+      "filename": "frame_00006.png",
+      "sourceTimestamp": 75.111667,
+      "offsetFromStart": 0.1
+    },
+    {
+      "index": 7,
+      "filename": "frame_00007.png",
+      "sourceTimestamp": 75.128333,
+      "offsetFromStart": 0.116666
+    },
+    {
+      "index": 8,
+      "filename": "frame_00008.png",
+      "sourceTimestamp": 75.145,
+      "offsetFromStart": 0.133333
+    },
+    {
+      "index": 9,
+      "filename": "frame_00009.png",
+      "sourceTimestamp": 75.161667,
+      "offsetFromStart": 0.15
+    },
+    {
+      "index": 10,
+      "filename": "frame_00010.png",
+      "sourceTimestamp": 75.178333,
+      "offsetFromStart": 0.166666
+    },
+    {
+      "index": 11,
+      "filename": "frame_00011.png",
+      "sourceTimestamp": 75.195,
+      "offsetFromStart": 0.183333
+    },
+    {
+      "index": 12,
+      "filename": "frame_00012.png",
+      "sourceTimestamp": 75.213333,
+      "offsetFromStart": 0.201666
+    },
+    {
+      "index": 13,
+      "filename": "frame_00013.png",
+      "sourceTimestamp": 75.23,
+      "offsetFromStart": 0.218333
+    },
+    {
+      "index": 14,
+      "filename": "frame_00014.png",
+      "sourceTimestamp": 75.246667,
+      "offsetFromStart": 0.235
+    },
+    {
+      "index": 15,
+      "filename": "frame_00015.png",
+      "sourceTimestamp": 75.263333,
+      "offsetFromStart": 0.251666
+    },
+    {
+      "index": 16,
+      "filename": "frame_00016.png",
+      "sourceTimestamp": 75.28,
+      "offsetFromStart": 0.268333
+    },
+    {
+      "index": 17,
+      "filename": "frame_00017.png",
+      "sourceTimestamp": 75.296667,
+      "offsetFromStart": 0.285
+    },
+    {
+      "index": 18,
+      "filename": "frame_00018.png",
+      "sourceTimestamp": 75.313333,
+      "offsetFromStart": 0.301666
+    },
+    {
+      "index": 19,
+      "filename": "frame_00019.png",
+      "sourceTimestamp": 75.33,
+      "offsetFromStart": 0.318333
+    },
+    {
+      "index": 20,
+      "filename": "frame_00020.png",
+      "sourceTimestamp": 75.346667,
+      "offsetFromStart": 0.335
+    },
+    {
+      "index": 21,
+      "filename": "frame_00021.png",
+      "sourceTimestamp": 75.363333,
+      "offsetFromStart": 0.351666
+    },
+    {
+      "index": 22,
+      "filename": "frame_00022.png",
+      "sourceTimestamp": 75.38,
+      "offsetFromStart": 0.368333
+    },
+    {
+      "index": 23,
+      "filename": "frame_00023.png",
+      "sourceTimestamp": 75.396667,
+      "offsetFromStart": 0.385
+    },
+    {
+      "index": 24,
+      "filename": "frame_00024.png",
+      "sourceTimestamp": 75.413333,
+      "offsetFromStart": 0.401666
+    },
+    {
+      "index": 25,
+      "filename": "frame_00025.png",
+      "sourceTimestamp": 75.43,
+      "offsetFromStart": 0.418333
+    },
+    {
+      "index": 26,
+      "filename": "frame_00026.png",
+      "sourceTimestamp": 75.446667,
+      "offsetFromStart": 0.435
+    },
+    {
+      "index": 27,
+      "filename": "frame_00027.png",
+      "sourceTimestamp": 75.463333,
+      "offsetFromStart": 0.451666
+    },
+    {
+      "index": 28,
+      "filename": "frame_00028.png",
+      "sourceTimestamp": 75.48,
+      "offsetFromStart": 0.468333
+    },
+    {
+      "index": 29,
+      "filename": "frame_00029.png",
+      "sourceTimestamp": 75.496667,
+      "offsetFromStart": 0.485
+    },
+    {
+      "index": 30,
+      "filename": "frame_00030.png",
+      "sourceTimestamp": 75.513333,
+      "offsetFromStart": 0.501666
+    },
+    {
+      "index": 31,
+      "filename": "frame_00031.png",
+      "sourceTimestamp": 75.53,
+      "offsetFromStart": 0.518333
+    },
+    {
+      "index": 32,
+      "filename": "frame_00032.png",
+      "sourceTimestamp": 75.546667,
+      "offsetFromStart": 0.535
+    },
+    {
+      "index": 33,
+      "filename": "frame_00033.png",
+      "sourceTimestamp": 75.563333,
+      "offsetFromStart": 0.551666
+    },
+    {
+      "index": 34,
+      "filename": "frame_00034.png",
+      "sourceTimestamp": 75.58,
+      "offsetFromStart": 0.568333
+    },
+    {
+      "index": 35,
+      "filename": "frame_00035.png",
+      "sourceTimestamp": 75.596667,
+      "offsetFromStart": 0.585
+    },
+    {
+      "index": 36,
+      "filename": "frame_00036.png",
+      "sourceTimestamp": 75.613333,
+      "offsetFromStart": 0.601666
+    },
+    {
+      "index": 37,
+      "filename": "frame_00037.png",
+      "sourceTimestamp": 75.63,
+      "offsetFromStart": 0.618333
+    },
+    {
+      "index": 38,
+      "filename": "frame_00038.png",
+      "sourceTimestamp": 75.646667,
+      "offsetFromStart": 0.635
+    },
+    {
+      "index": 39,
+      "filename": "frame_00039.png",
+      "sourceTimestamp": 75.663333,
+      "offsetFromStart": 0.651666
+    },
+    {
+      "index": 40,
+      "filename": "frame_00040.png",
+      "sourceTimestamp": 75.68,
+      "offsetFromStart": 0.668333
+    },
+    {
+      "index": 41,
+      "filename": "frame_00041.png",
+      "sourceTimestamp": 75.696667,
+      "offsetFromStart": 0.685
+    },
+    {
+      "index": 42,
+      "filename": "frame_00042.png",
+      "sourceTimestamp": 75.713333,
+      "offsetFromStart": 0.701666
+    },
+    {
+      "index": 43,
+      "filename": "frame_00043.png",
+      "sourceTimestamp": 75.73,
+      "offsetFromStart": 0.718333
+    },
+    {
+      "index": 44,
+      "filename": "frame_00044.png",
+      "sourceTimestamp": 75.746667,
+      "offsetFromStart": 0.735
+    },
+    {
+      "index": 45,
+      "filename": "frame_00045.png",
+      "sourceTimestamp": 75.763333,
+      "offsetFromStart": 0.751666
+    },
+    {
+      "index": 46,
+      "filename": "frame_00046.png",
+      "sourceTimestamp": 75.78,
+      "offsetFromStart": 0.768333
+    },
+    {
+      "index": 47,
+      "filename": "frame_00047.png",
+      "sourceTimestamp": 75.796667,
+      "offsetFromStart": 0.785
+    },
+    {
+      "index": 48,
+      "filename": "frame_00048.png",
+      "sourceTimestamp": 75.813333,
+      "offsetFromStart": 0.801666
+    },
+    {
+      "index": 49,
+      "filename": "frame_00049.png",
+      "sourceTimestamp": 75.83,
+      "offsetFromStart": 0.818333
+    },
+    {
+      "index": 50,
+      "filename": "frame_00050.png",
+      "sourceTimestamp": 75.846667,
+      "offsetFromStart": 0.835
+    },
+    {
+      "index": 51,
+      "filename": "frame_00051.png",
+      "sourceTimestamp": 75.863333,
+      "offsetFromStart": 0.851666
+    },
+    {
+      "index": 52,
+      "filename": "frame_00052.png",
+      "sourceTimestamp": 75.88,
+      "offsetFromStart": 0.868333
+    },
+    {
+      "index": 53,
+      "filename": "frame_00053.png",
+      "sourceTimestamp": 75.896667,
+      "offsetFromStart": 0.885
+    },
+    {
+      "index": 54,
+      "filename": "frame_00054.png",
+      "sourceTimestamp": 75.913333,
+      "offsetFromStart": 0.901666
+    },
+    {
+      "index": 55,
+      "filename": "frame_00055.png",
+      "sourceTimestamp": 75.93,
+      "offsetFromStart": 0.918333
+    },
+    {
+      "index": 56,
+      "filename": "frame_00056.png",
+      "sourceTimestamp": 75.946667,
+      "offsetFromStart": 0.935
+    },
+    {
+      "index": 57,
+      "filename": "frame_00057.png",
+      "sourceTimestamp": 75.963333,
+      "offsetFromStart": 0.951666
+    },
+    {
+      "index": 58,
+      "filename": "frame_00058.png",
+      "sourceTimestamp": 75.98,
+      "offsetFromStart": 0.968333
+    },
+    {
+      "index": 59,
+      "filename": "frame_00059.png",
+      "sourceTimestamp": 75.996667,
+      "offsetFromStart": 0.985
+    },
+    {
+      "index": 60,
+      "filename": "frame_00060.png",
+      "sourceTimestamp": 76.013333,
+      "offsetFromStart": 1.001666
+    },
+    {
+      "index": 61,
+      "filename": "frame_00061.png",
+      "sourceTimestamp": 76.03,
+      "offsetFromStart": 1.018333
+    },
+    {
+      "index": 62,
+      "filename": "frame_00062.png",
+      "sourceTimestamp": 76.046667,
+      "offsetFromStart": 1.035
+    },
+    {
+      "index": 63,
+      "filename": "frame_00063.png",
+      "sourceTimestamp": 76.063333,
+      "offsetFromStart": 1.051666
+    },
+    {
+      "index": 64,
+      "filename": "frame_00064.png",
+      "sourceTimestamp": 76.08,
+      "offsetFromStart": 1.068333
+    },
+    {
+      "index": 65,
+      "filename": "frame_00065.png",
+      "sourceTimestamp": 76.096667,
+      "offsetFromStart": 1.085
+    },
+    {
+      "index": 66,
+      "filename": "frame_00066.png",
+      "sourceTimestamp": 76.113333,
+      "offsetFromStart": 1.101666
+    },
+    {
+      "index": 67,
+      "filename": "frame_00067.png",
+      "sourceTimestamp": 76.13,
+      "offsetFromStart": 1.118333
+    },
+    {
+      "index": 68,
+      "filename": "frame_00068.png",
+      "sourceTimestamp": 76.146667,
+      "offsetFromStart": 1.135
+    },
+    {
+      "index": 69,
+      "filename": "frame_00069.png",
+      "sourceTimestamp": 76.163333,
+      "offsetFromStart": 1.151666
+    },
+    {
+      "index": 70,
+      "filename": "frame_00070.png",
+      "sourceTimestamp": 76.18,
+      "offsetFromStart": 1.168333
+    },
+    {
+      "index": 71,
+      "filename": "frame_00071.png",
+      "sourceTimestamp": 76.196667,
+      "offsetFromStart": 1.185
+    },
+    {
+      "index": 72,
+      "filename": "frame_00072.png",
+      "sourceTimestamp": 76.213333,
+      "offsetFromStart": 1.201666
+    },
+    {
+      "index": 73,
+      "filename": "frame_00073.png",
+      "sourceTimestamp": 76.23,
+      "offsetFromStart": 1.218333
+    },
+    {
+      "index": 74,
+      "filename": "frame_00074.png",
+      "sourceTimestamp": 76.246667,
+      "offsetFromStart": 1.235
+    },
+    {
+      "index": 75,
+      "filename": "frame_00075.png",
+      "sourceTimestamp": 76.263333,
+      "offsetFromStart": 1.251666
+    },
+    {
+      "index": 76,
+      "filename": "frame_00076.png",
+      "sourceTimestamp": 76.28,
+      "offsetFromStart": 1.268333
+    },
+    {
+      "index": 77,
+      "filename": "frame_00077.png",
+      "sourceTimestamp": 76.296667,
+      "offsetFromStart": 1.285
+    },
+    {
+      "index": 78,
+      "filename": "frame_00078.png",
+      "sourceTimestamp": 76.313333,
+      "offsetFromStart": 1.301666
+    },
+    {
+      "index": 79,
+      "filename": "frame_00079.png",
+      "sourceTimestamp": 76.33,
+      "offsetFromStart": 1.318333
+    },
+    {
+      "index": 80,
+      "filename": "frame_00080.png",
+      "sourceTimestamp": 76.346667,
+      "offsetFromStart": 1.335
+    },
+    {
+      "index": 81,
+      "filename": "frame_00081.png",
+      "sourceTimestamp": 76.363333,
+      "offsetFromStart": 1.351666
+    },
+    {
+      "index": 82,
+      "filename": "frame_00082.png",
+      "sourceTimestamp": 76.38,
+      "offsetFromStart": 1.368333
+    },
+    {
+      "index": 83,
+      "filename": "frame_00083.png",
+      "sourceTimestamp": 76.396667,
+      "offsetFromStart": 1.385
+    },
+    {
+      "index": 84,
+      "filename": "frame_00084.png",
+      "sourceTimestamp": 76.413333,
+      "offsetFromStart": 1.401666
+    },
+    {
+      "index": 85,
+      "filename": "frame_00085.png",
+      "sourceTimestamp": 76.43,
+      "offsetFromStart": 1.418333
+    },
+    {
+      "index": 86,
+      "filename": "frame_00086.png",
+      "sourceTimestamp": 76.446667,
+      "offsetFromStart": 1.435
+    },
+    {
+      "index": 87,
+      "filename": "frame_00087.png",
+      "sourceTimestamp": 76.463333,
+      "offsetFromStart": 1.451666
+    },
+    {
+      "index": 88,
+      "filename": "frame_00088.png",
+      "sourceTimestamp": 76.48,
+      "offsetFromStart": 1.468333
+    },
+    {
+      "index": 89,
+      "filename": "frame_00089.png",
+      "sourceTimestamp": 76.496667,
+      "offsetFromStart": 1.485
+    },
+    {
+      "index": 90,
+      "filename": "frame_00090.png",
+      "sourceTimestamp": 76.513333,
+      "offsetFromStart": 1.501666
+    },
+    {
+      "index": 91,
+      "filename": "frame_00091.png",
+      "sourceTimestamp": 76.53,
+      "offsetFromStart": 1.518333
+    },
+    {
+      "index": 92,
+      "filename": "frame_00092.png",
+      "sourceTimestamp": 76.546667,
+      "offsetFromStart": 1.535
+    },
+    {
+      "index": 93,
+      "filename": "frame_00093.png",
+      "sourceTimestamp": 76.563333,
+      "offsetFromStart": 1.551666
+    },
+    {
+      "index": 94,
+      "filename": "frame_00094.png",
+      "sourceTimestamp": 76.58,
+      "offsetFromStart": 1.568333
+    },
+    {
+      "index": 95,
+      "filename": "frame_00095.png",
+      "sourceTimestamp": 76.596667,
+      "offsetFromStart": 1.585
+    },
+    {
+      "index": 96,
+      "filename": "frame_00096.png",
+      "sourceTimestamp": 76.613333,
+      "offsetFromStart": 1.601666
+    },
+    {
+      "index": 97,
+      "filename": "frame_00097.png",
+      "sourceTimestamp": 76.63,
+      "offsetFromStart": 1.618333
+    },
+    {
+      "index": 98,
+      "filename": "frame_00098.png",
+      "sourceTimestamp": 76.646667,
+      "offsetFromStart": 1.635
+    },
+    {
+      "index": 99,
+      "filename": "frame_00099.png",
+      "sourceTimestamp": 76.663333,
+      "offsetFromStart": 1.651666
+    },
+    {
+      "index": 100,
+      "filename": "frame_00100.png",
+      "sourceTimestamp": 76.68,
+      "offsetFromStart": 1.668333
+    },
+    {
+      "index": 101,
+      "filename": "frame_00101.png",
+      "sourceTimestamp": 76.696667,
+      "offsetFromStart": 1.685
+    },
+    {
+      "index": 102,
+      "filename": "frame_00102.png",
+      "sourceTimestamp": 76.713333,
+      "offsetFromStart": 1.701666
+    },
+    {
+      "index": 103,
+      "filename": "frame_00103.png",
+      "sourceTimestamp": 76.73,
+      "offsetFromStart": 1.718333
+    },
+    {
+      "index": 104,
+      "filename": "frame_00104.png",
+      "sourceTimestamp": 76.746667,
+      "offsetFromStart": 1.735
+    },
+    {
+      "index": 105,
+      "filename": "frame_00105.png",
+      "sourceTimestamp": 76.763333,
+      "offsetFromStart": 1.751666
+    },
+    {
+      "index": 106,
+      "filename": "frame_00106.png",
+      "sourceTimestamp": 76.78,
+      "offsetFromStart": 1.768333
+    },
+    {
+      "index": 107,
+      "filename": "frame_00107.png",
+      "sourceTimestamp": 76.796667,
+      "offsetFromStart": 1.785
+    },
+    {
+      "index": 108,
+      "filename": "frame_00108.png",
+      "sourceTimestamp": 76.813333,
+      "offsetFromStart": 1.801666
+    },
+    {
+      "index": 109,
+      "filename": "frame_00109.png",
+      "sourceTimestamp": 76.83,
+      "offsetFromStart": 1.818333
+    },
+    {
+      "index": 110,
+      "filename": "frame_00110.png",
+      "sourceTimestamp": 76.846667,
+      "offsetFromStart": 1.835
+    },
+    {
+      "index": 111,
+      "filename": "frame_00111.png",
+      "sourceTimestamp": 76.863333,
+      "offsetFromStart": 1.851666
+    },
+    {
+      "index": 112,
+      "filename": "frame_00112.png",
+      "sourceTimestamp": 76.88,
+      "offsetFromStart": 1.868333
+    },
+    {
+      "index": 113,
+      "filename": "frame_00113.png",
+      "sourceTimestamp": 76.896667,
+      "offsetFromStart": 1.885
+    },
+    {
+      "index": 114,
+      "filename": "frame_00114.png",
+      "sourceTimestamp": 76.913333,
+      "offsetFromStart": 1.901666
+    },
+    {
+      "index": 115,
+      "filename": "frame_00115.png",
+      "sourceTimestamp": 76.93,
+      "offsetFromStart": 1.918333
+    },
+    {
+      "index": 116,
+      "filename": "frame_00116.png",
+      "sourceTimestamp": 76.946667,
+      "offsetFromStart": 1.935
+    },
+    {
+      "index": 117,
+      "filename": "frame_00117.png",
+      "sourceTimestamp": 76.963333,
+      "offsetFromStart": 1.951666
+    },
+    {
+      "index": 118,
+      "filename": "frame_00118.png",
+      "sourceTimestamp": 76.98,
+      "offsetFromStart": 1.968333
+    },
+    {
+      "index": 119,
+      "filename": "frame_00119.png",
+      "sourceTimestamp": 76.996667,
+      "offsetFromStart": 1.985
+    },
+    {
+      "index": 120,
+      "filename": "frame_00120.png",
+      "sourceTimestamp": 77.013333,
+      "offsetFromStart": 2.001666
+    },
+    {
+      "index": 121,
+      "filename": "frame_00121.png",
+      "sourceTimestamp": 77.03,
+      "offsetFromStart": 2.018333
+    },
+    {
+      "index": 122,
+      "filename": "frame_00122.png",
+      "sourceTimestamp": 77.046667,
+      "offsetFromStart": 2.035
+    },
+    {
+      "index": 123,
+      "filename": "frame_00123.png",
+      "sourceTimestamp": 77.063333,
+      "offsetFromStart": 2.051666
+    },
+    {
+      "index": 124,
+      "filename": "frame_00124.png",
+      "sourceTimestamp": 77.08,
+      "offsetFromStart": 2.068333
+    },
+    {
+      "index": 125,
+      "filename": "frame_00125.png",
+      "sourceTimestamp": 77.096667,
+      "offsetFromStart": 2.085
+    },
+    {
+      "index": 126,
+      "filename": "frame_00126.png",
+      "sourceTimestamp": 77.113333,
+      "offsetFromStart": 2.101666
+    },
+    {
+      "index": 127,
+      "filename": "frame_00127.png",
+      "sourceTimestamp": 77.13,
+      "offsetFromStart": 2.118333
+    },
+    {
+      "index": 128,
+      "filename": "frame_00128.png",
+      "sourceTimestamp": 77.146667,
+      "offsetFromStart": 2.135
+    },
+    {
+      "index": 129,
+      "filename": "frame_00129.png",
+      "sourceTimestamp": 77.163333,
+      "offsetFromStart": 2.151666
+    },
+    {
+      "index": 130,
+      "filename": "frame_00130.png",
+      "sourceTimestamp": 77.18,
+      "offsetFromStart": 2.168333
+    },
+    {
+      "index": 131,
+      "filename": "frame_00131.png",
+      "sourceTimestamp": 77.196667,
+      "offsetFromStart": 2.185
+    },
+    {
+      "index": 132,
+      "filename": "frame_00132.png",
+      "sourceTimestamp": 77.213333,
+      "offsetFromStart": 2.201666
+    },
+    {
+      "index": 133,
+      "filename": "frame_00133.png",
+      "sourceTimestamp": 77.23,
+      "offsetFromStart": 2.218333
+    },
+    {
+      "index": 134,
+      "filename": "frame_00134.png",
+      "sourceTimestamp": 77.246667,
+      "offsetFromStart": 2.235
+    },
+    {
+      "index": 135,
+      "filename": "frame_00135.png",
+      "sourceTimestamp": 77.263333,
+      "offsetFromStart": 2.251666
+    },
+    {
+      "index": 136,
+      "filename": "frame_00136.png",
+      "sourceTimestamp": 77.28,
+      "offsetFromStart": 2.268333
+    },
+    {
+      "index": 137,
+      "filename": "frame_00137.png",
+      "sourceTimestamp": 77.296667,
+      "offsetFromStart": 2.285
+    },
+    {
+      "index": 138,
+      "filename": "frame_00138.png",
+      "sourceTimestamp": 77.313333,
+      "offsetFromStart": 2.301666
+    },
+    {
+      "index": 139,
+      "filename": "frame_00139.png",
+      "sourceTimestamp": 77.33,
+      "offsetFromStart": 2.318333
+    },
+    {
+      "index": 140,
+      "filename": "frame_00140.png",
+      "sourceTimestamp": 77.346667,
+      "offsetFromStart": 2.335
+    },
+    {
+      "index": 141,
+      "filename": "frame_00141.png",
+      "sourceTimestamp": 77.363333,
+      "offsetFromStart": 2.351666
+    },
+    {
+      "index": 142,
+      "filename": "frame_00142.png",
+      "sourceTimestamp": 77.38,
+      "offsetFromStart": 2.368333
+    },
+    {
+      "index": 143,
+      "filename": "frame_00143.png",
+      "sourceTimestamp": 77.396667,
+      "offsetFromStart": 2.385
+    },
+    {
+      "index": 144,
+      "filename": "frame_00144.png",
+      "sourceTimestamp": 77.413333,
+      "offsetFromStart": 2.401666
+    },
+    {
+      "index": 145,
+      "filename": "frame_00145.png",
+      "sourceTimestamp": 77.43,
+      "offsetFromStart": 2.418333
+    },
+    {
+      "index": 146,
+      "filename": "frame_00146.png",
+      "sourceTimestamp": 77.446667,
+      "offsetFromStart": 2.435
+    },
+    {
+      "index": 147,
+      "filename": "frame_00147.png",
+      "sourceTimestamp": 77.463333,
+      "offsetFromStart": 2.451666
+    },
+    {
+      "index": 148,
+      "filename": "frame_00148.png",
+      "sourceTimestamp": 77.48,
+      "offsetFromStart": 2.468333
+    },
+    {
+      "index": 149,
+      "filename": "frame_00149.png",
+      "sourceTimestamp": 77.496667,
+      "offsetFromStart": 2.485
+    },
+    {
+      "index": 150,
+      "filename": "frame_00150.png",
+      "sourceTimestamp": 77.513333,
+      "offsetFromStart": 2.501666
+    },
+    {
+      "index": 151,
+      "filename": "frame_00151.png",
+      "sourceTimestamp": 77.53,
+      "offsetFromStart": 2.518333
+    },
+    {
+      "index": 152,
+      "filename": "frame_00152.png",
+      "sourceTimestamp": 77.546667,
+      "offsetFromStart": 2.535
+    },
+    {
+      "index": 153,
+      "filename": "frame_00153.png",
+      "sourceTimestamp": 77.563333,
+      "offsetFromStart": 2.551666
+    },
+    {
+      "index": 154,
+      "filename": "frame_00154.png",
+      "sourceTimestamp": 77.58,
+      "offsetFromStart": 2.568333
+    },
+    {
+      "index": 155,
+      "filename": "frame_00155.png",
+      "sourceTimestamp": 77.596667,
+      "offsetFromStart": 2.585
+    },
+    {
+      "index": 156,
+      "filename": "frame_00156.png",
+      "sourceTimestamp": 77.613333,
+      "offsetFromStart": 2.601666
+    },
+    {
+      "index": 157,
+      "filename": "frame_00157.png",
+      "sourceTimestamp": 77.63,
+      "offsetFromStart": 2.618333
+    },
+    {
+      "index": 158,
+      "filename": "frame_00158.png",
+      "sourceTimestamp": 77.646667,
+      "offsetFromStart": 2.635
+    },
+    {
+      "index": 159,
+      "filename": "frame_00159.png",
+      "sourceTimestamp": 77.663333,
+      "offsetFromStart": 2.651666
+    },
+    {
+      "index": 160,
+      "filename": "frame_00160.png",
+      "sourceTimestamp": 77.68,
+      "offsetFromStart": 2.668333
+    },
+    {
+      "index": 161,
+      "filename": "frame_00161.png",
+      "sourceTimestamp": 77.696667,
+      "offsetFromStart": 2.685
+    },
+    {
+      "index": 162,
+      "filename": "frame_00162.png",
+      "sourceTimestamp": 77.713333,
+      "offsetFromStart": 2.701666
+    },
+    {
+      "index": 163,
+      "filename": "frame_00163.png",
+      "sourceTimestamp": 77.73,
+      "offsetFromStart": 2.718333
+    },
+    {
+      "index": 164,
+      "filename": "frame_00164.png",
+      "sourceTimestamp": 77.746667,
+      "offsetFromStart": 2.735
+    },
+    {
+      "index": 165,
+      "filename": "frame_00165.png",
+      "sourceTimestamp": 77.763333,
+      "offsetFromStart": 2.751666
+    },
+    {
+      "index": 166,
+      "filename": "frame_00166.png",
+      "sourceTimestamp": 77.78,
+      "offsetFromStart": 2.768333
+    },
+    {
+      "index": 167,
+      "filename": "frame_00167.png",
+      "sourceTimestamp": 77.796667,
+      "offsetFromStart": 2.785
+    },
+    {
+      "index": 168,
+      "filename": "frame_00168.png",
+      "sourceTimestamp": 77.813333,
+      "offsetFromStart": 2.801666
+    },
+    {
+      "index": 169,
+      "filename": "frame_00169.png",
+      "sourceTimestamp": 77.83,
+      "offsetFromStart": 2.818333
+    },
+    {
+      "index": 170,
+      "filename": "frame_00170.png",
+      "sourceTimestamp": 77.846667,
+      "offsetFromStart": 2.835
+    },
+    {
+      "index": 171,
+      "filename": "frame_00171.png",
+      "sourceTimestamp": 77.863333,
+      "offsetFromStart": 2.851666
+    },
+    {
+      "index": 172,
+      "filename": "frame_00172.png",
+      "sourceTimestamp": 77.88,
+      "offsetFromStart": 2.868333
+    },
+    {
+      "index": 173,
+      "filename": "frame_00173.png",
+      "sourceTimestamp": 77.898333,
+      "offsetFromStart": 2.886666
+    },
+    {
+      "index": 174,
+      "filename": "frame_00174.png",
+      "sourceTimestamp": 77.915,
+      "offsetFromStart": 2.903333
+    },
+    {
+      "index": 175,
+      "filename": "frame_00175.png",
+      "sourceTimestamp": 77.931667,
+      "offsetFromStart": 2.92
+    },
+    {
+      "index": 176,
+      "filename": "frame_00176.png",
+      "sourceTimestamp": 77.948333,
+      "offsetFromStart": 2.936666
+    },
+    {
+      "index": 177,
+      "filename": "frame_00177.png",
+      "sourceTimestamp": 77.965,
+      "offsetFromStart": 2.953333
+    },
+    {
+      "index": 178,
+      "filename": "frame_00178.png",
+      "sourceTimestamp": 77.981667,
+      "offsetFromStart": 2.97
+    },
+    {
+      "index": 179,
+      "filename": "frame_00179.png",
+      "sourceTimestamp": 77.998333,
+      "offsetFromStart": 2.986666
+    },
+    {
+      "index": 180,
+      "filename": "frame_00180.png",
+      "sourceTimestamp": 78.015,
+      "offsetFromStart": 3.003333
+    },
+    {
+      "index": 181,
+      "filename": "frame_00181.png",
+      "sourceTimestamp": 78.031667,
+      "offsetFromStart": 3.02
+    },
+    {
+      "index": 182,
+      "filename": "frame_00182.png",
+      "sourceTimestamp": 78.048333,
+      "offsetFromStart": 3.036666
+    },
+    {
+      "index": 183,
+      "filename": "frame_00183.png",
+      "sourceTimestamp": 78.065,
+      "offsetFromStart": 3.053333
+    },
+    {
+      "index": 184,
+      "filename": "frame_00184.png",
+      "sourceTimestamp": 78.081667,
+      "offsetFromStart": 3.07
+    },
+    {
+      "index": 185,
+      "filename": "frame_00185.png",
+      "sourceTimestamp": 78.098333,
+      "offsetFromStart": 3.086666
+    },
+    {
+      "index": 186,
+      "filename": "frame_00186.png",
+      "sourceTimestamp": 78.115,
+      "offsetFromStart": 3.103333
+    },
+    {
+      "index": 187,
+      "filename": "frame_00187.png",
+      "sourceTimestamp": 78.131667,
+      "offsetFromStart": 3.12
+    },
+    {
+      "index": 188,
+      "filename": "frame_00188.png",
+      "sourceTimestamp": 78.148333,
+      "offsetFromStart": 3.136666
+    },
+    {
+      "index": 189,
+      "filename": "frame_00189.png",
+      "sourceTimestamp": 78.165,
+      "offsetFromStart": 3.153333
+    },
+    {
+      "index": 190,
+      "filename": "frame_00190.png",
+      "sourceTimestamp": 78.181667,
+      "offsetFromStart": 3.17
+    },
+    {
+      "index": 191,
+      "filename": "frame_00191.png",
+      "sourceTimestamp": 78.198333,
+      "offsetFromStart": 3.186666
+    },
+    {
+      "index": 192,
+      "filename": "frame_00192.png",
+      "sourceTimestamp": 78.215,
+      "offsetFromStart": 3.203333
+    },
+    {
+      "index": 193,
+      "filename": "frame_00193.png",
+      "sourceTimestamp": 78.231667,
+      "offsetFromStart": 3.22
+    },
+    {
+      "index": 194,
+      "filename": "frame_00194.png",
+      "sourceTimestamp": 78.248333,
+      "offsetFromStart": 3.236666
+    },
+    {
+      "index": 195,
+      "filename": "frame_00195.png",
+      "sourceTimestamp": 78.265,
+      "offsetFromStart": 3.253333
+    },
+    {
+      "index": 196,
+      "filename": "frame_00196.png",
+      "sourceTimestamp": 78.281667,
+      "offsetFromStart": 3.27
+    },
+    {
+      "index": 197,
+      "filename": "frame_00197.png",
+      "sourceTimestamp": 78.298333,
+      "offsetFromStart": 3.286666
+    },
+    {
+      "index": 198,
+      "filename": "frame_00198.png",
+      "sourceTimestamp": 78.315,
+      "offsetFromStart": 3.303333
+    },
+    {
+      "index": 199,
+      "filename": "frame_00199.png",
+      "sourceTimestamp": 78.331667,
+      "offsetFromStart": 3.32
+    },
+    {
+      "index": 200,
+      "filename": "frame_00200.png",
+      "sourceTimestamp": 78.348333,
+      "offsetFromStart": 3.336666
+    },
+    {
+      "index": 201,
+      "filename": "frame_00201.png",
+      "sourceTimestamp": 78.365,
+      "offsetFromStart": 3.353333
+    },
+    {
+      "index": 202,
+      "filename": "frame_00202.png",
+      "sourceTimestamp": 78.381667,
+      "offsetFromStart": 3.37
+    },
+    {
+      "index": 203,
+      "filename": "frame_00203.png",
+      "sourceTimestamp": 78.398333,
+      "offsetFromStart": 3.386666
+    },
+    {
+      "index": 204,
+      "filename": "frame_00204.png",
+      "sourceTimestamp": 78.415,
+      "offsetFromStart": 3.403333
+    },
+    {
+      "index": 205,
+      "filename": "frame_00205.png",
+      "sourceTimestamp": 78.431667,
+      "offsetFromStart": 3.42
+    },
+    {
+      "index": 206,
+      "filename": "frame_00206.png",
+      "sourceTimestamp": 78.448333,
+      "offsetFromStart": 3.436666
+    },
+    {
+      "index": 207,
+      "filename": "frame_00207.png",
+      "sourceTimestamp": 78.465,
+      "offsetFromStart": 3.453333
+    },
+    {
+      "index": 208,
+      "filename": "frame_00208.png",
+      "sourceTimestamp": 78.481667,
+      "offsetFromStart": 3.47
+    },
+    {
+      "index": 209,
+      "filename": "frame_00209.png",
+      "sourceTimestamp": 78.498333,
+      "offsetFromStart": 3.486666
+    },
+    {
+      "index": 210,
+      "filename": "frame_00210.png",
+      "sourceTimestamp": 78.515,
+      "offsetFromStart": 3.503333
+    },
+    {
+      "index": 211,
+      "filename": "frame_00211.png",
+      "sourceTimestamp": 78.531667,
+      "offsetFromStart": 3.52
+    },
+    {
+      "index": 212,
+      "filename": "frame_00212.png",
+      "sourceTimestamp": 78.548333,
+      "offsetFromStart": 3.536666
+    },
+    {
+      "index": 213,
+      "filename": "frame_00213.png",
+      "sourceTimestamp": 78.565,
+      "offsetFromStart": 3.553333
+    },
+    {
+      "index": 214,
+      "filename": "frame_00214.png",
+      "sourceTimestamp": 78.581667,
+      "offsetFromStart": 3.57
+    },
+    {
+      "index": 215,
+      "filename": "frame_00215.png",
+      "sourceTimestamp": 78.598333,
+      "offsetFromStart": 3.586666
+    },
+    {
+      "index": 216,
+      "filename": "frame_00216.png",
+      "sourceTimestamp": 78.615,
+      "offsetFromStart": 3.603333
+    },
+    {
+      "index": 217,
+      "filename": "frame_00217.png",
+      "sourceTimestamp": 78.631667,
+      "offsetFromStart": 3.62
+    },
+    {
+      "index": 218,
+      "filename": "frame_00218.png",
+      "sourceTimestamp": 78.648333,
+      "offsetFromStart": 3.636666
+    },
+    {
+      "index": 219,
+      "filename": "frame_00219.png",
+      "sourceTimestamp": 78.665,
+      "offsetFromStart": 3.653333
+    },
+    {
+      "index": 220,
+      "filename": "frame_00220.png",
+      "sourceTimestamp": 78.681667,
+      "offsetFromStart": 3.67
+    },
+    {
+      "index": 221,
+      "filename": "frame_00221.png",
+      "sourceTimestamp": 78.698333,
+      "offsetFromStart": 3.686666
+    },
+    {
+      "index": 222,
+      "filename": "frame_00222.png",
+      "sourceTimestamp": 78.715,
+      "offsetFromStart": 3.703333
+    },
+    {
+      "index": 223,
+      "filename": "frame_00223.png",
+      "sourceTimestamp": 78.731667,
+      "offsetFromStart": 3.72
+    },
+    {
+      "index": 224,
+      "filename": "frame_00224.png",
+      "sourceTimestamp": 78.748333,
+      "offsetFromStart": 3.736666
+    },
+    {
+      "index": 225,
+      "filename": "frame_00225.png",
+      "sourceTimestamp": 78.765,
+      "offsetFromStart": 3.753333
+    },
+    {
+      "index": 226,
+      "filename": "frame_00226.png",
+      "sourceTimestamp": 78.781667,
+      "offsetFromStart": 3.77
+    },
+    {
+      "index": 227,
+      "filename": "frame_00227.png",
+      "sourceTimestamp": 78.798333,
+      "offsetFromStart": 3.786666
+    },
+    {
+      "index": 228,
+      "filename": "frame_00228.png",
+      "sourceTimestamp": 78.815,
+      "offsetFromStart": 3.803333
+    },
+    {
+      "index": 229,
+      "filename": "frame_00229.png",
+      "sourceTimestamp": 78.831667,
+      "offsetFromStart": 3.82
+    },
+    {
+      "index": 230,
+      "filename": "frame_00230.png",
+      "sourceTimestamp": 78.848333,
+      "offsetFromStart": 3.836666
+    },
+    {
+      "index": 231,
+      "filename": "frame_00231.png",
+      "sourceTimestamp": 78.865,
+      "offsetFromStart": 3.853333
+    },
+    {
+      "index": 232,
+      "filename": "frame_00232.png",
+      "sourceTimestamp": 78.881667,
+      "offsetFromStart": 3.87
+    },
+    {
+      "index": 233,
+      "filename": "frame_00233.png",
+      "sourceTimestamp": 78.898333,
+      "offsetFromStart": 3.886666
+    },
+    {
+      "index": 234,
+      "filename": "frame_00234.png",
+      "sourceTimestamp": 78.915,
+      "offsetFromStart": 3.903333
+    },
+    {
+      "index": 235,
+      "filename": "frame_00235.png",
+      "sourceTimestamp": 78.931667,
+      "offsetFromStart": 3.92
+    },
+    {
+      "index": 236,
+      "filename": "frame_00236.png",
+      "sourceTimestamp": 78.948333,
+      "offsetFromStart": 3.936666
+    },
+    {
+      "index": 237,
+      "filename": "frame_00237.png",
+      "sourceTimestamp": 78.965,
+      "offsetFromStart": 3.953333
+    },
+    {
+      "index": 238,
+      "filename": "frame_00238.png",
+      "sourceTimestamp": 78.981667,
+      "offsetFromStart": 3.97
+    },
+    {
+      "index": 239,
+      "filename": "frame_00239.png",
+      "sourceTimestamp": 78.998333,
+      "offsetFromStart": 3.986666
+    }
+  ]
+}
