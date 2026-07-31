@@ -79,6 +79,44 @@ export interface SwapRoundtripResult extends RoundtripResult {
   swappedPrefix: string;
 }
 
+/**
+ * Client mirror of the sanitized diagnostic a video proxy persists into
+ * metadata_json.fal_diagnostics[op] (authoritative shape in
+ * supabase/functions/_shared/falDiagnostics.ts). Only the fields the UI surfaces
+ * are typed here. Secrets are already stripped server-side — this is safe to show.
+ */
+export interface ClientFalDiagnostic {
+  phase?: string;
+  classification?: string;
+  message?: string;
+  /** Our HTTP status to CC. */
+  cc_http_status?: number | null;
+  /** Upstream Fal status (the account-block signal: 401/402/403 vs 5xx). */
+  fal_status?: number | string | null;
+  provider_status?: string | null;
+  provider_error?: string | null;
+  model?: string | null;
+  request_id?: string | null;
+  fal_request_id?: string | null;
+  recorded_at?: string;
+}
+
+/**
+ * Thrown when a polled lane reaches "failed" WITH a structured diagnostic. The
+ * runner surfaces `diagnostic` (status + classification + short message); the
+ * full record stays in the DB.
+ */
+export class FalRunError extends Error {
+  readonly op: string;
+  readonly diagnostic: ClientFalDiagnostic | null;
+  constructor(message: string, op: string, diagnostic: ClientFalDiagnostic | null) {
+    super(message);
+    this.name = "FalRunError";
+    this.op = op;
+    this.diagnostic = diagnostic;
+  }
+}
+
 /** zero-padded so lexical order == frame order in Storage listings. */
 function framePath(userId: string, assetId: string, sessionId: string, index: number): string {
   return `${userId}/${assetId}/frames/${sessionId}/${String(index).padStart(6, "0")}.jpg`;
@@ -233,10 +271,13 @@ async function extractClipFramesServer(
 
   // 2. Wait for the trimmed clip. "frames_pending" == clip ready, frames not yet
   //    uploaded; "ready" == frames already present (idempotent short-circuit).
-  let meta = await pollAssetStatus(input.asset.id, "extract_status", "extract_error", [
-    "ready",
-    "frames_pending",
-  ]);
+  let meta = await pollAssetStatus(
+    input.asset.id,
+    "extract_status",
+    "extract_error",
+    ["ready", "frames_pending"],
+    "extract",
+  );
   let manifest = meta.extract_manifest as ClientExtractionManifest | undefined;
   if (!manifest?.framePrefix) throw new Error("Extractor produced no manifest");
 
@@ -306,7 +347,13 @@ async function extractClipFramesServer(
       maxFrames: input.maxFrames,
       finalize: true,
     });
-    meta = await pollAssetStatus(input.asset.id, "extract_status", "extract_error");
+    meta = await pollAssetStatus(
+      input.asset.id,
+      "extract_status",
+      "extract_error",
+      ["ready"],
+      "extract",
+    );
     manifest = meta.extract_manifest as ClientExtractionManifest | undefined;
     if (!manifest?.frames?.length) throw new Error("Finalized manifest has no frames");
   }
@@ -386,6 +433,7 @@ async function pollAssetStatus(
   key: string,
   errorKey: string,
   terminalReady: string[] = ["ready"],
+  diagKey?: string,
 ): Promise<Record<string, unknown>> {
   const deadline = Date.now() + SWAP_POLL_TIMEOUT_MS;
   while (Date.now() < deadline) {
@@ -397,7 +445,14 @@ async function pollAssetStatus(
     const meta = (data?.metadata_json ?? {}) as Record<string, unknown>;
     const status = String(meta[key] ?? "");
     if (terminalReady.includes(status)) return meta;
-    if (status === "failed") throw new Error(String(meta[errorKey] ?? `${key} failed`));
+    if (status === "failed") {
+      const diag = diagKey
+        ? ((meta.fal_diagnostics as Record<string, ClientFalDiagnostic> | undefined)?.[diagKey] ??
+          null)
+        : null;
+      const base = String(meta[errorKey] ?? `${key} failed`);
+      throw new FalRunError(diag?.message ?? base, diagKey ?? key, diag);
+    }
     await new Promise((r) => setTimeout(r, SWAP_POLL_INTERVAL_MS));
   }
   throw new Error(`${key} timed out`);
@@ -450,7 +505,13 @@ export async function runFrameSwapRoundtrip(
     },
   );
 
-  const meta = await pollAssetStatus(input.asset.id, "swap_status", "swap_error");
+  const meta = await pollAssetStatus(
+    input.asset.id,
+    "swap_status",
+    "swap_error",
+    ["ready"],
+    "swap",
+  );
   const prefix = String(meta.swap_swapped_prefix ?? swap.swappedPrefix);
   const swappedBucket = String(meta.swap_swapped_bucket ?? swap.swappedBucket ?? FRAME_BUCKET);
   const swappedPaths = up.framePaths.map((_, i) => `${prefix}${String(i).padStart(6, "0")}.jpg`);
@@ -615,10 +676,13 @@ export async function runLaneARoundtrip(input: LaneARoundtripInput): Promise<Lan
     cadenceFrames: input.cadenceFrames ?? KEYFRAME_CADENCE_DEFAULT,
   });
 
-  const meta = await pollAssetStatus(input.asset.id, "propagate_status", "propagate_error", [
-    "ready",
-    "incomplete",
-  ]);
+  const meta = await pollAssetStatus(
+    input.asset.id,
+    "propagate_status",
+    "propagate_error",
+    ["ready", "incomplete"],
+    "propagate",
+  );
   const propagateStatus = String(meta.propagate_status ?? "");
   const prefix = String(meta.propagate_prefix ?? prop.prefix);
   const reanchorNeeded = (meta.propagate_reanchor_needed as number[]) ?? prop.reanchorNeeded ?? [];
@@ -741,7 +805,13 @@ export async function runLaneCRoundtrip(input: LaneCRoundtripInput): Promise<Lan
     ...sourceOverride,
   });
 
-  const meta = await pollAssetStatus(input.asset.id, "lucy_status", "lucy_error");
+  const meta = await pollAssetStatus(
+    input.asset.id,
+    "lucy_status",
+    "lucy_error",
+    ["ready"],
+    "lucy",
+  );
   return {
     sessionId: dispatch.sessionId,
     outPath: String(meta.lucy_out_path ?? dispatch.outPath),

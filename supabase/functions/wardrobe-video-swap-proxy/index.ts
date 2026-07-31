@@ -46,6 +46,14 @@ import {
   swappedFramePrefix,
   type FrameSwapEngine,
 } from "../_shared/frameSwap.ts";
+import {
+  type CcEndpoints,
+  type FalCallContext,
+  falPoll,
+  falSubmit,
+  persistFalDiagnostic,
+  toFalDiagnostic,
+} from "../_shared/falDiagnostics.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -113,48 +121,29 @@ async function signInOrder(
   return out;
 }
 
-/** Submit one frame's swap to CC, poll to completion, return the swapped image URL. */
+/**
+ * Submit one frame's swap to CC, poll to completion, return the swapped image
+ * URL. Built on the shared falSubmit/falPoll so a submit/poll/job failure throws
+ * a FalDiagnosticError carrying the full structured diagnostic for THIS frame.
+ */
 async function swapOneFrame(
-  switchxUrl: string,
-  pollUrl: string,
-  proxySecret: string,
+  cc: CcEndpoints,
+  ctx: FalCallContext,
   humanUrl: string,
   garmentUrl: string,
   category: string,
   garmentDescription: string,
   engine: FrameSwapEngine,
 ): Promise<string> {
-  const submit = await fetch(switchxUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Proxy-Secret": proxySecret },
-    body: JSON.stringify(
-      buildFrameSwapBody({ humanImageUrl: humanUrl, garmentImageUrl: garmentUrl, category, garmentDescription, engine }),
-    ),
-  });
-  const sub = await submit.json().catch(() => ({}));
-  if (!submit.ok || !sub?.status_url || !sub?.response_url) {
-    throw new Error(`swap_submit_${submit.status}: ${sub?.error ?? JSON.stringify(sub).slice(0, 160)}`);
-  }
-  const deadline = Date.now() + PER_FRAME_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    const resp = await fetch(pollUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Proxy-Secret": proxySecret },
-      body: JSON.stringify({ status_url: sub.status_url, response_url: sub.response_url }),
-    });
-    const b = await resp.json().catch(() => ({}));
-    const status = String(b?.status ?? "");
-    if (status === "COMPLETED") {
-      const url = extractSwapImageUrl((b?.result ?? b) as Record<string, unknown>);
-      if (url) return url;
-      throw new Error("swap_completed_without_image_url");
-    }
-    if (status === "FAILED" || b?.error) {
-      throw new Error(`swap_failed: ${b?.error ?? b?.detail ?? status}`);
-    }
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-  }
-  throw new Error("swap_poll_timeout");
+  const queue = await falSubmit(
+    cc,
+    ctx,
+    buildFrameSwapBody({ humanImageUrl: humanUrl, garmentImageUrl: garmentUrl, category, garmentDescription, engine }),
+  );
+  const result = await falPoll(cc, ctx, queue);
+  const url = extractSwapImageUrl(result);
+  if (!url) throw new Error("swap_completed_without_image_url");
+  return url;
 }
 
 async function patchMeta(
@@ -263,8 +252,11 @@ serve(async (req) => {
     return json(500, { error: "frame_sign_failed", detail: String(err).slice(0, 200) });
   }
 
-  const switchxUrl = ccSwitchxUrl(composeCcUrl);
-  const pollUrl = ccFalPollUrl(composeCcUrl);
+  const cc: CcEndpoints = {
+    switchxUrl: ccSwitchxUrl(composeCcUrl),
+    pollUrl: ccFalPollUrl(composeCcUrl),
+    proxySecret,
+  };
   const prefix = swappedFramePrefix(userId, asset.id, body.sessionId);
 
   await patchMeta(admin, asset.id, {
@@ -286,8 +278,15 @@ serve(async (req) => {
         while (!failure) {
           const i = nextIndex++;
           if (i >= frameUrls.length) return;
+          const ctx: FalCallContext = {
+            model: falModel,
+            requestId: `${asset.id}:${body.sessionId}`,
+            label: `swap:frame_${i}`,
+            pollIntervalMs: POLL_INTERVAL_MS,
+            pollTimeoutMs: PER_FRAME_TIMEOUT_MS,
+          };
           const swappedUrl = await swapOneFrame(
-            switchxUrl, pollUrl, proxySecret,
+            cc, ctx,
             frameUrls[i], garmentUrl!, category, garmentDescription, engine,
           );
           const dl = await fetch(swappedUrl, { headers: { Accept: "image/*" } });
@@ -327,9 +326,13 @@ serve(async (req) => {
         swap_frame_count: framePaths.length,
       });
     } catch (err) {
-      await patchMeta(admin, asset.id, {
+      const diag = toFalDiagnostic(err, {
+        phase: "processing",
+        ctx: { model: falModel, requestId: `${asset.id}:${body.sessionId}`, label: "swap" },
+      });
+      await persistFalDiagnostic(admin, asset.id, "swap", diag, {
         swap_status: "failed",
-        swap_error: String(err).slice(0, 300),
+        swap_error: diag.message,
       });
     }
   };

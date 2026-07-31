@@ -54,6 +54,14 @@ import {
   propagatedFramePrefix,
   resolvePropagationEngine,
 } from "../_shared/propagation.ts";
+import {
+  type CcEndpoints,
+  type FalCallContext,
+  falPoll,
+  falSubmit,
+  persistFalDiagnostic,
+  toFalDiagnostic,
+} from "../_shared/falDiagnostics.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -138,42 +146,21 @@ async function signInOrder(
   return out;
 }
 
-/** Submit one propagation job to CC, poll to completion, return the image URL. */
+/**
+ * Submit one propagation job to CC, poll to completion, return the image URL.
+ * Built on the shared falSubmit/falPoll so a submit/poll/job failure throws a
+ * FalDiagnosticError carrying the full structured diagnostic for THIS frame.
+ */
 async function propagateViaCc(
-  switchxUrl: string,
-  pollUrl: string,
-  proxySecret: string,
+  cc: CcEndpoints,
+  ctx: FalCallContext,
   body: Record<string, unknown>,
 ): Promise<string> {
-  const submit = await fetch(switchxUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Proxy-Secret": proxySecret },
-    body: JSON.stringify(body),
-  });
-  const sub = await submit.json().catch(() => ({}));
-  if (!submit.ok || !sub?.status_url || !sub?.response_url) {
-    throw new Error(`propagate_submit_${submit.status}: ${sub?.error ?? JSON.stringify(sub).slice(0, 160)}`);
-  }
-  const deadline = Date.now() + PER_FRAME_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    const resp = await fetch(pollUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Proxy-Secret": proxySecret },
-      body: JSON.stringify({ status_url: sub.status_url, response_url: sub.response_url }),
-    });
-    const b = await resp.json().catch(() => ({}));
-    const status = String(b?.status ?? "");
-    if (status === "COMPLETED") {
-      const url = extractPropagatedImageUrl((b?.result ?? b) as Record<string, unknown>);
-      if (url) return url;
-      throw new Error("propagate_completed_without_image_url");
-    }
-    if (status === "FAILED" || b?.error) {
-      throw new Error(`propagate_failed: ${b?.error ?? b?.detail ?? status}`);
-    }
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-  }
-  throw new Error("propagate_poll_timeout");
+  const queue = await falSubmit(cc, ctx, body);
+  const result = await falPoll(cc, ctx, queue);
+  const url = extractPropagatedImageUrl(result);
+  if (!url) throw new Error("propagate_completed_without_image_url");
+  return url;
 }
 
 async function readMeta(
@@ -292,8 +279,11 @@ serve(async (req) => {
   const garmentDescription = String(wardrobe.label ?? "garment");
   const category = vtonCategoryForFeatureType(String(wardrobe.feature_type));
 
-  const switchxUrl = ccSwitchxUrl(composeCcUrl);
-  const pollUrl = ccFalPollUrl(composeCcUrl);
+  const cc: CcEndpoints = {
+    switchxUrl: ccSwitchxUrl(composeCcUrl),
+    pollUrl: ccFalPollUrl(composeCcUrl),
+    proxySecret,
+  };
   const prefix = propagatedFramePrefix(userId, asset.id, body.sessionId);
 
   // Resume: load any prior per-frame status for this session and skip completed.
@@ -442,9 +432,19 @@ serve(async (req) => {
         });
 
         let lastErr: Error | null = null;
+        let attempts = 0;
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
+          attempts = attempt;
           try {
-            const outUrl = await propagateViaCc(switchxUrl, pollUrl, proxySecret, reqBody);
+            const ctx: FalCallContext = {
+              model: engine.falModel ?? null,
+              requestId: `${asset.id}:${body.sessionId}`,
+              label: `propagate:frame_${i}`,
+              pollIntervalMs: POLL_INTERVAL_MS,
+              pollTimeoutMs: PER_FRAME_TIMEOUT_MS,
+              retryCount: attempt,
+            };
+            const outUrl = await propagateViaCc(cc, ctx, reqBody);
             const ext = await storeImageFromUrl(outUrl, i);
             await persistFrame(i, { status: "done", kind: "propagated", ext });
             return;
@@ -452,8 +452,20 @@ serve(async (req) => {
             lastErr = err instanceof Error ? err : new Error(String(err));
           }
         }
-        // Per-frame failure does NOT kill the job (no fail-fast, §6 #1).
-        await persistFrame(i, { status: "failed", error: String(lastErr).slice(0, 200) });
+        // Per-frame failure does NOT kill the job (no fail-fast, §6 #1). Persist
+        // the structured diagnostic (best-effort) so a Fal account-block /
+        // provider error is visible even though the job continues.
+        const diag = toFalDiagnostic(lastErr, {
+          phase: "processing",
+          ctx: {
+            model: engine.falModel ?? null,
+            requestId: `${asset.id}:${body.sessionId}`,
+            label: `propagate:frame_${i}`,
+            retryCount: attempts,
+          },
+        });
+        await persistFalDiagnostic(admin, asset.id, "propagate", diag);
+        await persistFrame(i, { status: "failed", error: diag.message });
       };
 
       const worker = async () => {
@@ -488,9 +500,13 @@ serve(async (req) => {
         propagate_failed_count: failed,
       });
     } catch (err) {
-      await patchMeta(admin, asset.id, {
+      const diag = toFalDiagnostic(err, {
+        phase: "processing",
+        ctx: { model: engine.falModel ?? null, requestId: `${asset.id}:${body.sessionId}`, label: "propagate" },
+      });
+      await persistFalDiagnostic(admin, asset.id, "propagate", diag, {
         propagate_status: "failed",
-        propagate_error: String(err).slice(0, 300),
+        propagate_error: diag.message,
       });
     }
   };

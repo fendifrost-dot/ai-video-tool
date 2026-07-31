@@ -35,6 +35,15 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import {
+  type CcEndpoints,
+  type FalCallContext,
+  falPoll,
+  falSubmit,
+  type FalQueueRef,
+  persistFalDiagnostic,
+  toFalDiagnostic,
+} from "../_shared/falDiagnostics.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -113,37 +122,6 @@ function extractVideoUrl(result: Record<string, unknown>): string | null {
     return videos[0]!.url!.trim();
   }
   return null;
-}
-
-async function pollFalViaCc(
-  pollUrl: string,
-  proxySecret: string,
-  statusUrl: string,
-  responseUrl: string,
-): Promise<string> {
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    const resp = await fetch(pollUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Proxy-Secret": proxySecret,
-      },
-      body: JSON.stringify({ status_url: statusUrl, response_url: responseUrl }),
-    });
-    const body = await resp.json().catch(() => ({}));
-    const status = String(body?.status ?? "");
-    if (status === "COMPLETED") {
-      const url = extractVideoUrl((body?.result ?? body) as Record<string, unknown>);
-      if (url) return url;
-      throw new Error("transcode_completed_without_video_url");
-    }
-    if (status === "FAILED" || body?.error) {
-      throw new Error(`transcode_failed: ${body?.error ?? body?.detail ?? status}`);
-    }
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-  }
-  throw new Error("transcode_poll_timeout");
 }
 
 /** Merge the proxy pointer fields into the master row's metadata_json. */
@@ -253,8 +231,18 @@ serve(async (req) => {
     scrub_proxy_path: proxyPath,
   });
 
-  const switchxUrl = ccSwitchxUrl(composeCcUrl);
-  const pollUrl = ccFalPollUrl(composeCcUrl);
+  const cc: CcEndpoints = {
+    switchxUrl: ccSwitchxUrl(composeCcUrl),
+    pollUrl: ccFalPollUrl(composeCcUrl),
+    proxySecret,
+  };
+  const ctx: FalCallContext = {
+    model: falModel,
+    requestId: asset.id,
+    label: "scrub_proxy",
+    pollIntervalMs: POLL_INTERVAL_MS,
+    pollTimeoutMs: POLL_TIMEOUT_MS,
+  };
 
   // Input handed straight to CC `fal-run`, which forwards it verbatim to the Fal
   // model. These keys are the ACTUAL fal-ai/workflow-utilities/scale-video input
@@ -274,36 +262,29 @@ serve(async (req) => {
     crf: 26,
   };
 
-  let queue: { status_url: string; response_url: string };
+  let queue: FalQueueRef;
   try {
-    const resp = await fetch(switchxUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Proxy-Secret": proxySecret },
-      body: JSON.stringify({ action: "fal-run", model: falModel, input: falInput }),
-    });
-    const cc = await resp.json().catch(() => ({}));
-    if (!resp.ok || !cc?.status_url || !cc?.response_url) {
-      await patchProxyMeta(admin, asset.id, { scrub_proxy_status: "failed" });
-      return json(502, {
-        error: "transcode_submit_failed",
-        detail: cc?.error ?? cc?.detail ?? JSON.stringify(cc).slice(0, 200),
-        assetId: asset.id,
-      });
-    }
-    queue = { status_url: cc.status_url, response_url: cc.response_url };
+    queue = await falSubmit(cc, ctx, { action: "fal-run", model: falModel, input: falInput });
   } catch (err) {
-    await patchProxyMeta(admin, asset.id, { scrub_proxy_status: "failed" });
-    return json(502, { error: "cc_unreachable", detail: String(err).slice(0, 200), assetId: asset.id });
+    const diag = toFalDiagnostic(err, { phase: "submission", ctx });
+    await persistFalDiagnostic(admin, asset.id, "scrub_proxy", diag, {
+      scrub_proxy_status: "failed",
+      scrub_proxy_error: diag.message,
+    });
+    return json(502, {
+      error: "transcode_submit_failed",
+      classification: diag.classification,
+      falStatus: diag.fal_status,
+      ccHttpStatus: diag.cc_http_status,
+      assetId: asset.id,
+    });
   }
 
   const finish = async () => {
     try {
-      const videoUrl = await pollFalViaCc(
-        pollUrl,
-        proxySecret,
-        queue.status_url,
-        queue.response_url,
-      );
+      const result = await falPoll(cc, ctx, queue);
+      const videoUrl = extractVideoUrl(result);
+      if (!videoUrl) throw new Error("transcode_completed_without_video_url");
       const dl = await fetch(videoUrl, { headers: { Accept: "video/*" } });
       if (!dl.ok) throw new Error(`proxy_download_${dl.status}`);
       const bytes = new Uint8Array(await dl.arrayBuffer());
@@ -322,9 +303,14 @@ serve(async (req) => {
         scrub_proxy_status: "ready",
       });
     } catch (err) {
-      await patchProxyMeta(admin, asset.id, {
+      const diag = toFalDiagnostic(err, {
+        phase: "output_retrieval",
+        ctx,
+        submittedAt: queue.submittedAt,
+      });
+      await persistFalDiagnostic(admin, asset.id, "scrub_proxy", diag, {
         scrub_proxy_status: "failed",
-        scrub_proxy_error: String(err).slice(0, 300),
+        scrub_proxy_error: diag.message,
       });
     }
   };

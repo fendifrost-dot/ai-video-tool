@@ -30,6 +30,15 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { buildComposeTracks, extractComposeVideoUrl } from "../_shared/videoCompose.ts";
+import {
+  type CcEndpoints,
+  type FalCallContext,
+  falPoll,
+  falSubmit,
+  type FalQueueRef,
+  persistFalDiagnostic,
+  toFalDiagnostic,
+} from "../_shared/falDiagnostics.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -108,34 +117,6 @@ async function signFramesInOrder(
     }
   }
   return signed;
-}
-
-async function pollFalViaCc(
-  pollUrl: string,
-  proxySecret: string,
-  statusUrl: string,
-  responseUrl: string,
-): Promise<string> {
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    const resp = await fetch(pollUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Proxy-Secret": proxySecret },
-      body: JSON.stringify({ status_url: statusUrl, response_url: responseUrl }),
-    });
-    const body = await resp.json().catch(() => ({}));
-    const status = String(body?.status ?? "");
-    if (status === "COMPLETED") {
-      const url = extractComposeVideoUrl((body?.result ?? body) as Record<string, unknown>);
-      if (url) return url;
-      throw new Error("compose_completed_without_video_url");
-    }
-    if (status === "FAILED" || body?.error) {
-      throw new Error(`compose_failed: ${body?.error ?? body?.detail ?? status}`);
-    }
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-  }
-  throw new Error("compose_poll_timeout");
 }
 
 async function patchMeta(
@@ -243,8 +224,18 @@ serve(async (req) => {
     return json(400, { error: "compose_shape_failed", detail: String(err).slice(0, 200) });
   }
 
-  const switchxUrl = ccSwitchxUrl(composeCcUrl);
-  const pollUrl = ccFalPollUrl(composeCcUrl);
+  const cc: CcEndpoints = {
+    switchxUrl: ccSwitchxUrl(composeCcUrl),
+    pollUrl: ccFalPollUrl(composeCcUrl),
+    proxySecret,
+  };
+  const ctx: FalCallContext = {
+    model: falModel,
+    requestId: `${asset.id}:${body.sessionId}`,
+    label: "reassemble",
+    pollIntervalMs: POLL_INTERVAL_MS,
+    pollTimeoutMs: POLL_TIMEOUT_MS,
+  };
   const outPath = `${userId}/${asset.id}/reassembled/${body.sessionId}.mp4`;
 
   await patchMeta(admin, asset.id, {
@@ -254,31 +245,29 @@ serve(async (req) => {
     reassemble_bucket: "project-exports",
   });
 
-  let queue: { status_url: string; response_url: string };
+  let queue: FalQueueRef;
   try {
-    const resp = await fetch(switchxUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Proxy-Secret": proxySecret },
-      body: JSON.stringify({ action: "fal-run", model: falModel, input: payload }),
-    });
-    const cc = await resp.json().catch(() => ({}));
-    if (!resp.ok || !cc?.status_url || !cc?.response_url) {
-      await patchMeta(admin, asset.id, { reassemble_status: "failed" });
-      return json(502, {
-        error: "compose_submit_failed",
-        detail: cc?.error ?? cc?.detail ?? JSON.stringify(cc).slice(0, 200),
-        assetId: asset.id,
-      });
-    }
-    queue = { status_url: cc.status_url, response_url: cc.response_url };
+    queue = await falSubmit(cc, ctx, { action: "fal-run", model: falModel, input: payload });
   } catch (err) {
-    await patchMeta(admin, asset.id, { reassemble_status: "failed" });
-    return json(502, { error: "cc_unreachable", detail: String(err).slice(0, 200), assetId: asset.id });
+    const diag = toFalDiagnostic(err, { phase: "submission", ctx });
+    await persistFalDiagnostic(admin, asset.id, "reassemble", diag, {
+      reassemble_status: "failed",
+      reassemble_error: diag.message,
+    });
+    return json(502, {
+      error: "compose_submit_failed",
+      classification: diag.classification,
+      falStatus: diag.fal_status,
+      ccHttpStatus: diag.cc_http_status,
+      assetId: asset.id,
+    });
   }
 
   const finish = async () => {
     try {
-      const videoUrl = await pollFalViaCc(pollUrl, proxySecret, queue.status_url, queue.response_url);
+      const result = await falPoll(cc, ctx, queue);
+      const videoUrl = extractComposeVideoUrl(result);
+      if (!videoUrl) throw new Error("compose_completed_without_video_url");
       const dl = await fetch(videoUrl, { headers: { Accept: "video/*" } });
       if (!dl.ok) throw new Error(`reassembled_download_${dl.status}`);
       const bytes = new Uint8Array(await dl.arrayBuffer());
@@ -295,9 +284,14 @@ serve(async (req) => {
         reassemble_fps: Number(body.fps),
       });
     } catch (err) {
-      await patchMeta(admin, asset.id, {
+      const diag = toFalDiagnostic(err, {
+        phase: "output_retrieval",
+        ctx,
+        submittedAt: queue.submittedAt,
+      });
+      await persistFalDiagnostic(admin, asset.id, "reassemble", diag, {
         reassemble_status: "failed",
-        reassemble_error: String(err).slice(0, 300),
+        reassemble_error: diag.message,
       });
     }
   };
