@@ -45,6 +45,15 @@ import {
   classifyLucyTransport,
   extractLucyVideoUrl,
 } from "../_shared/lucyV2v.ts";
+import {
+  type CcEndpoints,
+  type FalCallContext,
+  falPoll,
+  falSubmit,
+  type FalQueueRef,
+  persistFalDiagnostic,
+  toFalDiagnostic,
+} from "../_shared/falDiagnostics.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -110,34 +119,6 @@ function bucketForAssetType(assetType: string): string {
 function looksLikeVideo(fileUrl: string, mime: unknown): boolean {
   if (typeof mime === "string" && mime.startsWith("video/")) return true;
   return /\.(mp4|mov|webm|m4v|mkv)$/i.test(fileUrl);
-}
-
-async function pollFalViaCc(
-  pollUrl: string,
-  proxySecret: string,
-  statusUrl: string,
-  responseUrl: string,
-): Promise<string> {
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    const resp = await fetch(pollUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Proxy-Secret": proxySecret },
-      body: JSON.stringify({ status_url: statusUrl, response_url: responseUrl }),
-    });
-    const body = await resp.json().catch(() => ({}));
-    const status = String(body?.status ?? "");
-    if (status === "COMPLETED") {
-      const url = extractLucyVideoUrl((body?.result ?? body) as Record<string, unknown>);
-      if (url) return url;
-      throw new Error("lucy_completed_without_video_url");
-    }
-    if (status === "FAILED" || body?.error) {
-      throw new Error(`lucy_failed: ${body?.error ?? body?.detail ?? status}`);
-    }
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-  }
-  throw new Error("lucy_poll_timeout");
 }
 
 async function patchMeta(
@@ -308,45 +289,45 @@ serve(async (req) => {
     lucy_error: null,
   });
 
-  const switchxUrl = ccSwitchxUrl(composeCcUrl);
-  const pollUrl = ccFalPollUrl(composeCcUrl);
+  // Shared CC transport + one call context — the single place CC responses are
+  // read, so a submit/poll/job failure is captured as a full fal_diagnostics
+  // record (HTTP status, upstream fal_status, provider error, bounded body/logs).
+  const cc: CcEndpoints = {
+    switchxUrl: ccSwitchxUrl(composeCcUrl),
+    pollUrl: ccFalPollUrl(composeCcUrl),
+    proxySecret,
+  };
+  const ctx: FalCallContext = {
+    model: falModel,
+    requestId: `${asset.id}:${sessionId}`,
+    label: "lane_c_lucy_v2v",
+    pollIntervalMs: POLL_INTERVAL_MS,
+    pollTimeoutMs: POLL_TIMEOUT_MS,
+  };
 
-  let queue: { status_url: string; response_url: string };
+  let queue: FalQueueRef;
   try {
-    const resp = await fetch(switchxUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Proxy-Secret": proxySecret },
-      body: JSON.stringify(reqBody),
-    });
-    const cc = await resp.json().catch(() => ({}));
-    if (!resp.ok || !cc?.status_url || !cc?.response_url) {
-      await patchMeta(admin, asset.id, {
-        lucy_status: "failed",
-        lucy_error: `lucy_submit_failed: ${cc?.error ?? JSON.stringify(cc).slice(0, 200)}`,
-      });
-      return json(502, {
-        error: "lucy_submit_failed",
-        detail: cc?.error ?? cc?.detail,
-        assetId: asset.id,
-      });
-    }
-    queue = { status_url: cc.status_url, response_url: cc.response_url };
+    queue = await falSubmit(cc, ctx, reqBody);
   } catch (err) {
-    await patchMeta(admin, asset.id, {
+    const diag = toFalDiagnostic(err, { phase: "submission", ctx });
+    await persistFalDiagnostic(admin, asset.id, "lucy", diag, {
       lucy_status: "failed",
-      lucy_error: `cc_unreachable: ${String(err).slice(0, 200)}`,
+      lucy_error: diag.message,
     });
-    return json(502, { error: "cc_unreachable", assetId: asset.id });
+    return json(502, {
+      error: "lucy_submit_failed",
+      classification: diag.classification,
+      falStatus: diag.fal_status,
+      ccHttpStatus: diag.cc_http_status,
+      assetId: asset.id,
+    });
   }
 
   const finish = async () => {
     try {
-      const videoUrl = await pollFalViaCc(
-        pollUrl,
-        proxySecret,
-        queue.status_url,
-        queue.response_url,
-      );
+      const result = await falPoll(cc, ctx, queue);
+      const videoUrl = extractLucyVideoUrl(result);
+      if (!videoUrl) throw new Error("lucy_completed_without_video_url");
       const dl = await fetch(videoUrl, { headers: { Accept: "video/*" } });
       if (!dl.ok) throw new Error(`lucy_download_${dl.status}`);
       const bytes = new Uint8Array(await dl.arrayBuffer());
@@ -361,9 +342,15 @@ serve(async (req) => {
         lucy_out_bucket: OUT_BUCKET,
       });
     } catch (err) {
-      await patchMeta(admin, asset.id, {
+      // Poll/job failures carry their own phase; download/upload → output_retrieval.
+      const diag = toFalDiagnostic(err, {
+        phase: "output_retrieval",
+        ctx,
+        submittedAt: queue.submittedAt,
+      });
+      await persistFalDiagnostic(admin, asset.id, "lucy", diag, {
         lucy_status: "failed",
-        lucy_error: String(err).slice(0, 300),
+        lucy_error: diag.message,
       });
     }
   };

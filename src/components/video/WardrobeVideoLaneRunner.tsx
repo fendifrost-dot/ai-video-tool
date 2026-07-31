@@ -21,6 +21,8 @@ import { useWardrobe } from "@/lib/queries/wardrobe";
 import { signedUrl } from "@/lib/storage";
 import { pickFullLookGarmentPath, type RefImageLike } from "@/lib/garment/vtonReference";
 import {
+  type ClientFalDiagnostic,
+  FalRunError,
   runFrameSwapRoundtrip,
   runLaneARoundtrip,
   runLaneCRoundtrip,
@@ -91,6 +93,7 @@ export function WardrobeVideoLaneRunner({ projectId }: { projectId: string }) {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [diag, setDiag] = useState<{ op: string; diagnostic: ClientFalDiagnostic } | null>(null);
   const [result, setResult] = useState<string | null>(null);
   const [garmentRefUrl, setGarmentRefUrl] = useState<string | null>(null);
 
@@ -148,6 +151,7 @@ export function WardrobeVideoLaneRunner({ projectId }: { projectId: string }) {
     setConfirming(false);
     setResult(null);
     setError(null);
+    setDiag(null);
     setProgress(null);
   }
 
@@ -161,6 +165,7 @@ export function WardrobeVideoLaneRunner({ projectId }: { projectId: string }) {
     const serverExtract: ServerExtractConfig = { startSec, durationSec };
     setRunning(true);
     setError(null);
+    setDiag(null);
     setResult(null);
     setProgress("Extracting clip on the server (seek+trim)…");
     try {
@@ -214,6 +219,11 @@ export function WardrobeVideoLaneRunner({ projectId }: { projectId: string }) {
       toast.success(`Lane ${lane} run finished`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Lane run failed";
+      // A FalRunError carries the sanitized diagnostic — surface status +
+      // classification + short message (the full record stays in the DB).
+      if (err instanceof FalRunError && err.diagnostic) {
+        setDiag({ op: err.op, diagnostic: err.diagnostic });
+      }
       setError(msg);
       toast.error(msg);
     } finally {
@@ -447,7 +457,41 @@ export function WardrobeVideoLaneRunner({ projectId }: { projectId: string }) {
       )}
 
       {progress && <p className="text-xs text-muted-foreground">{progress}</p>}
-      {error && <p className="text-xs text-rose-300">{error}</p>}
+      {error && !diag && <p className="text-xs text-rose-300">{error}</p>}
+      {diag && (
+        // Sanitized Fal-failure diagnostic — no secrets (stripped server-side).
+        // The full structured record lives in metadata_json.fal_diagnostics.
+        <div className="space-y-1 rounded-md border border-rose-500/40 bg-rose-500/5 p-3 text-xs">
+          <p className="flex items-center gap-1.5 font-semibold text-rose-300">
+            <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+            Fal call failed · {diag.diagnostic.classification ?? "unknown"}
+          </p>
+          <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+            <dt>Status</dt>
+            <dd>
+              {diag.diagnostic.fal_status != null
+                ? `fal_status=${diag.diagnostic.fal_status}`
+                : diag.diagnostic.cc_http_status != null
+                  ? `http=${diag.diagnostic.cc_http_status}`
+                  : "—"}
+              {diag.diagnostic.provider_status ? ` · ${diag.diagnostic.provider_status}` : ""}
+            </dd>
+            <dt>Phase</dt>
+            <dd>{diag.diagnostic.phase ?? "—"}</dd>
+            <dt>Message</dt>
+            <dd className="text-rose-200">{diag.diagnostic.message ?? error}</dd>
+            {diag.diagnostic.model && (
+              <>
+                <dt>Model</dt>
+                <dd className="truncate">{diag.diagnostic.model}</dd>
+              </>
+            )}
+          </dl>
+          <p className="text-[10px] text-muted-foreground">
+            Full diagnostic in metadata_json.fal_diagnostics.{diag.op}
+          </p>
+        </div>
+      )}
       {result && <p className="text-xs text-emerald-300">{result}</p>}
     </section>
   );

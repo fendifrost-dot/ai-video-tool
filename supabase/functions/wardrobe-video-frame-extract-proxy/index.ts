@@ -54,6 +54,14 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
+  type CcEndpoints,
+  type FalCallContext,
+  falPoll,
+  falSubmit,
+  persistFalDiagnostic,
+  toFalDiagnostic,
+} from "../_shared/falDiagnostics.ts";
+import {
   buildExtractionManifest,
   buildMetadataInput,
   buildScaleInput,
@@ -129,41 +137,27 @@ function looksLikeVideo(fileUrl: string, mime: unknown): boolean {
   return /\.(mp4|mov|webm|m4v|mkv)$/i.test(fileUrl);
 }
 
-/** Submit one job to CC fal-run, poll to completion, return the raw result object. */
+/**
+ * Submit one job to CC fal-run, poll to completion, return the raw result object.
+ * Built on the shared falSubmit/falPoll so any failure throws a
+ * FalDiagnosticError carrying the full structured diagnostic (HTTP status,
+ * upstream fal_status, provider error, bounded body/logs) for THIS model step.
+ */
 async function runFalViaCc(
-  switchxUrl: string,
-  pollUrl: string,
-  proxySecret: string,
+  cc: CcEndpoints,
+  requestId: string,
   model: string,
   input: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
-  const submit = await fetch(switchxUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Proxy-Secret": proxySecret },
-    body: JSON.stringify({ action: "fal-run", model, input }),
-  });
-  const sub = await submit.json().catch(() => ({}));
-  if (!submit.ok || !sub?.status_url || !sub?.response_url) {
-    throw new Error(
-      `fal_submit_${submit.status}(${model}): ${sub?.error ?? sub?.detail ?? JSON.stringify(sub).slice(0, 200)}`,
-    );
-  }
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    const resp = await fetch(pollUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Proxy-Secret": proxySecret },
-      body: JSON.stringify({ status_url: sub.status_url, response_url: sub.response_url }),
-    });
-    const b = await resp.json().catch(() => ({}));
-    const status = String(b?.status ?? "");
-    if (status === "COMPLETED") return (b?.result ?? b) as Record<string, unknown>;
-    if (status === "FAILED" || b?.error) {
-      throw new Error(`fal_response_failed(${model}): ${b?.error ?? b?.detail ?? status}`);
-    }
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-  }
-  throw new Error(`fal_poll_timeout(${model})`);
+  const ctx: FalCallContext = {
+    model,
+    requestId,
+    label: `extract:${model}`,
+    pollIntervalMs: POLL_INTERVAL_MS,
+    pollTimeoutMs: POLL_TIMEOUT_MS,
+  };
+  const queue = await falSubmit(cc, ctx, { action: "fal-run", model, input });
+  return await falPoll(cc, ctx, queue);
 }
 
 async function readMeta(
@@ -344,8 +338,12 @@ serve(async (req) => {
       storedIndices,
     });
 
-  const switchxUrl = ccSwitchxUrl(composeCcUrl);
-  const pollUrl = ccFalPollUrl(composeCcUrl);
+  const cc: CcEndpoints = {
+    switchxUrl: ccSwitchxUrl(composeCcUrl),
+    pollUrl: ccFalPollUrl(composeCcUrl),
+    proxySecret,
+  };
+  const falRequestId = `${config.assetId}:${extractionId}`;
 
   // ---- FINALIZE: client uploaded frames; re-list + flip the manifest. --------
   if (body.finalize) {
@@ -435,9 +433,8 @@ serve(async (req) => {
       // 1. SEEK+TRIM on Fal — pulls ONLY the [start, start+duration] range. This
       //    is the step that dodges the whole-2 GB-HEVC decode scale-video died on.
       const trimResult = await runFalViaCc(
-        switchxUrl,
-        pollUrl,
-        proxySecret,
+        cc,
+        falRequestId,
         trimModel,
         buildTrimInput(masterSigned.signedUrl, config.startSec, config.durationSec),
       );
@@ -454,9 +451,8 @@ serve(async (req) => {
       if (metaModel) {
         try {
           const metaResult = await runFalViaCc(
-            switchxUrl,
-            pollUrl,
-            proxySecret,
+            cc,
+            falRequestId,
             metaModel,
             buildMetadataInput(trimmedUrl),
           );
@@ -492,9 +488,8 @@ serve(async (req) => {
           });
         } else {
           const scaleResult = await runFalViaCc(
-            switchxUrl,
-            pollUrl,
-            proxySecret,
+            cc,
+            falRequestId,
             scaleModel,
             buildScaleInput(finalUrl, w, h),
           );
@@ -528,10 +523,14 @@ serve(async (req) => {
       });
     } catch (err) {
       // Record the EXACT Fal error (e.g. fal_response_failed on the trim) so the
-      // large-HEVC behaviour is observable — "report exactly what works".
-      await patchMeta(admin, config.assetId, {
+      // large-HEVC behaviour is observable — "report exactly what works". The
+      // structured diagnostic (upstream fal_status, provider error, bounded
+      // body/logs) is persisted alongside so account-block vs job-failure is
+      // no longer inferred.
+      const diag = toFalDiagnostic(err, { phase: "processing", ctx: { requestId: falRequestId } });
+      await persistFalDiagnostic(admin, config.assetId, "extract", diag, {
         extract_status: "failed",
-        extract_error: String(err).slice(0, 400),
+        extract_error: diag.message,
       });
     }
   };
