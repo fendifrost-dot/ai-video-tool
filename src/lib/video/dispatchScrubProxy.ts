@@ -31,9 +31,11 @@ export function shouldDispatchScrubProxy(input: ScrubProxyDispatchInput): boolea
   if (!isVideo) return false;
 
   const status = readScrubProxyMeta(input.metadata).scrub_proxy_status;
-  // "pending"/"failed"/undefined are all fair game to (re)dispatch; only skip
-  // when a proxy is already ready or actively being built.
-  return status !== "ready" && status !== "processing";
+  // "pending"/"failed"/undefined are all fair game to (re)dispatch; skip when a
+  // proxy is already ready or actively being built, and when the preflight flagged
+  // "needs_transcode" (terminal — a 4K master needs a non-Fal mezzanine first;
+  // re-dispatching would just re-probe and re-flag).
+  return status !== "ready" && status !== "processing" && status !== "needs_transcode";
 }
 
 /**

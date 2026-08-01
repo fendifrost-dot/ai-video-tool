@@ -31,6 +31,14 @@
 //   SCRUB_PROXY_FAL_MODEL         — Fal model CC's fal-run runs; deployed as
 //                                    fal-ai/workflow-utilities/scale-video.
 //                                    REQUIRED — no model is guessed here.
+//   CLIP_META_FAL_MODEL           — OPTIONAL but STRONGLY recommended. Header-only
+//                                    source probe (fal-ai/ffmpeg-api/metadata),
+//                                    shared with the extract proxy. When set, the
+//                                    master's resolution gates the shared preflight
+//                                    service: a 4K master short-circuits to
+//                                    scrub_proxy_status="needs_transcode" instead of
+//                                    submitting the Fal scale that 500s. Unset ⇒
+//                                    legacy pad-into-1280×720 box.
 //   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
@@ -44,11 +52,12 @@ import {
   persistFalDiagnostic,
   toFalDiagnostic,
 } from "../_shared/falDiagnostics.ts";
+import { buildMetadataInput, extractVideoMeta } from "../_shared/frameExtract.ts";
+import { FALLBACK_CEILING_LONG_EDGE, planPreflight } from "../_shared/videoPreflight.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -57,11 +66,15 @@ const corsHeaders = {
 const SIGN_TTL = 3000;
 const POLL_INTERVAL_MS = 5000;
 const POLL_TIMEOUT_MS = 12 * 60 * 1000;
-// ~720p proxy box. scale-video with mode "pad" fits the master INSIDE this box
-// preserving aspect ratio (letterbox), so a portrait or 4:3 master is never
-// stretched. Both edges are even and inside the model's 512–2048 range.
-const PROXY_LONG_EDGE = 1280;
-const PROXY_SHORT_EDGE = 720;
+// The scrub proxy is a view-only ~720p preview, so its processing ceiling is the
+// shared 720p rung. The output DIMS are computed by the shared preflight service
+// (aspect-preserving, even) — NOT hardcoded here — so scrub/extract/trim all size
+// through the SAME rules. LEGACY_PROXY_* is only the fall-back box used when the
+// source resolution can't be probed (no meta model wired), kept identical to the
+// prior behaviour (pad the master inside 1280×720, never stretch).
+const PROXY_CEILING_LONG_EDGE = FALLBACK_CEILING_LONG_EDGE; // 720p
+const LEGACY_PROXY_LONG_EDGE = 1280;
+const LEGACY_PROXY_SHORT_EDGE = 720;
 
 type Body = { assetId?: string };
 
@@ -152,6 +165,10 @@ serve(async (req) => {
     Deno.env.get("COMPOSE_LOOK_PROXY_SECRET")?.trim() ||
     "";
   const falModel = Deno.env.get("SCRUB_PROXY_FAL_MODEL")?.trim() ?? "";
+  // Header-only source probe (fal-ai/ffmpeg-api/metadata) — safe on a 4K master.
+  // Shared with the extract proxy. When set, the master's resolution is probed so
+  // the preflight service can gate 4K away from the Fal scale that would 500.
+  const metaModel = Deno.env.get("CLIP_META_FAL_MODEL")?.trim() ?? "";
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -223,14 +240,6 @@ serve(async (req) => {
     return json(500, { error: "master_sign_failed", detail: signErr?.message });
   }
 
-  // Flip to "processing" up front so the UI reflects an in-flight transcode and
-  // repeat calls short-circuit above.
-  await patchProxyMeta(admin, asset.id, {
-    scrub_proxy_status: "processing",
-    scrub_proxy_bucket: masterBucket,
-    scrub_proxy_path: proxyPath,
-  });
-
   const cc: CcEndpoints = {
     switchxUrl: ccSwitchxUrl(composeCcUrl),
     pollUrl: ccFalPollUrl(composeCcUrl),
@@ -244,17 +253,85 @@ serve(async (req) => {
     pollTimeoutMs: POLL_TIMEOUT_MS,
   };
 
+  // ---- PREFLIGHT GATE (the shared video-preflight service) -------------------
+  // Probe the master's resolution (header-only, safe at 4K) and let planPreflight
+  // decide the DIMS + transport at the 720p ceiling. The scrub proxy IS a
+  // scale-video op, so a 4K master hits the exact 500 this service routes around:
+  // Fal cannot down-scale a source it cannot ingest. When the source is above
+  // Fal's ingest envelope we flag scrub_proxy_status="needs_transcode" and DO NOT
+  // submit the Fal scale — production needs a non-Fal mezzanine (Mux/Cloudflare/
+  // ffmpeg worker; local ffmpeg interim for T7 masters). When probing isn't wired
+  // (no meta model) we degrade to the legacy pad-into-1280×720 box.
+  let proxyWidth = LEGACY_PROXY_LONG_EDGE;
+  let proxyHeight = LEGACY_PROXY_SHORT_EDGE;
+  let preflightMeta: Record<string, unknown> | null = null;
+  if (metaModel) {
+    try {
+      const probeCtx: FalCallContext = { ...ctx, model: metaModel, label: "scrub_proxy:probe" };
+      const probeQueue = await falSubmit(cc, probeCtx, {
+        action: "fal-run",
+        model: metaModel,
+        input: buildMetadataInput(masterSigned.signedUrl),
+      });
+      const probeResult = await falPoll(cc, probeCtx, probeQueue);
+      const svm = extractVideoMeta(probeResult);
+      if (svm && svm.width && svm.height) {
+        const plan = planPreflight({
+          source: { width: svm.width, height: svm.height, fps: svm.fps, codec: svm.codec },
+          clip: { startSec: 0, durationSec: svm.durationSec ?? 0 },
+          operation: "scale",
+          ceilingLongEdge: PROXY_CEILING_LONG_EDGE,
+        });
+        preflightMeta = { ...plan.metadata };
+        if (plan.transcodeRequired) {
+          await patchProxyMeta(admin, asset.id, {
+            scrub_proxy_status: "needs_transcode",
+            scrub_proxy_bucket: masterBucket,
+            scrub_proxy_path: proxyPath,
+            scrub_proxy_preflight: plan.metadata,
+            scrub_proxy_preflight_transport: plan.transport,
+            scrub_proxy_transcode_reason: plan.transcodeReason,
+            scrub_proxy_preflight_warnings: plan.warnings,
+          });
+          return json(200, {
+            ok: true,
+            status: "needs_transcode",
+            assetId: asset.id,
+            transport: plan.transport,
+            transcodeReason: plan.transcodeReason,
+            preflight: plan.metadata,
+          });
+        }
+        // Fal-ingestable → use the preflight's aspect-preserving even dims.
+        proxyWidth = plan.transform.proxyWidth;
+        proxyHeight = plan.transform.proxyHeight;
+      }
+    } catch {
+      // Probe is best-effort; fall back to the legacy 1280×720 pad box.
+    }
+  }
+
+  // Flip to "processing" up front so the UI reflects an in-flight transcode and
+  // repeat calls short-circuit above.
+  await patchProxyMeta(admin, asset.id, {
+    scrub_proxy_status: "processing",
+    scrub_proxy_bucket: masterBucket,
+    scrub_proxy_path: proxyPath,
+    ...(preflightMeta ? { scrub_proxy_preflight: preflightMeta } : {}),
+  });
+
   // Input handed straight to CC `fal-run`, which forwards it verbatim to the Fal
   // model. These keys are the ACTUAL fal-ai/workflow-utilities/scale-video input
   // schema (video_url, width, height, mode∈{stretch,pad,crop}, pad_color,
-  // codec∈{libx264,libx265}, preset, crf 0–51). "pad" preserves the master's
-  // aspect ratio (fit-inside + letterbox) — it never stretches. libx264 keeps
-  // H.264 output; the model exposes no faststart flag, so none is sent. crf 26
-  // keeps the proxy small — it's view-only (scrub/preview), never a deliverable.
+  // codec∈{libx264,libx265}, preset, crf 0–51). Dims come from the shared
+  // preflight service (aspect-preserving, even); "pad" is a harmless no-op when
+  // they already match the master's aspect and letterboxes only the legacy
+  // fallback box. libx264 keeps H.264 output; crf 26 keeps the view-only proxy
+  // small (scrub/preview, never a deliverable).
   const falInput: Record<string, unknown> = {
     video_url: masterSigned.signedUrl,
-    width: PROXY_LONG_EDGE,
-    height: PROXY_SHORT_EDGE,
+    width: proxyWidth,
+    height: proxyHeight,
     mode: "pad",
     pad_color: "black",
     codec: "libx264",
@@ -288,13 +365,11 @@ serve(async (req) => {
       const dl = await fetch(videoUrl, { headers: { Accept: "video/*" } });
       if (!dl.ok) throw new Error(`proxy_download_${dl.status}`);
       const bytes = new Uint8Array(await dl.arrayBuffer());
-      const { error: upErr } = await admin.storage
-        .from(masterBucket)
-        .upload(proxyPath, bytes, {
-          contentType: "video/mp4",
-          cacheControl: "3600",
-          upsert: true,
-        });
+      const { error: upErr } = await admin.storage.from(masterBucket).upload(proxyPath, bytes, {
+        contentType: "video/mp4",
+        cacheControl: "3600",
+        upsert: true,
+      });
       if (upErr) throw new Error(`proxy_upload_failed: ${upErr.message}`);
 
       await patchProxyMeta(admin, asset.id, {
