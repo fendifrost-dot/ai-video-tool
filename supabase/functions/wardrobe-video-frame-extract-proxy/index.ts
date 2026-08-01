@@ -45,9 +45,18 @@
 //   CLIP_SCALE_FAL_MODEL          — OPTIONAL. Force-H.264 + output-dims model
 //                                    (fal-ai/workflow-utilities/scale-video —
 //                                    ALREADY allowlisted as SCRUB_PROXY_FAL_MODEL).
-//   CLIP_META_FAL_MODEL           — OPTIONAL. Source/clip probe
-//                                    (fal-ai/ffmpeg-api/metadata) for repro + to
-//                                    decide whether a re-encode is needed.
+//   CLIP_META_FAL_MODEL           — OPTIONAL but STRONGLY recommended. Source/clip
+//                                    probe (fal-ai/ffmpeg-api/metadata). Header-only,
+//                                    so safe on a 4K master. Drives the shared
+//                                    preflight gate: when set, the MASTER is probed
+//                                    up front and a source ABOVE Fal's ingest
+//                                    envelope (4K) short-circuits to
+//                                    extract_status="needs_transcode" instead of
+//                                    submitting a Fal trim that 500s. Unset ⇒ legacy
+//                                    trim-first path (assumes Fal-ingestable).
+//   PREFLIGHT_CEILING_LONG_EDGE   — OPTIONAL processing ceiling (long edge px) the
+//                                    shared preflight service targets. Default 1080p
+//                                    (1920). See _shared/videoPreflight.ts.
 //   EXTRACT_MAX_FRAMES            — OPTIONAL OOM/cost cap (default 900).
 //   SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
@@ -78,6 +87,11 @@ import {
   type ExtractionManifest,
   type ExtractionRepro,
 } from "../_shared/frameExtract.ts";
+import {
+  DEFAULT_CEILING_LONG_EDGE,
+  planPreflight,
+  type PreflightPlan,
+} from "../_shared/videoPreflight.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -233,6 +247,12 @@ serve(async (req) => {
   const maxFramesCap = Math.max(
     1,
     Number(Deno.env.get("EXTRACT_MAX_FRAMES")) || DEFAULT_MAX_FRAMES,
+  );
+  // Processing ceiling (long edge, px) — the ONE knob the shared preflight service
+  // reads. Default 1080p; set PREFLIGHT_CEILING_LONG_EDGE to change it globally.
+  const preflightCeiling = Math.max(
+    1,
+    Number(Deno.env.get("PREFLIGHT_CEILING_LONG_EDGE")) || DEFAULT_CEILING_LONG_EDGE,
   );
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
@@ -417,6 +437,66 @@ serve(async (req) => {
     return json(500, { error: "master_sign_failed", detail: signErr?.message });
   }
 
+  // ---- PREFLIGHT GATE (the shared video-preflight service) -------------------
+  // Probe the MASTER's resolution BEFORE any Fal decode op. ffmpeg-api/metadata
+  // reads headers only, so it is safe even on a 4K master (unlike trim/scale,
+  // which 500 on 4K). planPreflight then decides transport from the SOURCE
+  // resolution — the confirmed root cause. For a source ABOVE Fal's ingest
+  // envelope (the 4K master) we STOP here: the trim itself is a Fal decode op that
+  // would 500, so we flag needs_transcode honestly rather than submit-and-fail.
+  // When no meta model is wired we degrade to the legacy path (assume ingestable).
+  let preflightPlan: PreflightPlan | null = null;
+  if (metaModel) {
+    try {
+      const srcMetaResult = await runFalViaCc(
+        cc,
+        falRequestId,
+        metaModel,
+        buildMetadataInput(masterSigned.signedUrl),
+      );
+      const svm = extractVideoMeta(srcMetaResult);
+      if (svm && svm.width && svm.height) {
+        preflightPlan = planPreflight({
+          source: {
+            width: svm.width,
+            height: svm.height,
+            fps: svm.fps,
+            codec: svm.codec,
+            // Fal metadata does not surface pixel_format / HDR tags today; they
+            // pass through as null (preflight keeps HDR tags as-is when present).
+          },
+          clip: { startSec: config.startSec, durationSec: config.durationSec },
+          operation: config.width ? "scale" : "extract",
+          ceilingLongEdge: preflightCeiling,
+        });
+        if (preflightPlan.transcodeRequired) {
+          // The 4K case — Fal cannot down-scale it. Report exactly what production
+          // needs; do NOT submit a Fal op that will 500.
+          await patchMeta(admin, config.assetId, {
+            extract_status: "needs_transcode",
+            extract_session_id: extractionId,
+            extract_preflight: preflightPlan.metadata,
+            extract_preflight_transport: preflightPlan.transport,
+            extract_preflight_transcode_reason: preflightPlan.transcodeReason,
+            extract_preflight_warnings: preflightPlan.warnings,
+            extract_error: null,
+          });
+          return json(200, {
+            ok: true,
+            status: "needs_transcode",
+            extractionId,
+            transport: preflightPlan.transport,
+            transcodeReason: preflightPlan.transcodeReason,
+            preflight: preflightPlan.metadata,
+            warnings: preflightPlan.warnings,
+          });
+        }
+      }
+    } catch {
+      // Probe is best-effort; without it we fall back to the legacy trim-first path.
+    }
+  }
+
   // Advertise the planned set up-front so the UI shows progress immediately.
   await patchMeta(admin, config.assetId, {
     extract_status: "processing",
@@ -425,6 +505,14 @@ serve(async (req) => {
     extract_clip_bucket: OUT_BUCKET,
     extract_manifest: buildManifest([], false),
     extract_repro: repro,
+    // The SQL-readable metadata contract from the shared preflight service.
+    ...(preflightPlan
+      ? {
+          extract_preflight: preflightPlan.metadata,
+          extract_preflight_transport: preflightPlan.transport,
+          extract_preflight_warnings: preflightPlan.warnings,
+        }
+      : {}),
     extract_error: null,
   });
 
@@ -471,14 +559,17 @@ serve(async (req) => {
 
       // 3. NORMALIZE on the SMALL clip when dims are requested OR the codec isn't
       //    browser-decodable (e.g. HEVC passthrough). scale-video forces libx264.
-      //    For a codec-only re-encode we target the PROBED source dims so we do
-      //    NOT downsample (scale-video still clamps its 512–2048 range).
+      //    The output DIMS come from the shared preflight service — NOT computed
+      //    ad-hoc here — so every op scales through the same rules: explicit
+      //    caller dims win, else the preflight proxy dims (ceiling-bounded, aspect
+      //    preserved, even), else the probed source dims (codec-only re-encode
+      //    must NOT downsample). scale-video still clamps its own 512–2048 range.
       let finalUrl = trimmedUrl;
       const dimsRequested = Boolean(config.width && config.height);
       const codecUndecodable = clipCodec !== null && !isBrowserDecodableCodec(clipCodec);
       if (dimsRequested || codecUndecodable) {
-        const w = config.width ?? probedW ?? 1280;
-        const h = config.height ?? probedH ?? 720;
+        const w = config.width ?? preflightPlan?.transform.proxyWidth ?? probedW ?? 1280;
+        const h = config.height ?? preflightPlan?.transform.proxyHeight ?? probedH ?? 720;
         if (!scaleModel) {
           // Codec undecodable and no scaler wired → record a precise warning; the
           // client decode will fail loudly rather than fake a result.

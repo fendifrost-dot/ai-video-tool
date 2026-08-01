@@ -17,7 +17,11 @@
  * as they do today — this is a no-op no-regression foundation.
  */
 
-export type ScrubProxyStatus = "pending" | "processing" | "ready" | "failed";
+// "needs_transcode" — the shared preflight service found the master ABOVE Fal's
+// ingest envelope (a 4K master), so the Fal scale can't run; production must
+// produce a ≤1080p mezzanine off-Fal first. Terminal until that exists: not
+// usable (only "ready" is) and not auto-redispatched.
+export type ScrubProxyStatus = "pending" | "processing" | "ready" | "failed" | "needs_transcode";
 
 /** Proxy pointer fields an upstream transcode step writes onto asset.metadata_json. */
 export interface ScrubProxyMeta {
@@ -34,6 +38,7 @@ const STATUSES: ReadonlySet<string> = new Set([
   "processing",
   "ready",
   "failed",
+  "needs_transcode",
 ]);
 
 /** Normalize an asset's raw `metadata_json` (Json/unknown) into the proxy fields. */
