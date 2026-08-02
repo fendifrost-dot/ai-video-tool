@@ -48,11 +48,22 @@
 //
 // See docs/VIDEO_SWAP_ARCHITECTURE.md §4/§6 and CLAUDE.md "LOCKED" section.
 
-// Bump when the plan/metadata shape or the compatibility math changes, so persisted
-// rows are attributable to the exact preflight logic that produced them (§6 #4).
-// vp2: resolution-only "needs transcode" → multi-factor processing-compatibility
-// gate; asset-authoritative source resolution; metadata carries the gate result.
+// Bump when the plan/metadata SHAPE or the resolution/transport math changes, so
+// persisted rows are attributable to the exact preflight logic that produced them
+// (§6 #4). vp2: resolution-only "needs transcode" → multi-factor processing-
+// compatibility gate; asset-authoritative source resolution; metadata carries the
+// versioned compatibility decision (compatibility_version/result/reason/action).
 export const PREFLIGHT_VERSION = "vp2";
+
+// Versions the COMPATIBILITY DECISION LOGIC specifically — separate from
+// PREFLIGHT_VERSION (which versions the plan/metadata shape + resolution math).
+// Bump this WHENEVER the factors, thresholds, or decision rules in
+// assessProcessingCompatibility / decideCompatibility change, so a persisted
+// decision is always reproducible against the exact logic that made it and future
+// improvements never silently change behavior for already-decided assets.
+// cg1: codec(HEVC>1080p, ProRes) / 10-bit / non-4:2:0 / HDR / filesize(1GB) /
+//      bitrate(80Mbps) / resolution(>DCI-4K); resolution is ONE factor among many.
+export const COMPATIBILITY_VERSION = "cg1";
 
 // Default processing ceiling: 1080p long edge. CONFIGURABLE per call / per env.
 export const DEFAULT_CEILING_LONG_EDGE = 1920;
@@ -193,6 +204,17 @@ export interface PreflightMetadata {
   needs_processing: boolean;
   /** Which compatibility factors tripped the gate (empty when compatible). */
   compatibility_reasons: string[];
+  // ── The VERSIONED compatibility decision (stakeholder contract) ──────────────
+  // Persisted as first-class fields (not just a boolean) so the decision is
+  // reproducible and self-describing as the pipeline evolves.
+  /** The decision-logic version (COMPATIBILITY_VERSION) that produced the result. */
+  compatibility_version: string;
+  /** The outcome: "compatible" | "incompatible". */
+  compatibility_result: CompatibilityResult;
+  /** Human-readable why, e.g. "HEVC 10-bit 2160p, 2GB — incompatible (…)". */
+  compatibility_reason: string;
+  /** The remedy, e.g. "transcode-to-1080p-h264" | "pass-through". */
+  recommended_action: string;
   preflight_version: string;
 }
 
@@ -225,6 +247,15 @@ export interface PreflightPlan {
   processingReason: string | null;
   /** The individual factors that tripped the gate (empty when compatible). */
   compatibilityReasons: string[];
+  // ── The VERSIONED compatibility decision (mirrors the persisted metadata) ────
+  /** The decision-logic version (COMPATIBILITY_VERSION). */
+  compatibilityVersion: string;
+  /** The outcome: "compatible" | "incompatible". */
+  compatibilityResult: CompatibilityResult;
+  /** Human-readable why (compact, self-describing). */
+  compatibilityReason: string;
+  /** The remedy (kebab action token). */
+  recommendedAction: string;
   /**
    * @deprecated Back-compat alias of `needsProcessing`. The gate is a media
    * COMPATIBILITY decision now, not a resolution "needs transcode". Kept so
@@ -302,11 +333,16 @@ export function effectiveBitrateBps(source: SourceProbe): number | null {
   return null;
 }
 
+/** The gate outcome — answers "is this asset compatible with the AI pipeline?". */
+export type CompatibilityResult = "compatible" | "incompatible";
+
 export interface CompatibilityAssessment {
   /** True when Fal + WebCodecs can SAFELY consume the source as-is. */
   compatible: boolean;
-  /** The factors that make it incompatible (empty when compatible). */
+  /** The verbose factors that make it incompatible (empty when compatible). */
   reasons: string[];
+  /** Compact tags for the tripped factors (e.g. "HEVC>1080p", "10-bit"). */
+  tags: string[];
 }
 
 /**
@@ -314,9 +350,15 @@ export interface CompatibilityAssessment {
  * decode + the Fal ops) safely consume this source?" — considering codec, bit
  * depth, chroma, HDR, filesize, bitrate, and resolution as ONE factor among
  * several (NOT resolution alone). Pure + deterministic so vitest asserts it.
+ * Versioned by COMPATIBILITY_VERSION — bump that constant when this changes.
  */
 export function assessProcessingCompatibility(source: SourceProbe): CompatibilityAssessment {
   const reasons: string[] = [];
+  const tags: string[] = [];
+  const push = (tag: string, reason: string) => {
+    tags.push(tag);
+    reasons.push(reason);
+  };
   const codec = (source.codec ?? "").toLowerCase();
   const isHevc =
     codec.includes("hevc") ||
@@ -335,44 +377,151 @@ export function assessProcessingCompatibility(source: SourceProbe): Compatibilit
   const size = Number(source.sizeBytes);
 
   if (tenBit) {
-    reasons.push(
+    push(
+      "10-bit",
       "10-bit source (e.g. yuv420p10le/p010) — the Fal libx264 + WebCodecs 8-bit pipeline needs an off-Fal 8-bit transcode",
     );
   }
   if (notYuv420) {
-    reasons.push("non-4:2:0 chroma (4:2:2/4:4:4) — needs a 4:2:0 transcode for safe downstream decode");
+    push("4:2:2/4:4:4", "non-4:2:0 chroma (4:2:2/4:4:4) — needs a 4:2:0 transcode for safe downstream decode");
   }
   if (isHdrSource(source)) {
-    reasons.push(
+    push(
+      "HDR",
       "HDR source (PQ/HLG/BT.2020) — needs a color-managed off-Fal transcode for safe/correct downstream consumption",
     );
   }
   if (isProres) {
-    reasons.push("ProRes source — the Fal ffmpeg ops can't reliably ingest it; needs an off-Fal transcode");
+    push("ProRes", "ProRes source — the Fal ffmpeg ops can't reliably ingest it; needs an off-Fal transcode");
   }
   if (isHevc && longEdge > FAL_INPUT_MAX_LONG_EDGE) {
     // The classic multi-GB 4K HEVC master — the case that emits an undecodable clip.
-    reasons.push(
+    push(
+      `HEVC>${FAL_INPUT_MAX_LONG_EDGE}px`,
       `HEVC/H.265 above ${FAL_INPUT_MAX_LONG_EDGE}px long edge (${longEdge}px) — the 4K-HEVC master case Fal cannot process into a decodable clip`,
     );
   }
   if (longEdge > COMPAT_HARD_MAX_LONG_EDGE) {
-    reasons.push(
+    push(
+      ">DCI-4K",
       `resolution ${longEdge}px long edge exceeds DCI-4K (${COMPAT_HARD_MAX_LONG_EDGE}px) — beyond any Fal ingest even for a light codec`,
     );
   }
   if (Number.isFinite(size) && size > COMPAT_MAX_SIZE_BYTES) {
-    reasons.push(
+    push(
+      "oversize",
       `filesize ${(size / 1_000_000).toFixed(0)} MB exceeds the ${(COMPAT_MAX_SIZE_BYTES / 1_000_000).toFixed(0)} MB download/decode ceiling`,
     );
   }
   if (bitrate !== null && bitrate > COMPAT_MAX_BITRATE_BPS) {
-    reasons.push(
+    push(
+      "high-bitrate",
       `bitrate ${(bitrate / 1_000_000).toFixed(0)} Mbps exceeds the ${(COMPAT_MAX_BITRATE_BPS / 1_000_000).toFixed(0)} Mbps decode-complexity ceiling`,
     );
   }
 
-  return { compatible: reasons.length === 0, reasons };
+  return { compatible: reasons.length === 0, reasons, tags };
+}
+
+/** Map a ceiling long-edge (px) to a friendly "1080p"/"720p" label for actions/reasons. */
+export function ceilingLabel(ceilingLongEdge: number): string {
+  const c = Math.round(Number(ceilingLongEdge) || 0);
+  if (c === 1920) return "1080p";
+  if (c === 1280) return "720p";
+  if (c === 3840) return "2160p";
+  return `${c}px-long-edge`;
+}
+
+/** Short codec label for the human-readable descriptor (HEVC/H.264/ProRes/raw). */
+function codecLabel(codec?: string | null): string {
+  const c = (codec ?? "").toLowerCase();
+  if (!c) return "";
+  if (c.includes("hevc") || c.includes("h265") || c.includes("h.265") || c.includes("hvc1") || c.includes("hev1"))
+    return "HEVC";
+  if (c.includes("h264") || c.includes("avc")) return "H.264";
+  if (c.includes("prores")) return "ProRes";
+  return codec!.trim();
+}
+
+/** Compact, human-readable source descriptor, e.g. "HEVC 10-bit 2160p, 2GB". */
+export function sourceDescriptor(source: SourceProbe): string {
+  const parts: string[] = [];
+  const cl = codecLabel(source.codec);
+  if (cl) parts.push(cl);
+  const pf = (source.pixelFormat ?? "").toLowerCase();
+  if (pf) parts.push(pf.includes("10") || pf.includes("p010") || pf.includes("12") ? "10-bit" : "8-bit");
+  const sw = Math.round(Number(source.width) || 0);
+  const sh = Math.round(Number(source.height) || 0);
+  if (sw > 0 && sh > 0) parts.push(`${Math.min(sw, sh)}p`); // short-edge p-notation (2160p, 1080p)
+  let head = parts.join(" ");
+  const size = Number(source.sizeBytes);
+  if (Number.isFinite(size) && size > 0) {
+    const sizeLabel =
+      size >= 1_000_000_000
+        ? `${(size / 1_000_000_000).toFixed(1).replace(/\.0$/, "")}GB`
+        : `${Math.round(size / 1_000_000)}MB`;
+    head = head ? `${head}, ${sizeLabel}` : sizeLabel;
+  }
+  return head || "source media (metadata unknown)";
+}
+
+/**
+ * The VERSIONED, self-describing compatibility decision (stakeholder contract).
+ * Combines the pure factor assessment with the transport shape (from the scale
+ * transform + ceiling) into the four persisted fields: version, result, a compact
+ * human-readable reason, and a recommended remedy action. Pure + deterministic.
+ */
+export function decideCompatibility(
+  source: SourceProbe,
+  transform: ScaleTransform,
+  ceilingLongEdge: number,
+  assessment?: CompatibilityAssessment,
+): {
+  version: string;
+  result: CompatibilityResult;
+  reason: string;
+  recommendedAction: string;
+  reasons: string[];
+  tags: string[];
+} {
+  const a = assessment ?? assessProcessingCompatibility(source);
+  const descriptor = sourceDescriptor(source);
+  const label = ceilingLabel(resolveCeiling(ceilingLongEdge));
+
+  if (!a.compatible) {
+    return {
+      version: COMPATIBILITY_VERSION,
+      result: "incompatible",
+      reason: `${descriptor} — incompatible with the downstream AI pipeline (${a.tags.join(", ")})`,
+      recommendedAction: `transcode-to-${label}-h264`,
+      reasons: a.reasons,
+      tags: a.tags,
+    };
+  }
+
+  // Compatible: distinguish pass-through vs an on-Fal scale/normalize.
+  const needsScale = !transform.passThrough;
+  const needsCodecNormalize = !isH264_8bit(source.codec, source.pixelFormat);
+  let reason: string;
+  let recommendedAction: string;
+  if (!needsScale && !needsCodecNormalize) {
+    reason = `${descriptor} — compatible (pass-through)`;
+    recommendedAction = "pass-through";
+  } else if (needsScale) {
+    reason = `${descriptor} — compatible (downscale to ${label} on Fal)`;
+    recommendedAction = `fal-downscale-to-${label}-h264`;
+  } else {
+    reason = `${descriptor} — compatible (codec-normalize to H.264 on Fal)`;
+    recommendedAction = "fal-normalize-to-h264";
+  }
+  return {
+    version: COMPATIBILITY_VERSION,
+    result: "compatible",
+    reason,
+    recommendedAction,
+    reasons: a.reasons,
+    tags: a.tags,
+  };
 }
 
 /**
@@ -553,6 +702,7 @@ export function buildPreflightMetadata(
   compatibility?: CompatibilityAssessment,
 ): PreflightMetadata {
   const compat = compatibility ?? assessProcessingCompatibility(req.source);
+  const decision = decideCompatibility(req.source, transform, req.ceilingLongEdge ?? DEFAULT_CEILING_LONG_EDGE, compat);
   return {
     source_width: transform.sourceWidth,
     source_height: transform.sourceHeight,
@@ -581,6 +731,10 @@ export function buildPreflightMetadata(
     source_bitrate_bps: effectiveBitrateBps(req.source),
     needs_processing: !compat.compatible,
     compatibility_reasons: compat.reasons,
+    compatibility_version: decision.version,
+    compatibility_result: decision.result,
+    compatibility_reason: decision.reason,
+    recommended_action: decision.recommendedAction,
     preflight_version: PREFLIGHT_VERSION,
   };
 }
@@ -595,6 +749,7 @@ export function planPreflight(req: PreflightRequest): PreflightPlan {
   const ceiling = resolveCeiling(req.ceilingLongEdge);
   const transform = computeScaleTransform(req.source, ceiling);
   const compat = assessProcessingCompatibility(req.source);
+  const decision = decideCompatibility(req.source, transform, ceiling, compat);
   const metadata = buildPreflightMetadata({ ...req, ceilingLongEdge: ceiling }, transform, compat);
   const warnings: string[] = [];
 
@@ -651,6 +806,10 @@ export function planPreflight(req: PreflightRequest): PreflightPlan {
     needsProcessing,
     processingReason,
     compatibilityReasons: compat.reasons,
+    compatibilityVersion: decision.version,
+    compatibilityResult: decision.result,
+    compatibilityReason: decision.reason,
+    recommendedAction: decision.recommendedAction,
     // Deprecated back-compat aliases (see interface JSDoc).
     transcodeRequired: needsProcessing,
     transcodeReason: processingReason,

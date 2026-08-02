@@ -324,6 +324,11 @@ serve(async (req) => {
       scrub_proxy_preflight_needs_processing: true,
       scrub_proxy_preflight_reason: plan.processingReason,
       scrub_proxy_preflight_compatibility_reasons: plan.compatibilityReasons,
+      // Versioned compatibility decision — queryable top-level mirrors of the block.
+      scrub_proxy_preflight_compatibility_version: plan.compatibilityVersion,
+      scrub_proxy_preflight_compatibility_result: plan.compatibilityResult,
+      scrub_proxy_preflight_compatibility_reason: plan.compatibilityReason,
+      scrub_proxy_preflight_recommended_action: plan.recommendedAction,
       // Deprecated alias key kept so existing readers of the old field still work.
       scrub_proxy_transcode_reason: plan.processingReason,
       scrub_proxy_preflight_warnings: plan.warnings,
@@ -336,6 +341,10 @@ serve(async (req) => {
       needsProcessing: true,
       processingReason: plan.processingReason,
       compatibilityReasons: plan.compatibilityReasons,
+      compatibilityVersion: plan.compatibilityVersion,
+      compatibilityResult: plan.compatibilityResult,
+      compatibilityReason: plan.compatibilityReason,
+      recommendedAction: plan.recommendedAction,
       // Deprecated alias field for back-compat.
       transcodeReason: plan.processingReason,
       preflight: plan.metadata,
@@ -358,6 +367,10 @@ serve(async (req) => {
     scrub_proxy_preflight_transport: plan.transport,
     scrub_proxy_preflight_needs_processing: false,
     scrub_proxy_preflight_compatibility_reasons: plan.compatibilityReasons,
+    scrub_proxy_preflight_compatibility_version: plan.compatibilityVersion,
+    scrub_proxy_preflight_compatibility_result: plan.compatibilityResult,
+    scrub_proxy_preflight_compatibility_reason: plan.compatibilityReason,
+    scrub_proxy_preflight_recommended_action: plan.recommendedAction,
     scrub_proxy_preflight_warnings: plan.warnings,
   });
 
