@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   assessProcessingCompatibility,
   buildPreflightMetadata,
+  ceilingLabel,
+  COMPATIBILITY_VERSION,
   computeScaleTransform,
+  decideCompatibility,
   DEFAULT_CEILING_LONG_EDGE,
   effectiveBitrateBps,
   FALLBACK_CEILING_LONG_EDGE,
@@ -14,6 +17,7 @@ import {
   readAssetSourceMedia,
   resolveCeiling,
   resolveSourceProbe,
+  sourceDescriptor,
   toEvenDim,
   type PreflightRequest,
 } from "./videoPreflight";
@@ -424,6 +428,91 @@ describe("DoD — the caller path end to end (asset-authoritative gate + persist
     expect(block.needs_processing).toBe(true);
     expect(Array.isArray(block.compatibility_reasons)).toBe(true);
     expect(block.compatibility_reasons.length).toBeGreaterThan(0);
+    // The VERSIONED decision fields are folded into the persisted block:
+    expect(block.compatibility_version).toBe(COMPATIBILITY_VERSION);
+    expect(block.compatibility_result).toBe("incompatible");
+    expect(block.compatibility_reason).toMatch(/HEVC/);
+    expect(block.recommended_action).toBe("transcode-to-1080p-h264");
+  });
+});
+
+describe("versioned compatibility decision (stakeholder contract)", () => {
+  const clipRange = { startSec: 0, durationSec: 4 };
+  const plan = (source: PreflightRequest["source"], ceiling = DEFAULT_CEILING_LONG_EDGE) =>
+    planPreflight({ source, clip: clipRange, operation: "extract", ceilingLongEdge: ceiling });
+
+  it("ceilingLabel maps common rungs", () => {
+    expect(ceilingLabel(1920)).toBe("1080p");
+    expect(ceilingLabel(1280)).toBe("720p");
+  });
+
+  it("sourceDescriptor is compact + human-readable (matches the stakeholder example shape)", () => {
+    expect(
+      sourceDescriptor({
+        width: 3840,
+        height: 2160,
+        codec: "hevc",
+        pixelFormat: "yuv420p10le",
+        sizeBytes: 2_000_000_000,
+      }),
+    ).toBe("HEVC 10-bit 2160p, 2GB");
+  });
+
+  it("incompatible → result/reason/action + version, persisted on the metadata block", () => {
+    const p = plan({
+      width: 3840,
+      height: 2160,
+      codec: "hevc",
+      pixelFormat: "yuv420p10le",
+      sizeBytes: 2_000_000_000,
+      durationSec: 4,
+    });
+    expect(p.compatibilityVersion).toBe(COMPATIBILITY_VERSION);
+    expect(p.compatibilityResult).toBe("incompatible");
+    expect(p.compatibilityReason).toMatch(/HEVC 10-bit 2160p, 2GB — incompatible/);
+    expect(p.recommendedAction).toBe("transcode-to-1080p-h264");
+    // mirrored onto the persisted metadata block:
+    expect(p.metadata.compatibility_version).toBe(COMPATIBILITY_VERSION);
+    expect(p.metadata.compatibility_result).toBe("incompatible");
+    expect(p.metadata.recommended_action).toBe("transcode-to-1080p-h264");
+    expect(p.metadata.compatibility_reason).toBe(p.compatibilityReason);
+  });
+
+  it("compatible pass-through → action pass-through", () => {
+    const p = plan({ width: 1920, height: 1080, codec: "h264", pixelFormat: "yuv420p" });
+    expect(p.compatibilityResult).toBe("compatible");
+    expect(p.recommendedAction).toBe("pass-through");
+    expect(p.metadata.recommended_action).toBe("pass-through");
+  });
+
+  it("compatible but > ceiling → fal-downscale action", () => {
+    const p = plan({
+      width: 3840,
+      height: 2160,
+      codec: "h264",
+      pixelFormat: "yuv420p",
+      sizeBytes: 15_800_000,
+      durationSec: 4,
+    });
+    expect(p.compatibilityResult).toBe("compatible");
+    expect(p.recommendedAction).toBe("fal-downscale-to-1080p-h264");
+  });
+
+  it("compatible 1080p HEVC 8-bit → fal-normalize action (codec only, no scale)", () => {
+    const p = plan({ width: 1920, height: 1080, codec: "hevc", pixelFormat: "yuv420p" });
+    expect(p.compatibilityResult).toBe("compatible");
+    expect(p.recommendedAction).toBe("fal-normalize-to-h264");
+  });
+
+  it("decideCompatibility bumps action label with a lower ceiling", () => {
+    const t = computeScaleTransform({ width: 3840, height: 2160 }, FALLBACK_CEILING_LONG_EDGE);
+    const d = decideCompatibility(
+      { width: 3840, height: 2160, codec: "h264", pixelFormat: "yuv420p" },
+      t,
+      FALLBACK_CEILING_LONG_EDGE,
+    );
+    expect(d.result).toBe("compatible");
+    expect(d.recommendedAction).toBe("fal-downscale-to-720p-h264");
   });
 });
 

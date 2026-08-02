@@ -168,12 +168,28 @@ The master's stored metadata on the `project_assets` row (width/height/codec/fps
 - `readAssetSourceMedia` reads a canonical `source_media` sub-object first, then the legacy top-level keys the upload path already records (`size_bytes`, `duration_seconds`) and common dim/codec variants. Because `size_bytes`/`duration_seconds` are populated at upload today, the **filesize/bitrate factors are effective in production now**, even before dims are captured. Populating `source_media.{width,height,codec}` (a future upload-side capture) strengthens the resolution/codec factors — the resolver already consumes it.
 - `planPreflight` now runs **on every dispatch** (even with an empty probe), so the SQL-readable metadata block — dims, scale, codec, color, `needs_processing`, `compatibility_reasons`, `preflight_version` — is **always persisted**.
 
-### 9.3 Field naming + back-compat
+### 9.3 The versioned decision (persisted as first-class fields)
 
-- Plan fields: `needsProcessing` / `processingReason` / `compatibilityReasons` / `falCanProcess` are the compatibility-oriented names.
+The gate's output is persisted as **self-describing, versioned fields** — not just a boolean — so the decision is reproducible and never silently changes behavior as the pipeline evolves. Folded into the `extract_preflight` / `scrub_proxy_preflight` metadata block (and mirrored on `plan.*`):
+
+| Field (block) | Meaning | Example |
+|---|---|---|
+| `compatibility_version` | the decision-logic version (`COMPATIBILITY_VERSION`) that produced this result; **bumps whenever the factors/thresholds/rules change** | `cg1` |
+| `compatibility_result` | the outcome | `incompatible` / `compatible` |
+| `compatibility_reason` | compact human-readable why | `HEVC 10-bit 2160p, 2GB — incompatible with the downstream AI pipeline (HEVC>1920px, 10-bit, oversize)` |
+| `recommended_action` | the remedy | `transcode-to-1080p-h264` / `pass-through` / `fal-downscale-to-1080p-h264` / `fal-normalize-to-h264` |
+
+`compatibility_reasons` (the detailed factor array) and `needs_processing` remain for detail/back-compat. The callers also write queryable top-level mirrors (`extract_preflight_compatibility_version`, `…_result`, `…_reason`, `…_recommended_action`, and the `scrub_proxy_preflight_*` equivalents).
+
+**Two version knobs, versioning different things:**
+- `PREFLIGHT_VERSION` (`vp1`→`vp2`) — the **plan/metadata shape + resolution/transport math**.
+- `COMPATIBILITY_VERSION` (`cg1`) — the **compatibility decision logic** (factors, thresholds, rules). Bump this so a persisted decision is always attributable to the exact logic that made it.
+
+### 9.4 Field naming + back-compat
+
+- Plan fields: `needsProcessing` / `processingReason` / `compatibilityReasons` / `falCanProcess` are the compatibility-oriented names; the versioned decision is `compatibilityVersion` / `compatibilityResult` / `compatibilityReason` / `recommendedAction`.
 - **Deprecated aliases kept** so existing readers keep working: `plan.transcodeRequired` (= `needsProcessing`) and `plan.transcodeReason` (= `processingReason`); persisted `*_transcode_reason` keys are still written.
 - The persisted **status string stays `"needs_transcode"`** (a client contract in `src/lib/video/scrubProxy.ts` `ScrubProxyStatus` and the `extract_status` consumers) — the gate is renamed conceptually and in the shared API, but the DB status token is unchanged for back-compat.
-- `PREFLIGHT_VERSION` bumped `vp1` → `vp2`.
 
 ---
 

@@ -501,6 +501,11 @@ serve(async (req) => {
       extract_preflight_needs_processing: true,
       extract_preflight_reason: preflightPlan.processingReason,
       extract_preflight_compatibility_reasons: preflightPlan.compatibilityReasons,
+      // Versioned compatibility decision — queryable top-level mirrors of the block.
+      extract_preflight_compatibility_version: preflightPlan.compatibilityVersion,
+      extract_preflight_compatibility_result: preflightPlan.compatibilityResult,
+      extract_preflight_compatibility_reason: preflightPlan.compatibilityReason,
+      extract_preflight_recommended_action: preflightPlan.recommendedAction,
       // Deprecated alias key kept so existing readers of the old field still work.
       extract_preflight_transcode_reason: preflightPlan.processingReason,
       extract_preflight_warnings: preflightPlan.warnings,
@@ -514,6 +519,10 @@ serve(async (req) => {
       needsProcessing: true,
       processingReason: preflightPlan.processingReason,
       compatibilityReasons: preflightPlan.compatibilityReasons,
+      compatibilityVersion: preflightPlan.compatibilityVersion,
+      compatibilityResult: preflightPlan.compatibilityResult,
+      compatibilityReason: preflightPlan.compatibilityReason,
+      recommendedAction: preflightPlan.recommendedAction,
       // Deprecated alias field for back-compat.
       transcodeReason: preflightPlan.processingReason,
       preflight: preflightPlan.metadata,
@@ -535,6 +544,10 @@ serve(async (req) => {
     extract_preflight_transport: preflightPlan.transport,
     extract_preflight_needs_processing: false,
     extract_preflight_compatibility_reasons: preflightPlan.compatibilityReasons,
+    extract_preflight_compatibility_version: preflightPlan.compatibilityVersion,
+    extract_preflight_compatibility_result: preflightPlan.compatibilityResult,
+    extract_preflight_compatibility_reason: preflightPlan.compatibilityReason,
+    extract_preflight_recommended_action: preflightPlan.recommendedAction,
     extract_preflight_warnings: preflightPlan.warnings,
     extract_error: null,
   });
