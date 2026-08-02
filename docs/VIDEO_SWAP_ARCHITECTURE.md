@@ -133,4 +133,48 @@ If the short test fails any of these, do **not** scale to full length. Redesign 
 
 ---
 
+## 9. Processing-compatibility preflight (shared infra)
+
+*Added 2026-08-02. This is infrastructure under §4 (reusable frame/clip service) and §6 (reproducibility metadata) — it does not change the locked swap lane above. It **supersedes the earlier "Fal cannot process 4K" premise** that lived in the preflight code, which verified evidence disproved.*
+
+**Canonical module:** [`supabase/functions/_shared/videoPreflight.ts`](../supabase/functions/_shared/videoPreflight.ts). Every Fal video op (trim-video, scale-video, the frame-extraction path, the scrub proxy) computes its transport + processing resolution + metadata contract here — nowhere else.
+
+### 9.1 The gate is COMPATIBILITY, not resolution
+
+The question the gate answers is **"can downstream AI (WebCodecs decode + the Fal ops) safely consume this source?"** — **not** "is it 4K?".
+
+**Why the rename.** Verified evidence (2026-08-02): a small 4 s / 15.8 MB **4K H.264** clip was accepted by `trim-video` with **no 500**, while a genuine multi-GB **4K HEVC / 10-bit / HDR** master produced an **undecodable** clip. So resolution alone is not the failure — media **compatibility** is. Resolution is now **one factor among several**.
+
+Factors considered (any one can trip the gate — `plan.needsProcessing === true`):
+
+| Factor | Why it blocks safe Fal/WebCodecs consumption |
+|--------|----------------------------------------------|
+| Codec = **HEVC/H.265 above 1080p** | the classic 4K-HEVC master → undecodable clip |
+| Codec = **ProRes** | Fal ffmpeg ops can't reliably ingest it |
+| **10-bit** pixel format (`yuv420p10le`/`p010`) | Fal libx264 + WebCodecs are an 8-bit pipeline |
+| **non-4:2:0** chroma (4:2:2 / 4:4:4) | needs a 4:2:0 transcode |
+| **HDR** (PQ / HLG / BT.2020) | needs a color-managed transcode for correct output |
+| **Filesize** > `COMPAT_MAX_SIZE_BYTES` (1 GB) | download/decode choke on multi-GB masters |
+| **Bitrate** > `COMPAT_MAX_BITRATE_BPS` (80 Mbps) | decode complexity |
+| **Resolution** > DCI-4K (`COMPAT_HARD_MAX_LONG_EDGE` 4096) | beyond any Fal ingest, even a light codec |
+
+The **≤1080p downstream ceiling still holds**: a *compatible* source above 1080p is **down-scaled ON Fal** (transport `fal_scale`) — it is **not** gated. Only an *incompatible* source is gated to `non_fal_transcode` (a non-Fal mezzanine: Mux/Cloudflare/ffmpeg worker; local ffmpeg is the interim for T7 masters).
+
+### 9.2 The asset record is AUTHORITATIVE for the master
+
+The master's stored metadata on the `project_assets` row (width/height/codec/fps/duration/size) is **authoritative**. The `ffmpeg-api/metadata` probe of the **signed Supabase master URL is a FALLBACK only** — it has been observed to return **empty width/height** for large masters, which used to make `planPreflight` never run (gate never evaluated, the `extract_preflight` / `scrub_proxy_preflight` metadata block persisted **null** on every run).
+
+- Callers resolve the source with `resolveSourceProbe(readAssetSourceMedia(asset.metadata_json), signedUrlProbe)` — **asset fields win field-by-field; the probe fills only the gaps.**
+- `readAssetSourceMedia` reads a canonical `source_media` sub-object first, then the legacy top-level keys the upload path already records (`size_bytes`, `duration_seconds`) and common dim/codec variants. Because `size_bytes`/`duration_seconds` are populated at upload today, the **filesize/bitrate factors are effective in production now**, even before dims are captured. Populating `source_media.{width,height,codec}` (a future upload-side capture) strengthens the resolution/codec factors — the resolver already consumes it.
+- `planPreflight` now runs **on every dispatch** (even with an empty probe), so the SQL-readable metadata block — dims, scale, codec, color, `needs_processing`, `compatibility_reasons`, `preflight_version` — is **always persisted**.
+
+### 9.3 Field naming + back-compat
+
+- Plan fields: `needsProcessing` / `processingReason` / `compatibilityReasons` / `falCanProcess` are the compatibility-oriented names.
+- **Deprecated aliases kept** so existing readers keep working: `plan.transcodeRequired` (= `needsProcessing`) and `plan.transcodeReason` (= `processingReason`); persisted `*_transcode_reason` keys are still written.
+- The persisted **status string stays `"needs_transcode"`** (a client contract in `src/lib/video/scrubProxy.ts` `ScrubProxyStatus` and the `extract_status` consumers) — the gate is renamed conceptually and in the shared API, but the DB status token is unchanged for back-compat.
+- `PREFLIGHT_VERSION` bumped `vp1` → `vp2`.
+
+---
+
 *If this decision is ever superseded, do it explicitly and dated in this file — never by a silent drift in runtime code or in a new handoff. See the June-21 pivot handoff [`CURSOR_HANDOFF_video_clothing_swap_pivot.md`](../CURSOR_HANDOFF_video_clothing_swap_pivot.md) for the original rationale.*

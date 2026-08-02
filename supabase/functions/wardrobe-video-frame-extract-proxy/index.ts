@@ -90,7 +90,9 @@ import {
 import {
   DEFAULT_CEILING_LONG_EDGE,
   planPreflight,
-  type PreflightPlan,
+  readAssetSourceMedia,
+  resolveSourceProbe,
+  type SourceProbe,
 } from "../_shared/videoPreflight.ts";
 
 const corsHeaders = {
@@ -437,15 +439,21 @@ serve(async (req) => {
     return json(500, { error: "master_sign_failed", detail: signErr?.message });
   }
 
-  // ---- PREFLIGHT GATE (the shared video-preflight service) -------------------
-  // Probe the MASTER's resolution BEFORE any Fal decode op. ffmpeg-api/metadata
-  // reads headers only, so it is safe even on a 4K master (unlike trim/scale,
-  // which 500 on 4K). planPreflight then decides transport from the SOURCE
-  // resolution — the confirmed root cause. For a source ABOVE Fal's ingest
-  // envelope (the 4K master) we STOP here: the trim itself is a Fal decode op that
-  // would 500, so we flag needs_transcode honestly rather than submit-and-fail.
-  // When no meta model is wired we degrade to the legacy path (assume ingestable).
-  let preflightPlan: PreflightPlan | null = null;
+  // ---- PROCESSING-COMPATIBILITY GATE (the shared video-preflight service) -----
+  // AUTHORITY INVERSION: the MASTER's stored metadata on the project_assets row is
+  // AUTHORITATIVE (width/height/codec/fps/duration/size). The ffmpeg-api/metadata
+  // probe of the signed Supabase master URL is a FALLBACK only — it returns empty
+  // width/height for large masters, which used to make planPreflight never run
+  // (gate never evaluated, extract_preflight persisted null). We resolve the
+  // source from the asset record first and fill only the gaps from the probe.
+  //
+  // planPreflight then applies the PROCESSING-COMPATIBILITY gate (codec/10-bit/
+  // HDR/filesize/bitrate/resolution — not resolution alone). An INCOMPATIBLE
+  // master (multi-GB 4K HEVC/10-bit/HDR) cannot be safely processed on Fal, so we
+  // STOP here — the trim itself is a Fal decode op that would 500 or emit an
+  // undecodable clip — and flag it honestly rather than submit-and-fail.
+  const assetMedia = readAssetSourceMedia(assetMeta);
+  let falProbe: SourceProbe | null = null;
   if (metaModel) {
     try {
       const srcMetaResult = await runFalViaCc(
@@ -455,49 +463,67 @@ serve(async (req) => {
         buildMetadataInput(masterSigned.signedUrl),
       );
       const svm = extractVideoMeta(srcMetaResult);
-      if (svm && svm.width && svm.height) {
-        preflightPlan = planPreflight({
-          source: {
-            width: svm.width,
-            height: svm.height,
-            fps: svm.fps,
-            codec: svm.codec,
-            // Fal metadata does not surface pixel_format / HDR tags today; they
-            // pass through as null (preflight keeps HDR tags as-is when present).
-          },
-          clip: { startSec: config.startSec, durationSec: config.durationSec },
-          operation: config.width ? "scale" : "extract",
-          ceilingLongEdge: preflightCeiling,
-        });
-        if (preflightPlan.transcodeRequired) {
-          // The 4K case — Fal cannot down-scale it. Report exactly what production
-          // needs; do NOT submit a Fal op that will 500.
-          await patchMeta(admin, config.assetId, {
-            extract_status: "needs_transcode",
-            extract_session_id: extractionId,
-            extract_preflight: preflightPlan.metadata,
-            extract_preflight_transport: preflightPlan.transport,
-            extract_preflight_transcode_reason: preflightPlan.transcodeReason,
-            extract_preflight_warnings: preflightPlan.warnings,
-            extract_error: null,
-          });
-          return json(200, {
-            ok: true,
-            status: "needs_transcode",
-            extractionId,
-            transport: preflightPlan.transport,
-            transcodeReason: preflightPlan.transcodeReason,
-            preflight: preflightPlan.metadata,
-            warnings: preflightPlan.warnings,
-          });
-        }
+      if (svm) {
+        // Fal metadata does not surface pixel_format / HDR tags today; they pass
+        // through as null (preflight keeps HDR tags as-is when present).
+        falProbe = {
+          width: svm.width,
+          height: svm.height,
+          fps: svm.fps,
+          codec: svm.codec,
+          durationSec: svm.durationSec,
+        };
       }
     } catch {
-      // Probe is best-effort; without it we fall back to the legacy trim-first path.
+      // Probe is best-effort; the asset record remains the authority.
     }
   }
+  const { source: resolvedSource } = resolveSourceProbe(assetMedia, falProbe);
+  // planPreflight ALWAYS runs now (even when the probe is empty) so the metadata
+  // block ALWAYS persists — never null again.
+  const preflightPlan = planPreflight({
+    source: resolvedSource,
+    clip: { startSec: config.startSec, durationSec: config.durationSec },
+    operation: config.width ? "scale" : "extract",
+    ceilingLongEdge: preflightCeiling,
+  });
+  if (preflightPlan.needsProcessing) {
+    // The incompatible master — Fal cannot safely process it. Report exactly what
+    // production needs; do NOT submit a Fal op that will 500 / emit garbage. The
+    // persisted status string stays "needs_transcode" for client back-compat
+    // (ScrubProxyStatus / extract_status consumers); the block below records the
+    // richer compatibility semantics.
+    await patchMeta(admin, config.assetId, {
+      extract_status: "needs_transcode",
+      extract_session_id: extractionId,
+      extract_preflight: preflightPlan.metadata,
+      extract_preflight_transport: preflightPlan.transport,
+      extract_preflight_needs_processing: true,
+      extract_preflight_reason: preflightPlan.processingReason,
+      extract_preflight_compatibility_reasons: preflightPlan.compatibilityReasons,
+      // Deprecated alias key kept so existing readers of the old field still work.
+      extract_preflight_transcode_reason: preflightPlan.processingReason,
+      extract_preflight_warnings: preflightPlan.warnings,
+      extract_error: null,
+    });
+    return json(200, {
+      ok: true,
+      status: "needs_transcode",
+      extractionId,
+      transport: preflightPlan.transport,
+      needsProcessing: true,
+      processingReason: preflightPlan.processingReason,
+      compatibilityReasons: preflightPlan.compatibilityReasons,
+      // Deprecated alias field for back-compat.
+      transcodeReason: preflightPlan.processingReason,
+      preflight: preflightPlan.metadata,
+      warnings: preflightPlan.warnings,
+    });
+  }
 
-  // Advertise the planned set up-front so the UI shows progress immediately.
+  // Advertise the planned set up-front so the UI shows progress immediately. The
+  // SQL-readable preflight metadata block is ALWAYS persisted (with
+  // preflight_version), never conditional — the null-metadata bug is fixed here.
   await patchMeta(admin, config.assetId, {
     extract_status: "processing",
     extract_session_id: extractionId,
@@ -505,14 +531,11 @@ serve(async (req) => {
     extract_clip_bucket: OUT_BUCKET,
     extract_manifest: buildManifest([], false),
     extract_repro: repro,
-    // The SQL-readable metadata contract from the shared preflight service.
-    ...(preflightPlan
-      ? {
-          extract_preflight: preflightPlan.metadata,
-          extract_preflight_transport: preflightPlan.transport,
-          extract_preflight_warnings: preflightPlan.warnings,
-        }
-      : {}),
+    extract_preflight: preflightPlan.metadata,
+    extract_preflight_transport: preflightPlan.transport,
+    extract_preflight_needs_processing: false,
+    extract_preflight_compatibility_reasons: preflightPlan.compatibilityReasons,
+    extract_preflight_warnings: preflightPlan.warnings,
     extract_error: null,
   });
 
@@ -568,8 +591,10 @@ serve(async (req) => {
       const dimsRequested = Boolean(config.width && config.height);
       const codecUndecodable = clipCodec !== null && !isBrowserDecodableCodec(clipCodec);
       if (dimsRequested || codecUndecodable) {
-        const w = config.width ?? preflightPlan?.transform.proxyWidth ?? probedW ?? 1280;
-        const h = config.height ?? preflightPlan?.transform.proxyHeight ?? probedH ?? 720;
+        // preflightPlan is always defined; proxy dims are 0 when source dims were
+        // unknown, so use || (not ??) to fall through a 0 to the probed clip dims.
+        const w = config.width || preflightPlan.transform.proxyWidth || probedW || 1280;
+        const h = config.height || preflightPlan.transform.proxyHeight || probedH || 720;
         if (!scaleModel) {
           // Codec undecodable and no scaler wired → record a precise warning; the
           // client decode will fail loudly rather than fake a result.
