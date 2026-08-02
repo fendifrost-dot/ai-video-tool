@@ -1,0 +1,44 @@
+{
+  "stage": "A",
+  "worker_version": "0.1.0-prototype",
+  "frozen_set": "benchmark_frozen_2026-08-01 (single-frame: Kolors+Grok+source @134)",
+  "anchor_local": 60,
+  "frame_count": 121,
+  "single_anchor_reach_frames": 15,
+  "gate_reanchor_count": 84,
+  "flicker_near_anchor": 6.77,
+  "flicker_whole_window": 7.41,
+  "identity_drift_outside_mean": 0.0763,
+  "edge_halo_mean": 1.118,
+  "scorecard": {
+    "base_frame_quality": {
+      "status": "REVIEW(partial)",
+      "value": "1 real Kolors frame (anchor) only",
+      "note": "Real Kolors pixels are wired at the anchor and visibly propagate; a PER-FRAME Kolors base is BLOCKED (frozen set is single-frame) so full base quality is not scored."
+    },
+    "temporal_stability": {
+      "status": "PASS-near / DECAYS-far",
+      "value": "flicker near-anchor=6.77, whole-window=7.41; single-anchor reach=+/-15 frames",
+      "note": "Real Kolors garment holds temporally NEAR the anchor; degrades with distance because only ONE real anchor exists \u2014 that decay IS the re-anchor cadence answer."
+    },
+    "product_fidelity": {
+      "status": "DEFERRED(Stage B)",
+      "value": "no Grok in Stage A (by design)",
+      "note": "Garment construction toward Grok is intentionally not tested in Stage A."
+    },
+    "occlusion_correctness": {
+      "status": "WARN",
+      "value": "hands restored via real skin mask; garment mask COARSE",
+      "note": "Real SAM masks are BLOCKED (not in frozen set); coarse heuristic garment mask limits sleeve/collar precision."
+    },
+    "artifact_severity": {
+      "status": "PASS-near / WARN-far",
+      "value": "edge_halo mean=1.12, id_drift_outside=0.076",
+      "note": "Composite outside garment stays lossless; far-from-anchor warps stretch occluded Kolors regions (single-anchor holes) \u2014 expected, flagged by the reach gate."
+    }
+  },
+  "blocked": [
+    "per-frame Kolors base (frozen set has ONE Kolors frame; needs Kolors VTON per-frame via Fal fal-ai/kling/v1-5/kolors-virtual-try-on \u2014 separate edge/Fal deploy)",
+    "real SAM-3 masks (none frozen; needs sam3-segment-proxy / fal-ai/sam-3/video)"
+  ]
+}

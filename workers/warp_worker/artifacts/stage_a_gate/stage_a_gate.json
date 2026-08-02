@@ -1,0 +1,130 @@
+{
+  "stage": "A",
+  "question": "does the machinery remain stable on ACTUAL Kolors output (no regression)?",
+  "window": [
+    74,
+    194
+  ],
+  "anchor_frame": 134,
+  "single_anchor_reach_frames": 15,
+  "temporal_scorecard": {
+    "flicker": {
+      "kolors_reach": {
+        "mean": 6.831,
+        "max": 10.324
+      },
+      "source_reach": {
+        "mean": 4.917,
+        "max": 7.192
+      },
+      "kolors_window": {
+        "mean": 7.348,
+        "max": 13.815
+      },
+      "source_window": {
+        "mean": 6.086,
+        "max": 10.468
+      }
+    },
+    "edge_halo": {
+      "kolors_reach": {
+        "mean": 0.762,
+        "max": 1.113
+      },
+      "source_reach": {
+        "mean": 0.39,
+        "max": 0.591
+      },
+      "kolors_window": {
+        "mean": 1.118,
+        "max": 1.916
+      },
+      "source_window": {
+        "mean": 0.929,
+        "max": 1.812
+      }
+    },
+    "identity_drift_outside": {
+      "kolors_reach": {
+        "mean": 0.052,
+        "max": 0.077
+      },
+      "source_reach": {
+        "mean": 0.027,
+        "max": 0.041
+      },
+      "kolors_window": {
+        "mean": 0.076,
+        "max": 0.132
+      },
+      "source_window": {
+        "mean": 0.063,
+        "max": 0.129
+      }
+    },
+    "roundtrip_confidence": {
+      "kolors_reach": {
+        "mean": 0.853,
+        "max": 1.0
+      },
+      "source_reach": {
+        "mean": 0.853,
+        "max": 1.0
+      },
+      "kolors_window": {
+        "mean": 0.356,
+        "max": 1.0
+      },
+      "source_window": {
+        "mean": 0.356,
+        "max": 1.0
+      }
+    }
+  },
+  "regression_vs_source_anchor": {
+    "flicker": 0.3892617449664431,
+    "edge_halo": 0.9538461538461538,
+    "identity_drift": 0.9259259259259258,
+    "tolerance": 0.15
+  },
+  "worst_flicker_frame": {
+    "local": 83,
+    "source_index": 157,
+    "value": 13.815
+  },
+  "severe_failures": [
+    "single-anchor reach only \u00b115 of \u00b160 frames \u2014 garment smears badly beyond it (worst flicker frame #83=13.8)"
+  ],
+  "temporal_verdict": "FAIL",
+  "garment_fidelity_scorecard": {
+    "kolors_propagated_within_reach": {
+      "label": "kolors_propagated_within_reach",
+      "frames_measured": 31,
+      "stripe_width_variance": 0.1182,
+      "stripe_position_variance": 0.045,
+      "stripe_x_variance": 0.0331,
+      "stripe_presence_rate": 1.0,
+      "logo_alignment": null,
+      "logo_legibility": null,
+      "zipper_alignment": null,
+      "collar_geometry": null,
+      "methods": {
+        "logo_alignment": "SEMI-MANUAL: mark logo centroid in N sampled frames; report std of (logo_centroid - stripe_centroid) normalised by torso width.",
+        "logo_legibility": "SEMI-MANUAL: local RMS contrast / Laplacian variance in a fixed logo box; higher = sharper, less smeared.",
+        "zipper_alignment": "SEMI-MANUAL: fit a line to the central vertical seam; report max lateral deviation (px, normalised by torso width).",
+        "collar_geometry": "SEMI-MANUAL: mark collar top corners in N frames; report variance of collar width + tilt."
+      }
+    },
+    "frozen_kolors_at_anchor": {
+      "stripe_width_norm": 0.4811,
+      "stripe_cy_norm": 0.4563,
+      "present": true
+    }
+  },
+  "fidelity_verdict": "DEFERRED \u2014 Stage A introduces no Grok; baseline garment-fidelity numbers recorded (this is the Kolors-only floor Stage B must beat).",
+  "blocked": [
+    "real per-frame Kolors base \u2014 frozen set has ONE Kolors frame (134); needs Kolors VTON per-frame via Fal fal-ai/kling/v1-5/kolors-virtual-try-on (edge/Fal deploy). WITHOUT it, whole-clip Stage A cannot be run and single-anchor reach caps stable coverage at \u00b115 frames.",
+    "real SAM-3 masks \u2014 none frozen; needs sam3-segment-proxy / fal-ai/sam-3/video. Garment/sleeve/collar boundaries here are COARSE heuristic; occlusion-correctness + edge-crawl claims inherit that."
+  ],
+  "overall": "STAGE A DOES NOT PASS \u2014 required inputs (per-frame Kolors base, SAM masks) are BLOCKED and the runnable single-anchor substitute exhibits a severe beyond-reach garment failure. Do NOT introduce Grok / proceed to Stage B until the real per-frame Kolors base + SAM masks are wired."
+}
