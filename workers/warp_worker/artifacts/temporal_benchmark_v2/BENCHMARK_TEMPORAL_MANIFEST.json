@@ -1,0 +1,76 @@
+{
+  "benchmark": "avt_wardrobe_temporal",
+  "version": "2.0.0",
+  "supersedes": "benchmark_frozen_2026-08-01 (single-frame; kept immutable)",
+  "complete": false,
+  "pending": [
+    "kolors_sequence",
+    "sam_mask_sequence"
+  ],
+  "components": {
+    "source_clip": {
+      "status": "PRESENT",
+      "path": "/Volumes/T7/AVT VIDEO CLIPS/benchmark_frozen_2026-08-01/benchmark_1080p_clip.mp4",
+      "detail": "1080p H.264 benchmark clip"
+    },
+    "source_frames": {
+      "status": "PRESENT",
+      "path": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/frames",
+      "detail": "16-bit near-lossless source frame sequence"
+    },
+    "kolors_sequence": {
+      "status": "PENDING",
+      "path": "benchmark_temporal_v2/kolors_seq/",
+      "detail": "per-frame Kolors VTON output for the whole clip",
+      "runbook": "Generate per-frame Kolors: for each source frame, call the AVT edge fn wardrobe-video-swap-proxy (Phase-2b per-frame path) with FRAME_SWAP_FAL_MODEL=fal-ai/kling/v1-5/kolors-virtual-try-on via CC switchx-restyle fal-run, transferMode jacket_only, the wardrobe feature = the SL bomber. Needs: authenticated Supabase user (bearer), benchmark clip uploaded as a project_asset, CC allowlist + SWITCHX_PROXY_SECRET, Fal account not blocked. Output = project-exports swapped frames -> download to benchmark_temporal_v2/kolors_seq/frame_%05d.png. NOT runnable from the local worker (AVT holds no FAL_KEY; Fal is reached only via CC/edge)."
+    },
+    "grok_anchors": {
+      "status": "PRESENT",
+      "path": "/Volumes/T7/AVT VIDEO CLIPS/benchmark_frozen_2026-08-01/grok_anchor_frame_00134.jpg",
+      "detail": "approved Grok garment-detail anchor(s) (frame 134 frozen)"
+    },
+    "sam_mask_sequence": {
+      "status": "PENDING",
+      "path": "benchmark_temporal_v2/sam_seq/",
+      "detail": "per-frame per-region SAM-3 masks for the whole clip",
+      "runbook": "Generate SAM-3 masks: call sam3-segment-proxy (fal-ai/sam-3/video) on the benchmark clip with prompts for each region (torso, left_sleeve, right_sleeve, collar, stripe_logo, hands_arms). Needs the same authenticated edge/CC/Fal path. Output = per-frame per-region masks -> benchmark_temporal_v2/sam_seq/<region>/frame_%05d.png. NOT runnable from the local worker."
+    },
+    "forward_flow": {
+      "status": "PRESENT",
+      "path": "/Volumes/T7/AVT VIDEO CLIPS/benchmark_temporal_v2/flow",
+      "detail": "per-step forward dense flow (float32)"
+    },
+    "backward_flow": {
+      "status": "PRESENT",
+      "path": "/Volumes/T7/AVT VIDEO CLIPS/benchmark_temporal_v2/flow",
+      "detail": "per-step backward dense flow (float32)"
+    },
+    "confidence_maps": {
+      "status": "PRESENT",
+      "path": "/Volumes/T7/AVT VIDEO CLIPS/benchmark_temporal_v2/flow",
+      "detail": "per-step fwd/bwd-consistency confidence + occlusion"
+    },
+    "propagation_window_distribution": {
+      "status": "PRESENT",
+      "path": "/Volumes/T7/AVT VIDEO CLIPS/benchmark_temporal_v2/analysis/propagation_window.json",
+      "detail": "per-anchor reach + shot distribution"
+    },
+    "adaptive_anchor_plan": {
+      "status": "PRESENT",
+      "path": "/Volumes/T7/AVT VIDEO CLIPS/benchmark_temporal_v2/analysis/adaptive_anchor_plan.json",
+      "detail": "adaptive placement (replaces fixed cadence)"
+    },
+    "immutable_single_frame_frozen_set_v1": {
+      "status": "PRESENT",
+      "path": "/Volumes/T7/AVT VIDEO CLIPS/benchmark_frozen_2026-08-01",
+      "detail": "superseded but kept immutable"
+    }
+  },
+  "checksums": {
+    "flow_manifest.json": "71d58aef49806e92e4c19ce4957cacbf3ea7389701c571c55f5c814dd7de738c",
+    "SHA256SUMS.txt": "477233b327ae6c231af671c3106c81763f931c6496f8346e63647aba44b3172a",
+    "analysis/propagation_window.json": "989891fe240a871d6205e159762b8005e26a2659205ac95cac04406c8056a8d3",
+    "analysis/adaptive_anchor_plan.json": "176675bca86be0b6272fed6669987ea95d58398bfdc50f3d9e3ada3004207962"
+  },
+  "note": "Version bumps ONLY on regeneration. PENDING components are NOT fabricated; each carries the exact runbook. Experiments must use exactly these assets."
+}
