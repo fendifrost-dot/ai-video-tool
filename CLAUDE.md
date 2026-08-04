@@ -6,6 +6,14 @@ Full stack: `AGENTS.md`. Agent context: `claude_code_handoff_avt_agent_context.m
 
 ---
 
+## Engineering principles (read every session)
+
+**Benchmarks are DERIVED FROM EVIDENCE, never RECALLED FROM MEMORY.** Never certify a benchmark, golden set, or reference fixture by approving items "because they seem right" — derive them via a documented, versioned selection algorithm, present the evidence (scores, margins, review artifact) for human approval, then freeze read-only with full provenance. Canonical spec: [`docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md`](docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md) — read it before creating, certifying, or modifying any benchmark.
+
+**Evidence taxonomy:** every claim in any audit, benchmark, or report is labeled exactly one of **VERIFIED** (proven — cite it) / **OBSERVED** (seen, not proven) / **HYPOTHESIS** (needs a named test) / **DECISION** (intentional + rationale) / **RECOMMENDATION** (proposed). Never let a HYPOTHESIS read as VERIFIED.
+
+---
+
 ## CRITICAL — Chain of command (read every session)
 
 **There is NO standalone Supabase.** These apps are **Lovable-managed**. Do **not**:
