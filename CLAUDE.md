@@ -6,11 +6,17 @@ Full stack: `AGENTS.md`. Agent context: `claude_code_handoff_avt_agent_context.m
 
 ---
 
-## Engineering principles (read every session)
+## 🚫 MUST READ FIRST — Database access (do NOT open a standalone Supabase dashboard)
 
-**Benchmarks are DERIVED FROM EVIDENCE, never RECALLED FROM MEMORY.** Never certify a benchmark, golden set, or reference fixture by approving items "because they seem right" — derive them via a documented, versioned selection algorithm, present the evidence (scores, margins, review artifact) for human approval, then freeze read-only with full provenance. Canonical spec: [`docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md`](docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md) — read it before creating, certifying, or modifying any benchmark.
+**The database is LOVABLE-MANAGED. There is NO standalone Supabase to log into.** AVT Supabase project ref: **`qoyxgnkvjukovkrvdaiq`**.
 
-**Evidence taxonomy:** every claim in any audit, benchmark, or report is labeled exactly one of **VERIFIED** (proven — cite it) / **OBSERVED** (seen, not proven) / **HYPOTHESIS** (needs a named test) / **DECISION** (intentional + rationale) / **RECOMMENDATION** (proposed). Never let a HYPOTHESIS read as VERIFIED.
+- **NEVER open, log into, or "go to" a standalone Supabase dashboard (supabase.com) for ANY reason** — not to apply migrations, not to inspect schema, not to check data. The ONLY time you touch a Supabase dashboard is when **Lovable itself links you into it**.
+- **SQL / migrations →** run in **Lovable's SQL Editor** on the linked Lovable project.
+- **Edge function redeploys →** **Lovable → Edge Functions → redeploy** each touched function (Publish ≠ edge redeploy).
+- **A `supabase` CLI 403 / "wrong account" is a FALSE WALL, not a blocker** — do not treat it as a reason to open a dashboard or to stall.
+- Do **not** ask Fendi to paste/run SQL, and do **not** hunt for a separate "Supabase project" outside Lovable Cloud.
+
+Full deploy/schema chain of command is below. If in doubt: everything goes through **Lovable**, never a direct Supabase login.
 
 ---
 
@@ -19,7 +25,7 @@ Full stack: `AGENTS.md`. Agent context: `claude_code_handoff_avt_agent_context.m
 **There is NO standalone Supabase.** These apps are **Lovable-managed**. Do **not**:
 
 - Run the `supabase` CLI (403 / wrong account = a **FALSE wall**, not a blocker)
-- Open supabase.com dashboard to apply migrations
+- Open supabase.com dashboard for ANY reason — SQL, migrations, or inspection — **unless Lovable links you into it**
 - Ask Fendi to paste/run SQL
 - Hunt for a separate “Supabase project” outside Lovable Cloud
 - Treat “I can’t find Supabase” as a reason to stall
@@ -66,6 +72,14 @@ AVT reaches Fal via CC `switchx-restyle` (`fal-run`) + `fal-queue-poll`. Grok im
 | Modest Chic Builder | `lkbapymfjcfrnskcdrmv` |
 | Continuum Capital Chicago OS | `mdmetmylcfkehugcpbjg` |
 | LAAAN Logistics | `vtkvwvahtftpbcvnwbic` |
+
+---
+
+## Engineering principles (read every session)
+
+**Benchmarks are DERIVED FROM EVIDENCE, never RECALLED FROM MEMORY.** Never certify a benchmark, golden set, or reference fixture by approving items "because they seem right" — derive them via a documented, versioned selection algorithm, present the evidence (scores, margins, review artifact) for human approval, then freeze read-only with full provenance. Canonical spec: [`docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md`](docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md) — read it before creating, certifying, or modifying any benchmark.
+
+**Evidence taxonomy:** every claim in any audit, benchmark, or report is labeled exactly one of **VERIFIED** (proven — cite it) / **OBSERVED** (seen, not proven) / **HYPOTHESIS** (needs a named test) / **DECISION** (intentional + rationale) / **RECOMMENDATION** (proposed). Never let a HYPOTHESIS read as VERIFIED.
 
 ---
 
