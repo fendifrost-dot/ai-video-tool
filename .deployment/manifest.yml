@@ -1,0 +1,42 @@
+# AVT deployment-governance manifest — machine-readable source of truth.
+#
+# This file is the canonical, machine-readable statement of WHERE this project
+# lives and deploys, and WHAT is forbidden. Agents and tooling should read this
+# before any deploy/DB action.
+#
+# Human-readable policy .... ../CLAUDE.md  (PROJECT POLICY block, top of file)
+# Agent pre-flight ......... ../docs/AGENT_BOOTSTRAP.md
+#
+# Rule: if reality disagrees with this file, STOP — do not "work around" it.
+
+schema_version: 1
+
+project: ai-video-tool
+project_name: AI Video Tool (AVT)
+canonical_repo: https://github.com/fendifrost-dot/ai-video-tool
+canonical_branch: main
+
+deployment:
+  provider: lovable
+  lovable_project_id: bd21b544-c7b8-4780-bdde-391ac9d4bfa8
+  frontend: lovable_publish                 # published from canonical_branch
+  edge_functions: lovable_edge_functions_redeploy   # Publish != edge redeploy
+
+database:
+  provider: lovable_supabase
+  project_ref: qoyxgnkvjukovkrvdaiq
+  sql: lovable_sql_editor                    # never a standalone dashboard or local CLI
+
+# Doing ANY of these requires STOPPING work (see CLAUDE.md PROJECT POLICY):
+forbidden:
+  - standalone_supabase   # opening/logging into a standalone supabase.com dashboard for ANY reason unless Lovable links you into it
+  - archived_clone        # working from an archived or duplicate clone instead of canonical_repo
+  - local_sql             # running SQL locally or via the supabase CLI instead of Lovable SQL Editor (a CLI 403 is a FALSE WALL, not a blocker)
+  - stale_repo            # acting on a stale checkout; you must be on canonical_branch and up to date
+
+notes:
+  false_walls:
+    - "supabase CLI 403 / 'wrong account' = FALSE WALL, not a blocker — do not open a dashboard or stall over it"
+  sister_project_control_center:
+    repo: https://github.com/fendifrost-dot/fendi-control-center
+    supabase_project_ref: wkzwcfmvnwolgrdpnygc   # SEPARATE — holds FAL_KEY; AVT never holds Fal. Do not mix.

@@ -6,17 +6,23 @@ Full stack: `AGENTS.md`. Agent context: `claude_code_handoff_avt_agent_context.m
 
 ---
 
-## 🚫 MUST READ FIRST — Database access (do NOT open a standalone Supabase dashboard)
+## ⛔ PROJECT POLICY — violating ANY item requires STOPPING work
 
-**The database is LOVABLE-MANAGED. There is NO standalone Supabase to log into.** AVT Supabase project ref: **`qoyxgnkvjukovkrvdaiq`**.
+**Before doing anything, pass the pre-flight in [`docs/AGENT_BOOTSTRAP.md`](docs/AGENT_BOOTSTRAP.md). Machine-readable source of truth: [`.deployment/manifest.yml`](.deployment/manifest.yml). If you cannot answer the pre-flight from evidence, you do NOT proceed.**
 
-- **NEVER open, log into, or "go to" a standalone Supabase dashboard (supabase.com) for ANY reason** — not to apply migrations, not to inspect schema, not to check data. The ONLY time you touch a Supabase dashboard is when **Lovable itself links you into it**.
-- **SQL / migrations →** run in **Lovable's SQL Editor** on the linked Lovable project.
-- **Edge function redeploys →** **Lovable → Edge Functions → redeploy** each touched function (Publish ≠ edge redeploy).
-- **A `supabase` CLI 403 / "wrong account" is a FALSE WALL, not a blocker** — do not treat it as a reason to open a dashboard or to stall.
-- Do **not** ask Fendi to paste/run SQL, and do **not** hunt for a separate "Supabase project" outside Lovable Cloud.
+- **Database & deploy are LOVABLE-MANAGED.** There is NO standalone Supabase to log into. All SQL runs in **Lovable's SQL Editor**; all edge redeploys via **Lovable → Edge Functions → redeploy** (Publish ≠ edge redeploy).
+- **AVT Supabase project ref:** `qoyxgnkvjukovkrvdaiq`. **Canonical repo:** `github.com/fendifrost-dot/ai-video-tool`. **Canonical branch:** `main`.
 
-Full deploy/schema chain of command is below. If in doubt: everything goes through **Lovable**, never a direct Supabase login.
+**FORBIDDEN — if you catch yourself doing ANY of these, STOP work immediately:**
+
+| id | Forbidden |
+|----|-----------|
+| `standalone_supabase` | Opening / logging into a standalone supabase.com dashboard for ANY reason — migrations, schema, or data — **unless Lovable itself links you into it**. |
+| `archived_clone` | Working from an archived or duplicate clone instead of the canonical repo. |
+| `local_sql` | Running SQL locally or via the `supabase` CLI instead of Lovable's SQL Editor. **A CLI 403 / "wrong account" is a FALSE WALL**, not a blocker — do not open a dashboard or stall over it. |
+| `stale_repo` | Acting on a stale checkout; confirm you are on canonical `main` and up to date. |
+
+Do **not** ask Fendi to paste/run SQL, and do **not** hunt for a separate "Supabase project" outside Lovable Cloud. If in doubt: everything goes through **Lovable**, never a direct Supabase login. Full deploy/schema chain of command is below.
 
 ---
 
