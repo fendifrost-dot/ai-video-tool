@@ -1,5 +1,11 @@
 # warp_worker — architecture & interfaces
 
+> **⚗️ RESEARCH PROTOTYPE — NOT PRODUCTION.** Standalone CLI, no app/CI wiring, not
+> invocable in prod. A validated research direction, not shippable code. Production
+> gates (real Kolors bases, real SAM masks, real Grok corrections, live GPU-scale
+> propagation, production integration) are listed in [`../README.md`](../README.md)
+> and tracked as ARCH-1 in [`../../RISK_REGISTER.md`](../../RISK_REGISTER.md).
+
 Prototype of the LOCKED garment-swap propagation step
 ([`docs/VIDEO_SWAP_ARCHITECTURE.md`](../../docs/VIDEO_SWAP_ARCHITECTURE.md) §3).
 Read that doc and the `CLAUDE.md` "LOCKED" section first — this worker

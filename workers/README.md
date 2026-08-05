@@ -1,7 +1,35 @@
 # AVT compute workers (off-Fal, off-edge)
 
+> ## ⚗️ STATUS: RESEARCH PROTOTYPE — NOT PRODUCTION
+>
+> Everything under `workers/` is a **validated research direction**, **not**
+> production code. It is a **standalone CLI** with **no app or CI wiring**, so it
+> is **NOT invocable in prod** — no user action, edge function, or pipeline can
+> reach it. It exists to answer *one* question (does gated flow-propagation bridge
+> the garment-fidelity gap?) on *one* short benchmark shot. Do **not** read it as
+> "almost done" or schedule it as a shippable feature.
+>
+> **What "validated research direction" means:** the one-shot evidence shows the
+> approach is worth pursuing (identity/pose preserved; a real second-pass gate on
+> cumulative propagation residual). It does **not** show the gap is bridged — the
+> real frozen Kolors/Grok baselines are still missing inputs.
+>
+> **Gates required before ANY of this becomes production** (all must hold):
+> 1. **Real per-frame Kolors** VTON base frames as the geometry/identity authority
+>    (not source-frame stand-ins).
+> 2. **Real SAM masks** (SAM-3 video) for garment regions (not heuristic/skin masks).
+> 3. **Real Grok corrections** at approved anchor indices (not source anchors).
+> 4. **Live propagation at production scale** on a GPU worker (RAFT/GMFlow, full-res),
+>    proven past the KILL CRITERION in [`../docs/VIDEO_SWAP_ARCHITECTURE.md`](../docs/VIDEO_SWAP_ARCHITECTURE.md).
+> 5. **Production integration** — a durable job queue + status/retry/resume, wired
+>    into the app and CI, passing Class-C review per
+>    [`../docs/ARCHITECTURE_REVIEW.md`](../docs/ARCHITECTURE_REVIEW.md).
+>
+> Tracked as **ARCH-1** ("Lane A propagation inert") in
+> [`../RISK_REGISTER.md`](../RISK_REGISTER.md). See PR #15 for the one-shot result.
+
 Heavy compute that **cannot** run on Fal video ops or a Deno edge function lives
-here. Today that is one thing:
+here. Today that is one **research prototype**:
 
 ## `warp_worker/` — gated garment-detail propagation prototype
 
