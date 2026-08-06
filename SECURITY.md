@@ -74,6 +74,15 @@ callers can do nothing to real user data.
      aspect-ratios / durations, readable by any signed-in user) — this is
      **acceptable** and is *not* a finding. The rule is specifically about
      **write access and per-user data**, not about public read-only catalogs.
+
+   > **STANDING PRINCIPLE — Every public policy must have a documented business
+   > justification.** Any policy granting access beyond the owning user (a
+   > `USING (true)` predicate, a grant to `anon`, or a `public = true` bucket) is
+   > forbidden unless a written justification exists — in this document and, for the
+   > specific decision, in [`docs/SECURITY_DECISIONS.md`](docs/SECURITY_DECISIONS.md).
+   > No documented justification ⇒ the policy is a finding and must be removed. A
+   > "revert before production" comment is **not** a justification — it already
+   > failed once (RISK-001).
 3. **Dev-only relaxations must never ship.** A migration that opens policies "for
    local dev" is a loaded gun. If one is written, it must be (a) clearly labelled,
    (b) tracked as a P0 the moment it lands, and (c) reverted by a paired migration
@@ -159,10 +168,17 @@ control.
 | **RISK-001** | **Anonymous RLS / bucket exposure.** Migration `20260523171003_*.sql` (dated **2026-05-23**, labelled "DEV ONLY … Revert before production") replaced per-user policies with `FOR ALL TO anon, authenticated USING (true) WITH CHECK (true)` on **`artists`, `character_features`, `location_library`, `prop_library`, `artist_looks`**, and opened the **`look-composites`** storage bucket to `anon` for SELECT/INSERT/UPDATE/DELETE. **No later migration reverts it.** Any anonymous caller can read/write/delete these rows and objects. | **P0 / Critical** | **OPEN — under active remediation** | [RISK-001](RISK_REGISTER.md) |
 
 **RISK-001 handling note:** Do **not** attempt to fix this in a documentation change.
-Remediation is being handled separately as a **forensic report + a targeted
-revert migration** (restore owner-scoped policies on the five tables and the
-`look-composites` bucket; then add RLS integration tests that assert `anon` is
-denied). This document records the finding honestly; the register tracks the fix.
+Remediation is handled separately as a **forensic report + a targeted revert
+migration**, now authored under [`docs/security/RISK-001/`](docs/security/RISK-001/):
+the immutable forensic evidence (`evidence/` + `SHA256SUMS.txt`), the revert migration
+`supabase/migrations/20260806120000_risk_001_revert_anon_rls.sql` (restores
+owner-scoped policies on the five tables and the `look-composites` bucket, with
+rollback SQL — **not yet applied**), an [`IMPACT_REPORT.md`](docs/security/RISK-001/IMPACT_REPORT.md)
+("what breaks"), a [`VERIFICATION_PLAN.md`](docs/security/RISK-001/VERIFICATION_PLAN.md)
+(the runtime DoD), and a [`SECURITY_REVIEW_CHECKLIST.md`](docs/security/RISK-001/SECURITY_REVIEW_CHECKLIST.md).
+Status is **In-remediation** pending Class-C architecture + security review, apply to
+the live DB, and the RLS integration tests that assert `anon` is denied. This document
+records the finding honestly; the register tracks the fix.
 
 *What is NOT a finding:* `provider_capabilities`'s `SELECT ... USING (true)` — a
 read-only public catalog (see §2.2).

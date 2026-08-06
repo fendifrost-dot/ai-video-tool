@@ -12,7 +12,7 @@ Last reviewed: **2026-08-05**.
 
 | id | Title | Severity | Confidence | Status | Owner |
 |----|-------|----------|-----------|--------|-------|
-| [RISK-001](#risk-001--anonymous-rls--bucket-exposure) | Anonymous RLS / bucket exposure | Critical | Confirmed | **Open** | Platform / Products (AVT) |
+| [RISK-001](#risk-001--anonymous-rls--bucket-exposure) | Anonymous RLS / bucket exposure | Critical | Confirmed | **In-remediation** (revert migration authored, `docs/security/RISK-001/`; awaiting Class-C review + apply) | Platform / Products (AVT) |
 | [SEC-2](#sec-2--unauthenticated-training-endpoint) | Unauthenticated training endpoint | High | Likely | Open | Platform (AVT) |
 | [SEC-3](#sec-3--lora--asset-poisoning) | LoRA / asset poisoning | High | Suspected | Open | Products (AVT) |
 | [ARCH-1](#arch-1--lane-a-propagation-inert) | Lane A propagation inert (production hole) | Medium | Confirmed | Open | Products (AVT) |
@@ -24,8 +24,10 @@ Last reviewed: **2026-08-05**.
 
 ## RISK-001 — Anonymous RLS / bucket exposure
 
-- **Severity:** Critical · **Confidence:** Confirmed · **Status:** Open (remediation
-  scoped separately) · **Owner:** Platform / Products (AVT)
+- **Severity:** Critical · **Confidence:** Confirmed · **Status:** In-remediation
+  (revert migration + forensic/impact/verification artifacts authored under
+  [`docs/security/RISK-001/`](docs/security/RISK-001/); **not yet applied**, awaiting
+  Class-C architecture + security review) · **Owner:** Platform / Products (AVT)
 - **Summary:** Any anonymous (`anon`) caller can read, write, and delete real user
   data across several core tables and the `look-composites` storage bucket.
 - **Root cause:** Migration `supabase/migrations/20260523171003_541284ed-e697-4b53-9f4a-3b39b5a76fb9.sql`
