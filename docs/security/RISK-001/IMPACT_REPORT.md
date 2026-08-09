@@ -1,16 +1,36 @@
 # RISK-001 — Impact Report: "What breaks if we restore least-privilege RLS?"
 
-**Scope:** the revert migration `supabase/migrations/20260806120000_risk_001_revert_anon_rls.sql`
-only. It restores owner-scoped RLS on `artists`, `character_features`,
-`location_library`, `prop_library`, `artist_looks`, and the `look-composites`
-storage bucket, removing the accidental `USING(true)` anon grants from
-`20260523171003_*.sql`.
+**Scope: PART A (TABLE-ONLY).** The revert migration
+`supabase/migrations/20260806120000_risk_001_revert_anon_rls.sql` restores
+owner-scoped RLS on the five tenant TABLES only — `artists`, `character_features`,
+`location_library`, `prop_library`, `artist_looks` — removing the accidental
+`USING(true)` anon grants from `20260523171003_*.sql` **and** the stray
+`*_open_test` / `single_tenant_all` policies the identity audit found live on those
+tables (see §0.1). **The `look-composites` storage bucket is deferred to PART B**
+(a separate PR/migration that runs only AFTER the storage re-key) and is out of
+scope here; its impact is called out where relevant but is not restored by this PR.
 
 **Method:** live code trace of `src/` and `supabase/functions/` on `origin/main`
 @ `c9252fe`. Every claim below is tagged **[VERIFIED]** (I read the exact code, file:line cited)
 or **[INFERENCE]** (reasoned from verified facts; live-DB state is dashboard-only).
 
 ---
+
+## 0.1 What Part A changes vs the culprit migration (drop list is longer)
+
+Part A does **not** only undo the one dev-only migration. The identity/consolidation
+audit inventoried the **live** policies and found the DB is **MORE open** than
+`20260523171003_*.sql` alone documents: beyond the culprit's `*_anon_all` policies,
+there are stray permissive policies — `*_open_test` (per table) and a shared
+`single_tenant_all` — that no committed migration accounts for. Postgres RLS **unions**
+permissive policies, so a single leftover `USING(true)` re-opens the table regardless of
+the owner-scoped policies we add. Part A therefore drops **all three families**
+(`*_anon_all`, `*_open_test`, `single_tenant_all`) on the five tables before recreating
+the owner-scoped policies. Because live drift can exceed any snapshot, the drop list is
+necessary-but-not-assumed-sufficient: the **§A0 pre-deploy COMPLETE inventory**
+(VERIFICATION_PLAN) must be re-run against the live DB immediately before apply and any
+additional stray policy added to the migration first. **[VERIFIED — audit finding /
+RLS union semantics]**
 
 ## 0. TL;DR — the answer we merge on
 
@@ -115,7 +135,14 @@ Insert paths that set the owner explicitly (so the restored `WITH CHECK` passes)
   **still works** post-restore. **[VERIFIED]**
 - **After restore:** owner-scoped. Same happy-path/churn profile. **[VERIFIED]**
 
-### 2.6 storage bucket `look-composites`
+### 2.6 storage bucket `look-composites` — DEFERRED TO PART B (not changed by this PR)
+Part A does **not** touch `storage.objects`. The bucket lock-down (drop the anon
+SELECT/INSERT/UPDATE/DELETE policies, restore owner-folder-prefix policies) is a
+separate **Part B** migration that runs only **after the storage re-key** — doing it
+before the re-key would strand objects written under the old key layout. Until Part B
+applies, the bucket **remains open per the culprit migration** — that residual exposure
+is tracked, not resolved, by this PR. The code facts below are retained for Part B's
+eventual impact assessment:
 - **UI reads (signed URLs):** `LookDetailPage.tsx:122`, `HeroFrameStudioPage.tsx:189`,
   `LooksListPage.tsx:52`, `LookCard.tsx:78`, `ShotLockedLookPicker.tsx:50`. **[VERIFIED]**
 - **UI writes (`uploadBytesToBucket`, upsert):** `faceRestore.ts:251`,
@@ -124,10 +151,9 @@ Insert paths that set the owner explicitly (so the restored `WITH CHECK` passes)
   `eyewearRestore.ts:101`). **[VERIFIED]**
 - **Edge writes:** compose-look-proxy (userClient, own folder), compose-look-callback &
   faceswap-callback & sam3-segment-proxy (service role) — **unaffected**. **[VERIFIED]**
-- **After restore:** the owner-folder-prefix policy (`(storage.foldername(name))[1] =
-  auth.uid()::text`) is exactly the path the UI already writes. Reads/writes to the
-  **current uid's own folder work**; **breaks only** for a churned uid or bare-anon.
-  Bucket stays `public=false` (unchanged). **[VERIFIED]**
+- **Part B (after re-key) will restore:** the owner-folder-prefix policy
+  (`(storage.foldername(name))[1] = auth.uid()::text`), which is exactly the path the UI
+  already writes; bucket stays `public=false`. **Not in Part A.**
 
 ---
 
@@ -137,7 +163,7 @@ Insert paths that set the owner explicitly (so the restored `WITH CHECK` passes)
 |---|---|---|
 | Bare-`anon` (no session) SELECT on any of the 5 tables | **Fails → 0 rows** | ✅ yes — that is the fix |
 | Bare-`anon` INSERT/UPDATE/DELETE on any of the 5 tables | **Fails (RLS)** | ✅ yes |
-| Bare-`anon` read/write/delete of any `look-composites` object | **Fails (RLS)** | ✅ yes |
+| Bare-`anon` read/write/delete of any `look-composites` object | **Still succeeds** (bucket is **Part B**, unchanged here) | ⏸ deferred — closed by Part B after re-key |
 | Cross-tenant read: session A reading session B's artists/looks/features | **Fails** | ✅ yes — restores isolation |
 | **Same human, new anon uid** (cleared storage / other device) reading their *own prior* rows | **Fails → looks like data loss** | ⚠️ **side effect** — see §5, must be handled |
 | Authenticated (anon-auth) caller on its own current-uid data | **Works** | ✅ unchanged |
@@ -151,12 +177,11 @@ Insert paths that set the owner explicitly (so the restored `WITH CHECK` passes)
 - **Service-role background workers / callbacks / watchdogs / reapers:** RLS-exempt.
   **[VERIFIED]**
 - **`compose-look-proxy` user-scoped writes:** land in the caller's own scope. **[VERIFIED]**
-- **Hero Frame Studio browser load:** its table reads and its `look-composites`
-  signed-URL reads (`HeroFrameStudioPage.tsx:189`, via the authenticated session) resolve
-  for the current uid's data. **[VERIFIED for current-uid data]** / **[INFERENCE:** assumes
-  the composites it references were created under the same uid — true for same-device
-  work; a churned/imported composite under a different uid would not resolve. Covered by
-  the VERIFICATION_PLAN browser check.]**
+- **Hero Frame Studio browser load:** its **table** reads resolve for the current uid's
+  data. Its `look-composites` signed-URL reads (`HeroFrameStudioPage.tsx:189`) are on the
+  bucket, which **Part A does not change** — so they are unaffected by this PR regardless
+  of uid (bucket owner-scoping arrives in Part B). **[VERIFIED for current-uid table
+  data; bucket unchanged in Part A]**
 - **`provider_capabilities`:** untouched by this migration; its public read-only catalog
   policy is intentional (SECURITY.md §2.2). **[VERIFIED]**
 
@@ -186,6 +211,11 @@ The migration itself is inert until applied.
 
 ## 6. Out of scope (named so it isn't silently conflated)
 
+- **PART B — the `look-composites` storage bucket.** Restoring owner-folder-prefix RLS on
+  the bucket is a **separate migration/PR** that runs **only after the storage re-key**;
+  sequencing it before the re-key would strand objects written under the old key layout.
+  Until Part B lands, the bucket **remains exposed per the culprit migration** — a known,
+  tracked residual, not something this PR closes. Part A is TABLE-ONLY.
 - **SEC-2 / SEC-3** (unauthenticated `train-style-lora-proxy` / callback identity
   poisoning) — separate edge-function auth fixes; **frozen** for this PR.
 - **SEC-6** `grok-resolution-test` accepts the public anon key as bearer, but its DB

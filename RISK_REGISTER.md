@@ -27,7 +27,12 @@ Last reviewed: **2026-08-05**.
 - **Severity:** Critical · **Confidence:** Confirmed · **Status:** In-remediation
   (revert migration + forensic/impact/verification artifacts authored under
   [`docs/security/RISK-001/`](docs/security/RISK-001/); **not yet applied**, awaiting
-  Class-C architecture + security review) · **Owner:** Platform / Products (AVT)
+  Class-C architecture + security review). Remediation is **split**: **Part A** =
+  the five TABLES (revert `*_anon_all` + drop stray `*_open_test` / `single_tenant_all`
+  policies the identity audit found live, restore owner-scoped RLS) — authored now;
+  **Part B** = the `look-composites` **storage bucket**, deferred until **after the
+  storage re-key** (bucket stays exposed until then — tracked residual) ·
+  **Owner:** Platform / Products (AVT)
 - **Summary:** Any anonymous (`anon`) caller can read, write, and delete real user
   data across several core tables and the `look-composites` storage bucket.
 - **Root cause:** Migration `supabase/migrations/20260523171003_541284ed-e697-4b53-9f4a-3b39b5a76fb9.sql`

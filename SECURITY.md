@@ -168,17 +168,25 @@ control.
 | **RISK-001** | **Anonymous RLS / bucket exposure.** Migration `20260523171003_*.sql` (dated **2026-05-23**, labelled "DEV ONLY … Revert before production") replaced per-user policies with `FOR ALL TO anon, authenticated USING (true) WITH CHECK (true)` on **`artists`, `character_features`, `location_library`, `prop_library`, `artist_looks`**, and opened the **`look-composites`** storage bucket to `anon` for SELECT/INSERT/UPDATE/DELETE. **No later migration reverts it.** Any anonymous caller can read/write/delete these rows and objects. | **P0 / Critical** | **OPEN — under active remediation** | [RISK-001](RISK_REGISTER.md) |
 
 **RISK-001 handling note:** Do **not** attempt to fix this in a documentation change.
-Remediation is handled separately as a **forensic report + a targeted revert
-migration**, now authored under [`docs/security/RISK-001/`](docs/security/RISK-001/):
+Remediation is handled separately as a **forensic report + targeted revert
+migrations**, now authored under [`docs/security/RISK-001/`](docs/security/RISK-001/):
 the immutable forensic evidence (`evidence/` + `SHA256SUMS.txt`), the revert migration
-`supabase/migrations/20260806120000_risk_001_revert_anon_rls.sql` (restores
-owner-scoped policies on the five tables and the `look-composites` bucket, with
-rollback SQL — **not yet applied**), an [`IMPACT_REPORT.md`](docs/security/RISK-001/IMPACT_REPORT.md)
-("what breaks"), a [`VERIFICATION_PLAN.md`](docs/security/RISK-001/VERIFICATION_PLAN.md)
-(the runtime DoD), and a [`SECURITY_REVIEW_CHECKLIST.md`](docs/security/RISK-001/SECURITY_REVIEW_CHECKLIST.md).
-Status is **In-remediation** pending Class-C architecture + security review, apply to
-the live DB, and the RLS integration tests that assert `anon` is denied. This document
-records the finding honestly; the register tracks the fix.
+`supabase/migrations/20260806120000_risk_001_revert_anon_rls.sql`, an
+[`IMPACT_REPORT.md`](docs/security/RISK-001/IMPACT_REPORT.md) ("what breaks"), a
+[`VERIFICATION_PLAN.md`](docs/security/RISK-001/VERIFICATION_PLAN.md) (the runtime DoD),
+and a [`SECURITY_REVIEW_CHECKLIST.md`](docs/security/RISK-001/SECURITY_REVIEW_CHECKLIST.md).
+Remediation is split for safe sequencing:
+- **Part A (this migration — TABLE-ONLY):** restores owner-scoped policies on the five
+  tables **and drops the stray `*_open_test` / `single_tenant_all` policies** the identity
+  audit found live (the DB was more open than the culprit migration documented), with
+  table-only rollback SQL — **not yet applied**.
+- **Part B (separate, later):** the `look-composites` **storage bucket** lock-down, which
+  runs **only after the storage re-key**. Until Part B lands, the bucket remains exposed —
+  a tracked residual, not closed by Part A.
+
+Status is **In-remediation** pending Class-C architecture + security review, apply of
+Part A (then Part B) to the live DB, and the RLS integration tests that assert `anon` is
+denied. This document records the finding honestly; the register tracks the fix.
 
 *What is NOT a finding:* `provider_capabilities`'s `SELECT ... USING (true)` — a
 read-only public catalog (see §2.2).
