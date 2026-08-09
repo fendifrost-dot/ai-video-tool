@@ -21,6 +21,19 @@ Machine-readable source of truth: [`.deployment/manifest.yml`](../.deployment/ma
 
 ---
 
+## Kill this assumption before you start
+
+**Managed service ≠ operational access to the underlying platform.** AVT runs on Supabase
+technology *underneath* Lovable, but the team has **no** "Supabase environment": no
+dashboard, CLI, service-role key, or Admin API to operate. Lovable is the only control
+plane; the underlying Supabase is an implementation detail, not an operational surface.
+Never reason *"it's Supabase, so I'll use the Supabase dashboard/CLI/Admin API."* Everything
+goes through Lovable or the authenticated app/browser. Full statement:
+[`ENVIRONMENT.md`](../ENVIRONMENT.md) → "Principle: managed service ≠ operational access to
+the underlying platform."
+
+---
+
 ## Forbidden — doing any of these means STOP work immediately
 
 (Canonical list lives in [`.deployment/manifest.yml`](../.deployment/manifest.yml) → `forbidden`.)
