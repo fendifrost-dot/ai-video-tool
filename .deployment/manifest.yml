@@ -5,6 +5,7 @@
 # before any deploy/DB action.
 #
 # Human-readable policy .... ../CLAUDE.md  (PROJECT POLICY block, top of file)
+# Environment reality ...... ../ENVIRONMENT.md  (Lovable-managed authority chain; no standalone Supabase)
 # Agent pre-flight ......... ../docs/AGENT_BOOTSTRAP.md
 #
 # Rule: if reality disagrees with this file, STOP — do not "work around" it.
@@ -15,6 +16,8 @@ project: ai-video-tool
 project_name: AI Video Tool (AVT)
 canonical_repo: https://github.com/fendifrost-dot/ai-video-tool
 canonical_branch: main
+
+control_plane: lovable_managed   # Lovable-managed backend/cloud is the control plane — NOT a standalone Supabase project/dashboard/CLI. See ../ENVIRONMENT.md.
 
 deployment:
   provider: lovable
@@ -29,10 +32,13 @@ database:
 
 # Doing ANY of these requires STOPPING work (see CLAUDE.md PROJECT POLICY):
 forbidden:
-  - standalone_supabase   # opening/logging into a standalone supabase.com dashboard for ANY reason unless Lovable links you into it
-  - archived_clone        # working from an archived or duplicate clone instead of canonical_repo
-  - local_sql             # running SQL locally or via the supabase CLI instead of Lovable SQL Editor (a CLI 403 is a FALSE WALL, not a blocker)
-  - stale_repo            # acting on a stale checkout; you must be on canonical_branch and up to date
+  - standalone_supabase        # opening/logging into a standalone supabase.com dashboard for ANY reason unless Lovable links you into it
+  - service_role_assumption    # assuming/using a standalone service-role key or Supabase Admin API as if independently reachable
+  - supabase_cli               # using the Supabase CLI for inspect/migrate/deploy instead of Lovable (a CLI 403 is a FALSE WALL)
+  - external_supabase_project  # applying migrations to / logging into an external or standalone Supabase project
+  - archived_clone             # working from an archived or duplicate clone instead of canonical_repo
+  - local_sql                  # running SQL locally or via the supabase CLI instead of Lovable SQL Editor (a CLI 403 is a FALSE WALL, not a blocker)
+  - stale_repo                 # acting on a stale checkout; you must be on canonical_branch and up to date
 
 notes:
   false_walls:

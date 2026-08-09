@@ -10,6 +10,8 @@ Full stack: `AGENTS.md`. Agent context: `claude_code_handoff_avt_agent_context.m
 
 **Before doing anything, pass the pre-flight in [`docs/AGENT_BOOTSTRAP.md`](docs/AGENT_BOOTSTRAP.md). Machine-readable source of truth: [`.deployment/manifest.yml`](.deployment/manifest.yml). If you cannot answer the pre-flight from evidence, you do NOT proceed.**
 
+**Lovable-managed backend ONLY — no standalone Supabase dashboard/CLI/service-role/admin-API/external project. All auth, database, migration, and edge work goes through Lovable or the authenticated app/browser. See [`ENVIRONMENT.md`](ENVIRONMENT.md).**
+
 - **Database & deploy are LOVABLE-MANAGED.** There is NO standalone Supabase to log into. All SQL runs in **Lovable's SQL Editor**; all edge redeploys via **Lovable → Edge Functions → redeploy** (Publish ≠ edge redeploy).
 - **AVT Supabase project ref:** `qoyxgnkvjukovkrvdaiq`. **Canonical repo:** `github.com/fendifrost-dot/ai-video-tool`. **Canonical branch:** `main`.
 - **Classify every change before you touch it.** [`docs/ARCHITECTURE_REVIEW.md`](docs/ARCHITECTURE_REVIEW.md) sorts changes into Class A (docs/tests/UI → no review), B (features/endpoints/queries → one reviewer), and C (storage/providers/auth/rendering/timelines/benchmarks/security/orchestration → **architecture + product + security sign-off before merge**). Security posture and known risks live in [`SECURITY.md`](SECURITY.md) + [`RISK_REGISTER.md`](RISK_REGISTER.md); test health is **always** reported by category per [`docs/TEST_TAXONOMY.md`](docs/TEST_TAXONOMY.md).
