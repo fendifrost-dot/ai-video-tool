@@ -472,6 +472,30 @@ export type Database = {
           },
         ]
       }
+      identity_consolidation_backup_20260806: {
+        Row: {
+          moved_at: string | null
+          new_user_id: string | null
+          old_user_id: string | null
+          row_id: string | null
+          tbl: string | null
+        }
+        Insert: {
+          moved_at?: string | null
+          new_user_id?: string | null
+          old_user_id?: string | null
+          row_id?: string | null
+          tbl?: string | null
+        }
+        Update: {
+          moved_at?: string | null
+          new_user_id?: string | null
+          old_user_id?: string | null
+          row_id?: string | null
+          tbl?: string | null
+        }
+        Relationships: []
+      }
       location_library: {
         Row: {
           category: string | null
