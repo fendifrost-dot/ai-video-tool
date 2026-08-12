@@ -73,13 +73,3 @@ verify_jwt = true
 # See docs/AVT_masked_garment_swap_LOCKED.md.
 [functions.wardrobe-video-swap-proxy]
 verify_jwt = true
-
-# ONE-TIME account-repair function — DELETE AFTER USE. Sets the ONE durable AVT
-# account's email (hard-coded UID -> fendifrost@gmail.com) via the supported
-# UID-preserving admin path auth.admin.updateUserById. verify_jwt = true so the
-# platform blocks anonymous callers before our code runs; a second, admin-only
-# gate then requires the ACCOUNT_REPAIR_OPERATOR_SECRET via x-operator-secret.
-# Non-generalized: target UID + email are compile-time constants and cannot be
-# supplied by the request. See supabase/functions/admin-repair-account-email/.
-[functions.admin-repair-account-email]
-verify_jwt = true
