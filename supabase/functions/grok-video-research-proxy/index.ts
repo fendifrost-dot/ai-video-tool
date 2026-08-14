@@ -150,20 +150,45 @@ async function signStorage(
   return null;
 }
 
-/** Resolve a project_assets row to a signed URL for its stored file. */
+/**
+ * Storage bucket a project_assets row lives in — kept in lockstep with
+ * make-scrub-proxy-proxy's resolver and the client `bucketForAssetType`
+ * (src/lib/queries/projectAssets.ts). `project_assets` has NO bucket column.
+ */
+function bucketForAssetType(assetType: string): string {
+  switch (assetType) {
+    case "reference_image":
+    case "reference_video":
+    case "lyrics_doc":
+      return "project-references";
+    case "ae_asset":
+    case "premiere_export":
+      return "project-exports";
+    default:
+      return "project-clips";
+  }
+}
+
+/**
+ * Resolve a project_assets row to a signed URL. The row stores only `file_url`,
+ * which is a storage object path (occasionally already an absolute https URL).
+ */
 async function signAsset(
   admin: Admin,
   assetId: string,
 ): Promise<{ url: string; bucket: string; path: string } | null> {
   const { data, error } = await admin
     .from("project_assets")
-    .select("id, storage_path, bucket, file_url")
+    .select("id, file_url, asset_type")
     .eq("id", assetId)
     .maybeSingle();
   if (error || !data) return null;
-  const path = (data.storage_path as string | null) ?? (data.file_url as string | null);
+  const path = data.file_url as string | null;
   if (!path) return null;
-  const bucket = (data.bucket as string | null) ?? undefined;
+  if (path.startsWith("https://")) {
+    return { url: path, bucket: "(absolute-url)", path };
+  }
+  const bucket = bucketForAssetType(String(data.asset_type ?? ""));
   return signStorage(admin, { path, bucket }, VIDEO_BUCKETS);
 }
 
