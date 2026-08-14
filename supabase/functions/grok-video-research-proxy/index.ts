@@ -34,6 +34,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
+import { pickGrokGarmentReferencePaths } from "../_shared/garmentReference.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -104,6 +105,13 @@ type Body = {
   /** Up to 3 reference images for reference_to_video (xAI documented cap). */
   references?: StorageRef[];
   referenceUrls?: string[];
+  /**
+   * Convenience: append garment references straight from a character_features
+   * row (e.g. the Saint Laurent track jacket) so a caller never has to know the
+   * storage paths. Appended AFTER `references`, capped at 3 total.
+   */
+  wardrobeFeatureId?: string;
+  maxWardrobeReferences?: number;
 
   /**
    * probe mode only — POST this body verbatim to `probePath` and report the raw
@@ -336,6 +344,38 @@ serve(async (req) => {
       referenceUrls.push(signed.url);
     }
     resolved.references = body.references.slice(0, 3);
+  }
+
+  if (body.wardrobeFeatureId && referenceUrls.length < 3) {
+    const { data: wardrobe, error: wErr } = await admin
+      .from("character_features")
+      .select("id, label, file_url, storage_path, reference_images")
+      .eq("id", body.wardrobeFeatureId)
+      .maybeSingle();
+    if (wErr) return json(500, { error: "wardrobe_query_failed", detail: wErr.message });
+    if (!wardrobe) return json(404, { error: "wardrobe_not_found", wardrobeFeatureId: body.wardrobeFeatureId });
+
+    const refImages = Array.isArray(wardrobe.reference_images) ? wardrobe.reference_images : [];
+    const want = Math.min(body.maxWardrobeReferences ?? 2, 3 - referenceUrls.length);
+    const garmentPaths = pickGrokGarmentReferencePaths(
+      refImages as Parameters<typeof pickGrokGarmentReferencePaths>[0],
+      (wardrobe.storage_path as string | null) ?? (wardrobe.file_url as string | null),
+      want,
+    );
+    const usedPaths: string[] = [];
+    for (const p of garmentPaths) {
+      const signed = await signStorage(admin, { path: p }, IMAGE_BUCKETS);
+      if (signed) {
+        referenceUrls.push(signed.url);
+        usedPaths.push(p);
+      }
+    }
+    if (usedPaths.length === 0) return json(404, { error: "wardrobe_no_signable_image" });
+    resolved.wardrobe = {
+      wardrobeFeatureId: body.wardrobeFeatureId,
+      label: wardrobe.label,
+      garmentPathsUsed: usedPaths,
+    };
   }
 
   // ---- build the exact xAI request -----------------------------------------
