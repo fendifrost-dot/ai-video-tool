@@ -290,8 +290,25 @@ serve(async (req) => {
 
   const bearer = (req.headers.get("authorization") ?? "").replace(/^[Bb]earer\s+/, "").trim();
   if (!bearer || (bearer !== serviceRoleKey && bearer !== anonKey)) {
-    return json(401, { error: "anon_or_service_role_key_required" });
+    // Platform API-key migration: the live app's client key may no longer equal
+    // the env value, so also accept a valid logged-in user session JWT.
+    let userOk = false;
+    if (bearer) {
+      try {
+        const authClient = createClient(supabaseUrl, serviceRoleKey, {
+          auth: { persistSession: false },
+        });
+        const { data, error } = await authClient.auth.getUser(bearer);
+        userOk = !error && !!data?.user;
+      } catch {
+        userOk = false;
+      }
+    }
+    if (!userOk) {
+      return json(401, { error: "anon_service_role_or_user_jwt_required" });
+    }
   }
+
 
   if (!xaiKey) {
     return json(500, { error: "xai_api_key_missing", detail: xaiKeyMissingMessage() });
