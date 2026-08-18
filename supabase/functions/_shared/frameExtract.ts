@@ -468,3 +468,55 @@ export function isBrowserDecodableCodec(codec: string | null): boolean {
   const c = codec.toLowerCase();
   return c.includes("h264") || c.includes("avc") || c.includes("vp8") || c.includes("vp9");
 }
+
+/** The inputs to the normalize decision on the TRIMMED clip. */
+export interface NormalizeDecisionInput {
+  /** Caller asked for explicit output dims (both width AND height). */
+  dimsRequested: boolean;
+  /** Codec probed off the trimmed clip; null when the probe is unavailable. */
+  clipCodec: string | null;
+  /** preflightPlan.needsScale — source long edge is above the ceiling. */
+  planNeedsScale: boolean;
+  /** preflightPlan.needsCodecNormalize — source is not H.264 8-bit. */
+  planNeedsCodecNormalize: boolean;
+  /** preflightPlan.transport — "fal_scale" means Fal is expected to down-scale. */
+  planTransport: string;
+}
+
+export interface NormalizeDecision {
+  normalize: boolean;
+  /** Which inputs asked for it — persisted verbatim when no scaler is wired. */
+  reasons: string[];
+}
+
+/**
+ * Decide whether the trimmed clip must go through the scale/normalize step.
+ *
+ * THE BUG THIS FIXES. The decision used to be `dimsRequested || codecUndecodable`
+ * only, which silently discarded the preflight plan's OWN down-scale intent:
+ * WardrobeVideoLaneRunner sends `{ startSec, durationSec }` with NO width/height
+ * (so dimsRequested is always false on that path) and H.264 IS browser-decodable
+ * (so codecUndecodable is false too). A COMPATIBLE 4K H.264 master — the case the
+ * compatibility gate deliberately lets through — therefore stayed 4K:
+ * `transform.proxyWidth/Height` were computed and then read only inside a branch
+ * that never ran.
+ *
+ * The plan is computed on the MASTER while this decision applies to the TRIMMED
+ * clip. That is sound because trim-video preserves source dimensions — it only
+ * cuts the segment out — so the master's scale intent still describes the clip.
+ */
+export function decideClipNormalize(input: NormalizeDecisionInput): NormalizeDecision {
+  const codecUndecodable = input.clipCodec !== null && !isBrowserDecodableCodec(input.clipCodec);
+  const reasons: string[] = [];
+  if (input.dimsRequested) reasons.push("caller dims requested");
+  if (codecUndecodable) {
+    reasons.push(`trimmed clip codec ${input.clipCodec} may not decode in-browser`);
+  }
+  if (input.planNeedsScale) reasons.push("preflight plan wants a down-scale");
+  if (input.planNeedsCodecNormalize)
+    reasons.push("preflight plan wants a codec/bit-depth normalize");
+  if (!input.planNeedsScale && input.planTransport === "fal_scale") {
+    reasons.push("preflight transport is fal_scale");
+  }
+  return { normalize: reasons.length > 0, reasons };
+}

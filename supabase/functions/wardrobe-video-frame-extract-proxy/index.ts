@@ -77,12 +77,12 @@ import {
   buildTrimInput,
   canonicalizeExtractConfig,
   contiguousFromZero,
+  decideClipNormalize,
   extractClipVideoUrl,
   extractFramePrefix,
   extractionIdForConfig,
   extractVideoMeta,
   frameIndexFromPath,
-  isBrowserDecodableCodec,
   type ExtractConfig,
   type ExtractionManifest,
   type ExtractionRepro,
@@ -412,12 +412,35 @@ serve(async (req) => {
       priorManifest?.extractionId === extractionId ? priorManifest.repro : repro;
     const ready = contiguousFromZero(stored);
     const manifest = buildManifest(stored, true, reproExisting);
+    // BACKFILL the compatibility decision on this skip-the-trim path too, so
+    // "the preflight block is always persisted" holds for clips produced before
+    // the gate existed. The plan runs off the ASSET RECORD only — no signed URL,
+    // no Fal probe, no network — and is INFORMATIONAL here: the clip already
+    // exists, so we never flip an existing extract to "needs_transcode".
+    const backfillPlan = planPreflight({
+      source: readAssetSourceMedia(assetMeta),
+      clip: { startSec: config.startSec, durationSec: config.durationSec },
+      operation: config.width ? "scale" : "extract",
+      ceilingLongEdge: preflightCeiling,
+    });
     await patchMeta(admin, config.assetId, {
       extract_status: ready ? "ready" : "frames_pending",
       extract_session_id: extractionId,
       extract_manifest: manifest,
       extract_clip_path: clipPath,
       extract_clip_bucket: OUT_BUCKET,
+      extract_preflight: backfillPlan.metadata,
+      extract_preflight_transport: backfillPlan.transport,
+      extract_preflight_needs_processing: backfillPlan.needsProcessing,
+      extract_preflight_compatibility_reasons: backfillPlan.compatibilityReasons,
+      extract_preflight_compatibility_version: backfillPlan.compatibilityVersion,
+      extract_preflight_compatibility_result: backfillPlan.compatibilityResult,
+      extract_preflight_compatibility_reason: backfillPlan.compatibilityReason,
+      extract_preflight_recommended_action: backfillPlan.recommendedAction,
+      extract_preflight_warnings: backfillPlan.warnings,
+      // Self-describing: this decision describes the MASTER, not the stored clip,
+      // and was recorded after the clip was already produced.
+      extract_preflight_backfilled: true,
       extract_error: null,
     });
     return json(200, {
@@ -506,6 +529,8 @@ serve(async (req) => {
       extract_preflight_compatibility_result: preflightPlan.compatibilityResult,
       extract_preflight_compatibility_reason: preflightPlan.compatibilityReason,
       extract_preflight_recommended_action: preflightPlan.recommendedAction,
+      // Live decision (not the skip-the-trim backfill) — clears any stale marker.
+      extract_preflight_backfilled: false,
       // Deprecated alias key kept so existing readers of the old field still work.
       extract_preflight_transcode_reason: preflightPlan.processingReason,
       extract_preflight_warnings: preflightPlan.warnings,
@@ -549,6 +574,7 @@ serve(async (req) => {
     extract_preflight_compatibility_reason: preflightPlan.compatibilityReason,
     extract_preflight_recommended_action: preflightPlan.recommendedAction,
     extract_preflight_warnings: preflightPlan.warnings,
+    extract_preflight_backfilled: false,
     extract_error: null,
   });
 
@@ -593,27 +619,37 @@ serve(async (req) => {
         }
       }
 
-      // 3. NORMALIZE on the SMALL clip when dims are requested OR the codec isn't
-      //    browser-decodable (e.g. HEVC passthrough). scale-video forces libx264.
+      // 3. NORMALIZE on the SMALL clip when dims are requested, OR the codec isn't
+      //    browser-decodable (e.g. HEVC passthrough), OR THE PREFLIGHT PLAN ITSELF
+      //    ASKED FOR IT (decideClipNormalize — see _shared/frameExtract.ts for why
+      //    the plan's own intent must be an input). scale-video forces libx264.
       //    The output DIMS come from the shared preflight service — NOT computed
       //    ad-hoc here — so every op scales through the same rules: explicit
       //    caller dims win, else the preflight proxy dims (ceiling-bounded, aspect
       //    preserved, even), else the probed source dims (codec-only re-encode
       //    must NOT downsample). scale-video still clamps its own 512–2048 range.
       let finalUrl = trimmedUrl;
-      const dimsRequested = Boolean(config.width && config.height);
-      const codecUndecodable = clipCodec !== null && !isBrowserDecodableCodec(clipCodec);
-      if (dimsRequested || codecUndecodable) {
+      const normalizeDecision = decideClipNormalize({
+        dimsRequested: Boolean(config.width && config.height),
+        clipCodec,
+        planNeedsScale: preflightPlan.needsScale,
+        planNeedsCodecNormalize: preflightPlan.needsCodecNormalize,
+        planTransport: preflightPlan.transport,
+      });
+      if (normalizeDecision.normalize) {
         // preflightPlan is always defined; proxy dims are 0 when source dims were
         // unknown, so use || (not ??) to fall through a 0 to the probed clip dims.
         const w = config.width || preflightPlan.transform.proxyWidth || probedW || 1280;
         const h = config.height || preflightPlan.transform.proxyHeight || probedH || 720;
         if (!scaleModel) {
-          // Codec undecodable and no scaler wired → record a precise warning; the
-          // client decode will fail loudly rather than fake a result.
+          // No scaler wired → record a PRECISE warning naming what actually asked
+          // for the normalize, so an over-large or undecodable stored clip is
+          // self-explaining; the client decode fails loudly rather than faking it.
           reproOut.mode = "trim_video";
           await patchMeta(admin, config.assetId, {
-            extract_warning: `trimmed clip codec ${clipCodec ?? "unknown"} may not decode in-browser and CLIP_SCALE_FAL_MODEL is unset`,
+            extract_warning:
+              `${normalizeDecision.reasons.join("; ")} (target ${w}x${h}) but ` +
+              `CLIP_SCALE_FAL_MODEL is unset — clip stored as trimmed`,
           });
         } else {
           const scaleResult = await runFalViaCc(

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildExtractionManifest,
+  decideClipNormalize,
   buildMetadataInput,
   buildScaleInput,
   buildTrimInput,
@@ -304,5 +305,77 @@ describe("storage listing → manifest helpers (resume/finalize)", () => {
     expect(contiguousFromZero([0, 1, 3])).toBe(false); // gap at 2
     expect(contiguousFromZero([1, 2, 3])).toBe(false); // missing 0
     expect(contiguousFromZero([])).toBe(false);
+  });
+});
+
+describe("decideClipNormalize — the clip normalize/down-scale decision", () => {
+  const base = {
+    dimsRequested: false,
+    clipCodec: "h264" as string | null,
+    planNeedsScale: false,
+    planNeedsCodecNormalize: false,
+    planTransport: "passthrough",
+  };
+
+  it("REGRESSION: a compatible 4K H.264 master with NO caller dims still normalizes", () => {
+    // The exact production path: WardrobeVideoLaneRunner sends only
+    // { startSec, durationSec }, and H.264 is browser-decodable — so the old
+    // `dimsRequested || codecUndecodable` predicate was false on both counts and
+    // the clip was stored at full 4K, discarding the plan's down-scale intent.
+    const d = decideClipNormalize({
+      ...base,
+      planNeedsScale: true,
+      planTransport: "fal_scale",
+    });
+    expect(d.normalize).toBe(true);
+    expect(d.reasons).toContain("preflight plan wants a down-scale");
+  });
+
+  it("a compatible 1080p H.264 master with no caller dims does NOT normalize", () => {
+    // The pass-through case must stay pass-through — no pointless re-encode.
+    expect(decideClipNormalize(base).normalize).toBe(false);
+    expect(decideClipNormalize(base).reasons).toHaveLength(0);
+  });
+
+  it("explicit caller dims still trigger it (pre-existing behaviour preserved)", () => {
+    const d = decideClipNormalize({ ...base, dimsRequested: true });
+    expect(d.normalize).toBe(true);
+    expect(d.reasons).toContain("caller dims requested");
+  });
+
+  it("an undecodable clip codec still triggers it (pre-existing behaviour preserved)", () => {
+    const d = decideClipNormalize({ ...base, clipCodec: "hevc" });
+    expect(d.normalize).toBe(true);
+    expect(d.reasons[0]).toContain("hevc");
+  });
+
+  it("an unavailable codec probe is not treated as undecodable on its own", () => {
+    expect(decideClipNormalize({ ...base, clipCodec: null }).normalize).toBe(false);
+  });
+
+  it("a plan codec/bit-depth normalize triggers it even at/below the ceiling", () => {
+    const d = decideClipNormalize({ ...base, planNeedsCodecNormalize: true });
+    expect(d.normalize).toBe(true);
+    expect(d.reasons).toContain("preflight plan wants a codec/bit-depth normalize");
+  });
+
+  it("fal_scale transport alone triggers it, without double-listing the scale reason", () => {
+    const d = decideClipNormalize({ ...base, planTransport: "fal_scale" });
+    expect(d.normalize).toBe(true);
+    expect(d.reasons).toEqual(["preflight transport is fal_scale"]);
+    // When needsScale already covers it, fal_scale must not add a second line.
+    const both = decideClipNormalize({ ...base, planNeedsScale: true, planTransport: "fal_scale" });
+    expect(both.reasons).toEqual(["preflight plan wants a down-scale"]);
+  });
+
+  it("reasons accumulate so the persisted warning names every trigger", () => {
+    const d = decideClipNormalize({
+      dimsRequested: true,
+      clipCodec: "prores",
+      planNeedsScale: true,
+      planNeedsCodecNormalize: true,
+      planTransport: "fal_scale",
+    });
+    expect(d.reasons).toHaveLength(4);
   });
 });

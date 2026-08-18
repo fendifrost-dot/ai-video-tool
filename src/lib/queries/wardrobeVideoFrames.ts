@@ -117,6 +117,126 @@ export class FalRunError extends Error {
   }
 }
 
+/**
+ * The PROCESSING-COMPATIBILITY gate tripped: the master is incompatible with the
+ * Fal + WebCodecs path (multi-GB 4K HEVC / 10-bit / HDR …) and MUST be transcoded
+ * off-Fal to an H.264 8-bit mezzanine first.
+ *
+ * This is TERMINAL AND IMMEDIATE. The whole point of the gate is to fail fast
+ * instead of submitting a Fal op that 500s — so the one case the gate exists to
+ * catch must never be waited out on the poll timeout. `needs_transcode` is not a
+ * ready state and not a "failed" state, so before this existed it fell through
+ * pollAssetStatus and surfaced 12 minutes later as a bare "extract_status timed
+ * out", hiding the reason the server had already written to the asset row.
+ */
+export class VideoNeedsProcessingError extends Error {
+  readonly assetId: string;
+  readonly op: string;
+  /** Compact self-describing why, from the versioned compatibility decision. */
+  readonly compatibilityReason: string | null;
+  /** The remedy (kebab action token), e.g. "transcode-to-h264-8bit-1080p". */
+  readonly recommendedAction: string | null;
+  /** The individual factors that tripped the gate. */
+  readonly compatibilityReasons: string[];
+  readonly compatibilityVersion: string | null;
+  constructor(
+    assetId: string,
+    op: string,
+    detail: {
+      compatibilityReason?: string | null;
+      recommendedAction?: string | null;
+      compatibilityReasons?: string[] | null;
+      compatibilityVersion?: string | null;
+    },
+  ) {
+    const why =
+      detail.compatibilityReason?.trim() ||
+      (detail.compatibilityReasons ?? []).filter(Boolean).join("; ") ||
+      "source is incompatible with the Fal/WebCodecs processing path";
+    const action = detail.recommendedAction?.trim();
+    super(
+      `Video needs a non-Fal transcode before processing: ${why}.` +
+        (action ? ` Recommended action: ${action}.` : ""),
+    );
+    this.name = "VideoNeedsProcessingError";
+    this.assetId = assetId;
+    this.op = op;
+    this.compatibilityReason = detail.compatibilityReason ?? null;
+    this.recommendedAction = detail.recommendedAction ?? null;
+    this.compatibilityReasons = detail.compatibilityReasons ?? [];
+    this.compatibilityVersion = detail.compatibilityVersion ?? null;
+  }
+}
+
+/**
+ * The persisted status string stays "needs_transcode" — it is a client contract
+ * shared with ScrubProxyStatus (src/lib/video/scrubProxy.ts). Only the concept
+ * was renamed to a compatibility gate.
+ */
+const NEEDS_PROCESSING_STATUS = "needs_transcode";
+
+/** The dispatch response shape the extract proxy returns when the gate trips. */
+interface ExtractDispatchResponse {
+  ok?: boolean;
+  status?: string;
+  extractionId?: string;
+  needsProcessing?: boolean;
+  processingReason?: string | null;
+  compatibilityReasons?: string[];
+  compatibilityVersion?: string;
+  compatibilityResult?: string;
+  compatibilityReason?: string;
+  recommendedAction?: string;
+  transport?: string;
+  warnings?: string[];
+}
+
+function str(v: unknown): string | null {
+  return typeof v === "string" && v.trim() ? v : null;
+}
+
+/**
+ * Build the gate error from the DISPATCH BODY — the server returns HTTP 200 with
+ * status "needs_transcode" plus the full compatibility decision, so the client
+ * knows on the very first round-trip and never enters the poll loop at all.
+ */
+function needsProcessingFromDispatch(
+  assetId: string,
+  op: string,
+  body: ExtractDispatchResponse,
+): VideoNeedsProcessingError {
+  return new VideoNeedsProcessingError(assetId, op, {
+    compatibilityReason: str(body.compatibilityReason) ?? str(body.processingReason),
+    recommendedAction: str(body.recommendedAction),
+    compatibilityReasons: body.compatibilityReasons ?? [],
+    compatibilityVersion: str(body.compatibilityVersion),
+  });
+}
+
+/**
+ * Build the gate error from the PERSISTED asset metadata — the belt to the
+ * dispatch braces. Covers the gate tripping out-of-band (another tab, an earlier
+ * run, a server that answered before we started polling). The `*_preflight_*`
+ * keys are namespaced by the lane's status key ("extract_status" → "extract").
+ */
+function needsProcessingFromMeta(
+  assetId: string,
+  statusKey: string,
+  meta: Record<string, unknown>,
+): VideoNeedsProcessingError {
+  const p = statusKey.endsWith("_status") ? statusKey.slice(0, -"_status".length) : statusKey;
+  const reasons = meta[`${p}_preflight_compatibility_reasons`];
+  return new VideoNeedsProcessingError(assetId, p, {
+    compatibilityReason:
+      str(meta[`${p}_preflight_compatibility_reason`]) ??
+      str(meta[`${p}_preflight_reason`]) ??
+      str(meta[`${p}_preflight_transcode_reason`]),
+    recommendedAction: str(meta[`${p}_preflight_recommended_action`]),
+    compatibilityReasons: Array.isArray(reasons) ? reasons.map(String) : [],
+    compatibilityVersion: str(meta[`${p}_preflight_compatibility_version`]),
+  });
+}
+
 /** zero-padded so lexical order == frame order in Storage listings. */
 function framePath(userId: string, assetId: string, sessionId: string, index: number): string {
   return `${userId}/${assetId}/frames/${sessionId}/${String(index).padStart(6, "0")}.jpg`;
@@ -259,7 +379,9 @@ async function extractClipFramesServer(
   if (!userId) throw new Error("Not authenticated");
 
   // 1. Dispatch the server-side seek+trim (idempotent — skips if the clip exists).
-  await postEdge("wardrobe-video-frame-extract-proxy", {
+  //    The response is CONSUMED, not discarded: an incompatible master answers
+  //    HTTP 200 with status "needs_transcode" and we must stop right here.
+  await dispatchExtract(input.asset.id, {
     assetId: input.asset.id,
     startSec: cfg.startSec,
     durationSec: cfg.durationSec,
@@ -337,7 +459,7 @@ async function extractClipFramesServer(
     );
 
     // 4. Finalize: the edge fn re-lists storage and flips the manifest to ready.
-    await postEdge("wardrobe-video-frame-extract-proxy", {
+    await dispatchExtract(input.asset.id, {
       assetId: input.asset.id,
       startSec: cfg.startSec,
       durationSec: cfg.durationSec,
@@ -403,6 +525,27 @@ async function postEdge<T = Record<string, unknown>>(
   return (await resp.json()) as T;
 }
 
+/**
+ * POST the frame-extract proxy and SHORT-CIRCUIT on the compatibility gate.
+ *
+ * The gate answers HTTP 200 (it is a decision, not an error), so the dispatch
+ * body is the earliest possible signal — one round-trip instead of 12 minutes of
+ * polling a status that will never become "ready".
+ */
+async function dispatchExtract(
+  assetId: string,
+  payload: Record<string, unknown>,
+): Promise<ExtractDispatchResponse> {
+  const body = await postEdge<ExtractDispatchResponse>(
+    "wardrobe-video-frame-extract-proxy",
+    payload,
+  );
+  if (body?.status === NEEDS_PROCESSING_STATUS || body?.needsProcessing === true) {
+    throw needsProcessingFromDispatch(assetId, "extract", body);
+  }
+  return body;
+}
+
 async function dispatchReassemble(
   assetId: string,
   sessionId: string,
@@ -445,6 +588,13 @@ async function pollAssetStatus(
     const meta = (data?.metadata_json ?? {}) as Record<string, unknown>;
     const status = String(meta[key] ?? "");
     if (terminalReady.includes(status)) return meta;
+    // "needs_transcode" is TERMINAL — it is neither ready nor failed, so without
+    // this it fell through to the 12-minute timeout and reported a bare
+    // "<key> timed out", throwing away the compatibility decision the server had
+    // already persisted. Surface that decision instead, immediately.
+    if (status === NEEDS_PROCESSING_STATUS) {
+      throw needsProcessingFromMeta(assetId, key, meta);
+    }
     if (status === "failed") {
       const diag = diagKey
         ? ((meta.fal_diagnostics as Record<string, ClientFalDiagnostic> | undefined)?.[diagKey] ??

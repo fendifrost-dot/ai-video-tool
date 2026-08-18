@@ -191,6 +191,61 @@ The gate's output is persisted as **self-describing, versioned fields** — not 
 - **Deprecated aliases kept** so existing readers keep working: `plan.transcodeRequired` (= `needsProcessing`) and `plan.transcodeReason` (= `processingReason`); persisted `*_transcode_reason` keys are still written.
 - The persisted **status string stays `"needs_transcode"`** (a client contract in `src/lib/video/scrubProxy.ts` `ScrubProxyStatus` and the `extract_status` consumers) — the gate is renamed conceptually and in the shared API, but the DB status token is unchanged for back-compat.
 
+### 9.5 The gate is only real if BOTH ends consume it (2026-08-18)
+
+A gate that fails fast on the server but hangs on the client is not a gate. Two
+wiring defects were confirmed against the PR head and fixed; both are pinned by
+tests that fail without the fix.
+
+**The client MUST short-circuit on `needs_transcode`, twice over.**
+`wardrobe-video-frame-extract-proxy` writes `extract_status: "needs_transcode"`
+**and** returns HTTP 200 with `status: "needs_transcode"`. The client used to
+discard the dispatch response and treat only `ready` / `frames_pending` /
+`failed` as terminal, so the one case the gate exists to catch fell through to
+the 12-minute poll timeout and surfaced as a bare `extract_status timed out` —
+throwing away the reason the server had already persisted. Both halves are now
+wired in `src/lib/queries/wardrobeVideoFrames.ts`:
+
+1. the dispatch body is consumed (`dispatchExtract`) and throws immediately;
+2. `needs_transcode` is an explicit terminal poll state, surfacing the persisted
+   `*_preflight_compatibility_reason` + `*_preflight_recommended_action`.
+
+Both raise `VideoNeedsProcessingError`, which carries the versioned decision.
+The scrub-proxy lane already handled this (`shouldDispatchScrubProxy`); the
+defect was frame-extract-only.
+
+**A COMPATIBLE source above the ceiling must still be down-scaled.** The
+normalize step used to fire only on `dimsRequested || codecUndecodable`. The
+lane runner sends `{ startSec, durationSec }` with no width/height, and H.264 is
+browser-decodable — so a compatible 4K H.264 master (exactly what §9.1 lets
+through) matched neither condition and was stored at full 4K:
+`transform.proxyWidth/Height` were computed and then read only inside a branch
+that never ran. The decision now lives in one tested predicate,
+`decideClipNormalize` (`_shared/frameExtract.ts`), which also takes the plan's
+own `needsScale` / `needsCodecNormalize` / `fal_scale` transport. The plan is
+computed on the **master** while the decision applies to the **trimmed clip**;
+that is sound because `trim-video` preserves source dimensions.
+
+**Known-open, NOT fixed here** (they change gate semantics and need Class C
+sign-off per `docs/ARCHITECTURE_REVIEW.md`):
+
+- **Incomplete metadata fails OPEN.** `isH264_8bit("avc1", null)` is `true` and
+  unknown dims yield `transport: "passthrough"` with only a `"dims unknown"`
+  warning — so missing metadata resolves to *compatible*. It should either be
+  prevented (persist full `source_media` at ingest) or returned as an explicit
+  **indeterminate** result. Status: **HYPOTHESIS** that this masks real
+  incompatibles in production; needs a named test against live assets.
+- **`cg1` thresholds are provisional.** HEVC>1080p / ProRes / 10-bit / non-4:2:0
+  / HDR / 1 GB / 80 Mbps / >DCI-4K are declared heuristics, not derived
+  benchmarks. Treat `cg1` as provisional and benchmark boundary cases per
+  `docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md` before relying on the exact numbers.
+
+**Backfill.** The "clip already produced for this exact config" branch returned
+before `planPreflight` ran, so pre-gate clips were never annotated. It now runs
+the plan off the **asset record only** (no signed URL, no Fal probe, no network)
+and persists the block with `extract_preflight_backfilled: true`. It is
+INFORMATIONAL — an existing extract is never flipped to `needs_transcode`.
+
 ---
 
 *If this decision is ever superseded, do it explicitly and dated in this file — never by a silent drift in runtime code or in a new handoff. See the June-21 pivot handoff [`CURSOR_HANDOFF_video_clothing_swap_pivot.md`](../CURSOR_HANDOFF_video_clothing_swap_pivot.md) for the original rationale.*
