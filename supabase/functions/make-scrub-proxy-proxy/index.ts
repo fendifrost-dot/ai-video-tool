@@ -53,7 +53,13 @@ import {
   toFalDiagnostic,
 } from "../_shared/falDiagnostics.ts";
 import { buildMetadataInput, extractVideoMeta } from "../_shared/frameExtract.ts";
-import { FALLBACK_CEILING_LONG_EDGE, planPreflight } from "../_shared/videoPreflight.ts";
+import {
+  FALLBACK_CEILING_LONG_EDGE,
+  planPreflight,
+  readAssetSourceMedia,
+  resolveSourceProbe,
+  type SourceProbe,
+} from "../_shared/videoPreflight.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -253,18 +259,24 @@ serve(async (req) => {
     pollTimeoutMs: POLL_TIMEOUT_MS,
   };
 
-  // ---- PREFLIGHT GATE (the shared video-preflight service) -------------------
-  // Probe the master's resolution (header-only, safe at 4K) and let planPreflight
-  // decide the DIMS + transport at the 720p ceiling. The scrub proxy IS a
-  // scale-video op, so a 4K master hits the exact 500 this service routes around:
-  // Fal cannot down-scale a source it cannot ingest. When the source is above
-  // Fal's ingest envelope we flag scrub_proxy_status="needs_transcode" and DO NOT
-  // submit the Fal scale — production needs a non-Fal mezzanine (Mux/Cloudflare/
-  // ffmpeg worker; local ffmpeg interim for T7 masters). When probing isn't wired
-  // (no meta model) we degrade to the legacy pad-into-1280×720 box.
-  let proxyWidth = LEGACY_PROXY_LONG_EDGE;
-  let proxyHeight = LEGACY_PROXY_SHORT_EDGE;
-  let preflightMeta: Record<string, unknown> | null = null;
+  // ---- PROCESSING-COMPATIBILITY GATE (the shared video-preflight service) -----
+  // AUTHORITY INVERSION: the MASTER's stored metadata on the project_assets row is
+  // AUTHORITATIVE (width/height/codec/fps/duration/size). The ffmpeg-api/metadata
+  // probe of the signed Supabase master URL is a FALLBACK only — it returns empty
+  // width/height for large masters, which used to make planPreflight never run
+  // (gate never evaluated, scrub_proxy_preflight persisted null). We resolve the
+  // source from the asset record first and fill only the gaps from the probe.
+  //
+  // The scrub proxy IS a scale-video op, so an INCOMPATIBLE master (multi-GB 4K
+  // HEVC/10-bit/HDR) hits the exact 500 this service routes around. When the
+  // processing-compatibility gate fires we flag scrub_proxy_status="needs_transcode"
+  // (persisted string kept for client back-compat) and DO NOT submit the Fal scale
+  // — production needs a non-Fal mezzanine (Mux/Cloudflare/ffmpeg worker; local
+  // ffmpeg interim for T7 masters). Compatible sources use the preflight's
+  // aspect-preserving even dims; when NO usable source info exists at all we degrade
+  // to the legacy pad-into-1280×720 box.
+  const assetMedia = readAssetSourceMedia(meta);
+  let falProbe: SourceProbe | null = null;
   if (metaModel) {
     try {
       const probeCtx: FalCallContext = { ...ctx, model: metaModel, label: "scrub_proxy:probe" };
@@ -275,49 +287,91 @@ serve(async (req) => {
       });
       const probeResult = await falPoll(cc, probeCtx, probeQueue);
       const svm = extractVideoMeta(probeResult);
-      if (svm && svm.width && svm.height) {
-        const plan = planPreflight({
-          source: { width: svm.width, height: svm.height, fps: svm.fps, codec: svm.codec },
-          clip: { startSec: 0, durationSec: svm.durationSec ?? 0 },
-          operation: "scale",
-          ceilingLongEdge: PROXY_CEILING_LONG_EDGE,
-        });
-        preflightMeta = { ...plan.metadata };
-        if (plan.transcodeRequired) {
-          await patchProxyMeta(admin, asset.id, {
-            scrub_proxy_status: "needs_transcode",
-            scrub_proxy_bucket: masterBucket,
-            scrub_proxy_path: proxyPath,
-            scrub_proxy_preflight: plan.metadata,
-            scrub_proxy_preflight_transport: plan.transport,
-            scrub_proxy_transcode_reason: plan.transcodeReason,
-            scrub_proxy_preflight_warnings: plan.warnings,
-          });
-          return json(200, {
-            ok: true,
-            status: "needs_transcode",
-            assetId: asset.id,
-            transport: plan.transport,
-            transcodeReason: plan.transcodeReason,
-            preflight: plan.metadata,
-          });
-        }
-        // Fal-ingestable → use the preflight's aspect-preserving even dims.
-        proxyWidth = plan.transform.proxyWidth;
-        proxyHeight = plan.transform.proxyHeight;
+      if (svm) {
+        falProbe = {
+          width: svm.width,
+          height: svm.height,
+          fps: svm.fps,
+          codec: svm.codec,
+          durationSec: svm.durationSec,
+        };
       }
     } catch {
-      // Probe is best-effort; fall back to the legacy 1280×720 pad box.
+      // Probe is best-effort; the asset record remains the authority.
     }
   }
 
+  let proxyWidth = LEGACY_PROXY_LONG_EDGE;
+  let proxyHeight = LEGACY_PROXY_SHORT_EDGE;
+  let preflightMeta: Record<string, unknown> | null = null;
+  const { source: resolvedSource } = resolveSourceProbe(assetMedia, falProbe);
+  // planPreflight ALWAYS runs (even with an empty probe) so the metadata block
+  // ALWAYS persists — never null again.
+  const plan = planPreflight({
+    source: resolvedSource,
+    clip: { startSec: 0, durationSec: resolvedSource.durationSec ?? 0 },
+    operation: "scale",
+    ceilingLongEdge: PROXY_CEILING_LONG_EDGE,
+  });
+  preflightMeta = { ...plan.metadata };
+  if (plan.needsProcessing) {
+    await patchProxyMeta(admin, asset.id, {
+      scrub_proxy_status: "needs_transcode",
+      scrub_proxy_bucket: masterBucket,
+      scrub_proxy_path: proxyPath,
+      scrub_proxy_preflight: plan.metadata,
+      scrub_proxy_preflight_transport: plan.transport,
+      scrub_proxy_preflight_needs_processing: true,
+      scrub_proxy_preflight_reason: plan.processingReason,
+      scrub_proxy_preflight_compatibility_reasons: plan.compatibilityReasons,
+      // Versioned compatibility decision — queryable top-level mirrors of the block.
+      scrub_proxy_preflight_compatibility_version: plan.compatibilityVersion,
+      scrub_proxy_preflight_compatibility_result: plan.compatibilityResult,
+      scrub_proxy_preflight_compatibility_reason: plan.compatibilityReason,
+      scrub_proxy_preflight_recommended_action: plan.recommendedAction,
+      // Deprecated alias key kept so existing readers of the old field still work.
+      scrub_proxy_transcode_reason: plan.processingReason,
+      scrub_proxy_preflight_warnings: plan.warnings,
+    });
+    return json(200, {
+      ok: true,
+      status: "needs_transcode",
+      assetId: asset.id,
+      transport: plan.transport,
+      needsProcessing: true,
+      processingReason: plan.processingReason,
+      compatibilityReasons: plan.compatibilityReasons,
+      compatibilityVersion: plan.compatibilityVersion,
+      compatibilityResult: plan.compatibilityResult,
+      compatibilityReason: plan.compatibilityReason,
+      recommendedAction: plan.recommendedAction,
+      // Deprecated alias field for back-compat.
+      transcodeReason: plan.processingReason,
+      preflight: plan.metadata,
+    });
+  }
+  // Compatible → use the preflight's aspect-preserving even dims when the source
+  // resolution is known; otherwise keep the legacy pad box.
+  if (plan.transform.proxyWidth > 0 && plan.transform.proxyHeight > 0) {
+    proxyWidth = plan.transform.proxyWidth;
+    proxyHeight = plan.transform.proxyHeight;
+  }
+
   // Flip to "processing" up front so the UI reflects an in-flight transcode and
-  // repeat calls short-circuit above.
+  // repeat calls short-circuit above. The preflight block is ALWAYS persisted.
   await patchProxyMeta(admin, asset.id, {
     scrub_proxy_status: "processing",
     scrub_proxy_bucket: masterBucket,
     scrub_proxy_path: proxyPath,
-    ...(preflightMeta ? { scrub_proxy_preflight: preflightMeta } : {}),
+    scrub_proxy_preflight: preflightMeta,
+    scrub_proxy_preflight_transport: plan.transport,
+    scrub_proxy_preflight_needs_processing: false,
+    scrub_proxy_preflight_compatibility_reasons: plan.compatibilityReasons,
+    scrub_proxy_preflight_compatibility_version: plan.compatibilityVersion,
+    scrub_proxy_preflight_compatibility_result: plan.compatibilityResult,
+    scrub_proxy_preflight_compatibility_reason: plan.compatibilityReason,
+    scrub_proxy_preflight_recommended_action: plan.recommendedAction,
+    scrub_proxy_preflight_warnings: plan.warnings,
   });
 
   // Input handed straight to CC `fal-run`, which forwards it verbatim to the Fal
