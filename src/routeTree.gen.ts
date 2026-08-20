@@ -44,6 +44,7 @@ import { Route as ProjectsIdReviewRouteImport } from './routes/projects.$id.revi
 import { Route as ProjectsIdPromptRouteImport } from './routes/projects.$id.prompt'
 import { Route as ProjectsIdHeroFrameRouteImport } from './routes/projects.$id.hero-frame'
 import { Route as ProjectsIdExportRouteImport } from './routes/projects.$id.export'
+import { Route as ProjectsIdCoverFlightRouteImport } from './routes/projects.$id.cover-flight'
 import { Route as ProjectsIdContinuityRouteImport } from './routes/projects.$id.continuity'
 import { Route as ProjectsIdAssetsRouteImport } from './routes/projects.$id.assets'
 import { Route as ProductsIdManufacturingRouteImport } from './routes/products.$id.manufacturing'
@@ -228,6 +229,11 @@ const ProjectsIdExportRoute = ProjectsIdExportRouteImport.update({
   path: '/export',
   getParentRoute: () => ProjectsIdRoute,
 } as any)
+const ProjectsIdCoverFlightRoute = ProjectsIdCoverFlightRouteImport.update({
+  id: '/cover-flight',
+  path: '/cover-flight',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
 const ProjectsIdContinuityRoute = ProjectsIdContinuityRouteImport.update({
   id: '/continuity',
   path: '/continuity',
@@ -299,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/products/$id/manufacturing': typeof ProductsIdManufacturingRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
+  '/projects/$id/cover-flight': typeof ProjectsIdCoverFlightRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
   '/projects/$id/hero-frame': typeof ProjectsIdHeroFrameRoute
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
@@ -335,6 +342,7 @@ export interface FileRoutesByTo {
   '/products/$id/manufacturing': typeof ProductsIdManufacturingRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
+  '/projects/$id/cover-flight': typeof ProjectsIdCoverFlightRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
   '/projects/$id/hero-frame': typeof ProjectsIdHeroFrameRoute
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
@@ -381,6 +389,7 @@ export interface FileRoutesById {
   '/products/$id/manufacturing': typeof ProductsIdManufacturingRoute
   '/projects/$id/assets': typeof ProjectsIdAssetsRoute
   '/projects/$id/continuity': typeof ProjectsIdContinuityRoute
+  '/projects/$id/cover-flight': typeof ProjectsIdCoverFlightRoute
   '/projects/$id/export': typeof ProjectsIdExportRoute
   '/projects/$id/hero-frame': typeof ProjectsIdHeroFrameRoute
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
@@ -428,6 +437,7 @@ export interface FileRouteTypes {
     | '/products/$id/manufacturing'
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
+    | '/projects/$id/cover-flight'
     | '/projects/$id/export'
     | '/projects/$id/hero-frame'
     | '/projects/$id/prompt'
@@ -464,6 +474,7 @@ export interface FileRouteTypes {
     | '/products/$id/manufacturing'
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
+    | '/projects/$id/cover-flight'
     | '/projects/$id/export'
     | '/projects/$id/hero-frame'
     | '/projects/$id/prompt'
@@ -509,6 +520,7 @@ export interface FileRouteTypes {
     | '/products/$id/manufacturing'
     | '/projects/$id/assets'
     | '/projects/$id/continuity'
+    | '/projects/$id/cover-flight'
     | '/projects/$id/export'
     | '/projects/$id/hero-frame'
     | '/projects/$id/prompt'
@@ -785,6 +797,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsIdExportRouteImport
       parentRoute: typeof ProjectsIdRoute
     }
+    '/projects/$id/cover-flight': {
+      id: '/projects/$id/cover-flight'
+      path: '/cover-flight'
+      fullPath: '/projects/$id/cover-flight'
+      preLoaderRoute: typeof ProjectsIdCoverFlightRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
     '/projects/$id/continuity': {
       id: '/projects/$id/continuity'
       path: '/continuity'
@@ -972,6 +991,7 @@ const ProjectsIdShotsRouteWithChildren = ProjectsIdShotsRoute._addFileChildren(
 interface ProjectsIdRouteChildren {
   ProjectsIdAssetsRoute: typeof ProjectsIdAssetsRoute
   ProjectsIdContinuityRoute: typeof ProjectsIdContinuityRoute
+  ProjectsIdCoverFlightRoute: typeof ProjectsIdCoverFlightRoute
   ProjectsIdExportRoute: typeof ProjectsIdExportRoute
   ProjectsIdHeroFrameRoute: typeof ProjectsIdHeroFrameRoute
   ProjectsIdPromptRoute: typeof ProjectsIdPromptRoute
@@ -986,6 +1006,7 @@ interface ProjectsIdRouteChildren {
 const ProjectsIdRouteChildren: ProjectsIdRouteChildren = {
   ProjectsIdAssetsRoute: ProjectsIdAssetsRoute,
   ProjectsIdContinuityRoute: ProjectsIdContinuityRoute,
+  ProjectsIdCoverFlightRoute: ProjectsIdCoverFlightRoute,
   ProjectsIdExportRoute: ProjectsIdExportRoute,
   ProjectsIdHeroFrameRoute: ProjectsIdHeroFrameRoute,
   ProjectsIdPromptRoute: ProjectsIdPromptRoute,
