@@ -310,7 +310,8 @@ function NextStepsCard() {
   return (
     <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
       Next: open <strong className="text-foreground">Treatment</strong>,{" "}
-      <strong className="text-foreground">Shots</strong>, or{" "}
+      <strong className="text-foreground">Shots</strong>,{" "}
+      <strong className="text-foreground">Cover Flight</strong>, or{" "}
       <strong className="text-foreground">Assets</strong> from the project sidebar.
     </div>
   );
