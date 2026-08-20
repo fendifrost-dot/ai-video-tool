@@ -140,13 +140,33 @@ describe("containRect / pointerToNorm", () => {
   });
 
   it("maps a pointer on the image to normalized coords", () => {
-    const box = { left: 0, top: 0, width: 200, height: 100, right: 200, bottom: 100, x: 0, y: 0, toJSON: () => ({}) };
+    const box = {
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 100,
+      right: 200,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    };
     const p = pointerToNorm(50, 50, box as DOMRect, 100, 100);
     expect(p).toEqual({ x: 0, y: 0.5 });
   });
 
   it("returns null when the pointer is in the letterbox", () => {
-    const box = { left: 0, top: 0, width: 200, height: 100, right: 200, bottom: 100, x: 0, y: 0, toJSON: () => ({}) };
+    const box = {
+      left: 0,
+      top: 0,
+      width: 200,
+      height: 100,
+      right: 200,
+      bottom: 100,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    };
     expect(pointerToNorm(10, 50, box as DOMRect, 100, 100)).toBeNull();
   });
 });

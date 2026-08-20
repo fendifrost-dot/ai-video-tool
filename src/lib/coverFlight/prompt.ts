@@ -1,9 +1,5 @@
 import { validateFlightGuides } from "./geometry";
-import type {
-  CoverFlightCompileInput,
-  CoverFlightCompileResult,
-  FlightGuides,
-} from "./types";
+import type { CoverFlightCompileInput, CoverFlightCompileResult, FlightGuides } from "./types";
 
 /**
  * Universal Omni Flash / Google Flow prompt from the Music-Cover Flight Guide
@@ -32,8 +28,7 @@ export const COVER_FLIGHT_FLOW_SETTINGS = {
   durationMode: "Single Continuous",
 } as const;
 
-const PATH_PLACEHOLDER_RE =
-  /\[INSERT PATH:[^\]]*\]/g;
+const PATH_PLACEHOLDER_RE = /\[INSERT PATH:[^\]]*\]/g;
 
 export function normalizePathDescription(raw: string): string {
   return raw.replace(/\s+/g, " ").trim();
@@ -43,9 +38,7 @@ export function normalizePathDescription(raw: string): string {
  * Compile the universal prompt. Empty path descriptions leave the placeholder
  * in place and set `unfilled` so the UI can block copy-as-ready.
  */
-export function compileCoverFlightPrompt(
-  input: CoverFlightCompileInput,
-): CoverFlightCompileResult {
+export function compileCoverFlightPrompt(input: CoverFlightCompileInput): CoverFlightCompileResult {
   const pathDescription = normalizePathDescription(input.pathDescription);
   const key = input.keyElements?.trim();
   const filled =

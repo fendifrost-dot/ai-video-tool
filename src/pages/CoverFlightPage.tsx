@@ -14,7 +14,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/AppShell";
-import { CoverFlightAnnotator, type CoverFlightTool } from "@/components/coverFlight/CoverFlightAnnotator";
+import {
+  CoverFlightAnnotator,
+  type CoverFlightTool,
+} from "@/components/coverFlight/CoverFlightAnnotator";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -69,16 +72,14 @@ function CoverFlightPageInner({ projectId }: { projectId: string }) {
     };
   }, []);
 
-  const imageUrl = localUrl ?? (selectedAssetId ? urls[selectedAssetId] ?? null : null);
+  const imageUrl = localUrl ?? (selectedAssetId ? (urls[selectedAssetId] ?? null) : null);
 
   const compiled = useMemo(
     () => compileCoverFlightFromGuides(guides, pathDescription, keyElements),
     [guides, pathDescription, keyElements],
   );
 
-  const aspect = imageSize
-    ? classifyCoverAspect(imageSize.width, imageSize.height)
-    : null;
+  const aspect = imageSize ? classifyCoverAspect(imageSize.width, imageSize.height) : null;
 
   const guidesRef = useRef(guides);
   guidesRef.current = guides;
@@ -87,10 +88,13 @@ function CoverFlightPageInner({ projectId }: { projectId: string }) {
     setUndo((stack) => [...stack.slice(-19), guidesRef.current]);
   }, []);
 
-  const applyGuides = useCallback((next: FlightGuides) => {
-    snapshotUndo();
-    setGuides(next);
-  }, [snapshotUndo]);
+  const applyGuides = useCallback(
+    (next: FlightGuides) => {
+      snapshotUndo();
+      setGuides(next);
+    },
+    [snapshotUndo],
+  );
 
   const handleGuidesChange = useCallback(
     (next: FlightGuides) => {
@@ -166,15 +170,8 @@ function CoverFlightPageInner({ projectId }: { projectId: string }) {
     }
     try {
       const img = await loadImage(imageUrl);
-      const canvas = renderAnnotatedCover(
-        img,
-        img.naturalWidth,
-        img.naturalHeight,
-        guides,
-      );
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(resolve, "image/png"),
-      );
+      const canvas = renderAnnotatedCover(img, img.naturalWidth, img.naturalHeight, guides);
+      const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
       if (!blob) throw new Error("Could not export PNG (canvas may be tainted).");
       const title = projectQuery.data?.song_title || projectQuery.data?.title || "cover";
       saveAs(blob, `${slug(title)}-flight-guides.png`);
@@ -241,11 +238,10 @@ function CoverFlightPageInner({ projectId }: { projectId: string }) {
 
         <section className="rounded-md border border-border bg-card/30 p-4 text-sm text-muted-foreground">
           <p>
-            <span className="font-medium text-foreground">Red line</span> = where
-            the camera flies.{" "}
-            <span className="font-medium text-foreground">White arrows</span> = where
-            it looks. Guides are production marks only — Flow erases them and
-            keeps the cover a flat, unchanged picture.
+            <span className="font-medium text-foreground">Red line</span> = where the camera flies.{" "}
+            <span className="font-medium text-foreground">White arrows</span> = where it looks.
+            Guides are production marks only — Flow erases them and keeps the cover a flat,
+            unchanged picture.
           </p>
         </section>
 
@@ -289,18 +285,12 @@ function CoverFlightPageInner({ projectId }: { projectId: string }) {
                         type="button"
                         onClick={() => pickAsset(asset)}
                         className={`h-16 w-16 shrink-0 overflow-hidden rounded-sm border ${
-                          active
-                            ? "border-primary ring-1 ring-primary"
-                            : "border-border"
+                          active ? "border-primary ring-1 ring-primary" : "border-border"
                         } bg-muted/30`}
                         title={asset.file_url}
                       >
                         {url ? (
-                          <img
-                            src={url}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
+                          <img src={url} alt="" className="h-full w-full object-cover" />
                         ) : (
                           <span className="block h-full w-full bg-muted/40" />
                         )}
@@ -311,8 +301,7 @@ function CoverFlightPageInner({ projectId }: { projectId: string }) {
               )}
               {imageAssets.length === 0 && !localUrl && (
                 <p className="mb-3 text-xs text-muted-foreground">
-                  No project stills yet — upload a cover here, or add a reference
-                  image on{" "}
+                  No project stills yet — upload a cover here, or add a reference image on{" "}
                   <Link
                     to="/projects/$id/assets"
                     params={{ id: projectId }}
@@ -379,13 +368,28 @@ function CoverFlightPageInner({ projectId }: { projectId: string }) {
               <span className="self-center text-[10px] uppercase tracking-wider text-muted-foreground">
                 Presets
               </span>
-              <Button type="button" variant="secondary" size="sm" onClick={() => applyPreset("horizontal")}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => applyPreset("horizontal")}
+              >
                 Horizontal
               </Button>
-              <Button type="button" variant="secondary" size="sm" onClick={() => applyPreset("circle")}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => applyPreset("circle")}
+              >
                 Circle loop
               </Button>
-              <Button type="button" variant="secondary" size="sm" onClick={() => applyPreset("diagonal")}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => applyPreset("diagonal")}
+              >
                 Diagonal
               </Button>
               {aspect && (
@@ -405,9 +409,8 @@ function CoverFlightPageInner({ projectId }: { projectId: string }) {
               onImageSize={setImageSize}
             />
             <p className="text-xs text-muted-foreground">
-              Draw one continuous red route. Switch to arrows and click the line
-              (start → middle → end), then drag to aim the camera. Max three
-              arrows.
+              Draw one continuous red route. Switch to arrows and click the line (start → middle →
+              end), then drag to aim the camera. Max three arrows.
             </p>
           </div>
 
@@ -425,8 +428,7 @@ function CoverFlightPageInner({ projectId }: { projectId: string }) {
                 placeholder="Start at the top left → clockwise curve past the face and title type → Endpoint at the bottom right"
               />
               <p className="text-xs text-muted-foreground">
-                Fills the [INSERT PATH] block. Name collage panels or type when
-                the cover is busy.
+                Fills the [INSERT PATH] block. Name collage panels or type when the cover is busy.
               </p>
             </div>
             <div className="space-y-2">
@@ -458,7 +460,12 @@ function CoverFlightPageInner({ projectId }: { projectId: string }) {
               <div className="flex items-center justify-between gap-2">
                 <Label>Omni Flash prompt</Label>
                 <div className="flex gap-2">
-                  <Button type="button" size="sm" variant="outline" onClick={() => void downloadAnnotated()}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void downloadAnnotated()}
+                  >
                     <Download className="mr-1.5 h-4 w-4" />
                     Annotated PNG
                   </Button>
@@ -474,10 +481,7 @@ function CoverFlightPageInner({ projectId }: { projectId: string }) {
             </div>
 
             <ol className="space-y-2 rounded-md border border-border bg-card/30 p-4 text-sm text-muted-foreground">
-              <li>
-                1. Download the annotated PNG (red line + white arrows on the
-                cover).
-              </li>
+              <li>1. Download the annotated PNG (red line + white arrows on the cover).</li>
               <li>
                 2. Open{" "}
                 <a
@@ -488,7 +492,8 @@ function CoverFlightPageInner({ projectId }: { projectId: string }) {
                 >
                   labs.google/flow
                 </a>{" "}
-                and select <strong className="text-foreground">{COVER_FLIGHT_FLOW_SETTINGS.model}</strong>{" "}
+                and select{" "}
+                <strong className="text-foreground">{COVER_FLIGHT_FLOW_SETTINGS.model}</strong>{" "}
                 (Google AI Pro).
               </li>
               <li>
@@ -501,15 +506,13 @@ function CoverFlightPageInner({ projectId }: { projectId: string }) {
             </ol>
 
             <p className="text-xs text-muted-foreground">
-              Covers of real artists/albums can get flagged — use an invented
-              scene in the cover&apos;s style if Flow blocks the run. Never
-              describe a visible drone; the prompt already says POV camera, no
-              vehicle visible.
+              Covers of real artists/albums can get flagged — use an invented scene in the
+              cover&apos;s style if Flow blocks the run. Never describe a visible drone; the prompt
+              already says POV camera, no vehicle visible.
             </p>
             <p className="text-[10px] text-muted-foreground/80">
-              Flight guide by @by.jadla. AVT compiles the prompt and draws the
-              two-line system; generation stays in Flow (manual workflow — Veo
-              API is not wired).
+              Flight guide by @by.jadla. AVT compiles the prompt and draws the two-line system;
+              generation stays in Flow (manual workflow — Veo API is not wired).
             </p>
           </div>
         </div>

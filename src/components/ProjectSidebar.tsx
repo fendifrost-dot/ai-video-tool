@@ -29,7 +29,12 @@ const items = [
   { to: "/projects/$id/treatment", label: "Treatment", icon: FileText, key: "treatment" },
   { to: "/projects/$id/shots", label: "Shot List", icon: Clapperboard, key: "shots" },
   { to: "/projects/$id/assets", label: "Assets", icon: ImageIcon, key: "assets" },
-  { to: "/projects/$id/cover-flight", label: "Cover Flight", icon: Navigation, key: "cover-flight" },
+  {
+    to: "/projects/$id/cover-flight",
+    label: "Cover Flight",
+    icon: Navigation,
+    key: "cover-flight",
+  },
   { to: "/projects/$id/hero-frame", label: "Hero Frame", icon: Shirt, key: "hero-frame" },
   { to: "/projects/$id/prompt", label: "Prompt Lab", icon: Wand2, key: "prompt" },
   { to: "/projects/$id/video", label: "Video", icon: Video, key: "video" },

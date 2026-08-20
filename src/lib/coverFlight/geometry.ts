@@ -1,10 +1,4 @@
-import type {
-  CoverAspect,
-  FlightArrow,
-  FlightGuides,
-  PathKind,
-  Point,
-} from "./types";
+import type { CoverAspect, FlightArrow, FlightGuides, PathKind, Point } from "./types";
 
 export function clamp01(n: number): number {
   if (n < 0) return 0;
@@ -128,10 +122,7 @@ export function turningHint(points: Point[]): string {
  * Auto-fill for the [INSERT PATH] block from geometry. Users should still
  * name key cover elements (subject, type, collage panels) when they matter.
  */
-export function describeFlightPath(
-  points: Point[],
-  options?: { keyElements?: string },
-): string {
+export function describeFlightPath(points: Point[], options?: { keyElements?: string }): string {
   if (points.length < 2) return "";
   const start = quadrantLabel(points[0]);
   const end = quadrantLabel(points[points.length - 1]);

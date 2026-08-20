@@ -39,9 +39,4 @@ export {
   promptForbidsVisibleVehicle,
 } from "./prompt";
 
-export {
-  containRect,
-  drawFlightGuides,
-  pointerToNorm,
-  renderAnnotatedCover,
-} from "./draw";
+export { containRect, drawFlightGuides, pointerToNorm, renderAnnotatedCover } from "./draw";

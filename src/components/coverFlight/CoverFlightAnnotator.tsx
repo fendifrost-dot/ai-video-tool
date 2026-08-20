@@ -18,10 +18,7 @@ export type CoverFlightTool = "path" | "arrow";
 const CONTINUE_THRESHOLD = 0.05;
 const HIT_THRESHOLD = 0.045;
 
-type DragMode =
-  | { kind: "draw" }
-  | { kind: "rotate"; index: number }
-  | null;
+type DragMode = { kind: "draw" } | { kind: "rotate"; index: number } | null;
 
 export function CoverFlightAnnotator({
   imageUrl,
@@ -43,9 +40,7 @@ export function CoverFlightAnnotator({
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
-  const [natural, setNatural] = useState<{ width: number; height: number } | null>(
-    null,
-  );
+  const [natural, setNatural] = useState<{ width: number; height: number } | null>(null);
   const [selectedArrow, setSelectedArrow] = useState<number | null>(null);
   const dragRef = useRef<DragMode>(null);
   const strokeRef = useRef<Point[]>([]);
@@ -227,9 +222,7 @@ export function CoverFlightAnnotator({
     strokeRef.current = [];
   }
 
-  const aspect = natural
-    ? `${natural.width} / ${natural.height}`
-    : "1 / 1";
+  const aspect = natural ? `${natural.width} / ${natural.height}` : "1 / 1";
 
   return (
     <div
