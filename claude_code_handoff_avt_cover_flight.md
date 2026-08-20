@@ -37,7 +37,8 @@ Deliverables back to Fendi only if asked: PR review notes, publish confirmation,
 | Cover Flight UI + prompt compiler exist on branch `cursor/cover-flight-guide-6781` at `c225fff` | **VERIFIED** — `git log` + files listed in §4 |
 | PR #20 is open against `main` | **VERIFIED** — https://github.com/fendifrost-dot/ai-video-tool/pull/20 |
 | Production build succeeded in the Cursor cloud agent | **VERIFIED** — `npm run build` green this session |
-| 613 automated tests passed this session (582 unit, 31 mocked-integration, 0 live) | **VERIFIED** — `npx vitest run --exclude '**/.claude/worktrees/**' --exclude '**/node_modules/**'` |
+| 613 automated tests / 47 files on this branch | **VERIFIED** — `npx vitest run --exclude '**/.claude/worktrees/**' --exclude '**/node_modules/**'` |
+| Split is **576 unit + 37 mocked-integration** (0 / 0 / 0 live) | **VERIFIED** — taxonomy rule `vi.mock` / `vi.stubGlobal`; four files, 37 cases (see §8). An earlier 582 / 31 split in this handoff was **wrong** — total coincidentally still 613 |
 | Feature is live on `aivideotool.lovable.app` | **HYPOTHESIS** — false until merge + Lovable Publish |
 | Omni Flash will honour the red line / white arrows on a real cover | **HYPOTHESIS** — needs a human Flow run; no provider-live test exists |
 | Google Flow has a callable API we should wire | **DECISION** — no. Manual workflow only |
@@ -144,17 +145,32 @@ If Cover Flight is missing on live after publish: the publish did not include th
 
 ---
 
-## 8. Test health (this session)
+## 8. Test health (this branch — PR #20 head)
 
-**613 automated tests: 582 unit, 31 mocked-integration, 0 provider-live, 0 real-media-benchmark, 0 deployment-smoke.**
+**613 automated tests across 47 files: 576 unit, 37 mocked-integration, 0 provider-live, 0 real-media-benchmark, 0 deployment-smoke.**
 
-Cover Flight added **29 unit** cases under `src/lib/coverFlight/`. The three zeros are unchanged — the suite still proves **none** of: a live Flow call, a real cover animation, or a deployed RLS check.
+Correction (2026-08-20, Claude then Cursor re-ran the taxonomy rule): an earlier draft of this handoff said **582 / 31**. The **total (613)** was right; the **split was wrong**. Applying `docs/TEST_TAXONOMY.md` (`vi.mock` / `vi.stubGlobal` or a multi-module React render):
+
+| File | Cases | Why mocked-integration |
+|------|------:|------------------------|
+| `src/lib/providerJobs/api.test.ts` | 18 | mocks Supabase + storage; stubs `fetch` |
+| `src/lib/video/dispatchScrubProxy.test.ts` | 11 | mocks Supabase `functions.invoke` |
+| `src/components/library/MultiAngleGallery.test.tsx` | 2 | component render + storage mocks |
+| `src/lib/queries/wardrobeVideoFramesGate.test.ts` | 6 | mocks Supabase + auth; stubs `fetch` (PR #19, already on this branch) |
+| **Total** | **37** | |
+
+`613 − 37 = 576` unit. Cover Flight added **29 unit** cases under `src/lib/coverFlight/` (pure; no I/O double). The three zeros are unchanged — the suite still proves **none** of: a live Flow call, a real cover animation, or a deployed RLS check.
+
+Automated **deployment-smoke = 0**. Any manual post-deploy smokes stay **outside** this 613 headline; they do not become a fifth automated category by being mentioned.
+
+When this PR merges, `docs/TEST_TAXONOMY.md` must read **576 / 37 / 613** (47 files), not 582 / 31 and not the 2026-08-05 539 / 31 / 570 snapshot.
 
 Reproduce:
 
 ```bash
 npx vitest run --exclude '**/.claude/worktrees/**' --exclude '**/node_modules/**'
 npx vitest run src/lib/coverFlight --exclude '**/.claude/worktrees/**'
+rg -l 'vi\.mock\(|vi\.stubGlobal\(' src supabase --glob '*.test.ts*' | grep -v worktrees
 npm run build
 ```
 
