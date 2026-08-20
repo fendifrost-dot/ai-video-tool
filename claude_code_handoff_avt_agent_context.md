@@ -85,6 +85,7 @@ Browser → AVT jacket-inpaint-proxy (user JWT)
 | evf-sam 502 episode + retry fix status | `CURSOR_HANDOFF_avt_evfsam_502.md` |
 | Grok video vs image wiring | `docs/grok_api_status.md` |
 | CC provider proxy pattern | `docs/control_center_provider_proxy.md` |
+| Music Cover Flight (Flow / Omni Flash, manual workflow) | `claude_code_handoff_avt_cover_flight.md` |
 
 **Stale trap:** `AVT_MEMORY_HANDOFF.md` “Where things live” once lists CC repo as “this repo” — in an **AVT** session, **this repo** = `ai-video-tool` only.
 
