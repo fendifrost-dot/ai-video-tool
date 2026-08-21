@@ -116,21 +116,22 @@ Grok is three products in this project. Do not route one onto another's bill or 
 
 | Lane | Surface | What it is for | Billing |
 |------|---------|----------------|---------|
-| **Production media** | `grok-image-garment-proxy` → `/v1/images/edits`; CC `video-providers-grok-generate` → `/v1/videos/generations` | Repeatable user jobs, persisted outputs | `XAI_API_KEY` / `Frost_Grok` per call |
-| **Engineering / research** | Grok Build CLI (`grok`, `grok -p`, ACP) as **GROK_PROVIDER_SPECIALIST** | Inspect xAI paths, critique prompts, schema drift, go/no-go on a paid call | SuperGrok / X Premium+ via `grok login` |
+| **Production media** | `grok-image-garment-proxy` → `/v1/images/edits`; CC `video-providers-grok-generate` → `/v1/videos/generations` | Repeatable **user** jobs, persisted outputs | `XAI_API_KEY` / `Frost_Grok` per call |
+| **Engineering / research** | Grok Build CLI (`grok`, `grok -p`, ACP) as **GROK_PROVIDER_SPECIALIST**; research adapter `grok-video-research-proxy` (`/v1/videos/edits`) | Inspect xAI paths, critique prompts, schema drift, Architecture C video-edit evidence, go/no-go on a paid call | SuperGrok / X Premium+ via `grok login` (research adapter billed only with explicit spend approval) |
 | **Human creative** | Manual TUI / Imagine experiments | One-off prompt and visual critique | Subscription quota. **Never** automate grok.com |
 
-The CLI does **not** replace Imagine endpoints. It saves spend by **preventing bad paid calls**. Local Grok Build images are not garment-truth — that still goes through AVT's proxy.
+The CLI does **not** replace Imagine endpoints. It saves spend by **preventing bad paid calls**. Subscription/TUI outputs are not production-truth artifacts unless explicitly imported into an approved benchmark workflow. Production user jobs remain API-backed.
 
 **Auth:** engineering sessions use `grok login`. If `XAI_API_KEY` is exported, Grok Build bills the production meter — unset it for specialist work.
 
 **GROK_PROVIDER_SPECIALIST** (Grok Build skill + subagent):
 
-- Track xAI model/API changes against wired AVT code
+- Compare **repo wiring vs research evidence vs current xAI docs** (required; do not recite the lock as truth)
+- Track `/v1/videos/edits` (source video + `reference_images`) as the leading **research** candidate (Architecture C + original-master compositing); keyframe/propagation is fallback
 - Validate payloads; draft/critique garment prompts
-- Analyze Grok benchmark failures
-- Recommend `skip` / `wait-for-prompt-fix` / `worth-one-approved-call`
-- Never change production architecture without Class C review
+- Analyze Grok benchmark failures; check 720p/24, tail truncation, variance, seams, topology, master composite
+- Recommend `skip` / `fix-input-first` / `worth-one-approved-call` / `architecture-review-needed`
+- Do not change production architecture without Class C review; locked docs are baseline under evidence review
 - Charter: `.grok/skills/grok-provider-specialist/SKILL.md`
 
 ```bash
@@ -154,5 +155,6 @@ Useful file references:
 - `@src/start.ts` — middleware chain
 - `@supabase/functions/wardrobe-vton-proxy/index.ts` — VTON proxy
 - `@supabase/functions/grok-image-garment-proxy/index.ts` — Grok Image-Edit hero lane
+- `@supabase/functions/grok-video-research-proxy/index.ts` — research-only `/v1/videos/edits` adapter
 - `@vite.config.ts` — build config constraints
 - `@docs/grok_api_status.md` — wired vs documented xAI capability
