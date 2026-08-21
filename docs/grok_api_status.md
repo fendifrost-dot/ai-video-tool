@@ -4,6 +4,12 @@
 **AVT client: wired** via Control Center proxy — generation is live when CC has
 `Frost_Grok` (or equivalent) configured.
 
+This file is the **production media** lane (Imagine HTTP API). Engineering
+research and pre-call review belong on **Grok Build** as
+`GROK_PROVIDER_SPECIALIST` — see root `AGENTS.md` and
+`.grok/skills/grok-provider-specialist/SKILL.md`. The CLI is not a substitute
+for `/v1/images/edits` or `/v1/videos/*`.
+
 ## Architecture
 
 ```
