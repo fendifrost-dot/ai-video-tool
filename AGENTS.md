@@ -110,18 +110,49 @@ Registry: `src/lib/providers/registry.ts`. Job API: `src/lib/providerJobs/`.
 - Do not confuse with Fendi Control Center / compose-look Supabase project (`wkzwcfmvnwolgrdpnygc`).
 - **No standalone Supabase / no `supabase` CLI for migrations.** SQL → Lovable SQL editor; frontend → Publish; edge → Lovable redeploy. See root `CLAUDE.md` chain of command.
 
-## Grok workflow (this repo)
+## Grok lanes (do not mix)
 
-When asked to debug or optimize the build:
+Grok is three products in this project. Do not route one onto another's bill or job.
 
-1. Run `grok inspect` to confirm this file loaded.
-2. Use **plan mode** first for multi-file audits: `grok --permission-mode plan -p "..."`.
-3. Run `npm run build && npm run test && npm run lint` and fix failures with minimal diffs.
-4. For bundle/build profiling, trace: `vite.config.ts` → Lovable config → Nitro → Cloudflare plugin → `wrangler.jsonc`.
+| Lane | Surface | What it is for | Billing |
+|------|---------|----------------|---------|
+| **Production media** | `grok-image-garment-proxy` → `/v1/images/edits`; CC `video-providers-grok-generate` → `/v1/videos/generations` | Repeatable user jobs, persisted outputs | `XAI_API_KEY` / `Frost_Grok` per call |
+| **Engineering / research** | Grok Build CLI (`grok`, `grok -p`, ACP) as **GROK_PROVIDER_SPECIALIST** | Inspect xAI paths, critique prompts, schema drift, go/no-go on a paid call | SuperGrok / X Premium+ via `grok login` |
+| **Human creative** | Manual TUI / Imagine experiments | One-off prompt and visual critique | Subscription quota. **Never** automate grok.com |
+
+The CLI does **not** replace Imagine endpoints. It saves spend by **preventing bad paid calls**. Local Grok Build images are not garment-truth — that still goes through AVT's proxy.
+
+**Auth:** engineering sessions use `grok login`. If `XAI_API_KEY` is exported, Grok Build bills the production meter — unset it for specialist work.
+
+**GROK_PROVIDER_SPECIALIST** (Grok Build skill + subagent):
+
+- Track xAI model/API changes against wired AVT code
+- Validate payloads; draft/critique garment prompts
+- Analyze Grok benchmark failures
+- Recommend `skip` / `wait-for-prompt-fix` / `worth-one-approved-call`
+- Never change production architecture without Class C review
+- Charter: `.grok/skills/grok-provider-specialist/SKILL.md`
+
+```bash
+grok inspect   # confirm this file + the specialist skill loaded
+grok --permission-mode plan -p "GROK_PROVIDER_SPECIALIST: <task>"
+# in the TUI: /grok-provider-specialist
+```
+
+`dispatchScrubProxy` in this repo is a **video scrub-proxy** helper, not an agent orchestrator. Do not invent a Company OS inside AVT.
+
+When debugging the Vite/Cloudflare **build** (not xAI):
+
+1. `grok inspect`
+2. Plan mode for multi-file audits
+3. `npm run build && npm run test && npm run lint`
+4. Trace: `vite.config.ts` → Lovable config → Nitro → Cloudflare plugin → `wrangler.jsonc`
 
 Useful file references:
 
 - `@src/server.ts` — SSR / Cloudflare entry
 - `@src/start.ts` — middleware chain
 - `@supabase/functions/wardrobe-vton-proxy/index.ts` — VTON proxy
+- `@supabase/functions/grok-image-garment-proxy/index.ts` — Grok Image-Edit hero lane
 - `@vite.config.ts` — build config constraints
+- `@docs/grok_api_status.md` — wired vs documented xAI capability
