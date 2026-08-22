@@ -1,8 +1,8 @@
 # AVT — Aleph 2.0 vs Grok C · Benchmark Protocol
 
 **Status:** PRE-REGISTERED / PROVISIONAL — protocol frozen, **not yet run**.
-**Protocol version:** `aleph2-vs-grok-c-v1.0.1` (v1.0.0 + pre-run lock of seed-pause and arm-3 hold)
-**Date:** 2026-08-21 (inbound) · verification pass 2026-08-22 · pre-run lock 2026-08-22
+**Protocol version:** `aleph2-vs-grok-c-v1.0.2` (v1.0.1 + claim limits on 42/42 + conditional seed-43)
+**Date:** 2026-08-21 (inbound) · verification pass 2026-08-22 · pre-run locks 2026-08-22
 **Class:** **A** (this file is documentation). **Executing** the matrix, promoting a winner, or wiring any engine is **Class C** (benchmarks + providers + rendering) and is **out of scope for this PR**.
 **Companion:** inbound `AVT_MCP_CAPABILITY_SWEEP.md` — **not present in this checkout** (searched `main` @ `36e955a`). This protocol stands alone until that file lands.
 **Governing spec:** [`docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md`](../REPRODUCIBLE_BENCHMARK_SYSTEM.md) v1.0.
@@ -17,7 +17,7 @@ Evidence classes used throughout: **[V]** Verified · **[O]** Observed · **[H]*
 ## LINEAGE
 
 ```
-benchmark version:      aleph2-vs-grok-c-v1.0.1   (PROTOCOL — no scores yet; v1.0.0 + §5 rules 8–9)
+benchmark version:      aleph2-vs-grok-c-v1.0.2   (PROTOCOL — no scores yet; v1.0.1 + §4.1 claim limits)
 derived-from:           inbound brief 2026-08-21 + wardrobe-swap-v1 + grok-recap-2026-08
 algorithm version:      13-axis 0–3 rubric (§4), pre-registered before any render
 source SHA-256:         benchmark_1080p_clip  509ef6f5c7780c5c8236532d1347cdad1e3cc45444acf5932f89540973a85e20
@@ -130,9 +130,9 @@ Other doors, unchanged:
 
 **[D] Access path, decided before the first run:** provision `RUNWAYML_API_SECRET` and call Runway native. Replicate is **not** required to obtain seed.
 
-**[D] A failed seed check PAUSES Aleph spend. It does not merely annotate.** Deciding that after the first paid run is the thing that would invalidate the round, so it is locked here. See §4.1 for the scoring method and §5 rule 8 for the spend/verdict consequence. Switching to Replicate after a failed native seed is a **new protocol version** (v1.1+), written before any Replicate call — not an in-round door.
+**[D] An unstable 42/42 hinge reading PAUSES Aleph spend. It does not merely annotate.** Deciding that after the first paid run is the thing that would invalidate the round, so it is locked here. See §4.1 for the scoring method, the claim limits, and §5 rule 8. Switching to Replicate after a pause is a **new protocol version** (v1.1+), written before any Replicate call — not an in-round door.
 
-Why this still matters: the stated reason to prefer Aleph over Grok on epistemics is that seed lets us separate architectural capability from sampling variance (R4b vanishing improvement, R7 band regression — those run labels are **inbound**, not re-derived this session). A seed that does not reproduce is n=1 again, and n=2 on every other axis loses the weight it was bought to have.
+Why this still matters: the stated reason to prefer Aleph over Grok on epistemics is that seed lets us separate architectural capability from sampling variance (R4b vanishing improvement, R7 band regression — those run labels are **inbound**, not re-derived this session). An unstable repeated-seed pair means every Aleph conclusion in this round is a single comparison. That is enough to pause. It is **not** enough to write "seed does not work."
 
 ## 0.4 Hard constraints that shape the test
 
@@ -317,24 +317,23 @@ Ground-truth reference: wardrobe-swap-v1 16-bit PNG sequence (T7) for identity/m
 
 ### Axis 13 is not optional and is not scored from a single run
 
-- **n=2 minimum on every paid arm.** Same settings, second execution.
-- An arm that wins on run 1 and loses on run 2 is **unresolved**, not a win.
-- Product Swap has no seed: n=2 same-settings is the whole axis-13 test for arm 1.
+- **n=2 minimum on every paid arm** means two executions. For Product Swap those two are independent (no seed). For Aleph, 42/42 is two executions of the **same** draw — see §4.1. Do not count 42/42 as two independent hinge observations.
+- An arm that wins on one independent draw and loses on another is **unresolved**, not a win.
+- Product Swap has no seed: n=2 same-settings is both the axis-13 test and two independent observations.
 
 ### 4.1 Repeated-seed method (Aleph) — locked before spend
 
 "Exposes `seed: int`" plus a docstring that says "**similar** results" is not the same as reproducible. Byte-identical outputs are **not** the test — two MP4s of the same generation will not hash-equal. Axis 13 compares the two **scored readings**, not the bytes.
 
-**Tranche 1 Aleph pair is the repeated-seed test.** Do not buy a third Aleph run inside tranche 1.
+**Tranche 1 Aleph pair is the repeated-seed test.**
 
 | Run | Seed (frozen) | What it is |
 |---|---|---|
 | Arm 2 run 1 | **`42`** | first paid Aleph call |
-| Arm 2 run 2 | **`42`** | n=2 **and** the repeated-seed check |
+| Arm 2 run 2 | **`42`** | the repeated-seed check — **not** a second independent observation |
+| Arm 2 run 3 | **`43`** | **conditional** independent observation — see spend decision below |
 
-The different-seed pair (seed `43` vs `42`) is **not** part of tranche 1. It is attribution, bought only after the stop-and-reassess **and** only if rule 8 did not pause.
-
-**How to score the repeated-seed pair** (compare the two outputs to *each other*):
+**How to score the 42/42 pair** (compare the two outputs to *each other*):
 
 | Axis 13 | Meaning |
 |---|---|
@@ -343,17 +342,40 @@ The different-seed pair (seed `43` vs `42`) is **not** part of tranche 1. It is 
 | **1** | The two runs would change the hinge reading (identity, motion, occlusion, or temporal consistency) |
 | **0** | Hinge reading flips, or one run is unusable |
 
-**[D] Pause vs annotate, decided now:**
+#### What a ≤1 reading can and cannot claim
 
-| Result | Spend | Verdict weight |
+One comparison cannot separate:
+
+1. the `seed` parameter is ignored,
+2. the seed is honored but the model is stochastic in ways it does not control,
+3. arm 2 is unstable on **this** input.
+
+**[D]** Pausing on any of the three is the correct conservative response (rule 8). The writeup must **not** record a ≤1 as "seed does not work." Record it as:
+
+> Seed `42` did not produce a stable hinge reading on one comparison (n=1 pair). Cause among (1)/(2)/(3) is not identified.
+
+That leaves the door open to a later cheap re-test on **different input**, under a new protocol version. It does not authorize more spend on this clip in this round.
+
+#### Seed success costs you the replicate
+
+**[D]** If 42/42 scores 3, the two outputs are near-identical **by construction**. The hinge reading (identity inherited vs. not) is then **n=1**, not n=2. The pair bought a reproducibility check instead of a second independent observation. "Arm 2, n=2" on the scorecard is stronger than what that pair actually is. Do not write n=2 for the hinge off 42/42 alone.
+
+#### Spend decision, made now — conditional seed `43`
+
+The original inbound wanted both a seed check **and** n=2 independent observations. Folding the seed check into the only two Aleph calls trades one away. Deciding the third call after 42/42 lands would invalidate the round, so it is locked here:
+
+**[D]** Pre-authorize **one** further Aleph generation at seed **`43`**, same everything else, **only if** 42/42 scores axis 13 **= 3**. Cost +$1.12. Still inside the $6 tranche-1 ceiling.
+
+| After 42/42 | Seed 43? | What the hinge can claim |
 |---|---|---|
-| Axis 13 **≤ 1** on the Aleph repeated-seed pair | **PAUSE all further Aleph spend** (no arm 4, no arm 3, no different-seed pair, no Replicate switch). Arm 1 may finish its n=2. | No Aleph verdict this round (rule 5). The n=2 on axes 1–12 cannot carry VERIFIED weight. |
-| Axis 13 **= 2** | Finish tranche 1 if the second Product Swap run is unpaid. **Do not buy tranche 2 Aleph arms** without a new human authorization that explicitly accepts a weakened seed. | Aleph conclusions capped at **OBSERVED**. |
-| Axis 13 **= 3** | Normal stop-and-reassess. Different-seed pair is optional attribution in tranche 2, not required to score arm 2. | VERIFIED remains available if the rest of rule 5 holds. |
+| Axis 13 **≤ 1** | **No.** Rule 8 pause. | Unstable on this input. Not "seed broken." No Aleph verdict. |
+| Axis 13 **= 2** | **No**, not without a new human authorization (same as v1.0.1). | Hinge is n=1 and seed is only partial. **OBSERVED** only. |
+| Axis 13 **= 3**, then 43 **agrees** on axes 1, 2, 7 | **Yes — buy it.** | Honest **n=2** independent hinge readings + a working seed check. VERIFIED remains available if rule 5 holds. |
+| Axis 13 **= 3**, then 43 **disagrees** on axes 1, 2, or 7 | **Yes — buy it**, then stop Aleph. | Seed held; hinge is **seed-dependent**. **Unresolved**, not a win. |
 
-**If §7 live-rejects `seed`** (400 naming an unknown field): we never had a working seed. Run tranche 1 arm 2 as two **unseeded** same-settings calls. The hinge question (identity inheritance) does not require seed; the epistemics claim does. Any Aleph verdict is then capped at OBSERVED. Do not invent a Replicate hop mid-round.
+Stop rules 7 and 8 are unchanged. This section only limits what the round may write afterward, and pre-pays the one call that makes "n=2" true when the seed actually holds.
 
-**If §7 accepts `seed` but the provider ignores it** (repeated `42` behaves like two random draws → axis 13 ≤ 1): that **is** a failed seed check. Pause. Same row as axis 13 ≤ 1.
+**If §7 live-rejects `seed`** (400 naming an unknown field): we never had a working seed. Run tranche 1 arm 2 as two **unseeded** same-settings calls — those two **are** independent observations (no seed to collapse them). The hinge question does not require seed; the epistemics claim does. Any Aleph verdict is then capped at OBSERVED. Do not invent a Replicate hop mid-round. Do not buy seed 43 (there is no seed).
 
 ---
 
@@ -368,7 +390,7 @@ Written now so the result cannot be rationalized later.
 5. **Any scored arm fails axis 13** → no verdict recorded from this round, full stop. Do not promote an n=1 result.
 6. **Arm 1 succeeds on identity + garment + motion** → record it; it still does not authorize production wiring. It does authorize a Class-C design review of whether a Recipe belongs in the research lane.
 7. **Tranche 1 (arms 1 and 2) both reproduce the Grok failure modes** (garment topology breaks, identity drifts, occlusion unrecovered) → **stop**. Do not buy tranche 2. Verdict: Runway is a different flavour of the same failure.
-8. **Aleph repeated-seed pair scores axis 13 ≤ 1** → **PAUSE all further Aleph spend.** Do not annotate-and-continue. Do not hop to Replicate. Do not buy arm 4 to "attribute" a result that is n=1 again. Arm 1 (no seed) may finish. See §4.1.
+8. **Aleph 42/42 pair scores axis 13 ≤ 1** → **PAUSE all further Aleph spend.** Record: *seed 42 did not produce a stable hinge reading on one comparison.* Do **not** record "seed does not work." Do not annotate-and-continue. Do not hop to Replicate. Do not buy seed 43 or arm 4. Arm 1 (no seed) may finish. See §4.1.
 9. **Arm 3 is not fillable mid-round.** Absence of extra identity-broken Grok stills is not authorization to generate them. See §3.2.
 
 Inbound rule numbers used B1/B2/B3 for prompt-only / +1 kf / +3–5 kf. This version maps **B1 → arm 4**, **B2 → arm 2**, **B3 → arm 3**.
@@ -379,13 +401,14 @@ Inbound rule numbers used B1/B2/B3 for prompt-only / +1 kf / +3–5 kf. This ver
 
 **Do not commit the $15–25 matrix up front.**
 
-**Tranche 1 — ~$3–5.** Arm 1 (Product Swap) + arm 2 (Aleph + 1 kf), each n=2. Arm 2's two runs **are** the repeated-seed pair (seed `42` / `42`). No third Aleph call in this tranche.
+**Tranche 1 — ~$3–5, up to ~$4.50 Aleph if seed holds.** Arm 1 (Product Swap) n=2. Arm 2: seed `42` / `42` (reproducibility check), plus seed `43` **only if** 42/42 scores axis 13 = 3 (the independent observation).
 
 | Line | Est. |
 |---|---|
 | Aleph 4 s × 2 @ $0.28/s (seed `42` / `42`) | $2.24 |
+| Aleph 4 s × 1 @ $0.28/s (seed `43`, **only if** 42/42 = 3) | $1.12 |
 | Product Swap × 2 | **unknown — price before running** |
-| Buffer | to ~$5 |
+| Buffer | to ~$5–6 |
 
 Price Product Swap from the live `GET /v1/organization` credit balance + a dry schema read, or the first task's `estimatedCost` (SDK 5.14.0 exposes `estimatedCost` on retrieve). Do not guess.
 
@@ -443,7 +466,7 @@ Correction to the original sweep, worth flagging: a first-party generative-media
 - This does **not** unfreeze Grok prompting. Arm 0 uses the existing best config as-is. Arm 3 does not get to change that (rule 9).
 - **No production integration.** Not for Aleph, not for Product Swap, not for the Router. Not an AVT edge function. Not a CC allowlist change. Not a provider-registry change. The production path — AVT → Control Center → fal — is untouched.
 - Outputs are **evidence, not production truth**, until imported through the benchmark/evidence process ([`docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md`](../REPRODUCIBLE_BENCHMARK_SYSTEM.md)). Same rule as Grok Build.
-- Protocol is **frozen** as of `aleph2-vs-grok-c-v1.0.1`. Changes to arms, rubric, or decision rules after the first paid run invalidate the round. This v1.0.1 lock (seed-pause = rule 8; arm-3 hold = rule 9; repeated-seed method = §4.1) is pre-run: **no paid run has happened**.
+- Protocol is **frozen** as of `aleph2-vs-grok-c-v1.0.2`. Changes to arms, rubric, or decision rules after the first paid run invalidate the round. This v1.0.2 lock (≤1 is unreliability, not "seed broken"; 42/42 success makes the hinge n=1 unless seed 43 is bought; seed 43 pre-authorized only on axis 13 = 3) is pre-run: **no paid run has happened**.
 
 ### What this PR does **not** do
 
