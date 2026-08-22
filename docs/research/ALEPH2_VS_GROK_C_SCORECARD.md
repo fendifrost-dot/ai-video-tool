@@ -1,9 +1,9 @@
 # Aleph 2.0 vs Grok C — scorecard
 
-**Protocol:** [`ALEPH2_VS_GROK_C_BENCHMARK_PROTOCOL.md`](ALEPH2_VS_GROK_C_BENCHMARK_PROTOCOL.md) `aleph2-vs-grok-c-v1.0.0`
+**Protocol:** [`ALEPH2_VS_GROK_C_BENCHMARK_PROTOCOL.md`](ALEPH2_VS_GROK_C_BENCHMARK_PROTOCOL.md) `aleph2-vs-grok-c-v1.0.1`
 **Status:** EMPTY — pre-registered. Do not fill any cell after looking at a render until the axis definitions in protocol §4 have been read again.
 **Scale:** 0 = fails · 1 = partial · 2 = good · 3 = indistinguishable from ground truth
-**Rule:** n=2 per paid arm. An arm that wins on run 1 and loses on run 2 is **unresolved**, not a win. Axis 13 is not optional.
+**Rule:** n=2 per paid arm. An arm that wins on run 1 and loses on run 2 is **unresolved**, not a win. Axis 13 is not optional. Aleph axis 13 ≤ 1 **pauses** further Aleph spend (rule 8) — it is not a footnote.
 
 Scorer: _______________ · Date viewed: _______________ · Spend this round: $________
 
@@ -16,10 +16,9 @@ Scorer: _______________ · Date viewed: _______________ · Spend this round: $__
 | 0 control (Grok C) | existing | | | n/a | existing best config — do not re-prompt | | | | |
 | 1 Product Swap | 1 | | recipe `2026-06` | n/a | image fields, not §3.1 | | | | |
 | 1 Product Swap | 2 | | recipe `2026-06` | n/a | same | | | | |
-| 2 Aleph +1 kf @ 2.235 s | 1 | | `aleph2` | | §3.1 frozen prompt | | | | |
-| 2 Aleph +1 kf @ 2.235 s | 2 | | `aleph2` | | same | | | | |
-| 2 best-arm seed B (tranche 2 / if promoted) | 1 | | `aleph2` | different | same | | | | |
-| 2 best-arm repeated seed | 2 | | `aleph2` | repeat of run 1 | same | | | | |
+| 2 Aleph +1 kf @ 2.235 s | 1 | | `aleph2` | **42** | §3.1 frozen prompt | | | | |
+| 2 Aleph +1 kf @ 2.235 s | 2 | | `aleph2` | **42** (repeat) | same — this **is** the seed check | | | | |
+| 2 different-seed (only if rule 8 did not pause) | 1 | | `aleph2` | **43** | same; tranche 2 attribution only | | | | |
 | 4 Aleph prompt-only | 1 | | `aleph2` | | §3.1, no keyframes | | | | |
 | 4 Aleph prompt-only | 2 | | `aleph2` | | same | | | | |
 
@@ -61,6 +60,8 @@ Tick **after** scores exist. Do not pre-tick.
 - [ ] Rule 5 — any scored arm fails axis 13 → **no verdict this round**
 - [ ] Rule 6 — arm 1 succeeds on identity + garment + motion → record; still no production wiring
 - [ ] Rule 7 — tranche 1 both reproduce Grok failure modes → **stop; do not buy tranche 2**
+- [ ] Rule 8 — Aleph repeated-seed (42/42) axis 13 ≤ 1 → **PAUSE all further Aleph spend** (not an annotation)
+- [ ] Rule 9 — arm 3 stills missing → **do not** generate new Grok stills mid-round
 
 **Verdict this round:** ______________________________
 **Class of verdict:** OBSERVED / VERIFIED (circle). A VERIFIED verdict requires axis 13 pass + cited output checksums.
