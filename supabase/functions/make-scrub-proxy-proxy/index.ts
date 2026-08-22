@@ -288,12 +288,16 @@ serve(async (req) => {
       const probeResult = await falPoll(cc, probeCtx, probeQueue);
       const svm = extractVideoMeta(probeResult);
       if (svm) {
+        // Same mapping as wardrobe-video-frame-extract-proxy: pixel_format
+        // lives under media.format. Do not infer HDR from profile / bit depth.
         falProbe = {
           width: svm.width,
           height: svm.height,
           fps: svm.fps,
           codec: svm.codec,
           durationSec: svm.durationSec,
+          pixelFormat: svm.pixelFormat,
+          bitrateBps: svm.bitrateBps,
         };
       }
     } catch {
