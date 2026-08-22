@@ -8,7 +8,7 @@
 > **Severity:** Critical / High / Medium / Low · **Confidence:** Confirmed / Likely /
 > Suspected · **Status:** Open / In-remediation / Mitigated / Closed.
 
-Last reviewed: **2026-08-08** (RISK-001 Part B storage re-key — Phase 1 copy+verify complete; redefined RISK-002 as identity **+ storage-ownership** architecture; added STOR-1…STOR-4 per-bucket path-strand entries).
+Last reviewed: **2026-08-22** (added VOICE-1 for the Phase 1 Voice Director spend surface).
 
 | id | Title | Severity | Confidence | Status | Owner |
 |----|-------|----------|-----------|--------|-------|
@@ -24,6 +24,7 @@ Last reviewed: **2026-08-08** (RISK-001 Part B storage re-key — Phase 1 copy+v
 | [OPS-1](#ops-1--no-ci-gate) | No CI gate on tests | Medium | Confirmed | Open | Platform (AVT) |
 | [OPS-2](#ops-2--no-job-reaper) | No reaper for stuck/orphaned jobs | Medium | Likely | Open | Platform (AVT) |
 | [REL-1](#rel-1--pr16-compat-gate) | PR #16 preflight compatibility gate unmerged | Low | Confirmed | Open | Products (AVT) |
+| [VOICE-1](#voice-1--grok-voice-director-spend-surface) | Voice Director STT/TTS/text spend + mic | Medium | Likely | Open | Products (AVT) |
 
 ---
 
@@ -233,3 +234,21 @@ Last reviewed: **2026-08-08** (RISK-001 Part B storage re-key — Phase 1 copy+v
 - **Pointer:** PR #16 / branch `feat/video-preflight-compat-gate`;
   `supabase/functions/_shared/videoPreflight.ts`.
 - **DoD (target):** PR reviewed and merged, or explicitly parked with rationale.
+
+---
+
+## VOICE-1 — Grok Voice Director spend surface
+
+- **Severity:** Medium · **Confidence:** Likely · **Status:** Open · **Owner:** Products (AVT)
+- **Summary:** Phase 1 Voice Director (`grok-voice-director-proxy`) adds a new
+  xAI spend path (STT + Grok text + TTS) and a microphone surface. A stolen
+  user JWT can burn voice budget. A leaked xAI hop must not be able to mutate
+  AVT (Phase 1 is read-only). Transcripts must not be stored.
+- **Pointer:** `docs/ux/brief_for_chatgpt_voice_director.md`;
+  `supabase/functions/grok-voice-director-proxy/index.ts`.
+- **Mitigations in prototype:** JWT + project ownership, origin allowlist,
+  per-user turn budget, no writes, no transcript bucket, key stays on the edge.
+- **Open follow-ups (if the kill-test lives):** CSP tighten, Durable Objects
+  for rate-limit consistency, Class C sign-off before `main`.
+- **DoD (target):** kill the feature, or pass Class C review with the
+  mitigations above plus a session budget visible in the UI.

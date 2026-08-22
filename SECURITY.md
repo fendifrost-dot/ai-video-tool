@@ -48,7 +48,9 @@ verified.
   (scheme allow-list, private-range / IP-literal blocking, redirect + byte caps).
 - **Provider keys never reach the browser.** `XAI_API_KEY` lives as an AVT edge
   secret; Fal is reached only through Control Center. Keys are never requested in
-  chat and never committed.
+  chat and never committed. The Voice Director (Phase 1) uses the same key on
+  `grok-voice-director-proxy` for STT / text / TTS — never speech-to-speech
+  credentials in the client. See RISK-REGISTER **VOICE-1**.
 
 **Intended invariant:** a user can act on their own artists, looks, features,
 locations, props, timelines, and rendered assets — and nothing else. Anonymous

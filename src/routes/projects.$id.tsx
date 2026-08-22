@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { ProjectSidebar } from "@/components/ProjectSidebar";
+import { VoiceDirector } from "@/components/voiceDirector/VoiceDirector";
 import { ProjectRailProvider } from "@/lib/projectRail";
 
 export const Route = createFileRoute("/projects/$id")({
@@ -14,6 +15,7 @@ function ProjectLayout() {
         <ProjectSidebar projectId={id} />
         <main className="min-w-0 flex-1">
           <Outlet />
+          <VoiceDirector projectId={id} />
         </main>
       </div>
     </ProjectRailProvider>
