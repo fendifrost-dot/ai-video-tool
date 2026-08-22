@@ -4,6 +4,19 @@
 **AVT client: wired** via Control Center proxy — generation is live when CC has
 `Frost_Grok` (or equivalent) configured.
 
+This file is the **production media** lane (Imagine HTTP API). Engineering
+research and pre-call review belong on **Grok Build** as
+`GROK_PROVIDER_SPECIALIST` — see root `AGENTS.md` and
+`.grok/skills/grok-provider-specialist/SKILL.md`. The CLI is not a substitute
+for `/v1/images/edits` or `/v1/videos/*`.
+
+Video **edit** (`POST /v1/videos/edits`, including the Architecture C research
+question of source video + `reference_images` + original-master compositing)
+is evaluated via the research-only adapter `grok-video-research-proxy` — not
+this production path. See `docs/research/GROK_RECAP_2026-08_PHASE0_PHASE1.md`.
+Locked swap docs are the written baseline under evidence review; do not treat
+them as the specialist's conclusion.
+
 ## Architecture
 
 ```
