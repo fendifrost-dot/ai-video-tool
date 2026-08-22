@@ -8,7 +8,7 @@
 > **Severity:** Critical / High / Medium / Low · **Confidence:** Confirmed / Likely /
 > Suspected · **Status:** Open / In-remediation / Mitigated / Closed.
 
-Last reviewed: **2026-08-26** (REL-1 closed — PR #19 merged 2026-08-18; Fal `media.format` 10-bit feed lands with this queue).
+Last reviewed: **2026-08-27** (VOICE-1 added for Phase 1 Voice Director kill-test).
 
 | id | Title | Severity | Confidence | Status | Owner |
 |----|-------|----------|-----------|--------|-------|
@@ -24,6 +24,7 @@ Last reviewed: **2026-08-26** (REL-1 closed — PR #19 merged 2026-08-18; Fal `m
 | [OPS-1](#ops-1--no-ci-gate) | No CI gate on tests | Medium | Confirmed | Open | Platform (AVT) |
 | [OPS-2](#ops-2--no-job-reaper) | No reaper for stuck/orphaned jobs | Medium | Likely | Open | Platform (AVT) |
 | [REL-1](#rel-1--pr16-compat-gate) | PR #16 preflight compatibility gate unmerged | Low | Confirmed | **Closed** (superseded by PR #19, merged 2026-08-18) | Products (AVT) |
+| [VOICE-1](#voice-1--grok-voice-director-spend-surface) | Voice Director STT/TTS/text spend + mic | Medium | Likely | Open | Products (AVT) |
 
 ---
 
@@ -240,3 +241,24 @@ Last reviewed: **2026-08-26** (REL-1 closed — PR #19 merged 2026-08-18; Fal `m
 - **DoD:** met — gate merged; parser now maps Fal `media.format` into the
   existing 10-bit factor. HDR tags remain absent from this probe and are not
   inferred from `Main 10`.
+
+---
+
+## VOICE-1 — Grok Voice Director spend surface
+
+- **Severity:** Medium · **Confidence:** Likely · **Status:** Open · **Owner:** Products (AVT)
+- **Summary:** Phase 1 Voice Director (`grok-voice-director-proxy`) adds a new
+  xAI spend path (STT + Grok text + TTS) and a microphone surface. A stolen
+  user JWT can burn voice budget. A leaked xAI hop must not be able to mutate
+  AVT (Phase 1 is read-only). Transcripts must not be stored.
+- **Pointer:** `docs/ux/brief_for_chatgpt_voice_director.md`;
+  `supabase/functions/grok-voice-director-proxy/index.ts`.
+- **Mitigations in prototype:** JWT + project ownership, origin allowlist,
+  per-user turn budget, no writes, no transcript bucket, key stays on the edge.
+- **Product authorization:** 2026-08-27 — landed as a kill-test (read-only tools
+  only). Kill the feature if it is not used to ask “what happens after the second
+  chorus?”
+- **Open follow-ups (if the kill-test lives):** CSP tighten, Durable Objects
+  for rate-limit consistency, session budget visible in the UI.
+- **DoD (target):** kill the feature, or keep it with the mitigations above plus
+  a visible session budget.
