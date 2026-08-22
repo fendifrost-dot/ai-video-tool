@@ -22,6 +22,7 @@ import {
   type ExtractConfig,
   type ExtractionRepro,
 } from "./frameExtract";
+import { assessProcessingCompatibility, isHdrSource } from "./videoPreflight";
 
 const CFG: ExtractConfig = {
   assetId: "asset-1",
@@ -273,7 +274,60 @@ describe("Fal input shaping — CONFIRMED keys", () => {
       container: "mov",
       width: 3840,
       height: 2160,
+      pixelFormat: null,
+      profile: null,
+      bitrateBps: null,
+      frameCount: null,
     });
+  });
+
+  it("extractVideoMeta reads pixel_format/profile/bitrate from media.format (not flat media)", () => {
+    // Live Fal shape captured 2026-08-22 on asset 059114c4-… . A flat-key
+    // patch would miss these and keep returning null.
+    const meta = extractVideoMeta({
+      media: {
+        codec: "hevc",
+        container: "mov",
+        duration: 20,
+        fps: 60,
+        frame_count: 1200,
+        bitrate: 40589532,
+        resolution: { width: 1080, height: 1920, aspect_ratio: "9:16" },
+        format: {
+          pixel_format: "yuv420p10le",
+          profile: "Main 10",
+          video_codec: "hevc",
+          bitrate: 40589532,
+          level: 123,
+          container: "mov",
+        },
+      },
+    });
+    expect(meta?.pixelFormat).toBe("yuv420p10le");
+    expect(meta?.profile).toBe("Main 10");
+    expect(meta?.bitrateBps).toBe(40589532);
+    expect(meta?.frameCount).toBe(1200);
+    expect(meta?.codec).toBe("hevc");
+    expect(meta?.width).toBe(1080);
+    expect(meta?.height).toBe(1920);
+  });
+
+  it("extractVideoMeta does not invent HDR tags from Main 10 / yuv420p10le", () => {
+    const meta = extractVideoMeta({
+      media: {
+        codec: "hevc",
+        format: { pixel_format: "yuv420p10le", profile: "Main 10" },
+      },
+    });
+    const probe = {
+      codec: meta?.codec,
+      pixelFormat: meta?.pixelFormat,
+      bitrateBps: meta?.bitrateBps,
+    };
+    const compat = assessProcessingCompatibility(probe);
+    expect(compat.tags).toContain("10-bit");
+    expect(compat.tags).not.toContain("HDR");
+    expect(isHdrSource(probe)).toBe(false);
   });
 
   it("extractClipVideoUrl tolerates trim + scale output shapes", () => {
