@@ -1,8 +1,8 @@
 # AVT — Aleph 2.0 vs Grok C · Benchmark Protocol
 
 **Status:** PRE-REGISTERED / PROVISIONAL — protocol frozen, **not yet run**.
-**Protocol version:** `aleph2-vs-grok-c-v1.0.0`
-**Date:** 2026-08-21 (inbound) · verification pass 2026-08-22
+**Protocol version:** `aleph2-vs-grok-c-v1.0.1` (v1.0.0 + pre-run lock of seed-pause and arm-3 hold)
+**Date:** 2026-08-21 (inbound) · verification pass 2026-08-22 · pre-run lock 2026-08-22
 **Class:** **A** (this file is documentation). **Executing** the matrix, promoting a winner, or wiring any engine is **Class C** (benchmarks + providers + rendering) and is **out of scope for this PR**.
 **Companion:** inbound `AVT_MCP_CAPABILITY_SWEEP.md` — **not present in this checkout** (searched `main` @ `36e955a`). This protocol stands alone until that file lands.
 **Governing spec:** [`docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md`](../REPRODUCIBLE_BENCHMARK_SYSTEM.md) v1.0.
@@ -17,7 +17,7 @@ Evidence classes used throughout: **[V]** Verified · **[O]** Observed · **[H]*
 ## LINEAGE
 
 ```
-benchmark version:      aleph2-vs-grok-c-v1.0.0   (PROTOCOL — no scores yet)
+benchmark version:      aleph2-vs-grok-c-v1.0.1   (PROTOCOL — no scores yet; v1.0.0 + §5 rules 8–9)
 derived-from:           inbound brief 2026-08-21 + wardrobe-swap-v1 + grok-recap-2026-08
 algorithm version:      13-axis 0–3 rubric (§4), pre-registered before any render
 source SHA-256:         benchmark_1080p_clip  509ef6f5c7780c5c8236532d1347cdad1e3cc45444acf5932f89540973a85e20
@@ -128,9 +128,11 @@ Other doors, unchanged:
 | Runware `runway:aleph@2.0` | **no** — `model` / `inputs` / `positivePrompt` / `numberResults` (+ optional `frameImages`) | **[V]** runware.ai Aleph 2.0 editing guide | Not used. |
 | OpenRouter `runway/aleph-2` | optional `seed`; "determinism is not guaranteed for every provider" | **[V]** openrouter.ai/runway/aleph-2 | Not used (wrong tool; router-shaped). |
 
-**[D] Access path, decided before the first run:** provision `RUNWAYML_API_SECRET` and call Runway native. Replicate is **not** required to obtain seed. If a repeated native seed fails axis 13, **then** Replicate may be used as an experimental instrument — never a production path.
+**[D] Access path, decided before the first run:** provision `RUNWAYML_API_SECRET` and call Runway native. Replicate is **not** required to obtain seed.
 
-Why this still matters: the stated reason to prefer Aleph over Grok on epistemics is that seed lets us separate architectural capability from sampling variance (R4b vanishing improvement, R7 band regression — those run labels are **inbound**, not re-derived this session). A seed that does not reproduce is n=1 again.
+**[D] A failed seed check PAUSES Aleph spend. It does not merely annotate.** Deciding that after the first paid run is the thing that would invalidate the round, so it is locked here. See §4.1 for the scoring method and §5 rule 8 for the spend/verdict consequence. Switching to Replicate after a failed native seed is a **new protocol version** (v1.1+), written before any Replicate call — not an in-round door.
+
+Why this still matters: the stated reason to prefer Aleph over Grok on epistemics is that seed lets us separate architectural capability from sampling variance (R4b vanishing improvement, R7 band regression — those run labels are **inbound**, not re-derived this session). A seed that does not reproduce is n=1 again, and n=2 on every other axis loses the weight it was bought to have.
 
 ## 0.4 Hard constraints that shape the test
 
@@ -275,11 +277,19 @@ Arm 1 does **not** use this prompt. It uses the Recipe image fields.
 
 Arm 0 does **not** use this prompt. It uses the existing Grok best config as-is.
 
-### 3.2 Arm 3 cannot run from the current frozen set
+### 3.2 Arm 3 cannot run from the current frozen set — hold this line
 
 We have **one** garment-correct, identity-broken Grok still (`frame_00134`). Arm 3 wants 3–5 keyframes. Generating more Grok stills would **unfreeze Grok prompting** and spend outside this protocol.
 
-**[D]** Arm 3 stays in tranche 2 and additionally requires either (a) already-existing identity-broken Grok stills at clean-pose and recovery frames, checksummed into this protocol as a v1.1 **before** that arm is paid, or (b) an explicit human decision to reuse the single still at multiple timestamps (likely invalid — record as such if chosen). Do not improvise mid-run.
+**[D]** Predicted pressure, pre-rejected: after arm 2 shows *any* signal, it will be tempting to "just generate two more Grok stills" so arm 3 can run. That is a protocol violation, not a convenience. Mid-round Grok prompting is how this round silently becomes a different experiment.
+
+Arm 3 stays unrunnable until **all** of:
+
+1. Tranche 1 has been scored and rule 7 / rule 8 have not stopped the round.
+2. Already-existing identity-broken Grok stills at a clean-pose frame and a recovery frame are **checksummed into a new protocol version** (v1.1+) **before** that arm is paid. "Already-existing" means they were produced under a prior frozen Grok config, not generated to fill this hole.
+3. A human explicitly authorizes the v1.1 arm-3 spend.
+
+Reusing the single `frame_00134` still at multiple timestamps is **invalid** unless a human writes that choice into the v1.1 version before the call. Do not improvise mid-run. Do not treat "we don't have the stills" as a reason to unfreeze Grok.
 
 ---
 
@@ -301,16 +311,49 @@ Score every arm on all 13 axes, **0–3** (0 = fails, 1 = partial, 2 = good, 3 =
 | 10 | Scene preservation | Unrelated-pixel regeneration; background changed | Background/lighting held |
 | 11 | Resolution | Output below input, or soft | ≥ 1080×1920, not softened past the source |
 | 12 | Timing / truncation | Output duration ≠ input; clipped ending | Duration matches ~4.02 s |
-| 13 | Reproducibility | Second run disagrees, or repeated seed does not reproduce | n=2 agrees; repeated seed (Aleph) agrees |
+| 13 | Reproducibility | Second run disagrees, or repeated seed does not reproduce on the hinge | n=2 agrees; repeated seed (Aleph) agrees on axes 1, 2, 7, 8 |
 
 Ground-truth reference: wardrobe-swap-v1 16-bit PNG sequence (T7) for identity/motion/scene; SL bomber refs for garment/typography; Grok anchor **only** as the *contaminated keyframe input*, never as identity ground truth.
 
 ### Axis 13 is not optional and is not scored from a single run
 
 - **n=2 minimum on every paid arm.** Same settings, second execution.
-- On the best Aleph arm, if seed is accepted (schema says yes): **two different seeds** + **one repeated seed**. A repeated seed that does not reproduce means the seed is not doing what we think, and every downstream conclusion is n=1 again.
 - An arm that wins on run 1 and loses on run 2 is **unresolved**, not a win.
 - Product Swap has no seed: n=2 same-settings is the whole axis-13 test for arm 1.
+
+### 4.1 Repeated-seed method (Aleph) — locked before spend
+
+"Exposes `seed: int`" plus a docstring that says "**similar** results" is not the same as reproducible. Byte-identical outputs are **not** the test — two MP4s of the same generation will not hash-equal. Axis 13 compares the two **scored readings**, not the bytes.
+
+**Tranche 1 Aleph pair is the repeated-seed test.** Do not buy a third Aleph run inside tranche 1.
+
+| Run | Seed (frozen) | What it is |
+|---|---|---|
+| Arm 2 run 1 | **`42`** | first paid Aleph call |
+| Arm 2 run 2 | **`42`** | n=2 **and** the repeated-seed check |
+
+The different-seed pair (seed `43` vs `42`) is **not** part of tranche 1. It is attribution, bought only after the stop-and-reassess **and** only if rule 8 did not pause.
+
+**How to score the repeated-seed pair** (compare the two outputs to *each other*):
+
+| Axis 13 | Meaning |
+|---|---|
+| **3** | A scorer would not change any of axes 1–10 between the two runs |
+| **2** | Hinge axes **1, 2, 7, 8** agree within 1 point; construction axes (3–6, 9) may drift by 1 |
+| **1** | The two runs would change the hinge reading (identity, motion, occlusion, or temporal consistency) |
+| **0** | Hinge reading flips, or one run is unusable |
+
+**[D] Pause vs annotate, decided now:**
+
+| Result | Spend | Verdict weight |
+|---|---|---|
+| Axis 13 **≤ 1** on the Aleph repeated-seed pair | **PAUSE all further Aleph spend** (no arm 4, no arm 3, no different-seed pair, no Replicate switch). Arm 1 may finish its n=2. | No Aleph verdict this round (rule 5). The n=2 on axes 1–12 cannot carry VERIFIED weight. |
+| Axis 13 **= 2** | Finish tranche 1 if the second Product Swap run is unpaid. **Do not buy tranche 2 Aleph arms** without a new human authorization that explicitly accepts a weakened seed. | Aleph conclusions capped at **OBSERVED**. |
+| Axis 13 **= 3** | Normal stop-and-reassess. Different-seed pair is optional attribution in tranche 2, not required to score arm 2. | VERIFIED remains available if the rest of rule 5 holds. |
+
+**If §7 live-rejects `seed`** (400 naming an unknown field): we never had a working seed. Run tranche 1 arm 2 as two **unseeded** same-settings calls. The hinge question (identity inheritance) does not require seed; the epistemics claim does. Any Aleph verdict is then capped at OBSERVED. Do not invent a Replicate hop mid-round.
+
+**If §7 accepts `seed` but the provider ignores it** (repeated `42` behaves like two random draws → axis 13 ≤ 1): that **is** a failed seed check. Pause. Same row as axis 13 ≤ 1.
 
 ---
 
@@ -325,6 +368,8 @@ Written now so the result cannot be rationalized later.
 5. **Any scored arm fails axis 13** → no verdict recorded from this round, full stop. Do not promote an n=1 result.
 6. **Arm 1 succeeds on identity + garment + motion** → record it; it still does not authorize production wiring. It does authorize a Class-C design review of whether a Recipe belongs in the research lane.
 7. **Tranche 1 (arms 1 and 2) both reproduce the Grok failure modes** (garment topology breaks, identity drifts, occlusion unrecovered) → **stop**. Do not buy tranche 2. Verdict: Runway is a different flavour of the same failure.
+8. **Aleph repeated-seed pair scores axis 13 ≤ 1** → **PAUSE all further Aleph spend.** Do not annotate-and-continue. Do not hop to Replicate. Do not buy arm 4 to "attribute" a result that is n=1 again. Arm 1 (no seed) may finish. See §4.1.
+9. **Arm 3 is not fillable mid-round.** Absence of extra identity-broken Grok stills is not authorization to generate them. See §3.2.
 
 Inbound rule numbers used B1/B2/B3 for prompt-only / +1 kf / +3–5 kf. This version maps **B1 → arm 4**, **B2 → arm 2**, **B3 → arm 3**.
 
@@ -334,11 +379,11 @@ Inbound rule numbers used B1/B2/B3 for prompt-only / +1 kf / +3–5 kf. This ver
 
 **Do not commit the $15–25 matrix up front.**
 
-**Tranche 1 — ~$3–5.** Arm 1 (Product Swap) + arm 2 (Aleph + 1 kf), each n=2.
+**Tranche 1 — ~$3–5.** Arm 1 (Product Swap) + arm 2 (Aleph + 1 kf), each n=2. Arm 2's two runs **are** the repeated-seed pair (seed `42` / `42`). No third Aleph call in this tranche.
 
 | Line | Est. |
 |---|---|
-| Aleph 4 s × 2 @ $0.28/s | $2.24 |
+| Aleph 4 s × 2 @ $0.28/s (seed `42` / `42`) | $2.24 |
 | Product Swap × 2 | **unknown — price before running** |
 | Buffer | to ~$5 |
 
@@ -349,7 +394,7 @@ This buys the two answers that gate everything:
 1. Does Runway already have a purpose-built primitive that does this? (arm 1)
 2. Does Aleph inherit the contaminated keyframe's identity, or read only garment truth from it? (arm 2)
 
-**Stop and reassess after tranche 1.** Rule 7 applies.
+**Stop and reassess after tranche 1.** Rules 7 and 8 apply. Rule 8 can fire after arm 2 run 2 and stop Aleph before any later arm; it does not cancel an already-submitted Product Swap run.
 
 **Tranche 2** only if tranche 1 shows signal worth attributing.
 
@@ -395,10 +440,10 @@ Correction to the original sweep, worth flagging: a first-party generative-media
 # 8. Sequencing and boundaries
 
 - Runs **after** the compatibility-gate stopping point. **[V]** PR #19 is merged. Identity / PR #17 remains release-critical and **above** this.
-- This does **not** unfreeze Grok prompting. Arm 0 uses the existing best config as-is.
+- This does **not** unfreeze Grok prompting. Arm 0 uses the existing best config as-is. Arm 3 does not get to change that (rule 9).
 - **No production integration.** Not for Aleph, not for Product Swap, not for the Router. Not an AVT edge function. Not a CC allowlist change. Not a provider-registry change. The production path — AVT → Control Center → fal — is untouched.
 - Outputs are **evidence, not production truth**, until imported through the benchmark/evidence process ([`docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md`](../REPRODUCIBLE_BENCHMARK_SYSTEM.md)). Same rule as Grok Build.
-- Protocol is **frozen** as of `aleph2-vs-grok-c-v1.0.0`. Changes to arms, rubric, or decision rules after the first paid run invalidate the round. Pre-run corrections in this file (seed on native; schema-bound VTV union; frame 134 containment; Product Swap field set) are part of v1.0.0 because **no paid run has happened**.
+- Protocol is **frozen** as of `aleph2-vs-grok-c-v1.0.1`. Changes to arms, rubric, or decision rules after the first paid run invalidate the round. This v1.0.1 lock (seed-pause = rule 8; arm-3 hold = rule 9; repeated-seed method = §4.1) is pre-run: **no paid run has happened**.
 
 ### What this PR does **not** do
 
