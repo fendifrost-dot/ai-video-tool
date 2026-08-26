@@ -8,7 +8,7 @@
 > **Severity:** Critical / High / Medium / Low · **Confidence:** Confirmed / Likely /
 > Suspected · **Status:** Open / In-remediation / Mitigated / Closed.
 
-Last reviewed: **2026-08-08** (RISK-001 Part B storage re-key — Phase 1 copy+verify complete; redefined RISK-002 as identity **+ storage-ownership** architecture; added STOR-1…STOR-4 per-bucket path-strand entries).
+Last reviewed: **2026-08-26** (REL-1 closed — PR #19 merged 2026-08-18; Fal `media.format` 10-bit feed lands with this queue).
 
 | id | Title | Severity | Confidence | Status | Owner |
 |----|-------|----------|-----------|--------|-------|
@@ -23,7 +23,7 @@ Last reviewed: **2026-08-08** (RISK-001 Part B storage re-key — Phase 1 copy+v
 | [ARCH-1](#arch-1--lane-a-propagation-inert) | Lane A propagation inert (production hole) | Medium | Confirmed | Open | Products (AVT) |
 | [OPS-1](#ops-1--no-ci-gate) | No CI gate on tests | Medium | Confirmed | Open | Platform (AVT) |
 | [OPS-2](#ops-2--no-job-reaper) | No reaper for stuck/orphaned jobs | Medium | Likely | Open | Platform (AVT) |
-| [REL-1](#rel-1--pr16-compat-gate) | PR #16 preflight compatibility gate unmerged | Low | Confirmed | Open | Products (AVT) |
+| [REL-1](#rel-1--pr16-compat-gate) | PR #16 preflight compatibility gate unmerged | Low | Confirmed | **Closed** (superseded by PR #19, merged 2026-08-18) | Products (AVT) |
 
 ---
 
@@ -227,9 +227,16 @@ Last reviewed: **2026-08-08** (RISK-001 Part B storage re-key — Phase 1 copy+v
 
 ## REL-1 — PR #16 compat gate
 
-- **Severity:** Low · **Confidence:** Confirmed · **Status:** Open · **Owner:** Products (AVT)
-- **Summary:** The versioned video-preflight **compatibility** gate work (media
-  compatibility, asset-authoritative master metadata) is not yet merged to `main`.
-- **Pointer:** PR #16 / branch `feat/video-preflight-compat-gate`;
-  `supabase/functions/_shared/videoPreflight.ts`.
-- **DoD (target):** PR reviewed and merged, or explicitly parked with rationale.
+- **Severity:** Low · **Confidence:** Confirmed · **Status:** **Closed** · **Owner:** Products (AVT)
+- **Summary:** The versioned video-preflight **compatibility** gate (media
+  compatibility, asset-authoritative master metadata) landed via **PR #19**
+  (`b964c67`, merged 2026-08-18), which superseded unmerged PR #16. The 10-bit
+  factor in `assessProcessingCompatibility` was already correct; it was starved
+  because `extractVideoMeta` did not read nested `media.format.pixel_format`.
+  That feed is the remaining preflight parser fix (this landing queue / original
+  PR #26).
+- **Pointer:** PR #19 / `supabase/functions/_shared/videoPreflight.ts`; parser
+  expansion in `_shared/frameExtract.ts`.
+- **DoD:** met — gate merged; parser now maps Fal `media.format` into the
+  existing 10-bit factor. HDR tags remain absent from this probe and are not
+  inferred from `Main 10`.

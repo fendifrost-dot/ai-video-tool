@@ -6,8 +6,8 @@
 > tests touch a live provider, real media, or a deployed environment. Report the
 > five numbers, or report none.
 
-Last verified: **2026-08-20** on `cursor/cover-flight-guide-6781` (PR #20 head,
-includes PR #19). Categorized by the `vi.mock` / `vi.stubGlobal` rule below,
+Last verified: **2026-08-26** on `cursor/land-ready-queue-84cf` (lands PR #26
+parser tests + this queue). Categorized by the `vi.mock` / `vi.stubGlobal` rule below,
 then re-counted with Vitest.
 
 ---
@@ -16,15 +16,15 @@ then re-counted with Vitest.
 
 | Category | Definition | Runs against | Count |
 |----------|------------|--------------|------:|
-| **Unit** | Pure functions / modules; no test double for an I/O boundary (in-memory fixtures only). | Nothing external | **576** |
+| **Unit** | Pure functions / modules; no test double for an I/O boundary (in-memory fixtures only). | Nothing external | **578** |
 | **Integration (mocked)** | Exercises a seam across modules **with a test double** for an external boundary — Supabase client, storage, or `fetch` — or renders a component wiring several real modules. **No live network.** | Mocks / stubs | **37** |
 | **Provider-Live** | Actually calls Fal / Grok / xAI (or a sandbox thereof) and asserts on the real response contract. | Live provider APIs | **0** |
 | **Real-Media-Benchmark** | Runs the real pipeline on real T7 benchmark media and asserts on output fidelity (identity, garment, stripe/logo, flicker). | Real footage + real compute | **0** |
 | **Deployment-Smoke** | Hits a deployed edge function / published frontend and asserts it is live and correctly wired (incl. RLS: an `anon` client is *denied*). | Deployed environment | **0** |
-| | | **TOTAL** | **613** |
+| | | **TOTAL** | **615** |
 
 **Headline, stated correctly:**
-> **613 automated tests across 47 files: 576 unit, 37 mocked-integration, 0 provider-live,
+> **615 automated tests across 47 files: 578 unit, 37 mocked-integration, 0 provider-live,
 > 0 real-media-benchmark, 0 deployment-smoke.**
 
 The three zeros are the whole point. The suite proves our **pure logic** is correct.
@@ -55,7 +55,8 @@ Under that rule, exactly **four files** are Integration (mocked):
 | `src/lib/queries/wardrobeVideoFramesGate.test.ts` | 6 | `vi.mock`s Supabase + auth and `vi.stubGlobal`s `fetch` (PR #19 compatibility gate) |
 | **Total** | **37** | |
 
-The remaining **43** files (**576** cases) are Unit — pure helpers and validators.
+The remaining **43** files (**578** cases) are Unit — pure helpers and validators. (+2
+on nested Fal `media.format` in `frameExtract.test.ts`, this landing.)
 Cover Flight (`src/lib/coverFlight/*.test.ts`, PR #20) is Unit: 29 cases, no I/O
 double. Notably, several *security-relevant* and *provider-contract* tests are Unit,
 not Integration, because they exercise **pure** functions with no I/O double:
@@ -79,10 +80,10 @@ not Integration, because they exercise **pure** functions with no I/O double:
 
 Run from the repo root. **Exclude sibling git worktrees** — Vitest's default glob
 otherwise scans `.claude/worktrees/*` full-repo copies and multiplies the numbers
-(e.g. reports 132 files / 1672 tests instead of 47 / 613).
+(e.g. reports 132 files / 1672 tests instead of 47 / 615).
 
 ```bash
-# Total + per-category base (47 files, 613 cases)
+# Total + per-category base (47 files, 615 cases)
 npx vitest run --exclude '**/.claude/worktrees/**' --exclude '**/node_modules/**'
 
 # Which files are Integration (mocked): the only ones installing an I/O double
