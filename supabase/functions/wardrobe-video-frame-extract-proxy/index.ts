@@ -107,16 +107,6 @@ const POLL_TIMEOUT_MS = 12 * 60 * 1000;
 const OUT_BUCKET = "project-exports";
 const DEFAULT_MAX_FRAMES = 900;
 
-// TEMPORARY RESEARCH INSTRUMENTATION — remove after the one-shot raw Fal
-// metadata probe. Writes project_assets.metadata_json.debug_fal_meta so we
-// can inspect the live Fal ffmpeg-api/metadata payload. Not a product
-// change. The guard is hard-pinned to a single fixture id. Do not
-// generalize it: no request flag, no env var, no wildcard, no second id.
-// HDR is not inferred here. This block only captures the raw payload.
-const DEBUG_FAL_META_ASSET_IDS: readonly string[] = [
-  "059114c4-cb4b-4b29-ab22-6df3a8337c4d",
-];
-
 type Body = {
   assetId?: string;
   startSec?: number;
@@ -208,42 +198,6 @@ async function patchMeta(
     .from("project_assets")
     .update({ metadata_json: { ...current, ...patch } })
     .eq("id", assetId);
-}
-
-/**
- * TEMPORARY RESEARCH — persist the RAW Fal ffmpeg-api/metadata payload
- * under project_assets.metadata_json.debug_fal_meta for the pinned
- * fixture only.
- *
- * Purpose: determine whether pixel_format / profile / bitrate /
- * frame_count (or other useful stream metadata) are present in the live
- * Fal response and currently discarded by extractVideoMeta, or are
- * absent from Fal entirely. HDR stays out of scope.
- *
- * REMOVE after the single fixture probe. Best-effort: never throw, never
- * change extract / compatibility behaviour for any other asset.
- */
-async function persistDebugFalMeta(
-  admin: ReturnType<typeof createClient>,
-  assetId: string,
-  raw: Record<string, unknown>,
-): Promise<void> {
-  if (!DEBUG_FAL_META_ASSET_IDS.includes(assetId)) return;
-  const media = (raw.media ?? raw) as Record<string, unknown>;
-  const mediaObj = media && typeof media === "object" ? media : {};
-  try {
-    await patchMeta(admin, assetId, {
-      debug_fal_meta: {
-        note: "TEMPORARY — raw Fal metadata for parser-loss check. Remove after probe.",
-        captured_at: new Date().toISOString(),
-        top_level_keys: Object.keys(raw),
-        media_keys: Object.keys(mediaObj),
-        raw,
-      },
-    });
-  } catch {
-    // Research persist must never fail the extract path.
-  }
 }
 
 /** List the frame indices already stored under the extraction prefix (resume set). */
@@ -531,23 +485,20 @@ serve(async (req) => {
         metaModel,
         buildMetadataInput(masterSigned.signedUrl),
       );
-      // TEMPORARY RESEARCH — persist raw Fal metadata for the pinned
-      // fixture only. Must run on the raw result, before extractVideoMeta
-      // keeps only duration / fps / codec / container / width / height.
-      // Removal: delete DEBUG_FAL_META_ASSET_IDS, persistDebugFalMeta,
-      // and this call after the one-shot probe is read. No product change.
-      await persistDebugFalMeta(admin, config.assetId, srcMetaResult);
-
       const svm = extractVideoMeta(srcMetaResult);
       if (svm) {
-        // Fal metadata does not surface pixel_format / HDR tags today; they pass
-        // through as null (preflight keeps HDR tags as-is when present).
+        // pixel_format / profile / bitrate live under media.format (verified
+        // 2026-08-22 probe). HDR tags are genuinely absent — do not infer HDR
+        // from Main 10 or yuv420p10le. profile/frameCount stay on VideoMeta
+        // (provenance); they are not SourceProbe fields.
         falProbe = {
           width: svm.width,
           height: svm.height,
           fps: svm.fps,
           codec: svm.codec,
           durationSec: svm.durationSec,
+          pixelFormat: svm.pixelFormat,
+          bitrateBps: svm.bitrateBps,
         };
       }
     } catch {

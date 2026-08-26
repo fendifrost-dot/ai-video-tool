@@ -397,23 +397,51 @@ export interface VideoMeta {
   container: string | null;
   width: number | null;
   height: number | null;
+  /** From `media.format.pixel_format` (e.g. "yuv420p10le"). Not an HDR tag. */
+  pixelFormat: string | null;
+  /** From `media.format.profile` (e.g. "Main 10"). Not an HDR tag. */
+  profile: string | null;
+  /** From `media.format.bitrate` or flat `media.bitrate` (bits/sec). */
+  bitrateBps: number | null;
+  /** From flat `media.frame_count` (or `media.format.frame_count`). */
+  frameCount: number | null;
 }
 
-/** Parse `fal-ai/ffmpeg-api/metadata` output (`media:{...}`), tolerating shape. */
+/**
+ * Parse `fal-ai/ffmpeg-api/metadata` output (`media:{...}`), tolerating shape.
+ *
+ * Verified 2026-08-22 on fixture `059114c4-…` (deployed `f9cd33f` probe):
+ * `pixel_format`, `profile`, and `bitrate` live under **`media.format`**,
+ * not flat on `media`. `frame_count` is flat on `media`. A flat-key-only
+ * patch would keep returning null and look like the probe had failed.
+ *
+ * HDR tags (color primaries / transfer / matrix / `colr`) are genuinely
+ * absent from this payload. Do **not** infer HDR from `Main 10` or
+ * `yuv420p10le` — bit depth is established; HDR is not.
+ */
 export function extractVideoMeta(result: Record<string, unknown>): VideoMeta | null {
   const media = (result?.media ?? result) as Record<string, unknown> | undefined;
   if (!media || typeof media !== "object") return null;
   const res = (media.resolution ?? {}) as Record<string, unknown>;
+  const formatRaw = media.format;
+  const format =
+    formatRaw && typeof formatRaw === "object" && !Array.isArray(formatRaw)
+      ? (formatRaw as Record<string, unknown>)
+      : {};
   const num = (v: unknown): number | null =>
     typeof v === "number" && Number.isFinite(v) ? v : null;
   const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
   return {
     durationSec: num(media.duration),
     fps: num(media.fps),
-    codec: str(media.codec),
-    container: str(media.container),
+    codec: str(media.codec) ?? str(format.video_codec),
+    container: str(media.container) ?? str(format.container),
     width: num(res.width),
     height: num(res.height),
+    pixelFormat: str(format.pixel_format) ?? str(media.pixel_format),
+    profile: str(format.profile) ?? str(media.profile),
+    bitrateBps: num(format.bitrate) ?? num(media.bitrate),
+    frameCount: num(media.frame_count) ?? num(format.frame_count),
   };
 }
 
