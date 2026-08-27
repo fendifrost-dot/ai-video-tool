@@ -86,6 +86,7 @@ Browser → AVT jacket-inpaint-proxy (user JWT)
 | Grok video vs image wiring | `docs/grok_api_status.md` |
 | CC provider proxy pattern | `docs/control_center_provider_proxy.md` |
 | Music Cover Flight (Flow / Omni Flash, manual workflow) | `claude_code_handoff_avt_cover_flight.md` |
+| **2026-08-26/27 catch-up** (Fal format parser, Voice Director, RISK-001 Part A, Grok recap handoff) | `claude_code_handoff_avt_2026-08-26_catchup.md` |
 
 **Stale trap:** `AVT_MEMORY_HANDOFF.md` “Where things live” once lists CC repo as “this repo” — in an **AVT** session, **this repo** = `ai-video-tool` only.
 
@@ -119,7 +120,9 @@ Rules:
 - No image/video processing in Claude sandbox — all through AVT/CC edge functions
 - Publish ≠ edge redeploy; list which functions you redeployed
 
-Recent: jacket-inpaint evf-sam 502 retry is in e391f93 (jacket-inpaint-proxy). 
+Recent: 2026-08-26/27 catch-up is in claude_code_handoff_avt_2026-08-26_catchup.md
+(PRs #28–#31 on main). Grok recap Phase 2 is Claude's job; Cursor got 401 on P1.
+Jacket-inpaint evf-sam 502 retry is in e391f93 (jacket-inpaint-proxy). 
 Grok image lane is in aef389e+ (grok-image-garment-proxy, XAI_API_KEY on AVT).
 
 Task: [Fendi fills in]
