@@ -8,13 +8,13 @@
 > **Severity:** Critical / High / Medium / Low · **Confidence:** Confirmed / Likely /
 > Suspected · **Status:** Open / In-remediation / Mitigated / Closed.
 
-Last reviewed: **2026-08-27** (VOICE-1 added for Phase 1 Voice Director kill-test).
+Last reviewed: **2026-08-27** (RISK-001 Part A table RLS apply authorized; VOICE-1 kill-test landed).
 
 | id | Title | Severity | Confidence | Status | Owner |
 |----|-------|----------|-----------|--------|-------|
-| [RISK-001](#risk-001--anonymous-rls--bucket-exposure) | Anonymous RLS / bucket exposure | Critical | Confirmed | **In-remediation** (revert migration authored, `docs/security/RISK-001/`; awaiting Class-C review + apply — **gated on RISK-002 one-time consolidation**, see Identity Health Report) | Platform / Products (AVT) |
+| [RISK-001](#risk-001--anonymous-rls--bucket-exposure) | Anonymous RLS / bucket exposure | Critical | Confirmed | **In-remediation** (Part A **tables applied** 2026-08-27; `look-composites` bucket still open until Part B policy) | Platform / Products (AVT) |
 | [RISK-002](#risk-002--identity--storage-ownership-architecture) | Identity **+ storage-ownership** architecture (files coupled to disposable anon-UID paths) | High | Confirmed | Open | Platform (AVT) |
-| [STOR-1](#stor-1--look-composites-uid-path-strand) | `look-composites` UID-path strand | Critical | Confirmed | **In-remediation** (Part-B Phase 1 copy+verify DONE; ref-switch + policy pending) | Platform (AVT) |
+| [STOR-1](#stor-1--look-composites-uid-path-strand) | `look-composites` UID-path strand | Critical | Confirmed | **In-remediation** (Phase 1 copy+verify DONE; Phase B `artist_looks` ref-switch DONE; **bucket policy still open**) | Platform (AVT) |
 | [STOR-2](#stor-2--project-references-uid-path-strand) | `project-references` UID-path strand | High | Confirmed | Open (inventory pending) | Platform (AVT) |
 | [STOR-3](#stor-3--project-clips-uid-path-strand) | `project-clips` UID-path strand | High | Confirmed | Open (inventory pending) | Platform (AVT) |
 | [STOR-4](#stor-4--other-uid-path-encoded-buckets) | Other UID-path buckets (`wardrobe-refs`, `style-references`, `project-exports`, `product-assets`, `artist-assets`) + named-unconfirmed (`hero-frames`, `face-reference`) | High | Confirmed | Open (inventory pending) | Platform (AVT) |
@@ -31,11 +31,13 @@ Last reviewed: **2026-08-27** (VOICE-1 added for Phase 1 Voice Director kill-tes
 ## RISK-001 — Anonymous RLS / bucket exposure
 
 - **Severity:** Critical · **Confidence:** Confirmed · **Status:** In-remediation
-  (revert migration + forensic/impact/verification artifacts authored under
-  [`docs/security/RISK-001/`](docs/security/RISK-001/); **not yet applied**, awaiting
-  Class-C architecture + security review, and **gated on the RISK-002 one-time
-  identity consolidation** — see
-  [`docs/security/RISK-001/IDENTITY_HEALTH_REPORT.md`](docs/security/RISK-001/IDENTITY_HEALTH_REPORT.md)) ·
+  (**Part A tables applied 2026-08-27** via Lovable SQL — owner-scoped RLS restored
+  on `artists`, `character_features`, `location_library`, `prop_library`,
+  `artist_looks`. Live inventory confirmed the drop list: `*_anon_all`,
+  `*_open_test`, `single_tenant_all`. Go/no-go: 1 durable owner
+  `3ca10935-…`, 0 table rows would strand. **`look-composites` bucket still
+  open** until Part B policy — copy+checksum and `artist_looks` ref-switch
+  already done.) ·
   **Owner:** Platform / Products (AVT)
 - **Summary:** Any anonymous (`anon`) caller can read, write, and delete real user
   data across several core tables and the `look-composites` storage bucket.
@@ -138,7 +140,7 @@ Last reviewed: **2026-08-27** (VOICE-1 added for Phase 1 Voice Director kill-tes
 
 - **Severity:** Critical · **Confidence:** Confirmed · **Status:** In-remediation · **Owner:** Platform (AVT)
 - **Summary:** 363 legacy-era objects, **314 under 15 legacy anon-UID prefixes** (49 already durable). This is the bucket in RISK-001's DoD.
-- **Progress:** Part-B **Phase 1 (copy + checksum) COMPLETE** — 313/313 in-scope copied & sha256-verified byte-identical; 1 held (`864088d5…`, unexplained). Originals preserved. See [`docs/security/RISK-001/STORAGE_REKEY_PHASE1_RECONCILIATION.md`](docs/security/RISK-001/STORAGE_REKEY_PHASE1_RECONCILIATION.md) and [`STORAGE_REKEY_PLAN.md`](docs/security/RISK-001/STORAGE_REKEY_PLAN.md).
+- **Progress:** Part-B **Phase 1 (copy + checksum) COMPLETE** — 313/313 in-scope copied & sha256-verified. **Phase B `artist_looks` ref-switch COMPLETE** (156 rows, 0 legacy paths remaining in that table). **Bucket policy still open** (anon `look_composites_anon_*` + `look-composites_open_test` still live — Part B policy, not this apply). 1 held object (`864088d5…`). See [`STORAGE_REKEY_PHASE_B_RECONCILIATION.md`](docs/security/RISK-001/STORAGE_REKEY_PHASE_B_RECONCILIATION.md).
 - **DoD:** 285 `artist_looks` references switched to target paths and reconciled to 0 legacy prefixes; all 313 readable as the durable account; **then** bucket policy tightened; legacy originals deleted only in a later gate.
 
 ### STOR-2 — `project-references` UID-path strand
