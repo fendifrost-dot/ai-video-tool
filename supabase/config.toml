@@ -24,6 +24,11 @@ verify_jwt = false
 [functions.grok-image-garment-proxy]
 verify_jwt = true
 
+# Phase 1 Voice Director — STT / Grok text phrasing / TTS. User JWT required.
+# Read-only; no Imagine/video. See docs/ux/brief_for_chatgpt_voice_director.md.
+[functions.grok-voice-director-proxy]
+verify_jwt = true
+
 # Resolution verification harness (not a product lane). Runs server-side with
 # the service-role key so it needs no browser session — hence verify_jwt = false.
 # It authenticates itself by requiring the service-role key as the bearer token.
