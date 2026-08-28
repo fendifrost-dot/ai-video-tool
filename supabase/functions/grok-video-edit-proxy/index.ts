@@ -89,19 +89,6 @@ async function signStorage(
   return null;
 }
 
-async function signAsset(admin: Admin, assetId: string): Promise<string | null> {
-  const { data, error } = await admin
-    .from("project_assets")
-    .select("id, file_url, asset_type, user_id, project_id")
-    .eq("id", assetId)
-    .maybeSingle();
-  if (error || !data?.file_url) return null;
-  const path = data.file_url as string;
-  if (path.startsWith("https://")) return path;
-  const bucket = bucketForAssetType(String(data.asset_type ?? ""));
-  return signStorage(admin, path, [bucket, ...VIDEO_BUCKETS]);
-}
-
 function estimateCostUsd(model: string, durationSeconds: number): number {
   const rate = PRICE_USD_PER_SECOND[model] ?? 0.08;
   return Number((rate * durationSeconds).toFixed(4));
@@ -185,7 +172,35 @@ serve(async (req) => {
   const prompt = body.prompt ?? DEFAULT_PROMPT;
   const maxCostUsd = body.maxCostUsd ?? DEFAULT_MAX_COST_USD;
 
-  const videoUrl = await signAsset(admin, body.videoAssetId);
+  const { data: project, error: pErr } = await admin
+    .from("projects")
+    .select("id, artist_id, user_id")
+    .eq("id", body.projectId)
+    .maybeSingle();
+  if (pErr) return json(500, { error: "project_query_failed", detail: pErr.message });
+  if (!project || project.user_id !== userId || project.artist_id !== body.artistId) {
+    return json(403, { error: "project_forbidden" });
+  }
+
+  const { data: videoAsset, error: vErr } = await admin
+    .from("project_assets")
+    .select("id, user_id, project_id, file_url, asset_type")
+    .eq("id", body.videoAssetId)
+    .maybeSingle();
+  if (vErr) return json(500, { error: "video_asset_query_failed", detail: vErr.message });
+  if (!videoAsset || videoAsset.user_id !== userId || videoAsset.project_id !== body.projectId) {
+    return json(403, { error: "not_owner" });
+  }
+  if (!videoAsset.file_url) return json(404, { error: "video_asset_not_resolvable" });
+
+  const videoPath = videoAsset.file_url as string;
+  const videoUrl = videoPath.startsWith("https://")
+    ? videoPath
+    : await signStorage(
+        admin,
+        videoPath,
+        [bucketForAssetType(String(videoAsset.asset_type ?? "")), ...VIDEO_BUCKETS],
+      );
   if (!videoUrl) return json(404, { error: "video_asset_not_resolvable" });
 
   const { data: wardrobe, error: wErr } = await admin
