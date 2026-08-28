@@ -1,0 +1,122 @@
+{
+  "artifact": "P2_corrected_visual_scorecard",
+  "experiment": "grok-recap-2026-08",
+  "reviewedAt": "2026-08-28T07:50:00Z",
+  "operator": "Cursor cloud agent",
+  "reviewMethod": "Read-only: anon storage sign + local frame extraction (ffmpeg). No new provider calls.",
+  "subject": {
+    "requestId": "ed27462b-39c6-9fe6-9d6b-e3a6475809c0",
+    "storedPath": "project-exports/research/grok-recap-2026-08/probe-ed27462b-39c6-9fe6-9d6b-e3a6475809c0.mp4",
+    "sourceAssetId": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+    "wardrobeFeatureId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+    "prompt": "Change his shirt to a navy track jacket with white side stripes. Keep everything else identical."
+  },
+  "technicalFacts": {
+    "outputResolution": "720x1280",
+    "outputDurationSec": 3.71,
+    "outputFps": 24,
+    "sourceResolution": "1080x1920",
+    "sourceDurationSec": 4.02,
+    "labels": {
+      "outputResolution": "VERIFIED — ffprobe",
+      "sourceResolution": "VERIFIED — project_assets metadata",
+      "downscale": "OBSERVED — expected 720p edits cap per recap spec"
+    }
+  },
+  "scale": "0=fail · 1=partial · 2=good · 3=indistinguishable",
+  "axes": [
+    {
+      "id": 1,
+      "name": "Identity preservation (face, beard, glasses)",
+      "score": 2,
+      "label": "OBSERVED",
+      "note": "Same subject across frames; beard and glasses consistent vs source t≈2.235s."
+    },
+    {
+      "id": 2,
+      "name": "Body geometry / proportions",
+      "score": 2,
+      "label": "OBSERVED",
+      "note": "Torso/limb proportions stable; no obvious morphing."
+    },
+    {
+      "id": 3,
+      "name": "Pose fidelity",
+      "score": 2,
+      "label": "OBSERVED",
+      "note": "Arms-crossed / forward-lean poses match source benchmark moments."
+    },
+    {
+      "id": 4,
+      "name": "Performance motion continuity",
+      "score": 2,
+      "label": "OBSERVED",
+      "note": "Motion reads continuous over ~3.7s; minor hand/mouth blur at mid-clip."
+    },
+    {
+      "id": 5,
+      "name": "Camera framing / motion",
+      "score": 2,
+      "label": "OBSERVED",
+      "note": "Locked-off medium shot; framing matches source closet setup."
+    },
+    {
+      "id": 6,
+      "name": "Background preservation",
+      "score": 3,
+      "label": "VERIFIED",
+      "note": "White door, open closet, red-laced boots, black hanger garment with white graphic all preserved vs source."
+    },
+    {
+      "id": 7,
+      "name": "Lighting / shadows continuity",
+      "score": 2,
+      "label": "OBSERVED",
+      "note": "Indoor lighting consistent; no scene relight."
+    },
+    {
+      "id": 8,
+      "name": "Garment swap accuracy (navy track jacket + white sleeve stripes)",
+      "score": 2,
+      "label": "OBSERVED",
+      "note": "Camo shirt replaced with navy zip track jacket and prominent white sleeve stripes in direction of prompt + refs. Collar/zip/rib detail approximate, not product-pinned."
+    },
+    {
+      "id": 9,
+      "name": "Logo / typography",
+      "score": 1,
+      "label": "OBSERVED",
+      "note": "Chest logo area not legible; cannot verify SAINT LAURENT placement at 720p."
+    },
+    {
+      "id": 10,
+      "name": "Temporal consistency (flicker, morphing, swimming)",
+      "score": 2,
+      "label": "OBSERVED",
+      "note": "No full-scene boiling; mild sleeve-stripe edge softness/shimmer on some frames."
+    },
+    {
+      "id": 11,
+      "name": "Edit vs regenerate",
+      "score": 2,
+      "label": "VERIFIED",
+      "note": "MAJOR FAILURE: **no**. Scene/person/background preserved; garment region changed — behaves as edit, not full regen.",
+      "majorFailure": false
+    }
+  ],
+  "sumAxes1to10": 20,
+  "sumMax30": 30,
+  "verdict": {
+    "apiLevel": "VERIFIED — combined video + reference_images accepted (prior artifact)",
+    "visualLevel": "OBSERVED — partial pass: edit character strong; garment micro-detail/logo weak",
+    "architectureC": "RECOMMENDATION — viable research path; not production-certified without scored Tests A/B and logo/stripe audit at golden frames"
+  },
+  "spendUsd": 0.32,
+  "runningSpendTallyUsd": 0.32,
+  "ceilingUsd": 6.0,
+  "limitations": [
+    "Single terse prompt probe — not A1/A2 long-prompt runs",
+    "Garment product refs not side-by-side pixel-audited in this pass (storage sign 404 on ref paths via anon)",
+    "720p output caps stripe/logo legibility per frozen recap spec"
+  ]
+}

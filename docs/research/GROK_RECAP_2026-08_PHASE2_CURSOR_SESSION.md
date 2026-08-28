@@ -2,7 +2,7 @@
 
 **Experiment:** `grok-recap-2026-08` v1.0.0  
 **Base SHA:** `9e41003` (PR #32 merge) **[VERIFIED]**  
-**Spend this session:** **$0.00**  
+**Spend this session:** **$0.32**  
 **Operator:** Cursor cloud agent (takeover from Claude)
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**
@@ -107,9 +107,25 @@ Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / *
 | P3 | SCHEMA_REJECTED (422 missing `prompt`) | $0.00 |
 | **Total** | | **$0.32** / $6.00 ceiling |
 
+## P2_corrected — visual / garment scorecard ($0 review cost)
+
+Read-only review of stored output (anon storage sign + frame extraction). **No new provider calls.**
+
+| Field | Value |
+|-------|-------|
+| Sum (axes 1–10) | 20 / 30 |
+| MAJOR FAILURE (edit vs regen) | **No** — scene/person preserved; garment changed |
+| Garment swap | 2/3 — navy track + white sleeve stripes present; logo illegible |
+| Background | 3/3 — closet/door/boots preserved vs source |
+| Classification | **Partial visual pass** — research-viable, not production-certified |
+| Artifacts | `docs/research/results/P2_corrected_visual_scorecard.json`, `.md` |
+
+**[OBSERVED]** Output is 720×1280 / 3.71 s vs 1080×1920 / 4.02 s source — expected edits downscale/truncation per recap spec.
+
+---
+
 ## Next (requires approval)
 
-- **STOP** — corrected P2 accepted and billed; Architecture C API combination is **VERIFIED** at accept/generate level.
-- Visual/garment scoring of `probe-ed27462b-….mp4` is a separate review step, not executed here.
+- **STOP** — Step 0 + corrected P2 API + visual scorecard complete.
 - **Do not** run Tests A/B/C without explicit new approval.
 - **Do not** widen proxy auth.
