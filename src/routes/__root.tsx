@@ -153,6 +153,19 @@ function useBootstrapSession() {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const status = useBootstrapSession();
+  const router = useRouter();
+
+  // When the session identity changes (anonymous -> durable magic-link account),
+  // drop cached rows fetched under the old auth.uid() and refetch.
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        queryClient.clear();
+        router.invalidate();
+      }
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [queryClient, router]);
 
   return (
     <QueryClientProvider client={queryClient}>
