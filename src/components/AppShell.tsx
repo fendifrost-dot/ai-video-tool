@@ -71,7 +71,7 @@ type SecondaryNavItem = {
   label: string;
   description: string;
   icon: typeof LayoutDashboard;
-  to: "/library/locations" | "/settings" | "/design-studio" | "/products" | "/collections";
+  to: "/library/locations" | "/settings" | "/design-studio" | "/products" | "/collections" | "/auth";
 };
 
 const catalogNav: SecondaryNavItem[] = [
@@ -102,6 +102,12 @@ const secondaryNav: SecondaryNavItem[] = [
     label: "Library",
     description: "Reusable locations and props for your shoots.",
     icon: MapPin,
+  },
+  {
+    to: "/auth",
+    label: "Account — sign in",
+    description: "Email magic link sign-in for the owner account.",
+    icon: LogIn,
   },
   {
     to: "/settings",
@@ -260,10 +266,17 @@ export function AppShell() {
           <span className="font-display text-sm font-semibold tracking-tight text-gradient-aurora">
             AI Music Video OS
           </span>
+          <Link
+            to="/auth"
+            className="ml-auto flex h-9 w-9 items-center justify-center rounded-xl text-foreground/70 hover:bg-white/5 hover:text-foreground"
+            aria-label="Account sign in"
+          >
+            <LogIn className="h-4 w-4" />
+          </Link>
           <Button
             variant="ghost"
             size="icon"
-            className="ml-auto h-9 w-9 rounded-xl text-foreground/70 hover:bg-white/5 hover:text-foreground"
+            className="h-9 w-9 rounded-xl text-foreground/70 hover:bg-white/5 hover:text-foreground"
             onClick={() => supabase.auth.signOut()}
             aria-label="Sign out"
           >
