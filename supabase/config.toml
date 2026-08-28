@@ -43,6 +43,10 @@ verify_jwt = false
 [functions.grok-video-research-proxy]
 verify_jwt = false
 
+# Architecture C product lane — Grok /v1/videos/edits with user JWT.
+[functions.grok-video-edit-proxy]
+verify_jwt = true
+
 # Jacket-only masked inpaint (locked v2 wardrobe-swap primary lane). Routes Fal
 # through Control Center via X-Proxy-Secret (same secrets as wardrobe-vton-proxy);
 # user JWT required (browser calls with session token).

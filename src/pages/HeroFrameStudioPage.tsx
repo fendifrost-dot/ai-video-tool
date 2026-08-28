@@ -43,6 +43,7 @@ import {
 } from "@/lib/queries/eyewearRestore";
 import { ManualKeyframeQuadEditor } from "@/components/products/ManualKeyframeQuadEditor";
 import { WardrobeVideoLaneRunner } from "@/components/video/WardrobeVideoLaneRunner";
+import { GrokVideoEditRunner } from "@/components/video/GrokVideoEditRunner";
 import type { QuadNorm } from "@/lib/garment/placementEngine";
 
 // Periocular (eye + eyewear) starting quad — upper-centre of the frame. Drag to
@@ -793,6 +794,7 @@ export default function HeroFrameStudioPage({
             6 · Phase 2 — video garment swap (short clip)
           </h2>
           <WardrobeVideoLaneRunner projectId={projectId} />
+          <GrokVideoEditRunner projectId={projectId} />
         </section>
 
         {!videoAssets.length && (
