@@ -173,7 +173,7 @@ serve(async (req) => {
   const maxCostUsd = body.maxCostUsd ?? DEFAULT_MAX_COST_USD;
 
   const { data: project, error: pErr } = await admin
-    .from("projects")
+    .from("video_projects")
     .select("id, artist_id, user_id")
     .eq("id", body.projectId)
     .maybeSingle();
