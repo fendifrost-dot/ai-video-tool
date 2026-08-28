@@ -266,10 +266,17 @@ export function AppShell() {
           <span className="font-display text-sm font-semibold tracking-tight text-gradient-aurora">
             AI Music Video OS
           </span>
+          <Link
+            to="/auth"
+            className="ml-auto flex h-9 w-9 items-center justify-center rounded-xl text-foreground/70 hover:bg-white/5 hover:text-foreground"
+            aria-label="Account sign in"
+          >
+            <LogIn className="h-4 w-4" />
+          </Link>
           <Button
             variant="ghost"
             size="icon"
-            className="ml-auto h-9 w-9 rounded-xl text-foreground/70 hover:bg-white/5 hover:text-foreground"
+            className="h-9 w-9 rounded-xl text-foreground/70 hover:bg-white/5 hover:text-foreground"
             onClick={() => supabase.auth.signOut()}
             aria-label="Sign out"
           >
