@@ -1,7 +1,10 @@
 import { getAccessTokenWithTimeout } from "@/lib/authSession";
+import {
+  GROK_VIDEO_EDIT_PROMPT,
+  GROK_VIDEO_EDIT_PROMPT_READY,
+} from "@/lib/heroFrame/grokVideoEditPrompt";
 
-const GROK_VIDEO_EDIT_PROMPT =
-  "Replace only the clothing he is wearing with the exact garment shown in the reference images: navy Saint Laurent track jacket with white side stripes down the sleeves, ribbed collar and cuffs, full front zip. Change NOTHING else — keep his exact face, beard, glasses, skin tone, hair, body proportions, hands, arms, pose, movement, camera framing, background, and lighting. Do not regenerate the person or restyle the scene.";
+export { GROK_VIDEO_EDIT_PROMPT, GROK_VIDEO_EDIT_PROMPT_READY };
 
 export type GrokVideoEditInput = {
   projectId: string;
@@ -31,6 +34,13 @@ export async function callGrokVideoEdit(
   const baseUrl = import.meta.env.VITE_SUPABASE_URL;
   if (!baseUrl) throw new Error("Missing VITE_SUPABASE_URL");
 
+  const prompt = input.prompt ?? (GROK_VIDEO_EDIT_PROMPT_READY ? GROK_VIDEO_EDIT_PROMPT : "");
+  if (!prompt && !input.dryRun) {
+    throw new Error(
+      "Grok video edit prompt is not configured — awaiting Fendi confirmation of the frozen benchmark prompt.",
+    );
+  }
+
   const token = await getAccessTokenWithTimeout();
   const resp = await fetch(
     `${baseUrl.replace(/\/$/, "")}/functions/v1/grok-video-edit-proxy`,
@@ -42,7 +52,7 @@ export async function callGrokVideoEdit(
       },
       body: JSON.stringify({
         ...input,
-        prompt: input.prompt ?? GROK_VIDEO_EDIT_PROMPT,
+        ...(prompt ? { prompt } : {}),
         model: input.model ?? "grok-imagine-video",
         maxCostUsd: input.maxCostUsd ?? 0.5,
       }),

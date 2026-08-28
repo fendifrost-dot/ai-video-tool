@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useProject } from "@/lib/queries/projects";
 import { isVideoAsset, useProjectAssets } from "@/lib/queries/projectAssets";
 import { useWardrobe } from "@/lib/queries/wardrobe";
-import { callGrokVideoEdit } from "@/lib/queries/grokVideoEdit";
+import { callGrokVideoEdit, GROK_VIDEO_EDIT_PROMPT_READY } from "@/lib/queries/grokVideoEdit";
 
 const DEFAULT_DURATION = 4;
 
@@ -32,7 +32,16 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
 
   const selectedVideo = videos.find((v) => v.id === videoAssetId);
   const selectedGarment = garments.find((g) => g.id === wardrobeFeatureId);
-  const canRun = Boolean(artistId && videoAssetId && wardrobeFeatureId && !running);
+  const wardrobeBlocked = Boolean(
+    artistId && !wardrobeQuery.isLoading && garments.length === 0,
+  );
+  const canRun = Boolean(
+    artistId &&
+      videoAssetId &&
+      wardrobeFeatureId &&
+      GROK_VIDEO_EDIT_PROMPT_READY &&
+      !running,
+  );
 
   async function handleRun() {
     if (!artistId) return;
@@ -79,6 +88,22 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
           recovery + deterministic branding are follow-on steps.
         </p>
       </div>
+
+      {wardrobeBlocked && (
+        <p className="text-xs text-amber-300">
+          No wardrobe items are visible for this project&apos;s artist. The project may
+          be linked to an artist your account cannot see (RISK-001 identity scope) — sign
+          in with the owning account, or complete identity consolidation before running.
+        </p>
+      )}
+
+      {!GROK_VIDEO_EDIT_PROMPT_READY && (
+        <p className="text-xs text-amber-300">
+          Grok edit prompt is not configured yet — awaiting confirmation of the frozen
+          benchmark prompt (Saint Laurent Mastic stand-collar jacket, not track jacket).
+          Billed runs are blocked until then.
+        </p>
+      )}
 
       <div className="grid gap-3 md:grid-cols-2">
         <label className="space-y-1">

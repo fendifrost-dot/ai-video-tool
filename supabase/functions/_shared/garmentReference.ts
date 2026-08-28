@@ -85,6 +85,38 @@ export function pickFullLookGarmentPath(
   return fallbackPath ?? null;
 }
 
+/**
+ * Architecture C video-edits lane (R4 benchmark): flat product shot only.
+ * On-model crops degrade collar/chest-band fidelity; max 1 reference.
+ */
+export function pickGrokVideoEditReferencePaths(
+  refs: RefImageLike[],
+  fallbackPath?: string | null,
+  max = 1,
+): string[] {
+  const flatOnly = refs.filter((r) => !isOnModelReference(r));
+  const flatFallback =
+    fallbackPath && !refs.some((r) => pathFromRef(r) === fallbackPath && isOnModelReference(r))
+      ? fallbackPath
+      : flatOnly.length > 0
+        ? null
+        : fallbackPath;
+  const sorted = sortRefsForVtonGarment(flatOnly);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const r of sorted) {
+    const p = pathFromRef(r);
+    if (!p || seen.has(p)) continue;
+    seen.add(p);
+    out.push(p);
+    if (out.length >= max) break;
+  }
+  if (out.length === 0 && flatFallback && !seen.has(flatFallback)) {
+    out.push(flatFallback);
+  }
+  return out;
+}
+
 /** Pick up to N garment reference paths for Grok multi-image edit (on-model first). */
 export function pickGrokGarmentReferencePaths(
   refs: RefImageLike[],

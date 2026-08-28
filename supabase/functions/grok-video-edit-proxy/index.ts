@@ -6,7 +6,8 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { pickGrokGarmentReferencePaths } from "../_shared/garmentReference.ts";
+import { pickGrokVideoEditReferencePaths } from "../_shared/garmentReference.ts";
+import { buildGrokVideoEditXaiBody } from "../_shared/grokVideoEditRequest.ts";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 
 const corsHeaders = {
@@ -36,9 +37,6 @@ const IMAGE_BUCKETS = [
   "wardrobe-refs",
   "product-assets",
 ];
-
-const DEFAULT_PROMPT =
-  "Replace only the clothing he is wearing with the exact garment shown in the reference images: navy Saint Laurent track jacket with white side stripes down the sleeves, ribbed collar and cuffs, full front zip. Change NOTHING else — keep his exact face, beard, glasses, skin tone, hair, body proportions, hands, arms, pose, movement, camera framing, background, and lighting. Do not regenerate the person or restyle the scene.";
 
 type Body = {
   projectId: string;
@@ -169,8 +167,16 @@ serve(async (req) => {
 
   const admin = makeAdmin(supabaseUrl, serviceRoleKey);
   const model = body.model ?? DEFAULT_MODEL;
-  const prompt = body.prompt ?? DEFAULT_PROMPT;
+  const prompt = body.prompt?.trim() ?? "";
   const maxCostUsd = body.maxCostUsd ?? DEFAULT_MAX_COST_USD;
+  if (!prompt && !body.dryRun) {
+    return json(400, {
+      error: "prompt_required",
+      detail:
+        "Grok video edit prompt is not configured. Await Fendi confirmation of the frozen benchmark prompt before billed runs.",
+    });
+  }
+  const effectivePrompt = prompt || "(dry-run — prompt not configured)";
 
   const { data: project, error: pErr } = await admin
     .from("video_projects")
@@ -215,7 +221,7 @@ serve(async (req) => {
 
   const refImages = Array.isArray(wardrobe.reference_images) ? wardrobe.reference_images : [];
   const fallback = wardrobe.storage_path ?? wardrobe.file_url;
-  const garmentPaths = pickGrokGarmentReferencePaths(refImages, fallback, 2);
+  const garmentPaths = pickGrokVideoEditReferencePaths(refImages, fallback, 1);
   const referenceUrls: string[] = [];
   for (const p of garmentPaths) {
     const signed = await signStorage(admin, p, IMAGE_BUCKETS);
@@ -223,12 +229,12 @@ serve(async (req) => {
   }
   if (referenceUrls.length === 0) return json(404, { error: "wardrobe_no_signable_image" });
 
-  const xaiBody = {
+  const xaiBody = buildGrokVideoEditXaiBody({
     model,
-    prompt,
-    video: { url: videoUrl },
-    reference_images: referenceUrls,
-  };
+    prompt: effectivePrompt,
+    videoUrl,
+    referenceUrls,
+  });
 
   const plan = {
     lane: "architecture_c_grok_video_edit",
