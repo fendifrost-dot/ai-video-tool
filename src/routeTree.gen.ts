@@ -15,6 +15,7 @@ import { Route as ProductsRouteImport } from './routes/products'
 import { Route as LooksRouteImport } from './routes/looks'
 import { Route as DesignStudioRouteImport } from './routes/design-studio'
 import { Route as CollectionsRouteImport } from './routes/collections'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
@@ -82,6 +83,11 @@ const DesignStudioRoute = DesignStudioRouteImport.update({
 const CollectionsRoute = CollectionsRouteImport.update({
   id: '/collections',
   path: '/collections',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArtistsRoute = ArtistsRouteImport.update({
@@ -278,6 +284,7 @@ const ArtistsIdLooksLookIdRoute = ArtistsIdLooksLookIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/artists': typeof ArtistsRouteWithChildren
+  '/auth': typeof AuthRoute
   '/collections': typeof CollectionsRouteWithChildren
   '/design-studio': typeof DesignStudioRouteWithChildren
   '/looks': typeof LooksRouteWithChildren
@@ -323,6 +330,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
   '/settings': typeof SettingsRoute
   '/artists/new': typeof ArtistsNewRoute
   '/collections/$id': typeof CollectionsIdRoute
@@ -362,6 +370,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/artists': typeof ArtistsRouteWithChildren
+  '/auth': typeof AuthRoute
   '/collections': typeof CollectionsRouteWithChildren
   '/design-studio': typeof DesignStudioRouteWithChildren
   '/looks': typeof LooksRouteWithChildren
@@ -410,6 +419,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/artists'
+    | '/auth'
     | '/collections'
     | '/design-studio'
     | '/looks'
@@ -455,6 +465,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/auth'
     | '/settings'
     | '/artists/new'
     | '/collections/$id'
@@ -493,6 +504,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/artists'
+    | '/auth'
     | '/collections'
     | '/design-studio'
     | '/looks'
@@ -540,6 +552,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ArtistsRoute: typeof ArtistsRouteWithChildren
+  AuthRoute: typeof AuthRoute
   CollectionsRoute: typeof CollectionsRouteWithChildren
   DesignStudioRoute: typeof DesignStudioRouteWithChildren
   LooksRoute: typeof LooksRouteWithChildren
@@ -592,6 +605,13 @@ declare module '@tanstack/react-router' {
       path: '/collections'
       fullPath: '/collections'
       preLoaderRoute: typeof CollectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/artists': {
@@ -1041,6 +1061,7 @@ const ProjectsRouteWithChildren = ProjectsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ArtistsRoute: ArtistsRouteWithChildren,
+  AuthRoute: AuthRoute,
   CollectionsRoute: CollectionsRouteWithChildren,
   DesignStudioRoute: DesignStudioRouteWithChildren,
   LooksRoute: LooksRouteWithChildren,
