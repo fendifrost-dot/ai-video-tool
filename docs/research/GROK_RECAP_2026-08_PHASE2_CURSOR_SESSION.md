@@ -56,7 +56,30 @@ Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / *
 
 **[HYPOTHESIS]** xAI `/v1/videos/edits` may expect a `video` field (not `video_url`) when combining with `reference_images`. The frozen runbook probe body may need a corrected field name to answer the crux — that would be a **new probe design decision**, not a proxy auth change. **STOP before any such change without approval.**
 
-**[RECOMMENDATION]** Per runbook: P2 rejected → core Architecture C question is **not proven** but **not billable**; review with Fendi before Tests A/B/C or a corrected P2 follow-up.
+**[OBSERVED]** Original P2 was a **probe-schema rejection** (`video_url` vs required `video` object), not a negative Architecture C result.
+
+---
+
+## P2_corrected — ACCEPTED ($0.32)
+
+**Approved correction:** `video: { url: "{{VIDEO_URL}}" }` instead of `video_url`.
+
+| Field | Value |
+|-------|-------|
+| Proxy HTTP | 200 |
+| xAI `submit.httpStatus` | 200 |
+| `submit.accepted` | **true** |
+| `requestId` | `ed27462b-39c6-9fe6-9d6b-e3a6475809c0` |
+| `finalStatus` | `done` |
+| Output | `project-exports/research/grok-recap-2026-08/probe-ed27462b-39c6-9fe6-9d6b-e3a6475809c0.mp4` (1,653,727 bytes) |
+| Classification | **ACCEPTED** |
+| Artifact | `docs/research/results/P2_corrected_edits_video_plus_reference_images.json` |
+
+**[VERIFIED]** xAI accepted `/v1/videos/edits` with **both** `video` (signed source clip) and `reference_images` (two garment refs). Generation completed; proxy polled to `done`.
+
+**[VERIFIED]** Actual xAI charge: `cost_in_usd_ticks` = 3,200,000,000 → **$0.32** (4 s output). Proxy `estimatedCostUsd` was 0 for probe mode — use usage ticks for tally.
+
+**[DECISION]** Stopped after acceptance per operator instructions. **Do not** run Tests A/B/C without new approval.
 
 ---
 
@@ -79,12 +102,14 @@ Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / *
 | Step | Result | Spend |
 |------|--------|-------|
 | P1 | AUTH_CROSSED / PROVIDER_REACHED (422 missing `prompt`) | $0.00 |
-| P2 | SCHEMA_REJECTED (422 missing `video`) | $0.00 |
+| P2 (original) | SCHEMA_REJECTED (422 — `video_url` not `video`) | $0.00 |
+| P2_corrected | **ACCEPTED** (200 + `request_id`, gen `done`) | **$0.32** |
 | P3 | SCHEMA_REJECTED (422 missing `prompt`) | $0.00 |
-| **Total** | | **$0.00** / $6.00 ceiling |
+| **Total** | | **$0.32** / $6.00 ceiling |
 
 ## Next (requires approval)
 
-- **Do not** run Tests A/B/C until Fendi reviews P2 schema rejection and whether to issue a corrected probe (e.g. `video` vs `video_url`).
+- **STOP** — corrected P2 accepted and billed; Architecture C API combination is **VERIFIED** at accept/generate level.
+- Visual/garment scoring of `probe-ed27462b-….mp4` is a separate review step, not executed here.
+- **Do not** run Tests A/B/C without explicit new approval.
 - **Do not** widen proxy auth.
-- A0 dry-run and billed tests remain gated per frozen runbook.
