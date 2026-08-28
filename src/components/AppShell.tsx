@@ -8,6 +8,7 @@ import {
   MoreHorizontal,
   Settings,
   LogOut,
+  LogIn,
   MapPin,
   Lightbulb,
   Package,
@@ -224,7 +225,14 @@ export function AppShell() {
               );
             })}
           </nav>
-          <div className="border-t border-white/5 p-3">
+          <div className="space-y-1 border-t border-white/5 p-3">
+            <Link
+              to="/auth"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-foreground/60 transition-colors hover:bg-white/5 hover:text-foreground"
+            >
+              <LogIn className="h-4 w-4" />
+              Account
+            </Link>
             <Button
               variant="ghost"
               size="sm"
