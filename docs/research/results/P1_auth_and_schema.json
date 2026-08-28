@@ -1,0 +1,43 @@
+{
+  "step": "P1",
+  "label": "P1_auth_and_schema",
+  "experiment": "grok-recap-2026-08",
+  "executedAt": "2026-08-28T00:45:00Z",
+  "operator": "Cursor cloud agent (computerUse, authenticated AVT browser)",
+  "executionPath": "aivideotool.lovable.app → DevTools console → fetch with user session access_token from localStorage (token not persisted)",
+  "request": {
+    "method": "POST",
+    "path": "/functions/v1/grok-video-research-proxy",
+    "body": {
+      "mode": "probe",
+      "probePath": "videos/edits",
+      "probeBody": {
+        "model": "grok-imagine-video"
+      }
+    }
+  },
+  "proxyHttpStatus": 200,
+  "classification": "AUTH_CROSSED / PROVIDER_REACHED",
+  "response": {
+    "experiment": "grok-recap-2026-08",
+    "model": "grok-imagine-video",
+    "endpoint": "https://api.x.ai/v1/videos/edits",
+    "submit": {
+      "httpStatus": 422,
+      "payload": {
+        "_raw": "Failed to deserialize the JSON body into the target type: missing field 'prompt' at line 1 column 30"
+      },
+      "billed": false,
+      "billedNote": "REJECTED by xAI before generation - not billed."
+    }
+  },
+  "spendUsd": 0,
+  "runningSpendTallyUsd": 0,
+  "evidenceLabels": {
+    "proxyDeployed": "VERIFIED",
+    "publishableKeyAlone401": "VERIFIED",
+    "userJwtCrossesAuth": "VERIFIED",
+    "xaiReached422": "VERIFIED",
+    "xaiBilled": "VERIFIED — false"
+  }
+}

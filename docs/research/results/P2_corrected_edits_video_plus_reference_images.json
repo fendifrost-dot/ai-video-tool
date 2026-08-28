@@ -1,0 +1,88 @@
+{
+  "step": "P2_corrected",
+  "label": "P2_corrected_edits_video_plus_reference_images",
+  "experiment": "grok-recap-2026-08",
+  "executedAt": "2026-08-28T01:33:00Z",
+  "operator": "Cursor cloud agent (computerUse, authenticated AVT browser)",
+  "executionPath": "aivideotool.lovable.app → DevTools console → fetch with user session access_token (token not persisted)",
+  "correction": "Replaced probeBody video_url string with xAI edits shape video: { url: \"{{VIDEO_URL}}\" }",
+  "request": {
+    "method": "POST",
+    "path": "/functions/v1/grok-video-research-proxy",
+    "body": {
+      "mode": "probe",
+      "probePath": "videos/edits",
+      "videoAssetId": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+      "wardrobeFeatureId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+      "probeBody": {
+        "model": "grok-imagine-video",
+        "prompt": "Change his shirt to a navy track jacket with white side stripes. Keep everything else identical.",
+        "video": { "url": "{{VIDEO_URL}}" },
+        "reference_images": "{{REFERENCE_URLS}}"
+      }
+    }
+  },
+  "proxyHttpStatus": 200,
+  "classification": "ACCEPTED",
+  "response": {
+    "experiment": "grok-recap-2026-08",
+    "model": "grok-imagine-video",
+    "endpoint": "https://api.x.ai/v1/videos/edits",
+    "estimatedCostUsd": 0,
+    "resolvedInputs": {
+      "video": { "assetId": "76fe7438-671d-4428-a7f6-17a45e98c16f" },
+      "wardrobe": {
+        "wardrobeFeatureId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+        "label": "Saint Laurent Track Jacket - Mastic Cotton Navy Stripe"
+      }
+    },
+    "xaiRequestBody": {
+      "model": "grok-imagine-video",
+      "prompt": "Change his shirt to a navy track jacket with white side stripes. Keep everything else identical.",
+      "video": { "url": "<signed-redacted>" },
+      "reference_images": ["<signed-redacted>", "<signed-redacted>"]
+    },
+    "submit": {
+      "httpStatus": 200,
+      "accepted": true,
+      "requestId": "ed27462b-39c6-9fe6-9d6b-e3a6475809c0",
+      "elapsedMs": 355
+    },
+    "billed": true,
+    "billedNote": "ACCEPTED — this call is billed.",
+    "polled": true,
+    "pollCount": 9,
+    "finalStatus": "done",
+    "finalPayload": {
+      "status": "done",
+      "duration": 4,
+      "respect_moderation": true,
+      "model": "grok-imagine-video",
+      "usage": {
+        "cost_in_usd_ticks": 3200000000
+      }
+    },
+    "output": {
+      "storedBucket": "project-exports",
+      "storedPath": "research/grok-recap-2026-08/probe-ed27462b-39c6-9fe6-9d6b-e3a6475809c0.mp4",
+      "byteLength": 1653727
+    },
+    "totalElapsedMs": 36708
+  },
+  "interpretation": {
+    "coreQuestion": "Can /v1/videos/edits accept source video + reference_images together?",
+    "verdict": "YES — xAI accepted the combined payload and returned request_id; generation completed (status done).",
+    "label": "VERIFIED — API-level acceptance; visual/garment fidelity not scored in this step."
+  },
+  "spendUsd": 0.32,
+  "spendDerivation": "finalPayload.usage.cost_in_usd_ticks 3200000000 ÷ 10_000_000_000 = $0.32",
+  "runningSpendTallyUsd": 0.32,
+  "ceilingUsd": 6.0,
+  "evidenceLabels": {
+    "authCrossed": "VERIFIED",
+    "schemaCorrected": "VERIFIED",
+    "xaiAccepted": "VERIFIED",
+    "generationCompleted": "VERIFIED",
+    "outputPersisted": "VERIFIED"
+  }
+}

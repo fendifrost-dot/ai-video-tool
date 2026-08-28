@@ -1,0 +1,63 @@
+{
+  "step": "P2",
+  "label": "P2_edits_with_reference_images",
+  "experiment": "grok-recap-2026-08",
+  "executedAt": "2026-08-28T00:50:00Z",
+  "operator": "Cursor cloud agent (computerUse, authenticated AVT browser)",
+  "executionPath": "aivideotool.lovable.app → DevTools console → fetch with user session access_token (token not persisted)",
+  "request": {
+    "method": "POST",
+    "path": "/functions/v1/grok-video-research-proxy",
+    "body": {
+      "mode": "probe",
+      "probePath": "videos/edits",
+      "videoAssetId": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+      "wardrobeFeatureId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+      "probeBody": {
+        "model": "grok-imagine-video",
+        "prompt": "Change his shirt to a navy track jacket with white side stripes. Keep everything else identical.",
+        "video_url": "{{VIDEO_URL}}",
+        "reference_images": "{{REFERENCE_URLS}}"
+      }
+    }
+  },
+  "proxyHttpStatus": 200,
+  "classification": "SCHEMA_REJECTED",
+  "response": {
+    "experiment": "grok-recap-2026-08",
+    "model": "grok-imagine-video",
+    "endpoint": "https://api.x.ai/v1/videos/edits",
+    "estimatedCostUsd": 0,
+    "resolvedInputs": {
+      "video": { "assetId": "76fe7438-671d-4428-a7f6-17a45e98c16f" },
+      "wardrobe": {
+        "wardrobeFeatureId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+        "label": "Saint Laurent Track Jacket - Mastic Cotton Navy Stripe"
+      }
+    },
+    "submit": {
+      "httpStatus": 422,
+      "accepted": false,
+      "requestId": null,
+      "payload": {
+        "_raw": "Failed to deserialize the JSON body into the target type: missing field 'video' at line 1 column 1936"
+      },
+      "elapsedMs": 67
+    },
+    "billed": false,
+    "billedNote": "REJECTED by xAI before generation - not billed."
+  },
+  "interpretation": {
+    "coreQuestion": "Can /v1/videos/edits accept source video + reference_images together?",
+    "verdict": "Not demonstrated — xAI rejected payload at deserialization (expected field 'video', received 'video_url').",
+    "label": "HYPOTHESIS — schema may use 'video' not 'video_url'; a follow-up probe with corrected field names would be needed to answer the crux."
+  },
+  "spendUsd": 0,
+  "runningSpendTallyUsd": 0,
+  "evidenceLabels": {
+    "authCrossed": "VERIFIED",
+    "inputsResolved": "VERIFIED",
+    "xaiSchemaRejected": "VERIFIED",
+    "billed": "VERIFIED — false"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "step": "P3",
+  "label": "P3_edits_model_1_5",
+  "experiment": "grok-recap-2026-08",
+  "executedAt": "2026-08-28T00:52:00Z",
+  "operator": "Cursor cloud agent (computerUse, authenticated AVT browser)",
+  "executionPath": "aivideotool.lovable.app → DevTools console → fetch with user session access_token (token not persisted)",
+  "request": {
+    "method": "POST",
+    "path": "/functions/v1/grok-video-research-proxy",
+    "body": {
+      "mode": "probe",
+      "probePath": "videos/edits",
+      "probeBody": {
+        "model": "grok-imagine-video-1.5"
+      }
+    }
+  },
+  "proxyHttpStatus": 200,
+  "classification": "SCHEMA_REJECTED",
+  "response": {
+    "experiment": "grok-recap-2026-08",
+    "model": "grok-imagine-video-1.5",
+    "endpoint": "https://api.x.ai/v1/videos/edits",
+    "estimatedCostUsd": 0,
+    "submit": {
+      "httpStatus": 422,
+      "accepted": false,
+      "requestId": null,
+      "payload": {
+        "_raw": "Failed to deserialize the JSON body into the target type: missing field 'prompt' at line 1 column 34"
+      },
+      "elapsedMs": 76
+    },
+    "billedNote": "REJECTED by xAI before generation - not billed."
+  },
+  "interpretation": {
+    "verdict": "Minimal probe rejected for missing prompt — does not prove or disprove grok-imagine-video-1.5 availability on edits.",
+    "label": "OBSERVED — same gate as P1; model-specific availability still unknown without a valid edits payload."
+  },
+  "spendUsd": 0,
+  "runningSpendTallyUsd": 0,
+  "evidenceLabels": {
+    "authCrossed": "VERIFIED",
+    "xaiSchemaRejected": "VERIFIED",
+    "billed": "VERIFIED — false"
+  }
+}
