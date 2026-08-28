@@ -71,7 +71,7 @@ type SecondaryNavItem = {
   label: string;
   description: string;
   icon: typeof LayoutDashboard;
-  to: "/library/locations" | "/settings" | "/design-studio" | "/products" | "/collections";
+  to: "/library/locations" | "/settings" | "/design-studio" | "/products" | "/collections" | "/auth";
 };
 
 const catalogNav: SecondaryNavItem[] = [
