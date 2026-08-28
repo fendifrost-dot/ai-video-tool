@@ -87,7 +87,7 @@ function isImage(name: string): boolean {
   return /\.(jpe?g|png|webp)$/i.test(name);
 }
 
-type Admin = ReturnType<typeof createClient>;
+type Admin = any;
 
 async function signStoragePath(
   admin: Admin,

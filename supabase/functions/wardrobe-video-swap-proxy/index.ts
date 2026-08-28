@@ -103,7 +103,7 @@ function sniffExt(buf: Uint8Array): "jpg" | "png" | "webp" {
 }
 
 async function signInOrder(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   bucket: string,
   paths: string[],
 ): Promise<string[]> {
@@ -147,7 +147,7 @@ async function swapOneFrame(
 }
 
 async function patchMeta(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   assetId: string,
   patch: Record<string, unknown>,
 ): Promise<void> {

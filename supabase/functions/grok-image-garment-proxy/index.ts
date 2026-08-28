@@ -86,7 +86,7 @@ function sniffMime(buf: Uint8Array): "image/png" | "image/jpeg" | "image/webp" |
 }
 
 async function signStoragePath(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   path: string,
   buckets: string[],
 ): Promise<string | null> {

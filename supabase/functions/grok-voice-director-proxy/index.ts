@@ -236,7 +236,7 @@ Deno.serve(async (req) => {
       const form = new FormData();
       form.append("language", "en");
       form.append("format", "true");
-      form.append("file", new Blob([bytes], { type: mime }), "turn.webm");
+      form.append("file", new Blob([bytes as BlobPart], { type: mime }), "turn.webm");
       const stt = await fetch(`${XAI_BASE}/stt`, {
         method: "POST",
         headers: { Authorization: `Bearer ${key}` },

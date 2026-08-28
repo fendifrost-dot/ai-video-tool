@@ -177,7 +177,7 @@ async function runFalViaCc(
 }
 
 async function readMeta(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   assetId: string,
 ): Promise<Record<string, unknown>> {
   const { data: row } = await admin
@@ -189,7 +189,7 @@ async function readMeta(
 }
 
 async function patchMeta(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   assetId: string,
   patch: Record<string, unknown>,
 ): Promise<void> {
@@ -202,7 +202,7 @@ async function patchMeta(
 
 /** List the frame indices already stored under the extraction prefix (resume set). */
 async function listStoredFrameIndices(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   bucket: string,
   prefix: string,
 ): Promise<number[]> {
@@ -223,7 +223,7 @@ async function listStoredFrameIndices(
 }
 
 async function objectExists(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   bucket: string,
   path: string,
 ): Promise<boolean> {
