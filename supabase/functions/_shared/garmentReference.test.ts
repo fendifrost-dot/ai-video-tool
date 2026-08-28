@@ -41,7 +41,7 @@ describe("pickGrokVideoEditReferencePaths", () => {
     expect(paths).toEqual([]);
   });
 
-  it("does not leak on-model fallbackPath when no flat reference exists", () => {
+  it("fail-closed: no flat refs + non-null on-model fallbackPath → []", () => {
     const paths = pickGrokVideoEditReferencePaths(
       [
         {
@@ -51,6 +51,21 @@ describe("pickGrokVideoEditReferencePaths", () => {
         },
       ],
       "artist/onmodel.png",
+      1,
+    );
+    expect(paths).toEqual([]);
+  });
+
+  it("fail-closed: ignores non-on-model fallbackPath when refs have no flat", () => {
+    const paths = pickGrokVideoEditReferencePaths(
+      [
+        {
+          angle: "on_model",
+          label: "on-model lookbook",
+          storage_path: "artist/onmodel.png",
+        },
+      ],
+      "artist/some-other-path.jpg",
       1,
     );
     expect(paths).toEqual([]);
