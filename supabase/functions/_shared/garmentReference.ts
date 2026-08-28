@@ -88,6 +88,7 @@ export function pickFullLookGarmentPath(
 /**
  * Architecture C video-edits lane (R4 benchmark): flat product shot only.
  * On-model crops degrade collar/chest-band fidelity; max 1 reference.
+ * Never fall back to an on-model path — empty is correct when no flat exists.
  */
 export function pickGrokVideoEditReferencePaths(
   refs: RefImageLike[],
@@ -95,12 +96,12 @@ export function pickGrokVideoEditReferencePaths(
   max = 1,
 ): string[] {
   const flatOnly = refs.filter((r) => !isOnModelReference(r));
+  const fallbackIsOnModel =
+    !!fallbackPath &&
+    refs.some((r) => pathFromRef(r) === fallbackPath && isOnModelReference(r));
+  // Only accept an explicit fallback when it is not itself an on-model path.
   const flatFallback =
-    fallbackPath && !refs.some((r) => pathFromRef(r) === fallbackPath && isOnModelReference(r))
-      ? fallbackPath
-      : flatOnly.length > 0
-        ? null
-        : fallbackPath;
+    fallbackPath && !fallbackIsOnModel ? fallbackPath : null;
   const sorted = sortRefsForVtonGarment(flatOnly);
   const out: string[] = [];
   const seen = new Set<string>();

@@ -91,17 +91,18 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
 
       {wardrobeBlocked && (
         <p className="text-xs text-amber-300">
-          No wardrobe items are visible for this project&apos;s artist. The project may
-          be linked to an artist your account cannot see (RISK-001 identity scope) — sign
-          in with the owning account, or complete identity consolidation before running.
+          No wardrobe items are visible for this project&apos;s artist under the
+          current session. Artists / character_features are owner-scoped (RISK-001);
+          this anonymous or non-owner session cannot see them. Durable email auth
+          for the owning account is required before Architecture C can run — see
+          handoff durable-auth proposal. Do not create duplicate wardrobe rows.
         </p>
       )}
 
       {!GROK_VIDEO_EDIT_PROMPT_READY && (
         <p className="text-xs text-amber-300">
-          Grok edit prompt is not configured yet — awaiting confirmation of the frozen
-          benchmark prompt (Saint Laurent Mastic stand-collar jacket, not track jacket).
-          Billed runs are blocked until then.
+          Grok edit prompt is not configured yet — awaiting the Fendi-confirmed
+          verbatim frozen R4/R5 prompt string. Billed runs are blocked until then.
         </p>
       )}
 

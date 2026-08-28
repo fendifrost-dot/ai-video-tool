@@ -40,6 +40,21 @@ describe("pickGrokVideoEditReferencePaths", () => {
     );
     expect(paths).toEqual([]);
   });
+
+  it("does not leak on-model fallbackPath when no flat reference exists", () => {
+    const paths = pickGrokVideoEditReferencePaths(
+      [
+        {
+          angle: "on_model",
+          label: "on-model YSL model",
+          storage_path: "artist/onmodel.png",
+        },
+      ],
+      "artist/onmodel.png",
+      1,
+    );
+    expect(paths).toEqual([]);
+  });
 });
 
 describe("isOnModelReference", () => {
