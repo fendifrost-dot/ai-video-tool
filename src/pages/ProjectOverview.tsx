@@ -160,10 +160,19 @@ function StatusSelect({
 
 function MetaGrid({ project }: { project: NonNullable<ReturnType<typeof useProject>["data"]> }) {
   const artistQuery = useArtist(project.artist_id ?? undefined);
+  const artistHidden = Boolean(
+    project.artist_id && !artistQuery.isLoading && !artistQuery.data,
+  );
   const artistName = artistQuery.data?.name ?? null;
 
-  const items: { label: string; value: string | null }[] = [
-    { label: "Artist", value: artistName },
+  const items: { label: string; value: string | null; hidden?: boolean }[] = [
+    {
+      label: "Artist",
+      value: artistHidden
+        ? "Not visible to this account"
+        : artistName,
+      hidden: artistHidden,
+    },
     { label: "Genre", value: project.genre },
     { label: "Mood", value: project.mood },
     { label: "BPM", value: project.bpm != null ? String(project.bpm) : null },
@@ -179,7 +188,12 @@ function MetaGrid({ project }: { project: NonNullable<ReturnType<typeof useProje
             {item.label}
           </p>
           <p className="mt-0.5 truncate text-sm">
-            {item.value ?? <span className="text-muted-foreground italic">Not set</span>}
+            {item.value ?? (
+              <span className="text-muted-foreground italic">Not set</span>
+            )}
+            {item.hidden && (
+              <span className="ml-1 text-[10px] text-amber-400">(RLS / identity)</span>
+            )}
           </p>
         </div>
       ))}

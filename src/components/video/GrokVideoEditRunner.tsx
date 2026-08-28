@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useProject } from "@/lib/queries/projects";
 import { isVideoAsset, useProjectAssets } from "@/lib/queries/projectAssets";
 import { useWardrobe } from "@/lib/queries/wardrobe";
-import { callGrokVideoEdit } from "@/lib/queries/grokVideoEdit";
+import { callGrokVideoEdit, GROK_VIDEO_EDIT_PROMPT_READY } from "@/lib/queries/grokVideoEdit";
 
 const DEFAULT_DURATION = 4;
 
@@ -32,7 +32,16 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
 
   const selectedVideo = videos.find((v) => v.id === videoAssetId);
   const selectedGarment = garments.find((g) => g.id === wardrobeFeatureId);
-  const canRun = Boolean(artistId && videoAssetId && wardrobeFeatureId && !running);
+  const wardrobeBlocked = Boolean(
+    artistId && !wardrobeQuery.isLoading && garments.length === 0,
+  );
+  const canRun = Boolean(
+    artistId &&
+      videoAssetId &&
+      wardrobeFeatureId &&
+      GROK_VIDEO_EDIT_PROMPT_READY &&
+      !running,
+  );
 
   async function handleRun() {
     if (!artistId) return;
@@ -79,6 +88,22 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
           recovery + deterministic branding are follow-on steps.
         </p>
       </div>
+
+      {wardrobeBlocked && (
+        <p className="text-xs text-amber-300">
+          No wardrobe items are visible under this session. Artists /
+          character_features are owner-scoped (RISK-001). The owning account is a
+          recoverable email identity; this anonymous session is not it. AVT has no
+          sign-in UI yet — durable magic-link auth is required before Architecture C
+          can run. Do not create duplicate wardrobe rows.
+        </p>
+      )}
+
+      {!GROK_VIDEO_EDIT_PROMPT_READY && (
+        <p className="text-xs text-amber-300">
+          Grok edit prompt is not configured yet. Billed runs are blocked.
+        </p>
+      )}
 
       <div className="grid gap-3 md:grid-cols-2">
         <label className="space-y-1">

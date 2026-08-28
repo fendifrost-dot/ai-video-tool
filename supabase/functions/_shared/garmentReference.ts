@@ -85,6 +85,33 @@ export function pickFullLookGarmentPath(
   return fallbackPath ?? null;
 }
 
+/**
+ * Architecture C video-edits lane (R4 benchmark): flat product shot only.
+ * On-model crops degrade collar/chest-band fidelity; max 1 reference.
+ *
+ * Fail closed: never use fallbackPath. If no eligible flat ref exists, return []
+ * so the caller surfaces wardrobe_no_signable_image — no degraded paid fallback.
+ * `fallbackPath` is accepted for call-site compatibility but intentionally ignored.
+ */
+export function pickGrokVideoEditReferencePaths(
+  refs: RefImageLike[],
+  _fallbackPath?: string | null,
+  max = 1,
+): string[] {
+  const flatOnly = refs.filter((r) => !isOnModelReference(r));
+  const sorted = sortRefsForVtonGarment(flatOnly);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const r of sorted) {
+    const p = pathFromRef(r);
+    if (!p || seen.has(p)) continue;
+    seen.add(p);
+    out.push(p);
+    if (out.length >= max) break;
+  }
+  return out;
+}
+
 /** Pick up to N garment reference paths for Grok multi-image edit (on-model first). */
 export function pickGrokGarmentReferencePaths(
   refs: RefImageLike[],
