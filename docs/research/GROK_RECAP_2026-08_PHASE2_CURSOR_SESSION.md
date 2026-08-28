@@ -40,8 +40,51 @@ Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / *
 
 ---
 
-## Next
+## P2 — SCHEMA_REJECTED ($0)
 
-- P2: probe `videos/edits` with `reference_images` + `video_url` ($0 if rejected)
-- P3: probe `grok-imagine-video-1.5` on edits ($0 if rejected)
-- Do not widen proxy auth
+| Field | Value |
+|-------|-------|
+| Proxy HTTP | 200 |
+| xAI `submit.httpStatus` | 422 |
+| xAI error | missing field `video` (sent `video_url` + `reference_images`) |
+| Accepted | false |
+| Billed | false |
+| Classification | **SCHEMA_REJECTED** |
+| Artifact | `docs/research/results/P2_edits_with_reference_images.json` |
+
+**[OBSERVED]** Proxy resolved frozen `videoAssetId` and `wardrobeFeatureId` and forwarded signed URLs. xAI rejected at deserialization before generation.
+
+**[HYPOTHESIS]** xAI `/v1/videos/edits` may expect a `video` field (not `video_url`) when combining with `reference_images`. The frozen runbook probe body may need a corrected field name to answer the crux — that would be a **new probe design decision**, not a proxy auth change. **STOP before any such change without approval.**
+
+**[RECOMMENDATION]** Per runbook: P2 rejected → core Architecture C question is **not proven** but **not billable**; review with Fendi before Tests A/B/C or a corrected P2 follow-up.
+
+---
+
+## P3 — SCHEMA_REJECTED ($0)
+
+| Field | Value |
+|-------|-------|
+| Proxy HTTP | 200 |
+| xAI `submit.httpStatus` | 422 |
+| xAI error | missing field `prompt` |
+| Classification | **SCHEMA_REJECTED** (minimal probe; same gate as P1) |
+| Artifact | `docs/research/results/P3_edits_model_1_5.json` |
+
+**[OBSERVED]** `grok-imagine-video-1.5` on edits was not exercised with a valid payload; availability remains unknown.
+
+---
+
+## Step 0 summary
+
+| Step | Result | Spend |
+|------|--------|-------|
+| P1 | AUTH_CROSSED / PROVIDER_REACHED (422 missing `prompt`) | $0.00 |
+| P2 | SCHEMA_REJECTED (422 missing `video`) | $0.00 |
+| P3 | SCHEMA_REJECTED (422 missing `prompt`) | $0.00 |
+| **Total** | | **$0.00** / $6.00 ceiling |
+
+## Next (requires approval)
+
+- **Do not** run Tests A/B/C until Fendi reviews P2 schema rejection and whether to issue a corrected probe (e.g. `video` vs `video_url`).
+- **Do not** widen proxy auth.
+- A0 dry-run and billed tests remain gated per frozen runbook.
