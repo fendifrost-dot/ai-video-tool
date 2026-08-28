@@ -104,6 +104,12 @@ const secondaryNav: SecondaryNavItem[] = [
     icon: MapPin,
   },
   {
+    to: "/auth",
+    label: "Account — sign in",
+    description: "Email magic link sign-in for the owner account.",
+    icon: LogIn,
+  },
+  {
     to: "/settings",
     label: "Settings",
     description: "App preferences and account.",
