@@ -128,7 +128,7 @@ function contentTypeFor(ext: string): string {
 }
 
 async function signInOrder(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   bucket: string,
   paths: string[],
 ): Promise<string[]> {
@@ -164,7 +164,7 @@ async function propagateViaCc(
 }
 
 async function readMeta(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   assetId: string,
 ): Promise<Record<string, unknown>> {
   const { data: row } = await admin
@@ -176,7 +176,7 @@ async function readMeta(
 }
 
 async function patchMeta(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   assetId: string,
   patch: Record<string, unknown>,
 ): Promise<void> {

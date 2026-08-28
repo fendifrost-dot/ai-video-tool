@@ -100,7 +100,7 @@ function bucketForAssetType(assetType: string): string {
 }
 
 async function signFramesInOrder(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   bucket: string,
   paths: string[],
 ): Promise<string[]> {
@@ -120,7 +120,7 @@ async function signFramesInOrder(
 }
 
 async function patchMeta(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   assetId: string,
   patch: Record<string, unknown>,
 ): Promise<void> {

@@ -145,7 +145,7 @@ function extractVideoUrl(result: Record<string, unknown>): string | null {
 
 /** Merge the proxy pointer fields into the master row's metadata_json. */
 async function patchProxyMeta(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   assetId: string,
   patch: Record<string, unknown>,
 ): Promise<void> {

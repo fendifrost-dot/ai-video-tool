@@ -242,7 +242,7 @@ serve(async (req) => {
 });
 
 async function handleLookCallback(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   lookId: string,
   body: Body,
 ): Promise<Response> {

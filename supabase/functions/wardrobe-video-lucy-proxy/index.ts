@@ -122,7 +122,7 @@ function looksLikeVideo(fileUrl: string, mime: unknown): boolean {
 }
 
 async function patchMeta(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   assetId: string,
   patch: Record<string, unknown>,
 ): Promise<void> {
