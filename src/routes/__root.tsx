@@ -163,7 +163,7 @@ function useSessionState() {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const status = useBootstrapSession();
+  const session = useSessionState();
   const router = useRouter();
 
   // When the session identity changes (anonymous -> durable magic-link account),
@@ -178,12 +178,15 @@ function RootComponent() {
     return () => sub.subscription.unsubscribe();
   }, [queryClient, router]);
 
+  // Gate the entire site behind a durable (non-anonymous) sign-in.
+  const needsSignIn = session.status === "signed-out" || (session.status === "signed-in" && session.anon);
+
   return (
     <QueryClientProvider client={queryClient}>
-      {status === "loading" ? (
+      {session.status === "loading" ? (
         <div className="min-h-screen bg-background" />
-      ) : status === "failed" ? (
-        <BootstrapErrorScreen />
+      ) : needsSignIn ? (
+        <SignInGate />
       ) : (
         <AppShell />
       )}
@@ -192,15 +195,25 @@ function RootComponent() {
   );
 }
 
-function BootstrapErrorScreen() {
+function SignInGate() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="max-w-md space-y-3 text-center">
-        <h1 className="text-xl font-semibold tracking-tight">Couldn't start a session</h1>
-        <p className="text-sm text-muted-foreground">
-          Anonymous sign-in failed. Enable anonymous sign-ins in Lovable Cloud → Users → Auth
-          settings, then reload.
+    <div className="flex min-h-[100dvh] items-center justify-center bg-background px-4">
+      <div className="glass-float w-full max-w-sm rounded-2xl p-6">
+        <div
+          className="flex h-10 w-10 items-center justify-center rounded-lg ring-glow"
+          style={{ background: "linear-gradient(135deg, var(--aurora-1), var(--aurora-2))" }}
+        >
+          <span className="font-display text-base font-bold text-background">A</span>
+        </div>
+        <h1 className="mt-4 font-display text-xl font-semibold tracking-tight">
+          Sign in to AI Music Video OS
+        </h1>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          This workspace is private. Use the owner email to receive a magic link.
         </p>
+        <div className="mt-5">
+          <SignInForm />
+        </div>
       </div>
     </div>
   );
