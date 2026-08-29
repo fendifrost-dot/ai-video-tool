@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { SignInForm } from "@/components/SignInForm";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -25,9 +25,6 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
-  const [message, setMessage] = useState<string | null>(null);
   const [current, setCurrent] = useState<{ id: string; email: string | null; anon: boolean } | null>(
     null,
   );
@@ -56,35 +53,6 @@ function AuthPage() {
       sub.subscription.unsubscribe();
     };
   }, []);
-
-  async function sendLink(e: React.FormEvent) {
-    e.preventDefault();
-    const target = email.trim();
-    if (!target) return;
-    setStatus("sending");
-    setMessage(null);
-    try {
-      // Sign out any anonymous bootstrap session first, so the magic link signs
-      // in the existing durable account instead of linking an email identity
-      // onto the throwaway anonymous user.
-      const { data } = await supabase.auth.getUser();
-      if (data.user?.is_anonymous) await supabase.auth.signOut();
-
-      const { error } = await supabase.auth.signInWithOtp({
-        email: target,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth`,
-          shouldCreateUser: false,
-        },
-      });
-      if (error) throw error;
-      setStatus("sent");
-      setMessage(`Magic link sent to ${target}. Open it on this device to finish signing in.`);
-    } catch (err) {
-      setStatus("error");
-      setMessage(err instanceof Error ? err.message : "Could not send the magic link.");
-    }
-  }
 
   async function signOut() {
     await supabase.auth.signOut();
