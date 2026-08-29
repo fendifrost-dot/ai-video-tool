@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
 import { AppShell } from "@/components/AppShell";
+import { SignInForm } from "@/components/SignInForm";
 import { supabase } from "@/lib/supabase";
 
 import appCss from "../styles.css?url";
@@ -104,46 +105,56 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Single-user app: ensure an anonymous Supabase session exists so RLS policies
- * (which rely on auth.uid()) work without any sign-in UI. The session is
- * persisted to localStorage by the supabase-js client, so the same anon user
- * sticks around across reloads on this device.
- *
- * If anon sign-in is disabled on the Supabase project, this surfaces a clear
- * console error and shows a "no session" state. Re-enable anonymous sign-ins
- * in the Supabase Auth settings (Lovable Cloud -> Users -> Auth settings).
+ * Sign-in gate: the site requires a real (non-anonymous) session. Anonymous
+ * bootstrap is kept ONLY as a transient bridge while no session exists yet —
+ * but the UI stays behind the sign-in screen until a durable account signs in.
  */
-function useBootstrapSession() {
-  const [state, setState] = useState<"loading" | "ready" | "failed">("loading");
+function useSessionState() {
+  const [state, setState] = useState<
+    | { status: "loading" }
+    | { status: "signed-out" }
+    | { status: "signed-in"; anon: boolean }
+  >({ status: "loading" });
 
   useEffect(() => {
     let cancelled = false;
 
     async function bootstrap() {
       try {
-        const { data } = await supabase.auth.getSession();
-        if (data.session) {
-          if (!cancelled) setState("ready");
-          return;
-        }
-        const { error } = await supabase.auth.signInAnonymously();
+        const { data } = await supabase.auth.getUser();
         if (cancelled) return;
-        if (error) {
-          console.error("[bootstrap] anonymous sign-in failed:", error.message);
-          setState("failed");
+        if (data.user && !data.user.is_anonymous) {
+          setState({ status: "signed-in", anon: false });
           return;
         }
-        setState("ready");
+        if (data.user?.is_anonymous) {
+          setState({ status: "signed-in", anon: true });
+          return;
+        }
+        // No session: create an anonymous one so the app shell works after
+        // sign-in (magic link needs a clean slate, SignInForm signs it out).
+        await supabase.auth.signInAnonymously();
+        if (cancelled) return;
+        setState({ status: "signed-out" });
       } catch (err) {
         if (cancelled) return;
         console.error("[bootstrap] session init threw:", err);
-        setState("failed");
+        setState({ status: "signed-out" });
       }
     }
 
     bootstrap();
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (cancelled) return;
+      if (session?.user && !session.user.is_anonymous) {
+        setState({ status: "signed-in", anon: false });
+      } else {
+        setState({ status: "signed-out" });
+      }
+    });
     return () => {
       cancelled = true;
+      sub.subscription.unsubscribe();
     };
   }, []);
 
