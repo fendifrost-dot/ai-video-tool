@@ -80,35 +80,15 @@ function AuthPage() {
       </div>
 
       {!signedIn && (
-        <form onSubmit={sendLink} className="mt-6 space-y-3">
-          <Input
-            type="email"
-            autoComplete="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <Button type="submit" className="w-full" disabled={status === "sending"}>
-            {status === "sending" ? "Sending…" : "Send magic link"}
-          </Button>
-        </form>
+        <div className="mt-6">
+          <SignInForm />
+        </div>
       )}
 
       {signedIn && (
         <Button variant="outline" className="mt-6" onClick={signOut}>
           Sign out
         </Button>
-      )}
-
-      {message && (
-        <p
-          className={
-            status === "error" ? "mt-4 text-sm text-destructive" : "mt-4 text-sm text-muted-foreground"
-          }
-        >
-          {message}
-        </p>
       )}
     </div>
   );
