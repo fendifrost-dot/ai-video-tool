@@ -109,6 +109,18 @@ function RootShell({ children }: { children: React.ReactNode }) {
  * bootstrap is kept ONLY as a transient bridge while no session exists yet —
  * but the UI stays behind the sign-in screen until a durable account signs in.
  */
+function hasPendingAuthRedirect(): boolean {
+  if (typeof window === "undefined") return false;
+  const href = window.location.href;
+  return (
+    href.includes("access_token=") ||
+    href.includes("token_hash=") ||
+    href.includes("type=magiclink") ||
+    href.includes("type=email") ||
+    /[?&]code=/.test(href)
+  );
+}
+
 function useSessionState() {
   const [state, setState] = useState<
     | { status: "loading" }
@@ -129,6 +141,12 @@ function useSessionState() {
         }
         if (data.user?.is_anonymous) {
           setState({ status: "signed-in", anon: true });
+          return;
+        }
+        // Magic-link hash/code is still being exchanged. Do not create an
+        // anonymous user that could race and overwrite the durable session.
+        if (hasPendingAuthRedirect()) {
+          setState({ status: "signed-out" });
           return;
         }
         // No session: create an anonymous one so the app shell works after

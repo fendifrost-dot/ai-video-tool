@@ -35,6 +35,11 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 import { pickGrokGarmentReferencePaths } from "../_shared/garmentReference.ts";
+import {
+  buildResearchEditVideoBody,
+  buildResearchImageToVideoBody,
+  buildResearchReferenceToVideoBody,
+} from "../_shared/grokVideoResearchRequest.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -417,34 +422,39 @@ serve(async (req) => {
   } else if (mode === "edit_video") {
     if (!videoUrl) return json(400, { error: "edit_video_requires_video" });
     endpoint = `${XAI_BASE_URL}/videos/edits`;
-    xaiBody = { model, prompt: body.prompt ?? "", video_url: videoUrl };
-    if (body.resolution) xaiBody.resolution = body.resolution;
+    xaiBody = buildResearchEditVideoBody({
+      model,
+      prompt: body.prompt ?? "",
+      videoUrl,
+      referenceUrls: referenceUrls.length > 0 ? referenceUrls.slice(0, 3) : undefined,
+      resolution: body.resolution,
+    });
     // Edits inherit input duration; xAI truncates at 8.7s. Price the worst case.
     durationForCost = Math.min(body.duration ?? 8.7, 8.7);
   } else if (mode === "reference_to_video") {
     if (referenceUrls.length === 0) return json(400, { error: "reference_to_video_requires_references" });
     endpoint = `${XAI_BASE_URL}/videos/generations`;
     durationForCost = Math.min(body.duration ?? 5, MAX_DURATION_SECONDS);
-    xaiBody = {
+    xaiBody = buildResearchReferenceToVideoBody({
       model,
       prompt: body.prompt ?? "",
+      referenceUrls: referenceUrls.slice(0, 3),
       duration: durationForCost,
-      aspect_ratio: body.aspectRatio ?? "9:16",
-      resolution: body.resolution ?? "720p",
-      reference_images: referenceUrls.slice(0, 3),
-    };
+      aspectRatio: body.aspectRatio,
+      resolution: body.resolution,
+    });
   } else if (mode === "image_to_video") {
     if (!imageUrl) return json(400, { error: "image_to_video_requires_image" });
     endpoint = `${XAI_BASE_URL}/videos/generations`;
     durationForCost = Math.min(body.duration ?? 5, MAX_DURATION_SECONDS);
-    xaiBody = {
+    xaiBody = buildResearchImageToVideoBody({
       model,
       prompt: body.prompt ?? "",
-      image: imageUrl,
+      imageUrl,
       duration: durationForCost,
-      aspect_ratio: body.aspectRatio ?? "9:16",
-      resolution: body.resolution ?? "720p",
-    };
+      aspectRatio: body.aspectRatio,
+      resolution: body.resolution,
+    });
   } else {
     return json(400, { error: "unknown_mode", mode });
   }

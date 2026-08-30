@@ -7,7 +7,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { pickGrokVideoEditReferencePaths } from "../_shared/garmentReference.ts";
-import { buildGrokVideoEditXaiBody } from "../_shared/grokVideoEditRequest.ts";
+import { buildGrokVideoEditXaiBody, redactSignedUrls } from "../_shared/grokVideoEditRequest.ts";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 
 const corsHeaders = {
@@ -245,6 +245,9 @@ serve(async (req) => {
     garmentPathsUsed: garmentPaths,
     estimatedCostUsd: estimateCostUsd(model, 4.5),
     maxCostUsd,
+    prompt: effectivePrompt,
+    referenceCount: referenceUrls.length,
+    xaiRequestBody: redactSignedUrls(xaiBody),
   };
 
   if (body.dryRun) return json(200, { dryRun: true, billed: false, ...plan });

@@ -18,6 +18,27 @@ export type GrokVideoEditInput = {
   dryRun?: boolean;
 };
 
+export type GrokVideoEditDryRunPlan = {
+  dryRun: true;
+  billed: false;
+  lane?: string;
+  model: string;
+  endpoint: string;
+  videoAssetId: string;
+  wardrobeFeatureId: string;
+  garmentPathsUsed: string[];
+  estimatedCostUsd: number;
+  maxCostUsd: number;
+  prompt?: string;
+  referenceCount?: number;
+  xaiRequestBody?: {
+    model?: string;
+    prompt?: string;
+    video?: { url?: string };
+    reference_images?: Array<{ url?: string } | string>;
+  };
+};
+
 export type GrokVideoEditResult = {
   assetId: string | null;
   previewUrl: string | null;
@@ -26,6 +47,7 @@ export type GrokVideoEditResult = {
   finalStatus: string;
   billed: boolean;
   requestId?: string;
+  dryRunPlan?: GrokVideoEditDryRunPlan;
 };
 
 export async function callGrokVideoEdit(
@@ -63,6 +85,18 @@ export async function callGrokVideoEdit(
   if (!resp.ok) {
     const detail = (body.detail ?? body.error ?? resp.statusText) as string;
     throw new Error(`Grok video edit failed: ${resp.status} ${detail}`);
+  }
+
+  if (input.dryRun || body.dryRun) {
+    return {
+      assetId: null,
+      previewUrl: null,
+      storedPath: null,
+      actualCostUsd: null,
+      finalStatus: "dry_run",
+      billed: false,
+      dryRunPlan: body as GrokVideoEditDryRunPlan,
+    };
   }
 
   const submit = (body.submit ?? {}) as Record<string, unknown>;

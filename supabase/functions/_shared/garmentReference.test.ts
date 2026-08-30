@@ -70,6 +70,29 @@ describe("pickGrokVideoEditReferencePaths", () => {
     );
     expect(paths).toEqual([]);
   });
+
+  it("canonical SL jacket: picks the flat front path and never the on-model crop", () => {
+    const paths = pickGrokVideoEditReferencePaths(
+      [
+        {
+          angle: "on_model",
+          label: "on-model YSL model (IMG_5541)",
+          storage_path:
+            "65cf99cb-fd18-4168-b9ab-dfbfd42112ca/8d4a4d22-41c0-43ab-ba99-92750f81e335/onmodel_img5541_1782258480.png",
+        },
+        {
+          angle: "front",
+          storage_path:
+            "65cf99cb-fd18-4168-b9ab-dfbfd42112ca/8d4a4d22-41c0-43ab-ba99-92750f81e335/2a14a72b-e7de-4ecb-9c24-4142b672d175.jpg",
+        },
+      ],
+      "65cf99cb-fd18-4168-b9ab-dfbfd42112ca/8d4a4d22-41c0-43ab-ba99-92750f81e335/onmodel_img5541_1782258480.png",
+      1,
+    );
+    expect(paths).toEqual([
+      "65cf99cb-fd18-4168-b9ab-dfbfd42112ca/8d4a4d22-41c0-43ab-ba99-92750f81e335/2a14a72b-e7de-4ecb-9c24-4142b672d175.jpg",
+    ]);
+  });
 });
 
 describe("isOnModelReference", () => {
