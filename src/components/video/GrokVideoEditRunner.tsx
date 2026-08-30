@@ -11,7 +11,11 @@ import {
   GROK_VIDEO_EDIT_PROMPT_READY,
   type GrokVideoEditDryRunPlan,
 } from "@/lib/queries/grokVideoEdit";
-import { assessEditR4DryRun, editR4DryRunPassed } from "@/lib/heroFrame/editR4DryRunGate";
+import {
+  assessEditR4DryRun,
+  editR4DryRunPassed,
+  isEditR4CanonicalOwner,
+} from "@/lib/heroFrame/editR4DryRunGate";
 import { EDIT_R4_PRODUCT } from "@/lib/heroFrame/editR4ProductIds";
 import { supabase } from "@/lib/supabase";
 
@@ -67,15 +71,27 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
   const wardrobeBlocked = Boolean(
     artistId && !wardrobeQuery.isLoading && garments.length === 0,
   );
-  const gates = assessEditR4DryRun(dryRun ?? undefined, videoAssetId, wardrobeFeatureId);
+  const isCanonicalOwner = isEditR4CanonicalOwner(sessionUid);
+  const gates = assessEditR4DryRun(
+    dryRun ?? undefined,
+    videoAssetId,
+    wardrobeFeatureId,
+    sessionUid,
+  );
   const dryRunPassed = editR4DryRunPassed(gates);
   const canInspect = Boolean(
-    artistId && videoAssetId && wardrobeFeatureId && GROK_VIDEO_EDIT_PROMPT_READY && !running && !dryRunning,
+    isCanonicalOwner &&
+      artistId &&
+      videoAssetId &&
+      wardrobeFeatureId &&
+      GROK_VIDEO_EDIT_PROMPT_READY &&
+      !running &&
+      !dryRunning,
   );
   const canRun = canInspect && dryRunPassed;
 
   async function handleDryRun() {
-    if (!artistId) return;
+    if (!artistId || !isCanonicalOwner) return;
     setDryRunning(true);
     setDryRun(null);
     setConfirming(false);
@@ -101,7 +117,7 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
   }
 
   async function handleRun() {
-    if (!artistId || !dryRunPassed) return;
+    if (!artistId || !isCanonicalOwner || !dryRunPassed) return;
     setRunning(true);
     setPreviewUrl(null);
     setResultAssetId(null);
@@ -145,9 +161,17 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
         </p>
         <p className="mt-1 break-all text-[11px] text-muted-foreground">
           Session UID: {sessionUid ?? "unsigned"}
-          {sessionUid === EDIT_R4_PRODUCT.ownerId ? " · canonical owner" : ""}
+          {isCanonicalOwner ? " · canonical owner" : " · not the EDIT-R4 owner"}
         </p>
       </div>
+
+      {!isCanonicalOwner && (
+        <p className="text-xs text-amber-300">
+          EDIT-R4-PRODUCT-1 inspect and run stay disabled until the session UID is
+          the canonical owner. Sign in with the owner magic link (Account). Do not
+          create a replacement account.
+        </p>
+      )}
 
       {wardrobeBlocked && (
         <p className="text-xs text-amber-300">

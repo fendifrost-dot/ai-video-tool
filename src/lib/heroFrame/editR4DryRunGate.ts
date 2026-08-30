@@ -4,10 +4,15 @@ import type { GrokVideoEditDryRunPlan } from "@/lib/queries/grokVideoEdit";
 
 export type EditR4GateItem = { ok: boolean; label: string };
 
+export function isEditR4CanonicalOwner(sessionUid: string | null | undefined): boolean {
+  return sessionUid === EDIT_R4_PRODUCT.ownerId;
+}
+
 export function assessEditR4DryRun(
   plan: GrokVideoEditDryRunPlan | undefined,
   videoAssetId: string,
   wardrobeFeatureId: string,
+  sessionUid?: string | null,
 ): EditR4GateItem[] {
   const body = plan?.xaiRequestBody;
   const refs = body?.reference_images ?? [];
@@ -16,6 +21,10 @@ export function assessEditR4DryRun(
   const firstRefUrl = typeof firstRef === "string" ? firstRef : firstRef?.url ?? "";
   const paths = plan?.garmentPathsUsed ?? [];
   return [
+    {
+      ok: isEditR4CanonicalOwner(sessionUid),
+      label: "session UID = canonical owner",
+    },
     {
       ok: (plan?.endpoint ?? "").endsWith("/videos/edits"),
       label: "endpoint = /v1/videos/edits",
