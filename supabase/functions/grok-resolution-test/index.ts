@@ -117,25 +117,25 @@ async function findHeroFrameInStorage(
     });
     if (!top) continue;
 
-    const files = top.filter((e) => e.id !== null);
-    const hero = files.find((e) => looksLikeHeroFrame(e.name));
+    const files = top.filter((e: any) => e.id !== null);
+    const hero = files.find((e: any) => looksLikeHeroFrame(e.name));
     if (hero) return { path: `${root}/${hero.name}`, bucket };
 
-    for (const folder of top.filter((e) => e.id === null)) {
+    for (const folder of top.filter((e: any) => e.id === null)) {
       const sub = `${root}/${folder.name}`;
       const { data: inner } = await admin.storage.from(bucket).list(sub, {
         limit: 200,
         sortBy: { column: "created_at", order: "desc" },
       });
       if (!inner) continue;
-      const innerFiles = inner.filter((e) => e.id !== null);
-      const match = innerFiles.find((e) => looksLikeHeroFrame(e.name)) ??
-        innerFiles.find((e) => isImage(e.name));
+      const innerFiles = inner.filter((e: any) => e.id !== null);
+      const match = innerFiles.find((e: any) => looksLikeHeroFrame(e.name)) ??
+        innerFiles.find((e: any) => isImage(e.name));
       if (match) return { path: `${sub}/${match.name}`, bucket };
     }
 
     // Last resort within this bucket: any image directly under the project.
-    const anyImage = files.find((e) => isImage(e.name));
+    const anyImage = files.find((e: any) => isImage(e.name));
     if (anyImage) return { path: `${root}/${anyImage.name}`, bucket };
   }
   return null;
