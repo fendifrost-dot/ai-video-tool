@@ -6,6 +6,7 @@ import {
   GROK_VIDEO_EDIT_PROMPT_READY,
   GROK_VIDEO_EDIT_PROMPT_V1,
   GROK_VIDEO_EDIT_PROMPT_V2,
+  GROK_VIDEO_EDIT_PROMPT_V3,
   GROK_VIDEO_EDIT_PROMPT_VERSION,
 } from "./grokVideoEditPrompt";
 
@@ -30,13 +31,34 @@ describe("GROK_VIDEO_EDIT_PROMPT (active V2)", () => {
     expect(GROK_VIDEO_EDIT_PROMPT).toContain(GROK_VIDEO_EDIT_BRAND_EXCLUSION_SENTENCE);
     expect(GROK_VIDEO_EDIT_PROMPT_V1).toContain(GROK_VIDEO_EDIT_IDENTITY_SENTENCE);
     expect(GROK_VIDEO_EDIT_PROMPT_V1).toContain(GROK_VIDEO_EDIT_BRAND_EXCLUSION_SENTENCE);
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain(GROK_VIDEO_EDIT_IDENTITY_SENTENCE);
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain(GROK_VIDEO_EDIT_BRAND_EXCLUSION_SENTENCE);
   });
 });
 
-describe("GROK_VIDEO_EDIT_PROMPT freeze", () => {
-  it("does not grow a V3 construction prompt; remaining defects are repair-owned", () => {
-    expect(GROK_VIDEO_EDIT_PROMPT_VERSION).toBe("v2");
+describe("GROK_VIDEO_EDIT_PROMPT_V3 (installed, not active)", () => {
+  it("is preserved beside V1/V2 and is not the active product prompt", () => {
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).not.toBe(GROK_VIDEO_EDIT_PROMPT);
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).not.toBe(GROK_VIDEO_EDIT_PROMPT_V2);
     expect(GROK_VIDEO_EDIT_PROMPT).toBe(GROK_VIDEO_EDIT_PROMPT_V2);
+    expect(GROK_VIDEO_EDIT_PROMPT_VERSION).toBe("v2");
+  });
+
+  it("corrects collar outer + zip tape factual errors from V2", () => {
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain("mastic cream on the outside");
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain("only its inner facing navy");
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain(
+      "zip tape self-coloured in the same mastic cream as the body",
+    );
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain("small gold pull at the top");
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).not.toContain("navy stand collar");
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain("FULLY ZIPPED CLOSED");
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain("continuously and unbroken");
+  });
+
+  it("does not authorize spend: active lane stays V2", () => {
+    expect(GROK_VIDEO_EDIT_PROMPT).toBe(GROK_VIDEO_EDIT_PROMPT_V2);
+    expect(GROK_VIDEO_EDIT_PROMPT).toContain("navy stand collar");
   });
 });
 

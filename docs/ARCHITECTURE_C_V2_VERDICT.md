@@ -8,6 +8,10 @@ Post-test ChatGPT handoff (stills, sleeve geometry limit, withdrawn V3 compiler)
 
 ChatGPT lock (sequencing + no schema-yet): [`ARCHITECTURE_C_CHATGPT_LOCK_2026-09-03.md`](ARCHITECTURE_C_CHATGPT_LOCK_2026-09-03.md).
 
+Claude defect register: [`ARCHITECTURE_C_V2_DEFECTS_AND_PROPOSED_FIXES_2026-09-03.md`](ARCHITECTURE_C_V2_DEFECTS_AND_PROPOSED_FIXES_2026-09-03.md).
+
+ChatGPT follow-up (V3 installed, V2 active, no spend; §3.4 still-first): [`ARCHITECTURE_C_CHATGPT_V3_STILL_FIRST_RULING_2026-09-03.md`](ARCHITECTURE_C_CHATGPT_V3_STILL_FIRST_RULING_2026-09-03.md).
+
 ---
 
 ## Split the score (do not mix)
