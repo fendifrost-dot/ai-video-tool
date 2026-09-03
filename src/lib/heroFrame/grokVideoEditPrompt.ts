@@ -12,6 +12,11 @@
  * "not knit / not a generic track jacket", identity-preservation, and the
  * Polo-brand-exclusion sentence (verified working on V1).
  *
+ * FREEZE (2026-09-03): V2 is the generation baseline. Do not write a V3 that
+ * hard-codes remaining construction (wordmark, sleeve-panel topology, chest-band
+ * pinstripe, silhouette) into prose. Those defects are deterministic repair —
+ * see docs/ARCHITECTURE_C_V2_VERDICT.md.
+ *
  * Paired with pickGrokVideoEditReferencePaths (flat-only, max 1).
  */
 

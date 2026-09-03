@@ -33,6 +33,13 @@ describe("GROK_VIDEO_EDIT_PROMPT (active V2)", () => {
   });
 });
 
+describe("GROK_VIDEO_EDIT_PROMPT freeze", () => {
+  it("does not grow a V3 construction prompt; remaining defects are repair-owned", () => {
+    expect(GROK_VIDEO_EDIT_PROMPT_VERSION).toBe("v2");
+    expect(GROK_VIDEO_EDIT_PROMPT).toBe(GROK_VIDEO_EDIT_PROMPT_V2);
+  });
+});
+
 describe("GROK_VIDEO_EDIT_PROMPT_V1 (history preserved)", () => {
   it("still exists and still contains UNZIPPED", () => {
     expect(GROK_VIDEO_EDIT_PROMPT_V1).toContain("UNZIPPED");
