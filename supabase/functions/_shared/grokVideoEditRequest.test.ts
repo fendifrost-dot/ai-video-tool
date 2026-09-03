@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { pickGrokVideoEditReferencePaths } from "./garmentReference.ts";
-import { buildGrokVideoEditAssetInsert, buildGrokVideoEditXaiBody } from "./grokVideoEditRequest.ts";
+import {
+  buildGrokVideoEditAssetInsert,
+  buildGrokVideoEditXaiBody,
+  redactSignedUrls,
+} from "./grokVideoEditRequest.ts";
 
 describe("buildGrokVideoEditXaiBody", () => {
   it("uses struct forms for video and reference_images", () => {
@@ -70,5 +74,23 @@ describe("R4 reference lock", () => {
     expect(paths).toHaveLength(1);
     expect(paths[0]).toContain("2a14a72b-e7de-4ecb-9c24-4142b672d175.jpg");
     expect(paths.some((p) => p.includes("onmodel"))).toBe(false);
+  });
+});
+
+describe("redactSignedUrls", () => {
+  it("strips query tokens from the dry-run envelope and keeps the V2 prompt", () => {
+    const redacted = redactSignedUrls({
+      prompt: "Keep this text",
+      video: { url: "https://storage.example/source.mp4?token=secret" },
+      reference_images: [{ url: "https://storage.example/flat.jpg?token=secret" }],
+    }) as {
+      prompt: string;
+      video: { url: string };
+      reference_images: Array<{ url: string }>;
+    };
+    expect(redacted.prompt).toBe("Keep this text");
+    expect(redacted.video.url).toBe("https://storage.example/source.mp4?<signed>");
+    expect(redacted.reference_images[0].url).toBe("https://storage.example/flat.jpg?<signed>");
+    expect(JSON.stringify(redacted)).not.toContain("token=secret");
   });
 });

@@ -13,7 +13,7 @@ import {
   type GrokVideoEditDryRunPlan,
 } from "@/lib/queries/grokVideoEdit";
 import { EDIT_R4_PRODUCT, isEditR4CanonicalOwner } from "@/lib/heroFrame/editR4ProductIds";
-import { isEditR4DryRunReady } from "@/lib/heroFrame/editR4DryRunReady";
+import { assessEditR4DryRun, isEditR4DryRunReady } from "@/lib/heroFrame/editR4DryRunGate";
 import { supabase } from "@/lib/supabase";
 
 const DEFAULT_DURATION = 4;
@@ -71,7 +71,8 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
     artistId && !wardrobeQuery.isLoading && garments.length === 0,
   );
   const isCanonicalOwner = isEditR4CanonicalOwner(sessionUid);
-  const planReady = isEditR4DryRunReady(dryRun);
+  const gates = assessEditR4DryRun(dryRun, videoAssetId, wardrobeFeatureId, sessionUid);
+  const planReady = isEditR4DryRunReady(dryRun, videoAssetId, wardrobeFeatureId, sessionUid);
   const canInspect = Boolean(
     isCanonicalOwner &&
       artistId &&
@@ -256,24 +257,33 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
             <p className="text-xs text-muted-foreground">Fetching $0 dry-run plan…</p>
           )}
           {dryRun && (
-            <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
-              <dt className="text-muted-foreground">Endpoint</dt>
-              <dd className="truncate">{dryRun.endpoint}</dd>
-              <dt className="text-muted-foreground">Prompt</dt>
-              <dd>Frozen Prompt {(dryRun.promptVersion ?? GROK_VIDEO_EDIT_PROMPT_VERSION).toUpperCase()}</dd>
-              <dt className="text-muted-foreground">References</dt>
-              <dd>
-                {garmentNames.length} · {garmentNames.join(", ") || "—"}
-              </dd>
-              <dt className="text-muted-foreground">Est. cost</dt>
-              <dd>
-                ${dryRun.estimatedCostUsd?.toFixed(2) ?? "—"} / max ${dryRun.maxCostUsd}
-              </dd>
-              <dt className="text-muted-foreground">Video</dt>
-              <dd className="truncate">{selectedVideo?.file_url.split("/").pop()}</dd>
-              <dt className="text-muted-foreground">Garment</dt>
-              <dd>{selectedGarment?.label}</dd>
-            </dl>
+            <>
+              <ul className="space-y-1 text-xs">
+                {gates.map((g) => (
+                  <li key={g.label} className={g.ok ? "text-emerald-300" : "text-amber-300"}>
+                    {g.ok ? "PASS" : "FAIL"} — {g.label}
+                  </li>
+                ))}
+              </ul>
+              <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+                <dt className="text-muted-foreground">Endpoint</dt>
+                <dd className="truncate">{dryRun.endpoint}</dd>
+                <dt className="text-muted-foreground">Prompt</dt>
+                <dd>Frozen Prompt {(dryRun.promptVersion ?? GROK_VIDEO_EDIT_PROMPT_VERSION).toUpperCase()}</dd>
+                <dt className="text-muted-foreground">References</dt>
+                <dd>
+                  {garmentNames.length} · {garmentNames.join(", ") || "—"}
+                </dd>
+                <dt className="text-muted-foreground">Est. cost</dt>
+                <dd>
+                  ${dryRun.estimatedCostUsd?.toFixed(2) ?? "—"} / max ${dryRun.maxCostUsd}
+                </dd>
+                <dt className="text-muted-foreground">Video</dt>
+                <dd className="truncate">{selectedVideo?.file_url.split("/").pop()}</dd>
+                <dt className="text-muted-foreground">Garment</dt>
+                <dd>{selectedGarment?.label}</dd>
+              </dl>
+            </>
           )}
           <div className="flex flex-wrap gap-2">
             <Button size="sm" onClick={handleRun} disabled={!canRun || running}>

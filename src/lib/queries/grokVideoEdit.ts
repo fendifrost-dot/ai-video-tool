@@ -24,8 +24,8 @@ export type GrokVideoEditInput = {
 };
 
 export type GrokVideoEditDryRunPlan = {
-  dryRun: true;
-  billed: false;
+  dryRun?: boolean;
+  billed?: boolean;
   model: string;
   endpoint: string;
   videoAssetId: string;
@@ -35,6 +35,14 @@ export type GrokVideoEditDryRunPlan = {
   estimatedCostUsd: number;
   maxCostUsd: number;
   promptVersion?: string;
+  prompt?: string;
+  referenceCount?: number;
+  xaiRequestBody?: {
+    model?: string;
+    prompt?: string;
+    video?: { url?: string };
+    reference_images?: Array<{ url?: string } | string>;
+  };
 };
 
 export type GrokVideoEditResult = {

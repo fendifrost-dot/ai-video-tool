@@ -10,6 +10,7 @@ import { pickGrokVideoEditReferencePaths } from "../_shared/garmentReference.ts"
 import {
   buildGrokVideoEditAssetInsert,
   buildGrokVideoEditXaiBody,
+  redactSignedUrls,
 } from "../_shared/grokVideoEditRequest.ts";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 
@@ -252,6 +253,9 @@ serve(async (req) => {
     estimatedCostUsd: estimateCostUsd(model, 4.5),
     maxCostUsd,
     promptVersion,
+    prompt: effectivePrompt,
+    referenceCount: referenceUrls.length,
+    xaiRequestBody: redactSignedUrls(xaiBody),
   };
 
   if (body.dryRun) return json(200, { dryRun: true, billed: false, ...plan });
