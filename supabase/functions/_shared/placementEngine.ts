@@ -771,3 +771,91 @@ export async function compositeLogoOntoVton(
     debug_overlay_bytes: debugOverlayBytes,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Sleeve panel — still-only consumer (manual keyframe; detection stays stubbed)
+// ---------------------------------------------------------------------------
+
+export type SleevePanelCompositeResult = {
+  bytes: Uint8Array;
+  sides: Array<{
+    side: string;
+    placement_source: PlacementSource;
+    fallback_reason: FallbackReason;
+    target_quad: [number, number][];
+  }>;
+};
+
+function cropNormBboxLocal(
+  img: RgbaImage,
+  norm: [number, number, number, number],
+): RgbaImage {
+  const [nx, ny, nw, nh] = norm;
+  const left = Math.max(0, Math.round(nx * img.width));
+  const top = Math.max(0, Math.round(ny * img.height));
+  const w = Math.max(1, Math.round(nw * img.width));
+  const h = Math.max(1, Math.round(nh * img.height));
+  const data = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const sx = Math.min(img.width - 1, left + x);
+      const sy = Math.min(img.height - 1, top + y);
+      const si = (sy * img.width + sx) * 4;
+      const di = (y * w + x) * 4;
+      data[di] = img.data[si];
+      data[di + 1] = img.data[si + 1];
+      data[di + 2] = img.data[si + 2];
+      data[di + 3] = img.data[si + 3];
+    }
+  }
+  return { width: w, height: h, data };
+}
+
+/**
+ * Warp flat-ref sleeve-panel pixels onto manual upper-arm quads.
+ * Detection remains stubbed — callers must supply target quads.
+ */
+export async function compositeSleevePanelsOntoStill(
+  stillBytes: Uint8Array,
+  flatBytes: Uint8Array,
+  panels: Array<{
+    side: string;
+    targetQuad: QuadNorm;
+    sourceBboxNorm?: [number, number, number, number] | null;
+  }>,
+): Promise<SleevePanelCompositeResult> {
+  if (panels.length === 0) throw new Error("sleeve_panels_required");
+  let base = await decodeToRgba(stillBytes);
+  const flat = await decodeToRgba(flatBytes);
+  const sides: SleevePanelCompositeResult["sides"] = [];
+
+  for (const panel of panels) {
+    const eng = placeDetail({
+      frame: base,
+      detailType: "sleeve_panel",
+      manualPlacement: {
+        kind: "quad",
+        points: quadFromNorm(base, panel.targetQuad),
+      },
+    });
+    if (!eng.target || eng.target.kind !== "quad") {
+      throw new Error(`sleeve_panel_requires_manual_keyframe:${panel.side}`);
+    }
+    const targetQuad = eng.target.points;
+    const quadPts = targetQuad as unknown as QuadPts;
+    const covered = coverTargetQuad(base, quadPts);
+    const sourceNorm =
+      panel.sourceBboxNorm ??
+      ([0.05, 0.35, 0.12, 0.35] as [number, number, number, number]);
+    const panelCrop = cropNormBboxLocal(flat, sourceNorm);
+    base = warpQuadAlpha(covered, panelCrop, quadPts, 2);
+    sides.push({
+      side: panel.side,
+      placement_source: eng.source,
+      fallback_reason: eng.fallbackReason,
+      target_quad: quadToPairs(targetQuad),
+    });
+  }
+
+  return { bytes: await encodePng(base), sides };
+}

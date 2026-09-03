@@ -64,6 +64,6 @@ Cursor’s still-first order stands. One adjustment:
 
 ## Cursor hold
 
-Fendi / ChatGPT will deliver the **still-first deterministic repair execution directive** with a **hard stop before temporal tracking**.
+**[DECISION — Fendi, 2026-09-03]** Proceed authorized. Cursor implements still-first product wiring (`architecture-c-still-repair-proxy` + Hero Frame §7) with **hard stop before temporal tracking**. No V3, no spend.
 
-Until that directive lands: no implementation, no V3, no spend, no Lovable Agent coding for this lane.
+Until still passes human review: no temporal propagation, no SAM-3 master composite.

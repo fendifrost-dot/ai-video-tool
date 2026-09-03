@@ -47,6 +47,11 @@ verify_jwt = false
 [functions.grok-video-edit-proxy]
 verify_jwt = true
 
+# Architecture C still-first deterministic repair (logo_chest / sleeve_panel).
+# User JWT required. No xAI spend. Temporal tracking remains disabled in-code.
+[functions.architecture-c-still-repair-proxy]
+verify_jwt = true
+
 # Jacket-only masked inpaint (locked v2 wardrobe-swap primary lane). Routes Fal
 # through Control Center via X-Proxy-Secret (same secrets as wardrobe-vton-proxy);
 # user JWT required (browser calls with session token).
