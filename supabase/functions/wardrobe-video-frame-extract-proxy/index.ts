@@ -231,7 +231,7 @@ async function objectExists(
   const folder = slash >= 0 ? path.slice(0, slash) : "";
   const name = slash >= 0 ? path.slice(slash + 1) : path;
   const { data } = await admin.storage.from(bucket).list(folder, { search: name, limit: 100 });
-  return Boolean(data?.some((o) => o.name === name));
+  return Boolean(data?.some((o: any) => o.name === name));
 }
 
 serve(async (req) => {

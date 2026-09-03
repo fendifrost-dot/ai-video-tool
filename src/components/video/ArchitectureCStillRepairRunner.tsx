@@ -58,11 +58,11 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const [sessionUid, setSessionUid] = useState<string | null>(null);
-  const [videoAssetId, setVideoAssetId] = useState(ARCHITECTURE_C_V2_REPAIR.editedClipAssetId);
-  const [wardrobeFeatureId, setWardrobeFeatureId] = useState(
+  const [videoAssetId, setVideoAssetId] = useState<string>(ARCHITECTURE_C_V2_REPAIR.editedClipAssetId);
+  const [wardrobeFeatureId, setWardrobeFeatureId] = useState<string>(
     ARCHITECTURE_C_V2_REPAIR.wardrobeFeatureId,
   );
-  const [scrubTime, setScrubTime] = useState(ARCHITECTURE_C_V2_REPAIR.recommendedStillTimeSec);
+  const [scrubTime, setScrubTime] = useState<number>(ARCHITECTURE_C_V2_REPAIR.recommendedStillTimeSec);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [stillAssetId, setStillAssetId] = useState("");
   const [stillPreviewUrl, setStillPreviewUrl] = useState<string | null>(null);
