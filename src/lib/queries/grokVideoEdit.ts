@@ -2,9 +2,14 @@ import { getAccessTokenWithTimeout } from "@/lib/authSession";
 import {
   GROK_VIDEO_EDIT_PROMPT,
   GROK_VIDEO_EDIT_PROMPT_READY,
+  GROK_VIDEO_EDIT_PROMPT_VERSION,
 } from "@/lib/heroFrame/grokVideoEditPrompt";
 
-export { GROK_VIDEO_EDIT_PROMPT, GROK_VIDEO_EDIT_PROMPT_READY };
+export {
+  GROK_VIDEO_EDIT_PROMPT,
+  GROK_VIDEO_EDIT_PROMPT_READY,
+  GROK_VIDEO_EDIT_PROMPT_VERSION,
+};
 
 export type GrokVideoEditInput = {
   projectId: string;
@@ -18,6 +23,20 @@ export type GrokVideoEditInput = {
   dryRun?: boolean;
 };
 
+export type GrokVideoEditDryRunPlan = {
+  dryRun: true;
+  billed: false;
+  model: string;
+  endpoint: string;
+  videoAssetId: string;
+  wardrobeFeatureId: string;
+  garmentPathsUsed: string[];
+  garmentFilenames?: string[];
+  estimatedCostUsd: number;
+  maxCostUsd: number;
+  promptVersion?: string;
+};
+
 export type GrokVideoEditResult = {
   assetId: string | null;
   previewUrl: string | null;
@@ -26,6 +45,8 @@ export type GrokVideoEditResult = {
   finalStatus: string;
   billed: boolean;
   requestId?: string;
+  persistError?: string | null;
+  dryRunPlan?: GrokVideoEditDryRunPlan;
 };
 
 export async function callGrokVideoEdit(
@@ -55,6 +76,7 @@ export async function callGrokVideoEdit(
         ...(prompt ? { prompt } : {}),
         model: input.model ?? "grok-imagine-video",
         maxCostUsd: input.maxCostUsd ?? 0.5,
+        promptVersion: GROK_VIDEO_EDIT_PROMPT_VERSION,
       }),
     },
   );
@@ -63,6 +85,18 @@ export async function callGrokVideoEdit(
   if (!resp.ok) {
     const detail = (body.detail ?? body.error ?? resp.statusText) as string;
     throw new Error(`Grok video edit failed: ${resp.status} ${detail}`);
+  }
+
+  if (input.dryRun || body.dryRun) {
+    return {
+      assetId: null,
+      previewUrl: null,
+      storedPath: null,
+      actualCostUsd: null,
+      finalStatus: "dry_run",
+      billed: false,
+      dryRunPlan: body as GrokVideoEditDryRunPlan,
+    };
   }
 
   const submit = (body.submit ?? {}) as Record<string, unknown>;
@@ -76,5 +110,6 @@ export async function callGrokVideoEdit(
     finalStatus: String(body.finalStatus ?? "unknown"),
     billed: Boolean(body.billed),
     requestId: submit.requestId as string | undefined,
+    persistError: (body.persistError as string | null) ?? null,
   };
 }

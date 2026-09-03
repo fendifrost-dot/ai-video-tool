@@ -7,7 +7,10 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { pickGrokVideoEditReferencePaths } from "../_shared/garmentReference.ts";
-import { buildGrokVideoEditXaiBody } from "../_shared/grokVideoEditRequest.ts";
+import {
+  buildGrokVideoEditAssetInsert,
+  buildGrokVideoEditXaiBody,
+} from "../_shared/grokVideoEditRequest.ts";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 
 const corsHeaders = {
@@ -48,6 +51,7 @@ type Body = {
   maxCostUsd?: number;
   shotId?: string;
   dryRun?: boolean;
+  promptVersion?: string;
 };
 
 function json(status: number, body: unknown) {
@@ -236,6 +240,7 @@ serve(async (req) => {
     referenceUrls,
   });
 
+  const promptVersion = body.promptVersion?.trim() || "unspecified";
   const plan = {
     lane: "architecture_c_grok_video_edit",
     model,
@@ -243,8 +248,10 @@ serve(async (req) => {
     videoAssetId: body.videoAssetId,
     wardrobeFeatureId: body.wardrobeFeatureId,
     garmentPathsUsed: garmentPaths,
+    garmentFilenames: garmentPaths.map((p) => p.split("/").pop() ?? p),
     estimatedCostUsd: estimateCostUsd(model, 4.5),
     maxCostUsd,
+    promptVersion,
   };
 
   if (body.dryRun) return json(200, { dryRun: true, billed: false, ...plan });
@@ -292,6 +299,7 @@ serve(async (req) => {
   let storedPath: string | null = null;
   let assetId: string | null = null;
   let byteLength: number | null = null;
+  let persistError: string | null = null;
 
   if (outputUrl) {
     const dl = await fetch(outputUrl);
@@ -302,33 +310,30 @@ serve(async (req) => {
       const { error: upErr } = await admin.storage
         .from("project-clips")
         .upload(storedPath, bytes, { contentType: "video/mp4", upsert: true });
-      if (!upErr) {
+      if (upErr) {
+        persistError = `storage_upload: ${upErr.message}`;
+      } else {
+        const insertRow = buildGrokVideoEditAssetInsert({
+          userId,
+          projectId: body.projectId,
+          videoAssetId: body.videoAssetId,
+          wardrobeFeatureId: body.wardrobeFeatureId,
+          storedPath,
+          shotId: body.shotId,
+          requestId,
+          model,
+          actualCostUsd,
+          finalStatus,
+          byteLength,
+          promptVersion,
+        });
         const { data: assetRow, error: assetErr } = await admin
           .from("project_assets")
-          .insert({
-            user_id: userId,
-            project_id: body.projectId,
-            shot_id: body.shotId ?? null,
-            asset_type: "edited_clip",
-            file_url: storedPath,
-            source_tool: "grok_video_edit",
-            approval_status: "pending",
-            metadata_json: {
-              bucket: "project-clips",
-              mime_type: "video/mp4",
-              file_size_bytes: byteLength,
-              architecture_lane: "architecture_c",
-              grok_request_id: requestId,
-              source_video_asset_id: body.videoAssetId,
-              wardrobe_feature_id: body.wardrobeFeatureId,
-              model,
-              actual_cost_usd: actualCostUsd,
-              final_status: finalStatus,
-            },
-          })
+          .insert(insertRow)
           .select("id")
           .single();
         if (!assetErr && assetRow) assetId = assetRow.id as string;
+        else persistError = `project_assets_insert: ${assetErr?.message ?? "no_row"}`;
       }
     }
   }
@@ -348,6 +353,7 @@ serve(async (req) => {
     finalStatus,
     actualCostUsd,
     assetId,
+    persistError,
     output: {
       storedBucket: storedPath ? "project-clips" : null,
       storedPath,

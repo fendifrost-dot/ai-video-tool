@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, PlayCircle, ShieldAlert, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Link } from "@tanstack/react-router";
@@ -6,7 +6,15 @@ import { Button } from "@/components/ui/button";
 import { useProject } from "@/lib/queries/projects";
 import { isVideoAsset, useProjectAssets } from "@/lib/queries/projectAssets";
 import { useWardrobe } from "@/lib/queries/wardrobe";
-import { callGrokVideoEdit, GROK_VIDEO_EDIT_PROMPT_READY } from "@/lib/queries/grokVideoEdit";
+import {
+  callGrokVideoEdit,
+  GROK_VIDEO_EDIT_PROMPT_READY,
+  GROK_VIDEO_EDIT_PROMPT_VERSION,
+  type GrokVideoEditDryRunPlan,
+} from "@/lib/queries/grokVideoEdit";
+import { EDIT_R4_PRODUCT, isEditR4CanonicalOwner } from "@/lib/heroFrame/editR4ProductIds";
+import { isEditR4DryRunReady } from "@/lib/heroFrame/editR4DryRunReady";
+import { supabase } from "@/lib/supabase";
 
 const DEFAULT_DURATION = 4;
 
@@ -26,25 +34,83 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
   const [wardrobeFeatureId, setWardrobeFeatureId] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [running, setRunning] = useState(false);
+  const [dryRunning, setDryRunning] = useState(false);
+  const [dryRun, setDryRun] = useState<GrokVideoEditDryRunPlan | null>(null);
+  const [sessionUid, setSessionUid] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [resultAssetId, setResultAssetId] = useState<string | null>(null);
   const [lastCost, setLastCost] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getUser().then(({ data }) => {
+      if (!cancelled) {
+        setSessionUid(data.user && !data.user.is_anonymous ? data.user.id : null);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!videoAssetId && videos.some((v) => v.id === EDIT_R4_PRODUCT.videoAssetId)) {
+      setVideoAssetId(EDIT_R4_PRODUCT.videoAssetId);
+    }
+  }, [videos, videoAssetId]);
+
+  useEffect(() => {
+    if (!wardrobeFeatureId && garments.some((g) => g.id === EDIT_R4_PRODUCT.wardrobeFeatureId)) {
+      setWardrobeFeatureId(EDIT_R4_PRODUCT.wardrobeFeatureId);
+    }
+  }, [garments, wardrobeFeatureId]);
 
   const selectedVideo = videos.find((v) => v.id === videoAssetId);
   const selectedGarment = garments.find((g) => g.id === wardrobeFeatureId);
   const wardrobeBlocked = Boolean(
     artistId && !wardrobeQuery.isLoading && garments.length === 0,
   );
-  const canRun = Boolean(
-    artistId &&
+  const isCanonicalOwner = isEditR4CanonicalOwner(sessionUid);
+  const planReady = isEditR4DryRunReady(dryRun);
+  const canInspect = Boolean(
+    isCanonicalOwner &&
+      artistId &&
       videoAssetId &&
       wardrobeFeatureId &&
       GROK_VIDEO_EDIT_PROMPT_READY &&
-      !running,
+      !running &&
+      !dryRunning,
   );
+  const canRun = canInspect && confirming && planReady;
+
+  async function handleInspect() {
+    if (!artistId || !isCanonicalOwner) return;
+    setConfirming(true);
+    setDryRunning(true);
+    setDryRun(null);
+    try {
+      const result = await callGrokVideoEdit({
+        projectId,
+        artistId,
+        videoAssetId,
+        wardrobeFeatureId,
+        maxCostUsd: 0.5,
+        dryRun: true,
+      });
+      if (result.billed) throw new Error("Dry-run was billed — aborting");
+      if (!result.dryRunPlan) throw new Error("Dry-run returned no plan");
+      setDryRun(result.dryRunPlan);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast.error(msg);
+      setConfirming(false);
+    } finally {
+      setDryRunning(false);
+    }
+  }
 
   async function handleRun() {
-    if (!artistId) return;
+    if (!artistId || !isCanonicalOwner || !planReady) return;
     setRunning(true);
     setPreviewUrl(null);
     setResultAssetId(null);
@@ -66,15 +132,24 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
       setPreviewUrl(result.previewUrl);
       setResultAssetId(result.assetId);
       setLastCost(result.actualCostUsd);
-      toast.success("Grok video edit complete — review on the Review board");
+      if (result.persistError) {
+        toast.error(`Generated, but Review row failed: ${result.persistError}`);
+      } else if (result.assetId) {
+        toast.success("Grok video edit complete — review on the Review board");
+      } else {
+        toast.error("Generated, but no edited_clip row was returned");
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       toast.error(msg);
     } finally {
       setRunning(false);
-      setConfirming(false);
     }
   }
+
+  const garmentNames = dryRun?.garmentFilenames?.length
+    ? dryRun.garmentFilenames
+    : (dryRun?.garmentPathsUsed ?? []).map((p) => p.split("/").pop() ?? p);
 
   return (
     <section className="space-y-3 rounded-lg border border-violet-500/30 bg-violet-500/5 p-4">
@@ -83,19 +158,27 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
           Architecture C — Grok video edit (product test)
         </h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          Real footage + garment refs → Grok <code>/v1/videos/edits</code> →{" "}
-          <code>edited_clip</code> on Review. Raw 720p Grok output; SAM-3 master
-          recovery + deterministic branding are follow-on steps.
+          Frozen Prompt {GROK_VIDEO_EDIT_PROMPT_VERSION.toUpperCase()} · Fendi source +{" "}
+          <code>/v1/videos/edits</code> + one flat YSL reference. Inspect the dry-run
+          plan in-product before any paid click.
+        </p>
+        <p className="mt-1 break-all text-[11px] text-muted-foreground">
+          Session UID: {sessionUid ?? "unsigned"}
+          {isCanonicalOwner ? " · canonical owner" : " · not the EDIT-R4 owner"}
         </p>
       </div>
 
+      {!isCanonicalOwner && (
+        <p className="text-xs text-amber-300">
+          Inspect and run stay disabled until the session UID is the canonical
+          owner. Sign in with the owner magic link (Account).
+        </p>
+      )}
+
       {wardrobeBlocked && (
         <p className="text-xs text-amber-300">
-          No wardrobe items are visible under this session. Artists /
-          character_features are owner-scoped (RISK-001). The owning account is a
-          recoverable email identity; this anonymous session is not it. AVT has no
-          sign-in UI yet — durable magic-link auth is required before Architecture C
-          can run. Do not create duplicate wardrobe rows.
+          No wardrobe items are visible under this session. Sign in as the owner.
+          Do not create duplicate wardrobe rows.
         </p>
       )}
 
@@ -115,6 +198,8 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
             value={videoAssetId}
             onChange={(e) => {
               setVideoAssetId(e.target.value);
+              setDryRun(null);
+              setConfirming(false);
               setPreviewUrl(null);
             }}
           >
@@ -135,6 +220,8 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
             value={wardrobeFeatureId}
             onChange={(e) => {
               setWardrobeFeatureId(e.target.value);
+              setDryRun(null);
+              setConfirming(false);
               setPreviewUrl(null);
             }}
           >
@@ -150,26 +237,46 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
 
       <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
         <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        Billed xAI call (~$0.30–0.50 per ~{DEFAULT_DURATION}s clip). Uses the
-        selected asset as-is — trim with §6 server extract first if you need a
-        sub-range.
+        Billed xAI call (~$0.29–0.50 per ~{DEFAULT_DURATION}s clip). The paid
+        button stays disabled until an in-product dry-run succeeds.
       </p>
 
-      {!confirming ? (
-        <Button size="sm" disabled={!canRun} onClick={() => setConfirming(true)}>
-          <PlayCircle className="mr-1.5 h-4 w-4" />
-          Review Grok edit run
-        </Button>
-      ) : (
+      <Button size="sm" variant="outline" disabled={!canInspect} onClick={handleInspect}>
+        {dryRunning ? (
+          <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+        ) : (
+          <ShieldAlert className="mr-1.5 h-4 w-4" />
+        )}
+        Review Grok edit run
+      </Button>
+
+      {confirming && (
         <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
-            <dt className="text-muted-foreground">Video</dt>
-            <dd className="truncate">{selectedVideo?.file_url.split("/").pop()}</dd>
-            <dt className="text-muted-foreground">Garment</dt>
-            <dd>{selectedGarment?.label}</dd>
-          </dl>
+          {dryRunning && (
+            <p className="text-xs text-muted-foreground">Fetching $0 dry-run plan…</p>
+          )}
+          {dryRun && (
+            <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+              <dt className="text-muted-foreground">Endpoint</dt>
+              <dd className="truncate">{dryRun.endpoint}</dd>
+              <dt className="text-muted-foreground">Prompt</dt>
+              <dd>Frozen Prompt {(dryRun.promptVersion ?? GROK_VIDEO_EDIT_PROMPT_VERSION).toUpperCase()}</dd>
+              <dt className="text-muted-foreground">References</dt>
+              <dd>
+                {garmentNames.length} · {garmentNames.join(", ") || "—"}
+              </dd>
+              <dt className="text-muted-foreground">Est. cost</dt>
+              <dd>
+                ${dryRun.estimatedCostUsd?.toFixed(2) ?? "—"} / max ${dryRun.maxCostUsd}
+              </dd>
+              <dt className="text-muted-foreground">Video</dt>
+              <dd className="truncate">{selectedVideo?.file_url.split("/").pop()}</dd>
+              <dt className="text-muted-foreground">Garment</dt>
+              <dd>{selectedGarment?.label}</dd>
+            </dl>
+          )}
           <div className="flex flex-wrap gap-2">
-            <Button size="sm" onClick={handleRun} disabled={running}>
+            <Button size="sm" onClick={handleRun} disabled={!canRun || running}>
               {running ? (
                 <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
               ) : (
@@ -180,8 +287,11 @@ export function GrokVideoEditRunner({ projectId }: { projectId: string }) {
             <Button
               size="sm"
               variant="outline"
-              disabled={running}
-              onClick={() => setConfirming(false)}
+              disabled={running || dryRunning}
+              onClick={() => {
+                setConfirming(false);
+                setDryRun(null);
+              }}
             >
               Back
             </Button>
