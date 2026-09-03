@@ -4,6 +4,8 @@
 
 **Class:** A (docs / scoring). Does not change runtime. Does not authorize a paid xAI call.
 
+Post-test ChatGPT handoff (stills, sleeve geometry limit, withdrawn V3 compiler): [`claude_code_handoff_avt_architecture_c_v2_after_test_2026-09-03.md`](../claude_code_handoff_avt_architecture_c_v2_after_test_2026-09-03.md).
+
 ---
 
 ## Split the score (do not mix)
