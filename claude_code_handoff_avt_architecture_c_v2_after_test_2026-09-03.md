@@ -143,4 +143,6 @@ Please **review and lock** (or push back) before Fendi gives Cursor execution or
 
 ## 8. Cursor hold
 
-Fendi will return with next execution steps. Until then: **no code beyond this handoff**, no V3, no spend, no Lovable Agent coding.
+**[DECISION — ChatGPT, 2026-09-03]** Direction locked in [`docs/ARCHITECTURE_C_CHATGPT_LOCK_2026-09-03.md`](docs/ARCHITECTURE_C_CHATGPT_LOCK_2026-09-03.md): freeze V2, SKIP spend, still-first `chest_band`/`logo_zone` then `sleeve_panel` (visible upper arm only), then tracking, then SAM-3 as a **separate** architecture gate. **No** generalized garment JSON schema before those three primitives prove out.
+
+Awaiting Fendi/ChatGPT **still-first execution directive** (hard stop before temporal tracking). Until then: **no implementation**, no V3, no spend, no Lovable Agent coding.

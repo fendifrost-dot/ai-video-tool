@@ -6,6 +6,8 @@
 
 Post-test ChatGPT handoff (stills, sleeve geometry limit, withdrawn V3 compiler): [`claude_code_handoff_avt_architecture_c_v2_after_test_2026-09-03.md`](../claude_code_handoff_avt_architecture_c_v2_after_test_2026-09-03.md).
 
+ChatGPT lock (sequencing + no schema-yet): [`ARCHITECTURE_C_CHATGPT_LOCK_2026-09-03.md`](ARCHITECTURE_C_CHATGPT_LOCK_2026-09-03.md).
+
 ---
 
 ## Split the score (do not mix)
