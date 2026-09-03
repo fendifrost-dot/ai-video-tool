@@ -57,6 +57,7 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
   );
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const uploadRef = useRef<HTMLInputElement>(null);
   const [sessionUid, setSessionUid] = useState<string | null>(null);
   const [videoAssetId, setVideoAssetId] = useState<string>(ARCHITECTURE_C_V2_REPAIR.editedClipAssetId);
   const [wardrobeFeatureId, setWardrobeFeatureId] = useState<string>(
@@ -74,6 +75,7 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
   const [logoResultAssetId, setLogoResultAssetId] = useState<string | null>(null);
   const [sleeveResultUrl, setSleeveResultUrl] = useState<string | null>(null);
   const [hardStop, setHardStop] = useState<string | null>(null);
+  const [captureHint, setCaptureHint] = useState<string | null>(null);
 
   const isOwner = isEditR4CanonicalOwner(sessionUid);
 
@@ -132,22 +134,30 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
   }, [stillAssetId, stills]);
 
   async function handleCaptureStill() {
+    if (!isOwner) {
+      toast.error("Sign in as the durable owner to capture a repair still");
+      return;
+    }
     const video = videoRef.current;
-    if (!video || !isOwner) return;
+    if (!video) {
+      toast.error("Video element missing — wait for the V2 clip URL to load");
+      return;
+    }
+    if (!videoUrl) {
+      toast.error("No signed video URL yet — cannot capture");
+      return;
+    }
     setBusy(true);
+    setCaptureHint(null);
     try {
       const session = await getSessionWithTimeout();
-      const userId = session?.user?.id;
-      if (!userId) throw new Error("Not signed in");
-      video.currentTime = scrubTime;
-      await new Promise<void>((resolve, reject) => {
-        const onSeeked = () => {
-          video.removeEventListener("seeked", onSeeked);
-          resolve();
-        };
-        video.addEventListener("seeked", onSeeked);
-        setTimeout(() => reject(new Error("seek timeout")), 5000);
-      });
+      const userId = session.user.id;
+      // Do NOT pre-seek + await seeked here. When readyState stays 0, seeked never
+      // fires and that timeout used to block the WebCodecs fallback entirely.
+      // captureVideoFrame prefers WebCodecs when the element has not decoded.
+      setCaptureHint(
+        `Capturing t=${scrubTime.toFixed(3)}s (readyState=${video.readyState})…`,
+      );
       const blob = await captureVideoFrame(video, scrubTime);
       const { assetId } = await uploadHeroSourceFrame({
         projectId,
@@ -158,16 +168,57 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
       });
       setStillAssetId(assetId);
       await assetsQuery.refetch();
+      setCaptureHint(null);
       toast.success(`Captured still at t=${scrubTime.toFixed(3)}s`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Capture failed");
+      const msg = err instanceof Error ? err.message : "Capture failed";
+      setCaptureHint(msg);
+      toast.error(msg);
     } finally {
       setBusy(false);
     }
   }
 
+  async function handleUploadStill(file: File) {
+    if (!isOwner) {
+      toast.error("Sign in as the durable owner to upload a repair still");
+      return;
+    }
+    setBusy(true);
+    setCaptureHint(null);
+    try {
+      const session = await getSessionWithTimeout();
+      const { normalizeImageForUpload } = await import("@/lib/image-normalize");
+      const normalized = await normalizeImageForUpload(file);
+      const { assetId } = await uploadHeroSourceFrame({
+        projectId,
+        userId: session.user.id,
+        blob: normalized,
+        frameTimeSec: scrubTime,
+        videoAssetId,
+      });
+      setStillAssetId(assetId);
+      await assetsQuery.refetch();
+      toast.success("Uploaded repair still — continue with logo_chest");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      setCaptureHint(msg);
+      toast.error(msg);
+    } finally {
+      setBusy(false);
+      if (uploadRef.current) uploadRef.current.value = "";
+    }
+  }
+
   async function handleLogoChest() {
-    if (!stillAssetId || !isOwner) return;
+    if (!isOwner) {
+      toast.error("Sign in as the durable owner");
+      return;
+    }
+    if (!stillAssetId) {
+      toast.error("Capture or upload a repair still first");
+      return;
+    }
     setBusy(true);
     try {
       const result = await callArchitectureCStillRepair({
@@ -190,8 +241,15 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
   }
 
   async function handleSleeve() {
+    if (!isOwner) {
+      toast.error("Sign in as the durable owner");
+      return;
+    }
     const sourceStill = logoResultAssetId || stillAssetId;
-    if (!sourceStill || !isOwner) return;
+    if (!sourceStill) {
+      toast.error("Need a still (prefer logo_chest output) before sleeve_panel");
+      return;
+    }
     setBusy(true);
     try {
       const sleevePanels: SleevePanelManual[] = [
@@ -280,6 +338,9 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
             src={videoUrl}
             className="max-h-72 w-full rounded-md border border-border bg-black"
             controls
+            preload="auto"
+            playsInline
+            crossOrigin="anonymous"
             onLoadedMetadata={() => {
               if (videoRef.current) videoRef.current.currentTime = scrubTime;
             }}
@@ -309,8 +370,41 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
               Capture repair still
             </Button>
           </div>
+          {captureHint ? (
+            <p className="text-[11px] text-amber-200/90">{captureHint}</p>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              If the preview never buffers (readyState 0), Capture still uses WebCodecs on the
+              signed URL. Upload below bypasses the media element entirely.
+            </p>
+          )}
         </div>
       ) : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={busy || !isOwner}
+          onClick={() => uploadRef.current?.click()}
+        >
+          Upload repair still
+        </Button>
+        <input
+          ref={uploadRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic,.jpg,.jpeg,.png,.webp"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleUploadStill(file);
+          }}
+        />
+        <span className="text-[11px] text-muted-foreground">
+          Use Claude&apos;s t=0.785 extract if in-page capture still fails.
+        </span>
+      </div>
 
       <label className="block space-y-1 text-xs">
         <span className="text-muted-foreground">Repair still asset</span>
@@ -320,7 +414,7 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
           onChange={(e) => setStillAssetId(e.target.value)}
           disabled={busy}
         >
-          <option value="">Select or capture…</option>
+          <option value="">Select, capture, or upload…</option>
           {stills.map((s) => (
             <option key={s.id} value={s.id}>
               {s.file_url.split("/").pop()}

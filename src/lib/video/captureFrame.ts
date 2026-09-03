@@ -3,6 +3,24 @@ import { decodeFrameWithWebCodecs } from "./webCodecsFrame";
 /** A never-firing `seeked` would hang the capture forever, so bound the wait. */
 const SEEK_TIMEOUT_MS = 8000;
 
+/** HAVE_CURRENT_DATA — frame available at currentTime. Below this, <video> can't draw. */
+const HAVE_CURRENT_DATA = 2;
+
+/**
+ * Prefer WebCodecs when the media element has not decoded (common in
+ * backgrounded / cloud-agent tabs where fetch of the same URL succeeds but
+ * readyState stays 0 and seeked never fires).
+ */
+export function shouldPreferWebCodecsCapture(video: HTMLVideoElement): boolean {
+  return (
+    !Number.isFinite(video.duration) ||
+    video.duration <= 0 ||
+    video.readyState < HAVE_CURRENT_DATA ||
+    !video.videoWidth ||
+    !video.videoHeight
+  );
+}
+
 /**
  * Capture a single frame from a loaded <video> element at `timeSec`.
  * Browser-only — used by Hero Frame Studio for source-frame selection.
@@ -15,12 +33,26 @@ export async function captureVideoFrame(
   video: HTMLVideoElement,
   timeSec: number,
 ): Promise<Blob> {
+  const srcUrl = video.currentSrc || video.src;
+
+  if (shouldPreferWebCodecsCapture(video)) {
+    if (!srcUrl) {
+      throw new Error(
+        `Video not ready (readyState=${video.readyState}) and no source URL for WebCodecs fallback.`,
+      );
+    }
+    try {
+      return await decodeFrameWithWebCodecs(srcUrl, timeSec);
+    } catch (fallbackError) {
+      throw new Error(
+        `Frame capture failed: media element not ready (readyState=${video.readyState}, ` +
+          `duration=${video.duration}). WebCodecs: ${describe(fallbackError)}.`,
+      );
+    }
+  }
+
   let elementError: unknown;
   try {
-    if (!Number.isFinite(video.duration) || video.duration <= 0) {
-      throw new Error("Video duration unavailable — media element has not decoded.");
-    }
-
     const clamped = Math.max(0, Math.min(timeSec, Math.max(0, video.duration - 0.05)));
 
     await seekVideo(video, clamped);
@@ -47,7 +79,8 @@ export async function captureVideoFrame(
   }
 
   try {
-    return await decodeFrameWithWebCodecs(video.currentSrc || video.src, timeSec);
+    if (!srcUrl) throw new Error("No video source URL for WebCodecs fallback.");
+    return await decodeFrameWithWebCodecs(srcUrl, timeSec);
   } catch (fallbackError) {
     throw new Error(
       `Frame capture failed. Media element: ${describe(elementError)}. ` +
