@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, ShieldAlert, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { ManualKeyframeQuadEditor, defaultChestStripeQuad } from "@/components/products/ManualKeyframeQuadEditor";
+import { ManualKeyframeQuadEditor } from "@/components/products/ManualKeyframeQuadEditor";
 import { useProject } from "@/lib/queries/projects";
 import {
   bucketForAssetType,
@@ -18,6 +18,9 @@ import { uploadHeroSourceFrame } from "@/lib/queries/heroFrame";
 import { callArchitectureCStillRepair } from "@/lib/queries/architectureCStillRepair";
 import {
   ARCHITECTURE_C_V2_REPAIR,
+  MEASURED_V2_CHEST_BAND_QUAD,
+  assessChestBandQuadPlacement,
+  isStillRepairOutputMetadata,
   type SleevePanelManual,
 } from "@/lib/heroFrame/architectureCStillRepair";
 import { isEditR4CanonicalOwner } from "@/lib/heroFrame/editR4ProductIds";
@@ -39,6 +42,10 @@ function defaultUpperArmQuad(side: "left" | "right"): QuadNorm {
     [0.84, 0.5],
     [0.68, 0.48],
   ];
+}
+
+function cloneQuad(q: QuadNorm): QuadNorm {
+  return q.map(([x, y]) => [x, y]) as QuadNorm;
 }
 
 export function ArchitectureCStillRepairRunner({ projectId }: { projectId: string }) {
@@ -65,9 +72,11 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
   );
   const [scrubTime, setScrubTime] = useState<number>(ARCHITECTURE_C_V2_REPAIR.recommendedStillTimeSec);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  /** Clean capture/upload only — never auto-replaced by a repair output. */
   const [stillAssetId, setStillAssetId] = useState("");
   const [stillPreviewUrl, setStillPreviewUrl] = useState<string | null>(null);
-  const [logoQuad, setLogoQuad] = useState<QuadNorm>(defaultChestStripeQuad());
+  const [logoQuad, setLogoQuad] = useState<QuadNorm>(() => cloneQuad(MEASURED_V2_CHEST_BAND_QUAD));
+  const [quadEditorEpoch, setQuadEditorEpoch] = useState(0);
   const [leftSleeveQuad, setLeftSleeveQuad] = useState<QuadNorm>(defaultUpperArmQuad("left"));
   const [rightSleeveQuad, setRightSleeveQuad] = useState<QuadNorm>(defaultUpperArmQuad("right"));
   const [busy, setBusy] = useState(false);
@@ -78,6 +87,13 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
   const [captureHint, setCaptureHint] = useState<string | null>(null);
 
   const isOwner = isEditR4CanonicalOwner(sessionUid);
+  const chestAssessment = useMemo(() => assessChestBandQuadPlacement(logoQuad), [logoQuad]);
+
+  const selectedStillMeta = useMemo(() => {
+    const asset = stills.find((a) => a.id === stillAssetId);
+    return asset?.metadata_json ?? null;
+  }, [stills, stillAssetId]);
+  const selectedIsRepairOutput = isStillRepairOutputMetadata(selectedStillMeta);
 
   useEffect(() => {
     let cancelled = false;
@@ -133,6 +149,28 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
     };
   }, [stillAssetId, stills]);
 
+  function selectCleanStill(assetId: string) {
+    setStillAssetId(assetId);
+    setLogoResultAssetId(null);
+    setLogoResultUrl(null);
+    setSleeveResultUrl(null);
+  }
+
+  function handleStillSelectorChange(nextId: string) {
+    if (!nextId) {
+      setStillAssetId("");
+      return;
+    }
+    const asset = stills.find((a) => a.id === nextId);
+    if (asset && isStillRepairOutputMetadata(asset.metadata_json)) {
+      toast.error(
+        "That asset is a repair output. Keep the clean capture as the logo_chest input — use the result preview for review only.",
+      );
+      return;
+    }
+    selectCleanStill(nextId);
+  }
+
   async function handleCaptureStill() {
     if (!isOwner) {
       toast.error("Sign in as the durable owner to capture a repair still");
@@ -152,9 +190,6 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
     try {
       const session = await getSessionWithTimeout();
       const userId = session.user.id;
-      // Do NOT pre-seek + await seeked here. When readyState stays 0, seeked never
-      // fires and that timeout used to block the WebCodecs fallback entirely.
-      // captureVideoFrame prefers WebCodecs when the element has not decoded.
       setCaptureHint(
         `Capturing t=${scrubTime.toFixed(3)}s (readyState=${video.readyState})…`,
       );
@@ -166,10 +201,10 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         frameTimeSec: scrubTime,
         videoAssetId,
       });
-      setStillAssetId(assetId);
+      selectCleanStill(assetId);
       await assetsQuery.refetch();
       setCaptureHint(null);
-      toast.success(`Captured still at t=${scrubTime.toFixed(3)}s`);
+      toast.success(`Captured clean still at t=${scrubTime.toFixed(3)}s`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Capture failed";
       setCaptureHint(msg);
@@ -197,9 +232,9 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         frameTimeSec: scrubTime,
         videoAssetId,
       });
-      setStillAssetId(assetId);
+      selectCleanStill(assetId);
       await assetsQuery.refetch();
-      toast.success("Uploaded repair still — continue with logo_chest");
+      toast.success("Uploaded clean repair still — continue with logo_chest");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
       setCaptureHint(msg);
@@ -219,6 +254,17 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
       toast.error("Capture or upload a repair still first");
       return;
     }
+    if (selectedIsRepairOutput || stillAssetId === logoResultAssetId) {
+      toast.error(
+        "logo_chest input must be the clean still — not a previous repair output (chaining hazard).",
+      );
+      return;
+    }
+    if (!chestAssessment.ok) {
+      toast.warning(
+        `Placement warning: ${chestAssessment.warnings[0] ?? "quad looks off-garment"}. Re-check before treating as success.`,
+      );
+    }
     setBusy(true);
     try {
       const result = await callArchitectureCStillRepair({
@@ -228,11 +274,20 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         stage: "logo_chest",
         logoZoneQuad: logoQuad,
       });
+      // Do NOT set stillAssetId to the output — that was the chaining hazard.
       setLogoResultAssetId(result.assetId);
       setLogoResultUrl(result.previewUrl);
       setHardStop(result.hardStop);
       await assetsQuery.refetch();
-      toast.success("logo_chest repair saved — review vs flat ref before sleeve");
+      if (!chestAssessment.ok) {
+        toast.warning(
+          "logo_chest saved, but quad looked off-garment — review the preview; clean still remains selected for re-run.",
+        );
+      } else {
+        toast.success(
+          "logo_chest saved — clean still stays selected; review result vs flat ref before sleeve",
+        );
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "logo_chest failed");
     } finally {
@@ -283,7 +338,7 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
           7 · Architecture C — still-first deterministic repair
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Freeze V2. No Grok spend. Prove <span className="font-mono">chest_band</span> +{" "}
+          Active prompt stays V2 (no spend). Prove <span className="font-mono">chest_band</span> +{" "}
           <span className="font-mono">logo_zone</span>, then manual{" "}
           <span className="font-mono">sleeve_panel</span> on the visible upper arm. Temporal
           tracking is disabled until this still passes review.
@@ -402,43 +457,96 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
           }}
         />
         <span className="text-[11px] text-muted-foreground">
-          Use Claude&apos;s t=0.785 extract if in-page capture still fails.
+          Prefer clean still{" "}
+          <span className="font-mono">{ARCHITECTURE_C_V2_REPAIR.recommendedStillAssetId.slice(0, 8)}…</span>{" "}
+          (t=0.785) if in-page capture fails.
         </span>
       </div>
 
       <label className="block space-y-1 text-xs">
-        <span className="text-muted-foreground">Repair still asset</span>
+        <span className="text-muted-foreground">
+          Repair still asset (clean input only — repair outputs are blocked here)
+        </span>
         <select
           className="w-full rounded-md border border-border bg-background px-2 py-2 text-xs"
           value={stillAssetId}
-          onChange={(e) => setStillAssetId(e.target.value)}
+          onChange={(e) => handleStillSelectorChange(e.target.value)}
           disabled={busy}
         >
           <option value="">Select, capture, or upload…</option>
-          {stills.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.file_url.split("/").pop()}
-            </option>
-          ))}
+          {stills.map((s) => {
+            const repairOut = isStillRepairOutputMetadata(s.metadata_json);
+            const stage =
+              s.metadata_json &&
+              typeof s.metadata_json === "object" &&
+              "repair_stage" in s.metadata_json
+                ? String((s.metadata_json as { repair_stage?: string }).repair_stage)
+                : "";
+            return (
+              <option key={s.id} value={s.id} disabled={repairOut}>
+                {repairOut ? `[repair:${stage}] ` : ""}
+                {s.id === ARCHITECTURE_C_V2_REPAIR.recommendedStillAssetId ? "★ " : ""}
+                {s.file_url.split("/").pop()}
+              </option>
+            );
+          })}
         </select>
       </label>
+      {selectedIsRepairOutput ? (
+        <p className="text-[11px] text-amber-200/90">
+          Selected asset looks like a repair output. Reselect the clean capture before logo_chest.
+        </p>
+      ) : null}
 
       {stillPreviewUrl ? (
         <div className="grid gap-4 lg:grid-cols-2">
-          <ManualKeyframeQuadEditor
-            imageUrl={stillPreviewUrl}
-            initialQuad={logoQuad}
-            keyframeId="v2-still-0.785-logo"
-            disabled={busy || !isOwner}
-            onSave={async (q) => {
-              setLogoQuad(q);
-            }}
-          />
+          <div className="space-y-2">
+            <ManualKeyframeQuadEditor
+              key={`chest-${stillAssetId}-${quadEditorEpoch}`}
+              imageUrl={stillPreviewUrl}
+              initialQuad={logoQuad}
+              keyframeId="v2-still-0.785-logo"
+              disabled={busy || !isOwner}
+              heading="Chest band + logo_zone quad"
+              hint="Seeded from the measured band (y ≈ 0.503–0.578). Drag corners or type numeric x/y. Full-band navy cover + one wearer's-left wordmark."
+              saveLabel="Lock chest quad"
+              onQuadChange={setLogoQuad}
+              onSave={async (q) => {
+                setLogoQuad(q);
+              }}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => {
+                setLogoQuad(cloneQuad(MEASURED_V2_CHEST_BAND_QUAD));
+                setQuadEditorEpoch((n) => n + 1);
+              }}
+            >
+              Reset to measured band
+            </Button>
+            {!chestAssessment.ok ? (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
+                <p className="font-medium">Placement warning (do not treat as silent success)</p>
+                <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                  {chestAssessment.warnings.map((w) => (
+                    <li key={w}>{w}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="text-[11px] text-muted-foreground">
+                Quad overlaps measured chest band (center y={chestAssessment.centerY.toFixed(3)}).
+              </p>
+            )}
+          </div>
           <div className="space-y-3">
             <Button
               type="button"
               size="sm"
-              disabled={busy || !isOwner || !stillAssetId}
+              disabled={busy || !isOwner || !stillAssetId || selectedIsRepairOutput}
               onClick={handleLogoChest}
             >
               {busy ? (
@@ -449,11 +557,16 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
               1 · Repair chest_band + logo_zone
             </Button>
             {logoResultUrl ? (
-              <img
-                src={logoResultUrl}
-                alt="logo_chest repair"
-                className="max-h-80 w-full rounded-md border border-border object-contain"
-              />
+              <div className="space-y-1">
+                <p className="text-[11px] text-muted-foreground">
+                  Stage-1 result (review only — not auto-selected as next input)
+                </p>
+                <img
+                  src={logoResultUrl}
+                  alt="logo_chest repair"
+                  className="max-h-80 w-full rounded-md border border-border object-contain"
+                />
+              </div>
             ) : null}
           </div>
         </div>
@@ -462,22 +575,32 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
       {(logoResultUrl || stillPreviewUrl) && (
         <div className="space-y-3 border-t border-border pt-4">
           <p className="text-xs text-muted-foreground">
-            Sleeve panels: drag quads onto the <strong>visible upper-arm</strong> navy only.
-            This clip cannot prove armhole→cuff.
+            Sleeve panels: drag or type quads onto the <strong>visible upper-arm</strong> navy only.
+            Arms are crossed for the entire clip — this cannot prove armhole→cuff.
           </p>
           <div className="grid gap-4 lg:grid-cols-2">
             <ManualKeyframeQuadEditor
+              key={`sleeve-l-${logoResultAssetId ?? stillAssetId}`}
               imageUrl={logoResultUrl ?? stillPreviewUrl!}
               initialQuad={leftSleeveQuad}
               keyframeId="v2-still-0.785-sleeve-left"
               disabled={busy || !isOwner}
+              heading="Left upper-arm sleeve_panel"
+              hint="Visible upper arm only (arms crossed)."
+              saveLabel="Lock left sleeve quad"
+              onQuadChange={setLeftSleeveQuad}
               onSave={async (q) => setLeftSleeveQuad(q)}
             />
             <ManualKeyframeQuadEditor
+              key={`sleeve-r-${logoResultAssetId ?? stillAssetId}`}
               imageUrl={logoResultUrl ?? stillPreviewUrl!}
               initialQuad={rightSleeveQuad}
               keyframeId="v2-still-0.785-sleeve-right"
               disabled={busy || !isOwner}
+              heading="Right upper-arm sleeve_panel"
+              hint="Visible upper arm only (arms crossed)."
+              saveLabel="Lock right sleeve quad"
+              onQuadChange={setRightSleeveQuad}
               onSave={async (q) => setRightSleeveQuad(q)}
             />
           </div>
@@ -504,7 +627,8 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
       <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
         HARD STOP: temporal propagation / SAM-3 master composite are{" "}
         <span className="font-mono">not</span> wired here (
-        <span className="font-mono">temporalTrackingEnabled=false</span>).{" "}
+        <span className="font-mono">temporalTrackingEnabled=false</span>). V3 prompt is installed
+        but inactive — no paid V3 call until this still passes.{" "}
         {hardStop ?? "Pass this still visually against the flat ref before any tracking work."}
       </p>
     </section>

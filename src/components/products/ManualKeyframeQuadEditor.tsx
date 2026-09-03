@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,23 +22,53 @@ function clamp01(n: number): number {
   return Math.max(0, Math.min(1, n));
 }
 
+function cloneQuad(q: QuadNorm): QuadNorm {
+  return q.map(([x, y]) => [x, y]) as QuadNorm;
+}
+
 export function ManualKeyframeQuadEditor({
   imageUrl,
   initialQuad,
   keyframeId = "default",
   disabled,
   onSave,
+  onQuadChange,
+  saveLabel = "Save manual quad",
+  heading = "Manual logo placement (VTON frame)",
+  hint = "Drag the four corners onto the navy chest stripe. This quad is the source of truth — auto-detection only validates.",
 }: {
   imageUrl: string;
   initialQuad?: QuadNorm | null;
   keyframeId?: string;
   disabled?: boolean;
   onSave: (quad: QuadNorm, keyframeId: string) => Promise<void>;
+  /** Live updates while dragging or editing numeric fields (does not require Save). */
+  onQuadChange?: (quad: QuadNorm) => void;
+  saveLabel?: string;
+  heading?: string;
+  hint?: string;
 }) {
-  const [quad, setQuad] = useState<QuadNorm>(initialQuad ?? defaultChestStripeQuad());
+  const [quad, setQuad] = useState<QuadNorm>(
+    () => cloneQuad(initialQuad ?? defaultChestStripeQuad()),
+  );
   const [dragCorner, setDragCorner] = useState<CornerIndex | null>(null);
   const [saving, setSaving] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
+
+  // Remount (via parent `key`) or still/keyframe change reloads the seed.
+  // Do not sync every `initialQuad` reference change — that fights live drag/numeric edits.
+  useEffect(() => {
+    if (!initialQuad) return;
+    setQuad(cloneQuad(initialQuad));
+  }, [imageUrl, keyframeId]); // eslint-disable-line react-hooks/exhaustive-deps -- seed on still/keyframe only
+
+  const emitQuad = useCallback(
+    (next: QuadNorm) => {
+      setQuad(next);
+      onQuadChange?.(next);
+    },
+    [onQuadChange],
+  );
 
   const pointerToNorm = useCallback((clientX: number, clientY: number) => {
     const img = imgRef.current;
@@ -61,11 +91,9 @@ export function ManualKeyframeQuadEditor({
     if (dragCorner === null) return;
     const pt = pointerToNorm(e.clientX, e.clientY);
     if (!pt) return;
-    setQuad((prev) => {
-      const next = prev.map((p) => [...p]) as QuadNorm;
-      next[dragCorner] = [pt.x, pt.y];
-      return next;
-    });
+    const next = quad.map((p) => [...p]) as QuadNorm;
+    next[dragCorner] = [pt.x, pt.y];
+    emitQuad(next);
   }
 
   function onPointerUp(e: React.PointerEvent) {
@@ -74,11 +102,20 @@ export function ManualKeyframeQuadEditor({
     (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
   }
 
+  function setCornerCoord(corner: CornerIndex, axis: 0 | 1, raw: string) {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return;
+    const next = quad.map((p) => [...p]) as QuadNorm;
+    next[corner] = [...next[corner]] as [number, number];
+    next[corner][axis] = clamp01(n);
+    emitQuad(next);
+  }
+
   async function handleSave() {
     setSaving(true);
     try {
       await onSave(quad, keyframeId);
-      toast.success("Manual placement saved — re-run VTON to apply");
+      toast.success("Manual placement saved");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Save failed");
     } finally {
@@ -92,12 +129,10 @@ export function ManualKeyframeQuadEditor({
     <section className="space-y-3 rounded-md border border-border bg-card/30 p-4">
       <div>
         <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Manual logo placement (VTON frame)
+          {heading}
         </h2>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          Drag the four corners onto the navy chest stripe. This quad is the source of truth —
-          auto-detection only validates. Saved to product_details for keyframe{" "}
-          <span className="font-mono">{keyframeId}</span>.
+          {hint} Saved for keyframe <span className="font-mono">{keyframeId}</span>.
         </p>
       </div>
 
@@ -109,7 +144,7 @@ export function ManualKeyframeQuadEditor({
         <img
           ref={imgRef}
           src={imageUrl}
-          alt="VTON frame for manual placement"
+          alt="Frame for manual placement"
           className="block w-full select-none"
           draggable={false}
         />
@@ -138,16 +173,48 @@ export function ManualKeyframeQuadEditor({
         ))}
       </div>
 
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {CORNER_LABELS.map((label, i) => (
+          <fieldset
+            key={label}
+            className="space-y-1 rounded border border-border/60 px-2 py-1.5"
+            disabled={disabled}
+          >
+            <legend className="px-0.5 text-[10px] font-medium text-muted-foreground">{label}</legend>
+            <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              x
+              <input
+                type="number"
+                step="0.001"
+                min={0}
+                max={1}
+                className="w-full rounded border border-border bg-background px-1 py-0.5 font-mono text-[11px]"
+                value={Number(quad[i][0].toFixed(3))}
+                onChange={(e) => setCornerCoord(i as CornerIndex, 0, e.target.value)}
+                disabled={disabled}
+              />
+            </label>
+            <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+              y
+              <input
+                type="number"
+                step="0.001"
+                min={0}
+                max={1}
+                className="w-full rounded border border-border bg-background px-1 py-0.5 font-mono text-[11px]"
+                value={Number(quad[i][1].toFixed(3))}
+                onChange={(e) => setCornerCoord(i as CornerIndex, 1, e.target.value)}
+                disabled={disabled}
+              />
+            </label>
+          </fieldset>
+        ))}
+      </div>
+
       {!disabled ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={saving}
-          onClick={handleSave}
-        >
+        <Button type="button" size="sm" variant="outline" disabled={saving} onClick={handleSave}>
           {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
-          Save manual quad
+          {saveLabel}
         </Button>
       ) : null}
     </section>

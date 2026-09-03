@@ -99,6 +99,8 @@ Everything else in V2 — closure, continuous wide band, throat-only layering, f
 
 **If approved:** install as V3 alongside V1/V2 (preserve history), extend the regression test (assert "mastic cream on the outside" present and "navy stand collar" absent from the active prompt), and gate one paid run (~$0.32) behind the in-product dry run. **If declined:** A and B move to escalation-owned, and the repair layer's scope stays as §3.2.
 
+**[DECISION — ChatGPT, 2026-09-03]** Approve V3 factual corrections **and install them**, but **keep V2 active** and **do not spend** until still-first repair proof (§3.4 → chest → sleeve) passes. Then one gated V3 run. See [`ARCHITECTURE_C_CHATGPT_V3_STILL_FIRST_RULING_2026-09-03.md`](./ARCHITECTURE_C_CHATGPT_V3_STILL_FIRST_RULING_2026-09-03.md). Regression asserts apply to `GROK_VIDEO_EDIT_PROMPT_V3` (not the active V2 lane).
+
 Sleeve defect **C** is **not** proposed for the prompt pass. V2 already requests vertical panels and the model did not render them; that is a capability gap, and the deterministic `sleeve_panel` stage is the correct owner per the current directive. A prompt-wording hypothesis exists (the band and panels are described in one sentence and may be read as one element) but it is untested and does not justify reopening generation on its own.
 
 ---
