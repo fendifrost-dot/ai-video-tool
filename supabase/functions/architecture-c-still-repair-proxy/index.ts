@@ -144,7 +144,7 @@ serve(async (req) => {
   if (dlErr || !stillBlob) {
     return json(500, { error: "still_download_failed", detail: dlErr?.message ?? "empty" });
   }
-  let workingBytes = new Uint8Array(await stillBlob.arrayBuffer());
+  let workingBytes: Uint8Array = new Uint8Array(await stillBlob.arrayBuffer());
 
   const { data: wardrobe, error: wErr } = await admin
     .from("character_features")

@@ -26,19 +26,19 @@ export function mergeLogoZoneManualQuad(
   quad: QuadNorm,
   keyframeId = "v2-still-0.785",
 ): Record<string, unknown> {
-  const base =
+  const base: Record<string, unknown> =
     productTruthRaw && typeof productTruthRaw === "object"
       ? { ...(productTruthRaw as Record<string, unknown>) }
       : { version: 1 };
-  const detailsRaw =
+  const detailsRaw: Record<string, unknown> =
     base.details && typeof base.details === "object"
       ? { ...(base.details as Record<string, unknown>) }
       : {};
-  const logoRaw =
+  const logoRaw: Record<string, unknown> =
     detailsRaw.logo_zone && typeof detailsRaw.logo_zone === "object"
       ? { ...(detailsRaw.logo_zone as Record<string, unknown>) }
       : { detail_type: "logo_zone" };
-  const mkf =
+  const mkf: Record<string, unknown> =
     logoRaw.manual_keyframe && typeof logoRaw.manual_keyframe === "object"
       ? { ...(logoRaw.manual_keyframe as Record<string, unknown>) }
       : {};
