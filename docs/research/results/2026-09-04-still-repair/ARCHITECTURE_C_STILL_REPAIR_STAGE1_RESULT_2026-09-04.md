@@ -61,3 +61,11 @@ Fendi reviewed and raised three points. All three verified against both referenc
 **"No improvement to the logo from my view":** correct if viewing the clip. The repair produced **one still** (`477b722c`), not a video; the `edited_clip` in Review is untouched. The legible wordmark exists only in that frame and is not yet a pass even there (see table above).
 
 Evidence: `v2_pockets_cuffs_annot.jpg` in this folder.
+
+## Addendum 2 — UI path exercised after Lovable Publish [V]
+
+[V] Lovable Publish landed: the live bundle now carries the `4af7afa` runner (seeded measured-band quad, numeric x/y entry, `assessChestBandQuadPlacement` message, "clean input only — repair outputs are blocked here").
+
+[V] Stage 1 re-run **through the product UI** at $0: selected the clean still `2aa1a44c`, typed the same quad `[[0.30,0.530],[0.87,0.533],[0.87,0.585],[0.30,0.582]]` into the numeric fields (placement check updated to "Quad overlaps measured chest band (center y=0.557)"), Lock chest quad → "1 · Repair chest_band + logo_zone". Output `logo_chest_2aa1a44c…_1788482015671.png`, shown as "Stage-1 result (review only — not auto-selected as next input)"; the still selector stayed on the clean capture.
+
+[V] **Pixel-identical to the proxy-run output `477b722c`** (max channel diff 0 over 720×1280). The disclosure gap above is closed: UI path and proxy path produce the same composite. All four §3.4 runner items are verified live. The result itself is unchanged — still NOT a pass; the six fixes stand.
