@@ -28,6 +28,7 @@ import {
   keyGlyphForeground,
   logoQuality,
   logoSubQuadInBand,
+  overlayZipFromSource,
   restoreSkinOccluders,
   targetRectForLogo,
   warpQuadAlpha,
@@ -655,6 +656,8 @@ export type LogoCompositeResult = {
   fallback_reason: FallbackReason;
   placement_confidence: number;
   debug_overlay_bytes: Uint8Array | null;
+  /** How hand/face occlusion was handled on the still-repair path. */
+  occlusion_source?: "skin_heuristic" | "sam3" | "none";
 };
 
 function quadToPairs(q: Quad): [number, number][] {
@@ -728,6 +731,7 @@ export async function compositeLogoOntoVton(
   let targetQuad: Quad;
   let composited: RgbaImage;
   let warpMode: "affine" | "perspective";
+  let occlusionSource: "skin_heuristic" | "sam3" | "none" = "none";
 
   if (eng.source === "manual_keyframe" && eng.target && eng.target.kind === "quad") {
     // Perspective warp onto a logo *sub-quad* inside the band (not the full band).
@@ -753,16 +757,19 @@ export async function compositeLogoOntoVton(
     targetQuad = logoPts as unknown as Quad;
     target = rectFromTarget({ kind: "quad", points: targetQuad });
 
-    // Full-band navy cover (erase D/E/F) with zip strip + tilted-band expand,
-    // then shade, then warp the wordmark into the wearer's-left sub-quad only.
+    // Full-band navy cover (no column-follow drips), low-freq shading, zip overlay,
+    // then warp wordmark into wearer's-left sub-quad; skin heuristic as interim occlusion.
     let covered = coverTargetQuad(base, bandPts, {
-      zipStripFrac: 0.045,
-      maxExpandFrac: 0.05,
+      zipStripFrac: 0,
+      maxExpandFrac: 0.02,
+      columnFollow: false,
     });
     covered = applyBandLumaShading(base, covered, bandPts);
+    covered = overlayZipFromSource(base, covered, bandPts, 0.015);
     let compositedFrame = warpQuadAlpha(covered, logoImg, logoPts, 3);
     compositedFrame = restoreSkinOccluders(base, compositedFrame, bandPts);
     composited = compositedFrame;
+    occlusionSource = "skin_heuristic";
   } else {
     warpMode = "affine";
     if (eng.source === "detection" && eng.target) {
@@ -819,6 +826,7 @@ export async function compositeLogoOntoVton(
     fallback_reason: eng.fallbackReason,
     placement_confidence: eng.confidence,
     debug_overlay_bytes: debugOverlayBytes,
+    occlusion_source: occlusionSource,
   };
 }
 

@@ -755,10 +755,18 @@ export const ARCHITECTURE_C_LOGO_BAND_DEFAULTS: LogoBandPlacement = {
 };
 
 export type CoverTargetQuadOptions = {
-  /** Fraction of band width at mid-x left unpainted so the zip line survives. Default 0. */
+  /**
+   * @deprecated Prefer full-band cover + overlayZipFromSource. Leaving a raw hole
+   * reads as a slit (stage-1c regression). Default 0.
+   */
   zipStripFrac?: number;
   /** Vertical navy-snap expand as fraction of frame height. Default COVER_MAX_EXPAND_FRAC. */
   maxExpandFrac?: number;
+  /**
+   * When false, skip per-column downward expansion that follows dark sleeves
+   * (Architecture C still-repair). Default true preserves legacy VTON behaviour.
+   */
+  columnFollow?: boolean;
 };
 
 /** Forward-bilinear: (u,v) in [0..1]² → point inside quad. */
@@ -810,8 +818,10 @@ function luma(r: number, g: number, b: number): number {
 }
 
 /**
- * After navy cover, multiply covered pixels by source-band luminance so the
- * patch keeps body lighting instead of reading as a flat sticker.
+ * After navy cover, apply *low-frequency* luminance only.
+ * Non-navy source defects (old lettering, pinstripe) are median-filled from
+ * neighbouring navy, then the gain map is box-blurred and clamped to
+ * [0.85, 1.15] so high-frequency ghosts cannot imprint (stage-1c regression).
  */
 export function applyBandLumaShading(
   source: RgbaImage,
@@ -826,42 +836,189 @@ export function applyBandLumaShading(
   const right = Math.min(source.width - 1, Math.ceil(Math.max(...xs)));
   const top = Math.max(0, Math.floor(Math.min(...ys)));
   const bottom = Math.min(source.height - 1, Math.ceil(Math.max(...ys)));
+  const w = right - left + 1;
+  const h = bottom - top + 1;
+  if (w <= 0 || h <= 0) return { width: covered.width, height: covered.height, data: out };
 
-  let sumSrc = 0;
-  let nSrc = 0;
+  const inBand = new Uint8Array(w * h);
+  const navyLuma = new Float32Array(w * h);
+  const isNavyCell = new Uint8Array(w * h);
+  const navySamples: number[] = [];
+  navyLuma.fill(Number.NaN);
+
   for (let y = top; y <= bottom; y++) {
     for (let x = left; x <= right; x++) {
+      const li = (y - top) * w + (x - left);
       if (!invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) continue;
+      inBand[li] = 1;
       const i = (y * source.width + x) * 4;
-      if (!isNavyPixel(source.data[i], source.data[i + 1], source.data[i + 2])) continue;
-      sumSrc += luma(source.data[i], source.data[i + 1], source.data[i + 2]);
-      nSrc++;
+      const L = luma(source.data[i], source.data[i + 1], source.data[i + 2]);
+      if (isNavyPixel(source.data[i], source.data[i + 1], source.data[i + 2])) {
+        isNavyCell[li] = 1;
+        navyLuma[li] = L;
+        navySamples.push(L);
+      }
     }
   }
-  const meanSrc = nSrc > 0 ? sumSrc / nSrc : 40;
+  if (navySamples.length === 0) return { width: covered.width, height: covered.height, data: out };
+  navySamples.sort((a, b) => a - b);
+  const medianNavy = navySamples[Math.floor(navySamples.length / 2)]!;
+
+  const filled = new Float32Array(w * h);
+  filled.fill(Number.NaN);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const li = y * w + x;
+      if (!inBand[li]) continue;
+      if (isNavyCell[li]) {
+        filled[li] = navyLuma[li]!;
+        continue;
+      }
+      const neigh: number[] = [];
+      for (let dy = -2; dy <= 2; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const ni = ny * w + nx;
+          if (isNavyCell[ni]) neigh.push(navyLuma[ni]!);
+        }
+      }
+      if (neigh.length) {
+        neigh.sort((a, b) => a - b);
+        filled[li] = neigh[Math.floor(neigh.length / 2)]!;
+      } else {
+        filled[li] = medianNavy;
+      }
+    }
+  }
+
+  const radius = Math.max(3, Math.min(12, Math.round(h * 0.35)));
+  const blurred = boxBlurFinite(filled, w, h, radius);
 
   for (let y = top; y <= bottom; y++) {
     for (let x = left; x <= right; x++) {
-      if (!invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) continue;
+      const li = (y - top) * w + (x - left);
+      if (!inBand[li]) continue;
       const i = (y * source.width + x) * 4;
       const changed =
         out[i] !== source.data[i] ||
         out[i + 1] !== source.data[i + 1] ||
         out[i + 2] !== source.data[i + 2];
       if (!changed) continue;
-      const srcL = luma(source.data[i], source.data[i + 1], source.data[i + 2]);
-      // Prefer local source luma when the source pixel was navy; else mean band luma.
-      const targetL = isNavyPixel(source.data[i], source.data[i + 1], source.data[i + 2])
-        ? srcL
-        : meanSrc;
-      const coverL = Math.max(1, luma(out[i], out[i + 1], out[i + 2]));
-      const scale = Math.max(0.55, Math.min(1.45, targetL / coverL));
-      out[i] = Math.max(0, Math.min(255, Math.round(out[i] * scale)));
-      out[i + 1] = Math.max(0, Math.min(255, Math.round(out[i + 1] * scale)));
-      out[i + 2] = Math.max(0, Math.min(255, Math.round(out[i + 2] * scale)));
+      const L = Number.isFinite(blurred[li]) ? blurred[li]! : medianNavy;
+      const g = Math.max(0.85, Math.min(1.15, L / Math.max(1, medianNavy)));
+      out[i] = Math.max(0, Math.min(255, Math.round(out[i] * g)));
+      out[i + 1] = Math.max(0, Math.min(255, Math.round(out[i + 1] * g)));
+      out[i + 2] = Math.max(0, Math.min(255, Math.round(out[i + 2] * g)));
     }
   }
   return { width: covered.width, height: covered.height, data: out };
+}
+
+/** Separable box blur; non-finite values are ignored (treated as absent). */
+function boxBlurFinite(src: Float32Array, w: number, h: number, radius: number): Float32Array {
+  const tmp = new Float32Array(w * h);
+  const out = new Float32Array(w * h);
+  tmp.fill(Number.NaN);
+  out.fill(Number.NaN);
+  const r = Math.max(0, radius);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0;
+      let n = 0;
+      for (let dx = -r; dx <= r; dx++) {
+        const nx = x + dx;
+        if (nx < 0 || nx >= w) continue;
+        const v = src[y * w + nx]!;
+        if (!Number.isFinite(v)) continue;
+        sum += v;
+        n++;
+      }
+      if (n > 0) tmp[y * w + x] = sum / n;
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let sum = 0;
+      let n = 0;
+      for (let dy = -r; dy <= r; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= h) continue;
+        const v = tmp[ny * w + x]!;
+        if (!Number.isFinite(v)) continue;
+        sum += v;
+        n++;
+      }
+      if (n > 0) out[y * w + x] = sum / n;
+    }
+  }
+  return out;
+}
+
+/**
+ * Paint the band fully, then restore a thin feathered zip strip from source
+ * (no raw unpainted column — stage-1c slit regression).
+ */
+export function overlayZipFromSource(
+  source: RgbaImage,
+  covered: RgbaImage,
+  band: QuadPts,
+  stripFrac = 0.015,
+): RgbaImage {
+  const out = new Uint8Array(covered.data);
+  const bbox = quadBbox(band);
+  const midX = (bbox.left + bbox.right) / 2;
+  const half = Math.max(1, ((bbox.right - bbox.left) * Math.max(0.005, stripFrac)) / 2);
+  const [tl, tr, br, bl] = band;
+  const feather = Math.max(1, half * 0.6);
+  for (let y = Math.max(0, Math.floor(bbox.top)); y < Math.min(source.height, Math.ceil(bbox.bottom)); y++) {
+    for (let x = Math.max(0, Math.floor(midX - half - feather)); x <= Math.min(source.width - 1, Math.ceil(midX + half + feather)); x++) {
+      if (!invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) continue;
+      const dist = Math.abs(x - midX);
+      if (dist > half + feather) continue;
+      const i = (y * source.width + x) * 4;
+      // Prefer source zip / non-navy tape; if source is navy, skip (keep cover).
+      if (isNavyPixel(source.data[i], source.data[i + 1], source.data[i + 2])) continue;
+      let a = 1;
+      if (dist > half) a = 1 - (dist - half) / feather;
+      a = Math.max(0, Math.min(1, a));
+      const ia = 1 - a;
+      out[i] = Math.round(source.data[i] * a + out[i] * ia);
+      out[i + 1] = Math.round(source.data[i + 1] * a + out[i + 1] * ia);
+      out[i + 2] = Math.round(source.data[i + 2] * a + out[i + 2] * ia);
+    }
+  }
+  return { width: covered.width, height: covered.height, data: out };
+}
+
+/**
+ * True when any covered pixel lies more than `maxOutsidePx` outside the band
+ * quad bbox (guards against column-follow drips).
+ */
+export function countCoverLeakOutsideBand(
+  source: RgbaImage,
+  covered: RgbaImage,
+  band: QuadPts,
+  maxOutsidePx: number,
+): number {
+  const bbox = quadBbox(band);
+  const pad = Math.max(0, maxOutsidePx);
+  let leaks = 0;
+  for (let y = 0; y < source.height; y++) {
+    for (let x = 0; x < source.width; x++) {
+      const i = (y * source.width + x) * 4;
+      const changed =
+        covered.data[i] !== source.data[i] ||
+        covered.data[i + 1] !== source.data[i + 1] ||
+        covered.data[i + 2] !== source.data[i + 2];
+      if (!changed) continue;
+      const outsideY = y < bbox.top - pad || y >= bbox.bottom + pad;
+      const outsideX = x < bbox.left - pad || x > bbox.right + pad;
+      if (outsideY || outsideX) leaks++;
+    }
+  }
+  return leaks;
 }
 
 /**
@@ -1103,6 +1260,7 @@ export function coverTargetQuad(
   const midX = (bbox.left + bbox.right) / 2;
   const zipHalf = zipStripFrac > 0 ? ((bbox.right - bbox.left) * zipStripFrac) / 2 : 0;
   const inZipStrip = (x: number) => zipHalf > 0 && Math.abs(x - midX) <= zipHalf;
+  const columnFollow = options.columnFollow !== false;
 
   // Snap the band top/bottom to the navy extent just beyond the quad.
   let top = Math.max(0, bbox.top);
@@ -1116,6 +1274,14 @@ export function coverTargetQuad(
   for (let y = bottom; y < downLimit; y++) {
     if (rowNavyFrac(base, y, xL, xR) >= COVER_ROW_NAVY_FRAC) bottom = y + 1;
     else break;
+  }
+  // Guard: never let snapped height exceed ~1.5× original quad height (drip leak).
+  const quadH = Math.max(1, bbox.bottom - bbox.top);
+  if (bottom - top > quadH * 1.5) {
+    const mid = (bbox.top + bbox.bottom) / 2;
+    const half = (quadH * 1.5) / 2;
+    top = Math.max(0, Math.floor(mid - half));
+    bottom = Math.min(base.height, Math.ceil(mid + half));
   }
 
   const fillRow = (y: number, l: number, r: number, alpha: number) => {
@@ -1175,11 +1341,9 @@ export function coverTargetQuad(
     }
   }
 
-  // Below the band: follow the PER-COLUMN OUTER stripe edge — the row where the
-  // sustained TAN BODY (jacket fabric) begins. Solid-fill navy down to that edge,
-  // OVERWRITING interior light flecks/transition (the VTON's own mark) that would
-  // otherwise truncate the fill early — but never crossing into the tan body, so
-  // the diagonal contour is hugged with no over-extension / navy bulge.
+  // Below the band: follow the PER-COLUMN OUTER stripe edge — legacy VTON path.
+  // Architecture C still-repair sets columnFollow=false to avoid navy drips on sleeves.
+  if (columnFollow) {
   const tanSustain = Math.max(4, Math.round(base.height * COVER_TAN_SUSTAIN_FRAC));
   for (let x = spanL; x <= spanR; x++) {
     if (x < 0 || x >= base.width) continue;
@@ -1220,6 +1384,7 @@ export function coverTargetQuad(
       out[i + 3] = 255;
     }
   }
+  } // end columnFollow
 
   return { width: base.width, height: base.height, data: out };
 }
@@ -1278,6 +1443,8 @@ export type LogoCompositeResultLike = {
   placement_confidence?: number;
   warp_mode?: string;
   target_quad?: [number, number][];
+  /** skin_heuristic | sam3 | none — surfaced so Claude can verify occlusion path. */
+  occlusion_source?: string;
 };
 
 /**
@@ -1300,6 +1467,7 @@ export function logoCompositeMetaCore(c: LogoCompositeResultLike): Record<string
     placement_source: c.placement_source ?? null,
     fallback_reason: c.fallback_reason ?? null,
     placement_confidence: c.placement_confidence ?? null,
+    occlusion_source: c.occlusion_source ?? null,
   };
 }
 
