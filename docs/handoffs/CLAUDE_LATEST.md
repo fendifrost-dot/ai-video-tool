@@ -2,9 +2,11 @@
 
 > **Convention.** This file is always Claude's most recent handoff. Claude overwrites it each time; dated copies live in `docs/` and `docs/research/results/`. Cursor and ChatGPT: "check the repo" means read this file. Cursor's side is `docs/handoffs/CURSOR_LATEST.md`.
 
-**Updated:** 2026-09-04 (rev 4 — Cursor 8ebfe83 deployed + scored: regression) · **Author:** Claude (Cowork) · **Spend:** $12.80 of $20 ceiling, 32 generations · **No paid call pending** · stage-1 re-run cost $0
+**Updated:** 2026-09-04 (rev 5 — Cursor 3183082 reviewed vs ChatGPT directive; awaiting ChatGPT deploy authorization) · **Author:** Claude (Cowork) · **Spend:** $12.80 of $20 ceiling, 32 generations · **No paid call pending** · stage-1 re-run cost $0
 
 ## State in one paragraph
+
+**Latest (rev 5):** Cursor's branch `cursor/architecture-c-still-1c-corrections-88eb` @ `3183082` (unmerged) was reviewed against ChatGPT's Stage-1C Regression Correction Directive. **Met:** A (logo sub-zone preserved + test), B (defect-masked, blurred, clamped shading), D (feathered zip overlay), V3 I/J maintenance, hard gates. **Mostly met:** C (no column-follow; synthetic test is horizontal, not tilted). **Not met:** E (SAM-3 occlusion — heuristic still the only path; `occlusion_source` surfaced but no fallback naming / no visible failure), F (mask-derived geometry), G (golden fixture on `2aa1a44c`). Claude ran the branch's full suite (672/672 pass) and `vite build` (ok). **Not deployed — ChatGPT reviews and authorizes first.** Comparison: `docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_CURSOR_3183082_VS_CHATGPT_DIRECTIVE_2026-09-04.md`.
 
 **Latest (rev 4):** Cursor's `8ebfe83` (items 1–5) was redeployed to `architecture-c-still-repair-proxy` by Claude via Lovable deploy-only chat (`main` unchanged) and scored on the same still/quad → asset `f7c7b524`. **Wordmark placement is now correct (item 1 fixed) but the band regressed:** per-pixel luma shading ghosts the old lettering/pinstripe as blotches, the tilted-band expansion painted navy drips ~52 px below the band over sleeves and hands, the zip strip is a raw slit, and the skin heuristic cannot protect cream sleeve. **NOT a pass; worse than 1b on the band.** Corrections are specified in the 1c doc. Sleeve stage stays on hold.
 
@@ -26,10 +28,10 @@ The first stage-1b run supplied the quad directly to `architecture-c-still-repai
 
 | Owner | Item |
 |---|---|
-| **Cursor** | Fix the 1c regressions per the 1c doc §Proposed corrections: (1) shading = defect-masked, blurred luma, gain clamped [0.85,1.15]; (2) `coverTargetQuad` expansion along the band normal only — never column-following; (3) zip as a feathered overlay line, not an unpainted column; (4) SAM-3 garment mask as compositing alpha, skin heuristic only as surfaced fallback; (5) mask-derived quad; (6) golden test on still `2aa1a44c`. Item 1 (logo sub-zone) is done — keep it. Then say `redeploy needed` in CURSOR_LATEST. |
+| **Cursor** | Outstanding vs directive after `3183082`: **E** SAM-3 mask as compositing alpha with `occlusion_source: "sam3" \| "skin_heuristic_fallback"` and visible failure when neither is available; **F** mask-derived effective region + metadata (requested vs effective quad); **G** golden fixture on still `2aa1a44c` with the measured quad; **C** add a genuinely tilted synthetic band and measure leak against the quad, not its bbox; **D** parameterise the zip x-position (`zipXNorm`, default 0.5). Whether these go in before or after a 1d deploy is ChatGPT's call. |
 | **Fendi** | Nothing blocking. Edge redeploys are now handled by Claude via Lovable deploy-only chat (verified safe this round); a frontend Publish is only needed if the runner UI changes. |
-| **ChatGPT** | Rule on a **V3 clause for pockets/cuffs** (I, J) — proposed text in the result-doc addendum, not applied. Installed V3 does not cover them; the single gated V3 run should wait until it does. |
-| **Claude** | On Cursor's next land: redeploy `architecture-c-still-repair-proxy` (deploy-only), verify by behaviour (response `target_quad`/`occlusion_source`), re-run stage 1 on `2aa1a44c` with the same quad, score. Sleeve stage stays on hold until the band passes on one frame. |
+| **ChatGPT** | Review `3183082` and **authorize or hold the edge redeploy**. Claude recommends deploying it as an interim land for a $0 stage-1d score (isolates whether B/C/D are right) with E/F/G as the next order. V3 I/J clause is now installed inactive — that item is closed. |
+| **Claude** | On ChatGPT authorization (and merge to `main`): redeploy `architecture-c-still-repair-proxy` deploy-only, verify by behaviour (`occlusion_source` present in response), re-run stage 1 on `2aa1a44c` with the same quad, score 1d, and write the golden-fixture numbers from that output. Sleeve stage stays on hold. |
 
 ## Guardrails unchanged
 
