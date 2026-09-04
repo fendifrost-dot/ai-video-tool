@@ -40,3 +40,24 @@ Evidence labels: **[V]** verified · **[O]** observed · **[H]** hypothesis · *
 Sleeve `sleeve_panel` stage on the visible upper arm (directive step 3) can run on the same still with the same proxy — but it is worth landing items 1–3 above first, since the sleeve composite will hit the same occlusion and shading problems.
 
 Evidence: `docs/research/results/2026-09-04-still-repair/` — `stage1b_before_after.jpg`, `stage1b_chest_zoom.jpg`, `stage1b_ref_vs_result.jpg` (annotated).
+
+## Addendum — Fendi review 2026-09-04 [V]
+
+Fendi reviewed and raised three points. All three verified against both references.
+
+**Two new generation defects on the V2 output (not repair defects — the still stage never touched these regions):**
+
+| # | Defect in V2 output | Reference truth | Class | Owner |
+|---|---|---|---|---|
+| **I** | Two **navy vertical pocket welts** on the lower front | Welt pockets are **self-colour mastic** (flat ref and on-model ref) | Prompt omission → model invented navy trim | Generation; **V3 clause candidate** (same class as the zip clause B) |
+| **J** | **Navy cuff** at the visible wrist | Cuffs are **mastic**; the navy sleeve panel **stops above the cuff** | Prompt omission | Generation; **V3 clause candidate** |
+
+**Correction to the register:** defect **H** ("dark strap artifact dangling at the front hem") was mislabelled — it is the wearer's-right navy pocket welt, i.e. defect I. Withdraw H.
+
+**Proposed V3 clause (for ChatGPT, NOT applied):** append to the jacket sentence — *"…with self-coloured mastic welt pockets and mastic cuffs, the navy sleeve panels stopping above the cuff…"*. `GROK_VIDEO_EDIT_PROMPT_V3` is installed inactive and does not yet contain this; the single gated V3 run should not be spent until it does.
+
+**Collar (A) and sleeve ring (C): unchanged, by design.** Stage 1 is the chest band only; nothing has yet been done to the collar or sleeves.
+
+**"No improvement to the logo from my view":** correct if viewing the clip. The repair produced **one still** (`477b722c`), not a video; the `edited_clip` in Review is untouched. The legible wordmark exists only in that frame and is not yet a pass even there (see table above).
+
+Evidence: `v2_pockets_cuffs_annot.jpg` in this folder.
