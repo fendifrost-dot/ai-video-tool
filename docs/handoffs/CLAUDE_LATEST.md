@@ -2,7 +2,7 @@
 
 > **Convention.** This file is always Claude's most recent handoff. Claude overwrites it each time; dated copies live in `docs/` and `docs/research/results/`. Cursor and ChatGPT: "check the repo" means read this file. Cursor's side is `docs/handoffs/CURSOR_LATEST.md`.
 
-**Updated:** 2026-09-04 (rev 6 — Cursor d170491 closes E/F/G; suite 686/686, build ok; awaiting ChatGPT authorization + merge) · **Author:** Claude (Cowork) · **Spend:** $12.80 of $20 ceiling, 32 generations · **No paid call pending** · stage-1 re-run cost $0
+**Updated:** 2026-09-04 (rev 7 — + Grok Build consumer experiment note; product-lane state unchanged from rev 6) · **Author:** Claude (Cowork) · **Spend:** $12.80 of $20 ceiling, 32 generations · **No paid call pending** · stage-1 re-run cost $0
 
 ## State in one paragraph
 
@@ -15,6 +15,8 @@
 Prior state (rev 3): Stage 1 (`logo_chest`) has now been run with a **correct, measured band quad** on the clean still `2aa1a44c` → output asset `477b722c`. The wordmark renders legibly as SAINT LAURENT in the house typeface (defect **D fixed**, **F fixed** inside the quad). It is still **NOT a pass** under zero-deviation: the wordmark is centred on the band and ~2× oversized (reference: wearer's-left segment, ~½ band height), the patch paints over the crossed hand (no occlusion mask), the tilted band leaks below the rectangular patch, the zip line is erased, and the band is flat/unlit. **The failure has changed category** — from "can the engine do this" to specifiable compositing rules. V2 stays frozen; V3 is installed but inactive (`4af7afa`). **Fendi review added two generation defects: I navy pocket welts, J navy cuffs (both mastic on the reference) — and defect H is withdrawn (it was the pocket welt). Collar A and sleeve ring C are untouched by design.** The repair produced one still, not a clip; the Review clip is unchanged. **Lovable Publish has landed:** the `4af7afa` runner is live and stage 1 was re-run through the product UI with the same quad — output pixel-identical to `477b722c`, no auto-chaining, placement check working. UI path and proxy path now agree.
 
 ## Read this
+
+**`docs/research/results/2026-09-04-grok-build/GROK_BUILD_CONSUMER_EXPERIMENT_2026-09-04.md`** (`3365cb9`) — Fendi-directed side experiment on grok.com Build Mode (consumer plan, $0 API). Grok could not do video-to-video; it did `imagine_reference_to_image` (source frame + on-model + flat) → image-to-image fix → image-to-video. **Garment construction is the closest to zero-deviation seen in this project (A, B, D, E, F, I, J all correct in one pass), but the output is a regeneration of Fendi — FAIL for the product lane.** Open question for ChatGPT/Cursor: is that image-edit-with-references model reachable via the xAI API? If so it is a hero-keyframe/anchor candidate for Architecture C. No gates touched.
 
 **`docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1C_RESULT_2026-09-04.md`** — the 1c scorecard on `8ebfe83` with six corrections (defect-masked low-frequency shading clamped ±15 %; expansion along the band normal only; zip as feathered overlay; SAM-3 garment mask with `occlusion_source` surfaced; mask-derived quad; golden regression test). Evidence `stage1c_chest_compare.jpg`.
 
@@ -32,7 +34,7 @@ The first stage-1b run supplied the quad directly to `architecture-c-still-repai
 |---|---|
 | **Cursor** | Nothing outstanding vs the directive. Optional on ChatGPT's say-so: make `allowSkinHeuristicFallback` a request field defaulting to `false` on the still-repair lane; later, a real-pixel golden fixture from the committed still. On authorization: merge the branch to `main`. |
 | **Fendi** | Nothing blocking. Edge redeploys are now handled by Claude via Lovable deploy-only chat (verified safe this round); a frontend Publish is only needed if the runner UI changes. |
-| **ChatGPT** | Review `d170491` (all A–G implemented; comparison doc rev 2) and **authorize merge + edge redeploy** for stage 1d. Rule on the fallback caveat: is `skin_heuristic_fallback` an acceptable 1d outcome, or should the lane fail closed? |
+| **ChatGPT** | (1) Review `d170491` (all A–G implemented; comparison doc rev 2) and **authorize merge + edge redeploy** for stage 1d. Rule on the fallback caveat: is `skin_heuristic_fallback` an acceptable 1d outcome, or should the lane fail closed? (2) Read the Grok Build note and rule whether an API-side test of Imagine image-edit-with-references on still `2aa1a44c` is worth one gated call as an anchor experiment — separate from, and not blocking, 1d. |
 | **Claude** | After authorization and merge: deploy-only redeploy of `architecture-c-still-repair-proxy`, verify by behaviour (`repair_method_version: architecture_c_still_repair_1d` and `occlusion_source` in the response), run stage 1d on `2aa1a44c` with the measured quad, score — occlusion counts only if `occlusion_source === "sam3"`. Sleeve stage stays on hold. |
 
 ## Guardrails unchanged
