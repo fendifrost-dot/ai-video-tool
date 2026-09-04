@@ -46,6 +46,16 @@ export function mergeLogoZoneManualQuad(
   mkf.default = { target_quad_norm: quad };
   logoRaw.manual_keyframe = mkf;
   logoRaw.detail_type = "logo_zone";
+  // Seed Architecture C wordmark sub-zone defaults when absent (wearer's-left, ~½ height).
+  if (
+    !Array.isArray(logoRaw.logo_offset_norm) ||
+    (logoRaw.logo_offset_norm as unknown[]).length !== 2
+  ) {
+    logoRaw.logo_offset_norm = [0.55, 0.88];
+  }
+  if (typeof logoRaw.logo_height_ratio !== "number") {
+    logoRaw.logo_height_ratio = 0.5;
+  }
   detailsRaw.logo_zone = logoRaw;
   return { ...base, version: typeof base.version === "number" ? base.version : 1, details: detailsRaw };
 }

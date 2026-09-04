@@ -106,6 +106,10 @@ export type DetailPlacementSpec = {
   /** Colour profile for HSV detection (navy band, gold zipper, …). */
   color_profile?: ColorProfile | null;
   min_confidence?: number | null;
+  /** Horizontal UV span [u0, u1] of the wordmark inside the band quad. */
+  logo_offset_norm?: [number, number] | null;
+  /** Wordmark height as a fraction of band height (ref ≈ 0.5). */
+  logo_height_ratio?: number | null;
 };
 
 export type ManualKeyframePlacement = {
@@ -196,6 +200,16 @@ export function parseProductTruth(raw: unknown): ProductTruth | null {
         if (Object.keys(mkf).length > 0) spec.manual_keyframe = mkf;
       }
       if (typeof dv.min_confidence === "number") spec.min_confidence = dv.min_confidence;
+      if (
+        Array.isArray(dv.logo_offset_norm) &&
+        dv.logo_offset_norm.length === 2 &&
+        dv.logo_offset_norm.every((n) => typeof n === "number" && Number.isFinite(n))
+      ) {
+        spec.logo_offset_norm = dv.logo_offset_norm.map(Number) as [number, number];
+      }
+      if (typeof dv.logo_height_ratio === "number" && Number.isFinite(dv.logo_height_ratio)) {
+        spec.logo_height_ratio = dv.logo_height_ratio;
+      }
       out.details![key as DetailType] = spec;
     }
   }

@@ -16,6 +16,8 @@
 
 import {
   alphaComposite,
+  ARCHITECTURE_C_LOGO_BAND_DEFAULTS,
+  applyBandLumaShading,
   bandFromNormBbox,
   coverTargetOnBand,
   decodeToRgba,
@@ -25,8 +27,11 @@ import {
   isNavyPixel,
   keyGlyphForeground,
   logoQuality,
+  logoSubQuadInBand,
+  restoreSkinOccluders,
   targetRectForLogo,
   warpQuadAlpha,
+  type LogoBandPlacement,
   type LogoPlacement,
   type LogoQuality,
   type PixelMatch,
@@ -108,6 +113,13 @@ export type DetailPlacementSpec = {
   placement_hint?: string | null;
   color_profile?: ColorProfile | null;
   min_confidence?: number | null;
+  /**
+   * Horizontal UV span [u0, u1] of the wordmark inside the band quad
+   * (wearer's-left ≈ higher u). Used by Architecture C still repair.
+   */
+  logo_offset_norm?: [number, number] | null;
+  /** Wordmark height as a fraction of band height (ref ≈ 0.5). */
+  logo_height_ratio?: number | null;
 };
 
 export type ManualKeyframePlacement = {
@@ -193,6 +205,16 @@ export function parseProductTruth(raw: unknown): ProductTruth | null {
         if (Object.keys(mkf).length > 0) spec.manual_keyframe = mkf;
       }
       if (typeof dv.min_confidence === "number") spec.min_confidence = dv.min_confidence;
+      if (
+        Array.isArray(dv.logo_offset_norm) &&
+        dv.logo_offset_norm.length === 2 &&
+        dv.logo_offset_norm.every((n) => typeof n === "number" && Number.isFinite(n))
+      ) {
+        spec.logo_offset_norm = dv.logo_offset_norm.map(Number) as [number, number];
+      }
+      if (typeof dv.logo_height_ratio === "number" && Number.isFinite(dv.logo_height_ratio)) {
+        spec.logo_height_ratio = dv.logo_height_ratio;
+      }
       out.details![key as DetailType] = spec;
     }
   }
@@ -682,6 +704,9 @@ export async function compositeLogoOntoVton(
         manual_keyframe: ptLogo?.manual_keyframe ?? null,
         color_profile: NAVY_PROFILE,
         min_confidence: ptLogo?.min_confidence ?? MIN_STRIPE_CONFIDENCE,
+        logo_offset_norm: ptLogo?.logo_offset_norm ?? ARCHITECTURE_C_LOGO_BAND_DEFAULTS.logo_offset_norm,
+        logo_height_ratio:
+          ptLogo?.logo_height_ratio ?? ARCHITECTURE_C_LOGO_BAND_DEFAULTS.logo_height_ratio,
       },
     },
   };
@@ -705,14 +730,39 @@ export async function compositeLogoOntoVton(
   let warpMode: "affine" | "perspective";
 
   if (eng.source === "manual_keyframe" && eng.target && eng.target.kind === "quad") {
-    // Perspective warp onto the manual quad (follows a diagonal/curved stripe).
+    // Perspective warp onto a logo *sub-quad* inside the band (not the full band).
     warpMode = "perspective";
-    targetQuad = eng.target.points;
-    const quadPts = targetQuad as unknown as QuadPts;
+    const bandQuad = eng.target.points;
+    const bandPts = bandQuad as unknown as QuadPts;
     bandRect = rectFromTarget(eng.target);
-    target = bandRect;
-    const covered = coverTargetQuad(base, quadPts);
-    composited = warpQuadAlpha(covered, logoImg, quadPts, 3);
+
+    const offset = ptLogo?.logo_offset_norm;
+    const heightRatio = ptLogo?.logo_height_ratio;
+    const logoPlacement: LogoBandPlacement = {
+      logo_offset_norm:
+        Array.isArray(offset) && offset.length === 2
+          ? (offset as [number, number])
+          : ARCHITECTURE_C_LOGO_BAND_DEFAULTS.logo_offset_norm,
+      logo_height_ratio:
+        typeof heightRatio === "number" && Number.isFinite(heightRatio)
+          ? heightRatio
+          : ARCHITECTURE_C_LOGO_BAND_DEFAULTS.logo_height_ratio,
+      logo_v_center: ARCHITECTURE_C_LOGO_BAND_DEFAULTS.logo_v_center,
+    };
+    const logoPts = logoSubQuadInBand(bandPts, logoPlacement);
+    targetQuad = logoPts as unknown as Quad;
+    target = rectFromTarget({ kind: "quad", points: targetQuad });
+
+    // Full-band navy cover (erase D/E/F) with zip strip + tilted-band expand,
+    // then shade, then warp the wordmark into the wearer's-left sub-quad only.
+    let covered = coverTargetQuad(base, bandPts, {
+      zipStripFrac: 0.045,
+      maxExpandFrac: 0.05,
+    });
+    covered = applyBandLumaShading(base, covered, bandPts);
+    let compositedFrame = warpQuadAlpha(covered, logoImg, logoPts, 3);
+    compositedFrame = restoreSkinOccluders(base, compositedFrame, bandPts);
+    composited = compositedFrame;
   } else {
     warpMode = "affine";
     if (eng.source === "detection" && eng.target) {

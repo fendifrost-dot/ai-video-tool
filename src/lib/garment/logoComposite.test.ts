@@ -1,18 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
   alphaComposite,
+  ARCHITECTURE_C_LOGO_BAND_DEFAULTS,
+  applyBandLumaShading,
   bandFromNormBbox,
   coverTargetOnBand,
   coverTargetQuad,
   detectChestBand,
   glyphAlphaFactor,
   invBilinear,
+  isLikelySkinPixel,
   keyGlyphForeground,
   keyNavyBackground,
   logoCompositeMetaCore,
   logoQuality,
+  logoSubQuadInBand,
   resizeAreaAverage,
   resizeRgba,
+  restoreSkinOccluders,
   targetRectForLogo,
   warpQuadAlpha,
   type Point,
@@ -714,5 +719,92 @@ describe("logo typography rendering — anti-aliased downsampling", () => {
       expect(c.data[i]).toBeGreaterThan(110);
       expect(c.data[i]).toBeLessThan(146);
     }
+  });
+});
+
+describe("Architecture C logo sub-zone + cover rules", () => {
+  const band: QuadPts = [
+    { x: 30, y: 50 },
+    { x: 90, y: 50 },
+    { x: 90, y: 60 },
+    { x: 30, y: 60 },
+  ];
+
+  it("logoSubQuadInBand places a wearer's-left half-height logo, not full-band", () => {
+    const logo = logoSubQuadInBand(band, ARCHITECTURE_C_LOGO_BAND_DEFAULTS);
+    const bandMidX = (30 + 90) / 2;
+    const logoMidX = (logo[0].x + logo[1].x) / 2;
+    expect(logoMidX).toBeGreaterThan(bandMidX); // wearer's-left on facing still
+    const logoH = (logo[3].y + logo[2].y) / 2 - (logo[0].y + logo[1].y) / 2;
+    const bandH = 10;
+    expect(logoH).toBeCloseTo(bandH * 0.5, 0);
+  });
+
+  it("coverTargetQuad zipStripFrac leaves the mid column unpainted", () => {
+    const base = solid(100, 100, 200, 180, 160);
+    for (let y = 40; y < 60; y++) {
+      for (let x = 20; x < 80; x++) {
+        const i = (y * 100 + x) * 4;
+        base.data[i] = 25;
+        base.data[i + 1] = 30;
+        base.data[i + 2] = 95;
+      }
+    }
+    const quad: QuadPts = [
+      { x: 20, y: 40 },
+      { x: 80, y: 40 },
+      { x: 80, y: 60 },
+      { x: 20, y: 60 },
+    ];
+    const mid = 50;
+    // Mark mid column as a distinct "zip" colour so we can detect preservation.
+    for (let y = 40; y < 60; y++) {
+      const i = (y * 100 + mid) * 4;
+      base.data[i] = 90;
+      base.data[i + 1] = 80;
+      base.data[i + 2] = 70;
+    }
+    const out = coverTargetQuad(base, quad, { zipStripFrac: 0.05 });
+    const midI = (50 * 100 + mid) * 4;
+    expect(out.data[midI]).toBe(90); // zip strip preserved
+    const sideI = (50 * 100 + 30) * 4;
+    expect(out.data[sideI]).toBeLessThan(60); // navy cover applied
+  });
+
+  it("restoreSkinOccluders puts skin pixels back after a navy cover", () => {
+    const source = solid(40, 40, 25, 30, 95);
+    // Hand across bottom of band
+    for (let y = 22; y < 30; y++) {
+      for (let x = 5; x < 20; x++) {
+        const i = (y * 40 + x) * 4;
+        source.data[i] = 180;
+        source.data[i + 1] = 120;
+        source.data[i + 2] = 90;
+      }
+    }
+    const covered = solid(40, 40, 20, 25, 80);
+    const bandQ: QuadPts = [
+      { x: 0, y: 15 },
+      { x: 39, y: 15 },
+      { x: 39, y: 30 },
+      { x: 0, y: 30 },
+    ];
+    const out = restoreSkinOccluders(source, covered, bandQ);
+    const hand = (25 * 40 + 10) * 4;
+    expect(out.data[hand]).toBe(180);
+    expect(isLikelySkinPixel(180, 120, 90)).toBe(true);
+  });
+
+  it("applyBandLumaShading scales covered navy toward source luma", () => {
+    const source = solid(20, 20, 40, 45, 110); // brighter navy
+    const covered = solid(20, 20, 15, 18, 50); // flat dark navy cover
+    const bandQ: QuadPts = [
+      { x: 0, y: 0 },
+      { x: 19, y: 0 },
+      { x: 19, y: 19 },
+      { x: 0, y: 19 },
+    ];
+    const out = applyBandLumaShading(source, covered, bandQ);
+    expect(out.data[0]).toBeGreaterThan(covered.data[0]);
   });
 });

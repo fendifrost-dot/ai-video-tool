@@ -80,6 +80,8 @@ describe("mergeLogoZoneManualQuad", () => {
     const mkf = logo.manual_keyframe as Record<string, { target_quad_norm: unknown }>;
     expect(mkf.default.target_quad_norm).toEqual(quad);
     expect(mkf["v2-still-0.785"].target_quad_norm).toEqual(quad);
+    expect(logo.logo_offset_norm).toEqual([0.55, 0.88]);
+    expect(logo.logo_height_ratio).toBe(0.5);
   });
 
   it("preserves unrelated product_truth fields", () => {

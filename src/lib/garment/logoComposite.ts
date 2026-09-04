@@ -737,6 +737,165 @@ export function alphaComposite(
 export type Point = { x: number; y: number };
 export type QuadPts = [Point, Point, Point, Point];
 
+/** Logo placement inside a band quad (UV space of the band, not the full frame). */
+export type LogoBandPlacement = {
+  /** Horizontal UV span [u0, u1] within the band. Wearer's-left ≈ higher u on a facing still. */
+  logo_offset_norm: [number, number];
+  /** Logo height as a fraction of band height (ref ≈ 0.5). */
+  logo_height_ratio: number;
+  /** Vertical center of the logo in band UV. Default 0.5. */
+  logo_v_center?: number;
+};
+
+/** Architecture C SL mastic jacket defaults — wearer's-left wordmark, ~½ band height. */
+export const ARCHITECTURE_C_LOGO_BAND_DEFAULTS: LogoBandPlacement = {
+  logo_offset_norm: [0.55, 0.88],
+  logo_height_ratio: 0.5,
+  logo_v_center: 0.5,
+};
+
+export type CoverTargetQuadOptions = {
+  /** Fraction of band width at mid-x left unpainted so the zip line survives. Default 0. */
+  zipStripFrac?: number;
+  /** Vertical navy-snap expand as fraction of frame height. Default COVER_MAX_EXPAND_FRAC. */
+  maxExpandFrac?: number;
+};
+
+/** Forward-bilinear: (u,v) in [0..1]² → point inside quad. */
+export function quadPointAt(quad: QuadPts, u: number, v: number): Point {
+  const [tl, tr, br, bl] = quad;
+  const topX = tl.x + (tr.x - tl.x) * u;
+  const topY = tl.y + (tr.y - tl.y) * u;
+  const botX = bl.x + (br.x - bl.x) * u;
+  const botY = bl.y + (br.y - bl.y) * u;
+  return { x: topX + (botX - topX) * v, y: topY + (botY - topY) * v };
+}
+
+/**
+ * Derive a logo sub-quad inside the chest-band quad so the wordmark does not
+ * fill the entire band (Stage-1 failure: centred + ~2× too tall).
+ */
+export function logoSubQuadInBand(band: QuadPts, placement: LogoBandPlacement): QuadPts {
+  const u0 = Math.max(0, Math.min(1, placement.logo_offset_norm[0]));
+  const u1 = Math.max(0, Math.min(1, placement.logo_offset_norm[1]));
+  const lo = Math.min(u0, u1);
+  const hi = Math.max(u0, u1);
+  const vc = placement.logo_v_center ?? 0.5;
+  const half = Math.max(0.08, Math.min(0.9, placement.logo_height_ratio)) / 2;
+  const v0 = Math.max(0, vc - half);
+  const v1 = Math.min(1, vc + half);
+  return [
+    quadPointAt(band, lo, v0),
+    quadPointAt(band, hi, v0),
+    quadPointAt(band, hi, v1),
+    quadPointAt(band, lo, v1),
+  ];
+}
+
+/** Rough skin detector for crossed-hand occlusion on the chest band. */
+export function isLikelySkinPixel(r: number, g: number, b: number): boolean {
+  return (
+    r > 95 &&
+    g > 40 &&
+    b > 20 &&
+    r > g &&
+    r > b &&
+    r - g > 15 &&
+    Math.max(r, g, b) - Math.min(r, g, b) > 15
+  );
+}
+
+function luma(r: number, g: number, b: number): number {
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/**
+ * After navy cover, multiply covered pixels by source-band luminance so the
+ * patch keeps body lighting instead of reading as a flat sticker.
+ */
+export function applyBandLumaShading(
+  source: RgbaImage,
+  covered: RgbaImage,
+  band: QuadPts,
+): RgbaImage {
+  const out = new Uint8Array(covered.data);
+  const [tl, tr, br, bl] = band;
+  const xs = band.map((p) => p.x);
+  const ys = band.map((p) => p.y);
+  const left = Math.max(0, Math.floor(Math.min(...xs)));
+  const right = Math.min(source.width - 1, Math.ceil(Math.max(...xs)));
+  const top = Math.max(0, Math.floor(Math.min(...ys)));
+  const bottom = Math.min(source.height - 1, Math.ceil(Math.max(...ys)));
+
+  let sumSrc = 0;
+  let nSrc = 0;
+  for (let y = top; y <= bottom; y++) {
+    for (let x = left; x <= right; x++) {
+      if (!invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) continue;
+      const i = (y * source.width + x) * 4;
+      if (!isNavyPixel(source.data[i], source.data[i + 1], source.data[i + 2])) continue;
+      sumSrc += luma(source.data[i], source.data[i + 1], source.data[i + 2]);
+      nSrc++;
+    }
+  }
+  const meanSrc = nSrc > 0 ? sumSrc / nSrc : 40;
+
+  for (let y = top; y <= bottom; y++) {
+    for (let x = left; x <= right; x++) {
+      if (!invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) continue;
+      const i = (y * source.width + x) * 4;
+      const changed =
+        out[i] !== source.data[i] ||
+        out[i + 1] !== source.data[i + 1] ||
+        out[i + 2] !== source.data[i + 2];
+      if (!changed) continue;
+      const srcL = luma(source.data[i], source.data[i + 1], source.data[i + 2]);
+      // Prefer local source luma when the source pixel was navy; else mean band luma.
+      const targetL = isNavyPixel(source.data[i], source.data[i + 1], source.data[i + 2])
+        ? srcL
+        : meanSrc;
+      const coverL = Math.max(1, luma(out[i], out[i + 1], out[i + 2]));
+      const scale = Math.max(0.55, Math.min(1.45, targetL / coverL));
+      out[i] = Math.max(0, Math.min(255, Math.round(out[i] * scale)));
+      out[i + 1] = Math.max(0, Math.min(255, Math.round(out[i + 1] * scale)));
+      out[i + 2] = Math.max(0, Math.min(255, Math.round(out[i + 2] * scale)));
+    }
+  }
+  return { width: covered.width, height: covered.height, data: out };
+}
+
+/**
+ * Restore source pixels that look like skin/hands inside the band so the
+ * composite does not paint over crossed forearms (interim occlusion gate until
+ * SAM-3 outfit−hands−face is wired on the edge).
+ */
+export function restoreSkinOccluders(
+  source: RgbaImage,
+  composited: RgbaImage,
+  band: QuadPts,
+): RgbaImage {
+  const out = new Uint8Array(composited.data);
+  const [tl, tr, br, bl] = band;
+  const xs = band.map((p) => p.x);
+  const ys = band.map((p) => p.y);
+  const left = Math.max(0, Math.floor(Math.min(...xs) - 4));
+  const right = Math.min(source.width - 1, Math.ceil(Math.max(...xs) + 4));
+  const top = Math.max(0, Math.floor(Math.min(...ys) - 4));
+  const bottom = Math.min(source.height - 1, Math.ceil(Math.max(...ys) + 4));
+  for (let y = top; y <= bottom; y++) {
+    for (let x = left; x <= right; x++) {
+      if (!invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) continue;
+      const i = (y * source.width + x) * 4;
+      if (!isLikelySkinPixel(source.data[i], source.data[i + 1], source.data[i + 2])) continue;
+      out[i] = source.data[i];
+      out[i + 1] = source.data[i + 1];
+      out[i + 2] = source.data[i + 2];
+      out[i + 3] = source.data[i + 3];
+    }
+  }
+  return { width: composited.width, height: composited.height, data: out };
+}
+
 /** Inverse bilinear: pixel (px,py) → (u,v) in the quad TL,TR,BR,BL, or null when
  *  outside. u runs TL→TR, v runs TL→BL (Quilez closed form). */
 export function invBilinear(
@@ -924,7 +1083,11 @@ function navyExtentRow(base: RgbaImage, y: number, xL: number, xR: number): { l:
  * each row to the navy horizontal extent unioned with the quad span (following
  * the stripe shape so no tan halo), and feathers the outer transition rows.
  */
-export function coverTargetQuad(base: RgbaImage, quad: QuadPts): RgbaImage {
+export function coverTargetQuad(
+  base: RgbaImage,
+  quad: QuadPts,
+  options: CoverTargetQuadOptions = {},
+): RgbaImage {
   const out = new Uint8Array(base.data);
   const bbox = quadBbox(quad);
   const xL = Math.max(0, bbox.left - Math.round(base.width * COVER_SIDE_MARGIN_FRAC));
@@ -935,7 +1098,11 @@ export function coverTargetQuad(base: RgbaImage, quad: QuadPts): RgbaImage {
     right: Math.min(base.width, bbox.right),
     bottom: Math.min(base.height, bbox.bottom),
   });
-  const maxExpand = Math.round(base.height * COVER_MAX_EXPAND_FRAC);
+  const maxExpand = Math.round(base.height * (options.maxExpandFrac ?? COVER_MAX_EXPAND_FRAC));
+  const zipStripFrac = Math.max(0, options.zipStripFrac ?? 0);
+  const midX = (bbox.left + bbox.right) / 2;
+  const zipHalf = zipStripFrac > 0 ? ((bbox.right - bbox.left) * zipStripFrac) / 2 : 0;
+  const inZipStrip = (x: number) => zipHalf > 0 && Math.abs(x - midX) <= zipHalf;
 
   // Snap the band top/bottom to the navy extent just beyond the quad.
   let top = Math.max(0, bbox.top);
@@ -953,6 +1120,7 @@ export function coverTargetQuad(base: RgbaImage, quad: QuadPts): RgbaImage {
 
   const fillRow = (y: number, l: number, r: number, alpha: number) => {
     for (let x = Math.max(0, l); x <= Math.min(base.width - 1, r); x++) {
+      if (inZipStrip(x)) continue;
       const i = (y * base.width + x) * 4;
       if (alpha >= 1) {
         out[i] = nr;
@@ -1015,6 +1183,7 @@ export function coverTargetQuad(base: RgbaImage, quad: QuadPts): RgbaImage {
   const tanSustain = Math.max(4, Math.round(base.height * COVER_TAN_SUSTAIN_FRAC));
   for (let x = spanL; x <= spanR; x++) {
     if (x < 0 || x >= base.width) continue;
+    if (inZipStrip(x)) continue;
     let seenNavy = false;
     let deepestNavy = -1;
     let tanRun = 0;
