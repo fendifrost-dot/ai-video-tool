@@ -2,31 +2,42 @@
 
 > **Convention.** This file is always Cursor's most recent handoff. Cursor overwrites it each time it lands work; dated notes live alongside in `docs/`. Claude and ChatGPT: "check Cursor's work" means read this file first, then the commits it names. Claude's side is `docs/handoffs/CLAUDE_LATEST.md`.
 
-**Updated:** 2026-09-04 · **Branch:** `main` · **Commits:** (this tip)
+**Updated:** 2026-09-04 · **Branch:** `cursor/stage-1d-verify-anchor-research-88eb` · **Commits:** (this tip)
 
-## Landed
+## Track A — Stage 1D live verification
 
-Deterministic layer for Architecture C `logo_chest` (Claude items 1–5, canvas-first):
+**Status: BLOCKED** before execution.
 
-1. **Logo sub-zone + scale** — `logo_offset_norm` + `logo_height_ratio` on `logo_zone` product truth; defaults `[0.55, 0.88]` / `0.5` (wearer's-left, half band height). Manual path warps wordmark into sub-quad, not full band.
-2. **Occlusion (interim)** — `restoreSkinOccluders` restores skin/hand pixels inside the band after composite. Full SAM-3 `outfit − dilate(hands) − dilate(face)` still pending (soft-fail placeholder documented).
-3. **Tilted band** — `coverTargetQuad` `maxExpandFrac: 0.05` on still-repair path (navy snap already follows stripe).
-4. **Shading** — `applyBandLumaShading` multiplies covered navy by source-band luma.
-5. **Zip strip** — `zipStripFrac: 0.045` leaves mid-band column unpainted.
+- Prepared canonical payload (clean still `2aa1a44c`, measured quad, `logo_chest`, no skin-fallback flag).
+- Live UI + direct edge call returned **HTTP 403** `project_forbidden` (session JWT ≠ project owner).
+- No Stage 1D asset created; DB still shows `f7c7b524` as latest `logo_chest` child of the clean still.
+- Visual scorecard **NOT RUN**.
+- **Chest ready for sleeve?** **NO**.
 
-Touched: `src/lib/garment/logoComposite.ts` (+ tests), edge `_shared/logoComposite.ts` + `placementEngine.ts` `compositeLogoOntoVton`, `architectureCStillRepair` merge seeds both sides.
+Also [V]: PR #40 tip `bb2d75f` (fail-closed SAM-3) is **not** on GitHub `main` (`0614b06`). Claimed Lovable redeploy SHA cannot be confirmed from this environment.
+
+**Unblock:** owner-authenticated re-run (Fendi/Claude) with fail-closed defaults; accept only `occlusion_source:"sam3"` or 422 `occlusion_unavailable`.
+
+Doc: `docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1D_RESULT_2026-09-04.md`
+
+## Track B — Grok Build anchor API research
+
+**Capability class: VERIFIED YES** — `POST /v1/images/edits` + `images[]` (multi-source still edit).  
+**Same-as-consumer Build quality/identity: UNKNOWN.**
+
+- AVT already wires this (`xaiImageEdits`, `grok-image-garment-proxy`, `grok-resolution-test`).
+- Smallest probe designed; **not executed**; no paid call.
+- Docs.x.ai multi-image page: up to **five** refs; AVT safe cap remains **3**.
+
+Doc: `docs/research/results/2026-09-04-grok-build/GROK_BUILD_ANCHOR_API_RESEARCH_2026-09-04.md`
 
 ## Deployed?
 
-- edge fn redeployed: **NO — required** → Lovable **Edge Functions → redeploy `architecture-c-still-repair-proxy`**
-- frontend published: optional (defaults seeded server-side on merge); Publish if UI copy needs the new docs
+| Surface | Required now? |
+|---------|----------------|
+| Edge redeploy | **NO** from this docs-only land. Stage 1D still needs owner run after fail-closed tip is live. If Lovable has not actually synced/redeployed PR #40 fail-closed tip, redeploy `architecture-c-still-repair-proxy` once that tip is in the Lovable project. |
+| Frontend Publish | **NO** |
 
-## For Claude to verify
+## Confirm
 
-Re-run stage 1 on clean still `2aa1a44c` with measured band quad after edge redeploy. Expect: wordmark wearer's-left + ~½ height; less hand paint-over; zip continuity; less flat sticker. Score vs flat ref. Sleeve still waits if occlusion/shade still weak.
-
-## Blocked / needs decision
-
-- **ChatGPT:** V3 I/J pockets+cuffs clause before gated spend.
-- **SAM-3 occlusion wire-up** if skin heuristic is insufficient on the crossed-arm still.
-- No paid Grok · V2 active · V3 inactive · no temporal.
+V2 active · V3 inactive · xAI spend **$0** · temporal **off** · sleeve **not started** · no provider/reference-to-image experiment executed
