@@ -84,6 +84,9 @@ export function subtractAlpha(base: Float32Array, guard: Float32Array): Float32A
 /**
  * Build compositing α = outfit − dilate(hands) − dilate(face).
  * Missing occluder maps are treated as empty (no subtraction).
+ *
+ * Prefer {@link buildCompleteSam3OcclusionAlpha} for Architecture C logo_chest —
+ * that path refuses partial masks and never labels them `"sam3"`.
  */
 export function buildOutfitMinusOccludersAlpha(input: {
   width: number;
@@ -103,6 +106,111 @@ export function buildOutfitMinusOccludersAlpha(input: {
     a = subtractAlpha(a, dilateAlpha(input.face, width, height, dilatePx));
   }
   return a;
+}
+
+/**
+ * Architecture C / Stage-1D gate: `"sam3"` is only valid when outfit AND hands
+ * AND face masks all resolved. Partial sets must never be reported as SAM-3.
+ */
+export type Sam3Completeness =
+  | { complete: true }
+  | { complete: false; reason: "sam3_outfit_failed" | "sam3_hands_failed" | "sam3_face_failed" };
+
+export function assertSam3MaskCompleteness(input: {
+  outfit: Float32Array | null | undefined;
+  hands: Float32Array | null | undefined;
+  face: Float32Array | null | undefined;
+}): Sam3Completeness {
+  if (!input.outfit || input.outfit.length === 0) {
+    return { complete: false, reason: "sam3_outfit_failed" };
+  }
+  if (!input.hands || input.hands.length === 0) {
+    return { complete: false, reason: "sam3_hands_failed" };
+  }
+  if (!input.face || input.face.length === 0) {
+    return { complete: false, reason: "sam3_face_failed" };
+  }
+  return { complete: true };
+}
+
+/**
+ * Build α only when all three SAM-3 components are present.
+ * Returns null + reason when incomplete (caller must NOT emit occlusion_source "sam3").
+ */
+export function buildCompleteSam3OcclusionAlpha(input: {
+  width: number;
+  height: number;
+  outfit: Float32Array | null | undefined;
+  hands: Float32Array | null | undefined;
+  face: Float32Array | null | undefined;
+  dilatePx?: number;
+  minCoveragePx?: number;
+}):
+  | { ok: true; alpha: Float32Array; occlusion_source: "sam3" }
+  | { ok: false; reason: string; occlusion_source: "unavailable" } {
+  const gate = assertSam3MaskCompleteness(input);
+  if (!gate.complete) {
+    return { ok: false, reason: gate.reason, occlusion_source: "unavailable" };
+  }
+  const alpha = buildOutfitMinusOccludersAlpha({
+    width: input.width,
+    height: input.height,
+    outfit: input.outfit!,
+    hands: input.hands!,
+    face: input.face!,
+    dilatePx: input.dilatePx ?? 12,
+  });
+  const minCoverage = input.minCoveragePx ?? 64;
+  let coverage = 0;
+  for (let i = 0; i < alpha.length; i++) if (alpha[i]! > 0.5) coverage++;
+  if (coverage < minCoverage) {
+    return { ok: false, reason: "sam3_alpha_wiped", occlusion_source: "unavailable" };
+  }
+  return { ok: true, alpha, occlusion_source: "sam3" };
+}
+
+/**
+ * Stage-1D / logo_chest policy: SAM-3 must succeed completely; skin heuristic
+ * is NOT an automatic fallback for the canonical acceptance path.
+ */
+export const LOGO_CHEST_OCCLUSION_POLICY = {
+  requireCompleteSam3: true,
+  allowSkinHeuristicFallbackByDefault: false,
+} as const;
+
+/**
+ * Decide whether logo_chest may proceed to composite / persist an asset.
+ * Fail-closed when complete SAM-3 is required and unavailable.
+ */
+export function logoChestOcclusionGate(input: {
+  sam3Ok: boolean;
+  allowSkinHeuristicFallback?: boolean;
+}):
+  | { proceed: true; useSam3: boolean; useSkinFallback: boolean }
+  | {
+      proceed: false;
+      httpStatus: 422;
+      error: "occlusion_unavailable";
+      occlusion_source: "unavailable";
+      asset_persisted: false;
+    } {
+  const allowFallback =
+    typeof input.allowSkinHeuristicFallback === "boolean"
+      ? input.allowSkinHeuristicFallback
+      : LOGO_CHEST_OCCLUSION_POLICY.allowSkinHeuristicFallbackByDefault;
+  if (input.sam3Ok) {
+    return { proceed: true, useSam3: true, useSkinFallback: false };
+  }
+  if (allowFallback) {
+    return { proceed: true, useSam3: false, useSkinFallback: true };
+  }
+  return {
+    proceed: false,
+    httpStatus: 422,
+    error: "occlusion_unavailable",
+    occlusion_source: "unavailable",
+    asset_persisted: false,
+  };
 }
 
 /**

@@ -4,52 +4,46 @@
 
 **Updated:** 2026-09-04 · **Branch:** `cursor/architecture-c-still-1c-corrections-88eb` · **Commits:** (this tip)
 
-## Landed — ChatGPT Stage-1C Regression Correction Directive (full)
+## Landed — ChatGPT Stage-1C + ONE BLOCKING CORRECTION (SAM-3 fail-closed)
 
-Preserves wordmark sub-zone (`logo_offset_norm` / `logo_height_ratio`). Does **not** redesign the deterministic repair system.
+Preserves wordmark / LF shading / quad fill / zip / V3 I/J from `d170491`. This tip closes the ChatGPT merge blocker:
 
-### A — Logo sub-zone (preserved)
-Wearer's-left + ~½ band height defaults + golden regression proving no silent return to full-band/centered.
+### SAM-3 completeness (BLOCKER fix)
+`resolveSam3StillOcclusion` / `buildCompleteSam3OcclusionAlpha` require **outfit + hands + face**.
+- hands fail → `ok:false`, reason `sam3_hands_failed` — **never** `"sam3"`
+- face fail → `sam3_face_failed` — **never** `"sam3"`
+- outfit-only / partial → **never** `"sam3"`
 
-### B — Low-frequency band illumination
-Renamed path: `applyLowFrequencyBandIllumination` (alias `applyBandLumaShading`). Defect-masked navy luma → median fill → box blur → gain clamp **[0.85, 1.15]**. HF lettering/pinstripe must not survive (unit + golden tests).
+### logo_chest / Stage-1D fail-closed policy
+`LOGO_CHEST_OCCLUSION_POLICY.allowSkinHeuristicFallbackByDefault = false`
+`logoChestOcclusionGate`: if SAM incomplete and fallback not explicitly opted in →
+**HTTP 422 `occlusion_unavailable`**, `asset_persisted: false`, **before** composite/upload/`project_assets` insert.
 
-### C — Band expansion geometry
-Still-repair uses `fillMode: "quad"` + `columnFollow: false`: paint only inside a band-normal-expanded quad. No column-follow navy drips. Tilted-band leak test asserts against the **quad**, not AABB.
+Body opt-in only: `allowSkinHeuristicFallback: true` (non-gated contexts). Stage-1D must not pass it.
 
-### D — Zip overlay
-`overlayZipFromSource(..., stripFrac, zipUNorm=0.5)`: continuous navy cover, then feathered mastic zip tape restore. Parameterised `zipUNorm` for reuse. No raw slit.
+`occlusion_source` semantics:
+- `"sam3"` — complete mask only
+- `"skin_heuristic_fallback"` — only when explicitly permitted
+- `"unavailable"` / 422 — fail-closed path
 
-### E — SAM-3 occlusion
-Edge `resolveSam3StillOcclusion` → CC SwitchX `segment-image` (same secrets as `sam3-segment-proxy`; **no Grok proxy changes**):
-`α = outfit − dilate(hands) − dilate(face)`.
-Applied via `applyOcclusionAlphaComposite`.
+### Unchanged (do not regress)
+Low-frequency shading · quad-only expansion · zip overlay · logo sub-zone · V3 I/J inactive · V2 active · temporal off · sleeve not started
 
-`occlusion_source`:
-- `"sam3"` when SAM α is used
-- `"skin_heuristic_fallback"` when SAM cannot execute and fallback is allowed
-- `"unavailable"` → visible `422 occlusion_unavailable` (fail closed if fallback disabled)
+### Docs
+Fixed stale sentence in `ARCHITECTURE_C_STILL_REPAIR_POST_DEPLOY_VERIFY_2026-09-04.md` that claimed SAM-3 was deferred.
 
-Never reports heuristic as SAM-3.
-
-### F — Mask-derived geometry metadata
-Persists `requested_band_quad_norm`, `effective_band_bbox` (+ pixel_count), `occlusion_source`, `repair_method_version: architecture_c_still_repair_1d`. Manual quad remains bootstrap/override; paint gated by SAM α when present.
-
-### G — Golden fixture
-`src/lib/garment/architectureCStillRepairGolden.test.ts` — canonical still id `2aa1a44c` + measured quad; synthetic 720×1280 frame guards structural invariants (logo sub-zone, no sleeve drip, LF shading, zip overlay, occlusion α, V2/V3 gates, temporal off).
-
-### V3 I/J (inactive)
-`GROK_VIDEO_EDIT_PROMPT_V3` includes mastic welt pockets + mastic cuffs + navy panels stop above cuff. V1/V2 preserved. Active = V2. Version `"v2"`. No spend gate opened.
+### Claude handoff (origin/main rev 6)
+Claude already noted the fallback caveat on `d170491`; this tip closes it. Local checkout of `CLAUDE_LATEST` may lag until rebase/merge — authoritative tip is `origin/main` rev 6.
 
 ## Deployed?
 
 | Surface | Status |
 |---------|--------|
-| `architecture-c-still-repair-proxy` edge redeploy | **YES — required** (after ChatGPT authorizes + merge) |
-| Frontend Publish | **NO — not required** for this land (server-side composite + inactive V3 text only) |
+| `architecture-c-still-repair-proxy` edge redeploy | **YES — required** after ChatGPT re-review + merge |
+| Frontend Publish | **NO — not required** |
 
-**Do not run Stage 1D until ChatGPT reviews this commit and authorizes redeploy.**
+**STOP — no Stage 1D / no live run / no paid calls until ChatGPT re-reviews.**
 
 ## Confirm
 
-V2 active · V3 inactive · xAI spend **$0** · temporal **off** · sleeve **not started**
+V2 active · V3 inactive · xAI spend **$0** · temporal **off** · sleeve **not started** · no live Stage 1D

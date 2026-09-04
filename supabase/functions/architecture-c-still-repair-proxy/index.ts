@@ -27,6 +27,10 @@ import {
   compositeSleevePanelsOntoStill,
 } from "../_shared/placementEngine.ts";
 import { resolveSam3StillOcclusion } from "../_shared/sam3StillOcclusion.ts";
+import {
+  LOGO_CHEST_OCCLUSION_POLICY,
+  logoChestOcclusionGate,
+} from "../_shared/stillRepairOcclusion.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,6 +48,11 @@ type Body = {
   stage: StillRepairStage | string;
   logoZoneQuad?: QuadNorm;
   sleevePanels?: SleevePanelManual[];
+  /**
+   * When true, allow skin_heuristic_fallback if SAM-3 is incomplete/unavailable.
+   * Canonical Stage-1D / logo_chest acceptance defaults to false (fail closed).
+   */
+  allowSkinHeuristicFallback?: boolean;
 };
 
 function json(status: number, body: unknown) {
@@ -175,13 +184,35 @@ serve(async (req) => {
       requestedBandQuadNorm = body.logoZoneQuad as unknown as [number, number][];
     }
 
-    // Preferred: SAM-3 outfit − dilate(hands) − dilate(face). Falls back to
-    // skin_heuristic_fallback inside the composite when SAM cannot execute.
+    // Complete SAM-3 required: outfit + hands + face. Canonical logo_chest /
+    // Stage-1D is fail-closed — no automatic skin-heuristic fallback.
     const sam3 = await resolveSam3StillOcclusion({
       admin,
       stillBucket,
       stillPath: stillAsset.file_url as string,
     });
+
+    const allowSkinFallback =
+      typeof body.allowSkinHeuristicFallback === "boolean"
+        ? body.allowSkinHeuristicFallback
+        : LOGO_CHEST_OCCLUSION_POLICY.allowSkinHeuristicFallbackByDefault;
+
+    const gate = logoChestOcclusionGate({
+      sam3Ok: sam3.ok,
+      allowSkinHeuristicFallback: allowSkinFallback,
+    });
+    if (!gate.proceed) {
+      // Fail closed BEFORE composite / upload / project_assets insert.
+      return json(gate.httpStatus, {
+        error: gate.error,
+        detail:
+          "logo_chest requires complete SAM-3 (outfit+hands+face); refusing unsafe paint-over",
+        occlusion_source: gate.occlusion_source,
+        sam3_reason: sam3.ok ? null : sam3.reason,
+        sam3_ok: false,
+        asset_persisted: gate.asset_persisted,
+      });
+    }
 
     let composite;
     try {
@@ -195,7 +226,7 @@ serve(async (req) => {
           occlusionAlpha: sam3.ok ? sam3.alpha : undefined,
           occlusionAlphaWidth: sam3.ok ? sam3.width : undefined,
           occlusionAlphaHeight: sam3.ok ? sam3.height : undefined,
-          allowSkinHeuristicFallback: true,
+          allowSkinHeuristicFallback: allowSkinFallback,
           requestedBandQuadNorm,
         },
       );
@@ -206,7 +237,10 @@ serve(async (req) => {
           error: "occlusion_unavailable",
           detail:
             "SAM-3 occlusion failed and skin-heuristic fallback was disabled; refusing unsafe paint-over",
+          occlusion_source: "unavailable",
           sam3_reason: sam3.ok ? null : sam3.reason,
+          sam3_ok: false,
+          asset_persisted: false,
         });
       }
       throw e;
@@ -220,6 +254,7 @@ serve(async (req) => {
       sam3_attempted: true,
       sam3_ok: sam3.ok,
       sam3_reason: sam3.ok ? null : sam3.reason,
+      allow_skin_heuristic_fallback: allowSkinFallback,
     };
   } else {
     const panels = body.sleevePanels ?? [];

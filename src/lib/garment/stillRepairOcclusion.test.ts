@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   applyOcclusionAlphaComposite,
+  assertSam3MaskCompleteness,
+  buildCompleteSam3OcclusionAlpha,
   buildOutfitMinusOccludersAlpha,
   dilateAlpha,
   expandQuadAlongBandNormal,
+  LOGO_CHEST_OCCLUSION_POLICY,
+  logoChestOcclusionGate,
   sam3MaskedRgbToAlpha,
   type RgbaImage,
 } from "./stillRepairOcclusion";
@@ -102,5 +106,129 @@ describe("stillRepairOcclusion — SAM-3 α math", () => {
     expect(d[10 * W + 10]).toBe(1);
     expect(d[10 * W + 12]).toBe(1);
     expect(d[0]).toBe(0);
+  });
+});
+
+describe("SAM-3 completeness — never emit sam3 for partial masks", () => {
+  const ones = (n: number) => {
+    const a = new Float32Array(n);
+    a.fill(1);
+    return a;
+  };
+
+  it("outfit succeeds + hands fails -> not SAM-3", () => {
+    const gate = assertSam3MaskCompleteness({
+      outfit: ones(16),
+      hands: null,
+      face: ones(16),
+    });
+    expect(gate).toEqual({ complete: false, reason: "sam3_hands_failed" });
+    const built = buildCompleteSam3OcclusionAlpha({
+      width: 4,
+      height: 4,
+      outfit: ones(16),
+      hands: null,
+      face: ones(16),
+    });
+    expect(built.ok).toBe(false);
+    if (!built.ok) {
+      expect(built.reason).toBe("sam3_hands_failed");
+      expect(built.occlusion_source).toBe("unavailable");
+    }
+  });
+
+  it("outfit succeeds + face fails -> not SAM-3", () => {
+    const gate = assertSam3MaskCompleteness({
+      outfit: ones(16),
+      hands: ones(16),
+      face: null,
+    });
+    expect(gate).toEqual({ complete: false, reason: "sam3_face_failed" });
+    const built = buildCompleteSam3OcclusionAlpha({
+      width: 4,
+      height: 4,
+      outfit: ones(16),
+      hands: ones(16),
+      face: undefined,
+    });
+    expect(built.ok).toBe(false);
+    if (!built.ok) {
+      expect(built.reason).toBe("sam3_face_failed");
+      expect(built.occlusion_source).toBe("unavailable");
+    }
+  });
+
+  it("complete outfit/hands/face -> SAM-3", () => {
+    const W = 20;
+    const H = 20;
+    const outfit = ones(W * H);
+    const hands = new Float32Array(W * H);
+    const face = new Float32Array(W * H);
+    // small hand + face patches so subtraction does not wipe coverage
+    hands[5 * W + 5] = 1;
+    face[2 * W + 2] = 1;
+    const built = buildCompleteSam3OcclusionAlpha({
+      width: W,
+      height: H,
+      outfit,
+      hands,
+      face,
+      dilatePx: 1,
+      minCoveragePx: 64,
+    });
+    expect(built.ok).toBe(true);
+    if (built.ok) {
+      expect(built.occlusion_source).toBe("sam3");
+      expect(built.alpha.length).toBe(W * H);
+    }
+  });
+
+  it("outfit-only never reports sam3", () => {
+    const built = buildCompleteSam3OcclusionAlpha({
+      width: 4,
+      height: 4,
+      outfit: ones(16),
+      hands: null,
+      face: null,
+    });
+    expect(built.ok).toBe(false);
+    if (!built.ok) expect(built.occlusion_source).toBe("unavailable");
+  });
+});
+
+describe("logo_chest Stage-1D fail-closed policy", () => {
+  it("defaults disallow skin heuristic fallback", () => {
+    expect(LOGO_CHEST_OCCLUSION_POLICY.requireCompleteSam3).toBe(true);
+    expect(LOGO_CHEST_OCCLUSION_POLICY.allowSkinHeuristicFallbackByDefault).toBe(
+      false,
+    );
+  });
+
+  it("SAM failure + fail-closed -> 422 / no asset persistence", () => {
+    const gate = logoChestOcclusionGate({ sam3Ok: false });
+    expect(gate.proceed).toBe(false);
+    if (!gate.proceed) {
+      expect(gate.httpStatus).toBe(422);
+      expect(gate.error).toBe("occlusion_unavailable");
+      expect(gate.occlusion_source).toBe("unavailable");
+      expect(gate.asset_persisted).toBe(false);
+    }
+  });
+
+  it("SAM success -> proceed with sam3 only", () => {
+    const gate = logoChestOcclusionGate({ sam3Ok: true });
+    expect(gate).toEqual({ proceed: true, useSam3: true, useSkinFallback: false });
+  });
+
+  it("explicit allowSkinHeuristicFallback still permits surfaced fallback outside Stage-1D", () => {
+    const gate = logoChestOcclusionGate({
+      sam3Ok: false,
+      allowSkinHeuristicFallback: true,
+    });
+    expect(gate).toEqual({
+      proceed: true,
+      useSam3: false,
+      useSkinFallback: true,
+    });
   });
 });

@@ -36,9 +36,19 @@ No prior repaired still was used as input. Product lane only. No xAI spend.
 **Chest stage strong enough for `sleeve_panel`?** **NO** — hard stop.
 **Band leak class [O]:** primarily **compositing expansion** (column-follow), not the measured quad itself; shading failure is separate (high-frequency luma path).
 
-## Corrections landed (not yet live) [D]
+## Corrections landed (awaiting ChatGPT authorize + edge redeploy) [D]
 
-Code addresses 1c items 1–3 + surfaces `occlusion_source` (item 4 fallback path). SAM-3 wire-up and mask-derived quad deferred. After Lovable edge redeploy of `architecture-c-still-repair-proxy`, Claude re-runs stage 1d on the same clean still/quad.
+Code addresses Stage-1C items 1–6 on branch tip:
+- low-frequency defect-masked shading + gain clamp
+- quad-only / band-normal expansion (`fillMode: "quad"`)
+- feathered zip overlay (`zipUNorm`)
+- **SAM-3 complete-mask occlusion** (outfit + hands + face required; `occlusion_source: "sam3"` only when all succeed)
+- requested vs effective band metadata
+- golden structural fixture on still `2aa1a44c` + measured quad
+
+Canonical `logo_chest` / Stage-1D is **fail-closed**: incomplete/unavailable SAM-3 → HTTP 422 `occlusion_unavailable`, **no** project_assets insert. Skin heuristic remains available only when the caller explicitly sets `allowSkinHeuristicFallback: true` (not the Stage-1D default).
+
+After Lovable edge redeploy of `architecture-c-still-repair-proxy`, Claude re-runs stage 1d on the same clean still/quad.
 
 ## V3 I/J maintenance [V]
 
