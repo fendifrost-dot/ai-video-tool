@@ -2,25 +2,31 @@
 
 > **Convention.** This file is always Claude's most recent handoff. Claude overwrites it each time; dated copies live in `docs/` and `docs/research/results/`. Cursor and ChatGPT: "check the repo" means read this file. Cursor's side is `docs/handoffs/CURSOR_LATEST.md`.
 
-**Updated:** 2026-09-03 · **Author:** Claude (Cowork) · **Spend:** $12.80 of $20 ceiling, 32 generations · **No paid call pending**
+**Updated:** 2026-09-04 · **Author:** Claude (Cowork) · **Spend:** $12.80 of $20 ceiling, 32 generations · **No paid call pending** · stage-1 re-run cost $0
 
 ## State in one paragraph
 
-Architecture C is proven as a product lane (dry-run gate → paid run → `edited_clip` persisted → Review handoff) on Frozen Prompt V2, request `9d47bd2f`. The garment is **not a pass** under zero-deviation. Deterministic still-first repair is in progress on still `2aa1a44c` (t=0.785 s): the brand-pixel engine renders SAINT LAURENT legibly, but the default chest quad landed on the face — manual quad placement is required. V2 is frozen; no V3 has been applied.
+Stage 1 (`logo_chest`) has now been run with a **correct, measured band quad** on the clean still `2aa1a44c` → output asset `477b722c`. The wordmark renders legibly as SAINT LAURENT in the house typeface (defect **D fixed**, **F fixed** inside the quad). It is still **NOT a pass** under zero-deviation: the wordmark is centred on the band and ~2× oversized (reference: wearer's-left segment, ~½ band height), the patch paints over the crossed hand (no occlusion mask), the tilted band leaks below the rectangular patch, the zip line is erased, and the band is flat/unlit. **The failure has changed category** — from "can the engine do this" to specifiable compositing rules. V2 stays frozen; V3 is installed but inactive (`4af7afa`).
 
 ## Read this
 
-**`docs/ARCHITECTURE_C_V2_DEFECTS_AND_PROPOSED_FIXES_2026-09-03.md`** (PR #39, commit `aff6536`) — the full defect register A–F with owners, the widened chest-band repair scope, four runner items for Cursor (§3.4), and the collar/zip clause decision tabled for ChatGPT (§4).
+**`docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1_RESULT_2026-09-04.md`** (commit `33e2ab9`) — full result, disclosure of how the quad was supplied, defect table, and six proposed fixes. Annotated evidence in the same folder (`stage1b_ref_vs_result.jpg`, `stage1b_before_after.jpg`, `stage1b_chest_zoom.jpg`).
+
+Prior context: `docs/ARCHITECTURE_C_V2_DEFECTS_AND_PROPOSED_FIXES_2026-09-03.md` (register A–F) and `docs/ARCHITECTURE_C_CHATGPT_V3_STILL_FIRST_RULING_2026-09-03.md` (sequence).
+
+## Disclosure
+
+The live app was still serving the pre-`4af7afa` runner and the browser tab had no usable viewport, so the quad was passed as `logoZoneQuad` directly to the deployed `architecture-c-still-repair-proxy` — the same function and code path the UI calls, written to `product_truth` under keyframe `v2-still-0.785` as the UI does. The UI placement step was not exercised.
 
 ## Open items by owner
 
 | Owner | Item |
 |---|---|
-| **Fendi** | Place the **full-band** chest quad (≈ x 0.30–0.88, y 0.503–0.578) on the **clean** still `2aa1a44c` and re-run stage 1. Reset the still selector first — it auto-switched to the stage-1 output. |
-| **Cursor** | §3.4: don't auto-select stage output as next input · seed default chest quad from the measured band · numeric quad entry · surface out-of-mask composites. |
-| **ChatGPT** | §4: rule on the collar ("navy stand collar" is a factual error — reference collar is mastic outside) and zip clause corrections. Proposed V3 text is in the doc, not applied. |
-| **Claude** | Score the re-run against the flat ref; then sleeve panels; no spend. |
+| **Cursor** | Deterministic layer, in this order: (1) logo sub-zone + scale from product truth (`logo_offset_norm`, `logo_height_ratio`) instead of quad centre/full height; (2) occlusion mask before compositing — SAM-3 `outfit − dilate(hands) − dilate(face)` on the still; (3) mask-derived band quad for the tilted band; (4) shading transfer (low-frequency luminance from the source band, `periocularComposite` helper shape); (5) exclude/redraw the zip strip. Details in the result doc. |
+| **Fendi** | **Publish** in Lovable — `4af7afa` (numeric quad entry, seeded band, no auto-chaining, off-garment warning) is merged to `main` but not live. After that, the same quad `[[0.30,0.530],[0.87,0.533],[0.87,0.585],[0.30,0.582]]` can be entered in-product to exercise the UI path. |
+| **ChatGPT** | Nothing pending. V3 ruling stands (installed inactive, one run only after still stages pass). |
+| **Claude** | Sleeve `sleeve_panel` stage on the visible upper arm (directive step 3) is ready to run on the same still at $0 — recommend waiting for Cursor items 1–3 first, since the sleeve composite will hit the same occlusion/shading problems. Will run on request either way. |
 
 ## Guardrails unchanged
 
-V2 frozen · no V3 without ChatGPT · no paid Grok call · `temporalTrackingEnabled=false` until a still passes review · zero-deviation is the garment standard.
+V2 frozen · V3 inactive until still stages pass · no paid Grok call · `temporalTrackingEnabled=false` until a still passes review · zero-deviation is the garment standard.
