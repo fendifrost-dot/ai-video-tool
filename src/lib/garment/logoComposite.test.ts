@@ -3,6 +3,7 @@ import {
   alphaComposite,
   ARCHITECTURE_C_LOGO_BAND_DEFAULTS,
   applyBandLumaShading,
+  applyLowFrequencyBandIllumination,
   bandFromNormBbox,
   countCoverLeakOutsideBand,
   coverTargetOnBand,
@@ -879,13 +880,15 @@ describe("Architecture C logo sub-zone + cover rules", () => {
       { x: 39, y: 19 },
       { x: 0, y: 19 },
     ];
-    const out = applyBandLumaShading(source, covered, bandQ);
+    const out = applyLowFrequencyBandIllumination(source, covered, bandQ);
     const bright = (3 * 40 + 3) * 4;
     const dim = (15 * 40 + 30) * 4;
     expect(out.data[bright]).toBeGreaterThan(covered.data[bright]);
     expect(out.data[bright]).toBeLessThanOrEqual(Math.ceil(20 * 1.15));
     expect(out.data[dim]).toBeGreaterThanOrEqual(Math.floor(20 * 0.85));
     expect(out.data[dim]).toBeLessThanOrEqual(Math.ceil(20 * 1.15));
+    // Deprecated alias still resolves
+    expect(applyBandLumaShading).toBe(applyLowFrequencyBandIllumination);
   });
 
   it("applyBandLumaShading does not imprint high-frequency non-navy defects", () => {
@@ -906,7 +909,7 @@ describe("Architecture C logo sub-zone + cover rules", () => {
       { x: 39, y: 19 },
       { x: 0, y: 19 },
     ];
-    const out = applyBandLumaShading(source, covered, bandQ);
+    const out = applyLowFrequencyBandIllumination(source, covered, bandQ);
     const blotch = (10 * 40 + 20) * 4;
     const neighbor = (10 * 40 + 5) * 4;
     // After defect-mask + blur + clamp, blotch must not spike far above neighbour
@@ -928,8 +931,45 @@ describe("Architecture C logo sub-zone + cover rules", () => {
         placement_fallback: false,
         quality_warning: false,
       },
-      occlusion_source: "skin_heuristic",
+      occlusion_source: "skin_heuristic_fallback",
     });
-    expect(meta.occlusion_source).toBe("skin_heuristic");
+    expect(meta.occlusion_source).toBe("skin_heuristic_fallback");
+  });
+
+  it("tilted band with fillMode=quad does not drip below the quad", () => {
+    const base = solid(100, 120, 200, 180, 160);
+    // Tilted navy band
+    for (let y = 40; y < 55; y++) {
+      for (let x = 15 + Math.floor((y - 40) * 0.4); x < 75 + Math.floor((y - 40) * 0.4); x++) {
+        const i = (y * 100 + x) * 4;
+        base.data[i] = 25;
+        base.data[i + 1] = 30;
+        base.data[i + 2] = 95;
+      }
+    }
+    // Dark sleeve below
+    for (let y = 55; y < 110; y++) {
+      for (let x = 40; x < 55; x++) {
+        const i = (y * 100 + x) * 4;
+        base.data[i] = 20;
+        base.data[i + 1] = 22;
+        base.data[i + 2] = 28;
+      }
+    }
+    const quad: QuadPts = [
+      { x: 15, y: 40 },
+      { x: 75, y: 42 },
+      { x: 78, y: 55 },
+      { x: 12, y: 53 },
+    ];
+    const out = coverTargetQuad(base, quad, {
+      fillMode: "quad",
+      columnFollow: false,
+      maxExpandFrac: 0.05,
+      zipStripFrac: 0,
+    });
+    expect(countCoverLeakOutsideBand(base, out, quad, 8)).toBe(0);
+    const deepI = (90 * 100 + 45) * 4;
+    expect(out.data[deepI]).toBe(20);
   });
 });

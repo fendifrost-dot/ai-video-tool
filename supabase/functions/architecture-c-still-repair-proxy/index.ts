@@ -26,6 +26,7 @@ import {
   compositeLogoOntoVton,
   compositeSleevePanelsOntoStill,
 } from "../_shared/placementEngine.ts";
+import { resolveSam3StillOcclusion } from "../_shared/sam3StillOcclusion.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -165,25 +166,60 @@ serve(async (req) => {
       });
     }
     let truthRaw = resolved.productTruthRaw;
+    let requestedBandQuadNorm: [number, number][] | undefined;
     if (body.logoZoneQuad) {
       if (!isQuadNorm(body.logoZoneQuad)) {
         return json(400, { error: "invalid_logo_zone_quad" });
       }
       truthRaw = mergeLogoZoneManualQuad(truthRaw, body.logoZoneQuad, KEYFRAME_ID);
+      requestedBandQuadNorm = body.logoZoneQuad as unknown as [number, number][];
     }
-    const composite = await compositeLogoOntoVton(
-      workingBytes,
-      resolved.logoBytes,
-      resolved.placement,
-      resolved.logoSource,
-      truthRaw,
-    );
+
+    // Preferred: SAM-3 outfit − dilate(hands) − dilate(face). Falls back to
+    // skin_heuristic_fallback inside the composite when SAM cannot execute.
+    const sam3 = await resolveSam3StillOcclusion({
+      admin,
+      stillBucket,
+      stillPath: stillAsset.file_url as string,
+    });
+
+    let composite;
+    try {
+      composite = await compositeLogoOntoVton(
+        workingBytes,
+        resolved.logoBytes,
+        resolved.placement,
+        resolved.logoSource,
+        truthRaw,
+        {
+          occlusionAlpha: sam3.ok ? sam3.alpha : undefined,
+          occlusionAlphaWidth: sam3.ok ? sam3.width : undefined,
+          occlusionAlphaHeight: sam3.ok ? sam3.height : undefined,
+          allowSkinHeuristicFallback: true,
+          requestedBandQuadNorm,
+        },
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === "occlusion_unavailable") {
+        return json(422, {
+          error: "occlusion_unavailable",
+          detail:
+            "SAM-3 occlusion failed and skin-heuristic fallback was disabled; refusing unsafe paint-over",
+          sam3_reason: sam3.ok ? null : sam3.reason,
+        });
+      }
+      throw e;
+    }
     workingBytes = composite.bytes;
     repairMeta = {
       ...logoCompositeMetaCore(composite),
       logo_asset_id: resolved.placement.logo_asset_id ?? null,
       keyframe_id: KEYFRAME_ID,
       logo_zone_quad_provided: Boolean(body.logoZoneQuad),
+      sam3_attempted: true,
+      sam3_ok: sam3.ok,
+      sam3_reason: sam3.ok ? null : sam3.reason,
     };
   } else {
     const panels = body.sleevePanels ?? [];

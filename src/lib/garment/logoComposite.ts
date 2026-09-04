@@ -767,6 +767,11 @@ export type CoverTargetQuadOptions = {
    * (Architecture C still-repair). Default true preserves legacy VTON behaviour.
    */
   columnFollow?: boolean;
+  /**
+   * `quad` — paint only inside a band-normal-expanded quad (Architecture C).
+   * `navy_snap` — legacy VTON row/column navy union (default).
+   */
+  fillMode?: "quad" | "navy_snap";
 };
 
 /** Forward-bilinear: (u,v) in [0..1]² → point inside quad. */
@@ -818,12 +823,14 @@ function luma(r: number, g: number, b: number): number {
 }
 
 /**
- * After navy cover, apply *low-frequency* luminance only.
+ * Low-frequency band illumination transfer (Architecture C).
  * Non-navy source defects (old lettering, pinstripe) are median-filled from
  * neighbouring navy, then the gain map is box-blurred and clamped to
  * [0.85, 1.15] so high-frequency ghosts cannot imprint (stage-1c regression).
+ *
+ * Inherits broad shadow / highlight / curvature only — never source texture.
  */
-export function applyBandLumaShading(
+export function applyLowFrequencyBandIllumination(
   source: RgbaImage,
   covered: RgbaImage,
   band: QuadPts,
@@ -916,6 +923,9 @@ export function applyBandLumaShading(
   return { width: covered.width, height: covered.height, data: out };
 }
 
+/** @deprecated Use {@link applyLowFrequencyBandIllumination}. */
+export const applyBandLumaShading = applyLowFrequencyBandIllumination;
+
 /** Separable box blur; non-finite values are ignored (treated as absent). */
 function boxBlurFinite(src: Float32Array, w: number, h: number, radius: number): Float32Array {
   const tmp = new Float32Array(w * h);
@@ -959,23 +969,31 @@ function boxBlurFinite(src: Float32Array, w: number, h: number, radius: number):
 /**
  * Paint the band fully, then restore a thin feathered zip strip from source
  * (no raw unpainted column — stage-1c slit regression).
+ *
+ * @param stripFrac fraction of band width for the solid zip core (default ~1.5%)
+ * @param zipUNorm  horizontal position in band UV space (0=wearer's-right edge /
+ *                  image-left on a facing still, 1=opposite). Default 0.5 = center.
  */
 export function overlayZipFromSource(
   source: RgbaImage,
   covered: RgbaImage,
   band: QuadPts,
   stripFrac = 0.015,
+  zipUNorm = 0.5,
 ): RgbaImage {
   const out = new Uint8Array(covered.data);
   const bbox = quadBbox(band);
-  const midX = (bbox.left + bbox.right) / 2;
+  const u = Math.max(0, Math.min(1, zipUNorm));
+  // Sample the band mid-v line to find the zip x at this u (tilted bands supported).
+  const midPt = quadPointAt(band, u, 0.5);
+  const zipX = midPt.x;
   const half = Math.max(1, ((bbox.right - bbox.left) * Math.max(0.005, stripFrac)) / 2);
   const [tl, tr, br, bl] = band;
   const feather = Math.max(1, half * 0.6);
   for (let y = Math.max(0, Math.floor(bbox.top)); y < Math.min(source.height, Math.ceil(bbox.bottom)); y++) {
-    for (let x = Math.max(0, Math.floor(midX - half - feather)); x <= Math.min(source.width - 1, Math.ceil(midX + half + feather)); x++) {
+    for (let x = Math.max(0, Math.floor(zipX - half - feather)); x <= Math.min(source.width - 1, Math.ceil(zipX + half + feather)); x++) {
       if (!invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) continue;
-      const dist = Math.abs(x - midX);
+      const dist = Math.abs(x - zipX);
       if (dist > half + feather) continue;
       const i = (y * source.width + x) * 4;
       // Prefer source zip / non-navy tape; if source is navy, skip (keep cover).
@@ -993,8 +1011,8 @@ export function overlayZipFromSource(
 }
 
 /**
- * True when any covered pixel lies more than `maxOutsidePx` outside the band
- * quad bbox (guards against column-follow drips).
+ * Count repaired pixels that lie outside the band *quad* (not just its AABB),
+ * with a pixel pad. Guards tilted-band drips that stay inside the AABB.
  */
 export function countCoverLeakOutsideBand(
   source: RgbaImage,
@@ -1002,8 +1020,11 @@ export function countCoverLeakOutsideBand(
   band: QuadPts,
   maxOutsidePx: number,
 ): number {
-  const bbox = quadBbox(band);
+  const [tl, tr, br, bl] = band;
   const pad = Math.max(0, maxOutsidePx);
+  // Expand quad along normal by pad for the allowed region.
+  const allowed = pad > 0 ? expandBandForLeakPad(band, pad) : band;
+  const [atl, atr, abr, abl] = allowed;
   let leaks = 0;
   for (let y = 0; y < source.height; y++) {
     for (let x = 0; x < source.width; x++) {
@@ -1013,12 +1034,32 @@ export function countCoverLeakOutsideBand(
         covered.data[i + 1] !== source.data[i + 1] ||
         covered.data[i + 2] !== source.data[i + 2];
       if (!changed) continue;
-      const outsideY = y < bbox.top - pad || y >= bbox.bottom + pad;
-      const outsideX = x < bbox.left - pad || x > bbox.right + pad;
-      if (outsideY || outsideX) leaks++;
+      if (!invBilinear(x + 0.5, y + 0.5, atl, atr, abr, abl)) leaks++;
     }
   }
   return leaks;
+}
+
+function expandBandForLeakPad(band: QuadPts, padPx: number): QuadPts {
+  const [tl, tr, br, bl] = band;
+  const downX = (bl.x - tl.x + (br.x - tr.x)) / 2;
+  const downY = (bl.y - tl.y + (br.y - tr.y)) / 2;
+  const len = Math.hypot(downX, downY) || 1;
+  const nx = downX / len;
+  const ny = downY / len;
+  // Also expand sideways slightly so pad is isotropic-ish.
+  const rightX = (tr.x - tl.x + (br.x - bl.x)) / 2;
+  const rightY = (tr.y - tl.y + (br.y - bl.y)) / 2;
+  const rlen = Math.hypot(rightX, rightY) || 1;
+  const sx = rightX / rlen;
+  const sy = rightY / rlen;
+  const e = padPx;
+  return [
+    { x: tl.x - nx * e - sx * e, y: tl.y - ny * e - sy * e },
+    { x: tr.x - nx * e + sx * e, y: tr.y - ny * e + sy * e },
+    { x: br.x + nx * e + sx * e, y: br.y + ny * e + sy * e },
+    { x: bl.x + nx * e - sx * e, y: bl.y + ny * e - sy * e },
+  ];
 }
 
 /**
@@ -1246,15 +1287,48 @@ export function coverTargetQuad(
   options: CoverTargetQuadOptions = {},
 ): RgbaImage {
   const out = new Uint8Array(base.data);
+  const fillMode = options.fillMode ?? "navy_snap";
+  const [nr, ng, nb] = averageNavyInBand(base, {
+    left: Math.max(0, Math.floor(Math.min(...quad.map((p) => p.x)))),
+    top: Math.max(0, Math.floor(Math.min(...quad.map((p) => p.y)))),
+    right: Math.min(base.width, Math.ceil(Math.max(...quad.map((p) => p.x)))),
+    bottom: Math.min(base.height, Math.ceil(Math.max(...quad.map((p) => p.y)))),
+  });
+
+  // Architecture C: paint only inside a band-normal-expanded quad — no navy
+  // column/row snap that can drip into sleeves below a tilted band.
+  if (fillMode === "quad") {
+    const bandH = Math.max(
+      1,
+      Math.hypot(quad[3].x - quad[0].x, quad[3].y - quad[0].y),
+      Math.hypot(quad[2].x - quad[1].x, quad[2].y - quad[1].y),
+    );
+    // Expand by a fraction of band thickness along the local normal only.
+    const expandAlongBand = Math.max(1, Math.round(bandH * (options.maxExpandFrac ?? 0.05)));
+    const expanded = expandBandForLeakPad(quad, expandAlongBand);
+    const [tl, tr, br, bl] = expanded;
+    const xs = expanded.map((p) => p.x);
+    const ys = expanded.map((p) => p.y);
+    const left = Math.max(0, Math.floor(Math.min(...xs)));
+    const right = Math.min(base.width - 1, Math.ceil(Math.max(...xs)));
+    const top = Math.max(0, Math.floor(Math.min(...ys)));
+    const bottom = Math.min(base.height - 1, Math.ceil(Math.max(...ys)));
+    for (let y = top; y <= bottom; y++) {
+      for (let x = left; x <= right; x++) {
+        if (!invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) continue;
+        const i = (y * base.width + x) * 4;
+        out[i] = nr;
+        out[i + 1] = ng;
+        out[i + 2] = nb;
+        out[i + 3] = 255;
+      }
+    }
+    return { width: base.width, height: base.height, data: out };
+  }
+
   const bbox = quadBbox(quad);
   const xL = Math.max(0, bbox.left - Math.round(base.width * COVER_SIDE_MARGIN_FRAC));
   const xR = Math.min(base.width - 1, bbox.right + Math.round(base.width * COVER_SIDE_MARGIN_FRAC));
-  const [nr, ng, nb] = averageNavyInBand(base, {
-    left: Math.max(0, bbox.left),
-    top: Math.max(0, bbox.top),
-    right: Math.min(base.width, bbox.right),
-    bottom: Math.min(base.height, bbox.bottom),
-  });
   const maxExpand = Math.round(base.height * (options.maxExpandFrac ?? COVER_MAX_EXPAND_FRAC));
   const zipStripFrac = Math.max(0, options.zipStripFrac ?? 0);
   const midX = (bbox.left + bbox.right) / 2;
@@ -1443,8 +1517,11 @@ export type LogoCompositeResultLike = {
   placement_confidence?: number;
   warp_mode?: string;
   target_quad?: [number, number][];
-  /** skin_heuristic | sam3 | none — surfaced so Claude can verify occlusion path. */
+  /** sam3 | skin_heuristic_fallback | none | unavailable */
   occlusion_source?: string;
+  requested_band_quad_norm?: [number, number][];
+  effective_band_bbox?: PixelRect & { pixel_count?: number };
+  repair_method_version?: string;
 };
 
 /**
@@ -1468,6 +1545,9 @@ export function logoCompositeMetaCore(c: LogoCompositeResultLike): Record<string
     fallback_reason: c.fallback_reason ?? null,
     placement_confidence: c.placement_confidence ?? null,
     occlusion_source: c.occlusion_source ?? null,
+    requested_band_quad_norm: c.requested_band_quad_norm ?? null,
+    effective_band_bbox: c.effective_band_bbox ?? null,
+    repair_method_version: c.repair_method_version ?? null,
   };
 }
 
