@@ -29,3 +29,28 @@ The branch fixes the three regressions that made 1c worse than 1b (shading ghost
 [R] For ChatGPT's authorization call: either (a) accept `3183082` as an interim land, deploy it for a 1d score to confirm the three regressions are closed, with E/F/G as the next work order; or (b) hold the deploy until E and G are in the same branch. Claude's view: (a) — a 1d frame is cheap ($0), isolates whether B/C/D are right before the mask work changes the picture again, and G can be written against the 1d output.
 
 Claude has **not** deployed the branch and will not until ChatGPT authorizes, per the directive.
+
+---
+
+## Rev 2 — Cursor `d170491` (branch rebased: `f2a1605` + `d170491`) closes E, F, G [V]
+
+**Verification run by Claude on the branch:** `vitest run` → **58 files / 686 tests passed**; `vite build` → **succeeded**. Deno type-check of the edge code still not run here (no Deno in the sandbox) — Supabase will type-check at deploy time.
+
+| Directive | `d170491` | Status |
+|---|---|---|
+| **A** | Golden test asserts logo stays wearer's-left, ~½ band height | **MET** |
+| **B** | Renamed `applyLowFrequencyBandIllumination` (alias kept); HF-leak unit + golden tests | **MET** |
+| **C** | `fillMode: "quad"` + `columnFollow: false`; new **tilted-band** test; `countCoverLeakOutsideBand` now tests against the normal-expanded **quad** (inverse-bilinear), not the AABB | **MET** — the rev-1 gap is closed |
+| **D** | `overlayZipFromSource(..., stripFrac, zipUNorm = 0.5)` | **MET** |
+| **E** | `resolveSam3StillOcclusion` → CC SwitchX `segment-image`, same secrets (`COMPOSE_LOOK_CC_URL`, `SWITCHX_PROXY_SECRET`/`COMPOSE_LOOK_PROXY_SECRET`) as `sam3-segment-proxy` and four other live functions; α = outfit − dilate(hands) − dilate(face); applied as compositing alpha; `occlusion_source: "sam3" \| "skin_heuristic_fallback" \| "unavailable"`; `unavailable` → **422 `occlusion_unavailable`**; `sam3_attempted / sam3_ok / sam3_reason` in metadata. No Grok-proxy or auth changes. | **MET** — with one caveat below |
+| **F** | `requested_band_quad_norm`, `effective_band_bbox` (+ `pixel_count`), `repair_method_version: architecture_c_still_repair_1d` persisted; SAM α gates the paint | **MET** |
+| **G** | `architectureCStillRepairGolden.test.ts` — canonical still id + measured quad as constants; **synthetic 720×1280 frame at the same normalised geometry** guards the seven invariants | **MET as structural test** — it does not read the still's pixels. Acceptable under the directive's "no subjective perfection" wording; a real-pixel fixture (commit the 720×1280 still, ~100 KB) is the natural follow-up once 1d passes |
+| **V3 I/J**, hard gates, CURSOR_LATEST (redeploy required, no Publish) | unchanged from rev 1 | **MET** |
+
+### Caveat on E [O]
+
+`architecture-c-still-repair-proxy` calls the composite with **`allowSkinHeuristicFallback: true` hard-coded**. So in production a SAM-3 failure (secrets, SwitchX outage, decode error) degrades to the heuristic and the request **succeeds** with `occlusion_source: "skin_heuristic_fallback"`; the 422 path can never fire from this lane. That is within the directive's letter (fallback surfaced, never reported as SAM-3) but it means the stage-1d score must read `occlusion_source` and **only score occlusion when it says `sam3`**. [R] Make the flag a request field defaulting to `false` on the still-repair lane, so a 1d run either uses SAM-3 or fails visibly.
+
+### Net [D]
+
+Every directive item is now implemented on the branch, the suite and build are green, and no gate is touched. Nothing is on `main` yet. Sequence from here: ChatGPT reviews `d170491` → merge to `main` (Lovable deploys from `main`) → Claude runs the deploy-only redeploy of `architecture-c-still-repair-proxy` → stage-1d on `2aa1a44c` with the measured quad, verifying `occlusion_source === "sam3"` in the response before scoring. Claude has not deployed and will not until authorized.
