@@ -2,40 +2,47 @@
 
 > **Convention.** This file is always Cursor's most recent handoff. Cursor overwrites it each time it lands work; dated notes live alongside in `docs/`. Claude and ChatGPT: "check Cursor's work" means read this file first, then the commits it names. Claude's side is `docs/handoffs/CLAUDE_LATEST.md`.
 
-**Updated:** 2026-09-05 · **Branch:** `cursor/architecture-c-still-1e-perimeter-88eb` · **Head:** (this land)
+**Updated:** 2026-09-05 · **Branch:** `cursor/architecture-c-still-1e-perimeter-88eb` · **Head:** `759a5b75dc58e83b902a9f1a0e7f5a7fbb2199aa` · **PR:** [#43](https://github.com/fendifrost-dot/ai-video-tool/pull/43)
 
-## ChatGPT Stage 1D reading — confirmed
+## ChatGPT — APPROVED Stage 1e for merge/deploy
 
-Matches repo: PR #40 merge `514153f` (+ SAM-3 tip `bb2d75f`) + Lovable compile-only `fe246b4`/`1ffb814`/`6d77a2b`. Stage 1d asset `e0fb43b1`, `occlusion_source:"sam3"`, `repair_method_version: architecture_c_still_repair_1d`. Approve **1e chest refinement**; sleeve **blocked**; no paid xAI.
+PR #43 inspected independently and approved. Scope matches: `quad_navy_union`, 3 px paint feather, 2 px SAM-3 α feather, speckle suppress, gain **[0.80, 1.20]**, `architecture_c_still_repair_1e`, fail-closed skin preserved. Union is bounded (no column-follow / sleeve-drip reopen). PR is **ready for review**, **MERGEABLE**, based on `main` @ `f7a90d25…`.
 
-## Landed — Stage 1e perimeter polish (code only; not live-run)
+Cursor cannot merge from this agent (no write merge tool). **Claude: merge PR #43 → redeploy only.**
 
-Implements 1d doc corrections 1–4 (correction 5 = live 422 exercise → Claude after redeploy):
+## Claude — next actions (authorized)
 
-1. **Paint = `quad_navy_union`** — expanded manual quad ∪ navy inside a bounded band-normal search shell (`navyUnionMarginPx: 12`). No `columnFollow`. Covers the ~10 px left/top-left true-band sliver without sleeve drips.
-2. **Feather 2–3 px** — paint-mask `featherPx: 3` + SAM-3 occlusion `featherAlpha(..., 2)`.
-3. **Black-speckle suppress** — near-black navy outliers rejected in LF illumination; solid paint clamps luma below navy×0.55 back to average navy. Golden asserts zero near-black painted cells.
-4. **Illumination** — gain clamp **[0.80, 1.20]**; slightly tighter blur (`0.28×` band height).
+1. **Merge** PR #43 into `main`.
+2. **Redeploy only** `architecture-c-still-repair-proxy` (Publish **not** needed).
+3. Verify live response carries `repair_method_version: "architecture_c_still_repair_1e"`.
+4. **Run Stage 1e** on:
+   - still `2aa1a44c-b24a-46bf-890f-13a6fc65b1cc`
+   - quad `[[0.30,0.530],[0.87,0.533],[0.87,0.585],[0.30,0.582]]`
+   - no `allowSkinHeuristicFallback`
+5. Score and write result doc.
 
-Also: `allowSkinHeuristicFallback` default **fail-closed** (`=== true` to opt in). `repair_method_version` → **`architecture_c_still_repair_1e`**.
+### Stage 1e verdict — check these **four first**
 
-### Key files
-- `src/lib/garment/logoComposite.ts` (+ tests / golden)
-- `src/lib/garment/stillRepairOcclusion.ts` (`featherAlpha`)
-- `supabase/functions/_shared/{logoComposite,stillRepairOcclusion,placementEngine}.ts` (mirrors)
+| # | Gate | Pass means |
+|---|------|------------|
+| 1 | Left / top-left sliver | Completely gone (no original navy + pinstripe outside the old manual quad) |
+| 2 | No sleeve drips | No navy column-follow below the band |
+| 3 | No black speckles | No near-black column (~x≈280 or elsewhere) inside painted band |
+| 4 | Forearm boundary after SAM-3 feather | Clean — 1–2 px AA transition OK; **must not** visibly paint navy onto the foreground arm |
 
-### Verify
-**698 tests passed**, `npm run build` ok. No paid call. No Stage 1e live run.
+If all four pass → then score illumination / zip / wordmark. If those hold, chest still may be declarable complete.
 
-## Deployed?
+### Scrutinize closely (ChatGPT note)
 
-| Surface | Status |
-|---------|--------|
-| `architecture-c-still-repair-proxy` edge redeploy | **YES — required** after ChatGPT review + merge |
-| Frontend Publish | **NO — not required** (proxy-only) |
+SAM-3 α feather softens the staircase but creates a 1–2 px transition at the hand/forearm. Acceptable only as natural antialiasing — not navy bleed onto the arm.
 
-**STOP — no Stage 1e live run / no sleeve / no paid calls until ChatGPT authorizes post-merge.**
+## Do not
+
+- Frontend Publish
+- Sleeve stage
+- Temporal
+- Paid xAI call
 
 ## Confirm
 
-V2 active · V3 inactive · xAI spend unchanged · temporal **off** · sleeve **blocked** · 422 path still needs one live exercise after redeploy
+V2 active · V3 inactive · temporal **off** · sleeve **blocked** · spend unchanged until Claude runs ($0 deterministic path)
