@@ -2,56 +2,40 @@
 
 > **Convention.** This file is always Cursor's most recent handoff. Cursor overwrites it each time it lands work; dated notes live alongside in `docs/`. Claude and ChatGPT: "check Cursor's work" means read this file first, then the commits it names. Claude's side is `docs/handoffs/CLAUDE_LATEST.md`.
 
-**Updated:** 2026-09-05 · **Branch:** `cursor/architecture-c-still-1c-corrections-88eb` · **Head SHA:** `bb2d75f96c784113d3a55ced5dddfcecc0f594c3`
+**Updated:** 2026-09-05 · **Branch:** `cursor/architecture-c-still-1c-corrections-88eb` · **Head SHA:** `b360e276b4a9e78f12041b358bee303b9cf60ab9`
 
-## Do NOT merge `d170491`
+## ChatGPT verdict: APPROVE — MERGE PR #40
 
-ChatGPT rejected merge at the pre-blocker tip. **Review and authorize only this head:**
+Reviewed tip includes blocker fix `bb2d75f` (fail-closed SAM-3). Do **not** merge the older `d170491` tip alone.
 
-`bb2d75f` — `fix(architecture-c): fail-closed SAM-3 for logo_chest Stage-1D`
+**PR:** https://github.com/fendifrost-dot/ai-video-tool/pull/40  
+**Tests:** 694 passed · **build ok** · no paid call · no Stage 1D in this land
 
-Re-verified 2026-09-05: **694 tests passed**, **build ok**. No paid call. No Stage 1D execution.
+## After merge — ONLY this deploy step
 
-## Landed — ChatGPT Stage-1C + BLOCKING CORRECTION (SAM-3 fail-closed)
+| Action | Required? |
+|--------|-----------|
+| Lovable → **Edge Functions → redeploy `architecture-c-still-repair-proxy`** | **YES** |
+| Frontend Publish | **NO** |
+| Manual GitHub merge by Fendi (routine) | Prefer platform merge of approved PR #40; Lovable syncs Cursor commits — then edge redeploy |
 
-Preserves wordmark / LF shading / quad fill / zip / V3 I/J from the prior tip. `bb2d75f` closes the merge blocker:
+## Then Stage 1D (owner session)
 
-### SAM-3 completeness (BLOCKER fix)
-`resolveSam3StillOcclusion` / `buildCompleteSam3OcclusionAlpha` require **outfit + hands + face**.
-- hands fail → `ok:false`, reason `sam3_hands_failed` — **never** `"sam3"`
-- face fail → `sam3_face_failed` — **never** `"sam3"`
-- outfit-only / partial → **never** `"sam3"`
+Canonical inputs unchanged:
+- still `2aa1a44c-b24a-46bf-890f-13a6fc65b1cc`
+- quad `[[0.30,0.530],[0.87,0.533],[0.87,0.585],[0.30,0.582]]`
+- `logo_chest`, **no** `allowSkinHeuristicFallback`
 
-### logo_chest / Stage-1D fail-closed policy
-`LOGO_CHEST_OCCLUSION_POLICY.allowSkinHeuristicFallbackByDefault = false`
-`logoChestOcclusionGate`: if SAM incomplete and fallback not explicitly opted in →
-**HTTP 422 `occlusion_unavailable`**, `asset_persisted: false`, **before** composite/upload/`project_assets` insert.
+Accept only:
+- `occlusion_source: "sam3"` + new still to score, **or**
+- HTTP **422** `occlusion_unavailable` / `asset_persisted: false`
 
-Body opt-in only: `allowSkinHeuristicFallback: true` (non-gated contexts). Stage-1D must not pass it.
+No heuristic · no sleeve · no temporal · no paid Grok
 
-`occlusion_source` semantics:
-- `"sam3"` — complete mask only
-- `"skin_heuristic_fallback"` — only when explicitly permitted
-- `"unavailable"` / 422 — fail-closed path
+## Fail-closed policy (merged tip)
 
-### Unchanged (do not regress)
-Low-frequency shading · quad-only expansion · zip overlay · logo sub-zone · V3 I/J inactive · V2 active · temporal off · sleeve not started
-
-### Docs
-Fixed stale sentence in `ARCHITECTURE_C_STILL_REPAIR_POST_DEPLOY_VERIFY_2026-09-04.md` that claimed SAM-3 was deferred.
-
-### Claude handoff (origin/main rev 6)
-Claude already noted the fallback caveat on `d170491`; this tip closes it. Local checkout of `CLAUDE_LATEST` may lag until rebase/merge — authoritative tip is `origin/main` rev 6.
-
-## Deployed?
-
-| Surface | Status |
-|---------|--------|
-| `architecture-c-still-repair-proxy` edge redeploy | **YES — required** after ChatGPT re-review + merge |
-| Frontend Publish | **NO — not required** |
-
-**STOP — no Stage 1D / no live run / no paid calls until ChatGPT re-reviews.**
+`"sam3"` only if outfit+hands+face all succeed; else `sam3_hands_failed` / `sam3_face_failed` / etc. Canonical logo_chest defaults skin fallback **off** → 422 before composite/upload/`project_assets` insert.
 
 ## Confirm
 
-V2 active · V3 inactive · xAI spend **$0** · temporal **off** · sleeve **not started** · no live Stage 1D
+V2 active · V3 inactive · temporal off · sleeve held · xAI spend $0 pending Stage 1D
