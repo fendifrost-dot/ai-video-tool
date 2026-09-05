@@ -769,21 +769,25 @@ export type CoverTargetQuadOptions = {
   columnFollow?: boolean;
   /**
    * `quad` — paint only inside a band-normal-expanded quad.
-   * `quad_navy_union` — Architecture C Stage 1e: expanded quad ∪ navy inside a
-   *   bounded search shell around the quad (no column-follow / sleeve drip).
+   * `quad_navy_union` — Architecture C Stage 1f: `navy ∪ (quad ∩ dilate(navy,4px))`
+   *   with inward feather (never bare-cream quad paint; no column-follow).
    * `navy_snap` — legacy VTON row/column navy union (default).
    */
   fillMode?: "quad" | "quad_navy_union" | "navy_snap";
   /**
    * Soft alpha ramp at the paint-region perimeter (px). Default 0.
-   * Architecture C Stage 1e uses 2–3 to kill staircase edges.
+   * Architecture C Stage 1f uses 2–3 as an *inward* feather (erode then blur).
    */
   featherPx?: number;
   /**
-   * Extra band-normal margin (px) beyond the quad expand used to admit navy
-   * pixels into the paint union. Default ~10 when fillMode is quad_navy_union.
+   * Search-shell margin (px) beyond the quad expand used to gather the navy
+   * band component. Default ~10 when fillMode is quad_navy_union.
    */
   navyUnionMarginPx?: number;
+  /** Dilate navy before intersecting with quad (Stage 1f). Default 4. */
+  navyDilatePx?: number;
+  /** Extra navy dilate so the true band edge sits in the solid region. Default 2. */
+  navyEdgeDilatePx?: number;
 };
 
 /** Forward-bilinear: (u,v) in [0..1]² → point inside quad. */
@@ -1021,6 +1025,104 @@ function boxBlurAlphaLocal(src: Float32Array, w: number, h: number, radius: numb
     cur = out;
   }
   return cur;
+}
+
+/** Binary max-dilate on a local [0,1] mask. */
+function dilateBinaryLocal(src: Float32Array, w: number, h: number, radius: number): Float32Array {
+  if (radius <= 0) return new Float32Array(src);
+  const r = Math.max(1, Math.round(radius));
+  const tmp = new Float32Array(w * h);
+  const out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let m = 0;
+      for (let dx = -r; dx <= r; dx++) {
+        const nx = x + dx;
+        if (nx < 0 || nx >= w) continue;
+        const v = src[y * w + nx]!;
+        if (v > m) m = v;
+      }
+      tmp[y * w + x] = m;
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let m = 0;
+      for (let dy = -r; dy <= r; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= h) continue;
+        const v = tmp[ny * w + x]!;
+        if (v > m) m = v;
+      }
+      out[y * w + x] = m;
+    }
+  }
+  return out;
+}
+
+/** Binary min-erode on a local [0,1] mask. */
+function erodeBinaryLocal(src: Float32Array, w: number, h: number, radius: number): Float32Array {
+  if (radius <= 0) return new Float32Array(src);
+  const r = Math.max(1, Math.round(radius));
+  const tmp = new Float32Array(w * h);
+  const out = new Float32Array(w * h);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let m = 1;
+      for (let dx = -r; dx <= r; dx++) {
+        const nx = x + dx;
+        if (nx < 0 || nx >= w) {
+          m = 0;
+          break;
+        }
+        const v = src[y * w + nx]!;
+        if (v < m) m = v;
+      }
+      tmp[y * w + x] = m;
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let m = 1;
+      for (let dy = -r; dy <= r; dy++) {
+        const ny = y + dy;
+        if (ny < 0 || ny >= h) {
+          m = 0;
+          break;
+        }
+        const v = tmp[ny * w + x]!;
+        if (v < m) m = v;
+      }
+      out[y * w + x] = m;
+    }
+  }
+  return out;
+}
+
+/**
+ * Stage 1f inward feather: solid on eroded(valid), soft ramp only inside valid,
+ * zero outside valid (pinstripe never sits in an outward blend zone).
+ */
+function inwardFeatherAlpha(
+  valid: Float32Array,
+  w: number,
+  h: number,
+  featherPx: number,
+): Float32Array {
+  if (featherPx <= 0) return new Float32Array(valid);
+  const eroded = erodeBinaryLocal(valid, w, h, featherPx);
+  const soft = boxBlurAlphaLocal(eroded, w, h, featherPx);
+  const out = new Float32Array(w * h);
+  for (let i = 0; i < out.length; i++) {
+    if (valid[i]! < 0.5) {
+      out[i] = 0;
+    } else if (eroded[i]! >= 0.5) {
+      out[i] = 1;
+    } else {
+      out[i] = Math.max(0, Math.min(1, soft[i]!));
+    }
+  }
+  return out;
 }
 
 /**
@@ -1352,8 +1454,10 @@ export function coverTargetQuad(
     bottom: Math.min(base.height, Math.ceil(Math.max(...quad.map((p) => p.y)))),
   });
 
-  // Architecture C: paint inside a band-normal-expanded quad. Stage 1e also
-  // unions navy inside a bounded search shell (no column/row snap drips).
+  // Architecture C Stage 1f (`quad_navy_union`):
+  //   paint = dilate(navy, edgeDilate) ∪ (expandedQuad ∩ dilate(navy, 4px))
+  //   inward feather; single paint pass; luma clamp to band median ± 4.
+  // `quad` keeps the hard expanded-quad fill for legacy / drip tests.
   if (fillMode === "quad" || fillMode === "quad_navy_union") {
     const bandH = Math.max(
       1,
@@ -1372,6 +1476,8 @@ export function coverTargetQuad(
     const search =
       navyMargin > 0 ? expandBandForLeakPad(quad, expandAlongBand + navyMargin) : expanded;
     const featherPx = Math.max(0, Math.round(options.featherPx ?? 0));
+    const navyDilatePx = Math.max(0, Math.round(options.navyDilatePx ?? 4));
+    const navyEdgeDilatePx = Math.max(0, Math.round(options.navyEdgeDilatePx ?? 2));
 
     const [tl, tr, br, bl] = expanded;
     const [stl, str, sbr, sbl] = search;
@@ -1385,29 +1491,47 @@ export function coverTargetQuad(
     const mw = right - left + 1;
     const mh = bottom - top + 1;
     const paint = new Float32Array(mw * mh);
-    for (let y = top; y <= bottom; y++) {
-      for (let x = left; x <= right; x++) {
-        const inSearch = invBilinear(x + 0.5, y + 0.5, stl, str, sbr, sbl);
-        if (!inSearch) continue;
-        const inQuad = invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl);
-        const i = (y * base.width + x) * 4;
-        if (inQuad) {
+
+    if (fillMode === "quad") {
+      for (let y = top; y <= bottom; y++) {
+        for (let x = left; x <= right; x++) {
+          if (!invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) continue;
           paint[(y - top) * mw + (x - left)] = 1;
-        } else if (
-          fillMode === "quad_navy_union" &&
-          isNavyPixel(base.data[i]!, base.data[i + 1]!, base.data[i + 2]!)
-        ) {
-          // Admit true band extent past the manual quad (stage-1d left/top-left sliver).
-          paint[(y - top) * mw + (x - left)] = 1;
+        }
+      }
+    } else {
+      // Navy band component inside the search shell.
+      const navy = new Float32Array(mw * mh);
+      for (let y = top; y <= bottom; y++) {
+        for (let x = left; x <= right; x++) {
+          const inSearch = invBilinear(x + 0.5, y + 0.5, stl, str, sbr, sbl);
+          if (!inSearch) continue;
+          const i = (y * base.width + x) * 4;
+          if (isNavyPixel(base.data[i]!, base.data[i + 1]!, base.data[i + 2]!)) {
+            navy[(y - top) * mw + (x - left)] = 1;
+          }
+        }
+      }
+      const navyDilate4 = dilateBinaryLocal(navy, mw, mh, navyDilatePx);
+      const navyEdge = dilateBinaryLocal(navy, mw, mh, navyEdgeDilatePx);
+      for (let y = top; y <= bottom; y++) {
+        for (let x = left; x <= right; x++) {
+          const li = (y - top) * mw + (x - left);
+          const inQuad = invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl);
+          // navy ∪ (quad ∩ dilate(navy,4)) — never bare cream inside the quad.
+          if (navyEdge[li]! >= 0.5 || (inQuad && navyDilate4[li]! >= 0.5)) {
+            paint[li] = 1;
+          }
         }
       }
     }
 
     const alpha =
-      featherPx > 0 ? boxBlurAlphaLocal(paint, mw, mh, featherPx) : paint;
+      featherPx > 0 ? inwardFeatherAlpha(paint, mw, mh, featherPx) : paint;
 
-    const navyLuma = luma(nr, ng, nb);
-    const speckleFloor = navyLuma * 0.55;
+    const medianL = luma(nr, ng, nb);
+    const lumaLo = medianL - 4;
+    const lumaHi = medianL + 4;
     for (let y = top; y <= bottom; y++) {
       for (let x = left; x <= right; x++) {
         const a = alpha[(y - top) * mw + (x - left)]!;
@@ -1424,13 +1548,21 @@ export function coverTargetQuad(
           out[i + 2] = Math.round(nb * a + out[i + 2]! * ia);
         }
         out[i + 3] = 255;
-        // Speckle suppress: solid-ish paint must not land near-black.
+        // Single-pass luma clamp: no painted pixel darker/lighter than median ± 4.
         if (a >= 0.5) {
           const L = luma(out[i]!, out[i + 1]!, out[i + 2]!);
-          if (L < speckleFloor) {
-            out[i] = nr;
-            out[i + 1] = ng;
-            out[i + 2] = nb;
+          if (L < lumaLo || L > lumaHi) {
+            const target = Math.max(lumaLo, Math.min(lumaHi, L));
+            if (L > 1e-3) {
+              const s = target / L;
+              out[i] = Math.max(0, Math.min(255, Math.round(out[i]! * s)));
+              out[i + 1] = Math.max(0, Math.min(255, Math.round(out[i + 1]! * s)));
+              out[i + 2] = Math.max(0, Math.min(255, Math.round(out[i + 2]! * s)));
+            } else {
+              out[i] = nr;
+              out[i + 1] = ng;
+              out[i + 2] = nb;
+            }
           }
         }
       }

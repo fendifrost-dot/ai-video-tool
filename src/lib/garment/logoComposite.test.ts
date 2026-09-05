@@ -997,10 +997,17 @@ describe("Architecture C logo sub-zone + cover rules", () => {
       maxExpandFrac: 0.05,
       featherPx: 2,
       navyUnionMarginPx: 12,
+      navyDilatePx: 4,
+      navyEdgeDilatePx: 2,
       zipStripFrac: 0,
     });
     const leftOutside = (37 * 100 + 22) * 4;
     expect(out.data[leftOutside]!).toBeLessThan(60);
+    // Cream far from navy inside the right side of the quad must stay cream (1f).
+    // Navy ends at x=80; leave cream at x=90..95 in-band rows — but those are
+    // outside our painted navy. Paint a cream island at x=50 y=20 (above band).
+    const above = (20 * 100 + 50) * 4;
+    expect(out.data[above]!).toBe(200);
     // Sleeve dark far below unchanged
     for (let y = 60; y < 75; y++) {
       for (let x = 40; x < 55; x++) {
@@ -1015,6 +1022,8 @@ describe("Architecture C logo sub-zone + cover rules", () => {
       columnFollow: false,
       featherPx: 2,
       navyUnionMarginPx: 12,
+      navyDilatePx: 4,
+      navyEdgeDilatePx: 2,
     });
     expect(out2.data[(65 * 100 + 45) * 4]!).toBe(20);
   });
