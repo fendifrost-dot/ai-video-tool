@@ -2,31 +2,56 @@
 
 > **Convention.** This file is always Cursor's most recent handoff. Cursor overwrites it each time it lands work; dated notes live alongside in `docs/`. Claude and ChatGPT: "check Cursor's work" means read this file first, then the commits it names. Claude's side is `docs/handoffs/CLAUDE_LATEST.md`.
 
-**Updated:** 2026-09-04 · **Branch:** `main` · **Commits:** (this tip)
+**Updated:** 2026-09-05 · **Branch:** `cursor/architecture-c-still-1c-corrections-88eb` · **Head SHA:** `bb2d75f96c784113d3a55ced5dddfcecc0f594c3`
 
-## Landed
+## Do NOT merge `d170491`
 
-Deterministic layer for Architecture C `logo_chest` (Claude items 1–5, canvas-first):
+ChatGPT rejected merge at the pre-blocker tip. **Review and authorize only this head:**
 
-1. **Logo sub-zone + scale** — `logo_offset_norm` + `logo_height_ratio` on `logo_zone` product truth; defaults `[0.55, 0.88]` / `0.5` (wearer's-left, half band height). Manual path warps wordmark into sub-quad, not full band.
-2. **Occlusion (interim)** — `restoreSkinOccluders` restores skin/hand pixels inside the band after composite. Full SAM-3 `outfit − dilate(hands) − dilate(face)` still pending (soft-fail placeholder documented).
-3. **Tilted band** — `coverTargetQuad` `maxExpandFrac: 0.05` on still-repair path (navy snap already follows stripe).
-4. **Shading** — `applyBandLumaShading` multiplies covered navy by source-band luma.
-5. **Zip strip** — `zipStripFrac: 0.045` leaves mid-band column unpainted.
+`bb2d75f` — `fix(architecture-c): fail-closed SAM-3 for logo_chest Stage-1D`
 
-Touched: `src/lib/garment/logoComposite.ts` (+ tests), edge `_shared/logoComposite.ts` + `placementEngine.ts` `compositeLogoOntoVton`, `architectureCStillRepair` merge seeds both sides.
+Re-verified 2026-09-05: **694 tests passed**, **build ok**. No paid call. No Stage 1D execution.
+
+## Landed — ChatGPT Stage-1C + BLOCKING CORRECTION (SAM-3 fail-closed)
+
+Preserves wordmark / LF shading / quad fill / zip / V3 I/J from the prior tip. `bb2d75f` closes the merge blocker:
+
+### SAM-3 completeness (BLOCKER fix)
+`resolveSam3StillOcclusion` / `buildCompleteSam3OcclusionAlpha` require **outfit + hands + face**.
+- hands fail → `ok:false`, reason `sam3_hands_failed` — **never** `"sam3"`
+- face fail → `sam3_face_failed` — **never** `"sam3"`
+- outfit-only / partial → **never** `"sam3"`
+
+### logo_chest / Stage-1D fail-closed policy
+`LOGO_CHEST_OCCLUSION_POLICY.allowSkinHeuristicFallbackByDefault = false`
+`logoChestOcclusionGate`: if SAM incomplete and fallback not explicitly opted in →
+**HTTP 422 `occlusion_unavailable`**, `asset_persisted: false`, **before** composite/upload/`project_assets` insert.
+
+Body opt-in only: `allowSkinHeuristicFallback: true` (non-gated contexts). Stage-1D must not pass it.
+
+`occlusion_source` semantics:
+- `"sam3"` — complete mask only
+- `"skin_heuristic_fallback"` — only when explicitly permitted
+- `"unavailable"` / 422 — fail-closed path
+
+### Unchanged (do not regress)
+Low-frequency shading · quad-only expansion · zip overlay · logo sub-zone · V3 I/J inactive · V2 active · temporal off · sleeve not started
+
+### Docs
+Fixed stale sentence in `ARCHITECTURE_C_STILL_REPAIR_POST_DEPLOY_VERIFY_2026-09-04.md` that claimed SAM-3 was deferred.
+
+### Claude handoff (origin/main rev 6)
+Claude already noted the fallback caveat on `d170491`; this tip closes it. Local checkout of `CLAUDE_LATEST` may lag until rebase/merge — authoritative tip is `origin/main` rev 6.
 
 ## Deployed?
 
-- edge fn redeployed: **NO — required** → Lovable **Edge Functions → redeploy `architecture-c-still-repair-proxy`**
-- frontend published: optional (defaults seeded server-side on merge); Publish if UI copy needs the new docs
+| Surface | Status |
+|---------|--------|
+| `architecture-c-still-repair-proxy` edge redeploy | **YES — required** after ChatGPT re-review + merge |
+| Frontend Publish | **NO — not required** |
 
-## For Claude to verify
+**STOP — no Stage 1D / no live run / no paid calls until ChatGPT re-reviews.**
 
-Re-run stage 1 on clean still `2aa1a44c` with measured band quad after edge redeploy. Expect: wordmark wearer's-left + ~½ height; less hand paint-over; zip continuity; less flat sticker. Score vs flat ref. Sleeve still waits if occlusion/shade still weak.
+## Confirm
 
-## Blocked / needs decision
-
-- **ChatGPT:** V3 I/J pockets+cuffs clause before gated spend.
-- **SAM-3 occlusion wire-up** if skin heuristic is insufficient on the crossed-arm still.
-- No paid Grok · V2 active · V3 inactive · no temporal.
+V2 active · V3 inactive · xAI spend **$0** · temporal **off** · sleeve **not started** · no live Stage 1D

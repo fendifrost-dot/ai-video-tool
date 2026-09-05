@@ -56,9 +56,17 @@ describe("GROK_VIDEO_EDIT_PROMPT_V3 (installed, not active)", () => {
     expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain("continuously and unbroken");
   });
 
+  it("includes I/J pocket and cuff factual corrections (inactive)", () => {
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain("self-coloured mastic welt pockets");
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain("mastic cuffs");
+    expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain("navy sleeve panels stopping above the cuff");
+  });
+
   it("does not authorize spend: active lane stays V2", () => {
     expect(GROK_VIDEO_EDIT_PROMPT).toBe(GROK_VIDEO_EDIT_PROMPT_V2);
     expect(GROK_VIDEO_EDIT_PROMPT).toContain("navy stand collar");
+    expect(GROK_VIDEO_EDIT_PROMPT).not.toContain("self-coloured mastic welt pockets");
+    expect(GROK_VIDEO_EDIT_PROMPT_VERSION).toBe("v2");
   });
 });
 

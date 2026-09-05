@@ -3,7 +3,9 @@ import {
   alphaComposite,
   ARCHITECTURE_C_LOGO_BAND_DEFAULTS,
   applyBandLumaShading,
+  applyLowFrequencyBandIllumination,
   bandFromNormBbox,
+  countCoverLeakOutsideBand,
   coverTargetOnBand,
   coverTargetQuad,
   detectChestBand,
@@ -15,6 +17,7 @@ import {
   logoCompositeMetaCore,
   logoQuality,
   logoSubQuadInBand,
+  overlayZipFromSource,
   resizeAreaAverage,
   resizeRgba,
   restoreSkinOccluders,
@@ -740,7 +743,7 @@ describe("Architecture C logo sub-zone + cover rules", () => {
     expect(logoH).toBeCloseTo(bandH * 0.5, 0);
   });
 
-  it("coverTargetQuad zipStripFrac leaves the mid column unpainted", () => {
+  it("coverTargetQuad zipStripFrac (deprecated) leaves the mid column unpainted", () => {
     const base = solid(100, 100, 200, 180, 160);
     for (let y = 40; y < 60; y++) {
       for (let x = 20; x < 80; x++) {
@@ -771,6 +774,70 @@ describe("Architecture C logo sub-zone + cover rules", () => {
     expect(out.data[sideI]).toBeLessThan(60); // navy cover applied
   });
 
+  it("overlayZipFromSource restores non-navy zip tape without a raw hole", () => {
+    const source = solid(100, 100, 25, 30, 95);
+    const mid = 50;
+    for (let y = 40; y < 60; y++) {
+      for (let x = mid - 1; x <= mid + 1; x++) {
+        const i = (y * 100 + x) * 4;
+        source.data[i] = 190;
+        source.data[i + 1] = 180;
+        source.data[i + 2] = 160; // cream zip tape
+      }
+    }
+    const covered = solid(100, 100, 20, 25, 80);
+    const bandQ: QuadPts = [
+      { x: 20, y: 40 },
+      { x: 80, y: 40 },
+      { x: 80, y: 60 },
+      { x: 20, y: 60 },
+    ];
+    const out = overlayZipFromSource(source, covered, bandQ, 0.04);
+    const midI = (50 * 100 + mid) * 4;
+    expect(out.data[midI]).toBeGreaterThan(100); // zip tape restored
+    const sideI = (50 * 100 + 30) * 4;
+    expect(out.data[sideI]).toBe(20); // navy cover kept
+  });
+
+  it("columnFollow=false does not drip navy down dark columns outside the band", () => {
+    const base = solid(80, 100, 200, 180, 160);
+    // Horizontal navy band
+    for (let y = 40; y < 55; y++) {
+      for (let x = 10; x < 70; x++) {
+        const i = (y * 80 + x) * 4;
+        base.data[i] = 25;
+        base.data[i + 1] = 30;
+        base.data[i + 2] = 95;
+      }
+    }
+    // Dark sleeve column below band (would trigger column-follow drip)
+    for (let y = 55; y < 95; y++) {
+      for (let x = 30; x < 40; x++) {
+        const i = (y * 80 + x) * 4;
+        base.data[i] = 20;
+        base.data[i + 1] = 22;
+        base.data[i + 2] = 28;
+      }
+    }
+    const quad: QuadPts = [
+      { x: 10, y: 40 },
+      { x: 70, y: 40 },
+      { x: 70, y: 55 },
+      { x: 10, y: 55 },
+    ];
+    const out = coverTargetQuad(base, quad, {
+      columnFollow: false,
+      maxExpandFrac: 0.02,
+      zipStripFrac: 0,
+    });
+    const leaks = countCoverLeakOutsideBand(base, out, quad, 8);
+    expect(leaks).toBe(0);
+    // Far below band on the dark column must stay cream/sleeve, not navy-covered
+    const deepI = (85 * 80 + 35) * 4;
+    expect(out.data[deepI]).toBe(20);
+    expect(out.data[deepI + 1]).toBe(22);
+  });
+
   it("restoreSkinOccluders puts skin pixels back after a navy cover", () => {
     const source = solid(40, 40, 25, 30, 95);
     // Hand across bottom of band
@@ -795,16 +862,114 @@ describe("Architecture C logo sub-zone + cover rules", () => {
     expect(isLikelySkinPixel(180, 120, 90)).toBe(true);
   });
 
-  it("applyBandLumaShading scales covered navy toward source luma", () => {
-    const source = solid(20, 20, 40, 45, 110); // brighter navy
-    const covered = solid(20, 20, 15, 18, 50); // flat dark navy cover
+  it("applyBandLumaShading scales covered navy toward source luma within clamp", () => {
+    // Mostly mid navy; a bright corner forces local gain > 1 after blur+clamp.
+    const source = solid(40, 20, 28, 32, 90);
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 10; x++) {
+        const i = (y * 40 + x) * 4;
+        source.data[i] = 55;
+        source.data[i + 1] = 60;
+        source.data[i + 2] = 140;
+      }
+    }
+    const covered = solid(40, 20, 20, 25, 80); // flat navy cover
     const bandQ: QuadPts = [
       { x: 0, y: 0 },
-      { x: 19, y: 0 },
-      { x: 19, y: 19 },
+      { x: 39, y: 0 },
+      { x: 39, y: 19 },
       { x: 0, y: 19 },
     ];
-    const out = applyBandLumaShading(source, covered, bandQ);
-    expect(out.data[0]).toBeGreaterThan(covered.data[0]);
+    const out = applyLowFrequencyBandIllumination(source, covered, bandQ);
+    const bright = (3 * 40 + 3) * 4;
+    const dim = (15 * 40 + 30) * 4;
+    expect(out.data[bright]).toBeGreaterThan(covered.data[bright]);
+    expect(out.data[bright]).toBeLessThanOrEqual(Math.ceil(20 * 1.15));
+    expect(out.data[dim]).toBeGreaterThanOrEqual(Math.floor(20 * 0.85));
+    expect(out.data[dim]).toBeLessThanOrEqual(Math.ceil(20 * 1.15));
+    // Deprecated alias still resolves
+    expect(applyBandLumaShading).toBe(applyLowFrequencyBandIllumination);
+  });
+
+  it("applyBandLumaShading does not imprint high-frequency non-navy defects", () => {
+    const source = solid(40, 20, 30, 35, 90); // navy field
+    // Bright cream "lettering" blotch in the middle of the band
+    for (let y = 8; y < 12; y++) {
+      for (let x = 18; x < 22; x++) {
+        const i = (y * 40 + x) * 4;
+        source.data[i] = 220;
+        source.data[i + 1] = 210;
+        source.data[i + 2] = 190;
+      }
+    }
+    const covered = solid(40, 20, 20, 25, 80);
+    const bandQ: QuadPts = [
+      { x: 0, y: 0 },
+      { x: 39, y: 0 },
+      { x: 39, y: 19 },
+      { x: 0, y: 19 },
+    ];
+    const out = applyLowFrequencyBandIllumination(source, covered, bandQ);
+    const blotch = (10 * 40 + 20) * 4;
+    const neighbor = (10 * 40 + 5) * 4;
+    // After defect-mask + blur + clamp, blotch must not spike far above neighbour
+    expect(Math.abs(out.data[blotch] - out.data[neighbor])).toBeLessThan(8);
+  });
+
+  it("logoCompositeMetaCore surfaces occlusion_source", () => {
+    const meta = logoCompositeMetaCore({
+      method: "manual_quad",
+      logo_source: "asset",
+      band: { left: 0, top: 0, right: 10, bottom: 10 },
+      target: { left: 0, top: 0, right: 5, bottom: 5 },
+      quality: {
+        upscaled: false,
+        scale_ratio: 0.5,
+        native_height_px: 100,
+        target_height_px: 50,
+        stripe_confidence: 1,
+        placement_fallback: false,
+        quality_warning: false,
+      },
+      occlusion_source: "skin_heuristic_fallback",
+    });
+    expect(meta.occlusion_source).toBe("skin_heuristic_fallback");
+  });
+
+  it("tilted band with fillMode=quad does not drip below the quad", () => {
+    const base = solid(100, 120, 200, 180, 160);
+    // Tilted navy band
+    for (let y = 40; y < 55; y++) {
+      for (let x = 15 + Math.floor((y - 40) * 0.4); x < 75 + Math.floor((y - 40) * 0.4); x++) {
+        const i = (y * 100 + x) * 4;
+        base.data[i] = 25;
+        base.data[i + 1] = 30;
+        base.data[i + 2] = 95;
+      }
+    }
+    // Dark sleeve below
+    for (let y = 55; y < 110; y++) {
+      for (let x = 40; x < 55; x++) {
+        const i = (y * 100 + x) * 4;
+        base.data[i] = 20;
+        base.data[i + 1] = 22;
+        base.data[i + 2] = 28;
+      }
+    }
+    const quad: QuadPts = [
+      { x: 15, y: 40 },
+      { x: 75, y: 42 },
+      { x: 78, y: 55 },
+      { x: 12, y: 53 },
+    ];
+    const out = coverTargetQuad(base, quad, {
+      fillMode: "quad",
+      columnFollow: false,
+      maxExpandFrac: 0.05,
+      zipStripFrac: 0,
+    });
+    expect(countCoverLeakOutsideBand(base, out, quad, 8)).toBe(0);
+    const deepI = (90 * 100 + 45) * 4;
+    expect(out.data[deepI]).toBe(20);
   });
 });

@@ -26,6 +26,11 @@ import {
   compositeLogoOntoVton,
   compositeSleevePanelsOntoStill,
 } from "../_shared/placementEngine.ts";
+import { resolveSam3StillOcclusion } from "../_shared/sam3StillOcclusion.ts";
+import {
+  LOGO_CHEST_OCCLUSION_POLICY,
+  logoChestOcclusionGate,
+} from "../_shared/stillRepairOcclusion.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,6 +48,11 @@ type Body = {
   stage: StillRepairStage | string;
   logoZoneQuad?: QuadNorm;
   sleevePanels?: SleevePanelManual[];
+  /**
+   * When true, allow skin_heuristic_fallback if SAM-3 is incomplete/unavailable.
+   * Canonical Stage-1D / logo_chest acceptance defaults to false (fail closed).
+   */
+  allowSkinHeuristicFallback?: boolean;
 };
 
 function json(status: number, body: unknown) {
@@ -165,25 +175,86 @@ serve(async (req) => {
       });
     }
     let truthRaw = resolved.productTruthRaw;
+    let requestedBandQuadNorm: [number, number][] | undefined;
     if (body.logoZoneQuad) {
       if (!isQuadNorm(body.logoZoneQuad)) {
         return json(400, { error: "invalid_logo_zone_quad" });
       }
       truthRaw = mergeLogoZoneManualQuad(truthRaw, body.logoZoneQuad, KEYFRAME_ID);
+      requestedBandQuadNorm = body.logoZoneQuad as unknown as [number, number][];
     }
-    const composite = await compositeLogoOntoVton(
-      workingBytes,
-      resolved.logoBytes,
-      resolved.placement,
-      resolved.logoSource,
-      truthRaw,
-    );
+
+    // Complete SAM-3 required: outfit + hands + face. Canonical logo_chest /
+    // Stage-1D is fail-closed — no automatic skin-heuristic fallback.
+    const sam3 = await resolveSam3StillOcclusion({
+      admin,
+      stillBucket,
+      stillPath: stillAsset.file_url as string,
+    });
+
+    const allowSkinFallback =
+      typeof body.allowSkinHeuristicFallback === "boolean"
+        ? body.allowSkinHeuristicFallback
+        : LOGO_CHEST_OCCLUSION_POLICY.allowSkinHeuristicFallbackByDefault;
+
+    const gate = logoChestOcclusionGate({
+      sam3Ok: sam3.ok,
+      allowSkinHeuristicFallback: allowSkinFallback,
+    });
+    if (!gate.proceed) {
+      // Fail closed BEFORE composite / upload / project_assets insert.
+      return json(gate.httpStatus, {
+        error: gate.error,
+        detail:
+          "logo_chest requires complete SAM-3 (outfit+hands+face); refusing unsafe paint-over",
+        occlusion_source: gate.occlusion_source,
+        sam3_reason: sam3.ok ? null : sam3.reason,
+        sam3_ok: false,
+        asset_persisted: gate.asset_persisted,
+      });
+    }
+
+    let composite;
+    try {
+      composite = await compositeLogoOntoVton(
+        workingBytes,
+        resolved.logoBytes,
+        resolved.placement,
+        resolved.logoSource,
+        truthRaw,
+        {
+          occlusionAlpha: sam3.ok ? sam3.alpha : undefined,
+          occlusionAlphaWidth: sam3.ok ? sam3.width : undefined,
+          occlusionAlphaHeight: sam3.ok ? sam3.height : undefined,
+          allowSkinHeuristicFallback: allowSkinFallback,
+          requestedBandQuadNorm,
+        },
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === "occlusion_unavailable") {
+        return json(422, {
+          error: "occlusion_unavailable",
+          detail:
+            "SAM-3 occlusion failed and skin-heuristic fallback was disabled; refusing unsafe paint-over",
+          occlusion_source: "unavailable",
+          sam3_reason: sam3.ok ? null : sam3.reason,
+          sam3_ok: false,
+          asset_persisted: false,
+        });
+      }
+      throw e;
+    }
     workingBytes = composite.bytes;
     repairMeta = {
       ...logoCompositeMetaCore(composite),
       logo_asset_id: resolved.placement.logo_asset_id ?? null,
       keyframe_id: KEYFRAME_ID,
       logo_zone_quad_provided: Boolean(body.logoZoneQuad),
+      sam3_attempted: true,
+      sam3_ok: sam3.ok,
+      sam3_reason: sam3.ok ? null : sam3.reason,
+      allow_skin_heuristic_fallback: allowSkinFallback,
     };
   } else {
     const panels = body.sleevePanels ?? [];

@@ -17,7 +17,7 @@
 import {
   alphaComposite,
   ARCHITECTURE_C_LOGO_BAND_DEFAULTS,
-  applyBandLumaShading,
+  applyLowFrequencyBandIllumination,
   bandFromNormBbox,
   coverTargetOnBand,
   decodeToRgba,
@@ -28,6 +28,7 @@ import {
   keyGlyphForeground,
   logoQuality,
   logoSubQuadInBand,
+  overlayZipFromSource,
   restoreSkinOccluders,
   targetRectForLogo,
   warpQuadAlpha,
@@ -39,6 +40,12 @@ import {
   type QuadPts,
   type RgbaImage,
 } from "./logoComposite.ts";
+import {
+  applyOcclusionAlphaComposite,
+  effectivePaintBBoxFromAlpha,
+  resizeAlphaNearest,
+  type OcclusionSource,
+} from "./stillRepairOcclusion.ts";
 
 const MIN_STRIPE_CONFIDENCE = 0.5;
 
@@ -655,11 +662,36 @@ export type LogoCompositeResult = {
   fallback_reason: FallbackReason;
   placement_confidence: number;
   debug_overlay_bytes: Uint8Array | null;
+  /**
+   * How hand/face occlusion was handled on the still-repair path.
+   * `sam3` preferred; `skin_heuristic_fallback` only when SAM cannot execute;
+   * `unavailable` means the caller must fail visibly.
+   */
+  occlusion_source?: "sam3" | "skin_heuristic_fallback" | "none" | "unavailable";
+  /** Manual / requested band quad (norm), when provided. */
+  requested_band_quad_norm?: [number, number][];
+  /** Effective paint bbox after mask gating (pixels). */
+  effective_band_bbox?: PixelRect & { pixel_count?: number };
+  repair_method_version?: string;
 };
 
 function quadToPairs(q: Quad): [number, number][] {
   return q.map((p) => [p.x, p.y]) as [number, number][];
 }
+
+export type CompositeLogoOcclusionOptions = {
+  /**
+   * Precomputed SAM-3 (or equivalent) α — same size as the still, or will be
+   * resized. When present and usable, occlusion_source becomes `"sam3"`.
+   */
+  occlusionAlpha?: Float32Array;
+  occlusionAlphaWidth?: number;
+  occlusionAlphaHeight?: number;
+  /** When SAM α is missing/unusable, allow skin heuristic. Default true. */
+  allowSkinHeuristicFallback?: boolean;
+  /** Requested manual band quad in normalized coords (for metadata). */
+  requestedBandQuadNorm?: [number, number][];
+};
 
 /**
  * Composite the brand wordmark onto a VTON frame by asking the placement engine
@@ -675,6 +707,7 @@ export async function compositeLogoOntoVton(
   placement: LogoPlacement,
   logoSource: "asset" | "front_crop",
   productTruthRaw?: unknown,
+  occlusionOpts?: CompositeLogoOcclusionOptions,
 ): Promise<LogoCompositeResult> {
   const base = await decodeToRgba(vtonBytes);
   let logoImg = await decodeToRgba(logoBytes);
@@ -728,6 +761,10 @@ export async function compositeLogoOntoVton(
   let targetQuad: Quad;
   let composited: RgbaImage;
   let warpMode: "affine" | "perspective";
+  let occlusionSource: OcclusionSource = "none";
+  let effectiveBandBBox: (PixelRect & { pixel_count?: number }) | undefined;
+  const allowSkinFallback = occlusionOpts?.allowSkinHeuristicFallback !== false;
+  const requestedBandQuadNorm = occlusionOpts?.requestedBandQuadNorm;
 
   if (eng.source === "manual_keyframe" && eng.target && eng.target.kind === "quad") {
     // Perspective warp onto a logo *sub-quad* inside the band (not the full band).
@@ -753,15 +790,51 @@ export async function compositeLogoOntoVton(
     targetQuad = logoPts as unknown as Quad;
     target = rectFromTarget({ kind: "quad", points: targetQuad });
 
-    // Full-band navy cover (erase D/E/F) with zip strip + tilted-band expand,
-    // then shade, then warp the wordmark into the wearer's-left sub-quad only.
+    // Quad-only navy cover (band-normal expand), low-freq illumination, zip overlay,
+    // wordmark into wearer's-left sub-quad; SAM-3 α preferred for occlusion.
     let covered = coverTargetQuad(base, bandPts, {
-      zipStripFrac: 0.045,
+      zipStripFrac: 0,
       maxExpandFrac: 0.05,
+      columnFollow: false,
+      fillMode: "quad",
     });
-    covered = applyBandLumaShading(base, covered, bandPts);
+    covered = applyLowFrequencyBandIllumination(base, covered, bandPts);
+    covered = overlayZipFromSource(base, covered, bandPts, 0.015, 0.5);
     let compositedFrame = warpQuadAlpha(covered, logoImg, logoPts, 3);
-    compositedFrame = restoreSkinOccluders(base, compositedFrame, bandPts);
+
+    let samAlpha: Float32Array | null = null;
+    if (occlusionOpts?.occlusionAlpha && occlusionOpts.occlusionAlpha.length > 0) {
+      const aw = occlusionOpts.occlusionAlphaWidth ?? base.width;
+      const ah = occlusionOpts.occlusionAlphaHeight ?? base.height;
+      samAlpha = resizeAlphaNearest(
+        occlusionOpts.occlusionAlpha,
+        aw,
+        ah,
+        base.width,
+        base.height,
+      );
+    }
+
+    if (samAlpha) {
+      // Gate repair to garment pixels; restore source where α low (hands/face).
+      compositedFrame = applyOcclusionAlphaComposite(base, compositedFrame, samAlpha);
+      occlusionSource = "sam3";
+      const eff = effectivePaintBBoxFromAlpha(samAlpha, base.width, base.height, bandRect, 0.5);
+      if (eff) {
+        effectiveBandBBox = {
+          left: eff.left,
+          top: eff.top,
+          right: eff.right,
+          bottom: eff.bottom,
+          pixel_count: eff.pixel_count,
+        };
+      }
+    } else if (allowSkinFallback) {
+      compositedFrame = restoreSkinOccluders(base, compositedFrame, bandPts);
+      occlusionSource = "skin_heuristic_fallback";
+    } else {
+      occlusionSource = "unavailable";
+    }
     composited = compositedFrame;
   } else {
     warpMode = "affine";
@@ -786,6 +859,10 @@ export async function compositeLogoOntoVton(
     targetQuad = quadFromRect(target);
     const covered = coverTargetOnBand(base, bandRect, target, anchorXNorm);
     composited = alphaComposite(covered, logoImg, target);
+  }
+
+  if (occlusionSource === "unavailable") {
+    throw new Error("occlusion_unavailable");
   }
 
   const bytes = await encodePng(composited);
@@ -819,6 +896,10 @@ export async function compositeLogoOntoVton(
     fallback_reason: eng.fallbackReason,
     placement_confidence: eng.confidence,
     debug_overlay_bytes: debugOverlayBytes,
+    occlusion_source: occlusionSource,
+    requested_band_quad_norm: requestedBandQuadNorm,
+    effective_band_bbox: effectiveBandBBox,
+    repair_method_version: "architecture_c_still_repair_1d",
   };
 }
 
