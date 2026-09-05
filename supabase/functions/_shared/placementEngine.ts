@@ -43,6 +43,7 @@ import {
 import {
   applyOcclusionAlphaComposite,
   effectivePaintBBoxFromAlpha,
+  featherAlpha,
   resizeAlphaNearest,
   type OcclusionSource,
 } from "./stillRepairOcclusion.ts";
@@ -687,7 +688,7 @@ export type CompositeLogoOcclusionOptions = {
   occlusionAlpha?: Float32Array;
   occlusionAlphaWidth?: number;
   occlusionAlphaHeight?: number;
-  /** When SAM α is missing/unusable, allow skin heuristic. Default true. */
+  /** When SAM α is missing/unusable, allow skin heuristic. Default false (fail-closed). */
   allowSkinHeuristicFallback?: boolean;
   /** Requested manual band quad in normalized coords (for metadata). */
   requestedBandQuadNorm?: [number, number][];
@@ -763,7 +764,7 @@ export async function compositeLogoOntoVton(
   let warpMode: "affine" | "perspective";
   let occlusionSource: OcclusionSource = "none";
   let effectiveBandBBox: (PixelRect & { pixel_count?: number }) | undefined;
-  const allowSkinFallback = occlusionOpts?.allowSkinHeuristicFallback !== false;
+  const allowSkinFallback = occlusionOpts?.allowSkinHeuristicFallback === true;
   const requestedBandQuadNorm = occlusionOpts?.requestedBandQuadNorm;
 
   if (eng.source === "manual_keyframe" && eng.target && eng.target.kind === "quad") {
@@ -790,13 +791,15 @@ export async function compositeLogoOntoVton(
     targetQuad = logoPts as unknown as Quad;
     target = rectFromTarget({ kind: "quad", points: targetQuad });
 
-    // Quad-only navy cover (band-normal expand), low-freq illumination, zip overlay,
+    // Stage 1e: navy∪quad paint + 2–3 px perimeter feather, LF illumination, zip,
     // wordmark into wearer's-left sub-quad; SAM-3 α preferred for occlusion.
     let covered = coverTargetQuad(base, bandPts, {
       zipStripFrac: 0,
       maxExpandFrac: 0.05,
       columnFollow: false,
-      fillMode: "quad",
+      fillMode: "quad_navy_union",
+      featherPx: 3,
+      navyUnionMarginPx: 12,
     });
     covered = applyLowFrequencyBandIllumination(base, covered, bandPts);
     covered = overlayZipFromSource(base, covered, bandPts, 0.015, 0.5);
@@ -813,6 +816,8 @@ export async function compositeLogoOntoVton(
         base.width,
         base.height,
       );
+      // Soften occlusion staircase at the hand/forearm boundary (stage-1e).
+      samAlpha = featherAlpha(samAlpha, base.width, base.height, 2);
     }
 
     if (samAlpha) {
@@ -899,7 +904,7 @@ export async function compositeLogoOntoVton(
     occlusion_source: occlusionSource,
     requested_band_quad_norm: requestedBandQuadNorm,
     effective_band_bbox: effectiveBandBBox,
-    repair_method_version: "architecture_c_still_repair_1d",
+    repair_method_version: "architecture_c_still_repair_1e",
   };
 }
 

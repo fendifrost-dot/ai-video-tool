@@ -6,6 +6,7 @@ import {
   buildOutfitMinusOccludersAlpha,
   dilateAlpha,
   expandQuadAlongBandNormal,
+  featherAlpha,
   LOGO_CHEST_OCCLUSION_POLICY,
   logoChestOcclusionGate,
   sam3MaskedRgbToAlpha,
@@ -230,5 +231,21 @@ describe("logo_chest Stage-1D fail-closed policy", () => {
       useSam3: false,
       useSkinFallback: true,
     });
+  });
+});
+
+describe("featherAlpha", () => {
+  it("softens a hard binary edge without wiping the interior", () => {
+    const W = 32;
+    const H = 32;
+    const a = new Float32Array(W * H);
+    for (let y = 8; y < 24; y++) {
+      for (let x = 8; x < 24; x++) a[y * W + x] = 1;
+    }
+    const soft = featherAlpha(a, W, H, 2);
+    expect(soft[16 * W + 16]!).toBeGreaterThan(0.9);
+    expect(soft[8 * W + 8]!).toBeLessThan(1);
+    expect(soft[8 * W + 8]!).toBeGreaterThan(0);
+    expect(soft[0]!).toBe(0);
   });
 });

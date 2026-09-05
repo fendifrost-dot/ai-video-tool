@@ -2,56 +2,40 @@
 
 > **Convention.** This file is always Cursor's most recent handoff. Cursor overwrites it each time it lands work; dated notes live alongside in `docs/`. Claude and ChatGPT: "check Cursor's work" means read this file first, then the commits it names. Claude's side is `docs/handoffs/CLAUDE_LATEST.md`.
 
-**Updated:** 2026-09-05 · **Branch:** `cursor/architecture-c-still-1c-corrections-88eb` · **Head SHA:** `bb2d75f96c784113d3a55ced5dddfcecc0f594c3`
+**Updated:** 2026-09-05 · **Branch:** `cursor/architecture-c-still-1e-perimeter-88eb` · **Head:** (this land)
 
-## Do NOT merge `d170491`
+## ChatGPT Stage 1D reading — confirmed
 
-ChatGPT rejected merge at the pre-blocker tip. **Review and authorize only this head:**
+Matches repo: PR #40 merge `514153f` (+ SAM-3 tip `bb2d75f`) + Lovable compile-only `fe246b4`/`1ffb814`/`6d77a2b`. Stage 1d asset `e0fb43b1`, `occlusion_source:"sam3"`, `repair_method_version: architecture_c_still_repair_1d`. Approve **1e chest refinement**; sleeve **blocked**; no paid xAI.
 
-`bb2d75f` — `fix(architecture-c): fail-closed SAM-3 for logo_chest Stage-1D`
+## Landed — Stage 1e perimeter polish (code only; not live-run)
 
-Re-verified 2026-09-05: **694 tests passed**, **build ok**. No paid call. No Stage 1D execution.
+Implements 1d doc corrections 1–4 (correction 5 = live 422 exercise → Claude after redeploy):
 
-## Landed — ChatGPT Stage-1C + BLOCKING CORRECTION (SAM-3 fail-closed)
+1. **Paint = `quad_navy_union`** — expanded manual quad ∪ navy inside a bounded band-normal search shell (`navyUnionMarginPx: 12`). No `columnFollow`. Covers the ~10 px left/top-left true-band sliver without sleeve drips.
+2. **Feather 2–3 px** — paint-mask `featherPx: 3` + SAM-3 occlusion `featherAlpha(..., 2)`.
+3. **Black-speckle suppress** — near-black navy outliers rejected in LF illumination; solid paint clamps luma below navy×0.55 back to average navy. Golden asserts zero near-black painted cells.
+4. **Illumination** — gain clamp **[0.80, 1.20]**; slightly tighter blur (`0.28×` band height).
 
-Preserves wordmark / LF shading / quad fill / zip / V3 I/J from the prior tip. `bb2d75f` closes the merge blocker:
+Also: `allowSkinHeuristicFallback` default **fail-closed** (`=== true` to opt in). `repair_method_version` → **`architecture_c_still_repair_1e`**.
 
-### SAM-3 completeness (BLOCKER fix)
-`resolveSam3StillOcclusion` / `buildCompleteSam3OcclusionAlpha` require **outfit + hands + face**.
-- hands fail → `ok:false`, reason `sam3_hands_failed` — **never** `"sam3"`
-- face fail → `sam3_face_failed` — **never** `"sam3"`
-- outfit-only / partial → **never** `"sam3"`
+### Key files
+- `src/lib/garment/logoComposite.ts` (+ tests / golden)
+- `src/lib/garment/stillRepairOcclusion.ts` (`featherAlpha`)
+- `supabase/functions/_shared/{logoComposite,stillRepairOcclusion,placementEngine}.ts` (mirrors)
 
-### logo_chest / Stage-1D fail-closed policy
-`LOGO_CHEST_OCCLUSION_POLICY.allowSkinHeuristicFallbackByDefault = false`
-`logoChestOcclusionGate`: if SAM incomplete and fallback not explicitly opted in →
-**HTTP 422 `occlusion_unavailable`**, `asset_persisted: false`, **before** composite/upload/`project_assets` insert.
-
-Body opt-in only: `allowSkinHeuristicFallback: true` (non-gated contexts). Stage-1D must not pass it.
-
-`occlusion_source` semantics:
-- `"sam3"` — complete mask only
-- `"skin_heuristic_fallback"` — only when explicitly permitted
-- `"unavailable"` / 422 — fail-closed path
-
-### Unchanged (do not regress)
-Low-frequency shading · quad-only expansion · zip overlay · logo sub-zone · V3 I/J inactive · V2 active · temporal off · sleeve not started
-
-### Docs
-Fixed stale sentence in `ARCHITECTURE_C_STILL_REPAIR_POST_DEPLOY_VERIFY_2026-09-04.md` that claimed SAM-3 was deferred.
-
-### Claude handoff (origin/main rev 6)
-Claude already noted the fallback caveat on `d170491`; this tip closes it. Local checkout of `CLAUDE_LATEST` may lag until rebase/merge — authoritative tip is `origin/main` rev 6.
+### Verify
+**698 tests passed**, `npm run build` ok. No paid call. No Stage 1e live run.
 
 ## Deployed?
 
 | Surface | Status |
 |---------|--------|
-| `architecture-c-still-repair-proxy` edge redeploy | **YES — required** after ChatGPT re-review + merge |
-| Frontend Publish | **NO — not required** |
+| `architecture-c-still-repair-proxy` edge redeploy | **YES — required** after ChatGPT review + merge |
+| Frontend Publish | **NO — not required** (proxy-only) |
 
-**STOP — no Stage 1D / no live run / no paid calls until ChatGPT re-reviews.**
+**STOP — no Stage 1e live run / no sleeve / no paid calls until ChatGPT authorizes post-merge.**
 
 ## Confirm
 
-V2 active · V3 inactive · xAI spend **$0** · temporal **off** · sleeve **not started** · no live Stage 1D
+V2 active · V3 inactive · xAI spend unchanged · temporal **off** · sleeve **blocked** · 422 path still needs one live exercise after redeploy

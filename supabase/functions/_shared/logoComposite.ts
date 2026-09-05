@@ -832,10 +832,22 @@ export type CoverTargetQuadOptions = {
    */
   columnFollow?: boolean;
   /**
-   * `quad` — paint only inside a band-normal-expanded quad (Architecture C).
+   * `quad` — paint only inside a band-normal-expanded quad.
+   * `quad_navy_union` — Architecture C Stage 1e: expanded quad ∪ navy inside a
+   *   bounded search shell around the quad (no column-follow / sleeve drip).
    * `navy_snap` — legacy VTON row/column navy union (default).
    */
-  fillMode?: "quad" | "navy_snap";
+  fillMode?: "quad" | "quad_navy_union" | "navy_snap";
+  /**
+   * Soft alpha ramp at the paint-region perimeter (px). Default 0.
+   * Architecture C Stage 1e uses 2–3 to kill staircase edges.
+   */
+  featherPx?: number;
+  /**
+   * Extra band-normal margin (px) beyond the quad expand used to admit navy
+   * pixels into the paint union. Default ~10 when fillMode is quad_navy_union.
+   */
+  navyUnionMarginPx?: number;
 };
 
 /** Forward-bilinear: (u,v) in [0..1]² → point inside quad. */
@@ -890,9 +902,12 @@ function luma(r: number, g: number, b: number): number {
  * Low-frequency band illumination transfer (Architecture C).
  * Non-navy source defects (old lettering, pinstripe) are median-filled from
  * neighbouring navy, then the gain map is box-blurred and clamped to
- * [0.85, 1.15] so high-frequency ghosts cannot imprint (stage-1c regression).
+ * [0.80, 1.20] so high-frequency ghosts cannot imprint (stage-1c regression)
+ * while Stage 1e keeps modest fold contrast.
  *
  * Inherits broad shadow / highlight / curvature only — never source texture.
+ * Near-black navy outliers (speckle candidates) are replaced with the median
+ * before the gain map is built.
  */
 export function applyLowFrequencyBandIllumination(
   source: RgbaImage,
@@ -934,6 +949,8 @@ export function applyLowFrequencyBandIllumination(
   if (navySamples.length === 0) return { width: covered.width, height: covered.height, data: out };
   navySamples.sort((a, b) => a - b);
   const medianNavy = navySamples[Math.floor(navySamples.length / 2)]!;
+  // Reject near-black navy outliers that seed black speckles (stage-1d x≈280).
+  const navyFloor = medianNavy * 0.55;
 
   const filled = new Float32Array(w * h);
   filled.fill(Number.NaN);
@@ -942,7 +959,8 @@ export function applyLowFrequencyBandIllumination(
       const li = y * w + x;
       if (!inBand[li]) continue;
       if (isNavyCell[li]) {
-        filled[li] = navyLuma[li]!;
+        const L = navyLuma[li]!;
+        filled[li] = L < navyFloor ? medianNavy : L;
         continue;
       }
       const neigh: number[] = [];
@@ -952,7 +970,7 @@ export function applyLowFrequencyBandIllumination(
           const ny = y + dy;
           if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
           const ni = ny * w + nx;
-          if (isNavyCell[ni]) neigh.push(navyLuma[ni]!);
+          if (isNavyCell[ni] && navyLuma[ni]! >= navyFloor) neigh.push(navyLuma[ni]!);
         }
       }
       if (neigh.length) {
@@ -964,7 +982,8 @@ export function applyLowFrequencyBandIllumination(
     }
   }
 
-  const radius = Math.max(3, Math.min(12, Math.round(h * 0.35)));
+  // Slightly tighter blur than 1c/1d so folds read after the wider gain clamp.
+  const radius = Math.max(2, Math.min(10, Math.round(h * 0.28)));
   const blurred = boxBlurFinite(filled, w, h, radius);
 
   for (let y = top; y <= bottom; y++) {
@@ -978,7 +997,7 @@ export function applyLowFrequencyBandIllumination(
         out[i + 2] !== source.data[i + 2];
       if (!changed) continue;
       const L = Number.isFinite(blurred[li]) ? blurred[li]! : medianNavy;
-      const g = Math.max(0.85, Math.min(1.15, L / Math.max(1, medianNavy)));
+      const g = Math.max(0.8, Math.min(1.2, L / Math.max(1, medianNavy)));
       out[i] = Math.max(0, Math.min(255, Math.round(out[i] * g)));
       out[i + 1] = Math.max(0, Math.min(255, Math.round(out[i + 1] * g)));
       out[i + 2] = Math.max(0, Math.min(255, Math.round(out[i + 2] * g)));
@@ -1028,6 +1047,44 @@ function boxBlurFinite(src: Float32Array, w: number, h: number, radius: number):
     }
   }
   return out;
+}
+
+/** Separable box blur on a local [0,1] alpha mask (two passes ≈ soft feather). */
+function boxBlurAlphaLocal(src: Float32Array, w: number, h: number, radius: number): Float32Array {
+  const r = Math.max(1, Math.round(radius));
+  let cur = src;
+  for (let pass = 0; pass < 2; pass++) {
+    const tmp = new Float32Array(w * h);
+    const out = new Float32Array(w * h);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let sum = 0;
+        let n = 0;
+        for (let dx = -r; dx <= r; dx++) {
+          const nx = x + dx;
+          if (nx < 0 || nx >= w) continue;
+          sum += cur[y * w + nx]!;
+          n++;
+        }
+        tmp[y * w + x] = n ? sum / n : 0;
+      }
+    }
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let sum = 0;
+        let n = 0;
+        for (let dy = -r; dy <= r; dy++) {
+          const ny = y + dy;
+          if (ny < 0 || ny >= h) continue;
+          sum += tmp[ny * w + x]!;
+          n++;
+        }
+        out[y * w + x] = n ? sum / n : 0;
+      }
+    }
+    cur = out;
+  }
+  return cur;
 }
 
 /**
@@ -1359,32 +1416,87 @@ export function coverTargetQuad(
     bottom: Math.min(base.height, Math.ceil(Math.max(...quad.map((p) => p.y)))),
   });
 
-  // Architecture C: paint only inside a band-normal-expanded quad — no navy
-  // column/row snap that can drip into sleeves below a tilted band.
-  if (fillMode === "quad") {
+  // Architecture C: paint inside a band-normal-expanded quad. Stage 1e also
+  // unions navy inside a bounded search shell (no column/row snap drips).
+  if (fillMode === "quad" || fillMode === "quad_navy_union") {
     const bandH = Math.max(
       1,
       Math.hypot(quad[3].x - quad[0].x, quad[3].y - quad[0].y),
       Math.hypot(quad[2].x - quad[1].x, quad[2].y - quad[1].y),
     );
-    // Expand by a fraction of band thickness along the local normal only.
     const expandAlongBand = Math.max(1, Math.round(bandH * (options.maxExpandFrac ?? 0.05)));
     const expanded = expandBandForLeakPad(quad, expandAlongBand);
+    const navyMargin =
+      fillMode === "quad_navy_union"
+        ? Math.max(
+            expandAlongBand,
+            options.navyUnionMarginPx ?? Math.max(10, Math.round(bandH * 0.18)),
+          )
+        : 0;
+    const search =
+      navyMargin > 0 ? expandBandForLeakPad(quad, expandAlongBand + navyMargin) : expanded;
+    const featherPx = Math.max(0, Math.round(options.featherPx ?? 0));
+
     const [tl, tr, br, bl] = expanded;
-    const xs = expanded.map((p) => p.x);
-    const ys = expanded.map((p) => p.y);
+    const [stl, str, sbr, sbl] = search;
+    const xs = search.map((p) => p.x);
+    const ys = search.map((p) => p.y);
     const left = Math.max(0, Math.floor(Math.min(...xs)));
     const right = Math.min(base.width - 1, Math.ceil(Math.max(...xs)));
     const top = Math.max(0, Math.floor(Math.min(...ys)));
     const bottom = Math.min(base.height - 1, Math.ceil(Math.max(...ys)));
+
+    const mw = right - left + 1;
+    const mh = bottom - top + 1;
+    const paint = new Float32Array(mw * mh);
     for (let y = top; y <= bottom; y++) {
       for (let x = left; x <= right; x++) {
-        if (!invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) continue;
+        const inSearch = invBilinear(x + 0.5, y + 0.5, stl, str, sbr, sbl);
+        if (!inSearch) continue;
+        const inQuad = invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl);
         const i = (y * base.width + x) * 4;
-        out[i] = nr;
-        out[i + 1] = ng;
-        out[i + 2] = nb;
+        if (inQuad) {
+          paint[(y - top) * mw + (x - left)] = 1;
+        } else if (
+          fillMode === "quad_navy_union" &&
+          isNavyPixel(base.data[i]!, base.data[i + 1]!, base.data[i + 2]!)
+        ) {
+          // Admit true band extent past the manual quad (stage-1d left/top-left sliver).
+          paint[(y - top) * mw + (x - left)] = 1;
+        }
+      }
+    }
+
+    const alpha =
+      featherPx > 0 ? boxBlurAlphaLocal(paint, mw, mh, featherPx) : paint;
+
+    const navyLuma = luma(nr, ng, nb);
+    const speckleFloor = navyLuma * 0.55;
+    for (let y = top; y <= bottom; y++) {
+      for (let x = left; x <= right; x++) {
+        const a = alpha[(y - top) * mw + (x - left)]!;
+        if (a <= 0.02) continue;
+        const i = (y * base.width + x) * 4;
+        if (a >= 0.98) {
+          out[i] = nr;
+          out[i + 1] = ng;
+          out[i + 2] = nb;
+        } else {
+          const ia = 1 - a;
+          out[i] = Math.round(nr * a + out[i]! * ia);
+          out[i + 1] = Math.round(ng * a + out[i + 1]! * ia);
+          out[i + 2] = Math.round(nb * a + out[i + 2]! * ia);
+        }
         out[i + 3] = 255;
+        // Speckle suppress: solid-ish paint must not land near-black.
+        if (a >= 0.5) {
+          const L = luma(out[i]!, out[i + 1]!, out[i + 2]!);
+          if (L < speckleFloor) {
+            out[i] = nr;
+            out[i + 1] = ng;
+            out[i + 2] = nb;
+          }
+        }
       }
     }
     return { width: base.width, height: base.height, data: out };
