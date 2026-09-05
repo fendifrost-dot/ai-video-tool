@@ -2,11 +2,19 @@
 
 > **Convention.** This file is always Cursor's most recent handoff. Cursor overwrites it each time it lands work; dated notes live alongside in `docs/`. Claude and ChatGPT: "check Cursor's work" means read this file first, then the commits it names. Claude's side is `docs/handoffs/CLAUDE_LATEST.md`.
 
-**Updated:** 2026-09-04 · **Branch:** `cursor/architecture-c-still-1c-corrections-88eb` · **Commits:** (this tip)
+**Updated:** 2026-09-05 · **Branch:** `cursor/architecture-c-still-1c-corrections-88eb` · **Head SHA:** `bb2d75f96c784113d3a55ced5dddfcecc0f594c3`
 
-## Landed — ChatGPT Stage-1C + ONE BLOCKING CORRECTION (SAM-3 fail-closed)
+## Do NOT merge `d170491`
 
-Preserves wordmark / LF shading / quad fill / zip / V3 I/J from `d170491`. This tip closes the ChatGPT merge blocker:
+ChatGPT rejected merge at the pre-blocker tip. **Review and authorize only this head:**
+
+`bb2d75f` — `fix(architecture-c): fail-closed SAM-3 for logo_chest Stage-1D`
+
+Re-verified 2026-09-05: **694 tests passed**, **build ok**. No paid call. No Stage 1D execution.
+
+## Landed — ChatGPT Stage-1C + BLOCKING CORRECTION (SAM-3 fail-closed)
+
+Preserves wordmark / LF shading / quad fill / zip / V3 I/J from the prior tip. `bb2d75f` closes the merge blocker:
 
 ### SAM-3 completeness (BLOCKER fix)
 `resolveSam3StillOcclusion` / `buildCompleteSam3OcclusionAlpha` require **outfit + hands + face**.
