@@ -2,9 +2,11 @@
 
 > **Convention.** This file is always Claude's most recent handoff. Claude overwrites it each time; dated copies live in `docs/` and `docs/research/results/`. Cursor and ChatGPT: "check the repo" means read this file. Cursor's side is `docs/handoffs/CURSOR_LATEST.md`.
 
-**Updated:** 2026-09-05 (rev 9 — Stage 1e verified live: FAIL, gate not cleared; three deterministic corrections) · **Author:** Claude (Cowork) · **Spend:** $12.80 of $20 ceiling, 32 generations · **No paid call pending** · stage-1 runs cost $0
+**Updated:** 2026-09-05 (rev 10 — ChatGPT ratified the Stage 1f scope; ruling recorded on main; Claude holding for Cursor's land) · **Author:** Claude (Cowork) · **Spend:** $12.80 of $20 ceiling, 32 generations · **No paid call pending** · stage-1 runs cost $0
 
 ## State in one paragraph
+
+**Latest (rev 10):** Second 1e execution (asset `1cc15be0`) was **pixel-identical** to the first (`57504fac`) — 1e is deterministic; no nondeterminism work needed. Cursor concurred with the 1e FAIL diagnosis and ChatGPT issued the **Stage 1f directive** (recorded verbatim in `docs/ARCHITECTURE_C_CHATGPT_STAGE1F_DIRECTIVE_2026-09-05.md`): paint region `navy_band_component ∪ (quad ∩ dilate(navy_band_component, 4px))`, inward feather (erode → blur → dilate navy 2 px along the normal), one merged-mask paint pass with luma clamp `bandMedian ± 4` (golden asserts ≥ `bandMedian − 6`), four new golden fixtures, `repair_method_version = architecture_c_still_repair_1f`, `deno check` on changed edge files. Chest only; sleeve, temporal, V3, prompt, paid xAI all locked. Centre tie/zip wedge is V2 generation debt pending ChatGPT. **Claude is holding**: no 1e re-runs; verify 1f by behaviour after merge + redeploy, then score.
 
 **Latest (rev 9):** PR #43 (Stage 1e: navy∪quad paint, 3 px feather, 2 px α feather, speckle clamp, gain [0.80,1.20]) merged by Fendi (`205141d`), redeployed, **confirmed live by behaviour**. Stage 1e ran at $0 → asset **`57504fac`**, `repair_method_version: architecture_c_still_repair_1e`, `occlusion_source: sam3`, `sam3_ok: true`, `allow_skin_heuristic_fallback: false`. **Verdict: FAIL under zero-deviation — chest still gate NOT cleared.** Criteria 5–10 pass (no staircase, solid band, wordmark, zip, illumination, out-of-region pixels untouched). Criteria 1–4 fail at residual level: faint pinstripe survives at the upper-left edge (~40 % of original luma), 658 source-cream px painted navy at the tilted margins because `quad ∪ navy` includes bare-cream quad pixels, faint dark seam at x 279–283, feathered navy smear onto the sleeve at the forearm boundary (x 330–380, y 741–749). Three corrections in the 1e doc; the union fix removes two of the four. No sleeve work started.
 
@@ -19,6 +21,8 @@
 Prior state (rev 3): Stage 1 (`logo_chest`) has now been run with a **correct, measured band quad** on the clean still `2aa1a44c` → output asset `477b722c`. The wordmark renders legibly as SAINT LAURENT in the house typeface (defect **D fixed**, **F fixed** inside the quad). It is still **NOT a pass** under zero-deviation: the wordmark is centred on the band and ~2× oversized (reference: wearer's-left segment, ~½ band height), the patch paints over the crossed hand (no occlusion mask), the tilted band leaks below the rectangular patch, the zip line is erased, and the band is flat/unlit. **The failure has changed category** — from "can the engine do this" to specifiable compositing rules. V2 stays frozen; V3 is installed but inactive (`4af7afa`). **Fendi review added two generation defects: I navy pocket welts, J navy cuffs (both mastic on the reference) — and defect H is withdrawn (it was the pocket welt). Collar A and sleeve ring C are untouched by design.** The repair produced one still, not a clip; the Review clip is unchanged. **Lovable Publish has landed:** the `4af7afa` runner is live and stage 1 was re-run through the product UI with the same quad — output pixel-identical to `477b722c`, no auto-chaining, placement check working. UI path and proxy path now agree.
 
 ## Read this
+
+**`docs/ARCHITECTURE_C_CHATGPT_STAGE1F_DIRECTIVE_2026-09-05.md`** — the ruling Cursor implements, with Cursor's concurrence and Claude's verification plan (pixel probes + targets).
 
 **`docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1E_RESULT_2026-09-05.md`** — 1e verification: full metadata, criterion-by-criterion table, pixel-level defects D1–D3 with smallest corrections (inward feather + 2 px navy dilation; `navy ∪ (quad ∩ dilate(navy,4px))` instead of bare union; single paint pass + luma clamp). Evidence `stage1e_chest_compare.jpg`, `stage1e_zoom_annot.jpg`, `stage1e_topleft_edge.jpg`, `stage1e_forearm_boundary.jpg`, `stage1e_zip_column.jpg`.
 
@@ -40,10 +44,10 @@ The first stage-1b run supplied the quad directly to `architecture-c-still-repai
 
 | Owner | Item |
 |---|---|
-| **Cursor** | Stage 1f from the 1e doc: (D3/2/4) paint region = `navy_band ∪ (quad ∩ dilate(navy_band, 4 px))` — never bare-cream quad pixels; (D1) feather inward (erode by radius before blur) + dilate navy-band mask 2 px along the normal; (D2) single paint pass over the merged mask + clamp painted luma to band median ± 4, asserted in the golden test. Then `redeploy needed`. |
+| **Cursor** | Implement Stage 1f per `docs/ARCHITECTURE_C_CHATGPT_STAGE1F_DIRECTIVE_2026-09-05.md` (items 1–4, scope locks). Report commit SHA, changed files, tests/build/`deno check`, and redeploy requirement in CURSOR_LATEST. |
 | **Fendi** | Nothing blocking. Merge + redeploy for 1f when Cursor lands it (or ask Claude to). |
-| **ChatGPT** | (1) Review the 1e FAIL and confirm the 1f scope above. (2) Note the tie/zip wedge through the band centre is a V2 generation defect (throat-only layering), not repair-owned — decide whether it is accepted for the still gate or deferred to the V3 run. (3) Still open: API-side Imagine image-edit-with-references test as an anchor experiment (Grok Build note). |
-| **Claude** | On 1f merge + redeploy: verify by behaviour (`repair_method_version` 1f), run on the same still/quad, score against the same ten criteria. Sleeve stays on hold until the chest still gate is cleared. |
+| **ChatGPT** | Review PR when Cursor reports; authorize merge + redeploy. Pending rulings: centre tie/zip wedge (V2 generation debt — accept for the still gate or defer to V3); API-side Imagine image-edit-with-references anchor test (Grok Build note). |
+| **Claude** | Holding. After 1f merge + redeploy: verify `repair_method_version: architecture_c_still_repair_1f` by behaviour, run once on `2aa1a44c` with the measured quad, score the ten criteria with the same pixel probes (targets in the directive doc). No 1e re-runs. Sleeve stays on hold. |
 
 ## Guardrails unchanged
 
