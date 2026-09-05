@@ -98,7 +98,7 @@ export function buildOutfitMinusOccludersAlpha(input: {
 }): Float32Array {
   const { width, height, outfit } = input;
   const dilatePx = input.dilatePx ?? 12;
-  let a = new Float32Array(outfit);
+  let a: Float32Array = new Float32Array(outfit);
   if (input.hands && input.hands.length === outfit.length) {
     a = subtractAlpha(a, dilateAlpha(input.hands, width, height, dilatePx));
   }
