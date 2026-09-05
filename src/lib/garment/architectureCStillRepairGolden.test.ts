@@ -96,6 +96,32 @@ function buildCanonicalSynthetic(): { source: RgbaImage; band: QuadPts } {
       }
     }
   }
+  // Stage-1d left-edge defect: true navy band extends ~10 px past the manual quad.
+  const bandTop = Math.min(...band.map((p) => p.y));
+  const bandBot = Math.max(...band.map((p) => p.y));
+  const bandLeft = Math.min(...band.map((p) => p.x));
+  for (let y = Math.floor(bandTop); y <= Math.ceil(bandBot); y++) {
+    for (let x = Math.max(0, Math.floor(bandLeft) - 10); x < Math.floor(bandLeft); x++) {
+      const i = (y * W + x) * 4;
+      if (x % 7 === 0) {
+        source.data[i] = 210;
+        source.data[i + 1] = 200;
+        source.data[i + 2] = 180;
+      } else {
+        source.data[i] = 28;
+        source.data[i + 1] = 32;
+        source.data[i + 2] = 95;
+      }
+    }
+  }
+  // Near-black navy outlier column (stage-1d speckle seed at ~x=280 analogue).
+  const speckX = Math.round(bandLeft + 64);
+  for (let y = Math.floor(bandTop) + 2; y <= Math.ceil(bandBot) - 2; y++) {
+    const i = (y * W + speckX) * 4;
+    source.data[i] = 8;
+    source.data[i + 1] = 10;
+    source.data[i + 2] = 48; // still passes isNavyPixel (b>r+8)
+  }
   // Cream zip at center of band
   const midX = Math.round((Math.min(...band.map((p) => p.x)) + Math.max(...band.map((p) => p.x))) / 2);
   for (let y = Math.floor(Math.min(...band.map((p) => p.y))); y <= Math.ceil(Math.max(...band.map((p) => p.y))); y++) {
@@ -129,6 +155,15 @@ function buildCanonicalSynthetic(): { source: RgbaImage; band: QuadPts } {
   return { source, band };
 }
 
+const STAGE1E_COVER = {
+  fillMode: "quad_navy_union" as const,
+  columnFollow: false,
+  maxExpandFrac: 0.05,
+  featherPx: 3,
+  navyUnionMarginPx: 12,
+  zipStripFrac: 0,
+};
+
 describe("Architecture C stage-1 golden structural invariants", () => {
   it("records the canonical still + measured quad constants", () => {
     expect(ARCHITECTURE_C_STAGE1_GOLDEN.cleanStillAssetId).toBe(
@@ -152,15 +187,11 @@ describe("Architecture C stage-1 golden structural invariants", () => {
     expect(logoH / bandH).toBeLessThan(0.65);
   });
 
-  it("quad-only cover does not spill into sleeve column below a tilted band", () => {
+  it("quad_navy_union cover does not spill into sleeve column below a tilted band", () => {
     const { source, band } = buildCanonicalSynthetic();
-    const covered = coverTargetQuad(source, band, {
-      fillMode: "quad",
-      columnFollow: false,
-      maxExpandFrac: 0.05,
-      zipStripFrac: 0,
-    });
-    const leaks = countCoverLeakOutsideBand(source, covered, band, 8);
+    const covered = coverTargetQuad(source, band, STAGE1E_COVER);
+    // Allow navy-union margin (~12) + feather (~3) beyond the quad.
+    const leaks = countCoverLeakOutsideBand(source, covered, band, 20);
     expect(leaks).toBe(0);
     // Deep sleeve pixel unchanged
     const midX = Math.round((Math.min(...band.map((p) => p.x)) + Math.max(...band.map((p) => p.x))) / 2);
@@ -169,13 +200,26 @@ describe("Architecture C stage-1 golden structural invariants", () => {
     expect(covered.data[i]).toBe(source.data[i]);
   });
 
+  it("quad_navy_union covers true navy past the manual quad left edge", () => {
+    const { source, band } = buildCanonicalSynthetic();
+    const covered = coverTargetQuad(source, band, STAGE1E_COVER);
+    const y = Math.round((band[0].y + band[3].y) / 2);
+    const left = Math.floor(Math.min(...band.map((p) => p.x)));
+    // Find a cream pinstripe pixel in the ~10 px overhang and assert it was painted navy.
+    let foundPinstripe = false;
+    for (let x = left - 9; x < left; x++) {
+      const i = (y * source.width + x) * 4;
+      if (source.data[i]! < 150) continue; // skip already-navy cells
+      foundPinstripe = true;
+      expect(covered.data[i]!).toBeLessThan(80);
+      break;
+    }
+    expect(foundPinstripe).toBe(true);
+  });
+
   it("low-frequency illumination does not pass high-frequency stripe/text", () => {
     const { source, band } = buildCanonicalSynthetic();
-    const covered = coverTargetQuad(source, band, {
-      fillMode: "quad",
-      columnFollow: false,
-      maxExpandFrac: 0.05,
-    });
+    const covered = coverTargetQuad(source, band, STAGE1E_COVER);
     const shaded = applyLowFrequencyBandIllumination(source, covered, band);
     // Sample two neighbouring band pixels — variance must stay low after LF transfer
     const y = Math.round((band[0].y + band[3].y) / 2);
@@ -186,13 +230,43 @@ describe("Architecture C stage-1 golden structural invariants", () => {
     expect(Math.abs(shaded.data[i0]! - shaded.data[i1]!)).toBeLessThan(12);
   });
 
+  it("painted region has no near-black speckles darker than navy floor", () => {
+    const { source, band } = buildCanonicalSynthetic();
+    const covered = coverTargetQuad(source, band, STAGE1E_COVER);
+    const shaded = applyLowFrequencyBandIllumination(source, covered, band);
+    const y0 = Math.floor(Math.min(...band.map((p) => p.y)));
+    const y1 = Math.ceil(Math.max(...band.map((p) => p.y)));
+    const x0 = Math.floor(Math.min(...band.map((p) => p.x)));
+    const x1 = Math.ceil(Math.max(...band.map((p) => p.x)));
+    // Reference navy from a clean covered interior pixel
+    const refY = Math.round((y0 + y1) / 2);
+    const refX = Math.round(x0 + (x1 - x0) * 0.4);
+    const ri = (refY * source.width + refX) * 4;
+    const refL =
+      0.2126 * shaded.data[ri]! + 0.7152 * shaded.data[ri + 1]! + 0.0722 * shaded.data[ri + 2]!;
+    const floor = refL * 0.55;
+    let darkCount = 0;
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        const i = (y * source.width + x) * 4;
+        const changed =
+          shaded.data[i] !== source.data[i] ||
+          shaded.data[i + 1] !== source.data[i + 1] ||
+          shaded.data[i + 2] !== source.data[i + 2];
+        if (!changed) continue;
+        // Skip restored zip (high luma)
+        const L =
+          0.2126 * shaded.data[i]! + 0.7152 * shaded.data[i + 1]! + 0.0722 * shaded.data[i + 2]!;
+        if (L > 120) continue;
+        if (L < floor) darkCount++;
+      }
+    }
+    expect(darkCount).toBe(0);
+  });
+
   it("zip overlay restores tape without leaving an unpainted rectangular slit", () => {
     const { source, band } = buildCanonicalSynthetic();
-    const covered = coverTargetQuad(source, band, {
-      fillMode: "quad",
-      columnFollow: false,
-      zipStripFrac: 0,
-    });
+    const covered = coverTargetQuad(source, band, STAGE1E_COVER);
     const withZip = overlayZipFromSource(source, covered, band, 0.015, 0.5);
     const midX = Math.round((Math.min(...band.map((p) => p.x)) + Math.max(...band.map((p) => p.x))) / 2);
     const y = Math.round((band[0].y + band[3].y) / 2);
@@ -212,10 +286,7 @@ describe("Architecture C stage-1 golden structural invariants", () => {
 
   it("foreground occlusion α prevents repair over protected hand pixels", () => {
     const { source, band } = buildCanonicalSynthetic();
-    const covered = coverTargetQuad(source, band, {
-      fillMode: "quad",
-      columnFollow: false,
-    });
+    const covered = coverTargetQuad(source, band, STAGE1E_COVER);
     const W = source.width;
     const H = source.height;
     const outfit = new Float32Array(W * H);

@@ -2,56 +2,47 @@
 
 > **Convention.** This file is always Cursor's most recent handoff. Cursor overwrites it each time it lands work; dated notes live alongside in `docs/`. Claude and ChatGPT: "check Cursor's work" means read this file first, then the commits it names. Claude's side is `docs/handoffs/CLAUDE_LATEST.md`.
 
-**Updated:** 2026-09-05 · **Branch:** `cursor/architecture-c-still-1c-corrections-88eb` · **Head SHA:** `bb2d75f96c784113d3a55ced5dddfcecc0f594c3`
+**Updated:** 2026-09-05 · **Branch:** `cursor/architecture-c-still-1e-perimeter-88eb` · **Head:** `759a5b75dc58e83b902a9f1a0e7f5a7fbb2199aa` · **PR:** [#43](https://github.com/fendifrost-dot/ai-video-tool/pull/43)
 
-## Do NOT merge `d170491`
+## ChatGPT — APPROVED Stage 1e for merge/deploy
 
-ChatGPT rejected merge at the pre-blocker tip. **Review and authorize only this head:**
+PR #43 inspected independently and approved. Scope matches: `quad_navy_union`, 3 px paint feather, 2 px SAM-3 α feather, speckle suppress, gain **[0.80, 1.20]**, `architecture_c_still_repair_1e`, fail-closed skin preserved. Union is bounded (no column-follow / sleeve-drip reopen). PR is **ready for review**, **MERGEABLE**, based on `main` @ `f7a90d25…`.
 
-`bb2d75f` — `fix(architecture-c): fail-closed SAM-3 for logo_chest Stage-1D`
+Cursor cannot merge from this agent (no write merge tool). **Claude: merge PR #43 → redeploy only.**
 
-Re-verified 2026-09-05: **694 tests passed**, **build ok**. No paid call. No Stage 1D execution.
+## Claude — next actions (authorized)
 
-## Landed — ChatGPT Stage-1C + BLOCKING CORRECTION (SAM-3 fail-closed)
+1. **Merge** PR #43 into `main`.
+2. **Redeploy only** `architecture-c-still-repair-proxy` (Publish **not** needed).
+3. Verify live response carries `repair_method_version: "architecture_c_still_repair_1e"`.
+4. **Run Stage 1e** on:
+   - still `2aa1a44c-b24a-46bf-890f-13a6fc65b1cc`
+   - quad `[[0.30,0.530],[0.87,0.533],[0.87,0.585],[0.30,0.582]]`
+   - no `allowSkinHeuristicFallback`
+5. Score and write result doc.
 
-Preserves wordmark / LF shading / quad fill / zip / V3 I/J from the prior tip. `bb2d75f` closes the merge blocker:
+### Stage 1e verdict — check these **four first**
 
-### SAM-3 completeness (BLOCKER fix)
-`resolveSam3StillOcclusion` / `buildCompleteSam3OcclusionAlpha` require **outfit + hands + face**.
-- hands fail → `ok:false`, reason `sam3_hands_failed` — **never** `"sam3"`
-- face fail → `sam3_face_failed` — **never** `"sam3"`
-- outfit-only / partial → **never** `"sam3"`
+| # | Gate | Pass means |
+|---|------|------------|
+| 1 | Left / top-left sliver | Completely gone (no original navy + pinstripe outside the old manual quad) |
+| 2 | No sleeve drips | No navy column-follow below the band |
+| 3 | No black speckles | No near-black column (~x≈280 or elsewhere) inside painted band |
+| 4 | Forearm boundary after SAM-3 feather | Clean — 1–2 px AA transition OK; **must not** visibly paint navy onto the foreground arm |
 
-### logo_chest / Stage-1D fail-closed policy
-`LOGO_CHEST_OCCLUSION_POLICY.allowSkinHeuristicFallbackByDefault = false`
-`logoChestOcclusionGate`: if SAM incomplete and fallback not explicitly opted in →
-**HTTP 422 `occlusion_unavailable`**, `asset_persisted: false`, **before** composite/upload/`project_assets` insert.
+If all four pass → then score illumination / zip / wordmark. If those hold, chest still may be declarable complete.
 
-Body opt-in only: `allowSkinHeuristicFallback: true` (non-gated contexts). Stage-1D must not pass it.
+### Scrutinize closely (ChatGPT note)
 
-`occlusion_source` semantics:
-- `"sam3"` — complete mask only
-- `"skin_heuristic_fallback"` — only when explicitly permitted
-- `"unavailable"` / 422 — fail-closed path
+SAM-3 α feather softens the staircase but creates a 1–2 px transition at the hand/forearm. Acceptable only as natural antialiasing — not navy bleed onto the arm.
 
-### Unchanged (do not regress)
-Low-frequency shading · quad-only expansion · zip overlay · logo sub-zone · V3 I/J inactive · V2 active · temporal off · sleeve not started
+## Do not
 
-### Docs
-Fixed stale sentence in `ARCHITECTURE_C_STILL_REPAIR_POST_DEPLOY_VERIFY_2026-09-04.md` that claimed SAM-3 was deferred.
-
-### Claude handoff (origin/main rev 6)
-Claude already noted the fallback caveat on `d170491`; this tip closes it. Local checkout of `CLAUDE_LATEST` may lag until rebase/merge — authoritative tip is `origin/main` rev 6.
-
-## Deployed?
-
-| Surface | Status |
-|---------|--------|
-| `architecture-c-still-repair-proxy` edge redeploy | **YES — required** after ChatGPT re-review + merge |
-| Frontend Publish | **NO — not required** |
-
-**STOP — no Stage 1D / no live run / no paid calls until ChatGPT re-reviews.**
+- Frontend Publish
+- Sleeve stage
+- Temporal
+- Paid xAI call
 
 ## Confirm
 
-V2 active · V3 inactive · xAI spend **$0** · temporal **off** · sleeve **not started** · no live Stage 1D
+V2 active · V3 inactive · temporal **off** · sleeve **blocked** · spend unchanged until Claude runs ($0 deterministic path)

@@ -214,6 +214,55 @@ export function logoChestOcclusionGate(input: {
 }
 
 /**
+ * Separable box blur on α — cheap deterministic feather (two passes ≈ soft edge).
+ * Used for paint-region and SAM-3 occlusion perimeters (Architecture C Stage 1e).
+ */
+export function featherAlpha(
+  alpha: Float32Array,
+  width: number,
+  height: number,
+  radiusPx: number,
+  passes = 2,
+): Float32Array {
+  if (radiusPx <= 0) return alpha;
+  const r = Math.max(1, Math.round(radiusPx));
+  let src = alpha;
+  for (let pass = 0; pass < passes; pass++) {
+    const scratch = new Float32Array(alpha.length);
+    for (let y = 0; y < height; y++) {
+      const row = y * width;
+      for (let x = 0; x < width; x++) {
+        let sum = 0;
+        let cnt = 0;
+        for (let dx = -r; dx <= r; dx++) {
+          const xx = x + dx;
+          if (xx < 0 || xx >= width) continue;
+          sum += src[row + xx]!;
+          cnt++;
+        }
+        scratch[row + x] = cnt ? sum / cnt : 0;
+      }
+    }
+    const dst = new Float32Array(alpha.length);
+    for (let x = 0; x < width; x++) {
+      for (let y = 0; y < height; y++) {
+        let sum = 0;
+        let cnt = 0;
+        for (let dy = -r; dy <= r; dy++) {
+          const yy = y + dy;
+          if (yy < 0 || yy >= height) continue;
+          sum += scratch[yy * width + x]!;
+          cnt++;
+        }
+        dst[y * width + x] = cnt ? sum / cnt : 0;
+      }
+    }
+    src = dst;
+  }
+  return src;
+}
+
+/**
  * Blend repaired onto source using α (repair only where α high).
  * out = source·(1−α) + repaired·α
  */

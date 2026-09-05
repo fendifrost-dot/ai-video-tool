@@ -884,9 +884,9 @@ describe("Architecture C logo sub-zone + cover rules", () => {
     const bright = (3 * 40 + 3) * 4;
     const dim = (15 * 40 + 30) * 4;
     expect(out.data[bright]).toBeGreaterThan(covered.data[bright]);
-    expect(out.data[bright]).toBeLessThanOrEqual(Math.ceil(20 * 1.15));
-    expect(out.data[dim]).toBeGreaterThanOrEqual(Math.floor(20 * 0.85));
-    expect(out.data[dim]).toBeLessThanOrEqual(Math.ceil(20 * 1.15));
+    expect(out.data[bright]).toBeLessThanOrEqual(Math.ceil(20 * 1.2));
+    expect(out.data[dim]).toBeGreaterThanOrEqual(Math.floor(20 * 0.8));
+    expect(out.data[dim]).toBeLessThanOrEqual(Math.ceil(20 * 1.2));
     // Deprecated alias still resolves
     expect(applyBandLumaShading).toBe(applyLowFrequencyBandIllumination);
   });
@@ -971,5 +971,51 @@ describe("Architecture C logo sub-zone + cover rules", () => {
     expect(countCoverLeakOutsideBand(base, out, quad, 8)).toBe(0);
     const deepI = (90 * 100 + 45) * 4;
     expect(out.data[deepI]).toBe(20);
+  });
+
+  it("fillMode=quad_navy_union covers navy just outside the quad without sleeve drip", () => {
+    const base = solid(100, 80, 200, 180, 160);
+    // Horizontal navy band rows 30..45, x 20..80
+    for (let y = 30; y < 45; y++) {
+      for (let x = 20; x < 80; x++) {
+        const i = (y * 100 + x) * 4;
+        base.data[i] = 25;
+        base.data[i + 1] = 30;
+        base.data[i + 2] = 95;
+      }
+    }
+    // Manual quad stops short on the left (x=28) so true navy at x=20..27 escapes
+    const quad: QuadPts = [
+      { x: 28, y: 30 },
+      { x: 78, y: 30 },
+      { x: 78, y: 45 },
+      { x: 28, y: 45 },
+    ];
+    const out = coverTargetQuad(base, quad, {
+      fillMode: "quad_navy_union",
+      columnFollow: false,
+      maxExpandFrac: 0.05,
+      featherPx: 2,
+      navyUnionMarginPx: 12,
+      zipStripFrac: 0,
+    });
+    const leftOutside = (37 * 100 + 22) * 4;
+    expect(out.data[leftOutside]!).toBeLessThan(60);
+    // Sleeve dark far below unchanged
+    for (let y = 60; y < 75; y++) {
+      for (let x = 40; x < 55; x++) {
+        const i = (y * 100 + x) * 4;
+        base.data[i] = 20;
+        base.data[i + 1] = 22;
+        base.data[i + 2] = 28;
+      }
+    }
+    const out2 = coverTargetQuad(base, quad, {
+      fillMode: "quad_navy_union",
+      columnFollow: false,
+      featherPx: 2,
+      navyUnionMarginPx: 12,
+    });
+    expect(out2.data[(65 * 100 + 45) * 4]!).toBe(20);
   });
 });
