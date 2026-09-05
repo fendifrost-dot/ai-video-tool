@@ -791,8 +791,8 @@ export async function compositeLogoOntoVton(
     targetQuad = logoPts as unknown as Quad;
     target = rectFromTarget({ kind: "quad", points: targetQuad });
 
-    // Stage 1e: navy∪quad paint + 2–3 px perimeter feather, LF illumination, zip,
-    // wordmark into wearer's-left sub-quad; SAM-3 α preferred for occlusion.
+    // Stage 1f: navy ∪ (quad ∩ dilate(navy,4)) + inward feather, LF illumination,
+    // zip, wordmark into wearer's-left sub-quad; SAM-3 α preferred for occlusion.
     let covered = coverTargetQuad(base, bandPts, {
       zipStripFrac: 0,
       maxExpandFrac: 0.05,
@@ -800,6 +800,8 @@ export async function compositeLogoOntoVton(
       fillMode: "quad_navy_union",
       featherPx: 3,
       navyUnionMarginPx: 12,
+      navyDilatePx: 4,
+      navyEdgeDilatePx: 2,
     });
     covered = applyLowFrequencyBandIllumination(base, covered, bandPts);
     covered = overlayZipFromSource(base, covered, bandPts, 0.015, 0.5);
@@ -904,7 +906,7 @@ export async function compositeLogoOntoVton(
     occlusion_source: occlusionSource,
     requested_band_quad_norm: requestedBandQuadNorm,
     effective_band_bbox: effectiveBandBBox,
-    repair_method_version: "architecture_c_still_repair_1e",
+    repair_method_version: "architecture_c_still_repair_1f",
   };
 }
 

@@ -2,29 +2,28 @@
 
 > **Convention.** This file is always Cursor's most recent handoff. Cursor overwrites it each time it lands work; dated notes live alongside in `docs/`. Claude and ChatGPT: "check Cursor's work" means read this file first, then the commits it names. Claude's side is `docs/handoffs/CLAUDE_LATEST.md`.
 
-**Updated:** 2026-09-05 · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`. Open draft PRs are **not** live and **not** testable unless listed below as MERGED.
+**Updated:** 2026-09-05 · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`.
 
 ## Ready-to-test status (Architecture C chest)
 
 | Item | On `main`? | Live / redeployed? | Ready to test? |
 |------|------------|--------------------|----------------|
-| Stage **1e** code (`architecture_c_still_repair_1e`) | **YES** — PR #43 merge `205141d` | **YES** — Claude/Fendi redeployed; scored | **Scored FAIL** — asset `57504fac` |
-| Stage **1f** code | **NO** (directive only: `docs/ARCHITECTURE_C_CHATGPT_STAGE1F_DIRECTIVE_2026-09-05.md`) | n/a | **NOT ready** until 1f lands on `main` + edge redeploy |
+| Stage **1e** | YES | YES — scored **FAIL** (`57504fac`) | done |
+| Stage **1f** code | **YES** (this land) | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
 | Sleeve / temporal / paid xAI | blocked | — | **NO** |
 
-**Do not test open Cursor branches for chest repair.** If it is not on `main` + redeployed, it is not the live proxy.
+## Landed — Stage 1f (ChatGPT directive)
 
-## This cleanup land
+`repair_method_version: architecture_c_still_repair_1f`
 
-- Brought missing **Grok Build anchor API research** doc onto `main` (was stranded on draft PR #41).
-- Closed superseded still-repair drafts **#41** / **#42** (stale `CURSOR_LATEST` / superseded by Claude’s real 1d/1e docs).
-- Did **not** merge unrelated open PRs (security Class-C, research prototypes, conflicts, Voice Director, etc.).
+1. Paint = `dilate(navy,2) ∪ (quad ∩ dilate(navy,4))` — never bare-cream quad
+2. **Inward** feather (erode → blur; zero outside valid)
+3. Single paint pass + luma clamp `bandMedian ± 4` (golden ≥ median−6)
+4. Golden fixtures for cream-in-quad, forearm cream, left overhang, no dark seam/speckle
 
-## Claude / ChatGPT
+### Claude next
+1. Redeploy **only** `architecture-c-still-repair-proxy`
+2. Verify `architecture_c_still_repair_1f` by behaviour
+3. Run same still/quad; score ten criteria (pixel probes in ChatGPT 1f directive)
 
-- ChatGPT **Stage 1f directive** is on `main` (`5757fef`). Cursor concurrence recorded there.
-- User reports Claude is landing **1f on `main`** — Cursor is not double-implementing. After 1f merge: redeploy **only** `architecture-c-still-repair-proxy`, then score same still/quad.
-
-## Confirm
-
-V2 active · V3 inactive · temporal off · sleeve blocked · xAI spend $12.80 / $20 · `$0` still path
+No Publish · no sleeve · no re-run of 1e · no paid call
