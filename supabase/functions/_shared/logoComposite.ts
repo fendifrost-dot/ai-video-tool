@@ -399,6 +399,52 @@ function prefilterToTarget(src: RgbaImage, targetW: number, targetH: number): Rg
   return cur;
 }
 
+/** Decode PNG/JPEG bytes to RGBA via ImageScript. */
+export async function decodeToRgba(bytes: Uint8Array): Promise<RgbaImage> {
+  const img = await Image.decode(bytes);
+  return { width: img.width, height: img.height, data: new Uint8Array(img.bitmap) };
+}
+
+/** Encode RGBA to PNG bytes via ImageScript. */
+export async function encodePng(img: RgbaImage): Promise<Uint8Array> {
+  const out = new Image(img.width, img.height);
+  out.bitmap.set(img.data);
+  return await out.encode();
+}
+
+function sampleBilinearPt(
+  src: RgbaImage,
+  sx: number,
+  sy: number,
+): [number, number, number, number] {
+  const x0 = Math.max(0, Math.floor(sx));
+  const y0 = Math.max(0, Math.floor(sy));
+  const x1 = Math.min(src.width - 1, x0 + 1);
+  const y1 = Math.min(src.height - 1, y0 + 1);
+  const fx = sx - x0;
+  const fy = sy - y0;
+  const i00 = (y0 * src.width + x0) * 4;
+  const i10 = (y0 * src.width + x1) * 4;
+  const i01 = (y1 * src.width + x0) * 4;
+  const i11 = (y1 * src.width + x1) * 4;
+  const out: [number, number, number, number] = [0, 0, 0, 0];
+  for (let c = 0; c < 4; c++) {
+    const v00 = src.data[i00 + c];
+    const v10 = src.data[i10 + c];
+    const v01 = src.data[i01 + c];
+    const v11 = src.data[i11 + c];
+    out[c] = Math.round(
+      v00 * (1 - fx) * (1 - fy) +
+        v10 * fx * (1 - fy) +
+        v01 * (1 - fx) * fy +
+        v11 * fx * fy,
+    );
+  }
+  return out;
+}
+
+const sampleBilinear = sampleBilinearPt;
+
 /** Bilinear resize (used only after prefilter → ≤ 2× ratio, so no aliasing). */
 function resizeBilinearPure(src: RgbaImage, dstW: number, dstH: number): RgbaImage {
   const out = new Uint8Array(dstW * dstH * 4);
