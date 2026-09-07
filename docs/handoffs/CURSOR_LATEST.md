@@ -9,7 +9,7 @@
 | Item | On `main`? | Live / redeployed? | Ready to test? |
 |------|------------|--------------------|----------------|
 | Stage **1f** | YES | YES — scored **FAIL** 7/10 (`88a73cae`) | done |
-| Stage **1g** code | **PR open** (this land) | **NO — merge + redeploy needed** | **YES after** merge to `main` + `architecture-c-still-repair-proxy` redeploy |
+| Stage **1g** code | **PR #47** (this land) | **NO — merge + redeploy needed** | **YES after** merge to `main` + `architecture-c-still-repair-proxy` redeploy |
 | Sleeve / temporal / paid xAI | blocked | — | **NO** |
 
 ## Landed — Stage 1g (band component correction)
