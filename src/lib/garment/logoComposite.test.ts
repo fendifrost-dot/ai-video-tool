@@ -999,6 +999,8 @@ describe("Architecture C logo sub-zone + cover rules", () => {
       navyUnionMarginPx: 12,
       navyDilatePx: 4,
       navyEdgeDilatePx: 2,
+      bandCloseRadiusPx: 6,
+      topPinstripeAbsorbPx: 6,
       zipStripFrac: 0,
     });
     const leftOutside = (37 * 100 + 22) * 4;
@@ -1024,6 +1026,8 @@ describe("Architecture C logo sub-zone + cover rules", () => {
       navyUnionMarginPx: 12,
       navyDilatePx: 4,
       navyEdgeDilatePx: 2,
+      bandCloseRadiusPx: 6,
+      topPinstripeAbsorbPx: 6,
     });
     expect(out2.data[(65 * 100 + 45) * 4]!).toBe(20);
   });

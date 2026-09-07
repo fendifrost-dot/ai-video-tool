@@ -60,6 +60,24 @@ export function isNavyPixel(r: number, g: number, b: number): boolean {
   return b > r + 8 && b > g + 5;
 }
 
+/** max(r,g,b) − min(r,g,b) — low on shadowed navy / crease, high on skin/cream. */
+export function rgbChroma(r: number, g: number, b: number): number {
+  return Math.max(r, g, b) - Math.min(r, g, b);
+}
+
+/**
+ * Chest-band paint candidate (Architecture C Stage 1g). Admits lit navy via
+ * {@link isNavyPixel} plus shadowed navy / dark crease fabric that fails the
+ * lit-navy gate (`b < 45`). Chest / logo_chest path only — do not use as a
+ * global replacement for {@link isNavyPixel}.
+ *
+ *   bandCandidate = isNavyPixel || (luma < 60 && chroma < 32)
+ */
+export function isChestBandCandidate(r: number, g: number, b: number): boolean {
+  if (isNavyPixel(r, g, b)) return true;
+  return luma(r, g, b) < 60 && rgbChroma(r, g, b) < 32;
+}
+
 type NavyRun = { start: number; end: number };
 
 function findNavyRuns(rowScores: number[], threshold: number): NavyRun[] {
@@ -769,14 +787,15 @@ export type CoverTargetQuadOptions = {
   columnFollow?: boolean;
   /**
    * `quad` — paint only inside a band-normal-expanded quad.
-   * `quad_navy_union` — Architecture C Stage 1f: `navy ∪ (quad ∩ dilate(navy,4px))`
-   *   with inward feather (never bare-cream quad paint; no column-follow).
+   * `quad_navy_union` — Architecture C Stage 1g: band component from
+   *   {@link isChestBandCandidate} (largest CC overlapping the quad, closed),
+   *   then `component ∪ (quad ∩ dilate(component,4px))` with inward feather.
    * `navy_snap` — legacy VTON row/column navy union (default).
    */
   fillMode?: "quad" | "quad_navy_union" | "navy_snap";
   /**
    * Soft alpha ramp at the paint-region perimeter (px). Default 0.
-   * Architecture C Stage 1f uses 2–3 as an *inward* feather (erode then blur).
+   * Architecture C uses 2–3 as an *inward* feather (erode then blur).
    */
   featherPx?: number;
   /**
@@ -784,10 +803,21 @@ export type CoverTargetQuadOptions = {
    * band component. Default ~10 when fillMode is quad_navy_union.
    */
   navyUnionMarginPx?: number;
-  /** Dilate navy before intersecting with quad (Stage 1f). Default 4. */
+  /** Dilate band component before intersecting with quad. Default 4. */
   navyDilatePx?: number;
-  /** Extra navy dilate so the true band edge sits in the solid region. Default 2. */
+  /**
+   * Extra isotropic dilate of the band component (legacy 1f edge pad).
+   * Stage 1g prefers {@link topPinstripeAbsorbPx} for the bright top edge.
+   * Default 2.
+   */
   navyEdgeDilatePx?: number;
+  /** Morphological close radius on the band component (Stage 1g). Default 6. */
+  bandCloseRadiusPx?: number;
+  /**
+   * Absorb bright pinstripe along the band top-normal only (Stage 1g). Default 6.
+   * Gated: luma > 140 and within this many px of the component along −normal.
+   */
+  topPinstripeAbsorbPx?: number;
 };
 
 /** Forward-bilinear: (u,v) in [0..1]² → point inside quad. */
@@ -1125,6 +1155,110 @@ function inwardFeatherAlpha(
   return out;
 }
 
+/** Morphological closing = dilate then erode (fills holes / creases ≤ 2·radius). */
+function morphologicalCloseLocal(
+  src: Float32Array,
+  w: number,
+  h: number,
+  radius: number,
+): Float32Array {
+  return erodeBinaryLocal(dilateBinaryLocal(src, w, h, radius), w, h, radius);
+}
+
+/**
+ * Largest 4-connected component of a binary mask that overlaps `seed`
+ * (pixels with seed ≥ 0.5). Returns an empty mask when none overlap.
+ */
+export function largestOverlappingComponent(
+  mask: Float32Array,
+  seed: Float32Array,
+  w: number,
+  h: number,
+): Float32Array {
+  const n = w * h;
+  const seen = new Uint8Array(n);
+  const out = new Float32Array(n);
+  let bestSize = 0;
+  let bestLabel: number[] = [];
+  const stack: number[] = [];
+
+  for (let i = 0; i < n; i++) {
+    if (mask[i]! < 0.5 || seen[i]) continue;
+    stack.length = 0;
+    stack.push(i);
+    seen[i] = 1;
+    const members: number[] = [];
+    let overlaps = false;
+    while (stack.length) {
+      const cur = stack.pop()!;
+      members.push(cur);
+      if (seed[cur]! >= 0.5) overlaps = true;
+      const x = cur % w;
+      const y = (cur / w) | 0;
+      const neigh = [
+        x > 0 ? cur - 1 : -1,
+        x + 1 < w ? cur + 1 : -1,
+        y > 0 ? cur - w : -1,
+        y + 1 < h ? cur + w : -1,
+      ];
+      for (const ni of neigh) {
+        if (ni < 0 || seen[ni] || mask[ni]! < 0.5) continue;
+        seen[ni] = 1;
+        stack.push(ni);
+      }
+    }
+    if (overlaps && members.length > bestSize) {
+      bestSize = members.length;
+      bestLabel = members;
+    }
+  }
+  for (const i of bestLabel) out[i] = 1;
+  return out;
+}
+
+/**
+ * Absorb bright pinstripe pixels along the band's top-normal only (Stage 1g).
+ * A candidate is absorbed only when it is within `maxPx` of the component along
+ * −bandNormal and has luma > 140 (thin bright line — never cream body laterally).
+ */
+function absorbTopPinstripeLocal(
+  component: Float32Array,
+  base: RgbaImage,
+  left: number,
+  top: number,
+  mw: number,
+  mh: number,
+  bandNormalUpX: number,
+  bandNormalUpY: number,
+  maxPx: number,
+): Float32Array {
+  if (maxPx <= 0) return component;
+  const out = new Float32Array(component);
+  const ux = bandNormalUpX;
+  const uy = bandNormalUpY;
+  for (let ly = 0; ly < mh; ly++) {
+    for (let lx = 0; lx < mw; lx++) {
+      const li = ly * mw + lx;
+      if (component[li]! < 0.5) continue;
+      for (let k = 1; k <= maxPx; k++) {
+        const sx = Math.round(left + lx + ux * k);
+        const sy = Math.round(top + ly + uy * k);
+        if (sx < 0 || sy < 0 || sx >= base.width || sy >= base.height) break;
+        const olx = sx - left;
+        const oly = sy - top;
+        if (olx < 0 || oly < 0 || olx >= mw || oly >= mh) break;
+        const oi = oly * mw + olx;
+        if (out[oi]! >= 0.5) continue;
+        const pi = (sy * base.width + sx) * 4;
+        const L = luma(base.data[pi]!, base.data[pi + 1]!, base.data[pi + 2]!);
+        if (L <= 140) break; // stop climbing once we leave the bright line
+        out[oi] = 1;
+      }
+    }
+  }
+  return out;
+}
+
 /**
  * Paint the band fully, then restore a thin feathered zip strip from source
  * (no raw unpainted column — stage-1c slit regression).
@@ -1454,8 +1588,11 @@ export function coverTargetQuad(
     bottom: Math.min(base.height, Math.ceil(Math.max(...quad.map((p) => p.y)))),
   });
 
-  // Architecture C Stage 1f (`quad_navy_union`):
-  //   paint = dilate(navy, edgeDilate) ∪ (expandedQuad ∩ dilate(navy, 4px))
+  // Architecture C Stage 1g (`quad_navy_union`):
+  //   bandCandidate → close(6) → largest CC overlapping quad → top pinstripe absorb
+  //   (close runs *before* CC so thin pinstripe / shadow gaps cannot split the
+  //   real chest band into two components — Stage 1f→1g live failure mode.)
+  //   paint = component ∪ (expandedQuad ∩ dilate(component, 4px))
   //   inward feather; single paint pass; luma clamp to band median ± 4.
   // `quad` keeps the hard expanded-quad fill for legacy / drip tests.
   if (fillMode === "quad" || fillMode === "quad_navy_union") {
@@ -1478,6 +1615,8 @@ export function coverTargetQuad(
     const featherPx = Math.max(0, Math.round(options.featherPx ?? 0));
     const navyDilatePx = Math.max(0, Math.round(options.navyDilatePx ?? 4));
     const navyEdgeDilatePx = Math.max(0, Math.round(options.navyEdgeDilatePx ?? 2));
+    const bandCloseRadiusPx = Math.max(0, Math.round(options.bandCloseRadiusPx ?? 6));
+    const topPinstripeAbsorbPx = Math.max(0, Math.round(options.topPinstripeAbsorbPx ?? 6));
 
     const [tl, tr, br, bl] = expanded;
     const [stl, str, sbr, sbl] = search;
@@ -1492,6 +1631,13 @@ export function coverTargetQuad(
     const mh = bottom - top + 1;
     const paint = new Float32Array(mw * mh);
 
+    // Paint colour: prefer mean of band-candidate pixels in the search shell
+    // (lit navy + shadowed crease), falling back to the legacy navy average.
+    let paintNr = nr;
+    let paintNg = ng;
+    let paintNb = nb;
+    let paintMedianL = luma(nr, ng, nb);
+
     if (fillMode === "quad") {
       for (let y = top; y <= bottom; y++) {
         for (let x = left; x <= right; x++) {
@@ -1500,52 +1646,100 @@ export function coverTargetQuad(
         }
       }
     } else {
-      // Navy band component inside the search shell.
-      const navy = new Float32Array(mw * mh);
+      const candidates = new Float32Array(mw * mh);
+      const quadSeed = new Float32Array(mw * mh);
+      let sumR = 0;
+      let sumG = 0;
+      let sumB = 0;
+      let sumN = 0;
       for (let y = top; y <= bottom; y++) {
         for (let x = left; x <= right; x++) {
+          const li = (y - top) * mw + (x - left);
           const inSearch = invBilinear(x + 0.5, y + 0.5, stl, str, sbr, sbl);
           if (!inSearch) continue;
           const i = (y * base.width + x) * 4;
-          if (isNavyPixel(base.data[i]!, base.data[i + 1]!, base.data[i + 2]!)) {
-            navy[(y - top) * mw + (x - left)] = 1;
+          const r = base.data[i]!;
+          const g = base.data[i + 1]!;
+          const b = base.data[i + 2]!;
+          if (isChestBandCandidate(r, g, b)) {
+            candidates[li] = 1;
+            sumR += r;
+            sumG += g;
+            sumB += b;
+            sumN++;
+          }
+          if (invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) {
+            quadSeed[li] = 1;
           }
         }
       }
-      const navyDilate4 = dilateBinaryLocal(navy, mw, mh, navyDilatePx);
-      const navyEdge = dilateBinaryLocal(navy, mw, mh, navyEdgeDilatePx);
+      // Close candidate gaps (crease / thin pinstripe) *before* CC selection so
+      // the left shadowed run and right lit run form one band component.
+      let closedCandidates = candidates;
+      if (bandCloseRadiusPx > 0) {
+        closedCandidates = morphologicalCloseLocal(candidates, mw, mh, bandCloseRadiusPx);
+      }
+      let component = largestOverlappingComponent(closedCandidates, quadSeed, mw, mh);
+      // Top-normal unit vector (opposite of average TL→BL / TR→BR).
+      const downX = (quad[3].x - quad[0].x + (quad[2].x - quad[1].x)) / 2;
+      const downY = (quad[3].y - quad[0].y + (quad[2].y - quad[1].y)) / 2;
+      const dlen = Math.hypot(downX, downY) || 1;
+      const upX = -downX / dlen;
+      const upY = -downY / dlen;
+      if (topPinstripeAbsorbPx > 0) {
+        component = absorbTopPinstripeLocal(
+          component,
+          base,
+          left,
+          top,
+          mw,
+          mh,
+          upX,
+          upY,
+          topPinstripeAbsorbPx,
+        );
+      }
+      // Tie/zip wedge (dark low-chroma) is intentionally kept inside the closed
+      // component so the band runs continuous; overlayZipFromSource redraws the
+      // zip line after the solid paint pass.
+      const navyDilate4 = dilateBinaryLocal(component, mw, mh, navyDilatePx);
+      const navyEdge = dilateBinaryLocal(component, mw, mh, navyEdgeDilatePx);
       for (let y = top; y <= bottom; y++) {
         for (let x = left; x <= right; x++) {
           const li = (y - top) * mw + (x - left);
           const inQuad = invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl);
-          // navy ∪ (quad ∩ dilate(navy,4)) — never bare cream inside the quad.
           if (navyEdge[li]! >= 0.5 || (inQuad && navyDilate4[li]! >= 0.5)) {
             paint[li] = 1;
           }
         }
+      }
+      if (sumN > 0) {
+        paintNr = Math.round(sumR / sumN);
+        paintNg = Math.round(sumG / sumN);
+        paintNb = Math.round(sumB / sumN);
+        paintMedianL = luma(paintNr, paintNg, paintNb);
       }
     }
 
     const alpha =
       featherPx > 0 ? inwardFeatherAlpha(paint, mw, mh, featherPx) : paint;
 
-    const medianL = luma(nr, ng, nb);
-    const lumaLo = medianL - 4;
-    const lumaHi = medianL + 4;
+    const lumaLo = paintMedianL - 4;
+    const lumaHi = paintMedianL + 4;
     for (let y = top; y <= bottom; y++) {
       for (let x = left; x <= right; x++) {
         const a = alpha[(y - top) * mw + (x - left)]!;
         if (a <= 0.02) continue;
         const i = (y * base.width + x) * 4;
         if (a >= 0.98) {
-          out[i] = nr;
-          out[i + 1] = ng;
-          out[i + 2] = nb;
+          out[i] = paintNr;
+          out[i + 1] = paintNg;
+          out[i + 2] = paintNb;
         } else {
           const ia = 1 - a;
-          out[i] = Math.round(nr * a + out[i]! * ia);
-          out[i + 1] = Math.round(ng * a + out[i + 1]! * ia);
-          out[i + 2] = Math.round(nb * a + out[i + 2]! * ia);
+          out[i] = Math.round(paintNr * a + out[i]! * ia);
+          out[i + 1] = Math.round(paintNg * a + out[i + 1]! * ia);
+          out[i + 2] = Math.round(paintNb * a + out[i + 2]! * ia);
         }
         out[i + 3] = 255;
         // Single-pass luma clamp: no painted pixel darker/lighter than median ± 4.
@@ -1559,9 +1753,9 @@ export function coverTargetQuad(
               out[i + 1] = Math.max(0, Math.min(255, Math.round(out[i + 1]! * s)));
               out[i + 2] = Math.max(0, Math.min(255, Math.round(out[i + 2]! * s)));
             } else {
-              out[i] = nr;
-              out[i + 1] = ng;
-              out[i + 2] = nb;
+              out[i] = paintNr;
+              out[i + 1] = paintNg;
+              out[i + 2] = paintNb;
             }
           }
         }

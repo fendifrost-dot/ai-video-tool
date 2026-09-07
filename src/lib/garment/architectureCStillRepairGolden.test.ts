@@ -14,6 +14,8 @@ import {
   applyLowFrequencyBandIllumination,
   countCoverLeakOutsideBand,
   coverTargetQuad,
+  isChestBandCandidate,
+  isNavyPixel,
   logoSubQuadInBand,
   overlayZipFromSource,
   type QuadPts,
@@ -32,6 +34,10 @@ import {
   GROK_VIDEO_EDIT_PROMPT_V3,
   GROK_VIDEO_EDIT_PROMPT_VERSION,
 } from "@/lib/heroFrame/grokVideoEditPrompt";
+import {
+  ARCHITECTURE_C_BAND_CROP,
+  embedArchitectureCBandCropInFrame,
+} from "./fixtures/architectureCStillBandCrop";
 
 /** Canonical Stage-1 IDs / geometry (live evidence). */
 export const ARCHITECTURE_C_STAGE1_GOLDEN = {
@@ -91,6 +97,11 @@ function buildCanonicalSynthetic(): { source: RgbaImage; band: QuadPts } {
         source.data[i] = 210;
         source.data[i + 1] = 200;
         source.data[i + 2] = 180;
+      } else if (x < (xL + xR) * 0.5) {
+        // Shadowed band fabric — fails isNavyPixel (b<45); Stage 1g candidate.
+        source.data[i] = 30;
+        source.data[i + 1] = 32;
+        source.data[i + 2] = 42;
       } else {
         source.data[i] = 28;
         source.data[i + 1] = 32;
@@ -110,19 +121,18 @@ function buildCanonicalSynthetic(): { source: RgbaImage; band: QuadPts } {
         source.data[i + 1] = 200;
         source.data[i + 2] = 180;
       } else {
-        source.data[i] = 28;
+        source.data[i] = 30;
         source.data[i + 1] = 32;
-        source.data[i + 2] = 95;
+        source.data[i + 2] = 42; // shadowed — bandCandidate, not isNavyPixel
       }
     }
   }
-  // Near-black navy outlier column (stage-1d speckle seed at ~x=280 analogue).
   const speckX = Math.round(bandLeft + 64);
   for (let y = Math.floor(bandTop) + 2; y <= Math.ceil(bandBot) - 2; y++) {
     const i = (y * W + speckX) * 4;
-    source.data[i] = 8;
-    source.data[i + 1] = 10;
-    source.data[i + 2] = 48; // still passes isNavyPixel (b>r+8)
+    source.data[i] = 2;
+    source.data[i + 1] = 6;
+    source.data[i + 2] = 17;
   }
   // Cream zip at center of band
   const midX = Math.round((Math.min(...band.map((p) => p.x)) + Math.max(...band.map((p) => p.x))) / 2);
@@ -157,7 +167,7 @@ function buildCanonicalSynthetic(): { source: RgbaImage; band: QuadPts } {
   return { source, band };
 }
 
-const STAGE1F_COVER = {
+const STAGE1G_COVER = {
   fillMode: "quad_navy_union" as const,
   columnFollow: false,
   maxExpandFrac: 0.05,
@@ -165,6 +175,8 @@ const STAGE1F_COVER = {
   navyUnionMarginPx: 12,
   navyDilatePx: 4,
   navyEdgeDilatePx: 2,
+  bandCloseRadiusPx: 6,
+  topPinstripeAbsorbPx: 6,
   zipStripFrac: 0,
 };
 
@@ -193,7 +205,7 @@ describe("Architecture C stage-1 golden structural invariants", () => {
 
   it("quad_navy_union cover does not spill into sleeve column below a tilted band", () => {
     const { source, band } = buildCanonicalSynthetic();
-    const covered = coverTargetQuad(source, band, STAGE1F_COVER);
+    const covered = coverTargetQuad(source, band, STAGE1G_COVER);
     // Allow navy-union margin (~12) + feather (~3) beyond the quad.
     const leaks = countCoverLeakOutsideBand(source, covered, band, 20);
     expect(leaks).toBe(0);
@@ -206,7 +218,7 @@ describe("Architecture C stage-1 golden structural invariants", () => {
 
   it("quad_navy_union covers true navy past the manual quad left edge", () => {
     const { source, band } = buildCanonicalSynthetic();
-    const covered = coverTargetQuad(source, band, STAGE1F_COVER);
+    const covered = coverTargetQuad(source, band, STAGE1G_COVER);
     const y = Math.round((band[0].y + band[3].y) / 2);
     const left = Math.floor(Math.min(...band.map((p) => p.x)));
     // Find a cream pinstripe pixel in the ~10 px overhang and assert it was painted navy.
@@ -223,7 +235,7 @@ describe("Architecture C stage-1 golden structural invariants", () => {
 
   it("low-frequency illumination does not pass high-frequency stripe/text", () => {
     const { source, band } = buildCanonicalSynthetic();
-    const covered = coverTargetQuad(source, band, STAGE1F_COVER);
+    const covered = coverTargetQuad(source, band, STAGE1G_COVER);
     const shaded = applyLowFrequencyBandIllumination(source, covered, band);
     // Sample two neighbouring band pixels — variance must stay low after LF transfer
     const y = Math.round((band[0].y + band[3].y) / 2);
@@ -236,7 +248,7 @@ describe("Architecture C stage-1 golden structural invariants", () => {
 
   it("painted region has no near-black speckles darker than navy floor", () => {
     const { source, band } = buildCanonicalSynthetic();
-    const covered = coverTargetQuad(source, band, STAGE1F_COVER);
+    const covered = coverTargetQuad(source, band, STAGE1G_COVER);
     const shaded = applyLowFrequencyBandIllumination(source, covered, band);
     const y0 = Math.floor(Math.min(...band.map((p) => p.y)));
     const y1 = Math.ceil(Math.max(...band.map((p) => p.y)));
@@ -270,7 +282,7 @@ describe("Architecture C stage-1 golden structural invariants", () => {
 
   it("1f: cream inside the quad but away from navy stays unchanged", () => {
     const { source, band } = buildCanonicalSynthetic();
-    const covered = coverTargetQuad(source, band, STAGE1F_COVER);
+    const covered = coverTargetQuad(source, band, STAGE1G_COVER);
     const y = Math.round((band[0].y + band[3].y) / 2);
     const xR = Math.max(...band.map((p) => p.x));
     const creamX = Math.floor(xR - 8);
@@ -283,7 +295,7 @@ describe("Architecture C stage-1 golden structural invariants", () => {
 
   it("1f: cream below the band at forearm sample stays unchanged", () => {
     const { source, band } = buildCanonicalSynthetic();
-    const covered = coverTargetQuad(source, band, STAGE1F_COVER);
+    const covered = coverTargetQuad(source, band, STAGE1G_COVER);
     const midX = Math.round((Math.min(...band.map((p) => p.x)) + Math.max(...band.map((p) => p.x))) / 2);
     const y = Math.ceil(Math.max(...band.map((p) => p.y))) + 8;
     const x = midX + 50;
@@ -293,7 +305,7 @@ describe("Architecture C stage-1 golden structural invariants", () => {
 
   it("zip overlay restores tape without leaving an unpainted rectangular slit", () => {
     const { source, band } = buildCanonicalSynthetic();
-    const covered = coverTargetQuad(source, band, STAGE1F_COVER);
+    const covered = coverTargetQuad(source, band, STAGE1G_COVER);
     const withZip = overlayZipFromSource(source, covered, band, 0.015, 0.5);
     const midX = Math.round((Math.min(...band.map((p) => p.x)) + Math.max(...band.map((p) => p.x))) / 2);
     const y = Math.round((band[0].y + band[3].y) / 2);
@@ -313,7 +325,7 @@ describe("Architecture C stage-1 golden structural invariants", () => {
 
   it("foreground occlusion α prevents repair over protected hand pixels", () => {
     const { source, band } = buildCanonicalSynthetic();
-    const covered = coverTargetQuad(source, band, STAGE1F_COVER);
+    const covered = coverTargetQuad(source, band, STAGE1G_COVER);
     const W = source.width;
     const H = source.height;
     const outfit = new Float32Array(W * H);
@@ -356,5 +368,198 @@ describe("Architecture C stage-1 golden structural invariants", () => {
     expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain("mastic cuffs");
     expect(GROK_VIDEO_EDIT_PROMPT_V3).toContain("navy sleeve panels stopping above the cuff");
     expect(GROK_VIDEO_EDIT_PROMPT).not.toContain("self-coloured mastic welt pockets");
+  });
+
+  it("1g bandCandidate admits shadowed navy + crease; rejects cream", () => {
+    expect(isNavyPixel(30, 32, 42)).toBe(false); // b<45
+    expect(isChestBandCandidate(30, 32, 42)).toBe(true);
+    expect(isNavyPixel(2, 6, 17)).toBe(false);
+    expect(isChestBandCandidate(2, 6, 17)).toBe(true);
+    expect(isChestBandCandidate(200, 185, 165)).toBe(false); // cream
+    expect(isChestBandCandidate(185, 125, 95)).toBe(false); // skin-ish chroma
+    expect(isChestBandCandidate(28, 32, 95)).toBe(true); // lit navy
+  });
+});
+
+describe("Architecture C Stage 1g — real-pixel canonical band crop", () => {
+  const STAGE1G = {
+    fillMode: "quad_navy_union" as const,
+    columnFollow: false,
+    maxExpandFrac: 0.05,
+    featherPx: 3,
+    navyUnionMarginPx: 12,
+    navyDilatePx: 4,
+    navyEdgeDilatePx: 2,
+    bandCloseRadiusPx: 6,
+    topPinstripeAbsorbPx: 6,
+    zipStripFrac: 0,
+  };
+
+  function bandFromNorm(
+    w: number,
+    h: number,
+    norm: [[number, number], [number, number], [number, number], [number, number]],
+  ): QuadPts {
+    return norm.map(([nx, ny]) => ({ x: nx * w, y: ny * h })) as QuadPts;
+  }
+
+  it("records the canonical crop identity", () => {
+    expect(ARCHITECTURE_C_BAND_CROP.cleanStillAssetId).toBe(
+      "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+    );
+  });
+
+  it("left third of the band is included in the paint component", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1G);
+    const y = 700;
+    let painted = 0;
+    let total = 0;
+    for (let x = 216; x < 286; x++) {
+      const i = (y * source.width + x) * 4;
+      total++;
+      const changed =
+        covered.data[i] !== source.data[i] ||
+        covered.data[i + 1] !== source.data[i + 1] ||
+        covered.data[i + 2] !== source.data[i + 2];
+      if (changed) painted++;
+    }
+    expect(painted / total).toBeGreaterThan(0.85);
+  });
+
+  it("upper-left pinstripe is fully covered (max luma near band median)", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1G);
+    let maxL = 0;
+    let brightSrc = 0;
+    // Only the residual pinstripe on the band top (not cream body above the band).
+    for (let y = 678; y <= 680; y++) {
+      for (let x = 216; x <= 330; x++) {
+        const i = (y * source.width + x) * 4;
+        const srcL =
+          0.2126 * source.data[i]! +
+          0.7152 * source.data[i + 1]! +
+          0.0722 * source.data[i + 2]!;
+        if (srcL <= 140) continue;
+        brightSrc++;
+        const L =
+          0.2126 * covered.data[i]! +
+          0.7152 * covered.data[i + 1]! +
+          0.0722 * covered.data[i + 2]!;
+        if (L > maxL) maxL = L;
+      }
+    }
+    expect(brightSrc).toBeGreaterThan(10);
+    expect(maxL).toBeLessThan(80);
+  });
+
+  it("dark crease cannot remain below bandMedian - 6", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1G);
+    // Sample painted interior for median proxy
+    const refI = (700 * source.width + 450) * 4;
+    const median =
+      0.2126 * covered.data[refI]! +
+      0.7152 * covered.data[refI + 1]! +
+      0.0722 * covered.data[refI + 2]!;
+    const floor = median - 6;
+    for (let y = 690; y <= 740; y++) {
+      for (let x = 279; x <= 283; x++) {
+        const i = (y * source.width + x) * 4;
+        const L =
+          0.2126 * covered.data[i]! +
+          0.7152 * covered.data[i + 1]! +
+          0.0722 * covered.data[i + 2]!;
+        expect(L).toBeGreaterThanOrEqual(floor);
+      }
+    }
+  });
+
+  it("cream sleeve/forearm boundary remains unchanged", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1G);
+    // Deep forearm — below expand/dilate/feather reach from the band bottom (~749).
+    for (let y = 770; y <= 780; y++) {
+      for (let x = 330; x <= 380; x++) {
+        const i = (y * source.width + x) * 4;
+        expect(covered.data[i]).toBe(source.data[i]);
+        expect(covered.data[i + 1]).toBe(source.data[i + 1]);
+        expect(covered.data[i + 2]).toBe(source.data[i + 2]);
+      }
+    }
+  });
+
+  it("no cream-in-quad overpaint at the far-right open cream pocket", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1G);
+    // Open cream pocket (x≥601) — not an enclosed hole close() would fill.
+    const i = (710 * source.width + 615) * 4;
+    expect(source.data[i]!).toBeGreaterThan(150);
+    expect(covered.data[i]).toBe(source.data[i]);
+    expect(covered.data[i + 1]).toBe(source.data[i + 1]);
+    expect(covered.data[i + 2]).toBe(source.data[i + 2]);
+  });
+
+  it("no drips below the band into body/sleeve columns", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1G);
+    expect(countCoverLeakOutsideBand(source, covered, band, 20)).toBe(0);
+  });
+
+  it("zip overlay restores the centre zip line after solid band paint", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1G);
+    // Seed a cream zip tape on the source so overlay has signal to restore.
+    const midX = Math.round((band[0].x + band[1].x) / 2);
+    const y0 = Math.floor(Math.min(...band.map((p) => p.y)));
+    const y1 = Math.ceil(Math.max(...band.map((p) => p.y)));
+    for (let y = y0; y <= y1; y++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const i = (y * source.width + (midX + dx)) * 4;
+        source.data[i] = 195;
+        source.data[i + 1] = 185;
+        source.data[i + 2] = 165;
+      }
+    }
+    const withZip = overlayZipFromSource(source, covered, band, 0.015, 0.5);
+    const zipI = (Math.round((y0 + y1) / 2) * source.width + midX) * 4;
+    const sideI = (Math.round((y0 + y1) / 2) * source.width + (midX - 40)) * 4;
+    expect(withZip.data[zipI]!).toBeGreaterThan(150);
+    expect(withZip.data[sideI]!).toBeLessThan(80);
   });
 });

@@ -1,23 +1,14 @@
 /**
- * Post-VTON logo composite for Deno edge (ImageScript decode/encode).
+ * Pure RGBA helpers for post-VTON logo composite (testable in Vitest).
+ * Edge function mirrors this logic in supabase/functions/_shared/logoComposite.ts.
  */
 
-import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
-import {
-  resolveLogoPlacementFromMetadata,
-  resolveProductTruthFromMetadata,
-} from "./productDetails.ts";
+import type { LogoPlacementHint } from "./logoPlacement";
 
-export type LogoPlacementHint = "upper_left_chest" | "center_chest";
-
-export type LogoPlacement = {
-  logo_asset_id?: string | null;
-  front_asset_id?: string | null;
-  source_bbox_norm: [number, number, number, number];
-  target_region?: "chest_band";
-  placement_hint?: LogoPlacementHint;
-  target_bbox_norm?: [number, number, number, number] | null;
-  min_target_height_px?: number | null;
+export type RgbaImage = {
+  width: number;
+  height: number;
+  data: Uint8Array;
 };
 
 export type PixelRect = {
@@ -25,12 +16,6 @@ export type PixelRect = {
   top: number;
   right: number;
   bottom: number;
-};
-
-export type RgbaImage = {
-  width: number;
-  height: number;
-  data: Uint8Array;
 };
 
 const LOGO_WIDTH_FRAC = 0.55;
@@ -68,47 +53,29 @@ function clamp01(v: number): number {
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }
 
-export function parseLogoPlacement(raw: unknown): LogoPlacement | null {
-  if (!raw || typeof raw !== "object") return null;
-  const o = raw as Record<string, unknown>;
-  const bbox = o.source_bbox_norm;
-  if (!Array.isArray(bbox) || bbox.length !== 4) return null;
-  const nums = bbox.map((n) => Number(n));
-  if (nums.some((n) => !Number.isFinite(n) || n < 0 || n > 1)) return null;
-  const [x, y, w, h] = nums;
-  if (w <= 0 || h <= 0) return null;
-  const hint = o.placement_hint;
-  const placement_hint =
-    hint === "center_chest" || hint === "upper_left_chest" ? hint : "upper_left_chest";
-  let target_bbox_norm: LogoPlacement["target_bbox_norm"] = null;
-  if (Array.isArray(o.target_bbox_norm) && o.target_bbox_norm.length === 4) {
-    const t = o.target_bbox_norm.map((n) => Number(n));
-    if (t.every((n) => Number.isFinite(n) && n >= 0 && n <= 1)) {
-      target_bbox_norm = t as [number, number, number, number];
-    }
-  }
-  let min_target_height_px: LogoPlacement["min_target_height_px"] = null;
-  if (o.min_target_height_px != null) {
-    const n = Number(o.min_target_height_px);
-    if (Number.isFinite(n) && n >= 16 && n <= 256) {
-      min_target_height_px = Math.round(n);
-    }
-  }
-  return {
-    logo_asset_id: typeof o.logo_asset_id === "string" ? o.logo_asset_id : null,
-    front_asset_id: typeof o.front_asset_id === "string" ? o.front_asset_id : null,
-    source_bbox_norm: [x, y, w, h],
-    target_region: "chest_band",
-    placement_hint,
-    target_bbox_norm,
-    min_target_height_px,
-  };
-}
-
+/** Navy-ish pixel heuristic for chest stripe detection on VTON output. */
 export function isNavyPixel(r: number, g: number, b: number): boolean {
   if (r > 95 || g > 95) return false;
   if (b < 45) return false;
   return b > r + 8 && b > g + 5;
+}
+
+/** max(r,g,b) − min(r,g,b) — low on shadowed navy / crease, high on skin/cream. */
+export function rgbChroma(r: number, g: number, b: number): number {
+  return Math.max(r, g, b) - Math.min(r, g, b);
+}
+
+/**
+ * Chest-band paint candidate (Architecture C Stage 1g). Admits lit navy via
+ * {@link isNavyPixel} plus shadowed navy / dark crease fabric that fails the
+ * lit-navy gate (`b < 45`). Chest / logo_chest path only — do not use as a
+ * global replacement for {@link isNavyPixel}.
+ *
+ *   bandCandidate = isNavyPixel || (luma < 60 && chroma < 32)
+ */
+export function isChestBandCandidate(r: number, g: number, b: number): boolean {
+  if (isNavyPixel(r, g, b)) return true;
+  return luma(r, g, b) < 60 && rgbChroma(r, g, b) < 32;
 }
 
 type NavyRun = { start: number; end: number };
@@ -209,6 +176,8 @@ function evaluateRun(
   }
   const coverage = n > 0 ? sum / n : 0;
   const widthScore = clamp01(widthPx / (img.width * STRIPE_WIDTH_REF_FRAC));
+  // Both must be high: a wide-but-sparse smear or a solid-but-narrow collar
+  // patch should both score low. min() enforces the AND.
   const confidence = Math.min(widthScore, clamp01(coverage));
   return { top, bottom, left, right, widthPx, coverage, confidence };
 }
@@ -343,11 +312,53 @@ export function targetRectForLogo(
   };
 }
 
-function resizeRgbaBilinear(src: RgbaImage, dstW: number, dstH: number): RgbaImage {
-  const img = new Image(src.width, src.height);
-  img.bitmap.set(src.data);
-  const resized = img.resize(dstW, dstH);
-  return { width: dstW, height: dstH, data: new Uint8Array(resized.bitmap) };
+function sampleBilinear(
+  src: RgbaImage,
+  sx: number,
+  sy: number,
+): [number, number, number, number] {
+  const x0 = Math.max(0, Math.floor(sx));
+  const y0 = Math.max(0, Math.floor(sy));
+  const x1 = Math.min(src.width - 1, x0 + 1);
+  const y1 = Math.min(src.height - 1, y0 + 1);
+  const fx = sx - x0;
+  const fy = sy - y0;
+  const i00 = (y0 * src.width + x0) * 4;
+  const i10 = (y0 * src.width + x1) * 4;
+  const i01 = (y1 * src.width + x0) * 4;
+  const i11 = (y1 * src.width + x1) * 4;
+  const out: [number, number, number, number] = [0, 0, 0, 0];
+  for (let c = 0; c < 4; c++) {
+    const v00 = src.data[i00 + c];
+    const v10 = src.data[i10 + c];
+    const v01 = src.data[i01 + c];
+    const v11 = src.data[i11 + c];
+    out[c] = Math.round(
+      v00 * (1 - fx) * (1 - fy) +
+        v10 * fx * (1 - fy) +
+        v01 * (1 - fx) * fy +
+        v11 * fx * fy,
+    );
+  }
+  return out;
+}
+
+/** Bilinear resize RGBA (anti-aliased downscale for serif text). */
+export function resizeRgba(src: RgbaImage, dstW: number, dstH: number): RgbaImage {
+  const out = new Uint8Array(dstW * dstH * 4);
+  for (let y = 0; y < dstH; y++) {
+    const sy = ((y + 0.5) / dstH) * src.height - 0.5;
+    for (let x = 0; x < dstW; x++) {
+      const sx = ((x + 0.5) / dstW) * src.width - 0.5;
+      const [r, g, b, a] = sampleBilinear(src, sx, sy);
+      const di = (y * dstW + x) * 4;
+      out[di] = r;
+      out[di + 1] = g;
+      out[di + 2] = b;
+      out[di + 3] = a;
+    }
+  }
+  return { width: dstW, height: dstH, data: out };
 }
 
 // --- High-quality downsampling for the logo. The master (~2608px) is shrunk ~10×
@@ -399,78 +410,15 @@ function prefilterToTarget(src: RgbaImage, targetW: number, targetH: number): Rg
   return cur;
 }
 
-/** Decode PNG/JPEG bytes to RGBA via ImageScript. */
-export async function decodeToRgba(bytes: Uint8Array): Promise<RgbaImage> {
-  const img = await Image.decode(bytes);
-  return { width: img.width, height: img.height, data: new Uint8Array(img.bitmap) };
-}
-
-/** Encode RGBA to PNG bytes via ImageScript. */
-export async function encodePng(img: RgbaImage): Promise<Uint8Array> {
-  const out = new Image(img.width, img.height);
-  out.bitmap.set(img.data);
-  return await out.encode();
-}
-
-function sampleBilinearPt(
-  src: RgbaImage,
-  sx: number,
-  sy: number,
-): [number, number, number, number] {
-  const x0 = Math.max(0, Math.floor(sx));
-  const y0 = Math.max(0, Math.floor(sy));
-  const x1 = Math.min(src.width - 1, x0 + 1);
-  const y1 = Math.min(src.height - 1, y0 + 1);
-  const fx = sx - x0;
-  const fy = sy - y0;
-  const i00 = (y0 * src.width + x0) * 4;
-  const i10 = (y0 * src.width + x1) * 4;
-  const i01 = (y1 * src.width + x0) * 4;
-  const i11 = (y1 * src.width + x1) * 4;
-  const out: [number, number, number, number] = [0, 0, 0, 0];
-  for (let c = 0; c < 4; c++) {
-    const v00 = src.data[i00 + c];
-    const v10 = src.data[i10 + c];
-    const v01 = src.data[i01 + c];
-    const v11 = src.data[i11 + c];
-    out[c] = Math.round(
-      v00 * (1 - fx) * (1 - fy) +
-        v10 * fx * (1 - fy) +
-        v01 * (1 - fx) * fy +
-        v11 * fx * fy,
-    );
-  }
-  return out;
-}
-
-const sampleBilinear = sampleBilinearPt;
-
-/** Bilinear resize (used only after prefilter → ≤ 2× ratio, so no aliasing). */
-function resizeBilinearPure(src: RgbaImage, dstW: number, dstH: number): RgbaImage {
-  const out = new Uint8Array(dstW * dstH * 4);
-  for (let y = 0; y < dstH; y++) {
-    const sy = ((y + 0.5) / dstH) * src.height - 0.5;
-    for (let x = 0; x < dstW; x++) {
-      const sx = ((x + 0.5) / dstW) * src.width - 0.5;
-      const [r, g, b, a] = sampleBilinearPt(src, sx, sy);
-      const o = (y * dstW + x) * 4;
-      out[o] = r;
-      out[o + 1] = g;
-      out[o + 2] = b;
-      out[o + 3] = a;
-    }
-  }
-  return { width: dstW, height: dstH, data: out };
-}
-
 /** Area-averaging downsample/resize: prefilter (box mipmap) then bilinear. */
-function resizeAreaAverage(src: RgbaImage, dstW: number, dstH: number): RgbaImage {
-  if (dstW <= 0 || dstH <= 0) return { width: Math.max(1, dstW), height: Math.max(1, dstH), data: new Uint8Array(Math.max(1, dstW) * Math.max(1, dstH) * 4) };
-  const pre = prefilterToTarget(src, dstW, dstH);
-  return resizeBilinearPure(pre, dstW, dstH);
+export function resizeAreaAverage(src: RgbaImage, dstW: number, dstH: number): RgbaImage {
+  const w = Math.max(1, dstW);
+  const h = Math.max(1, dstH);
+  if (dstW <= 0 || dstH <= 0) return { width: w, height: h, data: new Uint8Array(w * h * 4) };
+  return resizeRgba(prefilterToTarget(src, w, h), w, h);
 }
 
-function cropRgba(
+export function cropRgba(
   img: RgbaImage,
   left: number,
   top: number,
@@ -493,6 +441,9 @@ function cropRgba(
   return { width, height, data: out };
 }
 
+/** Dark bluish pixel that isn't a strict navy but borders the keyed stripe — the
+ * anti-aliased fringe between cream letters and navy ground. Feathering these
+ * avoids a hard navy rectangle/seam when the crop is pasted over the stripe. */
 function isSemiNavyEdge(r: number, g: number, b: number): boolean {
   if (b <= r + 2 || b <= g) return false;
   return (r + g + b) / 3 < 130;
@@ -539,21 +490,21 @@ export function keyNavyBackground(logo: RgbaImage): RgbaImage {
 // --- Glyph-only keying: keep only the bright cream/gold wordmark, drop BOTH the
 //     navy stripe AND the tan fabric background, so a loose source bbox never
 //     paints a background sliver. All thresholds are named ratios, not per-image.
-const GLYPH_BRIGHT_DROP = 188;
-const GLYPH_BRIGHT_KEEP = 200; // full-alpha cream core (recovers core density)
+const GLYPH_BRIGHT_DROP = 188; // luma at/below → background (tan/navy)
+const GLYPH_BRIGHT_KEEP = 200; // luma at/above → full-alpha cream core (recovers core density)
 const GLYPH_WARM_HUE_MIN = 18;
 const GLYPH_WARM_HUE_MAX = 70;
-const GLYPH_GOLD_SAT_DROP = 0.4;
-const GLYPH_GOLD_SAT_KEEP = 0.55;
+const GLYPH_GOLD_SAT_DROP = 0.4; // warm + below this saturation → tan background
+const GLYPH_GOLD_SAT_KEEP = 0.55; // warm + at/above → gold glyph
 const GLYPH_GOLD_VAL_MIN = 0.5;
 // Glyph-mask DILATION rebuilds the anti-aliased stroke edges the key strips,
 // restoring the original (bold) stroke weight. We grow the confirmed-GLYPH mask
 // outward (not lower the luma threshold), so tan fabric — which has no glyph
 // neighbour — is never re-admitted; counters (navy, ≥ radius from a glyph) stay
 // open. This is the 76fb46f strength (glyph-body ≥ 275).
-const GLYPH_CONFIRM = 0.5;
-const GLYPH_DILATE_RADIUS = 1;
-const GLYPH_DILATE_FEATHER = 0.7;
+const GLYPH_CONFIRM = 0.5; // factor ≥ this → confirmed glyph (dilation source)
+const GLYPH_DILATE_RADIUS = 1; // px to grow the glyph mask
+const GLYPH_DILATE_FEATHER = 0.7; // alpha rebuilt on a dilated edge ring
 
 function lumaOf(r: number, g: number, b: number): number {
   return 0.299 * r + 0.587 * g + 0.114 * b;
@@ -730,12 +681,14 @@ export function coverTargetOnBand(
     if (y < 0 || y >= base.height) continue;
     const runs = rowNavyRuns(base, y, xLo, xHi);
     if (runs.length === 0) continue;
+    // Merge runs separated only by letter-sized gaps into super-segments.
     const segs: NavyRun[] = [];
     for (const run of runs) {
       const last = segs[segs.length - 1];
       if (last && run.start - last.end - 1 <= gap) last.end = run.end;
       else segs.push({ ...run });
     }
+    // Fill the segment whose span is nearest the anchor (the stripe, not a cuff).
     let best = segs[0];
     let bestDist = Infinity;
     for (const s of segs) {
@@ -762,6 +715,7 @@ export function coverTargetOnBand(
   return { width: base.width, height: base.height, data: out };
 }
 
+/** Alpha-blend logo onto base at target rect (clipped). */
 export function alphaComposite(
   base: RgbaImage,
   logo: RgbaImage,
@@ -794,8 +748,8 @@ export function alphaComposite(
 
 // ---------------------------------------------------------------------------
 // Perspective (quad) warp — map a logo onto an arbitrary 4-corner target quad
-// (TL, TR, BR, BL). Inverse-map each destination pixel to logo UV and sample
-// bilinearly (ImageScript has no perspective transform).
+// (TL, TR, BR, BL). ImageScript has no perspective transform, so we inverse-map
+// each destination pixel inside the quad to logo UV and sample bilinearly.
 // ---------------------------------------------------------------------------
 
 export type Point = { x: number; y: number };
@@ -833,14 +787,15 @@ export type CoverTargetQuadOptions = {
   columnFollow?: boolean;
   /**
    * `quad` — paint only inside a band-normal-expanded quad.
-   * `quad_navy_union` — Architecture C Stage 1f: `navy ∪ (quad ∩ dilate(navy,4px))`
-   *   with inward feather (never bare-cream quad paint; no column-follow).
+   * `quad_navy_union` — Architecture C Stage 1g: band component from
+   *   {@link isChestBandCandidate} (largest CC overlapping the quad, closed),
+   *   then `component ∪ (quad ∩ dilate(component,4px))` with inward feather.
    * `navy_snap` — legacy VTON row/column navy union (default).
    */
   fillMode?: "quad" | "quad_navy_union" | "navy_snap";
   /**
    * Soft alpha ramp at the paint-region perimeter (px). Default 0.
-   * Architecture C Stage 1f uses 2–3 as an *inward* feather (erode then blur).
+   * Architecture C uses 2–3 as an *inward* feather (erode then blur).
    */
   featherPx?: number;
   /**
@@ -848,10 +803,21 @@ export type CoverTargetQuadOptions = {
    * band component. Default ~10 when fillMode is quad_navy_union.
    */
   navyUnionMarginPx?: number;
-  /** Dilate navy before intersecting with quad (Stage 1f). Default 4. */
+  /** Dilate band component before intersecting with quad. Default 4. */
   navyDilatePx?: number;
-  /** Extra navy dilate so the true band edge sits in the solid region. Default 2. */
+  /**
+   * Extra isotropic dilate of the band component (legacy 1f edge pad).
+   * Stage 1g prefers {@link topPinstripeAbsorbPx} for the bright top edge.
+   * Default 2.
+   */
   navyEdgeDilatePx?: number;
+  /** Morphological close radius on the band component (Stage 1g). Default 6. */
+  bandCloseRadiusPx?: number;
+  /**
+   * Absorb bright pinstripe along the band top-normal only (Stage 1g). Default 6.
+   * Gated: luma > 140 and within this many px of the component along −normal.
+   */
+  topPinstripeAbsorbPx?: number;
 };
 
 /** Forward-bilinear: (u,v) in [0..1]² → point inside quad. */
@@ -1189,6 +1155,110 @@ function inwardFeatherAlpha(
   return out;
 }
 
+/** Morphological closing = dilate then erode (fills holes / creases ≤ 2·radius). */
+function morphologicalCloseLocal(
+  src: Float32Array,
+  w: number,
+  h: number,
+  radius: number,
+): Float32Array {
+  return erodeBinaryLocal(dilateBinaryLocal(src, w, h, radius), w, h, radius);
+}
+
+/**
+ * Largest 4-connected component of a binary mask that overlaps `seed`
+ * (pixels with seed ≥ 0.5). Returns an empty mask when none overlap.
+ */
+export function largestOverlappingComponent(
+  mask: Float32Array,
+  seed: Float32Array,
+  w: number,
+  h: number,
+): Float32Array {
+  const n = w * h;
+  const seen = new Uint8Array(n);
+  const out = new Float32Array(n);
+  let bestSize = 0;
+  let bestLabel: number[] = [];
+  const stack: number[] = [];
+
+  for (let i = 0; i < n; i++) {
+    if (mask[i]! < 0.5 || seen[i]) continue;
+    stack.length = 0;
+    stack.push(i);
+    seen[i] = 1;
+    const members: number[] = [];
+    let overlaps = false;
+    while (stack.length) {
+      const cur = stack.pop()!;
+      members.push(cur);
+      if (seed[cur]! >= 0.5) overlaps = true;
+      const x = cur % w;
+      const y = (cur / w) | 0;
+      const neigh = [
+        x > 0 ? cur - 1 : -1,
+        x + 1 < w ? cur + 1 : -1,
+        y > 0 ? cur - w : -1,
+        y + 1 < h ? cur + w : -1,
+      ];
+      for (const ni of neigh) {
+        if (ni < 0 || seen[ni] || mask[ni]! < 0.5) continue;
+        seen[ni] = 1;
+        stack.push(ni);
+      }
+    }
+    if (overlaps && members.length > bestSize) {
+      bestSize = members.length;
+      bestLabel = members;
+    }
+  }
+  for (const i of bestLabel) out[i] = 1;
+  return out;
+}
+
+/**
+ * Absorb bright pinstripe pixels along the band's top-normal only (Stage 1g).
+ * A candidate is absorbed only when it is within `maxPx` of the component along
+ * −bandNormal and has luma > 140 (thin bright line — never cream body laterally).
+ */
+function absorbTopPinstripeLocal(
+  component: Float32Array,
+  base: RgbaImage,
+  left: number,
+  top: number,
+  mw: number,
+  mh: number,
+  bandNormalUpX: number,
+  bandNormalUpY: number,
+  maxPx: number,
+): Float32Array {
+  if (maxPx <= 0) return component;
+  const out = new Float32Array(component);
+  const ux = bandNormalUpX;
+  const uy = bandNormalUpY;
+  for (let ly = 0; ly < mh; ly++) {
+    for (let lx = 0; lx < mw; lx++) {
+      const li = ly * mw + lx;
+      if (component[li]! < 0.5) continue;
+      for (let k = 1; k <= maxPx; k++) {
+        const sx = Math.round(left + lx + ux * k);
+        const sy = Math.round(top + ly + uy * k);
+        if (sx < 0 || sy < 0 || sx >= base.width || sy >= base.height) break;
+        const olx = sx - left;
+        const oly = sy - top;
+        if (olx < 0 || oly < 0 || olx >= mw || oly >= mh) break;
+        const oi = oly * mw + olx;
+        if (out[oi]! >= 0.5) continue;
+        const pi = (sy * base.width + sx) * 4;
+        const L = luma(base.data[pi]!, base.data[pi + 1]!, base.data[pi + 2]!);
+        if (L <= 140) break; // stop climbing once we leave the bright line
+        out[oi] = 1;
+      }
+    }
+  }
+  return out;
+}
+
 /**
  * Paint the band fully, then restore a thin feathered zip strip from source
  * (no raw unpainted column — stage-1c slit regression).
@@ -1518,8 +1588,11 @@ export function coverTargetQuad(
     bottom: Math.min(base.height, Math.ceil(Math.max(...quad.map((p) => p.y)))),
   });
 
-  // Architecture C Stage 1f (`quad_navy_union`):
-  //   paint = dilate(navy, edgeDilate) ∪ (expandedQuad ∩ dilate(navy, 4px))
+  // Architecture C Stage 1g (`quad_navy_union`):
+  //   bandCandidate → close(6) → largest CC overlapping quad → top pinstripe absorb
+  //   (close runs *before* CC so thin pinstripe / shadow gaps cannot split the
+  //   real chest band into two components — Stage 1f→1g live failure mode.)
+  //   paint = component ∪ (expandedQuad ∩ dilate(component, 4px))
   //   inward feather; single paint pass; luma clamp to band median ± 4.
   // `quad` keeps the hard expanded-quad fill for legacy / drip tests.
   if (fillMode === "quad" || fillMode === "quad_navy_union") {
@@ -1542,6 +1615,8 @@ export function coverTargetQuad(
     const featherPx = Math.max(0, Math.round(options.featherPx ?? 0));
     const navyDilatePx = Math.max(0, Math.round(options.navyDilatePx ?? 4));
     const navyEdgeDilatePx = Math.max(0, Math.round(options.navyEdgeDilatePx ?? 2));
+    const bandCloseRadiusPx = Math.max(0, Math.round(options.bandCloseRadiusPx ?? 6));
+    const topPinstripeAbsorbPx = Math.max(0, Math.round(options.topPinstripeAbsorbPx ?? 6));
 
     const [tl, tr, br, bl] = expanded;
     const [stl, str, sbr, sbl] = search;
@@ -1556,6 +1631,13 @@ export function coverTargetQuad(
     const mh = bottom - top + 1;
     const paint = new Float32Array(mw * mh);
 
+    // Paint colour: prefer mean of band-candidate pixels in the search shell
+    // (lit navy + shadowed crease), falling back to the legacy navy average.
+    let paintNr = nr;
+    let paintNg = ng;
+    let paintNb = nb;
+    let paintMedianL = luma(nr, ng, nb);
+
     if (fillMode === "quad") {
       for (let y = top; y <= bottom; y++) {
         for (let x = left; x <= right; x++) {
@@ -1564,52 +1646,100 @@ export function coverTargetQuad(
         }
       }
     } else {
-      // Navy band component inside the search shell.
-      const navy = new Float32Array(mw * mh);
+      const candidates = new Float32Array(mw * mh);
+      const quadSeed = new Float32Array(mw * mh);
+      let sumR = 0;
+      let sumG = 0;
+      let sumB = 0;
+      let sumN = 0;
       for (let y = top; y <= bottom; y++) {
         for (let x = left; x <= right; x++) {
+          const li = (y - top) * mw + (x - left);
           const inSearch = invBilinear(x + 0.5, y + 0.5, stl, str, sbr, sbl);
           if (!inSearch) continue;
           const i = (y * base.width + x) * 4;
-          if (isNavyPixel(base.data[i]!, base.data[i + 1]!, base.data[i + 2]!)) {
-            navy[(y - top) * mw + (x - left)] = 1;
+          const r = base.data[i]!;
+          const g = base.data[i + 1]!;
+          const b = base.data[i + 2]!;
+          if (isChestBandCandidate(r, g, b)) {
+            candidates[li] = 1;
+            sumR += r;
+            sumG += g;
+            sumB += b;
+            sumN++;
+          }
+          if (invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) {
+            quadSeed[li] = 1;
           }
         }
       }
-      const navyDilate4 = dilateBinaryLocal(navy, mw, mh, navyDilatePx);
-      const navyEdge = dilateBinaryLocal(navy, mw, mh, navyEdgeDilatePx);
+      // Close candidate gaps (crease / thin pinstripe) *before* CC selection so
+      // the left shadowed run and right lit run form one band component.
+      let closedCandidates = candidates;
+      if (bandCloseRadiusPx > 0) {
+        closedCandidates = morphologicalCloseLocal(candidates, mw, mh, bandCloseRadiusPx);
+      }
+      let component = largestOverlappingComponent(closedCandidates, quadSeed, mw, mh);
+      // Top-normal unit vector (opposite of average TL→BL / TR→BR).
+      const downX = (quad[3].x - quad[0].x + (quad[2].x - quad[1].x)) / 2;
+      const downY = (quad[3].y - quad[0].y + (quad[2].y - quad[1].y)) / 2;
+      const dlen = Math.hypot(downX, downY) || 1;
+      const upX = -downX / dlen;
+      const upY = -downY / dlen;
+      if (topPinstripeAbsorbPx > 0) {
+        component = absorbTopPinstripeLocal(
+          component,
+          base,
+          left,
+          top,
+          mw,
+          mh,
+          upX,
+          upY,
+          topPinstripeAbsorbPx,
+        );
+      }
+      // Tie/zip wedge (dark low-chroma) is intentionally kept inside the closed
+      // component so the band runs continuous; overlayZipFromSource redraws the
+      // zip line after the solid paint pass.
+      const navyDilate4 = dilateBinaryLocal(component, mw, mh, navyDilatePx);
+      const navyEdge = dilateBinaryLocal(component, mw, mh, navyEdgeDilatePx);
       for (let y = top; y <= bottom; y++) {
         for (let x = left; x <= right; x++) {
           const li = (y - top) * mw + (x - left);
           const inQuad = invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl);
-          // navy ∪ (quad ∩ dilate(navy,4)) — never bare cream inside the quad.
           if (navyEdge[li]! >= 0.5 || (inQuad && navyDilate4[li]! >= 0.5)) {
             paint[li] = 1;
           }
         }
+      }
+      if (sumN > 0) {
+        paintNr = Math.round(sumR / sumN);
+        paintNg = Math.round(sumG / sumN);
+        paintNb = Math.round(sumB / sumN);
+        paintMedianL = luma(paintNr, paintNg, paintNb);
       }
     }
 
     const alpha =
       featherPx > 0 ? inwardFeatherAlpha(paint, mw, mh, featherPx) : paint;
 
-    const medianL = luma(nr, ng, nb);
-    const lumaLo = medianL - 4;
-    const lumaHi = medianL + 4;
+    const lumaLo = paintMedianL - 4;
+    const lumaHi = paintMedianL + 4;
     for (let y = top; y <= bottom; y++) {
       for (let x = left; x <= right; x++) {
         const a = alpha[(y - top) * mw + (x - left)]!;
         if (a <= 0.02) continue;
         const i = (y * base.width + x) * 4;
         if (a >= 0.98) {
-          out[i] = nr;
-          out[i + 1] = ng;
-          out[i + 2] = nb;
+          out[i] = paintNr;
+          out[i + 1] = paintNg;
+          out[i + 2] = paintNb;
         } else {
           const ia = 1 - a;
-          out[i] = Math.round(nr * a + out[i]! * ia);
-          out[i + 1] = Math.round(ng * a + out[i + 1]! * ia);
-          out[i + 2] = Math.round(nb * a + out[i + 2]! * ia);
+          out[i] = Math.round(paintNr * a + out[i]! * ia);
+          out[i + 1] = Math.round(paintNg * a + out[i + 1]! * ia);
+          out[i + 2] = Math.round(paintNb * a + out[i + 2]! * ia);
         }
         out[i + 3] = 255;
         // Single-pass luma clamp: no painted pixel darker/lighter than median ± 4.
@@ -1623,9 +1753,9 @@ export function coverTargetQuad(
               out[i + 1] = Math.max(0, Math.min(255, Math.round(out[i + 1]! * s)));
               out[i + 2] = Math.max(0, Math.min(255, Math.round(out[i + 2]! * s)));
             } else {
-              out[i] = nr;
-              out[i + 1] = ng;
-              out[i + 2] = nb;
+              out[i] = paintNr;
+              out[i + 1] = paintNg;
+              out[i + 2] = paintNb;
             }
           }
         }
@@ -1776,8 +1906,11 @@ export type LogoQuality = {
   scale_ratio: number;
   native_height_px: number;
   target_height_px: number;
+  /** 0–1 confidence the navy stripe was found (null when not evaluated). */
   stripe_confidence: number | null;
+  /** True when detection was not confident and we used the SKU placement bbox. */
   placement_fallback: boolean;
+  /** front_crop pushed past its native resolution, OR low-confidence placement. */
   quality_warning: boolean;
 };
 
@@ -1831,9 +1964,9 @@ export type LogoCompositeResultLike = {
 
 /**
  * Build the persisted `logo_composite` audit metadata from a composite result.
- * The proxy spreads this into composition_recipe_json — keeping it here (and
- * unit-tested in the Vitest mirror) guards against the recipe silently dropping
- * `quality` / `quality_warning` (or the engine placement fields).
+ * The edge proxy spreads this into composition_recipe_json — keeping it here
+ * (and unit-tested) guards against the recipe silently dropping `quality` /
+ * `quality_warning` (or the engine placement fields).
  */
 export function logoCompositeMetaCore(c: LogoCompositeResultLike): Record<string, unknown> {
   return {
@@ -1856,143 +1989,11 @@ export function logoCompositeMetaCore(c: LogoCompositeResultLike): Record<string
   };
 }
 
-function cropNormBbox(img: RgbaImage, norm: [number, number, number, number]): RgbaImage {
+export function cropNormBbox(img: RgbaImage, norm: [number, number, number, number]): RgbaImage {
   const [nx, ny, nw, nh] = norm;
   const left = Math.round(nx * img.width);
   const top = Math.round(ny * img.height);
   const w = Math.max(1, Math.round(nw * img.width));
   const h = Math.max(1, Math.round(nh * img.height));
   return cropRgba(img, left, top, w, h);
-}
-
-
-export type ResolvedLogoAssets = {
-  placement: LogoPlacement;
-  logoBytes: Uint8Array;
-  logoSource: "asset" | "front_crop";
-  /** Raw product_truth_json blob (parsed by the engine) — carries manual quads. */
-  productTruthRaw: unknown;
-};
-
-// deno-lint-ignore no-explicit-any
-type SupabaseAdmin = { storage: any; from: (t: string) => any };
-
-export async function downloadStoragePath(
-  admin: SupabaseAdmin,
-  path: string,
-): Promise<Uint8Array> {
-  const buckets = ["product-assets", "wardrobe-refs"];
-  for (const bucket of buckets) {
-    const { data, error } = await admin.storage.from(bucket).download(path);
-    if (!error && data) return new Uint8Array(await data.arrayBuffer());
-  }
-  throw new Error(`asset_download_failed:${path}`);
-}
-
-export async function resolveLogoAssets(
-  admin: SupabaseAdmin,
-  wardrobeFeatureId: string,
-): Promise<ResolvedLogoAssets | null> {
-  const { data: wardrobe } = await admin
-    .from("character_features")
-    .select("metadata_json")
-    .eq("id", wardrobeFeatureId)
-    .maybeSingle();
-
-  const wardrobeMeta = (wardrobe?.metadata_json as Record<string, unknown> | null) ?? null;
-  let placement = resolveLogoPlacementFromMetadata(wardrobeMeta);
-  let productTruthRaw: unknown = resolveProductTruthFromMetadata(wardrobeMeta);
-
-  let productId: string | null = null;
-  if (!placement) {
-    const { data: link } = await admin
-      .from("product_wardrobe_links")
-      .select("product_id")
-      .eq("character_feature_id", wardrobeFeatureId)
-      .maybeSingle();
-    productId = link?.product_id ?? null;
-    if (productId) {
-      const { data: product } = await admin
-        .from("products")
-        .select("metadata_json")
-        .eq("id", productId)
-        .maybeSingle();
-      const productMeta = (product?.metadata_json as Record<string, unknown> | null) ?? null;
-      placement = resolveLogoPlacementFromMetadata(productMeta);
-      productTruthRaw = productTruthRaw ?? resolveProductTruthFromMetadata(productMeta);
-    }
-  } else {
-    const { data: link } = await admin
-      .from("product_wardrobe_links")
-      .select("product_id")
-      .eq("character_feature_id", wardrobeFeatureId)
-      .maybeSingle();
-    productId = link?.product_id ?? null;
-  }
-
-  if (!placement) return null;
-
-  let logoBytes: Uint8Array | null = null;
-  let logoSource: "asset" | "front_crop" = "front_crop";
-
-  if (placement.logo_asset_id && productId) {
-    const { data: logoAsset } = await admin
-      .from("product_assets")
-      .select("storage_path, file_url")
-      .eq("id", placement.logo_asset_id)
-      .eq("product_id", productId)
-      .maybeSingle();
-    const logoPath = logoAsset?.storage_path ?? logoAsset?.file_url;
-    if (logoPath) {
-      logoBytes = await downloadStoragePath(admin, logoPath);
-      logoSource = "asset";
-    }
-  }
-
-  if (!logoBytes && productId) {
-    const frontId = placement.front_asset_id;
-    let frontPath: string | null = null;
-    if (frontId) {
-      const { data: frontAsset } = await admin
-        .from("product_assets")
-        .select("storage_path, file_url")
-        .eq("id", frontId)
-        .eq("product_id", productId)
-        .maybeSingle();
-      frontPath = frontAsset?.storage_path ?? frontAsset?.file_url ?? null;
-    }
-    if (!frontPath) {
-      const { data: frontAsset } = await admin
-        .from("product_assets")
-        .select("storage_path, file_url")
-        .eq("product_id", productId)
-        .eq("asset_role", "front")
-        .order("sort_order", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      frontPath = frontAsset?.storage_path ?? frontAsset?.file_url ?? null;
-    }
-    if (!frontPath) return null;
-    const frontBytes = await downloadStoragePath(admin, frontPath);
-    const frontImg = await decodeToRgba(frontBytes);
-    const cropped = cropNormBbox(frontImg, placement.source_bbox_norm);
-    logoBytes = await encodePng(cropped);
-    logoSource = "front_crop";
-  }
-
-  if (!logoBytes) return null;
-
-  // If the truth blob wasn't on the wardrobe metadata, pull it from the product.
-  if (!productTruthRaw && productId) {
-    const { data: prod } = await admin
-      .from("products")
-      .select("metadata_json")
-      .eq("id", productId)
-      .maybeSingle();
-    productTruthRaw = resolveProductTruthFromMetadata(
-      (prod?.metadata_json as Record<string, unknown> | null) ?? null,
-    );
-  }
-
-  return { placement, logoBytes, logoSource, productTruthRaw };
 }
