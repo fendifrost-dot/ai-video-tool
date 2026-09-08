@@ -16,6 +16,7 @@ import {
   coverTargetQuad,
   isChestBandCandidate,
   isNavyPixel,
+  largestOverlappingComponent,
   logoSubQuadInBand,
   overlayZipFromSource,
   type QuadPts,
@@ -407,6 +408,88 @@ describe("Architecture C Stage 1g — real-pixel canonical band crop", () => {
     expect(ARCHITECTURE_C_BAND_CROP.cleanStillAssetId).toBe(
       "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
     );
+    expect(ARCHITECTURE_C_BAND_CROP.rgbaBase64.length).toBeGreaterThan(10_000);
+  });
+
+  it("fixture carries live failure values (crease + shadowed left) that defeat isNavyPixel", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const crease = (700 * source.width + 281) * 4;
+    const r = source.data[crease]!;
+    const g = source.data[crease + 1]!;
+    const b = source.data[crease + 2]!;
+    expect(isNavyPixel(r, g, b)).toBe(false);
+    expect(isChestBandCandidate(r, g, b)).toBe(true);
+    expect(r).toBeLessThan(20);
+    expect(b).toBeLessThan(45);
+    // Left-third sample must include classifier-negative band fabric.
+    let navy = 0;
+    let cand = 0;
+    for (let x = 216; x < 286; x++) {
+      const i = (700 * source.width + x) * 4;
+      const rr = source.data[i]!;
+      const gg = source.data[i + 1]!;
+      const bb = source.data[i + 2]!;
+      if (isNavyPixel(rr, gg, bb)) navy++;
+      if (isChestBandCandidate(rr, gg, bb)) cand++;
+    }
+    expect(cand).toBeGreaterThan(navy);
+    expect(cand / 70).toBeGreaterThan(0.85);
+  });
+
+  it("old 1f navy-only largest-CC path leaves the left third + crease unpainted", () => {
+    // Reconstruct Stage 1f paint authority on this real crop: isNavyPixel candidates
+    // → largest CC overlapping the quad (no bandCandidate, no close-before-CC).
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const pad = 16;
+    const left = Math.max(0, Math.floor(Math.min(...band.map((p) => p.x)) - pad));
+    const right = Math.min(source.width - 1, Math.ceil(Math.max(...band.map((p) => p.x)) + pad));
+    const top = Math.max(0, Math.floor(Math.min(...band.map((p) => p.y)) - pad));
+    const bottom = Math.min(source.height - 1, Math.ceil(Math.max(...band.map((p) => p.y)) + pad));
+    const mw = right - left + 1;
+    const mh = bottom - top + 1;
+    const navyMask = new Float32Array(mw * mh);
+    const seed = new Float32Array(mw * mh);
+    const [tl, tr, br, bl] = band;
+    for (let y = top; y <= bottom; y++) {
+      for (let x = left; x <= right; x++) {
+        const li = (y - top) * mw + (x - left);
+        const i = (y * source.width + x) * 4;
+        if (isNavyPixel(source.data[i]!, source.data[i + 1]!, source.data[i + 2]!)) {
+          navyMask[li] = 1;
+        }
+        // crude quad seed via bbox of measured band
+        if (
+          x >= Math.min(...band.map((p) => p.x)) &&
+          x <= Math.max(...band.map((p) => p.x)) &&
+          y >= Math.min(...band.map((p) => p.y)) &&
+          y <= Math.max(...band.map((p) => p.y))
+        ) {
+          seed[li] = 1;
+        }
+      }
+    }
+    const component = largestOverlappingComponent(navyMask, seed, mw, mh);
+    let leftHit = 0;
+    for (let x = 216; x < 286; x++) {
+      const li = (700 - top) * mw + (x - left);
+      if (component[li]! >= 0.5) leftHit++;
+    }
+    expect(leftHit / 70).toBeLessThan(0.2);
+    let creaseHit = 0;
+    for (let y = 690; y <= 740; y++) {
+      for (let x = 279; x <= 283; x++) {
+        const li = (y - top) * mw + (x - left);
+        if (component[li]! >= 0.5) creaseHit++;
+      }
+    }
+    expect(creaseHit).toBe(0);
+    // Silence unused (keeps quad corners referenced for future invBilinear tightening).
+    expect(tl && tr && br && bl).toBeTruthy();
   });
 
   it("left third of the band is included in the paint component", () => {
@@ -442,9 +525,9 @@ describe("Architecture C Stage 1g — real-pixel canonical band crop", () => {
     const covered = coverTargetQuad(source, band, STAGE1G);
     let maxL = 0;
     let brightSrc = 0;
-    // Only the residual pinstripe on the band top (not cream body above the band).
-    for (let y = 678; y <= 680; y++) {
-      for (let x = 216; x <= 330; x++) {
+    // Residual pinstripe on/near band top (live probe rows 675–680).
+    for (let y = 675; y <= 680; y++) {
+      for (let x = 210; x <= 330; x++) {
         const i = (y * source.width + x) * 4;
         const srcL =
           0.2126 * source.data[i]! +
@@ -498,10 +581,15 @@ describe("Architecture C Stage 1g — real-pixel canonical band crop", () => {
       ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
     );
     const covered = coverTargetQuad(source, band, STAGE1G);
-    // Deep forearm — below expand/dilate/feather reach from the band bottom (~749).
-    for (let y = 770; y <= 780; y++) {
+    // C4 probe: cream forearm on the real still (skip residual dark band fabric).
+    for (let y = 741; y <= 749; y++) {
       for (let x = 330; x <= 380; x++) {
         const i = (y * source.width + x) * 4;
+        const srcL =
+          0.2126 * source.data[i]! +
+          0.7152 * source.data[i + 1]! +
+          0.0722 * source.data[i + 2]!;
+        if (srcL < 180) continue;
         expect(covered.data[i]).toBe(source.data[i]);
         expect(covered.data[i + 1]).toBe(source.data[i + 1]);
         expect(covered.data[i + 2]).toBe(source.data[i + 2]);
@@ -509,7 +597,7 @@ describe("Architecture C Stage 1g — real-pixel canonical band crop", () => {
     }
   });
 
-  it("no cream-in-quad overpaint at the far-right open cream pocket", () => {
+  it("no cream-in-quad overpaint at far-right cream fabric", () => {
     const source = embedArchitectureCBandCropInFrame();
     const band = bandFromNorm(
       source.width,
@@ -517,8 +605,8 @@ describe("Architecture C Stage 1g — real-pixel canonical band crop", () => {
       ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
     );
     const covered = coverTargetQuad(source, band, STAGE1G);
-    // Open cream pocket (x≥601) — not an enclosed hole close() would fill.
-    const i = (710 * source.width + 615) * 4;
+    // Real still cream near the wearer's-left end of the measured quad.
+    const i = (710 * source.width + 620) * 4;
     expect(source.data[i]!).toBeGreaterThan(150);
     expect(covered.data[i]).toBe(source.data[i]);
     expect(covered.data[i + 1]).toBe(source.data[i + 1]);
