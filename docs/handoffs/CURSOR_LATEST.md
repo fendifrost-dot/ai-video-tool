@@ -9,12 +9,14 @@
 | Item | On `main`? | Live / redeployed? | Ready to test? |
 |------|------------|--------------------|----------------|
 | Stage **1g** | YES (`1e3ac2a` + Lovable restore) | YES — scored **NOT CLEARED** 5/11 (`2d110d13`) | done |
-| Stage **1h** code | **this branch** | **NO — merge + redeploy needed** | **YES after** merge to `main` + `architecture-c-still-repair-proxy` redeploy |
+| Stage **1h** code | **YES** — `main` @ `86372e6` (PR #48) | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
 | Sleeve / temporal / paid xAI | blocked | — | **NO** |
 
-## STAGE 1H — chest perimeter / absorb / crease / zip
+## STAGE 1H ON MAIN — ready for edge redeploy
 
-`repair_method_version: architecture_c_still_repair_1h`
+`repair_method_version: architecture_c_still_repair_1h`  
+**PR:** https://github.com/fendifrost-dot/ai-video-tool/pull/48  
+**Implementation:** `bd4262d` · **Handoff tip:** `86372e65e13cfd3914ec6bbeaef7537a8ae3a59d`
 
 ### Lovable commits inspected (pre-1h)
 
