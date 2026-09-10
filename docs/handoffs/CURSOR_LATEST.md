@@ -8,47 +8,36 @@
 
 | Item | On `main`? | Live / redeployed? | Ready to test? |
 |------|------------|--------------------|----------------|
-| Stage **1g** | YES (`1e3ac2a` + Lovable restore) | YES — scored **NOT CLEARED** 5/11 (`2d110d13`) | done |
-| Stage **1h** code | **YES** — `main` @ `86372e6` (PR #48) | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
+| Stage **1h** | YES (`9b5f90c` / PR #48) | YES — scored **NOT CLEARED** 4/11 (`39c4a842`, evidence `df64344`) | done |
+| Stage **1i** code | **PR branch** `cursor/architecture-c-still-1i-88eb` | **NO — merge + redeploy needed** | **YES after** merge + `architecture-c-still-repair-proxy` redeploy |
 | Sleeve / temporal / paid xAI | blocked | — | **NO** |
 
-## STAGE 1H ON MAIN — ready for edge redeploy
+## STAGE 1I — ChatGPT-approved causal corrections from 1h
 
-`repair_method_version: architecture_c_still_repair_1h`  
-**PR:** https://github.com/fendifrost-dot/ai-video-tool/pull/48  
-**Implementation:** `bd4262d` · **Handoff tip:** `86372e65e13cfd3914ec6bbeaef7537a8ae3a59d`
+`repair_method_version: architecture_c_still_repair_1i`
 
-### Lovable commits inspected (pre-1h)
+Evidence read + independently verified: `df64344` + handoff `fa55102`.
 
-| SHA | Content |
-|-----|---------|
-| `f5723c4` | `roadmap.md` only |
-| `0b264bf` / `81580f7` | Restored edge-only exports (`decodeToRgba`, `encodePng`, `resolveLogoAssets`, `parseLogoPlacement`) + `Float32Array` annotation after 1g mirror overwrite. **Paint logic untouched.** Preserved in this branch. |
+### Approved rulings implemented
 
-### Causal traces verified against source (Claude 1g evidence)
+| # | Ruling | Code |
+|---|--------|------|
+| 1 | Chest-local occlusion inside verified band: `α = 1 − dilate(hands ∪ face)`; outside keep outfit-based α | `applyChestLocalOcclusionSemantics` + `bandAuthorityMask` from `coverTargetQuad`; SAM-3 returns raw hands/face |
+| 2 | Withdraw `y > bandMidY && luma > 180` hard lock | Removed from paint pass |
+| 3 | Top absorb from fixed component-top origin; ridge+AA; no cream-body raise | `absorbTopPinstripeLocal` — dark-above-ridge signature; no re-climb |
+| 4 | Close must not pull shadowed cream sleeve/forearm | Close-added non-navy with luma ≤ 180 rejected |
 
-| Defect | Cause confirmed in code | 1h fix |
-|--------|-------------------------|--------|
-| Top-edge cream raise | `absorbTopPinstripeLocal` claimed any luma>140 for full 6px | Thickness-capped ridge (3px) + `maxAbsY = quadTop − 3` |
-| Hard staircase | α re-assert on full `stripeAbsorb` cancelled feather | Solid only on `core ∪ absorb`; expansion keeps inward feather |
-| Sleeve smear | Expansion admitted bare `luma < 140` | Expansion: `isChestBandCandidate` only |
-| Crease re-imprint | Illumination gain floor 0.80 + trough fill | `navyFloor = max(0.55·med, med−6)`; gain floor **0.95** |
-| Center wedge | Zip overlay restored mid-tone wedge | Restore bright zip only (`luma ≥ 150`), narrow core, no feather restore |
-| Cream speck bridge | Dark cream-body speckles seeded candidates above quad | Reject non-navy candidates above `quadTop − 1` |
+### Regression (mandatory)
 
-### Preserved 1g wins
+- Fixture: `src/lib/garment/fixtures/architectureCStill1hSam3Evidence.ts` — evidence-derived Stage 1h α (crease coverage profile + wedge hole + hand window); no binary dump in `df64344`
+- Golden runs **paint → illumination → zip → chest-local occlusion composite** (not pre-occlusion only)
 
-bandCandidate / close(6) / largest CC / left-third coverage / SAM-3 fail-closed / wordmark path / global `isNavyPixel` unchanged.
+### Deploy
 
-### Verification
-
-- Vitest **715** passed
-- Production build passed
-- `deno check` on changed edge `logoComposite.ts` + `placementEngine.ts` passed
-- Edge-only exports retained
+Redeploy **only** `architecture-c-still-repair-proxy`. No frontend Publish.
 
 ### Claude next (after merge)
 
 1. Redeploy **only** `architecture-c-still-repair-proxy`
-2. Canonical $0 still on `2aa1a44c` + measured quad; expect `architecture_c_still_repair_1h`
+2. Canonical $0 still on `2aa1a44c` + measured quad; expect `architecture_c_still_repair_1i`
 3. Score 11 chest criteria — no Publish · no sleeve · no temporal · no V3 · no prompt · no paid xAI
