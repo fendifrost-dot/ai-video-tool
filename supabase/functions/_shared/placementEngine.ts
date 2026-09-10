@@ -946,7 +946,7 @@ export async function compositeLogoOntoVton(
     occlusion_source: occlusionSource,
     requested_band_quad_norm: requestedBandQuadNorm,
     effective_band_bbox: effectiveBandBBox,
-    repair_method_version: "architecture_c_still_repair_1i",
+    repair_method_version: "architecture_c_still_repair_1j",
   };
 }
 

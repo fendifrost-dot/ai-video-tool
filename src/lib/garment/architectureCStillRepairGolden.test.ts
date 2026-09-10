@@ -1047,3 +1047,148 @@ describe("Architecture C Stage 1i — real-α occlusion composite regression", (
     expect(changed).toBe(0);
   });
 });
+
+describe("Architecture C Stage 1j — mid-luma interior topology + ROI occlusion", () => {
+  const STAGE1J = {
+    fillMode: "quad_navy_union" as const,
+    columnFollow: false,
+    maxExpandFrac: 0.05,
+    featherPx: 3,
+    navyUnionMarginPx: 12,
+    navyDilatePx: 4,
+    navyEdgeDilatePx: 2,
+    bandCloseRadiusPx: 6,
+    topPinstripeAbsorbPx: 5,
+    zipStripFrac: 0,
+  };
+
+  function bandFromNorm(
+    w: number,
+    h: number,
+    norm: [[number, number], [number, number], [number, number], [number, number]],
+  ): QuadPts {
+    return norm.map(([nx, ny]) => ({ x: nx * w, y: ny * h })) as QuadPts;
+  }
+
+  function lumaAt(img: RgbaImage, x: number, y: number): number {
+    const i = (y * img.width + x) * 4;
+    return 0.2126 * img.data[i]! + 0.7152 * img.data[i + 1]! + 0.0722 * img.data[i + 2]!;
+  }
+
+  it("real-crop mid-luma interior AA is painted (no outline ghosts)", () => {
+    // Live 1i failure: 809/866 mid-luma (60–180) interior px unpainted because
+    // close-rejection used a global luma≤180 lock. Stage 1j keeps interior fills.
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1J);
+    const refI = (700 * source.width + 450) * 4;
+    const median =
+      0.2126 * covered.data[refI]! +
+      0.7152 * covered.data[refI + 1]! +
+      0.0722 * covered.data[refI + 2]!;
+    const ceiling = median + 20;
+
+    // Left glyph/outline region (live: x 255–345 / y 696–712) + wearer's-left
+    // lettering (x 442–578 / y 704–734): mid-luma source pixels inside authority
+    // must not remain bright outlines.
+    const windows: Array<[number, number, number, number]> = [
+      [255, 345, 696, 712],
+      [442, 560, 704, 734],
+    ];
+    let midChecked = 0;
+    let midGhosts = 0;
+    for (const [x0, x1, y0, y1] of windows) {
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          if (covered.bandAuthorityMask[y * source.width + x]! < 0.5) continue;
+          const srcL = lumaAt(source, x, y);
+          if (srcL < 60 || srcL > 180) continue;
+          midChecked++;
+          if (lumaAt(covered, x, y) > ceiling) midGhosts++;
+        }
+      }
+    }
+    expect(midChecked).toBeGreaterThan(30);
+    // Allow a thin perimeter fringe; the 1i regression left ~93% unpainted.
+    expect(midGhosts / midChecked).toBeLessThan(0.25);
+  });
+
+  it("diagonal zip-tape mid-luma edges inside the band are absorbed (not orphaned)", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1J);
+    // Live 1i: diagonal tape x 427–431 and left-tape core survived as source.
+    // Topology close keeps mid-luma AA enclosed by band seeds so they paint.
+    for (const x of [400, 401, 427, 428, 430]) {
+      expect(lumaAt(covered, x, 715)).toBeLessThan(80);
+    }
+  });
+
+  it("sleeve/forearm cream boundary remains protected (1i win)", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1J);
+    for (let y = 741; y <= 749; y++) {
+      for (let x = 330; x <= 380; x++) {
+        const srcL = lumaAt(source, x, y);
+        if (srcL < 180) continue;
+        expect(covered.data[(y * source.width + x) * 4]!).toBe(
+          source.data[(y * source.width + x) * 4]!,
+        );
+      }
+    }
+  });
+
+  it("crease + wedge ownership remains intact under chest-local occlusion", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1J);
+    const shaded = applyLowFrequencyBandIllumination(source, covered, band);
+    const { outfitBasedAlpha, handsAlpha, faceAlpha } = buildStage1hSam3EvidenceAlphas(
+      source.width,
+      source.height,
+    );
+    const chestLocal = applyChestLocalOcclusionSemantics({
+      width: source.width,
+      height: source.height,
+      outfitBasedAlpha,
+      bandComponent: covered.bandAuthorityMask,
+      handsAlpha,
+      faceAlpha,
+      dilatePx: 12,
+    });
+    const out = applyOcclusionAlphaComposite(
+      source,
+      shaded,
+      featherAlpha(chestLocal, source.width, source.height, 2),
+    );
+    const refI = (700 * source.width + 450) * 4;
+    const median =
+      0.2126 * covered.data[refI]! +
+      0.7152 * covered.data[refI + 1]! +
+      0.0722 * covered.data[refI + 2]!;
+    const floor = median - 6;
+    for (let x = 277; x <= 283; x++) {
+      expect(lumaAt(out, x, 700)).toBeGreaterThanOrEqual(floor);
+    }
+    for (let x = 405; x <= 420; x++) {
+      expect(lumaAt(out, x, 720)).toBeLessThan(80);
+    }
+  });
+});

@@ -73,6 +73,114 @@ export function dilateAlpha(
   return out;
 }
 
+export type AlphaRoi = {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+};
+
+/** Axis-aligned bbox of α ≥ thresh, or null if empty. */
+export function alphaBBox(
+  alpha: Float32Array,
+  width: number,
+  height: number,
+  thresh = 0.5,
+): AlphaRoi | null {
+  let left = width;
+  let top = height;
+  let right = -1;
+  let bottom = -1;
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      if (alpha[row + x]! < thresh) continue;
+      if (x < left) left = x;
+      if (x > right) right = x;
+      if (y < top) top = y;
+      if (y > bottom) bottom = y;
+    }
+  }
+  if (right < 0) return null;
+  return { left, top, right, bottom };
+}
+
+/** Expand ROI by padPx and clamp to the frame. */
+export function expandAlphaRoi(
+  roi: AlphaRoi,
+  padPx: number,
+  width: number,
+  height: number,
+): AlphaRoi {
+  const p = Math.max(0, Math.round(padPx));
+  return {
+    left: Math.max(0, roi.left - p),
+    top: Math.max(0, roi.top - p),
+    right: Math.min(width - 1, roi.right + p),
+    bottom: Math.min(height - 1, roi.bottom + p),
+  };
+}
+
+/**
+ * Separable box max-dilate restricted to an ROI (Stage 1j).
+ * Output outside {@link roi} is 0. Inside {@link roi}, values match full-frame
+ * {@link dilateAlpha} when {@link roi} already includes every consumer pixel
+ * (e.g. band bbox padded by dilatePx) — intermediate rows above/below the ROI
+ * are computed as needed for the vertical pass.
+ */
+export function dilateAlphaRoi(
+  alpha: Float32Array,
+  width: number,
+  height: number,
+  radiusPx: number,
+  roi: AlphaRoi,
+): Float32Array {
+  if (radiusPx <= 0) {
+    const out = new Float32Array(alpha.length);
+    for (let y = roi.top; y <= roi.bottom; y++) {
+      const row = y * width;
+      for (let x = roi.left; x <= roi.right; x++) out[row + x] = alpha[row + x]!;
+    }
+    return out;
+  }
+  const r = Math.max(1, Math.round(radiusPx));
+  const out = new Float32Array(alpha.length);
+  const y0 = Math.max(0, roi.top - r);
+  const y1 = Math.min(height - 1, roi.bottom + r);
+  const scratchW = roi.right - roi.left + 1;
+  const scratchH = y1 - y0 + 1;
+  const scratch = new Float32Array(scratchW * scratchH);
+
+  for (let y = y0; y <= y1; y++) {
+    const row = y * width;
+    const sy = y - y0;
+    for (let x = roi.left; x <= roi.right; x++) {
+      let m = 0;
+      for (let dx = -r; dx <= r; dx++) {
+        const xx = x + dx;
+        if (xx < 0 || xx >= width) continue;
+        const v = alpha[row + xx]!;
+        if (v > m) m = v;
+      }
+      scratch[sy * scratchW + (x - roi.left)] = m;
+    }
+  }
+  for (let y = roi.top; y <= roi.bottom; y++) {
+    const row = y * width;
+    for (let x = roi.left; x <= roi.right; x++) {
+      let m = 0;
+      for (let dy = -r; dy <= r; dy++) {
+        const yy = y + dy;
+        if (yy < y0 || yy > y1) continue;
+        const v = scratch[(yy - y0) * scratchW + (x - roi.left)]!;
+        if (v > m) m = v;
+      }
+      out[row + x] = m;
+    }
+  }
+  return out;
+}
+
 export function subtractAlpha(base: Float32Array, guard: Float32Array): Float32Array {
   const out = new Float32Array(base.length);
   for (let i = 0; i < base.length; i++) {
@@ -263,7 +371,7 @@ export function featherAlpha(
 }
 
 /**
- * Architecture C Stage 1i — chest-local occlusion semantics.
+ * Architecture C Stage 1i — chest-local occlusion semantics (LOCKED).
  *
  * Inside the verified logo_chest band component, SAM-3 outfit holes must not
  * restore source garment / shirt / tie pixels (crease + centre wedge). Repair
@@ -271,6 +379,9 @@ export function featherAlpha(
  *   α = 1 − dilate(hands ∪ face)
  * Outside the component, keep the existing outfit−hands−face α unchanged.
  * Do not globally rewrite SAM-3 membership.
+ *
+ * Stage 1j: dilate hands/face only inside the band bbox padded by dilatePx
+ * (exact semantics inside the band; avoids full-frame r=12 WORKER_RESOURCE_LIMIT).
  */
 export function applyChestLocalOcclusionSemantics(input: {
   width: number;
@@ -292,8 +403,17 @@ export function applyChestLocalOcclusionSemantics(input: {
     throw new Error("chest_local_occlusion_size_mismatch");
   }
   const dilatePx = input.dilatePx ?? 12;
-  const handsD = dilateAlpha(input.handsAlpha, width, height, dilatePx);
-  const faceD = dilateAlpha(input.faceAlpha, width, height, dilatePx);
+  const bandBox = alphaBBox(input.bandComponent, width, height, 0.5);
+  let handsD: Float32Array;
+  let faceD: Float32Array;
+  if (bandBox) {
+    const roi = expandAlphaRoi(bandBox, dilatePx, width, height);
+    handsD = dilateAlphaRoi(input.handsAlpha, width, height, dilatePx, roi);
+    faceD = dilateAlphaRoi(input.faceAlpha, width, height, dilatePx, roi);
+  } else {
+    handsD = new Float32Array(n);
+    faceD = new Float32Array(n);
+  }
   const out = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     if (input.bandComponent[i]! >= 0.5) {

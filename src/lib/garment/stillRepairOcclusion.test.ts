@@ -285,4 +285,43 @@ describe("applyChestLocalOcclusionSemantics — Stage 1i", () => {
     // Outside band preserves outfit-based (right side stays 1)
     expect(a[5 * W + 15]!).toBe(1);
   });
+
+  it("1j: ROI dilate matches full-frame dilate inside the band (exact semantics)", () => {
+    const W = 64;
+    const H = 64;
+    const outfitBased = new Float32Array(W * H);
+    const band = new Float32Array(W * H);
+    const hands = new Float32Array(W * H);
+    const face = new Float32Array(W * H);
+    for (let i = 0; i < outfitBased.length; i++) outfitBased[i] = 0.25;
+    // Compact band in the centre
+    for (let y = 24; y < 40; y++) {
+      for (let x = 20; x < 44; x++) band[y * W + x] = 1;
+    }
+    // Hand near band edge
+    for (let y = 36; y < 42; y++) {
+      for (let x = 18; x < 24; x++) hands[y * W + x] = 1;
+    }
+    const roi = applyChestLocalOcclusionSemantics({
+      width: W,
+      height: H,
+      outfitBasedAlpha: outfitBased,
+      bandComponent: band,
+      handsAlpha: hands,
+      faceAlpha: face,
+      dilatePx: 4,
+    });
+    // Reference: full-frame dilate path (inline)
+    const handsD = dilateAlpha(hands, W, H, 4);
+    const faceD = dilateAlpha(face, W, H, 4);
+    for (let i = 0; i < W * H; i++) {
+      let expectA: number;
+      if (band[i]! >= 0.5) {
+        expectA = Math.max(0, 1 - Math.min(1, handsD[i]! + faceD[i]!));
+      } else {
+        expectA = outfitBased[i]!;
+      }
+      expect(roi[i]!).toBeCloseTo(expectA, 6);
+    }
+  });
 });

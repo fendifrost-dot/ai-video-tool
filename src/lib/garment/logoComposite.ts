@@ -1777,24 +1777,36 @@ export function coverTargetQuad(
             closedCandidates[i] = 0;
             continue;
           }
-          // Close may bridge cream holes (lettering) and shadowed sleeve cream.
-          // Keep original seeds; for close-added pixels:
-          //   - navy always kept
-          //   - bright cream (luma > 180) kept as lettering fills
-          //   - shadowed cream (luma ≤ 180, not navy) rejected so forearm
-          //     material cannot enter merely because it is dark (Stage 1i).
+          // Close may bridge cream holes (lettering AA) and shadowed sleeve cream.
+          // Stage 1j: interior topology beats tone. Keep close-added pixels that are
+          // sufficiently surrounded by original band seeds (glyph/tape/ridge AA).
+          // Reject only boundary-adjacent mid-luma non-navy bridges (sleeve/forearm
+          // cream). Do not use a global luma ≤ 180 hard lock as the authority.
           if (closedCandidates[i]! < 0.5 || candidates[i]! >= 0.5) continue;
           const ly = (i / mw) | 0;
-          const y = top + ly;
           const lx = i % mw;
           const x = left + lx;
+          const y = top + ly;
           const pi = (y * base.width + x) * 4;
           const r = base.data[pi]!;
           const g = base.data[pi + 1]!;
           const b = base.data[pi + 2]!;
           if (isNavyPixel(r, g, b)) continue;
           const L = luma(r, g, b);
-          if (L > 180) continue; // lettering hole fill (any half)
+          if (L > 180) continue; // bright lettering core fill
+          let origNbr = 0;
+          for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+              if (dx === 0 && dy === 0) continue;
+              const nx = lx + dx;
+              const ny = ly + dy;
+              if (nx < 0 || ny < 0 || nx >= mw || ny >= mh) continue;
+              if (candidates[ny * mw + nx]! >= 0.5) origNbr++;
+            }
+          }
+          // ≥4 original-seed neighbors ⇒ enclosed interior hole (AA / residual
+          // structure inside the verified band). Boundary bridges stay rejected.
+          if (origNbr >= 4) continue;
           closedCandidates[i] = 0;
         }
       }

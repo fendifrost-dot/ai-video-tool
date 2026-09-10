@@ -8,38 +8,33 @@
 
 | Item | On `main`? | Live / redeployed? | Ready to test? |
 |------|------------|--------------------|----------------|
-| Stage **1h** | YES (`9b5f90c` / PR #48) | YES — scored **NOT CLEARED** 4/11 (`39c4a842`, evidence `df64344`) | done |
-| Stage **1i** code | **YES** — `main` @ `cc5b796` (PR #49 FF-merged) | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
+| Stage **1i** | YES (`1ada136` / PR #49) | YES — scored **NOT CLEARED** 6/11 (`21972fcf`, evidence `c6e032b`) | done — **occlusion ownership LOCKED** |
+| Stage **1j** code | **YES — this commit** | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
 | Sleeve / temporal / paid xAI | blocked | — | **NO** |
 
-## STAGE 1I ON MAIN — ready for edge redeploy
+## STAGE 1J ON MAIN — ready for edge redeploy
 
-`repair_method_version: architecture_c_still_repair_1i`  
-**PR:** https://github.com/fendifrost-dot/ai-video-tool/pull/49  
-**Tip:** `cc5b796`
+`repair_method_version: architecture_c_still_repair_1j`
 
-Evidence read + independently verified: `df64344` + handoff `fa55102`.
+Evidence: `c6e032b` + handoff `c16c4fe`. Occlusion semantics from 1i are **locked** (no reopen).
 
-### Approved rulings implemented
+### Fixes
 
-| # | Ruling | Code |
-|---|--------|------|
-| 1 | Chest-local occlusion inside verified band: `α = 1 − dilate(hands ∪ face)`; outside keep outfit-based α | `applyChestLocalOcclusionSemantics` + `bandAuthorityMask` from `coverTargetQuad`; SAM-3 returns raw hands/face |
-| 2 | Withdraw `y > bandMidY && luma > 180` hard lock | Removed from paint pass |
-| 3 | Top absorb from fixed component-top origin; ridge+AA; no cream-body raise | `absorbTopPinstripeLocal` — dark-above-ridge signature; no re-climb |
-| 4 | Close must not pull shadowed cream sleeve/forearm | Close-added non-navy with luma ≤ 180 rejected |
+| # | Defect | Fix |
+|---|--------|-----|
+| 1 | Close-rejection stripped mid-luma interior AA → outline ghosts (809/866) | Topology rule: close-added mid-luma kept when ≥4 original-seed neighbors (interior); boundary bridges still rejected |
+| 2 | HTTP 546 from two full-frame r=12 dilates | `dilateAlphaRoi` on band bbox padded by dilatePx — exact semantics inside band |
 
-### Regression (mandatory)
+### Preserved 1i locks
 
-- Fixture: `src/lib/garment/fixtures/architectureCStill1hSam3Evidence.ts` — evidence-derived Stage 1h α (crease coverage profile + wedge hole + hand window); no binary dump in `df64344`
-- Golden runs **paint → illumination → zip → chest-local occlusion composite** (not pre-occlusion only)
+chest-local α · crease/wedge ownership · hand/face protection · no midY luma>180 lock · left-third coverage · no global SAM-3 change
 
 ### Deploy
 
 Redeploy **only** `architecture-c-still-repair-proxy`. No frontend Publish.
 
-### Claude next (after merge)
+### Claude next
 
 1. Redeploy **only** `architecture-c-still-repair-proxy`
-2. Canonical $0 still on `2aa1a44c` + measured quad; expect `architecture_c_still_repair_1i`
-3. Score 11 chest criteria — no Publish · no sleeve · no temporal · no V3 · no prompt · no paid xAI
+2. Canonical $0 still on `2aa1a44c` + measured quad; expect `architecture_c_still_repair_1j`
+3. Score 11 chest criteria — confirm no 546 and outline ghosts cleared
