@@ -9,12 +9,14 @@
 | Item | On `main`? | Live / redeployed? | Ready to test? |
 |------|------------|--------------------|----------------|
 | Stage **1h** | YES (`9b5f90c` / PR #48) | YES — scored **NOT CLEARED** 4/11 (`39c4a842`, evidence `df64344`) | done |
-| Stage **1i** code | **PR branch** `cursor/architecture-c-still-1i-88eb` | **NO — merge + redeploy needed** | **YES after** merge + `architecture-c-still-repair-proxy` redeploy |
+| Stage **1i** code | **YES** — `main` @ `cc5b796` (PR #49 FF-merged) | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
 | Sleeve / temporal / paid xAI | blocked | — | **NO** |
 
-## STAGE 1I — ChatGPT-approved causal corrections from 1h
+## STAGE 1I ON MAIN — ready for edge redeploy
 
-`repair_method_version: architecture_c_still_repair_1i`
+`repair_method_version: architecture_c_still_repair_1i`  
+**PR:** https://github.com/fendifrost-dot/ai-video-tool/pull/49  
+**Tip:** `cc5b796`
 
 Evidence read + independently verified: `df64344` + handoff `fa55102`.
 
