@@ -818,9 +818,10 @@ export async function compositeLogoOntoVton(
       topPinstripeAbsorbPx: 5,
     });
     const bandAuthorityMask = covered.bandAuthorityMask;
-    covered = applyLowFrequencyBandIllumination(base, covered, bandPts);
-    covered = overlayZipFromSource(base, covered, bandPts, 0.015, 0.5);
-    let compositedFrame = warpQuadAlpha(covered, logoImg, logoPts, 3);
+    let coveredFrame: RgbaImage = covered;
+    coveredFrame = applyLowFrequencyBandIllumination(base, coveredFrame, bandPts);
+    coveredFrame = overlayZipFromSource(base, coveredFrame, bandPts, 0.015, 0.5);
+    let compositedFrame = warpQuadAlpha(coveredFrame, logoImg, logoPts, 3);
 
     let samAlpha: Float32Array | null = null;
     if (occlusionOpts?.occlusionAlpha && occlusionOpts.occlusionAlpha.length > 0) {
