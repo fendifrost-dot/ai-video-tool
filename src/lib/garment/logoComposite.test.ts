@@ -885,7 +885,7 @@ describe("Architecture C logo sub-zone + cover rules", () => {
     const dim = (15 * 40 + 30) * 4;
     expect(out.data[bright]).toBeGreaterThan(covered.data[bright]);
     expect(out.data[bright]).toBeLessThanOrEqual(Math.ceil(20 * 1.2));
-    expect(out.data[dim]).toBeGreaterThanOrEqual(Math.floor(20 * 0.8));
+    expect(out.data[dim]).toBeGreaterThanOrEqual(Math.floor(20 * 0.95));
     expect(out.data[dim]).toBeLessThanOrEqual(Math.ceil(20 * 1.2));
     // Deprecated alias still resolves
     expect(applyBandLumaShading).toBe(applyLowFrequencyBandIllumination);

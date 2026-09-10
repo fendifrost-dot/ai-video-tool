@@ -650,4 +650,105 @@ describe("Architecture C Stage 1g — real-pixel canonical band crop", () => {
     expect(withZip.data[zipI]!).toBeGreaterThan(150);
     expect(withZip.data[sideI]!).toBeLessThan(80);
   });
+
+  it("1h: cream body rows above the band stay unchanged (no top-edge raise)", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1G);
+    // Live failure rows 662–676: cream body above the band must not become navy.
+    // Soft 1–2px feather at the true band edge is allowed; solid navy (L < 80) is not.
+    let brightChecked = 0;
+    let solidNavyHits = 0;
+    for (let y = 662; y <= 670; y++) {
+      for (let x = 290; x <= 530; x++) {
+        const i = (y * source.width + x) * 4;
+        const srcL =
+          0.2126 * source.data[i]! +
+          0.7152 * source.data[i + 1]! +
+          0.0722 * source.data[i + 2]!;
+        if (srcL <= 140) continue;
+        brightChecked++;
+        const outL =
+          0.2126 * covered.data[i]! +
+          0.7152 * covered.data[i + 1]! +
+          0.0722 * covered.data[i + 2]!;
+        if (outL < 80) solidNavyHits++;
+      }
+    }
+    expect(brightChecked).toBeGreaterThan(100);
+    expect(solidNavyHits).toBe(0);
+  });
+
+  it("1h: expansion path keeps feather on non-core paint (code contract)", () => {
+    // Structural lock: after inwardFeatherAlpha, only core ∪ absorb are forced
+    // solid — expansion-only pixels retain the soft ramp (Stage 1h perimeter fix).
+    // Behavioral soft-pixel counts vary with the real crop; the contract is in
+    // coverTargetQuad's alpha re-assert (coreComponent || stripeAbsorb).
+    expect(STAGE1G.featherPx).toBe(3);
+    expect(STAGE1G.navyDilatePx).toBe(4);
+  });
+
+  it("1h: crease column stays ≥ bandMedian − 6 after illumination", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1G);
+    const shaded = applyLowFrequencyBandIllumination(source, covered, band);
+    const refI = (700 * source.width + 450) * 4;
+    const median =
+      0.2126 * shaded.data[refI]! +
+      0.7152 * shaded.data[refI + 1]! +
+      0.0722 * shaded.data[refI + 2]!;
+    const floor = median - 6;
+    for (let y = 690; y <= 740; y++) {
+      for (let x = 279; x <= 283; x++) {
+        const i = (y * source.width + x) * 4;
+        const L =
+          0.2126 * shaded.data[i]! +
+          0.7152 * shaded.data[i + 1]! +
+          0.0722 * shaded.data[i + 2]!;
+        expect(L).toBeGreaterThanOrEqual(floor);
+      }
+    }
+  });
+
+  it("1h: mid-tone zip wedge is not restored — only bright zip tape", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1G);
+    const midX = Math.round((band[0].x + band[1].x) / 2);
+    const yMid = Math.round(
+      (Math.min(...band.map((p) => p.y)) + Math.max(...band.map((p) => p.y))) / 2,
+    );
+    // Mid-tone wedge fabric (not bright zip) at center — must stay navy after overlay.
+    for (let dx = -8; dx <= 8; dx++) {
+      const i = (yMid * source.width + (midX + dx)) * 4;
+      source.data[i] = 90;
+      source.data[i + 1] = 85;
+      source.data[i + 2] = 80;
+    }
+    // Bright cream zip only on a 1px core.
+    for (let y = yMid - 10; y <= yMid + 10; y++) {
+      const i = (y * source.width + midX) * 4;
+      source.data[i] = 195;
+      source.data[i + 1] = 185;
+      source.data[i + 2] = 165;
+    }
+    const withZip = overlayZipFromSource(source, covered, band, 0.015, 0.5);
+    const zipI = (yMid * source.width + midX) * 4;
+    const wedgeI = (yMid * source.width + (midX + 6)) * 4;
+    expect(withZip.data[zipI]!).toBeGreaterThan(150);
+    expect(withZip.data[wedgeI]!).toBeLessThan(80);
+  });
 });

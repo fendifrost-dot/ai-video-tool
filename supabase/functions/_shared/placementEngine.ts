@@ -794,6 +794,8 @@ export async function compositeLogoOntoVton(
     // Stage 1g: bandCandidate → close(6) → largest CC + top pinstripe absorb; then
     // component ∪ (quad ∩ dilate(component,4)) + inward feather; LF illumination;
     // zip overlay; wordmark into wearer's-left sub-quad; SAM-3 α preferred.
+    // Stage 1h: thin-ridge absorb, eroded solid-core feather, candidate-only
+    // expansion, crease-masked illumination, bright-only zip restore.
     let covered = coverTargetQuad(base, bandPts, {
       zipStripFrac: 0,
       maxExpandFrac: 0.05,
@@ -909,7 +911,7 @@ export async function compositeLogoOntoVton(
     occlusion_source: occlusionSource,
     requested_band_quad_norm: requestedBandQuadNorm,
     effective_band_bbox: effectiveBandBBox,
-    repair_method_version: "architecture_c_still_repair_1g",
+    repair_method_version: "architecture_c_still_repair_1h",
   };
 }
 
