@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyOcclusionAlphaComposite,
   assertSam3MaskCompleteness,
+  applyChestLocalOcclusionSemantics,
   buildCompleteSam3OcclusionAlpha,
   buildOutfitMinusOccludersAlpha,
   dilateAlpha,
@@ -247,5 +248,41 @@ describe("featherAlpha", () => {
     expect(soft[8 * W + 8]!).toBeLessThan(1);
     expect(soft[8 * W + 8]!).toBeGreaterThan(0);
     expect(soft[0]!).toBe(0);
+  });
+});
+
+describe("applyChestLocalOcclusionSemantics — Stage 1i", () => {
+  it("inside band uses 1−dilate(hands∪face); outside keeps outfit-based α", () => {
+    const W = 20;
+    const H = 20;
+    const outfitBased = new Float32Array(W * H);
+    const band = new Float32Array(W * H);
+    const hands = new Float32Array(W * H);
+    const face = new Float32Array(W * H);
+    // Outfit hole at (5,5) and solid at (15,15)
+    for (let i = 0; i < outfitBased.length; i++) outfitBased[i] = 1;
+    outfitBased[5 * W + 5] = 0.4; // crease-like hole
+    outfitBased[10 * W + 10] = 0; // wedge-like hole
+    // Band covers left half including crease/wedge holes
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < 12; x++) band[y * W + x] = 1;
+    }
+    // Hand only at (2,2)
+    hands[2 * W + 2] = 1;
+    const a = applyChestLocalOcclusionSemantics({
+      width: W,
+      height: H,
+      outfitBasedAlpha: outfitBased,
+      bandComponent: band,
+      handsAlpha: hands,
+      faceAlpha: face,
+      dilatePx: 1,
+    });
+    // Inside band, outfit holes become paintable (α≈1) except near hand
+    expect(a[5 * W + 5]!).toBe(1);
+    expect(a[10 * W + 10]!).toBe(1);
+    expect(a[2 * W + 2]!).toBe(0);
+    // Outside band preserves outfit-based (right side stays 1)
+    expect(a[5 * W + 15]!).toBe(1);
   });
 });

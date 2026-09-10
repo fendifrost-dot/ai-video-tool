@@ -25,6 +25,8 @@ import {
 import {
   applyOcclusionAlphaComposite,
   buildOutfitMinusOccludersAlpha,
+  applyChestLocalOcclusionSemantics,
+  featherAlpha,
 } from "./stillRepairOcclusion";
 import {
   ARCHITECTURE_C_V2_REPAIR,
@@ -39,6 +41,10 @@ import {
   ARCHITECTURE_C_BAND_CROP,
   embedArchitectureCBandCropInFrame,
 } from "./fixtures/architectureCStillBandCrop";
+import {
+  buildStage1hSam3EvidenceAlphas,
+  STAGE1H_SAM3_EVIDENCE,
+} from "./fixtures/architectureCStill1hSam3Evidence";
 
 /** Canonical Stage-1 IDs / geometry (live evidence). */
 export const ARCHITECTURE_C_STAGE1_GOLDEN = {
@@ -525,9 +531,10 @@ describe("Architecture C Stage 1g — real-pixel canonical band crop", () => {
     const covered = coverTargetQuad(source, band, STAGE1G);
     let maxL = 0;
     let brightSrc = 0;
-    // Residual pinstripe on/near band top (live probe rows 675–680).
+    // Stage 1i: probe the verified upper-left hard pinstripe (x214–255), not the
+    // open cream field further right (x≳280 at y675) which must stay unpainted.
     for (let y = 675; y <= 680; y++) {
-      for (let x = 210; x <= 330; x++) {
+      for (let x = 214; x <= 255; x++) {
         const i = (y * source.width + x) * 4;
         const srcL =
           0.2126 * source.data[i]! +
@@ -750,5 +757,293 @@ describe("Architecture C Stage 1g — real-pixel canonical band crop", () => {
     const wedgeI = (yMid * source.width + (midX + 6)) * 4;
     expect(withZip.data[zipI]!).toBeGreaterThan(150);
     expect(withZip.data[wedgeI]!).toBeLessThan(80);
+  });
+});
+
+describe("Architecture C Stage 1i — real-α occlusion composite regression", () => {
+  const STAGE1I = {
+    fillMode: "quad_navy_union" as const,
+    columnFollow: false,
+    maxExpandFrac: 0.05,
+    featherPx: 3,
+    navyUnionMarginPx: 12,
+    navyDilatePx: 4,
+    navyEdgeDilatePx: 2,
+    bandCloseRadiusPx: 6,
+    topPinstripeAbsorbPx: 5,
+    zipStripFrac: 0,
+  };
+
+  function bandFromNorm(
+    w: number,
+    h: number,
+    norm: [[number, number], [number, number], [number, number], [number, number]],
+  ): QuadPts {
+    return norm.map(([nx, ny]) => ({ x: nx * w, y: ny * h })) as QuadPts;
+  }
+
+  function lumaAt(img: RgbaImage, x: number, y: number): number {
+    const i = (y * img.width + x) * 4;
+    return 0.2126 * img.data[i]! + 0.7152 * img.data[i + 1]! + 0.0722 * img.data[i + 2]!;
+  }
+
+  /** Paint → illumination → bright zip → chest-local occlusion composite. */
+  function runStage1iPipeline(source: RgbaImage, band: QuadPts) {
+    const covered = coverTargetQuad(source, band, STAGE1I);
+    const shaded = applyLowFrequencyBandIllumination(source, covered, band);
+    // Seed a narrow bright zip core so overlay has signal (live still zip is faint).
+    const midX = Math.round((band[0].x + band[1].x) / 2);
+    const y0 = Math.floor(Math.min(...band.map((p) => p.y)));
+    const y1 = Math.ceil(Math.max(...band.map((p) => p.y)));
+    for (let y = y0; y <= y1; y++) {
+      const i = (y * source.width + midX) * 4;
+      source.data[i] = 195;
+      source.data[i + 1] = 185;
+      source.data[i + 2] = 165;
+    }
+    const withZip = overlayZipFromSource(source, shaded, band, 0.015, 0.5);
+    const { outfitBasedAlpha, handsAlpha, faceAlpha } = buildStage1hSam3EvidenceAlphas(
+      source.width,
+      source.height,
+    );
+    const chestLocal = applyChestLocalOcclusionSemantics({
+      width: source.width,
+      height: source.height,
+      outfitBasedAlpha,
+      bandComponent: covered.bandAuthorityMask,
+      handsAlpha,
+      faceAlpha,
+      dilatePx: 12,
+    });
+    const alpha = featherAlpha(chestLocal, source.width, source.height, 2);
+    const out = applyOcclusionAlphaComposite(source, withZip, alpha);
+    return { covered, withZip, out, outfitBasedAlpha, midX };
+  }
+
+  it("records Stage 1h evidence provenance on the α fixture", () => {
+    expect(STAGE1H_SAM3_EVIDENCE.sourceCommit).toBe(
+      "df64344c566cdb359468a9c2afd8afb4f7320d97",
+    );
+    expect(STAGE1H_SAM3_EVIDENCE.repairMethodVersion).toBe("architecture_c_still_repair_1h");
+  });
+
+  it("1h outfit-based α alone would restore crease+wedge (documents the causal hole)", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1I);
+    const { outfitBasedAlpha } = buildStage1hSam3EvidenceAlphas(source.width, source.height);
+    const bad = applyOcclusionAlphaComposite(source, covered, outfitBasedAlpha);
+    // Deepest crease dip (x280, coverage ≈ 0.39) stays much closer to source than
+    // to solid paint under outfit-based α (documents the causal hole).
+    const srcL = lumaAt(source, 280, 700);
+    const paintL = lumaAt(covered, 280, 700);
+    const badL = lumaAt(bad, 280, 700);
+    expect(Math.abs(badL - srcL)).toBeLessThan(Math.abs(paintL - srcL) * 0.55);
+    expect(Math.abs(badL - srcL)).toBeGreaterThan(0.5); // not fully painted either
+    // Wedge stays source under outfit hole (α=0).
+    expect(lumaAt(bad, 412, 720)).toBeCloseTo(lumaAt(source, 412, 720), 0);
+  });
+
+  it("chest-local occlusion repairs crease + wedge while protecting the hand window", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const { out, covered, midX } = runStage1iPipeline(source, band);
+    const refI = (700 * source.width + 450) * 4;
+    const median =
+      0.2126 * covered.data[refI]! +
+      0.7152 * covered.data[refI + 1]! +
+      0.0722 * covered.data[refI + 2]!;
+    const floor = median - 6;
+
+    // Crease x≈277–283 receives product-truth repair (not source restoration).
+    for (let x = 277; x <= 283; x++) {
+      expect(lumaAt(out, x, 700)).toBeGreaterThanOrEqual(floor);
+    }
+
+    // Wedge x≈399–430 continuous navy-band repair (exclude the narrow zip core).
+    for (let x = 402; x <= 423; x++) {
+      if (Math.abs(x - midX) <= 2) continue;
+      expect(lumaAt(out, x, 720)).toBeLessThan(80);
+      expect(lumaAt(out, x, 720)).toBeGreaterThanOrEqual(floor - 2);
+    }
+
+    // Only the intended narrow zip line is restored afterward.
+    expect(lumaAt(out, midX, 720)).toBeGreaterThan(150);
+    expect(lumaAt(out, midX - 6, 720)).toBeLessThan(80);
+
+    // Real hand/face foreground remains protected (forearm window).
+    for (let y = 741; y <= 749; y++) {
+      for (let x = 340; x <= 370; x++) {
+        const srcL = lumaAt(source, x, y);
+        if (srcL < 180) continue; // skip residual dark fabric
+        expect(out.data[(y * source.width + x) * 4]!).toBe(source.data[(y * source.width + x) * 4]!);
+      }
+    }
+  });
+
+  it("withdraws midY hard lock: wearer's-left y714–734 lettering is repaired", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    // Ensure bright lettering residues exist in the band interior on wearer's-left.
+    for (let y = 714; y <= 734; y++) {
+      for (let x = 460; x <= 520; x += 4) {
+        const i = (y * source.width + x) * 4;
+        if (lumaAt(source, x, y) > 150) continue;
+        // Plant bright lettering only where we will assert repair ownership.
+        source.data[i] = 210;
+        source.data[i + 1] = 200;
+        source.data[i + 2] = 185;
+      }
+    }
+    const { out, covered } = runStage1iPipeline(source, band);
+    // Authority must include these rows when they fall in the band component.
+    let repaired = 0;
+    let checked = 0;
+    for (let y = 714; y <= 734; y++) {
+      for (let x = 460; x <= 520; x++) {
+        if (covered.bandAuthorityMask[y * source.width + x]! < 0.5) continue;
+        checked++;
+        if (lumaAt(out, x, y) < 80) repaired++;
+      }
+    }
+    expect(checked).toBeGreaterThan(20);
+    expect(repaired / checked).toBeGreaterThan(0.85);
+  });
+
+  it("top absorb removes upper-left pinstripe/AA without cream-body raise", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    // Plant a finite bright ridge + AA with dark fabric above (live pinstripe
+    // signature). Open cream body alone must not be absorbed.
+    for (let x = 220; x <= 250; x++) {
+      for (let y = 681; y <= 700; y++) {
+        const i = (y * source.width + x) * 4;
+        source.data[i] = 28;
+        source.data[i + 1] = 32;
+        source.data[i + 2] = 95;
+      }
+      // Ridge 676–679 + AA 675, dark above 670–674 (not cream field).
+      for (let y = 676; y <= 679; y++) {
+        const i = (y * source.width + x) * 4;
+        source.data[i] = 220;
+        source.data[i + 1] = 210;
+        source.data[i + 2] = 195;
+      }
+      {
+        const i = (675 * source.width + x) * 4;
+        source.data[i] = 120;
+        source.data[i + 1] = 110;
+        source.data[i + 2] = 100;
+      }
+      for (let y = 670; y <= 674; y++) {
+        const i = (y * source.width + x) * 4;
+        source.data[i] = 20;
+        source.data[i + 1] = 22;
+        source.data[i + 2] = 28;
+      }
+      // Cream body further above — must stay cream.
+      for (let y = 662; y <= 668; y++) {
+        const i = (y * source.width + x) * 4;
+        source.data[i] = 205;
+        source.data[i + 1] = 190;
+        source.data[i + 2] = 170;
+      }
+    }
+    const { covered } = runStage1iPipeline(source, band);
+    let brightRidge = 0;
+    for (let y = 675; y <= 679; y++) {
+      for (let x = 220; x <= 250; x++) {
+        if (lumaAt(covered, x, y) > 140) brightRidge++;
+      }
+    }
+    expect(brightRidge).toBe(0);
+    let solidNavyHits = 0;
+    for (let y = 662; y <= 668; y++) {
+      for (let x = 220; x <= 250; x++) {
+        if (lumaAt(covered, x, y) < 80) solidNavyHits++;
+      }
+    }
+    expect(solidNavyHits).toBe(0);
+  });
+
+  it("close/expansion does not paint navy sleeve/forearm block or right-end protrusion", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    // Shadowed cream sleeve material adjacent to the band (Stage 1h failure zone).
+    for (let y = 745; y <= 759; y++) {
+      for (let x = 373; x <= 399; x++) {
+        const i = (y * source.width + x) * 4;
+        source.data[i] = 120;
+        source.data[i + 1] = 110;
+        source.data[i + 2] = 100;
+      }
+    }
+    const { covered, out } = runStage1iPipeline(source, band);
+    for (let y = 745; y <= 759; y++) {
+      for (let x = 373; x <= 399; x++) {
+        expect(lumaAt(covered, x, y)).toBeGreaterThan(90);
+        expect(covered.data[(y * source.width + x) * 4]!).toBe(source.data[(y * source.width + x) * 4]!);
+      }
+    }
+    // Far-right cream in-quad stays unpainted (no right-end protrusion).
+    const i = (710 * source.width + 620) * 4;
+    expect(source.data[i]!).toBeGreaterThan(150);
+    expect(out.data[i]!).toBe(source.data[i]!);
+  });
+
+  it("outside-region preservation remains intact after occlusion composite", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const { out } = runStage1iPipeline(source, band);
+    let changed = 0;
+    for (let y = 0; y < 600; y++) {
+      for (let x = 0; x < source.width; x++) {
+        const i = (y * source.width + x) * 4;
+        if (
+          out.data[i] !== source.data[i] ||
+          out.data[i + 1] !== source.data[i + 1] ||
+          out.data[i + 2] !== source.data[i + 2]
+        ) {
+          changed++;
+        }
+      }
+    }
+    for (let y = 800; y < source.height; y++) {
+      for (let x = 0; x < source.width; x++) {
+        const i = (y * source.width + x) * 4;
+        if (
+          out.data[i] !== source.data[i] ||
+          out.data[i + 1] !== source.data[i + 1] ||
+          out.data[i + 2] !== source.data[i + 2]
+        ) {
+          changed++;
+        }
+      }
+    }
+    expect(changed).toBe(0);
   });
 });

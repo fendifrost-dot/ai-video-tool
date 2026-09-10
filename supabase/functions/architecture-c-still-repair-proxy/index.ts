@@ -226,6 +226,8 @@ serve(async (req) => {
           occlusionAlpha: sam3.ok ? sam3.alpha : undefined,
           occlusionAlphaWidth: sam3.ok ? sam3.width : undefined,
           occlusionAlphaHeight: sam3.ok ? sam3.height : undefined,
+          occlusionHandsAlpha: sam3.ok ? sam3.handsAlpha : undefined,
+          occlusionFaceAlpha: sam3.ok ? sam3.faceAlpha : undefined,
           allowSkinHeuristicFallback: allowSkinFallback,
           requestedBandQuadNorm,
         },

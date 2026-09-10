@@ -29,6 +29,10 @@ export type Sam3OcclusionResult =
   | {
       ok: true;
       alpha: Float32Array;
+      /** Raw hands membership α (pre-dilate) for Stage 1i chest-local occlusion. */
+      handsAlpha: Float32Array;
+      /** Raw face membership α (pre-dilate) for Stage 1i chest-local occlusion. */
+      faceAlpha: Float32Array;
       width: number;
       height: number;
       occlusion_source: "sam3";
@@ -158,12 +162,16 @@ export async function resolveSam3StillOcclusion(input: {
     return { ok: false, reason: "sam3_face_failed", occlusion_source: "unavailable" };
   }
 
+  const outfitAlpha = sam3MaskedRgbToAlpha(outfitImg);
+  const handsAlpha = sam3MaskedRgbToAlpha(handsImg);
+  const faceAlpha = sam3MaskedRgbToAlpha(faceImg);
+
   const built = buildCompleteSam3OcclusionAlpha({
     width: outfitImg.width,
     height: outfitImg.height,
-    outfit: sam3MaskedRgbToAlpha(outfitImg),
-    hands: sam3MaskedRgbToAlpha(handsImg),
-    face: sam3MaskedRgbToAlpha(faceImg),
+    outfit: outfitAlpha,
+    hands: handsAlpha,
+    face: faceAlpha,
     dilatePx: input.dilatePx ?? 12,
   });
   if (!built.ok) {
@@ -173,6 +181,8 @@ export async function resolveSam3StillOcclusion(input: {
   return {
     ok: true,
     alpha: built.alpha,
+    handsAlpha,
+    faceAlpha,
     width: outfitImg.width,
     height: outfitImg.height,
     occlusion_source: "sam3",

@@ -263,6 +263,50 @@ export function featherAlpha(
 }
 
 /**
+ * Architecture C Stage 1i — chest-local occlusion semantics.
+ *
+ * Inside the verified logo_chest band component, SAM-3 outfit holes must not
+ * restore source garment / shirt / tie pixels (crease + centre wedge). Repair
+ * authority there is constrained only by foreground anatomy:
+ *   α = 1 − dilate(hands ∪ face)
+ * Outside the component, keep the existing outfit−hands−face α unchanged.
+ * Do not globally rewrite SAM-3 membership.
+ */
+export function applyChestLocalOcclusionSemantics(input: {
+  width: number;
+  height: number;
+  outfitBasedAlpha: Float32Array;
+  bandComponent: Float32Array;
+  handsAlpha: Float32Array;
+  faceAlpha: Float32Array;
+  dilatePx?: number;
+}): Float32Array {
+  const { width, height } = input;
+  const n = width * height;
+  if (
+    input.outfitBasedAlpha.length !== n ||
+    input.bandComponent.length !== n ||
+    input.handsAlpha.length !== n ||
+    input.faceAlpha.length !== n
+  ) {
+    throw new Error("chest_local_occlusion_size_mismatch");
+  }
+  const dilatePx = input.dilatePx ?? 12;
+  const handsD = dilateAlpha(input.handsAlpha, width, height, dilatePx);
+  const faceD = dilateAlpha(input.faceAlpha, width, height, dilatePx);
+  const out = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    if (input.bandComponent[i]! >= 0.5) {
+      const occl = Math.min(1, handsD[i]! + faceD[i]!);
+      out[i] = Math.max(0, 1 - occl);
+    } else {
+      out[i] = input.outfitBasedAlpha[i]!;
+    }
+  }
+  return out;
+}
+
+/**
  * Blend repaired onto source using α (repair only where α high).
  * out = source·(1−α) + repaired·α
  */

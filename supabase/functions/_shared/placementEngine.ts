@@ -41,6 +41,7 @@ import {
   type RgbaImage,
 } from "./logoComposite.ts";
 import {
+  applyChestLocalOcclusionSemantics,
   applyOcclusionAlphaComposite,
   effectivePaintBBoxFromAlpha,
   featherAlpha,
@@ -688,6 +689,12 @@ export type CompositeLogoOcclusionOptions = {
   occlusionAlpha?: Float32Array;
   occlusionAlphaWidth?: number;
   occlusionAlphaHeight?: number;
+  /**
+   * Raw SAM-3 hands / face membership (pre-dilate). Required for Stage 1i
+   * chest-local occlusion inside the verified band component.
+   */
+  occlusionHandsAlpha?: Float32Array;
+  occlusionFaceAlpha?: Float32Array;
   /** When SAM α is missing/unusable, allow skin heuristic. Default false (fail-closed). */
   allowSkinHeuristicFallback?: boolean;
   /** Requested manual band quad in normalized coords (for metadata). */
@@ -796,6 +803,8 @@ export async function compositeLogoOntoVton(
     // zip overlay; wordmark into wearer's-left sub-quad; SAM-3 α preferred.
     // Stage 1h: thin-ridge absorb, eroded solid-core feather, candidate-only
     // expansion, crease-masked illumination, bright-only zip restore.
+    // Stage 1i: chest-local occlusion inside band; withdraw midY luma lock;
+    // fixed-origin top absorb; close rejects shadowed cream.
     let covered = coverTargetQuad(base, bandPts, {
       zipStripFrac: 0,
       maxExpandFrac: 0.05,
@@ -806,8 +815,9 @@ export async function compositeLogoOntoVton(
       navyDilatePx: 4,
       navyEdgeDilatePx: 2,
       bandCloseRadiusPx: 6,
-      topPinstripeAbsorbPx: 6,
+      topPinstripeAbsorbPx: 5,
     });
+    const bandAuthorityMask = covered.bandAuthorityMask;
     covered = applyLowFrequencyBandIllumination(base, covered, bandPts);
     covered = overlayZipFromSource(base, covered, bandPts, 0.015, 0.5);
     let compositedFrame = warpQuadAlpha(covered, logoImg, logoPts, 3);
@@ -823,6 +833,30 @@ export async function compositeLogoOntoVton(
         base.width,
         base.height,
       );
+      // Stage 1i: inside verified band component, α = 1 − dilate(hands ∪ face)
+      // so outfit holes cannot restore crease/wedge. Outside, keep outfit-based α.
+      const handsRaw = occlusionOpts.occlusionHandsAlpha;
+      const faceRaw = occlusionOpts.occlusionFaceAlpha;
+      if (
+        handsRaw &&
+        faceRaw &&
+        handsRaw.length > 0 &&
+        faceRaw.length > 0 &&
+        bandAuthorityMask &&
+        bandAuthorityMask.length === base.width * base.height
+      ) {
+        const hands = resizeAlphaNearest(handsRaw, aw, ah, base.width, base.height);
+        const face = resizeAlphaNearest(faceRaw, aw, ah, base.width, base.height);
+        samAlpha = applyChestLocalOcclusionSemantics({
+          width: base.width,
+          height: base.height,
+          outfitBasedAlpha: samAlpha,
+          bandComponent: bandAuthorityMask,
+          handsAlpha: hands,
+          faceAlpha: face,
+          dilatePx: 12,
+        });
+      }
       // Soften occlusion staircase at the hand/forearm boundary (stage-1e).
       samAlpha = featherAlpha(samAlpha, base.width, base.height, 2);
     }
@@ -911,7 +945,7 @@ export async function compositeLogoOntoVton(
     occlusion_source: occlusionSource,
     requested_band_quad_norm: requestedBandQuadNorm,
     effective_band_bbox: effectiveBandBBox,
-    repair_method_version: "architecture_c_still_repair_1h",
+    repair_method_version: "architecture_c_still_repair_1i",
   };
 }
 

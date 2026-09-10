@@ -814,10 +814,17 @@ export type CoverTargetQuadOptions = {
   /** Morphological close radius on the band component (Stage 1g). Default 6. */
   bandCloseRadiusPx?: number;
   /**
-   * Absorb bright pinstripe along the band top-normal only (Stage 1g). Default 6.
-   * Gated: luma > 140 and within this many px of the component along −normal.
+   * Absorb top pinstripe/AA strip along the band top-normal (Stage 1i).
+   * Derived once from the component top boundary; default 5 covers the live
+   * 4–5 px ridge including its antialias row without cream-body raise.
    */
   topPinstripeAbsorbPx?: number;
+};
+
+/** Cover result: painted frame plus full-frame verified band authority mask. */
+export type CoverTargetQuadResult = RgbaImage & {
+  /** Full-frame mask of verified band paint (α ≥ 0.5). Stage 1i chest-local occlusion. */
+  bandAuthorityMask: Float32Array;
 };
 
 /** Forward-bilinear: (u,v) in [0..1]² → point inside quad. */
@@ -1221,12 +1228,20 @@ export function largestOverlappingComponent(
 }
 
 /**
- * Absorb bright pinstripe pixels along the band's top-normal only (Stage 1g/1h).
- * Stage 1h: claim at most a thin bright ridge (≤ {@link PINSTRIPE_MAX_RIDGE_THICKNESS_PX}
- * consecutive luma>140 pixels), then stop. Do not keep climbing into cream body
- * above the band for the remainder of `maxPx`.
+ * Absorb top pinstripe / antialias along the band normal (Stage 1i).
+ *
+ * Derive the allowable strip once from each column's top boundary on the
+ * *original* component. Do not let already-absorbed rows become new climb
+ * origins (Stage 1h recursive raise).
+ *
+ * Admit a finite bright ridge (incl. L>180 pinstripe) only when dark fabric
+ * exists above it inside the scan window — that is the pinstripe signature.
+ * Open cream body (continuous L>140 with no dark above) is not absorbed, which
+ * prevents the 5 px cream-body raise. AA rows (luma ≥ {@link PINSTRIPE_AA_LUMA_MIN})
+ * adjacent to the ridge are included.
  */
-const PINSTRIPE_MAX_RIDGE_THICKNESS_PX = 3;
+const PINSTRIPE_AA_LUMA_MIN = 100;
+const PINSTRIPE_BRIGHT_LUMA = 140;
 
 function absorbTopPinstripeLocal(
   component: Float32Array,
@@ -1238,51 +1253,85 @@ function absorbTopPinstripeLocal(
   bandNormalUpX: number,
   bandNormalUpY: number,
   maxPx: number,
-  solidPadPx = 0,
+  _solidPadPx = 0,
   maxAbsY: number | null = null,
 ): Float32Array {
-  if (maxPx <= 0 && solidPadPx <= 0) return component;
+  if (maxPx <= 0) return component;
   const out = new Float32Array(component);
   const ux = bandNormalUpX;
   const uy = bandNormalUpY;
-  const total = Math.max(0, maxPx) + Math.max(0, solidPadPx);
+  const steps = Math.max(0, Math.round(maxPx));
+  const scan = steps + 2; // peek past the strip for dark-above-ridge
 
-  const sampleLuma = (k: number, lx: number, ly: number): number | null => {
+  const colTopLy = new Int32Array(mw);
+  colTopLy.fill(-1);
+  for (let ly = 0; ly < mh; ly++) {
+    for (let lx = 0; lx < mw; lx++) {
+      if (component[ly * mw + lx]! < 0.5) continue;
+      if (colTopLy[lx]! < 0 || ly < colTopLy[lx]!) colTopLy[lx] = ly;
+    }
+  }
+
+  const sampleAt = (
+    lx: number,
+    originLy: number,
+    k: number,
+  ): { sx: number; sy: number; olx: number; oly: number; L: number } | null => {
     const sx = Math.round(left + lx + ux * k);
-    const sy = Math.round(top + ly + uy * k);
+    const sy = Math.round(top + originLy + uy * k);
     if (sx < 0 || sy < 0 || sx >= base.width || sy >= base.height) return null;
-    if (maxAbsY != null && sy < maxAbsY) return null; // above measured band — cream body
+    if (maxAbsY != null && sy < maxAbsY) return null;
     const olx = sx - left;
     const oly = sy - top;
     if (olx < 0 || oly < 0 || olx >= mw || oly >= mh) return null;
     const pi = (sy * base.width + sx) * 4;
-    return luma(base.data[pi]!, base.data[pi + 1]!, base.data[pi + 2]!);
+    const L = luma(base.data[pi]!, base.data[pi + 1]!, base.data[pi + 2]!);
+    return { sx, sy, olx, oly, L };
   };
 
-  for (let ly = 0; ly < mh; ly++) {
-    for (let lx = 0; lx < mw; lx++) {
-      const li = ly * mw + lx;
-      if (component[li]! < 0.5) continue;
-      let k = 1;
-      let claimed = 0;
-      while (k <= total && claimed < PINSTRIPE_MAX_RIDGE_THICKNESS_PX) {
-        const L = sampleLuma(k, lx, ly);
-        if (L == null) break;
-        if (L <= 140) {
-          // Dark gap between navy core and bright ridge — keep climbing.
-          if (claimed > 0) break; // already took the ridge; stop before cream body gaps
-          k++;
-          continue;
-        }
-        const sx = Math.round(left + lx + ux * k);
-        const sy = Math.round(top + ly + uy * k);
-        const oi = (sy - top) * mw + (sx - left);
-        if (out[oi]! < 0.5) {
-          out[oi] = 1;
-          claimed++;
-        }
-        k++;
+  for (let lx = 0; lx < mw; lx++) {
+    const originLy = colTopLy[lx]!;
+    if (originLy < 0) continue;
+
+    let firstBright = -1;
+    let lastBright = -1;
+    let darkAboveBright = false;
+    for (let k = 1; k <= scan; k++) {
+      const s = sampleAt(lx, originLy, k);
+      if (!s) break;
+      if (s.L > PINSTRIPE_BRIGHT_LUMA) {
+        if (firstBright < 0) firstBright = k;
+        lastBright = k;
+      } else if (firstBright >= 0 && s.L < 80) {
+        darkAboveBright = true;
+        break;
       }
+    }
+    // No bright ridge, or open cream field (bright runs through the whole window
+    // with no dark fabric above) — do not climb into cream body.
+    if (firstBright < 0) continue;
+    if (!darkAboveBright && lastBright >= steps) continue;
+
+    const lastK = Math.min(steps, Math.max(lastBright, firstBright) + 1); // +1 AA
+    for (let k = 1; k <= lastK; k++) {
+      const s = sampleAt(lx, originLy, k);
+      if (!s) break;
+      const admit =
+        s.L >= PINSTRIPE_AA_LUMA_MIN ||
+        isChestBandCandidate(
+          base.data[(s.sy * base.width + s.sx) * 4]!,
+          base.data[(s.sy * base.width + s.sx) * 4 + 1]!,
+          base.data[(s.sy * base.width + s.sx) * 4 + 2]!,
+        ) ||
+        isNavyPixel(
+          base.data[(s.sy * base.width + s.sx) * 4]!,
+          base.data[(s.sy * base.width + s.sx) * 4 + 1]!,
+          base.data[(s.sy * base.width + s.sx) * 4 + 2]!,
+        );
+      // Keep dark gaps unclaimed; claim AA + bright ridge only.
+      if (s.L < PINSTRIPE_AA_LUMA_MIN && s.L > 60) continue;
+      if (!admit && s.L < PINSTRIPE_AA_LUMA_MIN) continue;
+      if (s.L >= PINSTRIPE_AA_LUMA_MIN) out[s.oly * mw + s.olx] = 1;
     }
   }
   return out;
@@ -1611,8 +1660,9 @@ export function coverTargetQuad(
   base: RgbaImage,
   quad: QuadPts,
   options: CoverTargetQuadOptions = {},
-): RgbaImage {
+): CoverTargetQuadResult {
   const out = new Uint8Array(base.data);
+  const bandAuthorityMask = new Float32Array(base.width * base.height);
   const fillMode = options.fillMode ?? "navy_snap";
   const [nr, ng, nb] = averageNavyInBand(base, {
     left: Math.max(0, Math.floor(Math.min(...quad.map((p) => p.x)))),
@@ -1722,25 +1772,30 @@ export function coverTargetQuad(
       let closedCandidates: Float32Array = candidates;
       if (bandCloseRadiusPx > 0) {
         closedCandidates = morphologicalCloseLocal(candidates, mw, mh, bandCloseRadiusPx);
-        const midY =
-          (Math.min(...quad.map((p) => p.y)) + Math.max(...quad.map((p) => p.y))) / 2;
         for (let i = 0; i < closedCandidates.length; i++) {
           if (searchMask[i]! < 0.5) {
             closedCandidates[i] = 0;
             continue;
           }
-          // Close may bridge cream holes; keep top-half lettering fills, but never
-          // permanently attach cream forearm / body in the lower half of the band.
+          // Close may bridge cream holes (lettering) and shadowed sleeve cream.
+          // Keep original seeds; for close-added pixels:
+          //   - navy always kept
+          //   - bright cream (luma > 180) kept as lettering fills
+          //   - shadowed cream (luma ≤ 180, not navy) rejected so forearm
+          //     material cannot enter merely because it is dark (Stage 1i).
           if (closedCandidates[i]! < 0.5 || candidates[i]! >= 0.5) continue;
           const ly = (i / mw) | 0;
           const y = top + ly;
-          if (y <= midY) continue;
           const lx = i % mw;
           const x = left + lx;
           const pi = (y * base.width + x) * 4;
-          if (luma(base.data[pi]!, base.data[pi + 1]!, base.data[pi + 2]!) > 140) {
-            closedCandidates[i] = 0;
-          }
+          const r = base.data[pi]!;
+          const g = base.data[pi + 1]!;
+          const b = base.data[pi + 2]!;
+          if (isNavyPixel(r, g, b)) continue;
+          const L = luma(r, g, b);
+          if (L > 180) continue; // lettering hole fill (any half)
+          closedCandidates[i] = 0;
         }
       }
       let component = largestOverlappingComponent(closedCandidates, quadSeed, mw, mh);
@@ -1757,6 +1812,9 @@ export function coverTargetQuad(
       let stripeAbsorb = component;
       if (topPinstripeAbsorbPx > 0) {
         const quadTop = Math.min(...quad.map((p) => p.y));
+        // Stage 1i: strip derived once from component top; cream-body stop inside
+        // absorb. Ceiling = quadTop − absorbPx so already-absorbed rows cannot
+        // become a new origin for upward climbing into cream body.
         stripeAbsorb = absorbTopPinstripeLocal(
           component,
           base,
@@ -1768,9 +1826,7 @@ export function coverTargetQuad(
           upY,
           topPinstripeAbsorbPx,
           0,
-          // Allow a thin ridge just above the measured quad; never climb into
-          // cream body further above (Stage 1h top-edge raise fix).
-          Math.floor(quadTop) - PINSTRIPE_MAX_RIDGE_THICKNESS_PX,
+          Math.floor(quadTop) - topPinstripeAbsorbPx,
         );
       }
       // Tie/zip wedge (dark low-chroma) is intentionally kept inside the closed
@@ -1822,24 +1878,15 @@ export function coverTargetQuad(
 
     const lumaLo = paintMedianL - 4;
     const lumaHi = paintMedianL + 4;
-    const bandMidY =
-      fillMode === "quad_navy_union"
-        ? (Math.min(...quad.map((p) => p.y)) + Math.max(...quad.map((p) => p.y))) / 2
-        : null;
+    // Stage 1i: withdraw Stage 1h `y > bandMidY && luma > 180` hard lock — it
+    // re-exposed wearer's-left lettering/pinstripe (y≥714). Product-truth chest
+    // coverage owns those pixels when they belong to the verified band component;
+    // sleeve protection comes from close/expansion segmentation, not brightness.
     for (let y = top; y <= bottom; y++) {
       for (let x = left; x <= right; x++) {
         const a = alpha[(y - top) * mw + (x - left)]!;
         if (a <= 0.02) continue;
         const i = (y * base.width + x) * 4;
-        // Hard lock: never overpaint bright cream in the lower half of the chest
-        // band (forearm / body). Top-half bright pixels are pinstripe/lettering.
-        if (
-          bandMidY != null &&
-          y > bandMidY &&
-          luma(base.data[i]!, base.data[i + 1]!, base.data[i + 2]!) > 180
-        ) {
-          continue;
-        }
         if (a >= 0.98) {
           out[i] = paintNr;
           out[i + 1] = paintNg;
@@ -1853,6 +1900,7 @@ export function coverTargetQuad(
         out[i + 3] = 255;
         // Single-pass luma clamp: no painted pixel darker/lighter than median ± 4.
         if (a >= 0.5) {
+          bandAuthorityMask[y * base.width + x] = 1;
           const L = luma(out[i]!, out[i + 1]!, out[i + 2]!);
           if (L < lumaLo || L > lumaHi) {
             const target = Math.max(lumaLo, Math.min(lumaHi, L));
@@ -1870,7 +1918,7 @@ export function coverTargetQuad(
         }
       }
     }
-    return { width: base.width, height: base.height, data: out };
+    return { width: base.width, height: base.height, data: out, bandAuthorityMask };
   }
 
   const bbox = quadBbox(quad);
@@ -2007,7 +2055,7 @@ export function coverTargetQuad(
   }
   } // end columnFollow
 
-  return { width: base.width, height: base.height, data: out };
+  return { width: base.width, height: base.height, data: out, bandAuthorityMask };
 }
 
 export type LogoQuality = {
