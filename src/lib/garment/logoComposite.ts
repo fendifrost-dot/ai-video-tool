@@ -1686,7 +1686,7 @@ export function coverTargetQuad(
       // the left shadowed run and right lit run form one band component.
       // Re-gate to the search shell afterward so close cannot permanently attach
       // AABB corner / outside-shell dark regions.
-      let closedCandidates = candidates;
+      let closedCandidates: Float32Array = candidates;
       if (bandCloseRadiusPx > 0) {
         closedCandidates = morphologicalCloseLocal(candidates, mw, mh, bandCloseRadiusPx);
         const midY = (Math.min(...quad.map((p) => p.y)) + Math.max(...quad.map((p) => p.y))) / 2;

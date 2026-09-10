@@ -3,7 +3,56 @@
  * Edge function mirrors this logic in supabase/functions/_shared/logoComposite.ts.
  */
 
-import type { LogoPlacementHint } from "./logoPlacement";
+import { Image } from "https://deno.land/x/imagescript@1.3.0/mod.ts";
+import {
+  resolveLogoPlacementFromMetadata,
+  resolveProductTruthFromMetadata,
+} from "./productDetails.ts";
+
+export type LogoPlacementHint = "upper_left_chest" | "center_chest";
+
+export type LogoPlacement = {
+  logo_asset_id?: string | null;
+  front_asset_id?: string | null;
+  source_bbox_norm: [number, number, number, number];
+  target_region?: "chest_band";
+  placement_hint?: LogoPlacementHint;
+  target_bbox_norm?: [number, number, number, number] | null;
+  min_target_height_px?: number | null;
+};
+
+export function parseLogoPlacement(raw: unknown): LogoPlacement | null {
+  if (!raw || typeof raw !== "object") return null;
+  const o = raw as Record<string, unknown>;
+  const bbox = o.source_bbox_norm;
+  if (!Array.isArray(bbox) || bbox.length !== 4) return null;
+  const nums = bbox.map((n) => Number(n));
+  if (nums.some((n) => !Number.isFinite(n) || n < 0 || n > 1)) return null;
+  const [x, y, w, h] = nums;
+  if (w <= 0 || h <= 0) return null;
+  const placement_hint =
+    o.placement_hint === "center_chest" ? "center_chest" : "upper_left_chest";
+  let target_bbox_norm: LogoPlacement["target_bbox_norm"] = null;
+  if (Array.isArray(o.target_bbox_norm) && o.target_bbox_norm.length === 4) {
+    const target = o.target_bbox_norm.map((n) => Number(n));
+    if (target.every((n) => Number.isFinite(n) && n >= 0 && n <= 1)) {
+      target_bbox_norm = target as [number, number, number, number];
+    }
+  }
+  const minHeight = Number(o.min_target_height_px);
+  return {
+    logo_asset_id: typeof o.logo_asset_id === "string" ? o.logo_asset_id : null,
+    front_asset_id: typeof o.front_asset_id === "string" ? o.front_asset_id : null,
+    source_bbox_norm: [x, y, w, h],
+    target_region: "chest_band",
+    placement_hint,
+    target_bbox_norm,
+    min_target_height_px:
+      Number.isFinite(minHeight) && minHeight >= 16 && minHeight <= 256
+        ? Math.round(minHeight)
+        : null,
+  };
+}
 
 export type RgbaImage = {
   width: number;
@@ -1686,7 +1735,7 @@ export function coverTargetQuad(
       // the left shadowed run and right lit run form one band component.
       // Re-gate to the search shell afterward so close cannot permanently attach
       // AABB corner / outside-shell dark regions.
-      let closedCandidates = candidates;
+      let closedCandidates: Float32Array = candidates;
       if (bandCloseRadiusPx > 0) {
         closedCandidates = morphologicalCloseLocal(candidates, mw, mh, bandCloseRadiusPx);
         const midY = (Math.min(...quad.map((p) => p.y)) + Math.max(...quad.map((p) => p.y))) / 2;
@@ -2054,4 +2103,124 @@ export function cropNormBbox(img: RgbaImage, norm: [number, number, number, numb
   const w = Math.max(1, Math.round(nw * img.width));
   const h = Math.max(1, Math.round(nh * img.height));
   return cropRgba(img, left, top, w, h);
+}
+
+export async function decodeToRgba(bytes: Uint8Array): Promise<RgbaImage> {
+  const img = await Image.decode(bytes);
+  return { width: img.width, height: img.height, data: new Uint8Array(img.bitmap) };
+}
+
+export async function encodePng(img: RgbaImage): Promise<Uint8Array> {
+  const out = new Image(img.width, img.height);
+  out.bitmap.set(img.data);
+  return await out.encode();
+}
+
+export type ResolvedLogoAssets = {
+  placement: LogoPlacement;
+  logoBytes: Uint8Array;
+  logoSource: "asset" | "front_crop";
+  productTruthRaw: unknown;
+};
+
+// deno-lint-ignore no-explicit-any
+type SupabaseAdmin = { storage: any; from: (table: string) => any };
+
+export async function downloadStoragePath(
+  admin: SupabaseAdmin,
+  path: string,
+): Promise<Uint8Array> {
+  for (const bucket of ["product-assets", "wardrobe-refs"]) {
+    const { data, error } = await admin.storage.from(bucket).download(path);
+    if (!error && data) return new Uint8Array(await data.arrayBuffer());
+  }
+  throw new Error(`asset_download_failed:${path}`);
+}
+
+export async function resolveLogoAssets(
+  admin: SupabaseAdmin,
+  wardrobeFeatureId: string,
+): Promise<ResolvedLogoAssets | null> {
+  const { data: wardrobe } = await admin
+    .from("character_features")
+    .select("metadata_json")
+    .eq("id", wardrobeFeatureId)
+    .maybeSingle();
+  const wardrobeMeta = (wardrobe?.metadata_json as Record<string, unknown> | null) ?? null;
+  let placement = resolveLogoPlacementFromMetadata(wardrobeMeta);
+  let productTruthRaw: unknown = resolveProductTruthFromMetadata(wardrobeMeta);
+
+  const { data: link } = await admin
+    .from("product_wardrobe_links")
+    .select("product_id")
+    .eq("character_feature_id", wardrobeFeatureId)
+    .maybeSingle();
+  const productId = (link?.product_id as string | undefined) ?? null;
+  if (!placement && productId) {
+    const { data: product } = await admin
+      .from("products")
+      .select("metadata_json")
+      .eq("id", productId)
+      .maybeSingle();
+    const productMeta = (product?.metadata_json as Record<string, unknown> | null) ?? null;
+    placement = resolveLogoPlacementFromMetadata(productMeta);
+    productTruthRaw = productTruthRaw ?? resolveProductTruthFromMetadata(productMeta);
+  }
+  if (!placement) return null;
+
+  let logoBytes: Uint8Array | null = null;
+  let logoSource: "asset" | "front_crop" = "front_crop";
+  if (placement.logo_asset_id && productId) {
+    const { data: logoAsset } = await admin
+      .from("product_assets")
+      .select("storage_path, file_url")
+      .eq("id", placement.logo_asset_id)
+      .eq("product_id", productId)
+      .maybeSingle();
+    const logoPath = logoAsset?.storage_path ?? logoAsset?.file_url;
+    if (logoPath) {
+      logoBytes = await downloadStoragePath(admin, logoPath);
+      logoSource = "asset";
+    }
+  }
+
+  if (!logoBytes && productId) {
+    let frontPath: string | null = null;
+    if (placement.front_asset_id) {
+      const { data: frontAsset } = await admin
+        .from("product_assets")
+        .select("storage_path, file_url")
+        .eq("id", placement.front_asset_id)
+        .eq("product_id", productId)
+        .maybeSingle();
+      frontPath = frontAsset?.storage_path ?? frontAsset?.file_url ?? null;
+    }
+    if (!frontPath) {
+      const { data: frontAsset } = await admin
+        .from("product_assets")
+        .select("storage_path, file_url")
+        .eq("product_id", productId)
+        .eq("asset_role", "front")
+        .order("sort_order", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      frontPath = frontAsset?.storage_path ?? frontAsset?.file_url ?? null;
+    }
+    if (!frontPath) return null;
+    const frontImg = await decodeToRgba(await downloadStoragePath(admin, frontPath));
+    logoBytes = await encodePng(cropNormBbox(frontImg, placement.source_bbox_norm));
+  }
+  if (!logoBytes) return null;
+
+  if (!productTruthRaw && productId) {
+    const { data: product } = await admin
+      .from("products")
+      .select("metadata_json")
+      .eq("id", productId)
+      .maybeSingle();
+    productTruthRaw = resolveProductTruthFromMetadata(
+      (product?.metadata_json as Record<string, unknown> | null) ?? null,
+    );
+  }
+  return { placement, logoBytes, logoSource, productTruthRaw };
 }
