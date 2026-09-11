@@ -55,8 +55,8 @@ export type Stage1hSam3EvidenceAlphas = {
  * wedge, and cleared under the hand window (after a light dilate stand-in).
  */
 export function buildStage1hSam3EvidenceAlphas(
-  frameW = STAGE1H_SAM3_EVIDENCE.frameW,
-  frameH = STAGE1H_SAM3_EVIDENCE.frameH,
+  frameW: number = STAGE1H_SAM3_EVIDENCE.frameW,
+  frameH: number = STAGE1H_SAM3_EVIDENCE.frameH,
 ): Stage1hSam3EvidenceAlphas {
   const n = frameW * frameH;
   const outfit = new Float32Array(n);
