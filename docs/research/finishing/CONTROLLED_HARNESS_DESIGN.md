@@ -171,6 +171,8 @@ writeSidecar(path, payload)
 
 ### Astra computer-use (disabled)
 
+**[DECISION]** Fendi's OpenAI API can reach Astra. That access is for **research notes only** until RED-F1. The harness does not read the key, does not open a computer-use session, and keeps `astra.enabled = false`.
+
 **[DECISION]** Astra sees:
 
 - the Premiere window for the **jail project only**
