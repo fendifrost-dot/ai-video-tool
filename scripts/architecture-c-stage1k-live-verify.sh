@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Stage 1k CANONICAL LIVE VERIFY — $0 deterministic still repair.
 # Does not call Grok / V3 / Control Center.
+# Stage 1l one-shot (expect architecture_c_still_repair_1l, no anon fallback):
+#   scripts/architecture-c-stage1l-live-verify.sh
 #
 # Auth: set AVT_USER_ACCESS_TOKEN to a signed-in AVT user JWT (same token the
 # product UI sends as Bearer). The publishable/anon key is NOT a user session
