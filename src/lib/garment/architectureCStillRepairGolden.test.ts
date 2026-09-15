@@ -46,6 +46,8 @@ import {
   STAGE1H_SAM3_EVIDENCE,
 } from "./fixtures/architectureCStill1hSam3Evidence";
 import { evaluateChestStill } from "@/lib/eval/chestVisualEvaluator";
+import { GHOST_RATIO_PASS_CEILING } from "@/lib/eval/chestCriteria";
+import { STAGE1K_LIVE_VERIFIED } from "@/lib/eval/stage1kEvidence";
 import { pointInQuad } from "@/lib/eval/pixelMath";
 
 /** Canonical Stage-1 IDs / geometry (live evidence). */
@@ -1112,8 +1114,9 @@ describe("Architecture C Stage 1j — mid-luma interior topology + ROI occlusion
         }
       }
     }
-    // Real failure territory is larger than the authority-mask subset.
-    expect(c9!.metrics.midLumaChecked).toBeGreaterThan(filteredChecked);
+    // Stage 1l may paint every mid-luma sample, so the sets can be equal.
+    // The lock is unfiltered scoring (mask is not a filter), not a size gap.
+    expect(c9!.metrics.midLumaChecked).toBeGreaterThanOrEqual(filteredChecked);
     expect(c9!.metrics.ghostRatio).toBe(c9!.metrics.midLumaGhosts / c9!.metrics.midLumaChecked);
 
     // Stage 1k truthful golden: count EVERY mid-luma source pixel in the
@@ -1296,9 +1299,9 @@ describe("Architecture C Stage 1k — enclosure, truthful goldens, right-end, ab
         if (lumaAt(source, x, y) > 140 && lumaAt(covered, x, y) < 80) creamToNavy++;
       }
     }
-    // 1j live/fixture: 114. Enclosure + solid-navy trim cuts the tongue;
-    // residual navy-bounded cream holes remain (truthful, not zero).
-    expect(creamToNavy).toBeLessThan(55);
+    // 1j live/fixture: 114. Stage 1l drops the cool-white tongue past the
+    // wordmark (1k residual 41–42 navy-bounded holes).
+    expect(creamToNavy).toBe(0);
     expect(creamToNavy).toBeLessThan(114);
   });
 
@@ -1398,6 +1401,170 @@ describe("Architecture C Stage 1k — enclosure, truthful goldens, right-end, ab
         if (srcL < 180) continue;
         expect(out.data[(y * source.width + x) * 4]!).toBe(source.data[(y * source.width + x) * 4]!);
       }
+    }
+  });
+});
+
+describe("Architecture C Stage 1l — remaining 1k live FAILs (C2/C4/C6/C9)", () => {
+  const STAGE1L = {
+    fillMode: "quad_navy_union" as const,
+    columnFollow: false,
+    maxExpandFrac: 0.05,
+    featherPx: 3,
+    navyUnionMarginPx: 12,
+    navyDilatePx: 4,
+    navyEdgeDilatePx: 2,
+    bandCloseRadiusPx: 6,
+    topPinstripeAbsorbPx: 5,
+    zipStripFrac: 0,
+  };
+
+  function bandFromNorm(
+    w: number,
+    h: number,
+    norm: [[number, number], [number, number], [number, number], [number, number]],
+  ): QuadPts {
+    return norm.map(([nx, ny]) => ({ x: nx * w, y: ny * h })) as QuadPts;
+  }
+
+  function lumaAt(img: RgbaImage, x: number, y: number): number {
+    const i = (y * img.width + x) * 4;
+    return 0.2126 * img.data[i]! + 0.7152 * img.data[i + 1]! + 0.0722 * img.data[i + 2]!;
+  }
+
+  function setRgb(img: RgbaImage, x: number, y: number, r: number, g: number, b: number) {
+    const i = (y * img.width + x) * 4;
+    img.data[i] = r;
+    img.data[i + 1] = g;
+    img.data[i + 2] = b;
+    img.data[i + 3] = 255;
+  }
+
+  it("Lane E scores 11/11 on the canonical crop — 1k live FAILs would miss these zeros", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1L);
+    const report = evaluateChestStill({
+      source,
+      output: covered,
+      bandQuadNorm: ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+      bandAuthorityMask: covered.bandAuthorityMask,
+    });
+    expect(report.passCount).toBe(11);
+    expect(report.failCount).toBe(0);
+    const c2 = report.criteria.find((c) => c.id === 2)!;
+    const c4 = report.criteria.find((c) => c.id === 4)!;
+    const c6 = report.criteria.find((c) => c.id === 6)!;
+    const c9 = report.criteria.find((c) => c.id === 9)!;
+    expect(c2.metrics.remnants).toBe(0);
+    expect(c2.metrics.remnants).toBeLessThan(STAGE1K_LIVE_VERIFIED.pinstripeRemnants);
+    expect(c4.metrics.creamToNavy).toBe(0);
+    expect(c4.metrics.creamToNavy).toBeLessThan(STAGE1K_LIVE_VERIFIED.creamBodyToNavy);
+    expect(c6.metrics.creamToNavy).toBe(0);
+    expect(c6.metrics.creamToNavy).toBeLessThan(STAGE1K_LIVE_VERIFIED.rightEndCreamToNavy);
+    expect(c9.metrics.ghostRatio).toBeLessThan(GHOST_RATIO_PASS_CEILING);
+    expect(c9.metrics.rightWindowRatio).toBeLessThan(
+      STAGE1K_LIVE_VERIFIED.ghostRatiosUnfiltered.right,
+    );
+  });
+
+  it("does not paint a 1-px cream raise at x 290 (live C4 JPEG leak class)", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    setRgb(source, 290, 675, 205, 190, 170);
+    setRgb(source, 290, 674, 110, 105, 100);
+    setRgb(source, 290, 673, 40, 42, 48);
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1L);
+    expect(lumaAt(source, 290, 675)).toBeGreaterThan(150);
+    expect(lumaAt(covered, 290, 675)).toBeGreaterThan(140);
+    expect(covered.data[(675 * source.width + 290) * 4]!).toBe(
+      source.data[(675 * source.width + 290) * 4]!,
+    );
+  });
+
+  it("paints in-quad wordmark-edge mid-luma that 1k enclosure dropped (live C9-right class)", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    for (let x = 500; x <= 530; x++) {
+      setRgb(source, x, 721, 200, 185, 165);
+      setRgb(source, x, 720, 120, 115, 110);
+    }
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1L);
+    let painted = 0;
+    for (let x = 500; x <= 530; x++) {
+      if (lumaAt(covered, x, 720) < 80) painted++;
+    }
+    expect(painted).toBeGreaterThan(20);
+    const report = evaluateChestStill({
+      source,
+      output: covered,
+      bandQuadNorm: ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    });
+    const c9 = report.criteria.find((c) => c.id === 9)!;
+    expect(c9.metrics.ghostRatio).toBeLessThan(GHOST_RATIO_PASS_CEILING);
+    expect(c9.metrics.rightWindowRatio).toBeLessThan(0.05);
+  });
+
+  it("1i crease/wedge/hand + 1j sleeve 4×3 + C8 tapes survive 1l fills", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1L);
+    const shaded = applyLowFrequencyBandIllumination(source, covered, band);
+    const { outfitBasedAlpha, handsAlpha, faceAlpha } = buildStage1hSam3EvidenceAlphas(
+      source.width,
+      source.height,
+    );
+    const chestLocal = applyChestLocalOcclusionSemantics({
+      width: source.width,
+      height: source.height,
+      outfitBasedAlpha,
+      bandComponent: covered.bandAuthorityMask,
+      handsAlpha,
+      faceAlpha,
+      dilatePx: 12,
+    });
+    const out = applyOcclusionAlphaComposite(
+      source,
+      shaded,
+      featherAlpha(chestLocal, source.width, source.height, 2),
+    );
+    const refI = (700 * source.width + 450) * 4;
+    const median =
+      0.2126 * covered.data[refI]! +
+      0.7152 * covered.data[refI + 1]! +
+      0.0722 * covered.data[refI + 2]!;
+    const floor = median - 6;
+    for (let x = 277; x <= 283; x++) {
+      expect(lumaAt(out, x, 700)).toBeGreaterThanOrEqual(floor);
+    }
+    for (let x = 405; x <= 420; x++) {
+      expect(lumaAt(out, x, 720)).toBeLessThan(80);
+    }
+    for (let y = 746; y <= 748; y++) {
+      for (let x = 389; x <= 392; x++) {
+        expect(covered.data[(y * source.width + x) * 4]!).toBe(
+          source.data[(y * source.width + x) * 4]!,
+        );
+      }
+    }
+    for (const x of [399, 400, 401]) {
+      expect(lumaAt(covered, x, 715)).toBeLessThan(80);
     }
   });
 });
