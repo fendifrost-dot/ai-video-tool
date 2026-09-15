@@ -18,6 +18,9 @@ export type StageExecutionContext = {
   definition: StageDefinition;
   inputs: ArtifactRef[];
   attempt: number;
+  projectId: string;
+  runId: string;
+  reviews: Record<string, boolean>;
 };
 
 export type StageHandler = (ctx: StageExecutionContext) => Promise<StageHandlerResult>;

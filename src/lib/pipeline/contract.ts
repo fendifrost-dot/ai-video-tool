@@ -117,13 +117,14 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
         module: "supabase/functions/architecture-c-still-repair-proxy/index.ts",
         entrypoint: "POST /functions/v1/architecture-c-still-repair-proxy (stage: logo_chest)",
         notes:
-          "Chest compute lives here. Lane G consumes the result artifact; Lovable Edge Functions is the redeploy plane — not this lane.",
+          "Chest compute lives here. Canonical live CLEARED 11/11: asset 9ed83c01, architecture_c_still_repair_1m (PR #73). Lane G orchestrates via callArchitectureCStillRepair; does not rewrite paint or redeploy.",
       },
       {
         ...noPaidCalls,
         module: "src/lib/queries/architectureCStillRepair.ts",
         entrypoint: "callArchitectureCStillRepair (stage: logo_chest)",
-        notes: "Client wrapper only. Do not rewrite Architecture C algorithms.",
+        notes:
+          "Client wrapper. Product OS chest adapter calls this with stage: logo_chest. Do not rewrite Architecture C algorithms.",
       },
       {
         ...noPaidCalls,

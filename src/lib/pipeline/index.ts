@@ -12,6 +12,7 @@ export {
   ARTIFACT_KINDS,
   FAILURE_CLASSIFICATIONS,
   PIPELINE_CONTRACT_VERSION,
+  PIPELINE_REVIEW_KEYS,
   PIPELINE_RUN_STATUSES,
   PIPELINE_STAGE_IDS,
   STAGE_STATUSES,
@@ -27,6 +28,7 @@ export type {
   FailureClassification,
   LaneSurface,
   PipelineClock,
+  PipelineReviewKey,
   PipelineRun,
   PipelineRunStatus,
   PipelineStageId,
@@ -72,6 +74,7 @@ export type {
 } from "./adapters";
 export {
   advancePipeline,
+  createClearedChestPipelineRun,
   createPipelineRun,
   retryFailedStage,
   runPipelineToPause,
@@ -86,3 +89,36 @@ export {
   serializePipelineRun,
 } from "./persistence";
 export { LANE_G_DEPLOY_NEEDS, LANE_G_WORK_ORDER } from "./ownership";
+export {
+  CHEST_STILL_REVIEW_KEY,
+  CLEARED_CHEST_STILL,
+  chestClearedProvenanceMetadata,
+  clearedChestLanePayload,
+  clearedChestSeedArtifacts,
+  isClearedChestArtifact,
+  isClearedChestAssetId,
+} from "./chest";
+export { chestArtifactFromClientResult, createChestRepairHandler } from "./chestAdapter";
+export type {
+  ChestRepairClient,
+  ChestRepairClientInput,
+  ChestRepairClientResult,
+} from "./chestAdapter";
+export {
+  architectureCChestQueryClient,
+  createBoundChestQueryAdapter,
+  createLiveProductOsAdapters,
+} from "./chestQueryAdapter";
+export {
+  SLEEVE_STAGE_HOOK,
+  TEMPORAL_STAGE_HOOK,
+  createSleeveRepairStubHandler,
+  createTemporalPropagationStubHandler,
+} from "./stageHooks";
+export {
+  assertProductOsStageOrder,
+  createProductOsAdapters,
+  productOsChestAdapter,
+  productOsGraphNodes,
+} from "./productOs";
+export type { ProductOsAdapterOptions, ProductOsGraphNode } from "./productOs";

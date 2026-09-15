@@ -1,9 +1,9 @@
 # AVT Pipeline / Product OS — Lane G
 
-**Issue:** [#51](https://github.com/fendifrost-dot/ai-video-tool/issues/51) (**prefer this**) — child of [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50) lane 7  
+**Issue:** [#77](https://github.com/fendifrost-dot/ai-video-tool/issues/77) (**prefer this**) — lineage [#51](https://github.com/fendifrost-dot/ai-video-tool/issues/51), child of [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50) lane 7  
 **Owner:** Lane G — orchestration only (`src/lib/pipeline/**`)  
 **Class:** C (orchestration: job graph, stage status/retry/resume). Architecture + product + security sign-off before merge.  
-**Status:** scaffolding. Not a durable queue. Not a live production runner.  
+**Status:** scaffolding + **CLEARED chest stage wired**. Not a durable queue. Not a live production UI runner.  
 **Control plane:** Lovable — https://aivideotool.lovable.app (SQL editor + Edge Functions redeploy). No standalone Supabase CLI/dashboard from this lane.
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**
@@ -19,29 +19,53 @@ Approximate model:
 ```
 ingest
   → generation
-  → keyframe repair
-  → sleeve/garment repair
-  → temporal propagation
+  → keyframe repair          ← CLEARED chest (logo_chest / 9ed83c01)
+  → sleeve/garment repair    ← Lane B stub/hook
+  → temporal propagation     ← Lane C stub/hook (stillRepairApproved)
   → original-master reconstruction
   → deterministic branding
   → automated evaluation
   → review/export
 ```
 
-**[DECISION]** Lane G owns contracts, statuses, artifacts, provenance, failure, and retry. It does **not** own Architecture C algorithms, Grok generation internals, proxy auth, Control Center, evaluation metric implementations, or Astra/Premiere.
+**[DECISION]** Lane G owns contracts, statuses, artifacts, provenance, failure, retry, and the chest **query-client adapter**. It does **not** own Architecture C paint, Grok generation internals, proxy auth, Control Center, evaluation metric implementations, or Astra/Premiere.
+
+---
+
+## Chest integration (CLEARED 1m)
+
+**[VERIFIED]** Stage 1m live chest still is **CLEARED 11/11** (PR #73). Product OS treats that row as the reference `keyframe_repair` output.
+
+| Field                   | Value                                                                                                    |
+| ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| Gate                    | **CLEARED** 11/11                                                                                        |
+| `repair_method_version` | `architecture_c_still_repair_1m`                                                                         |
+| Asset                   | `9ed83c01-8c7d-4d1b-918f-87b0fc743c50`                                                                   |
+| Clean still             | `2aa1a44c-b24a-46bf-890f-13a6fc65b1cc`                                                                   |
+| Project                 | `764a63d2-93cd-44f3-905f-292f14ab2f51`                                                                   |
+| Scorecard               | `docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1M_RESULT_2026-09-15.md` |
+
+**[DECISION]** `createClearedChestPipelineRun()` seeds that artifact. `reviews.chestStillCleared` becomes true. That does **not** set `stillRepairApproved` — Architecture C still requires a human still review before temporal.
+
+**[DECISION]** Live chest compute is invoked only through `callArchitectureCStillRepair({ stage: "logo_chest" })` in `chestQueryAdapter.ts`. Default `createProductOsAdapters()` does **not** call the client (import / bind required) so tests stay $0. Use `createLiveProductOsAdapters()` when a later UI mounts a runner.
+
+A new live `logo_chest` output that is not `9ed83c01` is stored as `gate: UNSCORED`. Do not auto-claim CLEARED.
+
+**[DECISION]** Sleeve (`sleeve_stage_stub`, Lane B / #74) and temporal (`temporal_stage_stub`, Lane C / #56) are hooks. Lane G does not fill them.
 
 ---
 
 ## Hard locks (this lane)
 
-| Lock | Enforcement |
-|------|-------------|
-| No `fendi-control-center` | No CC files; no new proxy hops |
-| No proxy auth widening | No edge/auth edits |
-| No PR #37 | Out of scope |
-| No V3 / paid Grok gens | `generation` is import-only; `paidCallSurfaces()` lists the forbidden entrypoints |
-| Do not rewrite Architecture C | Still-repair / placement / occlusion modules are consume-only lane surfaces |
-| Identify files before touching shared surfaces | This lane adds `src/lib/pipeline/**` + this doc + a RISK_REGISTER pointer. It does not edit query/garment/edge algorithm files |
+| Lock                                           | Enforcement                                                                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| No `fendi-control-center`                      | No CC files; no new proxy hops                                                                               |
+| No proxy auth widening                         | No edge/auth edits                                                                                           |
+| No PR #37                                      | Out of scope                                                                                                 |
+| No V3 / paid Grok gens                         | `generation` is import-only; `paidCallSurfaces()` lists the forbidden entrypoints                            |
+| Do not rewrite Architecture C                  | Still-repair / placement / occlusion modules are consume-only. Adapter calls the **query client** only       |
+| Identify files before touching shared surfaces | This lane adds/updates `src/lib/pipeline/**` + this doc. It does not edit query/garment/edge algorithm files |
+| Do not edit Lane B/C paint                     | `sleevePanel`, temporal, reconstruct modules stay on those lanes                                             |
 
 ---
 
@@ -51,31 +75,37 @@ ingest
 
 **[VERIFIED]** `docs/ARCHITECTURE_C_CHATGPT_LOCK_2026-09-03.md` hard-stops temporal propagation and SAM-3 original-master composite until a repaired still passes human review. Gate 4 is explicitly “next architecture gate.”
 
-**[DECISION]** Other lanes plug in by producing `ArtifactRef`s of named kinds. The orchestrator stores lane payloads opaquely and never imports algorithm modules.
+**[DECISION]** Other lanes plug in by producing `ArtifactRef`s of named kinds. The orchestrator stores lane payloads opaquely and never imports algorithm modules. The chest adapter is the exception that **calls** the existing query entrypoint without owning paint.
 
 ---
 
-## Module map (intended files)
+## Module map
 
-| Path | Role |
-|------|------|
-| `src/lib/pipeline/types.ts` | Stage ids, statuses, artifact kinds, provenance, failure, retry policy |
-| `src/lib/pipeline/contract.ts` | Per-stage consume/produce/gates + **lane surface registry** |
-| `src/lib/pipeline/adapters.ts` | Plug-in `StageAdapter` / `StageHandler` |
-| `src/lib/pipeline/orchestrator.ts` | Create / advance / retry / review flags |
-| `src/lib/pipeline/persistence.ts` | JSON document + `metadata_json.pipeline_run` embed |
-| `src/lib/pipeline/errors.ts` | `PipelineError` + name-based classification of existing errors |
-| `src/lib/pipeline/retry.ts` | Default policy + backoff |
-| `src/lib/pipeline/graph.ts` | Topological order / cycle check |
+| Path                                    | Role                                                                   |
+| --------------------------------------- | ---------------------------------------------------------------------- |
+| `src/lib/pipeline/types.ts`             | Stage ids, statuses, artifact kinds, provenance, failure, retry policy |
+| `src/lib/pipeline/contract.ts`          | Per-stage consume/produce/gates + **lane surface registry**            |
+| `src/lib/pipeline/adapters.ts`          | Plug-in `StageAdapter` / `StageHandler`                                |
+| `src/lib/pipeline/chest.ts`             | CLEARED 1m identity (`9ed83c01`) + seed artifacts                      |
+| `src/lib/pipeline/chestAdapter.ts`      | `keyframe_repair` handler (import CLEARED or call injected client)     |
+| `src/lib/pipeline/chestQueryAdapter.ts` | Binds `callArchitectureCStillRepair` (logo_chest only)                 |
+| `src/lib/pipeline/stageHooks.ts`        | Sleeve + temporal stub errors other lanes fill                         |
+| `src/lib/pipeline/productOs.ts`         | Graph nodes + default Product OS adapters                              |
+| `src/lib/pipeline/orchestrator.ts`      | Create / advance / retry / review flags                                |
+| `src/lib/pipeline/persistence.ts`       | JSON document + `metadata_json.pipeline_run` embed                     |
+| `src/lib/pipeline/errors.ts`            | `PipelineError` + name-based classification of existing errors         |
+| `src/lib/pipeline/retry.ts`             | Default policy + backoff                                               |
+| `src/lib/pipeline/graph.ts`             | Topological order / cycle check                                        |
 
 ### Shared surfaces Lane G does **not** modify
 
 Named so a later integration issue can grant access explicitly:
 
 - `src/lib/queries/wardrobeVideoFrames.ts` — extract / Lane A propagate
-- `src/lib/queries/architectureCStillRepair.ts` — `callArchitectureCStillRepair`
+- `src/lib/queries/architectureCStillRepair.ts` — `callArchitectureCStillRepair` (**called**, not edited)
 - `src/lib/heroFrame/architectureCStillRepair.ts` — still-repair metadata helpers
 - `src/lib/garment/placementEngine.ts`, `src/lib/garment/logoComposite.ts`
+- `src/lib/sleevePanel/**` — Lane B
 - `src/lib/queries/grokImageGarment.ts`, `src/lib/queries/grokVideoEdit.ts`
 - `src/lib/providerJobs/api.ts`
 - `src/lib/queries/clipReviews.ts`, `src/lib/clipReviews/driftFlags.ts`
@@ -100,9 +130,13 @@ Run rolls up from stages: running if any stage is running/retrying; otherwise ne
 **needs_review** = a `StageGate.reviewKey` is not true (still-repair approval, export approval).  
 **blocked** = upstream failed, or Architecture C gate 4 not authorized.
 
+Known review keys: `chestStillCleared`, `stillRepairApproved`, `masterCompositeAuthorized`, `exportApproved`.
+
 ### Artifacts
 
 An `ArtifactRef` is a pointer (`assetId` / `bucket`+`path` / `lookId` / `contentHash`) plus `kind` and optional opaque `lanePayload`. Lane G does not open bytes.
+
+`repaired_still_logo_chest` with asset `9ed83c01-8c7d-4d1b-918f-87b0fc743c50` is the CLEARED chest reference.
 
 ### Provenance
 
@@ -116,11 +150,13 @@ Default policy: 3 attempts, 1s × 2^n backoff, retry only `adapter` and `timeout
 
 Name-based mapping (no imports of query error classes):
 
-| `error.name` | code | retryable |
-|--------------|------|-----------|
-| `VideoNeedsProcessingError` | `needs_transcode` | no (gate) |
-| `FalRunError` | `fal_run_failed` | yes (adapter) |
-| `ProviderCallError` | `provider_call_failed` | honors `.retryable` |
+| `error.name`                | code                   | retryable           |
+| --------------------------- | ---------------------- | ------------------- |
+| `VideoNeedsProcessingError` | `needs_transcode`      | no (gate)           |
+| `FalRunError`               | `fal_run_failed`       | yes (adapter)       |
+| `ProviderCallError`         | `provider_call_failed` | honors `.retryable` |
+
+Chest query `WORKER_RESOURCE_LIMIT` / HTTP 5xx / 546 maps to retryable `chest_query_failed`.
 
 ### Persistence
 
@@ -133,11 +169,26 @@ Name-based mapping (no imports of query error classes):
 ## Plug-in contract (other lanes)
 
 ```ts
-import { createStageAdapter, createPipelineRun, runPipelineToPause } from "@/lib/pipeline";
+import {
+  createClearedChestPipelineRun,
+  createLiveProductOsAdapters,
+  createStageAdapter,
+  runPipelineToPause,
+} from "@/lib/pipeline";
 
-const keyframeRepair = createStageAdapter("keyframe_repair", async (ctx) => {
-  // Call callArchitectureCStillRepair HERE from the still-repair lane — not from Lane G defaults.
-  return { artifacts: [/* repaired_still_logo_chest */], metadata: { /* repro */ } };
+// Prefer the CLEARED 1m chest (no new paint, $0):
+const run = createClearedChestPipelineRun();
+
+// Live logo_chest via existing query client (still $0; no V3):
+const live = createLiveProductOsAdapters({
+  sleeveHandler: async (ctx) => {
+    // Lane B fills this — call callArchitectureCStillRepair({ stage: "sleeve_panel" }).
+    return {
+      artifacts: [
+        /* repaired_still_sleeve_panel */
+      ],
+    };
+  },
 });
 ```
 
@@ -145,9 +196,10 @@ Rules:
 
 1. Produce the `ArtifactKind`s listed on your stage. Do not require the orchestrator to know your internals.
 2. Do not attach `callGrokVideoEdit` / `applyGrokGarmentTruthAndWait` / `createGenerationJob` as the Lane G default. Generation is **import an existing artifact**.
-3. Temporal propagation must not run unless `reviews.stillRepairApproved === true`.
+3. Temporal propagation must not run unless `reviews.stillRepairApproved === true`. `chestStillCleared` is not a substitute.
 4. Original-master reconstruction must not run unless `reviews.masterCompositeAuthorized === true` (gate 4).
-5. Integration happens only after your lane’s own acceptance criteria are met (#50).
+5. Integration of sleeve / temporal happens only after those lanes meet their own acceptance criteria (#50).
+6. Do not reopen chest paint. Do not redeploy `architecture-c-still-repair-proxy` from this lane.
 
 ---
 
@@ -155,11 +207,11 @@ Rules:
 
 **[DECISION]** GitHub merge is not a runtime gate. Report Lovable deploy needs instead.
 
-| Action | Needed? |
-|--------|---------|
-| Lovable **Publish** (frontend) | **No** — no product UI mounted on these contracts yet |
-| Lovable **Edge Functions → redeploy** | **No** — this lane did not change edge source. Chest compute remains `architecture-c-still-repair-proxy` (consume-only). Do not redeploy it from Lane G. |
-| Lovable SQL editor | **No** — run document embeds on existing `metadata_json`; no new table |
+| Action                                | Needed?                                                                                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Lovable **Publish** (frontend)        | **No** — no product UI mounted on these contracts yet                                                                                                                                      |
+| Lovable **Edge Functions → redeploy** | **No** — this lane did not change edge source. Chest compute remains `architecture-c-still-repair-proxy` already serving `architecture_c_still_repair_1m`. Do not redeploy it from Lane G. |
+| Lovable SQL editor                    | **No** — run document embeds on existing `metadata_json`; no new table                                                                                                                     |
 
 Machine-readable copy: `LANE_G_DEPLOY_NEEDS` in `src/lib/pipeline/ownership.ts`.
 
@@ -172,6 +224,7 @@ Machine-readable copy: `LANE_G_DEPLOY_NEEDS` in `src/lib/pipeline/ownership.ts`.
 - No durable edge orchestrator / reaper (OPS-2 remains open)
 - No product UI runner
 - No V3 prompt work
+- No sleeve / temporal paint (stubs only)
 
 ---
 
@@ -183,3 +236,6 @@ Machine-readable copy: `LANE_G_DEPLOY_NEEDS` in `src/lib/pipeline/ownership.ts`.
 - **[VERIFIED in code]** Still-repair review gate + gate-4 block
 - **[VERIFIED in code]** Generation import-only (paid_generation_forbidden)
 - **[VERIFIED in code]** JSON persistence + metadata embed helper
+- **[VERIFIED in code]** CLEARED chest (`9ed83c01` / 1m) as first-class `keyframe_repair` artifact
+- **[VERIFIED in code]** Chest adapter calls `callArchitectureCStillRepair` (logo_chest) without paint imports
+- **[VERIFIED in code]** Sleeve + temporal stub hooks (Lane B / Lane C fill)
