@@ -228,11 +228,19 @@ function scoreCriterion3(
   };
 }
 
+function firstNavyRow(img: RgbaImage, x: number, y0: number, y1: number): number {
+  for (let y = y0; y <= y1; y++) {
+    if (lumaAt(img, x, y) < BAND_NAVY_LUMA) return y;
+  }
+  return y1 + 1;
+}
+
 function scoreCreamToNavy(
   source: RgbaImage,
   output: RgbaImage,
   windows: PixelBox[],
   label: string,
+  extras?: Record<string, number>,
 ): Pick<ChestCriterionResult, "verdict" | "metrics" | "note" | "failureReason"> {
   let cream = 0;
   let darkened = 0;
@@ -245,12 +253,17 @@ function scoreCreamToNavy(
       }
     }
   }
-  const pass = darkened === 0;
+  const raisePx = extras?.firstNavyRaisePx ?? 0;
+  const pass = darkened === 0 && raisePx < 2;
   return {
     verdict: pass ? "PASS" : "FAIL",
-    metrics: { creamSource: cream, creamToNavy: darkened },
+    metrics: { creamSource: cream, creamToNavy: darkened, ...extras },
     note: label,
-    failureReason: pass ? null : `${darkened} cream pixels painted navy`,
+    failureReason: pass
+      ? null
+      : darkened > 0
+        ? `${darkened} cream pixels painted navy`
+        : `first-navy row raised ${raisePx} px into cream`,
   };
 }
 
@@ -402,11 +415,21 @@ export function evaluateChestStill(input: EvaluateChestStillInput): ChestVisualR
       continue;
     }
     if (def.id === 4) {
+      const x290 = Math.round((290 * width) / CHEST_REF_FRAME.width);
+      const yScan0 = Math.round((662 * height) / CHEST_REF_FRAME.height);
+      const yScan1 = Math.round((690 * height) / CHEST_REF_FRAME.height);
+      const srcNavy = firstNavyRow(source, x290, yScan0, yScan1);
+      const outNavy = firstNavyRow(output, x290, yScan0, yScan1);
       const s = scoreCreamToNavy(
         source,
         output,
         windows,
-        "Cream body at the 3-px raise window must not become navy.",
+        "Cream body at the 3-px raise window must not become navy (1j: 97 px / 3-px raise at x290).",
+        {
+          firstNavyRaisePx: srcNavy - outNavy,
+          firstNavyRowSource: srcNavy,
+          firstNavyRowOutput: outNavy,
+        },
       );
       criteria.push(result(def, windows, s.verdict, s.metrics, s.note, s.failureReason));
       continue;

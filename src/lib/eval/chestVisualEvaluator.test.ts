@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { coverTargetQuad, type QuadPts } from "@/lib/garment/logoComposite";
+import {
+  applyLowFrequencyBandIllumination,
+  coverTargetQuad,
+  overlayZipFromSource,
+  type QuadPts,
+} from "@/lib/garment/logoComposite";
+import {
+  applyChestLocalOcclusionSemantics,
+  applyOcclusionAlphaComposite,
+  featherAlpha,
+} from "@/lib/garment/stillRepairOcclusion";
+import { buildStage1hSam3EvidenceAlphas } from "@/lib/garment/fixtures/architectureCStill1hSam3Evidence";
 import {
   ARCHITECTURE_C_BAND_CROP,
   embedArchitectureCBandCropInFrame,
@@ -9,6 +20,7 @@ import {
   CHEST_CRITERION_DEFS,
   GHOST_RATIO_PASS_CEILING,
 } from "./chestCriteria";
+import { STAGE1J_LIVE_VERIFIED } from "./stage1jEvidence";
 import { evaluateChestStill, scoreMidLumaGhosts } from "./chestVisualEvaluator";
 import { cloneRgba, fillRect, lumaAt, pointInQuad, quadFromNorm, solidRgba } from "./pixelMath";
 import { CHEST_EVAL_SPEC_VERSION, type ChestCriterionId, type RgbaImage } from "./types";
@@ -217,6 +229,50 @@ describe("Lane E chest visual evaluator", () => {
   });
 });
 
+const STAGE1J_COVER = {
+  fillMode: "quad_navy_union" as const,
+  columnFollow: false,
+  maxExpandFrac: 0.05,
+  featherPx: 3,
+  navyUnionMarginPx: 12,
+  navyDilatePx: 4,
+  navyEdgeDilatePx: 2,
+  bandCloseRadiusPx: 6,
+  topPinstripeAbsorbPx: 5,
+  zipStripFrac: 0,
+};
+
+/** Evaluate-only 1j fixture path. Does not change Architecture C algorithms. */
+function runStage1jFixturePipeline() {
+  const source = embedArchitectureCBandCropInFrame();
+  const band = ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm.map(([nx, ny]) => ({
+    x: nx * source.width,
+    y: ny * source.height,
+  })) as QuadPts;
+  const covered = coverTargetQuad(source, band, STAGE1J_COVER);
+  const shaded = applyLowFrequencyBandIllumination(source, covered, band);
+  const withZip = overlayZipFromSource(source, shaded, band, 0.015, 0.5);
+  const { outfitBasedAlpha, handsAlpha, faceAlpha } = buildStage1hSam3EvidenceAlphas(
+    source.width,
+    source.height,
+  );
+  const chestLocal = applyChestLocalOcclusionSemantics({
+    width: source.width,
+    height: source.height,
+    outfitBasedAlpha,
+    bandComponent: covered.bandAuthorityMask,
+    handsAlpha,
+    faceAlpha,
+    dilatePx: 12,
+  });
+  const out = applyOcclusionAlphaComposite(
+    source,
+    withZip,
+    featherAlpha(chestLocal, source.width, source.height, 2),
+  );
+  return { source, covered, out, band };
+}
+
 describe("Lane E vs Architecture C real-crop (read-only of paint)", () => {
   it("Stage 1j cover scores unfiltered mid-luma ghosts; mask filter would hide them", () => {
     const source = embedArchitectureCBandCropInFrame();
@@ -224,18 +280,7 @@ describe("Lane E vs Architecture C real-crop (read-only of paint)", () => {
       x: nx * source.width,
       y: ny * source.height,
     })) as QuadPts;
-    const covered = coverTargetQuad(source, band, {
-      fillMode: "quad_navy_union",
-      columnFollow: false,
-      maxExpandFrac: 0.05,
-      featherPx: 3,
-      navyUnionMarginPx: 12,
-      navyDilatePx: 4,
-      navyEdgeDilatePx: 2,
-      bandCloseRadiusPx: 6,
-      topPinstripeAbsorbPx: 5,
-      zipStripFrac: 0,
-    });
+    const covered = coverTargetQuad(source, band, STAGE1J_COVER);
     const report = evaluateChestStill({
       source,
       output: covered,
@@ -267,5 +312,37 @@ describe("Lane E vs Architecture C real-crop (read-only of paint)", () => {
     }
     expect(c9.verdict).toBe("FAIL");
     expect(c9.metrics.ghostRatio).toBeGreaterThanOrEqual(GHOST_RATIO_PASS_CEILING);
+  });
+
+  it("evaluates the 1j fixture to a locked 11-point PASS/FAIL (algorithms unchanged)", () => {
+    const { source, covered, out } = runStage1jFixturePipeline();
+    const report = evaluateChestStill({
+      source,
+      output: out,
+      bandQuadNorm: ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+      bandAuthorityMask: covered.bandAuthorityMask,
+    });
+    const passed = report.criteria.filter((c) => c.verdict === "PASS").map((c) => c.id);
+    const failed = report.criteria.filter((c) => c.verdict === "FAIL").map((c) => c.id);
+    // Fixture+cover does not reproduce the live 3-px cream raise (C4). Live 1j
+    // is 5/11 (C4 FAIL); this path is 6/11 with C4 PASS on identical cream rows.
+    expect(passed).toEqual([1, 3, 4, 7, 10, 11]);
+    expect(failed).toEqual([2, 5, 6, 8, 9]);
+    expect(STAGE1J_LIVE_VERIFIED.pass).toEqual([1, 3, 7, 10, 11]);
+    expect(STAGE1J_LIVE_VERIFIED.fail).toEqual([2, 4, 5, 6, 8, 9]);
+
+    const c5 = criterion(report, 5);
+    const c6 = criterion(report, 6);
+    const c9 = criterion(report, 9);
+    expect(c5.metrics.patchDarkened).toBeGreaterThanOrEqual(7);
+    expect(c6.metrics.creamToNavy).toBe(STAGE1J_LIVE_VERIFIED.rightEndCreamToNavy);
+    expect(c9.metrics.bandAuthorityMaskUsed).toBe(0);
+    expect(c9.metrics.leftWindowRatio).toBeCloseTo(
+      STAGE1J_LIVE_VERIFIED.ghostRatiosUnfiltered.left,
+      1,
+    );
+    expect(c9.metrics.ghostRatio).toBeGreaterThanOrEqual(GHOST_RATIO_PASS_CEILING);
+    expect(report.unexplained).toEqual([]);
+    expect(formatChestEvalSummary(report)).toContain("FAIL (6/11)");
   });
 });

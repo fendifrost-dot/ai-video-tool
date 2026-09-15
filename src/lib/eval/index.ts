@@ -24,3 +24,4 @@ export {
   serializeChestEvalReport,
 } from "./visualArtifacts";
 export { encodeBmp24, encodePpm } from "./pixelMath";
+export { STAGE1J_LIVE_VERIFIED } from "./stage1jEvidence";
