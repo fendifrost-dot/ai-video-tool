@@ -38,13 +38,11 @@ export interface HeroFrameTemporalHookResult {
   contractVersion: typeof TEMPORAL_LIVE_PREP_CONTRACT_VERSION;
   /** Hard stop — this hook never enables product tracking. */
   temporalTrackingEnabled: false;
-  lineage: Pick<
-    CanonicalLineage,
-    "projectId" | "stillAssetId" | "keyframeId" | "clearedChestAssetId"
-  > & {
+  lineage: {
     projectId: string;
     stillAssetId: string;
     keyframeId: string;
+    clearedChestAssetId: string;
   };
   activation: TemporalLiveActivationDecision;
   preparedJobs: PropagationJobSpec[];
