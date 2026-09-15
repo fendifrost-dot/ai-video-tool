@@ -2,7 +2,7 @@
 
 **Work-order:** [#74](https://github.com/fendifrost-dot/ai-video-tool/issues/74) under umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50). Lineage [#54](https://github.com/fendifrost-dot/ai-video-tool/issues/54).  
 **Class:** C (rendering / compositing).  
-**Status:** **READY** for $0 live sleeve verify after Lovable **Edge Functions → redeploy** of `architecture-c-still-repair-proxy` only.
+**Status:** Live $0 row scored **NOT CLEARED 5/6** (asset `fde270bf`). See [`LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md`](./LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md). `TEMPORAL_LIVE_ACTIVATION_ARMED` stays false.
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**.
 
@@ -77,12 +77,12 @@ Redeploy **only** `architecture-c-still-repair-proxy`.
 
 ## READY / BLOCKED
 
-**READY** for $0 live sleeve verify.
+**SCORED** live $0 row `fde270bf`: **NOT CLEARED 5/6**. Identity/geometry/C5/C11/chest reserved hold. Visible navy-ward repair fails (cream fill). `TEMPORAL_LIVE_ACTIVATION_ARMED` stays false.
 
-This cloud VM has no `AVT_USER_ACCESS_TOKEN`. Anon POST remains 401 (auth not widened). Live click / owner JWT is the verify plane — same as chest 1l/1m.
+This cloud VM has no `AVT_USER_ACCESS_TOKEN`. Anon POST remains 401 (auth not widened). Repair was not re-run.
 
 **[VERIFIED]** Isolated + live-adapter unit tests: visible repair, hidden reject, chest reserved untouched, C5/C10/C11 windows byte-identical on a 720×1280 synthetic, src/_shared fingerprint parity.
 
 **[VERIFIED]** Existing Architecture C Stage 1m chest goldens are not edited.
 
-**Not claimed:** live pixels on `2aa1a44c` / `9ed83c01` after this PR (needs edge redeploy + owner session).
+**Live score (2026-09-15):** asset `fde270bf` on clean still `2aa1a44c` (preferred `9ed83c01` UI-disabled). Identity + geometry + C5/C11/chest reserved **PASS**. Visible navy-ward repair **FAIL** (cream fill, luma rose). Gate **NOT CLEARED 5/6**. Paint not changed in the score PR.

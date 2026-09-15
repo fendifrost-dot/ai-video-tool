@@ -1,0 +1,59 @@
+{
+  "assetId": "fde270bf-63f2-44ff-a76b-4129a0248708",
+  "created_at": "2026-09-15T05:46:25.424486Z",
+  "repair_method_version": "architecture_c_sleeve_still_1a",
+  "repair_stage": "sleeve_panel",
+  "source_still_asset_id": "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+  "preferred_chest_output_asset_id": "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
+  "preferred_chest_output_used": false,
+  "project_id": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+  "wardrobe_feature_id": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+  "keyframe_id": "v2-still-0.785",
+  "frame_time_sec": 0.785,
+  "temporal_tracking_enabled": false,
+  "storedPath": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/architecture-c-repair/sleeve_panel_2aa1a44c-b24a-46bf-890f-13a6fc65b1cc_1789451185112.png",
+  "storedBucket": "project-references",
+  "pngBytes": 1183248,
+  "metadata": {
+    "architecture_lane": "architecture_c",
+    "bucket": "project-references",
+    "frame_time_sec": 0.785,
+    "mime_type": "image/png",
+    "repair": {
+      "chest_output_asset_id": null,
+      "claim": "visible_geometry_only",
+      "consumed_chest_output": true,
+      "contract_version": "1.0.0",
+      "front_flat_path": "9044c334-f5ea-41fa-b000-6d5407010343/4529ddf8-fcc5-4aff-aff3-73b8b11b3103/352dedd2-1d72-42a1-ae4a-e13a5d53c999.jpg",
+      "geometry_note": "visible_upper_arm_only",
+      "hidden_shoulder_to_cuff_validated": false,
+      "keyframe_id": "v2-still-0.785",
+      "repair_method_version": "architecture_c_sleeve_still_1a",
+      "sleeve_panels": [
+        {
+          "fallback_reason": "",
+          "painted_pixel_count": 22777,
+          "placement_source": "manual_keyframe",
+          "rejected_chest_reserved_pixel_count": 0,
+          "rejected_hidden_pixel_count": 0,
+          "side": "left",
+          "target_quad": [[22, 640], [187, 646], [180, 787], [22, 781]]
+        },
+        {
+          "fallback_reason": "",
+          "painted_pixel_count": 11128,
+          "placement_source": "manual_keyframe",
+          "rejected_chest_reserved_pixel_count": 0,
+          "rejected_hidden_pixel_count": 0,
+          "side": "right",
+          "target_quad": [[634, 646], [713, 640], [713, 787], [634, 781]]
+        }
+      ]
+    },
+    "repair_stage": "sleeve_panel",
+    "source_still_asset_id": "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+    "source_video_asset_id": "f31bd0f2-884f-42e1-8b08-aa645597b7a6",
+    "temporal_tracking_enabled": false,
+    "wardrobe_feature_id": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0"
+  }
+}

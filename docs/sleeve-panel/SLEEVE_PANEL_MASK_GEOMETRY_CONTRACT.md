@@ -109,3 +109,5 @@ A target quad is rejected (`sleeve_panel_geometry_rejected`) when any of:
 4. Calls `repairVisibleSleevePanelsOnStill` → `repairVisibleSleevePanels`.
 
 `repair_method_version` for this wiring is `architecture_c_sleeve_still_1a` (not a chest 1m bump). Hidden shoulder→cuff stays unvalidated.
+
+**Live (2026-09-15):** `fde270bf` on `2aa1a44c` is **NOT CLEARED 5/6**. See [`LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md`](./LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md).

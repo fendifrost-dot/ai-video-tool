@@ -134,6 +134,8 @@ Until then, Hero Frame §7 must keep **HARD STOP — do not enable temporal trac
 
 **BLOCKED** for production temporal activation until sleeve still CLEARED on the canonical lineage.
 
+**Live sleeve 1a (2026-09-15):** asset `fde270bf` on `2aa1a44c` is **NOT CLEARED 5/6** (visible cream fill, not navy panel). C5/C11/chest reserved held. `TEMPORAL_LIVE_ACTIVATION_ARMED` stays **false**. Score: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md`.
+
 **[VERIFIED]** Unit tests in `src/lib/temporal/*.test.ts` (existing 20 + live-prep cases). No I/O doubles. No provider-live. No real-media.
 
-**Not claimed:** live pixels, edge dispatch, Hero Frame tracking on, sleeve quad approval.
+**Not claimed:** live pixels as CLEARED, edge dispatch, Hero Frame tracking on, sleeve quad approval.

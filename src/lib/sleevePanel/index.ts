@@ -62,6 +62,27 @@ export {
   rasterizeReservedChestMask,
   repairVisibleSleevePanelsOnStill,
 } from "./liveStill";
+export {
+  CANONICAL_CLEAN_STILL_ASSET_ID,
+  PREFERRED_CHEST_OUTPUT_ASSET_ID,
+  SLEEVE_LIVE_EXPECTED_METHOD,
+  SLEEVE_LIVE_SCORECARD_VERSION,
+  evaluateSleeveStillLive,
+  formatSleeveLiveSummary,
+  pixelTargetQuadToNorm,
+  scoreC11Outside,
+  scoreC5Forearm,
+  scoreChestReserved,
+  scoreSleeveGeometry,
+  scoreSleeveIdentity,
+  sleeveLiveEvidenceCrops,
+} from "./liveScore";
+export type {
+  SleeveCriterionResult,
+  SleeveGate,
+  SleeveLiveIdentityInput,
+  SleeveLiveScore,
+} from "./liveScore";
 export type {
   SleevePanelLiveInput,
   SleevePanelLiveMeta,
