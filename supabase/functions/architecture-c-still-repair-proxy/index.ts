@@ -368,6 +368,7 @@ serve(async (req) => {
       hidden_shoulder_to_cuff_validated: sleeve.hidden_shoulder_to_cuff_validated,
       consumed_chest_output: sleeve.consumed_chest_output,
       chest_output_asset_id: sleeve.chest_output_asset_id,
+      navy_fill_mode: sleeve.navy_fill_mode,
       keyframe_id: KEYFRAME_ID,
     };
   }

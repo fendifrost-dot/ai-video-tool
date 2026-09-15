@@ -3,6 +3,8 @@
  * Deterministic visible-upper-arm sleeve-panel repair.
  *
  * Warps flat-ref navy panel pixels onto manual visible quads.
+ * Cream/white source crops are resolved navy-ward (Stage 1b) instead of
+ * being pasted as panel truth.
  * Detection is not guessed — callers must supply target quads.
  * Hidden shoulder→cuff pixels are never painted and never validated.
  */
@@ -20,7 +22,6 @@ import {
   cloneRgba,
   countMask,
   createMask,
-  cropNormBbox,
   intersectMasks,
   invBilinear,
   quadNormToPts,
@@ -29,6 +30,7 @@ import {
   subtractMasks,
 } from "./raster.ts";
 import { assessVisibleSleeveQuad } from "./visibleGeometry.ts";
+import { resolveNavyPanelSource } from "./navyFill.ts";
 import type { BinaryMask } from "./types.ts";
 
 export function repairVisibleSleevePanels(input: SleevePanelStageInput): SleevePanelStageOutput {
@@ -68,7 +70,8 @@ export function repairVisibleSleevePanels(input: SleevePanelStageInput): SleeveP
     paintMask = subtractMasks(paintMask, input.hiddenMask);
     if (chestReserved) paintMask = subtractMasks(paintMask, chestReserved);
 
-    const source = cropNormBbox(input.flatRef, panel.sourceBboxNorm);
+    const resolved = resolveNavyPanelSource(input.flatRef, panel.sourceBboxNorm, panel.side);
+    const source = resolved.source;
     const [tl, tr, br, bl] = quadPts;
     let painted = 0;
     for (let y = 0; y < out.height; y++) {
@@ -95,6 +98,10 @@ export function repairVisibleSleevePanels(input: SleevePanelStageInput): SleeveP
       rejectedHiddenPixelCount: countMask(hiddenHits),
       rejectedChestReservedPixelCount: countMask(reservedHits),
       targetQuadNorm: panel.targetQuadNorm,
+      navyFillMode: resolved.fillMode,
+      sourceNavyFraction: resolved.navyFraction,
+      requestedSourceBboxNorm: panel.sourceBboxNorm,
+      resolvedSourceBboxNorm: resolved.bbox,
     });
   }
 

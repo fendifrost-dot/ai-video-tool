@@ -28,6 +28,7 @@ import {
   extractChestRepairMethodVersion,
   isStillRepairLogoChest,
   isStillRepairOutputMetadata,
+  resolvePreferredSleeveStillSource,
   type SleevePanelManual,
 } from "@/lib/heroFrame/architectureCStillRepair";
 import { isEditR4CanonicalOwner } from "@/lib/heroFrame/editR4ProductIds";
@@ -297,15 +298,17 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
     [stills],
   );
 
-  const preferredSleeveSourceId = useMemo(() => {
-    if (logoResultAssetId) return logoResultAssetId;
-    const recommended = logoChestOutputs.find(
-      (a) => a.id === ARCHITECTURE_C_V2_REPAIR.recommendedChestOutputAssetId,
-    );
-    if (recommended) return recommended.id;
-    if (logoChestOutputs[0]) return logoChestOutputs[0].id;
-    return stillAssetId;
-  }, [logoResultAssetId, logoChestOutputs, stillAssetId]);
+  const preferredSleeve = useMemo(
+    () =>
+      resolvePreferredSleeveStillSource({
+        inSessionChestAssetId: logoResultAssetId,
+        recommendedChestOutputAssetId: ARCHITECTURE_C_V2_REPAIR.recommendedChestOutputAssetId,
+        logoChestOutputIds: logoChestOutputs.map((a) => a.id),
+        selectedCleanStillId: stillAssetId,
+      }),
+    [logoResultAssetId, logoChestOutputs, stillAssetId],
+  );
+  const preferredSleeveSourceId = preferredSleeve.stillAssetId;
 
   const sleeveSourceMeta = useMemo(() => {
     const asset = stills.find((a) => a.id === preferredSleeveSourceId);
@@ -349,9 +352,11 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         sleevePanels,
         chestBandQuadNorm:
           extractChestBandQuad(sleeveSourceMeta) ?? logoQuad ?? MEASURED_V2_CHEST_BAND_QUAD,
-        chestOutputAssetId: isStillRepairLogoChest(sleeveSourceMeta)
-          ? sourceStill
-          : (logoResultAssetId ?? undefined),
+        chestOutputAssetId:
+          preferredSleeve.chestOutputAssetId ??
+          (isStillRepairLogoChest(sleeveSourceMeta)
+            ? sourceStill
+            : (logoResultAssetId ?? undefined)),
         chestRepairMethodVersion: extractChestRepairMethodVersion(sleeveSourceMeta) ?? undefined,
       });
       setSleeveResultUrl(result.previewUrl);
@@ -505,7 +510,8 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
 
       <label className="block space-y-1 text-xs">
         <span className="text-muted-foreground">
-          Repair still asset (clean input only — repair outputs are blocked here)
+          Repair still asset (clean input only — <span className="font-mono">logo_chest</span>{" "}
+          outputs stay disabled here so chest cannot re-chain)
         </span>
         <select
           className="w-full rounded-md border border-border bg-background px-2 py-2 text-xs"
@@ -536,7 +542,16 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         <p className="text-[11px] text-amber-200/90">
           Selected asset looks like a repair output. Reselect the clean capture before logo_chest.
         </p>
-      ) : null}
+      ) : (
+        <p className="text-[11px] text-muted-foreground">
+          Chest picker lock: CLEARED 1m{" "}
+          <span className="font-mono">
+            {ARCHITECTURE_C_V2_REPAIR.recommendedChestOutputAssetId.slice(0, 8)}…
+          </span>{" "}
+          is a repair output, so it cannot be the <span className="font-mono">logo_chest</span>{" "}
+          input. Sleeve stage sends it automatically ({preferredSleeve.reason}).
+        </p>
+      )}
 
       {stillPreviewUrl ? (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -616,10 +631,11 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         <div className="space-y-3 border-t border-border pt-4">
           <p className="text-xs text-muted-foreground">
             Sleeve panels: drag or type quads onto the <strong>visible upper-arm</strong> navy only.
-            Arms are crossed for the entire clip — this cannot prove armhole→cuff. Input prefers the{" "}
-            <span className="font-mono">logo_chest</span> output (
-            <span className="font-mono">{(preferredSleeveSourceId || "—").slice(0, 8)}…</span>
-            ). Expect <span className="font-mono">{SLEEVE_STILL_REPAIR_METHOD_VERSION}</span>, claim{" "}
+            Arms are crossed for the entire clip — this cannot prove armhole→cuff. Input is the{" "}
+            <span className="font-mono">logo_chest</span> lineage (
+            <span className="font-mono">{(preferredSleeveSourceId || "—").slice(0, 8)}…</span>,{" "}
+            {preferredSleeve.reason}) — not the chest picker. Expect{" "}
+            <span className="font-mono">{SLEEVE_STILL_REPAIR_METHOD_VERSION}</span>, claim{" "}
             <span className="font-mono">visible_geometry_only</span>.
           </p>
           <div className="grid gap-4 lg:grid-cols-2">

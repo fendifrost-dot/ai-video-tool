@@ -3,6 +3,7 @@ import { STAGE1J_LIVE_VERIFIED } from "./stage1jEvidence";
 import { STAGE1K_LIVE_VERIFIED } from "./stage1kEvidence";
 import { STAGE1L_LIVE_VERIFIED } from "./stage1lEvidence";
 import { STAGE1M_LIVE_VERIFIED } from "./stage1mEvidence";
+import { SLEEVE_STILL_1A_LIVE_VERIFIED } from "./sleeveStill1aEvidence";
 import {
   extractRepairMethodVersion,
   forensicExtras,
@@ -66,14 +67,37 @@ describe("Stage 1k live-verify harness (unit)", () => {
     expect(STAGE1M_LIVE_VERIFIED.gate).toBe("CLEARED");
     expect(STAGE1M_LIVE_VERIFIED.pass).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     expect(STAGE1M_LIVE_VERIFIED.fail).toEqual([]);
-    expect(STAGE1M_LIVE_VERIFIED.ghostRatiosUnfiltered.combined).toBeLessThan(GHOST_RATIO_PASS_CEILING);
-    expect(STAGE1M_LIVE_VERIFIED.ghostRatiosUnfiltered.right).toBeLessThan(GHOST_RATIO_PASS_CEILING);
+    expect(STAGE1M_LIVE_VERIFIED.ghostRatiosUnfiltered.combined).toBeLessThan(
+      GHOST_RATIO_PASS_CEILING,
+    );
+    expect(STAGE1M_LIVE_VERIFIED.ghostRatiosUnfiltered.right).toBeLessThan(
+      GHOST_RATIO_PASS_CEILING,
+    );
     expect(STAGE1M_LIVE_VERIFIED.ghostRatiosUnfiltered.right).toBeLessThan(
       STAGE1L_LIVE_VERIFIED.ghostRatiosUnfiltered.right,
     );
     expect(
       extractRepairMethodVersion({ repair: { repair_method_version: STAGE1M_EXPECTED_VERSION } }),
     ).toBe(STAGE1M_EXPECTED_VERSION);
+  });
+
+  it("locks Lane B sleeve still 1a live identity and 5/6 score", () => {
+    expect(SLEEVE_STILL_1A_LIVE_VERIFIED.repairMethodVersion).toBe(
+      "architecture_c_sleeve_still_1a",
+    );
+    expect(SLEEVE_STILL_1A_LIVE_VERIFIED.claim).toBe("visible_geometry_only");
+    expect(SLEEVE_STILL_1A_LIVE_VERIFIED.assetId).toBe("fde270bf-63f2-44ff-a76b-4129a0248708");
+    expect(SLEEVE_STILL_1A_LIVE_VERIFIED.cleanStillAssetId).toBe(STAGE1K_CANONICAL.stillAssetId);
+    expect(SLEEVE_STILL_1A_LIVE_VERIFIED.preferredChestOutputUsed).toBe(false);
+    expect(SLEEVE_STILL_1A_LIVE_VERIFIED.geometryRejectedHttp400).toBe(false);
+    expect(SLEEVE_STILL_1A_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
+    expect(SLEEVE_STILL_1A_LIVE_VERIFIED.pass).toEqual([1, 2, 3, 4, 5]);
+    expect(SLEEVE_STILL_1A_LIVE_VERIFIED.fail).toEqual([6]);
+    expect(
+      extractRepairMethodVersion({
+        repair: { repair_method_version: SLEEVE_STILL_1A_LIVE_VERIFIED.repairMethodVersion },
+      }),
+    ).toBe("architecture_c_sleeve_still_1a");
   });
 
   it("fixture pipeline is 11/11 under Stage 1l paint (1k live 7/11 stays historical)", () => {
@@ -86,7 +110,9 @@ describe("Stage 1k live-verify harness (unit)", () => {
     expect(pkg.report.passCount).toBe(11);
     const c9 = pkg.report.criteria.find((c) => c.id === 9)!;
     expect(c9.metrics.ghostRatio).toBeLessThan(GHOST_RATIO_PASS_CEILING);
-    expect(c9.metrics.rightWindowRatio).toBeLessThan(STAGE1K_LIVE_VERIFIED.ghostRatiosUnfiltered.right);
+    expect(c9.metrics.rightWindowRatio).toBeLessThan(
+      STAGE1K_LIVE_VERIFIED.ghostRatiosUnfiltered.right,
+    );
     expect(pkg.extras.sleeveCornerDarkened).toBe(0);
     expect(pkg.extras.rightEndCreamToNavy).toBe(0);
     expect(pkg.extras.creamToNavyX280Y673).toBe(0);

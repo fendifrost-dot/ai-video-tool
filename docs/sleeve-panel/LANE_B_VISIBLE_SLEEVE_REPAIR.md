@@ -50,4 +50,4 @@ Repair is a pass when visible quads receive the vertical panel (column pinstripe
 
 ## Status
 
-READY for review as an isolated Lane B subsystem. Integration with a live chest output is a later lane handshake, not this PR.
+Isolated engine landed (PR #60). Live 1a NOT CLEARED 5/6 on FAIL #6 (PR #80). Stage 1b (`architecture_c_sleeve_still_1b`, #81) owns navy-ward fill.

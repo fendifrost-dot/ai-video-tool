@@ -293,11 +293,13 @@ Last reviewed: **2026-09-15** (SLEEVE-1 added for Lane B live sleeve still wirin
 
 - **Severity:** Medium · **Confidence:** Confirmed · **Status:** Open · **Owner:** Products (AVT) / Lane B
 - **Summary:** Live `sleeve_panel` now paints through Lane B
-  (`architecture_c_sleeve_still_1a`) on the Architecture C still path. The
-  canonical pose is crossed arms for the entire clip. A geometry pass proves
-  **visible upper-arm** repair only. `hiddenShoulderToCuffValidated` is always
-  `false`. Treating a READY sleeve still as full armhole→cuff (or turning on
-  temporal tracking) is a misread of the contract.
+  (`architecture_c_sleeve_still_1b`) on the Architecture C still path. Stage 1a
+  (`fde270bf`) was NOT CLEARED 5/6 on FAIL #6 (cream/white fill). 1b resolves
+  cream source crops navy-ward. The canonical pose is crossed arms for the entire
+  clip. A geometry pass proves **visible upper-arm** repair only.
+  `hiddenShoulderToCuffValidated` is always `false`. Treating a READY sleeve still
+  as full armhole→cuff (or turning on temporal tracking) is a misread of the
+  contract.
 - **Pointer:** [`docs/sleeve-panel/SLEEVE_PANEL_MASK_GEOMETRY_CONTRACT.md`](docs/sleeve-panel/SLEEVE_PANEL_MASK_GEOMETRY_CONTRACT.md);
   [`docs/sleeve-panel/LANE_B_SLEEVE_STILL_LIVE_WIRING.md`](docs/sleeve-panel/LANE_B_SLEEVE_STILL_LIVE_WIRING.md).
 - **Mitigations:** live mask rejects tall/hidden quads; chest band is a reserved

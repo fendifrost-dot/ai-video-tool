@@ -9,35 +9,35 @@
 | Item | On `main`? | Live / redeployed? | Ready to test? |
 |------|------------|--------------------|----------------|
 | Stage **1m** chest CLEARED 11/11 | YES (PR #73, `e206d3c`) | YES (asset `9ed83c01`) | **LOCKED — do not reopen chest paint** |
-| Lane B isolated sleeve engine | YES (PR #60) | n/a (fixtures) | landed |
-| Lane B **sleeve still live wiring** | this PR | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
+| Lane B sleeve still **1a** live | YES (PR #75 wiring) | YES (asset `fde270bf`) | **NOT CLEARED 5/6** (FAIL #6 cream fill, PR #80) |
+| Lane B sleeve still **1b** navy-ward | this PR | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
 
-## SLEEVE STILL — ready for edge redeploy
+## SLEEVE STILL 1b — ready for edge redeploy
 
-Work-order: GitHub **#74** (lineage **#54**, parent **#50**). Lane B only. **Do not reopen chest 1m.**
+Work-order: GitHub **#81** (lineage **#74** / **#54**, parent **#50**). Lane B only. **Do not reopen chest 1m. Do not arm temporal.**
 
-`repair_method_version: architecture_c_sleeve_still_1a`  
+`repair_method_version: architecture_c_sleeve_still_1b`  
 `claim: visible_geometry_only`  
 `hidden_shoulder_to_cuff_validated: false`
 
-### Wiring
+### FAIL #6
 
-`compositeSleevePanelsOntoStill` now calls `src/lib/sleevePanel/liveStill.ts` (`repairVisibleSleevePanelsOnStill`). Edge mirror lives in `supabase/functions/_shared/sleevePanel/**`. Chest reserved mask defaults to the live 1m band quad. Detection stays `detectStub`. Temporal stays off.
+1a live `fde270bf` painted cream/white (left luma 202→227, right 134→226). Root cause: `DEFAULT_FLAT_SLEEVE_SOURCE_BBOX` is cream on the SL flat. 1b `resolveNavyPanelSource` warps a navy-majority crop, else a vertical navy strip, else median product navy.
 
-### Preserved locks
+### Lineage
 
-logoComposite C2/C4/C6/C9 1m · 1i chest-local α · 1j ROI · 1k enclosure · 1l C2/C4/C6 · 4×3 sleeve unpainted on **chest** path · no CC · no proxy-auth widen · no PR #37 · no V3 / paid Grok
+`9ed83c01` stays **disabled** in the chest still picker (logo_chest chaining lock). Sleeve sends it via `resolvePreferredSleeveStillSource` without selecting it there.
 
 ### Deploy
 
-Redeploy **only** `architecture-c-still-repair-proxy`. Frontend Publish optional (seeds visible-upper-arm quads + prefers `9ed83c01`). No V3. No paid Grok.
+Redeploy **only** `architecture-c-still-repair-proxy`. Frontend Publish optional for paint; required for the product-UI sleeve source resolver. No V3. No paid Grok.
 
 ### Claude / Fendi next ($0)
 
 1. Redeploy **only** `architecture-c-still-repair-proxy`
 2. Hero Frame click path in `docs/sleeve-panel/LANE_B_SLEEVE_STILL_LIVE_WIRING.md`
-3. Canonical sleeve run on the **same still lineage** as chest (`2aa1a44c` / chest output `9ed83c01`)
-4. Expect `architecture_c_sleeve_still_1a`. Do **not** start temporal.
+3. Canonical sleeve run on **9ed83c01** (picker stays on clean `2aa1a44c`)
+4. Expect `architecture_c_sleeve_still_1b`. Score `lane-b-sleeve-live-v1`. Criterion 6 must pass. Do **not** start temporal.
 
 ## STAGE 1M — live score (authoritative, PR #73)
 

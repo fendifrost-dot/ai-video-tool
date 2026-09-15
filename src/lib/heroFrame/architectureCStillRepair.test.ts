@@ -13,6 +13,7 @@ import {
   isStillRepairLogoChest,
   isStillRepairOutputMetadata,
   mergeLogoZoneManualQuad,
+  resolvePreferredSleeveStillSource,
 } from "./architectureCStillRepair";
 
 describe("ARCHITECTURE_C_V2_REPAIR", () => {
@@ -27,7 +28,7 @@ describe("ARCHITECTURE_C_V2_REPAIR", () => {
     expect(ARCHITECTURE_C_V2_REPAIR.recommendedChestOutputAssetId).toBe(
       "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
     );
-    expect(SLEEVE_STILL_REPAIR_METHOD_VERSION).toBe("architecture_c_sleeve_still_1a");
+    expect(SLEEVE_STILL_REPAIR_METHOD_VERSION).toBe("architecture_c_sleeve_still_1b");
     expect(assessSleevePanelQuadPlacement(SEEDED_VISIBLE_SLEEVE_QUADS.left).ok).toBe(true);
   });
 });
@@ -144,5 +145,38 @@ describe("logo_chest metadata handshake for sleeve", () => {
     expect(extractChestRepairMethodVersion(meta)).toBe("architecture_c_still_repair_1m");
     expect(extractChestBandQuad(meta)?.[0][0]).toBeCloseTo(0.3, 3);
     expect(isStillRepairLogoChest({ repair_stage: "sleeve_panel" })).toBe(false);
+  });
+});
+
+describe("resolvePreferredSleeveStillSource", () => {
+  it("uses canonical CLEARED 9ed83c01 even when the chest picker cannot select it", () => {
+    const r = resolvePreferredSleeveStillSource({
+      selectedCleanStillId: "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+    });
+    expect(r.stillAssetId).toBe("9ed83c01-8c7d-4d1b-918f-87b0fc743c50");
+    expect(r.chestOutputAssetId).toBe("9ed83c01-8c7d-4d1b-918f-87b0fc743c50");
+    expect(r.reason).toBe("canonical_cleared_chest");
+    expect(r.chestPickerLocked).toBe(true);
+    expect(isStillRepairOutputMetadata({ repair_stage: "logo_chest" })).toBe(true);
+  });
+
+  it("prefers an in-session logo_chest over the canonical id", () => {
+    const r = resolvePreferredSleeveStillSource({
+      inSessionChestAssetId: "fresh-1m-row",
+      selectedCleanStillId: "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+    });
+    expect(r.stillAssetId).toBe("fresh-1m-row");
+    expect(r.reason).toBe("in_session_logo_chest");
+  });
+
+  it("falls back to the clean still only when no chest output id exists", () => {
+    const r = resolvePreferredSleeveStillSource({
+      recommendedChestOutputAssetId: "",
+      logoChestOutputIds: [],
+      selectedCleanStillId: "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+    });
+    expect(r.stillAssetId).toBe("2aa1a44c-b24a-46bf-890f-13a6fc65b1cc");
+    expect(r.chestOutputAssetId).toBeNull();
+    expect(r.reason).toBe("clean_still_fallback");
   });
 });

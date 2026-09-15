@@ -12,6 +12,7 @@ const MIRROR_FILES = [
   "raster.ts",
   "contract.ts",
   "visibleGeometry.ts",
+  "navyFill.ts",
   "repair.ts",
   "liveStill.ts",
 ] as const;

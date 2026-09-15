@@ -63,12 +63,18 @@ export type SleevePanelStageInput = {
   chestOutput?: ChestOutputConsumptionSlot | null;
 };
 
+export type SleeveNavyFillMode = "warp" | "median_navy";
+
 export type SleevePanelSideResult = {
   side: SleeveSide;
   paintedPixelCount: number;
   rejectedHiddenPixelCount: number;
   rejectedChestReservedPixelCount: number;
   targetQuadNorm: QuadNorm;
+  navyFillMode: SleeveNavyFillMode;
+  sourceNavyFraction: number;
+  requestedSourceBboxNorm: NormBbox;
+  resolvedSourceBboxNorm: NormBbox;
 };
 
 export type SleevePanelStageOutput = {

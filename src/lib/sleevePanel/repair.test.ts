@@ -9,6 +9,7 @@ import {
   buildCrossedArmsSleeveFixture,
   LEFT_HIDDEN_SHOULDER_TO_CUFF_QUAD,
 } from "./fixtures";
+import { DEFAULT_FLAT_SLEEVE_SOURCE_BBOX } from "./liveStill";
 import { SLEEVE_PANEL_CONTRACT_VERSION } from "./types";
 import { pixelAt, rgbaFingerprint } from "./raster";
 import { repairVisibleSleevePanels } from "./repair";
@@ -55,6 +56,7 @@ describe("deterministic visible sleeve-panel repair", () => {
     expect(out.consumedChestOutput).toBe(false);
     expect(out.sides).toHaveLength(2);
     expect(out.sides.every((s) => s.paintedPixelCount > 40)).toBe(true);
+    expect(out.sides.every((s) => s.navyFillMode === "warp")).toBe(true);
 
     // Former horizontal cream pinstripe row near the left edge becomes navy
     // (flat-ref vertical panel, u≈0).
@@ -213,5 +215,31 @@ describe("deterministic visible sleeve-panel repair", () => {
     expect(pixelAt(fx.still, LEFT_VISIBLE.x0 + 1, 24)).toEqual([...PINSTRIPE, 255]);
     expect(CREAM[0]).toBeGreaterThan(200);
     expect(NAVY[2]).toBeGreaterThan(NAVY[0]);
+  });
+
+  it("1b: cream 1a-default bbox still paints navy-ward, not cream/white", () => {
+    const fx = buildCrossedArmsSleeveFixture();
+    const before = pixelAt(fx.still, LEFT_VISIBLE.x0 + 1, 24);
+    expect(isPinstripe(before)).toBe(true);
+
+    const out = repairVisibleSleevePanels({
+      contractVersion: SLEEVE_PANEL_CONTRACT_VERSION,
+      still: fx.still,
+      flatRef: fx.flatRef,
+      visibleMask: fx.visibleMask,
+      hiddenMask: fx.hiddenMask,
+      panels: fx.panels.map((p) => ({ ...p, sourceBboxNorm: DEFAULT_FLAT_SLEEVE_SOURCE_BBOX })),
+      visibility: fx.visibility,
+    });
+
+    expect(out.claims.visibleGeometryRepaired).toBe(true);
+    expect(out.claims.hiddenShoulderToCuffValidated).toBe(false);
+    const after = pixelAt(out.still, LEFT_VISIBLE.x0 + 1, 24);
+    expect(isNavy(after)).toBe(true);
+    expect(isCream(after)).toBe(false);
+    expect(out.sides.every((s) => s.paintedPixelCount > 40)).toBe(true);
+    expect(
+      out.sides.every((s) => s.sourceNavyFraction >= 0 || s.navyFillMode === "median_navy"),
+    ).toBe(true);
   });
 });
