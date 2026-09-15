@@ -11,13 +11,40 @@
 | Stage **1i** occlusion | YES | YES — **LOCKED** | do not reopen |
 | Stage **1j** ROI compute | YES | YES — **LOCKED** | do not reopen |
 | Stage **1k** enclosure / absorb / right-end | YES | YES — scored live (PR #66) | **NOT CLEARED 7/11** — historical |
-| Stage **1l** remaining C2/C4/C6/C9 | YES (PR #68) | YES — **scored live** | **NOT CLEARED 10/11** — C9 remains |
+| Stage **1l** C2/C4/C6 + in-quad mid-luma | YES (PR #68) | YES — scored live (PR #70) | **NOT CLEARED 10/11** — historical; C2/C4/C6 **LIVE CLEARED** |
+| Stage **1m** C9-right wordmark-edge AA | YES (PR #72) | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
 
-## STAGE 1L — live score (canonical) + identity / UI path
+## STAGE 1M — ready for edge redeploy
+
+`repair_method_version: architecture_c_still_repair_1m`
+
+Work-order: GitHub **#71** (lineage **#67**, parent **#50**). Lane A only. **C9-right only.**
+
+### Fix
+
+| # | Defect | Fix |
+|---|--------|-----|
+| C9-right | Wordmark-edge AA re-lights source-mid-luma at x 462–500 / y 713–723 after 1l cover | Post-warp snap: in-quad C9-right mid-luma output (≤180, not glyph cores) → painted navy. C6 x≥576 and C4 cream-raise untouched. |
+
+### Preserved locks
+
+chest-local α · crease/wedge ownership · hand/face protection · no midY luma>180 lock · left-third coverage · no global SAM-3 change · ROI `dilateAlphaRoi` (1j) · 1k closed-component enclosure · 1l lateral ridge / 1-row cream raise / cool-white tongue / in-quad mid-luma keep · 4×3 sleeve unpainted · C8 tapes navy · C9-left 0
+
+### Deploy
+
+Redeploy **only** `architecture-c-still-repair-proxy`. No frontend Publish. No V3. No paid Grok.
+
+### Claude next
+
+1. Redeploy **only** `architecture-c-still-repair-proxy`
+2. Canonical $0 still on `2aa1a44c` + measured quad; expect `architecture_c_still_repair_1m`
+3. Score 11 chest criteria with Lane E unfiltered mid-luma (same ruler as PR #70). Target: C9 combined < 0.05 and right window < 0.05; C2 remnants 0, C4 cream→navy 0, C6 cream→navy 0
+
+## STAGE 1L — live score (historical, PR #70) + identity / UI path (PR #69)
 
 `repair_method_version: architecture_c_still_repair_1l`
 
-Work-order: GitHub **#67** (lineage **#52**, parent **#50**). Lane E score-only. No paint change. No redeploy. $0.
+Work-order: GitHub **#67** (lineage **#52**, parent **#50**). Lane E score-only. No paint change. Historical 10/11 evidence — do not mint another 1l row.
 
 ### Canonical live verdict (asset `9eaf0c55`, PR #70)
 
@@ -31,6 +58,7 @@ Work-order: GitHub **#67** (lineage **#52**, parent **#50**). Lane E score-only.
 | PASS | 1, 2, 3, 4, 5, 6, 7, 8, 10, 11 |
 | FAIL | **9 only** |
 | Decoder | ImageScript 1.3.0; `bandAuthorityMaskUsed: false` |
+| Ghost ratios (unfiltered) | combined **0.172**, left **0.000**, right **0.261** (84/488 at x 462–500 / y 713–723) |
 
 ### vs 1k leftovers (PR #66, `c9c4efee`, 7/11)
 
@@ -41,7 +69,7 @@ Work-order: GitHub **#67** (lineage **#52**, parent **#50**). Lane E score-only.
 | C6 right-end cream→navy | 41 | **0 PASS** |
 | C9 ghost (combined / left / right) | 0.195 / 0.042 / 0.273 | **0.172 / 0.000 / 0.261 FAIL** |
 
-C9: 84 / 488 mid-luma ghosts, all in the wordmark-right window (x 462–500 / y 713–723). Left window cleared. 1k rescore of `c9c4efee` on this ruler is still 7/11.
+C9: 84 / 488 mid-luma ghosts, all in the wordmark-right window (x 462–500 / y 713–723). Left window cleared. 1k rescore of `c9c4efee` on this ruler is still 7/11. Fixture predicted 11/11 — live extra FAIL is C9-right wordmark-edge AA (`warpQuadAlpha` + live SAM-3; cover-only fixture does not reproduce it).
 
 Full scorecard: `docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1L_RESULT_2026-09-15.md`
 
@@ -66,10 +94,6 @@ AVT_USER_ACCESS_TOKEN='<owner JWT>' ./scripts/architecture-c-stage1l-live-verify
 ```
 
 UI: `https://aivideotool.lovable.app/projects/764a63d2-93cd-44f3-905f-292f14ab2f51/hero-frame` → **7 · Architecture C — still-first deterministic repair** → ★ clean still → override chest quad (do not Reset to measured band) → **1 · Repair chest_band + logo_zone**.
-
-### Claude next
-
-C9-right is the remaining gate. Do not claim CLEARED. Do not reopen C2/C4/C6 without new live pixels. Hold 1i occlusion and 1j ROI. No paid Grok. Do not mint another 1l row.
 
 ### 1k canonical live score (authoritative, PR #66 — historical)
 

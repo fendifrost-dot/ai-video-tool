@@ -1,5 +1,5 @@
 /**
- * GitHub-verified Stage 1l chest still identity + live scorecard.
+ * GitHub-verified Stage 1l chest still identity + live scorecard (historical).
  * Identity: docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1L_LIVE_ASSET_2026-09-15.md
  * Scorecard: docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1L_RESULT_2026-09-15.md
  *
@@ -9,6 +9,7 @@
  * Live ≠ fixture: the real-crop 1l pipeline predicted 11/11.
  * Canonical live (asset 9eaf0c55, ImageScript-decoded source, unfiltered mid-luma)
  * is 10/11 (FAIL C9 only). 1k leftovers C2/C4/C6 are live-cleared.
+ * Stage 1m goldens target the remaining C9-right wordmark-edge AA (84/488).
  */
 
 import type { ChestCriterionId } from "./types";
@@ -42,6 +43,9 @@ export const STAGE1L_LIVE_VERIFIED = {
   ghostRatiosUnfiltered: { left: 0, right: 0.261, combined: 0.172 },
   midLumaGhosts: 84,
   midLumaChecked: 488,
+  rightWindowGhosts: 84,
+  rightWindowChecked: 322,
+  leftoverBox: { x0: 462, x1: 500, y0: 713, y1: 723 },
   rightEndCreamToNavy: 0,
   creamBodyToNavy: 0,
   firstNavyRaisePx: 0,

@@ -28,6 +28,7 @@ describe("Stage 1k live-verify harness (unit)", () => {
     expect(STAGE1K_LIVE_VERIFIED.fail).toEqual([2, 4, 6, 9]);
     expect(STAGE1L_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
     expect(STAGE1L_LIVE_VERIFIED.fail).toEqual([9]);
+    expect(STAGE1L_LIVE_VERIFIED.assetId).toBe("9eaf0c55-5fdd-44ac-ac5c-9a9a86414c75");
     expect(STAGE1L_LIVE_VERIFIED.pinstripeRemnants).toBe(0);
     expect(STAGE1L_LIVE_VERIFIED.creamBodyToNavy).toBe(0);
     expect(STAGE1L_LIVE_VERIFIED.rightEndCreamToNavy).toBe(0);
