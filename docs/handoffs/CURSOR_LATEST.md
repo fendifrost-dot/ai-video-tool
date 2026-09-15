@@ -11,36 +11,39 @@
 | Stage **1m** chest CLEARED 11/11 | YES (PR #73, `e206d3c`) | YES (asset `9ed83c01`) | **LOCKED — do not reopen chest paint** |
 | Lane B isolated sleeve engine | YES (PR #60) | n/a (fixtures) | landed |
 | Lane B sleeve still **1a** live | YES (PR #75 wiring, PR #80 score) | YES (asset `fde270bf`) | **NOT CLEARED 5/6** (FAIL #6 cream fill) — historical lock |
-| Lane B sleeve still **1b** navy-ward | YES (PR #82) | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
+| Lane B sleeve still **1b** live | YES (PR #82 paint) | YES (asset `a4dc7f47`) | **NOT CLEARED 5/6** (FAIL #6 right luma rose) — this score PR |
 | Temporal live activation | YES (prep only, PR #78) | `TEMPORAL_LIVE_ACTIVATION_ARMED = false` | **wait — sleeve not CLEARED** |
 
-## SLEEVE STILL 1b — ready for edge redeploy
+## SLEEVE STILL 1b — live score (authoritative)
 
-Work-order: GitHub **#81** (lineage **#74** / **#54**, parent **#50**). Lane B only. **Do not reopen chest 1m. Do not arm temporal.**
+Work-order: GitHub **#81** (lineage **#74** / **#54**, parent **#50**). Lane B score-only. **Do not reopen chest 1m. Do not arm temporal. Do not change paint.**
 
 `repair_method_version: architecture_c_sleeve_still_1b`  
 `claim: visible_geometry_only`  
-`hidden_shoulder_to_cuff_validated: false`
+`hidden_shoulder_to_cuff_validated: false`  
+`navy_fill_mode: warp`
 
-### FAIL #6 (1a historical)
+| Field | Value |
+|-------|--------|
+| Asset | **`a4dc7f47-a08d-46e5-b279-ae53fd81e37c`** |
+| Source still | `2aa1a44c-b24a-46bf-890f-13a6fc65b1cc` (preferred `9ed83c01` not used) |
+| Gate | **NOT CLEARED 5/6** |
+| Criterion 6 left | luma **202.24→160.90** navyLike **5301/22794** PASS |
+| Criterion 6 right | luma **133.56→157.51** navyLike **2636/11139** FAIL |
+| C5 / C11 / chest reserved | **0 / 0 / 0** PASS |
+| Latency / spend | ~5.2 s / $0 |
 
-1a live `fde270bf` painted cream/white (left luma 202→227, right 134→226). Scorecard: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md`. Crops: `docs/sleeve-panel/live-1a/`. Root cause: `DEFAULT_FLAT_SLEEVE_SOURCE_BBOX` is cream on the SL flat. 1b `resolveNavyPanelSource` warps a navy-majority crop, else a vertical navy strip, else median product navy.
+Full scorecard: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`  
+Crops: `docs/sleeve-panel/live-1b/`
 
-### Lineage
+1a `fde270bf` stays historical NOT CLEARED 5/6 (both sides cream). 1b moved left navy-ward and found a navy stripe, but the right paste is still cream-majority over the dark ring so mean luma rose.
 
-`9ed83c01` stays **disabled** in the chest still picker (logo_chest chaining lock). Sleeve sends it via `resolvePreferredSleeveStillSource` without selecting it there.
+### Claude / Fendi next
 
-### Deploy
-
-Redeploy **only** `architecture-c-still-repair-proxy`. Frontend Publish optional for paint; required for the product-UI sleeve source resolver. No V3. No paid Grok.
-
-### Claude / Fendi next ($0)
-
-1. Redeploy **only** `architecture-c-still-repair-proxy`
-2. Hero Frame click path in `docs/sleeve-panel/LANE_B_SLEEVE_STILL_LIVE_WIRING.md`
-3. Canonical sleeve run on **9ed83c01** (picker stays on clean `2aa1a44c`)
-4. Expect `architecture_c_sleeve_still_1b`. Score `lane-b-sleeve-live-v1`. Criterion 6 must pass. Do **not** start temporal.
-5. Do **not** flip `TEMPORAL_LIVE_ACTIVATION_ARMED`
+1. Keep `TEMPORAL_LIVE_ACTIVATION_ARMED = false`
+2. Do **not** start temporal
+3. Next paint (separate Class C) if product wants another still: navy-majority warp (0.18 threshold accepted ~23% navy + cream body); optionally tighten left quad off the wall; prefer `9ed83c01` after frontend Publish
+4. Re-score a new `$0` row on `lane-b-sleeve-live-v1`. Do not mint from the score agent
 
 ## STAGE 1M — live score (authoritative, PR #73)
 

@@ -2,7 +2,7 @@
 
 **Work-order:** [#81](https://github.com/fendifrost-dot/ai-video-tool/issues/81) under umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50). Lineage [#74](https://github.com/fendifrost-dot/ai-video-tool/issues/74) / [#54](https://github.com/fendifrost-dot/ai-video-tool/issues/54).  
 **Class:** C (rendering / compositing).  
-**Status:** **READY** for $0 live sleeve re-verify after Lovable **Edge Functions → redeploy** of `architecture-c-still-repair-proxy` only.
+**Status:** Live $0 1b score **NOT CLEARED 5/6** (asset `a4dc7f47`). Paint not reopened from the score PR.
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**.
 
@@ -13,6 +13,14 @@ Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / *
 Asset `fde270bf-63f2-44ff-a76b-4129a0248708`, `architecture_c_sleeve_still_1a`, **NOT CLEARED 5/6**. FAIL #6: cream/white fill (left luma 202→227, right 134→226). Evidence: PR #80.
 
 **[H → now coded]** `DEFAULT_FLAT_SLEEVE_SOURCE_BBOX = [0.05, 0.35, 0.12, 0.35]` sampled cream/white on the SL flat. 1b resolves navy-ward.
+
+---
+
+## Stage 1b live (historical)
+
+Asset `a4dc7f47-a08d-46e5-b279-ae53fd81e37c`, `architecture_c_sleeve_still_1b`, **NOT CLEARED 5/6**. Identity + claim `visible_geometry_only` + geometry + C5/C11/chest reserved PASS. FAIL #6 right only: luma 133.6→157.5 (navyLike 2636/11139). Left luma 202.2→160.9 PASS. Evidence: `LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`.
+
+`navy_fill_mode: warp` (resolved navy fraction ~0.23). Crops are cream-majority trapezoids with a navy stripe — not a vertical navy panel. Temporal stays disarmed.
 
 ---
 
@@ -98,7 +106,7 @@ Redeploy **only** `architecture-c-still-repair-proxy`.
 
 ## READY / BLOCKED
 
-**READY** for $0 live sleeve re-verify after that edge redeploy.
+**BLOCKED** for temporal. Live 1b `a4dc7f47` is **NOT CLEARED 5/6**.
 
 This cloud VM has no `AVT_USER_ACCESS_TOKEN`. Anon POST remains 401 (auth not widened). Live click / owner JWT is the verify plane — same as chest 1m / sleeve 1a.
 
@@ -106,4 +114,4 @@ This cloud VM has no `AVT_USER_ACCESS_TOKEN`. Anon POST remains 401 (auth not wi
 
 **[VERIFIED]** Existing Architecture C Stage 1m chest goldens are not edited.
 
-**Not claimed:** live pixels on `9ed83c01` after this PR (needs edge redeploy + owner session). 1a live `fde270bf` remains NOT CLEARED 5/6.
+**[VERIFIED]** Live 1b identity `architecture_c_sleeve_still_1b` + `visible_geometry_only`. Gate **NOT CLEARED 5/6** on criterion 6 right luma 133.6→157.5. 1a `fde270bf` remains NOT CLEARED 5/6.

@@ -1,11 +1,13 @@
 # Architecture C — Sleeve still Stage 1b (`architecture_c_sleeve_still_1b`)
 
 **Date:** 2026-09-15 · **Author:** Cursor Lane B · **Spend:** $0 · **Issue:** #81 (lineage #74 / #54, parent #50)  
-**Status:** **READY** for $0 live sleeve re-verify after edge redeploy of `architecture-c-still-repair-proxy`.
+**Status:** Live $0 score **NOT CLEARED 5/6** (asset `a4dc7f47`). Paint not reopened from this score PR.
 
 Chest still gate: **CLEARED 11/11** (PR #73, asset `9ed83c01`, `architecture_c_still_repair_1m`). Not reopened.
 
-Sleeve 1a live: **NOT CLEARED 5/6** (asset `fde270bf`, PR #80). FAIL #6 only — cream/white fill.
+Sleeve 1a live: **NOT CLEARED 5/6** (asset `fde270bf`, PR #80). FAIL #6 both sides — cream/white fill.
+
+Sleeve 1b live: **NOT CLEARED 5/6** (asset `a4dc7f47`). FAIL #6 right only — luma 133.6→157.5. Left navy-ward PASS (202.2→160.9).
 
 ## Ownership
 
