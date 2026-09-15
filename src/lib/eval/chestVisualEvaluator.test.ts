@@ -21,6 +21,7 @@ import {
   GHOST_RATIO_PASS_CEILING,
 } from "./chestCriteria";
 import { STAGE1J_LIVE_VERIFIED } from "./stage1jEvidence";
+import { STAGE1K_LIVE_VERIFIED } from "./stage1kEvidence";
 import { evaluateChestStill, scoreMidLumaGhosts } from "./chestVisualEvaluator";
 import { cloneRgba, fillRect, lumaAt, pointInQuad, quadFromNorm, solidRgba } from "./pixelMath";
 import { CHEST_EVAL_SPEC_VERSION, type ChestCriterionId, type RgbaImage } from "./types";
@@ -330,6 +331,11 @@ describe("Lane E vs Architecture C real-crop (read-only of paint)", () => {
     expect(failed).toEqual([2, 6]);
     expect(STAGE1J_LIVE_VERIFIED.pass).toEqual([1, 3, 7, 10, 11]);
     expect(STAGE1J_LIVE_VERIFIED.fail).toEqual([2, 4, 5, 6, 8, 9]);
+    // Canonical live 1k (c9c4efee) is 7/11 — fixture remains 9/11. Do not
+    // collapse the two tables; C4 + C9-right missed the live wordmark/SAM-3 path.
+    expect(STAGE1K_LIVE_VERIFIED.pass).toEqual([1, 3, 5, 7, 8, 10, 11]);
+    expect(STAGE1K_LIVE_VERIFIED.fail).toEqual([2, 4, 6, 9]);
+    expect(STAGE1K_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
 
     const c5 = criterion(report, 5);
     const c6 = criterion(report, 6);

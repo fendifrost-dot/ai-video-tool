@@ -25,3 +25,4 @@ export {
 } from "./visualArtifacts";
 export { encodeBmp24, encodePpm } from "./pixelMath";
 export { STAGE1J_LIVE_VERIFIED } from "./stage1jEvidence";
+export { STAGE1K_LIVE_VERIFIED } from "./stage1kEvidence";

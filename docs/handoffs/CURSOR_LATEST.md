@@ -10,45 +10,34 @@
 |------|------------|--------------------|----------------|
 | Stage **1i** occlusion | YES | YES — **LOCKED** | do not reopen |
 | Stage **1j** ROI compute | YES | YES — **LOCKED** | do not reopen |
-| Stage **1k** enclosure / absorb / right-end | **this PR** | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
+| Stage **1k** enclosure / absorb / right-end | YES | YES — **scored live** | **NOT CLEARED 7/11** |
 
-## STAGE 1K — ready for edge redeploy
+## STAGE 1K — canonical live score (score-only)
 
-`repair_method_version: architecture_c_still_repair_1k`
+Work-order: GitHub **#52** (parent **#50**). Repair **not** re-run.
 
-Work-order: GitHub **#52** (parent **#50**). Lane A only.
+| Field | Value |
+|-------|--------|
+| Asset | **`c9c4efee-6bd2-450f-a9e4-b70fb9b722bb`** |
+| `repair_method_version` | `architecture_c_still_repair_1k` |
+| Gate | **NOT CLEARED — 7 / 11** |
+| PASS | 1, 3, 5, 7, 8, 10, 11 |
+| FAIL | 2, 4, 6, 9 |
+| Ghost ratios (unfiltered) | combined **0.195**, left **0.042**, right **0.273** |
+| Right-end cream→navy | **41** (1j 109; fixture 42) |
+| Sleeve 4×3 | **0** (1j 8) |
+| Cream→navy C4 | **19** / 1-px raise (1j 71 / 3-px; fixture 0) |
 
-### Fixes
+vs 1j `fb8117ee` **5/11**: C5 and C8 now PASS. vs fixture **9/11**: live extra FAILs are C4 and C9-right.
 
-| # | Defect (1j live) | Fix |
-|---|------------------|-----|
-| 1 | ≥4 original-seed neighbours missed glyph/tape AA (ghosts 0.60 / 0.59) | Closed-component enclosure: keep close-added mid-luma iff not 8-adjacent to outside; reject cream-body bridges |
-| 2 | Golden skipped rejected AA via `bandAuthorityMask` | Unfiltered mid-luma windows; target ghost ratio **< 0.05** |
-| 3 | Right-end protrusion 114 px (x 580–616 / y 713–730) | Trim non-navy past solid navy run; residual navy-bounded cream holes **42** on fixture (was 114) |
-| 4 | Ridge AA leftover + 3-px cream raise | Absorb AA (L≥90) immediately above component; stop when cream-body continues as a field |
-| 5 | 1j 4×3 sleeve patch | Below-quad cream trim; enclosure rejects boundary cream |
+Lane E 1j rescore of the same PNGs is 5/11, matching the human 1j table. Decoder: ImageScript (edge), not ffmpeg JPEG.
 
-### Fixture vs 1j (canonical crop `2aa1a44c`)
-
-| Metric | 1j | 1k |
-|--------|----|----|
-| Left glyph ghost ratio | 0.596 | **0.042** |
-| Right letter ghost ratio | 0.416 | **0.012** |
-| Right-end cream→navy | 114 | **42** |
-| Sleeve 4×3 | 8 | **0** |
-| Left tape x399 y715 | unpainted (110) | **painted (34)** |
-| Cream raise x280–330 y673–675 | 0 (fixture) | **0** |
+Full scorecard: `docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1K_RESULT_2026-09-15.md`
 
 ### Preserved locks
 
 chest-local α · crease/wedge ownership · hand/face protection · no midY luma>180 lock · left-third coverage · no global SAM-3 change · ROI `dilateAlphaRoi` (1j compute)
 
-### Deploy
+### Next
 
-Redeploy **only** `architecture-c-still-repair-proxy`. No frontend Publish. No V3. No paid Grok.
-
-### Claude next
-
-1. Redeploy **only** `architecture-c-still-repair-proxy`
-2. Canonical $0 still on `2aa1a44c` + measured quad; expect `architecture_c_still_repair_1k`
-3. Score 11 chest criteria + unfiltered ghost ratios (target < 0.05), tape x399–401, right-end window, cream-body rows 673–675
+Hold paint. ChatGPT rules on C2/C4/C6/C9-right. No V3. No paid Grok. No CC. No proxy auth widen.

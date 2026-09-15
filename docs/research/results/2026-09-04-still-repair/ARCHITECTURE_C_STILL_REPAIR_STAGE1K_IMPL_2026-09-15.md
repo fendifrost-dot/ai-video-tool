@@ -1,7 +1,7 @@
 # Architecture C — Stage 1k implementation (enclosure / truthful goldens / right-end / absorb)
 
 **Date:** 2026-09-15 · **Author:** Cursor Lane A · **Spend:** $0 · **Issue:** #52 (parent #50)
-**Status:** automated regression ready for canonical live verification. **CHEST STILL GATE not scored live** (requires Fendi redeploy of `architecture-c-still-repair-proxy`).
+**Status:** automated regression shipped; **canonical live scored 2026-09-15 — CHEST STILL GATE NOT CLEARED 7/11** (asset `c9c4efee`). See `ARCHITECTURE_C_STILL_REPAIR_STAGE1K_RESULT_2026-09-15.md`. Fixture prediction was 9/11 (FAIL C2+C6); live extra FAILs are C4 and C9-right.
 
 Evidence labels: **[V]** verified on the canonical crop fixture · **[D]** decision · **[R]** recommendation
 
