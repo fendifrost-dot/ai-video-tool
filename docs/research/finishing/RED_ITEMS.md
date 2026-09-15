@@ -29,7 +29,7 @@ These stay **no** even if finishing looks blocked:
 
 | ID | Action | Why it costs or leaves the repo | Suggested ceiling if approved |
 |----|--------|----------------------------------|-------------------------------|
-| **RED-F1** | Any GPT-6 Astra / OpenAI computer-use session | Paid computer-use; public pricing not treated as known here **[HYPOTHESIS]** | Name a USD cap **before** the first session; default remains $0 |
+| **RED-F1** | Any billed GPT-6 Astra / OpenAI computer-use call | Access exists via Fendi's OpenAI API **[DECISION]** (research-only). A live/billed session is still paid; public unit price is not treated as known here **[HYPOTHESIS]**. Having the key ≠ approval to spend. | Name a USD cap **before** the first session; default remains $0 |
 | **RED-F2** | Live Astra (or any computer-use agent) on Fendi's workstation | Touches real Premiere, real media, real Creative Cloud login | Time-boxed session + workspace on `/Volumes/T7/...` only |
 | **RED-F3** | Install a Premiere UXP/CEP panel or developer-load a panel | Changes the Adobe install; needs CC license already on that machine | $0 if license exists; still needs machine + volume confirmation |
 | **RED-F4** | Runway Premiere / AE plugin generations | Paid credits; generative restyle of footage **[OBSERVED]** 2026-09-08 Runway announcement | Do not use for garment/identity frames |
@@ -48,7 +48,7 @@ These stay **no** even if finishing looks blocked:
 
 | Work | Notes |
 |------|-------|
-| Reading / extending `docs/research/finishing/` | This lane |
+| Reading / extending `docs/research/finishing/` | This lane. May mention that Fendi's OpenAI API can reach Astra. Must not call it. |
 | `validateFinishingRecipe` unit tests | No I/O |
 | Using the existing Export page ZIP / FCPXML handoff | Already shipping |
 | Human-in-Premiere finishing on a machine Fendi already uses, **without** agents or new plugins | Normal editorial work; not this lane's spend |

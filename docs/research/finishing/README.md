@@ -22,4 +22,6 @@ This folder is the ownership surface for Lane F. Other lanes should treat it as 
 | `src/lib/automation/finishingHarness.ts` | Harness config; Astra runner **disabled by default** |
 | `src/lib/automation/premiereUxp.ts` | Existing v1 stub (unchanged behavior) |
 
-**Lane state:** READY (architecture + harness plan documented; no paid action taken).
+**Astra access [DECISION]:** available via Fendi's OpenAI API for **research documentation only**. No billed computer-use, no live Premiere session, no key in this repo. Spend still requires a RED yes on [#57](https://github.com/fendifrost-dot/ai-video-tool/issues/57).
+
+**Lane state:** READY (architecture + harness plan documented; no paid action taken). Does not block AVT engineering.

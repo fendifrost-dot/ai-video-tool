@@ -61,6 +61,8 @@ Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / *
 
 **[DECISION]** Astra is optional capacity for *visual* operations that UXP cannot address. It is never the source of shot order, trims, approved clip IDs, or brand-layer pixels.
 
+**[DECISION]** Execution-manager note (2026-09-15): Astra is **reachable** via Fendi's existing OpenAI API access. That is **not** spend approval. This lane may cite the access path in research docs only. It must not create billed computer-use jobs, open a live Premiere session, store or request the key, or enable `astra.enabled` until RED-F1 / RED-F10.
+
 ---
 
 ## Recommended stack (three layers)
