@@ -1,0 +1,24 @@
+{
+  "assetId": "9eaf0c55-5fdd-44ac-ac5c-9a9a86414c75",
+  "created_at": "2026-09-15T04:32:47.992701Z",
+  "repair_method_version": "architecture_c_still_repair_1l",
+  "repair_stage": "logo_chest",
+  "source_still_asset_id": "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+  "wardrobe_feature_id": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+  "project_id": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+  "keyframe_id": "v2-still-0.785",
+  "frame_time_sec": 0.785,
+  "requested_band_quad_norm": [
+    [0.3, 0.53],
+    [0.87, 0.533],
+    [0.87, 0.585],
+    [0.3, 0.582]
+  ],
+  "occlusion_source": "sam3",
+  "sam3_ok": true,
+  "allow_skin_heuristic_fallback": false,
+  "temporal_tracking_enabled": false,
+  "effective_band_bbox_pixel_count": 27390,
+  "storedPath": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/architecture-c-repair/logo_chest_2aa1a44c-b24a-46bf-890f-13a6fc65b1cc_1789446767711.png",
+  "gate": "NOT_SCORED"
+}

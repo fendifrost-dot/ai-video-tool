@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { STAGE1J_LIVE_VERIFIED } from "./stage1jEvidence";
 import { STAGE1K_LIVE_VERIFIED } from "./stage1kEvidence";
+import { STAGE1L_LIVE_VERIFIED } from "./stage1lEvidence";
 import {
   extractRepairMethodVersion,
   forensicExtras,
@@ -8,6 +9,7 @@ import {
   scoreStillPair,
   STAGE1K_CANONICAL,
   STAGE1K_EXPECTED_VERSION,
+  STAGE1L_EXPECTED_VERSION,
 } from "./liveVerify";
 import { GHOST_RATIO_PASS_CEILING } from "./chestCriteria";
 
@@ -27,6 +29,18 @@ describe("Stage 1k live-verify harness (unit)", () => {
     expect(
       extractRepairMethodVersion({ repair: { repair_method_version: STAGE1K_EXPECTED_VERSION } }),
     ).toBe(STAGE1K_EXPECTED_VERSION);
+  });
+
+  it("locks Stage 1l live asset identity and expected version (score is a follow-up)", () => {
+    expect(STAGE1L_EXPECTED_VERSION).toBe("architecture_c_still_repair_1l");
+    expect(STAGE1L_LIVE_VERIFIED.assetId).toBe("9eaf0c55-5fdd-44ac-ac5c-9a9a86414c75");
+    expect(STAGE1L_LIVE_VERIFIED.repairMethodVersion).toBe(STAGE1L_EXPECTED_VERSION);
+    expect(STAGE1L_LIVE_VERIFIED.cleanStillAssetId).toBe(STAGE1K_CANONICAL.stillAssetId);
+    expect(STAGE1L_LIVE_VERIFIED.requestedBandQuadNorm).toEqual(STAGE1K_CANONICAL.bandQuad);
+    expect(STAGE1L_LIVE_VERIFIED.gate).toBe("NOT_SCORED");
+    expect(
+      extractRepairMethodVersion({ repair: { repair_method_version: STAGE1L_EXPECTED_VERSION } }),
+    ).toBe(STAGE1L_EXPECTED_VERSION);
   });
 
   it("fixture pipeline is 11/11 under Stage 1l paint (1k live 7/11 stays historical)", () => {

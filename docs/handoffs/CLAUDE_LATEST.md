@@ -2,9 +2,11 @@
 
 > **Convention.** This file is always Claude's most recent handoff. Claude overwrites it each time; dated copies live in `docs/` and `docs/research/results/`. Cursor and ChatGPT: "check the repo" means read this file. Cursor's side is `docs/handoffs/CURSOR_LATEST.md`.
 
-**Updated:** 2026-09-15 (rev 16 — Stage 1k scored live: CHEST STILL GATE NOT CLEARED 7/11; C5+C8 fixed; C2/C4/C6/C9 remain; fixture 9/11 over-predicted C4+C9-right) · **Author:** Cursor (score-only) · **Spend:** $0 · **No paid call pending** · stage-1 runs cost $0
+**Updated:** 2026-09-15 (rev 17 — Stage 1l live asset minted, identity only, not scored) · **Author:** Cursor (identity-only) · **Spend:** $0 · **No paid call pending** · stage-1 runs cost $0
 
 ## State in one paragraph
+
+**Latest (rev 17):** Stage 1l live asset **`9eaf0c55-5fdd-44ac-ac5c-9a9a86414c75`**, `repair_method_version: architecture_c_still_repair_1l`, `occlusion_source: sam3`, `sam3_ok: true`, fallback `false`, still `2aa1a44c`, keyframe `v2-still-0.785`, canonical chest quad, `effective_band_bbox.pixel_count` 27 390. **Gate: NOT SCORED** (Lane E follow-up). Cloud VM anon POST remains 401; this agent did not re-run repair. UI path + one-shot script: `docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1L_LIVE_ASSET_2026-09-15.md`.
 
 **Latest (rev 16):** Stage 1k live asset **`c9c4efee-6bd2-450f-a9e4-b70fb9b722bb`**, `repair_method_version: architecture_c_still_repair_1k`, `occlusion_source: sam3`, `sam3_ok: true`, `sam3_reason: null`, `allow_skin_heuristic_fallback: false`, `effective_band_bbox.pixel_count` 27 307, latency ~56.6 s. Lane E unfiltered mid-luma (`bandAuthorityMaskUsed: false`). **Verdict: CHEST STILL GATE NOT CLEARED — 7 / 11** (PASS 1, 3, 5, 7, 8, 10, 11). vs 1j `fb8117ee` (5/11): **C5 sleeve 4×3 fixed** (8→0), **C8 tapes painted** (47/68 bright→0). Still FAIL: **C2** 6 pinstripe remnants (1j 22); **C4** 19 cream→navy / 1-px raise at x 290 (1j 71 / 3-px); **C6** right-end **41** cream→navy (1j 109; fixture 42); **C9** ghost ratio **0.195** (left 0.042, right 0.273) vs ceiling 0.05 (1j 0.590). Fixture predicted 9/11 (FAIL C2+C6 only) — live extra FAILs are C4 and C9-right (wordmark half). 1k vs 1j: 3 773 px. 1i occlusion + 1j ROI hold. Score-only; repair not re-run.
 
@@ -19,6 +21,8 @@
 **Earlier (revs 3–11, 09-04 → 09-07):** 1b/1c/1d/1e/1f scored NOT A PASS in turn — wordmark fixed (1b), band regressed then recovered (1c/1d), 1e deterministic, 1f exposed `isNavyPixel` as the paint authority (left third unpainted; the x 279–291 "seam" is a source crease). Full history in the dated result docs listed below and the 1e/1f directive docs.
 
 ## Read this
+
+**`docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1L_LIVE_ASSET_2026-09-15.md`** — 1l live identity (`9eaf0c55`, `_1l`, sam3 ok). **Not scored.** UI click path + one-shot script. Lane E is a follow-up.
 
 **`docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1K_RESULT_2026-09-15.md`** — 1k live verification: preflight (`c9c4efee`, `_1k`, sam3 ok), Lane E 7/11 table vs 1j 5/11 and fixture 9/11, forensic A–E, ImageScript decoder note. Evidence `stage1k_chest_compare.jpg`, `stage1k_pinstripe_topleft.jpg`, `stage1k_crease_lettering.jpg`, `stage1k_right_top_edge.jpg`, `stage1k_sleeve_zip_bottom.jpg`, `stage1k_centre_wedge.jpg`, `stage1k_lane_e_report.json`, `stage1k_live_score.json`.
 
