@@ -23,6 +23,7 @@ import {
 import { STAGE1J_LIVE_VERIFIED } from "./stage1jEvidence";
 import { STAGE1K_LIVE_VERIFIED } from "./stage1kEvidence";
 import { STAGE1L_LIVE_VERIFIED } from "./stage1lEvidence";
+import { STAGE1M_LIVE_VERIFIED } from "./stage1mEvidence";
 import { evaluateChestStill, scoreMidLumaGhosts } from "./chestVisualEvaluator";
 import { cloneRgba, fillRect, lumaAt, pointInQuad, quadFromNorm, solidRgba } from "./pixelMath";
 import { CHEST_EVAL_SPEC_VERSION, type ChestCriterionId, type RgbaImage } from "./types";
@@ -345,6 +346,15 @@ describe("Lane E vs Architecture C real-crop (read-only of paint)", () => {
       GHOST_RATIO_PASS_CEILING,
     );
     expect(STAGE1L_LIVE_VERIFIED.ghostRatiosUnfiltered.right).toBeCloseTo(0.261, 3);
+    // Canonical live 1m (9ed83c01) is 11/11 — C9-right cleared; C2/C4/C6 remain 0.
+    expect(STAGE1M_LIVE_VERIFIED.pass).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    expect(STAGE1M_LIVE_VERIFIED.fail).toEqual([]);
+    expect(STAGE1M_LIVE_VERIFIED.gate).toBe("CLEARED");
+    expect(STAGE1M_LIVE_VERIFIED.ghostRatiosUnfiltered.combined).toBeLessThan(GHOST_RATIO_PASS_CEILING);
+    expect(STAGE1M_LIVE_VERIFIED.ghostRatiosUnfiltered.right).toBeLessThan(GHOST_RATIO_PASS_CEILING);
+    expect(STAGE1M_LIVE_VERIFIED.pinstripeRemnants).toBe(0);
+    expect(STAGE1M_LIVE_VERIFIED.creamBodyToNavy).toBe(0);
+    expect(STAGE1M_LIVE_VERIFIED.rightEndCreamToNavy).toBe(0);
 
     const c2 = criterion(report, 2);
     const c4 = criterion(report, 4);
