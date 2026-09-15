@@ -299,9 +299,13 @@ Last reviewed: **2026-09-15** (SLEEVE-1 added for Lane B live sleeve still wirin
   `false`. Treating a READY sleeve still as full armhole→cuff (or turning on
   temporal tracking) is a misread of the contract.
 - **Pointer:** [`docs/sleeve-panel/SLEEVE_PANEL_MASK_GEOMETRY_CONTRACT.md`](docs/sleeve-panel/SLEEVE_PANEL_MASK_GEOMETRY_CONTRACT.md);
-  [`docs/sleeve-panel/LANE_B_SLEEVE_STILL_LIVE_WIRING.md`](docs/sleeve-panel/LANE_B_SLEEVE_STILL_LIVE_WIRING.md).
+  [`docs/sleeve-panel/LANE_B_SLEEVE_STILL_LIVE_WIRING.md`](docs/sleeve-panel/LANE_B_SLEEVE_STILL_LIVE_WIRING.md);
+  live score [`docs/sleeve-panel/LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md`](docs/sleeve-panel/LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md).
 - **Mitigations:** live mask rejects tall/hidden quads; chest band is a reserved
   do-not-paint slot; metadata always records `visible_geometry_only`.
 - **DoD (target):** human review of one $0 sleeve still on `2aa1a44c` / `9ed83c01`
   before any temporal lane is enabled. Class C sign-off required to change the
   claim.
+- **Live (2026-09-15):** asset `fde270bf` scored **NOT CLEARED 5/6**. Identity +
+  geometry + C5/C11/chest reserved PASS; visible navy-ward repair FAIL (cream
+  fill). Temporal stays disarmed.
