@@ -14,7 +14,14 @@ import {
   type VisibleSleevePanelSpec,
 } from "./contract";
 import { repairVisibleSleevePanels } from "./repair";
-import { createMask, fillMaskRect, isNormBbox, isQuadNorm, rasterizeQuadMask, quadNormToPts } from "./raster";
+import {
+  createMask,
+  fillMaskRect,
+  isNormBbox,
+  isQuadNorm,
+  rasterizeQuadMask,
+  quadNormToPts,
+} from "./raster";
 import {
   SLEEVE_PANEL_CLAIM,
   SLEEVE_PANEL_CONTRACT_VERSION,
@@ -158,9 +165,10 @@ export function buildChestOutputSlotFromLive(input: {
   chestRepairMethodVersion?: string | null;
   chestBandQuadNorm?: QuadNorm | null;
 }): ChestOutputConsumptionSlot {
-  const quad = input.chestBandQuadNorm && isQuadNorm(input.chestBandQuadNorm)
-    ? input.chestBandQuadNorm
-    : LIVE_CHEST_RESERVED_QUAD_NORM;
+  const quad =
+    input.chestBandQuadNorm && isQuadNorm(input.chestBandQuadNorm)
+      ? input.chestBandQuadNorm
+      : LIVE_CHEST_RESERVED_QUAD_NORM;
   return {
     kind: CHEST_OUTPUT_SLOT_KIND,
     contractVersion: SLEEVE_PANEL_CONTRACT_VERSION,
@@ -218,7 +226,9 @@ export function assessSleevePanelQuadPlacement(quad: QuadNorm): SleeveQuadPlacem
   return { ok: warnings.length === 0, warnings, centerY, height };
 }
 
-export function repairVisibleSleevePanelsOnStill(input: SleevePanelLiveInput): SleevePanelLiveResult {
+export function repairVisibleSleevePanelsOnStill(
+  input: SleevePanelLiveInput,
+): SleevePanelLiveResult {
   if (input.panels.length === 0) throw new Error("sleeve_panels_required");
 
   const specs: VisibleSleevePanelSpec[] = input.panels.map((panel) => {
@@ -239,8 +249,10 @@ export function repairVisibleSleevePanelsOnStill(input: SleevePanelLiveInput): S
     };
   });
 
-  const visibleMask = input.visibleMask ?? buildCanonicalVisibleMask(input.still.width, input.still.height);
-  const hiddenMask = input.hiddenMask ?? buildCanonicalHiddenMask(input.still.width, input.still.height);
+  const visibleMask =
+    input.visibleMask ?? buildCanonicalVisibleMask(input.still.width, input.still.height);
+  const hiddenMask =
+    input.hiddenMask ?? buildCanonicalHiddenMask(input.still.width, input.still.height);
   const chestOutput = buildChestOutputSlotFromLive({
     width: input.still.width,
     height: input.still.height,

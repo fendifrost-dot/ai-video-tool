@@ -57,7 +57,11 @@ export function mergeLogoZoneManualQuad(
     logoRaw.logo_height_ratio = 0.5;
   }
   detailsRaw.logo_zone = logoRaw;
-  return { ...base, version: typeof base.version === "number" ? base.version : 1, details: detailsRaw };
+  return {
+    ...base,
+    version: typeof base.version === "number" ? base.version : 1,
+    details: detailsRaw,
+  };
 }
 
 export function buildStillRepairAssetMetadata(input: {

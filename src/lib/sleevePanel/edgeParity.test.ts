@@ -3,11 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { repairVisibleSleevePanelsOnStill as srcRepair } from "./liveStill";
 import { repairVisibleSleevePanelsOnStill as edgeRepair } from "../../../supabase/functions/_shared/sleevePanel/liveStill.ts";
-import {
-  LEFT_VISIBLE_QUAD,
-  RIGHT_VISIBLE_QUAD,
-  buildCrossedArmsSleeveFixture,
-} from "./fixtures";
+import { LEFT_VISIBLE_QUAD, RIGHT_VISIBLE_QUAD, buildCrossedArmsSleeveFixture } from "./fixtures";
 import { rgbaFingerprint } from "./raster";
 import { SLEEVE_STILL_REPAIR_METHOD_VERSION } from "./liveStill";
 
@@ -39,8 +35,16 @@ describe("edge sleevePanel mirror stays in sync with src", () => {
       still: fx.still,
       flatRef: fx.flatRef,
       panels: [
-        { side: "left" as const, targetQuad: LEFT_VISIBLE_QUAD, sourceBboxNorm: fx.panels[0].sourceBboxNorm },
-        { side: "right" as const, targetQuad: RIGHT_VISIBLE_QUAD, sourceBboxNorm: fx.panels[1].sourceBboxNorm },
+        {
+          side: "left" as const,
+          targetQuad: LEFT_VISIBLE_QUAD,
+          sourceBboxNorm: fx.panels[0].sourceBboxNorm,
+        },
+        {
+          side: "right" as const,
+          targetQuad: RIGHT_VISIBLE_QUAD,
+          sourceBboxNorm: fx.panels[1].sourceBboxNorm,
+        },
       ],
       visibleMask: fx.visibleMask,
       hiddenMask: fx.hiddenMask,

@@ -87,7 +87,11 @@ export type SleevePanelStageOutput = {
 };
 
 export function defaultVisibilityManifest(): VisibilityManifest {
-  return { ...CROSSED_ARMS_VISIBILITY, validated: [...CROSSED_ARMS_VISIBILITY.validated], unvalidated: [...CROSSED_ARMS_VISIBILITY.unvalidated] };
+  return {
+    ...CROSSED_ARMS_VISIBILITY,
+    validated: [...CROSSED_ARMS_VISIBILITY.validated],
+    unvalidated: [...CROSSED_ARMS_VISIBILITY.unvalidated],
+  };
 }
 
 export function isSleeveSide(v: unknown): v is SleeveSide {
@@ -142,7 +146,8 @@ export function assertSleevePanelContract(input: SleevePanelStageInput): void {
   for (const panel of input.panels) {
     if (!isSleeveSide(panel.side)) throw new Error("invalid_sleeve_side");
     if (!isQuadNorm(panel.targetQuadNorm)) throw new Error(`invalid_sleeve_quad:${panel.side}`);
-    if (!isNormBbox(panel.sourceBboxNorm)) throw new Error(`invalid_sleeve_source_bbox:${panel.side}`);
+    if (!isNormBbox(panel.sourceBboxNorm))
+      throw new Error(`invalid_sleeve_source_bbox:${panel.side}`);
   }
   const { still, visibleMask, hiddenMask } = input;
   if (visibleMask.width !== still.width || visibleMask.height !== still.height) {

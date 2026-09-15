@@ -86,8 +86,20 @@ describe("sleeve-panel mask/geometry contract", () => {
   });
 
   it("rejects chest slots that are not logo_chest or wrong kind", () => {
-    expect(parseChestOutputSlot({ kind: "sleeve_panel", contractVersion: "1.0.0", stage: "sleeve_panel" })).toBeNull();
-    expect(parseChestOutputSlot({ kind: "chest_output_ref", contractVersion: "0.0.0", stage: "logo_chest" })).toBeNull();
+    expect(
+      parseChestOutputSlot({
+        kind: "sleeve_panel",
+        contractVersion: "1.0.0",
+        stage: "sleeve_panel",
+      }),
+    ).toBeNull();
+    expect(
+      parseChestOutputSlot({
+        kind: "chest_output_ref",
+        contractVersion: "0.0.0",
+        stage: "logo_chest",
+      }),
+    ).toBeNull();
     expect(parseChestOutputSlot(null)).toBeNull();
   });
 });

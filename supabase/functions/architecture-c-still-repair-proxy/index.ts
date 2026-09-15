@@ -350,7 +350,10 @@ serve(async (req) => {
         return json(400, { error: "sleeve_panels_required", detail: msg });
       }
       if (msg.startsWith("sleeve_panel_geometry_rejected") || msg.startsWith("invalid_sleeve")) {
-        return json(400, { error: msg.split(":")[0] ?? "sleeve_panel_geometry_rejected", detail: msg });
+        return json(400, {
+          error: msg.split(":")[0] ?? "sleeve_panel_geometry_rejected",
+          detail: msg,
+        });
       }
       throw e;
     }
@@ -372,12 +375,9 @@ serve(async (req) => {
   const frameTimeSec =
     typeof stillMeta.frame_time_sec === "number" ? stillMeta.frame_time_sec : null;
   const sourceVideoAssetId =
-    typeof stillMeta.source_video_asset_id === "string"
-      ? stillMeta.source_video_asset_id
-      : null;
+    typeof stillMeta.source_video_asset_id === "string" ? stillMeta.source_video_asset_id : null;
 
-  const outPath =
-    `${userId}/${body.projectId}/architecture-c-repair/${stage}_${body.stillAssetId}_${Date.now()}.png`;
+  const outPath = `${userId}/${body.projectId}/architecture-c-repair/${stage}_${body.stillAssetId}_${Date.now()}.png`;
   const { error: upErr } = await admin.storage
     .from("project-references")
     .upload(outPath, workingBytes, { contentType: "image/png", upsert: true });

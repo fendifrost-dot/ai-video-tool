@@ -12,7 +12,14 @@ export function clamp01(v: number): number {
   return v;
 }
 
-export function createRgba(width: number, height: number, r: number, g: number, b: number, a = 255): RgbaImage {
+export function createRgba(
+  width: number,
+  height: number,
+  r: number,
+  g: number,
+  b: number,
+  a = 255,
+): RgbaImage {
   const data = new Uint8Array(width * height * 4);
   for (let i = 0; i < width * height; i++) {
     const o = i * 4;
@@ -238,7 +245,11 @@ export function cropNormBbox(img: RgbaImage, bbox: NormBbox): RgbaImage {
   return out;
 }
 
-export function sampleNearest(img: RgbaImage, u: number, v: number): [number, number, number, number] {
+export function sampleNearest(
+  img: RgbaImage,
+  u: number,
+  v: number,
+): [number, number, number, number] {
   const x = Math.max(0, Math.min(img.width - 1, Math.round(clamp01(u) * (img.width - 1))));
   const y = Math.max(0, Math.min(img.height - 1, Math.round(clamp01(v) * (img.height - 1))));
   const i = (y * img.width + x) * 4;

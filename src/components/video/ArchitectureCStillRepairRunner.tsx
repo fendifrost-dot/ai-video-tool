@@ -47,23 +47,21 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
   const artistId = projectQuery.data?.artist_id ?? undefined;
   const wardrobeQuery = useWardrobe(artistId);
 
-  const videos = useMemo(
-    () => (assetsQuery.data ?? []).filter(isVideoAsset),
-    [assetsQuery.data],
-  );
-  const stills = useMemo(
-    () => (assetsQuery.data ?? []).filter(isImageAsset),
-    [assetsQuery.data],
-  );
+  const videos = useMemo(() => (assetsQuery.data ?? []).filter(isVideoAsset), [assetsQuery.data]);
+  const stills = useMemo(() => (assetsQuery.data ?? []).filter(isImageAsset), [assetsQuery.data]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
   const [sessionUid, setSessionUid] = useState<string | null>(null);
-  const [videoAssetId, setVideoAssetId] = useState<string>(ARCHITECTURE_C_V2_REPAIR.editedClipAssetId);
+  const [videoAssetId, setVideoAssetId] = useState<string>(
+    ARCHITECTURE_C_V2_REPAIR.editedClipAssetId,
+  );
   const [wardrobeFeatureId, setWardrobeFeatureId] = useState<string>(
     ARCHITECTURE_C_V2_REPAIR.wardrobeFeatureId,
   );
-  const [scrubTime, setScrubTime] = useState<number>(ARCHITECTURE_C_V2_REPAIR.recommendedStillTimeSec);
+  const [scrubTime, setScrubTime] = useState<number>(
+    ARCHITECTURE_C_V2_REPAIR.recommendedStillTimeSec,
+  );
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   /** Clean capture/upload only — never auto-replaced by a repair output. */
   const [stillAssetId, setStillAssetId] = useState("");
@@ -191,9 +189,7 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
     try {
       const session = await getSessionWithTimeout();
       const userId = session.user.id;
-      setCaptureHint(
-        `Capturing t=${scrubTime.toFixed(3)}s (readyState=${video.readyState})…`,
-      );
+      setCaptureHint(`Capturing t=${scrubTime.toFixed(3)}s (readyState=${video.readyState})…`);
       const blob = await captureVideoFrame(video, scrubTime);
       const { assetId } = await uploadHeroSourceFrame({
         projectId,
@@ -297,8 +293,7 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
   }
 
   const logoChestOutputs = useMemo(
-    () =>
-      stills.filter((a) => isStillRepairLogoChest(a.metadata_json)),
+    () => stills.filter((a) => isStillRepairLogoChest(a.metadata_json)),
     [stills],
   );
 
@@ -329,7 +324,7 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
     }
     if (!leftSleeveAssessment.ok || !rightSleeveAssessment.ok) {
       toast.warning(
-        `Sleeve quad warning: ${(leftSleeveAssessment.warnings[0] ?? rightSleeveAssessment.warnings[0]) ?? "off visible upper arm"}. Re-check before treating as success.`,
+        `Sleeve quad warning: ${leftSleeveAssessment.warnings[0] ?? rightSleeveAssessment.warnings[0] ?? "off visible upper arm"}. Re-check before treating as success.`,
       );
     }
     setBusy(true);
@@ -354,7 +349,9 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         sleevePanels,
         chestBandQuadNorm:
           extractChestBandQuad(sleeveSourceMeta) ?? logoQuad ?? MEASURED_V2_CHEST_BAND_QUAD,
-        chestOutputAssetId: isStillRepairLogoChest(sleeveSourceMeta) ? sourceStill : logoResultAssetId ?? undefined,
+        chestOutputAssetId: isStillRepairLogoChest(sleeveSourceMeta)
+          ? sourceStill
+          : (logoResultAssetId ?? undefined),
         chestRepairMethodVersion: extractChestRepairMethodVersion(sleeveSourceMeta) ?? undefined,
       });
       setSleeveResultUrl(result.previewUrl);
@@ -499,7 +496,9 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         />
         <span className="text-[11px] text-muted-foreground">
           Prefer clean still{" "}
-          <span className="font-mono">{ARCHITECTURE_C_V2_REPAIR.recommendedStillAssetId.slice(0, 8)}…</span>{" "}
+          <span className="font-mono">
+            {ARCHITECTURE_C_V2_REPAIR.recommendedStillAssetId.slice(0, 8)}…
+          </span>{" "}
           (t=0.785) if in-page capture fails.
         </span>
       </div>
@@ -619,11 +618,8 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
             Sleeve panels: drag or type quads onto the <strong>visible upper-arm</strong> navy only.
             Arms are crossed for the entire clip — this cannot prove armhole→cuff. Input prefers the{" "}
             <span className="font-mono">logo_chest</span> output (
-            <span className="font-mono">
-              {(preferredSleeveSourceId || "—").slice(0, 8)}…
-            </span>
-            ). Expect{" "}
-            <span className="font-mono">{SLEEVE_STILL_REPAIR_METHOD_VERSION}</span>, claim{" "}
+            <span className="font-mono">{(preferredSleeveSourceId || "—").slice(0, 8)}…</span>
+            ). Expect <span className="font-mono">{SLEEVE_STILL_REPAIR_METHOD_VERSION}</span>, claim{" "}
             <span className="font-mono">visible_geometry_only</span>.
           </p>
           <div className="grid gap-4 lg:grid-cols-2">
@@ -676,8 +672,8 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
             disabled={busy || !isOwner || !preferredSleeveSourceId}
             onClick={handleSleeve}
           >
-            {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
-            2 · Repair sleeve_panel (manual, upper arm)
+            {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}2 · Repair
+            sleeve_panel (manual, upper arm)
           </Button>
           {sleeveResultUrl ? (
             <img

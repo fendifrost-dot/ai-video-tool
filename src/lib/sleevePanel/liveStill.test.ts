@@ -79,8 +79,16 @@ describe("Lane B live still adapter", () => {
       still: fx.still,
       flatRef: fx.flatRef,
       panels: [
-        { side: "left", targetQuad: LEFT_VISIBLE_QUAD, sourceBboxNorm: fx.panels[0].sourceBboxNorm },
-        { side: "right", targetQuad: RIGHT_VISIBLE_QUAD, sourceBboxNorm: fx.panels[1].sourceBboxNorm },
+        {
+          side: "left",
+          targetQuad: LEFT_VISIBLE_QUAD,
+          sourceBboxNorm: fx.panels[0].sourceBboxNorm,
+        },
+        {
+          side: "right",
+          targetQuad: RIGHT_VISIBLE_QUAD,
+          sourceBboxNorm: fx.panels[1].sourceBboxNorm,
+        },
       ],
       visibleMask: fx.visibleMask,
       hiddenMask: fx.hiddenMask,
@@ -109,8 +117,16 @@ describe("Lane B live still adapter", () => {
       still: fx.still,
       flatRef: fx.flatRef,
       panels: [
-        { side: "left", targetQuad: LEFT_VISIBLE_QUAD, sourceBboxNorm: fx.panels[0].sourceBboxNorm },
-        { side: "right", targetQuad: RIGHT_VISIBLE_QUAD, sourceBboxNorm: fx.panels[1].sourceBboxNorm },
+        {
+          side: "left",
+          targetQuad: LEFT_VISIBLE_QUAD,
+          sourceBboxNorm: fx.panels[0].sourceBboxNorm,
+        },
+        {
+          side: "right",
+          targetQuad: RIGHT_VISIBLE_QUAD,
+          sourceBboxNorm: fx.panels[1].sourceBboxNorm,
+        },
       ],
       visibleMask: fx.visibleMask,
       hiddenMask: fx.hiddenMask,

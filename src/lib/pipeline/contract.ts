@@ -156,7 +156,8 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
         ...noPaidCalls,
         module: "src/lib/sleevePanel/liveStill.ts",
         entrypoint: "repairVisibleSleevePanelsOnStill",
-        notes: "Authoritative visible-geometry contract. Manual quads only; hidden shoulder→cuff never validated.",
+        notes:
+          "Authoritative visible-geometry contract. Manual quads only; hidden shoulder→cuff never validated.",
       },
       {
         ...noPaidCalls,

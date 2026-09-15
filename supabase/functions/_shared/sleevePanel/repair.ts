@@ -61,7 +61,9 @@ export function repairVisibleSleevePanels(input: SleevePanelStageInput): SleeveP
     const quadPts = quadNormToPts(panel.targetQuadNorm, out.width, out.height);
     const quadMask = rasterizeQuadMask(out.width, out.height, quadPts);
     const hiddenHits = intersectMasks(quadMask, input.hiddenMask);
-    const reservedHits = chestReserved ? intersectMasks(quadMask, chestReserved) : createMask(out.width, out.height);
+    const reservedHits = chestReserved
+      ? intersectMasks(quadMask, chestReserved)
+      : createMask(out.width, out.height);
     let paintMask = intersectMasks(quadMask, input.visibleMask);
     paintMask = subtractMasks(paintMask, input.hiddenMask);
     if (chestReserved) paintMask = subtractMasks(paintMask, chestReserved);

@@ -9,12 +9,7 @@ export const SLEEVE_PANEL_CONTRACT_VERSION = "1.0.0" as const;
 export type SleeveSide = "left" | "right";
 
 /** Normalized still quad, TL → TR → BR → BL, each axis in [0, 1]. */
-export type QuadNorm = [
-  [number, number],
-  [number, number],
-  [number, number],
-  [number, number],
-];
+export type QuadNorm = [[number, number], [number, number], [number, number], [number, number]];
 
 export type Point = { x: number; y: number };
 export type QuadPts = [Point, Point, Point, Point];
