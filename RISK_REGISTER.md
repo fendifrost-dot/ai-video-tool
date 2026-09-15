@@ -8,7 +8,7 @@
 > **Severity:** Critical / High / Medium / Low · **Confidence:** Confirmed / Likely /
 > Suspected · **Status:** Open / In-remediation / Mitigated / Closed.
 
-Last reviewed: **2026-08-27** (RISK-001 Part A table RLS apply authorized; VOICE-1 kill-test landed).
+Last reviewed: **2026-09-15** (PIPELINE-1 added for Lane G orchestration scaffolding).
 
 | id | Title | Severity | Confidence | Status | Owner |
 |----|-------|----------|-----------|--------|-------|
@@ -25,6 +25,7 @@ Last reviewed: **2026-08-27** (RISK-001 Part A table RLS apply authorized; VOICE
 | [OPS-2](#ops-2--no-job-reaper) | No reaper for stuck/orphaned jobs | Medium | Likely | Open | Platform (AVT) |
 | [REL-1](#rel-1--pr16-compat-gate) | PR #16 preflight compatibility gate unmerged | Low | Confirmed | **Closed** (superseded by PR #19, merged 2026-08-18) | Products (AVT) |
 | [VOICE-1](#voice-1--grok-voice-director-spend-surface) | Voice Director STT/TTS/text spend + mic | Medium | Likely | Open | Products (AVT) |
+| [PIPELINE-1](#pipeline-1--orchestration-scaffolding-is-not-a-durable-queue) | Pipeline OS scaffolding is in-process only (no durable queue / reaper) | Medium | Confirmed | Open | Products (AVT) / Lane G |
 
 ---
 
@@ -264,3 +265,23 @@ Last reviewed: **2026-08-27** (RISK-001 Part A table RLS apply authorized; VOICE
   for rate-limit consistency, session budget visible in the UI.
 - **DoD (target):** kill the feature, or keep it with the mitigations above plus
   a visible session budget.
+
+---
+
+## PIPELINE-1 — Orchestration scaffolding is not a durable queue
+
+- **Severity:** Medium · **Confidence:** Confirmed · **Status:** Open · **Owner:** Products (AVT) / Lane G
+- **Summary:** Lane G (#51) adds an in-process pipeline state machine
+  (`src/lib/pipeline`) with stage status, artifacts, provenance, failure, and
+  retry. It persists as a JSON document (`metadata_json.pipeline_run`) only.
+  There is still no durable worker, watchdog, or reaper. A browser tab close or
+  edge isolate eviction can leave a run mid-stage. This does **not** close
+  [OPS-2](#ops-2--no-job-reaper).
+- **Pointer:** [`docs/PIPELINE_PRODUCT_OS.md`](docs/PIPELINE_PRODUCT_OS.md);
+  `src/lib/pipeline/`.
+- **Mitigations in scaffolding:** explicit statuses; import-from-lane resume;
+  retry classification that refuses `needs_transcode` / missing inputs; generation
+  is import-only (no paid Grok from this lane).
+- **DoD (target):** a Lovable-managed durable `pipeline_runs` record + worker
+  that resumes from last succeeded stage, plus a reaper that terminals stale
+  `running`/`retrying` rows (joint with OPS-2). Class C sign-off required.
