@@ -293,10 +293,13 @@ Last reviewed: **2026-09-15** (SLEEVE-1 added for Lane B live sleeve still wirin
 
 - **Severity:** Medium · **Confidence:** Confirmed · **Status:** Open · **Owner:** Products (AVT) / Lane B
 - **Summary:** Live `sleeve_panel` now paints through Lane B
-  (`architecture_c_sleeve_still_1b`) on the Architecture C still path. Stage 1a
-  (`fde270bf`) was NOT CLEARED 5/6 on FAIL #6 (cream/white fill). 1b resolves
-  cream source crops navy-ward. The canonical pose is crossed arms for the entire
-  clip. A geometry pass proves **visible upper-arm** repair only.
+  (`architecture_c_sleeve_still_1c`) on the Architecture C still path. Stage 1a
+  (`fde270bf`) was NOT CLEARED 5/6 on FAIL #6 (cream/white fill). Stage 1b
+  (`a4dc7f47`) was NOT CLEARED 5/6: left navy-ward PASS, right cream-majority
+  warp over the already-dark V2 ring (luma 134→158). 1c prefers product navy
+  over cream stripe so both visible quads drop luma. The canonical pose is
+  crossed arms for the entire clip. A geometry pass proves **visible upper-arm**
+  repair only.
   `hiddenShoulderToCuffValidated` is always `false`. Treating a READY sleeve still
   as full armhole→cuff (or turning on temporal tracking) is a misread of the
   contract.
@@ -309,4 +312,4 @@ Last reviewed: **2026-09-15** (SLEEVE-1 added for Lane B live sleeve still wirin
 - **DoD (target):** human review of one $0 sleeve still on `2aa1a44c` / `9ed83c01`
   before any temporal lane is enabled. Class C sign-off required to change the
   claim.
-- **Live (2026-09-15):** 1a `fde270bf` **NOT CLEARED 5/6** (cream fill both sides). 1b `a4dc7f47` **NOT CLEARED 5/6** — identity + geometry + C5/C11/chest reserved PASS; visible navy-ward FAIL on the **right** (luma 133.6→157.5; left 202.2→160.9 PASS). Temporal stays disarmed. Score: [`docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`](docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md).
+- **Live (2026-09-15):** 1a `fde270bf` **NOT CLEARED 5/6** (cream fill both sides). 1b `a4dc7f47` **NOT CLEARED 5/6** — identity + geometry + C5/C11/chest reserved PASS; visible navy-ward FAIL on the **right** (luma 133.6→157.5; left 202.2→160.9 PASS, cream-majority warp over the already-dark V2 ring). Temporal stays disarmed. 1c prefers product navy over cream stripe. Score: [`docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`](docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md).

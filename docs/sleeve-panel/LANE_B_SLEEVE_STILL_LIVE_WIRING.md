@@ -1,8 +1,8 @@
 # Lane B — Architecture C sleeve still live wiring
 
-**Work-order:** [#81](https://github.com/fendifrost-dot/ai-video-tool/issues/81) under umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50). Lineage [#74](https://github.com/fendifrost-dot/ai-video-tool/issues/74) / [#54](https://github.com/fendifrost-dot/ai-video-tool/issues/54).  
+**Work-order:** [#84](https://github.com/fendifrost-dot/ai-video-tool/issues/84) under umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50). Lineage [#81](https://github.com/fendifrost-dot/ai-video-tool/issues/81) / [#74](https://github.com/fendifrost-dot/ai-video-tool/issues/74) / [#54](https://github.com/fendifrost-dot/ai-video-tool/issues/54).  
 **Class:** C (rendering / compositing).  
-**Status:** Live $0 1b score **NOT CLEARED 5/6** (asset `a4dc7f47`). Paint not reopened from the score PR.
+**Status:** **READY** for $0 live sleeve re-verify after Lovable **Edge Functions → redeploy** of `architecture-c-still-repair-proxy` only. Live 1b `a4dc7f47` remains **NOT CLEARED 5/6**.
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**.
 
@@ -12,28 +12,27 @@ Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / *
 
 Asset `fde270bf-63f2-44ff-a76b-4129a0248708`, `architecture_c_sleeve_still_1a`, **NOT CLEARED 5/6**. FAIL #6: cream/white fill (left luma 202→227, right 134→226). Evidence: PR #80.
 
-**[H → now coded]** `DEFAULT_FLAT_SLEEVE_SOURCE_BBOX = [0.05, 0.35, 0.12, 0.35]` sampled cream/white on the SL flat. 1b resolves navy-ward.
-
----
-
 ## Stage 1b live (historical)
 
-Asset `a4dc7f47-a08d-46e5-b279-ae53fd81e37c`, `architecture_c_sleeve_still_1b`, **NOT CLEARED 5/6**. Identity + claim `visible_geometry_only` + geometry + C5/C11/chest reserved PASS. FAIL #6 right only: luma 133.6→157.5 (navyLike 2636/11139). Left luma 202.2→160.9 PASS. Evidence: `LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`.
+Asset `a4dc7f47-a08d-46e5-b279-ae53fd81e37c`, `architecture_c_sleeve_still_1b`, **NOT CLEARED 5/6**. Evidence: PR #83.
 
-`navy_fill_mode: warp` (resolved navy fraction ~0.23). Crops are cream-majority trapezoids with a navy stripe — not a vertical navy panel. Temporal stays disarmed.
+- Left criterion 6 **PASS** (luma 202.24→160.90)
+- Right criterion 6 **FAIL** (luma 133.56→157.51; need ≤125.6). `navy_fill_mode: warp`, navy fraction ~0.23. Right covers the already-dark V2 ring; paste still cream-majority.
+- Criteria 1–5 PASS; chest reserved 0; C5/C11 0
+
+**[VERIFIED in leftover fixture]** 1b warped a ~0.23 navy crop as-is. Cream-majority paste raises luma on a dark right ring.
 
 ---
 
-## What 1b changes
+## What 1c changes
 
 | Surface | Change |
 |---------|--------|
-| `src/lib/sleevePanel/navyFill.ts` | Navy-majority crop warps as-is; cream crop searches a vertical navy strip; else median product navy fill |
-| `src/lib/sleevePanel/repair.ts` | Uses `resolveNavyPanelSource` — never pastes cream/white as panel truth |
-| `src/lib/sleevePanel/liveStill.ts` | `architecture_c_sleeve_still_1b` + `navy_fill_mode` |
-| `supabase/functions/_shared/sleevePanel/**` | Edge mirror (incl. `navyFill.ts`) |
-| `compositeSleevePanelsOntoStill` | Passes navy-fill metadata. **Does not** call logoComposite |
-| Hero Frame §7 | Sleeve `stillAssetId` is CLEARED `9ed83c01` even though the chest picker disables it |
+| `src/lib/sleevePanel/navyFill.ts` | Prefer product navy over cream stripe (`preferProductNavyOverCream`); search unless crop is navy-majority (≥0.50) |
+| `src/lib/sleevePanel/repair.ts` | Uses 1c `resolveNavyPanelSource` |
+| `src/lib/sleevePanel/liveStill.ts` | `architecture_c_sleeve_still_1c` + `navy_over_cream` fill mode |
+| `supabase/functions/_shared/sleevePanel/**` | Edge mirror |
+| leftover fixture | 1b as-is warp FAILS criterion 6 on dark right; 1c CLEARS 6/6 |
 
 **Not touched:** `logoComposite.ts` C2/C4/C6/C9 1m locks, Control Center, proxy auth, PR #37, V3 / paid Grok, temporal tracking.
 
@@ -44,13 +43,13 @@ Asset `a4dc7f47-a08d-46e5-b279-ae53fd81e37c`, `architecture_c_sleeve_still_1b`, 
 | Field | Value |
 |-------|--------|
 | `repair_stage` | `sleeve_panel` |
-| `repair.repair_method_version` | `architecture_c_sleeve_still_1b` |
+| `repair.repair_method_version` | `architecture_c_sleeve_still_1c` |
 | `repair.contract_version` | `1.0.0` |
 | `repair.claim` | `visible_geometry_only` |
 | `repair.geometry_note` | `visible_upper_arm_only` |
 | `repair.hidden_shoulder_to_cuff_validated` | `false` |
 | `repair.consumed_chest_output` | `true` when a chest reserved quad/slot was applied |
-| `repair.navy_fill_mode` | `warp` \| `median_navy` \| `mixed` |
+| `repair.navy_fill_mode` | `warp` \| `median_navy` \| `navy_over_cream` \| `mixed` |
 | `repair.keyframe_id` | `v2-still-0.785` |
 | `temporal_tracking_enabled` | `false` |
 
@@ -66,7 +65,7 @@ Chest outputs stay `architecture_c_still_repair_1m`. Do not bump the chest versi
 
 **[DECISION]** Sleeve source is a **separate** resolver (`resolvePreferredSleeveStillSource`). It sends `stillAssetId=9ed83c01` (canonical CLEARED 1m) even when the picker cannot select it. In-session chest output, if present, wins. The clean still `2aa1a44c` is fallback only.
 
-Stage 1a live used `2aa1a44c` because the published runner fell through to the selected clean still. 1b does not require selecting a repair output.
+Stage 1a / 1b live used `2aa1a44c` because the published runner fell through to the selected clean still. 1c does not require selecting a repair output.
 
 ---
 
@@ -86,8 +85,8 @@ Project: `https://aivideotool.lovable.app/projects/764a63d2-93cd-44f3-905f-292f1
 | Right | 0.880, 0.505 | 0.990, 0.500 | 0.990, 0.615 | 0.880, 0.610 |
 
 6. Click **2 · Repair sleeve_panel (manual, upper arm)**.
-7. Accept only if `repair.repair_method_version === architecture_c_sleeve_still_1b` and `hidden_shoulder_to_cuff_validated === false`.
-8. Score with `lane-b-sleeve-live-v1` (same 6-pt table as 1a). Criterion 6 must be navy-ward (mean luma drop, navy-like pixels).
+7. Accept only if `repair.repair_method_version === architecture_c_sleeve_still_1c` and `hidden_shoulder_to_cuff_validated === false`.
+8. Score with `lane-b-sleeve-live-v1` (same 6-pt table as 1a/1b). Criterion 6 must be navy-ward on **both** quads (mean luma drop, navy-like pixels). Left must stay PASS; right must drop (not rise).
 9. **HARD STOP.** Do not enable temporal tracking.
 
 A shoulder→cuff / face-high quad must return HTTP **400** `sleeve_panel_geometry_rejected` (not a saved pass).
@@ -98,9 +97,9 @@ A shoulder→cuff / face-high quad must return HTTP **400** `sleeve_panel_geomet
 
 Redeploy **only** `architecture-c-still-repair-proxy`.
 
-- **Required** for live `architecture_c_sleeve_still_1b` + navy-ward fill.
+- **Required** for live `architecture_c_sleeve_still_1c` + navy-over-cream fill.
 - Frontend Publish is **optional for paint** (edge owns fill) but **required** for the `9ed83c01` sleeve-source resolver in the product UI. Until Publish, POST with `stillAssetId=9ed83c01`.
-- No V3. No paid Grok. No Control Center. No auth widen.
+- No V3. No paid Grok. No Control Center. No auth widen. Parent owns Lovable redeploy after READY.
 
 ---
 
@@ -108,10 +107,12 @@ Redeploy **only** `architecture-c-still-repair-proxy`.
 
 **BLOCKED** for temporal. Live 1b `a4dc7f47` is **NOT CLEARED 5/6**.
 
-This cloud VM has no `AVT_USER_ACCESS_TOKEN`. Anon POST remains 401 (auth not widened). Live click / owner JWT is the verify plane — same as chest 1m / sleeve 1a.
+This cloud VM has no `AVT_USER_ACCESS_TOKEN`. Anon POST remains 401 (auth not widened). Live click / owner JWT is the verify plane — same as chest 1m / sleeve 1a / 1b.
 
-**[VERIFIED]** Isolated fixtures: cream 1a-default bbox paints navy, not cream; hidden reject; chest reserved untouched; C5/C11 windows byte-identical on a 720×1280 synthetic with DEFAULT bbox; 6-pt gate CLEARED on that synthetic; src/_shared fingerprint parity.
+**[VERIFIED]** Isolated leftover fixture: 1b as-is cream-majority warp FAILS criterion 6 on the dark right ring; 1c prefer-navy CLEARS 6/6; C5/C11/reserved untouched; src/_shared fingerprint parity.
 
 **[VERIFIED]** Existing Architecture C Stage 1m chest goldens are not edited.
 
 **[VERIFIED]** Live 1b identity `architecture_c_sleeve_still_1b` + `visible_geometry_only`. Gate **NOT CLEARED 5/6** on criterion 6 right luma 133.6→157.5. 1a `fde270bf` remains NOT CLEARED 5/6.
+
+**Not claimed:** live pixels on `9ed83c01` / `2aa1a44c` after 1c (needs edge redeploy + owner session).

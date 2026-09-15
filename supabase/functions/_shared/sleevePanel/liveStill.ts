@@ -36,7 +36,7 @@ import {
 import { assessVisibleSleeveQuad } from "./visibleGeometry.ts";
 
 /** Sleeve-stage method version. Independent of chest `architecture_c_still_repair_1m`. */
-export const SLEEVE_STILL_REPAIR_METHOD_VERSION = "architecture_c_sleeve_still_1b" as const;
+export const SLEEVE_STILL_REPAIR_METHOD_VERSION = "architecture_c_sleeve_still_1c" as const;
 
 /**
  * Live 1m / Lane E measured chest-band quad on still `2aa1a44c` (720×1280).
@@ -51,8 +51,8 @@ export const LIVE_CHEST_RESERVED_QUAD_NORM: QuadNorm = [
 
 /**
  * Requested flat-ref crop (existing 1a default). On the SL front flat this
- * window is cream/white — Stage 1b resolves navy-ward via `resolveNavyPanelSource`
- * rather than warping the cream crop.
+ * window is cream/white — Stage 1c resolves navy-ward via `resolveNavyPanelSource`
+ * (prefer product navy over cream stripe) rather than warping the cream crop.
  */
 export const DEFAULT_FLAT_SLEEVE_SOURCE_BBOX: NormBbox = [0.05, 0.35, 0.12, 0.35];
 

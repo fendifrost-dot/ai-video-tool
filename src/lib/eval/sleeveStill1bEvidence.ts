@@ -3,8 +3,9 @@
  * Scorecard: docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md
  *
  * Live $0 Hero Frame run on clean still 2aa1a44c (preferred chest-cleared
- * 9ed83c01 was not the stillAssetId). Paint not re-run. Historical lock —
- * later paint stages must not change these numbers.
+ * 9ed83c01 was not the stillAssetId). Evidence PR #83. Paint not re-run.
+ * Historical lock — Stage 1c owns FAIL #6 right; later paint stages must not
+ * change these numbers.
  */
 
 import type { SleeveCriterionId } from "../sleevePanel/liveScore";
@@ -16,6 +17,7 @@ export const SLEEVE_STILL_1B_LIVE_VERIFIED = {
   geometryNote: "visible_upper_arm_only",
   hiddenShoulderToCuffValidated: false,
   navyFillMode: "warp",
+  sourceNavyFraction: 0.23,
   assetId: "a4dc7f47-a08d-46e5-b279-ae53fd81e37c",
   projectId: "764a63d2-93cd-44f3-905f-292f14ab2f51",
   wardrobeFeatureId: "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
@@ -41,6 +43,7 @@ export const SLEEVE_STILL_1B_LIVE_VERIFIED = {
   rightMeanSrcLuma: 133.56,
   rightMeanOutLuma: 157.51,
   rightNavyLike: 2636,
+  rightChecked: 11139,
   c5BrightChanged: 0,
   c5PatchDarkened: 0,
   c11ChangedAboveY600: 0,

@@ -11,17 +11,28 @@
 | Stage **1m** chest CLEARED 11/11 | YES (PR #73, `e206d3c`) | YES (asset `9ed83c01`) | **LOCKED — do not reopen chest paint** |
 | Lane B isolated sleeve engine | YES (PR #60) | n/a (fixtures) | landed |
 | Lane B sleeve still **1a** live | YES (PR #75 wiring, PR #80 score) | YES (asset `fde270bf`) | **NOT CLEARED 5/6** (FAIL #6 cream fill) — historical lock |
-| Lane B sleeve still **1b** live | YES (PR #82 paint) | YES (asset `a4dc7f47`) | **NOT CLEARED 5/6** (FAIL #6 right luma rose) — this score PR |
+| Lane B sleeve still **1b** live | YES (PR #82 paint, PR #83 score) | YES (asset `a4dc7f47`) | **NOT CLEARED 5/6** — left PASS, right cream-majority over dark V2 ring |
+| Lane B sleeve still **1c** navy-over-cream | YES (PR #85) | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
 | Temporal live activation | YES (prep only, PR #78) | `TEMPORAL_LIVE_ACTIVATION_ARMED = false` | **wait — sleeve not CLEARED** |
 
-## SLEEVE STILL 1b — live score (authoritative)
+## SLEEVE STILL 1c — ready for edge redeploy
 
-Work-order: GitHub **#81** (lineage **#74** / **#54**, parent **#50**). Lane B score-only. **Do not reopen chest 1m. Do not arm temporal. Do not change paint.**
+Work-order: GitHub **#84** (lineage **#81** / **#74** / **#54**, parent **#50**). Lane B only. **Do not reopen chest 1m. Do not arm temporal.**
 
-`repair_method_version: architecture_c_sleeve_still_1b`  
+`repair_method_version: architecture_c_sleeve_still_1c`  
 `claim: visible_geometry_only`  
 `hidden_shoulder_to_cuff_validated: false`  
-`navy_fill_mode: warp`
+`navy_fill_mode: warp` \| `median_navy` \| `navy_over_cream` \| `mixed`
+
+### FAIL #6 (1b historical)
+
+1b live `a4dc7f47` warped a ~0.23 navy crop as-is. Left luma 202→161 PASS. Right (already-dark V2 ring) 134→158 FAIL (need ≤125.6). 1c `preferProductNavyOverCream` replaces non-navy source pixels with median product navy so both quads drop luma.
+
+Leftover fixture: 1b-style as-is warp FAILS criterion 6 on the dark right ring; 1c CLEARS 6/6. C5/C11/chest reserved stay 0.
+
+## SLEEVE STILL 1b — live score (authoritative, historical)
+
+Work-order: GitHub **#81** (lineage **#74** / **#54**, parent **#50**). Lane B score-only. **Do not reopen chest 1m. Do not arm temporal. Do not change 1b paint.**
 
 | Field | Value |
 |-------|--------|
@@ -38,12 +49,17 @@ Crops: `docs/sleeve-panel/live-1b/`
 
 1a `fde270bf` stays historical NOT CLEARED 5/6 (both sides cream). 1b moved left navy-ward and found a navy stripe, but the right paste is still cream-majority over the dark ring so mean luma rose.
 
-### Claude / Fendi next
+### Deploy
 
-1. Keep `TEMPORAL_LIVE_ACTIVATION_ARMED = false`
-2. Do **not** start temporal
-3. Next paint (separate Class C) if product wants another still: navy-majority warp (0.18 threshold accepted ~23% navy + cream body); optionally tighten left quad off the wall; prefer `9ed83c01` after frontend Publish
-4. Re-score a new `$0` row on `lane-b-sleeve-live-v1`. Do not mint from the score agent
+Redeploy **only** `architecture-c-still-repair-proxy`. Frontend Publish optional for paint; required for the product-UI sleeve source resolver. No V3. No paid Grok. Parent owns Lovable after READY.
+
+### Claude / Fendi next ($0)
+
+1. Redeploy **only** `architecture-c-still-repair-proxy`
+2. Hero Frame click path in `docs/sleeve-panel/LANE_B_SLEEVE_STILL_LIVE_WIRING.md`
+3. Canonical sleeve run on **9ed83c01** (picker stays on clean `2aa1a44c`)
+4. Expect `architecture_c_sleeve_still_1c`. Score `lane-b-sleeve-live-v1`. Criterion 6 must pass on **both** sides. Do **not** start temporal.
+5. Do **not** flip `TEMPORAL_LIVE_ACTIVATION_ARMED`
 
 ## STAGE 1M — live score (authoritative, PR #73)
 

@@ -56,30 +56,32 @@ describe("deterministic visible sleeve-panel repair", () => {
     expect(out.consumedChestOutput).toBe(false);
     expect(out.sides).toHaveLength(2);
     expect(out.sides.every((s) => s.paintedPixelCount > 40)).toBe(true);
-    expect(out.sides.every((s) => s.navyFillMode === "warp")).toBe(true);
+    expect(
+      out.sides.every((s) => s.navyFillMode === "navy_over_cream" || s.navyFillMode === "warp"),
+    ).toBe(true);
 
     // Former horizontal cream pinstripe row near the left edge becomes navy
-    // (flat-ref vertical panel, u≈0).
+    // (flat-ref vertical panel, u≈0). 1c prefers product navy over cream stripe.
     const afterEdge = pixelAt(out.still, LEFT_VISIBLE.x0 + 1, 24);
     expect(isNavy(afterEdge)).toBe(true);
 
-    // Vertical pinstripe from the flat lands as a column (u≈0.5), not a row.
     const midU = Math.floor((LEFT_VISIBLE.x0 + LEFT_VISIBLE.x1) / 2);
     const edgeX = LEFT_VISIBLE.x0 + 1;
     const colHits = { stripe: 0, navy: 0 };
     for (let y = LEFT_VISIBLE.y0; y < LEFT_VISIBLE.y1; y++) {
       if (isPinstripe(pixelAt(out.still, midU, y))) colHits.stripe++;
       if (isNavy(pixelAt(out.still, edgeX, y))) colHits.navy++;
+      if (isNavy(pixelAt(out.still, midU, y))) colHits.navy++;
     }
-    expect(colHits.stripe).toBeGreaterThan(8);
-    expect(colHits.navy).toBeGreaterThan(4);
+    expect(colHits.stripe).toBe(0);
+    expect(colHits.navy).toBeGreaterThan(8);
 
     // The old horizontal pinstripe row is no longer cream across the arm.
     let horizontalCream = 0;
     for (let x = LEFT_VISIBLE.x0; x < LEFT_VISIBLE.x1; x++) {
       if (isPinstripe(pixelAt(out.still, x, 24))) horizontalCream++;
     }
-    expect(horizontalCream).toBeLessThan(6);
+    expect(horizontalCream).toBe(0);
   });
 
   it("leaves hidden shoulder→cuff / distal forearm pixels untouched", () => {
@@ -217,7 +219,7 @@ describe("deterministic visible sleeve-panel repair", () => {
     expect(NAVY[2]).toBeGreaterThan(NAVY[0]);
   });
 
-  it("1b: cream 1a-default bbox still paints navy-ward, not cream/white", () => {
+  it("1c: cream 1a-default bbox still paints navy-ward, not cream/white", () => {
     const fx = buildCrossedArmsSleeveFixture();
     const before = pixelAt(fx.still, LEFT_VISIBLE.x0 + 1, 24);
     expect(isPinstripe(before)).toBe(true);

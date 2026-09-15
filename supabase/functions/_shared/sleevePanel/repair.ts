@@ -3,8 +3,8 @@
  * Deterministic visible-upper-arm sleeve-panel repair.
  *
  * Warps flat-ref navy panel pixels onto manual visible quads.
- * Cream/white source crops are resolved navy-ward (Stage 1b) instead of
- * being pasted as panel truth.
+ * Cream/white source crops are resolved navy-ward (Stage 1c: prefer product
+ * navy over cream stripe) instead of being pasted as panel truth.
  * Detection is not guessed — callers must supply target quads.
  * Hidden shoulder→cuff pixels are never painted and never validated.
  */

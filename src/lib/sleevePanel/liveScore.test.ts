@@ -5,6 +5,11 @@ import { SLEEVE_STILL_1B_LIVE_VERIFIED } from "@/lib/eval/sleeveStill1bEvidence"
 import { TEMPORAL_LIVE_ACTIVATION_ARMED } from "@/lib/temporal/livePrep";
 import { CREAM, buildCrossedArmsSleeveFixture } from "./fixtures";
 import {
+  buildCreamMajorityNavyStripeFlat,
+  buildStage1bRightLeftoverStill,
+  warpRequestedCropAsIs,
+} from "./stage1bRightLeftover";
+import {
   DEFAULT_FLAT_SLEEVE_SOURCE_BBOX,
   LIVE_CHEST_RESERVED_QUAD_NORM,
   SEEDED_VISIBLE_SLEEVE_QUADS,
@@ -77,7 +82,7 @@ function creamStill720(): {
 describe("Lane B sleeve live scorecard", () => {
   it("locks live identity + seeded quads without claiming temporal armed", () => {
     expect(TEMPORAL_LIVE_ACTIVATION_ARMED).toBe(false);
-    expect(SLEEVE_STILL_REPAIR_METHOD_VERSION).toBe("architecture_c_sleeve_still_1b");
+    expect(SLEEVE_STILL_REPAIR_METHOD_VERSION).toBe("architecture_c_sleeve_still_1c");
     expect(scoreSleeveIdentity(LIVE_IDENTITY).verdict).toBe("PASS");
     expect(scoreSleeveGeometry(LIVE_IDENTITY).verdict).toBe("PASS");
     expect(PREFERRED_CHEST_OUTPUT_ASSET_ID).toBe("9ed83c01-8c7d-4d1b-918f-87b0fc743c50");
@@ -133,7 +138,7 @@ describe("Lane B sleeve live scorecard", () => {
     expect(score.inputLineage.preferredChestOutputUsed).toBe(true);
   });
 
-  it("1b: DEFAULT cream bbox on the fixture flat still CLEARS the 6-pt gate", () => {
+  it("1c: DEFAULT cream bbox on the fixture flat still CLEARS the 6-pt gate", () => {
     const still = creamStill720();
     const fx = buildCrossedArmsSleeveFixture();
     const out = repairVisibleSleevePanelsOnStill({
@@ -165,7 +170,7 @@ describe("Lane B sleeve live scorecard", () => {
         rightPainted: out.output.sides.find((s) => s.side === "right")?.paintedPixelCount ?? 0,
       },
     });
-    expect(out.meta.repair_method_version).toBe("architecture_c_sleeve_still_1b");
+    expect(out.meta.repair_method_version).toBe("architecture_c_sleeve_still_1c");
     expect(score.gate).toBe("CLEARED");
     expect(score.criteria.find((c) => c.id === 6)?.verdict).toBe("PASS");
     expect(score.criteria.find((c) => c.id === 5)?.verdict).toBe("PASS");
@@ -200,7 +205,6 @@ describe("Lane B sleeve live scorecard", () => {
     );
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.claim).toBe(SLEEVE_PANEL_CLAIM);
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.hiddenShoulderToCuffValidated).toBe(false);
-    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.navyFillMode).toBe("warp");
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.preferredChestOutputUsed).toBe(false);
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.cleanStillAssetId).toBe(CANONICAL_CLEAN_STILL_ASSET_ID);
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
@@ -209,12 +213,86 @@ describe("Lane B sleeve live scorecard", () => {
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.c5BrightChanged).toBe(0);
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.chestReservedChanged).toBe(0);
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.c11ChangedAboveY600).toBe(0);
-    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.leftMeanOutLuma + 8).toBeLessThan(
-      SLEEVE_STILL_1B_LIVE_VERIFIED.leftMeanSrcLuma,
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.leftMeanOutLuma).toBeLessThan(
+      SLEEVE_STILL_1B_LIVE_VERIFIED.leftMeanSrcLuma - 8,
     );
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.rightMeanOutLuma).toBeGreaterThan(
       SLEEVE_STILL_1B_LIVE_VERIFIED.rightMeanSrcLuma,
     );
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.navyFillMode).toBe("warp");
+  });
+
+  it("1b leftover: cream-majority warp over dark right ring FAILS criterion 6", () => {
+    const still = buildStage1bRightLeftoverStill();
+    const flat = buildCreamMajorityNavyStripeFlat();
+    const leftover = warpRequestedCropAsIs(
+      still,
+      flat,
+      SEEDED_VISIBLE_SLEEVE_QUADS.left,
+      SEEDED_VISIBLE_SLEEVE_QUADS.right,
+    );
+    const score = evaluateSleeveStillLive({
+      source: still,
+      output: leftover,
+      identity: {
+        ...LIVE_IDENTITY,
+        leftPainted: 1,
+        rightPainted: 1,
+      },
+    });
+    expect(score.criteria.find((c) => c.id === 3)?.verdict).toBe("PASS");
+    expect(score.criteria.find((c) => c.id === 4)?.verdict).toBe("PASS");
+    expect(score.criteria.find((c) => c.id === 5)?.verdict).toBe("PASS");
+    const c6 = score.criteria.find((c) => c.id === 6)!;
+    expect(c6.verdict).toBe("FAIL");
+    expect(c6.metrics.leftMeanOutLuma + 8).toBeLessThan(c6.metrics.leftMeanSrcLuma);
+    expect(c6.metrics.rightMeanOutLuma).toBeGreaterThan(c6.metrics.rightMeanSrcLuma);
+    expect(score.gate).toBe("NOT_CLEARED");
+  });
+
+  it("1c: same leftover fixture CLEARS when product navy is preferred over cream", () => {
+    const still = buildStage1bRightLeftoverStill();
+    const flat = buildCreamMajorityNavyStripeFlat();
+    const out = repairVisibleSleevePanelsOnStill({
+      still,
+      flatRef: flat,
+      panels: [
+        {
+          side: "left",
+          targetQuad: SEEDED_VISIBLE_SLEEVE_QUADS.left,
+          sourceBboxNorm: DEFAULT_FLAT_SLEEVE_SOURCE_BBOX,
+        },
+        {
+          side: "right",
+          targetQuad: SEEDED_VISIBLE_SLEEVE_QUADS.right,
+          sourceBboxNorm: DEFAULT_FLAT_SLEEVE_SOURCE_BBOX,
+        },
+      ],
+      chestBandQuadNorm: LIVE_CHEST_RESERVED_QUAD_NORM,
+      sourceStillId: CANONICAL_CLEAN_STILL_ASSET_ID,
+      chestOutputAssetId: PREFERRED_CHEST_OUTPUT_ASSET_ID,
+    });
+    const score = evaluateSleeveStillLive({
+      source: still,
+      output: out.still,
+      identity: {
+        ...LIVE_IDENTITY,
+        leftPainted: out.output.sides.find((s) => s.side === "left")?.paintedPixelCount ?? 0,
+        rightPainted: out.output.sides.find((s) => s.side === "right")?.paintedPixelCount ?? 0,
+      },
+    });
+    expect(out.meta.repair_method_version).toBe("architecture_c_sleeve_still_1c");
+    expect(out.output.sides.every((s) => s.sourceNavyFraction >= 0.99)).toBe(true);
+    expect(score.gate).toBe("CLEARED");
+    expect(score.failCount).toBe(0);
+    const c6 = score.criteria.find((c) => c.id === 6)!;
+    expect(c6.verdict).toBe("PASS");
+    expect(c6.metrics.leftMeanOutLuma + 8).toBeLessThan(c6.metrics.leftMeanSrcLuma);
+    expect(c6.metrics.rightMeanOutLuma + 8).toBeLessThan(c6.metrics.rightMeanSrcLuma);
+    expect(score.criteria.find((c) => c.id === 3)?.verdict).toBe("PASS");
+    expect(score.criteria.find((c) => c.id === 4)?.verdict).toBe("PASS");
+    expect(score.criteria.find((c) => c.id === 5)?.verdict).toBe("PASS");
+    expect(score.temporal.TEMPORAL_LIVE_ACTIVATION_ARMED).toBe(false);
   });
 
   it("fails chest reserved when the band is overwritten", () => {

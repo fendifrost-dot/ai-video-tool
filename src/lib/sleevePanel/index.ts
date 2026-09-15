@@ -51,11 +51,13 @@ export { repairVisibleSleevePanels } from "./repair";
 
 export {
   NAVY_CROP_MIN_FRACTION,
+  NAVY_MAJORITY_FRACTION,
   PRODUCT_NAVY_FALLBACK,
   findVerticalNavyBbox,
   isSleeveCreamOrWhite,
   isSleeveProductNavy,
   navyFraction,
+  preferProductNavyOverCream,
   resolveNavyPanelSource,
 } from "./navyFill";
 export type { NavyFillMode, NavyPanelSource } from "./navyFill";
@@ -116,3 +118,12 @@ export {
   buildHiddenMask,
   buildVisibleMask,
 } from "./fixtures";
+export {
+  LIVE_1B_LEFT_CREAM,
+  LIVE_1B_RIGHT_V2_RING,
+  STAGE1B_CREAM_MAJORITY_NAVY_FRACTION,
+  buildCreamMajorityNavyStripeFlat,
+  buildStage1bRightLeftoverStill,
+  stage1bLeftoverRequestedNavyFraction,
+  warpRequestedCropAsIs,
+} from "./stage1bRightLeftover";

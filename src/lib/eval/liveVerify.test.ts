@@ -101,7 +101,7 @@ describe("Stage 1k live-verify harness (unit)", () => {
     ).toBe("architecture_c_sleeve_still_1a");
   });
 
-  it("locks Lane B sleeve still 1b live identity and 5/6 score", () => {
+  it("locks Lane B sleeve still 1b live identity and 5/6 score (right navy-ward FAIL)", () => {
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.repairMethodVersion).toBe(
       "architecture_c_sleeve_still_1b",
     );
@@ -115,7 +115,7 @@ describe("Stage 1k live-verify harness (unit)", () => {
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.pass).toEqual([1, 2, 3, 4, 5]);
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.fail).toEqual([6]);
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.leftMeanOutLuma).toBeLessThan(
-      SLEEVE_STILL_1B_LIVE_VERIFIED.leftMeanSrcLuma,
+      SLEEVE_STILL_1B_LIVE_VERIFIED.leftMeanSrcLuma - 8,
     );
     expect(SLEEVE_STILL_1B_LIVE_VERIFIED.rightMeanOutLuma).toBeGreaterThan(
       SLEEVE_STILL_1B_LIVE_VERIFIED.rightMeanSrcLuma,
