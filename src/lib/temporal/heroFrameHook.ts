@@ -10,7 +10,6 @@ import {
   CANONICAL_PROJECT_ID,
   CANONICAL_STILL_ASSET_ID,
   CANONICAL_KEYFRAME_ID,
-  type CanonicalLineage,
 } from "./canonicalLineage";
 import { clearedChestQuadSet, type ApprovedQuadSet } from "./approvedQuad";
 import {
