@@ -134,7 +134,9 @@ Until then, Hero Frame §7 must keep **HARD STOP — do not enable temporal trac
 
 **BLOCKED** for production temporal activation until sleeve still CLEARED on the canonical lineage.
 
-**Live sleeve 1a (2026-09-15):** asset `fde270bf` on `2aa1a44c` is **NOT CLEARED 5/6** (visible cream fill, not navy panel). C5/C11/chest reserved held. `TEMPORAL_LIVE_ACTIVATION_ARMED` stays **false**. Score: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md`.
+**Live sleeve 1a (2026-09-15):** asset `fde270bf` on `2aa1a44c` is **NOT CLEARED 5/6** (visible cream fill). Score: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md`.
+
+**Live sleeve 1b (2026-09-15):** asset `a4dc7f47` on `2aa1a44c` is **NOT CLEARED 5/6** (criterion 6 right luma 133.6→157.5; left navy-ward PASS). C5/C11/chest reserved held. `TEMPORAL_LIVE_ACTIVATION_ARMED` stays **false**. Score: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`.
 
 **[VERIFIED]** Unit tests in `src/lib/temporal/*.test.ts` (existing 20 + live-prep cases). No I/O doubles. No provider-live. No real-media.
 

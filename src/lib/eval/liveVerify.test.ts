@@ -4,6 +4,7 @@ import { STAGE1K_LIVE_VERIFIED } from "./stage1kEvidence";
 import { STAGE1L_LIVE_VERIFIED } from "./stage1lEvidence";
 import { STAGE1M_LIVE_VERIFIED } from "./stage1mEvidence";
 import { SLEEVE_STILL_1A_LIVE_VERIFIED } from "./sleeveStill1aEvidence";
+import { SLEEVE_STILL_1B_LIVE_VERIFIED } from "./sleeveStill1bEvidence";
 import {
   extractRepairMethodVersion,
   forensicExtras,
@@ -98,6 +99,32 @@ describe("Stage 1k live-verify harness (unit)", () => {
         repair: { repair_method_version: SLEEVE_STILL_1A_LIVE_VERIFIED.repairMethodVersion },
       }),
     ).toBe("architecture_c_sleeve_still_1a");
+  });
+
+  it("locks Lane B sleeve still 1b live identity and 5/6 score", () => {
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.repairMethodVersion).toBe(
+      "architecture_c_sleeve_still_1b",
+    );
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.claim).toBe("visible_geometry_only");
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.assetId).toBe("a4dc7f47-a08d-46e5-b279-ae53fd81e37c");
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.cleanStillAssetId).toBe(STAGE1K_CANONICAL.stillAssetId);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.preferredChestOutputUsed).toBe(false);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.geometryRejectedHttp400).toBe(false);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.navyFillMode).toBe("warp");
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.pass).toEqual([1, 2, 3, 4, 5]);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.fail).toEqual([6]);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.leftMeanOutLuma).toBeLessThan(
+      SLEEVE_STILL_1B_LIVE_VERIFIED.leftMeanSrcLuma,
+    );
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.rightMeanOutLuma).toBeGreaterThan(
+      SLEEVE_STILL_1B_LIVE_VERIFIED.rightMeanSrcLuma,
+    );
+    expect(
+      extractRepairMethodVersion({
+        repair: { repair_method_version: SLEEVE_STILL_1B_LIVE_VERIFIED.repairMethodVersion },
+      }),
+    ).toBe("architecture_c_sleeve_still_1b");
   });
 
   it("fixture pipeline is 11/11 under Stage 1l paint (1k live 7/11 stays historical)", () => {

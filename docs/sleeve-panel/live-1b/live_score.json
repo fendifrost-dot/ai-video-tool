@@ -1,0 +1,158 @@
+{
+  "assetId": "a4dc7f47-a08d-46e5-b279-ae53fd81e37c",
+  "created_at": "2026-09-15T06:29:13.307298Z",
+  "storedPath": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/architecture-c-repair/sleeve_panel_2aa1a44c-b24a-46bf-890f-13a6fc65b1cc_1789453752896.png",
+  "decoder": "imagescript-1.3.0",
+  "vsCleanChangedPx": 33905,
+  "vsChest1mChangedPx": 55169,
+  "vs1aChangedPx": 31292,
+  "navyFillMode": "warp",
+  "score": {
+    "schemaVersion": "lane-b-sleeve-live-v1",
+    "gate": "NOT_CLEARED",
+    "passCount": 5,
+    "failCount": 1,
+    "criteria": [
+      {
+        "id": 1,
+        "key": "identity_visible_geometry_only",
+        "name": "Identity: current sleeve method + visible_geometry_only",
+        "verdict": "PASS",
+        "metrics": {
+          "methodOk": 1,
+          "claimOk": 1,
+          "hiddenUnvalidated": 1,
+          "stageOk": 1,
+          "trackingOff": 1
+        },
+        "note": "Must persist repair_method_version architecture_c_sleeve_still_1b, claim visible_geometry_only, hidden_shoulder_to_cuff_validated false, temporal off.",
+        "failureReason": null
+      },
+      {
+        "id": 2,
+        "key": "geometry_seeded_visible_upper_arm",
+        "name": "Geometry: seeded visible-upper-arm quads accepted (no HTTP 400)",
+        "verdict": "PASS",
+        "metrics": {
+          "leftOk": 1,
+          "rightOk": 1,
+          "no400": 1,
+          "leftPainted": 22777,
+          "rightPainted": 11128,
+          "rejectedHidden": 0,
+          "rejectedChestReserved": 0
+        },
+        "note": "Seeded quads must match SEEDED_VISIBLE_SLEEVE_QUADS. A shoulder→cuff / face-high quad must 400, not save.",
+        "failureReason": null
+      },
+      {
+        "id": 3,
+        "key": "c5_forearm_preserved",
+        "name": "C5 sleeve/forearm + 4×3 zip-corner must not be wrecked",
+        "verdict": "PASS",
+        "metrics": {
+          "brightChecked": 653,
+          "brightChanged": 0,
+          "patchDarkened": 0
+        },
+        "note": "Same Lane E C5 windows as chest 1m (x330–380/y738–755 bright skin; x389–392/y746–748 cream).",
+        "failureReason": null
+      },
+      {
+        "id": 4,
+        "key": "c11_outside_region",
+        "name": "C11 outside-region: no paint above y600 or below y800",
+        "verdict": "PASS",
+        "metrics": {
+          "changedAboveY600": 0,
+          "changedBelowY800": 0,
+          "height": 1280,
+          "width": 720
+        },
+        "note": "Visible-upper-arm paint stays in the C11 gap (y 600–799). Face belt and distal cuff stay source.",
+        "failureReason": null
+      },
+      {
+        "id": 5,
+        "key": "chest_reserved_untouched",
+        "name": "Chest reserved band (LIVE_CHEST_RESERVED_QUAD_NORM) byte-identical to input",
+        "verdict": "PASS",
+        "metrics": {
+          "reservedPixels": 27282,
+          "changed": 0,
+          "consumedSlotDefault": 1
+        },
+        "note": "Lane B subtracts the 1m measured chest quad. It must not paint reserved pixels even when the input is the clean still rather than 9ed83c01.",
+        "failureReason": null
+      },
+      {
+        "id": 6,
+        "key": "visible_upper_arm_repaired",
+        "name": "Visible upper-arm quads painted navy-ward; hidden face / C5 pocket untouched",
+        "verdict": "FAIL",
+        "metrics": {
+          "leftChanged": 22755,
+          "leftChecked": 22794,
+          "leftNavyLike": 5301,
+          "leftMeanSrcLuma": 202.24,
+          "leftMeanOutLuma": 160.9,
+          "rightChanged": 11124,
+          "rightChecked": 11139,
+          "rightNavyLike": 2636,
+          "rightMeanSrcLuma": 133.56,
+          "rightMeanOutLuma": 157.51,
+          "hiddenFaceChanged": 0,
+          "crossedForearmChanged": 0,
+          "leftMaskPixels": 22794,
+          "rightMaskPixels": 11139
+        },
+        "note": "Contract: visible quads receive the flat-ref navy panel. Hidden shoulder→cuff is unvalidated and must not be claimed. Face + crossed-forearm C5 pocket stay source.",
+        "failureReason": "right luma 133.6→157.5 (need navy-ward drop) navyLike=2636/11139"
+      }
+    ],
+    "identity": {
+      "repairMethodVersion": "architecture_c_sleeve_still_1b",
+      "claim": "visible_geometry_only",
+      "contractVersion": "1.0.0",
+      "geometryNote": "visible_upper_arm_only",
+      "hiddenShoulderToCuffValidated": false,
+      "repairStage": "sleeve_panel",
+      "sourceStillAssetId": "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+      "chestOutputAssetId": null,
+      "consumedChestOutput": true,
+      "temporalTrackingEnabled": false,
+      "keyframeId": "v2-still-0.785",
+      "leftQuad": [
+        [0.030555555555555555, 0.5],
+        [0.25972222222222224, 0.5046875],
+        [0.25, 0.61484375],
+        [0.030555555555555555, 0.61015625]
+      ],
+      "rightQuad": [
+        [0.8805555555555555, 0.5046875],
+        [0.9902777777777778, 0.5],
+        [0.9902777777777778, 0.61484375],
+        [0.8805555555555555, 0.61015625]
+      ],
+      "leftPainted": 22777,
+      "rightPainted": 11128,
+      "leftRejectedHidden": 0,
+      "rightRejectedHidden": 0,
+      "leftRejectedChest": 0,
+      "rightRejectedChest": 0,
+      "geometryRejectedHttp400": false
+    },
+    "inputLineage": {
+      "sourceStillAssetId": "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+      "preferredChestOutputUsed": false,
+      "chestOutputAssetId": null,
+      "note": "Sleeve input is not 9ed83c01. Reserved chest quad still applied from LIVE_CHEST_RESERVED_QUAD_NORM. Chest still picker must stay on the clean capture (logo_chest chaining lock)."
+    },
+    "temporal": {
+      "TEMPORAL_LIVE_ACTIVATION_ARMED": false,
+      "temporalTrackingEnabled": false,
+      "activationMayProceedAfterCleared": false
+    }
+  },
+  "summary": "Lane B sleeve live lane-b-sleeve-live-v1: NOT_CLEARED 5/6\n  PASS 1 identity_visible_geometry_only\n  PASS 2 geometry_seeded_visible_upper_arm\n  PASS 3 c5_forearm_preserved\n  PASS 4 c11_outside_region\n  PASS 5 chest_reserved_untouched\n  FAIL 6 visible_upper_arm_repaired — right luma 133.6→157.5 (need navy-ward drop) navyLike=2636/11139"
+}

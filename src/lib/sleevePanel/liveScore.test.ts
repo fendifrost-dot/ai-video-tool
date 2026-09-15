@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CHEST_REF_FRAME } from "@/lib/eval/chestCriteria";
 import { SLEEVE_STILL_1A_LIVE_VERIFIED } from "@/lib/eval/sleeveStill1aEvidence";
+import { SLEEVE_STILL_1B_LIVE_VERIFIED } from "@/lib/eval/sleeveStill1bEvidence";
 import { TEMPORAL_LIVE_ACTIVATION_ARMED } from "@/lib/temporal/livePrep";
 import { CREAM, buildCrossedArmsSleeveFixture } from "./fixtures";
 import {
@@ -189,6 +190,30 @@ describe("Lane B sleeve live scorecard", () => {
     expect(SLEEVE_STILL_1A_LIVE_VERIFIED.c11ChangedAboveY600).toBe(0);
     expect(SLEEVE_STILL_1A_LIVE_VERIFIED.leftMeanOutLuma).toBeGreaterThan(
       SLEEVE_STILL_1A_LIVE_VERIFIED.leftMeanSrcLuma,
+    );
+  });
+
+  it("locks the canonical live 1b score (a4dc7f47, NOT CLEARED 5/6) as history", () => {
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.assetId).toBe("a4dc7f47-a08d-46e5-b279-ae53fd81e37c");
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.repairMethodVersion).toBe(
+      "architecture_c_sleeve_still_1b",
+    );
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.claim).toBe(SLEEVE_PANEL_CLAIM);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.hiddenShoulderToCuffValidated).toBe(false);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.navyFillMode).toBe("warp");
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.preferredChestOutputUsed).toBe(false);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.cleanStillAssetId).toBe(CANONICAL_CLEAN_STILL_ASSET_ID);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.pass).toEqual([1, 2, 3, 4, 5]);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.fail).toEqual([6]);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.c5BrightChanged).toBe(0);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.chestReservedChanged).toBe(0);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.c11ChangedAboveY600).toBe(0);
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.leftMeanOutLuma + 8).toBeLessThan(
+      SLEEVE_STILL_1B_LIVE_VERIFIED.leftMeanSrcLuma,
+    );
+    expect(SLEEVE_STILL_1B_LIVE_VERIFIED.rightMeanOutLuma).toBeGreaterThan(
+      SLEEVE_STILL_1B_LIVE_VERIFIED.rightMeanSrcLuma,
     );
   });
 

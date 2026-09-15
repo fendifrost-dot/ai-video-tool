@@ -1,0 +1,7 @@
+Lane B sleeve live lane-b-sleeve-live-v1: NOT_CLEARED 5/6
+  PASS 1 identity_visible_geometry_only
+  PASS 2 geometry_seeded_visible_upper_arm
+  PASS 3 c5_forearm_preserved
+  PASS 4 c11_outside_region
+  PASS 5 chest_reserved_untouched
+  FAIL 6 visible_upper_arm_repaired — right luma 133.6→157.5 (need navy-ward drop) navyLike=2636/11139
