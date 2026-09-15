@@ -45,6 +45,8 @@ import {
   buildStage1hSam3EvidenceAlphas,
   STAGE1H_SAM3_EVIDENCE,
 } from "./fixtures/architectureCStill1hSam3Evidence";
+import { evaluateChestStill } from "@/lib/eval/chestVisualEvaluator";
+import { pointInQuad } from "@/lib/eval/pixelMath";
 
 /** Canonical Stage-1 IDs / geometry (live evidence). */
 export const ARCHITECTURE_C_STAGE1_GOLDEN = {
@@ -1075,9 +1077,10 @@ describe("Architecture C Stage 1j — mid-luma interior topology + ROI occlusion
     return 0.2126 * img.data[i]! + 0.7152 * img.data[i + 1]! + 0.0722 * img.data[i + 2]!;
   }
 
-  it("real-crop mid-luma interior AA is painted (no outline ghosts)", () => {
-    // Live 1i failure: 809/866 mid-luma (60–180) interior px unpainted because
-    // close-rejection used a global luma≤180 lock. Stage 1j keeps interior fills.
+  it("real-crop mid-luma ghosts are scored in the quad, not through bandAuthorityMask", () => {
+    // Stage 1j test-model mismatch [V]: filtering mid-luma AA by bandAuthorityMask
+    // skipped exactly the pixels the close-reject rule drops (false PASS at <0.25).
+    // Lane E scores every mid-luma source pixel inside the quad windows.
     const source = embedArchitectureCBandCropInFrame();
     const band = bandFromNorm(
       source.width,
@@ -1085,17 +1088,43 @@ describe("Architecture C Stage 1j — mid-luma interior topology + ROI occlusion
       ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
     );
     const covered = coverTargetQuad(source, band, STAGE1J);
+    const report = evaluateChestStill({
+      source,
+      output: covered,
+      bandQuadNorm: ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+      bandAuthorityMask: covered.bandAuthorityMask,
+    });
+    const c9 = report.criteria.find((row) => row.id === 9);
+    expect(c9).toBeDefined();
+    expect(report.scoring.bandAuthorityMaskUsed).toBe(false);
+    expect(c9!.metrics.bandAuthorityMaskUsed).toBe(0);
+    expect(c9!.metrics.midLumaChecked).toBeGreaterThan(30);
+
+    let filteredChecked = 0;
+    for (const box of c9!.windows) {
+      for (let y = box.y0; y <= box.y1; y++) {
+        for (let x = box.x0; x <= box.x1; x++) {
+          if (covered.bandAuthorityMask[y * source.width + x]! < 0.5) continue;
+          const srcL = lumaAt(source, x, y);
+          if (srcL < 60 || srcL > 180) continue;
+          if (!pointInQuad(x, y, band)) continue;
+          filteredChecked++;
+        }
+      }
+    }
+    // Real failure territory is larger than the authority-mask subset.
+    expect(c9!.metrics.midLumaChecked).toBeGreaterThan(filteredChecked);
+    expect(c9!.metrics.ghostRatio).toBe(c9!.metrics.midLumaGhosts / c9!.metrics.midLumaChecked);
+
+    // Stage 1k truthful golden: count EVERY mid-luma source pixel in the
+    // lettering windows (no authority-mask filter — that skipped rejected AA
+    // and made 1j's golden pass while live ghosts remained).
     const refI = (700 * source.width + 450) * 4;
     const median =
       0.2126 * covered.data[refI]! +
       0.7152 * covered.data[refI + 1]! +
       0.0722 * covered.data[refI + 2]!;
     const ceiling = median + 20;
-
-    // Left glyph/outline region (live: x 255–345 / y 696–712) + wearer's-left
-    // lettering (x 442–560 / y 704–734). Stage 1k: count EVERY mid-luma source
-    // pixel in the window (no authority-mask filter — that skipped exactly the
-    // rejected AA and made 1j's golden pass while live ghosts remained).
     const windows: Array<[number, number, number, number]> = [
       [255, 345, 696, 712],
       [442, 560, 704, 734],
