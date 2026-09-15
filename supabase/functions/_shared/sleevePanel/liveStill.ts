@@ -11,6 +11,7 @@ import {
   defaultVisibilityManifest,
   parseChestOutputSlot,
   type ChestOutputConsumptionSlot,
+  type SleeveNavyFillMode,
   type SleevePanelStageOutput,
   type VisibleSleevePanelSpec,
 } from "./contract.ts";
@@ -35,7 +36,7 @@ import {
 import { assessVisibleSleeveQuad } from "./visibleGeometry.ts";
 
 /** Sleeve-stage method version. Independent of chest `architecture_c_still_repair_1m`. */
-export const SLEEVE_STILL_REPAIR_METHOD_VERSION = "architecture_c_sleeve_still_1a" as const;
+export const SLEEVE_STILL_REPAIR_METHOD_VERSION = "architecture_c_sleeve_still_1b" as const;
 
 /**
  * Live 1m / Lane E measured chest-band quad on still `2aa1a44c` (720×1280).
@@ -48,7 +49,11 @@ export const LIVE_CHEST_RESERVED_QUAD_NORM: QuadNorm = [
   [0.3, 0.582],
 ];
 
-/** Flat-ref navy vertical panel crop (existing edge default). */
+/**
+ * Requested flat-ref crop (existing 1a default). On the SL front flat this
+ * window is cream/white — Stage 1b resolves navy-ward via `resolveNavyPanelSource`
+ * rather than warping the cream crop.
+ */
 export const DEFAULT_FLAT_SLEEVE_SOURCE_BBOX: NormBbox = [0.05, 0.35, 0.12, 0.35];
 
 /**
@@ -115,6 +120,7 @@ export type SleevePanelLiveMeta = {
   chest_output_asset_id: string | null;
   source_still_id: string | null;
   chest_repair_method_version: string | null;
+  navy_fill_mode: SleeveNavyFillMode | "mixed";
 };
 
 export type SleevePanelLiveResult = {
@@ -290,6 +296,9 @@ export function repairVisibleSleevePanelsOnStill(
   });
 
   const slot = parseChestOutputSlot(chestOutput);
+  const fillModes = new Set(output.sides.map((s) => s.navyFillMode));
+  const navyFillMode: SleeveNavyFillMode | "mixed" =
+    fillModes.size === 1 ? (output.sides[0]?.navyFillMode ?? "warp") : "mixed";
 
   return {
     still: output.still,
@@ -304,6 +313,7 @@ export function repairVisibleSleevePanelsOnStill(
       chest_output_asset_id: input.chestOutputAssetId ?? null,
       source_still_id: input.sourceStillId ?? null,
       chest_repair_method_version: input.chestRepairMethodVersion ?? null,
+      navy_fill_mode: navyFillMode,
     },
   };
 }

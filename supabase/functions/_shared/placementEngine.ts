@@ -978,6 +978,10 @@ export type SleevePanelCompositeResult = {
     painted_pixel_count?: number;
     rejected_hidden_pixel_count?: number;
     rejected_chest_reserved_pixel_count?: number;
+    navy_fill_mode?: "warp" | "median_navy";
+    source_navy_fraction?: number;
+    requested_source_bbox_norm?: [number, number, number, number];
+    resolved_source_bbox_norm?: [number, number, number, number];
   }>;
   repair_method_version: typeof SLEEVE_STILL_REPAIR_METHOD_VERSION;
   contract_version: string;
@@ -986,6 +990,7 @@ export type SleevePanelCompositeResult = {
   hidden_shoulder_to_cuff_validated: false;
   consumed_chest_output: boolean;
   chest_output_asset_id: string | null;
+  navy_fill_mode: "warp" | "median_navy" | "mixed";
 };
 
 export type SleevePanelCompositeOptions = {
@@ -1059,6 +1064,10 @@ export async function compositeSleevePanelsOntoStill(
     row.painted_pixel_count = hit.paintedPixelCount;
     row.rejected_hidden_pixel_count = hit.rejectedHiddenPixelCount;
     row.rejected_chest_reserved_pixel_count = hit.rejectedChestReservedPixelCount;
+    row.navy_fill_mode = hit.navyFillMode;
+    row.source_navy_fraction = hit.sourceNavyFraction;
+    row.requested_source_bbox_norm = hit.requestedSourceBboxNorm;
+    row.resolved_source_bbox_norm = hit.resolvedSourceBboxNorm;
   }
 
   return {
@@ -1075,5 +1084,6 @@ export async function compositeSleevePanelsOntoStill(
     hidden_shoulder_to_cuff_validated: false,
     consumed_chest_output: repaired.meta.consumed_chest_output,
     chest_output_asset_id: repaired.meta.chest_output_asset_id,
+    navy_fill_mode: repaired.meta.navy_fill_mode,
   };
 }

@@ -46,8 +46,8 @@ Repair is a pass when visible quads receive the vertical panel (column pinstripe
 | Contract + chest-output slot | **VERIFIED** | `contract.test.ts`, contract doc |
 | No paid Grok / no CC / no proxy-auth change | **VERIFIED** | no such files in the diff |
 
-**Live (2026-09-15):** asset `fde270bf` scored **NOT CLEARED 5/6** — identity/geometry/C5/C11/chest reserved hold; visible navy panel does not. See [`LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md`](./LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md). Hidden shoulder→cuff stays unvalidated. Temporal stays off.
+**Not claimed:** live V2 still `2aa1a44c`, product runner, temporal tracking, full armhole→cuff, chest still-gate.
 
 ## Status
 
-Isolated fixtures remain **VERIFIED**. Live 1a is **NOT CLEARED 5/6** (`fde270bf`). Temporal stays off.
+Isolated engine landed (PR #60). Live 1a NOT CLEARED 5/6 on FAIL #6 (PR #80). Stage 1b (`architecture_c_sleeve_still_1b`, #81) owns navy-ward fill.

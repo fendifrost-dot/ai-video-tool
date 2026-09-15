@@ -218,7 +218,7 @@ export function scoreSleeveIdentity(input: SleeveLiveIdentityInput): SleeveCrite
   return result(
     1,
     "identity_visible_geometry_only",
-    "Identity: architecture_c_sleeve_still_1a + visible_geometry_only",
+    "Identity: current sleeve method + visible_geometry_only",
     pass,
     {
       methodOk: methodOk ? 1 : 0,
@@ -227,7 +227,7 @@ export function scoreSleeveIdentity(input: SleeveLiveIdentityInput): SleeveCrite
       stageOk: stageOk ? 1 : 0,
       trackingOff: trackingOff ? 1 : 0,
     },
-    "Must persist repair_method_version architecture_c_sleeve_still_1a, claim visible_geometry_only, hidden_shoulder_to_cuff_validated false, temporal off.",
+    `Must persist repair_method_version ${SLEEVE_LIVE_EXPECTED_METHOD}, claim visible_geometry_only, hidden_shoulder_to_cuff_validated false, temporal off.`,
     pass
       ? null
       : `identity mismatch method=${input.repairMethodVersion} claim=${input.claim} hidden=${String(input.hiddenShoulderToCuffValidated)}`,
@@ -456,7 +456,7 @@ export function evaluateSleeveStillLive(input: {
       chestOutputAssetId: input.identity.chestOutputAssetId ?? null,
       note: preferredUsed
         ? "Sleeve input is the CLEARED 1m chest still 9ed83c01."
-        : "Sleeve input is the clean still (preferred 9ed83c01 was not the stillAssetId). Reserved chest quad still applied from LIVE_CHEST_RESERVED_QUAD_NORM.",
+        : "Sleeve input is not 9ed83c01. Reserved chest quad still applied from LIVE_CHEST_RESERVED_QUAD_NORM. Chest still picker must stay on the clean capture (logo_chest chaining lock).",
     },
     temporal: {
       TEMPORAL_LIVE_ACTIVATION_ARMED: false,

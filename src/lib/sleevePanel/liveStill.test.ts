@@ -108,6 +108,24 @@ describe("Lane B live still adapter", () => {
     expect(before[0]).toBeGreaterThan(200);
   });
 
+  it("1b: live adapter with DEFAULT cream bbox still paints navy, not cream", () => {
+    const fx = buildCrossedArmsSleeveFixture();
+    const out = repairVisibleSleevePanelsOnStill({
+      still: fx.still,
+      flatRef: fx.flatRef,
+      panels: [
+        { side: "left", targetQuad: LEFT_VISIBLE_QUAD },
+        { side: "right", targetQuad: RIGHT_VISIBLE_QUAD },
+      ],
+      visibleMask: fx.visibleMask,
+      hiddenMask: fx.hiddenMask,
+    });
+    expect(out.meta.repair_method_version).toBe("architecture_c_sleeve_still_1b");
+    expect(out.meta.claim).toBe(SLEEVE_PANEL_CLAIM);
+    expect(out.meta.navy_fill_mode).not.toBe("median_navy");
+    expect(isNavy(pixelAt(out.still, LEFT_VISIBLE.x0 + 1, 24))).toBe(true);
+  });
+
   it("leaves chest-reserved pixels byte-identical on the fixture", () => {
     const fx = buildCrossedArmsSleeveFixture();
     const reservedX = 35;

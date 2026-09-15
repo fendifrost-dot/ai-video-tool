@@ -79,7 +79,7 @@ Do **not** do any of the following until a sleeve still on the same lineage (`2a
 2. Flip Hero Frame `temporalTrackingEnabled` to `true` (Hero Frame owner — not this module)
 3. Redeploy any temporal-capable edge function
 4. Feed live extract manifests / footage into `propagateRepair`
-5. Treat Lane B `architecture_c_sleeve_still_1a` wiring (PR #75) as a temporal go
+5. Treat Lane B sleeve still **CLEARED** (not 1a `fde270bf` NOT CLEARED 5/6) as a temporal go
 6. Call Grok per intermediate frame (architecture lock: propagate, don't regenerate)
 
 **[DECISION]** Temporal live stays off while sleeve is PENDING / not yet CLEARED. Matches `VIDEO_SWAP_ARCHITECTURE.md` and pipeline stage `temporal_propagation` (`dependsOn: sleeve_garment_repair` + `still_repair_approved` gate).

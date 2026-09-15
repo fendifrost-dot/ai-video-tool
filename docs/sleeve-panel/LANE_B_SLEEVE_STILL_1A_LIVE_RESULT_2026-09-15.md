@@ -1,5 +1,7 @@
 # Lane B — Sleeve still live score (`architecture_c_sleeve_still_1a`, `fde270bf`)
 
+**Historical lock (PR #80).** Paint was **not** changed here. Stage 1b (`architecture_c_sleeve_still_1b`, #81 / PR #82) owns FAIL #6.
+
 **Date:** 2026-09-15 · **Author:** Cursor (Lane B, score-only) · **Spend:** $0 · **Issue:** [#74](https://github.com/fendifrost-dot/ai-video-tool/issues/74) (lineage [#54](https://github.com/fendifrost-dot/ai-video-tool/issues/54), parent [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50))  
 **Code under test:** live edge serving `architecture_c_sleeve_still_1a` (PR #75 on `main`). **Repair not re-run. Paint not changed.**  
 **Run:** authenticated AVT product UI (Hero Frame Studio), $0. Input still `2aa1a44c` (preferred chest-cleared `9ed83c01` was UI-disabled as a `[repair:logo_chest]` option). Seeded visible-upper-arm quads. No HTTP 400.  

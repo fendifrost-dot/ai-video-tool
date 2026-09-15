@@ -1,9 +1,11 @@
 /**
- * GitHub-verified Lane B sleeve still identity + live scorecard.
+ * GitHub-verified Lane B sleeve still identity + live scorecard (Stage 1a).
  * Scorecard: docs/sleeve-panel/LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md
+ * Evidence PR #80.
  *
  * Live $0 Hero Frame run on clean still 2aa1a44c (preferred chest-cleared
- * 9ed83c01 was UI-disabled as a repair output). Paint not re-run.
+ * 9ed83c01 was UI-disabled as a repair output). Paint not re-run. Historical
+ * lock — Stage 1b does not change these numbers.
  */
 
 import type { SleeveCriterionId } from "../sleevePanel/liveScore";

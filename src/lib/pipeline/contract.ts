@@ -151,7 +151,7 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
         module: "supabase/functions/architecture-c-still-repair-proxy/index.ts",
         entrypoint: "POST /functions/v1/architecture-c-still-repair-proxy (stage: sleeve_panel)",
         notes:
-          "Same Lovable edge function as chest. Sleeve paint is Lane B `repairVisibleSleevePanelsOnStill` (`architecture_c_sleeve_still_1a`). Do not reopen logo_chest 1m.",
+          "Same Lovable edge function as chest. Sleeve paint is Lane B `repairVisibleSleevePanelsOnStill` (`architecture_c_sleeve_still_1b`). Do not reopen logo_chest 1m.",
       },
       {
         ...noPaidCalls,

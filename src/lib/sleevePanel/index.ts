@@ -32,6 +32,7 @@ export {
 } from "./contract";
 export type {
   ChestOutputConsumptionSlot,
+  SleeveNavyFillMode,
   SleevePanelSideResult,
   SleevePanelStageInput,
   SleevePanelStageOutput,
@@ -47,6 +48,17 @@ export {
 export type { VisibleQuadAssessment } from "./visibleGeometry";
 
 export { repairVisibleSleevePanels } from "./repair";
+
+export {
+  NAVY_CROP_MIN_FRACTION,
+  PRODUCT_NAVY_FALLBACK,
+  findVerticalNavyBbox,
+  isSleeveCreamOrWhite,
+  isSleeveProductNavy,
+  navyFraction,
+  resolveNavyPanelSource,
+} from "./navyFill";
+export type { NavyFillMode, NavyPanelSource } from "./navyFill";
 
 export {
   CANONICAL_HIDDEN_BOXES,
@@ -75,6 +87,7 @@ export {
   scoreChestReserved,
   scoreSleeveGeometry,
   scoreSleeveIdentity,
+  scoreVisibleRepair,
   sleeveLiveEvidenceCrops,
 } from "./liveScore";
 export type {

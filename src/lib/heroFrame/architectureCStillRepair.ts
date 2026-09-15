@@ -213,6 +213,71 @@ export function extractChestBandQuad(metadata: unknown): QuadNorm | null {
   return isHeroQuadNorm(raw) ? raw : null;
 }
 
+export type SleeveStillSourceReason =
+  | "in_session_logo_chest"
+  | "canonical_cleared_chest"
+  | "other_logo_chest"
+  | "clean_still_fallback";
+
+export type SleeveStillSourceResolution = {
+  stillAssetId: string;
+  chestOutputAssetId: string | null;
+  reason: SleeveStillSourceReason;
+  /** Chest still <select> stays on the clean capture — repair outputs stay disabled there. */
+  chestPickerLocked: true;
+};
+
+/**
+ * Sleeve input is independent of the chest still picker.
+ *
+ * `logo_chest` must never re-chain a repair output (that's why `9ed83c01` is
+ * disabled in the still <select>). Sleeve *wants* that CLEARED 1m row. Send it
+ * as `stillAssetId` even when the picker cannot select it.
+ */
+export function resolvePreferredSleeveStillSource(input: {
+  inSessionChestAssetId?: string | null;
+  recommendedChestOutputAssetId?: string;
+  logoChestOutputIds?: readonly string[];
+  selectedCleanStillId?: string | null;
+}): SleeveStillSourceResolution {
+  const recommended =
+    input.recommendedChestOutputAssetId ?? ARCHITECTURE_C_V2_REPAIR.recommendedChestOutputAssetId;
+  const inSession = input.inSessionChestAssetId ?? null;
+  const logoChest = input.logoChestOutputIds ?? [];
+  const clean = input.selectedCleanStillId ?? "";
+
+  if (inSession) {
+    return {
+      stillAssetId: inSession,
+      chestOutputAssetId: inSession,
+      reason: "in_session_logo_chest",
+      chestPickerLocked: true,
+    };
+  }
+  if (recommended) {
+    return {
+      stillAssetId: recommended,
+      chestOutputAssetId: recommended,
+      reason: "canonical_cleared_chest",
+      chestPickerLocked: true,
+    };
+  }
+  if (logoChest[0]) {
+    return {
+      stillAssetId: logoChest[0],
+      chestOutputAssetId: logoChest[0],
+      reason: "other_logo_chest",
+      chestPickerLocked: true,
+    };
+  }
+  return {
+    stillAssetId: clean,
+    chestOutputAssetId: null,
+    reason: "clean_still_fallback",
+    chestPickerLocked: true,
+  };
+}
+
 function isHeroQuadNorm(v: unknown): v is QuadNorm {
   return (
     Array.isArray(v) &&
