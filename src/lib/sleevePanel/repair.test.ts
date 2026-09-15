@@ -13,16 +13,16 @@ import { SLEEVE_PANEL_CONTRACT_VERSION } from "./types";
 import { pixelAt, rgbaFingerprint } from "./raster";
 import { repairVisibleSleevePanels } from "./repair";
 
-function isNavy(rgb: readonly [number, number, number]): boolean {
-  return rgb[2] > rgb[0] + 20 && rgb[2] > rgb[1] + 20 && rgb[0] < 80;
+function isNavy(rgba: readonly [number, number, number, number]): boolean {
+  return rgba[2] > rgba[0] + 20 && rgba[2] > rgba[1] + 20 && rgba[0] < 80;
 }
 
-function isCream(rgb: readonly [number, number, number]): boolean {
-  return rgb[0] > 180 && rgb[1] > 160 && rgb[2] > 130 && rgb[0] > rgb[2];
+function isCream(rgba: readonly [number, number, number, number]): boolean {
+  return rgba[0] > 180 && rgba[1] > 160 && rgba[2] > 130 && rgba[0] > rgba[2];
 }
 
-function isPinstripe(rgb: readonly [number, number, number]): boolean {
-  return rgb[0] > 220 && rgb[1] > 210 && rgb[2] > 190;
+function isPinstripe(rgba: readonly [number, number, number, number]): boolean {
+  return rgba[0] > 220 && rgba[1] > 210 && rgba[2] > 190;
 }
 
 describe("deterministic visible sleeve-panel repair", () => {

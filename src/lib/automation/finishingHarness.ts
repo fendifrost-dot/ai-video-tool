@@ -5,11 +5,11 @@
 
 export type FinishingHarnessConfig = {
   astra: {
-    enabled: false;
-    max_steps: 0;
+    enabled: boolean;
+    max_steps: number;
   };
   spend: {
-    max_usd: 0;
+    max_usd: number;
   };
   max_actions: number;
   allow_file_delete: false;
