@@ -805,6 +805,7 @@ export async function compositeLogoOntoVton(
     // expansion, crease-masked illumination, bright-only zip restore.
     // Stage 1i: chest-local occlusion inside band; withdraw midY luma lock;
     // fixed-origin top absorb; close rejects shadowed cream.
+    // Stage 1k: closed-component enclosure; cream-body absorb stop; right-end trim.
     let covered = coverTargetQuad(base, bandPts, {
       zipStripFrac: 0,
       maxExpandFrac: 0.05,
@@ -946,7 +947,7 @@ export async function compositeLogoOntoVton(
     occlusion_source: occlusionSource,
     requested_band_quad_norm: requestedBandQuadNorm,
     effective_band_bbox: effectiveBandBBox,
-    repair_method_version: "architecture_c_still_repair_1j",
+    repair_method_version: "architecture_c_still_repair_1k",
   };
 }
 

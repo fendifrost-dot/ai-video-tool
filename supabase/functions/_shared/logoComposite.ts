@@ -127,6 +127,17 @@ export function isChestBandCandidate(r: number, g: number, b: number): boolean {
   return luma(r, g, b) < 60 && rgbChroma(r, g, b) < 32;
 }
 
+/**
+ * Warm cream / mastic jacket field (Stage 1k). Distinct from thin pinstripe
+ * ticks: cream is warm (r,g ahead of b) and high-luma. Absorb must stop here.
+ */
+export function isCreamBodyPixel(r: number, g: number, b: number): boolean {
+  const L = luma(r, g, b);
+  if (L < 145) return false;
+  if (isNavyPixel(r, g, b) || isChestBandCandidate(r, g, b)) return false;
+  return r > 140 && r > b + 12 && g > b + 4;
+}
+
 type NavyRun = { start: number; end: number };
 
 function findNavyRuns(rowScores: number[], threshold: number): NavyRun[] {
@@ -1289,8 +1300,137 @@ export function largestOverlappingComponent(
  * prevents the 5 px cream-body raise. AA rows (luma ≥ {@link PINSTRIPE_AA_LUMA_MIN})
  * adjacent to the ridge are included.
  */
-const PINSTRIPE_AA_LUMA_MIN = 100;
-const PINSTRIPE_BRIGHT_LUMA = 140;
+const PINSTRIPE_AA_LUMA_MIN = 90;
+
+/** True when a close-added pixel is 8-adjacent to the outside of `closed`. */
+function closeAddedTouchesOutside(
+  lx: number,
+  ly: number,
+  closed: Float32Array,
+  mw: number,
+  mh: number,
+): boolean {
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const nx = lx + dx;
+      const ny = ly + dy;
+      if (nx < 0 || ny < 0 || nx >= mw || ny >= mh) return true;
+      if (closed[ny * mw + nx]! < 0.5) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Stage 1k: drop cream / non-navy armhole shadow past the solid navy run.
+ * Lettering holes stay when they sit left of that run's end (navy on their right).
+ */
+function trimRightEndArmholeProtrusion(
+  mask: Float32Array,
+  base: RgbaImage,
+  left: number,
+  top: number,
+  mw: number,
+  mh: number,
+  letterGapPx: number = 6,
+  minNavyRunPx: number = 8,
+  padPx: number = 2,
+): Float32Array {
+  const out = new Float32Array(mask);
+  const gap = Math.max(1, Math.round(letterGapPx));
+  const minRun = Math.max(1, Math.round(minNavyRunPx));
+  const pad = Math.max(0, Math.round(padPx));
+  for (let ly = 0; ly < mh; ly++) {
+    let runNavy = 0;
+    let lastNavyLx = -1;
+    let solidEnd = -1;
+    for (let lx = 0; lx < mw; lx++) {
+      if (mask[ly * mw + lx]! < 0.5) continue;
+      const x = left + lx;
+      const y = top + ly;
+      if (x < 0 || y < 0 || x >= base.width || y >= base.height) continue;
+      const pi = (y * base.width + x) * 4;
+      if (!isNavyPixel(base.data[pi]!, base.data[pi + 1]!, base.data[pi + 2]!)) continue;
+      if (lastNavyLx >= 0 && lx - lastNavyLx > gap) {
+        runNavy = 0;
+      }
+      runNavy++;
+      lastNavyLx = lx;
+      if (runNavy >= minRun) solidEnd = lx;
+    }
+    if (solidEnd < 0) continue;
+    const cut = solidEnd + pad;
+    for (let lx = 0; lx < mw; lx++) {
+      if (out[ly * mw + lx]! < 0.5) continue;
+      const x = left + lx;
+      const y = top + ly;
+      const pi = (y * base.width + x) * 4;
+      const r = base.data[pi]!;
+      const g = base.data[pi + 1]!;
+      const b = base.data[pi + 2]!;
+      if (isNavyPixel(r, g, b)) continue;
+      if (lx > cut) {
+        out[ly * mw + lx] = 0;
+        continue;
+      }
+      // Cream past the wordmark that is not a navy-bounded letter hole is the
+      // armhole tongue (live x 580–616). Keep only holes with navy on both sides.
+      if (!isCreamBodyPixel(r, g, b)) continue;
+      if (lx < solidEnd - 20) continue;
+      let leftNavy = false;
+      let rightNavy = false;
+      for (let d = 1; d <= 6; d++) {
+        const ll = lx - d;
+        const rl = lx + d;
+        if (!leftNavy && ll >= 0) {
+          const lpi = ((top + ly) * base.width + (left + ll)) * 4;
+          if (isNavyPixel(base.data[lpi]!, base.data[lpi + 1]!, base.data[lpi + 2]!)) leftNavy = true;
+        }
+        if (!rightNavy && rl < mw) {
+          const rpi = ((top + ly) * base.width + (left + rl)) * 4;
+          if (isNavyPixel(base.data[rpi]!, base.data[rpi + 1]!, base.data[rpi + 2]!)) rightNavy = true;
+        }
+      }
+      if (!(leftNavy && rightNavy)) out[ly * mw + lx] = 0;
+    }
+  }
+  return out;
+}
+
+/**
+ * Stage 1k: drop non-navy / non-candidate pixels below the quad bottom so a
+ * close-bridge cannot paint the crossed forearm / sleeve (1i lock).
+ */
+function trimBottomCreamSleeve(
+  mask: Float32Array,
+  base: RgbaImage,
+  left: number,
+  top: number,
+  mw: number,
+  mh: number,
+  quadBottomY: number,
+  padPx: number = 2,
+): Float32Array {
+  const out = new Float32Array(mask);
+  const cutY = Math.floor(quadBottomY) - Math.max(0, Math.round(padPx));
+  for (let ly = 0; ly < mh; ly++) {
+    const y = top + ly;
+    if (y <= cutY) continue;
+    for (let lx = 0; lx < mw; lx++) {
+      if (out[ly * mw + lx]! < 0.5) continue;
+      const x = left + lx;
+      if (x < 0 || y < 0 || x >= base.width || y >= base.height) continue;
+      const pi = (y * base.width + x) * 4;
+      const r = base.data[pi]!;
+      const g = base.data[pi + 1]!;
+      const b = base.data[pi + 2]!;
+      if (isNavyPixel(r, g, b) || isChestBandCandidate(r, g, b)) continue;
+      out[ly * mw + lx] = 0;
+    }
+  }
+  return out;
+}
 
 function absorbTopPinstripeLocal(
   component: Float32Array,
@@ -1302,7 +1442,7 @@ function absorbTopPinstripeLocal(
   bandNormalUpX: number,
   bandNormalUpY: number,
   maxPx: number,
-  _solidPadPx = 0,
+  _solidPadPx: number = 0,
   maxAbsY: number | null = null,
 ): Float32Array {
   if (maxPx <= 0) return component;
@@ -1310,7 +1450,6 @@ function absorbTopPinstripeLocal(
   const ux = bandNormalUpX;
   const uy = bandNormalUpY;
   const steps = Math.max(0, Math.round(maxPx));
-  const scan = steps + 2; // peek past the strip for dark-above-ridge
 
   const colTopLy = new Int32Array(mw);
   colTopLy.fill(-1);
@@ -1342,44 +1481,58 @@ function absorbTopPinstripeLocal(
     const originLy = colTopLy[lx]!;
     if (originLy < 0) continue;
 
+    const scan = steps + 2;
     let firstBright = -1;
     let lastBright = -1;
     let darkAboveBright = false;
+    let firstAa = -1;
     for (let k = 1; k <= scan; k++) {
       const s = sampleAt(lx, originLy, k);
       if (!s) break;
-      if (s.L > PINSTRIPE_BRIGHT_LUMA) {
+      if (s.L > 140) {
         if (firstBright < 0) firstBright = k;
         lastBright = k;
       } else if (firstBright >= 0 && s.L < 80) {
         darkAboveBright = true;
         break;
+      } else if (s.L >= PINSTRIPE_AA_LUMA_MIN && s.L <= 140 && firstAa < 0 && firstBright < 0) {
+        firstAa = k;
       }
     }
-    // No bright ridge, or open cream field (bright runs through the whole window
-    // with no dark fabric above) — do not climb into cream body.
-    if (firstBright < 0) continue;
-    if (!darkAboveBright && lastBright >= steps) continue;
 
-    const lastK = Math.min(steps, Math.max(lastBright, firstBright) + 1); // +1 AA
+    let lastK = 0;
+    if (firstBright >= 0) {
+      if (!darkAboveBright && lastBright >= steps) {
+        lastK = 0; // open cream field
+      } else {
+        lastK = Math.min(steps, Math.max(lastBright, firstBright) + 1);
+      }
+    } else if (firstAa === 1) {
+      // Stage 1k: AA immediately above the component, no bright tick above.
+      lastK = 1;
+      const next = sampleAt(lx, originLy, 2);
+      if (next && next.L >= PINSTRIPE_AA_LUMA_MIN && next.L <= 140) lastK = 2;
+    }
+
     for (let k = 1; k <= lastK; k++) {
       const s = sampleAt(lx, originLy, k);
       if (!s) break;
-      const admit =
-        s.L >= PINSTRIPE_AA_LUMA_MIN ||
-        isChestBandCandidate(
-          base.data[(s.sy * base.width + s.sx) * 4]!,
-          base.data[(s.sy * base.width + s.sx) * 4 + 1]!,
-          base.data[(s.sy * base.width + s.sx) * 4 + 2]!,
-        ) ||
-        isNavyPixel(
-          base.data[(s.sy * base.width + s.sx) * 4]!,
-          base.data[(s.sy * base.width + s.sx) * 4 + 1]!,
-          base.data[(s.sy * base.width + s.sx) * 4 + 2]!,
-        );
-      // Keep dark gaps unclaimed; claim AA + bright ridge only.
-      if (s.L < PINSTRIPE_AA_LUMA_MIN && s.L > 60) continue;
-      if (!admit && s.L < PINSTRIPE_AA_LUMA_MIN) continue;
+      const pr = base.data[(s.sy * base.width + s.sx) * 4]!;
+      const pg = base.data[(s.sy * base.width + s.sx) * 4 + 1]!;
+      const pb = base.data[(s.sy * base.width + s.sx) * 4 + 2]!;
+      const next = sampleAt(lx, originLy, k + 1);
+      const nextCream = !!(
+        next &&
+        isCreamBodyPixel(
+          base.data[(next.sy * base.width + next.sx) * 4]!,
+          base.data[(next.sy * base.width + next.sx) * 4 + 1]!,
+          base.data[(next.sy * base.width + next.sx) * 4 + 2]!,
+        )
+      );
+      if (isCreamBodyPixel(pr, pg, pb) && nextCream) {
+        if (!darkAboveBright) break;
+        if (firstBright >= 0 && k > lastBright) break;
+      }
       if (s.L >= PINSTRIPE_AA_LUMA_MIN) out[s.oly * mw + s.olx] = 1;
     }
   }
@@ -1724,6 +1877,8 @@ export function coverTargetQuad(
   //   bandCandidate → close(6) → largest CC overlapping quad → top pinstripe absorb
   //   (close runs *before* CC so thin pinstripe / shadow gaps cannot split the
   //   real chest band into two components — Stage 1f→1g live failure mode.)
+  //   Stage 1k: close-added mid-luma uses closed-component enclosure (not ≥4
+  //   original-seed neighbours); right-end armhole + below-quad cream trimmed.
   //   paint = component ∪ (expandedQuad ∩ dilate(component, 4px))
   //   inward feather; single paint pass; luma clamp to band median ± 4.
   // `quad` keeps the hard expanded-quad fill for legacy / drip tests.
@@ -1822,15 +1977,14 @@ export function coverTargetQuad(
       if (bandCloseRadiusPx > 0) {
         closedCandidates = morphologicalCloseLocal(candidates, mw, mh, bandCloseRadiusPx);
         for (let i = 0; i < closedCandidates.length; i++) {
-          if (searchMask[i]! < 0.5) {
-            closedCandidates[i] = 0;
-            continue;
-          }
-          // Close may bridge cream holes (lettering AA) and shadowed sleeve cream.
-          // Stage 1j: interior topology beats tone. Keep close-added pixels that are
-          // sufficiently surrounded by original band seeds (glyph/tape/ridge AA).
-          // Reject only boundary-adjacent mid-luma non-navy bridges (sleeve/forearm
-          // cream). Do not use a global luma ≤ 180 hard lock as the authority.
+          if (searchMask[i]! < 0.5) closedCandidates[i] = 0;
+        }
+        // Stage 1k: enclosure vs the closed component (incl. close-added bright
+        // cores), not original-seed neighbor count. Keep a close-added mid-luma
+        // pixel only when it is not 8-adjacent to any pixel outside the close.
+        // Glyph/tape AA is enclosed; sleeve/forearm cream bridges touch outside.
+        const closedSnapshot = new Float32Array(closedCandidates);
+        for (let i = 0; i < closedCandidates.length; i++) {
           if (closedCandidates[i]! < 0.5 || candidates[i]! >= 0.5) continue;
           const ly = (i / mw) | 0;
           const lx = i % mw;
@@ -1842,24 +1996,23 @@ export function coverTargetQuad(
           const b = base.data[pi + 2]!;
           if (isNavyPixel(r, g, b)) continue;
           const L = luma(r, g, b);
-          if (L > 180) continue; // bright lettering core fill
-          let origNbr = 0;
-          for (let dy = -1; dy <= 1; dy++) {
-            for (let dx = -1; dx <= 1; dx++) {
-              if (dx === 0 && dy === 0) continue;
-              const nx = lx + dx;
-              const ny = ly + dy;
-              if (nx < 0 || ny < 0 || nx >= mw || ny >= mh) continue;
-              if (candidates[ny * mw + nx]! >= 0.5) origNbr++;
-            }
+          const touchesOutside = closeAddedTouchesOutside(lx, ly, closedSnapshot, mw, mh);
+          // Bright cores stay when enclosed (lettering). Boundary cream-body
+          // cores are sleeve/jacket, not glyphs — reject so they cannot join
+          // the CC through a mid-luma close-bridge.
+          if (L > 180) {
+            if (isCreamBodyPixel(r, g, b) && touchesOutside) closedCandidates[i] = 0;
+            continue;
           }
-          // ≥4 original-seed neighbors ⇒ enclosed interior hole (AA / residual
-          // structure inside the verified band). Boundary bridges stay rejected.
-          if (origNbr >= 4) continue;
-          closedCandidates[i] = 0;
+          if (touchesOutside || isCreamBodyPixel(r, g, b)) {
+            closedCandidates[i] = 0;
+          }
         }
       }
       let component = largestOverlappingComponent(closedCandidates, quadSeed, mw, mh);
+      const quadBottomY = Math.max(...quad.map((p) => p.y));
+      component = trimRightEndArmholeProtrusion(component, base, left, top, mw, mh, 2, 14, 0);
+      component = trimBottomCreamSleeve(component, base, left, top, mw, mh, quadBottomY, 8);
       // Snapshot the solid band core before top-pinstripe absorb / edge dilate.
       // Inward feather must not erode this core (crease + shadowed fabric), and the
       // absorbed pinstripe must be forced solid after feathering.
@@ -1915,6 +2068,18 @@ export function coverTargetQuad(
           }
         }
       }
+      // Expansion dilate can re-attach the armhole tongue — trim again.
+      const trimmedPaint = trimBottomCreamSleeve(
+        trimRightEndArmholeProtrusion(paint, base, left, top, mw, mh, 2, 14, 0),
+        base,
+        left,
+        top,
+        mw,
+        mh,
+        quadBottomY,
+        8,
+      );
+      paint.set(trimmedPaint);
       if (sumN > 0) {
         paintNr = Math.round(sumR / sumN);
         paintNg = Math.round(sumG / sumN);

@@ -274,7 +274,7 @@ function runStage1jFixturePipeline() {
 }
 
 describe("Lane E vs Architecture C real-crop (read-only of paint)", () => {
-  it("Stage 1j cover scores unfiltered mid-luma ghosts; mask filter would hide them", () => {
+  it("scores unfiltered mid-luma ghosts; mask filter still sees a smaller set", () => {
     const source = embedArchitectureCBandCropInFrame();
     const band = ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm.map(([nx, ny]) => ({
       x: nx * source.width,
@@ -306,15 +306,15 @@ describe("Lane E vs Architecture C real-crop (read-only of paint)", () => {
       }
     }
     expect(c9.metrics.midLumaChecked).toBeGreaterThan(filteredChecked);
-    // The lying filter stays under the old 0.25 ceiling; real territory does not.
     if (filteredChecked > 0) {
       expect(filteredGhosts / filteredChecked).toBeLessThan(0.25);
     }
-    expect(c9.verdict).toBe("FAIL");
-    expect(c9.metrics.ghostRatio).toBeGreaterThanOrEqual(GHOST_RATIO_PASS_CEILING);
+    // Stage 1k enclosure: unfiltered ghost ratio is truthful and under 0.05.
+    expect(c9.verdict).toBe("PASS");
+    expect(c9.metrics.ghostRatio).toBeLessThan(GHOST_RATIO_PASS_CEILING);
   });
 
-  it("evaluates the 1j fixture to a locked 11-point PASS/FAIL (algorithms unchanged)", () => {
+  it("evaluates the real-crop fixture under Stage 1k paint (1j live table stays historical)", () => {
     const { source, covered, out } = runStage1jFixturePipeline();
     const report = evaluateChestStill({
       source,
@@ -324,25 +324,23 @@ describe("Lane E vs Architecture C real-crop (read-only of paint)", () => {
     });
     const passed = report.criteria.filter((c) => c.verdict === "PASS").map((c) => c.id);
     const failed = report.criteria.filter((c) => c.verdict === "FAIL").map((c) => c.id);
-    // Fixture+cover does not reproduce the live 3-px cream raise (C4). Live 1j
-    // is 5/11 (C4 FAIL); this path is 6/11 with C4 PASS on identical cream rows.
-    expect(passed).toEqual([1, 3, 4, 7, 10, 11]);
-    expect(failed).toEqual([2, 5, 6, 8, 9]);
+    // Stage 1k fixture+cover: C5/C8/C9 now PASS. C2 remnants + C6 residual
+    // right-end cream→navy (42 px, down from 1j's 114) remain FAIL.
+    expect(passed).toEqual([1, 3, 4, 5, 7, 8, 9, 10, 11]);
+    expect(failed).toEqual([2, 6]);
     expect(STAGE1J_LIVE_VERIFIED.pass).toEqual([1, 3, 7, 10, 11]);
     expect(STAGE1J_LIVE_VERIFIED.fail).toEqual([2, 4, 5, 6, 8, 9]);
 
     const c5 = criterion(report, 5);
     const c6 = criterion(report, 6);
     const c9 = criterion(report, 9);
-    expect(c5.metrics.patchDarkened).toBeGreaterThanOrEqual(7);
-    expect(c6.metrics.creamToNavy).toBe(STAGE1J_LIVE_VERIFIED.rightEndCreamToNavy);
+    expect(c5.metrics.patchDarkened).toBe(0);
+    expect(c6.metrics.creamToNavy).toBeLessThan(55);
+    expect(c6.metrics.creamToNavy).toBeLessThan(STAGE1J_LIVE_VERIFIED.rightEndCreamToNavy);
+    expect(c6.metrics.creamToNavy).toBeGreaterThan(0);
     expect(c9.metrics.bandAuthorityMaskUsed).toBe(0);
-    expect(c9.metrics.leftWindowRatio).toBeCloseTo(
-      STAGE1J_LIVE_VERIFIED.ghostRatiosUnfiltered.left,
-      1,
-    );
-    expect(c9.metrics.ghostRatio).toBeGreaterThanOrEqual(GHOST_RATIO_PASS_CEILING);
+    expect(c9.metrics.ghostRatio).toBeLessThan(GHOST_RATIO_PASS_CEILING);
     expect(report.unexplained).toEqual([]);
-    expect(formatChestEvalSummary(report)).toContain("FAIL (6/11)");
+    expect(formatChestEvalSummary(report)).toContain("FAIL (9/11)");
   });
 });
