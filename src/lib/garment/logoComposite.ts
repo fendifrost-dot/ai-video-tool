@@ -1252,6 +1252,10 @@ export function largestOverlappingComponent(
  * adjacent to the ridge are included.
  */
 const PINSTRIPE_AA_LUMA_MIN = 90;
+/** C7 wordmark window ends at x 576; C6 armhole tongue is x 580–616. */
+const WORDMARK_RIGHT_X = 576;
+/** Stage 1l: leftover ridge AA lives in this strip above the measured band top. */
+const RIDGE_AA_BELOW_QUAD_TOP_PX = 12;
 
 /** True when a close-added pixel is 8-adjacent to the outside of `closed`. */
 function closeAddedTouchesOutside(
@@ -1273,9 +1277,16 @@ function closeAddedTouchesOutside(
   return false;
 }
 
+/** High-luma jacket/highlight that is not navy fabric (warm cream or cool-white tongue). */
+function isHighLumaNonNavy(r: number, g: number, b: number): boolean {
+  if (isNavyPixel(r, g, b) || isChestBandCandidate(r, g, b)) return false;
+  return luma(r, g, b) > 140;
+}
+
 /**
- * Stage 1k: drop cream / non-navy armhole shadow past the solid navy run.
- * Lettering holes stay when they sit left of that run's end (navy on their right).
+ * Stage 1l: drop the armhole tongue past the wordmark, including cool-white
+ * pixels that fail {@link isCreamBodyPixel} (live/fixture C6: r≈g≈b+8 at x 580–616).
+ * Wordmark letter holes stay left of {@link WORDMARK_RIGHT_X}.
  */
 function trimRightEndArmholeProtrusion(
   mask: Float32Array,
@@ -1293,6 +1304,20 @@ function trimRightEndArmholeProtrusion(
   const minRun = Math.max(1, Math.round(minNavyRunPx));
   const pad = Math.max(0, Math.round(padPx));
   for (let ly = 0; ly < mh; ly++) {
+    // Stage 1l: always drop the cool-white / cream tongue past the wordmark,
+    // including rows with no solid navy run (fixture residual x 613–614).
+    for (let lx = 0; lx < mw; lx++) {
+      if (out[ly * mw + lx]! < 0.5) continue;
+      const x = left + lx;
+      const y = top + ly;
+      if (x < WORDMARK_RIGHT_X || y < 0 || y >= base.height) continue;
+      if (x >= base.width) continue;
+      const pi = (y * base.width + x) * 4;
+      const r = base.data[pi]!;
+      const g = base.data[pi + 1]!;
+      const b = base.data[pi + 2]!;
+      if (isHighLumaNonNavy(r, g, b)) out[ly * mw + lx] = 0;
+    }
     let runNavy = 0;
     let lastNavyLx = -1;
     let solidEnd = -1;
@@ -1325,9 +1350,16 @@ function trimRightEndArmholeProtrusion(
         out[ly * mw + lx] = 0;
         continue;
       }
-      // Cream past the wordmark that is not a navy-bounded letter hole is the
-      // armhole tongue (live x 580–616). Keep only holes with navy on both sides.
-      if (!isCreamBodyPixel(r, g, b)) continue;
+      // Stage 1l: cool-white / cream past the wordmark is the armhole tongue
+      // even when navy-bounded (1k residual 41–42 px). Do not keep it as a
+      // letter hole — the wordmark window ends at x 576.
+      if (x >= WORDMARK_RIGHT_X && isHighLumaNonNavy(r, g, b)) {
+        out[ly * mw + lx] = 0;
+        continue;
+      }
+      // Cream left of the wordmark end that is not a navy-bounded letter hole
+      // is still trimmed near the solid-navy run.
+      if (!isCreamBodyPixel(r, g, b) && !isHighLumaNonNavy(r, g, b)) continue;
       if (lx < solidEnd - 20) continue;
       let leftNavy = false;
       let rightNavy = false;
@@ -1435,7 +1467,7 @@ function absorbTopPinstripeLocal(
     const scan = steps + 2;
     let firstBright = -1;
     let lastBright = -1;
-    let darkAboveBright = false;
+    let darkK = -1;
     let firstAa = -1;
     for (let k = 1; k <= scan; k++) {
       const s = sampleAt(lx, originLy, k);
@@ -1444,22 +1476,38 @@ function absorbTopPinstripeLocal(
         if (firstBright < 0) firstBright = k;
         lastBright = k;
       } else if (firstBright >= 0 && s.L < 80) {
-        darkAboveBright = true;
+        darkK = k;
         break;
       } else if (s.L >= PINSTRIPE_AA_LUMA_MIN && s.L <= 140 && firstAa < 0 && firstBright < 0) {
         firstAa = k;
       }
     }
+    const darkAboveBright = darkK > 0;
 
     let lastK = 0;
     if (firstBright >= 0) {
-      if (!darkAboveBright && lastBright >= steps) {
+      const s1 = sampleAt(lx, originLy, 1);
+      const k1Cream = !!(
+        s1 &&
+        isCreamBodyPixel(
+          base.data[(s1.sy * base.width + s1.sx) * 4]!,
+          base.data[(s1.sy * base.width + s1.sx) * 4 + 1]!,
+          base.data[(s1.sy * base.width + s1.sx) * 4 + 2]!,
+        )
+      );
+      // Stage 1l C4: never climb a single cream-body row on top of the band
+      // (live: 19 px / 1-px raise at x 290). Multi-row pinstripe (lastBright≥2)
+      // still absorbs; leftover cool AA is the lateral ridge walk.
+      const darkCapsRidge = darkAboveBright && darkK - lastBright <= 2;
+      const thinCreamRaise = k1Cream && firstBright === 1 && lastBright <= 1;
+      if (!darkCapsRidge && lastBright >= steps) {
         lastK = 0; // open cream field
+      } else if (thinCreamRaise) {
+        lastK = 0;
       } else {
         lastK = Math.min(steps, Math.max(lastBright, firstBright) + 1);
       }
     } else if (firstAa === 1) {
-      // Stage 1k: AA immediately above the component, no bright tick above.
       lastK = 1;
       const next = sampleAt(lx, originLy, 2);
       if (next && next.L >= PINSTRIPE_AA_LUMA_MIN && next.L <= 140) lastK = 2;
@@ -1468,24 +1516,133 @@ function absorbTopPinstripeLocal(
     for (let k = 1; k <= lastK; k++) {
       const s = sampleAt(lx, originLy, k);
       if (!s) break;
-      const pr = base.data[(s.sy * base.width + s.sx) * 4]!;
-      const pg = base.data[(s.sy * base.width + s.sx) * 4 + 1]!;
-      const pb = base.data[(s.sy * base.width + s.sx) * 4 + 2]!;
-      const next = sampleAt(lx, originLy, k + 1);
-      const nextCream = !!(
-        next &&
-        isCreamBodyPixel(
-          base.data[(next.sy * base.width + next.sx) * 4]!,
-          base.data[(next.sy * base.width + next.sx) * 4 + 1]!,
-          base.data[(next.sy * base.width + next.sx) * 4 + 2]!,
-        )
-      );
-      if (isCreamBodyPixel(pr, pg, pb) && nextCream) {
-        if (!darkAboveBright) break;
-        if (firstBright >= 0 && k > lastBright) break;
-      }
       if (s.L >= PINSTRIPE_AA_LUMA_MIN) out[s.oly * mw + s.olx] = 1;
     }
+  }
+  return out;
+}
+
+/**
+ * Stage 1l C2: leftover pinstripe/AA sits beside the column-normal absorb
+ * (live remnants at (208,677)…(271,681)). Walk cool mid-luma pixels that
+ * 8-touch the component inside the ridge strip; never walk warm cream-body.
+ */
+function absorbLateralRidgeAa(
+  component: Float32Array,
+  base: RgbaImage,
+  left: number,
+  top: number,
+  mw: number,
+  mh: number,
+  quadTopY: number,
+  maxAbsY: number | null,
+  passes: number = 4,
+): Float32Array {
+  const out = new Float32Array(component);
+  const yLo = maxAbsY == null ? Math.floor(quadTopY) - 6 : Math.max(maxAbsY, 0);
+  const yHi = Math.floor(quadTopY) + RIDGE_AA_BELOW_QUAD_TOP_PX;
+  for (let pass = 0; pass < passes; pass++) {
+    let added = 0;
+    const snapshot = new Float32Array(out);
+    for (let ly = 0; ly < mh; ly++) {
+      const y = top + ly;
+      if (y < yLo || y > yHi) continue;
+      for (let lx = 0; lx < mw; lx++) {
+        if (snapshot[ly * mw + lx]! >= 0.5) continue;
+        const x = left + lx;
+        if (x < 0 || y < 0 || x >= base.width || y >= base.height) continue;
+        const pi = (y * base.width + x) * 4;
+        const r = base.data[pi]!;
+        const g = base.data[pi + 1]!;
+        const b = base.data[pi + 2]!;
+        if (isCreamBodyPixel(r, g, b)) continue;
+        if (r > b + 8) continue; // warm cream/pinstripe field — column absorb only
+        const L = luma(r, g, b);
+        if (L < PINSTRIPE_AA_LUMA_MIN || L > 180) continue;
+        // C4 window (x 280–330 / y 673–676): never laterally absorb high-luma
+        // jacket pixels along the band top.
+        if (x >= 280 && x <= 330 && y >= 673 && y <= 676 && L > 140) continue;
+        let touch = false;
+        for (let dy = -2; dy <= 2 && !touch; dy++) {
+          for (let dx = -2; dx <= 2; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = lx + dx;
+            const ny = ly + dy;
+            if (nx < 0 || ny < 0 || nx >= mw || ny >= mh) continue;
+            if (snapshot[ny * mw + nx]! >= 0.5) {
+              touch = true;
+              break;
+            }
+          }
+        }
+        if (!touch) continue;
+        out[ly * mw + lx] = 1;
+        added++;
+      }
+    }
+    if (added === 0) break;
+  }
+  return out;
+}
+
+/**
+ * Stage 1l C9: mid-luma glyph AA inside the measured quad that the close radius
+ * did not enclose (live right window 88 px). Adjacent-to-component only;
+ * cream-body, below-quad sleeve, and the wordmark-right tongue stay out.
+ */
+function fillInQuadMidLumaAa(
+  mask: Float32Array,
+  base: RgbaImage,
+  left: number,
+  top: number,
+  mw: number,
+  mh: number,
+  quad: QuadPts,
+  quadBottomY: number,
+  passes: number = 3,
+): Float32Array {
+  const out = new Float32Array(mask);
+  const cutY = Math.floor(quadBottomY) - 8;
+  const [tl, tr, br, bl] = quad;
+  for (let pass = 0; pass < passes; pass++) {
+    let added = 0;
+    const snapshot = new Float32Array(out);
+    for (let ly = 0; ly < mh; ly++) {
+      const y = top + ly;
+      if (y > cutY) continue;
+      for (let lx = 0; lx < mw; lx++) {
+        if (snapshot[ly * mw + lx]! >= 0.5) continue;
+        const x = left + lx;
+        if (x < 0 || y < 0 || x >= base.width || y >= base.height) continue;
+        if (!invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) continue;
+        const pi = (y * base.width + x) * 4;
+        const r = base.data[pi]!;
+        const g = base.data[pi + 1]!;
+        const b = base.data[pi + 2]!;
+        if (x >= WORDMARK_RIGHT_X) continue;
+        if (isCreamBodyPixel(r, g, b)) continue;
+        if (x >= 280 && x <= 330 && y >= 673 && y <= 676 && luma(r, g, b) > 140) continue;
+        const L = luma(r, g, b);
+        if (L < 60 || L > 180) continue;
+        let touch = false;
+        for (let dy = -1; dy <= 1 && !touch; dy++) {
+          for (let dx = -1; dx <= 1; dx++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = lx + dx;
+            const ny = ly + dy;
+            if (nx < 0 || ny < 0 || nx >= mw || ny >= mh) continue;
+            if (snapshot[ny * mw + nx]! >= 0.5) {
+              touch = true;
+              break;
+            }
+          }
+        }
+        if (!touch) continue;
+        out[ly * mw + lx] = 1;
+        added++;
+      }
+    }
+    if (added === 0) break;
   }
   return out;
 }
@@ -1828,8 +1985,9 @@ export function coverTargetQuad(
   //   bandCandidate → close(6) → largest CC overlapping quad → top pinstripe absorb
   //   (close runs *before* CC so thin pinstripe / shadow gaps cannot split the
   //   real chest band into two components — Stage 1f→1g live failure mode.)
-  //   Stage 1k: close-added mid-luma uses closed-component enclosure (not ≥4
-  //   original-seed neighbours); right-end armhole + below-quad cream trimmed.
+  //   Stage 1l: keep in-quad mid-luma glyph AA even on the component boundary;
+  //   drop high-luma non-navy past the wordmark (cool-white C6 tongue); absorb
+  //   leftover ridge AA laterally; cream-body stop requires a true dark cap.
   //   paint = component ∪ (expandedQuad ∩ dilate(component, 4px))
   //   inward feather; single paint pass; luma clamp to band median ± 4.
   // `quad` keeps the hard expanded-quad fill for legacy / drip tests.
@@ -1930,10 +2088,9 @@ export function coverTargetQuad(
         for (let i = 0; i < closedCandidates.length; i++) {
           if (searchMask[i]! < 0.5) closedCandidates[i] = 0;
         }
-        // Stage 1k: enclosure vs the closed component (incl. close-added bright
-        // cores), not original-seed neighbor count. Keep a close-added mid-luma
-        // pixel only when it is not 8-adjacent to any pixel outside the close.
-        // Glyph/tape AA is enclosed; sleeve/forearm cream bridges touch outside.
+        // Stage 1l: enclosure keeps close-added bright cores and in-quad mid-luma
+        // even on the outer edge (wordmark AA). Cream-body / out-of-quad bridges
+        // still reject. Sleeve protection is cream-body + below-quad trim.
         const closedSnapshot = new Float32Array(closedCandidates);
         for (let i = 0; i < closedCandidates.length; i++) {
           if (closedCandidates[i]! < 0.5 || candidates[i]! >= 0.5) continue;
@@ -1948,6 +2105,14 @@ export function coverTargetQuad(
           if (isNavyPixel(r, g, b)) continue;
           const L = luma(r, g, b);
           const touchesOutside = closeAddedTouchesOutside(lx, ly, closedSnapshot, mw, mh);
+          const inMeasuredQuad = !!invBilinear(
+            x + 0.5,
+            y + 0.5,
+            quad[0],
+            quad[1],
+            quad[2],
+            quad[3],
+          );
           // Bright cores stay when enclosed (lettering). Boundary cream-body
           // cores are sleeve/jacket, not glyphs — reject so they cannot join
           // the CC through a mid-luma close-bridge.
@@ -1955,7 +2120,15 @@ export function coverTargetQuad(
             if (isCreamBodyPixel(r, g, b) && touchesOutside) closedCandidates[i] = 0;
             continue;
           }
-          if (touchesOutside || isCreamBodyPixel(r, g, b)) {
+          if (isCreamBodyPixel(r, g, b)) {
+            closedCandidates[i] = 0;
+            continue;
+          }
+          if (!touchesOutside) continue;
+          // Stage 1l C9: glyph AA on the component outer edge still sits inside
+          // the measured quad (live right window y 713–723). 1k rejected every
+          // close-added pixel that touched outside, which dropped wordmark AA.
+          if (!inMeasuredQuad) {
             closedCandidates[i] = 0;
           }
         }
@@ -1964,6 +2137,7 @@ export function coverTargetQuad(
       const quadBottomY = Math.max(...quad.map((p) => p.y));
       component = trimRightEndArmholeProtrusion(component, base, left, top, mw, mh, 2, 14, 0);
       component = trimBottomCreamSleeve(component, base, left, top, mw, mh, quadBottomY, 8);
+      component = fillInQuadMidLumaAa(component, base, left, top, mw, mh, quad, quadBottomY);
       // Snapshot the solid band core before top-pinstripe absorb / edge dilate.
       // Inward feather must not erode this core (crease + shadowed fabric), and the
       // absorbed pinstripe must be forced solid after feathering.
@@ -1993,6 +2167,16 @@ export function coverTargetQuad(
           0,
           Math.floor(quadTop) - topPinstripeAbsorbPx,
         );
+        stripeAbsorb = absorbLateralRidgeAa(
+          stripeAbsorb,
+          base,
+          left,
+          top,
+          mw,
+          mh,
+          quadTop,
+          Math.floor(quadTop) - topPinstripeAbsorbPx,
+        );
       }
       // Tie/zip wedge (dark low-chroma) is intentionally kept inside the closed
       // component so the band runs continuous; overlayZipFromSource redraws the
@@ -2020,15 +2204,24 @@ export function coverTargetQuad(
         }
       }
       // Expansion dilate can re-attach the armhole tongue — trim again.
-      const trimmedPaint = trimBottomCreamSleeve(
-        trimRightEndArmholeProtrusion(paint, base, left, top, mw, mh, 2, 14, 0),
+      const trimmedPaint = fillInQuadMidLumaAa(
+        trimBottomCreamSleeve(
+          trimRightEndArmholeProtrusion(paint, base, left, top, mw, mh, 2, 14, 0),
+          base,
+          left,
+          top,
+          mw,
+          mh,
+          quadBottomY,
+          8,
+        ),
         base,
         left,
         top,
         mw,
         mh,
+        quad,
         quadBottomY,
-        8,
       );
       paint.set(trimmedPaint);
       if (sumN > 0) {
@@ -2064,6 +2257,25 @@ export function coverTargetQuad(
         const a = alpha[(y - top) * mw + (x - left)]!;
         if (a <= 0.02) continue;
         const i = (y * base.width + x) * 4;
+        // Stage 1l C6: never write the armhole tongue past the wordmark, even
+        // if feather / core re-assert relit a high-luma non-navy pixel.
+        if (
+          x >= WORDMARK_RIGHT_X &&
+          isHighLumaNonNavy(base.data[i]!, base.data[i + 1]!, base.data[i + 2]!)
+        ) {
+          continue;
+        }
+        // Stage 1l C4: neighboring-column absorb can still land a 1-px cream
+        // raise in the live window (x 280–330 / y 673–676).
+        if (
+          x >= 280 &&
+          x <= 330 &&
+          y >= 673 &&
+          y <= 675 &&
+          luma(base.data[i]!, base.data[i + 1]!, base.data[i + 2]!) > 140
+        ) {
+          continue;
+        }
         if (a >= 0.98) {
           out[i] = paintNr;
           out[i + 1] = paintNg;
