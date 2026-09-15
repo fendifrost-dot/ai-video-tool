@@ -32,7 +32,16 @@ export {
   warpQuadNorm,
 } from "./geometry";
 
-export { cloneMask, emptyMask, maskArea, maskBBox, maskIoU, paintRectMask, warpMask } from "./mask";
+export {
+  cloneMask,
+  emptyMask,
+  maskArea,
+  maskBBox,
+  maskIoU,
+  paintQuadMask,
+  paintRectMask,
+  warpMask,
+} from "./mask";
 
 export { estimateTranslation } from "./flow";
 export type { TranslationEstimate } from "./flow";
@@ -49,3 +58,81 @@ export {
   translatingSquareFixture,
 } from "./fixtures";
 export type { TranslatingSquareFixture } from "./fixtures";
+
+export {
+  CANONICAL_KEYFRAME_ID,
+  CANONICAL_KEYFRAME_TIME_SEC,
+  CANONICAL_LINEAGE,
+  CANONICAL_PROJECT_ID,
+  CANONICAL_STILL_ASSET_ID,
+  CLEARED_CHEST_ASSET_ID,
+  CLEARED_CHEST_GATE,
+  CLEARED_CHEST_GATE_SCORE,
+  CLEARED_CHEST_QUAD_NORM,
+  CLEARED_CHEST_QUAD_TUPLE,
+  CLEARED_CHEST_REPAIR_METHOD_VERSION,
+  quadNormToTuple,
+  tupleToQuadNorm,
+} from "./canonicalLineage";
+export type { CanonicalLineage, QuadTuple } from "./canonicalLineage";
+
+export {
+  PENDING_SLEEVE_SLOTS,
+  clearedChestApprovedQuad,
+  clearedChestQuadSet,
+  gatedApprovedQuads,
+} from "./approvedQuad";
+export type {
+  ApprovedQuad,
+  ApprovedQuadKind,
+  ApprovedQuadSet,
+  RepairGateStatus,
+  ReservedSleeveSlot,
+} from "./approvedQuad";
+
+export {
+  DEFAULT_SLEEVE_STILL_GATE,
+  TEMPORAL_LIVE_ACTIVATION_ARMED,
+  TEMPORAL_LIVE_DEPLOY_NOTES,
+  TEMPORAL_LIVE_PREP_CONTRACT_VERSION,
+  defaultActivationForCanonicalLineage,
+  evaluateTemporalLiveActivation,
+} from "./livePrep";
+export type {
+  ActivationWaitToken,
+  SleeveStillGate,
+  TemporalLiveActivationDecision,
+  TemporalLiveActivationInput,
+} from "./livePrep";
+
+export {
+  TEMPORAL_JOB_PROVIDER_NONE,
+  approvedQuadToPropagationInput,
+  buildPropagationJobsFromApprovedSet,
+  cloneClipFrames,
+} from "./quadAdapter";
+export type { BuildJobsOptions, PropagationJobSpec } from "./quadAdapter";
+
+export { prepareHeroFrameTemporalHook } from "./heroFrameHook";
+export type { HeroFrameTemporalHookInput, HeroFrameTemporalHookResult } from "./heroFrameHook";
+
+export {
+  TEMPORAL_EDGE_ADAPTER_VERSION,
+  authorizeTemporalEdgeRequest,
+  buildTemporalEdgeRequest,
+} from "./edgeAdapter";
+export type {
+  TemporalEdgeAuthorization,
+  TemporalEdgeRejectCode,
+  TemporalEdgeRequest,
+} from "./edgeAdapter";
+
+export {
+  CLEARED_CHEST_FIXTURE_DX_PER_FRAME,
+  CLEARED_CHEST_FIXTURE_FRAME_COUNT,
+  CLEARED_CHEST_FIXTURE_SIZE,
+  clearedChestApprovedSet,
+  clearedChestTranslatingFixture,
+  expectedChestQuadAtFrame,
+  expectedChestTranslation,
+} from "./clearedChestFixture";
