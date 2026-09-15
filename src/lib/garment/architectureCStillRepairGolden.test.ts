@@ -1093,8 +1093,9 @@ describe("Architecture C Stage 1j — mid-luma interior topology + ROI occlusion
     const ceiling = median + 20;
 
     // Left glyph/outline region (live: x 255–345 / y 696–712) + wearer's-left
-    // lettering (x 442–578 / y 704–734): mid-luma source pixels inside authority
-    // must not remain bright outlines.
+    // lettering (x 442–560 / y 704–734). Stage 1k: count EVERY mid-luma source
+    // pixel in the window (no authority-mask filter — that skipped exactly the
+    // rejected AA and made 1j's golden pass while live ghosts remained).
     const windows: Array<[number, number, number, number]> = [
       [255, 345, 696, 712],
       [442, 560, 704, 734],
@@ -1104,7 +1105,6 @@ describe("Architecture C Stage 1j — mid-luma interior topology + ROI occlusion
     for (const [x0, x1, y0, y1] of windows) {
       for (let y = y0; y <= y1; y++) {
         for (let x = x0; x <= x1; x++) {
-          if (covered.bandAuthorityMask[y * source.width + x]! < 0.5) continue;
           const srcL = lumaAt(source, x, y);
           if (srcL < 60 || srcL > 180) continue;
           midChecked++;
@@ -1113,8 +1113,7 @@ describe("Architecture C Stage 1j — mid-luma interior topology + ROI occlusion
       }
     }
     expect(midChecked).toBeGreaterThan(30);
-    // Allow a thin perimeter fringe; the 1i regression left ~93% unpainted.
-    expect(midGhosts / midChecked).toBeLessThan(0.25);
+    expect(midGhosts / midChecked).toBeLessThan(0.05);
   });
 
   it("diagonal zip-tape mid-luma edges inside the band are absorbed (not orphaned)", () => {
@@ -1189,6 +1188,187 @@ describe("Architecture C Stage 1j — mid-luma interior topology + ROI occlusion
     }
     for (let x = 405; x <= 420; x++) {
       expect(lumaAt(out, x, 720)).toBeLessThan(80);
+    }
+  });
+});
+
+describe("Architecture C Stage 1k — enclosure, truthful goldens, right-end, absorb", () => {
+  const STAGE1K = {
+    fillMode: "quad_navy_union" as const,
+    columnFollow: false,
+    maxExpandFrac: 0.05,
+    featherPx: 3,
+    navyUnionMarginPx: 12,
+    navyDilatePx: 4,
+    navyEdgeDilatePx: 2,
+    bandCloseRadiusPx: 6,
+    topPinstripeAbsorbPx: 5,
+    zipStripFrac: 0,
+  };
+
+  function bandFromNorm(
+    w: number,
+    h: number,
+    norm: [[number, number], [number, number], [number, number], [number, number]],
+  ): QuadPts {
+    return norm.map(([nx, ny]) => ({ x: nx * w, y: ny * h })) as QuadPts;
+  }
+
+  function lumaAt(img: RgbaImage, x: number, y: number): number {
+    const i = (y * img.width + x) * 4;
+    return 0.2126 * img.data[i]! + 0.7152 * img.data[i + 1]! + 0.0722 * img.data[i + 2]!;
+  }
+
+  it("unfiltered mid-luma ghost ratio is < 0.05 in both lettering windows", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1K);
+    const refI = (700 * source.width + 450) * 4;
+    const median =
+      0.2126 * covered.data[refI]! +
+      0.7152 * covered.data[refI + 1]! +
+      0.0722 * covered.data[refI + 2]!;
+    const ceiling = median + 20;
+    const windows: Array<[number, number, number, number]> = [
+      [255, 345, 696, 712],
+      [442, 560, 704, 734],
+    ];
+    for (const [x0, x1, y0, y1] of windows) {
+      let mid = 0;
+      let ghosts = 0;
+      for (let y = y0; y <= y1; y++) {
+        for (let x = x0; x <= x1; x++) {
+          const srcL = lumaAt(source, x, y);
+          if (srcL < 60 || srcL > 180) continue;
+          mid++;
+          if (lumaAt(covered, x, y) > ceiling) ghosts++;
+        }
+      }
+      expect(mid).toBeGreaterThan(30);
+      expect(ghosts / mid).toBeLessThan(0.05);
+    }
+  });
+
+  it("right-end cream window is not the 1j 114-px armhole tongue", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1K);
+    let creamToNavy = 0;
+    for (let y = 713; y <= 730; y++) {
+      for (let x = 580; x <= 616; x++) {
+        if (lumaAt(source, x, y) > 140 && lumaAt(covered, x, y) < 80) creamToNavy++;
+      }
+    }
+    // 1j live/fixture: 114. Enclosure + solid-navy trim cuts the tongue;
+    // residual navy-bounded cream holes remain (truthful, not zero).
+    expect(creamToNavy).toBeLessThan(55);
+    expect(creamToNavy).toBeLessThan(114);
+  });
+
+  it("left zip-tape column x399–401 is painted after cover (and stays navy after zip)", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1K);
+    const withZip = overlayZipFromSource(source, covered, band, 0.015, 0.5);
+    for (const x of [399, 400, 401]) {
+      expect(lumaAt(covered, x, 715)).toBeLessThan(80);
+    }
+    // Bright cream zip restore is the centre core only — left tape stays navy.
+    expect(lumaAt(withZip, 399, 715)).toBeLessThan(80);
+    expect(lumaAt(withZip, 400, 715)).toBeLessThan(80);
+  });
+
+  it("1j 4×3 sleeve patch x389–392 / y746–748 stays unpainted", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1K);
+    for (let y = 746; y <= 748; y++) {
+      for (let x = 389; x <= 392; x++) {
+        expect(covered.data[(y * source.width + x) * 4]!).toBe(
+          source.data[(y * source.width + x) * 4]!,
+        );
+      }
+    }
+  });
+
+  it("absorb stops at cream-body: x280–330 / y673–675 stay unpainted", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1K);
+    let creamRaise = 0;
+    for (let y = 673; y <= 675; y++) {
+      for (let x = 280; x <= 330; x++) {
+        if (lumaAt(source, x, y) > 150 && lumaAt(covered, x, y) < 80) creamRaise++;
+      }
+    }
+    expect(creamRaise).toBe(0);
+  });
+
+  it("1i crease/wedge/hand locks survive enclosure", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1K);
+    const shaded = applyLowFrequencyBandIllumination(source, covered, band);
+    const { outfitBasedAlpha, handsAlpha, faceAlpha } = buildStage1hSam3EvidenceAlphas(
+      source.width,
+      source.height,
+    );
+    const chestLocal = applyChestLocalOcclusionSemantics({
+      width: source.width,
+      height: source.height,
+      outfitBasedAlpha,
+      bandComponent: covered.bandAuthorityMask,
+      handsAlpha,
+      faceAlpha,
+      dilatePx: 12,
+    });
+    const out = applyOcclusionAlphaComposite(
+      source,
+      shaded,
+      featherAlpha(chestLocal, source.width, source.height, 2),
+    );
+    const refI = (700 * source.width + 450) * 4;
+    const median =
+      0.2126 * covered.data[refI]! +
+      0.7152 * covered.data[refI + 1]! +
+      0.0722 * covered.data[refI + 2]!;
+    const floor = median - 6;
+    for (let x = 277; x <= 283; x++) {
+      expect(lumaAt(out, x, 700)).toBeGreaterThanOrEqual(floor);
+    }
+    for (let x = 405; x <= 420; x++) {
+      expect(lumaAt(out, x, 720)).toBeLessThan(80);
+    }
+    for (let y = 741; y <= 749; y++) {
+      for (let x = 330; x <= 380; x++) {
+        const srcL = lumaAt(source, x, y);
+        if (srcL < 180) continue;
+        expect(out.data[(y * source.width + x) * 4]!).toBe(source.data[(y * source.width + x) * 4]!);
+      }
     }
   });
 });
