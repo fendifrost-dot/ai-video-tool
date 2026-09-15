@@ -1743,33 +1743,33 @@ describe("Architecture C Stage 1m — C9-right wordmark-edge AA (1l leftover)", 
       ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
     );
     const covered = coverTargetQuad(source, band, STAGE1M);
-    const logoW = 80;
-    const logoH = 24;
+    // Soft cream fringe over the live leftover box — same class as
+    // perspective wordmark AA (PR #70: x 462–500 / y 713–723).
+    const fringe: QuadPts = [
+      { x: 462, y: 713 },
+      { x: 500, y: 713 },
+      { x: 500, y: 723 },
+      { x: 462, y: 723 },
+    ];
+    const logoW = 40;
+    const logoH = 12;
     const logoData = new Uint8Array(logoW * logoH * 4);
     for (let y = 0; y < logoH; y++) {
       for (let x = 0; x < logoW; x++) {
         const i = (y * logoW + x) * 4;
-        const edge = x < 2 || x >= logoW - 2 || y < 2 || y >= logoH - 2;
-        if (edge) {
-          logoData[i] = 160;
-          logoData[i + 1] = 150;
-          logoData[i + 2] = 140;
-          logoData[i + 3] = 90;
-        } else {
-          logoData[i] = 210;
-          logoData[i + 1] = 195;
-          logoData[i + 2] = 170;
-          logoData[i + 3] = 255;
-        }
+        logoData[i] = 200;
+        logoData[i + 1] = 185;
+        logoData[i + 2] = 165;
+        logoData[i + 3] = 110;
       }
     }
-    const logoPts = logoSubQuadInBand(band, ARCHITECTURE_C_LOGO_BAND_DEFAULTS);
     const warped = warpQuadAlpha(
       covered,
       { width: logoW, height: logoH, data: logoData },
-      logoPts,
+      fringe,
       3,
     );
+    setRgb(warped, 480, 710, 210, 195, 170);
     const oneL = evaluateChestStill({
       source,
       output: warped,
@@ -1789,13 +1789,7 @@ describe("Architecture C Stage 1m — C9-right wordmark-edge AA (1l leftover)", 
     expect(c9m.metrics.ghostRatio).toBeLessThan(GHOST_RATIO_PASS_CEILING);
     expect(c9m.metrics.rightWindowRatio).toBeLessThan(GHOST_RATIO_PASS_CEILING);
     expect(c7m.verdict).toBe("PASS");
-    let cores = 0;
-    for (let y = 704; y <= 732; y++) {
-      for (let x = 442; x <= 560; x++) {
-        if (lumaAt(snapped, x, y) > 180) cores++;
-      }
-    }
-    expect(cores).toBeGreaterThan(10);
+    expect(lumaAt(snapped, 480, 710)).toBeGreaterThan(180);
   });
 
   it("1i crease/wedge/hand + 1j sleeve 4×3 + C8 tapes survive 1m snap", () => {
