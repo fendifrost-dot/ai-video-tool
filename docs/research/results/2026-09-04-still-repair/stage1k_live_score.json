@@ -1,0 +1,765 @@
+{
+  "live1k": {
+    "schemaVersion": "lane-e-chest-eval-v1",
+    "verdict": "FAIL",
+    "passCount": 7,
+    "failCount": 4,
+    "criteria": [
+      {
+        "id": 1,
+        "key": "full_band_left_third",
+        "name": "Full band including left third",
+        "verdict": "PASS",
+        "metrics": {
+          "sourceNavy": 2283,
+          "unpaintedNavy": 0,
+          "unpaintedFrac": 0
+        },
+        "windows": [
+          {
+            "x0": 216,
+            "x1": 285,
+            "y0": 678,
+            "y1": 749
+          }
+        ],
+        "note": "Source-dark pixels in the left-third quad must stay painted navy.",
+        "failureReason": null
+      },
+      {
+        "id": 2,
+        "key": "pinstripe_aa_removed",
+        "name": "Pinstripe + AA removed",
+        "verdict": "FAIL",
+        "metrics": {
+          "remnants": 6,
+          "probed": 268,
+          "maxOutputLuma": 254.7874
+        },
+        "windows": [
+          {
+            "x0": 208,
+            "x1": 280,
+            "y0": 676,
+            "y1": 679
+          },
+          {
+            "x0": 260,
+            "x1": 280,
+            "y0": 676,
+            "y1": 690
+          }
+        ],
+        "note": "Mid-luma ridge/AA remnants (not cream body) in the top-left pinstripe windows.",
+        "failureReason": "6 pinstripe/AA remnant pixels"
+      },
+      {
+        "id": 3,
+        "key": "crease_removed",
+        "name": "Crease removed",
+        "verdict": "PASS",
+        "metrics": {
+          "median": 31.585599999999996,
+          "floor": 25.585599999999996,
+          "columnsBelowFloor": 0,
+          "minColumnMean": 32.71890322580645
+        },
+        "windows": [
+          {
+            "x0": 277,
+            "x1": 283,
+            "y0": 690,
+            "y1": 720
+          }
+        ],
+        "note": "Crease columns must sit at/above band median − 6.",
+        "failureReason": null
+      },
+      {
+        "id": 4,
+        "key": "cream_preservation",
+        "name": "Cream-body preservation",
+        "verdict": "FAIL",
+        "metrics": {
+          "creamSource": 179,
+          "creamToNavy": 19,
+          "firstNavyRaisePx": 1,
+          "firstNavyRowSource": 676,
+          "firstNavyRowOutput": 675
+        },
+        "windows": [
+          {
+            "x0": 280,
+            "x1": 330,
+            "y0": 673,
+            "y1": 676
+          }
+        ],
+        "note": "Cream body at the 3-px raise window must not become navy (1j: 97 px / 3-px raise at x290).",
+        "failureReason": "19 cream pixels painted navy"
+      },
+      {
+        "id": 5,
+        "key": "sleeve_forearm",
+        "name": "Sleeve / forearm preservation",
+        "verdict": "PASS",
+        "metrics": {
+          "brightChecked": 653,
+          "brightChanged": 0,
+          "patchDarkened": 0
+        },
+        "windows": [
+          {
+            "x0": 330,
+            "x1": 380,
+            "y0": 738,
+            "y1": 755
+          },
+          {
+            "x0": 389,
+            "x1": 392,
+            "y0": 746,
+            "y1": 748
+          }
+        ],
+        "note": "Bright sleeve/forearm bytes stay identical; 4×3 zip-corner cream must not drop ≥40 luma.",
+        "failureReason": null
+      },
+      {
+        "id": 6,
+        "key": "perimeter_right_end",
+        "name": "Perimeter / right-end protrusion",
+        "verdict": "FAIL",
+        "metrics": {
+          "creamSource": 136,
+          "creamToNavy": 41
+        },
+        "windows": [
+          {
+            "x0": 580,
+            "x1": 616,
+            "y0": 713,
+            "y1": 730
+          }
+        ],
+        "note": "Right-end cream (x580–616 / y713–730) must stay cream.",
+        "failureReason": "41 cream pixels painted navy"
+      },
+      {
+        "id": 7,
+        "key": "wordmark",
+        "name": "Wordmark present",
+        "verdict": "PASS",
+        "metrics": {
+          "navyFrac": 0.8874485596707818,
+          "meanLuma": 51.6801237448567,
+          "pixels": 4860
+        },
+        "windows": [
+          {
+            "x0": 442,
+            "x1": 576,
+            "y0": 697,
+            "y1": 732
+          }
+        ],
+        "note": "Wearer's-left wordmark zone must be a navy band (not a cream hole). Not OCR.",
+        "failureReason": null
+      },
+      {
+        "id": 8,
+        "key": "centre_single_zip",
+        "name": "Centre / single zip (tapes absorbed)",
+        "verdict": "PASS",
+        "metrics": {
+          "tapeSamples": 68,
+          "tapeBright": 0
+        },
+        "windows": [
+          {
+            "x0": 399,
+            "x1": 401,
+            "y0": 715,
+            "y1": 735
+          },
+          {
+            "x0": 427,
+            "x1": 431,
+            "y0": 715,
+            "y1": 715
+          }
+        ],
+        "note": "Left tape x399–401 and diagonal x427–431 must be navy; zip core x418–424 excluded.",
+        "failureReason": null
+      },
+      {
+        "id": 9,
+        "key": "no_ghosting",
+        "name": "No outline ghosting",
+        "verdict": "FAIL",
+        "metrics": {
+          "midLumaChecked": 488,
+          "midLumaGhosts": 95,
+          "ghostRatio": 0.19467213114754098,
+          "ghostCeiling": 51.5856,
+          "median": 31.585599999999996,
+          "bandAuthorityMaskUsed": 0,
+          "leftWindowRatio": 0.04216867469879518,
+          "rightWindowRatio": 0.2732919254658385,
+          "leftWindowChecked": 166,
+          "rightWindowChecked": 322,
+          "passCeiling": 0.05
+        },
+        "windows": [
+          {
+            "x0": 255,
+            "x1": 345,
+            "y0": 696,
+            "y1": 712
+          },
+          {
+            "x0": 442,
+            "x1": 560,
+            "y0": 704,
+            "y1": 734
+          }
+        ],
+        "note": "Every mid-luma (60–180) source pixel inside the quad windows. Authority mask is not a filter.",
+        "failureReason": "ghost ratio 0.195 ≥ 0.05"
+      },
+      {
+        "id": 10,
+        "key": "foreground_occlusion",
+        "name": "Foreground occlusion (hand / skin)",
+        "verdict": "PASS",
+        "metrics": {
+          "brightSkin": 109,
+          "changed": 0
+        },
+        "windows": [
+          {
+            "x0": 330,
+            "x1": 380,
+            "y0": 738,
+            "y1": 742
+          }
+        ],
+        "note": "Bright hand/forearm pixels (luma ≥ 180) must be byte-identical.",
+        "failureReason": null
+      },
+      {
+        "id": 11,
+        "key": "outside_region",
+        "name": "Outside-region preservation",
+        "verdict": "PASS",
+        "metrics": {
+          "changed": 0,
+          "yTopExclusive": 600,
+          "yBottomExclusive": 800
+        },
+        "windows": [
+          {
+            "x0": 0,
+            "x1": 719,
+            "y0": 0,
+            "y1": 599
+          },
+          {
+            "x0": 0,
+            "x1": 719,
+            "y0": 800,
+            "y1": 1279
+          }
+        ],
+        "note": "No pixel changes above y600 or below y800 (scaled).",
+        "failureReason": null
+      }
+    ],
+    "unexplained": [],
+    "scoring": {
+      "ghostTerritory": "quad_mid_luma",
+      "bandAuthorityMaskUsed": false,
+      "ghostRatioPassCeiling": 0.05,
+      "referenceFrame": {
+        "width": 720,
+        "height": 1280
+      }
+    },
+    "artifacts": {
+      "absDiff": {
+        "id": "abs_diff",
+        "width": 720,
+        "height": 1280,
+        "files": [
+          "abs_diff.ppm",
+          "abs_diff.bmp"
+        ]
+      },
+      "crops": [
+        {
+          "id": "chest_compare",
+          "box": {
+            "x0": 200,
+            "x1": 630,
+            "y0": 660,
+            "y1": 770
+          },
+          "width": 431,
+          "height": 111,
+          "files": [
+            "chest_compare.ppm",
+            "chest_compare.bmp"
+          ]
+        },
+        {
+          "id": "pinstripe_topleft",
+          "box": {
+            "x0": 200,
+            "x1": 340,
+            "y0": 660,
+            "y1": 700
+          },
+          "width": 141,
+          "height": 41,
+          "files": [
+            "pinstripe_topleft.ppm",
+            "pinstripe_topleft.bmp"
+          ]
+        },
+        {
+          "id": "crease_lettering",
+          "box": {
+            "x0": 250,
+            "x1": 360,
+            "y0": 688,
+            "y1": 740
+          },
+          "width": 111,
+          "height": 53,
+          "files": [
+            "crease_lettering.ppm",
+            "crease_lettering.bmp"
+          ]
+        },
+        {
+          "id": "right_top_edge",
+          "box": {
+            "x0": 430,
+            "x1": 630,
+            "y0": 690,
+            "y1": 750
+          },
+          "width": 201,
+          "height": 61,
+          "files": [
+            "right_top_edge.ppm",
+            "right_top_edge.bmp"
+          ]
+        },
+        {
+          "id": "sleeve_zip_bottom",
+          "box": {
+            "x0": 320,
+            "x1": 420,
+            "y0": 730,
+            "y1": 760
+          },
+          "width": 101,
+          "height": 31,
+          "files": [
+            "sleeve_zip_bottom.ppm",
+            "sleeve_zip_bottom.bmp"
+          ]
+        },
+        {
+          "id": "centre_wedge",
+          "box": {
+            "x0": 390,
+            "x1": 440,
+            "y0": 700,
+            "y1": 750
+          },
+          "width": 51,
+          "height": 51,
+          "files": [
+            "centre_wedge.ppm",
+            "centre_wedge.bmp"
+          ]
+        }
+      ]
+    }
+  },
+  "live1jRescore": {
+    "passCount": 5,
+    "failCount": 6,
+    "verdict": "FAIL",
+    "criteria": [
+      {
+        "id": 1,
+        "key": "full_band_left_third",
+        "verdict": "PASS",
+        "metrics": {
+          "sourceNavy": 2283,
+          "unpaintedNavy": 0,
+          "unpaintedFrac": 0
+        },
+        "failureReason": null
+      },
+      {
+        "id": 2,
+        "key": "pinstripe_aa_removed",
+        "verdict": "FAIL",
+        "metrics": {
+          "remnants": 22,
+          "probed": 268,
+          "maxOutputLuma": 179.14839999999998
+        },
+        "failureReason": "22 pinstripe/AA remnant pixels"
+      },
+      {
+        "id": 3,
+        "key": "crease_removed",
+        "verdict": "PASS",
+        "metrics": {
+          "median": 31.585599999999996,
+          "floor": 25.585599999999996,
+          "columnsBelowFloor": 0,
+          "minColumnMean": 32.71890322580645
+        },
+        "failureReason": null
+      },
+      {
+        "id": 4,
+        "key": "cream_preservation",
+        "verdict": "FAIL",
+        "metrics": {
+          "creamSource": 179,
+          "creamToNavy": 71,
+          "firstNavyRaisePx": 3,
+          "firstNavyRowSource": 676,
+          "firstNavyRowOutput": 673
+        },
+        "failureReason": "71 cream pixels painted navy"
+      },
+      {
+        "id": 5,
+        "key": "sleeve_forearm",
+        "verdict": "FAIL",
+        "metrics": {
+          "brightChecked": 653,
+          "brightChanged": 0,
+          "patchDarkened": 8
+        },
+        "failureReason": "0 bright sleeve bytes changed, 8 corner cream darkened"
+      },
+      {
+        "id": 6,
+        "key": "perimeter_right_end",
+        "verdict": "FAIL",
+        "metrics": {
+          "creamSource": 136,
+          "creamToNavy": 109
+        },
+        "failureReason": "109 cream pixels painted navy"
+      },
+      {
+        "id": 7,
+        "key": "wordmark",
+        "verdict": "PASS",
+        "metrics": {
+          "navyFrac": 0.8613168724279835,
+          "meanLuma": 54.286409753086986,
+          "pixels": 4860
+        },
+        "failureReason": null
+      },
+      {
+        "id": 8,
+        "key": "centre_single_zip",
+        "verdict": "FAIL",
+        "metrics": {
+          "tapeSamples": 68,
+          "tapeBright": 47
+        },
+        "failureReason": "47/68 zip-tape samples still bright"
+      },
+      {
+        "id": 9,
+        "key": "no_ghosting",
+        "verdict": "FAIL",
+        "metrics": {
+          "midLumaChecked": 488,
+          "midLumaGhosts": 288,
+          "ghostRatio": 0.5901639344262295,
+          "ghostCeiling": 51.5856,
+          "median": 31.585599999999996,
+          "bandAuthorityMaskUsed": 0,
+          "leftWindowRatio": 0.5963855421686747,
+          "rightWindowRatio": 0.5869565217391305,
+          "leftWindowChecked": 166,
+          "rightWindowChecked": 322,
+          "passCeiling": 0.05
+        },
+        "failureReason": "ghost ratio 0.590 ≥ 0.05"
+      },
+      {
+        "id": 10,
+        "key": "foreground_occlusion",
+        "verdict": "PASS",
+        "metrics": {
+          "brightSkin": 109,
+          "changed": 0
+        },
+        "failureReason": null
+      },
+      {
+        "id": 11,
+        "key": "outside_region",
+        "verdict": "PASS",
+        "metrics": {
+          "changed": 0,
+          "yTopExclusive": 600,
+          "yBottomExclusive": 800
+        },
+        "failureReason": null
+      }
+    ]
+  },
+  "forensic": {
+    "assetId": "c9c4efee-6bd2-450f-a9e4-b70fb9b722bb",
+    "vsClean": {
+      "n": 20930,
+      "x0": 205,
+      "x1": 618,
+      "y0": 666,
+      "y1": 761
+    },
+    "vs1j": {
+      "n": 3773,
+      "x0": 205,
+      "x1": 617,
+      "y0": 666,
+      "y1": 761,
+      "gt8": 2286
+    },
+    "outsideTop": 0,
+    "outsideBot": 0,
+    "bandCoreMedianLuma": 31.585599999999996,
+    "midLumaInterior": {
+      "live1k": {
+        "mid": 3619,
+        "unpainted": 899,
+        "brightUnpainted": 5393
+      },
+      "live1j": {
+        "mid": 3619,
+        "unpainted": 1325,
+        "brightUnpainted": 5297
+      }
+    },
+    "creamRaise_x280_330_y673_676": 19,
+    "creamRaise1j": 71,
+    "rightEndCreamToNavy": 41,
+    "rightEnd1j": 109,
+    "sleevePatchDarkened": 0,
+    "sleevePatch1j": 8,
+    "leftTape": {
+      "y715": [
+        41,
+        41,
+        41
+      ],
+      "y735": [
+        39,
+        39,
+        39
+      ],
+      "sourceY715": [
+        110,
+        182,
+        98
+      ],
+      "live1j_y715": [
+        110,
+        86,
+        55
+      ]
+    },
+    "diagonalTape_y715": {
+      "live1k": [
+        41,
+        41,
+        41,
+        41
+      ],
+      "live1j": [
+        41,
+        42,
+        41,
+        41
+      ],
+      "source": [
+        141,
+        161,
+        22,
+        29
+      ]
+    },
+    "pinstripe": {
+      "row676_x208_213": [
+        34,
+        34,
+        34,
+        34,
+        34,
+        34
+      ],
+      "row676_x256_262": [
+        34,
+        34,
+        34,
+        34,
+        34,
+        34,
+        34
+      ],
+      "row679_x228_239": [
+        32,
+        32,
+        84,
+        77,
+        69,
+        70,
+        69,
+        65,
+        63,
+        63,
+        65,
+        67
+      ],
+      "row676_1j": [
+        39,
+        50,
+        58,
+        70,
+        76,
+        78,
+        108,
+        100,
+        87,
+        78,
+        65,
+        57,
+        37
+      ],
+      "source676": [
+        39,
+        52,
+        62,
+        79,
+        89,
+        96,
+        108,
+        100,
+        87,
+        78,
+        65,
+        57,
+        37
+      ]
+    },
+    "creaseColMeans": [
+      {
+        "x": 277,
+        "mean": 35.609877419354845
+      },
+      {
+        "x": 278,
+        "mean": 32.71890322580645
+      },
+      {
+        "x": 279,
+        "mean": 33.14049677419356
+      },
+      {
+        "x": 280,
+        "mean": 33.557651612903236
+      },
+      {
+        "x": 281,
+        "mean": 33.58094193548387
+      },
+      {
+        "x": 282,
+        "mean": 33.59025806451613
+      },
+      {
+        "x": 283,
+        "mean": 33.81878064516128
+      }
+    ],
+    "firstNavyRow_x290": {
+      "source": 676,
+      "live1k": 675,
+      "live1j": 673
+    }
+  },
+  "summary1k": "Chest visual eval lane-e-chest-eval-v1: FAIL (7/11)\nghostTerritory=quad_mid_luma bandAuthorityMaskUsed=false\n  1. Full band including left third: PASS\n  2. Pinstripe + AA removed: FAIL — 6 pinstripe/AA remnant pixels\n  3. Crease removed: PASS\n  4. Cream-body preservation: FAIL — 19 cream pixels painted navy\n  5. Sleeve / forearm preservation: PASS\n  6. Perimeter / right-end protrusion: FAIL — 41 cream pixels painted navy\n  7. Wordmark present: PASS\n  8. Centre / single zip (tapes absorbed): PASS\n  9. No outline ghosting: FAIL — ghost ratio 0.195 ≥ 0.05\n  10. Foreground occlusion (hand / skin): PASS\n  11. Outside-region preservation: PASS",
+  "summary1j": "Chest visual eval lane-e-chest-eval-v1: FAIL (5/11)\nghostTerritory=quad_mid_luma bandAuthorityMaskUsed=false\n  1. Full band including left third: PASS\n  2. Pinstripe + AA removed: FAIL — 22 pinstripe/AA remnant pixels\n  3. Crease removed: PASS\n  4. Cream-body preservation: FAIL — 71 cream pixels painted navy\n  5. Sleeve / forearm preservation: FAIL — 0 bright sleeve bytes changed, 8 corner cream darkened\n  6. Perimeter / right-end protrusion: FAIL — 109 cream pixels painted navy\n  7. Wordmark present: PASS\n  8. Centre / single zip (tapes absorbed): FAIL — 47/68 zip-tape samples still bright\n  9. No outline ghosting: FAIL — ghost ratio 0.590 ≥ 0.05\n  10. Foreground occlusion (hand / skin): PASS\n  11. Outside-region preservation: PASS",
+  "evidenceCrops": [
+    {
+      "id": "chest_compare",
+      "box": {
+        "x0": 200,
+        "x1": 630,
+        "y0": 660,
+        "y1": 770
+      }
+    },
+    {
+      "id": "pinstripe_topleft",
+      "box": {
+        "x0": 200,
+        "x1": 340,
+        "y0": 660,
+        "y1": 700
+      }
+    },
+    {
+      "id": "crease_lettering",
+      "box": {
+        "x0": 250,
+        "x1": 360,
+        "y0": 688,
+        "y1": 740
+      }
+    },
+    {
+      "id": "right_top_edge",
+      "box": {
+        "x0": 430,
+        "x1": 630,
+        "y0": 690,
+        "y1": 750
+      }
+    },
+    {
+      "id": "sleeve_zip_bottom",
+      "box": {
+        "x0": 320,
+        "x1": 420,
+        "y0": 730,
+        "y1": 760
+      }
+    },
+    {
+      "id": "centre_wedge",
+      "box": {
+        "x0": 390,
+        "x1": 440,
+        "y0": 700,
+        "y1": 750
+      }
+    }
+  ]
+}

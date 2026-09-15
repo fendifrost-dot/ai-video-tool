@@ -1,115 +1,108 @@
-# Architecture C — Stage 1k canonical live verification (`logo_chest`)
+# Architecture C — Stage 1k canonical live verification (`logo_chest`, `c9c4efee`)
 
-**Date:** 2026-09-15 · **Author:** Cursor (cloud agent, Lane A verify) · **Spend:** $0 · **Issue:** #52 (parent #50)
-**Code under test:** `main` @ `9366f09` (Stage 1k `0b12e8c` + PR #64 merge + Lovable “Redeployed repair proxy edge fn”)
-**Expected live version:** `architecture_c_still_repair_1k`
+**Date:** 2026-09-15 · **Author:** Cursor (Lane A, score-only) · **Spend:** $0 · **Issue:** #52 (parent #50)
+**Code under test:** `main` @ `9366f09` (Stage 1k enclosure / truthful goldens / right-end / absorb; edge `architecture-c-still-repair-proxy` already redeployed; **repair not re-run**)
+**Run:** authenticated AVT product UI (Fendi), clean still `2aa1a44c`, keyframe `v2-still-0.785`, stage `logo_chest`, quad `[[0.30,0.530],[0.87,0.533],[0.87,0.585],[0.30,0.582]]`
+**Scorer:** Lane E `evaluateChestStill` (`src/lib/eval/*`, spec `lane-e-chest-eval-v1`) + Stage 1d–1j forensic windows. **Unfiltered mid-luma** (`bandAuthorityMaskUsed: false`).
+**Compared against:** clean still `2aa1a44c` (ImageScript-decoded, same decoder as the edge), Stage 1j live `fb8117ee` (5/11), fixture 1k prediction (9/11, FAIL C2+C6)
 
 Evidence labels: **[V]** verified · **[O]** observed · **[H]** hypothesis · **[D]** decision · **[R]** recommendation
 
-## Verdict — **CHEST STILL GATE: NOT SCORED LIVE** (blocked)
-
-| Field                   | Value                                                                                                                                         |
-| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Gate                    | **NOT CLEARED — live invoke blocked** (no 1k asset, no 11-point live table)                                                                   |
-| `repair_method_version` | **not returned** (HTTP 401, body `{"error":"unauthenticated"}`)                                                                               |
-| Output asset id         | **none** — DB newest `logo_chest` is still 1j `fb8117ee-a0bd-4949-a190-517d444cee4a` (`architecture_c_still_repair_1j`, 2026-09-14 05:16:53Z) |
-| Latency                 | **1366 ms** to 401 (not a 546)                                                                                                                |
-| HTTP 546                | **no** — proxy is reachable; OPTIONS 200; POST with missing/invalid user JWT is 401                                                           |
-| Production activation   | **still blocked** (still gate not live-scored; fixture residual C2 + C6)                                                                      |
-
-This is **not** a 1j re-score. 1j remains `d3dbe647` / `c24abc905` **NOT CLEARED 5/11**.
-
 ## Runtime preflight [V]
 
-Established $0 path = `POST /functions/v1/architecture-c-still-repair-proxy` with the product-UI payload (same as `callArchitectureCStillRepair` / `ArchitectureCStillRepairRunner`):
+| Field | Value |
+|---|---|
+| HTTP / attempts | 200, single attempt (repair already succeeded; this session did not invoke the proxy) |
+| Latency | **~56.6 s** [O] (1j: ~10.8 s; 1i: ~41 s). Not a chest-gate criterion. |
+| `assetId` | **`c9c4efee-6bd2-450f-a9e4-b70fb9b722bb`** |
+| `storedPath` | `…/architecture-c-repair/logo_chest_2aa1a44c-b24a-46bf-890f-13a6fc65b1cc_1789441063771.png` (720×1280 PNG, 1 174 779 bytes, etag `e9bb12a7d146fdde8c1a18de419385d3`) |
+| `repair_method_version` | **`architecture_c_still_repair_1k`** |
+| `occlusion_source` / `sam3_attempted` / `sam3_ok` / `sam3_reason` | `sam3` / `true` / `true` / `null` |
+| `allow_skin_heuristic_fallback` | `false` |
+| `requested_band_quad_norm` | echoed unchanged; `logo_zone_quad_provided: true`; `keyframe_id: v2-still-0.785` |
+| `effective_band_bbox` | `{216,678,621,749, pixel_count 27 307}` (1j 27 582) |
+| `temporalTrackingEnabled` | `false` |
+| Decoder | JPEG source decoded with **ImageScript 1.3.0** (edge `decodeToRgba`). FFmpeg JPEG decode differs on 859 067 / 921 600 px and **false-FAILs C5/C10/C11** — do not use it as source. PNG ffmpeg ↔ ImageScript: 0 px RGB diff. |
 
-```json
-{
-  "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
-  "stillAssetId": "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
-  "wardrobeFeatureId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
-  "stage": "logo_chest",
-  "logoZoneQuad": [
-    [0.3, 0.53],
-    [0.87, 0.533],
-    [0.87, 0.585],
-    [0.3, 0.582]
-  ]
-}
-```
+Changed vs clean: x 205–618, y 666–761, **20 930 px**. 0 px changed above y 600 or below y 800. Band-core sample luma (450,700) **31.6**.
 
-No `allowSkinHeuristicFallback` (fail-closed SAM-3). No Grok, no V3, no Control Center edits.
+## 1k vs 1j delta [V]
 
-| Probe                                                                     | Result                                                                                      |
-| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| OPTIONS proxy                                                             | HTTP **200** in 1.57 s                                                                      |
-| POST, Authorization = publishable/anon JWT                                | HTTP **401** `unauthenticated` in **1.37 s**                                                |
-| POST, no Authorization                                                    | HTTP **401** `UNAUTHORIZED_NO_AUTH_HEADER`                                                  |
-| `project_assets` `repair_method_version = architecture_c_still_repair_1k` | **0 rows** [V] Lovable SQL                                                                  |
-| Cloud VM `.env`                                                           | `SUPABASE_URL` + publishable key only — **no user access token / password / refresh token** |
-| Service-role impersonation                                                | **not used** (forbidden)                                                                    |
+**3 773 px differ** (2 286 by > 8). Delta bbox x 205–617 / y 666–761 — inside the chest belt.
 
-Exact blocker for Claude Cowork / Execution Manager: the proxy calls `auth.getUser()` and requires `video_projects.user_id` to match that user. The anon/publishable JWT is not a user session. Set `AVT_USER_ACCESS_TOKEN` to a signed-in AVT owner JWT (browser session → Application → localStorage / network `Authorization` on any authenticated `functions/v1` call) and re-run:
+| Metric | 1j live `fb8117ee` | 1k live `c9c4efee` |
+|---|---|---|
+| Lane E score | **5 / 11** (rescore of the same PNGs; matches the human 1j table) | **7 / 11** |
+| Unfiltered ghost ratio (combined / left / right) | 0.590 / 0.596 / 0.587 | **0.195 / 0.042 / 0.273** |
+| C2 pinstripe remnants | 22 | **6** |
+| C4 cream→navy (x 280–330 / y 673–676) | 71 (human 1j: 97) | **19** |
+| C4 first-navy row at x 290 | 673 (raise 3) | **675** (raise **1**) |
+| C5 4×3 sleeve patch | 8 darkened | **0** (byte-identical) |
+| C6 right-end cream→navy | 109 (human 1j: 114) | **41** |
+| C8 zip-tape bright samples | 47 / 68 | **0 / 68** |
+| Left tape x399–401 y715 luma | 110 / 86 / 55 | **41 / 41 / 41** |
 
-```bash
-AVT_USER_ACCESS_TOKEN='<user jwt>' ./scripts/architecture-c-stage1k-live-verify.sh --skip-calibration
-```
+## Stage 1k causal checks [V]
 
-Refuse the run if `repair.repair_method_version !== architecture_c_still_repair_1k` (DEPLOYMENT MISMATCH, same as the 09-11 1j first redeploy).
+**A — Mid-luma interior ownership: partial.** Unfiltered Lane E C9: **95 / 488** mid-luma source pixels in the two lettering windows still above median + 20 (ceiling 51.6). Left window **0.042** (7 / 166) — matches the fixture 0.042 and is under the 0.05 ceiling. Right window **0.273** (88 / 322) — fixture predicted 0.012. Survivors cluster x 462–555 / y 713–723 in the wordmark half (plus a few unpainted AA at x 552–555 / y 704–705).
 
-## Fixture prediction (not live) [V on canonical crop + 1h SAM-3 α]
+**B — Occlusion ownership: preserved.** Crease column means x 277–283 = 35.6 … 33.8 (floor 25.6). C3 PASS. Hand/forearm bright skin **109 / 109 byte-identical** (C10). 1j 4×3 sleeve patch x 389–392 / y 746–748 is **byte-identical to source** (C5).
 
-Lane E `evaluateChestStill` on `runFixturePipeline()` (1k `coverTargetQuad` + illumination + zip + chest-local α). **This is not a live SAM-3 / worker score.**
+**C — Sleeve/cream boundary: restored.** C5 PASS. Below-quad trim + enclosure rejected the 1j 8-px zip-corner cream admission.
 
-**Predicted gate: NOT CLEARED 9/11** (`fixture_1k/gate.txt`).
+**D — Top ridge / cream raise: improved, not cleared.** Row 676 x 208–213 and x 256–262 are now navy 34 (1j still held source AA 39–108). Six mid-luma remnants remain: (208,677), (213,679), (269,680), (261–262,681), (271,681). Cream-body → navy **19 px**, almost all on **y 675** x 281–295 (y 673–674: 2+2 at x 280–281; y 676: 0). 1-px raise at x 290.
 
-| #   | Criterion                  | Result   | vs 1j live           | Metrics                                                                                                |
-| --- | -------------------------- | -------- | -------------------- | ------------------------------------------------------------------------------------------------------ |
-| 1   | Full band incl. left third | **PASS** | =                    | unpaintedFrac 0                                                                                        |
-| 2   | Pinstripe + AA removed     | **FAIL** | still fail           | 10 remnant px (1j Lane E on live PNG: 21)                                                              |
-| 3   | Crease removed             | **PASS** | =                    | min column mean 32.9 ≥ floor 25.6                                                                      |
-| 4   | Cream preservation         | **PASS** | improved vs 1j 97 px | cream→navy **0**; first-navy row 676=source                                                            |
-| 5   | Sleeve/forearm             | **PASS** | improved vs 1j 8 px  | patchDarkened **0**                                                                                    |
-| 6   | Perimeter                  | **FAIL** | improved 114→42      | cream→navy **42** at x 580–616 / y 713–730                                                             |
-| 7   | Wordmark                   | **PASS** | =                    |                                                                                                        |
-| 8   | Centre / single zip        | **PASS** | improved             | left tape x399 y715 luma **40.5** (1j live **109.6**)                                                  |
-| 9   | No ghosting                | **PASS** | improved             | unfiltered ghost ratio **0.023**; windows **0.042 / 0.012** (1j live **0.607 / 0.593**; target < 0.05) |
-| 10  | Foreground occlusion       | **PASS** | =                    |                                                                                                        |
-| 11  | Outside-region             | **PASS** | =                    | 0 px above y 600 / below y 800                                                                         |
+**E — Right/top perimeter: residual tongue.** C6 **41** cream→navy at x 580–614 / y 713–727 (mostly y 713–715: 10+12+15). Fixture residual was **42**. Not a PASS.
 
-Crops: `stage1k-harness/fixture_1k/*.jpg`.
+## Verdict — **CHEST STILL GATE: NOT CLEARED** (7 / 11)
 
-Residual claimed by 1k impl notes and reproduced here: right-end letter-hole class (42 px) + ridge AA remnants (C2). Enclosure / tape / sleeve 4×3 / cream raise hold on the fixture.
+| # | Criterion | Result | vs 1j | vs fixture 1k | Evidence |
+|---|---|---|---|---|---|
+| 1 | Full band incl. left third | **PASS** | = | = | `stage1k_chest_compare.jpg` |
+| 2 | Pinstripe + AA removed | **FAIL** — 6 remnant px (rows 677/679/680/681) | improved (22→6) | FAIL as predicted | `stage1k_pinstripe_topleft.jpg` |
+| 3 | Crease removed | **PASS** | = | = | `stage1k_crease_lettering.jpg` |
+| 4 | Cream preservation | **FAIL** — 19 cream-body px, 1-px raise at x 290 | improved (71→19; raise 3→1) | **live extra FAIL** (fixture 0) | `stage1k_pinstripe_topleft.jpg` |
+| 5 | Sleeve/forearm | **PASS** — 0 bright bytes changed; 4×3 patchDarkened 0 | **fixed** (8→0) | = | `stage1k_sleeve_zip_bottom.jpg` |
+| 6 | Perimeter | **FAIL** — right-end cream→navy **41** (x 580–616 / y 713–730) | improved (109→41) | FAIL as predicted (42) | `stage1k_right_top_edge.jpg` |
+| 7 | Wordmark | **PASS** (navyFrac 0.887) | = | = | `stage1k_right_top_edge.jpg` |
+| 8 | Centre / single zip | **PASS** — left tape + diagonal navy (0/68 bright) | **fixed** (47/68→0) | = | `stage1k_centre_wedge.jpg` |
+| 9 | No ghosting | **FAIL** — unfiltered ratio **0.195** ≥ 0.05 (left 0.042 PASS locally; right 0.273) | improved (0.590→0.195) | **live extra FAIL** (fixture < 0.05) | `stage1k_crease_lettering.jpg`, `stage1k_right_top_edge.jpg` |
+| 10 | Foreground occlusion | **PASS** | = | = | `stage1k_sleeve_zip_bottom.jpg` |
+| 11 | Outside-region | **PASS** — 0 px above y 600 / below y 800 | = | = | pixel diff |
 
-## 1j live PNG Lane E calibration [V, with decoder caveat]
+Lane E 1j rescore of `fb8117ee` is **5 / 11**, FAIL {2,4,5,6,8,9} — identical to the human Stage 1j table. The 1k table is therefore on the same ruler.
 
-Scored persisted 1j asset `fb8117ee` vs clean still JPEG `2aa1a44c` through ffmpeg PPM. Band-local probes agree with Claude’s 1j forensic table; **byte-identity criteria do not**, because the source is a re-decoded JPEG.
+## Live vs fixture 1k [V]
 
-| Probe                                     | Human 1j (`d3dbe647`) | Lane E on live PNG        |                                               |
-| ----------------------------------------- | --------------------- | ------------------------- | --------------------------------------------- |
-| Ghost windows (unfiltered)                | 0.60 / 0.59           | **0.607 / 0.593**         | match                                         |
-| Right-end cream→navy                      | 114                   | **109**                   | match                                         |
-| Sleeve 4×3 darkened                       | 8                     | **8** (`patchDarkened`)   | match                                         |
-| Left tape x399 y715                       | unpainted ~110        | **109.6**                 | match                                         |
-| Cream-body x280–330                       | 97                    | **71**                    | same FAIL, JPEG luma shift                    |
-| C5 bright-sleeve / C10 skin / C11 outside | PASS (byte-identical) | FAIL (585 / 109 / 719473) | **JPEG re-decode noise — ignore for live 1k** |
+Fixture `coverTargetQuad` + 1h SAM-3 evidence alphas predicted **9 / 11** (FAIL C2+C6). Live is **7 / 11**. Two gaps:
 
-After a real 1k PNG lands, score it the same way: **trust C1–C4, C6–C9 extras; treat C5 brightChanged / C10 / C11 as FAIL only if the 1j PNG vs JPEG pair does not already fail them.** Prefer comparing 1k PNG to 1j PNG for those three if the worker’s JPEG decode is unavailable.
+1. **C9 right window** — fixture 0.012 vs live **0.273**. Left window matches (0.042). The wearer's-left wordmark half is where live SAM-3 + perspective wordmark warp sit; the crop fixture does not reproduce those mid-luma residuals.
+2. **C4 cream raise** — fixture 0 at y 673–675 vs live **19** (15 of them on y 675 x 281–295). Absorb's cream-body stop is leakier on the live JPEG than on the embed crop.
 
-## Harness (for Cowork)
+C6 matched (41 live vs 42 fixture). C5/C8 matched (PASS).
 
-| Path                                            | Role                                                         |
-| ----------------------------------------------- | ------------------------------------------------------------ |
-| `scripts/architecture-c-stage1k-live-verify.sh` | curl invoke + Lane E score + fixture                         |
-| `src/lib/eval/liveVerify.ts`                    | canonical payload, invoke, forensic extras, fixture pipeline |
-| `src/lib/eval/liveVerify.runner.test.ts`        | env-gated runner (`STAGE1K_HARNESS=1`)                       |
-| `src/lib/eval/chestVisualEvaluator.ts`          | 11-point Lane E                                              |
+## Hard locks [V]
 
-Hard locks preserved: no 1i occlusion reopen, no 1j ROI reopen, no CC, no `grok-video-research-proxy`, no PR #37, no V3 / paid Grok.
+Score-only. No production paint/occlusion change, no proxy auth widen, no Control Center, no V3, no paid Grok, no PR #37, no repair re-run. Evidence + Lane E historical table only.
 
 ## Recommended next step [R]
 
-1. Cowork: one authenticated $0 POST with `AVT_USER_ACCESS_TOKEN`.
-2. Confirm `repair_method_version === architecture_c_still_repair_1k` and no 546.
-3. Fill the live 11-point table from Lane E + the extras in `report.json`. Fixture says C2 + C6 still FAIL → expect **NOT CLEARED 9/11** unless live SAM-3 / full-frame paint differs.
-4. Production activation stays blocked until the live table is 11/11 (or ChatGPT rules residual C2/C6 acceptable).
+Not a threshold. C6 is the fixture-honest residual (navy-bounded letter-hole class, ~41 px) — same class the 1k impl already disclosed. C2 is six isolated ridge AA pixels. The **gate-moving** live misses vs the 9/11 prediction are **C9-right** (wordmark-half mid-luma, 88 px) and **C4** (19 px / 1-row raise). Hold 1i occlusion and 1j ROI. Do not claim CLEARED.
+
+## Evidence files
+
+- `stage1k_chest_compare.jpg` — clean \| 1j \| live 1k
+- `stage1k_pinstripe_topleft.jpg`
+- `stage1k_crease_lettering.jpg`
+- `stage1k_right_top_edge.jpg`
+- `stage1k_sleeve_zip_bottom.jpg`
+- `stage1k_centre_wedge.jpg`
+- `stage1k_lane_e_report.json` — Lane E 1k JSON
+- `stage1k_live_score.json` — 1k + 1j rescore + forensic probes
+- `stage1k-harness/` — Lane E fixture + 1j PNG calibration from the earlier blocked probe (PR #65)
+
+## Prior blocked probe (PR #65, superseded) [V]
+
+Before the authenticated UI run that produced `c9c4efee`, a cloud-VM $0 POST with the anon/publishable JWT returned HTTP **401** `unauthenticated` in **1366 ms** (OPTIONS 200; not a 546). No user JWT was present on that VM; service-role was not used. That probe did **not** score a live 1k asset. The 11-point table above from asset `c9c4efee` is canonical.
+
+Harness kept from that PR: `scripts/architecture-c-stage1k-live-verify.sh`, `src/lib/eval/liveVerify.ts`, `stage1k-harness/fixture_1k/` (predicted 9/11), `stage1k-harness/calibration_1j_fb8117ee/`.

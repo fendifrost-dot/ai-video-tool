@@ -6,44 +6,42 @@
 
 ## Ready-to-test status (Architecture C chest)
 
-| Item                                        | On `main`?               | Live / redeployed?               | Ready to test?                                   |
-| ------------------------------------------- | ------------------------ | -------------------------------- | ------------------------------------------------ |
-| Stage **1i** occlusion                      | YES                      | YES — **LOCKED**                 | do not reopen                                    |
-| Stage **1j** ROI compute                    | YES                      | YES — **LOCKED**                 | do not reopen                                    |
-| Stage **1k** enclosure / absorb / right-end | YES (`0b12e8c` / PR #64) | **redeploy claimed** (`9366f09`) | **live score BLOCKED** — no user JWT on cloud VM |
-| Sleeve / temporal / paid xAI                | blocked                  | —                                | **NO**                                           |
+| Item | On `main`? | Live / redeployed? | Ready to test? |
+|------|------------|--------------------|----------------|
+| Stage **1i** occlusion | YES | YES — **LOCKED** | do not reopen |
+| Stage **1j** ROI compute | YES | YES — **LOCKED** | do not reopen |
+| Stage **1k** enclosure / absorb / right-end | YES | YES — **scored live** | **NOT CLEARED 7/11** |
 
-## STAGE 1K LIVE VERIFY — BLOCKED (harness ready)
+## STAGE 1K — canonical live score (score-only)
 
-`repair_method_version` expected: `architecture_c_still_repair_1k`
+Work-order: GitHub **#52** (parent **#50**). Repair **not** re-run.
 
-Work-order: GitHub **#52** (parent **#50**). Lane A only. Paid spend locked.
+| Field | Value |
+|-------|--------|
+| Asset | **`c9c4efee-6bd2-450f-a9e4-b70fb9b722bb`** |
+| `repair_method_version` | `architecture_c_still_repair_1k` |
+| Gate | **NOT CLEARED — 7 / 11** |
+| PASS | 1, 3, 5, 7, 8, 10, 11 |
+| FAIL | 2, 4, 6, 9 |
+| Ghost ratios (unfiltered) | combined **0.195**, left **0.042**, right **0.273** |
+| Right-end cream→navy | **41** (1j 109; fixture 42) |
+| Sleeve 4×3 | **0** (1j 8) |
+| Cream→navy C4 | **19** / 1-px raise (1j 71 / 3-px; fixture 0) |
 
-### What ran
+vs 1j `fb8117ee` **5/11**: C5 and C8 now PASS. vs fixture **9/11**: live extra FAILs are C4 and C9-right.
 
-| Probe                                      | Result                                                                 |
-| ------------------------------------------ | ---------------------------------------------------------------------- |
-| POST proxy with anon/publishable JWT       | HTTP **401** `unauthenticated` in **1366 ms** — **not 546**            |
-| OPTIONS proxy                              | 200                                                                    |
-| DB `architecture_c_still_repair_1k` assets | **0** — newest chest still is 1j `fb8117ee`                            |
-| Lane E fixture (crop + 1h α)               | **NOT CLEARED 9/11** (FAIL 2 pinstripe remnants, 6 right-end 42 px)    |
-| 1j live PNG Lane E extras                  | ghosts 0.607/0.593, right-end 109, sleeve 4×3 = 8 — matches `d3dbe647` |
+Lane E 1j rescore of the same PNGs is 5/11, matching the human 1j table. Decoder: ImageScript (edge), not ffmpeg JPEG.
 
-Exact blocker: cloud VM `.env` has no AVT **user** access token. Proxy `getUser()` rejects the anon key. Do not use service-role.
-
-### Claude next (Cowork / Execution Manager)
-
-```bash
-AVT_USER_ACCESS_TOKEN='<signed-in AVT owner JWT>' \
-  ./scripts/architecture-c-stage1k-live-verify.sh --skip-calibration
-```
-
-1. Refuse if version ≠ `architecture_c_still_repair_1k` (DEPLOYMENT MISMATCH).
-2. Score 11 chest criteria from `stage1k-harness/<label>/report.json`.
-3. Commit live asset id + latency + table over this blocked report.
-
-Evidence: `docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1K_RESULT_2026-09-15.md`
+Full scorecard: `docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1K_RESULT_2026-09-15.md`
 
 ### Preserved locks
 
-chest-local α · crease/wedge ownership · hand/face protection · no midY luma>180 lock · left-third coverage · no global SAM-3 change · ROI `dilateAlphaRoi` (1j compute) · no V3 · no paid Grok
+chest-local α · crease/wedge ownership · hand/face protection · no midY luma>180 lock · left-third coverage · no global SAM-3 change · ROI `dilateAlphaRoi` (1j compute)
+
+### Next
+
+Hold paint. ChatGPT rules on C2/C4/C6/C9-right. No V3. No paid Grok. No CC. No proxy auth widen.
+
+### Prior blocked probe (PR #65, superseded by the live score above)
+
+Anon/publishable JWT POST to `architecture-c-still-repair-proxy` returned HTTP **401** `unauthenticated` in **1366 ms** (not 546). Cloud VM had no user JWT. Harness remains on `main`: `scripts/architecture-c-stage1k-live-verify.sh`, `src/lib/eval/liveVerify.ts`, `docs/research/results/2026-09-04-still-repair/stage1k-harness/`.
