@@ -2,11 +2,13 @@
 
 > **Convention.** This file is always Claude's most recent handoff. Claude overwrites it each time; dated copies live in `docs/` and `docs/research/results/`. Cursor and ChatGPT: "check the repo" means read this file. Cursor's side is `docs/handoffs/CURSOR_LATEST.md`.
 
-**Updated:** 2026-09-15 (rev 17 — Stage 1l live asset minted, identity only, not scored) · **Author:** Cursor (identity-only) · **Spend:** $0 · **No paid call pending** · stage-1 runs cost $0
+**Updated:** 2026-09-15 (rev 18 — Stage 1l live scored NOT CLEARED 10/11 on `9eaf0c55`) · **Author:** Cursor (merge of identity PR #69 + score PR #70) · **Spend:** $0 · **No paid call pending** · stage-1 runs cost $0
 
 ## State in one paragraph
 
-**Latest (rev 17):** Stage 1l live asset **`9eaf0c55-5fdd-44ac-ac5c-9a9a86414c75`**, `repair_method_version: architecture_c_still_repair_1l`, `occlusion_source: sam3`, `sam3_ok: true`, fallback `false`, still `2aa1a44c`, keyframe `v2-still-0.785`, canonical chest quad, `effective_band_bbox.pixel_count` 27 390. **Gate: NOT SCORED** (Lane E follow-up). Cloud VM anon POST remains 401; this agent did not re-run repair. UI path + one-shot script: `docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1L_LIVE_ASSET_2026-09-15.md`.
+**Latest (rev 18):** Stage 1l live asset **`9eaf0c55-5fdd-44ac-ac5c-9a9a86414c75`**, `repair_method_version: architecture_c_still_repair_1l`, `occlusion_source: sam3`, `sam3_ok: true`, fallback `false`, still `2aa1a44c`, keyframe `v2-still-0.785`, canonical chest quad `[[0.30,0.530],[0.87,0.533],[0.87,0.585],[0.30,0.582]]`, `effective_band_bbox.pixel_count` 27 390. Lane E unfiltered mid-luma (`bandAuthorityMaskUsed: false`). **Verdict: CHEST STILL GATE NOT CLEARED — 10 / 11** (PASS 1, 2, 3, 4, 5, 6, 7, 8, 10, 11; FAIL **9 only**). vs 1k `c9c4efee` (7/11): **C2 remnants 6→0**, **C4 cream→navy 19/1-px→0**, **C6 right-end 41→0**; C9 improved 0.195→0.172 (left 0.042→0.000, right 0.273→0.261). C9-right (x 462–500 / y 713–723; 84/488) remains the gate. Repair was **not** re-run; paint was **not** changed. Identity + UI path: `ARCHITECTURE_C_STILL_REPAIR_STAGE1L_LIVE_ASSET_2026-09-15.md`. Scorecard: `ARCHITECTURE_C_STILL_REPAIR_STAGE1L_RESULT_2026-09-15.md`. Do not mint a second 1l row.
+
+**Latest (rev 17):** Stage 1l live asset **`9eaf0c55-5fdd-44ac-ac5c-9a9a86414c75`** identity only (PR #69). Same SAM-3 / still / quad / bbox as rev 18. **Gate then: NOT SCORED** (Lane E follow-up, now completed in rev 18). Cloud VM anon POST remains 401. UI path + one-shot script: `docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1L_LIVE_ASSET_2026-09-15.md`.
 
 **Latest (rev 16):** Stage 1k live asset **`c9c4efee-6bd2-450f-a9e4-b70fb9b722bb`**, `repair_method_version: architecture_c_still_repair_1k`, `occlusion_source: sam3`, `sam3_ok: true`, `sam3_reason: null`, `allow_skin_heuristic_fallback: false`, `effective_band_bbox.pixel_count` 27 307, latency ~56.6 s. Lane E unfiltered mid-luma (`bandAuthorityMaskUsed: false`). **Verdict: CHEST STILL GATE NOT CLEARED — 7 / 11** (PASS 1, 3, 5, 7, 8, 10, 11). vs 1j `fb8117ee` (5/11): **C5 sleeve 4×3 fixed** (8→0), **C8 tapes painted** (47/68 bright→0). Still FAIL: **C2** 6 pinstripe remnants (1j 22); **C4** 19 cream→navy / 1-px raise at x 290 (1j 71 / 3-px); **C6** right-end **41** cream→navy (1j 109; fixture 42); **C9** ghost ratio **0.195** (left 0.042, right 0.273) vs ceiling 0.05 (1j 0.590). Fixture predicted 9/11 (FAIL C2+C6 only) — live extra FAILs are C4 and C9-right (wordmark half). 1k vs 1j: 3 773 px. 1i occlusion + 1j ROI hold. Score-only; repair not re-run.
 
@@ -22,7 +24,9 @@
 
 ## Read this
 
-**`docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1L_LIVE_ASSET_2026-09-15.md`** — 1l live identity (`9eaf0c55`, `_1l`, sam3 ok). **Not scored.** UI click path + one-shot script. Lane E is a follow-up.
+**`docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1L_RESULT_2026-09-15.md`** — 1l live verification: preflight (`9eaf0c55`, `_1l`, sam3 ok), Lane E **NOT CLEARED 10/11** vs 1k 7/11 and fixture 11/11, forensic A–E. C9-right remains. Evidence `stage1l_chest_compare.jpg`, `stage1l_pinstripe_topleft.jpg`, `stage1l_crease_lettering.jpg`, `stage1l_right_top_edge.jpg`, `stage1l_sleeve_zip_bottom.jpg`, `stage1l_centre_wedge.jpg`, `stage1l_lane_e_report.json`, `stage1l_live_score.json`.
+
+**`docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1L_LIVE_ASSET_2026-09-15.md`** — 1l live identity (`9eaf0c55`, `_1l`, sam3 ok). UI click path + one-shot script. Do not mint a second 1l row.
 
 **`docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1K_RESULT_2026-09-15.md`** — 1k live verification: preflight (`c9c4efee`, `_1k`, sam3 ok), Lane E 7/11 table vs 1j 5/11 and fixture 9/11, forensic A–E, ImageScript decoder note. Evidence `stage1k_chest_compare.jpg`, `stage1k_pinstripe_topleft.jpg`, `stage1k_crease_lettering.jpg`, `stage1k_right_top_edge.jpg`, `stage1k_sleeve_zip_bottom.jpg`, `stage1k_centre_wedge.jpg`, `stage1k_lane_e_report.json`, `stage1k_live_score.json`.
 
@@ -58,10 +62,10 @@ The first stage-1b run supplied the quad directly to `architecture-c-still-repai
 
 | Owner | Item |
 |---|---|
-| **ChatGPT** | Rule on the 1k live 7/11. Locked wins: 1i occlusion, 1j ROI, 1k C5 (sleeve 4×3) + C8 (tapes). Decide whether the remaining FAILs are in-scope for a 1ℓ patch or a stop: **C6** 41 px navy-bounded holes (fixture-honest), **C2** 6 ridge AA px, **C4** 19 cream / 1-px raise (fixture missed), **C9-right** 0.273 (fixture 0.012; wordmark-half mid-luma). Do not treat fixture 9/11 as live. Still pending: API-side Imagine image-edit-with-references anchor test (Grok Build note). |
-| **Cursor** | Score-only 1k is done. Hold paint until ChatGPT rules. Do not reopen 1i/1j. |
-| **Fendi** | Nothing blocking. Gate is **NOT CLEARED 7/11** on `c9c4efee`. No re-run of 1k. |
-| **Claude** | Holding. No re-runs of 1k. Sleeve stays on hold. |
+| **ChatGPT** | Rule on the 1l live **10/11**. Locked wins: 1i occlusion, 1j ROI, 1k C5+C8, 1l **C2/C4/C6** (live-cleared). Remaining FAIL is **C9-right** 0.261 (84/488; x 462–500 / y 713–723). Do not treat fixture 11/11 as live. Still pending: API-side Imagine image-edit-with-references anchor test (Grok Build note). |
+| **Cursor** | Score-only 1l is done. Hold paint until ChatGPT rules. Do not reopen 1i/1j or C2/C4/C6 without new live pixels. |
+| **Fendi** | Nothing blocking. Gate is **NOT CLEARED 10/11** on `9eaf0c55`. No re-run of 1l. Do not mint a second 1l row. |
+| **Claude** | Holding. No re-runs of 1l. Sleeve stays on hold. |
 
 ## Guardrails unchanged
 

@@ -1,11 +1,17 @@
 /**
- * GitHub-verified Stage 1l chest still identity (live asset, not yet scored).
- * Evidence: docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1L_LIVE_ASSET_2026-09-15.md
+ * GitHub-verified Stage 1l chest still identity + live scorecard.
+ * Identity: docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1L_LIVE_ASSET_2026-09-15.md
+ * Scorecard: docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1L_RESULT_2026-09-15.md
  *
  * Produced on the canonical still `2aa1a44c` with the measured live quad after
  * PR #68 merged and `architecture-c-still-repair-proxy` was redeployed for 1l.
- * Lane E 11-point scoring is a follow-up — this table is identity only.
+ *
+ * Live ≠ fixture: the real-crop 1l pipeline predicted 11/11.
+ * Canonical live (asset 9eaf0c55, ImageScript-decoded source, unfiltered mid-luma)
+ * is 10/11 (FAIL C9 only). 1k leftovers C2/C4/C6 are live-cleared.
  */
+
+import type { ChestCriterionId } from "./types";
 
 export const STAGE1L_LIVE_VERIFIED = {
   repairMethodVersion: "architecture_c_still_repair_1l",
@@ -29,5 +35,16 @@ export const STAGE1L_LIVE_VERIFIED = {
     [0.3, 0.582],
   ] as const,
   effectiveBandBboxPixelCount: 27390,
-  gate: "NOT_SCORED" as const,
+  gate: "NOT_CLEARED" as const,
+  pass: [1, 2, 3, 4, 5, 6, 7, 8, 10, 11] as const satisfies readonly ChestCriterionId[],
+  fail: [9] as const satisfies readonly ChestCriterionId[],
+  /** Unfiltered window ghost ratios (no authority-mask skip). Combined 0.172. */
+  ghostRatiosUnfiltered: { left: 0, right: 0.261, combined: 0.172 },
+  midLumaGhosts: 84,
+  midLumaChecked: 488,
+  rightEndCreamToNavy: 0,
+  creamBodyToNavy: 0,
+  firstNavyRaisePx: 0,
+  sleeveCornerDarkened: 0,
+  pinstripeRemnants: 0,
 } as const;
