@@ -36,6 +36,7 @@ import type { ChestVisualReport, NormQuad, RgbaImage } from "./types";
 
 export const STAGE1K_EXPECTED_VERSION = "architecture_c_still_repair_1k";
 export const STAGE1L_EXPECTED_VERSION = "architecture_c_still_repair_1l";
+export const STAGE1M_EXPECTED_VERSION = "architecture_c_still_repair_1m";
 
 export const STAGE1K_CANONICAL = {
   projectId: "764a63d2-93cd-44f3-905f-292f14ab2f51",

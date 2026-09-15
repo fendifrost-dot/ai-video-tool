@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { STAGE1J_LIVE_VERIFIED } from "./stage1jEvidence";
 import { STAGE1K_LIVE_VERIFIED } from "./stage1kEvidence";
 import { STAGE1L_LIVE_VERIFIED } from "./stage1lEvidence";
+import { STAGE1M_LIVE_VERIFIED } from "./stage1mEvidence";
 import {
   extractRepairMethodVersion,
   forensicExtras,
@@ -10,6 +11,7 @@ import {
   STAGE1K_CANONICAL,
   STAGE1K_EXPECTED_VERSION,
   STAGE1L_EXPECTED_VERSION,
+  STAGE1M_EXPECTED_VERSION,
 } from "./liveVerify";
 import { GHOST_RATIO_PASS_CEILING } from "./chestCriteria";
 
@@ -32,6 +34,12 @@ describe("Stage 1k live-verify harness (unit)", () => {
     expect(STAGE1L_LIVE_VERIFIED.pinstripeRemnants).toBe(0);
     expect(STAGE1L_LIVE_VERIFIED.creamBodyToNavy).toBe(0);
     expect(STAGE1L_LIVE_VERIFIED.rightEndCreamToNavy).toBe(0);
+    expect(STAGE1M_LIVE_VERIFIED.gate).toBe("CLEARED");
+    expect(STAGE1M_LIVE_VERIFIED.fail).toEqual([]);
+    expect(STAGE1M_LIVE_VERIFIED.assetId).toBe("9ed83c01-8c7d-4d1b-918f-87b0fc743c50");
+    expect(STAGE1M_LIVE_VERIFIED.pinstripeRemnants).toBe(0);
+    expect(STAGE1M_LIVE_VERIFIED.creamBodyToNavy).toBe(0);
+    expect(STAGE1M_LIVE_VERIFIED.rightEndCreamToNavy).toBe(0);
     expect(
       extractRepairMethodVersion({ repair: { repair_method_version: STAGE1K_EXPECTED_VERSION } }),
     ).toBe(STAGE1K_EXPECTED_VERSION);
@@ -47,6 +55,25 @@ describe("Stage 1k live-verify harness (unit)", () => {
     expect(
       extractRepairMethodVersion({ repair: { repair_method_version: STAGE1L_EXPECTED_VERSION } }),
     ).toBe(STAGE1L_EXPECTED_VERSION);
+  });
+
+  it("locks Stage 1m live asset identity and canonical 11/11 score", () => {
+    expect(STAGE1M_EXPECTED_VERSION).toBe("architecture_c_still_repair_1m");
+    expect(STAGE1M_LIVE_VERIFIED.assetId).toBe("9ed83c01-8c7d-4d1b-918f-87b0fc743c50");
+    expect(STAGE1M_LIVE_VERIFIED.repairMethodVersion).toBe(STAGE1M_EXPECTED_VERSION);
+    expect(STAGE1M_LIVE_VERIFIED.cleanStillAssetId).toBe(STAGE1K_CANONICAL.stillAssetId);
+    expect(STAGE1M_LIVE_VERIFIED.requestedBandQuadNorm).toEqual(STAGE1K_CANONICAL.bandQuad);
+    expect(STAGE1M_LIVE_VERIFIED.gate).toBe("CLEARED");
+    expect(STAGE1M_LIVE_VERIFIED.pass).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    expect(STAGE1M_LIVE_VERIFIED.fail).toEqual([]);
+    expect(STAGE1M_LIVE_VERIFIED.ghostRatiosUnfiltered.combined).toBeLessThan(GHOST_RATIO_PASS_CEILING);
+    expect(STAGE1M_LIVE_VERIFIED.ghostRatiosUnfiltered.right).toBeLessThan(GHOST_RATIO_PASS_CEILING);
+    expect(STAGE1M_LIVE_VERIFIED.ghostRatiosUnfiltered.right).toBeLessThan(
+      STAGE1L_LIVE_VERIFIED.ghostRatiosUnfiltered.right,
+    );
+    expect(
+      extractRepairMethodVersion({ repair: { repair_method_version: STAGE1M_EXPECTED_VERSION } }),
+    ).toBe(STAGE1M_EXPECTED_VERSION);
   });
 
   it("fixture pipeline is 11/11 under Stage 1l paint (1k live 7/11 stays historical)", () => {

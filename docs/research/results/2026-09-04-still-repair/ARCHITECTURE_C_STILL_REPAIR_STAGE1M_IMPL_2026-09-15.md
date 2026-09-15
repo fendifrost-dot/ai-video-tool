@@ -1,7 +1,7 @@
 # Architecture C — Stage 1m implementation (C9-right wordmark-edge AA)
 
 **Date:** 2026-09-15 · **Author:** Cursor Lane A · **Spend:** $0 · **Issue:** #71 (lineage #67, parent #50)
-**Status:** automated regression ready for canonical live verification. **CHEST STILL GATE not scored live** (requires Fendi redeploy of `architecture-c-still-repair-proxy`).
+**Status:** automated regression on `main` (PR #72). **Live 1m asset scored** `9ed83c01` (`architecture_c_still_repair_1m`). **CHEST STILL GATE: CLEARED 11/11** (Lane E, unfiltered mid-luma).
 
 Evidence labels: **[V]** verified on the canonical crop fixture + Lane E · **[D]** decision · **[R]** recommendation
 
