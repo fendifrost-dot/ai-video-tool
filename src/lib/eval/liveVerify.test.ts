@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { STAGE1J_LIVE_VERIFIED } from "./stage1jEvidence";
+import { STAGE1K_LIVE_VERIFIED } from "./stage1kEvidence";
 import {
   extractRepairMethodVersion,
   forensicExtras,
@@ -21,24 +22,27 @@ describe("Stage 1k live-verify harness (unit)", () => {
       [0.3, 0.582],
     ]);
     expect(STAGE1J_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
+    expect(STAGE1K_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
+    expect(STAGE1K_LIVE_VERIFIED.fail).toEqual([2, 4, 6, 9]);
     expect(
       extractRepairMethodVersion({ repair: { repair_method_version: STAGE1K_EXPECTED_VERSION } }),
     ).toBe(STAGE1K_EXPECTED_VERSION);
   });
 
-  it("fixture pipeline is 9/11 with truthful ghosts and residual right-end cream→navy", () => {
+  it("fixture pipeline is 11/11 under Stage 1l paint (1k live 7/11 stays historical)", () => {
     const { source, output } = runFixturePipeline();
-    const pkg = scoreStillPair(source, output, "fixture_1k", false, STAGE1K_CANONICAL.bandQuad);
+    const pkg = scoreStillPair(source, output, "fixture_1l", false, STAGE1K_CANONICAL.bandQuad);
     const passed = pkg.report.criteria.filter((c) => c.verdict === "PASS").map((c) => c.id);
     const failed = pkg.report.criteria.filter((c) => c.verdict === "FAIL").map((c) => c.id);
-    expect(passed).toEqual([1, 3, 4, 5, 7, 8, 9, 10, 11]);
-    expect(failed).toEqual([2, 6]);
-    expect(pkg.report.passCount).toBe(9);
+    expect(passed).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    expect(failed).toEqual([]);
+    expect(pkg.report.passCount).toBe(11);
     const c9 = pkg.report.criteria.find((c) => c.id === 9)!;
     expect(c9.metrics.ghostRatio).toBeLessThan(GHOST_RATIO_PASS_CEILING);
+    expect(c9.metrics.rightWindowRatio).toBeLessThan(STAGE1K_LIVE_VERIFIED.ghostRatiosUnfiltered.right);
     expect(pkg.extras.sleeveCornerDarkened).toBe(0);
-    expect(pkg.extras.rightEndCreamToNavy).toBeGreaterThan(0);
-    expect(pkg.extras.rightEndCreamToNavy).toBeLessThan(STAGE1J_LIVE_VERIFIED.rightEndCreamToNavy);
+    expect(pkg.extras.rightEndCreamToNavy).toBe(0);
+    expect(pkg.extras.creamToNavyX280Y673).toBe(0);
     expect(pkg.extras.changedAboveY600).toBe(0);
     expect(pkg.extras.changedBelowY800).toBe(0);
     expect(pkg.json.live).toBe(false);
