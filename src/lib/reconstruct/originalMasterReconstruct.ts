@@ -23,11 +23,7 @@
  * `segmentation`. This stage does not feather, dilate, or invent geometry.
  */
 
-import type {
-  ReconstructInput,
-  ReconstructResult,
-  RgbaImage,
-} from "./types";
+import type { ReconstructInput, ReconstructResult, RgbaImage } from "./types";
 
 export type { ReconstructInput, ReconstructMetrics, ReconstructResult, RgbaImage } from "./types";
 

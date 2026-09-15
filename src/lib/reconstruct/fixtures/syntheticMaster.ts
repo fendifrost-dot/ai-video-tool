@@ -54,12 +54,7 @@ export function invertedGenerated(original: RgbaImage): RgbaImage {
   return { width: original.width, height: original.height, data };
 }
 
-export function rectMask(
-  width: number,
-  height: number,
-  rect: Rect,
-  value = 1,
-): Float32Array {
+export function rectMask(width: number, height: number, rect: Rect, value = 1): Float32Array {
   const a = new Float32Array(width * height);
   for (let y = rect.y0; y < rect.y1; y++) {
     for (let x = rect.x0; x < rect.x1; x++) {
@@ -74,8 +69,7 @@ export function featheredRectMask(width: number, height: number, rect: Rect): Fl
   const a = new Float32Array(width * height);
   for (let y = rect.y0; y < rect.y1; y++) {
     for (let x = rect.x0; x < rect.x1; x++) {
-      const edge =
-        x === rect.x0 || x === rect.x1 - 1 || y === rect.y0 || y === rect.y1 - 1;
+      const edge = x === rect.x0 || x === rect.x1 - 1 || y === rect.y0 || y === rect.y1 - 1;
       a[y * width + x] = edge ? 0.5 : 1;
     }
   }

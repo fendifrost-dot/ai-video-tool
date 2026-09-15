@@ -7,9 +7,4 @@ export {
   unauthorizedPixelsMatchOriginal,
 } from "./originalMasterReconstruct";
 
-export type {
-  ReconstructInput,
-  ReconstructMetrics,
-  ReconstructResult,
-  RgbaImage,
-} from "./types";
+export type { ReconstructInput, ReconstructMetrics, ReconstructResult, RgbaImage } from "./types";

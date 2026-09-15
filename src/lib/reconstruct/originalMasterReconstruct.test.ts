@@ -48,9 +48,7 @@ describe("Lane D fixture pack — original-master reconstruction", () => {
   const pack = laneDFixturePack();
 
   it("generated differs from original at every pixel (rerender is never a no-op)", () => {
-    expect(countRgbMismatches(pack.original, pack.generated)).toBe(
-      pack.width * pack.height,
-    );
+    expect(countRgbMismatches(pack.original, pack.generated)).toBe(pack.width * pack.height);
   });
 
   it("zero segmentation returns the original master byte-for-byte (Grok cannot be the master)", () => {
