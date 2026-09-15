@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "host": "premiere",
+  "project_id": "example-not-a-live-project",
+  "operator": "fendi",
+  "workspace_root": "/Volumes/T7/avt-finishing/example-project",
+  "export_package_relpath": "unzipped-export/premiere_ready",
+  "spend": {
+    "astra_allowed": false,
+    "max_usd": 0
+  },
+  "actions": [
+    {
+      "op": "import_fcpxml",
+      "runner": "uxp",
+      "path": "unzipped-export/premiere_ready/timeline.fcpxml"
+    },
+    {
+      "op": "import_media_folder",
+      "runner": "uxp",
+      "path": "unzipped-export/approved_clips"
+    },
+    {
+      "op": "import_media_folder",
+      "runner": "uxp",
+      "path": "unzipped-export/audio"
+    },
+    {
+      "op": "add_markers_from_beats",
+      "runner": "uxp"
+    },
+    {
+      "op": "queue_ame_export",
+      "runner": "uxp",
+      "preset_path": "presets/avt_master_h264.epr",
+      "output_path": "out/master.mp4"
+    },
+    {
+      "op": "write_sidecar",
+      "runner": "uxp",
+      "path": "out/finishing_sidecar.json"
+    }
+  ]
+}
