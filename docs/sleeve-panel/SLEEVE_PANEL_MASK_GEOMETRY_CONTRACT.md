@@ -108,4 +108,4 @@ A target quad is rejected (`sleeve_panel_geometry_rejected`) when any of:
 3. Places **visible-upper-arm** quads only (`SEEDED_VISIBLE_SLEEVE_QUADS`).
 4. Calls `repairVisibleSleevePanelsOnStill` → `repairVisibleSleevePanels`.
 
-`repair_method_version` for this wiring is `architecture_c_sleeve_still_1b` (not a chest 1m bump). Hidden shoulder→cuff stays unvalidated. Stage 1a (`architecture_c_sleeve_still_1a`) is historical: live FAIL #6 cream fill.
+`repair_method_version` for this wiring is `architecture_c_sleeve_still_1c` (not a chest 1m bump). Hidden shoulder→cuff stays unvalidated. Stage 1a (`architecture_c_sleeve_still_1a`) and 1b (`architecture_c_sleeve_still_1b`) are historical: live FAIL #6 (1a both-side cream; 1b right cream-majority over dark V2 ring).

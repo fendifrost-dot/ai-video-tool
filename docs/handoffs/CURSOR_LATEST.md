@@ -11,20 +11,23 @@
 | Stage **1m** chest CLEARED 11/11 | YES (PR #73, `e206d3c`) | YES (asset `9ed83c01`) | **LOCKED — do not reopen chest paint** |
 | Lane B isolated sleeve engine | YES (PR #60) | n/a (fixtures) | landed |
 | Lane B sleeve still **1a** live | YES (PR #75 wiring, PR #80 score) | YES (asset `fde270bf`) | **NOT CLEARED 5/6** (FAIL #6 cream fill) — historical lock |
-| Lane B sleeve still **1b** navy-ward | YES (PR #82) | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
+| Lane B sleeve still **1b** live | YES (PR #82) | YES (asset `a4dc7f47`, PR #83) | **NOT CLEARED 5/6** — left PASS, right cream-majority over dark V2 ring |
+| Lane B sleeve still **1c** navy-over-cream | this PR (#84) | **NO — redeploy needed** | **YES after** `architecture-c-still-repair-proxy` redeploy |
 | Temporal live activation | YES (prep only, PR #78) | `TEMPORAL_LIVE_ACTIVATION_ARMED = false` | **wait — sleeve not CLEARED** |
 
-## SLEEVE STILL 1b — ready for edge redeploy
+## SLEEVE STILL 1c — ready for edge redeploy
 
-Work-order: GitHub **#81** (lineage **#74** / **#54**, parent **#50**). Lane B only. **Do not reopen chest 1m. Do not arm temporal.**
+Work-order: GitHub **#84** (lineage **#81** / **#74** / **#54**, parent **#50**). Lane B only. **Do not reopen chest 1m. Do not arm temporal.**
 
-`repair_method_version: architecture_c_sleeve_still_1b`  
+`repair_method_version: architecture_c_sleeve_still_1c`  
 `claim: visible_geometry_only`  
 `hidden_shoulder_to_cuff_validated: false`
 
-### FAIL #6 (1a historical)
+### FAIL #6 (1b historical)
 
-1a live `fde270bf` painted cream/white (left luma 202→227, right 134→226). Scorecard: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md`. Crops: `docs/sleeve-panel/live-1a/`. Root cause: `DEFAULT_FLAT_SLEEVE_SOURCE_BBOX` is cream on the SL flat. 1b `resolveNavyPanelSource` warps a navy-majority crop, else a vertical navy strip, else median product navy.
+1b live `a4dc7f47` warped a ~0.23 navy crop as-is. Left luma 202→161 PASS. Right (already-dark V2 ring) 134→158 FAIL (need ≤125.6). 1c `preferProductNavyOverCream` replaces non-navy source pixels with median product navy so both quads drop luma.
+
+Leftover fixture: 1b-style as-is warp FAILS criterion 6 on the dark right ring; 1c CLEARS 6/6. C5/C11/chest reserved stay 0.
 
 ### Lineage
 
@@ -32,14 +35,14 @@ Work-order: GitHub **#81** (lineage **#74** / **#54**, parent **#50**). Lane B o
 
 ### Deploy
 
-Redeploy **only** `architecture-c-still-repair-proxy`. Frontend Publish optional for paint; required for the product-UI sleeve source resolver. No V3. No paid Grok.
+Redeploy **only** `architecture-c-still-repair-proxy`. Frontend Publish optional for paint; required for the product-UI sleeve source resolver. No V3. No paid Grok. Parent owns Lovable after READY.
 
 ### Claude / Fendi next ($0)
 
-1. Redeploy **only** `architecture-c-still-repair-proxy`
+1. Merge this PR, then redeploy **only** `architecture-c-still-repair-proxy`
 2. Hero Frame click path in `docs/sleeve-panel/LANE_B_SLEEVE_STILL_LIVE_WIRING.md`
 3. Canonical sleeve run on **9ed83c01** (picker stays on clean `2aa1a44c`)
-4. Expect `architecture_c_sleeve_still_1b`. Score `lane-b-sleeve-live-v1`. Criterion 6 must pass. Do **not** start temporal.
+4. Expect `architecture_c_sleeve_still_1c`. Score `lane-b-sleeve-live-v1`. Criterion 6 must pass on **both** sides. Do **not** start temporal.
 5. Do **not** flip `TEMPORAL_LIVE_ACTIVATION_ARMED`
 
 ## STAGE 1M — live score (authoritative, PR #73)

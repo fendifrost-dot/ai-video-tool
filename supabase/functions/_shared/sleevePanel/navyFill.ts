@@ -8,21 +8,29 @@
  *
  * 1b: if the requested crop is not navy-majority, search the same flat
  * for a vertical navy strip on that side; if none, fill with the flat's
- * median product navy. Never paint cream/white as "panel truth".
+ * median product navy. Live 1b (`a4dc7f47`) still warped a ~0.23 navy
+ * crop as-is — cream-majority paste raised luma on the already-dark
+ * right V2 ring (134→158) while left (cream 202→161) passed.
+ *
+ * 1c: prefer product navy over cream stripe. After resolving a crop,
+ * replace non-navy source pixels with median product navy so both
+ * visible quads drop luma navy-ward, including a dark target ring.
  *
  * Does not import logoComposite / chest paint.
  */
 
-import { cropNormBbox, createRgba, isNormBbox } from "./raster.ts";
+import { cloneRgba, cropNormBbox, createRgba, isNormBbox } from "./raster.ts";
 import type { NormBbox, RgbaImage, SleeveSide } from "./types.ts";
 
 export const NAVY_CROP_MIN_FRACTION = 0.18;
+/** Skip the vertical-strip search when the requested crop is already navy-majority. */
+export const NAVY_MAJORITY_FRACTION = 0.5;
 export const NAVY_SEARCH_MIN_COLUMN_FRACTION = 0.04;
 
 /** Fixture / SL chest-band class navy when the flat has no navy samples. */
 export const PRODUCT_NAVY_FALLBACK: readonly [number, number, number] = [28, 32, 88];
 
-export type NavyFillMode = "warp" | "median_navy";
+export type NavyFillMode = "warp" | "median_navy" | "navy_over_cream";
 
 export type NavyPanelSource = {
   source: RgbaImage;
@@ -83,6 +91,30 @@ export function medianNavyRgb(img: RgbaImage): [number, number, number] | null {
     return arr[Math.floor(arr.length / 2)]!;
   };
   return [mid(rs), mid(gs), mid(bs)];
+}
+
+/**
+ * Replace cream stripe / studio / any non-navy source with product navy.
+ * Keeps sampled navy pixels (construction). Live 1b's 0.23 navy warp left
+ * cream-majority paste; this is the 1c navy-ward step.
+ */
+export function preferProductNavyOverCream(
+  img: RgbaImage,
+  navy: readonly [number, number, number],
+): { image: RgbaImage; replaced: number } {
+  const out = cloneRgba(img);
+  const total = img.width * img.height;
+  let replaced = 0;
+  for (let i = 0; i < total; i++) {
+    const o = i * 4;
+    if (isSleeveProductNavy(out.data[o]!, out.data[o + 1]!, out.data[o + 2]!)) continue;
+    out.data[o] = navy[0];
+    out.data[o + 1] = navy[1];
+    out.data[o + 2] = navy[2];
+    out.data[o + 3] = 255;
+    replaced++;
+  }
+  return { image: out, replaced };
 }
 
 /**
@@ -173,6 +205,30 @@ export function findVerticalNavyBbox(
   return bbox;
 }
 
+function finalizePanelSource(
+  crop: RgbaImage,
+  bbox: NormBbox,
+  medianNavy: [number, number, number],
+): NavyPanelSource {
+  const preferred = preferProductNavyOverCream(crop, medianNavy);
+  if (preferred.replaced === 0) {
+    return {
+      source: crop,
+      bbox,
+      navyFraction: navyFraction(crop),
+      fillMode: "warp",
+      medianNavy,
+    };
+  }
+  return {
+    source: preferred.image,
+    bbox,
+    navyFraction: navyFraction(preferred.image),
+    fillMode: "navy_over_cream",
+    medianNavy,
+  };
+}
+
 export function resolveNavyPanelSource(
   flat: RgbaImage,
   requested: NormBbox,
@@ -183,14 +239,12 @@ export function resolveNavyPanelSource(
   const globalMedian =
     medianNavyRgb(flat) ?? ([...PRODUCT_NAVY_FALLBACK] as [number, number, number]);
 
-  if (requestedFrac >= NAVY_CROP_MIN_FRACTION) {
-    return {
-      source: requestedCrop,
-      bbox: requested,
-      navyFraction: requestedFrac,
-      fillMode: "warp",
-      medianNavy: medianNavyRgb(requestedCrop) ?? globalMedian,
-    };
+  if (requestedFrac >= NAVY_MAJORITY_FRACTION) {
+    return finalizePanelSource(
+      requestedCrop,
+      requested,
+      medianNavyRgb(requestedCrop) ?? globalMedian,
+    );
   }
 
   const found =
@@ -199,14 +253,15 @@ export function resolveNavyPanelSource(
   if (found) {
     const crop = cropNormBbox(flat, found);
     const frac = navyFraction(crop);
-    if (frac >= NAVY_CROP_MIN_FRACTION) {
-      return {
-        source: crop,
-        bbox: found,
-        navyFraction: frac,
-        fillMode: "warp",
-        medianNavy: medianNavyRgb(crop) ?? globalMedian,
-      };
+    if (frac >= NAVY_CROP_MIN_FRACTION || frac > requestedFrac) {
+      return finalizePanelSource(crop, found, medianNavyRgb(crop) ?? globalMedian);
+    }
+  }
+
+  if (requestedFrac > 0) {
+    const cropMedian = medianNavyRgb(requestedCrop);
+    if (cropMedian) {
+      return finalizePanelSource(requestedCrop, requested, cropMedian);
     }
   }
 
@@ -215,7 +270,7 @@ export function resolveNavyPanelSource(
   return {
     source: createRgba(fw, fh, globalMedian[0], globalMedian[1], globalMedian[2]),
     bbox: requested,
-    navyFraction: requestedFrac,
+    navyFraction: 1,
     fillMode: "median_navy",
     medianNavy: globalMedian,
   };

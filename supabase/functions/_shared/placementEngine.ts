@@ -978,7 +978,7 @@ export type SleevePanelCompositeResult = {
     painted_pixel_count?: number;
     rejected_hidden_pixel_count?: number;
     rejected_chest_reserved_pixel_count?: number;
-    navy_fill_mode?: "warp" | "median_navy";
+    navy_fill_mode?: "warp" | "median_navy" | "navy_over_cream";
     source_navy_fraction?: number;
     requested_source_bbox_norm?: [number, number, number, number];
     resolved_source_bbox_norm?: [number, number, number, number];
@@ -990,7 +990,7 @@ export type SleevePanelCompositeResult = {
   hidden_shoulder_to_cuff_validated: false;
   consumed_chest_output: boolean;
   chest_output_asset_id: string | null;
-  navy_fill_mode: "warp" | "median_navy" | "mixed";
+  navy_fill_mode: "warp" | "median_navy" | "navy_over_cream" | "mixed";
 };
 
 export type SleevePanelCompositeOptions = {

@@ -28,7 +28,7 @@ describe("ARCHITECTURE_C_V2_REPAIR", () => {
     expect(ARCHITECTURE_C_V2_REPAIR.recommendedChestOutputAssetId).toBe(
       "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
     );
-    expect(SLEEVE_STILL_REPAIR_METHOD_VERSION).toBe("architecture_c_sleeve_still_1b");
+    expect(SLEEVE_STILL_REPAIR_METHOD_VERSION).toBe("architecture_c_sleeve_still_1c");
     expect(assessSleevePanelQuadPlacement(SEEDED_VISIBLE_SLEEVE_QUADS.left).ok).toBe(true);
   });
 });

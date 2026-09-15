@@ -1,7 +1,7 @@
 # Architecture C — Sleeve still Stage 1b (`architecture_c_sleeve_still_1b`)
 
 **Date:** 2026-09-15 · **Author:** Cursor Lane B · **Spend:** $0 · **Issue:** #81 (lineage #74 / #54, parent #50)  
-**Status:** **READY** for $0 live sleeve re-verify after edge redeploy of `architecture-c-still-repair-proxy`.
+**Status:** **Historical.** Live 1b `a4dc7f47` was **NOT CLEARED 5/6** (PR #83): left PASS, right FAIL (cream-majority warp over dark V2 ring). Stage 1c (`architecture_c_sleeve_still_1c`, #84) owns the right navy-ward leftover.
 
 Chest still gate: **CLEARED 11/11** (PR #73, asset `9ed83c01`, `architecture_c_still_repair_1m`). Not reopened.
 

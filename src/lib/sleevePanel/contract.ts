@@ -63,7 +63,7 @@ export type SleevePanelStageInput = {
   chestOutput?: ChestOutputConsumptionSlot | null;
 };
 
-export type SleeveNavyFillMode = "warp" | "median_navy";
+export type SleeveNavyFillMode = "warp" | "median_navy" | "navy_over_cream";
 
 export type SleevePanelSideResult = {
   side: SleeveSide;
