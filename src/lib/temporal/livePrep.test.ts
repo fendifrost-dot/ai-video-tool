@@ -30,10 +30,7 @@ import {
   evaluateTemporalLiveActivation,
 } from "./livePrep";
 import { propagateRepair } from "./propagate";
-import {
-  buildPropagationJobsFromApprovedSet,
-  approvedQuadToPropagationInput,
-} from "./quadAdapter";
+import { buildPropagationJobsFromApprovedSet, approvedQuadToPropagationInput } from "./quadAdapter";
 import {
   CLEARED_CHEST_FIXTURE_SIZE,
   clearedChestApprovedSet,

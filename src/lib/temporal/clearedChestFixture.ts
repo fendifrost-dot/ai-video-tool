@@ -20,7 +20,12 @@ function blankLuma(): Uint8Array {
   return new Uint8Array(W * H);
 }
 
-function paintMaskLuma(luma: Uint8Array, mask: { data: Uint8Array }, dx: number, value: number): void {
+function paintMaskLuma(
+  luma: Uint8Array,
+  mask: { data: Uint8Array },
+  dx: number,
+  value: number,
+): void {
   for (let y = 0; y < H; y++) {
     const row = y * W;
     for (let x = 0; x < W; x++) {

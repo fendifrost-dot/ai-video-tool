@@ -21,10 +21,7 @@ import {
   type SleeveStillGate,
   type TemporalLiveActivationDecision,
 } from "./livePrep";
-import {
-  buildPropagationJobsFromApprovedSet,
-  type PropagationJobSpec,
-} from "./quadAdapter";
+import { buildPropagationJobsFromApprovedSet, type PropagationJobSpec } from "./quadAdapter";
 import type { SourceClip } from "./contract";
 
 export interface HeroFrameTemporalHookInput {

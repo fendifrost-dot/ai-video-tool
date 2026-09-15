@@ -12,16 +12,16 @@ Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / *
 
 `src/lib/temporal/**` now includes a live-prep layer on top of `propagateRepair` (PR #61).
 
-| Surface | Change |
-|---------|--------|
-| `canonicalLineage.ts` | Frozen Stage 1m IDs + CLEARED chest quad |
-| `approvedQuad.ts` | Chest CLEARED + reserved PENDING sleeve slots |
-| `quadAdapter.ts` | Approved CLEARED quads → in-memory `propagateRepair` jobs |
-| `livePrep.ts` | Activation gate (`TEMPORAL_LIVE_ACTIVATION_ARMED = false`) |
-| `heroFrameHook.ts` | Isolated Hero Frame prepare hook — `temporalTrackingEnabled: false` |
-| `edgeAdapter.ts` | Future edge request/authorize contract — no fetch, no auth |
-| `clearedChestFixture.ts` | Synthetic luma clip for the live 1m chest quad |
-| This doc | Deploy notes: what **must wait** for sleeve CLEARED |
+| Surface                  | Change                                                              |
+| ------------------------ | ------------------------------------------------------------------- |
+| `canonicalLineage.ts`    | Frozen Stage 1m IDs + CLEARED chest quad                            |
+| `approvedQuad.ts`        | Chest CLEARED + reserved PENDING sleeve slots                       |
+| `quadAdapter.ts`         | Approved CLEARED quads → in-memory `propagateRepair` jobs           |
+| `livePrep.ts`            | Activation gate (`TEMPORAL_LIVE_ACTIVATION_ARMED = false`)          |
+| `heroFrameHook.ts`       | Isolated Hero Frame prepare hook — `temporalTrackingEnabled: false` |
+| `edgeAdapter.ts`         | Future edge request/authorize contract — no fetch, no auth          |
+| `clearedChestFixture.ts` | Synthetic luma clip for the live 1m chest quad                      |
+| This doc                 | Deploy notes: what **must wait** for sleeve CLEARED                 |
 
 **Not touched:** `logoComposite` / stillRepairOcclusion / `architecture-c-still-repair-proxy` chest path, `src/lib/sleevePanel/**` / edge sleevePanel, `src/lib/heroFrame/architectureCStillRepair.ts`, pipeline OS, reconstruct, Astra, Control Center, proxy auth, PR #37, V3 / paid Grok.
 
@@ -29,15 +29,15 @@ Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / *
 
 ## Canonical lineage (frozen)
 
-| Field | Value |
-|-------|--------|
-| Project | `764a63d2-93cd-44f3-905f-292f14ab2f51` |
-| Clean still | `2aa1a44c-b24a-46bf-890f-13a6fc65b1cc` |
-| Keyframe | `v2-still-0.785` |
-| Chest quad | `[[0.30,0.530],[0.87,0.533],[0.87,0.585],[0.30,0.582]]` |
-| Cleared chest asset | `9ed83c01-8c7d-4d1b-918f-87b0fc743c50` |
-| Chest method | `architecture_c_still_repair_1m` |
-| Chest gate | **CLEARED 11/11** |
+| Field               | Value                                                   |
+| ------------------- | ------------------------------------------------------- |
+| Project             | `764a63d2-93cd-44f3-905f-292f14ab2f51`                  |
+| Clean still         | `2aa1a44c-b24a-46bf-890f-13a6fc65b1cc`                  |
+| Keyframe            | `v2-still-0.785`                                        |
+| Chest quad          | `[[0.30,0.530],[0.87,0.533],[0.87,0.585],[0.30,0.582]]` |
+| Cleared chest asset | `9ed83c01-8c7d-4d1b-918f-87b0fc743c50`                  |
+| Chest method        | `architecture_c_still_repair_1m`                        |
+| Chest gate          | **CLEARED 11/11**                                       |
 
 **[VERIFIED]** These IDs match Stage 1m live evidence (`docs/research/results/2026-09-04-still-repair/ARCHITECTURE_C_STILL_REPAIR_STAGE1M_RESULT_2026-09-15.md`).
 
@@ -103,11 +103,11 @@ Do **not** do any of the following until a sleeve still on the same lineage (`2a
 
 **Do not redeploy from this lane:**
 
-| Function | Why |
-|----------|-----|
-| `architecture-c-still-repair-proxy` | Lane B sleeve verify; chest 1m path locked |
-| `wardrobe-video-propagate-proxy` | Fal engine selector — out of ownership |
-| `grok-image-garment-proxy` / `grok-video-research-proxy` | Paid / research Grok — forbidden |
+| Function                                                 | Why                                        |
+| -------------------------------------------------------- | ------------------------------------------ |
+| `architecture-c-still-repair-proxy`                      | Lane B sleeve verify; chest 1m path locked |
+| `wardrobe-video-propagate-proxy`                         | Fal engine selector — out of ownership     |
+| `grok-image-garment-proxy` / `grok-video-research-proxy` | Paid / research Grok — forbidden           |
 
 Publish ≠ edge redeploy. No V3. No paid Grok. No Control Center.
 
