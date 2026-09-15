@@ -809,7 +809,7 @@ export async function compositeLogoOntoVton(
     // Stage 1k: closed-component enclosure; cream-body absorb stop; right-end trim.
     // Stage 1l: lateral ridge AA, 1-row cream raise guard, cool-white tongue, in-quad mid-luma.
     // Stage 1m: snap wordmark-edge AA ghosts after warp (C9-right only).
-    let covered = coverTargetQuad(base, bandPts, {
+    const covered = coverTargetQuad(base, bandPts, {
       zipStripFrac: 0,
       maxExpandFrac: 0.05,
       columnFollow: false,
