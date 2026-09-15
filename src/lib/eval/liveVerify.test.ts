@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { STAGE1J_LIVE_VERIFIED } from "./stage1jEvidence";
 import { STAGE1K_LIVE_VERIFIED } from "./stage1kEvidence";
+import { STAGE1L_LIVE_VERIFIED } from "./stage1lEvidence";
 import {
   extractRepairMethodVersion,
   forensicExtras,
@@ -24,6 +25,11 @@ describe("Stage 1k live-verify harness (unit)", () => {
     expect(STAGE1J_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
     expect(STAGE1K_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
     expect(STAGE1K_LIVE_VERIFIED.fail).toEqual([2, 4, 6, 9]);
+    expect(STAGE1L_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
+    expect(STAGE1L_LIVE_VERIFIED.fail).toEqual([9]);
+    expect(STAGE1L_LIVE_VERIFIED.pinstripeRemnants).toBe(0);
+    expect(STAGE1L_LIVE_VERIFIED.creamBodyToNavy).toBe(0);
+    expect(STAGE1L_LIVE_VERIFIED.rightEndCreamToNavy).toBe(0);
     expect(
       extractRepairMethodVersion({ repair: { repair_method_version: STAGE1K_EXPECTED_VERSION } }),
     ).toBe(STAGE1K_EXPECTED_VERSION);
