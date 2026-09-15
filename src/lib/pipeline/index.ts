@@ -64,7 +64,12 @@ export {
   importedArtifactsForStage,
   missingRequiredKinds,
 } from "./adapters";
-export type { StageAdapter, StageExecutionContext, StageHandler, StageHandlerResult } from "./adapters";
+export type {
+  StageAdapter,
+  StageExecutionContext,
+  StageHandler,
+  StageHandlerResult,
+} from "./adapters";
 export {
   advancePipeline,
   createPipelineRun,

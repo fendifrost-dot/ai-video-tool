@@ -87,7 +87,9 @@ function dependencyMet(run: PipelineRun, dep: PipelineStageId): boolean {
 function evaluateGates(
   run: PipelineRun,
   stageId: PipelineStageId,
-): { ok: true } | { ok: false; status: Extract<StageStatus, "blocked" | "needs_review">; reason: string } {
+):
+  | { ok: true }
+  | { ok: false; status: Extract<StageStatus, "blocked" | "needs_review">; reason: string } {
   const def = getStageDefinition(stageId);
   for (const gate of def.gates) {
     if (gate.requiresStage) {
@@ -172,7 +174,10 @@ function markImportedStages(run: PipelineRun, clock: PipelineClock): PipelineRun
   return next;
 }
 
-export function createPipelineRun(input: CreatePipelineRunInput, clock: PipelineClock = defaultClock()): PipelineRun {
+export function createPipelineRun(
+  input: CreatePipelineRunInput,
+  clock: PipelineClock = defaultClock(),
+): PipelineRun {
   const now = clock.now();
   const seed: ArtifactRef[] = (input.seedArtifacts ?? []).map((a) => ({
     ...a,
@@ -378,7 +383,10 @@ async function executeStage(
     };
     const next: PipelineRun = {
       ...running,
-      artifacts: [...running.artifacts, ...stamped.filter((a) => !running.artifacts.some((x) => x.id === a.id))],
+      artifacts: [
+        ...running.artifacts,
+        ...stamped.filter((a) => !running.artifacts.some((x) => x.id === a.id)),
+      ],
       stages: {
         ...running.stages,
         [stageId]: {

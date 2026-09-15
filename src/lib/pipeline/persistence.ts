@@ -34,7 +34,10 @@ function parseArtifact(value: unknown): ArtifactRef {
     throw new Error(`pipeline_document_invalid:artifact.kind:${kind}`);
   }
   const producedByStage = asString(value.producedByStage, "artifact.producedByStage");
-  if (producedByStage !== "seed" && !(PIPELINE_STAGE_IDS as readonly string[]).includes(producedByStage)) {
+  if (
+    producedByStage !== "seed" &&
+    !(PIPELINE_STAGE_IDS as readonly string[]).includes(producedByStage)
+  ) {
     throw new Error(`pipeline_document_invalid:artifact.producedByStage:${producedByStage}`);
   }
   return value as ArtifactRef;
@@ -77,7 +80,10 @@ export function parsePipelineRun(raw: unknown): PipelineRun {
 }
 
 /** Embed a run on project_assets.metadata_json without inventing a SQL table. */
-export function embedPipelineRun(metadata: Record<string, unknown> | null | undefined, run: PipelineRun): Record<string, unknown> {
+export function embedPipelineRun(
+  metadata: Record<string, unknown> | null | undefined,
+  run: PipelineRun,
+): Record<string, unknown> {
   return { ...(metadata ?? {}), [PIPELINE_METADATA_KEY]: run };
 }
 

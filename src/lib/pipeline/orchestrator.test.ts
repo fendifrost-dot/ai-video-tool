@@ -170,7 +170,12 @@ describe("gates, retry, and plug-in handlers", () => {
     expect(run.stages.keyframe_repair.failures).toHaveLength(1);
     expect(run.stages.keyframe_repair.nextRetryAt).toBeTruthy();
 
-    run = await retryFailedStage(run, "keyframe_repair", { adapters: { keyframe_repair: flaky } }, clock);
+    run = await retryFailedStage(
+      run,
+      "keyframe_repair",
+      { adapters: { keyframe_repair: flaky } },
+      clock,
+    );
     expect(run.stages.keyframe_repair.status).toBe("succeeded");
     expect(run.stages.keyframe_repair.attempt).toBe(2);
     expect(run.stages.keyframe_repair.provenance.some((p) => p.source === "executed")).toBe(true);
@@ -179,7 +184,10 @@ describe("gates, retry, and plug-in handlers", () => {
 
   it("does not retry missing inputs", async () => {
     const clock = testClock();
-    let run = createPipelineRun({ projectId: "proj-1", seedArtifacts: [seed("source_master")] }, clock);
+    let run = createPipelineRun(
+      { projectId: "proj-1", seedArtifacts: [seed("source_master")] },
+      clock,
+    );
     // Force keyframe_repair ready without its still by skipping generation via a fixture that fails closed.
     run = {
       ...run,

@@ -37,12 +37,7 @@ export const STAGE_STATUSES = [
 
 export type StageStatus = (typeof STAGE_STATUSES)[number];
 
-export const TERMINAL_STAGE_STATUSES = [
-  "succeeded",
-  "failed",
-  "skipped",
-  "cancelled",
-] as const;
+export const TERMINAL_STAGE_STATUSES = ["succeeded", "failed", "skipped", "cancelled"] as const;
 
 export type TerminalStageStatus = (typeof TERMINAL_STAGE_STATUSES)[number];
 

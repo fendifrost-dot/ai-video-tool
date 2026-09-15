@@ -52,15 +52,21 @@ describe("pipeline stage contracts", () => {
   it("keeps Architecture C still-repair as a consume-only surface", () => {
     const chest = getStageDefinition("keyframe_repair");
     const sleeve = getStageDefinition("sleeve_garment_repair");
-    expect(chest.laneSurfaces.some((s) => s.module.includes("architectureCStillRepair"))).toBe(true);
-    expect(sleeve.laneSurfaces.some((s) => s.entrypoint.includes("sleeve_panel"))).toBe(true);
-    expect(STAGE_DEFINITIONS.temporal_propagation.gates.some((g) => g.reviewKey === "stillRepairApproved")).toBe(
+    expect(chest.laneSurfaces.some((s) => s.module.includes("architectureCStillRepair"))).toBe(
       true,
     );
+    expect(sleeve.laneSurfaces.some((s) => s.entrypoint.includes("sleeve_panel"))).toBe(true);
+    expect(
+      STAGE_DEFINITIONS.temporal_propagation.gates.some(
+        (g) => g.reviewKey === "stillRepairApproved",
+      ),
+    ).toBe(true);
   });
 
   it("stubs original-master reconstruction as Architecture C gate 4", () => {
-    const gate = STAGE_DEFINITIONS.original_master_reconstruction.gates.find((g) => g.id === "architecture_c_gate_4");
+    const gate = STAGE_DEFINITIONS.original_master_reconstruction.gates.find(
+      (g) => g.id === "architecture_c_gate_4",
+    );
     expect(gate?.reviewKey).toBe("masterCompositeAuthorized");
     expect(gate?.onFail).toBe("blocked");
   });

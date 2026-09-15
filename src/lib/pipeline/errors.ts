@@ -39,7 +39,11 @@ function errorMessage(error: unknown): string {
  * Classify lane/runtime errors by `error.name` so this module stays decoupled
  * from query/provider files (no imports of FalRunError, ProviderCallError, …).
  */
-export function classifyUnknownError(error: unknown, attempt: number, occurredAt: string): StageFailure {
+export function classifyUnknownError(
+  error: unknown,
+  attempt: number,
+  occurredAt: string,
+): StageFailure {
   if (error instanceof PipelineError) {
     return {
       code: error.code,

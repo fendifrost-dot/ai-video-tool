@@ -45,13 +45,15 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
         ...noPaidCalls,
         module: "src/lib/queries/wardrobeVideoFrames.ts",
         entrypoint: "runFrameRoundtrip / ServerExtractConfig",
-        notes: "Server clip extract + pollAssetStatus extract_status. Consume manifest; do not own FFmpeg.",
+        notes:
+          "Server clip extract + pollAssetStatus extract_status. Consume manifest; do not own FFmpeg.",
       },
       {
         ...noPaidCalls,
         module: "src/lib/video/scrubProxy.ts",
         entrypoint: "readScrubProxyMeta",
-        notes: "Scrub-proxy pointer on metadata_json. Compatibility gate needs_transcode is terminal.",
+        notes:
+          "Scrub-proxy pointer on metadata_json. Compatibility gate needs_transcode is terminal.",
       },
       {
         ...noPaidCalls,
@@ -93,7 +95,8 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
         entrypoint: "createGenerationJob",
         ownsInternals: false,
         paidCalls: true,
-        notes: "Provider-job lifecycle lives in another lane. Orchestrator stores job/asset ids only.",
+        notes:
+          "Provider-job lifecycle lives in another lane. Orchestrator stores job/asset ids only.",
       },
     ],
   },
@@ -317,7 +320,11 @@ export function consumedKindsFor(id: PipelineStageId): ArtifactKind[] {
 }
 
 /** Stages whose lane surfaces declare paidCalls: true — orchestrator must not invoke them. */
-export function paidCallSurfaces(): { stageId: PipelineStageId; module: string; entrypoint: string }[] {
+export function paidCallSurfaces(): {
+  stageId: PipelineStageId;
+  module: string;
+  entrypoint: string;
+}[] {
   const out: { stageId: PipelineStageId; module: string; entrypoint: string }[] = [];
   for (const def of STAGE_DEFINITION_LIST) {
     for (const surface of def.laneSurfaces) {

@@ -1,6 +1,12 @@
 import { PipelineError } from "./errors";
 import { getStageDefinition } from "./contract";
-import { PIPELINE_STAGE_IDS, type ArtifactKind, type ArtifactRef, type PipelineStageId, type StageDefinition } from "./types";
+import {
+  PIPELINE_STAGE_IDS,
+  type ArtifactKind,
+  type ArtifactRef,
+  type PipelineStageId,
+  type StageDefinition,
+} from "./types";
 
 export type StageHandlerResult = {
   artifacts: ArtifactRef[];
@@ -28,7 +34,9 @@ export function missingRequiredKinds(
   definition: StageDefinition,
   artifacts: ArtifactRef[],
 ): ArtifactKind[] {
-  const missingAll = definition.requiredAll.filter((kind) => !artifacts.some((a) => a.kind === kind));
+  const missingAll = definition.requiredAll.filter(
+    (kind) => !artifacts.some((a) => a.kind === kind),
+  );
   const anyOk =
     definition.requiredAny.length === 0 ||
     definition.requiredAny.some((kind) => artifacts.some((a) => a.kind === kind));

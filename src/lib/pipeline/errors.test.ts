@@ -38,8 +38,14 @@ describe("pipeline error classification + retry", () => {
   });
 
   it("honors ProviderCallError.retryable", () => {
-    const retryable = Object.assign(new Error("429"), { name: "ProviderCallError", retryable: true });
-    const notRetryable = Object.assign(new Error("400"), { name: "ProviderCallError", retryable: false });
+    const retryable = Object.assign(new Error("429"), {
+      name: "ProviderCallError",
+      retryable: true,
+    });
+    const notRetryable = Object.assign(new Error("400"), {
+      name: "ProviderCallError",
+      retryable: false,
+    });
     expect(classifyUnknownError(retryable, 1, "t").retryable).toBe(true);
     expect(classifyUnknownError(notRetryable, 1, "t").retryable).toBe(false);
   });
