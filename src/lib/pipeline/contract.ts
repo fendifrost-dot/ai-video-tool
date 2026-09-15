@@ -114,9 +114,16 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
     laneSurfaces: [
       {
         ...noPaidCalls,
+        module: "supabase/functions/architecture-c-still-repair-proxy/index.ts",
+        entrypoint: "POST /functions/v1/architecture-c-still-repair-proxy (stage: logo_chest)",
+        notes:
+          "Chest compute lives here. Lane G consumes the result artifact; Lovable Edge Functions is the redeploy plane — not this lane.",
+      },
+      {
+        ...noPaidCalls,
         module: "src/lib/queries/architectureCStillRepair.ts",
         entrypoint: "callArchitectureCStillRepair (stage: logo_chest)",
-        notes: "Consume assetId + repair metadata. Do not rewrite Architecture C algorithms.",
+        notes: "Client wrapper only. Do not rewrite Architecture C algorithms.",
       },
       {
         ...noPaidCalls,
@@ -140,9 +147,15 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
     laneSurfaces: [
       {
         ...noPaidCalls,
+        module: "supabase/functions/architecture-c-still-repair-proxy/index.ts",
+        entrypoint: "POST /functions/v1/architecture-c-still-repair-proxy (stage: sleeve_panel)",
+        notes: "Same Lovable edge function as chest. Lane G does not own sleeve geometry.",
+      },
+      {
+        ...noPaidCalls,
         module: "src/lib/queries/architectureCStillRepair.ts",
         entrypoint: "callArchitectureCStillRepair (stage: sleeve_panel)",
-        notes: "Same proxy, different stage. Lane G does not own sleeve geometry.",
+        notes: "Client wrapper only. Same proxy, different stage.",
       },
     ],
   },

@@ -6,6 +6,7 @@ import {
   paidCallSurfaces,
 } from "./contract";
 import { assertAcyclic, topologicalStages } from "./graph";
+import { LANE_G_DEPLOY_NEEDS, LANE_G_WORK_ORDER } from "./ownership";
 import { PIPELINE_STAGE_IDS } from "./types";
 
 describe("pipeline stage contracts", () => {
@@ -49,9 +50,28 @@ describe("pipeline stage contracts", () => {
     );
   });
 
+  it("prefers work-order #51 and does not own Architecture C internals", () => {
+    expect(LANE_G_WORK_ORDER.issue).toBe(51);
+    expect(LANE_G_WORK_ORDER.preferredIssue).toBe(51);
+    expect(LANE_G_WORK_ORDER.parentIssue).toBe(50);
+    expect(LANE_G_WORK_ORDER.chestEdgeFunction).toBe("architecture-c-still-repair-proxy");
+    expect(LANE_G_WORK_ORDER.controlPlane.provider).toBe("lovable");
+    expect(LANE_G_WORK_ORDER.controlPlane.noStandaloneSupabase).toBe(true);
+    expect(LANE_G_WORK_ORDER.doesNotOwn.some((s) => s.includes("Architecture C"))).toBe(true);
+  });
+
+  it("reports no Lovable Publish or edge redeploy for this scaffolding", () => {
+    expect(LANE_G_DEPLOY_NEEDS.frontendPublish).toBe(false);
+    expect([...LANE_G_DEPLOY_NEEDS.edgeRedeploy]).toEqual([]);
+    expect(LANE_G_DEPLOY_NEEDS.lovableSql).toBe(false);
+  });
+
   it("keeps Architecture C still-repair as a consume-only surface", () => {
     const chest = getStageDefinition("keyframe_repair");
     const sleeve = getStageDefinition("sleeve_garment_repair");
+    expect(
+      chest.laneSurfaces.some((s) => s.module.includes("architecture-c-still-repair-proxy")),
+    ).toBe(true);
     expect(chest.laneSurfaces.some((s) => s.module.includes("architectureCStillRepair"))).toBe(
       true,
     );

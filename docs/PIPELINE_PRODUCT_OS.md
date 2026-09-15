@@ -1,9 +1,10 @@
 # AVT Pipeline / Product OS — Lane G
 
-**Issue:** [#51](https://github.com/fendifrost-dot/ai-video-tool/issues/51) (child of [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50) lane 7)  
-**Owner:** Lane G — orchestration only  
+**Issue:** [#51](https://github.com/fendifrost-dot/ai-video-tool/issues/51) (**prefer this**) — child of [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50) lane 7  
+**Owner:** Lane G — orchestration only (`src/lib/pipeline/**`)  
 **Class:** C (orchestration: job graph, stage status/retry/resume). Architecture + product + security sign-off before merge.  
-**Status:** scaffolding. Not a durable queue. Not a live production runner.
+**Status:** scaffolding. Not a durable queue. Not a live production runner.  
+**Control plane:** Lovable — https://aivideotool.lovable.app (SQL editor + Edge Functions redeploy). No standalone Supabase CLI/dashboard from this lane.
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**
 
@@ -147,6 +148,20 @@ Rules:
 3. Temporal propagation must not run unless `reviews.stillRepairApproved === true`.
 4. Original-master reconstruction must not run unless `reviews.masterCompositeAuthorized === true` (gate 4).
 5. Integration happens only after your lane’s own acceptance criteria are met (#50).
+
+---
+
+## Deploy needs (no merge-wait gate)
+
+**[DECISION]** GitHub merge is not a runtime gate. Report Lovable deploy needs instead.
+
+| Action | Needed? |
+|--------|---------|
+| Lovable **Publish** (frontend) | **No** — no product UI mounted on these contracts yet |
+| Lovable **Edge Functions → redeploy** | **No** — this lane did not change edge source. Chest compute remains `architecture-c-still-repair-proxy` (consume-only). Do not redeploy it from Lane G. |
+| Lovable SQL editor | **No** — run document embeds on existing `metadata_json`; no new table |
+
+Machine-readable copy: `LANE_G_DEPLOY_NEEDS` in `src/lib/pipeline/ownership.ts`.
 
 ---
 

@@ -85,3 +85,4 @@ export {
   readEmbeddedPipelineRun,
   serializePipelineRun,
 } from "./persistence";
+export { LANE_G_DEPLOY_NEEDS, LANE_G_WORK_ORDER } from "./ownership";
