@@ -8,6 +8,16 @@
 
 export const PIPELINE_CONTRACT_VERSION = "1.0.0" as const;
 
+/** Known review flags. Runs may carry additional keys. */
+export const PIPELINE_REVIEW_KEYS = [
+  "chestStillCleared",
+  "stillRepairApproved",
+  "masterCompositeAuthorized",
+  "exportApproved",
+] as const;
+
+export type PipelineReviewKey = (typeof PIPELINE_REVIEW_KEYS)[number];
+
 export const PIPELINE_STAGE_IDS = [
   "ingest",
   "generation",

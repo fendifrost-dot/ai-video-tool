@@ -50,11 +50,15 @@ describe("pipeline stage contracts", () => {
     );
   });
 
-  it("prefers work-order #51 and does not own Architecture C internals", () => {
-    expect(LANE_G_WORK_ORDER.issue).toBe(51);
-    expect(LANE_G_WORK_ORDER.preferredIssue).toBe(51);
+  it("prefers work-order #77 (lineage #51) and does not own Architecture C internals", () => {
+    expect(LANE_G_WORK_ORDER.issue).toBe(77);
+    expect(LANE_G_WORK_ORDER.preferredIssue).toBe(77);
+    expect(LANE_G_WORK_ORDER.lineageIssue).toBe(51);
     expect(LANE_G_WORK_ORDER.parentIssue).toBe(50);
     expect(LANE_G_WORK_ORDER.chestEdgeFunction).toBe("architecture-c-still-repair-proxy");
+    expect(LANE_G_WORK_ORDER.chestReferenceAssetId).toBe("9ed83c01-8c7d-4d1b-918f-87b0fc743c50");
+    expect(LANE_G_WORK_ORDER.chestRepairMethodVersion).toBe("architecture_c_still_repair_1m");
+    expect(LANE_G_WORK_ORDER.chestGate).toBe("CLEARED");
     expect(LANE_G_WORK_ORDER.controlPlane.provider).toBe("lovable");
     expect(LANE_G_WORK_ORDER.controlPlane.noStandaloneSupabase).toBe(true);
     expect(LANE_G_WORK_ORDER.doesNotOwn.some((s) => s.includes("Architecture C"))).toBe(true);
@@ -66,7 +70,7 @@ describe("pipeline stage contracts", () => {
     expect(LANE_G_DEPLOY_NEEDS.lovableSql).toBe(false);
   });
 
-  it("keeps Architecture C still-repair as a consume-only surface", () => {
+  it("keeps Architecture C still-repair as a consume-only surface with CLEARED chest identity", () => {
     const chest = getStageDefinition("keyframe_repair");
     const sleeve = getStageDefinition("sleeve_garment_repair");
     expect(
@@ -75,6 +79,8 @@ describe("pipeline stage contracts", () => {
     expect(chest.laneSurfaces.some((s) => s.module.includes("architectureCStillRepair"))).toBe(
       true,
     );
+    expect(chest.laneSurfaces.some((s) => s.notes.includes("9ed83c01"))).toBe(true);
+    expect(chest.laneSurfaces.some((s) => s.notes.includes("logo_chest"))).toBe(true);
     expect(sleeve.laneSurfaces.some((s) => s.entrypoint.includes("sleeve_panel"))).toBe(true);
     expect(
       STAGE_DEFINITIONS.temporal_propagation.gates.some(

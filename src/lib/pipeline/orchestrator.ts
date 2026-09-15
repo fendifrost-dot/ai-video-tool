@@ -1,13 +1,15 @@
+import { importedArtifactsForStage, missingRequiredKinds, type StageAdapter } from "./adapters";
 import {
-  createDefaultAdapters,
-  createImportOnlyGenerationHandler,
-  importedArtifactsForStage,
-  missingRequiredKinds,
-  type StageAdapter,
-} from "./adapters";
+  CHEST_STILL_REVIEW_KEY,
+  CLEARED_CHEST_STILL,
+  chestClearedProvenanceMetadata,
+  clearedChestSeedArtifacts,
+  isClearedChestArtifact,
+} from "./chest";
 import { STAGE_DEFINITION_LIST, getStageDefinition } from "./contract";
 import { classifyUnknownError } from "./errors";
 import { topologicalStages } from "./graph";
+import { createProductOsAdapters } from "./productOs";
 import { nextRetryAt, shouldRetry } from "./retry";
 import type {
   ArtifactRef,
@@ -139,7 +141,10 @@ function markImportedStages(run: PipelineRun, clock: PipelineClock): PipelineRun
             outputArtifactIds: imported.map((a) => a.id),
             startedAt: now,
             finishedAt: now,
-            metadata: { source: "imported_from_lane" },
+            metadata:
+              stageId === "keyframe_repair" && imported.some(isClearedChestArtifact)
+                ? chestClearedProvenanceMetadata()
+                : { source: "imported_from_lane" },
           },
         ],
       };
@@ -171,7 +176,17 @@ function markImportedStages(run: PipelineRun, clock: PipelineClock): PipelineRun
   }
   next.status = deriveRunStatus(next);
   next.updatedAt = clock.now();
-  return next;
+  return applyClearedChestReview(next);
+}
+
+function applyClearedChestReview(run: PipelineRun): PipelineRun {
+  if (run.reviews[CHEST_STILL_REVIEW_KEY] === true) return run;
+  const cleared = run.artifacts.some(isClearedChestArtifact);
+  if (!cleared) return run;
+  return {
+    ...run,
+    reviews: { ...run.reviews, [CHEST_STILL_REVIEW_KEY]: true },
+  };
 }
 
 export function createPipelineRun(
@@ -206,6 +221,25 @@ export function createPipelineRun(
   return markImportedStages(run, clock);
 }
 
+/** Product OS run already holding the CLEARED Stage 1m chest artifact. */
+export function createClearedChestPipelineRun(
+  input: Partial<CreatePipelineRunInput> = {},
+  clock: PipelineClock = defaultClock(),
+): PipelineRun {
+  return createPipelineRun(
+    {
+      projectId: input.projectId ?? CLEARED_CHEST_STILL.projectId,
+      seedArtifacts: input.seedArtifacts ?? clearedChestSeedArtifacts(),
+      reviews: {
+        [CHEST_STILL_REVIEW_KEY]: true,
+        stillRepairApproved: false,
+        ...input.reviews,
+      },
+    },
+    clock,
+  );
+}
+
 export function setPipelineReview(
   run: PipelineRun,
   reviews: Record<string, boolean>,
@@ -228,9 +262,7 @@ export function setPipelineReview(
 }
 
 function defaultAdapters(): Record<PipelineStageId, StageAdapter> {
-  return createDefaultAdapters({
-    generation: createImportOnlyGenerationHandler(),
-  });
+  return createProductOsAdapters();
 }
 
 function resolveAdapters(
@@ -361,6 +393,9 @@ async function executeStage(
       definition: def,
       inputs,
       attempt,
+      projectId: running.projectId,
+      runId: running.id,
+      reviews: running.reviews,
     });
     const finishedAt = clock.now();
     const stamped = result.artifacts.map((a) => ({
@@ -401,6 +436,7 @@ async function executeStage(
       updatedAt: finishedAt,
     };
     next.status = deriveRunStatus(next);
+    if (stageId === "keyframe_repair") return applyClearedChestReview(next);
     return next;
   } catch (error) {
     const failedAt = clock.now();
