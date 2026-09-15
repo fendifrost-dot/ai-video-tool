@@ -341,6 +341,9 @@ describe("Lane E vs Architecture C real-crop (read-only of paint)", () => {
     expect(STAGE1L_LIVE_VERIFIED.pass).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 10, 11]);
     expect(STAGE1L_LIVE_VERIFIED.fail).toEqual([9]);
     expect(STAGE1L_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
+    expect(STAGE1L_LIVE_VERIFIED.ghostRatiosUnfiltered.combined).toBeGreaterThan(
+      GHOST_RATIO_PASS_CEILING,
+    );
     expect(STAGE1L_LIVE_VERIFIED.ghostRatiosUnfiltered.right).toBeCloseTo(0.261, 3);
 
     const c2 = criterion(report, 2);

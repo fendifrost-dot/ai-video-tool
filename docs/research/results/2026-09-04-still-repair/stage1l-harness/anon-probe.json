@@ -1,0 +1,14 @@
+{
+  "httpStatus": 401,
+  "latencyMs": 681,
+  "url": "https://qoyxgnkvjukovkrvdaiq.supabase.co/functions/v1/architecture-c-still-repair-proxy",
+  "body": {
+    "error": "unauthenticated"
+  },
+  "repairMethodVersion": null,
+  "assetId": null,
+  "authKind": "anon_publishable_key",
+  "expectedVersion": "architecture_c_still_repair_1l",
+  "versionMatch": false,
+  "note": "Cloud VM probe 2026-09-15T04:32Z. AVT_USER_ACCESS_TOKEN unset. Live 1l row 9eaf0c55 was produced by an authenticated owner session, not this probe."
+}

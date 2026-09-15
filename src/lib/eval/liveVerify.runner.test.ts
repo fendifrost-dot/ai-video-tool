@@ -9,6 +9,7 @@ import {
   scoreStillPair,
   STAGE1K_CANONICAL,
   STAGE1K_EXPECTED_VERSION,
+  STAGE1L_EXPECTED_VERSION,
   writeScorePackage,
   type InvokeResult,
 } from "./liveVerify";
@@ -27,6 +28,9 @@ describe.skipIf(!enabled)("Stage 1k live harness runner", () => {
       const anon =
         process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY || "";
       const token = userToken || anon;
+      const expectedVersion =
+        process.env.EXPECTED_REPAIR_METHOD_VERSION ||
+        (process.env.STAGE1L_HARNESS === "1" ? STAGE1L_EXPECTED_VERSION : STAGE1K_EXPECTED_VERSION);
       const invoke: InvokeResult = await invokeArchitectureCStillRepair({
         supabaseUrl,
         accessToken: token,
@@ -38,8 +42,8 @@ describe.skipIf(!enabled)("Stage 1k live harness runner", () => {
           {
             ...invoke,
             authKind: userToken ? "user_access_token" : anon ? "anon_publishable_key" : "missing",
-            expectedVersion: STAGE1K_EXPECTED_VERSION,
-            versionMatch: invoke.repairMethodVersion === STAGE1K_EXPECTED_VERSION,
+            expectedVersion,
+            versionMatch: invoke.repairMethodVersion === expectedVersion,
             canonical: STAGE1K_CANONICAL,
           },
           null,

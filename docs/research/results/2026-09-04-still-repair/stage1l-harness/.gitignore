@@ -1,0 +1,3 @@
+# Local invoke dumps / downloads (keep live_asset.json + anon-probe.json)
+_downloads/
+invoke.json.body
