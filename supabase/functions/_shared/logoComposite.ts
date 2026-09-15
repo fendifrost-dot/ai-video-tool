@@ -1696,6 +1696,71 @@ function fillInQuadMidLumaAa(
   return out;
 }
 
+/** Live C9-right leftover box (PR #70, asset 9eaf0c55): wordmark-half AA. */
+const C9_RIGHT_GHOST_X0 = 442;
+const C9_RIGHT_GHOST_X1 = 560;
+const C9_RIGHT_GHOST_Y0 = 704;
+const C9_RIGHT_GHOST_Y1 = 734;
+const WORDMARK_GLYPH_CORE_LUMA = 180;
+const C9_GHOST_MEDIAN_SLACK = 20;
+
+/**
+ * Stage 1m C9-right: snap wordmark-edge AA leftovers back to navy.
+ *
+ * Live 1l (PR #70) cleared C9-left and C2/C4/C6. `warpQuadAlpha` then re-lit
+ * 84 source-mid-luma pixels at x 462–500 / y 713–723 (right window 0.261).
+ * Glyph cores (L>180) stay for C7. C6 tongue (x≥576) and C4 cream-raise are
+ * outside this window and are not touched. 1i occlusion / 1k enclosure stay.
+ */
+export function snapWordmarkEdgeAaGhosts(
+  source: RgbaImage,
+  composited: RgbaImage,
+  band: QuadPts,
+): RgbaImage {
+  const out = new Uint8Array(composited.data);
+  const [tl, tr, br, bl] = band;
+  const w = Math.min(source.width, composited.width);
+  const h = Math.min(source.height, composited.height);
+  const sampleX = Math.max(0, Math.min(w - 1, 450));
+  const sampleY = Math.max(0, Math.min(h - 1, 700));
+  const si = (sampleY * composited.width + sampleX) * 4;
+  let nr = out[si]!;
+  let ng = out[si + 1]!;
+  let nb = out[si + 2]!;
+  if (luma(nr, ng, nb) > 80) {
+    nr = 28;
+    ng = 32;
+    nb = 48;
+  }
+  const ceiling = luma(nr, ng, nb) + C9_GHOST_MEDIAN_SLACK;
+  const x0 = Math.max(0, C9_RIGHT_GHOST_X0);
+  const x1 = Math.min(w - 1, C9_RIGHT_GHOST_X1);
+  const y0 = Math.max(0, C9_RIGHT_GHOST_Y0);
+  const y1 = Math.min(h - 1, C9_RIGHT_GHOST_Y1);
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      if (x >= WORDMARK_RIGHT_X) continue;
+      if (!invBilinear(x + 0.5, y + 0.5, tl, tr, br, bl)) continue;
+      const i = (y * source.width + x) * 4;
+      const sr = source.data[i]!;
+      const sg = source.data[i + 1]!;
+      const sb = source.data[i + 2]!;
+      if (isCreamBodyPixel(sr, sg, sb)) continue;
+      const srcL = luma(sr, sg, sb);
+      if (srcL < 60 || srcL > 180) continue;
+      const oi = (y * composited.width + x) * 4;
+      const outL = luma(out[oi]!, out[oi + 1]!, out[oi + 2]!);
+      if (outL <= ceiling) continue;
+      if (outL > WORDMARK_GLYPH_CORE_LUMA) continue;
+      out[oi] = nr;
+      out[oi + 1] = ng;
+      out[oi + 2] = nb;
+      out[oi + 3] = 255;
+    }
+  }
+  return { width: composited.width, height: composited.height, data: out };
+}
+
 /**
  * Paint the band fully, then restore a thin feathered zip strip from source
  * (no raw unpainted column — stage-1c slit regression).

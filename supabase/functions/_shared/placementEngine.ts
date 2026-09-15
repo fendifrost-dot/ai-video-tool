@@ -30,6 +30,7 @@ import {
   logoSubQuadInBand,
   overlayZipFromSource,
   restoreSkinOccluders,
+  snapWordmarkEdgeAaGhosts,
   targetRectForLogo,
   warpQuadAlpha,
   type LogoBandPlacement,
@@ -806,6 +807,8 @@ export async function compositeLogoOntoVton(
     // Stage 1i: chest-local occlusion inside band; withdraw midY luma lock;
     // fixed-origin top absorb; close rejects shadowed cream.
     // Stage 1k: closed-component enclosure; cream-body absorb stop; right-end trim.
+    // Stage 1l: lateral ridge AA, 1-row cream raise guard, cool-white tongue, in-quad mid-luma.
+    // Stage 1m: snap wordmark-edge AA ghosts after warp (C9-right only).
     let covered = coverTargetQuad(base, bandPts, {
       zipStripFrac: 0,
       maxExpandFrac: 0.05,
@@ -822,7 +825,11 @@ export async function compositeLogoOntoVton(
     let coveredFrame: RgbaImage = covered;
     coveredFrame = applyLowFrequencyBandIllumination(base, coveredFrame, bandPts);
     coveredFrame = overlayZipFromSource(base, coveredFrame, bandPts, 0.015, 0.5);
-    let compositedFrame = warpQuadAlpha(coveredFrame, logoImg, logoPts, 3);
+    let compositedFrame = snapWordmarkEdgeAaGhosts(
+      base,
+      warpQuadAlpha(coveredFrame, logoImg, logoPts, 3),
+      bandPts,
+    );
 
     let samAlpha: Float32Array | null = null;
     if (occlusionOpts?.occlusionAlpha && occlusionOpts.occlusionAlpha.length > 0) {
@@ -947,7 +954,7 @@ export async function compositeLogoOntoVton(
     occlusion_source: occlusionSource,
     requested_band_quad_norm: requestedBandQuadNorm,
     effective_band_bbox: effectiveBandBBox,
-    repair_method_version: "architecture_c_still_repair_1l",
+    repair_method_version: "architecture_c_still_repair_1m",
   };
 }
 

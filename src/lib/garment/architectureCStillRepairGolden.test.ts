@@ -19,6 +19,8 @@ import {
   largestOverlappingComponent,
   logoSubQuadInBand,
   overlayZipFromSource,
+  snapWordmarkEdgeAaGhosts,
+  warpQuadAlpha,
   type QuadPts,
   type RgbaImage,
 } from "./logoComposite";
@@ -48,6 +50,7 @@ import {
 import { evaluateChestStill } from "@/lib/eval/chestVisualEvaluator";
 import { GHOST_RATIO_PASS_CEILING } from "@/lib/eval/chestCriteria";
 import { STAGE1K_LIVE_VERIFIED } from "@/lib/eval/stage1kEvidence";
+import { STAGE1L_LIVE_VERIFIED } from "@/lib/eval/stage1lEvidence";
 import { pointInQuad } from "@/lib/eval/pixelMath";
 
 /** Canonical Stage-1 IDs / geometry (live evidence). */
@@ -1542,6 +1545,286 @@ describe("Architecture C Stage 1l — remaining 1k live FAILs (C2/C4/C6/C9)", ()
     const out = applyOcclusionAlphaComposite(
       source,
       shaded,
+      featherAlpha(chestLocal, source.width, source.height, 2),
+    );
+    const refI = (700 * source.width + 450) * 4;
+    const median =
+      0.2126 * covered.data[refI]! +
+      0.7152 * covered.data[refI + 1]! +
+      0.0722 * covered.data[refI + 2]!;
+    const floor = median - 6;
+    for (let x = 277; x <= 283; x++) {
+      expect(lumaAt(out, x, 700)).toBeGreaterThanOrEqual(floor);
+    }
+    for (let x = 405; x <= 420; x++) {
+      expect(lumaAt(out, x, 720)).toBeLessThan(80);
+    }
+    for (let y = 746; y <= 748; y++) {
+      for (let x = 389; x <= 392; x++) {
+        expect(covered.data[(y * source.width + x) * 4]!).toBe(
+          source.data[(y * source.width + x) * 4]!,
+        );
+      }
+    }
+    for (const x of [399, 400, 401]) {
+      expect(lumaAt(covered, x, 715)).toBeLessThan(80);
+    }
+  });
+});
+
+describe("Architecture C Stage 1m — C9-right wordmark-edge AA (1l leftover)", () => {
+  const STAGE1M = {
+    fillMode: "quad_navy_union" as const,
+    columnFollow: false,
+    maxExpandFrac: 0.05,
+    featherPx: 3,
+    navyUnionMarginPx: 12,
+    navyDilatePx: 4,
+    navyEdgeDilatePx: 2,
+    bandCloseRadiusPx: 6,
+    topPinstripeAbsorbPx: 5,
+    zipStripFrac: 0,
+  };
+
+  function bandFromNorm(
+    w: number,
+    h: number,
+    norm: [[number, number], [number, number], [number, number], [number, number]],
+  ): QuadPts {
+    return norm.map(([nx, ny]) => ({ x: nx * w, y: ny * h })) as QuadPts;
+  }
+
+  function lumaAt(img: RgbaImage, x: number, y: number): number {
+    const i = (y * img.width + x) * 4;
+    return 0.2126 * img.data[i]! + 0.7152 * img.data[i + 1]! + 0.0722 * img.data[i + 2]!;
+  }
+
+  function setRgb(img: RgbaImage, x: number, y: number, r: number, g: number, b: number) {
+    const i = (y * img.width + x) * 4;
+    img.data[i] = r;
+    img.data[i + 1] = g;
+    img.data[i + 2] = b;
+    img.data[i + 3] = 255;
+  }
+
+  /** Live leftover class (PR #70): source mid-luma at x 462–500 / y 713–723. */
+  function plantLiveC9RightSourceMid(source: RgbaImage) {
+    for (let y = 713; y <= 723; y++) {
+      for (let x = 462; x <= 500; x++) {
+        setRgb(source, x, y, 120, 115, 110);
+      }
+    }
+  }
+
+  /**
+   * 1l live leftover: cover paints navy, then perspective wordmark AA re-lights
+   * those source-mid-luma pixels to mid-luma (L ~90–130), not glyph cores.
+   */
+  function simulate1lWordmarkEdgeAa(covered: RgbaImage): RgbaImage {
+    const data = new Uint8Array(covered.data);
+    const a = 0.45;
+    for (let y = 713; y <= 723; y++) {
+      for (let x = 462; x <= 500; x++) {
+        const i = (y * covered.width + x) * 4;
+        data[i] = Math.round(200 * a + data[i]! * (1 - a));
+        data[i + 1] = Math.round(185 * a + data[i + 1]! * (1 - a));
+        data[i + 2] = Math.round(165 * a + data[i + 2]! * (1 - a));
+      }
+    }
+    return { width: covered.width, height: covered.height, data };
+  }
+
+  it("1l-style wordmark-edge AA fails C9-right (live leftover class)", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    plantLiveC9RightSourceMid(source);
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1M);
+    const leftover = simulate1lWordmarkEdgeAa(covered);
+    const report = evaluateChestStill({
+      source,
+      output: leftover,
+      bandQuadNorm: ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    });
+    const c9 = report.criteria.find((c) => c.id === 9)!;
+    expect(c9.verdict).toBe("FAIL");
+    expect(c9.metrics.rightWindowRatio).toBeGreaterThanOrEqual(GHOST_RATIO_PASS_CEILING);
+    expect(c9.metrics.rightWindowRatio).toBeGreaterThan(
+      STAGE1L_LIVE_VERIFIED.ghostRatiosUnfiltered.right - 0.05,
+    );
+    expect(c9.metrics.ghostRatio).toBeGreaterThanOrEqual(
+      STAGE1L_LIVE_VERIFIED.ghostRatiosUnfiltered.combined,
+    );
+  });
+
+  it("1m snap clears planted C9-right leftovers without eating C7 cores", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    plantLiveC9RightSourceMid(source);
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1M);
+    const leftover = simulate1lWordmarkEdgeAa(covered);
+    setRgb(leftover, 480, 710, 210, 195, 170);
+    const snapped = snapWordmarkEdgeAaGhosts(source, leftover, band);
+    expect(lumaAt(snapped, 480, 710)).toBeGreaterThan(180);
+    const report = evaluateChestStill({
+      source,
+      output: snapped,
+      bandQuadNorm: ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    });
+    const c9 = report.criteria.find((c) => c.id === 9)!;
+    const c7 = report.criteria.find((c) => c.id === 7)!;
+    expect(c9.verdict).toBe("PASS");
+    expect(c9.metrics.ghostRatio).toBeLessThan(GHOST_RATIO_PASS_CEILING);
+    expect(c9.metrics.rightWindowRatio).toBeLessThan(GHOST_RATIO_PASS_CEILING);
+    expect(c9.metrics.rightWindowRatio).toBeLessThan(
+      STAGE1L_LIVE_VERIFIED.ghostRatiosUnfiltered.right,
+    );
+    expect(c7.verdict).toBe("PASS");
+  });
+
+  it("Lane E stays 11/11 on crop+cover+snap — 1l C2/C4/C6 zeros hold", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1M);
+    const snapped = snapWordmarkEdgeAaGhosts(source, covered, band);
+    const report = evaluateChestStill({
+      source,
+      output: snapped,
+      bandQuadNorm: ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+      bandAuthorityMask: covered.bandAuthorityMask,
+    });
+    expect(report.passCount).toBe(11);
+    expect(report.failCount).toBe(0);
+    const c2 = report.criteria.find((c) => c.id === 2)!;
+    const c4 = report.criteria.find((c) => c.id === 4)!;
+    const c6 = report.criteria.find((c) => c.id === 6)!;
+    const c9 = report.criteria.find((c) => c.id === 9)!;
+    expect(c2.metrics.remnants).toBe(0);
+    expect(c4.metrics.creamToNavy).toBe(0);
+    expect(c6.metrics.creamToNavy).toBe(0);
+    expect(c9.metrics.leftWindowRatio).toBe(0);
+    expect(c9.metrics.ghostRatio).toBeLessThan(GHOST_RATIO_PASS_CEILING);
+  });
+
+  it("does not paint a 1-px cream raise at x 290 (1l C4 lock)", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    setRgb(source, 290, 675, 205, 190, 170);
+    setRgb(source, 290, 674, 110, 105, 100);
+    setRgb(source, 290, 673, 40, 42, 48);
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1M);
+    const snapped = snapWordmarkEdgeAaGhosts(source, covered, band);
+    expect(snapped.data[(675 * source.width + 290) * 4]!).toBe(
+      source.data[(675 * source.width + 290) * 4]!,
+    );
+  });
+
+  it("warpQuadAlpha + 1m snap clears C9-right AA and keeps C7 cores", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    plantLiveC9RightSourceMid(source);
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1M);
+    const logoW = 80;
+    const logoH = 24;
+    const logoData = new Uint8Array(logoW * logoH * 4);
+    for (let y = 0; y < logoH; y++) {
+      for (let x = 0; x < logoW; x++) {
+        const i = (y * logoW + x) * 4;
+        const edge = x < 2 || x >= logoW - 2 || y < 2 || y >= logoH - 2;
+        if (edge) {
+          logoData[i] = 160;
+          logoData[i + 1] = 150;
+          logoData[i + 2] = 140;
+          logoData[i + 3] = 90;
+        } else {
+          logoData[i] = 210;
+          logoData[i + 1] = 195;
+          logoData[i + 2] = 170;
+          logoData[i + 3] = 255;
+        }
+      }
+    }
+    const logoPts = logoSubQuadInBand(band, ARCHITECTURE_C_LOGO_BAND_DEFAULTS);
+    const warped = warpQuadAlpha(
+      covered,
+      { width: logoW, height: logoH, data: logoData },
+      logoPts,
+      3,
+    );
+    const oneL = evaluateChestStill({
+      source,
+      output: warped,
+      bandQuadNorm: ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    });
+    const c9l = oneL.criteria.find((c) => c.id === 9)!;
+    expect(c9l.metrics.rightWindowRatio).toBeGreaterThanOrEqual(GHOST_RATIO_PASS_CEILING);
+    const snapped = snapWordmarkEdgeAaGhosts(source, warped, band);
+    const oneM = evaluateChestStill({
+      source,
+      output: snapped,
+      bandQuadNorm: ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    });
+    const c9m = oneM.criteria.find((c) => c.id === 9)!;
+    const c7m = oneM.criteria.find((c) => c.id === 7)!;
+    expect(c9m.verdict).toBe("PASS");
+    expect(c9m.metrics.ghostRatio).toBeLessThan(GHOST_RATIO_PASS_CEILING);
+    expect(c9m.metrics.rightWindowRatio).toBeLessThan(GHOST_RATIO_PASS_CEILING);
+    expect(c7m.verdict).toBe("PASS");
+    let cores = 0;
+    for (let y = 704; y <= 732; y++) {
+      for (let x = 442; x <= 560; x++) {
+        if (lumaAt(snapped, x, y) > 180) cores++;
+      }
+    }
+    expect(cores).toBeGreaterThan(10);
+  });
+
+  it("1i crease/wedge/hand + 1j sleeve 4×3 + C8 tapes survive 1m snap", () => {
+    const source = embedArchitectureCBandCropInFrame();
+    const band = bandFromNorm(
+      source.width,
+      source.height,
+      ARCHITECTURE_C_BAND_CROP.measuredBandQuadNorm,
+    );
+    const covered = coverTargetQuad(source, band, STAGE1M);
+    const shaded = applyLowFrequencyBandIllumination(source, covered, band);
+    const withZip = overlayZipFromSource(source, shaded, band, 0.015, 0.5);
+    const snapped = snapWordmarkEdgeAaGhosts(source, withZip, band);
+    const { outfitBasedAlpha, handsAlpha, faceAlpha } = buildStage1hSam3EvidenceAlphas(
+      source.width,
+      source.height,
+    );
+    const chestLocal = applyChestLocalOcclusionSemantics({
+      width: source.width,
+      height: source.height,
+      outfitBasedAlpha,
+      bandComponent: covered.bandAuthorityMask,
+      handsAlpha,
+      faceAlpha,
+      dilatePx: 12,
+    });
+    const out = applyOcclusionAlphaComposite(
+      source,
+      snapped,
       featherAlpha(chestLocal, source.width, source.height, 2),
     );
     const refI = (700 * source.width + 450) * 4;

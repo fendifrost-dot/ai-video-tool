@@ -22,6 +22,7 @@ import {
 } from "./chestCriteria";
 import { STAGE1J_LIVE_VERIFIED } from "./stage1jEvidence";
 import { STAGE1K_LIVE_VERIFIED } from "./stage1kEvidence";
+import { STAGE1L_LIVE_VERIFIED } from "./stage1lEvidence";
 import { evaluateChestStill, scoreMidLumaGhosts } from "./chestVisualEvaluator";
 import { cloneRgba, fillRect, lumaAt, pointInQuad, quadFromNorm, solidRgba } from "./pixelMath";
 import { CHEST_EVAL_SPEC_VERSION, type ChestCriterionId, type RgbaImage } from "./types";
@@ -336,6 +337,11 @@ describe("Lane E vs Architecture C real-crop (read-only of paint)", () => {
     expect(STAGE1K_LIVE_VERIFIED.pass).toEqual([1, 3, 5, 7, 8, 10, 11]);
     expect(STAGE1K_LIVE_VERIFIED.fail).toEqual([2, 4, 6, 9]);
     expect(STAGE1K_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
+    // Canonical live 1l (9eaf0c55) is 10/11 — C2/C4/C6 cleared; C9-right remains.
+    expect(STAGE1L_LIVE_VERIFIED.pass).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 10, 11]);
+    expect(STAGE1L_LIVE_VERIFIED.fail).toEqual([9]);
+    expect(STAGE1L_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
+    expect(STAGE1L_LIVE_VERIFIED.ghostRatiosUnfiltered.right).toBeCloseTo(0.261, 3);
 
     const c2 = criterion(report, 2);
     const c4 = criterion(report, 4);
