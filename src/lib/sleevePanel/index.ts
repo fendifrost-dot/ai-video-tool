@@ -1,7 +1,7 @@
 /**
  * Lane B public surface — visible sleeve-panel repair + mask/geometry contract.
  *
- * Ownership: this directory only. Chest / Architecture C stay untouched.
+ * Isolated engine + live still adapter. Chest paint (logoComposite) stays out.
  */
 
 export {
@@ -47,6 +47,27 @@ export {
 export type { VisibleQuadAssessment } from "./visibleGeometry";
 
 export { repairVisibleSleevePanels } from "./repair";
+
+export {
+  CANONICAL_HIDDEN_BOXES,
+  CANONICAL_VISIBLE_UPPER_ARM_BOXES,
+  DEFAULT_FLAT_SLEEVE_SOURCE_BBOX,
+  LIVE_CHEST_RESERVED_QUAD_NORM,
+  SEEDED_VISIBLE_SLEEVE_QUADS,
+  SLEEVE_STILL_REPAIR_METHOD_VERSION,
+  assessSleevePanelQuadPlacement,
+  buildCanonicalHiddenMask,
+  buildCanonicalVisibleMask,
+  buildChestOutputSlotFromLive,
+  rasterizeReservedChestMask,
+  repairVisibleSleevePanelsOnStill,
+} from "./liveStill";
+export type {
+  SleevePanelLiveInput,
+  SleevePanelLiveMeta,
+  SleevePanelLiveResult,
+  SleeveQuadPlacementAssessment,
+} from "./liveStill";
 
 export {
   DEFAULT_PANELS,

@@ -18,34 +18,27 @@ import { uploadHeroSourceFrame } from "@/lib/queries/heroFrame";
 import { callArchitectureCStillRepair } from "@/lib/queries/architectureCStillRepair";
 import {
   ARCHITECTURE_C_V2_REPAIR,
+  DEFAULT_FLAT_SLEEVE_SOURCE_BBOX,
   MEASURED_V2_CHEST_BAND_QUAD,
+  SEEDED_VISIBLE_SLEEVE_QUADS,
+  SLEEVE_STILL_REPAIR_METHOD_VERSION,
   assessChestBandQuadPlacement,
+  assessSleevePanelQuadPlacement,
+  extractChestBandQuad,
+  extractChestRepairMethodVersion,
+  isStillRepairLogoChest,
   isStillRepairOutputMetadata,
   type SleevePanelManual,
 } from "@/lib/heroFrame/architectureCStillRepair";
 import { isEditR4CanonicalOwner } from "@/lib/heroFrame/editR4ProductIds";
 import type { QuadNorm } from "@/lib/garment/placementEngine";
 
-function defaultUpperArmQuad(side: "left" | "right"): QuadNorm {
-  // Visible upper-arm only (arms crossed) — starting guess; user must drag.
-  if (side === "left") {
-    return [
-      [0.12, 0.38],
-      [0.28, 0.36],
-      [0.3, 0.48],
-      [0.14, 0.5],
-    ];
-  }
-  return [
-    [0.7, 0.36],
-    [0.86, 0.38],
-    [0.84, 0.5],
-    [0.68, 0.48],
-  ];
-}
-
 function cloneQuad(q: QuadNorm): QuadNorm {
   return q.map(([x, y]) => [x, y]) as QuadNorm;
+}
+
+function defaultUpperArmQuad(side: "left" | "right"): QuadNorm {
+  return cloneQuad(SEEDED_VISIBLE_SLEEVE_QUADS[side]);
 }
 
 export function ArchitectureCStillRepairRunner({ projectId }: { projectId: string }) {
@@ -88,6 +81,14 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
 
   const isOwner = isEditR4CanonicalOwner(sessionUid);
   const chestAssessment = useMemo(() => assessChestBandQuadPlacement(logoQuad), [logoQuad]);
+  const leftSleeveAssessment = useMemo(
+    () => assessSleevePanelQuadPlacement(leftSleeveQuad),
+    [leftSleeveQuad],
+  );
+  const rightSleeveAssessment = useMemo(
+    () => assessSleevePanelQuadPlacement(rightSleeveQuad),
+    [rightSleeveQuad],
+  );
 
   const selectedStillMeta = useMemo(() => {
     const asset = stills.find((a) => a.id === stillAssetId);
@@ -295,21 +296,55 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
     }
   }
 
+  const logoChestOutputs = useMemo(
+    () =>
+      stills.filter((a) => isStillRepairLogoChest(a.metadata_json)),
+    [stills],
+  );
+
+  const preferredSleeveSourceId = useMemo(() => {
+    if (logoResultAssetId) return logoResultAssetId;
+    const recommended = logoChestOutputs.find(
+      (a) => a.id === ARCHITECTURE_C_V2_REPAIR.recommendedChestOutputAssetId,
+    );
+    if (recommended) return recommended.id;
+    if (logoChestOutputs[0]) return logoChestOutputs[0].id;
+    return stillAssetId;
+  }, [logoResultAssetId, logoChestOutputs, stillAssetId]);
+
+  const sleeveSourceMeta = useMemo(() => {
+    const asset = stills.find((a) => a.id === preferredSleeveSourceId);
+    return asset?.metadata_json ?? null;
+  }, [stills, preferredSleeveSourceId]);
+
   async function handleSleeve() {
     if (!isOwner) {
       toast.error("Sign in as the durable owner");
       return;
     }
-    const sourceStill = logoResultAssetId || stillAssetId;
+    const sourceStill = preferredSleeveSourceId;
     if (!sourceStill) {
       toast.error("Need a still (prefer logo_chest output) before sleeve_panel");
       return;
     }
+    if (!leftSleeveAssessment.ok || !rightSleeveAssessment.ok) {
+      toast.warning(
+        `Sleeve quad warning: ${(leftSleeveAssessment.warnings[0] ?? rightSleeveAssessment.warnings[0]) ?? "off visible upper arm"}. Re-check before treating as success.`,
+      );
+    }
     setBusy(true);
     try {
       const sleevePanels: SleevePanelManual[] = [
-        { side: "left", targetQuad: leftSleeveQuad },
-        { side: "right", targetQuad: rightSleeveQuad },
+        {
+          side: "left",
+          targetQuad: leftSleeveQuad,
+          sourceBboxNorm: DEFAULT_FLAT_SLEEVE_SOURCE_BBOX,
+        },
+        {
+          side: "right",
+          targetQuad: rightSleeveQuad,
+          sourceBboxNorm: DEFAULT_FLAT_SLEEVE_SOURCE_BBOX,
+        },
       ];
       const result = await callArchitectureCStillRepair({
         projectId,
@@ -317,11 +352,17 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         wardrobeFeatureId,
         stage: "sleeve_panel",
         sleevePanels,
+        chestBandQuadNorm:
+          extractChestBandQuad(sleeveSourceMeta) ?? logoQuad ?? MEASURED_V2_CHEST_BAND_QUAD,
+        chestOutputAssetId: isStillRepairLogoChest(sleeveSourceMeta) ? sourceStill : logoResultAssetId ?? undefined,
+        chestRepairMethodVersion: extractChestRepairMethodVersion(sleeveSourceMeta) ?? undefined,
       });
       setSleeveResultUrl(result.previewUrl);
       setHardStop(result.hardStop);
       await assetsQuery.refetch();
-      toast.success("sleeve_panel repair saved — HARD STOP before tracking");
+      toast.success(
+        `sleeve_panel saved (${SLEEVE_STILL_REPAIR_METHOD_VERSION}) — HARD STOP before tracking`,
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "sleeve_panel failed");
     } finally {
@@ -576,7 +617,14 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         <div className="space-y-3 border-t border-border pt-4">
           <p className="text-xs text-muted-foreground">
             Sleeve panels: drag or type quads onto the <strong>visible upper-arm</strong> navy only.
-            Arms are crossed for the entire clip — this cannot prove armhole→cuff.
+            Arms are crossed for the entire clip — this cannot prove armhole→cuff. Input prefers the{" "}
+            <span className="font-mono">logo_chest</span> output (
+            <span className="font-mono">
+              {(preferredSleeveSourceId || "—").slice(0, 8)}…
+            </span>
+            ). Expect{" "}
+            <span className="font-mono">{SLEEVE_STILL_REPAIR_METHOD_VERSION}</span>, claim{" "}
+            <span className="font-mono">visible_geometry_only</span>.
           </p>
           <div className="grid gap-4 lg:grid-cols-2">
             <ManualKeyframeQuadEditor
@@ -586,7 +634,7 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
               keyframeId="v2-still-0.785-sleeve-left"
               disabled={busy || !isOwner}
               heading="Left upper-arm sleeve_panel"
-              hint="Visible upper arm only (arms crossed)."
+              hint="Visible upper arm only (arms crossed). Seeded y≈0.50–0.61, image-left of the chest band."
               saveLabel="Lock left sleeve quad"
               onQuadChange={setLeftSleeveQuad}
               onSave={async (q) => setLeftSleeveQuad(q)}
@@ -598,17 +646,34 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
               keyframeId="v2-still-0.785-sleeve-right"
               disabled={busy || !isOwner}
               heading="Right upper-arm sleeve_panel"
-              hint="Visible upper arm only (arms crossed)."
+              hint="Visible upper arm only (arms crossed). Seeded x≈0.88–0.99 at chest-band height."
               saveLabel="Lock right sleeve quad"
               onQuadChange={setRightSleeveQuad}
               onSave={async (q) => setRightSleeveQuad(q)}
             />
           </div>
+          {!leftSleeveAssessment.ok || !rightSleeveAssessment.ok ? (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-[11px] text-amber-100">
+              <p className="font-medium">Sleeve placement warning (visible upper-arm only)</p>
+              <ul className="mt-1 list-disc space-y-0.5 pl-4">
+                {leftSleeveAssessment.warnings.map((w) => (
+                  <li key={`L-${w}`}>Left: {w}</li>
+                ))}
+                {rightSleeveAssessment.warnings.map((w) => (
+                  <li key={`R-${w}`}>Right: {w}</li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="text-[11px] text-muted-foreground">
+              Both sleeve quads sit in the visible upper-arm corridor. Chest band stays reserved.
+            </p>
+          )}
           <Button
             type="button"
             size="sm"
             variant="secondary"
-            disabled={busy || !isOwner || !(logoResultAssetId || stillAssetId)}
+            disabled={busy || !isOwner || !preferredSleeveSourceId}
             onClick={handleSleeve}
           >
             {busy ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}

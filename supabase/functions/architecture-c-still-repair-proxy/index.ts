@@ -12,6 +12,9 @@ import {
   assertStillRepairStage,
   buildStillRepairAssetMetadata,
   isQuadNorm,
+  extractChestBandQuad,
+  extractChestRepairMethodVersion,
+  isStillRepairLogoChest,
   mergeLogoZoneManualQuad,
   type QuadNorm,
   type SleevePanelManual,
@@ -53,6 +56,10 @@ type Body = {
    * Canonical Stage-1D / logo_chest acceptance defaults to false (fail closed).
    */
   allowSkinHeuristicFallback?: boolean;
+  /** Optional chest-band quad used as the sleeve do-not-paint reserved mask. */
+  chestBandQuadNorm?: QuadNorm;
+  chestOutputAssetId?: string;
+  chestRepairMethodVersion?: string;
 };
 
 function json(status: number, body: unknown) {
@@ -303,20 +310,62 @@ serve(async (req) => {
     }
     if (!frontPath) return json(422, { error: "front_flat_missing" });
     const flatBytes = await downloadStoragePath(admin, frontPath);
-    const sleeve = await compositeSleevePanelsOntoStill(
-      workingBytes,
-      flatBytes,
-      panels.map((p) => ({
-        side: p.side,
-        targetQuad: p.targetQuad,
-        sourceBboxNorm: p.sourceBboxNorm ?? null,
-      })),
-    );
+    let chestBandQuadNorm: QuadNorm | null = null;
+    if (body.chestBandQuadNorm) {
+      if (!isQuadNorm(body.chestBandQuadNorm)) {
+        return json(400, { error: "invalid_chest_band_quad" });
+      }
+      chestBandQuadNorm = body.chestBandQuadNorm;
+    } else if (isStillRepairLogoChest(stillMeta)) {
+      chestBandQuadNorm = extractChestBandQuad(stillMeta);
+    }
+    let sleeve;
+    try {
+      sleeve = await compositeSleevePanelsOntoStill(
+        workingBytes,
+        flatBytes,
+        panels.map((p) => ({
+          side: p.side,
+          targetQuad: p.targetQuad,
+          sourceBboxNorm: p.sourceBboxNorm ?? null,
+        })),
+        {
+          chestBandQuadNorm,
+          chestOutputAssetId:
+            typeof body.chestOutputAssetId === "string"
+              ? body.chestOutputAssetId
+              : isStillRepairLogoChest(stillMeta)
+                ? body.stillAssetId
+                : null,
+          sourceStillId: body.stillAssetId,
+          chestRepairMethodVersion:
+            typeof body.chestRepairMethodVersion === "string"
+              ? body.chestRepairMethodVersion
+              : extractChestRepairMethodVersion(stillMeta),
+        },
+      );
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg === "sleeve_panels_required") {
+        return json(400, { error: "sleeve_panels_required", detail: msg });
+      }
+      if (msg.startsWith("sleeve_panel_geometry_rejected") || msg.startsWith("invalid_sleeve")) {
+        return json(400, { error: msg.split(":")[0] ?? "sleeve_panel_geometry_rejected", detail: msg });
+      }
+      throw e;
+    }
     workingBytes = sleeve.bytes;
     repairMeta = {
       sleeve_panels: sleeve.sides,
       front_flat_path: frontPath,
-      geometry_note: "visible_upper_arm_only",
+      geometry_note: sleeve.geometry_note,
+      repair_method_version: sleeve.repair_method_version,
+      contract_version: sleeve.contract_version,
+      claim: sleeve.claim,
+      hidden_shoulder_to_cuff_validated: sleeve.hidden_shoulder_to_cuff_validated,
+      consumed_chest_output: sleeve.consumed_chest_output,
+      chest_output_asset_id: sleeve.chest_output_asset_id,
+      keyframe_id: KEYFRAME_ID,
     };
   }
 

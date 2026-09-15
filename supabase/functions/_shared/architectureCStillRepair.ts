@@ -99,3 +99,26 @@ export function isQuadNorm(v: unknown): v is QuadNorm {
     )
   );
 }
+
+export function isStillRepairLogoChest(metadata: unknown): boolean {
+  if (!metadata || typeof metadata !== "object") return false;
+  return (metadata as { repair_stage?: unknown }).repair_stage === "logo_chest";
+}
+
+export function extractChestRepairMethodVersion(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const repair = (metadata as { repair?: unknown }).repair;
+  if (!repair || typeof repair !== "object") return null;
+  const v = (repair as { repair_method_version?: unknown }).repair_method_version;
+  return typeof v === "string" ? v : null;
+}
+
+export function extractChestBandQuad(metadata: unknown): QuadNorm | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const repair = (metadata as { repair?: unknown }).repair;
+  if (!repair || typeof repair !== "object") return null;
+  const raw =
+    (repair as { requested_band_quad_norm?: unknown }).requested_band_quad_norm ??
+    (repair as { requestedBandQuadNorm?: unknown }).requestedBandQuadNorm;
+  return isQuadNorm(raw) ? raw : null;
+}

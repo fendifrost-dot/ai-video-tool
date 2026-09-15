@@ -99,13 +99,13 @@ A target quad is rejected (`sleeve_panel_geometry_rejected`) when any of:
 
 ---
 
-## Later chest-output wiring (not this PR)
+## Chest-output wiring (Issue #74)
 
-**[RECOMMENDATION]** When chest still-gate clears, a product runner may:
+**[DECISION]** After Stage 1m chest CLEARED 11/11, the product runner / edge sleeve stage:
 
-1. Take the chest-repair PNG as `still`.
-2. Fill `chestOutput.reservedMask` from the chest authority / band mask.
-3. Place **visible-upper-arm** quads only.
-4. Call `repairVisibleSleevePanels`.
+1. Takes the chest-repair PNG (prefer `9ed83c01`) or the same-frame clean still as `still`.
+2. Fills `chestOutput.reservedMask` from the live measured band quad (`LIVE_CHEST_RESERVED_QUAD_NORM`).
+3. Places **visible-upper-arm** quads only (`SEEDED_VISIBLE_SLEEVE_QUADS`).
+4. Calls `repairVisibleSleevePanelsOnStill` → `repairVisibleSleevePanels`.
 
-Until then, Lane B runs on `buildCrossedArmsSleeveFixture()` only.
+`repair_method_version` for this wiring is `architecture_c_sleeve_still_1a` (not a chest 1m bump). Hidden shoulder→cuff stays unvalidated.

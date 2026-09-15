@@ -5,6 +5,13 @@
 
 import type { QuadNorm } from "@/lib/garment/placementEngine";
 import { EDIT_R4_PRODUCT } from "@/lib/heroFrame/editR4ProductIds";
+import {
+  DEFAULT_FLAT_SLEEVE_SOURCE_BBOX,
+  LIVE_CHEST_RESERVED_QUAD_NORM,
+  SEEDED_VISIBLE_SLEEVE_QUADS,
+  SLEEVE_STILL_REPAIR_METHOD_VERSION,
+  assessSleevePanelQuadPlacement,
+} from "@/lib/sleevePanel";
 
 export const ARCHITECTURE_C_V2_REPAIR = {
   ...EDIT_R4_PRODUCT,
@@ -13,9 +20,19 @@ export const ARCHITECTURE_C_V2_REPAIR = {
   recommendedStillTimeSec: 0.785,
   /** Clean capture used for stage-1 scoring (t=0.785). */
   recommendedStillAssetId: "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+  /** Cleared Stage 1m chest output (PR #73) — preferred sleeve_panel input. */
+  recommendedChestOutputAssetId: "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
   /** Hard stop — do not build tracking until still repair passes. */
   temporalTrackingEnabled: false,
 } as const;
+
+export {
+  DEFAULT_FLAT_SLEEVE_SOURCE_BBOX,
+  LIVE_CHEST_RESERVED_QUAD_NORM,
+  SEEDED_VISIBLE_SLEEVE_QUADS,
+  SLEEVE_STILL_REPAIR_METHOD_VERSION,
+  assessSleevePanelQuadPlacement,
+};
 
 /**
  * Measured full chest band on clean still `2aa1a44c` (t=0.785), TL→TR→BR→BL.
@@ -167,4 +184,40 @@ export function buildStillRepairAssetMetadata(input: {
 export function assertStillRepairStage(stage: string): StillRepairStage {
   if (stage === "logo_chest" || stage === "sleeve_panel") return stage;
   throw new Error(`invalid_still_repair_stage:${stage}`);
+}
+
+export function isStillRepairLogoChest(metadata: unknown): boolean {
+  if (!metadata || typeof metadata !== "object") return false;
+  return (metadata as { repair_stage?: unknown }).repair_stage === "logo_chest";
+}
+
+export function extractChestRepairMethodVersion(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const repair = (metadata as { repair?: unknown }).repair;
+  if (!repair || typeof repair !== "object") return null;
+  const v = (repair as { repair_method_version?: unknown }).repair_method_version;
+  return typeof v === "string" ? v : null;
+}
+
+export function extractChestBandQuad(metadata: unknown): QuadNorm | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const repair = (metadata as { repair?: unknown }).repair;
+  if (!repair || typeof repair !== "object") return null;
+  const raw =
+    (repair as { requested_band_quad_norm?: unknown }).requested_band_quad_norm ??
+    (repair as { requestedBandQuadNorm?: unknown }).requestedBandQuadNorm;
+  return isHeroQuadNorm(raw) ? raw : null;
+}
+
+function isHeroQuadNorm(v: unknown): v is QuadNorm {
+  return (
+    Array.isArray(v) &&
+    v.length === 4 &&
+    v.every(
+      (p) =>
+        Array.isArray(p) &&
+        p.length === 2 &&
+        p.every((n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 1),
+    )
+  );
 }

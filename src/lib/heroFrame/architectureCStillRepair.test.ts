@@ -2,9 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   ARCHITECTURE_C_V2_REPAIR,
   MEASURED_V2_CHEST_BAND_QUAD,
+  SEEDED_VISIBLE_SLEEVE_QUADS,
+  SLEEVE_STILL_REPAIR_METHOD_VERSION,
   assertStillRepairStage,
   assessChestBandQuadPlacement,
+  assessSleevePanelQuadPlacement,
   buildStillRepairAssetMetadata,
+  extractChestBandQuad,
+  extractChestRepairMethodVersion,
+  isStillRepairLogoChest,
   isStillRepairOutputMetadata,
   mergeLogoZoneManualQuad,
 } from "./architectureCStillRepair";
@@ -22,6 +28,11 @@ describe("ARCHITECTURE_C_V2_REPAIR", () => {
     expect(ARCHITECTURE_C_V2_REPAIR.wardrobeFeatureId).toBe(
       "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
     );
+    expect(ARCHITECTURE_C_V2_REPAIR.recommendedChestOutputAssetId).toBe(
+      "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
+    );
+    expect(SLEEVE_STILL_REPAIR_METHOD_VERSION).toBe("architecture_c_sleeve_still_1a");
+    expect(assessSleevePanelQuadPlacement(SEEDED_VISIBLE_SLEEVE_QUADS.left).ok).toBe(true);
   });
 });
 
@@ -116,5 +127,26 @@ describe("assertStillRepairStage", () => {
     expect(assertStillRepairStage("logo_chest")).toBe("logo_chest");
     expect(assertStillRepairStage("sleeve_panel")).toBe("sleeve_panel");
     expect(() => assertStillRepairStage("temporal")).toThrow(/invalid_still_repair_stage/);
+  });
+});
+
+describe("logo_chest metadata handshake for sleeve", () => {
+  it("reads 1m chest reserved quad + method version", () => {
+    const meta = {
+      repair_stage: "logo_chest",
+      repair: {
+        repair_method_version: "architecture_c_still_repair_1m",
+        requested_band_quad_norm: [
+          [0.3, 0.53],
+          [0.87, 0.533],
+          [0.87, 0.585],
+          [0.3, 0.582],
+        ],
+      },
+    };
+    expect(isStillRepairLogoChest(meta)).toBe(true);
+    expect(extractChestRepairMethodVersion(meta)).toBe("architecture_c_still_repair_1m");
+    expect(extractChestBandQuad(meta)?.[0][0]).toBeCloseTo(0.3, 3);
+    expect(isStillRepairLogoChest({ repair_stage: "sleeve_panel" })).toBe(false);
   });
 });

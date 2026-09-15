@@ -49,6 +49,12 @@ import {
   resizeAlphaNearest,
   type OcclusionSource,
 } from "./stillRepairOcclusion.ts";
+import {
+  DEFAULT_FLAT_SLEEVE_SOURCE_BBOX,
+  SLEEVE_STILL_REPAIR_METHOD_VERSION,
+  repairVisibleSleevePanelsOnStill,
+} from "./sleevePanel/liveStill.ts";
+import type { SleeveSide } from "./sleevePanel/types.ts";
 
 const MIN_STRIPE_CONFIDENCE = 0.5;
 
@@ -969,37 +975,30 @@ export type SleevePanelCompositeResult = {
     placement_source: PlacementSource;
     fallback_reason: FallbackReason;
     target_quad: [number, number][];
+    painted_pixel_count?: number;
+    rejected_hidden_pixel_count?: number;
+    rejected_chest_reserved_pixel_count?: number;
   }>;
+  repair_method_version: typeof SLEEVE_STILL_REPAIR_METHOD_VERSION;
+  contract_version: string;
+  claim: "visible_geometry_only";
+  geometry_note: "visible_upper_arm_only";
+  hidden_shoulder_to_cuff_validated: false;
+  consumed_chest_output: boolean;
+  chest_output_asset_id: string | null;
 };
 
-function cropNormBboxLocal(
-  img: RgbaImage,
-  norm: [number, number, number, number],
-): RgbaImage {
-  const [nx, ny, nw, nh] = norm;
-  const left = Math.max(0, Math.round(nx * img.width));
-  const top = Math.max(0, Math.round(ny * img.height));
-  const w = Math.max(1, Math.round(nw * img.width));
-  const h = Math.max(1, Math.round(nh * img.height));
-  const data = new Uint8Array(w * h * 4);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const sx = Math.min(img.width - 1, left + x);
-      const sy = Math.min(img.height - 1, top + y);
-      const si = (sy * img.width + sx) * 4;
-      const di = (y * w + x) * 4;
-      data[di] = img.data[si];
-      data[di + 1] = img.data[si + 1];
-      data[di + 2] = img.data[si + 2];
-      data[di + 3] = img.data[si + 3];
-    }
-  }
-  return { width: w, height: h, data };
-}
+export type SleevePanelCompositeOptions = {
+  chestBandQuadNorm?: QuadNorm | null;
+  chestOutputAssetId?: string | null;
+  sourceStillId?: string | null;
+  chestRepairMethodVersion?: string | null;
+};
 
 /**
- * Warp flat-ref sleeve-panel pixels onto manual upper-arm quads.
+ * Visible-upper-arm sleeve-panel repair (Lane B contract).
  * Detection remains stubbed — callers must supply target quads.
+ * Does not call chest / logoComposite paint.
  */
 export async function compositeSleevePanelsOntoStill(
   stillBytes: Uint8Array,
@@ -1009,13 +1008,17 @@ export async function compositeSleevePanelsOntoStill(
     targetQuad: QuadNorm;
     sourceBboxNorm?: [number, number, number, number] | null;
   }>,
+  opts?: SleevePanelCompositeOptions,
 ): Promise<SleevePanelCompositeResult> {
   if (panels.length === 0) throw new Error("sleeve_panels_required");
-  let base = await decodeToRgba(stillBytes);
+  const base = await decodeToRgba(stillBytes);
   const flat = await decodeToRgba(flatBytes);
   const sides: SleevePanelCompositeResult["sides"] = [];
 
   for (const panel of panels) {
+    if (panel.side !== "left" && panel.side !== "right") {
+      throw new Error("invalid_sleeve_side");
+    }
     const eng = placeDetail({
       frame: base,
       detailType: "sleeve_panel",
@@ -1027,21 +1030,50 @@ export async function compositeSleevePanelsOntoStill(
     if (!eng.target || eng.target.kind !== "quad") {
       throw new Error(`sleeve_panel_requires_manual_keyframe:${panel.side}`);
     }
-    const targetQuad = eng.target.points;
-    const quadPts = targetQuad as unknown as QuadPts;
-    const covered = coverTargetQuad(base, quadPts);
-    const sourceNorm =
-      panel.sourceBboxNorm ??
-      ([0.05, 0.35, 0.12, 0.35] as [number, number, number, number]);
-    const panelCrop = cropNormBboxLocal(flat, sourceNorm);
-    base = warpQuadAlpha(covered, panelCrop, quadPts, 2);
     sides.push({
       side: panel.side,
       placement_source: eng.source,
       fallback_reason: eng.fallbackReason,
-      target_quad: quadToPairs(targetQuad),
+      target_quad: quadToPairs(eng.target.points),
     });
   }
 
-  return { bytes: await encodePng(base), sides };
+  const repaired = repairVisibleSleevePanelsOnStill({
+    still: { width: base.width, height: base.height, data: base.data },
+    flatRef: { width: flat.width, height: flat.height, data: flat.data },
+    panels: panels.map((p) => ({
+      side: p.side as SleeveSide,
+      targetQuad: p.targetQuad,
+      sourceBboxNorm: p.sourceBboxNorm ?? DEFAULT_FLAT_SLEEVE_SOURCE_BBOX,
+    })),
+    chestBandQuadNorm: opts?.chestBandQuadNorm ?? null,
+    chestOutputAssetId: opts?.chestOutputAssetId ?? null,
+    sourceStillId: opts?.sourceStillId ?? null,
+    chestRepairMethodVersion: opts?.chestRepairMethodVersion ?? null,
+  });
+
+  const bySide = new Map(repaired.output.sides.map((s) => [s.side, s]));
+  for (const row of sides) {
+    const hit = bySide.get(row.side as SleeveSide);
+    if (!hit) continue;
+    row.painted_pixel_count = hit.paintedPixelCount;
+    row.rejected_hidden_pixel_count = hit.rejectedHiddenPixelCount;
+    row.rejected_chest_reserved_pixel_count = hit.rejectedChestReservedPixelCount;
+  }
+
+  return {
+    bytes: await encodePng({
+      width: repaired.still.width,
+      height: repaired.still.height,
+      data: repaired.still.data,
+    }),
+    sides,
+    repair_method_version: repaired.meta.repair_method_version,
+    contract_version: repaired.meta.contract_version,
+    claim: repaired.meta.claim,
+    geometry_note: repaired.meta.geometry_note,
+    hidden_shoulder_to_cuff_validated: false,
+    consumed_chest_output: repaired.meta.consumed_chest_output,
+    chest_output_asset_id: repaired.meta.chest_output_asset_id,
+  };
 }
