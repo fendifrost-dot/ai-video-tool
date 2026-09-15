@@ -1,0 +1,13 @@
+Chest visual eval lane-e-chest-eval-v1: FAIL (9/11)
+ghostTerritory=quad_mid_luma bandAuthorityMaskUsed=false
+  1. Full band including left third: PASS
+  2. Pinstripe + AA removed: FAIL — 10 pinstripe/AA remnant pixels
+  3. Crease removed: PASS
+  4. Cream-body preservation: PASS
+  5. Sleeve / forearm preservation: PASS
+  6. Perimeter / right-end protrusion: FAIL — 42 cream pixels painted navy
+  7. Wordmark present: PASS
+  8. Centre / single zip (tapes absorbed): PASS
+  9. No outline ghosting: PASS
+  10. Foreground occlusion (hand / skin): PASS
+  11. Outside-region preservation: PASS

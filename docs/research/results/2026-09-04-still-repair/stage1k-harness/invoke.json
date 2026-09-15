@@ -1,0 +1,42 @@
+{
+  "httpStatus": 401,
+  "latencyMs": 1366,
+  "url": "https://qoyxgnkvjukovkrvdaiq.supabase.co/functions/v1/architecture-c-still-repair-proxy",
+  "body": {
+    "error": "unauthenticated"
+  },
+  "repairMethodVersion": null,
+  "assetId": null,
+  "storedPath": null,
+  "previewUrl": null,
+  "worker546": false,
+  "authKind": "anon_publishable_key",
+  "expectedVersion": "architecture_c_still_repair_1k",
+  "versionMatch": false,
+  "canonical": {
+    "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+    "wardrobeFeatureId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+    "clipId": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+    "stillAssetId": "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+    "keyframeId": "v2-still-0.785",
+    "stage": "logo_chest",
+    "bandQuad": [
+      [
+        0.3,
+        0.53
+      ],
+      [
+        0.87,
+        0.533
+      ],
+      [
+        0.87,
+        0.585
+      ],
+      [
+        0.3,
+        0.582
+      ]
+    ]
+  }
+}
