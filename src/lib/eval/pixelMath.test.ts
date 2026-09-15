@@ -2,9 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   absDiffLuma,
   cropRgba,
+  decodePpm,
   encodeBmp24,
   encodePpm,
   luma,
+  lumaAt,
   pointInQuad,
   quadFromNorm,
   solidRgba,
@@ -41,5 +43,17 @@ describe("Lane E pixel math", () => {
     expect(pointInQuad(450, 710, quad)).toBe(true);
     expect(pointInQuad(10, 10, quad)).toBe(false);
     expect(luma(28, 32, 95)).toBeLessThan(80);
+  });
+
+  it("decodePpm round-trips encodePpm including a non-navy pixel", () => {
+    const img = solidRgba(4, 3, 28, 32, 95);
+    img.data[16] = 200;
+    img.data[17] = 185;
+    img.data[18] = 165;
+    const decoded = decodePpm(encodePpm(img));
+    expect(decoded.width).toBe(4);
+    expect(decoded.height).toBe(3);
+    expect(decoded.data).toEqual(img.data);
+    expect(lumaAt(decoded, 0, 1)).toBeCloseTo(luma(200, 185, 165), 5);
   });
 });

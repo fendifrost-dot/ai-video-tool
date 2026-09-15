@@ -1,0 +1,390 @@
+{
+  "schemaVersion": "lane-e-chest-eval-v1",
+  "verdict": "FAIL",
+  "passCount": 7,
+  "failCount": 4,
+  "criteria": [
+    {
+      "id": 1,
+      "key": "full_band_left_third",
+      "name": "Full band including left third",
+      "verdict": "PASS",
+      "metrics": {
+        "sourceNavy": 2283,
+        "unpaintedNavy": 0,
+        "unpaintedFrac": 0
+      },
+      "windows": [
+        {
+          "x0": 216,
+          "x1": 285,
+          "y0": 678,
+          "y1": 749
+        }
+      ],
+      "note": "Source-dark pixels in the left-third quad must stay painted navy.",
+      "failureReason": null
+    },
+    {
+      "id": 2,
+      "key": "pinstripe_aa_removed",
+      "name": "Pinstripe + AA removed",
+      "verdict": "FAIL",
+      "metrics": {
+        "remnants": 6,
+        "probed": 268,
+        "maxOutputLuma": 254.7874
+      },
+      "windows": [
+        {
+          "x0": 208,
+          "x1": 280,
+          "y0": 676,
+          "y1": 679
+        },
+        {
+          "x0": 260,
+          "x1": 280,
+          "y0": 676,
+          "y1": 690
+        }
+      ],
+      "note": "Mid-luma ridge/AA remnants (not cream body) in the top-left pinstripe windows.",
+      "failureReason": "6 pinstripe/AA remnant pixels"
+    },
+    {
+      "id": 3,
+      "key": "crease_removed",
+      "name": "Crease removed",
+      "verdict": "PASS",
+      "metrics": {
+        "median": 31.585599999999996,
+        "floor": 25.585599999999996,
+        "columnsBelowFloor": 0,
+        "minColumnMean": 32.71890322580645
+      },
+      "windows": [
+        {
+          "x0": 277,
+          "x1": 283,
+          "y0": 690,
+          "y1": 720
+        }
+      ],
+      "note": "Crease columns must sit at/above band median − 6.",
+      "failureReason": null
+    },
+    {
+      "id": 4,
+      "key": "cream_preservation",
+      "name": "Cream-body preservation",
+      "verdict": "FAIL",
+      "metrics": {
+        "creamSource": 179,
+        "creamToNavy": 19,
+        "firstNavyRaisePx": 1,
+        "firstNavyRowSource": 676,
+        "firstNavyRowOutput": 675
+      },
+      "windows": [
+        {
+          "x0": 280,
+          "x1": 330,
+          "y0": 673,
+          "y1": 676
+        }
+      ],
+      "note": "Cream body at the 3-px raise window must not become navy (1j: 97 px / 3-px raise at x290).",
+      "failureReason": "19 cream pixels painted navy"
+    },
+    {
+      "id": 5,
+      "key": "sleeve_forearm",
+      "name": "Sleeve / forearm preservation",
+      "verdict": "PASS",
+      "metrics": {
+        "brightChecked": 653,
+        "brightChanged": 0,
+        "patchDarkened": 0
+      },
+      "windows": [
+        {
+          "x0": 330,
+          "x1": 380,
+          "y0": 738,
+          "y1": 755
+        },
+        {
+          "x0": 389,
+          "x1": 392,
+          "y0": 746,
+          "y1": 748
+        }
+      ],
+      "note": "Bright sleeve/forearm bytes stay identical; 4×3 zip-corner cream must not drop ≥40 luma.",
+      "failureReason": null
+    },
+    {
+      "id": 6,
+      "key": "perimeter_right_end",
+      "name": "Perimeter / right-end protrusion",
+      "verdict": "FAIL",
+      "metrics": {
+        "creamSource": 136,
+        "creamToNavy": 41
+      },
+      "windows": [
+        {
+          "x0": 580,
+          "x1": 616,
+          "y0": 713,
+          "y1": 730
+        }
+      ],
+      "note": "Right-end cream (x580–616 / y713–730) must stay cream.",
+      "failureReason": "41 cream pixels painted navy"
+    },
+    {
+      "id": 7,
+      "key": "wordmark",
+      "name": "Wordmark present",
+      "verdict": "PASS",
+      "metrics": {
+        "navyFrac": 0.8874485596707818,
+        "meanLuma": 51.6801237448567,
+        "pixels": 4860
+      },
+      "windows": [
+        {
+          "x0": 442,
+          "x1": 576,
+          "y0": 697,
+          "y1": 732
+        }
+      ],
+      "note": "Wearer's-left wordmark zone must be a navy band (not a cream hole). Not OCR.",
+      "failureReason": null
+    },
+    {
+      "id": 8,
+      "key": "centre_single_zip",
+      "name": "Centre / single zip (tapes absorbed)",
+      "verdict": "PASS",
+      "metrics": {
+        "tapeSamples": 68,
+        "tapeBright": 0
+      },
+      "windows": [
+        {
+          "x0": 399,
+          "x1": 401,
+          "y0": 715,
+          "y1": 735
+        },
+        {
+          "x0": 427,
+          "x1": 431,
+          "y0": 715,
+          "y1": 715
+        }
+      ],
+      "note": "Left tape x399–401 and diagonal x427–431 must be navy; zip core x418–424 excluded.",
+      "failureReason": null
+    },
+    {
+      "id": 9,
+      "key": "no_ghosting",
+      "name": "No outline ghosting",
+      "verdict": "FAIL",
+      "metrics": {
+        "midLumaChecked": 488,
+        "midLumaGhosts": 95,
+        "ghostRatio": 0.19467213114754098,
+        "ghostCeiling": 51.5856,
+        "median": 31.585599999999996,
+        "bandAuthorityMaskUsed": 0,
+        "leftWindowRatio": 0.04216867469879518,
+        "rightWindowRatio": 0.2732919254658385,
+        "leftWindowChecked": 166,
+        "rightWindowChecked": 322,
+        "passCeiling": 0.05
+      },
+      "windows": [
+        {
+          "x0": 255,
+          "x1": 345,
+          "y0": 696,
+          "y1": 712
+        },
+        {
+          "x0": 442,
+          "x1": 560,
+          "y0": 704,
+          "y1": 734
+        }
+      ],
+      "note": "Every mid-luma (60–180) source pixel inside the quad windows. Authority mask is not a filter.",
+      "failureReason": "ghost ratio 0.195 ≥ 0.05"
+    },
+    {
+      "id": 10,
+      "key": "foreground_occlusion",
+      "name": "Foreground occlusion (hand / skin)",
+      "verdict": "PASS",
+      "metrics": {
+        "brightSkin": 109,
+        "changed": 0
+      },
+      "windows": [
+        {
+          "x0": 330,
+          "x1": 380,
+          "y0": 738,
+          "y1": 742
+        }
+      ],
+      "note": "Bright hand/forearm pixels (luma ≥ 180) must be byte-identical.",
+      "failureReason": null
+    },
+    {
+      "id": 11,
+      "key": "outside_region",
+      "name": "Outside-region preservation",
+      "verdict": "PASS",
+      "metrics": {
+        "changed": 0,
+        "yTopExclusive": 600,
+        "yBottomExclusive": 800
+      },
+      "windows": [
+        {
+          "x0": 0,
+          "x1": 719,
+          "y0": 0,
+          "y1": 599
+        },
+        {
+          "x0": 0,
+          "x1": 719,
+          "y0": 800,
+          "y1": 1279
+        }
+      ],
+      "note": "No pixel changes above y600 or below y800 (scaled).",
+      "failureReason": null
+    }
+  ],
+  "unexplained": [],
+  "scoring": {
+    "ghostTerritory": "quad_mid_luma",
+    "bandAuthorityMaskUsed": false,
+    "ghostRatioPassCeiling": 0.05,
+    "referenceFrame": {
+      "width": 720,
+      "height": 1280
+    }
+  },
+  "artifacts": {
+    "absDiff": {
+      "id": "abs_diff",
+      "width": 720,
+      "height": 1280,
+      "files": [
+        "abs_diff.ppm",
+        "abs_diff.bmp"
+      ]
+    },
+    "crops": [
+      {
+        "id": "chest_compare",
+        "box": {
+          "x0": 200,
+          "x1": 630,
+          "y0": 660,
+          "y1": 770
+        },
+        "width": 431,
+        "height": 111,
+        "files": [
+          "chest_compare.ppm",
+          "chest_compare.bmp"
+        ]
+      },
+      {
+        "id": "pinstripe_topleft",
+        "box": {
+          "x0": 200,
+          "x1": 340,
+          "y0": 660,
+          "y1": 700
+        },
+        "width": 141,
+        "height": 41,
+        "files": [
+          "pinstripe_topleft.ppm",
+          "pinstripe_topleft.bmp"
+        ]
+      },
+      {
+        "id": "crease_lettering",
+        "box": {
+          "x0": 250,
+          "x1": 360,
+          "y0": 688,
+          "y1": 740
+        },
+        "width": 111,
+        "height": 53,
+        "files": [
+          "crease_lettering.ppm",
+          "crease_lettering.bmp"
+        ]
+      },
+      {
+        "id": "right_top_edge",
+        "box": {
+          "x0": 430,
+          "x1": 630,
+          "y0": 690,
+          "y1": 750
+        },
+        "width": 201,
+        "height": 61,
+        "files": [
+          "right_top_edge.ppm",
+          "right_top_edge.bmp"
+        ]
+      },
+      {
+        "id": "sleeve_zip_bottom",
+        "box": {
+          "x0": 320,
+          "x1": 420,
+          "y0": 730,
+          "y1": 760
+        },
+        "width": 101,
+        "height": 31,
+        "files": [
+          "sleeve_zip_bottom.ppm",
+          "sleeve_zip_bottom.bmp"
+        ]
+      },
+      {
+        "id": "centre_wedge",
+        "box": {
+          "x0": 390,
+          "x1": 440,
+          "y0": 700,
+          "y1": 750
+        },
+        "width": 51,
+        "height": 51,
+        "files": [
+          "centre_wedge.ppm",
+          "centre_wedge.bmp"
+        ]
+      }
+    ]
+  }
+}

@@ -188,6 +188,59 @@ export function encodePpm(img: RgbaImage): Uint8Array {
   return out;
 }
 
+/**
+ * Decode binary P6 PPM (ffmpeg-friendly). Comments and extra whitespace allowed.
+ */
+export function decodePpm(bytes: Uint8Array): RgbaImage {
+  if (bytes.length < 8 || bytes[0] !== 0x50 || bytes[1] !== 0x36) {
+    throw new Error("decodePpm: expected binary P6 PPM");
+  }
+  let i = 2;
+  const skip = () => {
+    while (i < bytes.length) {
+      const c = bytes[i]!;
+      if (c === 0x23) {
+        while (i < bytes.length && bytes[i] !== 0x0a) i++;
+        continue;
+      }
+      if (c === 0x20 || c === 0x09 || c === 0x0d || c === 0x0a) {
+        i++;
+        continue;
+      }
+      break;
+    }
+  };
+  const readToken = (): string => {
+    skip();
+    const start = i;
+    while (i < bytes.length) {
+      const c = bytes[i]!;
+      if (c === 0x20 || c === 0x09 || c === 0x0d || c === 0x0a || c === 0x23) break;
+      i++;
+    }
+    return new TextDecoder().decode(bytes.subarray(start, i));
+  };
+  const width = Number(readToken());
+  const height = Number(readToken());
+  const maxVal = Number(readToken());
+  if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1) {
+    throw new Error("decodePpm: invalid dimensions");
+  }
+  if (maxVal !== 255) throw new Error(`decodePpm: expected maxVal 255, got ${maxVal}`);
+  if (bytes[i] === 0x0a || bytes[i] === 0x20 || bytes[i] === 0x09 || bytes[i] === 0x0d) i++;
+  const need = width * height * 3;
+  const rgb = bytes.subarray(i, i + need);
+  if (rgb.length < need) throw new Error("decodePpm: truncated raster");
+  const data = new Uint8Array(width * height * 4);
+  for (let p = 0, q = 0; p < need; p += 3, q += 4) {
+    data[q] = rgb[p]!;
+    data[q + 1] = rgb[p + 1]!;
+    data[q + 2] = rgb[p + 2]!;
+    data[q + 3] = 255;
+  }
+  return { width, height, data };
+}
+
 /** Uncompressed 24-bit BMP (bottom-up BGR). Opens without extra deps. */
 export function encodeBmp24(img: RgbaImage): Uint8Array {
   const w = img.width;

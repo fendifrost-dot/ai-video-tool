@@ -332,8 +332,10 @@ describe("Lane E vs Architecture C real-crop (read-only of paint)", () => {
     expect(failed).toEqual([]);
     expect(STAGE1J_LIVE_VERIFIED.pass).toEqual([1, 3, 7, 10, 11]);
     expect(STAGE1J_LIVE_VERIFIED.fail).toEqual([2, 4, 5, 6, 8, 9]);
+    // Canonical live 1k (c9c4efee) is 7/11 — do not collapse live vs fixture.
     expect(STAGE1K_LIVE_VERIFIED.pass).toEqual([1, 3, 5, 7, 8, 10, 11]);
     expect(STAGE1K_LIVE_VERIFIED.fail).toEqual([2, 4, 6, 9]);
+    expect(STAGE1K_LIVE_VERIFIED.gate).toBe("NOT_CLEARED");
 
     const c2 = criterion(report, 2);
     const c4 = criterion(report, 4);
