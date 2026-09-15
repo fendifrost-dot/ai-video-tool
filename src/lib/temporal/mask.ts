@@ -1,4 +1,4 @@
-import type { AffineTransform, BinaryMask } from "./contract";
+import type { AffineTransform, BinaryMask, Point2, QuadNorm } from "./contract";
 import { invertAffine } from "./geometry";
 
 export interface MaskBBox {
@@ -84,6 +84,43 @@ export function warpMask(source: BinaryMask, canonicalToDest: AffineTransform): 
     }
   }
   return dest;
+}
+
+function signArea(a: Point2, b: Point2, c: Point2): number {
+  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+}
+
+function pointInTriangle(p: Point2, a: Point2, b: Point2, c: Point2): boolean {
+  const s1 = signArea(p, a, b);
+  const s2 = signArea(p, b, c);
+  const s3 = signArea(p, c, a);
+  const hasNeg = s1 < 0 || s2 < 0 || s3 < 0;
+  const hasPos = s1 > 0 || s2 > 0 || s3 > 0;
+  return !(hasNeg && hasPos);
+}
+
+/** Pixel-center coverage of a normalized TL→TR→BR→BL quad. */
+export function paintQuadMask(width: number, height: number, quad: QuadNorm): BinaryMask {
+  const mask = emptyMask(width, height);
+  const px = quad.map((p) => ({ x: p.x * width, y: p.y * height }));
+  const q0 = px[0]!;
+  const q1 = px[1]!;
+  const q2 = px[2]!;
+  const q3 = px[3]!;
+  let minX = Math.max(0, Math.floor(Math.min(q0.x, q1.x, q2.x, q3.x)));
+  let maxX = Math.min(width - 1, Math.ceil(Math.max(q0.x, q1.x, q2.x, q3.x)));
+  let minY = Math.max(0, Math.floor(Math.min(q0.y, q1.y, q2.y, q3.y)));
+  let maxY = Math.min(height - 1, Math.ceil(Math.max(q0.y, q1.y, q2.y, q3.y)));
+  for (let y = minY; y <= maxY; y++) {
+    const row = y * width;
+    for (let x = minX; x <= maxX; x++) {
+      const p = { x: x + 0.5, y: y + 0.5 };
+      if (pointInTriangle(p, q0, q1, q2) || pointInTriangle(p, q0, q2, q3)) {
+        mask.data[row + x] = 1;
+      }
+    }
+  }
+  return mask;
 }
 
 export function paintRectMask(

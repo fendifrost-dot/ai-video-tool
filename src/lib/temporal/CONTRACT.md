@@ -82,3 +82,30 @@ downstream still gets a mask, but `reanchorRecommended` is true.
 A later lane may feed `frames[].mask` / `frames[].transform` / `frames[].quadNorm`
 into compositing. This contract stays luma + mask + affine; it does not own pixels
 of a garment render.
+
+---
+
+## Live-prep (v1.0.0, not activated)
+
+**Work-order:** [#76](https://github.com/fendifrost-dot/ai-video-tool/issues/76) (lineage #56, umbrella #50)
+
+Isolated adapters so activation is one edge redeploy away **after sleeve still CLEARED**.
+They do **not** flip Hero Frame `temporalTrackingEnabled`, do **not** call Grok, and
+do **not** touch chest/sleeve paint.
+
+| Module | Role |
+|--------|------|
+| `canonicalLineage.ts` | Frozen project / still / keyframe / CLEARED chest quad `[[0.30,0.530],[0.87,0.533],[0.87,0.585],[0.30,0.582]]` |
+| `approvedQuad.ts` | Chest CLEARED slot + PENDING sleeve_left / sleeve_right slots |
+| `quadAdapter.ts` | CLEARED quads → `PropagationInput` jobs (`provider: "none"`, `grokPerFrame: false`) |
+| `livePrep.ts` | `TEMPORAL_LIVE_ACTIVATION_ARMED = false` + `evaluateTemporalLiveActivation` |
+| `heroFrameHook.ts` | `prepareHeroFrameTemporalHook` — tracking stays `false` |
+| `edgeAdapter.ts` | Future edge request body + `authorizeTemporalEdgeRequest` (refuses until armed) |
+| `clearedChestFixture.ts` | Synthetic proof the CLEARED chest quad propagates without per-frame Grok |
+
+`TEMPORAL_LIVE_PREP_CONTRACT_VERSION` is `"1.0.0"`. The core propagation contract
+stays `"1.0.0"`; live-prep is an additive adapter layer.
+
+**Hard stop:** `evaluateTemporalLiveActivation()` with the compile-time const is
+`allowed: false` until sleeve CLEARED + Class C sign-off + `explicitArm`. See
+[`docs/temporal/LIVE_PREP.md`](../../docs/temporal/LIVE_PREP.md).
