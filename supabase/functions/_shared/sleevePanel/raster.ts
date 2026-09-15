@@ -1,9 +1,10 @@
+/** Edge mirror of src/lib/sleevePanel/raster.ts — keep in sync. */
 /**
  * Isolated raster helpers for visible sleeve-panel repair.
  * Not a chest-band / Architecture C cover path.
  */
 
-import type { BinaryMask, NormBbox, Point, QuadNorm, QuadPts, RgbaImage } from "./types";
+import type { BinaryMask, NormBbox, Point, QuadNorm, QuadPts, RgbaImage } from "./types.ts";
 
 export function clamp01(v: number): number {
   if (v < 0) return 0;

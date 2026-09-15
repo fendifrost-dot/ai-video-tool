@@ -1,3 +1,4 @@
+/** Edge mirror of src/lib/sleevePanel/types.ts — keep in sync. */
 /**
  * Lane B — isolated sleeve-panel types.
  * Do not import Architecture C / chest repair modules from here.

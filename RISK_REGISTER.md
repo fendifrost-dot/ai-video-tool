@@ -8,7 +8,7 @@
 > **Severity:** Critical / High / Medium / Low · **Confidence:** Confirmed / Likely /
 > Suspected · **Status:** Open / In-remediation / Mitigated / Closed.
 
-Last reviewed: **2026-09-15** (PIPELINE-1 added for Lane G orchestration scaffolding).
+Last reviewed: **2026-09-15** (SLEEVE-1 added for Lane B live sleeve still wiring).
 
 | id | Title | Severity | Confidence | Status | Owner |
 |----|-------|----------|-----------|--------|-------|
@@ -26,6 +26,7 @@ Last reviewed: **2026-09-15** (PIPELINE-1 added for Lane G orchestration scaffol
 | [REL-1](#rel-1--pr16-compat-gate) | PR #16 preflight compatibility gate unmerged | Low | Confirmed | **Closed** (superseded by PR #19, merged 2026-08-18) | Products (AVT) |
 | [VOICE-1](#voice-1--grok-voice-director-spend-surface) | Voice Director STT/TTS/text spend + mic | Medium | Likely | Open | Products (AVT) |
 | [PIPELINE-1](#pipeline-1--orchestration-scaffolding-is-not-a-durable-queue) | Pipeline OS scaffolding is in-process only (no durable queue / reaper) | Medium | Confirmed | Open | Products (AVT) / Lane G |
+| [SLEEVE-1](#sleeve-1--visible-upper-arm-only-must-not-be-read-as-armholecuff) | Sleeve still repair is visible-upper-arm only; a pass must not be read as armhole→cuff | Medium | Confirmed | Open | Products (AVT) / Lane B |
 
 ---
 
@@ -285,3 +286,22 @@ Last reviewed: **2026-09-15** (PIPELINE-1 added for Lane G orchestration scaffol
 - **DoD (target):** a Lovable-managed durable `pipeline_runs` record + worker
   that resumes from last succeeded stage, plus a reaper that terminals stale
   `running`/`retrying` rows (joint with OPS-2). Class C sign-off required.
+
+---
+
+## SLEEVE-1 — Visible-upper-arm only must not be read as armhole→cuff
+
+- **Severity:** Medium · **Confidence:** Confirmed · **Status:** Open · **Owner:** Products (AVT) / Lane B
+- **Summary:** Live `sleeve_panel` now paints through Lane B
+  (`architecture_c_sleeve_still_1a`) on the Architecture C still path. The
+  canonical pose is crossed arms for the entire clip. A geometry pass proves
+  **visible upper-arm** repair only. `hiddenShoulderToCuffValidated` is always
+  `false`. Treating a READY sleeve still as full armhole→cuff (or turning on
+  temporal tracking) is a misread of the contract.
+- **Pointer:** [`docs/sleeve-panel/SLEEVE_PANEL_MASK_GEOMETRY_CONTRACT.md`](docs/sleeve-panel/SLEEVE_PANEL_MASK_GEOMETRY_CONTRACT.md);
+  [`docs/sleeve-panel/LANE_B_SLEEVE_STILL_LIVE_WIRING.md`](docs/sleeve-panel/LANE_B_SLEEVE_STILL_LIVE_WIRING.md).
+- **Mitigations:** live mask rejects tall/hidden quads; chest band is a reserved
+  do-not-paint slot; metadata always records `visible_geometry_only`.
+- **DoD (target):** human review of one $0 sleeve still on `2aa1a44c` / `9ed83c01`
+  before any temporal lane is enabled. Class C sign-off required to change the
+  claim.

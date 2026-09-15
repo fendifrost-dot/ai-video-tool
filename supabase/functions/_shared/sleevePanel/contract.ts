@@ -1,3 +1,4 @@
+/** Edge mirror of src/lib/sleevePanel/contract.ts — keep in sync. */
 /**
  * Mask / geometry contract for Lane B sleeve-panel repair.
  *
@@ -15,8 +16,8 @@ import {
   type RgbaImage,
   type SleeveSide,
   type VisibilityManifest,
-} from "./types";
-import { isNormBbox, isQuadNorm } from "./raster";
+} from "./types.ts";
+import { isNormBbox, isQuadNorm } from "./raster.ts";
 
 export { SLEEVE_PANEL_CONTRACT_VERSION, SLEEVE_PANEL_CLAIM };
 

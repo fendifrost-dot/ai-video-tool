@@ -6,15 +6,13 @@
  * No production bytes, no network, no paid generation.
  */
 
-import { defaultVisibilityManifest, type ChestOutputConsumptionSlot, type VisibleSleevePanelSpec } from "./contract";
-import { SLEEVE_PANEL_CONTRACT_VERSION } from "./types";
 import {
-  createMask,
-  createRgba,
-  fillMaskRect,
-  fillRect,
-  rgbaFingerprint,
-} from "./raster";
+  defaultVisibilityManifest,
+  type ChestOutputConsumptionSlot,
+  type VisibleSleevePanelSpec,
+} from "./contract";
+import { SLEEVE_PANEL_CONTRACT_VERSION } from "./types";
+import { createMask, createRgba, fillMaskRect, fillRect, rgbaFingerprint } from "./raster";
 import type { BinaryMask, NormBbox, QuadNorm, RgbaImage } from "./types";
 
 export const FIXTURE_STILL_W = 80;
@@ -56,7 +54,12 @@ export const LEFT_HIDDEN_SHOULDER_TO_CUFF_QUAD: QuadNorm = [
   [LEFT_VISIBLE.x0 / FIXTURE_STILL_W, 0.86],
 ];
 
-export const FLAT_PANEL_BBOX: NormBbox = [8 / FIXTURE_FLAT_W, 6 / FIXTURE_FLAT_H, 10 / FIXTURE_FLAT_W, 22 / FIXTURE_FLAT_H];
+export const FLAT_PANEL_BBOX: NormBbox = [
+  8 / FIXTURE_FLAT_W,
+  6 / FIXTURE_FLAT_H,
+  10 / FIXTURE_FLAT_W,
+  22 / FIXTURE_FLAT_H,
+];
 
 export const DEFAULT_PANELS: VisibleSleevePanelSpec[] = [
   { side: "left", targetQuadNorm: LEFT_VISIBLE_QUAD, sourceBboxNorm: FLAT_PANEL_BBOX },
@@ -89,8 +92,26 @@ export function buildCrossedArmsStill(): RgbaImage {
   // Horizontal defect rings (continuation of the chest band onto the sleeve).
   fillRect(still, LEFT_VISIBLE.x0, 22, LEFT_VISIBLE.x1, 29, NAVY[0], NAVY[1], NAVY[2]);
   fillRect(still, RIGHT_VISIBLE.x0, 22, RIGHT_VISIBLE.x1, 29, NAVY[0], NAVY[1], NAVY[2]);
-  fillRect(still, LEFT_VISIBLE.x0, 24, LEFT_VISIBLE.x1, 26, PINSTRIPE[0], PINSTRIPE[1], PINSTRIPE[2]);
-  fillRect(still, RIGHT_VISIBLE.x0, 24, RIGHT_VISIBLE.x1, 26, PINSTRIPE[0], PINSTRIPE[1], PINSTRIPE[2]);
+  fillRect(
+    still,
+    LEFT_VISIBLE.x0,
+    24,
+    LEFT_VISIBLE.x1,
+    26,
+    PINSTRIPE[0],
+    PINSTRIPE[1],
+    PINSTRIPE[2],
+  );
+  fillRect(
+    still,
+    RIGHT_VISIBLE.x0,
+    24,
+    RIGHT_VISIBLE.x1,
+    26,
+    PINSTRIPE[0],
+    PINSTRIPE[1],
+    PINSTRIPE[2],
+  );
 
   paintRect(still, CHEST_RESERVED, NAVY);
   return still;

@@ -1,7 +1,7 @@
 # Lane B — Visible sleeve-panel repair
 
 **Work-order:** [#54](https://github.com/fendifrost-dot/ai-video-tool/issues/54) under umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50).  
-**Branch surface:** `src/lib/sleevePanel/**`, `docs/sleeve-panel/**` only.
+**Live wiring:** [#74](https://github.com/fendifrost-dot/ai-video-tool/issues/74) — see [`LANE_B_SLEEVE_STILL_LIVE_WIRING.md`](./LANE_B_SLEEVE_STILL_LIVE_WIRING.md).
 
 ---
 
@@ -21,7 +21,7 @@ Deterministic **visible** sleeve-panel repair against **static fixtures**. Prove
 | | `grok-video-research-proxy` auth |
 | | V3 / paid Grok / PR #37 |
 
-Existing Architecture C `sleeve_panel` stage + `compositeSleevePanelsOntoStill` are **untouched**. Lane B is a parallel isolated engine so chest work can continue without collision.
+Isolated engine landed first so chest work could finish. Live wiring (#74) now consumes this contract from `compositeSleevePanelsOntoStill` **without** editing chest paint.
 
 ## What the fixture encodes [DECISION]
 

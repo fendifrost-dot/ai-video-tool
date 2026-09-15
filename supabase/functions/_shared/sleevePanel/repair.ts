@@ -1,3 +1,4 @@
+/** Edge mirror of src/lib/sleevePanel/repair.ts — keep in sync. */
 /**
  * Deterministic visible-upper-arm sleeve-panel repair.
  *
@@ -13,7 +14,7 @@ import {
   type SleevePanelSideResult,
   type SleevePanelStageInput,
   type SleevePanelStageOutput,
-} from "./contract";
+} from "./contract.ts";
 import {
   assertSameSize,
   cloneRgba,
@@ -26,9 +27,9 @@ import {
   rasterizeQuadMask,
   sampleNearest,
   subtractMasks,
-} from "./raster";
-import { assessVisibleSleeveQuad } from "./visibleGeometry";
-import type { BinaryMask } from "./types";
+} from "./raster.ts";
+import { assessVisibleSleeveQuad } from "./visibleGeometry.ts";
+import type { BinaryMask } from "./types.ts";
 
 export function repairVisibleSleevePanels(input: SleevePanelStageInput): SleevePanelStageOutput {
   assertSleevePanelContract(input);

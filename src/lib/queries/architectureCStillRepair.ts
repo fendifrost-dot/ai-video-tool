@@ -9,6 +9,9 @@ export type ArchitectureCStillRepairInput = {
   stage: StillRepairStage;
   logoZoneQuad?: QuadNorm;
   sleevePanels?: SleevePanelManual[];
+  chestBandQuadNorm?: QuadNorm;
+  chestOutputAssetId?: string;
+  chestRepairMethodVersion?: string;
 };
 
 export type ArchitectureCStillRepairResult = {

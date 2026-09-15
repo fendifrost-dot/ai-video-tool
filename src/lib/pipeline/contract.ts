@@ -149,7 +149,15 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
         ...noPaidCalls,
         module: "supabase/functions/architecture-c-still-repair-proxy/index.ts",
         entrypoint: "POST /functions/v1/architecture-c-still-repair-proxy (stage: sleeve_panel)",
-        notes: "Same Lovable edge function as chest. Lane G does not own sleeve geometry.",
+        notes:
+          "Same Lovable edge function as chest. Sleeve paint is Lane B `repairVisibleSleevePanelsOnStill` (`architecture_c_sleeve_still_1a`). Do not reopen logo_chest 1m.",
+      },
+      {
+        ...noPaidCalls,
+        module: "src/lib/sleevePanel/liveStill.ts",
+        entrypoint: "repairVisibleSleevePanelsOnStill",
+        notes:
+          "Authoritative visible-geometry contract. Manual quads only; hidden shoulder→cuff never validated.",
       },
       {
         ...noPaidCalls,

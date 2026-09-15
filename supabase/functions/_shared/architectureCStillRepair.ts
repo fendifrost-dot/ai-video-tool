@@ -57,7 +57,11 @@ export function mergeLogoZoneManualQuad(
     logoRaw.logo_height_ratio = 0.5;
   }
   detailsRaw.logo_zone = logoRaw;
-  return { ...base, version: typeof base.version === "number" ? base.version : 1, details: detailsRaw };
+  return {
+    ...base,
+    version: typeof base.version === "number" ? base.version : 1,
+    details: detailsRaw,
+  };
 }
 
 export function buildStillRepairAssetMetadata(input: {
@@ -98,4 +102,27 @@ export function isQuadNorm(v: unknown): v is QuadNorm {
         p.every((n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 1),
     )
   );
+}
+
+export function isStillRepairLogoChest(metadata: unknown): boolean {
+  if (!metadata || typeof metadata !== "object") return false;
+  return (metadata as { repair_stage?: unknown }).repair_stage === "logo_chest";
+}
+
+export function extractChestRepairMethodVersion(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const repair = (metadata as { repair?: unknown }).repair;
+  if (!repair || typeof repair !== "object") return null;
+  const v = (repair as { repair_method_version?: unknown }).repair_method_version;
+  return typeof v === "string" ? v : null;
+}
+
+export function extractChestBandQuad(metadata: unknown): QuadNorm | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const repair = (metadata as { repair?: unknown }).repair;
+  if (!repair || typeof repair !== "object") return null;
+  const raw =
+    (repair as { requested_band_quad_norm?: unknown }).requested_band_quad_norm ??
+    (repair as { requestedBandQuadNorm?: unknown }).requestedBandQuadNorm;
+  return isQuadNorm(raw) ? raw : null;
 }
