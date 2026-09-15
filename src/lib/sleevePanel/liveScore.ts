@@ -11,8 +11,8 @@ import {
   OUTSIDE_Y_BOTTOM,
   OUTSIDE_Y_TOP,
 } from "../eval/chestCriteria";
-import { lumaAt, pixelsMatch, type PixelBox } from "../eval/pixelMath";
-import type { RgbaImage as EvalRgba } from "../eval/types";
+import { lumaAt, pixelsMatch } from "../eval/pixelMath";
+import type { PixelBox, RgbaImage as EvalRgba } from "../eval/types";
 import {
   CANONICAL_HIDDEN_BOXES,
   LIVE_CHEST_RESERVED_QUAD_NORM,
