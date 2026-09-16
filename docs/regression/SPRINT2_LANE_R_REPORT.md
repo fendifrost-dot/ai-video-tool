@@ -64,6 +64,8 @@ No red locked suite. No paint fix.
 
 **Assign:** Lane C may update the notes copy after ChatGPT YELLOW if they want docs parity. Lane R will **not** edit `src/lib/temporal/livePrep.ts` or the Deno vendor.
 
+Follow-up: RISK_REGISTER **REL-2** (docs-only, issue #115). Still not a failing suite.
+
 ### 2. Still-output metadata still stamps `temporalTrackingEnabled: false`
 
 `STAGE1M_LIVE_VERIFIED` and `SLEEVE_STILL_1C_LIVE_VERIFIED` record `temporalTrackingEnabled: false` (still-repair / sleeve-still live rows). Product tracking is independently true. **OBSERVED**, not a gate reopen. Do not treat as CLEARED-still regression.

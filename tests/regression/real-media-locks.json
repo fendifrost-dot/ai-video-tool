@@ -1,0 +1,141 @@
+{
+  "schemaVersion": "1.0.0",
+  "lane": "R",
+  "issue": 115,
+  "parent": 102,
+  "coreHarnessIssue": 104,
+  "coreHarnessPr": 112,
+  "taxonomyCategory": "Real-Media-Benchmark",
+  "paidCalls": false,
+  "grokPerFrame": false,
+  "sam3LiveFetch": false,
+  "inventPassForbidden": true,
+  "class": "A",
+  "purpose": "Placeholders for Sprint 2 real-media gates. Every lock stays UNCLAIMED until the owning lane commits evidence. Lane R must not invent PASS. Real-Media-Benchmark count stays 0 while all locks are UNCLAIMED.",
+  "canonical": {
+    "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+    "masterClipId": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+    "stillAssetId": "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+    "keyframeId": "v2-still-0.785",
+    "fullClipFrames": 241,
+    "fullClipDurationSec": 4.02,
+    "workingRaster": [720, 1280]
+  },
+  "notSubstitutes": [
+    "5-frame synthetic luma temporal click smoke (#96 / PR #97)",
+    "RECONSTRUCT-1 E2E $0 5-frame unique-RGB stand-in (#100 / PR #99 / PR #101)",
+    "Chest 1m / sleeve 1c still goldens"
+  ],
+  "howToClaim": {
+    "owner": "Owning lane listed on the lock — not Lane R",
+    "steps": [
+      "Land evidence JSON/docs on the owning-lane surface (not paint owned by A/B).",
+      "Set status to CLAIMED and point evidence.path at that artifact.",
+      "verdict may be PASS, FAIL, or INCOMPLETE only when status is CLAIMED and evidence.paidCalls is false.",
+      "UNCLAIMED locks must keep verdict null. Do not invent PASS."
+    ]
+  },
+  "locks": [
+    {
+      "id": "full-clip-temporal-qa",
+      "owningLane": "C2",
+      "owningIssue": 107,
+      "claim": "Full-clip temporal QA on canonical master 76fe7438 (241 frames / 4.02s): drift, flicker, coverage, occlusion continuity; machine-readable temporal-video-qa-v1 JSON.",
+      "status": "UNCLAIMED",
+      "verdict": null,
+      "evidence": null,
+      "notThis": "3 jobs on a 5-frame synthetic luma fixture (click smoke #96)",
+      "evidenceRequired": [
+        "temporal-video-qa-v1 JSON covering the full canonical clip window",
+        "drift / flicker / coverage / occlusion continuity metrics",
+        "bad-frame tokens; paidCalls=false; grokPerFrame=false"
+      ],
+      "doNotEditFromLaneR": [
+        "src/lib/temporal/",
+        "src/lib/eval/",
+        "src/lib/reconstruct/"
+      ]
+    },
+    {
+      "id": "original-master-preservation-video",
+      "owningLane": "D2",
+      "owningIssue": 108,
+      "claim": "Original-master preservation video asserts on 720×1280 / full-clip indexes: authorized α === 0 → output RGB === original RGB; seam / identity / continuity.",
+      "status": "UNCLAIMED",
+      "verdict": null,
+      "evidence": null,
+      "notThis": "RECONSTRUCT-1 PASS 9/9 on 5 unique-RGB stand-in frames at 80×128 (#100)",
+      "evidenceRequired": [
+        "720×1280 preservation assertions (α===0 byte-identical)",
+        "full-clip index run (not frames=5 only)",
+        "docs/reconstruct/video-qa/ evidence JSON; paidCalls=false"
+      ],
+      "doNotEditFromLaneR": [
+        "src/lib/reconstruct/",
+        "src/lib/garment/",
+        "src/lib/sleevePanel/"
+      ]
+    },
+    {
+      "id": "playable-mp4-provenance-76fe7438",
+      "owningLane": "H",
+      "owningIssue": 111,
+      "claim": "Playable reconstructed MP4 with asserted width/height/frameCount/fps/duration/codec/container/audio and provenance to master 76fe7438 at 720×1280.",
+      "status": "UNCLAIMED",
+      "verdict": null,
+      "evidence": null,
+      "notThis": "Hero Frame player showing clip 76fe7438 while reconstruct E2E used stand-in rasters",
+      "evidenceRequired": [
+        "playable MP4 artifact (or committed provenance package pointing at it)",
+        "width=720 height=1280 frameCount/fps/duration/codec/container/audio",
+        "lineage to 76fe7438; paidCalls=false; grokPerFrame=false"
+      ],
+      "doNotEditFromLaneR": [
+        "src/lib/reconstruct/",
+        "src/lib/eval/",
+        "src/lib/pipeline/"
+      ]
+    },
+    {
+      "id": "sam3-consume-evidence",
+      "owningLane": "D2",
+      "owningIssue": 108,
+      "alsoConsumedBy": "H (#111)",
+      "claim": "Production path consumes intended SAM-3 (Stage 1h evidence / caller-supplied). Record source, mask provenance, fallback, failure behavior. liveFetch=false.",
+      "status": "UNCLAIMED",
+      "verdict": null,
+      "evidence": null,
+      "notThis": "Fixture α in RECONSTRUCT-1 E2E $0; live sam3-segment-proxy / CC fetch",
+      "evidenceRequired": [
+        "mask source + provenance recorded (Stage 1h evidence or caller-supplied)",
+        "sam3.liveFetch=false; no CC SwitchX call from this gate",
+        "fallback/failure behavior documented"
+      ],
+      "doNotEditFromLaneR": [
+        "src/lib/reconstruct/",
+        "supabase/functions/sam3-segment-proxy/",
+        "fendi-control-center"
+      ]
+    },
+    {
+      "id": "e2-video-qa-json",
+      "owningLane": "E2",
+      "owningIssue": 105,
+      "claim": "Lane E2 video-level PASS/FAIL JSON (lane-e2-video-qa-v1) against a real reconstructed MP4: coverage, jitter/drift, mask discontinuity, outside-region change, seams, original-master preservation, artifact crops. Do not reopen still goldens.",
+      "status": "UNCLAIMED",
+      "verdict": null,
+      "evidence": null,
+      "notThis": "lane-e-reconstruct-video-v1 9/9 on the 4/5-frame $0 fixture",
+      "evidenceRequired": [
+        "lane-e2-video-qa-v1 JSON (or INCOMPLETE with blockingArtifactProducer=false)",
+        "scored against Lane H MP4 / decoded frames — not still 11/11 or 6/6",
+        "stillGoldensReopened=false; paidCalls=false"
+      ],
+      "doNotEditFromLaneR": [
+        "src/lib/eval/",
+        "src/lib/garment/architectureCStillRepairGolden.test.ts",
+        "src/lib/sleevePanel/liveScore.test.ts"
+      ]
+    }
+  ]
+}

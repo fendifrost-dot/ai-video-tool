@@ -160,6 +160,19 @@
         "src/lib/temporal/livePrep.ts",
         "src/lib/reconstruct/originalMasterReconstruct.ts"
       ]
+    },
+    {
+      "id": "lane-r-real-media-placeholders",
+      "lane": "R",
+      "lock": "Sprint 2 real-media gates stay UNCLAIMED until owning-lane evidence (no invented PASS)",
+      "files": ["tests/regression/real-media-locks.contract.test.ts"],
+      "escalateTo": "Owning lane on the UNCLAIMED row (C2/D2/H/E2). Lane R does not fill PASS.",
+      "doNotFix": [
+        "src/lib/temporal/",
+        "src/lib/reconstruct/",
+        "src/lib/eval/",
+        "src/lib/pipeline/"
+      ]
     }
   ]
 }
