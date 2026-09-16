@@ -56,7 +56,7 @@ A recipe is a versioned JSON document. It names:
 - `schema_version`
 - `host`: `"premiere"` (v1) — `"after_effects"` is rejected until a later RED
 - `workspace_root`: absolute path that must pass the jail
-- `export_package_relpath`: path to the unzipped AVT ZIP
+- `export_package_relpath`: path to the unzipped AVT ZIP (may also contain `reconstructed_master/` — Lane F2 sidecar, not a new op; ingest via existing `import_media_folder`)
 - `actions[]`: only allowlisted `op` names
 - `operator`: human id
 - `spend`: `{ astra_allowed: false, max_usd: 0 }`
@@ -210,6 +210,8 @@ Astra does **not** see:
 
 ```ts
 validateFinishingRecipe(recipe) → { ok, errors[] }
+validateReconstructedMasterHandoff(json) → { ok, errors[] }
+finishingRecipeCompatibleWithHandoff(recipe, handoff) → { ok, errors[] }
 createDisabledHarnessConfig()   → { astra.enabled: false, max_usd: 0 }
 ```
 
@@ -226,8 +228,10 @@ A future implementation PR (not this lane unless Fendi expands scope) would add 
 | Architecture recommendation | this folder |
 | Harness design (this file) | this folder |
 | Recipe allowlist + jail validator | `src/lib/automation/finishingRecipe.ts` |
+| Reconstructed-master sidecar validator (F2) | `src/lib/automation/finishingHandoff.ts` |
 | Disabled-by-default harness config | `src/lib/automation/finishingHarness.ts` |
 | Sample UXP-only recipe | `sample_finishing_recipe.json` |
+| Sample reconstructed-master handoff + recipe | `sample_reconstructed_master_handoff.json`, `sample_reconstructed_master_recipe.json` |
 | Live UXP panel | **not started** (needs machine + Adobe install; see RED) |
 | Live Astra session | **forbidden** until RED |
 

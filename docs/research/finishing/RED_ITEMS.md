@@ -3,7 +3,7 @@
 **Lane F · 2026-09-15**  
 Nothing in this list has been started. This research spent **$0**.
 
-A RED item is a **stop**. Do not “just try it.” Do not ask another agent to do it. Comment on [#57](https://github.com/fendifrost-dot/ai-video-tool/issues/57) (or have Fendi comment) with an explicit yes + spend ceiling.
+A RED item is a **stop**. Do not “just try it.” Do not ask another agent to do it. Comment on [#57](https://github.com/fendifrost-dot/ai-video-tool/issues/57) or [#103](https://github.com/fendifrost-dot/ai-video-tool/issues/103) (or have Fendi comment) with an explicit yes + spend ceiling.
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**
 
@@ -51,6 +51,8 @@ These stay **no** even if finishing looks blocked:
 | Reading / extending `docs/research/finishing/` | This lane. May mention that Fendi's OpenAI API can reach Astra. Must not call it. |
 | `validateFinishingRecipe` unit tests | No I/O |
 | Using the existing Export page ZIP / FCPXML handoff | Already shipping |
+| Defining / validating the reconstructed-master sidecar (`encode_status: not_claimed`) | Lane F2 contract; no MP4, no Premiere, no Astra |
+| Lane H encoding `76fe7438` to MP4 inside AVT | **Not this lane.** Artifact owner is Lane H; F2 only consumes the path |
 | Human-in-Premiere finishing on a machine Fendi already uses, **without** agents or new plugins | Normal editorial work; not this lane's spend |
 
 **[RECOMMENDATION]** The first *implementation* increment after this design, if Fendi wants it, is RED-F3 on a T7 workspace with an empty UXP panel that reports version only. Still $0 API spend. Still no Astra.
@@ -59,7 +61,7 @@ These stay **no** even if finishing looks blocked:
 
 ## How to approve
 
-Comment on [#57](https://github.com/fendifrost-dot/ai-video-tool/issues/57) with:
+Comment on [#57](https://github.com/fendifrost-dot/ai-video-tool/issues/57) or [#103](https://github.com/fendifrost-dot/ai-video-tool/issues/103) with:
 
 ```
 APPROVE RED-Fn

@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "kind": "reconstructed_master_handoff",
+  "source": "lane_h",
+  "consumer": "lane_f2",
+  "paid_calls": false,
+  "astra_required": false,
+  "blocks_e2e": false,
+  "grok_per_frame": false,
+  "sam3_live_fetch": false,
+  "encode_status": "not_claimed",
+  "project_id": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+  "master_clip_asset_id": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+  "chest_asset_id": "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
+  "sleeve_asset_id": "fdb86b18-d4aa-465e-b73f-1d252709739c",
+  "reconstruct_adapter_version": "1.0.0",
+  "reconstruct_e2e_version": "1.0.0",
+  "frame_count": 5,
+  "temporal_job_count": 3,
+  "original_pixels_preserved_where_unauthorized": true,
+  "eval_verdict": "PASS",
+  "eval_spec_version": "lane-e-reconstruct-video-v1",
+  "not_claimed": [
+    "live 720×1280 pixels of original master 76fe7438",
+    "live SAM-3 fetch via sam3-segment-proxy / Control Center",
+    "chest Stage 1m 11/11 rescore",
+    "sleeve Stage 1c 6/6 rescore",
+    "MP4 encode of clip 76fe7438"
+  ],
+  "master": {
+    "relpath": null,
+    "mime": "video/mp4"
+  },
+  "finishing": {
+    "host": "premiere",
+    "import_mode": "single_clip",
+    "recut": false,
+    "regenerate": false,
+    "recipe_relpath": "docs/research/finishing/sample_reconstructed_master_recipe.json"
+  }
+}
