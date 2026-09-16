@@ -32,6 +32,14 @@ export const CANONICAL_CLIP_KEYFRAME_INDEX = 19;
 export const HERO_FRAME_PLAYABLE_EXPORT_FRAME_COUNT = 8;
 export const HERO_FRAME_PLAYABLE_EXPORT_KEYFRAME_INDEX = 2;
 
+/**
+ * Live WebCodecs sample of the committed **72-frame gate MP4**.
+ * Same count as the UI compose window by memory budget (~29 MB RGBA),
+ * **not** the 8-frame in-memory compose (false FAIL 6/9). Full 72-frame
+ * decode remains the node/ffmpeg CI path.
+ */
+export const LIVE_PLAYABLE_DECODE_MAX_FRAMES = 8;
+
 /** Must stay ≤ temporal search radius (6) or hops fail-match. */
 export const PLAYABLE_DX_PER_FRAME = 2;
 

@@ -5,10 +5,10 @@
  * Encode-first with frames:[] is allowed (INCOMPLETE awaiting
  * decoded_frames). blockingArtifactProducer is always false.
  *
- * Decoded MP4 rasters are supplied by H (ffmpeg in node/tests, or an
- * injected frame pack). This module does not import ffmpeg / child_process
- * so Hero Frame UI can call it. Pairing 8-frame UI compose onto the 72-frame
- * gate MP4 is refused — that was the false FAIL 6/9.
+ * Decoded MP4 rasters are supplied by H (ffmpeg in node/tests, WebCodecs
+ * in the browser, or an injected frame pack). This module does not import
+ * ffmpeg / child_process so Hero Frame UI can call it. Pairing 8-frame UI
+ * compose onto the 72-frame gate MP4 is refused — that was the false FAIL 6/9.
  */
 
 import {
@@ -20,8 +20,8 @@ import {
 import type { StructuralReconstructFrame } from "@/lib/eval/videoQaAdapter";
 import type { VideoQaJson, VideoQaMp4Ref, VideoQaReport } from "@/lib/eval/videoQaTypes";
 import { RECONSTRUCT_E2E_VERSION, type ReconstructE2eOk } from "../e2e";
-import type { Sam3MaskSource } from "@/lib/reconstruct/adapters";
 import type { RgbaImage } from "../types";
+import type { Sam3MaskSource } from "@/lib/reconstruct/adapters";
 import {
   SAM3_CONSUME_VERSION,
   SAM3_LIVE_FETCH_ATTEMPTED,
@@ -234,8 +234,8 @@ export function evaluatePlayableVideoQa(input: {
    */
   includeDecodedFrames?: boolean;
   /**
-   * RGBA from H-owned decode (ffmpeg / fixture / injected). When length>0,
-   * E2 scores these instead of compose buffers or frames:[].
+   * RGBA from H-owned decode (ffmpeg / WebCodecs / fixture / injected).
+   * When length>0, E2 scores these instead of compose buffers or frames:[].
    */
   decodedFrames?: Array<PlayableDecodedRgba | StructuralReconstructFrame>;
   /** Attach compose original+α only when counts/size match. Default false. */

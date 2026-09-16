@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { VIDEO_QA_SPEC_VERSION } from "@/lib/eval";
+import { happyPathFrames } from "@/lib/eval/videoQaFixtures";
 import { runPlayableCompose } from "./compose";
 import { heroFramePlayableSpec } from "./spec";
 import {
@@ -136,7 +137,7 @@ describe("playable E2 video QA plug-in", () => {
     expect(ref.mimeType).toBe("video/mp4");
   });
 
-  it("scores injected decoded rasters with frames>0 (no ffmpeg)", () => {
+  it("scores injected decoded rasters with frames>0 (no ffmpeg / no WebCodecs)", () => {
     const frames = happyPathFrames(4);
     const { report, json } = evaluatePlayableVideoQa({
       mp4: committedPlayableMp4Ref(),
