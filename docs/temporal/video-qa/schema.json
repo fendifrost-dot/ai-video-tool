@@ -181,22 +181,25 @@
     },
     "coverage": {
       "type": "object",
-      "required": ["minRatio", "meanRatio", "holeFrames", "overflowFrames"],
+      "required": ["minRatio", "meanRatio", "minSupport", "meanSupport", "holeFrames", "overflowFrames"],
       "properties": {
         "minRatio": { "type": "number" },
         "meanRatio": { "type": "number" },
+        "minSupport": { "type": "number" },
+        "meanSupport": { "type": "number" },
         "holeFrames": { "type": "integer", "minimum": 0 },
         "overflowFrames": { "type": "integer", "minimum": 0 }
       }
     },
     "occlusion": {
       "type": "object",
-      "required": ["declaredWindowCount", "flaggedInWindows", "discontinuityFrames"],
+      "required": ["declaredWindowCount", "flaggedInWindows", "discontinuityFrames", "holdLatchedAfterBreak"],
       "properties": {
         "declaredWindowCount": { "type": "integer", "minimum": 0 },
         "flaggedInWindows": { "type": "integer", "minimum": 0 },
         "recoveryLagFrames": { "type": ["integer", "null"] },
-        "discontinuityFrames": { "type": "integer", "minimum": 0 }
+        "discontinuityFrames": { "type": "integer", "minimum": 0 },
+        "holdLatchedAfterBreak": { "type": "boolean" }
       }
     },
     "sam3": {

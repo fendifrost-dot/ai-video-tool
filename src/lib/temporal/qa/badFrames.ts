@@ -54,7 +54,12 @@ export function reasonsForFrame(
   if (frame.consecutiveIou != null && frame.consecutiveIou < thresholds.minConsecutiveIou) {
     reasons.push("flicker_iou");
   }
-  if (frame.coverageRatio < thresholds.minCoverageRatio) reasons.push("coverage_hole");
+  if (
+    frame.coverageRatio < thresholds.minCoverageRatio ||
+    frame.supportCoverage < thresholds.minCoverageRatio
+  ) {
+    reasons.push("coverage_hole");
+  }
   if (frame.coverageRatio > thresholds.maxCoverageRatio) reasons.push("coverage_overflow");
   if (
     frame.centroidJumpPx != null &&

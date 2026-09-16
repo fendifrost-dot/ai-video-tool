@@ -3,7 +3,7 @@
  * Drift / flicker / coverage / occlusion continuity. No providers.
  */
 
-import type { BinaryMask, PropagatedFrame, PropagationOutput } from "../contract";
+import type { BinaryMask, PropagatedFrame, PropagationOutput, SourceClipFrame } from "../contract";
 import { translationOf } from "../geometry";
 import { maskArea, maskBBox, maskIoU } from "../mask";
 import { DEFAULT_TEMPORAL_QA_THRESHOLDS, type TemporalQaThresholds } from "./thresholds";
@@ -31,6 +31,23 @@ export function maskCentroid(mask: BinaryMask): MaskCentroid | null {
   return { x: sx / n, y: sy / n };
 }
 
+/** Fraction of mask pixels whose clip luma is “on” (≥ threshold). */
+export function maskSupportCoverage(
+  mask: BinaryMask,
+  luma: Uint8Array,
+  threshold = 128,
+): number {
+  let on = 0;
+  let n = 0;
+  const nPix = Math.min(mask.data.length, luma.length);
+  for (let i = 0; i < nPix; i++) {
+    if (mask.data[i] !== 1) continue;
+    n++;
+    if (luma[i]! >= threshold) on++;
+  }
+  return n === 0 ? 0 : on / n;
+}
+
 export type TemporalFrameMetrics = {
   index: number;
   confidence: number;
@@ -42,6 +59,7 @@ export type TemporalFrameMetrics = {
   measuredDx: number;
   measuredDy: number;
   coverageRatio: number;
+  supportCoverage: number;
   maskArea: number;
   consecutiveIou: number | null;
   centroidJumpPx: number | null;
@@ -62,6 +80,8 @@ export type FlickerSummary = {
 export type CoverageSummary = {
   minRatio: number;
   meanRatio: number;
+  minSupport: number;
+  meanSupport: number;
   holeFrames: number;
   overflowFrames: number;
 };
@@ -71,6 +91,7 @@ export type OcclusionSummary = {
   flaggedInWindows: number;
   recoveryLagFrames: number | null;
   discontinuityFrames: number;
+  holdLatchedAfterBreak: boolean;
 };
 
 function mean(values: number[]): number {
@@ -81,11 +102,11 @@ function mean(values: number[]): number {
 export function scorePropagationFrames(
   output: PropagationOutput,
   expectedDx: number[],
-  thresholds: TemporalQaThresholds = DEFAULT_TEMPORAL_QA_THRESHOLDS,
+  clipFrames: SourceClipFrame[] = [],
 ): TemporalFrameMetrics[] {
   const canonical = output.frames.find((f) => f.index === output.canonicalIndex);
   const canonicalArea = canonical ? maskArea(canonical.mask) : 0;
-  const byIndex = new Map(output.frames.map((f) => [f.index, f]));
+  const lumaByIndex = new Map(clipFrames.map((f) => [f.index, f.luma]));
   const sorted = [...output.frames].sort((a, b) => a.index - b.index);
 
   return sorted.map((frame, i) => {
@@ -94,6 +115,8 @@ export function scorePropagationFrames(
     const driftPx = Math.hypot(t.dx - expected, t.dy);
     const area = maskArea(frame.mask);
     const coverageRatio = canonicalArea === 0 ? 0 : area / canonicalArea;
+    const luma = lumaByIndex.get(frame.index);
+    const supportCoverage = luma ? maskSupportCoverage(frame.mask, luma) : 1;
     const prev = i > 0 ? sorted[i - 1] : undefined;
     const consecutiveIou = prev ? maskIoU(prev.mask, frame.mask) : null;
     const prevC = prev ? maskCentroid(prev.mask) : null;
@@ -111,6 +134,7 @@ export function scorePropagationFrames(
       measuredDx: t.dx,
       measuredDy: t.dy,
       coverageRatio,
+      supportCoverage,
       maskArea: area,
       consecutiveIou,
       centroidJumpPx,
@@ -151,10 +175,17 @@ export function summarizeCoverage(
   thresholds: TemporalQaThresholds = DEFAULT_TEMPORAL_QA_THRESHOLDS,
 ): CoverageSummary {
   const ratios = frames.map((f) => f.coverageRatio);
+  const support = frames.map((f) => f.supportCoverage);
   return {
     minRatio: ratios.length ? Math.min(...ratios) : 0,
     meanRatio: mean(ratios),
-    holeFrames: frames.filter((f) => f.coverageRatio < thresholds.minCoverageRatio).length,
+    minSupport: support.length ? Math.min(...support) : 0,
+    meanSupport: mean(support),
+    holeFrames: frames.filter(
+      (f) =>
+        f.coverageRatio < thresholds.minCoverageRatio ||
+        f.supportCoverage < thresholds.minCoverageRatio,
+    ).length,
     overflowFrames: frames.filter((f) => f.coverageRatio > thresholds.maxCoverageRatio).length,
   };
 }
@@ -171,6 +202,7 @@ export function summarizeOcclusion(
       (f.source === "hold" ||
         f.reanchorRecommended ||
         f.coverageRatio < thresholds.minCoverageRatio ||
+        f.supportCoverage < thresholds.minCoverageRatio ||
         f.confidence < thresholds.minConfidence),
   ).length;
 
@@ -181,11 +213,16 @@ export function summarizeOcclusion(
       (f) =>
         f.index > lastEnd &&
         f.index <= lastEnd + thresholds.occlusionRecoveryFrames &&
-        f.coverageRatio >= 0.85 &&
-        f.source !== "hold",
+        f.supportCoverage >= 0.85,
     );
     recoveryLagFrames = recovered ? recovered.index - lastEnd : null;
   }
+
+  const firstHold = frames.find((f) => f.source === "hold");
+  const holdLatchedAfterBreak =
+    firstHold != null &&
+    frames.filter((f) => f.index > firstHold.index && f.source === "hold").length >
+      frames.filter((f) => f.index > firstHold.index && f.source !== "hold").length;
 
   const discontinuityFrames = frames.filter(
     (f) =>
@@ -200,6 +237,7 @@ export function summarizeOcclusion(
     flaggedInWindows,
     recoveryLagFrames,
     discontinuityFrames,
+    holdLatchedAfterBreak,
   };
 }
 

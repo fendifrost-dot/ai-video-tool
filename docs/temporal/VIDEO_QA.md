@@ -50,6 +50,8 @@ canonical 241-frame synthetic luma (clean or injected-defect)
   → temporal-video-qa-v1 JSON
 ```
 
+**[OBSERVED]** After a failed hop (occlusion / scene cut), `propagateRepair` latches `source=hold` for the rest of the walk until a new keyframe/anchor. That matches the locked architecture (re-anchor on flow break). QA flags the latched frames and records `holdLatchedAfterBreak`. Luma-support coverage can recover while the transform is still held.
+
 **[DECISION]** Full-clip does **not** POST `temporal-propagate-proxy`. The authenticated proxy still caps `clip.frames` at **24** (5-frame smoke / Reconstruct E2E). Raising that cap is a **YELLOW** shared contract.
 
 ## Metrics
@@ -58,8 +60,8 @@ canonical 241-frame synthetic luma (clean or injected-defect)
 |--------|------------------|
 | **Drift** | \|measured translation − expected dx\| per frame (px) |
 | **Flicker** | consecutive propagated-mask IoU |
-| **Coverage** | mask area / canonical-keyframe area |
-| **Occlusion continuity** | declared-window flags, recovery lag, centroid jumps |
+| **Coverage** | warped-mask area / canonical area **and** luma-support fraction inside the mask |
+| **Occlusion continuity** | declared-window flags, luma-support recovery lag, centroid jumps, hold-latch after break |
 | **SAM-3 continuity** | consecutive IoU of SAM-3-shaped masks + overlap with repair-mask union |
 
 Bad-frame tokens (stable): `low_confidence`, `reanchor_recommended`, `hold`, `failed_match`, `scene_cut`, `drift_exceeded`, `flicker_iou`, `coverage_hole`, `coverage_overflow`, `occlusion_discontinuity`, `sam3_discontinuity`.
@@ -92,6 +94,22 @@ Both stamp `paidCalls=false`, `grokPerFrame=false`, `sam3LiveFetch=false`, `stil
 2. **`live_1080x1920_ingest_of_76fe7438_not_this_lane`** — same not-claimed as Reconstruct E2E. Later Class C.
 3. **`lane_e2_should_consume_temporal-video-qa-v1`** — do not re-implement drift/flicker inside `src/lib/eval/**` from this lane.
 4. **`sam3_continuity_is_caller_supplied_not_live_fetch`** — no `sam3-segment-proxy` / CC.
+
+## Metrics produced (this PR)
+
+Clean 241-frame stand-in — **TEMPORAL-QA PASS 8/8** `frames=241 jobs=3 bad=0 paidCalls=false grokPerFrame=false`:
+
+| Metric | Clean | Defect fixture (detector proof) |
+|--------|-------|----------------------------------|
+| Drift max / mean px | 0 / 0 | 6 / 0.26 |
+| Flicker min consecutive IoU | 1.0 | 0.49 (1 frame below 0.75) |
+| Coverage ratio | 1.0 | 1.0 (hold keeps warped area) |
+| Luma-support min / hole frames | 1.0 / 0 | 0 / 56 |
+| Occlusion window flags | n/a | 16 in 100–115; recovery lag 1; **hold latched after break** |
+| SAM-3 continuity | IoU 1.0, overlap 1.0, `sam3LiveFetch=false` | min IoU 0, 16 empty masks, 4 discontinuities |
+| Auto bad frames | **0** | **203** (windows all hit) |
+
+JSON: [`video-qa/full-clip-clean.json`](./video-qa/full-clip-clean.json) · [`video-qa/full-clip-defects.json`](./video-qa/full-clip-defects.json)
 
 ## Schema / evidence
 
