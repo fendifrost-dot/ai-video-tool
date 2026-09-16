@@ -163,7 +163,8 @@ export const RECONSTRUCT_LIVE_DEPLOY_NOTES = {
   parentRedeployOnly: {
     function: null,
     via: "none — no Lovable Edge Functions redeploy from this lane",
-    publishNote: "Publish ≠ edge redeploy. Frontend Publish is not this lane.",
+    publishNote:
+      "Publish ≠ edge redeploy. Frontend Publish is required so Hero Frame §7 Run reconstruct E2E $0 is live. No edge redeploy from this lane.",
     paidCalls: false,
     noPerFrameGrok: true,
     noControlCenter: true,

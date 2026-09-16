@@ -13,39 +13,35 @@
 | Temporal live activation | YES (`TEMPORAL_LIVE_ACTIVATION_ARMED = true`) | YES — `temporal-propagate-proxy` OPTIONS 200 / JWT only | **YES** |
 | Hero Frame `temporalTrackingEnabled` | YES (`true` + `prepareHeroFrameTemporalDispatch` → `explicitArm`) | frontend Publish | **YES** |
 | Hero Frame §7 Temporal Run control | YES (PR #95, `782adac`) | frontend Publish | **YES** |
-| Temporal `$0` **click** smoke | YES (this evidence) | live product UI | **SUCCESS** — 3 jobs, `paidCalls=false` |
-| Temporal `$0` **script** smoke | YES (PR #93) | edge live; **VM BLOCKED on JWT** | optional fallback |
-| Lane D original-master live wiring | YES (`200bea9` / PR #92) | n/a — in-lib | **separate** — not this smoke POST |
+| Temporal `$0` **click** smoke | YES (PR #97) | live product UI | **SUCCESS** — 3 jobs, `paidCalls=false` |
+| Lane D original-master live wiring | YES (PR #92) | n/a — in-lib | YES (library) |
+| **RECONSTRUCT-1 E2E $0** | this PR (#98) | **Publish after merge** | **READY** — parent signed-in click |
 
-## TEMPORAL RUN CLICK SMOKE — SUCCESS
+## RECONSTRUCT-1 E2E $0 — READY for parent live verify
 
-Work-order: GitHub **#96** (lineage **#94** / PR **#95**, **#93**, parent **#50**). Docs/evidence only. **Do not reopen chest 1m or sleeve paint.**
+Work-order: GitHub **#98** (lineage **#89** / PR **#92**, temporal **#95** / **#97**, parent **#50**). Isolated reconstruct E2E + Lane E video eval + Hero Frame §7 button. **Do not reopen chest 1m or sleeve paint.**
 
-**When:** 2026-09-15 ~19:51 America/Chicago (~2026-09-16 00:51 UTC)  
-**App:** https://aivideotool.lovable.app (signed-in AVT owner)  
-**Code:** `main` @ `782adac` (PR #95) + Lovable frontend **Publish**
+**Click path** (after merge + Lovable frontend **Publish**):
 
-| Field | Value |
-|-------|--------|
-| Project | `764a63d2-93cd-44f3-905f-292f14ab2f51` |
-| Garment | `0feb028f-dc4d-45dc-82ac-e4bbd16054b0` |
-| Clip (UI player) | `76fe7438-671d-4428-a7f6-17a45e98c16f` |
-| UI | **Run temporal propagate** visible in Hero Frame §7 |
-| Click | once |
-| Toast | `Dispatched 3 job(s). paidCalls=false grokPerFrame=false.` |
-| 401 / paid generation / asset IDs in toast | **none** |
+1. Sign in at https://aivideotool.lovable.app
+2. `https://aivideotool.lovable.app/projects/764a63d2-93cd-44f3-905f-292f14ab2f51/hero-frame`
+3. §7 · Architecture C — still-first deterministic repair
+4. Do **not** click chest or sleeve paint
+5. Click **Run reconstruct E2E $0** once
 
-Write-up: `docs/temporal/LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md`  
-JSON: `docs/temporal/live-smoke/click-smoke.json`  
-Screenshots: `temporal-smoke-evidence/before-run.png` + `after-run.png` (described in the write-up; binaries not hydrated onto this VM)
+Expected toast: `RECONSTRUCT-1 PASS 9/9 frames=<n> paidCalls=false grokPerFrame=false.`
 
-**Not claimed:** live footage CLEARED, reconstruct composite, per-frame Grok, new edge redeploy.
+Write-up: `docs/reconstruct/E2E_LIVE.md`
+
+**Publish ≠ edge redeploy.** No still-repair / temporal / SAM-3 redeploy from this lane.
+
+**Not claimed:** live 720×1280 pixels of master `76fe7438`, live SAM-3 fetch, still-golden rescore, MP4 encode.
 
 ## Canonical IDs (unchanged)
 
 - project `764a63d2-93cd-44f3-905f-292f14ab2f51`
 - garment `0feb028f-dc4d-45dc-82ac-e4bbd16054b0`
-- original master clip `76fe7438-671d-4428-a7f6-17a45e98c16f` (Lane D — player only for this smoke)
+- original master clip `76fe7438-671d-4428-a7f6-17a45e98c16f`
 - still `2aa1a44c-b24a-46bf-890f-13a6fc65b1cc`
 - keyframe `v2-still-0.785`
 - chest `9ed83c01` / `architecture_c_still_repair_1m` / CLEARED 11/11

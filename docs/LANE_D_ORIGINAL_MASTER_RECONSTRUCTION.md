@@ -1,10 +1,11 @@
 # Lane D — Original-master reconstruction
 
 **Issue:** [#89](https://github.com/fendifrost-dot/ai-video-tool/issues/89) (child of [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50); lineage [#55](https://github.com/fendifrost-dot/ai-video-tool/issues/55) / PR #58)  
-**Status:** isolated reconstruct + **live-wiring adapters** (gate 4). Dispatch requires `explicitArm`. Not a live SAM-3 fetch.  
+**Status:** isolated reconstruct + **live-wiring adapters** + **Hero Frame E2E $0 runner** (gate 4). Dispatch / E2E click requires `explicitArm`. Not a live SAM-3 fetch.  
 **Class:** C (compositing / rendering) — isolated module; no chest/sleeve paint or temporal authorize edits.
 
-Live-wiring deploy notes: [`docs/reconstruct/LIVE_WIRING.md`](reconstruct/LIVE_WIRING.md).
+Live-wiring deploy notes: [`docs/reconstruct/LIVE_WIRING.md`](reconstruct/LIVE_WIRING.md).  
+E2E click path: [`docs/reconstruct/E2E_LIVE.md`](reconstruct/E2E_LIVE.md).
 
 ## Product rule
 
@@ -31,6 +32,11 @@ Live wiring (gate 4) builds `generated` from CLEARED chest + sleeve stills stamp
 | `src/lib/reconstruct/liveWiring.ts` | Gate 4 arm + deploy notes |
 | `src/lib/reconstruct/adapters.ts` | Consume stills + SAM-3 + temporal → `reconstructMasterClip` |
 | `src/lib/reconstruct/dispatch.ts` | Wire parse → authorize → reconstruct |
+| `src/lib/reconstruct/e2e.ts` | RECONSTRUCT-1 E2E compose (temporal jobs → reconstruct) |
+| `src/lib/reconstruct/heroFrameRun.ts` | Hero Frame §7 product gate |
+| `src/lib/eval/reconstructVideoEvaluator.ts` | Lane E video/sampled-frame PASS/FAIL (no still reopen) |
+| `src/components/video/HeroFrameReconstructRunControl.tsx` | §7 **Run reconstruct E2E $0** |
+| `src/components/video/ArchitectureCStillRepairRunner.tsx` | Thin §7 mount only (no paint edits) |
 | `src/lib/reconstruct/fixtures/*` | `$0` synthetic packs (no live bytes, no paid Grok) |
 | `src/lib/reconstruct/*.test.ts` | Preservation + gate + dispatch proofs |
 | `src/lib/reconstruct/index.ts` | Public export |
@@ -100,3 +106,4 @@ Fixture tests prove:
 5. Live-wiring gate refuses without `explicitArm` / uncleared chest or sleeve / temporal not armed.
 6. `$0` 4-frame pack on master clip `76fe7438` preserves unauthorized pixels.
 7. **No edge function** to redeploy from this lane.
+8. Hero Frame §7 **Run reconstruct E2E $0** gated on reconstruct armed + temporal tracking; eval JSON does not reopen still goldens.
