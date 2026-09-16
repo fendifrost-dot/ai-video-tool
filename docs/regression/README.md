@@ -22,7 +22,9 @@ Machine-readable file list + owning lanes: [`tests/regression/locked-surfaces.js
 
 Human inventory: [`LOCKED_SURFACES.md`](LOCKED_SURFACES.md).  
 Escalation protocol: [`OWNERSHIP.md`](OWNERSHIP.md).  
-Sprint 2 baseline: [`SPRINT2_LANE_R_REPORT.md`](SPRINT2_LANE_R_REPORT.md).
+Sprint 2 baseline: [`SPRINT2_LANE_R_REPORT.md`](SPRINT2_LANE_R_REPORT.md).  
+Real-media placeholders (all **UNCLAIMED**): [`REAL_MEDIA_LOCKS.md`](REAL_MEDIA_LOCKS.md).  
+Follow-up report: [`SPRINT2_LANE_R_REAL_MEDIA.md`](SPRINT2_LANE_R_REAL_MEDIA.md).
 
 ## What this is not
 

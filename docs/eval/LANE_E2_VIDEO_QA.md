@@ -17,6 +17,43 @@ Upgrade evaluation from still-centric checks to **video-level QA**. Lane H produ
 
 Chest 11/11 and sleeve 6/6 stay **LOCKED**. This module never calls `evaluateChestStill`. If video evidence suggests a still regression, **escalate** (`stillGoldensReopened: false`) — do not silently reopen goldens.
 
+**[DECISION]** `evaluateVideoQa` is **project/clip-id agnostic**. Provenance IDs are recorded, never allowlisted. A second existing clip scores through the same probes.
+
+---
+
+## Full-clip 720×1280 fixture path (H / C2 / D2)
+
+Hang real-media probes here — not on still goldens:
+
+|             |                                                                                                           |
+| ----------- | --------------------------------------------------------------------------------------------------------- |
+| Module      | `src/lib/eval/fixtures/fullClip720.ts`                                                                    |
+| Raster      | **720×1280** (shape of the canonical still/video raster; synthetic unique-RGB, not live `76fe7438` bytes) |
+| Frames      | 8 @ 24 fps                                                                                                |
+| Hook        | `VIDEO_QA_REAL_MEDIA_HOOK` / `fullClip720FromDecodedFrames`                                               |
+| Second clip | `secondClipFullClipInput()` — alternate project + master IDs                                              |
+| Decode      | **false** — H supplies decoded RGBA + α                                                                   |
+
+See [`fixtures/README.md`](fixtures/README.md).
+
+```ts
+import { evaluateVideoQa, fullClip720FromDecodedFrames, secondClipFullClipInput } from "@/lib/eval";
+
+evaluateVideoQa(secondClipFullClipInput()); // $0 portability proof
+
+evaluateVideoQa(
+  fullClip720FromDecodedFrames(
+    decoded720x1280Frames,
+    {
+      produced: true,
+      path,
+      mimeType: "video/mp4",
+    },
+    { masterClipAssetId: anyClipId },
+  ),
+);
+```
+
 ---
 
 ## How Lane H plugs in
@@ -109,9 +146,32 @@ Claude (or a human forensic pass) investigates **only** `unexplained[]`:
 
 ---
 
-## Still-golden lock / escalation
+## Still-golden lock / preservation FAIL escalation
 
-**[DECISION]** Video FAIL of original-master preservation escalates as `architectural_blocker` with `stillGoldensReopened: false`. Message assigns the defect to reconstruct/compositing. Do not call `evaluateChestStill` or sleeve still scorers from this lane.
+**[DECISION]** `original_master_preservation` FAIL (unauthorized α === 0 pixels drifted from original RGB) is a **compositing contract break**, not a still-gate miss.
+
+Contract (frozen example: [`preservation-escalate.example.json`](preservation-escalate.example.json)):
+
+```json
+{
+  "stillGoldensReopened": false,
+  "escalate": {
+    "kind": "architectural_blocker",
+    "message": "Original-master pixels drifted outside authorized α. Assign to reconstruct/compositing — do not reopen chest 11/11 or sleeve 6/6 still goldens.",
+    "stillGoldensReopened": false
+  }
+}
+```
+
+| Field                           | Value                   | Why                                                     |
+| ------------------------------- | ----------------------- | ------------------------------------------------------- |
+| `report.stillGoldensReopened`   | `false`                 | E2 never calls `evaluateChestStill` / sleeve 6/6        |
+| `escalate.kind`                 | `architectural_blocker` | Lane D2 / reconstruct owns unauthorized-pixel identity  |
+| `escalate.stillGoldensReopened` | `false`                 | Escalate ≠ reopen. Do not silently rescore 11/11 or 6/6 |
+| `unexplained`                   | `[]`                    | Classified FAIL — **Claude does not investigate**       |
+| `claudeInvestigates`            | `unexplained_only`      | Ordinary `failureReason` stays on the criterion         |
+
+Constant: `PRESERVATION_FAIL_ESCALATE` in `src/lib/eval/videoQaCriteria.ts`.
 
 `still_golden_regression_suspected` is reserved for a later full-video evidence pack. It still must not reopen 11/11 or 6/6.
 
@@ -131,17 +191,19 @@ Materialized as PPM + BMP via existing Lane E encoders.
 
 ## Ownership
 
-| Path                                        | Role                                         |
-| ------------------------------------------- | -------------------------------------------- |
-| `src/lib/eval/videoQaTypes.ts`              | Input / report / JSON types                  |
-| `src/lib/eval/videoQaCriteria.ts`           | Provisional thresholds                       |
-| `src/lib/eval/videoQaMetrics.ts`            | Pure probes                                  |
-| `src/lib/eval/videoQaEvaluator.ts`          | `evaluateVideoQa`                            |
-| `src/lib/eval/videoQaAdapter.ts`            | Lane H plug-in from reconstruct E2E / frames |
-| `src/lib/eval/videoQaArtifacts.ts`          | JSON + crops                                 |
-| `src/lib/eval/videoQaFixtures.ts`           | `$0` synthetic packs                         |
-| `src/lib/eval/videoQaEvaluator.test.ts`     | Unit / fixture proofs                        |
-| `src/lib/eval/reconstructVideoEvaluator.ts` | Unchanged architectural 9-criterion E2E gate |
+| Path                                        | Role                                              |
+| ------------------------------------------- | ------------------------------------------------- |
+| `src/lib/eval/videoQaTypes.ts`              | Input / report / JSON types                       |
+| `src/lib/eval/videoQaCriteria.ts`           | Provisional thresholds                            |
+| `src/lib/eval/videoQaMetrics.ts`            | Pure probes                                       |
+| `src/lib/eval/videoQaEvaluator.ts`          | `evaluateVideoQa`                                 |
+| `src/lib/eval/videoQaAdapter.ts`            | Lane H plug-in from reconstruct E2E / frames      |
+| `src/lib/eval/videoQaArtifacts.ts`          | JSON + crops                                      |
+| `src/lib/eval/videoQaFixtures.ts`           | `$0` synthetic packs                              |
+| `src/lib/eval/videoQaEvaluator.test.ts`     | Unit / fixture proofs                             |
+| `src/lib/eval/fixtures/fullClip720.ts`      | 720×1280 synthetic clip + second-clip + hang hook |
+| `src/lib/eval/videoQaFullClip.test.ts`      | Full-clip / portability / escalate contract       |
+| `src/lib/eval/reconstructVideoEvaluator.ts` | Unchanged architectural 9-criterion E2E gate      |
 
 ### Not edited
 
@@ -153,8 +215,9 @@ The architectural reconstruct eval (`lane-e-reconstruct-video-v1`, 9/9 E2E) rema
 
 ## Not claimed
 
-- Live 720×1280 decode of master `76fe7438` inside this PR’s unit suite (H supplies that MP4)
+- Live 720×1280 decode of master `76fe7438` (H supplies that MP4; this suite scores a **synthetic** 720×1280 sequence of the same shape)
 - In-process ffmpeg / mp4Demux
 - Chest 11/11 or sleeve 6/6 rescore
 - Architecture C paint correctness
 - Temporal optical-flow internals
+- Clip-id allowlisting inside `evaluateVideoQa` (provenance is opaque)

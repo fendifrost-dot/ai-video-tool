@@ -10,9 +10,11 @@
 
 import {
   CANONICAL_FULL_CLIP_FRAME_COUNT,
+  CANONICAL_MASTER_CLIP_ID,
   CANONICAL_MASTER_FPS,
   CANONICAL_MASTER_HEIGHT,
   CANONICAL_MASTER_WIDTH,
+  CANONICAL_PROJECT_ID,
   CLEARED_CHEST_ASSET_ID,
   CLEARED_CHEST_QUAD_TUPLE,
   CLEARED_SLEEVE_ASSET_ID,
@@ -143,7 +145,7 @@ export function fixtureTemporalJobs(
   const rightMask = fillConvexQuad(width, height, CLEARED_SLEEVE_RIGHT_QUAD_TUPLE);
   const translateChest = options?.translateChest === true;
   const dxPerFrame = options?.dxPerFrame ?? 0;
-  const last = frameCount - 1;
+  const last = Math.max(0, frameCount - 1);
 
   const framesFor = (
     kind: "chest" | "sleeve",
@@ -198,18 +200,50 @@ export function liveShapedTemporalJobs(): ConsumedTemporalJob[] {
 }
 
 export function liveWiringFixturePack() {
+  return reconstructQaFixturePack();
+}
+
+/**
+ * Generic reconstruct QA pack. Alternate `masterClipAssetId` is a parameter —
+ * no clip-specific reconstruct code.
+ */
+export function reconstructQaFixturePack(options: {
+  masterClipAssetId?: string;
+  projectId?: string;
+  clipId?: string;
+  width?: number;
+  height?: number;
+  frameCount?: number;
+  fps?: number;
+} = {}) {
+  const width = options.width ?? FIXTURE_WIDTH;
+  const height = options.height ?? FIXTURE_HEIGHT;
+  const frameCount = options.frameCount ?? LIVE_WIRING_FRAME_COUNT;
+  const fps = options.fps ?? 24;
+  const masterClipAssetId = options.masterClipAssetId ?? CANONICAL_MASTER_CLIP_ID;
+  const projectId = options.projectId ?? CANONICAL_PROJECT_ID;
+  const clipId = options.clipId ?? masterClipAssetId;
+
   const originalFrames: MasterClipFrame[] = [];
-  for (let i = 0; i < LIVE_WIRING_FRAME_COUNT; i++) {
-    originalFrames.push({ index: i, image: uniqueOriginalFrame(i) });
+  for (let i = 0; i < frameCount; i++) {
+    originalFrames.push({ index: i, image: uniqueOriginalFrame(i, width, height) });
   }
   return {
-    width: FIXTURE_WIDTH,
-    height: FIXTURE_HEIGHT,
+    width,
+    height,
+    fps,
+    frameCount,
+    masterClipAssetId,
+    projectId,
+    clipId,
     originalFrames,
-    chestStill: { assetId: CLEARED_CHEST_ASSET_ID, image: flatStill(CHEST_STILL_RGB) },
-    sleeveStill: { assetId: CLEARED_SLEEVE_ASSET_ID, image: flatStill(SLEEVE_STILL_RGB) },
-    sam3: fixtureSam3Mask(),
-    temporalJobs: fixtureTemporalJobs(),
+    chestStill: { assetId: CLEARED_CHEST_ASSET_ID, image: flatStill(CHEST_STILL_RGB, width, height) },
+    sleeveStill: {
+      assetId: CLEARED_SLEEVE_ASSET_ID,
+      image: flatStill(SLEEVE_STILL_RGB, width, height),
+    },
+    sam3: fixtureSam3Mask(width, height),
+    temporalJobs: fixtureTemporalJobs(width, height, frameCount),
     invertedOnFrame0: invertedGenerated(originalFrames[0]!.image),
   };
 }

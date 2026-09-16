@@ -42,6 +42,7 @@ describe("portable clip specs", () => {
   });
 });
 
+
 describe("canonical full-clip synthetic fixture", () => {
   it("emits 241 luma frames sized to the QA raster with canonical keyframe 47", () => {
     const fixture = canonicalFullClipCleanFixture();

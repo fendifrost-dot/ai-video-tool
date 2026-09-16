@@ -35,4 +35,8 @@ Lane R may **run** any existing `*.test.ts` file. Running is not ownership of th
 
 ## Known non-blocking drift (do not "fix" from Lane R)
 
-`TEMPORAL_LIVE_DEPLOY_NOTES.heroFrameOwnerFlip.current` is **false** because Lane C does not own the Hero Frame flag. Product `ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` is **true** (PR #91 / #95). Auth/dispatch uses the product flag + `TEMPORAL_LIVE_ACTIVATION_ARMED` + `explicitArm`, not that notes field. See the Sprint 2 report.
+`TEMPORAL_LIVE_DEPLOY_NOTES.heroFrameOwnerFlip.current` is **false** because Lane C does not own the Hero Frame flag. Product `ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` is **true** (PR #91 / #95). Auth/dispatch uses the product flag + `TEMPORAL_LIVE_ACTIVATION_ARMED` + `explicitArm`, not that notes field. Register: **REL-2** in [`RISK_REGISTER.md`](../../RISK_REGISTER.md). Lane R must **not** edit `src/lib/temporal/livePrep.ts`.
+
+## Real-media placeholders
+
+C2 / D2 / E2 / H own evidence for [`REAL_MEDIA_LOCKS.md`](REAL_MEDIA_LOCKS.md). Lane R only keeps the UNCLAIMED table honest. G2 / F2 stay off this checklist.

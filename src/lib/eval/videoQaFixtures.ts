@@ -82,13 +82,33 @@ export type HappyPathOpts = {
   garment?: PixelBox;
   repair?: PixelBox;
   stamp?: readonly [number, number, number];
+  width?: number;
+  height?: number;
 };
 
+/** Scale a 16×16 fixture box onto an arbitrary raster. */
+export function scaleBoxFrom16(box: PixelBox, width: number, height: number): PixelBox {
+  return {
+    x0: Math.round((box.x0 * width) / VIDEO_QA_FIXTURE_WIDTH),
+    x1: Math.round((box.x1 * width) / VIDEO_QA_FIXTURE_WIDTH),
+    y0: Math.round((box.y0 * height) / VIDEO_QA_FIXTURE_HEIGHT),
+    y1: Math.round((box.y1 * height) / VIDEO_QA_FIXTURE_HEIGHT),
+  };
+}
+
 export function happyPathFrame(index: number, opts: HappyPathOpts = {}): VideoQaFrame {
-  const width = VIDEO_QA_FIXTURE_WIDTH;
-  const height = VIDEO_QA_FIXTURE_HEIGHT;
-  const garment = opts.garment ?? GARMENT_RECT;
-  const repair = opts.repair ?? REPAIR_RECT;
+  const width = opts.width ?? VIDEO_QA_FIXTURE_WIDTH;
+  const height = opts.height ?? VIDEO_QA_FIXTURE_HEIGHT;
+  const garment =
+    opts.garment ??
+    (width === VIDEO_QA_FIXTURE_WIDTH && height === VIDEO_QA_FIXTURE_HEIGHT
+      ? GARMENT_RECT
+      : scaleBoxFrom16(GARMENT_RECT, width, height));
+  const repair =
+    opts.repair ??
+    (width === VIDEO_QA_FIXTURE_WIDTH && height === VIDEO_QA_FIXTURE_HEIGHT
+      ? REPAIR_RECT
+      : scaleBoxFrom16(REPAIR_RECT, width, height));
   const original = uniqueOriginal(index, width, height);
   const reconstructed = cloneRgba(original);
   stampRect(reconstructed, garment, opts.stamp ?? NAVY);
