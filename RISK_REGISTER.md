@@ -8,7 +8,7 @@
 > **Severity:** Critical / High / Medium / Low · **Confidence:** Confirmed / Likely /
 > Suspected · **Status:** Open / In-remediation / Mitigated / Closed.
 
-Last reviewed: **2026-09-16** (TEMPORAL-1 added for Lane C live arm).
+Last reviewed: **2026-09-16** (TEMPORAL-1 Hero Frame tracking on via #91; RECONSTRUCT-1 added for Lane D gate 4).
 
 | id | Title | Severity | Confidence | Status | Owner |
 |----|-------|----------|-----------|--------|-------|
@@ -28,6 +28,7 @@ Last reviewed: **2026-09-16** (TEMPORAL-1 added for Lane C live arm).
 | [PIPELINE-1](#pipeline-1--orchestration-scaffolding-is-not-a-durable-queue) | Pipeline OS scaffolding is in-process only (no durable queue / reaper) | Medium | Confirmed | Open | Products (AVT) / Lane G |
 | [SLEEVE-1](#sleeve-1--visible-upper-arm-only-must-not-be-read-as-armholecuff) | Sleeve still repair is visible-upper-arm only; a pass must not be read as armhole→cuff | Medium | Confirmed | Open | Products (AVT) / Lane B |
 | [TEMPORAL-1](#temporal-1--live-arm-without-hero-frame-tracking) | Temporal lib armed; Hero Frame tracking on (#90); `temporal-propagate-proxy` not yet Lovable-redeployed | Medium | Confirmed | **In-remediation** | Products (AVT) / Hero Frame + Lane C |
+| [RECONSTRUCT-1](#reconstruct-1--gate-4-wiring-without-live-sam-3--new-edge) | Gate 4 wiring without live SAM-3 / new edge | Medium | Confirmed | Open | Products (AVT) / Lane D |
 
 ---
 
@@ -322,7 +323,17 @@ Last reviewed: **2026-09-16** (TEMPORAL-1 added for Lane C live arm).
 ## TEMPORAL-1 — Live arm without Hero Frame tracking
 
 - **Severity:** Medium · **Confidence:** Confirmed · **Status:** In-remediation · **Owner:** Products (AVT) / Hero Frame + Lane C
-- **Summary:** `TEMPORAL_LIVE_ACTIVATION_ARMED` is `true` after chest 1m CLEARED 11/11 and sleeve 1c CLEARED 6/6. Isolated `temporal-propagate-proxy` is JWT-gated (`verify_jwt` + `getUser`), calls `authorizeTemporalEdgeRequest` then `propagateRepair`, and never calls Grok / Fal / CC. Hero Frame `ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` is now **true** (#90). Product dispatch sets `explicitArm: true`. Still-repair edge mirror stays **false** so `architecture-c-still-repair-proxy` does not 500.
+- **Summary:** `TEMPORAL_LIVE_ACTIVATION_ARMED` is `true` after chest 1m CLEARED 11/11 and sleeve 1c CLEARED 6/6. Isolated `temporal-propagate-proxy` is JWT-gated (`verify_jwt` + `getUser`), calls `authorizeTemporalEdgeRequest` then `propagateRepair`, and never calls Grok / Fal / CC. Hero Frame `ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` is now **true** (#90 / #91). Product dispatch sets `explicitArm: true`. Still-repair edge mirror stays **false** so `architecture-c-still-repair-proxy` does not 500.
 - **Pointer:** [`docs/temporal/LIVE_PREP.md`](docs/temporal/LIVE_PREP.md); [`src/lib/heroFrame/temporalDispatch.ts`](src/lib/heroFrame/temporalDispatch.ts); [`src/lib/temporal/livePrep.ts`](src/lib/temporal/livePrep.ts); [`supabase/functions/temporal-propagate-proxy/README.md`](supabase/functions/temporal-propagate-proxy/README.md).
 - **DoD (target):** parent Lovable-redeploys **only** `temporal-propagate-proxy` (from #88); Hero Frame flag flip is frontend-only; no still-repair edge redeploy; no per-frame Grok; no proxy-auth widen.
 - **Mitigations:** compile-time arm + explicitArm; luma-only body caps; no service-role / CC secret on this function; still-repair edge flag remains false.
+
+---
+
+## RECONSTRUCT-1 — Gate 4 wiring without live SAM-3 / new edge
+
+- **Severity:** Medium · **Confidence:** Confirmed · **Status:** Open · **Owner:** Products (AVT) / Lane D
+- **Summary:** Original-master live wiring (`RECONSTRUCT_LIVE_WIRING_ARMED = true`) composites CLEARED chest/sleeve stills + caller-supplied SAM-3 α + trusted temporal masks onto original master `76fe7438` via `reconstructOriginalMaster`. Dispatch still requires `explicitArm`. This lane does **not** fetch SAM-3 (`sam3-segment-proxy` / CC), does **not** add a JWT edge, and does **not** edit `logoComposite`, sleevePanel paint, or temporal authorize constants. A full inverted generated still cannot become the master when α === 0.
+- **Pointer:** [`docs/reconstruct/LIVE_WIRING.md`](docs/reconstruct/LIVE_WIRING.md); [`docs/LANE_D_ORIGINAL_MASTER_RECONSTRUCTION.md`](docs/LANE_D_ORIGINAL_MASTER_RECONSTRUCTION.md); `src/lib/reconstruct/`.
+- **DoD (target):** Lane G binds `dispatchOriginalMasterReconstruct` after a human `masterCompositeAuthorized` review; live SAM-3 (if ever) is a separate Class C that does not go through Control Center from this lane.
+- **Mitigations:** isolated module; `$0` fixtures; untrusted temporal frames ignored; no edge redeploy; `sam3.liveFetch` is always `false`.
