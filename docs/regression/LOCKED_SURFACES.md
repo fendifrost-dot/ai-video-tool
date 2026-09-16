@@ -66,6 +66,20 @@ Temporal and reconstruct **copy** CLEARED IDs instead of importing paint owners.
 
 If red because one copy drifted → assign the lane that changed its table. Do not merge the modules.
 
+## Real-media gates — UNCLAIMED (not a PASS)
+
+Sprint 2 still has **no** Real-Media-Benchmark. Placeholders live in [`REAL_MEDIA_LOCKS.md`](REAL_MEDIA_LOCKS.md) / `tests/regression/real-media-locks.json`.
+
+| Lock | Owner | Status |
+|------|-------|--------|
+| Full-clip temporal QA | C2 #107 | **UNCLAIMED** |
+| Original-master preservation video | D2 #108 | **UNCLAIMED** |
+| Playable MP4 provenance to `76fe7438` | H #111 | **UNCLAIMED** |
+| SAM-3 consume evidence (`liveFetch=false`) | D2 #108 / H #111 | **UNCLAIMED** |
+| E2 video QA JSON | E2 #105 | **UNCLAIMED** |
+
+Do not treat #96 click-smoke or #100 5-frame E2E as these locks. Do not invent PASS from Lane R.
+
 ## Full deterministic suite
 
 Not a locked subset. Still required for the Sprint 2 report:
