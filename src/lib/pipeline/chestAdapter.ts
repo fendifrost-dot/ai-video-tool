@@ -157,11 +157,17 @@ export function createChestRepairHandler(opts?: { client?: ChestRepairClient }):
     }
 
     const wardrobeFeatureId =
-      (typeof still.lanePayload?.wardrobeFeatureId === "string"
+      typeof still.lanePayload?.wardrobeFeatureId === "string"
         ? still.lanePayload.wardrobeFeatureId
-        : undefined) ?? CLEARED_CHEST_STILL.wardrobeFeatureId;
-    const logoZoneQuad =
-      asQuad(still.lanePayload?.logoZoneQuad) ?? CLEARED_CHEST_STILL.requestedBandQuadNorm;
+        : undefined;
+    if (!wardrobeFeatureId) {
+      throw new PipelineError(
+        "chest_wardrobe_feature_missing",
+        "Chest adapter needs wardrobeFeatureId on the still artifact payload (catalog binding). No clip-specific default.",
+        { retryable: false, classification: "input" },
+      );
+    }
+    const logoZoneQuad = asQuad(still.lanePayload?.logoZoneQuad);
 
     let result: ChestRepairClientResult;
     try {

@@ -7,30 +7,35 @@ import {
   isClearedChestArtifact,
 } from "./chest";
 import { STAGE_DEFINITION_LIST, getStageDefinition } from "./contract";
+import { evaluatorResultFromArtifact } from "./consumedContracts";
 import { classifyUnknownError } from "./errors";
 import { topologicalStages } from "./graph";
+import { applyHandoffs, buildHandoffs } from "./handoff";
+import { lifecycleFromStatus, retryReasonFrom } from "./lifecycle";
 import { createProductOsAdapters } from "./productOs";
 import { nextRetryAt, shouldRetry } from "./retry";
+import { isClearedSleeveArtifact, sleeveClearedProvenanceMetadata } from "./sleeve";
+import { stageVersionFor } from "./stageVersion";
 import type {
   ArtifactRef,
+  ConsumedEvaluatorResult,
   PipelineClock,
   PipelineRun,
   PipelineRunStatus,
   PipelineStageId,
+  SeedArtifact,
   StageRecord,
   StageStatus,
 } from "./types";
 import { PIPELINE_CONTRACT_VERSION, PIPELINE_STAGE_IDS } from "./types";
 
-export type SeedArtifact = Omit<ArtifactRef, "id" | "producedAt"> & {
-  id?: string;
-  producedAt?: string;
-};
+export type { SeedArtifact };
 
 export type CreatePipelineRunInput = {
   projectId: string;
   seedArtifacts?: SeedArtifact[];
   reviews?: Record<string, boolean>;
+  catalogId?: string;
 };
 
 export type AdvanceOptions = {
@@ -54,16 +59,65 @@ const defaultClock = (): PipelineClock => {
 };
 
 function emptyStage(stageId: PipelineStageId, now: string): StageRecord {
+  const status: StageStatus = "pending";
   return {
     stageId,
-    status: "pending",
+    status,
+    lifecycle: lifecycleFromStatus(status),
+    stageVersion: stageVersionFor(stageId),
     attempt: 0,
     artifacts: [],
     provenance: [],
     failures: [],
+    evaluatorResult: null,
+    retryReason: null,
     nextRetryAt: null,
     updatedAt: now,
   };
+}
+
+function stampStage(
+  record: StageRecord,
+  patch: Partial<StageRecord>,
+  now: string,
+  gateReason?: string,
+): StageRecord {
+  const next: StageRecord = { ...record, ...patch, updatedAt: now };
+  if ("lastError" in patch && patch.lastError === undefined) {
+    delete next.lastError;
+  }
+  next.lifecycle = lifecycleFromStatus(next.status, next.lastError);
+  next.retryReason = retryReasonFrom({
+    status: next.status,
+    lifecycle: next.lifecycle,
+    lastError: next.lastError,
+    gateReason,
+  });
+  if (!next.stageVersion) next.stageVersion = stageVersionFor(next.stageId);
+  if (next.evaluatorResult === undefined) next.evaluatorResult = record.evaluatorResult ?? null;
+  return next;
+}
+
+function evaluatorForStage(stageId: PipelineStageId, artifacts: ArtifactRef[]): ConsumedEvaluatorResult | null {
+  if (stageId !== "automated_evaluation") return null;
+  const report = artifacts.find((a) => a.kind === "evaluation_report");
+  return evaluatorResultFromArtifact(report);
+}
+
+function recordPassHandoffs(
+  run: PipelineRun,
+  fromStage: PipelineStageId,
+  clock: PipelineClock,
+): PipelineRun {
+  return applyHandoffs(run, buildHandoffs(run, fromStage, clock.createId, clock.now()));
+}
+
+function recordAllPassHandoffs(run: PipelineRun, clock: PipelineClock): PipelineRun {
+  let next = run;
+  for (const stageId of PIPELINE_STAGE_IDS) {
+    next = recordPassHandoffs(next, stageId, clock);
+  }
+  return next;
 }
 
 function allArtifacts(run: PipelineRun): ArtifactRef[] {
@@ -124,11 +178,16 @@ function markImportedStages(run: PipelineRun, clock: PipelineClock): PipelineRun
     const imported = importedArtifactsForStage(def, allArtifacts(next));
     if (imported.length > 0 && def.allowImportFromLane) {
       const now = clock.now();
-      next.stages[stageId] = {
-        ...record,
+      const metadata =
+        stageId === "keyframe_repair" && imported.some(isClearedChestArtifact)
+          ? chestClearedProvenanceMetadata()
+          : stageId === "sleeve_garment_repair" && imported.some(isClearedSleeveArtifact)
+            ? sleeveClearedProvenanceMetadata()
+            : { source: "imported_from_lane" };
+      next.stages[stageId] = stampStage(record, {
         status: "succeeded",
         artifacts: imported,
-        updatedAt: now,
+        evaluatorResult: evaluatorForStage(stageId, imported),
         provenance: [
           ...record.provenance,
           {
@@ -141,21 +200,16 @@ function markImportedStages(run: PipelineRun, clock: PipelineClock): PipelineRun
             outputArtifactIds: imported.map((a) => a.id),
             startedAt: now,
             finishedAt: now,
-            metadata:
-              stageId === "keyframe_repair" && imported.some(isClearedChestArtifact)
-                ? chestClearedProvenanceMetadata()
-                : { source: "imported_from_lane" },
+            metadata,
           },
         ],
-      };
+      }, now);
       continue;
     }
     if (canSkipStage(next, stageId)) {
       const now = clock.now();
-      next.stages[stageId] = {
-        ...record,
+      next.stages[stageId] = stampStage(record, {
         status: "skipped",
-        updatedAt: now,
         provenance: [
           ...record.provenance,
           {
@@ -171,12 +225,12 @@ function markImportedStages(run: PipelineRun, clock: PipelineClock): PipelineRun
             metadata: { reason: "downstream_already_satisfied" },
           },
         ],
-      };
+      }, now);
     }
   }
   next.status = deriveRunStatus(next);
   next.updatedAt = clock.now();
-  return applyClearedChestReview(next);
+  return recordAllPassHandoffs(applyClearedChestReview(next), clock);
 }
 
 function applyClearedChestReview(run: PipelineRun): PipelineRun {
@@ -216,6 +270,9 @@ export function createPipelineRun(
     artifacts: seed,
     reviews: { ...input.reviews },
     seedArtifactIds: seed.map((a) => a.id),
+    paidCalls: false,
+    catalogId: input.catalogId,
+    handoffs: [],
   };
 
   return markImportedStages(run, clock);
@@ -254,7 +311,7 @@ export function setPipelineReview(
   for (const id of PIPELINE_STAGE_IDS) {
     const status = next.stages[id].status;
     if (status === "blocked" || status === "needs_review") {
-      next.stages[id] = { ...next.stages[id], status: "pending", updatedAt: clock.now() };
+      next.stages[id] = stampStage(next.stages[id], { status: "pending", lastError: undefined }, clock.now());
     }
   }
   next.status = deriveRunStatus(next);
@@ -304,19 +361,22 @@ async function executeStage(
           ...run,
           stages: {
             ...run.stages,
-            [stageId]: {
-              ...record,
-              status: "blocked",
-              updatedAt: now,
-              lastError: {
-                code: "upstream_failed",
-                message: `Stage ${stageId} blocked because ${dep} failed.`,
-                retryable: false,
-                classification: "dependency",
-                occurredAt: now,
-                attempt: record.attempt,
+            [stageId]: stampStage(
+              record,
+              {
+                status: "blocked",
+                lastError: {
+                  code: "upstream_failed",
+                  message: `Stage ${stageId} blocked because ${dep} failed.`,
+                  retryable: false,
+                  classification: "dependency",
+                  occurredAt: now,
+                  attempt: record.attempt,
+                },
               },
-            },
+              now,
+              `upstream_failed:${dep}`,
+            ),
           },
           updatedAt: now,
           status: "blocked",
@@ -332,7 +392,22 @@ async function executeStage(
       ...run,
       stages: {
         ...run.stages,
-        [stageId]: { ...record, status: gate.status, updatedAt: now },
+        [stageId]: stampStage(
+          record,
+          {
+            status: gate.status,
+            lastError: {
+              code: "stage_gate",
+              message: gate.reason,
+              retryable: false,
+              classification: "gate",
+              occurredAt: now,
+              attempt: record.attempt,
+            },
+          },
+          now,
+          gate.reason,
+        ),
       },
       updatedAt: now,
     };
@@ -361,13 +436,15 @@ async function executeStage(
       ...run,
       stages: {
         ...run.stages,
-        [stageId]: {
-          ...record,
-          status: "failed",
-          lastError: failure,
-          failures: [...record.failures, failure],
-          updatedAt: now,
-        },
+        [stageId]: stampStage(
+          record,
+          {
+            status: "failed",
+            lastError: failure,
+            failures: [...record.failures, failure],
+          },
+          now,
+        ),
       },
       updatedAt: now,
     };
@@ -382,7 +459,7 @@ async function executeStage(
     updatedAt: now,
     stages: {
       ...run.stages,
-      [stageId]: { ...record, status: "running", attempt, updatedAt: now },
+      [stageId]: stampStage(record, { status: "running", attempt }, now),
     },
   };
 
@@ -416,6 +493,9 @@ async function executeStage(
       finishedAt,
       metadata: result.metadata ?? {},
     };
+    const evaluatorResult =
+      (result.metadata?.evaluatorResult as ConsumedEvaluatorResult | undefined) ??
+      evaluatorForStage(stageId, stamped);
     const next: PipelineRun = {
       ...running,
       artifacts: [
@@ -424,20 +504,24 @@ async function executeStage(
       ],
       stages: {
         ...running.stages,
-        [stageId]: {
-          ...running.stages[stageId],
-          status: "succeeded",
-          artifacts: stamped,
-          provenance: [...record.provenance, provenance],
-          nextRetryAt: null,
-          updatedAt: finishedAt,
-        },
+        [stageId]: stampStage(
+          running.stages[stageId],
+          {
+            status: "succeeded",
+            artifacts: stamped,
+            provenance: [...record.provenance, provenance],
+            nextRetryAt: null,
+            evaluatorResult,
+          },
+          finishedAt,
+        ),
       },
       updatedAt: finishedAt,
     };
     next.status = deriveRunStatus(next);
-    if (stageId === "keyframe_repair") return applyClearedChestReview(next);
-    return next;
+    const handed = recordPassHandoffs(next, stageId, clock);
+    if (stageId === "keyframe_repair") return applyClearedChestReview(handed);
+    return handed;
   } catch (error) {
     const failedAt = clock.now();
     const failure = classifyUnknownError(error, attempt, failedAt);
@@ -447,14 +531,16 @@ async function executeStage(
       ...running,
       stages: {
         ...running.stages,
-        [stageId]: {
-          ...running.stages[stageId],
-          status,
-          lastError: failure,
-          failures: [...record.failures, failure],
-          nextRetryAt: retry ? nextRetryAt(attempt, def.retryPolicy, failedAt) : null,
-          updatedAt: failedAt,
-        },
+        [stageId]: stampStage(
+          running.stages[stageId],
+          {
+            status,
+            lastError: failure,
+            failures: [...record.failures, failure],
+            nextRetryAt: retry ? nextRetryAt(attempt, def.retryPolicy, failedAt) : null,
+          },
+          failedAt,
+        ),
       },
       updatedAt: failedAt,
     };
@@ -515,7 +601,12 @@ export async function retryFailedStage(
     ...run,
     stages: {
       ...run.stages,
-      [stageId]: { ...record, status: "retrying", nextRetryAt: null, updatedAt: clock.now() },
+      [stageId]: stampStage(
+        record,
+        { status: "retrying", nextRetryAt: null },
+        clock.now(),
+        record.lastError?.message ?? record.lastError?.code ?? "explicit_retry",
+      ),
     },
   };
   return executeStage(reset, stageId, resolveAdapters(options.adapters), clock, true);

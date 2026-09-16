@@ -1,13 +1,19 @@
+import { lifecycleFromStatus } from "./lifecycle";
+import { stageVersionFor } from "./stageVersion";
 import {
   ARTIFACT_KINDS,
+  G2_STAGE_STATES,
   PIPELINE_CONTRACT_VERSION,
+  PIPELINE_CONTRACT_VERSIONS,
   PIPELINE_RUN_STATUSES,
   PIPELINE_STAGE_IDS,
   STAGE_STATUSES,
   type ArtifactRef,
+  type G2StageState,
   type PipelineRun,
   type PipelineStageId,
   type StageRecord,
+  type StageStatus,
 } from "./types";
 
 export const PIPELINE_METADATA_KEY = "pipeline_run" as const;
@@ -45,11 +51,26 @@ function parseArtifact(value: unknown): ArtifactRef {
 
 function parseStageRecord(stageId: PipelineStageId, value: unknown): StageRecord {
   if (!isRecord(value)) throw new Error(`pipeline_document_invalid:stage:${stageId}`);
-  const status = asString(value.status, `stage.${stageId}.status`);
+  const status = asString(value.status, `stage.${stageId}.status`) as StageStatus;
   if (!(STAGE_STATUSES as readonly string[]).includes(status)) {
     throw new Error(`pipeline_document_invalid:stage.${stageId}.status:${status}`);
   }
-  return value as StageRecord;
+  const record = value as unknown as StageRecord;
+  const lifecycleRaw = value.lifecycle;
+  const lifecycle: G2StageState =
+    typeof lifecycleRaw === "string" && (G2_STAGE_STATES as readonly string[]).includes(lifecycleRaw)
+      ? (lifecycleRaw as G2StageState)
+      : lifecycleFromStatus(status, record.lastError);
+  return {
+    ...record,
+    stageId,
+    status,
+    lifecycle,
+    stageVersion:
+      typeof value.stageVersion === "string" ? value.stageVersion : stageVersionFor(stageId),
+    evaluatorResult: record.evaluatorResult ?? null,
+    retryReason: typeof value.retryReason === "string" ? value.retryReason : (record.retryReason ?? null),
+  };
 }
 
 export function serializePipelineRun(run: PipelineRun): string {
@@ -59,8 +80,9 @@ export function serializePipelineRun(run: PipelineRun): string {
 export function parsePipelineRun(raw: unknown): PipelineRun {
   const value = typeof raw === "string" ? JSON.parse(raw) : raw;
   if (!isRecord(value)) throw new Error("pipeline_document_invalid:root");
-  if (value.contractVersion !== PIPELINE_CONTRACT_VERSION) {
-    throw new Error(`pipeline_document_unsupported:${String(value.contractVersion)}`);
+  const version = asString(value.contractVersion, "contractVersion");
+  if (!(PIPELINE_CONTRACT_VERSIONS as readonly string[]).includes(version)) {
+    throw new Error(`pipeline_document_unsupported:${version}`);
   }
   const status = asString(value.status, "status");
   if (!(PIPELINE_RUN_STATUSES as readonly string[]).includes(status)) {
@@ -72,10 +94,14 @@ export function parsePipelineRun(raw: unknown): PipelineRun {
     stages[id] = parseStageRecord(id, value.stages[id]);
   }
   const artifacts = Array.isArray(value.artifacts) ? value.artifacts.map(parseArtifact) : [];
+  const handoffs = Array.isArray(value.handoffs) ? value.handoffs : [];
   return {
     ...(value as unknown as PipelineRun),
+    contractVersion: PIPELINE_CONTRACT_VERSION,
+    paidCalls: false,
     stages,
     artifacts,
+    handoffs: handoffs as PipelineRun["handoffs"],
   };
 }
 
