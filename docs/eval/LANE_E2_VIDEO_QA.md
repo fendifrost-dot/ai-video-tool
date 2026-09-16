@@ -1,0 +1,160 @@
+# Lane E2 — Video-level automated evaluator
+
+**Issue:** [#105](https://github.com/fendifrost-dot/ai-video-tool/issues/105) (child of sprint [#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102); umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50))  
+**Owner:** Lane E2 — `src/lib/eval/**` + this directory  
+**Spec:** `lane-e2-video-qa-v1`  
+**JSON Schema:** [`lane-e2-video-qa.schema.json`](lane-e2-video-qa.schema.json)  
+**Class:** C (evaluation / fidelity thresholds). Thresholds are **PROVISIONAL** operational gates, not frozen canonical video goldens.  
+**Spend:** `paidCalls=false`
+
+Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**
+
+---
+
+## Mission
+
+Upgrade evaluation from still-centric checks to **video-level QA**. Lane H produces the reconstructed MP4; E2 scores decoded frames plus MP4 provenance. The evaluator is generated **alongside** H — missing decode is `INCOMPLETE` with `blockingArtifactProducer: false`, never a reason to stall MP4 encode.
+
+Chest 11/11 and sleeve 6/6 stay **LOCKED**. This module never calls `evaluateChestStill`. If video evidence suggests a still regression, **escalate** (`stillGoldensReopened: false`) — do not silently reopen goldens.
+
+---
+
+## How Lane H plugs in
+
+```ts
+import {
+  evaluateVideoQa,
+  videoQaInputFromReconstructE2e,
+  videoQaInputFromFrames,
+  videoQaReportToJson,
+  materializeVideoQaFiles,
+} from "@/lib/eval";
+
+// After RECONSTRUCT-1 E2E (frames in memory). Attach MP4 provenance when encode finishes.
+const input = videoQaInputFromReconstructE2e(e2e, {
+  produced: true,
+  artifactId,
+  path, // storage path or local artifact path
+  sha256,
+  byteLength,
+  mimeType: "video/mp4",
+});
+const report = evaluateVideoQa(input);
+const json = videoQaReportToJson(report); // persist next to the MP4
+const files = materializeVideoQaFiles(report); // report.json + diagnostic PPM/BMP crops
+
+// H may produce the MP4 first, then decode:
+const pending = evaluateVideoQa(
+  videoQaInputFromFrames({
+    frames: [],
+    mp4: { produced: true, path, mimeType: "video/mp4" },
+  }),
+);
+// pending.verdict === "INCOMPLETE"
+// pending.awaiting includes "decoded_frames"
+// pending.blockingArtifactProducer === false  → keep encoding
+```
+
+**[DECISION]** E2 does **not** decode MP4 in-process (no `src/lib/video` / ffmpeg ownership). H (or an injected decoder owned by H) supplies RGBA rasters + per-frame α. The real-media gate is: given a produced reconstructed MP4 **and** decoded frames, E2 emits a complete PASS/FAIL JSON.
+
+Structural frame contract:
+
+| Field                                  | Required for complete score                             |
+| -------------------------------------- | ------------------------------------------------------- |
+| `original` / `reconstructed` RGBA      | yes                                                     |
+| `authorizedAlpha` `[0,1]` length `w*h` | original-master, outside-change, mask XOR, jitter, seam |
+| `repairAlpha`                          | per-frame repair coverage (SKIP if omitted)             |
+| `segmentationAlpha`                    | optional                                                |
+
+---
+
+## Criteria (`lane-e2-video-qa-v1`)
+
+| id                                 | Probe                                                                  | PASS when                                                                       |
+| ---------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `paid_calls_false`                 | Spend lock                                                             | `paidCalls === false`                                                           |
+| `still_goldens_not_reopened`       | Still lock                                                             | always PASS (never calls chest/sleeve still gates)                              |
+| `mp4_artifact_scored`              | Real-media hook                                                        | MP4 `produced` + decoded frames present; SKIP if frames-only or awaiting decode |
+| `per_frame_repair_coverage`        | Repair α > 0.5 fraction                                                | coverage ≤ 0.85 and frame-to-frame \|Δ\| ≤ 0.25                                 |
+| `original_master_preservation`     | α === 0 RGB vs original                                                | 0 unauthorized changed pixels                                                   |
+| `unintended_outside_region_change` | Same bytes, product wording                                            | same hard gate as preservation                                                  |
+| `mask_discontinuity`               | XOR of binarized α                                                     | mean ≤ 0.12 and max ≤ 0.25                                                      |
+| `temporal_jitter_drift`            | Outside excess luma vs original motion; inside boiling; centroid drift | excess ≤ 1; inside mean \|Δluma\| ≤ 40; centroid ≤ 4 px                         |
+| `seam_edge_instability`            | \|Δluma\| on soft-α / mask-boundary pixels                             | mean ≤ 25                                                                       |
+
+Thresholds are **[DECISION] PROVISIONAL**, derived from documented formulas + synthetic fixture margins (happy-path excess = 0; leak/flicker/jump fixtures fail the named probe). They are **not** a frozen canonical-clip golden.
+
+Overall verdict:
+
+- `FAIL` if any criterion FAILs
+- `INCOMPLETE` if no FAIL but `awaiting` or `unexplained` is non-empty
+- `PASS` otherwise
+
+`blockingArtifactProducer` is **always false**.
+
+---
+
+## Claude investigates only unexplained failures
+
+**[DECISION]** Ordinary deterministic FAILs carry `failureReason` on the criterion. Do **not** page Claude for those.
+
+Claude (or a human forensic pass) investigates **only** `unexplained[]`:
+
+- missing / truncated raster
+- original vs reconstructed size mismatch
+- α length mismatch
+- NaN / non-finite α samples that prevent classification
+
+`claudeInvestigates: "unexplained_only"` is part of the JSON contract so orchestrators can route automatically.
+
+---
+
+## Still-golden lock / escalation
+
+**[DECISION]** Video FAIL of original-master preservation escalates as `architectural_blocker` with `stillGoldensReopened: false`. Message assigns the defect to reconstruct/compositing. Do not call `evaluateChestStill` or sleeve still scorers from this lane.
+
+`still_golden_regression_suspected` is reserved for a later full-video evidence pack. It still must not reopen 11/11 or 6/6.
+
+---
+
+## Diagnostic crops
+
+Worst-frame selection (documented algorithm, not a golden):
+
+1. **outside_change** — frame with max unauthorized changed pixels; crop = bounding box of leaked pixels + 2 px pad
+2. **seam** — frame with max seam pixel count; crop = seam bounding box + pad
+3. **abs_diff** — luma abs-diff of a representative scored frame
+
+Materialized as PPM + BMP via existing Lane E encoders.
+
+---
+
+## Ownership
+
+| Path                                        | Role                                         |
+| ------------------------------------------- | -------------------------------------------- |
+| `src/lib/eval/videoQaTypes.ts`              | Input / report / JSON types                  |
+| `src/lib/eval/videoQaCriteria.ts`           | Provisional thresholds                       |
+| `src/lib/eval/videoQaMetrics.ts`            | Pure probes                                  |
+| `src/lib/eval/videoQaEvaluator.ts`          | `evaluateVideoQa`                            |
+| `src/lib/eval/videoQaAdapter.ts`            | Lane H plug-in from reconstruct E2E / frames |
+| `src/lib/eval/videoQaArtifacts.ts`          | JSON + crops                                 |
+| `src/lib/eval/videoQaFixtures.ts`           | `$0` synthetic packs                         |
+| `src/lib/eval/videoQaEvaluator.test.ts`     | Unit / fixture proofs                        |
+| `src/lib/eval/reconstructVideoEvaluator.ts` | Unchanged architectural 9-criterion E2E gate |
+
+### Not edited
+
+Paint, temporal core, reconstruct math, pipeline OS, finishing, Control Center, proxy auth, paid Grok.
+
+The architectural reconstruct eval (`lane-e-reconstruct-video-v1`, 9/9 E2E) remains. E2 **adds** `lane-e2-video-qa-v1` on top.
+
+---
+
+## Not claimed
+
+- Live 720×1280 decode of master `76fe7438` inside this PR’s unit suite (H supplies that MP4)
+- In-process ffmpeg / mp4Demux
+- Chest 11/11 or sleeve 6/6 rescore
+- Architecture C paint correctness
+- Temporal optical-flow internals

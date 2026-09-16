@@ -1,8 +1,8 @@
 /**
- * Lane E — Automated Visual Evaluation (chest still 11-point gate).
+ * Lane E / E2 — Automated Visual Evaluation.
  *
  * Ownership: evaluator / metrics / diffs / crops / JSON PASS/FAIL + related tests.
- * Does not implement Architecture C paint or occlusion.
+ * Does not implement Architecture C paint, temporal core, pipeline OS, or finishing.
  */
 
 export {
@@ -37,3 +37,21 @@ export {
   evaluateReconstructedClip,
   reconstructVideoReportToJson,
 } from "./reconstructVideoEvaluator";
+export {
+  VIDEO_QA_SPEC_VERSION,
+  type VideoQaInput,
+  type VideoQaJson,
+  type VideoQaReport,
+} from "./videoQaTypes";
+export { evaluateVideoQa } from "./videoQaEvaluator";
+export {
+  formatVideoQaSummary,
+  materializeVideoQaFiles,
+  serializeVideoQaReport,
+  videoQaReportToJson,
+} from "./videoQaArtifacts";
+export {
+  videoQaInputFromFrames,
+  videoQaInputFromReconstructClip,
+  videoQaInputFromReconstructE2e,
+} from "./videoQaAdapter";
