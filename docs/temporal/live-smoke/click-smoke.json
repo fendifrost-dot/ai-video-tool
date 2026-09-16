@@ -1,0 +1,50 @@
+{
+  "smoke": "hero-frame-section-7-temporal-run-click",
+  "verdict": "SUCCESS",
+  "when": {
+    "local": "2026-09-15T19:51:00-05:00",
+    "timezone": "America/Chicago",
+    "utc": "2026-09-16T00:51:00Z"
+  },
+  "app": "https://aivideotool.lovable.app",
+  "route": "https://aivideotool.lovable.app/projects/764a63d2-93cd-44f3-905f-292f14ab2f51/hero-frame",
+  "authenticated": true,
+  "http401": false,
+  "paidGeneration": false,
+  "toast": {
+    "text": "Dispatched 3 job(s). paidCalls=false grokPerFrame=false.",
+    "jobCount": 3,
+    "paidCalls": false,
+    "grokPerFrame": false,
+    "assetIdsShown": false
+  },
+  "lineage": {
+    "issue": 96,
+    "parentIssue": 50,
+    "runControlIssue": 94,
+    "runControlPr": 95,
+    "priorSmokePr": 93,
+    "codeHead": "782adac77e708d052646cd645da363b35f519497",
+    "frontend": "lovable_publish_of_pr_95",
+    "edge": "temporal-propagate-proxy (JWT-only redeploy from #88; unchanged by this smoke)",
+    "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+    "garmentId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+    "clipId": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+    "heroTimestamp": 0.785,
+    "chestAssetId": "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
+    "sleeveAssetId": "fdb86b18-d4aa-465e-b73f-1d252709739c"
+  },
+  "screenshots": {
+    "before": "temporal-smoke-evidence/before-run.png",
+    "after": "temporal-smoke-evidence/after-run.png",
+    "committedInRepo": false,
+    "note": "PR #93 smoke stored JSON probes, not PNGs. Binaries were attached to the evidence run and described in LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md; this VM did not hydrate the files."
+  },
+  "notClaimed": [
+    "live_footage_cleared",
+    "reconstruct_original_master",
+    "per_frame_grok",
+    "new_still_repair_mint",
+    "new_edge_redeploy"
+  ]
+}
