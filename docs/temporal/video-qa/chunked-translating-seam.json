@@ -1,0 +1,149 @@
+{
+  "schemaVersion": "temporal-video-qa-chunked-v1",
+  "lane": "C2",
+  "verdict": "PASS",
+  "passCount": 6,
+  "failCount": 0,
+  "paidCalls": false,
+  "grokPerFrame": false,
+  "sam3LiveFetch": false,
+  "stillGoldensReopened": false,
+  "clipSpec": {
+    "id": "temporal-qa-translating-seam-probe",
+    "frameCount": 30,
+    "fps": 24,
+    "keyframeIndex": 0,
+    "keyframeTimeSec": 0,
+    "nativeWidth": 720,
+    "nativeHeight": 1280,
+    "qaRaster": {
+      "width": 40,
+      "height": 64
+    },
+    "pixels": "synthetic_luma_stand_in_not_live_pixels",
+    "lineageNote": "YELLOW translating seam probe"
+  },
+  "chunkCount": 2,
+  "maxWindowFrames": 24,
+  "proxyMaxFrames": 24,
+  "coversFullClip": true,
+  "stitchedFrameCount": 30,
+  "uniqueGlobalIndices": 30,
+  "minSeamIou": 0.7358490566037735,
+  "meanSeamIou": 0.7358490566037735,
+  "holdLatchedChunks": 0,
+  "chunkingInsufficientForTranslation": true,
+  "yellowContracts": [
+    "edge_max_frames_24_vs_canonical_241",
+    "live_1080x1920_ingest_of_76fe7438_not_this_lane",
+    "lane_e2_should_consume_temporal-video-qa-v1",
+    "sam3_continuity_is_caller_supplied_not_live_fetch",
+    "chunk_quad_reset_no_carried_mask",
+    "chunking_insufficient_for_translated_mask_continuity"
+  ],
+  "plans": [
+    {
+      "chunkIndex": 0,
+      "direction": "forward",
+      "globalStart": 0,
+      "globalEnd": 23,
+      "seedGlobalIndex": 0,
+      "localCanonicalIndex": 0,
+      "frameCount": 24
+    },
+    {
+      "chunkIndex": 1,
+      "direction": "forward",
+      "globalStart": 23,
+      "globalEnd": 29,
+      "seedGlobalIndex": 23,
+      "localCanonicalIndex": 0,
+      "frameCount": 7
+    }
+  ],
+  "seamCount": 3,
+  "chestSeams": [
+    {
+      "globalIndex": 23,
+      "kind": "chest",
+      "fromChunk": 0,
+      "toChunk": 1,
+      "iou": 0.7358490566037735
+    }
+  ],
+  "criteria": [
+    {
+      "id": "paid_calls_false",
+      "name": "No paid provider calls",
+      "verdict": "PASS",
+      "metrics": {
+        "paidCalls": 0
+      },
+      "note": "Chunked dispatch is $0.",
+      "failureReason": null
+    },
+    {
+      "id": "explicit_arm_dispatch",
+      "name": "Every window dispatched with explicitArm",
+      "verdict": "PASS",
+      "metrics": {
+        "chunks": 2,
+        "failed": 0
+      },
+      "note": "Auth lock: explicitArm required per window.",
+      "failureReason": null
+    },
+    {
+      "id": "windows_within_max_frames",
+      "name": "Every window ≤ proxy maxFrames",
+      "verdict": "PASS",
+      "metrics": {
+        "maxWindowFrames": 24,
+        "proxyMaxFrames": 24
+      },
+      "note": "Does not raise maxFrames.",
+      "failureReason": null
+    },
+    {
+      "id": "stitched_full_coverage",
+      "name": "Stitched globals cover the clip",
+      "verdict": "PASS",
+      "metrics": {
+        "unique": 30,
+        "expected": 30,
+        "chunks": 2
+      },
+      "note": "Chunk plan + stitch must cover every frame index.",
+      "failureReason": null
+    },
+    {
+      "id": "translation_seam_yellow",
+      "name": "Translating seams expose quad-reset insufficiency",
+      "verdict": "PASS",
+      "metrics": {
+        "minSeamIou": 0.7358490566037735,
+        "seams": 1
+      },
+      "note": "Proxy re-paints CLEARED quads at each seed — carried-mask is not on the wire.",
+      "failureReason": null
+    },
+    {
+      "id": "still_goldens_not_reopened",
+      "name": "Still goldens not rescored",
+      "verdict": "PASS",
+      "metrics": {
+        "chest11": 0,
+        "sleeve6": 0
+      },
+      "note": "Chunked QA never calls chest/sleeve still gates.",
+      "failureReason": null
+    }
+  ],
+  "notClaimed": [
+    "raising TEMPORAL_PROPAGATE_LIMITS.maxFrames",
+    "carried warped mask / canonicalIndex on temporal-propagate-proxy wire (Lovable)",
+    "live 1080×1920 pixels of 76fe7438",
+    "live SAM-3 fetch",
+    "chest 1m / sleeve 1c rescore"
+  ]
+}

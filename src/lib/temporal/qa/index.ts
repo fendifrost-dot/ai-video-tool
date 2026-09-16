@@ -55,3 +55,34 @@ export {
   type TemporalVideoQaReport,
   type TemporalVideoQaVerdict,
 } from "./report";
+
+export {
+  TEMPORAL_CHUNK_HELPER_VERSION,
+  TEMPORAL_CHUNK_OVERLAP,
+  chunkCoversClip,
+  planTemporalChunks,
+  sliceClipForChunk,
+  type ChunkDirection,
+  type TemporalChunkPlan,
+} from "./chunking";
+
+export {
+  assertChunkDispatchLocks,
+  dispatchTemporalChunk,
+  dispatchTemporalChunks,
+  stitchChunkDispatches,
+  type ChunkSeam,
+  type StitchedChunkFrame,
+  type TemporalChunkDispatch,
+} from "./chunkDispatch";
+
+export {
+  TEMPORAL_CHUNKED_QA_SPEC_VERSION,
+  TEMPORAL_CHUNK_YELLOW_CONTRACTS,
+  YELLOW_CHUNKING_INSUFFICIENT_FOR_TRANSLATION,
+  YELLOW_CHUNK_QUAD_RESET,
+  chunkedTemporalVideoQaToJson,
+  formatChunkedTemporalVideoQaSummary,
+  runChunkedTemporalVideoQa,
+  type TemporalChunkedQaReport,
+} from "./chunkReport";

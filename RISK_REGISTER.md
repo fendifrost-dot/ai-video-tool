@@ -8,7 +8,7 @@
 > **Severity:** Critical / High / Medium / Low · **Confidence:** Confirmed / Likely /
 > Suspected · **Status:** Open / In-remediation / Mitigated / Closed.
 
-Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1280 unique-RGB; Lane C2 full-clip temporal QA 241-frame stand-in / TEMPORAL-2; Lane R REL-2 notes-vs-flag YELLOW; real-media locks UNCLAIMED — issue #115; live camera pixels of `76fe7438` still not claimed).
+Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1280 unique-RGB; Lane C2 full-clip temporal QA 241-frame stand-in / TEMPORAL-2; Lane C2 chunked ≤24-frame proxy QA / TEMPORAL-3; Lane R REL-2 notes-vs-flag YELLOW; real-media locks UNCLAIMED — issue #115; live camera pixels of `76fe7438` still not claimed).
 
 | id | Title | Severity | Confidence | Status | Owner |
 |----|-------|----------|-----------|--------|-------|
@@ -30,6 +30,7 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 | [SLEEVE-1](#sleeve-1--visible-upper-arm-only-must-not-be-read-as-armholecuff) | Sleeve still repair is visible-upper-arm only; a pass must not be read as armhole→cuff | Medium | Confirmed | Open | Products (AVT) / Lane B |
 | [TEMPORAL-1](#temporal-1--live-arm-without-hero-frame-tracking) | Temporal lib armed; Hero Frame tracking on (#90); §7 Run control (#94/#95); **click smoke SUCCESS** (`paidCalls=false`, 3 jobs) | Medium | Confirmed | **In-remediation** (click path proven; live footage not claimed) | Products (AVT) / Hero Frame + Lane C |
 | [TEMPORAL-2](#temporal-2--full-clip-video-qa-without-raising-proxy-maxframes) | Full-clip temporal QA without raising proxy `maxFrames=24` (Lane C2 / #107) | Low | Confirmed | **Monitoring** (241-frame in-lib stand-in; live 1080×1920 not claimed) | Products (AVT) / Lane C2 |
+| [TEMPORAL-3](#temporal-3--chunked-proxy-windows-without-raising-maxframes) | Chunked ≤24-frame proxy QA without raising `maxFrames` (Lane C2 / #124) | Low | Confirmed | **Monitoring** (stationary stitch GREEN; translating seams YELLOW) | Products (AVT) / Lane C2 |
 | [RECONSTRUCT-1](#reconstruct-1--gate-4-wiring-without-live-sam-3--new-edge) | Gate 4 wiring without live SAM-3 / new edge; E2E $0 click PASS 9/9 (`frames=5`); **D2 unique-RGB 720×1280 PASS 15/15** | Medium | Confirmed | **In-remediation** (720×1280 unique-RGB claimed; live `76fe7438` camera / SAM-3 / MP4 not claimed) | Products (AVT) / Lane D |
 
 ---
@@ -352,6 +353,16 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **Pointer:** [`docs/temporal/VIDEO_QA.md`](docs/temporal/VIDEO_QA.md); [`src/lib/temporal/qa/`](src/lib/temporal/qa/); [`src/lib/temporal/fullClipFixture.ts`](src/lib/temporal/fullClipFixture.ts).
 - **DoD (target):** unit/fixture proofs on 241 frames; JSON evidence `temporal-video-qa-v1`; dispatch lock tests (5-frame smoke still works; 241-frame POST still refused). **YELLOW:** raising `maxFrames` or live native ingest is a shared-contract / Class C decision — not this lane.
 - **Mitigations:** measurement-only modules; synthetic luma stand-in; yellow contracts named in the JSON; Lane E2 consumes the schema rather than this lane editing eval core.
+
+---
+
+## TEMPORAL-3 — Chunked proxy windows without raising maxFrames
+
+- **Severity:** Low · **Confidence:** Confirmed · **Status:** Monitoring · **Owner:** Products (AVT) / Lane C2
+- **Summary:** Follow-on #124. GREEN helper splits a clip into ≤24-frame overlap-1 windows, reindexes seed to local 0, dispatches via the existing in-lib `temporal-propagate-proxy` adapter (`explicitArm`, `paidCalls=false`), and stitches global metrics. `maxFrames` stays **24**. Stationary 241-frame stitch covers the canonical clip; a second synthetic spec (72 frames @ 24 fps) proves portability. **YELLOW:** each window re-paints CLEARED still quads (no carried mask on the wire), so translating overlap seams drop IoU — chunking is insufficient for translated-mask continuity. Escalation is a shared-contract wire field, not a cap raise. No Lovable edits.
+- **Pointer:** [`docs/temporal/VIDEO_QA.md`](docs/temporal/VIDEO_QA.md); [`src/lib/temporal/qa/chunking.ts`](src/lib/temporal/qa/chunking.ts); [`src/lib/temporal/qa/chunkDispatch.ts`](src/lib/temporal/qa/chunkDispatch.ts).
+- **DoD (target):** unit proofs that every window ≤24, 241-frame stitch covers the clip, second-clip spec runs, translating seam YELLOW is named, `maxFrames` unchanged.
+- **Mitigations:** planner refuses `maxFrames > 24`; 241-frame single POST still rejected; yellow tokens in JSON.
 
 ---
 

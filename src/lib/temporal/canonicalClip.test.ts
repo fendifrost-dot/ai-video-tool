@@ -15,6 +15,7 @@ import {
   canonicalFullClipDefectFixture,
   expectedDxAtFrame,
 } from "./fullClipFixture";
+import { CANONICAL_QA_CLIP_SPEC, SECOND_QA_CLIP_SPEC, keyframeIndexForSpec } from "./clipSpec";
 import { maskArea } from "./mask";
 
 describe("canonical master clip metadata", () => {
@@ -29,6 +30,18 @@ describe("canonical master clip metadata", () => {
     expect(CANONICAL_CLIP_META.pixels).toBe("synthetic_luma_stand_in_not_live_1080x1920");
   });
 });
+
+describe("portable clip specs", () => {
+  it("keeps a second-clip spec distinct from canonical 76fe7438 / 241 / 59.94", () => {
+    expect(SECOND_QA_CLIP_SPEC.id).not.toBe(CANONICAL_QA_CLIP_SPEC.id);
+    expect(SECOND_QA_CLIP_SPEC.frameCount).toBe(72);
+    expect(SECOND_QA_CLIP_SPEC.fps).toBe(24);
+    expect(SECOND_QA_CLIP_SPEC.keyframeIndex).toBe(18);
+    expect(keyframeIndexForSpec(SECOND_QA_CLIP_SPEC)).toBe(18);
+    expect(CANONICAL_QA_CLIP_SPEC.frameCount).toBe(241);
+  });
+});
+
 
 describe("canonical full-clip synthetic fixture", () => {
   it("emits 241 luma frames sized to the QA raster with canonical keyframe 47", () => {

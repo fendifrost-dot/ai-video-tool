@@ -1,0 +1,181 @@
+{
+  "schemaVersion": "temporal-video-qa-chunked-v1",
+  "lane": "C2",
+  "verdict": "PASS",
+  "passCount": 6,
+  "failCount": 0,
+  "paidCalls": false,
+  "grokPerFrame": false,
+  "sam3LiveFetch": false,
+  "stillGoldensReopened": false,
+  "clipSpec": {
+    "id": "temporal-qa-second-clip-synthetic",
+    "frameCount": 72,
+    "fps": 24,
+    "keyframeIndex": 18,
+    "keyframeTimeSec": 0.75,
+    "nativeWidth": 720,
+    "nativeHeight": 1280,
+    "qaRaster": {
+      "width": 40,
+      "height": 64
+    },
+    "pixels": "synthetic_luma_stand_in_not_live_pixels",
+    "lineageNote": "portability probe — not a production master; proves QA/chunking is not hardcoded to 76fe7438"
+  },
+  "chunkCount": 4,
+  "maxWindowFrames": 24,
+  "proxyMaxFrames": 24,
+  "coversFullClip": true,
+  "stitchedFrameCount": 72,
+  "uniqueGlobalIndices": 72,
+  "minSeamIou": 1,
+  "meanSeamIou": 1,
+  "holdLatchedChunks": 0,
+  "chunkingInsufficientForTranslation": false,
+  "yellowContracts": [
+    "edge_max_frames_24_vs_canonical_241",
+    "live_1080x1920_ingest_of_76fe7438_not_this_lane",
+    "lane_e2_should_consume_temporal-video-qa-v1",
+    "sam3_continuity_is_caller_supplied_not_live_fetch",
+    "chunk_quad_reset_no_carried_mask",
+    "chunking_insufficient_for_translated_mask_continuity"
+  ],
+  "plans": [
+    {
+      "chunkIndex": 0,
+      "direction": "backward",
+      "globalStart": 0,
+      "globalEnd": 18,
+      "seedGlobalIndex": 18,
+      "localCanonicalIndex": 0,
+      "frameCount": 19
+    },
+    {
+      "chunkIndex": 1,
+      "direction": "forward",
+      "globalStart": 18,
+      "globalEnd": 41,
+      "seedGlobalIndex": 18,
+      "localCanonicalIndex": 0,
+      "frameCount": 24
+    },
+    {
+      "chunkIndex": 2,
+      "direction": "forward",
+      "globalStart": 41,
+      "globalEnd": 64,
+      "seedGlobalIndex": 41,
+      "localCanonicalIndex": 0,
+      "frameCount": 24
+    },
+    {
+      "chunkIndex": 3,
+      "direction": "forward",
+      "globalStart": 64,
+      "globalEnd": 71,
+      "seedGlobalIndex": 64,
+      "localCanonicalIndex": 0,
+      "frameCount": 8
+    }
+  ],
+  "seamCount": 9,
+  "chestSeams": [
+    {
+      "globalIndex": 18,
+      "kind": "chest",
+      "fromChunk": 0,
+      "toChunk": 1,
+      "iou": 1
+    },
+    {
+      "globalIndex": 41,
+      "kind": "chest",
+      "fromChunk": 1,
+      "toChunk": 2,
+      "iou": 1
+    },
+    {
+      "globalIndex": 64,
+      "kind": "chest",
+      "fromChunk": 2,
+      "toChunk": 3,
+      "iou": 1
+    }
+  ],
+  "criteria": [
+    {
+      "id": "paid_calls_false",
+      "name": "No paid provider calls",
+      "verdict": "PASS",
+      "metrics": {
+        "paidCalls": 0
+      },
+      "note": "Chunked dispatch is $0.",
+      "failureReason": null
+    },
+    {
+      "id": "explicit_arm_dispatch",
+      "name": "Every window dispatched with explicitArm",
+      "verdict": "PASS",
+      "metrics": {
+        "chunks": 4,
+        "failed": 0
+      },
+      "note": "Auth lock: explicitArm required per window.",
+      "failureReason": null
+    },
+    {
+      "id": "windows_within_max_frames",
+      "name": "Every window ≤ proxy maxFrames",
+      "verdict": "PASS",
+      "metrics": {
+        "maxWindowFrames": 24,
+        "proxyMaxFrames": 24
+      },
+      "note": "Does not raise maxFrames.",
+      "failureReason": null
+    },
+    {
+      "id": "stitched_full_coverage",
+      "name": "Stitched globals cover the clip",
+      "verdict": "PASS",
+      "metrics": {
+        "unique": 72,
+        "expected": 72,
+        "chunks": 4
+      },
+      "note": "Chunk plan + stitch must cover every frame index.",
+      "failureReason": null
+    },
+    {
+      "id": "stationary_seams_hold",
+      "name": "Stationary seams stay high-IoU",
+      "verdict": "PASS",
+      "metrics": {
+        "minSeamIou": 1,
+        "seams": 3
+      },
+      "note": "Stationary clip: quad-reset matches previous identity warp.",
+      "failureReason": null
+    },
+    {
+      "id": "still_goldens_not_reopened",
+      "name": "Still goldens not rescored",
+      "verdict": "PASS",
+      "metrics": {
+        "chest11": 0,
+        "sleeve6": 0
+      },
+      "note": "Chunked QA never calls chest/sleeve still gates.",
+      "failureReason": null
+    }
+  ],
+  "notClaimed": [
+    "raising TEMPORAL_PROPAGATE_LIMITS.maxFrames",
+    "carried warped mask / canonicalIndex on temporal-propagate-proxy wire (Lovable)",
+    "live 1080×1920 pixels of 76fe7438",
+    "live SAM-3 fetch",
+    "chest 1m / sleeve 1c rescore"
+  ]
+}
