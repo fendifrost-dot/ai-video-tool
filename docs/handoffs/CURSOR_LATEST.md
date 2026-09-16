@@ -14,7 +14,17 @@
 | Lane B sleeve still **1b** live | YES (PR #82 paint, PR #83 score) | YES (asset `a4dc7f47`) | **NOT CLEARED 5/6** — left PASS, right cream-majority over dark V2 ring |
 | Lane B sleeve still **1c** live | paint YES (PR #85); score evidence PR #86 | YES (asset `fdb86b18`) | **CLEARED 6/6 — LOCKED, do not reopen sleeve paint** |
 | Temporal live activation | YES (`TEMPORAL_LIVE_ACTIVATION_ARMED = true`) | **NO — redeploy `temporal-propagate-proxy` only** | **YES after** that one edge redeploy |
-| Hero Frame `temporalTrackingEnabled` | stays **false** | n/a | Hero Frame owner — **not this PR** |
+| Hero Frame `temporalTrackingEnabled` | YES (`true` when armed) | frontend Publish | **YES** — product dispatch uses `explicitArm` |
+
+## HERO FRAME TEMPORAL FLAG — product dispatch with explicitArm
+
+Work-order: GitHub **#90** (lineage **#87** / PR #88, parent **#50**). Hero Frame owner only. **Do not reopen chest 1m or sleeve paint.**
+
+`ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled = true`  
+`prepareHeroFrameTemporalDispatch()` sets `explicitArm: true` when armed.  
+Still-repair edge mirror stays **false** — no `architecture-c-still-repair-proxy` redeploy.
+
+Parent deploy from this PR: **none** (frontend-only). The #88 `temporal-propagate-proxy` Lovable redeploy is unchanged.
 
 ## TEMPORAL LIVE ACTIVATION — ready for one edge redeploy
 
@@ -31,11 +41,11 @@ Redeploy **only** `temporal-propagate-proxy` via Lovable → Edge Functions → 
 **Do not** redeploy `architecture-c-still-repair-proxy` from this lane.  
 Publish ≠ edge redeploy. Frontend Publish optional for Hero Frame to call the new edge.
 
-### Hero Frame owner (separate)
+### Hero Frame owner (this PR / #90)
 
-`ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` stays **false**.  
+`ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` is **true**.  
 File: `src/lib/heroFrame/architectureCStillRepair.ts`.  
-Lane C does not flip it. After the temporal edge is live, Hero Frame owner may flip in a later change. Do not edit chest/sleeve paint as part of that flip.
+Product UI (`prepareHeroFrameTemporalDispatch`) sets `explicitArm: true` when the flag and `TEMPORAL_LIVE_ACTIVATION_ARMED` are both true. Still-repair edge mirror stays **false** — no `architecture-c-still-repair-proxy` redeploy. Do not edit chest/sleeve paint.
 
 ### Canonical IDs (unchanged)
 

@@ -1,6 +1,9 @@
 /**
  * Architecture C still-first deterministic repair — constants + pure helpers.
- * Temporal tracking is intentionally OFF until a still passes human review.
+ * Product temporal tracking is ON after chest 1m CLEARED 11/11 + sleeve 1c
+ * CLEARED 6/6 + TEMPORAL_LIVE_ACTIVATION_ARMED (PR #88). Still-repair paint
+ * stays locked. The still-repair edge mirror of this flag stays false so
+ * architecture-c-still-repair-proxy does not 500 tracking_flag_misconfigured.
  */
 
 import type { QuadNorm } from "@/lib/garment/placementEngine";
@@ -22,8 +25,11 @@ export const ARCHITECTURE_C_V2_REPAIR = {
   recommendedStillAssetId: "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
   /** Cleared Stage 1m chest output (PR #73) — preferred sleeve_panel input. */
   recommendedChestOutputAssetId: "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
-  /** Hard stop — do not build tracking until still repair passes. */
-  temporalTrackingEnabled: false,
+  /**
+   * Product UI gate for temporal dispatch (Hero Frame owner).
+   * When true + TEMPORAL_LIVE_ACTIVATION_ARMED, §7 sends explicitArm.
+   */
+  temporalTrackingEnabled: true,
 } as const;
 
 export {
@@ -176,7 +182,9 @@ export function buildStillRepairAssetMetadata(input: {
     mime_type: "image/png",
     architecture_lane: "architecture_c",
     repair_stage: input.stage,
-    temporal_tracking_enabled: ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled,
+    // Still-repair outputs stay still-first. Product tracking is the
+    // ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled gate, not this row.
+    temporal_tracking_enabled: false,
     source_still_asset_id: input.sourceStillAssetId,
     source_video_asset_id: input.sourceVideoAssetId,
     frame_time_sec: input.frameTimeSec,

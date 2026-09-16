@@ -31,6 +31,7 @@ import {
   resolvePreferredSleeveStillSource,
   type SleevePanelManual,
 } from "@/lib/heroFrame/architectureCStillRepair";
+import { prepareHeroFrameTemporalDispatch } from "@/lib/heroFrame/temporalDispatch";
 import { isEditR4CanonicalOwner } from "@/lib/heroFrame/editR4ProductIds";
 import type { QuadNorm } from "@/lib/garment/placementEngine";
 
@@ -363,7 +364,7 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
       setHardStop(result.hardStop);
       await assetsQuery.refetch();
       toast.success(
-        `sleeve_panel saved (${SLEEVE_STILL_REPAIR_METHOD_VERSION}) — HARD STOP before tracking`,
+        `sleeve_panel saved (${SLEEVE_STILL_REPAIR_METHOD_VERSION}) — paint locked; tracking uses explicitArm`,
       );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "sleeve_panel failed");
@@ -373,6 +374,7 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
   }
 
   const garments = wardrobeQuery.data ?? [];
+  const temporalDispatch = useMemo(() => prepareHeroFrameTemporalDispatch(), []);
 
   return (
     <section className="space-y-4 rounded-md border border-border bg-card/30 p-4">
@@ -381,10 +383,12 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
           7 · Architecture C — still-first deterministic repair
         </h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Active prompt stays V2 (no spend). Prove <span className="font-mono">chest_band</span> +{" "}
-          <span className="font-mono">logo_zone</span>, then manual{" "}
-          <span className="font-mono">sleeve_panel</span> on the visible upper arm. Temporal
-          tracking is disabled until this still passes review.
+          Active prompt stays V2 (no spend). Chest 1m + sleeve 1c are CLEARED and locked. Do not
+          re-run paint. Temporal tracking is{" "}
+          <span className="font-mono">
+            temporalTrackingEnabled={String(ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled)}
+          </span>
+          ; dispatch uses <span className="font-mono">explicitArm</span>.
         </p>
       </div>
 
@@ -701,12 +705,16 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         </div>
       )}
 
-      <p className="rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-        HARD STOP: temporal propagation / SAM-3 master composite are{" "}
-        <span className="font-mono">not</span> wired here (
-        <span className="font-mono">temporalTrackingEnabled=false</span>). V3 prompt is installed
-        but inactive — no paid V3 call until this still passes.{" "}
-        {hardStop ?? "Pass this still visually against the flat ref before any tracking work."}
+      <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
+        Temporal product gate is on (
+        <span className="font-mono">
+          temporalTrackingEnabled={String(temporalDispatch.temporalTrackingEnabled)}
+        </span>
+        , <span className="font-mono">armed={String(temporalDispatch.armed)}</span>,{" "}
+        <span className="font-mono">explicitArm={String(temporalDispatch.explicitArm)}</span>,{" "}
+        <span className="font-mono">canDispatch={String(temporalDispatch.canDispatch)}</span>
+        ). Chest/sleeve paint stays locked. V3 stays inactive — no paid Grok.{" "}
+        {hardStop ?? "Dispatch goes to temporal-propagate-proxy with explicitArm."}
       </p>
     </section>
   );
