@@ -232,6 +232,7 @@ A future implementation PR (not this lane unless Fendi expands scope) would add 
 | Disabled-by-default harness config | `src/lib/automation/finishingHarness.ts` |
 | Sample UXP-only recipe | `sample_finishing_recipe.json` |
 | Sample reconstructed-master handoff + recipe | `sample_reconstructed_master_handoff.json`, `sample_reconstructed_master_recipe.json` |
+| Second-clip portability fixtures | `fixtures/second_clip_handoff.json`, `fixtures/second_clip_recipe.json` |
 | Live UXP panel | **not started** (needs machine + Adobe install; see RED) |
 | Live Astra session | **forbidden** until RED |
 
