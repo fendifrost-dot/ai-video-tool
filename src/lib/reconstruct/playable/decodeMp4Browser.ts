@@ -8,9 +8,10 @@
  * Hero Frame MAY import this module. Do **not** import `decodeMp4.ts`
  * (node/ffmpeg, `child_process`) from the UI graph.
  *
- * Live Export caps `maxFrames` (see `LIVE_PLAYABLE_DECODE_MAX_FRAMES`).
- * That sample is of the **72-frame gate MP4**, not the 8-frame compose.
- * Full 72-frame decode is the node/ffmpeg CI path.
+ * Live Export defaults to the full 72-frame gate
+ * (`LIVE_PLAYABLE_DECODE_MAX_FRAMES`). Abort / OOM / timeout keep any
+ * partial rasters or step down `LIVE_PLAYABLE_DECODE_FALLBACK_STEPS`
+ * (24 then 8) — never a false E2 FAIL, never the 8-frame UI compose.
  *
  * Missing WebCodecs / fetch / sha mismatch → fail closed. Callers keep
  * encode-first INCOMPLETE (`awaiting decoded_frames`).
@@ -22,14 +23,23 @@ import {
   CANONICAL_CLIP_FRAME_COUNT,
   LIVE_PLAYABLE_DECODE_MAX_FRAMES,
   PLAYABLE_WORKING_FPS,
+  livePlayableDecodeTimeoutMs,
+  resolveLivePlayableDecodeLadder,
 } from "./contract";
 import {
   PLAYABLE_MP4_BYTE_LENGTH,
   PLAYABLE_MP4_RELATIVE_PATH,
   PLAYABLE_MP4_SHA256,
-  committedPlayableMp4Ref,
   type PlayableDecodedRgba,
 } from "./videoQaPlug";
+
+export type LivePlayableDecodeFallbackReason =
+  | "none"
+  | "timeout"
+  | "oom"
+  | "abort"
+  | "decode_error"
+  | "progressive_ladder";
 
 export type DecodePlayableMp4BrowserOk = {
   ok: true;
@@ -41,6 +51,8 @@ export type DecodePlayableMp4BrowserOk = {
   frameCount: number;
   truncated: boolean;
   liveSample: boolean;
+  requestedMaxFrames: number;
+  fallbackReason: LivePlayableDecodeFallbackReason;
   frames: PlayableDecodedRgba[];
   sha256?: string;
 };
@@ -68,10 +80,13 @@ export type DecodePlayableMp4BrowserResult =
 
 export type DecodePlayableMp4BrowserInput = {
   mp4Bytes?: Uint8Array;
-  /** Hard cap. Live Export uses LIVE_PLAYABLE_DECODE_MAX_FRAMES. Omit to decode all. */
+  /** Hard cap. Live Export defaults to LIVE_PLAYABLE_DECODE_MAX_FRAMES (72). Omit to decode all demuxed samples. */
   maxFrames?: number;
   /** 0-based source index to start. Must land on/after a sync sample. */
   startFrame?: number;
+  /** In-flight RGBA copy wait. Default scales with maxFrames, capped at 60 s. */
+  timeoutMs?: number;
+  abortSignal?: AbortSignal;
 };
 
 interface WcDecoderConfig {
@@ -116,6 +131,38 @@ function fail(
   decoder: DecodePlayableMp4BrowserFail["decoder"] = "webcodecs",
 ): DecodePlayableMp4BrowserFail {
   return { ok: false, decoder, code, message };
+}
+
+export function classifyLiveDecodeFailure(
+  message: string,
+): Exclude<LivePlayableDecodeFallbackReason, "none" | "progressive_ladder"> {
+  const m = message.toLowerCase();
+  if (m.includes("timeout") || m.includes("deadline") || m.includes("timed out")) {
+    return "timeout";
+  }
+  if (
+    m.includes("out of memory") ||
+    m.includes("oom") ||
+    m.includes("allocation failed") ||
+    m.includes("allocationerror")
+  ) {
+    return "oom";
+  }
+  if (m.includes("abort")) return "abort";
+  return "decode_error";
+}
+
+/** Abort / OOM / timeout / empty-after-decode may retry a smaller sample. */
+export function isRecoverableLiveDecodeFailure(result: DecodePlayableMp4BrowserFail): boolean {
+  if (result.code === "decode_failed") return true;
+  if (result.code === "empty" && /decoded no frames|timeout|abort|oom/i.test(result.message)) {
+    return true;
+  }
+  return false;
+}
+
+function isAborted(signal?: AbortSignal): boolean {
+  return signal?.aborted === true;
 }
 
 /** True when this runtime can construct a WebCodecs VideoDecoder. */
@@ -254,10 +301,14 @@ export async function decodePlayableMp4Browser(
     return fail("empty", `startFrame ${startFrame} >= sourceFrameCount ${sourceFrameCount}`);
   }
 
+  if (isAborted(input.abortSignal)) {
+    return fail("decode_failed", "decode_aborted");
+  }
+
   const remaining = sourceFrameCount - startFrame;
-  const frameCount = Math.min(remaining, Math.max(1, input.maxFrames ?? remaining));
-  const truncated = startFrame + frameCount < sourceFrameCount;
-  const liveSample = truncated || frameCount < CANONICAL_CLIP_FRAME_COUNT;
+  const requestedMaxFrames = Math.max(1, input.maxFrames ?? remaining);
+  const frameCount = Math.min(remaining, requestedMaxFrames);
+  const timeoutMs = Math.max(1, input.timeoutMs ?? livePlayableDecodeTimeoutMs(frameCount));
 
   const config: WcDecoderConfig = {
     codec: track.codec,
@@ -321,7 +372,7 @@ export async function decodePlayableMp4Browser(
     let from = startFrame;
     while (from > 0 && !track.samples[from]!.isSync) from--;
     for (let i = from; i < end; i++) {
-      if (decodeError) break;
+      if (decodeError || isAborted(input.abortSignal)) break;
       const sample = track.samples[i]!;
       decoder.decode(
         new EncodedVideoChunkCtor({
@@ -338,15 +389,20 @@ export async function decodePlayableMp4Browser(
     if (decoder.state !== "closed") decoder.close();
   }
 
-  const deadline = Date.now() + 15_000;
-  while (inFlight > 0 && !decodeError && Date.now() < deadline) {
+  const deadline = Date.now() + timeoutMs;
+  while (inFlight > 0 && Date.now() < deadline) {
+    if (isAborted(input.abortSignal)) break;
     await new Promise((r) => setTimeout(r, 0));
   }
 
-  if (decodeError) {
-    return fail("decode_failed", decodeError.message);
+  if (isAborted(input.abortSignal)) {
+    decodeError ??= new Error("decode_aborted");
+  } else if (inFlight > 0 && !decodeError) {
+    decodeError = new Error("decode_timeout");
   }
+
   if (pending.length === 0) {
+    if (decodeError) return fail("decode_failed", decodeError.message);
     return fail("empty", "WebCodecs decoded no frames.");
   }
 
@@ -362,6 +418,13 @@ export async function decodePlayableMp4Browser(
     image: p.image,
   }));
 
+  const actualCount = frames.length;
+  const truncated = startFrame + actualCount < sourceFrameCount;
+  const liveSample = truncated || actualCount < CANONICAL_CLIP_FRAME_COUNT;
+  const fallbackReason: LivePlayableDecodeFallbackReason = decodeError
+    ? classifyLiveDecodeFailure(decodeError.message)
+    : "none";
+
   return {
     ok: true,
     decoder: "webcodecs",
@@ -369,9 +432,11 @@ export async function decodePlayableMp4Browser(
     height: first.height,
     fps: inferSourceFps(track.samples),
     sourceFrameCount,
-    frameCount: frames.length,
+    frameCount: actualCount,
     truncated,
     liveSample,
+    requestedMaxFrames,
+    fallbackReason,
     frames,
   };
 }
@@ -440,17 +505,27 @@ export async function fetchPlayableMp4Bytes(input: {
 
 /**
  * Live Export helper: fetch the committed gate MP4 (or use injected bytes)
- * and decode a bounded sample. Fail closed → caller keeps INCOMPLETE.
+ * and decode up to `maxFrames` (default 72). Abort / OOM / timeout keep a
+ * partial sample when any rasters landed, else step down the fallback
+ * ladder. Fail closed → caller keeps INCOMPLETE. Never pairs the 8-frame
+ * UI compose onto the gate.
  */
 export async function decodeCommittedPlayableMp4ForLive(
   input: {
     mp4Bytes?: Uint8Array;
     mp4Url?: string;
     maxFrames?: number;
+    timeoutMs?: number;
+    abortSignal?: AbortSignal;
+    /** Default true: 72 → 24 → 8 when a larger attempt yields 0 frames. */
+    progressiveFallback?: boolean;
   } = {},
 ): Promise<DecodePlayableMp4BrowserResult> {
-  const maxFrames = Math.max(1, input.maxFrames ?? LIVE_PLAYABLE_DECODE_MAX_FRAMES);
-  const ref = committedPlayableMp4Ref();
+  const requestedMaxFrames = Math.max(1, input.maxFrames ?? LIVE_PLAYABLE_DECODE_MAX_FRAMES);
+  const ladder =
+    input.progressiveFallback === false
+      ? [requestedMaxFrames]
+      : resolveLivePlayableDecodeLadder(requestedMaxFrames);
 
   let bytes = input.mp4Bytes;
   let sha: string | undefined;
@@ -476,17 +551,41 @@ export async function decodeCommittedPlayableMp4ForLive(
     }
   }
 
-  const decoded = await decodePlayableMp4Browser({ mp4Bytes: bytes, maxFrames });
-  if (!decoded.ok) return decoded;
-  return { ...decoded, sha256: sha };
+  let lastFail: DecodePlayableMp4BrowserFail | null = null;
+  for (let i = 0; i < ladder.length; i++) {
+    const cap = ladder[i]!;
+    if (isAborted(input.abortSignal)) {
+      return fail("decode_failed", "decode_aborted");
+    }
+    const decoded = await decodePlayableMp4Browser({
+      mp4Bytes: bytes,
+      maxFrames: cap,
+      timeoutMs: input.timeoutMs ?? livePlayableDecodeTimeoutMs(cap),
+      abortSignal: input.abortSignal,
+    });
+    if (decoded.ok) {
+      const steppedDown = cap < requestedMaxFrames && decoded.fallbackReason === "none";
+      return {
+        ...decoded,
+        sha256: sha,
+        requestedMaxFrames,
+        fallbackReason: steppedDown ? "progressive_ladder" : decoded.fallbackReason,
+      };
+    }
+    lastFail = decoded;
+    const canRetry = isRecoverableLiveDecodeFailure(decoded) && i < ladder.length - 1;
+    if (!canRetry) return decoded;
+  }
+  return lastFail ?? fail("decode_failed", "live_decode_exhausted");
 }
 
 export function formatPlayableBrowserDecodeNote(result: DecodePlayableMp4BrowserResult): string {
   if (!result.ok) {
     return `browserDecode=${result.code} (INCOMPLETE awaiting decoded_frames preserved).`;
   }
-  const sample = result.liveSample
-    ? `liveSample maxFrames=${result.frameCount} of source=${result.sourceFrameCount} (not the 8-frame UI compose; full 72f is node/ffmpeg CI)`
-    : `fullDecode frames=${result.frameCount} source=${result.sourceFrameCount}`;
-  return `browserDecode=webcodecs ${result.width}×${result.height} ${sample}.`;
+  if (!result.liveSample) {
+    return `browserDecode=webcodecs ${result.width}×${result.height} fullDecode frames=${result.frameCount} source=${result.sourceFrameCount}.`;
+  }
+  const fallback = result.fallbackReason !== "none" ? ` (fallback=${result.fallbackReason})` : "";
+  return `browserDecode=webcodecs ${result.width}×${result.height} liveSample maxFrames=${result.frameCount} of source=${result.sourceFrameCount}${fallback} (not the 8-frame UI compose).`;
 }

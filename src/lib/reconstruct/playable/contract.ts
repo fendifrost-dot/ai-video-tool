@@ -33,12 +33,55 @@ export const HERO_FRAME_PLAYABLE_EXPORT_FRAME_COUNT = 8;
 export const HERO_FRAME_PLAYABLE_EXPORT_KEYFRAME_INDEX = 2;
 
 /**
- * Live WebCodecs sample of the committed **72-frame gate MP4**.
- * Same count as the UI compose window by memory budget (~29 MB RGBA),
- * **not** the 8-frame in-memory compose (false FAIL 6/9). Full 72-frame
- * decode remains the node/ffmpeg CI path.
+ * Live WebCodecs decode of the committed **72-frame gate MP4**.
+ * Default is the full gate (`CANONICAL_CLIP_FRAME_COUNT`). Configurable via
+ * `maxFrames` on decode / `runHeroFramePlayableExportLive`.
+ *
+ * Memory: 72 × 720 × 1280 × 4 = 265_420_800 bytes ≈ 253 MiB RGBA in-tab.
+ * Time: `copyTo` / `getImageData` per frame; budget scales with count
+ * (`livePlayableDecodeTimeoutMs`) and is capped so the toast cannot hang.
+ *
+ * If decode aborts / OOM / timeout, live Export falls back via
+ * `LIVE_PLAYABLE_DECODE_FALLBACK_STEPS` (24 then 8) or keeps any partial
+ * rasters already decoded — never a false E2 FAIL, never pairing the
+ * 8-frame UI compose onto the gate. `HERO_FRAME_PLAYABLE_EXPORT_FRAME_COUNT`
+ * stays 8 (compose window). Node/ffmpeg CI still scores the full file.
  */
-export const LIVE_PLAYABLE_DECODE_MAX_FRAMES = 8;
+export const LIVE_PLAYABLE_DECODE_MAX_FRAMES = CANONICAL_CLIP_FRAME_COUNT;
+
+/**
+ * Progressive smaller samples when a larger live decode yields 0 frames.
+ * Tried only after abort / OOM / timeout. Not the 8-frame UI compose.
+ */
+export const LIVE_PLAYABLE_DECODE_FALLBACK_STEPS = [24, 8] as const;
+
+/** 720 × 1280 × 4. */
+export const LIVE_PLAYABLE_RGBA_BYTES_PER_FRAME =
+  PLAYABLE_WORKING_WIDTH * PLAYABLE_WORKING_HEIGHT * 4;
+
+export const LIVE_PLAYABLE_DECODE_TIMEOUT_BASE_MS = 10_000;
+export const LIVE_PLAYABLE_DECODE_TIMEOUT_MS_PER_FRAME = 500;
+export const LIVE_PLAYABLE_DECODE_TIMEOUT_CAP_MS = 60_000;
+
+export function livePlayableRgbaBudgetBytes(frameCount: number): number {
+  return Math.max(0, Math.floor(frameCount)) * LIVE_PLAYABLE_RGBA_BYTES_PER_FRAME;
+}
+
+/** In-flight RGBA copy wait. 72 frames → 46 s, capped at 60 s. */
+export function livePlayableDecodeTimeoutMs(frameCount: number): number {
+  const n = Math.max(1, Math.floor(frameCount));
+  return Math.min(
+    LIVE_PLAYABLE_DECODE_TIMEOUT_CAP_MS,
+    LIVE_PLAYABLE_DECODE_TIMEOUT_BASE_MS + n * LIVE_PLAYABLE_DECODE_TIMEOUT_MS_PER_FRAME,
+  );
+}
+
+/** Requested cap first, then any fallback step strictly below it. */
+export function resolveLivePlayableDecodeLadder(requestedMaxFrames: number): number[] {
+  const requested = Math.max(1, Math.floor(requestedMaxFrames));
+  const steps = [requested, ...LIVE_PLAYABLE_DECODE_FALLBACK_STEPS.filter((n) => n < requested)];
+  return [...new Set(steps)];
+}
 
 /** Must stay ≤ temporal search radius (6) or hops fail-match. */
 export const PLAYABLE_DX_PER_FRAME = 2;

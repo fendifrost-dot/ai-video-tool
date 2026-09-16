@@ -13,7 +13,7 @@ import {
   type ReconstructLiveWiringDecision,
 } from "../liveWiring";
 import { heroFrameReconstructExplicitArm } from "../heroFrameRun";
-import { PLAYABLE_RECONSTRUCT_VERSION } from "./contract";
+import { CANONICAL_CLIP_FRAME_COUNT, PLAYABLE_RECONSTRUCT_VERSION } from "./contract";
 import { runPlayableCompose, type PlayableComposeResult } from "./compose";
 import { heroFramePlayableSpec } from "./spec";
 import { playableE2HookToJson, buildPlayableArtifactClaims, buildPlayableE2Hook } from "./e2Hook";
@@ -185,14 +185,18 @@ export type HeroFramePlayableExportLiveOpts = HeroFramePlayableExportOpts & {
   mp4Bytes?: Uint8Array;
   /** Override fetch URL for the committed artifact. */
   mp4Url?: string;
-  /** Live sample cap. Default LIVE_PLAYABLE_DECODE_MAX_FRAMES (not 72). */
+  /** Live decode cap. Default LIVE_PLAYABLE_DECODE_MAX_FRAMES (72). */
   maxFrames?: number;
+  timeoutMs?: number;
+  abortSignal?: AbortSignal;
+  /** Default true: 72 → 24 → 8 when a larger attempt yields 0 frames. */
+  progressiveFallback?: boolean;
 };
 
 /**
- * After the 8-frame compose, attach a bounded WebCodecs decode of the
- * committed 72-frame gate MP4 when bytes/URL/WebCodecs exist. Decode
- * failure preserves encode-first INCOMPLETE.
+ * After the 8-frame compose, attach a WebCodecs decode of the committed
+ * 72-frame gate MP4 (default all 72). Abort / OOM / timeout keep a partial
+ * sample or INCOMPLETE — never a false FAIL, never the 8-frame UI compose.
  */
 export async function runHeroFramePlayableExportLive(
   opts: HeroFramePlayableExportLiveOpts = {},
@@ -215,8 +219,10 @@ export async function runHeroFramePlayableExportLive(
         fps: 24,
         sourceFrameCount: opts.decodedFrames.length,
         frameCount: opts.decodedFrames.length,
-        truncated: false,
-        liveSample: false,
+        truncated: opts.decodedFrames.length < CANONICAL_CLIP_FRAME_COUNT,
+        liveSample: opts.decodedFrames.length < CANONICAL_CLIP_FRAME_COUNT,
+        requestedMaxFrames: opts.decodedFrames.length,
+        fallbackReason: "none",
         frames: opts.decodedFrames,
       },
     };
@@ -226,6 +232,9 @@ export async function runHeroFramePlayableExportLive(
     mp4Bytes: opts.mp4Bytes,
     mp4Url: opts.mp4Url,
     maxFrames: opts.maxFrames,
+    timeoutMs: opts.timeoutMs,
+    abortSignal: opts.abortSignal,
+    progressiveFallback: opts.progressiveFallback,
   });
   const run = runHeroFramePlayableExport({
     decodedFrames: decode.ok ? decode.frames : [],

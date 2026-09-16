@@ -229,7 +229,7 @@ Write-up: [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](../
 
 `Lane E2 video QA lane-e2-video-qa-v1: PASS 3/9 fail=0 skip=6 frames=8 mp4=produced paidCalls=false stillGoldensReopened=false. browserDecode=webcodecs 720×1280 liveSample maxFrames=8 of source=72 (not the 8-frame UI compose; full 72f is node/ffmpeg CI).`
 
-That is a **bounded WebCodecs sample** of the committed 72-frame MP4 (`sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`): `mp4_artifact_scored` PASS + spend/lock PASSes; six visual probes SKIP (no α on lossy H.264). **Not** a full 72-frame live score. Full write-up: [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`](../reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md).
+That is a **bounded WebCodecs sample** of the committed 72-frame MP4 (`sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`): `mp4_artifact_scored` PASS + spend/lock PASSes; six visual probes SKIP (no α on lossy H.264). **Not** a full 72-frame live score on that click. Code default is now 72 (`LIVE_PLAYABLE_DECODE_MAX_FRAMES`); claimed toast after a later Publish is `fullDecode frames=72 source=72` or a documented fallback — [`PLAYABLE_BROWSER_DECODE.md`](../reconstruct/PLAYABLE_BROWSER_DECODE.md). Full write-up of the sample click: [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`](../reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md).
 
 ---
 
