@@ -1,19 +1,33 @@
 # Temporal $0 live smoke — procedure + expected body
 
 **Date:** 2026-09-16 · **Author:** Cursor (Lane C smoke / evidence) · **Spend:** $0  
-**Code under test:** `main` @ `200bea9` (PRs #88 arm, #91 Hero Frame flag, #92 reconstruct wiring — reconstruct stays **separate**)  
+**Code under test:** `main` @ `782adac` (PR #95 §7 Run control; prior `200bea9` = PRs #88 arm, #91 Hero Frame flag, #92 reconstruct — reconstruct stays **separate**)  
 **Edge:** `temporal-propagate-proxy` (parent said JWT-only redeploy already done)  
 **Class:** A (docs + isolated smoke helper / unit tests). No paint. No Lovable code. **Do not** redeploy `architecture-c-still-repair-proxy`.
 
 Evidence labels: **[V]** verified · **[O]** observed · **[H]** hypothesis · **[D]** decision · **[R]** recommendation
 
-Lineage: [#87](https://github.com/fendifrost-dot/ai-video-tool/issues/87) / [#90](https://github.com/fendifrost-dot/ai-video-tool/issues/90) under umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50). Prep: [`LIVE_PREP.md`](./LIVE_PREP.md).
+Lineage: [#96](https://github.com/fendifrost-dot/ai-video-tool/issues/96) click SUCCESS · [#94](https://github.com/fendifrost-dot/ai-video-tool/issues/94) / [PR #95](https://github.com/fendifrost-dot/ai-video-tool/pull/95) · [#87](https://github.com/fendifrost-dot/ai-video-tool/issues/87) / [#90](https://github.com/fendifrost-dot/ai-video-tool/issues/90) under umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50). Prep: [`LIVE_PREP.md`](./LIVE_PREP.md).
 
 ---
 
-## Verdict this VM [V]
+## Product click SUCCESS [V]
 
-**BLOCKED on owner JWT** — same plane as chest 1m / sleeve 1c still verifies.
+**2026-09-15 ~19:51 America/Chicago** — signed-in AVT owner on https://aivideotool.lovable.app after Lovable **Publish** of PR #95.
+
+Hero Frame §7 **Run temporal propagate** was visible. One click → toast:
+
+`Dispatched 3 job(s). paidCalls=false grokPerFrame=false.`
+
+No 401. No paid generation. No asset IDs in the toast. Canonical: project `764a63d2…`, garment `0feb028f…`, clip `76fe7438…`.
+
+Full write-up + screenshots: [`LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md`](./LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md) · [`live-smoke/click-smoke.json`](./live-smoke/click-smoke.json).
+
+---
+
+## Verdict this VM (script / JWT) [V]
+
+**BLOCKED on owner JWT** for `./scripts/temporal-live-smoke.sh` — same plane as chest 1m / sleeve 1c still verifies. The **published product click** above is the live SUCCESS; this section is the script fallback.
 
 | Probe                                                             | Result                                                                                                     | Time       |
 | ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------- |
@@ -26,13 +40,13 @@ Anon reached the in-function `auth.getUser()` gate (body is `unauthenticated`, n
 
 Machine-readable copy of this VM's run: [`live-smoke/probe.json`](./live-smoke/probe.json) + [`live-smoke/expected-body-summary.json`](./live-smoke/expected-body-summary.json).
 
-**Not claimed:** live 200 from `propagateRepair` on the deployed edge. That needs a signed-in AVT owner JWT on the parent computerUse.
+**Not claimed (script path):** HTTP 200 from this VM's `./scripts/temporal-live-smoke.sh`. The **product click** (above) is the live SUCCESS. Script still needs a signed-in AVT owner JWT.
 
 In-lib `dispatchTemporalPropagate(buildTemporalLiveSmokeBody())` is **[V]** HTTP-equivalent **200** with `paidCalls: false`, `grokPerFrame: false`, jobs `chest` / `sleeve_left` / `sleeve_right` on assets `9ed83c01` + `fdb86b18`. That is **not** a live edge POST.
 
 ---
 
-## State on `main` @ `200bea9` [V]
+## State on `main` @ `782adac` [V]
 
 | Flag / surface                                                | Value                                                                      |
 | ------------------------------------------------------------- | -------------------------------------------------------------------------- |
@@ -44,14 +58,15 @@ In-lib `dispatchTemporalPropagate(buildTemporalLiveSmokeBody())` is **[V]** HTTP
 | Chest quad / asset                                            | `9ed83c01` / `architecture_c_still_repair_1m` / CLEARED 11/11              |
 | Sleeve quads / asset                                          | `fdb86b18` / `architecture_c_sleeve_still_1c` / CLEARED 6/6                |
 | Reconstruct                                                   | Wired in-lib (`RECONSTRUCT_LIVE_WIRING_ARMED`); **not** this POST          |
+| Hero Frame §7 **Run temporal propagate**                      | landed PR #95; product click **SUCCESS** (issue #96)                       |
 
 ---
 
 ## Exact click path (Hero Frame) [V]
 
-§7 **does not have a temporal run button.** `ArchitectureCStillRepairRunner` only calls `prepareHeroFrameTemporalDispatch()` to **display** the gate. `callTemporalPropagate` is the API helper — it is not bound to **1 · Repair chest** or **2 · Repair sleeve**.
+§7 **has** **Run temporal propagate** as of PR #95 (`main` @ `782adac`). That control calls `prepareHeroFrameTemporalDispatch` / `buildHeroFrameTemporalPropagateBody` then `callTemporalPropagate`. It is **not** bound to **1 · Repair chest** or **2 · Repair sleeve**. Live click SUCCESS: [`LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md`](./LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md).
 
-Parent computerUse (confirm gate, then JWT, then script):
+Parent computerUse script fallback (confirm gate, then JWT, then script) — still valid when no in-app session:
 
 1. Sign in at `https://aivideotool.lovable.app` as the durable owner (`3ca10935-8c3d-4479-9a0c-8bfe8050840c`).
 2. Open **Hero Frame**:  
@@ -65,7 +80,7 @@ Parent computerUse (confirm gate, then JWT, then script):
 6. **Do not** click **1 · Repair chest_band + logo_zone**.  
    **Do not** click **2 · Repair sleeve_panel (manual, upper arm)**.  
    Paint is locked (chest 1m + sleeve 1c). This smoke must not mint a new still.
-7. There is no third button. Copy the owner JWT:
+7. Prefer the §7 **Run temporal propagate** click (SUCCESS recorded). Script fallback: copy the owner JWT:
 
    DevTools → **Network** → any authenticated app request → request header  
    `Authorization: Bearer <access_token>`
@@ -275,6 +290,8 @@ curl -sS -X POST \
 
 **READY** as documented $0 smoke procedure + expected body + parent script.
 
-**BLOCKED** for a live 200 on this cloud VM: no `AVT_USER_ACCESS_TOKEN`. Anon stays 401.
+**SUCCESS** on the published product click (PR #95 Publish, 2026-09-15 ~19:51 CT): 3 jobs, `paidCalls=false`, `grokPerFrame=false`, authenticated, no 401. See [`LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md`](./LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md).
 
-**[R]** Parent computerUse: confirm §7 gate → copy owner JWT → run `./scripts/temporal-live-smoke.sh` → record HTTP 200 / `paidCalls: false` / three jobs.
+**BLOCKED** for a live 200 from this cloud VM's script: no `AVT_USER_ACCESS_TOKEN`. Anon stays 401.
+
+**[R]** Script fallback remains: confirm §7 gate → copy owner JWT → `./scripts/temporal-live-smoke.sh` → record HTTP 200 / `paidCalls: false` / three jobs. Not required to re-prove the click SUCCESS.

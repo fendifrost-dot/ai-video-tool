@@ -2,7 +2,7 @@
 
 **Work-order:** [#87](https://github.com/fendifrost-dot/ai-video-tool/issues/87) under umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50). Lineage [#76](https://github.com/fendifrost-dot/ai-video-tool/issues/76) / PR #78 (live-prep, armed was false). Sleeve evidence [#86](https://github.com/fendifrost-dot/ai-video-tool/pull/86).  
 **Class:** C (rendering / keyframe-propagation + new JWT edge). Isolated adapters + unit tests + one new edge function.  
-**Status:** **ARMED** on `main` @ `200bea9`. `temporal-propagate-proxy` is live (JWT only). `$0` smoke procedure: [`LIVE_SMOKE.md`](./LIVE_SMOKE.md) — this VM **BLOCKED** on owner JWT.
+**Status:** **ARMED** on `main` @ `782adac` (PR #95 Run control). `temporal-propagate-proxy` is live (JWT only). Product click smoke: [`LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md`](./LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md) — **SUCCESS**. Script procedure: [`LIVE_SMOKE.md`](./LIVE_SMOKE.md) — this VM still **BLOCKED** on owner JWT.
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**.
 
@@ -115,7 +115,7 @@ No V3. No paid Grok. No Control Center.
 
 **Not claimed:** live footage ingest, still-repair edge flag flip, paid/provider calls.
 
-**$0 live smoke (2026-09-16):** procedure + expected `explicitArm: true` body with chest `9ed83c01` + sleeve `fdb86b18` is in [`LIVE_SMOKE.md`](./LIVE_SMOKE.md). This VM: OPTIONS **200**, anon POST **401** `unauthenticated`, no owner JWT — **BLOCKED** on JWT like prior still verifies. Hero Frame §7 has **no** temporal run button (`prepareHeroFrameTemporalDispatch` is display-only). Parent computerUse: confirm gate → copy owner JWT → `./scripts/temporal-live-smoke.sh`. Reconstruct stays separate. Do **not** redeploy `architecture-c-still-repair-proxy`.
+**$0 live smoke (2026-09-16):** procedure + expected `explicitArm: true` body with chest `9ed83c01` + sleeve `fdb86b18` is in [`LIVE_SMOKE.md`](./LIVE_SMOKE.md). This VM: OPTIONS **200**, anon POST **401** `unauthenticated`, no owner JWT — script still **BLOCKED** on JWT. Hero Frame §7 **Run temporal propagate** landed in PR #95. **Product click SUCCESS** 2026-09-15 ~19:51 CT after Publish: 3 jobs, `paidCalls=false`, `grokPerFrame=false`, no 401 — [`LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md`](./LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md). Reconstruct stays separate. Do **not** redeploy `architecture-c-still-repair-proxy`.
 
 **Live sleeve 1b (2026-09-15):** asset `a4dc7f47` on `2aa1a44c` is **NOT CLEARED 5/6** (criterion 6 right luma 133.6→157.5; left navy-ward PASS). C5/C11/chest reserved held. Historical. Score: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`.
 
