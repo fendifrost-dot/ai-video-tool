@@ -333,6 +333,16 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 
 ---
 
+## TEMPORAL-2 — Full-clip video QA without raising proxy maxFrames
+
+- **Severity:** Low · **Confidence:** Confirmed · **Status:** Monitoring · **Owner:** Products (AVT) / Lane C2
+- **Summary:** Lane C2 (#107) scores the **full canonical clip duration** (master `76fe7438`, 241 frames @ 59.94 fps, keyframe index 47) in-lib via `propagateRepair`. Metrics: drift / flicker / coverage / occlusion continuity + SAM-3-shaped mask continuity (`sam3LiveFetch=false`). Authenticated `temporal-propagate-proxy` dispatch stays regression-locked (`paidCalls=false`, `grokPerFrame=false`, `explicitArm`, **`maxFrames=24`**). A 241-frame wire clip is rejected at parse. Click-smoke SUCCESS (#96) is unchanged. Does not reopen chest 1m / sleeve 1c paint. Does not ingest live 1080×1920 pixels.
+- **Pointer:** [`docs/temporal/VIDEO_QA.md`](docs/temporal/VIDEO_QA.md); [`src/lib/temporal/qa/`](src/lib/temporal/qa/); [`src/lib/temporal/fullClipFixture.ts`](src/lib/temporal/fullClipFixture.ts).
+- **DoD (target):** unit/fixture proofs on 241 frames; JSON evidence `temporal-video-qa-v1`; dispatch lock tests (5-frame smoke still works; 241-frame POST still refused). **YELLOW:** raising `maxFrames` or live native ingest is a shared-contract / Class C decision — not this lane.
+- **Mitigations:** measurement-only modules; synthetic luma stand-in; yellow contracts named in the JSON; Lane E2 consumes the schema rather than this lane editing eval core.
+
+---
+
 ## RECONSTRUCT-1 — Gate 4 wiring without live SAM-3 / new edge
 
 - **Severity:** Medium · **Confidence:** Confirmed · **Status:** In-remediation (E2E $0 click **PASS 9/9** after PR #99 Publish; Lane D2 unique-RGB **720×1280 PASS 15/15** — issue #108; live `76fe7438` camera pixels / SAM-3 still not claimed) · **Owner:** Products (AVT) / Lane D

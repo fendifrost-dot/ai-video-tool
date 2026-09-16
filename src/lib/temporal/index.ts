@@ -162,6 +162,59 @@ export {
 export type { TemporalLiveSmokeBodySummary } from "./liveSmoke";
 
 export {
+  CANONICAL_CLIP_DURATION_SEC,
+  CANONICAL_CLIP_FRAME_COUNT,
+  CANONICAL_CLIP_KEYFRAME_FRAME_INDEX,
+  CANONICAL_CLIP_META,
+  CANONICAL_CLIP_NATIVE_FPS,
+  CANONICAL_CLIP_NATIVE_HEIGHT,
+  CANONICAL_CLIP_NATIVE_WIDTH,
+  CANONICAL_CLIP_PIXELS,
+  CANONICAL_MASTER_CLIP_ID,
+} from "./canonicalClip";
+export type { CanonicalClipMeta } from "./canonicalClip";
+
+export {
+  FULL_CLIP_DEFECT_WINDOWS,
+  FULL_CLIP_DX_PERIOD,
+  FULL_CLIP_FIXTURE_VERSION,
+  FULL_CLIP_QA_RASTER,
+  canonicalFullClipCleanFixture,
+  canonicalFullClipDefectFixture,
+  expectedDxAtFrame,
+} from "./fullClipFixture";
+export type {
+  CanonicalFullClipFixture,
+  FullClipDefectKind,
+  InjectedDefectWindow,
+} from "./fullClipFixture";
+
+export {
+  DEFAULT_TEMPORAL_QA_THRESHOLDS,
+  TEMPORAL_DISPATCH_LOCK_VERSION,
+  TEMPORAL_QA_YELLOW_CONTRACTS,
+  TEMPORAL_VIDEO_QA_SPEC_VERSION,
+  detectorHitAllWindows,
+  formatTemporalVideoQaSummary,
+  identifyBadFrames,
+  inspectTemporalDispatchLock,
+  runTemporalVideoQa,
+  scorePropagationFrames,
+  scoreSam3Continuity,
+  temporalVideoQaReportToJson,
+} from "./qa";
+export type {
+  TemporalBadFrame,
+  TemporalBadFrameReason,
+  TemporalDispatchLockReport,
+  TemporalFrameMetrics,
+  TemporalQaThresholds,
+  TemporalQaYellowContract,
+  TemporalVideoQaReport,
+  TemporalVideoQaVerdict,
+} from "./qa";
+
+export {
   TEMPORAL_EDGE_DISPATCH_VERSION,
   TEMPORAL_PROPAGATE_LIMITS,
   dispatchTemporalPropagate,

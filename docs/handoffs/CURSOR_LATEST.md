@@ -16,7 +16,11 @@
 | Temporal `$0` **click** smoke | YES (PR #97) | live product UI | **SUCCESS** — 3 jobs, `paidCalls=false` |
 | Lane D original-master live wiring | YES (PR #92) | n/a — in-lib | YES (library) |
 | **RECONSTRUCT-1 E2E $0** | YES (PR #99, `58b8a49`) | frontend Publish | **PASS 9/9** — `paidCalls=false`, `frames=5` |
+<<<<<<< HEAD
 | **Lane D2 reconstruct video QA** | this PR (issue **#108**) | n/a — in-lib, no Publish | **PASS 15/15** unique-RGB 720×1280 |
+=======
+| Lane C2 temporal video QA (full clip) | this PR | n/a — in-lib | **READY** — 241-frame metrics, `paidCalls=false` |
+>>>>>>> 3a74835 (Lane C2: full-clip temporal video QA (241 frames, $0))
 
 ## Lane D2 — Reconstruction video QA
 
@@ -38,6 +42,20 @@ JSON: `docs/reconstruct/video-qa/preservation-720x1280.json`
 **Publish ≠ edge redeploy.** No UI change → **no frontend Publish required**. No still-repair / temporal / SAM-3 redeploy.
 
 **Not claimed:** live camera pixels of master `76fe7438`, live SAM-3 fetch, still-golden rescore, MP4 encode (Lane H).
+
+## Lane C2 — Temporal video QA (full canonical clip)
+
+Work-order: GitHub **#107** (sprint **#102**, umbrella **#50**). Measurement-only. **Do not reopen chest 1m or sleeve paint.** **Do not raise `maxFrames=24`.**
+
+In-lib `propagateRepair` on a 241-frame synthetic luma stand-in of master `76fe7438` (native 1080×1920 / 59.94 fps / keyframe index 47). JSON schema `temporal-video-qa-v1`: drift / flicker / coverage / occlusion continuity + SAM-3-shaped continuity (`sam3LiveFetch=false`). Authenticated 5-frame `temporal-propagate-proxy` path stays locked (`paidCalls=false`, `explicitArm` required). 241-frame wire clip is still rejected.
+
+Write-up: `docs/temporal/VIDEO_QA.md`  
+Schema: `docs/temporal/video-qa/schema.json`  
+Emit: `npx tsx scripts/temporal-video-qa.mts`
+
+**YELLOW:** proxy `maxFrames=24` vs canonical 241; live 1080×1920 ingest; Lane E2 should consume this schema; SAM-3 is not live-fetched.
+
+**Not claimed:** live native pixels of `76fe7438`, live SAM-3 fetch, still-golden rescore, MP4 encode, proxy cap raise.
 
 ## Canonical IDs (unchanged)
 
