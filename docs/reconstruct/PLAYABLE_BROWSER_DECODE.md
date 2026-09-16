@@ -63,12 +63,14 @@ The live button calls `runHeroFramePlayableExportLive()`:
 3. WebCodecs-decode at most **8** frames of that **72-frame** file.
 4. `evaluatePlayableVideoQa({ decodedFrames, pairCompose: false })`.
 
-**Claimed after Publish, when WebCodecs + asset fetch work [R]:**
+**Claimed after Publish of #133, when WebCodecs + asset fetch work [V]:**
 
 ```
 PLAYABLE compose 720×1280 frames=8 … Lane E2 video QA … frames=8 mp4=produced … stillGoldensReopened=false
 browserDecode=webcodecs 720×1280 liveSample maxFrames=8 of source=72 …
 ```
+
+**[V]** Live click 2026-09-16 ~2:05 AM CT recorded that exact class of toast as E2 **PASS 3/9** `fail=0` `skip=6` `frames=8`. See [`PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`](PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md).
 
 `mp4_artifact_scored` can PASS. Visual probes SKIP (no α on lossy H.264). That is **not** a full-clip 72-frame score and **not** a still-golden reopen.
 
@@ -125,6 +127,22 @@ await runHeroFramePlayableExportLive();
 ```
 
 The published control calls `runHeroFramePlayableExportLive()` (no compose rasters passed as `decodedFrames`).
+
+---
+
+## Live re-verify after #133 Publish [V]
+
+**When:** 2026-09-16 ~2:05 AM America/Chicago (~07:05 UTC). `main` @ `7dc04ad` + Lovable frontend **Publish**. Signed-in owner, hard refresh, one click.
+
+Verbatim toast:
+
+```
+PLAYABLE compose 720×1280 frames=8 fps=24 preserved=true sam3=intended_stage1h_evidence paidCalls=false. Lane E2 video QA lane-e2-video-qa-v1: PASS 3/9 fail=0 skip=6 frames=8 mp4=produced paidCalls=false stillGoldensReopened=false. browserDecode=webcodecs 720×1280 liveSample maxFrames=8 of source=72 (not the 8-frame UI compose; full 72f is node/ffmpeg CI).
+```
+
+That matches the claimed-after-Publish contract above: `frames=8` is a sample of the 72-frame gate; `mp4_artifact_scored` PASS; visual probes SKIP; still goldens not reopened. Gate sha256 `71f54599…` unchanged (committed file + live `/reconstruct/playable-76fe7438.mp4` mirror).
+
+Write-up: [`PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`](PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md) · JSON: [`live-smoke/playable-export-pass.json`](live-smoke/playable-export-pass.json).
 
 ---
 

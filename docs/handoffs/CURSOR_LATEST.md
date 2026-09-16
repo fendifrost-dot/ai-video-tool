@@ -4,18 +4,48 @@
 
 **Updated:** 2026-09-16 · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`.
 
+## Live re-verify — Hero Frame export E2 PASS 3/9 (after PR #133 Publish)
+
+Work-order: sprint **[#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102)** · umbrella **[#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50)** · merged PR **[#133](https://github.com/fendifrost-dot/ai-video-tool/pull/133)** (`7dc04ad`). **Class A docs.** `paidCalls=false`. No paint / edge / Lovable runtime. **No Publish.**
+
+**When:** 2026-09-16 ~2:05 AM America/Chicago (~07:05 UTC). Signed in, hard refresh, one click on **Export playable reconstruct $0** at `https://aivideotool.lovable.app/projects/764a63d2-93cd-44f3-905f-292f14ab2f51/hero-frame`.
+
+Verbatim toast:
+
+```
+PLAYABLE compose 720×1280 frames=8 fps=24 preserved=true sam3=intended_stage1h_evidence paidCalls=false. Lane E2 video QA lane-e2-video-qa-v1: PASS 3/9 fail=0 skip=6 frames=8 mp4=produced paidCalls=false stillGoldensReopened=false. browserDecode=webcodecs 720×1280 liveSample maxFrames=8 of source=72 (not the 8-frame UI compose; full 72f is node/ffmpeg CI).
+```
+
+| Read | Result |
+|------|--------|
+| Compose | **SUCCESS** — 8-frame UI window |
+| E2 | **PASS 3/9**; `fail=0`; `skip=6`; `frames=8`; `mp4=produced`; `stillGoldensReopened=false` |
+| Browser decode | **webcodecs** liveSample maxFrames=8 of source=72 (not the UI compose) |
+| Prior INCOMPLETE 2/9 (`frames=0`) | **cleared for this sample path** by #133 + Publish |
+| Gate MP4 | committed `docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4` — 720×1280, 72 frames, 24 fps, 3.0s, H.264, `sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`, provenance master `76fe7438`. Live `/reconstruct/playable-76fe7438.mp4` sha256 **matches**. |
+
+**CLEARED:** live WebCodecs sample decode of the gate MP4 → E2 PASS `frames=8` `fail=0` `mp4=produced` `stillGoldensReopened=false`.
+
+**Not claimed:** full 72-frame live score; live 241-frame/1080 ingest; 2nd-clip live Export; raising `maxFrames`; CLEARED real-media gate final (locks stay UNCLAIMED).
+
+Write-up: `docs/reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`  
+JSON: `docs/reconstruct/live-smoke/playable-export-pass.json`  
+Screenshot: `docs/reconstruct/live-smoke/playable-export-evidence/export-pass-toast-2026-09-16.png`
+
+**Publish ≠ edge redeploy.** This evidence record does **not** Publish or redeploy.
+
 ## Lane H + E2 — browser decode of playable MP4 → live `frames>0`
 
-Sprint **#102** / umbrella **#50**. GREEN stretch after live encode-first INCOMPLETE (`frames=0`) and sibling node/ffmpeg PR **#132** (merged `f006de9`). Isolated playable WebCodecs decode + E2 plug-in. **Do not reopen chest 1m or sleeve 1c.** `paidCalls=false`. **No Lovable Publish from this merge.**
+Sprint **#102** / umbrella **#50**. GREEN stretch after live encode-first INCOMPLETE (`frames=0`) and sibling node/ffmpeg PR **#132** (merged `f006de9`). Isolated playable WebCodecs decode + E2 plug-in. **Do not reopen chest 1m or sleeve 1c.** `paidCalls=false`.
 
-**[VERIFIED]** Live `frames=0` is encode-first: the 8-frame UI window is not scored as the 72-frame H.264 gate (that was false FAIL 6/9). E2 does not decode MP4.
+**[VERIFIED]** Live `frames=0` (after #129) was encode-first: the 8-frame UI window is not scored as the 72-frame H.264 gate (that was false FAIL 6/9). E2 does not decode MP4.
 
 **[VERIFIED in-lib]** H-owned `decodePlayableMp4` (node/ffmpeg, #132) + `decodePlayableMp4Browser` (mp4Demux + mocked WebCodecs, #133) + `evaluatePlayableVideoQa({ decodedFrames })` score committed `playable-76fe7438` bytes (full file in node, bounded sample in browser) with **`frames>0`**, `mp4_artifact_scored=PASS`, `stillGoldensReopened=false`. jsdom without VideoDecoder / empty decode keeps **INCOMPLETE** `awaiting decoded_frames`.
 
-**Live click after Publish of this merge:** `runHeroFramePlayableExportLive()` fetches `/reconstruct/playable-76fe7438.mp4` (same-origin mirror of the gate file) and WebCodecs-decodes **max 8 of 72** frames. That sample is **not** the 8-frame compose. If WebCodecs or the asset is missing, INCOMPLETE is preserved.
+**[VERIFIED live after Publish of #133]** `runHeroFramePlayableExportLive()` fetched `/reconstruct/playable-76fe7438.mp4` and WebCodecs-decoded **max 8 of 72** frames. Toast: E2 **PASS 3/9** `frames=8` `browserDecode=webcodecs` liveSample. That sample is **not** the 8-frame compose.
 
 Write-up: [`docs/reconstruct/PLAYABLE_BROWSER_DECODE.md`](docs/reconstruct/PLAYABLE_BROWSER_DECODE.md) · [`docs/reconstruct/PLAYABLE_DECODE.md`](docs/reconstruct/PLAYABLE_DECODE.md)  
-PRs: [#132](https://github.com/fendifrost-dot/ai-video-tool/pull/132) merged; [#133](https://github.com/fendifrost-dot/ai-video-tool/pull/133) merging (no Publish).
+PRs: [#132](https://github.com/fendifrost-dot/ai-video-tool/pull/132) merged; [#133](https://github.com/fendifrost-dot/ai-video-tool/pull/133) merged + frontend Publish.
 
 ## Lane H stretch — 2nd-clip playable portability (`f31bd0f2`)
 
@@ -30,6 +60,8 @@ Sprint **#102** / umbrella **#50**. After PLAYABLE-1 **#120** and E2 INCOMPLETE 
 Write-up: [`docs/reconstruct/PLAYABLE_PORTABILITY.md`](docs/reconstruct/PLAYABLE_PORTABILITY.md)
 
 ## Live re-verify — Hero Frame export E2 INCOMPLETE 2/9 (after PR #129 Publish)
+
+**Superseded for the live sample path** by the PASS record above (PR #133 Publish). Kept as encode-first lineage.
 
 Work-order: sprint **#102** · related **#128** / merged PR **#129** (`f5f7d8a`) · umbrella **#50**. **Class A docs.** `paidCalls=false`. No paint / edge / Lovable runtime.
 
@@ -72,11 +104,11 @@ Live toast before the fix: `FAIL 6/9 frames=8 mp4=none`. **[VERIFIED]** `FAIL 6/
 | Lane D original-master live wiring | YES (PR #92) | n/a — in-lib | YES (library) |
 | **RECONSTRUCT-1 E2E $0** | YES (PR #99, `58b8a49`) | frontend Publish | **PASS 9/9** — `paidCalls=false`, `frames=5` |
 | **Lane D2 reconstruct video QA** | YES (PR #118, issue **#108**) | n/a — in-lib, no Publish | **PASS 15/15** unique-RGB 720×1280 |
-| **Lane E2 video QA** | YES (PR **#116** / **#123** / **#129** + H decode **#132** / browser **#133**) | live §7 export after Publish of #133 | **INCOMPLETE 2/9** live (`frames=0`) until WebCodecs Publish; **in-lib decode** scores `frames>0` off committed MP4 bytes |
-| **Lane H playable 720×1280 MP4** | YES (PR **#120** / **#129**) | frontend Publish of #129 | **LIVE INCOMPLETE** — 2026-09-16 ~1:19 AM CT; node/ffmpeg decode is #132; browser WebCodecs sample is #133 |
+| **Lane E2 video QA** | YES (PR **#116** / **#123** / **#129** + H decode **#132** / browser **#133**) | frontend Publish of #133 | **LIVE PASS 3/9** — 2026-09-16 ~2:05 AM CT; WebCodecs sample `frames=8` of 72; `fail=0`; `mp4=produced`; **not** full 72f live |
+| **Lane H playable 720×1280 MP4** | YES (PR **#120** / **#129** / **#133**) | frontend Publish of #133 | **LIVE PASS (sample)** — same click; node/ffmpeg full 72f decode remains CI (#132) |
 | Lane C2 temporal video QA (full clip) | YES (PR #113, issue **#107**) | n/a — in-lib | **READY** — 241-frame metrics, `paidCalls=false` |
 | Lane C2 chunked proxy QA + 2nd clip | YES (PR #127, issue **#124**) | n/a — in-lib | **READY** — ≤24-frame windows, seams YELLOW named |
-| Lane R real-media lock placeholders | YES (PR #121, issue **#115**) | n/a — docs/tests | **UNCLAIMED** — live export re-verify does **not** claim these |
+| Lane R real-media lock placeholders | YES (PR #121, issue **#115**) | n/a — docs/tests | **UNCLAIMED** — live export sample PASS does **not** claim these |
 | **Lane H 2nd-clip portability** | YES (PR **#131**) | n/a — in-lib, no Publish | **READY in-lib** — catalog `f31bd0f2`; live Export on 2nd clip **NOT CLEARED** |
 
 ## Lane D2 — Reconstruction video QA

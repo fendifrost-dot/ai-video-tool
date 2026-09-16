@@ -58,7 +58,7 @@ The live button still has no ffmpeg. Expect the **same class of toast**:
 PLAYABLE compose 720×1280 frames=8 … Lane E2 video QA … INCOMPLETE 2/9 fail=0 skip=7 frames=0 mp4=produced … stillGoldensReopened=false
 ```
 
-That is **not** a product FAIL. GREEN for this change is: **in-lib / CI** can score decoded playable MP4 bytes with `frames>0`. Live decoded-frame PASS is **not claimed** until a browser decode path exists.
+That is **not** a product FAIL. GREEN for this change is: **in-lib / CI** can score decoded playable MP4 bytes with `frames>0`. Live decoded-frame PASS is owned by the browser path ([PR #133](https://github.com/fendifrost-dot/ai-video-tool/pull/133) / [`PLAYABLE_BROWSER_DECODE.md`](PLAYABLE_BROWSER_DECODE.md)) — recorded 2026-09-16 ~2:05 AM CT after Publish: E2 **PASS 3/9** `frames=8` WebCodecs sample of the 72-frame gate ([`PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`](PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md)). This node/ffmpeg module still does **not** run in Hero Frame.
 
 Offline proof (this VM, ffmpeg 6.1):
 

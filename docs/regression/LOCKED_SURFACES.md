@@ -78,7 +78,7 @@ Sprint 2 still has **no** Real-Media-Benchmark. Placeholders live in [`REAL_MEDI
 | SAM-3 consume evidence (`liveFetch=false`) | D2 #108 / H #111 | **UNCLAIMED** |
 | E2 video QA JSON | E2 #105 | **UNCLAIMED** |
 
-Do not treat #96 click-smoke or #100 5-frame E2E as these locks. Do not invent PASS from Lane R.
+Do not treat #96 click-smoke, #100 5-frame E2E, or the #133 live WebCodecs sample E2 PASS (`frames=8` of 72, not full-clip) as these locks. Do not invent PASS from Lane R.
 
 ## Full deterministic suite
 

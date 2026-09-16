@@ -1,0 +1,119 @@
+{
+  "smoke": "hero-frame-section-7-playable-export-click",
+  "verdict": "PASS",
+  "interpretation": "compose_success_e2_pass_webcodecs_live_sample_not_full_72f",
+  "passCount": 3,
+  "failCount": 0,
+  "skipCount": 6,
+  "when": {
+    "local": "2026-09-16T02:05:00-05:00",
+    "timezone": "America/Chicago",
+    "utc": "2026-09-16T07:05:00Z"
+  },
+  "app": "https://aivideotool.lovable.app",
+  "route": "https://aivideotool.lovable.app/projects/764a63d2-93cd-44f3-905f-292f14ab2f51/hero-frame",
+  "authenticated": true,
+  "http401": false,
+  "paidGeneration": false,
+  "hardRefresh": true,
+  "clickedOnce": true,
+  "button": "Export playable reconstruct $0",
+  "toast": {
+    "text": "PLAYABLE compose 720×1280 frames=8 fps=24 preserved=true sam3=intended_stage1h_evidence paidCalls=false. Lane E2 video QA lane-e2-video-qa-v1: PASS 3/9 fail=0 skip=6 frames=8 mp4=produced paidCalls=false stillGoldensReopened=false. browserDecode=webcodecs 720×1280 liveSample maxFrames=8 of source=72 (not the 8-frame UI compose; full 72f is node/ffmpeg CI).",
+    "compose": {
+      "width": 720,
+      "height": 1280,
+      "frames": 8,
+      "fps": 24,
+      "preserved": true,
+      "sam3": "intended_stage1h_evidence",
+      "paidCalls": false
+    },
+    "e2": {
+      "schema": "lane-e2-video-qa-v1",
+      "verdict": "PASS",
+      "passCount": 3,
+      "failCount": 0,
+      "skipCount": 6,
+      "frames": 8,
+      "mp4": "produced",
+      "paidCalls": false,
+      "stillGoldensReopened": false
+    },
+    "browserDecode": {
+      "decoder": "webcodecs",
+      "width": 720,
+      "height": 1280,
+      "liveSample": true,
+      "maxFrames": 8,
+      "sourceFrameCount": 72,
+      "note": "not the 8-frame UI compose; full 72f is node/ffmpeg CI"
+    }
+  },
+  "priorIncomplete": {
+    "toastFragment": "INCOMPLETE 2/9 fail=0 skip=7 frames=0 mp4=produced",
+    "afterPr": 129,
+    "clearedForSamplePathByPr": 133,
+    "note": "Encode-first INCOMPLETE (no browser decode). PASS 3/9 is passCount/total including SKIPs (3 PASS + 0 FAIL + 6 SKIP). frames=8 is a WebCodecs sample of the 72-frame gate, not the UI compose."
+  },
+  "priorFalseFail": {
+    "toastFragment": "FAIL 6/9 frames=8 mp4=none",
+    "fixedByPr": 129,
+    "note": "FAIL 6/9 was passCount/total including SKIPs (6 PASS + 1 FAIL centroid drift on 8 in-memory frames + 2 SKIP), not 3 FAILs. Gate artifact is the committed 72-frame MP4, not the UI window."
+  },
+  "gateMp4": {
+    "path": "docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4",
+    "publishMirror": "/reconstruct/playable-76fe7438.mp4",
+    "width": 720,
+    "height": 1280,
+    "frameCount": 72,
+    "fps": 24,
+    "durationSec": 3.0,
+    "codec": "h264",
+    "pixelFormat": "yuv420p",
+    "container": "mov,mp4,m4a,3gp,3g2,mj2",
+    "byteLength": 486769,
+    "sha256": "71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b",
+    "provenanceMaster": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+    "probedOn": "7dc04ad6e305c63fc2f5ad00c91dd21bceb6b2e2",
+    "livePublishSha256Match": true
+  },
+  "lineage": {
+    "sprintIssue": 102,
+    "relatedIssue": 128,
+    "incompleteEvidencePr": 130,
+    "fixPr": 129,
+    "nodeDecodePr": 132,
+    "browserDecodePr": 133,
+    "mergeCommit": "7dc04ad6e305c63fc2f5ad00c91dd21bceb6b2e2",
+    "browserDecodeCommit": "abc8510",
+    "umbrellaIssue": 50,
+    "playableIssue": 111,
+    "e2Issue": 105,
+    "frontend": "lovable_publish_of_pr_133",
+    "edge": "none from this lane",
+    "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+    "clipId": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+    "heroTimestamp": 0.785,
+    "chestAssetId": "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
+    "sleeveAssetId": "fdb86b18-d4aa-465e-b73f-1d252709739c"
+  },
+  "screenshots": {
+    "exportPassToast": "playable-export-evidence/export-pass-toast-2026-09-16.png",
+    "committedInRepo": true,
+    "note": "Upload from the live click after hard refresh. Status copy under Export playable reconstruct $0 is the verbatim toast."
+  },
+  "notClaimed": [
+    "full_72_frame_live_browser_score",
+    "live_241_frame_1080_ingest_of_master_76fe7438",
+    "second_clip_live_hero_frame_export_f31bd0f2",
+    "raising_proxy_max_frames_above_24",
+    "cleared_real_media_gate_final",
+    "live_sam3_fetch",
+    "chest_11_11_rescore",
+    "sleeve_6_6_rescore",
+    "new_edge_redeploy",
+    "newly_encoded_mp4_from_this_click",
+    "rewrite_committed_video_qa_json"
+  ]
+}

@@ -217,13 +217,19 @@ The architectural reconstruct eval (`lane-e-reconstruct-video-v1`, 9/9 E2E) rema
 
 ---
 
-## Live Hero Frame export (after PR #129 Publish)
+## Live Hero Frame export
 
-**[OBSERVED]** 2026-09-16 ~1:19 AM America/Chicago (~06:19 UTC). Signed-in **Export playable reconstruct $0** after merge `f5f7d8a` + Lovable frontend Publish. Verbatim E2 fragment:
+**[OBSERVED]** 2026-09-16 ~1:19 AM America/Chicago (~06:19 UTC) after PR #129 Publish. Encode-first INCOMPLETE (no browser decode):
 
 `Lane E2 video QA lane-e2-video-qa-v1: INCOMPLETE 2/9 fail=0 skip=7 frames=0 mp4=produced paidCalls=false stillGoldensReopened=false.`
 
-That is encode-first INCOMPLETE on the committed 72-frame MP4 (`sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`), **not** FAIL. Full write-up: [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](../reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md).
+Write-up: [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](../reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md).
+
+**[OBSERVED]** 2026-09-16 ~2:05 AM America/Chicago (~07:05 UTC) after [PR #133](https://github.com/fendifrost-dot/ai-video-tool/pull/133) merge `7dc04ad` + Lovable frontend Publish. Signed-in **Export playable reconstruct $0**. Verbatim E2 fragment:
+
+`Lane E2 video QA lane-e2-video-qa-v1: PASS 3/9 fail=0 skip=6 frames=8 mp4=produced paidCalls=false stillGoldensReopened=false. browserDecode=webcodecs 720×1280 liveSample maxFrames=8 of source=72 (not the 8-frame UI compose; full 72f is node/ffmpeg CI).`
+
+That is a **bounded WebCodecs sample** of the committed 72-frame MP4 (`sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`): `mp4_artifact_scored` PASS + spend/lock PASSes; six visual probes SKIP (no α on lossy H.264). **Not** a full 72-frame live score. Full write-up: [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`](../reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md).
 
 ---
 

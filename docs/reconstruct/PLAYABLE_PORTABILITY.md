@@ -68,7 +68,7 @@ Pattern match: F2 [#119](https://github.com/fendifrost-dot/ai-video-tool/pull/11
 | `parentMasterClipAssetId` | (omit) | `76fe7438-671d-4428-a7f6-17a45e98c16f` |
 | Default window | 72 @ 24 fps (Architecture C 3.0 s) | **8** @ 24 fps (Hero-sized fixture) |
 | Artifact dir | `playable-76fe7438/` | `playable-f31bd0f2/` |
-| Live §7 Export | **CLEARED path** (after Publish of PLAYABLE-1) | **NOT CLEARED** |
+| Live §7 Export | **CLEARED sample path** after #133 Publish (E2 PASS 3/9 `frames=8` of 72; not full-clip) | **NOT CLEARED** |
 
 Factory: `playableSpecFromCatalog("ysl-ice-on-v2-edited-clip")` / `secondClipPlayableSpec()`.
 
