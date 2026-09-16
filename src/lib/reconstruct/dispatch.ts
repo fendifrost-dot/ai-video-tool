@@ -367,7 +367,7 @@ export function dispatchOriginalMasterReconstruct(raw: unknown): ReconstructDisp
     const code = decision.waitingFor[0] ?? "live_wiring_not_armed";
     return {
       ok: false,
-      status: code === "invalid_request" ? 400 : 403,
+      status: 403,
       body: {
         ok: false,
         error: "not_authorized",
