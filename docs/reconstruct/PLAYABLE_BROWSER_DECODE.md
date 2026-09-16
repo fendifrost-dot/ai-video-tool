@@ -1,6 +1,6 @@
 # Lane H — Browser decode of playable MP4 → Lane E2 frames
 
-**Issues:** sprint [#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102) · umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50) · related live INCOMPLETE [#128](https://github.com/fendifrost-dot/ai-video-tool/issues/128) / [PR #129](https://github.com/fendifrost-dot/ai-video-tool/pull/129) · sibling node/ffmpeg decode [PR #132](https://github.com/fendifrost-dot/ai-video-tool/pull/132)  
+**Issues:** sprint [#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102) · umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50) · related live INCOMPLETE [#128](https://github.com/fendifrost-dot/ai-video-tool/issues/128) / [PR #129](https://github.com/fendifrost-dot/ai-video-tool/pull/129) · sibling node/ffmpeg decode [PR #132](https://github.com/fendifrost-dot/ai-video-tool/pull/132) · this PR [#133](https://github.com/fendifrost-dot/ai-video-tool/pull/133)  
 **Class:** C (evaluation / compositing ingest). Thresholds unchanged.  
 **Spend:** `$0` · `paidCalls=false` · `grokPerFrame=false` · no paid Grok · no edge cap raise.
 

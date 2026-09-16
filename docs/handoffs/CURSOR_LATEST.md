@@ -14,7 +14,8 @@ Sprint **#102** / umbrella **#50**. GREEN stretch after live encode-first INCOMP
 
 **Live click after Publish of this PR:** `runHeroFramePlayableExportLive()` fetches `/reconstruct/playable-76fe7438.mp4` (same-origin mirror of the gate file) and WebCodecs-decodes **max 8 of 72** frames. That sample is **not** the 8-frame compose. If WebCodecs or the asset is missing, INCOMPLETE is preserved.
 
-Write-up: [`docs/reconstruct/PLAYABLE_BROWSER_DECODE.md`](docs/reconstruct/PLAYABLE_BROWSER_DECODE.md)
+Write-up: [`docs/reconstruct/PLAYABLE_BROWSER_DECODE.md`](docs/reconstruct/PLAYABLE_BROWSER_DECODE.md)  
+PR: [#133](https://github.com/fendifrost-dot/ai-video-tool/pull/133) (READY, do not merge, do not Publish).
 
 ## Lane H stretch — 2nd-clip playable portability (`f31bd0f2`)
 
