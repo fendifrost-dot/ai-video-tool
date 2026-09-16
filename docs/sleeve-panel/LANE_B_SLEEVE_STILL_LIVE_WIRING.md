@@ -2,7 +2,7 @@
 
 **Work-order:** [#84](https://github.com/fendifrost-dot/ai-video-tool/issues/84) under umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50). Lineage [#81](https://github.com/fendifrost-dot/ai-video-tool/issues/81) / [#74](https://github.com/fendifrost-dot/ai-video-tool/issues/74) / [#54](https://github.com/fendifrost-dot/ai-video-tool/issues/54).  
 **Class:** C (rendering / compositing).  
-**Status:** **READY** for $0 live sleeve re-verify after Lovable **Edge Functions → redeploy** of `architecture-c-still-repair-proxy` only. Live 1b `a4dc7f47` remains **NOT CLEARED 5/6**.
+**Status:** Live 1c `fdb86b18` **CLEARED 6/6**. Live 1a / 1b remain historical **NOT CLEARED 5/6**. Temporal stays disarmed until parent arms.
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**.
 
@@ -21,6 +21,16 @@ Asset `a4dc7f47-a08d-46e5-b279-ae53fd81e37c`, `architecture_c_sleeve_still_1b`, 
 - Criteria 1–5 PASS; chest reserved 0; C5/C11 0
 
 **[VERIFIED in leftover fixture]** 1b warped a ~0.23 navy crop as-is. Cream-majority paste raises luma on a dark right ring.
+
+## Stage 1c live (authoritative)
+
+Asset `fdb86b18-d4aa-465e-b73f-1d252709739c`, `architecture_c_sleeve_still_1c`, **CLEARED 6/6**. Evidence: this score PR.
+
+- Left criterion 6 **PASS** (luma 202.24→39.93; navyLike 22730/22794)
+- Right criterion 6 **PASS** (luma 133.56→39.96; navyLike 11104/11139). `navy_fill_mode: navy_over_cream`, `source_navy_fraction: 1`.
+- Criteria 1–5 PASS; chest reserved 0; C5/C11 0
+
+**[VERIFIED]** Live pixels on `2aa1a44c` after 1c. Same seeded quads as 1a/1b. No HTTP 400. $0 / ~5735 ms.
 
 ---
 
@@ -105,7 +115,7 @@ Redeploy **only** `architecture-c-still-repair-proxy`.
 
 ## READY / BLOCKED
 
-**BLOCKED** for temporal. Live 1b `a4dc7f47` is **NOT CLEARED 5/6**.
+**CLEARED** for sleeve still on `2aa1a44c` / `fdb86b18`. **BLOCKED** for temporal until parent arms `TEMPORAL_LIVE_ACTIVATION_ARMED` after Class C sign-off.
 
 This cloud VM has no `AVT_USER_ACCESS_TOKEN`. Anon POST remains 401 (auth not widened). Live click / owner JWT is the verify plane — same as chest 1m / sleeve 1a / 1b.
 
@@ -113,6 +123,6 @@ This cloud VM has no `AVT_USER_ACCESS_TOKEN`. Anon POST remains 401 (auth not wi
 
 **[VERIFIED]** Existing Architecture C Stage 1m chest goldens are not edited.
 
-**[VERIFIED]** Live 1b identity `architecture_c_sleeve_still_1b` + `visible_geometry_only`. Gate **NOT CLEARED 5/6** on criterion 6 right luma 133.6→157.5. 1a `fde270bf` remains NOT CLEARED 5/6.
+**[VERIFIED]** Live 1c identity `architecture_c_sleeve_still_1c` + `visible_geometry_only`. Gate **CLEARED 6/6** on criterion 6 both sides (left 202.24→39.93, right 133.56→39.96). 1a `fde270bf` and 1b `a4dc7f47` remain historical NOT CLEARED 5/6.
 
-**Not claimed:** live pixels on `9ed83c01` / `2aa1a44c` after 1c (needs edge redeploy + owner session).
+**Not claimed:** live pixels on preferred chest input `9ed83c01` (this row used clean `2aa1a44c`). Hidden shoulder→cuff. Temporal armed.
