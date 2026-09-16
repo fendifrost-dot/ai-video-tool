@@ -50,4 +50,4 @@ Repair is a pass when visible quads receive the vertical panel (column pinstripe
 
 ## Status
 
-Isolated engine landed (PR #60). Live 1a NOT CLEARED 5/6 on FAIL #6 (PR #80). Live 1b (`architecture_c_sleeve_still_1b`, #81 / PR #82) scored **NOT CLEARED 5/6** — FAIL #6 right luma rose (133.6→157.5); left navy-ward PASS (PR #83). Stage 1c (`architecture_c_sleeve_still_1c`, #84) prefers product navy over cream stripe.
+Isolated engine landed (PR #60). Live 1a NOT CLEARED 5/6 on FAIL #6 (PR #80). Live 1b (`architecture_c_sleeve_still_1b`, #81 / PR #82) scored **NOT CLEARED 5/6** — FAIL #6 right luma rose (133.6→157.5); left navy-ward PASS (PR #83). Live 1c (`architecture_c_sleeve_still_1c`, #84 / PR #85) scored **CLEARED 6/6** — both sides navy-ward (left 202.24→39.93, right 133.56→39.96).

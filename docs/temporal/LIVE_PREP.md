@@ -79,7 +79,7 @@ Do **not** do any of the following until a sleeve still on the same lineage (`2a
 2. Flip Hero Frame `temporalTrackingEnabled` to `true` (Hero Frame owner — not this module)
 3. Redeploy any temporal-capable edge function
 4. Feed live extract manifests / footage into `propagateRepair`
-5. Treat Lane B sleeve still **CLEARED** (not 1a `fde270bf` NOT CLEARED 5/6) as a temporal go
+5. Treat Lane B sleeve still **CLEARED** (`fdb86b18` 6/6; not 1a/1b NOT CLEARED 5/6) as the prerequisite — **parent still owns the arm**
 6. Call Grok per intermediate frame (architecture lock: propagate, don't regenerate)
 
 **[DECISION]** Temporal live stays off while sleeve is PENDING / not yet CLEARED. Matches `VIDEO_SWAP_ARCHITECTURE.md` and pipeline stage `temporal_propagation` (`dependsOn: sleeve_garment_repair` + `still_repair_approved` gate).
@@ -132,12 +132,14 @@ Until then, Hero Frame §7 must keep **HARD STOP — do not enable temporal trac
 
 **READY** as isolated live-prep (wiring + tests + deploy notes).
 
-**BLOCKED** for production temporal activation until sleeve still CLEARED on the canonical lineage.
+**BLOCKED** for production temporal activation until parent arms `TEMPORAL_LIVE_ACTIVATION_ARMED` (sleeve still `fdb86b18` is now **CLEARED 6/6**).
 
 **Live sleeve 1a (2026-09-15):** asset `fde270bf` on `2aa1a44c` is **NOT CLEARED 5/6** (visible cream fill). Score: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1A_LIVE_RESULT_2026-09-15.md`.
 
-**Live sleeve 1b (2026-09-15):** asset `a4dc7f47` on `2aa1a44c` is **NOT CLEARED 5/6** (criterion 6 right luma 133.6→157.5; left navy-ward PASS). C5/C11/chest reserved held. `TEMPORAL_LIVE_ACTIVATION_ARMED` stays **false**. Score: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`.
+**Live sleeve 1b (2026-09-15):** asset `a4dc7f47` on `2aa1a44c` is **NOT CLEARED 5/6** (criterion 6 right luma 133.6→157.5; left navy-ward PASS). C5/C11/chest reserved held. Historical. Score: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`.
+
+**Live sleeve 1c (2026-09-16):** asset `fdb86b18` on `2aa1a44c` is **CLEARED 6/6** (criterion 6 both sides navy-ward: left 202.24→39.93, right 133.56→39.96). C5/C11/chest reserved held. `TEMPORAL_LIVE_ACTIVATION_ARMED` stays **false** — **parent owns the arm**. Score: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1C_LIVE_RESULT_2026-09-16.md`.
 
 **[VERIFIED]** Unit tests in `src/lib/temporal/*.test.ts` (existing 20 + live-prep cases). No I/O doubles. No provider-live. No real-media.
 
-**Not claimed:** live pixels as CLEARED, edge dispatch, Hero Frame tracking on, sleeve quad approval.
+**Not claimed:** temporal armed, edge dispatch, Hero Frame tracking on. Sleeve still CLEARED is recorded on `fdb86b18` only.

@@ -1,0 +1,7 @@
+Lane B sleeve live lane-b-sleeve-live-v1: CLEARED 6/6
+  PASS 1 identity_visible_geometry_only
+  PASS 2 geometry_seeded_visible_upper_arm
+  PASS 3 c5_forearm_preserved
+  PASS 4 c11_outside_region
+  PASS 5 chest_reserved_untouched
+  PASS 6 visible_upper_arm_repaired

@@ -30,3 +30,4 @@ export { STAGE1L_LIVE_VERIFIED } from "./stage1lEvidence";
 export { STAGE1M_LIVE_VERIFIED } from "./stage1mEvidence";
 export { SLEEVE_STILL_1A_LIVE_VERIFIED } from "./sleeveStill1aEvidence";
 export { SLEEVE_STILL_1B_LIVE_VERIFIED } from "./sleeveStill1bEvidence";
+export { SLEEVE_STILL_1C_LIVE_VERIFIED } from "./sleeveStill1cEvidence";

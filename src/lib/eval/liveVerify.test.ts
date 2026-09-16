@@ -5,6 +5,7 @@ import { STAGE1L_LIVE_VERIFIED } from "./stage1lEvidence";
 import { STAGE1M_LIVE_VERIFIED } from "./stage1mEvidence";
 import { SLEEVE_STILL_1A_LIVE_VERIFIED } from "./sleeveStill1aEvidence";
 import { SLEEVE_STILL_1B_LIVE_VERIFIED } from "./sleeveStill1bEvidence";
+import { SLEEVE_STILL_1C_LIVE_VERIFIED } from "./sleeveStill1cEvidence";
 import {
   extractRepairMethodVersion,
   forensicExtras,
@@ -125,6 +126,34 @@ describe("Stage 1k live-verify harness (unit)", () => {
         repair: { repair_method_version: SLEEVE_STILL_1B_LIVE_VERIFIED.repairMethodVersion },
       }),
     ).toBe("architecture_c_sleeve_still_1b");
+  });
+
+  it("locks Lane B sleeve still 1c live identity and 6/6 CLEARED (both sides navy-ward)", () => {
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.repairMethodVersion).toBe(
+      "architecture_c_sleeve_still_1c",
+    );
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.claim).toBe("visible_geometry_only");
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.assetId).toBe("fdb86b18-d4aa-465e-b73f-1d252709739c");
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.cleanStillAssetId).toBe(STAGE1K_CANONICAL.stillAssetId);
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.preferredChestOutputUsed).toBe(false);
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.geometryRejectedHttp400).toBe(false);
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.navyFillMode).toBe("navy_over_cream");
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.gate).toBe("CLEARED");
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.pass).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.fail).toEqual([]);
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.leftMeanOutLuma).toBeLessThan(
+      SLEEVE_STILL_1C_LIVE_VERIFIED.leftMeanSrcLuma - 8,
+    );
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.rightMeanOutLuma).toBeLessThan(
+      SLEEVE_STILL_1C_LIVE_VERIFIED.rightMeanSrcLuma - 8,
+    );
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.leftNavyLike).toBeGreaterThan(0);
+    expect(SLEEVE_STILL_1C_LIVE_VERIFIED.rightNavyLike).toBeGreaterThan(0);
+    expect(
+      extractRepairMethodVersion({
+        repair: { repair_method_version: SLEEVE_STILL_1C_LIVE_VERIFIED.repairMethodVersion },
+      }),
+    ).toBe("architecture_c_sleeve_still_1c");
   });
 
   it("fixture pipeline is 11/11 under Stage 1l paint (1k live 7/11 stays historical)", () => {

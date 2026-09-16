@@ -1,7 +1,7 @@
 # Architecture C — Sleeve still Stage 1c (`architecture_c_sleeve_still_1c`)
 
 **Date:** 2026-09-15 · **Author:** Cursor Lane B · **Spend:** $0 · **Issue:** #84 (lineage #81 / #74 / #54, parent #50)  
-**Status:** **READY** for parent merge + Lovable **Edge Functions → redeploy** of `architecture-c-still-repair-proxy` only + $0 live re-verify.
+**Status:** Live `fdb86b18` **CLEARED 6/6** (score 2026-09-16). Paint not reopened. Temporal unarmed until parent arms.
 
 Chest still gate: **CLEARED 11/11** (PR #73, asset `9ed83c01`, `architecture_c_still_repair_1m`). Not reopened. Temporal unarmed.
 
