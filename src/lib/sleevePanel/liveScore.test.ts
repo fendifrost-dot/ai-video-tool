@@ -80,8 +80,8 @@ function creamStill720(): {
 }
 
 describe("Lane B sleeve live scorecard", () => {
-  it("locks live identity + seeded quads without claiming temporal armed", () => {
-    expect(TEMPORAL_LIVE_ACTIVATION_ARMED).toBe(false);
+  it("locks live identity + seeded quads; scorecard temporal stays off", () => {
+    expect(TEMPORAL_LIVE_ACTIVATION_ARMED).toBe(true);
     expect(SLEEVE_STILL_REPAIR_METHOD_VERSION).toBe("architecture_c_sleeve_still_1c");
     expect(scoreSleeveIdentity(LIVE_IDENTITY).verdict).toBe("PASS");
     expect(scoreSleeveGeometry(LIVE_IDENTITY).verdict).toBe("PASS");

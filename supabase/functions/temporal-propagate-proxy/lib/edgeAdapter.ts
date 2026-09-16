@@ -5,17 +5,17 @@
  * + sleeve CLEARED + explicitArm. No fetch. No auth widening. No Grok / Fal.
  */
 
-import type { SourceClip } from "./contract";
-import type { ApprovedQuadSet } from "./approvedQuad";
-import { clearedChestAndSleeveQuadSet } from "./approvedQuad";
+import type { SourceClip } from "./contract.ts";
+import type { ApprovedQuadSet } from "./approvedQuad.ts";
+import { clearedChestAndSleeveQuadSet } from "./approvedQuad.ts";
 import {
   DEFAULT_SLEEVE_STILL_GATE,
   TEMPORAL_LIVE_PREP_CONTRACT_VERSION,
   evaluateTemporalLiveActivation,
   type SleeveStillGate,
   type TemporalLiveActivationDecision,
-} from "./livePrep";
-import { TEMPORAL_PROPAGATION_CONTRACT_VERSION } from "./contract";
+} from "./livePrep.ts";
+import { TEMPORAL_PROPAGATION_CONTRACT_VERSION } from "./contract.ts";
 
 export const TEMPORAL_EDGE_ADAPTER_VERSION = "1.0.0";
 

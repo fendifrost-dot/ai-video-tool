@@ -71,6 +71,16 @@ export {
   CLEARED_CHEST_QUAD_NORM,
   CLEARED_CHEST_QUAD_TUPLE,
   CLEARED_CHEST_REPAIR_METHOD_VERSION,
+  CLEARED_SLEEVE_ASSET_ID,
+  CLEARED_SLEEVE_CLAIM,
+  CLEARED_SLEEVE_EVIDENCE,
+  CLEARED_SLEEVE_GATE,
+  CLEARED_SLEEVE_GATE_SCORE,
+  CLEARED_SLEEVE_LEFT_QUAD_NORM,
+  CLEARED_SLEEVE_LEFT_QUAD_TUPLE,
+  CLEARED_SLEEVE_REPAIR_METHOD_VERSION,
+  CLEARED_SLEEVE_RIGHT_QUAD_NORM,
+  CLEARED_SLEEVE_RIGHT_QUAD_TUPLE,
   quadNormToTuple,
   tupleToQuadNorm,
 } from "./canonicalLineage";
@@ -78,8 +88,11 @@ export type { CanonicalLineage, QuadTuple } from "./canonicalLineage";
 
 export {
   PENDING_SLEEVE_SLOTS,
+  clearedChestAndSleeveQuadSet,
   clearedChestApprovedQuad,
   clearedChestQuadSet,
+  clearedSleeveLeftApprovedQuad,
+  clearedSleeveRightApprovedQuad,
   gatedApprovedQuads,
 } from "./approvedQuad";
 export type {
@@ -95,6 +108,7 @@ export {
   TEMPORAL_LIVE_ACTIVATION_ARMED,
   TEMPORAL_LIVE_DEPLOY_NOTES,
   TEMPORAL_LIVE_PREP_CONTRACT_VERSION,
+  armedActivationForCanonicalLineage,
   defaultActivationForCanonicalLineage,
   evaluateTemporalLiveActivation,
 } from "./livePrep";
@@ -136,3 +150,19 @@ export {
   expectedChestQuadAtFrame,
   expectedChestTranslation,
 } from "./clearedChestFixture";
+
+export {
+  TEMPORAL_EDGE_DISPATCH_VERSION,
+  TEMPORAL_PROPAGATE_LIMITS,
+  dispatchTemporalPropagate,
+  parseTemporalPropagateClip,
+  sourceClipToWire,
+} from "./edgeDispatch";
+export type {
+  TemporalPropagateDispatchResult,
+  TemporalPropagateJobResult,
+  TemporalPropagateSerializedFrame,
+  TemporalPropagateWireBody,
+  TemporalPropagateWireClip,
+  TemporalPropagateWireFrame,
+} from "./edgeDispatch";
