@@ -30,7 +30,8 @@ import {
 
 export const PLAYABLE_VIDEO_QA_ARTIFACT_ID = CANONICAL_PLAYABLE_ARTIFACT_LAYOUT.artifactId;
 export const PLAYABLE_MP4_RELATIVE_PATH = CANONICAL_PLAYABLE_ARTIFACT_LAYOUT.mp4RelativePath;
-export const PLAYABLE_VIDEO_QA_RELATIVE_PATH = CANONICAL_PLAYABLE_ARTIFACT_LAYOUT.videoQaRelativePath;
+export const PLAYABLE_VIDEO_QA_RELATIVE_PATH =
+  CANONICAL_PLAYABLE_ARTIFACT_LAYOUT.videoQaRelativePath;
 /** Committed full-clip H.264 gate artifact (72 @ 720×1280). Do not reopen still goldens. */
 export const PLAYABLE_MP4_SHA256 =
   "71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b";
@@ -165,7 +166,8 @@ export function evaluatePlayableVideoQa(input: {
    */
   includeDecodedFrames?: boolean;
 }): PlayableVideoQaResult {
-  const e2e = input.e2e ?? (input.compose ? playableComposeToReconstructE2e(input.compose) : undefined);
+  const e2e =
+    input.e2e ?? (input.compose ? playableComposeToReconstructE2e(input.compose) : undefined);
   const includeFrames = input.includeDecodedFrames !== false && e2e !== undefined;
 
   if (includeFrames && e2e) {

@@ -26,7 +26,8 @@ import {
 import { CANONICAL_GARMENT_ID, canonicalPlayableSpec } from "./spec";
 
 /** Must match `CANONICAL_YSL_ICE_ON.id` in src/lib/pipeline/catalog.ts */
-export const CANONICAL_PLAYABLE_CATALOG_ID = "canonical-ysl-ice-on" as const satisfies PlayableCatalogId;
+export const CANONICAL_PLAYABLE_CATALOG_ID =
+  "canonical-ysl-ice-on" as const satisfies PlayableCatalogId;
 
 /** Must match `SECOND_EXISTING_V2_EDITED_CLIP.id` in src/lib/pipeline/catalog.ts */
 export const SECOND_CLIP_PLAYABLE_CATALOG_ID =
@@ -80,13 +81,18 @@ function layoutFor(
   };
 }
 
-export const CANONICAL_PLAYABLE_ARTIFACT_LAYOUT = layoutFor("76fe7438", CANONICAL_PLAYABLE_CATALOG_ID);
+export const CANONICAL_PLAYABLE_ARTIFACT_LAYOUT = layoutFor(
+  "76fe7438",
+  CANONICAL_PLAYABLE_CATALOG_ID,
+);
 export const SECOND_CLIP_PLAYABLE_ARTIFACT_LAYOUT = layoutFor(
   "f31bd0f2",
   SECOND_CLIP_PLAYABLE_CATALOG_ID,
 );
 
-export function playableArtifactLayoutForCatalog(catalogId: PlayableCatalogId): PlayableArtifactLayout {
+export function playableArtifactLayoutForCatalog(
+  catalogId: PlayableCatalogId,
+): PlayableArtifactLayout {
   if (catalogId === SECOND_CLIP_PLAYABLE_CATALOG_ID) {
     return SECOND_CLIP_PLAYABLE_ARTIFACT_LAYOUT;
   }
@@ -143,7 +149,9 @@ export function playablePortabilityDesign(): {
  * 2aa1a44c band-crop). That is NOT live Grok V2 pixels and NOT a 2nd-clip
  * chest/sleeve golden.
  */
-export function secondClipPlayableSpec(overrides: Partial<PlayableClipSpec> = {}): PlayableClipSpec {
+export function secondClipPlayableSpec(
+  overrides: Partial<PlayableClipSpec> = {},
+): PlayableClipSpec {
   const frameCount = overrides.frameCount ?? SECOND_CLIP_PLAYABLE_FRAME_COUNT;
   const fps = overrides.fps ?? PLAYABLE_WORKING_FPS;
   const keyframeIndex = overrides.keyframeIndex ?? SECOND_CLIP_PLAYABLE_KEYFRAME_INDEX;

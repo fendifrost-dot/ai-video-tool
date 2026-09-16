@@ -197,7 +197,9 @@ describe("Lane H second-clip playable portability", () => {
       mp4: playableMp4RefForLayout(SECOND_CLIP_PLAYABLE_ARTIFACT_LAYOUT, { produced: false }),
     });
     expect(report.stillGoldensReopened).toBe(false);
-    expect(report.criteria.find((c) => c.id === "still_goldens_not_reopened")?.verdict).toBe("PASS");
+    expect(report.criteria.find((c) => c.id === "still_goldens_not_reopened")?.verdict).toBe(
+      "PASS",
+    );
   });
 });
 
@@ -217,7 +219,9 @@ describe("committed 2nd-clip playable fixture", () => {
     expect(ref.artifactId).toBe("playable-f31bd0f2");
     expect(ref.mimeType).toBe("video/mp4");
 
-    const claims = JSON.parse(readFileSync(SECOND_CLIP_PLAYABLE_ARTIFACT_LAYOUT.claimsRelativePath, "utf8")) as {
+    const claims = JSON.parse(
+      readFileSync(SECOND_CLIP_PLAYABLE_ARTIFACT_LAYOUT.claimsRelativePath, "utf8"),
+    ) as {
       masterClipAssetId: string;
       mp4: { width: number; height: number; frameCount: number; fps: number };
       paidCalls: boolean;
