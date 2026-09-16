@@ -3,6 +3,10 @@
  *
  * Scores RECONSTRUCT-1 E2E output. Does **not** reopen chest 11/11 or
  * sleeve 6/6 still goldens. Does not import logoComposite / sleeve paint.
+ *
+ * Video-level probes (jitter, mask XOR, seams, MP4 artifact) live in
+ * `videoQaEvaluator.ts` (`lane-e2-video-qa-v1`). This module stays the
+ * architectural 9-criterion reconstruct gate.
  */
 
 import {

@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/fendifrost-dot/ai-video-tool/docs/eval/lane-e2-video-qa.schema.json",
+  "title": "Lane E2 video QA report",
+  "description": "Stable PASS/FAIL JSON contract (lane-e2-video-qa-v1). Lane H persists this after evaluateVideoQa().",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "verdict",
+    "passCount",
+    "failCount",
+    "skipCount",
+    "paidCalls",
+    "stillGoldensReopened",
+    "blockingArtifactProducer",
+    "claudeInvestigates",
+    "awaiting",
+    "frameCount",
+    "artifactKind",
+    "mp4",
+    "criteria",
+    "perFrame",
+    "temporal",
+    "artifacts",
+    "unexplained",
+    "escalate",
+    "notClaimed",
+    "provenance"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "lane-e2-video-qa-v1" },
+    "verdict": { "enum": ["PASS", "FAIL", "INCOMPLETE"] },
+    "passCount": { "type": "integer", "minimum": 0 },
+    "failCount": { "type": "integer", "minimum": 0 },
+    "skipCount": { "type": "integer", "minimum": 0 },
+    "paidCalls": { "const": false },
+    "stillGoldensReopened": { "const": false },
+    "blockingArtifactProducer": { "const": false },
+    "claudeInvestigates": { "const": "unexplained_only" },
+    "awaiting": { "type": "array", "items": { "type": "string" } },
+    "frameCount": { "type": "integer", "minimum": 0 },
+    "artifactKind": { "enum": ["reconstructed_mp4", "reconstructed_frames"] },
+    "mp4": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "produced": { "type": "boolean" },
+        "artifactId": { "type": "string" },
+        "path": { "type": "string" },
+        "sha256": { "type": "string" },
+        "byteLength": { "type": "integer", "minimum": 0 },
+        "mimeType": { "const": "video/mp4" }
+      },
+      "required": ["produced"]
+    },
+    "criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "verdict", "metrics", "note", "failureReason"],
+        "properties": {
+          "id": {
+            "enum": [
+              "paid_calls_false",
+              "still_goldens_not_reopened",
+              "per_frame_repair_coverage",
+              "temporal_jitter_drift",
+              "mask_discontinuity",
+              "unintended_outside_region_change",
+              "seam_edge_instability",
+              "original_master_preservation",
+              "mp4_artifact_scored"
+            ]
+          },
+          "name": { "type": "string" },
+          "verdict": { "enum": ["PASS", "FAIL", "SKIP"] },
+          "metrics": {
+            "type": "object",
+            "additionalProperties": { "type": "number" }
+          },
+          "note": { "type": "string" },
+          "failureReason": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "perFrame": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "index",
+          "repairCoverage",
+          "maskCoverage",
+          "unauthorizedPixels",
+          "unauthorizedChangedPixels",
+          "unauthorizedChangedFrac",
+          "seamPixelCount"
+        ],
+        "properties": {
+          "index": { "type": "integer" },
+          "repairCoverage": { "type": ["number", "null"] },
+          "maskCoverage": { "type": ["number", "null"] },
+          "unauthorizedPixels": { "type": ["integer", "null"] },
+          "unauthorizedChangedPixels": { "type": ["integer", "null"] },
+          "unauthorizedChangedFrac": { "type": ["number", "null"] },
+          "seamPixelCount": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "temporal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "maskXorMean",
+        "maskXorMax",
+        "outsideExcessMeanAbsLuma",
+        "insideMeanAbsLumaDelta",
+        "seamTemporalMeanAbsLuma",
+        "centroidDriftPx"
+      ],
+      "properties": {
+        "maskXorMean": { "type": ["number", "null"] },
+        "maskXorMax": { "type": ["number", "null"] },
+        "outsideExcessMeanAbsLuma": { "type": ["number", "null"] },
+        "insideMeanAbsLumaDelta": { "type": ["number", "null"] },
+        "seamTemporalMeanAbsLuma": { "type": ["number", "null"] },
+        "centroidDriftPx": { "type": ["number", "null"] }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["crops"],
+      "properties": {
+        "crops": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "criterionId", "frameIndex", "box", "width", "height", "files"],
+            "properties": {
+              "id": { "type": "string" },
+              "criterionId": { "type": "string" },
+              "frameIndex": { "type": "integer" },
+              "box": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["x0", "x1", "y0", "y1"],
+                "properties": {
+                  "x0": { "type": "integer" },
+                  "x1": { "type": "integer" },
+                  "y0": { "type": "integer" },
+                  "y1": { "type": "integer" }
+                }
+              },
+              "width": { "type": "integer" },
+              "height": { "type": "integer" },
+              "files": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "unexplained": { "type": "array", "items": { "type": "string" } },
+    "escalate": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": ["architectural_blocker", "still_golden_regression_suspected"]
+        },
+        "message": { "type": "string" },
+        "stillGoldensReopened": { "const": false }
+      },
+      "required": ["kind", "message", "stillGoldensReopened"]
+    },
+    "notClaimed": { "type": "array", "items": { "type": "string" } },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "projectId": { "type": "string" },
+        "masterClipAssetId": { "type": "string" },
+        "reconstructionVersion": { "type": "string" },
+        "temporalJobCount": { "type": "integer" },
+        "source": { "type": "string" }
+      }
+    }
+  }
+}
