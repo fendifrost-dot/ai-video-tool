@@ -32,6 +32,7 @@ import {
   type SleevePanelManual,
 } from "@/lib/heroFrame/architectureCStillRepair";
 import { HeroFrameTemporalRunControl } from "@/components/video/HeroFrameTemporalRunControl";
+import { HeroFrameReconstructRunControl } from "@/components/video/HeroFrameReconstructRunControl";
 import { isEditR4CanonicalOwner } from "@/lib/heroFrame/editR4ProductIds";
 import type { QuadNorm } from "@/lib/garment/placementEngine";
 
@@ -387,7 +388,8 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
           <span className="font-mono">
             temporalTrackingEnabled={String(ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled)}
           </span>
-          ; use <span className="font-mono">Run temporal propagate</span> below (explicitArm).
+          ; use <span className="font-mono">Run temporal propagate</span> then{" "}
+          <span className="font-mono">Run reconstruct E2E $0</span> below (explicitArm).
         </p>
       </div>
 
@@ -709,6 +711,7 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         onBusyChange={setBusy}
         stillRepairHardStop={hardStop}
       />
+      <HeroFrameReconstructRunControl busy={busy} onBusyChange={setBusy} />
     </section>
   );
 }

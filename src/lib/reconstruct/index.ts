@@ -31,5 +31,15 @@ export {
 } from "./adapters";
 
 export { dispatchOriginalMasterReconstruct } from "./dispatch";
+export {
+  RECONSTRUCT_E2E_VERSION,
+  consumeTemporalJobsFromPropagateResult,
+  runReconstructE2e,
+} from "./e2e";
+export {
+  HERO_FRAME_RECONSTRUCT_RUN_VERSION,
+  prepareHeroFrameReconstructDispatch,
+  runHeroFrameReconstructFromTemporalJson,
+} from "./heroFrameRun";
 
 export type { ReconstructInput, ReconstructMetrics, ReconstructResult, RgbaImage } from "./types";

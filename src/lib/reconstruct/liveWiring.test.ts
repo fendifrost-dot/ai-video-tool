@@ -96,6 +96,9 @@ describe("deploy notes — no edge function", () => {
     expect(RECONSTRUCT_LIVE_DEPLOY_NOTES.parentRedeployOnly.function).toBeNull();
     expect(RECONSTRUCT_LIVE_DEPLOY_NOTES.parentRedeployOnly.sam3LiveFetch).toBe(false);
     expect(RECONSTRUCT_LIVE_DEPLOY_NOTES.parentRedeployOnly.noControlCenter).toBe(true);
+    expect(RECONSTRUCT_LIVE_DEPLOY_NOTES.parentRedeployOnly.publishNote).toMatch(
+      /Run reconstruct E2E \$0/,
+    );
     expect(RECONSTRUCT_SHARED_SURFACES_LEFT_ALONE).toContain("src/lib/garment/logoComposite.ts");
     expect(RECONSTRUCT_SHARED_SURFACES_LEFT_ALONE).toContain(
       "src/lib/temporal/livePrep.ts (TEMPORAL_LIVE_ACTIVATION_ARMED)",

@@ -8,7 +8,7 @@
 > **Severity:** Critical / High / Medium / Low · **Confidence:** Confirmed / Likely /
 > Suspected · **Status:** Open / In-remediation / Mitigated / Closed.
 
-Last reviewed: **2026-09-16** (TEMPORAL-1 §7 click smoke SUCCESS after PR #95 Publish).
+Last reviewed: **2026-09-16** (RECONSTRUCT-1 E2E $0 UI READY — issue #98).
 
 | id | Title | Severity | Confidence | Status | Owner |
 |----|-------|----------|-----------|--------|-------|
@@ -28,7 +28,7 @@ Last reviewed: **2026-09-16** (TEMPORAL-1 §7 click smoke SUCCESS after PR #95 P
 | [PIPELINE-1](#pipeline-1--orchestration-scaffolding-is-not-a-durable-queue) | Pipeline OS scaffolding is in-process only (no durable queue / reaper) | Medium | Confirmed | Open | Products (AVT) / Lane G |
 | [SLEEVE-1](#sleeve-1--visible-upper-arm-only-must-not-be-read-as-armholecuff) | Sleeve still repair is visible-upper-arm only; a pass must not be read as armhole→cuff | Medium | Confirmed | Open | Products (AVT) / Lane B |
 | [TEMPORAL-1](#temporal-1--live-arm-without-hero-frame-tracking) | Temporal lib armed; Hero Frame tracking on (#90); §7 Run control (#94/#95); **click smoke SUCCESS** (`paidCalls=false`, 3 jobs) | Medium | Confirmed | **In-remediation** (click path proven; live footage not claimed) | Products (AVT) / Hero Frame + Lane C |
-| [RECONSTRUCT-1](#reconstruct-1--gate-4-wiring-without-live-sam-3--new-edge) | Gate 4 wiring without live SAM-3 / new edge | Medium | Confirmed | Open | Products (AVT) / Lane D |
+| [RECONSTRUCT-1](#reconstruct-1--gate-4-wiring-without-live-sam-3--new-edge) | Gate 4 wiring without live SAM-3 / new edge; **E2E $0 UI READY** (#98) | Medium | Confirmed | **In-remediation** (Publish + signed-in click remaining) | Products (AVT) / Lane D |
 
 ---
 
@@ -332,8 +332,8 @@ Last reviewed: **2026-09-16** (TEMPORAL-1 §7 click smoke SUCCESS after PR #95 P
 
 ## RECONSTRUCT-1 — Gate 4 wiring without live SAM-3 / new edge
 
-- **Severity:** Medium · **Confidence:** Confirmed · **Status:** Open · **Owner:** Products (AVT) / Lane D
-- **Summary:** Original-master live wiring (`RECONSTRUCT_LIVE_WIRING_ARMED = true`) composites CLEARED chest/sleeve stills + caller-supplied SAM-3 α + trusted temporal masks onto original master `76fe7438` via `reconstructOriginalMaster`. Dispatch still requires `explicitArm`. This lane does **not** fetch SAM-3 (`sam3-segment-proxy` / CC), does **not** add a JWT edge, and does **not** edit `logoComposite`, sleevePanel paint, or temporal authorize constants. A full inverted generated still cannot become the master when α === 0.
-- **Pointer:** [`docs/reconstruct/LIVE_WIRING.md`](docs/reconstruct/LIVE_WIRING.md); [`docs/LANE_D_ORIGINAL_MASTER_RECONSTRUCTION.md`](docs/LANE_D_ORIGINAL_MASTER_RECONSTRUCTION.md); `src/lib/reconstruct/`.
-- **DoD (target):** Lane G binds `dispatchOriginalMasterReconstruct` after a human `masterCompositeAuthorized` review; live SAM-3 (if ever) is a separate Class C that does not go through Control Center from this lane.
-- **Mitigations:** isolated module; `$0` fixtures; untrusted temporal frames ignored; no edge redeploy; `sam3.liveFetch` is always `false`.
+- **Severity:** Medium · **Confidence:** Confirmed · **Status:** In-remediation (E2E $0 UI READY — parent Publish + signed-in click) · **Owner:** Products (AVT) / Lane D
+- **Summary:** Original-master live wiring (`RECONSTRUCT_LIVE_WIRING_ARMED = true`) composites CLEARED chest/sleeve stills + caller-supplied SAM-3 α + trusted temporal masks onto original master `76fe7438` via `reconstructOriginalMaster`. Dispatch / Hero Frame E2E still requires `explicitArm`. Hero Frame §7 **Run reconstruct E2E $0** (#98) POSTs `temporal-propagate-proxy` (`paidCalls=false`) then runs in-lib reconstruct + Lane E reconstruct-video eval. This lane does **not** fetch SAM-3 (`sam3-segment-proxy` / CC), does **not** add a JWT edge, and does **not** edit `logoComposite`, sleevePanel paint, or temporal authorize constants. A full inverted generated still cannot become the master when α === 0. Still goldens are not rescored.
+- **Pointer:** [`docs/reconstruct/E2E_LIVE.md`](docs/reconstruct/E2E_LIVE.md); [`docs/reconstruct/LIVE_WIRING.md`](docs/reconstruct/LIVE_WIRING.md); [`docs/LANE_D_ORIGINAL_MASTER_RECONSTRUCTION.md`](docs/LANE_D_ORIGINAL_MASTER_RECONSTRUCTION.md); `src/lib/reconstruct/`; `src/lib/eval/reconstructVideoEvaluator.ts`.
+- **DoD (target):** parent merges + Lovable frontend **Publish**; signed-in owner clicks **Run reconstruct E2E $0** on Hero Frame §7; capture PASS JSON (`paidCalls=false`). Live 720×1280 ingest of `76fe7438` and live SAM-3 remain **not claimed** (later Class C). Lane G may later bind `dispatchOriginalMasterReconstruct` after a human `masterCompositeAuthorized` review.
+- **Mitigations:** isolated module; `$0` fixtures; untrusted temporal frames ignored; no edge redeploy; `sam3.liveFetch` is always `false`; video eval never calls chest 11/11 / sleeve 6/6.
