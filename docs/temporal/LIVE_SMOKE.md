@@ -15,14 +15,16 @@ Lineage: [#87](https://github.com/fendifrost-dot/ai-video-tool/issues/87) / [#90
 
 **BLOCKED on owner JWT** — same plane as chest 1m / sleeve 1c still verifies.
 
-| Probe | Result | Time |
-| ----- | ------ | ---- |
-| `OPTIONS` `temporal-propagate-proxy` | HTTP **200** (function live; `x-served-by: supabase-edge-runtime`, `sb-project-ref: qoyxgnkvjukovkrvdaiq`) | **285 ms** |
-| `POST` with publishable/anon JWT + `explicitArm: true` + 1×1 luma | HTTP **401** `{"error":"unauthenticated"}` | **650 ms** |
-| `POST` with no `Authorization` | HTTP **401** `UNAUTHORIZED_NO_AUTH_HEADER` | **91 ms** |
-| `AVT_USER_ACCESS_TOKEN` | **unset** | — |
+| Probe                                                             | Result                                                                                                     | Time       |
+| ----------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------- |
+| `OPTIONS` `temporal-propagate-proxy`                              | HTTP **200** (function live; `x-served-by: supabase-edge-runtime`, `sb-project-ref: qoyxgnkvjukovkrvdaiq`) | **285 ms** |
+| `POST` with publishable/anon JWT + `explicitArm: true` + 1×1 luma | HTTP **401** `{"error":"unauthenticated"}`                                                                 | **650 ms** |
+| `POST` with no `Authorization`                                    | HTTP **401** `UNAUTHORIZED_NO_AUTH_HEADER`                                                                 | **91 ms**  |
+| `AVT_USER_ACCESS_TOKEN`                                           | **unset**                                                                                                  | —          |
 
 Anon reached the in-function `auth.getUser()` gate (body is `unauthenticated`, not a 546). Auth was **not** widened. Service-role was **not** used. No V3 / paid Grok / Fal / Control Center call was made.
+
+Machine-readable copy of this VM's run: [`live-smoke/probe.json`](./live-smoke/probe.json) + [`live-smoke/expected-body-summary.json`](./live-smoke/expected-body-summary.json).
 
 **Not claimed:** live 200 from `propagateRepair` on the deployed edge. That needs a signed-in AVT owner JWT on the parent computerUse.
 
@@ -32,16 +34,16 @@ In-lib `dispatchTemporalPropagate(buildTemporalLiveSmokeBody())` is **[V]** HTTP
 
 ## State on `main` @ `200bea9` [V]
 
-| Flag / surface | Value |
-| -------------- | ----- |
-| `TEMPORAL_LIVE_ACTIVATION_ARMED` | `true` |
-| Hero Frame `ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` | `true` |
-| `prepareHeroFrameTemporalDispatch()` | `explicitArm: true` when both flags are on |
-| `callTemporalPropagate` | JWT `POST` → `temporal-propagate-proxy`; always stamps `explicitArm: true` |
-| Still-repair edge `temporalTrackingEnabled` | **false** (do not flip; proxy 500s `tracking_flag_misconfigured`) |
-| Chest quad / asset | `9ed83c01` / `architecture_c_still_repair_1m` / CLEARED 11/11 |
-| Sleeve quads / asset | `fdb86b18` / `architecture_c_sleeve_still_1c` / CLEARED 6/6 |
-| Reconstruct | Wired in-lib (`RECONSTRUCT_LIVE_WIRING_ARMED`); **not** this POST |
+| Flag / surface                                                | Value                                                                      |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `TEMPORAL_LIVE_ACTIVATION_ARMED`                              | `true`                                                                     |
+| Hero Frame `ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` | `true`                                                                     |
+| `prepareHeroFrameTemporalDispatch()`                          | `explicitArm: true` when both flags are on                                 |
+| `callTemporalPropagate`                                       | JWT `POST` → `temporal-propagate-proxy`; always stamps `explicitArm: true` |
+| Still-repair edge `temporalTrackingEnabled`                   | **false** (do not flip; proxy 500s `tracking_flag_misconfigured`)          |
+| Chest quad / asset                                            | `9ed83c01` / `architecture_c_still_repair_1m` / CLEARED 11/11              |
+| Sleeve quads / asset                                          | `fdb86b18` / `architecture_c_sleeve_still_1c` / CLEARED 6/6                |
+| Reconstruct                                                   | Wired in-lib (`RECONSTRUCT_LIVE_WIRING_ARMED`); **not** this POST          |
 
 ---
 
@@ -69,6 +71,7 @@ Parent computerUse (confirm gate, then JWT, then script):
    `Authorization: Bearer <access_token>`
 
    (Live `aivideotool.lovable.app` uses localStorage; Lovable preview may broker auth. Network header is the reliable copy.)
+
 8. Run the $0 smoke (existing synthetic luma only — not V2 footage, not Grok):
 
    ```bash
@@ -186,13 +189,13 @@ This is what `./scripts/temporal-live-smoke.sh` POSTs. Quad tuples are TL→TR�
 }
 ```
 
-| Lineage field | Value |
-| ------------- | ----- |
-| Project | `764a63d2-93cd-44f3-905f-292f14ab2f51` |
-| Clean still | `2aa1a44c-b24a-46bf-890f-13a6fc65b1cc` |
-| Keyframe | `v2-still-0.785` |
-| Chest asset | `9ed83c01-8c7d-4d1b-918f-87b0fc743c50` |
-| Sleeve asset | `fdb86b18-d4aa-465e-b73f-1d252709739c` |
+| Lineage field | Value                                  |
+| ------------- | -------------------------------------- |
+| Project       | `764a63d2-93cd-44f3-905f-292f14ab2f51` |
+| Clean still   | `2aa1a44c-b24a-46bf-890f-13a6fc65b1cc` |
+| Keyframe      | `v2-still-0.785`                       |
+| Chest asset   | `9ed83c01-8c7d-4d1b-918f-87b0fc743c50` |
+| Sleeve asset  | `fdb86b18-d4aa-465e-b73f-1d252709739c` |
 
 `clip.frames[].luma` is generated at runtime from `clearedChestTranslatingFixture()` (80×128 × 5). Do **not** paste a 10k-value dump into chat. Do **not** send live V2 pixels. Do **not** attach reconstruct / SAM-3 / original-master fields.
 

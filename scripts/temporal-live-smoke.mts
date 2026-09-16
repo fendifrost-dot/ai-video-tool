@@ -12,7 +12,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildHeroFrameTemporalPropagateBody } from "../src/lib/heroFrame/temporalDispatch";
 import {
   TEMPORAL_LIVE_SMOKE_LINEAGE,
   TEMPORAL_PROPAGATE_PROXY_PATH,
@@ -35,13 +34,21 @@ const ANON =
 mkdirSync(OUT_DIR, { recursive: true });
 
 const smokeBody = buildTemporalLiveSmokeBody();
-const productBody = buildHeroFrameTemporalPropagateBody({ clip: smokeBody.clip! });
 const summary = summarizeTemporalLiveSmokeBody(smokeBody);
 
 writeFileSync(`${OUT_DIR}/expected-body-summary.json`, `${JSON.stringify(summary, null, 2)}\n`);
 writeFileSync(
   `${OUT_DIR}/expected-product-body-summary.json`,
-  `${JSON.stringify({ explicitArm: productBody.explicitArm, clipId: productBody.clip?.id, frameCount: productBody.clip?.frames?.length }, null, 2)}\n`,
+  `${JSON.stringify(
+    {
+      note: "callTemporalPropagate / buildHeroFrameTemporalPropagateBody stamps explicitArm only; approved defaults on the edge",
+      explicitArm: true,
+      clipId: smokeBody.clip?.id,
+      frameCount: smokeBody.clip?.frames?.length,
+    },
+    null,
+    2,
+  )}\n`,
 );
 
 async function timedFetch(

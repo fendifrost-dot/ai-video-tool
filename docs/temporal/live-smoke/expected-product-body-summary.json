@@ -1,0 +1,6 @@
+{
+  "note": "callTemporalPropagate / buildHeroFrameTemporalPropagateBody stamps explicitArm only; approved defaults on the edge",
+  "explicitArm": true,
+  "clipId": "live-prep-cleared-chest-quad",
+  "frameCount": 5
+}

@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ARCHITECTURE_C_V2_REPAIR } from "@/lib/heroFrame/architectureCStillRepair";
 import { buildHeroFrameTemporalPropagateBody } from "@/lib/heroFrame/temporalDispatch";
-import {
-  TEMPORAL_LIVE_ACTIVATION_ARMED,
-  dispatchTemporalPropagate,
-} from "@/lib/temporal";
+import { TEMPORAL_LIVE_ACTIVATION_ARMED, dispatchTemporalPropagate } from "@/lib/temporal";
 import {
   TEMPORAL_LIVE_SMOKE_CLIP_ID,
   TEMPORAL_LIVE_SMOKE_LINEAGE,
@@ -24,8 +21,12 @@ describe("temporal $0 live-smoke body", () => {
     expect(body.approved?.chest.sourceAssetId).toBe(TEMPORAL_LIVE_SMOKE_LINEAGE.chestAssetId);
     expect(body.approved?.chest.repairMethodVersion).toBe("architecture_c_still_repair_1m");
     expect(body.approved?.chest.gate).toBe("CLEARED");
-    expect(body.approved?.sleeveLeft?.sourceAssetId).toBe(TEMPORAL_LIVE_SMOKE_LINEAGE.sleeveAssetId);
-    expect(body.approved?.sleeveRight?.sourceAssetId).toBe(TEMPORAL_LIVE_SMOKE_LINEAGE.sleeveAssetId);
+    expect(body.approved?.sleeveLeft?.sourceAssetId).toBe(
+      TEMPORAL_LIVE_SMOKE_LINEAGE.sleeveAssetId,
+    );
+    expect(body.approved?.sleeveRight?.sourceAssetId).toBe(
+      TEMPORAL_LIVE_SMOKE_LINEAGE.sleeveAssetId,
+    );
     expect(body.approved?.sleeveLeft?.repairMethodVersion).toBe("architecture_c_sleeve_still_1c");
     expect(body.sleeveGate?.status).toBe("CLEARED");
     expect(body.sleeveGate?.assetId).toBe(TEMPORAL_LIVE_SMOKE_LINEAGE.sleeveAssetId);

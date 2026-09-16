@@ -1,0 +1,178 @@
+{
+  "edge": "https://qoyxgnkvjukovkrvdaiq.supabase.co/functions/v1/temporal-propagate-proxy",
+  "lineage": {
+    "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+    "stillAssetId": "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+    "keyframeId": "v2-still-0.785",
+    "chestAssetId": "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
+    "chestRepairMethodVersion": "architecture_c_still_repair_1m",
+    "chestGate": "CLEARED",
+    "chestGateScore": "11/11",
+    "chestQuadTuple": [
+      [
+        0.3,
+        0.53
+      ],
+      [
+        0.87,
+        0.533
+      ],
+      [
+        0.87,
+        0.585
+      ],
+      [
+        0.3,
+        0.582
+      ]
+    ],
+    "sleeveAssetId": "fdb86b18-d4aa-465e-b73f-1d252709739c",
+    "sleeveRepairMethodVersion": "architecture_c_sleeve_still_1c",
+    "sleeveGate": "CLEARED",
+    "sleeveGateScore": "6/6",
+    "sleeveClaim": "visible_geometry_only",
+    "sleeveLeftQuadTuple": [
+      [
+        0.03,
+        0.5
+      ],
+      [
+        0.26,
+        0.505
+      ],
+      [
+        0.25,
+        0.615
+      ],
+      [
+        0.03,
+        0.61
+      ]
+    ],
+    "sleeveRightQuadTuple": [
+      [
+        0.88,
+        0.505
+      ],
+      [
+        0.99,
+        0.5
+      ],
+      [
+        0.99,
+        0.615
+      ],
+      [
+        0.88,
+        0.61
+      ]
+    ]
+  },
+  "summary": {
+    "smokeVersion": "1.0.0",
+    "explicitArm": true,
+    "clip": {
+      "id": "live-prep-cleared-chest-quad",
+      "fps": 24,
+      "frameCount": 5,
+      "width": 80,
+      "height": 128,
+      "lumaLengthPerFrame": 10240
+    },
+    "lineage": {
+      "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+      "stillAssetId": "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+      "keyframeId": "v2-still-0.785",
+      "chestAssetId": "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
+      "chestRepairMethodVersion": "architecture_c_still_repair_1m",
+      "chestGate": "CLEARED",
+      "chestGateScore": "11/11",
+      "chestQuadTuple": [
+        [
+          0.3,
+          0.53
+        ],
+        [
+          0.87,
+          0.533
+        ],
+        [
+          0.87,
+          0.585
+        ],
+        [
+          0.3,
+          0.582
+        ]
+      ],
+      "sleeveAssetId": "fdb86b18-d4aa-465e-b73f-1d252709739c",
+      "sleeveRepairMethodVersion": "architecture_c_sleeve_still_1c",
+      "sleeveGate": "CLEARED",
+      "sleeveGateScore": "6/6",
+      "sleeveClaim": "visible_geometry_only",
+      "sleeveLeftQuadTuple": [
+        [
+          0.03,
+          0.5
+        ],
+        [
+          0.26,
+          0.505
+        ],
+        [
+          0.25,
+          0.615
+        ],
+        [
+          0.03,
+          0.61
+        ]
+      ],
+      "sleeveRightQuadTuple": [
+        [
+          0.88,
+          0.505
+        ],
+        [
+          0.99,
+          0.5
+        ],
+        [
+          0.99,
+          0.615
+        ],
+        [
+          0.88,
+          0.61
+        ]
+      ]
+    },
+    "jobsExpected": [
+      "chest",
+      "sleeve_left",
+      "sleeve_right"
+    ],
+    "paidCalls": false,
+    "grokPerFrame": false,
+    "reconstruct": "separate_in_lib_not_this_post"
+  },
+  "probes": [
+    {
+      "label": "OPTIONS",
+      "http": 200,
+      "ms": 280,
+      "body": ""
+    },
+    {
+      "label": "ANON_POST",
+      "http": 401,
+      "ms": 350,
+      "body": {
+        "error": "unauthenticated"
+      }
+    }
+  ],
+  "jwtPresent": false,
+  "livePost": null,
+  "verdict": "BLOCKED_NO_USER_JWT"
+}
