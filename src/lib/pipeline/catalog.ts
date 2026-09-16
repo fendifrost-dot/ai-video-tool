@@ -8,6 +8,7 @@
  * Second existing clip: V2 edited_clip `f31bd0f2` (same project, different asset).
  */
 
+import { productSafeAutoReviews } from "./autoReviews";
 import { CLEARED_CHEST_STILL, clearedChestSeedArtifacts } from "./chest";
 import { createPipelineRun } from "./orchestrator";
 import { CLEARED_SLEEVE_STILL, clearedSleeveSeedArtifact } from "./sleeve";
@@ -107,12 +108,17 @@ export function bindCatalog(input: BindCatalogInput): {
   catalogId: ClipCatalogId;
   paidCalls: false;
 } {
+  const seedArtifacts = [...input.catalog.seedArtifacts(), ...(input.extraSeedArtifacts ?? [])];
   return {
     projectId: input.catalog.projectId,
     catalogId: input.catalog.id,
     paidCalls: false,
-    reviews: { ...input.catalog.reviews, ...input.reviews },
-    seedArtifacts: [...input.catalog.seedArtifacts(), ...(input.extraSeedArtifacts ?? [])],
+    reviews: {
+      ...input.catalog.reviews,
+      ...productSafeAutoReviews(seedArtifacts),
+      ...input.reviews,
+    },
+    seedArtifacts,
   };
 }
 
@@ -173,6 +179,7 @@ export function secondClipPortabilityDesign(): {
       "src/lib/pipeline/catalog.ts",
       "src/lib/pipeline/chest.ts",
       "src/lib/pipeline/sleeve.ts",
+      "src/lib/pipeline/autoReviews.ts",
     ],
     sharedModules: [
       "src/lib/pipeline/orchestrator.ts",

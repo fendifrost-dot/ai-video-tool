@@ -49,6 +49,7 @@ export const LANE_G_WORK_ORDER = {
 
 /** Sprint 2 Lane G2 — unattended orchestration. Child of #102 / umbrella #50. */
 export const LANE_G2_WORK_ORDER = {
+  followUpIssue: 122,
   issue: 109,
   stubIssue: 106,
   parentIssue: 102,
@@ -61,7 +62,9 @@ export const LANE_G2_WORK_ORDER = {
     "G2 stage lifecycle queued/running/passed/failed/blocked/retryable",
     "kind-based artifact handoff",
     "stage version pins",
-    "consumed evaluator result (E2 JSON)",
+    "consumed evaluator result (E2 videoQaReport JSON + reconstruct-video JSON)",
+    "Lane H encoded_mp4 provenance / not_claimed stub",
+    "product-safe $0 auto-run past stillRepairApproved (CLEARED 1m+1c only)",
     "retry reason",
     "unattended runner",
     "clip catalog binding (canonical + second existing clip)",
