@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "kind": "reconstructed_master_handoff",
+  "source": "lane_h",
+  "consumer": "lane_f2",
+  "paid_calls": false,
+  "astra_required": false,
+  "blocks_e2e": false,
+  "grok_per_frame": false,
+  "sam3_live_fetch": false,
+  "encode_status": "not_claimed",
+  "project_id": "aaaaaaaa-0002-4000-8000-bbbbbbbbbbbb",
+  "master_clip_asset_id": "cccccccc-0002-4000-8000-dddddddddddd",
+  "chest_asset_id": "eeeeeeee-0002-4000-8000-ffffffffffff",
+  "sleeve_asset_id": "12121212-0002-4000-8000-343434343434",
+  "reconstruct_adapter_version": "1.0.0",
+  "reconstruct_e2e_version": "1.0.0",
+  "frame_count": 4,
+  "temporal_job_count": 2,
+  "original_pixels_preserved_where_unauthorized": true,
+  "eval_verdict": "unscored",
+  "eval_spec_version": "lane-e-reconstruct-video-v1",
+  "not_claimed": [
+    "live pixels of this synthetic second master",
+    "MP4 encode of clip cccccccc-0002-4000-8000-dddddddddddd"
+  ],
+  "master": {
+    "relpath": null,
+    "mime": "video/mp4"
+  },
+  "finishing": {
+    "host": "premiere",
+    "import_mode": "single_clip",
+    "recut": false,
+    "regenerate": false,
+    "recipe_relpath": "docs/research/finishing/fixtures/second_clip_recipe.json"
+  }
+}

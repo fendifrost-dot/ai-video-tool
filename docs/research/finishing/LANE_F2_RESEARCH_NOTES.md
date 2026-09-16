@@ -1,11 +1,12 @@
 # Lane F2 — finishing-path research notes
 
 **Lane F2 · 2026-09-16 · $0 · no paid Astra · no live Premiere**  
-**Work-order:** [#103](https://github.com/fendifrost-dot/ai-video-tool/issues/103) · **Sprint:** [#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102)
+**Work-order:** [#103](https://github.com/fendifrost-dot/ai-video-tool/issues/103) · stretch [#114](https://github.com/fendifrost-dot/ai-video-tool/issues/114) · **Sprint:** [#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102)
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**
 
 Companion contract: [RECONSTRUCTED_MASTER_HANDOFF.md](./RECONSTRUCTED_MASTER_HANDOFF.md).  
+Portability (second clip/project): [PORTABILITY.md](./PORTABILITY.md).  
 Lane F baseline (do not rebuild): [ASTRA_PREMIERE_FINISHING_ARCHITECTURE.md](./ASTRA_PREMIERE_FINISHING_ARCHITECTURE.md).
 
 ---

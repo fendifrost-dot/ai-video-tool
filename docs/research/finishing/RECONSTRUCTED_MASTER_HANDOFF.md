@@ -1,7 +1,7 @@
 # Reconstructed-master → finishing handoff contract
 
 **Lane F2 · 2026-09-16 · $0 · isolated from Architecture C / Pipeline OS / eval core**  
-**Work-order:** [#103](https://github.com/fendifrost-dot/ai-video-tool/issues/103) · **Sprint:** [#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102) · **Lineage:** [#57](https://github.com/fendifrost-dot/ai-video-tool/issues/57) / [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50)
+**Work-order:** [#103](https://github.com/fendifrost-dot/ai-video-tool/issues/103) · stretch [#114](https://github.com/fendifrost-dot/ai-video-tool/issues/114) · **Sprint:** [#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102) · **Lineage:** [#57](https://github.com/fendifrost-dot/ai-video-tool/issues/57) / [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50)
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**
 
@@ -89,8 +89,8 @@ Machine-readable schema: `src/lib/automation/finishingHandoff.ts` (`FINISHING_HA
 |-------|------|
 | `kind` | `"reconstructed_master_handoff"` |
 | `source` | `"lane_h"` (producer). Finishing is `"lane_f2"` consumer only. |
-| `project_id` | AVT project |
-| `master_clip_asset_id` | Approved clip this master **replaces** (canonical `76fe7438-…`) |
+| `project_id` | AVT project UUID (**any** project — not an allowlist) |
+| `master_clip_asset_id` | Approved clip this master **replaces** (any UUID; demo sample is `76fe7438-…`) |
 | `chest_asset_id` / `sleeve_asset_id` | Lineage only; not still-golden reopen |
 | `reconstruct_adapter_version` / `reconstruct_e2e_version` | Copied strings from Lane D/H |
 | `frame_count` / `temporal_job_count` | Copied counts |
@@ -102,7 +102,7 @@ Machine-readable schema: `src/lib/automation/finishingHandoff.ts` (`FINISHING_HA
 | `encode_status` | `not_claimed` \| `pending` \| `encoded` |
 | `master` | Relpath + mime when encoded; omitted/empty when not |
 
-Canonical IDs for the sprint fixture **[VERIFIED]** (`src/lib/reconstruct/canonicalLineage.ts`):
+Canonical IDs for the sprint **sample** **[VERIFIED]** (copied strings; F2 does not import reconstruct). A second project uses different UUIDs — see [PORTABILITY.md](./PORTABILITY.md).
 
 | | |
 |--|--|
@@ -110,6 +110,8 @@ Canonical IDs for the sprint fixture **[VERIFIED]** (`src/lib/reconstruct/canoni
 | Master clip | `76fe7438-671d-4428-a7f6-17a45e98c16f` |
 | Chest 1m CLEARED | `9ed83c01-8c7d-4d1b-918f-87b0fc743c50` |
 | Sleeve 1c CLEARED | `fdb86b18-d4aa-465e-b73f-1d252709739c` |
+
+**[DECISION]** Validators must not require those values. `createReconstructedMasterHandoff(identity)` takes any UUID identity.
 
 ---
 
@@ -150,6 +152,8 @@ See [LANE_F2_RESEARCH_NOTES.md](./LANE_F2_RESEARCH_NOTES.md). Headline **[DECISI
 
 ```ts
 validateReconstructedMasterHandoff(json) → { ok, errors[] }
+createReconstructedMasterHandoff(identity, overrides?) → sidecar  // any UUID identity
+bindRecipeToHandoffIdentity(recipe, identity) → recipe
 handoffBlocksE2e(json)                  → false | error
 finishingRecipeCompatibleWithHandoff(recipe, handoff) → { ok, errors[] }
 ```
@@ -169,6 +173,7 @@ Stop and redesign (do not “just enable Astra”) if:
 3. Finishing calls a generative provider or sets `astra_required: true` / `paid_calls: true`.
 4. F2 encodes or muxes the master (ownership theft from Lane H).
 5. F2 edits paint, temporal, eval core, or Pipeline OS.
+6. A second project requires clip-specific F2 TypeScript or a `76fe7438` allowlist.
 
 ---
 
