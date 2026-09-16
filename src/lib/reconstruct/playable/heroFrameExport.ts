@@ -18,9 +18,9 @@ import { runPlayableCompose, type PlayableComposeResult } from "./compose";
 import { heroFramePlayableSpec } from "./spec";
 import { playableE2HookToJson, buildPlayableArtifactClaims, buildPlayableE2Hook } from "./e2Hook";
 import type { PlayableMp4Claims } from "./contract";
+import { CANONICAL_PLAYABLE_ARTIFACT_LAYOUT } from "./catalogBind";
 import {
   PLAYABLE_MP4_BYTE_LENGTH,
-  PLAYABLE_MP4_RELATIVE_PATH,
   PLAYABLE_MP4_SHA256,
   committedPlayableMp4Ref,
   evaluatePlayableVideoQa,
@@ -132,9 +132,9 @@ export function runHeroFramePlayableExport(): {
   };
   const claims = buildPlayableArtifactClaims(compose, placeholderMp4);
   const hook = buildPlayableE2Hook(claims, {
-    mp4RelativePath: PLAYABLE_MP4_RELATIVE_PATH,
-    claimsRelativePath: "docs/reconstruct/artifacts/playable-76fe7438/claims.json",
-    hookRelativePath: "docs/reconstruct/artifacts/playable-76fe7438/e2-hook.json",
+    mp4RelativePath: CANONICAL_PLAYABLE_ARTIFACT_LAYOUT.mp4RelativePath,
+    claimsRelativePath: CANONICAL_PLAYABLE_ARTIFACT_LAYOUT.claimsRelativePath,
+    hookRelativePath: CANONICAL_PLAYABLE_ARTIFACT_LAYOUT.hookRelativePath,
   });
   const { json: videoQaJson, report } = evaluatePlayableVideoQa({
     compose,

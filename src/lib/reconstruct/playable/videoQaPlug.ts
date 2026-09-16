@@ -22,12 +22,15 @@ import {
   type Sam3FallbackStatus,
 } from "@/lib/reconstruct/sam3Consume";
 import type { PlayableComposeOk } from "./compose";
+import {
+  CANONICAL_PLAYABLE_ARTIFACT_LAYOUT,
+  SECOND_CLIP_PLAYABLE_ARTIFACT_LAYOUT,
+  type PlayableArtifactLayout,
+} from "./catalogBind";
 
-export const PLAYABLE_VIDEO_QA_ARTIFACT_ID = "playable-76fe7438";
-export const PLAYABLE_MP4_RELATIVE_PATH =
-  "docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4";
-export const PLAYABLE_VIDEO_QA_RELATIVE_PATH =
-  "docs/reconstruct/artifacts/playable-76fe7438/video-qa.json";
+export const PLAYABLE_VIDEO_QA_ARTIFACT_ID = CANONICAL_PLAYABLE_ARTIFACT_LAYOUT.artifactId;
+export const PLAYABLE_MP4_RELATIVE_PATH = CANONICAL_PLAYABLE_ARTIFACT_LAYOUT.mp4RelativePath;
+export const PLAYABLE_VIDEO_QA_RELATIVE_PATH = CANONICAL_PLAYABLE_ARTIFACT_LAYOUT.videoQaRelativePath;
 /** Committed full-clip H.264 gate artifact (72 @ 720×1280). Do not reopen still goldens. */
 export const PLAYABLE_MP4_SHA256 =
   "71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b";
@@ -106,6 +109,37 @@ export function committedPlayableMp4Ref(): VideoQaMp4Ref {
     path: PLAYABLE_MP4_RELATIVE_PATH,
     sha256: PLAYABLE_MP4_SHA256,
     byteLength: PLAYABLE_MP4_BYTE_LENGTH,
+  });
+}
+
+/** Catalog-driven MP4 ref. Canonical SHA pins stay on `committedPlayableMp4Ref()`. */
+export function playableMp4RefForLayout(
+  layout: PlayableArtifactLayout,
+  input: { produced: boolean; sha256?: string; byteLength?: number },
+): VideoQaMp4Ref {
+  return playableMp4Ref({
+    produced: input.produced,
+    artifactId: layout.artifactId,
+    path: layout.mp4RelativePath,
+    sha256: input.sha256,
+    byteLength: input.byteLength,
+  });
+}
+
+/**
+ * Committed 8-frame 2nd-clip fixture MP4 (`f31bd0f2`).
+ * Distinct from the canonical 72-frame Hero Frame gate artifact.
+ * Live Export on this clip is NOT CLEARED.
+ */
+export const SECOND_CLIP_PLAYABLE_MP4_SHA256 =
+  "2b5dde758780ddddcd74530225f4c6d600db29be5f7fe2a8847d7191265760fa";
+export const SECOND_CLIP_PLAYABLE_MP4_BYTE_LENGTH = 387277;
+
+export function committedSecondClipPlayableMp4Ref(): VideoQaMp4Ref {
+  return playableMp4RefForLayout(SECOND_CLIP_PLAYABLE_ARTIFACT_LAYOUT, {
+    produced: true,
+    sha256: SECOND_CLIP_PLAYABLE_MP4_SHA256,
+    byteLength: SECOND_CLIP_PLAYABLE_MP4_BYTE_LENGTH,
   });
 }
 

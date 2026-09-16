@@ -7,7 +7,8 @@
 Live-wiring deploy notes: [`docs/reconstruct/LIVE_WIRING.md`](reconstruct/LIVE_WIRING.md).  
 E2E click path: [`docs/reconstruct/E2E_LIVE.md`](reconstruct/E2E_LIVE.md).  
 Live SUCCESS: [`docs/reconstruct/E2E_LIVE_SUCCESS_2026-09-15.md`](reconstruct/E2E_LIVE_SUCCESS_2026-09-15.md).  
-Playable MP4: [`docs/reconstruct/PLAYABLE_ARTIFACT.md`](reconstruct/PLAYABLE_ARTIFACT.md).
+Playable MP4: [`docs/reconstruct/PLAYABLE_ARTIFACT.md`](reconstruct/PLAYABLE_ARTIFACT.md).  
+2nd-clip portability: [`docs/reconstruct/PLAYABLE_PORTABILITY.md`](reconstruct/PLAYABLE_PORTABILITY.md).
 
 ## Product rule
 

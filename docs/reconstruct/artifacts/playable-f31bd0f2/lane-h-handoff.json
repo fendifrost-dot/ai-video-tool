@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "reconstruct-lane-h-handoff-v2",
+  "ownedBy": "lane_d_reconstruct",
+  "exportOwnedBy": "lane_h",
+  "paidCalls": false,
+  "grokPerFrame": false,
+  "sam3LiveFetch": false,
+  "stillGoldensReopened": false,
+  "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+  "masterClipAssetId": "f31bd0f2-884f-42e1-8b08-aa645597b7a6",
+  "clipId": "f31bd0f2-884f-42e1-8b08-aa645597b7a6",
+  "width": 720,
+  "height": 1280,
+  "fps": 24,
+  "frameCount": 8,
+  "durationSec": 0.3333333333333333,
+  "frameIndices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7
+  ],
+  "originalPixelsPreservedWhereUnauthorized": true,
+  "unauthorizedLeakCount": 0,
+  "audio": {
+    "reconstructTouchesAudio": false,
+    "passthrough": true,
+    "muxOwnedBy": "lane_h"
+  },
+  "mp4": {
+    "reconstructDoesNotEncode": true,
+    "reconstructProvides": "frame_rgba_sequence",
+    "dims": {
+      "width": 720,
+      "height": 1280
+    },
+    "fps": 24,
+    "durationSec": 0.3333333333333333,
+    "frameCount": 8,
+    "codecClaims": {
+      "reconstructDoesNotChooseCodec": true,
+      "pixelFormat": "rgba8",
+      "videoCodec": null,
+      "audioCodec": null,
+      "container": null
+    },
+    "provenanceClaims": [
+      "original_pixels_preserved_where_unauthorized",
+      "generated_is_not_master",
+      "dims_from_reconstruct_frame_stream",
+      "fps_from_reconstruct_frame_stream",
+      "duration_from_frame_count_over_fps",
+      "codec_not_chosen_by_reconstruct",
+      "audio_passthrough_untouched_by_reconstruct"
+    ]
+  },
+  "sam3": {
+    "source": "caller_supplied",
+    "fallbackStatus": "not_needed",
+    "liveFetchAttempted": false,
+    "paidCalls": false,
+    "failure": null,
+    "checksum": "63b6317e"
+  }
+}

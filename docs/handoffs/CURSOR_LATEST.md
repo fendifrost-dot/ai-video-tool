@@ -4,7 +4,20 @@
 
 **Updated:** 2026-09-16 · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`.
 
+## Lane H stretch — 2nd-clip playable portability (`f31bd0f2`)
+
+Sprint **#102** / umbrella **#50**. After PLAYABLE-1 **#120** and E2 INCOMPLETE **#129**. Isolated `src/lib/reconstruct/playable/**` + docs. **Do not reopen chest 1m or sleeve 1c.** `paidCalls=false`. **No Lovable Publish.**
+
+**[VERIFIED in-lib]** Catalog `ysl-ice-on-v2-edited-clip` / clip `f31bd0f2-884f-42e1-8b08-aa645597b7a6` (G2 `SECOND_EXISTING_V2_EDITED_CLIP`) fills `PlayableClipSpec`. Compose / encode / E2-hook / Lane H handoff v2 do **not** switch on master `76fe7438`. `LIVE_PROXY_MAX_FRAMES` stays **24**.
+
+**Live Hero Frame Export on the 2nd clip is NOT CLEARED.** §7 still uses `heroFramePlayableSpec()` + `committedPlayableMp4Ref()` (canonical 72-frame `playable-76fe7438`).
+
+8-frame 720×1280 fixture: `docs/reconstruct/artifacts/playable-f31bd0f2/`. Pixels are the $0 still-derived unique-RGB pack — **not** live Grok V2 bytes.
+
+Write-up: [`docs/reconstruct/PLAYABLE_PORTABILITY.md`](docs/reconstruct/PLAYABLE_PORTABILITY.md)
+
 ## Lane H+E2 — Hero Frame export E2 INCOMPLETE (not FAIL 6/9)
+
 
 Work-order: child of sprint **#102** (this PR). Isolated playable export glue + `evaluateVideoQa` mp4 criterion. **Do not reopen chest 1m or sleeve 1c.** `paidCalls=false`. No Lovable code edits. No paint / paid Grok.
 
@@ -124,7 +137,7 @@ Work-order: GitHub **#111** (parent **#102** / **#50**). Isolated compose/export
 
 **Not claimed:** live storage decode of `76fe7438` (DB row is 1080×1920 HDR); live SAM-3 fetch. Live proxy full-clip stays **YELLOW** (`maxFrames=24` vs canonical 241) — Lane H does **not** raise the cap. GREEN path: chunk ≤24 + stitch. Architecture C window is 72-frame / 720×1280 still-derived.
 
-Write-up: `docs/reconstruct/PLAYABLE_ARTIFACT.md`
+Write-up: [`docs/reconstruct/PLAYABLE_ARTIFACT.md`](docs/reconstruct/PLAYABLE_ARTIFACT.md) · 2nd-clip stretch: [`docs/reconstruct/PLAYABLE_PORTABILITY.md`](docs/reconstruct/PLAYABLE_PORTABILITY.md)
 
 ## Canonical IDs (unchanged)
 

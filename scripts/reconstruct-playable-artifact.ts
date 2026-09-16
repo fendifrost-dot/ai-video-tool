@@ -1,16 +1,27 @@
 /**
- * Lane H — produce the playable Architecture C reconstructed MP4 artifact.
+ * Lane H — produce a playable Architecture C reconstructed MP4 artifact.
  *
  * $0 / paidCalls=false / grokPerFrame=false / no SAM-3 fetch.
- * Usage: npx tsx scripts/reconstruct-playable-artifact.ts
+ *
+ * Canonical 72-frame gate (default):
+ *   npx tsx scripts/reconstruct-playable-artifact.ts
+ *
+ * Second-clip 8-frame portability fixture:
+ *   npx tsx scripts/reconstruct-playable-artifact.ts --catalog=ysl-ice-on-v2-edited-clip
  */
 
 import { createHash } from "node:crypto";
-import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { runPlayableCompose } from "../src/lib/reconstruct/playable/compose";
 import { canonicalPlayableSpec } from "../src/lib/reconstruct/playable/spec";
+import {
+  playableArtifactLayoutForCatalog,
+  secondClipPlayableSpec,
+  type PlayableArtifactLayout,
+} from "../src/lib/reconstruct/playable/catalogBind";
+import type { PlayableCatalogId, PlayableClipSpec } from "../src/lib/reconstruct/playable/contract";
 import { encodePlayableMp4 } from "../src/lib/reconstruct/playable/encodeMp4";
 import {
   buildPlayableArtifactClaims,
@@ -18,20 +29,31 @@ import {
   playableE2HookToJson,
 } from "../src/lib/reconstruct/playable/e2Hook";
 import {
-  PLAYABLE_MP4_RELATIVE_PATH,
-  PLAYABLE_VIDEO_QA_ARTIFACT_ID,
   evaluatePlayableVideoQa,
   persistPlayableVideoQaJson,
-  playableMp4Ref,
+  playableMp4RefForLayout,
 } from "../src/lib/reconstruct/playable/videoQaPlug";
 import { buildPlayableLaneHHandoff } from "../src/lib/reconstruct/playable/handoff";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const OUT_DIR = join(ROOT, "docs/reconstruct/artifacts/playable-76fe7438");
 
-function main(): void {
-  mkdirSync(OUT_DIR, { recursive: true });
-  const spec = canonicalPlayableSpec();
+function parseCatalog(argv: string[]): PlayableCatalogId {
+  const flag = argv.find((a) => a.startsWith("--catalog="));
+  const value = flag?.slice("--catalog=".length);
+  if (value === "ysl-ice-on-v2-edited-clip") return "ysl-ice-on-v2-edited-clip";
+  if (value === "canonical-ysl-ice-on" || value === undefined) return "canonical-ysl-ice-on";
+  throw new Error(`unknown_playable_catalog:${value}`);
+}
+
+function specForCatalog(catalogId: PlayableCatalogId): PlayableClipSpec {
+  if (catalogId === "ysl-ice-on-v2-edited-clip") return secondClipPlayableSpec();
+  return canonicalPlayableSpec();
+}
+
+function writeArtifact(catalogId: PlayableCatalogId, layout: PlayableArtifactLayout): void {
+  const outDir = join(ROOT, layout.dir);
+  mkdirSync(outDir, { recursive: true });
+  const spec = specForCatalog(catalogId);
   const compose = runPlayableCompose({ explicitArm: true, spec });
   if (!compose.ok) {
     throw new Error(`compose_failed:${compose.code}:${compose.message}`);
@@ -40,55 +62,58 @@ function main(): void {
   const encoded = encodePlayableMp4({
     frames: compose.clip.frames.map((fr) => ({ index: fr.index, image: fr.result.image })),
     fps: compose.fps,
-    outPath: join(OUT_DIR, "reconstructed.mp4"),
-    workDir: join(OUT_DIR, ".ppm"),
+    outPath: join(ROOT, layout.mp4RelativePath),
+    workDir: join(outDir, ".ppm"),
   });
   if (!encoded.ok) {
     throw new Error(`encode_failed:${encoded.message}`);
   }
+  rmSync(join(outDir, ".ppm"), { recursive: true, force: true });
 
   const claims = buildPlayableArtifactClaims(compose, encoded.claims);
   const hook = buildPlayableE2Hook(claims, {
-    mp4RelativePath: "docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4",
-    claimsRelativePath: "docs/reconstruct/artifacts/playable-76fe7438/claims.json",
-    hookRelativePath: "docs/reconstruct/artifacts/playable-76fe7438/e2-hook.json",
+    mp4RelativePath: layout.mp4RelativePath,
+    claimsRelativePath: layout.claimsRelativePath,
+    hookRelativePath: layout.hookRelativePath,
   });
 
-  const mp4Bytes = readFileSync(join(OUT_DIR, "reconstructed.mp4"));
+  const mp4Bytes = readFileSync(join(ROOT, layout.mp4RelativePath));
   const sha256 = createHash("sha256").update(mp4Bytes).digest("hex");
 
   const { json: videoQaJson, report: videoQa } = evaluatePlayableVideoQa({
     compose,
-    mp4: playableMp4Ref({
+    mp4: playableMp4RefForLayout(layout, {
       produced: true,
-      artifactId: PLAYABLE_VIDEO_QA_ARTIFACT_ID,
-      path: PLAYABLE_MP4_RELATIVE_PATH,
       sha256,
       byteLength: mp4Bytes.length,
     }),
-    // Encode-first: MP4 is the producer artifact. E2 scores decoded
-    // rasters when attached; empty frames → INCOMPLETE, never blocks H.
     includeDecodedFrames: false,
   });
-  persistPlayableVideoQaJson(videoQaJson, (relativePath, body) => {
-    const name = relativePath.split("/").pop() ?? "video-qa.json";
-    writeFileSync(join(OUT_DIR, name), body);
-  });
+  persistPlayableVideoQaJson(
+    videoQaJson,
+    (relativePath, body) => {
+      const name = relativePath.split("/").pop() ?? "video-qa.json";
+      writeFileSync(join(outDir, name), body);
+    },
+    layout.videoQaRelativePath,
+  );
 
   const laneHHandoff = buildPlayableLaneHHandoff(compose);
-  writeFileSync(join(OUT_DIR, "lane-h-handoff.json"), `${JSON.stringify(laneHHandoff, null, 2)}\n`);
 
   const provenance = {
     playableVersion: compose.playableVersion,
-    issue: 111,
-    parent: 102,
+    issue: 102,
+    parent: 50,
+    catalogId,
     paidCalls: false,
     grokPerFrame: false,
     sam3LiveFetch: false,
+    liveExportCleared: catalogId === "canonical-ysl-ice-on",
     masterClipAssetId: spec.masterClipAssetId,
     stillAssetId: spec.stillAssetId,
     projectId: spec.projectId,
     garmentId: spec.garmentId,
+    parentMasterClipAssetId: spec.parentMasterClipAssetId ?? null,
     mediaKind: compose.mediaKind,
     sha256,
     mp4Bytes: mp4Bytes.length,
@@ -114,20 +139,29 @@ function main(): void {
       durationSec: laneHHandoff.durationSec,
       unauthorizedLeakCount: laneHHandoff.unauthorizedLeakCount,
     },
+    notClaimed: [
+      "live_hero_frame_export_on_second_clip",
+      "live_241_frame_proxy",
+      "live_f31bd0f2_grok_pixels",
+      "second_clip_chest_1m_sleeve_1c_goldens",
+      "raised_proxy_max_frames",
+    ],
   };
 
-  writeFileSync(join(OUT_DIR, "claims.json"), `${JSON.stringify(claims, null, 2)}\n`);
+  writeFileSync(join(outDir, "lane-h-handoff.json"), `${JSON.stringify(laneHHandoff, null, 2)}\n`);
+  writeFileSync(join(outDir, "claims.json"), `${JSON.stringify(claims, null, 2)}\n`);
   writeFileSync(
-    join(OUT_DIR, "e2-hook.json"),
+    join(outDir, "e2-hook.json"),
     `${JSON.stringify(playableE2HookToJson(hook), null, 2)}\n`,
   );
-  writeFileSync(join(OUT_DIR, "provenance.json"), `${JSON.stringify(provenance, null, 2)}\n`);
+  writeFileSync(join(outDir, "provenance.json"), `${JSON.stringify(provenance, null, 2)}\n`);
 
   console.log(
     JSON.stringify(
       {
         ok: true,
-        mp4: "docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4",
+        catalogId,
+        mp4: layout.mp4RelativePath,
         width: encoded.claims.width,
         height: encoded.claims.height,
         frameCount: encoded.claims.frameCount,
@@ -139,13 +173,21 @@ function main(): void {
         preserved: compose.clip.originalPixelsPreservedWhereUnauthorized,
         sam3: compose.sam3.source,
         sha256,
+        byteLength: mp4Bytes.length,
         videoQaVerdict: videoQa.verdict,
         videoQaBlocking: videoQa.blockingArtifactProducer,
+        liveExportCleared: catalogId === "canonical-ysl-ice-on",
       },
       null,
       2,
     ),
   );
+}
+
+function main(): void {
+  const catalogId = parseCatalog(process.argv.slice(2));
+  const layout = playableArtifactLayoutForCatalog(catalogId);
+  writeArtifact(catalogId, layout);
 }
 
 main();

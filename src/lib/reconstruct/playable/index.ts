@@ -12,6 +12,7 @@ export {
 } from "./contract";
 export type {
   PlayableArtifactClaims,
+  PlayableCatalogId,
   PlayableClipSpec,
   PlayableE2Hook,
   PlayableMp4Claims,
@@ -19,6 +20,23 @@ export type {
 } from "./contract";
 
 export { canonicalPlayableSpec, heroFramePlayableSpec } from "./spec";
+export {
+  CANONICAL_PLAYABLE_ARTIFACT_LAYOUT,
+  CANONICAL_PLAYABLE_CATALOG_ID,
+  SECOND_CLIP_PARENT_MASTER_ID,
+  SECOND_CLIP_PLAYABLE_ARTIFACT_LAYOUT,
+  SECOND_CLIP_PLAYABLE_CATALOG_ID,
+  SECOND_CLIP_PLAYABLE_CLIP_ID,
+  SECOND_CLIP_PLAYABLE_FRAME_COUNT,
+  SECOND_CLIP_PLAYABLE_KEYFRAME_INDEX,
+  SECOND_CLIP_PLAYABLE_PROJECT_ID,
+  livePlayableExportCleared,
+  playableArtifactLayoutForCatalog,
+  playablePortabilityDesign,
+  playableSpecFromCatalog,
+  secondClipPlayableSpec,
+} from "./catalogBind";
+export type { PlayableArtifactLayout } from "./catalogBind";
 export { consumeIntendedSam3, INTENDED_SAM3_EVIDENCE_ID } from "./sam3Consume";
 export { buildPlayableMediaPack, buildStableOriginal, playableFrameAt } from "./mediaPack";
 export { lumaFramesToSourceClip, propagatePlayableClip } from "./temporalFullClip";
@@ -40,12 +58,16 @@ export {
   PLAYABLE_MP4_SHA256,
   PLAYABLE_VIDEO_QA_ARTIFACT_ID,
   PLAYABLE_VIDEO_QA_RELATIVE_PATH,
+  SECOND_CLIP_PLAYABLE_MP4_BYTE_LENGTH,
+  SECOND_CLIP_PLAYABLE_MP4_SHA256,
   committedPlayableMp4Ref,
+  committedSecondClipPlayableMp4Ref,
   evaluatePlayableVideoQa,
   evaluatePlayableVideoQaFromE2e,
   persistPlayableVideoQaJson,
   playableComposeToReconstructE2e,
   playableMp4Ref,
+  playableMp4RefForLayout,
 } from "./videoQaPlug";
 export {
   HERO_FRAME_PLAYABLE_EXPORT_VERSION,

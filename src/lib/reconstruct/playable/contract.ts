@@ -56,6 +56,12 @@ export type Sam3FailureBehavior =
   | "fail_closed_missing_required"
   | "none";
 
+/**
+ * Catalog ids owned by Product OS (`src/lib/pipeline/catalog.ts`).
+ * Playable copies the union so reconstruct does not import pipeline.
+ */
+export type PlayableCatalogId = "canonical-ysl-ice-on" | "ysl-ice-on-v2-edited-clip";
+
 export type PlayableClipSpec = {
   projectId: string;
   masterClipAssetId: string;
@@ -70,6 +76,13 @@ export type PlayableClipSpec = {
   keyframeId: string;
   keyframeTimeSec: number;
   dxPerFrame: number;
+  /** Product OS catalog when this spec was bound from a catalog. */
+  catalogId?: PlayableCatalogId;
+  /**
+   * Parent original master when `masterClipAssetId` is a generation_clip
+   * (V2 edited_clip `f31bd0f2` → parent `76fe7438`).
+   */
+  parentMasterClipAssetId?: string;
 };
 
 export type Sam3Provenance = {
