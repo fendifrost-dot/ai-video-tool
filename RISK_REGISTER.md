@@ -27,7 +27,7 @@ Last reviewed: **2026-09-16** (TEMPORAL-1 added for Lane C live arm).
 | [VOICE-1](#voice-1--grok-voice-director-spend-surface) | Voice Director STT/TTS/text spend + mic | Medium | Likely | Open | Products (AVT) |
 | [PIPELINE-1](#pipeline-1--orchestration-scaffolding-is-not-a-durable-queue) | Pipeline OS scaffolding is in-process only (no durable queue / reaper) | Medium | Confirmed | Open | Products (AVT) / Lane G |
 | [SLEEVE-1](#sleeve-1--visible-upper-arm-only-must-not-be-read-as-armholecuff) | Sleeve still repair is visible-upper-arm only; a pass must not be read as armhole→cuff | Medium | Confirmed | Open | Products (AVT) / Lane B |
-| [TEMPORAL-1](#temporal-1--live-arm-without-hero-frame-tracking) | Temporal lib armed; Hero Frame tracking still off; new JWT-only edge not yet Lovable-redeployed | Medium | Confirmed | **In-remediation** | Products (AVT) / Lane C |
+| [TEMPORAL-1](#temporal-1--live-arm-without-hero-frame-tracking) | Temporal lib armed; Hero Frame tracking on (#90); `temporal-propagate-proxy` not yet Lovable-redeployed | Medium | Confirmed | **In-remediation** | Products (AVT) / Hero Frame + Lane C |
 
 ---
 
@@ -321,8 +321,8 @@ Last reviewed: **2026-09-16** (TEMPORAL-1 added for Lane C live arm).
 
 ## TEMPORAL-1 — Live arm without Hero Frame tracking
 
-- **Severity:** Medium · **Confidence:** Confirmed · **Status:** In-remediation · **Owner:** Products (AVT) / Lane C
-- **Summary:** `TEMPORAL_LIVE_ACTIVATION_ARMED` is now `true` after chest 1m CLEARED 11/11 and sleeve 1c CLEARED 6/6. Isolated `temporal-propagate-proxy` is JWT-gated (`verify_jwt` + `getUser`), calls `authorizeTemporalEdgeRequest` then `propagateRepair`, and never calls Grok / Fal / CC. Hero Frame `ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` stays **false** (Hero Frame owner — not this module). Dispatch still requires `explicitArm: true`.
-- **Pointer:** [`docs/temporal/LIVE_PREP.md`](docs/temporal/LIVE_PREP.md); [`src/lib/temporal/livePrep.ts`](src/lib/temporal/livePrep.ts); [`supabase/functions/temporal-propagate-proxy/README.md`](supabase/functions/temporal-propagate-proxy/README.md).
-- **DoD (target):** parent Lovable-redeploys **only** `temporal-propagate-proxy`; Hero Frame owner flip (if any) is a separate change; no per-frame Grok; no proxy-auth widen.
-- **Mitigations:** compile-time arm + explicitArm; luma-only body caps; no service-role / CC secret on this function.
+- **Severity:** Medium · **Confidence:** Confirmed · **Status:** In-remediation · **Owner:** Products (AVT) / Hero Frame + Lane C
+- **Summary:** `TEMPORAL_LIVE_ACTIVATION_ARMED` is `true` after chest 1m CLEARED 11/11 and sleeve 1c CLEARED 6/6. Isolated `temporal-propagate-proxy` is JWT-gated (`verify_jwt` + `getUser`), calls `authorizeTemporalEdgeRequest` then `propagateRepair`, and never calls Grok / Fal / CC. Hero Frame `ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` is now **true** (#90). Product dispatch sets `explicitArm: true`. Still-repair edge mirror stays **false** so `architecture-c-still-repair-proxy` does not 500.
+- **Pointer:** [`docs/temporal/LIVE_PREP.md`](docs/temporal/LIVE_PREP.md); [`src/lib/heroFrame/temporalDispatch.ts`](src/lib/heroFrame/temporalDispatch.ts); [`src/lib/temporal/livePrep.ts`](src/lib/temporal/livePrep.ts); [`supabase/functions/temporal-propagate-proxy/README.md`](supabase/functions/temporal-propagate-proxy/README.md).
+- **DoD (target):** parent Lovable-redeploys **only** `temporal-propagate-proxy` (from #88); Hero Frame flag flip is frontend-only; no still-repair edge redeploy; no per-frame Grok; no proxy-auth widen.
+- **Mitigations:** compile-time arm + explicitArm; luma-only body caps; no service-role / CC secret on this function; still-repair edge flag remains false.

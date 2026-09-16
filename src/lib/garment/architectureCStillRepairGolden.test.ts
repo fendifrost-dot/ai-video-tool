@@ -202,7 +202,7 @@ describe("Architecture C stage-1 golden structural invariants", () => {
     expect(ARCHITECTURE_C_V2_REPAIR.recommendedStillAssetId).toBe(
       ARCHITECTURE_C_STAGE1_GOLDEN.cleanStillAssetId,
     );
-    expect(ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled).toBe(false);
+    expect(ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled).toBe(true);
   });
 
   it("logo sub-zone stays wearer's-left and ~½ band height (not full-band)", () => {
@@ -372,7 +372,7 @@ describe("Architecture C stage-1 golden structural invariants", () => {
     expect(ARCHITECTURE_C_V2_REPAIR.recommendedStillAssetId).toBe(
       ARCHITECTURE_C_STAGE1_GOLDEN.cleanStillAssetId,
     );
-    expect(ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled).toBe(false);
+    expect(ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled).toBe(true);
   });
 
   it("V3 I/J installed inactive; active lane remains V2; no paid-run gate", () => {

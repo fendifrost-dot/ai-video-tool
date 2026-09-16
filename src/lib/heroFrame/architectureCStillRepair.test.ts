@@ -17,13 +17,13 @@ import {
 } from "./architectureCStillRepair";
 
 describe("ARCHITECTURE_C_V2_REPAIR", () => {
-  it("points at the V2 edited_clip and freezes tracking off", () => {
+  it("points at the V2 edited_clip and enables product tracking after stills CLEARED", () => {
     expect(ARCHITECTURE_C_V2_REPAIR.editedClipAssetId).toBe("f31bd0f2-884f-42e1-8b08-aa645597b7a6");
     expect(ARCHITECTURE_C_V2_REPAIR.recommendedStillTimeSec).toBe(0.785);
     expect(ARCHITECTURE_C_V2_REPAIR.recommendedStillAssetId).toBe(
       "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
     );
-    expect(ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled).toBe(false);
+    expect(ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled).toBe(true);
     expect(ARCHITECTURE_C_V2_REPAIR.wardrobeFeatureId).toBe("0feb028f-dc4d-45dc-82ac-e4bbd16054b0");
     expect(ARCHITECTURE_C_V2_REPAIR.recommendedChestOutputAssetId).toBe(
       "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
@@ -104,7 +104,7 @@ describe("mergeLogoZoneManualQuad", () => {
 });
 
 describe("buildStillRepairAssetMetadata", () => {
-  it("records stage and hard-stops tracking", () => {
+  it("records stage and keeps still-repair metadata tracking off", () => {
     const meta = buildStillRepairAssetMetadata({
       stage: "logo_chest",
       sourceStillAssetId: "still-1",

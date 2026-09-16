@@ -61,14 +61,13 @@ TEMPORAL_LIVE_ACTIVATION_ARMED = true
 
 ---
 
-## Hero Frame owner flip (NOT this lane)
+## Hero Frame owner flip (landed — [#90](https://github.com/fendifrost-dot/ai-video-tool/issues/90))
 
-`prepareHeroFrameTemporalHook` always returns `temporalTrackingEnabled: false` and `providerCalls: []`.
+Lane C `prepareHeroFrameTemporalHook` still returns `temporalTrackingEnabled: false` (temporal module does not own the product flag).
 
-Lane C does **not** own `src/lib/heroFrame/architectureCStillRepair.ts`.  
-`ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` stays **false**.
+Hero Frame owner now flips `ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` to **true** in `src/lib/heroFrame/architectureCStillRepair.ts`. Product UI calls `prepareHeroFrameTemporalDispatch()` which sets `explicitArm: true` when the product flag and `TEMPORAL_LIVE_ACTIVATION_ARMED` are both true.
 
-**[DECISION]** Hero Frame owner may flip that flag in a **separate** change after `temporal-propagate-proxy` is Lovable-redeployed. Do not edit chest/sleeve paint as part of that flip.
+**[DECISION]** Still-repair edge mirror stays **false**. `architecture-c-still-repair-proxy` 500s `tracking_flag_misconfigured` if that copy is true. Temporal dispatch is `temporal-propagate-proxy`, not still-repair. No still-repair edge redeploy from the Hero Frame flip. Do not edit chest/sleeve paint as part of that flip.
 
 ---
 
@@ -79,7 +78,7 @@ Lane C does **not** own `src/lib/heroFrame/architectureCStillRepair.ts`.
 1. Lovable → **Edge Functions → redeploy `temporal-propagate-proxy`**.
 2. Do **not** redeploy `architecture-c-still-repair-proxy` unless a separate Lane B need requires it (chest 1m + sleeve 1c paint are locked).
 3. Optional frontend Publish so Hero Frame can call the hook then the new edge. Publish ≠ edge redeploy.
-4. Hero Frame owner flip is a later change.
+4. Hero Frame owner flip is a separate frontend change (#90) — not an edge redeploy.
 
 The function:
 
@@ -112,9 +111,9 @@ No V3. No paid Grok. No Control Center.
 
 **READY** as isolated live activation (armed=true + edge source + tests + edge-only deploy notes).
 
-**BLOCKED** for Hero Frame product tracking until the Hero Frame owner flips `temporalTrackingEnabled` (out of Lane C ownership).
+**READY** for Hero Frame product tracking (`temporalTrackingEnabled = true` when armed; dispatch uses `explicitArm`). Still-repair edge flag stays false.
 
-**Not claimed:** live footage ingest, Hero Frame tracking on, edge already redeployed, paid/provider calls.
+**Not claimed:** live footage ingest, still-repair edge flag flip, paid/provider calls. `temporal-propagate-proxy` Lovable redeploy remains the #88 parent step.
 
 **Live sleeve 1b (2026-09-15):** asset `a4dc7f47` on `2aa1a44c` is **NOT CLEARED 5/6** (criterion 6 right luma 133.6→157.5; left navy-ward PASS). C5/C11/chest reserved held. Historical. Score: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`.
 

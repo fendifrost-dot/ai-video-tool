@@ -108,5 +108,5 @@ do **not** touch chest/sleeve paint.
 stays `"1.0.0"`.
 
 **Hard stop:** dispatch still needs `explicitArm: true`. Hero Frame
-`temporalTrackingEnabled` stays false until that owner flips it. See
-[`docs/temporal/LIVE_PREP.md`](../../docs/temporal/LIVE_PREP.md).
+`temporalTrackingEnabled` is flipped by the Hero Frame owner (#90) when
+armed. See [`docs/temporal/LIVE_PREP.md`](../../docs/temporal/LIVE_PREP.md).
