@@ -72,9 +72,10 @@ export function HeroFramePlayableExportControl({
         $0 path: intended Stage 1h SAM-3 + in-lib full-window temporal + original-master
         reconstruct. No Grok. Full-clip MP4 is the ffmpeg artifact
         (docs/reconstruct/artifacts/playable-76fe7438/). Calls evaluateVideoQa via
-        videoQaInputFromReconstructE2e on the committed MP4 encode-first (sha256
-        71f54599…); the 8-frame window is not decoded MP4 rasters. This control
-        does not own eval modules.
+        videoQaInputFromReconstructE2e on the committed MP4 encode-first (sha256 71f54599…). The
+        8-frame window is not decoded MP4 rasters. Browser Export has no ffmpeg — E2 stays
+        INCOMPLETE (frames=0, awaiting decoded_frames) until a node/ffmpeg decode attaches rasters.
+        This control does not own eval modules.
       </p>
       <Button
         type="button"

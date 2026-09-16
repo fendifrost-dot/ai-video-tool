@@ -50,6 +50,12 @@ export {
 export { runPlayableCompose } from "./compose";
 export type { PlayableComposeResult } from "./compose";
 export { encodePlayableMp4, ffmpegAvailable, probePlayableMp4 } from "./encodeMp4";
+export { decodePlayableMp4 } from "./decodeMp4";
+export type {
+  DecodePlayableMp4Result,
+  DecodePlayableMp4Ok,
+  DecodePlayableMp4Fail,
+} from "./decodeMp4";
 export { buildPlayableArtifactClaims, buildPlayableE2Hook, playableE2HookToJson } from "./e2Hook";
 export { buildPlayableLaneHHandoff, RECONSTRUCT_LANE_H_HANDOFF_VERSION } from "./handoff";
 export {
@@ -66,9 +72,11 @@ export {
   evaluatePlayableVideoQaFromE2e,
   persistPlayableVideoQaJson,
   playableComposeToReconstructE2e,
+  playableDecodedToVideoQaFrames,
   playableMp4Ref,
   playableMp4RefForLayout,
 } from "./videoQaPlug";
+export type { PlayableDecodedRgba, PlayableVideoQaResult } from "./videoQaPlug";
 export {
   HERO_FRAME_PLAYABLE_EXPORT_VERSION,
   formatHeroFramePlayableExportCopy,
@@ -76,4 +84,6 @@ export {
   prepareHeroFramePlayableExport,
   runHeroFramePlayableExport,
   summarizePlayableCompose,
+  heroFrameDecodedFromRgba,
 } from "./heroFrameExport";
+export type { HeroFramePlayableExportOpts } from "./heroFrameExport";
