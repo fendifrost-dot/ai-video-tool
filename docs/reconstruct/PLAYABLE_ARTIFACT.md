@@ -16,17 +16,17 @@ The first **playable** Architecture C reconstructed video artifact at the Archit
 PlayableClipSpec
   → 720×1280 media pack (real still 2aa1a44c band-crop + unique-RGB master)
   → intended Stage 1h SAM-3 consume (provenance, fail-closed)
-  → in-lib temporal propagateRepair (full clip; not the edge 24-frame cap)
+  → in-lib temporal propagateRepair in proxy-sized chunks (≤24) + stitch
   → reconstructOriginalMaster per frame
   → ffmpeg H.264 MP4 + E2 hook JSON
   → evaluateVideoQa(videoQaInputFromReconstructE2e(e2e, mp4)) → persist videoQaReportToJson
 ```
 
-**[DECISION]** No new JWT edge. Full-clip temporal runs in-lib (`propagateRepair`) so the entire 3.0 s / 72-frame window is not clipped by `TEMPORAL_PROPAGATE_LIMITS.maxFrames=24`.  
+**[DECISION]** No new JWT edge. Live `temporal-propagate-proxy` stays `maxFrames=24` (YELLOW vs canonical 241). This lane does **not** raise the cap. Clips longer than 24 frames are **chunked ≤24, propagated, and stitched** in-lib so reconstruct still sees the full window.  
 **[DECISION]** Intended SAM-3 is Stage 1h evidence at 720×1280 (`liveFetch=false`). Size mismatch fails closed — no silent 80×128 fixture.  
 **[DECISION]** No paid Grok / V3 / Fal / CC. Chest 1m and sleeve 1c paint stay locked.  
 **[DECISION]** Lane E2 owns scoring (`src/lib/eval/**`). Lane H calls `evaluateVideoQa` / `videoQaInputFromReconstructE2e` / `videoQaReportToJson` only. Encode-first with `frames:[]` is INCOMPLETE (`awaiting decoded_frames`); `blockingArtifactProducer` is always false.  
-**[DECISION]** Live `temporal-propagate-proxy` stays `maxFrames=24` (YELLOW vs canonical 241). This lane does **not** raise the cap. In-lib `propagateRepair` covers the Architecture C 72-frame window; a live-proxy path must chunk ≤24 and stitch.  
+**[DECISION]** Live `temporal-propagate-proxy` stays `maxFrames=24` (YELLOW vs canonical 241). This lane does **not** raise the cap. Option (a) GREEN path: chunk temporal jobs ≤24 and stitch reconstruct. Live 1080×1920 ingest of `76fe7438` remains not claimed.  
 **[DECISION]** D2 `reconstruct-lane-h-handoff-v2` is consumed for dims/fps/durationSec; codec/container stay null until this lane muxes.
 
 ---
@@ -47,6 +47,7 @@ PlayableClipSpec
 | Codec / container | H.264 / MP4 (`yuv420p`, `+faststart`)                                                                             |
 | Audio             | none on this pack (source has no audio track)                                                                     |
 | SHA-256           | `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`                                                 |
+| Temporal          | chunk ≤24 + stitch (`chunkCount=4`, `raisedProxyMaxFrames=false`); MP4 SHA **unchanged** after switch              |
 | Master provenance | `76fe7438-671d-4428-a7f6-17a45e98c16f`                                                                            |
 | SAM-3             | `intended_stage1h_evidence` / `architecture_c_still_1h_sam3` / `liveFetch=false`                                  |
 

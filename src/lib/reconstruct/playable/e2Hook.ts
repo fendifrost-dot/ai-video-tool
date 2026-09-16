@@ -27,6 +27,13 @@ export function buildPlayableArtifactClaims(
     originalPixelsPreservedWhereUnauthorized: compose.clip.originalPixelsPreservedWhereUnauthorized,
     temporalJobCount: compose.temporalJobCount,
     temporalFramesUsed: compose.temporalFramesUsed,
+    temporalChunking: {
+      maxFrames: compose.temporalChunking.maxFrames,
+      chunkCount: compose.temporalChunking.chunkCount,
+      didChunk: compose.temporalChunking.didChunk,
+      raisedProxyMaxFrames: false,
+      yellowContracts: [...compose.temporalChunking.yellowContracts],
+    },
     paidCalls: false,
     grokPerFrame: false,
     sam3LiveFetch: false,
