@@ -81,8 +81,8 @@
   "screenshots": {
     "exportToast1": "playable-export-evidence/export-toast-1.png",
     "exportToast2": "playable-export-evidence/export-toast-2.png",
-    "committedInRepo": false,
-    "note": "Uploads from the live click after hard refresh (status copy under Export playable reconstruct $0 is the verbatim toast). PRs #93 / #97 / #101 stored JSON probes, not PNGs, when this VM did not hydrate the files. Same here."
+    "committedInRepo": true,
+    "note": "Uploads from the live click after hard refresh. Status copy under Export playable reconstruct $0 is the verbatim toast."
   },
   "notClaimed": [
     "decoded_frame_e2_pass_frames_0",

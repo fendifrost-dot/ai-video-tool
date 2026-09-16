@@ -25,7 +25,7 @@ Authenticated Hero Frame §7 **Export playable reconstruct $0** click on the pub
 | Still goldens reopened | **no** (`stillGoldensReopened=false`) |
 
 Machine-readable copy: [`live-smoke/playable-export-incomplete.json`](./live-smoke/playable-export-incomplete.json).  
-Screenshots: attached to this evidence run as `playable-export-evidence/export-toast-1.png` and `export-toast-2.png` (described below). Prior Hero Frame smoke PRs (#93 / #97 / #101) stored JSON probes, not PNGs when this VM did not hydrate the binary uploads; the same happened here — the two export-toast captures were attached to the run and transcribed, but PNG bytes were not on this disk to `git add`.  
+Screenshots (committed): [`live-smoke/playable-export-evidence/export-toast-1.png`](./live-smoke/playable-export-evidence/export-toast-1.png) · [`export-toast-2.png`](./live-smoke/playable-export-evidence/export-toast-2.png).  
 Click recipe: [`PLAYABLE_ARTIFACT.md`](./PLAYABLE_ARTIFACT.md) § Parent live-verify recipe.
 
 ---
@@ -118,7 +118,7 @@ Probed on this evidence branch from `main` @ `f5f7d8a` (`ffprobe` + `sha256sum`)
 
 ## Screenshots [O]
 
-Source attachments on this evidence run were labeled `playable-export-evidence/export-toast-1.png` and `playable-export-evidence/export-toast-2.png` (uploads; 2026-09-16 ~1:19 AM America/Chicago). Expected commit path: [`live-smoke/playable-export-evidence/`](./live-smoke/playable-export-evidence/). Binaries were not hydrated onto this VM disk (same Class A JSON-probe pattern as PR #101 `docs/reconstruct/live-smoke/`). Visual content below is from those attachments.
+Committed under [`live-smoke/playable-export-evidence/`](./live-smoke/playable-export-evidence/) (uploads from the live click; 2026-09-16 ~1:19 AM America/Chicago).
 
 ### `export-toast-1.png`
 
