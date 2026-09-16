@@ -35,6 +35,13 @@ export const HERO_FRAME_PLAYABLE_EXPORT_KEYFRAME_INDEX = 2;
 /** Must stay ≤ temporal search radius (6) or hops fail-match. */
 export const PLAYABLE_DX_PER_FRAME = 2;
 
+/**
+ * Live `temporal-propagate-proxy` cap (YELLOW vs canonical 241-frame
+ * master). Do not silently raise. In-lib `propagateRepair` has no cap;
+ * a live-proxy path must chunk jobs to this width and stitch.
+ */
+export const LIVE_PROXY_MAX_FRAMES = 24;
+
 export type PlayableMediaKind =
   | "canonical_720x1280_still_derived"
   | "ingested_frames"

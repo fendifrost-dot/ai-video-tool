@@ -101,5 +101,14 @@
     "awaiting": ["decoded_frames"],
     "blockingArtifactProducer": false,
     "stillGoldensReopened": false
+  },
+  "laneHHandoff": {
+    "schemaVersion": "reconstruct-lane-h-handoff-v2",
+    "width": 720,
+    "height": 1280,
+    "fps": 24,
+    "frameCount": 72,
+    "durationSec": 3,
+    "unauthorizedLeakCount": 0
   }
 }

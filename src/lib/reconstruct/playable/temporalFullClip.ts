@@ -3,7 +3,8 @@
  *
  * Uses propagateRepair + approved CLEARED quads. Does not edit temporal
  * QA metrics, livePrep, or authorizeTemporalEdgeRequest.
- * Bypasses the edge 24-frame wire cap on purpose (full clip).
+ * Bypasses the edge 24-frame wire cap on purpose (Architecture C window).
+ * Live proxy stays maxFrames=24 (YELLOW vs canonical 241) — chunk, don't raise.
  */
 
 import {

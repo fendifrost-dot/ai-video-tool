@@ -25,7 +25,9 @@ PlayableClipSpec
 **[DECISION]** No new JWT edge. Full-clip temporal runs in-lib (`propagateRepair`) so the entire 3.0 s / 72-frame window is not clipped by `TEMPORAL_PROPAGATE_LIMITS.maxFrames=24`.  
 **[DECISION]** Intended SAM-3 is Stage 1h evidence at 720×1280 (`liveFetch=false`). Size mismatch fails closed — no silent 80×128 fixture.  
 **[DECISION]** No paid Grok / V3 / Fal / CC. Chest 1m and sleeve 1c paint stay locked.  
-**[DECISION]** Lane E2 owns scoring (`src/lib/eval/**`). Lane H calls `evaluateVideoQa` / `videoQaInputFromReconstructE2e` / `videoQaReportToJson` only. Encode-first with `frames:[]` is INCOMPLETE (`awaiting decoded_frames`); `blockingArtifactProducer` is always false.
+**[DECISION]** Lane E2 owns scoring (`src/lib/eval/**`). Lane H calls `evaluateVideoQa` / `videoQaInputFromReconstructE2e` / `videoQaReportToJson` only. Encode-first with `frames:[]` is INCOMPLETE (`awaiting decoded_frames`); `blockingArtifactProducer` is always false.  
+**[DECISION]** Live `temporal-propagate-proxy` stays `maxFrames=24` (YELLOW vs canonical 241). This lane does **not** raise the cap. In-lib `propagateRepair` covers the Architecture C 72-frame window; a live-proxy path must chunk ≤24 and stitch.  
+**[DECISION]** D2 `reconstruct-lane-h-handoff-v2` is consumed for dims/fps/durationSec; codec/container stay null until this lane muxes.
 
 ---
 
@@ -37,6 +39,7 @@ PlayableClipSpec
 | Claims            | [`claims.json`](artifacts/playable-76fe7438/claims.json)                                                          |
 | E2 hook           | [`e2-hook.json`](artifacts/playable-76fe7438/e2-hook.json)                                                        |
 | E2 video QA       | [`video-qa.json`](artifacts/playable-76fe7438/video-qa.json) — `lane-e2-video-qa-v1`                               |
+| D2 handoff v2     | [`lane-h-handoff.json`](artifacts/playable-76fe7438/lane-h-handoff.json)                                           |
 | Provenance        | [`provenance.json`](artifacts/playable-76fe7438/provenance.json)                                                  |
 | Working raster    | **720×1280**                                                                                                      |
 | Frame count       | **72** (entire 3.0 s canonical window @ 24 fps)                                                                   |

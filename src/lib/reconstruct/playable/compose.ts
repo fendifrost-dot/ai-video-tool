@@ -3,7 +3,7 @@
  * + original-master reconstruct. $0 / no Grok / no SAM-3 fetch / no new edge.
  */
 
-import { reconstructMasterClip, type ReconstructClipResult } from "../adapters";
+import { reconstructMasterClip, type ConsumedSam3Mask, type ReconstructClipResult } from "../adapters";
 import {
   DEFAULT_CHEST_STILL_GATE,
   DEFAULT_SLEEVE_STILL_GATE,
@@ -39,6 +39,7 @@ export type PlayableComposeOk = {
   originalFrames: MasterClipFrame[];
   clip: ReconstructClipResult;
   sam3: Sam3Provenance;
+  sam3Mask: ConsumedSam3Mask;
   decision: ReconstructLiveWiringDecision;
 };
 
@@ -170,6 +171,7 @@ export function runPlayableCompose(input: RunPlayableComposeInput = {}): Playabl
       originalFrames: pack.originalFrames,
       clip: reconstructed,
       sam3: sam3.provenance,
+      sam3Mask: sam3.mask,
       decision,
     };
   } catch (err) {

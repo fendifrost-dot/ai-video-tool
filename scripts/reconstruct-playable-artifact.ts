@@ -24,6 +24,7 @@ import {
   persistPlayableVideoQaJson,
   playableMp4Ref,
 } from "../src/lib/reconstruct/playable/videoQaPlug";
+import { buildPlayableLaneHHandoff } from "../src/lib/reconstruct/playable/handoff";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = join(ROOT, "docs/reconstruct/artifacts/playable-76fe7438");
@@ -74,6 +75,9 @@ function main(): void {
     writeFileSync(join(OUT_DIR, name), body);
   });
 
+  const laneHHandoff = buildPlayableLaneHHandoff(compose);
+  writeFileSync(join(OUT_DIR, "lane-h-handoff.json"), `${JSON.stringify(laneHHandoff, null, 2)}\n`);
+
   const provenance = {
     playableVersion: compose.playableVersion,
     issue: 111,
@@ -100,6 +104,15 @@ function main(): void {
       awaiting: videoQa.awaiting,
       blockingArtifactProducer: videoQa.blockingArtifactProducer,
       stillGoldensReopened: videoQa.stillGoldensReopened,
+    },
+    laneHHandoff: {
+      schemaVersion: laneHHandoff.schemaVersion,
+      width: laneHHandoff.width,
+      height: laneHHandoff.height,
+      fps: laneHHandoff.fps,
+      frameCount: laneHHandoff.frameCount,
+      durationSec: laneHHandoff.durationSec,
+      unauthorizedLeakCount: laneHHandoff.unauthorizedLeakCount,
     },
   };
 
