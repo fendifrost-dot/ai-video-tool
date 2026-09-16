@@ -48,6 +48,7 @@ export interface RealMediaLockTable {
   inventPassForbidden: boolean;
   taxonomyCategory: string;
   canonical: { masterClipId: string };
+  notSubstitutes: string[];
   locks: RealMediaLock[];
 }
 
