@@ -136,3 +136,27 @@ runs in-lib `propagateRepair`. Do not raise the cap from this lane. Live
 schema rather than re-implementing drift/flicker in eval core.
 
 See [`docs/temporal/VIDEO_QA.md`](../../docs/temporal/VIDEO_QA.md).
+
+---
+
+## Chunked proxy QA (v1, Lane C2 follow-on)
+
+**Work-order:** [#124](https://github.com/fendifrost-dot/ai-video-tool/issues/124) (prior #107 / PR #113)
+
+`qa/chunking.ts` splits a clip into **≤24-frame** windows (overlap 1) from the
+canonical keyframe, reindexes each window so the seed is **local index 0**, and
+dispatches via the existing in-lib adapter (`explicitArm`, `paidCalls=false`).
+`qa/chunkDispatch.ts` stitches global indices and scores **seams** at overlap
+frames.
+
+**GREEN:** live-shaped windows that the current proxy can accept without a
+Lovable edit or `maxFrames` raise. Stationary full-clip stitch covers 241
+frames. A second synthetic clip spec (`temporal-qa-second-clip-synthetic`, 72
+frames @ 24 fps) proves the helper is not hardcoded to `76fe7438`.
+
+**YELLOW — chunking is insufficient for translated mask continuity.** Each
+window re-paints CLEARED still quads at local 0 (the wire has no carried mask /
+`canonicalIndex`). Overlap seams on a translating probe drop IoU. Escalation
+(not this lane): optional carried-mask / `canonicalIndex` on
+`temporal-propagate-proxy` (Lovable + shared contract). Do **not** raise
+`maxFrames`.

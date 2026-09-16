@@ -1,0 +1,309 @@
+{
+  "schemaVersion": "temporal-video-qa-chunked-v1",
+  "lane": "C2",
+  "verdict": "PASS",
+  "passCount": 6,
+  "failCount": 0,
+  "paidCalls": false,
+  "grokPerFrame": false,
+  "sam3LiveFetch": false,
+  "stillGoldensReopened": false,
+  "clipSpec": {
+    "id": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+    "frameCount": 241,
+    "fps": 59.94,
+    "keyframeIndex": 47,
+    "keyframeTimeSec": 0.785,
+    "nativeWidth": 1080,
+    "nativeHeight": 1920,
+    "qaRaster": {
+      "width": 80,
+      "height": 128
+    },
+    "pixels": "synthetic_luma_stand_in_not_live_1080x1920",
+    "lineageNote": "canonical master 76fe7438 — IMG_5633 H.264 cloud copy metadata"
+  },
+  "chunkCount": 12,
+  "maxWindowFrames": 24,
+  "proxyMaxFrames": 24,
+  "coversFullClip": true,
+  "stitchedFrameCount": 241,
+  "uniqueGlobalIndices": 241,
+  "minSeamIou": 1,
+  "meanSeamIou": 1,
+  "holdLatchedChunks": 0,
+  "chunkingInsufficientForTranslation": false,
+  "yellowContracts": [
+    "edge_max_frames_24_vs_canonical_241",
+    "live_1080x1920_ingest_of_76fe7438_not_this_lane",
+    "lane_e2_should_consume_temporal-video-qa-v1",
+    "sam3_continuity_is_caller_supplied_not_live_fetch",
+    "chunk_quad_reset_no_carried_mask",
+    "chunking_insufficient_for_translated_mask_continuity"
+  ],
+  "plans": [
+    {
+      "chunkIndex": 0,
+      "direction": "backward",
+      "globalStart": 0,
+      "globalEnd": 1,
+      "seedGlobalIndex": 1,
+      "localCanonicalIndex": 0,
+      "frameCount": 2
+    },
+    {
+      "chunkIndex": 1,
+      "direction": "backward",
+      "globalStart": 1,
+      "globalEnd": 24,
+      "seedGlobalIndex": 24,
+      "localCanonicalIndex": 0,
+      "frameCount": 24
+    },
+    {
+      "chunkIndex": 2,
+      "direction": "backward",
+      "globalStart": 24,
+      "globalEnd": 47,
+      "seedGlobalIndex": 47,
+      "localCanonicalIndex": 0,
+      "frameCount": 24
+    },
+    {
+      "chunkIndex": 3,
+      "direction": "forward",
+      "globalStart": 47,
+      "globalEnd": 70,
+      "seedGlobalIndex": 47,
+      "localCanonicalIndex": 0,
+      "frameCount": 24
+    },
+    {
+      "chunkIndex": 4,
+      "direction": "forward",
+      "globalStart": 70,
+      "globalEnd": 93,
+      "seedGlobalIndex": 70,
+      "localCanonicalIndex": 0,
+      "frameCount": 24
+    },
+    {
+      "chunkIndex": 5,
+      "direction": "forward",
+      "globalStart": 93,
+      "globalEnd": 116,
+      "seedGlobalIndex": 93,
+      "localCanonicalIndex": 0,
+      "frameCount": 24
+    },
+    {
+      "chunkIndex": 6,
+      "direction": "forward",
+      "globalStart": 116,
+      "globalEnd": 139,
+      "seedGlobalIndex": 116,
+      "localCanonicalIndex": 0,
+      "frameCount": 24
+    },
+    {
+      "chunkIndex": 7,
+      "direction": "forward",
+      "globalStart": 139,
+      "globalEnd": 162,
+      "seedGlobalIndex": 139,
+      "localCanonicalIndex": 0,
+      "frameCount": 24
+    },
+    {
+      "chunkIndex": 8,
+      "direction": "forward",
+      "globalStart": 162,
+      "globalEnd": 185,
+      "seedGlobalIndex": 162,
+      "localCanonicalIndex": 0,
+      "frameCount": 24
+    },
+    {
+      "chunkIndex": 9,
+      "direction": "forward",
+      "globalStart": 185,
+      "globalEnd": 208,
+      "seedGlobalIndex": 185,
+      "localCanonicalIndex": 0,
+      "frameCount": 24
+    },
+    {
+      "chunkIndex": 10,
+      "direction": "forward",
+      "globalStart": 208,
+      "globalEnd": 231,
+      "seedGlobalIndex": 208,
+      "localCanonicalIndex": 0,
+      "frameCount": 24
+    },
+    {
+      "chunkIndex": 11,
+      "direction": "forward",
+      "globalStart": 231,
+      "globalEnd": 240,
+      "seedGlobalIndex": 231,
+      "localCanonicalIndex": 0,
+      "frameCount": 10
+    }
+  ],
+  "seamCount": 33,
+  "chestSeams": [
+    {
+      "globalIndex": 1,
+      "kind": "chest",
+      "fromChunk": 0,
+      "toChunk": 1,
+      "iou": 1
+    },
+    {
+      "globalIndex": 24,
+      "kind": "chest",
+      "fromChunk": 1,
+      "toChunk": 2,
+      "iou": 1
+    },
+    {
+      "globalIndex": 47,
+      "kind": "chest",
+      "fromChunk": 2,
+      "toChunk": 3,
+      "iou": 1
+    },
+    {
+      "globalIndex": 70,
+      "kind": "chest",
+      "fromChunk": 3,
+      "toChunk": 4,
+      "iou": 1
+    },
+    {
+      "globalIndex": 93,
+      "kind": "chest",
+      "fromChunk": 4,
+      "toChunk": 5,
+      "iou": 1
+    },
+    {
+      "globalIndex": 116,
+      "kind": "chest",
+      "fromChunk": 5,
+      "toChunk": 6,
+      "iou": 1
+    },
+    {
+      "globalIndex": 139,
+      "kind": "chest",
+      "fromChunk": 6,
+      "toChunk": 7,
+      "iou": 1
+    },
+    {
+      "globalIndex": 162,
+      "kind": "chest",
+      "fromChunk": 7,
+      "toChunk": 8,
+      "iou": 1
+    },
+    {
+      "globalIndex": 185,
+      "kind": "chest",
+      "fromChunk": 8,
+      "toChunk": 9,
+      "iou": 1
+    },
+    {
+      "globalIndex": 208,
+      "kind": "chest",
+      "fromChunk": 9,
+      "toChunk": 10,
+      "iou": 1
+    },
+    {
+      "globalIndex": 231,
+      "kind": "chest",
+      "fromChunk": 10,
+      "toChunk": 11,
+      "iou": 1
+    }
+  ],
+  "criteria": [
+    {
+      "id": "paid_calls_false",
+      "name": "No paid provider calls",
+      "verdict": "PASS",
+      "metrics": {
+        "paidCalls": 0
+      },
+      "note": "Chunked dispatch is $0.",
+      "failureReason": null
+    },
+    {
+      "id": "explicit_arm_dispatch",
+      "name": "Every window dispatched with explicitArm",
+      "verdict": "PASS",
+      "metrics": {
+        "chunks": 12,
+        "failed": 0
+      },
+      "note": "Auth lock: explicitArm required per window.",
+      "failureReason": null
+    },
+    {
+      "id": "windows_within_max_frames",
+      "name": "Every window ≤ proxy maxFrames",
+      "verdict": "PASS",
+      "metrics": {
+        "maxWindowFrames": 24,
+        "proxyMaxFrames": 24
+      },
+      "note": "Does not raise maxFrames.",
+      "failureReason": null
+    },
+    {
+      "id": "stitched_full_coverage",
+      "name": "Stitched globals cover the clip",
+      "verdict": "PASS",
+      "metrics": {
+        "unique": 241,
+        "expected": 241,
+        "chunks": 12
+      },
+      "note": "Chunk plan + stitch must cover every frame index.",
+      "failureReason": null
+    },
+    {
+      "id": "stationary_seams_hold",
+      "name": "Stationary seams stay high-IoU",
+      "verdict": "PASS",
+      "metrics": {
+        "minSeamIou": 1,
+        "seams": 11
+      },
+      "note": "Stationary clip: quad-reset matches previous identity warp.",
+      "failureReason": null
+    },
+    {
+      "id": "still_goldens_not_reopened",
+      "name": "Still goldens not rescored",
+      "verdict": "PASS",
+      "metrics": {
+        "chest11": 0,
+        "sleeve6": 0
+      },
+      "note": "Chunked QA never calls chest/sleeve still gates.",
+      "failureReason": null
+    }
+  ],
+  "notClaimed": [
+    "raising TEMPORAL_PROPAGATE_LIMITS.maxFrames",
+    "carried warped mask / canonicalIndex on temporal-propagate-proxy wire (Lovable)",
+    "live 1080×1920 pixels of 76fe7438",
+    "live SAM-3 fetch",
+    "chest 1m / sleeve 1c rescore"
+  ]
+}

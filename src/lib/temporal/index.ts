@@ -175,6 +175,19 @@ export {
 export type { CanonicalClipMeta } from "./canonicalClip";
 
 export {
+  CANONICAL_QA_CLIP_SPEC,
+  SECOND_QA_CLIP_SPEC,
+  keyframeIndexForSpec,
+} from "./clipSpec";
+export type { TemporalQaClipSpec } from "./clipSpec";
+
+export {
+  buildPortableCleanFixture,
+  secondClipCleanFixture,
+  translatingChunkSeamFixture,
+} from "./portableFixture";
+
+export {
   FULL_CLIP_DEFECT_WINDOWS,
   FULL_CLIP_DX_PERIOD,
   FULL_CLIP_FIXTURE_VERSION,
@@ -202,6 +215,10 @@ export {
   scorePropagationFrames,
   scoreSam3Continuity,
   temporalVideoQaReportToJson,
+  planTemporalChunks,
+  runChunkedTemporalVideoQa,
+  chunkedTemporalVideoQaToJson,
+  formatChunkedTemporalVideoQaSummary,
 } from "./qa";
 export type {
   TemporalBadFrame,

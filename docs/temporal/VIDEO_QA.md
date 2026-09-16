@@ -94,6 +94,30 @@ Both stamp `paidCalls=false`, `grokPerFrame=false`, `sam3LiveFetch=false`, `stil
 2. **`live_1080x1920_ingest_of_76fe7438_not_this_lane`** — same not-claimed as Reconstruct E2E. Later Class C.
 3. **`lane_e2_should_consume_temporal-video-qa-v1`** — do not re-implement drift/flicker inside `src/lib/eval/**` from this lane.
 4. **`sam3_continuity_is_caller_supplied_not_live_fetch`** — no `sam3-segment-proxy` / CC.
+5. **`chunk_quad_reset_no_carried_mask`** — each ≤24-frame window re-paints CLEARED still quads at local index 0. The live proxy wire has no carried mask / `canonicalIndex`.
+6. **`chunking_insufficient_for_translated_mask_continuity`** — overlap seams on a translating probe drop IoU. **Do not raise `maxFrames`.** Escalation is a carried-mask / `canonicalIndex` wire field (Lovable + shared contract), not a cap raise.
+
+## Chunked proxy dispatch (follow-on #124)
+
+Split the 241-frame clip into **≤24-frame** windows (overlap 1) from keyframe 47, reindex so the seed is local `0` (current proxy default), `dispatchTemporalPropagate` with `explicitArm: true`, stitch globals, score seams.
+
+| Path | Result |
+|------|--------|
+| Canonical stationary 241 | GREEN — full coverage, seams IoU ≈ 1, `paidCalls=false` |
+| Second clip `temporal-qa-second-clip-synthetic` (72 @ 24 fps, kf 18) | GREEN — same helper, different spec |
+| Translating seam probe | **YELLOW** — min seam IoU < 0.85; chunking insufficient without carried mask |
+
+Planner **throws** if asked for `maxFrames > 24`. 241-frame single POST still rejected.
+
+Produced on this follow-on:
+
+| Fixture | Result |
+|---------|--------|
+| Canonical 241 | **TEMPORAL-QA-CHUNKED PASS 6/6** `frames=241 chunks=12 maxWindow=24 paidCalls=false` (stationary seams high-IoU) |
+| Second clip 72 @ 24 fps | **PASS 6/6** `frames=72 chunks=4 maxWindow=24` |
+| Translating seam probe 30 | **PASS 6/6** (YELLOW proof) min seam IoU **0.736**, `chunkingInsufficientForTranslation=true` |
+
+JSON: [`video-qa/chunked-canonical.json`](./video-qa/chunked-canonical.json) · [`video-qa/chunked-second-clip.json`](./video-qa/chunked-second-clip.json) · [`video-qa/chunked-translating-seam.json`](./video-qa/chunked-translating-seam.json)
 
 ## Metrics produced (this PR)
 
@@ -118,6 +142,7 @@ JSON: [`video-qa/full-clip-clean.json`](./video-qa/full-clip-clean.json) · [`vi
 - Defect evidence: [`video-qa/full-clip-defects.json`](./video-qa/full-clip-defects.json)
 - Types: `src/lib/temporal/qa/report.ts`
 - Emit: `npx tsx scripts/temporal-video-qa.mts`
+- Chunked: [`video-qa/chunked-canonical.json`](./video-qa/chunked-canonical.json) · [`video-qa/chunked-second-clip.json`](./video-qa/chunked-second-clip.json) · [`video-qa/chunked-translating-seam.json`](./video-qa/chunked-translating-seam.json)
 
 ## Hard locks honored
 

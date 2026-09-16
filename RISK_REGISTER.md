@@ -343,6 +343,16 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 
 ---
 
+## TEMPORAL-3 — Chunked proxy windows without raising maxFrames
+
+- **Severity:** Low · **Confidence:** Confirmed · **Status:** Monitoring · **Owner:** Products (AVT) / Lane C2
+- **Summary:** Follow-on #124. GREEN helper splits a clip into ≤24-frame overlap-1 windows, reindexes seed to local 0, dispatches via the existing in-lib `temporal-propagate-proxy` adapter (`explicitArm`, `paidCalls=false`), and stitches global metrics. `maxFrames` stays **24**. Stationary 241-frame stitch covers the canonical clip; a second synthetic spec (72 frames @ 24 fps) proves portability. **YELLOW:** each window re-paints CLEARED still quads (no carried mask on the wire), so translating overlap seams drop IoU — chunking is insufficient for translated-mask continuity. Escalation is a shared-contract wire field, not a cap raise. No Lovable edits.
+- **Pointer:** [`docs/temporal/VIDEO_QA.md`](docs/temporal/VIDEO_QA.md); [`src/lib/temporal/qa/chunking.ts`](src/lib/temporal/qa/chunking.ts); [`src/lib/temporal/qa/chunkDispatch.ts`](src/lib/temporal/qa/chunkDispatch.ts).
+- **DoD (target):** unit proofs that every window ≤24, 241-frame stitch covers the clip, second-clip spec runs, translating seam YELLOW is named, `maxFrames` unchanged.
+- **Mitigations:** planner refuses `maxFrames > 24`; 241-frame single POST still rejected; yellow tokens in JSON.
+
+---
+
 ## RECONSTRUCT-1 — Gate 4 wiring without live SAM-3 / new edge
 
 - **Severity:** Medium · **Confidence:** Confirmed · **Status:** In-remediation (E2E $0 click **PASS 9/9** after PR #99 Publish; Lane D2 unique-RGB **720×1280 PASS 15/15** — issue #108; live `76fe7438` camera pixels / SAM-3 still not claimed) · **Owner:** Products (AVT) / Lane D

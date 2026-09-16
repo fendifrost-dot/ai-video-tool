@@ -16,11 +16,9 @@
 | Temporal `$0` **click** smoke | YES (PR #97) | live product UI | **SUCCESS** — 3 jobs, `paidCalls=false` |
 | Lane D original-master live wiring | YES (PR #92) | n/a — in-lib | YES (library) |
 | **RECONSTRUCT-1 E2E $0** | YES (PR #99, `58b8a49`) | frontend Publish | **PASS 9/9** — `paidCalls=false`, `frames=5` |
-<<<<<<< HEAD
-| **Lane D2 reconstruct video QA** | this PR (issue **#108**) | n/a — in-lib, no Publish | **PASS 15/15** unique-RGB 720×1280 |
-=======
-| Lane C2 temporal video QA (full clip) | this PR | n/a — in-lib | **READY** — 241-frame metrics, `paidCalls=false` |
->>>>>>> 3a74835 (Lane C2: full-clip temporal video QA (241 frames, $0))
+| **Lane D2 reconstruct video QA** | YES (PR #118) | n/a — in-lib | **PASS 15/15** unique-RGB 720×1280 |
+| Lane C2 temporal video QA (full clip) | PR #113 | n/a — in-lib | **READY** — 241-frame metrics, `paidCalls=false` |
+| Lane C2 chunked proxy QA + 2nd clip | this PR (#124) | n/a — in-lib | **READY** — ≤24-frame windows, seams YELLOW named |
 
 ## Lane D2 — Reconstruction video QA
 
@@ -55,7 +53,13 @@ Emit: `npx tsx scripts/temporal-video-qa.mts`
 
 **YELLOW:** proxy `maxFrames=24` vs canonical 241; live 1080×1920 ingest; Lane E2 should consume this schema; SAM-3 is not live-fetched.
 
-**Not claimed:** live native pixels of `76fe7438`, live SAM-3 fetch, still-golden rescore, MP4 encode, proxy cap raise.
+## Lane C2 — Chunked proxy QA + second-clip portability
+
+Work-order: GitHub **#124** (prior **#107** / PR **#113**, sprint **#102**). `src/lib/temporal/**` QA only. **Do not raise `maxFrames=24`.** No Lovable edits.
+
+≤24-frame overlap-1 windows, seed reindexed to local 0, `explicitArm` / `paidCalls=false`, stitched globals. Second clip spec `temporal-qa-second-clip-synthetic` (72 @ 24 fps). **YELLOW:** proxy re-paints CLEARED quads each window — translating seams prove chunking is insufficient without a carried-mask wire field.
+
+**Not claimed:** live native pixels, live SAM-3, `maxFrames` raise, Lovable proxy wire change.
 
 ## Canonical IDs (unchanged)
 
