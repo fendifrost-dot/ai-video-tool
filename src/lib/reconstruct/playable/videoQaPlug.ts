@@ -14,6 +14,13 @@ import {
 } from "@/lib/eval";
 import type { VideoQaJson, VideoQaMp4Ref, VideoQaReport } from "@/lib/eval/videoQaTypes";
 import { RECONSTRUCT_E2E_VERSION, type ReconstructE2eOk } from "../e2e";
+import type { Sam3MaskSource } from "@/lib/reconstruct/adapters";
+import {
+  SAM3_CONSUME_VERSION,
+  SAM3_LIVE_FETCH_ATTEMPTED,
+  type Sam3ConsumeProvenance,
+  type Sam3FallbackStatus,
+} from "@/lib/reconstruct/sam3Consume";
 import type { PlayableComposeOk } from "./compose";
 
 export const PLAYABLE_VIDEO_QA_ARTIFACT_ID = "playable-76fe7438";
