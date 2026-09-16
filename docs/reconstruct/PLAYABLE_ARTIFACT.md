@@ -19,12 +19,13 @@ PlayableClipSpec
   → in-lib temporal propagateRepair (full clip; not the edge 24-frame cap)
   → reconstructOriginalMaster per frame
   → ffmpeg H.264 MP4 + E2 hook JSON
+  → evaluateVideoQa(videoQaInputFromReconstructE2e(e2e, mp4)) → persist videoQaReportToJson
 ```
 
 **[DECISION]** No new JWT edge. Full-clip temporal runs in-lib (`propagateRepair`) so the entire 3.0 s / 72-frame window is not clipped by `TEMPORAL_PROPAGATE_LIMITS.maxFrames=24`.  
 **[DECISION]** Intended SAM-3 is Stage 1h evidence at 720×1280 (`liveFetch=false`). Size mismatch fails closed — no silent 80×128 fixture.  
 **[DECISION]** No paid Grok / V3 / Fal / CC. Chest 1m and sleeve 1c paint stay locked.  
-**[DECISION]** Lane E2 owns scoring. This lane emits `avt.reconstruct.playable.e2-hook.v1` only.
+**[DECISION]** Lane E2 owns scoring (`src/lib/eval/**`). Lane H calls `evaluateVideoQa` / `videoQaInputFromReconstructE2e` / `videoQaReportToJson` only. Encode-first with `frames:[]` is INCOMPLETE (`awaiting decoded_frames`); `blockingArtifactProducer` is always false.
 
 ---
 
@@ -35,6 +36,7 @@ PlayableClipSpec
 | Path              | [`docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4`](artifacts/playable-76fe7438/reconstructed.mp4) |
 | Claims            | [`claims.json`](artifacts/playable-76fe7438/claims.json)                                                          |
 | E2 hook           | [`e2-hook.json`](artifacts/playable-76fe7438/e2-hook.json)                                                        |
+| E2 video QA       | [`video-qa.json`](artifacts/playable-76fe7438/video-qa.json) — `lane-e2-video-qa-v1`                               |
 | Provenance        | [`provenance.json`](artifacts/playable-76fe7438/provenance.json)                                                  |
 | Working raster    | **720×1280**                                                                                                      |
 | Frame count       | **72** (entire 3.0 s canonical window @ 24 fps)                                                                   |
@@ -71,17 +73,16 @@ Caller-supplied SAM-3 is accepted only at `width×height`. An 80×128 fixture ma
 
 ## What is / is not claimed
 
-**[VERIFIED]** in-lib: 720×1280 compose, intended SAM-3 consume, in-lib temporal jobs, original-pixel preservation where α===0, playable H.264 MP4 via ffmpeg, E2 hook JSON.
+**[VERIFIED]** in-lib: 720×1280 compose, intended SAM-3 consume, in-lib temporal jobs, original-pixel preservation where α===0, playable H.264 MP4 via ffmpeg, E2 hook JSON, Lane E2 `evaluateVideoQa` plug-in (`blockingArtifactProducer=false`).
 
 **[OBSERVED]** Lovable Cloud row for master `76fe7438` is stored as 1080×1920 HDR (`IMG_5633…`); Architecture C stills / SAM-3 / chest 1m / sleeve 1c are **720×1280**. This artifact uses the Architecture C working raster.
 
 **Not claimed (not FAILs):**
 
-- Live storage bytes of master `76fe7438` (1080×1920) decoded on this VM (JWT / storage sign)
+- Live storage bytes of master `76fe7438` (1080×1920 HDR) decoded on this VM (JWT / storage sign)
 - Live SAM-3 fetch via `sam3-segment-proxy`
 - Chest 11/11 / sleeve 6/6 rescore
 - Edge redeploy
-- Lane E2 scoring of the MP4 (hook only)
 
 ---
 
@@ -101,8 +102,8 @@ Caller-supplied SAM-3 is accepted only at `width×height`. An 80×128 fixture ma
 5. Scroll to **7 · Architecture C — still-first deterministic repair**.
 6. Do **not** click chest or sleeve paint.
 7. Confirm **Export playable reconstruct $0** is enabled.
-8. Click once. Expect toast `PLAYABLE compose 720×1280 frames=8 … paidCalls=false.` and E2 hook JSON in the panel (`scoringOwner=lane_e2`).
-9. Full-clip MP4 remains the ffmpeg artifact (72 frames) at the path above — Lane E2 hooks `e2-hook.json`.
+8. Click once. Expect toast `PLAYABLE compose 720×1280 frames=8 … paidCalls=false.` plus a Lane E2 `evaluateVideoQa` summary (`blockingArtifactProducer=false`).
+9. Full-clip MP4 remains the ffmpeg artifact (72 frames) at the path above. Persist path: `evaluateVideoQa(videoQaInputFromReconstructE2e(e2e, mp4))` → `video-qa.json`. Encode-first with `frames:[]` is INCOMPLETE (`awaiting decoded_frames`).
 
 Publish ≠ edge redeploy.
 
@@ -113,7 +114,7 @@ Publish ≠ edge redeploy.
 | Surface                           | Action                              |
 | --------------------------------- | ----------------------------------- |
 | `src/lib/reconstruct/playable/**` | This lane                           |
-| `src/lib/eval/**`                 | E2 — hook contract only             |
+| `src/lib/eval/**`                 | E2 — consume only, no edits         |
 | `src/lib/temporal/**` QA metrics  | C2 — consume `propagateRepair` only |
 | `src/lib/pipeline/**`             | G2 — not edited                     |
 | logoComposite / sleeve paint      | not edited                          |

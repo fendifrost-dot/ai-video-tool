@@ -91,5 +91,15 @@
     "sam3Consumed": true,
     "paidCalls": false,
     "grokPerFrame": false
+  },
+  "videoQa": {
+    "schemaVersion": "lane-e2-video-qa-v1",
+    "verdict": "INCOMPLETE",
+    "passCount": 2,
+    "failCount": 0,
+    "skipCount": 7,
+    "awaiting": ["decoded_frames"],
+    "blockingArtifactProducer": false,
+    "stillGoldensReopened": false
   }
 }

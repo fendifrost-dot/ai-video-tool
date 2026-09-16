@@ -17,6 +17,13 @@ import {
   buildPlayableE2Hook,
   playableE2HookToJson,
 } from "../src/lib/reconstruct/playable/e2Hook";
+import {
+  PLAYABLE_MP4_RELATIVE_PATH,
+  PLAYABLE_VIDEO_QA_ARTIFACT_ID,
+  evaluatePlayableVideoQa,
+  persistPlayableVideoQaJson,
+  playableMp4Ref,
+} from "../src/lib/reconstruct/playable/videoQaPlug";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = join(ROOT, "docs/reconstruct/artifacts/playable-76fe7438");
@@ -49,6 +56,24 @@ function main(): void {
   const mp4Bytes = readFileSync(join(OUT_DIR, "reconstructed.mp4"));
   const sha256 = createHash("sha256").update(mp4Bytes).digest("hex");
 
+  const { json: videoQaJson, report: videoQa } = evaluatePlayableVideoQa({
+    compose,
+    mp4: playableMp4Ref({
+      produced: true,
+      artifactId: PLAYABLE_VIDEO_QA_ARTIFACT_ID,
+      path: PLAYABLE_MP4_RELATIVE_PATH,
+      sha256,
+      byteLength: mp4Bytes.length,
+    }),
+    // Encode-first: MP4 is the producer artifact. E2 scores decoded
+    // rasters when attached; empty frames → INCOMPLETE, never blocks H.
+    includeDecodedFrames: false,
+  });
+  persistPlayableVideoQaJson(videoQaJson, (relativePath, body) => {
+    const name = relativePath.split("/").pop() ?? "video-qa.json";
+    writeFileSync(join(OUT_DIR, name), body);
+  });
+
   const provenance = {
     playableVersion: compose.playableVersion,
     issue: 111,
@@ -66,6 +91,16 @@ function main(): void {
     claims,
     sam3: compose.sam3,
     composeSelfCheck: hook.composeSelfCheck,
+    videoQa: {
+      schemaVersion: videoQa.schemaVersion,
+      verdict: videoQa.verdict,
+      passCount: videoQa.passCount,
+      failCount: videoQa.failCount,
+      skipCount: videoQa.skipCount,
+      awaiting: videoQa.awaiting,
+      blockingArtifactProducer: videoQa.blockingArtifactProducer,
+      stillGoldensReopened: videoQa.stillGoldensReopened,
+    },
   };
 
   writeFileSync(join(OUT_DIR, "claims.json"), `${JSON.stringify(claims, null, 2)}\n`);
@@ -91,6 +126,8 @@ function main(): void {
         preserved: compose.clip.originalPixelsPreservedWhereUnauthorized,
         sam3: compose.sam3.source,
         sha256,
+        videoQaVerdict: videoQa.verdict,
+        videoQaBlocking: videoQa.blockingArtifactProducer,
       },
       null,
       2,

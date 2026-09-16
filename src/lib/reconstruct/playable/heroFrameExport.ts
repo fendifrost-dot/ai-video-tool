@@ -5,6 +5,7 @@
  */
 
 import { ARCHITECTURE_C_V2_REPAIR } from "@/lib/heroFrame/architectureCStillRepair";
+import { formatVideoQaSummary, type VideoQaJson } from "@/lib/eval";
 import {
   RECONSTRUCT_LIVE_WIRING_ARMED,
   TEMPORAL_ARMED_AFTER_PR_88,
@@ -17,6 +18,7 @@ import { runPlayableCompose, type PlayableComposeResult } from "./compose";
 import { heroFramePlayableSpec } from "./spec";
 import { playableE2HookToJson, buildPlayableArtifactClaims, buildPlayableE2Hook } from "./e2Hook";
 import type { PlayableMp4Claims } from "./contract";
+import { evaluatePlayableVideoQa, playableMp4Ref } from "./videoQaPlug";
 
 export const HERO_FRAME_PLAYABLE_EXPORT_VERSION = "1.0.0";
 
@@ -92,13 +94,19 @@ export function runHeroFramePlayableExport(): {
   compose: PlayableComposeResult;
   summary: string;
   hookJson: Record<string, unknown> | null;
+  videoQaJson: VideoQaJson | null;
 } {
   const compose = runPlayableCompose({
     explicitArm: true,
     spec: heroFramePlayableSpec(),
   });
   if (!compose.ok) {
-    return { compose, summary: summarizePlayableCompose(compose), hookJson: null };
+    return {
+      compose,
+      summary: summarizePlayableCompose(compose),
+      hookJson: null,
+      videoQaJson: null,
+    };
   }
   const placeholderMp4: PlayableMp4Claims = {
     width: compose.width,
@@ -122,9 +130,14 @@ export function runHeroFramePlayableExport(): {
     claimsRelativePath: "docs/reconstruct/artifacts/playable-76fe7438/claims.json",
     hookRelativePath: "docs/reconstruct/artifacts/playable-76fe7438/e2-hook.json",
   });
+  const { json: videoQaJson, report } = evaluatePlayableVideoQa({
+    compose,
+    mp4: playableMp4Ref({ produced: false }),
+  });
   return {
     compose,
-    summary: summarizePlayableCompose(compose),
+    summary: `${summarizePlayableCompose(compose)} ${formatVideoQaSummary(report)}`,
     hookJson: playableE2HookToJson(hook),
+    videoQaJson,
   };
 }

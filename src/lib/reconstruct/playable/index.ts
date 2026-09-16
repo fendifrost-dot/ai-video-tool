@@ -26,6 +26,16 @@ export type { PlayableComposeResult } from "./compose";
 export { encodePlayableMp4, ffmpegAvailable, probePlayableMp4 } from "./encodeMp4";
 export { buildPlayableArtifactClaims, buildPlayableE2Hook, playableE2HookToJson } from "./e2Hook";
 export {
+  PLAYABLE_MP4_RELATIVE_PATH,
+  PLAYABLE_VIDEO_QA_ARTIFACT_ID,
+  PLAYABLE_VIDEO_QA_RELATIVE_PATH,
+  evaluatePlayableVideoQa,
+  evaluatePlayableVideoQaFromE2e,
+  persistPlayableVideoQaJson,
+  playableComposeToReconstructE2e,
+  playableMp4Ref,
+} from "./videoQaPlug";
+export {
   HERO_FRAME_PLAYABLE_EXPORT_VERSION,
   formatHeroFramePlayableExportCopy,
   heroFramePlayableExportEnabled,

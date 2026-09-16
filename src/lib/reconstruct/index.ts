@@ -68,6 +68,9 @@ export {
   runPlayableCompose,
   prepareHeroFramePlayableExport,
   runHeroFramePlayableExport,
+  evaluatePlayableVideoQa,
+  evaluatePlayableVideoQaFromE2e,
+  playableComposeToReconstructE2e,
 } from "./playable";
 
 export type { ReconstructInput, ReconstructMetrics, ReconstructResult, RgbaImage } from "./types";

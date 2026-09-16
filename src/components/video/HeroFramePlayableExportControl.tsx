@@ -71,8 +71,8 @@ export function HeroFramePlayableExportControl({
       <p className="text-[11px] text-muted-foreground">
         $0 path: intended Stage 1h SAM-3 + in-lib full-window temporal + original-master
         reconstruct. No Grok. Full-clip MP4 is the ffmpeg artifact
-        (docs/reconstruct/artifacts/playable-76fe7438/). E2 scores the hook JSON — this control does
-        not own eval modules.
+        (docs/reconstruct/artifacts/playable-76fe7438/). Calls evaluateVideoQa via
+        videoQaInputFromReconstructE2e — this control does not own eval modules.
       </p>
       <Button
         type="button"

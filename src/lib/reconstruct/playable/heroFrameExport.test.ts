@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ARCHITECTURE_C_V2_REPAIR } from "@/lib/heroFrame/architectureCStillRepair";
+import { VIDEO_QA_SPEC_VERSION } from "@/lib/eval";
 import { RECONSTRUCT_LIVE_WIRING_ARMED } from "../liveWiring";
 import {
   PLAYABLE_E2_HOOK_SCHEMA,
@@ -42,10 +43,11 @@ describe("formatHeroFramePlayableExportCopy", () => {
 });
 
 describe("runHeroFramePlayableExport", () => {
-  it("emits E2 hook JSON without owning eval scoring", () => {
-    const { compose, summary, hookJson } = runHeroFramePlayableExport();
+  it("emits E2 hook JSON and evaluateVideoQa report without owning scoring", () => {
+    const { compose, summary, hookJson, videoQaJson } = runHeroFramePlayableExport();
     expect(compose.ok).toBe(true);
     expect(summary).toMatch(/PLAYABLE compose 720×1280/);
+    expect(summary).toMatch(/Lane E2 video QA/);
     expect(hookJson).not.toBeNull();
     expect(hookJson?.schemaVersion).toBe(PLAYABLE_E2_HOOK_SCHEMA);
     expect(hookJson?.scoringOwner).toBe("lane_e2");
@@ -58,5 +60,10 @@ describe("runHeroFramePlayableExport", () => {
     expect(input.width).toBe(720);
     expect(input.height).toBe(1280);
     expect(input.masterClipAssetId).toBe("76fe7438-671d-4428-a7f6-17a45e98c16f");
+    expect(videoQaJson).not.toBeNull();
+    expect(videoQaJson?.schemaVersion).toBe(VIDEO_QA_SPEC_VERSION);
+    expect(videoQaJson?.paidCalls).toBe(false);
+    expect(videoQaJson?.stillGoldensReopened).toBe(false);
+    expect(videoQaJson?.blockingArtifactProducer).toBe(false);
   });
 });
