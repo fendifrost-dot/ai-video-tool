@@ -110,3 +110,29 @@ stays `"1.0.0"`.
 **Hard stop:** dispatch still needs `explicitArm: true`. Hero Frame
 `temporalTrackingEnabled` is flipped by the Hero Frame owner (#90) when
 armed. See [`docs/temporal/LIVE_PREP.md`](../../docs/temporal/LIVE_PREP.md).
+
+---
+
+## Video QA (v1, Lane C2)
+
+**Work-order:** [#107](https://github.com/fendifrost-dot/ai-video-tool/issues/107) (sprint #102 / umbrella #50)
+
+Measurement-only. Does **not** change `propagateRepair`, authorize constants, or
+`temporal-propagate-proxy`. Schema: `temporal-video-qa-v1`.
+
+| Module | Role |
+| ------ | ---- |
+| `canonicalClip.ts` | Frozen master `76fe7438` metadata (241 frames / 59.94 fps / keyframe index 47) |
+| `fullClipFixture.ts` | Synthetic 241-frame luma stand-in (clean + injected-defect) |
+| `qa/metrics.ts` | Drift / flicker / coverage / occlusion continuity |
+| `qa/sam3Continuity.ts` | SAM-3-shaped mask continuity (`sam3LiveFetch: false`) |
+| `qa/badFrames.ts` | Automatic bad-frame tokens |
+| `qa/report.ts` | JSON evidence + PASS/FAIL criteria |
+| `qa/dispatchLock.ts` | Proxy `maxFrames=24` / `paidCalls=false` regression lock |
+
+**YELLOW:** the authenticated proxy still caps `clip.frames` at 24. Full-clip QA
+runs in-lib `propagateRepair`. Do not raise the cap from this lane. Live
+1080×1920 ingest of `76fe7438` is not claimed. Lane E2 should consume this
+schema rather than re-implementing drift/flicker in eval core.
+
+See [`docs/temporal/VIDEO_QA.md`](../../docs/temporal/VIDEO_QA.md).
