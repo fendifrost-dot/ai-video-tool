@@ -14,7 +14,8 @@ Sprint **#102** / umbrella **#50**. Advance past live encode-first INCOMPLETE (`
 
 **Live click after Publish of this PR:** still **INCOMPLETE** `frames=0` — browser has no ffmpeg; the control does not import `decodeMp4.ts`. GREEN here is CI/node decode, not a new live toast.
 
-Write-up: [`docs/reconstruct/PLAYABLE_DECODE.md`](docs/reconstruct/PLAYABLE_DECODE.md)
+Write-up: [`docs/reconstruct/PLAYABLE_DECODE.md`](docs/reconstruct/PLAYABLE_DECODE.md)  
+PR: [#132](https://github.com/fendifrost-dot/ai-video-tool/pull/132) (READY, do not merge, do not Publish).
 
 ## Lane H stretch — 2nd-clip playable portability (`f31bd0f2`)
 
