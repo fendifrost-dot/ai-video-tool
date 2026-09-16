@@ -15,7 +15,8 @@
 | Lane B sleeve still **1c** live | paint YES (PR #85); score evidence PR #86 | YES (asset `fdb86b18`) | **CLEARED 6/6 — LOCKED, do not reopen sleeve paint** |
 | Temporal live activation | YES (`TEMPORAL_LIVE_ACTIVATION_ARMED = true`) | **NO — redeploy `temporal-propagate-proxy` only** | **YES after** that one edge redeploy |
 | Hero Frame `temporalTrackingEnabled` | YES (`true` when armed) | frontend Publish | **YES** — product dispatch uses `explicitArm` |
-| Lane D original-master live wiring | this PR | **n/a — no edge function** | **YES** as `$0` in-lib dispatch (`explicitArm` required) |
+| Hero Frame §7 Temporal Run control | this PR (#94) | frontend Publish | **YES** after Publish — button gated on canDispatch / armed / tracking |
+| Lane D original-master live wiring | YES (PR #92) | **n/a — no edge function** | **YES** as `$0` in-lib dispatch (`explicitArm` required) |
 
 ## HERO FRAME TEMPORAL FLAG — product dispatch with explicitArm
 
@@ -26,6 +27,14 @@ Work-order: GitHub **#90** (lineage **#87** / PR #88, parent **#50**). Hero Fram
 Still-repair edge mirror stays **false** — no `architecture-c-still-repair-proxy` redeploy.
 
 Parent deploy from #91: **none** (frontend-only). The #88 `temporal-propagate-proxy` Lovable redeploy is unchanged.
+
+## HERO FRAME §7 — Temporal Run control
+
+Work-order: GitHub **#94** (lineage **#90** / PR #91, parent **#50**). Hero Frame owner only. **Do not reopen chest 1m or sleeve paint.**
+
+§7 now has **Run temporal propagate**. It calls `prepareHeroFrameTemporalDispatch` / `buildHeroFrameTemporalPropagateBody` then `callTemporalPropagate` with the canonical luma fixture + CLEARED chest/sleeve quads (`explicitArm: true`). Button is disabled unless `canDispatch` + armed + `temporalTrackingEnabled`. Still-repair hard-stop copy that says `temporalTrackingEnabled=false` or "temporal propagation is disabled" is dropped when the product flag is true.
+
+Parent deploy from this PR: **Lovable frontend Publish only**. No edge redeploy. The #88 `temporal-propagate-proxy` Lovable redeploy is unchanged.
 
 ## LANE D — Original-master live wiring (Architecture C gate 4)
 

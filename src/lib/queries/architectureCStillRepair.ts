@@ -59,7 +59,7 @@ export async function callArchitectureCStillRepair(
     temporalTrackingEnabled: false,
     hardStop: String(
       body.hardStop ??
-        "Still-first gate only. Temporal propagation is disabled until this still passes human review.",
+        "Still-first paint gate only. Chest 1m + sleeve 1c are CLEARED and locked. Temporal dispatch is Hero Frame §7 → temporal-propagate-proxy.",
     ),
   };
 }

@@ -65,7 +65,7 @@ TEMPORAL_LIVE_ACTIVATION_ARMED = true
 
 Lane C `prepareHeroFrameTemporalHook` still returns `temporalTrackingEnabled: false` (temporal module does not own the product flag).
 
-Hero Frame owner now flips `ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` to **true** in `src/lib/heroFrame/architectureCStillRepair.ts`. Product UI calls `prepareHeroFrameTemporalDispatch()` which sets `explicitArm: true` when the product flag and `TEMPORAL_LIVE_ACTIVATION_ARMED` are both true.
+Hero Frame owner now flips `ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` to **true** in `src/lib/heroFrame/architectureCStillRepair.ts`. Product UI calls `prepareHeroFrameTemporalDispatch()` which sets `explicitArm: true` when the product flag and `TEMPORAL_LIVE_ACTIVATION_ARMED` are both true. Hero Frame §7 **Run temporal propagate** (#94) is the click path: gated on `canDispatch` / armed / tracking, then `callTemporalPropagate`.
 
 **[DECISION]** Still-repair edge mirror stays **false**. `architecture-c-still-repair-proxy` 500s `tracking_flag_misconfigured` if that copy is true. Temporal dispatch is `temporal-propagate-proxy`, not still-repair. No still-repair edge redeploy from the Hero Frame flip. Do not edit chest/sleeve paint as part of that flip.
 
