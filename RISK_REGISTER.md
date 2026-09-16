@@ -326,3 +326,13 @@ Last reviewed: **2026-09-16** (TEMPORAL-1 added for Lane C live arm).
 - **Pointer:** [`docs/temporal/LIVE_PREP.md`](docs/temporal/LIVE_PREP.md); [`src/lib/temporal/livePrep.ts`](src/lib/temporal/livePrep.ts); [`supabase/functions/temporal-propagate-proxy/README.md`](supabase/functions/temporal-propagate-proxy/README.md).
 - **DoD (target):** parent Lovable-redeploys **only** `temporal-propagate-proxy`; Hero Frame owner flip (if any) is a separate change; no per-frame Grok; no proxy-auth widen.
 - **Mitigations:** compile-time arm + explicitArm; luma-only body caps; no service-role / CC secret on this function.
+
+---
+
+## RECONSTRUCT-1 — Gate 4 wiring without live SAM-3 / new edge
+
+- **Severity:** Medium · **Confidence:** Confirmed · **Status:** Open · **Owner:** Products (AVT) / Lane D
+- **Summary:** Original-master live wiring (`RECONSTRUCT_LIVE_WIRING_ARMED = true`) composites CLEARED chest/sleeve stills + caller-supplied SAM-3 α + trusted temporal masks onto original master `76fe7438` via `reconstructOriginalMaster`. Dispatch still requires `explicitArm`. This lane does **not** fetch SAM-3 (`sam3-segment-proxy` / CC), does **not** add a JWT edge, and does **not** edit `logoComposite`, sleevePanel paint, or temporal authorize constants. A full inverted generated still cannot become the master when α === 0.
+- **Pointer:** [`docs/reconstruct/LIVE_WIRING.md`](docs/reconstruct/LIVE_WIRING.md); [`docs/LANE_D_ORIGINAL_MASTER_RECONSTRUCTION.md`](docs/LANE_D_ORIGINAL_MASTER_RECONSTRUCTION.md); `src/lib/reconstruct/`.
+- **DoD (target):** Lane G binds `dispatchOriginalMasterReconstruct` after a human `masterCompositeAuthorized` review; live SAM-3 (if ever) is a separate Class C that does not go through Control Center from this lane.
+- **Mitigations:** isolated module; `$0` fixtures; untrusted temporal frames ignored; no edge redeploy; `sam3.liveFetch` is always `false`.
