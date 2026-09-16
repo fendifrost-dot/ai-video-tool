@@ -1,0 +1,97 @@
+{
+  "smoke": "hero-frame-section-7-playable-export-click",
+  "verdict": "INCOMPLETE",
+  "interpretation": "compose_success_e2_incomplete_not_fail",
+  "passCount": 2,
+  "failCount": 0,
+  "skipCount": 7,
+  "when": {
+    "local": "2026-09-16T01:19:00-05:00",
+    "timezone": "America/Chicago",
+    "utc": "2026-09-16T06:19:00Z"
+  },
+  "app": "https://aivideotool.lovable.app",
+  "route": "https://aivideotool.lovable.app/projects/764a63d2-93cd-44f3-905f-292f14ab2f51/hero-frame",
+  "authenticated": true,
+  "http401": false,
+  "paidGeneration": false,
+  "hardRefresh": true,
+  "clickedOnce": true,
+  "button": "Export playable reconstruct $0",
+  "toast": {
+    "text": "PLAYABLE compose 720×1280 frames=8 fps=24 preserved=true sam3=intended_stage1h_evidence paidCalls=false. Lane E2 video QA lane-e2-video-qa-v1: INCOMPLETE 2/9 fail=0 skip=7 frames=0 mp4=produced paidCalls=false stillGoldensReopened=false.",
+    "compose": {
+      "width": 720,
+      "height": 1280,
+      "frames": 8,
+      "fps": 24,
+      "preserved": true,
+      "sam3": "intended_stage1h_evidence",
+      "paidCalls": false
+    },
+    "e2": {
+      "schema": "lane-e2-video-qa-v1",
+      "verdict": "INCOMPLETE",
+      "passCount": 2,
+      "failCount": 0,
+      "skipCount": 7,
+      "frames": 0,
+      "mp4": "produced",
+      "paidCalls": false,
+      "stillGoldensReopened": false
+    }
+  },
+  "priorFalseFail": {
+    "toastFragment": "FAIL 6/9 frames=8 mp4=none",
+    "fixedByPr": 129,
+    "note": "FAIL 6/9 was passCount/total including SKIPs (6 PASS + 1 FAIL centroid drift on 8 in-memory frames + 2 SKIP), not 3 FAILs. Gate artifact is the committed 72-frame MP4, not the UI window."
+  },
+  "gateMp4": {
+    "path": "docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4",
+    "width": 720,
+    "height": 1280,
+    "frameCount": 72,
+    "fps": 24,
+    "durationSec": 3.0,
+    "codec": "h264",
+    "pixelFormat": "yuv420p",
+    "container": "mov,mp4,m4a,3gp,3g2,mj2",
+    "byteLength": 486769,
+    "sha256": "71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b",
+    "provenanceMaster": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+    "probedOn": "f5f7d8a31a695786a1b2496e37745ea7aa4bd64c"
+  },
+  "lineage": {
+    "sprintIssue": 102,
+    "relatedIssue": 128,
+    "fixPr": 129,
+    "mergeCommit": "f5f7d8a31a695786a1b2496e37745ea7aa4bd64c",
+    "fixCommit": "6678803d23ac590ab62365ef03b7303c0e6710a4",
+    "umbrellaIssue": 50,
+    "playableIssue": 111,
+    "e2Issue": 105,
+    "frontend": "lovable_publish_of_pr_129",
+    "edge": "none from this lane",
+    "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+    "clipId": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+    "heroTimestamp": 0.785,
+    "chestAssetId": "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
+    "sleeveAssetId": "fdb86b18-d4aa-465e-b73f-1d252709739c"
+  },
+  "screenshots": {
+    "exportToast1": "playable-export-evidence/export-toast-1.png",
+    "exportToast2": "playable-export-evidence/export-toast-2.png",
+    "committedInRepo": true,
+    "note": "Uploads from the live click after hard refresh. Status copy under Export playable reconstruct $0 is the verbatim toast."
+  },
+  "notClaimed": [
+    "decoded_frame_e2_pass_frames_0",
+    "live_241_frame_1080_ingest_of_master_76fe7438",
+    "cleared_real_media_gate_final",
+    "live_sam3_fetch",
+    "chest_11_11_rescore",
+    "sleeve_6_6_rescore",
+    "new_edge_redeploy",
+    "newly_encoded_mp4_from_this_click"
+  ]
+}

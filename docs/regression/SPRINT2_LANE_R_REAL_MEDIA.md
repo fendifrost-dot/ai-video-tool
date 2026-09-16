@@ -22,6 +22,12 @@ Full deterministic Vitest (`main` @ `b1bb84f` + this PR): **1001 passed + 1 skip
 
 Real-Media-Benchmark remains **0**. No PASS claimed.
 
+## Live playable export re-verify (does **not** claim the locks)
+
+**[OBSERVED]** 2026-09-16 ~1:19 AM America/Chicago (~06:19 UTC) after PR #129 merge `f5f7d8a` + Lovable frontend Publish. Hero Frame **Export playable reconstruct $0**: compose SUCCESS (8-frame window) + E2 **INCOMPLETE 2/9** `fail=0` `mp4=produced` `stillGoldensReopened=false`. Gate MP4 sha256 `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`. Write-up: [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](../reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md).
+
+This is **not** a CLEARED real-media gate. The five rows stay **UNCLAIMED**. `real-media-locks.json` is not edited.
+
 ## YELLOW documented (docs only)
 
 **REL-2** — Lane C `TEMPORAL_LIVE_DEPLOY_NOTES.heroFrameOwnerFlip.current === false` vs product `ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled === true`. Owner: **Lane C**. Lane R did **not** edit `livePrep.ts`.
