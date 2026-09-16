@@ -1,5 +1,6 @@
 /**
- * Lane F — harness config. Astra is disabled. No I/O.
+ * Lane F / F2 — harness config. Astra is disabled. No I/O.
+ * Reconstructed-master handoff does not turn this runner on.
  * See docs/research/finishing/CONTROLLED_HARNESS_DESIGN.md.
  */
 

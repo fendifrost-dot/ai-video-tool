@@ -1,6 +1,7 @@
 # Astra / Premiere finishing architecture
 
 **Lane F · 2026-09-15 · $0 · isolated from Architecture C**  
+**Lane F2 addendum · 2026-09-16 · reconstructed-master handoff · [#103](https://github.com/fendifrost-dot/ai-video-tool/issues/103) / [#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102)**  
 **Work-order:** [#57](https://github.com/fendifrost-dot/ai-video-tool/issues/57) · **Umbrella:** [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50) lane 6
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**
@@ -193,15 +194,21 @@ Stop and redesign (do not “just add more Astra steps”) if any of these happe
 
 ## Relationship to other #50 lanes
 
-| Lane | Contract from Lane F |
+| Lane | Contract from Lane F / F2 |
 |------|----------------------|
 | 1–2 Architecture C / sleeve | **None.** Finishing reads approved clips only. |
 | 3 Temporal | Finishing consumes assembled clips if/when they exist; no API coupling. |
-| 4 Original-master | Finishing may *receive* a restored master as an approved clip. It must not reconstruct. |
-| 5 Eval / benchmark | Optional later: score a finished master vs the AVT cut (sync, duration). Not required to close #57. |
-| 7 Orchestration | Input: `export_package` with `premiere_ready/`. Output: `premiere_export` asset + sidecar. |
+| 4 Original-master / Lane H | Finishing **consumes** a reconstructed-master sidecar (+ MP4 when encoded). It must not reconstruct, encode, or gate E2E. See [RECONSTRUCTED_MASTER_HANDOFF.md](./RECONSTRUCTED_MASTER_HANDOFF.md). |
+| 5 Eval / benchmark | Optional later: score a finished master vs the AVT cut (sync, duration). Opaque `eval_verdict` on the sidecar only. |
+| 7 Orchestration | Input: `export_package` with `premiere_ready/` and/or `reconstructed_master/`. Output: `premiere_export` asset + sidecar. F2 does not edit Pipeline OS. |
 
-**[DECISION]** Lane F is **non-blocking**. Current AVT engineering continues to use the existing Export page. Nothing in this folder is required for chest-still or provider work.
+**[DECISION]** Lane F / F2 is **non-blocking**. Current AVT engineering continues to use the existing Export page. Reconstruct E2E may PASS with `encode_status: "not_claimed"` and no Premiere session. Nothing in this folder is required for chest-still, temporal, eval core, or provider work.
+
+### Lane F2 (sprint #102) — reconstructed master
+
+**[DECISION] 2026-09-16** The Architecture C reconstructed clip is **replacement media for one approved `master_clip_asset_id`**, not a new FCPXML sequence. Import with existing `import_media_folder`. Astra remains disabled. Paid calls remain false.
+
+**[VERIFIED]** RECONSTRUCT-1 E2E $0 PASS 9/9 does not claim an MP4 of `76fe7438`. The F2 sidecar is therefore valid without `master.relpath`.
 
 ---
 
