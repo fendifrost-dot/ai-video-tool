@@ -6,7 +6,7 @@
  * temporal-propagate-proxy wire always uses canonicalIndex 0.
  */
 
-import type { SourceClip, SourceClipFrame } from "./contract";
+import type { SourceClip, SourceClipFrame } from "../contract";
 import { TEMPORAL_PROPAGATE_LIMITS } from "../edgeDispatch";
 
 export const TEMPORAL_CHUNK_HELPER_VERSION = "1.0.0";
