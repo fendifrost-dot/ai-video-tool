@@ -1,7 +1,7 @@
 # Lane D — Original-master reconstruction
 
 **Issue:** [#89](https://github.com/fendifrost-dot/ai-video-tool/issues/89) (child of [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50); lineage [#55](https://github.com/fendifrost-dot/ai-video-tool/issues/55) / PR #58)  
-**Status:** isolated reconstruct + **live-wiring adapters** + **Hero Frame E2E $0 runner** (gate 4). Dispatch / E2E click requires `explicitArm`. Live click **PASS 9/9** (issue [#100](https://github.com/fendifrost-dot/ai-video-tool/issues/100)). Not a live SAM-3 fetch.  
+**Status:** isolated reconstruct + **live-wiring adapters** + **Hero Frame E2E $0 runner** (gate 4) + **Lane D2 video QA** ([#108](https://github.com/fendifrost-dot/ai-video-tool/issues/108)). Dispatch / E2E click requires `explicitArm`. Live click **PASS 9/9** (issue [#100](https://github.com/fendifrost-dot/ai-video-tool/issues/100)). D2 unique-RGB **720×1280 PASS 15/15** ([`docs/reconstruct/VIDEO_QA.md`](reconstruct/VIDEO_QA.md)). Not a live SAM-3 fetch / not live `76fe7438` camera bytes.  
 **Class:** C (compositing / rendering) — isolated module; no chest/sleeve paint or temporal authorize edits.
 
 Live-wiring deploy notes: [`docs/reconstruct/LIVE_WIRING.md`](reconstruct/LIVE_WIRING.md).  
@@ -35,6 +35,8 @@ Live wiring (gate 4) builds `generated` from CLEARED chest + sleeve stills stamp
 | `src/lib/reconstruct/dispatch.ts` | Wire parse → authorize → reconstruct |
 | `src/lib/reconstruct/e2e.ts` | RECONSTRUCT-1 E2E compose (temporal jobs → reconstruct) |
 | `src/lib/reconstruct/heroFrameRun.ts` | Hero Frame §7 product gate |
+| `src/lib/reconstruct/videoQa.ts` | Lane D2 clip QA (preservation / seam / continuity / media) |
+| `src/lib/reconstruct/exportHandoff.ts` | Lane H MP4 provenance interface (no exporter) |
 | `src/lib/eval/reconstructVideoEvaluator.ts` | Lane E video/sampled-frame PASS/FAIL (no still reopen) |
 | `src/components/video/HeroFrameReconstructRunControl.tsx` | §7 **Run reconstruct E2E $0** |
 | `src/components/video/ArchitectureCStillRepairRunner.tsx` | Thin §7 mount only (no paint edits) |
@@ -108,3 +110,6 @@ Fixture tests prove:
 6. `$0` 4-frame pack on master clip `76fe7438` preserves unauthorized pixels.
 7. **No edge function** to redeploy from this lane.
 8. Hero Frame §7 **Run reconstruct E2E $0** gated on reconstruct armed + temporal tracking; eval JSON does not reopen still goldens.
+9. **Lane D2:** 720×1280 unique-RGB preservation + full-clip (24 @ 24 fps) + live-shaped 80×128 temporal onto 720×1280 originals; Lane H handoff does not encode MP4.
+
+Video QA: [`docs/reconstruct/VIDEO_QA.md`](reconstruct/VIDEO_QA.md).

@@ -1,0 +1,579 @@
+{
+  "schemaVersion": "reconstruct-video-qa-evidence-v1",
+  "issue": 108,
+  "parent": 102,
+  "umbrella": 50,
+  "paidCalls": false,
+  "grokPerFrame": false,
+  "sam3LiveFetch": false,
+  "stillGoldensReopened": false,
+  "generatedAt": "2026-09-16T05:30:00Z",
+  "evidenceLabels": {
+    "originalMasterPreservationOutsideTransformedRegions": "VERIFIED",
+    "seamNoUnauthorizedLeak": "VERIFIED",
+    "identityAndBackgroundPreservation": "VERIFIED",
+    "frameContinuityUnauthorized": "VERIFIED",
+    "resolution720x1280": "VERIFIED",
+    "fpsPassthrough24": "VERIFIED",
+    "audioUntouched": "VERIFIED",
+    "liveCameraPixelsOf76fe7438": "NOT_CLAIMED",
+    "liveSam3Fetch": "NOT_CLAIMED",
+    "mp4Encode": "NOT_CLAIMED_LANE_H"
+  },
+  "claims": {
+    "originalMasterPreservationOutsideTransformedRegions": "PASS",
+    "liveCameraPixelsOf76fe7438": "NOT_CLAIMED",
+    "mp4Encode": "NOT_CLAIMED_LANE_H"
+  },
+  "runs": [
+    {
+      "name": "native_720x1280_translating",
+      "verdict": "PASS",
+      "passCount": 15,
+      "failCount": 0,
+      "width": 720,
+      "height": 1280,
+      "fps": 24,
+      "frameCount": 8,
+      "temporalJobCount": 3,
+      "escalate": null,
+      "criteria": [
+        {
+          "id": "paid_calls_false",
+          "verdict": "PASS",
+          "metrics": {
+            "paidCalls": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "grok_per_frame_false",
+          "verdict": "PASS",
+          "metrics": {
+            "grokPerFrame": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "sam3_live_fetch_false",
+          "verdict": "PASS",
+          "metrics": {
+            "sam3LiveFetch": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "original_preserved_unauthorized",
+          "verdict": "PASS",
+          "metrics": {
+            "leaks": 0,
+            "frames": 8
+          },
+          "failureReason": null
+        },
+        {
+          "id": "independent_alpha_zero_bytes",
+          "verdict": "PASS",
+          "metrics": {
+            "checked": 8,
+            "failed": 0,
+            "leaks": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "generated_is_not_master",
+          "verdict": "PASS",
+          "metrics": {
+            "frames": 8,
+            "firstPreserved": 863960,
+            "firstChanged": 57640
+          },
+          "failureReason": null
+        },
+        {
+          "id": "identity_repair_preserved",
+          "verdict": "PASS",
+          "metrics": {
+            "checked": 58520,
+            "failed": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "background_corners_preserved",
+          "verdict": "PASS",
+          "metrics": {
+            "corners": 4
+          },
+          "failureReason": null
+        },
+        {
+          "id": "seam_no_unauthorized_leak",
+          "verdict": "PASS",
+          "metrics": {
+            "seamPixels": 0,
+            "unauthorizedNeighborLeaks": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "frame_continuity_unauthorized",
+          "verdict": "PASS",
+          "metrics": {
+            "maxCoverageDelta": 0,
+            "limit": 0.08,
+            "frames": 8
+          },
+          "failureReason": null
+        },
+        {
+          "id": "resolution_matches_master",
+          "verdict": "PASS",
+          "metrics": {
+            "width": 720,
+            "height": 1280,
+            "expectedWidth": 720,
+            "expectedHeight": 1280
+          },
+          "failureReason": null
+        },
+        {
+          "id": "fps_passthrough",
+          "verdict": "PASS",
+          "metrics": {
+            "fps": 24,
+            "expectedFps": 24
+          },
+          "failureReason": null
+        },
+        {
+          "id": "audio_untouched",
+          "verdict": "PASS",
+          "metrics": {
+            "reconstructTouchesAudio": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "temporal_masks_consumed",
+          "verdict": "PASS",
+          "metrics": {
+            "jobs": 3,
+            "framesTemporalUsed": 8
+          },
+          "failureReason": null
+        },
+        {
+          "id": "still_goldens_not_reopened",
+          "verdict": "PASS",
+          "metrics": {
+            "chest11": 0,
+            "sleeve6": 0
+          },
+          "failureReason": null
+        }
+      ],
+      "laneHHandoff": {
+        "schemaVersion": "reconstruct-lane-h-handoff-v1",
+        "ownedBy": "lane_d2_reconstruct",
+        "exportOwnedBy": "lane_h",
+        "originalPixelsPreservedWhereUnauthorized": true,
+        "unauthorizedLeakCount": 0,
+        "width": 720,
+        "height": 1280,
+        "fps": 24,
+        "frameCount": 8,
+        "audio": {
+          "reconstructTouchesAudio": false,
+          "passthrough": true,
+          "muxOwnedBy": "lane_h"
+        },
+        "mp4": {
+          "reconstructDoesNotEncode": true,
+          "reconstructProvides": "frame_rgba_sequence",
+          "provenanceClaims": [
+            "original_pixels_preserved_where_unauthorized",
+            "generated_is_not_master",
+            "resolution_matches_reconstructed_frames",
+            "fps_passthrough_metadata",
+            "audio_passthrough_untouched_by_reconstruct"
+          ]
+        }
+      },
+      "notClaimed": [
+        "live camera pixels of original master 76fe7438 (unique-RGB stand-in at the claimed raster)",
+        "live SAM-3 fetch via sam3-segment-proxy / Control Center",
+        "chest Stage 1m 11/11 rescore",
+        "sleeve Stage 1c 6/6 rescore",
+        "MP4 encode / mux of clip 76fe7438 (Lane H owns export)"
+      ]
+    },
+    {
+      "name": "full_clip_720x1280_24",
+      "verdict": "PASS",
+      "passCount": 15,
+      "failCount": 0,
+      "width": 720,
+      "height": 1280,
+      "fps": 24,
+      "frameCount": 24,
+      "temporalJobCount": 3,
+      "escalate": null,
+      "criteria": [
+        {
+          "id": "paid_calls_false",
+          "verdict": "PASS",
+          "metrics": {
+            "paidCalls": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "grok_per_frame_false",
+          "verdict": "PASS",
+          "metrics": {
+            "grokPerFrame": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "sam3_live_fetch_false",
+          "verdict": "PASS",
+          "metrics": {
+            "sam3LiveFetch": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "original_preserved_unauthorized",
+          "verdict": "PASS",
+          "metrics": {
+            "leaks": 0,
+            "frames": 24
+          },
+          "failureReason": null
+        },
+        {
+          "id": "independent_alpha_zero_bytes",
+          "verdict": "PASS",
+          "metrics": {
+            "checked": 24,
+            "failed": 0,
+            "leaks": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "generated_is_not_master",
+          "verdict": "PASS",
+          "metrics": {
+            "frames": 24,
+            "firstPreserved": 863960,
+            "firstChanged": 57640
+          },
+          "failureReason": null
+        },
+        {
+          "id": "identity_repair_preserved",
+          "verdict": "PASS",
+          "metrics": {
+            "checked": 175560,
+            "failed": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "background_corners_preserved",
+          "verdict": "PASS",
+          "metrics": {
+            "corners": 4
+          },
+          "failureReason": null
+        },
+        {
+          "id": "seam_no_unauthorized_leak",
+          "verdict": "PASS",
+          "metrics": {
+            "seamPixels": 0,
+            "unauthorizedNeighborLeaks": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "frame_continuity_unauthorized",
+          "verdict": "PASS",
+          "metrics": {
+            "maxCoverageDelta": 0,
+            "limit": 0.08,
+            "frames": 24
+          },
+          "failureReason": null
+        },
+        {
+          "id": "resolution_matches_master",
+          "verdict": "PASS",
+          "metrics": {
+            "width": 720,
+            "height": 1280,
+            "expectedWidth": 720,
+            "expectedHeight": 1280
+          },
+          "failureReason": null
+        },
+        {
+          "id": "fps_passthrough",
+          "verdict": "PASS",
+          "metrics": {
+            "fps": 24,
+            "expectedFps": 24
+          },
+          "failureReason": null
+        },
+        {
+          "id": "audio_untouched",
+          "verdict": "PASS",
+          "metrics": {
+            "reconstructTouchesAudio": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "temporal_masks_consumed",
+          "verdict": "PASS",
+          "metrics": {
+            "jobs": 3,
+            "framesTemporalUsed": 24
+          },
+          "failureReason": null
+        },
+        {
+          "id": "still_goldens_not_reopened",
+          "verdict": "PASS",
+          "metrics": {
+            "chest11": 0,
+            "sleeve6": 0
+          },
+          "failureReason": null
+        }
+      ],
+      "laneHHandoff": {
+        "schemaVersion": "reconstruct-lane-h-handoff-v1",
+        "ownedBy": "lane_d2_reconstruct",
+        "exportOwnedBy": "lane_h",
+        "originalPixelsPreservedWhereUnauthorized": true,
+        "unauthorizedLeakCount": 0,
+        "width": 720,
+        "height": 1280,
+        "fps": 24,
+        "frameCount": 24,
+        "audio": {
+          "reconstructTouchesAudio": false,
+          "passthrough": true,
+          "muxOwnedBy": "lane_h"
+        },
+        "mp4": {
+          "reconstructDoesNotEncode": true,
+          "reconstructProvides": "frame_rgba_sequence",
+          "provenanceClaims": [
+            "original_pixels_preserved_where_unauthorized",
+            "generated_is_not_master",
+            "resolution_matches_reconstructed_frames",
+            "fps_passthrough_metadata",
+            "audio_passthrough_untouched_by_reconstruct"
+          ]
+        }
+      },
+      "notClaimed": [
+        "live camera pixels of original master 76fe7438 (unique-RGB stand-in at the claimed raster)",
+        "live SAM-3 fetch via sam3-segment-proxy / Control Center",
+        "chest Stage 1m 11/11 rescore",
+        "sleeve Stage 1c 6/6 rescore",
+        "MP4 encode / mux of clip 76fe7438 (Lane H owns export)"
+      ]
+    },
+    {
+      "name": "live_shaped_80x128_onto_720x1280",
+      "verdict": "PASS",
+      "passCount": 15,
+      "failCount": 0,
+      "width": 720,
+      "height": 1280,
+      "fps": 24,
+      "frameCount": 5,
+      "temporalJobCount": 3,
+      "escalate": null,
+      "criteria": [
+        {
+          "id": "paid_calls_false",
+          "verdict": "PASS",
+          "metrics": {
+            "paidCalls": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "grok_per_frame_false",
+          "verdict": "PASS",
+          "metrics": {
+            "grokPerFrame": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "sam3_live_fetch_false",
+          "verdict": "PASS",
+          "metrics": {
+            "sam3LiveFetch": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "original_preserved_unauthorized",
+          "verdict": "PASS",
+          "metrics": {
+            "leaks": 0,
+            "frames": 5
+          },
+          "failureReason": null
+        },
+        {
+          "id": "independent_alpha_zero_bytes",
+          "verdict": "PASS",
+          "metrics": {
+            "checked": 5,
+            "failed": 0,
+            "leaks": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "generated_is_not_master",
+          "verdict": "PASS",
+          "metrics": {
+            "frames": 5,
+            "firstPreserved": 863960,
+            "firstChanged": 57640
+          },
+          "failureReason": null
+        },
+        {
+          "id": "identity_repair_preserved",
+          "verdict": "PASS",
+          "metrics": {
+            "checked": 36575,
+            "failed": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "background_corners_preserved",
+          "verdict": "PASS",
+          "metrics": {
+            "corners": 4
+          },
+          "failureReason": null
+        },
+        {
+          "id": "seam_no_unauthorized_leak",
+          "verdict": "PASS",
+          "metrics": {
+            "seamPixels": 0,
+            "unauthorizedNeighborLeaks": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "frame_continuity_unauthorized",
+          "verdict": "PASS",
+          "metrics": {
+            "maxCoverageDelta": 0,
+            "limit": 0.08,
+            "frames": 5
+          },
+          "failureReason": null
+        },
+        {
+          "id": "resolution_matches_master",
+          "verdict": "PASS",
+          "metrics": {
+            "width": 720,
+            "height": 1280,
+            "expectedWidth": 720,
+            "expectedHeight": 1280
+          },
+          "failureReason": null
+        },
+        {
+          "id": "fps_passthrough",
+          "verdict": "PASS",
+          "metrics": {
+            "fps": 24,
+            "expectedFps": 24
+          },
+          "failureReason": null
+        },
+        {
+          "id": "audio_untouched",
+          "verdict": "PASS",
+          "metrics": {
+            "reconstructTouchesAudio": 0
+          },
+          "failureReason": null
+        },
+        {
+          "id": "temporal_masks_consumed",
+          "verdict": "PASS",
+          "metrics": {
+            "jobs": 3,
+            "framesTemporalUsed": 5
+          },
+          "failureReason": null
+        },
+        {
+          "id": "still_goldens_not_reopened",
+          "verdict": "PASS",
+          "metrics": {
+            "chest11": 0,
+            "sleeve6": 0
+          },
+          "failureReason": null
+        }
+      ],
+      "laneHHandoff": {
+        "schemaVersion": "reconstruct-lane-h-handoff-v1",
+        "ownedBy": "lane_d2_reconstruct",
+        "exportOwnedBy": "lane_h",
+        "originalPixelsPreservedWhereUnauthorized": true,
+        "unauthorizedLeakCount": 0,
+        "width": 720,
+        "height": 1280,
+        "fps": 24,
+        "frameCount": 5,
+        "audio": {
+          "reconstructTouchesAudio": false,
+          "passthrough": true,
+          "muxOwnedBy": "lane_h"
+        },
+        "mp4": {
+          "reconstructDoesNotEncode": true,
+          "reconstructProvides": "frame_rgba_sequence",
+          "provenanceClaims": [
+            "original_pixels_preserved_where_unauthorized",
+            "generated_is_not_master",
+            "resolution_matches_reconstructed_frames",
+            "fps_passthrough_metadata",
+            "audio_passthrough_untouched_by_reconstruct"
+          ]
+        }
+      },
+      "notClaimed": [
+        "live camera pixels of original master 76fe7438 (unique-RGB stand-in at the claimed raster)",
+        "live SAM-3 fetch via sam3-segment-proxy / Control Center",
+        "chest Stage 1m 11/11 rescore",
+        "sleeve Stage 1c 6/6 rescore",
+        "MP4 encode / mux of clip 76fe7438 (Lane H owns export)"
+      ]
+    }
+  ]
+}

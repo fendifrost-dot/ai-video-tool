@@ -20,7 +20,7 @@ import {
 import { reconstructOriginalMaster } from "./originalMasterReconstruct";
 import type { ReconstructResult, RgbaImage } from "./types";
 
-export const RECONSTRUCT_ADAPTER_VERSION = "1.0.0";
+export const RECONSTRUCT_ADAPTER_VERSION = "1.1.0";
 
 /** This lane never live-fetches SAM-3. Masks are fixture or caller-supplied. */
 export const SAM3_LIVE_FETCH = false as const;
@@ -99,6 +99,8 @@ export interface ReconstructClipResult {
   sam3LiveFetch: false;
   grokPerFrame: false;
   provider: "none";
+  width: number;
+  height: number;
 }
 
 export const TEMPORAL_MASK_MIN_CONFIDENCE = 0.6;
@@ -195,23 +197,29 @@ export function buildGeneratedFromClearedStills(input: {
   chestQuad?: QuadTuple;
   sleeveLeftQuad?: QuadTuple;
   sleeveRightQuad?: QuadTuple;
+  /** Pre-rasterized quads — reuse across a clip so 720×1280 is not re-filled per frame. */
+  chestMask?: Float32Array;
+  sleeveLeftMask?: Float32Array;
+  sleeveRightMask?: Float32Array;
 }): RgbaImage {
   const generated = cloneRgba(input.original);
   const { width, height } = generated;
   stampStillIntoFrame(
     generated,
     input.chestStill,
-    fillConvexQuad(width, height, input.chestQuad ?? CLEARED_CHEST_QUAD_TUPLE),
+    input.chestMask ?? fillConvexQuad(width, height, input.chestQuad ?? CLEARED_CHEST_QUAD_TUPLE),
   );
   stampStillIntoFrame(
     generated,
     input.sleeveStill,
-    fillConvexQuad(width, height, input.sleeveLeftQuad ?? CLEARED_SLEEVE_LEFT_QUAD_TUPLE),
+    input.sleeveLeftMask ??
+      fillConvexQuad(width, height, input.sleeveLeftQuad ?? CLEARED_SLEEVE_LEFT_QUAD_TUPLE),
   );
   stampStillIntoFrame(
     generated,
     input.sleeveStill,
-    fillConvexQuad(width, height, input.sleeveRightQuad ?? CLEARED_SLEEVE_RIGHT_QUAD_TUPLE),
+    input.sleeveRightMask ??
+      fillConvexQuad(width, height, input.sleeveRightQuad ?? CLEARED_SLEEVE_RIGHT_QUAD_TUPLE),
   );
   return generated;
 }
@@ -220,6 +228,40 @@ function maskValue(mask: ArrayLike<number>, i: number): number {
   const v = mask[i];
   if (typeof v !== "number" || !Number.isFinite(v)) return 0;
   return v > 1 ? clamp01(v / 255) : clamp01(v);
+}
+
+function asFloatMask(mask: ArrayLike<number>, length: number): Float32Array {
+  if (mask instanceof Float32Array && mask.length === length) return mask;
+  const out = new Float32Array(length);
+  for (let i = 0; i < length; i++) out[i] = maskValue(mask, i);
+  return out;
+}
+
+/**
+ * Nearest-neighbor α resize so live temporal rasters (e.g. 80×128) can
+ * authorize original-master frames (720×1280) without inventing geometry.
+ * Does not feather or dilate.
+ */
+export function scaleAlphaNearest(
+  src: Float32Array,
+  srcW: number,
+  srcH: number,
+  destW: number,
+  destH: number,
+): Float32Array {
+  if (srcW === destW && srcH === destH) return src;
+  if (srcW < 1 || srcH < 1 || destW < 1 || destH < 1) {
+    throw new Error("reconstruct_alpha_size_mismatch:scale");
+  }
+  const out = new Float32Array(destW * destH);
+  for (let y = 0; y < destH; y++) {
+    const sy = Math.min(srcH - 1, Math.floor((y + 0.5) * (srcH / destH)));
+    for (let x = 0; x < destW; x++) {
+      const sx = Math.min(srcW - 1, Math.floor((x + 0.5) * (srcW / destW)));
+      out[y * destW + x] = src[sy * srcW + sx]!;
+    }
+  }
+  return out;
 }
 
 export function mergeAuthorization(input: {
@@ -246,18 +288,21 @@ export function mergeAuthorization(input: {
   for (const job of input.temporalJobs ?? []) {
     const frame = job.frames.find((f) => f.index === input.frameIndex);
     if (!frame) continue;
-    if (frame.width !== input.width || frame.height !== input.height) {
-      throw new Error("reconstruct_alpha_size_mismatch:temporal_mask");
-    }
-    if (frame.mask.length !== n) {
+    const expected = frame.width * frame.height;
+    if (frame.mask.length !== expected) {
       throw new Error("reconstruct_alpha_size_mismatch:temporal_mask");
     }
     const trusted =
       frame.reanchorRecommended !== true && frame.confidence >= TEMPORAL_MASK_MIN_CONFIDENCE;
     if (!trusted) continue;
     temporalUsed = true;
+    const native = asFloatMask(frame.mask, expected);
+    const aligned =
+      frame.width === input.width && frame.height === input.height
+        ? native
+        : scaleAlphaNearest(native, frame.width, frame.height, input.width, input.height);
     for (let i = 0; i < n; i++) {
-      const t = maskValue(frame.mask, i);
+      const t = aligned[i]!;
       if (t > segmentation[i]!) segmentation[i] = t;
     }
   }
@@ -282,16 +327,28 @@ export function reconstructMasterClip(input: ReconstructClipInput): ReconstructC
     generatedByIndex.set(g.index, g.image);
   }
 
+  const width = input.originalFrames[0]!.image.width;
+  const height = input.originalFrames[0]!.image.height;
+  const chestMask = fillConvexQuad(width, height, CLEARED_CHEST_QUAD_TUPLE);
+  const sleeveLeftMask = fillConvexQuad(width, height, CLEARED_SLEEVE_LEFT_QUAD_TUPLE);
+  const sleeveRightMask = fillConvexQuad(width, height, CLEARED_SLEEVE_RIGHT_QUAD_TUPLE);
+
   const frames: ReconstructClipFrameResult[] = [];
   let allPreserved = true;
 
   for (const src of input.originalFrames) {
+    if (src.image.width !== width || src.image.height !== height) {
+      throw new Error("reconstruct_size_mismatch:clip_frame");
+    }
     const generated =
       generatedByIndex.get(src.index) ??
       buildGeneratedFromClearedStills({
         original: src.image,
         chestStill: input.chestStill.image,
         sleeveStill: input.sleeveStill.image,
+        chestMask,
+        sleeveLeftMask,
+        sleeveRightMask,
       });
 
     const { segmentation, repair, temporalUsed } = mergeAuthorization({
@@ -325,6 +382,8 @@ export function reconstructMasterClip(input: ReconstructClipInput): ReconstructC
     sam3LiveFetch: false,
     grokPerFrame: false,
     provider: "none",
+    width,
+    height,
   };
 }
 

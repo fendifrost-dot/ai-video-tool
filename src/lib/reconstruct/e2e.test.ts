@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { liveWiringFixturePack } from "./fixtures/liveWiringFixture";
+import { liveWiringFixturePack, uniqueOriginalFrame } from "./fixtures/liveWiringFixture";
 import {
   RECONSTRUCT_E2E_VERSION,
   consumeTemporalJobsFromPropagateResult,
@@ -106,5 +106,20 @@ describe("packFromTemporalJobs", () => {
     expect(pack.width).toBe(32);
     expect(pack.height).toBe(24);
     expect(pack.originalFrames).toHaveLength(4);
+  });
+
+  it("accepts caller-supplied original-master frames at a different raster", () => {
+    const consumed = consumeTemporalJobsFromPropagateResult(fixturePropagateJson());
+    expect(consumed.ok).toBe(true);
+    if (!consumed.ok) return;
+    const originalFrames = [
+      { index: 0, image: uniqueOriginalFrame(0, 80, 128) },
+      { index: 1, image: uniqueOriginalFrame(1, 80, 128) },
+    ];
+    const pack = packFromTemporalJobs(consumed.jobs, { originalFrames });
+    expect(pack.width).toBe(80);
+    expect(pack.height).toBe(128);
+    expect(pack.temporalWidth).toBe(32);
+    expect(pack.temporalHeight).toBe(24);
   });
 });
