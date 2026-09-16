@@ -94,6 +94,8 @@ const pending = evaluateVideoQa(
 
 **[DECISION]** E2 does **not** decode MP4 in-process (no `src/lib/video` / ffmpeg ownership). H (or an injected decoder owned by H) supplies RGBA rasters + per-frame α. The real-media gate is: given a produced reconstructed MP4 **and** decoded frames, E2 emits a complete PASS/FAIL JSON.
 
+**[DECISION]** A claimed `reconstructed_mp4` with `produced !== true` is **INCOMPLETE** (`awaiting: ["mp4"]`), never FAIL, even if in-memory frames are present. `mp4_artifact_scored` and the six visual probes SKIP. `blockingArtifactProducer` stays false. Frames-only (`kind: reconstructed_frames`, no mp4 object) still scores visuals. Encode-first with `produced: true` and `frames: []` stays INCOMPLETE awaiting `decoded_frames`.
+
 Structural frame contract:
 
 | Field                                  | Required for complete score                             |
@@ -111,7 +113,7 @@ Structural frame contract:
 | ---------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `paid_calls_false`                 | Spend lock                                                             | `paidCalls === false`                                                           |
 | `still_goldens_not_reopened`       | Still lock                                                             | always PASS (never calls chest/sleeve still gates)                              |
-| `mp4_artifact_scored`              | Real-media hook                                                        | MP4 `produced` + decoded frames present; SKIP if frames-only or awaiting decode |
+| `mp4_artifact_scored`              | Real-media hook                                                        | MP4 `produced` + decoded frames present; SKIP if frames-only, awaiting decode, or claimed MP4 not produced |
 | `per_frame_repair_coverage`        | Repair α > 0.5 fraction                                                | coverage ≤ 0.85 and frame-to-frame \|Δ\| ≤ 0.25                                 |
 | `original_master_preservation`     | α === 0 RGB vs original                                                | 0 unauthorized changed pixels                                                   |
 | `unintended_outside_region_change` | Same bytes, product wording                                            | same hard gate as preservation                                                  |

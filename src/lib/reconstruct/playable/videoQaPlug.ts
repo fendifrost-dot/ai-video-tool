@@ -28,6 +28,10 @@ export const PLAYABLE_MP4_RELATIVE_PATH =
   "docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4";
 export const PLAYABLE_VIDEO_QA_RELATIVE_PATH =
   "docs/reconstruct/artifacts/playable-76fe7438/video-qa.json";
+/** Committed full-clip H.264 gate artifact (72 @ 720×1280). Do not reopen still goldens. */
+export const PLAYABLE_MP4_SHA256 =
+  "71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b";
+export const PLAYABLE_MP4_BYTE_LENGTH = 486769;
 
 export type PlayableVideoQaResult = {
   report: VideoQaReport;
@@ -92,6 +96,17 @@ export function playableMp4Ref(input: {
     byteLength: input.byteLength,
     mimeType: input.produced ? "video/mp4" : undefined,
   };
+}
+
+/** Gate MP4 for Hero Frame §7 / E2 — encode-first, do not treat the 8-frame UI window as decoded rasters. */
+export function committedPlayableMp4Ref(): VideoQaMp4Ref {
+  return playableMp4Ref({
+    produced: true,
+    artifactId: PLAYABLE_VIDEO_QA_ARTIFACT_ID,
+    path: PLAYABLE_MP4_RELATIVE_PATH,
+    sha256: PLAYABLE_MP4_SHA256,
+    byteLength: PLAYABLE_MP4_BYTE_LENGTH,
+  });
 }
 
 /**

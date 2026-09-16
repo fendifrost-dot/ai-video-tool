@@ -65,5 +65,20 @@ describe("runHeroFramePlayableExport", () => {
     expect(videoQaJson?.paidCalls).toBe(false);
     expect(videoQaJson?.stillGoldensReopened).toBe(false);
     expect(videoQaJson?.blockingArtifactProducer).toBe(false);
+    expect(videoQaJson?.verdict).toBe("INCOMPLETE");
+    expect(videoQaJson?.awaiting).toContain("decoded_frames");
+    expect(videoQaJson?.failCount).toBe(0);
+    expect(videoQaJson?.mp4?.produced).toBe(true);
+    expect(videoQaJson?.mp4?.path).toBe(
+      "docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4",
+    );
+    expect(videoQaJson?.mp4?.sha256).toBe(
+      "71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b",
+    );
+    expect(videoQaJson?.mp4?.byteLength).toBe(486769);
+    expect(videoQaJson?.mp4?.artifactId).toBe("playable-76fe7438");
+    expect(summary).toMatch(/INCOMPLETE/);
+    expect(summary).not.toMatch(/\bFAIL\b/);
+    expect(summary).toMatch(/mp4=produced/);
   });
 });

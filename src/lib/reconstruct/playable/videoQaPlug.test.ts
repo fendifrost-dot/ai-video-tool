@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { VIDEO_QA_SPEC_VERSION } from "@/lib/eval";
 import { runPlayableCompose } from "./compose";
 import { heroFramePlayableSpec } from "./spec";
 import {
+  PLAYABLE_MP4_BYTE_LENGTH,
   PLAYABLE_MP4_RELATIVE_PATH,
+  PLAYABLE_MP4_SHA256,
   PLAYABLE_VIDEO_QA_ARTIFACT_ID,
+  committedPlayableMp4Ref,
   evaluatePlayableVideoQa,
   evaluatePlayableVideoQaFromE2e,
   persistPlayableVideoQaJson,
@@ -58,6 +63,27 @@ describe("playable E2 video QA plug-in", () => {
     expect(json.paidCalls).toBe(false);
   });
 
+  it("does not FAIL mp4-scored criteria when produced=false (UI window ≠ decoded MP4)", () => {
+    const compose = runPlayableCompose({
+      explicitArm: true,
+      spec: heroFramePlayableSpec({ frameCount: 3, keyframeIndex: 1 }),
+    });
+    expect(compose.ok).toBe(true);
+    if (!compose.ok) return;
+
+    const { report } = evaluatePlayableVideoQa({
+      compose,
+      mp4: playableMp4Ref({ produced: false }),
+    });
+    expect(report.verdict).toBe("INCOMPLETE");
+    expect(report.failCount).toBe(0);
+    expect(report.awaiting).toContain("mp4");
+    expect(report.blockingArtifactProducer).toBe(false);
+    expect(report.stillGoldensReopened).toBe(false);
+    expect(report.criteria.find((c) => c.id === "temporal_jitter_drift")?.verdict).toBe("SKIP");
+    expect(report.criteria.find((c) => c.id === "mp4_artifact_scored")?.verdict).toBe("SKIP");
+  });
+
   it("encode-first with frames:[] is INCOMPLETE and never blocks the producer", () => {
     const compose = runPlayableCompose({
       explicitArm: true,
@@ -92,5 +118,19 @@ describe("playable E2 video QA plug-in", () => {
     expect(written["docs/reconstruct/artifacts/playable-76fe7438/video-qa.json"]).toContain(
       "lane-e2-video-qa-v1",
     );
+  });
+
+  it("pins the committed 72-frame playable MP4 sha256 as the E2 gate artifact", () => {
+    const bytes = readFileSync(PLAYABLE_MP4_RELATIVE_PATH);
+    const sha = createHash("sha256").update(bytes).digest("hex");
+    expect(sha).toBe(PLAYABLE_MP4_SHA256);
+    expect(bytes.byteLength).toBe(PLAYABLE_MP4_BYTE_LENGTH);
+    const ref = committedPlayableMp4Ref();
+    expect(ref.produced).toBe(true);
+    expect(ref.sha256).toBe(PLAYABLE_MP4_SHA256);
+    expect(ref.byteLength).toBe(PLAYABLE_MP4_BYTE_LENGTH);
+    expect(ref.path).toBe(PLAYABLE_MP4_RELATIVE_PATH);
+    expect(ref.artifactId).toBe(PLAYABLE_VIDEO_QA_ARTIFACT_ID);
+    expect(ref.mimeType).toBe("video/mp4");
   });
 });

@@ -18,7 +18,13 @@ import { runPlayableCompose, type PlayableComposeResult } from "./compose";
 import { heroFramePlayableSpec } from "./spec";
 import { playableE2HookToJson, buildPlayableArtifactClaims, buildPlayableE2Hook } from "./e2Hook";
 import type { PlayableMp4Claims } from "./contract";
-import { evaluatePlayableVideoQa, playableMp4Ref } from "./videoQaPlug";
+import {
+  PLAYABLE_MP4_BYTE_LENGTH,
+  PLAYABLE_MP4_RELATIVE_PATH,
+  PLAYABLE_MP4_SHA256,
+  committedPlayableMp4Ref,
+  evaluatePlayableVideoQa,
+} from "./videoQaPlug";
 
 export const HERO_FRAME_PLAYABLE_EXPORT_VERSION = "1.0.0";
 
@@ -121,18 +127,20 @@ export function runHeroFramePlayableExport(): {
       present: false,
       preserved: null,
       sync: null,
-      note: "Hero Frame window is in-memory compose; full-clip MP4 is the ffmpeg artifact",
+      note: `Hero Frame window is in-memory compose (${compose.frameCount} frames). E2 scores the committed full-clip MP4 encode-first (sha256=${PLAYABLE_MP4_SHA256.slice(0, 8)}…, ${PLAYABLE_MP4_BYTE_LENGTH} bytes).`,
     },
   };
   const claims = buildPlayableArtifactClaims(compose, placeholderMp4);
   const hook = buildPlayableE2Hook(claims, {
-    mp4RelativePath: "docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4",
+    mp4RelativePath: PLAYABLE_MP4_RELATIVE_PATH,
     claimsRelativePath: "docs/reconstruct/artifacts/playable-76fe7438/claims.json",
     hookRelativePath: "docs/reconstruct/artifacts/playable-76fe7438/e2-hook.json",
   });
   const { json: videoQaJson, report } = evaluatePlayableVideoQa({
     compose,
-    mp4: playableMp4Ref({ produced: false }),
+    mp4: committedPlayableMp4Ref(),
+    // 8-frame UI window is not decoded 72-frame MP4 rasters.
+    includeDecodedFrames: false,
   });
   return {
     compose,

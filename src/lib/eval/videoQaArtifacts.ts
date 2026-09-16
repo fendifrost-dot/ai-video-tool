@@ -79,5 +79,5 @@ export function materializeVideoQaFiles(report: VideoQaReport): MaterializedEval
 export function formatVideoQaSummary(report: VideoQaReport): string {
   const n = report.passCount + report.failCount + report.skipCount;
   const mp4 = report.mp4?.produced ? "mp4=produced" : "mp4=none";
-  return `Lane E2 video QA ${report.schemaVersion}: ${report.verdict} ${report.passCount}/${n} frames=${report.frameCount} ${mp4} paidCalls=false stillGoldensReopened=false.`;
+  return `Lane E2 video QA ${report.schemaVersion}: ${report.verdict} ${report.passCount}/${n} fail=${report.failCount} skip=${report.skipCount} frames=${report.frameCount} ${mp4} paidCalls=false stillGoldensReopened=false.`;
 }
