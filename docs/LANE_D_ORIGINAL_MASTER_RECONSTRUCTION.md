@@ -1,11 +1,12 @@
 # Lane D — Original-master reconstruction
 
 **Issue:** [#89](https://github.com/fendifrost-dot/ai-video-tool/issues/89) (child of [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50); lineage [#55](https://github.com/fendifrost-dot/ai-video-tool/issues/55) / PR #58)  
-**Status:** isolated reconstruct + **live-wiring adapters** + **Hero Frame E2E $0 runner** (gate 4). Dispatch / E2E click requires `explicitArm`. Not a live SAM-3 fetch.  
+**Status:** isolated reconstruct + **live-wiring adapters** + **Hero Frame E2E $0 runner** (gate 4). Dispatch / E2E click requires `explicitArm`. Live click **PASS 9/9** (issue [#100](https://github.com/fendifrost-dot/ai-video-tool/issues/100)). Not a live SAM-3 fetch.  
 **Class:** C (compositing / rendering) — isolated module; no chest/sleeve paint or temporal authorize edits.
 
 Live-wiring deploy notes: [`docs/reconstruct/LIVE_WIRING.md`](reconstruct/LIVE_WIRING.md).  
-E2E click path: [`docs/reconstruct/E2E_LIVE.md`](reconstruct/E2E_LIVE.md).
+E2E click path: [`docs/reconstruct/E2E_LIVE.md`](reconstruct/E2E_LIVE.md).  
+Live SUCCESS: [`docs/reconstruct/E2E_LIVE_SUCCESS_2026-09-15.md`](reconstruct/E2E_LIVE_SUCCESS_2026-09-15.md).
 
 ## Product rule
 
