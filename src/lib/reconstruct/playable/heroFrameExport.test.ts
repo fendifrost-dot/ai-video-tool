@@ -198,4 +198,166 @@ describe("runHeroFramePlayableExport", () => {
     expect(summary).toMatch(/webcodecs/);
     expect(summary).not.toMatch(/INCOMPLETE/);
   });
+
+  it("live Export default scores all 72 gate frames (tiny mock; pairCompose stays off)", async () => {
+    class MockFrame {
+      timestamp: number;
+      displayWidth = 8;
+      displayHeight = 8;
+      constructor(timestamp: number) {
+        this.timestamp = timestamp;
+      }
+      close() {
+        /* noop */
+      }
+      allocationSize() {
+        return 8 * 8 * 4;
+      }
+      async copyTo(destination: Uint8Array) {
+        destination.fill(32);
+        for (let i = 3; i < destination.length; i += 4) destination[i] = 255;
+      }
+    }
+    class MockDecoder {
+      state = "unconfigured";
+      static async isConfigSupported() {
+        return { supported: true };
+      }
+      output: (frame: MockFrame) => void;
+      constructor(init: { output: (frame: MockFrame) => void }) {
+        this.output = init.output;
+      }
+      configure() {
+        this.state = "configured";
+      }
+      decode(chunk: { timestamp: number }) {
+        this.output(new MockFrame(chunk.timestamp));
+      }
+      async flush() {
+        /* noop */
+      }
+      close() {
+        this.state = "closed";
+      }
+    }
+    vi.stubGlobal("VideoDecoder", MockDecoder);
+    vi.stubGlobal(
+      "EncodedVideoChunk",
+      class {
+        timestamp: number;
+        constructor(init: { timestamp: number }) {
+          this.timestamp = init.timestamp;
+        }
+      },
+    );
+    const bytes = new Uint8Array(
+      readFileSync("docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4"),
+    );
+    const { compose, videoQaJson, summary, decode } = await runHeroFramePlayableExportLive({
+      mp4Bytes: bytes,
+    });
+    vi.unstubAllGlobals();
+    expect(compose.ok).toBe(true);
+    if (compose.ok) expect(compose.frameCount).toBe(8);
+    expect(decode.ok).toBe(true);
+    if (!decode.ok) return;
+    expect(decode.sourceFrameCount).toBe(72);
+    expect(decode.frameCount).toBe(72);
+    expect(decode.liveSample).toBe(false);
+    expect(decode.fallbackReason).toBe("none");
+    expect(videoQaJson?.frameCount).toBe(72);
+    expect(videoQaJson?.awaiting).not.toContain("decoded_frames");
+    expect(videoQaJson?.verdict).not.toBe("INCOMPLETE");
+    expect(videoQaJson?.failCount).toBe(0);
+    expect(videoQaJson?.stillGoldensReopened).toBe(false);
+    expect(videoQaJson?.paidCalls).toBe(false);
+    expect(summary).toMatch(/frames=72/);
+    expect(summary).toMatch(/fullDecode frames=72 source=72/);
+    expect(summary).not.toMatch(/INCOMPLETE/);
+    expect(summary).not.toMatch(/\bFAIL\b/);
+  });
+
+  it("live Export timeout fallback scores a partial sample, not FAIL and not the 8-frame compose", async () => {
+    let copyCount = 0;
+    class MockFrame {
+      timestamp: number;
+      displayWidth = 8;
+      displayHeight = 8;
+      constructor(timestamp: number) {
+        this.timestamp = timestamp;
+      }
+      close() {
+        /* noop */
+      }
+      allocationSize() {
+        return 8 * 8 * 4;
+      }
+      async copyTo(destination: Uint8Array) {
+        copyCount++;
+        if (copyCount > 5) {
+          return new Promise(() => {
+            /* hang */
+          });
+        }
+        destination.fill(48);
+        for (let i = 3; i < destination.length; i += 4) destination[i] = 255;
+      }
+    }
+    class MockDecoder {
+      state = "unconfigured";
+      static async isConfigSupported() {
+        return { supported: true };
+      }
+      output: (frame: MockFrame) => void;
+      constructor(init: { output: (frame: MockFrame) => void }) {
+        this.output = init.output;
+      }
+      configure() {
+        this.state = "configured";
+      }
+      decode(chunk: { timestamp: number }) {
+        this.output(new MockFrame(chunk.timestamp));
+      }
+      async flush() {
+        /* noop */
+      }
+      close() {
+        this.state = "closed";
+      }
+    }
+    vi.stubGlobal("VideoDecoder", MockDecoder);
+    vi.stubGlobal(
+      "EncodedVideoChunk",
+      class {
+        timestamp: number;
+        constructor(init: { timestamp: number }) {
+          this.timestamp = init.timestamp;
+        }
+      },
+    );
+    const bytes = new Uint8Array(
+      readFileSync("docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4"),
+    );
+    const { compose, videoQaJson, summary, decode } = await runHeroFramePlayableExportLive({
+      mp4Bytes: bytes,
+      maxFrames: 72,
+      timeoutMs: 40,
+      progressiveFallback: false,
+    });
+    vi.unstubAllGlobals();
+    expect(compose.ok).toBe(true);
+    if (compose.ok) expect(compose.frameCount).toBe(8);
+    expect(decode.ok).toBe(true);
+    if (!decode.ok) return;
+    expect(decode.frameCount).toBe(5);
+    expect(decode.liveSample).toBe(true);
+    expect(decode.fallbackReason).toBe("timeout");
+    expect(videoQaJson?.frameCount).toBe(5);
+    expect(videoQaJson?.failCount).toBe(0);
+    expect(videoQaJson?.verdict).not.toBe("INCOMPLETE");
+    expect(videoQaJson?.stillGoldensReopened).toBe(false);
+    expect(summary).toMatch(/frames=5/);
+    expect(summary).toMatch(/fallback=timeout/);
+    expect(summary).not.toMatch(/\bFAIL\b/);
+  });
 });

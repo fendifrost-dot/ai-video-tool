@@ -4,12 +4,17 @@ export {
   CANONICAL_CLIP_KEYFRAME_INDEX,
   HERO_FRAME_PLAYABLE_EXPORT_FRAME_COUNT,
   LIVE_PLAYABLE_DECODE_MAX_FRAMES,
+  LIVE_PLAYABLE_DECODE_FALLBACK_STEPS,
+  LIVE_PLAYABLE_RGBA_BYTES_PER_FRAME,
   LIVE_PROXY_MAX_FRAMES,
   PLAYABLE_E2_HOOK_SCHEMA,
   PLAYABLE_RECONSTRUCT_VERSION,
   PLAYABLE_WORKING_FPS,
   PLAYABLE_WORKING_HEIGHT,
   PLAYABLE_WORKING_WIDTH,
+  livePlayableDecodeTimeoutMs,
+  livePlayableRgbaBudgetBytes,
+  resolveLivePlayableDecodeLadder,
 } from "./contract";
 export type {
   PlayableArtifactClaims,
@@ -85,11 +90,14 @@ export {
   formatPlayableBrowserDecodeNote,
   webCodecsVideoDecoderAvailable,
   committedPlayableMp4FetchCandidates,
+  classifyLiveDecodeFailure,
+  isRecoverableLiveDecodeFailure,
 } from "./decodeMp4Browser";
 export type {
   DecodePlayableMp4BrowserResult,
   DecodePlayableMp4BrowserOk,
   DecodePlayableMp4BrowserFail,
+  LivePlayableDecodeFallbackReason,
 } from "./decodeMp4Browser";
 export {
   HERO_FRAME_PLAYABLE_EXPORT_VERSION,

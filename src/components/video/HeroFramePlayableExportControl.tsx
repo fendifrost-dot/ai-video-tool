@@ -72,9 +72,9 @@ export function HeroFramePlayableExportControl({
         $0 path: intended Stage 1h SAM-3 + in-lib full-window temporal + original-master
         reconstruct. No Grok. Full-clip MP4 is the ffmpeg artifact
         (docs/reconstruct/artifacts/playable-76fe7438/). After compose, Export tries a browser
-        WebCodecs sample of that committed 72-frame gate (max 8 decoded rasters, not the 8-frame UI
-        compose). E2 stays INCOMPLETE awaiting decoded_frames if WebCodecs or MP4 bytes are missing.
-        This control does not own eval modules.
+        WebCodecs decode of that committed 72-frame gate (default all 72 rasters ≈ 253 MiB RGBA).
+        Abort / OOM / timeout keep a smaller sample or stay INCOMPLETE — never a false FAIL, never
+        the 8-frame UI compose. This control does not own eval modules.
       </p>
       <Button
         type="button"

@@ -39,7 +39,7 @@ export type DecodePlayableMp4Result = DecodePlayableMp4Ok | DecodePlayableMp4Fai
 export type DecodePlayableMp4Input = {
   mp4Path?: string;
   mp4Bytes?: Uint8Array;
-  /** Hard cap. Live/UI should stay small; tests use 4–8. Omit to decode all. */
+  /** Hard cap. Omit to decode all. Browser live Export defaults to 72 with fallback. */
   maxFrames?: number;
   /** 0-based source index to start. */
   startFrame?: number;

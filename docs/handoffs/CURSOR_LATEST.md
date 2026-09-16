@@ -4,6 +4,26 @@
 
 **Updated:** 2026-09-16 · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`.
 
+## Lane H — live WebCodecs default 72-frame gate decode (READY, no Publish)
+
+Sprint **[#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102)** · umbrella **[#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50)**. GREEN after #133 live sample `frames=8`. Isolated `src/lib/reconstruct/playable/**` + docs. **Do not raise edge `maxFrames=24`.** `paidCalls=false`. **No Publish. Do not merge from this agent.**
+
+**[DECISION]** `LIVE_PLAYABLE_DECODE_MAX_FRAMES = 72` (`CANONICAL_CLIP_FRAME_COUNT`). Configurable via `maxFrames`. UI compose stays 8 (`HERO_FRAME_PLAYABLE_EXPORT_FRAME_COUNT`). `pairCompose` stays **false**.
+
+**[DECISION]** Memory: 72 × 720 × 1280 × 4 = **265_420_800 bytes ≈ 253 MiB** RGBA. Timeout `10s + 500ms × N` capped at 60 s (72f → 46 s). Abort / OOM / timeout keep any copied rasters; if 0 frames, step **24 then 8**. Never false E2 FAIL.
+
+**Claimed live toast after Lovable frontend Publish of this PR** (when the tab holds ~253 MiB + WebCodecs):
+
+```
+PLAYABLE compose 720×1280 frames=8 … Lane E2 video QA lane-e2-video-qa-v1: PASS 3/9 fail=0 skip=6 frames=72 mp4=produced paidCalls=false stillGoldensReopened=false. browserDecode=webcodecs 720×1280 fullDecode frames=72 source=72.
+```
+
+Fallback: `liveSample maxFrames=N of source=72 (fallback=timeout|oom|abort|progressive_ladder) (not the 8-frame UI compose).` Zero frames → **INCOMPLETE** `awaiting decoded_frames` `fail=0` — not FAIL.
+
+Write-up: [`docs/reconstruct/PLAYABLE_BROWSER_DECODE.md`](../reconstruct/PLAYABLE_BROWSER_DECODE.md)
+
+**Not claimed:** live click of the 72-frame default (needs Publish); live 241/1080; 2nd-clip Export; raising `temporal-propagate-proxy` maxFrames; still-golden reopen.
+
 ## Live re-verify — Hero Frame export E2 PASS 3/9 (after PR #133 Publish)
 
 Work-order: sprint **[#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102)** · umbrella **[#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50)** · merged PR **[#133](https://github.com/fendifrost-dot/ai-video-tool/pull/133)** (`7dc04ad`). **Class A docs.** `paidCalls=false`. No paint / edge / Lovable runtime. **No Publish.**
