@@ -33,6 +33,7 @@ import {
 } from "@/lib/heroFrame/architectureCStillRepair";
 import { HeroFrameTemporalRunControl } from "@/components/video/HeroFrameTemporalRunControl";
 import { HeroFrameReconstructRunControl } from "@/components/video/HeroFrameReconstructRunControl";
+import { HeroFramePlayableExportControl } from "@/components/video/HeroFramePlayableExportControl";
 import { isEditR4CanonicalOwner } from "@/lib/heroFrame/editR4ProductIds";
 import type { QuadNorm } from "@/lib/garment/placementEngine";
 
@@ -389,7 +390,8 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
             temporalTrackingEnabled={String(ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled)}
           </span>
           ; use <span className="font-mono">Run temporal propagate</span> then{" "}
-          <span className="font-mono">Run reconstruct E2E $0</span> below (explicitArm).
+          <span className="font-mono">Run reconstruct E2E $0</span> then{" "}
+          <span className="font-mono">Export playable reconstruct $0</span> below (explicitArm).
         </p>
       </div>
 
@@ -712,6 +714,7 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         stillRepairHardStop={hardStop}
       />
       <HeroFrameReconstructRunControl busy={busy} onBusyChange={setBusy} />
+      <HeroFramePlayableExportControl busy={busy} onBusyChange={setBusy} />
     </section>
   );
 }

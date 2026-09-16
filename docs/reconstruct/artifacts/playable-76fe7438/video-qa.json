@@ -1,0 +1,123 @@
+{
+  "schemaVersion": "lane-e2-video-qa-v1",
+  "verdict": "INCOMPLETE",
+  "passCount": 2,
+  "failCount": 0,
+  "skipCount": 7,
+  "paidCalls": false,
+  "stillGoldensReopened": false,
+  "blockingArtifactProducer": false,
+  "claudeInvestigates": "unexplained_only",
+  "awaiting": ["decoded_frames"],
+  "frameCount": 0,
+  "artifactKind": "reconstructed_mp4",
+  "mp4": {
+    "produced": true,
+    "artifactId": "playable-76fe7438",
+    "path": "docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4",
+    "sha256": "71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b",
+    "byteLength": 486769,
+    "mimeType": "video/mp4"
+  },
+  "criteria": [
+    {
+      "id": "paid_calls_false",
+      "name": "No paid provider calls",
+      "verdict": "PASS",
+      "metrics": { "paidCalls": 0 },
+      "note": "Lane E2 is $0. paidCalls must stay false.",
+      "failureReason": null
+    },
+    {
+      "id": "still_goldens_not_reopened",
+      "name": "Still goldens not rescored",
+      "verdict": "PASS",
+      "metrics": { "chest11": 0, "sleeve6": 0 },
+      "note": "This evaluator never calls chest 11/11 or sleeve 6/6 gates.",
+      "failureReason": null
+    },
+    {
+      "id": "mp4_artifact_scored",
+      "name": "Reconstructed MP4 artifact scored",
+      "verdict": "SKIP",
+      "metrics": { "produced": 1, "decodedFrames": 0 },
+      "note": "MP4 produced; waiting on decoded rasters. Does not block Lane H.",
+      "failureReason": null
+    },
+    {
+      "id": "per_frame_repair_coverage",
+      "name": "Per-frame repair coverage",
+      "verdict": "SKIP",
+      "metrics": {},
+      "note": "No decoded frames yet.",
+      "failureReason": null
+    },
+    {
+      "id": "original_master_preservation",
+      "name": "Original-master preservation",
+      "verdict": "SKIP",
+      "metrics": {},
+      "note": "No decoded frames yet.",
+      "failureReason": null
+    },
+    {
+      "id": "unintended_outside_region_change",
+      "name": "Unintended outside-region change",
+      "verdict": "SKIP",
+      "metrics": {},
+      "note": "No decoded frames yet.",
+      "failureReason": null
+    },
+    {
+      "id": "mask_discontinuity",
+      "name": "Mask discontinuity",
+      "verdict": "SKIP",
+      "metrics": {},
+      "note": "No decoded frames yet.",
+      "failureReason": null
+    },
+    {
+      "id": "temporal_jitter_drift",
+      "name": "Temporal jitter / drift",
+      "verdict": "SKIP",
+      "metrics": {},
+      "note": "No decoded frames yet.",
+      "failureReason": null
+    },
+    {
+      "id": "seam_edge_instability",
+      "name": "Seam / edge instability",
+      "verdict": "SKIP",
+      "metrics": {},
+      "note": "No decoded frames yet.",
+      "failureReason": null
+    }
+  ],
+  "perFrame": [],
+  "temporal": {
+    "maskXorMean": null,
+    "maskXorMax": null,
+    "outsideExcessMeanAbsLuma": null,
+    "insideMeanAbsLumaDelta": null,
+    "seamTemporalMeanAbsLuma": null,
+    "centroidDriftPx": null
+  },
+  "artifacts": { "crops": [] },
+  "unexplained": [],
+  "escalate": null,
+  "notClaimed": [
+    "chest Stage 1m 11/11 rescore",
+    "sleeve Stage 1c 6/6 rescore",
+    "Architecture C paint / occlusion correctness",
+    "temporal optical-flow / authorize internals",
+    "in-process MP4 decode (Lane H or injected decoder supplies rasters)",
+    "paid provider calls"
+  ],
+  "provenance": {
+    "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+    "masterClipAssetId": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+    "reconstructionVersion": "1.0.0",
+    "temporalJobCount": 3,
+    "source": "fixture_temporal_jobs"
+  }
+}

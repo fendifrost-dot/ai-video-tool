@@ -61,6 +61,17 @@ export {
   reconstructVideoQaToJson,
   runReconstructVideoQa,
 } from "./videoQa";
+export {
+  PLAYABLE_RECONSTRUCT_VERSION,
+  PLAYABLE_WORKING_WIDTH,
+  PLAYABLE_WORKING_HEIGHT,
+  runPlayableCompose,
+  prepareHeroFramePlayableExport,
+  runHeroFramePlayableExport,
+  evaluatePlayableVideoQa,
+  evaluatePlayableVideoQaFromE2e,
+  playableComposeToReconstructE2e,
+} from "./playable";
 
 export type { ReconstructInput, ReconstructMetrics, ReconstructResult, RgbaImage } from "./types";
 export type { ReconstructLaneHHandoff } from "./exportHandoff";

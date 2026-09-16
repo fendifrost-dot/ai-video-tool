@@ -1,12 +1,13 @@
 # Lane D — Original-master reconstruction
 
 **Issue:** [#89](https://github.com/fendifrost-dot/ai-video-tool/issues/89) (child of [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50); lineage [#55](https://github.com/fendifrost-dot/ai-video-tool/issues/55) / PR #58)  
-**Status:** isolated reconstruct + **live-wiring adapters** + **Hero Frame E2E $0 runner** (gate 4) + **Lane D2 video QA** ([#108](https://github.com/fendifrost-dot/ai-video-tool/issues/108)). Dispatch / E2E click requires `explicitArm`. Live click **PASS 9/9** (issue [#100](https://github.com/fendifrost-dot/ai-video-tool/issues/100)). D2 unique-RGB **720×1280 PASS 15/15** ([`docs/reconstruct/VIDEO_QA.md`](reconstruct/VIDEO_QA.md)). Not a live SAM-3 fetch / not live `76fe7438` camera bytes.  
+**Status:** isolated reconstruct + **live-wiring adapters** + **Hero Frame E2E $0 runner** (gate 4) + **Lane D2 video QA** ([#108](https://github.com/fendifrost-dot/ai-video-tool/issues/108)) + **Lane H playable 720×1280 MP4** (issue [#111](https://github.com/fendifrost-dot/ai-video-tool/issues/111)). Dispatch / E2E click requires `explicitArm`. Live click **PASS 9/9** (issue [#100](https://github.com/fendifrost-dot/ai-video-tool/issues/100)). D2 unique-RGB **720×1280 PASS 15/15** ([`docs/reconstruct/VIDEO_QA.md`](reconstruct/VIDEO_QA.md)). Playable artifact is in-lib compose + ffmpeg — not a live SAM-3 fetch / not live `76fe7438` camera bytes.
 **Class:** C (compositing / rendering) — isolated module; no chest/sleeve paint or temporal authorize edits.
 
 Live-wiring deploy notes: [`docs/reconstruct/LIVE_WIRING.md`](reconstruct/LIVE_WIRING.md).  
 E2E click path: [`docs/reconstruct/E2E_LIVE.md`](reconstruct/E2E_LIVE.md).  
-Live SUCCESS: [`docs/reconstruct/E2E_LIVE_SUCCESS_2026-09-15.md`](reconstruct/E2E_LIVE_SUCCESS_2026-09-15.md).
+Live SUCCESS: [`docs/reconstruct/E2E_LIVE_SUCCESS_2026-09-15.md`](reconstruct/E2E_LIVE_SUCCESS_2026-09-15.md).  
+Playable MP4: [`docs/reconstruct/PLAYABLE_ARTIFACT.md`](reconstruct/PLAYABLE_ARTIFACT.md).
 
 ## Product rule
 
@@ -43,6 +44,8 @@ Live wiring (gate 4) builds `generated` from CLEARED chest + sleeve stills stamp
 | `src/components/video/ArchitectureCStillRepairRunner.tsx` | Thin §7 mount only (no paint edits) |
 | `src/lib/reconstruct/fixtures/*` | `$0` synthetic packs (no live bytes, no paid Grok) |
 | `src/lib/reconstruct/*.test.ts` | Preservation + gate + dispatch proofs |
+| `src/lib/reconstruct/playable/**` | Lane H 720×1280 compose / SAM-3 consume / MP4 / E2 hook |
+| `src/components/video/HeroFramePlayableExportControl.tsx` | §7 **Export playable reconstruct $0** |
 | `src/lib/reconstruct/index.ts` | Public export |
 
 **Identified shared surfaces — not edited**
