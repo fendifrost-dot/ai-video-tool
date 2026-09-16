@@ -2,7 +2,7 @@
 
 **Work-order:** [#87](https://github.com/fendifrost-dot/ai-video-tool/issues/87) under umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50). Lineage [#76](https://github.com/fendifrost-dot/ai-video-tool/issues/76) / PR #78 (live-prep, armed was false). Sleeve evidence [#86](https://github.com/fendifrost-dot/ai-video-tool/pull/86).  
 **Class:** C (rendering / keyframe-propagation + new JWT edge). Isolated adapters + unit tests + one new edge function.  
-**Status:** **READY** to merge with `TEMPORAL_LIVE_ACTIVATION_ARMED = true`. Parent Lovable-redeploys **only** `temporal-propagate-proxy`.
+**Status:** **ARMED** on `main` @ `200bea9`. `temporal-propagate-proxy` is live (JWT only). `$0` smoke procedure: [`LIVE_SMOKE.md`](./LIVE_SMOKE.md) — this VM **BLOCKED** on owner JWT.
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**.
 
@@ -113,7 +113,9 @@ No V3. No paid Grok. No Control Center.
 
 **READY** for Hero Frame product tracking (`temporalTrackingEnabled = true` when armed; dispatch uses `explicitArm`). Still-repair edge flag stays false.
 
-**Not claimed:** live footage ingest, still-repair edge flag flip, paid/provider calls. `temporal-propagate-proxy` Lovable redeploy remains the #88 parent step.
+**Not claimed:** live footage ingest, still-repair edge flag flip, paid/provider calls.
+
+**$0 live smoke (2026-09-16):** procedure + expected `explicitArm: true` body with chest `9ed83c01` + sleeve `fdb86b18` is in [`LIVE_SMOKE.md`](./LIVE_SMOKE.md). This VM: OPTIONS **200**, anon POST **401** `unauthenticated`, no owner JWT — **BLOCKED** on JWT like prior still verifies. Hero Frame §7 has **no** temporal run button (`prepareHeroFrameTemporalDispatch` is display-only). Parent computerUse: confirm gate → copy owner JWT → `./scripts/temporal-live-smoke.sh`. Reconstruct stays separate. Do **not** redeploy `architecture-c-still-repair-proxy`.
 
 **Live sleeve 1b (2026-09-15):** asset `a4dc7f47` on `2aa1a44c` is **NOT CLEARED 5/6** (criterion 6 right luma 133.6→157.5; left navy-ward PASS). C5/C11/chest reserved held. Historical. Score: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`.
 

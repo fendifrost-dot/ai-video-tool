@@ -31,4 +31,4 @@ Lovable → **Edge Functions → redeploy `temporal-propagate-proxy`**.
 
 Publish ≠ edge redeploy. **Do not** redeploy `architecture-c-still-repair-proxy` from this lane.
 
-Hero Frame `temporalTrackingEnabled` stays **false** until the Hero Frame owner flips it in a separate change.
+Hero Frame `temporalTrackingEnabled` is **true** on `main` (#91). Product dispatch stamps `explicitArm: true`. Still-repair edge mirror stays **false**. `$0` live smoke procedure: `docs/temporal/LIVE_SMOKE.md`. Do **not** redeploy `architecture-c-still-repair-proxy` from a smoke run.

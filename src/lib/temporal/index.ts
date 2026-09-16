@@ -152,6 +152,16 @@ export {
 } from "./clearedChestFixture";
 
 export {
+  TEMPORAL_LIVE_SMOKE_CLIP_ID,
+  TEMPORAL_LIVE_SMOKE_LINEAGE,
+  TEMPORAL_LIVE_SMOKE_VERSION,
+  TEMPORAL_PROPAGATE_PROXY_PATH,
+  buildTemporalLiveSmokeBody,
+  summarizeTemporalLiveSmokeBody,
+} from "./liveSmoke";
+export type { TemporalLiveSmokeBodySummary } from "./liveSmoke";
+
+export {
   TEMPORAL_EDGE_DISPATCH_VERSION,
   TEMPORAL_PROPAGATE_LIMITS,
   dispatchTemporalPropagate,
