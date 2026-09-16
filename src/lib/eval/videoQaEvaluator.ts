@@ -227,11 +227,15 @@ export function evaluateVideoQa(input: VideoQaInput): VideoQaReport {
     repairFail,
   );
 
-  const changed = perFrame.map((p) => p.unauthorizedChangedPixels);
-  const frac = perFrame.map((p) => p.unauthorizedChangedFrac);
-  const hasAuth = changed.some((v) => v !== null);
-  const totalChanged = hasAuth ? changed.reduce((s, v) => s + (v ?? 0), 0) : 0;
-  const maxFrac = hasAuth ? Math.max(...frac.map((v) => v ?? 0)) : 0;
+  const changed = perFrame
+    .map((p) => p.unauthorizedChangedPixels)
+    .filter((v): v is number => v !== null);
+  const frac = perFrame
+    .map((p) => p.unauthorizedChangedFrac)
+    .filter((v): v is number => v !== null);
+  const hasAuth = changed.length > 0;
+  const totalChanged = hasAuth ? changed.reduce((s, v) => s + v, 0) : 0;
+  const maxFrac = hasAuth && frac.length > 0 ? Math.max(...frac) : 0;
   const preservationPass =
     hasAuth &&
     totalChanged <= MAX_UNAUTHORIZED_CHANGED_PIXELS &&
