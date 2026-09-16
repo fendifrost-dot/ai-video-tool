@@ -1,14 +1,15 @@
 # Lane D — Original-master reconstruction
 
 **Issue:** [#89](https://github.com/fendifrost-dot/ai-video-tool/issues/89) (child of [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50); lineage [#55](https://github.com/fendifrost-dot/ai-video-tool/issues/55) / PR #58)  
-**Status:** isolated reconstruct + **live-wiring adapters** + **Hero Frame E2E $0 runner** (gate 4) + **Lane D2 video QA** ([#108](https://github.com/fendifrost-dot/ai-video-tool/issues/108)) + **Lane H playable 720×1280 MP4** (issue [#111](https://github.com/fendifrost-dot/ai-video-tool/issues/111)). Dispatch / E2E click requires `explicitArm`. Live click **PASS 9/9** (issue [#100](https://github.com/fendifrost-dot/ai-video-tool/issues/100)). D2 unique-RGB **720×1280 PASS 15/15** ([`docs/reconstruct/VIDEO_QA.md`](reconstruct/VIDEO_QA.md)). Playable artifact is in-lib compose + ffmpeg — not a live SAM-3 fetch / not live `76fe7438` camera bytes. Live §7 **Export playable reconstruct $0** after PR #129 Publish: E2 **INCOMPLETE 2/9** `fail=0` `mp4=produced` (not FAIL 6/9) — [`PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md).
+**Status:** isolated reconstruct + **live-wiring adapters** + **Hero Frame E2E $0 runner** (gate 4) + **Lane D2 video QA** ([#108](https://github.com/fendifrost-dot/ai-video-tool/issues/108)) + **Lane H playable 720×1280 MP4** (issue [#111](https://github.com/fendifrost-dot/ai-video-tool/issues/111)). Dispatch / E2E click requires `explicitArm`. Live click **PASS 9/9** (issue [#100](https://github.com/fendifrost-dot/ai-video-tool/issues/100)). D2 unique-RGB **720×1280 PASS 15/15** ([`docs/reconstruct/VIDEO_QA.md`](reconstruct/VIDEO_QA.md)). Playable artifact is in-lib compose + ffmpeg — not a live SAM-3 fetch / not live `76fe7438` camera bytes. Live §7 **Export playable reconstruct $0** after PR #133 Publish: E2 **PASS 3/9** `fail=0` `frames=8` WebCodecs sample of the 72-frame gate (`browserDecode=webcodecs`, not a full 72f live score) — [`PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`](reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md). Prior #129 Publish: E2 **INCOMPLETE 2/9** `frames=0` — [`PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md).
 **Class:** C (compositing / rendering) — isolated module; no chest/sleeve paint or temporal authorize edits.
 
 Live-wiring deploy notes: [`docs/reconstruct/LIVE_WIRING.md`](reconstruct/LIVE_WIRING.md).  
 E2E click path: [`docs/reconstruct/E2E_LIVE.md`](reconstruct/E2E_LIVE.md).  
 Live SUCCESS: [`docs/reconstruct/E2E_LIVE_SUCCESS_2026-09-15.md`](reconstruct/E2E_LIVE_SUCCESS_2026-09-15.md).  
 Playable MP4: [`docs/reconstruct/PLAYABLE_ARTIFACT.md`](reconstruct/PLAYABLE_ARTIFACT.md).  
-Live playable export (INCOMPLETE 2/9 after PR #129 Publish): [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md).  
+Live playable export PASS (WebCodecs sample after PR #133 Publish): [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`](reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md).  
+Prior INCOMPLETE 2/9 (after PR #129 Publish): [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md).  
 2nd-clip portability: [`docs/reconstruct/PLAYABLE_PORTABILITY.md`](reconstruct/PLAYABLE_PORTABILITY.md).
 
 ## Product rule

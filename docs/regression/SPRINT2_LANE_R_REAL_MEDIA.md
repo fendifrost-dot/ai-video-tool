@@ -26,7 +26,9 @@ Real-Media-Benchmark remains **0**. No PASS claimed.
 
 **[OBSERVED]** 2026-09-16 ~1:19 AM America/Chicago (~06:19 UTC) after PR #129 merge `f5f7d8a` + Lovable frontend Publish. Hero Frame **Export playable reconstruct $0**: compose SUCCESS (8-frame window) + E2 **INCOMPLETE 2/9** `fail=0` `mp4=produced` `stillGoldensReopened=false`. Gate MP4 sha256 `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`. Write-up: [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](../reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md).
 
-This is **not** a CLEARED real-media gate. The five rows stay **UNCLAIMED**. `real-media-locks.json` is not edited.
+**[OBSERVED]** 2026-09-16 ~2:05 AM America/Chicago (~07:05 UTC) after PR #133 merge `7dc04ad` + Lovable frontend Publish. Same button: compose SUCCESS + E2 **PASS 3/9** `fail=0` `skip=6` `frames=8` `mp4=produced` `stillGoldensReopened=false` `browserDecode=webcodecs` liveSample maxFrames=8 of source=72. Gate MP4 sha256 **unchanged**. Write-up: [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`](../reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md). JSON: [`docs/reconstruct/live-smoke/playable-export-pass.json`](../reconstruct/live-smoke/playable-export-pass.json).
+
+This is a **live WebCodecs sample** of the committed 72-frame gate, **not** a CLEARED real-media gate. The five rows stay **UNCLAIMED**. `real-media-locks.json` is not edited. Not claimed: full 72-frame live score; live 241/1080; 2nd-clip live Export; raising `maxFrames`.
 
 ## YELLOW documented (docs only)
 

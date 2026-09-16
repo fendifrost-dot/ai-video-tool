@@ -87,6 +87,8 @@ Caller-supplied SAM-3 is accepted only at `width×height`. An 80×128 fixture ma
 - Live SAM-3 fetch via `sam3-segment-proxy`
 - Chest 11/11 / sleeve 6/6 rescore
 - Edge redeploy
+- Full 72-frame live browser score (live caps at 8; CI/node can take all 72)
+- 2nd-clip live Hero Frame Export
 
 ---
 
@@ -114,16 +116,18 @@ npm run reconstruct:playable:second-clip
 5. Scroll to **7 · Architecture C — still-first deterministic repair**.
 6. Do **not** click chest or sleeve paint.
 7. Confirm **Export playable reconstruct $0** is enabled.
-8. Click once. Expect toast `PLAYABLE compose 720×1280 frames=8 … paidCalls=false.` plus Lane E2 `evaluateVideoQa`. **Do not** score the 8-frame UI window as the 72-frame gate. After this browser-decode PR's **frontend Publish**: if WebCodecs + `/reconstruct/playable-76fe7438.mp4` succeed, E2 can show **`frames>0`** (live sample of the gate MP4, `pairCompose=false`). If WebCodecs or the asset is missing, expect **INCOMPLETE** `awaiting decoded_frames`, `mp4=produced`, `fail=0` — not FAIL. Node/ffmpeg decode of the committed MP4 remains the CI `frames>0` path ([`PLAYABLE_DECODE.md`](PLAYABLE_DECODE.md)). Full browser write-up: [`PLAYABLE_BROWSER_DECODE.md`](PLAYABLE_BROWSER_DECODE.md).
+8. Click once. Expect toast `PLAYABLE compose 720×1280 frames=8 … paidCalls=false.` plus Lane E2 `evaluateVideoQa`. **Do not** score the 8-frame UI window as the 72-frame gate. After [PR #133](https://github.com/fendifrost-dot/ai-video-tool/pull/133) **frontend Publish**: WebCodecs + `/reconstruct/playable-76fe7438.mp4` produced live E2 **PASS 3/9** `frames=8` (sample of the gate MP4, `pairCompose=false`). If WebCodecs or the asset is missing, expect **INCOMPLETE** `awaiting decoded_frames`, `mp4=produced`, `fail=0` — not FAIL. Node/ffmpeg decode of the committed MP4 remains the CI full/bounded 72-frame path ([`PLAYABLE_DECODE.md`](PLAYABLE_DECODE.md)). Full browser write-up: [`PLAYABLE_BROWSER_DECODE.md`](PLAYABLE_BROWSER_DECODE.md).
 9. Full-clip MP4 remains the ffmpeg artifact (72 frames) at the path above (`sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`). Persist path: `evaluateVideoQa(videoQaInputFromReconstructE2e(e2e, mp4))` → `video-qa.json`. Encode-first with `frames:[]` is INCOMPLETE (`awaiting decoded_frames`). Claimed MP4 with `produced=false` is INCOMPLETE (`awaiting mp4`), not FAIL.
 
-**Live re-verify recorded:** 2026-09-16 ~1:19 AM America/Chicago (~06:19 UTC) after merge `f5f7d8a` ([PR #129](https://github.com/fendifrost-dot/ai-video-tool/pull/129)) + Lovable frontend **Publish**. Signed-in owner, hard refresh, one click on **Export playable reconstruct $0**. Verbatim toast:
+**Live re-verify recorded (PASS):** 2026-09-16 ~2:05 AM America/Chicago (~07:05 UTC) after merge `7dc04ad` ([PR #133](https://github.com/fendifrost-dot/ai-video-tool/pull/133)) + Lovable frontend **Publish**. Signed-in owner, hard refresh, one click on **Export playable reconstruct $0**. Verbatim toast:
 
 ```
-PLAYABLE compose 720×1280 frames=8 fps=24 preserved=true sam3=intended_stage1h_evidence paidCalls=false. Lane E2 video QA lane-e2-video-qa-v1: INCOMPLETE 2/9 fail=0 skip=7 frames=0 mp4=produced paidCalls=false stillGoldensReopened=false.
+PLAYABLE compose 720×1280 frames=8 fps=24 preserved=true sam3=intended_stage1h_evidence paidCalls=false. Lane E2 video QA lane-e2-video-qa-v1: PASS 3/9 fail=0 skip=6 frames=8 mp4=produced paidCalls=false stillGoldensReopened=false. browserDecode=webcodecs 720×1280 liveSample maxFrames=8 of source=72 (not the 8-frame UI compose; full 72f is node/ffmpeg CI).
 ```
 
-Compose SUCCESS (8-frame UI window). E2 **INCOMPLETE** (not FAIL); `fail=0`; `mp4=produced`; `stillGoldensReopened=false`. Gate MP4 unchanged (`sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`). Write-up: [`PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md) · JSON: [`live-smoke/playable-export-incomplete.json`](live-smoke/playable-export-incomplete.json). **Not claimed:** decoded-frame E2 PASS (`frames=0`), live 241-frame/1080 ingest, CLEARED real-media gate final.
+Compose SUCCESS (8-frame UI window). E2 **PASS 3/9** (`fail=0`; `skip=6`; `frames=8` WebCodecs sample of the 72-frame gate; `mp4=produced`; `stillGoldensReopened=false`). Gate MP4 unchanged (`sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`); live Publish mirror sha256 matches. Write-up: [`PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`](PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md) · JSON: [`live-smoke/playable-export-pass.json`](live-smoke/playable-export-pass.json). **Not claimed:** full 72-frame live score, live 241-frame/1080 ingest, 2nd-clip live Export, raising `maxFrames`, CLEARED real-media gate final.
+
+**Prior live re-verify (INCOMPLETE):** 2026-09-16 ~1:19 AM America/Chicago after merge `f5f7d8a` ([PR #129](https://github.com/fendifrost-dot/ai-video-tool/pull/129)) + Publish. Encode-first `INCOMPLETE 2/9 fail=0 skip=7 frames=0 mp4=produced`. Write-up: [`PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md).
 
 Publish ≠ edge redeploy.
 

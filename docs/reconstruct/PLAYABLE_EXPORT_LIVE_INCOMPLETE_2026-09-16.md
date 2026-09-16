@@ -1,5 +1,7 @@
 # PLAYABLE-1 live export — E2 INCOMPLETE 2/9 (not FAIL 6/9)
 
+> **Superseded for the live sample path:** after [PR #133](https://github.com/fendifrost-dot/ai-video-tool/pull/133) + frontend Publish, the same button toasted E2 **PASS 3/9** `frames=8` WebCodecs sample — [`PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`](./PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md). This file stays as the encode-first INCOMPLETE lineage (`frames=0`).
+
 **Date:** 2026-09-16 ~1:19 AM America/Chicago (~2026-09-16 06:19 UTC)  
 **Author:** Cursor (Lane H / E2 live evidence) · **Spend:** **$0**  
 **Issues:** sprint [#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102) · related [#128](https://github.com/fendifrost-dot/ai-video-tool/issues/128) / [PR #129](https://github.com/fendifrost-dot/ai-video-tool/pull/129) · umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50)  
