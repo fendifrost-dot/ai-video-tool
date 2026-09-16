@@ -109,6 +109,14 @@ Caller-supplied SAM-3 is accepted only at `width×height`. An 80×128 fixture ma
 8. Click once. Expect toast `PLAYABLE compose 720×1280 frames=8 … paidCalls=false.` plus Lane E2 `evaluateVideoQa` **INCOMPLETE** (encode-first on the committed 72-frame MP4, `awaiting decoded_frames`, `mp4=produced`, `fail=0`, `blockingArtifactProducer=false`, `stillGoldensReopened=false`). Do **not** expect FAIL — the 8-frame UI window is not decoded MP4 rasters.
 9. Full-clip MP4 remains the ffmpeg artifact (72 frames) at the path above (`sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`). Persist path: `evaluateVideoQa(videoQaInputFromReconstructE2e(e2e, mp4))` → `video-qa.json`. Encode-first with `frames:[]` is INCOMPLETE (`awaiting decoded_frames`). Claimed MP4 with `produced=false` is INCOMPLETE (`awaiting mp4`), not FAIL.
 
+**Live re-verify recorded:** 2026-09-16 ~1:19 AM America/Chicago (~06:19 UTC) after merge `f5f7d8a` ([PR #129](https://github.com/fendifrost-dot/ai-video-tool/pull/129)) + Lovable frontend **Publish**. Signed-in owner, hard refresh, one click on **Export playable reconstruct $0**. Verbatim toast:
+
+```
+PLAYABLE compose 720×1280 frames=8 fps=24 preserved=true sam3=intended_stage1h_evidence paidCalls=false. Lane E2 video QA lane-e2-video-qa-v1: INCOMPLETE 2/9 fail=0 skip=7 frames=0 mp4=produced paidCalls=false stillGoldensReopened=false.
+```
+
+Compose SUCCESS (8-frame UI window). E2 **INCOMPLETE** (not FAIL); `fail=0`; `mp4=produced`; `stillGoldensReopened=false`. Gate MP4 unchanged (`sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`). Write-up: [`PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md) · JSON: [`live-smoke/playable-export-incomplete.json`](live-smoke/playable-export-incomplete.json). **Not claimed:** decoded-frame E2 PASS (`frames=0`), live 241-frame/1080 ingest, CLEARED real-media gate final.
+
 Publish ≠ edge redeploy.
 
 ---

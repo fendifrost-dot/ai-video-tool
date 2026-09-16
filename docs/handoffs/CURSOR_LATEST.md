@@ -4,40 +4,35 @@
 
 **Updated:** 2026-09-16 · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`.
 
-## Lane H+E2 — Hero Frame export E2 INCOMPLETE (not FAIL 6/9)
+## Live re-verify — Hero Frame export E2 INCOMPLETE 2/9 (after PR #129 Publish)
 
-Work-order: child of sprint **#102** (this PR). Isolated playable export glue + `evaluateVideoQa` mp4 criterion. **Do not reopen chest 1m or sleeve 1c.** `paidCalls=false`. No Lovable code edits. No paint / paid Grok.
+Work-order: sprint **#102** · related **#128** / merged PR **#129** (`f5f7d8a`) · umbrella **#50**. **Class A docs.** `paidCalls=false`. No paint / edge / Lovable runtime.
 
-Live §7 **Export playable reconstruct $0** toast was:
+**When:** 2026-09-16 ~1:19 AM America/Chicago (~06:19 UTC). Signed in, hard refresh, one click on **Export playable reconstruct $0** at `https://aivideotool.lovable.app/projects/764a63d2-93cd-44f3-905f-292f14ab2f51/hero-frame`.
 
-`PLAYABLE compose 720×1280 frames=8 … paidCalls=false. Lane E2 video QA lane-e2-video-qa-v1: FAIL 6/9 frames=8 mp4=none …`
+Verbatim toast:
 
-**[VERIFIED]** `FAIL 6/9` is `passCount/total` including SKIPs, not 3 FAILs.
+```
+PLAYABLE compose 720×1280 frames=8 fps=24 preserved=true sam3=intended_stage1h_evidence paidCalls=false. Lane E2 video QA lane-e2-video-qa-v1: INCOMPLETE 2/9 fail=0 skip=7 frames=0 mp4=produced paidCalls=false stillGoldensReopened=false.
+```
 
-| Criterion | Live verdict | Why |
-|-----------|--------------|-----|
-| `paid_calls_false` | PASS | `$0` |
-| `still_goldens_not_reopened` | PASS | never calls chest/sleeve still gates |
-| `mp4_artifact_scored` | SKIP | UI passed `playableMp4Ref({ produced: false })` → `mp4=none` |
-| `per_frame_repair_coverage` | SKIP | adapter maps `authorizedAlpha` only (repair already punched in) |
-| `original_master_preservation` | PASS | 0 unauthorized changed pixels |
-| `unintended_outside_region_change` | PASS | same |
-| `mask_discontinuity` | PASS | XOR 0 |
-| `temporal_jitter_drift` | **FAIL** | `centroidDriftPx=92.65` > 4 on the **8-frame in-memory window** (not decoded MP4) |
-| `seam_edge_instability` | PASS | no soft-α seam samples |
-
-FAIL was **wrong**. Gate artifact is the committed 72-frame MP4 `docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4` (`sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`). UI 8-frame export is not decoded MP4 rasters.
-
-### Fix
-
-| Lane | Change |
+| Read | Result |
 |------|--------|
-| **H** | `runHeroFramePlayableExport` attaches `committedPlayableMp4Ref()` (`produced: true`, path, sha256, 486769 bytes) and `includeDecodedFrames: false` (encode-first). |
-| **E2** | Claimed `reconstructed_mp4` with `produced !== true` → `INCOMPLETE` `awaiting: ["mp4"]`; six visual probes SKIP. Frames-only (no mp4 object) still scores. `blockingArtifactProducer=false`. |
+| Compose | **SUCCESS** — 8-frame UI window |
+| E2 | **INCOMPLETE 2/9** (not FAIL); `fail=0`; `skip=7`; `frames=0`; `mp4=produced`; `stillGoldensReopened=false` |
+| Prior false FAIL 6/9 (`mp4=none`) | **fixed** by #129 |
+| Gate MP4 | committed `docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4` — 720×1280, 72 frames, 24 fps, 3.0s, H.264, `sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`, provenance master `76fe7438` |
 
-Expected re-click toast: compose 8-frame success + E2 **INCOMPLETE** `fail=0` `mp4=produced` `awaiting decoded_frames`.
+**Not claimed:** decoded-frame E2 PASS (`frames=0`), live 241-frame/1080 ingest, CLEARED real-media gate final (locks stay UNCLAIMED).
 
-**Publish ≠ edge redeploy.** Frontend Publish from `main` after merge. No edge redeploy.
+Write-up: `docs/reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`  
+JSON: `docs/reconstruct/live-smoke/playable-export-incomplete.json`
+
+**Publish ≠ edge redeploy.** This evidence PR does **not** Publish or redeploy.
+
+### Prior false FAIL (pre-#129, kept for lineage)
+
+Live toast before the fix: `FAIL 6/9 frames=8 mp4=none`. **[VERIFIED]** `FAIL 6/9` is `passCount/total` including SKIPs (6 PASS + 1 FAIL `centroidDriftPx` on the **8-frame in-memory window** + 2 SKIP), not 3 FAILs. H now attaches `committedPlayableMp4Ref()` encode-first; E2 treats claimed `reconstructed_mp4` with `produced !== true` as INCOMPLETE, never FAIL.
 
 ## Ready-to-test status
 
@@ -52,11 +47,11 @@ Expected re-click toast: compose 8-frame success + E2 **INCOMPLETE** `fail=0` `m
 | Lane D original-master live wiring | YES (PR #92) | n/a — in-lib | YES (library) |
 | **RECONSTRUCT-1 E2E $0** | YES (PR #99, `58b8a49`) | frontend Publish | **PASS 9/9** — `paidCalls=false`, `frames=5` |
 | **Lane D2 reconstruct video QA** | YES (PR #118, issue **#108**) | n/a — in-lib, no Publish | **PASS 15/15** unique-RGB 720×1280 |
-| **Lane E2 video QA** | YES (PR **#116** / **#123**) + this PR | n/a — in-lib | missing `produced` MP4 → **INCOMPLETE** not FAIL |
+| **Lane E2 video QA** | YES (PR **#116** / **#123** / **#129**) | live §7 export after Publish | **INCOMPLETE 2/9** `fail=0` `mp4=produced` (not FAIL 6/9) |
 | Lane C2 temporal video QA (full clip) | YES (PR #113, issue **#107**) | n/a — in-lib | **READY** — 241-frame metrics, `paidCalls=false` |
 | Lane C2 chunked proxy QA + 2nd clip | YES (PR #127, issue **#124**) | n/a — in-lib | **READY** — ≤24-frame windows, seams YELLOW named |
-| Lane R real-media lock placeholders | YES (PR #121, issue **#115**) | n/a — docs/tests | **UNCLAIMED** — REL-2 YELLOW; no invented PASS |
-| **Lane H playable 720×1280 MP4** | YES (PR **#120**) + this PR | frontend Publish for §7 export | **READY** — 8-frame click is E2 INCOMPLETE on committed MP4 |
+| Lane R real-media lock placeholders | YES (PR #121, issue **#115**) | n/a — docs/tests | **UNCLAIMED** — live export re-verify does **not** claim these |
+| **Lane H playable 720×1280 MP4** | YES (PR **#120** / **#129**) | frontend Publish of #129 | **LIVE INCOMPLETE** — 2026-09-16 ~1:19 AM CT |
 
 ## Lane D2 — Reconstruction video QA
 

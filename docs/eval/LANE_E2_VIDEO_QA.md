@@ -215,6 +215,16 @@ The architectural reconstruct eval (`lane-e-reconstruct-video-v1`, 9/9 E2E) rema
 
 ---
 
+## Live Hero Frame export (after PR #129 Publish)
+
+**[OBSERVED]** 2026-09-16 ~1:19 AM America/Chicago (~06:19 UTC). Signed-in **Export playable reconstruct $0** after merge `f5f7d8a` + Lovable frontend Publish. Verbatim E2 fragment:
+
+`Lane E2 video QA lane-e2-video-qa-v1: INCOMPLETE 2/9 fail=0 skip=7 frames=0 mp4=produced paidCalls=false stillGoldensReopened=false.`
+
+That is encode-first INCOMPLETE on the committed 72-frame MP4 (`sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`), **not** FAIL. Full write-up: [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](../reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md).
+
+---
+
 ## Not claimed
 
 - Live 720×1280 decode of master `76fe7438` (H supplies that MP4; this suite scores a **synthetic** 720×1280 sequence of the same shape)

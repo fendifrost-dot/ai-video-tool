@@ -26,6 +26,11 @@ Do **not** invent PASS. Fixture click-smoke and RECONSTRUCT-1 5-frame E2E $0 are
 | Temporal click smoke #96 | Authenticated `paidCalls=false` dispatch, **5-frame synthetic luma** | Full-clip temporal QA |
 | RECONSTRUCT-1 #100 | E2E $0 **PASS 9/9**, `frames=5`, unique-RGB stand-in | 720×1280 original-master video / MP4 |
 | Chest 1m / sleeve 1c goldens | Still CLEARED 11/11 and 6/6 | Video-level QA |
+| PLAYABLE live export 2026-09-16 ~1:19 AM CT | Hero Frame **Export playable reconstruct $0** after PR #129 Publish: compose SUCCESS (8-frame window) + E2 **INCOMPLETE 2/9** `fail=0` `mp4=produced` `stillGoldensReopened=false`. Gate MP4 remains committed `playable-76fe7438/reconstructed.mp4` (`sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`) | Decoded-frame E2 PASS (`frames=0`); live 241-frame/1080 ingest; **CLEARED real-media gate final** — locks below stay **UNCLAIMED** |
+
+## Live observation that does **not** claim a lock
+
+**[OBSERVED]** 2026-09-16 ~1:19 AM America/Chicago (~06:19 UTC): authenticated click after #129 merge `f5f7d8a` + Lovable frontend Publish. Verbatim toast in [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](../reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md). `tests/regression/real-media-locks.json` is **unchanged** (`status: UNCLAIMED`, `verdict: null`). Do not invent PASS.
 
 ## How an owning lane claims
 
