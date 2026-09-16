@@ -17,9 +17,11 @@
 | Lane D original-master live wiring | YES (PR #92) | n/a — in-lib | YES (library) |
 | **RECONSTRUCT-1 E2E $0** | YES (PR #99, `58b8a49`) | frontend Publish | **PASS 9/9** — `paidCalls=false`, `frames=5` |
 | **Lane D2 reconstruct video QA** | YES (PR #118, issue **#108**) | n/a — in-lib, no Publish | **PASS 15/15** unique-RGB 720×1280 |
+| **Lane E2 video QA** | YES (PR **#116** / **#123**) | n/a — in-lib | `evaluateVideoQa` / `videoQaInputFromReconstructE2e` |
 | Lane C2 temporal video QA (full clip) | YES (PR #113, issue **#107**) | n/a — in-lib | **READY** — 241-frame metrics, `paidCalls=false` |
-| Lane C2 chunked proxy QA + 2nd clip | this PR (#124) | n/a — in-lib | **READY** — ≤24-frame windows, seams YELLOW named |
+| Lane C2 chunked proxy QA + 2nd clip | YES (PR #127, issue **#124**) | n/a — in-lib | **READY** — ≤24-frame windows, seams YELLOW named |
 | Lane R real-media lock placeholders | YES (PR #121, issue **#115**) | n/a — docs/tests | **UNCLAIMED** — REL-2 YELLOW; no invented PASS |
+| **Lane H playable 720×1280 MP4** | this PR | frontend Publish for §7 export | **Artifact ready** — 72-frame H.264 |
 
 ## Lane D2 — Reconstruction video QA
 
@@ -58,11 +60,35 @@ Emit: `npx tsx scripts/temporal-video-qa.mts`
 
 ## Lane C2 — Chunked proxy QA + second-clip portability
 
-Work-order: GitHub **#124** (prior **#107** / PR **#113**, sprint **#102**). `src/lib/temporal/**` QA only. **Do not raise `maxFrames=24`.** No Lovable edits.
+Work-order: GitHub **#124** (prior **#107** / PR **#113**, sprint **#102**, merged PR **#127**). `src/lib/temporal/**` QA only. **Do not raise `maxFrames=24`.** No Lovable edits.
 
 ≤24-frame overlap-1 windows, seed reindexed to local 0, `explicitArm` / `paidCalls=false`, stitched globals. Second clip spec `temporal-qa-second-clip-synthetic` (72 @ 24 fps). **YELLOW:** proxy re-paints CLEARED quads each window — translating seams prove chunking is insufficient without a carried-mask wire field.
 
 **Not claimed:** live native pixels, live SAM-3, `maxFrames` raise, Lovable proxy wire change.
+
+## PLAYABLE-1 — 720×1280 reconstructed MP4
+
+Work-order: GitHub **#111** (parent **#102** / **#50**). Isolated compose/export. **Do not reopen chest 1m or sleeve paint.**
+
+| Field | Value |
+|-------|--------|
+| Project | `764a63d2-93cd-44f3-905f-292f14ab2f51` |
+| Garment | `0feb028f-dc4d-45dc-82ac-e4bbd16054b0` |
+| Master clip provenance | `76fe7438-671d-4428-a7f6-17a45e98c16f` |
+| Working raster | **720×1280** @ 24 fps · **72** frames · **3.000 s** |
+| Codec | H.264 `yuv420p` / MP4 (`mov,mp4,…`) |
+| Audio | none (source pack has no audio) |
+| SAM-3 | `intended_stage1h_evidence` / `liveFetch=false` / fail-closed |
+| Preservation | `originalPixelsPreservedWhereUnauthorized=true` |
+| Spend | `paidCalls=false` `grokPerFrame=false` |
+| E2 contract | `evaluateVideoQa(videoQaInputFromReconstructE2e(e2e, mp4))` → persist `videoQaReportToJson` |
+| Artifact | `docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4` |
+
+**Publish ≠ edge redeploy.** No still-repair / temporal / SAM-3 redeploy from this lane.
+
+**Not claimed:** live storage decode of `76fe7438` (DB row is 1080×1920 HDR); live SAM-3 fetch. Live proxy full-clip stays **YELLOW** (`maxFrames=24` vs canonical 241) — Lane H does not raise the cap; in-lib temporal covers the 72-frame Architecture C window.
+
+Write-up: `docs/reconstruct/PLAYABLE_ARTIFACT.md`
 
 ## Canonical IDs (unchanged)
 

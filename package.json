@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:regression": "node scripts/run-regression-locked.mjs"
+    "test:regression": "node scripts/run-regression-locked.mjs",
+    "reconstruct:playable": "npx tsx scripts/reconstruct-playable-artifact.ts"
   },
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.25.5",
