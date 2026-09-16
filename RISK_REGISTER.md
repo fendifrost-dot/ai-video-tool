@@ -8,7 +8,7 @@
 > **Severity:** Critical / High / Medium / Low · **Confidence:** Confirmed / Likely /
 > Suspected · **Status:** Open / In-remediation / Mitigated / Closed.
 
-Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1280 unique-RGB; live camera pixels of `76fe7438` still not claimed).
+Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1280 unique-RGB; Lane C2 full-clip temporal QA 241-frame stand-in / TEMPORAL-2; live camera pixels of `76fe7438` still not claimed).
 
 | id | Title | Severity | Confidence | Status | Owner |
 |----|-------|----------|-----------|--------|-------|
@@ -28,6 +28,7 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 | [PIPELINE-1](#pipeline-1--orchestration-scaffolding-is-not-a-durable-queue) | Pipeline OS scaffolding is in-process only (no durable queue / reaper) | Medium | Confirmed | Open | Products (AVT) / Lane G |
 | [SLEEVE-1](#sleeve-1--visible-upper-arm-only-must-not-be-read-as-armholecuff) | Sleeve still repair is visible-upper-arm only; a pass must not be read as armhole→cuff | Medium | Confirmed | Open | Products (AVT) / Lane B |
 | [TEMPORAL-1](#temporal-1--live-arm-without-hero-frame-tracking) | Temporal lib armed; Hero Frame tracking on (#90); §7 Run control (#94/#95); **click smoke SUCCESS** (`paidCalls=false`, 3 jobs) | Medium | Confirmed | **In-remediation** (click path proven; live footage not claimed) | Products (AVT) / Hero Frame + Lane C |
+| [TEMPORAL-2](#temporal-2--full-clip-video-qa-without-raising-proxy-maxframes) | Full-clip temporal QA without raising proxy `maxFrames=24` (Lane C2 / #107) | Low | Confirmed | **Monitoring** (241-frame in-lib stand-in; live 1080×1920 not claimed) | Products (AVT) / Lane C2 |
 | [RECONSTRUCT-1](#reconstruct-1--gate-4-wiring-without-live-sam-3--new-edge) | Gate 4 wiring without live SAM-3 / new edge; E2E $0 click PASS 9/9 (`frames=5`); **D2 unique-RGB 720×1280 PASS 15/15** | Medium | Confirmed | **In-remediation** (720×1280 unique-RGB claimed; live `76fe7438` camera / SAM-3 / MP4 not claimed) | Products (AVT) / Lane D |
 
 ---
@@ -330,6 +331,16 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **Pointer:** [`docs/temporal/LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md`](docs/temporal/LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md); [`docs/temporal/LIVE_SMOKE.md`](docs/temporal/LIVE_SMOKE.md); [`docs/temporal/LIVE_PREP.md`](docs/temporal/LIVE_PREP.md); [`src/lib/heroFrame/temporalDispatch.ts`](src/lib/heroFrame/temporalDispatch.ts); [`src/lib/heroFrame/temporalRunControl.ts`](src/lib/heroFrame/temporalRunControl.ts); [`src/lib/temporal/livePrep.ts`](src/lib/temporal/livePrep.ts); [`supabase/functions/temporal-propagate-proxy/README.md`](supabase/functions/temporal-propagate-proxy/README.md).
 - **DoD (target):** parent Lovable-redeploys **only** `temporal-propagate-proxy` (from #88); Hero Frame flag flip + §7 Run control are frontend-only (Publish); no still-repair edge redeploy; no per-frame Grok; no proxy-auth widen. **Click path:** SUCCESS (issue #96). Script `./scripts/temporal-live-smoke.sh` remains JWT-blocked on cloud VMs without `AVT_USER_ACCESS_TOKEN` (OPTIONS 200 / anon 401). **Not claimed:** live footage ingest / CLEARED. Reconstruct E2E $0 is recorded separately (RECONSTRUCT-1 / issue #100).
 - **Mitigations:** compile-time arm + explicitArm; luma-only body caps; no service-role / CC secret on this function; still-repair edge flag remains false.
+
+---
+
+## TEMPORAL-2 — Full-clip video QA without raising proxy maxFrames
+
+- **Severity:** Low · **Confidence:** Confirmed · **Status:** Monitoring · **Owner:** Products (AVT) / Lane C2
+- **Summary:** Lane C2 (#107) scores the **full canonical clip duration** (master `76fe7438`, 241 frames @ 59.94 fps, keyframe index 47) in-lib via `propagateRepair`. Metrics: drift / flicker / coverage / occlusion continuity + SAM-3-shaped mask continuity (`sam3LiveFetch=false`). Authenticated `temporal-propagate-proxy` dispatch stays regression-locked (`paidCalls=false`, `grokPerFrame=false`, `explicitArm`, **`maxFrames=24`**). A 241-frame wire clip is rejected at parse. Click-smoke SUCCESS (#96) is unchanged. Does not reopen chest 1m / sleeve 1c paint. Does not ingest live 1080×1920 pixels.
+- **Pointer:** [`docs/temporal/VIDEO_QA.md`](docs/temporal/VIDEO_QA.md); [`src/lib/temporal/qa/`](src/lib/temporal/qa/); [`src/lib/temporal/fullClipFixture.ts`](src/lib/temporal/fullClipFixture.ts).
+- **DoD (target):** unit/fixture proofs on 241 frames; JSON evidence `temporal-video-qa-v1`; dispatch lock tests (5-frame smoke still works; 241-frame POST still refused). **YELLOW:** raising `maxFrames` or live native ingest is a shared-contract / Class C decision — not this lane.
+- **Mitigations:** measurement-only modules; synthetic luma stand-in; yellow contracts named in the JSON; Lane E2 consumes the schema rather than this lane editing eval core.
 
 ---
 

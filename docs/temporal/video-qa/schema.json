@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/fendifrost-dot/ai-video-tool/docs/temporal/video-qa/schema.json",
+  "title": "temporal-video-qa-v1",
+  "description": "Lane C2 full-canonical-clip temporal QA evidence. Consumable by Lane E2. paidCalls is always false.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "lane",
+    "verdict",
+    "paidCalls",
+    "grokPerFrame",
+    "sam3LiveFetch",
+    "stillGoldensReopened",
+    "clip",
+    "summary",
+    "badFrames",
+    "dispatchPath",
+    "yellowContracts",
+    "criteria"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "temporal-video-qa-v1" },
+    "lane": { "const": "C2" },
+    "verdict": { "enum": ["PASS", "FAIL"] },
+    "passCount": { "type": "integer", "minimum": 0 },
+    "failCount": { "type": "integer", "minimum": 0 },
+    "paidCalls": { "const": false },
+    "grokPerFrame": { "const": false },
+    "sam3LiveFetch": { "const": false },
+    "stillGoldensReopened": { "const": false },
+    "fixtureMode": { "enum": ["clean", "defects"] },
+    "clip": {
+      "type": "object",
+      "required": ["id", "native", "qaRaster", "canonicalIndex", "pixels"],
+      "properties": {
+        "id": { "const": "76fe7438-671d-4428-a7f6-17a45e98c16f" },
+        "native": {
+          "type": "object",
+          "required": ["width", "height", "fps", "frameCount", "durationSec"],
+          "properties": {
+            "width": { "const": 1080 },
+            "height": { "const": 1920 },
+            "fps": { "const": 59.94 },
+            "frameCount": { "const": 241 },
+            "durationSec": { "const": 4.0207 }
+          }
+        },
+        "qaRaster": {
+          "type": "object",
+          "required": ["width", "height", "frameCount"],
+          "properties": {
+            "width": { "type": "integer" },
+            "height": { "type": "integer" },
+            "frameCount": { "const": 241 },
+            "fps": { "type": "number" }
+          }
+        },
+        "canonicalIndex": { "const": 47 },
+        "keyframeTimeSec": { "const": 0.785 },
+        "pixels": { "const": "synthetic_luma_stand_in_not_live_1080x1920" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": [
+        "frameCount",
+        "jobsScored",
+        "badFrameCount",
+        "drift",
+        "flicker",
+        "coverage",
+        "occlusion",
+        "sam3Continuity"
+      ],
+      "properties": {
+        "frameCount": { "const": 241 },
+        "jobsScored": { "type": "integer", "minimum": 1 },
+        "badFrameCount": { "type": "integer", "minimum": 0 },
+        "detectorHitAllInjectedWindows": { "type": "boolean" },
+        "drift": { "$ref": "#/$defs/drift" },
+        "flicker": { "$ref": "#/$defs/flicker" },
+        "coverage": { "$ref": "#/$defs/coverage" },
+        "occlusion": { "$ref": "#/$defs/occlusion" },
+        "sam3Continuity": { "$ref": "#/$defs/sam3" }
+      }
+    },
+    "badFrames": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["index", "jobKind", "reasons"],
+        "properties": {
+          "index": { "type": "integer", "minimum": 0, "maximum": 240 },
+          "jobKind": { "enum": ["chest", "sleeve_left", "sleeve_right"] },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "enum": [
+                "low_confidence",
+                "reanchor_recommended",
+                "hold",
+                "failed_match",
+                "scene_cut",
+                "drift_exceeded",
+                "flicker_iou",
+                "coverage_hole",
+                "coverage_overflow",
+                "occlusion_discontinuity",
+                "sam3_discontinuity"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "dispatchPath": {
+      "type": "object",
+      "required": [
+        "paidCalls",
+        "grokPerFrame",
+        "edgeMaxFrames",
+        "canonicalFrameCount",
+        "fullClipFitsProxy",
+        "fullClipPath"
+      ],
+      "properties": {
+        "paidCalls": { "const": false },
+        "grokPerFrame": { "const": false },
+        "edgeMaxFrames": { "const": 24 },
+        "canonicalFrameCount": { "const": 241 },
+        "fullClipFitsProxy": { "const": false },
+        "fullClipPath": { "const": "in_lib_propagateRepair" }
+      }
+    },
+    "yellowContracts": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "edge_max_frames_24_vs_canonical_241",
+          "live_1080x1920_ingest_of_76fe7438_not_this_lane",
+          "lane_e2_should_consume_temporal-video-qa-v1",
+          "sam3_continuity_is_caller_supplied_not_live_fetch"
+        ]
+      }
+    },
+    "criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "verdict"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "verdict": { "enum": ["PASS", "FAIL"] },
+          "metrics": { "type": "object" },
+          "note": { "type": "string" },
+          "failureReason": { "type": ["string", "null"] }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "drift": {
+      "type": "object",
+      "required": ["maxPx", "meanPx", "framesOverThreshold"],
+      "properties": {
+        "maxPx": { "type": "number" },
+        "meanPx": { "type": "number" },
+        "framesOverThreshold": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "flicker": {
+      "type": "object",
+      "required": ["minConsecutiveIou", "meanConsecutiveIou", "framesBelowThreshold"],
+      "properties": {
+        "minConsecutiveIou": { "type": "number" },
+        "meanConsecutiveIou": { "type": "number" },
+        "framesBelowThreshold": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["minRatio", "meanRatio", "minSupport", "meanSupport", "holeFrames", "overflowFrames"],
+      "properties": {
+        "minRatio": { "type": "number" },
+        "meanRatio": { "type": "number" },
+        "minSupport": { "type": "number" },
+        "meanSupport": { "type": "number" },
+        "holeFrames": { "type": "integer", "minimum": 0 },
+        "overflowFrames": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "occlusion": {
+      "type": "object",
+      "required": ["declaredWindowCount", "flaggedInWindows", "discontinuityFrames", "holdLatchedAfterBreak"],
+      "properties": {
+        "declaredWindowCount": { "type": "integer", "minimum": 0 },
+        "flaggedInWindows": { "type": "integer", "minimum": 0 },
+        "recoveryLagFrames": { "type": ["integer", "null"] },
+        "discontinuityFrames": { "type": "integer", "minimum": 0 },
+        "holdLatchedAfterBreak": { "type": "boolean" }
+      }
+    },
+    "sam3": {
+      "type": "object",
+      "required": ["sam3LiveFetch", "frameCount", "meanConsecutiveIou", "minConsecutiveIou", "discontinuityFrames"],
+      "properties": {
+        "sam3LiveFetch": { "const": false },
+        "frameCount": { "const": 241 },
+        "meanConsecutiveIou": { "type": "number" },
+        "minConsecutiveIou": { "type": "number" },
+        "discontinuityFrames": { "type": "integer", "minimum": 0 },
+        "meanRepairOverlap": { "type": "number" },
+        "emptyMaskFrames": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
