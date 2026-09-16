@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "lane-e2-video-qa-v1",
+  "stillGoldensReopened": false,
+  "claudeInvestigates": "unexplained_only",
+  "escalate": {
+    "kind": "architectural_blocker",
+    "message": "Original-master pixels drifted outside authorized α. Assign to reconstruct/compositing — do not reopen chest 11/11 or sleeve 6/6 still goldens.",
+    "stillGoldensReopened": false
+  },
+  "owner": "reconstruct / Lane D2 compositing",
+  "notOwner": ["chest 11/11 still goldens", "sleeve 6/6 still goldens", "Lane E2 paint"],
+  "claude": "Do not investigate. This is a classified original-master contract FAIL, not unexplained[]."
+}

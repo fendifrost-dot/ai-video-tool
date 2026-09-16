@@ -44,6 +44,7 @@ export {
   type VideoQaReport,
 } from "./videoQaTypes";
 export { evaluateVideoQa } from "./videoQaEvaluator";
+export { PRESERVATION_FAIL_ESCALATE, PRESERVATION_FAIL_ESCALATE_MESSAGE } from "./videoQaCriteria";
 export {
   formatVideoQaSummary,
   materializeVideoQaFiles,
@@ -55,3 +56,12 @@ export {
   videoQaInputFromReconstructClip,
   videoQaInputFromReconstructE2e,
 } from "./videoQaAdapter";
+export {
+  VIDEO_QA_FULLCLIP_HEIGHT,
+  VIDEO_QA_FULLCLIP_MODULE_PATH,
+  VIDEO_QA_FULLCLIP_WIDTH,
+  VIDEO_QA_REAL_MEDIA_HOOK,
+  fullClip720FromDecodedFrames,
+  fullClip720Input,
+  secondClipFullClipInput,
+} from "./fixtures/fullClip720";

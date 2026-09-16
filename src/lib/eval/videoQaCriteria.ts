@@ -64,6 +64,20 @@ export const MAX_SEAM_TEMPORAL_MEAN_ABS_LUMA = 25;
  */
 export const MAX_CENTROID_DRIFT_PX = 4;
 
+/**
+ * [DECISION] Preservation FAIL is an original-master compositing contract break.
+ * Escalate to reconstruct / D2 — never reopen chest 11/11 or sleeve 6/6.
+ * `stillGoldensReopened` stays false on both the report and the escalate object.
+ */
+export const PRESERVATION_FAIL_ESCALATE_MESSAGE =
+  "Original-master pixels drifted outside authorized α. Assign to reconstruct/compositing — do not reopen chest 11/11 or sleeve 6/6 still goldens.";
+
+export const PRESERVATION_FAIL_ESCALATE = {
+  kind: "architectural_blocker" as const,
+  message: PRESERVATION_FAIL_ESCALATE_MESSAGE,
+  stillGoldensReopened: false as const,
+};
+
 export const VIDEO_QA_NOT_CLAIMED = [
   "chest Stage 1m 11/11 rescore",
   "sleeve Stage 1c 6/6 rescore",
