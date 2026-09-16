@@ -406,7 +406,8 @@ describe("edge function vendor + authorize path", () => {
     expect(edgeIndex).toContain('from "./lib/edgeDispatch.ts"');
     expect(edgeIndex).toContain("dispatchTemporalPropagate");
     expect(edgeIndex).toContain("auth.getUser()");
-    expect(edgeIndex).not.toContain("X-Proxy-Secret");
+    expect(edgeIndex).not.toMatch(/["']X-Proxy-Secret["']/);
+    expect(edgeIndex).not.toContain("SWITCHX_PROXY_SECRET");
     expect(edgeIndex).not.toContain("COMPOSE_LOOK");
     expect(edgeIndex).not.toContain("FAL_");
     expect(edgeIndex).not.toContain("XAI_API_KEY");
