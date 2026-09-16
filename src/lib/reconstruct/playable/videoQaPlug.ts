@@ -62,6 +62,18 @@ export function playableComposeToReconstructE2e(compose: PlayableComposeOk): Rec
     originalFrames: compose.originalFrames,
     clip: compose.clip,
     decision: compose.decision,
+    sam3Provenance: {
+      consumeVersion: SAM3_CONSUME_VERSION,
+      source: compose.sam3.source as Sam3MaskSource,
+      liveFetchAttempted: SAM3_LIVE_FETCH_ATTEMPTED,
+      paidCalls: false,
+      grokPerFrame: false,
+      fallbackStatus: compose.sam3.fallbackStatus as unknown as Sam3FallbackStatus,
+      mask: null,
+      failure: null,
+    } as Sam3ConsumeProvenance,
+    fps: compose.fps,
+    durationSec: compose.durationSec,
   };
 }
 
