@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { VIDEO_QA_SPEC_VERSION } from "@/lib/eval";
+import { happyPathFrames } from "@/lib/eval/videoQaFixtures";
 import { runPlayableCompose } from "./compose";
 import { heroFramePlayableSpec } from "./spec";
 import {
@@ -14,6 +15,7 @@ import {
   evaluatePlayableVideoQaFromE2e,
   persistPlayableVideoQaJson,
   playableComposeToReconstructE2e,
+  playableDecodedToVideoQaFrames,
   playableMp4Ref,
 } from "./videoQaPlug";
 
@@ -132,5 +134,48 @@ describe("playable E2 video QA plug-in", () => {
     expect(ref.path).toBe(PLAYABLE_MP4_RELATIVE_PATH);
     expect(ref.artifactId).toBe(PLAYABLE_VIDEO_QA_ARTIFACT_ID);
     expect(ref.mimeType).toBe("video/mp4");
+  });
+
+  it("scores injected decoded rasters with frames>0 (no ffmpeg / no WebCodecs)", () => {
+    const frames = happyPathFrames(4);
+    const { report, json } = evaluatePlayableVideoQa({
+      mp4: committedPlayableMp4Ref(),
+      decodedFrames: frames,
+      includeDecodedFrames: false,
+    });
+    expect(report.frameCount).toBe(4);
+    expect(report.frameCount).toBeGreaterThan(0);
+    expect(report.awaiting).not.toContain("decoded_frames");
+    expect(report.verdict).toBe("PASS");
+    expect(report.failCount).toBe(0);
+    expect(report.criteria.find((c) => c.id === "mp4_artifact_scored")?.verdict).toBe("PASS");
+    expect(report.stillGoldensReopened).toBe(false);
+    expect(report.paidCalls).toBe(false);
+    expect(report.blockingArtifactProducer).toBe(false);
+    expect(json.frameCount).toBe(4);
+    expect(json.provenance?.source).toBe("playable_mp4_decode");
+  });
+
+  it("does not pair 8-frame compose onto a 4-frame decode (false FAIL 6/9 guard)", () => {
+    const compose = runPlayableCompose({
+      explicitArm: true,
+      spec: heroFramePlayableSpec({ frameCount: 8, keyframeIndex: 2 }),
+    });
+    expect(compose.ok).toBe(true);
+    if (!compose.ok) return;
+    const decoded = [
+      { index: 0, image: { width: 8, height: 8, data: new Uint8Array(8 * 8 * 4) } },
+      { index: 1, image: { width: 8, height: 8, data: new Uint8Array(8 * 8 * 4) } },
+      { index: 2, image: { width: 8, height: 8, data: new Uint8Array(8 * 8 * 4) } },
+      { index: 3, image: { width: 8, height: 8, data: new Uint8Array(8 * 8 * 4) } },
+    ];
+    const frames = playableDecodedToVideoQaFrames({
+      decoded,
+      compose,
+      pairCompose: true,
+    });
+    expect(frames).toHaveLength(4);
+    expect(frames[0]!.authorizedAlpha).toBeUndefined();
+    expect(frames[0]!.original).toBe(decoded[0]!.image);
   });
 });

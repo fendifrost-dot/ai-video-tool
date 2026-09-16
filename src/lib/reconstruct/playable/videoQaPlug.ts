@@ -4,6 +4,11 @@
  *
  * Encode-first with frames:[] is allowed (INCOMPLETE awaiting
  * decoded_frames). blockingArtifactProducer is always false.
+ *
+ * Decoded MP4 rasters are supplied by H (ffmpeg in node/tests, WebCodecs
+ * in the browser, or an injected frame pack). This module does not import
+ * ffmpeg / child_process so Hero Frame UI can call it. Pairing 8-frame UI
+ * compose onto the 72-frame gate MP4 is refused — that was the false FAIL 6/9.
  */
 
 import {
@@ -12,8 +17,10 @@ import {
   videoQaInputFromReconstructE2e,
   videoQaReportToJson,
 } from "@/lib/eval";
+import type { StructuralReconstructFrame } from "@/lib/eval/videoQaAdapter";
 import type { VideoQaJson, VideoQaMp4Ref, VideoQaReport } from "@/lib/eval/videoQaTypes";
 import { RECONSTRUCT_E2E_VERSION, type ReconstructE2eOk } from "../e2e";
+import type { RgbaImage } from "../types";
 import type { Sam3MaskSource } from "@/lib/reconstruct/adapters";
 import {
   SAM3_CONSUME_VERSION,
@@ -41,6 +48,66 @@ export type PlayableVideoQaResult = {
   report: VideoQaReport;
   json: VideoQaJson;
 };
+
+/** Reconstructed RGBA from an MP4 decode (no α until compose is paired). */
+export type PlayableDecodedRgba = {
+  index: number;
+  image: RgbaImage;
+};
+
+function isStructuralFrame(
+  frame: PlayableDecodedRgba | StructuralReconstructFrame,
+): frame is StructuralReconstructFrame {
+  return "reconstructed" in frame && "original" in frame;
+}
+
+/**
+ * Turn decoded MP4 rasters into E2 frames.
+ *
+ * Compose original + authorizedAlpha attach only when frame counts AND
+ * raster size match (full-clip compose ↔ full-clip decode). The 8-frame
+ * Hero window must not overlay the 72-frame gate MP4.
+ *
+ * Default (no pair): original = reconstructed, no α → visual probes SKIP,
+ * `mp4_artifact_scored` can PASS. H.264 is lossy; pairing unique-RGB
+ * originals onto decoded yuv420p would false-FAIL preservation.
+ */
+export function playableDecodedToVideoQaFrames(input: {
+  decoded: Array<PlayableDecodedRgba | StructuralReconstructFrame>;
+  compose?: PlayableComposeOk;
+  pairCompose?: boolean;
+}): StructuralReconstructFrame[] {
+  if (input.decoded.length === 0) return [];
+  if (isStructuralFrame(input.decoded[0]!)) {
+    return input.decoded.filter(isStructuralFrame);
+  }
+
+  const decoded = input.decoded.filter((f): f is PlayableDecodedRgba => !isStructuralFrame(f));
+  const first = decoded[0]!.image;
+  const compose = input.compose;
+  const canPair =
+    input.pairCompose === true &&
+    compose !== undefined &&
+    compose.frameCount === decoded.length &&
+    compose.width === first.width &&
+    compose.height === first.height;
+
+  const originals =
+    canPair && compose ? new Map(compose.originalFrames.map((f) => [f.index, f.image])) : null;
+  const clipByIndex =
+    canPair && compose ? new Map(compose.clip.frames.map((f) => [f.index, f])) : null;
+
+  return decoded.map((d) => {
+    const original = originals?.get(d.index);
+    const clipFr = clipByIndex?.get(d.index);
+    return {
+      index: d.index,
+      original: original ?? d.image,
+      reconstructed: d.image,
+      authorizedAlpha: clipFr?.result.authorizedAlpha,
+    };
+  });
+}
 
 /**
  * Structural view of a playable compose so H can call the E2 contract
@@ -163,11 +230,47 @@ export function evaluatePlayableVideoQa(input: {
   /**
    * false = encode-first: frames:[] → INCOMPLETE awaiting decoded_frames.
    * Default true when e2e/compose is present.
+   * Ignored when `decodedFrames` is non-empty (MP4 rasters win).
    */
   includeDecodedFrames?: boolean;
+  /**
+   * RGBA from H-owned decode (ffmpeg / WebCodecs / fixture / injected).
+   * When length>0, E2 scores these instead of compose buffers or frames:[].
+   */
+  decodedFrames?: Array<PlayableDecodedRgba | StructuralReconstructFrame>;
+  /** Attach compose original+α only when counts/size match. Default false. */
+  pairCompose?: boolean;
 }): PlayableVideoQaResult {
   const e2e =
     input.e2e ?? (input.compose ? playableComposeToReconstructE2e(input.compose) : undefined);
+  const decoded = input.decodedFrames ?? [];
+
+  if (decoded.length > 0) {
+    const frames = playableDecodedToVideoQaFrames({
+      decoded,
+      compose: input.compose,
+      pairCompose: input.pairCompose,
+    });
+    const first = frames[0]!;
+    const report = evaluateVideoQa(
+      videoQaInputFromFrames({
+        frames,
+        mp4: input.mp4,
+        width: first.reconstructed.width,
+        height: first.reconstructed.height,
+        fps: input.compose?.fps ?? e2e?.fps,
+        provenance: {
+          projectId: e2e?.projectId ?? input.compose?.spec.projectId,
+          masterClipAssetId: e2e?.masterClipAssetId ?? input.compose?.spec.masterClipAssetId,
+          reconstructionVersion: e2e?.e2eVersion ?? input.compose?.playableVersion,
+          temporalJobCount: e2e?.temporalJobCount ?? input.compose?.temporalJobCount,
+          source: "playable_mp4_decode",
+        },
+      }),
+    );
+    return { report, json: videoQaReportToJson(report) };
+  }
+
   const includeFrames = input.includeDecodedFrames !== false && e2e !== undefined;
 
   if (includeFrames && e2e) {

@@ -46,10 +46,7 @@ export {
   prepareHeroFrameReconstructDispatch,
   runHeroFrameReconstructFromTemporalJson,
 } from "./heroFrameRun";
-export {
-  SAM3_CONSUME_VERSION,
-  consumeSam3ForReconstruct,
-} from "./sam3Consume";
+export { SAM3_CONSUME_VERSION, consumeSam3ForReconstruct } from "./sam3Consume";
 export {
   RECONSTRUCT_LANE_H_HANDOFF_VERSION,
   buildReconstructLaneHHandoff,
@@ -71,6 +68,8 @@ export {
   evaluatePlayableVideoQa,
   evaluatePlayableVideoQaFromE2e,
   playableComposeToReconstructE2e,
+  decodePlayableMp4Browser,
+  runHeroFramePlayableExportLive,
 } from "./playable";
 
 export type { ReconstructInput, ReconstructMetrics, ReconstructResult, RgbaImage } from "./types";

@@ -6,7 +6,7 @@ import {
   formatHeroFramePlayableExportCopy,
   heroFramePlayableExportEnabled,
   prepareHeroFramePlayableExport,
-  runHeroFramePlayableExport,
+  runHeroFramePlayableExportLive,
 } from "@/lib/reconstruct/playable/heroFrameExport";
 
 type RunStatus = "idle" | "running" | "ok" | "error";
@@ -29,7 +29,7 @@ export function HeroFramePlayableExportControl({
 
   const gateCopy = formatHeroFramePlayableExportCopy(intent);
 
-  function handleRun() {
+  async function handleRun() {
     if (disabled) return;
     setStatus("running");
     setError(null);
@@ -37,7 +37,7 @@ export function HeroFramePlayableExportControl({
     setHookJson(null);
     onBusyChange?.(true);
     try {
-      const { compose, summary, hookJson: json } = runHeroFramePlayableExport();
+      const { compose, summary, hookJson: json } = await runHeroFramePlayableExportLive();
       if (!compose.ok || !json) {
         setStatus("error");
         setError(summary);
@@ -71,10 +71,10 @@ export function HeroFramePlayableExportControl({
       <p className="text-[11px] text-muted-foreground">
         $0 path: intended Stage 1h SAM-3 + in-lib full-window temporal + original-master
         reconstruct. No Grok. Full-clip MP4 is the ffmpeg artifact
-        (docs/reconstruct/artifacts/playable-76fe7438/). Calls evaluateVideoQa via
-        videoQaInputFromReconstructE2e on the committed MP4 encode-first (sha256
-        71f54599…); the 8-frame window is not decoded MP4 rasters. This control
-        does not own eval modules.
+        (docs/reconstruct/artifacts/playable-76fe7438/). After compose, Export tries a browser
+        WebCodecs sample of that committed 72-frame gate (max 8 decoded rasters, not the 8-frame UI
+        compose). E2 stays INCOMPLETE awaiting decoded_frames if WebCodecs or MP4 bytes are missing.
+        This control does not own eval modules.
       </p>
       <Button
         type="button"

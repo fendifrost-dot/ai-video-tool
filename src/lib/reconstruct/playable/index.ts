@@ -3,6 +3,7 @@ export {
   CANONICAL_CLIP_FRAME_COUNT,
   CANONICAL_CLIP_KEYFRAME_INDEX,
   HERO_FRAME_PLAYABLE_EXPORT_FRAME_COUNT,
+  LIVE_PLAYABLE_DECODE_MAX_FRAMES,
   LIVE_PROXY_MAX_FRAMES,
   PLAYABLE_E2_HOOK_SCHEMA,
   PLAYABLE_RECONSTRUCT_VERSION,
@@ -66,14 +67,35 @@ export {
   evaluatePlayableVideoQaFromE2e,
   persistPlayableVideoQaJson,
   playableComposeToReconstructE2e,
+  playableDecodedToVideoQaFrames,
   playableMp4Ref,
   playableMp4RefForLayout,
 } from "./videoQaPlug";
+export type { PlayableDecodedRgba, PlayableVideoQaResult } from "./videoQaPlug";
+export {
+  decodeCommittedPlayableMp4ForLive,
+  decodePlayableMp4Browser,
+  fetchPlayableMp4Bytes,
+  formatPlayableBrowserDecodeNote,
+  webCodecsVideoDecoderAvailable,
+  committedPlayableMp4FetchCandidates,
+} from "./decodeMp4Browser";
+export type {
+  DecodePlayableMp4BrowserResult,
+  DecodePlayableMp4BrowserOk,
+  DecodePlayableMp4BrowserFail,
+} from "./decodeMp4Browser";
 export {
   HERO_FRAME_PLAYABLE_EXPORT_VERSION,
   formatHeroFramePlayableExportCopy,
   heroFramePlayableExportEnabled,
   prepareHeroFramePlayableExport,
   runHeroFramePlayableExport,
+  runHeroFramePlayableExportLive,
   summarizePlayableCompose,
+  heroFrameDecodedFromRgba,
+} from "./heroFrameExport";
+export type {
+  HeroFramePlayableExportOpts,
+  HeroFramePlayableExportLiveOpts,
 } from "./heroFrameExport";

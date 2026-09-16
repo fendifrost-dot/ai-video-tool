@@ -4,6 +4,18 @@
 
 **Updated:** 2026-09-16 · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`.
 
+## Lane H + E2 — browser decode of playable MP4 → live `frames>0`
+
+Sprint **#102** / umbrella **#50**. GREEN stretch after live encode-first INCOMPLETE (`frames=0`) and sibling node/ffmpeg PR **#132**. Isolated playable WebCodecs decode + E2 plug-in. **Do not reopen chest 1m or sleeve 1c.** `paidCalls=false`. **No Lovable Publish.** **No merge.**
+
+**[VERIFIED]** Live `frames=0` is encode-first: the 8-frame UI window is not scored as the 72-frame H.264 gate (that was false FAIL 6/9). E2 does not decode MP4.
+
+**[VERIFIED in-lib]** `decodePlayableMp4Browser` (mp4Demux + mocked WebCodecs) + `evaluatePlayableVideoQa({ decodedFrames })` scores a bounded sample of committed `playable-76fe7438` bytes with **`frames>0`**, `mp4_artifact_scored=PASS`, `stillGoldensReopened=false`. jsdom without VideoDecoder keeps **INCOMPLETE** `awaiting decoded_frames`.
+
+**Live click after Publish of this PR:** `runHeroFramePlayableExportLive()` fetches `/reconstruct/playable-76fe7438.mp4` (same-origin mirror of the gate file) and WebCodecs-decodes **max 8 of 72** frames. That sample is **not** the 8-frame compose. If WebCodecs or the asset is missing, INCOMPLETE is preserved.
+
+Write-up: [`docs/reconstruct/PLAYABLE_BROWSER_DECODE.md`](docs/reconstruct/PLAYABLE_BROWSER_DECODE.md)
+
 ## Lane H stretch — 2nd-clip playable portability (`f31bd0f2`)
 
 Sprint **#102** / umbrella **#50**. After PLAYABLE-1 **#120** and E2 INCOMPLETE **#129**. Isolated `src/lib/reconstruct/playable/**` + docs. **Do not reopen chest 1m or sleeve 1c.** `paidCalls=false`. **No Lovable Publish.**
@@ -59,11 +71,11 @@ Live toast before the fix: `FAIL 6/9 frames=8 mp4=none`. **[VERIFIED]** `FAIL 6/
 | Lane D original-master live wiring | YES (PR #92) | n/a — in-lib | YES (library) |
 | **RECONSTRUCT-1 E2E $0** | YES (PR #99, `58b8a49`) | frontend Publish | **PASS 9/9** — `paidCalls=false`, `frames=5` |
 | **Lane D2 reconstruct video QA** | YES (PR #118, issue **#108**) | n/a — in-lib, no Publish | **PASS 15/15** unique-RGB 720×1280 |
-| **Lane E2 video QA** | YES (PR **#116** / **#123** / **#129**) | live §7 export after Publish | **INCOMPLETE 2/9** `fail=0` `mp4=produced` (not FAIL 6/9) |
+| **Lane E2 video QA** | YES (PR **#116** / **#123** / **#129**) | live §7 export after Publish | **INCOMPLETE 2/9** `fail=0` `mp4=produced` (not FAIL 6/9) until browser decode PR Publishes |
 | Lane C2 temporal video QA (full clip) | YES (PR #113, issue **#107**) | n/a — in-lib | **READY** — 241-frame metrics, `paidCalls=false` |
 | Lane C2 chunked proxy QA + 2nd clip | YES (PR #127, issue **#124**) | n/a — in-lib | **READY** — ≤24-frame windows, seams YELLOW named |
 | Lane R real-media lock placeholders | YES (PR #121, issue **#115**) | n/a — docs/tests | **UNCLAIMED** — live export re-verify does **not** claim these |
-| **Lane H playable 720×1280 MP4** | YES (PR **#120** / **#129**) | frontend Publish of #129 | **LIVE INCOMPLETE** — 2026-09-16 ~1:19 AM CT |
+| **Lane H playable 720×1280 MP4** | YES (PR **#120** / **#129**) | frontend Publish of #129 | **LIVE INCOMPLETE** — 2026-09-16 ~1:19 AM CT; browser WebCodecs sample is this PR |
 | **Lane H 2nd-clip portability** | YES (PR **#131**) | n/a — in-lib, no Publish | **READY in-lib** — catalog `f31bd0f2`; live Export on 2nd clip **NOT CLEARED** |
 
 ## Lane D2 — Reconstruction video QA
