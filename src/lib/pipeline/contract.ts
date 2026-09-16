@@ -23,6 +23,7 @@
  */
 
 import { DEFAULT_RETRY_POLICY } from "./retry";
+import { STAGE_VERSIONS } from "./stageVersion";
 import type { ArtifactKind, PipelineStageId, StageDefinition } from "./types";
 import { PIPELINE_STAGE_IDS } from "./types";
 
@@ -40,6 +41,7 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
     gates: [],
     retryPolicy: DEFAULT_RETRY_POLICY,
     allowImportFromLane: true,
+    stageVersion: STAGE_VERSIONS.ingest,
     laneSurfaces: [
       {
         ...noPaidCalls,
@@ -74,6 +76,7 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
     gates: [],
     retryPolicy: { ...DEFAULT_RETRY_POLICY, maxAttempts: 1 },
     allowImportFromLane: true,
+    stageVersion: STAGE_VERSIONS.generation,
     laneSurfaces: [
       {
         module: "src/lib/queries/grokVideoEdit.ts",
@@ -111,6 +114,7 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
     gates: [],
     retryPolicy: DEFAULT_RETRY_POLICY,
     allowImportFromLane: true,
+    stageVersion: STAGE_VERSIONS.keyframe_repair,
     laneSurfaces: [
       {
         ...noPaidCalls,
@@ -145,6 +149,7 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
     gates: [],
     retryPolicy: DEFAULT_RETRY_POLICY,
     allowImportFromLane: true,
+    stageVersion: STAGE_VERSIONS.sleeve_garment_repair,
     laneSurfaces: [
       {
         ...noPaidCalls,
@@ -189,6 +194,7 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
     ],
     retryPolicy: DEFAULT_RETRY_POLICY,
     allowImportFromLane: true,
+    stageVersion: STAGE_VERSIONS.temporal_propagation,
     laneSurfaces: [
       {
         ...noPaidCalls,
@@ -229,12 +235,13 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
     ],
     retryPolicy: { ...DEFAULT_RETRY_POLICY, maxAttempts: 1 },
     allowImportFromLane: true,
+    stageVersion: STAGE_VERSIONS.original_master_reconstruction,
     laneSurfaces: [
       {
         ...noPaidCalls,
         module: "docs/ARCHITECTURE_C_CHATGPT_LOCK_2026-09-03.md",
         entrypoint: "Gate 4 — SAM-3 / original-master reconstruction",
-        notes: "No dedicated module yet. Lane G exposes the plug-in slot only.",
+        notes: "No dedicated module yet. Lane G exposes the plug-in slot only. Consume RECONSTRUCT-1 (`src/lib/reconstruct/e2e.ts` version 1.0.0) as original_master_composite — do not run reconstruct math from this lane.",
       },
     ],
   },
@@ -249,6 +256,7 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
     gates: [],
     retryPolicy: DEFAULT_RETRY_POLICY,
     allowImportFromLane: true,
+    stageVersion: STAGE_VERSIONS.deterministic_branding,
     laneSurfaces: [
       {
         ...noPaidCalls,
@@ -275,7 +283,15 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
     gates: [],
     retryPolicy: { ...DEFAULT_RETRY_POLICY, maxAttempts: 1 },
     allowImportFromLane: true,
+    stageVersion: STAGE_VERSIONS.automated_evaluation,
     laneSurfaces: [
+      {
+        ...noPaidCalls,
+        module: "src/lib/eval/reconstructVideoEvaluator.ts",
+        entrypoint: "evaluateReconstructedClip / ReconstructVideoReport JSON",
+        notes:
+          "Lane E2 owns metrics. Lane G2 consumes evaluation_report JSON (spec lane-e-reconstruct-video-v1) as evaluatorResult. Do not compute criteria or reopen chest/sleeve goldens.",
+      },
       {
         ...noPaidCalls,
         module: "src/lib/queries/clipReviews.ts",
@@ -299,10 +315,10 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
   review_export: {
     id: "review_export",
     label: "Review / export",
-    consumes: ["evaluation_report", "branded_composite"],
+    consumes: ["evaluation_report", "branded_composite", "encoded_mp4"],
     requiredAll: [],
-    requiredAny: ["evaluation_report", "branded_composite"],
-    produces: ["review_scorecard", "export_package"],
+    requiredAny: ["evaluation_report", "branded_composite", "encoded_mp4"],
+    produces: ["review_scorecard", "export_package", "encoded_mp4"],
     dependsOn: ["automated_evaluation"],
     gates: [
       {
@@ -314,12 +330,20 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
     ],
     retryPolicy: DEFAULT_RETRY_POLICY,
     allowImportFromLane: true,
+    stageVersion: STAGE_VERSIONS.review_export,
     laneSurfaces: [
       {
         ...noPaidCalls,
         module: "src/lib/export/buildPackage.ts",
         entrypoint: "buildAndDownloadPackage",
         notes: "Client export zip/EDL. Orchestrator records the package artifact, does not zip.",
+      },
+      {
+        ...noPaidCalls,
+        module: "Lane H — E2E playable MP4 encode",
+        entrypoint: "encoded_mp4 artifact (playable reconstructed video)",
+        notes:
+          "Lane G2 does not encode MP4. When Lane H produces encoded_mp4, Product OS stores the pointer + provenance. notClaimed until H hands off.",
       },
     ],
   },

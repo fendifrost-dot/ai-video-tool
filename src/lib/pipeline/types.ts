@@ -6,7 +6,24 @@
  * algorithms, provider clients, or edge proxies.
  */
 
-export const PIPELINE_CONTRACT_VERSION = "1.0.0" as const;
+export const PIPELINE_CONTRACT_VERSION = "1.1.0" as const;
+export const PIPELINE_CONTRACT_VERSIONS = ["1.0.0", "1.1.0"] as const;
+export type PipelineContractVersion = (typeof PIPELINE_CONTRACT_VERSIONS)[number];
+
+/**
+ * Sprint 2 / Lane G2 canonical lifecycle. Richer internal `StageStatus`
+ * values project onto these six product states.
+ */
+export const G2_STAGE_STATES = [
+  "queued",
+  "running",
+  "passed",
+  "failed",
+  "blocked",
+  "retryable",
+] as const;
+
+export type G2StageState = (typeof G2_STAGE_STATES)[number];
 
 /** Known review flags. Runs may carry additional keys. */
 export const PIPELINE_REVIEW_KEYS = [
@@ -79,6 +96,8 @@ export const ARTIFACT_KINDS = [
   "evaluation_report",
   "review_scorecard",
   "export_package",
+  /** Playable MP4 produced by Lane H. Lane G2 stores the pointer only. */
+  "encoded_mp4",
 ] as const;
 
 export type ArtifactKind = (typeof ARTIFACT_KINDS)[number];
@@ -108,6 +127,34 @@ export type ArtifactRef = {
   producedAt: string;
   /** Opaque lane-owned payload. Orchestrator stores, never interprets. */
   lanePayload?: Record<string, unknown>;
+};
+
+/**
+ * Structural consume of Lane E2 evaluator JSON.
+ * Orchestration stores this; it does not compute metrics or reopen goldens.
+ */
+export type ConsumedEvaluatorResult = {
+  specVersion: string;
+  verdict: "PASS" | "FAIL" | "UNSCORED" | "NOT_RUN";
+  passCount: number | null;
+  failCount: number | null;
+  ownerLane: "E2" | "E";
+  paidCalls: false;
+  stillGoldensReopened: false;
+  reportArtifactId?: string;
+  /** Opaque bag from E2. Do not interpret as owned metrics. */
+  summary: Record<string, unknown>;
+};
+
+/** Kind-based handoff from a passed stage to the next compatible stage. */
+export type ArtifactHandoff = {
+  id: string;
+  fromStage: PipelineStageId;
+  toStage: PipelineStageId;
+  artifactIds: string[];
+  kinds: ArtifactKind[];
+  compatibility: "kinds_match";
+  at: string;
 };
 
 export type ProvenanceRecord = {
@@ -176,6 +223,8 @@ export type StageDefinition = {
   gates: StageGate[];
   retryPolicy: RetryPolicy;
   laneSurfaces: LaneSurface[];
+  /** Consume-only version pin (paint / reconstruct / eval owners bump their own). */
+  stageVersion: string;
   /** When true, a seed artifact of a produced kind satisfies the stage without execution. */
   allowImportFromLane: boolean;
 };
@@ -183,11 +232,16 @@ export type StageDefinition = {
 export type StageRecord = {
   stageId: PipelineStageId;
   status: StageStatus;
+  /** G2 product lifecycle. Derived from `status` + retryability. */
+  lifecycle: G2StageState;
+  stageVersion: string;
   attempt: number;
   artifacts: ArtifactRef[];
   provenance: ProvenanceRecord[];
   failures: StageFailure[];
   lastError?: StageFailure;
+  evaluatorResult: ConsumedEvaluatorResult | null;
+  retryReason: string | null;
   nextRetryAt?: string | null;
   updatedAt: string;
 };
@@ -203,6 +257,14 @@ export type PipelineRun = {
   artifacts: ArtifactRef[];
   reviews: Record<string, boolean>;
   seedArtifactIds: string[];
+  paidCalls: false;
+  catalogId?: string;
+  handoffs: ArtifactHandoff[];
+};
+
+export type SeedArtifact = Omit<ArtifactRef, "id" | "producedAt"> & {
+  id?: string;
+  producedAt?: string;
 };
 
 export type PipelineClock = {
@@ -224,4 +286,12 @@ export function isTerminalStageStatus(status: StageStatus): status is TerminalSt
 
 export function isArtifactKind(value: string): value is ArtifactKind {
   return (ARTIFACT_KINDS as readonly string[]).includes(value);
+}
+
+export function isG2StageState(value: string): value is G2StageState {
+  return (G2_STAGE_STATES as readonly string[]).includes(value);
+}
+
+export function isPipelineContractVersion(value: string): value is PipelineContractVersion {
+  return (PIPELINE_CONTRACT_VERSIONS as readonly string[]).includes(value);
 }

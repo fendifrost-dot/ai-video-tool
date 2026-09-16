@@ -274,13 +274,16 @@ Last reviewed: **2026-09-16** (RECONSTRUCT-1 E2E $0 live click PASS 9/9 after PR
 ## PIPELINE-1 — Orchestration scaffolding is not a durable queue
 
 - **Severity:** Medium · **Confidence:** Confirmed · **Status:** Open · **Owner:** Products (AVT) / Lane G
-- **Summary:** Lane G (#51) adds an in-process pipeline state machine
-  (`src/lib/pipeline`) with stage status, artifacts, provenance, failure, and
-  retry. It persists as a JSON document (`metadata_json.pipeline_run`) only.
+- **Summary:** Lane G (#51 / G2 #109) adds an in-process pipeline state machine
+  (`src/lib/pipeline`) with G2 lifecycle (`queued/running/passed/failed/blocked/retryable`),
+  artifacts, provenance, stage version, consumed evaluator result, retry reason,
+  kind-based handoff, and an unattended runner. It persists as a JSON document
+  (`metadata_json.pipeline_run`, contract 1.1.0) only.
   There is still no durable worker, watchdog, or reaper. A browser tab close or
   edge isolate eviction can leave a run mid-stage. This does **not** close
-  [OPS-2](#ops-2--no-job-reaper).
+  [OPS-2](#ops-2--no-job-reaper). G2 does not own MP4 encode (Lane H) or eval metrics (Lane E2).
 - **Pointer:** [`docs/PIPELINE_PRODUCT_OS.md`](docs/PIPELINE_PRODUCT_OS.md);
+  [`docs/PIPELINE_G2_UNATTENDED.md`](docs/PIPELINE_G2_UNATTENDED.md);
   `src/lib/pipeline/`.
 - **Mitigations in scaffolding:** explicit statuses; import-from-lane resume;
   retry classification that refuses `needs_transcode` / missing inputs; generation

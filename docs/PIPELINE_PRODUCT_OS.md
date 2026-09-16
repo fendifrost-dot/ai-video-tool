@@ -1,9 +1,10 @@
 # AVT Pipeline / Product OS — Lane G
 
-**Issue:** [#77](https://github.com/fendifrost-dot/ai-video-tool/issues/77) (**prefer this**) — lineage [#51](https://github.com/fendifrost-dot/ai-video-tool/issues/51), child of [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50) lane 7  
-**Owner:** Lane G — orchestration only (`src/lib/pipeline/**`)  
+**Issue:** [#77](https://github.com/fendifrost-dot/ai-video-tool/issues/77) (**prefer this** for chest scaffolding) — lineage [#51](https://github.com/fendifrost-dot/ai-video-tool/issues/51), child of [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50) lane 7  
+**Sprint 2 G2:** [#109](https://github.com/fendifrost-dot/ai-video-tool/issues/109) under [#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102) — see [`PIPELINE_G2_UNATTENDED.md`](PIPELINE_G2_UNATTENDED.md)  
+**Owner:** Lane G / G2 — orchestration only (`src/lib/pipeline/**`)  
 **Class:** C (orchestration: job graph, stage status/retry/resume). Architecture + product + security sign-off before merge.  
-**Status:** scaffolding + **CLEARED chest stage wired**. Not a durable queue. Not a live production UI runner.  
+**Status:** scaffolding + **CLEARED chest stage wired** + **G2 unattended lifecycle / handoff / catalog binding**. Not a durable queue. Not a live production UI runner.  
 **Control plane:** Lovable — https://aivideotool.lovable.app (SQL editor + Edge Functions redeploy). No standalone Supabase CLI/dashboard from this lane.
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**
@@ -90,6 +91,13 @@ A new live `logo_chest` output that is not `9ed83c01` is stored as `gate: UNSCOR
 | `src/lib/pipeline/chestAdapter.ts`      | `keyframe_repair` handler (import CLEARED or call injected client)     |
 | `src/lib/pipeline/chestQueryAdapter.ts` | Binds `callArchitectureCStillRepair` (logo_chest only)                 |
 | `src/lib/pipeline/stageHooks.ts`        | Sleeve + temporal stub errors other lanes fill                         |
+| `src/lib/pipeline/sleeve.ts`            | CLEARED 1c identity (`fdb86b18`) — IDs only, no paint                   |
+| `src/lib/pipeline/lifecycle.ts`         | G2 states queued/running/passed/failed/blocked/retryable               |
+| `src/lib/pipeline/stageVersion.ts`      | Consume-only version pins                                              |
+| `src/lib/pipeline/handoff.ts`           | Kind-based artifact handoff to next compatible stage                   |
+| `src/lib/pipeline/consumedContracts.ts` | E2 evaluator JSON + Lane H encoded_mp4 (consume, do not own)           |
+| `src/lib/pipeline/catalog.ts`           | Canonical + second-clip catalogs; portable binding                     |
+| `src/lib/pipeline/unattended.ts`        | Advance until G2 pause without per-stage dispatch                      |
 | `src/lib/pipeline/productOs.ts`         | Graph nodes + default Product OS adapters                              |
 | `src/lib/pipeline/orchestrator.ts`      | Create / advance / retry / review flags                                |
 | `src/lib/pipeline/persistence.ts`       | JSON document + `metadata_json.pipeline_run` embed                     |
@@ -122,6 +130,8 @@ Named so a later integration issue can grant access explicitly:
 ### Status
 
 Stage: `pending | ready | running | succeeded | failed | skipped | blocked | needs_review | retrying | cancelled`
+
+G2 product lifecycle (Sprint 2): `queued | running | passed | failed | blocked | retryable`. Mapping: pending/ready → queued; succeeded/skipped → passed; retrying → retryable; blocked/needs_review → blocked; cancelled/failed → failed (failed+retryable lastError → retryable).
 
 Run rolls up from stages: running if any stage is running/retrying; otherwise needs_review / blocked / failed win over succeeded.
 
@@ -160,7 +170,7 @@ Chest query `WORKER_RESOURCE_LIMIT` / HTTP 5xx / 546 maps to retryable `chest_qu
 
 ### Persistence
 
-**[DECISION]** No new SQL table in this work-order (Lovable-managed SQL is out of band; this lane must not invent a migration). The run is a versioned JSON document (`contractVersion: 1.0.0`) that can live on `project_assets.metadata_json.pipeline_run` via `embedPipelineRun`.
+**[DECISION]** No new SQL table in this work-order (Lovable-managed SQL is out of band; this lane must not invent a migration). The run is a versioned JSON document (`contractVersion: 1.1.0`) that can live on `project_assets.metadata_json.pipeline_run` via `embedPipelineRun`. `1.0.0` documents migrate in `parsePipelineRun`.
 
 **[RECOMMENDATION]** A future Class C issue may add a `pipeline_runs` table + durable worker. Until then this is in-process scaffolding. See RISK PIPELINE-1 / OPS-2.
 
