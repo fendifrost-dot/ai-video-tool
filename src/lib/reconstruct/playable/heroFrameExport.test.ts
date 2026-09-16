@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ARCHITECTURE_C_V2_REPAIR } from "@/lib/heroFrame/architectureCStillRepair";
 import { VIDEO_QA_SPEC_VERSION } from "@/lib/eval";
+import { happyPathFrames } from "@/lib/eval/videoQaFixtures";
 import { RECONSTRUCT_LIVE_WIRING_ARMED } from "../liveWiring";
 import {
   PLAYABLE_E2_HOOK_SCHEMA,
@@ -80,5 +81,26 @@ describe("runHeroFramePlayableExport", () => {
     expect(summary).toMatch(/INCOMPLETE/);
     expect(summary).not.toMatch(/\bFAIL\b/);
     expect(summary).toMatch(/mp4=produced/);
+  });
+
+  it("scores frames>0 when decoded rasters are attached (Hero Frame hook)", () => {
+    const decodedFrames = happyPathFrames(4).map((f) => ({
+      index: f.index,
+      image: f.reconstructed,
+    }));
+    const { videoQaJson, summary } = runHeroFramePlayableExport({ decodedFrames });
+    expect(videoQaJson).not.toBeNull();
+    expect(videoQaJson?.frameCount).toBe(4);
+    expect(videoQaJson?.frameCount).toBeGreaterThan(0);
+    expect(videoQaJson?.awaiting).not.toContain("decoded_frames");
+    expect(videoQaJson?.verdict).toBe("PASS");
+    expect(videoQaJson?.failCount).toBe(0);
+    expect(videoQaJson?.stillGoldensReopened).toBe(false);
+    expect(videoQaJson?.paidCalls).toBe(false);
+    expect(videoQaJson?.mp4?.produced).toBe(true);
+    expect(videoQaJson?.criteria.find((c) => c.id === "mp4_artifact_scored")?.verdict).toBe("PASS");
+    expect(summary).toMatch(/PASS/);
+    expect(summary).toMatch(/frames=4/);
+    expect(summary).not.toMatch(/INCOMPLETE/);
   });
 });

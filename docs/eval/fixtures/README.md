@@ -36,4 +36,4 @@ const report = evaluateVideoQa(
 );
 ```
 
-`VIDEO_QA_REAL_MEDIA_HOOK.decodeMp4 === false`. If frames are empty, `evaluateVideoQa` returns `INCOMPLETE` and does not block MP4 production.
+`VIDEO_QA_REAL_MEDIA_HOOK.decodeMp4 === false`. If frames are empty, `evaluateVideoQa` returns `INCOMPLETE` and does not block MP4 production. Lane H decode (ffmpeg / injected rasters) is documented in [`docs/reconstruct/PLAYABLE_DECODE.md`](../../reconstruct/PLAYABLE_DECODE.md).

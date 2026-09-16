@@ -94,6 +94,8 @@ const pending = evaluateVideoQa(
 
 **[DECISION]** E2 does **not** decode MP4 in-process (no `src/lib/video` / ffmpeg ownership). H (or an injected decoder owned by H) supplies RGBA rasters + per-frame α. The real-media gate is: given a produced reconstructed MP4 **and** decoded frames, E2 emits a complete PASS/FAIL JSON.
 
+**[DECISION]** Lane H decode lives in `src/lib/reconstruct/playable/decodeMp4.ts` (node/ffmpeg) and `evaluatePlayableVideoQa({ decodedFrames })` (browser-safe plug-in). See [`docs/reconstruct/PLAYABLE_DECODE.md`](../reconstruct/PLAYABLE_DECODE.md). Missing decode remains `INCOMPLETE` / `awaiting decoded_frames`.
+
 **[DECISION]** A claimed `reconstructed_mp4` with `produced !== true` is **INCOMPLETE** (`awaiting: ["mp4"]`), never FAIL, even if in-memory frames are present. `mp4_artifact_scored` and the six visual probes SKIP. `blockingArtifactProducer` stays false. Frames-only (`kind: reconstructed_frames`, no mp4 object) still scores visuals. Encode-first with `produced: true` and `frames: []` stays INCOMPLETE awaiting `decoded_frames`.
 
 Structural frame contract:
@@ -228,7 +230,8 @@ That is encode-first INCOMPLETE on the committed 72-frame MP4 (`sha256` `71f5459
 ## Not claimed
 
 - Live 720×1280 decode of master `76fe7438` (H supplies that MP4; this suite scores a **synthetic** 720×1280 sequence of the same shape)
-- In-process ffmpeg / mp4Demux
+- In-process ffmpeg / mp4Demux inside `src/lib/eval/**` (H owns `decodeMp4.ts`; E2 still does not decode)
+- Live Hero Frame browser decode of the 72-frame gate MP4 (after Publish of the H decode PR the click stays encode-first INCOMPLETE; node/Vitest is the `frames>0` path)
 - Chest 11/11 or sleeve 6/6 rescore
 - Architecture C paint correctness
 - Temporal optical-flow internals

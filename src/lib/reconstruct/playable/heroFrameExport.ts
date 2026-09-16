@@ -19,11 +19,13 @@ import { heroFramePlayableSpec } from "./spec";
 import { playableE2HookToJson, buildPlayableArtifactClaims, buildPlayableE2Hook } from "./e2Hook";
 import type { PlayableMp4Claims } from "./contract";
 import { CANONICAL_PLAYABLE_ARTIFACT_LAYOUT } from "./catalogBind";
+import type { RgbaImage } from "../types";
 import {
   PLAYABLE_MP4_BYTE_LENGTH,
   PLAYABLE_MP4_SHA256,
   committedPlayableMp4Ref,
   evaluatePlayableVideoQa,
+  type PlayableDecodedRgba,
 } from "./videoQaPlug";
 
 export const HERO_FRAME_PLAYABLE_EXPORT_VERSION = "1.0.0";
@@ -96,7 +98,17 @@ export function summarizePlayableCompose(result: PlayableComposeResult): string 
   return `PLAYABLE compose ${result.width}×${result.height} frames=${result.frameCount} fps=${result.fps} preserved=${String(result.clip.originalPixelsPreservedWhereUnauthorized)} sam3=${result.sam3.source} paidCalls=false.`;
 }
 
-export function runHeroFramePlayableExport(): {
+export type HeroFramePlayableExportOpts = {
+  /**
+   * Optional H-owned decode of the committed gate MP4 (ffmpeg/node or
+   * injected fixture). Browser live click does not pass this — E2 stays
+   * INCOMPLETE awaiting decoded_frames. Do not pass the 8-frame compose
+   * buffer here (false FAIL 6/9).
+   */
+  decodedFrames?: PlayableDecodedRgba[];
+};
+
+export function runHeroFramePlayableExport(opts: HeroFramePlayableExportOpts = {}): {
   compose: PlayableComposeResult;
   summary: string;
   hookJson: Record<string, unknown> | null;
@@ -114,6 +126,7 @@ export function runHeroFramePlayableExport(): {
       videoQaJson: null,
     };
   }
+  const decodedFrames = opts.decodedFrames ?? [];
   const placeholderMp4: PlayableMp4Claims = {
     width: compose.width,
     height: compose.height,
@@ -127,7 +140,10 @@ export function runHeroFramePlayableExport(): {
       present: false,
       preserved: null,
       sync: null,
-      note: `Hero Frame window is in-memory compose (${compose.frameCount} frames). E2 scores the committed full-clip MP4 encode-first (sha256=${PLAYABLE_MP4_SHA256.slice(0, 8)}…, ${PLAYABLE_MP4_BYTE_LENGTH} bytes).`,
+      note:
+        decodedFrames.length > 0
+          ? `Hero Frame window is in-memory compose (${compose.frameCount} frames). E2 scores ${decodedFrames.length} decoded rasters from the committed MP4 (sha256=${PLAYABLE_MP4_SHA256.slice(0, 8)}…).`
+          : `Hero Frame window is in-memory compose (${compose.frameCount} frames). E2 scores the committed full-clip MP4 encode-first (sha256=${PLAYABLE_MP4_SHA256.slice(0, 8)}…, ${PLAYABLE_MP4_BYTE_LENGTH} bytes) until decoded rasters are attached.`,
     },
   };
   const claims = buildPlayableArtifactClaims(compose, placeholderMp4);
@@ -141,6 +157,8 @@ export function runHeroFramePlayableExport(): {
     mp4: committedPlayableMp4Ref(),
     // 8-frame UI window is not decoded 72-frame MP4 rasters.
     includeDecodedFrames: false,
+    decodedFrames,
+    pairCompose: false,
   });
   return {
     compose,
@@ -148,4 +166,11 @@ export function runHeroFramePlayableExport(): {
     hookJson: playableE2HookToJson(hook),
     videoQaJson,
   };
+}
+
+/** Structural helper so callers can wrap ffmpeg output without importing decodeMp4. */
+export function heroFrameDecodedFromRgba(
+  frames: Array<{ index: number; image: RgbaImage }>,
+): PlayableDecodedRgba[] {
+  return frames.map((f) => ({ index: f.index, image: f.image }));
 }
