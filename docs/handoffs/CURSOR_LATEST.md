@@ -11,9 +11,18 @@
 | Stage **1m** chest CLEARED 11/11 | YES (PR #73) | YES (`9ed83c01`) | **LOCKED — do not reopen chest paint** |
 | Lane B sleeve still **1c** | YES (PR #85 / #86) | YES (`fdb86b18`) | **CLEARED 6/6 — LOCKED** |
 | Temporal live activation | YES (`TEMPORAL_LIVE_ACTIVATION_ARMED = true`) | YES — `temporal-propagate-proxy` OPTIONS 200 / JWT only | **YES after owner JWT** |
-| Hero Frame `temporalTrackingEnabled` | YES (`true` + `prepareHeroFrameTemporalDispatch` → `explicitArm`) | frontend Publish | **YES** — §7 shows gate; **no run button** |
+| Hero Frame `temporalTrackingEnabled` | YES (`true` + `prepareHeroFrameTemporalDispatch` → `explicitArm`) | frontend Publish | **YES** — product dispatch uses `explicitArm` |
+| Hero Frame §7 Temporal Run control | this PR (#94 / #95) | frontend Publish | **YES** after Publish — button gated on canDispatch / armed / tracking |
 | Lane D original-master live wiring | YES (`200bea9` / PR #92) | n/a — in-lib | **separate** — not this smoke POST |
-| Temporal `$0` live smoke | this PR (docs + script) | edge live; **VM BLOCKED on JWT** | parent computerUse JWT POST |
+| Temporal `$0` live smoke | YES (PR #93) | edge live; **VM BLOCKED on JWT** | parent computerUse JWT POST |
+
+## HERO FRAME §7 — Temporal Run control
+
+Work-order: GitHub **#94** (lineage **#90** / PR #91, parent **#50**). Hero Frame owner only. **Do not reopen chest 1m or sleeve paint.**
+
+§7 now has **Run temporal propagate**. It calls `prepareHeroFrameTemporalDispatch` / `buildHeroFrameTemporalPropagateBody` then `callTemporalPropagate` with the canonical luma fixture + CLEARED chest/sleeve quads (`explicitArm: true`). Button is disabled unless `canDispatch` + armed + `temporalTrackingEnabled`. Still-repair hard-stop copy that says `temporalTrackingEnabled=false` or "temporal propagation is disabled" is dropped when the product flag is true.
+
+Parent deploy from this PR: **Lovable frontend Publish only**. No edge redeploy. The #88 `temporal-propagate-proxy` Lovable redeploy is unchanged.
 
 ## TEMPORAL $0 LIVE SMOKE — documented; JWT BLOCKED on this VM
 

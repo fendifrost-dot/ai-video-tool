@@ -31,7 +31,7 @@ import {
   resolvePreferredSleeveStillSource,
   type SleevePanelManual,
 } from "@/lib/heroFrame/architectureCStillRepair";
-import { prepareHeroFrameTemporalDispatch } from "@/lib/heroFrame/temporalDispatch";
+import { HeroFrameTemporalRunControl } from "@/components/video/HeroFrameTemporalRunControl";
 import { isEditR4CanonicalOwner } from "@/lib/heroFrame/editR4ProductIds";
 import type { QuadNorm } from "@/lib/garment/placementEngine";
 
@@ -374,7 +374,6 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
   }
 
   const garments = wardrobeQuery.data ?? [];
-  const temporalDispatch = useMemo(() => prepareHeroFrameTemporalDispatch(), []);
 
   return (
     <section className="space-y-4 rounded-md border border-border bg-card/30 p-4">
@@ -388,7 +387,7 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
           <span className="font-mono">
             temporalTrackingEnabled={String(ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled)}
           </span>
-          ; dispatch uses <span className="font-mono">explicitArm</span>.
+          ; use <span className="font-mono">Run temporal propagate</span> below (explicitArm).
         </p>
       </div>
 
@@ -705,17 +704,11 @@ export function ArchitectureCStillRepairRunner({ projectId }: { projectId: strin
         </div>
       )}
 
-      <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-100">
-        Temporal product gate is on (
-        <span className="font-mono">
-          temporalTrackingEnabled={String(temporalDispatch.temporalTrackingEnabled)}
-        </span>
-        , <span className="font-mono">armed={String(temporalDispatch.armed)}</span>,{" "}
-        <span className="font-mono">explicitArm={String(temporalDispatch.explicitArm)}</span>,{" "}
-        <span className="font-mono">canDispatch={String(temporalDispatch.canDispatch)}</span>
-        ). Chest/sleeve paint stays locked. V3 stays inactive — no paid Grok.{" "}
-        {hardStop ?? "Dispatch goes to temporal-propagate-proxy with explicitArm."}
-      </p>
+      <HeroFrameTemporalRunControl
+        busy={busy}
+        onBusyChange={setBusy}
+        stillRepairHardStop={hardStop}
+      />
     </section>
   );
 }
