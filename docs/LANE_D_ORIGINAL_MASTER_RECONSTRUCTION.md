@@ -33,6 +33,8 @@ Live wiring (gate 4) builds `generated` from CLEARED chest + sleeve stills stamp
 | `src/lib/reconstruct/liveWiring.ts` | Gate 4 arm + deploy notes |
 | `src/lib/reconstruct/adapters.ts` | Consume stills + SAM-3 + temporal → `reconstructMasterClip` |
 | `src/lib/reconstruct/dispatch.ts` | Wire parse → authorize → reconstruct |
+| `src/lib/reconstruct/sam3Consume.ts` | SAM-3 consume + provenance (fixture fallback; no live fetch) |
+| `src/lib/reconstruct/exportHandoff.ts` | Lane H MP4 provenance (dims/fps/duration/codec claims) |
 | `src/lib/reconstruct/e2e.ts` | RECONSTRUCT-1 E2E compose (temporal jobs → reconstruct) |
 | `src/lib/reconstruct/heroFrameRun.ts` | Hero Frame §7 product gate |
 | `src/lib/eval/reconstructVideoEvaluator.ts` | Lane E video/sampled-frame PASS/FAIL (no still reopen) |
@@ -108,3 +110,6 @@ Fixture tests prove:
 6. `$0` 4-frame pack on master clip `76fe7438` preserves unauthorized pixels.
 7. **No edge function** to redeploy from this lane.
 8. Hero Frame §7 **Run reconstruct E2E $0** gated on reconstruct armed + temporal tracking; eval JSON does not reopen still goldens.
+9. SAM-3 consume records source / mask checksum / fallback; live `maskPath` never fetched (`paidCalls=false`).
+10. Lane H handoff v2 exposes dims, fps, durationSec (`frameCount/fps`), and null codec claims from the reconstruct frame stream.
+11. Reconstruct QA fixtures accept alternate `masterClipAssetId` as a parameter (no clip-specific code).

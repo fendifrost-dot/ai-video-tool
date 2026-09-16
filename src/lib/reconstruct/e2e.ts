@@ -23,7 +23,7 @@ import {
   SLEEVE_STILL_RGB,
   fixtureSam3Mask,
   flatStill,
-  liveWiringFixturePack,
+  reconstructQaFixturePack,
   uniqueOriginalFrame,
 } from "./fixtures/liveWiringFixture";
 import {
@@ -32,6 +32,7 @@ import {
   evaluateReconstructLiveWiring,
   type ReconstructLiveWiringDecision,
 } from "./liveWiring";
+import { consumeSam3ForReconstruct, type Sam3ConsumeProvenance } from "./sam3Consume";
 import type { RgbaImage } from "./types";
 
 export const RECONSTRUCT_E2E_VERSION = "1.0.0";
@@ -60,6 +61,9 @@ export type ReconstructE2eOk = {
   originalFrames: { index: number; image: RgbaImage }[];
   clip: ReconstructClipResult;
   decision: ReconstructLiveWiringDecision;
+  sam3Provenance: Sam3ConsumeProvenance;
+  fps: number;
+  durationSec: number;
 };
 
 export type ReconstructE2eFail = {
@@ -199,6 +203,14 @@ export type RunReconstructE2eInput = {
    * Live UI must pass temporal jobs; it does not silently substitute fixtures.
    */
   allowFixtureTemporal?: boolean;
+  /** Alternate master clip — no clip-specific reconstruct branch. */
+  masterClipAssetId?: string;
+  projectId?: string;
+  clipId?: string;
+  fps?: number;
+  /** SAM-3 JSON. Live path/maskPath → fixture fallback. Never fetched. */
+  sam3?: unknown;
+  allowFixtureSam3?: boolean;
 };
 
 function fail(
@@ -242,7 +254,7 @@ export function runReconstructE2e(input: RunReconstructE2eInput = {}): Reconstru
   }
 
   let source: ReconstructE2eSource;
-  let pack: ReturnType<typeof packFromTemporalJobs> | ReturnType<typeof liveWiringFixturePack>;
+  let pack: ReturnType<typeof packFromTemporalJobs> | ReturnType<typeof reconstructQaFixturePack>;
 
   if (input.temporalPropagateResult !== undefined) {
     const consumed = consumeTemporalJobsFromPropagateResult(input.temporalPropagateResult);
@@ -255,7 +267,12 @@ export function runReconstructE2e(input: RunReconstructE2eInput = {}): Reconstru
     }
     source = "live_temporal_jobs";
   } else if (input.allowFixtureTemporal === true) {
-    pack = liveWiringFixturePack();
+    pack = reconstructQaFixturePack({
+      masterClipAssetId: input.masterClipAssetId,
+      projectId: input.projectId,
+      clipId: input.clipId,
+      fps: input.fps,
+    });
     source = "fixture_temporal_jobs";
   } else {
     return fail(
@@ -266,15 +283,41 @@ export function runReconstructE2e(input: RunReconstructE2eInput = {}): Reconstru
   }
 
   try {
+    const fps =
+      input.fps ??
+      ("fps" in pack && typeof pack.fps === "number" && pack.fps > 0 ? pack.fps : 24);
+    const masterClipAssetId =
+      input.masterClipAssetId ??
+      ("masterClipAssetId" in pack && typeof pack.masterClipAssetId === "string"
+        ? pack.masterClipAssetId
+        : CANONICAL_MASTER_CLIP_ID);
+    const projectId =
+      input.projectId ??
+      ("projectId" in pack && typeof pack.projectId === "string"
+        ? pack.projectId
+        : CANONICAL_PROJECT_ID);
+    const clipId = input.clipId ?? masterClipAssetId;
+
+    const sam3Consumed = consumeSam3ForReconstruct({
+      raw: input.sam3 !== undefined ? input.sam3 : pack.sam3,
+      expectedWidth: pack.width,
+      expectedHeight: pack.height,
+      allowFixtureFallback: input.allowFixtureSam3 !== false,
+    });
+    if (!sam3Consumed.ok) {
+      return fail(sam3Consumed.code, sam3Consumed.message, decision);
+    }
+
     const clip = reconstructMasterClip({
       originalFrames: pack.originalFrames,
       chestStill: pack.chestStill,
       sleeveStill: pack.sleeveStill,
-      sam3: pack.sam3,
+      sam3: sam3Consumed.sam3,
       temporalJobs: pack.temporalJobs,
-      projectId: CANONICAL_PROJECT_ID,
-      masterClipAssetId: CANONICAL_MASTER_CLIP_ID,
-      clipId: CANONICAL_MASTER_CLIP_ID,
+      projectId,
+      masterClipAssetId,
+      clipId,
+      fps,
     });
     return {
       ok: true,
@@ -286,8 +329,8 @@ export function runReconstructE2e(input: RunReconstructE2eInput = {}): Reconstru
       provider: "none",
       edgeFunction: null,
       explicitArm: true,
-      projectId: CANONICAL_PROJECT_ID,
-      masterClipAssetId: CANONICAL_MASTER_CLIP_ID,
+      projectId,
+      masterClipAssetId,
       stillAssetId: CANONICAL_STILL_ASSET_ID,
       chestAssetId: clip.chestAssetId,
       sleeveAssetId: clip.sleeveAssetId,
@@ -298,6 +341,9 @@ export function runReconstructE2e(input: RunReconstructE2eInput = {}): Reconstru
       originalFrames: pack.originalFrames,
       clip,
       decision,
+      sam3Provenance: sam3Consumed.provenance,
+      fps,
+      durationSec: clip.frames.length / fps,
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "reconstruct_failed";

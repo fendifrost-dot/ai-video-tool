@@ -5,14 +5,17 @@
  * Original pixels are unique per (x, y, frame) so preservation is exact RGB.
  */
 
-import { CLEARED_CHEST_ASSET_ID, CLEARED_SLEEVE_ASSET_ID } from "../canonicalLineage";
-import type { ConsumedSam3Mask, ConsumedTemporalJob, MasterClipFrame } from "../adapters";
-import { fillConvexQuad } from "../adapters";
 import {
+  CANONICAL_MASTER_CLIP_ID,
+  CANONICAL_PROJECT_ID,
+  CLEARED_CHEST_ASSET_ID,
   CLEARED_CHEST_QUAD_TUPLE,
+  CLEARED_SLEEVE_ASSET_ID,
   CLEARED_SLEEVE_LEFT_QUAD_TUPLE,
   CLEARED_SLEEVE_RIGHT_QUAD_TUPLE,
 } from "../canonicalLineage";
+import type { ConsumedSam3Mask, ConsumedTemporalJob, MasterClipFrame } from "../adapters";
+import { fillConvexQuad } from "../adapters";
 import {
   FIXTURE_HEIGHT,
   FIXTURE_WIDTH,
@@ -82,22 +85,25 @@ export function fixtureSam3Mask(width = FIXTURE_WIDTH, height = FIXTURE_HEIGHT):
 export function fixtureTemporalJobs(
   width = FIXTURE_WIDTH,
   height = FIXTURE_HEIGHT,
+  frameCount = LIVE_WIRING_FRAME_COUNT,
 ): ConsumedTemporalJob[] {
   const chestMask = fillConvexQuad(width, height, CLEARED_CHEST_QUAD_TUPLE);
   const leftMask = fillConvexQuad(width, height, CLEARED_SLEEVE_LEFT_QUAD_TUPLE);
   const rightMask = fillConvexQuad(width, height, CLEARED_SLEEVE_RIGHT_QUAD_TUPLE);
+  const last = Math.max(0, frameCount - 1);
+  const indices = Array.from({ length: frameCount }, (_, i) => i);
 
   const framesFor = (
     mask: Float32Array,
     lowConfidenceLast: boolean,
   ): ConsumedTemporalJob["frames"] =>
-    [0, 1, 2, 3].map((index) => ({
+    indices.map((index) => ({
       index,
       width,
       height,
       mask,
-      confidence: lowConfidenceLast && index === 3 ? 0.2 : 1,
-      reanchorRecommended: lowConfidenceLast && index === 3,
+      confidence: lowConfidenceLast && index === last ? 0.2 : 1,
+      reanchorRecommended: lowConfidenceLast && index === last,
     }));
 
   return [
@@ -120,18 +126,50 @@ export function fixtureTemporalJobs(
 }
 
 export function liveWiringFixturePack() {
+  return reconstructQaFixturePack();
+}
+
+/**
+ * Generic reconstruct QA pack. Alternate `masterClipAssetId` is a parameter —
+ * no clip-specific reconstruct code.
+ */
+export function reconstructQaFixturePack(options: {
+  masterClipAssetId?: string;
+  projectId?: string;
+  clipId?: string;
+  width?: number;
+  height?: number;
+  frameCount?: number;
+  fps?: number;
+} = {}) {
+  const width = options.width ?? FIXTURE_WIDTH;
+  const height = options.height ?? FIXTURE_HEIGHT;
+  const frameCount = options.frameCount ?? LIVE_WIRING_FRAME_COUNT;
+  const fps = options.fps ?? 24;
+  const masterClipAssetId = options.masterClipAssetId ?? CANONICAL_MASTER_CLIP_ID;
+  const projectId = options.projectId ?? CANONICAL_PROJECT_ID;
+  const clipId = options.clipId ?? masterClipAssetId;
+
   const originalFrames: MasterClipFrame[] = [];
-  for (let i = 0; i < LIVE_WIRING_FRAME_COUNT; i++) {
-    originalFrames.push({ index: i, image: uniqueOriginalFrame(i) });
+  for (let i = 0; i < frameCount; i++) {
+    originalFrames.push({ index: i, image: uniqueOriginalFrame(i, width, height) });
   }
   return {
-    width: FIXTURE_WIDTH,
-    height: FIXTURE_HEIGHT,
+    width,
+    height,
+    fps,
+    frameCount,
+    masterClipAssetId,
+    projectId,
+    clipId,
     originalFrames,
-    chestStill: { assetId: CLEARED_CHEST_ASSET_ID, image: flatStill(CHEST_STILL_RGB) },
-    sleeveStill: { assetId: CLEARED_SLEEVE_ASSET_ID, image: flatStill(SLEEVE_STILL_RGB) },
-    sam3: fixtureSam3Mask(),
-    temporalJobs: fixtureTemporalJobs(),
+    chestStill: { assetId: CLEARED_CHEST_ASSET_ID, image: flatStill(CHEST_STILL_RGB, width, height) },
+    sleeveStill: {
+      assetId: CLEARED_SLEEVE_ASSET_ID,
+      image: flatStill(SLEEVE_STILL_RGB, width, height),
+    },
+    sam3: fixtureSam3Mask(width, height),
+    temporalJobs: fixtureTemporalJobs(width, height, frameCount),
     invertedOnFrame0: invertedGenerated(originalFrames[0]!.image),
   };
 }

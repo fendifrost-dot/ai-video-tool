@@ -25,7 +25,7 @@ export const RECONSTRUCT_ADAPTER_VERSION = "1.0.0";
 /** This lane never live-fetches SAM-3. Masks are fixture or caller-supplied. */
 export const SAM3_LIVE_FETCH = false as const;
 
-export type Sam3MaskSource = "fixture" | "caller_supplied";
+export type Sam3MaskSource = "fixture" | "caller_supplied" | "unavailable_fallback_fixture";
 
 export interface ConsumedSam3Mask {
   width: number;
@@ -78,6 +78,8 @@ export interface ReconstructClipInput {
   projectId?: string;
   masterClipAssetId?: string;
   clipId?: string;
+  /** Passthrough for Lane H duration/fps claims. Reconstruct does not restamp fps. */
+  fps?: number;
 }
 
 export interface ReconstructClipFrameResult {
@@ -99,6 +101,9 @@ export interface ReconstructClipResult {
   sam3LiveFetch: false;
   grokPerFrame: false;
   provider: "none";
+  width: number;
+  height: number;
+  fps: number | null;
 }
 
 export const TEMPORAL_MASK_MIN_CONFIDENCE = 0.6;
@@ -325,6 +330,9 @@ export function reconstructMasterClip(input: ReconstructClipInput): ReconstructC
     sam3LiveFetch: false,
     grokPerFrame: false,
     provider: "none",
+    width: input.originalFrames[0]!.image.width,
+    height: input.originalFrames[0]!.image.height,
+    fps: typeof input.fps === "number" && Number.isFinite(input.fps) && input.fps > 0 ? input.fps : null,
   };
 }
 

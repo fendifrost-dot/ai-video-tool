@@ -41,5 +41,16 @@ export {
   prepareHeroFrameReconstructDispatch,
   runHeroFrameReconstructFromTemporalJson,
 } from "./heroFrameRun";
+export {
+  SAM3_CONSUME_VERSION,
+  consumeSam3ForReconstruct,
+} from "./sam3Consume";
+export {
+  RECONSTRUCT_LANE_H_HANDOFF_VERSION,
+  buildReconstructLaneHHandoff,
+  durationSecFromFrameStream,
+} from "./exportHandoff";
 
 export type { ReconstructInput, ReconstructMetrics, ReconstructResult, RgbaImage } from "./types";
+export type { ReconstructLaneHHandoff } from "./exportHandoff";
+export type { Sam3ConsumeProvenance } from "./sam3Consume";
