@@ -2,7 +2,7 @@
 
 **Work-order:** [#87](https://github.com/fendifrost-dot/ai-video-tool/issues/87) under umbrella [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50). Lineage [#76](https://github.com/fendifrost-dot/ai-video-tool/issues/76) / PR #78 (live-prep, armed was false). Sleeve evidence [#86](https://github.com/fendifrost-dot/ai-video-tool/pull/86).  
 **Class:** C (rendering / keyframe-propagation + new JWT edge). Isolated adapters + unit tests + one new edge function.  
-**Status:** **READY** to merge with `TEMPORAL_LIVE_ACTIVATION_ARMED = true`. Parent Lovable-redeploys **only** `temporal-propagate-proxy`.
+**Status:** **ARMED** on `main` @ `200bea9`. `temporal-propagate-proxy` is live (JWT only). `$0` smoke procedure: [`LIVE_SMOKE.md`](./LIVE_SMOKE.md) — this VM **BLOCKED** on owner JWT.
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**.
 
@@ -10,15 +10,15 @@ Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / *
 
 ## What landed
 
-| Surface | Change |
-| ------- | ------ |
-| `livePrep.ts` | `TEMPORAL_LIVE_ACTIVATION_ARMED = true` |
-| `canonicalLineage.ts` | Frozen 1m chest + live 1c sleeve IDs / documented seeds |
-| `approvedQuad.ts` | CLEARED chest + CLEARED sleeve left/right |
-| `edgeAdapter.ts` / `edgeDispatch.ts` | `authorizeTemporalEdgeRequest` then `propagateRepair` |
-| `heroFrameHook.ts` | Prepares 3 jobs; **`temporalTrackingEnabled` stays false** |
-| `temporal-propagate-proxy` | Isolated JWT edge. No Grok / Fal / CC |
-| This doc | Edge-only deploy notes + Hero Frame owner flip |
+| Surface                              | Change                                                     |
+| ------------------------------------ | ---------------------------------------------------------- |
+| `livePrep.ts`                        | `TEMPORAL_LIVE_ACTIVATION_ARMED = true`                    |
+| `canonicalLineage.ts`                | Frozen 1m chest + live 1c sleeve IDs / documented seeds    |
+| `approvedQuad.ts`                    | CLEARED chest + CLEARED sleeve left/right                  |
+| `edgeAdapter.ts` / `edgeDispatch.ts` | `authorizeTemporalEdgeRequest` then `propagateRepair`      |
+| `heroFrameHook.ts`                   | Prepares 3 jobs; **`temporalTrackingEnabled` stays false** |
+| `temporal-propagate-proxy`           | Isolated JWT edge. No Grok / Fal / CC                      |
+| This doc                             | Edge-only deploy notes + Hero Frame owner flip             |
 
 **Not touched:** `logoComposite` / stillRepairOcclusion / `architecture-c-still-repair-proxy` chest path, `src/lib/sleevePanel/**` paint / edge sleevePanel, `src/lib/heroFrame/architectureCStillRepair.ts`, pipeline OS, reconstruct, Astra, Control Center, proxy auth, PR #37, V3 / paid Grok.
 
@@ -26,20 +26,20 @@ Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / *
 
 ## Canonical lineage (frozen)
 
-| Field | Value |
-| ----- | ----- |
-| Project | `764a63d2-93cd-44f3-905f-292f14ab2f51` |
-| Clean still | `2aa1a44c-b24a-46bf-890f-13a6fc65b1cc` |
-| Keyframe | `v2-still-0.785` |
-| Chest quad | `[[0.30,0.530],[0.87,0.533],[0.87,0.585],[0.30,0.582]]` |
-| Cleared chest asset | `9ed83c01-8c7d-4d1b-918f-87b0fc743c50` |
-| Chest method | `architecture_c_still_repair_1m` |
-| Chest gate | **CLEARED 11/11** |
-| Cleared sleeve asset | `fdb86b18-d4aa-465e-b73f-1d252709739c` |
-| Sleeve method | `architecture_c_sleeve_still_1c` |
-| Sleeve gate | **CLEARED 6/6** (evidence PR #86) |
-| Sleeve left seed | `[[0.03,0.50],[0.26,0.505],[0.25,0.615],[0.03,0.61]]` |
-| Sleeve right seed | `[[0.88,0.505],[0.99,0.50],[0.99,0.615],[0.88,0.61]]` |
+| Field                | Value                                                   |
+| -------------------- | ------------------------------------------------------- |
+| Project              | `764a63d2-93cd-44f3-905f-292f14ab2f51`                  |
+| Clean still          | `2aa1a44c-b24a-46bf-890f-13a6fc65b1cc`                  |
+| Keyframe             | `v2-still-0.785`                                        |
+| Chest quad           | `[[0.30,0.530],[0.87,0.533],[0.87,0.585],[0.30,0.582]]` |
+| Cleared chest asset  | `9ed83c01-8c7d-4d1b-918f-87b0fc743c50`                  |
+| Chest method         | `architecture_c_still_repair_1m`                        |
+| Chest gate           | **CLEARED 11/11**                                       |
+| Cleared sleeve asset | `fdb86b18-d4aa-465e-b73f-1d252709739c`                  |
+| Sleeve method        | `architecture_c_sleeve_still_1c`                        |
+| Sleeve gate          | **CLEARED 6/6** (evidence PR #86)                       |
+| Sleeve left seed     | `[[0.03,0.50],[0.26,0.505],[0.25,0.615],[0.03,0.61]]`   |
+| Sleeve right seed    | `[[0.88,0.505],[0.99,0.50],[0.99,0.615],[0.88,0.61]]`   |
 
 **[VERIFIED]** Chest IDs match Stage 1m live evidence. Sleeve IDs / seeds match PR #86 live 1c scorecard (`docs/sleeve-panel/LANE_B_SLEEVE_STILL_1C_LIVE_RESULT_2026-09-16.md` on that PR). Preferred chest output `9ed83c01` was **not** the live 1c `stillAssetId`; temporal still consumes the documented visible-upper-arm seeds.
 
@@ -89,11 +89,11 @@ The function:
 
 **Do not redeploy from this lane:**
 
-| Function | Why |
-| -------- | --- |
-| `architecture-c-still-repair-proxy` | Lane B sleeve verify; chest 1m path locked |
-| `wardrobe-video-propagate-proxy` | Fal engine selector — out of ownership |
-| `grok-image-garment-proxy` / `grok-video-research-proxy` | Paid / research Grok — forbidden |
+| Function                                                 | Why                                        |
+| -------------------------------------------------------- | ------------------------------------------ |
+| `architecture-c-still-repair-proxy`                      | Lane B sleeve verify; chest 1m path locked |
+| `wardrobe-video-propagate-proxy`                         | Fal engine selector — out of ownership     |
+| `grok-image-garment-proxy` / `grok-video-research-proxy` | Paid / research Grok — forbidden           |
 
 No V3. No paid Grok. No Control Center.
 
@@ -113,7 +113,9 @@ No V3. No paid Grok. No Control Center.
 
 **READY** for Hero Frame product tracking (`temporalTrackingEnabled = true` when armed; dispatch uses `explicitArm`). Still-repair edge flag stays false.
 
-**Not claimed:** live footage ingest, still-repair edge flag flip, paid/provider calls. `temporal-propagate-proxy` Lovable redeploy remains the #88 parent step.
+**Not claimed:** live footage ingest, still-repair edge flag flip, paid/provider calls.
+
+**$0 live smoke (2026-09-16):** procedure + expected `explicitArm: true` body with chest `9ed83c01` + sleeve `fdb86b18` is in [`LIVE_SMOKE.md`](./LIVE_SMOKE.md). This VM: OPTIONS **200**, anon POST **401** `unauthenticated`, no owner JWT — **BLOCKED** on JWT like prior still verifies. Hero Frame §7 has **no** temporal run button (`prepareHeroFrameTemporalDispatch` is display-only). Parent computerUse: confirm gate → copy owner JWT → `./scripts/temporal-live-smoke.sh`. Reconstruct stays separate. Do **not** redeploy `architecture-c-still-repair-proxy`.
 
 **Live sleeve 1b (2026-09-15):** asset `a4dc7f47` on `2aa1a44c` is **NOT CLEARED 5/6** (criterion 6 right luma 133.6→157.5; left navy-ward PASS). C5/C11/chest reserved held. Historical. Score: `docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`.
 
