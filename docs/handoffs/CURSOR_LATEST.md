@@ -6,7 +6,7 @@
 
 ## Live re-verify — Hero Frame export E2 PASS 3/9 (after PR #133 Publish)
 
-Work-order: sprint **[#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102)** · umbrella **[#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50)** · merged PR **[#133](https://github.com/fendifrost-dot/ai-video-tool/pull/133)** (`7dc04ad`). **Class A docs.** `paidCalls=false`. No paint / edge / Lovable runtime. **Do not merge. Do not Publish.**
+Work-order: sprint **[#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102)** · umbrella **[#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50)** · merged PR **[#133](https://github.com/fendifrost-dot/ai-video-tool/pull/133)** (`7dc04ad`). **Class A docs.** `paidCalls=false`. No paint / edge / Lovable runtime. **No Publish.**
 
 **When:** 2026-09-16 ~2:05 AM America/Chicago (~07:05 UTC). Signed in, hard refresh, one click on **Export playable reconstruct $0** at `https://aivideotool.lovable.app/projects/764a63d2-93cd-44f3-905f-292f14ab2f51/hero-frame`.
 
@@ -29,9 +29,10 @@ PLAYABLE compose 720×1280 frames=8 fps=24 preserved=true sam3=intended_stage1h_
 **Not claimed:** full 72-frame live score; live 241-frame/1080 ingest; 2nd-clip live Export; raising `maxFrames`; CLEARED real-media gate final (locks stay UNCLAIMED).
 
 Write-up: `docs/reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`  
-JSON: `docs/reconstruct/live-smoke/playable-export-pass.json`
+JSON: `docs/reconstruct/live-smoke/playable-export-pass.json`  
+Screenshot: `docs/reconstruct/live-smoke/playable-export-evidence/export-pass-toast-2026-09-16.png`
 
-**Publish ≠ edge redeploy.** This evidence PR does **not** Publish or redeploy.
+**Publish ≠ edge redeploy.** This evidence record does **not** Publish or redeploy.
 
 ## Lane H + E2 — browser decode of playable MP4 → live `frames>0`
 

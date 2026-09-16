@@ -26,7 +26,7 @@ Authenticated Hero Frame §7 **Export playable reconstruct $0** click on the pub
 | Still goldens reopened | **no** (`stillGoldensReopened=false`) |
 
 Machine-readable copy: [`live-smoke/playable-export-pass.json`](./live-smoke/playable-export-pass.json).  
-Screenshot: attached to this evidence run as `playable-export-evidence/export-pass-toast-2026-09-16.png` (described below). This VM did not hydrate the PNG bytes (same Class A JSON-probe pattern as PR #101 / first #130 push); visual content is transcribed from the attached live capture.  
+Screenshot (committed): [`live-smoke/playable-export-evidence/export-pass-toast-2026-09-16.png`](./live-smoke/playable-export-evidence/export-pass-toast-2026-09-16.png).  
 Prior INCOMPLETE record: [`PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](./PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md).  
 Click recipe: [`PLAYABLE_ARTIFACT.md`](./PLAYABLE_ARTIFACT.md) § Parent live-verify recipe.
 
@@ -123,7 +123,7 @@ Probed on this evidence branch from `main` @ `7dc04ad` (`ffprobe` + `sha256sum` 
 
 ## Screenshot [O]
 
-Source attachment on this evidence run was labeled `/workspace/evidence-133/export-pass-toast.png` (expected commit path [`live-smoke/playable-export-evidence/export-pass-toast-2026-09-16.png`](./live-smoke/playable-export-evidence/export-pass-toast-2026-09-16.png); 2026-09-16 ~2:05 AM America/Chicago). Binaries were not hydrated onto this VM disk (same Class A JSON-probe pattern as PR #101 / first #130 push). Visual content below is from that attachment.
+Committed under [`live-smoke/playable-export-evidence/`](./live-smoke/playable-export-evidence/) (upload from the live click; 2026-09-16 ~2:05 AM America/Chicago).
 
 ### `export-pass-toast-2026-09-16.png`
 

@@ -100,8 +100,8 @@
   },
   "screenshots": {
     "exportPassToast": "playable-export-evidence/export-pass-toast-2026-09-16.png",
-    "committedInRepo": false,
-    "note": "Attachment labeled /workspace/evidence-133/export-pass-toast.png from the live click after hard refresh. Status copy under Export playable reconstruct $0 is the verbatim toast. This VM did not hydrate the PNG bytes (same Class A pattern as PR #101 / first #130 push); visual content is transcribed in PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md. Follow-up may git add the binary when present."
+    "committedInRepo": true,
+    "note": "Upload from the live click after hard refresh. Status copy under Export playable reconstruct $0 is the verbatim toast."
   },
   "notClaimed": [
     "full_72_frame_live_browser_score",
