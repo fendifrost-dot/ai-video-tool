@@ -1,0 +1,165 @@
+{
+  "schemaVersion": "1.0.0",
+  "lane": "R",
+  "issue": 104,
+  "parent": 102,
+  "paidCalls": false,
+  "grokPerFrame": false,
+  "class": "A",
+  "purpose": "Re-run existing deterministic suites that lock CLEARED chest/sleeve goldens, temporal auth/dispatch, and reconstruct unit proofs. Do not edit product paint. Escalate ownership conflicts.",
+  "howToRerun": {
+    "locked": "npm run test:regression",
+    "fullDeterministic": "npx vitest run --exclude '**/.claude/worktrees/**' --exclude '**/node_modules/**'",
+    "taxonomy": "docs/TEST_TAXONOMY.md",
+    "docs": "docs/regression/README.md"
+  },
+  "escalation": {
+    "redSuite": "Write evidence under docs/regression/; assign owning lane; do not patch that lane's paint.",
+    "ownershipCollision": "YELLOW → ChatGPT. Do not edit the other lane's surface.",
+    "paidCallsOrAuthOrRls": "RED → Fendi. Stop."
+  },
+  "suites": [
+    {
+      "id": "chest-cleared-golden",
+      "lane": "A",
+      "lock": "Chest 1m CLEARED 11/11 (9ed83c01 / architecture_c_still_repair_1m)",
+      "files": ["src/lib/garment/architectureCStillRepairGolden.test.ts"],
+      "escalateTo": "Lane A — chest still / logoComposite / stillRepairOcclusion",
+      "doNotFix": [
+        "src/lib/garment/logoComposite.ts",
+        "src/lib/garment/stillRepairOcclusion.ts",
+        "supabase/functions/_shared/logoComposite.ts",
+        "supabase/functions/architecture-c-still-repair-proxy/"
+      ]
+    },
+    {
+      "id": "chest-identity",
+      "lane": "A",
+      "lock": "Hero Frame chest identity + 1m repair_method_version",
+      "files": ["src/lib/heroFrame/architectureCStillRepair.test.ts"],
+      "escalateTo": "Lane A / Hero Frame owner — architectureCStillRepair identity",
+      "doNotFix": ["src/lib/garment/logoComposite.ts"]
+    },
+    {
+      "id": "sleeve-cleared-live-score",
+      "lane": "B",
+      "lock": "Sleeve 1c CLEARED 6/6 (fdb86b18 / architecture_c_sleeve_still_1c)",
+      "files": ["src/lib/sleevePanel/liveScore.test.ts"],
+      "escalateTo": "Lane B — sleevePanel live score / navy fill",
+      "doNotFix": [
+        "src/lib/sleevePanel/repair.ts",
+        "src/lib/sleevePanel/navyFill.ts",
+        "src/lib/sleevePanel/liveStill.ts",
+        "src/lib/sleevePanel/stage1bRightLeftover.ts"
+      ]
+    },
+    {
+      "id": "sleeve-cleared-live-still",
+      "lane": "B",
+      "lock": "Sleeve live adapter + chest-reserved C5/C11 windows",
+      "files": ["src/lib/sleevePanel/liveStill.test.ts"],
+      "escalateTo": "Lane B — sleevePanel live still adapter",
+      "doNotFix": ["src/lib/sleevePanel/repair.ts", "src/lib/sleevePanel/navyFill.ts"]
+    },
+    {
+      "id": "sleeve-contract",
+      "lane": "B",
+      "lock": "visible_geometry_only contract (hidden shoulder→cuff never validated)",
+      "files": ["src/lib/sleevePanel/contract.test.ts"],
+      "escalateTo": "Lane B — sleevePanel contract",
+      "doNotFix": ["src/lib/sleevePanel/repair.ts"]
+    },
+    {
+      "id": "temporal-auth-prep",
+      "lane": "C",
+      "lock": "authorizeTemporalEdgeRequest + CLEARED lineage + explicitArm + paidCalls=false",
+      "files": ["src/lib/temporal/livePrep.test.ts"],
+      "escalateTo": "Lane C — temporal livePrep / edgeAdapter / edgeDispatch",
+      "doNotFix": [
+        "src/lib/temporal/livePrep.ts",
+        "src/lib/temporal/edgeAdapter.ts",
+        "src/lib/temporal/edgeDispatch.ts",
+        "supabase/functions/temporal-propagate-proxy/"
+      ]
+    },
+    {
+      "id": "temporal-auth-smoke",
+      "lane": "C",
+      "lock": "$0 live-smoke body (explicitArm + CLEARED quads, no luma dump)",
+      "files": ["src/lib/temporal/liveSmoke.test.ts"],
+      "escalateTo": "Lane C — temporal live smoke",
+      "doNotFix": ["src/lib/temporal/liveSmoke.ts", "src/lib/temporal/edgeDispatch.ts"]
+    },
+    {
+      "id": "temporal-hero-dispatch",
+      "lane": "C",
+      "lock": "Hero Frame temporal dispatch stamp (tracking true, still-repair edge mirror false)",
+      "files": [
+        "src/lib/heroFrame/temporalDispatch.test.ts",
+        "src/lib/heroFrame/temporalRunControl.test.ts"
+      ],
+      "escalateTo": "Hero Frame / Lane C — temporal dispatch + §7 Run control",
+      "doNotFix": [
+        "src/lib/heroFrame/architectureCStillRepair.ts",
+        "src/lib/heroFrame/temporalDispatch.ts",
+        "supabase/functions/_shared/architectureCStillRepair.ts"
+      ]
+    },
+    {
+      "id": "reconstruct-unit",
+      "lane": "D",
+      "lock": "reconstructOriginalMaster original-pixel preservation + size contracts",
+      "files": ["src/lib/reconstruct/originalMasterReconstruct.test.ts"],
+      "escalateTo": "Lane D — originalMasterReconstruct",
+      "doNotFix": ["src/lib/reconstruct/originalMasterReconstruct.ts"]
+    },
+    {
+      "id": "reconstruct-wiring",
+      "lane": "D",
+      "lock": "Gate 4 live wiring + adapters + dispatch (paidCalls=false, no SAM-3 fetch)",
+      "files": [
+        "src/lib/reconstruct/liveWiring.test.ts",
+        "src/lib/reconstruct/adapters.test.ts",
+        "src/lib/reconstruct/dispatch.test.ts"
+      ],
+      "escalateTo": "Lane D — reconstruct live wiring / adapters / dispatch",
+      "doNotFix": [
+        "src/lib/reconstruct/liveWiring.ts",
+        "src/lib/reconstruct/adapters.ts",
+        "src/lib/reconstruct/dispatch.ts"
+      ]
+    },
+    {
+      "id": "reconstruct-e2e",
+      "lane": "D",
+      "lock": "RECONSTRUCT-1 E2E $0 (explicitArm, fixture temporal jobs, paidCalls=false)",
+      "files": [
+        "src/lib/reconstruct/e2e.test.ts",
+        "src/lib/reconstruct/heroFrameRun.test.ts"
+      ],
+      "escalateTo": "Lane D — reconstruct e2e / Hero Frame reconstruct run",
+      "doNotFix": ["src/lib/reconstruct/e2e.ts", "src/lib/reconstruct/heroFrameRun.ts"]
+    },
+    {
+      "id": "reconstruct-video-eval",
+      "lane": "E",
+      "lock": "Lane E reconstruct-video 9/9 PASS without reopening still goldens",
+      "files": ["src/lib/eval/reconstructVideoEvaluator.test.ts"],
+      "escalateTo": "Lane E — reconstructVideoEvaluator",
+      "doNotFix": ["src/lib/eval/reconstructVideoEvaluator.ts", "src/lib/eval/chestVisualEvaluator.ts"]
+    },
+    {
+      "id": "lane-r-cross-copy",
+      "lane": "R",
+      "lock": "Cross-lane copied CLEARED IDs + paidCalls=false stay aligned",
+      "files": ["tests/regression/locked-lineage.contract.test.ts"],
+      "escalateTo": "Lane R (this harness). If the mismatch is a copied ID, assign the lane that diverged — do not merge copies.",
+      "doNotFix": [
+        "src/lib/garment/logoComposite.ts",
+        "src/lib/sleevePanel/",
+        "src/lib/temporal/livePrep.ts",
+        "src/lib/reconstruct/originalMasterReconstruct.ts"
+      ]
+    }
+  ]
+}
