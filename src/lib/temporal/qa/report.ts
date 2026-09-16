@@ -194,6 +194,9 @@ function mergeCoverage(jobs: TemporalQaJobReport[]): CoverageSummary {
     minRatio: jobs.length ? Math.min(...jobs.map((j) => j.coverage.minRatio)) : 0,
     meanRatio:
       jobs.length === 0 ? 0 : jobs.reduce((s, j) => s + j.coverage.meanRatio, 0) / jobs.length,
+    minSupport: jobs.length ? Math.min(...jobs.map((j) => j.coverage.minSupport)) : 0,
+    meanSupport:
+      jobs.length === 0 ? 0 : jobs.reduce((s, j) => s + j.coverage.meanSupport, 0) / jobs.length,
     holeFrames: jobs.reduce((s, j) => s + j.coverage.holeFrames, 0),
     overflowFrames: jobs.reduce((s, j) => s + j.coverage.overflowFrames, 0),
   };
@@ -205,6 +208,7 @@ function mergeOcclusion(jobs: TemporalQaJobReport[]): OcclusionSummary {
     flaggedInWindows: jobs.reduce((s, j) => s + j.occlusion.flaggedInWindows, 0),
     recoveryLagFrames: jobs[0]?.occlusion.recoveryLagFrames ?? null,
     discontinuityFrames: jobs.reduce((s, j) => s + j.occlusion.discontinuityFrames, 0),
+    holdLatchedAfterBreak: jobs.some((j) => j.occlusion.holdLatchedAfterBreak),
   };
 }
 
@@ -240,7 +244,7 @@ export function runTemporalVideoQa(
   const occlusionWindows = fixture.defects.filter((d) => d.kind === "occlusion");
 
   const jobs: TemporalQaJobReport[] = outputs.map(({ kind, spec, out }) => {
-    const frames = scorePropagationFrames(out, fixture.expectedDx, thresholds);
+    const frames = scorePropagationFrames(out, fixture.expectedDx, fixture.clip.frames);
     const bad = identifyBadFrames(kind, frames, {
       thresholds,
       sam3Frames: kind === "chest" ? sam3.frames : undefined,
@@ -461,6 +465,7 @@ export function temporalVideoQaReportToJson(
       confidence: job.frames.map((f) => f.confidence),
       driftPx: job.frames.map((f) => f.driftPx),
       coverageRatio: job.frames.map((f) => f.coverageRatio),
+      supportCoverage: job.frames.map((f) => f.supportCoverage),
       consecutiveIou: job.frames.map((f) => f.consecutiveIou),
       source: job.frames.map((f) => f.source),
     })),

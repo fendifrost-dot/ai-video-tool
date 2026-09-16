@@ -6,6 +6,7 @@ export {
 
 export {
   maskCentroid,
+  maskSupportCoverage,
   scorePropagationFrames,
   summarizeCoverage,
   summarizeDrift,

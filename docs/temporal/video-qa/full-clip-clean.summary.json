@@ -1,0 +1,186 @@
+{
+  "schemaVersion": "temporal-video-qa-v1",
+  "verdict": "PASS",
+  "summaryLine": "TEMPORAL-QA PASS 8/8 frames=241 jobs=3 bad=0 paidCalls=false grokPerFrame=false.",
+  "passCount": 8,
+  "failCount": 0,
+  "paidCalls": false,
+  "grokPerFrame": false,
+  "sam3LiveFetch": false,
+  "fixtureMode": "clean",
+  "clip": {
+    "id": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+    "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+    "keyframeId": "v2-still-0.785",
+    "native": {
+      "width": 1080,
+      "height": 1920,
+      "fps": 59.94,
+      "frameCount": 241,
+      "durationSec": 4.0207
+    },
+    "qaRaster": {
+      "width": 80,
+      "height": 128,
+      "frameCount": 241,
+      "fps": 59.94
+    },
+    "canonicalIndex": 47,
+    "keyframeTimeSec": 0.785,
+    "pixels": "synthetic_luma_stand_in_not_live_1080x1920"
+  },
+  "summary": {
+    "frameCount": 241,
+    "jobsScored": 3,
+    "badFrameCount": 0,
+    "detectorHitAllInjectedWindows": true,
+    "drift": {
+      "maxPx": 0,
+      "meanPx": 0,
+      "framesOverThreshold": 0
+    },
+    "flicker": {
+      "minConsecutiveIou": 1,
+      "meanConsecutiveIou": 1,
+      "framesBelowThreshold": 0
+    },
+    "coverage": {
+      "minRatio": 1,
+      "meanRatio": 1,
+      "minSupport": 1,
+      "meanSupport": 1,
+      "holeFrames": 0,
+      "overflowFrames": 0
+    },
+    "occlusion": {
+      "declaredWindowCount": 0,
+      "flaggedInWindows": 0,
+      "recoveryLagFrames": null,
+      "discontinuityFrames": 0,
+      "holdLatchedAfterBreak": false
+    },
+    "sam3Continuity": {
+      "sam3LiveFetch": false,
+      "frameCount": 241,
+      "meanConsecutiveIou": 1,
+      "minConsecutiveIou": 1,
+      "discontinuityFrames": 0,
+      "meanRepairOverlap": 1,
+      "emptyMaskFrames": 0
+    }
+  },
+  "badFrameCount": 0,
+  "yellowContracts": [
+    "edge_max_frames_24_vs_canonical_241",
+    "live_1080x1920_ingest_of_76fe7438_not_this_lane",
+    "lane_e2_should_consume_temporal-video-qa-v1",
+    "sam3_continuity_is_caller_supplied_not_live_fetch"
+  ],
+  "dispatchPath": {
+    "lockVersion": "1.0.0",
+    "paidCalls": false,
+    "grokPerFrame": false,
+    "provider": "none",
+    "explicitArmRequired": true,
+    "jwtGatedProxy": true,
+    "edgeMaxFrames": 24,
+    "canonicalFrameCount": 241,
+    "fullClipFitsProxy": false,
+    "fullClipPath": "in_lib_propagateRepair",
+    "yellowContracts": [
+      "edge_max_frames_24_vs_canonical_241",
+      "live_1080x1920_ingest_of_76fe7438_not_this_lane",
+      "lane_e2_should_consume_temporal-video-qa-v1",
+      "sam3_continuity_is_caller_supplied_not_live_fetch"
+    ]
+  },
+  "criteria": [
+    {
+      "id": "paid_calls_false",
+      "name": "No paid provider calls",
+      "verdict": "PASS",
+      "metrics": {
+        "paidCalls": 0
+      },
+      "note": "Lane C2 is $0. paidCalls must stay false.",
+      "failureReason": null
+    },
+    {
+      "id": "grok_per_frame_false",
+      "name": "No per-frame Grok",
+      "verdict": "PASS",
+      "metrics": {
+        "grokPerFrame": 0
+      },
+      "note": "No Grok / V3 generation on this path.",
+      "failureReason": null
+    },
+    {
+      "id": "full_clip_frame_count",
+      "name": "Full canonical clip frame count",
+      "verdict": "PASS",
+      "metrics": {
+        "frameCount": 241,
+        "expected": 241
+      },
+      "note": "QA must score all 241 frames of master 76fe7438's duration.",
+      "failureReason": null
+    },
+    {
+      "id": "canonical_ids",
+      "name": "Canonical master / chest / sleeve IDs",
+      "verdict": "PASS",
+      "metrics": {
+        "jobs": 3
+      },
+      "note": "Lineage stays on project 764a63d2 / master 76fe7438 / CLEARED stills.",
+      "failureReason": null
+    },
+    {
+      "id": "dispatch_path_locked",
+      "name": "Authenticated proxy dispatch path unchanged",
+      "verdict": "PASS",
+      "metrics": {
+        "edgeMaxFrames": 24,
+        "canonicalFrames": 241
+      },
+      "note": "maxFrames stays 24; full-clip QA is in-lib propagateRepair.",
+      "failureReason": null
+    },
+    {
+      "id": "sam3_live_fetch_false",
+      "name": "SAM-3 not live-fetched",
+      "verdict": "PASS",
+      "metrics": {
+        "sam3LiveFetch": 0,
+        "sam3Frames": 241
+      },
+      "note": "Continuity is scored on caller-supplied / synthetic masks.",
+      "failureReason": null
+    },
+    {
+      "id": "still_goldens_not_reopened",
+      "name": "Still goldens not rescored",
+      "verdict": "PASS",
+      "metrics": {
+        "chest11": 0,
+        "sleeve6": 0
+      },
+      "note": "This QA never calls chest 11/11 or sleeve 6/6 gates.",
+      "failureReason": null
+    },
+    {
+      "id": "clean_clip_no_bad_frames",
+      "name": "Clean full clip has no auto-flagged bad frames",
+      "verdict": "PASS",
+      "metrics": {
+        "badFrameCount": 0,
+        "injectedWindows": 0,
+        "detectorHit": 1
+      },
+      "note": "Stationary/slow full-clip stand-in should not flag drift/flicker/holes.",
+      "failureReason": null
+    }
+  ],
+  "elapsedMs": 326
+}
