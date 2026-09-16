@@ -17,6 +17,7 @@ import {
   MAX_SEAM_TEMPORAL_MEAN_ABS_LUMA,
   MAX_UNAUTHORIZED_CHANGED_FRAC,
   MAX_UNAUTHORIZED_CHANGED_PIXELS,
+  PRESERVATION_FAIL_ESCALATE,
   VIDEO_QA_CRITERION_NAMES,
   VIDEO_QA_NOT_CLAIMED,
 } from "./videoQaCriteria";
@@ -99,6 +100,8 @@ function finish(
 /**
  * Score a reconstructed clip / MP4 frame pack.
  * Never invokes the chest 11-point still scorer. Never blocks Lane H MP4 production.
+ * Provenance project/clip IDs are recorded, never allowlisted — second clips score
+ * the same rasters as the canonical master.
  */
 export function evaluateVideoQa(input: VideoQaInput): VideoQaReport {
   const unexplained: string[] = [];
@@ -451,12 +454,7 @@ function buildEscalate(
   totalChanged: number,
 ): VideoQaEscalate | null {
   if (hasAuth && !preservationPass && totalChanged > 0) {
-    return {
-      kind: "architectural_blocker",
-      message:
-        "Original-master pixels drifted outside authorized α. Assign to reconstruct/compositing — do not reopen chest 11/11 or sleeve 6/6 still goldens.",
-      stillGoldensReopened: false,
-    };
+    return { ...PRESERVATION_FAIL_ESCALATE };
   }
   return null;
 }
