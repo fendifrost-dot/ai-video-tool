@@ -81,12 +81,13 @@ Work-order: GitHub **#111** (parent **#102** / **#50**). Isolated compose/export
 | SAM-3 | `intended_stage1h_evidence` / `liveFetch=false` / fail-closed |
 | Preservation | `originalPixelsPreservedWhereUnauthorized=true` |
 | Spend | `paidCalls=false` `grokPerFrame=false` |
+| Temporal | chunk ≤24 + stitch (`raisedProxyMaxFrames=false`; YELLOW 241 vs 24) |
 | E2 contract | `evaluateVideoQa(videoQaInputFromReconstructE2e(e2e, mp4))` → persist `videoQaReportToJson` |
 | Artifact | `docs/reconstruct/artifacts/playable-76fe7438/reconstructed.mp4` |
 
 **Publish ≠ edge redeploy.** No still-repair / temporal / SAM-3 redeploy from this lane.
 
-**Not claimed:** live storage decode of `76fe7438` (DB row is 1080×1920 HDR); live SAM-3 fetch. Live proxy full-clip stays **YELLOW** (`maxFrames=24` vs canonical 241) — Lane H does not raise the cap; in-lib temporal covers the 72-frame Architecture C window.
+**Not claimed:** live storage decode of `76fe7438` (DB row is 1080×1920 HDR); live SAM-3 fetch. Live proxy full-clip stays **YELLOW** (`maxFrames=24` vs canonical 241) — Lane H does **not** raise the cap. GREEN path: chunk ≤24 + stitch. Architecture C window is 72-frame / 720×1280 still-derived.
 
 Write-up: `docs/reconstruct/PLAYABLE_ARTIFACT.md`
 

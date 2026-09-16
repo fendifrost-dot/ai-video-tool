@@ -50,6 +50,15 @@
   "originalPixelsPreservedWhereUnauthorized": true,
   "temporalJobCount": 3,
   "temporalFramesUsed": 72,
+  "temporalChunking": {
+    "maxFrames": 24,
+    "chunkCount": 4,
+    "didChunk": true,
+    "raisedProxyMaxFrames": false,
+    "yellowContracts": [
+      "edge_max_frames_24_vs_canonical_241"
+    ]
+  },
   "paidCalls": false,
   "grokPerFrame": false,
   "sam3LiveFetch": false,

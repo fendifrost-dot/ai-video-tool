@@ -36,6 +36,9 @@ describe("runPlayableCompose", () => {
     expect(result.sam3.fallbackStatus).toBe("none");
     expect(result.temporalJobCount).toBe(3);
     expect(result.temporalFramesUsed).toBeGreaterThan(0);
+    expect(result.temporalChunking.didChunk).toBe(false);
+    expect(result.temporalChunking.raisedProxyMaxFrames).toBe(false);
+    expect(result.temporalChunking.maxFrames).toBe(24);
     expect(result.clip.originalPixelsPreservedWhereUnauthorized).toBe(true);
     expect(result.mediaKind).toBe("canonical_720x1280_still_derived");
 

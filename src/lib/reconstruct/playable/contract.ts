@@ -116,6 +116,13 @@ export type PlayableArtifactClaims = {
   originalPixelsPreservedWhereUnauthorized: boolean;
   temporalJobCount: number;
   temporalFramesUsed: number;
+  temporalChunking?: {
+    maxFrames: number;
+    chunkCount: number;
+    didChunk: boolean;
+    raisedProxyMaxFrames: false;
+    yellowContracts: string[];
+  };
   paidCalls: false;
   grokPerFrame: false;
   sam3LiveFetch: false;

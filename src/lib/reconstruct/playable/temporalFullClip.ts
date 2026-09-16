@@ -5,6 +5,7 @@
  * QA metrics, livePrep, or authorizeTemporalEdgeRequest.
  * Bypasses the edge 24-frame wire cap on purpose (Architecture C window).
  * Live proxy stays maxFrames=24 (YELLOW vs canonical 241) — chunk, don't raise.
+ * Full-clip coverage is chunk ≤24 + stitch (propagatePlayableClipChunked).
  */
 
 import {

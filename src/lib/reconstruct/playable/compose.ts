@@ -15,7 +15,8 @@ import type { PlayableClipSpec, PlayableMediaKind, Sam3Provenance } from "./cont
 import { PLAYABLE_RECONSTRUCT_VERSION } from "./contract";
 import { buildPlayableMediaPack, type PlayableMediaPack } from "./mediaPack";
 import { consumeIntendedSam3 } from "./sam3Consume";
-import { lumaFramesToSourceClip, propagatePlayableClip } from "./temporalFullClip";
+import { lumaFramesToSourceClip } from "./temporalFullClip";
+import { propagatePlayableClipChunked, type PlayableTemporalPlan } from "./temporalChunk";
 import { canonicalPlayableSpec } from "./spec";
 
 export type PlayableComposeOk = {
@@ -36,6 +37,7 @@ export type PlayableComposeOk = {
   durationSec: number;
   temporalJobCount: number;
   temporalFramesUsed: number;
+  temporalChunking: PlayableTemporalPlan;
   originalFrames: MasterClipFrame[];
   clip: ReconstructClipResult;
   sam3: Sam3Provenance;
@@ -127,12 +129,15 @@ export function runPlayableCompose(input: RunPlayableComposeInput = {}): Playabl
   }
 
   let temporalJobs;
+  let temporalChunking: PlayableTemporalPlan;
   try {
     const clip = lumaFramesToSourceClip(spec.masterClipAssetId, spec.fps, pack.lumaFrames);
-    temporalJobs = propagatePlayableClip({
+    const propagated = propagatePlayableClipChunked({
       clip,
       canonicalIndex: spec.keyframeIndex,
     });
+    temporalJobs = propagated.jobs;
+    temporalChunking = propagated.plan;
   } catch (err) {
     const message = err instanceof Error ? err.message : "playable_temporal_failed";
     return fail("playable_temporal_failed", message, { decision, sam3: sam3.provenance });
@@ -168,6 +173,7 @@ export function runPlayableCompose(input: RunPlayableComposeInput = {}): Playabl
       durationSec: spec.durationSec,
       temporalJobCount: temporalJobs.length,
       temporalFramesUsed,
+      temporalChunking,
       originalFrames: pack.originalFrames,
       clip: reconstructed,
       sam3: sam3.provenance,

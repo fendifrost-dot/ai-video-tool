@@ -22,6 +22,13 @@ export { canonicalPlayableSpec, heroFramePlayableSpec } from "./spec";
 export { consumeIntendedSam3, INTENDED_SAM3_EVIDENCE_ID } from "./sam3Consume";
 export { buildPlayableMediaPack, buildStableOriginal, playableFrameAt } from "./mediaPack";
 export { lumaFramesToSourceClip, propagatePlayableClip } from "./temporalFullClip";
+export {
+  PROXY_CHUNK_OVERLAP,
+  YELLOW_EDGE_MAX_FRAMES_VS_CANONICAL,
+  planProxyTemporalChunks,
+  propagatePlayableClipChunked,
+  stitchConsumedJobs,
+} from "./temporalChunk";
 export { runPlayableCompose } from "./compose";
 export type { PlayableComposeResult } from "./compose";
 export { encodePlayableMp4, ffmpegAvailable, probePlayableMp4 } from "./encodeMp4";
