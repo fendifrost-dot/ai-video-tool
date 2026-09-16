@@ -26,6 +26,10 @@ describe("Lane D canonical lineage (copied, not imported from paint / temporal a
     expect(CANONICAL_LINEAGE.sleeveGate).toBe("CLEARED");
     expect(CANONICAL_LINEAGE.chestGateScore).toBe("11/11");
     expect(CANONICAL_LINEAGE.sleeveGateScore).toBe("6/6");
+    expect(CANONICAL_LINEAGE.masterWidth).toBe(720);
+    expect(CANONICAL_LINEAGE.masterHeight).toBe(1280);
+    expect(CANONICAL_LINEAGE.masterFps).toBe(24);
+    expect(CANONICAL_LINEAGE.fullClipFrameCount).toBe(24);
   });
 });
 

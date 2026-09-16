@@ -154,7 +154,10 @@ export function consumeTemporalJobsFromPropagateResult(
   return { ok: true, jobs };
 }
 
-export function packFromTemporalJobs(jobs: ConsumedTemporalJob[]) {
+export function packFromTemporalJobs(
+  jobs: ConsumedTemporalJob[],
+  options?: { originalFrames?: { index: number; image: RgbaImage }[] },
+) {
   const first = jobs[0]?.frames[0];
   if (!first) {
     throw new Error("reconstruct_e2e_empty_temporal");
@@ -169,22 +172,39 @@ export function packFromTemporalJobs(jobs: ConsumedTemporalJob[]) {
       indices.add(fr.index);
     }
   }
-  const originalFrames = [...indices]
-    .sort((a, b) => a - b)
-    .map((index) => ({ index, image: uniqueOriginalFrame(index, width, height) }));
+  const supplied = options?.originalFrames;
+  let originalFrames: { index: number; image: RgbaImage }[];
+  if (supplied && supplied.length > 0) {
+    const ow = supplied[0]!.image.width;
+    const oh = supplied[0]!.image.height;
+    for (const fr of supplied) {
+      if (fr.image.width !== ow || fr.image.height !== oh) {
+        throw new Error("reconstruct_e2e_original_size_mismatch");
+      }
+    }
+    originalFrames = supplied;
+  } else {
+    originalFrames = [...indices]
+      .sort((a, b) => a - b)
+      .map((index) => ({ index, image: uniqueOriginalFrame(index, width, height) }));
+  }
+  const ow = originalFrames[0]!.image.width;
+  const oh = originalFrames[0]!.image.height;
   return {
-    width,
-    height,
+    width: ow,
+    height: oh,
+    temporalWidth: width,
+    temporalHeight: height,
     originalFrames,
     chestStill: {
       assetId: CLEARED_CHEST_ASSET_ID,
-      image: flatStill(CHEST_STILL_RGB, width, height),
+      image: flatStill(CHEST_STILL_RGB, ow, oh),
     },
     sleeveStill: {
       assetId: CLEARED_SLEEVE_ASSET_ID,
-      image: flatStill(SLEEVE_STILL_RGB, width, height),
+      image: flatStill(SLEEVE_STILL_RGB, ow, oh),
     },
-    sam3: fixtureSam3Mask(width, height),
+    sam3: fixtureSam3Mask(ow, oh),
     temporalJobs: jobs,
   };
 }
@@ -199,6 +219,11 @@ export type RunReconstructE2eInput = {
    * Live UI must pass temporal jobs; it does not silently substitute fixtures.
    */
   allowFixtureTemporal?: boolean;
+  /**
+   * Original-master frames (any raster). When omitted, unique-RGB stand-ins
+   * are sized to the temporal raster. Lane D2 passes 720×1280 unique-RGB here.
+   */
+  originalFrames?: { index: number; image: RgbaImage }[];
 };
 
 function fail(
@@ -248,7 +273,9 @@ export function runReconstructE2e(input: RunReconstructE2eInput = {}): Reconstru
     const consumed = consumeTemporalJobsFromPropagateResult(input.temporalPropagateResult);
     if (!consumed.ok) return fail("invalid_temporal", consumed.message, decision);
     try {
-      pack = packFromTemporalJobs(consumed.jobs);
+      pack = packFromTemporalJobs(consumed.jobs, {
+        originalFrames: input.originalFrames,
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : "reconstruct_e2e_pack_failed";
       return fail("invalid_temporal", message, decision);

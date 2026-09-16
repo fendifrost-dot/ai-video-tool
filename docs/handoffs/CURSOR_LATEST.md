@@ -16,33 +16,28 @@
 | Temporal `$0` **click** smoke | YES (PR #97) | live product UI | **SUCCESS** — 3 jobs, `paidCalls=false` |
 | Lane D original-master live wiring | YES (PR #92) | n/a — in-lib | YES (library) |
 | **RECONSTRUCT-1 E2E $0** | YES (PR #99, `58b8a49`) | frontend Publish | **PASS 9/9** — `paidCalls=false`, `frames=5` |
+| **Lane D2 reconstruct video QA** | this PR (issue **#108**) | n/a — in-lib, no Publish | **PASS 15/15** unique-RGB 720×1280 |
 
-## RECONSTRUCT-1 E2E $0 — PASS 9/9
+## Lane D2 — Reconstruction video QA
 
-Work-order: GitHub **#100** (lineage **#98** / PR **#99**, temporal **#96** / **#97**, parent **#50**). Docs/evidence only. **Do not reopen chest 1m or sleeve paint.**
-
-**When:** 2026-09-15 ~21:13 America/Chicago (~2026-09-16 02:13 UTC)  
-**App:** https://aivideotool.lovable.app (signed-in AVT owner)  
-**Code:** `main` @ `58b8a49` (PR #99) + Lovable frontend **Publish**
+Work-order: GitHub **#108** (parent **#102**, umbrella **#50**, lineage **#100** / **#99**). Isolated `src/lib/reconstruct/**`. **Do not reopen chest 1m or sleeve paint.** No Lovable code edits. No eval / temporal / pipeline / export implementation.
 
 | Field | Value |
 |-------|--------|
-| Project | `764a63d2-93cd-44f3-905f-292f14ab2f51` |
-| Garment | `0feb028f-dc4d-45dc-82ac-e4bbd16054b0` |
-| Canonical master clip | `76fe7438-671d-4428-a7f6-17a45e98c16f` |
-| UI | **Run reconstruct E2E $0** visible in Hero Frame §7 |
-| Click | once |
-| Toast | `RECONSTRUCT-1 PASS 9/9 frames=5 paidCalls=false grokPerFrame=false.` |
-| JSON | `verdict=PASS`, `frameCount=5`, `paidCalls=false`, `grokPerFrame=false`, `escalate=null`, `stillGoldensReopened=false` |
-| 401 / paid Grok / still-golden reopen | **none** |
+| `paidCalls` / `grokPerFrame` / `sam3LiveFetch` | `false` |
+| Native 720×1280 translating | **PASS 15/15** frames=8 |
+| Full-clip 720×1280 @ 24 fps | **PASS 15/15** frames=24 |
+| Live-shaped 80×128 × 5 onto 720×1280 | **PASS 15/15** (nearest-neighbor temporal upsample) |
+| Unauthorized leaks | **0** |
+| Lane H handoff | `reconstruct-lane-h-handoff-v1` — frame RGBA + fps/audio passthrough; **H owns MP4** |
+| Escalate / still-golden reopen | **none** |
 
-Write-up: `docs/reconstruct/E2E_LIVE_SUCCESS_2026-09-15.md`  
-JSON: `docs/reconstruct/live-smoke/e2e-pass.json`  
-Screenshots: `reconstruct-e2e-evidence/before-reconstruct-e2e.png` + `after-reconstruct-e2e-pass.png` (described in the write-up; binaries not hydrated onto this VM)
+Write-up: `docs/reconstruct/VIDEO_QA.md`  
+JSON: `docs/reconstruct/video-qa/preservation-720x1280.json`
 
-**Publish ≠ edge redeploy.** No still-repair / temporal / SAM-3 redeploy from this record.
+**Publish ≠ edge redeploy.** No UI change → **no frontend Publish required**. No still-repair / temporal / SAM-3 redeploy.
 
-**Not claimed:** live 720×1280 pixels of master `76fe7438`, live SAM-3 fetch, still-golden rescore, MP4 encode.
+**Not claimed:** live camera pixels of master `76fe7438`, live SAM-3 fetch, still-golden rescore, MP4 encode (Lane H).
 
 ## Canonical IDs (unchanged)
 

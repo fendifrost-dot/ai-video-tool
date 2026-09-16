@@ -103,4 +103,4 @@ Lane G may later bind `dispatchOriginalMasterReconstruct` / `reconstructMasterCl
 - Not a live SAM-3 call.
 - Not a flip of Hero Frame `temporalTrackingEnabled`.
 - Not a rewrite of chest/sleeve paint or temporal authorize.
-- Not live 720×1280 ingest of master `76fe7438` (E2E uses unique-RGB stand-in frames; see [`E2E_LIVE.md`](E2E_LIVE.md)).
+- Not live 720×1280 ingest of master `76fe7438` (Hero Frame E2E uses unique-RGB stand-in frames; D2 proves unique-RGB 720×1280 in-lib — [`VIDEO_QA.md`](VIDEO_QA.md)).

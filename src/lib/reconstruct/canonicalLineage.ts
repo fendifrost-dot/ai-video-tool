@@ -19,6 +19,13 @@ export const CANONICAL_STILL_ASSET_ID = "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc";
 export const CANONICAL_KEYFRAME_ID = "v2-still-0.785";
 export const CANONICAL_KEYFRAME_TIME_SEC = 0.785;
 
+/** Canonical V2 / still raster. Unique-RGB stand-ins at this size prove geometry — not live 76fe7438 camera bytes. */
+export const CANONICAL_MASTER_WIDTH = 720;
+export const CANONICAL_MASTER_HEIGHT = 1280;
+export const CANONICAL_MASTER_FPS = 24;
+/** 1 s at 24 fps. The 0:03 player is 72 frames; the reconstruct loop is the same. */
+export const CANONICAL_FULL_CLIP_FRAME_COUNT = 24;
+
 export const CLEARED_CHEST_ASSET_ID = "9ed83c01-8c7d-4d1b-918f-87b0fc743c50";
 export const CLEARED_CHEST_REPAIR_METHOD_VERSION = "architecture_c_still_repair_1m";
 export const CLEARED_CHEST_GATE = "CLEARED" as const;
@@ -70,6 +77,10 @@ export const CANONICAL_LINEAGE = {
   sleeveEvidence: CLEARED_SLEEVE_EVIDENCE,
   sleeveLeftQuadTuple: CLEARED_SLEEVE_LEFT_QUAD_TUPLE,
   sleeveRightQuadTuple: CLEARED_SLEEVE_RIGHT_QUAD_TUPLE,
+  masterWidth: CANONICAL_MASTER_WIDTH,
+  masterHeight: CANONICAL_MASTER_HEIGHT,
+  masterFps: CANONICAL_MASTER_FPS,
+  fullClipFrameCount: CANONICAL_FULL_CLIP_FRAME_COUNT,
 } as const;
 
 export type CanonicalLineage = typeof CANONICAL_LINEAGE;

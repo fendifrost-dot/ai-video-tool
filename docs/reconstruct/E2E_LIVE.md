@@ -151,7 +151,7 @@ Criteria (Lane E reconstruct-video v1):
 
 ## Not claimed (not FAILs)
 
-- Live 720×1280 pixels of master `76fe7438` (this $0 path uses unique-RGB stand-in frames sized to the temporal raster; full-res master ingest is a later Class C).
+- Live 720×1280 **camera** pixels of master `76fe7438` (the $0 Hero Frame click uses unique-RGB stand-in frames sized to the temporal raster). Lane D2 (#108) separately proves unique-RGB **720×1280** preservation in-lib — see [`VIDEO_QA.md`](VIDEO_QA.md). Full-res live ingest remains a later Class C.
 - Live SAM-3 fetch.
 - Chest 11/11 / sleeve 6/6 rescore.
 - An MP4 file of clip `76fe7438`.

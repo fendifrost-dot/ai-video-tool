@@ -18,6 +18,11 @@ import type { RgbaImage } from "./types";
 
 export const RECONSTRUCT_DISPATCH_VERSION = "1.0.0";
 
+/**
+ * JSON wire caps only. 720×1280 / full-clip reconstruct is in-lib
+ * (`reconstructMasterClip` / `runReconstructVideoQa`), not this serializer.
+ * Do not raise these to production raster — RGBA JSON of 720×1280 is not a product path.
+ */
 export const RECONSTRUCT_DISPATCH_LIMITS = {
   maxFrames: 8,
   maxWidth: 64,

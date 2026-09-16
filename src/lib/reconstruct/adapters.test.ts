@@ -5,6 +5,7 @@ import {
   fillConvexQuad,
   mergeAuthorization,
   reconstructMasterClip,
+  scaleAlphaNearest,
 } from "./adapters";
 import {
   CANONICAL_MASTER_CLIP_ID,
@@ -15,10 +16,11 @@ import {
 } from "./canonicalLineage";
 import {
   CHEST_STILL_RGB,
+  fixtureIdentityRect,
   fixtureSam3Mask,
   liveWiringFixturePack,
 } from "./fixtures/liveWiringFixture";
-import { FIXTURE_HEIGHT, FIXTURE_WIDTH, inRect, IDENTITY_RECT } from "./fixtures/syntheticMaster";
+import { FIXTURE_HEIGHT, FIXTURE_WIDTH } from "./fixtures/syntheticMaster";
 import { countRgbMismatches, unauthorizedPixelsMatchOriginal } from "./originalMasterReconstruct";
 import type { RgbaImage } from "./types";
 
@@ -153,10 +155,10 @@ describe("reconstructMasterClip — $0 original-master live wiring", () => {
         unauthorizedPixelsMatchOriginal(original, frame.result.image, frame.result.authorizedAlpha),
       ).toBe(true);
       expectRgbNearCorner(frame.result.image, original);
-      const [ix, iy] = [IDENTITY_RECT.x0, IDENTITY_RECT.y0];
-      if (inRect(ix, iy, IDENTITY_RECT)) {
-        expect(rgbAt(frame.result.image, ix, iy)).toEqual(rgbAt(original, ix, iy));
-      }
+      const identity = fixtureIdentityRect(pack.width, pack.height);
+      expect(rgbAt(frame.result.image, identity.x0, identity.y0)).toEqual(
+        rgbAt(original, identity.x0, identity.y0),
+      );
     }
   });
 
@@ -181,6 +183,15 @@ describe("reconstructMasterClip — $0 original-master live wiring", () => {
     expect(rgbAt(reconstructed, 0, 0)).toEqual(rgbAt(original, 0, 0));
   });
 
+  it("nearest-neighbor scales a temporal mask to original-master size", () => {
+    const src = new Float32Array(2 * 2);
+    src[0] = 1;
+    const out = scaleAlphaNearest(src, 2, 2, 4, 4);
+    expect(out).toHaveLength(16);
+    expect(out[0]).toBe(1);
+    expect(out[15]).toBe(0);
+  });
+
   it("does not let a full inverted generated become the master when SAM-3 is empty", () => {
     const pack = liveWiringFixturePack();
     const empty = new Float32Array(pack.width * pack.height);
@@ -196,5 +207,21 @@ describe("reconstructMasterClip — $0 original-master live wiring", () => {
     expect(countRgbMismatches(out.frames[0]!.result.image, pack.invertedOnFrame0)).toBe(
       FIXTURE_WIDTH * FIXTURE_HEIGHT,
     );
+  });
+});
+
+describe("scaleAlphaNearest", () => {
+  it("nearest-neighbor scales a temporal mask to original-master size", () => {
+    const src = new Float32Array(2 * 2);
+    src[0] = 1;
+    const out = scaleAlphaNearest(src, 2, 2, 4, 4);
+    expect(out).toHaveLength(16);
+    expect(out[0]).toBe(1);
+    expect(out[15]).toBe(0);
+  });
+
+  it("is a no-op when size already matches", () => {
+    const src = new Float32Array([0.2, 0.8]);
+    expect(scaleAlphaNearest(src, 2, 1, 2, 1)).toBe(src);
   });
 });
