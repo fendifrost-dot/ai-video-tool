@@ -106,8 +106,8 @@ Caller-supplied SAM-3 is accepted only at `width×height`. An 80×128 fixture ma
 5. Scroll to **7 · Architecture C — still-first deterministic repair**.
 6. Do **not** click chest or sleeve paint.
 7. Confirm **Export playable reconstruct $0** is enabled.
-8. Click once. Expect toast `PLAYABLE compose 720×1280 frames=8 … paidCalls=false.` plus a Lane E2 `evaluateVideoQa` summary (`blockingArtifactProducer=false`).
-9. Full-clip MP4 remains the ffmpeg artifact (72 frames) at the path above. Persist path: `evaluateVideoQa(videoQaInputFromReconstructE2e(e2e, mp4))` → `video-qa.json`. Encode-first with `frames:[]` is INCOMPLETE (`awaiting decoded_frames`).
+8. Click once. Expect toast `PLAYABLE compose 720×1280 frames=8 … paidCalls=false.` plus Lane E2 `evaluateVideoQa` **INCOMPLETE** (encode-first on the committed 72-frame MP4, `awaiting decoded_frames`, `mp4=produced`, `fail=0`, `blockingArtifactProducer=false`, `stillGoldensReopened=false`). Do **not** expect FAIL — the 8-frame UI window is not decoded MP4 rasters.
+9. Full-clip MP4 remains the ffmpeg artifact (72 frames) at the path above (`sha256` `71f54599be288a7359b125f8f3acec14f3ec4d7b444bc79500712fec99d6029b`). Persist path: `evaluateVideoQa(videoQaInputFromReconstructE2e(e2e, mp4))` → `video-qa.json`. Encode-first with `frames:[]` is INCOMPLETE (`awaiting decoded_frames`). Claimed MP4 with `produced=false` is INCOMPLETE (`awaiting mp4`), not FAIL.
 
 Publish ≠ edge redeploy.
 

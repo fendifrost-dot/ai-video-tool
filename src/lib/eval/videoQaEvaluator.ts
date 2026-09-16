@@ -130,18 +130,18 @@ export function evaluateVideoQa(input: VideoQaInput): VideoQaReport {
 
   const mp4Produced = mp4?.produced === true;
   const hasFrames = frames.length > 0;
+  /**
+   * Claimed reconstructed_mp4 without produced=true is INCOMPLETE, not FAIL.
+   * blockingArtifactProducer stays false. Frames-only (no mp4 object) still scores.
+   */
+  const awaitingMp4 = artifactKind === "reconstructed_mp4" && !mp4Produced;
   if (mp4Produced && !hasFrames) awaiting.push("decoded_frames");
   if (!hasFrames && !mp4Produced) awaiting.push("reconstructed_frames_or_mp4");
+  if (awaitingMp4) awaiting.push("mp4");
 
   const mp4Scored = criterion(
     "mp4_artifact_scored",
-    mp4Produced && hasFrames
-      ? "PASS"
-      : mp4Produced && !hasFrames
-        ? "SKIP"
-        : artifactKind === "reconstructed_frames" && hasFrames
-          ? "SKIP"
-          : "SKIP",
+    mp4Produced && hasFrames ? "PASS" : "SKIP",
     {
       produced: mp4Produced ? 1 : 0,
       decodedFrames: frames.length,
@@ -150,25 +150,19 @@ export function evaluateVideoQa(input: VideoQaInput): VideoQaReport {
       ? "Lane H MP4 provenance present and decoded frames scored."
       : mp4Produced
         ? "MP4 produced; waiting on decoded rasters. Does not block Lane H."
-        : "Frame-pack path (no MP4 yet). Lane H may attach mp4 later.",
+        : awaitingMp4
+          ? "MP4 claimed but not produced. INCOMPLETE, not FAIL. blockingArtifactProducer=false."
+          : "Frame-pack path (no MP4 yet). Lane H may attach mp4 later.",
     "MP4 artifact missing",
   );
 
-  if (!hasFrames) {
-    const skippedIds: VideoQaCriterionId[] = [
-      "per_frame_repair_coverage",
-      "original_master_preservation",
-      "unintended_outside_region_change",
-      "mask_discontinuity",
-      "temporal_jitter_drift",
-      "seam_edge_instability",
-    ];
-    const skipped = skippedIds.map((id) =>
-      criterion(id, "SKIP", {}, "No decoded frames yet.", "no frames"),
-    );
-    return finish([paid, stillLock, mp4Scored, ...skipped], {
+  if (!hasFrames || awaitingMp4) {
+    const skipNote = !hasFrames
+      ? "No decoded frames yet."
+      : "MP4 not produced; mp4-scored probes stay SKIP (INCOMPLETE), not FAIL.";
+    return finish([paid, stillLock, mp4Scored, ...skipMp4ScoredVisuals(skipNote)], {
       awaiting,
-      frameCount: 0,
+      frameCount: frames.length,
       artifactKind,
       mp4,
       perFrame: [],
@@ -344,6 +338,19 @@ export function evaluateVideoQa(input: VideoQaInput): VideoQaReport {
       provenance,
     },
   );
+}
+
+const MP4_SCORED_VISUAL_IDS: VideoQaCriterionId[] = [
+  "per_frame_repair_coverage",
+  "original_master_preservation",
+  "unintended_outside_region_change",
+  "mask_discontinuity",
+  "temporal_jitter_drift",
+  "seam_edge_instability",
+];
+
+function skipMp4ScoredVisuals(note: string): VideoQaCriterion[] {
+  return MP4_SCORED_VISUAL_IDS.map((id) => criterion(id, "SKIP", {}, note, "awaiting mp4"));
 }
 
 function emptyTemporal(): VideoQaTemporal {

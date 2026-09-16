@@ -91,6 +91,53 @@ describe("Lane E2 video-level QA", () => {
     expect(report.criteria.find((c) => c.id === "mp4_artifact_scored")?.verdict).toBe("SKIP");
   });
 
+  it("returns INCOMPLETE not FAIL when reconstructed_mp4 is claimed but not produced", () => {
+    const leak = outsideLeakInput();
+    const report = evaluateVideoQa({
+      ...leak,
+      artifact: {
+        ...leak.artifact,
+        kind: "reconstructed_mp4",
+        mp4: { produced: false },
+      },
+    });
+    expect(report.verdict).toBe("INCOMPLETE");
+    expect(report.failCount).toBe(0);
+    expect(report.awaiting).toContain("mp4");
+    expect(report.blockingArtifactProducer).toBe(false);
+    expect(report.stillGoldensReopened).toBe(false);
+    expect(report.escalate).toBeNull();
+    expect(report.criteria.find((c) => c.id === "mp4_artifact_scored")?.verdict).toBe("SKIP");
+    expect(report.criteria.find((c) => c.id === "original_master_preservation")?.verdict).toBe(
+      "SKIP",
+    );
+    expect(report.criteria.find((c) => c.id === "temporal_jitter_drift")?.verdict).toBe("SKIP");
+    expect(report.criteria.find((c) => c.id === "unintended_outside_region_change")?.verdict).toBe(
+      "SKIP",
+    );
+    expect(formatVideoQaSummary(report)).toMatch(/INCOMPLETE/);
+    expect(formatVideoQaSummary(report)).toMatch(/fail=0/);
+    expect(formatVideoQaSummary(report)).toMatch(/mp4=none/);
+  });
+
+  it("still FAILs frames-only leaks when no MP4 object is attached", () => {
+    const leak = outsideLeakInput();
+    const report = evaluateVideoQa({
+      ...leak,
+      artifact: {
+        ...leak.artifact,
+        kind: "reconstructed_frames",
+        mp4: undefined,
+      },
+    });
+    expect(report.verdict).toBe("FAIL");
+    expect(report.awaiting).not.toContain("mp4");
+    expect(report.criteria.find((c) => c.id === "original_master_preservation")?.verdict).toBe(
+      "FAIL",
+    );
+    expect(report.stillGoldensReopened).toBe(false);
+  });
+
   it("FAILs unintended outside-region change and escalates without reopening stills", () => {
     const report = evaluateVideoQa(outsideLeakInput());
     expect(report.verdict).toBe("FAIL");

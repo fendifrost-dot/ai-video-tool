@@ -35,9 +35,12 @@ export { encodePlayableMp4, ffmpegAvailable, probePlayableMp4 } from "./encodeMp
 export { buildPlayableArtifactClaims, buildPlayableE2Hook, playableE2HookToJson } from "./e2Hook";
 export { buildPlayableLaneHHandoff, RECONSTRUCT_LANE_H_HANDOFF_VERSION } from "./handoff";
 export {
+  PLAYABLE_MP4_BYTE_LENGTH,
   PLAYABLE_MP4_RELATIVE_PATH,
+  PLAYABLE_MP4_SHA256,
   PLAYABLE_VIDEO_QA_ARTIFACT_ID,
   PLAYABLE_VIDEO_QA_RELATIVE_PATH,
+  committedPlayableMp4Ref,
   evaluatePlayableVideoQa,
   evaluatePlayableVideoQaFromE2e,
   persistPlayableVideoQaJson,
