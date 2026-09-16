@@ -15,25 +15,32 @@
 | Hero Frame §7 Temporal Run control | YES (PR #95, `782adac`) | frontend Publish | **YES** |
 | Temporal `$0` **click** smoke | YES (PR #97) | live product UI | **SUCCESS** — 3 jobs, `paidCalls=false` |
 | Lane D original-master live wiring | YES (PR #92) | n/a — in-lib | YES (library) |
-| **RECONSTRUCT-1 E2E $0** | this PR (#98) | **Publish after merge** | **READY** — parent signed-in click |
+| **RECONSTRUCT-1 E2E $0** | YES (PR #99, `58b8a49`) | frontend Publish | **PASS 9/9** — `paidCalls=false`, `frames=5` |
 
-## RECONSTRUCT-1 E2E $0 — READY for parent live verify
+## RECONSTRUCT-1 E2E $0 — PASS 9/9
 
-Work-order: GitHub **#98** (lineage **#89** / PR **#92**, temporal **#95** / **#97**, parent **#50**). Isolated reconstruct E2E + Lane E video eval + Hero Frame §7 button. **Do not reopen chest 1m or sleeve paint.**
+Work-order: GitHub **#100** (lineage **#98** / PR **#99**, temporal **#96** / **#97**, parent **#50**). Docs/evidence only. **Do not reopen chest 1m or sleeve paint.**
 
-**Click path** (after merge + Lovable frontend **Publish**):
+**When:** 2026-09-15 ~21:13 America/Chicago (~2026-09-16 02:13 UTC)  
+**App:** https://aivideotool.lovable.app (signed-in AVT owner)  
+**Code:** `main` @ `58b8a49` (PR #99) + Lovable frontend **Publish**
 
-1. Sign in at https://aivideotool.lovable.app
-2. `https://aivideotool.lovable.app/projects/764a63d2-93cd-44f3-905f-292f14ab2f51/hero-frame`
-3. §7 · Architecture C — still-first deterministic repair
-4. Do **not** click chest or sleeve paint
-5. Click **Run reconstruct E2E $0** once
+| Field | Value |
+|-------|--------|
+| Project | `764a63d2-93cd-44f3-905f-292f14ab2f51` |
+| Garment | `0feb028f-dc4d-45dc-82ac-e4bbd16054b0` |
+| Canonical master clip | `76fe7438-671d-4428-a7f6-17a45e98c16f` |
+| UI | **Run reconstruct E2E $0** visible in Hero Frame §7 |
+| Click | once |
+| Toast | `RECONSTRUCT-1 PASS 9/9 frames=5 paidCalls=false grokPerFrame=false.` |
+| JSON | `verdict=PASS`, `frameCount=5`, `paidCalls=false`, `grokPerFrame=false`, `escalate=null`, `stillGoldensReopened=false` |
+| 401 / paid Grok / still-golden reopen | **none** |
 
-Expected toast: `RECONSTRUCT-1 PASS 9/9 frames=<n> paidCalls=false grokPerFrame=false.`
+Write-up: `docs/reconstruct/E2E_LIVE_SUCCESS_2026-09-15.md`  
+JSON: `docs/reconstruct/live-smoke/e2e-pass.json`  
+Screenshots: `reconstruct-e2e-evidence/before-reconstruct-e2e.png` + `after-reconstruct-e2e-pass.png` (described in the write-up; binaries not hydrated onto this VM)
 
-Write-up: `docs/reconstruct/E2E_LIVE.md`
-
-**Publish ≠ edge redeploy.** No still-repair / temporal / SAM-3 redeploy from this lane.
+**Publish ≠ edge redeploy.** No still-repair / temporal / SAM-3 redeploy from this record.
 
 **Not claimed:** live 720×1280 pixels of master `76fe7438`, live SAM-3 fetch, still-golden rescore, MP4 encode.
 

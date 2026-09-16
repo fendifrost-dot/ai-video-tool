@@ -2,7 +2,7 @@
 
 **Issue:** [#89](https://github.com/fendifrost-dot/ai-video-tool/issues/89) (child of [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50); lineage [#55](https://github.com/fendifrost-dot/ai-video-tool/issues/55) / PR #58)  
 **Class:** C (compositing / rendering) — isolated adapters + `$0` fixtures.  
-**Status:** **READY** — wiring armed; dispatch still requires `explicitArm`. **No edge function.** Hero Frame §7 E2E click path: [`docs/reconstruct/E2E_LIVE.md`](E2E_LIVE.md) (issue #98).
+**Status:** **PASS 9/9** live click (issue [#100](https://github.com/fendifrost-dot/ai-video-tool/issues/100)) — wiring armed; dispatch still requires `explicitArm`. **No edge function.** Hero Frame §7 E2E: [`E2E_LIVE.md`](E2E_LIVE.md) · [`E2E_LIVE_SUCCESS_2026-09-15.md`](E2E_LIVE_SUCCESS_2026-09-15.md).
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**.
 
@@ -92,7 +92,7 @@ Untrusted temporal frames (`confidence < 0.6` or `reanchorRecommended`) do not e
 2. **Do not** redeploy `architecture-c-still-repair-proxy` (chest/sleeve paint locked).
 3. **Do not** redeploy `temporal-propagate-proxy` from this lane (Lane C / PR #88 parent deploy).
 4. **Do not** redeploy or call `sam3-segment-proxy` (CC).
-5. Publish ≠ edge redeploy. Frontend **Publish is required** so Hero Frame §7 **Run reconstruct E2E $0** is live (issue #98). No edge redeploy from this lane.
+5. Publish ≠ edge redeploy. Frontend **Publish** of PR #99 made Hero Frame §7 **Run reconstruct E2E $0** live (issue #98). Live click **PASS 9/9** is issue [#100](https://github.com/fendifrost-dot/ai-video-tool/issues/100). No edge redeploy from this lane.
 
 Lane G may later bind `dispatchOriginalMasterReconstruct` / `reconstructMasterClip` into the `original_master_reconstruction` slot. That is **not** this PR.
 

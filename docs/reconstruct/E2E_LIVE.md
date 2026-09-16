@@ -2,7 +2,7 @@
 
 **Issue:** [#98](https://github.com/fendifrost-dot/ai-video-tool/issues/98) (child of [#50](https://github.com/fendifrost-dot/ai-video-tool/issues/50); lineage [#89](https://github.com/fendifrost-dot/ai-video-tool/issues/89) / PR #92)  
 **Class:** C (compositing / rendering) + thin Hero Frame UI. Isolated reconstruct E2E + Lane E video eval.  
-**Status:** **READY** for parent signed-in live verify after merge + frontend **Publish**. **No edge function.**
+**Status:** **PASS 9/9** live click after merge + frontend **Publish** of PR #99 — [#100](https://github.com/fendifrost-dot/ai-video-tool/issues/100) · [`E2E_LIVE_SUCCESS_2026-09-15.md`](E2E_LIVE_SUCCESS_2026-09-15.md). **No edge function.**
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**.
 
@@ -114,6 +114,8 @@ JSON panel (`data-testid="hero-frame-reconstruct-run-json"`):
 - `source: "live_temporal_jobs"`
 
 Capture for evidence: before-click PNG, after-click PNG, toast text, JSON body. Same pattern as [`docs/temporal/LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md`](../temporal/LIVE_CLICK_SMOKE_SUCCESS_2026-09-15.md).
+
+**Live SUCCESS recorded:** 2026-09-15 ~21:13 America/Chicago — toast `RECONSTRUCT-1 PASS 9/9 frames=5 paidCalls=false grokPerFrame=false.` JSON `verdict=PASS`, `frameCount=5`, `paidCalls=false`, `grokPerFrame=false`, `escalate=null`, `stillGoldensReopened=false`. Write-up: [`E2E_LIVE_SUCCESS_2026-09-15.md`](E2E_LIVE_SUCCESS_2026-09-15.md) · JSON: [`live-smoke/e2e-pass.json`](live-smoke/e2e-pass.json).
 
 Optional: click **Run temporal propagate** first (already SUCCESS). The reconstruct button **re-POSTs** temporal itself so one click is the E2E.
 

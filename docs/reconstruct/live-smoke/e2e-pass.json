@@ -1,0 +1,64 @@
+{
+  "smoke": "hero-frame-section-7-reconstruct-e2e-click",
+  "verdict": "PASS",
+  "passCount": 9,
+  "failCount": 0,
+  "when": {
+    "local": "2026-09-15T21:13:00-05:00",
+    "timezone": "America/Chicago",
+    "utc": "2026-09-16T02:13:00Z"
+  },
+  "app": "https://aivideotool.lovable.app",
+  "route": "https://aivideotool.lovable.app/projects/764a63d2-93cd-44f3-905f-292f14ab2f51/hero-frame",
+  "authenticated": true,
+  "http401": false,
+  "paidGeneration": false,
+  "toast": {
+    "text": "RECONSTRUCT-1 PASS 9/9 frames=5 paidCalls=false grokPerFrame=false.",
+    "passCount": 9,
+    "failCount": 0,
+    "frameCount": 5,
+    "paidCalls": false,
+    "grokPerFrame": false
+  },
+  "json": {
+    "verdict": "PASS",
+    "frameCount": 5,
+    "paidCalls": false,
+    "grokPerFrame": false,
+    "escalate": null,
+    "stillGoldensReopened": false
+  },
+  "lineage": {
+    "issue": 100,
+    "parentIssue": 50,
+    "e2eIssue": 98,
+    "e2ePr": 99,
+    "temporalClickIssue": 96,
+    "temporalClickPr": 97,
+    "codeHead": "58b8a49252a0bf736a88812906907251253292f5",
+    "frontend": "lovable_publish_of_pr_99",
+    "edge": "none from this lane; temporal-propagate-proxy JWT-only redeploy from #88 unchanged",
+    "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+    "garmentId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+    "clipId": "76fe7438-671d-4428-a7f6-17a45e98c16f",
+    "heroTimestamp": 0.785,
+    "chestAssetId": "9ed83c01-8c7d-4d1b-918f-87b0fc743c50",
+    "sleeveAssetId": "fdb86b18-d4aa-465e-b73f-1d252709739c",
+    "chain": "cleared_chest_1m + cleared_sleeve_1c + live_temporal + reconstruct_1"
+  },
+  "screenshots": {
+    "before": "reconstruct-e2e-evidence/before-reconstruct-e2e.png",
+    "after": "reconstruct-e2e-evidence/after-reconstruct-e2e-pass.png",
+    "committedInRepo": false,
+    "note": "PRs #93 / #97 stored JSON probes, not PNGs. Binaries were attached to the evidence run and described in E2E_LIVE_SUCCESS_2026-09-15.md; this VM did not hydrate the files."
+  },
+  "notClaimed": [
+    "live_720x1280_pixels_of_master_76fe7438",
+    "live_sam3_fetch",
+    "chest_11_11_rescore",
+    "sleeve_6_6_rescore",
+    "mp4_of_clip_76fe7438",
+    "new_edge_redeploy"
+  ]
+}
