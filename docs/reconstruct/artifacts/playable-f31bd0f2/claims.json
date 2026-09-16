@@ -1,0 +1,69 @@
+{
+  "playableVersion": "1.0.0",
+  "mediaKind": "canonical_720x1280_still_derived",
+  "lineage": {
+    "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+    "masterClipAssetId": "f31bd0f2-884f-42e1-8b08-aa645597b7a6",
+    "stillAssetId": "2aa1a44c-b24a-46bf-890f-13a6fc65b1cc",
+    "garmentId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+    "width": 720,
+    "height": 1280,
+    "fps": 24,
+    "frameCount": 8,
+    "durationSec": 0.3333333333333333,
+    "keyframeIndex": 2,
+    "keyframeId": "v2-edited-clip-playable-fixture",
+    "keyframeTimeSec": 0.08333333333333333,
+    "dxPerFrame": 2,
+    "catalogId": "ysl-ice-on-v2-edited-clip",
+    "parentMasterClipAssetId": "76fe7438-671d-4428-a7f6-17a45e98c16f"
+  },
+  "sam3": {
+    "source": "intended_stage1h_evidence",
+    "evidenceId": "architecture_c_still_1h_sam3",
+    "sourceCommit": "df64344c566cdb359468a9c2afd8afb4f7320d97",
+    "repairMethodVersion": "architecture_c_still_repair_1h",
+    "liveFetch": false,
+    "fallbackStatus": "none",
+    "failureBehavior": "fail_closed_size_mismatch",
+    "failure": null,
+    "width": 720,
+    "height": 1280,
+    "outfitCoverage": 0.09371419270833334,
+    "repairCoverage": 0.00099609375
+  },
+  "mp4": {
+    "width": 720,
+    "height": 1280,
+    "frameCount": 8,
+    "fps": 24,
+    "durationSec": 0.333333,
+    "codec": "h264",
+    "container": "mov,mp4,m4a,3gp,3g2,mj2",
+    "pixelFormat": "yuv420p",
+    "audio": {
+      "present": false,
+      "preserved": null,
+      "sync": null,
+      "note": "source pack has no audio track (still-derived 720×1280 working raster)"
+    }
+  },
+  "masterClipAssetId": "f31bd0f2-884f-42e1-8b08-aa645597b7a6",
+  "originalPixelsPreservedWhereUnauthorized": true,
+  "temporalJobCount": 3,
+  "temporalFramesUsed": 8,
+  "temporalChunking": {
+    "maxFrames": 24,
+    "chunkCount": 1,
+    "didChunk": false,
+    "raisedProxyMaxFrames": false,
+    "yellowContracts": [
+      "edge_max_frames_24_vs_canonical_241"
+    ]
+  },
+  "paidCalls": false,
+  "grokPerFrame": false,
+  "sam3LiveFetch": false,
+  "provider": "none",
+  "edgeFunction": null
+}

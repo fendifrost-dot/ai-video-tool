@@ -4,6 +4,18 @@
 
 **Updated:** 2026-09-16 · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`.
 
+## Lane H stretch — 2nd-clip playable portability (`f31bd0f2`)
+
+Sprint **#102** / umbrella **#50**. After PLAYABLE-1 **#120** and E2 INCOMPLETE **#129**. Isolated `src/lib/reconstruct/playable/**` + docs. **Do not reopen chest 1m or sleeve 1c.** `paidCalls=false`. **No Lovable Publish.**
+
+**[VERIFIED in-lib]** Catalog `ysl-ice-on-v2-edited-clip` / clip `f31bd0f2-884f-42e1-8b08-aa645597b7a6` (G2 `SECOND_EXISTING_V2_EDITED_CLIP`) fills `PlayableClipSpec`. Compose / encode / E2-hook / Lane H handoff v2 do **not** switch on master `76fe7438`. `LIVE_PROXY_MAX_FRAMES` stays **24**.
+
+**Live Hero Frame Export on the 2nd clip is NOT CLEARED.** §7 still uses `heroFramePlayableSpec()` + `committedPlayableMp4Ref()` (canonical 72-frame `playable-76fe7438`).
+
+8-frame 720×1280 fixture: `docs/reconstruct/artifacts/playable-f31bd0f2/`. Pixels are the $0 still-derived unique-RGB pack — **not** live Grok V2 bytes.
+
+Write-up: [`docs/reconstruct/PLAYABLE_PORTABILITY.md`](docs/reconstruct/PLAYABLE_PORTABILITY.md)
+
 ## Live re-verify — Hero Frame export E2 INCOMPLETE 2/9 (after PR #129 Publish)
 
 Work-order: sprint **#102** · related **#128** / merged PR **#129** (`f5f7d8a`) · umbrella **#50**. **Class A docs.** `paidCalls=false`. No paint / edge / Lovable runtime.
@@ -52,6 +64,7 @@ Live toast before the fix: `FAIL 6/9 frames=8 mp4=none`. **[VERIFIED]** `FAIL 6/
 | Lane C2 chunked proxy QA + 2nd clip | YES (PR #127, issue **#124**) | n/a — in-lib | **READY** — ≤24-frame windows, seams YELLOW named |
 | Lane R real-media lock placeholders | YES (PR #121, issue **#115**) | n/a — docs/tests | **UNCLAIMED** — live export re-verify does **not** claim these |
 | **Lane H playable 720×1280 MP4** | YES (PR **#120** / **#129**) | frontend Publish of #129 | **LIVE INCOMPLETE** — 2026-09-16 ~1:19 AM CT |
+| **Lane H 2nd-clip portability** | YES (PR **#131**) | n/a — in-lib, no Publish | **READY in-lib** — catalog `f31bd0f2`; live Export on 2nd clip **NOT CLEARED** |
 
 ## Lane D2 — Reconstruction video QA
 
@@ -119,7 +132,7 @@ Work-order: GitHub **#111** (parent **#102** / **#50**). Isolated compose/export
 
 **Not claimed:** live storage decode of `76fe7438` (DB row is 1080×1920 HDR); live SAM-3 fetch. Live proxy full-clip stays **YELLOW** (`maxFrames=24` vs canonical 241) — Lane H does **not** raise the cap. GREEN path: chunk ≤24 + stitch. Architecture C window is 72-frame / 720×1280 still-derived.
 
-Write-up: `docs/reconstruct/PLAYABLE_ARTIFACT.md`
+Write-up: [`docs/reconstruct/PLAYABLE_ARTIFACT.md`](docs/reconstruct/PLAYABLE_ARTIFACT.md) · 2nd-clip stretch: [`docs/reconstruct/PLAYABLE_PORTABILITY.md`](docs/reconstruct/PLAYABLE_PORTABILITY.md)
 
 ## Canonical IDs (unchanged)
 

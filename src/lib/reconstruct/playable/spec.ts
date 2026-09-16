@@ -40,6 +40,7 @@ export function canonicalPlayableSpec(overrides: Partial<PlayableClipSpec> = {})
     keyframeId: CANONICAL_KEYFRAME_ID,
     keyframeTimeSec: CANONICAL_KEYFRAME_TIME_SEC,
     dxPerFrame: PLAYABLE_DX_PER_FRAME,
+    catalogId: "canonical-ysl-ice-on",
     ...overrides,
   };
 }
@@ -49,6 +50,7 @@ export function heroFramePlayableSpec(overrides: Partial<PlayableClipSpec> = {})
   const frameCount = overrides.frameCount ?? HERO_FRAME_PLAYABLE_EXPORT_FRAME_COUNT;
   const fps = overrides.fps ?? PLAYABLE_WORKING_FPS;
   return canonicalPlayableSpec({
+    catalogId: "canonical-ysl-ice-on",
     frameCount,
     durationSec: frameCount / fps,
     keyframeIndex: HERO_FRAME_PLAYABLE_EXPORT_KEYFRAME_INDEX,

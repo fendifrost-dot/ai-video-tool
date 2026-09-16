@@ -92,7 +92,15 @@ Caller-supplied SAM-3 is accepted only at `width×height`. An 80×128 fixture ma
 
 ## Stretch — second clip/project
 
-`PlayableClipSpec` is clip-agnostic. A second project supplies `projectId`, `masterClipAssetId`, `stillAssetId`, `width`, `height`, `fps`, `frameCount`, `keyframeIndex` and calls `runPlayableCompose({ spec })`. Compose/encode/E2-hook do not branch on canonical IDs.
+**[VERIFIED in-lib]** See [`PLAYABLE_PORTABILITY.md`](PLAYABLE_PORTABILITY.md). Catalog `ysl-ice-on-v2-edited-clip` / clip `f31bd0f2` fills `PlayableClipSpec` and uses the same compose → encode → E2-hook path. Compose/encode/E2-hook/handoff do not branch on canonical IDs.
+
+**Live Export on the 2nd clip is NOT CLEARED.** Hero Frame §7 stays `heroFramePlayableSpec()` / `committedPlayableMp4Ref()` (canonical `76fe7438` 72-frame gate).
+
+```bash
+npm run reconstruct:playable:second-clip
+```
+
+8-frame 720×1280 fixture: [`artifacts/playable-f31bd0f2/`](artifacts/playable-f31bd0f2/). Not live Grok V2 pixels. `maxFrames=24` unchanged.
 
 ---
 
@@ -128,6 +136,6 @@ Publish ≠ edge redeploy.
 | `src/lib/reconstruct/playable/**` | This lane                           |
 | `src/lib/eval/**`                 | E2 — consume only, no edits         |
 | `src/lib/temporal/**` QA metrics  | C2 — consume `propagateRepair` only |
-| `src/lib/pipeline/**`             | G2 — not edited                     |
+| `src/lib/pipeline/**`             | G2 — consume catalog ids in tests only |
 | logoComposite / sleeve paint      | not edited                          |
 | finishing / Astra                 | F2 — not this lane                  |
