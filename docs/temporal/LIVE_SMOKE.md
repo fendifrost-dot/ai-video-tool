@@ -218,7 +218,9 @@ Without `explicitArm: true` the edge returns **403** `explicit_arm_required` (in
 
 ---
 
-## Expected live 200 [H until parent JWT POST; in-lib V]
+## Expected live 200 [O toast SUCCESS; full JSON still H for script POST; in-lib V]
+
+Product click toast [V]: `Dispatched 3 job(s). paidCalls=false grokPerFrame=false.` Full job-array JSON below is still the in-lib / script-expected body (not printed in the UI).
 
 ```json
 {
