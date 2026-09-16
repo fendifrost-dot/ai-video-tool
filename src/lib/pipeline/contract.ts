@@ -278,13 +278,20 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
     consumes: ["branded_composite", "propagated_clip", "repaired_still_sleeve_panel"],
     requiredAll: [],
     requiredAny: ["branded_composite", "propagated_clip", "repaired_still_sleeve_panel"],
-    produces: ["evaluation_report"],
+    produces: ["evaluation_report", "video_qa_report"],
     dependsOn: ["deterministic_branding"],
     gates: [],
     retryPolicy: { ...DEFAULT_RETRY_POLICY, maxAttempts: 1 },
     allowImportFromLane: true,
     stageVersion: STAGE_VERSIONS.automated_evaluation,
     laneSurfaces: [
+      {
+        ...noPaidCalls,
+        module: "src/lib/eval/videoQaArtifacts.ts",
+        entrypoint: "videoQaReportToJson / VideoQaJson (lane-e2-video-qa-v1)",
+        notes:
+          "Lane E2 owns video QA metrics. Lane G2 consumes video_qa_report JSON as evaluatorResult. Do not call evaluateVideoQa or reopen chest/sleeve goldens.",
+      },
       {
         ...noPaidCalls,
         module: "src/lib/eval/reconstructVideoEvaluator.ts",
@@ -315,9 +322,9 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
   review_export: {
     id: "review_export",
     label: "Review / export",
-    consumes: ["evaluation_report", "branded_composite", "encoded_mp4"],
+    consumes: ["evaluation_report", "video_qa_report", "branded_composite", "encoded_mp4"],
     requiredAll: [],
-    requiredAny: ["evaluation_report", "branded_composite", "encoded_mp4"],
+    requiredAny: ["evaluation_report", "video_qa_report", "branded_composite", "encoded_mp4"],
     produces: ["review_scorecard", "export_package", "encoded_mp4"],
     dependsOn: ["automated_evaluation"],
     gates: [
@@ -343,7 +350,7 @@ export const STAGE_DEFINITIONS: Record<PipelineStageId, StageDefinition> = {
         module: "Lane H — E2E playable MP4 encode",
         entrypoint: "encoded_mp4 artifact (playable reconstructed video)",
         notes:
-          "Lane G2 does not encode MP4. When Lane H produces encoded_mp4, Product OS stores the pointer + provenance. notClaimed until H hands off.",
+          "Lane G2 does not encode MP4. Default adapter is a not_claimed provenance stub until Lane H merges. Import encoded_mp4 when H produces it.",
       },
     ],
   },

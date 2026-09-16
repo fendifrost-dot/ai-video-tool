@@ -6,8 +6,8 @@
  * algorithms, provider clients, or edge proxies.
  */
 
-export const PIPELINE_CONTRACT_VERSION = "1.1.0" as const;
-export const PIPELINE_CONTRACT_VERSIONS = ["1.0.0", "1.1.0"] as const;
+export const PIPELINE_CONTRACT_VERSION = "1.2.0" as const;
+export const PIPELINE_CONTRACT_VERSIONS = ["1.0.0", "1.1.0", "1.2.0"] as const;
 export type PipelineContractVersion = (typeof PIPELINE_CONTRACT_VERSIONS)[number];
 
 /**
@@ -28,6 +28,7 @@ export type G2StageState = (typeof G2_STAGE_STATES)[number];
 /** Known review flags. Runs may carry additional keys. */
 export const PIPELINE_REVIEW_KEYS = [
   "chestStillCleared",
+  "sleeveStillCleared",
   "stillRepairApproved",
   "masterCompositeAuthorized",
   "exportApproved",
@@ -94,6 +95,8 @@ export const ARTIFACT_KINDS = [
   "original_master_composite",
   "branded_composite",
   "evaluation_report",
+  /** Lane E2 video-level QA JSON (`lane-e2-video-qa-v1`). G2 stores, does not score. */
+  "video_qa_report",
   "review_scorecard",
   "export_package",
   /** Playable MP4 produced by Lane H. Lane G2 stores the pointer only. */
@@ -135,15 +138,32 @@ export type ArtifactRef = {
  */
 export type ConsumedEvaluatorResult = {
   specVersion: string;
-  verdict: "PASS" | "FAIL" | "UNSCORED" | "NOT_RUN";
+  verdict: "PASS" | "FAIL" | "UNSCORED" | "NOT_RUN" | "INCOMPLETE";
   passCount: number | null;
   failCount: number | null;
   ownerLane: "E2" | "E";
   paidCalls: false;
   stillGoldensReopened: false;
+  /** Always false — incomplete decode must not stall Lane H. */
+  blockingArtifactProducer: false;
   reportArtifactId?: string;
   /** Opaque bag from E2. Do not interpret as owned metrics. */
   summary: Record<string, unknown>;
+};
+
+export type ConsumedEncodeStatus = "not_claimed" | "pending" | "encoded";
+
+/** Lane H encode pointer. G2 never muxes bytes. */
+export type ConsumedEncodeProvenance = {
+  ownerLane: "H";
+  paidCalls: false;
+  encodeStatus: ConsumedEncodeStatus;
+  produced: boolean;
+  artifactId?: string;
+  path?: string;
+  sha256?: string;
+  mimeType?: "video/mp4";
+  blockingArtifactProducer: false;
 };
 
 /** Kind-based handoff from a passed stage to the next compatible stage. */

@@ -170,7 +170,7 @@ Chest query `WORKER_RESOURCE_LIMIT` / HTTP 5xx / 546 maps to retryable `chest_qu
 
 ### Persistence
 
-**[DECISION]** No new SQL table in this work-order (Lovable-managed SQL is out of band; this lane must not invent a migration). The run is a versioned JSON document (`contractVersion: 1.1.0`) that can live on `project_assets.metadata_json.pipeline_run` via `embedPipelineRun`. `1.0.0` documents migrate in `parsePipelineRun`.
+**[DECISION]** No new SQL table in this work-order (Lovable-managed SQL is out of band; this lane must not invent a migration). The run is a versioned JSON document (`contractVersion: 1.2.0`) that can live on `project_assets.metadata_json.pipeline_run` via `embedPipelineRun`. `1.0.0` / `1.1.0` documents migrate in `parsePipelineRun`.
 
 **[RECOMMENDATION]** A future Class C issue may add a `pipeline_runs` table + durable worker. Until then this is in-process scaffolding. See RISK PIPELINE-1 / OPS-2.
 
