@@ -14,6 +14,10 @@ import {
 } from "./adapters";
 import { CLEARED_CHEST_STILL } from "./chest";
 import { createChestRepairHandler, type ChestRepairClient } from "./chestAdapter";
+import {
+  createConsumedVideoQaHandler,
+  createLaneHEncodeStubHandler,
+} from "./consumedContracts";
 import { STAGE_DEFINITION_LIST } from "./contract";
 import { topologicalStages } from "./graph";
 import {
@@ -56,8 +60,16 @@ const NODE_META: Record<PipelineStageId, Omit<ProductOsGraphNode, "stageId">> = 
     status: "gate_4_blocked",
   },
   deterministic_branding: { integration: "scaffolding", ownerLane: null, status: "scaffolding" },
-  automated_evaluation: { integration: "scaffolding", ownerLane: null, status: "scaffolding" },
-  review_export: { integration: "scaffolding", ownerLane: null, status: "scaffolding" },
+  automated_evaluation: {
+    integration: "import_only",
+    ownerLane: "G",
+    status: "consume_e2_video_qa_v1",
+  },
+  review_export: {
+    integration: "import_only",
+    ownerLane: "G",
+    status: "consume_h_encoded_mp4_stub",
+  },
 };
 
 export function productOsGraphNodes(): ProductOsGraphNode[] {
@@ -71,9 +83,11 @@ export type ProductOsAdapterOptions = {
   chestClient?: ChestRepairClient;
   sleeveHandler?: StageHandler;
   temporalHandler?: StageHandler;
+  evalHandler?: StageHandler;
+  encodeHandler?: StageHandler;
 };
 
-/** Safe defaults: import CLEARED chest / require bind; sleeve + temporal stubs. */
+/** Safe defaults: import CLEARED chest / require bind; sleeve + temporal stubs; E2/H consume-only. */
 export function createProductOsAdapters(
   opts: ProductOsAdapterOptions = {},
 ): Record<PipelineStageId, StageAdapter> {
@@ -84,6 +98,8 @@ export function createProductOsAdapters(
     ),
     sleeve_garment_repair: opts.sleeveHandler ?? createSleeveRepairStubHandler(),
     temporal_propagation: opts.temporalHandler ?? createTemporalPropagationStubHandler(),
+    automated_evaluation: opts.evalHandler ?? createConsumedVideoQaHandler(),
+    review_export: opts.encodeHandler ?? createLaneHEncodeStubHandler(),
   });
 }
 

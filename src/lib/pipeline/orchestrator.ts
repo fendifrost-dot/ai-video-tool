@@ -100,7 +100,9 @@ function stampStage(
 
 function evaluatorForStage(stageId: PipelineStageId, artifacts: ArtifactRef[]): ConsumedEvaluatorResult | null {
   if (stageId !== "automated_evaluation") return null;
-  const report = artifacts.find((a) => a.kind === "evaluation_report");
+  const report =
+    artifacts.find((a) => a.kind === "video_qa_report") ??
+    artifacts.find((a) => a.kind === "evaluation_report");
   return evaluatorResultFromArtifact(report);
 }
 

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createStageAdapter } from "./adapters";
+import { AUTO_REVIEW_DO_NOT_SET } from "./autoReviews";
 import {
   CANONICAL_YSL_ICE_ON,
   SECOND_EXISTING_V2_EDITED_CLIP,
@@ -12,17 +13,22 @@ import {
 import { CLEARED_CHEST_STILL } from "./chest";
 import {
   ENCODE_CONTRACT,
-  EVALUATOR_CONTRACT,
+  E2_VIDEO_QA_SPEC_VERSION,
+  consumeEncodeProvenance,
   consumeEvaluatorReport,
+  consumeVideoQaReport,
   createConsumedEncodeHandler,
   createConsumedEvaluatorHandler,
 } from "./consumedContracts";
 import { STAGE_DEFINITION_LIST } from "./contract";
+import { fixtureGraphSeeds, fixtureStillSeeds, fixtureVideoQaLanePayload } from "./fixtureSeeds";
 import { nextCompatibleStages } from "./handoff";
 import { G2_REQUIRED_STATES, lifecycleFromStatus } from "./lifecycle";
+import { createClearedChestPipelineRun } from "./orchestrator";
 import { LANE_G2_DEPLOY_NEEDS, LANE_G2_WORK_ORDER } from "./ownership";
 import { parsePipelineRun, serializePipelineRun } from "./persistence";
 import { CLEARED_SLEEVE_STILL } from "./sleeve";
+import { TEMPORAL_STAGE_HOOK } from "./stageHooks";
 import { STAGE_VERSIONS } from "./stageVersion";
 import { runUnattendedPipeline, stageGraphSnapshot } from "./unattended";
 import type { ArtifactRef, PipelineClock } from "./types";
@@ -45,19 +51,10 @@ function testClock(): PipelineClock {
 function reportArtifact(): ArtifactRef {
   return {
     id: "eval-report-1",
-    kind: "evaluation_report",
+    kind: "video_qa_report",
     producedByStage: "automated_evaluation",
     producedAt: "2026-09-16T00:00:01.000Z",
-    lanePayload: {
-      schemaVersion: EVALUATOR_CONTRACT.specVersion,
-      verdict: "PASS",
-      passCount: 9,
-      failCount: 0,
-      paidCalls: false,
-      stillGoldensReopened: false,
-      source: "fixture_temporal_jobs",
-      frameCount: 5,
-    },
+    lanePayload: fixtureVideoQaLanePayload(),
   };
 }
 
@@ -89,6 +86,7 @@ describe("G2 lifecycle + stage graph", () => {
     expect(lifecycleFromStatus("retrying")).toBe("retryable");
     expect(lifecycleFromStatus("needs_review")).toBe("blocked");
     expect(LANE_G2_WORK_ORDER.issue).toBe(109);
+    expect(LANE_G2_WORK_ORDER.followUpIssue).toBe(122);
     expect(LANE_G2_WORK_ORDER.parentIssue).toBe(102);
     expect(LANE_G2_WORK_ORDER.paidCalls).toBe(false);
     expect(LANE_G2_DEPLOY_NEEDS.frontendPublish).toBe(false);
@@ -118,28 +116,46 @@ describe("G2 lifecycle + stage graph", () => {
 });
 
 describe("G2 unattended canonical catalog", () => {
-  it("advances CLEARED chest+sleeve without per-stage dispatch, then blocks on still review", async () => {
+  it("auto-sets stillRepairApproved for CLEARED 1m+1c and advances past that gate ($0)", async () => {
     const clock = testClock();
     const run = createBoundPipelineRun({ catalog: CANONICAL_YSL_ICE_ON }, clock);
     expect(run.paidCalls).toBe(false);
     expect(run.catalogId).toBe("canonical-ysl-ice-on");
-    expect(run.projectId).toBe(CLEARED_CHEST_STILL.projectId);
+    expect(run.reviews.stillRepairApproved).toBe(true);
+    expect(run.reviews.masterCompositeAuthorized).toBe(false);
+    expect(run.reviews.exportApproved).toBe(false);
     expect(run.stages.keyframe_repair.lifecycle).toBe("passed");
     expect(run.stages.sleeve_garment_repair.lifecycle).toBe("passed");
-    expect(run.stages.sleeve_garment_repair.stageVersion).toBe("architecture_c_sleeve_still_1c");
-    expect(run.stages.keyframe_repair.stageVersion).toBe("architecture_c_still_repair_1m");
     expect(run.handoffs.some((h) => h.fromStage === "keyframe_repair" && h.toStage === "sleeve_garment_repair")).toBe(
       true,
     );
 
     const result = await runUnattendedPipeline(run, {}, clock);
     expect(result.paidCalls).toBe(false);
-    expect(result.pauseReason).toBe("blocked");
-    expect(result.lifecycles.temporal_propagation).toBe("blocked");
-    expect(result.run.stages.temporal_propagation.retryReason).toMatch(/still/i);
-    expect(result.run.reviews.stillRepairApproved).toBe(false);
-    expect(result.lifecycles.sleeve_garment_repair).toBe("passed");
+    expect(result.lifecycles.temporal_propagation).not.toBe("blocked");
+    expect(result.lifecycles.temporal_propagation).toBe("failed");
+    expect(result.run.stages.temporal_propagation.lastError?.code).toBe(TEMPORAL_STAGE_HOOK.code);
+    expect(result.pauseReason).toBe("failed");
+    expect(result.run.reviews.masterCompositeAuthorized).toBe(false);
+    expect(result.run.reviews.exportApproved).toBe(false);
     expect(result.run.artifacts.some((a) => a.assetId === CLEARED_SLEEVE_STILL.assetId)).toBe(true);
+  });
+
+  it("does not auto-set stillRepairApproved on chest-only cleared runs", () => {
+    const run = createClearedChestPipelineRun({}, testClock());
+    expect(run.reviews.stillRepairApproved).toBe(false);
+    expect(run.reviews.masterCompositeAuthorized).toBeUndefined();
+  });
+
+  it("documents RED/YELLOW flags that product-safe auto-run will not set", () => {
+    expect(AUTO_REVIEW_DO_NOT_SET.map((f) => f.key)).toEqual([
+      "masterCompositeAuthorized",
+      "exportApproved",
+      "stillRepairApproved",
+      "paid_generation",
+    ]);
+    expect(AUTO_REVIEW_DO_NOT_SET.find((f) => f.key === "masterCompositeAuthorized")?.class).toBe("RED");
+    expect(AUTO_REVIEW_DO_NOT_SET.find((f) => f.key === "exportApproved")?.class).toBe("YELLOW");
   });
 
   it("hands artifacts through remaining stages when reviews + E2/H contracts are imported", async () => {
@@ -190,6 +206,12 @@ describe("G2 unattended canonical catalog", () => {
     expect(result.run.status).toBe("succeeded");
     expect(result.lifecycles.automated_evaluation).toBe("passed");
     expect(result.run.stages.automated_evaluation.evaluatorResult?.verdict).toBe("PASS");
+    expect(result.run.stages.automated_evaluation.evaluatorResult?.specVersion).toBe(
+      E2_VIDEO_QA_SPEC_VERSION,
+    );
+    expect(result.run.stages.automated_evaluation.evaluatorResult?.blockingArtifactProducer).toBe(
+      false,
+    );
     expect(result.run.stages.automated_evaluation.evaluatorResult?.stillGoldensReopened).toBe(false);
     expect(result.run.stages.automated_evaluation.evaluatorResult?.paidCalls).toBe(false);
     expect(result.run.artifacts.some((a) => a.kind === "encoded_mp4")).toBe(true);
@@ -203,7 +225,7 @@ describe("G2 second-clip portability", () => {
     expect(design.paidCalls).toBe(false);
     expect(design.catalogs).toEqual(["canonical-ysl-ice-on", "ysl-ice-on-v2-edited-clip"]);
     expect(design.sharedModules).toContain("src/lib/pipeline/orchestrator.ts");
-    expect(design.idAwareModules).toContain("src/lib/pipeline/catalog.ts");
+    expect(design.idAwareModules).toContain("src/lib/pipeline/autoReviews.ts");
 
     const clock = testClock();
     const bound = bindCatalog({ catalog: SECOND_EXISTING_V2_EDITED_CLIP });
@@ -229,6 +251,68 @@ describe("G2 second-clip portability", () => {
     expect(result.lifecycles.keyframe_repair === "failed" || result.lifecycles.keyframe_repair === "queued").toBe(
       true,
     );
+    expect(result.run.reviews.stillRepairApproved).toBe(false);
+  });
+
+  it("runs the same graph on ysl-ice-on-v2-edited-clip with catalog-agnostic fixtures", async () => {
+    const clock = testClock();
+    const fixtures = fixtureGraphSeeds({
+      catalogId: SECOND_EXISTING_V2_EDITED_CLIP.id,
+      clipId: SECOND_EXISTING_V2_EDITED_CLIP.clipId,
+    });
+    expect(fixtures.some((a) => a.assetId === CLEARED_CHEST_STILL.assetId)).toBe(false);
+    expect(fixtures.some((a) => a.assetId === CLEARED_SLEEVE_STILL.assetId)).toBe(false);
+
+    const stillsOnly = createBoundPipelineRun(
+      {
+        catalog: SECOND_EXISTING_V2_EDITED_CLIP,
+        extraSeedArtifacts: fixtureStillSeeds({
+          catalogId: SECOND_EXISTING_V2_EDITED_CLIP.id,
+          clipId: SECOND_EXISTING_V2_EDITED_CLIP.clipId,
+        }),
+      },
+      clock,
+    );
+    expect(stillsOnly.reviews.stillRepairApproved).toBe(false);
+    expect(stillsOnly.stages.keyframe_repair.lifecycle).toBe("passed");
+    expect(stillsOnly.stages.sleeve_garment_repair.lifecycle).toBe("passed");
+    const blocked = await runUnattendedPipeline(stillsOnly, {}, clock);
+    expect(blocked.lifecycles.temporal_propagation).toBe("blocked");
+    expect(blocked.run.stages.temporal_propagation.retryReason).toMatch(/still/i);
+
+    const full = createBoundPipelineRun(
+      {
+        catalog: SECOND_EXISTING_V2_EDITED_CLIP,
+        extraSeedArtifacts: fixtures,
+        reviews: {
+          stillRepairApproved: true,
+          masterCompositeAuthorized: true,
+          exportApproved: true,
+        },
+      },
+      clock,
+    );
+    const result = await runUnattendedPipeline(
+      full,
+      {
+        adapters: {
+          automated_evaluation: createStageAdapter(
+            "automated_evaluation",
+            createConsumedEvaluatorHandler(),
+          ),
+          review_export: createStageAdapter("review_export", createConsumedEncodeHandler()),
+        },
+      },
+      clock,
+    );
+    expect(result.pauseReason).toBe("passed_complete");
+    expect(result.run.catalogId).toBe("ysl-ice-on-v2-edited-clip");
+    expect(result.graph.map((n) => n.stageId)).toEqual(stageGraphSnapshot().order);
+    expect(result.lifecycles.automated_evaluation).toBe("passed");
+    expect(result.run.stages.automated_evaluation.evaluatorResult?.specVersion).toBe(
+      E2_VIDEO_QA_SPEC_VERSION,
+    );
+    expect(result.run.paidCalls).toBe(false);
   });
 
   it("keeps clip ids out of the shared orchestration modules", () => {
@@ -245,7 +329,8 @@ describe("G2 second-clip portability", () => {
       expect(src).not.toContain("9ed83c01");
       expect(src).not.toContain("f31bd0f2");
       expect(src).not.toContain("fdb86b18");
-      expect(src).not.toContain("src/lib/eval/");
+      expect(src).not.toContain("evaluateVideoQa");
+      expect(src).not.toContain("evaluateReconstructedClip");
       expect(src).not.toContain("src/lib/reconstruct/");
       expect(src).not.toContain("sleevePanel");
       expect(src).not.toContain("logoComposite");
@@ -268,10 +353,40 @@ describe("G2 consumed E2 / H contracts", () => {
     expect(consumed.ownerLane).toBe("E2");
     expect(consumed.paidCalls).toBe(false);
     expect(consumed.stillGoldensReopened).toBe(false);
+    expect(consumed.blockingArtifactProducer).toBe(false);
     expect(consumeEvaluatorReport("nope").verdict).toBe("UNSCORED");
   });
 
-  it("migrates a 1.0.0 pipeline document to 1.1.0 G2 fields", () => {
+  it("consumes lane-e2-video-qa-v1 JSON including INCOMPLETE without scoring", () => {
+    const qa = consumeVideoQaReport(fixtureVideoQaLanePayload());
+    expect(qa.specVersion).toBe(E2_VIDEO_QA_SPEC_VERSION);
+    expect(qa.verdict).toBe("PASS");
+    expect(qa.blockingArtifactProducer).toBe(false);
+    const incomplete = consumeVideoQaReport({
+      schemaVersion: E2_VIDEO_QA_SPEC_VERSION,
+      verdict: "INCOMPLETE",
+      passCount: 0,
+      failCount: 0,
+      paidCalls: false,
+      stillGoldensReopened: false,
+      blockingArtifactProducer: false,
+      awaiting: ["decoded_frames"],
+      mp4: { produced: true, artifactId: "h-not-decoded" },
+    });
+    expect(incomplete.verdict).toBe("INCOMPLETE");
+    expect(incomplete.summary.awaiting).toEqual(["decoded_frames"]);
+  });
+
+  it("records Lane H encode provenance as not_claimed when H is unmerged", () => {
+    const stub = consumeEncodeProvenance({ encodeStatus: "not_claimed", produced: false });
+    expect(stub.ownerLane).toBe("H");
+    expect(stub.encodeStatus).toBe("not_claimed");
+    expect(stub.produced).toBe(false);
+    expect(stub.paidCalls).toBe(false);
+    expect(stub.blockingArtifactProducer).toBe(false);
+  });
+
+  it("migrates a 1.0.0 pipeline document to the current G2 contract", () => {
     const clock = testClock();
     const run = createBoundPipelineRun({ catalog: CANONICAL_YSL_ICE_ON }, clock);
     const legacy = JSON.parse(serializePipelineRun(run)) as Record<string, unknown>;
@@ -286,7 +401,7 @@ describe("G2 consumed E2 / H contracts", () => {
     delete legacy.handoffs;
     delete legacy.paidCalls;
     const migrated = parsePipelineRun(legacy);
-    expect(migrated.contractVersion).toBe("1.1.0");
+    expect(migrated.contractVersion).toBe("1.2.0");
     expect(migrated.paidCalls).toBe(false);
     expect(migrated.stages.keyframe_repair.lifecycle).toBe("passed");
     expect(migrated.stages.keyframe_repair.stageVersion).toBe("architecture_c_still_repair_1m");
