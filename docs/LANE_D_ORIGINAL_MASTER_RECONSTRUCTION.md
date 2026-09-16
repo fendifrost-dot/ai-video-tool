@@ -33,10 +33,11 @@ Live wiring (gate 4) builds `generated` from CLEARED chest + sleeve stills stamp
 | `src/lib/reconstruct/liveWiring.ts` | Gate 4 arm + deploy notes |
 | `src/lib/reconstruct/adapters.ts` | Consume stills + SAM-3 + temporal → `reconstructMasterClip` |
 | `src/lib/reconstruct/dispatch.ts` | Wire parse → authorize → reconstruct |
+| `src/lib/reconstruct/sam3Consume.ts` | SAM-3 consume + provenance (fixture fallback; no live fetch) |
+| `src/lib/reconstruct/exportHandoff.ts` | Lane H MP4 provenance v2 (dims/fps/duration/codec claims; no exporter) |
 | `src/lib/reconstruct/e2e.ts` | RECONSTRUCT-1 E2E compose (temporal jobs → reconstruct) |
 | `src/lib/reconstruct/heroFrameRun.ts` | Hero Frame §7 product gate |
 | `src/lib/reconstruct/videoQa.ts` | Lane D2 clip QA (preservation / seam / continuity / media) |
-| `src/lib/reconstruct/exportHandoff.ts` | Lane H MP4 provenance interface (no exporter) |
 | `src/lib/eval/reconstructVideoEvaluator.ts` | Lane E video/sampled-frame PASS/FAIL (no still reopen) |
 | `src/components/video/HeroFrameReconstructRunControl.tsx` | §7 **Run reconstruct E2E $0** |
 | `src/components/video/ArchitectureCStillRepairRunner.tsx` | Thin §7 mount only (no paint edits) |
@@ -111,5 +112,8 @@ Fixture tests prove:
 7. **No edge function** to redeploy from this lane.
 8. Hero Frame §7 **Run reconstruct E2E $0** gated on reconstruct armed + temporal tracking; eval JSON does not reopen still goldens.
 9. **Lane D2:** 720×1280 unique-RGB preservation + full-clip (24 @ 24 fps) + live-shaped 80×128 temporal onto 720×1280 originals; Lane H handoff does not encode MP4.
+10. SAM-3 consume records source / mask checksum / fallback; live `maskPath` never fetched (`paidCalls=false`).
+11. Lane H handoff v2 exposes dims, fps, durationSec (`frameCount/fps`), and null codec claims from the reconstruct frame stream.
+12. Reconstruct QA fixtures accept alternate `masterClipAssetId` as a parameter (no clip-specific code).
 
 Video QA: [`docs/reconstruct/VIDEO_QA.md`](reconstruct/VIDEO_QA.md).
