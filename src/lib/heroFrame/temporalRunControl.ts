@@ -38,9 +38,7 @@ export type HeroFrameTemporalRunGateInput = {
  */
 export function heroFrameTemporalRunEnabled(input: HeroFrameTemporalRunGateInput): boolean {
   return (
-    input.canDispatch === true &&
-    input.armed === true &&
-    input.temporalTrackingEnabled === true
+    input.canDispatch === true && input.armed === true && input.temporalTrackingEnabled === true
   );
 }
 

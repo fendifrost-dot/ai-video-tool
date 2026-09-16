@@ -113,7 +113,9 @@ describe("sanitizeHeroFrameHardStopCopy", () => {
     expect(sanitizeHeroFrameHardStopCopy("Still-first paint locked.", true)).toBe(
       "Still-first paint locked.",
     );
-    expect(sanitizeHeroFrameHardStopCopy(STILL_REPAIR_HARD_STOP, false)).toBe(STILL_REPAIR_HARD_STOP);
+    expect(sanitizeHeroFrameHardStopCopy(STILL_REPAIR_HARD_STOP, false)).toBe(
+      STILL_REPAIR_HARD_STOP,
+    );
     expect(sanitizeHeroFrameHardStopCopy(null, true)).toBeNull();
   });
 });
