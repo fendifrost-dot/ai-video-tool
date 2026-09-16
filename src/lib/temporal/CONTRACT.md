@@ -85,27 +85,28 @@ of a garment render.
 
 ---
 
-## Live-prep (v1.0.0, not activated)
+## Live activation (v1.1.0, armed)
 
-**Work-order:** [#76](https://github.com/fendifrost-dot/ai-video-tool/issues/76) (lineage #56, umbrella #50)
+**Work-order:** [#87](https://github.com/fendifrost-dot/ai-video-tool/issues/87) (lineage #76 / PR #78, umbrella #50)
 
-Isolated adapters so activation is one edge redeploy away **after sleeve still CLEARED**.
+`TEMPORAL_LIVE_ACTIVATION_ARMED = true`. Isolated adapters + `temporal-propagate-proxy`.
 They do **not** flip Hero Frame `temporalTrackingEnabled`, do **not** call Grok, and
 do **not** touch chest/sleeve paint.
 
 | Module                   | Role                                                                                                           |
 | ------------------------ | -------------------------------------------------------------------------------------------------------------- |
-| `canonicalLineage.ts`    | Frozen project / still / keyframe / CLEARED chest quad `[[0.30,0.530],[0.87,0.533],[0.87,0.585],[0.30,0.582]]` |
-| `approvedQuad.ts`        | Chest CLEARED slot + PENDING sleeve_left / sleeve_right slots                                                  |
+| `canonicalLineage.ts`    | Frozen 1m chest + live 1c sleeve IDs / documented visible-upper-arm seeds                                       |
+| `approvedQuad.ts`        | CLEARED chest + CLEARED sleeve_left / sleeve_right                                                             |
 | `quadAdapter.ts`         | CLEARED quads → `PropagationInput` jobs (`provider: "none"`, `grokPerFrame: false`)                            |
-| `livePrep.ts`            | `TEMPORAL_LIVE_ACTIVATION_ARMED = false` + `evaluateTemporalLiveActivation`                                    |
-| `heroFrameHook.ts`       | `prepareHeroFrameTemporalHook` — tracking stays `false`                                                        |
-| `edgeAdapter.ts`         | Future edge request body + `authorizeTemporalEdgeRequest` (refuses until armed)                                |
-| `clearedChestFixture.ts` | Synthetic proof the CLEARED chest quad propagates without per-frame Grok                                       |
+| `livePrep.ts`            | `TEMPORAL_LIVE_ACTIVATION_ARMED = true` + `evaluateTemporalLiveActivation`                                     |
+| `heroFrameHook.ts`       | `prepareHeroFrameTemporalHook` — tracking stays `false` (Hero Frame owner flip)                                |
+| `edgeAdapter.ts`         | `authorizeTemporalEdgeRequest` (requires explicitArm)                                                          |
+| `edgeDispatch.ts`        | Wire parse → authorize → `propagateRepair`                                                                     |
+| `clearedChestFixture.ts` | Synthetic proof CLEARED quads propagate without per-frame Grok                                                 |
 
-`TEMPORAL_LIVE_PREP_CONTRACT_VERSION` is `"1.0.0"`. The core propagation contract
-stays `"1.0.0"`; live-prep is an additive adapter layer.
+`TEMPORAL_LIVE_PREP_CONTRACT_VERSION` is `"1.1.0"`. The core propagation contract
+stays `"1.0.0"`.
 
-**Hard stop:** `evaluateTemporalLiveActivation()` with the compile-time const is
-`allowed: false` until sleeve CLEARED + Class C sign-off + `explicitArm`. See
+**Hard stop:** dispatch still needs `explicitArm: true`. Hero Frame
+`temporalTrackingEnabled` stays false until that owner flips it. See
 [`docs/temporal/LIVE_PREP.md`](../../docs/temporal/LIVE_PREP.md).

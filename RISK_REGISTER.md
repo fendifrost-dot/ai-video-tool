@@ -8,7 +8,7 @@
 > **Severity:** Critical / High / Medium / Low · **Confidence:** Confirmed / Likely /
 > Suspected · **Status:** Open / In-remediation / Mitigated / Closed.
 
-Last reviewed: **2026-09-15** (SLEEVE-1 added for Lane B live sleeve still wiring).
+Last reviewed: **2026-09-16** (TEMPORAL-1 added for Lane C live arm).
 
 | id | Title | Severity | Confidence | Status | Owner |
 |----|-------|----------|-----------|--------|-------|
@@ -27,6 +27,7 @@ Last reviewed: **2026-09-15** (SLEEVE-1 added for Lane B live sleeve still wirin
 | [VOICE-1](#voice-1--grok-voice-director-spend-surface) | Voice Director STT/TTS/text spend + mic | Medium | Likely | Open | Products (AVT) |
 | [PIPELINE-1](#pipeline-1--orchestration-scaffolding-is-not-a-durable-queue) | Pipeline OS scaffolding is in-process only (no durable queue / reaper) | Medium | Confirmed | Open | Products (AVT) / Lane G |
 | [SLEEVE-1](#sleeve-1--visible-upper-arm-only-must-not-be-read-as-armholecuff) | Sleeve still repair is visible-upper-arm only; a pass must not be read as armhole→cuff | Medium | Confirmed | Open | Products (AVT) / Lane B |
+| [TEMPORAL-1](#temporal-1--live-arm-without-hero-frame-tracking) | Temporal lib armed; Hero Frame tracking still off; new JWT-only edge not yet Lovable-redeployed | Medium | Confirmed | **In-remediation** | Products (AVT) / Lane C |
 
 ---
 
@@ -312,4 +313,15 @@ Last reviewed: **2026-09-15** (SLEEVE-1 added for Lane B live sleeve still wirin
 - **DoD (target):** human review of one $0 sleeve still on `2aa1a44c` / `9ed83c01`
   before any temporal lane is enabled. Class C sign-off required to change the
   claim.
-- **Live (2026-09-15):** 1a `fde270bf` **NOT CLEARED 5/6** (cream fill both sides). 1b `a4dc7f47` **NOT CLEARED 5/6** — identity + geometry + C5/C11/chest reserved PASS; visible navy-ward FAIL on the **right** (luma 133.6→157.5; left 202.2→160.9 PASS, cream-majority warp over the already-dark V2 ring). Temporal stays disarmed. 1c prefers product navy over cream stripe. Score: [`docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`](docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md).
+- **Live (2026-09-15):** 1a `fde270bf` **NOT CLEARED 5/6** (cream fill both sides). 1b `a4dc7f47` **NOT CLEARED 5/6** — identity + geometry + C5/C11/chest reserved PASS; visible navy-ward FAIL on the **right** (luma 133.6→157.5; left 202.2→160.9 PASS, cream-majority warp over the already-dark V2 ring). 1c prefers product navy over cream stripe. Score: [`docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md`](docs/sleeve-panel/LANE_B_SLEEVE_STILL_1B_LIVE_RESULT_2026-09-15.md).
+- **Live 1c (2026-09-16, evidence PR #86):** asset `fdb86b18` **CLEARED 6/6**. That is the temporal prerequisite. Sleeve paint stays locked; see TEMPORAL-1 for the arm.
+
+---
+
+## TEMPORAL-1 — Live arm without Hero Frame tracking
+
+- **Severity:** Medium · **Confidence:** Confirmed · **Status:** In-remediation · **Owner:** Products (AVT) / Lane C
+- **Summary:** `TEMPORAL_LIVE_ACTIVATION_ARMED` is now `true` after chest 1m CLEARED 11/11 and sleeve 1c CLEARED 6/6. Isolated `temporal-propagate-proxy` is JWT-gated (`verify_jwt` + `getUser`), calls `authorizeTemporalEdgeRequest` then `propagateRepair`, and never calls Grok / Fal / CC. Hero Frame `ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled` stays **false** (Hero Frame owner — not this module). Dispatch still requires `explicitArm: true`.
+- **Pointer:** [`docs/temporal/LIVE_PREP.md`](docs/temporal/LIVE_PREP.md); [`src/lib/temporal/livePrep.ts`](src/lib/temporal/livePrep.ts); [`supabase/functions/temporal-propagate-proxy/README.md`](supabase/functions/temporal-propagate-proxy/README.md).
+- **DoD (target):** parent Lovable-redeploys **only** `temporal-propagate-proxy`; Hero Frame owner flip (if any) is a separate change; no per-frame Grok; no proxy-auth widen.
+- **Mitigations:** compile-time arm + explicitArm; luma-only body caps; no service-role / CC secret on this function.

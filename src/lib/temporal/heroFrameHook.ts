@@ -2,7 +2,8 @@
  * Isolated Hero Frame hook for later §7 / still-repair integration.
  *
  * Does NOT import or edit src/lib/heroFrame/architectureCStillRepair.ts.
- * temporalTrackingEnabled is always false here. No edge invoke. No Grok.
+ * temporalTrackingEnabled is always false here — Hero Frame owner flip is
+ * out of temporal ownership. No edge invoke. No Grok.
  */
 
 import {
@@ -11,7 +12,7 @@ import {
   CANONICAL_STILL_ASSET_ID,
   CANONICAL_KEYFRAME_ID,
 } from "./canonicalLineage";
-import { clearedChestQuadSet, type ApprovedQuadSet } from "./approvedQuad";
+import { clearedChestAndSleeveQuadSet, type ApprovedQuadSet } from "./approvedQuad";
 import {
   DEFAULT_SLEEVE_STILL_GATE,
   TEMPORAL_LIVE_DEPLOY_NOTES,
@@ -35,7 +36,10 @@ export interface HeroFrameTemporalHookInput {
 
 export interface HeroFrameTemporalHookResult {
   contractVersion: typeof TEMPORAL_LIVE_PREP_CONTRACT_VERSION;
-  /** Hard stop — this hook never enables product tracking. */
+  /**
+   * Hard stop — this hook never enables product tracking.
+   * Hero Frame owner flips ARCHITECTURE_C_V2_REPAIR.temporalTrackingEnabled.
+   */
   temporalTrackingEnabled: false;
   lineage: {
     projectId: string;
@@ -48,7 +52,8 @@ export interface HeroFrameTemporalHookResult {
   reservedSleeveSlots: ApprovedQuadSet["reservedSleeveSlots"];
   providerCalls: [];
   grokPerFrame: false;
-  deployWhenReady: typeof TEMPORAL_LIVE_DEPLOY_NOTES.whenSleeveClearedThen;
+  deployWhenReady: typeof TEMPORAL_LIVE_DEPLOY_NOTES.parentRedeployOnly;
+  heroFrameOwnerFlip: typeof TEMPORAL_LIVE_DEPLOY_NOTES.heroFrameOwnerFlip;
 }
 
 /**
@@ -58,7 +63,7 @@ export interface HeroFrameTemporalHookResult {
 export function prepareHeroFrameTemporalHook(
   input: HeroFrameTemporalHookInput = {},
 ): HeroFrameTemporalHookResult {
-  const approved = input.approved ?? clearedChestQuadSet();
+  const approved = input.approved ?? clearedChestAndSleeveQuadSet();
   const sleeveGate = input.sleeveGate ?? DEFAULT_SLEEVE_STILL_GATE;
   const activation = evaluateTemporalLiveActivation({
     chestGate: approved.chest.gate,
@@ -87,6 +92,7 @@ export function prepareHeroFrameTemporalHook(
     reservedSleeveSlots: approved.reservedSleeveSlots,
     providerCalls: [],
     grokPerFrame: false,
-    deployWhenReady: TEMPORAL_LIVE_DEPLOY_NOTES.whenSleeveClearedThen,
+    deployWhenReady: TEMPORAL_LIVE_DEPLOY_NOTES.parentRedeployOnly,
+    heroFrameOwnerFlip: TEMPORAL_LIVE_DEPLOY_NOTES.heroFrameOwnerFlip,
   };
 }

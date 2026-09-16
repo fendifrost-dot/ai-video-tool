@@ -4,7 +4,7 @@
  * from chest/sleeve paint owners (collision policy).
  */
 
-import type { QuadNorm } from "./contract";
+import type { QuadNorm } from "./contract.ts";
 
 /** TL → TR → BR → BL, same tuple form as Hero Frame / Stage 1m live body. */
 export type QuadTuple = readonly [

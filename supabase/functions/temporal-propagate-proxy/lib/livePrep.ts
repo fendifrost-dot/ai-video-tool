@@ -12,8 +12,8 @@ import {
   CLEARED_SLEEVE_ASSET_ID,
   CLEARED_SLEEVE_GATE,
   CLEARED_SLEEVE_REPAIR_METHOD_VERSION,
-} from "./canonicalLineage";
-import type { RepairGateStatus } from "./approvedQuad";
+} from "./canonicalLineage.ts";
+import type { RepairGateStatus } from "./approvedQuad.ts";
 
 export const TEMPORAL_LIVE_PREP_CONTRACT_VERSION = "1.1.0";
 

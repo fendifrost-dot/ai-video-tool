@@ -95,3 +95,9 @@ verify_jwt = true
 # See docs/AVT_masked_garment_swap_LOCKED.md.
 [functions.wardrobe-video-swap-proxy]
 verify_jwt = true
+
+# Isolated temporal propagate — luma frames + approved CLEARED quads only.
+# User JWT required (same pattern as architecture-c-still-repair-proxy).
+# No Grok / Fal / Control Center / X-Proxy-Secret. Do not widen proxy auth.
+[functions.temporal-propagate-proxy]
+verify_jwt = true

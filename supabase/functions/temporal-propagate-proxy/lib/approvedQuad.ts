@@ -4,7 +4,7 @@
  * Geometry is copied from temporal lineage — not imported from paint owners.
  */
 
-import type { QuadNorm } from "./contract";
+import type { QuadNorm } from "./contract.ts";
 import {
   CANONICAL_KEYFRAME_ID,
   CLEARED_CHEST_ASSET_ID,
@@ -16,7 +16,7 @@ import {
   CLEARED_SLEEVE_LEFT_QUAD_NORM,
   CLEARED_SLEEVE_REPAIR_METHOD_VERSION,
   CLEARED_SLEEVE_RIGHT_QUAD_NORM,
-} from "./canonicalLineage";
+} from "./canonicalLineage.ts";
 
 export type RepairGateStatus = "CLEARED" | "PENDING" | "FAILED" | "NOT_RUN";
 
