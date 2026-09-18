@@ -19,8 +19,14 @@ import {
 import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/queries/projects";
 import { useProjectRail } from "@/lib/projectRail";
-import { useAdvancedMode } from "@/lib/nav/advancedMode";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useEngineeringMode } from "@/lib/ux/engineeringMode";
+import { EngineeringModeToggle } from "@/components/ux/EngineeringModeToggle";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 
 type NavItem = {
@@ -30,8 +36,7 @@ type NavItem = {
   key: string;
 };
 
-// Primary creative funnel: Build Treatment → Produce Video → Review → Export,
-// plus lightweight Assets. These stay visible at all times.
+/** Primary creative funnel — always visible. */
 const primaryItems: readonly NavItem[] = [
   { to: "/projects/$id/treatment", label: "Treatment", icon: FileText, key: "treatment" },
   { to: "/projects/$id/assets", label: "Assets", icon: ImageIcon, key: "assets" },
@@ -40,8 +45,7 @@ const primaryItems: readonly NavItem[] = [
   { to: "/projects/$id/export", label: "Export", icon: Upload, key: "export" },
 ] as const;
 
-// Engineering destinations — hidden behind Advanced. Capability is preserved
-// (deep links keep working); the rail just stops leading with them.
+/** Engineering destinations — revealed in engineering mode (Lane G store). */
 const advancedItems: readonly NavItem[] = [
   { to: "/projects/$id/shots", label: "Shot List", icon: Clapperboard, key: "shots" },
   {
@@ -60,18 +64,16 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const projectQuery = useProject(projectId);
   const { collapsed, setCollapsed } = useProjectRail();
-  const [advancedMode, setAdvancedMode] = useAdvancedMode();
+  const { isEngineering, setMode } = useEngineeringMode();
   const projectTitle =
     projectQuery.data?.title?.trim() ||
     (projectQuery.isLoading ? "Loading…" : `${projectId.slice(0, 8)}…`);
 
   const isActive = (item: NavItem) => pathname.startsWith(`/projects/${projectId}/${item.key}`);
 
-  // Deep-link safety: if the active route is an Advanced destination, reveal
-  // the Advanced group even when the toggle is off so the active item stays
-  // visible and navigable.
+  // Deep-link safety: reveal Advanced when on an advanced route even if mode is creative.
   const onAdvancedRoute = advancedItems.some(isActive);
-  const showAdvanced = advancedMode || onAdvancedRoute;
+  const showAdvanced = isEngineering || onAdvancedRoute;
 
   const renderLink = (item: NavItem, layout: "rail" | "chip") => {
     const active = isActive(item);
@@ -132,7 +134,6 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
 
   return (
     <>
-      {/* Desktop: floating glass column */}
       <aside
         className={cn(
           "relative z-10 hidden shrink-0 transition-[width] duration-200 md:block md:p-4 md:pr-0",
@@ -148,7 +149,9 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
           >
             {!collapsed && (
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-foreground/50">Project</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-foreground/50">
+                  Project
+                </p>
                 <p
                   className="mt-1 truncate font-display text-sm font-semibold text-foreground"
                   title={projectTitle}
@@ -177,7 +180,6 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
             <nav className="space-y-1">
               {primaryItems.map((item) => renderLink(item, "rail"))}
 
-              {/* Advanced / Engineering divider + toggle */}
               <div className={cn("pt-2", !collapsed && "px-1")}>
                 {collapsed ? (
                   <Tooltip>
@@ -187,9 +189,11 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                         variant="ghost"
                         size="sm"
                         className="h-9 w-full justify-center p-0 text-foreground/60 hover:text-foreground"
-                        onClick={() => setAdvancedMode(!advancedMode)}
+                        onClick={() =>
+                          setMode(isEngineering ? "creative" : "engineering")
+                        }
                         aria-expanded={showAdvanced}
-                        aria-label={advancedMode ? "Hide Advanced" : "Show Advanced"}
+                        aria-label={isEngineering ? "Hide Advanced" : "Show Advanced"}
                       >
                         <SlidersHorizontal
                           className={cn("h-4 w-4", showAdvanced && "text-primary")}
@@ -197,13 +201,13 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      {advancedMode ? "Hide Advanced" : "Show Advanced"}
+                      {isEngineering ? "Hide Advanced" : "Show Advanced"}
                     </TooltipContent>
                   </Tooltip>
                 ) : (
                   <button
                     type="button"
-                    onClick={() => setAdvancedMode(!advancedMode)}
+                    onClick={() => setMode(isEngineering ? "creative" : "engineering")}
                     aria-expanded={showAdvanced}
                     className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-foreground/45 transition-colors hover:text-foreground/70"
                   >
@@ -221,18 +225,20 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
 
               {showAdvanced && advancedItems.map((item) => renderLink(item, "rail"))}
             </nav>
+            <div className="mt-2 border-t border-white/5 pt-2">
+              <EngineeringModeToggle collapsed={collapsed} />
+            </div>
           </TooltipProvider>
         </div>
       </aside>
 
-      {/* Mobile: horizontal scroll chip nav */}
       <nav className="md:hidden relative z-20 px-4">
         <div className="glass rounded-2xl p-1.5">
           <div className="flex gap-1 overflow-x-auto scrollbar-none">
             {primaryItems.map((item) => renderLink(item, "chip"))}
             <button
               type="button"
-              onClick={() => setAdvancedMode(!advancedMode)}
+              onClick={() => setMode(isEngineering ? "creative" : "engineering")}
               aria-expanded={showAdvanced}
               className={cn(
                 "flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all",
@@ -246,6 +252,9 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
               />
             </button>
             {showAdvanced && advancedItems.map((item) => renderLink(item, "chip"))}
+            <div className="ml-auto shrink-0 pl-1">
+              <EngineeringModeToggle collapsed />
+            </div>
           </div>
         </div>
       </nav>

@@ -61,7 +61,8 @@ export async function draftTreatment(input: TreatmentDraftInput): Promise<Treatm
 
   const treatmentText = String(data.treatmentText ?? "").trim();
   const model = String(data.model ?? "");
-  if (!treatmentText) throw new ProviderCallError("PROVIDER_API_ERROR", "Empty treatment returned.");
+  if (!treatmentText)
+    throw new ProviderCallError("PROVIDER_API_ERROR", "Empty treatment returned.");
 
   const envelope: TreatmentEnvelope = {
     text: treatmentText,
@@ -183,14 +184,15 @@ function contextBody(input: TreatmentContext): Record<string, unknown> {
   };
 }
 
-async function callTreatmentEndpoint(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+async function callTreatmentEndpoint(
+  body: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new ProviderCallError("UNAUTHORISED", "Not signed in.");
 
-  const { data, error } = await supabase.functions.invoke<{ ok: boolean } & Record<string, unknown>>(
-    "proxy-provider-call",
-    { body: { endpoint: "ai-draft-treatment", method: "POST", body } },
-  );
+  const { data, error } = await supabase.functions.invoke<
+    { ok: boolean } & Record<string, unknown>
+  >("proxy-provider-call", { body: { endpoint: "ai-draft-treatment", method: "POST", body } });
   if (error) throw new ProviderCallError("INTERNAL", error.message || "proxy failed");
   if (!data || data.ok === false) {
     throw new ProviderCallError(
@@ -218,7 +220,14 @@ export async function suggestConcepts(input: TreatmentContext): Promise<ConceptS
   return concepts;
 }
 
-const SHOT_TYPES = new Set(["performance", "b_roll", "narrative", "vfx", "transition", "lyric_visual"]);
+const SHOT_TYPES = new Set([
+  "performance",
+  "b_roll",
+  "narrative",
+  "vfx",
+  "transition",
+  "lyric_visual",
+]);
 const TOOLS = new Set(["runway", "veo", "gemini", "grok", "higgsfield", "pika", "fal", "manual"]);
 const PRIORITIES = new Set(["low", "normal", "high", "hero"]);
 const DEP_KINDS = new Set(["look_composite", "faceswap_still", "reference_image", "other"]);
@@ -247,7 +256,9 @@ export async function draftFullTreatment(
     const deps = Array.isArray(m.dependencies)
       ? (m.dependencies as Array<Record<string, unknown>>)
           .map((d) => ({
-            kind: (DEP_KINDS.has(String(d.kind)) ? String(d.kind) : "other") as TreatmentDependencyKind,
+            kind: (DEP_KINDS.has(String(d.kind))
+              ? String(d.kind)
+              : "other") as TreatmentDependencyKind,
             look: d.look ? String(d.look) : null,
             note: String(d.note ?? "").trim(),
           }))
@@ -263,7 +274,8 @@ export async function draftFullTreatment(
       section: g.section,
       energy: g.energy,
       shot_type: SHOT_TYPES.has(shotType) ? shotType : "b_roll",
-      scene_description: String(m.scene_description ?? "").trim() || "(direction missing — regenerate this clip)",
+      scene_description:
+        String(m.scene_description ?? "").trim() || "(direction missing — regenerate this clip)",
       camera_direction: String(m.camera_direction ?? "").trim(),
       lighting: String(m.lighting ?? "").trim(),
       wardrobe: String(m.wardrobe ?? "").trim(),
@@ -312,4 +324,86 @@ export function parseSavedStructuredTreatment(value: unknown): StructuredTreatme
   const v = value as Record<string, unknown>;
   if (v.version !== 2 || !Array.isArray(v.clips) || v.clips.length === 0) return null;
   return v as unknown as StructuredTreatment;
+}
+
+// ============================================================================
+// Shot Specification bridge (Lane C)
+//
+// Additive: converts the existing StructuredTreatment clips into generalized
+// Shot Specs (docs/ux/SHOT_SPECIFICATION.md) so the treatment builder output can
+// be serialized as the machine-executable contract WITHOUT changing the grid
+// timing or the StructuredTreatment shape.
+// ============================================================================
+
+import {
+  parseShotSpec,
+  RENDER_ENGINES,
+  SHOT_PRIORITIES,
+  SHOT_TYPES as SPEC_SHOT_TYPES,
+  type RenderEngine,
+  type ShotKind,
+  type ShotPriorityLiteral,
+  type ShotSpec,
+  type ShotTypeLiteral,
+} from "@/lib/treatment/shotSpec";
+
+function specKindFromShotType(shotType: string): ShotKind {
+  if (shotType === "performance") return "performance";
+  if (shotType === "b_roll") return "broll";
+  return "generated";
+}
+
+/**
+ * Map a single treatment clip → ShotSpec. Grid owns timing (start/end) and the
+ * model owns the creative fields, exactly as in `draftFullTreatment`. Fields the
+ * treatment clip doesn't carry (framing, lens, previs, reconstruction, QA) are
+ * left as schema defaults for downstream refinement.
+ */
+export function treatmentClipToShotSpec(
+  clip: TreatmentClip,
+  provenance?: { model?: string; generatedAt?: string },
+): ShotSpec {
+  const shotType: ShotTypeLiteral = SPEC_SHOT_TYPES.includes(clip.shot_type as ShotTypeLiteral)
+    ? (clip.shot_type as ShotTypeLiteral)
+    : "b_roll";
+  const priority: ShotPriorityLiteral = SHOT_PRIORITIES.includes(
+    clip.priority as ShotPriorityLiteral,
+  )
+    ? (clip.priority as ShotPriorityLiteral)
+    : "normal";
+  const engine: RenderEngine | null = RENDER_ENGINES.includes(clip.recommended_tool as RenderEngine)
+    ? (clip.recommended_tool as RenderEngine)
+    : null;
+
+  return parseShotSpec({
+    id: clip.key,
+    purpose: clip.scene_description,
+    kind: specKindFromShotType(clip.shot_type),
+    shotType,
+    priority,
+    timeline: { start: clip.start, end: clip.end },
+    wardrobe: { description: clip.wardrobe },
+    environment: { description: clip.environment },
+    lighting: { description: clip.lighting },
+    cameraMotion: { description: clip.camera_direction },
+    fx: shotType === "vfx" ? [{ type: "vfx", description: clip.scene_description }] : [],
+    references: clip.lyric_ref ? [{ kind: "note", note: `lyric: ${clip.lyric_ref}` }] : [],
+    generation: {
+      required: !!engine && engine !== "manual",
+      engine,
+    },
+    status: "planned",
+    provenance: {
+      source: "ai",
+      createdAt: provenance?.generatedAt ?? "",
+      model: provenance?.model ?? null,
+    },
+  });
+}
+
+/** Convert every clip of a StructuredTreatment into Shot Specs. */
+export function structuredTreatmentToShotSpecs(treatment: StructuredTreatment): ShotSpec[] {
+  return treatment.clips.map((c) =>
+    treatmentClipToShotSpec(c, { model: treatment.model, generatedAt: treatment.generated_at }),
+  );
 }
