@@ -17,6 +17,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/queries/projects";
 import { useProjectRail } from "@/lib/projectRail";
+import { useEngineeringMode, isDestinationVisible } from "@/lib/ux/engineeringMode";
+import { EngineeringModeToggle } from "@/components/ux/EngineeringModeToggle";
 import {
   Tooltip,
   TooltipContent,
@@ -48,6 +50,8 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const projectQuery = useProject(projectId);
   const { collapsed, setCollapsed } = useProjectRail();
+  const { mode } = useEngineeringMode();
+  const visibleItems = items.filter((item) => isDestinationVisible(item.key, mode));
   const projectTitle =
     projectQuery.data?.title?.trim() ||
     (projectQuery.isLoading ? "Loading…" : `${projectId.slice(0, 8)}…`);
@@ -99,7 +103,7 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
           </div>
           <TooltipProvider delayDuration={0}>
             <nav className="space-y-1">
-              {items.map((item) => {
+              {visibleItems.map((item) => {
                 const active = pathname.startsWith(`/projects/${projectId}/${item.key}`);
                 const Icon = item.icon;
                 const link = (
@@ -143,6 +147,9 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                 );
               })}
             </nav>
+            <div className="mt-2 border-t border-white/5 pt-2">
+              <EngineeringModeToggle collapsed={collapsed} />
+            </div>
           </TooltipProvider>
         </div>
       </aside>
@@ -150,8 +157,8 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
       {/* Mobile: horizontal scroll chip nav */}
       <nav className="md:hidden relative z-20 px-4">
         <div className="glass rounded-2xl p-1.5">
-          <div className="flex gap-1 overflow-x-auto scrollbar-none">
-            {items.map((item) => {
+          <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+            {visibleItems.map((item) => {
               const active = pathname.startsWith(`/projects/${projectId}/${item.key}`);
               const Icon = item.icon;
               return (
@@ -171,6 +178,9 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                 </Link>
               );
             })}
+            <div className="ml-auto shrink-0 pl-1">
+              <EngineeringModeToggle collapsed />
+            </div>
           </div>
         </div>
       </nav>
