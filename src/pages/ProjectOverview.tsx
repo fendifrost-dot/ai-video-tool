@@ -324,9 +324,10 @@ function NextStepsCard() {
   return (
     <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
       Next: open <strong className="text-foreground">Treatment</strong>,{" "}
-      <strong className="text-foreground">Shots</strong>,{" "}
-      <strong className="text-foreground">Cover Flight</strong>, or{" "}
-      <strong className="text-foreground">Assets</strong> from the project sidebar.
+      <strong className="text-foreground">Assets</strong>, or{" "}
+      <strong className="text-foreground">Produce Video</strong> from the project sidebar.
+      Engineering stages (shot list, cover flight, continuity) live under{" "}
+      <strong className="text-foreground">Advanced</strong>.
     </div>
   );
 }

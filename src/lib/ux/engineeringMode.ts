@@ -24,17 +24,25 @@ export const DEFAULT_ENGINEERING_MODE: EngineeringMode = "creative";
  * engineering-stage surfaces. Hidden from the primary nav in creative mode,
  * revealed in engineering mode.
  *
+ * MUST stay in sync with `ProjectSidebar.advancedItems` — the sidebar is the
+ * rendered source of truth for the rail split, and `ProjectSidebar.test.tsx`
+ * cross-checks this list against `advancedItems` so the two cannot drift.
+ * (The primary funnel — treatment/assets/video/review/export — is everything
+ * NOT listed here.)
+ *
+ * - `shots`         — shot list (production planning surface)
  * - `cover-flight`  — technical camera-path compiler
  * - `hero-frame`    — keyframe / SAM / mask / propagation studio
  * - `prompt`        — Prompt Lab (prompt engineering)
- * - `review`        — clip evaluator (consistency/realism/lighting scoring)
+ * - `timeline`      — music-video editor / timeline
  * - `continuity`    — temporal continuity locking
  */
 export const ADVANCED_DESTINATION_KEYS = [
+  "shots",
   "cover-flight",
   "hero-frame",
   "prompt",
-  "review",
+  "timeline",
   "continuity",
 ] as const;
 

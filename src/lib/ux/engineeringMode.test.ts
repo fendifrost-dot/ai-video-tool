@@ -31,8 +31,9 @@ describe("classification", () => {
     }
   });
 
-  it("treats core creative destinations as not advanced", () => {
-    for (const key of ["treatment", "shots", "assets", "video", "timeline", "export"]) {
+  it("treats core creative-funnel destinations as not advanced", () => {
+    // The primary rail — everything the sidebar shows without engineering mode.
+    for (const key of ["treatment", "assets", "video", "review", "export"]) {
       expect(isAdvancedDestination(key)).toBe(false);
     }
   });
