@@ -22,7 +22,15 @@ import {
   type StructuredTreatment,
   type TreatmentContext,
 } from "@/lib/treatment/api";
-import type { ShotPriority, ShotStatus, ShotType, ProviderName } from "@/integrations/supabase/aliases";
+import type {
+  ShotPriority,
+  ShotStatus,
+  ShotType,
+  ProviderName,
+} from "@/integrations/supabase/aliases";
+import { CreativeDirectorPanel } from "@/components/creativeDirector/CreativeDirectorPanel";
+import { shotSpecToShotRow } from "@/lib/treatment/shotSpec";
+import type { CreativeBrief, CreativeDirectorPlan } from "@/lib/creativeDirector";
 
 const PROJECT_TYPES: { value: ProjectType; label: string }[] = [
   { value: "music_video", label: "Music video" },
@@ -76,7 +84,10 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
   const grid = useMemo(() => {
     if (projectType === "music_video" && analysis) return buildClipGrid({ analysis });
     const dur = Number(targetDuration);
-    return buildClipGrid({ analysis: projectType === "music_video" ? analysis : null, durationSeconds: Number.isFinite(dur) ? dur : null });
+    return buildClipGrid({
+      analysis: projectType === "music_video" ? analysis : null,
+      durationSeconds: Number.isFinite(dur) ? dur : null,
+    });
   }, [analysis, projectType, targetDuration]);
 
   const context = (): TreatmentContext => {
@@ -86,7 +97,7 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
           .filter(([, v]) => typeof v === "string" && (v as string).length > 0)
           .map(([k, v]) => `${k}: ${v}`)
           .join("\n")
-      : artistQuery.data?.name ?? null;
+      : (artistQuery.data?.name ?? null);
     const energyCurve = analysis?.energy_curve_json ?? [];
     const bucket = Math.max(1, Math.floor(energyCurve.length / 12));
     const energyProfile = energyCurve.length
@@ -120,6 +131,55 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
     };
   };
 
+  const creativeBrief: CreativeBrief = useMemo(
+    () => ({
+      format: projectType,
+      concept: chosenConcept || current?.concept || null,
+      narrative: current?.narrative ?? null,
+      mood: effectiveMood || null,
+      visualStyle: project?.visual_style ?? null,
+      songTitle: project?.song_title ?? null,
+      notes: [project?.notes, notes].filter(Boolean).join("\n") || null,
+      wardrobe: (looksQuery.data ?? [])
+        .filter((l) => !["archived", "failed", "error"].includes(l.status))
+        .slice(0, 12)
+        .map((l) => ({ name: l.name, description: l.description, lookId: l.id })),
+    }),
+
+    [projectType, chosenConcept, current, effectiveMood, project, notes, looksQuery.data],
+  );
+
+  async function handleApplyPlan(plan: CreativeDirectorPlan) {
+    setCommitting(true);
+    try {
+      const rows = plan.shots.map((spec) => {
+        const row = shotSpecToShotRow(spec);
+        return {
+          song_section: spec.title || null,
+          timestamp_start: row.timestamp_start,
+          timestamp_end: row.timestamp_end,
+          duration_seconds: row.duration_seconds,
+          shot_type: row.shot_type as ShotType,
+          scene_description: row.scene_description ?? spec.purpose,
+          camera_direction: row.camera_direction ?? null,
+          lighting: row.lighting ?? null,
+          wardrobe: row.wardrobe ?? null,
+          environment: row.environment ?? null,
+          recommended_tool: (row.recommended_tool ?? null) as ProviderName | null,
+          priority: (row.priority ?? "normal") as ShotPriority,
+          status: "planned" as ShotStatus,
+          notes: [`CDKEY:${spec.id}`, spec.performanceDirection].filter(Boolean).join("\n"),
+        };
+      });
+      const n = await bulkCreate.mutateAsync({ projectId, replace: false, rows });
+      toast.success(`${n} director shots appended to the shot list`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Apply failed");
+    } finally {
+      setCommitting(false);
+    }
+  }
+
   async function handleSuggest() {
     setSuggesting(true);
     try {
@@ -147,7 +207,11 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
     }
     setGenerating(true);
     try {
-      const result = await draftFullTreatment({ ...context(), concept: chosenConcept.trim(), grid });
+      const result = await draftFullTreatment({
+        ...context(),
+        concept: chosenConcept.trim(),
+        grid,
+      });
       setTreatment(result);
       setCommitted(false);
       toast.success(`Treatment generated — ${result.clips.length} clips`);
@@ -178,16 +242,16 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
         notes: [
           `TKEY:${c.key}`,
           c.lyric_ref ? `LYRIC: "${c.lyric_ref}"` : null,
-          ...c.dependencies.map(
-            (d) => `PREP[${d.kind}${d.look ? `: ${d.look}` : ""}] ${d.note}`,
-          ),
+          ...c.dependencies.map((d) => `PREP[${d.kind}${d.look ? `: ${d.look}` : ""}] ${d.note}`),
         ]
           .filter(Boolean)
           .join("\n"),
       }));
       const n = await bulkCreate.mutateAsync({ projectId, replace, rows });
       setCommitted(true);
-      toast.success(`${n} shots ${replace ? "written (replaced existing)" : "appended"} to the shot list`);
+      toast.success(
+        `${n} shots ${replace ? "written (replaced existing)" : "appended"} to the shot list`,
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Commit failed");
     } finally {
@@ -197,7 +261,10 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
 
   const prepAssets = useMemo(() => {
     if (!current) return [];
-    const seen = new Map<string, { kind: string; look: string | null; note: string; clips: string[] }>();
+    const seen = new Map<
+      string,
+      { kind: string; look: string | null; note: string; clips: string[] }
+    >();
     for (const c of current.clips) {
       for (const d of c.dependencies) {
         const id = `${d.kind}|${d.look ?? ""}|${d.note}`;
@@ -213,7 +280,9 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
     return (
       <>
         <PageHeader title="Treatment" />
-        <div className="px-4 py-6 md:px-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
+        <div className="px-4 py-6 md:px-8">
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </div>
       </>
     );
   }
@@ -240,7 +309,9 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
                 type="button"
                 onClick={() => setProjectType(pt.value)}
                 className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
-                  projectType === pt.value ? "glass-raised text-foreground" : "text-foreground/60 hover:bg-white/5"
+                  projectType === pt.value
+                    ? "glass-raised text-foreground"
+                    : "text-foreground/60 hover:bg-white/5"
                 }`}
               >
                 {pt.label}
@@ -251,13 +322,14 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
           {projectType === "music_video" ? (
             analysis ? (
               <p className="text-xs text-foreground/60">
-                Beat grid ready: {analysis.bpm ? `${Math.round(analysis.bpm)} BPM` : "BPM unknown"} ·{" "}
-                {Math.round(analysis.duration_seconds ?? 0)}s · {gridSummary(grid)}
+                Beat grid ready: {analysis.bpm ? `${Math.round(analysis.bpm)} BPM` : "BPM unknown"}{" "}
+                · {Math.round(analysis.duration_seconds ?? 0)}s · {gridSummary(grid)}
               </p>
             ) : (
               <div className="space-y-2">
                 <p className="flex items-center gap-1.5 text-xs text-amber-300">
-                  <AlertTriangle className="h-3.5 w-3.5" /> No song analysis yet — run it so clips snap to the beat.
+                  <AlertTriangle className="h-3.5 w-3.5" /> No song analysis yet — run it so clips
+                  snap to the beat.
                 </p>
                 <SongAnalysisCard projectId={projectId} />
               </div>
@@ -302,7 +374,11 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
               2 · Concept
             </h2>
             <Button size="sm" variant="outline" onClick={handleSuggest} disabled={suggesting}>
-              {suggesting ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
+              {suggesting ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-3.5 w-3.5" />
+              )}
               {concepts ? "Re-suggest" : "Suggest 3 concepts"}
             </Button>
           </div>
@@ -332,7 +408,9 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
           )}
 
           <div>
-            <label className="text-xs text-foreground/60">Concept (pick above or write your own)</label>
+            <label className="text-xs text-foreground/60">
+              Concept (pick above or write your own)
+            </label>
             <Textarea
               value={chosenConcept}
               onChange={(e) => setChosenConcept(e.target.value)}
@@ -341,11 +419,23 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
             />
           </div>
 
-          <Button onClick={handleGenerate} disabled={generating || needsAnalysis || !chosenConcept.trim()}>
-            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-            {generating ? "Generating treatment…" : `Generate full treatment (${grid.length} clips)`}
+          <Button
+            onClick={handleGenerate}
+            disabled={generating || needsAnalysis || !chosenConcept.trim()}
+          >
+            {generating ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Wand2 className="mr-2 h-4 w-4" />
+            )}
+            {generating
+              ? "Generating treatment…"
+              : `Generate full treatment (${grid.length} clips)`}
           </Button>
         </Card>
+
+        {/* ---- Creative Director: propose a full shot sequence ----------- */}
+        <CreativeDirectorPanel brief={creativeBrief} grid={grid} onApply={handleApplyPlan} />
 
         {/* ---- Step 3: result -------------------------------------------- */}
         {current && (
@@ -362,7 +452,11 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
               {current.sections.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {current.sections.map((s) => (
-                    <span key={s.name} className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] text-foreground/60" title={s.intent}>
+                    <span
+                      key={s.name}
+                      className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] text-foreground/60"
+                      title={s.intent}
+                    >
                       {s.name}
                     </span>
                   ))}
@@ -382,11 +476,14 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
                     </span>
                     {p.look && <span className="font-medium text-foreground">{p.look}</span>}
                     <span className="text-foreground/70">{p.note}</span>
-                    <span className="text-foreground/40">({p.clips.length} clip{p.clips.length > 1 ? "s" : ""}: {p.clips.join(", ")})</span>
+                    <span className="text-foreground/40">
+                      ({p.clips.length} clip{p.clips.length > 1 ? "s" : ""}: {p.clips.join(", ")})
+                    </span>
                   </div>
                 ))}
                 <p className="text-[10px] text-foreground/50">
-                  Look composites → Looks tab · face swaps → Assets tab ("Apply My Face") · reference stills → Prompt Lab.
+                  Look composites → Looks tab · face swaps → Assets tab ("Apply My Face") ·
+                  reference stills → Prompt Lab.
                 </p>
               </Card>
             )}
@@ -411,16 +508,26 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
                         <td className="px-3 py-2 text-foreground/40">{i + 1}</td>
                         <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
                           {fmtTime(c.start)}–{fmtTime(c.end)}
-                          <span className="ml-1 text-foreground/40">({(c.end - c.start).toFixed(1)}s)</span>
+                          <span className="ml-1 text-foreground/40">
+                            ({(c.end - c.start).toFixed(1)}s)
+                          </span>
                         </td>
                         <td className="px-3 py-2 text-foreground/60">{c.section}</td>
                         <td className="px-3 py-2">
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] ${ENERGY_STYLES[c.energy] ?? ""}`}>{c.energy}</span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] ${ENERGY_STYLES[c.energy] ?? ""}`}
+                          >
+                            {c.energy}
+                          </span>
                         </td>
                         <td className="px-3 py-2 text-foreground/60">{c.shot_type}</td>
                         <td className="px-3 py-2 text-foreground/80">
                           {c.scene_description}
-                          {c.lyric_ref && <span className="block text-[10px] italic text-foreground/40">"{c.lyric_ref}"</span>}
+                          {c.lyric_ref && (
+                            <span className="block text-[10px] italic text-foreground/40">
+                              "{c.lyric_ref}"
+                            </span>
+                          )}
                           {c.dependencies.length > 0 && (
                             <span className="mt-0.5 block text-[10px] text-amber-300">
                               prep: {c.dependencies.map((d) => d.look ?? d.kind).join(", ")}
@@ -438,7 +545,8 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
             <Card className="flex flex-wrap items-center gap-3 p-4 md:p-5">
               {committed ? (
                 <p className="flex items-center gap-1.5 text-sm text-emerald-300">
-                  <CheckCircle2 className="h-4 w-4" /> Committed to the shot list — head to Shot List / Prompt Lab.
+                  <CheckCircle2 className="h-4 w-4" /> Committed to the shot list — head to Shot
+                  List / Prompt Lab.
                 </p>
               ) : (
                 <>
@@ -447,7 +555,11 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
                     Commit {current.clips.length} clips to shot list
                   </Button>
                   {existingShotCount > 0 && (
-                    <Button variant="outline" onClick={() => handleCommit(true)} disabled={committing}>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleCommit(true)}
+                      disabled={committing}
+                    >
                       Replace existing {existingShotCount} shots
                     </Button>
                   )}
