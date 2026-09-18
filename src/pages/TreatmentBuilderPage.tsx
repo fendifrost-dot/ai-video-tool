@@ -1,5 +1,14 @@
 import { useMemo, useState } from "react";
-import { Loader2, RefreshCw, Sparkles, Wand2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import {
+  Loader2,
+  RefreshCw,
+  Sparkles,
+  Wand2,
+  AlertTriangle,
+  CheckCircle2,
+  LayoutGrid,
+  Table2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,6 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/AppShell";
 import { SongAnalysisCard } from "@/components/projects/SongAnalysisCard";
+import { ShotStoryboard } from "@/components/treatment/ShotStoryboard";
+import type { ShotEnergy } from "@/components/treatment/ShotCard";
 import { useProject } from "@/lib/queries/projects";
 import { useArtist } from "@/lib/queries/artists";
 import { useArtistLooks } from "@/lib/queries/looks";
@@ -17,12 +28,20 @@ import {
   suggestConcepts,
   draftFullTreatment,
   parseSavedStructuredTreatment,
+  structuredTreatmentToShotSpecs,
   type ConceptSuggestion,
   type ProjectType,
   type StructuredTreatment,
   type TreatmentContext,
 } from "@/lib/treatment/api";
-import type { ShotPriority, ShotStatus, ShotType, ProviderName } from "@/integrations/supabase/aliases";
+import type {
+  ShotPriority,
+  ShotStatus,
+  ShotType,
+  ProviderName,
+} from "@/integrations/supabase/aliases";
+
+const CLIP_ENERGIES = new Set<ShotEnergy>(["low", "mid", "high", "drop"]);
 
 const PROJECT_TYPES: { value: ProjectType; label: string }[] = [
   { value: "music_video", label: "Music video" },
@@ -69,14 +88,30 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
   const [treatment, setTreatment] = useState<StructuredTreatment | null>(null);
   const [committing, setCommitting] = useState(false);
   const [committed, setCommitted] = useState(false);
+  const [view, setView] = useState<"storyboard" | "grid">("storyboard");
 
   const current = treatment ?? saved;
   const effectiveMood = mood ?? project?.mood ?? "";
 
+  // Chronological cinematic shot cards consume the generalized Shot Spec.
+  // `treatmentClipToShotSpec` keys each spec by the clip key, so the energy
+  // accent from the beat grid can be looked up by spec id.
+  const specs = useMemo(() => (current ? structuredTreatmentToShotSpecs(current) : []), [current]);
+  const energyById = useMemo(() => {
+    const map: Record<string, ShotEnergy> = {};
+    for (const c of current?.clips ?? []) {
+      if (CLIP_ENERGIES.has(c.energy as ShotEnergy)) map[c.key] = c.energy as ShotEnergy;
+    }
+    return map;
+  }, [current]);
+
   const grid = useMemo(() => {
     if (projectType === "music_video" && analysis) return buildClipGrid({ analysis });
     const dur = Number(targetDuration);
-    return buildClipGrid({ analysis: projectType === "music_video" ? analysis : null, durationSeconds: Number.isFinite(dur) ? dur : null });
+    return buildClipGrid({
+      analysis: projectType === "music_video" ? analysis : null,
+      durationSeconds: Number.isFinite(dur) ? dur : null,
+    });
   }, [analysis, projectType, targetDuration]);
 
   const context = (): TreatmentContext => {
@@ -86,7 +121,7 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
           .filter(([, v]) => typeof v === "string" && (v as string).length > 0)
           .map(([k, v]) => `${k}: ${v}`)
           .join("\n")
-      : artistQuery.data?.name ?? null;
+      : (artistQuery.data?.name ?? null);
     const energyCurve = analysis?.energy_curve_json ?? [];
     const bucket = Math.max(1, Math.floor(energyCurve.length / 12));
     const energyProfile = energyCurve.length
@@ -147,7 +182,11 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
     }
     setGenerating(true);
     try {
-      const result = await draftFullTreatment({ ...context(), concept: chosenConcept.trim(), grid });
+      const result = await draftFullTreatment({
+        ...context(),
+        concept: chosenConcept.trim(),
+        grid,
+      });
       setTreatment(result);
       setCommitted(false);
       toast.success(`Treatment generated — ${result.clips.length} clips`);
@@ -178,16 +217,16 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
         notes: [
           `TKEY:${c.key}`,
           c.lyric_ref ? `LYRIC: "${c.lyric_ref}"` : null,
-          ...c.dependencies.map(
-            (d) => `PREP[${d.kind}${d.look ? `: ${d.look}` : ""}] ${d.note}`,
-          ),
+          ...c.dependencies.map((d) => `PREP[${d.kind}${d.look ? `: ${d.look}` : ""}] ${d.note}`),
         ]
           .filter(Boolean)
           .join("\n"),
       }));
       const n = await bulkCreate.mutateAsync({ projectId, replace, rows });
       setCommitted(true);
-      toast.success(`${n} shots ${replace ? "written (replaced existing)" : "appended"} to the shot list`);
+      toast.success(
+        `${n} shots ${replace ? "written (replaced existing)" : "appended"} to the shot list`,
+      );
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Commit failed");
     } finally {
@@ -197,7 +236,10 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
 
   const prepAssets = useMemo(() => {
     if (!current) return [];
-    const seen = new Map<string, { kind: string; look: string | null; note: string; clips: string[] }>();
+    const seen = new Map<
+      string,
+      { kind: string; look: string | null; note: string; clips: string[] }
+    >();
     for (const c of current.clips) {
       for (const d of c.dependencies) {
         const id = `${d.kind}|${d.look ?? ""}|${d.note}`;
@@ -213,7 +255,9 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
     return (
       <>
         <PageHeader title="Treatment" />
-        <div className="px-4 py-6 md:px-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
+        <div className="px-4 py-6 md:px-8">
+          <Loader2 className="h-5 w-5 animate-spin" />
+        </div>
       </>
     );
   }
@@ -240,7 +284,9 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
                 type="button"
                 onClick={() => setProjectType(pt.value)}
                 className={`rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
-                  projectType === pt.value ? "glass-raised text-foreground" : "text-foreground/60 hover:bg-white/5"
+                  projectType === pt.value
+                    ? "glass-raised text-foreground"
+                    : "text-foreground/60 hover:bg-white/5"
                 }`}
               >
                 {pt.label}
@@ -251,13 +297,14 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
           {projectType === "music_video" ? (
             analysis ? (
               <p className="text-xs text-foreground/60">
-                Beat grid ready: {analysis.bpm ? `${Math.round(analysis.bpm)} BPM` : "BPM unknown"} ·{" "}
-                {Math.round(analysis.duration_seconds ?? 0)}s · {gridSummary(grid)}
+                Beat grid ready: {analysis.bpm ? `${Math.round(analysis.bpm)} BPM` : "BPM unknown"}{" "}
+                · {Math.round(analysis.duration_seconds ?? 0)}s · {gridSummary(grid)}
               </p>
             ) : (
               <div className="space-y-2">
                 <p className="flex items-center gap-1.5 text-xs text-amber-300">
-                  <AlertTriangle className="h-3.5 w-3.5" /> No song analysis yet — run it so clips snap to the beat.
+                  <AlertTriangle className="h-3.5 w-3.5" /> No song analysis yet — run it so clips
+                  snap to the beat.
                 </p>
                 <SongAnalysisCard projectId={projectId} />
               </div>
@@ -302,7 +349,11 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
               2 · Concept
             </h2>
             <Button size="sm" variant="outline" onClick={handleSuggest} disabled={suggesting}>
-              {suggesting ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-2 h-3.5 w-3.5" />}
+              {suggesting ? (
+                <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="mr-2 h-3.5 w-3.5" />
+              )}
               {concepts ? "Re-suggest" : "Suggest 3 concepts"}
             </Button>
           </div>
@@ -332,7 +383,9 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
           )}
 
           <div>
-            <label className="text-xs text-foreground/60">Concept (pick above or write your own)</label>
+            <label className="text-xs text-foreground/60">
+              Concept (pick above or write your own)
+            </label>
             <Textarea
               value={chosenConcept}
               onChange={(e) => setChosenConcept(e.target.value)}
@@ -341,9 +394,18 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
             />
           </div>
 
-          <Button onClick={handleGenerate} disabled={generating || needsAnalysis || !chosenConcept.trim()}>
-            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-            {generating ? "Generating treatment…" : `Generate full treatment (${grid.length} clips)`}
+          <Button
+            onClick={handleGenerate}
+            disabled={generating || needsAnalysis || !chosenConcept.trim()}
+          >
+            {generating ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Wand2 className="mr-2 h-4 w-4" />
+            )}
+            {generating
+              ? "Generating treatment…"
+              : `Generate full treatment (${grid.length} clips)`}
           </Button>
         </Card>
 
@@ -362,7 +424,11 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
               {current.sections.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {current.sections.map((s) => (
-                    <span key={s.name} className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] text-foreground/60" title={s.intent}>
+                    <span
+                      key={s.name}
+                      className="rounded-full bg-white/5 px-2.5 py-1 text-[10px] text-foreground/60"
+                      title={s.intent}
+                    >
                       {s.name}
                     </span>
                   ))}
@@ -382,63 +448,112 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
                     </span>
                     {p.look && <span className="font-medium text-foreground">{p.look}</span>}
                     <span className="text-foreground/70">{p.note}</span>
-                    <span className="text-foreground/40">({p.clips.length} clip{p.clips.length > 1 ? "s" : ""}: {p.clips.join(", ")})</span>
+                    <span className="text-foreground/40">
+                      ({p.clips.length} clip{p.clips.length > 1 ? "s" : ""}: {p.clips.join(", ")})
+                    </span>
                   </div>
                 ))}
                 <p className="text-[10px] text-foreground/50">
-                  Look composites → Looks tab · face swaps → Assets tab ("Apply My Face") · reference stills → Prompt Lab.
+                  Look composites → Looks tab · face swaps → Assets tab ("Apply My Face") ·
+                  reference stills → Prompt Lab.
                 </p>
               </Card>
             )}
 
-            <Card className="p-0">
-              <div className="max-h-[28rem] overflow-auto">
-                <table className="w-full min-w-[760px] text-left text-xs">
-                  <thead className="sticky top-0 bg-background/95 backdrop-blur">
-                    <tr className="border-b border-border text-[10px] uppercase tracking-wider text-foreground/50">
-                      <th className="px-3 py-2">#</th>
-                      <th className="px-3 py-2">Time</th>
-                      <th className="px-3 py-2">Section</th>
-                      <th className="px-3 py-2">Energy</th>
-                      <th className="px-3 py-2">Type</th>
-                      <th className="px-3 py-2">Scene</th>
-                      <th className="px-3 py-2">Tool</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {current.clips.map((c, i) => (
-                      <tr key={c.key} className="border-b border-border/40 align-top">
-                        <td className="px-3 py-2 text-foreground/40">{i + 1}</td>
-                        <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
-                          {fmtTime(c.start)}–{fmtTime(c.end)}
-                          <span className="ml-1 text-foreground/40">({(c.end - c.start).toFixed(1)}s)</span>
-                        </td>
-                        <td className="px-3 py-2 text-foreground/60">{c.section}</td>
-                        <td className="px-3 py-2">
-                          <span className={`rounded-full px-2 py-0.5 text-[10px] ${ENERGY_STYLES[c.energy] ?? ""}`}>{c.energy}</span>
-                        </td>
-                        <td className="px-3 py-2 text-foreground/60">{c.shot_type}</td>
-                        <td className="px-3 py-2 text-foreground/80">
-                          {c.scene_description}
-                          {c.lyric_ref && <span className="block text-[10px] italic text-foreground/40">"{c.lyric_ref}"</span>}
-                          {c.dependencies.length > 0 && (
-                            <span className="mt-0.5 block text-[10px] text-amber-300">
-                              prep: {c.dependencies.map((d) => d.look ?? d.kind).join(", ")}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-foreground/60">{c.recommended_tool}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* ---- Storyboard vs. timing grid --------------------------- */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Storyboard
+              </h2>
+              <div className="flex items-center gap-1 rounded-lg bg-white/5 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setView("storyboard")}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                    view === "storyboard"
+                      ? "glass-raised text-foreground"
+                      : "text-foreground/50 hover:text-foreground/80"
+                  }`}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" /> Storyboard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("grid")}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                    view === "grid"
+                      ? "glass-raised text-foreground"
+                      : "text-foreground/50 hover:text-foreground/80"
+                  }`}
+                >
+                  <Table2 className="h-3.5 w-3.5" /> Timing grid
+                </button>
               </div>
-            </Card>
+            </div>
+
+            {view === "storyboard" ? (
+              <ShotStoryboard specs={specs} energyById={energyById} />
+            ) : (
+              <Card className="p-0">
+                <div className="max-h-[28rem] overflow-auto">
+                  <table className="w-full min-w-[760px] text-left text-xs">
+                    <thead className="sticky top-0 bg-background/95 backdrop-blur">
+                      <tr className="border-b border-border text-[10px] uppercase tracking-wider text-foreground/50">
+                        <th className="px-3 py-2">#</th>
+                        <th className="px-3 py-2">Time</th>
+                        <th className="px-3 py-2">Section</th>
+                        <th className="px-3 py-2">Energy</th>
+                        <th className="px-3 py-2">Type</th>
+                        <th className="px-3 py-2">Scene</th>
+                        <th className="px-3 py-2">Tool</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {current.clips.map((c, i) => (
+                        <tr key={c.key} className="border-b border-border/40 align-top">
+                          <td className="px-3 py-2 text-foreground/40">{i + 1}</td>
+                          <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
+                            {fmtTime(c.start)}–{fmtTime(c.end)}
+                            <span className="ml-1 text-foreground/40">
+                              ({(c.end - c.start).toFixed(1)}s)
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-foreground/60">{c.section}</td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] ${ENERGY_STYLES[c.energy] ?? ""}`}
+                            >
+                              {c.energy}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-foreground/60">{c.shot_type}</td>
+                          <td className="px-3 py-2 text-foreground/80">
+                            {c.scene_description}
+                            {c.lyric_ref && (
+                              <span className="block text-[10px] italic text-foreground/40">
+                                "{c.lyric_ref}"
+                              </span>
+                            )}
+                            {c.dependencies.length > 0 && (
+                              <span className="mt-0.5 block text-[10px] text-amber-300">
+                                prep: {c.dependencies.map((d) => d.look ?? d.kind).join(", ")}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-foreground/60">{c.recommended_tool}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
 
             <Card className="flex flex-wrap items-center gap-3 p-4 md:p-5">
               {committed ? (
                 <p className="flex items-center gap-1.5 text-sm text-emerald-300">
-                  <CheckCircle2 className="h-4 w-4" /> Committed to the shot list — head to Shot List / Prompt Lab.
+                  <CheckCircle2 className="h-4 w-4" /> Committed to the shot list — head to Shot
+                  List / Prompt Lab.
                 </p>
               ) : (
                 <>
@@ -447,7 +562,11 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
                     Commit {current.clips.length} clips to shot list
                   </Button>
                   {existingShotCount > 0 && (
-                    <Button variant="outline" onClick={() => handleCommit(true)} disabled={committing}>
+                    <Button
+                      variant="outline"
+                      onClick={() => handleCommit(true)}
+                      disabled={committing}
+                    >
                       Replace existing {existingShotCount} shots
                     </Button>
                   )}
