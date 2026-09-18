@@ -205,3 +205,23 @@ export {
   productOsGraphNodes,
 } from "./productOs";
 export type { ProductOsAdapterOptions, ProductOsGraphNode } from "./productOs";
+export {
+  PRODUCTION_ELIGIBLE_STATUSES,
+  TREATMENT_BRIDGE_VERSION,
+  createPipelineRunFromShotSpec,
+  createPipelineRunsFromTreatment,
+  isProductionEligible,
+  shotReproducibility,
+  shotSpecToRunInput,
+  shotSpecToSeedArtifacts,
+  treatmentToRunInputs,
+} from "./treatmentBridge";
+export type {
+  BridgedShot,
+  ShotBridgeReason,
+  ShotBridgeWarning,
+  SkippedShot,
+  TreatmentBridgeOptions,
+  TreatmentBridgeResult,
+  TreatmentRunSet,
+} from "./treatmentBridge";
