@@ -1,5 +1,14 @@
 import { useMemo, useState } from "react";
-import { Loader2, RefreshCw, Sparkles, Wand2, AlertTriangle, CheckCircle2 } from "lucide-react";
+import {
+  Loader2,
+  RefreshCw,
+  Sparkles,
+  Wand2,
+  AlertTriangle,
+  CheckCircle2,
+  LayoutGrid,
+  Table2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -7,6 +16,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/AppShell";
 import { SongAnalysisCard } from "@/components/projects/SongAnalysisCard";
+import { ShotStoryboard } from "@/components/treatment/ShotStoryboard";
+import type { ShotEnergy } from "@/components/treatment/ShotCard";
 import { useProject } from "@/lib/queries/projects";
 import { useArtist } from "@/lib/queries/artists";
 import { useArtistLooks } from "@/lib/queries/looks";
@@ -17,6 +28,7 @@ import {
   suggestConcepts,
   draftFullTreatment,
   parseSavedStructuredTreatment,
+  structuredTreatmentToShotSpecs,
   type ConceptSuggestion,
   type ProjectType,
   type StructuredTreatment,
@@ -31,6 +43,8 @@ import type {
 import { CreativeDirectorPanel } from "@/components/creativeDirector/CreativeDirectorPanel";
 import { shotSpecToShotRow } from "@/lib/treatment/shotSpec";
 import type { CreativeBrief, CreativeDirectorPlan } from "@/lib/creativeDirector";
+
+const CLIP_ENERGIES = new Set<ShotEnergy>(["low", "mid", "high", "drop"]);
 
 const PROJECT_TYPES: { value: ProjectType; label: string }[] = [
   { value: "music_video", label: "Music video" },
@@ -77,9 +91,22 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
   const [treatment, setTreatment] = useState<StructuredTreatment | null>(null);
   const [committing, setCommitting] = useState(false);
   const [committed, setCommitted] = useState(false);
+  const [view, setView] = useState<"storyboard" | "grid">("storyboard");
 
   const current = treatment ?? saved;
   const effectiveMood = mood ?? project?.mood ?? "";
+
+  // Chronological cinematic shot cards consume the generalized Shot Spec.
+  // `treatmentClipToShotSpec` keys each spec by the clip key, so the energy
+  // accent from the beat grid can be looked up by spec id.
+  const specs = useMemo(() => (current ? structuredTreatmentToShotSpecs(current) : []), [current]);
+  const energyById = useMemo(() => {
+    const map: Record<string, ShotEnergy> = {};
+    for (const c of current?.clips ?? []) {
+      if (CLIP_ENERGIES.has(c.energy as ShotEnergy)) map[c.key] = c.energy as ShotEnergy;
+    }
+    return map;
+  }, [current]);
 
   const grid = useMemo(() => {
     if (projectType === "music_video" && analysis) return buildClipGrid({ analysis });
@@ -179,7 +206,6 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
       setCommitting(false);
     }
   }
-
   async function handleSuggest() {
     setSuggesting(true);
     try {
@@ -488,59 +514,94 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
               </Card>
             )}
 
-            <Card className="p-0">
-              <div className="max-h-[28rem] overflow-auto">
-                <table className="w-full min-w-[760px] text-left text-xs">
-                  <thead className="sticky top-0 bg-background/95 backdrop-blur">
-                    <tr className="border-b border-border text-[10px] uppercase tracking-wider text-foreground/50">
-                      <th className="px-3 py-2">#</th>
-                      <th className="px-3 py-2">Time</th>
-                      <th className="px-3 py-2">Section</th>
-                      <th className="px-3 py-2">Energy</th>
-                      <th className="px-3 py-2">Type</th>
-                      <th className="px-3 py-2">Scene</th>
-                      <th className="px-3 py-2">Tool</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {current.clips.map((c, i) => (
-                      <tr key={c.key} className="border-b border-border/40 align-top">
-                        <td className="px-3 py-2 text-foreground/40">{i + 1}</td>
-                        <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
-                          {fmtTime(c.start)}–{fmtTime(c.end)}
-                          <span className="ml-1 text-foreground/40">
-                            ({(c.end - c.start).toFixed(1)}s)
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-foreground/60">{c.section}</td>
-                        <td className="px-3 py-2">
-                          <span
-                            className={`rounded-full px-2 py-0.5 text-[10px] ${ENERGY_STYLES[c.energy] ?? ""}`}
-                          >
-                            {c.energy}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-foreground/60">{c.shot_type}</td>
-                        <td className="px-3 py-2 text-foreground/80">
-                          {c.scene_description}
-                          {c.lyric_ref && (
-                            <span className="block text-[10px] italic text-foreground/40">
-                              "{c.lyric_ref}"
-                            </span>
-                          )}
-                          {c.dependencies.length > 0 && (
-                            <span className="mt-0.5 block text-[10px] text-amber-300">
-                              prep: {c.dependencies.map((d) => d.look ?? d.kind).join(", ")}
-                            </span>
-                          )}
-                        </td>
-                        <td className="px-3 py-2 text-foreground/60">{c.recommended_tool}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {/* ---- Storyboard vs. timing grid --------------------------- */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Storyboard
+              </h2>
+              <div className="flex items-center gap-1 rounded-lg bg-white/5 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setView("storyboard")}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                    view === "storyboard"
+                      ? "glass-raised text-foreground"
+                      : "text-foreground/50 hover:text-foreground/80"
+                  }`}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" /> Storyboard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setView("grid")}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                    view === "grid"
+                      ? "glass-raised text-foreground"
+                      : "text-foreground/50 hover:text-foreground/80"
+                  }`}
+                >
+                  <Table2 className="h-3.5 w-3.5" /> Timing grid
+                </button>
               </div>
-            </Card>
+            </div>
+
+            {view === "storyboard" ? (
+              <ShotStoryboard specs={specs} energyById={energyById} />
+            ) : (
+              <Card className="p-0">
+                <div className="max-h-[28rem] overflow-auto">
+                  <table className="w-full min-w-[760px] text-left text-xs">
+                    <thead className="sticky top-0 bg-background/95 backdrop-blur">
+                      <tr className="border-b border-border text-[10px] uppercase tracking-wider text-foreground/50">
+                        <th className="px-3 py-2">#</th>
+                        <th className="px-3 py-2">Time</th>
+                        <th className="px-3 py-2">Section</th>
+                        <th className="px-3 py-2">Energy</th>
+                        <th className="px-3 py-2">Type</th>
+                        <th className="px-3 py-2">Scene</th>
+                        <th className="px-3 py-2">Tool</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {current.clips.map((c, i) => (
+                        <tr key={c.key} className="border-b border-border/40 align-top">
+                          <td className="px-3 py-2 text-foreground/40">{i + 1}</td>
+                          <td className="whitespace-nowrap px-3 py-2 text-foreground/70">
+                            {fmtTime(c.start)}–{fmtTime(c.end)}
+                            <span className="ml-1 text-foreground/40">
+                              ({(c.end - c.start).toFixed(1)}s)
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-foreground/60">{c.section}</td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[10px] ${ENERGY_STYLES[c.energy] ?? ""}`}
+                            >
+                              {c.energy}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-foreground/60">{c.shot_type}</td>
+                          <td className="px-3 py-2 text-foreground/80">
+                            {c.scene_description}
+                            {c.lyric_ref && (
+                              <span className="block text-[10px] italic text-foreground/40">
+                                "{c.lyric_ref}"
+                              </span>
+                            )}
+                            {c.dependencies.length > 0 && (
+                              <span className="mt-0.5 block text-[10px] text-amber-300">
+                                prep: {c.dependencies.map((d) => d.look ?? d.kind).join(", ")}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-foreground/60">{c.recommended_tool}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
 
             <Card className="flex flex-wrap items-center gap-3 p-4 md:p-5">
               {committed ? (
