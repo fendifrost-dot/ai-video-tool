@@ -37,7 +37,7 @@ type NavItem = {
 };
 
 /** Primary creative funnel — always visible. */
-const primaryItems: readonly NavItem[] = [
+export const primaryItems: readonly NavItem[] = [
   { to: "/projects/$id/treatment", label: "Treatment", icon: FileText, key: "treatment" },
   { to: "/projects/$id/assets", label: "Assets", icon: ImageIcon, key: "assets" },
   { to: "/projects/$id/video", label: "Produce Video", icon: Video, key: "video" },
@@ -46,7 +46,7 @@ const primaryItems: readonly NavItem[] = [
 ] as const;
 
 /** Engineering destinations — revealed in engineering mode (Lane G store). */
-const advancedItems: readonly NavItem[] = [
+export const advancedItems: readonly NavItem[] = [
   { to: "/projects/$id/shots", label: "Shot List", icon: Clapperboard, key: "shots" },
   {
     to: "/projects/$id/cover-flight",
