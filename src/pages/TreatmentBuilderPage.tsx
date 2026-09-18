@@ -40,6 +40,9 @@ import type {
   ShotType,
   ProviderName,
 } from "@/integrations/supabase/aliases";
+import { CreativeDirectorPanel } from "@/components/creativeDirector/CreativeDirectorPanel";
+import { shotSpecToShotRow } from "@/lib/treatment/shotSpec";
+import type { CreativeBrief, CreativeDirectorPlan } from "@/lib/creativeDirector";
 
 const CLIP_ENERGIES = new Set<ShotEnergy>(["low", "mid", "high", "drop"]);
 
@@ -155,6 +158,54 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
     };
   };
 
+  const creativeBrief: CreativeBrief = useMemo(
+    () => ({
+      format: projectType,
+      concept: chosenConcept || current?.concept || null,
+      narrative: current?.narrative ?? null,
+      mood: effectiveMood || null,
+      visualStyle: project?.visual_style ?? null,
+      songTitle: project?.song_title ?? null,
+      notes: [project?.notes, notes].filter(Boolean).join("\n") || null,
+      wardrobe: (looksQuery.data ?? [])
+        .filter((l) => !["archived", "failed", "error"].includes(l.status))
+        .slice(0, 12)
+        .map((l) => ({ name: l.name, description: l.description, lookId: l.id })),
+    }),
+
+    [projectType, chosenConcept, current, effectiveMood, project, notes, looksQuery.data],
+  );
+
+  async function handleApplyPlan(plan: CreativeDirectorPlan) {
+    setCommitting(true);
+    try {
+      const rows = plan.shots.map((spec) => {
+        const row = shotSpecToShotRow(spec);
+        return {
+          song_section: spec.title || null,
+          timestamp_start: row.timestamp_start,
+          timestamp_end: row.timestamp_end,
+          duration_seconds: row.duration_seconds,
+          shot_type: row.shot_type as ShotType,
+          scene_description: row.scene_description ?? spec.purpose,
+          camera_direction: row.camera_direction ?? null,
+          lighting: row.lighting ?? null,
+          wardrobe: row.wardrobe ?? null,
+          environment: row.environment ?? null,
+          recommended_tool: (row.recommended_tool ?? null) as ProviderName | null,
+          priority: (row.priority ?? "normal") as ShotPriority,
+          status: "planned" as ShotStatus,
+          notes: [`CDKEY:${spec.id}`, spec.performanceDirection].filter(Boolean).join("\n"),
+        };
+      });
+      const n = await bulkCreate.mutateAsync({ projectId, replace: false, rows });
+      toast.success(`${n} director shots appended to the shot list`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Apply failed");
+    } finally {
+      setCommitting(false);
+    }
+  }
   async function handleSuggest() {
     setSuggesting(true);
     try {
@@ -408,6 +459,9 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
               : `Generate full treatment (${grid.length} clips)`}
           </Button>
         </Card>
+
+        {/* ---- Creative Director: propose a full shot sequence ----------- */}
+        <CreativeDirectorPanel brief={creativeBrief} grid={grid} onApply={handleApplyPlan} />
 
         {/* ---- Step 3: result -------------------------------------------- */}
         {current && (
