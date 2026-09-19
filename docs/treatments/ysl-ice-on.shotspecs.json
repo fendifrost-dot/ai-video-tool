@@ -1,0 +1,4804 @@
+[
+  {
+    "version": 1,
+    "id": "c001",
+    "title": "",
+    "order": 0,
+    "purpose": "intro performance — Fendi to camera; The closet as a dim luxury vault.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "hero",
+    "timeline": {
+      "start": 0,
+      "end": 5.14
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "The closet as a dim luxury vault — backlit garment bags glowing, mirrored black floor, cold negative space.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "slow dolly-in"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Cold blue rim + single hard key; deep shadow, high-gloss speculars on hardware.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c002",
+    "title": "",
+    "order": 1,
+    "purpose": "intro performance — Fendi to camera; The closet as a dim luxury vault.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 5.14,
+      "end": 10.29
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "The closet as a dim luxury vault — backlit garment bags glowing, mirrored black floor, cold negative space.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "static locked"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Cold blue rim + single hard key; deep shadow, high-gloss speculars on hardware.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c003",
+    "title": "",
+    "order": 2,
+    "purpose": "verse 1 performance — Fendi to camera; Closet expands.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "hero",
+    "timeline": {
+      "start": 10.29,
+      "end": 15.43
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "handheld push"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c004",
+    "title": "",
+    "order": 3,
+    "purpose": "verse 1 performance — Fendi to camera; Closet expands.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 15.43,
+      "end": 18.86
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "gimbal orbit"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c005",
+    "title": "",
+    "order": 4,
+    "purpose": "insert: hardware / zipper pull glinting, extreme close-up — verse_1 texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "normal",
+    "timeline": {
+      "start": 18.86,
+      "end": 22.29
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "whip pan to reframe"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c006",
+    "title": "",
+    "order": 5,
+    "purpose": "verse 1 performance — Fendi to camera; Closet expands.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 22.29,
+      "end": 25.71
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "medium truck"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c007",
+    "title": "",
+    "order": 6,
+    "purpose": "verse 1 performance — Fendi to camera; Closet expands.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 25.71,
+      "end": 29.14
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "handheld push"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c008",
+    "title": "",
+    "order": 7,
+    "purpose": "macro insert: crystalline chain / jewelry catching light — verse_1 texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "normal",
+    "timeline": {
+      "start": 29.14,
+      "end": 32.57
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "gimbal orbit"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c009",
+    "title": "",
+    "order": 8,
+    "purpose": "verse 1 performance — Fendi to camera; Closet expands.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 32.57,
+      "end": 36
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "whip pan to reframe"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c010",
+    "title": "",
+    "order": 9,
+    "purpose": "verse 1 performance — Fendi to camera; Closet expands.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 36,
+      "end": 39.43
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "medium truck"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c011",
+    "title": "",
+    "order": 10,
+    "purpose": "insert: frost particles drifting across a mirrored surface — verse_1 texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "normal",
+    "timeline": {
+      "start": 39.43,
+      "end": 42.86
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "handheld push"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c012",
+    "title": "",
+    "order": 11,
+    "purpose": "verse 1 performance — Fendi to camera; Closet expands.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 42.86,
+      "end": 46.29
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "gimbal orbit"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c013",
+    "title": "",
+    "order": 12,
+    "purpose": "pre hook performance — Fendi to camera; Corridor of light forming.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "hero",
+    "timeline": {
+      "start": 46.29,
+      "end": 49.71
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Corridor of light forming — the vault seam cracks open toward a bright runway beyond.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "accelerating dolly"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Rising exposure, lens flares blooming toward frame-open; strobe-adjacent flicker.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c014",
+    "title": "",
+    "order": 13,
+    "purpose": "pre hook performance — Fendi to camera; Corridor of light forming.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 49.71,
+      "end": 53.14
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Corridor of light forming — the vault seam cracks open toward a bright runway beyond.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "snap zoom"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Rising exposure, lens flares blooming toward frame-open; strobe-adjacent flicker.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c015",
+    "title": "",
+    "order": 14,
+    "purpose": "insert: hardware / zipper pull glinting, extreme close-up — pre_hook texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "normal",
+    "timeline": {
+      "start": 53.14,
+      "end": 56.57
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Corridor of light forming — the vault seam cracks open toward a bright runway beyond.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "handheld build"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Rising exposure, lens flares blooming toward frame-open; strobe-adjacent flicker.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c016",
+    "title": "",
+    "order": 15,
+    "purpose": "DROP HERO — Full runway payoff. Fendi hits the beat in Look B — White Ice; frost particles, crystal sparkle, speed ramp on drop, light streaks.",
+    "kind": "generated",
+    "shotType": "vfx",
+    "priority": "hero",
+    "timeline": {
+      "start": 56.57,
+      "end": 60
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "fast gimbal orbit"
+    },
+    "lighting": {
+      "style": "",
+      "description": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [
+      {
+        "type": "vfx",
+        "description": "DROP HERO — Full runway payoff. Fendi hits the beat in Look B — White Ice; frost particles, crystal sparkle, speed ramp on drop, light streaks.",
+        "intensity": null
+      }
+    ],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c017",
+    "title": "",
+    "order": 16,
+    "purpose": "hook 1 performance — Fendi to camera; Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit..",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "high",
+    "timeline": {
+      "start": 60,
+      "end": 63.43
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "runway dolly"
+    },
+    "lighting": {
+      "style": "",
+      "description": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c018",
+    "title": "",
+    "order": 17,
+    "purpose": "insert: hardware / zipper pull glinting, extreme close-up — hook_1 texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "high",
+    "timeline": {
+      "start": 63.43,
+      "end": 66.86
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "low-angle hero push"
+    },
+    "lighting": {
+      "style": "",
+      "description": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c019",
+    "title": "",
+    "order": 18,
+    "purpose": "hook 1 performance — Fendi to camera; Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit..",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "high",
+    "timeline": {
+      "start": 66.86,
+      "end": 70.29
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "whip pan"
+    },
+    "lighting": {
+      "style": "",
+      "description": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c020",
+    "title": "",
+    "order": 19,
+    "purpose": "hook 1 performance — Fendi to camera; Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit..",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "high",
+    "timeline": {
+      "start": 70.29,
+      "end": 73.71
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "fast gimbal orbit"
+    },
+    "lighting": {
+      "style": "",
+      "description": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c021",
+    "title": "",
+    "order": 20,
+    "purpose": "macro insert: crystalline chain / jewelry catching light — hook_1 texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "high",
+    "timeline": {
+      "start": 73.71,
+      "end": 77.14
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "runway dolly"
+    },
+    "lighting": {
+      "style": "",
+      "description": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c022",
+    "title": "",
+    "order": 21,
+    "purpose": "hook 1 performance — Fendi to camera; Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit..",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "high",
+    "timeline": {
+      "start": 77.14,
+      "end": 80.57
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "low-angle hero push"
+    },
+    "lighting": {
+      "style": "",
+      "description": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c023",
+    "title": "",
+    "order": 22,
+    "purpose": "verse 2 performance — Fendi to camera; Designer showroom.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "hero",
+    "timeline": {
+      "start": 80.57,
+      "end": 84
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "slider glide"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c024",
+    "title": "",
+    "order": 23,
+    "purpose": "verse 2 performance — Fendi to camera; Designer showroom.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 84,
+      "end": 87.43
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "locked product static"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c025",
+    "title": "",
+    "order": 24,
+    "purpose": "insert: hardware / zipper pull glinting, extreme close-up — verse_2 texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "normal",
+    "timeline": {
+      "start": 87.43,
+      "end": 90.86
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "gimbal reveal"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c026",
+    "title": "",
+    "order": 25,
+    "purpose": "verse 2 performance — Fendi to camera; Designer showroom.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 90.86,
+      "end": 94.29
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "medium push"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c027",
+    "title": "",
+    "order": 26,
+    "purpose": "verse 2 performance — Fendi to camera; Designer showroom.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 94.29,
+      "end": 97.71
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "slider glide"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c028",
+    "title": "",
+    "order": 27,
+    "purpose": "macro insert: crystalline chain / jewelry catching light — verse_2 texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "normal",
+    "timeline": {
+      "start": 97.71,
+      "end": 101.14
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "locked product static"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c029",
+    "title": "",
+    "order": 28,
+    "purpose": "verse 2 performance — Fendi to camera; Designer showroom.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 101.14,
+      "end": 104.57
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "gimbal reveal"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c030",
+    "title": "",
+    "order": 29,
+    "purpose": "verse 2 performance — Fendi to camera; Designer showroom.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 104.57,
+      "end": 108
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "medium push"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c031",
+    "title": "",
+    "order": 30,
+    "purpose": "insert: frost particles drifting across a mirrored surface — verse_2 texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "normal",
+    "timeline": {
+      "start": 108,
+      "end": 111.43
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "slider glide"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c032",
+    "title": "",
+    "order": 31,
+    "purpose": "verse 2 performance — Fendi to camera; Designer showroom.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 111.43,
+      "end": 114.86
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look A — Onyx Tailoring",
+      "description": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "locked product static"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c033",
+    "title": "",
+    "order": 32,
+    "purpose": "DROP HERO — Bigger hook reprise. Fendi hits the beat in Look B — White Ice; heavy frost particles, beam sweep, mirror doubling, speed ramp.",
+    "kind": "generated",
+    "shotType": "vfx",
+    "priority": "hero",
+    "timeline": {
+      "start": 114.86,
+      "end": 118.29
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "crane descend"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [
+      {
+        "type": "vfx",
+        "description": "DROP HERO — Bigger hook reprise. Fendi hits the beat in Look B — White Ice; heavy frost particles, beam sweep, mirror doubling, speed ramp.",
+        "intensity": null
+      }
+    ],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c034",
+    "title": "",
+    "order": 33,
+    "purpose": "hook 2 performance — Fendi to camera; Runway world escalated.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "high",
+    "timeline": {
+      "start": 118.29,
+      "end": 121.71
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "fast orbit"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c035",
+    "title": "",
+    "order": 34,
+    "purpose": "insert: hardware / zipper pull glinting, extreme close-up — hook_2 texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "high",
+    "timeline": {
+      "start": 121.71,
+      "end": 125.14
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "hero low push"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c036",
+    "title": "",
+    "order": 35,
+    "purpose": "hook 2 performance — Fendi to camera; Runway world escalated.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "high",
+    "timeline": {
+      "start": 125.14,
+      "end": 128.57
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "whip pan"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c037",
+    "title": "",
+    "order": 36,
+    "purpose": "hook 2 performance — Fendi to camera; Runway world escalated.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "high",
+    "timeline": {
+      "start": 128.57,
+      "end": 132
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "crane descend"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c038",
+    "title": "",
+    "order": 37,
+    "purpose": "macro insert: crystalline chain / jewelry catching light — hook_2 texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "high",
+    "timeline": {
+      "start": 132,
+      "end": 135.43
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "fast orbit"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c039",
+    "title": "",
+    "order": 38,
+    "purpose": "hook 2 performance — Fendi to camera; Runway world escalated.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "high",
+    "timeline": {
+      "start": 135.43,
+      "end": 138.86
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "hero low push"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c040",
+    "title": "",
+    "order": 39,
+    "purpose": "bridge performance — Fendi to camera; After-hours neon boutique.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "hero",
+    "timeline": {
+      "start": 138.86,
+      "end": 144
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look C — Noir Slip",
+      "description": "Look C — Noir Slip: sheer black jewelry-forward YSL evening look for the after-hours bridge.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "After-hours neon boutique — wet reflective floor, signage glow, quiet luxury, city night beyond glass.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "slow reflective dolly"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Neon magenta/cyan wash, soft reflections, low-key intimate.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c041",
+    "title": "",
+    "order": 40,
+    "purpose": "bridge performance — Fendi to camera; After-hours neon boutique.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 144,
+      "end": 149.14
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look C — Noir Slip",
+      "description": "Look C — Noir Slip: sheer black jewelry-forward YSL evening look for the after-hours bridge.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "After-hours neon boutique — wet reflective floor, signage glow, quiet luxury, city night beyond glass.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "static intimate"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Neon magenta/cyan wash, soft reflections, low-key intimate.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c042",
+    "title": "",
+    "order": 41,
+    "purpose": "insert: hardware / zipper pull glinting, extreme close-up — bridge texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "normal",
+    "timeline": {
+      "start": 149.14,
+      "end": 154.29
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look C — Noir Slip",
+      "description": "Look C — Noir Slip: sheer black jewelry-forward YSL evening look for the after-hours bridge.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "After-hours neon boutique — wet reflective floor, signage glow, quiet luxury, city night beyond glass.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "gentle handheld"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Neon magenta/cyan wash, soft reflections, low-key intimate.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c043",
+    "title": "",
+    "order": 42,
+    "purpose": "bridge performance — Fendi to camera; After-hours neon boutique.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "normal",
+    "timeline": {
+      "start": 154.29,
+      "end": 159.43
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look C — Noir Slip",
+      "description": "Look C — Noir Slip: sheer black jewelry-forward YSL evening look for the after-hours bridge.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "After-hours neon boutique — wet reflective floor, signage glow, quiet luxury, city night beyond glass.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "slow reflective dolly"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Neon magenta/cyan wash, soft reflections, low-key intimate.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c044",
+    "title": "",
+    "order": 43,
+    "purpose": "DROP HERO — Final payoff + button. Fendi hits the beat in Look B — White Ice; mirror multiplication, frost settle, final flare, speed ramp.",
+    "kind": "generated",
+    "shotType": "vfx",
+    "priority": "hero",
+    "timeline": {
+      "start": 159.43,
+      "end": 162.86
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "hero low push"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [
+      {
+        "type": "vfx",
+        "description": "DROP HERO — Final payoff + button. Fendi hits the beat in Look B — White Ice; mirror multiplication, frost settle, final flare, speed ramp.",
+        "intensity": null
+      }
+    ],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c045",
+    "title": "",
+    "order": 44,
+    "purpose": "hook 3 performance — Fendi to camera; Closet-as-gallery.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "high",
+    "timeline": {
+      "start": 162.86,
+      "end": 166.29
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "fast orbit"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c046",
+    "title": "",
+    "order": 45,
+    "purpose": "insert: hardware / zipper pull glinting, extreme close-up — hook_3 texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "high",
+    "timeline": {
+      "start": 166.29,
+      "end": 169.71
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "mirror-multiply lock"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c047",
+    "title": "",
+    "order": 46,
+    "purpose": "DROP HERO — Final payoff + button. Fendi hits the beat in Look B — White Ice; mirror multiplication, frost settle, final flare, speed ramp.",
+    "kind": "generated",
+    "shotType": "vfx",
+    "priority": "hero",
+    "timeline": {
+      "start": 169.71,
+      "end": 173.14
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "crane up and out"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [
+      {
+        "type": "vfx",
+        "description": "DROP HERO — Final payoff + button. Fendi hits the beat in Look B — White Ice; mirror multiplication, frost settle, final flare, speed ramp.",
+        "intensity": null
+      }
+    ],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c048",
+    "title": "",
+    "order": 47,
+    "purpose": "hook 3 performance — Fendi to camera; Closet-as-gallery.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "high",
+    "timeline": {
+      "start": 173.14,
+      "end": 176.57
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "hero low push"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c049",
+    "title": "",
+    "order": 48,
+    "purpose": "macro insert: crystalline chain / jewelry catching light — hook_3 texture.",
+    "kind": "broll",
+    "shotType": "b_roll",
+    "priority": "high",
+    "timeline": {
+      "start": 176.57,
+      "end": 180
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "fast orbit"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": true,
+      "engine": "grok",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": false,
+      "mode": "",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [],
+      "notes": ""
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  },
+  {
+    "version": 1,
+    "id": "c050",
+    "title": "",
+    "order": 49,
+    "purpose": "hook 3 performance — Fendi to camera; Closet-as-gallery.",
+    "kind": "performance",
+    "shotType": "performance",
+    "priority": "high",
+    "timeline": {
+      "start": 180,
+      "end": 185
+    },
+    "source": {
+      "kind": "none",
+      "mediaId": null,
+      "uri": null,
+      "range": null,
+      "note": ""
+    },
+    "wardrobe": {
+      "name": "Look B — White Ice",
+      "description": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "lookId": null,
+      "references": []
+    },
+    "environment": {
+      "description": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "location": "",
+      "timeOfDay": "",
+      "references": []
+    },
+    "framing": null,
+    "cameraAngle": null,
+    "lens": {
+      "focalLengthMm": null,
+      "aperture": "",
+      "description": ""
+    },
+    "cameraMotion": {
+      "type": "static",
+      "description": "mirror-multiply lock"
+    },
+    "lighting": {
+      "style": "",
+      "description": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "references": []
+    },
+    "performanceDirection": "",
+    "fx": [],
+    "transitionIn": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "transitionOut": {
+      "type": "cut",
+      "durationSeconds": null
+    },
+    "references": [],
+    "previs": {
+      "status": "none",
+      "uri": null,
+      "notes": ""
+    },
+    "generation": {
+      "required": false,
+      "engine": "manual",
+      "model": "",
+      "prompt": "",
+      "negativePrompt": "",
+      "seed": null,
+      "parameters": {},
+      "notes": ""
+    },
+    "reconstruction": {
+      "required": true,
+      "mode": "keyframe_propagation",
+      "maskVersion": null,
+      "referenceAssetHash": null,
+      "preserve": [
+        "face",
+        "scene",
+        "body"
+      ],
+      "notes": "Preserve Fendi identity + master performance; swap wardrobe to locked look."
+    },
+    "qa": [],
+    "status": "planned",
+    "provenance": {
+      "source": "ai",
+      "createdAt": "2026-09-19T00:00:00.000Z",
+      "updatedAt": null,
+      "author": null,
+      "model": "director:grok-bot+claude-code (deterministic seed)",
+      "notes": ""
+    }
+  }
+]

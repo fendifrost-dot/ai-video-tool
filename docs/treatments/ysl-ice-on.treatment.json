@@ -1,0 +1,1202 @@
+{
+  "version": 2,
+  "project_type": "music_video",
+  "concept": "THE COLD ROOM — Fendi's real full-song closet performance is transformed, section by section, into a shifting luxury world: a jewel vault, an infinite mirrored runway, a designer showroom, an after-hours neon boutique, and finally a gallery. The garments are the 'ice' — jewel-lit, frost-wrapped. Luxury runway fashion film × designer commercial × kinetic rap. The closet must stop reading as a closet.",
+  "narrative": "We open on Fendi caged in a cold vault (the closet as a jewel safe). As the verse ignites, the walls slide back into an infinite mirrored wardrobe; the pre-hook cracks a corridor of light. On the drop, the closet is gone — a full luxury runway with volumetric shafts and suspended frost, Fendi in White Ice (Look B). Verse two cools into a glass-vitrine designer showroom (commercial polish). Hook two escalates the runway. The bridge exhales in a neon after-hours boutique (Look C). The final hook returns to the closet — but it is now a lit gallery, the transformation permanent — mirror-multiplied hero and a hard button.",
+  "sections": [
+    {
+      "name": "intro",
+      "intent": "Establish the cold vault. Closet reads as a jewel safe, not a bedroom closet. Slow reveal of Fendi in Look A."
+    },
+    {
+      "name": "verse_1",
+      "intent": "Kinetic verse. Closet walls slide back into an infinite mirrored wardrobe/soft runway. Fendi delivers to camera."
+    },
+    {
+      "name": "pre_hook",
+      "intent": "Tension build to the drop. Tighten, accelerate cuts, hint at the White Ice look through a doorway of light."
+    },
+    {
+      "name": "hook_1",
+      "intent": "Full runway payoff. Look B (White Ice). Volumetric shafts, frost particles, rapid rhythmic cuts + jewelry macro inserts. Closet is gone — pure luxury-runway world."
+    },
+    {
+      "name": "verse_2",
+      "intent": "Designer-commercial verse. Glass-vitrine showroom; product-grade lighting on garment + accessories. Back to Look A energy with commercial polish."
+    },
+    {
+      "name": "hook_2",
+      "intent": "Bigger hook reprise. Runway world returns hotter — more particles, wider crane moves, escalating cut rate."
+    },
+    {
+      "name": "bridge",
+      "intent": "After-hours cooldown. Neon boutique, wet reflective floor, Look C. Slower, intimate, jewelry-forward — breath before the final hook."
+    },
+    {
+      "name": "hook_3",
+      "intent": "Final payoff + button. Closet returns as a gallery — the space is transformed for good. Mirror-multiplied hero, biggest energy, hard out."
+    }
+  ],
+  "clips": [
+    {
+      "key": "c001",
+      "start": 0,
+      "end": 5.14,
+      "section": "intro",
+      "energy": "low",
+      "shot_type": "performance",
+      "scene_description": "intro performance — Fendi to camera; The closet as a dim luxury vault.",
+      "camera_direction": "slow dolly-in",
+      "lighting": "Cold blue rim + single hard key; deep shadow, high-gloss speculars on hardware.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "The closet as a dim luxury vault — backlit garment bags glowing, mirrored black floor, cold negative space.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "hero",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c002",
+      "start": 5.14,
+      "end": 10.29,
+      "section": "intro",
+      "energy": "low",
+      "shot_type": "performance",
+      "scene_description": "intro performance — Fendi to camera; The closet as a dim luxury vault.",
+      "camera_direction": "static locked",
+      "lighting": "Cold blue rim + single hard key; deep shadow, high-gloss speculars on hardware.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "The closet as a dim luxury vault — backlit garment bags glowing, mirrored black floor, cold negative space.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c003",
+      "start": 10.29,
+      "end": 15.43,
+      "section": "verse_1",
+      "energy": "low",
+      "shot_type": "performance",
+      "scene_description": "verse 1 performance — Fendi to camera; Closet expands.",
+      "camera_direction": "handheld push",
+      "lighting": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "hero",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c004",
+      "start": 15.43,
+      "end": 18.86,
+      "section": "verse_1",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "verse 1 performance — Fendi to camera; Closet expands.",
+      "camera_direction": "gimbal orbit",
+      "lighting": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c005",
+      "start": 18.86,
+      "end": 22.29,
+      "section": "verse_1",
+      "energy": "mid",
+      "shot_type": "b_roll",
+      "scene_description": "insert: hardware / zipper pull glinting, extreme close-up — verse_1 texture.",
+      "camera_direction": "whip pan to reframe",
+      "lighting": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": []
+    },
+    {
+      "key": "c006",
+      "start": 22.29,
+      "end": 25.71,
+      "section": "verse_1",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "verse 1 performance — Fendi to camera; Closet expands.",
+      "camera_direction": "medium truck",
+      "lighting": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c007",
+      "start": 25.71,
+      "end": 29.14,
+      "section": "verse_1",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "verse 1 performance — Fendi to camera; Closet expands.",
+      "camera_direction": "handheld push",
+      "lighting": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c008",
+      "start": 29.14,
+      "end": 32.57,
+      "section": "verse_1",
+      "energy": "mid",
+      "shot_type": "b_roll",
+      "scene_description": "macro insert: crystalline chain / jewelry catching light — verse_1 texture.",
+      "camera_direction": "gimbal orbit",
+      "lighting": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": []
+    },
+    {
+      "key": "c009",
+      "start": 32.57,
+      "end": 36,
+      "section": "verse_1",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "verse 1 performance — Fendi to camera; Closet expands.",
+      "camera_direction": "whip pan to reframe",
+      "lighting": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c010",
+      "start": 36,
+      "end": 39.43,
+      "section": "verse_1",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "verse 1 performance — Fendi to camera; Closet expands.",
+      "camera_direction": "medium truck",
+      "lighting": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c011",
+      "start": 39.43,
+      "end": 42.86,
+      "section": "verse_1",
+      "energy": "mid",
+      "shot_type": "b_roll",
+      "scene_description": "insert: frost particles drifting across a mirrored surface — verse_1 texture.",
+      "camera_direction": "handheld push",
+      "lighting": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": []
+    },
+    {
+      "key": "c012",
+      "start": 42.86,
+      "end": 46.29,
+      "section": "verse_1",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "verse 1 performance — Fendi to camera; Closet expands.",
+      "camera_direction": "gimbal orbit",
+      "lighting": "Punchy key with mirror kick-back; cool wardrobe practicals, controlled contrast.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Closet expands — infinite mirrored wardrobe corridor, garment racks receding into a soft runway.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c013",
+      "start": 46.29,
+      "end": 49.71,
+      "section": "pre_hook",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "pre hook performance — Fendi to camera; Corridor of light forming.",
+      "camera_direction": "accelerating dolly",
+      "lighting": "Rising exposure, lens flares blooming toward frame-open; strobe-adjacent flicker.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Corridor of light forming — the vault seam cracks open toward a bright runway beyond.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "hero",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c014",
+      "start": 49.71,
+      "end": 53.14,
+      "section": "pre_hook",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "pre hook performance — Fendi to camera; Corridor of light forming.",
+      "camera_direction": "snap zoom",
+      "lighting": "Rising exposure, lens flares blooming toward frame-open; strobe-adjacent flicker.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Corridor of light forming — the vault seam cracks open toward a bright runway beyond.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c015",
+      "start": 53.14,
+      "end": 56.57,
+      "section": "pre_hook",
+      "energy": "mid",
+      "shot_type": "b_roll",
+      "scene_description": "insert: hardware / zipper pull glinting, extreme close-up — pre_hook texture.",
+      "camera_direction": "handheld build",
+      "lighting": "Rising exposure, lens flares blooming toward frame-open; strobe-adjacent flicker.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Corridor of light forming — the vault seam cracks open toward a bright runway beyond.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": []
+    },
+    {
+      "key": "c016",
+      "start": 56.57,
+      "end": 60,
+      "section": "hook_1",
+      "energy": "drop",
+      "shot_type": "vfx",
+      "scene_description": "DROP HERO — Full runway payoff. Fendi hits the beat in Look B — White Ice; frost particles, crystal sparkle, speed ramp on drop, light streaks.",
+      "camera_direction": "fast gimbal orbit",
+      "lighting": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "hero",
+      "dependencies": [
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c017",
+      "start": 60,
+      "end": 63.43,
+      "section": "hook_1",
+      "energy": "high",
+      "shot_type": "performance",
+      "scene_description": "hook 1 performance — Fendi to camera; Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit..",
+      "camera_direction": "runway dolly",
+      "lighting": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look B — White Ice",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        },
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c018",
+      "start": 63.43,
+      "end": 66.86,
+      "section": "hook_1",
+      "energy": "high",
+      "shot_type": "b_roll",
+      "scene_description": "insert: hardware / zipper pull glinting, extreme close-up — hook_1 texture.",
+      "camera_direction": "low-angle hero push",
+      "lighting": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c019",
+      "start": 66.86,
+      "end": 70.29,
+      "section": "hook_1",
+      "energy": "high",
+      "shot_type": "performance",
+      "scene_description": "hook 1 performance — Fendi to camera; Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit..",
+      "camera_direction": "whip pan",
+      "lighting": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look B — White Ice",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        },
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c020",
+      "start": 70.29,
+      "end": 73.71,
+      "section": "hook_1",
+      "energy": "high",
+      "shot_type": "performance",
+      "scene_description": "hook 1 performance — Fendi to camera; Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit..",
+      "camera_direction": "fast gimbal orbit",
+      "lighting": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look B — White Ice",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        },
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c021",
+      "start": 73.71,
+      "end": 77.14,
+      "section": "hook_1",
+      "energy": "high",
+      "shot_type": "b_roll",
+      "scene_description": "macro insert: crystalline chain / jewelry catching light — hook_1 texture.",
+      "camera_direction": "runway dolly",
+      "lighting": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c022",
+      "start": 77.14,
+      "end": 80.57,
+      "section": "hook_1",
+      "energy": "high",
+      "shot_type": "performance",
+      "scene_description": "hook 1 performance — Fendi to camera; Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit..",
+      "camera_direction": "low-angle hero push",
+      "lighting": "High-key runway with hard volumetric shafts; crystalline sparkle on garment and ice.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Full runway with volumetric light shafts, suspended frost/ice particles, glossy infinity floor, jewel-lit.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look B — White Ice",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        },
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c023",
+      "start": 80.57,
+      "end": 84,
+      "section": "verse_2",
+      "energy": "high",
+      "shot_type": "performance",
+      "scene_description": "verse 2 performance — Fendi to camera; Designer showroom.",
+      "camera_direction": "slider glide",
+      "lighting": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "hero",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c024",
+      "start": 84,
+      "end": 87.43,
+      "section": "verse_2",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "verse 2 performance — Fendi to camera; Designer showroom.",
+      "camera_direction": "locked product static",
+      "lighting": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c025",
+      "start": 87.43,
+      "end": 90.86,
+      "section": "verse_2",
+      "energy": "mid",
+      "shot_type": "b_roll",
+      "scene_description": "insert: hardware / zipper pull glinting, extreme close-up — verse_2 texture.",
+      "camera_direction": "gimbal reveal",
+      "lighting": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": []
+    },
+    {
+      "key": "c026",
+      "start": 90.86,
+      "end": 94.29,
+      "section": "verse_2",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "verse 2 performance — Fendi to camera; Designer showroom.",
+      "camera_direction": "medium push",
+      "lighting": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c027",
+      "start": 94.29,
+      "end": 97.71,
+      "section": "verse_2",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "verse 2 performance — Fendi to camera; Designer showroom.",
+      "camera_direction": "slider glide",
+      "lighting": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c028",
+      "start": 97.71,
+      "end": 101.14,
+      "section": "verse_2",
+      "energy": "mid",
+      "shot_type": "b_roll",
+      "scene_description": "macro insert: crystalline chain / jewelry catching light — verse_2 texture.",
+      "camera_direction": "locked product static",
+      "lighting": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": []
+    },
+    {
+      "key": "c029",
+      "start": 101.14,
+      "end": 104.57,
+      "section": "verse_2",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "verse 2 performance — Fendi to camera; Designer showroom.",
+      "camera_direction": "gimbal reveal",
+      "lighting": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c030",
+      "start": 104.57,
+      "end": 108,
+      "section": "verse_2",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "verse 2 performance — Fendi to camera; Designer showroom.",
+      "camera_direction": "medium push",
+      "lighting": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c031",
+      "start": 108,
+      "end": 111.43,
+      "section": "verse_2",
+      "energy": "mid",
+      "shot_type": "b_roll",
+      "scene_description": "insert: frost particles drifting across a mirrored surface — verse_2 texture.",
+      "camera_direction": "slider glide",
+      "lighting": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": []
+    },
+    {
+      "key": "c032",
+      "start": 111.43,
+      "end": 114.86,
+      "section": "verse_2",
+      "energy": "mid",
+      "shot_type": "performance",
+      "scene_description": "verse 2 performance — Fendi to camera; Designer showroom.",
+      "camera_direction": "locked product static",
+      "lighting": "Soft product key + rim, controlled reflections, editorial catalog polish.",
+      "wardrobe": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "environment": "Designer showroom — glass vitrines, plinths with accessories, seamless cyclorama; commercial cleanliness.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look A — Onyx Tailoring",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c033",
+      "start": 114.86,
+      "end": 118.29,
+      "section": "hook_2",
+      "energy": "drop",
+      "shot_type": "vfx",
+      "scene_description": "DROP HERO — Bigger hook reprise. Fendi hits the beat in Look B — White Ice; heavy frost particles, beam sweep, mirror doubling, speed ramp.",
+      "camera_direction": "crane descend",
+      "lighting": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "hero",
+      "dependencies": [
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c034",
+      "start": 118.29,
+      "end": 121.71,
+      "section": "hook_2",
+      "energy": "high",
+      "shot_type": "performance",
+      "scene_description": "hook 2 performance — Fendi to camera; Runway world escalated.",
+      "camera_direction": "fast orbit",
+      "lighting": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look B — White Ice",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        },
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c035",
+      "start": 121.71,
+      "end": 125.14,
+      "section": "hook_2",
+      "energy": "high",
+      "shot_type": "b_roll",
+      "scene_description": "insert: hardware / zipper pull glinting, extreme close-up — hook_2 texture.",
+      "camera_direction": "hero low push",
+      "lighting": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c036",
+      "start": 125.14,
+      "end": 128.57,
+      "section": "hook_2",
+      "energy": "high",
+      "shot_type": "performance",
+      "scene_description": "hook 2 performance — Fendi to camera; Runway world escalated.",
+      "camera_direction": "whip pan",
+      "lighting": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look B — White Ice",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        },
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c037",
+      "start": 128.57,
+      "end": 132,
+      "section": "hook_2",
+      "energy": "high",
+      "shot_type": "performance",
+      "scene_description": "hook 2 performance — Fendi to camera; Runway world escalated.",
+      "camera_direction": "crane descend",
+      "lighting": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look B — White Ice",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        },
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c038",
+      "start": 132,
+      "end": 135.43,
+      "section": "hook_2",
+      "energy": "high",
+      "shot_type": "b_roll",
+      "scene_description": "macro insert: crystalline chain / jewelry catching light — hook_2 texture.",
+      "camera_direction": "fast orbit",
+      "lighting": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c039",
+      "start": 135.43,
+      "end": 138.86,
+      "section": "hook_2",
+      "energy": "high",
+      "shot_type": "performance",
+      "scene_description": "hook 2 performance — Fendi to camera; Runway world escalated.",
+      "camera_direction": "hero low push",
+      "lighting": "Punchier volumetrics, moving beams, hot crystalline speculars.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Runway world escalated — deeper haze, more frost, mirrored wings doubling the figure.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look B — White Ice",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        },
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c040",
+      "start": 138.86,
+      "end": 144,
+      "section": "bridge",
+      "energy": "low",
+      "shot_type": "performance",
+      "scene_description": "bridge performance — Fendi to camera; After-hours neon boutique.",
+      "camera_direction": "slow reflective dolly",
+      "lighting": "Neon magenta/cyan wash, soft reflections, low-key intimate.",
+      "wardrobe": "Look C — Noir Slip: sheer black jewelry-forward YSL evening look for the after-hours bridge.",
+      "environment": "After-hours neon boutique — wet reflective floor, signage glow, quiet luxury, city night beyond glass.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "hero",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look C — Noir Slip",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c041",
+      "start": 144,
+      "end": 149.14,
+      "section": "bridge",
+      "energy": "low",
+      "shot_type": "performance",
+      "scene_description": "bridge performance — Fendi to camera; After-hours neon boutique.",
+      "camera_direction": "static intimate",
+      "lighting": "Neon magenta/cyan wash, soft reflections, low-key intimate.",
+      "wardrobe": "Look C — Noir Slip: sheer black jewelry-forward YSL evening look for the after-hours bridge.",
+      "environment": "After-hours neon boutique — wet reflective floor, signage glow, quiet luxury, city night beyond glass.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look C — Noir Slip",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c042",
+      "start": 149.14,
+      "end": 154.29,
+      "section": "bridge",
+      "energy": "low",
+      "shot_type": "b_roll",
+      "scene_description": "insert: hardware / zipper pull glinting, extreme close-up — bridge texture.",
+      "camera_direction": "gentle handheld",
+      "lighting": "Neon magenta/cyan wash, soft reflections, low-key intimate.",
+      "wardrobe": "Look C — Noir Slip: sheer black jewelry-forward YSL evening look for the after-hours bridge.",
+      "environment": "After-hours neon boutique — wet reflective floor, signage glow, quiet luxury, city night beyond glass.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": []
+    },
+    {
+      "key": "c043",
+      "start": 154.29,
+      "end": 159.43,
+      "section": "bridge",
+      "energy": "low",
+      "shot_type": "performance",
+      "scene_description": "bridge performance — Fendi to camera; After-hours neon boutique.",
+      "camera_direction": "slow reflective dolly",
+      "lighting": "Neon magenta/cyan wash, soft reflections, low-key intimate.",
+      "wardrobe": "Look C — Noir Slip: sheer black jewelry-forward YSL evening look for the after-hours bridge.",
+      "environment": "After-hours neon boutique — wet reflective floor, signage glow, quiet luxury, city night beyond glass.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "normal",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look C — Noir Slip",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        }
+      ]
+    },
+    {
+      "key": "c044",
+      "start": 159.43,
+      "end": 162.86,
+      "section": "hook_3",
+      "energy": "drop",
+      "shot_type": "vfx",
+      "scene_description": "DROP HERO — Final payoff + button. Fendi hits the beat in Look B — White Ice; mirror multiplication, frost settle, final flare, speed ramp.",
+      "camera_direction": "hero low push",
+      "lighting": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "hero",
+      "dependencies": [
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c045",
+      "start": 162.86,
+      "end": 166.29,
+      "section": "hook_3",
+      "energy": "high",
+      "shot_type": "performance",
+      "scene_description": "hook 3 performance — Fendi to camera; Closet-as-gallery.",
+      "camera_direction": "fast orbit",
+      "lighting": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look B — White Ice",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        },
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c046",
+      "start": 166.29,
+      "end": 169.71,
+      "section": "hook_3",
+      "energy": "high",
+      "shot_type": "b_roll",
+      "scene_description": "insert: hardware / zipper pull glinting, extreme close-up — hook_3 texture.",
+      "camera_direction": "mirror-multiply lock",
+      "lighting": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c047",
+      "start": 169.71,
+      "end": 173.14,
+      "section": "hook_3",
+      "energy": "drop",
+      "shot_type": "vfx",
+      "scene_description": "DROP HERO — Final payoff + button. Fendi hits the beat in Look B — White Ice; mirror multiplication, frost settle, final flare, speed ramp.",
+      "camera_direction": "crane up and out",
+      "lighting": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "hero",
+      "dependencies": [
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c048",
+      "start": 173.14,
+      "end": 176.57,
+      "section": "hook_3",
+      "energy": "high",
+      "shot_type": "performance",
+      "scene_description": "hook 3 performance — Fendi to camera; Closet-as-gallery.",
+      "camera_direction": "hero low push",
+      "lighting": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look B — White Ice",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        },
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c049",
+      "start": 176.57,
+      "end": 180,
+      "section": "hook_3",
+      "energy": "high",
+      "shot_type": "b_roll",
+      "scene_description": "macro insert: crystalline chain / jewelry catching light — hook_3 texture.",
+      "camera_direction": "fast orbit",
+      "lighting": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "recommended_tool": "grok",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    },
+    {
+      "key": "c050",
+      "start": 180,
+      "end": 185,
+      "section": "hook_3",
+      "energy": "high",
+      "shot_type": "performance",
+      "scene_description": "hook 3 performance — Fendi to camera; Closet-as-gallery.",
+      "camera_direction": "mirror-multiply lock",
+      "lighting": "Gallery hero key + volumetric finish; final crystalline flare then clean out.",
+      "wardrobe": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "environment": "Closet-as-gallery — the vault, now lit like an exhibition; mirror-multiplied hero figure, frost settling.",
+      "recommended_tool": "manual",
+      "lyric_ref": null,
+      "priority": "high",
+      "dependencies": [
+        {
+          "kind": "reference_image",
+          "look": "Look B — White Ice",
+          "note": "Cut from master closet performance (IMG_5633.mov); wardrobe swap to locked look via keyframe+propagation (see VIDEO_SWAP_ARCHITECTURE.md)."
+        },
+        {
+          "kind": "look_composite",
+          "look": "Look B — White Ice",
+          "note": "Composite performance onto generated luxury-runway world; frost/particle FX pass."
+        }
+      ]
+    }
+  ],
+  "model": "director:grok-bot+claude-code (deterministic seed)",
+  "generated_at": "2026-09-19T00:00:00.000Z",
+  "text": "THE COLD ROOM — YSL (Ice On) full-song treatment. Transform Fendi's real closet performance into a luxury-runway world across 8 sections; >=2 YSL looks (Onyx Tailoring / White Ice / Noir Slip accent)."
+}
