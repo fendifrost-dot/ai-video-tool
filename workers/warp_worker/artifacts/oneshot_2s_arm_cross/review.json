@@ -1,0 +1,53 @@
+{
+  "outcome": "CONDITIONAL PASS",
+  "isolated_weakness": "Garment-detail transfer is UNPROVEN: the real Kolors base frames and Grok correction anchors (and SAM masks) are not yet wired \u2014 BLOCKED on the separate preflight/upload deploy. The flow/gate/composite/brand/status machinery is validated on real footage and holds identity + temporal stability, but product-fidelity and base-quality cannot be scored until those inputs arrive. Do NOT read this as garment fidelity proven.",
+  "dims": [
+    {
+      "name": "base_frame_quality",
+      "status": "BLOCKED",
+      "value": "no Kolors base",
+      "rationale": "Base = source frame (identity stand-in). Real Kolors geometry authority not wired; cannot score base-frame quality."
+    },
+    {
+      "name": "temporal_stability",
+      "status": "PASS",
+      "value": "flicker_ratio=0.955, residual_max=7.706",
+      "rationale": "Frame-to-frame garment stability across the WHOLE clip; residual peak marks worst drift."
+    },
+    {
+      "name": "product_fidelity",
+      "status": "BLOCKED",
+      "value": "no Grok detail",
+      "rationale": "No Grok correction anchor supplied \u2192 garment construction improvement toward Grok is untested. This is the CENTRAL product question and it is not answered by this run."
+    },
+    {
+      "name": "occlusion_correctness",
+      "status": "WARN",
+      "value": "worst-occ frame #117 skin 33%",
+      "rationale": "Hands/arms occlusion is real (skin mask restore). Sleeve/collar boundaries rely on COARSE masks \u2192 WARN until SAM masks are wired."
+    },
+    {
+      "name": "artifact_severity",
+      "status": "PASS",
+      "value": "edge_halo=0.328",
+      "rationale": "Halo/edge-crawl just outside the garment mask. Low = clean composite boundary. Coarse masks can still leave in-region softness not captured here."
+    }
+  ],
+  "questions": {
+    "1_identity_pose_at_kolors": "Identity/pose OUTSIDE the garment is preserved against the SOURCE (mean |\u0394| = 0.022 gray levels \u2248 lossless). But 'at the Kolors baseline' is UNPROVEN: no Kolors-only frames were supplied to compare against (PENDING).",
+    "2_construction_toward_grok": "NOT DEMONSTRATED. No Grok correction anchor was supplied to this run \u2014 the garment content is the propagated SOURCE garment plus a synthetic tracked stripe, so no movement 'toward Grok construction' can be claimed. Requires --grok-dir (PENDING).",
+    "3_stripe_logo_stable": "Stripe/logo placement is a DETERMINISTIC tracked layer; its width coefficient-of-variation across the clip = 0.0257 (target <0.08 \u2192 stable). It does not 'swim' because it is not generated. (Real logo art plugs in via --brand-asset.)",
+    "4_hands_sleeves_occlusion": "Hands/arms are restored ON TOP from the original footage via a REAL YCrCb skin mask, so genuine occlusion wins over the swap at the worst-occlusion frame (#117, skin-in-chest 33%). Sleeves/collar use COARSE heuristic masks (not SAM), so their structural realism is only approximate here.",
+    "5_stable_whole_shot": "Across all 120 frames the garment-region temporal difference of the output vs the source gives flicker_ratio = 0.955 (target <1.35 \u2192 ok). Worst composite flicker at frame #119. Cumulative propagation residual peaks 7.7 gray at frame #98 (mean 3.3); re-anchor pops = the gate flags those, it does not hide them."
+  },
+  "worst": {
+    "pose": 119,
+    "occlusion": 117,
+    "residual": 98,
+    "flicker": 119
+  },
+  "blocked": [
+    "base_frame_quality (needs frozen Kolors per-frame VTON frames \u2192 --kolors-dir/--base)",
+    "product_fidelity (needs approved Grok correction anchors \u2192 --grok-dir/--anchors)"
+  ]
+}

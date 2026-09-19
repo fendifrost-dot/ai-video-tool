@@ -1,0 +1,1358 @@
+{
+  "created_at": "+0.0s",
+  "frame_count": 120,
+  "frames": {
+    "0": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00000.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 0,
+      "kind": "anchor",
+      "reasons": [],
+      "status": "done"
+    },
+    "1": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00001.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 1,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "10": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00010.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 10,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "100": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00100.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 100,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "101": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00101.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 101,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "102": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00102.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 102,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "103": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00103.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 103,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "104": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00104.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 104,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "105": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00105.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 105,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "106": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00106.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 106,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "107": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00107.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 107,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "108": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00108.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 108,
+      "kind": "anchor",
+      "reasons": [],
+      "status": "done"
+    },
+    "109": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00109.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 109,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "11": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00011.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 11,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "110": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00110.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 110,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "111": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00111.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 111,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "112": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00112.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 112,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "113": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00113.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 113,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "114": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00114.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 114,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "115": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00115.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 115,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "116": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00116.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 116,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "117": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00117.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 117,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "118": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00118.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 118,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "119": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00119.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 119,
+      "kind": "anchor",
+      "reasons": [],
+      "status": "done"
+    },
+    "12": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00012.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 12,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "13": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00013.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 13,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "14": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00014.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 14,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "15": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00015.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 15,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "16": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00016.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 16,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "17": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00017.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 17,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "18": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00018.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 18,
+      "kind": "anchor",
+      "reasons": [],
+      "status": "done"
+    },
+    "19": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00019.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 19,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "2": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00002.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 2,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "20": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00020.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 20,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "21": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00021.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 21,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "22": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00022.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 22,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "23": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00023.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 23,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "24": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00024.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 24,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "25": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00025.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 25,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "26": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00026.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 26,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "27": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00027.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 27,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "28": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00028.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 28,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "29": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00029.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 29,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "3": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00003.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 3,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "30": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00030.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 30,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "31": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00031.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 31,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "32": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00032.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 32,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "33": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00033.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 33,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "34": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00034.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 34,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "35": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00035.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 35,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "36": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00036.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 36,
+      "kind": "anchor",
+      "reasons": [],
+      "status": "done"
+    },
+    "37": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00037.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 37,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "38": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00038.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 38,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "39": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00039.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 39,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "4": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00004.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 4,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "40": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00040.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 40,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "41": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00041.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 41,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "42": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00042.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 42,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "43": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00043.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 43,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "44": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00044.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 44,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "45": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00045.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 45,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "46": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00046.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 46,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "47": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00047.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 47,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "48": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00048.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 48,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "49": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00049.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 49,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "5": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00005.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 5,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "50": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00050.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 50,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "51": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00051.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 51,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "52": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00052.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 52,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "53": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00053.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 53,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "54": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00054.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 54,
+      "kind": "anchor",
+      "reasons": [],
+      "status": "done"
+    },
+    "55": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00055.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 55,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "56": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00056.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 56,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "57": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00057.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 57,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "58": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00058.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 58,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "59": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00059.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 59,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "6": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00006.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 6,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "60": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00060.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 60,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "61": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00061.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 61,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "62": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00062.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 62,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "63": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00063.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 63,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "64": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00064.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 64,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "65": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00065.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 65,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "66": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00066.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 66,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "67": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00067.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 67,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "68": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00068.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 68,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "69": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00069.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 69,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "7": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00007.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 7,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "70": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00070.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 70,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "71": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00071.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 71,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "72": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00072.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 72,
+      "kind": "anchor",
+      "reasons": [],
+      "status": "done"
+    },
+    "73": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00073.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 73,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "74": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00074.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 74,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "75": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00075.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 75,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "76": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00076.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 76,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "77": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00077.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 77,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "78": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00078.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 78,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "79": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00079.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 79,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "8": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00008.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 8,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "80": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00080.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 80,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "81": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00081.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 81,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "82": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00082.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 82,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "83": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00083.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 83,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "84": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00084.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 84,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "85": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00085.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 85,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "86": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00086.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 86,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "87": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00087.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 87,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "88": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00088.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 88,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "89": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00089.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 89,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "9": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00009.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 9,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "90": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00090.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 90,
+      "kind": "anchor",
+      "reasons": [],
+      "status": "done"
+    },
+    "91": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00091.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 91,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "92": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00092.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 92,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "93": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00093.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 93,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "94": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00094.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 94,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "95": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00095.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 95,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "96": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00096.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 96,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "97": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00097.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 97,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "98": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00098.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 98,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    },
+    "99": {
+      "artifacts": {
+        "composite": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/warp_worker_out/oneshot_2s_arm_cross/composite/frame_00099.png"
+      },
+      "attempts": 0,
+      "error": null,
+      "index": 99,
+      "kind": "propagated",
+      "reasons": [],
+      "status": "done"
+    }
+  },
+  "job_status": "ready",
+  "reanchor_needed": [],
+  "reanchor_reasons": {},
+  "repro": {
+    "anchors_provided": [],
+    "base_provided": false,
+    "brand_asset": "synthetic",
+    "cadence_frames": 18,
+    "detail_authority": "grok",
+    "flow_engine": "opencv-dis-medium",
+    "geometry_authority": "kolors",
+    "masks_provided": [],
+    "shot_id": "oneshot_2s_arm_cross",
+    "source_dir": "/Volumes/T7/AVT VIDEO CLIPS/benchmark/wardrobe-swap-v1/frames",
+    "source_index_count": 120,
+    "source_index_start": 48,
+    "source_index_stride": 1,
+    "transfer_mode": "gated_flow_propagation_prototype",
+    "work_width": 480,
+    "worker_version": "0.1.0-prototype"
+  },
+  "rollup": {
+    "blocked": 0,
+    "by_status": {
+      "done": 120
+    },
+    "complete": true,
+    "done": 120,
+    "failed": 0
+  },
+  "shot_id": "oneshot_2s_arm_cross",
+  "updated_at": "+435.1s"
+}
