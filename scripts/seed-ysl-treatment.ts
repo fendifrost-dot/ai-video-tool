@@ -31,6 +31,7 @@ import {
   RENDER_ENGINES,
   SHOT_PRIORITIES,
   SHOT_TYPES as SPEC_SHOT_TYPES,
+  type ReferenceKind,
   type RenderEngine,
   type ShotKind,
   type ShotPriorityLiteral,
@@ -121,6 +122,140 @@ function lookForSection(section: string): string {
   if (section.startsWith("hook")) return LOOK_B;
   if (section === "bridge") return LOOK_C;
   return LOOK_A;
+}
+
+// ---------------------------------------------------------------------------
+// WARD look-lock catalog (Milestone 1 · UNIT WARD). Deterministic, $0.
+//
+// Each look = a stable slug (wardrobe.lookId) + the canonical garment spec +
+// a production-ready Grok Imagine prompt + the identity anchors extracted $0
+// from the real master (IMG_5633.mov). The garment "look_composite" (Fendi
+// rendered in the YSL look) is a Grok keyframe generated at production time via
+// the AUTHENTICATED app / edge secret — it cannot be produced from a headless
+// session (xAI key is a Lovable edge-function secret, not local). These records
+// are what the pipeline attaches to hook/vfx ShotSpecs via wardrobe.lookId +
+// wardrobe.references, and are emitted as docs/treatments/ysl-ice-on.looks.json.
+//
+// Evidence labels: garment/palette/prompts = DECISION (authored). Identity
+// anchors = VERIFIED (real frames of the master). model id / cost = HYPOTHESIS
+// pending the app-configured Grok image model + first accepted gen.
+// ---------------------------------------------------------------------------
+type LookRecord = {
+  id: string;
+  summary: string; // matches LOOK_A/B/C so clips resolve by wardrobe string
+  name: string;
+  sectionUse: string;
+  dependencyRole: "reference_image" | "look_composite";
+  garment: string;
+  palette: string[];
+  hardware: string;
+  silhouette: string;
+  environment: string;
+  grokPrompt: string;
+  negativePrompt: string;
+  params: { engine: RenderEngine; model: string; aspect: string; seed: number | null };
+  identityAnchors: string[]; // frames under units/WARD/anchors/ (from master)
+};
+
+const NEG_COMMON =
+  "camouflage, camo print, baseball cap, casual button-up shirt, american flag patch, logo patches, cluttered walk-in closet, hangers, sneakers on shelves, bedroom, low quality, blurry, deformed hands, extra fingers, warped face, text, watermark, cartoon, cgi plastic skin";
+
+const LOOKS: LookRecord[] = [
+  {
+    id: "ysl-look-a-onyx",
+    summary: LOOK_A,
+    name: "Look A — Onyx Tailoring",
+    sectionUse: "intro + verse_1 + pre_hook + verse_2 (Look A energy)",
+    dependencyRole: "reference_image",
+    garment:
+      "Black razor-shoulder tailored jacket — structured sharp shoulder, high-gloss leather lapels, worn open over a black tee; onyx-on-onyx luxury menswear tailoring.",
+    palette: ["onyx black", "gunmetal", "polished silver"],
+    hardware: "polished silver hardware, sharp peak lapel, clean structured seams",
+    silhouette: "sharp, predatory, structured luxury-runway tailoring",
+    environment:
+      "dim luxury jewel-vault — cold blue rim + single hard key, mirrored black floor, high-gloss speculars on silver hardware",
+    grokPrompt:
+      "Full-body fashion editorial portrait of a tall lean Black man with a short beard (match the identity reference), wearing a black razor-shoulder tailored jacket with high-gloss leather lapels and polished silver hardware, open over a black tee — onyx-on-onyx luxury menswear. Standing in a dim luxury jewel-vault: cold blue rim light and a single hard key, mirrored black floor, deep shadow, high-gloss speculars on the silver hardware. Luxury runway fashion film, designer commercial grade, 9:16 vertical, photoreal, sharp predatory elegance.",
+    negativePrompt: NEG_COMMON,
+    params: { engine: "grok", model: "xai-grok-image (per AVT grok image proxy)", aspect: "9:16", seed: null },
+    identityAnchors: [
+      "anchor_A-intro_t4s.jpg",
+      "anchor_A-verse1_t15s.jpg",
+      "anchor_A-prehook_t42s.jpg",
+      "anchor_A-verse2_t88s.jpg",
+    ],
+  },
+  {
+    id: "ysl-look-b-white-ice",
+    summary: LOOK_B,
+    name: "Look B — White Ice",
+    sectionUse: "hook_1 + hook_2 + hook_3 + all drop hero beats (the 'ice on' payoff)",
+    dependencyRole: "look_composite",
+    garment:
+      "Winter-white satin and silver look with crystal / rhinestone accents that catch light like ice — the literal 'ice on' payoff, jewel-lit.",
+    palette: ["winter white", "silver", "crystal / iridescent frost"],
+    hardware: "crystal & rhinestone accents, silver trim, jewel-lit speculars",
+    silhouette: "glacial, high-shine, runway-hero",
+    environment:
+      "full luxury runway — volumetric white light shafts, suspended frost/ice particles, glossy infinity floor, crystalline sparkle",
+    grokPrompt:
+      "Full-body fashion editorial portrait of a tall lean Black man with a short beard (match the identity reference), wearing a winter-white satin and silver look with crystal and rhinestone accents that catch light like ice. Standing on a full luxury runway: volumetric white light shafts, suspended frost and ice particles, glossy infinity floor, jewel-lit crystalline sparkle on the garment. High-key runway, hard volumetric beams, crystal speculars. Luxury runway fashion film, 9:16 vertical, photoreal, glacial elegance.",
+    negativePrompt: NEG_COMMON + ", dull, dark, muddy, dim",
+    params: { engine: "grok", model: "xai-grok-image (per AVT grok image proxy)", aspect: "9:16", seed: null },
+    identityAnchors: [
+      "anchor_B-hook1_t58s.jpg",
+      "anchor_B-hook2_t116s.jpg",
+      "anchor_B-hook3_t160s.jpg",
+    ],
+  },
+  {
+    id: "ysl-look-c-noir-slip",
+    summary: LOOK_C,
+    name: "Look C — Noir Slip",
+    sectionUse: "bridge only (after-hours accent)",
+    dependencyRole: "reference_image",
+    garment:
+      "Sheer black jewelry-forward evening look — fine sheer black fabric, layered silver chains and crystal jewelry as the focal point.",
+    palette: ["sheer black", "silver chain", "neon magenta/cyan spill"],
+    hardware: "layered silver chains, crystal jewelry, minimal metal",
+    silhouette: "sultry, nocturnal, jewelry-forward",
+    environment:
+      "after-hours neon boutique — wet reflective floor, magenta/cyan neon wash, soft reflections, low-key intimate",
+    grokPrompt:
+      "Full-body fashion editorial portrait of a tall lean Black man with a short beard (match the identity reference), wearing a sheer black jewelry-forward evening look with layered silver chains and crystal jewelry as the focal point. Standing in an after-hours neon boutique: wet reflective floor, magenta and cyan neon wash, soft reflections, low-key intimate lighting. Editorial fashion film, 9:16 vertical, photoreal, sultry nocturnal elegance.",
+    negativePrompt: NEG_COMMON,
+    params: { engine: "grok", model: "xai-grok-image (per AVT grok image proxy)", aspect: "9:16", seed: null },
+    identityAnchors: ["anchor_C-bridge_t140s.jpg"],
+  },
+];
+
+const LOOK_BY_SUMMARY: Record<string, LookRecord> = Object.fromEntries(
+  LOOKS.map((l) => [l.summary, l]),
+);
+
+/** Build the ShotSpec wardrobe.references[] for a look: identity anchor (frame,
+ * real, from master) + a note pointing at the look-lock record. */
+function wardrobeReferencesFor(look: LookRecord): {
+  kind: ReferenceKind;
+  uri: null;
+  assetId: null;
+  note: string;
+}[] {
+  const anchor = look.identityAnchors[0];
+  return [
+    {
+      kind: "frame",
+      uri: null,
+      assetId: null,
+      note: `identity/pose/environment anchor — master IMG_5633.mov, extracted $0 (units/WARD/anchors/${anchor})`,
+    },
+    {
+      kind: "note",
+      uri: null,
+      assetId: null,
+      note: `look-lock ${look.id} (${look.dependencyRole}) — spec: docs/treatments/ysl-ice-on.looks.json + units/WARD/LOOK_LOCK.md; Grok Imagine prompt ready. Garment look_composite render PENDING via authenticated app (xAI key = Lovable edge secret, not headless).`,
+    },
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -337,7 +472,16 @@ function clipToShotSpec(clip: TreatmentClip, order: number): ShotSpec {
     shotType,
     priority,
     timeline: { start: clip.start, end: clip.end },
-    wardrobe: { name: clip.wardrobe.split(":")[0].trim(), description: clip.wardrobe },
+    wardrobe: (() => {
+      const look = LOOK_BY_SUMMARY[clip.wardrobe];
+      return {
+        name: clip.wardrobe.split(":")[0].trim(),
+        description: clip.wardrobe,
+        // WARD look-lock: stable slug (pending managed artist_looks asset) + refs.
+        lookId: look ? look.id : null,
+        references: look ? wardrobeReferencesFor(look) : [],
+      };
+    })(),
     environment: { description: clip.environment },
     lighting: { description: clip.lighting },
     cameraMotion: { description: clip.camera_direction },
@@ -402,6 +546,26 @@ writeFileSync(
   JSON.stringify(specs, null, 2) + "\n",
 );
 
+// WARD look-lock catalog — the canonical machine-readable A/B/C records the
+// pipeline attaches via wardrobe.lookId. Deterministic, $0.
+const looksCatalog = {
+  version: 1 as const,
+  project_id: PROJECT_ID,
+  song: SONG_TITLE,
+  unit: "WARD",
+  generated_at: ANALYSIS.analyzed_at,
+  model: MODEL,
+  spend_usd: 0,
+  master_source: "IMG_5633.mov (T7 · 3840x2160 HEVC · 190.3s · rotation-90 portrait)",
+  note:
+    "Identity anchors are real frames extracted $0 from the master (VERIFIED). Garment look_composite (Fendi rendered in each YSL look) is a Grok keyframe generated at production time via the authenticated app / edge secret — NOT producible headless (xAI key is a Lovable edge-function secret). Prompts below are production-ready.",
+  looks: LOOKS,
+};
+writeFileSync(
+  resolve(outDir, "ysl-ice-on.looks.json"),
+  JSON.stringify(looksCatalog, null, 2) + "\n",
+);
+
 // Coverage report to stdout.
 const total = grid.length ? grid[grid.length - 1].end : 0;
 const covered = clips.reduce((a, c) => a + (c.end - c.start), 0);
@@ -419,3 +583,4 @@ console.log(`  shot_types: ${JSON.stringify(byType)}`);
 console.log(`  hero keyframes: ${heroes}`);
 console.log(`  wrote docs/treatments/ysl-ice-on.treatment.json (${JSON.stringify(structuredTreatment).length} bytes)`);
 console.log(`  wrote docs/treatments/ysl-ice-on.shotspecs.json (${specs.length} specs, all schema-validated)`);
+console.log(`  wrote docs/treatments/ysl-ice-on.looks.json (${LOOKS.length} WARD look-lock records)`);
