@@ -1,0 +1,99 @@
+{
+  "version": 1,
+  "project_id": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+  "song": "YSL (Ice On)",
+  "unit": "WARD",
+  "generated_at": "2026-09-19T00:00:00.000Z",
+  "model": "director:grok-bot+claude-code (deterministic seed)",
+  "spend_usd": 0,
+  "master_source": "IMG_5633.mov (T7 · 3840x2160 HEVC · 190.3s · rotation-90 portrait)",
+  "note": "Identity anchors are real frames extracted $0 from the master (VERIFIED). Garment look_composite (Fendi rendered in each YSL look) is a Grok keyframe generated at production time via the authenticated app / edge secret — NOT producible headless (xAI key is a Lovable edge-function secret). Prompts below are production-ready.",
+  "looks": [
+    {
+      "id": "ysl-look-a-onyx",
+      "summary": "Look A — Onyx Tailoring: black YSL razor-shoulder tailored jacket, high-gloss leather, silver hardware; sharp, predatory, luxury-runway.",
+      "name": "Look A — Onyx Tailoring",
+      "sectionUse": "intro + verse_1 + pre_hook + verse_2 (Look A energy)",
+      "dependencyRole": "reference_image",
+      "garment": "Black razor-shoulder tailored jacket — structured sharp shoulder, high-gloss leather lapels, worn open over a black tee; onyx-on-onyx luxury menswear tailoring.",
+      "palette": [
+        "onyx black",
+        "gunmetal",
+        "polished silver"
+      ],
+      "hardware": "polished silver hardware, sharp peak lapel, clean structured seams",
+      "silhouette": "sharp, predatory, structured luxury-runway tailoring",
+      "environment": "dim luxury jewel-vault — cold blue rim + single hard key, mirrored black floor, high-gloss speculars on silver hardware",
+      "grokPrompt": "Full-body fashion editorial portrait of a tall lean Black man with a short beard (match the identity reference), wearing a black razor-shoulder tailored jacket with high-gloss leather lapels and polished silver hardware, open over a black tee — onyx-on-onyx luxury menswear. Standing in a dim luxury jewel-vault: cold blue rim light and a single hard key, mirrored black floor, deep shadow, high-gloss speculars on the silver hardware. Luxury runway fashion film, designer commercial grade, 9:16 vertical, photoreal, sharp predatory elegance.",
+      "negativePrompt": "camouflage, camo print, baseball cap, casual button-up shirt, american flag patch, logo patches, cluttered walk-in closet, hangers, sneakers on shelves, bedroom, low quality, blurry, deformed hands, extra fingers, warped face, text, watermark, cartoon, cgi plastic skin",
+      "params": {
+        "engine": "grok",
+        "model": "xai-grok-image (per AVT grok image proxy)",
+        "aspect": "9:16",
+        "seed": null
+      },
+      "identityAnchors": [
+        "anchor_A-intro_t4s.jpg",
+        "anchor_A-verse1_t15s.jpg",
+        "anchor_A-prehook_t42s.jpg",
+        "anchor_A-verse2_t88s.jpg"
+      ]
+    },
+    {
+      "id": "ysl-look-b-white-ice",
+      "summary": "Look B — White Ice: winter-white satin/silver YSL look with crystal accents; the literal 'ice on' payoff, jewel-lit.",
+      "name": "Look B — White Ice",
+      "sectionUse": "hook_1 + hook_2 + hook_3 + all drop hero beats (the 'ice on' payoff)",
+      "dependencyRole": "look_composite",
+      "garment": "Winter-white satin and silver look with crystal / rhinestone accents that catch light like ice — the literal 'ice on' payoff, jewel-lit.",
+      "palette": [
+        "winter white",
+        "silver",
+        "crystal / iridescent frost"
+      ],
+      "hardware": "crystal & rhinestone accents, silver trim, jewel-lit speculars",
+      "silhouette": "glacial, high-shine, runway-hero",
+      "environment": "full luxury runway — volumetric white light shafts, suspended frost/ice particles, glossy infinity floor, crystalline sparkle",
+      "grokPrompt": "Full-body fashion editorial portrait of a tall lean Black man with a short beard (match the identity reference), wearing a winter-white satin and silver look with crystal and rhinestone accents that catch light like ice. Standing on a full luxury runway: volumetric white light shafts, suspended frost and ice particles, glossy infinity floor, jewel-lit crystalline sparkle on the garment. High-key runway, hard volumetric beams, crystal speculars. Luxury runway fashion film, 9:16 vertical, photoreal, glacial elegance.",
+      "negativePrompt": "camouflage, camo print, baseball cap, casual button-up shirt, american flag patch, logo patches, cluttered walk-in closet, hangers, sneakers on shelves, bedroom, low quality, blurry, deformed hands, extra fingers, warped face, text, watermark, cartoon, cgi plastic skin, dull, dark, muddy, dim",
+      "params": {
+        "engine": "grok",
+        "model": "xai-grok-image (per AVT grok image proxy)",
+        "aspect": "9:16",
+        "seed": null
+      },
+      "identityAnchors": [
+        "anchor_B-hook1_t58s.jpg",
+        "anchor_B-hook2_t116s.jpg",
+        "anchor_B-hook3_t160s.jpg"
+      ]
+    },
+    {
+      "id": "ysl-look-c-noir-slip",
+      "summary": "Look C — Noir Slip: sheer black jewelry-forward YSL evening look for the after-hours bridge.",
+      "name": "Look C — Noir Slip",
+      "sectionUse": "bridge only (after-hours accent)",
+      "dependencyRole": "reference_image",
+      "garment": "Sheer black jewelry-forward evening look — fine sheer black fabric, layered silver chains and crystal jewelry as the focal point.",
+      "palette": [
+        "sheer black",
+        "silver chain",
+        "neon magenta/cyan spill"
+      ],
+      "hardware": "layered silver chains, crystal jewelry, minimal metal",
+      "silhouette": "sultry, nocturnal, jewelry-forward",
+      "environment": "after-hours neon boutique — wet reflective floor, magenta/cyan neon wash, soft reflections, low-key intimate",
+      "grokPrompt": "Full-body fashion editorial portrait of a tall lean Black man with a short beard (match the identity reference), wearing a sheer black jewelry-forward evening look with layered silver chains and crystal jewelry as the focal point. Standing in an after-hours neon boutique: wet reflective floor, magenta and cyan neon wash, soft reflections, low-key intimate lighting. Editorial fashion film, 9:16 vertical, photoreal, sultry nocturnal elegance.",
+      "negativePrompt": "camouflage, camo print, baseball cap, casual button-up shirt, american flag patch, logo patches, cluttered walk-in closet, hangers, sneakers on shelves, bedroom, low quality, blurry, deformed hands, extra fingers, warped face, text, watermark, cartoon, cgi plastic skin",
+      "params": {
+        "engine": "grok",
+        "model": "xai-grok-image (per AVT grok image proxy)",
+        "aspect": "9:16",
+        "seed": null
+      },
+      "identityAnchors": [
+        "anchor_C-bridge_t140s.jpg"
+      ]
+    }
+  ]
+}
