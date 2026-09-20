@@ -29,6 +29,7 @@ import {
   uploadHeroSourceFrame,
 } from "@/lib/queries/heroFrame";
 import { signLookPreviewUrl } from "@/lib/queries/looks";
+import { applyGrokLookCompositeAndWait } from "@/lib/queries/grokImageLookComposite";
 import {
   SAM_GROK_RESTORE_PLAN,
   type HeroCandidateResult,
@@ -102,6 +103,19 @@ export default function HeroFrameStudioPage({
   );
   const [primaryUrl, setPrimaryUrl] = useState<string | null>(null);
   const [primaryApproved, setPrimaryApproved] = useState(false);
+  // Mode: garment-truth (swap a real garment photo onto the frame) vs
+  // look-composite (generate a new look from identity anchor + text prompt).
+  const [heroMode, setHeroMode] = useState<"garment_truth" | "look_composite">(
+    "garment_truth",
+  );
+  // Generative look-composite lane state.
+  const [lcPrompt, setLcPrompt] = useState("");
+  const [lcNegative, setLcNegative] = useState("");
+  const [lcBusy, setLcBusy] = useState(false);
+  const [lcProgress, setLcProgress] = useState<string | null>(null);
+  const [lcLookId, setLcLookId] = useState<string | null>(null);
+  const [lcUrl, setLcUrl] = useState<string | null>(null);
+  const [lcApproved, setLcApproved] = useState(false);
 
   const videoAssets = useMemo(
     () => (assetsQuery.data ?? []).filter(isVideoAsset),
@@ -350,6 +364,69 @@ export default function HeroFrameStudioPage({
     }
   }
 
+  async function handleLookComposite() {
+    if (!artistId || !heroScenePath || !lcPrompt.trim()) return;
+    setLcBusy(true);
+    setLcProgress("Submitting…");
+    setLcLookId(null);
+    setLcUrl(null);
+    setLcApproved(false);
+    try {
+      const look = await applyGrokLookCompositeAndWait(
+        {
+          artistId,
+          identityPath: heroScenePath,
+          identityBucket: "project-references",
+          prompt: lcPrompt.trim(),
+          negativePrompt: lcNegative.trim() || undefined,
+          projectId,
+          heroFrameSessionId: sessionId,
+          name: "Hero · generative look composite · Grok",
+        },
+        {
+          onTick: ({ status }) => setLcProgress(`Grok: ${status}…`),
+        },
+      );
+      setLcLookId(look.id);
+      const path = look.generated_storage_path ?? look.generated_image_url ?? null;
+      if (path) {
+        const url = path.startsWith("http") ? path : await signLookPreviewUrl(path, 3600);
+        setLcUrl(url ?? null);
+      }
+      toast.success("Generative look composite complete");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Look composite failed");
+    } finally {
+      setLcBusy(false);
+      setLcProgress(null);
+    }
+  }
+
+  async function handleApproveLookComposite() {
+    if (!artistId || !lcLookId || !heroScenePath) return;
+    try {
+      await approveHeroFrameLook({
+        artistId,
+        lookId: lcLookId,
+        session: buildSessionMeta({
+          sessionId,
+          projectId,
+          scenePath: heroScenePath,
+          sceneBucket: "project-references",
+          frameTimeSec: scrubTime,
+          // No wardrobe feature in the generative lane — the look is prompt-driven.
+          wardrobeFeatureId: "",
+          candidates: [],
+          approvedLookId: lcLookId,
+        }),
+      });
+      setLcApproved(true);
+      toast.success("Generative look composite approved");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Approve failed");
+    }
+  }
+
   async function handleApprove() {
     if (!artistId || !selectedCandidateId || !heroScenePath || !garmentId) return;
     const picked = candidates.find((c) => c.identityLookId === selectedCandidateId);
@@ -527,9 +604,121 @@ export default function HeroFrameStudioPage({
           )}
         </section>
 
+        <section className="rounded-md border border-border bg-card/30 p-4 space-y-2">
+          <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            2 · Mode
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant={heroMode === "garment_truth" ? "default" : "outline"}
+              onClick={() => setHeroMode("garment_truth")}
+            >
+              Garment swap (truth)
+            </Button>
+            <Button
+              size="sm"
+              variant={heroMode === "look_composite" ? "default" : "outline"}
+              onClick={() => setHeroMode("look_composite")}
+            >
+              Look composite (generative)
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {heroMode === "garment_truth"
+              ? "Garment swap repaints only the clothing pixels of the captured frame from a real garment photograph (pixel-preserving)."
+              : "Look composite generates a NEW photoreal 9:16 hero of the same person from the captured frame + a text prompt — no garment photo needed (e.g. Look B — White Ice)."}
+          </p>
+        </section>
+
+        {heroMode === "look_composite" && (
+          <section className="rounded-md border border-primary/50 bg-card/40 p-4 space-y-3">
+            <h2 className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+              3 · Look composite (generative)
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Uses the captured hero frame as the identity anchor. Describe the
+              look, wardrobe and scene; Grok generates a new photoreal 9:16 hero
+              of the same person. Prompts live in{" "}
+              <span className="font-mono">docs/treatments/ysl-ice-on.looks.json</span>.
+            </p>
+            <label className="block space-y-1">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Prompt
+              </span>
+              <textarea
+                className="min-h-[110px] w-full rounded-md border border-border bg-background px-2 py-2 text-xs"
+                placeholder="Full-body fashion editorial portrait of … (match the identity reference), wearing …, 9:16 vertical, photoreal…"
+                value={lcPrompt}
+                onChange={(e) => setLcPrompt(e.target.value)}
+              />
+            </label>
+            <label className="block space-y-1">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Negative prompt (optional)
+              </span>
+              <textarea
+                className="min-h-[64px] w-full rounded-md border border-border bg-background px-2 py-2 text-xs"
+                placeholder="blurry, deformed hands, extra fingers, warped face, text, watermark…"
+                value={lcNegative}
+                onChange={(e) => setLcNegative(e.target.value)}
+              />
+            </label>
+            <Button
+              onClick={handleLookComposite}
+              disabled={lcBusy || !heroScenePath || !lcPrompt.trim()}
+            >
+              {lcBusy ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="mr-1.5 h-4 w-4" />
+              )}
+              Generate look composite
+            </Button>
+            {!heroScenePath && (
+              <p className="text-[11px] text-amber-300">
+                Capture a hero frame first (section 1) — it anchors the identity.
+              </p>
+            )}
+            {lcProgress && <p className="text-xs text-muted-foreground">{lcProgress}</p>}
+            {lcUrl && (
+              <div className="space-y-2">
+                <img
+                  src={lcUrl}
+                  alt="Generative look composite"
+                  className="max-h-[520px] w-auto rounded border border-border"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button asChild size="sm" variant="outline">
+                    <a href={lcUrl} download={`look-composite-${lcLookId ?? "hero"}.png`}>
+                      Download
+                    </a>
+                  </Button>
+                  <Button size="sm" onClick={handleApproveLookComposite} disabled={lcApproved}>
+                    {lcApproved ? <CheckCircle2 className="mr-1.5 h-4 w-4" /> : null}
+                    {lcApproved ? "Approved" : "Approve this hero"}
+                  </Button>
+                  {lcLookId && (
+                    <Button asChild variant="outline" size="sm">
+                      <Link
+                        to="/artists/$id/looks/$lookId"
+                        params={{ id: artistId, lookId: lcLookId }}
+                      >
+                        Open look
+                      </Link>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {heroMode === "garment_truth" && (
+        <>
         <section className="rounded-md border border-border bg-card/30 p-4 space-y-3">
           <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            2 · Outfit reference
+            3 · Outfit reference
           </h2>
           <select
             className="w-full rounded-md border border-border bg-background px-2 py-2 text-xs"
@@ -560,7 +749,7 @@ export default function HeroFrameStudioPage({
 
         <section className="rounded-md border border-primary/30 bg-card/30 p-4 space-y-3">
           <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            3 · Generate candidates
+            4 · Generate candidates
           </h2>
           <p className="text-xs text-muted-foreground">
             Primary is SAM-3 mask → Grok outfit swap → lock onto hero → face restore.
@@ -584,7 +773,7 @@ export default function HeroFrameStudioPage({
 
         <section className="rounded-md border border-primary/50 bg-card/40 p-4 space-y-3">
           <h2 className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-            3b · SAM-3 → Grok · Full outfit (primary)
+            4b · SAM-3 → Grok · Full outfit (primary)
           </h2>
           <p className="text-xs text-muted-foreground">
             What worked in tests: SAM-3 (SwitchX segment) masks clothing, Grok
@@ -642,11 +831,13 @@ export default function HeroFrameStudioPage({
             </div>
           )}
         </section>
+        </>
+        )}
 
-        {candidates.length > 0 && (
+        {heroMode === "garment_truth" && candidates.length > 0 && (
           <section className="rounded-md border border-border bg-card/30 p-4 space-y-3">
             <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              4 · Compare & approve
+              5 · Compare & approve
             </h2>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-2">
               {candidates.map((c) => {
@@ -731,10 +922,10 @@ export default function HeroFrameStudioPage({
           </section>
         )}
 
-        {identityCandidate && heroPreviewUrl && (
+        {heroMode === "garment_truth" && identityCandidate && heroPreviewUrl && (
           <section className="rounded-md border border-primary/30 bg-card/30 p-4 space-y-3">
             <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              5 · Restore real glasses (Grok + Identity)
+              6 · Restore real glasses (Grok + Identity)
             </h2>
             <p className="text-xs text-muted-foreground">
               Grok reinvents the eyewear; the face-swap keeps it. Frame the subject's glasses
@@ -792,7 +983,7 @@ export default function HeroFrameStudioPage({
             a SERVER-extracted clip so the browser never decodes the 2 GB master. */}
         <section className="space-y-2">
           <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-            6 · Phase 2 — video garment swap (short clip)
+            7 · Phase 2 — video garment swap (short clip)
           </h2>
           <WardrobeVideoLaneRunner projectId={projectId} />
           <GrokVideoEditRunner projectId={projectId} />

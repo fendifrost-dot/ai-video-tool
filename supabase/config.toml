@@ -24,6 +24,12 @@ verify_jwt = false
 [functions.grok-image-garment-proxy]
 verify_jwt = true
 
+# Hero Frame Grok GENERATIVE look-composite — identity anchor + prompt (no garment
+# photo) → Grok image. User JWT required (browser calls with session token).
+# Distinct lane from grok-image-garment-proxy; see docs/HERO_FRAME_LOOK_COMPOSITE.md.
+[functions.grok-image-look-composite]
+verify_jwt = true
+
 # Phase 1 Voice Director — STT / Grok text phrasing / TTS. User JWT required.
 # Read-only; no Imagine/video. See docs/ux/brief_for_chatgpt_voice_director.md.
 [functions.grok-voice-director-proxy]
