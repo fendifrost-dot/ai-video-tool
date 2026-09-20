@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { VIDEO_QA_SPEC_VERSION } from "@/lib/eval";
-import { happyPathFrames } from "@/lib/eval/videoQaFixtures";
 import { runPlayableCompose } from "./compose";
 import { heroFramePlayableSpec } from "./spec";
 import {

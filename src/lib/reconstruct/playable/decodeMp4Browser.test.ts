@@ -452,7 +452,7 @@ describe("fetchPlayableMp4Bytes", () => {
     const bytes = gateBytes();
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => new Response(bytes, { status: 200 })),
+      vi.fn(async () => new Response(bytes as Uint8Array, { status: 200 })),
     );
     const result = await fetchPlayableMp4Bytes({
       url: "/reconstruct/playable-76fe7438.mp4",
