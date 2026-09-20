@@ -1,0 +1,1661 @@
+{
+  "version": 1,
+  "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+  "section": {
+    "name": "bars 24–46 (pre-hook + hook block)",
+    "songRange": {
+      "start": 47.2131,
+      "end": 90.4918
+    },
+    "bars": [
+      24,
+      46
+    ],
+    "bpm": 122,
+    "barSeconds": 1.9672131147540983
+  },
+  "sync": {
+    "offsetSeconds": 0.8538,
+    "driftPpm": -0.3,
+    "songAssetId": "067a4cbf-6fd0-4601-9111-df1119c52fa6",
+    "performanceAssetId": "55bdc383-50e7-41b8-9ec9-8bda031ac5e0"
+  },
+  "looks": {
+    "look1": {
+      "id": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+      "name": "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe",
+      "bars": "32–46 (hook)"
+    },
+    "look2": {
+      "id": "f6455042-faec-4a07-b6a2-cb0525a69c65",
+      "name": "YSL Trucker Jacket — French Black Denim",
+      "bars": "24–32 (pre-hook)"
+    }
+  },
+  "totals": {
+    "performanceSeconds": 36.393,
+    "brollSeconds": 6.885
+  },
+  "shots": [
+    {
+      "version": 1,
+      "id": "S01",
+      "title": "Pre-hook open",
+      "order": 0,
+      "purpose": "Cut in on the downbeat of bar 24 with the real performance in Look 2 — establishes Fendi in the transformed room.",
+      "kind": "performance",
+      "shotType": "performance",
+      "priority": "hero",
+      "timeline": {
+        "start": 47.2131,
+        "end": 51.1475
+      },
+      "source": {
+        "kind": "captured",
+        "mediaId": "70304981-d375-47a9-81df-aa062c62c6ec",
+        "uri": null,
+        "range": {
+          "start": 46.3593,
+          "end": 50.2937
+        },
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+      },
+      "wardrobe": {
+        "name": "YSL Trucker Jacket — French Black Denim",
+        "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
+        "lookId": "f6455042-faec-4a07-b6a2-cb0525a69c65",
+        "references": [
+          {
+            "kind": "asset",
+            "uri": null,
+            "assetId": "f6455042-faec-4a07-b6a2-cb0525a69c65",
+            "note": "wardrobe feature with product/on-model references"
+          }
+        ]
+      },
+      "environment": {
+        "description": "The closet becomes a cold, dark fitting room: matte charcoal walls, one hard key from camera-left, a single mirror panel behind Fendi multiplying the highlight, floor haze. The door and shelves must not read as the original closet.",
+        "location": "cold room (transformed closet)",
+        "timeOfDay": "night",
+        "references": []
+      },
+      "framing": "medium",
+      "cameraAngle": "eye_level",
+      "lens": {
+        "focalLengthMm": null,
+        "aperture": "",
+        "description": ""
+      },
+      "cameraMotion": {
+        "type": "static",
+        "description": "locked off; 2 % digital push over the shot"
+      },
+      "lighting": {
+        "style": "",
+        "description": "single hard key camera-left, cold rim, black falloff",
+        "references": []
+      },
+      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "fx": [],
+      "transitionIn": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "transitionOut": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "references": [],
+      "previs": {
+        "status": "none",
+        "uri": null,
+        "notes": ""
+      },
+      "generation": {
+        "required": true,
+        "engine": "grok",
+        "model": "grok-imagine-video (xAI /v1/videos/edits)",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "negativePrompt": "",
+        "seed": null,
+        "parameters": {
+          "lane": "architecture_c_grok_video_edit",
+          "inputClipHandlesSeconds": 0.5,
+          "outputFps": 24,
+          "outputRaster": "720x1280",
+          "sourceCutAssetId": "ffc1da5e-8fc8-46af-a8f7-e43ac94dda75"
+        },
+        "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
+      },
+      "reconstruction": {
+        "required": false,
+        "mode": "",
+        "maskVersion": null,
+        "referenceAssetHash": null,
+        "preserve": [],
+        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+      },
+      "qa": [
+        {
+          "check": "gate0_identity_visible",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_on_body",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_photoreal_next_to_master",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_anatomy",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_framing",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_truth",
+          "mustPass": true,
+          "notes": "collar/zip/pockets/cuffs/band vs product photos"
+        },
+        {
+          "check": "sync_within_one_frame_of_song_clock",
+          "mustPass": true,
+          "notes": ""
+        }
+      ],
+      "status": "planned",
+      "provenance": {
+        "source": "human",
+        "createdAt": "2026-09-20",
+        "updatedAt": null,
+        "author": "Claude (takeover)",
+        "model": null,
+        "notes": "bars/sync computed, not typed"
+      }
+    },
+    {
+      "version": 1,
+      "id": "S02",
+      "title": "Fashion insert — zip & wordmark",
+      "order": 1,
+      "purpose": "Reinforce the fashion language on the verse: a product-true macro of the jacket hardware, one bar, on the beat.",
+      "kind": "generated",
+      "shotType": "b_roll",
+      "priority": "high",
+      "timeline": {
+        "start": 51.1475,
+        "end": 53.1148
+      },
+      "source": {
+        "kind": "generated",
+        "mediaId": null,
+        "uri": null,
+        "range": null,
+        "note": ""
+      },
+      "wardrobe": {
+        "name": "",
+        "description": "",
+        "lookId": null,
+        "references": []
+      },
+      "environment": {
+        "description": "cold room / ice motif — matches the performance world",
+        "location": "cold room",
+        "timeOfDay": "night",
+        "references": []
+      },
+      "framing": "insert",
+      "cameraAngle": "eye_level",
+      "lens": {
+        "focalLengthMm": null,
+        "aperture": "",
+        "description": ""
+      },
+      "cameraMotion": {
+        "type": "dolly",
+        "description": "slow push"
+      },
+      "lighting": {
+        "style": "",
+        "description": "hard key, cold rim, black falloff",
+        "references": []
+      },
+      "performanceDirection": "",
+      "fx": [],
+      "transitionIn": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "transitionOut": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "references": [],
+      "previs": {
+        "status": "none",
+        "uri": null,
+        "notes": ""
+      },
+      "generation": {
+        "required": true,
+        "engine": "grok",
+        "model": "Grok Imagine (browser, consumer plan) — image → video",
+        "prompt": "Extreme close-up macro of a black denim jacket's silver rivet and YSL Cassandre stitching, single hard light, cold room, slow push, 9:16",
+        "negativePrompt": "",
+        "seed": null,
+        "parameters": {
+          "aspect": "9:16",
+          "durationSeconds": 1.9673000000000016
+        },
+        "notes": "No Fendi in B-roll. Supporting department only."
+      },
+      "reconstruction": {
+        "required": false,
+        "mode": "",
+        "maskVersion": null,
+        "referenceAssetHash": null,
+        "preserve": [],
+        "notes": ""
+      },
+      "qa": [
+        {
+          "check": "purpose_visible_in_frame",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "no_synthetic_performer",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "matches_world_lighting",
+          "mustPass": true,
+          "notes": ""
+        }
+      ],
+      "status": "planned",
+      "provenance": {
+        "source": "human",
+        "createdAt": "2026-09-20",
+        "updatedAt": null,
+        "author": "Claude (takeover)",
+        "model": null,
+        "notes": ""
+      }
+    },
+    {
+      "version": 1,
+      "id": "S03",
+      "title": "Pre-hook build",
+      "order": 2,
+      "purpose": "The rapid-fire bars; his pointing/arm-up gestures at song 54–55 s carry the energy.",
+      "kind": "performance",
+      "shotType": "performance",
+      "priority": "hero",
+      "timeline": {
+        "start": 53.1148,
+        "end": 59.0164
+      },
+      "source": {
+        "kind": "captured",
+        "mediaId": "70304981-d375-47a9-81df-aa062c62c6ec",
+        "uri": null,
+        "range": {
+          "start": 52.261,
+          "end": 58.1626
+        },
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+      },
+      "wardrobe": {
+        "name": "YSL Trucker Jacket — French Black Denim",
+        "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
+        "lookId": "f6455042-faec-4a07-b6a2-cb0525a69c65",
+        "references": [
+          {
+            "kind": "asset",
+            "uri": null,
+            "assetId": "f6455042-faec-4a07-b6a2-cb0525a69c65",
+            "note": "wardrobe feature with product/on-model references"
+          }
+        ]
+      },
+      "environment": {
+        "description": "The closet becomes a cold, dark fitting room: matte charcoal walls, one hard key from camera-left, a single mirror panel behind Fendi multiplying the highlight, floor haze. The door and shelves must not read as the original closet.",
+        "location": "cold room (transformed closet)",
+        "timeOfDay": "night",
+        "references": []
+      },
+      "framing": "medium",
+      "cameraAngle": "eye_level",
+      "lens": {
+        "focalLengthMm": null,
+        "aperture": "",
+        "description": ""
+      },
+      "cameraMotion": {
+        "type": "static",
+        "description": "locked off"
+      },
+      "lighting": {
+        "style": "",
+        "description": "single hard key camera-left, cold rim, black falloff",
+        "references": []
+      },
+      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "fx": [],
+      "transitionIn": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "transitionOut": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "references": [],
+      "previs": {
+        "status": "none",
+        "uri": null,
+        "notes": ""
+      },
+      "generation": {
+        "required": true,
+        "engine": "grok",
+        "model": "grok-imagine-video (xAI /v1/videos/edits)",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "negativePrompt": "",
+        "seed": null,
+        "parameters": {
+          "lane": "architecture_c_grok_video_edit",
+          "inputClipHandlesSeconds": 0.5,
+          "outputFps": 24,
+          "outputRaster": "720x1280",
+          "sourceCutAssetId": "7aef4f67-5466-40d7-9f69-b4f0a92f79fb"
+        },
+        "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
+      },
+      "reconstruction": {
+        "required": false,
+        "mode": "",
+        "maskVersion": null,
+        "referenceAssetHash": null,
+        "preserve": [],
+        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+      },
+      "qa": [
+        {
+          "check": "gate0_identity_visible",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_on_body",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_photoreal_next_to_master",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_anatomy",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_framing",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_truth",
+          "mustPass": true,
+          "notes": "collar/zip/pockets/cuffs/band vs product photos"
+        },
+        {
+          "check": "sync_within_one_frame_of_song_clock",
+          "mustPass": true,
+          "notes": ""
+        }
+      ],
+      "status": "planned",
+      "provenance": {
+        "source": "human",
+        "createdAt": "2026-09-20",
+        "updatedAt": null,
+        "author": "Claude (takeover)",
+        "model": null,
+        "notes": "bars/sync computed, not typed"
+      }
+    },
+    {
+      "version": 1,
+      "id": "S04",
+      "title": "Pre-hook tight",
+      "order": 3,
+      "purpose": "Tighter framing (crop of the master) to escalate into the drop.",
+      "kind": "performance",
+      "shotType": "performance",
+      "priority": "hero",
+      "timeline": {
+        "start": 59.0164,
+        "end": 61.9672
+      },
+      "source": {
+        "kind": "captured",
+        "mediaId": "70304981-d375-47a9-81df-aa062c62c6ec",
+        "uri": null,
+        "range": {
+          "start": 58.1626,
+          "end": 61.1134
+        },
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+      },
+      "wardrobe": {
+        "name": "YSL Trucker Jacket — French Black Denim",
+        "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
+        "lookId": "f6455042-faec-4a07-b6a2-cb0525a69c65",
+        "references": [
+          {
+            "kind": "asset",
+            "uri": null,
+            "assetId": "f6455042-faec-4a07-b6a2-cb0525a69c65",
+            "note": "wardrobe feature with product/on-model references"
+          }
+        ]
+      },
+      "environment": {
+        "description": "The closet becomes a cold, dark fitting room: matte charcoal walls, one hard key from camera-left, a single mirror panel behind Fendi multiplying the highlight, floor haze. The door and shelves must not read as the original closet.",
+        "location": "cold room (transformed closet)",
+        "timeOfDay": "night",
+        "references": []
+      },
+      "framing": "medium_close",
+      "cameraAngle": "eye_level",
+      "lens": {
+        "focalLengthMm": null,
+        "aperture": "",
+        "description": ""
+      },
+      "cameraMotion": {
+        "type": "static",
+        "description": "locked off, 1.25× crop"
+      },
+      "lighting": {
+        "style": "",
+        "description": "single hard key camera-left, cold rim, black falloff",
+        "references": []
+      },
+      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "fx": [],
+      "transitionIn": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "transitionOut": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "references": [],
+      "previs": {
+        "status": "none",
+        "uri": null,
+        "notes": ""
+      },
+      "generation": {
+        "required": true,
+        "engine": "grok",
+        "model": "grok-imagine-video (xAI /v1/videos/edits)",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "negativePrompt": "",
+        "seed": null,
+        "parameters": {
+          "lane": "architecture_c_grok_video_edit",
+          "inputClipHandlesSeconds": 0.5,
+          "outputFps": 24,
+          "outputRaster": "720x1280",
+          "sourceCutAssetId": "3d2ab326-c5cc-4db2-bc3e-7a303cfa60c9"
+        },
+        "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
+      },
+      "reconstruction": {
+        "required": false,
+        "mode": "",
+        "maskVersion": null,
+        "referenceAssetHash": null,
+        "preserve": [],
+        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+      },
+      "qa": [
+        {
+          "check": "gate0_identity_visible",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_on_body",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_photoreal_next_to_master",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_anatomy",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_framing",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_truth",
+          "mustPass": true,
+          "notes": "collar/zip/pockets/cuffs/band vs product photos"
+        },
+        {
+          "check": "sync_within_one_frame_of_song_clock",
+          "mustPass": true,
+          "notes": ""
+        }
+      ],
+      "status": "planned",
+      "provenance": {
+        "source": "human",
+        "createdAt": "2026-09-20",
+        "updatedAt": null,
+        "author": "Claude (takeover)",
+        "model": null,
+        "notes": "bars/sync computed, not typed"
+      }
+    },
+    {
+      "version": 1,
+      "id": "S05",
+      "title": "Ice hit",
+      "order": 4,
+      "purpose": "Half-bar FX transition into the drop: a diamond refraction flash whites out the frame on the last beat before bar 32.",
+      "kind": "generated",
+      "shotType": "b_roll",
+      "priority": "high",
+      "timeline": {
+        "start": 61.9672,
+        "end": 62.9508
+      },
+      "source": {
+        "kind": "generated",
+        "mediaId": null,
+        "uri": null,
+        "range": null,
+        "note": ""
+      },
+      "wardrobe": {
+        "name": "",
+        "description": "",
+        "lookId": null,
+        "references": []
+      },
+      "environment": {
+        "description": "cold room / ice motif — matches the performance world",
+        "location": "cold room",
+        "timeOfDay": "night",
+        "references": []
+      },
+      "framing": "insert",
+      "cameraAngle": "eye_level",
+      "lens": {
+        "focalLengthMm": null,
+        "aperture": "",
+        "description": ""
+      },
+      "cameraMotion": {
+        "type": "dolly",
+        "description": "slow push"
+      },
+      "lighting": {
+        "style": "",
+        "description": "hard key, cold rim, black falloff",
+        "references": []
+      },
+      "performanceDirection": "",
+      "fx": [
+        {
+          "type": "flash",
+          "description": "flash",
+          "intensity": 0.6
+        }
+      ],
+      "transitionIn": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "transitionOut": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "references": [],
+      "previs": {
+        "status": "none",
+        "uri": null,
+        "notes": ""
+      },
+      "generation": {
+        "required": true,
+        "engine": "grok",
+        "model": "Grok Imagine (browser, consumer plan) — image → video",
+        "prompt": "Diamond facets refracting a hard white light, flare blooms to white, black background, 9:16, one second",
+        "negativePrompt": "",
+        "seed": null,
+        "parameters": {
+          "aspect": "9:16",
+          "durationSeconds": 0.9836000000000027
+        },
+        "notes": "No Fendi in B-roll. Supporting department only."
+      },
+      "reconstruction": {
+        "required": false,
+        "mode": "",
+        "maskVersion": null,
+        "referenceAssetHash": null,
+        "preserve": [],
+        "notes": ""
+      },
+      "qa": [
+        {
+          "check": "purpose_visible_in_frame",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "no_synthetic_performer",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "matches_world_lighting",
+          "mustPass": true,
+          "notes": ""
+        }
+      ],
+      "status": "planned",
+      "provenance": {
+        "source": "human",
+        "createdAt": "2026-09-20",
+        "updatedAt": null,
+        "author": "Claude (takeover)",
+        "model": null,
+        "notes": ""
+      }
+    },
+    {
+      "version": 1,
+      "id": "S06",
+      "title": "Hook drop — Look 1",
+      "order": 5,
+      "purpose": "The drop: wardrobe changes to the Saint Laurent track jacket as the hook lands; the room hardens.",
+      "kind": "performance",
+      "shotType": "performance",
+      "priority": "hero",
+      "timeline": {
+        "start": 62.9508,
+        "end": 68.8525
+      },
+      "source": {
+        "kind": "captured",
+        "mediaId": "70304981-d375-47a9-81df-aa062c62c6ec",
+        "uri": null,
+        "range": {
+          "start": 62.097,
+          "end": 67.9987
+        },
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+      },
+      "wardrobe": {
+        "name": "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe",
+        "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
+        "lookId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+        "references": [
+          {
+            "kind": "asset",
+            "uri": null,
+            "assetId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+            "note": "wardrobe feature with product/on-model references"
+          }
+        ]
+      },
+      "environment": {
+        "description": "Same cold room after the drop: the mirror panel splits into several, blue-white 'ice' rim light, diamond refraction glints on the walls, deeper black, harder contrast. Fendi, his pose and his scale are untouched.",
+        "location": "cold room (transformed closet)",
+        "timeOfDay": "night",
+        "references": []
+      },
+      "framing": "medium",
+      "cameraAngle": "eye_level",
+      "lens": {
+        "focalLengthMm": null,
+        "aperture": "",
+        "description": ""
+      },
+      "cameraMotion": {
+        "type": "static",
+        "description": "locked off"
+      },
+      "lighting": {
+        "style": "",
+        "description": "single hard key camera-left, cold rim, black falloff",
+        "references": []
+      },
+      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "fx": [],
+      "transitionIn": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "transitionOut": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "references": [],
+      "previs": {
+        "status": "none",
+        "uri": null,
+        "notes": ""
+      },
+      "generation": {
+        "required": true,
+        "engine": "grok",
+        "model": "grok-imagine-video (xAI /v1/videos/edits)",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "negativePrompt": "",
+        "seed": null,
+        "parameters": {
+          "lane": "architecture_c_grok_video_edit",
+          "inputClipHandlesSeconds": 0.5,
+          "outputFps": 24,
+          "outputRaster": "720x1280",
+          "sourceCutAssetId": "939662aa-4ec0-4a87-897d-90068074b7a2"
+        },
+        "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
+      },
+      "reconstruction": {
+        "required": false,
+        "mode": "",
+        "maskVersion": null,
+        "referenceAssetHash": null,
+        "preserve": [],
+        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+      },
+      "qa": [
+        {
+          "check": "gate0_identity_visible",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_on_body",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_photoreal_next_to_master",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_anatomy",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_framing",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_truth",
+          "mustPass": true,
+          "notes": "collar/zip/pockets/cuffs/band vs product photos"
+        },
+        {
+          "check": "sync_within_one_frame_of_song_clock",
+          "mustPass": true,
+          "notes": ""
+        }
+      ],
+      "status": "planned",
+      "provenance": {
+        "source": "human",
+        "createdAt": "2026-09-20",
+        "updatedAt": null,
+        "author": "Claude (takeover)",
+        "model": null,
+        "notes": "bars/sync computed, not typed"
+      }
+    },
+    {
+      "version": 1,
+      "id": "S07",
+      "title": "City night insert",
+      "order": 6,
+      "purpose": "Rhythmic cutaway on the hook's first repeat: luxury/night-city motif that answers 'ice on'.",
+      "kind": "generated",
+      "shotType": "b_roll",
+      "priority": "high",
+      "timeline": {
+        "start": 68.8525,
+        "end": 70.8197
+      },
+      "source": {
+        "kind": "generated",
+        "mediaId": null,
+        "uri": null,
+        "range": null,
+        "note": ""
+      },
+      "wardrobe": {
+        "name": "",
+        "description": "",
+        "lookId": null,
+        "references": []
+      },
+      "environment": {
+        "description": "cold room / ice motif — matches the performance world",
+        "location": "cold room",
+        "timeOfDay": "night",
+        "references": []
+      },
+      "framing": "insert",
+      "cameraAngle": "eye_level",
+      "lens": {
+        "focalLengthMm": null,
+        "aperture": "",
+        "description": ""
+      },
+      "cameraMotion": {
+        "type": "dolly",
+        "description": "slow push"
+      },
+      "lighting": {
+        "style": "",
+        "description": "hard key, cold rim, black falloff",
+        "references": []
+      },
+      "performanceDirection": "",
+      "fx": [],
+      "transitionIn": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "transitionOut": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "references": [],
+      "previs": {
+        "status": "none",
+        "uri": null,
+        "notes": ""
+      },
+      "generation": {
+        "required": true,
+        "engine": "grok",
+        "model": "Grok Imagine (browser, consumer plan) — image → video",
+        "prompt": "Night city street at speed through a car window, wet asphalt reflecting blue-white lights, luxury car interior edge, 9:16",
+        "negativePrompt": "",
+        "seed": null,
+        "parameters": {
+          "aspect": "9:16",
+          "durationSeconds": 1.9671999999999912
+        },
+        "notes": "No Fendi in B-roll. Supporting department only."
+      },
+      "reconstruction": {
+        "required": false,
+        "mode": "",
+        "maskVersion": null,
+        "referenceAssetHash": null,
+        "preserve": [],
+        "notes": ""
+      },
+      "qa": [
+        {
+          "check": "purpose_visible_in_frame",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "no_synthetic_performer",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "matches_world_lighting",
+          "mustPass": true,
+          "notes": ""
+        }
+      ],
+      "status": "planned",
+      "provenance": {
+        "source": "human",
+        "createdAt": "2026-09-20",
+        "updatedAt": null,
+        "author": "Claude (takeover)",
+        "model": null,
+        "notes": ""
+      }
+    },
+    {
+      "version": 1,
+      "id": "S08",
+      "title": "Hook repeat 2",
+      "order": 7,
+      "purpose": "Second hook repeat on the real performance, Look 1, mirror-multiplied room.",
+      "kind": "performance",
+      "shotType": "performance",
+      "priority": "hero",
+      "timeline": {
+        "start": 70.8197,
+        "end": 76.7213
+      },
+      "source": {
+        "kind": "captured",
+        "mediaId": "70304981-d375-47a9-81df-aa062c62c6ec",
+        "uri": null,
+        "range": {
+          "start": 69.9659,
+          "end": 75.8675
+        },
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+      },
+      "wardrobe": {
+        "name": "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe",
+        "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
+        "lookId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+        "references": [
+          {
+            "kind": "asset",
+            "uri": null,
+            "assetId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+            "note": "wardrobe feature with product/on-model references"
+          }
+        ]
+      },
+      "environment": {
+        "description": "Same cold room after the drop: the mirror panel splits into several, blue-white 'ice' rim light, diamond refraction glints on the walls, deeper black, harder contrast. Fendi, his pose and his scale are untouched.",
+        "location": "cold room (transformed closet)",
+        "timeOfDay": "night",
+        "references": []
+      },
+      "framing": "medium",
+      "cameraAngle": "eye_level",
+      "lens": {
+        "focalLengthMm": null,
+        "aperture": "",
+        "description": ""
+      },
+      "cameraMotion": {
+        "type": "static",
+        "description": "locked off"
+      },
+      "lighting": {
+        "style": "",
+        "description": "single hard key camera-left, cold rim, black falloff",
+        "references": []
+      },
+      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "fx": [],
+      "transitionIn": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "transitionOut": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "references": [],
+      "previs": {
+        "status": "none",
+        "uri": null,
+        "notes": ""
+      },
+      "generation": {
+        "required": true,
+        "engine": "grok",
+        "model": "grok-imagine-video (xAI /v1/videos/edits)",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "negativePrompt": "",
+        "seed": null,
+        "parameters": {
+          "lane": "architecture_c_grok_video_edit",
+          "inputClipHandlesSeconds": 0.5,
+          "outputFps": 24,
+          "outputRaster": "720x1280",
+          "sourceCutAssetId": "e5cfeebc-1780-42e7-8f30-5f157f64ff85"
+        },
+        "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
+      },
+      "reconstruction": {
+        "required": false,
+        "mode": "",
+        "maskVersion": null,
+        "referenceAssetHash": null,
+        "preserve": [],
+        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+      },
+      "qa": [
+        {
+          "check": "gate0_identity_visible",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_on_body",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_photoreal_next_to_master",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_anatomy",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_framing",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_truth",
+          "mustPass": true,
+          "notes": "collar/zip/pockets/cuffs/band vs product photos"
+        },
+        {
+          "check": "sync_within_one_frame_of_song_clock",
+          "mustPass": true,
+          "notes": ""
+        }
+      ],
+      "status": "planned",
+      "provenance": {
+        "source": "human",
+        "createdAt": "2026-09-20",
+        "updatedAt": null,
+        "author": "Claude (takeover)",
+        "model": null,
+        "notes": "bars/sync computed, not typed"
+      }
+    },
+    {
+      "version": 1,
+      "id": "S09",
+      "title": "Hook — crossed arms (existing clip)",
+      "order": 8,
+      "purpose": "Uses the already-proven Look-1 video edit (master 75–78.7 s): crossed arms on the hook line.",
+      "kind": "performance",
+      "shotType": "performance",
+      "priority": "hero",
+      "timeline": {
+        "start": 76.7213,
+        "end": 78.6885
+      },
+      "source": {
+        "kind": "captured",
+        "mediaId": "f31bd0f2-884f-42e1-8b08-aa645597b7a6",
+        "uri": null,
+        "range": {
+          "start": 75.8675,
+          "end": 77.8347
+        },
+        "note": "Existing Look-1 grok video edit f31bd0f2-884f-42e1-8b08-aa645597b7a6 covers master 75.0–78.7 s; trim to this range."
+      },
+      "wardrobe": {
+        "name": "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe",
+        "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
+        "lookId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+        "references": [
+          {
+            "kind": "asset",
+            "uri": null,
+            "assetId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+            "note": "wardrobe feature with product/on-model references"
+          }
+        ]
+      },
+      "environment": {
+        "description": "Same cold room after the drop: the mirror panel splits into several, blue-white 'ice' rim light, diamond refraction glints on the walls, deeper black, harder contrast. Fendi, his pose and his scale are untouched.",
+        "location": "cold room (transformed closet)",
+        "timeOfDay": "night",
+        "references": []
+      },
+      "framing": "medium",
+      "cameraAngle": "eye_level",
+      "lens": {
+        "focalLengthMm": null,
+        "aperture": "",
+        "description": ""
+      },
+      "cameraMotion": {
+        "type": "static",
+        "description": "locked off"
+      },
+      "lighting": {
+        "style": "",
+        "description": "single hard key camera-left, cold rim, black falloff",
+        "references": []
+      },
+      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "fx": [],
+      "transitionIn": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "transitionOut": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "references": [],
+      "previs": {
+        "status": "none",
+        "uri": null,
+        "notes": ""
+      },
+      "generation": {
+        "required": true,
+        "engine": "grok",
+        "model": "grok-imagine-video (xAI /v1/videos/edits)",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "negativePrompt": "",
+        "seed": null,
+        "parameters": {
+          "lane": "architecture_c_grok_video_edit",
+          "inputClipHandlesSeconds": 0.5,
+          "outputFps": 24,
+          "outputRaster": "720x1280",
+          "sourceCutAssetId": null
+        },
+        "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
+      },
+      "reconstruction": {
+        "required": false,
+        "mode": "",
+        "maskVersion": null,
+        "referenceAssetHash": null,
+        "preserve": [],
+        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+      },
+      "qa": [
+        {
+          "check": "gate0_identity_visible",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_on_body",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_photoreal_next_to_master",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_anatomy",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_framing",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_truth",
+          "mustPass": true,
+          "notes": "collar/zip/pockets/cuffs/band vs product photos"
+        },
+        {
+          "check": "sync_within_one_frame_of_song_clock",
+          "mustPass": true,
+          "notes": ""
+        }
+      ],
+      "status": "planned",
+      "provenance": {
+        "source": "human",
+        "createdAt": "2026-09-20",
+        "updatedAt": null,
+        "author": "Claude (takeover)",
+        "model": null,
+        "notes": "bars/sync computed, not typed"
+      }
+    },
+    {
+      "version": 1,
+      "id": "S10",
+      "title": "Mirror strobe",
+      "order": 9,
+      "purpose": "FX beat: the mirror panels multiply and strobe for one bar — visual escalation before the last two hook repeats.",
+      "kind": "generated",
+      "shotType": "b_roll",
+      "priority": "high",
+      "timeline": {
+        "start": 78.6885,
+        "end": 80.6557
+      },
+      "source": {
+        "kind": "generated",
+        "mediaId": null,
+        "uri": null,
+        "range": null,
+        "note": ""
+      },
+      "wardrobe": {
+        "name": "",
+        "description": "",
+        "lookId": null,
+        "references": []
+      },
+      "environment": {
+        "description": "cold room / ice motif — matches the performance world",
+        "location": "cold room",
+        "timeOfDay": "night",
+        "references": []
+      },
+      "framing": "insert",
+      "cameraAngle": "eye_level",
+      "lens": {
+        "focalLengthMm": null,
+        "aperture": "",
+        "description": ""
+      },
+      "cameraMotion": {
+        "type": "dolly",
+        "description": "slow push"
+      },
+      "lighting": {
+        "style": "",
+        "description": "hard key, cold rim, black falloff",
+        "references": []
+      },
+      "performanceDirection": "",
+      "fx": [
+        {
+          "type": "glitch",
+          "description": "glitch",
+          "intensity": 0.6
+        }
+      ],
+      "transitionIn": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "transitionOut": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "references": [],
+      "previs": {
+        "status": "none",
+        "uri": null,
+        "notes": ""
+      },
+      "generation": {
+        "required": true,
+        "engine": "grok",
+        "model": "Grok Imagine (browser, consumer plan) — image → video",
+        "prompt": "Infinity mirror corridor, blue-white strobe, diamond glints, black, 9:16, two seconds",
+        "negativePrompt": "",
+        "seed": null,
+        "parameters": {
+          "aspect": "9:16",
+          "durationSeconds": 1.9671999999999912
+        },
+        "notes": "No Fendi in B-roll. Supporting department only."
+      },
+      "reconstruction": {
+        "required": false,
+        "mode": "",
+        "maskVersion": null,
+        "referenceAssetHash": null,
+        "preserve": [],
+        "notes": ""
+      },
+      "qa": [
+        {
+          "check": "purpose_visible_in_frame",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "no_synthetic_performer",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "matches_world_lighting",
+          "mustPass": true,
+          "notes": ""
+        }
+      ],
+      "status": "planned",
+      "provenance": {
+        "source": "human",
+        "createdAt": "2026-09-20",
+        "updatedAt": null,
+        "author": "Claude (takeover)",
+        "model": null,
+        "notes": ""
+      }
+    },
+    {
+      "version": 1,
+      "id": "S11",
+      "title": "Hook repeat 3",
+      "order": 10,
+      "purpose": "Third repeat; he is up-front and direct to camera.",
+      "kind": "performance",
+      "shotType": "performance",
+      "priority": "hero",
+      "timeline": {
+        "start": 80.6557,
+        "end": 86.5574
+      },
+      "source": {
+        "kind": "captured",
+        "mediaId": "70304981-d375-47a9-81df-aa062c62c6ec",
+        "uri": null,
+        "range": {
+          "start": 79.8019,
+          "end": 85.7036
+        },
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+      },
+      "wardrobe": {
+        "name": "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe",
+        "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
+        "lookId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+        "references": [
+          {
+            "kind": "asset",
+            "uri": null,
+            "assetId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+            "note": "wardrobe feature with product/on-model references"
+          }
+        ]
+      },
+      "environment": {
+        "description": "Same cold room after the drop: the mirror panel splits into several, blue-white 'ice' rim light, diamond refraction glints on the walls, deeper black, harder contrast. Fendi, his pose and his scale are untouched.",
+        "location": "cold room (transformed closet)",
+        "timeOfDay": "night",
+        "references": []
+      },
+      "framing": "medium",
+      "cameraAngle": "eye_level",
+      "lens": {
+        "focalLengthMm": null,
+        "aperture": "",
+        "description": ""
+      },
+      "cameraMotion": {
+        "type": "static",
+        "description": "locked off"
+      },
+      "lighting": {
+        "style": "",
+        "description": "single hard key camera-left, cold rim, black falloff",
+        "references": []
+      },
+      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "fx": [],
+      "transitionIn": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "transitionOut": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "references": [],
+      "previs": {
+        "status": "none",
+        "uri": null,
+        "notes": ""
+      },
+      "generation": {
+        "required": true,
+        "engine": "grok",
+        "model": "grok-imagine-video (xAI /v1/videos/edits)",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "negativePrompt": "",
+        "seed": null,
+        "parameters": {
+          "lane": "architecture_c_grok_video_edit",
+          "inputClipHandlesSeconds": 0.5,
+          "outputFps": 24,
+          "outputRaster": "720x1280",
+          "sourceCutAssetId": "770ab475-2072-46e8-a7b5-a9631880f0e5"
+        },
+        "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
+      },
+      "reconstruction": {
+        "required": false,
+        "mode": "",
+        "maskVersion": null,
+        "referenceAssetHash": null,
+        "preserve": [],
+        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+      },
+      "qa": [
+        {
+          "check": "gate0_identity_visible",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_on_body",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_photoreal_next_to_master",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_anatomy",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_framing",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_truth",
+          "mustPass": true,
+          "notes": "collar/zip/pockets/cuffs/band vs product photos"
+        },
+        {
+          "check": "sync_within_one_frame_of_song_clock",
+          "mustPass": true,
+          "notes": ""
+        }
+      ],
+      "status": "planned",
+      "provenance": {
+        "source": "human",
+        "createdAt": "2026-09-20",
+        "updatedAt": null,
+        "author": "Claude (takeover)",
+        "model": null,
+        "notes": "bars/sync computed, not typed"
+      }
+    },
+    {
+      "version": 1,
+      "id": "S12",
+      "title": "Hook out",
+      "order": 11,
+      "purpose": "Fourth repeat to the bar-46 downbeat; hard out on the last hit.",
+      "kind": "performance",
+      "shotType": "performance",
+      "priority": "hero",
+      "timeline": {
+        "start": 86.5574,
+        "end": 90.4918
+      },
+      "source": {
+        "kind": "captured",
+        "mediaId": "70304981-d375-47a9-81df-aa062c62c6ec",
+        "uri": null,
+        "range": {
+          "start": 85.7036,
+          "end": 89.638
+        },
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+      },
+      "wardrobe": {
+        "name": "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe",
+        "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
+        "lookId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+        "references": [
+          {
+            "kind": "asset",
+            "uri": null,
+            "assetId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+            "note": "wardrobe feature with product/on-model references"
+          }
+        ]
+      },
+      "environment": {
+        "description": "Same cold room after the drop: the mirror panel splits into several, blue-white 'ice' rim light, diamond refraction glints on the walls, deeper black, harder contrast. Fendi, his pose and his scale are untouched.",
+        "location": "cold room (transformed closet)",
+        "timeOfDay": "night",
+        "references": []
+      },
+      "framing": "medium",
+      "cameraAngle": "eye_level",
+      "lens": {
+        "focalLengthMm": null,
+        "aperture": "",
+        "description": ""
+      },
+      "cameraMotion": {
+        "type": "static",
+        "description": "locked off"
+      },
+      "lighting": {
+        "style": "",
+        "description": "single hard key camera-left, cold rim, black falloff",
+        "references": []
+      },
+      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "fx": [],
+      "transitionIn": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "transitionOut": {
+        "type": "cut",
+        "durationSeconds": null
+      },
+      "references": [],
+      "previs": {
+        "status": "none",
+        "uri": null,
+        "notes": ""
+      },
+      "generation": {
+        "required": true,
+        "engine": "grok",
+        "model": "grok-imagine-video (xAI /v1/videos/edits)",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "negativePrompt": "",
+        "seed": null,
+        "parameters": {
+          "lane": "architecture_c_grok_video_edit",
+          "inputClipHandlesSeconds": 0.5,
+          "outputFps": 24,
+          "outputRaster": "720x1280",
+          "sourceCutAssetId": "9a087c22-4877-47f4-ace6-07e61bdc54e7"
+        },
+        "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
+      },
+      "reconstruction": {
+        "required": false,
+        "mode": "",
+        "maskVersion": null,
+        "referenceAssetHash": null,
+        "preserve": [],
+        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+      },
+      "qa": [
+        {
+          "check": "gate0_identity_visible",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_on_body",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_photoreal_next_to_master",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_anatomy",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_framing",
+          "mustPass": true,
+          "notes": ""
+        },
+        {
+          "check": "gate0_garment_truth",
+          "mustPass": true,
+          "notes": "collar/zip/pockets/cuffs/band vs product photos"
+        },
+        {
+          "check": "sync_within_one_frame_of_song_clock",
+          "mustPass": true,
+          "notes": ""
+        }
+      ],
+      "status": "planned",
+      "provenance": {
+        "source": "human",
+        "createdAt": "2026-09-20",
+        "updatedAt": null,
+        "author": "Claude (takeover)",
+        "model": null,
+        "notes": "bars/sync computed, not typed"
+      }
+    }
+  ]
+}
