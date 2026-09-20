@@ -1,0 +1,233 @@
+{
+  "offset_seconds": 0.8538,
+  "drift_ppm": -0.22,
+  "method": "gcc_phat_windowed_16k_10s",
+  "confidence_json": {
+    "windowsTotal": 30,
+    "windowsConsistent": 23,
+    "medianOffsetSeconds": 0.8538,
+    "minOffsetSeconds": 0.8536,
+    "maxOffsetSeconds": 0.8538,
+    "peakSharpnessMedian": 0.716,
+    "windows": [
+      {
+        "window_start_s": 2,
+        "offset_s": 0.8538,
+        "peak": 0.01081,
+        "second_over_first": 0.952,
+        "consistent": false
+      },
+      {
+        "window_start_s": 8,
+        "offset_s": 0.8538,
+        "peak": 0.06352,
+        "second_over_first": 0.178,
+        "consistent": true
+      },
+      {
+        "window_start_s": 14,
+        "offset_s": 0.8538,
+        "peak": 0.09737,
+        "second_over_first": 0.069,
+        "consistent": true
+      },
+      {
+        "window_start_s": 20,
+        "offset_s": 0.8538,
+        "peak": 0.07302,
+        "second_over_first": 0.131,
+        "consistent": true
+      },
+      {
+        "window_start_s": 26,
+        "offset_s": 0.8538,
+        "peak": 0.05116,
+        "second_over_first": 0.16,
+        "consistent": true
+      },
+      {
+        "window_start_s": 32,
+        "offset_s": 0.8538,
+        "peak": 0.02044,
+        "second_over_first": 0.428,
+        "consistent": true
+      },
+      {
+        "window_start_s": 38,
+        "offset_s": 0.8538,
+        "peak": 0.04629,
+        "second_over_first": 0.279,
+        "consistent": true
+      },
+      {
+        "window_start_s": 44,
+        "offset_s": 0.8538,
+        "peak": 0.05775,
+        "second_over_first": 0.215,
+        "consistent": true
+      },
+      {
+        "window_start_s": 50,
+        "offset_s": 0.8538,
+        "peak": 0.04989,
+        "second_over_first": 0.284,
+        "consistent": true
+      },
+      {
+        "window_start_s": 56,
+        "offset_s": 0.8538,
+        "peak": 0.0679,
+        "second_over_first": 0.398,
+        "consistent": true
+      },
+      {
+        "window_start_s": 62,
+        "offset_s": 0.8538,
+        "peak": 0.05227,
+        "second_over_first": 0.35,
+        "consistent": true
+      },
+      {
+        "window_start_s": 68,
+        "offset_s": 0.8538,
+        "peak": 0.04684,
+        "second_over_first": 0.358,
+        "consistent": true
+      },
+      {
+        "window_start_s": 74,
+        "offset_s": 0.8538,
+        "peak": 0.04929,
+        "second_over_first": 0.359,
+        "consistent": true
+      },
+      {
+        "window_start_s": 80,
+        "offset_s": 0.8538,
+        "peak": 0.05034,
+        "second_over_first": 0.468,
+        "consistent": true
+      },
+      {
+        "window_start_s": 86,
+        "offset_s": 0.8538,
+        "peak": 0.04646,
+        "second_over_first": 0.348,
+        "consistent": true
+      },
+      {
+        "window_start_s": 92,
+        "offset_s": 0.8538,
+        "peak": 0.03235,
+        "second_over_first": 0.481,
+        "consistent": true
+      },
+      {
+        "window_start_s": 98,
+        "offset_s": 0.8538,
+        "peak": 0.0218,
+        "second_over_first": 0.662,
+        "consistent": false
+      },
+      {
+        "window_start_s": 104,
+        "offset_s": 0.8538,
+        "peak": 0.02269,
+        "second_over_first": 0.791,
+        "consistent": false
+      },
+      {
+        "window_start_s": 110,
+        "offset_s": 0.8538,
+        "peak": 0.02074,
+        "second_over_first": 0.987,
+        "consistent": false
+      },
+      {
+        "window_start_s": 116,
+        "offset_s": 0.8538,
+        "peak": 0.0307,
+        "second_over_first": 0.478,
+        "consistent": true
+      },
+      {
+        "window_start_s": 122,
+        "offset_s": 0.8538,
+        "peak": 0.03496,
+        "second_over_first": 0.312,
+        "consistent": true
+      },
+      {
+        "window_start_s": 128,
+        "offset_s": 0.8538,
+        "peak": 0.04114,
+        "second_over_first": 0.174,
+        "consistent": true
+      },
+      {
+        "window_start_s": 134,
+        "offset_s": 0.8538,
+        "peak": 0.04014,
+        "second_over_first": 0.274,
+        "consistent": true
+      },
+      {
+        "window_start_s": 140,
+        "offset_s": 0.8536,
+        "peak": 0.0315,
+        "second_over_first": 0.349,
+        "consistent": true
+      },
+      {
+        "window_start_s": 146,
+        "offset_s": 0.8529,
+        "peak": 0.02309,
+        "second_over_first": 0.766,
+        "consistent": false
+      },
+      {
+        "window_start_s": 152,
+        "offset_s": 0.8538,
+        "peak": 0.05474,
+        "second_over_first": 0.25,
+        "consistent": true
+      },
+      {
+        "window_start_s": 158,
+        "offset_s": 0.8538,
+        "peak": 0.0911,
+        "second_over_first": 0.201,
+        "consistent": true
+      },
+      {
+        "window_start_s": 164,
+        "offset_s": 0.8538,
+        "peak": 0.0694,
+        "second_over_first": 0.237,
+        "consistent": true
+      },
+      {
+        "window_start_s": 170,
+        "offset_s": 0.8538,
+        "peak": 0.03458,
+        "second_over_first": 0.774,
+        "consistent": false
+      },
+      {
+        "window_start_s": 176,
+        "offset_s": 0.8538,
+        "peak": 0.02495,
+        "second_over_first": 0.998,
+        "consistent": false
+      }
+    ]
+  },
+  "song_duration_s": 201.874,
+  "performance_duration_s": 190.337,
+  "status": "auto",
+  "project_id": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+  "song_asset_id": "067a4cbf-6fd0-4601-9111-df1119c52fa6",
+  "performance_asset_id": "55bdc383-50e7-41b8-9ec9-8bda031ac5e0",
+  "measured_at": "2026-09-20",
+  "notes": "song_time = performance_time + 0.8538 s; recording started 0.85 s after song playback began; Fendi enters frame at master ~9 s"
+}
