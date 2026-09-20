@@ -12,6 +12,11 @@ import { GROK_DEFAULT_IMAGE_MODEL } from "@/lib/providers/grok";
  * the frontend). Grok generates a new photoreal 9:16 hero image of the same
  * person in the described look.
  */
+/** Look-generation contract framing (see docs/LOOK_GENERATION_CONTRACT.md and
+ *  supabase/functions/_shared/lookGenerationContract.ts). Kept as a local union
+ *  so the browser bundle does not pull in the Deno edge module. */
+export type LookFraming = "full_body" | "hero" | "broll";
+
 export type ApplyGrokLookCompositeInput = {
   artistId: string;
   /** Identity anchor storage path (e.g. a captured hero frame). */
@@ -20,8 +25,14 @@ export type ApplyGrokLookCompositeInput = {
   identityPaths?: string[];
   /** Bucket the identity path(s) live in. Defaults server-side to project-references. */
   identityBucket?: string;
+  /** Optional garment/look reference still (recorded on the look). */
+  garmentPath?: string;
   prompt: string;
   negativePrompt?: string;
+  /** Framing intent. Defaults server-side to full_body (head-to-toe, 9:16). */
+  framing?: LookFraming;
+  /** Target aspect "W:H". Defaults server-side to 9:16. */
+  aspect?: string;
   name?: string;
   heroFrameSessionId?: string;
   candidateIndex?: number;

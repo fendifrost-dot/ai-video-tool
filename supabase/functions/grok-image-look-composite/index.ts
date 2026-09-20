@@ -18,10 +18,15 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 import { callXaiImageEditsDetailed } from "../_shared/xaiImageEdits.ts";
+import { validateLookCompositeInput } from "../_shared/lookCompositePrompt.ts";
 import {
-  composeLookCompositePrompt,
-  validateLookCompositeInput,
-} from "../_shared/lookCompositePrompt.ts";
+  composeLookGeneration,
+  DEFAULT_ASPECT,
+  DEFAULT_FRAMING,
+  type LookFraming,
+} from "../_shared/lookGenerationContract.ts";
+import { evaluateLookQa } from "../_shared/lookQaGate.ts";
+import { readImageDimensions } from "../_shared/imageDimensions.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -51,8 +56,15 @@ type Body = {
   /** Multiple identity anchors (same person, different frames) — up to 3. */
   identityPaths?: string[];
   identityBucket?: string;
+  /** Optional garment/look reference still (part of the shared contract; the
+   *  generative look_composite lane records it but does not require it). */
+  garmentPath?: string;
   prompt?: string;
   negativePrompt?: string;
+  /** Look-generation contract framing. Defaults to full_body (head-to-toe). */
+  framing?: LookFraming;
+  /** Target aspect "W:H". Defaults to 9:16. */
+  aspect?: string;
   name?: string;
   heroFrameSessionId?: string;
   candidateIndex?: number;
@@ -192,7 +204,21 @@ serve(async (req) => {
     console.log(`[look-composite-debug] IDENTITY_${i} : ${dbgId(url)}`)
   );
 
-  const promptSent = composeLookCompositePrompt(validated.prompt, validated.negativePrompt);
+  // Look-generation contract: mechanically inject framing constraints + the
+  // protective negatives (bare legs, cropped face, warped logo, close-up …) so
+  // this lane cannot silently ship a close-up wardrobe look. Default framing is
+  // full_body (head-to-toe) at 9:16 unless the caller opts into hero/broll.
+  const framing = body.framing ?? DEFAULT_FRAMING;
+  const aspect = (body.aspect ?? "").trim() || DEFAULT_ASPECT;
+  const composed = composeLookGeneration({
+    identityPaths,
+    garmentPath: body.garmentPath ?? null,
+    prompt: validated.prompt,
+    negativePrompt: validated.negativePrompt,
+    aspect,
+    framing,
+  });
+  const promptSent = composed.promptSent;
 
   const childLookId = crypto.randomUUID();
   const recipe = {
@@ -200,6 +226,7 @@ serve(async (req) => {
     generative_look_composite: true,
     identity_paths_used: identityPaths,
     identity_bucket: body.identityBucket ?? null,
+    garment_path: body.garmentPath ?? null,
     scene_path: identityPaths[0],
     hero_frame_session_id: body.heroFrameSessionId ?? null,
     hero_frame_candidate_index: body.candidateIndex ?? null,
@@ -207,7 +234,9 @@ serve(async (req) => {
     candidate_type: "hero_frame",
     garment_truth_lane: false,
     identity_restored: false,
-    negative_prompt: validated.negativePrompt,
+    negative_prompt: composed.negativePrompt,
+    framing,
+    aspect,
     generation_metadata: null,
   };
 
@@ -274,9 +303,32 @@ serve(async (req) => {
         .upload(storagePath, imageBuf, { contentType: mime, cacheControl: "3600", upsert: true });
       if (uploadErr) throw new Error(`upload_failed: ${uploadErr.message}`);
 
+      // Output QA gate — deterministic, fail closed. Runs the aspect check on
+      // real pixel dimensions before the look can be marked complete. The
+      // face-coverage / feet checks activate automatically when a detector
+      // supplies faceBox / feetNearBottomScore (see lookQaGate.ts); this lane
+      // has no in-edge face detector, so those are left null and skipped.
+      const dims = readImageDimensions(imageBuf);
+      const qa = evaluateLookQa({
+        width: dims?.width ?? 0,
+        height: dims?.height ?? 0,
+        framing,
+        expectedAspect: aspect,
+        faceBox: null,
+        feetNearBottomScore: null,
+      });
+      grokDebug.qa = qa;
+      grokDebug.imageDimensions = dims;
+      console.log(
+        `[look-composite-debug] qa ok=${qa.ok} ` +
+          `dims=${dims?.width ?? "?"}x${dims?.height ?? "?"} ` +
+          `reasons=${qa.ok ? "" : (qa as { reasons: string[] }).reasons.join(",")}`,
+      );
+
       const meta = {
         model: body.model ?? DEFAULT_MODEL,
         identity_paths: identityPaths,
+        garment_path: body.garmentPath ?? null,
         hero_frame_candidate: true,
         hero_frame_session_id: body.heroFrameSessionId ?? null,
         candidate_index: body.candidateIndex ?? null,
@@ -284,8 +336,12 @@ serve(async (req) => {
         garment_truth_lane: false,
         generative_look_composite: true,
         identity_restored: false,
-        negative_prompt: validated.negativePrompt,
+        negative_prompt: composed.negativePrompt,
+        framing,
+        aspect,
         xai_image_count: imageInputs.length,
+        qa,
+        qa_artifact_path: storagePath,
         grok_debug: grokDebug,
       };
 
@@ -297,17 +353,33 @@ serve(async (req) => {
       const existingRecipe = (existing?.composition_recipe_json ?? {}) as Record<string, unknown>;
       existingRecipe.generation_metadata = meta;
 
+      // Fail closed: a QA failure is NOT a success. Keep the uploaded artifact
+      // for human inspection (qa_artifact_path in the recipe) but mark the look
+      // `failed` with a machine-readable reason and leave generated_* null so no
+      // downstream UI presents it as a completed, downloadable look.
+      const update = qa.ok
+        ? {
+            status: "complete",
+            generated_image_url: storagePath,
+            generated_storage_path: storagePath,
+            pipeline_used: "grok_image_look_composite",
+            cost_cents: 12,
+            composition_recipe_json: existingRecipe,
+            error_message: null,
+          }
+        : {
+            status: "failed",
+            generated_image_url: null,
+            generated_storage_path: null,
+            pipeline_used: "grok_image_look_composite",
+            cost_cents: 12,
+            composition_recipe_json: existingRecipe,
+            error_message: `qa_failed: ${(qa as { reasons: string[] }).reasons.join(",")}`,
+          };
+
       const { error: updateErr } = await admin
         .from("artist_looks")
-        .update({
-          status: "complete",
-          generated_image_url: storagePath,
-          generated_storage_path: storagePath,
-          pipeline_used: "grok_image_look_composite",
-          cost_cents: 12,
-          composition_recipe_json: existingRecipe,
-          error_message: null,
-        })
+        .update(update)
         .eq("id", childLookId);
       if (updateErr) throw new Error(`update_failed: ${updateErr.message}`);
     } catch (err) {
