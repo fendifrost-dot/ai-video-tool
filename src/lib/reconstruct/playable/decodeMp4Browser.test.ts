@@ -449,10 +449,10 @@ describe("fetchPlayableMp4Bytes", () => {
   });
 
   it("accepts fetched bytes that match the committed sha256", async () => {
-    const bytes = gateBytes();
+    const bytes = new Uint8Array(gateBytes());
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () => new Response(bytes as Uint8Array, { status: 200 })),
+      vi.fn(async () => new Response(bytes, { status: 200 })),
     );
     const result = await fetchPlayableMp4Bytes({
       url: "/reconstruct/playable-76fe7438.mp4",
