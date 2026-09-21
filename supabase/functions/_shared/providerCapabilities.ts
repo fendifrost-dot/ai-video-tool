@@ -21,9 +21,9 @@ export const SAFETY_MAX_REFERENCE_IMAGES = 8;
 
 const DEFAULTS: Record<string, ProviderCapability> = {
   "xai:images/edits": {
-    maxReferenceImages: 5,
+    maxReferenceImages: 3,
     firstFrameConditioning: true,
-    source: "docs.x.ai multi-image editing: images[] max 5 per request; <IMAGE_0> is the edited frame, so a Look-on-artist anchor can be sent as <IMAGE_1>",
+    source: "VERIFIED 2026-09-21: grok-imagine-image-quality rejects >3 input images ('This model supports at most 3 input image(s)'); docs list 5 for grok-imagine-image-2.0 — raise per model via PROVIDER_CAPABILITIES_JSON when that model is used. <IMAGE_0> is the edited frame, so a Look-on-artist anchor can be sent as <IMAGE_1>",
   },
   "xai:videos/edits": {
     maxReferenceImages: 8,
