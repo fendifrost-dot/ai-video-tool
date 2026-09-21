@@ -6,7 +6,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { pickGrokVideoEditReferencePaths } from "../_shared/garmentReference.ts";
+import { pickGrokVideoEditReferencePaths, pickGrokGarmentReferencePaths } from "../_shared/garmentReference.ts";
 import {
   buildGrokVideoEditAssetInsert,
   buildGrokVideoEditXaiBody,
@@ -54,7 +54,25 @@ type Body = {
   shotId?: string;
   dryRun?: boolean;
   promptVersion?: string;
+  /**
+   * Which wardrobe references go to xAI. "flat" (default, unchanged behaviour): the flat
+   * product photo only, max 1 — the R4 benchmark choice for jacket-only edits. "full_look":
+   * on-model photo first + flat, max 2 — for prompts that replace the whole outfit
+   * (shirt/tie/trousers come from the on-model reference, not from the model's imagination).
+   */
+  referenceMode?: "flat" | "full_look";
+  /**
+   * A composed Look (artist_looks.id). When set, the outfit is the Look's
+   * wardrobe_feature_ids in order: ONE reference per piece (flat product shot first; the
+   * on-model shot too for the first piece when referenceMode is "full_look"), capped at
+   * MAX_LOOK_REFERENCES. wardrobeFeatureId then only has to be one of the Look's pieces
+   * (kept for the asset row / ownership check). Fendi 2026-09-21: "the outfit swap is only
+   * placing the jacket on me and not the entire YSL outfit — it should be in AVT."
+   */
+  lookId?: string;
 };
+
+const MAX_LOOK_REFERENCES = 4;
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -170,6 +188,9 @@ serve(async (req) => {
   if (!body.projectId || !body.artistId || !body.videoAssetId || !body.wardrobeFeatureId) {
     return json(400, { error: "missing_required_fields" });
   }
+  if (body.lookId != null && body.lookId !== "" && !UUID_RE.test(body.lookId)) {
+    return json(400, { error: "invalid_look_id", detail: "lookId must be an artist_looks.id uuid" });
+  }
   // Fail closed BEFORE any billed call: shot_id is a uuid column, so a treatment
   // label like "S06" would bill xAI and then lose the row at insert time.
   if (body.shotId != null && body.shotId !== "" && !UUID_RE.test(body.shotId)) {
@@ -233,9 +254,50 @@ serve(async (req) => {
     return json(404, { error: "wardrobe_not_found" });
   }
 
-  const refImages = Array.isArray(wardrobe.reference_images) ? wardrobe.reference_images : [];
-  const fallback = wardrobe.storage_path ?? wardrobe.file_url;
-  const garmentPaths = pickGrokVideoEditReferencePaths(refImages, fallback, 1);
+  const referenceMode = body.referenceMode === "full_look" ? "full_look" : "flat";
+  let garmentPaths: string[] = [];
+  let lookPieces: Array<{ featureId: string; label: string; featureType: string; path: string | null }> = [];
+  const lookId = body.lookId?.trim() || null;
+  if (lookId) {
+    // Outfit from a composed Look: every piece contributes its best flat product shot.
+    const { data: look, error: lErr } = await admin
+      .from("artist_looks")
+      .select("id, artist_id, name, composition_recipe_json")
+      .eq("id", lookId)
+      .maybeSingle();
+    if (lErr) return json(500, { error: "look_query_failed", detail: lErr.message });
+    if (!look || look.artist_id !== body.artistId) return json(404, { error: "look_not_found" });
+    const recipe = (look.composition_recipe_json ?? {}) as { wardrobe_feature_ids?: unknown };
+    const featureIds = Array.isArray(recipe.wardrobe_feature_ids)
+      ? recipe.wardrobe_feature_ids.filter((x): x is string => typeof x === "string" && UUID_RE.test(x))
+      : [];
+    if (featureIds.length === 0) return json(400, { error: "look_has_no_wardrobe", detail: `Look "${look.name}" has no wardrobe_feature_ids` });
+    if (!featureIds.includes(body.wardrobeFeatureId)) {
+      return json(400, { error: "wardrobe_not_in_look", detail: "wardrobeFeatureId must be one of the Look's pieces" });
+    }
+    const { data: pieces, error: pErr } = await admin
+      .from("character_features")
+      .select("id, artist_id, label, feature_type, file_url, storage_path, reference_images")
+      .in("id", featureIds);
+    if (pErr) return json(500, { error: "wardrobe_query_failed", detail: pErr.message });
+    const byId = new Map((pieces ?? []).map((f) => [f.id as string, f]));
+    for (const fid of featureIds) {
+      const f = byId.get(fid);
+      if (!f || f.artist_id !== body.artistId) continue;
+      const refs = Array.isArray(f.reference_images) ? f.reference_images : [];
+      const paths = (fid === featureIds[0] && referenceMode === "full_look")
+        ? pickGrokGarmentReferencePaths(refs, null, 2)
+        : pickGrokVideoEditReferencePaths(refs, f.storage_path ?? f.file_url, 1);
+      lookPieces.push({ featureId: fid, label: String(f.label ?? ""), featureType: String(f.feature_type ?? ""), path: paths[0] ?? null });
+      for (const p of paths) if (!garmentPaths.includes(p) && garmentPaths.length < MAX_LOOK_REFERENCES) garmentPaths.push(p);
+    }
+  } else {
+    const refImages = Array.isArray(wardrobe.reference_images) ? wardrobe.reference_images : [];
+    const fallback = wardrobe.storage_path ?? wardrobe.file_url;
+    garmentPaths = referenceMode === "full_look"
+      ? pickGrokGarmentReferencePaths(refImages, null, 2)
+      : pickGrokVideoEditReferencePaths(refImages, fallback, 1);
+  }
   const referenceUrls: string[] = [];
   for (const p of garmentPaths) {
     const signed = await signStorage(admin, p, IMAGE_BUCKETS);
@@ -257,6 +319,9 @@ serve(async (req) => {
     endpoint: `${XAI_BASE_URL}/videos/edits`,
     videoAssetId: body.videoAssetId,
     wardrobeFeatureId: body.wardrobeFeatureId,
+    referenceMode,
+    lookId,
+    lookPieces: lookPieces.map((p) => ({ featureId: p.featureId, label: p.label, featureType: p.featureType, file: p.path?.split("/").pop() ?? null })),
     garmentPathsUsed: garmentPaths,
     garmentFilenames: garmentPaths.map((p) => p.split("/").pop() ?? p),
     estimatedCostUsd: estimateCostUsd(model, 4.5),
@@ -339,6 +404,8 @@ serve(async (req) => {
           finalStatus,
           byteLength,
           promptVersion,
+          referenceMode,
+          lookId,
         });
         const { data: assetRow, error: assetErr } = await admin
           .from("project_assets")
