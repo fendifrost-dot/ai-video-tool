@@ -12,6 +12,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { pickGrokGarmentReferencePaths } from "../_shared/garmentReference.ts";
+import { composeConstraintsFirst, lookSpecificationText, orderLookReferences, resolveReferencePolicy, type ReferencePolicy } from "../_shared/lookReferences.ts";
+import { getProviderCapability } from "../_shared/providerCapabilities.ts";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 import { callXaiImageEditsDetailed } from "../_shared/xaiImageEdits.ts";
 
@@ -63,7 +65,23 @@ type Body = {
   /** Optional xAI output resolution ("1k" | "2k"). Forwarded verbatim to
    *  /v1/images/edits only when set; absent → today's native-default behaviour. */
   resolution?: string;
+  // ---- canonical-Look lane (2026-09-21, ChatGPT ruling §2/§3) ---------------------------
+  /** A composed Look (artist_looks.id): references come from every piece via the Look truth
+   *  hierarchy (_shared/lookReferences.ts) instead of the single wardrobe feature. */
+  lookId?: string;
+  referenceMode?: "flat" | "full_look";
+  referencePolicy?: ReferencePolicy;
+  /** The APPROVED Look-on-artist hero image (storage path): sent as <IMAGE_1> so every still
+   *  minted for a shot reproduces ONE garment realisation instead of sampling a new one.
+   *  This is the conditioning the video-edit endpoint does not offer. */
+  anchorPath?: string;
+  anchorBucket?: string;
+  promptVersion?: string;
 };
+
+const IMAGE_EDITS_CAPABILITY_KEY = "xai:images/edits";
+/** Role sentence for the approved hero when it is sent as <IMAGE_1>. */
+const ANCHOR_ROLE_SENTENCE = "ROLE OF <IMAGE_1>: the SAME man wearing the APPROVED outfit. Reproduce THAT exact garment realisation on the person in <IMAGE_0> — same construction, same colours, same closure state, same placement and size of every marking — adapted only to his pose in <IMAGE_0>. The images after <IMAGE_1> are product photos of the same garments for construction detail.";
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -146,9 +164,54 @@ serve(async (req) => {
     return json(404, { error: "wardrobe_not_found" });
   }
 
-  const refImages = Array.isArray(wardrobe.reference_images) ? wardrobe.reference_images : [];
-  const fallback = wardrobe.storage_path ?? wardrobe.file_url;
-  const garmentPaths = pickGrokGarmentReferencePaths(refImages, fallback, 2);
+  const capability = getProviderCapability(IMAGE_EDITS_CAPABILITY_KEY);
+  const anchorPath = body.anchorPath?.trim() || null;
+  // slots for garment references = provider max − scene − anchor
+  const refBudget = Math.max(1, capability.maxReferenceImages - 1 - (anchorPath ? 1 : 0));
+  let garmentPaths: string[] = [];
+  let referencePlan: Array<{ role: string; featureId: string | null; file: string }> = [];
+  let lookConstraints: string[] = [];
+  let lookSpec = "";
+  const lookId = body.lookId?.trim() || null;
+  if (lookId) {
+    const { data: look, error: lErr } = await admin
+      .from("artist_looks")
+      .select("id, artist_id, name, composition_recipe_json, generated_storage_path")
+      .eq("id", lookId)
+      .maybeSingle();
+    if (lErr) return json(500, { error: "look_query_failed", detail: lErr.message });
+    if (!look || look.artist_id !== body.artistId) return json(404, { error: "look_not_found" });
+    const recipe = (look.composition_recipe_json ?? {}) as {
+      wardrobe_feature_ids?: unknown; hero_feature_id?: unknown; outfit_sheet_path?: unknown;
+      reference_policy?: ReferencePolicy; constraints?: unknown; spec?: unknown;
+    };
+    const featureIds = Array.isArray(recipe.wardrobe_feature_ids) ? recipe.wardrobe_feature_ids.filter((x): x is string => typeof x === "string") : [];
+    if (!featureIds.includes(body.wardrobeFeatureId)) return json(400, { error: "wardrobe_not_in_look" });
+    const heroFeatureId = typeof recipe.hero_feature_id === "string" && featureIds.includes(recipe.hero_feature_id) ? recipe.hero_feature_id : featureIds[0];
+    const { data: pieces, error: pErr } = await admin
+      .from("character_features")
+      .select("id, artist_id, label, feature_type, file_url, storage_path, reference_images")
+      .in("id", featureIds);
+    if (pErr) return json(500, { error: "wardrobe_query_failed", detail: pErr.message });
+    const byId = new Map((pieces ?? []).map((f) => [f.id as string, f]));
+    const pieceInputs = featureIds.flatMap((fid) => {
+      const f = byId.get(fid);
+      if (!f || f.artist_id !== body.artistId) return [];
+      return [{ featureId: fid, label: String(f.label ?? ""), featureType: String(f.feature_type ?? ""), refs: Array.isArray(f.reference_images) ? f.reference_images : [], fallbackPath: f.storage_path ?? f.file_url }];
+    });
+    const policy = resolveReferencePolicy(refBudget, recipe.reference_policy, body.referencePolicy);
+    const outfitSheetPath = typeof recipe.outfit_sheet_path === "string" && recipe.outfit_sheet_path ? recipe.outfit_sheet_path : (look.generated_storage_path ?? null);
+    const ordered = orderLookReferences({ mode: body.referenceMode === "flat" ? "flat" : "full_look", outfitSheetPath, heroFeatureId, pieces: pieceInputs, policy });
+    garmentPaths = ordered.paths;
+    referencePlan = ordered.plan.map((r) => ({ role: r.role, featureId: r.featureId, file: r.path.split("/").pop() ?? r.path }));
+    lookConstraints = Array.isArray(recipe.constraints) ? recipe.constraints.filter((c): c is string => typeof c === "string" && c.trim().length > 0) : [];
+    lookSpec = lookSpecificationText({ spec: recipe.spec, name: look.name }, pieceInputs);
+  } else {
+    const refImages = Array.isArray(wardrobe.reference_images) ? wardrobe.reference_images : [];
+    const fallback = wardrobe.storage_path ?? wardrobe.file_url;
+    garmentPaths = pickGrokGarmentReferencePaths(refImages, fallback, Math.min(2, refBudget));
+    referencePlan = garmentPaths.map((p) => ({ role: "primary_piece", featureId: wardrobe.id as string, file: p.split("/").pop() ?? p }));
+  }
   if (garmentPaths.length === 0) {
     return json(404, { error: "wardrobe_no_image" });
   }
@@ -159,17 +222,23 @@ serve(async (req) => {
 
   const garmentUrls: string[] = [];
   for (const p of garmentPaths) {
-    const url = await signStoragePath(admin, p, ["wardrobe-refs", "product-assets"]);
+    const url = await signStoragePath(admin, p, ["wardrobe-refs", "product-assets", "look-composites"]);
     if (url) garmentUrls.push(url);
   }
   if (garmentUrls.length === 0) {
     return json(500, { error: "garment_sign_failed" });
   }
 
+  let anchorUrl: string | null = null;
+  if (anchorPath) {
+    anchorUrl = await signStoragePath(admin, anchorPath, [body.anchorBucket || "project-references", "look-composites", "project-exports"]);
+    if (!anchorUrl) return json(500, { error: "anchor_sign_failed" });
+  }
   const imageInputs = [
     { url: heroUrl, type: "image_url" as const },
+    ...(anchorUrl ? [{ url: anchorUrl, type: "image_url" as const }] : []),
     ...garmentUrls.map((url) => ({ url, type: "image_url" as const })),
-  ].slice(0, 3);
+  ].slice(0, capability.maxReferenceImages);
 
   // [grok-proxy-debug] Instrumentation: expose exactly which images the proxy is
   // about to send to xAI. Logs storage paths + URL lengths only — the query
@@ -209,6 +278,11 @@ serve(async (req) => {
     garment_truth_lane: true,
     identity_restored: false,
     generation_metadata: null,
+    look_id: lookId,
+    anchor_path: anchorPath,
+    reference_plan: referencePlan,
+    prompt_version: body.promptVersion ?? null,
+    provider_capability: { key: IMAGE_EDITS_CAPABILITY_KEY, ...capability },
   };
 
   const { data: childLook, error: insErr } = await userClient
@@ -237,7 +311,14 @@ serve(async (req) => {
   }
 
   const finish = async () => {
-    const promptSent = body.prompt ?? GROK_GARMENT_TRUTH_PROMPT;
+    // Prompt: [anchor role] + [Look constraints first] + body (client or fallback) + [Look spec].
+    // With an anchor the garment swatches start at <IMAGE_2>, so the fallback's role text is
+    // re-indexed rather than duplicated.
+    let base = body.prompt ?? GROK_GARMENT_TRUTH_PROMPT;
+    if (anchorUrl) base = base.replace("<IMAGE_1> (and <IMAGE_2> if present) is a GARMENT SWATCH ONLY", "<IMAGE_2> onwards are GARMENT SWATCHES ONLY");
+    let promptSent = composeConstraintsFirst(lookConstraints, base);
+    if (anchorUrl) promptSent = `${ANCHOR_ROLE_SENTENCE} ${promptSent}`;
+    if (lookSpec) promptSent = `${promptSent}\n\nLOOK SPECIFICATION: ${lookSpec}`;
     // [grok-proxy-debug] Same values as the [grok-proxy-debug] console.logs, but
     // ALSO persisted below into composition_recipe_json.generation_metadata.grok_debug
     // so they can be read with a read-only SELECT in the Lovable SQL editor —
@@ -295,6 +376,10 @@ serve(async (req) => {
         garment_truth_lane: true,
         identity_restored: false,
         xai_image_count: imageInputs.length,
+        anchor_used: !!anchorUrl,
+        look_id: lookId,
+        prompt_version: body.promptVersion ?? null,
+        prompt_composition: { anchorRole: !!anchorUrl, constraintsFirst: lookConstraints, lookSpecification: lookSpec || null },
         grok_debug: grokDebug,
       };
 
