@@ -71,6 +71,10 @@ def main():
         "answers": answers, "final_verdict": final, "escalate_to_fendi": escalate,
         "_provenance": {"parts": parts_meta, "totalCostUsd": round(cost, 4), "usage": usage, "note": "aggregated by scripts/qa/aggregate_astra_review.py from the proxy-stored part files"},
     }
+    # Items the reviewer declared outside its evidence (silent sampled frames). They are not
+    # repair work for any subsystem; they go to native-media QA or to the authority.
+    unverifiable = [d["defect_id"] for d in defects.values() if str(d.get("description", "")).upper().startswith("UNVERIFIABLE FROM SAMPLES")]
+    review["_native_media_qa_required"] = sorted(unverifiable)
     if a.prev:
         prev = json.load(open(a.prev)); p = {d["defect_id"]: d for d in prev["sequence_defects"]}
         review["_diff_vs_prev"] = {
@@ -82,7 +86,7 @@ def main():
     json.dump(review, open(a.out, "w"), indent=2)
     by_owner = {}
     for d in defects.values(): by_owner.setdefault(d["recommended_owner"], []).append(f'{d["severity"]}:{d["defect_id"]}')
-    print(json.dumps({"final_verdict": final, "overall": {k: v for k, v in overall.items() if k != "summary"}, "defects": len(defects), "by_owner": by_owner, "cost": round(cost, 4), "diff": review.get("_diff_vs_prev")}, indent=2))
+    print(json.dumps({"final_verdict": final, "overall": {k: v for k, v in overall.items() if k != "summary"}, "defects": len(defects), "by_owner": by_owner, "cost": round(cost, 4), "native_media_qa_required": review["_native_media_qa_required"], "diff": review.get("_diff_vs_prev")}, indent=2))
 
 if __name__ == "__main__":
     main()
