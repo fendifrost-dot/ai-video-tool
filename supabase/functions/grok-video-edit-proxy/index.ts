@@ -72,7 +72,12 @@ type Body = {
   lookId?: string;
 };
 
-const MAX_LOOK_REFERENCES = 4;
+const MAX_LOOK_REFERENCES = 5;
+// Under referenceMode "full_look" the Look's first piece (the hero garment) may send its
+// on-model shot, its flat shot and up to two "detail" crops (collar, sleeve inside, …) —
+// construction facts a text prompt keeps losing (Fendi 2026-09-21: stripe INSIDE the sleeve,
+// stand collar, zip closed). Other pieces send one flat shot each.
+const LOOK_PRIMARY_PIECE_REFS = 4;
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -286,7 +291,7 @@ serve(async (req) => {
       if (!f || f.artist_id !== body.artistId) continue;
       const refs = Array.isArray(f.reference_images) ? f.reference_images : [];
       const paths = (fid === featureIds[0] && referenceMode === "full_look")
-        ? pickGrokGarmentReferencePaths(refs, null, 2)
+        ? pickGrokGarmentReferencePaths(refs, null, LOOK_PRIMARY_PIECE_REFS)
         : pickGrokVideoEditReferencePaths(refs, f.storage_path ?? f.file_url, 1);
       lookPieces.push({ featureId: fid, label: String(f.label ?? ""), featureType: String(f.feature_type ?? ""), path: paths[0] ?? null });
       for (const p of paths) if (!garmentPaths.includes(p) && garmentPaths.length < MAX_LOOK_REFERENCES) garmentPaths.push(p);
