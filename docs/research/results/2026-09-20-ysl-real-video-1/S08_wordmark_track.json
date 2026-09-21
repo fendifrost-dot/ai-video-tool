@@ -1,0 +1,269 @@
+{
+ "video": "s08_v4c.mp4",
+ "graphic": "gfx/band_wearer_left.png",
+ "anchorFrame": 30,
+ "anchorQuad": [
+  [
+   318.0,
+   715.0
+  ],
+  [
+   423.8399963378906,
+   708.4400024414062
+  ],
+  [
+   423.8399963378906,
+   748.4400024414062
+  ],
+  [
+   318.0,
+   757.0
+  ]
+ ],
+ "minConfidence": 0.35,
+ "qa": {
+  "frames": 161,
+  "fps": 24.0,
+  "confidence_mean": 0.9334439467887035,
+  "confidence_min": 0.39120370370370366,
+  "frames_lost": [],
+  "lost_fraction": 0.0,
+  "corner_jitter_px_mean": 1.2611319809777182,
+  "corner_jitter_px_p95": 2.694560050964355,
+  "frames_not_applied": [],
+  "occlusion_mean": 0.05334021988677683
+ },
+ "frames": [
+  {
+   "frame": 0,
+   "confidence": 1.0,
+   "applied": true,
+   "occlusion": 0.14325320720672607,
+   "gain": 0.689,
+   "chroma": [
+    -0.77,
+    -1.03
+   ]
+  },
+  {
+   "frame": 8,
+   "confidence": 0.9736842105263158,
+   "applied": true,
+   "occlusion": 0.139359250664711,
+   "gain": 0.789,
+   "chroma": [
+    -1.28,
+    -0.04
+   ]
+  },
+  {
+   "frame": 16,
+   "confidence": 0.9166666666666666,
+   "applied": true,
+   "occlusion": 0.1461811512708664,
+   "gain": 0.763,
+   "chroma": [
+    -1.13,
+    -0.43
+   ]
+  },
+  {
+   "frame": 24,
+   "confidence": 0.6888020833333334,
+   "applied": true,
+   "occlusion": 0.0,
+   "gain": 0.992,
+   "chroma": [
+    -0.74,
+    0.77
+   ]
+  },
+  {
+   "frame": 32,
+   "confidence": 0.9666666666666667,
+   "applied": true,
+   "occlusion": 0.0,
+   "gain": 0.945,
+   "chroma": [
+    0.28,
+    -0.52
+   ]
+  },
+  {
+   "frame": 40,
+   "confidence": 1.0,
+   "applied": true,
+   "occlusion": 0.15689127147197723,
+   "gain": 0.846,
+   "chroma": [
+    -0.08,
+    -0.87
+   ]
+  },
+  {
+   "frame": 48,
+   "confidence": 0.9615384615384616,
+   "applied": true,
+   "occlusion": 0.15492933988571167,
+   "gain": 0.891,
+   "chroma": [
+    -0.74,
+    0.56
+   ]
+  },
+  {
+   "frame": 56,
+   "confidence": 1.0,
+   "applied": true,
+   "occlusion": 0.0,
+   "gain": 1.066,
+   "chroma": [
+    -0.3,
+    0.83
+   ]
+  },
+  {
+   "frame": 64,
+   "confidence": 1.0,
+   "applied": true,
+   "occlusion": 0.0,
+   "gain": 1.161,
+   "chroma": [
+    -0.5,
+    1.23
+   ]
+  },
+  {
+   "frame": 72,
+   "confidence": 1.0,
+   "applied": true,
+   "occlusion": 0.0,
+   "gain": 1.038,
+   "chroma": [
+    -0.19,
+    0.61
+   ]
+  },
+  {
+   "frame": 80,
+   "confidence": 0.9166666666666666,
+   "applied": true,
+   "occlusion": 0.0,
+   "gain": 1.055,
+   "chroma": [
+    0.14,
+    0.54
+   ]
+  },
+  {
+   "frame": 88,
+   "confidence": 0.6689814814814815,
+   "applied": true,
+   "occlusion": 0.1520167887210846,
+   "gain": 0.985,
+   "chroma": [
+    -0.32,
+    1.6
+   ]
+  },
+  {
+   "frame": 96,
+   "confidence": 1.0,
+   "applied": true,
+   "occlusion": 0.12816157937049866,
+   "gain": 1.088,
+   "chroma": [
+    0.25,
+    2.28
+   ]
+  },
+  {
+   "frame": 104,
+   "confidence": 1.0,
+   "applied": true,
+   "occlusion": 0.0,
+   "gain": 1.135,
+   "chroma": [
+    -0.27,
+    2.1
+   ]
+  },
+  {
+   "frame": 112,
+   "confidence": 1.0,
+   "applied": true,
+   "occlusion": 0.0,
+   "gain": 1.033,
+   "chroma": [
+    0.3,
+    1.29
+   ]
+  },
+  {
+   "frame": 120,
+   "confidence": 0.9696969696969697,
+   "applied": true,
+   "occlusion": 0.0,
+   "gain": 1.029,
+   "chroma": [
+    0.11,
+    1.7
+   ]
+  },
+  {
+   "frame": 128,
+   "confidence": 0.7916666666666666,
+   "applied": true,
+   "occlusion": 0.0,
+   "gain": 0.991,
+   "chroma": [
+    0.42,
+    0.83
+   ]
+  },
+  {
+   "frame": 136,
+   "confidence": 0.8536585365853658,
+   "applied": true,
+   "occlusion": 0.0,
+   "gain": 0.925,
+   "chroma": [
+    0.45,
+    0.11
+   ]
+  },
+  {
+   "frame": 144,
+   "confidence": 0.7162698412698413,
+   "applied": true,
+   "occlusion": 0.0,
+   "gain": 1.011,
+   "chroma": [
+    0.3,
+    0.59
+   ]
+  },
+  {
+   "frame": 152,
+   "confidence": 0.9253731343283582,
+   "applied": true,
+   "occlusion": 0.13896320760250092,
+   "gain": 1.117,
+   "chroma": [
+    0.37,
+    0.69
+   ]
+  },
+  {
+   "frame": 160,
+   "confidence": 0.9761904761904762,
+   "applied": true,
+   "occlusion": 0.14897044003009796,
+   "gain": 0.832,
+   "chroma": [
+    -0.12,
+    0.24
+   ]
+  }
+ ]
+}
