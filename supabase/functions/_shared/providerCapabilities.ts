@@ -20,6 +20,11 @@ export type ProviderCapability = {
 export const SAFETY_MAX_REFERENCE_IMAGES = 8;
 
 const DEFAULTS: Record<string, ProviderCapability> = {
+  "xai:images/edits": {
+    maxReferenceImages: 5,
+    firstFrameConditioning: true,
+    source: "docs.x.ai multi-image editing: images[] max 5 per request; <IMAGE_0> is the edited frame, so a Look-on-artist anchor can be sent as <IMAGE_1>",
+  },
   "xai:videos/edits": {
     maxReferenceImages: 8,
     firstFrameConditioning: null,
