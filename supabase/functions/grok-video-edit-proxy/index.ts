@@ -24,6 +24,7 @@ const XAI_BASE_URL = "https://api.x.ai/v1";
 const SIGN_TTL = 3600;
 const OUTPUT_SIGN_TTL = 604800;
 const DEFAULT_MODEL = "grok-imagine-video";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_MAX_COST_USD = 0.5;
 const POLL_INTERVAL_MS = 4000;
 const POLL_TIMEOUT_MS = 600_000;
@@ -168,6 +169,14 @@ serve(async (req) => {
   }
   if (!body.projectId || !body.artistId || !body.videoAssetId || !body.wardrobeFeatureId) {
     return json(400, { error: "missing_required_fields" });
+  }
+  // Fail closed BEFORE any billed call: shot_id is a uuid column, so a treatment
+  // label like "S06" would bill xAI and then lose the row at insert time.
+  if (body.shotId != null && body.shotId !== "" && !UUID_RE.test(body.shotId)) {
+    return json(400, {
+      error: "invalid_shot_id",
+      detail: "shotId must be a shots.id uuid (treatment labels belong in metadata, not shot_id)",
+    });
   }
 
   const admin = makeAdmin(supabaseUrl, serviceRoleKey);
