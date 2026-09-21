@@ -1,0 +1,363 @@
+{
+  "draftId": "YSL_IceOn_bars24-46_v1",
+  "partId": "transitions",
+  "model": "gpt-6-astra",
+  "responseId": "resp_0a165e9896b6a209006ab0b8253a3c87d2a034467ec02672ad",
+  "reviewedAt": "2026-09-21T04:58:13.084Z",
+  "usage": {
+    "input_tokens": 47824,
+    "input_tokens_details": {
+      "cache_write_tokens": 47821,
+      "cached_tokens": 0
+    },
+    "output_tokens": 13983,
+    "output_tokens_details": {
+      "reasoning_tokens": 7768
+    },
+    "total_tokens": 61807
+  },
+  "actualCostUsd": 1.1774,
+  "review": {
+    "transitions": [
+      {
+        "expected": "Hard cut from Look 2 performance to a cold-lit jacket-hardware insert at 0:03.934.",
+        "from_shot": "S01",
+        "observed": "S01→S02 before frames at 0:03.726–0:03.893 show continuous performance motion; after frames at 0:03.976–0:04.143 show a clean cut to tight jacket-button and pocket detail. The dark palette carries across without an unintended flash or mixed image. Visual transition passes. Musical landing is UNCERTAIN, low confidence: no audio supplied.",
+        "to_shot": "S02",
+        "verdict": "PASS",
+        "defect_ids": [],
+        "draft_time": 3.934,
+        "recommended_action": "Retain the visual cut; verify its musical alignment at native frame rate."
+      },
+      {
+        "expected": "Hard cut from hardware B-roll back to synchronized Look 2 performance in the same cold room at 0:05.902.",
+        "from_shot": "S02",
+        "observed": "S02→S03 before frames at 0:05.693–0:05.860 show a hand moving across the jacket close-up. After frames at 0:05.943–0:06.110 return directly to medium performance, retaining the black trucker and charcoal room established at 0:03.893, S01→S02 before. No transition-layer contamination is visible in these samples. Musical landing, lip sync and the provenance of the hand in S02 are UNCERTAIN, low confidence.",
+        "to_shot": "S03",
+        "verdict": "PASS",
+        "defect_ids": [],
+        "draft_time": 5.902,
+        "recommended_action": "Retain the visual return; verify synchronization and S02 provenance against the master."
+      },
+      {
+        "expected": "Cut to a 1.25× medium-close crop of the contiguous master performance, visibly tightening the framing.",
+        "from_shot": "S03",
+        "observed": "S03→S04 before frames at 0:11.595–0:11.762 and after frames at 0:11.845–0:12.012 retain essentially the same performer scale, headroom and background-panel placement. The gesture continues, but the requested framing escalation does not occur. Musical landing is UNCERTAIN, low confidence.",
+        "to_shot": "S04",
+        "verdict": "FAIL",
+        "defect_ids": [
+          "S04-CROP-MISSING"
+        ],
+        "draft_time": 11.803,
+        "recommended_action": "Apply the specified 1.25× crop at the S04 boundary without changing the master timing."
+      },
+      {
+        "expected": "Cut from tighter Look 2 performance to a half-bar diamond-refraction insert that builds to the pre-drop white-out.",
+        "from_shot": "S04",
+        "observed": "S04→S05 before frames at 0:14.546–0:14.712 show Look 2 performance. After frames at 0:14.796–0:14.962 continue that performance under an increasingly milky exposure wash; no diamond insert or refraction structure appears. The visible entrance is not the requested B-roll cutaway. A white-out peak within the unsampled middle of S05 is UNCERTAIN, low confidence.",
+        "to_shot": "S05",
+        "verdict": "FAIL",
+        "defect_ids": [
+          "S05-REFRACTION-INSERT-MISSING"
+        ],
+        "draft_time": 14.754,
+        "recommended_action": "Replace the performance wash in S05 with the specified diamond-refraction insert, preserving the half-bar duration."
+      },
+      {
+        "expected": "Flash into the drop at 0:15.738: first reveal of Look 1, with the room splitting into multiple ice-lit mirror panels while preserving Fendi.",
+        "from_shot": "S05",
+        "observed": "Look 1 is already exposed in all S05→S06 before frames at 0:15.529–0:15.696, at least 0.209 seconds before the planned reveal. The after frame at 0:15.779 is a translucent grey-white wash over that already-visible look; 0:15.863–0:15.946 return to darkness. No multi-panel reveal reads. These frames also expose a truncated screen-left arm and patterned fragments behind the screen-right flank. The jacket has incorrect shoulder blocking, chest-band proportions and branding. Exact flash peak and musical synchronization are UNCERTAIN, low confidence.",
+        "to_shot": "S06",
+        "verdict": "FAIL",
+        "defect_ids": [
+          "S06-DROP-REVEAL-EARLY",
+          "HOOK-PERFORMER-MATTE",
+          "HOOK-SOURCE-LEAK",
+          "HOOK-LOOK1-GARMENT-TRUTH",
+          "HOOK-WORDMARK-DRIFT",
+          "HOOK-ROOM-ESCALATION"
+        ],
+        "draft_time": 15.738,
+        "recommended_action": "Withhold Look 1 until the specified drop; rebuild the refraction-to-flash reveal and repair the performer composite, garment and hook environment before reassembly."
+      },
+      {
+        "expected": "Hard cut on the hook repeat from Look 1 performance to the cold luxury/night-city insert at 0:21.639.",
+        "from_shot": "S06",
+        "observed": "S06→S07 before frames at 0:21.431 and 0:21.514 show Look 1 with missing screen-left arm coverage. The frame labelled before at 0:21.598 already shows the city, preceding the declared boundary. City frames at 0:21.681–0:21.848 retain coherent blue-white wet-street imagery and provide an intentional visual cutaway. The timestamp discrepancy needs verification; audible beat placement is UNCERTAIN, low confidence.",
+        "to_shot": "S07",
+        "verdict": "PARTIAL",
+        "defect_ids": [
+          "HOOK-PERFORMER-MATTE",
+          "S07-CUT-TIMING"
+        ],
+        "draft_time": 21.639,
+        "recommended_action": "Keep the city cutaway, repair the outgoing performer matte and check the actual cut PTS against the song clock."
+      },
+      {
+        "expected": "Clean hard cut back from city B-roll to synchronized Look 1 performance in the mirror-multiplied hook room.",
+        "from_shot": "S07",
+        "observed": "S07→S08 cuts directly from city imagery at 0:23.398–0:23.565 to performance at 0:23.648–0:23.815. However, the returning performer has a large background-filled gap through the screen-left upper arm, leaving the forearm/hand inadequately connected; patterned non-room material is visible beside the opposite flank. The room still reads as a single rear panel, not the specified multiplied mirrors. The return is not visually clean. Lip sync and beat placement are UNCERTAIN, low confidence.",
+        "to_shot": "S08",
+        "verdict": "FAIL",
+        "defect_ids": [
+          "HOOK-PERFORMER-MATTE",
+          "HOOK-SOURCE-LEAK",
+          "HOOK-ROOM-ESCALATION",
+          "HOOK-WORDMARK-DRIFT"
+        ],
+        "draft_time": 23.607,
+        "recommended_action": "Repair the full-person matte and remove retained source fragments before approving the B-roll return; verify synchronization against the master."
+      },
+      {
+        "expected": "Contiguous medium-performance cut to the specified crossed-arms passage, retaining Look 1, body scale and room continuity.",
+        "from_shot": "S08",
+        "observed": "The crossed-arms gesture is present, but S08→S09 before frames at 0:29.300–0:29.467 and after frames at 0:29.550–0:29.717 show a floating upper-body cutout: the lower torso and legs are replaced by the room, with additional rectangular gaps around the crossed wrists. Zipper and chest-band rendering also reset between 0:29.383 and 0:29.467, before the labelled boundary. This is not an intentional cut effect. Whether S09's 1.000-second file trim selects the correct master range is UNCERTAIN, low confidence.",
+        "to_shot": "S09",
+        "verdict": "FAIL",
+        "defect_ids": [
+          "HOOK-PERFORMER-MATTE",
+          "HOOK-GARMENT-RESET",
+          "REVIEW-SYNC-UNVERIFIED"
+        ],
+        "draft_time": 29.508,
+        "recommended_action": "Restore the complete performer beneath the crossed arms, stabilize garment construction across the cut and validate S09's file-to-master time mapping."
+      },
+      {
+        "expected": "Cut to a one-bar generated insert of multiplying, strobing mirror panels, with glitch FX.",
+        "from_shot": "S09",
+        "observed": "S09→S10 before frames at 0:31.267–0:31.434 and after frames at 0:31.517–0:31.684 continue the performer and the same room. The incoming samples become bluer, but do not present the requested mirror-panel cutaway. A tint change does not deliver the specified visual escalation. Strobe activity between samples or in the unsampled interior is UNCERTAIN, low confidence.",
+        "to_shot": "S10",
+        "verdict": "FAIL",
+        "defect_ids": [
+          "S10-MIRROR-INSERT-MISSING"
+        ],
+        "draft_time": 31.475,
+        "recommended_action": "Supply the specified mirror-panel insert rather than continuing tinted performance under the B-roll slot."
+      },
+      {
+        "expected": "Glitch return from the mirror-strobe insert to correctly oriented, synchronized Look 1 performance.",
+        "from_shot": "S10",
+        "observed": "S10→S11 before frames at 0:33.234–0:33.401 show full-frame performance with reversed chest lettering and the bright wall on camera-right. At 0:33.484 after, the entire composition flips back, moving the performer to the other side under a grey-white exposure pulse; 0:33.568–0:33.651 settle into the camera-left-lit room. This is a whole-image reversal/flash, not visible panel multiplication, and it reverses the brand before the return. A background-filled waist gap remains at 0:33.568. Additional native-frame glitch detail is UNCERTAIN, low confidence.",
+        "to_shot": "S11",
+        "verdict": "FAIL",
+        "defect_ids": [
+          "S10-MIRROR-INSERT-MISSING",
+          "S10-S11-FULLFRAME-FLIP",
+          "HOOK-PERFORMER-MATTE"
+        ],
+        "draft_time": 33.443,
+        "recommended_action": "Keep performer and brand orientation intact; rebuild the specified panel-based FX and glitch return, then repair the exposed waist matte."
+      },
+      {
+        "expected": "Clean contiguous performance cut into the fourth hook repeat, preserving the same Look 1 garment and branding.",
+        "from_shot": "S11",
+        "observed": "S11→S12 before frames at 0:39.136 and 0:39.219 show a smaller condensed chest wordmark. At 0:39.303, still labelled before, it abruptly becomes much larger and wider; the zipper and pocket treatment also change. That new rendering persists in after frames at 0:39.386–0:39.553. The room and gesture continue, making the wardrobe reset conspicuous and unmotivated. Musical landing and the later hard-out are UNCERTAIN, low confidence.",
+        "to_shot": "S12",
+        "verdict": "FAIL",
+        "defect_ids": [
+          "HOOK-WORDMARK-DRIFT",
+          "HOOK-GARMENT-RESET"
+        ],
+        "draft_time": 39.344,
+        "recommended_action": "Use one product-correct garment construction and tracked wordmark across S11/S12; remove the pre-boundary rendering reset without retiming the performance."
+      }
+    ],
+    "defects": [
+      {
+        "severity": "major",
+        "shot_id": "S04",
+        "recommended_owner": "edit_fx",
+        "category": "framing",
+        "description": "The specified 1.25× medium-close crop is missing, so S04 does not provide the requested pre-drop framing escalation.",
+        "defect_id": "S04-CROP-MISSING",
+        "evidence": "S03→S04 before at 0:11.595, 0:11.678 and 0:11.762 versus after at 0:11.845, 0:11.928 and 0:12.012: performer scale, large headroom and rear-panel placement remain essentially unchanged.",
+        "requires_treatment_change": false,
+        "time_range": [
+          11.803,
+          14.754
+        ],
+        "recommended_action": "Apply the approved 1.25× crop for S04, maintaining the contiguous master range and eye-level framing."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S05",
+        "recommended_owner": "broll",
+        "category": "broll",
+        "description": "The sampled entrance and exit of the diamond-refraction B-roll slot contain performance instead of the specified insert. The visible wash lacks diamond/refraction structure.",
+        "defect_id": "S05-REFRACTION-INSERT-MISSING",
+        "evidence": "S04→S05 after at 0:14.796, 0:14.879 and 0:14.962 continues Look 2 performance beneath a rising grey wash. S05→S06 before at 0:15.529, 0:15.613 and 0:15.696 contains Look 1 performance. No diamond insert is visible in these head/tail samples; the unsampled interior is not certified.",
+        "requires_treatment_change": false,
+        "time_range": [
+          14.754,
+          15.738
+        ],
+        "recommended_action": "Replace the slot with the requested cold-world diamond-refraction insert, terminating in the specified pre-drop white-out."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S06",
+        "recommended_owner": "edit_fx",
+        "category": "transition",
+        "description": "Look 1 is revealed before the designated S06 drop. The sampled S06 flash occurs over an already-exposed wardrobe rather than delivering the intended wardrobe reveal.",
+        "defect_id": "S06-DROP-REVEAL-EARLY",
+        "evidence": "S05→S06 before at 0:15.529 already shows the cream/navy track jacket, 0.209 seconds before 0:15.738; it remains visible at 0:15.613 and 0:15.696. After at 0:15.779 shows a translucent wash, followed by dark performance at 0:15.863 and 0:15.946. No opaque white-out is present in these samples; an unsampled peak is UNCERTAIN, low confidence.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.529,
+          15.946
+        ],
+        "recommended_action": "Remove the premature Look 1 exposure from S05. Coordinate the diamond white-out and S06 flash so the approved first reveal occurs at the drop; inspect the effect at native frame rate."
+      },
+      {
+        "severity": "blocker",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "Recurring foreground-mask failures erase limbs and body regions. The crossed-arms boundary reduces the performer to a floating upper-body cutout. These are persistent sampled defects, not a permissible transition effect.",
+        "defect_id": "HOOK-PERFORMER-MATTE",
+        "evidence": "S05→S06 before 0:15.696 and after 0:15.863–0:15.946: screen-left sleeve terminates without a complete arm. S06→S07 before 0:21.431–0:21.514: missing arm coverage beside the torso. S07→S08 after 0:23.648–0:23.815: the wall replaces much of the screen-left upper arm. S08→S09 before 0:29.300–0:29.467 and after 0:29.550–0:29.717: torso/legs below the crossed arms are absent and rectangular gaps interrupt the wrists. S10→S11 after 0:33.568: room texture intrudes into the waist.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.696,
+          33.651
+        ],
+        "recommended_action": "Rebuild and temporally propagate a full-person matte from the real master, preserving the body beneath arm occlusions. Inspect every native frame through each affected boundary; do not conceal these failures with flashes."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "environment",
+        "description": "Patterned non-room fragments remain behind the performer's screen-right flank and change visibility with his movement. They break the transformed-room composite. The exact source object is UNCERTAIN, low confidence.",
+        "defect_id": "HOOK-SOURCE-LEAK",
+        "evidence": "S05→S06 before at 0:15.529–0:15.696 shows black/white/lime patterned material behind the screen-right side; the flash at 0:15.779 exposes that region further. S07→S08 after at 0:23.648 and 0:23.732 shows similar patterned material beside the screen-right torso, inconsistent with the surrounding charcoal wall.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.529,
+          23.815
+        ],
+        "recommended_action": "Remove retained non-performer source regions and reconstruct the approved room behind moving arms and torso. Validate occlusion boundaries over time."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "The hook retains a cream/navy track-jacket family but not the supplied Look 1 construction. A broad chest band and navy shoulder blocking replace the reference's narrow chest stripe and unblocked mastic shoulders.",
+        "defect_id": "HOOK-LOOK1-GARMENT-TRUTH",
+        "evidence": "Against the supplied Look 1 flat product reference: S05→S06 after 0:15.863–0:15.946, S06→S07 before 0:21.431–0:21.514, S07→S08 after 0:23.648–0:23.815 and S11→S12 after 0:39.386–0:39.553 consistently show the broad navy chest panel and navy shoulder sections.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.529,
+          39.553
+        ],
+        "recommended_action": "Regenerate the garment against the supplied product construction, preserving Fendi's source body, movement and scale. Approve a canonical Look 1 before temporal propagation and brand repair."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "brand_repair",
+        "category": "continuity",
+        "description": "The Look 1 wordmark is oversized, white and centered across the zipper instead of the reference's small gold wearer-left mark. Letterforms vary, and the S11/S12 boundary exposes an abrupt scale/type change.",
+        "defect_id": "HOOK-WORDMARK-DRIFT",
+        "evidence": "S05→S06 after 0:15.863–0:15.946 shows malformed centered lettering; S07→S08 after 0:23.648–0:23.815 shows a wider centered wordmark. S11→S12 before 0:39.136–0:39.219 has a smaller condensed mark, which becomes much larger and wider at 0:39.303, still labelled before, and persists after at 0:39.386–0:39.553. The supplied Look 1 reference places a small gold mark on the wearer-left chest stripe.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.529,
+          39.553
+        ],
+        "recommended_action": "Replace generated lettering with one product-correct, garment-tracked mark. Lock placement, scale, color and letterforms across all hook shots and their edit handles."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "temporal_propagation",
+        "category": "continuity",
+        "description": "Garment construction resets near contiguous performance boundaries: zipper contrast, stripe geometry and pocket treatment change rather than remaining one jacket moving with the performer.",
+        "defect_id": "HOOK-GARMENT-RESET",
+        "evidence": "S08→S09 before 0:29.383 versus 0:29.467: the zipper becomes distinctly dark and the chest-band rendering changes while the crossed-arm pose remains similar. S11→S12 before 0:39.219 versus 0:39.303: the front zipper becomes heavier/darker and pocket treatment changes; the new construction persists after at 0:39.386–0:39.553.",
+        "requires_treatment_change": false,
+        "time_range": [
+          29.383,
+          39.553
+        ],
+        "recommended_action": "Propagate one approved garment across adjacent source ranges and overlap handles. Stabilize zipper, pockets and stripe geometry through S08/S09 and S11/S12 rather than independently reseeding each shot."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "environment",
+        "category": "creative_intent",
+        "description": "The specified post-drop room escalation does not read in the supplied hook boundary frames. The room remains dominated by one tall rear panel, without the requested multiple mirrors and diamond-refraction glints.",
+        "defect_id": "HOOK-ROOM-ESCALATION",
+        "evidence": "S05→S06 after 0:15.863–0:15.946, S07→S08 after 0:23.648–0:23.815, S08→S09 at 0:29.300–0:29.717 and S10→S11 after 0:33.568–0:33.651 show the same single-panel room organization. Even where the faulty matte exposes the room at 0:29.550, there is no visible mirror multiplication.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.738,
+          39.553
+        ],
+        "recommended_action": "Implement the approved multi-panel hook environment, blue-white ice rim and wall refraction glints while leaving the real performer, pose and scale untouched."
+      },
+      {
+        "severity": "minor",
+        "shot_id": "S07",
+        "recommended_owner": "sync",
+        "category": "transition",
+        "description": "Visible city content precedes the declared S07 cut time. The discrepancy is confirmed against the supplied frame labels; the exact render offset and audible impact are UNCERTAIN, low confidence.",
+        "defect_id": "S07-CUT-TIMING",
+        "evidence": "S06→S07 before at 0:21.514 still shows performance, but the frame also labelled before at 0:21.598 already shows S07 city imagery. The declared boundary is 0:21.639; after frames at 0:21.681–0:21.848 continue the city.",
+        "requires_treatment_change": false,
+        "time_range": [
+          21.514,
+          21.681
+        ],
+        "recommended_action": "Compare decoded frame PTS, export timebase and song-clock boundary. Correct the assembly if genuinely early; do not shift footage solely from approximate sampling labels."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S10",
+        "recommended_owner": "broll",
+        "category": "broll",
+        "description": "The mirror-strobe insert slot shows continued full-frame performance at its sampled entrance and exit, not the specified multiplying mirror panels.",
+        "defect_id": "S10-MIRROR-INSERT-MISSING",
+        "evidence": "S09→S10 after at 0:31.517, 0:31.600 and 0:31.684 continues the performer in the same room with a bluer grade. S10→S11 before at 0:33.234, 0:33.318 and 0:33.401 still shows full-frame performance, now reversed. No multiplied panel insert is visible in these samples; interior strobe cadence is UNCERTAIN, low confidence.",
+        "requires_treatment_change": false,
+        "time_range": [
+          31.475,
+          33.443
+        ],
+        "recommended_action": "Produce and place the specified one-bar mirror-panel multiplication/strobe insert, matching the performance world's lighting and intended glitch return."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S10",
+        "recommended_owner": "edit_fx",
+        "category": "transition",
+        "description": "The mirror treatment reverses the entire performance and branding, then flips the whole composition back under an exposure pulse. This creates a spatial jump instead of the requested mirror-panel escalation.",
+        "defect_id": "S10-S11-FULLFRAME-FLIP",
+        "evidence": "S10→S11 before at 0:33.234–0:33.401 has reversed chest lettering, a camera-right bright wall and a performer positioned toward frame-right. After at 0:33.484 restores normal orientation and camera-left lighting while moving him to frame-left under a milky flash; 0:33.568–0:33.651 retains that orientation.",
+        "requires_treatment_change": false,
+        "time_range": [
+          33.234,
+          33.651
+        ],
+        "recommended_action": "Remove the whole-performance reversal. Apply the approved mirror/glitch treatment without reversing Fendi or the product branding, and inspect native frames to verify the actual glitch rather than certifying the sampled exposure pulse alone."
+      },
+      {
+        "severity": "note",
+        "shot_id": null,
+        "recommended_owner": "sync",
+        "category": "sync",
+        "description": "Musical landing and synchronization within one native frame are UNCERTAIN, low confidence. The supplied 12 fps images have no audio or unmodified master comparison. S09's unusual file trim warrants verification but does not establish a timing error. Opening and final hard-out frames are not supplied.",
+        "defect_id": "REVIEW-SYNC-UNVERIFIED",
+        "evidence": "Returns are represented only by sampled images: S02→S03 after 0:05.943–0:06.110, S07→S08 after 0:23.648–0:23.815 and S10→S11 after 0:33.484–0:33.651. S08→S09 after 0:29.550–0:29.717 shows crossed arms but cannot establish the master timestamp. Assembly metadata uses S09_env.mp4 @ 1.000s versus 0.500s for other performance clips. The last supplied image is S11→S12 after at 0:39.553, not the 0:43.279 out.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0,
+          43.279
+        ],
+        "recommended_action": "Review the native-rate export with song audio, decoded PTS and a master-performance comparison. Have source_range verify S09's file-zero-to-master mapping before changing its trim. Check exact flash/glitch peaks, every musical boundary and the final hard-out; do not treat these visual transition passes as sync or identity-provenance approval."
+      }
+    ]
+  }
+}
