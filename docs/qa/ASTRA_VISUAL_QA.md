@@ -55,6 +55,8 @@ Route to Fendi when Astra and Claude disagree materially, a fix needs a treatmen
 3. Results land in `project-exports/<user>/<project>/astra-reviews/<draftId>/<part>.json` and in the returned object; aggregate into `AstraReviewSchema`, commit under the draft's results folder.
 4. Repair → rerender affected slots → reassemble → rebuild package (v2) → re-run → `diffReviews`.
 
+Latency: the edge gateway cuts requests at ~150 s and a 50–90-frame Astra part takes longer, so the proxy runs OpenAI in **background mode**: `mode: "submit"` returns a `responseId` immediately, `mode: "poll"` returns `status` until `completed`, then stores the review. The runner submits all parts, then polls every 15 s.
+
 Cost: list price $10 / 1M input, $50 / 1M output; a full 5-part review of a 43 s draft ≈ 300 images ≈ $5–7. The proxy fails closed above `maxCostUsd` (default $2 per part).
 
 Secrets: `OPENAI_API_KEY` (or `FROST_OPENAI` / `ASTRA_API_KEY`) as an Edge Function secret. The key is never sent to or read by the browser.
