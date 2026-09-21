@@ -107,3 +107,8 @@ verify_jwt = true
 # No Grok / Fal / Control Center / X-Proxy-Secret. Do not widen proxy auth.
 [functions.temporal-propagate-proxy]
 verify_jwt = true
+
+# Astra visual QA (Phase 1): user-JWT-only bridge to OpenAI gpt-6-astra for
+# reviewing completed drafts against treatment intent. Key stays server-side.
+[functions.astra-visual-review-proxy]
+verify_jwt = true
