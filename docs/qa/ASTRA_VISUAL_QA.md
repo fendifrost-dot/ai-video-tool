@@ -54,6 +54,7 @@ Route to Fendi when Astra and Claude disagree materially, a fix needs a treatmen
 |---|---|---|---|---|---|
 | v1 | REPAIR_REQUIRED | 4 / 4 / 8 / 3 / 4 / 5 | 44 (7 blockers: body dropouts + closet leaks) | $5.19 | matte → RobustVideoMatting; hook plate with several mirror panels; S04 1.25× crop; S05 diamond insert; S10 corridor strobe; S02 locked macro; Look 1 re-generated reference-true (v3c) |
 | v2 | REPAIR_REQUIRED | 6 / 6 / 8 / 4 / 6 / 7 | 29 (0 blockers; **20 resolved**, 4 new: edge halo, S06→S08 garment reset, cut-label offset, S10 strobe unverified) | $5.00 (+$2.3 for one `max_output_tokens` incomplete part) | matte v3 (RVM fgr decontamination, alpha 0.4→0.85 remap, static-pixel peel in the matte band); frame-label snap in the builder; wardrobe re-rolls **blocked on xAI credit** |
+| v5 | REPAIR_REQUIRED | 5 / 5 / 8 / 3 / 5 / 6 | 33 (0 blockers; 0 resolved, 29 persisting "changed manifestation", 4 new: S08 hem drift, matte foreground erosion S11/S12, two verification gates) | $5.28 (+≈$2.3 for one incomplete transitions part) | the FULL OUTFIT pass (jacket-only → whole Look via `lookId`, Fendi's ysl.com detail crops as references, construction facts first in the prompt) got the outfit on him but Astra holds the zero-deviation standard: wardrobe 4→3 because every shot is still a different approximation of the garment. Generator-bound; next lever is a hero-frame-conditioned lane, not more prompt rolls. Matte fringe/shadow halo persists (alpha remap did not close it). |
 
 Aggregates and per-part results: `docs/research/results/2026-09-20-ysl-real-video-1/astra/` (`astra_review_v1.json`, `astra_review_v2.json` with `_diff_vs_prev`).
 
@@ -63,6 +64,10 @@ What the loop taught us (generalized):
 * **Output budget**: the sequence part with 15 questions + prior defects exceeded `max_output_tokens: 16000` (`incomplete`, still billed ≈ $2.3). The re-run with `reasoningEffort: "medium"` and an explicit "under 9000 tokens, ≤ 45 words per item" clause completed at $1.08. The proxy should raise the cap; until then the builder's sequence instructions carry the budget clause.
 * **Sampling can create phantom findings**: the 2 fps sequence strip landed on the white eighths of the S10 strobe (Astra: "S10 white in both samples"), while the 6 fps shot strip passed S10. Frame labels also lagged content by one frame at cuts (`SEQ-CUT-BOUNDARY-OFFSET`) because `ffmpeg -ss t` returns the first frame with pts ≥ t; the builder now snaps every sample to its frame and labels the assembler's actual cut frame.
 * **Ownership routing held**: every v2 defect landed on the subsystem that could fix it; the ones Claude cannot close alone are `wardrobe_generation` / `temporal_propagation` (stochastic per-clip xAI edits — construction differs shot to shot; needs either credit for re-rolls or a hero-frame-conditioned lane) and `brand_repair` (no deterministic wordmark repair exists for moving footage yet).
+
+## Nothing project-specific in the tooling
+
+The builder templates its brief and the 15 standing questions on a `treatment` block in the ShotSpecs file — `artistName`, `authority`, `brand`, `creativeDirection`, `sourceEnvironment` — with neutral fallbacks, so the same script reviews any artist's section. B-roll/FX renders come from `scripts/edit/render_broll_slots.py`, which reads each B-roll ShotSpec (fx / cameraMotion) plus a per-section `broll_recipes.json` (plates and macro sources) — the old id-by-id `ysl_section_fx.py` is gone. Garment truth stays in the prompt registry (data per garment), the wardrobe lane itself takes any Look (`lookId`).
 
 ## Running it (Phase 1, manual)
 
