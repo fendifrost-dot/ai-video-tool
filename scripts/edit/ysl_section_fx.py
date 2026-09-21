@@ -6,11 +6,12 @@ Every slot is rendered ON THE SONG CLOCK from real, already-synced material wher
 the treatment allows it, so the section never leaves the performance for filler:
 
   S02  fashion insert  — real macro: 2.2× push-in on the trucker jacket (S03 env render)
-  S05  ice hit         — real performance across the look change: S04 tail (Look 2) → white
-                         bloom → S06 handle (Look 1); the white-out hides the wardrobe cut
+  S05  diamond flash   — performer-free insert (Astra review #1, S05 was a performance
+                         cross-fade): Grok Imagine diamond still, push-in + prismatic bloom,
+                         whiting out on the last beat before bar 32 (S06 has flash-in)
   S07  city insert     — Grok Imagine still (public CDN) animated with a fast lateral push
-  S10  mirror strobe   — 1/8-note strobe: mirrored S09 tail ×3, ice flashes ×3 (the 0.73 s
-                         with no wardrobe render), mirrored S11 head ×2
+  S10  mirror strobe   — performer-free insert (Astra review #1): infinity-mirror corridor
+                         still, slow push, hard 1/8-note strobe (flip / negative / ice flash)
 
 Inputs are the env composites (scripts/edit/composite_environment.py). Outputs are
 720×1280 @ 24 fps, exactly the slot length, ready for assemble_section.py.
@@ -29,6 +30,8 @@ def main():
     ap.add_argument("--shotspecs", required=True); ap.add_argument("--env-dir", required=True)
     ap.add_argument("--renders", required=True, help="renders.json (masterStart per env clip)")
     ap.add_argument("--city-plate", required=True); ap.add_argument("--out-dir", required=True)
+    ap.add_argument("--diamond-plate", required=True, help="S05 still (Grok Imagine, public CDN)")
+    ap.add_argument("--corridor-plate", required=True, help="S10 still (Grok Imagine, public CDN)")
     a = ap.parse_args()
     spec = json.load(open(a.shotspecs)); sync = spec["sync"]
     shots = {s["id"]: s for s in spec["shots"]}
@@ -41,27 +44,29 @@ def main():
     def env(sid): return R[sid]["file"], R[sid]["masterStart"]
     out = {}
 
-    # S02 — real macro push-in on the trucker jacket, from S03 (steady chest, bars 27-30)
-    f, ms = env("S03"); d = dur("S02")
-    off = s2p(shots["S03"]["timeline"]["start"]) - ms + 1.2
+    # S02 — controlled product macro (Astra review #1: the v1 macro drifted into a hand swing;
+    # every 2 s window of the trucker shots has hands crossing the chest, so this is a locked
+    # still-life): one clean frame of S03, locked on his left chest pocket + button placket,
+    # slow 3.2→3.5× push, cold grade, vignette, light sharpen, fine grain so it is not a freeze.
+    f, ms = env("S03"); d = dur("S02"); n = int(round(d * 24))
+    off = s2p(shots["S03"]["timeline"]["start"]) - ms + 1.55
+    still = os.path.join(a.out_dir, "_s02_still.png")
+    run(["ffmpeg", "-v", "error", "-y", "-ss", f"{off:.3f}", "-i", f, "-frames:v", "1", still])
     p = os.path.join(a.out_dir, "S02_macro.mp4")
-    run(["ffmpeg", "-v", "error", "-y", "-ss", f"{off:.3f}", "-i", f, "-t", f"{d:.3f}",
-         "-vf", "scale=1584:2816:flags=lanczos,zoompan=z='3.0+0.4*on/48':x='iw/2-iw/zoom/2':y='ih*0.66-ih/zoom/2':d=1:s=720x1280:fps=24,eq=contrast=1.08:saturation=0.9,unsharp=5:5:0.4",
+    run(["ffmpeg", "-v", "error", "-y", "-loop", "1", "-i", still, "-t", f"{d:.3f}",
+         "-vf", f"scale=1584:2816:flags=lanczos,zoompan=z='3.2+0.3*on/{n}':x='iw*0.56-iw/zoom/2':y='ih*0.60-ih/zoom/2':d=1:s=720x1280:fps=24,"
+                "eq=contrast=1.1:saturation=0.85,colorbalance=bs=0.08:bm=0.04,unsharp=5:5:0.5,noise=alls=6:allf=t,vignette=PI/4",
          *ENC, p]); out["S02"] = {"file": p}
 
-    # S05 — ice hit across the look change (S04 tail → white → S06 handle)
-    d = dur("S05"); t0 = shots["S05"]["timeline"]["start"]; half = (d - PAD) / 2
-    f4, ms4 = env("S04"); f6, ms6 = env("S06")
-    off4 = s2p(t0) - ms4; off6 = s2p(t0 + half) - ms6
-    if off6 < 0: raise SystemExit("S06 render does not reach the S05 midpoint")
-    a4 = os.path.join(a.out_dir, "_s05a.mp4"); b6 = os.path.join(a.out_dir, "_s05b.mp4")
-    run(["ffmpeg", "-v", "error", "-y", "-ss", f"{off4:.3f}", "-i", f4, "-t", f"{half+0.05:.3f}",
-         "-vf", f"fade=t=out:st=0:d={half:.3f}:color=white,fps=24", *ENC, a4])
-    run(["ffmpeg", "-v", "error", "-y", "-ss", f"{off6:.3f}", "-i", f6, "-t", f"{half+0.1:.3f}",
-         "-vf", f"fade=t=in:st=0:d={half*0.6:.3f}:color=white,fps=24", *ENC, b6])
-    p = os.path.join(a.out_dir, "S05_icehit.mp4")
-    lst = os.path.join(a.out_dir, "_s05.txt"); open(lst, "w").write(f"file '{a4}'\nfile '{b6}'\n")
-    run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", p]); out["S05"] = {"file": p}
+    # S05 — diamond refraction flash (performer-free): push-in on the still, prismatic bloom
+    # rising through the half bar, hard white-out over the last 6 frames into S06's flash-in.
+    d = dur("S05"); n = int(round(d * 24))
+    p = os.path.join(a.out_dir, "S05_diamond.mp4")
+    run(["ffmpeg", "-v", "error", "-y", "-loop", "1", "-i", a.diamond_plate, "-t", f"{d:.3f}",
+         "-vf", f"scale=1440:2560:flags=lanczos,zoompan=z='1.0+0.18*on/{n}':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s=720x1280:fps=24,"
+                f"eq=contrast=1.15:saturation=1.1,gblur=sigma=0.6,curves=preset=increase_contrast,"
+                f"fade=t=out:st={max(0.0, d - PAD - 0.25):.3f}:d=0.25:color=white",
+         *ENC, p]); out["S05"] = {"file": p}
 
     # S07 — city insert: fast lateral push on the still (already motion-blurred plate)
     d = dur("S07"); n = int(round(d * 24))
@@ -70,30 +75,22 @@ def main():
          "-vf", f"scale=1440:2560:flags=lanczos,zoompan=z='1.05+0.30*on/{n}':x='iw*0.15+iw*0.25*on/{n}-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s=720x1280:fps=24,tmix=frames=3,eq=contrast=1.1:saturation=1.05",
          *ENC, p]); out["S07"] = {"file": p}
 
-    # S10 — mirror strobe: 8 eighth-notes. Fendi stays whole; the frame flips left/right on
-    # every eighth (mirror-multiplied energy), with an ice flash on each flip. The 3 eighths
-    # that no wardrobe render covers (master 78.58–79.30) are a hard strobe built from the
-    # last covered S09 frame (negative / cold / bloom, 12 Hz) — declared FX, not filler.
-    d = dur("S10"); e = (d - PAD) / 8; t0 = shots["S10"]["timeline"]["start"]
+    # S10 — mirror corridor strobe (performer-free): 8 eighth-notes on the corridor still.
+    # Even eighths: slow push, cold grade; odd eighths: mirrored + negative ice flash decaying
+    # to black over the eighth — a hard 1/8-note strobe the whole bar, then S11 glitches in.
+    d = dur("S10"); e = (d - PAD) / 8
     EF = ["-frames:v", "6"]  # 0.246 s eighths → 6 frames each = 48 ≥ 47 needed
-    f9, ms9 = env("S09"); f11, ms11 = env("S11")
+    grade = "eq=contrast=1.2:saturation=0.7,colorbalance=bs=0.18:bm=0.10:bh=0.05"
     parts = []
-    grade = "eq=contrast=1.2:saturation=0.65,colorbalance=bs=0.18:bm=0.10:bh=0.05,fps=24"
-    def seg(src, off, k, flip):
+    for k in range(8):
         pk = os.path.join(a.out_dir, f"_s10_{k}.mp4")
-        vf = ("hflip," if flip else "") + grade + (",fade=t=in:st=0:d=0.06:color=white" if k else "")
-        run(["ffmpeg", "-v", "error", "-y", "-ss", f"{off:.3f}", "-i", src, "-t", f"{e+0.1:.3f}", "-vf", vf, *EF, *ENC, pk]); return pk
-    for k in range(3):
-        parts.append(seg(f9, s2p(t0 + k * e) - ms9, k, flip=bool(k % 2)))
-    # strobe from the last covered S09 frame
-    last = os.path.join(a.out_dir, "_s10_last.png")
-    run(["ffmpeg", "-v", "error", "-y", "-sseof", "-0.05", "-i", f9, "-frames:v", "1", last])
-    for k in range(3, 6):
-        pk = os.path.join(a.out_dir, f"_s10_{k}.mp4")
-        vf = ("hflip," if k % 2 else "") + "negate,eq=contrast=1.6:brightness=-0.1:saturation=0.3,colorbalance=bs=0.3:bm=0.2,gblur=sigma=1.5,fps=24,fade=t=in:st=0:d=0.001:color=white,fade=t=out:st=0.04:d=0.20:color=black"
-        run(["ffmpeg", "-v", "error", "-y", "-loop", "1", "-i", last, "-t", f"{e+0.1:.3f}", "-vf", vf, *EF, *ENC, pk]); parts.append(pk)
-    for k in range(6, 8):
-        parts.append(seg(f11, s2p(t0 + k * e) - ms11, k, flip=bool(k % 2)))
+        z0 = 1.0 + 0.04 * k
+        base = f"scale=1440:2560:flags=lanczos,zoompan=z='{z0}+0.04*on/6':x='iw/2-iw/zoom/2':y='ih/2-ih/zoom/2':d=1:s=720x1280:fps=24"
+        if k % 2 == 0:
+            vf = base + "," + grade + (",fade=t=in:st=0:d=0.05:color=white" if k else "")
+        else:
+            vf = base + ",hflip,negate,eq=contrast=1.5:brightness=-0.05:saturation=0.35,colorbalance=bs=0.3:bm=0.2,gblur=sigma=1.2,fade=t=in:st=0:d=0.001:color=white,fade=t=out:st=0.04:d=0.20:color=black"
+        run(["ffmpeg", "-v", "error", "-y", "-loop", "1", "-i", a.corridor_plate, "-t", f"{e+0.1:.3f}", "-vf", vf, *EF, *ENC, pk]); parts.append(pk)
     lst = os.path.join(a.out_dir, "_s10.txt"); open(lst, "w").write("".join(f"file '{p}'\n" for p in parts))
     p = os.path.join(a.out_dir, "S10_mirrorstrobe.mp4")
     run(["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", lst, "-c", "copy", p]); out["S10"] = {"file": p}
