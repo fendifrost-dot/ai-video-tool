@@ -8,7 +8,7 @@
  * and, for performance shots, resolves to a SOURCE RANGE on the performance master via the
  * canonical sync (song = master + 0.8538 s). No number below is typed by hand.
  */
-import { writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { parseShotSpec, type ShotSpec } from "../src/lib/treatment/shotSpec";
 import {
   YSL_ICE_ON_GRID,
@@ -168,6 +168,18 @@ const out = {
   },
   shots,
 };
-writeFileSync("docs/treatments/ysl-ice-on.section-bars24-46.shotspecs.json", JSON.stringify(out, null, 2) + "\n");
+// Production decisions recorded by later stages survive a re-seed: the B-roll planner
+// (scripts/edit/render_broll_slots.py --plan) writes generation.parameters.broll into each
+// B-roll ShotSpec, and the renderer executes only that. A re-seed must not silently drop it.
+const OUT_PATH = "docs/treatments/ysl-ice-on.section-bars24-46.shotspecs.json";
+if (existsSync(OUT_PATH)) {
+  const prev = JSON.parse(readFileSync(OUT_PATH, "utf8")) as { shots?: Array<{ id: string; generation?: { parameters?: Record<string, unknown> } }> };
+  const prevBroll = new Map((prev.shots ?? []).map((s) => [s.id, s.generation?.parameters?.broll]).filter(([, b]) => b != null));
+  for (const s of shots) {
+    const b = prevBroll.get(s.id);
+    if (b != null) s.generation.parameters = { ...s.generation.parameters, broll: b };
+  }
+}
+writeFileSync(OUT_PATH, JSON.stringify(out, null, 2) + "\n");
 console.log(`wrote ${shots.length} shots; performance ${out.totals.performanceSeconds}s, broll/fx ${out.totals.brollSeconds}s`);
 for (const s of shots) console.log(s.id.padEnd(4), s.kind.padEnd(11), `song ${s.timeline.start.toFixed(3)}–${s.timeline.end.toFixed(3)}`, s.source.range ? `master ${s.source.range.start.toFixed(3)}–${s.source.range.end.toFixed(3)}` : "", s.wardrobe.lookId ?? "");
