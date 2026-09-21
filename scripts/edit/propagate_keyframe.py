@@ -67,6 +67,33 @@ def garment_mask_from_edit(master, edit, thr=18.0, min_frac=0.004):
     cv2.floodFill(ff, mask, (0, 0), 255); keep = keep | cv2.bitwise_not(ff)
     return keep
 
+def person_alpha(frames_bgr, model_path=os.path.expanduser("~/.cache/avt/rvm_mobilenetv3_fp32.onnx")):
+    """RobustVideoMatting alphas for a few single frames (recurrent state reset per frame).
+    Used to keep a minted still's garment INSIDE the real silhouette of its master frame: if the
+    generator moved an arm, that sleeve must never be painted onto the background."""
+    import onnxruntime as ort, tempfile as tf
+    if not os.path.exists(model_path):
+        os.makedirs(os.path.dirname(model_path), exist_ok=True)
+        subprocess.run(["curl", "-sSL", "-o", model_path, "https://github.com/PeterL1n/RobustVideoMatting/releases/download/v1.0.0/rvm_mobilenetv3_fp32.onnx"], check=True)
+    sess = ort.InferenceSession(model_path); out = []
+    for f in frames_bgr:
+        rec = [np.zeros([1, 1, 1, 1], np.float32)] * 4
+        src = (cv2.cvtColor(f, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0).transpose(2, 0, 1)[None]
+        _, pha, *_ = sess.run(None, {"src": src, "r1i": rec[0], "r2i": rec[1], "r3i": rec[2], "r4i": rec[3], "downsample_ratio": np.array([0.4], np.float32)})
+        out.append(pha[0, 0].astype(np.float32))
+    return out
+
+def head_exclusion(person_alpha_map, head_frac=0.17):
+    """Rows from the top of the real silhouette down by head_frac of the frame height, as a mask
+    to keep OUT of any hero garment mask: a generator's re-rendered head must never be carried
+    onto the footage, whatever the diff says. (Face detectors were tried and are not reliable on
+    this footage — cap + glasses + motion blur — so the rule is geometric and person-agnostic.)"""
+    m = np.zeros(person_alpha_map.shape, np.uint8)
+    rows = np.where((person_alpha_map > 0.5).any(axis=1))[0]
+    if len(rows) == 0: return m
+    top = int(rows.min()); m[top:top + int(head_frac * m.shape[0]), :] = 255
+    return m
+
 def dis():
     d = cv2.DISOpticalFlow_create(cv2.DISOPTICAL_FLOW_PRESET_MEDIUM)
     d.setUseSpatialPropagation(True); d.setFinestScale(1)
@@ -139,12 +166,14 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--master", required=True); ap.add_argument("--edit", default=None)
     ap.add_argument("--hero-image", default=None); ap.add_argument("--hero-mask", default=None)
+    ap.add_argument("--hero-stills", default=None, help="comma list of frame:path — minted stills (one garment realisation) aligned to those master frames; the garment mask is what each still changed vs its master frame")
     ap.add_argument("--hero-frame", type=int, default=None); ap.add_argument("--hero-frames", default=None, help="comma list of hero frame indices (re-anchor cadence); each frame is carried from its NEAREST hero")
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--size", default="720x1280"); ap.add_argument("--fps", type=int, default=24)
     ap.add_argument("--conf", type=float, default=0.6, help="min propagation confidence to use the hero garment")
     ap.add_argument("--span", type=int, default=10 ** 6, help="max frames to propagate each side of the hero")
     ap.add_argument("--feather", type=float, default=2.0); ap.add_argument("--no-relight", action="store_true")
+    ap.add_argument("--head-frac", type=float, default=0.17, help="still heroes: fraction of frame height below the silhouette top that is never taken from a still (the head)")
     ap.add_argument("--occl-thresh", type=float, default=26.0, help="Lab residual (master now vs master at the hero, warped) above which the garment is occluded there")
     a = ap.parse_args()
     W, H = (int(x) for x in a.size.lower().split("x"))
@@ -153,8 +182,15 @@ def main():
     edit = decode(a.edit, W, H, a.fps) if a.edit else None
     n = min(len(master), len(edit)) if edit else len(master)
     master = master[:n]; edit = edit[:n] if edit else None
-    heroes = sorted({int(x) for x in a.hero_frames.split(",")} if a.hero_frames else {a.hero_frame})
-    if any(h is None or not (0 <= h < n) for h in heroes): raise SystemExit("hero frame out of range")
+    stills = {}
+    if a.hero_stills:
+        for item in a.hero_stills.split(","):
+            fr, path = item.split(":", 1); stills[int(fr)] = path
+    heroes = sorted(stills.keys()) if stills else sorted({int(x) for x in a.hero_frames.split(",")} if a.hero_frames else {a.hero_frame})
+    dropped = [h for h in heroes if h is None or not (0 <= h < n)]
+    heroes = [h for h in heroes if h is not None and 0 <= h < n]
+    if dropped: print(f"warning: hero frames {dropped} are outside the {n}-frame clip and are ignored", flush=True)
+    if not heroes: raise SystemExit("no usable hero frame")
     hero = heroes[0]
     grays = [cv2.cvtColor(f, cv2.COLOR_BGR2GRAY) for f in master]
     # per-hero garment image + mask, and the chain maps from every frame to that hero
@@ -166,7 +202,15 @@ def main():
         right = (heroes[i + 1] - hidx) // 2 + 2 if i + 1 < len(heroes) else n - 1 - hidx
         spans[hidx] = min(a.span, max(left, right))
     for hidx in heroes:
-        if edit is not None:
+        if hidx in stills:
+            himg = cv2.resize(cv2.imread(stills[hidx]), (W, H), interpolation=cv2.INTER_AREA); hmask = garment_mask_from_edit(master[hidx], himg)
+            # the still's garment is trusted only where BOTH silhouettes agree it is the person
+            am, ah = person_alpha([master[hidx], himg])
+            agree = (am > 0.5) & (ah > 0.5)
+            hmask = (hmask & (agree.astype(np.uint8) * 255))
+            hmask = hmask & cv2.bitwise_not(head_exclusion(am, a.head_frac))
+            hmask = cv2.morphologyEx(hmask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+        elif edit is not None:
             himg = edit[hidx]; hmask = garment_mask_from_edit(master[hidx], edit[hidx])
         else:
             himg = cv2.resize(cv2.imread(a.hero_image), (W, H)); hmask = cv2.resize(cv2.imread(a.hero_mask, 0), (W, H))
