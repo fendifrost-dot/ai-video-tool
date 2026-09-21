@@ -63,21 +63,36 @@ type Body = {
   referenceMode?: "flat" | "full_look";
   /**
    * A composed Look (artist_looks.id). When set, the outfit is the Look's
-   * wardrobe_feature_ids in order: ONE reference per piece (flat product shot first; the
-   * on-model shot too for the first piece when referenceMode is "full_look"), capped at
-   * MAX_LOOK_REFERENCES. wardrobeFeatureId then only has to be one of the Look's pieces
+   * wardrobe_feature_ids in order; how many references each piece sends comes from the
+   * reference policy (request > Look recipe > defaults; see resolveReferencePolicy).
+   * wardrobeFeatureId then only has to be one of the Look's pieces
    * (kept for the asset row / ownership check). Fendi 2026-09-21: "the outfit swap is only
    * placing the jacket on me and not the entire YSL outfit — it should be in AVT."
    */
   lookId?: string;
+  /** Per-request override of the reference policy (see resolveReferencePolicy). */
+  referencePolicy?: { primaryPieceRefs?: number; otherPieceRefs?: number; maxRefs?: number };
 };
 
-const MAX_LOOK_REFERENCES = 5;
-// Under referenceMode "full_look" the Look's first piece (the hero garment) may send its
-// on-model shot, its flat shot and up to two "detail" crops (collar, sleeve inside, …) —
-// construction facts a text prompt keeps losing (Fendi 2026-09-21: stripe INSIDE the sleeve,
-// stand collar, zip closed). Other pieces send one flat shot each.
-const LOOK_PRIMARY_PIECE_REFS = 4;
+// Reference policy is DATA, not code (Fendi 2026-09-21: "an outfit update should populate in
+// the tool in a seamless workflow" — no redeploy for wardrobe changes). Resolution order:
+//   request.referencePolicy  >  Look composition_recipe_json.reference_policy  >  defaults.
+// Only the absolute cap below is code, because it is the provider's limit, not a creative choice.
+const ABSOLUTE_MAX_REFERENCES = 8;
+type ReferencePolicy = { primaryPieceRefs?: number; otherPieceRefs?: number; maxRefs?: number };
+const DEFAULT_REFERENCE_POLICY: Required<ReferencePolicy> = { primaryPieceRefs: 4, otherPieceRefs: 1, maxRefs: 5 };
+function resolveReferencePolicy(...layers: Array<ReferencePolicy | null | undefined>): Required<ReferencePolicy> {
+  const out = { ...DEFAULT_REFERENCE_POLICY };
+  for (const l of layers) {
+    if (!l) continue;
+    for (const k of ["primaryPieceRefs", "otherPieceRefs", "maxRefs"] as const) {
+      const v = Number(l[k]);
+      if (Number.isFinite(v) && v >= 1) out[k] = Math.min(Math.floor(v), ABSOLUTE_MAX_REFERENCES);
+    }
+  }
+  out.maxRefs = Math.min(out.maxRefs, ABSOLUTE_MAX_REFERENCES);
+  return out;
+}
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -272,7 +287,8 @@ serve(async (req) => {
       .maybeSingle();
     if (lErr) return json(500, { error: "look_query_failed", detail: lErr.message });
     if (!look || look.artist_id !== body.artistId) return json(404, { error: "look_not_found" });
-    const recipe = (look.composition_recipe_json ?? {}) as { wardrobe_feature_ids?: unknown };
+    const recipe = (look.composition_recipe_json ?? {}) as { wardrobe_feature_ids?: unknown; reference_policy?: ReferencePolicy };
+    const policy = resolveReferencePolicy(recipe.reference_policy, body.referencePolicy);
     const featureIds = Array.isArray(recipe.wardrobe_feature_ids)
       ? recipe.wardrobe_feature_ids.filter((x): x is string => typeof x === "string" && UUID_RE.test(x))
       : [];
@@ -290,17 +306,19 @@ serve(async (req) => {
       const f = byId.get(fid);
       if (!f || f.artist_id !== body.artistId) continue;
       const refs = Array.isArray(f.reference_images) ? f.reference_images : [];
-      const paths = (fid === featureIds[0] && referenceMode === "full_look")
-        ? pickGrokGarmentReferencePaths(refs, null, LOOK_PRIMARY_PIECE_REFS)
-        : pickGrokVideoEditReferencePaths(refs, f.storage_path ?? f.file_url, 1);
+      const primary = fid === featureIds[0];
+      const paths = referenceMode === "full_look"
+        ? pickGrokGarmentReferencePaths(refs, null, primary ? policy.primaryPieceRefs : policy.otherPieceRefs)
+        : pickGrokVideoEditReferencePaths(refs, f.storage_path ?? f.file_url, primary ? Math.min(policy.primaryPieceRefs, 1) : 1);
       lookPieces.push({ featureId: fid, label: String(f.label ?? ""), featureType: String(f.feature_type ?? ""), path: paths[0] ?? null });
-      for (const p of paths) if (!garmentPaths.includes(p) && garmentPaths.length < MAX_LOOK_REFERENCES) garmentPaths.push(p);
+      for (const p of paths) if (!garmentPaths.includes(p) && garmentPaths.length < policy.maxRefs) garmentPaths.push(p);
     }
   } else {
     const refImages = Array.isArray(wardrobe.reference_images) ? wardrobe.reference_images : [];
     const fallback = wardrobe.storage_path ?? wardrobe.file_url;
+    const policy = resolveReferencePolicy(body.referencePolicy);
     garmentPaths = referenceMode === "full_look"
-      ? pickGrokGarmentReferencePaths(refImages, null, 2)
+      ? pickGrokGarmentReferencePaths(refImages, null, Math.min(policy.primaryPieceRefs, policy.maxRefs))
       : pickGrokVideoEditReferencePaths(refImages, fallback, 1);
   }
   const referenceUrls: string[] = [];
