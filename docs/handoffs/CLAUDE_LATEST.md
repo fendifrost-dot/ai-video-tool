@@ -34,6 +34,8 @@
 
 ## Read this
 
+**`docs/handoffs/CHATGPT_REVIEW_YSL_SECTION_V5_2026-09-21.md`** — the review brief for ChatGPT (requested by Fendi 2026-09-21): what to review in PR #153, the loop verdict and where the ceiling is, Astra's escalations, and the four design questions (hero-frame-conditioned Look propagation, wordmark repair on moving footage, matte direction, stop rule) that decide the next round.
+
 **`docs/qa/ASTRA_VISUAL_QA.md`** — the review loop (Astra = reviewer, not creative director), tooling constraint (text + images only → frame strips), contract, routing table, escalation rules, run steps, the loop log for this section and the lessons (defect identity needs the previous list; repair notes are claims; output budget; sampling artefacts). **`docs/research/results/2026-09-20-ysl-real-video-1/astra/`** — `astra_review_v1.json`, `astra_review_v2.json` (with `_diff_vs_prev`), per-part results, `repair_notes_v2.txt`, `pkg_v2_manifest.json`.
 
 **`docs/research/results/2026-09-20-ysl-real-video-1/YSL_REAL_VIDEO_1_SECTION_BARS24-46_RESULT_2026-09-21.md`** — the takeover result: mandate-test table, Gate-0 log per shot with asset ids and cost, ledger, problems → generalized fixes, limitations, scaling recommendation. Evidence in the same folder (`S06_wardrobe_src_vs_edit.jpg`, `S01_trucker_zoom.jpg`, `S08_attempt1_rejected_band_broken.jpg`, `S06_env_v2v_rejected.jpg`, `S06_env_composite.jpg`, `env_composites_*.jpg`, `fx_*.jpg`, `section_v1_contact_sheet.jpg`, `alignment_check.json`, `section_v1.assembly.json`, `renders_all.json`).
@@ -80,7 +82,7 @@ The first stage-1b run supplied the quad directly to `architecture-c-still-repai
 |---|---|
 | **Fendi** | (1) **Redeploy `grok-video-edit-proxy`** once more (reference policy as data) — after that wardrobe/Look changes need no deploy. (2) OpenAI credit is ≈ $6 from empty; top up before the next Astra review (~$5–7 each). (3) Watch `YSL_IceOn_bars24-46_v5` at native rate and rule: is the full-outfit hook (zipped, stand collar) approved as the direction; is the pre-hook trucker wash (S01 lighter grey) acceptable; musical timing of the drop / S10 / final out. (4) Migration `20260920120000`; `~/Downloads` grant. |
 | **Claude** | Holding for (1)+(3). Next work when cleared: hero-frame-conditioned Look propagation design (one approved still per Look → all shots), shadow-aware matte refinement, deterministic wordmark repair on moving footage; Astra #4 only after those. |
-| **ChatGPT** | Still-repair lane unchanged. Video lane design questions: hero-frame conditioning for `/videos/edits` (does xAI accept a first-frame reference?), and whether the still-repair `logoComposite` can be tracked onto moving footage for `brand_repair`. |
+| **ChatGPT** | Review brief: `docs/handoffs/CHATGPT_REVIEW_YSL_SECTION_V5_2026-09-21.md` (rulings on its §6.1–6.4). Still-repair lane unchanged. Video lane design questions: hero-frame conditioning for `/videos/edits` (does xAI accept a first-frame reference?), and whether the still-repair `logoComposite` can be tracked onto moving footage for `brand_repair`. |
 | **Cursor** | Nothing pending on the video lane. |
 
 ## Guardrails unchanged
