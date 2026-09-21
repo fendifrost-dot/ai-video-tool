@@ -1,0 +1,6 @@
+{
+  "S02": {"recipe": "render_macro", "source": "S03", "slotOffset": 1.55, "center": [0.56, 0.60], "zoom": [3.2, 3.5], "still": true},
+  "S05": {"plate": "plates/diamond_1.jpg"},
+  "S07": {"plate": "plates/city_c332371a-ded3-4aa9-8d84-d78ae576fc12.jpg", "recipe": "still_lateral_push"},
+  "S10": {"plate": "plates/corridor_2.jpg", "subdivision": 8}
+}
