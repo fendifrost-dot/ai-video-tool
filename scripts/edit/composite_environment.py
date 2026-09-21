@@ -69,6 +69,70 @@ def fill_holes(mask):
     from scipy import ndimage
     return ndimage.binary_fill_holes(mask)
 
+def local_ncc(a, b, win=9):
+    """Normalised cross-correlation of two single-channel images in a win×win window:
+    ~1 where the two share the same STRUCTURE (a shadowed door still shows the door's
+    panel lines), ~0 where a different surface sits in front of the background."""
+    import cv2
+    a = a.astype(np.float32); b = b.astype(np.float32)
+    ma = cv2.blur(a, (win, win)); mb = cv2.blur(b, (win, win))
+    va = cv2.blur(a * a, (win, win)) - ma * ma; vb = cv2.blur(b * b, (win, win)) - mb * mb
+    cov = cv2.blur(a * b, (win, win)) - ma * mb
+    return cov / np.sqrt(np.maximum(va, 1e-3) * np.maximum(vb, 1e-3))
+
+def shadow_aware_alpha(img, fgr, alpha, bg, core_hi=0.98, band_px=14, ncc_win=9, ncc_thr=0.55, min_sep=45.0):
+    """Shadow-aware matte refinement (ChatGPT ruling 2026-09-21 §5): keep the RVM foreground,
+    reason explicitly about the background/shadow interaction in the UNCERTAIN BAND only.
+
+      img   this frame (RGB float)      fgr   RVM's decontaminated foreground colour (or img)
+      alpha RVM alpha after the hard-mask cleanup   bg   temporal-median background prior
+
+    1. Local shadow model: the performer's shadow is the background scaled by a smooth,
+       nearly neutral attenuation k(x,y). k is estimated from confident-background pixels
+       (alpha < 0.05) as the local median of img/bg, smoothed, clipped to [0.35, 1.05], so
+       B(x,y) = k·bg is what the background looks like HERE, shadow included.
+    2. Structure test: local NCC between the frame's luminance and the background's. Shadowed
+       background keeps the door's structure (NCC high); a garment or skin in front of the
+       door does not. Pixels in the band with NCC > ncc_thr and a colour close to B are
+       background — even when they are cream on a cream door.
+    3. Known-background unmixing on the rest of the band: img = a·F + (1−a)·B with F = fgr,
+       a = <img−B, F−B> / |F−B|²  (the classic difference-matting solution). Where F and B are
+       too similar (|F−B| < min_sep) the equation is ill-posed and RVM's alpha is kept.
+    The confident core (alpha ≥ core_hi, eroded) is never touched: no foreground erosion.
+    Returns (alpha, band_mask, shadow_mask)."""
+    import cv2
+    from scipy import ndimage
+    core = ndimage.binary_erosion(alpha >= core_hi, iterations=3)
+    outer = ndimage.binary_dilation(alpha > 0.02, iterations=band_px)
+    band = outer & ~core
+    # 1. local attenuation from confident background
+    eps = 4.0
+    ratio = ((img + eps) / (bg + eps)).mean(axis=2)
+    conf_bg = (alpha < 0.05)
+    k = np.where(conf_bg, ratio, np.nan)
+    k_med = ndimage.generic_filter(np.nan_to_num(k, nan=1.0), np.median, size=15) if False else None  # (slow) — use blur of masked values instead
+    num = cv2.blur(np.where(conf_bg, ratio, 0).astype(np.float32), (31, 31)); den = cv2.blur(conf_bg.astype(np.float32), (31, 31))
+    k_s = np.where(den > 0.05, num / np.maximum(den, 1e-6), 1.0)
+    k_s = cv2.GaussianBlur(np.clip(k_s, 0.35, 1.05).astype(np.float32), (0, 0), 8)
+    B = bg * k_s[..., None]
+    # 2. structure test
+    gi = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_RGB2GRAY); gb = cv2.cvtColor(np.clip(B, 0, 255).astype(np.uint8), cv2.COLOR_RGB2GRAY)
+    ncc = local_ncc(gi, gb, ncc_win)
+    close_to_B = np.abs(img - B).sum(axis=2) < 60
+    grad = cv2.Sobel(gb.astype(np.float32), cv2.CV_32F, 1, 0) ** 2 + cv2.Sobel(gb.astype(np.float32), cv2.CV_32F, 0, 1) ** 2
+    has_structure = cv2.blur(grad, (ncc_win, ncc_win)) > 25.0   # NCC is meaningless on a flat wall
+    shadow_bg = band & close_to_B & ((ncc > ncc_thr) | ~has_structure) & (alpha < 0.9)
+    # 3. known-background unmixing
+    F = fgr if fgr is not None else img
+    d = F - B; sep = np.sqrt((d * d).sum(axis=2))
+    a_unmix = np.clip(((img - B) * d).sum(axis=2) / np.maximum(sep * sep, 1e-6), 0, 1)
+    posed = band & (sep >= min_sep)
+    out = alpha.copy()
+    out[posed] = 0.5 * alpha[posed] + 0.5 * a_unmix[posed]   # blend: RVM's temporal prior + the physics
+    out[shadow_bg] = 0.0
+    # tiny detached specks the refinement leaves behind
+    return out.astype(np.float32), band, shadow_bg
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--in", dest="inp", required=True); ap.add_argument("--plate", required=True)
@@ -89,6 +153,9 @@ def main():
     ap.add_argument("--shadow-spread", type=float, default=0.0, help="max per-channel ratio spread for the shadowed-background test; 0 = off (tested 0.04 on S08: it bites into the cream shoulder and cap, so it stays off)")
     ap.add_argument("--alpha-lo", type=float, default=0.4, help="RVM alpha at/below this is background")
     ap.add_argument("--alpha-hi", type=float, default=0.85, help="RVM alpha at/above this is body")
+    ap.add_argument("--refine", default="shadow", choices=["shadow", "none"], help="shadow-aware refinement of the RVM matte in the uncertain band (known-background unmixing + structure test; never touches the confident core)")
+    ap.add_argument("--refine-ncc", type=float, default=0.55); ap.add_argument("--refine-band", type=int, default=14)
+    ap.add_argument("--refine-debug", default=None, help="write band/shadow masks for frame indices (comma list) as PNGs next to --out")
     ap.add_argument("--mask-cache", default=None, help="npz path; segmenter masks are saved here and reused if present (matte logic can then be iterated without re-running rembg)")
     a = ap.parse_args()
     W, H = (int(x) for x in a.size.lower().split("x"))
@@ -201,7 +268,16 @@ def main():
             # remap: below alpha-lo is background (shadow/door bleed RVM keeps half-transparent),
             # above alpha-hi is body; smoothstep between, then the Gaussian feather below
             t = np.clip((al - a.alpha_lo) / max(1e-3, a.alpha_hi - a.alpha_lo), 0, 1)
-            alphas.append((t * t * (3 - 2 * t)).astype(np.float32))
+            t = (t * t * (3 - 2 * t)).astype(np.float32)
+            if a.refine == "shadow":
+                img = np.asarray(Image.open(os.path.join(tmp, f)).convert("RGB")).astype(np.float32)
+                fgr_p = os.path.join(tmp, f"fgr_{i:05d}.png")
+                fgr = np.asarray(Image.open(fgr_p).convert("RGB")).astype(np.float32) if os.path.exists(fgr_p) else None
+                t, band, shadow_bg = shadow_aware_alpha(img, fgr, t, bg_med, band_px=a.refine_band, ncc_thr=a.refine_ncc)
+                if a.refine_debug and str(i) in a.refine_debug.split(","):
+                    dbg = np.zeros((*t.shape, 3), np.uint8); dbg[band] = (60, 60, 60); dbg[shadow_bg] = (255, 0, 0); dbg[t >= 0.98] = (0, 160, 0)
+                    Image.fromarray(dbg).save(os.path.splitext(a.out)[0] + f"_refine_{i:05d}.png")
+            alphas.append(t)
             continue
         hard = soft[i] > 0.4
         hard = ndimage.binary_closing(hard, structure=vstruct)
