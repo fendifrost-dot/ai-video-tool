@@ -23,7 +23,22 @@ const MASTER_AUDIO_SOURCE = "55bdc383-50e7-41b8-9ec9-8bda031ac5e0"; // IMG_5633.
 const PERFORMANCE_DURATION_S = 190.33;
 const LOOK_SL_TRACK = "0feb028f-dc4d-45dc-82ac-e4bbd16054b0"; // Saint Laurent Track Jacket — Mastic Cotton Navy Stripe (wardrobe feature)
 const LOOK_SL_TRUCKER = "f6455042-faec-4a07-b6a2-cb0525a69c65"; // YSL Trucker Jacket — French Black Denim (wardrobe feature)
-const EXISTING_V2_CLIP = "f31bd0f2-884f-42e1-8b08-aa645597b7a6"; // grok video edit of master 75.0–79.0 (Look 1)
+/**
+ * Accepted wardrobe renders (xAI /v1/videos/edits via grok-video-edit-proxy, 2026-09-20).
+ * Each passed Gate 0 on moving footage; provenance (cost, attempt, decision, reason) lives in
+ * the asset's metadata_json.provenance. S08 attempt 1 (236f30f5) was rejected; S06 env v2v
+ * test (255417f1) was rejected — environment is composited, not regenerated.
+ */
+const WARDROBE_OUTPUT_ASSETS: Record<string, string> = {
+  S01: "ac4ca37d-8544-4bf8-a20a-876a1bd51318",
+  S03: "a4f84701-6796-4cfb-a500-f6ad4681847d",
+  S04: "e9fb4348-df08-4616-be79-0d80334f2fe8",
+  S06: "d36c0309-875f-4b58-837b-2e0b68ac7cfd",
+  S08: "2daf6190-e623-40bb-8986-92ec1e51de5c",
+  S09: "8db0030f-f4ca-4032-8e28-b58bdc797bba",
+  S11: "ab3ba0f2-5f21-4ef9-b7d8-7c143dde2337",
+  S12: "efa48177-0132-483a-a565-81258288fa87",
+};
 /** Section cuts uploaded 2026-09-20 as generated_clip assets (master ranges + 0.5 s handles, 1080×1920 30 fps). */
 const SOURCE_CUT_ASSETS: Record<string, string> = {
   S01: "ffc1da5e-8fc8-46af-a8f7-e43ac94dda75",
@@ -31,6 +46,7 @@ const SOURCE_CUT_ASSETS: Record<string, string> = {
   S04: "3d2ab326-c5cc-4db2-bc3e-7a303cfa60c9",
   S06: "939662aa-4ec0-4a87-897d-90068074b7a2",
   S08: "e5cfeebc-1780-42e7-8f30-5f157f64ff85",
+  S09: "84ce32ab-12f2-435e-bfb7-d8e970544544",
   S11: "770ab475-2072-46e8-a7b5-a9631880f0e5",
   S12: "9a087c22-4877-47f4-ace6-07e61bdc54e7",
 };
@@ -43,7 +59,7 @@ const ENV_HOOK =
 const bar = (b: number) => barStartSeconds(b, YSL_ICE_ON_GRID);
 const song = (b0: number, b1: number) => ({ start: bar(b0), end: bar(b1) });
 
-type Perf = { id: string; b0: number; b1: number; look: string; title: string; purpose: string; framing: ShotSpec["framing"]; motion: string; env: string; existing?: string };
+type Perf = { id: string; b0: number; b1: number; look: string; title: string; purpose: string; framing: ShotSpec["framing"]; motion: string; env: string; transitionIn?: { type: "cut" | "flash" | "glitch" | "fade_white"; durationSeconds?: number } };
 
 function performance(p: Perf, order: number): ShotSpec {
   const timeline = song(p.b0, p.b1);
@@ -60,11 +76,9 @@ function performance(p: Perf, order: number): ShotSpec {
     timeline,
     source: {
       kind: "captured",
-      mediaId: p.existing ?? MASTER_1080,
+      mediaId: MASTER_1080,
       range: src,
-      note: p.existing
-        ? `Existing Look-1 grok video edit ${p.existing} covers master 75.0–78.7 s; trim to this range.`
-        : `Master range on ${MASTER_1080} (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source ${MASTER_AUDIO_SOURCE}.`,
+      note: `Master range on ${MASTER_1080} (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source ${MASTER_AUDIO_SOURCE}.`,
     },
     wardrobe: {
       name: p.look === LOOK_SL_TRACK ? "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe" : "YSL Trucker Jacket — French Black Denim",
@@ -83,10 +97,11 @@ function performance(p: Perf, order: number): ShotSpec {
       engine: "grok",
       model: "grok-imagine-video (xAI /v1/videos/edits)",
       prompt: "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
-      parameters: { lane: "architecture_c_grok_video_edit", inputClipHandlesSeconds: 0.5, outputFps: 24, outputRaster: "720x1280", sourceCutAssetId: SOURCE_CUT_ASSETS[p.id] ?? null },
+      parameters: { lane: "architecture_c_grok_video_edit", inputClipHandlesSeconds: 0.5, outputFps: 24, outputRaster: "720x1280", sourceCutAssetId: SOURCE_CUT_ASSETS[p.id] ?? null, wardrobeOutputAssetId: WARDROBE_OUTPUT_ASSETS[p.id] ?? null, promptVersion: p.look === LOOK_SL_TRACK ? "v3-jacket-only" : "trucker-v1" },
       notes: "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth.",
     },
-    reconstruction: { required: false, notes: "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face." },
+    reconstruction: { required: true, notes: "Environment = person matte over a generated plate (scripts/edit/composite_environment.py); a second v2v pass over Fendi was tested and rejected (identity loss)." },
+    transitionIn: p.transitionIn ?? { type: "cut" },
     qa: [
       { check: "gate0_identity_visible", mustPass: true },
       { check: "gate0_garment_on_body", mustPass: true },
@@ -96,7 +111,7 @@ function performance(p: Perf, order: number): ShotSpec {
       { check: "gate0_garment_truth", mustPass: true, notes: "collar/zip/pockets/cuffs/band vs product photos" },
       { check: "sync_within_one_frame_of_song_clock", mustPass: true },
     ],
-    status: "planned",
+    status: WARDROBE_OUTPUT_ASSETS[p.id] ? "generated" : "planned",
     provenance: { source: "human", author: "Claude (takeover)", createdAt: "2026-09-20", notes: "bars/sync computed, not typed" },
   });
 }
@@ -124,12 +139,12 @@ shots.push(broll("S02", 26, 27, "Fashion insert — zip & wordmark", "Reinforce 
 shots.push(performance({ id: "S03", b0: 27, b1: 30, look: LOOK_SL_TRUCKER, title: "Pre-hook build", purpose: "The rapid-fire bars; his pointing/arm-up gestures at song 54–55 s carry the energy.", framing: "medium", motion: "locked off", env: ENV_PREHOOK }, o++));
 shots.push(performance({ id: "S04", b0: 30, b1: 31.5, look: LOOK_SL_TRUCKER, title: "Pre-hook tight", purpose: "Tighter framing (crop of the master) to escalate into the drop.", framing: "medium_close", motion: "locked off, 1.25× crop", env: ENV_PREHOOK }, o++));
 shots.push(broll("S05", 31.5, 32, "Ice hit", "Half-bar FX transition into the drop: a diamond refraction flash whites out the frame on the last beat before bar 32.", "Diamond facets refracting a hard white light, flare blooms to white, black background, 9:16, one second", o++, ["flash"]));
-shots.push(performance({ id: "S06", b0: 32, b1: 35, look: LOOK_SL_TRACK, title: "Hook drop — Look 1", purpose: "The drop: wardrobe changes to the Saint Laurent track jacket as the hook lands; the room hardens.", framing: "medium", motion: "locked off", env: ENV_HOOK }, o++));
+shots.push(performance({ id: "S06", b0: 32, b1: 35, look: LOOK_SL_TRACK, title: "Hook drop — Look 1", purpose: "The drop: wardrobe changes to the Saint Laurent track jacket as the hook lands; the room hardens.", framing: "medium", motion: "locked off", env: ENV_HOOK, transitionIn: { type: "flash", durationSeconds: 0.1 } }, o++));
 shots.push(broll("S07", 35, 36, "City night insert", "Rhythmic cutaway on the hook's first repeat: luxury/night-city motif that answers 'ice on'.", "Night city street at speed through a car window, wet asphalt reflecting blue-white lights, luxury car interior edge, 9:16", o++));
 shots.push(performance({ id: "S08", b0: 36, b1: 39, look: LOOK_SL_TRACK, title: "Hook repeat 2", purpose: "Second hook repeat on the real performance, Look 1, mirror-multiplied room.", framing: "medium", motion: "locked off", env: ENV_HOOK }, o++));
-shots.push(performance({ id: "S09", b0: 39, b1: 40, look: LOOK_SL_TRACK, title: "Hook — crossed arms (existing clip)", purpose: "Uses the already-proven Look-1 video edit (master 75–78.7 s): crossed arms on the hook line.", framing: "medium", motion: "locked off", env: ENV_HOOK, existing: EXISTING_V2_CLIP }, o++));
+shots.push(performance({ id: "S09", b0: 39, b1: 40, look: LOOK_SL_TRACK, title: "Hook — crossed arms", purpose: "Crossed arms on the hook line, Look 1 (own cut + edit, master 75.868–77.835).", framing: "medium", motion: "locked off", env: ENV_HOOK }, o++));
 shots.push(broll("S10", 40, 41, "Mirror strobe", "FX beat: the mirror panels multiply and strobe for one bar — visual escalation before the last two hook repeats.", "Infinity mirror corridor, blue-white strobe, diamond glints, black, 9:16, two seconds", o++, ["glitch"]));
-shots.push(performance({ id: "S11", b0: 41, b1: 44, look: LOOK_SL_TRACK, title: "Hook repeat 3", purpose: "Third repeat; he is up-front and direct to camera.", framing: "medium", motion: "locked off", env: ENV_HOOK }, o++));
+shots.push(performance({ id: "S11", b0: 41, b1: 44, look: LOOK_SL_TRACK, title: "Hook repeat 3", purpose: "Third repeat; he is up-front and direct to camera.", framing: "medium", motion: "locked off", env: ENV_HOOK, transitionIn: { type: "glitch", durationSeconds: 0.1 } }, o++));
 shots.push(performance({ id: "S12", b0: 44, b1: 46, look: LOOK_SL_TRACK, title: "Hook out", purpose: "Fourth repeat to the bar-46 downbeat; hard out on the last hit.", framing: "medium", motion: "locked off", env: ENV_HOOK }, o++));
 
 const out = {

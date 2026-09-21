@@ -33,3 +33,6 @@ dist-ssr
 
 # Lane H playable encode scratch
 docs/reconstruct/artifacts/**/.ppm/
+
+# local AVT render outputs written by Claude/Cursor sessions
+_avt_outputs/

@@ -123,17 +123,19 @@
           "inputClipHandlesSeconds": 0.5,
           "outputFps": 24,
           "outputRaster": "720x1280",
-          "sourceCutAssetId": "ffc1da5e-8fc8-46af-a8f7-e43ac94dda75"
+          "sourceCutAssetId": "ffc1da5e-8fc8-46af-a8f7-e43ac94dda75",
+          "wardrobeOutputAssetId": "ac4ca37d-8544-4bf8-a20a-876a1bd51318",
+          "promptVersion": "trucker-v1"
         },
         "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
       },
       "reconstruction": {
-        "required": false,
+        "required": true,
         "mode": "",
         "maskVersion": null,
         "referenceAssetHash": null,
         "preserve": [],
-        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+        "notes": "Environment = person matte over a generated plate (scripts/edit/composite_environment.py); a second v2v pass over Fendi was tested and rejected (identity loss)."
       },
       "qa": [
         {
@@ -172,7 +174,7 @@
           "notes": ""
         }
       ],
-      "status": "planned",
+      "status": "generated",
       "provenance": {
         "source": "human",
         "createdAt": "2026-09-20",
@@ -380,17 +382,19 @@
           "inputClipHandlesSeconds": 0.5,
           "outputFps": 24,
           "outputRaster": "720x1280",
-          "sourceCutAssetId": "7aef4f67-5466-40d7-9f69-b4f0a92f79fb"
+          "sourceCutAssetId": "7aef4f67-5466-40d7-9f69-b4f0a92f79fb",
+          "wardrobeOutputAssetId": "a4f84701-6796-4cfb-a500-f6ad4681847d",
+          "promptVersion": "trucker-v1"
         },
         "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
       },
       "reconstruction": {
-        "required": false,
+        "required": true,
         "mode": "",
         "maskVersion": null,
         "referenceAssetHash": null,
         "preserve": [],
-        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+        "notes": "Environment = person matte over a generated plate (scripts/edit/composite_environment.py); a second v2v pass over Fendi was tested and rejected (identity loss)."
       },
       "qa": [
         {
@@ -429,7 +433,7 @@
           "notes": ""
         }
       ],
-      "status": "planned",
+      "status": "generated",
       "provenance": {
         "source": "human",
         "createdAt": "2026-09-20",
@@ -525,17 +529,19 @@
           "inputClipHandlesSeconds": 0.5,
           "outputFps": 24,
           "outputRaster": "720x1280",
-          "sourceCutAssetId": "3d2ab326-c5cc-4db2-bc3e-7a303cfa60c9"
+          "sourceCutAssetId": "3d2ab326-c5cc-4db2-bc3e-7a303cfa60c9",
+          "wardrobeOutputAssetId": "e9fb4348-df08-4616-be79-0d80334f2fe8",
+          "promptVersion": "trucker-v1"
         },
         "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
       },
       "reconstruction": {
-        "required": false,
+        "required": true,
         "mode": "",
         "maskVersion": null,
         "referenceAssetHash": null,
         "preserve": [],
-        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+        "notes": "Environment = person matte over a generated plate (scripts/edit/composite_environment.py); a second v2v pass over Fendi was tested and rejected (identity loss)."
       },
       "qa": [
         {
@@ -574,7 +580,7 @@
           "notes": ""
         }
       ],
-      "status": "planned",
+      "status": "generated",
       "provenance": {
         "source": "human",
         "createdAt": "2026-09-20",
@@ -763,8 +769,8 @@
       "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
       "fx": [],
       "transitionIn": {
-        "type": "cut",
-        "durationSeconds": null
+        "type": "flash",
+        "durationSeconds": 0.1
       },
       "transitionOut": {
         "type": "cut",
@@ -788,17 +794,19 @@
           "inputClipHandlesSeconds": 0.5,
           "outputFps": 24,
           "outputRaster": "720x1280",
-          "sourceCutAssetId": "939662aa-4ec0-4a87-897d-90068074b7a2"
+          "sourceCutAssetId": "939662aa-4ec0-4a87-897d-90068074b7a2",
+          "wardrobeOutputAssetId": "d36c0309-875f-4b58-837b-2e0b68ac7cfd",
+          "promptVersion": "v3-jacket-only"
         },
         "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
       },
       "reconstruction": {
-        "required": false,
+        "required": true,
         "mode": "",
         "maskVersion": null,
         "referenceAssetHash": null,
         "preserve": [],
-        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+        "notes": "Environment = person matte over a generated plate (scripts/edit/composite_environment.py); a second v2v pass over Fendi was tested and rejected (identity loss)."
       },
       "qa": [
         {
@@ -837,7 +845,7 @@
           "notes": ""
         }
       ],
-      "status": "planned",
+      "status": "generated",
       "provenance": {
         "source": "human",
         "createdAt": "2026-09-20",
@@ -1045,17 +1053,19 @@
           "inputClipHandlesSeconds": 0.5,
           "outputFps": 24,
           "outputRaster": "720x1280",
-          "sourceCutAssetId": "e5cfeebc-1780-42e7-8f30-5f157f64ff85"
+          "sourceCutAssetId": "e5cfeebc-1780-42e7-8f30-5f157f64ff85",
+          "wardrobeOutputAssetId": "2daf6190-e623-40bb-8986-92ec1e51de5c",
+          "promptVersion": "v3-jacket-only"
         },
         "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
       },
       "reconstruction": {
-        "required": false,
+        "required": true,
         "mode": "",
         "maskVersion": null,
         "referenceAssetHash": null,
         "preserve": [],
-        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+        "notes": "Environment = person matte over a generated plate (scripts/edit/composite_environment.py); a second v2v pass over Fendi was tested and rejected (identity loss)."
       },
       "qa": [
         {
@@ -1094,7 +1104,7 @@
           "notes": ""
         }
       ],
-      "status": "planned",
+      "status": "generated",
       "provenance": {
         "source": "human",
         "createdAt": "2026-09-20",
@@ -1107,9 +1117,9 @@
     {
       "version": 1,
       "id": "S09",
-      "title": "Hook — crossed arms (existing clip)",
+      "title": "Hook — crossed arms",
       "order": 8,
-      "purpose": "Uses the already-proven Look-1 video edit (master 75–78.7 s): crossed arms on the hook line.",
+      "purpose": "Crossed arms on the hook line, Look 1 (own cut + edit, master 75.868–77.835).",
       "kind": "performance",
       "shotType": "performance",
       "priority": "hero",
@@ -1119,13 +1129,13 @@
       },
       "source": {
         "kind": "captured",
-        "mediaId": "f31bd0f2-884f-42e1-8b08-aa645597b7a6",
+        "mediaId": "70304981-d375-47a9-81df-aa062c62c6ec",
         "uri": null,
         "range": {
           "start": 75.8675,
           "end": 77.8347
         },
-        "note": "Existing Look-1 grok video edit f31bd0f2-884f-42e1-8b08-aa645597b7a6 covers master 75.0–78.7 s; trim to this range."
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
       },
       "wardrobe": {
         "name": "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe",
@@ -1190,17 +1200,19 @@
           "inputClipHandlesSeconds": 0.5,
           "outputFps": 24,
           "outputRaster": "720x1280",
-          "sourceCutAssetId": null
+          "sourceCutAssetId": "84ce32ab-12f2-435e-bfb7-d8e970544544",
+          "wardrobeOutputAssetId": "8db0030f-f4ca-4032-8e28-b58bdc797bba",
+          "promptVersion": "v3-jacket-only"
         },
         "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
       },
       "reconstruction": {
-        "required": false,
+        "required": true,
         "mode": "",
         "maskVersion": null,
         "referenceAssetHash": null,
         "preserve": [],
-        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+        "notes": "Environment = person matte over a generated plate (scripts/edit/composite_environment.py); a second v2v pass over Fendi was tested and rejected (identity loss)."
       },
       "qa": [
         {
@@ -1239,7 +1251,7 @@
           "notes": ""
         }
       ],
-      "status": "planned",
+      "status": "generated",
       "provenance": {
         "source": "human",
         "createdAt": "2026-09-20",
@@ -1428,8 +1440,8 @@
       "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
       "fx": [],
       "transitionIn": {
-        "type": "cut",
-        "durationSeconds": null
+        "type": "glitch",
+        "durationSeconds": 0.1
       },
       "transitionOut": {
         "type": "cut",
@@ -1453,17 +1465,19 @@
           "inputClipHandlesSeconds": 0.5,
           "outputFps": 24,
           "outputRaster": "720x1280",
-          "sourceCutAssetId": "770ab475-2072-46e8-a7b5-a9631880f0e5"
+          "sourceCutAssetId": "770ab475-2072-46e8-a7b5-a9631880f0e5",
+          "wardrobeOutputAssetId": "ab3ba0f2-5f21-4ef9-b7d8-7c143dde2337",
+          "promptVersion": "v3-jacket-only"
         },
         "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
       },
       "reconstruction": {
-        "required": false,
+        "required": true,
         "mode": "",
         "maskVersion": null,
         "referenceAssetHash": null,
         "preserve": [],
-        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+        "notes": "Environment = person matte over a generated plate (scripts/edit/composite_environment.py); a second v2v pass over Fendi was tested and rejected (identity loss)."
       },
       "qa": [
         {
@@ -1502,7 +1516,7 @@
           "notes": ""
         }
       ],
-      "status": "planned",
+      "status": "generated",
       "provenance": {
         "source": "human",
         "createdAt": "2026-09-20",
@@ -1598,17 +1612,19 @@
           "inputClipHandlesSeconds": 0.5,
           "outputFps": 24,
           "outputRaster": "720x1280",
-          "sourceCutAssetId": "9a087c22-4877-47f4-ace6-07e61bdc54e7"
+          "sourceCutAssetId": "9a087c22-4877-47f4-ace6-07e61bdc54e7",
+          "wardrobeOutputAssetId": "efa48177-0132-483a-a565-81258288fa87",
+          "promptVersion": "v3-jacket-only"
         },
         "notes": "Gate 0 on moving footage: identity, garment on body, photoreal next to master, anatomy, framing, garment truth."
       },
       "reconstruction": {
-        "required": false,
+        "required": true,
         "mode": "",
         "maskVersion": null,
         "referenceAssetHash": null,
         "preserve": [],
-        "notes": "Environment pass after wardrobe pass; original-master composite only if the edit degrades the face."
+        "notes": "Environment = person matte over a generated plate (scripts/edit/composite_environment.py); a second v2v pass over Fendi was tested and rejected (identity loss)."
       },
       "qa": [
         {
@@ -1647,7 +1663,7 @@
           "notes": ""
         }
       ],
-      "status": "planned",
+      "status": "generated",
       "provenance": {
         "source": "human",
         "createdAt": "2026-09-20",

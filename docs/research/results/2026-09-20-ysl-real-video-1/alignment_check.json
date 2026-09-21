@@ -1,0 +1,66 @@
+{
+ "S01": {
+  "editFrames": 113,
+  "editSec": 4.708,
+  "srcSec": 5.0,
+  "dtMedian": 0.0,
+  "dtMax": 0.033,
+  "masterStart": 45.859
+ },
+ "S03": {
+  "editFrames": 161,
+  "editSec": 6.708,
+  "srcSec": 6.967,
+  "dtMedian": 0.0,
+  "dtMax": 0.033,
+  "masterStart": 51.761
+ },
+ "S04": {
+  "editFrames": 97,
+  "editSec": 4.042,
+  "srcSec": 4.033,
+  "dtMedian": 0.0,
+  "dtMax": 0.0,
+  "masterStart": 57.663
+ },
+ "S06": {
+  "editFrames": 161,
+  "editSec": 6.708,
+  "srcSec": 6.967,
+  "dtMedian": 0.0,
+  "dtMax": 0.0,
+  "masterStart": 61.597
+ },
+ "S08": {
+  "editFrames": 161,
+  "editSec": 6.708,
+  "srcSec": 6.967,
+  "dtMedian": 0.0,
+  "dtMax": 0.0,
+  "masterStart": 69.466
+ },
+ "S09": {
+  "editFrames": 89,
+  "editSec": 3.708,
+  "srcSec": 3.967,
+  "dtMedian": 0.0,
+  "dtMax": 0.0,
+  "masterStart": 74.868
+ },
+ "S11": {
+  "editFrames": 161,
+  "editSec": 6.708,
+  "srcSec": 6.967,
+  "dtMedian": 0.0,
+  "dtMax": 0.0,
+  "masterStart": 79.302
+ },
+ "S12": {
+  "editFrames": 113,
+  "editSec": 4.708,
+  "srcSec": 5.0,
+  "dtMedian": 0.0,
+  "dtMax": 0.0,
+  "masterStart": 85.204
+ }
+}
