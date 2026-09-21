@@ -1,0 +1,46 @@
+{
+ "S01": {
+  "file": "env2/S01_env.mp4",
+  "masterStart": 45.859
+ },
+ "S03": {
+  "file": "env2/S03_env.mp4",
+  "masterStart": 51.761
+ },
+ "S04": {
+  "file": "env2/S04_env.mp4",
+  "masterStart": 57.663
+ },
+ "S06": {
+  "file": "env2/S06_env.mp4",
+  "masterStart": 61.597
+ },
+ "S08": {
+  "file": "env2/S08_env.mp4",
+  "masterStart": 69.466
+ },
+ "S09": {
+  "file": "env2/S09_env.mp4",
+  "masterStart": 74.868
+ },
+ "S11": {
+  "file": "env2/S11_env.mp4",
+  "masterStart": 79.302
+ },
+ "S12": {
+  "file": "env2/S12_env.mp4",
+  "masterStart": 85.204
+ },
+ "S02": {
+  "file": "fx2/S02_macro.mp4"
+ },
+ "S05": {
+  "file": "fx2/S05_diamond.mp4"
+ },
+ "S07": {
+  "file": "fx2/S07_city.mp4"
+ },
+ "S10": {
+  "file": "fx2/S10_mirrorstrobe.mp4"
+ }
+}

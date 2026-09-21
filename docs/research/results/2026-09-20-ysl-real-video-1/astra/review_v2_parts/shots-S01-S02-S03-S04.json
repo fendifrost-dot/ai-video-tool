@@ -1,0 +1,224 @@
+{
+  "draftId": "YSL_IceOn_bars24-46_v2",
+  "partId": "shots-S01-S02-S03-S04",
+  "model": "gpt-6-astra",
+  "responseId": "resp_090e50b87c6524f4006ab0c4def7ec87d29a1913f219b08415",
+  "reviewedAt": "2026-09-21T05:50:37.052Z",
+  "usage": {
+    "input_tokens": 44325,
+    "input_tokens_details": {
+      "cache_write_tokens": 44322,
+      "cached_tokens": 0
+    },
+    "output_tokens": 7984,
+    "output_tokens_details": {
+      "reasoning_tokens": 3624
+    },
+    "total_tokens": 52309
+  },
+  "actualCostUsd": 0.8425,
+  "review": {
+    "shots": [
+      {
+        "expected": "Real performance in Look 2, medium eye-level framing, locked camera with a 2% push; cold charcoal fitting room with one reflective mirror panel, hard camera-left key and no readable original closet.",
+        "recommended_owner": "wardrobe_generation",
+        "observations": [
+          "Scope: supplied draft frame labels run from S01 at 00:00.167 to S04 at 00:14.637. Hook-only defects and S05–S12 repair claims are unassessed, not resolved.",
+          "Fendi remains recognizable through the cap, glasses, beard and facial proportions at S01 00:00.167, 00:01.833 and 00:03.833. The black trucker is worn across his torso and both sleeves; no substantial body dropout is visible in these samples.",
+          "Medium performance framing and the establishment purpose occur at S01 00:00.167–00:03.833. The exact 2% push cannot be certified from these samples.",
+          "The charcoal walls, directional wall illumination and floor haze are visible at S01 00:01.167 and 00:03.167. No complete original door or shelving is readable, but small light remnants remain beside the moving silhouette at 00:01.500.",
+          "Look 2 product truth remains defective: S01 00:01.167, 00:02.500 and 00:03.167 show conspicuous pale seam outlines, enlarged blank-looking buttons and exaggerated sleeve volume. LOOK2-PRODUCT-TRUTH remains PRESENT and is consolidated under the equivalent legacy ID SEQ-LOOK2-PRODUCT-TRUTH.",
+          "SEQ-ORIGINAL-CLOSET-LEAK remains PRESENT in the reviewed pre-hook portion as residual background inclusion, consolidated under PREHOOK-CLOSET-MATTE-LEAK. This does not establish the status of its unprovided hook portion."
+        ],
+        "observed": "The intended performance shot occurs and identity remains credible. Look 2 is fully worn, but it is not product-true. The room is substantially transformed; residual background fragments, silhouette fringes and an unreadable mirror function prevent conformance.",
+        "confidence": 0.95,
+        "verdict": "FAIL",
+        "shot_id": "S01",
+        "defect_ids": [
+          "SEQ-LOOK2-PRODUCT-TRUTH",
+          "PREHOOK-CLOSET-MATTE-LEAK",
+          "PREHOOK-MATTE-HALO",
+          "LOOK2-CUT-CONSTRUCTION-DRIFT",
+          "SEQ-MIRROR-PROGRESSION-MISSING",
+          "SEQ-FRAME-SYNC-UNVERIFIED"
+        ],
+        "recommended_action": "Correct the reference garment construction and material, propagate one approved Look 2 across the performance cuts, clean the remaining matte contamination, and make the specified rear mirror reflection readable without changing the performance."
+      },
+      {
+        "expected": "Controlled product-true hardware macro, slow push, hard cold lighting and black falloff; a fashion insert rather than gesturing performance coverage.",
+        "recommended_owner": "broll",
+        "observations": [
+          "S02 00:04.018, 00:04.851 and 00:05.851 hold the same chest-pocket/placket arrangement with a small progressive enlargement. The previous lateral body motion and hand obstruction are no longer visible.",
+          "The product occupies the insert at S02 00:04.018–00:05.851. A cropped neckline remains at the top, but no face or gesturing performer appears. These images do not independently establish how the insert was generated.",
+          "Product accuracy still fails at S02 00:04.018, 00:05.018 and 00:05.851: button faces read as oversized pale discs, seam edges are heavily outlined, and the enlarged fabric/hardware detail is soft rather than a convincing inspection of the reference denim.",
+          "S02-HARDWARE-MACRO-CONFORMANCE is partly repaired: its lateral-motion and hand-occlusion components are RESOLVED across S02 00:04.018–00:05.851; its product-conformance component remains PRESENT under S02-HARDWARE-MACRO-TRUTH. It is not counted as a second copy of the same remaining defect.",
+          "The dark, cool, high-contrast presentation at S02 00:04.018 and 00:05.851 broadly matches the performance world. Hardware engraving or fine branding cannot be verified at the supplied detail level."
+        ],
+        "observed": "A stable slow-push fashion insert now occurs, without the previous gesturing hand. However, it magnifies inaccurate, soft generated garment details and still fails the product-true commercial purpose.",
+        "confidence": 0.98,
+        "verdict": "FAIL",
+        "shot_id": "S02",
+        "defect_ids": [
+          "S02-HARDWARE-MACRO-TRUTH",
+          "SEQ-FRAME-SYNC-UNVERIFIED"
+        ],
+        "recommended_action": "Retain the repaired controlled motion, but replace the enlarged generated torso detail with a reference-accurate macro showing believable denim weave, seam construction and metal hardware."
+      },
+      {
+        "expected": "Real rapid-fire performance in the same Look 2 and cold fitting room, medium eye-level locked framing; preserve the pointing and arm-up gestures around song 54–55 seconds.",
+        "recommended_owner": "wardrobe_generation",
+        "observations": [
+          "The requested arm-up gesture is visible at S03 00:06.735, 00:07.068 and 00:07.402, corresponding to song 53.948–54.615 seconds. Fendi's cap, glasses and beard remain credible across these samples and 00:11.735.",
+          "The jacket stays on the body through raised-arm, lowered-arm and crossed-body gestures at S03 00:07.068, 00:08.402 and 00:08.735. No substantial torso or sleeve removal is visible. Fine hand anatomy during blurred movement cannot be certified from these samples.",
+          "S03 00:06.068 and 00:11.735 show a pale rectangular remnant immediately outside the screen-right forearm. Its changing relationship to the moving sleeve distinguishes it from the fixed rear panel; the exact original object is uncertain.",
+          "S03 00:06.735 and 00:10.735 retain the exaggerated pale construction lines and bright blank hardware. Compared with S01 00:03.167–00:03.833, the jacket also reads as a narrower, differently proportioned construction rather than the same garment continuing across the cut.",
+          "The medium composition and performance purpose occur at S03 00:06.068–00:11.735. The cold chamber remains stable, but the rear panel does not visibly multiply the key highlight at 00:07.735 or 00:10.402."
+        ],
+        "observed": "The correct performance passage and gestures occur, with credible identity and continuous garment/body coverage. Product truth, cross-shot garment continuity and residual matte contamination remain defective.",
+        "confidence": 0.96,
+        "verdict": "FAIL",
+        "shot_id": "S03",
+        "defect_ids": [
+          "SEQ-LOOK2-PRODUCT-TRUTH",
+          "PREHOOK-CLOSET-MATTE-LEAK",
+          "PREHOOK-MATTE-HALO",
+          "LOOK2-CUT-CONSTRUCTION-DRIFT",
+          "SEQ-MIRROR-PROGRESSION-MISSING",
+          "SEQ-FRAME-SYNC-UNVERIFIED"
+        ],
+        "recommended_action": "Preserve this performance range and its gestures. Repair the garment from the product reference, maintain its construction across adjacent shots, and remove the forearm-adjacent background remnants and silhouette fringe."
+      },
+      {
+        "expected": "Real Look 2 performance in a locked 1.25× punch-in, producing tighter medium-close coverage and escalating into the drop; maintain the same garment and transformed fitting room.",
+        "recommended_owner": "wardrobe_generation",
+        "observations": [
+          "RESOLVED: S04-CROP-MISSING and S04-MISSING-125-CROP. Compared with S03 00:11.735, S04 00:11.970 and 00:12.303 visibly enlarge both performer and background, crop away more of the lower body and deliver the requested punch-in. The rear panel is also visibly wider, consistent with the approximately 1.25× crop.",
+          "Fendi remains present and recognizable at S04 00:11.970, 00:12.637 and 00:14.637. The jacket remains worn through the sweeping arm movement at 00:13.303–00:13.970; no substantial body dropout is visible.",
+          "The tighter framing serves the escalation purpose at S04 00:11.970–00:14.637, but enlarged bright buttons and pale seam outlines remain conspicuous at 00:12.637 and 00:14.303.",
+          "The collar becomes a smoother, simply outlined construction at S04 00:11.970–00:12.303 compared with the strongly stitched collar at S03 00:11.402–00:11.735. The crop does not explain this detail reset.",
+          "The charcoal room and hard wall illumination remain at S04 00:12.970 and 00:14.303; the rear panel still lacks a clearly readable reflected highlight. Gray silhouette edging remains visible around the cap and shoulders at 00:12.303 and 00:13.637.",
+          "Re-review summary: the crop repair is visually verified; S02's motion/occlusion repair is verified at 00:04.018–00:05.851. Look 2 truth, garment continuity, pre-hook matte cleanliness and readable mirror function still require repair. REVIEW-SYNC-UNVERIFIED remains UNCERTAIN, low confidence, and is consolidated under SEQ-FRAME-SYNC-UNVERIFIED; these silent sampled frames do not certify one-frame musical synchronization."
+        ],
+        "observed": "The requested punch-in now occurs and is no longer a defect. Identity and garment coverage remain credible, but product inaccuracies, a construction reset and visible compositing fringes still prevent the shot from passing.",
+        "confidence": 0.96,
+        "verdict": "FAIL",
+        "shot_id": "S04",
+        "defect_ids": [
+          "SEQ-LOOK2-PRODUCT-TRUTH",
+          "PREHOOK-MATTE-HALO",
+          "LOOK2-CUT-CONSTRUCTION-DRIFT",
+          "SEQ-MIRROR-PROGRESSION-MISSING",
+          "SEQ-FRAME-SYNC-UNVERIFIED"
+        ],
+        "recommended_action": "Keep the repaired punch-in. Correct Look 2 and its continuity with S03, clean the enlarged matte edges, and repair the mirror function without changing the shot's performance or framing."
+      }
+    ],
+    "defects": [
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "PRESENT across S01, S03 and S04. Look 2 is worn and recognizable as a black trucker, but it is not product-true. Bright enlarged blank-looking button discs, strongly outlined seams, exaggerated sleeve volume and a glossy/washed surface replace the reference's more restrained black-denim construction. Equivalent legacy finding LOOK2-PRODUCT-TRUTH is also PRESENT and is consolidated here rather than duplicated.",
+        "defect_id": "SEQ-LOOK2-PRODUCT-TRUTH",
+        "evidence": "S01 frames 00:01.167, 00:02.500 and 00:03.167 show bright discs, pale pocket/seam outlines and broad sleeves. S03 frames 00:06.735 and 00:10.735 show similarly outlined panels and glossy gray sleeves. S04 frames 00:12.637 and 00:14.303 enlarge the same discrepancies against the supplied Look 2 product photograph.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0,
+          14.754
+        ],
+        "recommended_action": "Rebuild Look 2 against the supplied product image: match denim finish, pocket/collar/cuff construction, fit, seam contrast and hardware size/material. Preserve Fendi's face, body motion and occlusions. Do not add an external wordmark absent from the reference."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S02",
+        "recommended_owner": "broll",
+        "category": "broll",
+        "description": "PRESENT, although motion is repaired. The insert now holds a controlled composition, but its enlarged generated garment detail still fails the product-true macro purpose. The hardware lacks convincing metallic surface detail and the strongly outlined, soft denim/pocket construction remains inaccurate. The remaining product component of S02-HARDWARE-MACRO-CONFORMANCE is consolidated here.",
+        "defect_id": "S02-HARDWARE-MACRO-TRUTH",
+        "evidence": "S02 frames 00:04.018, 00:05.018 and 00:05.851 show the same pale blank button faces, heavy pocket outlines and soft enlarged fabric detail. Comparing 00:04.018 with 00:05.851 confirms controlled enlargement without the previous gesturing-hand obstruction.",
+        "requires_treatment_change": false,
+        "time_range": [
+          3.934,
+          5.902
+        ],
+        "recommended_action": "Replace the inaccurate enlarged garment detail with a product-reference-driven hardware macro. Preserve the repaired slow push and dark cold presentation; render believable metal relief, denim weave and true pocket/placket proportions."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "PRESENT in S01 and S03. Small light background fragments remain attached to or exposed beside the moving silhouette. The full original closet is no longer readable in these samples, but the replacement is not clean. The exact source object is uncertain. The reviewed pre-hook component of SEQ-ORIGINAL-CLOSET-LEAK is consolidated here; its later coverage is unassessed.",
+        "defect_id": "PREHOOK-CLOSET-MATTE-LEAK",
+        "evidence": "S01 frame 00:01.500 shows a small pale rectangular projection outside the screen-right sleeve. S03 frames 00:06.068 and 00:11.735 show a larger pale vertical tab immediately outside the screen-right forearm. This tab is not present in the same form when that arm moves forward at S03 00:08.402.",
+        "requires_treatment_change": false,
+        "time_range": [
+          1.5,
+          11.735
+        ],
+        "recommended_action": "Exclude the residual background islands from the foreground matte and rebuild the affected sleeve-adjacent negative spaces. Inspect the full-resolution moving sequence so cleanup removes the fragments without eroding sleeves or hands."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "A persistent gray fringe and soft edge contamination remain around the performer against the dark room. The edging follows cap, shoulder, sleeve and trouser contours, making the foreground read as a cutout. This is distinct from the discrete background fragments and is not a substantial body-coverage dropout.",
+        "defect_id": "PREHOOK-MATTE-HALO",
+        "evidence": "S01 frame 00:01.167 shows gray edging around the screen-right arm and trouser silhouette; 00:03.167 shows a soft pale patch around the cap. S03 frames 00:06.402 and 00:11.402 retain cap/shoulder edging. S04 frames 00:12.303 and 00:13.637 show the fringe enlarged around the cap and shoulder contours.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0.167,
+          14.637
+        ],
+        "recommended_action": "Refine edge alpha and foreground-color decontamination, including motion-blurred edges. Remove source-colored fringes without uniform matte erosion; retain only lighting-consistent rim highlights."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "temporal_propagation",
+        "category": "continuity",
+        "description": "PRESENT. Look 2 resets construction across the pre-hook performance cuts: S01's broad sleeve/body treatment changes to a narrower construction in S03, and the collar/pocket detailing changes again into S04. These are garment-detail changes, not merely the approved framing change.",
+        "defect_id": "LOOK2-CUT-CONSTRUCTION-DRIFT",
+        "evidence": "Compare S01 frames 00:03.167 and 00:03.833 with S03 00:06.068 and 00:06.735: sleeve/body volume and pocket proportions change. Compare S03 00:11.402–00:11.735 with S04 00:11.970–00:12.303: the visibly stitched collar becomes smoother and more simply outlined despite the larger crop.",
+        "requires_treatment_change": false,
+        "time_range": [
+          3.167,
+          12.303
+        ],
+        "recommended_action": "Use one approved reference-accurate Look 2 construction across S01, S03 and S04. Propagate collar, pocket, seam and sleeve geometry through the source performance, with explicit checks at both performance-cut boundaries."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "environment",
+        "category": "environment",
+        "description": "PRESENT in the reviewed pre-hook portion. The cold charcoal chamber is established, but the tall rear panel reads as a dark architectural slab rather than clearly delivering the requested single mirror multiplying the key highlight. No conclusion is made about post-drop mirror progression because those frames are not supplied.",
+        "defect_id": "SEQ-MIRROR-PROGRESSION-MISSING",
+        "evidence": "S01 frames 00:01.167 and 00:03.167 show the tall dark panel and a thin cold edge without a distinct reflected key highlight. The same unreadable mirror function persists at S03 00:07.735 and 00:10.402 and in the enlarged S04 view at 00:12.970 and 00:14.303.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0,
+          14.754
+        ],
+        "recommended_action": "Make the already-specified single rear mirror visibly reflective and establish its multiplied key highlight. Preserve the charcoal room, existing performance scale and pre-hook lighting concept."
+      },
+      {
+        "severity": "note",
+        "shot_id": null,
+        "recommended_owner": "sync",
+        "category": "sync",
+        "description": "UNCERTAIN, low confidence: synchronization within one native frame and exact beat landings remain unverified. This is not an observed blanket sync failure. Equivalent legacy note REVIEW-SYNC-UNVERIFIED is consolidated here for the reviewed range.",
+        "defect_id": "SEQ-FRAME-SYNC-UNVERIFIED",
+        "evidence": "The supplied S01 labels 00:00.167, 00:00.500 and 00:00.833 are spaced about one-third second apart; S02 labels 00:04.018 and 00:04.184 are about one-sixth second apart. S03 00:11.735 and S04 00:11.970 do not provide native-frame boundary coverage. No audio accompanies these images.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0,
+          14.754
+        ],
+        "recommended_action": "Verify the native-frame export against the song clock and untouched master with audio. Check the opening downbeat, S02 insert boundaries and S03/S04 source continuity; do not adjust timing solely from this sampled strip."
+      }
+    ]
+  }
+}

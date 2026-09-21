@@ -26,9 +26,19 @@ def run(cmd):
     if r.returncode != 0:
         sys.stderr.write(r.stderr[-2000:]); raise SystemExit("ffmpeg failed")
 
+DRAFT_FPS = 24.0
+
+def snap(t, fps=DRAFT_FPS):
+    """Snap a sample time to the presentation time of the frame that contains it (frame n = floor(t*fps)).
+    ffmpeg -ss returns the first frame with pts >= ss, so seeking to an unsnapped t could hand back the NEXT
+    frame while the label still said t — across a cut that mislabels the incoming shot as 'before the cut'
+    (Astra review #2, SEQ-CUT-BOUNDARY-OFFSET, ~1/24 s)."""
+    return int(t * fps + 1e-6) / fps
+
 def grab(draft, t, path, w=540, h=960):
-    """Returns False when t is past the last frame (ffmpeg writes nothing)."""
-    run(["ffmpeg", "-v", "error", "-y", "-ss", f"{t:.3f}", "-i", draft, "-frames:v", "1", "-vf", f"scale={w}:{h}:flags=lanczos", "-q:v", "4", path])
+    """Grabs frame floor(t*fps) exactly (seek to half a frame before its pts). Returns False past the last frame."""
+    ts = snap(t)
+    run(["ffmpeg", "-v", "error", "-y", "-ss", f"{max(0.0, ts - 0.5 / DRAFT_FPS):.4f}", "-i", draft, "-frames:v", "1", "-vf", f"scale={w}:{h}:flags=lanczos", "-q:v", "4", path])
     return os.path.exists(path)
 
 def fmt(t): return f"{int(t//60)}:{t%60:06.3f}"
@@ -87,6 +97,8 @@ def main():
     ap.add_argument("--ref", action="append", default=[], help='"label=path"'); ap.add_argument("--out", required=True)
     ap.add_argument("--fps", type=float, default=3.0); ap.add_argument("--short-fps", type=float, default=6.0)
     ap.add_argument("--group-size", type=int, default=4)
+    ap.add_argument("--prev-review", default=None, help="aggregated AstraReviewSchema JSON of the previous revision: its defect_ids are handed to Astra so persisting defects keep their identity (diffReviews)")
+    ap.add_argument("--repair-notes", default=None, help="text file: what Claude changed since the previous revision (Astra verifies, it does not take it on trust)")
     a = ap.parse_args()
     spec = json.load(open(a.shotspecs)); asm = json.load(open(a.assembly))
     shots = sorted(spec["shots"], key=lambda s: s["timeline"]["start"]); offset = shots[0]["timeline"]["start"]
@@ -102,6 +114,15 @@ def main():
     common = (f"{ROLE}\n\nDRAFT: {a.draft_id} — song {asm['sectionSong'][0]:.3f}-{asm['sectionSong'][1]:.3f}s, {asm['expectedSeconds']:.2f}s, draft t=0 is song {offset:.3f}s. Treatment version {a.treatment_version}.\n"
               f"CREATIVE DIRECTION: luxury runway fashion film x designer commercial x high-energy contemporary rap video. Fendi's REAL performance is the visual spine; AI changes wardrobe (YSL actually on him), environment, lighting, FX and B-roll — it must not replace him.\n"
               f"LOOKS:\n{looks_txt}\n\nSHOTSPECS (expected, one per line):\n{treatment_lines}\n\nASSEMBLED TIMELINE (what was actually placed):\n{manifest_txt}\n")
+    if a.prev_review:
+        prev = json.load(open(a.prev_review))
+        prev_lines = "\n".join(f"- {d['defect_id']} [{d['severity']}/{d['recommended_owner']}] draft {fmt(d['time_range'][0])}-{fmt(d['time_range'][1])}: {d['description'][:220]}" for d in prev["sequence_defects"])
+        common += (f"\nPREVIOUS REVISION ({prev['draft_id']}, verdict {prev['final_verdict']}) reported these defects. This is a RE-REVIEW after targeted repair: "
+                   f"for every defect below, look at the same time range in THIS draft and decide from the frames whether it is RESOLVED or still PRESENT. "
+                   f"If still present, report it again with EXACTLY the same defect_id (do not rename it). Do not list a resolved defect as a defect; mention resolved ids in your summary. "
+                   f"New problems get new defect_ids. Never mark something resolved because the repair notes say it was fixed — verify it in the frames.\n{prev_lines}\n")
+    if a.repair_notes:
+        common += "\nREPAIR NOTES FROM CLAUDE (claims to verify, not facts):\n" + open(a.repair_notes).read().strip() + "\n"
 
     parts = []
     # ---- Level 1: shot groups ----
@@ -114,7 +135,7 @@ def main():
             t = t0 + 0.5 / fps
             while t < t1 - 1e-6:
                 p = os.path.join(a.out, "frames", f"{s['id']}_{t:07.3f}.jpg")
-                if grab(a.draft, t, p): frames.append({"label": f"draft t={fmt(t)} (song {t+offset:.3f}s) shot {s['id']}", "file": p})
+                if grab(a.draft, t, p): frames.append({"label": f"draft t={fmt(snap(t))} (song {snap(t)+offset:.3f}s) shot {s['id']}", "file": p})
                 t += 1 / fps
         ids = [s["id"] for s in g]
         instr = common + (f"\nTASK (LEVEL 1 — SHOT CONFORMANCE) for shots {', '.join(ids)}. For EACH shot answer: did the intended shot occur; is Fendi present when the spec says performance; is the correct look visible and actually WORN by him (not floating, not partial); does identity stay credible (same real person, face/beard/glasses/cap); does the intended environment appear (closet must NOT read as a closet); does framing approximately match; does the shot perform its stated purpose; are AI artifacts visible (morphing, texture crawl, plastic skin, garment disappearing, wordmark corruption, matte halos)? "
@@ -131,7 +152,8 @@ def main():
             if t < 0: continue
             p = os.path.join(a.out, "frames", f"cut_{shots[i-1]['id']}_{shots[i]['id']}_{t:07.3f}.jpg")
             if not grab(a.draft, t, p): continue
-            frames.append({"label": f"draft t={fmt(t)} — cut {shots[i-1]['id']}→{shots[i]['id']} at {fmt(tc)} ({'before' if t < tc else 'after'})", "file": p})
+            ts = snap(t); cut_frame = int(round(tc * DRAFT_FPS)) / DRAFT_FPS  # the assembler cuts on round(t*fps)
+            frames.append({"label": f"draft t={fmt(ts)} — cut {shots[i-1]['id']}→{shots[i]['id']} at {fmt(cut_frame)} ({'before' if ts < cut_frame - 1e-6 else 'after'})", "file": p})
     instr = common + ("\nTASK (LEVEL 2 — TRANSITION / EDIT REVIEW). For every cut (6 frames at 12 fps around each): does the transition described in the treatment actually happen (cut / flash / glitch / white-out); does the cut feel intentional and land musically on the downbeat; do wardrobe and environment continuity make sense (Look 2 pre-hook → Look 1 from the drop at S06); are there accidental visual jumps; does B-roll return cleanly to synchronized performance; do transitions expose broken mattes, malformed frames or identity discontinuities; does each effect improve the sequence or merely look generated?")
     parts.append({"partId": "transitions", "instructions": instr, "frames": frames, "references": refs[:2], "jsonSchema": SCHEMA_TRANS, "level": 2})
 
@@ -140,7 +162,7 @@ def main():
     while t < end:
         sid = next((s["id"] for s in shots if s["timeline"]["start"] - offset <= t < s["timeline"]["end"] - offset), "?")
         p = os.path.join(a.out, "frames", f"seq_{t:07.3f}.jpg")
-        if grab(a.draft, t, p): frames.append({"label": f"draft t={fmt(t)} shot {sid}", "file": p})
+        if grab(a.draft, t, p): frames.append({"label": f"draft t={fmt(snap(t))} shot {sid}", "file": p})
         t += 0.5
     questions = [
         "1. Does Fendi remain recognizably the same real person throughout the performance shots?",

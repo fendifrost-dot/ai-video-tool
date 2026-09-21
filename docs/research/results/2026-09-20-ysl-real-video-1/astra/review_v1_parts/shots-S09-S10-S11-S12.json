@@ -1,0 +1,208 @@
+{
+  "draftId": "YSL_IceOn_bars24-46_v1",
+  "partId": "shots-S09-S10-S11-S12",
+  "model": "gpt-6-astra",
+  "responseId": "resp_086768fd78b91ca8006ab0b823896087d283b02e31bba5abc3",
+  "reviewedAt": "2026-09-21T04:57:03.509Z",
+  "usage": {
+    "input_tokens": 42739,
+    "input_tokens_details": {
+      "cache_write_tokens": 42736,
+      "cached_tokens": 0
+    },
+    "output_tokens": 9587,
+    "output_tokens_details": {
+      "reasoning_tokens": 5178
+    },
+    "total_tokens": 52326
+  },
+  "actualCostUsd": 0.9067,
+  "review": {
+    "shots": [
+      {
+        "expected": "Crossed-arm real performance in Look 1, medium eye-level framing, locked camera, and the post-drop multi-mirror ice room. Jacket and performer must remain complete through arm movement.",
+        "recommended_owner": "compositing_mask",
+        "observations": [
+          "The intended crossed-arm action occurs: Fendi holds his arms across his chest, dips his head and leans through frames S09@00:29.592–00:30.925, then begins uncrossing at S09@00:31.258–00:31.425.",
+          "Fendi remains recognizable by his face, beard, glasses and cap at S09@00:29.925 and 00:31.092. No definite identity replacement is established by these samples.",
+          "Coverage fails catastrophically: S09@00:29.592 shows a floating upper body with the room visible where his abdomen and lower body should be; coverage partially returns at 00:29.758 and is substantially restored at 00:29.925. Further lower-jacket cutouts appear at 00:30.925–00:31.092.",
+          "A cream/navy track jacket follows his torso and crossed sleeves at S09@00:30.092–00:30.592, but its broad chest block, shoulder striping and large central wordmark do not match the product reference.",
+          "Medium, approximately eye-level framing and a stationary background are present at S09@00:29.925–00:31.425. The charcoal room replaces most of the closet, but the specified multiplied mirrors and diamond wall glints are not discernible; a source-background remnant appears beside his screen-right hip at 00:31.258.",
+          "One-frame song sync and exact master-range alignment are UNCERTAIN, confidence 0.1: frames S09@00:29.592–00:31.425 establish the gesture sequence, but the supplied stills and lack of audio cannot establish frame-accurate synchronization."
+        ],
+        "observed": "The crossed-arm performance occurs, but foreground disappearance makes Fendi visibly float and prevents continuous on-body wardrobe coverage. Product truth and the post-drop environment also fail conformance. Evidence: S09@00:29.592–00:31.425.",
+        "confidence": 0.99,
+        "verdict": "FAIL",
+        "shot_id": "S09",
+        "defect_ids": [
+          "PERF-MATTE-DROPOUT",
+          "PERF-SOURCE-BACKGROUND-LEAK",
+          "LOOK1-GARMENT-CONSTRUCTION",
+          "LOOK1-WORDMARK-TRUTH",
+          "HOOK-ENV-ESCALATION"
+        ],
+        "recommended_action": "Repair the complete foreground matte through the crossed-arm sequence first. Remove source-background remnants, rebuild Look 1 against the product reference, and apply the specified post-drop room treatment without changing the performance."
+      },
+      {
+        "expected": "A generated, performer-free mirror-panel insert with a slow push, panel multiplication and one-bar strobing/glitch escalation in the cold-room world.",
+        "recommended_owner": "broll",
+        "observations": [
+          "The intended insert does not occur: S10@00:31.559 continues the performer action visible at S09@00:31.425, and Fendi remains the principal subject through S10@00:33.392.",
+          "The scene is horizontally flipped between S10@00:31.559 and 00:31.725, and again between 00:33.059 and 00:33.225. The wall illumination and chest lettering reverse together; this is whole-image mirroring, not visible multiplication of room mirror panels.",
+          "Strobe/glitch energy is present: negative-looking bright and dark states alternate at S10@00:32.225–00:32.892. These effects are not defects merely because they flash or invert, but they operate on the performance image rather than the requested mirror insert.",
+          "Foreground coverage also fails at S10@00:31.892: the abdomen and lower body disappear beneath the crossed arms, exposing the room behind the floating upper body.",
+          "The performer at S10@00:31.559 and 00:33.059 retains Fendi-like cap, glasses and beard cues. Whether this asset contains a newly synthesized performer cannot be determined; the confirmed failure is the substitution of performance imagery for the specified B-roll.",
+          "Frame-accurate beat placement and the boundary into S11 are UNCERTAIN, confidence 0.1: the supplied samples end at S10@00:33.392 and resume at S11@00:33.609, without audio or boundary-adjacent frames."
+        ],
+        "observed": "A mirrored, strobed and inverted continuation of performance footage replaces the generated mirror-panel cutaway. Flashing occurs, but the intended shot type, insert framing and panel-multiplication purpose are not delivered. Evidence: S10@00:31.559–00:33.392.",
+        "confidence": 0.99,
+        "verdict": "FAIL",
+        "shot_id": "S10",
+        "defect_ids": [
+          "S10-WRONG-INSERT",
+          "PERF-MATTE-DROPOUT"
+        ],
+        "recommended_action": "Replace this asset with the specified performer-free mirror-panel B-roll. Preserve the scheduled duration and implement the requested panel multiplication, slow push and strobe/glitch escalation."
+      },
+      {
+        "expected": "Third hook-repeat real performance, up-front and direct to camera, wearing product-true Look 1 in medium locked framing within the intensified multi-mirror ice room.",
+        "recommended_owner": "compositing_mask",
+        "observations": [
+          "The performance shot occurs: Fendi addresses camera and gestures at S11@00:33.943–00:34.609 and 00:36.943–00:39.276. His face, beard, glasses and cap remain recognizable in these samples.",
+          "The track jacket is attached to his torso and arms in intact frames such as S11@00:34.276 and 00:35.276, but complete coverage does not persist. Background appears through the waist at 00:33.609 and through a large lower-abdomen region at 00:36.943; further hem cutouts recur at 00:37.609 and 00:38.943.",
+          "Arm/background separation also breaks: S11@00:35.943 shows an eroded screen-right sleeve/forearm boundary. This joins the recurring torso dropout rather than demonstrating stable garment occlusion during movement.",
+          "The broad chest band, navy shoulder/side construction and unusually tall collar differ from the reference at S11@00:33.943–00:35.609. The wordmark is centered across the zipper, oversized relative to the reference, and has compressed, malformed letter shapes at 00:35.276–00:36.276.",
+          "Medium eye-level framing and a largely stationary charcoal-room background are present at S11@00:34.276 and 00:38.276. However, original-looking clothing clutter reappears behind his screen-right side at 00:34.609, and a pale door patch with a black handle appears at 00:36.609.",
+          "The specified post-drop mirror multiplication and diamond glints are not discernible at S11@00:34.276, 00:36.609 or 00:38.276. Exact sync and the entry glitch are UNCERTAIN, confidence 0.1, because the first supplied S11 frame is 00:33.609 and no audio is supplied."
+        ],
+        "observed": "The direct-to-camera performance is present, but recurring body/garment transparency and source-closet leakage destroy the composite. Look 1 remains a non-product-true approximation, and the requested room escalation is not visibly delivered. Evidence: S11@00:33.609–00:39.276.",
+        "confidence": 0.99,
+        "verdict": "FAIL",
+        "shot_id": "S11",
+        "defect_ids": [
+          "PERF-MATTE-DROPOUT",
+          "PERF-SOURCE-BACKGROUND-LEAK",
+          "LOOK1-GARMENT-CONSTRUCTION",
+          "LOOK1-WORDMARK-TRUTH",
+          "HOOK-ENV-ESCALATION"
+        ],
+        "recommended_action": "Rebuild and temporally validate the foreground/background separation, including moving sleeves and hands. Remove retained closet pixels, then regenerate and propagate the reference-correct jacket and post-drop environment."
+      },
+      {
+        "expected": "Fourth hook-repeat real performance in unchanged Look 1 and medium locked framing, continuing the multi-mirror ice room through a hard out on the final hit.",
+        "recommended_owner": "brand_repair",
+        "observations": [
+          "The closing performance occurs: Fendi remains visible and recognizable, gesturing toward camera across S12@00:39.511–00:43.178. Cap, glasses and beard remain credible at 00:39.844, 00:41.178 and 00:43.178.",
+          "Unlike the catastrophic S09/S11 dropouts, the sampled S12 jacket is largely complete and worn on his torso and arms at S12@00:39.844, 00:40.511 and 00:41.511. This does not make it product-true.",
+          "The wordmark is conspicuously wrong in scale and placement: at S12@00:39.511–00:41.178, large white capitals occupy most of the chest band and cross the zipper, instead of the small reference mark confined to the wearer's left chest.",
+          "The jacket changes at the S11/S12 boundary: compare S11@00:39.276 with S12@00:39.511. The zipper becomes dark and prominent, black-outlined pockets appear, the collar changes, and the wordmark becomes much larger and changes type treatment despite both shots specifying the same look.",
+          "Medium, approximately eye-level framing and the charcoal room continue at S12@00:40.511–00:43.178. Pale source-background slivers remain behind the hanging screen-right hand at 00:40.844 and 00:41.844; the specified multiplied mirror reflections and diamond glints remain indiscernible at 00:41.178 and 00:43.178.",
+          "The hard out and last-hit synchronization are UNCERTAIN, confidence 0.1: the last supplied frame is S12@00:43.178, before the specified 00:43.279 endpoint, and no audio or post-out frame is provided."
+        ],
+        "observed": "The closing performance and generally complete on-body jacket are present. However, the jacket changes design across the cut, its dominant chest branding is far outside reference scale and placement, source-background remnants remain, and the specified room escalation is absent from the samples. Evidence: S11@00:39.276 to S12@00:43.178.",
+        "confidence": 0.98,
+        "verdict": "FAIL",
+        "shot_id": "S12",
+        "defect_ids": [
+          "PERF-SOURCE-BACKGROUND-LEAK",
+          "LOOK1-GARMENT-CONSTRUCTION",
+          "LOOK1-WORDMARK-TRUTH",
+          "HOOK-ENV-ESCALATION"
+        ],
+        "recommended_action": "Restore the small reference-correct wearer-left chest wordmark. Match garment construction to the same approved Look 1 anchor used for adjacent shots, remove source-background slivers, and verify the final hard out against the song clock."
+      }
+    ],
+    "defects": [
+      {
+        "severity": "blocker",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "Recurring foreground matte dropout removes substantial portions of Fendi and his jacket, exposing the room through his body and creating a floating upper torso. Coverage returns and disappears between samples, so this is temporal foreground failure, not a deliberate crop. Observed in S09, S10 and S11; the time range encloses separate occurrences.",
+        "defect_id": "PERF-MATTE-DROPOUT",
+        "evidence": "S09@00:29.592: abdomen/lower body absent beneath crossed arms. S09@00:29.758: partial transparent waist; 00:29.925: coverage returns. S09@00:30.925–00:31.092: lower-jacket cutouts recur. S10@00:31.892: floating upper torso with lower body erased. S11@00:33.609: background through waist; 00:35.943: eroded screen-right sleeve/forearm boundary; 00:36.943: broad floor-textured opening through lower abdomen; 00:37.609 and 00:38.943: further hem cutouts.",
+        "requires_treatment_change": false,
+        "time_range": [
+          29.592,
+          38.943
+        ],
+        "recommended_action": "Rebuild the complete performer/garment foreground alpha and its hand/arm occlusion handling. Keep the room behind all opaque body and clothing regions. Propagate and inspect the correction frame by frame through crossed arms, moving hands and hem motion; do not conceal the failure with additional haze."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "environment",
+        "description": "Source-background pixels survive around the performer and reintroduce closet/door elements into the transformed room. This is unwanted source inclusion, distinct from the foreground dropout reported separately.",
+        "defect_id": "PERF-SOURCE-BACKGROUND-LEAK",
+        "evidence": "S09@00:31.258: black handle-like source remnant beside the screen-right hip. S11@00:34.609: clothing-pile imagery behind the screen-right torso/arm, consistent with the source closet clutter. S11@00:36.609: pale door patch and black horizontal handle beside the screen-right waist. S12@00:40.844 and 00:41.844: pale source-background slivers remain behind the hanging screen-right hand.",
+        "requires_treatment_change": false,
+        "time_range": [
+          31.258,
+          41.844
+        ],
+        "recommended_action": "Remove original background pixels from the foreground extraction, particularly in arm/torso gaps and around hanging hands. Restore the generated room behind those regions while preserving the actual hands and garment edges."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "Look 1 is a cream/navy track-jacket approximation rather than the referenced product. The chest stripe is substantially too deep, navy striping extends across the shoulders toward the collar, and collar/hem/pocket construction differs. Construction also changes between S11 and S12 despite an unchanged look assignment.",
+        "defect_id": "LOOK1-GARMENT-CONSTRUCTION",
+        "evidence": "The Look 1 product reference has a narrow chest stripe, cream shoulders, sleeve stripes originating below the shoulders and discreet tonal pocket openings. S09@00:30.092–00:30.592 instead shows a broad chest block and navy shoulder-connected stripes. S11@00:33.943 and 00:35.609 shows a tall collar and navy side/shoulder panels. Across S11@00:39.276 to S12@00:39.511–00:39.844, the collar and zipper change and prominent black-outlined pockets appear.",
+        "requires_treatment_change": false,
+        "time_range": [
+          29.592,
+          43.178
+        ],
+        "recommended_action": "Generate a single product-faithful Look 1 anchor using the supplied garment truth, correcting stripe proportions and paths, collar, zipper, pockets and hem. Reuse that construction across S09, S11 and S12 and propagate it through the real performance without independently redesigning adjacent segments."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "brand_repair",
+        "category": "wardrobe",
+        "description": "The Saint Laurent wordmark has incorrect scale, placement and typography. It spans the central zipper and both chest panels rather than remaining a small mark on the wearer's left chest. S09/S11 lettering is malformed and inconsistently rendered; S12 switches to a much larger sans-serif treatment that occupies most of the chest band.",
+        "defect_id": "LOOK1-WORDMARK-TRUTH",
+        "evidence": "Compare the small wearer-left chest mark in the Look 1 reference with the large central lettering at S09@00:29.925–00:30.258 and S11@00:35.276–00:36.276. Compressed and irregular letter shapes are visible in those samples. S11@00:39.276 to S12@00:39.511 shows an abrupt increase in lettering size and a type-treatment change. S12@00:39.844, 00:40.178 and 00:41.178 clearly shows the oversized wordmark crossing the zipper.",
+        "requires_treatment_change": false,
+        "time_range": [
+          29.592,
+          43.178
+        ],
+        "recommended_action": "Replace generated lettering with the reference-correct wordmark at the correct garment-relative scale, pale color and wearer-left chest placement. Track its deformation with the fabric, preserve hand occlusion, and use the same branding treatment across all Look 1 shots."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "environment",
+        "category": "environment",
+        "description": "The performance background supplies a dark charcoal chamber and floor haze, but not the specified post-drop escalation. It reads as a largely static room with a central recess/panel; multiplied mirror reflections and diamond wall refractions are not discernible, and the blue-white ice-light treatment is not clearly established.",
+        "defect_id": "HOOK-ENV-ESCALATION",
+        "evidence": "S09@00:30.258 and 00:31.092, S11@00:34.276, 00:36.609 and 00:38.276, and S12@00:41.178 and 00:43.178 all show substantially the same charcoal wall/recess arrangement and low haze without discernible multiplied mirror reflections or diamond wall glints.",
+        "requires_treatment_change": false,
+        "time_range": [
+          29.592,
+          43.178
+        ],
+        "recommended_action": "Conform the performance-room render to the existing post-drop specification: several readable mirror panels, blue-white ice rim lighting and diamond refraction glints, with deeper contrast. Preserve Fendi's source pose, framing and scale."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S10",
+        "recommended_owner": "broll",
+        "category": "broll",
+        "description": "The specified generated mirror-panel insert is replaced by performance footage with whole-image flips and negative/brightness strobing. The strobe component is present, but the intended performer-free insert, mirror-panel multiplication and insert-camera behavior are not delivered.",
+        "defect_id": "S10-WRONG-INSERT",
+        "evidence": "S09@00:31.425 to S10@00:31.559 continues the performer action rather than cutting to a mirror insert. S10@00:31.725 reverses the performer and wall together. S10@00:32.225–00:32.892 strobes inverted performer imagery. S10@00:33.059–00:33.392 returns to the same performer image and flips it again; no performer-free panel-multiplication insert appears in the supplied S10 sequence.",
+        "requires_treatment_change": false,
+        "time_range": [
+          31.559,
+          33.392
+        ],
+        "recommended_action": "Replace S10_mirrorstrobe.mp4 with generated mirror-panel B-roll matching the requested cold-room world. Make panel multiplication visibly readable, apply the specified slow push and strobing/glitch escalation, and retain the scheduled cutaway duration."
+      }
+    ]
+  }
+}

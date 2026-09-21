@@ -1,0 +1,37 @@
+{
+  "draftId": "YSL_IceOn_bars24-46_v2",
+  "treatmentVersion": "section-bars24-46@d3cbac2",
+  "draftOffsetSongSeconds": 47.2131,
+  "parts": [
+    {
+      "partId": "shots-S01-S02-S03-S04",
+      "level": 1,
+      "frames": 51,
+      "references": 4
+    },
+    {
+      "partId": "shots-S05-S06-S07-S08",
+      "level": 1,
+      "frames": 54,
+      "references": 4
+    },
+    {
+      "partId": "shots-S09-S10-S11-S12",
+      "level": 1,
+      "frames": 53,
+      "references": 4
+    },
+    {
+      "partId": "transitions",
+      "level": 2,
+      "frames": 66,
+      "references": 2
+    },
+    {
+      "partId": "sequence",
+      "level": 3,
+      "frames": 86,
+      "references": 4
+    }
+  ]
+}

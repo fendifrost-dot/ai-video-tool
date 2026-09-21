@@ -54,6 +54,8 @@ export function buildGrokVideoEditAssetInsert(input: {
   finalStatus: string;
   byteLength: number | null;
   promptVersion: string;
+  referenceMode?: "flat" | "full_look";
+  lookId?: string | null;
 }): {
   user_id: string;
   project_id: string;
@@ -84,6 +86,8 @@ export function buildGrokVideoEditAssetInsert(input: {
       actual_cost_usd: input.actualCostUsd,
       final_status: input.finalStatus,
       prompt_version: input.promptVersion,
+      reference_mode: input.referenceMode ?? "flat",
+      look_id: input.lookId ?? null,
     },
   };
 }

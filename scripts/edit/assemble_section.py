@@ -38,6 +38,13 @@ def probe_duration(path):
 def song_to_performance(t, sync):
     return (t - sync["offsetSeconds"]) / (1 + sync.get("driftPpm", 0) / 1e6)
 
+def _framing_zoom(shot):
+    """'1.25× crop' / '1.25x crop' in the ShotSpec motion/framing text → 1.25 (0 when absent)."""
+    import re
+    txt = json.dumps({k: shot.get(k) for k in ("framing", "cameraMotion", "camera", "motion")}, ensure_ascii=False)
+    m = re.search(r"(\d+(?:\.\d+)?)\s*[×x]\s*crop", txt)
+    return float(m.group(1)) if m else 0.0
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--shotspecs", required=True); ap.add_argument("--renders", required=True)
@@ -69,6 +76,11 @@ def main():
         # normalise every part to the same raster / fps / pixel format, video only
         part = os.path.join(tmp, f"{sid}.mp4")
         vf = f"scale={W}:{H}:force_original_aspect_ratio=increase:flags=lanczos,crop={W}:{H},fps={a.fps},format=yuv420p"
+        # per-slot punch-in: renders.json "zoom" (e.g. 1.25) or a "<n>× crop" in the ShotSpec framing
+        zoom = float(r.get("zoom") or 0) or _framing_zoom(s)
+        if zoom and zoom > 1.0:
+            cw, ch = int(W / zoom) // 2 * 2, int(H / zoom) // 2 * 2
+            vf += f",crop={cw}:{ch}:(iw-{cw})/2:(ih-{ch})*0.4,scale={W}:{H}:flags=lanczos"
         fx_in = ""
         tr = s.get("transitionIn") or {}
         ttype = tr.get("type", "cut"); tdur = float(tr.get("durationSeconds") or 0)

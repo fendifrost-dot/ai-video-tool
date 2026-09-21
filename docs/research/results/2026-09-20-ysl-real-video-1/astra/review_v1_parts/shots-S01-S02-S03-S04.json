@@ -1,0 +1,192 @@
+{
+  "draftId": "YSL_IceOn_bars24-46_v1",
+  "partId": "shots-S01-S02-S03-S04",
+  "model": "gpt-6-astra",
+  "responseId": "resp_0f0359a7993098a0006ab0b820044c87d29d1ec50403becea0",
+  "reviewedAt": "2026-09-21T04:57:55.159Z",
+  "usage": {
+    "input_tokens": 40843,
+    "input_tokens_details": {
+      "cache_write_tokens": 40840,
+      "cached_tokens": 0
+    },
+    "output_tokens": 10860,
+    "output_tokens_details": {
+      "reasoning_tokens": 6214
+    },
+    "total_tokens": 51703
+  },
+  "actualCostUsd": 0.9514,
+  "review": {
+    "shots": [
+      {
+        "expected": "Real Fendi performing in the reference Look 2 black-denim trucker, fully worn, in a transformed charcoal fitting room with no readable original closet. Eye-level medium framing, locked camera with a 2% push; establish the performance and wardrobe.",
+        "recommended_owner": "compositing_mask",
+        "observations": [
+          "Evidence labels F01–F51 refer to the supplied frames in their listed order. All cited timecodes are draft time.",
+          "Performance occurs. Fendi remains recognizable through his face, beard, glasses and cap at F01 (00:00.167), F07 (00:02.167) and F12 (00:03.833). The sampled sequence does not establish an identity replacement.",
+          "The trucker is actually worn: torso, sleeves and cuffs remain attached through crossed-arm and pointing movements at F02–F03 (00:00.500–00:00.833) and F07 (00:02.167). No complete garment dropout is visible. However, the exaggerated pale stitching, bright disc-like buttons and heavily processed fabric do not faithfully reproduce the product reference; see LOOK2-PRODUCT-TRUTH.",
+          "Look 2's reference has no external chest wordmark. The unbranded chest visible at F04 (00:01.167) and F10 (00:03.167) is therefore not a missing-logo defect. Hardware appearance, rather than wordmark scale, is the issue.",
+          "The dark charcoal room and cold vertical light are visible at F01, F06 and F12 (00:00.167, 00:01.833, 00:03.833), but original closet material survives beside the screen-right arm/hip. F01 exposes a clothing pile with a bright green detail; F08 and F10 (00:02.500, 00:03.167) expose a pale vertical source-background strip. Environment replacement is incomplete.",
+          "Framing is approximately the requested eye-level medium composition, with the full jacket and upper legs visible at F04 and F12 (00:01.167, 00:03.833). The room landmarks remain substantially fixed. The exact 2% push is UNCERTAIN, confidence 0.3, from these samples.",
+          "The establishment purpose occurs, but clean luxury-product presentation fails because of the product-rendering and compositing defects. Garment construction also changes on the subsequent return to performance; compare F12 (00:03.833) with F25 (00:06.068).",
+          "A functioning mirror multiplying highlights is not clearly readable behind him at F06 and F12 (00:01.833, 00:03.833): UNCERTAIN, confidence 0.35. Exact lip sync and preservation of every original performance frame cannot be certified from the silent, spaced samples F01–F12; UNCERTAIN, confidence 0.2. Blurred moving hands at F02–F03 are insufficient evidence for a finger-anatomy defect."
+        ],
+        "observed": "The intended performance setup and on-body black trucker occur, but product fidelity and clean removal of the closet fail. Fendi remains visually credible in the sampled sequence (F01–F12, 00:00.167–00:03.833).",
+        "confidence": 0.96,
+        "verdict": "FAIL",
+        "shot_id": "S01",
+        "defect_ids": [
+          "LOOK2-PRODUCT-TRUTH",
+          "PREHOOK-CLOSET-MATTE-LEAK",
+          "LOOK2-CUT-CONSTRUCTION-DRIFT"
+        ],
+        "recommended_action": "Repair the performer/environment matte, rebuild Look 2 against the product reference, and propagate one approved garment construction across the pre-hook performance shots. Preserve the source performance."
+      },
+      {
+        "expected": "A generated, product-true macro insert of Look 2 jacket hardware, with a slow push and cold hard-key lighting. It should function as a one-bar fashion cutaway without a synthetic performer.",
+        "recommended_owner": "broll",
+        "observations": [
+          "An insert occurs, showing the jacket placket, several buttons and both chest pockets at F13–F17 (00:04.018–00:04.684). Hardware is visible, but the composition reads as a close crop of a moving torso rather than a controlled hardware-detail macro.",
+          "The framing moves laterally across the chest between F13 and F17 (00:04.018–00:04.684), then changes with the arm gesture at F19–F24 (00:05.018–00:05.851). A clean slow-push presentation is not established.",
+          "A sleeve and hand enter and sweep across the product at F18–F24 (00:04.851–00:05.851), substantially occluding the central hardware at F21–F23 (00:05.351–00:05.684). This weakens the requested hardware-focused cutaway.",
+          "The enlargement exposes pale, largely featureless button discs, coarse bright seam outlines and smooth, glossy-looking fabric at F14, F16 and F20 (00:04.184, 00:04.518, 00:05.184). These do not provide the requested product-true denim/hardware detail; see LOOK2-PRODUCT-TRUTH.",
+          "The dark, cool presentation broadly matches the performance palette at F13 and F17 (00:04.018, 00:04.684). No face is shown in F13–F24. Whether the torso and hand come from real performance or a synthetic performer is UNCERTAIN, confidence 0.25; their provenance cannot be determined visually here.",
+          "No readable external wordmark is required by the supplied Look 2 reference, and none is evident at F13–F17 (00:04.018–00:04.684). The visible failure is product detail and insert execution, not missing YSL lettering."
+        ],
+        "observed": "A jacket-torso close-up occupies the insert, but its lateral/body-driven movement, hand occlusion and inaccurate product rendering prevent the specified hardware macro from being delivered cleanly (F13–F24, 00:04.018–00:05.851).",
+        "confidence": 0.93,
+        "verdict": "FAIL",
+        "shot_id": "S02",
+        "defect_ids": [
+          "LOOK2-PRODUCT-TRUTH",
+          "S02-HARDWARE-MACRO-CONFORMANCE"
+        ],
+        "recommended_action": "Regenerate the specified hardware insert from approved Look 2 product truth, retaining the cold lighting and implementing a controlled slow push. Keep the hardware legible rather than allowing a performance gesture to dominate it."
+      },
+      {
+        "expected": "Real Fendi continuing the rapid-fire performance in the same reference Look 2, with pointing/arm-up gestures around song 54–55 seconds. Locked eye-level medium framing in the transformed charcoal fitting room; no original closet visible.",
+        "recommended_owner": "compositing_mask",
+        "observations": [
+          "The intended performance occurs. The arm-up gesture is visible at F27–F30 (00:06.735–00:07.735), including the requested song 54–55-second interval. This broadly follows the gesture progression in the supplied original-performance contact sheet.",
+          "Fendi's cap, glasses, beard and facial proportions remain recognizable at F25, F28 and F40 (00:06.068, 00:07.068, 00:11.068). There is no clear sampled identity swap; exact preservation of the original face pixels is not established by these images.",
+          "The jacket remains worn through the raised arm and subsequent cross-body movement at F28–F33 (00:07.068–00:08.735). Both sleeves remain present. No definite extra limb or full garment disappearance is visible in those samples.",
+          "The bright outlined seams, pale buttons and gray/glossy fabric treatment remain inconsistent with the reference black denim at F25, F28 and F32 (00:06.068, 00:07.068, 00:08.402). The jacket also returns with a noticeably different fit and pocket construction from S01; compare F12 (00:03.833) with F25–F26 (00:06.068–00:06.402).",
+          "The charcoal room remains spatially stable at F25, F30 and F42 (00:06.068, 00:07.735, 00:11.735), but pale original-background strips reappear beside the screen-right hand/hip at F26, F28–F29 and F40 (00:06.402, 00:07.068–00:07.402, 00:11.068). The leak changes exposure as the performer moves.",
+          "Eye-level medium framing approximately matches, with the jacket hem and upper legs visible at F25 and F42 (00:06.068, 00:11.735). The rapid-fire performance purpose is present, but product truth and compositing prevent conformance.",
+          "No external chest wordmark is required by the Look 2 reference; the visible unbranded chest at F25 and F35 (00:06.068, 00:09.402) is not a branding omission. Mirror function remains UNCERTAIN, confidence 0.35, at F30 and F42 (00:07.735, 00:11.735). One-frame song sync and between-sample flicker remain UNCERTAIN, confidence 0.2, across F25–F42."
+        ],
+        "observed": "The requested performance and arm-up energy are present, with credible Fendi identity and continuous on-body wardrobe coverage. The jacket is not product-faithful or construction-consistent with S01, and closet-background remnants recur (F25–F42, 00:06.068–00:11.735).",
+        "confidence": 0.96,
+        "verdict": "FAIL",
+        "shot_id": "S03",
+        "defect_ids": [
+          "LOOK2-PRODUCT-TRUTH",
+          "PREHOOK-CLOSET-MATTE-LEAK",
+          "LOOK2-CUT-CONSTRUCTION-DRIFT"
+        ],
+        "recommended_action": "Preserve this source gesture range. Correct the recurring environment-matte leaks and apply the same approved product-faithful Look 2 construction used for S01, with temporal checks through arm raises and crossed-arm occlusions."
+      },
+      {
+        "expected": "The real performance in unchanged Look 2 and the same transformed room, reframed to a tighter medium-close shot using a locked 1.25× crop, escalating into the drop.",
+        "recommended_owner": "edit_fx",
+        "observations": [
+          "Fendi's performance continues, with recognizable cap, glasses, beard and face at F43, F46 and F51 (00:11.970, 00:12.970, 00:14.637). The jacket is worn across torso and both arms, including the cross-chest gesture at F48 (00:13.637).",
+          "The required tighter shot does not occur. F43–F44 (00:11.970–00:12.303) retain essentially the S03 composition seen at F42 (00:11.735): comparable head scale, substantial headroom, full jacket hem and upper legs. The wall boundaries and vertical cold-light strip also remain at substantially the same image positions.",
+          "The shot stays wide enough to show the complete jacket and upper legs at F46 and F51 (00:12.970, 00:14.637), rather than providing the specified 1.25× medium-close escalation.",
+          "Product-rendering problems continue at F44 and F46 (00:12.303, 00:12.970). The pocket and collar construction also changes across the S03/S04 cut; compare F40–F42 (00:11.068–00:11.735) with F43–F44 (00:11.970–00:12.303). This is not simply an enlargement of the preceding jacket.",
+          "The dark-room setting persists, but a pale source-background strip is visible beside the screen-right arm/hip at F45 and F47 (00:12.637, 00:13.303). Clean environment replacement therefore still fails.",
+          "No external wordmark is required by the Look 2 reference, and the unbranded chest at F44–F46 (00:12.303–00:12.970) is not a missing-logo defect. Fast-hand blur at F47 and F49 (00:13.303, 00:13.970) is insufficient to diagnose malformed fingers. Exact source-frame preservation and one-frame sync remain UNCERTAIN, confidence 0.2, across F43–F51."
+        ],
+        "observed": "The performance continues, but the defining 1.25× tighter crop is visibly absent. The shot consequently misses its escalation purpose while retaining the product-fidelity, jacket-continuity and background-matte defects (F43–F51, 00:11.970–00:14.637).",
+        "confidence": 0.99,
+        "verdict": "FAIL",
+        "shot_id": "S04",
+        "defect_ids": [
+          "LOOK2-PRODUCT-TRUTH",
+          "PREHOOK-CLOSET-MATTE-LEAK",
+          "LOOK2-CUT-CONSTRUCTION-DRIFT",
+          "S04-MISSING-125-CROP"
+        ],
+        "recommended_action": "Apply the specified locked 1.25× crop to the corrected performance composite. Preserve the source gesture range, use the approved continuous Look 2 construction, and repair the exposed background remnants before reframing."
+      }
+    ],
+    "defects": [
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "Across S01–S04, the rendered Look 2 is recognizable as a black trucker but is not product-true. Stitching and seams are exaggerated into pale outlines, buttons read as enlarged bright discs rather than the reference's restrained metal hardware, and the fabric often reads as glossy/processed gray-black material instead of the reference's understated black denim. S02 magnifies the same problem.",
+        "defect_id": "LOOK2-PRODUCT-TRUTH",
+        "evidence": "Compare the supplied Look 2 flat product reference with S01 F04/F10 at draft 00:01.167/00:03.167; S02 F14/F16 at 00:04.184/00:04.518; S03 F25/F32 at 00:06.068/00:08.402; and S04 F44/F46 at 00:12.303/00:12.970. Pale seam outlines and flat bright button faces recur across these views; the macro particularly exposes the lack of convincing denim and hardware detail.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0.167,
+          14.637
+        ],
+        "recommended_action": "Rebuild and approve Look 2 against the supplied product photo, matching denim surface response, restrained seam contrast and hardware proportions. Preserve natural material detail under the specified lighting rather than baking highlights into the garment. Use that approved truth for both on-body renders and S02's regenerated macro."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "Original closet-background fragments survive intermittently beside the moving performer in S01, S03 and S04. The room replacement does not extend cleanly through the arm/torso negative spaces and outer silhouette, exposing clothing and pale door/background strips. The enclosing time range describes recurring samples, not a continuous leak in S02.",
+        "defect_id": "PREHOOK-CLOSET-MATTE-LEAK",
+        "evidence": "S01 F01 at draft 00:00.167 shows a clothing pile with a bright green detail under the screen-right arm; F08/F10 at 00:02.500/00:03.167 show a pale vertical strip beside the screen-right hip/hand. S03 F26/F28/F29/F40 at 00:06.402/00:07.068/00:07.402/00:11.068 expose pale remnants beside the lowered screen-right arm. S04 F45/F47 at 00:12.637/00:13.303 show the same kind of vertical source-background remnant. These features correspond visually to the pale door and stored clothing in the untouched source reference.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0.167,
+          13.303
+        ],
+        "recommended_action": "Repair the performer/environment separation through arm gaps, cuffs, hands and hip edges. Extend the replacement-room plate behind the entire moving silhouette and remove retained source-background islands. Review at full frame rate to ensure the fragments do not reappear as occlusions change."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "temporal_propagation",
+        "category": "continuity",
+        "description": "Look 2 changes construction across the S01/S03 and S03/S04 performance cuts. Sleeve/body volume, collar treatment and chest-pocket proportions reset, making the continuous pre-hook look read as different generated trucker variants rather than one garment. This is separate from the shared material/hardware mismatch.",
+        "defect_id": "LOOK2-CUT-CONSTRUCTION-DRIFT",
+        "evidence": "S01 F10/F12 at draft 00:03.167/00:03.833 show a broader, fuller-sleeved jacket with visibly gathered pocket/front-panel treatment. S03 F25/F26 at 00:06.068/00:06.402 return with a slimmer body and more elongated, sharply outlined pocket construction. Across the next cut, S03 F40/F42 at 00:11.068/00:11.735 and S04 F43/F44 at 00:11.970/00:12.303 show another change in pocket-bottom shape, collar detailing and fit, without the expected framing enlargement accounting for it.",
+        "requires_treatment_change": false,
+        "time_range": [
+          3.167,
+          12.303
+        ],
+        "recommended_action": "After correcting the base garment, propagate one approved Look 2 construction across all pre-hook performance ranges. Anchor collar, pocket, placket, cuff and hem geometry across shot boundaries; allow pose-driven cloth deformation without regenerating a different cut of jacket."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S02",
+        "recommended_owner": "broll",
+        "category": "broll",
+        "description": "The intended controlled hardware macro is replaced by a moving jacket-torso close-up. The motion is substantially lateral/body-driven, and a gesturing sleeve and hand obscure the product during the latter portion. Hardware is present, but the shot does not sustain the specified hardware-detail focus or slow-push execution. A synthetic performer is not asserted; provenance is unverified.",
+        "defect_id": "S02-HARDWARE-MACRO-CONFORMANCE",
+        "evidence": "S02 F13–F17 at draft 00:04.018–00:04.684 move across both pockets and the placket rather than maintaining a hardware-detail composition. A hand enters at F18 (00:04.851); the sleeve and hand sweep over the central jacket at F19–F24 (00:05.018–00:05.851), with substantial hardware occlusion at F21–F23 (00:05.351–00:05.684).",
+        "requires_treatment_change": false,
+        "time_range": [
+          4.018,
+          5.851
+        ],
+        "recommended_action": "Regenerate the requested product-true hardware macro with a controlled slow push, cold hard-key lighting and uninterrupted visibility of the chosen hardware detail. Verify that no unapproved synthetic performer is introduced. Retain the existing shot duration and intended cutaway role."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S04",
+        "recommended_owner": "edit_fx",
+        "category": "framing",
+        "description": "The specified locked 1.25× crop is absent. S04 remains approximately the preceding medium composition instead of becoming the tighter medium-close shot, so its defining escalation into the drop is missing.",
+        "defect_id": "S04-MISSING-125-CROP",
+        "evidence": "Compare S03 F42 at draft 00:11.735 with S04 F43/F44 at 00:11.970/00:12.303: subject scale and background landmark positions remain comparable. S04 F46/F51 at 00:12.970/00:14.637 still show substantial headroom, the entire jacket hem and upper legs rather than the requested tighter crop.",
+        "requires_treatment_change": false,
+        "time_range": [
+          11.803,
+          14.754
+        ],
+        "recommended_action": "Apply the specified fixed 1.25× crop to S04's corrected performance composite, maintaining eye-level framing and the original source timing. Verify a visible framing escalation at the S03/S04 cut without generating a new pose or changing Fendi's identity."
+      }
+    ]
+  }
+}
