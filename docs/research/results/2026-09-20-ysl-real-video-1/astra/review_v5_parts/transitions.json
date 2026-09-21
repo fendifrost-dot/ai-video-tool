@@ -1,0 +1,577 @@
+{
+  "draftId": "YSL_IceOn_bars24-46_v5",
+  "partId": "transitions",
+  "model": "gpt-6-astra",
+  "responseId": "resp_08140c6597f041c0006ab0ef77646c87d280e8c1e615c7abe7",
+  "reviewedAt": "2026-09-21T08:51:39.786Z",
+  "usage": {
+    "input_tokens": 49684,
+    "input_tokens_details": {
+      "cache_write_tokens": 49681,
+      "cached_tokens": 0
+    },
+    "output_tokens": 7922,
+    "output_tokens_details": {
+      "reasoning_tokens": 516
+    },
+    "total_tokens": 57606
+  },
+  "actualCostUsd": 0.8929,
+  "review": {
+    "transitions": [
+      {
+        "expected": "Hard cut from Look 2 performance to a product-true hardware macro, retaining the cold fashion world.",
+        "from_shot": "S01",
+        "observed": "03.875 before → 03.958 after is a clean cut. The insert enlarges a soft torso rendering rather than resolving hardware. Washed denim and foreground edging remain visible before departure.",
+        "to_shot": "S02",
+        "verdict": "PARTIAL",
+        "defect_ids": [
+          "S02-HARDWARE-MACRO-TRUTH",
+          "SEQ-LOOK2-PRODUCT-TRUTH",
+          "PREHOOK-MATTE-HALO"
+        ],
+        "draft_time": 3.917,
+        "recommended_action": "Keep the cut; replace the insert with verified hardware detail and repair the outgoing composite. Musical landing remains unverified without audio."
+      },
+      {
+        "expected": "Cut back to the real performance, maintaining Look 2 construction, room continuity and song synchronization.",
+        "from_shot": "S02",
+        "observed": "05.833 before → 05.917 after restores gesturing performance in the same room. Jacket darkness differs from S01; residual sleeve contamination is visible. Source identity and synchronization cannot be certified without the master.",
+        "to_shot": "S03",
+        "verdict": "PARTIAL",
+        "defect_ids": [
+          "LOOK2-CUT-CONSTRUCTION-DRIFT",
+          "PREHOOK-CLOSET-MATTE-LEAK",
+          "REVIEW-SYNC-UNVERIFIED"
+        ],
+        "draft_time": 5.917,
+        "recommended_action": "Preserve the return timing pending audio/master verification; unify jacket construction and clean the moving matte."
+      },
+      {
+        "expected": "An intentional 1.25× punch-in on contiguous performance, not a new jacket or performance replacement.",
+        "from_shot": "S03",
+        "observed": "11.750 before → 11.833 after delivers the tighter crop and continues the gesture. Hardware brightness, pocket geometry and cuff construction reset alongside the intended scale change.",
+        "to_shot": "S04",
+        "verdict": "PARTIAL",
+        "defect_ids": [
+          "LOOK2-CUT-CONSTRUCTION-DRIFT",
+          "LOOK2-PRODUCT-TRUTH"
+        ],
+        "draft_time": 11.792,
+        "recommended_action": "Retain the specified punch-in; propagate the same corrected garment through both source ranges."
+      },
+      {
+        "expected": "Cut to a half-bar diamond-refraction insert that prepares the drop whiteout.",
+        "from_shot": "S04",
+        "observed": "14.708 before → 14.792 after cleanly replaces performance with a faceted diamond on black. The cold refraction motif is legible; outgoing moving-sleeve edging remains exposed immediately before the cut.",
+        "to_shot": "S05",
+        "verdict": "PARTIAL",
+        "defect_ids": [
+          "PREHOOK-MATTE-HALO"
+        ],
+        "draft_time": 14.75,
+        "recommended_action": "Keep the diamond entry. Repair the outgoing sleeve boundary; assess beat placement against the actual soundtrack."
+      },
+      {
+        "expected": "Diamond whiteout into Look 1 at the drop, revealing multiple mirrors and harder ice lighting without source-background fragments.",
+        "from_shot": "S05",
+        "observed": "15.667 before brightens; 15.750 after is fully white; 15.833 after reveals Look 1 and multiple mirrors. A large clothing/furniture-like source remnant intrudes at screen-right, undermining the reveal.",
+        "to_shot": "S06",
+        "verdict": "FAIL",
+        "defect_ids": [
+          "SEQ-ORIGINAL-CLOSET-LEAK",
+          "PERF-MATTE-COVERAGE",
+          "LOOK1-CONSTRUCTION-MISMATCH"
+        ],
+        "draft_time": 15.75,
+        "recommended_action": "Keep the evidenced flash and wardrobe-change location. Remove the screen-right remnant and correct Look 1 before approving the drop."
+      },
+      {
+        "expected": "Hard cut from the first hook performance to the cold luxury/night-city motif.",
+        "from_shot": "S06",
+        "observed": "21.583 before remains performance; 21.667 after is blue-lit wet-city imagery. The cut is visually intentional, with compatible highlights and no sampled premature city frame.",
+        "to_shot": "S07",
+        "verdict": "PASS",
+        "defect_ids": [],
+        "draft_time": 21.625,
+        "recommended_action": "Retain the visual cut. S07-CUT-TIMING is resolved in these samples; this does not certify musical synchronization."
+      },
+      {
+        "expected": "Clean cut back to synchronized performance in the identical Look 1 and mirror room.",
+        "from_shot": "S07",
+        "observed": "23.542 before → 23.625 after restores the mirror plate, but the jacket becomes longer with pale contrasting sleeves. Irregular pale edging and dark material beside the screen-right flank remain through 23.792 after.",
+        "to_shot": "S08",
+        "verdict": "FAIL",
+        "defect_ids": [
+          "S06-S08-GARMENT-RESET",
+          "PERF-CLOSET-LEAKAGE",
+          "HOOK-SOURCE-LEAK",
+          "PERF-MATTE-COVERAGE"
+        ],
+        "draft_time": 23.625,
+        "recommended_action": "Match S08 to the approved S06 garment construction, remove attached remnants, and verify the performance return against source and audio."
+      },
+      {
+        "expected": "Own cut on crossed arms while preserving the same jacket, performer scale and hook room.",
+        "from_shot": "S08",
+        "observed": "29.458 before → 29.542 after preserves crossed arms and the plate. Pale loose cuffs become fitted ribbed cuffs; jacket length, collar lining and branding change abruptly. The outfit reset overwhelms the intended performance cut.",
+        "to_shot": "S09",
+        "verdict": "FAIL",
+        "defect_ids": [
+          "HOOK-GARMENT-RESET",
+          "HOOK-WORDMARK-DRIFT",
+          "S09-SOURCE-INPOINT-AUDIT"
+        ],
+        "draft_time": 29.5,
+        "recommended_action": "Keep the specified crossed-arm edit only after matching garment states. Audit the 1.000-second asset trim against the requested source clock."
+      },
+      {
+        "expected": "Cut into a one-bar multiplying mirror/strobe FX insert, escalating the established hook environment.",
+        "from_shot": "S09",
+        "observed": "31.417 before → 31.500 after reveals a deep reflective corridor rather than sustained white. Repeated illuminated edges support the mirror motif. The sampled opening does not establish the full strobe cadence.",
+        "to_shot": "S10",
+        "verdict": "PARTIAL",
+        "defect_ids": [
+          "S10-STROBE-VISIBILITY-UNVERIFIED"
+        ],
+        "draft_time": 31.458,
+        "recommended_action": "Retain the visible corridor concept; inspect all native frames across the bar to verify multiplication, strobe rhythm and musical escalation."
+      },
+      {
+        "expected": "A visible glitch transition from the mirror-strobe insert back to synchronized Look 1 performance.",
+        "from_shot": "S10",
+        "observed": "33.375 before shows the corridor; 33.458 after is white; 33.542 after returns to performance. This demonstrates a flash, not a discernible glitch. Branding becomes stacked gold marks and the tie pattern changes.",
+        "to_shot": "S11",
+        "verdict": "PARTIAL",
+        "defect_ids": [
+          "S11-GLITCH-UNVERIFIED",
+          "HOOK-WORDMARK-DRIFT",
+          "HOOK-GARMENT-RESET"
+        ],
+        "draft_time": 33.458,
+        "recommended_action": "Inspect intervening native frames for the specified glitch; repair the effect if absent. Match garment and branding to the preceding hook performance."
+      },
+      {
+        "expected": "Hard cut into the fourth repeat with unchanged Look 1 construction, branding and mirror environment.",
+        "from_shot": "S11",
+        "observed": "39.292 before → 39.375 after retains the plate but changes collar, cuffs, tie and logo layout. A broad pale shoulder patch and dark protrusion beside the screen-right sleeve become conspicuous on the incoming shot.",
+        "to_shot": "S12",
+        "verdict": "FAIL",
+        "defect_ids": [
+          "HOOK-GARMENT-RESET",
+          "HOOK-WORDMARK-DRIFT",
+          "PERF-SOURCE-BACKGROUND-LEAK"
+        ],
+        "draft_time": 39.333,
+        "recommended_action": "REPAIR_REQUIRED. Match wardrobe and remove composite remnants. Review summary: SEQ-CUT-BOUNDARY-OFFSET is resolved in supplied boundary samples; S07-CUT-TIMING is resolved at its cut. S12-WORDMARK-SCALE is provisionally resolved at this sampled entrance: the mark is restrained, although malformed typography persists under sequence branding defects. S10 corridor visibility is now verified, but cadence remains open. No full-shot clearance is implied: shot interiors, opening and final hard out are unsampled."
+      }
+    ],
+    "defects": [
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "Source-background elimination still fails. Large non-room material survives at the drop, with further attached remnants at later performance returns. Confidence: high for composite failure; exact source objects are uncertain.",
+        "defect_id": "SEQ-ORIGINAL-CLOSET-LEAK",
+        "evidence": "15.833 S05→S06 after: clothing/furniture-like mass at right edge. 23.792 S07→S08 after: dark flank attachment. 39.375 S11→S12 after: pale patch and dark protrusion.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.833,
+          39.542
+        ],
+        "recommended_action": "Rebuild foreground exclusion masks from source comparisons; remove attached background components rather than shrinking the whole performer matte."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "Look 2 still reads as heavily washed gray denim with emphasized seams, rather than the specified French Black Denim. Exact reference-level hardware comparison is limited because no Look 2 product image accompanies this package.",
+        "defect_id": "SEQ-LOOK2-PRODUCT-TRUTH",
+        "evidence": "03.792 S01→S02 before: pale washed jacket and jeans. 05.917 S02→S03 after: highlighted seam network. 11.833 S03→S04 after: conspicuously bright fasteners.",
+        "requires_treatment_change": false,
+        "time_range": [
+          3.708,
+          14.708
+        ],
+        "recommended_action": "Validate against the actual Look 2 product references and regenerate the restrained black-denim material before temporal propagation."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "environment",
+        "category": "environment",
+        "description": "The pre-hook central panel still reads as an unreflective architectural recess. Hook mirror multiplication is visible, but the required initial mirror highlight has not been established.",
+        "defect_id": "SEQ-MIRROR-PROGRESSION-MISSING",
+        "evidence": "03.875 S01→S02 before and 11.750 S03→S04 before: dark central panel lacks a multiplied highlight. 15.833 S05→S06 after: several panels visibly repeat bright reflections.",
+        "requires_treatment_change": false,
+        "time_range": [
+          3.708,
+          14.708
+        ],
+        "recommended_action": "Repair the pre-hook panel's reflective response while retaining the approved room geometry and hook progression."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S04",
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "The tighter view continues to expose washed seam ridges and prominent blank-looking buttons. The product-commercial truth gate cannot pass on garment category alone; exact hardware identity remains uncertain without its reference.",
+        "defect_id": "LOOK2-PRODUCT-TRUTH",
+        "evidence": "11.833 S03→S04 after: bright pocket and placket buttons. 12.000 S03→S04 after: pale outlined seams. 14.625 S04→S05 before: the same treatment persists.",
+        "requires_treatment_change": false,
+        "time_range": [
+          11.833,
+          14.708
+        ],
+        "recommended_action": "Correct material and hardware using the approved Look 2 reference, then inspect the punch-in at delivery resolution."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "Gray silhouette contamination remains around pre-hook shoulders and moving sleeves. Its broad, uneven shape reads as compositing residue rather than the specified cold rim.",
+        "defect_id": "PREHOOK-MATTE-HALO",
+        "evidence": "03.708 S01→S02 before: broad pale screen-right sleeve boundary. 03.875 S01→S02 before: fringe follows the changed arm position. 14.708 S04→S05 before: sleeve edge remains contaminated.",
+        "requires_treatment_change": false,
+        "time_range": [
+          3.708,
+          14.708
+        ],
+        "recommended_action": "Refine motion-aware alpha and foreground edge color; check moving sleeves without suppressing legitimate motion blur."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "temporal_propagation",
+        "category": "continuity",
+        "description": "Look 2 remains asset-dependent: wash intensity changes across the insert, then hardware, pocket details and cuffs reset at the punch-in. The latter is not explained by the specified crop.",
+        "defect_id": "LOOK2-CUT-CONSTRUCTION-DRIFT",
+        "evidence": "03.875 S01→S02 before: pale fitted trucker. 11.750 S03→S04 before: dark hardware and rolled-looking cuff. 11.833 S03→S04 after: bright buttons and different cuff finish.",
+        "requires_treatment_change": false,
+        "time_range": [
+          3.875,
+          12
+        ],
+        "recommended_action": "Propagate one approved construction through S01, S03 and S04; derive the punch-in from the same corrected garment state."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S02",
+        "recommended_owner": "broll",
+        "category": "broll",
+        "description": "The insert remains a soft enlarged torso crop with indistinct, irregular hardware, not a product-true hardware macro. The cut emphasizes generated texture instead of supplying commercial detail.",
+        "defect_id": "S02-HARDWARE-MACRO-TRUTH",
+        "evidence": "03.958 S01→S02 after: collar, tee and two pockets dominate. 04.125 S01→S02 after: buttons remain featureless. 05.833 S02→S03 before: enlarged texture still lacks resolved hardware detail.",
+        "requires_treatment_change": false,
+        "time_range": [
+          3.958,
+          5.833
+        ],
+        "recommended_action": "Build the specified hardware insert from verified product detail rather than enlarging the generated performance frame."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S03",
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "Non-garment-looking protrusions remain beside the moving sleeve/cuff. Background contamination is still suspected; exact closet provenance is UNCERTAIN, low confidence, without the source comparison.",
+        "defect_id": "PREHOOK-CLOSET-MATTE-LEAK",
+        "evidence": "06.083 S02→S03 after: small dark extension outside screen-right cuff. 11.667 S03→S04 before and 11.750 S03→S04 before: rod-like extension remains beyond the wrist silhouette.",
+        "requires_treatment_change": false,
+        "time_range": [
+          6.083,
+          11.75
+        ],
+        "recommended_action": "Compare these cuff regions with the source and garment render; remove retained background only after separating it from genuine cuff hardware."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "Substantial body coverage survives, but hook foreground integration still fails. Broad pale shoulder echoes and ragged sleeve boundaries move against a sharp, stationary mirror plate.",
+        "defect_id": "PERF-MATTE-COVERAGE",
+        "evidence": "15.917 S05→S06 after: diffuse cap/shoulder perimeter. 23.625 S07→S08 after: irregular pale screen-right shoulder. 23.792 S07→S08 after: contour changes while mirror edges remain fixed.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.833,
+          29.458
+        ],
+        "recommended_action": "Repair edge coverage and decontamination temporally, preserving intact anatomy and the original performance motion."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "S06 and S08 still substitute different constructions for the reference: cropped broad hem and exposed shirt tail versus a longer body with contrasting pale sleeves. Inner-sleeve stripe fidelity cannot be confirmed from these views.",
+        "defect_id": "LOOK1-CONSTRUCTION-MISMATCH",
+        "evidence": "21.583 S06→S07 before: short body, broad hem and hanging striped shirt. 23.625 S07→S08 after: longer zip-front body. 29.458 S08→S09 before: loose pale sleeves and cuffs.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.833,
+          29.458
+        ],
+        "recommended_action": "Match body length, cotton construction, hem, cuff and sleeve panels to the supplied flat and on-model references."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "brand_repair",
+        "category": "wardrobe",
+        "description": "Gold wearer-left placement is retained, but the lettering remains malformed and changes shape during motion. Correct location does not resolve brand truth.",
+        "defect_id": "LOOK1-WORDMARK-TRUTH",
+        "evidence": "21.583 S06→S07 before: compact, irregular gold letterforms. 23.625 S07→S08 after: a different distorted wordmark. 29.458 S08→S09 before: lettering becomes compressed and curved.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.833,
+          29.458
+        ],
+        "recommended_action": "Apply verified Saint Laurent artwork with cloth-aware tracking after garment construction is stabilized."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "Hook garments still differ materially from the reference. The prior navy outer sleeves are gone, but fitted knit-like cuffs, tall collars and altered body/hem proportions remain across the regenerated variants.",
+        "defect_id": "HOOK-LOOK1-GARMENT-TRUTH",
+        "evidence": "21.583 S06→S07 before: shortened body and broad waistband. 29.625 S08→S09 after: conspicuous ribbed cuff. 39.292 S11→S12 before: tall flared collar and sweatshirt-like cuff treatment.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.833,
+          39.292
+        ],
+        "recommended_action": "Use the reference cotton track-jacket pattern consistently; do not approve solely because the beige/navy color blocking matches."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "brand_repair",
+        "category": "continuity",
+        "description": "Branding still resets across hook assets. S11 no longer has the old centered white text, but substitutes stacked gold marks; adjacent shots use incompatible single-line marks.",
+        "defect_id": "HOOK-WORDMARK-DRIFT",
+        "evidence": "29.542 S08→S09 after: tiny single-line mark. 39.292 S11→S12 before: stacked gold lettering. 39.375 S11→S12 after: wider single-line lettering returns.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.833,
+          39.542
+        ],
+        "recommended_action": "Use one verified artwork, physical scale and wearer-left placement across every hook asset."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "The sequence still presents multiple beige/navy approximations rather than one product-true track jacket. Adding the shirt, tie and trousers has not resolved collar, closure, hem and sleeve construction.",
+        "defect_id": "SEQ-LOOK1-PRODUCT-TRUTH",
+        "evidence": "15.833 S05→S06 after: deeply open, cropped jacket. 23.625 S07→S08 after: longer body with pale sleeves. 39.375 S11→S12 after: another collar, cuff and hem treatment.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.833,
+          39.542
+        ],
+        "recommended_action": "Approve one full-outfit reference match, then regenerate only nonconforming regions and propagate through all hook shots."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "brand_repair",
+        "category": "wardrobe",
+        "description": "Reference typography remains unmet through S11. Small gold placement is an improvement, but unreadable substitutes and a stacked emblem are not the supplied delicate Saint Laurent wordmark.",
+        "defect_id": "SEQ-LOOK1-WORDMARK-TRUTH",
+        "evidence": "23.708 S07→S08 after: irregular compressed lettering. 31.333 S09→S10 before: tiny nonspecific marks. 33.542 S10→S11 after: multi-row gold emblem.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.833,
+          39.292
+        ],
+        "recommended_action": "Replace generated lettering with approved brand artwork and validate at native delivery resolution."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S08",
+        "recommended_owner": "temporal_propagation",
+        "category": "continuity",
+        "description": "The city cutaway still hides an unauthorized garment reset. S06's short jacket and exposed shirt tail return as a longer jacket with different sleeves, zipper treatment and collar lining.",
+        "defect_id": "S06-S08-GARMENT-RESET",
+        "evidence": "21.583 S06→S07 before: cropped hem above visible striped shirt. 23.625 S07→S08 after: shirt tail disappears beneath longer jacket. 23.792 S07→S08 after: pale contrasting sleeve construction persists.",
+        "requires_treatment_change": false,
+        "time_range": [
+          21.583,
+          23.792
+        ],
+        "recommended_action": "Carry the approved S06 garment geometry, material and styling through the S08 return."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S08",
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "Attached non-room material remains at the hook return. Small dark/light fragments between the screen-right sleeve and torso undermine the otherwise consistent mirror environment.",
+        "defect_id": "PERF-CLOSET-LEAKAGE",
+        "evidence": "23.625 S07→S08 after: dark attachment beside lower flank. 23.708 S07→S08 after: contrasting fragment remains. 23.792 S07→S08 after: the attachment follows the performer.",
+        "requires_treatment_change": false,
+        "time_range": [
+          23.625,
+          23.792
+        ],
+        "recommended_action": "Remove retained source islands between arm and torso using source-assisted, temporally coherent masks."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S08",
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "The first S08 frames still expose foreign material behind the screen-right flank. Exact source-object identity is UNCERTAIN, low confidence; the mismatch with the mirror plate is visible.",
+        "defect_id": "HOOK-SOURCE-LEAK",
+        "evidence": "23.625 S07→S08 after: black fragment beneath the jacket side. 23.792 S07→S08 after: pale-edged dark remnant persists in the arm/torso gap.",
+        "requires_treatment_change": false,
+        "time_range": [
+          23.625,
+          23.792
+        ],
+        "recommended_action": "Prioritize the incoming frames so the city-to-performance cut does not immediately reveal the composite."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "temporal_propagation",
+        "category": "continuity",
+        "description": "Late-hook construction resets remain conspicuous. S08/S09 changes sleeve fabric and cuff shape; S11/S12 changes collar, cuff exposure, tie pattern and jacket finish despite continuous performance intent.",
+        "defect_id": "HOOK-GARMENT-RESET",
+        "evidence": "29.458 S08→S09 before: loose pale cuffs. 29.542 S08→S09 after: fitted ribbed cuffs. 39.375 S11→S12 after: white shirt cuffs and revised collar/tie appear.",
+        "requires_treatment_change": false,
+        "time_range": [
+          29.458,
+          39.542
+        ],
+        "recommended_action": "Match full-outfit states across cuts, including shirt and tie; do not restrict propagation checks to chest stripes."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "Late-hook jackets retain non-reference cuff and collar construction. Removing navy shoulder coverage and the old pointed shirt-style front does not make the replacement variants product-true.",
+        "defect_id": "LOOK1-GARMENT-CONSTRUCTION",
+        "evidence": "29.625 S08→S09 after: thick ribbed wrist finish. 39.292 S11→S12 before: oversized flared collar. 39.375 S11→S12 after: black-edged collar and exposed white cuff replace that construction.",
+        "requires_treatment_change": false,
+        "time_range": [
+          29.625,
+          39.542
+        ],
+        "recommended_action": "Correct the late-hook assets against the supplied stand-collar, cotton cuff and hem details before matching their transitions."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "Late performance still retains pale trailing masses and a discrete dark protrusion outside the sleeve. These are not explained by the stationary mirror highlights or intact anatomy.",
+        "defect_id": "PERF-SOURCE-BACKGROUND-LEAK",
+        "evidence": "39.208 S11→S12 before: pale mass behind screen-right upper arm. 39.375 S11→S12 after: broad shoulder patch and dark knob-like protrusion. 39.542 S11→S12 after: pale shoulder residue persists.",
+        "requires_treatment_change": false,
+        "time_range": [
+          39.125,
+          39.542
+        ],
+        "recommended_action": "Remove attached background and rebuild contaminated foreground edges through the S11/S12 boundary."
+      },
+      {
+        "severity": "minor",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "Residual soft silhouette fringes remain on late-hook caps, shoulders and sleeves. The foreground looks cut out against the sharply defined mirror plate, separately from the larger attached remnants.",
+        "defect_id": "PERF-MATTE-EDGE-HALO",
+        "evidence": "29.708 S08→S09 after: pale cap and shoulder outline. 31.417 S09→S10 before: diffuse moving sleeve perimeter. 33.625 S10→S11 after: fuzzy arm edge against crisp reflections.",
+        "requires_treatment_change": false,
+        "time_range": [
+          29.708,
+          39.542
+        ],
+        "recommended_action": "Perform final edge-color and alpha refinement after removing the larger source islands."
+      },
+      {
+        "severity": "note",
+        "shot_id": null,
+        "recommended_owner": "sync",
+        "category": "sync",
+        "description": "One-native-frame performance synchronization remains UNCERTAIN, low confidence. Corrected sample labels and visible gestures cannot prove lip or source-clock alignment without the master and soundtrack.",
+        "defect_id": "SEQ-FRAME-SYNC-UNVERIFIED",
+        "evidence": "05.917 S02→S03 after, 23.625 S07→S08 after and 33.542 S10→S11 after show performance returns; these silent 12-fps samples do not expose native-frame audiovisual alignment.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0,
+          43.279
+        ],
+        "recommended_action": "Check encoded presentation timestamps and lip/gesture synchronization against the requested master ranges and song clock at native frame rate."
+      },
+      {
+        "severity": "note",
+        "shot_id": null,
+        "recommended_owner": "sync",
+        "category": "sync",
+        "description": "Musical landing and the final hard out remain UNCERTAIN, low confidence. The package permits visual edit assessment but supplies neither audible beats nor the final boundary.",
+        "defect_id": "REVIEW-SYNC-UNVERIFIED",
+        "evidence": "15.750 S05→S06 after verifies a white drop frame; 21.667 S06→S07 after verifies city content. The last supplied frame is 39.542 S11→S12 after, before the requested ending.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0,
+          43.279
+        ],
+        "recommended_action": "Review the full audiovisual export, including opening and final hit; do not treat visual transition passes as beat-sync certification."
+      },
+      {
+        "severity": "note",
+        "shot_id": "S09",
+        "recommended_owner": "source_range",
+        "category": "continuity",
+        "description": "The 1.000-second S09 asset trim still requires source-clock verification. Crossed arms are present, but pose agreement does not establish the requested master in-point. UNCERTAIN, low confidence.",
+        "defect_id": "S09-SOURCE-INPOINT-AUDIT",
+        "evidence": "29.458 S08→S09 before and 29.542 S08→S09 after both show crossed arms; 31.417 S09→S10 before shows the gesture opening. No source-clock reference accompanies these images.",
+        "requires_treatment_change": false,
+        "time_range": [
+          29.5,
+          31.458
+        ],
+        "recommended_action": "Map S09_env.mp4 at 1.000 seconds to master 75.868 seconds and verify continuity through master 77.835 seconds."
+      },
+      {
+        "severity": "note",
+        "shot_id": "S10",
+        "recommended_owner": "edit_fx",
+        "category": "transition",
+        "description": "Corridor visibility is now confirmed, resolving the sustained-whiteout concern. Full-bar strobe cadence and dynamic panel multiplication remain UNCERTAIN, low confidence because only the insert's boundary neighborhoods are supplied.",
+        "defect_id": "S10-STROBE-VISIBILITY-UNVERIFIED",
+        "evidence": "31.500 S09→S10 after: visible illuminated corridor. 33.208 S10→S11 before: black phase. 33.292 S10→S11 before: corridor returns.",
+        "requires_treatment_change": false,
+        "time_range": [
+          31.458,
+          33.458
+        ],
+        "recommended_action": "Inspect the complete native-frame insert with audio; close the remaining cadence gate only after verifying the requested one-bar escalation."
+      },
+      {
+        "severity": "note",
+        "shot_id": "S11",
+        "recommended_owner": "edit_fx",
+        "category": "transition",
+        "description": "The sampled S11 entry demonstrates white flash rather than a recognizable glitch. Whether a short glitch exists between samples is UNCERTAIN, low confidence; the specified transition cannot yet pass.",
+        "defect_id": "S11-GLITCH-UNVERIFIED",
+        "evidence": "33.375 S10→S11 before: intact corridor. 33.458 S10→S11 after: uniform white. 33.542 S10→S11 after: intact performance, without visible displacement or channel breakup.",
+        "requires_treatment_change": false,
+        "time_range": [
+          33.375,
+          33.625
+        ],
+        "recommended_action": "Inspect every native frame at the boundary; if only a flash exists, implement the specified glitch without distorting the performer's identity."
+      }
+    ]
+  }
+}

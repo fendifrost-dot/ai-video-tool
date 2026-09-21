@@ -6,8 +6,8 @@ Build the Astra visual-QA review package for a completed draft (deterministic, $
       --draft out/section_v1.mp4 --shotspecs docs/treatments/<x>.shotspecs.json \
       --assembly out/section_v1.mp4.assembly.json --draft-id YSL_IceOn_bars24-46_v1 \
       --ref "Look 1 flat product photo=refs/track_flat.jpg" --ref "Look 2 flat product photo=refs/trucker.jpg" \
-      --ref "Identity anchor: real Fendi, original master frame=refs/identity.jpg" \
-      --ref "Source performance contact sheet (original closet)=refs/source_sheet.jpg" \
+      --ref "Identity anchor: the performer, original master frame=refs/identity.jpg" \
+      --ref "Source performance contact sheet (original location)=refs/source_sheet.jpg" \
       --out astra_pkg/
 
 gpt-6-astra takes text + images only (no video on the API), so the draft is handed over as
@@ -75,7 +75,7 @@ SCHEMA_SEQ = {"name": "astra_sequence_review", "schema": {"type": "object", "add
                              "final_verdict": {"type": "string", "enum": ["PASS", "REPAIR_REQUIRED", "HUMAN_REVIEW_REQUIRED"]},
                              "escalate_to_fendi": {"type": "array", "items": {"type": "string"}}}}}
 
-ROLE = """You are Astra, the visual-QA reviewer for AVT (Fendi's AI music-video tool). You are NOT the creative director: the Treatment and ShotSpecs are the creative intent and Fendi is final authority. Your job is to compare WHAT WAS REQUESTED against WHAT IS ACTUALLY VISIBLE in the rendered draft, shot by shot and over time, and to report defects that route to the production subsystem that can fix them. Do not invent a different video. Do not soften findings. Cite draft timecodes and frame labels as evidence for every claim. If you cannot tell, say UNCERTAIN with low confidence rather than guessing. The frames are consecutive samples of one continuous video: reason about motion, stability, flicker and continuity across them, not only about single images."""
+ROLE = """You are Astra, the visual-QA reviewer for AVT (an AI music-video tool). You are NOT the creative director: the Treatment and ShotSpecs are the creative intent and {authority} is final authority. Your job is to compare WHAT WAS REQUESTED against WHAT IS ACTUALLY VISIBLE in the rendered draft, shot by shot and over time, and to report defects that route to the production subsystem that can fix them. Do not invent a different video. Do not soften findings. Cite draft timecodes and frame labels as evidence for every claim. If you cannot tell, say UNCERTAIN with low confidence rather than guessing. The frames are consecutive samples of one continuous video: reason about motion, stability, flicker and continuity across them, not only about single images."""
 
 def expected_text(s, offset):
     t0, t1 = s["timeline"]["start"], s["timeline"]["end"]
@@ -107,12 +107,21 @@ def main():
     refs = []
     for r in a.ref:
         label, path = r.split("=", 1); refs.append({"label": label, "file": os.path.abspath(path)})
+    # Project context comes from the ShotSpecs file's `treatment` block (artistName, creativeDirection,
+    # brand, sourceEnvironment, authority, toolName), never from this script. Missing keys fall back to
+    # neutral wording so the builder works for any artist / brand / location.
+    T = spec.get("treatment") or {}
+    artist = T.get("artistName") or "the performer"
+    brand = T.get("brand") or "the specified"
+    direction = T.get("creativeDirection") or "the approved treatment"
+    source_env = T.get("sourceEnvironment") or "the original shooting location"
+    authority = T.get("authority") or "the artist"
     treatment_lines = "\n".join(expected_text(s, offset) for s in shots)
     looks = spec.get("looks", {})
     looks_txt = "\n".join(f"- {k}: {v.get('name')} (bars {v.get('bars')})" for k, v in looks.items())
     manifest_txt = "\n".join(f"{sl['shot']}: draft {fmt(sl['song'][0]-offset)}-{fmt(sl['song'][1]-offset)} <- {os.path.basename(sl['file'])} @ {sl['offsetInFile']:.3f}s, {sl['frames']} frames, transitionIn={sl['transitionIn']}" for sl in asm["slots"])
-    common = (f"{ROLE}\n\nDRAFT: {a.draft_id} — song {asm['sectionSong'][0]:.3f}-{asm['sectionSong'][1]:.3f}s, {asm['expectedSeconds']:.2f}s, draft t=0 is song {offset:.3f}s. Treatment version {a.treatment_version}.\n"
-              f"CREATIVE DIRECTION: luxury runway fashion film x designer commercial x high-energy contemporary rap video. Fendi's REAL performance is the visual spine; AI changes wardrobe (YSL actually on him), environment, lighting, FX and B-roll — it must not replace him.\n"
+    common = (f"{ROLE.format(authority=authority)}\n\nDRAFT: {a.draft_id} — song {asm['sectionSong'][0]:.3f}-{asm['sectionSong'][1]:.3f}s, {asm['expectedSeconds']:.2f}s, draft t=0 is song {offset:.3f}s. Treatment version {a.treatment_version}.\n"
+              f"CREATIVE DIRECTION: {direction}. {artist}'s REAL performance is the visual spine; AI changes wardrobe ({brand} garments actually on the performer), environment, lighting, FX and B-roll — it must not replace the performer.\n"
               f"LOOKS:\n{looks_txt}\n\nSHOTSPECS (expected, one per line):\n{treatment_lines}\n\nASSEMBLED TIMELINE (what was actually placed):\n{manifest_txt}\n")
     if a.prev_review:
         prev = json.load(open(a.prev_review))
@@ -138,8 +147,8 @@ def main():
                 if grab(a.draft, t, p): frames.append({"label": f"draft t={fmt(snap(t))} (song {snap(t)+offset:.3f}s) shot {s['id']}", "file": p})
                 t += 1 / fps
         ids = [s["id"] for s in g]
-        instr = common + (f"\nTASK (LEVEL 1 — SHOT CONFORMANCE) for shots {', '.join(ids)}. For EACH shot answer: did the intended shot occur; is Fendi present when the spec says performance; is the correct look visible and actually WORN by him (not floating, not partial); does identity stay credible (same real person, face/beard/glasses/cap); does the intended environment appear (closet must NOT read as a closet); does framing approximately match; does the shot perform its stated purpose; are AI artifacts visible (morphing, texture crawl, plastic skin, garment disappearing, wordmark corruption, matte halos)? "
-                         "For wardrobe shots inspect: garment construction vs the reference, coverage, wordmark/logo legibility and SCALE vs reference, placement, temporal stability across the frames, sleeve/body behaviour during arm movement, occlusion behaviour, unintended wardrobe changes, cartoon/plastic look. "
+        instr = common + (f"\nTASK (LEVEL 1 — SHOT CONFORMANCE) for shots {', '.join(ids)}. For EACH shot answer: did the intended shot occur; is {artist} present when the spec says performance; is the correct look visible and actually WORN by him (not floating, not partial); does identity stay credible (same real person, face/beard/glasses/cap); does the intended environment appear ({source_env} must NOT be recognizable); does framing approximately match; does the shot perform its stated purpose; are AI artifacts visible (morphing, texture crawl, plastic skin, garment disappearing, wordmark corruption, matte halos)? "
+                         f"For wardrobe shots inspect: garment construction vs the reference, coverage, wordmark/logo legibility and SCALE vs reference, placement, temporal stability across the frames, sleeve/body behaviour during arm movement, occlusion behaviour, unintended wardrobe changes, cartoon/plastic look. "
                          "Report every defect once with a stable defect_id, severity, DRAFT time_range and the owning subsystem.")
         parts.append({"partId": f"shots-{'-'.join(ids)}", "instructions": instr, "frames": frames, "references": refs, "jsonSchema": SCHEMA_SHOTS, "level": 1})
 
@@ -164,26 +173,38 @@ def main():
         p = os.path.join(a.out, "frames", f"seq_{t:07.3f}.jpg")
         if grab(a.draft, t, p): frames.append({"label": f"draft t={fmt(snap(t))} shot {sid}", "file": p})
         t += 0.5
+    # Standing questions (the Astra handoff's 15), templated on the treatment block; the
+    # wordmark-scale question targets whichever shots the ShotSpecs mark as wordmark-critical
+    # (qa contains "gate0_garment_truth"), falling back to "any shot".
+    wm_shots = [s["id"] for s in shots if any("garment_truth" in str(q) for q in (s.get("qa") or []))]
+    wm_target = ", ".join(wm_shots[-2:]) if wm_shots else "any shot"
     questions = [
-        "1. Does Fendi remain recognizably the same real person throughout the performance shots?",
-        "2. Is the YSL wardrobe actually and convincingly worn by Fendi?",
+        f"1. Does {artist} remain recognizably the same real person throughout the performance shots?",
+        f"2. Is the {brand} wardrobe actually and convincingly worn by {artist}?",
         "3. Does the wardrobe remain stable during movement?",
         "4. Where exactly does the wordmark/logo break (draft timecodes)?",
-        "5. Is S12 lettering visibly oversized relative to the reference?",
+        f"5. Is any lettering visibly oversized or mis-scaled relative to the reference (check {wm_target} in particular)?",
         "6. Are there other garment defects not listed in the shotspecs QA?",
-        "7. Does the 720p-native transformation/upscale visibly hurt quality relative to the source contact sheet?",
-        "8. Does the environment composite convincingly eliminate the closet?",
+        "7. Does the native-resolution transformation/upscale visibly hurt quality relative to the source contact sheet?",
+        f"8. Does the environment composite convincingly eliminate {source_env}?",
         "9. Do matte/composite boundaries remain believable during movement?",
         "10. Does B-roll feel intentional and compatible with the treatment?",
         "11. Do transitions work musically and visually?",
         "12. Does the edit return correctly to synchronized performance after B-roll/FX?",
         "13. Does every shot substantially conform to its ShotSpec?",
-        "14. Does the complete sequence resemble the intended luxury runway fashion film x designer commercial x high-energy rap video?",
-        "15. MOST IMPORTANT: does this look like a REAL Fendi music video enhanced by AVT, or like AI content built around Fendi's song? No vague praise — support with timecoded evidence.",
+        f"14. Does the complete sequence resemble the intended treatment ({direction})?",
+        f"15. MOST IMPORTANT: does this look like a REAL {artist} music video enhanced by AVT, or like AI content built around {artist}'s song? No vague praise — support with timecoded evidence.",
     ]
     instr = common + ("\nTASK (LEVEL 3 — SEQUENCE / TREATMENT CONFORMANCE). Judge the draft as a complete piece (2 fps strip): does it resemble the approved treatment; does the creative language survive production; does it feel like a coherent music video; does the real performance remain the spine; has AI generation begun replacing rather than enhancing; does the wardrobe strategy (two looks, change on the drop) read; do environments feel intentional; is B-roll purposeful; is the visual rhythm right; where did implementation succeed technically but fail creatively? Score each overall dimension 0-10. Answer ALL of these questions explicitly in `answers`:\n" + "\n".join(questions) +
-                      "\nSet final_verdict: PASS only if no blocker/major defects remain; REPAIR_REQUIRED for objective, technically repairable defects; HUMAN_REVIEW_REQUIRED when the fix needs a treatment decision, findings are contradictory/low-confidence, or the disagreement is aesthetic. List anything for Fendi in escalate_to_fendi.")
+                      f"\nSet final_verdict: PASS only if no blocker/major defects remain; REPAIR_REQUIRED for objective, technically repairable defects; HUMAN_REVIEW_REQUIRED when the fix needs a treatment decision, findings are contradictory/low-confidence, or the disagreement is aesthetic. List anything for {authority} in escalate_to_fendi.")
     parts.append({"partId": "sequence", "instructions": instr, "frames": frames, "references": refs, "jsonSchema": SCHEMA_SEQ, "level": 3})
+
+    # Output budget on every part: the sequence part (15 questions + prior defects) overran the proxy's
+    # max_output_tokens in review #2 and the transitions part did in review #3 — both `incomplete`,
+    # both still billed. The clause keeps answers inside the cap without dropping findings.
+    BUDGET = ("\nOUTPUT BUDGET (hard): keep the whole JSON answer under 9000 tokens — at most 45 words per expected/observed/description/evidence/answer field, "
+              "at most three frame labels per item, no repeated text across fields, and do not restate the prior-defect list: report only defects still PRESENT or NEW.")
+    for p in parts: p["instructions"] += BUDGET
 
     for p in parts:
         json.dump(p, open(os.path.join(a.out, "parts", p["partId"] + ".json"), "w"), indent=1)

@@ -1,0 +1,303 @@
+{
+  "draftId": "YSL_IceOn_bars24-46_v5",
+  "partId": "shots-S05-S06-S07-S08",
+  "model": "gpt-6-astra",
+  "responseId": "resp_0edd7eda986f7114006ab0ed8db0c887d28295cfa24e010598",
+  "reviewedAt": "2026-09-21T08:47:51.558Z",
+  "usage": {
+    "input_tokens": 45540,
+    "input_tokens_details": {
+      "cache_write_tokens": 45537,
+      "cached_tokens": 0
+    },
+    "output_tokens": 15925,
+    "output_tokens_details": {
+      "reasoning_tokens": 10358
+    },
+    "total_tokens": 61465
+  },
+  "actualCostUsd": 1.2517,
+  "review": {
+    "shots": [
+      {
+        "expected": "A half-bar diamond-refraction insert with a slow push, cold highlights and black falloff, whitening the frame immediately before the hook.",
+        "recommended_owner": "edit_fx",
+        "observations": [
+          "Frames S05 @ 0:14.833, 0:15.167 and 0:15.500 show a stable faceted diamond enlarging gradually against black, with cold spectral streaks. The requested insert occurs; no performer or wardrobe is required or visible.",
+          "Frame S05 @ 0:15.667 shows a substantial flash ramp, but the diamond remains visible against gray. The next supplied frame, S06 @ 0:15.875, already shows normally exposed performance. The intervening whiteout peak and flash handoff are UNCERTAIN, confidence 0.30; these samples do not establish a missing flash.",
+          "The gemstone and surrounding streaks remain structurally consistent from S05 @ 0:14.833 through 0:15.500. No conspicuous morphing or unintended subject appears in those samples."
+        ],
+        "observed": "The intended diamond insert and flash buildup occur. Full-frame whiteout and its precise musical landing cannot be verified from the supplied boundary samples.",
+        "confidence": 0.9,
+        "verdict": "PARTIAL",
+        "shot_id": "S05",
+        "defect_ids": [
+          "S05-FLASH-PEAK-UNVERIFIED",
+          "SEQ-FRAME-SYNC-UNVERIFIED"
+        ],
+        "recommended_action": "Inspect the native frames across the S05/S06 boundary with audio. Verify the whiteout peak and hook landing before changing the otherwise conforming diamond insert."
+      },
+      {
+        "expected": "Fendi's real medium, eye-level performance introduces the reference Saint Laurent mastic/navy track jacket in the harder, multi-mirror ice room, preserving identity, pose and scale.",
+        "recommended_owner": "compositing_mask",
+        "observations": [
+          "Frames S06 @ 0:15.875, 0:16.542 and 0:20.542 retain a credible Fendi likeness: cap, glasses, beard and recognizable performance gestures. The jacket follows his torso and arms; black trousers cover the lower body. No wholesale garment disappearance or floating jacket is visible in these samples. Exact preservation of the native performance cannot be certified from the contact sheet alone.",
+          "Frames S06 @ 0:17.208, 0:18.542 and 0:20.542 show a jacket open almost to the waist, a long exposed tie, projecting striped shirt cuffs and an untucked shirt hem beneath a short jacket. This does not reproduce the reference's largely closed body and restrained shirt-and-tie exposure at the neck.",
+          "At S06 @ 0:15.875 and 0:18.542, the outstretched sleeves do not show the reference navy inner-sleeve runs. Narrow chest bands and a dark-lined raised collar are present, but those improvements do not establish product truth.",
+          "At S06 @ 0:15.875, a recognizable closet-side clothing pile/storage structure survives behind the screen-right arm and hip. At 0:18.542, an opaque pale wedge remains beneath the screen-left forearm. The transformed room has not completely replaced the source background.",
+          "Frames S06 @ 0:16.875 and 0:18.875 show broad pale silhouette echoes beside the screen-right sleeve; 0:20.542 shows an irregular, bitten outer sleeve edge. These change with movement rather than behaving like a controlled cold rim.",
+          "The wearer-left gold wordmark is visible at S06 @ 0:16.875, 0:17.542 and 0:20.542, but its glyph shapes change and its lettering is heavier than the supplied reference. Placement is improved; typography and temporal stability remain failed.",
+          "Frames S06 @ 0:18.208 and 0:21.542 show stable multiple reflective panels, hard highlights and wall/floor glints. The eye-level, upper-leg-inclusive performance framing approximately matches the requested medium shot. The drop's performance-and-room change is visible, but the product and composite failures prevent conformance."
+        ],
+        "observed": "Fendi performs wearing a beige/navy jacket and the expanded outfit in the intended mirror room. However, the jacket is not product-correct, branding remains unstable, recognizable source-background material survives, and moving matte contamination is conspicuous.",
+        "confidence": 0.99,
+        "verdict": "FAIL",
+        "shot_id": "S06",
+        "defect_ids": [
+          "SEQ-ORIGINAL-CLOSET-LEAK",
+          "PERF-MATTE-COVERAGE",
+          "LOOK1-CONSTRUCTION-MISMATCH",
+          "SEQ-LOOK1-PRODUCT-TRUTH",
+          "LOOK1-WORDMARK-TRUTH",
+          "SEQ-LOOK1-WORDMARK-TRUTH",
+          "S06-S08-GARMENT-RESET",
+          "SEQ-FRAME-SYNC-UNVERIFIED"
+        ],
+        "recommended_action": "Remove retained source-background components and repair moving matte edges. Correct the jacket against both product references, then propagate that approved construction and tracked reference wordmark without changing Fendi's performance."
+      },
+      {
+        "expected": "A one-bar luxury/night-city cutaway answering 'ice on', with a slow push, cold illumination, black falloff and no synthetic performer.",
+        "recommended_owner": "sync",
+        "observations": [
+          "Frames S07 @ 0:21.708, 0:22.542 and 0:23.542 show a rain-speckled vehicle-window view of blue-white city lights and wet-road reflections. The requested cold night-city motif occurs; no performer or garment is introduced.",
+          "Across S07 @ 0:21.708–0:23.542, the window, droplets and light pattern undergo a gradual lateral/scale move without conspicuous geometry morphing. This is consistent with the requested slow-push cutaway rather than a new performance shot.",
+          "The previous early-city label discrepancy is not reproduced in the supplied pair: S06 @ 0:21.542 is still performance and S07 @ 0:21.708 is city, bracketing the declared 0:21.639 boundary. S07-CUT-TIMING nevertheless remains UNCERTAIN, confidence 0.30, because adjacent native cut frames are absent.",
+          "Likewise, S07 @ 0:23.542 remains city and S08 @ 0:23.750 is performance, on the expected sides of the declared 0:23.607 cut. These samples do not demonstrate SEQ-CUT-BOUNDARY-OFFSET, but cannot certify its sequence-wide resolution."
+        ],
+        "observed": "The intended cold luxury/night-city cutaway occurs and remains visually stable. No visible content defect is established; exact cut timing remains an audit limitation.",
+        "confidence": 0.97,
+        "verdict": "PASS",
+        "shot_id": "S07",
+        "defect_ids": [
+          "S07-CUT-TIMING",
+          "SEQ-FRAME-SYNC-UNVERIFIED"
+        ],
+        "recommended_action": "Retain the city visual. Verify the actual incoming and outgoing cut frames on the native presentation-time grid; do not shift the edit based on these sparse samples."
+      },
+      {
+        "expected": "The second hook repeat returns to Fendi's real medium performance in the same reference track jacket and multi-mirror ice room, with no wardrobe reset or source-background leakage.",
+        "recommended_owner": "wardrobe_generation",
+        "observations": [
+          "Frames S08 @ 0:23.750, 0:24.417, 0:27.417 and 0:29.417 retain a credible cap/glasses/beard identity through head turns and crossed-arm movement. Clothing remains attached to the torso and sleeves, and arm-over-body occlusion broadly follows the performance. No demonstrated performer replacement or major anatomical dropout is established by these samples.",
+          "Frames S08 @ 0:23.750 and 0:24.750 show pale cream sleeves against a distinctly tan body, a pale inner stand collar, dark zipper/pocket outlines and an opening exposing the tie below the chest stripe. At 0:28.417, the visible forearm surfaces still lack the reference inner-sleeve navy runs. This is not the supplied track-jacket construction.",
+          "Comparing S06 @ 0:21.542 with S08 @ 0:23.750 and 0:24.083, the outfit resets across the city insert: the short, dark-lined-collar jacket with exposed striped cuffs and shirt hem becomes a longer two-tone jacket with a pale collar interior, dark zipper and different cuff/hem treatment. No wardrobe change is specified.",
+          "The lower waistband is defined at S08 @ 0:24.750, loses that construction at 0:26.083 and 0:26.750, returns at 0:27.417, and is again poorly defined at 0:29.083. The lower front remains visible during these changes; this is not explained solely by crossed-arm occlusion.",
+          "At S08 @ 0:23.750, a dark, pale-edged non-room fragment remains behind the screen-right hip, between torso and arm. Its precise source object is uncertain, but its failure to belong to the mirror plate is visible.",
+          "Frames S08 @ 0:24.083 and 0:26.417 show broad pale contamination above and beside the shoulders; 0:25.417 shows an irregular screen-left sleeve boundary. The foreground remains visibly softer and more cut out than the sharp mirror plate.",
+          "The gold wearer-left wordmark remains incorrectly drawn and changes across S08 @ 0:24.083, 0:24.417 and 0:27.417. Its lettering is more prominent and heavier than the delicate reference mark; the scale assessment is moderate confidence, while the typography failure is clear.",
+          "The room and approximate framing remain consistent between S08 @ 0:23.750, 0:26.083 and 0:29.417: multiple reflective panels, cold glints, deep black and a locked eye-level performance view. The second-repeat performance occurs, but product continuity and integration fail.",
+          "Historical tracking: PERF-CLOSET-LEAKAGE remains PRESENT at S08 @ 0:23.750; that same physical return-frame remnant is reported once below as HOOK-SOURCE-LEAK. REVIEW-SYNC-UNVERIFIED remains an open uncertainty and is represented once by SEQ-FRAME-SYNC-UNVERIFIED.",
+          "Re-review summary, S05–S08 only: REPAIR_REQUIRED. No complete historical defect ID is certified RESOLVED by this subset. The old pointed outer collar and shoulder-tab appearance is absent in S08 @ 0:23.750 and 0:27.417, but the jacket still fails construction and continuity. Pre-hook and S09–S12-specific findings, including the cited late-shot components of HOOK-LOOK1-GARMENT-TRUTH and HOOK-WORDMARK-DRIFT, are not reviewed or cleared."
+        ],
+        "observed": "The real-performance hook return and mirror room occur, but a different approximate jacket replaces S06's variant. Product construction, temporal hem stability, branding and matte integration remain defective, with a source remnant at the return.",
+        "confidence": 0.99,
+        "verdict": "FAIL",
+        "shot_id": "S08",
+        "defect_ids": [
+          "PERF-MATTE-COVERAGE",
+          "LOOK1-CONSTRUCTION-MISMATCH",
+          "SEQ-LOOK1-PRODUCT-TRUTH",
+          "LOOK1-WORDMARK-TRUTH",
+          "SEQ-LOOK1-WORDMARK-TRUTH",
+          "S06-S08-GARMENT-RESET",
+          "HOOK-SOURCE-LEAK",
+          "S08-HEM-CONSTRUCTION-DRIFT",
+          "SEQ-FRAME-SYNC-UNVERIFIED"
+        ],
+        "recommended_action": "Restore the reference jacket's sleeve, collar, closure, pocket and hem construction; use one approved garment state across S06 and S08. Stabilize its seams and wordmark through arm crossings, and remove the return-frame source remnant and moving matte contamination."
+      }
+    ],
+    "defects": [
+      {
+        "severity": "major",
+        "shot_id": "S06",
+        "recommended_owner": "compositing_mask",
+        "category": "environment",
+        "description": "PRESENT in the reviewed interval: recognizable original closet-side material survives the environment replacement. Additional opaque non-room material is retained beside a moving forearm.",
+        "defect_id": "SEQ-ORIGINAL-CLOSET-LEAK",
+        "evidence": "Frame S06 @ draft 0:15.875 shows a black clothing pile over a storage-like structure behind the screen-right arm/hip, consistent with the closet-side material in the identity anchor. S06 @ 0:18.542 shows a flat pale wedge beneath the extended screen-left forearm rather than the reflective room.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.875,
+          18.542
+        ],
+        "recommended_action": "Rebuild the foreground matte around the moving arm/hip gaps and exclude retained static source components. Inspect the complete shot at native cadence; preserve hands, sleeves and performance scale."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "PRESENT: body coverage is maintained, but broad pale silhouette echoes, soft contamination and irregular sleeve edges remain during movement. These are not believable controlled rim lighting.",
+        "defect_id": "PERF-MATTE-COVERAGE",
+        "evidence": "S06 @ draft 0:16.875 and 0:18.875 show changing pale echoes beside the screen-right sleeve; 0:20.542 has an irregular outer upper-arm edge. S08 @ 0:24.083 and 0:26.417 show pale shoulder clouds, while 0:25.417 has an irregular screen-left sleeve boundary against the stationary sharp plate.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.875,
+          29.417
+        ],
+        "recommended_action": "Repair temporal alpha and foreground-edge color in S06 and S08. Remove trailing contamination without eroding garment contours, then inspect arm sweeps and crossings at native speed."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "PRESENT: the reference inner-sleeve navy stripes are not reproduced. S08 additionally substitutes pale cream sleeves and different cuff construction for the reference's mastic sleeves. The previously reported pointed outer collar/tabs are improved, but sleeve construction still fails.",
+        "defect_id": "LOOK1-CONSTRUCTION-MISMATCH",
+        "evidence": "S06 @ draft 0:15.875 and 0:18.542 expose outstretched, largely plain sleeve surfaces without the required inner navy runs. S08 @ 0:23.750 and 0:24.750 shows a tan-body/cream-sleeve split; the arm rotation/crossing at 0:28.417 still does not reveal the reference navy inner-sleeve construction.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.875,
+          29.417
+        ],
+        "recommended_action": "Regenerate sleeve panels from the supplied flat and on-model references: mastic outer sleeves, correctly positioned navy inner runs and reference cuffs. Validate their visibility through arm rotation rather than adding navy shoulder blocking."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "PRESENT in S06/S08: collar lining, closure, garment length and pocket/hem treatment remain approximate rather than product-correct. S06 opens almost to the waist; S08 introduces a pale collar interior and conspicuous dark closure/pocket outlines.",
+        "defect_id": "SEQ-LOOK1-PRODUCT-TRUTH",
+        "evidence": "S06 @ draft 0:17.208 and 0:20.542 exposes most of the tie and a projecting striped shirt hem beneath a short jacket. S08 @ 0:23.750 and 0:24.750 shows the longer body, pale collar interior, dark center zipper and outlined pockets. These differ from the supplied navy-lined stand collar, restrained closure/pockets and reference body proportions.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.875,
+          29.417
+        ],
+        "recommended_action": "Match collar lining, body proportions, zipper, pockets and waistband to the actual product. Keep the body closed to the reference level, with shirt and tie exposure concentrated at the neckline; do not treat beige/navy color matching as product approval."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "brand_repair",
+        "category": "continuity",
+        "description": "PRESENT: gold wearer-left placement is maintained, but the wordmark's generated glyphs change with movement instead of behaving as one stable garment graphic.",
+        "defect_id": "LOOK1-WORDMARK-TRUTH",
+        "evidence": "Compare the gold lettering in S06 @ draft 0:16.875, 0:17.542 and 0:20.542, then S08 @ 0:24.083, 0:24.417 and 0:27.417. Letter shapes, spacing and stroke grouping change between samples, beyond a consistent perspective deformation.",
+        "requires_treatment_change": false,
+        "time_range": [
+          16.875,
+          29.417
+        ],
+        "recommended_action": "Replace generated lettering with the approved reference graphic and track it to the cloth surface through folds, rotation and hand occlusion. Do not regenerate text independently on successive frames."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "brand_repair",
+        "category": "wardrobe",
+        "description": "PRESENT in the sampled hook shots: the mark does not reproduce the reference's delicate stylized typography. It is heavier and more prominent on the chest band; the scale finding is moderate confidence at this review resolution.",
+        "defect_id": "SEQ-LOOK1-WORDMARK-TRUTH",
+        "evidence": "S06 @ draft 0:20.542 and S08 @ 0:24.083 and 0:27.417 show heavier, more block-like gold lettering than the thin stylized mark in both supplied Look 1 references. Placement is wearer-left rather than centered, but placement alone does not resolve graphic truth.",
+        "requires_treatment_change": false,
+        "time_range": [
+          16.875,
+          29.417
+        ],
+        "recommended_action": "Use the actual approved Saint Laurent mark, matching its stroke weight and chest-relative footprint to the product/on-model references. Verify scale on full-resolution garment crops before temporal tracking."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "temporal_propagation",
+        "category": "continuity",
+        "description": "PRESENT: the same specified hook look changes construction across S07. The old pointed-collar reset is reduced, but jacket length, sleeve color, collar lining, zipper and cuff/hem treatment still reset.",
+        "defect_id": "S06-S08-GARMENT-RESET",
+        "evidence": "S06 @ draft 0:21.542 has a short jacket, dark collar interior, light closure and exposed striped cuffs/shirt hem. S08 @ 0:23.750 and 0:24.083 returns with a longer tan-body/cream-sleeve garment, pale collar interior, dark closure and different cuff/hem treatment. S08 @ 0:24.750 confirms the new construction persists.",
+        "requires_treatment_change": false,
+        "time_range": [
+          21.542,
+          24.75
+        ],
+        "recommended_action": "Carry one approved product-correct garment state across both performance assets. Lock construction and material identity across the cutaway while allowing only pose-driven cloth deformation."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S08",
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "PRESENT: a non-room fragment remains attached behind the screen-right flank on the hook return. Its exact source object is UNCERTAIN, but the composite mismatch is clear. This is also the sampled occurrence of historical PERF-CLOSET-LEAKAGE, not a separate repair.",
+        "defect_id": "HOOK-SOURCE-LEAK",
+        "evidence": "Frame S08 @ draft 0:23.750 shows a dark fragment with a pale curved/horizontal edge behind the screen-right hip, in the gap between torso and arm, interrupting the reflective room plate.",
+        "requires_treatment_change": false,
+        "time_range": [
+          23.607,
+          23.815
+        ],
+        "recommended_action": "Remove the retained component from the return-frame matte and inspect neighboring native frames as the arm closes the gap. Preserve the jacket hem and hand rather than concealing the fragment by cropping."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S08",
+        "recommended_owner": "temporal_propagation",
+        "category": "continuity",
+        "description": "NEW: the jacket's lower waistband/seam construction disappears and returns during the shot, producing a changing garment rather than stable cloth deformation.",
+        "defect_id": "S08-HEM-CONSTRUCTION-DRIFT",
+        "evidence": "S08 @ draft 0:24.750 has a distinct lower band. At 0:26.083 and 0:26.750 the visible lower front becomes substantially unsegmented tan fabric; the band is distinct again at 0:27.417 and poorly defined again at 0:29.083. The lower garment remains visible below the arm crossings.",
+        "requires_treatment_change": false,
+        "time_range": [
+          24.75,
+          29.417
+        ],
+        "recommended_action": "Propagate a fixed waistband and seam layout through the shot, preserving construction beneath temporary arm occlusion. Check the lower front before, during and after every crossing."
+      },
+      {
+        "severity": "note",
+        "shot_id": "S05",
+        "recommended_owner": "edit_fx",
+        "category": "transition",
+        "description": "UNCERTAIN, confidence 0.30: flash buildup is visible, but the requested full whiteout and handoff are not sampled. This is an open verification gate, not a demonstrated missing-flash defect.",
+        "defect_id": "S05-FLASH-PEAK-UNVERIFIED",
+        "evidence": "S05 @ draft 0:15.667 is washed gray with visible diamond detail. S06 @ 0:15.875 is normally exposed performance. No supplied frame shows the intervening peak around the declared 0:15.738 boundary.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.667,
+          15.875
+        ],
+        "recommended_action": "Review every native frame through the transition. Confirm a full-frame white peak and the intended hook reveal; modify the flash only if that inspection demonstrates a miss."
+      },
+      {
+        "severity": "note",
+        "shot_id": "S07",
+        "recommended_owner": "sync",
+        "category": "sync",
+        "description": "UNCERTAIN, confidence 0.30: the earlier label/content discrepancy is not reproduced, but this sampling cannot certify its resolution. No current early-city timing failure is demonstrated.",
+        "defect_id": "S07-CUT-TIMING",
+        "evidence": "S06 @ draft 0:21.542 contains performance and S07 @ 0:21.708 contains city. They bracket the declared 0:21.639 cut, but do not show the adjacent native frames needed to test the former approximately one-frame discrepancy.",
+        "requires_treatment_change": false,
+        "time_range": [
+          21.542,
+          21.708
+        ],
+        "recommended_action": "Compare the encoded cut frame and its presentation timestamp with the assembler cut index. Close the historical label issue only after that check; do not infer an audible sync error."
+      },
+      {
+        "severity": "note",
+        "shot_id": null,
+        "recommended_owner": "sync",
+        "category": "sync",
+        "description": "Still UNCERTAIN, confidence 0.20: one-native-frame performance synchronization and musical landings cannot be certified from silent sampled images. Historical REVIEW-SYNC-UNVERIFIED refers to the same open gate.",
+        "defect_id": "SEQ-FRAME-SYNC-UNVERIFIED",
+        "evidence": "The supplied sequence samples S05 @ draft 0:15.667 to S06 @ 0:15.875, S06 @ 0:21.542 to S07 @ 0:21.708, and S07 @ 0:23.542 to S08 @ 0:23.750. These show content transitions but omit intervening native frames and provide no audible song/performance comparison.",
+        "requires_treatment_change": false,
+        "time_range": [
+          14.754,
+          29.508
+        ],
+        "recommended_action": "Compare the rendered section with the master and song clock at native frame rate with audio. Verify source mapping, lip/gesture alignment and transition landings within the required one-frame tolerance."
+      }
+    ]
+  }
+}

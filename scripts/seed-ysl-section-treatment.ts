@@ -151,6 +151,15 @@ const out = {
   version: 1,
   projectId: PROJECT_ID,
   section: { name: "bars 24–46 (pre-hook + hook block)", songRange: song(24, 46), bars: [24, 46], bpm: YSL_ICE_ON_GRID.bpm, barSeconds: YSL_ICE_ON_GRID.barSeconds },
+  // Project context for the review layer (scripts/qa/build_astra_review_package.py templates its
+  // brief and standing questions on this block; nothing project-specific lives in that script).
+  treatment: {
+    artistName: "Fendi",
+    authority: "Fendi",
+    brand: "YSL / Saint Laurent",
+    creativeDirection: "luxury runway fashion film x designer commercial x high-energy contemporary rap video",
+    sourceEnvironment: "the original closet (white door, shelves, hanging clothes)",
+  },
   sync: { offsetSeconds: YSL_ICE_ON_PERFORMANCE_SYNC.offsetSeconds, driftPpm: YSL_ICE_ON_PERFORMANCE_SYNC.driftPpm, songAssetId: YSL_ICE_ON_PERFORMANCE_SYNC.songAssetId, performanceAssetId: YSL_ICE_ON_PERFORMANCE_SYNC.performanceAssetId },
   looks: { look1: { id: LOOK_SL_TRACK, name: "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe", bars: "32–46 (hook)" }, look2: { id: LOOK_SL_TRUCKER, name: "YSL Trucker Jacket — French Black Denim", bars: "24–32 (pre-hook)" } },
   totals: {
