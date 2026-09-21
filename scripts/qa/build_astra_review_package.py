@@ -27,7 +27,9 @@ def run(cmd):
         sys.stderr.write(r.stderr[-2000:]); raise SystemExit("ffmpeg failed")
 
 def grab(draft, t, path, w=540, h=960):
+    """Returns False when t is past the last frame (ffmpeg writes nothing)."""
     run(["ffmpeg", "-v", "error", "-y", "-ss", f"{t:.3f}", "-i", draft, "-frames:v", "1", "-vf", f"scale={w}:{h}:flags=lanczos", "-q:v", "4", path])
+    return os.path.exists(path)
 
 def fmt(t): return f"{int(t//60)}:{t%60:06.3f}"
 
@@ -36,7 +38,7 @@ VERDICT = {"type": "string", "enum": ["PASS", "FAIL", "PARTIAL", "UNCERTAIN"]}
 SEV = {"type": "string", "enum": ["blocker", "major", "minor", "note"]}
 CAT = {"type": "string", "enum": ["wardrobe", "identity", "environment", "framing", "transition", "sync", "broll", "artifact", "quality", "continuity", "creative_intent"]}
 OWNER = {"type": "string", "enum": ["wardrobe_generation", "temporal_propagation", "brand_repair", "identity", "environment", "compositing_mask", "edit_fx", "source_range", "sync", "broll", "export_quality", "treatment", "unknown"]}
-NUM2 = {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}
+NUM2 = {"type": "array", "items": {"type": "number"}, "description": "exactly two numbers [start, end]"}
 DEFECT = {"type": "object", "additionalProperties": False, "required": ["defect_id", "severity", "category", "time_range", "shot_id", "description", "evidence", "recommended_owner", "recommended_action", "requires_treatment_change"],
           "properties": {"defect_id": {"type": "string", "description": "stable id like S12-WORDMARK-SCALE; reuse the same id for the same defect in later reviews"},
                          "severity": SEV, "category": CAT,
@@ -48,11 +50,11 @@ DEFECT = {"type": "object", "additionalProperties": False, "required": ["defect_
 SHOT = {"type": "object", "additionalProperties": False, "required": ["shot_id", "verdict", "confidence", "expected", "observed", "observations", "defect_ids", "recommended_owner", "recommended_action"],
         "properties": {"shot_id": {"type": "string"}, "verdict": VERDICT, "confidence": {"type": "number"}, "expected": {"type": "string"}, "observed": {"type": "string"},
                        "observations": {"type": "array", "items": {"type": "string"}}, "defect_ids": {"type": "array", "items": {"type": "string"}},
-                       "recommended_owner": {"type": ["string", "null"], "enum": list(OWNER["enum"]) + [None]}, "recommended_action": {"type": ["string", "null"]}}}
+                       "recommended_owner": {"type": "string", "enum": list(OWNER["enum"]) + ["none"]}, "recommended_action": {"type": ["string", "null"]}}}
 TRANS = {"type": "object", "additionalProperties": False, "required": ["from_shot", "to_shot", "draft_time", "verdict", "expected", "observed", "defect_ids", "recommended_action"],
          "properties": {"from_shot": {"type": "string"}, "to_shot": {"type": "string"}, "draft_time": {"type": "number"}, "verdict": VERDICT, "expected": {"type": "string"}, "observed": {"type": "string"},
                         "defect_ids": {"type": "array", "items": {"type": "string"}}, "recommended_action": {"type": ["string", "null"]}}}
-SCORE = {"type": "integer", "minimum": 0, "maximum": 10}
+SCORE = {"type": "integer", "description": "0-10"}
 SCHEMA_SHOTS = {"name": "astra_shot_review", "schema": {"type": "object", "additionalProperties": False, "required": ["shots", "defects"], "properties": {"shots": {"type": "array", "items": SHOT}, "defects": {"type": "array", "items": DEFECT}}}}
 SCHEMA_TRANS = {"name": "astra_transition_review", "schema": {"type": "object", "additionalProperties": False, "required": ["transitions", "defects"], "properties": {"transitions": {"type": "array", "items": TRANS}, "defects": {"type": "array", "items": DEFECT}}}}
 SCHEMA_SEQ = {"name": "astra_sequence_review", "schema": {"type": "object", "additionalProperties": False, "required": ["overall", "answers", "defects", "final_verdict", "escalate_to_fendi"],
@@ -111,8 +113,9 @@ def main():
             fps = a.short_fps if (t1 - t0) < 2.5 else a.fps
             t = t0 + 0.5 / fps
             while t < t1 - 1e-6:
-                p = os.path.join(a.out, "frames", f"{s['id']}_{t:07.3f}.jpg"); grab(a.draft, t, p)
-                frames.append({"label": f"draft t={fmt(t)} (song {t+offset:.3f}s) shot {s['id']}", "file": p}); t += 1 / fps
+                p = os.path.join(a.out, "frames", f"{s['id']}_{t:07.3f}.jpg")
+                if grab(a.draft, t, p): frames.append({"label": f"draft t={fmt(t)} (song {t+offset:.3f}s) shot {s['id']}", "file": p})
+                t += 1 / fps
         ids = [s["id"] for s in g]
         instr = common + (f"\nTASK (LEVEL 1 — SHOT CONFORMANCE) for shots {', '.join(ids)}. For EACH shot answer: did the intended shot occur; is Fendi present when the spec says performance; is the correct look visible and actually WORN by him (not floating, not partial); does identity stay credible (same real person, face/beard/glasses/cap); does the intended environment appear (closet must NOT read as a closet); does framing approximately match; does the shot perform its stated purpose; are AI artifacts visible (morphing, texture crawl, plastic skin, garment disappearing, wordmark corruption, matte halos)? "
                          "For wardrobe shots inspect: garment construction vs the reference, coverage, wordmark/logo legibility and SCALE vs reference, placement, temporal stability across the frames, sleeve/body behaviour during arm movement, occlusion behaviour, unintended wardrobe changes, cartoon/plastic look. "
@@ -126,7 +129,8 @@ def main():
         for k in range(-3, 3):
             t = tc + (k + 0.5) / 12.0
             if t < 0: continue
-            p = os.path.join(a.out, "frames", f"cut_{shots[i-1]['id']}_{shots[i]['id']}_{t:07.3f}.jpg"); grab(a.draft, t, p)
+            p = os.path.join(a.out, "frames", f"cut_{shots[i-1]['id']}_{shots[i]['id']}_{t:07.3f}.jpg")
+            if not grab(a.draft, t, p): continue
             frames.append({"label": f"draft t={fmt(t)} — cut {shots[i-1]['id']}→{shots[i]['id']} at {fmt(tc)} ({'before' if t < tc else 'after'})", "file": p})
     instr = common + ("\nTASK (LEVEL 2 — TRANSITION / EDIT REVIEW). For every cut (6 frames at 12 fps around each): does the transition described in the treatment actually happen (cut / flash / glitch / white-out); does the cut feel intentional and land musically on the downbeat; do wardrobe and environment continuity make sense (Look 2 pre-hook → Look 1 from the drop at S06); are there accidental visual jumps; does B-roll return cleanly to synchronized performance; do transitions expose broken mattes, malformed frames or identity discontinuities; does each effect improve the sequence or merely look generated?")
     parts.append({"partId": "transitions", "instructions": instr, "frames": frames, "references": refs[:2], "jsonSchema": SCHEMA_TRANS, "level": 2})
@@ -135,8 +139,9 @@ def main():
     frames = []; t = 0.25; end = asm["expectedSeconds"]
     while t < end:
         sid = next((s["id"] for s in shots if s["timeline"]["start"] - offset <= t < s["timeline"]["end"] - offset), "?")
-        p = os.path.join(a.out, "frames", f"seq_{t:07.3f}.jpg"); grab(a.draft, t, p)
-        frames.append({"label": f"draft t={fmt(t)} shot {sid}", "file": p}); t += 0.5
+        p = os.path.join(a.out, "frames", f"seq_{t:07.3f}.jpg")
+        if grab(a.draft, t, p): frames.append({"label": f"draft t={fmt(t)} shot {sid}", "file": p})
+        t += 0.5
     questions = [
         "1. Does Fendi remain recognizably the same real person throughout the performance shots?",
         "2. Is the YSL wardrobe actually and convincingly worn by Fendi?",
