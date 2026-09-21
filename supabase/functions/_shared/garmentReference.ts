@@ -28,6 +28,10 @@ export function isOnModelReference(r: RefImageLike): boolean {
   if (angle === "on_model" || angle === "on-model" || angle === "on_model_reference") {
     return true;
   }
+  // An explicit angle is authoritative: a "detail" crop whose label says "worn" is still a
+  // detail reference (2026-09-21: the sleeve-inside-worn crop was being promoted to on-model
+  // and sent first). The label heuristic only applies when no angle was recorded.
+  if (angle && angle !== "other") return false;
   return /\b(on[- ]?model|wearing|worn|styled|lookbook|lifestyle)\b/.test(label);
 }
 
