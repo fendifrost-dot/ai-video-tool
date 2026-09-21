@@ -1,0 +1,203 @@
+{
+  "draftId": "YSL_IceOn_bars24-46_v2",
+  "partId": "shots-S05-S06-S07-S08",
+  "model": "gpt-6-astra",
+  "responseId": "resp_05bc25aca335e949006ab0c4e0815887d2a667be71bcff1cb4",
+  "reviewedAt": "2026-09-21T05:50:38.177Z",
+  "usage": {
+    "input_tokens": 46221,
+    "input_tokens_details": {
+      "cache_write_tokens": 46218,
+      "cached_tokens": 0
+    },
+    "output_tokens": 8349,
+    "output_tokens_details": {
+      "reasoning_tokens": 4142
+    },
+    "total_tokens": 54570
+  },
+  "actualCostUsd": 0.8797,
+  "review": {
+    "shots": [
+      {
+        "expected": "Performer-free diamond-refraction insert with a slow push, building to a whiteout immediately before the S06 wardrobe reveal.",
+        "recommended_owner": "none",
+        "observations": [
+          "S05 frames at draft 00:14.837, 00:15.004 and 00:15.337 show a faceted diamond against black with cold spectral refractions. Its gradual enlargement delivers the requested slow push; no performer is visible.",
+          "S05 frames at 00:15.504 and 00:15.671 show an increasing white wash over the diamond. The flash build is visible, but the exact peak whiteout and musical landing fall between supplied samples and are UNCERTAIN.",
+          "Re-review summary: S05-DIAMOND-INSERT-MISSING and S05-REFRACTION-INSERT-MISSING are RESOLVED in the supplied samples.",
+          "Re-review summary: the early-performance/Look 1 reveal reported as S05-DROP-REVEAL-EARLY and S06-DROP-REVEAL-EARLY is no longer visible: S05 remains performer-free at 00:15.671, and the first supplied Look 1 performance frame is S06 at 00:15.904. Exact native-frame reveal timing remains unverified.",
+          "Review scope is S05–S08 only. Defects confined to S01–S04 or S09–S12 cannot be resolved from these frames; sequence-wide findings below are assessed only within the supplied interval."
+        ],
+        "observed": "The intended diamond insert occurs and visibly builds into a flash. No synthetic performer, unintended wardrobe reveal or obvious temporal instability is visible in the sampled insert.",
+        "confidence": 0.96,
+        "verdict": "PASS",
+        "shot_id": "S05",
+        "defect_ids": [
+          "SEQ-FRAME-SYNC-UNVERIFIED"
+        ],
+        "recommended_action": "Retain the insert; verify the final whiteout and S06 reveal against the native-frame song clock."
+      },
+      {
+        "expected": "Fendi's real medium-framed performance wearing the reference Saint Laurent track jacket, revealed on the drop in a darker room with several mirror panels, blue-white highlights and diamond glints. Preserve anatomy, identity and garment coverage.",
+        "recommended_owner": "wardrobe_generation",
+        "observations": [
+          "S06 frames at 00:15.904, 00:17.571 and 00:20.904 show a recognizably consistent Fendi, retaining cap, glasses, beard and performance gestures. Framing approximately matches the requested eye-level medium performance. No clear identity replacement is visible.",
+          "The jacket is worn on the body rather than floating. At 00:16.571, crossed sleeves remain in front of the torso; at 00:18.571 and 00:21.571, both arms, the jacket hem and trousers remain present. S06-ARM-MATTE-EROSION is RESOLVED in the supplied samples.",
+          "Body-removal symptoms tracked by HOOK-PERFORMER-MATTE are also RESOLVED within the sampled S06 interval. PERF-MATTE-COVERAGE is only partially repaired: substantial body coverage is restored, but moving edge fringes remain at 00:17.904, 00:20.238 and 00:21.571.",
+          "The mastic body, narrower navy chest stripe and unblocked shoulders are improved, but sleeve stripes from the product reference are absent through the arm positions at 00:15.904, 00:16.571 and 00:18.571. The conspicuously dark zipper also differs from the reference's tonal closure.",
+          "The wordmark is now gold and on the wearer's left chest, not centered across the zipper. However, its lettering changes and remains wider relative to the chest stripe than the reference; compare 00:16.904, 00:17.571 and 00:19.571.",
+          "Several angled reflective panels, repeated cold highlights and small wall/floor glints are plainly visible at 00:15.904, 00:18.238 and 00:21.571. HOOK-ENVIRONMENT-ESCALATION is RESOLVED for S06; the reviewed S06 portions of HOOK-ROOM-ESCALATION and SEQ-MIRROR-PROGRESSION-MISSING are likewise repaired. Pre-hook progression and later hook shots are not verified here."
+        ],
+        "observed": "The intended performance and hardened mirror-room reveal occur, with credible identity and restored body coverage. It still fails garment truth, brand fidelity and clean foreground integration.",
+        "confidence": 0.98,
+        "verdict": "FAIL",
+        "shot_id": "S06",
+        "defect_ids": [
+          "PERF-MATTE-COVERAGE",
+          "LOOK1-CONSTRUCTION-MISMATCH",
+          "LOOK1-WORDMARK-TRUTH",
+          "S06-S08-GARMENT-RESET",
+          "SEQ-FRAME-SYNC-UNVERIFIED"
+        ],
+        "recommended_action": "Correct the garment against the product image, stabilize the reference wordmark and remove residual matte fringes without sacrificing the restored body coverage."
+      },
+      {
+        "expected": "A performer-free luxury/night-city cutaway with a slow push and cold, high-contrast lighting that answers the hook's ice motif.",
+        "recommended_owner": "none",
+        "observations": [
+          "S07 frames at 00:21.723, 00:22.556 and 00:23.389 show a rain-speckled vehicle-window view of a night street, blue-white lights and wet-road reflections. This supplies the requested night-city cutaway and matches the cold palette.",
+          "Across S07 frames 00:21.723–00:23.556, the composition gradually enlarges. No performer appears, and no obvious object morphing or flickering replacement is demonstrated by these samples.",
+          "Re-review summary: S07-CUT-TIMING is UNCERTAIN, confidence 0.3. S06 still shows performance at 00:21.571 and S07 shows city imagery at 00:21.723, bracketing the declared 00:21.639 cut. The previous early-city symptom is not reproduced at 00:21.571, but these samples cannot certify the actual cut frame."
+        ],
+        "observed": "The intended cold night-city B-roll occurs and performs its visual cutaway purpose. Exact beat placement remains unverified rather than demonstrably wrong.",
+        "confidence": 0.95,
+        "verdict": "PASS",
+        "shot_id": "S07",
+        "defect_ids": [
+          "SEQ-FRAME-SYNC-UNVERIFIED"
+        ],
+        "recommended_action": "Retain the visual content; verify the S07 cut at native frame rate before closing S07-CUT-TIMING."
+      },
+      {
+        "expected": "Return to Fendi's real medium-framed performance in the same reference Look 1 and mirror-multiplied hook room, preserving his body, identity and garment construction through arm crossings.",
+        "recommended_owner": "compositing_mask",
+        "observations": [
+          "S08 frames at 00:23.773, 00:26.440 and 00:29.440 retain recognizable cap, glasses, beard and performance identity. The medium framing and repeated mirror-room background occur as requested.",
+          "The torso, hem and trousers remain visible through the crossed-arm sequence at 00:26.773, 00:28.440, 00:29.107 and 00:29.440. S08-BODY-MATTE-DROPOUT is RESOLVED in the supplied samples. The reviewed S08 body-removal component of HOOK-PERFORMER-MATTE is also repaired; this does not close that finding for unsupplied S09 frames.",
+          "Original-looking non-room material remains beside the screen-right hip and arm at 00:23.773: a dark upright surface with white-and-black fragments intrudes into the mirror room. A smaller dark remnant persists beside the screen-right sleeve at 00:24.107 and is absent after the performer moves at 00:24.440.",
+          "S08 introduces a pointed fold-down collar, shoulder tabs and a pale zipper at 00:23.773 and 00:24.773, unlike both the product reference and S06's stand collar/dark zipper at 00:21.571. Navy sleeve stripes remain absent at 00:24.773 and 00:28.440.",
+          "The gold wearer-left wordmark remains attached to the chest, but its letterforms and spacing vary at 00:24.773, 00:25.107 and 00:26.440. Its relative width is still excessive compared with the small reference mark.",
+          "The several reflective panels, cold edge highlights and wall glints remain visible at 00:23.773, 00:26.440 and 00:29.440. HOOK-ENVIRONMENT-ESCALATION is RESOLVED for S08; the reviewed portions of HOOK-ROOM-ESCALATION and SEQ-MIRROR-PROGRESSION-MISSING are repaired.",
+          "Deduplicated re-review summary: LOOK1-CONSTRUCTION-MISMATCH remains PRESENT; overlapping prior IDs HOOK-LOOK1-GARMENT-TRUTH and SEQ-LOOK1-PRODUCT-TRUTH describe the same remaining product-conformance failure in S06/S08. LOOK1-WORDMARK-TRUTH remains PRESENT; overlapping HOOK-WORDMARK-DRIFT and SEQ-LOOK1-WORDMARK-TRUTH remain open for lettering instability, although central placement and white coloring are repaired. Evidence: S06 00:17.571 and S08 00:24.773–00:26.440.",
+          "Deduplicated re-review summary: PERF-CLOSET-LEAKAGE remains PRESENT at S08 00:23.773–00:24.107. SEQ-ORIGINAL-CLOSET-LEAK and HOOK-SOURCE-LEAK describe the same surviving inclusion here and are not separate defect entries. The exact source object is uncertain; the visibly non-room fragment is not."
+        ],
+        "observed": "The intended performance returns with restored full-body coverage and the repaired hook environment. It still fails because source-background fragments survive, matte fringes remain, the garment changes construction from S06, and product/wordmark fidelity is incomplete.",
+        "confidence": 0.99,
+        "verdict": "FAIL",
+        "shot_id": "S08",
+        "defect_ids": [
+          "PERF-MATTE-COVERAGE",
+          "PERF-CLOSET-LEAKAGE",
+          "LOOK1-CONSTRUCTION-MISMATCH",
+          "LOOK1-WORDMARK-TRUTH",
+          "S06-S08-GARMENT-RESET",
+          "SEQ-FRAME-SYNC-UNVERIFIED"
+        ],
+        "recommended_action": "Remove the retained source fragments, refine moving matte edges and replace the pointed-collar/shoulder-tab variant with the same reference-correct Look 1 used throughout the hook."
+      }
+    ],
+    "defects": [
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "PERF-MATTE-COVERAGE is partially repaired, not closed. The former large body dropouts are no longer visible in sampled S06/S08 frames, but soft gray fringes and trailing edge patches still detach the performer from the sharp background. This is a residual edge defect, not continuing blocker-level body removal.",
+        "defect_id": "PERF-MATTE-COVERAGE",
+        "evidence": "S06 frame 00:17.904 shows a broad hazy patch outside the moving screen-left upper arm; 00:20.238 shows a ragged gray trail along the screen-left shoulder/upper arm; 00:21.571 shows a pale fringe around the screen-right sleeve and hand. S08 frames 00:24.107 and 00:25.773 retain diffuse edge contamination around moving sleeves. By contrast, torso/hem coverage remains intact at S06 00:18.571 and S08 00:29.440.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.904,
+          29.44
+        ],
+        "recommended_action": "Refine motion-aware alpha edges and foreground color decontamination around cap, shoulders, sleeves and hands. Preserve the newly restored opaque torso and limb coverage; do not solve fringes by broadly eroding the matte."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S08",
+        "recommended_owner": "compositing_mask",
+        "category": "environment",
+        "description": "Source-background inclusion still contaminates the transformed room at the S08 entrance. A dark upright patch with white-and-black fragments survives behind the screen-right flank/arm, then changes visibility with the performer. This is distinct from the repaired body-dropout issue.",
+        "defect_id": "PERF-CLOSET-LEAKAGE",
+        "evidence": "S08 frame 00:23.773 shows the dark vertical inclusion and white-and-black fragments between the screen-right jacket flank, arm and frame edge. At 00:24.107, a smaller dark remnant remains beside the screen-right sleeve; at 00:24.440 the room is exposed there instead. The exact original object is uncertain, but the fragment does not belong to the supplied mirror-room plate.",
+        "requires_treatment_change": false,
+        "time_range": [
+          23.773,
+          24.107
+        ],
+        "recommended_action": "Exclude retained background islands from the foreground matte and restore the hook plate through the arm/torso negative space. Check the full S08 entrance at native frame rate for related inclusions."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "Look 1 remains an approximation rather than the reference garment. The corrected mastic body and narrow chest stripe are present, but the reference's navy sleeve stripes are missing. S06 has a strongly contrasting dark zipper; S08 adds a pointed collar and shoulder tabs absent from the reference stand-collar jacket.",
+        "defect_id": "LOOK1-CONSTRUCTION-MISMATCH",
+        "evidence": "S06 frames 00:15.904, 00:16.571 and 00:18.571 expose differently oriented sleeves that remain beige without the reference navy stripes; 00:19.904 clearly shows the dark zipper. S08 frames 00:23.773, 00:24.773 and 00:26.440 show the pointed collar and shoulder tabs; 00:24.773 and 00:28.440 again expose plain sleeves. These differ directly from the supplied Look 1 product photograph.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.738,
+          29.508
+        ],
+        "recommended_action": "Use the product photograph as a construction constraint: restore the correct sleeve stripes, stand collar, plain shoulder construction and tonal closure. Preserve Fendi's performance and the repaired body coverage."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "brand_repair",
+        "category": "wardrobe",
+        "description": "Wordmark placement and color are repaired, but brand truth remains incomplete. The gold wearer-left mark has unstable, malformed lettering and occupies too much of its half of the chest stripe relative to the small reference mark. It must not be accepted merely because some frames approximately read SAINT LAURENT.",
+        "defect_id": "LOOK1-WORDMARK-TRUTH",
+        "evidence": "Compare S06 frames 00:16.904, 00:17.571 and 00:19.571: character shapes and spacing change while the mark remains on the same chest panel. S08 frames 00:24.773, 00:25.107 and 00:26.440 show further malformed and stretched lettering. Front-facing S06 00:17.571 and S08 00:26.440 show the mark filling substantially more of the wearer-left stripe segment than in the product reference.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.904,
+          29.44
+        ],
+        "recommended_action": "Apply the reference-correct gold wordmark at reference-relative scale on the wearer's left chest. Track a stable brand asset through cloth deformation and arm occlusion rather than propagating generated letterforms."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "temporal_propagation",
+        "category": "continuity",
+        "description": "The same hook look visibly changes construction across the S07 cutaway. S06's stand-collar jacket with dark zipper returns in S08 as a pointed-collar, pale-zipper jacket with shoulder tabs. No wardrobe change is specified between these performances.",
+        "defect_id": "S06-S08-GARMENT-RESET",
+        "evidence": "The last supplied S06 frame at 00:21.571 has an upright collar, dark zipper and plain shoulders. The first supplied S08 frame at 00:23.773 has a fold-down pointed collar, pale zipper and shoulder tabs; those features persist at 00:24.440 and 00:24.773, demonstrating a construction reset rather than a transient fold.",
+        "requires_treatment_change": false,
+        "time_range": [
+          21.571,
+          24.773
+        ],
+        "recommended_action": "After correcting product construction, lock one Look 1 garment specification across S06 and S08. Propagate collar, zipper, shoulder and sleeve details consistently instead of independently interpreting each shot."
+      },
+      {
+        "severity": "note",
+        "shot_id": null,
+        "recommended_owner": "sync",
+        "category": "sync",
+        "description": "Native-frame synchronization and exact musical transition placement remain UNCERTAIN, confidence 0.2. The supplied silent samples establish visual ordering but cannot certify one-frame performance sync, the peak drop whiteout or exact S07 cut timing. This is an unverified gate, not an observed blanket sync failure. REVIEW-SYNC-UNVERIFIED is the overlapping prior note for the same gate.",
+        "defect_id": "SEQ-FRAME-SYNC-UNVERIFIED",
+        "evidence": "S05 frame 00:15.671 shows the flash build and the next supplied frame, S06 00:15.904, shows performance; the exact 00:15.738 boundary is not sampled. S06 00:21.571 and S07 00:21.723 bracket the intended 00:21.639 city cut. S07 00:23.556 and S08 00:23.773 similarly bracket the 00:23.607 return. No audio accompanies these frames.",
+        "requires_treatment_change": false,
+        "time_range": [
+          14.754,
+          29.508
+        ],
+        "recommended_action": "Review native-frame playback with audio and source/song-clock burn-ins. Confirm S05 whiteout, S06 reveal, S07/S08 cut frames and performance alignment before closing the synchronization gate or S07-CUT-TIMING."
+      }
+    ]
+  }
+}
