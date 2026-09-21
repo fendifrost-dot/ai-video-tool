@@ -54,3 +54,25 @@ The kill criterion is unchanged from `VIDEO_SWAP_ARCHITECTURE.md` §7: identity,
 ## 4. Decision requested from ChatGPT (next review)
 
 Confirm the order: (1) $0 propagation test on S06 as described; (2) E1 (≈ $1.10) only if (1) is inconclusive; (3) E2 heroes for the remaining slots only after the hook Look direction is approved by Fendi. Claude's position: build (1) now.
+
+## 5. Result of step (1): the $0 propagation test on S06 (2026-09-21, after the ruling)
+
+`scripts/edit/propagate_keyframe.py` (new) on `S06_master` (720×1280 @ 24, 161 frames) with the hero garment taken from the v5 S06 edit at frame 72 (garment region = what the edit changed, found automatically). DIS dense flow chained frame to frame, forward–backward error accumulated as a drift estimate and gated into confidence, occluders detected on the real footage (master now vs master at the hero, warped), hero garment re-lit from the master's own low-frequency luminance, composite = edit frame with the hero garment wherever propagation is trustworthy. Nothing invented.
+
+| Measure | One hero (f72) | Seven heroes every 24 frames | xAI edit (reference) |
+|---|---|---|---|
+| Garment carried from the hero, within ±10 frames | 78 % (occluded 4 %) | — | — |
+| Reach at ≥ 80 % coverage | 6 frames back / 3 forward | 2–4 per hero | — |
+| Coverage, whole shot | 20 % (one hero cannot cover 6.7 s of dance) | 64 % | — |
+| Flow-compensated temporal residual in the garment (flicker; lower is better) | 8.66 mean / 15.3 p95 | 8.37 mean / 18.8 p95 | 9.62 mean / 17.0 p95 (single run) · 11.14 mean / 18.4 p95 (multi-hero run's masks) |
+| Generator drift (edit garment vs the carried hero garment, same frame, 0–255) | 18.9 within ±10 frames; 35.8 whole shot | 22.3 | — |
+
+What this establishes:
+
+1. **The mechanism works where the flow holds**: within ±8 frames the propagated frames read as one garment (same lettering, same construction) and flicker is 10–25 % lower than the edit. See `S06_propagation_qa_sheet.jpg` and the half-speed clip sent to Fendi.
+2. **The limiter is the motion, not the flow engine.** Fendi moves ~5 px/frame median in this shot. DIS chained, DIS direct and RAFT-small direct (torchvision, CPU, half resolution) all lose forward–backward consistency at the same rate (≈ 78 % of the garment within 2 px at 3 frames, ≈ 55 % at 12, ≈ 10 % at 24). So the **re-anchor cadence on dance footage is ≈ 12–16 frames**, inside the range `VIDEO_SWAP_ARCHITECTURE.md` §3 predicted (12–24).
+3. **Cost of the lane per shot**: a 6.9 s slot needs ≈ 10–14 heroes. With E2 (`/images/edits`, ≈ $0.15 per still, each conditioned on ONE approved hero so construction is shared) that is ≈ $1.5–2.1 per shot — about the same as one xAI video edit ($0.55) × 3, but with one garment realisation instead of one per cut.
+4. **Multi-hero from the edit itself is not the answer** (the seven heroes above are seven different xAI samples, so switch points show construction jumps — p95 residual rises). The heroes must come from the still lane conditioned on one approved hero, or from that hero warped forward as the reference for the next.
+5. **Occlusion** is handled honestly: the arm crossing S06 at frames 90+ is detected on the real footage and the edit is used there; nothing is painted over the arm.
+
+Kill criterion (§7): identity — real face pixels throughout (pass by construction); exact construction and stripe/logo placement — inherited from the hero where carried (pass within reach); natural occlusion — pass (detected, not painted over); no flicker/morphing — better than the edit within reach, not yet over a whole 6.9 s shot with one hero. **Verdict: the lane is viable at a 12–16-frame re-anchor cadence; it is not viable with one hero per shot.** Next: E2 heroes (needs Fendi's spend approval, ≈ $2 for one shot) → full-shot propagation → the deterministic brand layer on top → assemble → then a targeted Astra shot review is justified (ruling §10).
