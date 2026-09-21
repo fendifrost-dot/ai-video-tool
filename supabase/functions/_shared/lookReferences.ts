@@ -112,13 +112,15 @@ export function orderLookReferences(args: {
  * MUST record in the plan.
  */
 export function lookSpecificationText(recipe: { spec?: unknown; name?: string }, pieces: Array<{ label: string; featureType: string }>): string {
+  const sentence = (t: string) => (/[.!?]$/.test(t) ? t : t + ".");
   const lines: string[] = [];
   const spec = recipe.spec;
-  if (typeof spec === "string" && spec.trim()) lines.push(spec.trim());
+  if (typeof spec === "string" && spec.trim()) lines.push(sentence(spec.trim()));
   else if (spec && typeof spec === "object") {
-    for (const [k, v] of Object.entries(spec as Record<string, unknown>)) {
-      if (typeof v === "string" && v.trim()) lines.push(`${k}: ${v.trim()}`);
-    }
+    const items = Object.entries(spec as Record<string, unknown>)
+      .filter(([, v]) => typeof v === "string" && (v as string).trim())
+      .map(([k, v]) => `${k}: ${(v as string).trim().replace(/[.;]+$/, "")}`);
+    if (items.length) lines.push(`Look specification — ${items.join("; ")}.`);
   }
   const pieceLines = pieces.filter((p) => p.label).map((p) => (p.featureType ? `${p.featureType}: ${p.label}` : p.label));
   if (pieceLines.length) lines.push(`Pieces — ${pieceLines.join("; ")}.`);

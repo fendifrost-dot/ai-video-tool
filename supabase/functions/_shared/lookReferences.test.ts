@@ -43,6 +43,11 @@ describe("orderLookReferences (Look truth hierarchy)", () => {
     // glasses' only image is the hero's on-model shot — already sent, contributes nothing
     expect(plan.filter((p) => p.featureId === "gls")).toEqual([]);
   });
+  it("an explicit detail angle stays a detail reference even when its label says 'worn'", () => {
+    const piece = { ...hero, refs: [{ angle: "detail", label: "detail: stripe inside the sleeve, worn, arm down", storage_path: "w/sleeve_worn.jpg" }, { angle: "on_model", storage_path: "w/hero_on_model.jpg" }, { angle: "front", storage_path: "w/hero_flat.jpg" }] };
+    const { plan } = orderLookReferences({ mode: "full_look", outfitSheetPath: null, heroFeatureId: "hero", pieces: [piece], policy: resolveReferencePolicy(8) });
+    expect(plan.map((p) => p.role + ":" + p.path.split("/").pop())).toEqual(["primary_piece:hero_on_model.jpg", "primary_piece:hero_flat.jpg", "detail:sleeve_worn.jpg"]);
+  });
   it("respects maxRefs and the outfitSheet switch", () => {
     const policy = resolveReferencePolicy(8, { maxRefs: 2, outfitSheet: false });
     const { paths } = orderLookReferences({ mode: "full_look", outfitSheetPath: "looks/sheet.jpg", heroFeatureId: "hero", pieces: [hero, trousers], policy });
@@ -63,8 +68,8 @@ describe("orderLookReferences (Look truth hierarchy)", () => {
 
 describe("lookSpecificationText + composeConstraintsFirst", () => {
   it("renders the recipe spec and one line per piece", () => {
-    expect(lookSpecificationText({ spec: { collar: "stand collar", closure: "zipped" } }, [hero, trousers])).toBe(
-      "collar: stand collar closure: zipped Pieces — outerwear: Track jacket; bottoms: Pleated trousers.",
+    expect(lookSpecificationText({ spec: { collar: "stand collar", closure: "zipped." } }, [hero, trousers])).toBe(
+      "Look specification — collar: stand collar; closure: zipped. Pieces — outerwear: Track jacket; bottoms: Pleated trousers.",
     );
     expect(lookSpecificationText({}, [])).toBe("");
   });
