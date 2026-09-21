@@ -7,6 +7,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { pickGrokVideoEditReferencePaths, pickGrokGarmentReferencePaths } from "../_shared/garmentReference.ts";
+import { composeConstraintsFirst, lookSpecificationText, orderLookReferences, resolveReferencePolicy, type ReferencePolicy } from "../_shared/lookReferences.ts";
+import { getProviderCapability } from "../_shared/providerCapabilities.ts";
 import {
   buildGrokVideoEditAssetInsert,
   buildGrokVideoEditXaiBody,
@@ -70,29 +72,16 @@ type Body = {
    * placing the jacket on me and not the entire YSL outfit — it should be in AVT."
    */
   lookId?: string;
-  /** Per-request override of the reference policy (see resolveReferencePolicy). */
-  referencePolicy?: { primaryPieceRefs?: number; otherPieceRefs?: number; maxRefs?: number };
+  /** Per-request override of the reference policy (see _shared/lookReferences.ts). */
+  referencePolicy?: ReferencePolicy;
 };
 
 // Reference policy is DATA, not code (Fendi 2026-09-21: "an outfit update should populate in
-// the tool in a seamless workflow" — no redeploy for wardrobe changes). Resolution order:
-//   request.referencePolicy  >  Look composition_recipe_json.reference_policy  >  defaults.
-// Only the absolute cap below is code, because it is the provider's limit, not a creative choice.
-const ABSOLUTE_MAX_REFERENCES = 8;
-type ReferencePolicy = { primaryPieceRefs?: number; otherPieceRefs?: number; maxRefs?: number };
-const DEFAULT_REFERENCE_POLICY: Required<ReferencePolicy> = { primaryPieceRefs: 4, otherPieceRefs: 1, maxRefs: 5 };
-function resolveReferencePolicy(...layers: Array<ReferencePolicy | null | undefined>): Required<ReferencePolicy> {
-  const out = { ...DEFAULT_REFERENCE_POLICY };
-  for (const l of layers) {
-    if (!l) continue;
-    for (const k of ["primaryPieceRefs", "otherPieceRefs", "maxRefs"] as const) {
-      const v = Number(l[k]);
-      if (Number.isFinite(v) && v >= 1) out[k] = Math.min(Math.floor(v), ABSOLUTE_MAX_REFERENCES);
-    }
-  }
-  out.maxRefs = Math.min(out.maxRefs, ABSOLUTE_MAX_REFERENCES);
-  return out;
-}
+// the tool in a seamless workflow" — no redeploy for wardrobe changes). Resolution order
+// (ChatGPT ruling 2026-09-21 §3): artist identity_profile_json.reference_policy  <
+// project treatment_json.reference_policy  <  Look composition_recipe_json.reference_policy  <
+// request.referencePolicy, all clamped by the provider capability (_shared/providerCapabilities.ts).
+const XAI_VIDEO_EDIT_CAPABILITY_KEY = "xai:videos/edits";
 
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), {
@@ -235,13 +224,21 @@ serve(async (req) => {
 
   const { data: project, error: pErr } = await admin
     .from("video_projects")
-    .select("id, artist_id, user_id")
+    .select("id, artist_id, user_id, treatment_json")
     .eq("id", body.projectId)
     .maybeSingle();
   if (pErr) return json(500, { error: "project_query_failed", detail: pErr.message });
   if (!project || project.user_id !== userId || project.artist_id !== body.artistId) {
     return json(403, { error: "project_forbidden" });
   }
+  const { data: artistRow } = await admin
+    .from("artists")
+    .select("id, identity_profile_json")
+    .eq("id", body.artistId)
+    .maybeSingle();
+  const artistPolicy = ((artistRow?.identity_profile_json ?? {}) as { reference_policy?: ReferencePolicy }).reference_policy ?? null;
+  const projectPolicy = ((project.treatment_json ?? {}) as { reference_policy?: ReferencePolicy }).reference_policy ?? null;
+  const capability = getProviderCapability(XAI_VIDEO_EDIT_CAPABILITY_KEY);
 
   const { data: videoAsset, error: vErr } = await admin
     .from("project_assets")
@@ -276,19 +273,28 @@ serve(async (req) => {
 
   const referenceMode = body.referenceMode === "full_look" ? "full_look" : "flat";
   let garmentPaths: string[] = [];
+  let referencePlan: Array<{ role: string; featureId: string | null; file: string }> = [];
   let lookPieces: Array<{ featureId: string; label: string; featureType: string; path: string | null }> = [];
+  let lookSpec = "";
+  let lookConstraints: string[] = [];
+  let policyUsed: Required<ReferencePolicy>;
   const lookId = body.lookId?.trim() || null;
   if (lookId) {
-    // Outfit from a composed Look: every piece contributes its best flat product shot.
+    // Outfit from a composed Look — the Look truth hierarchy (outfit sheet → hero piece
+    // primary refs → hero piece detail refs → other pieces → structured spec) is resolved
+    // by _shared/lookReferences.ts from the Look recipe; nothing here is garment-specific.
     const { data: look, error: lErr } = await admin
       .from("artist_looks")
-      .select("id, artist_id, name, composition_recipe_json")
+      .select("id, artist_id, name, composition_recipe_json, generated_storage_path")
       .eq("id", lookId)
       .maybeSingle();
     if (lErr) return json(500, { error: "look_query_failed", detail: lErr.message });
     if (!look || look.artist_id !== body.artistId) return json(404, { error: "look_not_found" });
-    const recipe = (look.composition_recipe_json ?? {}) as { wardrobe_feature_ids?: unknown; reference_policy?: ReferencePolicy };
-    const policy = resolveReferencePolicy(recipe.reference_policy, body.referencePolicy);
+    const recipe = (look.composition_recipe_json ?? {}) as {
+      wardrobe_feature_ids?: unknown; hero_feature_id?: unknown; outfit_sheet_path?: unknown;
+      reference_policy?: ReferencePolicy; constraints?: unknown; spec?: unknown;
+    };
+    policyUsed = resolveReferencePolicy(capability.maxReferenceImages, artistPolicy, projectPolicy, recipe.reference_policy, body.referencePolicy);
     const featureIds = Array.isArray(recipe.wardrobe_feature_ids)
       ? recipe.wardrobe_feature_ids.filter((x): x is string => typeof x === "string" && UUID_RE.test(x))
       : [];
@@ -296,31 +302,40 @@ serve(async (req) => {
     if (!featureIds.includes(body.wardrobeFeatureId)) {
       return json(400, { error: "wardrobe_not_in_look", detail: "wardrobeFeatureId must be one of the Look's pieces" });
     }
-    const { data: pieces, error: pErr } = await admin
+    const heroFeatureId = typeof recipe.hero_feature_id === "string" && featureIds.includes(recipe.hero_feature_id) ? recipe.hero_feature_id : featureIds[0];
+    const { data: pieces, error: pErr2 } = await admin
       .from("character_features")
       .select("id, artist_id, label, feature_type, file_url, storage_path, reference_images")
       .in("id", featureIds);
-    if (pErr) return json(500, { error: "wardrobe_query_failed", detail: pErr.message });
+    if (pErr2) return json(500, { error: "wardrobe_query_failed", detail: pErr2.message });
     const byId = new Map((pieces ?? []).map((f) => [f.id as string, f]));
-    for (const fid of featureIds) {
+    const pieceInputs = featureIds.flatMap((fid) => {
       const f = byId.get(fid);
-      if (!f || f.artist_id !== body.artistId) continue;
-      const refs = Array.isArray(f.reference_images) ? f.reference_images : [];
-      const primary = fid === featureIds[0];
-      const paths = referenceMode === "full_look"
-        ? pickGrokGarmentReferencePaths(refs, null, primary ? policy.primaryPieceRefs : policy.otherPieceRefs)
-        : pickGrokVideoEditReferencePaths(refs, f.storage_path ?? f.file_url, primary ? Math.min(policy.primaryPieceRefs, 1) : 1);
-      lookPieces.push({ featureId: fid, label: String(f.label ?? ""), featureType: String(f.feature_type ?? ""), path: paths[0] ?? null });
-      for (const p of paths) if (!garmentPaths.includes(p) && garmentPaths.length < policy.maxRefs) garmentPaths.push(p);
-    }
+      if (!f || f.artist_id !== body.artistId) return [];
+      return [{ featureId: fid, label: String(f.label ?? ""), featureType: String(f.feature_type ?? ""), refs: Array.isArray(f.reference_images) ? f.reference_images : [], fallbackPath: f.storage_path ?? f.file_url }];
+    });
+    const outfitSheetPath = typeof recipe.outfit_sheet_path === "string" && recipe.outfit_sheet_path ? recipe.outfit_sheet_path : (look.generated_storage_path ?? null);
+    const ordered = orderLookReferences({ mode: referenceMode, outfitSheetPath, heroFeatureId, pieces: pieceInputs, policy: policyUsed });
+    garmentPaths = ordered.paths;
+    referencePlan = ordered.plan.map((p) => ({ role: p.role, featureId: p.featureId, file: p.path.split("/").pop() ?? p.path }));
+    lookPieces = pieceInputs.map((p) => ({ featureId: p.featureId, label: p.label, featureType: p.featureType, path: ordered.plan.find((r) => r.featureId === p.featureId)?.path ?? null }));
+    lookSpec = lookSpecificationText({ spec: recipe.spec, name: look.name }, pieceInputs);
+    lookConstraints = Array.isArray(recipe.constraints) ? recipe.constraints.filter((c): c is string => typeof c === "string" && c.trim().length > 0) : [];
   } else {
     const refImages = Array.isArray(wardrobe.reference_images) ? wardrobe.reference_images : [];
     const fallback = wardrobe.storage_path ?? wardrobe.file_url;
-    const policy = resolveReferencePolicy(body.referencePolicy);
+    policyUsed = resolveReferencePolicy(capability.maxReferenceImages, artistPolicy, projectPolicy, body.referencePolicy);
     garmentPaths = referenceMode === "full_look"
-      ? pickGrokGarmentReferencePaths(refImages, null, Math.min(policy.primaryPieceRefs, policy.maxRefs))
+      ? pickGrokGarmentReferencePaths(refImages, null, Math.min(policyUsed.primaryPieceRefs, policyUsed.maxRefs))
       : pickGrokVideoEditReferencePaths(refImages, fallback, 1);
+    referencePlan = garmentPaths.map((p) => ({ role: "primary_piece", featureId: body.wardrobeFeatureId, file: p.split("/").pop() ?? p }));
   }
+  // Prompt composition: the Look's hard construction constraints go FIRST (the mechanism that
+  // took the hook hit rate from 1/5 to 4/4 on 2026-09-21), the structured Look specification
+  // LAST. Both are Look data; the client's prompt is the body in between.
+  const composedPrompt = lookSpec
+    ? `${composeConstraintsFirst(lookConstraints, effectivePrompt)} ${lookSpec}`
+    : composeConstraintsFirst(lookConstraints, effectivePrompt);
   const referenceUrls: string[] = [];
   for (const p of garmentPaths) {
     const signed = await signStorage(admin, p, IMAGE_BUCKETS);
@@ -330,7 +345,7 @@ serve(async (req) => {
 
   const xaiBody = buildGrokVideoEditXaiBody({
     model,
-    prompt: effectivePrompt,
+    prompt: composedPrompt,
     videoUrl,
     referenceUrls,
   });
@@ -345,12 +360,16 @@ serve(async (req) => {
     referenceMode,
     lookId,
     lookPieces: lookPieces.map((p) => ({ featureId: p.featureId, label: p.label, featureType: p.featureType, file: p.path?.split("/").pop() ?? null })),
+    referencePlan,
+    referencePolicy: policyUsed,
+    providerCapability: { key: XAI_VIDEO_EDIT_CAPABILITY_KEY, ...capability },
+    promptComposition: { constraintsFirst: lookConstraints, lookSpecification: lookSpec || null },
     garmentPathsUsed: garmentPaths,
     garmentFilenames: garmentPaths.map((p) => p.split("/").pop() ?? p),
     estimatedCostUsd: estimateCostUsd(model, 4.5),
     maxCostUsd,
     promptVersion,
-    prompt: effectivePrompt,
+    prompt: composedPrompt,
     referenceCount: referenceUrls.length,
     xaiRequestBody: redactSignedUrls(xaiBody),
   };
