@@ -96,6 +96,35 @@ export const GROK_VIDEO_EDIT_PROMPT_V4_FULL_LOOK_TRUCKER =
 export const GROK_VIDEO_EDIT_PROMPT_V4B_FULL_LOOK =
   "Replace his entire visible outfit with the complete Saint Laurent look shown in the reference photos, worn ON HIM over his real body, matching the garments EXACTLY — the reference photos are the truth, follow them over any assumption. The jacket is the Saint Laurent track jacket: sand-beige (mastic) woven cotton, boxy and slightly cropped, ONE narrow horizontal navy stripe at mid-chest interrupted by the zip, a single small gold-toned SAINT LAURENT on the stripe on the wearer's LEFT chest only. COLLAR: a STAND COLLAR that stands straight up around the neck, mastic on the outside and navy on the inside facing — it does NOT fold down, it is NOT a shirt collar, NOT a butterfly collar, no collar points, no lapels. ZIP: the front zip is CLOSED — zipped up over the chest exactly as in the reference — with only the top of the collar standing open so the striped shirt collar and the knot of the tie show at the neck; the two jacket fronts are NOT hanging open. SLEEVES: the outer top of each sleeve and the shoulders are plain mastic with NO stripe; the only navy on the sleeves is a stripe running down the INSIDE / underside of each sleeve (the side against the body, from the armpit to the cuff), visible only when the arm lifts; the cuffs are mastic. Under the jacket: a white cotton shirt with fine navy pinstripes and a navy-and-white diagonally striped silk tie, both visible only at the neck because the zip is closed. Bottom: black pleated wool trousers with a straight wide leg, replacing his current trousers. Keep his own shoes as in the original footage. Keep the man himself completely unchanged: his real face, beard, his own clear prescription glasses (NOT sunglasses), head, body, hands, performance, pose and movement, and the exact same camera, background and lighting. Keep his existing cap exactly as it appears in the original footage, but do NOT copy the cap's Polo pony logo or any other branding onto the clothing; the only brand marking anywhere is the single small gold SAINT LAURENT on the wearer's left chest stripe.";
 
+/**
+ * Constraints-first composition (2026-09-21 finding, ruling §8). Stating the hard construction
+ * facts as short imperative sentences BEFORE the descriptive prompt raised the hook hit rate
+ * from 1/5 (V4B alone) to 4/4 (V4C). The mechanism is general: the constraints are whatever a
+ * Look's garment truth says must not vary; the body is any registry prompt.
+ */
+export function composeConstraintsFirst(constraints: readonly string[], body: string): string {
+  const head = constraints.map((c) => c.trim().replace(/[.\s]+$/, "") + ".").join(" ");
+  return head ? `${head} Follow the reference photos exactly. ${body}` : body;
+}
+
+/** Hook-Look construction constraints that V4B alone did not hold (Fendi's garment truth). */
+export const GROK_VIDEO_EDIT_V4C_CONSTRAINTS = [
+  "THE JACKET IS ZIPPED CLOSED",
+  "Its collar STANDS UP",
+  "Its sleeves are PLAIN on the outside",
+] as const;
+
+/**
+ * V4c — the winning runtime prompt for the hook Look on `YSL_IceOn_bars24-46_v5` (4/4 slots:
+ * zipped, stand collar, plain outer sleeves). Identical text to what was sent at runtime on
+ * 2026-09-21 (promptVersion "v4c-full-look"); registered so it can be reused and versioned.
+ */
+export const GROK_VIDEO_EDIT_PROMPT_V4C_FULL_LOOK = composeConstraintsFirst(
+  GROK_VIDEO_EDIT_V4C_CONSTRAINTS,
+  GROK_VIDEO_EDIT_PROMPT_V4B_FULL_LOOK,
+);
+export const GROK_VIDEO_EDIT_PROMPT_V4C_FULL_LOOK_VERSION = "v4c-full-look" as const;
+
 /** Active product-lane prompt (V2). */
 export const GROK_VIDEO_EDIT_PROMPT = GROK_VIDEO_EDIT_PROMPT_V2;
 

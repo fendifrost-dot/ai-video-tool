@@ -8,6 +8,10 @@ import {
   GROK_VIDEO_EDIT_PROMPT_V2,
   GROK_VIDEO_EDIT_PROMPT_V3,
   GROK_VIDEO_EDIT_PROMPT_VERSION,
+  GROK_VIDEO_EDIT_PROMPT_V4B_FULL_LOOK,
+  GROK_VIDEO_EDIT_PROMPT_V4C_FULL_LOOK,
+  GROK_VIDEO_EDIT_V4C_CONSTRAINTS,
+  composeConstraintsFirst,
 } from "./grokVideoEditPrompt";
 
 describe("GROK_VIDEO_EDIT_PROMPT (active V2)", () => {
@@ -76,5 +80,23 @@ describe("GROK_VIDEO_EDIT_PROMPT_V1 (history preserved)", () => {
     expect(GROK_VIDEO_EDIT_PROMPT_V1).toContain("hanging open");
     expect(GROK_VIDEO_EDIT_PROMPT_V1).toContain("narrow navy horizontal band");
     expect(GROK_VIDEO_EDIT_PROMPT_V1).not.toBe(GROK_VIDEO_EDIT_PROMPT);
+  });
+});
+
+describe("GROK_VIDEO_EDIT_PROMPT_V4C_FULL_LOOK (constraints first)", () => {
+  it("is the exact runtime text that won 4/4 on the v5 hook slots", () => {
+    expect(GROK_VIDEO_EDIT_PROMPT_V4C_FULL_LOOK).toBe(
+      "THE JACKET IS ZIPPED CLOSED. Its collar STANDS UP. Its sleeves are PLAIN on the outside. Follow the reference photos exactly. " +
+        GROK_VIDEO_EDIT_PROMPT_V4B_FULL_LOOK,
+    );
+  });
+  it("puts every constraint before the body and keeps the body intact", () => {
+    for (const c of GROK_VIDEO_EDIT_V4C_CONSTRAINTS) {
+      expect(GROK_VIDEO_EDIT_PROMPT_V4C_FULL_LOOK.indexOf(c)).toBeLessThan(
+        GROK_VIDEO_EDIT_PROMPT_V4C_FULL_LOOK.indexOf(GROK_VIDEO_EDIT_PROMPT_V4B_FULL_LOOK),
+      );
+    }
+    expect(composeConstraintsFirst([], "body")).toBe("body");
+    expect(composeConstraintsFirst(["A.", " b "], "body")).toBe("A. b. Follow the reference photos exactly. body");
   });
 });

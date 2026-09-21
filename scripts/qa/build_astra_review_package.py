@@ -77,6 +77,25 @@ SCHEMA_SEQ = {"name": "astra_sequence_review", "schema": {"type": "object", "add
 
 ROLE = """You are Astra, the visual-QA reviewer for AVT (an AI music-video tool). You are NOT the creative director: the Treatment and ShotSpecs are the creative intent and {authority} is final authority. Your job is to compare WHAT WAS REQUESTED against WHAT IS ACTUALLY VISIBLE in the rendered draft, shot by shot and over time, and to report defects that route to the production subsystem that can fix them. Do not invent a different video. Do not soften findings. Cite draft timecodes and frame labels as evidence for every claim. If you cannot tell, say UNCERTAIN with low confidence rather than guessing. The frames are consecutive samples of one continuous video: reason about motion, stability, flicker and continuity across them, not only about single images."""
 
+# What sampled silent frames CAN and CANNOT establish. Kept as data next to ROLE so a future
+# reviewer with audio / native-rate input can drop the clause without touching the questions.
+UNOBSERVABLE = [
+    "musical timing, downbeat landing and beat alignment of any cut, flash, strobe or hard out",
+    "audio / lip / gesture synchronization after inserts",
+    "one-native-frame precision of cut boundaries (labels are computed from the assembler, not observed)",
+    "sub-sample motion: flicker, strobe cadence, glitch duration, fabric shimmer between sampled frames",
+    "native-resolution sharpness vs the source (frames are downscaled samples)",
+]
+EVIDENCE_BOUNDARY = (
+    "\nEVIDENCE BOUNDARY: you are reviewing SILENT, SAMPLED frames of the draft, not the native-rate video with audio. "
+    "You CAN establish what is visible in and across the sampled frames (wardrobe, identity, environment, matte edges, "
+    "composition, continuity at sampled instants, presence/absence of an effect state). You CANNOT establish, and must not "
+    "certify or fail: " + "; ".join(UNOBSERVABLE) + ". For any such property answer exactly 'UNVERIFIABLE FROM SAMPLES' "
+    "with confidence no higher than 0.3, say what native-media check would settle it, and — if you must file it as a defect — "
+    "use severity 'note', recommended_owner 'sync' (timing/audio) or 'edit_fx' (cadence/duration) and start the description "
+    "with 'UNVERIFIABLE FROM SAMPLES:'. Those items are routed to deterministic native-media QA or to {authority}, never repaired on your word alone."
+)
+
 def expected_text(s, offset):
     t0, t1 = s["timeline"]["start"], s["timeline"]["end"]
     d0, d1 = t0 - offset, t1 - offset
@@ -123,6 +142,11 @@ def main():
     common = (f"{ROLE.format(authority=authority)}\n\nDRAFT: {a.draft_id} — song {asm['sectionSong'][0]:.3f}-{asm['sectionSong'][1]:.3f}s, {asm['expectedSeconds']:.2f}s, draft t=0 is song {offset:.3f}s. Treatment version {a.treatment_version}.\n"
               f"CREATIVE DIRECTION: {direction}. {artist}'s REAL performance is the visual spine; AI changes wardrobe ({brand} garments actually on the performer), environment, lighting, FX and B-roll — it must not replace the performer.\n"
               f"LOOKS:\n{looks_txt}\n\nSHOTSPECS (expected, one per line):\n{treatment_lines}\n\nASSEMBLED TIMELINE (what was actually placed):\n{manifest_txt}\n")
+    # Epistemic boundary (ChatGPT ruling 2026-09-21 §7): the material is SILENT, SAMPLED frames.
+    # Properties that need audio or native-rate motion are declared out of scope here so the
+    # reviewer is never pressured into a verdict its evidence cannot support; they route to
+    # native-media QA (scripts/edit/assemble_section.py timeline + audio checks) or to the authority.
+    common += EVIDENCE_BOUNDARY.format(authority=authority)
     if a.prev_review:
         prev = json.load(open(a.prev_review))
         prev_lines = "\n".join(f"- {d['defect_id']} [{d['severity']}/{d['recommended_owner']}] draft {fmt(d['time_range'][0])}-{fmt(d['time_range'][1])}: {d['description'][:220]}" for d in prev["sequence_defects"])
@@ -163,7 +187,7 @@ def main():
             if not grab(a.draft, t, p): continue
             ts = snap(t); cut_frame = int(round(tc * DRAFT_FPS)) / DRAFT_FPS  # the assembler cuts on round(t*fps)
             frames.append({"label": f"draft t={fmt(ts)} — cut {shots[i-1]['id']}→{shots[i]['id']} at {fmt(cut_frame)} ({'before' if ts < cut_frame - 1e-6 else 'after'})", "file": p})
-    instr = common + ("\nTASK (LEVEL 2 — TRANSITION / EDIT REVIEW). For every cut (6 frames at 12 fps around each): does the transition described in the treatment actually happen (cut / flash / glitch / white-out); does the cut feel intentional and land musically on the downbeat; do wardrobe and environment continuity make sense (Look 2 pre-hook → Look 1 from the drop at S06); are there accidental visual jumps; does B-roll return cleanly to synchronized performance; do transitions expose broken mattes, malformed frames or identity discontinuities; does each effect improve the sequence or merely look generated?")
+    instr = common + ("\nTASK (LEVEL 2 — TRANSITION / EDIT REVIEW). For every cut (6 frames at 12 fps around each): does the transition described in the treatment actually happen (cut / flash / glitch / white-out); does the cut happen on the labelled cut frame and feel intentional (musical landing is UNVERIFIABLE FROM SAMPLES — do not judge it); do wardrobe and environment continuity make sense (Look 2 pre-hook → Look 1 from the drop at S06); are there accidental visual jumps; does B-roll return cleanly to synchronized performance; do transitions expose broken mattes, malformed frames or identity discontinuities; does each effect improve the sequence or merely look generated?")
     parts.append({"partId": "transitions", "instructions": instr, "frames": frames, "references": refs[:2], "jsonSchema": SCHEMA_TRANS, "level": 2})
 
     # ---- Level 3: whole sequence ----
@@ -189,8 +213,8 @@ def main():
         f"8. Does the environment composite convincingly eliminate {source_env}?",
         "9. Do matte/composite boundaries remain believable during movement?",
         "10. Does B-roll feel intentional and compatible with the treatment?",
-        "11. Do transitions work musically and visually?",
-        "12. Does the edit return correctly to synchronized performance after B-roll/FX?",
+        "11. Do transitions work visually at the sampled instants? (Musical landing is UNVERIFIABLE FROM SAMPLES — say so rather than judge it.)",
+        "12. Does the edit visibly return to the performer in the intended slots after B-roll/FX? (Exact synchronization is UNVERIFIABLE FROM SAMPLES.)",
         "13. Does every shot substantially conform to its ShotSpec?",
         f"14. Does the complete sequence resemble the intended treatment ({direction})?",
         f"15. MOST IMPORTANT: does this look like a REAL {artist} music video enhanced by AVT, or like AI content built around {artist}'s song? No vague praise — support with timecoded evidence.",

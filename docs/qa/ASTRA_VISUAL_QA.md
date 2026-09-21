@@ -33,16 +33,20 @@ Every part carries the full intent package as text (treatment direction, looks, 
 |---|---|---|
 | wrong wardrobe / garment not on body | `wardrobe_generation` | grok-video-edit lane / hero frame |
 | garment morphing, flicker | `temporal_propagation` | temporal repair |
-| logo / wordmark | `brand_repair` | deterministic branding repair |
+| logo / wordmark | `brand_repair` | `scripts/edit/garment_graphic_track.py` — canonical graphic tracked on the garment plane (deterministic, occlusion-aware) |
 | identity drift | `identity` | identity anchors / generation / compositing |
 | closet still visible | `environment` | `scripts/edit/composite_environment.py` |
-| bad mask edge | `compositing_mask` | segmentation / compositing |
-| bad transition | `edit_fx` | `scripts/edit/ysl_section_fx.py` / assembler |
+| bad mask edge | `compositing_mask` | `scripts/edit/composite_environment.py` (`--refine shadow`: known-background unmixing + structure test) |
+| bad transition | `edit_fx` | `scripts/edit/render_broll_slots.py` (recorded recipe) / assembler |
 | wrong source moment | `source_range` | timeline / source-range mapping |
-| lips out of sync | `sync` | `performance_syncs` |
+| lips out of sync | `sync` | `performance_syncs` — and anything Astra marks `UNVERIFIABLE FROM SAMPLES` goes to native-media QA / Fendi, never to a repair lane |
 | B-roll off-treatment | `broll` | B-roll production |
 | soft / low-res | `export_quality` | reconstruction / upscale / export |
 | needs a treatment decision | `treatment` | **Fendi** |
+
+## Evidence boundary (ruling 2026-09-21 §7)
+
+The material is silent, sampled frames. The package builder tells Astra what that can and cannot establish (`UNOBSERVABLE` list in `build_astra_review_package.py`): musical timing and downbeat landing, audio/lip sync, one-native-frame cut precision, sub-sample motion (flicker, strobe cadence, glitch duration), native-resolution sharpness. For those Astra answers `UNVERIFIABLE FROM SAMPLES` with confidence ≤ 0.3 and names the native-media check that would settle it; if filed as a defect it is a `note` owned by `sync`/`edit_fx` with that prefix, and the aggregator lists it under `_native_media_qa_required` instead of routing it to a repair lane. Do not weaken this to get a cleaner verdict.
 
 ## Escalation (no infinite loop)
 
