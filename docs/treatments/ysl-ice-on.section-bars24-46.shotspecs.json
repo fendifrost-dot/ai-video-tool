@@ -2,7 +2,7 @@
   "version": 1,
   "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
   "section": {
-    "name": "bars 24–46 (pre-hook + hook block)",
+    "name": "bars 24\u201346 (pre-hook + hook block)",
     "songRange": {
       "start": 47.2131,
       "end": 90.4918
@@ -14,6 +14,13 @@
     "bpm": 122,
     "barSeconds": 1.9672131147540983
   },
+  "treatment": {
+    "artistName": "Fendi",
+    "authority": "Fendi",
+    "brand": "YSL / Saint Laurent",
+    "creativeDirection": "luxury runway fashion film x designer commercial x high-energy contemporary rap video",
+    "sourceEnvironment": "the original closet (white door, shelves, hanging clothes)"
+  },
   "sync": {
     "offsetSeconds": 0.8538,
     "driftPpm": -0.3,
@@ -23,13 +30,13 @@
   "looks": {
     "look1": {
       "id": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
-      "name": "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe",
-      "bars": "32–46 (hook)"
+      "name": "Saint Laurent Track Jacket \u2014 Mastic Cotton Navy Stripe",
+      "bars": "32\u201346 (hook)"
     },
     "look2": {
       "id": "f6455042-faec-4a07-b6a2-cb0525a69c65",
-      "name": "YSL Trucker Jacket — French Black Denim",
-      "bars": "24–32 (pre-hook)"
+      "name": "YSL Trucker Jacket \u2014 French Black Denim",
+      "bars": "24\u201332 (pre-hook)"
     }
   },
   "totals": {
@@ -42,7 +49,7 @@
       "id": "S01",
       "title": "Pre-hook open",
       "order": 0,
-      "purpose": "Cut in on the downbeat of bar 24 with the real performance in Look 2 — establishes Fendi in the transformed room.",
+      "purpose": "Cut in on the downbeat of bar 24 with the real performance in Look 2 \u2014 establishes Fendi in the transformed room.",
       "kind": "performance",
       "shotType": "performance",
       "priority": "hero",
@@ -58,10 +65,10 @@
           "start": 46.3593,
           "end": 50.2937
         },
-        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song \u2212 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
       },
       "wardrobe": {
-        "name": "YSL Trucker Jacket — French Black Denim",
+        "name": "YSL Trucker Jacket \u2014 French Black Denim",
         "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
         "lookId": "f6455042-faec-4a07-b6a2-cb0525a69c65",
         "references": [
@@ -95,7 +102,7 @@
         "description": "single hard key camera-left, cold rim, black falloff",
         "references": []
       },
-      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "performanceDirection": "Fendi's real take \u2014 no re-performance, no synthetic performer.",
       "fx": [],
       "transitionIn": {
         "type": "cut",
@@ -115,7 +122,7 @@
         "required": true,
         "engine": "grok",
         "model": "grok-imagine-video (xAI /v1/videos/edits)",
-        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) \u2014 src/lib/heroFrame/grokVideoEditPrompt.ts",
         "negativePrompt": "",
         "seed": null,
         "parameters": {
@@ -187,7 +194,7 @@
     {
       "version": 1,
       "id": "S02",
-      "title": "Fashion insert — zip & wordmark",
+      "title": "Fashion insert \u2014 zip & wordmark",
       "order": 1,
       "purpose": "Reinforce the fashion language on the verse: a product-true macro of the jacket hardware, one bar, on the beat.",
       "kind": "generated",
@@ -211,7 +218,7 @@
         "references": []
       },
       "environment": {
-        "description": "cold room / ice motif — matches the performance world",
+        "description": "cold room / ice motif \u2014 matches the performance world",
         "location": "cold room",
         "timeOfDay": "night",
         "references": []
@@ -251,7 +258,7 @@
       "generation": {
         "required": true,
         "engine": "grok",
-        "model": "Grok Imagine (browser, consumer plan) — image → video",
+        "model": "Grok Imagine (browser, consumer plan) \u2014 image \u2192 video",
         "prompt": "Extreme close-up macro of a black denim jacket's silver rivet and YSL Cassandre stitching, single hard light, cold room, slow push, 9:16",
         "negativePrompt": "",
         "seed": null,
@@ -301,7 +308,7 @@
       "id": "S03",
       "title": "Pre-hook build",
       "order": 2,
-      "purpose": "The rapid-fire bars; his pointing/arm-up gestures at song 54–55 s carry the energy.",
+      "purpose": "The rapid-fire bars; his pointing/arm-up gestures at song 54\u201355 s carry the energy.",
       "kind": "performance",
       "shotType": "performance",
       "priority": "hero",
@@ -317,10 +324,10 @@
           "start": 52.261,
           "end": 58.1626
         },
-        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song \u2212 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
       },
       "wardrobe": {
-        "name": "YSL Trucker Jacket — French Black Denim",
+        "name": "YSL Trucker Jacket \u2014 French Black Denim",
         "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
         "lookId": "f6455042-faec-4a07-b6a2-cb0525a69c65",
         "references": [
@@ -354,7 +361,7 @@
         "description": "single hard key camera-left, cold rim, black falloff",
         "references": []
       },
-      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "performanceDirection": "Fendi's real take \u2014 no re-performance, no synthetic performer.",
       "fx": [],
       "transitionIn": {
         "type": "cut",
@@ -374,7 +381,7 @@
         "required": true,
         "engine": "grok",
         "model": "grok-imagine-video (xAI /v1/videos/edits)",
-        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) \u2014 src/lib/heroFrame/grokVideoEditPrompt.ts",
         "negativePrompt": "",
         "seed": null,
         "parameters": {
@@ -464,10 +471,10 @@
           "start": 58.1626,
           "end": 61.1134
         },
-        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song \u2212 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
       },
       "wardrobe": {
-        "name": "YSL Trucker Jacket — French Black Denim",
+        "name": "YSL Trucker Jacket \u2014 French Black Denim",
         "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
         "lookId": "f6455042-faec-4a07-b6a2-cb0525a69c65",
         "references": [
@@ -494,14 +501,14 @@
       },
       "cameraMotion": {
         "type": "static",
-        "description": "locked off, 1.25× crop"
+        "description": "locked off, 1.25\u00d7 crop"
       },
       "lighting": {
         "style": "",
         "description": "single hard key camera-left, cold rim, black falloff",
         "references": []
       },
-      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "performanceDirection": "Fendi's real take \u2014 no re-performance, no synthetic performer.",
       "fx": [],
       "transitionIn": {
         "type": "cut",
@@ -521,7 +528,7 @@
         "required": true,
         "engine": "grok",
         "model": "grok-imagine-video (xAI /v1/videos/edits)",
-        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) \u2014 src/lib/heroFrame/grokVideoEditPrompt.ts",
         "negativePrompt": "",
         "seed": null,
         "parameters": {
@@ -617,7 +624,7 @@
         "references": []
       },
       "environment": {
-        "description": "cold room / ice motif — matches the performance world",
+        "description": "cold room / ice motif \u2014 matches the performance world",
         "location": "cold room",
         "timeOfDay": "night",
         "references": []
@@ -663,7 +670,7 @@
       "generation": {
         "required": true,
         "engine": "grok",
-        "model": "Grok Imagine (browser, consumer plan) — image → video",
+        "model": "Grok Imagine (browser, consumer plan) \u2014 image \u2192 video",
         "prompt": "Diamond facets refracting a hard white light, flare blooms to white, black background, 9:16, one second",
         "negativePrompt": "",
         "seed": null,
@@ -711,7 +718,7 @@
     {
       "version": 1,
       "id": "S06",
-      "title": "Hook drop — Look 1",
+      "title": "Hook drop \u2014 Look 1",
       "order": 5,
       "purpose": "The drop: wardrobe changes to the Saint Laurent track jacket as the hook lands; the room hardens.",
       "kind": "performance",
@@ -729,10 +736,10 @@
           "start": 62.097,
           "end": 67.9987
         },
-        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song \u2212 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
       },
       "wardrobe": {
-        "name": "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe",
+        "name": "Saint Laurent Track Jacket \u2014 Mastic Cotton Navy Stripe",
         "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
         "lookId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
         "references": [
@@ -766,7 +773,7 @@
         "description": "single hard key camera-left, cold rim, black falloff",
         "references": []
       },
-      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "performanceDirection": "Fendi's real take \u2014 no re-performance, no synthetic performer.",
       "fx": [],
       "transitionIn": {
         "type": "flash",
@@ -786,7 +793,7 @@
         "required": true,
         "engine": "grok",
         "model": "grok-imagine-video (xAI /v1/videos/edits)",
-        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) \u2014 src/lib/heroFrame/grokVideoEditPrompt.ts",
         "negativePrompt": "",
         "seed": null,
         "parameters": {
@@ -882,7 +889,7 @@
         "references": []
       },
       "environment": {
-        "description": "cold room / ice motif — matches the performance world",
+        "description": "cold room / ice motif \u2014 matches the performance world",
         "location": "cold room",
         "timeOfDay": "night",
         "references": []
@@ -922,7 +929,7 @@
       "generation": {
         "required": true,
         "engine": "grok",
-        "model": "Grok Imagine (browser, consumer plan) — image → video",
+        "model": "Grok Imagine (browser, consumer plan) \u2014 image \u2192 video",
         "prompt": "Night city street at speed through a car window, wet asphalt reflecting blue-white lights, luxury car interior edge, 9:16",
         "negativePrompt": "",
         "seed": null,
@@ -988,10 +995,10 @@
           "start": 69.9659,
           "end": 75.8675
         },
-        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song \u2212 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
       },
       "wardrobe": {
-        "name": "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe",
+        "name": "Saint Laurent Track Jacket \u2014 Mastic Cotton Navy Stripe",
         "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
         "lookId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
         "references": [
@@ -1025,7 +1032,7 @@
         "description": "single hard key camera-left, cold rim, black falloff",
         "references": []
       },
-      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "performanceDirection": "Fendi's real take \u2014 no re-performance, no synthetic performer.",
       "fx": [],
       "transitionIn": {
         "type": "cut",
@@ -1045,7 +1052,7 @@
         "required": true,
         "engine": "grok",
         "model": "grok-imagine-video (xAI /v1/videos/edits)",
-        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) \u2014 src/lib/heroFrame/grokVideoEditPrompt.ts",
         "negativePrompt": "",
         "seed": null,
         "parameters": {
@@ -1117,9 +1124,9 @@
     {
       "version": 1,
       "id": "S09",
-      "title": "Hook — crossed arms",
+      "title": "Hook \u2014 crossed arms",
       "order": 8,
-      "purpose": "Crossed arms on the hook line, Look 1 (own cut + edit, master 75.868–77.835).",
+      "purpose": "Crossed arms on the hook line, Look 1 (own cut + edit, master 75.868\u201377.835).",
       "kind": "performance",
       "shotType": "performance",
       "priority": "hero",
@@ -1135,10 +1142,10 @@
           "start": 75.8675,
           "end": 77.8347
         },
-        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song \u2212 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
       },
       "wardrobe": {
-        "name": "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe",
+        "name": "Saint Laurent Track Jacket \u2014 Mastic Cotton Navy Stripe",
         "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
         "lookId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
         "references": [
@@ -1172,7 +1179,7 @@
         "description": "single hard key camera-left, cold rim, black falloff",
         "references": []
       },
-      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "performanceDirection": "Fendi's real take \u2014 no re-performance, no synthetic performer.",
       "fx": [],
       "transitionIn": {
         "type": "cut",
@@ -1192,7 +1199,7 @@
         "required": true,
         "engine": "grok",
         "model": "grok-imagine-video (xAI /v1/videos/edits)",
-        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) \u2014 src/lib/heroFrame/grokVideoEditPrompt.ts",
         "negativePrompt": "",
         "seed": null,
         "parameters": {
@@ -1266,7 +1273,7 @@
       "id": "S10",
       "title": "Mirror strobe",
       "order": 9,
-      "purpose": "FX beat: the mirror panels multiply and strobe for one bar — visual escalation before the last two hook repeats.",
+      "purpose": "FX beat: the mirror panels multiply and strobe for one bar \u2014 visual escalation before the last two hook repeats.",
       "kind": "generated",
       "shotType": "b_roll",
       "priority": "high",
@@ -1288,7 +1295,7 @@
         "references": []
       },
       "environment": {
-        "description": "cold room / ice motif — matches the performance world",
+        "description": "cold room / ice motif \u2014 matches the performance world",
         "location": "cold room",
         "timeOfDay": "night",
         "references": []
@@ -1334,7 +1341,7 @@
       "generation": {
         "required": true,
         "engine": "grok",
-        "model": "Grok Imagine (browser, consumer plan) — image → video",
+        "model": "Grok Imagine (browser, consumer plan) \u2014 image \u2192 video",
         "prompt": "Infinity mirror corridor, blue-white strobe, diamond glints, black, 9:16, two seconds",
         "negativePrompt": "",
         "seed": null,
@@ -1400,10 +1407,10 @@
           "start": 79.8019,
           "end": 85.7036
         },
-        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song \u2212 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
       },
       "wardrobe": {
-        "name": "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe",
+        "name": "Saint Laurent Track Jacket \u2014 Mastic Cotton Navy Stripe",
         "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
         "lookId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
         "references": [
@@ -1437,7 +1444,7 @@
         "description": "single hard key camera-left, cold rim, black falloff",
         "references": []
       },
-      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "performanceDirection": "Fendi's real take \u2014 no re-performance, no synthetic performer.",
       "fx": [],
       "transitionIn": {
         "type": "glitch",
@@ -1457,7 +1464,7 @@
         "required": true,
         "engine": "grok",
         "model": "grok-imagine-video (xAI /v1/videos/edits)",
-        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) \u2014 src/lib/heroFrame/grokVideoEditPrompt.ts",
         "negativePrompt": "",
         "seed": null,
         "parameters": {
@@ -1547,10 +1554,10 @@
           "start": 85.7036,
           "end": 89.638
         },
-        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song − 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
+        "note": "Master range on 70304981-d375-47a9-81df-aa062c62c6ec (song \u2212 0.8538 s). Cut with +0.5 s handles for the video edit; audio sync source 55bdc383-50e7-41b8-9ec9-8bda031ac5e0."
       },
       "wardrobe": {
-        "name": "Saint Laurent Track Jacket — Mastic Cotton Navy Stripe",
+        "name": "Saint Laurent Track Jacket \u2014 Mastic Cotton Navy Stripe",
         "description": "Placed ON Fendi's real performance via the AVT wardrobe lane (xAI video edit with garment references), then QA'd against the product photos.",
         "lookId": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
         "references": [
@@ -1584,7 +1591,7 @@
         "description": "single hard key camera-left, cold rim, black falloff",
         "references": []
       },
-      "performanceDirection": "Fendi's real take — no re-performance, no synthetic performer.",
+      "performanceDirection": "Fendi's real take \u2014 no re-performance, no synthetic performer.",
       "fx": [],
       "transitionIn": {
         "type": "cut",
@@ -1604,7 +1611,7 @@
         "required": true,
         "engine": "grok",
         "model": "grok-imagine-video (xAI /v1/videos/edits)",
-        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) — src/lib/heroFrame/grokVideoEditPrompt.ts",
+        "prompt": "AVT wardrobe lane prompt (V3 factual corrections) \u2014 src/lib/heroFrame/grokVideoEditPrompt.ts",
         "negativePrompt": "",
         "seed": null,
         "parameters": {
