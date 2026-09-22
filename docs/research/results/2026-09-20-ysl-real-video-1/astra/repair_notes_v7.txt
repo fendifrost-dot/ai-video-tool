@@ -1,0 +1,8 @@
+Since v5 (the revision you reviewed) these MECHANISMS changed; judge them from the frames only:
+1. canonical_look — every wardrobe edit is now conditioned on ONE approved Look-on-artist frame (the Look's outfit sheet): hook shots S06/S08/S09/S11/S12 on the same anchor, pre-hook S01/S03/S04 on another. Claim: one garment realisation per Look across cuts (same construction, colours, closure, collar, stripe placement) instead of one approximation per shot.
+2. construction — zip closed, stand collar, plain outer sleeves, single chest band; claimed consistent across the hook shots.
+3. wordmark — a deterministic tracked graphic replaces the generator's lettering on the chest band in S06/S08/S09/S11/S12; stray extra glyphs the generator drew next to the band were erased. Claim: same wordmark, same size, same position on every hook shot; no duplicate lettering.
+4. temporal_garment — flow-compensated garment residual measured natively is 2.7–4.1 (8-bit mean) per shot; claim: no visible construction flicker within a shot.
+5. matte — shadow-aware refinement of the person matte on every composite; claim: no halo or peeled shadow at the body edge, trousers not eaten.
+6. S09_repair — S09 (crossed arms) re-rolled: previous roll had a stripe running down the OUTER upper arm from the shoulder; the new roll has plain upper arms, zip closed, stand collar. PREVIOUS-draft frames of S09 are included at the same instants.
+Known and NOT repaired (do not spend words on them): pre-hook plate aesthetics; musical timing (unverifiable from samples).

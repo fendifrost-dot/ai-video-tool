@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "draft_id": "YSL_IceOn_bars24-46_v8",
+  "project_id": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+  "treatment_version": "v6-canonical-look",
+  "reviewer": "gpt-6-astra",
+  "review_timestamp": "2026-09-22T02:01:54.372Z",
+  "watched_video": false,
+  "overall": null,
+  "shots": [],
+  "transitions": [],
+  "sequence_defects": [
+    {
+      "severity": "major",
+      "shot_id": "S01",
+      "recommended_owner": "wardrobe_generation",
+      "category": "wardrobe",
+      "description": "PRESENT, chiefly in S01: smooth, near-coated panels and chalk-bright seam outlines still depart from the approved worn black-denim surface.",
+      "defect_id": "SEQ-LOOK2-PRODUCT-TRUTH",
+      "evidence": "THIS S01 0:00.625 shows broad smooth highlights across the sleeves and front; THIS S01 0:03.250 retains conspicuously pale construction outlines. The approved pre-hook anchor has more subdued, irregular denim wear.",
+      "requires_treatment_change": false,
+      "time_range": [
+        0.0,
+        3.934
+      ],
+      "recommended_action": "Recondition S01 on the approved worn-denim material, preserving its tonal variation without converting seams into bright graphic outlines.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": "S01",
+      "recommended_owner": "wardrobe_generation",
+      "category": "wardrobe",
+      "description": "PRESENT: oversized-looking white hardware and exaggerated pocket-flap edging continue to dominate the jacket rather than reading as worn metal and denim detailing.",
+      "defect_id": "LOOK2-PRODUCT-TRUTH",
+      "evidence": "THIS S01 0:01.958 exposes bright circular fasteners and heavily outlined pocket flaps. THIS S01 0:03.250 maintains that treatment; THIS S03 0:06.875 instead shows smaller-looking, more subdued hardware.",
+      "requires_treatment_change": false,
+      "time_range": [
+        0.0,
+        14.754
+      ],
+      "recommended_action": "Match button proportions, metallic appearance and pocket detailing to the approved performer anchor before propagating the corrected garment.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "temporal_propagation",
+      "category": "continuity",
+      "description": "PRESENT: the pre-hook cuts still exchange jacket length, surface treatment and hardware proportions instead of preserving a single Look 2 asset.",
+      "defect_id": "LOOK2-CUT-CONSTRUCTION-DRIFT",
+      "evidence": "THIS S01 0:03.250 has a longer smooth front and bright buttons. THIS S03 0:06.875 changes to a shorter, washed-looking body; THIS S04 0:13.250 retains the worn realization rather than S01\u2019s construction.",
+      "requires_treatment_change": false,
+      "time_range": [
+        3.167,
+        14.754
+      ],
+      "recommended_action": "Carry one approved denim construction across S01, S03 and S04, maintaining garment landmarks independently of pose and the specified crop.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "wardrobe_generation",
+      "category": "wardrobe",
+      "description": "PRESENT: collar facing, collar height and shirt-cuff exposure remain incompatible versions of the hook outfit. Merely seeing a shirt collar or tie knot is not the defect.",
+      "defect_id": "HOOK-LOOK1-GARMENT-TRUTH",
+      "evidence": "THIS S06 0:18.667 has a large navy-faced collar. THIS S08 0:24.583 substitutes a short mastic collar. THIS S11 0:38.333 adds extensive striped shirt cuffs, unlike the approved hook anchor.",
+      "requires_treatment_change": false,
+      "time_range": [
+        15.738,
+        39.344
+      ],
+      "recommended_action": "Unify collar geometry, facing material and cuff layering against the approved performer reference without suppressing its intentional neck styling.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "wardrobe_generation",
+      "category": "wardrobe",
+      "description": "PRESENT: body length, waistband definition and pocket treatment still resolve into multiple beige/navy jackets rather than one product-consistent hook garment.",
+      "defect_id": "SEQ-LOOK1-PRODUCT-TRUTH",
+      "evidence": "THIS S06 0:18.667 has a fitted waistband and low pocket details. THIS S09 0:29.833 presents a longer plain lower body. THIS S12 0:42.583 returns to a defined waistband with prominent angled pocket treatment.",
+      "requires_treatment_change": false,
+      "time_range": [
+        15.738,
+        43.279
+      ],
+      "recommended_action": "Lock the anchor\u2019s torso proportions, waistband dimensions and pocket construction across every hook garment asset.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "temporal_propagation",
+      "category": "continuity",
+      "description": "PRESENT: the city cutaway still separates two visibly different jacket realizations, producing an unauthorized wardrobe reset.",
+      "defect_id": "S06-S08-GARMENT-RESET",
+      "evidence": "THIS S06 0:20.625 ends with a tall dark-faced collar and closed waistband over trousers. THIS S08 0:24.583 returns with a much shorter collar and exposed striped shirt hem.",
+      "requires_treatment_change": false,
+      "time_range": [
+        20.625,
+        24.773
+      ],
+      "recommended_action": "Condition S08 from the approved S06-consistent garment state, preserving neck, hem and layering landmarks across the intervening insert.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": "S08",
+      "recommended_owner": "wardrobe_generation",
+      "category": "wardrobe",
+      "description": "PRESENT with narrowed scope: S08\u2019s lower fronts separate above visible striped shirt tails. This is a lower-closure mismatch, not an objection to the permitted collar and tie exposure.",
+      "defect_id": "LOOK1-CONSTRUCTION-MISMATCH",
+      "evidence": "THIS S08 0:24.583 already exposes shirt below the jacket. THIS S08 0:26.542 shows separated lower edges; THIS S08 0:28.500 makes the central split particularly clear, unlike the anchor\u2019s closed lower front.",
+      "requires_treatment_change": false,
+      "time_range": [
+        23.607,
+        29.508
+      ],
+      "recommended_action": "Restore the anchor\u2019s joined lower zipper, continuous hem and contained shirt while retaining the approved open-top standing collar.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": "S08",
+      "recommended_owner": "temporal_propagation",
+      "category": "continuity",
+      "description": "PRESENT: S08 does not preserve its initially defined lower waistband as the performer changes pose.",
+      "defect_id": "S08-HEM-CONSTRUCTION-DRIFT",
+      "evidence": "THIS S08 0:24.583 shows a distinct horizontal waistband boundary. In THIS S08 0:26.542 that structure becomes poorly defined; THIS S08 0:28.500 instead presents long, separated plain lower panels.",
+      "requires_treatment_change": false,
+      "time_range": [
+        24.583,
+        29.508
+      ],
+      "recommended_action": "Propagate a fixed waistband and lower-zip topology through S08 while allowing only pose-driven folds and perspective changes.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "temporal_propagation",
+      "category": "continuity",
+      "description": "PRESENT: late-hook cuts continue changing tie pattern and cuff layering without a specified outfit change.",
+      "defect_id": "HOOK-GARMENT-RESET",
+      "evidence": "THIS S09 0:30.458 has densely striped neckwear and covered wrists. THIS S11 0:34.417 switches to broad diagonal tie stripes and exposed shirt cuffs. THIS S12 0:41.292 restores finer striping and jacket-covered wrists.",
+      "requires_treatment_change": false,
+      "time_range": [
+        29.508,
+        43.279
+      ],
+      "recommended_action": "Maintain the same shirt, tie pattern and sleeve-layer lengths across S09, S11 and S12 using shared garment-coordinate references.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": "S11",
+      "recommended_owner": "temporal_propagation",
+      "category": "wardrobe",
+      "description": "PRESENT, changed manifestation: the restored wearer-right band is interrupted by beige gaps at a sampled pose, so a coherent complete chest stripe is still not achieved.",
+      "defect_id": "S11-CHEST-BAND-INCOMPLETE",
+      "evidence": "THIS S11 0:34.417 supplies the formerly absent half, but THIS S11 0:36.375 divides it into disconnected dark pieces. THIS S11 0:38.333 returns to a straight strip, demonstrating inconsistent sampled attachment to the garment.",
+      "requires_treatment_change": false,
+      "time_range": [
+        33.443,
+        39.344
+      ],
+      "recommended_action": "Replace the current track with a garment-surface deformation solve that maintains continuous band boundaries and alignment with the existing half through changing poses.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": "S11",
+      "recommended_owner": "compositing_mask",
+      "category": "artifact",
+      "description": "NEW: the replacement strip crosses the foreground tie and spills beyond its intended chest region, exposing the repair as an incorrectly layered graphic.",
+      "defect_id": "S11-BAND-PATCH-OCCLUSION",
+      "evidence": "THIS S11 0:38.333 adds a horizontal strip over tie detail visible in PREVIOUS S11 0:38.333. THIS S11 0:36.375 also carries the patch leftward beyond the proper torso area.",
+      "requires_treatment_change": false,
+      "time_range": [
+        33.443,
+        39.344
+      ],
+      "recommended_action": "Clip the band to the jacket surface, restore tie and neckline foreground holdouts, and preserve zipper separation rather than bridging exposed neckwear.",
+      "song_range": null
+    }
+  ],
+  "answers": {},
+  "final_verdict": "REPAIR_REQUIRED",
+  "escalate_to_fendi": [],
+  "targeted": true,
+  "mechanisms": [
+    {
+      "evidence": "THIS S09 0:29.833 matches PREVIOUS S09 0:29.833: plain upper arms, joined torso fronts, standing collar and exposed tie. THIS S09 0:31.125 preserves that construction. The neckline is acceptable under the clarified anchor, not a visible repair.",
+      "mechanism_id": "S09_repair",
+      "defect_ids": [],
+      "confidence": 0.98,
+      "verdict": "UNCHANGED"
+    },
+    {
+      "evidence": "THIS S11 0:36.375 breaks the added half into displaced pieces. THIS S11 0:38.333 places the strip across the exposed tie, unlike PREVIOUS S11 0:38.333. Coverage increases, but registration and foreground occlusion introduce major artifacts.",
+      "mechanism_id": "S11_band",
+      "defect_ids": [
+        "S11-CHEST-BAND-INCOMPLETE",
+        "S11-BAND-PATCH-OCCLUSION"
+      ],
+      "confidence": 0.99,
+      "verdict": "REGRESSED"
+    },
+    {
+      "evidence": "PREVIOUS S12 0:41.292 contains yellow lettering above the band; THIS S12 0:41.292 removes it while retaining the in-band mark. THIS S12 0:42.583 also has no duplicate. All supplied current chest samples pass this removal check.",
+      "mechanism_id": "S12_duplicate_lettering",
+      "defect_ids": [],
+      "confidence": 0.99,
+      "verdict": "IMPROVED"
+    },
+    {
+      "evidence": "THIS S09 0:31.125 has acceptable neck exposure and joined fronts. However, THIS S06 0:20.625 and THIS S08 0:28.500 retain different collar constructions; S08 additionally has separated lower fronts and shirt tails. Clarified neckline truth does not clear these discrepancies.",
+      "mechanism_id": "construction",
+      "defect_ids": [
+        "LOOK1-CONSTRUCTION-MISMATCH",
+        "HOOK-LOOK1-GARMENT-TRUTH",
+        "SEQ-LOOK1-PRODUCT-TRUTH"
+      ],
+      "confidence": 0.96,
+      "verdict": "UNCHANGED"
+    },
+    {
+      "evidence": "THIS S01 0:03.250 has smooth, brightly outlined denim; THIS S03 0:06.875 switches to a shorter, more worn realization. THIS S11 0:38.333 retains long exposed shirt cuffs absent from the hook anchor. Cross-shot canonical garment consistency remains unachieved.",
+      "mechanism_id": "canonical_look",
+      "defect_ids": [
+        "SEQ-LOOK2-PRODUCT-TRUTH",
+        "LOOK2-PRODUCT-TRUTH",
+        "LOOK2-CUT-CONSTRUCTION-DRIFT",
+        "HOOK-LOOK1-GARMENT-TRUTH",
+        "SEQ-LOOK1-PRODUCT-TRUTH",
+        "S06-S08-GARMENT-RESET",
+        "S08-HEM-CONSTRUCTION-DRIFT",
+        "HOOK-GARMENT-RESET"
+      ],
+      "confidence": 0.97,
+      "verdict": "UNCHANGED"
+    },
+    {
+      "evidence": "THIS S11 0:38.333 retains the shoulder remnant already visible in PREVIOUS S11 0:38.333. THIS S12 0:41.292 establishes no additional performer-silhouette failure. No new performer-matte defect is identified; inherited contamination is not cleared, and band-patch masking is assessed separately.",
+      "mechanism_id": "matte",
+      "defect_ids": [],
+      "confidence": 0.89,
+      "verdict": "UNCHANGED"
+    }
+  ],
+  "readiness": {
+    "ready_for_full_review": false,
+    "reason": "Major wardrobe inconsistency persists, including S08\u2019s split lower construction (THIS S08 0:28.500), while the replacement band adds conspicuous integration failures (THIS S11 0:36.375), preventing advancement to full review.",
+    "summary": "Resolved at inspected samples: S12-DUPLICATE-WORDMARK (THIS S12 0:40.000). Withdrawn under clarified neckline truth: S09-CLOSURE-COLLAR-REGRESSION and LOOK1-GARMENT-CONSTRUCTION (THIS S09 0:30.458), not pixel repairs. S11\u2019s band repair introduces registration/occlusion faults (THIS S11 0:36.375); canonical-look defects remain."
+  },
+  "_provenance": {
+    "parts": {
+      "mechanisms": {
+        "responseId": "resp_02ad644cc4cd8663006ab1e047a80c87d2885baabf3904b6f2",
+        "model": "gpt-6-astra",
+        "actualCostUsd": 0.7612,
+        "reviewedAt": "2026-09-22T02:01:54.372Z"
+      }
+    },
+    "totalCostUsd": 0.7612,
+    "usage": {
+      "input_tokens": 31326,
+      "output_tokens": 8959
+    },
+    "note": "aggregated by scripts/qa/aggregate_astra_review.py from the proxy-stored part files"
+  },
+  "_native_media_qa_required": [],
+  "_diff_vs_prev": {
+    "prev_draft_id": "YSL_IceOn_bars24-46_v7",
+    "resolved": [
+      "HOOK-WORDMARK-DRIFT",
+      "LOOK1-GARMENT-CONSTRUCTION",
+      "PERF-MATTE-COVERAGE",
+      "PERF-MATTE-EDGE-HALO",
+      "PERF-SOURCE-BACKGROUND-LEAK",
+      "PREHOOK-MATTE-HALO",
+      "S09-CLOSURE-COLLAR-REGRESSION",
+      "S12-DUPLICATE-WORDMARK",
+      "S12-WORDMARK-SCALE",
+      "SEQ-LOOK1-WORDMARK-TRUTH",
+      "SEQ-ORIGINAL-CLOSET-LEAK"
+    ],
+    "persisting": [
+      "HOOK-GARMENT-RESET",
+      "HOOK-LOOK1-GARMENT-TRUTH",
+      "LOOK1-CONSTRUCTION-MISMATCH",
+      "LOOK2-CUT-CONSTRUCTION-DRIFT",
+      "LOOK2-PRODUCT-TRUTH",
+      "S06-S08-GARMENT-RESET",
+      "S08-HEM-CONSTRUCTION-DRIFT",
+      "S11-CHEST-BAND-INCOMPLETE",
+      "SEQ-LOOK1-PRODUCT-TRUTH",
+      "SEQ-LOOK2-PRODUCT-TRUTH"
+    ],
+    "introduced": [
+      "S11-BAND-PATCH-OCCLUSION"
+    ]
+  }
+}

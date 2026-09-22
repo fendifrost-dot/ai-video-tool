@@ -1,0 +1,22 @@
+{
+  "draftId": "YSL_IceOn_bars24-46_v7",
+  "treatmentVersion": "v6-canonical-look",
+  "draftOffsetSongSeconds": 47.2131,
+  "targeted": true,
+  "mechanisms": [
+    "canonical_look",
+    "construction",
+    "wordmark",
+    "temporal_garment",
+    "matte",
+    "S09_repair"
+  ],
+  "parts": [
+    {
+      "partId": "mechanisms",
+      "level": 4,
+      "frames": 27,
+      "references": 6
+    }
+  ]
+}
