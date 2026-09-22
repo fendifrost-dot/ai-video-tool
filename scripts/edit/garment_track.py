@@ -134,17 +134,27 @@ def reacquire(anchor_gray, cur_gray, quad, approx_H, model="affine", search_px=4
     if H is None or inl.sum() < min_inliers: return None, None, None
     return H, apts[ok][inl].reshape(-1, 1, 2), nxt[ok][inl].reshape(-1, 1, 2)
 
-def track_plane(frames, anchor_idx, quad, min_inliers=8, reseed_below=18, fb_thresh=1.5, model="similarity", smooth_sigma=1.0, max_coast=6):
+def expand_quad(quad, factor):
+    """Scale a quad about its centre (factor 1 = unchanged)."""
+    q = quad_array(quad); c = q.mean(axis=0)
+    return quad_array(c + (q - c) * float(factor))
+
+def track_plane(frames, anchor_idx, quad, min_inliers=8, reseed_below=18, fb_thresh=1.5, model="similarity", smooth_sigma=1.0, max_coast=6, track_quad=None):
     """Track the anchor quad through all frames (backward from the anchor and forward).
+    `track_quad` (default: the quad itself) is the region whose texture is TRACKED; the
+    returned transforms are applied to `quad`, the region the graphic occupies. Use a larger
+    track_quad when the graphic sits on a textureless patch (a plain chest panel) surrounded by
+    trackable structure (zip, seams, an existing stripe) on the same garment plane.
     Returns per-frame dicts: {H (3x3 or None), quad (4x2 or None), confidence, inliers, tracked}."""
     grays = [cv2.cvtColor(f, cv2.COLOR_BGR2GRAY) for f in frames]
     n = len(frames)
     out = [None] * n
     out[anchor_idx] = {"H": np.eye(3), "quad": quad_array(quad), "confidence": 1.0, "inliers": 0, "tracked": 0}
+    tq = quad_array(quad) if track_quad is None else quad_array(track_quad)
 
     def run(direction):
         idx = anchor_idx
-        pts = seed_points(grays[idx], quad)                    # current positions
+        pts = seed_points(grays[idx], tq)                      # current positions
         apts = pts.copy()                                       # anchor coordinates of the same points
         H_prev = np.eye(3); coast = 0
         while True:
@@ -158,7 +168,7 @@ def track_plane(frames, anchor_idx, quad, min_inliers=8, reseed_below=18, fb_thr
             if coast > 0 or n_inl < min_inliers:
                 # after (or during) a coast, frame-to-frame tracks are not trustworthy: match the
                 # ANCHOR frame directly so recovered points carry true anchor coordinates
-                Hr, ar, cr = reacquire(grays[anchor_idx], grays[j], quad, H_prev if H is None else H, model=model)
+                Hr, ar, cr = reacquire(grays[anchor_idx], grays[j], tq, H_prev if H is None else H, model=model)
                 if Hr is not None:
                     H, apts, pts = Hr, ar, cr; inl = np.ones(len(pts), bool); n_inl = int(len(pts))
             if H is not None and n_inl >= min_inliers:
@@ -177,7 +187,7 @@ def track_plane(frames, anchor_idx, quad, min_inliers=8, reseed_below=18, fb_thr
                 if H is not None and n_inl >= min_inliers // 2: pts, apts = pts[inl], apts[inl]
             # re-seed inside the current plane; new points get anchor coordinates via H^-1
             if len(pts) < reseed_below and out[j]["quad"] is not None and coast == 0:
-                fresh = seed_points(grays[j], out[j]["quad"])
+                fresh = seed_points(grays[j], warp_quad(out[j]["H"], tq))
                 try:
                     Hinv = np.linalg.inv(out[j]["H"])
                 except np.linalg.LinAlgError:
