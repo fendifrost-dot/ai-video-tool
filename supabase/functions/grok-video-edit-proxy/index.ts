@@ -336,6 +336,19 @@ serve(async (req) => {
   const composedPrompt = lookSpec
     ? `${composeConstraintsFirst(lookConstraints, effectivePrompt)} ${lookSpec}`
     : composeConstraintsFirst(lookConstraints, effectivePrompt);
+  // Provider prompt limit (capability config): fail closed with the composed length so the
+  // caller can shorten its prompt — the provider rejects it anyway (unbilled), but without saying
+  // how much of the length is Look data.
+  if (capability.maxPromptChars != null && composedPrompt.length > capability.maxPromptChars) {
+    return json(400, {
+      error: "prompt_too_long",
+      composedPromptChars: composedPrompt.length,
+      maxPromptChars: capability.maxPromptChars,
+      lookConstraintsChars: composeConstraintsFirst(lookConstraints, "").length,
+      lookSpecChars: lookSpec.length,
+      clientPromptChars: effectivePrompt.length,
+    });
+  }
   const referenceUrls: string[] = [];
   for (const p of garmentPaths) {
     const signed = await signStorage(admin, p, IMAGE_BUCKETS);
