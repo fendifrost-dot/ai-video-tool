@@ -1,6 +1,7 @@
 // Astra visual-QA runner — runs INSIDE the authenticated AVT app tab (Phase 1, manual).
 //
 // 1. Build the package:  python3 scripts/qa/build_astra_review_package.py ... --out pkg/
+//    (a TARGETED package has one part, mechanisms.json — same flow)
 // 2. In the app tab, create a file input, pick every file under pkg/parts/*.json,
 //    pkg/frames/*.jpg and the reference images (or add them with file_upload tooling).
 // 3. Paste this file into the console and call:
@@ -32,7 +33,7 @@
   // The proxy stores each completed part under project-exports/.../astra-reviews/<draftId>/<partId>.json.
   async function run({ projectId, draftId, files, maxCostUsd = 2.5, model, reasoningEffort = "high", only = null, dryRun = false, pollMs = 15000, maxWaitMs = 25 * 60 * 1000 }) {
     const byName = new Map([...files].map((f) => [f.name, f]));
-    const parts = [...files].filter((f) => /^(shots-.*|transitions|sequence)\.json$/.test(f.name)).sort((a, b) => a.name.localeCompare(b.name));
+    const parts = [...files].filter((f) => /^(shots-.*|transitions|sequence|mechanisms)\.json$/.test(f.name)).sort((a, b) => a.name.localeCompare(b.name));
     if (!parts.length) throw new Error("no part json files selected");
     const dataUrlCache = new Map();
     const img = async (fileRef) => { const name = fileRef.split("/").pop(); if (!dataUrlCache.has(name)) { const f = byName.get(name); if (!f) throw new Error("missing image file " + name); dataUrlCache.set(name, await readDataUrl(f)); } return dataUrlCache.get(name); };

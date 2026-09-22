@@ -15,6 +15,11 @@ dense TIMESTAMPED FRAME SEQUENCES — the documented way to do temporal review w
   parts/shots-*.json      per shot group, 3 fps (6 fps for slots < 2.5 s)      → Level 1 shot conformance
   parts/transitions.json  ±0.25 s at 12 fps around every cut                      → Level 2 edit review
   parts/sequence.json     2 fps across the whole draft                            → Level 3 treatment conformance
+TARGETED mode (--mechanism "id=…" …, ruling 2026-09-21 §10): ONE part `parts/mechanisms.json`
+(level 4) — N frames per wardrobe shot spread across the shot, optionally paired with the same
+instants of the previous draft (--prev-draft, --compare-shots) — asking for a verdict PER CHANGED
+MECHANISM (IMPROVED / UNCHANGED / REGRESSED) plus `ready_for_full_review`, instead of paying for the
+three-level review to rediscover known defects.
 Each part = { instructions, frames[{label,file}], references[{label,file}], jsonSchema } for
 supabase/functions/astra-visual-review-proxy. Frames are 540x960 JPEG (~70 KB) so a part stays
 under the proxy's image cap and the browser can inline them as data URLs.
@@ -75,6 +80,15 @@ SCHEMA_SEQ = {"name": "astra_sequence_review", "schema": {"type": "object", "add
                              "final_verdict": {"type": "string", "enum": ["PASS", "REPAIR_REQUIRED", "HUMAN_REVIEW_REQUIRED"]},
                              "escalate_to_fendi": {"type": "array", "items": {"type": "string"}}}}}
 
+MECH = {"type": "object", "additionalProperties": False, "required": ["mechanism_id", "verdict", "confidence", "evidence", "defect_ids"],
+        "properties": {"mechanism_id": {"type": "string"}, "verdict": {"type": "string", "enum": ["IMPROVED", "UNCHANGED", "REGRESSED", "UNCERTAIN"]},
+                       "confidence": {"type": "number"}, "evidence": {"type": "string", "description": "what you saw, with frame labels; compare across shots and against the previous revision's defects"},
+                       "defect_ids": {"type": "array", "items": {"type": "string"}}}}
+SCHEMA_MECH = {"name": "astra_mechanism_review", "schema": {"type": "object", "additionalProperties": False, "required": ["mechanisms", "defects", "ready_for_full_review", "readiness_reason", "summary"],
+               "properties": {"mechanisms": {"type": "array", "items": MECH}, "defects": {"type": "array", "items": DEFECT},
+                              "ready_for_full_review": {"type": "boolean", "description": "true only if every targeted mechanism is IMPROVED or UNCHANGED-and-acceptable and no blocker/major defect remains in the targeted shots"},
+                              "readiness_reason": {"type": "string"}, "summary": {"type": "string"}}}}
+
 ROLE = """You are Astra, the visual-QA reviewer for AVT (an AI music-video tool). You are NOT the creative director: the Treatment and ShotSpecs are the creative intent and {authority} is final authority. Your job is to compare WHAT WAS REQUESTED against WHAT IS ACTUALLY VISIBLE in the rendered draft, shot by shot and over time, and to report defects that route to the production subsystem that can fix them. Do not invent a different video. Do not soften findings. Cite draft timecodes and frame labels as evidence for every claim. If you cannot tell, say UNCERTAIN with low confidence rather than guessing. The frames are consecutive samples of one continuous video: reason about motion, stability, flicker and continuity across them, not only about single images."""
 
 # What sampled silent frames CAN and CANNOT establish. Kept as data next to ROLE so a future
@@ -118,6 +132,11 @@ def main():
     ap.add_argument("--group-size", type=int, default=4)
     ap.add_argument("--prev-review", default=None, help="aggregated AstraReviewSchema JSON of the previous revision: its defect_ids are handed to Astra so persisting defects keep their identity (diffReviews)")
     ap.add_argument("--repair-notes", default=None, help="text file: what Claude changed since the previous revision (Astra verifies, it does not take it on trust)")
+    ap.add_argument("--mechanism", action="append", default=[], help='TARGETED mode: "id=what changed and what to judge"; repeatable. With at least one, the package is ONE part (`mechanisms`) built from cross-shot frames of the wardrobe shots instead of the three-level full review')
+    ap.add_argument("--shots", default=None, help="targeted mode: comma-separated shot ids to sample (default: every shot with a wardrobe)")
+    ap.add_argument("--samples-per-shot", type=int, default=3, help="targeted mode: frames per shot, spread across the shot")
+    ap.add_argument("--prev-draft", default=None, help="targeted mode: previous revision's draft video — the same sample instants are grabbed from it for the shots in --compare-shots so a repair can be judged before/after")
+    ap.add_argument("--compare-shots", default=None, help="targeted mode: comma-separated shot ids to pair with --prev-draft frames")
     a = ap.parse_args()
     spec = json.load(open(a.shotspecs)); asm = json.load(open(a.assembly))
     shots = sorted(spec["shots"], key=lambda s: s["timeline"]["start"]); offset = shots[0]["timeline"]["start"]
@@ -158,6 +177,38 @@ def main():
         common += "\nREPAIR NOTES FROM CLAUDE (claims to verify, not facts):\n" + open(a.repair_notes).read().strip() + "\n"
 
     parts = []
+    if a.mechanism:
+        # ---- TARGETED mode (ruling §10: review the mechanisms that changed, not the whole sequence) ----
+        # One part: for each wardrobe shot, N frames spread across the shot so the same garment can be
+        # compared ACROSS shots (canonical-Look consistency) and along time (stability); plus, for
+        # repaired shots, the same instants from the previous draft so the repair is judged before/after.
+        want = set(x.strip() for x in a.shots.split(",")) if a.shots else {s["id"] for s in shots if s.get("wardrobe", {}).get("name")}
+        cmp_ids = set(x.strip() for x in a.compare_shots.split(",")) if a.compare_shots else set()
+        frames = []
+        for s in shots:
+            if s["id"] not in want: continue
+            t0, t1 = s["timeline"]["start"] - offset, s["timeline"]["end"] - offset
+            for k in range(a.samples_per_shot):
+                t = t0 + (t1 - t0) * (k + 0.5) / a.samples_per_shot
+                p = os.path.join(a.out, "frames", f"{s['id']}_{t:07.3f}.jpg")
+                if grab(a.draft, t, p): frames.append({"label": f"THIS draft t={fmt(snap(t))} shot {s['id']} ({s.get('wardrobe', {}).get('name', '')})", "file": p})
+                if a.prev_draft and s["id"] in cmp_ids:
+                    pp = os.path.join(a.out, "frames", f"prev_{s['id']}_{t:07.3f}.jpg")
+                    if grab(a.prev_draft, t, pp): frames.append({"label": f"PREVIOUS draft t={fmt(snap(t))} shot {s['id']} — same instant, before repair", "file": pp})
+        mech_lines = "\n".join(f"- {m.split('=', 1)[0].strip()}: {m.split('=', 1)[1].strip() if '=' in m else ''}" for m in a.mechanism)
+        instr = common + (f"\nTASK (TARGETED MECHANISM REVIEW). This is NOT a full-sequence review. Since the previous revision these production MECHANISMS changed; judge each one from the frames and nothing else:\n{mech_lines}\n"
+                          "For every mechanism give a verdict — IMPROVED (the previous revision's defects in that mechanism are visibly reduced or gone), UNCHANGED, REGRESSED (new or worse defects caused by it), UNCERTAIN — with confidence and frame-label evidence. "
+                          "Compare the SAME garment ACROSS shots (construction, closure, collar, stripe placement, wordmark size/position/lettering) and along each shot's frames (stability). Where PREVIOUS-draft frames are provided, judge the repair before/after at the same instants. "
+                          "Then list defects still PRESENT or NEW in these shots only (same defect_id rules as before). Finally set ready_for_full_review: true only if the targeted mechanisms are IMPROVED or acceptably UNCHANGED and no blocker/major defect remains in the sampled shots, with a one-sentence reason. Do not re-report defects outside the targeted mechanisms.")
+        parts.append({"partId": "mechanisms", "instructions": instr, "frames": frames, "references": refs, "jsonSchema": SCHEMA_MECH, "level": 4})
+        BUDGET = ("\nOUTPUT BUDGET (hard): keep the whole JSON answer under 9000 tokens — at most 45 words per evidence/description/answer field, "
+                  "at most three frame labels per item, no repeated text across fields, and do not restate the prior-defect list: report only defects still PRESENT or NEW.")
+        for p in parts: p["instructions"] += BUDGET
+        for p in parts: json.dump(p, open(os.path.join(a.out, "parts", p["partId"] + ".json"), "w"), indent=1)
+        summary = {"draftId": a.draft_id, "treatmentVersion": a.treatment_version, "draftOffsetSongSeconds": offset, "targeted": True, "mechanisms": [m.split("=", 1)[0].strip() for m in a.mechanism],
+                   "parts": [{"partId": p["partId"], "level": p["level"], "frames": len(p["frames"]), "references": len(p["references"])} for p in parts]}
+        json.dump(summary, open(os.path.join(a.out, "manifest.json"), "w"), indent=2)
+        print(json.dumps(summary, indent=2)); return
     # ---- Level 1: shot groups ----
     groups = [shots[i:i + a.group_size] for i in range(0, len(shots), a.group_size)]
     for gi, g in enumerate(groups):

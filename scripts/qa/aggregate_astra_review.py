@@ -8,6 +8,8 @@ previous aggregate (same defect-identity rules as diffReviews()).
   python3 scripts/qa/aggregate_astra_review.py --parts review_v2/*.json --manifest pkg_v2/manifest.json \
       --project-id <uuid> --out astra_review_v2.json [--prev astra_review_v1.json]
 
+A targeted package (manifest `targeted: true`, one `mechanisms` part) has no `overall`; the
+aggregate then carries `mechanisms` (per-mechanism verdicts) and `readiness` instead.
 Defects from every part are merged by defect_id (first occurrence wins; severities are
 upgraded if a later part rates the same defect higher). `watched_video` is false: the
 frame-strip path is the only one available on the API today.
@@ -36,6 +38,7 @@ def main():
     files = sorted(f for pat in a.parts for f in glob.glob(pat))
     shots, transitions, defects, answers, escalate = [], [], {}, {}, []
     overall = None; final = None; ts = None; cost = 0.0; usage = {"input_tokens": 0, "output_tokens": 0}; parts_meta = {}
+    mechanisms, readiness = [], None
     for f in files:
         rec = json.load(open(f)); r = rec.get("review") or {}
         if not r: print(f"warning: {f} has no parsed review", file=sys.stderr); continue
@@ -59,7 +62,10 @@ def main():
         escalate += [e for e in (r.get("escalate_to_fendi") or []) if e not in escalate]
         if r.get("overall"): overall = r["overall"]
         if r.get("final_verdict"): final = r["final_verdict"]
-    if overall is None: raise SystemExit("no part carried `overall` (the sequence part is missing)")
+        for m in r.get("mechanisms", []) or []: mechanisms.append(dict(m))
+        if "ready_for_full_review" in r: readiness = {"ready_for_full_review": bool(r["ready_for_full_review"]), "reason": r.get("readiness_reason", ""), "summary": r.get("summary", "")}
+    targeted = bool(man.get("targeted"))
+    if overall is None and not targeted: raise SystemExit("no part carried `overall` (the sequence part is missing)")
     worst = max((SEV[d["severity"]] for d in defects.values()), default=0)
     if final is None: final = "REPAIR_REQUIRED" if worst >= 1 else "PASS"
     review = {
@@ -69,6 +75,8 @@ def main():
         "shots": sorted(shots, key=lambda s: s["shot_id"]), "transitions": sorted(transitions, key=lambda t: t["draft_time"]),
         "sequence_defects": sorted(defects.values(), key=lambda d: (-SEV[d["severity"]], d["time_range"][0])),
         "answers": answers, "final_verdict": final, "escalate_to_fendi": escalate,
+        # targeted (mechanism) reviews: per-mechanism verdicts + readiness for a full review; `overall` is None there
+        "targeted": targeted, "mechanisms": mechanisms, "readiness": readiness,
         "_provenance": {"parts": parts_meta, "totalCostUsd": round(cost, 4), "usage": usage, "note": "aggregated by scripts/qa/aggregate_astra_review.py from the proxy-stored part files"},
     }
     # Items the reviewer declared outside its evidence (silent sampled frames). They are not
@@ -86,7 +94,7 @@ def main():
     json.dump(review, open(a.out, "w"), indent=2)
     by_owner = {}
     for d in defects.values(): by_owner.setdefault(d["recommended_owner"], []).append(f'{d["severity"]}:{d["defect_id"]}')
-    print(json.dumps({"final_verdict": final, "overall": {k: v for k, v in overall.items() if k != "summary"}, "defects": len(defects), "by_owner": by_owner, "cost": round(cost, 4), "native_media_qa_required": review["_native_media_qa_required"], "diff": review.get("_diff_vs_prev")}, indent=2))
+    print(json.dumps({"final_verdict": final, "overall": ({k: v for k, v in overall.items() if k != "summary"} if overall else None), "mechanisms": [(m.get("mechanism_id"), m.get("verdict")) for m in mechanisms], "readiness": readiness, "defects": len(defects), "by_owner": by_owner, "cost": round(cost, 4), "native_media_qa_required": review["_native_media_qa_required"], "diff": review.get("_diff_vs_prev")}, indent=2))
 
 if __name__ == "__main__":
     main()
