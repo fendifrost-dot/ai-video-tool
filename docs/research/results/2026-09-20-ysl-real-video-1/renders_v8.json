@@ -1,0 +1,46 @@
+{
+ "S01": {
+  "file": "env7/S01_env.mp4",
+  "masterStart": 45.859
+ },
+ "S03": {
+  "file": "env7/S03_env.mp4",
+  "masterStart": 51.761
+ },
+ "S04": {
+  "file": "env7/S04_env.mp4",
+  "masterStart": 57.663
+ },
+ "S06": {
+  "file": "env7/S06_env.mp4",
+  "masterStart": 61.597
+ },
+ "S08": {
+  "file": "env7/S08_env.mp4",
+  "masterStart": 69.466
+ },
+ "S09": {
+  "file": "env7/S09d_env.mp4",
+  "masterStart": 74.868
+ },
+ "S11": {
+  "file": "env7/S11b_env.mp4",
+  "masterStart": 79.302
+ },
+ "S12": {
+  "file": "env7/S12b_env.mp4",
+  "masterStart": 85.204
+ },
+ "S02": {
+  "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/fx7/S02_render_macro.mp4"
+ },
+ "S05": {
+  "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/fx7/S05_still_push_flash.mp4"
+ },
+ "S07": {
+  "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/fx7/S07_still_lateral_push.mp4"
+ },
+ "S10": {
+  "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/fx7/S10_still_strobe.mp4"
+ }
+}
