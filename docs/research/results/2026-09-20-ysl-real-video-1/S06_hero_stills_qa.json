@@ -1,0 +1,138 @@
+{
+ "summary": {
+  "stills": 14,
+  "ok": 14,
+  "reject": [],
+  "anchor_similarity_mean": 0.7412685169321132,
+  "anchor_similarity_spread": 0.11169865918950395,
+  "outside_change_mean": 4.059867279870169
+ },
+ "stills": [
+  {
+   "frame": 6,
+   "path": "heroes/S06/stills/S06_f0006.jpg",
+   "garment_frac": 0.5216536458333333,
+   "outside_change": 3.0302894115448,
+   "face_change": 2.8864636421203613,
+   "anchor_similarity": 0.7897787299539385,
+   "verdict": "OK"
+  },
+  {
+   "frame": 18,
+   "path": "heroes/S06/stills/S06_f0018.jpg",
+   "garment_frac": 0.5412651909722223,
+   "outside_change": 3.189380168914795,
+   "face_change": 3.2025392055511475,
+   "anchor_similarity": 0.7376454129540968,
+   "verdict": "OK"
+  },
+  {
+   "frame": 30,
+   "path": "heroes/S06/stills/S06_f0030.jpg",
+   "garment_frac": 0.4047927517361111,
+   "outside_change": 3.799854040145874,
+   "face_change": 3.267291784286499,
+   "anchor_similarity": 0.7240680217698868,
+   "verdict": "OK"
+  },
+  {
+   "frame": 42,
+   "path": "heroes/S06/stills/S06_f0042.jpg",
+   "garment_frac": 0.43430989583333335,
+   "outside_change": 4.016507148742676,
+   "face_change": 3.922322988510132,
+   "anchor_similarity": 0.721527092970901,
+   "verdict": "OK"
+  },
+  {
+   "frame": 54,
+   "path": "heroes/S06/stills/S06_f0054.jpg",
+   "garment_frac": 0.3650802951388889,
+   "outside_change": 3.7263779640197754,
+   "face_change": 3.424426317214966,
+   "anchor_similarity": 0.7174084365323654,
+   "verdict": "OK"
+  },
+  {
+   "frame": 66,
+   "path": "heroes/S06/stills/S06_f0066.jpg",
+   "garment_frac": 0.46253580729166666,
+   "outside_change": 3.1589109897613525,
+   "face_change": 2.9206855297088623,
+   "anchor_similarity": 0.785298674676145,
+   "verdict": "OK"
+  },
+  {
+   "frame": 78,
+   "path": "heroes/S06/stills/S06_f0078.jpg",
+   "garment_frac": 0.48935872395833335,
+   "outside_change": 4.388521194458008,
+   "face_change": 4.293941497802734,
+   "anchor_similarity": 0.7320640675124324,
+   "verdict": "OK"
+  },
+  {
+   "frame": 90,
+   "path": "heroes/S06/stills/S06_f0090.jpg",
+   "garment_frac": 0.40831488715277775,
+   "outside_change": 4.443326950073242,
+   "face_change": 4.465087413787842,
+   "anchor_similarity": 0.6804148032845649,
+   "verdict": "OK"
+  },
+  {
+   "frame": 102,
+   "path": "heroes/S06/stills/S06_f0102.jpg",
+   "garment_frac": 0.3431673177083333,
+   "outside_change": 4.361993789672852,
+   "face_change": 3.331902503967285,
+   "anchor_similarity": 0.7588317741228019,
+   "verdict": "OK"
+  },
+  {
+   "frame": 114,
+   "path": "heroes/S06/stills/S06_f0114.jpg",
+   "garment_frac": 0.3798383246527778,
+   "outside_change": 3.8715760707855225,
+   "face_change": 3.6239895820617676,
+   "anchor_similarity": 0.7292688247330061,
+   "verdict": "OK"
+  },
+  {
+   "frame": 126,
+   "path": "heroes/S06/stills/S06_f0126.jpg",
+   "garment_frac": 0.49925889756944447,
+   "outside_change": 4.058595657348633,
+   "face_change": 4.045880317687988,
+   "anchor_similarity": 0.7921134624740689,
+   "verdict": "OK"
+  },
+  {
+   "frame": 138,
+   "path": "heroes/S06/stills/S06_f0138.jpg",
+   "garment_frac": 0.4420290798611111,
+   "outside_change": 4.312164306640625,
+   "face_change": 4.172292709350586,
+   "anchor_similarity": 0.712874077341872,
+   "verdict": "OK"
+  },
+  {
+   "frame": 150,
+   "path": "heroes/S06/stills/S06_f0150.jpg",
+   "garment_frac": 0.35401475694444445,
+   "outside_change": 5.655577659606934,
+   "face_change": 5.190529823303223,
+   "anchor_similarity": 0.7187508603076174,
+   "verdict": "OK"
+  },
+  {
+   "frame": 162,
+   "path": "heroes/S06/stills/S06_f0162.jpg",
+   "garment_frac": 0.3440711805555556,
+   "outside_change": 4.825066566467285,
+   "face_change": 4.245863437652588,
+   "anchor_similarity": 0.7777149984158871,
+   "verdict": "OK"
+  }
+ ]
+}

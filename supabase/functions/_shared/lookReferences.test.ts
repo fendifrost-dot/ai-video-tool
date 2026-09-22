@@ -87,6 +87,7 @@ describe("getProviderCapability", () => {
     expect(getProviderCapability("xai:videos/edits", env()).maxReferenceImages).toBe(8);
     expect(getProviderCapability("xai:videos/edits", env('{"xai:videos/edits":{"maxReferenceImages":3,"firstFrameConditioning":true}}'))).toMatchObject({ maxReferenceImages: 3, firstFrameConditioning: true });
     expect(getProviderCapability("xai:videos/edits", env('{"xai:videos/edits":{"maxReferenceImages":64}}')).maxReferenceImages).toBe(SAFETY_MAX_REFERENCE_IMAGES);
+    expect(getProviderCapability("xai:images/edits", env()).maxReferenceImages).toBe(3);   // verified 2026-09-21 on grok-imagine-image-quality
     expect(getProviderCapability("xai:videos/edits", env("not json")).maxReferenceImages).toBe(8);
     expect(getProviderCapability("nobody:nothing", env()).maxReferenceImages).toBe(1);
   });

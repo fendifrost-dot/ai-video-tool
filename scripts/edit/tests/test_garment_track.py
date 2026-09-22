@@ -39,3 +39,11 @@ def test_coasts_through_short_occlusion_and_flags_occluder():
     assert occ[plane > 0].mean() > 0.6                                        # the green block reads as occluder
     occ2, plane2 = occlusion_mask(frames[10], frames[0], tr[10]["H"], quad)
     assert occ2[plane2 > 0].mean() < 0.05                                     # clean frame: nothing occluded
+
+def test_quad_shape_gate_rejects_collapsed_fits():
+    from garment_graphic_track import quad_shape_ok
+    anchor = quad_array([100, 100, 210, 100, 210, 130, 100, 130])
+    ok, r = quad_shape_ok(anchor, quad_array([300, 400, 355, 402, 356, 418, 301, 416]), 1.3)   # uniformly half size: fine
+    assert ok and r < 1.1, r
+    ok, r = quad_shape_ok(anchor, quad_array([100, 100, 148, 104, 139, 133, 91, 132]), 1.3)     # width collapsed to 48 px, height kept
+    assert not ok and r > 1.3, r

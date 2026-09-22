@@ -39,13 +39,16 @@
     return out;
   }
 
-  async function mint({ artistId, wardrobeFeatureId, lookId, projectId, scenePaths, anchorPath, anchorBucket = "project-references", sceneBucket = "project-references", promptVersion = "hero-e2-v1", prompt, model, resolution, maxCostUsd = 2.0, pollMs = 8000, maxWaitMs = 20 * 60 * 1000, dryRun = false }) {
+  // referenceMode/referencePolicy are pass-through to the proxy. With an anchor the provider's
+  // 3-image limit (grok-imagine-image-quality, verified 2026-09-21) leaves ONE slot for a product
+  // reference, so the default is the flat product shot of the hero piece.
+  async function mint({ artistId, wardrobeFeatureId, lookId, projectId, scenePaths, anchorPath, anchorBucket = "project-references", sceneBucket = "project-references", promptVersion = "hero-e2-v1", referenceMode = "flat", referencePolicy = { maxRefs: 1, primaryPieceRefs: 1, otherPieceRefs: 1 }, prompt, model, resolution, maxCostUsd = 2.0, pollMs = 8000, maxWaitMs = 20 * 60 * 1000, dryRun = false }) {
     const allowed = Math.floor(maxCostUsd / COST_PER_STILL_USD);
     if (scenePaths.length > allowed) throw new Error(`refusing: ${scenePaths.length} stills exceed maxCostUsd ${maxCostUsd} (${allowed} allowed at $${COST_PER_STILL_USD} each)`);
     const log = []; const rows = [];
     for (const scenePath of scenePaths) {
       const name = `Hero E2 · ${scenePath.split("/").pop()} · ${promptVersion}`;
-      const body = { artistId, wardrobeFeatureId, lookId, projectId, scenePath, sceneBucket, anchorPath, anchorBucket, referenceMode: "full_look", promptVersion, name, prompt, model, resolution };
+      const body = { artistId, wardrobeFeatureId, lookId, projectId, scenePath, sceneBucket, anchorPath, anchorBucket, referenceMode, referencePolicy, promptVersion, name, prompt, model, resolution };
       if (dryRun) { log.push(`dry ${scenePath}`); continue; }
       const res = await fetch(`${SUPABASE_URL}/functions/v1/grok-image-garment-proxy`, { method: "POST", headers: headers({ "Content-Type": "application/json" }), body: JSON.stringify(body) });
       const j = await res.json().catch(() => ({ error: "bad_json" }));
