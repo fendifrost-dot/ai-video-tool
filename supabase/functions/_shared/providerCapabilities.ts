@@ -13,6 +13,10 @@ export type ProviderCapability = {
   /** Whether the endpoint accepts an image that conditions the FIRST FRAME / canonical
    *  appearance of the subject (as opposed to garment references). null = not yet verified. */
   firstFrameConditioning: boolean | null;
+  /** Maximum prompt length the endpoint accepts, in characters (null = not verified). The
+   *  proxies compare the COMPOSED prompt (Look constraints + client prompt + Look spec) against it
+   *  and fail closed before calling the provider. */
+  maxPromptChars: number | null;
   /** Human note on where the numbers come from. */
   source: string;
 };
@@ -23,12 +27,14 @@ const DEFAULTS: Record<string, ProviderCapability> = {
   "xai:images/edits": {
     maxReferenceImages: 3,
     firstFrameConditioning: true,
+    maxPromptChars: null,
     source: "VERIFIED 2026-09-21: grok-imagine-image-quality rejects >3 input images ('This model supports at most 3 input image(s)'); docs list 5 for grok-imagine-image-2.0 — raise per model via PROVIDER_CAPABILITIES_JSON when that model is used. <IMAGE_0> is the edited frame, so a Look-on-artist anchor can be sent as <IMAGE_1>",
   },
   "xai:videos/edits": {
     maxReferenceImages: 8,
     firstFrameConditioning: null,
-    source: "observed: 5 references accepted on 2026-09-21 (full_look, request 296ee0ca lineage); provider maximum not yet verified",
+    maxPromptChars: 4096,
+    source: "observed: 5 references accepted on 2026-09-21 (full_look, request 296ee0ca lineage); provider maximum not yet verified. VERIFIED 2026-09-22: prompt longer than 4096 characters is rejected ('Prompt length exceeds the maximum allowed length of 4096'), unbilled",
   },
 };
 
@@ -47,12 +53,14 @@ function parseOverrides(env: EnvLike | undefined): Record<string, Partial<Provid
 
 /** `key` is "<provider>:<endpoint>", e.g. "xai:videos/edits". Unknown keys get conservative defaults. */
 export function getProviderCapability(key: string, env: EnvLike | undefined = typeof Deno !== "undefined" ? Deno.env : undefined): ProviderCapability {
-  const base = DEFAULTS[key] ?? { maxReferenceImages: 1, firstFrameConditioning: null, source: "unknown provider — conservative default" };
+  const base = DEFAULTS[key] ?? { maxReferenceImages: 1, firstFrameConditioning: null, maxPromptChars: null, source: "unknown provider — conservative default" };
   const o = parseOverrides(env)[key] ?? {};
   const max = Number(o.maxReferenceImages);
+  const maxPrompt = Number(o.maxPromptChars);
   return {
     maxReferenceImages: Math.max(1, Math.min(Number.isFinite(max) && max >= 1 ? Math.floor(max) : base.maxReferenceImages, SAFETY_MAX_REFERENCE_IMAGES)),
     firstFrameConditioning: typeof o.firstFrameConditioning === "boolean" ? o.firstFrameConditioning : base.firstFrameConditioning,
+    maxPromptChars: Number.isFinite(maxPrompt) && maxPrompt >= 1 ? Math.floor(maxPrompt) : base.maxPromptChars,
     source: typeof o.source === "string" && o.source ? o.source : base.source,
   };
 }
