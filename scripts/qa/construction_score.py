@@ -39,6 +39,26 @@ WEIGHTS = {"neck": 0.2, "chest": 0.25, "lower_front": 0.2, "hem": 0.15, "sleeve_
 
 def lab(im): return cv2.cvtColor(im, cv2.COLOR_BGR2LAB).astype(np.float32)
 
+def garment_mask(master, edit, lo=18.0, hi=36.0, reach=25, min_frac=0.004):
+    """What the edit changed, with hysteresis: strong changes (Lab distance > hi) seed the mask,
+    weaker ones (> lo) join only within `reach` px of a seed. A clean edit (xAI lane) gives the
+    same mask as the plain threshold; a provider that re-renders the whole frame (Runway) shifts
+    the face, cap and hands by a few Lab units with sharp edges above `lo`, which the plain
+    threshold admits and which then drag the neck/sleeve zones onto skin."""
+    a = cv2.GaussianBlur(cv2.cvtColor(master, cv2.COLOR_BGR2LAB), (0, 0), 2).astype(np.float32)
+    b = cv2.GaussianBlur(cv2.cvtColor(edit, cv2.COLOR_BGR2LAB), (0, 0), 2).astype(np.float32)
+    d = np.sqrt(((a - b) ** 2).sum(axis=2))
+    core = cv2.morphologyEx((d > hi).astype(np.uint8) * 255, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+    n, lab_, stats, _ = cv2.connectedComponentsWithStats(core); keep = np.zeros_like(core); area = core.size
+    for i in range(1, n):
+        if stats[i, cv2.CC_STAT_AREA] >= min_frac * area: keep[lab_ == i] = 255
+    grow = cv2.dilate(keep, np.ones((2 * reach + 1, 2 * reach + 1), np.uint8))
+    m = ((d > lo).astype(np.uint8) * 255) & grow
+    m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))
+    ff = m.copy(); h, w = ff.shape; mm = np.zeros((h + 2, w + 2), np.uint8)
+    cv2.floodFill(ff, mm, (0, 0), 255)
+    return m | cv2.bitwise_not(ff)
+
 def learn_classes(anchor, mask, k):
     px = lab(anchor)[mask > 0].reshape(-1, 3)
     if len(px) > 60000: px = px[np.random.default_rng(0).choice(len(px), 60000, replace=False)]
@@ -65,21 +85,30 @@ def run_around(sm, r, rel=0.5):
     while bot < len(sm) - 1 and sm[bot + 1] >= thr: bot += 1
     return top, bot
 
-def landmark(cls_map, mask, stripe_ids, max_height_frac=0.12, min_peak=0.25):
+def landmark(cls_map, mask, stripe_ids, max_height_frac=0.12, min_peak=0.25, band=(0.12, 0.7), min_width_frac=0.25):
     """The garment's horizontal STRIPE landmark: over the candidate classes and over EVERY local
     peak of each class's row profile, the narrow peak (half-height run at most max_height_frac of
     the garment's height) with the highest row fraction. A class that is also a large region
-    elsewhere (a navy band on a jacket over black trousers) still yields its narrow peak. Returns
+    elsewhere (a navy band on a jacket over black trousers) still yields its narrow peak. Only rows
+    inside `band` (fractions of the changed region's height) qualify: a chest stripe is never at the
+    very top or bottom of the garment, and a provider that re-renders the whole frame puts the cap
+    and glasses into the edit-vs-master mask, where a dark cap row would otherwise win. Returns
     row/top/bottom/height, class id and peak, or None."""
     ys = np.where((mask > 0).any(axis=1))[0]
     if len(ys) < 40: return None
     gh = ys.max() - ys.min(); best = None
+    r_lo, r_hi = ys.min() + band[0] * gh, ys.min() + band[1] * gh
+    # the garment's width = its widest row; a chest stripe spans most of it, a cap visor or a
+    # zip pull (also dark, also narrow in height) spans a small fraction and is rejected
+    gw = max(1, int((mask > 0).sum(axis=1).max()))
     for cid in stripe_ids:
         sm = row_profile(cls_map, mask, cid)
-        peaks = [r for r in range(1, len(sm) - 1) if sm[r] >= min_peak and sm[r] >= sm[r - 1] and sm[r] > sm[r + 1]]
+        peaks = [r for r in range(1, len(sm) - 1) if r_lo <= r <= r_hi and sm[r] >= min_peak and sm[r] >= sm[r - 1] and sm[r] > sm[r + 1]]
         for r in peaks:
             top, bot = run_around(sm, r)
             if (bot - top + 1) > max_height_frac * gh: continue
+            cols = np.where((cls_map[r] == cid) & (mask[r] > 0))[0]
+            if len(cols) < 2 or (cols.max() - cols.min()) < min_width_frac * gw: continue
             if best is None or sm[r] > best["peak"]: best = {"row": r, "top": top, "bottom": bot, "height": max(6, bot - top + 1), "class": cid, "peak": float(sm[r])}
     return best
 
@@ -103,9 +132,13 @@ def zones_for(mask, lm):
     }
 
 def zone_hist(cls_map, zone, k):
-    v = cls_map[zone > 0]
+    """Class histogram of a zone over the GARMENT SURFACE only: pixels that match none of the
+    anchor's colour classes ("other" — skin, hair, background bleeding into the changed-region
+    mask when a provider re-renders the whole frame) are not garment and are left out, so a
+    zone is compared on what the garment is made of, not on how much of the frame changed."""
+    v = cls_map[zone > 0]; v = v[v < k]
     if len(v) < 40: return None
-    return np.bincount(v, minlength=k + 1)[: k + 1] / len(v)
+    return np.bincount(v, minlength=k)[:k] / len(v)
 
 def compare(hist_a, hist_c):
     return None if (hist_a is None or hist_c is None) else float(1.0 - 0.5 * np.abs(hist_a - hist_c).sum())
@@ -117,8 +150,8 @@ def intrusion(hist_a, hist_c, absent=0.05):
     if hist_a is None or hist_c is None: return None
     return float(sum(c for a_, c in zip(hist_a, hist_c) if a_ < absent))
 
-def score_frame(im, mask, centres, radius, stripe_ids, anchor_hists, max_stripe_frac, min_stripe_peak):
-    cls = classify(im, centres, radius); lm = landmark(cls, mask, stripe_ids, max_stripe_frac, min_stripe_peak)
+def score_frame(im, mask, centres, radius, stripe_ids, anchor_hists, max_stripe_frac, min_stripe_peak, band=(0.12, 0.7)):
+    cls = classify(im, centres, radius); lm = landmark(cls, mask, stripe_ids, max_stripe_frac, min_stripe_peak, band)
     if lm is None: return {"score": 0.0, "landmark": None, "zones": {z: 0.0 for z in ZONES}, "note": "no stripe landmark found"}, cls, None
     zs = zones_for(mask, lm); per = {}; intr = {}
     for z in ZONES:
@@ -159,16 +192,18 @@ def main():
     ap.add_argument("--classes", type=int, default=6); ap.add_argument("--class-radius", type=float, default=28.0)
     ap.add_argument("--max-stripe-frac", type=float, default=0.12, help="a stripe landmark's half-height run may be at most this fraction of the garment's height")
     ap.add_argument("--min-stripe-peak", type=float, default=0.25, help="minimum row fraction at the stripe's peak")
+    ap.add_argument("--landmark-band", default="0.12,0.7", help="rows eligible for the stripe landmark, as fractions of the changed region's height (top,bottom)")
     ap.add_argument("--tolerance", type=float, default=0.02); ap.add_argument("--out", required=True)
     a = ap.parse_args()
     W, H = (int(x) for x in a.size.lower().split("x")); os.makedirs(a.out, exist_ok=True)
     anchor = cv2.resize(cv2.imread(a.anchor), (W, H), interpolation=cv2.INTER_AREA); amaster = cv2.resize(cv2.imread(a.anchor_master), (W, H), interpolation=cv2.INTER_AREA)
-    amask = garment_mask_from_edit(amaster, anchor)
+    amask = garment_mask(amaster, anchor)
     centres, shares = learn_classes(anchor, amask, a.classes)
     acls = classify(anchor, centres, a.class_radius)
     # the stripe landmark is searched over EVERY learned class; the body is whatever dominates the
     # torso window around it (so trousers, shirt or skin never masquerade as the garment body)
-    alm = landmark(acls, amask, list(range(len(centres))), a.max_stripe_frac, a.min_stripe_peak)
+    band = tuple(float(x) for x in a.landmark_band.split(","))
+    alm = landmark(acls, amask, list(range(len(centres))), a.max_stripe_frac, a.min_stripe_peak, band)
     if alm is None: raise SystemExit("anchor: no horizontal stripe landmark found — the score needs one (chest band / yoke / placket stripe)")
     r, h = alm["row"], alm["height"]
     win = np.zeros_like(amask); win[max(0, r - 3 * h):r + 5 * h] = 255; win &= amask
@@ -185,9 +220,9 @@ def main():
         name, frames, masters = load_clip(spec, W, H, a.fps, a.master)
         per = []; unscored = 0
         for k in range(0, len(frames), a.step):
-            m = garment_mask_from_edit(masters[k], frames[k])
+            m = garment_mask(masters[k], frames[k])
             if (m > 0).sum() < 2000: continue
-            r, cls, zs = score_frame(frames[k], m, centres, a.class_radius, stripe_ids, ahists, a.max_stripe_frac, a.min_stripe_peak); r["frame"] = k
+            r, cls, zs = score_frame(frames[k], m, centres, a.class_radius, stripe_ids, ahists, a.max_stripe_frac, a.min_stripe_peak, band); r["frame"] = k
             if r["landmark"] is not None: per.append((r, cls, zs))
             else: unscored += 1
         if not per: report[bucket][name] = {"error": "no frames scored (stripe landmark never found)", "frames_unscored": unscored}; return
