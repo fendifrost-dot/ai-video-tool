@@ -8,7 +8,7 @@ Requested by ChatGPT via Fendi: verify current xAI and Runway capabilities again
 |---|---|---|---|---|
 | Video wardrobe edit (E1) | `grok-video-edit-proxy` | `grok-imagine-video` (default; `-1.5` priced but unused) | `POST /v1/videos/edits` | 5 `reference_images` accepted (observed); prompt ≤ 4096 chars (400, unbilled, 2026-09-22) |
 | Hero stills (E2, tooling) | `grok-image-garment-proxy` | `grok-imagine-image-quality` | `POST /v1/images/edits` | 3 input images (400 on 5, 2026-09-21) |
-| Runway | Control Center `video-providers/runway/generate` only | `gen3a_turbo` (retired on Runway Dev 2026-07-30) | text/image-to-video | no video-to-video route; `RUNWAY_API_KEY` lives in Control Center (locked) |
+| Runway | Control Center `video-providers/runway/generate` only | `gen3a_turbo` (retired on Runway Dev 2026-07-30) | text/image-to-video | video-to-video added 2026-09-23 as `video-providers-runway-video-edit` (additive; generate untouched); `RUNWAY_API_KEY` lives in Control Center |
 
 ## 2. Current xAI capabilities (docs.x.ai, read 2026-09-23)
 
@@ -43,7 +43,7 @@ One endpoint, `POST /v1/video_to_video`, hosts several models; three of them **e
 | Duration | ≤ 8.7 s | ≤ 8.7 s | any | ≤ 30 s | ≤ 10 s | ≤ 10 s |
 | Cost per useful second | $0.08 | $0.16–0.24 (N=2–3) | $0 + heroes | $0.28 (+ keyframe) | $0.10 | $0.45 (720p) |
 | Deterministic repair compatibility | yes | yes | is the repair | yes | yes | yes |
-| AVT integration | live | live + `construction_score.py` | scripts exist | new edge function (written, `runway-video-edit-proxy`) + `RUNWAY_API_KEY` in Lovable Cloud | same function | same function |
+| AVT integration | live | live + `construction_score.py` | scripts exist | `runway-video-edit-proxy` → `proxy-provider-call` → Control Center `video-providers-runway-video-edit`; **no AVT secret** | same function | same function |
 
 ## 5. What changed / what does not matter
 
@@ -62,7 +62,7 @@ Identical S08 source range, identical Look truth, identical construction target,
 
 Seedance 2.5 is held back (3–7× the price) unless the two above fail. Kill criterion: a mechanism whose S08 output does not `pass` the scorer is out; between passers, lowest cost per useful second wins; a passer also has to survive the targeted Astra part on temporal stability.
 
-**Needs Fendi:** `RUNWAY_API_KEY` as an edge-function secret in AVT's Lovable Cloud (the Control Center proxy has no video-to-video route and is locked), deploy of `runway-video-edit-proxy`, and the go on ≈ $4.5 of the ≈ $43 remaining.
+**Needs Fendi:** deploy Control Center `video-providers-runway-video-edit` (merged 2026-09-23), redeploy AVT `proxy-provider-call` + `runway-video-edit-proxy`, and the go on ≈ $4.5 of the ≈ $43 remaining. **No AVT secret** — `RUNWAY_API_KEY` stays in Control Center.
 
 ## 7. Smoke preparation (2026-09-23, $0, after ChatGPT's test-order change)
 
@@ -72,4 +72,4 @@ Order changed by ChatGPT: **Aleph 2.0 and Gemini Omni Flash 1.1 first**, no fres
 - **Source**: project asset `e5cfeebc-1780-42e7-8f30-5f157f64ff85` (`S08_master_69_466-76_368…mp4`, the same cut every S08 roll used; ≈ 7.0 s).
 - **Runner**: `scripts/edit/runway_smoke_runner.browser.js` — aleph2 (keyframe at 3.5 s, short instruction) and gemini_omni_flash_1.1 (mode=edit, Look truth hierarchy ≤ 5 refs, full E1 instruction), dry run first, provenance captured from the proxy's plan.
 - **Common evaluator**: `scripts/qa/construction_score.py` (construction vs the anchor; calibrated) + `scripts/qa/edit_fidelity.py` (new: did the provider EDIT or REGENERATE — performer-outside-garment change, head change, source→candidate pose displacement by dense flow outside the garment, motion-energy correlation; baseline on S08: E1 and v4c → EDIT, a different shot → REGENERATED) + `native_media_qa.py` temporal residual + the wordmark tracker.
-- **Boundary**: `runway-video-edit-proxy` is not deployed (the app cannot reach it) and `RUNWAY_API_KEY` is not set — both are Fendi's. Estimated smoke cost: Aleph ≈ $2.0 (7 s × $0.28), Omni Flash ≈ $0.70; nothing else.
+- **Boundary**: provider execution runs Control Center-side (`video-providers-runway-video-edit`); AVT never holds `RUNWAY_API_KEY`. Remaining: deploy the CC function, then redeploy AVT's two proxies. Estimated smoke cost: Aleph ≈ $2.0 (7 s × $0.28), Omni Flash ≈ $0.70; nothing else.

@@ -9,7 +9,19 @@
 // Models are DATA (MODELS below): which endpoint fields a model takes, its input/prompt limits and
 // its credit price. Adding a Runway model is a table row, not a code path.
 //
-// Secrets: RUNWAY_API_KEY (Lovable Cloud). Fails closed with runway_key_missing when absent.
+// PROVIDER EXECUTION IS NOT AVT'S. This function never holds a Runway credential and never calls
+// Runway. It resolves the request and hands it to Control Center, which owns RUNWAY_API_KEY, the
+// upstream call, provider retries, audit logging and the break-glass:
+//
+//   browser → runway-video-edit-proxy → proxy-provider-call → CC video-providers-runway-video-edit → Runway
+//
+// The extra AVT hop is deliberate: proxy-provider-call is the one place AVT_PROXY_KEY lives, and it
+// stamps the authenticated user id onto the request so Control Center's audit row cannot be forged
+// by the client. Polling and result retrieval go through the same hop to CC's existing
+// video-providers-job-status / -job-result, which already handle provider=runway.
+//
+// Secrets: none for the provider. CONTROL_CENTER_URL + AVT_PROXY_KEY are read by
+// proxy-provider-call, not here.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -21,8 +33,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const RUNWAY_BASE_URL = "https://api.dev.runwayml.com/v1";
-const RUNWAY_VERSION = "2024-11-06";
+/** Control Center function that owns the Runway credential and the upstream call. */
+const CC_VIDEO_EDIT_ENDPOINT = "video-providers-runway-video-edit";
+const CC_JOB_STATUS_ENDPOINT = "video-providers-job-status";
+const CC_JOB_RESULT_ENDPOINT = "video-providers-job-result";
 const SIGN_TTL = 3600;
 const OUTPUT_SIGN_TTL = 604800;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -100,11 +114,39 @@ async function readJsonSafe(res: Response): Promise<unknown> {
 }
 const redact = (u: string) => u.replace(/token=[^&]+/g, "token=REDACTED");
 
+type CcCall = { endpoint: string; method?: "POST" | "GET"; body?: Record<string, unknown>; query?: Record<string, string> };
+type CcResult = { httpStatus: number; payload: Record<string, unknown> };
+
+/**
+ * Call Control Center through AVT's own proxy-provider-call.
+ *
+ * The user's bearer token is forwarded verbatim: proxy-provider-call re-verifies it and
+ * stamps the authenticated user id onto the Control Center request, so the audit trail on
+ * CC's side is tied to a real AVT session rather than to whatever the client claimed.
+ * AVT_PROXY_KEY is never read here — it lives in proxy-provider-call alone.
+ */
+async function callControlCenter(supabaseUrl: string, authHeader: string, call: CcCall): Promise<CcResult> {
+  const res = await fetch(`${supabaseUrl.replace(/\/$/, "")}/functions/v1/proxy-provider-call`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: authHeader },
+    body: JSON.stringify({
+      endpoint: call.endpoint,
+      method: call.method ?? "POST",
+      ...(call.body ? { body: call.body } : {}),
+      ...(call.query ? { query: call.query } : {}),
+    }),
+  });
+  return { httpStatus: res.status, payload: (await readJsonSafe(res)) as Record<string, unknown> };
+}
+
+/** Dollars (AVT's authorization unit) → whole cents (Control Center's). Rounds UP so the
+ *  authorization sent is never smaller than the amount AVT actually approved. */
+const usdToCents = (usd: number) => Math.ceil(usd * 100);
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? ""; const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? ""; const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const runwayKey = Deno.env.get("RUNWAY_API_KEY")?.trim() ?? "";
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.toLowerCase().startsWith("bearer ")) return json(401, { error: "missing_bearer" });
   const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } });
@@ -200,34 +242,98 @@ serve(async (req) => {
     ? { model: "aleph2", videoUri: videoUrl, promptText: composedPrompt, ...(keyframes.length ? { keyframes } : {}), contentModeration: { publicFigureThreshold: "low" } }
     : { model: modelId, videoUri: videoUrl, mode: "edit", promptText: composedPrompt, duration: "auto", ...(referenceUrls.length ? { references: referenceUrls.map((uri) => ({ uri })) } : {}), ...(modelId === "seedance2_5" ? {} : { ratio: spec.ratio }) };
   const promptVersion = body.promptVersion?.trim() || "unspecified";
+  const estimatedCostUsd = estimateCostUsd(spec, inputSeconds);
+  // AVT owns spend AUTHORIZATION; Control Center forms its own provider estimate and
+  // refuses if that exceeds this number. Two numbers, two owners — neither is the other's.
+  const avtAuthorizedMaxCents = usdToCents(maxCostUsd);
+
+  // Normalised fields, not Runway's wire shape: Control Center re-derives the provider
+  // request from its own model table, so the contract between AVT and CC stays stable if
+  // Runway changes a field name.
+  const ccRequestBody: Record<string, unknown> = {
+    model: modelId,
+    videoUri: videoUrl,
+    promptText: composedPrompt,
+    ...(keyframes.length ? { keyframes } : {}),
+    ...(referenceUrls.length ? { references: referenceUrls.map((uri) => ({ uri })) } : {}),
+    ...(spec.contract === "mode_edit" && spec.ratio ? { ratio: spec.ratio } : {}),
+    contentModeration: { publicFigureThreshold: "low" },
+    inputSeconds,
+    avtAuthorizedMaxCents,
+    avt_project_id: body.projectId,
+    avt_shot_id: body.shotId ?? null,
+    // avt_user_id is stamped by proxy-provider-call from the verified JWT, not sent here.
+  };
+
   const plan = {
-    lane: "canonical_look_runway_video_edit", provider: "runway", model: modelId, endpoint: `${RUNWAY_BASE_URL}/video_to_video`, contract: spec.contract,
+    lane: "canonical_look_runway_video_edit", provider: "runway", model: modelId,
+    endpoint: `controlCenter/${CC_VIDEO_EDIT_ENDPOINT}`, providerEndpoint: "runway POST /v1/video_to_video (executed by Control Center)",
+    credentialLocation: "control_center", contract: spec.contract,
     videoAssetId: body.videoAssetId, wardrobeFeatureId: body.wardrobeFeatureId, lookId, referencePlan, referenceCount: referenceUrls.length, keyframeCount: keyframes.length,
     referencePolicy: policyUsed, providerCapability: { key: "runway:video_to_video", model: modelId, ...capability, maxKeyframes: spec.maxKeyframes, maxInputSeconds: spec.maxInputSeconds },
     promptComposition: { constraintsFirst: lookConstraints, specLast: withSpec ? lookSpec : "" }, prompt: composedPrompt, promptVersion,
-    inputSeconds, estimatedCostUsd: estimateCostUsd(spec, inputSeconds), maxCostUsd, keyConfigured: !!runwayKey,
+    inputSeconds, estimatedCostUsd, maxCostUsd, avtAuthorizedMaxCents,
     runwayRequestBody: JSON.parse(redact(JSON.stringify(runwayBody))),
+    controlCenterRequestBody: JSON.parse(redact(JSON.stringify(ccRequestBody))),
   };
-  if (body.dryRun) return json(200, { dryRun: true, billed: false, ...plan });
-  if (!runwayKey) return json(503, { error: "runway_key_missing", detail: "Add RUNWAY_API_KEY to the project's edge-function secrets (Lovable Cloud) — nothing was billed", ...plan });
-  if (plan.estimatedCostUsd > maxCostUsd) return json(400, { error: "cost_ceiling_exceeded", detail: `Estimated $${plan.estimatedCostUsd} exceeds maxCostUsd $${maxCostUsd}`, ...plan });
 
-  const headers = { "Content-Type": "application/json", Authorization: `Bearer ${runwayKey}`, "X-Runway-Version": RUNWAY_VERSION };
-  const submitRes = await fetch(`${RUNWAY_BASE_URL}/video_to_video`, { method: "POST", headers, body: JSON.stringify(runwayBody) });
-  const submitPayload = await readJsonSafe(submitRes) as Record<string, unknown>;
-  const taskId = typeof submitPayload?.id === "string" ? submitPayload.id : null;
-  if (!submitRes.ok || !taskId) return json(200, { ...plan, billed: false, submit: { httpStatus: submitRes.status, accepted: false, payload: submitPayload } });
+  // ---- $0 dry run --------------------------------------------------------
+  // The local plan is resolved without touching anything. Control Center's own dry run is
+  // then attempted for the authoritative provider envelope, but a failure there must not
+  // cost the caller the local plan — inspection has to work before CC is even deployed.
+  if (body.dryRun) {
+    let controlCenterDryRun: unknown = null;
+    let controlCenterError: string | null = null;
+    try {
+      const cc = await callControlCenter(supabaseUrl, authHeader, {
+        endpoint: CC_VIDEO_EDIT_ENDPOINT,
+        body: { ...ccRequestBody, dryRun: true },
+      });
+      if (cc.payload?.ok === true) controlCenterDryRun = cc.payload;
+      else controlCenterError = `control_center_http_${cc.httpStatus}: ${JSON.stringify(cc.payload).slice(0, 600)}`;
+    } catch (e) {
+      controlCenterError = `control_center_unreachable: ${String(e)}`;
+    }
+    return json(200, { dryRun: true, billed: false, ...plan, controlCenterDryRun, controlCenterError });
+  }
 
-  const t0 = Date.now(); let finalPayload: Record<string, unknown> = {}; let finalStatus = "unknown";
+  if (estimatedCostUsd > maxCostUsd) return json(400, { error: "cost_ceiling_exceeded", detail: `Estimated $${estimatedCostUsd} exceeds maxCostUsd $${maxCostUsd}`, ...plan });
+
+  // ---- submit through Control Center -------------------------------------
+  const submit = await callControlCenter(supabaseUrl, authHeader, { endpoint: CC_VIDEO_EDIT_ENDPOINT, body: ccRequestBody });
+  const submitOk = submit.payload?.ok === true;
+  const taskId = typeof submit.payload?.providerJobId === "string" && submit.payload.providerJobId ? submit.payload.providerJobId : null;
+  // Control Center's refusals (PROVIDER_KEY_NOT_CONFIGURED, PROVIDER_NOT_AVAILABLE,
+  // COST_LIMIT_EXCEEDED) come back verbatim so the caller sees which boundary said no.
+  if (!submitOk || !taskId) {
+    return json(200, { ...plan, billed: false, submit: { httpStatus: submit.httpStatus, accepted: false, payload: submit.payload } });
+  }
+  const controlCenterJobId = typeof submit.payload?.jobId === "string" ? submit.payload.jobId : null;
+  const ccProviderEstimateCents = typeof submit.payload?.ccProviderEstimateCents === "number" ? submit.payload.ccProviderEstimateCents : null;
+
+  // ---- poll Control Center's existing cross-provider status endpoint ------
+  const t0 = Date.now(); let finalPayload: Record<string, unknown> = {}; let finalStatus = "unknown"; let statusResultUrl: string | null = null;
   while (Date.now() - t0 < POLL_TIMEOUT_MS) {
-    const pollRes = await fetch(`${RUNWAY_BASE_URL}/tasks/${taskId}`, { headers });
-    finalPayload = await readJsonSafe(pollRes) as Record<string, unknown>;
-    finalStatus = String(finalPayload?.status ?? "unknown");
-    if (["SUCCEEDED", "FAILED", "CANCELLED"].includes(finalStatus)) break;
+    const poll = await callControlCenter(supabaseUrl, authHeader, {
+      endpoint: CC_JOB_STATUS_ENDPOINT, method: "GET", query: { provider: "runway", id: taskId },
+    });
+    if (poll.payload?.ok === true) {
+      finalStatus = String(poll.payload.status ?? "unknown");   // normalised: queued|running|succeeded|failed
+      finalPayload = (poll.payload.providerMetadata as Record<string, unknown>) ?? {};
+      statusResultUrl = typeof poll.payload.resultUrl === "string" ? poll.payload.resultUrl : null;
+      if (finalStatus === "succeeded" || finalStatus === "failed") break;
+    }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
   }
-  const outputs = Array.isArray(finalPayload?.output) ? (finalPayload.output as unknown[]) : [];
-  const outputUrl = finalStatus === "SUCCEEDED" && typeof outputs[0] === "string" ? (outputs[0] as string) : null;
+
+  // The status envelope normally carries the URL; job-result is the documented fallback.
+  let outputUrl: string | null = finalStatus === "succeeded" ? statusResultUrl : null;
+  if (finalStatus === "succeeded" && !outputUrl) {
+    const res = await callControlCenter(supabaseUrl, authHeader, {
+      endpoint: CC_JOB_RESULT_ENDPOINT, method: "GET", query: { provider: "runway", id: taskId },
+    });
+    if (res.payload?.ok === true && typeof res.payload.resultUrl === "string") outputUrl = res.payload.resultUrl;
+  }
   let storedPath: string | null = null; let assetId: string | null = null; let byteLength: number | null = null; let persistError: string | null = null;
   if (outputUrl) {
     const dl = await fetch(outputUrl);
@@ -241,7 +347,11 @@ serve(async (req) => {
           user_id: userId, project_id: body.projectId, shot_id: body.shotId ?? null, parent_asset_id: body.videoAssetId, asset_type: "edited_clip", file_url: storedPath, approval_status: "pending",
           metadata_json: { bucket: "project-clips", mime_type: "video/mp4", file_size_bytes: byteLength, architecture_lane: "canonical_look_runway", provider: "runway", model: modelId, runway_task_id: taskId,
             source_video_asset_id: body.videoAssetId, wardrobe_feature_id: body.wardrobeFeatureId, look_id: lookId, prompt_version: promptVersion, reference_plan: referencePlan, keyframe_count: keyframes.length,
-            estimated_cost_usd: plan.estimatedCostUsd, final_status: finalStatus, provider_capability: plan.providerCapability },
+            estimated_cost_usd: plan.estimatedCostUsd, final_status: finalStatus, provider_capability: plan.providerCapability,
+            // Provenance across the boundary: control_center_job_id is CC's
+            // tool_execution_logs.request_id, so an AVT artifact joins to CC's audit row.
+            credential_location: "control_center", control_center_job_id: controlCenterJobId,
+            avt_authorized_max_cents: avtAuthorizedMaxCents, cc_provider_estimate_cents: ccProviderEstimateCents },
         }).select("id").single();
         if (!assetErr && assetRow) assetId = assetRow.id as string; else persistError = `project_assets_insert: ${assetErr?.message ?? "no_row"}`;
       }
@@ -249,6 +359,9 @@ serve(async (req) => {
   }
   let previewUrl: string | null = null;
   if (storedPath) { const { data: signed } = await admin.storage.from("project-clips").createSignedUrl(storedPath, OUTPUT_SIGN_TTL); previewUrl = signed?.signedUrl ?? null; }
-  return json(200, { ...plan, billed: finalStatus === "SUCCEEDED" || finalStatus === "FAILED", submit: { httpStatus: submitRes.status, accepted: true, taskId }, finalStatus, failure: finalPayload?.failure ?? finalPayload?.failureCode ?? null,
-    estimatedCostUsd: plan.estimatedCostUsd, assetId, persistError, output: { storedBucket: storedPath ? "project-clips" : null, storedPath, previewUrl, byteLength } });
+  return json(200, { ...plan, billed: finalStatus === "succeeded" || finalStatus === "failed",
+    submit: { httpStatus: submit.httpStatus, accepted: true, taskId }, controlCenterJobId,
+    finalStatus, providerStatus: finalPayload?.status ?? null, failure: finalPayload?.failure ?? finalPayload?.failureCode ?? null,
+    estimatedCostUsd: plan.estimatedCostUsd, ccProviderEstimateCents, assetId, persistError,
+    output: { storedBucket: storedPath ? "project-clips" : null, storedPath, previewUrl, byteLength } });
 });
