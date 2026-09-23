@@ -1,0 +1,175 @@
+{
+  "out": "out/YSL_IceOn_bars24-46_v8.mp4",
+  "sectionSong": [
+    47.2131,
+    90.4918
+  ],
+  "expectedSeconds": 43.2787,
+  "outputSeconds": 43.279,
+  "fps": 24,
+  "size": "1080x1920",
+  "sync": {
+    "offsetSeconds": 0.8538,
+    "driftPpm": -0.3,
+    "songAssetId": "067a4cbf-6fd0-4601-9111-df1119c52fa6",
+    "performanceAssetId": "55bdc383-50e7-41b8-9ec9-8bda031ac5e0"
+  },
+  "slots": [
+    {
+      "shot": "S01",
+      "kind": "performance",
+      "song": [
+        47.2131,
+        51.1475
+      ],
+      "file": "env7/S01_env.mp4",
+      "offsetInFile": 0.5003,
+      "durationSeconds": 3.9344,
+      "frames": 95,
+      "transitionIn": "cut"
+    },
+    {
+      "shot": "S02",
+      "kind": "generated",
+      "song": [
+        51.1475,
+        53.1148
+      ],
+      "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/fx7/S02_render_macro.mp4",
+      "offsetInFile": 0.0,
+      "durationSeconds": 1.9673,
+      "frames": 47,
+      "transitionIn": "cut"
+    },
+    {
+      "shot": "S03",
+      "kind": "performance",
+      "song": [
+        53.1148,
+        59.0164
+      ],
+      "file": "env7/S03_env.mp4",
+      "offsetInFile": 0.5,
+      "durationSeconds": 5.9016,
+      "frames": 141,
+      "transitionIn": "cut"
+    },
+    {
+      "shot": "S04",
+      "kind": "performance",
+      "song": [
+        59.0164,
+        61.9672
+      ],
+      "file": "env7/S04_env.mp4",
+      "offsetInFile": 0.4996,
+      "durationSeconds": 2.9508,
+      "frames": 71,
+      "transitionIn": "cut"
+    },
+    {
+      "shot": "S05",
+      "kind": "generated",
+      "song": [
+        61.9672,
+        62.9508
+      ],
+      "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/fx7/S05_still_push_flash.mp4",
+      "offsetInFile": 0.0,
+      "durationSeconds": 0.9836,
+      "frames": 24,
+      "transitionIn": "cut"
+    },
+    {
+      "shot": "S06",
+      "kind": "performance",
+      "song": [
+        62.9508,
+        68.8525
+      ],
+      "file": "env7/S06_env.mp4",
+      "offsetInFile": 0.5,
+      "durationSeconds": 5.9017,
+      "frames": 141,
+      "transitionIn": "flash"
+    },
+    {
+      "shot": "S07",
+      "kind": "generated",
+      "song": [
+        68.8525,
+        70.8197
+      ],
+      "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/fx7/S07_still_lateral_push.mp4",
+      "offsetInFile": 0.0,
+      "durationSeconds": 1.9672,
+      "frames": 48,
+      "transitionIn": "cut"
+    },
+    {
+      "shot": "S08",
+      "kind": "performance",
+      "song": [
+        70.8197,
+        76.7213
+      ],
+      "file": "env7/S08_env.mp4",
+      "offsetInFile": 0.4999,
+      "durationSeconds": 5.9016,
+      "frames": 141,
+      "transitionIn": "cut"
+    },
+    {
+      "shot": "S09",
+      "kind": "performance",
+      "song": [
+        76.7213,
+        78.6885
+      ],
+      "file": "env7/S09d_env.mp4",
+      "offsetInFile": 0.9995,
+      "durationSeconds": 1.9672,
+      "frames": 48,
+      "transitionIn": "cut"
+    },
+    {
+      "shot": "S10",
+      "kind": "generated",
+      "song": [
+        78.6885,
+        80.6557
+      ],
+      "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/fx7/S10_still_strobe.mp4",
+      "offsetInFile": 0.0,
+      "durationSeconds": 1.9672,
+      "frames": 47,
+      "transitionIn": "cut"
+    },
+    {
+      "shot": "S11",
+      "kind": "performance",
+      "song": [
+        80.6557,
+        86.5574
+      ],
+      "file": "env7/S11b_env.mp4",
+      "offsetInFile": 0.4999,
+      "durationSeconds": 5.9017,
+      "frames": 141,
+      "transitionIn": "glitch"
+    },
+    {
+      "shot": "S12",
+      "kind": "performance",
+      "song": [
+        86.5574,
+        90.4918
+      ],
+      "file": "env7/S12b_env.mp4",
+      "offsetInFile": 0.4996,
+      "durationSeconds": 3.9344,
+      "frames": 95,
+      "transitionIn": "cut"
+    }
+  ]
+}

@@ -1,0 +1,493 @@
+{
+  "schema_version": 1,
+  "draft_id": "YSL_IceOn_bars24-46_v7",
+  "project_id": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+  "treatment_version": "v6-canonical-look",
+  "reviewer": "gpt-6-astra",
+  "review_timestamp": "2026-09-22T01:29:05.337Z",
+  "watched_video": false,
+  "overall": null,
+  "shots": [],
+  "transitions": [],
+  "sequence_defects": [
+    {
+      "severity": "major",
+      "shot_id": "S01",
+      "recommended_owner": "compositing_mask",
+      "category": "artifact",
+      "description": "PRESENT: a non-room black remnant survives outside the performer. Its exact source-object identity is uncertain, but it is not an acceptable body edge.",
+      "defect_id": "SEQ-ORIGINAL-CLOSET-LEAK",
+      "evidence": "THIS S01 00:03.250 contains a block-like dark patch immediately outside the screen-right wrist and hand, extending independently into the replacement room.",
+      "requires_treatment_change": false,
+      "time_range": [
+        0.0,
+        3.934
+      ],
+      "recommended_action": "Remove the external remnant from the foreground extraction while retaining the complete hand and sleeve.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "wardrobe_generation",
+      "category": "wardrobe",
+      "description": "PRESENT, partially improved: Look 2 is darker, but smooth panels and chalk-bright seam treatment still depart from the approved worn-denim realization.",
+      "defect_id": "SEQ-LOOK2-PRODUCT-TRUTH",
+      "evidence": "THIS S01 00:01.958 reads as smooth black material with white piping-like outlines. THIS S03 00:10.792 returns to visibly mottled, washed denim; the material response is not canonical across assets.",
+      "requires_treatment_change": false,
+      "time_range": [
+        0.0,
+        14.754
+      ],
+      "recommended_action": "Match the approved pre-hook anchor's denim texture, restrained seam contrast and material response before propagation.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "wardrobe_generation",
+      "category": "wardrobe",
+      "description": "PRESENT: removing the red tab has not corrected the oversized bright button treatment and exaggerated pocket detailing.",
+      "defect_id": "LOOK2-PRODUCT-TRUTH",
+      "evidence": "THIS S01 00:01.958 shows large, nearly blank white button faces and strongly outlined pocket flaps. THIS S03 00:06.875 uses smaller metallic-looking hardware, unlike the preceding garment realization.",
+      "requires_treatment_change": false,
+      "time_range": [
+        0.0,
+        14.754
+      ],
+      "recommended_action": "Lock button scale, material and pocket geometry to the approved garment; do not infer hardware authenticity from white circular highlights.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "compositing_mask",
+      "category": "artifact",
+      "description": "PRESENT: soft gray contamination remains around pre-hook head and clothing boundaries rather than a consistently motivated cold rim.",
+      "defect_id": "PREHOOK-MATTE-HALO",
+      "evidence": "THIS S01 00:00.625 has a pale cap outline. THIS S03 00:10.792 carries a diffuse screen-right sleeve edge. THIS S04 00:14.250 retains a broad soft fringe along the extended screen-right arm.",
+      "requires_treatment_change": false,
+      "time_range": [
+        0.0,
+        14.754
+      ],
+      "recommended_action": "Refine the moving alpha and remove source-background color contamination without trimming real clothing or motion blur.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "temporal_propagation",
+      "category": "continuity",
+      "description": "PRESENT: the pre-hook jacket still changes material, hardware scale and body proportions across generated assets.",
+      "defect_id": "LOOK2-CUT-CONSTRUCTION-DRIFT",
+      "evidence": "THIS S01 00:03.250 has long, smooth fronts and large white buttons. THIS S03 00:06.875 has a shorter washed body and smaller hardware. THIS S04 00:12.292 retains the rougher variant rather than S01's construction.",
+      "requires_treatment_change": false,
+      "time_range": [
+        3.167,
+        14.754
+      ],
+      "recommended_action": "Propagate one approved jacket realization across all three assets; preserve its dimensions through the S04 crop.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "compositing_mask",
+      "category": "artifact",
+      "description": "PRESENT: body coverage is more complete, but broad pale silhouette extensions still compromise early-hook integration.",
+      "defect_id": "PERF-MATTE-COVERAGE",
+      "evidence": "THIS S06 00:18.667 shows a pale extension outside the screen-left forearm and irregular shoulder margins. THIS S08 00:24.583 retains a diffuse vertical echo outside the screen-right sleeve.",
+      "requires_treatment_change": false,
+      "time_range": [
+        15.738,
+        29.508
+      ],
+      "recommended_action": "Separate foreground clothing from peeled source shadows; rebuild motion-aware edges rather than broadly feathering the silhouette.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "wardrobe_generation",
+      "category": "wardrobe",
+      "description": "PRESENT: early-hook upper closures remain open, and S08 introduces a split lower front with visible shirt tails.",
+      "defect_id": "LOOK1-CONSTRUCTION-MISMATCH",
+      "evidence": "THIS S06 00:16.708 exposes shirt and tie down to the chest band. THIS S08 00:24.583 shows striped shirttail below the jacket; THIS S08 00:28.500 retains the divided lower opening.",
+      "requires_treatment_change": false,
+      "time_range": [
+        15.738,
+        29.508
+      ],
+      "recommended_action": "Enforce the requested closed zipper and consistent lower closure while preserving the real pose and garment scale.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "wardrobe_generation",
+      "category": "wardrobe",
+      "description": "PRESENT: incompatible collar, lining and cuff treatments remain across the hook despite the shared conditioning anchor.",
+      "defect_id": "HOOK-LOOK1-GARMENT-TRUTH",
+      "evidence": "THIS S06 00:20.625 has large navy-lined collar wings. THIS S08 00:26.542 uses a short beige neckband. THIS S11 00:38.333 substitutes a tall beige collar and extensive exposed white shirt cuffs.",
+      "requires_treatment_change": false,
+      "time_range": [
+        15.738,
+        39.344
+      ],
+      "recommended_action": "Use one collar and sleeve construction, honoring the explicit stand-collar requirement rather than accepting separate approximations.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "wardrobe_generation",
+      "category": "wardrobe",
+      "description": "PRESENT: body length, waistband and pocket treatment still form multiple beige/navy garments rather than the approved hook outfit.",
+      "defect_id": "SEQ-LOOK1-PRODUCT-TRUTH",
+      "evidence": "THIS S06 00:18.667 has a defined segmented lower band. THIS S09 00:29.833 has a longer plain lower front. THIS S12 00:40.000 introduces a different pocket-and-hem arrangement.",
+      "requires_treatment_change": false,
+      "time_range": [
+        15.738,
+        43.279
+      ],
+      "recommended_action": "Constrain garment topology and proportions to a single approved realization, not merely the same color palette.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "brand_repair",
+      "category": "wardrobe",
+      "description": "PRESENT, changed manifestation: cleaner replacement typography has not eliminated all generator-origin marks.",
+      "defect_id": "SEQ-LOOK1-WORDMARK-TRUTH",
+      "evidence": "THIS S11 00:34.417 retains an isolated gold fleck beyond the principal lettering. THIS S12 00:41.292 clearly shows a second yellow text row outside the navy band.",
+      "requires_treatment_change": false,
+      "time_range": [
+        15.738,
+        43.279
+      ],
+      "recommended_action": "Complete the generated-lettering cleanup before compositing the sole approved graphic; inspect the entire surrounding chest region.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "temporal_propagation",
+      "category": "continuity",
+      "description": "PRESENT: the wardrobe resets across the city cutaway instead of continuing the same jacket.",
+      "defect_id": "S06-S08-GARMENT-RESET",
+      "evidence": "THIS S06 00:20.625 ends the sampled setup with navy collar lining and covered shirt hem. THIS S08 00:24.583 returns with a short beige collar, changed lower construction and striped shirttail exposure.",
+      "requires_treatment_change": false,
+      "time_range": [
+        20.625,
+        24.773
+      ],
+      "recommended_action": "Carry S06's approved garment geometry into S08 before matching lighting and pose deformation.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": "S08",
+      "recommended_owner": "temporal_propagation",
+      "category": "continuity",
+      "description": "PRESENT: the initially defined lower waistband is not maintained in later sampled garment states.",
+      "defect_id": "S08-HEM-CONSTRUCTION-DRIFT",
+      "evidence": "THIS S08 00:24.583 displays a horizontal waistband boundary above the shirttail. In THIS S08 00:26.542 and 00:28.500, the exposed lower panels lack that same distinct construction line.",
+      "requires_treatment_change": false,
+      "time_range": [
+        24.583,
+        29.417
+      ],
+      "recommended_action": "Track the waistband seam through the native frames and preserve its topology through pose changes and hand occlusion.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "temporal_propagation",
+      "category": "continuity",
+      "description": "PRESENT: late-hook cuts still exchange tie patterns, collar forms and cuff exposure without a specified outfit change.",
+      "defect_id": "HOOK-GARMENT-RESET",
+      "evidence": "THIS S09 00:29.833 has a densely striped tie and covered shirt cuffs. THIS S11 00:38.333 uses broad tie stripes and long white cuffs. THIS S12 00:40.000 returns to finer stripes and concealed cuffs.",
+      "requires_treatment_change": false,
+      "time_range": [
+        29.508,
+        43.279
+      ],
+      "recommended_action": "Propagate jacket and underlying shirt/tie together as one persistent outfit across late-hook assets.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": null,
+      "recommended_owner": "wardrobe_generation",
+      "category": "wardrobe",
+      "description": "PRESENT: late-hook necklines remain unzipped and differently shaped, rather than consistently closed with the requested stand collar.",
+      "defect_id": "LOOK1-GARMENT-CONSTRUCTION",
+      "evidence": "THIS S09 00:31.125 exposes a tie through a broad upper opening. THIS S11 00:36.375 opens below the chest band. THIS S12 00:42.583 retains a deep opening under a much shorter collar.",
+      "requires_treatment_change": false,
+      "time_range": [
+        29.508,
+        43.279
+      ],
+      "recommended_action": "Correct the late-hook closure and collar as shared construction parameters, not independent styling choices.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": "S09",
+      "recommended_owner": "wardrobe_generation",
+      "category": "wardrobe",
+      "description": "NEW regression: removing the outer-arm stripes also replaces the previously closed stand-collar neckline with an open, splayed configuration.",
+      "defect_id": "S09-CLOSURE-COLLAR-REGRESSION",
+      "evidence": "PREVIOUS S09 00:29.833 is zipped to the neck. THIS S09 00:29.833 reveals a white shirt and striped tie; THIS S09 00:31.125 confirms the replacement remains open.",
+      "requires_treatment_change": false,
+      "time_range": [
+        29.508,
+        31.475
+      ],
+      "recommended_action": "Retain the repaired plain upper sleeves while restoring the closed zipper and compact upright collar.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": "S11",
+      "recommended_owner": "wardrobe_generation",
+      "category": "wardrobe",
+      "description": "NEW: the wearer-right half of the navy chest band is missing, leaving a one-sided branding patch.",
+      "defect_id": "S11-CHEST-BAND-INCOMPLETE",
+      "evidence": "THIS S11 00:34.417, 00:36.375 and 00:38.333 all show beige fabric across the screen-left chest where the other half of the band should continue.",
+      "requires_treatment_change": false,
+      "time_range": [
+        33.443,
+        39.344
+      ],
+      "recommended_action": "Restore the missing band half, aligned across the zipper, and propagate it through the complete shot.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": "S11",
+      "recommended_owner": "compositing_mask",
+      "category": "artifact",
+      "description": "PRESENT: a large pale remnant trails outside the intact upper body, exceeding a subtle edge halo.",
+      "defect_id": "PERF-SOURCE-BACKGROUND-LEAK",
+      "evidence": "THIS S11 00:38.333 shows a block-shaped light-gray patch behind the screen-left neck and shoulder. It does not follow the fixed mirror-panel geometry; its precise source-object identity is UNCERTAIN, confidence 0.25.",
+      "requires_treatment_change": false,
+      "time_range": [
+        33.443,
+        39.344
+      ],
+      "recommended_action": "Exclude the trailing source patch from the matte while protecting the actual neck, collar and shoulder.",
+      "song_range": null
+    },
+    {
+      "severity": "major",
+      "shot_id": "S12",
+      "recommended_owner": "brand_repair",
+      "category": "artifact",
+      "description": "NEW: a conspicuous yellow text row appears above the chest band while the intended in-band wordmark remains visible.",
+      "defect_id": "S12-DUPLICATE-WORDMARK",
+      "evidence": "THIS S12 00:41.292 contains simultaneous above-band yellow lettering and a smaller in-band mark. The extra row is absent from THIS S12 00:40.000 and 00:42.583.",
+      "requires_treatment_change": false,
+      "time_range": [
+        40.0,
+        42.583
+      ],
+      "recommended_action": "Remove the extra lettering throughout its native-frame extent and propagate the cleanup through chest deformation.",
+      "song_range": null
+    },
+    {
+      "severity": "minor",
+      "shot_id": null,
+      "recommended_owner": "brand_repair",
+      "category": "continuity",
+      "description": "PRESENT, reduced: placement is broadly wearer-left and single-line, but apparent graphic scale is still inconsistent relative to the band.",
+      "defect_id": "HOOK-WORDMARK-DRIFT",
+      "evidence": "THIS S06 00:18.667 and S08 00:26.542 have comparatively prominent band lettering. THIS S12 00:40.000 carries a visibly smaller mark even relative to its local band width.",
+      "requires_treatment_change": false,
+      "time_range": [
+        15.738,
+        43.279
+      ],
+      "recommended_action": "Normalize logo dimensions and offsets in garment coordinates, accounting for perspective rather than fixing screen-space size.",
+      "song_range": null
+    },
+    {
+      "severity": "minor",
+      "shot_id": null,
+      "recommended_owner": "compositing_mask",
+      "category": "artifact",
+      "description": "PRESENT: narrow soft gray fringes remain even where no larger detached remnant is visible.",
+      "defect_id": "PERF-MATTE-EDGE-HALO",
+      "evidence": "THIS S09 00:29.833 has soft cap and shoulder outlines. THIS S11 00:36.375 retains sleeve fringes; THIS S12 00:41.292 shows pale contamination around the screen-right head boundary.",
+      "requires_treatment_change": false,
+      "time_range": [
+        29.758,
+        41.844
+      ],
+      "recommended_action": "Refine edge alpha and color decontamination locally; avoid solving halos by eroding face or garment coverage.",
+      "song_range": null
+    },
+    {
+      "severity": "minor",
+      "shot_id": "S12",
+      "recommended_owner": "brand_repair",
+      "category": "wardrobe",
+      "description": "PRESENT, changed manifestation: the former excessive in-band prominence is reduced, but S12 now uses a smaller apparent logo scale than neighboring hook realizations.",
+      "defect_id": "S12-WORDMARK-SCALE",
+      "evidence": "Compare THIS S06 00:18.667 with THIS S12 00:40.000 and 00:42.583: the latter lettering occupies less of its wearer-left band segment. Exact residual width error is uncertain at this sampling scale.",
+      "requires_treatment_change": false,
+      "time_range": [
+        39.344,
+        43.279
+      ],
+      "recommended_action": "Verify normalized width against the approved artwork at native resolution before adjusting S12's tracked graphic.",
+      "song_range": null
+    }
+  ],
+  "answers": {},
+  "final_verdict": "REPAIR_REQUIRED",
+  "escalate_to_fendi": [],
+  "targeted": true,
+  "mechanisms": [
+    {
+      "evidence": "THIS S01 00:03.250 remains smoother and more heavily outlined than the pre-hook anchor. THIS S06 00:20.625 has a tall navy-lined collar; THIS S08 00:24.583 substitutes a short beige collar and exposed shirttail. Canonical conditioning has not eliminated outfit resets.",
+      "mechanism_id": "canonical_look",
+      "defect_ids": [
+        "SEQ-LOOK2-PRODUCT-TRUTH",
+        "LOOK2-PRODUCT-TRUTH",
+        "LOOK2-CUT-CONSTRUCTION-DRIFT",
+        "SEQ-LOOK1-PRODUCT-TRUTH",
+        "S06-S08-GARMENT-RESET",
+        "HOOK-GARMENT-RESET"
+      ],
+      "confidence": 0.98,
+      "verdict": "UNCHANGED"
+    },
+    {
+      "evidence": "THIS S06 00:18.667 and S12 00:40.000 retain open upper zippers. THIS S11 00:36.375 additionally lacks the wearer-right chest-band half. Plain outer sleeves are improved, but closed closure, consistent stand collar and complete chest band are not achieved.",
+      "mechanism_id": "construction",
+      "defect_ids": [
+        "LOOK1-CONSTRUCTION-MISMATCH",
+        "HOOK-LOOK1-GARMENT-TRUTH",
+        "LOOK1-GARMENT-CONSTRUCTION",
+        "S11-CHEST-BAND-INCOMPLETE"
+      ],
+      "confidence": 0.98,
+      "verdict": "REGRESSED"
+    },
+    {
+      "evidence": "THIS S06 00:18.667 and S11 00:36.375 show cleaner single-line marks instead of the reported stacked pseudo-text. THIS S12 00:41.292 nevertheless displays both an in-band mark and yellow lettering above it. Exact micro-letterform fidelity remains UNCERTAIN, confidence 0.25.",
+      "mechanism_id": "wordmark",
+      "defect_ids": [
+        "HOOK-WORDMARK-DRIFT",
+        "SEQ-LOOK1-WORDMARK-TRUTH",
+        "S12-WORDMARK-SCALE",
+        "S12-DUPLICATE-WORDMARK"
+      ],
+      "confidence": 0.92,
+      "verdict": "IMPROVED"
+    },
+    {
+      "evidence": "THIS S08 00:24.583 shows a defined lower waistband; THIS S08 00:26.542 and 00:28.500 instead show plain split lower panels without the same seam. The previously reported waistband-continuity problem remains visible across sampled poses.",
+      "mechanism_id": "temporal_garment",
+      "defect_ids": [
+        "S08-HEM-CONSTRUCTION-DRIFT"
+      ],
+      "confidence": 0.8,
+      "verdict": "UNCHANGED"
+    },
+    {
+      "evidence": "THIS S06 00:18.667 retains broad sleeve echoes; THIS S11 00:38.333 retains a detached-looking shoulder patch. THIS S12 00:40.000 preserves the visible face and trousers. Reported foreground erosion is reduced, but clean-edge and no-peeled-shadow claims still fail.",
+      "mechanism_id": "matte",
+      "defect_ids": [
+        "SEQ-ORIGINAL-CLOSET-LEAK",
+        "PREHOOK-MATTE-HALO",
+        "PERF-MATTE-COVERAGE",
+        "PERF-SOURCE-BACKGROUND-LEAK",
+        "PERF-MATTE-EDGE-HALO"
+      ],
+      "confidence": 0.88,
+      "verdict": "IMPROVED"
+    },
+    {
+      "evidence": "PREVIOUS S09 00:30.458 versus THIS S09 00:30.458: outer-arm stripes disappear, but the closed neckline becomes open, exposing a tie beneath a splayed collar. THIS S09 00:31.125 repeats that regression; the wordmark remains on the chest band.",
+      "mechanism_id": "S09_repair",
+      "defect_ids": [
+        "S09-CLOSURE-COLLAR-REGRESSION",
+        "LOOK1-GARMENT-CONSTRUCTION"
+      ],
+      "confidence": 0.99,
+      "verdict": "REGRESSED"
+    }
+  ],
+  "readiness": {
+    "ready_for_full_review": false,
+    "reason": "Major cross-shot garment resets, closure and band failures, duplicate branding and visible matte contamination remain, so the targeted repairs do not qualify for full review.",
+    "summary": "Sampled resolution: SEQ-MATTE-FOREGROUND-EROSION is not reproduced in THIS S11 00:36.375 or S12 00:40.000. Other repairs remain partial: garment variants persist, S09 sacrifices closure, and branding cleanup is incomplete. Unrepresented historical intervals are not certified resolved."
+  },
+  "_provenance": {
+    "parts": {
+      "mechanisms": {
+        "responseId": "resp_059c886161807714006ab1d76b067887d287fb1bb915d42949",
+        "model": "gpt-6-astra",
+        "actualCostUsd": 1.0857,
+        "reviewedAt": "2026-09-22T01:29:05.337Z"
+      }
+    },
+    "totalCostUsd": 1.0857,
+    "usage": {
+      "input_tokens": 29464,
+      "output_tokens": 15821
+    },
+    "note": "aggregated by scripts/qa/aggregate_astra_review.py from the proxy-stored part files"
+  },
+  "_native_media_qa_required": [],
+  "_diff_vs_prev": {
+    "prev_draft_id": "YSL_IceOn_bars24-46_v5",
+    "resolved": [
+      "HOOK-SOURCE-LEAK",
+      "LOOK1-WORDMARK-TRUTH",
+      "PERF-CLOSET-LEAKAGE",
+      "PREHOOK-CLOSET-MATTE-LEAK",
+      "REVIEW-SYNC-UNVERIFIED",
+      "S02-HARDWARE-MACRO-TRUTH",
+      "S05-FLASH-PEAK-UNVERIFIED",
+      "S07-CUT-TIMING",
+      "S09-SOURCE-INPOINT-AUDIT",
+      "S10-STROBE-VISIBILITY-UNVERIFIED",
+      "S11-GLITCH-UNVERIFIED",
+      "SEQ-CUT-BOUNDARY-OFFSET",
+      "SEQ-FRAME-SYNC-UNVERIFIED",
+      "SEQ-MATTE-FOREGROUND-EROSION",
+      "SEQ-MIRROR-PROGRESSION-MISSING"
+    ],
+    "persisting": [
+      "HOOK-GARMENT-RESET",
+      "HOOK-LOOK1-GARMENT-TRUTH",
+      "HOOK-WORDMARK-DRIFT",
+      "LOOK1-CONSTRUCTION-MISMATCH",
+      "LOOK1-GARMENT-CONSTRUCTION",
+      "LOOK2-CUT-CONSTRUCTION-DRIFT",
+      "LOOK2-PRODUCT-TRUTH",
+      "PERF-MATTE-COVERAGE",
+      "PERF-MATTE-EDGE-HALO",
+      "PERF-SOURCE-BACKGROUND-LEAK",
+      "PREHOOK-MATTE-HALO",
+      "S06-S08-GARMENT-RESET",
+      "S08-HEM-CONSTRUCTION-DRIFT",
+      "S12-WORDMARK-SCALE",
+      "SEQ-LOOK1-PRODUCT-TRUTH",
+      "SEQ-LOOK1-WORDMARK-TRUTH",
+      "SEQ-LOOK2-PRODUCT-TRUTH",
+      "SEQ-ORIGINAL-CLOSET-LEAK"
+    ],
+    "introduced": [
+      "S09-CLOSURE-COLLAR-REGRESSION",
+      "S11-CHEST-BAND-INCOMPLETE",
+      "S12-DUPLICATE-WORDMARK"
+    ]
+  }
+}

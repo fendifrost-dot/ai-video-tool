@@ -43,7 +43,7 @@ The graphic is dropped (not guessed) on frames whose tracking confidence is belo
 import argparse, json, os, subprocess, sys
 import cv2, numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from garment_track import (illumination, occlusion_mask, quad_array, quad_mask, read_frames, temporal_qa, to_jsonable, track_plane, warp_quad)
+from garment_track import (expand_quad, illumination, occlusion_mask, quad_array, quad_mask, read_frames, temporal_qa, to_jsonable, track_plane, warp_quad)
 
 def load_graphic(path, opaque):
     g = cv2.imread(path, cv2.IMREAD_UNCHANGED)
@@ -105,6 +105,8 @@ def main():
     ap.add_argument("--resid-thresh", type=float, default=34.0); ap.add_argument("--name", default=None)
     ap.add_argument("--skin-occluder", action="store_true", help="also treat YCrCb skin as occluder (only for garments far from skin tones)")
     ap.add_argument("--motion-model", choices=("similarity", "affine", "homography"), default="affine")
+    ap.add_argument("--track-expand", type=float, default=1.0, help="track the texture of a quad this many times larger (about the same centre) than the graphic's quad — for a graphic on a plain panel surrounded by trackable garment structure")
+    ap.add_argument("--proximity-weight", type=float, default=0.01, help="multi-anchor ownership: confidence penalty per frame of distance from the anchor, so the nearest anchor wins ties")
     ap.add_argument("--max-shape-drift", type=float, default=1.3, help="a tracked quad whose edge lengths (scale-normalised) drift more than this factor from the anchor's is degenerate and gets confidence 0")
     ap.add_argument("--erase-above", type=float, default=0.0, help="fraction of the plane height ABOVE the plane to repaint with the surrounding garment colour before compositing — removes stray marks a generator drew next to the true graphic (0 = off)")
     ap.add_argument("--erase-below", type=float, default=0.0, help="same, below the plane")
@@ -140,7 +142,7 @@ def main():
     matte = read_frames(a.matte)[0] if a.matte else None
 
     print(f"tracking plane from anchor frame(s) {[f for f, _ in anchors]} over {len(frames)} frames …", flush=True)
-    tracks = [track_plane(frames, f, q, model=a.motion_model, smooth_sigma=a.smooth) for f, q in anchors]
+    tracks = [track_plane(frames, f, q, model=a.motion_model, smooth_sigma=a.smooth, track_quad=expand_quad(q, a.track_expand) if a.track_expand != 1.0 else None) for f, q in anchors]
     # shape sanity: a tracked quad whose edges have collapsed or stretched relative to the anchor's
     # (beyond --max-shape-drift, after removing the mean scale) is a degenerate fit, however many
     # inliers it kept — its confidence goes to 0 so a healthier anchor takes the frame
@@ -149,11 +151,14 @@ def main():
             if t is None or t.get("quad") is None: continue
             ok, ratio = quad_shape_ok(q0, t["quad"], a.max_shape_drift)
             if not ok: t["confidence"] = 0.0; t["shape_ratio"] = ratio
-    # per frame: the anchor whose track is most confident there
+    # per frame: the anchor whose track is most confident there; among near-equal confidences the
+    # NEAREST anchor wins (tracks drift with distance even while their inlier confidence stays high)
     owner = []
     for k in range(len(frames)):
-        best = max(range(len(anchors)), key=lambda i: (tracks[i][k] or {"confidence": -1})["confidence"])
-        owner.append(best)
+        def score(i):
+            t = tracks[i][k]
+            return -1.0 if t is None else t["confidence"] - a.proximity_weight * abs(k - anchors[i][0])
+        owner.append(max(range(len(anchors)), key=score))
     track = [tracks[owner[k]][k] for k in range(len(frames))]
     anchor = frames[a.anchor_frame]
     if a.fit == "contain":
@@ -235,6 +240,7 @@ def main():
                     dist = np.sqrt(0.25 * (lab_f[..., 0] - ref[0]) ** 2 + (lab_f[..., 1] - ref[1]) ** 2 + (lab_f[..., 2] - ref[2]) ** 2)
                     cand = ((dist > a.erase_thresh) & em).astype(np.uint8) * 255
                     cand = cv2.morphologyEx(cand, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+                    cand = cv2.morphologyEx(cand, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))   # break thin bridges to the tie / zip / shadows
                     n_lab, lab_img, stats, _ = cv2.connectedComponentsWithStats(cand)
                     marks = np.zeros_like(cand); band_area = max(1, int(em.sum()))
                     # a stray mark is an ISLAND: an off-colour blob fully enclosed by garment colour. Anything

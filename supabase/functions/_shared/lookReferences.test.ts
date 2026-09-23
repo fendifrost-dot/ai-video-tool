@@ -90,5 +90,8 @@ describe("getProviderCapability", () => {
     expect(getProviderCapability("xai:images/edits", env()).maxReferenceImages).toBe(3);   // verified 2026-09-21 on grok-imagine-image-quality
     expect(getProviderCapability("xai:videos/edits", env("not json")).maxReferenceImages).toBe(8);
     expect(getProviderCapability("nobody:nothing", env()).maxReferenceImages).toBe(1);
+    expect(getProviderCapability("xai:videos/edits", env()).maxPromptChars).toBe(4096);   // verified 2026-09-22 (unbilled 400)
+    expect(getProviderCapability("xai:videos/edits", env('{"xai:videos/edits":{"maxPromptChars":8000}}')).maxPromptChars).toBe(8000);
+    expect(getProviderCapability("nobody:nothing", env()).maxPromptChars).toBeNull();
   });
 });
