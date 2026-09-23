@@ -50,7 +50,17 @@ describe("runway-video-edit-proxy holds no provider credential", () => {
 
   it("routes provider execution through Control Center", () => {
     expect(code).toContain("video-providers-runway-video-edit");
-    expect(code).toContain("proxy-provider-call");
+    expect(code).toContain("controlCenterClient");
+  });
+
+  it("does not synchronously invoke another AVT edge function", () => {
+    // The bug this pins: PR #161 called AVT's own proxy-provider-call from here, a
+    // same-project edge→edge hop during a request. Every valid request came back as a bare
+    // 503 with no CORS headers — the gateway answering for a killed worker, which the
+    // caller's try/catch cannot intercept. Control Center is a SEPARATE project, so the
+    // direct call is an ordinary outbound request; hopping through AVT's own gateway is not.
+    expect(code).not.toContain("proxy-provider-call");
+    expect(code).not.toMatch(/SUPABASE_URL[\s\S]{0,120}functions\/v1/);
   });
 
   it("reuses Control Center's existing polling instead of reimplementing it", () => {
@@ -60,10 +70,26 @@ describe("runway-video-edit-proxy holds no provider credential", () => {
     expect(code).not.toContain("/tasks/");
   });
 
-  it("does not read the Control Center shared secret either", () => {
-    // AVT_PROXY_KEY lives in proxy-provider-call alone, so there is one place to rotate it.
-    expect(code).not.toContain("AVT_PROXY_KEY");
-    expect(code).not.toContain("CONTROL_CENTER_URL");
+  it("reads the Control Center secret only through the shared client", () => {
+    // AVT_PROXY_KEY is NOT a provider credential — it is AVT's own shared secret with Control
+    // Center, and it already lives in proxy-provider-call and ingest-provider-job. The
+    // invariant that matters is the one above: no PROVIDER key in AVT. Keeping the hop in
+    // _shared/controlCenterClient.ts gives one implementation without an intra-project hop.
+    expect(code).not.toMatch(/Deno\.env\.get\(\s*["'`]AVT_PROXY_KEY/);
+    expect(code).not.toMatch(/Deno\.env\.get\(\s*["'`]CONTROL_CENTER_URL/);
+    expect(code).toContain("controlCenterConfig()");
+  });
+
+  it("fails closed when Control Center is not configured", () => {
+    // AVT has no provider credential to fall back on, so it must refuse rather than pretend.
+    expect(code).toContain("control_center_not_configured");
+  });
+
+  it("converts an unhandled throw into a CORS-bearing JSON error", () => {
+    // Without this the runtime answers with a bare 503 and no CORS headers, and the browser
+    // only reports "Failed to fetch" — the failure becomes invisible to everyone.
+    expect(code).toContain("unhandled_exception");
+    expect(code).toMatch(/serve\(async \(req\) => \{[\s\S]{0,200}try \{[\s\S]{0,120}handleRequest/);
   });
 
   it("sends AVT's spend authorization and lets Control Center form its own estimate", () => {

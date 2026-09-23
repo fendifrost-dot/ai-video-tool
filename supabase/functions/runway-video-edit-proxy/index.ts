@@ -13,20 +13,26 @@
 // Runway. It resolves the request and hands it to Control Center, which owns RUNWAY_API_KEY, the
 // upstream call, provider retries, audit logging and the break-glass:
 //
-//   browser → runway-video-edit-proxy → proxy-provider-call → CC video-providers-runway-video-edit → Runway
+//   browser → runway-video-edit-proxy → CC video-providers-runway-video-edit → Runway
 //
-// The extra AVT hop is deliberate: proxy-provider-call is the one place AVT_PROXY_KEY lives, and it
-// stamps the authenticated user id onto the request so Control Center's audit row cannot be forged
-// by the client. Polling and result retrieval go through the same hop to CC's existing
-// video-providers-job-status / -job-result, which already handle provider=runway.
+// The call goes DIRECTLY to Control Center (a separate Supabase project) via
+// _shared/controlCenterClient.ts. It deliberately does not hop through AVT's own
+// proxy-provider-call: that is the BROWSER's entry point, and routing an edge function through it
+// is a synchronous same-project edge→edge invocation. PR #161 did exactly that and every valid
+// request died with a bare 503 and no CORS headers — the gateway answering for a killed worker,
+// which the caller's try/catch cannot intercept. See controlCenterClient.ts for the full note.
 //
-// Secrets: none for the provider. CONTROL_CENTER_URL + AVT_PROXY_KEY are read by
-// proxy-provider-call, not here.
+// This function verifies the user's JWT itself, so it stamps avt_user_id on the Control Center
+// request from its own verified session rather than trusting anything the client sent.
+//
+// Secrets: none for the provider. CONTROL_CENTER_URL + AVT_PROXY_KEY (AVT's own shared secret
+// with Control Center, not a provider credential) are read via controlCenterClient.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { composeConstraintsFirst, lookSpecificationText, orderLookReferences, resolveReferencePolicy, type ReferencePolicy } from "../_shared/lookReferences.ts";
 import { getProviderCapability } from "../_shared/providerCapabilities.ts";
+import { callControlCenter, controlCenterConfig, type ControlCenterConfig } from "../_shared/controlCenterClient.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -92,7 +98,8 @@ type Body = {
   /** the input video's duration (seconds) for the cost estimate; probed by the caller */
   inputSeconds?: number;
 };
-type Admin = ReturnType<typeof createClient>;
+// deno-lint-ignore no-explicit-any
+type Admin = SupabaseClient<any, any, any>;
 
 function json(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -114,39 +121,16 @@ async function readJsonSafe(res: Response): Promise<unknown> {
 }
 const redact = (u: string) => u.replace(/token=[^&]+/g, "token=REDACTED");
 
-type CcCall = { endpoint: string; method?: "POST" | "GET"; body?: Record<string, unknown>; query?: Record<string, string> };
-type CcResult = { httpStatus: number; payload: Record<string, unknown> };
-
-/**
- * Call Control Center through AVT's own proxy-provider-call.
- *
- * The user's bearer token is forwarded verbatim: proxy-provider-call re-verifies it and
- * stamps the authenticated user id onto the Control Center request, so the audit trail on
- * CC's side is tied to a real AVT session rather than to whatever the client claimed.
- * AVT_PROXY_KEY is never read here — it lives in proxy-provider-call alone.
- */
-async function callControlCenter(supabaseUrl: string, authHeader: string, call: CcCall): Promise<CcResult> {
-  const res = await fetch(`${supabaseUrl.replace(/\/$/, "")}/functions/v1/proxy-provider-call`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: authHeader },
-    body: JSON.stringify({
-      endpoint: call.endpoint,
-      method: call.method ?? "POST",
-      ...(call.body ? { body: call.body } : {}),
-      ...(call.query ? { query: call.query } : {}),
-    }),
-  });
-  return { httpStatus: res.status, payload: (await readJsonSafe(res)) as Record<string, unknown> };
-}
-
 /** Dollars (AVT's authorization unit) → whole cents (Control Center's). Rounds UP so the
  *  authorization sent is never smaller than the amount AVT actually approved. */
 const usdToCents = (usd: number) => Math.ceil(usd * 100);
 
-serve(async (req) => {
+async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? ""; const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? ""; const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  // null when unconfigured; the dry run still resolves locally, a billed call fails closed.
+  const cc: ControlCenterConfig | null = controlCenterConfig();
   const authHeader = req.headers.get("Authorization") ?? "";
   if (!authHeader.toLowerCase().startsWith("bearer ")) return json(401, { error: "missing_bearer" });
   const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } });
@@ -188,7 +172,7 @@ serve(async (req) => {
 
   // ---- Look truth hierarchy (same as the xAI lane) ----
   let garmentPaths: string[] = []; let referencePlan: Array<{ role: string; featureId: string | null; file: string }> = [];
-  let lookConstraints: string[] = []; let lookSpec = ""; let policyUsed: ReferencePolicy | null = null;
+  let lookConstraints: string[] = []; let lookSpec = ""; let policyUsed: Required<ReferencePolicy> | null = null;
   const lookId = body.lookId?.trim() || null;
   const refCap = Math.min(spec.maxReferences, capability.maxReferenceImages);
   if (lookId && refCap > 0) {
@@ -262,7 +246,8 @@ serve(async (req) => {
     avtAuthorizedMaxCents,
     avt_project_id: body.projectId,
     avt_shot_id: body.shotId ?? null,
-    // avt_user_id is stamped by proxy-provider-call from the verified JWT, not sent here.
+    // Stamped from the JWT this function verified itself, never from the client's body.
+    avt_user_id: userId,
   };
 
   const plan = {
@@ -275,6 +260,7 @@ serve(async (req) => {
     inputSeconds, estimatedCostUsd, maxCostUsd, avtAuthorizedMaxCents,
     runwayRequestBody: JSON.parse(redact(JSON.stringify(runwayBody))),
     controlCenterRequestBody: JSON.parse(redact(JSON.stringify(ccRequestBody))),
+    controlCenterConfigured: cc !== null,
   };
 
   // ---- $0 dry run --------------------------------------------------------
@@ -284,23 +270,29 @@ serve(async (req) => {
   if (body.dryRun) {
     let controlCenterDryRun: unknown = null;
     let controlCenterError: string | null = null;
-    try {
-      const cc = await callControlCenter(supabaseUrl, authHeader, {
+    if (!cc) {
+      controlCenterError = "control_center_not_configured: set CONTROL_CENTER_URL and AVT_PROXY_KEY as AVT edge-function secrets";
+    } else try {
+      const ccDry = await callControlCenter(cc, {
         endpoint: CC_VIDEO_EDIT_ENDPOINT,
         body: { ...ccRequestBody, dryRun: true },
       });
-      if (cc.payload?.ok === true) controlCenterDryRun = cc.payload;
-      else controlCenterError = `control_center_http_${cc.httpStatus}: ${JSON.stringify(cc.payload).slice(0, 600)}`;
+      if (ccDry.payload?.ok === true) controlCenterDryRun = ccDry.payload;
+      else controlCenterError = `control_center_http_${ccDry.httpStatus}: ${JSON.stringify(ccDry.payload).slice(0, 600)}`;
     } catch (e) {
       controlCenterError = `control_center_unreachable: ${String(e)}`;
     }
     return json(200, { dryRun: true, billed: false, ...plan, controlCenterDryRun, controlCenterError });
   }
 
+  // Past this point a provider call is possible, so an unreachable Control Center is fatal:
+  // AVT has no credential of its own to fall back on, and must not pretend otherwise.
+  if (!cc) return json(503, { error: "control_center_not_configured", detail: "CONTROL_CENTER_URL and AVT_PROXY_KEY must be set as AVT edge-function secrets — nothing was billed", ...plan });
+
   if (estimatedCostUsd > maxCostUsd) return json(400, { error: "cost_ceiling_exceeded", detail: `Estimated $${estimatedCostUsd} exceeds maxCostUsd $${maxCostUsd}`, ...plan });
 
   // ---- submit through Control Center -------------------------------------
-  const submit = await callControlCenter(supabaseUrl, authHeader, { endpoint: CC_VIDEO_EDIT_ENDPOINT, body: ccRequestBody });
+  const submit = await callControlCenter(cc, { endpoint: CC_VIDEO_EDIT_ENDPOINT, body: ccRequestBody });
   const submitOk = submit.payload?.ok === true;
   const taskId = typeof submit.payload?.providerJobId === "string" && submit.payload.providerJobId ? submit.payload.providerJobId : null;
   // Control Center's refusals (PROVIDER_KEY_NOT_CONFIGURED, PROVIDER_NOT_AVAILABLE,
@@ -314,7 +306,7 @@ serve(async (req) => {
   // ---- poll Control Center's existing cross-provider status endpoint ------
   const t0 = Date.now(); let finalPayload: Record<string, unknown> = {}; let finalStatus = "unknown"; let statusResultUrl: string | null = null;
   while (Date.now() - t0 < POLL_TIMEOUT_MS) {
-    const poll = await callControlCenter(supabaseUrl, authHeader, {
+    const poll = await callControlCenter(cc, {
       endpoint: CC_JOB_STATUS_ENDPOINT, method: "GET", query: { provider: "runway", id: taskId },
     });
     if (poll.payload?.ok === true) {
@@ -329,7 +321,7 @@ serve(async (req) => {
   // The status envelope normally carries the URL; job-result is the documented fallback.
   let outputUrl: string | null = finalStatus === "succeeded" ? statusResultUrl : null;
   if (finalStatus === "succeeded" && !outputUrl) {
-    const res = await callControlCenter(supabaseUrl, authHeader, {
+    const res = await callControlCenter(cc, {
       endpoint: CC_JOB_RESULT_ENDPOINT, method: "GET", query: { provider: "runway", id: taskId },
     });
     if (res.payload?.ok === true && typeof res.payload.resultUrl === "string") outputUrl = res.payload.resultUrl;
@@ -364,4 +356,16 @@ serve(async (req) => {
     finalStatus, providerStatus: finalPayload?.status ?? null, failure: finalPayload?.failure ?? finalPayload?.failureCode ?? null,
     estimatedCostUsd: plan.estimatedCostUsd, ccProviderEstimateCents, assetId, persistError,
     output: { storedBucket: storedPath ? "project-clips" : null, storedPath, previewUrl, byteLength } });
+}
+
+// A throw anywhere above would otherwise surface as a bare gateway 503 with no CORS headers,
+// which the browser reports only as "Failed to fetch" — the caller cannot see what broke, and
+// neither can we. Converting it to a CORS-bearing JSON error makes the next failure legible.
+serve(async (req) => {
+  try {
+    return await handleRequest(req);
+  } catch (e) {
+    console.error("runway-video-edit-proxy unhandled", e);
+    return json(500, { error: "unhandled_exception", detail: String((e as Error)?.stack ?? e).slice(0, 2000) });
+  }
 });
