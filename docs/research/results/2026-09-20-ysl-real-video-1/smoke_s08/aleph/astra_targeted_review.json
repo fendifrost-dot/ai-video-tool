@@ -1,0 +1,132 @@
+{
+  "draftId": "S08_mechanism_AB_aleph2_vs_E1",
+  "partId": "mechanisms",
+  "model": "gpt-6-astra",
+  "responseId": "resp_00a1659e317bc968006ab43d39e76c87d2bbaefddc335d6475",
+  "reviewedAt": "2026-09-23T21:00:37.863Z",
+  "usage": {
+    "input_tokens": 9600,
+    "input_tokens_details": {
+      "cache_write_tokens": 9597,
+      "cached_tokens": 0
+    },
+    "output_tokens": 7204,
+    "output_tokens_details": {
+      "reasoning_tokens": 5696
+    },
+    "total_tokens": 16804
+  },
+  "actualCostUsd": 0.4562,
+  "review": {
+    "mechanisms": [
+      {
+        "evidence": "THIS S08 0:00.667 versus PREVIOUS S08 0:00.667 eliminates shirt tails, closes the hem and reduces wordmark size. One left-chest mark, plain sleeves, cuffs and pleated trousers remain. APPROVED anchor still differs in collar geometry, stripe thickness and added detailing.",
+        "mechanism_id": "aleph2_construction",
+        "defect_ids": [
+          "S08-EXTRA-CONSTRUCTION-DETAILS",
+          "S08-COLLAR-SHAPE",
+          "S08-BAND-WIDTH"
+        ],
+        "confidence": 0.96,
+        "verdict": "IMPROVED"
+      },
+      {
+        "evidence": "THIS S08 0:06.000 versus PREVIOUS S08 0:06.000 places the head farther left and changes the exposed fist/wrist configuration. Cap and glasses remain recognizable; room landmarks and camera composition align. Broad action survives, but exact pose preservation fails.",
+        "mechanism_id": "aleph2_performance_preservation",
+        "defect_ids": [
+          "S08-PERFORMER-POSE-DRIFT",
+          "S08-FACIAL-RESHAPING"
+        ],
+        "confidence": 0.94,
+        "verdict": "REGRESSED"
+      },
+      {
+        "evidence": "THIS S08 0:00.667, 0:03.333 and 0:06.000 retain consistent mastic colour, chest-band placement, collar opening, left-wordmark location and closed hem through changing gestures. E1's construction errors were also persistent; these samples establish no separate temporal improvement.",
+        "mechanism_id": "aleph2_temporal_stability",
+        "defect_ids": [],
+        "confidence": 0.87,
+        "verdict": "UNCHANGED"
+      }
+    ],
+    "readiness_reason": "Major garment-reference mismatches and protected-performer alterations remain; performance preservation regressed despite the improved hem closure.",
+    "ready_for_full_review": false,
+    "summary": "Aleph improves garment closure and maintains consistent construction at sampled instants, but does not reproduce the approved jacket or preserve the performer exactly. Findings concern S08 only, not native-rate timing or intervening frames.",
+    "defects": [
+      {
+        "severity": "major",
+        "shot_id": "S08",
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "The replacement adds slanted pocket openings, pronounced outer-sleeve seam lines and dark centre-zip edging not present in the visible approved construction. Additional zipper hardware cannot be established.",
+        "defect_id": "S08-EXTRA-CONSTRUCTION-DETAILS",
+        "evidence": "THIS S08 0:00.667 exposes a dark diagonal hip opening and contrasting zipper border. THIS S08 0:03.333 shows strong forearm seam outlines. APPROVED anchor lacks these conspicuous details.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0.667,
+          6
+        ],
+        "recommended_action": "Regenerate the jacket without invented pocket cuts or pronounced piping; match the reference zipper treatment while protecting the corrected hem."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S08",
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "The collar is a short, rounded stand rather than the reference's tall, outward-flared construction. Visible shirt collar and tie above the closed chest zip are correct and are not an open-jacket defect.",
+        "defect_id": "S08-COLLAR-SHAPE",
+        "evidence": "Against APPROVED anchor, THIS S08 0:02.000 has substantially reduced collar height and spread. THIS S08 0:04.667 retains the compact neckline during the head turn.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0.667,
+          6
+        ],
+        "recommended_action": "Restore the approved collar height and flare without concealing the neckwear or reopening the chest-to-hem closure."
+      },
+      {
+        "severity": "minor",
+        "shot_id": "S08",
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "The chest band remains shallower relative to the torso than the reference stripe. Its single-band count and navy appearance are otherwise compatible with the requested construction.",
+        "defect_id": "S08-BAND-WIDTH",
+        "evidence": "APPROVED anchor shows a deeper horizontal band. THIS S08 0:03.333 and PREVIOUS S08 0:03.333 both render a comparatively thin strip; this mismatch was not repaired.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0.667,
+          6
+        ],
+        "recommended_action": "Match stripe thickness using torso-normalized reference proportions; retain one small wordmark on the wearer's left."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S08",
+        "recommended_owner": "compositing_mask",
+        "category": "continuity",
+        "description": "Exposed hand positions depart from the matched performance. These differences extend beyond jacket silhouette or sleeve volume and violate the requirement to leave Fendi's pose untouched.",
+        "defect_id": "S08-PERFORMER-POSE-DRIFT",
+        "evidence": "THIS S08 0:03.333 places both crossed hands visibly below their positions in PREVIOUS S08 0:03.333, while the door geometry remains aligned.",
+        "requires_treatment_change": false,
+        "time_range": [
+          3.333,
+          6
+        ],
+        "recommended_action": "Protect source-master hands and body landmarks with immutable masks; constrain garment generation around the original gesture rather than reconstructing exposed anatomy."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S08",
+        "recommended_owner": "identity",
+        "category": "identity",
+        "description": "Local facial reshaping changes the beard/jaw silhouette and mouth configuration. This does not establish a different person, but the face is not identical at the supplied matched instant.",
+        "defect_id": "S08-FACIAL-RESHAPING",
+        "evidence": "THIS S08 0:00.667 shows a fuller lower beard contour and different mouth opening than PREVIOUS S08 0:00.667, despite closely corresponding cap placement and head orientation.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0.667,
+          0.667
+        ],
+        "recommended_action": "Restore the original source-master face and beard region; exclude facial features from generative wardrobe reconstruction and verify with registered same-frame overlays."
+      }
+    ]
+  }
+}
