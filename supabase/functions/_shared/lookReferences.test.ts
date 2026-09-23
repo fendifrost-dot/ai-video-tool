@@ -87,7 +87,15 @@ describe("getProviderCapability", () => {
     expect(getProviderCapability("xai:videos/edits", env()).maxReferenceImages).toBe(8);
     expect(getProviderCapability("xai:videos/edits", env('{"xai:videos/edits":{"maxReferenceImages":3,"firstFrameConditioning":true}}'))).toMatchObject({ maxReferenceImages: 3, firstFrameConditioning: true });
     expect(getProviderCapability("xai:videos/edits", env('{"xai:videos/edits":{"maxReferenceImages":64}}')).maxReferenceImages).toBe(SAFETY_MAX_REFERENCE_IMAGES);
-    expect(getProviderCapability("xai:images/edits", env()).maxReferenceImages).toBe(3);   // verified 2026-09-21 on grok-imagine-image-quality
+    expect(getProviderCapability("runway:video_to_video", env(), "aleph2").maxReferenceImages).toBe(0);
+    expect(getProviderCapability("runway:video_to_video", env(), "seedance2_5").maxReferenceImages).toBe(30);
+    expect(getProviderCapability("runway:video_to_video", env(), "gemini_omni_flash_1.1").maxPromptChars).toBe(4000);
+    expect(getProviderCapability("xai:images/edits", env()).maxReferenceImages).toBe(3);   // endpoint default = most conservative model
+    expect(getProviderCapability("xai:images/edits", env(), "grok-imagine-image-quality").maxReferenceImages).toBe(3);   // verified 2026-09-21
+    expect(getProviderCapability("xai:images/edits", env(), "grok-imagine-image-2.0").maxReferenceImages).toBe(5);       // release note 2026-08-28
+    expect(getProviderCapability("xai:images/edits", env(), "some-future-model").maxReferenceImages).toBe(3);            // unknown model → endpoint default
+    expect(getProviderCapability("xai:images/edits", env('{"xai:images/edits:grok-imagine-image-2.0":{"maxReferenceImages":6}}'), "grok-imagine-image-2.0").maxReferenceImages).toBe(6);   // model override wins
+    expect(getProviderCapability("xai:videos/generations", env(), "grok-imagine-video-1.5").firstFrameConditioning).toBe(false);
     expect(getProviderCapability("xai:videos/edits", env("not json")).maxReferenceImages).toBe(8);
     expect(getProviderCapability("nobody:nothing", env()).maxReferenceImages).toBe(1);
     expect(getProviderCapability("xai:videos/edits", env()).maxPromptChars).toBe(4096);   // verified 2026-09-22 (unbilled 400)
