@@ -25,7 +25,9 @@ const corsHeaders = {
 };
 
 const SIGN_TTL = 2700;
-const DEFAULT_MODEL = "grok-imagine-image-quality";
+// grok-imagine-image-quality is retired on 2026-11-02 (served by grok-imagine-image-2.0 after that).
+// The default is data: XAI_IMAGE_EDIT_MODEL secret overrides it without a code change.
+const DEFAULT_MODEL = Deno.env.get("XAI_IMAGE_EDIT_MODEL")?.trim() || "grok-imagine-image-quality";
 
 // Fallback prompt for direct/server-side calls. The Hero Frame Studio client
 // always sends its own copy — keep this in sync with
@@ -164,7 +166,8 @@ serve(async (req) => {
     return json(404, { error: "wardrobe_not_found" });
   }
 
-  const capability = getProviderCapability(IMAGE_EDITS_CAPABILITY_KEY);
+  const imageModel = body.model ?? DEFAULT_MODEL;
+  const capability = getProviderCapability(IMAGE_EDITS_CAPABILITY_KEY, undefined, imageModel);
   const anchorPath = body.anchorPath?.trim() || null;
   // slots for garment references = provider max − scene − anchor
   const refBudget = Math.max(1, capability.maxReferenceImages - 1 - (anchorPath ? 1 : 0));
