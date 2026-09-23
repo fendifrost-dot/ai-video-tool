@@ -311,6 +311,20 @@ async function handleRequest(req: Request): Promise<Response> {
   const controlCenterJobId = typeof submit.payload?.jobId === "string" ? submit.payload.jobId : null;
   const ccProviderEstimateCents = typeof submit.payload?.ccProviderEstimateCents === "number" ? submit.payload.ccProviderEstimateCents : null;
 
+  // Record the accepted (billable) job BEFORE the long poll. If this function is cut off by
+  // the gateway while Runway is still rendering, the task id survives in provider_jobs and
+  // the existing pollJobStatus / ingest-provider-job path can finish it — no orphaned spend.
+  let providerJobRowId: string | null = null;
+  {
+    const { data: jobRow, error: jobErr } = await admin.from("provider_jobs").insert({
+      user_id: userId, project_id: body.projectId, prompt_id: null, provider: "runway", status: "queued", external_job_id: taskId,
+      request_payload_json: { lane: plan.lane, model: modelId, contract: spec.contract, videoAssetId: body.videoAssetId, wardrobeFeatureId: body.wardrobeFeatureId, lookId, shotId: body.shotId ?? null,
+        promptVersion, promptText: composedPrompt, referencePlan, keyframeCount: keyframes.length, inputSeconds, estimatedCostUsd, avtAuthorizedMaxCents, controlCenterJobId, ccProviderEstimateCents },
+      response_payload_json: submit.payload,
+    }).select("id").single();
+    if (!jobErr && jobRow) providerJobRowId = jobRow.id as string; else console.error("runway-video-edit-proxy: provider_jobs insert failed", jobErr?.message);
+  }
+
   // ---- poll Control Center's existing cross-provider status endpoint ------
   const t0 = Date.now(); let finalPayload: Record<string, unknown> = {}; let finalStatus = "unknown"; let statusResultUrl: string | null = null;
   while (Date.now() - t0 < POLL_TIMEOUT_MS) {
@@ -359,8 +373,15 @@ async function handleRequest(req: Request): Promise<Response> {
   }
   let previewUrl: string | null = null;
   if (storedPath) { const { data: signed } = await admin.storage.from("project-clips").createSignedUrl(storedPath, OUTPUT_SIGN_TTL); previewUrl = signed?.signedUrl ?? null; }
+  if (providerJobRowId) {
+    await admin.from("provider_jobs").update({
+      status: finalStatus === "succeeded" || finalStatus === "failed" ? finalStatus : "running",
+      response_payload_json: { submit: submit.payload, final: finalPayload, resultUrl: outputUrl ? redactUrl(outputUrl) : null },
+      result_asset_id: assetId, error_text: persistError ?? (finalStatus === "failed" ? String(finalPayload?.failure ?? finalPayload?.failureCode ?? "provider_failed") : null),
+    }).eq("id", providerJobRowId);
+  }
   return json(200, { ...plan, billed: finalStatus === "succeeded" || finalStatus === "failed",
-    submit: { httpStatus: submit.httpStatus, accepted: true, taskId }, controlCenterJobId,
+    submit: { httpStatus: submit.httpStatus, accepted: true, taskId }, controlCenterJobId, providerJobRowId,
     finalStatus, providerStatus: finalPayload?.status ?? null, failure: finalPayload?.failure ?? finalPayload?.failureCode ?? null,
     estimatedCostUsd: plan.estimatedCostUsd, ccProviderEstimateCents, assetId, persistError,
     output: { storedBucket: storedPath ? "project-clips" : null, storedPath, previewUrl, byteLength } });
