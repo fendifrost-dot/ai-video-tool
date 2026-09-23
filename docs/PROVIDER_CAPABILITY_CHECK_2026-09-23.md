@@ -63,3 +63,13 @@ Identical S08 source range, identical Look truth, identical construction target,
 Seedance 2.5 is held back (3–7× the price) unless the two above fail. Kill criterion: a mechanism whose S08 output does not `pass` the scorer is out; between passers, lowest cost per useful second wins; a passer also has to survive the targeted Astra part on temporal stability.
 
 **Needs Fendi:** `RUNWAY_API_KEY` as an edge-function secret in AVT's Lovable Cloud (the Control Center proxy has no video-to-video route and is locked), deploy of `runway-video-edit-proxy`, and the go on ≈ $4.5 of the ≈ $43 remaining.
+
+## 7. Smoke preparation (2026-09-23, $0, after ChatGPT's test-order change)
+
+Order changed by ChatGPT: **Aleph 2.0 and Gemini Omni Flash 1.1 first**, no fresh xAI control unless the existing S08 E1 evidence proves unfair; Seedance held; Astra only if deterministic QA leaves the answer ambiguous. Prepared:
+
+- **Keyframe for Aleph** (`results/…/smoke_s08/keyframe_S08_f0084_repaired.png`, provenance JSON alongside): frame 84 (3.500 s @ 24 fps) of the existing anchored S08 roll with the deterministic wordmark — pose identical to the S08 master frame by construction (it is a video edit of that frame), the highest construction score of the roll (0.774, hem intrusion 0.13 < the accepted band's 0.29), zip closed, stand collar, band + single wordmark. One deterministic repair: the striped shirt tail the roll shows below the jacket hem (its known defect) was replaced by the trousers colour (two textured light blobs below band + 9h, feathered). Every other pixel is the roll's. Uploaded to `project-references/…/heroes/S08/keyframe_S08_f0084_repaired.png`.
+- **Source**: project asset `e5cfeebc-1780-42e7-8f30-5f157f64ff85` (`S08_master_69_466-76_368…mp4`, the same cut every S08 roll used; ≈ 7.0 s).
+- **Runner**: `scripts/edit/runway_smoke_runner.browser.js` — aleph2 (keyframe at 3.5 s, short instruction) and gemini_omni_flash_1.1 (mode=edit, Look truth hierarchy ≤ 5 refs, full E1 instruction), dry run first, provenance captured from the proxy's plan.
+- **Common evaluator**: `scripts/qa/construction_score.py` (construction vs the anchor; calibrated) + `scripts/qa/edit_fidelity.py` (new: did the provider EDIT or REGENERATE — performer-outside-garment change, head change, source→candidate pose displacement by dense flow outside the garment, motion-energy correlation; baseline on S08: E1 and v4c → EDIT, a different shot → REGENERATED) + `native_media_qa.py` temporal residual + the wordmark tracker.
+- **Boundary**: `runway-video-edit-proxy` is not deployed (the app cannot reach it) and `RUNWAY_API_KEY` is not set — both are Fendi's. Estimated smoke cost: Aleph ≈ $2.0 (7 s × $0.28), Omni Flash ≈ $0.70; nothing else.
