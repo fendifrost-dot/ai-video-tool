@@ -1,0 +1,95 @@
+{
+ "source": {
+  "file": "cuts/S08_master_69.466-76.368.mp4",
+  "width": 1080,
+  "height": 1920,
+  "fps": "30/1",
+  "frames": 209,
+  "duration": 6.966667,
+  "decoded_frames": 167
+ },
+ "candidates": {
+  "E1": {
+   "file": "s08_e1.mp4",
+   "width": 720,
+   "height": 1280,
+   "fps": "24/1",
+   "frames": 161,
+   "duration": 6.708333,
+   "decoded_frames": 161,
+   "frames_compared": 161,
+   "garment_frac": 0.27679345904063785,
+   "outside_change": 6.656907770368788,
+   "outside_change_p90": 8.731719970703125,
+   "head_change": 5.091709678555712,
+   "pose_displacement_px_median": 2.487855911254883,
+   "pose_displacement_px_p90": 21.723018646240234,
+   "motion_corr": 0.97964702731276,
+   "motion_ratio": 0.9641884565353394,
+   "verdict": "EDIT",
+   "verdict_reasons": {
+    "outside_within_tolerance": true,
+    "head_within_tolerance": true,
+    "pose_displacement_ok": true,
+    "motion_correlated": true
+   }
+  },
+  "v4c": {
+   "file": "s08_v4c.mp4",
+   "width": 720,
+   "height": 1280,
+   "fps": "24/1",
+   "frames": 161,
+   "duration": 6.708333,
+   "decoded_frames": 161,
+   "frames_compared": 161,
+   "garment_frac": 0.28955966274434164,
+   "outside_change": 6.196942971076495,
+   "outside_change_p90": 7.501007080078125,
+   "head_change": 5.142423329529939,
+   "pose_displacement_px_median": 2.97772216796875,
+   "pose_displacement_px_p90": 35.18312454223633,
+   "motion_corr": 0.9725991167384826,
+   "motion_ratio": 1.0177865028381348,
+   "verdict": "EDIT",
+   "verdict_reasons": {
+    "outside_within_tolerance": true,
+    "head_within_tolerance": true,
+    "pose_displacement_ok": true,
+    "motion_correlated": true
+   }
+  },
+  "S09_wrongshot": {
+   "file": "s09_e1d.mp4",
+   "width": 720,
+   "height": 1280,
+   "fps": "24/1",
+   "frames": 89,
+   "duration": 3.708008,
+   "decoded_frames": 89,
+   "frames_compared": 89,
+   "garment_frac": 0.4523283661265432,
+   "outside_change": 4.752493815762656,
+   "outside_change_p90": 7.855550765991209,
+   "head_change": 3.7736988703409833,
+   "pose_displacement_px_median": 20.453923225402832,
+   "pose_displacement_px_p90": 120.97183761596679,
+   "motion_corr": 0.21169160580699045,
+   "motion_ratio": 0.9350785613059998,
+   "verdict": "REGENERATED",
+   "verdict_reasons": {
+    "outside_within_tolerance": true,
+    "head_within_tolerance": true,
+    "pose_displacement_ok": false,
+    "motion_correlated": false
+   }
+  }
+ },
+ "thresholds": {
+  "edit_tolerance": 1.6,
+  "max_pose_px": 8.0,
+  "pose_tolerance": 2.0,
+  "min_motion_corr": 0.85
+ },
+ "reference": "E1"
+}

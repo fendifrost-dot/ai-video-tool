@@ -1,0 +1,9 @@
+{
+ "source": "s08_e1 (xAI grok-imagine-video, anchored roll, asset 21cbaa43-d647-4ea9-a6f8-324d002c4a38) + deterministic wordmark layer (gfx/s08_e1_graphic.mp4)",
+ "frame": 84,
+ "fps": 24,
+ "seconds": 3.5,
+ "pose": "identical to the S08 master frame 84 by construction (video edit of that frame)",
+ "repair": "striped shirt tail below the jacket hem (textured light pixels below band+9h inside the garment mask) replaced by the trousers colour, feathered",
+ "repaired_pixels": 11101
+}

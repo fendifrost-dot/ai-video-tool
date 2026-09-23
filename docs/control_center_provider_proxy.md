@@ -235,6 +235,7 @@ split.
 | Method | Path                                              | Purpose                                   |
 |--------|---------------------------------------------------|-------------------------------------------|
 | POST   | `/functions/v1/video-providers/runway/generate`   | text-to-video or image-to-video           |
+| POST   | `/functions/v1/video-providers-runway-video-edit` | **video-to-video: edit an existing clip** |
 | POST   | `/functions/v1/video-providers/veo/generate`      | text-to-video, image-to-video, lipsync    |
 | POST   | `/functions/v1/video-providers/pika/generate`     | text-to-video or image-to-video           |
 | POST   | `/functions/v1/video-providers/fal/generate`      | per-model (FLUX, Mochi, etc.)             |
@@ -264,6 +265,57 @@ All accept the auth/audit fields above plus provider-specific fields.
   "seed": 12345
 }
 ```
+
+### Runway video edit (`video-providers-runway-video-edit`)
+
+A **separate** Control Center function from `/runway/generate`, added 2026-09-23. Editing
+carries a source video, timed keyframes and reference lists that the generation contract
+(`validateCommonBody`) has nowhere to put, and that contract is shared by six live generate
+functions — so editing rides its own route rather than bending a locked one.
+
+AVT reaches it through `proxy-provider-call` like every other CC endpoint. `RUNWAY_API_KEY`
+stays in Control Center; AVT holds no provider credential.
+
+```json
+{
+  "model": "aleph2" | "gemini_omni_flash_1.1" | "seedance2_5",
+  "videoUri": "<signed AVT storage URL of the clip being edited>",
+  "promptText": "constraints-first composed prompt",
+  "keyframes": [{ "uri": "<signed URL>", "seconds": 3.5 }],
+  "references": [{ "uri": "<signed URL>" }],
+  "inputSeconds": 7,
+  "avtAuthorizedMaxCents": 250,
+  "dryRun": false
+}
+```
+
+`keyframes` are aleph2-only (≤ 5, edited frames of *this* video); `references` are for the
+`mode=edit` models (≤ 5 Omni, ≤ 30 Seedance). Counts, prompt length and input duration are
+validated per model and **fail closed — never truncated**.
+
+**Cost has two owners, and two field names, deliberately:**
+
+| Field | Owner | Meaning |
+|---|---|---|
+| `avtAuthorizedMaxCents` | AVT | spend authorization for this operation |
+| `ccProviderEstimateCents` | Control Center | CC's own estimate from its canonical rate table |
+| `costFinalCents` | provider | actual, when available |
+
+If `ccProviderEstimateCents > avtAuthorizedMaxCents` the request is refused before any
+provider call (`COST_LIMIT_EXCEEDED`). A missing authorization or duration is also a
+refusal, not a default. There is no single `costEstimateCents` on this route — one number
+whose authority is unclear is exactly what caused the confusion this split removes.
+
+`dryRun: true` returns the resolved Runway request body, contacts nothing, bills nothing and
+writes no audit row.
+
+**Polling and results use the shared endpoints** — `video-providers-job-status` and
+`video-providers-job-result` with `?provider=runway&id=<providerJobId>`. Runway's
+`video_to_video` tasks live on the same `GET /v1/tasks/{id}` endpoint as generation, so
+nothing provider-specific was duplicated.
+
+Break-glass: setting `RUNWAY_VIDEO_EDIT_DISABLED=true` in Control Center stops this lane
+(`PROVIDER_NOT_AVAILABLE`) without touching generation.
 
 ### Veo (`/veo/generate`)
 

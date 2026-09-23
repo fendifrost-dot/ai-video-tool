@@ -238,7 +238,7 @@ serve(async (req) => {
     .maybeSingle();
   const artistPolicy = ((artistRow?.identity_profile_json ?? {}) as { reference_policy?: ReferencePolicy }).reference_policy ?? null;
   const projectPolicy = ((project.treatment_json ?? {}) as { reference_policy?: ReferencePolicy }).reference_policy ?? null;
-  const capability = getProviderCapability(XAI_VIDEO_EDIT_CAPABILITY_KEY);
+  const capability = getProviderCapability(XAI_VIDEO_EDIT_CAPABILITY_KEY, undefined, model);
 
   const { data: videoAsset, error: vErr } = await admin
     .from("project_assets")

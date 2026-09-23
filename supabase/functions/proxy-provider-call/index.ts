@@ -14,6 +14,7 @@
  *   Content-Type: application/json
  *   Body: {
  *     "endpoint": "video-providers-runway-generate" |
+ *                 "video-providers-runway-video-edit" |
  *                 "video-providers-veo-generate" |
  *                 "video-providers-pika-generate" |
  *                 "video-providers-fal-generate" |
@@ -44,6 +45,10 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 
 const ALLOWED_ENDPOINTS = new Set([
   "video-providers-runway-generate",
+  // Runway video EDIT (/v1/video_to_video). Separate CC function from -generate:
+  // editing carries a source video, timed keyframes and reference lists that the
+  // generation contract has no room for. Used by runway-video-edit-proxy.
+  "video-providers-runway-video-edit",
   "video-providers-veo-generate",
   "video-providers-pika-generate",
   "video-providers-fal-generate",

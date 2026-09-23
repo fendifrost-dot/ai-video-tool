@@ -1,0 +1,391 @@
+{
+ "anchor": "heroes/anchor_hook_s11_f0080.jpg",
+ "classes": [
+  {
+   "lab": [
+    16.5,
+    129.6,
+    125.9
+   ],
+   "share": 0.281
+  },
+  {
+   "lab": [
+    178.0,
+    132.2,
+    143.5
+   ],
+   "share": 0.222
+  },
+  {
+   "lab": [
+    204.4,
+    131.9,
+    142.1
+   ],
+   "share": 0.193
+  },
+  {
+   "lab": [
+    99.6,
+    135.0,
+    143.8
+   ],
+   "share": 0.146
+  },
+  {
+   "lab": [
+    132.2,
+    133.8,
+    144.0
+   ],
+   "share": 0.104
+  },
+  {
+   "lab": [
+    57.4,
+    134.5,
+    136.8
+   ],
+   "share": 0.054
+  }
+ ],
+ "stripe_class": 0,
+ "body_class": 1,
+ "anchor_landmark": {
+  "row": 730,
+  "top": 698,
+  "bottom": 746,
+  "height": 49,
+  "class": 0,
+  "peak": 0.5986637473106384
+ },
+ "anchor_zone_hists": {
+  "neck": [
+   0.081,
+   0.253,
+   0.409,
+   0.064,
+   0.121,
+   0.043,
+   0.028
+  ],
+  "chest": [
+   0.445,
+   0.292,
+   0.041,
+   0.111,
+   0.062,
+   0.048,
+   0.001
+  ],
+  "lower_front": [
+   0.003,
+   0.635,
+   0.245,
+   0.015,
+   0.101,
+   0.001,
+   0.0
+  ],
+  "hem": [
+   0.306,
+   0.099,
+   0.149,
+   0.3,
+   0.104,
+   0.041,
+   0.0
+  ],
+  "sleeve_left": [
+   0.023,
+   0.091,
+   0.22,
+   0.477,
+   0.077,
+   0.113,
+   0.0
+  ],
+  "sleeve_right": [
+   0.005,
+   0.334,
+   0.435,
+   0.054,
+   0.147,
+   0.024,
+   0.0
+  ]
+ },
+ "weights": {
+  "neck": 0.2,
+  "chest": 0.25,
+  "lower_front": 0.2,
+  "hem": 0.15,
+  "sleeve_left": 0.1,
+  "sleeve_right": 0.1
+ },
+ "candidates": {
+  "S08": {
+   "file": "s08_e1.mp4",
+   "frames_scored": 36,
+   "frames_unscored": 5,
+   "median": 0.7173243867722734,
+   "p10": 0.6678409200436655,
+   "min": 0.27575060482013736,
+   "zones_median": {
+    "neck": 0.8089067068577538,
+    "chest": 0.7994181251808206,
+    "lower_front": 0.7259074063689737,
+    "hem": 0.5060005157651428,
+    "sleeve_left": 0.6004097664885943,
+    "sleeve_right": 0.8220893498529132
+   },
+   "intrusion_p90": {
+    "neck": 0.14084216040041903,
+    "chest": 0.40811007280775197,
+    "lower_front": 0.39390784036831095,
+    "hem": 0.2944107005282853,
+    "sleeve_left": 0.03579760984666773,
+    "sleeve_right": 0.07929528583244724
+   },
+   "worst_zone": "hem",
+   "passes": false,
+   "failing_zones": [],
+   "intruding_zones": [
+    "hem"
+   ]
+  },
+  "S08_v4c": {
+   "file": "s08_v4c.mp4",
+   "frames_scored": 38,
+   "frames_unscored": 3,
+   "median": 0.6382632108464941,
+   "p10": 0.5946318298100314,
+   "min": 0.32677482506641253,
+   "zones_median": {
+    "neck": 0.7652734517310832,
+    "chest": 0.5875250489453938,
+    "lower_front": 0.6841043736514973,
+    "hem": 0.5125058950893765,
+    "sleeve_left": 0.4933348460985237,
+    "sleeve_right": 0.726590904591112
+   },
+   "intrusion_p90": {
+    "neck": 0.08402137405724738,
+    "chest": 0.5726570735002273,
+    "lower_front": 0.32212546970007516,
+    "hem": 0.5171633155880153,
+    "sleeve_left": 0.02869570542907582,
+    "sleeve_right": 0.055256042578362974
+   },
+   "worst_zone": "sleeve_left",
+   "passes": false,
+   "failing_zones": [
+    "chest",
+    "sleeve_left"
+   ],
+   "intruding_zones": [
+    "chest",
+    "hem"
+   ]
+  },
+  "S09_e1b": {
+   "file": "s09_e1b.mp4",
+   "frames_scored": 20,
+   "frames_unscored": 3,
+   "median": 0.6673542659465976,
+   "p10": 0.4733797218342647,
+   "min": 0.4183779919074841,
+   "zones_median": {
+    "neck": 0.7225798926911969,
+    "chest": 0.7458197222698908,
+    "lower_front": 0.565999477362339,
+    "hem": 0.5955164910542996,
+    "sleeve_left": 0.5431506232219205,
+    "sleeve_right": 0.6564521985312014
+   },
+   "intrusion_p90": {
+    "neck": 0.15533421126713523,
+    "chest": 0.40847695633550285,
+    "lower_front": 0.7473484656346537,
+    "hem": 0.1821369397961614,
+    "sleeve_left": 0.36367433935678933,
+    "sleeve_right": 0.4446736393948309
+   },
+   "worst_zone": "sleeve_left",
+   "passes": false,
+   "failing_zones": [
+    "sleeve_right"
+   ],
+   "intruding_zones": [
+    "sleeve_left",
+    "sleeve_right"
+   ]
+  },
+  "S09_e1c": {
+   "file": "s09_e1c.mp4",
+   "frames_scored": 21,
+   "frames_unscored": 2,
+   "median": 0.5790106918793051,
+   "p10": 0.48753060892829236,
+   "min": 0.27783990331857544,
+   "zones_median": {
+    "neck": 0.6779391951825993,
+    "chest": 0.7229261677811489,
+    "lower_front": 0.4194018698259526,
+    "hem": 0.4975176871309336,
+    "sleeve_left": 0.5759790804401828,
+    "sleeve_right": 0.6466947840087445
+   },
+   "intrusion_p90": {
+    "neck": 0.18792590898696546,
+    "chest": 0.33802666095615397,
+    "lower_front": 0.836017740429505,
+    "hem": 0.07652508723378655,
+    "sleeve_left": 0.28035116091024603,
+    "sleeve_right": 0.5810429649065267
+   },
+   "worst_zone": "lower_front",
+   "passes": false,
+   "failing_zones": [
+    "lower_front",
+    "sleeve_right"
+   ],
+   "intruding_zones": [
+    "sleeve_left",
+    "sleeve_right"
+   ]
+  }
+ },
+ "references": {
+  "S06": {
+   "file": "s06_e1.mp4",
+   "frames_scored": 41,
+   "frames_unscored": 0,
+   "median": 0.6861114940686223,
+   "p10": 0.4893411151820305,
+   "min": 0.17985004913755193,
+   "zones_median": {
+    "neck": 0.6636500964664418,
+    "chest": 0.7228944492571492,
+    "lower_front": 0.7286379730963878,
+    "hem": 0.5547680594263069,
+    "sleeve_left": 0.5952885336656502,
+    "sleeve_right": 0.7107143963932556
+   },
+   "intrusion_p90": {
+    "neck": 0.10167610167610168,
+    "chest": 0.2912901258524145,
+    "lower_front": 0.43330014932802396,
+    "hem": 0.12418772563176896,
+    "sleeve_left": 0.22976190476190475,
+    "sleeve_right": 0.2925170068027211
+   },
+   "worst_zone": "hem"
+  },
+  "S09": {
+   "file": "s09_e1d.mp4",
+   "frames_scored": 23,
+   "frames_unscored": 0,
+   "median": 0.5515279403739405,
+   "p10": 0.39578645916395894,
+   "min": 0.34881711188157105,
+   "zones_median": {
+    "neck": 0.4432760448177695,
+    "chest": 0.7076855654526621,
+    "lower_front": 0.473835316106182,
+    "hem": 0.5879241876704403,
+    "sleeve_left": 0.5187947071228612,
+    "sleeve_right": 0.7459258528547965
+   },
+   "intrusion_p90": {
+    "neck": 0.08674911735294652,
+    "chest": 0.4754757412031332,
+    "lower_front": 0.4793921442412047,
+    "hem": 0.18592800182273872,
+    "sleeve_left": 0.12218700076732458,
+    "sleeve_right": 0.15642210747609875
+   },
+   "worst_zone": "neck"
+  },
+  "S11": {
+   "file": "s11_e1.mp4",
+   "frames_scored": 41,
+   "frames_unscored": 0,
+   "median": 0.5660728139489313,
+   "p10": 0.39323879709677156,
+   "min": 0.2588278629222539,
+   "zones_median": {
+    "neck": 0.5686582809224319,
+    "chest": 0.7011598813552913,
+    "lower_front": 0.5716251804455542,
+    "hem": 0.4621946274724734,
+    "sleeve_left": 0.6370208928363188,
+    "sleeve_right": 0.7612711877506697
+   },
+   "intrusion_p90": {
+    "neck": 0.3469387755102041,
+    "chest": 0.4340309372156506,
+    "lower_front": 0.8285714285714286,
+    "hem": 0.26648044692737427,
+    "sleeve_left": 0.15800865800865802,
+    "sleeve_right": 0.4144079885877318
+   },
+   "worst_zone": "hem"
+  },
+  "S12": {
+   "file": "s12_e1.mp4",
+   "frames_scored": 28,
+   "frames_unscored": 1,
+   "median": 0.7505662621330518,
+   "p10": 0.6933652395926405,
+   "min": 0.1910124676877581,
+   "zones_median": {
+    "neck": 0.8869107278928058,
+    "chest": 0.7928666283435468,
+    "lower_front": 0.8057179677191838,
+    "hem": 0.566210829706406,
+    "sleeve_left": 0.6301737232970908,
+    "sleeve_right": 0.7347076182808682
+   },
+   "intrusion_p90": {
+    "neck": 0.13287242242711925,
+    "chest": 0.3088502108710876,
+    "lower_front": 0.17443151183970856,
+    "hem": 0.10396740358791731,
+    "sleeve_left": 0.035622900227082394,
+    "sleeve_right": 0.08995766212917398
+   },
+   "worst_zone": "hem"
+  }
+ },
+ "decision": {
+  "reference_floor": 0.5315279403739405,
+  "zone_floors": {
+   "neck": 0.4232760448177695,
+   "chest": 0.6811598813552913,
+   "lower_front": 0.453835316106182,
+   "hem": 0.4421946274724734,
+   "sleeve_left": 0.4987947071228612,
+   "sleeve_right": 0.6907143963932556
+  },
+  "intrusion_ceilings": {
+   "neck": 0.3669387755102041,
+   "chest": 0.4954757412031332,
+   "lower_front": 0.8485714285714286,
+   "hem": 0.2864804469273743,
+   "sleeve_left": 0.24976190476190474,
+   "sleeve_right": 0.43440798858773183
+  },
+  "ranked": [
+   "S08",
+   "S09_e1b",
+   "S08_v4c",
+   "S09_e1c"
+  ],
+  "best": "S08",
+  "best_passes": false,
+  "passing": [],
+  "rule": "pass = candidate median \u2265 min(reference medians) \u2212 tolerance AND every zone median \u2265 that zone's reference minimum \u2212 tolerance AND every zone's p90 foreign-class intrusion \u2264 the references' maximum + tolerance; best = highest median"
+ }
+}
