@@ -48,7 +48,12 @@ const OUTPUT_SIGN_TTL = 604800;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DEFAULT_MAX_COST_USD = 1.0;
 const POLL_INTERVAL_MS = 5000;
-const POLL_TIMEOUT_MS = 900_000;
+// The AVT gateway cuts a synchronous edge function at ~150 s (observed 504 on 2026-09-23 while
+// Runway was still rendering). A submit therefore waits at most MAX_WAIT_MS for the result and
+// otherwise returns the recorded provider_jobs row; the caller finishes it with
+// `{ finalizeProviderJobRowId }` (same function, same persistence path), any number of times.
+const MAX_WAIT_MS = 100_000;
+const FINALIZE_WAIT_MS = 60_000;
 const USD_PER_CREDIT = 0.01;
 const VIDEO_BUCKETS = ["project-clips", "project-exports", "project-references"];
 const IMAGE_BUCKETS = ["project-references", "look-composites", "project-exports", "project-clips", "wardrobe-refs", "product-assets"];
@@ -95,6 +100,18 @@ type Body = {
   keyframes?: Array<{ path: string; bucket?: string; seconds: number }>;
   /** the input video's duration (seconds) for the cost estimate; probed by the caller */
   inputSeconds?: number;
+  /** finalize mode: settle a previously accepted job (poll → persist) instead of submitting one */
+  finalizeProviderJobRowId?: string;
+  /** submit mode: how long to wait for the result before returning the recorded job (s, ≤ 120) */
+  maxWaitSeconds?: number;
+};
+
+/** Everything the persistence step needs; stored in provider_jobs.request_payload_json so a
+ *  finalize call can rebuild it without re-resolving the Look. */
+type JobContext = {
+  rowId: string; taskId: string; userId: string; projectId: string; shotId: string | null; videoAssetId: string; wardrobeFeatureId: string;
+  lookId: string | null; modelId: string; promptVersion: string; referencePlan: unknown; keyframeCount: number; estimatedCostUsd: number;
+  providerCapability: unknown; controlCenterJobId: string | null; avtAuthorizedMaxCents: number; providerEstimateCentsFromControlCenter: number | null; submitPayload: unknown;
 };
 // deno-lint-ignore no-explicit-any
 type Admin = SupabaseClient<any, any, any>;
@@ -131,6 +148,73 @@ const redactDeep = (v: unknown): unknown =>
  *  authorization sent is never smaller than the amount AVT actually approved. */
 const usdToCents = (usd: number) => Math.ceil(usd * 100);
 
+
+/** Poll Control Center for the job until it settles or `deadlineMs` passes; on success download
+ *  the output (an unauthenticated, time-limited Runway URL) into project-clips and insert the
+ *  project_assets row; always bring provider_jobs up to date. Idempotent: a row that already
+ *  has result_asset_id is returned as is. */
+async function settleJob(cc: ControlCenterConfig, admin: Admin, ctx: JobContext, deadlineMs: number) {
+  const { data: existing } = await admin.from("provider_jobs").select("id, status, result_asset_id, response_payload_json").eq("id", ctx.rowId).maybeSingle();
+  if (existing?.result_asset_id) {
+    const { data: asset } = await admin.from("project_assets").select("id, file_url").eq("id", existing.result_asset_id).maybeSingle();
+    let previewUrl: string | null = null;
+    if (asset?.file_url) { const { data: signed } = await admin.storage.from("project-clips").createSignedUrl(String(asset.file_url), OUTPUT_SIGN_TTL); previewUrl = signed?.signedUrl ?? null; }
+    return { finalStatus: "succeeded", providerStatus: "SUCCEEDED", failure: null, assetId: String(existing.result_asset_id), persistError: null, alreadyFinalized: true,
+      output: { storedBucket: "project-clips", storedPath: asset?.file_url ?? null, previewUrl, byteLength: null } };
+  }
+  const t0 = Date.now(); let finalPayload: Record<string, unknown> = {}; let finalStatus = "unknown"; let statusResultUrl: string | null = null;
+  while (true) {
+    const poll = await callControlCenter(cc, { endpoint: CC_JOB_STATUS_ENDPOINT, method: "GET", query: { provider: "runway", id: ctx.taskId } });
+    if (poll.payload?.ok === true) {
+      finalStatus = String(poll.payload.status ?? "unknown");   // normalised: queued|running|succeeded|failed
+      finalPayload = (poll.payload.providerMetadata as Record<string, unknown>) ?? {};
+      statusResultUrl = typeof poll.payload.resultUrl === "string" ? poll.payload.resultUrl : null;
+      if (finalStatus === "succeeded" || finalStatus === "failed") break;
+    }
+    if (Date.now() - t0 + POLL_INTERVAL_MS > deadlineMs) break;
+    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+  }
+  // The status envelope normally carries the URL; job-result is the documented fallback.
+  let outputUrl: string | null = finalStatus === "succeeded" ? statusResultUrl : null;
+  if (finalStatus === "succeeded" && !outputUrl) {
+    const res = await callControlCenter(cc, { endpoint: CC_JOB_RESULT_ENDPOINT, method: "GET", query: { provider: "runway", id: ctx.taskId } });
+    if (res.payload?.ok === true && typeof res.payload.resultUrl === "string") outputUrl = res.payload.resultUrl;
+  }
+  let storedPath: string | null = null; let assetId: string | null = null; let byteLength: number | null = null; let persistError: string | null = null;
+  if (outputUrl) {
+    const dl = await fetch(outputUrl);
+    if (!dl.ok) persistError = `download: http ${dl.status}`;
+    else {
+      const bytes = new Uint8Array(await dl.arrayBuffer()); byteLength = bytes.length;
+      storedPath = `${ctx.userId}/${ctx.projectId}/runway-video-edit/${ctx.taskId}.mp4`;
+      const { error: upErr } = await admin.storage.from("project-clips").upload(storedPath, bytes, { contentType: "video/mp4", upsert: true });
+      if (upErr) persistError = `storage_upload: ${upErr.message}`;
+      else {
+        const { data: assetRow, error: assetErr } = await admin.from("project_assets").insert({
+          user_id: ctx.userId, project_id: ctx.projectId, shot_id: ctx.shotId, parent_asset_id: ctx.videoAssetId, asset_type: "edited_clip", file_url: storedPath, approval_status: "pending",
+          metadata_json: { bucket: "project-clips", mime_type: "video/mp4", file_size_bytes: byteLength, architecture_lane: "canonical_look_runway", provider: "runway", model: ctx.modelId, runway_task_id: ctx.taskId,
+            source_video_asset_id: ctx.videoAssetId, wardrobe_feature_id: ctx.wardrobeFeatureId, look_id: ctx.lookId, prompt_version: ctx.promptVersion, reference_plan: ctx.referencePlan, keyframe_count: ctx.keyframeCount,
+            estimated_cost_usd: ctx.estimatedCostUsd, final_status: finalStatus, provider_capability: ctx.providerCapability,
+            // Provenance across the boundary: control_center_job_id is CC's
+            // tool_execution_logs.request_id, so an AVT artifact joins to CC's audit row.
+            credential_location: "control_center", control_center_job_id: ctx.controlCenterJobId,
+            avt_authorized_max_cents: ctx.avtAuthorizedMaxCents, cc_provider_estimate_cents: ctx.providerEstimateCentsFromControlCenter, provider_jobs_row_id: ctx.rowId },
+        }).select("id").single();
+        if (!assetErr && assetRow) assetId = assetRow.id as string; else persistError = `project_assets_insert: ${assetErr?.message ?? "no_row"}`;
+      }
+    }
+  }
+  let previewUrl: string | null = null;
+  if (storedPath && !persistError) { const { data: signed } = await admin.storage.from("project-clips").createSignedUrl(storedPath, OUTPUT_SIGN_TTL); previewUrl = signed?.signedUrl ?? null; }
+  await admin.from("provider_jobs").update({
+    status: finalStatus === "succeeded" || finalStatus === "failed" ? finalStatus : "running",
+    response_payload_json: { submit: ctx.submitPayload, final: finalPayload, resultUrl: outputUrl ? redactUrl(outputUrl) : null },
+    result_asset_id: assetId, error_text: persistError ?? (finalStatus === "failed" ? String(finalPayload?.failure ?? finalPayload?.failureCode ?? "provider_failed") : null),
+  }).eq("id", ctx.rowId);
+  return { finalStatus, providerStatus: finalPayload?.status ?? null, failure: finalPayload?.failure ?? finalPayload?.failureCode ?? null, assetId, persistError, alreadyFinalized: false,
+    output: { storedBucket: storedPath ? "project-clips" : null, storedPath, previewUrl, byteLength } };
+}
+
 async function handleRequest(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
@@ -146,6 +230,30 @@ async function handleRequest(req: Request): Promise<Response> {
 
   let body: Body;
   try { body = await req.json(); } catch { return json(400, { error: "invalid_json" }); }
+
+  // ---- finalize mode: settle a job this function accepted earlier -------------------------
+  if (body.finalizeProviderJobRowId) {
+    if (!UUID_RE.test(body.finalizeProviderJobRowId)) return json(400, { error: "invalid_provider_job_row_id" });
+    if (!cc) return json(503, { error: "control_center_not_configured" });
+    const adminF = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
+    const { data: row, error: rowErr } = await adminF.from("provider_jobs").select("id, user_id, project_id, provider, external_job_id, status, result_asset_id, request_payload_json, response_payload_json").eq("id", body.finalizeProviderJobRowId).maybeSingle();
+    if (rowErr) return json(500, { error: "job_query_failed", detail: rowErr.message });
+    if (!row || row.user_id !== userId) return json(404, { error: "job_not_found" });
+    if (row.provider !== "runway" || !row.external_job_id) return json(400, { error: "not_a_runway_video_edit_job" });
+    const rp = (row.request_payload_json ?? {}) as Record<string, unknown>;
+    if (rp.lane !== "canonical_look_runway_video_edit") return json(400, { error: "not_a_runway_video_edit_job" });
+    const ctx: JobContext = {
+      rowId: row.id as string, taskId: String(row.external_job_id), userId, projectId: String(row.project_id), shotId: (rp.shotId as string | null) ?? null,
+      videoAssetId: String(rp.videoAssetId ?? ""), wardrobeFeatureId: String(rp.wardrobeFeatureId ?? ""), lookId: (rp.lookId as string | null) ?? null, modelId: String(rp.model ?? "aleph2"),
+      promptVersion: String(rp.promptVersion ?? "unspecified"), referencePlan: rp.referencePlan ?? [], keyframeCount: Number(rp.keyframeCount ?? 0), estimatedCostUsd: Number(rp.estimatedCostUsd ?? 0),
+      providerCapability: rp.providerCapability ?? null, controlCenterJobId: (rp.controlCenterJobId as string | null) ?? null, avtAuthorizedMaxCents: Number(rp.avtAuthorizedMaxCents ?? 0),
+      providerEstimateCentsFromControlCenter: typeof rp.ccProviderEstimateCents === "number" ? rp.ccProviderEstimateCents : null, submitPayload: (row.response_payload_json as Record<string, unknown>)?.submit ?? row.response_payload_json,
+    };
+    const settled = await settleJob(cc, adminF, ctx, Math.min(FINALIZE_WAIT_MS, Math.max(0, (body.maxWaitSeconds ?? 60) * 1000)));
+    return json(200, { finalize: true, providerJobRowId: ctx.rowId, submit: { accepted: true, taskId: ctx.taskId }, controlCenterJobId: ctx.controlCenterJobId, model: ctx.modelId,
+      billed: settled.finalStatus === "succeeded" || settled.finalStatus === "failed", ...settled });
+  }
+
   if (!body.projectId || !body.artistId || !body.videoAssetId || !body.wardrobeFeatureId) return json(400, { error: "missing_required_fields" });
   if (body.lookId != null && body.lookId !== "" && !UUID_RE.test(body.lookId)) return json(400, { error: "invalid_look_id" });
   if (body.shotId != null && body.shotId !== "" && !UUID_RE.test(body.shotId)) return json(400, { error: "invalid_shot_id" });
@@ -320,72 +428,23 @@ async function handleRequest(req: Request): Promise<Response> {
     const { data: jobRow, error: jobErr } = await admin.from("provider_jobs").insert({
       user_id: userId, project_id: body.projectId, prompt_id: null, provider: "runway", status: "queued", external_job_id: taskId,
       request_payload_json: { lane: plan.lane, model: modelId, contract: spec.contract, videoAssetId: body.videoAssetId, wardrobeFeatureId: body.wardrobeFeatureId, lookId, shotId: body.shotId ?? null,
-        promptVersion, promptText: composedPrompt, referencePlan, keyframeCount: keyframes.length, inputSeconds, estimatedCostUsd, avtAuthorizedMaxCents, controlCenterJobId, ccProviderEstimateCents },
+        promptVersion, promptText: composedPrompt, referencePlan, keyframeCount: keyframes.length, inputSeconds, estimatedCostUsd, avtAuthorizedMaxCents, controlCenterJobId, ccProviderEstimateCents, providerCapability: plan.providerCapability },
       response_payload_json: submit.payload,
     }).select("id").single();
     if (!jobErr && jobRow) providerJobRowId = jobRow.id as string; else console.error("runway-video-edit-proxy: provider_jobs insert failed", jobErr?.message);
   }
 
-  // ---- poll Control Center's existing cross-provider status endpoint ------
-  const t0 = Date.now(); let finalPayload: Record<string, unknown> = {}; let finalStatus = "unknown"; let statusResultUrl: string | null = null;
-  while (Date.now() - t0 < POLL_TIMEOUT_MS) {
-    const poll = await callControlCenter(cc, {
-      endpoint: CC_JOB_STATUS_ENDPOINT, method: "GET", query: { provider: "runway", id: taskId },
-    });
-    if (poll.payload?.ok === true) {
-      finalStatus = String(poll.payload.status ?? "unknown");   // normalised: queued|running|succeeded|failed
-      finalPayload = (poll.payload.providerMetadata as Record<string, unknown>) ?? {};
-      statusResultUrl = typeof poll.payload.resultUrl === "string" ? poll.payload.resultUrl : null;
-      if (finalStatus === "succeeded" || finalStatus === "failed") break;
-    }
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-  }
-
-  // The status envelope normally carries the URL; job-result is the documented fallback.
-  let outputUrl: string | null = finalStatus === "succeeded" ? statusResultUrl : null;
-  if (finalStatus === "succeeded" && !outputUrl) {
-    const res = await callControlCenter(cc, {
-      endpoint: CC_JOB_RESULT_ENDPOINT, method: "GET", query: { provider: "runway", id: taskId },
-    });
-    if (res.payload?.ok === true && typeof res.payload.resultUrl === "string") outputUrl = res.payload.resultUrl;
-  }
-  let storedPath: string | null = null; let assetId: string | null = null; let byteLength: number | null = null; let persistError: string | null = null;
-  if (outputUrl) {
-    const dl = await fetch(outputUrl);
-    if (dl.ok) {
-      const bytes = new Uint8Array(await dl.arrayBuffer()); byteLength = bytes.length;
-      storedPath = `${userId}/${body.projectId}/runway-video-edit/${taskId}.mp4`;
-      const { error: upErr } = await admin.storage.from("project-clips").upload(storedPath, bytes, { contentType: "video/mp4", upsert: true });
-      if (upErr) persistError = `storage_upload: ${upErr.message}`;
-      else {
-        const { data: assetRow, error: assetErr } = await admin.from("project_assets").insert({
-          user_id: userId, project_id: body.projectId, shot_id: body.shotId ?? null, parent_asset_id: body.videoAssetId, asset_type: "edited_clip", file_url: storedPath, approval_status: "pending",
-          metadata_json: { bucket: "project-clips", mime_type: "video/mp4", file_size_bytes: byteLength, architecture_lane: "canonical_look_runway", provider: "runway", model: modelId, runway_task_id: taskId,
-            source_video_asset_id: body.videoAssetId, wardrobe_feature_id: body.wardrobeFeatureId, look_id: lookId, prompt_version: promptVersion, reference_plan: referencePlan, keyframe_count: keyframes.length,
-            estimated_cost_usd: plan.estimatedCostUsd, final_status: finalStatus, provider_capability: plan.providerCapability,
-            // Provenance across the boundary: control_center_job_id is CC's
-            // tool_execution_logs.request_id, so an AVT artifact joins to CC's audit row.
-            credential_location: "control_center", control_center_job_id: controlCenterJobId,
-            avt_authorized_max_cents: avtAuthorizedMaxCents, cc_provider_estimate_cents: ccProviderEstimateCents },
-        }).select("id").single();
-        if (!assetErr && assetRow) assetId = assetRow.id as string; else persistError = `project_assets_insert: ${assetErr?.message ?? "no_row"}`;
-      }
-    }
-  }
-  let previewUrl: string | null = null;
-  if (storedPath) { const { data: signed } = await admin.storage.from("project-clips").createSignedUrl(storedPath, OUTPUT_SIGN_TTL); previewUrl = signed?.signedUrl ?? null; }
-  if (providerJobRowId) {
-    await admin.from("provider_jobs").update({
-      status: finalStatus === "succeeded" || finalStatus === "failed" ? finalStatus : "running",
-      response_payload_json: { submit: submit.payload, final: finalPayload, resultUrl: outputUrl ? redactUrl(outputUrl) : null },
-      result_asset_id: assetId, error_text: persistError ?? (finalStatus === "failed" ? String(finalPayload?.failure ?? finalPayload?.failureCode ?? "provider_failed") : null),
-    }).eq("id", providerJobRowId);
-  }
-  return json(200, { ...plan, billed: finalStatus === "succeeded" || finalStatus === "failed",
+  // ---- bounded wait, then settle (persist) — a still-running job is returned as such and
+  // finished later through `finalizeProviderJobRowId` ---------------------------------------
+  if (!providerJobRowId) return json(200, { ...plan, billed: true, submit: { httpStatus: submit.httpStatus, accepted: true, taskId }, controlCenterJobId, providerJobRowId: null,
+    finalStatus: "unknown", persistError: "provider_jobs_insert_failed: the job ran but cannot be finalized by row id; use the task id", output: null });
+  const ctx: JobContext = { rowId: providerJobRowId, taskId, userId, projectId: body.projectId, shotId: body.shotId ?? null, videoAssetId: body.videoAssetId, wardrobeFeatureId: body.wardrobeFeatureId, lookId, modelId,
+    promptVersion, referencePlan, keyframeCount: keyframes.length, estimatedCostUsd, providerCapability: plan.providerCapability, controlCenterJobId, avtAuthorizedMaxCents, providerEstimateCentsFromControlCenter: ccProviderEstimateCents, submitPayload: submit.payload };
+  const waitMs = Math.min(MAX_WAIT_MS, Math.max(0, (body.maxWaitSeconds ?? MAX_WAIT_MS / 1000) * 1000));
+  const settled = await settleJob(cc, admin, ctx, waitMs);
+  return json(200, { ...plan, billed: settled.finalStatus === "succeeded" || settled.finalStatus === "failed",
     submit: { httpStatus: submit.httpStatus, accepted: true, taskId }, controlCenterJobId, providerJobRowId,
-    finalStatus, providerStatus: finalPayload?.status ?? null, failure: finalPayload?.failure ?? finalPayload?.failureCode ?? null,
-    estimatedCostUsd: plan.estimatedCostUsd, ccProviderEstimateCents, assetId, persistError,
-    output: { storedBucket: storedPath ? "project-clips" : null, storedPath, previewUrl, byteLength } });
+    estimatedCostUsd: plan.estimatedCostUsd, ccProviderEstimateCents, ...settled });
 }
 
 // A throw anywhere above would otherwise surface as a bare gateway 503 with no CORS headers,
