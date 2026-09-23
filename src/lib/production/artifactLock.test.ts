@@ -123,28 +123,94 @@ describe("lockArtifact", () => {
 });
 
 describe("supersedeArtifact", () => {
+  /** Narrow the result union, failing loudly if a case that should succeed did not. */
+  function expectOk(r: ReturnType<typeof supersedeArtifact>) {
+    expect(r.ok, r.ok ? "" : r.reason).toBe(true);
+    if (!r.ok) throw new Error(r.reason);
+    return r;
+  }
+
   it("retires the old artifact and points it at the replacement", () => {
     const old = shotArtifact("S09");
     const next = shotArtifact("S09", { artifactId: "S09-a2", state: "DRAFT" });
-    const { previous, replacement } = supersedeArtifact(old, next, {
-      at: AT,
-      reason: "S09 crossed-arm repair",
-    });
+    const { previous, replacement } = expectOk(
+      supersedeArtifact(old, next, { at: AT, reason: "S09 crossed-arm repair" }),
+    );
     expect(previous.state).toBe("SUPERSEDED");
     expect(previous.supersededBy).toBe("S09-a2");
     expect(previous.supersededAt).toBe(AT);
     expect(replacement.artifactId).toBe("S09-a2");
-    // Provenance survives: what was locked, and what replaced it.
     expect(previous.outputRef).toBe(old.outputRef);
   });
 
-  it("never reuses a superseded artifact, even with nothing changed", () => {
-    const old = supersedeArtifact(
+  it("keeps why-it-was-locked and why-it-was-retired as separate facts", () => {
+    const old = shotArtifact("S09", { lockReason: "passed native-media QA in v8" });
+    const { previous } = expectOk(
+      supersedeArtifact(old, shotArtifact("S09", { artifactId: "S09-a2" }), {
+        at: AT,
+        reason: "band repair",
+      }),
+    );
+    // Overwriting lockReason with the supersede reason would destroy the record of what the
+    // lock ever certified.
+    expect(previous.lockReason).toBe("passed native-media QA in v8");
+    expect(previous.supersedeReason).toBe("band repair");
+  });
+
+  it("refuses self-supersession", () => {
+    const a = shotArtifact("S09");
+    const r = supersedeArtifact(a, a, { at: AT });
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toContain("cannot supersede itself");
+  });
+
+  it("refuses cross-project supersession", () => {
+    // A change in one project must not be able to retire another project's approved output.
+    const r = supersedeArtifact(
       shotArtifact("S09"),
-      shotArtifact("S09", { artifactId: "S09-a2" }),
+      shotArtifact("S09", { artifactId: "S09-a2", projectId: "p2" }),
       { at: AT },
-    ).previous;
-    expect(planArtifact(old, worldOf([old])).action).toBe("RERENDER");
+    );
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toContain("cross-project");
+  });
+
+  it("refuses cross-shot supersession", () => {
+    // Otherwise the timeline silently acquires the wrong footage under S09's lineage, and the
+    // failure only shows up later as a wrong cut.
+    const r = supersedeArtifact(
+      shotArtifact("S09"),
+      shotArtifact("S11", { artifactId: "S11-a2" }),
+      { at: AT },
+    );
+    expect(r.ok).toBe(false);
+    if (r.ok) return;
+    expect(r.reason).toContain("cross-shot");
+  });
+
+  it("refuses to supersede an already-superseded artifact", () => {
+    const { previous } = expectOk(
+      supersedeArtifact(shotArtifact("S09"), shotArtifact("S09", { artifactId: "S09-a2" }), {
+        at: AT,
+      }),
+    );
+    const again = supersedeArtifact(previous, shotArtifact("S09", { artifactId: "S09-a3" }), {
+      at: AT,
+    });
+    expect(again.ok).toBe(false);
+    if (again.ok) return;
+    expect(again.reason).toContain("already superseded");
+  });
+
+  it("never reuses a superseded artifact, even with nothing changed", () => {
+    const { previous } = expectOk(
+      supersedeArtifact(shotArtifact("S09"), shotArtifact("S09", { artifactId: "S09-a2" }), {
+        at: AT,
+      }),
+    );
+    expect(planArtifact(previous, worldOf([previous])).action).toBe("RERENDER");
   });
 });
 
@@ -257,6 +323,47 @@ describe("dependency invalidation", () => {
     expect(plan.byAction.REPAIR).toHaveLength(0);
   });
 
+  it("REVIEW of a LOCKED artifact does not require supersession", () => {
+    // Re-reading a locked output against a moved standard produces a verdict, not a new
+    // render. The lock survives the reading. Treating REVIEW as an unlock made every
+    // treatment or QA-rubric edit look like a re-render round.
+    for (const kind of ["treatment:ysl-section", "qa_rubric:na"] as const) {
+      const plan = planRender(shots, worldOf(shots, { [kind]: "moved" }));
+      if (kind === "treatment:ysl-section") {
+        expect(plan.byAction.REVIEW).toHaveLength(5);
+        expect(plan.requiresUnlock).toHaveLength(0);
+        expect(plan.entries[0].rationale.join(" ")).toContain("the lock stands");
+      }
+    }
+  });
+
+  it("REPAIR and RERENDER of a LOCKED artifact still require supersession", () => {
+    const repair = planRender(
+      shots,
+      worldOf(shots, { "deterministic_process:wordmark_track": "wordmark-v2" }),
+    );
+    expect(repair.byAction.REPAIR).toHaveLength(5);
+    expect(repair.requiresUnlock).toHaveLength(5);
+
+    const rerender = planRender(shots, worldOf(shots, { "look:look-hook": "look-hook-v2" }));
+    expect(rerender.requiresUnlock).toHaveLength(5);
+  });
+
+  it("reports PASS reuse and LOCKED reuse as different claims", () => {
+    // Both mean "do not regenerate", but only one had someone commit to it against a gate.
+    const mixed = [
+      shotArtifact("S06"),
+      shotArtifact("S08", { state: "PASS", lockReason: null, lockedAt: null }),
+    ];
+    const plan = planRender(mixed, worldOf(mixed));
+    expect(plan.byAction.REUSE_LOCKED.map((e) => e.shotId)).toEqual(["S06"]);
+    expect(plan.byAction.REUSE_PASS.map((e) => e.shotId)).toEqual(["S08"]);
+    // Both still count as preserved, and neither is "affected".
+    expect(plan.preserved).toHaveLength(2);
+    expect(plan.affected).toHaveLength(0);
+    expect(plan.byAction.REUSE_PASS[0].rationale.join(" ")).toContain("not pinned");
+  });
+
   it("takes the most severe consequence when several dependencies move at once", () => {
     const plan = planRender(
       shots,
@@ -274,13 +381,13 @@ describe("dependency invalidation", () => {
     expect(why).toContain("treatment:ysl-section");
     expect(why).toContain("deterministic_process:wordmark_track");
     expect(why).toContain("look:look-hook");
-    expect(why).toContain("needs authorization");
+    expect(why).toContain("needs supersession authorization");
   });
 
   it("flags when an action would discard a LOCKED artifact", () => {
     const plan = planRender(shots, worldOf(shots, { "look:look-hook": "look-hook-v2" }));
     expect(plan.requiresUnlock).toHaveLength(5);
-    expect(plan.entries[0].rationale.join(" ")).toContain("needs authorization");
+    expect(plan.entries[0].rationale.join(" ")).toContain("needs supersession authorization");
 
     // An un-pinned PASS artifact needs no authorization to replace.
     const loose = [shotArtifact("S06", { state: "PASS", lockReason: null })];
@@ -324,7 +431,7 @@ describe("state baselines", () => {
     const at = (state: ArtifactRecord["state"]) =>
       planArtifact(shotArtifact("S06", { state }), world).action;
     expect(at("LOCKED")).toBe("REUSE_LOCKED");
-    expect(at("PASS")).toBe("REUSE_LOCKED");
+    expect(at("PASS")).toBe("REUSE_PASS"); // reusable, but never pinned — do not overstate it
     expect(at("QA_PENDING")).toBe("REVIEW");
     expect(at("DRAFT")).toBe("REVIEW");
     expect(at("REPAIR_REQUIRED")).toBe("REPAIR");

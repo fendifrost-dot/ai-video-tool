@@ -1,238 +1,171 @@
-# CLAUDE_INFRA_LANE — provider capability registry + artifact locking
+# CLAUDE_INFRA_LANE — artifact locking, bake-off records, provider-boundary work
 
-**Date:** 2026-09-23 · **Branch:** `claude/ai-video-tool-setup-trwpol` · **Base:** `main` @ `391b60f` (handoff rev 25)
-**Lane:** parallel infrastructure. The primary agent owns YSL S08 mechanism testing, xAI/Runway Aleph capability investigation, current YSL production, and all paid experiments.
-**Spend:** **$0.** No provider call, no Astra call, no redeploy, no SQL.
+**Date:** 2026-09-23 · **Lane:** parallel infrastructure (agent 2) · **Spend:** **$0** — no provider call, no Astra call, no SQL.
 
-> This is a **separate** handoff on purpose. `docs/handoffs/CLAUDE_LATEST.md` is rewritten
-> by the primary agent every round (rev 23 → 24 → 25 in three days); editing it from this
-> lane would have produced a guaranteed conflict over a file with no code in it. Fold this
-> into rev 26 when convenient.
+> Kept separate from `CLAUDE_LATEST.md` on purpose: agent 1 rewrites that file every round
+> (rev 23 → 26 in three days). Fold anything useful into the next rev.
 
 ---
 
-## WHAT SHIPPED
+## Shipped and merged
 
-### A · Provider capability registry — `supabase/functions/_shared/capabilityRegistry.ts`
-
-Capability truth keyed **provider → model → operation**, replacing three incompatible
-vendor-keyed sources (DB table, edge module, UI flag union) that could not express "this
-model allows 3, that one allows 5".
-
-- **Address resolution**: exact model id > longest trailing-`*` family pattern > `"*"`,
-  merged **field by field**, so a model record that pins one limit inherits the rest.
-- **Verification states**: `LIVE_VERIFIED` / `DOCUMENTED` / `INFERRED` / `UNKNOWN`, plus
-  `STALE` **derived** from age (90/60/30-day TTLs). Documentation and a live 400 are never
-  treated as the same evidence. An undated fact is STALE — freshness must be provable.
-- **Per-field provenance**: every resolved field reports `status`, `effectiveStatus`,
-  `verifiedAt`, `source`, `evidence`, which record it came from, and which layer. This is
-  the direct answer to "main says 3, deployed says 5, nobody knows which model".
-- **Overrides without redeploy**: `CAPABILITY_REGISTRY_JSON` edge secret. An override that
-  does not declare its own status is recorded as `INFERRED` — it cannot inherit
-  `LIVE_VERIFIED` from the fact it replaces — and the safety ceiling is applied after all
-  merging.
-- **Fail-closed enforcement**: `evaluateRequest()` returns `block` (known limit exceeded /
-  feature declared `false`) vs `unverified` (unknown or stale — proceed, but recorded).
-  Unknown addresses default to 1 reference image, so a multi-reference call blocks.
-- **Expressible**: text/image/video/audio input, source-video editing, image/video/keyframe
-  conditioning, max references, prompt chars, input+output duration, resolutions, native
-  resolution, aspect ratios, FPS, audio output + source-audio preservation, alpha, output
-  and intermediate (ProRes) formats, bit depth, HDR, async, pricing, provenance.
-
-**Seeded facts — xAI only**, all traced to evidence already in this repo:
-
-| Address | Fact | Class |
-|---|---|---|
-| `xai/*/images/edits` | 3 refs | LIVE_VERIFIED 2026-09-21 |
-| `xai/grok-imagine-image-quality/images/edits` | 3 refs | LIVE_VERIFIED 2026-09-21 |
-| `xai/grok-imagine-image-2.0/images/edits` | 5 refs | DOCUMENTED 2026-09-21 (never called) |
-| `xai/*/videos/edits` | 8 refs = safety ceiling, not a provider fact | INFERRED 2026-09-21 |
-| `xai/*/videos/edits` | 4096 prompt chars | LIVE_VERIFIED 2026-09-22 (unbilled 400) |
-
-Runway/Veo/Pika/Higgsfield/OpenAI/Google are **deliberately absent** — seeding limits for
-providers AVT has not called would be a memory-derived benchmark. A test enforces this.
-
-**No rankings.** `capabilityBakeoff.ts` ships `eligibleCandidates()` (capability
-feasibility, caller order preserved, no score) and `BakeoffResult` / `BakeoffRound` record
-shapes. `BakeoffRound` has no `winner` field. No benchmark numbers were invented.
-
-### B · Artifact locking — `src/lib/production/artifactLock.ts`
-
-States `DRAFT / QA_PENDING / REPAIR_REQUIRED / PASS / LOCKED / SUPERSEDED`, reusing Astra's
-verdicts and the existing `draft|approved|locked|archived` ladder rather than inventing a
-vocabulary. `shots.locked_look_id` is the single-Look ancestor this generalizes.
-
-- `lockArtifact()` refuses without a PASS verdict, without a reason, with missing
-  stage-required QA gates, or **with no declared dependencies** (a lock that can never be
-  invalidated is worse than no lock).
-- No unlock-in-place: `supersedeArtifact()` is the only exit, recording `supersededBy` /
-  `supersededAt`. Re-running QA on a LOCKED artifact records the verdict without flipping
-  the state.
-- **Dependency-aware invalidation** over 9 dependency kinds. `deterministic_process` and
-  `timeline_sync` → **REPAIR**; `treatment` / `qa_rubric` → **REVIEW**; generative inputs →
-  **RERENDER**. Scoping each dependency by id is why "changing S08 does not unlock S06"
-  needs no special case.
-- `planRender()` → `REUSE_LOCKED / REVIEW / REPAIR / RERENDER` per artifact, taking the
-  strongest consequence across changed dependencies, with a full rationale, a
-  `requiresUnlock` list, and unresolved dependencies failing closed. It decides; it never
-  renders or mutates.
+| PR | Repo | Commit | What |
+|---|---|---|---|
+| **CC #17** | fendi-control-center | `cfeb26e` | `video-providers-runway-video-edit` — Runway `/v1/video_to_video` behind Control Center |
+| **AVT #161** | ai-video-tool | `8fd57f2` | AVT routes Runway through Control Center; reference safety ceiling scoped per model |
+| **AVT #159** | ai-video-tool | *this branch* | artifact locking, dependency invalidation, render planning, bake-off records |
 
 ---
 
-## TEST RESULTS
+## 1 · Provider boundary (CC #17 + AVT #161)
 
-Reported by category per [`TEST_TAXONOMY.md`](../TEST_TAXONOMY.md). All 58 new tests are
-**Unit** — none installs a `vi.mock` / `vi.stubGlobal` boundary double or renders a
-component.
+AVT PR #160 shipped `runway-video-edit-proxy` calling Runway directly with an AVT-side
+`RUNWAY_API_KEY` — a second provider-credential boundary. What it worked around was a
+Control Center *capability* gap, not a missing key: `video-providers-runway-generate` covered
+`text_to_video`/`image_to_video` only. **Nothing ever executed on the direct path** — that lane
+was blocked on the key it never received.
 
-**Full suite: 1360 passed, 1 skipped, across 135 files — 1360 unit + mocked-integration as
-previously categorized, 0 provider-live, 0 real-media-benchmark, 0 deployment-smoke.**
-
-Delta vs base `391b60f`: **1302 → 1360 passed (+58)**, 131 → 135 files (+4). No pre-existing
-test changed.
-
-| New file | Tests |
-|---|---:|
-| `supabase/functions/_shared/capabilityRegistry.test.ts` | 25 |
-| `supabase/functions/_shared/capabilityRegistry.compat.test.ts` | 4 |
-| `supabase/functions/_shared/capabilityBakeoff.test.ts` | 4 |
-| `src/lib/production/artifactLock.test.ts` | 25 |
-
-`npx tsc --noEmit` clean. `npx eslint` clean on all new files.
-
-**The three zeros still stand.** Nothing here has been exercised against a live provider,
-real media, or a deployed environment. This proves the resolution and planning logic is
-correct; it proves nothing about xAI's actual limits beyond the evidence already recorded.
-
-Coverage of the specifically-requested cases: model/operation-specific resolution ✓,
-unknown-capability behavior ✓, stale-capability behavior ✓, provider/model distinction ✓,
-lock creation ✓, locked-artifact reuse ✓, dependency invalidation ✓, unrelated-shot
-preservation ✓, supersession ✓, fail-closed on safety-critical constraints ✓.
-
-One design flaw was found **by a test rather than by inspection**: the first draft carried
-a record-level verification status, which cannot express `xai/*/videos/edits` (a
-LIVE_VERIFIED prompt limit sitting next to an INFERRED reference ceiling). Fixed with
-per-field provenance.
-
----
-
-## FILES / SCHEMAS CHANGED
-
-**All new. Zero existing files modified** (`git status` shows 8 untracked paths and nothing else).
+Final path:
 
 ```
-supabase/functions/_shared/capabilityRegistry.ts
-supabase/functions/_shared/capabilityRegistry.test.ts
-supabase/functions/_shared/capabilityRegistry.compat.test.ts
-supabase/functions/_shared/capabilityBakeoff.ts
-supabase/functions/_shared/capabilityBakeoff.test.ts
-src/lib/production/artifactLock.ts
-src/lib/production/artifactLock.test.ts
-src/lib/production/index.ts
-docs/PROVIDER_CAPABILITY_REGISTRY.md
-docs/ARTIFACT_LOCKING.md
-docs/handoffs/CLAUDE_INFRA_LANE_2026-09-23.md
+browser → runway-video-edit-proxy → proxy-provider-call → CC video-providers-runway-video-edit → Runway
 ```
 
-Not touched: `providerCapabilities.ts`, any `grok-*-proxy`, `provider_capabilities` table,
-`src/lib/providers/*`, `shots`, `timeline_items`, `CLAUDE_LATEST.md`, any YSL result artifact.
+`RUNWAY_API_KEY` is in Control Center only. AVT keeps ownership, Look resolution, reference and
+keyframe preparation, cost authorization, the dry run, QA and artifact persistence. Control
+Center owns the credential, the upstream call, retries, audit and the break-glass
+(`RUNWAY_VIDEO_EDIT_DISABLED`). Polling reuses CC's existing `video-providers-job-status` /
+`-job-result` — no polling logic was duplicated.
+
+**Cost has two owners and two names**: `avtAuthorizedMaxCents` (AVT's authorization) vs
+`ccProviderEstimateCents` (CC's independent estimate). CC refuses before calling if its estimate
+exceeds the authorization. A missing authorization or duration is a refusal, not a default.
+
+**Dry run stays $0** and returns AVT's plan even when Control Center is unreachable.
+
+### Safety ceiling — fixed
+
+A single global `SAFETY_MAX_REFERENCE_IMAGES = 30` made Seedance 2.5's **documented** 30 the
+bound for every address, including xAI video edits whose limit has never been verified above 5.
+The ceiling bounds an *unverified* number, so it now resolves where capability resolves —
+provider + operation + model. Default back to **8**; `SAFETY_CEILINGS` carries the one scoped
+exception `runway:video_to_video:seedance2_5 = 30`. No value any live lane resolves changed.
 
 ---
 
-## ANY MIGRATION
+## 2 · Capability truth — one registry, not two (PR #159 reconciliation)
 
-**None.** No file added to `supabase/migrations/`, no SQL to run in Lovable, no edge
-redeploy, no new secret required for current behavior.
+The first draft of this lane shipped its own provider→model→operation registry. **It has been
+removed**, not reconciled. PR #160 landed `providerCapabilities.ts` keyed
+`provider:operation[:model]` on `main`, and that is now the canonical source. Keeping a second
+one would have recreated exactly the condition that caused the original "main says 3, deployed
+says 5" incident.
 
-A proposed additive `shot_artifacts` table is written out in
-[`ARTIFACT_LOCKING.md` §6](../ARTIFACT_LOCKING.md) **for review, not application** — the
-pure layer works on `renders_vN.json`-shaped records today, and dropping a migration file
-into the repo while the primary agent is mid-production is a risk with no current payoff.
-When it is applied it needs the RLS integration test that Class C requires.
+What survived the removal, rebuilt on the canonical module:
 
-`CAPABILITY_REGISTRY_JSON` is optional and unset; absent it, built-in facts apply.
+- **`capabilityBakeoff.ts`** — `eligibleCandidates()` reads `getProviderCapability()`. It filters
+  by capability **feasibility only**: a candidate is ineligible only when a capability fact
+  positively rules it out; one whose facts are merely unknown stays *eligible-but-provisional*,
+  because silently dropping unproven providers is how capability data becomes a ranking by
+  omission. Caller order is preserved and carries no preference.
+- **`BakeoffResult` / `BakeoffRound`** — the record shape a future harness writes: canonical test
+  shot + ShotSpec hash + candidate → metrics, each with its `method` and `direction`, plus cost
+  and a `reproduction` block. `BakeoffRound` has **no `winner` field**; picking one is a
+  reviewer's decision recorded with its rationale, not a property of the round.
 
----
+**No benchmark numbers were invented.** `metrics` is open because identity preservation,
+canonical-Look adherence, temporal stability, treatment conformance and cost per useful second
+have no agreed measurement yet, and freezing the taxonomy first would be backwards.
 
-## CONFLICT RISK
-
-**Low — no shared file was edited.**
-
-| Shared file | Primary-agent activity | This lane |
-|---|---|---|
-| `_shared/providerCapabilities.ts` | edited `378b641` (09-21), `54ebb67` (09-22) | **not edited** — delegation documented instead |
-| `grok-video-edit-proxy/index.ts` | edited `48df1d8` (09-22) | **not edited** |
-| `grok-image-garment-proxy/index.ts` | edited `a43a16b` | **not edited** |
-| `docs/handoffs/CLAUDE_LATEST.md` | rewritten every round | **not edited** — separate handoff |
-| `scripts/edit/*`, `scripts/qa/*`, YSL results | actively written | **not touched** |
-
-The one real coupling is that the registry and `providerCapabilities.ts` currently hold the
-same xAI facts. That duplication is guarded by `capabilityRegistry.compat.test.ts`, which
-fails and names the field the moment they disagree — including if the primary agent
-verifies a new xAI limit and updates only the legacy module. **That is the intended
-behavior**: it is a prompt to update both, not a broken test.
+Still flagged, still not fixed: `recommendProviderForShotType()` in
+`src/lib/providers/capabilities.ts` ranks via a hard-coded `preferredOrder`. It predates this
+work, is live in the PromptBuilder UI, and replacing it needs benchmark evidence that does not
+exist.
 
 ---
 
-## WHAT PRIMARY AGENT SHOULD ADOPT
+## 3 · Artifact locking
 
-Nothing is required. In rough order of payoff:
+**Passing outputs should not be casually regenerated.** An artifact carries a state and the
+dependency fingerprints it was made from, so "does this still stand?" is answered by comparing
+recorded inputs instead of by re-rendering to find out. (v6 re-rolled all 8 performance slots;
+only some needed it.)
 
-1. **When you verify a new xAI limit, update both files.** The conformance test will tell
-   you if you miss one. Put the fact at the tightest address the evidence supports — a 400
-   from `grok-imagine-image-quality` does not license a `"*"` record.
+States: `DRAFT / QA_PENDING / REPAIR_REQUIRED / PASS / LOCKED / SUPERSEDED` — reusing Astra's
+verdicts and the existing `draft|approved|locked|archived` ladder. `shots.locked_look_id` is the
+single-Look ancestor this generalizes.
 
-2. **Record `dependencies[]` alongside `renders_vN.json`.** This is the single highest-value
-   step and it needs no adoption of anything else: Look version, ShotSpec hash,
-   provider/model, prompt hash, tracker version, sync id. Without recorded inputs, "which
-   shots does this change actually affect?" has no answer except *all of them* — which is
-   what made the v6 round re-roll all 8 slots. `docs/ARTIFACT_LOCKING.md` §7.
+Invalidation is per dependency **kind**, scoped by **id** — which is why "changing S08 does not
+unlock S06" needs no special case:
 
-3. **Lock what passed.** `lockArtifact(a, { reason, at, requiredGates: ["native_media_qa"] })`
-   on each shot that clears QA, then `planRender()` before the next round and act on
-   `affected` only. The wordmark case is the immediate win: a new tracker version plans as
-   5 × `REPAIR`, **0 × `RERENDER`**.
+| Change | Plans as |
+|---|---|
+| deterministic process (wordmark tracker version) | **REPAIR** — a script re-run, not 8 paid shots |
+| timeline sync | **REPAIR** — placement moved, pixels didn't |
+| treatment / QA rubric | **REVIEW** — the standard moved, not the artifact |
+| source asset / ShotSpec / Look / provider-model / prompt | **RERENDER** |
 
-4. **The proxy delegation** (`docs/PROVIDER_CAPABILITY_REGISTRY.md` §4) — written out as a
-   diff-ready snippet, left unapplied because both files are yours. It is what gives the
-   proxies a model dimension: `getCapability({ provider, model, operation })` +
-   `evaluateRequest()` fail-closed before spend. Land it when the YSL lane is quiet.
+### Semantics corrected this round
 
-5. **For the Runway Aleph investigation**: add records as you verify, rather than a constants
-   file. `DOCUMENTED` for what Runway's docs claim, `LIVE_VERIFIED` only for what a call
-   proved. The registry is deliberately empty of Runway facts so nothing there contradicts
-   what you find.
+- **REVIEW of a LOCKED artifact does not require supersession.** Re-reading a locked output
+  against a moved standard produces a verdict, not a new render; the lock survives. Only
+  `REPAIR`/`RERENDER` set `requiresUnlock`. Previously every treatment or rubric edit looked like
+  a re-render round.
+- **PASS reuse and LOCKED reuse are reported as different claims** (`REUSE_PASS` vs
+  `REUSE_LOCKED`). Both are preserved and neither is affected, but calling a PASS reuse "LOCKED"
+  overstates the review it has had.
+- **Supersession refuses four lineage corruptions**: self-supersession, cross-project,
+  cross-shot, and re-superseding an already-superseded artifact.
+- **Provenance is two facts**: `lockReason` (why pinned) survives untouched; `supersedeReason`
+  records why retired.
 
----
-
-## WHAT REMAINS DESIGN-ONLY
-
-- **The proxy delegation** — snippet written, not applied (both files are the primary
-  agent's). Until then the duplication is guarded by the conformance test.
-- **`shot_artifacts` DDL** — proposed in `ARTIFACT_LOCKING.md` §6, not added to
-  `supabase/migrations/`. Needs RLS + its integration test before application.
-- **Benchmark harness** — only the record shape (`BakeoffResult`, `BakeoffRound`) and the
-  eligibility filter exist. No runner, no metrics, no scores. Per
-  `REPRODUCIBLE_BENCHMARK_SYSTEM.md`, numbers come from a run or they do not go in.
-- **Evidence-based provider selection** — `recommendProviderForShotType()` in
-  `src/lib/providers/capabilities.ts` still ranks via a hard-coded `preferredOrder` against
-  the DB table. It is live in the PromptBuilder UI and **was not modified**; replacing it is
-  a Class-C product decision that needs benchmark evidence that does not exist yet.
-  **Flagged, not fixed.**
-- **DB-table reconciliation** — `provider_capabilities` overlaps the registry on
-  `max_duration_seconds`, `supported_aspect_ratios`, `supports_reference_image`. Proposal:
-  the table keeps creative guidance, the registry owns hard constraints, and those three
-  columns eventually source from the registry. Not implemented.
+`planRender()` decides; it never renders, spends or mutates.
 
 ---
 
-## REVIEW GATE
+## Tests
 
-Class **C** per [`ARCHITECTURE_REVIEW.md`](../ARCHITECTURE_REVIEW.md) — touches **Providers**
-(trust boundary + spend), **Rendering/Timelines** (artifact graph), and **Benchmarks**
-(bake-off contract). **Three sign-offs required before merge: architecture + product +
-security.** The PR is a draft and must not be self-merged.
+Reported by category per [`TEST_TAXONOMY.md`](../TEST_TAXONOMY.md). All new tests are **Unit** —
+none installs a `vi.mock` / `vi.stubGlobal` boundary double.
 
-No `RISK_REGISTER.md` entry: no risk is opened, moved, or closed — nothing in the running
-system reads either module yet. If the proxy delegation lands, that change carries the
-risk-register review, since it moves a live spend guard.
+| Suite | Result |
+|---|---|
+| Control Center `test:deno` | **134 passed / 0 failed** (+18 new) |
+| Control Center `vitest` | 19 passed |
+| AVT full suite | **see PR #159 body for the current count** — 0 provider-live, 0 real-media-benchmark, 0 deployment-smoke |
+
+**The three zeros still stand.** Nothing here has touched a live provider, real media, or a
+deployed environment.
+
+---
+
+## What Fendi / agent 1 must do
+
+1. **Deploy Control Center `video-providers-runway-video-edit`** (merged, not deployed).
+2. **Then redeploy AVT `proxy-provider-call` + `runway-video-edit-proxy`.** No SQL, no migration,
+   **no new secret in either project**.
+3. **Do NOT add `RUNWAY_API_KEY` to AVT.** The stale instructions saying otherwise have been
+   corrected in the capability-check doc and in `CLAUDE_LATEST.md`'s Fendi row.
+4. Optional, highest-value adoption: **record `dependencies[]` alongside `renders_vN.json`**
+   (Look version, ShotSpec hash, provider/model, prompt hash, tracker version, sync id). Without
+   recorded inputs, "which shots does this change affect?" has no answer except *all of them*.
+
+Agent 1 owns the paid S08 Aleph/Omni experiment. This lane made no paid call and none is
+authorized from here.
+
+## Known, pre-existing, not fixed
+
+- **CC CI `web` is red on `main`** — `prefer-const` at `src/integrations/supabase/previewAuthStorage.ts:38`.
+  Not a one-word fix (`timer` is closed over by `finish()`), and outside the authorized CC
+  exception. `deno-edge` passes.
+- **`runway-video-edit-proxy/index.ts`** already had 99 prettier findings on `main`; its dense
+  style was left rather than reformatted wholesale. New files are lint-clean.
+- **`deno check`** reports 4 supabase-js generic errors in that same file on `main` and on the
+  branch alike — untouched signing code.
+
+## Storage
+
+Still **design-only**. No migration in either repo. The proposed additive `shot_artifacts` DDL is
+in [`ARTIFACT_LOCKING.md` §6](../ARTIFACT_LOCKING.md) for review; it needs the RLS integration
+test Class C requires before it is applied. The pure layer works on `renders_vN.json`-shaped
+records today.

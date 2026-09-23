@@ -72,6 +72,20 @@ and what replaced it both survive. Re-running QA on a locked artifact records th
 verdict but does **not** flip the state — unpinning is a supersession decision, not a side
 effect of a review.
 
+`supersedeArtifact()` returns `{ ok }` and **refuses** four lineage corruptions outright,
+because each is hard to spot afterwards and impossible to undo:
+
+| Refused | Why |
+|---|---|
+| self-supersession | an unresolvable cycle that reads as "replaced" while nothing replaced it |
+| cross-**project** | a change in one project must not retire another project's approved output |
+| cross-**shot** | the timeline would silently acquire the wrong footage under the old shot's lineage, surfacing much later as a wrong cut |
+| already `SUPERSEDED` | the first replacement is the record; a second overwrites it |
+
+Provenance is kept as two separate facts: `lockReason` (why it was pinned) survives
+untouched, and `supersedeReason` records why it was retired. Overwriting the first with the
+second would destroy the record of what the lock ever certified.
+
 ---
 
 ## 4. Dependencies and invalidation
@@ -126,16 +140,27 @@ Per artifact: take the baseline implied by its state, then take the **strongest*
 consequence across every changed dependency.
 
 ```
-REUSE_LOCKED  <  REVIEW  <  REPAIR  <  RERENDER
+REUSE_LOCKED  <  REUSE_PASS  <  REVIEW  <  REPAIR  <  RERENDER
 ```
 
-State baselines: `LOCKED`/`PASS` → `REUSE_LOCKED`; `DRAFT`/`QA_PENDING` → `REVIEW`;
-`REPAIR_REQUIRED` → `REPAIR`; `SUPERSEDED` → `RERENDER`. A clean dependency set never
-downgrades a baseline — a known defect does not become a reuse because nothing moved.
+State baselines: `LOCKED` → `REUSE_LOCKED`; `PASS` → `REUSE_PASS`; `DRAFT`/`QA_PENDING` →
+`REVIEW`; `REPAIR_REQUIRED` → `REPAIR`; `SUPERSEDED` → `RERENDER`. A clean dependency set
+never downgrades a baseline — a known defect does not become a reuse because nothing moved.
+
+**The two reuse actions are not the same claim.** `REUSE_LOCKED` is an output someone pinned
+against a stage's gates; `REUSE_PASS` only cleared QA and nobody committed to it. Both count
+as `preserved` and neither is `affected`, but reporting a PASS reuse as "LOCKED" would
+overstate how much review the output has actually had. `isReuse()` is the predicate for
+"do not regenerate".
 
 Every entry carries a `rationale`, listing **all** the reasons, not only the one that won,
-so a plan explains itself. `requiresUnlock` flags any action that would supersede a LOCKED
-artifact, so those get authorized rather than executed silently.
+so a plan explains itself.
+
+**`requiresUnlock` flags only actions that would REPLACE the pixels** — `REPAIR` and
+`RERENDER`. A `REVIEW` of a locked artifact does **not** require supersession: re-reading a
+locked output against a moved standard produces a verdict, not a new render, and the lock
+survives the reading. Treating REVIEW as an unlock made every treatment or QA-rubric edit
+look like a re-render round, which is the over-reaction this module exists to stop.
 
 **Unresolved dependencies fail closed.** A dependency absent from the current fingerprint
 index cannot be *proven* unchanged, so it does not get to count as unchanged: default
@@ -150,7 +175,7 @@ records, and the store is deliberately unspecified.
 
 | Scenario | Result |
 |---|---|
-| Nothing changed | 5/5 `REUSE_LOCKED` |
+| Nothing changed | 5/5 `REUSE_LOCKED` (a PASS artifact would report `REUSE_PASS`) |
 | S08 changes | S08 `RERENDER`; S06/S09/S11/S12 preserved |
 | Canonical hook Look changes | all 5 hook shots `RERENDER`; a B-roll shot on another Look preserved |
 | B-roll S14 changes | S14 only; all wardrobe shots preserved |

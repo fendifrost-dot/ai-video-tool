@@ -123,6 +123,8 @@ export type ArtifactRecord = {
   /** artifactId of the replacement, set on SUPERSEDED. */
   supersededBy?: string | null;
   supersededAt?: string | null;
+  /** Why it was retired. Kept separate from lockReason, which says why it was pinned. */
+  supersedeReason?: string | null;
 
   createdAt?: string | null;
   /** Free-form provenance: model version, seed, transfer mode, cost. */
@@ -198,18 +200,58 @@ export function lockArtifact(
  * Supersession is the ONLY way a LOCKED artifact stops being authoritative — there is no
  * unlock-in-place, so the record of what was locked, and what replaced it, always survives.
  */
+export type SupersessionResult =
+  | { ok: true; previous: ArtifactRecord; replacement: ArtifactRecord }
+  | { ok: false; reason: string };
+
 export function supersedeArtifact(
   previous: ArtifactRecord,
   replacement: ArtifactRecord,
   opts: { at: string; reason?: string },
-): { previous: ArtifactRecord; replacement: ArtifactRecord } {
+): SupersessionResult {
+  // Lineage guards. Each of these would corrupt the record in a way that is hard to see
+  // afterwards and impossible to undo, so they are refusals rather than warnings.
+
+  // Self-supersession: an artifact pointing at itself is an unresolvable cycle, and it would
+  // read as "replaced" while nothing replaced it.
+  if (previous.artifactId === replacement.artifactId) {
+    return { ok: false, reason: "an artifact cannot supersede itself" };
+  }
+  // Cross-project: supersession is a statement about one project's history. Crossing projects
+  // would let a change in one project retire another project's approved output.
+  if (previous.projectId !== replacement.projectId) {
+    return {
+      ok: false,
+      reason: `cross-project supersession refused: ${previous.projectId} → ${replacement.projectId}`,
+    };
+  }
+  // Cross-shot: the replacement must depict the same shot. Otherwise the timeline silently
+  // acquires the wrong footage under the old shot's lineage — the failure would show up as a
+  // wrong cut, long after the swap.
+  if (previous.shotId !== replacement.shotId) {
+    return {
+      ok: false,
+      reason: `cross-shot supersession refused: ${previous.shotId} → ${replacement.shotId}`,
+    };
+  }
+  if (previous.state === "SUPERSEDED") {
+    return {
+      ok: false,
+      reason: `already superseded by ${previous.supersededBy ?? "an earlier replacement"}`,
+    };
+  }
+
   return {
+    ok: true,
     previous: {
       ...previous,
       state: "SUPERSEDED",
       supersededBy: replacement.artifactId,
       supersededAt: opts.at,
-      lockReason: opts.reason ?? previous.lockReason ?? null,
+      // Provenance: the original lock reason is preserved. `supersedeReason` records why it was
+      // replaced, so "why was this locked" and "why was it retired" stay separate questions.
+      lockReason: previous.lockReason ?? null,
+      supersedeReason: opts.reason ?? null,
     },
     replacement,
   };
@@ -223,8 +265,18 @@ export function supersedeArtifact(
  * Plan actions, ordered weakest → strongest. `planRank` makes "take the most severe
  * consequence across all changed dependencies" a one-line reduction.
  */
-export const PLAN_ACTIONS = ["REUSE_LOCKED", "REVIEW", "REPAIR", "RERENDER"] as const;
+export const PLAN_ACTIONS = ["REUSE_LOCKED", "REUSE_PASS", "REVIEW", "REPAIR", "RERENDER"] as const;
 export type PlanAction = (typeof PLAN_ACTIONS)[number];
+
+/**
+ * Both reuse actions mean "do not regenerate", but they are not the same claim and the plan
+ * must not blur them: REUSE_LOCKED is an output someone pinned against a stage's gates;
+ * REUSE_PASS only passed QA and nobody committed to it. Reporting a PASS reuse as "LOCKED"
+ * would overstate how much review the output has actually had.
+ */
+export function isReuse(action: PlanAction): boolean {
+  return action === "REUSE_LOCKED" || action === "REUSE_PASS";
+}
 
 export function planRank(action: PlanAction): number {
   return PLAN_ACTIONS.indexOf(action);
@@ -263,7 +315,8 @@ export const INVALIDATION_POLICY: Record<DependencyKind, PlanAction> = {
 /** Baseline action implied by the artifact's own state, before dependencies are considered. */
 export const STATE_BASELINE: Record<ArtifactState, PlanAction> = {
   LOCKED: "REUSE_LOCKED",
-  PASS: "REUSE_LOCKED",
+  // Reusable, but say so honestly: PASS was never pinned to a stage's gates.
+  PASS: "REUSE_PASS",
   QA_PENDING: "REVIEW",
   DRAFT: "REVIEW",
   REPAIR_REQUIRED: "REPAIR",
@@ -353,7 +406,9 @@ export function planArtifact(
     rationale.push(
       artifact.state === "LOCKED"
         ? `LOCKED and no declared dependency changed — reuse (${artifact.lockReason ?? "no reason recorded"})`
-        : `state ${artifact.state} with no dependency change — ${baseline}`,
+        : artifact.state === "PASS"
+          ? "PASS and no declared dependency changed — reusable, but not pinned to a stage's gates"
+          : `state ${artifact.state} with no dependency change — ${baseline}`,
     );
   } else {
     for (const c of changes) {
@@ -366,9 +421,19 @@ export function planArtifact(
     }
   }
 
-  const requiresUnlock = artifact.state === "LOCKED" && action !== "REUSE_LOCKED";
+  // Only actions that would REPLACE the pixels need a supersession decision. REVIEW does not:
+  // re-reading a locked output against a moved standard produces a verdict, not a new render,
+  // and the lock survives the reading. Treating REVIEW as an unlock made every treatment or
+  // rubric edit look like a re-render round, which is exactly the over-reaction this module
+  // exists to stop.
+  const replacesPixels = action === "REPAIR" || action === "RERENDER";
+  const requiresUnlock = artifact.state === "LOCKED" && replacesPixels;
   if (requiresUnlock) {
-    rationale.push("artifact is LOCKED — this action supersedes it and needs authorization");
+    rationale.push(
+      `artifact is LOCKED — ${action} replaces it, so it needs supersession authorization`,
+    );
+  } else if (artifact.state === "LOCKED" && action === "REVIEW") {
+    rationale.push("artifact is LOCKED — REVIEW re-reads it without replacing it; the lock stands");
   }
 
   return {
@@ -414,8 +479,8 @@ export function planRender(
 
   return {
     entries,
-    affected: entries.filter((e) => e.action !== "REUSE_LOCKED"),
-    preserved: byAction.REUSE_LOCKED,
+    affected: entries.filter((e) => !isReuse(e.action)),
+    preserved: entries.filter((e) => isReuse(e.action)),
     byAction,
     requiresUnlock: entries.filter((e) => e.requiresUnlock),
   };

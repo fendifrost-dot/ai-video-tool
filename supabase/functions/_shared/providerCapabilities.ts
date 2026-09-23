@@ -48,7 +48,8 @@ export const SAFETY_CEILINGS: Record<string, number> = {
 /** Resolve the ceiling for an address: model entry, then endpoint entry, then the default. */
 export function safetyCeilingFor(key: string, model?: string | null): number {
   const modelKey = model ? `${key}:${model}` : null;
-  if (modelKey && Object.prototype.hasOwnProperty.call(SAFETY_CEILINGS, modelKey)) return SAFETY_CEILINGS[modelKey];
+  if (modelKey && Object.prototype.hasOwnProperty.call(SAFETY_CEILINGS, modelKey))
+    return SAFETY_CEILINGS[modelKey];
   if (Object.prototype.hasOwnProperty.call(SAFETY_CEILINGS, key)) return SAFETY_CEILINGS[key];
   return SAFETY_MAX_REFERENCE_IMAGES;
 }
@@ -62,57 +63,78 @@ const DEFAULTS: Record<string, ProviderCapability> = {
     maxReferenceImages: 3,
     firstFrameConditioning: true,
     maxPromptChars: null,
-    source: "endpoint default = the most conservative model on it (grok-imagine-image-quality: 3, verified 2026-09-21). <IMAGE_0> is the edited frame, so a Look-on-artist anchor can be sent as <IMAGE_1>",
+    source:
+      "endpoint default = the most conservative model on it (grok-imagine-image-quality: 3, verified 2026-09-21). <IMAGE_0> is the edited frame, so a Look-on-artist anchor can be sent as <IMAGE_1>",
   },
   "xai:images/edits:grok-imagine-image-quality": {
     maxReferenceImages: 3,
     firstFrameConditioning: true,
     maxPromptChars: null,
-    source: "VERIFIED 2026-09-21: rejects >3 input images ('This model supports at most 3 input image(s)'). Retired 2026-11-02 — requests are then served by grok-imagine-image-2.0 (docs.x.ai migration note, 2026-09-02)",
+    source:
+      "VERIFIED 2026-09-21: rejects >3 input images ('This model supports at most 3 input image(s)'). Retired 2026-11-02 — requests are then served by grok-imagine-image-2.0 (docs.x.ai migration note, 2026-09-02)",
   },
   "xai:images/edits:grok-imagine-image-2.0": {
     maxReferenceImages: 5,
     firstFrameConditioning: true,
     maxPromptChars: null,
-    source: "docs.x.ai release notes 2026-08-28: 'Image editing now accepts up to 5 source images per request (was 3)'; not yet verified against the API by AVT",
+    source:
+      "docs.x.ai release notes 2026-08-28: 'Image editing now accepts up to 5 source images per request (was 3)'; not yet verified against the API by AVT",
   },
   "xai:videos/edits": {
     maxReferenceImages: 8,
     firstFrameConditioning: null,
     maxPromptChars: 4096,
-    source: "observed: 5 references accepted on 2026-09-21 (full_look, request 296ee0ca lineage, model grok-imagine-video); provider maximum not yet verified. VERIFIED 2026-09-22: prompt longer than 4096 characters is rejected ('Prompt length exceeds the maximum allowed length of 4096'), unbilled",
+    source:
+      "observed: 5 references accepted on 2026-09-21 (full_look, request 296ee0ca lineage, model grok-imagine-video); provider maximum not yet verified. VERIFIED 2026-09-22: prompt longer than 4096 characters is rejected ('Prompt length exceeds the maximum allowed length of 4096'), unbilled",
   },
   "runway:video_to_video": {
     maxReferenceImages: 0,
     firstFrameConditioning: null,
     maxPromptChars: 1000,
-    source: "endpoint default = the most conservative edit model on it (aleph2: no image references, keyframes instead, prompt ≤ 1000)",
+    source:
+      "endpoint default = the most conservative edit model on it (aleph2: no image references, keyframes instead, prompt ≤ 1000)",
   },
   "runway:video_to_video:aleph2": {
     maxReferenceImages: 0,
     firstFrameConditioning: true,
     maxPromptChars: 1000,
-    source: "docs.dev.runwayml.com OpenAPI 2026-09-23: videoUri ≤ 30 s, promptText ≤ 1000, keyframes ≤ 5 timed guidance images ('Edit one frame and Aleph 2.0 modifies the rest of your video to match'); 28 credits/s, 56 minimum",
+    source:
+      "docs.dev.runwayml.com OpenAPI 2026-09-23: videoUri ≤ 30 s, promptText ≤ 1000, keyframes ≤ 5 timed guidance images ('Edit one frame and Aleph 2.0 modifies the rest of your video to match'); 28 credits/s, 56 minimum",
   },
   "runway:video_to_video:gemini_omni_flash_1.1": {
     maxReferenceImages: 5,
     firstFrameConditioning: null,
     maxPromptChars: 4000,
-    source: "docs.dev.runwayml.com OpenAPI 2026-09-23: mode=edit transforms the input video per the prompt with up to 5 image references; input ≤ 10 s; 10 credits/s",
+    source:
+      "docs.dev.runwayml.com OpenAPI 2026-09-23: mode=edit transforms the input video per the prompt with up to 5 image references; input ≤ 10 s; 10 credits/s",
   },
   "runway:video_to_video:seedance2_5": {
     maxReferenceImages: 30,
     firstFrameConditioning: null,
     maxPromptChars: 15000,
-    source: "docs.dev.runwayml.com OpenAPI 2026-09-23: mode=edit modifies the input video in place with up to 30 image references; input ≤ 10 s; 720p 30 credits/s + 15 credits/s input",
+    source:
+      "docs.dev.runwayml.com OpenAPI 2026-09-23: mode=edit modifies the input video in place with up to 30 image references; input ≤ 10 s; 720p 30 credits/s + 15 credits/s input",
   },
   "xai:videos/generations:grok-imagine-video-1.5": {
     maxReferenceImages: 7,
     firstFrameConditioning: false,
     maxPromptChars: null,
-    source: "docs.x.ai reference-to-video (grok-imagine-video-1.5): up to 7 reference images that guide a GENERATED video without forcing the first frame; 'cannot be combined with video editing' — not a video-edit conditioning path",
+    source:
+      "docs.x.ai reference-to-video (grok-imagine-video-1.5): up to 7 reference images that guide a GENERATED video without forcing the first frame; 'cannot be combined with video editing' — not a video-edit conditioning path",
   },
 };
+
+/**
+ * The `source` a resolution carries when NO record matched — the conservative defaults are a
+ * fallback, not a capability claim. Callers that must distinguish "we know this is 1" from
+ * "we know nothing and assumed 1" compare against this rather than re-deriving the lookup.
+ */
+export const UNKNOWN_CAPABILITY_SOURCE = "unknown provider — conservative default";
+
+/** True when a built-in or override record actually describes this address. */
+export function hasCapabilityRecord(key: string, env?: EnvLike, model?: string | null): boolean {
+  return getProviderCapability(key, env, model).source !== UNKNOWN_CAPABILITY_SOURCE;
+}
 
 type EnvLike = { get(name: string): string | undefined };
 
@@ -121,7 +143,9 @@ function parseOverrides(env: EnvLike | undefined): Record<string, Partial<Provid
   if (!raw) return {};
   try {
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" ? (parsed as Record<string, Partial<ProviderCapability>>) : {};
+    return parsed && typeof parsed === "object"
+      ? (parsed as Record<string, Partial<ProviderCapability>>)
+      : {};
   } catch {
     return {};
   }
@@ -130,18 +154,38 @@ function parseOverrides(env: EnvLike | undefined): Record<string, Partial<Provid
 /** `key` is "<provider>:<operation>", e.g. "xai:videos/edits"; with `model` the model-specific entry
  *  "<key>:<model>" is used when one exists (built-in or via PROVIDER_CAPABILITIES_JSON), else the
  *  endpoint default. Unknown keys get conservative defaults. */
-export function getProviderCapability(key: string, env: EnvLike | undefined = typeof Deno !== "undefined" ? Deno.env : undefined, model?: string | null): ProviderCapability {
+export function getProviderCapability(
+  key: string,
+  env: EnvLike | undefined = typeof Deno !== "undefined" ? Deno.env : undefined,
+  model?: string | null,
+): ProviderCapability {
   const overrides = parseOverrides(env);
   const modelKey = model ? `${key}:${model}` : null;
-  const base = (modelKey && DEFAULTS[modelKey]) || DEFAULTS[key] || { maxReferenceImages: 1, firstFrameConditioning: null, maxPromptChars: null, source: "unknown provider — conservative default" };
+  const base = (modelKey && DEFAULTS[modelKey]) ||
+    DEFAULTS[key] || {
+      maxReferenceImages: 1,
+      firstFrameConditioning: null,
+      maxPromptChars: null,
+      source: UNKNOWN_CAPABILITY_SOURCE,
+    };
   const o = { ...(overrides[key] ?? {}), ...((modelKey && overrides[modelKey]) ?? {}) };
   const max = Number(o.maxReferenceImages);
   const maxPrompt = Number(o.maxPromptChars);
   return {
     // 0 is a legitimate value (a model that takes no image references, e.g. keyframe-guided editors)
-    maxReferenceImages: Math.max(0, Math.min(Number.isFinite(max) && max >= 0 ? Math.floor(max) : base.maxReferenceImages, safetyCeilingFor(key, model))),
-    firstFrameConditioning: typeof o.firstFrameConditioning === "boolean" ? o.firstFrameConditioning : base.firstFrameConditioning,
-    maxPromptChars: Number.isFinite(maxPrompt) && maxPrompt >= 1 ? Math.floor(maxPrompt) : base.maxPromptChars,
+    maxReferenceImages: Math.max(
+      0,
+      Math.min(
+        Number.isFinite(max) && max >= 0 ? Math.floor(max) : base.maxReferenceImages,
+        safetyCeilingFor(key, model),
+      ),
+    ),
+    firstFrameConditioning:
+      typeof o.firstFrameConditioning === "boolean"
+        ? o.firstFrameConditioning
+        : base.firstFrameConditioning,
+    maxPromptChars:
+      Number.isFinite(maxPrompt) && maxPrompt >= 1 ? Math.floor(maxPrompt) : base.maxPromptChars,
     source: typeof o.source === "string" && o.source ? o.source : base.source,
   };
 }
