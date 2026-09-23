@@ -12,7 +12,8 @@
 //   await window.runwaySmoke.run({ projectId, artistId, videoAssetId, wardrobeFeatureId, lookId,
 //       keyframePath, keyframeSeconds, inputSeconds, alephPrompt, omniPrompt, maxCostUsd: 3, dryRun: true })
 //   → dry run returns each model's plan (contract, references, estimate) with nothing billed;
-//     dryRun:false submits both (sequentially; the proxy is synchronous) and returns provenance.
+//     dryRun:false submits both (sequentially), then finalizes each job through the proxy's
+//     `finalizeProviderJobRowId` mode until it settles (the gateway cuts a single call at ~150 s).
 // Everything recorded per model: model, contract, source asset, input seconds, keyframe path +
 // timestamp, reference plan, prompt (composed), request body (signed URLs redacted), estimate,
 // task id, final status, cost, output path, asset id.
@@ -28,7 +29,7 @@
     const res = await fetch(`${SUPABASE_URL}/functions/v1/runway-video-edit-proxy`, { method: "POST", headers: { apikey: anon, Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
     const j = await res.json().catch(() => ({ error: "bad_json" })); j._httpStatus = res.status; return j;
   }
-  async function run({ projectId, artistId, videoAssetId, wardrobeFeatureId, lookId, keyframePath, keyframeBucket = "project-references", keyframeSeconds, inputSeconds, alephPrompt, omniPrompt, maxCostUsd = 3.0, dryRun = true, only = null, promptVersion = "smoke-s08-v1" }) {
+  async function run({ projectId, artistId, videoAssetId, wardrobeFeatureId, lookId, keyframePath, keyframeBucket = "project-references", keyframeSeconds, inputSeconds, alephPrompt, omniPrompt, maxCostUsd = 3.0, dryRun = true, only = null, promptVersion = "smoke-s08-v1", finalizeTimeoutMs = 20 * 60 * 1000 }) {
     const common = { projectId, artistId, videoAssetId, wardrobeFeatureId, lookId, inputSeconds, maxCostUsd, dryRun, promptVersion };
     const jobs = [
       { name: "aleph2", body: { ...common, model: "aleph2", prompt: alephPrompt, keyframes: [{ path: keyframePath, bucket: keyframeBucket, seconds: keyframeSeconds }] } },
@@ -37,7 +38,18 @@
     const out = { dryRun, results: {}, log: [] }; window.__runwaySmoke = out;
     for (const job of jobs) {
       if (only && !only.includes(job.name)) continue;
-      const t0 = Date.now(); const j = await call(job.body);
+      const t0 = Date.now(); let j = await call(job.body);
+      // The proxy waits at most ~100 s (the gateway cuts a function at ~150 s); a job still
+      // rendering comes back with its provider_jobs row id and is settled by finalize calls.
+      if (!dryRun && j.providerJobRowId && j.finalStatus !== "succeeded" && j.finalStatus !== "failed") {
+        const rowId = j.providerJobRowId; const tEnd = Date.now() + finalizeTimeoutMs;
+        while (Date.now() < tEnd) {
+          const f = await call({ finalizeProviderJobRowId: rowId, maxWaitSeconds: 45 });
+          j = { ...j, ...f, submit: j.submit, _finalizeCalls: (j._finalizeCalls || 0) + 1 };
+          if (f.finalStatus === "succeeded" || f.finalStatus === "failed" || f.error) break;
+          await new Promise((r) => setTimeout(r, 5000));
+        }
+      }
       out.results[job.name] = { ...j, _elapsedMs: Date.now() - t0 };
       out.log.push(`${job.name}: http ${j._httpStatus} ${j.error || ""} est $${j.estimatedCostUsd ?? "?"} refs=${j.referenceCount ?? "?"} keyframes=${j.keyframeCount ?? "?"} ${dryRun ? "(dry)" : `status=${j.finalStatus} cost=$${j.actualCostUsd ?? j.estimatedCostUsd ?? "?"} task=${j.submit?.taskId ?? "-"}`}`);
     }
