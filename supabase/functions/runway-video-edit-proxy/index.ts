@@ -249,7 +249,9 @@ async function handleRequest(req: Request): Promise<Response> {
     ...(keyframes.length ? { keyframes } : {}),
     ...(referenceUrls.length ? { references: referenceUrls.map((uri) => ({ uri })) } : {}),
     ...(spec.contract === "mode_edit" && spec.ratio ? { ratio: spec.ratio } : {}),
-    contentModeration: { publicFigureThreshold: "low" },
+    // Runway accepts contentModeration on the aleph2 contract only; mode=edit models reject it
+    // with 400 unrecognized_keys (observed on gemini_omni_flash_1.1, 2026-09-23, unbilled).
+    ...(spec.contract === "aleph2" ? { contentModeration: { publicFigureThreshold: "low" } } : {}),
     inputSeconds,
     avtAuthorizedMaxCents,
     avt_project_id: body.projectId,
