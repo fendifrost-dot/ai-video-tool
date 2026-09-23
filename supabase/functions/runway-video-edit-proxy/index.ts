@@ -67,8 +67,6 @@ type RunwayModel = {
   creditsPerOutputSecond: number;
   creditsPerInputSecond: number;
   minCredits: number;
-  /** field values the contract needs */
-  ratio?: string;
   source: string;
 };
 const MODELS: Record<string, RunwayModel> = {
@@ -79,12 +77,12 @@ const MODELS: Record<string, RunwayModel> = {
   },
   "gemini_omni_flash_1.1": {
     contract: "mode_edit", maxReferences: 5, maxKeyframes: 0, maxInputSeconds: 10, maxPromptChars: 4000,
-    creditsPerOutputSecond: 10, creditsPerInputSecond: 0, minCredits: 0, ratio: "720:1280",
-    source: "video_to_video mode=edit with up to 5 image references; input ≤ 10 s; ratios up to 2160:3840; 10 credits/s (pricing page lists t2v/i2v; edit assumed the same until billed)",
+    creditsPerOutputSecond: 10, creditsPerInputSecond: 0, minCredits: 0,
+    source: "video_to_video mode=edit with up to 5 image references; input ≤ 10 s; 10 credits/s (pricing page lists t2v/i2v; edit assumed the same until billed). Runway 2026-09-23: in edit mode `ratio` is rejected — output orientation follows the input video and resolution is 720p (the 2160:3840 ratios belong to reference mode)",
   },
   seedance2_5: {
     contract: "mode_edit", maxReferences: 30, maxKeyframes: 0, maxInputSeconds: 10, maxPromptChars: 15000,
-    creditsPerOutputSecond: 30, creditsPerInputSecond: 15, minCredits: 0, ratio: "720:1280",
+    creditsPerOutputSecond: 30, creditsPerInputSecond: 15, minCredits: 0,
     source: "Seedance 2.5 video_to_video mode=edit (duration auto) with up to 30 image references; 720p: 30 credits/s output + 15 credits/s input",
   },
 };
@@ -232,7 +230,7 @@ async function handleRequest(req: Request): Promise<Response> {
   if (inputSeconds > spec.maxInputSeconds) return json(400, { error: "input_too_long", inputSeconds, maxInputSeconds: spec.maxInputSeconds });
   const runwayBody: Record<string, unknown> = spec.contract === "aleph2"
     ? { model: "aleph2", videoUri: videoUrl, promptText: composedPrompt, ...(keyframes.length ? { keyframes } : {}), contentModeration: { publicFigureThreshold: "low" } }
-    : { model: modelId, videoUri: videoUrl, mode: "edit", promptText: composedPrompt, duration: "auto", ...(referenceUrls.length ? { references: referenceUrls.map((uri) => ({ uri })) } : {}), ...(modelId === "seedance2_5" ? {} : { ratio: spec.ratio }) };
+    : { model: modelId, videoUri: videoUrl, mode: "edit", promptText: composedPrompt, duration: "auto", ...(referenceUrls.length ? { references: referenceUrls.map((uri) => ({ uri })) } : {}) };
   const promptVersion = body.promptVersion?.trim() || "unspecified";
   const estimatedCostUsd = estimateCostUsd(spec, inputSeconds);
   // AVT owns spend AUTHORIZATION; Control Center forms its own provider estimate and
@@ -248,7 +246,8 @@ async function handleRequest(req: Request): Promise<Response> {
     promptText: composedPrompt,
     ...(keyframes.length ? { keyframes } : {}),
     ...(referenceUrls.length ? { references: referenceUrls.map((uri) => ({ uri })) } : {}),
-    ...(spec.contract === "mode_edit" && spec.ratio ? { ratio: spec.ratio } : {}),
+    // no `ratio` in edit mode: Runway rejects it ("output orientation follows the input video and
+    // resolution is 720p", observed 2026-09-23, unbilled); `ratio` belongs to reference mode only.
     // Runway accepts contentModeration on the aleph2 contract only; mode=edit models reject it
     // with 400 unrecognized_keys (observed on gemini_omni_flash_1.1, 2026-09-23, unbilled).
     ...(spec.contract === "aleph2" ? { contentModeration: { publicFigureThreshold: "low" } } : {}),
