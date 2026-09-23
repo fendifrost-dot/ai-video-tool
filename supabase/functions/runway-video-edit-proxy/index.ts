@@ -119,7 +119,15 @@ async function readJsonSafe(res: Response): Promise<unknown> {
   const text = await res.text();
   try { return JSON.parse(text); } catch { return { _raw: text.slice(0, 4000) }; }
 }
-const redact = (u: string) => u.replace(/token=[^&]+/g, "token=REDACTED");
+// Redact signed-URL tokens on VALUES, never on serialised JSON: a `token=[^&]+` run over a
+// JSON string eats the closing quote and everything up to the next "&", and the re-parse
+// throws "Unterminated string in JSON" on every request that carries a signed URL.
+const redactUrl = (u: string) => u.replace(/([?&]token=)[^&]+/g, "$1REDACTED");
+const redactDeep = (v: unknown): unknown =>
+  typeof v === "string" ? redactUrl(v)
+  : Array.isArray(v) ? v.map(redactDeep)
+  : v && typeof v === "object" ? Object.fromEntries(Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, redactDeep(x)]))
+  : v;
 
 /** Dollars (AVT's authorization unit) → whole cents (Control Center's). Rounds UP so the
  *  authorization sent is never smaller than the amount AVT actually approved. */
@@ -258,8 +266,8 @@ async function handleRequest(req: Request): Promise<Response> {
     referencePolicy: policyUsed, providerCapability: { key: "runway:video_to_video", model: modelId, ...capability, maxKeyframes: spec.maxKeyframes, maxInputSeconds: spec.maxInputSeconds },
     promptComposition: { constraintsFirst: lookConstraints, specLast: withSpec ? lookSpec : "" }, prompt: composedPrompt, promptVersion,
     inputSeconds, estimatedCostUsd, maxCostUsd, avtAuthorizedMaxCents,
-    runwayRequestBody: JSON.parse(redact(JSON.stringify(runwayBody))),
-    controlCenterRequestBody: JSON.parse(redact(JSON.stringify(ccRequestBody))),
+    runwayRequestBody: redactDeep(runwayBody),
+    controlCenterRequestBody: redactDeep(ccRequestBody),
     controlCenterConfigured: cc !== null,
   };
 
