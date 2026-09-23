@@ -22,7 +22,36 @@ export type ProviderCapability = {
   source: string;
 };
 
-export const SAFETY_MAX_REFERENCE_IMAGES = 30;   // raised from 8 on 2026-09-23: Runway Seedance 2.5 documents 30; per-model entries carry the real limits
+/**
+ * Default reference-image ceiling for any address without a specific one.
+ *
+ * The ceiling exists to bound an UNVERIFIED number — it is what stops a bad override or an
+ * unproven default from spending on a request the provider would reject. So it has to
+ * resolve where capability resolves: at provider + operation + model. A single global
+ * ceiling briefly made Seedance 2.5's documented 30 the bound for every address, which
+ * would have let an override push xAI video edits (themselves unverified above 5) to 30.
+ * A documented capability on one model must never loosen the bound on another.
+ */
+export const SAFETY_MAX_REFERENCE_IMAGES = 8;
+
+/**
+ * Ceilings that differ from the default, keyed exactly like DEFAULTS:
+ * "<provider>:<operation>" or "<provider>:<operation>:<model>". Most specific wins.
+ * Raising one is a deliberate, reviewed change and should cite the evidence.
+ */
+export const SAFETY_CEILINGS: Record<string, number> = {
+  // Runway documents 30 image references for Seedance 2.5 mode=edit. Scoped to that model
+  // so it bounds nothing else — not even Runway's other video_to_video models.
+  "runway:video_to_video:seedance2_5": 30,
+};
+
+/** Resolve the ceiling for an address: model entry, then endpoint entry, then the default. */
+export function safetyCeilingFor(key: string, model?: string | null): number {
+  const modelKey = model ? `${key}:${model}` : null;
+  if (modelKey && Object.prototype.hasOwnProperty.call(SAFETY_CEILINGS, modelKey)) return SAFETY_CEILINGS[modelKey];
+  if (Object.prototype.hasOwnProperty.call(SAFETY_CEILINGS, key)) return SAFETY_CEILINGS[key];
+  return SAFETY_MAX_REFERENCE_IMAGES;
+}
 
 // Keys are "<provider>:<operation>" for an endpoint default and "<provider>:<operation>:<model>" for
 // a model-specific override. Limits belong to the exact model: the same endpoint served
@@ -110,7 +139,7 @@ export function getProviderCapability(key: string, env: EnvLike | undefined = ty
   const maxPrompt = Number(o.maxPromptChars);
   return {
     // 0 is a legitimate value (a model that takes no image references, e.g. keyframe-guided editors)
-    maxReferenceImages: Math.max(0, Math.min(Number.isFinite(max) && max >= 0 ? Math.floor(max) : base.maxReferenceImages, SAFETY_MAX_REFERENCE_IMAGES)),
+    maxReferenceImages: Math.max(0, Math.min(Number.isFinite(max) && max >= 0 ? Math.floor(max) : base.maxReferenceImages, safetyCeilingFor(key, model))),
     firstFrameConditioning: typeof o.firstFrameConditioning === "boolean" ? o.firstFrameConditioning : base.firstFrameConditioning,
     maxPromptChars: Number.isFinite(maxPrompt) && maxPrompt >= 1 ? Math.floor(maxPrompt) : base.maxPromptChars,
     source: typeof o.source === "string" && o.source ? o.source : base.source,
