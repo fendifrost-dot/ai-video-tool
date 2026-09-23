@@ -1,0 +1,14 @@
+{
+ "master": {
+  "residual_median": 21.97,
+  "residual_p90": 32.69
+ },
+ "e1": {
+  "residual_median": 21.31,
+  "residual_p90": 27.25
+ },
+ "aleph": {
+  "residual_median": 19.14,
+  "residual_p90": 27.71
+ }
+}

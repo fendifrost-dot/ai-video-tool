@@ -1,0 +1,70 @@
+{
+ "source": {
+  "file": "cuts/S08_master_69.466-76.368.mp4",
+  "width": 1080,
+  "height": 1920,
+  "fps": "30/1",
+  "frames": 209,
+  "duration": 6.966667,
+  "decoded_frames": 167
+ },
+ "candidates": {
+  "E1": {
+   "file": "s08_e1.mp4",
+   "width": 720,
+   "height": 1280,
+   "fps": "24/1",
+   "frames": 161,
+   "duration": 6.708333,
+   "decoded_frames": 161,
+   "frames_compared": 161,
+   "garment_frac": 0.27679345904063785,
+   "outside_change": 6.656907770368788,
+   "outside_change_p90": 8.731719970703125,
+   "head_change": 5.091709678555712,
+   "pose_displacement_px_median": 2.487855911254883,
+   "pose_displacement_px_p90": 21.723018646240234,
+   "motion_corr": 0.97964702731276,
+   "motion_ratio": 0.9641884565353394,
+   "verdict": "EDIT",
+   "verdict_reasons": {
+    "outside_within_tolerance": true,
+    "head_within_tolerance": true,
+    "pose_displacement_ok": true,
+    "motion_correlated": true
+   }
+  },
+  "S08_aleph": {
+   "file": "runway_s08/s08_aleph.mp4",
+   "width": 612,
+   "height": 1088,
+   "fps": "30/1",
+   "frames": 209,
+   "duration": 6.966667,
+   "decoded_frames": 167,
+   "frames_compared": 167,
+   "garment_frac": 0.30774167338376324,
+   "outside_change": 7.510064457144056,
+   "outside_change_p90": 9.979885959625244,
+   "head_change": 5.288393131324223,
+   "pose_displacement_px_median": 2.8929444551467896,
+   "pose_displacement_px_p90": 22.70856456756592,
+   "motion_corr": 0.9104776611621878,
+   "motion_ratio": 0.9089820981025696,
+   "verdict": "EDIT",
+   "verdict_reasons": {
+    "outside_within_tolerance": true,
+    "head_within_tolerance": true,
+    "pose_displacement_ok": true,
+    "motion_correlated": true
+   }
+  }
+ },
+ "thresholds": {
+  "edit_tolerance": 1.6,
+  "max_pose_px": 8.0,
+  "pose_tolerance": 2.0,
+  "min_motion_corr": 0.85
+ },
+ "reference": "E1"
+}

@@ -1,0 +1,39 @@
+{
+ "provider": "runway",
+ "model": "aleph2",
+ "contract": "aleph2",
+ "runway_task_id": "985fe022-c79d-45c8-88cf-235c33bd4681",
+ "control_center_job_id": "75e07092-d34b-4a54-9ae9-c6b3baf0e411",
+ "avt_provider_jobs_row": "816bee33-90d0-4db9-84d2-90670b73eee0",
+ "submitted_utc": "2026-09-23T20:00:09Z",
+ "task_created_utc": "2026-09-23T20:01:30Z",
+ "source": {
+  "project_asset": "e5cfeebc-1780-42e7-8f30-5f157f64ff85",
+  "file": "S08_master_69_466-76_368_1789946042626_206t0f.mp4",
+  "seconds": 6.708
+ },
+ "keyframe": {
+  "path": "project-references/3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/heroes/S08/keyframe_S08_f0084_repaired.png",
+  "seconds": 3.5,
+  "provenance": "../keyframe_provenance.json"
+ },
+ "prompt_chars": 609,
+ "prompt_version": "smoke-s08-v1",
+ "estimated_cost_usd": 1.96,
+ "avt_authorized_max_cents": 300,
+ "output": {
+  "stored": "project-clips/3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/runway-video-edit/985fe022-c79d-45c8-88cf-235c33bd4681.mp4",
+  "bytes": 1950049,
+  "width": 612,
+  "height": 1088,
+  "fps": 30,
+  "frames": 209,
+  "seconds": 6.967,
+  "audio": false
+ },
+ "path": "browser \u2192 AVT runway-video-edit-proxy \u2192 Control Center video-providers-runway-video-edit \u2192 Runway POST /v1/video_to_video; status via Control Center video-providers-job-status; the AVT gateway cut the synchronous poll at ~150 s (504) \u2014 the job was recovered from provider_jobs and the output stored by hand at the path the proxy would have used",
+ "notes": [
+  "Runway drew its own small gold script wordmark on the band (garbled); the deterministic wordmark layer replaces it as it does for E1",
+  "the jacket gained a vertical zip pocket on the wearer's left hip and a small chest-pocket zip that the anchor does not have (Astra to confirm)"
+ ]
+}
