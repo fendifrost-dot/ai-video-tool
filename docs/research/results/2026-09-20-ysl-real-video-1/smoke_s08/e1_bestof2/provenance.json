@@ -1,0 +1,37 @@
+{
+ "date": "2026-09-24",
+ "experiment": "S08 E1 best-of-N (N=2, smallest justified)",
+ "rolls": [
+  {
+   "promptVersion": "v4c-anchor-e1-bestof-1",
+   "asset": "69b769a4-ca3c-49f3-b2dd-7d799350fcfc",
+   "file": "grok-video-edit/c969a278-248a-9213-97bb-9c8f0f17da6b.mp4",
+   "billed_usd": 0.56
+  },
+  {
+   "promptVersion": "v4c-anchor-e1-bestof-2",
+   "asset": "f4be165b-4879-44f2-877b-a53590f59523",
+   "file": "grok-video-edit/c40421fa-e255-9fa8-8075-9523d0e5f8e2.mp4",
+   "billed_usd": 0.56
+  }
+ ],
+ "reference_plan": "outfit_sheet anchor_hook_s11_f0080 \u2192 on-model \u2192 flat \u2192 collar detail \u2192 sleeve-inside flat (5 refs, xai:videos/edits)",
+ "scorer": "construction_score.py (v7 scorer, references S06/S09/S11/S12)",
+ "result": {
+  "ranked": [
+   "S08_e1",
+   "S08_r2",
+   "S08_r1"
+  ],
+  "passing": [
+   "S08_e1"
+  ],
+  "medians": {
+   "S08_e1": 0.742,
+   "S08_r2": 0.73,
+   "S08_r1": 0.716
+  },
+  "visual": "both new rolls have the jacket fronts hanging OPEN with the tie fully exposed and long white shirt tails below the hem; E1 keeps its closed zip and only the shirt tails"
+ },
+ "kill_criterion": "0/2 beat the accepted roll and all three E1 rolls of this shot (3/3) reproduce the source's untucked-shirt silhouette as a shirt tail \u2192 the defect is inherited from the source performance, not sampled; further rolls are not justified. Fixed at $0 by scripts/edit/hem_repair.py instead."
+}
