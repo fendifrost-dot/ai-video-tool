@@ -144,7 +144,8 @@ def main():
     ap.add_argument("--bg-tol", type=float, default=30.0, help="sum-RGB distance below which a pixel matches the static background")
     ap.add_argument("--band-px", type=int, default=20, help="the background prior may only remove pixels within this many px of the matte edge")
     ap.add_argument("--close-v", type=int, default=61, help="vertical closing kernel height (bridges hip/waist gaps)")
-    ap.add_argument("--temporal", type=int, default=5, help="temporal median window (odd)")
+    ap.add_argument("--temporal", type=int, default=5, help="temporal window (odd)")
+    ap.add_argument("--temporal-mode", choices=["median", "max"], default="median", help="median: remove one-frame pops; max: keep a fast limb the matter drops for a few frames")
     ap.add_argument("--matte", default="rvm", choices=["rvm", "rembg"])
     ap.add_argument("--rvm-model", default=os.path.expanduser("~/.cache/avt/rvm_mobilenetv3_fp32.onnx"))
     ap.add_argument("--rvm-downsample", type=float, default=0.4)
@@ -313,7 +314,9 @@ def main():
     Am = A.copy(); h = a.temporal // 2
     for i in range(n):
         lo, hi = max(0, i - h), min(n, i + h + 1)
-        Am[i] = np.median(A[lo:hi], axis=0)
+        # median removes one-frame matte pops; max keeps a fast, motion-blurred limb that the
+        # matter drops for a few frames (the plate is static, so the cost is a slight widening)
+        Am[i] = np.max(A[lo:hi], axis=0) if a.temporal_mode == "max" else np.median(A[lo:hi], axis=0)
     out_frames = []
     for i in range(n):
         al = Image.fromarray((Am[i] * 255).astype(np.uint8))

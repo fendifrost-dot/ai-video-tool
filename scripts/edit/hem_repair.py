@@ -111,19 +111,24 @@ def analyse_columns(im, cls, mask, region, jacket_ids, r, h, dark_l=70, smooth_m
 
 
 def smooth_columns(arr, kind, ker=31):
-    out = arr.copy(); W = len(arr); x = 0
+    """Smooth a per-column boundary within each contiguous same-kind group: a median (removes
+    outliers) followed by a Gaussian (removes the stair-steps a pure median leaves), so the
+    repaired hem is a continuous fabric edge rather than a mask edge."""
+    out = arr.astype(np.float32).copy(); W = len(arr); x = 0
     while x < W:
         if kind[x] == 0: x += 1; continue
         x1 = x
         while x1 + 1 < W and kind[x1 + 1] == kind[x]: x1 += 1
-        seg = arr[x:x1 + 1].astype(np.float32); k = min(ker, 2 * ((x1 - x + 1) // 2) + 1)
+        seg = arr[x:x1 + 1].astype(np.float32); n = len(seg); k = min(ker, 2 * (n // 2) + 1)
         if k >= 3:
-            padded = np.pad(seg, k // 2, mode="edge"); out[x:x1 + 1] = np.array([np.median(padded[i:i + k]) for i in range(len(seg))]).astype(int)
+            padded = np.pad(seg, k // 2, mode="edge"); med = np.array([np.median(padded[i:i + k]) for i in range(n)], np.float32)
+            sig = max(1.0, k / 4.0); r = int(3 * sig); pad2 = np.pad(med, r, mode="edge"); g = np.exp(-0.5 * (np.arange(-r, r + 1) / sig) ** 2); g /= g.sum()
+            out[x:x1 + 1] = np.convolve(pad2, g, mode="valid")
         x = x1 + 1
-    return out
+    return np.round(out).astype(int)
 
 
-def fill_columns(im, top, bot, kind, feather, overlap=2, overlap_below=3, min_cols=4):
+def fill_columns(im, top, bot, kind, feather, overlap=2, overlap_below=3, min_cols=4, cls_map=None, jacket_ids=(), split_max_w=40, remnant_fn=None):
     out = im.copy().astype(np.float32); H, W = im.shape[:2]; filled = np.zeros((H, W), np.uint8); rng_ = np.random.default_rng(0)
     x = 0
     while x < W:   # drop slivers narrower than min_cols
@@ -131,6 +136,18 @@ def fill_columns(im, top, bot, kind, feather, overlap=2, overlap_below=3, min_co
         x1 = x
         while x1 + 1 < W and kind[x1 + 1] == kind[x]: x1 += 1
         if x1 - x + 1 < min_cols: kind[x:x1 + 1] = 0
+        x = x1 + 1
+    # a narrow tail group flanked on both sides by jacket at its own rows is the gap between the
+    # two jacket fronts (a split), not a tail: fill it with jacket, not trousers
+    cls_j = None
+    x = 0
+    while x < W:
+        if kind[x] != 1: x += 1; continue
+        x1 = x
+        while x1 + 1 < W and kind[x1 + 1] == 1: x1 += 1
+        if x1 - x + 1 <= split_max_w and cls_map is not None:
+            ym = int((top[x] + bot[x]) / 2); lx, rx = max(0, x - 6), min(W - 1, x1 + 6)
+            if int(cls_map[ym, lx]) in jacket_ids and int(cls_map[ym, rx]) in jacket_ids: kind[x:x1 + 1] = 2
         x = x1 + 1
     for x in range(W):
         if kind[x] == 0 or top[x] < 0 or bot[x] < top[x]: continue
@@ -151,6 +168,13 @@ def fill_columns(im, top, bot, kind, feather, overlap=2, overlap_below=3, min_co
         smooth = cv2.GaussianBlur(out, (0, 0), 1.0)
         out = np.where(filled[..., None] > 0, smooth, out)
         out = soft[..., None] * out + (1 - soft[..., None]) * im.astype(np.float32)
+        out8 = np.clip(out, 0, 255).astype(np.uint8)
+        if remnant_fn is not None:
+            # pale remnants the column fill missed, within reach of the repaint: inpaint from the surroundings
+            near = cv2.dilate(filled, np.ones((9, 9), np.uint8)); rem = (remnant_fn(out8) & (near > 0) & (filled == 0)).astype(np.uint8) * 255
+            rem = cv2.dilate(rem, np.ones((3, 3), np.uint8))
+            if rem.any(): out8 = cv2.inpaint(out8, rem, 3, cv2.INPAINT_TELEA); filled = filled | rem
+        return out8, filled
     return np.clip(out, 0, 255).astype(np.uint8), filled
 
 
@@ -166,6 +190,7 @@ def main():
     ap.add_argument("--min-blob", type=int, default=40, help="ignore intruding blobs smaller than this many pixels")
     ap.add_argument("--temporal", type=int, default=3, help="temporal median window on the repair mask (odd; 1 = off)")
     ap.add_argument("--feather", type=float, default=2.0)
+    ap.add_argument("--hem-smooth", type=int, default=41, help="column window (odd) for smoothing the repaired hem line")
     a = ap.parse_args()
     W, H = (int(v) for v in a.size.split("x")); lo, hi = (float(v) for v in a.zone.split(","))
     masters = glob.glob(a.master); assert masters, f"no master matches {a.master}"
@@ -228,7 +253,9 @@ def main():
         if lm and masks[k].any(): cols.append(analyse_columns(edit[k], clss[k], masks[k], regions[k], jacket_ids, lm["row"], h_ref or lm["height"]))
         else: cols.append((np.full(W, -1), np.full(W, -1), np.zeros(W, dtype=np.uint8)))
     tops = np.stack([c[0] for c in cols]); bots = np.stack([c[1] for c in cols]); kinds = np.stack([c[2] for c in cols])
-    for k in range(n): tops[k] = smooth_columns(tops[k], kinds[k]); bots[k] = smooth_columns(bots[k], kinds[k], ker=15)
+    for k in range(n):
+        anyk = (kinds[k] > 0).astype(np.uint8)          # the hem is ONE fabric edge: smooth it across every repaired column, whatever the fill kind
+        tops[k] = smooth_columns(tops[k], anyk, ker=a.hem_smooth); bots[k] = smooth_columns(bots[k], kinds[k], ker=15)
     if a.temporal > 1:
         t = a.temporal // 2; tops2 = tops.copy()
         for k in range(n):
@@ -239,7 +266,7 @@ def main():
     out_frames = []; after = []; repaired = 0; fill_px = []
     for k in range(n):
         if kinds[k].any():
-            im2, filled = fill_columns(edit[k], tops[k], bots[k], kinds[k], a.feather); out_frames.append(im2); fill_px.append(int((filled > 0).sum()))
+            im2, filled = fill_columns(edit[k], tops[k], bots[k], kinds[k], a.feather, cls_map=clss[k], jacket_ids=jacket_ids, remnant_fn=lambda im_: intruder_map(im_, a)); out_frames.append(im2); fill_px.append(int((filled > 0).sum()))
             if filled.any(): repaired += 1
             reg = regions[k]
             if reg:
