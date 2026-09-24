@@ -228,8 +228,13 @@ def main():
         if not per: report[bucket][name] = {"error": "no frames scored (stripe landmark never found)", "frames_unscored": unscored}; return
         scores = np.array([p[0]["score"] for p in per]); zone_med = {z: float(np.median([p[0]["zones"][z] for p in per])) for z in ZONES}
         intr_p90 = {z: float(np.percentile([p[0]["intrusion"][z] for p in per], 90)) for z in ZONES}
+        # stability across the WHOLE shot (not hero frames): std of the total score over time and the
+        # mean per-zone temporal std — a garment that is one persistent object scores low here
+        zone_std = {z: float(np.std([p[0]["zones"][z] for p in per])) for z in ZONES}
         rec = {"file": spec.split("=", 1)[1].split(":")[0], "frames_scored": len(per), "frames_unscored": unscored, "median": float(np.median(scores)), "p10": float(np.percentile(scores, 10)), "min": float(scores.min()),
-               "zones_median": zone_med, "intrusion_p90": intr_p90, "worst_zone": min(ZONES, key=lambda z: zone_med[z])}
+               "zones_median": zone_med, "intrusion_p90": intr_p90, "worst_zone": min(ZONES, key=lambda z: zone_med[z]),
+               "score_std": float(scores.std()), "zone_std": zone_std, "zone_std_mean": float(np.mean(list(zone_std.values()))),
+               "per_frame": [{"frame": p[0]["frame"], "score": round(float(p[0]["score"]), 4), "zones": {z: round(float(p[0]["zones"][z]), 4) for z in ZONES}, "intrusion": {z: round(float(p[0]["intrusion"][z]), 4) for z in ZONES}} for p in per]}
         report[bucket][name] = rec
         mid = per[int(np.argsort(scores)[len(scores) // 2])]
         t = cv2.resize(draw(frames[mid[0]["frame"]], mid[2], mid[0]["landmark"]), None, fx=0.35, fy=0.35)
