@@ -82,8 +82,8 @@ const MODELS: Record<string, RunwayModel> = {
   },
   "gemini_omni_flash_1.1": {
     contract: "mode_edit", maxReferences: 5, maxKeyframes: 0, maxInputSeconds: 10, maxPromptChars: 4000,
-    creditsPerOutputSecond: 10, creditsPerInputSecond: 0, minCredits: 0,
-    source: "video_to_video mode=edit with up to 5 image references; input ≤ 10 s; 10 credits/s (pricing page lists t2v/i2v; edit assumed the same until billed). Runway 2026-09-23: in edit mode `ratio` is rejected — output orientation follows the input video and resolution is 720p (the 2160:3840 ratios belong to reference mode)",
+    creditsPerOutputSecond: 12, creditsPerInputSecond: 0, minCredits: 0,
+    source: "video_to_video mode=edit with up to 5 image references; input ≤ 10 s. Runway's own task estimate for a 6.71 s edit was 81 credits (2026-09-23/24, two tasks) — 12 credits/s, above the pricing page's 10 credits/s for t2v/i2v; the estimate here uses 12 so the cost gate stays conservative until a billed task fixes it. Edit mode rejects `ratio` (orientation follows the input video, 720p) and `contentModeration`. Both S08 tasks (4 refs, 6.71 s, 3115-char prompt) reached 98 % within ~2 min then failed at ~40 min with THIRD_PARTY.TIMEOUT, 0 credits charged",
   },
   seedance2_5: {
     contract: "mode_edit", maxReferences: 30, maxKeyframes: 0, maxInputSeconds: 10, maxPromptChars: 15000,
