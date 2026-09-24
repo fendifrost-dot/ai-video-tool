@@ -1,0 +1,342 @@
+{
+  "draftId": "YSL_IceOn_bars24-46_v11",
+  "partId": "sequence",
+  "model": "gpt-6-astra",
+  "responseId": "resp_09fdb7f828185dab006ab5422e484887d2a215eac479ffac95",
+  "reviewedAt": "2026-09-24T15:34:57.950Z",
+  "usage": {
+    "input_tokens": 36837,
+    "input_tokens_details": {
+      "cache_write_tokens": 36834,
+      "cached_tokens": 0
+    },
+    "output_tokens": 10758,
+    "output_tokens_details": {
+      "reasoning_tokens": 5647
+    },
+    "total_tokens": 47595
+  },
+  "actualCostUsd": 0.9063,
+  "review": {
+    "defects": [
+      {
+        "severity": "major",
+        "shot_id": "S01",
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "PRESENT: Look 2 retains a smooth, coated appearance and chalk-bright seam outlines rather than the reference's worn black denim.",
+        "defect_id": "SEQ-LOOK2-PRODUCT-TRUTH",
+        "evidence": "S01@00:01.500 and S01@00:02.500 show broad smooth front panels, bright pocket outlines and strongly highlighted vertical seams.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0,
+          3.934
+        ],
+        "recommended_action": "Regenerate the material against the product reference while preserving the performer and approved room."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "PRESENT: pale hardware proportions and exaggerated pocket-flap edging remain inconsistent with the Look 2 product.",
+        "defect_id": "LOOK2-PRODUCT-TRUTH",
+        "evidence": "S02@00:04.500 magnifies oversized-looking pale buttons and heavy flap borders; S03@00:07.500 and S04@00:12.500 retain conspicuous hardware and edging differences.",
+        "requires_treatment_change": false,
+        "time_range": [
+          0,
+          14.754
+        ],
+        "recommended_action": "Use one reference-locked hardware and pocket specification for both the performance garment and macro insert."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "temporal_propagation",
+        "category": "continuity",
+        "description": "PRESENT: pre-hook cuts still exchange jacket length, wear treatment and hardware proportions.",
+        "defect_id": "LOOK2-CUT-CONSTRUCTION-DRIFT",
+        "evidence": "Compare S01@00:03.500's longer, smooth fronts with S03@00:06.500's shorter, more distressed body and S04@00:12.500's changed placket and pocket proportions.",
+        "requires_treatment_change": false,
+        "time_range": [
+          3.167,
+          14.754
+        ],
+        "recommended_action": "Propagate a shared garment construction across the pre-hook shots, allowing pose deformation rather than independent jacket redesigns."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S08",
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "PRESENT: the lower fronts still separate below the zipper, with pale material exposed in the opening. This is distinct from permitted shirt-and-tie visibility at the neck.",
+        "defect_id": "LOOK1-CONSTRUCTION-MISMATCH",
+        "evidence": "S08@00:27.500 shows a triangular lower-front split; S08@00:28.500 exposes a narrow pale sliver between the jacket fronts above the trousers.",
+        "requires_treatment_change": false,
+        "time_range": [
+          23.607,
+          29.508
+        ],
+        "recommended_action": "Restore the approved closed lower jacket and continuous zipper-to-waistband construction without removing the allowed neck styling."
+      },
+      {
+        "severity": "note",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "PRESENT under the documented styling exception: shirt/tie and cuff treatments remain variant. The permitted collar and tie knot above a closed zip are not classified as an open-jacket defect.",
+        "defect_id": "HOOK-LOOK1-GARMENT-TRUTH",
+        "evidence": "S06@00:17.500 retains the visible neck shirt/tie arrangement; S11@00:35.500 adds prominent white cuffs and different shirt presentation.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.738,
+          39.344
+        ],
+        "recommended_action": "Retain the existing nonblocking exception; do not reinterpret it as authorization for broken closure, stripe or matte construction."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "wardrobe_generation",
+        "category": "wardrobe",
+        "description": "PRESENT: unresolved hook body, waistband and pocket differences prevent a single consistent product realization. Accepted late-hook styling variance is not assigned an additional release block.",
+        "defect_id": "SEQ-LOOK1-PRODUCT-TRUTH",
+        "evidence": "S06@00:17.500 has a short, defined waistband; S08@00:27.500 has a longer split-front body; S12@00:39.500 introduces conspicuous front pocket treatment.",
+        "requires_treatment_change": false,
+        "time_range": [
+          15.738,
+          43.279
+        ],
+        "recommended_action": "Lock unresolved construction to the approved artist anchor, preserving only the already accepted styling tolerances."
+      },
+      {
+        "severity": "major",
+        "shot_id": null,
+        "recommended_owner": "temporal_propagation",
+        "category": "continuity",
+        "description": "PRESENT: the city insert still separates visibly different Look 1 jacket bodies.",
+        "defect_id": "S06-S08-GARMENT-RESET",
+        "evidence": "S06@00:21.500 shows a broad navy-lined collar and compact waist; S08@00:24.500 returns with a narrow beige collar and longer lower fronts.",
+        "requires_treatment_change": false,
+        "time_range": [
+          20.625,
+          24.773
+        ],
+        "recommended_action": "Match S08's garment geometry to S06 across the insert while retaining the intended performance takes."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S08",
+        "recommended_owner": "temporal_propagation",
+        "category": "continuity",
+        "description": "PRESENT: S08's waistband and lower closure do not maintain one construction through the arm-crossing and torso-turning poses.",
+        "defect_id": "S08-HEM-CONSTRUCTION-DRIFT",
+        "evidence": "S08@00:25.500 has an irregular lower closure beneath the hands; S08@00:26.500 loses a coherent hem band; S08@00:27.500 shows a more defined band with separated fronts.",
+        "requires_treatment_change": false,
+        "time_range": [
+          24.583,
+          29.508
+        ],
+        "recommended_action": "Track a consistent closed hem and waistband through torso deformation and hand occlusion."
+      },
+      {
+        "severity": "note",
+        "shot_id": null,
+        "recommended_owner": "temporal_propagation",
+        "category": "continuity",
+        "description": "PRESENT within the accepted late-hook styling tolerance; the cross-cut garment variance itself remains nonblocking.",
+        "defect_id": "HOOK-GARMENT-RESET",
+        "evidence": "S09@00:30.500, S11@00:35.500 and S12@00:40.500 retain visibly different collar, cuff and waist treatments.",
+        "requires_treatment_change": false,
+        "time_range": [
+          29.508,
+          43.279
+        ],
+        "recommended_action": "Preserve the documented tolerance and keep it separate from the objective stripe-integration repairs."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S11",
+        "recommended_owner": "temporal_propagation",
+        "category": "wardrobe",
+        "description": "PRESENT: beige wedges interrupt the wearer-right chest stripe rather than allowing a complete band to follow the garment.",
+        "defect_id": "S11-CHEST-BAND-INCOMPLETE",
+        "evidence": "S11@00:36.500 and S11@00:37.500 show diagonal beige interruptions within the screen-left stripe segment as the torso changes orientation.",
+        "requires_treatment_change": false,
+        "time_range": [
+          33.443,
+          39.344
+        ],
+        "recommended_action": "Propagate the complete stripe on the jacket surface through folds and turns, respecting the neck opening."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S11",
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "PRESENT: the replacement chest band remains visibly graphic and incorrectly integrated with garment and neck-layer occlusion.",
+        "defect_id": "S11-BAND-PATCH-OCCLUSION",
+        "evidence": "S11@00:33.500 shows the horizontal patch bridging the central tie region; S11@00:35.500 exposes ruler-straight rectangular edges disconnected from surrounding fabric shaping.",
+        "requires_treatment_change": false,
+        "time_range": [
+          33.443,
+          39.344
+        ],
+        "recommended_action": "Rebuild garment-only stripe masks and depth ordering; deform and shade the band with the fabric rather than laying a flat patch over it."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S08",
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "PRESENT: the bounded hem repair has not cleared the visible damage. Abrupt notches and pale residue remain instead of a consistently finished fabric boundary.",
+        "defect_id": "S08-HEM-REPAIR-MASK-DAMAGE",
+        "evidence": "S08@00:26.500 retains an uneven, cut-away lower edge; S08@00:28.500 shows a small hem notch and pale material inside the center split.",
+        "requires_treatment_change": false,
+        "time_range": [
+          23.607,
+          29.508
+        ],
+        "recommended_action": "Rebuild the jacket/trouser/hand boundary from coherent closed-hem geometry. Remove residual fragments without merely blurring the contour."
+      },
+      {
+        "severity": "major",
+        "shot_id": "S06",
+        "recommended_owner": "compositing_mask",
+        "category": "artifact",
+        "description": "PRESENT: the revised matte still removes part of the moving upper-arm silhouette at the sampled repair checkpoint.",
+        "defect_id": "S06-SHOULDER-MATTE-CUTOUT",
+        "evidence": "S06@00:20.500 shows a pronounced background-colored notch biting into the screen-right upper sleeve immediately below the shoulder.",
+        "requires_treatment_change": false,
+        "time_range": [
+          20.5,
+          21.639
+        ],
+        "recommended_action": "Restore the missing sleeve silhouette with a locally corrected motion-aware matte; inspect the complete native-rate repair interval before acceptance."
+      }
+    ],
+    "overall": {
+      "visual_coherence": 6,
+      "wardrobe_conformance": 4,
+      "summary": "The performance spine survives (S01@00:01.500). Neither bounded repair clears: S06-SHOULDER-MATTE-CUTOUT (S06@00:20.500) and S08-HEM-REPAIR-MASK-DAMAGE (S08@00:26.500) remain visible. No previous defect is verified resolved. Product/construction and chest-band failures still prevent release. Scores assess sampled visuals, not native timing or upscale quality.",
+      "identity_preservation": 8,
+      "edit_transition_conformance": 7,
+      "environment_conformance": 9,
+      "treatment_conformance": 6
+    },
+    "final_verdict": "REPAIR_REQUIRED",
+    "answers": [
+      {
+        "evidence": "S01@00:01.500, S08@00:27.500 and S12@00:41.500 retain the anchor's recognizable facial structure, beard, cap and glasses through different poses.",
+        "question": "1. Does Fendi remain recognizably the same real person throughout the performance shots?",
+        "answer": "Recognizably, yes. No obvious substitute performer appears in the supplied performance samples. Exact preservation of the original performance motion cannot be established from the single identity anchor."
+      },
+      {
+        "evidence": "S01@00:02.500 has a body-following trucker silhouette; S06@00:17.500 shows the track jacket on the performer; S08@00:28.500 exposes the failed lower closure.",
+        "question": "2. Is the YSL / Saint Laurent wardrobe actually and convincingly worn by Fendi?",
+        "answer": "Actually on-body, yes; consistently convincing and product-true, no. Sleeves and fronts follow his poses, but material substitution, construction resets and damaged garment boundaries undermine the designer-commercial requirement."
+      },
+      {
+        "evidence": "S08@00:26.500 versus S08@00:27.500 changes the hem construction; S11@00:36.500 exposes an interrupted stripe during a torso turn.",
+        "question": "3. Does the wardrobe remain stable during movement?",
+        "answer": "No at the sampled poses. S08's lower construction changes, and S11's band fails to remain integrated with the turning torso. These are observable state differences, not an inference about between-sample shimmer."
+      },
+      {
+        "evidence": "Confidence 0.1. The S08@00:26.500 and S08@00:27.500 samples leave intervening motion unseen. Inspect the native-rate sequence for fabric shimmer, transient deformation and flicker.",
+        "question": "3a. Are between-sample fabric shimmer and flicker verifiable?",
+        "answer": "UNVERIFIABLE FROM SAMPLES"
+      },
+      {
+        "evidence": "S11@00:36.500 and S11@00:37.500 locate the band interruptions on wearer-right; S12@00:40.500 retains a small wearer-left mark.",
+        "question": "4. Where exactly does the wordmark/logo break?",
+        "answer": "No separate mark-loss, duplication or migration defect is established. The confirmed branding-region failure is S11's interrupted wearer-right band, not the exact lettering. Glyph correctness is excluded from this review."
+      },
+      {
+        "evidence": "S11@00:35.500, S11@00:38.500 and S12@00:42.500 show a small mark confined to the wearer-left chest stripe.",
+        "question": "5. Is any lettering visibly oversized or mis-scaled relative to the reference, particularly S11 and S12?",
+        "answer": "No conspicuously oversized lettering is visible in those shots. The supplied views do not support a scale-repair finding; the mark remains small relative to the chest band. Exact letterforms are outside scope."
+      },
+      {
+        "evidence": "S02@00:04.500 reveals exaggerated hardware; S11@00:35.500 shows white cuff/waist additions; S12@00:39.500 displays changed front pocket construction.",
+        "question": "6. Are there other garment defects not individually listed in the ShotSpecs QA?",
+        "answer": "Yes: material and hardware substitutions, altered pockets and waistbands, lower-front splits, and stripe layering require specific checks beyond generic garment gates. Existing styling exceptions remain nonblocking; permitted neck shirt-and-tie visibility is not itself a defect."
+      },
+      {
+        "evidence": "Confidence 0.1. S04@00:12.500 and S11@00:35.500 are downscaled samples; no matched native source contact sheet is supplied. Compare time-matched master and export crops at 100% resolution.",
+        "question": "7. Does the native-resolution transformation/upscale visibly hurt quality relative to the source contact sheet?",
+        "answer": "UNVERIFIABLE FROM SAMPLES"
+      },
+      {
+        "evidence": "S01@00:00.500 and S04@00:14.500 replace the closet with charcoal architecture; S06@00:18.500 establishes multiple reflective panels and cold floor highlights.",
+        "question": "8. Does the environment composite convincingly eliminate the original closet?",
+        "answer": "Yes in the supplied views. The white door, shelves and hanging clothes no longer read. The single-panel pre-hook room develops into a colder multi-panel hook space, preserving the intended environmental escalation."
+      },
+      {
+        "evidence": "S06@00:20.500 has the sleeve cutout; S08@00:26.500 has the damaged hem; S11@00:33.500 shows faulty stripe/neck-layer integration.",
+        "question": "9. Do matte/composite boundaries remain believable during movement?",
+        "answer": "Not consistently. Both targeted silhouette/hem repairs still fail at visible checkpoints, and S11's internal garment compositing remains implausible. These findings concern observable boundaries, not ordinary motion blur or inferred native sharpness."
+      },
+      {
+        "evidence": "S02@00:04.500 supplies fashion hardware, S05@00:15.500 diamond refraction, and S07@00:22.500 a cold wet night-city view.",
+        "question": "10. Does B-roll feel intentional and compatible with the treatment?",
+        "answer": "Yes in motif and placement: the cutaways extend fashion, ice and luxury-night imagery rather than replace Fendi. S02's product inaccuracy weakens its commercial purpose. No identifiable replacement performer appears in these inserts."
+      },
+      {
+        "evidence": "S10@00:31.500 is dark and reflective, S10@00:32.500 is inverted/light, and S11@00:33.500 returns to Fendi beneath a pale overlay.",
+        "question": "11. Do transitions work visually at the sampled instants?",
+        "answer": "The sampled state changes are legible and compatible with the cold reflective world. They establish contrasting FX states and a readable performer return, but do not establish complete flash/glitch execution."
+      },
+      {
+        "evidence": "Confidence 0.1. S05@00:15.500 does not sample a white-out; S10@00:32.500 and S11@00:33.500 capture isolated effect states. Inspect every native frame across both FX transitions for white-out, strobe cadence and glitch duration.",
+        "question": "11a. Are the flash white-out, strobe cadence and glitch duration correct?",
+        "answer": "UNVERIFIABLE FROM SAMPLES"
+      },
+      {
+        "evidence": "Confidence 0.1. S05@00:15.500, S11@00:33.500 and S12@00:42.500 are silent samples. Check native video with audio against the song clock for downbeats, FX landing, cut alignment and final hard out.",
+        "question": "11b. Do cuts, flash, strobe and hard out land musically?",
+        "answer": "UNVERIFIABLE FROM SAMPLES"
+      },
+      {
+        "evidence": "S03@00:06.500, S08@00:24.500 and S11@00:33.500 visibly occupy the intended performance slots after the corresponding inserts.",
+        "question": "12. Does the edit visibly return to the performer in the intended slots after B-roll/FX?",
+        "answer": "Yes. The sampled sequence returns to performance in S03, S06, S08 and S11 rather than extending generated inserts into those intended slots. This is a visual slot check, not a synchronization certification."
+      },
+      {
+        "evidence": "Confidence 0.1. S03@00:06.500, S06@00:16.500 and S11@00:33.500 cannot establish lip/gesture timing. Compare native audio/video, source-frame correspondence and assembler PTS against the song clock within one native frame.",
+        "question": "12a. Are performer returns and subsequent lip/gesture synchronization exact?",
+        "answer": "UNVERIFIABLE FROM SAMPLES"
+      },
+      {
+        "evidence": "S01@00:01.500 establishes the room; S02@00:04.500 is the hardware insert; S03@00:07.500 preserves the arm-up performance pose.",
+        "question": "13. Does every shot substantially conform to its ShotSpec? S01–S03 assessment.",
+        "answer": "No. S01 delivers recognizable performance and the transformed room but fails product truth. S02 fulfills the macro role with inaccurate hardware/material. S03 retains the intended gesture-led performance and environment, but not a consistent reference-true jacket."
+      },
+      {
+        "evidence": "S04@00:12.500 is visibly tighter; S05@00:15.500 presents the diamond; S06@00:16.500 returns in the beige/navy look amid multiplied panels.",
+        "question": "13a. S04–S06 ShotSpec conformance?",
+        "answer": "S04 supplies the tighter escalation but retains garment inaccuracies. S05 supplies the specified diamond/refraction motif. S06 makes the two-look change and hardened room readable, but its silhouette/product defects prevent full conformance. These samples do not prove crop ratio or white-out execution."
+      },
+      {
+        "evidence": "S07@00:22.500 supplies the night-city motif; S08@00:27.500 shows the split lower jacket; S09@00:30.500 retains the crossed-arm pose.",
+        "question": "13b. S07–S09 ShotSpec conformance?",
+        "answer": "S07 substantially matches its visual purpose and palette. S08 returns to the intended performance world but fails closed-jacket construction and continuity. S09 delivers crossed arms in the hook setting; its late-hook styling variance remains within the documented tolerance."
+      },
+      {
+        "evidence": "S10@00:31.500 shows multiplied reflective architecture; S11@00:36.500 has the broken band; S12@00:41.500 retains direct gestural performance.",
+        "question": "13c. S10–S12 ShotSpec conformance?",
+        "answer": "S10 supplies the mirror-multiplication motif; cadence requires native review. S11 preserves direct performance but fails chest-band integration. S12 continues the performer-led finish while retaining construction variance. No conclusion about final-hit timing follows from the last sampled pose."
+      },
+      {
+        "evidence": "S01@00:02.500 establishes dark fashion performance; S05@00:15.500 introduces diamond imagery; S06@00:17.500 combines the contrasting hook look with the intensified mirror room.",
+        "question": "14. Does the complete sequence resemble the intended luxury runway fashion film × designer commercial × contemporary rap treatment?",
+        "answer": "Broadly yes: the two-look strategy, cold-room escalation and insert/performance alternation survive. The visual structure remains coherent, but inconsistent products and visible repair layers undermine designer-commercial credibility. Musical energy cannot be certified from silent samples."
+      },
+      {
+        "evidence": "S06@00:20.500 preserves recognizable performance despite the shoulder notch; S08@00:26.500 exposes the hem repair; S11@00:36.500 exposes the pasted-band treatment.",
+        "question": "15. Does this look like a real Fendi music video enhanced by AVT, or AI content built around Fendi's song?",
+        "answer": "It remains a Fendi-led performance video, not an evident replacement-performer construction. However, the missing shoulder, damaged hem and graphic stripe repeatedly expose the AI/compositing implementation. The performance survives; the illusion of convincingly worn luxury clothing does not."
+      }
+    ],
+    "escalate_to_fendi": []
+  }
+}
