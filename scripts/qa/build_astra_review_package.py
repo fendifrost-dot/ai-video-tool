@@ -130,6 +130,7 @@ def main():
     ap.add_argument("--ref", action="append", default=[], help='"label=path"'); ap.add_argument("--out", required=True)
     ap.add_argument("--fps", type=float, default=3.0); ap.add_argument("--short-fps", type=float, default=6.0)
     ap.add_argument("--group-size", type=int, default=4)
+    ap.add_argument("--seq-step", type=float, default=0.5, help="level 3 (whole sequence) sampling step in seconds; 1.0 halves the part's cost when the review budget is tight")
     ap.add_argument("--prev-review", default=None, help="aggregated AstraReviewSchema JSON of the previous revision: its defect_ids are handed to Astra so persisting defects keep their identity (diffReviews)")
     ap.add_argument("--repair-notes", default=None, help="text file: what Claude changed since the previous revision (Astra verifies, it does not take it on trust)")
     ap.add_argument("--mechanism", action="append", default=[], help='TARGETED mode: "id=what changed and what to judge"; repeatable. With at least one, the package is ONE part (`mechanisms`) built from cross-shot frames of the wardrobe shots instead of the three-level full review')
@@ -242,12 +243,12 @@ def main():
     parts.append({"partId": "transitions", "instructions": instr, "frames": frames, "references": refs[:2], "jsonSchema": SCHEMA_TRANS, "level": 2})
 
     # ---- Level 3: whole sequence ----
-    frames = []; t = 0.25; end = asm["expectedSeconds"]
+    frames = []; t = a.seq_step / 2; end = asm["expectedSeconds"]
     while t < end:
         sid = next((s["id"] for s in shots if s["timeline"]["start"] - offset <= t < s["timeline"]["end"] - offset), "?")
         p = os.path.join(a.out, "frames", f"seq_{t:07.3f}.jpg")
         if grab(a.draft, t, p): frames.append({"label": f"draft t={fmt(snap(t))} shot {sid}", "file": p})
-        t += 0.5
+        t += a.seq_step
     # Standing questions (the Astra handoff's 15), templated on the treatment block; the
     # wordmark-scale question targets whichever shots the ShotSpecs mark as wordmark-critical
     # (qa contains "gate0_garment_truth"), falling back to "any shot".
