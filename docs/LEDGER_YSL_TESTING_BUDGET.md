@@ -28,13 +28,14 @@ Two figures were also found to be overstated in the results doc and are correcte
 | 7 | 09-23 | OpenAI | Astra targeted A/B, Aleph vs E1 on S08 | $0.4562 | — | $10.91 |
 | – | 09-23/24 | Runway | Gemini Omni Flash 1.1 on S08 ×2, `THIRD_PARTY.TIMEOUT` | $0 (0 credits) | not counted | $10.91 |
 | 8 | 09-24 | xAI | S08 E1 best-of-2 (`v4c-anchor-e1-bestof-1/-2`); neither beat the accepted roll | $1.12 (2 × $0.56, `actualCostUsd`) | — | $12.03 |
-| 9 | 09-24 | OpenAI | Astra project-level review of v10, `sequence` part only (43 frames @ 1 s + 5 refs) | see row note below | est. $1.13 | $13.16 (est.) |
+| 9 | 09-24 | OpenAI | Astra project-level review of v10, `sequence` part only (43 frames @ 1 s + 5 refs) | $0.8794 | — | $12.91 |
+| 10 | 09-24 | OpenAI | Astra re-review of v11, `sequence` part | $0.9063 | — | $13.82 |
 
-**YSL testing budget used: ≈ $13.16 (row 9 at estimate) · remaining: ≈ $36.8 of $50.** Row 2 is the only unverified amount and is carried at its upper estimate; row 9 is replaced by `actualCostUsd` when the review completes.
+**YSL testing budget used: ≈ $13.82 · remaining: ≈ $36.18 of $50.** Row 2 is the only unverified amount and is carried at its upper estimate.
 
 ## Second constraint: the OpenAI credit balance
 
-Fendi's $30 OpenAI top-up funds every Astra call regardless of which budget it is booked to. Spent: ≈ $24.00 (scope 0) + $1.09 + $0.76 + $0.46 = **≈ $26.31 → ≈ $3.69 left**. A three-level full Astra review has cost ≈ $8; a single-part review of ~30 frames has cost $0.76–1.09. So the project-level review of the assembled section must be designed as **one part** (≈ $1.5) until the OpenAI balance is topped up. This is a resource limit, not a budget breach; it does not stop $0 work.
+Fendi's $30 OpenAI top-up funds every Astra call regardless of which budget it is booked to. Spent: ≈ $24.00 (scope 0) + $1.09 + $0.76 + $0.46 + $0.88 + $0.91 (v10, v11 sequence reviews) = **≈ $28.10 → ≈ $1.90 left** — one more single-part review at most; a top-up is needed before any further Astra pass. A three-level full Astra review has cost ≈ $8; a single-part review of ~30 frames has cost $0.76–1.09. So the project-level review of the assembled section must be designed as **one part** (≈ $1.5) until the OpenAI balance is topped up. This is a resource limit, not a budget breach; it does not stop $0 work.
 
 ## Rules applied
 
