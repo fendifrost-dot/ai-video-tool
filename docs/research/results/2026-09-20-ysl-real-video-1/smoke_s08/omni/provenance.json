@@ -1,0 +1,69 @@
+{
+ "provider": "runway",
+ "model": "gemini_omni_flash_1.1",
+ "contract": "mode_edit",
+ "outcome": "provider_timeout_twice_unbilled",
+ "control_center_fix": "fendi-control-center main feb676c (PR #18, Claude Code): edit mode sends neither ratio nor contentModeration; deployed 2026-09-23",
+ "dry_run_proof": {
+  "http": 200,
+  "runway_request_body_keys": [
+   "model",
+   "videoUri",
+   "mode",
+   "promptText",
+   "duration",
+   "references"
+  ],
+  "prompt_chars": 3115,
+  "reference_count": 4,
+  "estimated_cost_usd": 0.7,
+  "control_center_dry_run_ok": true
+ },
+ "source": {
+  "project_asset": "e5cfeebc-1780-42e7-8f30-5f157f64ff85",
+  "seconds": 6.71
+ },
+ "look_id": "ce7f6350-7583-4564-be95-78fb4f39e915",
+ "reference_plan": [
+  "outfit_sheet anchor_hook_s11_f0080.jpg",
+  "primary_piece onmodel_img5541_1782258480.png",
+  "primary_piece 2a14a72b-e7de-4ecb-9c24-4142b672d175.jpg",
+  "detail track_detail_collar_zip.jpg"
+ ],
+ "prompt_version": "smoke-s08-v1",
+ "prompt": "constraints-first head + outfit-sheet approved-realisation sentence + GROK_VIDEO_EDIT_PROMPT_V4B_FULL_LOOK + Look spec (composed by the proxy, 3115 chars)",
+ "attempts": [
+  {
+   "submitted_utc": "2026-09-23T23:27:50Z",
+   "runway_task_id": "787b1b26-4502-4b61-b42f-3dca03ca60f6",
+   "avt_provider_jobs_row": "f5c35a27-3afc-4b4f-951e-c97cccf8fa03",
+   "runway_estimate_credits": 81,
+   "progress_0.98_by": "~23:30Z",
+   "failed_utc": "~00:07Z",
+   "failure_code": "THIRD_PARTY.TIMEOUT",
+   "failure": "Timed out",
+   "credits_charged": 0,
+   "avt_lane": "bounded wait \u2192 running row \u2192 25 finalize calls (22 min) \u2192 runner loop expired \u2192 finalize by row id recorded the failure"
+  },
+  {
+   "submitted_utc": "2026-09-24T00:07:54Z",
+   "runway_task_id": "c0c292bf-1901-4371-93a8-dde97905fc98",
+   "avt_provider_jobs_row": "31b84f42-0cf5-4aa6-9abc-b3563b69aa54",
+   "runway_estimate_credits": 81,
+   "progress_0.98_by": "~00:10Z",
+   "failed_utc": "~00:43Z",
+   "failure_code": "THIRD_PARTY.TIMEOUT",
+   "failure": "Timed out",
+   "credits_charged": 0,
+   "avt_lane": "same; the app session JWT expired at ~00:31 and the runner loop exited on 401 (by design: any error ends the loop); finalize by row id after a token refresh recorded the failure"
+  }
+ ],
+ "observed_capability": {
+  "credits_per_output_second": "81 credits for 6.71 s \u2192 12/s (pricing page says 10/s for t2v/i2v); AVT estimate raised to 12/s",
+  "edit_mode_body": "model, videoUri, mode=edit, promptText, duration=auto, references \u2014 no ratio, no contentModeration"
+ },
+ "spend": {
+  "runway_usd": 0.0,
+  "openai_usd": 0.0
+ }
+}
