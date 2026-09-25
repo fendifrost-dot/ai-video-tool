@@ -1,6 +1,6 @@
 # Pose-locked hero contract (2026-09-25)
 
-Status: **checkpoint A** — the deterministic hero gate is calibrated on existing assets ($0), the hero scheduler measures the carrier's reach, the provider-neutral interface exists, the first paid experiment is designed and costed; no paid call has been made. Directive: ChatGPT via Fendi, "NEXT PHASE: POSE-LOCKED HERO CONTRACT" (after rev 31 / checkpoint B).
+Status: **checkpoint B (2026-09-25)** — the first paid experiment was run on S08 f84: 0 of 5 distinct candidates passed the gate; `xai_image_edit` and `fal_inpaint_masked` are stopped under §6's rule (results doc section "First paid pose-locked hero experiment", evidence `hero_exp_s08_f84/`). The gate, scheduler and interface stand. Directive: ChatGPT via Fendi, "NEXT PHASE: POSE-LOCKED HERO CONTRACT" (after rev 31 / checkpoint B).
 
 ## 1. Why this exists
 
@@ -84,6 +84,10 @@ Question: **can we create ONE frame that passes both pose lock and canonical gar
   Seedance is not chosen by default (untested, video-only, $0.45/s); Aleph is a video editor whose f86 frame passes the gate but re-designs details at other frames (rev 28); Omni's failure was a provider timeout, not evidence either way, and it is video-only.
 - Gate every candidate with `hero_gate.py` (same anchor, same thresholds as the calibration). PASS → feed the hero into `propagate_keyframe.py --hero-stills 84:<hero.png>` on S08 and measure the ±window (coverage, temporal residual, sharpness, hands) — checkpoint B. No pass in 5 candidates → stop those mechanisms (checkpoint C for the lane), report which law each failed.
 - Budget: ≈ $0.50 total; ledger row appended with the result. Astra: not used (≈ $1.90 OpenAI credit reserved).
+
+## 6a. Result of the first paid experiment (2026-09-25)
+
+Run exactly as designed: xAI ×3 (grok-imagine-image-quality, the configured default; law composed first in the client prompt, anchor as `<IMAGE_1>`, flat product as `<IMAGE_2>`) and masked flux-lora ×2 distinct (three runs: the first two shared the default seed). All FAIL. xAI: pose lock broken on every still (strict mean 0.13–0.15, arm 25–39°, faces redrawn SSIM 0.33–0.39) with the garment colours right — the mechanism re-poses regardless of instruction. Masked: geometry perfect (SSIM 1.00, IoU 1.00) but the camo shirt stays (construction 0.32–0.38) and a track sleeve is painted across the crossed forearm and a hand — no conditioning on the approved realisation, anatomy broken inside the mask. Spend: xAI $0.24 actual, fal carried $0.36; ledger $14.42. Both lanes stop; the registry keeps their evidence. The next candidate mechanism, if authorised, must condition on the approved realisation while holding geometry (masked inpaint with the anchor as the IP-Adapter image, or a documented photo-preserving instruction editor with a reference slot).
 
 ## 7. What is not in this checkpoint
 

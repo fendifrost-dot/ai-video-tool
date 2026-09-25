@@ -4,7 +4,7 @@ Reconciled 2026-09-24 by Claude (executive authority, ChatGPT reconciliation dir
 
 ## Answer to the reconciliation question
 
-The rev 29 header ("≈ $23.4 xAI + ≈ $26.4 OpenAI + ≈ $1.96 Runway") is **C with a dose of B and D**: it reports cumulative spend of the whole takeover (since rev 19, 2026-09-20) across two funding sources that predate the $50 budget — an xAI API credit and Fendi's $30 OpenAI top-up (rev 20) — and several of its numbers are estimates rather than billed amounts. Only spend after the budget was set counts against the $50. As of the last row below that spend is **$13.82 (conservative), leaving $36.18** — the table is authoritative and this sentence is updated with it. The "well inside $50" statement was correct in substance and wrong in presentation: the header mixed scopes.
+The rev 29 header ("≈ $23.4 xAI + ≈ $26.4 OpenAI + ≈ $1.96 Runway") is **C with a dose of B and D**: it reports cumulative spend of the whole takeover (since rev 19, 2026-09-20) across two funding sources that predate the $50 budget — an xAI API credit and Fendi's $30 OpenAI top-up (rev 20) — and several of its numbers are estimates rather than billed amounts. Only spend after the budget was set counts against the $50. As of the last row below that spend is **$14.42 (conservative), leaving $35.58** — the table is authoritative and this sentence is updated with it. The "well inside $50" statement was correct in substance and wrong in presentation: the header mixed scopes.
 
 Two figures were also found to be overstated in the results doc and are corrected here: the S09 repair round was "$1.28 for four rolls incl. two unbilled 400s" — two of the four rolls were unbilled 400s, so the billed amount is 2 × $0.32 = **$0.64** (rev 25 already said "$0.64 billed"); and the E1 anchored re-roll "≈ $4.6" is an estimate — the per-shot rates on record sum to **$4.00** (8 slots + one S09 retry). The ledger carries the higher figure until the xAI console confirms.
 
@@ -30,8 +30,10 @@ Two figures were also found to be overstated in the results doc and are correcte
 | 8 | 09-24 | xAI | S08 E1 best-of-2 (`v4c-anchor-e1-bestof-1/-2`); neither beat the accepted roll | $1.12 (2 × $0.56, `actualCostUsd`) | — | $12.03 |
 | 9 | 09-24 | OpenAI | Astra project-level review of v10, `sequence` part only (43 frames @ 1 s + 5 refs) | $0.8794 | — | $12.91 |
 | 10 | 09-24 | OpenAI | Astra re-review of v11, `sequence` part | $0.9063 | — | $13.82 |
+| 11 | 09-25 | xAI | Pose-locked hero experiment, S08 f84: `grok-image-garment-proxy` ×3 (`pose-locked-hero-v1`, grok-imagine-image-quality, source + anchor + flat product) — all three failed the hero gate | $0.24 (xAI `cost_in_usd_ticks` 800000000 × 3; the proxy books 12 ¢ each) | — | $14.06 |
+| 12 | 09-25 | fal (via Control Center) | Pose-locked hero experiment, S08 f84: `jacket-inpaint-proxy` ×3 (`fal-ai/flux-lora/inpainting` + evf-sam + face guard; runs 1–2 byte-identical at the default seed, run 3 seed 778) — all failed the hero gate | not readable from AVT (fal is billed on Control Center's key) | carried at the proxy's estimate 3 × $0.12 = $0.36 | $14.42 |
 
-**YSL testing budget used: ≈ $13.82 · remaining: ≈ $36.18 of $50.** Row 2 is the only unverified amount and is carried at its upper estimate.
+**YSL testing budget used: ≈ $14.42 · remaining: ≈ $35.58 of $50.** Rows 2 and 12 are the unverified amounts and are carried at their upper estimates.
 
 ## Second constraint: the OpenAI credit balance
 
