@@ -1,0 +1,502 @@
+{
+ "anchor": {
+  "file": "heroes/anchor_hook_s11_f0080.jpg",
+  "features": {
+   "score": 1.0,
+   "body_lab": [
+    179.0,
+    133.0,
+    145.0
+   ],
+   "stripe_lab": [
+    19.0,
+    130.0,
+    126.0
+   ],
+   "sleeve_minus_body_L": -1.0,
+   "stripe_height_ratio": 0.12149532710280374,
+   "stripe_pos_ratio": 0.29615384615384616,
+   "garment_len_ratio": 1.2827102803738317,
+   "neck_body_share": 0.24384741591468417,
+   "neck_navy_share": 0.07715340442986054,
+   "neck_white_share": 0.42768662838392124,
+   "collar_navy_share": 0.18202853837254146,
+   "hem_hist_dist": 0.0,
+   "neck_hist_dist": 0.0,
+   "texture_body": 46.250667572021484
+  }
+ },
+ "tolerances": {
+  "body_lab_de": 6.0,
+  "stripe_lab_de": 12.0,
+  "sleeve_minus_body_L": 8.0,
+  "stripe_height_ratio": 0.35,
+  "stripe_pos_ratio": 0.08,
+  "neck_navy_share": 0.2,
+  "neck_white_share": 0.15,
+  "neck_body_share": 0.25,
+  "collar_navy_share": 0.12,
+  "hem_hist_dist": 0.3,
+  "texture_ratio": 1.0,
+  "garment_len_ratio": 0.25
+ },
+ "clips": {
+  "S06_c2": {
+   "file": "s06_e1e2.mp4",
+   "frames_scored": 41,
+   "features": {
+    "score": 0.7297062781149265,
+    "body_lab": [
+     174.0,
+     131.0,
+     145.0
+    ],
+    "stripe_lab": [
+     12.0,
+     130.0,
+     126.0
+    ],
+    "sleeve_minus_body_L": 1.0,
+    "stripe_height_ratio": 0.11697247706422019,
+    "stripe_pos_ratio": 0.28058510638297873,
+    "garment_len_ratio": 1.254364089775561,
+    "neck_body_share": 0.20342601787487588,
+    "neck_navy_share": 0.04587884806355511,
+    "neck_white_share": 0.29683806146572106,
+    "collar_navy_share": 0.06342257199872924,
+    "hem_hist_dist": 0.3628159054948993,
+    "neck_hist_dist": 0.21202166685938617,
+    "texture_body": 98.36543273925781,
+    "frame": 80.0
+   },
+   "delta_to_anchor": {
+    "body_lab_de": 5.385164807134504,
+    "stripe_lab_de": 7.0,
+    "sleeve_minus_body_L": 2.0,
+    "stripe_height_ratio": 0.03722653493295691,
+    "stripe_pos_ratio": 0.015568739770867424,
+    "neck_navy_share": 0.03127455636630543,
+    "neck_white_share": 0.13084856691820018,
+    "neck_body_share": 0.04042139803980829,
+    "collar_navy_share": 0.11860596637381222,
+    "hem_hist_dist": 0.3628159054948993,
+    "texture_ratio": 0.7546135511961175,
+    "garment_len_ratio": 0.028346190598270704
+   },
+   "flagged": [
+    "hem_hist_dist"
+   ],
+   "per_frame_std": {
+    "stripe_pos_ratio": 0.030140756323928094,
+    "stripe_height_ratio": 0.015776523876985218,
+    "sleeve_minus_body_L": 3.8922122094514235,
+    "neck_navy_share": 0.02014802578545517
+   }
+  },
+  "S06_c1": {
+   "file": "s06_e1e1.mp4",
+   "frames_scored": 41,
+   "features": {
+    "score": 0.7746486672672621,
+    "body_lab": [
+     179.0,
+     130.0,
+     144.0
+    ],
+    "stripe_lab": [
+     15.0,
+     130.0,
+     125.0
+    ],
+    "sleeve_minus_body_L": -4.0,
+    "stripe_height_ratio": 0.08123791102514506,
+    "stripe_pos_ratio": 0.3246592317224288,
+    "garment_len_ratio": 1.1572052401746724,
+    "neck_body_share": 0.18204812687995625,
+    "neck_navy_share": 0.0964559507352017,
+    "neck_white_share": 0.455701394585726,
+    "collar_navy_share": 0.395445622300746,
+    "hem_hist_dist": 0.4101357282464855,
+    "neck_hist_dist": 0.15684453364877815,
+    "texture_body": 58.83522415161133,
+    "frame": 80.0
+   },
+   "delta_to_anchor": {
+    "body_lab_de": 3.1622776601683795,
+    "stripe_lab_de": 4.123105625617661,
+    "sleeve_minus_body_L": 3.0,
+    "stripe_height_ratio": 0.3313495015622676,
+    "stripe_pos_ratio": 0.02850538556858262,
+    "neck_navy_share": 0.01930254630534116,
+    "neck_white_share": 0.028014766201804764,
+    "neck_body_share": 0.06179928903472792,
+    "collar_navy_share": 0.21341708392820452,
+    "hem_hist_dist": 0.4101357282464855,
+    "texture_ratio": 0.2406648278991908,
+    "garment_len_ratio": 0.1255050401991593
+   },
+   "flagged": [
+    "collar_navy_share",
+    "hem_hist_dist"
+   ],
+   "per_frame_std": {
+    "stripe_pos_ratio": 0.019871811598918463,
+    "stripe_height_ratio": 0.014289614474116533,
+    "sleeve_minus_body_L": 3.313663958230907,
+    "neck_navy_share": 0.029778392006328973
+   }
+  },
+  "S06_e1": {
+   "file": "s06_e1.mp4",
+   "frames_scored": 40,
+   "features": {
+    "score": 0.7108138965165404,
+    "body_lab": [
+     177.5,
+     129.0,
+     141.0
+    ],
+    "stripe_lab": [
+     15.0,
+     130.0,
+     125.0
+    ],
+    "sleeve_minus_body_L": -3.5,
+    "stripe_height_ratio": 0.0784647859451615,
+    "stripe_pos_ratio": 0.33480189471349586,
+    "garment_len_ratio": 1.1485806710849564,
+    "neck_body_share": 0.2293540080609046,
+    "neck_navy_share": 0.10002849351905956,
+    "neck_white_share": 0.21136066116745264,
+    "collar_navy_share": 0.5165809014621068,
+    "hem_hist_dist": 0.5770548701127116,
+    "neck_hist_dist": 0.29579776666998475,
+    "texture_body": 59.03009223937988,
+    "frame": 82.0
+   },
+   "delta_to_anchor": {
+    "body_lab_de": 5.852349955359813,
+    "stripe_lab_de": 4.123105625617661,
+    "sleeve_minus_body_L": 2.5,
+    "stripe_height_ratio": 0.35417445414367077,
+    "stripe_pos_ratio": 0.038648048559649706,
+    "neck_navy_share": 0.02287508908919901,
+    "neck_white_share": 0.2163259672164686,
+    "neck_body_share": 0.01449340785377956,
+    "collar_navy_share": 0.3345523630895653,
+    "hem_hist_dist": 0.5770548701127116,
+    "texture_ratio": 0.24397145399224376,
+    "garment_len_ratio": 0.1341296092888753
+   },
+   "flagged": [
+    "stripe_height_ratio",
+    "neck_white_share",
+    "collar_navy_share",
+    "hem_hist_dist"
+   ],
+   "per_frame_std": {
+    "stripe_pos_ratio": 0.02323156356482927,
+    "stripe_height_ratio": 0.009476323407944938,
+    "sleeve_minus_body_L": 3.961612676676002,
+    "neck_navy_share": 0.021531710028881594
+   }
+  },
+  "S08": {
+   "file": "gfx/s08_e1_graphic_hem3.mp4",
+   "frames_scored": 36,
+   "features": {
+    "score": 0.7035634518393495,
+    "body_lab": [
+     178.0,
+     130.0,
+     142.0
+    ],
+    "stripe_lab": [
+     8.0,
+     130.0,
+     126.0
+    ],
+    "sleeve_minus_body_L": 1.5,
+    "stripe_height_ratio": 0.07513894722447426,
+    "stripe_pos_ratio": 0.26226610786554905,
+    "garment_len_ratio": 1.2137789244537611,
+    "neck_body_share": 0.4692113095238095,
+    "neck_navy_share": 0.049906600249066,
+    "neck_white_share": 0.31030119074473916,
+    "collar_navy_share": 0.008798602055268286,
+    "hem_hist_dist": 0.48070352206965333,
+    "neck_hist_dist": 0.24339012064660515,
+    "texture_body": 40.84391975402832,
+    "frame": 74.0
+   },
+   "delta_to_anchor": {
+    "body_lab_de": 4.358898943540674,
+    "stripe_lab_de": 11.0,
+    "sleeve_minus_body_L": 2.5,
+    "stripe_height_ratio": 0.38154866515240415,
+    "stripe_pos_ratio": 0.03388773828829711,
+    "neck_navy_share": 0.027246804180794545,
+    "neck_white_share": 0.11738543763918208,
+    "neck_body_share": 0.22536389360912534,
+    "collar_navy_share": 0.17322993631727318,
+    "hem_hist_dist": 0.48070352206965333,
+    "texture_ratio": 0.12431793084680087,
+    "garment_len_ratio": 0.0689313559200706
+   },
+   "flagged": [
+    "stripe_height_ratio",
+    "collar_navy_share",
+    "hem_hist_dist"
+   ],
+   "per_frame_std": {
+    "stripe_pos_ratio": 0.02590486682460523,
+    "stripe_height_ratio": 0.011425582788241276,
+    "sleeve_minus_body_L": 3.556721813936029,
+    "neck_navy_share": 0.012097435127306771
+   }
+  },
+  "S09_c2": {
+   "file": "s09_e1e2_clean.mp4",
+   "frames_scored": 19,
+   "features": {
+    "score": 0.6777814385047632,
+    "body_lab": [
+     175.0,
+     130.0,
+     147.0
+    ],
+    "stripe_lab": [
+     12.0,
+     130.0,
+     126.0
+    ],
+    "sleeve_minus_body_L": 2.0,
+    "stripe_height_ratio": 0.08817204301075268,
+    "stripe_pos_ratio": 0.27770360480640854,
+    "garment_len_ratio": 1.1584582441113491,
+    "neck_body_share": 0.10061900716106324,
+    "neck_navy_share": 0.10953443877551021,
+    "neck_white_share": 0.2905692438402719,
+    "collar_navy_share": 0.19511868043449107,
+    "hem_hist_dist": 0.36944655866043274,
+    "neck_hist_dist": 0.2271502894350197,
+    "texture_body": 59.404666900634766,
+    "frame": 36.0
+   },
+   "delta_to_anchor": {
+    "body_lab_de": 5.385164807134504,
+    "stripe_lab_de": 7.0,
+    "sleeve_minus_body_L": 3.0,
+    "stripe_height_ratio": 0.2742762613730356,
+    "stripe_pos_ratio": 0.018450241347437613,
+    "neck_navy_share": 0.032381034345649665,
+    "neck_white_share": 0.13711738454364936,
+    "neck_body_share": 0.14322840875362092,
+    "collar_navy_share": 0.013090142061949611,
+    "hem_hist_dist": 0.36944655866043274,
+    "texture_ratio": 0.2502968927891813,
+    "garment_len_ratio": 0.1242520362624826
+   },
+   "flagged": [
+    "hem_hist_dist"
+   ],
+   "per_frame_std": {
+    "stripe_pos_ratio": 0.10148284359514204,
+    "stripe_height_ratio": 0.039082445128582576,
+    "sleeve_minus_body_L": 2.5361582690029616,
+    "neck_navy_share": 0.03878695655939878
+   }
+  },
+  "S11_v4c": {
+   "file": "s11_v4c.mp4",
+   "frames_scored": 41,
+   "features": {
+    "score": 0.791405625911055,
+    "body_lab": [
+     178.0,
+     133.0,
+     145.0
+    ],
+    "stripe_lab": [
+     14.0,
+     130.0,
+     126.0
+    ],
+    "sleeve_minus_body_L": -1.0,
+    "stripe_height_ratio": 0.13404255319148936,
+    "stripe_pos_ratio": 0.27225806451612905,
+    "garment_len_ratio": 1.3098591549295775,
+    "neck_body_share": 0.20563431645165703,
+    "neck_navy_share": 0.05633626097867001,
+    "neck_white_share": 0.366451507476101,
+    "collar_navy_share": 0.04088930800533969,
+    "hem_hist_dist": 0.303779172330394,
+    "neck_hist_dist": 0.13392519784308754,
+    "texture_body": 55.004356384277344,
+    "frame": 80.0
+   },
+   "delta_to_anchor": {
+    "body_lab_de": 1.0,
+    "stripe_lab_de": 5.0,
+    "sleeve_minus_body_L": 0.0,
+    "stripe_height_ratio": 0.10327332242225862,
+    "stripe_pos_ratio": 0.023895781637717106,
+    "neck_navy_share": 0.020817143451190533,
+    "neck_white_share": 0.06123512090782024,
+    "neck_body_share": 0.038213099463027145,
+    "collar_navy_share": 0.14113923036720177,
+    "hem_hist_dist": 0.303779172330394,
+    "texture_ratio": 0.17333649123870515,
+    "garment_len_ratio": 0.027148874555745772
+   },
+   "flagged": [
+    "collar_navy_share",
+    "hem_hist_dist"
+   ],
+   "per_frame_std": {
+    "stripe_pos_ratio": 0.028067529730636417,
+    "stripe_height_ratio": 0.011060947694679519,
+    "sleeve_minus_body_L": 2.989571404106256,
+    "neck_navy_share": 0.009115914210261297
+   }
+  },
+  "S12": {
+   "file": "gfx/s12_e1_graphic.mp4",
+   "frames_scored": 27,
+   "features": {
+    "score": 0.7463017326220428,
+    "body_lab": [
+     178.0,
+     131.0,
+     144.0
+    ],
+    "stripe_lab": [
+     9.0,
+     130.0,
+     126.0
+    ],
+    "sleeve_minus_body_L": -2.0,
+    "stripe_height_ratio": 0.07213930348258707,
+    "stripe_pos_ratio": 0.2697986577181208,
+    "garment_len_ratio": 1.3616504854368932,
+    "neck_body_share": 0.25257554945054944,
+    "neck_navy_share": 0.08640125570776255,
+    "neck_white_share": 0.40180419994084593,
+    "collar_navy_share": 0.008883405305367057,
+    "hem_hist_dist": 0.4603757013328187,
+    "neck_hist_dist": 0.09015517302469633,
+    "texture_body": 59.639339447021484,
+    "frame": 52.0
+   },
+   "delta_to_anchor": {
+    "body_lab_de": 2.449489742783178,
+    "stripe_lab_de": 10.0,
+    "sleeve_minus_body_L": 1.0,
+    "stripe_height_ratio": 0.4062380405663988,
+    "stripe_pos_ratio": 0.026355188435725374,
+    "neck_navy_share": 0.009247851277902008,
+    "neck_white_share": 0.02588242844307531,
+    "neck_body_share": 0.008728133535865268,
+    "collar_navy_share": 0.1731451330671744,
+    "hem_hist_dist": 0.4603757013328187,
+    "texture_ratio": 0.2542395163209526,
+    "garment_len_ratio": 0.07894020506306143
+   },
+   "flagged": [
+    "stripe_height_ratio",
+    "collar_navy_share",
+    "hem_hist_dist"
+   ],
+   "per_frame_std": {
+    "stripe_pos_ratio": 0.02209056268075554,
+    "stripe_height_ratio": 0.013842568667777963,
+    "sleeve_minus_body_L": 2.7908335161162228,
+    "neck_navy_share": 0.019530570519650552
+   }
+  }
+ },
+ "cross_clip_spread": {
+  "sleeve_minus_body_L": {
+   "std": 2.247447531793182,
+   "min": -4.0,
+   "max": 2.0
+  },
+  "stripe_height_ratio": {
+   "std": 0.021983596534747317,
+   "min": 0.07213930348258707,
+   "max": 0.13404255319148936
+  },
+  "stripe_pos_ratio": {
+   "std": 0.02654208365665252,
+   "min": 0.26226610786554905,
+   "max": 0.33480189471349586
+  },
+  "neck_navy_share": {
+   "std": 0.024439137015409555,
+   "min": 0.04587884806355511,
+   "max": 0.10953443877551021
+  },
+  "neck_white_share": {
+   "std": 0.07495473542929346,
+   "min": 0.21136066116745264,
+   "max": 0.455701394585726
+  },
+  "neck_body_share": {
+   "std": 0.10550320059541042,
+   "min": 0.10061900716106324,
+   "max": 0.4692113095238095
+  },
+  "collar_navy_share": {
+   "std": 0.18948385772038434,
+   "min": 0.008798602055268286,
+   "max": 0.5165809014621068
+  },
+  "hem_hist_dist": {
+   "std": 0.0839448522432257,
+   "min": 0.303779172330394,
+   "max": 0.5770548701127116
+  },
+  "texture_body": {
+   "std": 16.25214565480178,
+   "min": 40.84391975402832,
+   "max": 98.36543273925781
+  },
+  "garment_len_ratio": {
+   "std": 0.07709655619826634,
+   "min": 1.1485806710849564,
+   "max": 1.3616504854368932
+  }
+ },
+ "summary": {
+  "S06_c2": [
+   "hem_hist_dist"
+  ],
+  "S06_c1": [
+   "collar_navy_share",
+   "hem_hist_dist"
+  ],
+  "S06_e1": [
+   "stripe_height_ratio",
+   "neck_white_share",
+   "collar_navy_share",
+   "hem_hist_dist"
+  ],
+  "S08": [
+   "stripe_height_ratio",
+   "collar_navy_share",
+   "hem_hist_dist"
+  ],
+  "S09_c2": [
+   "hem_hist_dist"
+  ],
+  "S11_v4c": [
+   "collar_navy_share",
+   "hem_hist_dist"
+  ],
+  "S12": [
+   "stripe_height_ratio",
+   "collar_navy_share",
+   "hem_hist_dist"
+  ]
+ }
+}
