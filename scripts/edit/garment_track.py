@@ -248,8 +248,12 @@ def occlusion_mask(frame, anchor_frame, H, quad, extra_mask=None, resid_thresh=3
     occ = (occ & plane)
     n_lab, lab_img, stats, _ = cv2.connectedComponentsWithStats(occ)
     plane_area = max(1, int((plane > 0).sum())); keep = np.zeros_like(occ)
+    # ...and it ENTERS the plane from outside: an occluder touches the plane's border. A blob
+    # enclosed by the plane is the generator's lettering (large in some rolls), never an arm.
+    border = (plane > 0) & (cv2.erode(plane, np.ones((9, 9), np.uint8)) == 0)
     for i in range(1, n_lab):
-        if stats[i, cv2.CC_STAT_AREA] >= min_blob_frac * plane_area: keep[lab_img == i] = 255
+        blob = lab_img == i
+        if stats[i, cv2.CC_STAT_AREA] >= min_blob_frac * plane_area and (blob & border).any(): keep[blob] = 255
     occ = cv2.dilate(keep, np.ones((9, 9), np.uint8)) & plane
     occ_f = cv2.GaussianBlur(occ.astype(np.float32) / 255.0, (0, 0), feather)
     return np.clip(occ_f, 0, 1), plane

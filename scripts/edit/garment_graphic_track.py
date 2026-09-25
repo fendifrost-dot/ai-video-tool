@@ -95,18 +95,77 @@ def quad_shape_ok(anchor_quad, quad, max_drift):
     worst = float(max(r.max(), 1.0 / max(1e-6, r.min())))
     return worst <= max_drift, worst
 
+def snap_to_band(frames, track, anchors, owner, reach, tol, min_conf):
+    """Vertical refinement of a tracked plane against the SURFACE it sits on: a band segment's
+    own texture (the lettering a generator redraws every frame) is a weak tracking target and the
+    plane creeps or rotates off the band over a fast move, but the band's edges are the strongest
+    lines in the region. Per frame the plane is rectified with `reach` extra rows above and below;
+    on its left third and its right third separately, each row's share of band-coloured pixels
+    (Lab distance to the anchor plane's median < tol) is taken, small gaps (the lettering) are
+    closed, the run of band rows around the plane's centre is found, and the plane's four corners
+    are moved along the plane's vertical axis onto that run (at most `reach` px, so a missing edge
+    leaves the corner alone). Offsets are median-smoothed over 5 frames. Only frames with
+    confidence ≥ min_conf are touched."""
+    def band_run(near, reach, Hp):
+        rows = (near > 0.5).astype(np.uint8)
+        rows = cv2.morphologyEx(rows[:, None], cv2.MORPH_CLOSE, np.ones((15, 1), np.uint8))[:, 0].astype(bool)
+        c = reach + Hp // 2
+        if not rows[c]:
+            inside = np.where(rows[reach:reach + Hp])[0]
+            if len(inside) == 0: return None
+            c = reach + int(inside[np.argmin(np.abs(inside - Hp // 2))])
+        top = c
+        while top > 0 and rows[top - 1]: top -= 1
+        bot = c
+        while bot < len(rows) - 1 and rows[bot + 1]: bot += 1
+        d_top, d_bot = top - reach, bot + 1 - (reach + Hp)
+        return (float(d_top) if abs(d_top) <= reach else 0.0, float(d_bot) if abs(d_bot) <= reach else 0.0)
+    offs = {}; med_cache = {}
+    for k, t in enumerate(track):
+        if t is None or t.get("H") is None or t["confidence"] < min_conf: continue
+        af, aq = anchors[owner[k]]
+        if af not in med_cache:
+            pm = quad_mask(frames[af].shape, aq) > 0
+            med_cache[af] = np.median(cv2.cvtColor(frames[af], cv2.COLOR_BGR2LAB).astype(np.float32)[pm], axis=0)
+        med = med_cache[af]
+        q = warp_quad(t["H"], aq).astype(np.float32)
+        wq = float((np.linalg.norm(q[1] - q[0]) + np.linalg.norm(q[2] - q[3])) / 2); hq = float((np.linalg.norm(q[3] - q[0]) + np.linalg.norm(q[2] - q[1])) / 2)
+        Wp, Hp = max(9, int(round(wq))), max(4, int(round(hq)))
+        vax = ((q[3] - q[0]) + (q[2] - q[1])) / 2 / max(hq, 1e-6)
+        src = np.array([q[0] - vax * reach, q[1] - vax * reach, q[2] + vax * reach, q[3] + vax * reach], np.float32)
+        dst = np.array([[0, 0], [Wp, 0], [Wp, Hp + 2 * reach], [0, Hp + 2 * reach]], np.float32)
+        rect = cv2.warpPerspective(frames[k], cv2.getPerspectiveTransform(src, dst), (Wp, Hp + 2 * reach), flags=cv2.INTER_LINEAR)
+        lab = cv2.cvtColor(rect, cv2.COLOR_BGR2LAB).astype(np.float32)
+        nearpx = np.sqrt(((lab - med) ** 2).sum(axis=2)) < tol
+        L = band_run(nearpx[:, : Wp // 3].mean(axis=1), reach, Hp); R = band_run(nearpx[:, -(Wp // 3):].mean(axis=1), reach, Hp)
+        if L is None or R is None: continue
+        offs[k] = (L[0], R[0], R[1], L[1])                                     # TL, TR, BR, BL along the vertical axis
+    if not offs: return track, {}
+    ks = sorted(offs); sm = {}
+    for i, k in enumerate(ks):
+        win = np.array([offs[j] for j in ks[max(0, i - 2):i + 3]]); sm[k] = tuple(float(x) for x in np.median(win, axis=0))
+    out = list(track)
+    for k, d in sm.items():
+        t = track[k]; af, aq = anchors[owner[k]]; q = warp_quad(t["H"], aq).astype(np.float32)
+        hq = float((np.linalg.norm(q[3] - q[0]) + np.linalg.norm(q[2] - q[1])) / 2)
+        vax = ((q[3] - q[0]) + (q[2] - q[1])) / 2 / max(hq, 1e-6)
+        q2 = np.array([q[i] + vax * d[i] for i in range(4)], np.float32)
+        H2 = cv2.getPerspectiveTransform(aq.astype(np.float32), q2)
+        out[k] = {**t, "H": H2, "quad": q2, "snap": list(d)}
+    return out, sm
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--video", required=True); ap.add_argument("--graphic", required=True); ap.add_argument("--out-dir", required=True)
     ap.add_argument("--anchor-frame", type=int, default=None); ap.add_argument("--anchor-quad", default=None, help="x1,y1,x2,y2,x3,y3,x4,y4 (TL,TR,BR,BL); omit to locate the graphic on the anchor frame automatically")
     ap.add_argument("--anchors", default=None, help="several anchors 'frame:x1,y1,...,x4,y4;frame:...' — each frame uses whichever anchor's track is most confident there (re-anchoring across occlusions/turns)")
     ap.add_argument("--matte", default=None); ap.add_argument("--opaque", action="store_true")
-    ap.add_argument("--min-confidence", type=float, default=0.35); ap.add_argument("--edge-feather", type=float, default=1.2)
+    ap.add_argument("--min-confidence", type=float, default=0.35); ap.add_argument("--max-occlusion", type=float, default=0.5, help="a frame whose plane is more than this fraction occluded gets no graphic"); ap.add_argument("--edge-feather", type=float, default=1.2)
     ap.add_argument("--resid-thresh", type=float, default=34.0); ap.add_argument("--name", default=None)
     ap.add_argument("--skin-occluder", action="store_true", help="also treat YCrCb skin as occluder (only for garments far from skin tones)")
     ap.add_argument("--motion-model", choices=("similarity", "affine", "homography"), default="affine")
     ap.add_argument("--track-expand", type=float, default=1.0, help="track the texture of a quad this many times larger (about the same centre) than the graphic's quad — for a graphic on a plain panel surrounded by trackable garment structure")
-    ap.add_argument("--proximity-weight", type=float, default=0.01, help="multi-anchor ownership: confidence penalty per frame of distance from the anchor, so the nearest anchor wins ties")
+    ap.add_argument("--snap-reach", type=int, default=0, help="px: after tracking, move the plane's top and bottom edges onto the band-coloured row run they sit in (a band segment whose lettering the generator redraws is a weak tracking target; its edges are not); 0 = off"); ap.add_argument("--snap-tol", type=float, default=22.0, help="Lab distance to the anchor plane's median colour that counts as the band"); ap.add_argument("--handover", type=int, default=4, help="frames on each side of an anchor-ownership change over which the plane blends from the old track to the new one"); ap.add_argument("--proximity-weight", type=float, default=0.01, help="multi-anchor ownership: confidence penalty per frame of distance from the anchor, so the nearest anchor wins ties")
     ap.add_argument("--max-shape-drift", type=float, default=1.3, help="a tracked quad whose edge lengths (scale-normalised) drift more than this factor from the anchor's is degenerate and gets confidence 0")
     ap.add_argument("--erase-above", type=float, default=0.0, help="fraction of the plane height ABOVE the plane to repaint with the surrounding garment colour before compositing — removes stray marks a generator drew next to the true graphic (0 = off)")
     ap.add_argument("--erase-below", type=float, default=0.0, help="same, below the plane")
@@ -153,13 +212,51 @@ def main():
             if not ok: t["confidence"] = 0.0; t["shape_ratio"] = ratio
     # per frame: the anchor whose track is most confident there; among near-equal confidences the
     # NEAREST anchor wins (tracks drift with distance even while their inlier confidence stays high)
+    # ...and a track that had to COAST through an occlusion between its anchor and this frame is
+    # worth less than one that saw the plane all the way: the path minimum of its confidence
+    # counts as much as its confidence here (a wrong re-acquisition after a full occlusion can be
+    # confident again, and it would otherwise steal frames from the anchor that never lost sight)
+    def path_min(i, k):
+        f0 = anchors[i][0]; lo, hi = (f0, k) if k >= f0 else (k, f0)
+        vals = [tracks[i][j]["confidence"] if tracks[i][j] is not None else 0.0 for j in range(lo, hi + 1)]
+        return min(vals) if vals else 0.0
     owner = []
     for k in range(len(frames)):
         def score(i):
             t = tracks[i][k]
-            return -1.0 if t is None else t["confidence"] - a.proximity_weight * abs(k - anchors[i][0])
+            return -1.0 if t is None else 0.5 * (t["confidence"] + path_min(i, k)) - a.proximity_weight * abs(k - anchors[i][0])
         owner.append(max(range(len(anchors)), key=score))
     track = [tracks[owner[k]][k] for k in range(len(frames))]
+    # handover: two anchors' tracks disagree by a few tens of pixels where ownership changes (each
+    # drifts with distance from its anchor); the plane crosses from one to the other over
+    # --handover frames instead of jumping — the incoming anchor owns the window, its plane is the
+    # blend of both tracks' quads, so the graphic slides rather than snaps
+    if a.handover > 0 and len(anchors) > 1:
+        switches = [k for k in range(1, len(frames)) if owner[k] != owner[k - 1]]
+        for k in switches:
+            ia, ib = owner[k - 1], owner[k]
+            for j in range(max(0, k - a.handover), min(len(frames), k + a.handover)):
+                ta, tb = tracks[ia][j], tracks[ib][j]
+                if ta is None or tb is None or ta.get("H") is None or tb.get("H") is None: continue
+                wt = (j - (k - a.handover) + 0.5) / (2 * a.handover)                    # 0 → 1 across the window
+                qa_, qb_ = warp_quad(ta["H"], anchors[ia][1]), warp_quad(tb["H"], anchors[ib][1])
+                # only two tracks that both see the plane and roughly agree are blended; when they
+                # disagree by more than half a plane width one of them is wrong (a coasted track
+                # re-acquired on the wrong texture) and the frame keeps its plain owner
+                if ta["confidence"] < a.min_confidence or tb["confidence"] < a.min_confidence: continue
+                pw_ = np.linalg.norm(qa_[1] - qa_[0])
+                if np.linalg.norm(qa_.mean(axis=0) - qb_.mean(axis=0)) > 0.5 * pw_: continue
+                q = (1 - wt) * qa_ + wt * qb_
+                # the frame is owned by whichever anchor's plane the blend is nearer to, so the
+                # occluder test compares against a texture that is nearly where it should be
+                io = ia if wt < 0.5 else ib
+                Ho = cv2.getPerspectiveTransform(anchors[io][1].astype(np.float32), q.astype(np.float32))
+                track[j] = {**tracks[io][j], "H": Ho, "quad": q, "confidence": max(ta["confidence"], tb["confidence"])}; owner[j] = io
+    snap_offsets = {}
+    if a.snap_reach > 0:
+        track, snap_offsets = snap_to_band(frames, track, anchors, owner, a.snap_reach, a.snap_tol, a.min_confidence)
+        if snap_offsets:
+            v = np.array(list(snap_offsets.values())); print(f"band snap: {len(snap_offsets)} frames, mean corner offsets TL/TR/BR/BL {np.round(v.mean(axis=0), 1).tolist()} px, p95 |offset| {np.percentile(np.abs(v), 95):.1f} px")
     anchor = frames[a.anchor_frame]
     if a.fit == "contain":
         # the plane's aspect from the anchor quad (mean of opposite edges); pad the graphic to it
@@ -176,12 +273,15 @@ def main():
             gbgr = cv2.copyMakeBorder(gbgr, 0, 0, left, right, cv2.BORDER_CONSTANT, value=pad_col); galpha = cv2.copyMakeBorder(galpha, 0, 0, left, right, cv2.BORDER_REPLICATE)
         gh, gw = galpha.shape
     if a.match_anchor:
-        # one-time colour match: the graphic's mean Lab → the anchor plane's mean Lab, so the
-        # canonical asset (product photo lighting) sits in the footage's lighting from frame one
+        # one-time colour match: the graphic's MEDIAN Lab → the anchor plane's median Lab, so the
+        # canonical asset (product photo lighting) sits in the footage's lighting from frame one.
+        # Medians, not means: the plane on the footage carries whatever lettering the generator
+        # drew (often large and bright) and the graphic carries the true mark — both are the
+        # minority of their plane, and the surface colour is what must agree
         pm = quad_mask(anchor.shape, quad) > 0
         la = cv2.cvtColor(anchor, cv2.COLOR_BGR2LAB).astype(np.float32); lg = cv2.cvtColor(gbgr, cv2.COLOR_BGR2LAB).astype(np.float32)
         for ch in range(3):
-            lg[..., ch] = np.clip(lg[..., ch] + (la[..., ch][pm].mean() - lg[..., ch].mean()), 0, 255)
+            lg[..., ch] = np.clip(lg[..., ch] + (np.median(la[..., ch][pm]) - np.median(lg[..., ch])), 0, 255)
         gbgr = cv2.cvtColor(lg.astype(np.uint8), cv2.COLOR_LAB2BGR)
     if a.soften > 0: gbgr = cv2.GaussianBlur(gbgr, (0, 0), a.soften)
     # plane extension comes AFTER the colour match so the match sees only the true graphic plane
@@ -214,6 +314,11 @@ def main():
         if matte is not None and k < len(matte):
             extra = (cv2.cvtColor(matte[k], cv2.COLOR_BGR2GRAY) < 128).astype(np.uint8) * 255
         occ, plane = occlusion_mask(f, anchor, t["H"], quad, extra_mask=extra, resid_thresh=a.resid_thresh, use_skin=a.skin_occluder)
+        # a plane that is MOSTLY hidden (an arm sweeping across it) is not drawn at all: the part
+        # the occluder test leaves "visible" is motion blur and skin the residual missed, and a
+        # graphic painted on a forearm is worse than the generator's lettering under it
+        if (plane > 0).any() and float(occ[plane > 0].mean()) > a.max_occlusion:
+            rec["occlusion"] = float(occ[plane > 0].mean()); out_frames.append(f); per.append(rec); continue
         gain, da, db = illumination(f, anchor, t["H"], quad, occ)
         g_lit = apply_illumination(gbgr, gain, da, db)
         # stray-mark eraser (before the graphic goes on): bands above/below the tracked plane,
@@ -303,7 +408,7 @@ def main():
         o = frames[k][y0:y1, x0:x1].copy(); c = out_frames[k][y0:y1, x0:x1].copy()
         if q is not None: cv2.polylines(o, [np.round(q - [x0, y0]).astype(np.int32)], True, (0, 255, 0), 1)
         cv2.putText(c, f"f{k} c={per[k]['confidence']:.2f}" + ("" if per[k]["applied"] else " DROPPED"), (4, 14), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1)
-        tiles.append(np.hstack([o, c]))
+        tile = np.hstack([o, c]); tiles.append(cv2.copyMakeBorder(tile, 0, 240 - tile.shape[0], 0, 640 - tile.shape[1], cv2.BORDER_CONSTANT))   # a plane at the frame edge gives a short crop
     sheet = np.vstack([np.hstack(tiles[:4]), np.hstack(tiles[4:])])
     cv2.imwrite(os.path.join(a.out_dir, f"{name}_qa_sheet.jpg"), sheet, [cv2.IMWRITE_JPEG_QUALITY, 88])
     print(json.dumps(qa, indent=1)); print(f"wrote {final}")
