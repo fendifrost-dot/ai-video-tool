@@ -40,6 +40,20 @@ def test_coasts_through_short_occlusion_and_flags_occluder():
     occ2, plane2 = occlusion_mask(frames[10], frames[0], tr[10]["H"], quad)
     assert occ2[plane2 > 0].mean() < 0.05                                     # clean frame: nothing occluded
 
+def test_lettering_enclosed_by_the_plane_is_not_an_occluder():
+    """A generator redraws its lettering every frame: a bright stroke INSIDE the plane must not
+    punch a hole in the graphic, while an arm entering from the plane's edge still does."""
+    frames, truth = make_clip()
+    quad = quad_array([150, 170, 260, 170, 260, 230, 150, 230])
+    tr = track_plane(frames, 0, quad, model="affine", smooth_sigma=0)
+    f = frames[10].copy(); q = warp_quad(tr[10]["H"], quad); cx, cy = q.mean(axis=0).astype(int)
+    cv2.rectangle(f, (cx - 35, cy - 4), (cx + 35, cy + 4), (250, 250, 60), -1)           # a stroke well inside
+    occ, plane = occlusion_mask(f, frames[0], tr[10]["H"], quad)
+    assert occ[plane > 0].mean() < 0.05
+    g = frames[10].copy(); cv2.rectangle(g, (cx - 60, cy - 60), (cx - 10, cy + 60), (30, 200, 30), -1)   # an arm crossing the edge
+    occ2, _ = occlusion_mask(g, frames[0], tr[10]["H"], quad)
+    assert occ2[plane > 0].mean() > 0.2
+
 def test_quad_shape_gate_rejects_collapsed_fits():
     from garment_graphic_track import quad_shape_ok
     anchor = quad_array([100, 100, 210, 100, 210, 130, 100, 130])
