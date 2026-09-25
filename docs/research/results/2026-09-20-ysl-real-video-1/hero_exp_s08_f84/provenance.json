@@ -1,0 +1,385 @@
+{
+ "experiment": "pose-locked hero, first paid experiment (contract \u00a76), S08 f84 only",
+ "date_utc": "2026-09-25",
+ "source_frame": {
+  "shot": "S08",
+  "frame_index_24fps": 84,
+  "seconds": 3.5,
+  "master_cut": "cuts/S08_master_69.466-76.368.mp4 (1080x1920@30 native; decoded at 24 fps like the scheduler)",
+  "storage": "project-references/3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/heroes/S08/S08_f0084_source.png",
+  "sha256": "a80ed38189fa54f85bd7f9b309b10fe9b1a04ea6824419aeb78b62e432b03ea5"
+ },
+ "anchor": {
+  "storage": "project-references/3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/heroes/S06/anchor_hook_s11_f0080.jpg",
+  "sha256": "9141b303ccea3e46a6fd3fa771fd69dcb76f197ef58d8bcfdf395771a3cad5fc",
+  "anchor_master_sha256": "d6e72633effc2744cff05b06f6128e99ee1e669509d484fc80e1b7b364a7e489"
+ },
+ "product_references": [
+  {
+   "storage": "wardrobe-refs/65cf99cb-fd18-4168-b9ab-dfbfd42112ca/8d4a4d22-41c0-43ab-ba99-92750f81e335/2a14a72b-e7de-4ecb-9c24-4142b672d175.jpg",
+   "role": "flat product photo of the hero piece (referenceMode flat, maxRefs 1)",
+   "sha256": "dbe9532cd5e23764b5988cb8874dd8fd0005e8bd02bb59a2d08927be0ad7e302"
+  }
+ ],
+ "look": {
+  "id": "ce7f6350-7583-4564-be95-78fb4f39e915",
+  "name": "White Ice \u2014 Full Outfit (jacket + SL trousers)",
+  "hero_feature_id": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+  "constraints": [
+   "THE JACKET IS ZIPPED CLOSED",
+   "Its collar STANDS UP",
+   "Its sleeves are PLAIN on the outside"
+  ]
+ },
+ "hero_gate": {
+  "script": "scripts/qa/hero_gate.py",
+  "commit": "6c5d396",
+  "thresholds": {
+   "pose_strict_max": 0.2,
+   "pose_strict_mean": 0.06,
+   "pose_head_max": 0.06,
+   "pose_arm_angle_max_deg": 20.0,
+   "pose_moderate_max": 0.35,
+   "pose_legs_max": 0.3,
+   "pose_min_presence": 0.5,
+   "identity_ssim_min": 0.75,
+   "identity_lab_max": 22.0,
+   "silhouette_iou_anatomy_min": 0.75,
+   "silhouette_boundary_p90_max": 0.1,
+   "construction_score_min": 0.65,
+   "construction_zone_min": 0.35,
+   "construction_min_garment_frac": 0.03,
+   "material_body_de_max": 10.0,
+   "material_stripe_de_max": 16.0,
+   "material_texture_ratio": [
+    0.4,
+    2.5
+   ],
+   "material_stripe_height_ratio": [
+    0.5,
+    1.8
+   ],
+   "anatomy_hand_skin_dab": 10.0,
+   "anatomy_hand_skin_dL": 60.0,
+   "anatomy_hand_skin_ratio_min": 0.4,
+   "anatomy_component_min_share": 0.95
+  },
+  "expectation_bundle": "docs/research/results/2026-09-20-ysl-real-video-1/hero_gate_calibration/expectations.json (calibration agreed 14/14 at 6c5d396)",
+  "raw_output": "gate_all/gate.json"
+ },
+ "candidates": [
+  {
+   "candidate": "xai_c0",
+   "provider": "xai_image_edit",
+   "model": "grok-imagine-image-quality (proxy default; XAI_IMAGE_EDIT_MODEL not set)",
+   "artist_looks_row": "f0e372d9-c089-48f0-8656-c7003e6d66ae",
+   "output_sha256": "ae2af783defc228737d0dc37619f0a88e3401a05f62b70deba37c6986042cdf8",
+   "output_file": "cand_c0_f0e372d9.jpg",
+   "seed": null,
+   "prompt": {
+    "client_prompt_sha256": "597277f9b61b799042acef207254988fc74f3cc6cb5bdb7a9ca01b0d157e5174",
+    "client_prompt_chars": 3338,
+    "client_prompt_file": "xai_prompt_sent_client.txt",
+    "prompt_version": "pose-locked-hero-v1",
+    "server_composition": "grok-image-garment-proxy at 64dcd07: ANCHOR_ROLE_SENTENCE + Look constraints (composeConstraintsFirst) + client prompt + 'LOOK SPECIFICATION: ' + Look spec; images: <IMAGE_0> source, <IMAGE_1> anchor, <IMAGE_2> flat product photo (3 = the model's limit)",
+    "note": "the pose-lock law is the first six sentences of the CLIENT prompt; the deployed proxy still puts the anchor role sentence and the Look's three construction constraints ahead of it"
+   },
+   "provider_cost_usd_actual": 0.08,
+   "proxy_cost_cents_booked": 12,
+   "gate": {
+    "verdict": "FAIL",
+    "pose_lock": "FAIL",
+    "failing": [
+     "pose",
+     "identity",
+     "silhouette",
+     "construction",
+     "material"
+    ],
+    "checks": {
+     "pose": {
+      "pass": false
+     },
+     "identity": {
+      "pass": false
+     },
+     "silhouette": {
+      "pass": false
+     },
+     "construction": {
+      "pass": false
+     },
+     "material": {
+      "pass": false
+     },
+     "edit_locality": {
+      "pass": null
+     },
+     "anatomy": {
+      "pass": true
+     }
+    }
+   }
+  },
+  {
+   "candidate": "xai_c1",
+   "provider": "xai_image_edit",
+   "model": "grok-imagine-image-quality (proxy default; XAI_IMAGE_EDIT_MODEL not set)",
+   "artist_looks_row": "efe7c9be-7904-4474-95b0-ddcd60a377a8",
+   "output_sha256": "cef570f2ac256f5125e63d0dd33c0b1a5847b1bdeacea908592338ba7dbc3da2",
+   "output_file": "cand_c1_efe7c9be.jpg",
+   "seed": null,
+   "prompt": {
+    "client_prompt_sha256": "597277f9b61b799042acef207254988fc74f3cc6cb5bdb7a9ca01b0d157e5174",
+    "client_prompt_chars": 3338,
+    "client_prompt_file": "xai_prompt_sent_client.txt",
+    "prompt_version": "pose-locked-hero-v1",
+    "server_composition": "grok-image-garment-proxy at 64dcd07: ANCHOR_ROLE_SENTENCE + Look constraints (composeConstraintsFirst) + client prompt + 'LOOK SPECIFICATION: ' + Look spec; images: <IMAGE_0> source, <IMAGE_1> anchor, <IMAGE_2> flat product photo (3 = the model's limit)",
+    "note": "the pose-lock law is the first six sentences of the CLIENT prompt; the deployed proxy still puts the anchor role sentence and the Look's three construction constraints ahead of it"
+   },
+   "provider_cost_usd_actual": 0.08,
+   "proxy_cost_cents_booked": 12,
+   "gate": {
+    "verdict": "FAIL",
+    "pose_lock": "FAIL",
+    "failing": [
+     "pose",
+     "identity",
+     "silhouette",
+     "construction",
+     "material"
+    ],
+    "checks": {
+     "pose": {
+      "pass": false
+     },
+     "identity": {
+      "pass": false
+     },
+     "silhouette": {
+      "pass": false
+     },
+     "construction": {
+      "pass": false
+     },
+     "material": {
+      "pass": false
+     },
+     "edit_locality": {
+      "pass": null
+     },
+     "anatomy": {
+      "pass": true
+     }
+    }
+   }
+  },
+  {
+   "candidate": "xai_c2",
+   "provider": "xai_image_edit",
+   "model": "grok-imagine-image-quality (proxy default; XAI_IMAGE_EDIT_MODEL not set)",
+   "artist_looks_row": "b62f5bab-7b73-4387-b5ad-e0656e15e577",
+   "output_sha256": "8eaef3f40399f0d0ba7c273b6cb90d7e6f0b82a81ad5fc96501adc8a37951412",
+   "output_file": "cand_c2_b62f5bab.jpg",
+   "seed": null,
+   "prompt": {
+    "client_prompt_sha256": "597277f9b61b799042acef207254988fc74f3cc6cb5bdb7a9ca01b0d157e5174",
+    "client_prompt_chars": 3338,
+    "client_prompt_file": "xai_prompt_sent_client.txt",
+    "prompt_version": "pose-locked-hero-v1",
+    "server_composition": "grok-image-garment-proxy at 64dcd07: ANCHOR_ROLE_SENTENCE + Look constraints (composeConstraintsFirst) + client prompt + 'LOOK SPECIFICATION: ' + Look spec; images: <IMAGE_0> source, <IMAGE_1> anchor, <IMAGE_2> flat product photo (3 = the model's limit)",
+    "note": "the pose-lock law is the first six sentences of the CLIENT prompt; the deployed proxy still puts the anchor role sentence and the Look's three construction constraints ahead of it"
+   },
+   "provider_cost_usd_actual": 0.08,
+   "proxy_cost_cents_booked": 12,
+   "gate": {
+    "verdict": "FAIL",
+    "pose_lock": "FAIL",
+    "failing": [
+     "pose",
+     "identity",
+     "silhouette",
+     "construction",
+     "material"
+    ],
+    "checks": {
+     "pose": {
+      "pass": false
+     },
+     "identity": {
+      "pass": false
+     },
+     "silhouette": {
+      "pass": false
+     },
+     "construction": {
+      "pass": false
+     },
+     "material": {
+      "pass": false
+     },
+     "edit_locality": {
+      "pass": null
+     },
+     "anatomy": {
+      "pass": true
+     }
+    }
+   }
+  },
+  {
+   "candidate": "fal_m0",
+   "provider": "fal_inpaint_masked",
+   "model": "fal-ai/flux-lora/inpainting (jacket-inpaint-proxy default flux-lora; evf-sam mask + face guard; steps 30, strength 0.85, controlnet none)",
+   "artist_looks_row": "49cdf3ae-495e-4e69-b7a0-7c0f3b28dc13",
+   "output_sha256": "f03e97257258a457796438de73495609099f044228ec0bd4000a8f276405008d",
+   "output_file": "cand_m0_49cdf3ae.png",
+   "seed": 777,
+   "prompt": {
+    "prompt": "derived by jacket-inpaint-proxy from the wardrobe feature (buildMaskedGarmentPrompts): 'Full outfit only, inside the masked clothing region only. Saint Laurent Track Jacket - Mastic Cotton Navy Stripe worn as a complete outfit \u2026'",
+    "mask": "evf-sam body-region prompt + face guard (proxy defaults)",
+    "conditioning": "none on the approved realisation (known gap in the contract registry)"
+   },
+   "provider_cost_usd_actual": null,
+   "proxy_cost_cents_booked": 12,
+   "gate": {
+    "verdict": "FAIL",
+    "pose_lock": "FAIL",
+    "failing": [
+     "pose",
+     "construction"
+    ],
+    "checks": {
+     "pose": {
+      "pass": false
+     },
+     "identity": {
+      "pass": true
+     },
+     "silhouette": {
+      "pass": true
+     },
+     "construction": {
+      "pass": false
+     },
+     "material": {
+      "pass": true
+     },
+     "edit_locality": {
+      "pass": null
+     },
+     "anatomy": {
+      "pass": true
+     }
+    }
+   }
+  },
+  {
+   "candidate": "fal_m1_dup",
+   "provider": "fal_inpaint_masked",
+   "model": "same as fal_m0 \u2014 byte-identical output (deterministic default seed 777)",
+   "artist_looks_row": "a559d245-0a45-4a75-85be-720eaa10428e",
+   "output_sha256": "f03e97257258a457796438de73495609099f044228ec0bd4000a8f276405008d",
+   "output_file": "cand_m1_a559d245.png",
+   "seed": 777,
+   "prompt": {
+    "prompt": "derived by jacket-inpaint-proxy from the wardrobe feature (buildMaskedGarmentPrompts): 'Full outfit only, inside the masked clothing region only. Saint Laurent Track Jacket - Mastic Cotton Navy Stripe worn as a complete outfit \u2026'",
+    "mask": "evf-sam body-region prompt + face guard (proxy defaults)",
+    "conditioning": "none on the approved realisation (known gap in the contract registry)"
+   },
+   "provider_cost_usd_actual": null,
+   "proxy_cost_cents_booked": 12,
+   "gate": {
+    "verdict": "FAIL",
+    "pose_lock": "FAIL",
+    "failing": [
+     "pose",
+     "construction"
+    ],
+    "checks": {
+     "pose": {
+      "pass": false
+     },
+     "identity": {
+      "pass": true
+     },
+     "silhouette": {
+      "pass": true
+     },
+     "construction": {
+      "pass": false
+     },
+     "material": {
+      "pass": true
+     },
+     "edit_locality": {
+      "pass": null
+     },
+     "anatomy": {
+      "pass": true
+     }
+    }
+   }
+  },
+  {
+   "candidate": "fal_m2_seed778",
+   "provider": "fal_inpaint_masked",
+   "model": "fal-ai/flux-lora/inpainting, seed 778 (the second DISTINCT masked candidate)",
+   "artist_looks_row": "d4c36db5-f663-4b03-b37b-066ca5db6733",
+   "output_sha256": "39dada9e612fba60a1aed78e5d791a4bca00c1be1fba0c9ab1b8c0bed6ecac98",
+   "output_file": "cand_m2_d4c36db5.png",
+   "seed": 778,
+   "prompt": {
+    "prompt": "derived by jacket-inpaint-proxy from the wardrobe feature (buildMaskedGarmentPrompts): 'Full outfit only, inside the masked clothing region only. Saint Laurent Track Jacket - Mastic Cotton Navy Stripe worn as a complete outfit \u2026'",
+    "mask": "evf-sam body-region prompt + face guard (proxy defaults)",
+    "conditioning": "none on the approved realisation (known gap in the contract registry)"
+   },
+   "provider_cost_usd_actual": null,
+   "proxy_cost_cents_booked": 12,
+   "gate": {
+    "verdict": "FAIL",
+    "pose_lock": "FAIL",
+    "failing": [
+     "pose",
+     "construction",
+     "material"
+    ],
+    "checks": {
+     "pose": {
+      "pass": false
+     },
+     "identity": {
+      "pass": true
+     },
+     "silhouette": {
+      "pass": true
+     },
+     "construction": {
+      "pass": false
+     },
+     "material": {
+      "pass": false
+     },
+     "edit_locality": {
+      "pass": null
+     },
+     "anatomy": {
+      "pass": true
+     }
+    }
+   }
+  }
+ ],
+ "spend": {
+  "xai_actual_usd": 0.24,
+  "xai_actual_basis": "usage.cost_in_usd_ticks 800000000 per image (3 images) = $0.08 each",
+  "fal_runs": 3,
+  "fal_actual_usd": null,
+  "fal_carried_usd": 0.36,
+  "fal_basis": "the proxy books 12 cents per run as an estimate; the fal invoice is on Control Center's key and not readable from AVT \u2014 carried at the estimate per the ledger rule",
+  "tranche_carried_usd": 0.6,
+  "cap_usd": 0.5,
+  "note": "the cap was set at \u2248 $0.50 for five candidates; six runs were made because the first two masked runs shared the deterministic default seed and returned one byte-identical image, so one more seed was spent to have two distinct masked candidates; actual xAI spend ($0.24) is below its $0.36 estimate"
+ },
+ "result": "0 of 5 distinct candidates PASS the hero gate; both mechanisms stop (contract \u00a76, stop rule)"
+}
