@@ -21,6 +21,10 @@ Features per clip (median over scored frames; all relative to the garment, never
   stripe_height_ratio stripe half-height run / garment width at the stripe row
   stripe_pos_ratio    (stripe row − garment top) / garment height   (band sits higher/lower)
   neck_navy_share, neck_white_share, neck_body_share
+  collar_navy_share   stripe-class share over the OUTER thirds of the neck zone with the tie's
+                      region removed: the colour the stand collar is lined with (Astra v13 found
+                      S06's collar inside tan where the Look says navy; the plain neck shares
+                      missed it)
                       class shares in the neck zone: a navy exterior collar, a spread white shirt
                       collar outside the jacket, or a mastic stand collar are different numbers
   hem_hist_dist       neck/hem zone histogram distance to the anchor (construction_score's compare)
@@ -38,7 +42,7 @@ from construction_score import build_anchor_model, score_with_model, garment_mas
 from propagate_keyframe import decode  # noqa: E402
 
 DEFAULT_TOL = {"body_lab_de": 6.0, "stripe_lab_de": 12.0, "sleeve_minus_body_L": 8.0, "stripe_height_ratio": 0.35, "stripe_pos_ratio": 0.08,
-               "neck_navy_share": 0.20, "neck_white_share": 0.15, "neck_body_share": 0.25, "hem_hist_dist": 0.30, "texture_ratio": 1.0, "garment_len_ratio": 0.25}
+               "neck_navy_share": 0.20, "neck_white_share": 0.15, "neck_body_share": 0.25, "collar_navy_share": 0.10, "hem_hist_dist": 0.30, "texture_ratio": 1.0, "garment_len_ratio": 0.25}
 
 def lab_median(im, sel):
     if sel.sum() < 100: return None
@@ -72,8 +76,24 @@ def frame_features(model, im, gm):
         # "white" = the lightest anchor class other than body (shirt collar), if there is one
         light = sorted(range(k), key=lambda c: -model["centres"][c][0]); white = next((c for c in light if c != body and model["centres"][c][0] > model["centres"][body][0] + 15), None)
         f["neck_white_share"] = float(shares[white]) if white is not None else 0.0
+        # the collar's INSIDE: seen from the front, a stand collar's visible surfaces at the SIDES of
+        # the neck opening are its inner faces (the tie and shirt sit in the middle). The neck zone
+        # box from the stripe landmark ends at the shoulder line, so per column of its outer thirds
+        # the garment pixels ABOVE the box, up to the collar's top edge (at most 90 px, gaps ≤ 3 px
+        # bridged), are the collar; the stripe-class share of those pixels says what it is lined with
+        nys, nxs = np.where(zs["neck"] > 0); x0, x1 = nxs.min(), nxs.max(); y0 = nys.min(); third = max(1, (x1 - x0) // 3)
+        hit = tot = 0
+        for x in [x for x in range(x0, x1 + 1) if x < x0 + third or x > x1 - third]:
+            y = y0; gap = 0
+            while y > 0 and y0 - y < 90:
+                if g[y, x]: gap = 0; hit += int(cls[y, x] == stripe); tot += 1
+                else:
+                    gap += 1
+                    if gap > 3: break
+                y -= 1
+        f["collar_navy_share"] = float(hit / tot) if tot > 200 else None
     else:
-        f["neck_body_share"] = f["neck_navy_share"] = f["neck_white_share"] = None
+        f["neck_body_share"] = f["neck_navy_share"] = f["neck_white_share"] = f["collar_navy_share"] = None
     f["hem_hist_dist"] = float(1.0 - r["zones"]["hem"]); f["neck_hist_dist"] = float(1.0 - r["zones"]["neck"])
     lap = cv2.Laplacian(cv2.cvtColor(im, cv2.COLOR_BGR2GRAY), cv2.CV_32F); bsel = (cls == body) & g
     f["texture_body"] = float((lap[bsel] ** 2).mean() / max(1.0, float(L[bsel].mean())) ** 2 * 1e4) if bsel.sum() > 200 else None
@@ -123,6 +143,7 @@ def main():
                  "neck_navy_share": (abs(med["neck_navy_share"] - af["neck_navy_share"]) if med.get("neck_navy_share") is not None and af.get("neck_navy_share") is not None else None),
                  "neck_white_share": (abs(med["neck_white_share"] - af["neck_white_share"]) if med.get("neck_white_share") is not None and af.get("neck_white_share") is not None else None),
                  "neck_body_share": (abs(med["neck_body_share"] - af["neck_body_share"]) if med.get("neck_body_share") is not None and af.get("neck_body_share") is not None else None),
+                 "collar_navy_share": (abs(med["collar_navy_share"] - af["collar_navy_share"]) if med.get("collar_navy_share") is not None and af.get("collar_navy_share") is not None else None),
                  "hem_hist_dist": med.get("hem_hist_dist"), "texture_ratio": (abs(np.log(med["texture_body"] / af["texture_body"])) if med.get("texture_body") and af.get("texture_body") else None),
                  "garment_len_ratio": (abs(med["garment_len_ratio"] - af["garment_len_ratio"]) if med.get("garment_len_ratio") is not None and af.get("garment_len_ratio") is not None else None)}
         flagged = [k for k, v in delta.items() if v is not None and v > tol[k]]
@@ -134,7 +155,7 @@ def main():
     # cross-clip spread per feature
     feats = [c["features"] for c in report["clips"].values() if "features" in c]
     spread = {}
-    for key in ("sleeve_minus_body_L", "stripe_height_ratio", "stripe_pos_ratio", "neck_navy_share", "neck_white_share", "neck_body_share", "hem_hist_dist", "texture_body", "garment_len_ratio"):
+    for key in ("sleeve_minus_body_L", "stripe_height_ratio", "stripe_pos_ratio", "neck_navy_share", "neck_white_share", "neck_body_share", "collar_navy_share", "hem_hist_dist", "texture_body", "garment_len_ratio"):
         vals = [f[key] for f in feats if f.get(key) is not None]
         if len(vals) >= 2: spread[key] = {"std": float(np.std(vals)), "min": float(min(vals)), "max": float(max(vals))}
     report["cross_clip_spread"] = spread
