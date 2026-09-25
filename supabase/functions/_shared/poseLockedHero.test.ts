@@ -48,6 +48,8 @@ Deno.test("default provider is the strongest available mechanism", () => {
   assertEquals(b.mechanism, "mask");
   assertEquals(b.body.wardrobeFeatureId, "feature-jacket");
   assertEquals(b.body.controlnet, "pose");
+  assert(!String(b.prompt).includes("Keep the person's identity"), "a masked lane gets the garment prompt, not the pose law");
+  assert(String(b.prompt).startsWith("THE JACKET IS ZIPPED CLOSED."));
 });
 
 Deno.test("a retired lane is never selected by default", () => {

@@ -177,7 +177,10 @@ export function buildHeroRequest(req: PoseLockedHeroRequest, specs: Record<HeroP
   if (!provider) throw new Error("no available hero provider");
   const spec = specs[provider];
   if (!spec) throw new Error(`unknown hero provider ${provider}`);
-  const prompt = composeHeroPrompt(req.constraints, req.promptBody ?? "");
+  // A masked mechanism holds the geometry by construction and paints only inside the garment
+  // mask: its prompt describes the GARMENT (Look constraints first, body last); the pose-lock
+  // law is for whole-image editors, which can only be asked.
+  const prompt = spec.mechanism === "mask" ? composeConstraintsFirst(req.constraints, req.promptBody ?? "") : composeHeroPrompt(req.constraints, req.promptBody ?? "");
   const common = {
     artistId: req.artistId,
     projectId: req.projectId,
