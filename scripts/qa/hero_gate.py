@@ -136,15 +136,27 @@ def torso_scale(lm):
 def angle(lm, i, j):
     v = lm[j, :2] - lm[i, :2]; return float(np.degrees(np.arctan2(v[1], v[0])))
 
-def pose_fidelity(src, cand, th):
+HAND_LANDMARKS = {"hand_l": (15, 19, "fore_l"), "hand_r": (16, 20, "fore_r")}
+
+def pose_fidelity(src, cand, th, hands_verified_in_place=()):
+    """`hands_verified_in_place`: hands the anatomy check found STILL PRESENT (this performer's skin)
+    at their SOURCE location. A hand that is verifiably where it was cannot have moved, so a large
+    wrist/index displacement there is the landmarker re-localising on repainted surroundings (a
+    sleeve painted across the forearm), not a re-posed arm: those landmarks and that forearm angle
+    are excluded from the pose statistics and reported under `relocalised`. A hand that is NOT
+    at its source location keeps its full displacement — whether it moved or was painted over,
+    the pose-lock law is broken there and the anatomy check names the cause."""
     if src is None: return {"pass": None, "note": "no pose on the source frame"}
     if cand is None: return {"pass": False, "note": "pose lost on the candidate"}
-    ts = torso_scale(src); seen = lambda i: src[i, 3] >= th["pose_min_presence"] and src[i, 2] >= 0.3
+    excluded = {i for h in hands_verified_in_place for i in HAND_LANDMARKS[h][:2]}; excluded_arms = {HAND_LANDMARKS[h][2] for h in hands_verified_in_place}
+    ts = torso_scale(src); seen = lambda i: src[i, 3] >= th["pose_min_presence"] and src[i, 2] >= 0.3 and i not in excluded
     disp = {n: float(np.linalg.norm(src[i, :2] - cand[i, :2]) / ts) for i, n in STRICT.items() if seen(i)}
+    excluded_disp = {STRICT[i]: float(np.linalg.norm(src[i, :2] - cand[i, :2]) / ts) for i in excluded if i in STRICT and src[i, 3] >= th["pose_min_presence"]}
     mod = {n: float(np.linalg.norm(src[i, :2] - cand[i, :2]) / ts) for i, n in MODERATE.items() if seen(i)}
     legs = {n: float(np.linalg.norm(src[i, :2] - cand[i, :2]) / ts) for i, n in LEGS.items() if seen(i)}
     ang = {}
     for n, (i, j) in ARMS.items():
+        if n in excluded_arms: continue
         if seen(i) and seen(j):
             d = abs(angle(src, i, j) - angle(cand, i, j)); ang[n] = float(min(d, 360 - d))
     strict_max = max(disp.values()) if disp else None; strict_mean = float(np.mean(list(disp.values()))) if disp else None
@@ -155,6 +167,7 @@ def pose_fidelity(src, cand, th):
           and (max(mod.values()) if mod else 0.0) <= th["pose_moderate_max"] and (max(legs.values()) if legs else 0.0) <= th["pose_legs_max"])
     worst = max(disp, key=disp.get) if disp else None
     return {"pass": bool(ok), "torso_px": ts, "strict_max": strict_max, "strict_mean": strict_mean, "head_max": head_max, "worst_landmark": worst, "arm_angle_max_deg": arm_max, "arm_angles_deg": ang,
+            "relocalised": {"hands_verified_in_place": list(hands_verified_in_place), "landmark_displacements_excluded": excluded_disp},
             "moderate_max": max(mod.values()) if mod else None, "legs_max": max(legs.values()) if legs else None, "displacements": disp}
 
 # ----------------------------------------------------------------------------- identity / silhouette / anatomy
@@ -223,11 +236,14 @@ def anatomy_integrity(src, cand, lm_s, lm_c, gm, cls, alpha_c, model, th):
     H, W = src.shape[:2]
     hands = {}
     Ls, Lc = (cv2.cvtColor(x, cv2.COLOR_BGR2LAB).astype(np.float32) for x in (src, cand))
-    src_patches = dict(hand_patches(lm_s, W, H, 0.07)); cand_patches = dict(hand_patches(lm_c if lm_c is not None else lm_s, W, H, 0.07))
+    # OWNERSHIP: each hand owns the disc at its SOURCE location. Whatever the candidate's own
+    # landmarks say, those pixels must still be this performer's skin — a garment mask may not
+    # consume a hand because it fell inside a coarse clothing region. (Forearms are not owned:
+    # a long-sleeved Look legitimately covers a bare forearm; the Look's data decides that.)
+    src_patches = dict(hand_patches(lm_s, W, H, 0.07)); cand_patches = dict(hand_patches(lm_c, W, H, 0.07)) if lm_c is not None else {}
     ts = torso_scale(lm_s)
-    for name, mc in cand_patches.items():
-        ms = src_patches.get(name)
-        if ms is None or ms.sum() < 20: continue
+    for name, ms in src_patches.items():
+        if ms.sum() < 20: continue
         ys, xs = np.where(ms)
         if ys.min() < 2 or xs.min() < 2 or ys.max() > H - 3 or xs.max() > W - 3: hands[name] = {"skipped": "hand at the frame edge"}; continue
         skin = np.median(Ls[ms], axis=0)                         # the performer's OWN skin at this hand, from the source
@@ -235,14 +251,19 @@ def anatomy_integrity(src, cand, lm_s, lm_c, gm, cls, alpha_c, model, th):
         # anchor's hands are 30–40 L darker than the master's — but a beige sleeve, a white cuff or a
         # navy band over the hand changes a/b and/or L by far more)
         like = lambda L_: ((np.sqrt(((L_[:, 1:] - skin[1:]) ** 2).sum(axis=1)) <= th["anatomy_hand_skin_dab"]) & (np.abs(L_[:, 0] - skin[0]) <= th["anatomy_hand_skin_dL"]))
-        fs = float(like(Ls[ms]).mean()); fc = float(like(Lc[mc]).mean())
-        hands[name] = {"skin_fraction_source": fs, "skin_fraction": fc, "skin_ratio": float(fc / max(fs, 0.2)), "in_garment_mask": float((gm[mc] > 0).mean())}
-    hands_ok = all(v["skin_ratio"] >= th["anatomy_hand_skin_ratio_min"] for v in hands.values() if "skin_ratio" in v)
+        fs = float(like(Ls[ms]).mean()); fc_src_loc = float(like(Lc[ms]).mean())
+        rec = {"skin_fraction_source": fs, "skin_fraction_at_source_location": fc_src_loc, "skin_ratio": float(fc_src_loc / max(fs, 0.2)), "in_garment_mask": float((gm[ms] > 0).mean())}
+        mc = cand_patches.get(name)
+        if mc is not None and mc.sum() >= 20: rec["skin_fraction_at_candidate_landmark"] = float(like(Lc[mc]).mean())
+        rec["repainted"] = bool(rec["skin_ratio"] < th["anatomy_hand_skin_ratio_min"])
+        hands[name] = rec
+    hands_ok = not any(v.get("repainted") for v in hands.values())
     present_ok = lm_c is not None and all(lm_c[i, 3] >= th["pose_min_presence"] for i in STRICT if lm_s[i, 3] >= th["pose_min_presence"] and lm_s[i, 2] >= 0.3)
     n, lab, stats, _ = cv2.connectedComponentsWithStats(cv2.morphologyEx((alpha_c > 0.5).astype(np.uint8), cv2.MORPH_OPEN, np.ones((7, 7), np.uint8)))
     areas = sorted(stats[1:, cv2.CC_STAT_AREA], reverse=True) if n > 1 else [0]
     share = float(areas[0] / max(1, sum(areas)))
-    return {"pass": bool(hands_ok and present_ok and share >= th["anatomy_component_min_share"]), "hands": hands, "strict_landmarks_present": bool(present_ok), "largest_component_share": share, "components": int(n - 1)}
+    return {"pass": bool(hands_ok and present_ok and share >= th["anatomy_component_min_share"]), "hands": hands, "repainted_hands": [k for k, v in hands.items() if v.get("repainted")],
+            "strict_landmarks_present": bool(present_ok), "largest_component_share": share, "components": int(n - 1)}
 
 # ----------------------------------------------------------------------------- garment truth
 def class_stats(im, cls, mask, cid):
@@ -320,20 +341,23 @@ def main():
         lm_s, lm_c = landmarks(spath, src), landmarks(cpath, cand)
         alpha_s, alpha_c = person_alpha([src, cand])
         checks = {}
-        checks["pose"] = pose_fidelity(lm_s, lm_c, th)
+        gt, gm, cls, zs = garment_truth(model, src, cand, th)
+        if cls is None: cls = classify(cand, model["centres"], model["class_radius"])
+        anatomy = anatomy_integrity(src, cand, lm_s, lm_c, gm, cls, alpha_c, model, th) if lm_s is not None else {"pass": None, "note": "no source pose"}
+        in_place = tuple(k for k, v in anatomy.get("hands", {}).items() if "skin_ratio" in v and not v.get("repainted"))
+        checks["pose"] = pose_fidelity(lm_s, lm_c, th, hands_verified_in_place=in_place)
         if lm_s is not None:
             checks["identity"] = identity_fidelity(src, cand, lm_s, th)
             checks["silhouette"] = silhouette_fidelity(alpha_s, alpha_c, lm_s, th)
         else:
             checks["identity"] = {"pass": None, "note": "no source pose"}; checks["silhouette"] = {"pass": None, "note": "no source pose"}
-        gt, gm, cls, zs = garment_truth(model, src, cand, th); checks.update(gt)
+        checks.update(gt)
         # diagnostic (no pass/fail): how much of the frame OUTSIDE the garment the candidate touched —
         # a local edit sits at the JPEG floor, a whole-frame re-render (Runway, the old E2) does not
         outside = cv2.dilate(gm, np.ones((25, 25), np.uint8)) == 0
         dl = np.sqrt(((cv2.cvtColor(src, cv2.COLOR_BGR2LAB).astype(np.float32) - cv2.cvtColor(cand, cv2.COLOR_BGR2LAB).astype(np.float32)) ** 2).sum(axis=2))
         checks["edit_locality"] = {"pass": None, "outside_garment_lab_mean": float(dl[outside].mean()) if outside.any() else None, "garment_frac": float((gm > 0).mean())}
-        if cls is None: cls = classify(cand, model["centres"], model["class_radius"])
-        checks["anatomy"] = anatomy_integrity(src, cand, lm_s, lm_c, gm, cls, alpha_c, model, th) if lm_s is not None else {"pass": None, "note": "no source pose"}
+        checks["anatomy"] = anatomy
         # POSE LOCK = landmarks in place AND the face unchanged (the law names head position and face
         # geometry; a frontal re-render of a turned, singing face passes the coarse landmarks — E2 f114)
         pose_ok = bool(checks["pose"]["pass"] and checks["identity"].get("pass"))
@@ -345,7 +369,7 @@ def main():
         print(json.dumps({name: {"verdict": verdict, "pose_lock": rec["pose_lock"], "failing": failing, "pose": {k: checks["pose"].get(k) for k in ("strict_max", "strict_mean", "arm_angle_max_deg", "worst_landmark")},
                                  "identity": {k: checks["identity"].get(k) for k in ("ssim", "lab_residual")}, "silhouette": {k: checks["silhouette"].get(k) for k in ("iou_anatomy", "boundary_p90_torso")},
                                  "construction": checks["construction"].get("score"), "material": {k: checks["material"].get(k) for k in ("body_de", "stripe_de", "texture_ratio", "stripe_height_ratio")},
-                                 "anatomy": {k: checks["anatomy"].get(k) for k in ("hands", "largest_component_share")}, "head_max": checks["pose"].get("head_max")}}, default=float), flush=True)
+                                 "anatomy": {k: checks["anatomy"].get(k) for k in ("hands", "repainted_hands", "largest_component_share")}, "head_max": checks["pose"].get("head_max")}}, default=float), flush=True)
         # sheet: source with its skeleton | candidate with both skeletons | garment mask + anatomy region
         t1 = draw_skeleton(src.copy(), lm_s, (0, 255, 0)); t2 = draw_skeleton(draw_skeleton(cand.copy(), lm_s, (0, 255, 0)), lm_c, (0, 0, 255))
         ov = cand.copy(); ov[gm > 0] = (0.55 * ov[gm > 0] + 0.45 * np.array([0, 200, 0])).astype(np.uint8)
