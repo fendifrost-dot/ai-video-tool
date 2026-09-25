@@ -67,6 +67,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--max-residual", type=float, default=12.0); ap.add_argument("--min-anchor-sim", type=float, default=0.55); ap.add_argument("--max-anchor-spread", type=float, default=0.2)
     ap.add_argument("--min-silhouette-iou", type=float, default=0.85, help="matte (no master available): 5th percentile of the motion-compensated silhouette IoU between consecutive frames must stay above this")
+    ap.add_argument("--min-silhouette-seen", type=float, default=0.45, help="the silhouette measure is only trusted when at least this share of the garment differs from the background estimate (a garment the same tone as the plate has no silhouette to measure)")
     ap.add_argument("--min-silhouette-ratio", type=float, default=0.9, help="matte (master available): composite IoU p05 ÷ master IoU p05 must stay above this — the composite may not flicker more than the real footage segments")
     a = ap.parse_args()
     W, H = (int(x) for x in a.size.lower().split("x")); os.makedirs(a.out, exist_ok=True)
@@ -85,7 +86,7 @@ def main():
     for it in a.track:
         sid, path = it.split("=", 1); tracks[sid] = json.load(open(path)).get("qa", {})
     engine = dis()
-    report = {"draft": a.draft, "timeline": {}, "slots": [], "looks": {}, "thresholds": {"max_residual": a.max_residual, "min_anchor_sim": a.min_anchor_sim, "max_anchor_spread": a.max_anchor_spread, "min_silhouette_iou": a.min_silhouette_iou, "min_silhouette_ratio": a.min_silhouette_ratio}}
+    report = {"draft": a.draft, "timeline": {}, "slots": [], "looks": {}, "thresholds": {"max_residual": a.max_residual, "min_anchor_sim": a.min_anchor_sim, "max_anchor_spread": a.max_anchor_spread, "min_silhouette_iou": a.min_silhouette_iou, "min_silhouette_ratio": a.min_silhouette_ratio, "min_silhouette_seen": a.min_silhouette_seen}}
 
     # ---- timeline / audio ----
     p = probe(a.draft)
@@ -156,6 +157,13 @@ def main():
             return sil, ious
         sil, ious = sil_iou(rend)
         rec["silhouette"] = {"area_mean": float(np.mean([(s_ > 0).mean() for s_ in sil])), "iou_mean": float(np.mean(ious)) if ious else None, "iou_p05": float(np.percentile(ious, 5)) if ious else None}
+        # the silhouette is a colour difference against the background estimate: a garment the
+        # same tone as the plate (black denim in a black corridor) leaves no silhouette to measure,
+        # so the measure's validity is the share of the garment that the difference actually sees
+        if masks:
+            seen = [float(((sil[k] > 0) & (masks[k] > 0)).sum() / max(1, (masks[k] > 0).sum())) for k in range(0, len(rend), max(1, len(rend) // 12)) if (masks[k] > 0).sum() > 500]
+            rec["silhouette"]["garment_seen"] = float(np.mean(seen)) if seen else None
+            rec["silhouette"]["measurable"] = bool(seen and np.mean(seen) >= a.min_silhouette_seen)
         if masters is not None and len(masters) == len(rend):
             _, ious_m = sil_iou(masters)
             rec["silhouette"]["iou_p05_master"] = float(np.percentile(ious_m, 5)) if ious_m else None
@@ -165,7 +173,9 @@ def main():
         if rec.get("temporal_residual") and rec["temporal_residual"]["mean"] > a.max_residual: flags.append("temporal_residual")
         if rec.get("anchor_similarity") and rec["anchor_similarity"]["mean"] < a.min_anchor_sim: flags.append("anchor_similarity")
         r_ = rec["silhouette"].get("ratio_to_master")
-        if r_ is not None:
+        if rec["silhouette"].get("measurable") is False:
+            rec.setdefault("notes", []).append("silhouette_low_contrast")   # informational: not a defect, the measure has no signal here
+        elif r_ is not None:
             if r_ < a.min_silhouette_ratio: flags.append("silhouette_flicker")
         elif rec["silhouette"]["iou_p05"] is not None and rec["silhouette"]["iou_p05"] < a.min_silhouette_iou: flags.append("silhouette_flicker")
         rec["verdict"] = "CHECK" if flags else "OK"; rec["flags"] = flags
