@@ -1,0 +1,16 @@
+{
+ "A_source_f86":       {"pose": "PASS", "identity": "PASS", "construction": "FAIL", "verdict": "FAIL"},
+ "B_E1_f86":           {"pose": "PASS", "construction": "PASS"},
+ "B_E1_f22":           {"pose": "PASS"},
+ "B_E1_f146":          {"pose": "PASS"},
+ "B_E1_S11_f40":       {"pose": "PASS", "construction": "PASS"},
+ "C_E2_f6":            {"pose": "FAIL", "verdict": "FAIL"},
+ "C_E2_f18":           {"pose": "FAIL", "verdict": "FAIL"},
+ "C_E2_f30":           {"pose": "FAIL", "verdict": "FAIL"},
+ "C_E2_f78":           {"pose": "FAIL", "verdict": "FAIL"},
+ "C_E2_f114":          {"pose": "FAIL", "verdict": "FAIL"},
+ "D_wrong_frame_f0":   {"pose": "FAIL", "verdict": "FAIL"},
+ "D_wrong_shot_anchor":{"pose": "FAIL", "verdict": "FAIL"},
+ "E_anchor":           {"pose": "PASS", "construction": "PASS", "material": "PASS", "verdict": "PASS"},
+ "F_aleph_f86":        {"pose": "PASS"}
+}
