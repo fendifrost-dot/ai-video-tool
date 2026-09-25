@@ -33,11 +33,15 @@ Two figures were also found to be overstated in the results doc and are correcte
 | 11 | 09-25 | xAI | Pose-locked hero experiment, S08 f84: `grok-image-garment-proxy` ×3 (`pose-locked-hero-v1`, grok-imagine-image-quality, source + anchor + flat product) — all three failed the hero gate | $0.24 (xAI `cost_in_usd_ticks` 800000000 × 3; the proxy books 12 ¢ each) | — | $14.06 |
 | 12 | 09-25 | fal (via Control Center) | Pose-locked hero experiment, S08 f84: `jacket-inpaint-proxy` ×3 (`fal-ai/flux-lora/inpainting` + evf-sam + face guard; runs 1–2 byte-identical at the default seed, run 3 seed 778) — all failed the hero gate | not readable from AVT (fal is billed on Control Center's key) | carried at the proxy's estimate 3 × $0.12 = $0.36 | $14.42 |
 
-**YSL testing budget used: ≈ $14.42 · remaining: ≈ $35.58 of $50.** Rows 2 and 12 are the unverified amounts and are carried at their upper estimates.
+| 13 | 09-25 | xAI | Cross-shot Look consistency: the collar-facing constraint was added to the hook Look as DATA and S06/S09 were re-rolled through `grok-video-edit-proxy` (`v4d-anchor-e1-collar-1/-2-S06`, `-S09`; assets `9a3ab98b`, `dc46b133`, `4b58fb29`, `56768513`); collar-2 rolls selected for both shots | $1.76 (`actualCostUsd`: S06 2 × $0.56, S09 2 × $0.32) | — | $16.18 |
+
+| 14 | 09-25 | OpenAI | Astra project-level review of v13, `sequence` part only (43 frames @ 1 s + 5 refs, previous defect ids + repair notes) — REPAIR_REQUIRED, one new defect (S06 collar interior tan, not navy) | $1.0626 | — | $17.24 |
+
+**YSL testing budget used: ≈ $17.24 · remaining: ≈ $32.76 of $50.** Rows 2 and 12 are the unverified amounts and are carried at their upper estimates.
 
 ## Second constraint: the OpenAI credit balance
 
-Fendi's $30 OpenAI top-up funds every Astra call regardless of which budget it is booked to. Spent: ≈ $24.00 (scope 0) + $1.09 + $0.76 + $0.46 + $0.88 + $0.91 (v10, v11 sequence reviews) = **≈ $28.10 → ≈ $1.90 left** — one more single-part review at most; a top-up is needed before any further Astra pass. A three-level full Astra review has cost ≈ $8; a single-part review of ~30 frames has cost $0.76–1.09. So the project-level review of the assembled section must be designed as **one part** (≈ $1.5) until the OpenAI balance is topped up. This is a resource limit, not a budget breach; it does not stop $0 work.
+Fendi's $30 OpenAI top-up funds every Astra call regardless of which budget it is booked to. Spent: ≈ $24.00 (scope 0) + $1.09 + $0.76 + $0.46 + $0.88 + $0.91 + $1.06 (v10, v11, v13 sequence reviews) = **≈ $29.16 → ≈ $0.84 left** — no further Astra pass is possible without a top-up. A three-level full Astra review has cost ≈ $8; a single-part review of ~30 frames has cost $0.76–1.09. So the project-level review of the assembled section must be designed as **one part** (≈ $1.5) until the OpenAI balance is topped up. This is a resource limit, not a budget breach; it does not stop $0 work.
 
 ## Rules applied
 
