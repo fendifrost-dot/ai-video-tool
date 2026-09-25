@@ -75,7 +75,11 @@ def intruder_map(im, a):
     # ...but only as a CONTINUATION of lit shirt: a ribbed hem band or a seam is textured too, so a
     # shaded pixel counts only within --intruder-grow px of pixels the lit rule accepted
     near_lit = cv2.dilate(lit.astype(np.uint8), np.ones((2 * a.intruder_grow + 1,) * 2, np.uint8)) > 0
-    return lit | (shaded & near_lit)
+    # a BRIGHT, colour-neutral pixel is the intruder whatever its texture: a white rib knit's flat
+    # parts have no horizontal gradient, and no shade of the warm garment reaches this lightness
+    # with this little chroma (S09's white waistband: L 190+, b 132 vs the mastic highlight's 142)
+    bright = (lab[..., 0] > a.intruder_l_bright) & (lab[..., 2] < a.intruder_b_max) & (lab[..., 1] < a.intruder_a_max)
+    return lit | (shaded & near_lit) | bright
 
 
 def analyse_columns(im, cls, mask, region, jacket_ids, r, h, dark_l=70, smooth_max=10.0, extend=110, climb_max=24, win=8, win_ok=5, max_run=150):
@@ -195,6 +199,7 @@ def main():
     ap.add_argument("--zone", default="2.5,11", help="hem region rows as multiples of the stripe height below the stripe row (lo,hi)")
     ap.add_argument("--intruder-l-min", type=float, default=110.0); ap.add_argument("--intruder-b-max", type=float, default=137.0)
     ap.add_argument("--intruder-a-max", type=float, default=134.0); ap.add_argument("--intruder-texture-min", type=float, default=12.0)
+    ap.add_argument("--intruder-l-bright", type=float, default=170.0, help="L above which a colour-neutral pixel is the intruder without the texture test")
     ap.add_argument("--intruder-grow", type=int, default=25, help="px: shaded-shirt pixels count only this close to lit-shirt pixels")
     ap.add_argument("--intruder-texture-hi", type=float, default=40.0, help="horizontal-gradient energy above which a pixel is the intruder even in shadow (colour thresholds relaxed)")
     ap.add_argument("--hole-max", type=float, default=0.03, help="an unchanged hole enclosed by the changed region up to this fraction of the frame counts as garment region (the source's own shirt tail)")
