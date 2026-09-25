@@ -37,11 +37,15 @@ Two figures were also found to be overstated in the results doc and are correcte
 
 | 14 | 09-25 | OpenAI | Astra project-level review of v13, `sequence` part only (43 frames @ 1 s + 5 refs, previous defect ids + repair notes) — REPAIR_REQUIRED, one new defect (S06 collar interior tan, not navy) | $1.0626 | — | $17.24 |
 
-**YSL testing budget used: ≈ $17.24 · remaining: ≈ $32.76 of $50.** Rows 2 and 12 are the unverified amounts and are carried at their upper estimates.
+| 15 | 09-25 | xAI | S06 collar-lining test: hook Look constraints strengthened as data (solid navy inner faces, plain shoulders), one `grok-video-edit-proxy` roll (`v4e-anchor-e1-lining-1-S06`, asset `7b6f7b0b`) — collar inside still tan (3/3 rolls against the anchor's own tan-inside collar), full-length outer sleeve stripes added; killed, S06 keeps collar-2 | $0.56 (`actualCostUsd`) | — | $17.80 |
+
+| 16 | 09-25 | OpenAI | Astra TARGETED review of v15 (`mechanisms` part, 18 frames incl. 6 v13 before-frames, 4 refs): S11 approved roll IMPROVED 0.98, S08 hem v4 IMPROVED 0.9, hook one-garment UNCHANGED (S08 construction, S09 white ribbing, wordmark continuity S11 vs S06/S08) | $0.8439 | — | $18.64 |
+
+**YSL testing budget used: ≈ $18.64 · remaining: ≈ $31.36 of $50.** Rows 2 and 12 are the unverified amounts and are carried at their upper estimates.
 
 ## Second constraint: the OpenAI credit balance
 
-Fendi's $30 OpenAI top-up funds every Astra call regardless of which budget it is booked to. Spent: ≈ $24.00 (scope 0) + $1.09 + $0.76 + $0.46 + $0.88 + $0.91 + $1.06 (v10, v11, v13 sequence reviews) = **≈ $29.16 → ≈ $0.84 left** — no further Astra pass is possible without a top-up. A three-level full Astra review has cost ≈ $8; a single-part review of ~30 frames has cost $0.76–1.09. So the project-level review of the assembled section must be designed as **one part** (≈ $1.5) until the OpenAI balance is topped up. This is a resource limit, not a budget breach; it does not stop $0 work.
+Fendi's $30 OpenAI top-up funds every Astra call regardless of which budget it is booked to. Spent: ≈ $24.00 (scope 0) + $1.09 + $0.76 + $0.46 + $0.88 + $0.91 + $1.06 + $0.84 (v10, v11, v13 sequence reviews; v15 targeted) = **≈ $30.00 → ≈ $0 left** — every further Astra pass needs a top-up. A three-level full Astra review has cost ≈ $8; a single-part review of ~30 frames has cost $0.76–1.09. So the project-level review of the assembled section must be designed as **one part** (≈ $1.5) until the OpenAI balance is topped up. This is a resource limit, not a budget breach; it does not stop $0 work.
 
 ## Rules applied
 
