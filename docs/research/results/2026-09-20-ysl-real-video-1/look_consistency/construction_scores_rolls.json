@@ -1,0 +1,8060 @@
+{
+ "anchor": "heroes/anchor_hook_s11_f0080.jpg",
+ "classes": [
+  {
+   "lab": [
+    177.5,
+    132.2,
+    143.5
+   ],
+   "share": 0.243
+  },
+  {
+   "lab": [
+    203.5,
+    132.0,
+    142.3
+   ],
+   "share": 0.225
+  },
+  {
+   "lab": [
+    19.3,
+    130.2,
+    125.4
+   ],
+   "share": 0.2
+  },
+  {
+   "lab": [
+    99.4,
+    135.0,
+    143.7
+   ],
+   "share": 0.164
+  },
+  {
+   "lab": [
+    132.2,
+    133.8,
+    144.0
+   ],
+   "share": 0.114
+  },
+  {
+   "lab": [
+    56.2,
+    134.3,
+    136.3
+   ],
+   "share": 0.053
+  }
+ ],
+ "stripe_class": 2,
+ "body_class": 0,
+ "anchor_landmark": {
+  "row": 730,
+  "top": 695,
+  "bottom": 746,
+  "height": 52,
+  "class": 2,
+  "peak": 0.5992558598518372
+ },
+ "anchor_zone_hists": {
+  "neck": [
+   0.254,
+   0.445,
+   0.08,
+   0.065,
+   0.119,
+   0.038
+  ],
+  "chest": [
+   0.278,
+   0.064,
+   0.44,
+   0.11,
+   0.062,
+   0.045
+  ],
+  "lower_front": [
+   0.582,
+   0.283,
+   0.001,
+   0.014,
+   0.118,
+   0.001
+  ],
+  "hem": [
+   0.074,
+   0.115,
+   0.369,
+   0.312,
+   0.072,
+   0.058
+  ],
+  "sleeve_left": [
+   0.097,
+   0.253,
+   0.026,
+   0.451,
+   0.076,
+   0.098
+  ],
+  "sleeve_right": [
+   0.324,
+   0.453,
+   0.005,
+   0.053,
+   0.143,
+   0.022
+  ]
+ },
+ "weights": {
+  "neck": 0.2,
+  "chest": 0.25,
+  "lower_front": 0.2,
+  "hem": 0.15,
+  "sleeve_left": 0.1,
+  "sleeve_right": 0.1
+ },
+ "candidates": {
+  "S06_e1": {
+   "file": "s06_e1.mp4",
+   "frames_scored": 52,
+   "frames_unscored": 2,
+   "median": 0.7079562680857854,
+   "p10": 0.6711111692681822,
+   "min": 0.6332452282284291,
+   "zones_median": {
+    "neck": 0.7042332862829083,
+    "chest": 0.8138438366883545,
+    "lower_front": 0.7999084238363467,
+    "hem": 0.4207814843521764,
+    "sleeve_left": 0.6425405793053278,
+    "sleeve_right": 0.7635104917658198
+   },
+   "intrusion_p90": {
+    "neck": 0.09044145404095848,
+    "chest": 0.22056591346560198,
+    "lower_front": 0.17869728661320786,
+    "hem": 0.0,
+    "sleeve_left": 0.032101425966076416,
+    "sleeve_right": 0.11899717290063583
+   },
+   "worst_zone": "hem",
+   "score_std": 0.026742841584155276,
+   "zone_std": {
+    "neck": 0.05978452130685065,
+    "chest": 0.05317789642391623,
+    "lower_front": 0.10549398065947127,
+    "hem": 0.07615235006277499,
+    "sleeve_left": 0.08298243922530428,
+    "sleeve_right": 0.1349122489994904
+   },
+   "zone_std_mean": 0.08541723944630131,
+   "per_frame": [
+    {
+     "frame": 0,
+     "score": 0.6759,
+     "zones": {
+      "neck": 0.7685,
+      "chest": 0.7996,
+      "lower_front": 0.7196,
+      "hem": 0.3428,
+      "sleeve_left": 0.581,
+      "sleeve_right": 0.6889
+     },
+     "intrusion": {
+      "neck": 0.087,
+      "chest": 0.0866,
+      "lower_front": 0.072,
+      "hem": 0.0,
+      "sleeve_left": 0.0103,
+      "sleeve_right": 0.0225
+     }
+    },
+    {
+     "frame": 3,
+     "score": 0.6565,
+     "zones": {
+      "neck": 0.8258,
+      "chest": 0.7469,
+      "lower_front": 0.6259,
+      "hem": 0.373,
+      "sleeve_left": 0.5259,
+      "sleeve_right": 0.7089
+     },
+     "intrusion": {
+      "neck": 0.1005,
+      "chest": 0.1216,
+      "lower_front": 0.0788,
+      "hem": 0.0,
+      "sleeve_left": 0.0036,
+      "sleeve_right": 0.0237
+     }
+    },
+    {
+     "frame": 6,
+     "score": 0.6716,
+     "zones": {
+      "neck": 0.7955,
+      "chest": 0.7912,
+      "lower_front": 0.6483,
+      "hem": 0.4038,
+      "sleeve_left": 0.5076,
+      "sleeve_right": 0.7367
+     },
+     "intrusion": {
+      "neck": 0.0719,
+      "chest": 0.1185,
+      "lower_front": 0.0652,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.1194
+     }
+    },
+    {
+     "frame": 9,
+     "score": 0.7229,
+     "zones": {
+      "neck": 0.6454,
+      "chest": 0.8625,
+      "lower_front": 0.8818,
+      "hem": 0.6585,
+      "sleeve_left": 0.5312,
+      "sleeve_right": 0.4998
+     },
+     "intrusion": {
+      "neck": 0.0561,
+      "chest": 0.1294,
+      "lower_front": 0.0788,
+      "hem": 0.0,
+      "sleeve_left": 0.0018,
+      "sleeve_right": 0.3372
+     }
+    },
+    {
+     "frame": 12,
+     "score": 0.704,
+     "zones": {
+      "neck": 0.6308,
+      "chest": 0.798,
+      "lower_front": 0.9217,
+      "hem": 0.6704,
+      "sleeve_left": 0.6151,
+      "sleeve_right": 0.3194
+     },
+     "intrusion": {
+      "neck": 0.0534,
+      "chest": 0.1327,
+      "lower_front": 0.0762,
+      "hem": 0.0,
+      "sleeve_left": 0.0116,
+      "sleeve_right": 0.4472
+     }
+    },
+    {
+     "frame": 15,
+     "score": 0.6711,
+     "zones": {
+      "neck": 0.5542,
+      "chest": 0.8171,
+      "lower_front": 0.8984,
+      "hem": 0.5226,
+      "sleeve_left": 0.6339,
+      "sleeve_right": 0.3449
+     },
+     "intrusion": {
+      "neck": 0.0528,
+      "chest": 0.1462,
+      "lower_front": 0.1043,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.3744
+     }
+    },
+    {
+     "frame": 18,
+     "score": 0.6672,
+     "zones": {
+      "neck": 0.6152,
+      "chest": 0.822,
+      "lower_front": 0.8694,
+      "hem": 0.4696,
+      "sleeve_left": 0.4604,
+      "sleeve_right": 0.4833
+     },
+     "intrusion": {
+      "neck": 0.0588,
+      "chest": 0.1211,
+      "lower_front": 0.11,
+      "hem": 0.0,
+      "sleeve_left": 0.0002,
+      "sleeve_right": 0.3121
+     }
+    },
+    {
+     "frame": 21,
+     "score": 0.7446,
+     "zones": {
+      "neck": 0.7368,
+      "chest": 0.8019,
+      "lower_front": 0.94,
+      "hem": 0.4658,
+      "sleeve_left": 0.6348,
+      "sleeve_right": 0.7542
+     },
+     "intrusion": {
+      "neck": 0.0457,
+      "chest": 0.1252,
+      "lower_front": 0.073,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.1671
+     }
+    },
+    {
+     "frame": 24,
+     "score": 0.7252,
+     "zones": {
+      "neck": 0.8272,
+      "chest": 0.7055,
+      "lower_front": 0.8955,
+      "hem": 0.4047,
+      "sleeve_left": 0.6732,
+      "sleeve_right": 0.7623
+     },
+     "intrusion": {
+      "neck": 0.0698,
+      "chest": 0.1485,
+      "lower_front": 0.0606,
+      "hem": 0.0,
+      "sleeve_left": 0.0002,
+      "sleeve_right": 0.0016
+     }
+    },
+    {
+     "frame": 33,
+     "score": 0.6809,
+     "zones": {
+      "neck": 0.7015,
+      "chest": 0.8176,
+      "lower_front": 0.6205,
+      "hem": 0.5595,
+      "sleeve_left": 0.6503,
+      "sleeve_right": 0.631
+     },
+     "intrusion": {
+      "neck": 0.132,
+      "chest": 0.0514,
+      "lower_front": 0.281,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0739
+     }
+    },
+    {
+     "frame": 36,
+     "score": 0.7278,
+     "zones": {
+      "neck": 0.7008,
+      "chest": 0.856,
+      "lower_front": 0.7582,
+      "hem": 0.5851,
+      "sleeve_left": 0.5842,
+      "sleeve_right": 0.7577
+     },
+     "intrusion": {
+      "neck": 0.0983,
+      "chest": 0.0736,
+      "lower_front": 0.0818,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0294
+     }
+    },
+    {
+     "frame": 39,
+     "score": 0.7335,
+     "zones": {
+      "neck": 0.7047,
+      "chest": 0.9257,
+      "lower_front": 0.7774,
+      "hem": 0.4725,
+      "sleeve_left": 0.7409,
+      "sleeve_right": 0.6065
+     },
+     "intrusion": {
+      "neck": 0.0902,
+      "chest": 0.0845,
+      "lower_front": 0.1833,
+      "hem": 0.0,
+      "sleeve_left": 0.0048,
+      "sleeve_right": 0.066
+     }
+    },
+    {
+     "frame": 42,
+     "score": 0.7452,
+     "zones": {
+      "neck": 0.6804,
+      "chest": 0.8745,
+      "lower_front": 0.8795,
+      "hem": 0.5559,
+      "sleeve_left": 0.6579,
+      "sleeve_right": 0.6537
+     },
+     "intrusion": {
+      "neck": 0.0758,
+      "chest": 0.1102,
+      "lower_front": 0.1369,
+      "hem": 0.0,
+      "sleeve_left": 0.0053,
+      "sleeve_right": 0.0071
+     }
+    },
+    {
+     "frame": 45,
+     "score": 0.7359,
+     "zones": {
+      "neck": 0.6959,
+      "chest": 0.8069,
+      "lower_front": 0.8888,
+      "hem": 0.4739,
+      "sleeve_left": 0.7668,
+      "sleeve_right": 0.695
+     },
+     "intrusion": {
+      "neck": 0.0779,
+      "chest": 0.1469,
+      "lower_front": 0.1276,
+      "hem": 0.0,
+      "sleeve_left": 0.0008,
+      "sleeve_right": 0.0105
+     }
+    },
+    {
+     "frame": 48,
+     "score": 0.6926,
+     "zones": {
+      "neck": 0.675,
+      "chest": 0.7996,
+      "lower_front": 0.7172,
+      "hem": 0.4194,
+      "sleeve_left": 0.738,
+      "sleeve_right": 0.7752
+     },
+     "intrusion": {
+      "neck": 0.0819,
+      "chest": 0.191,
+      "lower_front": 0.2992,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0307
+     }
+    },
+    {
+     "frame": 51,
+     "score": 0.6858,
+     "zones": {
+      "neck": 0.7092,
+      "chest": 0.7887,
+      "lower_front": 0.6741,
+      "hem": 0.4136,
+      "sleeve_left": 0.6545,
+      "sleeve_right": 0.8448
+     },
+     "intrusion": {
+      "neck": 0.0646,
+      "chest": 0.1926,
+      "lower_front": 0.3423,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0314
+     }
+    },
+    {
+     "frame": 54,
+     "score": 0.736,
+     "zones": {
+      "neck": 0.7865,
+      "chest": 0.8083,
+      "lower_front": 0.7584,
+      "hem": 0.3726,
+      "sleeve_left": 0.7633,
+      "sleeve_right": 0.9274
+     },
+     "intrusion": {
+      "neck": 0.0518,
+      "chest": 0.2231,
+      "lower_front": 0.0955,
+      "hem": 0.0,
+      "sleeve_left": 0.0151,
+      "sleeve_right": 0.0348
+     }
+    },
+    {
+     "frame": 57,
+     "score": 0.7287,
+     "zones": {
+      "neck": 0.764,
+      "chest": 0.7697,
+      "lower_front": 0.8349,
+      "hem": 0.3812,
+      "sleeve_left": 0.7053,
+      "sleeve_right": 0.8879
+     },
+     "intrusion": {
+      "neck": 0.0511,
+      "chest": 0.2297,
+      "lower_front": 0.0869,
+      "hem": 0.0,
+      "sleeve_left": 0.0101,
+      "sleeve_right": 0.0307
+     }
+    },
+    {
+     "frame": 60,
+     "score": 0.7008,
+     "zones": {
+      "neck": 0.7577,
+      "chest": 0.8161,
+      "lower_front": 0.6735,
+      "hem": 0.4227,
+      "sleeve_left": 0.5625,
+      "sleeve_right": 0.9084
+     },
+     "intrusion": {
+      "neck": 0.0474,
+      "chest": 0.1535,
+      "lower_front": 0.109,
+      "hem": 0.0,
+      "sleeve_left": 0.0024,
+      "sleeve_right": 0.0366
+     }
+    },
+    {
+     "frame": 63,
+     "score": 0.7033,
+     "zones": {
+      "neck": 0.7025,
+      "chest": 0.9035,
+      "lower_front": 0.7079,
+      "hem": 0.4108,
+      "sleeve_left": 0.556,
+      "sleeve_right": 0.7812
+     },
+     "intrusion": {
+      "neck": 0.0488,
+      "chest": 0.111,
+      "lower_front": 0.1212,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0646
+     }
+    },
+    {
+     "frame": 66,
+     "score": 0.7068,
+     "zones": {
+      "neck": 0.6916,
+      "chest": 0.9258,
+      "lower_front": 0.7999,
+      "hem": 0.3816,
+      "sleeve_left": 0.4207,
+      "sleeve_right": 0.777
+     },
+     "intrusion": {
+      "neck": 0.0546,
+      "chest": 0.1002,
+      "lower_front": 0.0766,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0444
+     }
+    },
+    {
+     "frame": 69,
+     "score": 0.7046,
+     "zones": {
+      "neck": 0.6749,
+      "chest": 0.8943,
+      "lower_front": 0.7999,
+      "hem": 0.4104,
+      "sleeve_left": 0.4809,
+      "sleeve_right": 0.7643
+     },
+     "intrusion": {
+      "neck": 0.0511,
+      "chest": 0.0977,
+      "lower_front": 0.1127,
+      "hem": 0.0,
+      "sleeve_left": 0.0074,
+      "sleeve_right": 0.0348
+     }
+    },
+    {
+     "frame": 72,
+     "score": 0.6953,
+     "zones": {
+      "neck": 0.6644,
+      "chest": 0.8471,
+      "lower_front": 0.7634,
+      "hem": 0.4231,
+      "sleeve_left": 0.5781,
+      "sleeve_right": 0.7665
+     },
+     "intrusion": {
+      "neck": 0.055,
+      "chest": 0.1007,
+      "lower_front": 0.1206,
+      "hem": 0.0,
+      "sleeve_left": 0.0064,
+      "sleeve_right": 0.0621
+     }
+    },
+    {
+     "frame": 75,
+     "score": 0.7092,
+     "zones": {
+      "neck": 0.7064,
+      "chest": 0.8098,
+      "lower_front": 0.8461,
+      "hem": 0.4193,
+      "sleeve_left": 0.6125,
+      "sleeve_right": 0.7207
+     },
+     "intrusion": {
+      "neck": 0.0553,
+      "chest": 0.1241,
+      "lower_front": 0.1047,
+      "hem": 0.0,
+      "sleeve_left": 0.0127,
+      "sleeve_right": 0.0836
+     }
+    },
+    {
+     "frame": 78,
+     "score": 0.7212,
+     "zones": {
+      "neck": 0.7271,
+      "chest": 0.8297,
+      "lower_front": 0.8918,
+      "hem": 0.4145,
+      "sleeve_left": 0.5682,
+      "sleeve_right": 0.7104
+     },
+     "intrusion": {
+      "neck": 0.0637,
+      "chest": 0.1521,
+      "lower_front": 0.071,
+      "hem": 0.0,
+      "sleeve_left": 0.0279,
+      "sleeve_right": 0.1155
+     }
+    },
+    {
+     "frame": 81,
+     "score": 0.7208,
+     "zones": {
+      "neck": 0.7544,
+      "chest": 0.7779,
+      "lower_front": 0.8688,
+      "hem": 0.4225,
+      "sleeve_left": 0.5931,
+      "sleeve_right": 0.7898
+     },
+     "intrusion": {
+      "neck": 0.0587,
+      "chest": 0.1638,
+      "lower_front": 0.0682,
+      "hem": 0.0,
+      "sleeve_left": 0.0187,
+      "sleeve_right": 0.0652
+     }
+    },
+    {
+     "frame": 84,
+     "score": 0.7143,
+     "zones": {
+      "neck": 0.7076,
+      "chest": 0.8116,
+      "lower_front": 0.694,
+      "hem": 0.4465,
+      "sleeve_left": 0.7227,
+      "sleeve_right": 0.9181
+     },
+     "intrusion": {
+      "neck": 0.056,
+      "chest": 0.178,
+      "lower_front": 0.1014,
+      "hem": 0.0,
+      "sleeve_left": 0.0213,
+      "sleeve_right": 0.0379
+     }
+    },
+    {
+     "frame": 87,
+     "score": 0.7061,
+     "zones": {
+      "neck": 0.6472,
+      "chest": 0.8223,
+      "lower_front": 0.7128,
+      "hem": 0.3818,
+      "sleeve_left": 0.833,
+      "sleeve_right": 0.8798
+     },
+     "intrusion": {
+      "neck": 0.0905,
+      "chest": 0.1563,
+      "lower_front": 0.1288,
+      "hem": 0.0,
+      "sleeve_left": 0.0027,
+      "sleeve_right": 0.0226
+     }
+    },
+    {
+     "frame": 90,
+     "score": 0.735,
+     "zones": {
+      "neck": 0.663,
+      "chest": 0.8298,
+      "lower_front": 0.7808,
+      "hem": 0.5639,
+      "sleeve_left": 0.6696,
+      "sleeve_right": 0.8727
+     },
+     "intrusion": {
+      "neck": 0.113,
+      "chest": 0.1588,
+      "lower_front": 0.1931,
+      "hem": 0.0,
+      "sleeve_left": 0.0028,
+      "sleeve_right": 0.0268
+     }
+    },
+    {
+     "frame": 93,
+     "score": 0.6332,
+     "zones": {
+      "neck": 0.6465,
+      "chest": 0.8167,
+      "lower_front": 0.3476,
+      "hem": 0.6238,
+      "sleeve_left": 0.6861,
+      "sleeve_right": 0.6806
+     },
+     "intrusion": {
+      "neck": 0.1008,
+      "chest": 0.1949,
+      "lower_front": 0.5958,
+      "hem": 0.0,
+      "sleeve_left": 0.0079,
+      "sleeve_right": 0.0309
+     }
+    },
+    {
+     "frame": 96,
+     "score": 0.7,
+     "zones": {
+      "neck": 0.6727,
+      "chest": 0.7071,
+      "lower_front": 0.7969,
+      "hem": 0.5295,
+      "sleeve_left": 0.6709,
+      "sleeve_right": 0.8278
+     },
+     "intrusion": {
+      "neck": 0.0689,
+      "chest": 0.1662,
+      "lower_front": 0.1349,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0203
+     }
+    },
+    {
+     "frame": 99,
+     "score": 0.6994,
+     "zones": {
+      "neck": 0.6516,
+      "chest": 0.8789,
+      "lower_front": 0.7544,
+      "hem": 0.4521,
+      "sleeve_left": 0.7037,
+      "sleeve_right": 0.6028
+     },
+     "intrusion": {
+      "neck": 0.0539,
+      "chest": 0.0911,
+      "lower_front": 0.0806,
+      "hem": 0.0,
+      "sleeve_left": 0.0487,
+      "sleeve_right": 0.0146
+     }
+    },
+    {
+     "frame": 102,
+     "score": 0.67,
+     "zones": {
+      "neck": 0.6643,
+      "chest": 0.8381,
+      "lower_front": 0.7057,
+      "hem": 0.4789,
+      "sleeve_left": 0.5582,
+      "sleeve_right": 0.5884
+     },
+     "intrusion": {
+      "neck": 0.0746,
+      "chest": 0.1325,
+      "lower_front": 0.0812,
+      "hem": 0.0,
+      "sleeve_left": 0.0083,
+      "sleeve_right": 0.0066
+     }
+    },
+    {
+     "frame": 105,
+     "score": 0.6812,
+     "zones": {
+      "neck": 0.7137,
+      "chest": 0.8603,
+      "lower_front": 0.7192,
+      "hem": 0.4178,
+      "sleeve_left": 0.573,
+      "sleeve_right": 0.5963
+     },
+     "intrusion": {
+      "neck": 0.0779,
+      "chest": 0.0884,
+      "lower_front": 0.0664,
+      "hem": 0.0,
+      "sleeve_left": 0.0001,
+      "sleeve_right": 0.0096
+     }
+    },
+    {
+     "frame": 108,
+     "score": 0.6972,
+     "zones": {
+      "neck": 0.8034,
+      "chest": 0.892,
+      "lower_front": 0.6432,
+      "hem": 0.4394,
+      "sleeve_left": 0.4911,
+      "sleeve_right": 0.6987
+     },
+     "intrusion": {
+      "neck": 0.07,
+      "chest": 0.078,
+      "lower_front": 0.0649,
+      "hem": 0.0,
+      "sleeve_left": 0.0013,
+      "sleeve_right": 0.0244
+     }
+    },
+    {
+     "frame": 111,
+     "score": 0.7368,
+     "zones": {
+      "neck": 0.7552,
+      "chest": 0.8037,
+      "lower_front": 0.8705,
+      "hem": 0.3812,
+      "sleeve_left": 0.6648,
+      "sleeve_right": 0.8704
+     },
+     "intrusion": {
+      "neck": 0.0533,
+      "chest": 0.1602,
+      "lower_front": 0.0856,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0303
+     }
+    },
+    {
+     "frame": 114,
+     "score": 0.7437,
+     "zones": {
+      "neck": 0.7037,
+      "chest": 0.7973,
+      "lower_front": 0.9347,
+      "hem": 0.38,
+      "sleeve_left": 0.6778,
+      "sleeve_right": 0.9194
+     },
+     "intrusion": {
+      "neck": 0.0595,
+      "chest": 0.1693,
+      "lower_front": 0.0803,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0373
+     }
+    },
+    {
+     "frame": 117,
+     "score": 0.7184,
+     "zones": {
+      "neck": 0.7128,
+      "chest": 0.7712,
+      "lower_front": 0.9294,
+      "hem": 0.3605,
+      "sleeve_left": 0.6244,
+      "sleeve_right": 0.8059
+     },
+     "intrusion": {
+      "neck": 0.0538,
+      "chest": 0.1632,
+      "lower_front": 0.087,
+      "hem": 0.0,
+      "sleeve_left": 0.0008,
+      "sleeve_right": 0.0222
+     }
+    },
+    {
+     "frame": 120,
+     "score": 0.7226,
+     "zones": {
+      "neck": 0.6932,
+      "chest": 0.8555,
+      "lower_front": 0.9203,
+      "hem": 0.3609,
+      "sleeve_left": 0.6799,
+      "sleeve_right": 0.6393
+     },
+     "intrusion": {
+      "neck": 0.0532,
+      "chest": 0.1018,
+      "lower_front": 0.0704,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0611
+     }
+    },
+    {
+     "frame": 123,
+     "score": 0.7475,
+     "zones": {
+      "neck": 0.8199,
+      "chest": 0.8751,
+      "lower_front": 0.8492,
+      "hem": 0.4802,
+      "sleeve_left": 0.6661,
+      "sleeve_right": 0.5623
+     },
+     "intrusion": {
+      "neck": 0.0601,
+      "chest": 0.0794,
+      "lower_front": 0.0786,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0482
+     }
+    },
+    {
+     "frame": 126,
+     "score": 0.7437,
+     "zones": {
+      "neck": 0.7648,
+      "chest": 0.8559,
+      "lower_front": 0.8106,
+      "hem": 0.4956,
+      "sleeve_left": 0.6346,
+      "sleeve_right": 0.768
+     },
+     "intrusion": {
+      "neck": 0.0638,
+      "chest": 0.0827,
+      "lower_front": 0.0756,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0366
+     }
+    },
+    {
+     "frame": 129,
+     "score": 0.6996,
+     "zones": {
+      "neck": 0.6144,
+      "chest": 0.809,
+      "lower_front": 0.7805,
+      "hem": 0.4742,
+      "sleeve_left": 0.598,
+      "sleeve_right": 0.8738
+     },
+     "intrusion": {
+      "neck": 0.047,
+      "chest": 0.0855,
+      "lower_front": 0.0617,
+      "hem": 0.0,
+      "sleeve_left": 0.0022,
+      "sleeve_right": 0.0291
+     }
+    },
+    {
+     "frame": 132,
+     "score": 0.706,
+     "zones": {
+      "neck": 0.6619,
+      "chest": 0.783,
+      "lower_front": 0.85,
+      "hem": 0.4107,
+      "sleeve_left": 0.6579,
+      "sleeve_right": 0.805
+     },
+     "intrusion": {
+      "neck": 0.0449,
+      "chest": 0.1049,
+      "lower_front": 0.0699,
+      "hem": 0.0,
+      "sleeve_left": 0.0163,
+      "sleeve_right": 0.066
+     }
+    },
+    {
+     "frame": 135,
+     "score": 0.7328,
+     "zones": {
+      "neck": 0.6366,
+      "chest": 0.8446,
+      "lower_front": 0.8495,
+      "hem": 0.4651,
+      "sleeve_left": 0.7014,
+      "sleeve_right": 0.8449
+     },
+     "intrusion": {
+      "neck": 0.0413,
+      "chest": 0.1456,
+      "lower_front": 0.0675,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0579
+     }
+    },
+    {
+     "frame": 138,
+     "score": 0.7597,
+     "zones": {
+      "neck": 0.7528,
+      "chest": 0.8295,
+      "lower_front": 0.8825,
+      "hem": 0.4044,
+      "sleeve_left": 0.6959,
+      "sleeve_right": 0.95
+     },
+     "intrusion": {
+      "neck": 0.0426,
+      "chest": 0.1474,
+      "lower_front": 0.0818,
+      "hem": 0.0,
+      "sleeve_left": 0.027,
+      "sleeve_right": 0.0142
+     }
+    },
+    {
+     "frame": 141,
+     "score": 0.7118,
+     "zones": {
+      "neck": 0.7693,
+      "chest": 0.7935,
+      "lower_front": 0.7972,
+      "hem": 0.3931,
+      "sleeve_left": 0.6334,
+      "sleeve_right": 0.778
+     },
+     "intrusion": {
+      "neck": 0.0474,
+      "chest": 0.171,
+      "lower_front": 0.0705,
+      "hem": 0.0,
+      "sleeve_left": 0.0388,
+      "sleeve_right": 0.0198
+     }
+    },
+    {
+     "frame": 144,
+     "score": 0.7108,
+     "zones": {
+      "neck": 0.6911,
+      "chest": 0.8278,
+      "lower_front": 0.8216,
+      "hem": 0.3989,
+      "sleeve_left": 0.679,
+      "sleeve_right": 0.7361
+     },
+     "intrusion": {
+      "neck": 0.0559,
+      "chest": 0.1923,
+      "lower_front": 0.0618,
+      "hem": 0.0,
+      "sleeve_left": 0.0293,
+      "sleeve_right": 0.0348
+     }
+    },
+    {
+     "frame": 147,
+     "score": 0.7053,
+     "zones": {
+      "neck": 0.7577,
+      "chest": 0.7912,
+      "lower_front": 0.8249,
+      "hem": 0.3587,
+      "sleeve_left": 0.6811,
+      "sleeve_right": 0.691
+     },
+     "intrusion": {
+      "neck": 0.0639,
+      "chest": 0.1976,
+      "lower_front": 0.0661,
+      "hem": 0.0,
+      "sleeve_left": 0.0414,
+      "sleeve_right": 0.0446
+     }
+    },
+    {
+     "frame": 150,
+     "score": 0.6837,
+     "zones": {
+      "neck": 0.6911,
+      "chest": 0.6843,
+      "lower_front": 0.863,
+      "hem": 0.4108,
+      "sleeve_left": 0.5876,
+      "sleeve_right": 0.8136
+     },
+     "intrusion": {
+      "neck": 0.0563,
+      "chest": 0.248,
+      "lower_front": 0.0867,
+      "hem": 0.0,
+      "sleeve_left": 0.0413,
+      "sleeve_right": 0.036
+     }
+    },
+    {
+     "frame": 153,
+     "score": 0.6654,
+     "zones": {
+      "neck": 0.7195,
+      "chest": 0.6903,
+      "lower_front": 0.7821,
+      "hem": 0.4003,
+      "sleeve_left": 0.5453,
+      "sleeve_right": 0.7794
+     },
+     "intrusion": {
+      "neck": 0.0518,
+      "chest": 0.2395,
+      "lower_front": 0.0967,
+      "hem": 0.0,
+      "sleeve_left": 0.0324,
+      "sleeve_right": 0.0085
+     }
+    },
+    {
+     "frame": 156,
+     "score": 0.7229,
+     "zones": {
+      "neck": 0.8088,
+      "chest": 0.7471,
+      "lower_front": 0.7636,
+      "hem": 0.4222,
+      "sleeve_left": 0.7352,
+      "sleeve_right": 0.8481
+     },
+     "intrusion": {
+      "neck": 0.0356,
+      "chest": 0.2554,
+      "lower_front": 0.0634,
+      "hem": 0.0,
+      "sleeve_left": 0.0187,
+      "sleeve_right": 0.0054
+     }
+    },
+    {
+     "frame": 159,
+     "score": 0.736,
+     "zones": {
+      "neck": 0.7869,
+      "chest": 0.7613,
+      "lower_front": 0.8247,
+      "hem": 0.5295,
+      "sleeve_left": 0.6765,
+      "sleeve_right": 0.7628
+     },
+     "intrusion": {
+      "neck": 0.0522,
+      "chest": 0.229,
+      "lower_front": 0.0602,
+      "hem": 0.0,
+      "sleeve_left": 0.0455,
+      "sleeve_right": 0.0249
+     }
+    }
+   ],
+   "passes": false,
+   "failing_zones": [
+    "neck"
+   ],
+   "intruding_zones": [
+    "sleeve_right"
+   ]
+  },
+  "S06_c1": {
+   "file": "s06_e1e1.mp4",
+   "frames_scored": 54,
+   "frames_unscored": 0,
+   "median": 0.7784843892851623,
+   "p10": 0.6940501199400799,
+   "min": 0.6111077703336445,
+   "zones_median": {
+    "neck": 0.8490498325951836,
+    "chest": 0.846187308156078,
+    "lower_front": 0.8443971499312057,
+    "hem": 0.608555525551279,
+    "sleeve_left": 0.6516974443231958,
+    "sleeve_right": 0.7336908618814526
+   },
+   "intrusion_p90": {
+    "neck": 0.07731071051072128,
+    "chest": 0.08151575339028941,
+    "lower_front": 0.191924587851469,
+    "hem": 0.0,
+    "sleeve_left": 0.2882339022483384,
+    "sleeve_right": 0.323829607525332
+   },
+   "worst_zone": "hem",
+   "score_std": 0.046742425640430976,
+   "zone_std": {
+    "neck": 0.06477238838876792,
+    "chest": 0.045423798343012176,
+    "lower_front": 0.11169362606732088,
+    "hem": 0.10912233073999741,
+    "sleeve_left": 0.09326209258002953,
+    "sleeve_right": 0.12168751430902759
+   },
+   "zone_std_mean": 0.09099362507135926,
+   "per_frame": [
+    {
+     "frame": 0,
+     "score": 0.7579,
+     "zones": {
+      "neck": 0.8879,
+      "chest": 0.7179,
+      "lower_front": 0.8873,
+      "hem": 0.5074,
+      "sleeve_left": 0.7011,
+      "sleeve_right": 0.7716
+     },
+     "intrusion": {
+      "neck": 0.0562,
+      "chest": 0.0619,
+      "lower_front": 0.0649,
+      "hem": 0.0,
+      "sleeve_left": 0.1046,
+      "sleeve_right": 0.2487
+     }
+    },
+    {
+     "frame": 3,
+     "score": 0.764,
+     "zones": {
+      "neck": 0.8192,
+      "chest": 0.7442,
+      "lower_front": 0.8874,
+      "hem": 0.6569,
+      "sleeve_left": 0.594,
+      "sleeve_right": 0.7867
+     },
+     "intrusion": {
+      "neck": 0.0905,
+      "chest": 0.0388,
+      "lower_front": 0.0712,
+      "hem": 0.0,
+      "sleeve_left": 0.0735,
+      "sleeve_right": 0.2343
+     }
+    },
+    {
+     "frame": 6,
+     "score": 0.7836,
+     "zones": {
+      "neck": 0.8232,
+      "chest": 0.8573,
+      "lower_front": 0.873,
+      "hem": 0.552,
+      "sleeve_left": 0.6347,
+      "sleeve_right": 0.8376
+     },
+     "intrusion": {
+      "neck": 0.0842,
+      "chest": 0.0607,
+      "lower_front": 0.1058,
+      "hem": 0.0,
+      "sleeve_left": 0.0994,
+      "sleeve_right": 0.1619
+     }
+    },
+    {
+     "frame": 9,
+     "score": 0.7121,
+     "zones": {
+      "neck": 0.7777,
+      "chest": 0.7973,
+      "lower_front": 0.851,
+      "hem": 0.4965,
+      "sleeve_left": 0.5971,
+      "sleeve_right": 0.5287
+     },
+     "intrusion": {
+      "neck": 0.0774,
+      "chest": 0.0578,
+      "lower_front": 0.1237,
+      "hem": 0.0,
+      "sleeve_left": 0.1543,
+      "sleeve_right": 0.2412
+     }
+    },
+    {
+     "frame": 12,
+     "score": 0.6741,
+     "zones": {
+      "neck": 0.7248,
+      "chest": 0.8321,
+      "lower_front": 0.817,
+      "hem": 0.452,
+      "sleeve_left": 0.6362,
+      "sleeve_right": 0.2629
+     },
+     "intrusion": {
+      "neck": 0.0678,
+      "chest": 0.0638,
+      "lower_front": 0.1149,
+      "hem": 0.0,
+      "sleeve_left": 0.2874,
+      "sleeve_right": 0.5212
+     }
+    },
+    {
+     "frame": 15,
+     "score": 0.7251,
+     "zones": {
+      "neck": 0.7902,
+      "chest": 0.8437,
+      "lower_front": 0.8247,
+      "hem": 0.5816,
+      "sleeve_left": 0.7081,
+      "sleeve_right": 0.3313
+     },
+     "intrusion": {
+      "neck": 0.0666,
+      "chest": 0.0755,
+      "lower_front": 0.0893,
+      "hem": 0.0,
+      "sleeve_left": 0.1266,
+      "sleeve_right": 0.3901
+     }
+    },
+    {
+     "frame": 18,
+     "score": 0.7195,
+     "zones": {
+      "neck": 0.7942,
+      "chest": 0.8488,
+      "lower_front": 0.8539,
+      "hem": 0.5357,
+      "sleeve_left": 0.489,
+      "sleeve_right": 0.4839
+     },
+     "intrusion": {
+      "neck": 0.0677,
+      "chest": 0.0631,
+      "lower_front": 0.104,
+      "hem": 0.0,
+      "sleeve_left": 0.0425,
+      "sleeve_right": 0.3312
+     }
+    },
+    {
+     "frame": 21,
+     "score": 0.8053,
+     "zones": {
+      "neck": 0.854,
+      "chest": 0.8436,
+      "lower_front": 0.9022,
+      "hem": 0.6825,
+      "sleeve_left": 0.6282,
+      "sleeve_right": 0.7796
+     },
+     "intrusion": {
+      "neck": 0.0546,
+      "chest": 0.0498,
+      "lower_front": 0.0566,
+      "hem": 0.0,
+      "sleeve_left": 0.018,
+      "sleeve_right": 0.1114
+     }
+    },
+    {
+     "frame": 24,
+     "score": 0.8244,
+     "zones": {
+      "neck": 0.8816,
+      "chest": 0.785,
+      "lower_front": 0.9206,
+      "hem": 0.7813,
+      "sleeve_left": 0.7434,
+      "sleeve_right": 0.7623
+     },
+     "intrusion": {
+      "neck": 0.0425,
+      "chest": 0.0517,
+      "lower_front": 0.0599,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.1453
+     }
+    },
+    {
+     "frame": 27,
+     "score": 0.6111,
+     "zones": {
+      "neck": 0.5997,
+      "chest": 0.7565,
+      "lower_front": 0.6298,
+      "hem": 0.4095,
+      "sleeve_left": 0.5677,
+      "sleeve_right": 0.5788
+     },
+     "intrusion": {
+      "neck": 0.1214,
+      "chest": 0.0713,
+      "lower_front": 0.3652,
+      "hem": 0.0,
+      "sleeve_left": 0.3539,
+      "sleeve_right": 0.448
+     }
+    },
+    {
+     "frame": 30,
+     "score": 0.6492,
+     "zones": {
+      "neck": 0.8489,
+      "chest": 0.7269,
+      "lower_front": 0.4735,
+      "hem": 0.742,
+      "sleeve_left": 0.5236,
+      "sleeve_right": 0.3937
+     },
+     "intrusion": {
+      "neck": 0.0612,
+      "chest": 0.0478,
+      "lower_front": 0.4542,
+      "hem": 0.0,
+      "sleeve_left": 0.2883,
+      "sleeve_right": 0.433
+     }
+    },
+    {
+     "frame": 33,
+     "score": 0.6867,
+     "zones": {
+      "neck": 0.8626,
+      "chest": 0.7349,
+      "lower_front": 0.4698,
+      "hem": 0.7824,
+      "sleeve_left": 0.6608,
+      "sleeve_right": 0.5306
+     },
+     "intrusion": {
+      "neck": 0.0771,
+      "chest": 0.0488,
+      "lower_front": 0.4127,
+      "hem": 0.0,
+      "sleeve_left": 0.3594,
+      "sleeve_right": 0.2579
+     }
+    },
+    {
+     "frame": 36,
+     "score": 0.7676,
+     "zones": {
+      "neck": 0.8654,
+      "chest": 0.8356,
+      "lower_front": 0.6262,
+      "hem": 0.8658,
+      "sleeve_left": 0.5381,
+      "sleeve_right": 0.7669
+     },
+     "intrusion": {
+      "neck": 0.0438,
+      "chest": 0.0614,
+      "lower_front": 0.0566,
+      "hem": 0.0,
+      "sleeve_left": 0.3775,
+      "sleeve_right": 0.2599
+     }
+    },
+    {
+     "frame": 39,
+     "score": 0.786,
+     "zones": {
+      "neck": 0.8103,
+      "chest": 0.8543,
+      "lower_front": 0.8742,
+      "hem": 0.5756,
+      "sleeve_left": 0.7571,
+      "sleeve_right": 0.735
+     },
+     "intrusion": {
+      "neck": 0.0439,
+      "chest": 0.0619,
+      "lower_front": 0.0604,
+      "hem": 0.0,
+      "sleeve_left": 0.1319,
+      "sleeve_right": 0.0994
+     }
+    },
+    {
+     "frame": 42,
+     "score": 0.7797,
+     "zones": {
+      "neck": 0.8403,
+      "chest": 0.7889,
+      "lower_front": 0.9282,
+      "hem": 0.6084,
+      "sleeve_left": 0.6909,
+      "sleeve_right": 0.6848
+     },
+     "intrusion": {
+      "neck": 0.0326,
+      "chest": 0.0817,
+      "lower_front": 0.053,
+      "hem": 0.0,
+      "sleeve_left": 0.0937,
+      "sleeve_right": 0.1216
+     }
+    },
+    {
+     "frame": 45,
+     "score": 0.7578,
+     "zones": {
+      "neck": 0.849,
+      "chest": 0.7759,
+      "lower_front": 0.857,
+      "hem": 0.6524,
+      "sleeve_left": 0.5876,
+      "sleeve_right": 0.6597
+     },
+     "intrusion": {
+      "neck": 0.0361,
+      "chest": 0.0735,
+      "lower_front": 0.051,
+      "hem": 0.0,
+      "sleeve_left": 0.0216,
+      "sleeve_right": 0.1004
+     }
+    },
+    {
+     "frame": 48,
+     "score": 0.7866,
+     "zones": {
+      "neck": 0.8937,
+      "chest": 0.818,
+      "lower_front": 0.836,
+      "hem": 0.6915,
+      "sleeve_left": 0.6449,
+      "sleeve_right": 0.6797
+     },
+     "intrusion": {
+      "neck": 0.0306,
+      "chest": 0.0854,
+      "lower_front": 0.1804,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.1043
+     }
+    },
+    {
+     "frame": 51,
+     "score": 0.8004,
+     "zones": {
+      "neck": 0.8721,
+      "chest": 0.8544,
+      "lower_front": 0.8415,
+      "hem": 0.6792,
+      "sleeve_left": 0.713,
+      "sleeve_right": 0.7094
+     },
+     "intrusion": {
+      "neck": 0.0328,
+      "chest": 0.0516,
+      "lower_front": 0.1749,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.1343
+     }
+    },
+    {
+     "frame": 54,
+     "score": 0.791,
+     "zones": {
+      "neck": 0.8608,
+      "chest": 0.832,
+      "lower_front": 0.8712,
+      "hem": 0.5512,
+      "sleeve_left": 0.7762,
+      "sleeve_right": 0.7634
+     },
+     "intrusion": {
+      "neck": 0.0354,
+      "chest": 0.0845,
+      "lower_front": 0.0468,
+      "hem": 0.0,
+      "sleeve_left": 0.0154,
+      "sleeve_right": 0.2634
+     }
+    },
+    {
+     "frame": 57,
+     "score": 0.7495,
+     "zones": {
+      "neck": 0.8286,
+      "chest": 0.8274,
+      "lower_front": 0.8176,
+      "hem": 0.4205,
+      "sleeve_left": 0.7535,
+      "sleeve_right": 0.75
+     },
+     "intrusion": {
+      "neck": 0.046,
+      "chest": 0.0577,
+      "lower_front": 0.0537,
+      "hem": 0.0,
+      "sleeve_left": 0.0466,
+      "sleeve_right": 0.2768
+     }
+    },
+    {
+     "frame": 60,
+     "score": 0.7685,
+     "zones": {
+      "neck": 0.8526,
+      "chest": 0.8674,
+      "lower_front": 0.7836,
+      "hem": 0.5171,
+      "sleeve_left": 0.6921,
+      "sleeve_right": 0.7767
+     },
+     "intrusion": {
+      "neck": 0.04,
+      "chest": 0.0539,
+      "lower_front": 0.0547,
+      "hem": 0.0,
+      "sleeve_left": 0.0425,
+      "sleeve_right": 0.2501
+     }
+    },
+    {
+     "frame": 63,
+     "score": 0.7816,
+     "zones": {
+      "neck": 0.87,
+      "chest": 0.8547,
+      "lower_front": 0.7768,
+      "hem": 0.7428,
+      "sleeve_left": 0.4837,
+      "sleeve_right": 0.7872
+     },
+     "intrusion": {
+      "neck": 0.0412,
+      "chest": 0.0462,
+      "lower_front": 0.0559,
+      "hem": 0.0,
+      "sleeve_left": 0.1691,
+      "sleeve_right": 0.2166
+     }
+    },
+    {
+     "frame": 66,
+     "score": 0.7766,
+     "zones": {
+      "neck": 0.8986,
+      "chest": 0.8271,
+      "lower_front": 0.7885,
+      "hem": 0.6799,
+      "sleeve_left": 0.5395,
+      "sleeve_right": 0.765
+     },
+     "intrusion": {
+      "neck": 0.0533,
+      "chest": 0.0374,
+      "lower_front": 0.0605,
+      "hem": 0.0,
+      "sleeve_left": 0.2301,
+      "sleeve_right": 0.1915
+     }
+    },
+    {
+     "frame": 69,
+     "score": 0.7786,
+     "zones": {
+      "neck": 0.9161,
+      "chest": 0.8655,
+      "lower_front": 0.7822,
+      "hem": 0.5492,
+      "sleeve_left": 0.635,
+      "sleeve_right": 0.7664
+     },
+     "intrusion": {
+      "neck": 0.052,
+      "chest": 0.0559,
+      "lower_front": 0.1019,
+      "hem": 0.0,
+      "sleeve_left": 0.0512,
+      "sleeve_right": 0.1552
+     }
+    },
+    {
+     "frame": 72,
+     "score": 0.8053,
+     "zones": {
+      "neck": 0.8943,
+      "chest": 0.9085,
+      "lower_front": 0.8457,
+      "hem": 0.6472,
+      "sleeve_left": 0.5739,
+      "sleeve_right": 0.7575
+     },
+     "intrusion": {
+      "neck": 0.0603,
+      "chest": 0.0698,
+      "lower_front": 0.0613,
+      "hem": 0.0,
+      "sleeve_left": 0.0119,
+      "sleeve_right": 0.0995
+     }
+    },
+    {
+     "frame": 75,
+     "score": 0.7981,
+     "zones": {
+      "neck": 0.8412,
+      "chest": 0.8818,
+      "lower_front": 0.8347,
+      "hem": 0.675,
+      "sleeve_left": 0.6794,
+      "sleeve_right": 0.7324
+     },
+     "intrusion": {
+      "neck": 0.0505,
+      "chest": 0.0661,
+      "lower_front": 0.0554,
+      "hem": 0.0,
+      "sleeve_left": 0.0011,
+      "sleeve_right": 0.0448
+     }
+    },
+    {
+     "frame": 78,
+     "score": 0.7719,
+     "zones": {
+      "neck": 0.8482,
+      "chest": 0.8583,
+      "lower_front": 0.8236,
+      "hem": 0.6276,
+      "sleeve_left": 0.6568,
+      "sleeve_right": 0.6314
+     },
+     "intrusion": {
+      "neck": 0.0486,
+      "chest": 0.0707,
+      "lower_front": 0.0563,
+      "hem": 0.0,
+      "sleeve_left": 0.0004,
+      "sleeve_right": 0.0442
+     }
+    },
+    {
+     "frame": 81,
+     "score": 0.7394,
+     "zones": {
+      "neck": 0.778,
+      "chest": 0.8057,
+      "lower_front": 0.7891,
+      "hem": 0.5718,
+      "sleeve_left": 0.6333,
+      "sleeve_right": 0.7549
+     },
+     "intrusion": {
+      "neck": 0.0488,
+      "chest": 0.0762,
+      "lower_front": 0.0608,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0617
+     }
+    },
+    {
+     "frame": 84,
+     "score": 0.8132,
+     "zones": {
+      "neck": 0.8972,
+      "chest": 0.8719,
+      "lower_front": 0.8765,
+      "hem": 0.5574,
+      "sleeve_left": 0.677,
+      "sleeve_right": 0.8912
+     },
+     "intrusion": {
+      "neck": 0.0474,
+      "chest": 0.0697,
+      "lower_front": 0.0509,
+      "hem": 0.0,
+      "sleeve_left": 0.0147,
+      "sleeve_right": 0.1282
+     }
+    },
+    {
+     "frame": 87,
+     "score": 0.7582,
+     "zones": {
+      "neck": 0.8586,
+      "chest": 0.844,
+      "lower_front": 0.8693,
+      "hem": 0.4099,
+      "sleeve_left": 0.6154,
+      "sleeve_right": 0.7857
+     },
+     "intrusion": {
+      "neck": 0.0695,
+      "chest": 0.0789,
+      "lower_front": 0.0577,
+      "hem": 0.0,
+      "sleeve_left": 0.1285,
+      "sleeve_right": 0.2411
+     }
+    },
+    {
+     "frame": 90,
+     "score": 0.7673,
+     "zones": {
+      "neck": 0.8816,
+      "chest": 0.8045,
+      "lower_front": 0.8219,
+      "hem": 0.7378,
+      "sleeve_left": 0.4726,
+      "sleeve_right": 0.6751
+     },
+     "intrusion": {
+      "neck": 0.0568,
+      "chest": 0.081,
+      "lower_front": 0.0655,
+      "hem": 0.0,
+      "sleeve_left": 0.3159,
+      "sleeve_right": 0.3066
+     }
+    },
+    {
+     "frame": 93,
+     "score": 0.6637,
+     "zones": {
+      "neck": 0.7925,
+      "chest": 0.8507,
+      "lower_front": 0.4171,
+      "hem": 0.6611,
+      "sleeve_left": 0.4751,
+      "sleeve_right": 0.6246
+     },
+     "intrusion": {
+      "neck": 0.1209,
+      "chest": 0.1412,
+      "lower_front": 0.4695,
+      "hem": 0.0,
+      "sleeve_left": 0.305,
+      "sleeve_right": 0.4022
+     }
+    },
+    {
+     "frame": 96,
+     "score": 0.7112,
+     "zones": {
+      "neck": 0.774,
+      "chest": 0.7338,
+      "lower_front": 0.8402,
+      "hem": 0.6714,
+      "sleeve_left": 0.3989,
+      "sleeve_right": 0.6429
+     },
+     "intrusion": {
+      "neck": 0.0784,
+      "chest": 0.2229,
+      "lower_front": 0.1249,
+      "hem": 0.0,
+      "sleeve_left": 0.2477,
+      "sleeve_right": 0.3043
+     }
+    },
+    {
+     "frame": 99,
+     "score": 0.7955,
+     "zones": {
+      "neck": 0.8334,
+      "chest": 0.8126,
+      "lower_front": 0.8878,
+      "hem": 0.749,
+      "sleeve_left": 0.6359,
+      "sleeve_right": 0.7217
+     },
+     "intrusion": {
+      "neck": 0.0625,
+      "chest": 0.0945,
+      "lower_front": 0.1042,
+      "hem": 0.0,
+      "sleeve_left": 0.1915,
+      "sleeve_right": 0.1947
+     }
+    },
+    {
+     "frame": 102,
+     "score": 0.7957,
+     "zones": {
+      "neck": 0.8504,
+      "chest": 0.8817,
+      "lower_front": 0.8877,
+      "hem": 0.736,
+      "sleeve_left": 0.5005,
+      "sleeve_right": 0.6723
+     },
+     "intrusion": {
+      "neck": 0.07,
+      "chest": 0.0399,
+      "lower_front": 0.0593,
+      "hem": 0.0,
+      "sleeve_left": 0.1485,
+      "sleeve_right": 0.1798
+     }
+    },
+    {
+     "frame": 105,
+     "score": 0.8113,
+     "zones": {
+      "neck": 0.8491,
+      "chest": 0.8918,
+      "lower_front": 0.8761,
+      "hem": 0.7501,
+      "sleeve_left": 0.6457,
+      "sleeve_right": 0.6619
+     },
+     "intrusion": {
+      "neck": 0.0763,
+      "chest": 0.0497,
+      "lower_front": 0.0562,
+      "hem": 0.0,
+      "sleeve_left": 0.1309,
+      "sleeve_right": 0.1776
+     }
+    },
+    {
+     "frame": 108,
+     "score": 0.7784,
+     "zones": {
+      "neck": 0.8159,
+      "chest": 0.8561,
+      "lower_front": 0.8709,
+      "hem": 0.6774,
+      "sleeve_left": 0.57,
+      "sleeve_right": 0.6843
+     },
+     "intrusion": {
+      "neck": 0.0679,
+      "chest": 0.0433,
+      "lower_front": 0.0521,
+      "hem": 0.0,
+      "sleeve_left": 0.1514,
+      "sleeve_right": 0.197
+     }
+    },
+    {
+     "frame": 111,
+     "score": 0.7811,
+     "zones": {
+      "neck": 0.7818,
+      "chest": 0.859,
+      "lower_front": 0.8407,
+      "hem": 0.6898,
+      "sleeve_left": 0.6106,
+      "sleeve_right": 0.7729
+     },
+     "intrusion": {
+      "neck": 0.0424,
+      "chest": 0.0447,
+      "lower_front": 0.0474,
+      "hem": 0.0,
+      "sleeve_left": 0.1026,
+      "sleeve_right": 0.2095
+     }
+    },
+    {
+     "frame": 114,
+     "score": 0.7832,
+     "zones": {
+      "neck": 0.8029,
+      "chest": 0.8348,
+      "lower_front": 0.8368,
+      "hem": 0.6117,
+      "sleeve_left": 0.714,
+      "sleeve_right": 0.8345
+     },
+     "intrusion": {
+      "neck": 0.0365,
+      "chest": 0.0469,
+      "lower_front": 0.0532,
+      "hem": 0.0,
+      "sleeve_left": 0.0203,
+      "sleeve_right": 0.1534
+     }
+    },
+    {
+     "frame": 117,
+     "score": 0.7526,
+     "zones": {
+      "neck": 0.8668,
+      "chest": 0.8189,
+      "lower_front": 0.8067,
+      "hem": 0.503,
+      "sleeve_left": 0.6789,
+      "sleeve_right": 0.6984
+     },
+     "intrusion": {
+      "neck": 0.0395,
+      "chest": 0.0578,
+      "lower_front": 0.0589,
+      "hem": 0.0,
+      "sleeve_left": 0.0013,
+      "sleeve_right": 0.1407
+     }
+    },
+    {
+     "frame": 120,
+     "score": 0.7874,
+     "zones": {
+      "neck": 0.85,
+      "chest": 0.8481,
+      "lower_front": 0.8905,
+      "hem": 0.6087,
+      "sleeve_left": 0.7496,
+      "sleeve_right": 0.61
+     },
+     "intrusion": {
+      "neck": 0.033,
+      "chest": 0.0594,
+      "lower_front": 0.0689,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.1672
+     }
+    },
+    {
+     "frame": 123,
+     "score": 0.7772,
+     "zones": {
+      "neck": 0.8724,
+      "chest": 0.8839,
+      "lower_front": 0.775,
+      "hem": 0.6165,
+      "sleeve_left": 0.7747,
+      "sleeve_right": 0.568
+     },
+     "intrusion": {
+      "neck": 0.0455,
+      "chest": 0.0436,
+      "lower_front": 0.1652,
+      "hem": 0.0,
+      "sleeve_left": 0.1284,
+      "sleeve_right": 0.2473
+     }
+    },
+    {
+     "frame": 126,
+     "score": 0.6735,
+     "zones": {
+      "neck": 0.6269,
+      "chest": 0.8698,
+      "lower_front": 0.6934,
+      "hem": 0.4271,
+      "sleeve_left": 0.6493,
+      "sleeve_right": 0.6296
+     },
+     "intrusion": {
+      "neck": 0.0675,
+      "chest": 0.0555,
+      "lower_front": 0.2878,
+      "hem": 0.0,
+      "sleeve_left": 0.2881,
+      "sleeve_right": 0.2698
+     }
+    },
+    {
+     "frame": 129,
+     "score": 0.7129,
+     "zones": {
+      "neck": 0.6527,
+      "chest": 0.8665,
+      "lower_front": 0.7729,
+      "hem": 0.4546,
+      "sleeve_left": 0.6541,
+      "sleeve_right": 0.7759
+     },
+     "intrusion": {
+      "neck": 0.0586,
+      "chest": 0.0538,
+      "lower_front": 0.1969,
+      "hem": 0.0,
+      "sleeve_left": 0.1842,
+      "sleeve_right": 0.2029
+     }
+    },
+    {
+     "frame": 132,
+     "score": 0.7618,
+     "zones": {
+      "neck": 0.7221,
+      "chest": 0.883,
+      "lower_front": 0.8346,
+      "hem": 0.5759,
+      "sleeve_left": 0.6711,
+      "sleeve_right": 0.7619
+     },
+     "intrusion": {
+      "neck": 0.062,
+      "chest": 0.0417,
+      "lower_front": 0.1186,
+      "hem": 0.0,
+      "sleeve_left": 0.1252,
+      "sleeve_right": 0.2256
+     }
+    },
+    {
+     "frame": 135,
+     "score": 0.8195,
+     "zones": {
+      "neck": 0.7969,
+      "chest": 0.9013,
+      "lower_front": 0.8872,
+      "hem": 0.7939,
+      "sleeve_left": 0.6427,
+      "sleeve_right": 0.7397
+     },
+     "intrusion": {
+      "neck": 0.0377,
+      "chest": 0.0434,
+      "lower_front": 0.0579,
+      "hem": 0.0,
+      "sleeve_left": 0.0147,
+      "sleeve_right": 0.2871
+     }
+    },
+    {
+     "frame": 138,
+     "score": 0.8378,
+     "zones": {
+      "neck": 0.9085,
+      "chest": 0.8548,
+      "lower_front": 0.917,
+      "hem": 0.6855,
+      "sleeve_left": 0.7774,
+      "sleeve_right": 0.7845
+     },
+     "intrusion": {
+      "neck": 0.0461,
+      "chest": 0.0573,
+      "lower_front": 0.0617,
+      "hem": 0.0,
+      "sleeve_left": 0.0083,
+      "sleeve_right": 0.2424
+     }
+    },
+    {
+     "frame": 141,
+     "score": 0.8082,
+     "zones": {
+      "neck": 0.8668,
+      "chest": 0.8551,
+      "lower_front": 0.9231,
+      "hem": 0.5588,
+      "sleeve_left": 0.776,
+      "sleeve_right": 0.7499
+     },
+     "intrusion": {
+      "neck": 0.0431,
+      "chest": 0.0604,
+      "lower_front": 0.0534,
+      "hem": 0.0,
+      "sleeve_left": 0.0239,
+      "sleeve_right": 0.1656
+     }
+    },
+    {
+     "frame": 144,
+     "score": 0.7966,
+     "zones": {
+      "neck": 0.8554,
+      "chest": 0.8513,
+      "lower_front": 0.9584,
+      "hem": 0.5568,
+      "sleeve_left": 0.7615,
+      "sleeve_right": 0.6135
+     },
+     "intrusion": {
+      "neck": 0.0481,
+      "chest": 0.0556,
+      "lower_front": 0.051,
+      "hem": 0.0,
+      "sleeve_left": 0.0234,
+      "sleeve_right": 0.1741
+     }
+    },
+    {
+     "frame": 147,
+     "score": 0.7774,
+     "zones": {
+      "neck": 0.8636,
+      "chest": 0.9048,
+      "lower_front": 0.9088,
+      "hem": 0.4874,
+      "sleeve_left": 0.6546,
+      "sleeve_right": 0.5812
+     },
+     "intrusion": {
+      "neck": 0.046,
+      "chest": 0.046,
+      "lower_front": 0.0833,
+      "hem": 0.0,
+      "sleeve_left": 0.0201,
+      "sleeve_right": 0.2001
+     }
+    },
+    {
+     "frame": 150,
+     "score": 0.7977,
+     "zones": {
+      "neck": 0.8304,
+      "chest": 0.8686,
+      "lower_front": 0.9412,
+      "hem": 0.5148,
+      "sleeve_left": 0.7721,
+      "sleeve_right": 0.7177
+     },
+     "intrusion": {
+      "neck": 0.0467,
+      "chest": 0.0552,
+      "lower_front": 0.06,
+      "hem": 0.0,
+      "sleeve_left": 0.0219,
+      "sleeve_right": 0.1913
+     }
+    },
+    {
+     "frame": 153,
+     "score": 0.782,
+     "zones": {
+      "neck": 0.8377,
+      "chest": 0.8358,
+      "lower_front": 0.8431,
+      "hem": 0.5096,
+      "sleeve_left": 0.815,
+      "sleeve_right": 0.789
+     },
+     "intrusion": {
+      "neck": 0.0462,
+      "chest": 0.0567,
+      "lower_front": 0.0618,
+      "hem": 0.0,
+      "sleeve_left": 0.0227,
+      "sleeve_right": 0.2363
+     }
+    },
+    {
+     "frame": 156,
+     "score": 0.7963,
+     "zones": {
+      "neck": 0.867,
+      "chest": 0.8398,
+      "lower_front": 0.9181,
+      "hem": 0.4971,
+      "sleeve_left": 0.7616,
+      "sleeve_right": 0.7862
+     },
+     "intrusion": {
+      "neck": 0.0468,
+      "chest": 0.0582,
+      "lower_front": 0.057,
+      "hem": 0.0,
+      "sleeve_left": 0.0101,
+      "sleeve_right": 0.2341
+     }
+    },
+    {
+     "frame": 159,
+     "score": 0.8008,
+     "zones": {
+      "neck": 0.8744,
+      "chest": 0.8443,
+      "lower_front": 0.9396,
+      "hem": 0.5303,
+      "sleeve_left": 0.7036,
+      "sleeve_right": 0.77
+     },
+     "intrusion": {
+      "neck": 0.0494,
+      "chest": 0.0571,
+      "lower_front": 0.0744,
+      "hem": 0.0,
+      "sleeve_left": 0.0236,
+      "sleeve_right": 0.2358
+     }
+    }
+   ],
+   "passes": false,
+   "failing_zones": [],
+   "intruding_zones": [
+    "sleeve_left",
+    "sleeve_right"
+   ]
+  },
+  "S06_c2": {
+   "file": "s06_e1e2.mp4",
+   "frames_scored": 54,
+   "frames_unscored": 0,
+   "median": 0.7260938551725071,
+   "p10": 0.6466726136559182,
+   "min": 0.5721522721084298,
+   "zones_median": {
+    "neck": 0.7702349062732009,
+    "chest": 0.7748334539549997,
+    "lower_front": 0.7323157928071197,
+    "hem": 0.6364077630088616,
+    "sleeve_left": 0.6320157412854854,
+    "sleeve_right": 0.7083711115456048
+   },
+   "intrusion_p90": {
+    "neck": 0.16660079068901634,
+    "chest": 0.2215913282884653,
+    "lower_front": 0.3350487716324099,
+    "hem": 0.0,
+    "sleeve_left": 0.2078573549056138,
+    "sleeve_right": 0.307387126682953
+   },
+   "worst_zone": "sleeve_left",
+   "score_std": 0.049564090250587355,
+   "zone_std": {
+    "neck": 0.06947662936891918,
+    "chest": 0.04374694026255836,
+    "lower_front": 0.1104392759050432,
+    "hem": 0.09568954865435234,
+    "sleeve_left": 0.08804100568330363,
+    "sleeve_right": 0.14025393192254088
+   },
+   "zone_std_mean": 0.09127455529945294,
+   "per_frame": [
+    {
+     "frame": 0,
+     "score": 0.7506,
+     "zones": {
+      "neck": 0.8037,
+      "chest": 0.7731,
+      "lower_front": 0.7091,
+      "hem": 0.744,
+      "sleeve_left": 0.6576,
+      "sleeve_right": 0.7741
+     },
+     "intrusion": {
+      "neck": 0.1635,
+      "chest": 0.1525,
+      "lower_front": 0.2022,
+      "hem": 0.0,
+      "sleeve_left": 0.0396,
+      "sleeve_right": 0.0897
+     }
+    },
+    {
+     "frame": 3,
+     "score": 0.7258,
+     "zones": {
+      "neck": 0.7638,
+      "chest": 0.7795,
+      "lower_front": 0.6321,
+      "hem": 0.6807,
+      "sleeve_left": 0.6167,
+      "sleeve_right": 0.8795
+     },
+     "intrusion": {
+      "neck": 0.1716,
+      "chest": 0.1427,
+      "lower_front": 0.3096,
+      "hem": 0.0,
+      "sleeve_left": 0.185,
+      "sleeve_right": 0.05
+     }
+    },
+    {
+     "frame": 6,
+     "score": 0.6739,
+     "zones": {
+      "neck": 0.682,
+      "chest": 0.7748,
+      "lower_front": 0.7008,
+      "hem": 0.5815,
+      "sleeve_left": 0.5691,
+      "sleeve_right": 0.5954
+     },
+     "intrusion": {
+      "neck": 0.1254,
+      "chest": 0.1263,
+      "lower_front": 0.1692,
+      "hem": 0.0,
+      "sleeve_left": 0.0473,
+      "sleeve_right": 0.1957
+     }
+    },
+    {
+     "frame": 9,
+     "score": 0.6647,
+     "zones": {
+      "neck": 0.6211,
+      "chest": 0.8425,
+      "lower_front": 0.7108,
+      "hem": 0.5232,
+      "sleeve_left": 0.6405,
+      "sleeve_right": 0.4517
+     },
+     "intrusion": {
+      "neck": 0.1254,
+      "chest": 0.1047,
+      "lower_front": 0.2115,
+      "hem": 0.0,
+      "sleeve_left": 0.1538,
+      "sleeve_right": 0.3198
+     }
+    },
+    {
+     "frame": 12,
+     "score": 0.645,
+     "zones": {
+      "neck": 0.6146,
+      "chest": 0.8632,
+      "lower_front": 0.7118,
+      "hem": 0.5192,
+      "sleeve_left": 0.5869,
+      "sleeve_right": 0.2732
+     },
+     "intrusion": {
+      "neck": 0.1307,
+      "chest": 0.1156,
+      "lower_front": 0.239,
+      "hem": 0.0,
+      "sleeve_left": 0.3144,
+      "sleeve_right": 0.5306
+     }
+    },
+    {
+     "frame": 15,
+     "score": 0.6664,
+     "zones": {
+      "neck": 0.6548,
+      "chest": 0.8316,
+      "lower_front": 0.7172,
+      "hem": 0.6194,
+      "sleeve_left": 0.6109,
+      "sleeve_right": 0.3005
+     },
+     "intrusion": {
+      "neck": 0.1076,
+      "chest": 0.1362,
+      "lower_front": 0.239,
+      "hem": 0.0,
+      "sleeve_left": 0.1884,
+      "sleeve_right": 0.5318
+     }
+    },
+    {
+     "frame": 18,
+     "score": 0.6926,
+     "zones": {
+      "neck": 0.663,
+      "chest": 0.7838,
+      "lower_front": 0.7538,
+      "hem": 0.6656,
+      "sleeve_left": 0.645,
+      "sleeve_right": 0.4899
+     },
+     "intrusion": {
+      "neck": 0.1087,
+      "chest": 0.1341,
+      "lower_front": 0.157,
+      "hem": 0.0,
+      "sleeve_left": 0.0643,
+      "sleeve_right": 0.3823
+     }
+    },
+    {
+     "frame": 21,
+     "score": 0.7023,
+     "zones": {
+      "neck": 0.6733,
+      "chest": 0.7369,
+      "lower_front": 0.7417,
+      "hem": 0.6385,
+      "sleeve_left": 0.6739,
+      "sleeve_right": 0.7187
+     },
+     "intrusion": {
+      "neck": 0.1215,
+      "chest": 0.1392,
+      "lower_front": 0.1519,
+      "hem": 0.0,
+      "sleeve_left": 0.0225,
+      "sleeve_right": 0.2456
+     }
+    },
+    {
+     "frame": 24,
+     "score": 0.6895,
+     "zones": {
+      "neck": 0.7062,
+      "chest": 0.6981,
+      "lower_front": 0.7107,
+      "hem": 0.6017,
+      "sleeve_left": 0.5757,
+      "sleeve_right": 0.8379
+     },
+     "intrusion": {
+      "neck": 0.1479,
+      "chest": 0.1439,
+      "lower_front": 0.1967,
+      "hem": 0.0,
+      "sleeve_left": 0.0228,
+      "sleeve_right": 0.0602
+     }
+    },
+    {
+     "frame": 27,
+     "score": 0.6551,
+     "zones": {
+      "neck": 0.7452,
+      "chest": 0.7024,
+      "lower_front": 0.526,
+      "hem": 0.4996,
+      "sleeve_left": 0.6869,
+      "sleeve_right": 0.8167
+     },
+     "intrusion": {
+      "neck": 0.135,
+      "chest": 0.0429,
+      "lower_front": 0.308,
+      "hem": 0.0,
+      "sleeve_left": 0.22,
+      "sleeve_right": 0.1256
+     }
+    },
+    {
+     "frame": 30,
+     "score": 0.6007,
+     "zones": {
+      "neck": 0.741,
+      "chest": 0.6467,
+      "lower_front": 0.4544,
+      "hem": 0.7005,
+      "sleeve_left": 0.5041,
+      "sleeve_right": 0.4451
+     },
+     "intrusion": {
+      "neck": 0.1679,
+      "chest": 0.1715,
+      "lower_front": 0.5586,
+      "hem": 0.0,
+      "sleeve_left": 0.2472,
+      "sleeve_right": 0.3347
+     }
+    },
+    {
+     "frame": 33,
+     "score": 0.5722,
+     "zones": {
+      "neck": 0.5958,
+      "chest": 0.7768,
+      "lower_front": 0.2787,
+      "hem": 0.672,
+      "sleeve_left": 0.5957,
+      "sleeve_right": 0.427
+     },
+     "intrusion": {
+      "neck": 0.249,
+      "chest": 0.2285,
+      "lower_front": 0.5853,
+      "hem": 0.0,
+      "sleeve_left": 0.3529,
+      "sleeve_right": 0.3164
+     }
+    },
+    {
+     "frame": 36,
+     "score": 0.7513,
+     "zones": {
+      "neck": 0.8052,
+      "chest": 0.8104,
+      "lower_front": 0.7338,
+      "hem": 0.7067,
+      "sleeve_left": 0.6135,
+      "sleeve_right": 0.7353
+     },
+     "intrusion": {
+      "neck": 0.1523,
+      "chest": 0.1859,
+      "lower_front": 0.1194,
+      "hem": 0.0,
+      "sleeve_left": 0.2251,
+      "sleeve_right": 0.0811
+     }
+    },
+    {
+     "frame": 39,
+     "score": 0.7294,
+     "zones": {
+      "neck": 0.7823,
+      "chest": 0.8106,
+      "lower_front": 0.7309,
+      "hem": 0.673,
+      "sleeve_left": 0.5402,
+      "sleeve_right": 0.692
+     },
+     "intrusion": {
+      "neck": 0.1345,
+      "chest": 0.1606,
+      "lower_front": 0.242,
+      "hem": 0.0,
+      "sleeve_left": 0.1346,
+      "sleeve_right": 0.0911
+     }
+    },
+    {
+     "frame": 42,
+     "score": 0.7345,
+     "zones": {
+      "neck": 0.8117,
+      "chest": 0.7871,
+      "lower_front": 0.7584,
+      "hem": 0.6479,
+      "sleeve_left": 0.5399,
+      "sleeve_right": 0.7249
+     },
+     "intrusion": {
+      "neck": 0.1233,
+      "chest": 0.1535,
+      "lower_front": 0.1858,
+      "hem": 0.0,
+      "sleeve_left": 0.0379,
+      "sleeve_right": 0.07
+     }
+    },
+    {
+     "frame": 45,
+     "score": 0.7356,
+     "zones": {
+      "neck": 0.8153,
+      "chest": 0.7844,
+      "lower_front": 0.7516,
+      "hem": 0.7189,
+      "sleeve_left": 0.4823,
+      "sleeve_right": 0.7002
+     },
+     "intrusion": {
+      "neck": 0.1222,
+      "chest": 0.1593,
+      "lower_front": 0.2021,
+      "hem": 0.0,
+      "sleeve_left": 0.0137,
+      "sleeve_right": 0.0847
+     }
+    },
+    {
+     "frame": 48,
+     "score": 0.7614,
+     "zones": {
+      "neck": 0.7997,
+      "chest": 0.7698,
+      "lower_front": 0.752,
+      "hem": 0.7485,
+      "sleeve_left": 0.7237,
+      "sleeve_right": 0.7393
+     },
+     "intrusion": {
+      "neck": 0.1158,
+      "chest": 0.176,
+      "lower_front": 0.1871,
+      "hem": 0.0,
+      "sleeve_left": 0.0264,
+      "sleeve_right": 0.0639
+     }
+    },
+    {
+     "frame": 51,
+     "score": 0.7058,
+     "zones": {
+      "neck": 0.6764,
+      "chest": 0.7748,
+      "lower_front": 0.6103,
+      "hem": 0.7362,
+      "sleeve_left": 0.7291,
+      "sleeve_right": 0.7143
+     },
+     "intrusion": {
+      "neck": 0.0746,
+      "chest": 0.1817,
+      "lower_front": 0.346,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.052
+     }
+    },
+    {
+     "frame": 54,
+     "score": 0.7663,
+     "zones": {
+      "neck": 0.7629,
+      "chest": 0.7735,
+      "lower_front": 0.7965,
+      "hem": 0.6997,
+      "sleeve_left": 0.7578,
+      "sleeve_right": 0.8028
+     },
+     "intrusion": {
+      "neck": 0.0882,
+      "chest": 0.1989,
+      "lower_front": 0.205,
+      "hem": 0.0,
+      "sleeve_left": 0.0375,
+      "sleeve_right": 0.0802
+     }
+    },
+    {
+     "frame": 57,
+     "score": 0.7438,
+     "zones": {
+      "neck": 0.7696,
+      "chest": 0.7198,
+      "lower_front": 0.7964,
+      "hem": 0.6182,
+      "sleeve_left": 0.7218,
+      "sleeve_right": 0.858
+     },
+     "intrusion": {
+      "neck": 0.0871,
+      "chest": 0.2058,
+      "lower_front": 0.1878,
+      "hem": 0.0,
+      "sleeve_left": 0.0884,
+      "sleeve_right": 0.0985
+     }
+    },
+    {
+     "frame": 60,
+     "score": 0.7297,
+     "zones": {
+      "neck": 0.7697,
+      "chest": 0.7769,
+      "lower_front": 0.7538,
+      "hem": 0.5566,
+      "sleeve_left": 0.6225,
+      "sleeve_right": 0.8505
+     },
+     "intrusion": {
+      "neck": 0.0805,
+      "chest": 0.1855,
+      "lower_front": 0.2024,
+      "hem": 0.0,
+      "sleeve_left": 0.0746,
+      "sleeve_right": 0.1123
+     }
+    },
+    {
+     "frame": 63,
+     "score": 0.7072,
+     "zones": {
+      "neck": 0.748,
+      "chest": 0.7625,
+      "lower_front": 0.7211,
+      "hem": 0.5701,
+      "sleeve_left": 0.6365,
+      "sleeve_right": 0.7363
+     },
+     "intrusion": {
+      "neck": 0.0988,
+      "chest": 0.1784,
+      "lower_front": 0.2178,
+      "hem": 0.0,
+      "sleeve_left": 0.0826,
+      "sleeve_right": 0.0718
+     }
+    },
+    {
+     "frame": 66,
+     "score": 0.6692,
+     "zones": {
+      "neck": 0.7453,
+      "chest": 0.7798,
+      "lower_front": 0.7253,
+      "hem": 0.5218,
+      "sleeve_left": 0.3385,
+      "sleeve_right": 0.6801
+     },
+     "intrusion": {
+      "neck": 0.0948,
+      "chest": 0.1764,
+      "lower_front": 0.2482,
+      "hem": 0.0,
+      "sleeve_left": 0.1502,
+      "sleeve_right": 0.0619
+     }
+    },
+    {
+     "frame": 69,
+     "score": 0.6919,
+     "zones": {
+      "neck": 0.7708,
+      "chest": 0.7773,
+      "lower_front": 0.7271,
+      "hem": 0.5565,
+      "sleeve_left": 0.4559,
+      "sleeve_right": 0.6888
+     },
+     "intrusion": {
+      "neck": 0.0761,
+      "chest": 0.1603,
+      "lower_front": 0.209,
+      "hem": 0.0,
+      "sleeve_left": 0.0497,
+      "sleeve_right": 0.0539
+     }
+    },
+    {
+     "frame": 72,
+     "score": 0.6891,
+     "zones": {
+      "neck": 0.757,
+      "chest": 0.7389,
+      "lower_front": 0.7265,
+      "hem": 0.5658,
+      "sleeve_left": 0.5404,
+      "sleeve_right": 0.6883
+     },
+     "intrusion": {
+      "neck": 0.0937,
+      "chest": 0.1602,
+      "lower_front": 0.1687,
+      "hem": 0.0,
+      "sleeve_left": 0.0787,
+      "sleeve_right": 0.0703
+     }
+    },
+    {
+     "frame": 75,
+     "score": 0.704,
+     "zones": {
+      "neck": 0.7668,
+      "chest": 0.7418,
+      "lower_front": 0.7347,
+      "hem": 0.5721,
+      "sleeve_left": 0.6444,
+      "sleeve_right": 0.6797
+     },
+     "intrusion": {
+      "neck": 0.1022,
+      "chest": 0.1677,
+      "lower_front": 0.1454,
+      "hem": 0.0,
+      "sleeve_left": 0.0803,
+      "sleeve_right": 0.0944
+     }
+    },
+    {
+     "frame": 78,
+     "score": 0.678,
+     "zones": {
+      "neck": 0.7546,
+      "chest": 0.7203,
+      "lower_front": 0.7406,
+      "hem": 0.5218,
+      "sleeve_left": 0.6714,
+      "sleeve_right": 0.535
+     },
+     "intrusion": {
+      "neck": 0.1058,
+      "chest": 0.1721,
+      "lower_front": 0.2195,
+      "hem": 0.0,
+      "sleeve_left": 0.1068,
+      "sleeve_right": 0.2231
+     }
+    },
+    {
+     "frame": 81,
+     "score": 0.6913,
+     "zones": {
+      "neck": 0.731,
+      "chest": 0.7311,
+      "lower_front": 0.7471,
+      "hem": 0.5375,
+      "sleeve_left": 0.6275,
+      "sleeve_right": 0.6952
+     },
+     "intrusion": {
+      "neck": 0.1046,
+      "chest": 0.1916,
+      "lower_front": 0.1777,
+      "hem": 0.0,
+      "sleeve_left": 0.1156,
+      "sleeve_right": 0.1267
+     }
+    },
+    {
+     "frame": 84,
+     "score": 0.7222,
+     "zones": {
+      "neck": 0.7665,
+      "chest": 0.7241,
+      "lower_front": 0.7605,
+      "hem": 0.5379,
+      "sleeve_left": 0.6237,
+      "sleeve_right": 0.9272
+     },
+     "intrusion": {
+      "neck": 0.1024,
+      "chest": 0.224,
+      "lower_front": 0.1472,
+      "hem": 0.0,
+      "sleeve_left": 0.0521,
+      "sleeve_right": 0.0547
+     }
+    },
+    {
+     "frame": 87,
+     "score": 0.7349,
+     "zones": {
+      "neck": 0.7739,
+      "chest": 0.7316,
+      "lower_front": 0.7587,
+      "hem": 0.7138,
+      "sleeve_left": 0.5377,
+      "sleeve_right": 0.8467
+     },
+     "intrusion": {
+      "neck": 0.1263,
+      "chest": 0.2377,
+      "lower_front": 0.162,
+      "hem": 0.0,
+      "sleeve_left": 0.1401,
+      "sleeve_right": 0.0056
+     }
+    },
+    {
+     "frame": 90,
+     "score": 0.6506,
+     "zones": {
+      "neck": 0.7751,
+      "chest": 0.7581,
+      "lower_front": 0.4949,
+      "hem": 0.6482,
+      "sleeve_left": 0.4571,
+      "sleeve_right": 0.6417
+     },
+     "intrusion": {
+      "neck": 0.1355,
+      "chest": 0.2522,
+      "lower_front": 0.4225,
+      "hem": 0.0,
+      "sleeve_left": 0.2049,
+      "sleeve_right": 0.2863
+     }
+    },
+    {
+     "frame": 93,
+     "score": 0.6121,
+     "zones": {
+      "neck": 0.7842,
+      "chest": 0.7339,
+      "lower_front": 0.2946,
+      "hem": 0.6724,
+      "sleeve_left": 0.514,
+      "sleeve_right": 0.6059
+     },
+     "intrusion": {
+      "neck": 0.1566,
+      "chest": 0.2588,
+      "lower_front": 0.56,
+      "hem": 0.0,
+      "sleeve_left": 0.2091,
+      "sleeve_right": 0.2791
+     }
+    },
+    {
+     "frame": 96,
+     "score": 0.595,
+     "zones": {
+      "neck": 0.7074,
+      "chest": 0.6518,
+      "lower_front": 0.4596,
+      "hem": 0.4543,
+      "sleeve_left": 0.6945,
+      "sleeve_right": 0.6108
+     },
+     "intrusion": {
+      "neck": 0.1962,
+      "chest": 0.2507,
+      "lower_front": 0.3808,
+      "hem": 0.0,
+      "sleeve_left": 0.1595,
+      "sleeve_right": 0.0523
+     }
+    },
+    {
+     "frame": 99,
+     "score": 0.6377,
+     "zones": {
+      "neck": 0.6745,
+      "chest": 0.7481,
+      "lower_front": 0.6514,
+      "hem": 0.4083,
+      "sleeve_left": 0.6814,
+      "sleeve_right": 0.561
+     },
+     "intrusion": {
+      "neck": 0.2003,
+      "chest": 0.1833,
+      "lower_front": 0.2632,
+      "hem": 0.0,
+      "sleeve_left": 0.0684,
+      "sleeve_right": 0.0434
+     }
+    },
+    {
+     "frame": 102,
+     "score": 0.7474,
+     "zones": {
+      "neck": 0.9045,
+      "chest": 0.8261,
+      "lower_front": 0.6904,
+      "hem": 0.5742,
+      "sleeve_left": 0.6547,
+      "sleeve_right": 0.7024
+     },
+     "intrusion": {
+      "neck": 0.0955,
+      "chest": 0.1546,
+      "lower_front": 0.2252,
+      "hem": 0.0,
+      "sleeve_left": 0.0198,
+      "sleeve_right": 0.0982
+     }
+    },
+    {
+     "frame": 105,
+     "score": 0.7617,
+     "zones": {
+      "neck": 0.9099,
+      "chest": 0.8202,
+      "lower_front": 0.6886,
+      "hem": 0.7276,
+      "sleeve_left": 0.5979,
+      "sleeve_right": 0.6802
+     },
+     "intrusion": {
+      "neck": 0.0971,
+      "chest": 0.1632,
+      "lower_front": 0.2127,
+      "hem": 0.0,
+      "sleeve_left": 0.0315,
+      "sleeve_right": 0.0854
+     }
+    },
+    {
+     "frame": 108,
+     "score": 0.7264,
+     "zones": {
+      "neck": 0.8197,
+      "chest": 0.8159,
+      "lower_front": 0.7289,
+      "hem": 0.6344,
+      "sleeve_left": 0.5157,
+      "sleeve_right": 0.6603
+     },
+     "intrusion": {
+      "neck": 0.1099,
+      "chest": 0.146,
+      "lower_front": 0.1843,
+      "hem": 0.0,
+      "sleeve_left": 0.0673,
+      "sleeve_right": 0.0681
+     }
+    },
+    {
+     "frame": 111,
+     "score": 0.7742,
+     "zones": {
+      "neck": 0.8684,
+      "chest": 0.8179,
+      "lower_front": 0.7467,
+      "hem": 0.837,
+      "sleeve_left": 0.5602,
+      "sleeve_right": 0.6519
+     },
+     "intrusion": {
+      "neck": 0.069,
+      "chest": 0.1361,
+      "lower_front": 0.2237,
+      "hem": 0.0,
+      "sleeve_left": 0.032,
+      "sleeve_right": 0.0229
+     }
+    },
+    {
+     "frame": 114,
+     "score": 0.7765,
+     "zones": {
+      "neck": 0.8186,
+      "chest": 0.7771,
+      "lower_front": 0.7684,
+      "hem": 0.7998,
+      "sleeve_left": 0.7327,
+      "sleeve_right": 0.7159
+     },
+     "intrusion": {
+      "neck": 0.0684,
+      "chest": 0.1918,
+      "lower_front": 0.2026,
+      "hem": 0.0,
+      "sleeve_left": 0.0193,
+      "sleeve_right": 0.0105
+     }
+    },
+    {
+     "frame": 117,
+     "score": 0.7635,
+     "zones": {
+      "neck": 0.7989,
+      "chest": 0.7543,
+      "lower_front": 0.7994,
+      "hem": 0.7152,
+      "sleeve_left": 0.7516,
+      "sleeve_right": 0.7284
+     },
+     "intrusion": {
+      "neck": 0.0764,
+      "chest": 0.2159,
+      "lower_front": 0.1867,
+      "hem": 0.0,
+      "sleeve_left": 0.0331,
+      "sleeve_right": 0.0525
+     }
+    },
+    {
+     "frame": 120,
+     "score": 0.7407,
+     "zones": {
+      "neck": 0.8022,
+      "chest": 0.7888,
+      "lower_front": 0.7585,
+      "hem": 0.5762,
+      "sleeve_left": 0.7162,
+      "sleeve_right": 0.7327
+     },
+     "intrusion": {
+      "neck": 0.1038,
+      "chest": 0.1634,
+      "lower_front": 0.1946,
+      "hem": 0.0,
+      "sleeve_left": 0.0869,
+      "sleeve_right": 0.1132
+     }
+    },
+    {
+     "frame": 123,
+     "score": 0.7264,
+     "zones": {
+      "neck": 0.8463,
+      "chest": 0.8444,
+      "lower_front": 0.7525,
+      "hem": 0.4743,
+      "sleeve_left": 0.6467,
+      "sleeve_right": 0.5973
+     },
+     "intrusion": {
+      "neck": 0.13,
+      "chest": 0.0965,
+      "lower_front": 0.229,
+      "hem": 0.0,
+      "sleeve_left": 0.1818,
+      "sleeve_right": 0.2076
+     }
+    },
+    {
+     "frame": 126,
+     "score": 0.7031,
+     "zones": {
+      "neck": 0.7584,
+      "chest": 0.8108,
+      "lower_front": 0.7136,
+      "hem": 0.463,
+      "sleeve_left": 0.6702,
+      "sleeve_right": 0.6959
+     },
+     "intrusion": {
+      "neck": 0.134,
+      "chest": 0.1008,
+      "lower_front": 0.2587,
+      "hem": 0.0,
+      "sleeve_left": 0.1619,
+      "sleeve_right": 0.0786
+     }
+    },
+    {
+     "frame": 129,
+     "score": 0.7009,
+     "zones": {
+      "neck": 0.7416,
+      "chest": 0.7666,
+      "lower_front": 0.6975,
+      "hem": 0.5428,
+      "sleeve_left": 0.6258,
+      "sleeve_right": 0.7741
+     },
+     "intrusion": {
+      "neck": 0.1372,
+      "chest": 0.1199,
+      "lower_front": 0.2317,
+      "hem": 0.0,
+      "sleeve_left": 0.1135,
+      "sleeve_right": 0.1741
+     }
+    },
+    {
+     "frame": 132,
+     "score": 0.6788,
+     "zones": {
+      "neck": 0.6734,
+      "chest": 0.7874,
+      "lower_front": 0.6154,
+      "hem": 0.4884,
+      "sleeve_left": 0.7029,
+      "sleeve_right": 0.8063
+     },
+     "intrusion": {
+      "neck": 0.1912,
+      "chest": 0.1159,
+      "lower_front": 0.3004,
+      "hem": 0.0,
+      "sleeve_left": 0.1843,
+      "sleeve_right": 0.1405
+     }
+    },
+    {
+     "frame": 135,
+     "score": 0.7396,
+     "zones": {
+      "neck": 0.7724,
+      "chest": 0.7244,
+      "lower_front": 0.7083,
+      "hem": 0.7034,
+      "sleeve_left": 0.6909,
+      "sleeve_right": 0.8776
+     },
+     "intrusion": {
+      "neck": 0.097,
+      "chest": 0.1659,
+      "lower_front": 0.1036,
+      "hem": 0.0,
+      "sleeve_left": 0.0445,
+      "sleeve_right": 0.0872
+     }
+    },
+    {
+     "frame": 138,
+     "score": 0.7703,
+     "zones": {
+      "neck": 0.7996,
+      "chest": 0.7171,
+      "lower_front": 0.7753,
+      "hem": 0.7441,
+      "sleeve_left": 0.7866,
+      "sleeve_right": 0.8579
+     },
+     "intrusion": {
+      "neck": 0.081,
+      "chest": 0.1708,
+      "lower_front": 0.0776,
+      "hem": 0.0,
+      "sleeve_left": 0.0287,
+      "sleeve_right": 0.0769
+     }
+    },
+    {
+     "frame": 141,
+     "score": 0.7445,
+     "zones": {
+      "neck": 0.8001,
+      "chest": 0.7562,
+      "lower_front": 0.7626,
+      "hem": 0.6775,
+      "sleeve_left": 0.6196,
+      "sleeve_right": 0.7931
+     },
+     "intrusion": {
+      "neck": 0.0744,
+      "chest": 0.1995,
+      "lower_front": 0.1069,
+      "hem": 0.0,
+      "sleeve_left": 0.0861,
+      "sleeve_right": 0.0606
+     }
+    },
+    {
+     "frame": 144,
+     "score": 0.7514,
+     "zones": {
+      "neck": 0.8898,
+      "chest": 0.7564,
+      "lower_front": 0.7683,
+      "hem": 0.6144,
+      "sleeve_left": 0.745,
+      "sleeve_right": 0.6406
+     },
+     "intrusion": {
+      "neck": 0.0889,
+      "chest": 0.185,
+      "lower_front": 0.1758,
+      "hem": 0.0,
+      "sleeve_left": 0.0883,
+      "sleeve_right": 0.0781
+     }
+    },
+    {
+     "frame": 147,
+     "score": 0.7533,
+     "zones": {
+      "neck": 0.8657,
+      "chest": 0.796,
+      "lower_front": 0.742,
+      "hem": 0.6321,
+      "sleeve_left": 0.7423,
+      "sleeve_right": 0.6366
+     },
+     "intrusion": {
+      "neck": 0.1236,
+      "chest": 0.1606,
+      "lower_front": 0.1379,
+      "hem": 0.0,
+      "sleeve_left": 0.0661,
+      "sleeve_right": 0.0838
+     }
+    },
+    {
+     "frame": 150,
+     "score": 0.7711,
+     "zones": {
+      "neck": 0.8137,
+      "chest": 0.7939,
+      "lower_front": 0.7596,
+      "hem": 0.726,
+      "sleeve_left": 0.6777,
+      "sleeve_right": 0.8126
+     },
+     "intrusion": {
+      "neck": 0.1253,
+      "chest": 0.1936,
+      "lower_front": 0.099,
+      "hem": 0.0,
+      "sleeve_left": 0.0598,
+      "sleeve_right": 0.0434
+     }
+    },
+    {
+     "frame": 153,
+     "score": 0.7781,
+     "zones": {
+      "neck": 0.8089,
+      "chest": 0.8076,
+      "lower_front": 0.743,
+      "hem": 0.7812,
+      "sleeve_left": 0.6449,
+      "sleeve_right": 0.8409
+     },
+     "intrusion": {
+      "neck": 0.115,
+      "chest": 0.2033,
+      "lower_front": 0.1319,
+      "hem": 0.0,
+      "sleeve_left": 0.0216,
+      "sleeve_right": 0.0592
+     }
+    },
+    {
+     "frame": 156,
+     "score": 0.7464,
+     "zones": {
+      "neck": 0.8094,
+      "chest": 0.7569,
+      "lower_front": 0.7666,
+      "hem": 0.6495,
+      "sleeve_left": 0.5723,
+      "sleeve_right": 0.8733
+     },
+     "intrusion": {
+      "neck": 0.1201,
+      "chest": 0.2117,
+      "lower_front": 0.1248,
+      "hem": 0.0,
+      "sleeve_left": 0.0297,
+      "sleeve_right": 0.0861
+     }
+    },
+    {
+     "frame": 159,
+     "score": 0.7618,
+     "zones": {
+      "neck": 0.8391,
+      "chest": 0.8033,
+      "lower_front": 0.7473,
+      "hem": 0.6739,
+      "sleeve_left": 0.5822,
+      "sleeve_right": 0.844
+     },
+     "intrusion": {
+      "neck": 0.1343,
+      "chest": 0.1894,
+      "lower_front": 0.1501,
+      "hem": 0.0,
+      "sleeve_left": 0.0189,
+      "sleeve_right": 0.0613
+     }
+    }
+   ],
+   "passes": false,
+   "failing_zones": [],
+   "intruding_zones": [
+    "neck",
+    "lower_front",
+    "sleeve_left",
+    "sleeve_right"
+   ]
+  },
+  "S09_e1d": {
+   "file": "s09_e1d.mp4",
+   "frames_scored": 25,
+   "frames_unscored": 5,
+   "median": 0.6652838636583528,
+   "p10": 0.5548022302038015,
+   "min": 0.5177787838644379,
+   "zones_median": {
+    "neck": 0.7960858018206256,
+    "chest": 0.6936589944116125,
+    "lower_front": 0.5301078765669252,
+    "hem": 0.5155515582245401,
+    "sleeve_left": 0.6492516100095465,
+    "sleeve_right": 0.7868419846883749
+   },
+   "intrusion_p90": {
+    "neck": 0.10708330665728866,
+    "chest": 0.15971886519015568,
+    "lower_front": 0.525677392083293,
+    "hem": 0.0,
+    "sleeve_left": 0.001644367599675943,
+    "sleeve_right": 0.11739262548266464
+   },
+   "worst_zone": "hem",
+   "score_std": 0.05872898347554462,
+   "zone_std": {
+    "neck": 0.12778759827199102,
+    "chest": 0.0874226169801909,
+    "lower_front": 0.1038851326334512,
+    "hem": 0.10394728965846714,
+    "sleeve_left": 0.2313535287847739,
+    "sleeve_right": 0.08277031924006238
+   },
+   "zone_std_mean": 0.12286108092815608,
+   "per_frame": [
+    {
+     "frame": 0,
+     "score": 0.6754,
+     "zones": {
+      "neck": 0.9031,
+      "chest": 0.5327,
+      "lower_front": 0.6052,
+      "hem": 0.7553,
+      "sleeve_left": 0.6283,
+      "sleeve_right": 0.6442
+     },
+     "intrusion": {
+      "neck": 0.0639,
+      "chest": 0.0657,
+      "lower_front": 0.3657,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0044
+     }
+    },
+    {
+     "frame": 3,
+     "score": 0.6595,
+     "zones": {
+      "neck": 0.8611,
+      "chest": 0.5308,
+      "lower_front": 0.4293,
+      "hem": 0.852,
+      "sleeve_left": 0.6493,
+      "sleeve_right": 0.7595
+     },
+     "intrusion": {
+      "neck": 0.0662,
+      "chest": 0.0567,
+      "lower_front": 0.5681,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0653
+     }
+    },
+    {
+     "frame": 6,
+     "score": 0.6576,
+     "zones": {
+      "neck": 0.8821,
+      "chest": 0.6288,
+      "lower_front": 0.4819,
+      "hem": 0.6181,
+      "sleeve_left": 0.5919,
+      "sleeve_right": 0.7571
+     },
+     "intrusion": {
+      "neck": 0.0611,
+      "chest": 0.0608,
+      "lower_front": 0.5346,
+      "hem": 0.0,
+      "sleeve_left": 0.0012,
+      "sleeve_right": 0.0009
+     }
+    },
+    {
+     "frame": 9,
+     "score": 0.7187,
+     "zones": {
+      "neck": 0.9385,
+      "chest": 0.6903,
+      "lower_front": 0.7157,
+      "hem": 0.5316,
+      "sleeve_left": 0.5639,
+      "sleeve_right": 0.7917
+     },
+     "intrusion": {
+      "neck": 0.0687,
+      "chest": 0.067,
+      "lower_front": 0.2,
+      "hem": 0.0,
+      "sleeve_left": 0.0064,
+      "sleeve_right": 0.0032
+     }
+    },
+    {
+     "frame": 12,
+     "score": 0.6822,
+     "zones": {
+      "neck": 0.795,
+      "chest": 0.7533,
+      "lower_front": 0.5591,
+      "hem": 0.5156,
+      "sleeve_left": 0.6651,
+      "sleeve_right": 0.792
+     },
+     "intrusion": {
+      "neck": 0.0759,
+      "chest": 0.0886,
+      "lower_front": 0.1995,
+      "hem": 0.0,
+      "sleeve_left": 0.0011,
+      "sleeve_right": 0.0034
+     }
+    },
+    {
+     "frame": 15,
+     "score": 0.6965,
+     "zones": {
+      "neck": 0.83,
+      "chest": 0.7778,
+      "lower_front": 0.5322,
+      "hem": 0.4406,
+      "sleeve_left": 0.8883,
+      "sleeve_right": 0.7467
+     },
+     "intrusion": {
+      "neck": 0.0414,
+      "chest": 0.1296,
+      "lower_front": 0.3076,
+      "hem": 0.0,
+      "sleeve_left": 0.0015,
+      "sleeve_right": 0.0052
+     }
+    },
+    {
+     "frame": 18,
+     "score": 0.7005,
+     "zones": {
+      "neck": 0.8513,
+      "chest": 0.7123,
+      "lower_front": 0.588,
+      "hem": 0.468,
+      "sleeve_left": 0.8809,
+      "sleeve_right": 0.7634
+     },
+     "intrusion": {
+      "neck": 0.055,
+      "chest": 0.1214,
+      "lower_front": 0.2652,
+      "hem": 0.0,
+      "sleeve_left": 0.0015,
+      "sleeve_right": 0.0075
+     }
+    },
+    {
+     "frame": 21,
+     "score": 0.6943,
+     "zones": {
+      "neck": 0.8486,
+      "chest": 0.6705,
+      "lower_front": 0.6071,
+      "hem": 0.4745,
+      "sleeve_left": 0.8672,
+      "sleeve_right": 0.777
+     },
+     "intrusion": {
+      "neck": 0.0573,
+      "chest": 0.1136,
+      "lower_front": 0.2517,
+      "hem": 0.0,
+      "sleeve_left": 0.0003,
+      "sleeve_right": 0.0155
+     }
+    },
+    {
+     "frame": 24,
+     "score": 0.677,
+     "zones": {
+      "neck": 0.8516,
+      "chest": 0.5864,
+      "lower_front": 0.6196,
+      "hem": 0.4857,
+      "sleeve_left": 0.8498,
+      "sleeve_right": 0.7832
+     },
+     "intrusion": {
+      "neck": 0.0581,
+      "chest": 0.1107,
+      "lower_front": 0.2935,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.022
+     }
+    },
+    {
+     "frame": 27,
+     "score": 0.6653,
+     "zones": {
+      "neck": 0.8248,
+      "chest": 0.5875,
+      "lower_front": 0.5941,
+      "hem": 0.496,
+      "sleeve_left": 0.7945,
+      "sleeve_right": 0.8077
+     },
+     "intrusion": {
+      "neck": 0.0449,
+      "chest": 0.1524,
+      "lower_front": 0.3001,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0096
+     }
+    },
+    {
+     "frame": 30,
+     "score": 0.7013,
+     "zones": {
+      "neck": 0.8073,
+      "chest": 0.6937,
+      "lower_front": 0.5537,
+      "hem": 0.5559,
+      "sleeve_left": 0.8517,
+      "sleeve_right": 0.8711
+     },
+     "intrusion": {
+      "neck": 0.0632,
+      "chest": 0.1646,
+      "lower_front": 0.2899,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0054
+     }
+    },
+    {
+     "frame": 33,
+     "score": 0.7132,
+     "zones": {
+      "neck": 0.7961,
+      "chest": 0.7984,
+      "lower_front": 0.4737,
+      "hem": 0.5672,
+      "sleeve_left": 0.8339,
+      "sleeve_right": 0.912
+     },
+     "intrusion": {
+      "neck": 0.059,
+      "chest": 0.1461,
+      "lower_front": 0.3505,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0043
+     }
+    },
+    {
+     "frame": 36,
+     "score": 0.7035,
+     "zones": {
+      "neck": 0.7901,
+      "chest": 0.8309,
+      "lower_front": 0.4475,
+      "hem": 0.5217,
+      "sleeve_left": 0.756,
+      "sleeve_right": 0.944
+     },
+     "intrusion": {
+      "neck": 0.0486,
+      "chest": 0.1351,
+      "lower_front": 0.422,
+      "hem": 0.0,
+      "sleeve_left": 0.0001,
+      "sleeve_right": 0.0087
+     }
+    },
+    {
+     "frame": 39,
+     "score": 0.6722,
+     "zones": {
+      "neck": 0.7402,
+      "chest": 0.7767,
+      "lower_front": 0.4973,
+      "hem": 0.4604,
+      "sleeve_left": 0.784,
+      "sleeve_right": 0.8301
+     },
+     "intrusion": {
+      "neck": 0.0457,
+      "chest": 0.1062,
+      "lower_front": 0.3998,
+      "hem": 0.0,
+      "sleeve_left": 0.0006,
+      "sleeve_right": 0.0064
+     }
+    },
+    {
+     "frame": 42,
+     "score": 0.6662,
+     "zones": {
+      "neck": 0.7534,
+      "chest": 0.7639,
+      "lower_front": 0.5301,
+      "hem": 0.433,
+      "sleeve_left": 0.7172,
+      "sleeve_right": 0.8185
+     },
+     "intrusion": {
+      "neck": 0.0447,
+      "chest": 0.0924,
+      "lower_front": 0.3669,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0016
+     }
+    },
+    {
+     "frame": 45,
+     "score": 0.6588,
+     "zones": {
+      "neck": 0.7457,
+      "chest": 0.7515,
+      "lower_front": 0.5182,
+      "hem": 0.4457,
+      "sleeve_left": 0.7106,
+      "sleeve_right": 0.8027
+     },
+     "intrusion": {
+      "neck": 0.0387,
+      "chest": 0.0794,
+      "lower_front": 0.3618,
+      "hem": 0.0,
+      "sleeve_left": 0.0001,
+      "sleeve_right": 0.0018
+     }
+    },
+    {
+     "frame": 48,
+     "score": 0.6076,
+     "zones": {
+      "neck": 0.7072,
+      "chest": 0.7184,
+      "lower_front": 0.3976,
+      "hem": 0.6478,
+      "sleeve_left": 0.2479,
+      "sleeve_right": 0.8513
+     },
+     "intrusion": {
+      "neck": 0.0648,
+      "chest": 0.0679,
+      "lower_front": 0.4071,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0146
+     }
+    },
+    {
+     "frame": 51,
+     "score": 0.5178,
+     "zones": {
+      "neck": 0.5727,
+      "chest": 0.6919,
+      "lower_front": 0.3238,
+      "hem": 0.4955,
+      "sleeve_left": 0.1251,
+      "sleeve_right": 0.7868
+     },
+     "intrusion": {
+      "neck": 0.1202,
+      "chest": 0.0533,
+      "lower_front": 0.5064,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.1627
+     }
+    },
+    {
+     "frame": 54,
+     "score": 0.5295,
+     "zones": {
+      "neck": 0.5165,
+      "chest": 0.7758,
+      "lower_front": 0.2713,
+      "hem": 0.5501,
+      "sleeve_left": 0.251,
+      "sleeve_right": 0.7042
+     },
+     "intrusion": {
+      "neck": 0.1047,
+      "chest": 0.0502,
+      "lower_front": 0.5382,
+      "hem": 0.0,
+      "sleeve_left": 0.0001,
+      "sleeve_right": 0.2416
+     }
+    },
+    {
+     "frame": 57,
+     "score": 0.5523,
+     "zones": {
+      "neck": 0.4971,
+      "chest": 0.8157,
+      "lower_front": 0.3117,
+      "hem": 0.5699,
+      "sleeve_left": 0.2805,
+      "sleeve_right": 0.7304
+     },
+     "intrusion": {
+      "neck": 0.1087,
+      "chest": 0.0457,
+      "lower_front": 0.5124,
+      "hem": 0.0,
+      "sleeve_left": 0.0033,
+      "sleeve_right": 0.1521
+     }
+    },
+    {
+     "frame": 60,
+     "score": 0.5791,
+     "zones": {
+      "neck": 0.502,
+      "chest": 0.7412,
+      "lower_front": 0.4481,
+      "hem": 0.6164,
+      "sleeve_left": 0.2764,
+      "sleeve_right": 0.8364
+     },
+     "intrusion": {
+      "neck": 0.0582,
+      "chest": 0.1284,
+      "lower_front": 0.414,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0263
+     }
+    },
+    {
+     "frame": 63,
+     "score": 0.5933,
+     "zones": {
+      "neck": 0.5435,
+      "chest": 0.6447,
+      "lower_front": 0.595,
+      "hem": 0.4833,
+      "sleeve_left": 0.4283,
+      "sleeve_right": 0.8916
+     },
+     "intrusion": {
+      "neck": 0.0379,
+      "chest": 0.229,
+      "lower_front": 0.2461,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0119
+     }
+    },
+    {
+     "frame": 66,
+     "score": 0.5586,
+     "zones": {
+      "neck": 0.6951,
+      "chest": 0.5413,
+      "lower_front": 0.5834,
+      "hem": 0.4199,
+      "sleeve_left": 0.4253,
+      "sleeve_right": 0.6205
+     },
+     "intrusion": {
+      "neck": 0.2167,
+      "chest": 0.2366,
+      "lower_front": 0.2765,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0008
+     }
+    },
+    {
+     "frame": 84,
+     "score": 0.631,
+     "zones": {
+      "neck": 0.8168,
+      "chest": 0.6507,
+      "lower_front": 0.5196,
+      "hem": 0.6065,
+      "sleeve_left": 0.442,
+      "sleeve_right": 0.6587
+     },
+     "intrusion": {
+      "neck": 0.0397,
+      "chest": 0.1064,
+      "lower_front": 0.3721,
+      "hem": 0.0,
+      "sleeve_left": 0.0017,
+      "sleeve_right": 0.0384
+     }
+    },
+    {
+     "frame": 87,
+     "score": 0.6036,
+     "zones": {
+      "neck": 0.8242,
+      "chest": 0.6366,
+      "lower_front": 0.5861,
+      "hem": 0.3805,
+      "sleeve_left": 0.4253,
+      "sleeve_right": 0.6278
+     },
+     "intrusion": {
+      "neck": 0.0431,
+      "chest": 0.1159,
+      "lower_front": 0.2219,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.036
+     }
+    }
+   ],
+   "passes": false,
+   "failing_zones": [
+    "chest",
+    "lower_front"
+   ],
+   "intruding_zones": [
+    "lower_front",
+    "sleeve_right"
+   ]
+  },
+  "S09_c1": {
+   "file": "s09_e1e1.mp4",
+   "frames_scored": 29,
+   "frames_unscored": 1,
+   "median": 0.5332296667463886,
+   "p10": 0.4535009879197558,
+   "min": 0.34212833641759594,
+   "zones_median": {
+    "neck": 0.7537258686394819,
+    "chest": 0.7071524780744639,
+    "lower_front": 0.28562599703217206,
+    "hem": 0.4271392845493095,
+    "sleeve_left": 0.3351347718322223,
+    "sleeve_right": 0.46013519688157645
+   },
+   "intrusion_p90": {
+    "neck": 0.13283734347990264,
+    "chest": 0.18809518935890301,
+    "lower_front": 0.8965625378193091,
+    "hem": 0.0,
+    "sleeve_left": 0.6144790247465369,
+    "sleeve_right": 0.9006751009078281
+   },
+   "worst_zone": "lower_front",
+   "score_std": 0.07974113035205925,
+   "zone_std": {
+    "neck": 0.07756163825301485,
+    "chest": 0.0656535840635994,
+    "lower_front": 0.15375276207587743,
+    "hem": 0.17226191975752403,
+    "sleeve_left": 0.1705568433636653,
+    "sleeve_right": 0.21367874593099986
+   },
+   "zone_std_mean": 0.14224424890744683,
+   "per_frame": [
+    {
+     "frame": 0,
+     "score": 0.5352,
+     "zones": {
+      "neck": 0.885,
+      "chest": 0.7955,
+      "lower_front": 0.3914,
+      "hem": 0.0,
+      "sleeve_left": 0.597,
+      "sleeve_right": 0.2132
+     },
+     "intrusion": {
+      "neck": 0.051,
+      "chest": 0.1939,
+      "lower_front": 0.625,
+      "hem": 0.0,
+      "sleeve_left": 0.1489,
+      "sleeve_right": 0.8136
+     }
+    },
+    {
+     "frame": 3,
+     "score": 0.6096,
+     "zones": {
+      "neck": 0.8751,
+      "chest": 0.7405,
+      "lower_front": 0.4591,
+      "hem": 0.547,
+      "sleeve_left": 0.4791,
+      "sleeve_right": 0.277
+     },
+     "intrusion": {
+      "neck": 0.0286,
+      "chest": 0.1337,
+      "lower_front": 0.528,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.7477
+     }
+    },
+    {
+     "frame": 6,
+     "score": 0.5513,
+     "zones": {
+      "neck": 0.7153,
+      "chest": 0.6437,
+      "lower_front": 0.4294,
+      "hem": 0.5004,
+      "sleeve_left": 0.576,
+      "sleeve_right": 0.2878
+     },
+     "intrusion": {
+      "neck": 0.0546,
+      "chest": 0.2831,
+      "lower_front": 0.587,
+      "hem": 0.0,
+      "sleeve_left": 0.1137,
+      "sleeve_right": 0.6975
+     }
+    },
+    {
+     "frame": 9,
+     "score": 0.5216,
+     "zones": {
+      "neck": 0.7547,
+      "chest": 0.6116,
+      "lower_front": 0.3519,
+      "hem": 0.4179,
+      "sleeve_left": 0.5696,
+      "sleeve_right": 0.2775
+     },
+     "intrusion": {
+      "neck": 0.0467,
+      "chest": 0.2758,
+      "lower_front": 0.6645,
+      "hem": 0.0,
+      "sleeve_left": 0.1253,
+      "sleeve_right": 0.6657
+     }
+    },
+    {
+     "frame": 15,
+     "score": 0.5884,
+     "zones": {
+      "neck": 0.6768,
+      "chest": 0.765,
+      "lower_front": 0.2856,
+      "hem": 0.4883,
+      "sleeve_left": 0.6753,
+      "sleeve_right": 0.6393
+     },
+     "intrusion": {
+      "neck": 0.0329,
+      "chest": 0.0796,
+      "lower_front": 0.6413,
+      "hem": 0.0,
+      "sleeve_left": 0.1179,
+      "sleeve_right": 0.0283
+     }
+    },
+    {
+     "frame": 18,
+     "score": 0.5332,
+     "zones": {
+      "neck": 0.8107,
+      "chest": 0.6752,
+      "lower_front": 0.2594,
+      "hem": 0.3898,
+      "sleeve_left": 0.4336,
+      "sleeve_right": 0.4858
+     },
+     "intrusion": {
+      "neck": 0.0324,
+      "chest": 0.1359,
+      "lower_front": 0.757,
+      "hem": 0.0,
+      "sleeve_left": 0.5924,
+      "sleeve_right": 0.0055
+     }
+    },
+    {
+     "frame": 21,
+     "score": 0.6161,
+     "zones": {
+      "neck": 0.8553,
+      "chest": 0.7524,
+      "lower_front": 0.3817,
+      "hem": 0.4759,
+      "sleeve_left": 0.5533,
+      "sleeve_right": 0.5385
+     },
+     "intrusion": {
+      "neck": 0.0172,
+      "chest": 0.1866,
+      "lower_front": 0.6072,
+      "hem": 0.0,
+      "sleeve_left": 0.4555,
+      "sleeve_right": 0.0149
+     }
+    },
+    {
+     "frame": 24,
+     "score": 0.6032,
+     "zones": {
+      "neck": 0.8255,
+      "chest": 0.7195,
+      "lower_front": 0.3976,
+      "hem": 0.4502,
+      "sleeve_left": 0.5851,
+      "sleeve_right": 0.5267
+     },
+     "intrusion": {
+      "neck": 0.011,
+      "chest": 0.1838,
+      "lower_front": 0.5974,
+      "hem": 0.0,
+      "sleeve_left": 0.441,
+      "sleeve_right": 0.0063
+     }
+    },
+    {
+     "frame": 27,
+     "score": 0.5444,
+     "zones": {
+      "neck": 0.6746,
+      "chest": 0.6626,
+      "lower_front": 0.3777,
+      "hem": 0.4192,
+      "sleeve_left": 0.5904,
+      "sleeve_right": 0.4637
+     },
+     "intrusion": {
+      "neck": 0.0115,
+      "chest": 0.1674,
+      "lower_front": 0.598,
+      "hem": 0.0,
+      "sleeve_left": 0.3209,
+      "sleeve_right": 0.0681
+     }
+    },
+    {
+     "frame": 30,
+     "score": 0.4761,
+     "zones": {
+      "neck": 0.7375,
+      "chest": 0.6791,
+      "lower_front": 0.161,
+      "hem": 0.3813,
+      "sleeve_left": 0.435,
+      "sleeve_right": 0.2591
+     },
+     "intrusion": {
+      "neck": 0.0624,
+      "chest": 0.0884,
+      "lower_front": 0.8554,
+      "hem": 0.0,
+      "sleeve_left": 0.5911,
+      "sleeve_right": 0.0415
+     }
+    },
+    {
+     "frame": 33,
+     "score": 0.3421,
+     "zones": {
+      "neck": 0.6502,
+      "chest": 0.6707,
+      "lower_front": 0.0,
+      "hem": 0.0,
+      "sleeve_left": 0.3351,
+      "sleeve_right": 0.109
+     },
+     "intrusion": {
+      "neck": 0.0688,
+      "chest": 0.0251,
+      "lower_front": 0.0,
+      "hem": 0.0,
+      "sleeve_left": 0.6333,
+      "sleeve_right": 0.9068
+     }
+    },
+    {
+     "frame": 36,
+     "score": 0.578,
+     "zones": {
+      "neck": 0.7525,
+      "chest": 0.6787,
+      "lower_front": 0.4213,
+      "hem": 0.374,
+      "sleeve_left": 0.5261,
+      "sleeve_right": 0.6486
+     },
+     "intrusion": {
+      "neck": 0.0425,
+      "chest": 0.047,
+      "lower_front": 0.5029,
+      "hem": 0.0,
+      "sleeve_left": 0.1654,
+      "sleeve_right": 0.0084
+     }
+    },
+    {
+     "frame": 39,
+     "score": 0.4859,
+     "zones": {
+      "neck": 0.7323,
+      "chest": 0.671,
+      "lower_front": 0.1202,
+      "hem": 0.3694,
+      "sleeve_left": 0.4025,
+      "sleeve_right": 0.5195
+     },
+     "intrusion": {
+      "neck": 0.0683,
+      "chest": 0.018,
+      "lower_front": 0.8944,
+      "hem": 0.0,
+      "sleeve_left": 0.6236,
+      "sleeve_right": 0.3403
+     }
+    },
+    {
+     "frame": 42,
+     "score": 0.4711,
+     "zones": {
+      "neck": 0.7531,
+      "chest": 0.6542,
+      "lower_front": 0.0791,
+      "hem": 0.3694,
+      "sleeve_left": 0.397,
+      "sleeve_right": 0.4601
+     },
+     "intrusion": {
+      "neck": 0.0556,
+      "chest": 0.0106,
+      "lower_front": 0.9344,
+      "hem": 0.0,
+      "sleeve_left": 0.6122,
+      "sleeve_right": 0.5513
+     }
+    },
+    {
+     "frame": 45,
+     "score": 0.4479,
+     "zones": {
+      "neck": 0.7712,
+      "chest": 0.6307,
+      "lower_front": 0.111,
+      "hem": 0.3694,
+      "sleeve_left": 0.2542,
+      "sleeve_right": 0.3296
+     },
+     "intrusion": {
+      "neck": 0.0389,
+      "chest": 0.0112,
+      "lower_front": 0.905,
+      "hem": 0.0,
+      "sleeve_left": 0.4921,
+      "sleeve_right": 0.6955
+     }
+    },
+    {
+     "frame": 48,
+     "score": 0.4769,
+     "zones": {
+      "neck": 0.7044,
+      "chest": 0.7072,
+      "lower_front": 0.241,
+      "hem": 0.4476,
+      "sleeve_left": 0.1965,
+      "sleeve_right": 0.2425
+     },
+     "intrusion": {
+      "neck": 0.0434,
+      "chest": 0.0329,
+      "lower_front": 0.7641,
+      "hem": 0.0,
+      "sleeve_left": 0.002,
+      "sleeve_right": 0.7808
+     }
+    },
+    {
+     "frame": 51,
+     "score": 0.4736,
+     "zones": {
+      "neck": 0.7881,
+      "chest": 0.6703,
+      "lower_front": 0.2268,
+      "hem": 0.4697,
+      "sleeve_left": 0.1383,
+      "sleeve_right": 0.1872
+     },
+     "intrusion": {
+      "neck": 0.028,
+      "chest": 0.0769,
+      "lower_front": 0.7896,
+      "hem": 0.0,
+      "sleeve_left": 0.1124,
+      "sleeve_right": 0.8396
+     }
+    },
+    {
+     "frame": 54,
+     "score": 0.3482,
+     "zones": {
+      "neck": 0.5572,
+      "chest": 0.7382,
+      "lower_front": 0.1361,
+      "hem": 0.0,
+      "sleeve_left": 0.1527,
+      "sleeve_right": 0.0973
+     },
+     "intrusion": {
+      "neck": 0.073,
+      "chest": 0.0621,
+      "lower_front": 0.823,
+      "hem": 0.0,
+      "sleeve_left": 0.1305,
+      "sleeve_right": 0.9295
+     }
+    },
+    {
+     "frame": 57,
+     "score": 0.4589,
+     "zones": {
+      "neck": 0.6701,
+      "chest": 0.7524,
+      "lower_front": 0.1628,
+      "hem": 0.5266,
+      "sleeve_left": 0.1439,
+      "sleeve_right": 0.1082
+     },
+     "intrusion": {
+      "neck": 0.0802,
+      "chest": 0.0554,
+      "lower_front": 0.5401,
+      "hem": 0.0,
+      "sleeve_left": 0.0753,
+      "sleeve_right": 0.9186
+     }
+    },
+    {
+     "frame": 60,
+     "score": 0.4902,
+     "zones": {
+      "neck": 0.8808,
+      "chest": 0.757,
+      "lower_front": 0.1485,
+      "hem": 0.4636,
+      "sleeve_left": 0.1277,
+      "sleeve_right": 0.1277
+     },
+     "intrusion": {
+      "neck": 0.0161,
+      "chest": 0.0507,
+      "lower_front": 0.8311,
+      "hem": 0.0,
+      "sleeve_left": 0.1153,
+      "sleeve_right": 0.8991
+     }
+    },
+    {
+     "frame": 63,
+     "score": 0.5175,
+     "zones": {
+      "neck": 0.8607,
+      "chest": 0.762,
+      "lower_front": 0.2323,
+      "hem": 0.4168,
+      "sleeve_left": 0.176,
+      "sleeve_right": 0.2828
+     },
+     "intrusion": {
+      "neck": 0.0206,
+      "chest": 0.024,
+      "lower_front": 0.7841,
+      "hem": 0.0,
+      "sleeve_left": 0.1136,
+      "sleeve_right": 0.744
+     }
+    },
+    {
+     "frame": 66,
+     "score": 0.6453,
+     "zones": {
+      "neck": 0.8433,
+      "chest": 0.7266,
+      "lower_front": 0.6467,
+      "hem": 0.5167,
+      "sleeve_left": 0.2349,
+      "sleeve_right": 0.6463
+     },
+     "intrusion": {
+      "neck": 0.0255,
+      "chest": 0.1284,
+      "lower_front": 0.2584,
+      "hem": 0.0,
+      "sleeve_left": 0.0781,
+      "sleeve_right": 0.3635
+     }
+    },
+    {
+     "frame": 69,
+     "score": 0.4559,
+     "zones": {
+      "neck": 0.678,
+      "chest": 0.6855,
+      "lower_front": 0.1027,
+      "hem": 0.4271,
+      "sleeve_left": 0.2037,
+      "sleeve_right": 0.4392
+     },
+     "intrusion": {
+      "neck": 0.1979,
+      "chest": 0.0269,
+      "lower_front": 0.9137,
+      "hem": 0.0,
+      "sleeve_left": 0.8113,
+      "sleeve_right": 0.5876
+     }
+    },
+    {
+     "frame": 72,
+     "score": 0.6541,
+     "zones": {
+      "neck": 0.7479,
+      "chest": 0.9105,
+      "lower_front": 0.4066,
+      "hem": 0.5649,
+      "sleeve_left": 0.3272,
+      "sleeve_right": 0.7812
+     },
+     "intrusion": {
+      "neck": 0.0643,
+      "chest": 0.0557,
+      "lower_front": 0.3522,
+      "hem": 0.0,
+      "sleeve_left": 0.4333,
+      "sleeve_right": 0.177
+     }
+    },
+    {
+     "frame": 75,
+     "score": 0.6196,
+     "zones": {
+      "neck": 0.6817,
+      "chest": 0.7518,
+      "lower_front": 0.4689,
+      "hem": 0.5733,
+      "sleeve_left": 0.3649,
+      "sleeve_right": 0.7899
+     },
+     "intrusion": {
+      "neck": 0.0447,
+      "chest": 0.0669,
+      "lower_front": 0.4016,
+      "hem": 0.0,
+      "sleeve_left": 0.3746,
+      "sleeve_right": 0.1532
+     }
+    },
+    {
+     "frame": 78,
+     "score": 0.5574,
+     "zones": {
+      "neck": 0.7537,
+      "chest": 0.5946,
+      "lower_front": 0.3809,
+      "hem": 0.6005,
+      "sleeve_left": 0.2625,
+      "sleeve_right": 0.6545
+     },
+     "intrusion": {
+      "neck": 0.1376,
+      "chest": 0.0782,
+      "lower_front": 0.5287,
+      "hem": 0.0,
+      "sleeve_left": 0.2161,
+      "sleeve_right": 0.3556
+     }
+    },
+    {
+     "frame": 81,
+     "score": 0.4549,
+     "zones": {
+      "neck": 0.7932,
+      "chest": 0.646,
+      "lower_front": 0.2452,
+      "hem": 0.0,
+      "sleeve_left": 0.2281,
+      "sleeve_right": 0.6294
+     },
+     "intrusion": {
+      "neck": 0.0843,
+      "chest": 0.0746,
+      "lower_front": 0.7712,
+      "hem": 0.0,
+      "sleeve_left": 0.5036,
+      "sleeve_right": 0.0904
+     }
+    },
+    {
+     "frame": 84,
+     "score": 0.6441,
+     "zones": {
+      "neck": 0.7641,
+      "chest": 0.7997,
+      "lower_front": 0.5462,
+      "hem": 0.5681,
+      "sleeve_left": 0.2456,
+      "sleeve_right": 0.7236
+     },
+     "intrusion": {
+      "neck": 0.1621,
+      "chest": 0.1701,
+      "lower_front": 0.3277,
+      "hem": 0.0,
+      "sleeve_left": 0.2208,
+      "sleeve_right": 0.1614
+     }
+    },
+    {
+     "frame": 87,
+     "score": 0.5664,
+     "zones": {
+      "neck": 0.7918,
+      "chest": 0.7604,
+      "lower_front": 0.4285,
+      "hem": 0.3694,
+      "sleeve_left": 0.127,
+      "sleeve_right": 0.6414
+     },
+     "intrusion": {
+      "neck": 0.1316,
+      "chest": 0.0471,
+      "lower_front": 0.5879,
+      "hem": 0.0,
+      "sleeve_left": 0.3236,
+      "sleeve_right": 0.1809
+     }
+    }
+   ],
+   "passes": false,
+   "failing_zones": [
+    "chest",
+    "lower_front",
+    "sleeve_left",
+    "sleeve_right"
+   ],
+   "intruding_zones": [
+    "lower_front",
+    "sleeve_left",
+    "sleeve_right"
+   ]
+  },
+  "S09_c2": {
+   "file": "s09_e1e2.mp4",
+   "frames_scored": 25,
+   "frames_unscored": 5,
+   "median": 0.670661370237068,
+   "p10": 0.5883960704236487,
+   "min": 0.3943683819784208,
+   "zones_median": {
+    "neck": 0.7791936730689183,
+    "chest": 0.7229240381384108,
+    "lower_front": 0.6096370734528629,
+    "hem": 0.6201963953149963,
+    "sleeve_left": 0.48494091649123006,
+    "sleeve_right": 0.8258707112749182
+   },
+   "intrusion_p90": {
+    "neck": 0.056925085743914715,
+    "chest": 0.06196475478292839,
+    "lower_front": 0.5384036108426352,
+    "hem": 0.0,
+    "sleeve_left": 0.011950741148730626,
+    "sleeve_right": 0.04989418872959067
+   },
+   "worst_zone": "sleeve_left",
+   "score_std": 0.08039731943064711,
+   "zone_std": {
+    "neck": 0.13493676219789577,
+    "chest": 0.09284268799191604,
+    "lower_front": 0.19470312105537074,
+    "hem": 0.16130253396700645,
+    "sleeve_left": 0.12315025751919893,
+    "sleeve_right": 0.090598203349671
+   },
+   "zone_std_mean": 0.13292226101350982,
+   "per_frame": [
+    {
+     "frame": 0,
+     "score": 0.6703,
+     "zones": {
+      "neck": 0.8324,
+      "chest": 0.5646,
+      "lower_front": 0.5871,
+      "hem": 0.793,
+      "sleeve_left": 0.4259,
+      "sleeve_right": 0.8375
+     },
+     "intrusion": {
+      "neck": 0.0574,
+      "chest": 0.035,
+      "lower_front": 0.4293,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0333
+     }
+    },
+    {
+     "frame": 3,
+     "score": 0.6614,
+     "zones": {
+      "neck": 0.8114,
+      "chest": 0.558,
+      "lower_front": 0.5661,
+      "hem": 0.7572,
+      "sleeve_left": 0.4352,
+      "sleeve_right": 0.8934
+     },
+     "intrusion": {
+      "neck": 0.0545,
+      "chest": 0.038,
+      "lower_front": 0.4503,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0023
+     }
+    },
+    {
+     "frame": 6,
+     "score": 0.6478,
+     "zones": {
+      "neck": 0.8318,
+      "chest": 0.5779,
+      "lower_front": 0.4949,
+      "hem": 0.7235,
+      "sleeve_left": 0.4519,
+      "sleeve_right": 0.8423
+     },
+     "intrusion": {
+      "neck": 0.0501,
+      "chest": 0.046,
+      "lower_front": 0.5163,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0609
+     }
+    },
+    {
+     "frame": 9,
+     "score": 0.715,
+     "zones": {
+      "neck": 0.8356,
+      "chest": 0.6409,
+      "lower_front": 0.8171,
+      "hem": 0.6118,
+      "sleeve_left": 0.4422,
+      "sleeve_right": 0.8824
+     },
+     "intrusion": {
+      "neck": 0.0439,
+      "chest": 0.0405,
+      "lower_front": 0.1993,
+      "hem": 0.0,
+      "sleeve_left": 0.0029,
+      "sleeve_right": 0.003
+     }
+    },
+    {
+     "frame": 12,
+     "score": 0.7335,
+     "zones": {
+      "neck": 0.7792,
+      "chest": 0.7369,
+      "lower_front": 0.934,
+      "hem": 0.4914,
+      "sleeve_left": 0.4838,
+      "sleeve_right": 0.845
+     },
+     "intrusion": {
+      "neck": 0.0282,
+      "chest": 0.0565,
+      "lower_front": 0.0649,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0136
+     }
+    },
+    {
+     "frame": 15,
+     "score": 0.7407,
+     "zones": {
+      "neck": 0.804,
+      "chest": 0.772,
+      "lower_front": 0.8406,
+      "hem": 0.6364,
+      "sleeve_left": 0.5141,
+      "sleeve_right": 0.7194
+     },
+     "intrusion": {
+      "neck": 0.0314,
+      "chest": 0.0578,
+      "lower_front": 0.0417,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.012
+     }
+    },
+    {
+     "frame": 18,
+     "score": 0.7082,
+     "zones": {
+      "neck": 0.8305,
+      "chest": 0.6132,
+      "lower_front": 0.8048,
+      "hem": 0.6079,
+      "sleeve_left": 0.6556,
+      "sleeve_right": 0.7108
+     },
+     "intrusion": {
+      "neck": 0.0331,
+      "chest": 0.0812,
+      "lower_front": 0.068,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.016
+     }
+    },
+    {
+     "frame": 21,
+     "score": 0.7053,
+     "zones": {
+      "neck": 0.8309,
+      "chest": 0.5787,
+      "lower_front": 0.8396,
+      "hem": 0.583,
+      "sleeve_left": 0.6789,
+      "sleeve_right": 0.7121
+     },
+     "intrusion": {
+      "neck": 0.0448,
+      "chest": 0.0718,
+      "lower_front": 0.0624,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0223
+     }
+    },
+    {
+     "frame": 24,
+     "score": 0.6946,
+     "zones": {
+      "neck": 0.8425,
+      "chest": 0.565,
+      "lower_front": 0.8129,
+      "hem": 0.5716,
+      "sleeve_left": 0.6269,
+      "sleeve_right": 0.7387
+     },
+     "intrusion": {
+      "neck": 0.047,
+      "chest": 0.0647,
+      "lower_front": 0.0436,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0273
+     }
+    },
+    {
+     "frame": 27,
+     "score": 0.7091,
+     "zones": {
+      "neck": 0.8061,
+      "chest": 0.6413,
+      "lower_front": 0.6801,
+      "hem": 0.6979,
+      "sleeve_left": 0.6575,
+      "sleeve_right": 0.8113
+     },
+     "intrusion": {
+      "neck": 0.0538,
+      "chest": 0.0462,
+      "lower_front": 0.2515,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0163
+     }
+    },
+    {
+     "frame": 30,
+     "score": 0.7446,
+     "zones": {
+      "neck": 0.8311,
+      "chest": 0.7606,
+      "lower_front": 0.8179,
+      "hem": 0.6167,
+      "sleeve_left": 0.4908,
+      "sleeve_right": 0.8303
+     },
+     "intrusion": {
+      "neck": 0.0359,
+      "chest": 0.0359,
+      "lower_front": 0.0465,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0181
+     }
+    },
+    {
+     "frame": 33,
+     "score": 0.7405,
+     "zones": {
+      "neck": 0.7677,
+      "chest": 0.7988,
+      "lower_front": 0.8099,
+      "hem": 0.6113,
+      "sleeve_left": 0.4862,
+      "sleeve_right": 0.8493
+     },
+     "intrusion": {
+      "neck": 0.0354,
+      "chest": 0.0346,
+      "lower_front": 0.0459,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0197
+     }
+    },
+    {
+     "frame": 36,
+     "score": 0.7393,
+     "zones": {
+      "neck": 0.7406,
+      "chest": 0.8154,
+      "lower_front": 0.7859,
+      "hem": 0.6306,
+      "sleeve_left": 0.5231,
+      "sleeve_right": 0.8332
+     },
+     "intrusion": {
+      "neck": 0.0386,
+      "chest": 0.0393,
+      "lower_front": 0.0668,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0161
+     }
+    },
+    {
+     "frame": 39,
+     "score": 0.7344,
+     "zones": {
+      "neck": 0.7871,
+      "chest": 0.8247,
+      "lower_front": 0.6096,
+      "hem": 0.6277,
+      "sleeve_left": 0.6743,
+      "sleeve_right": 0.8726
+     },
+     "intrusion": {
+      "neck": 0.0562,
+      "chest": 0.0422,
+      "lower_front": 0.1694,
+      "hem": 0.0,
+      "sleeve_left": 0.0073,
+      "sleeve_right": 0.0058
+     }
+    },
+    {
+     "frame": 42,
+     "score": 0.719,
+     "zones": {
+      "neck": 0.7906,
+      "chest": 0.8243,
+      "lower_front": 0.5544,
+      "hem": 0.6248,
+      "sleeve_left": 0.6488,
+      "sleeve_right": 0.8529
+     },
+     "intrusion": {
+      "neck": 0.0489,
+      "chest": 0.051,
+      "lower_front": 0.2018,
+      "hem": 0.0,
+      "sleeve_left": 0.0195,
+      "sleeve_right": 0.003
+     }
+    },
+    {
+     "frame": 45,
+     "score": 0.6707,
+     "zones": {
+      "neck": 0.6325,
+      "chest": 0.8101,
+      "lower_front": 0.5345,
+      "hem": 0.6279,
+      "sleeve_left": 0.5341,
+      "sleeve_right": 0.8714
+     },
+     "intrusion": {
+      "neck": 0.0511,
+      "chest": 0.0482,
+      "lower_front": 0.19,
+      "hem": 0.0,
+      "sleeve_left": 0.0125,
+      "sleeve_right": 0.0
+     }
+    },
+    {
+     "frame": 48,
+     "score": 0.6097,
+     "zones": {
+      "neck": 0.5974,
+      "chest": 0.7229,
+      "lower_front": 0.5563,
+      "hem": 0.6202,
+      "sleeve_left": 0.2256,
+      "sleeve_right": 0.8259
+     },
+     "intrusion": {
+      "neck": 0.0579,
+      "chest": 0.0424,
+      "lower_front": 0.1303,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0086
+     }
+    },
+    {
+     "frame": 51,
+     "score": 0.5139,
+     "zones": {
+      "neck": 0.5776,
+      "chest": 0.6626,
+      "lower_front": 0.4188,
+      "hem": 0.3811,
+      "sleeve_left": 0.2264,
+      "sleeve_right": 0.6915
+     },
+     "intrusion": {
+      "neck": 0.1251,
+      "chest": 0.0371,
+      "lower_front": 0.5956,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.3353
+     }
+    },
+    {
+     "frame": 54,
+     "score": 0.5867,
+     "zones": {
+      "neck": 0.4561,
+      "chest": 0.7073,
+      "lower_front": 0.4546,
+      "hem": 0.8183,
+      "sleeve_left": 0.3109,
+      "sleeve_right": 0.739
+     },
+     "intrusion": {
+      "neck": 0.0504,
+      "chest": 0.0402,
+      "lower_front": 0.5201,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0027
+     }
+    },
+    {
+     "frame": 57,
+     "score": 0.5909,
+     "zones": {
+      "neck": 0.4366,
+      "chest": 0.7609,
+      "lower_front": 0.4186,
+      "hem": 0.7894,
+      "sleeve_left": 0.4253,
+      "sleeve_right": 0.6873
+     },
+     "intrusion": {
+      "neck": 0.0485,
+      "chest": 0.0369,
+      "lower_front": 0.5506,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0007
+     }
+    },
+    {
+     "frame": 60,
+     "score": 0.6408,
+     "zones": {
+      "neck": 0.4848,
+      "chest": 0.7544,
+      "lower_front": 0.5503,
+      "hem": 0.834,
+      "sleeve_left": 0.4253,
+      "sleeve_right": 0.7751
+     },
+     "intrusion": {
+      "neck": 0.0374,
+      "chest": 0.0308,
+      "lower_front": 0.2645,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0041
+     }
+    },
+    {
+     "frame": 63,
+     "score": 0.6562,
+     "zones": {
+      "neck": 0.512,
+      "chest": 0.7855,
+      "lower_front": 0.7028,
+      "hem": 0.6068,
+      "sleeve_left": 0.4253,
+      "sleeve_right": 0.8324
+     },
+     "intrusion": {
+      "neck": 0.0448,
+      "chest": 0.0448,
+      "lower_front": 0.0845,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0104
+     }
+    },
+    {
+     "frame": 66,
+     "score": 0.633,
+     "zones": {
+      "neck": 0.5704,
+      "chest": 0.7736,
+      "lower_front": 0.6298,
+      "hem": 0.548,
+      "sleeve_left": 0.4257,
+      "sleeve_right": 0.7475
+     },
+     "intrusion": {
+      "neck": 0.0334,
+      "chest": 0.0404,
+      "lower_front": 0.1469,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0051
+     }
+    },
+    {
+     "frame": 69,
+     "score": 0.5984,
+     "zones": {
+      "neck": 0.5935,
+      "chest": 0.6935,
+      "lower_front": 0.5366,
+      "hem": 0.5571,
+      "sleeve_left": 0.4849,
+      "sleeve_right": 0.6692
+     },
+     "intrusion": {
+      "neck": 0.0344,
+      "chest": 0.0389,
+      "lower_front": 0.468,
+      "hem": 0.0,
+      "sleeve_left": 0.0111,
+      "sleeve_right": 0.0023
+     }
+    },
+    {
+     "frame": 87,
+     "score": 0.3944,
+     "zones": {
+      "neck": 0.7207,
+      "chest": 0.5702,
+      "lower_front": 0.0069,
+      "hem": 0.0,
+      "sleeve_left": 0.5764,
+      "sleeve_right": 0.4866
+     },
+     "intrusion": {
+      "neck": 0.0221,
+      "chest": 0.0202,
+      "lower_front": 0.9978,
+      "hem": 0.0,
+      "sleeve_left": 0.1875,
+      "sleeve_right": 0.5402
+     }
+    }
+   ],
+   "passes": false,
+   "failing_zones": [
+    "chest",
+    "lower_front",
+    "sleeve_left"
+   ],
+   "intruding_zones": [
+    "lower_front"
+   ]
+  }
+ },
+ "references": {
+  "S08": {
+   "file": "gfx/s08_e1_graphic_hem3.mp4",
+   "frames_scored": 47,
+   "frames_unscored": 7,
+   "median": 0.6987730352698918,
+   "p10": 0.6506798258745434,
+   "min": 0.5989601980538628,
+   "zones_median": {
+    "neck": 0.7657018817627043,
+    "chest": 0.7746287589078142,
+    "lower_front": 0.7268260573085135,
+    "hem": 0.5148312066502043,
+    "sleeve_left": 0.5705316378905023,
+    "sleeve_right": 0.8500306093266228
+   },
+   "intrusion_p90": {
+    "neck": 0.0665548804319083,
+    "chest": 0.2279117830816176,
+    "lower_front": 0.2987841086091187,
+    "hem": 0.0,
+    "sleeve_left": 0.014024490109974658,
+    "sleeve_right": 0.06931517667349311
+   },
+   "worst_zone": "hem",
+   "score_std": 0.0395534870580589,
+   "zone_std": {
+    "neck": 0.09738307759748929,
+    "chest": 0.05230216421603053,
+    "lower_front": 0.10463781353747047,
+    "hem": 0.10866574990630255,
+    "sleeve_left": 0.10887765917204174,
+    "sleeve_right": 0.09833179869378475
+   },
+   "zone_std_mean": 0.09503304385385324,
+   "per_frame": [
+    {
+     "frame": 0,
+     "score": 0.6905,
+     "zones": {
+      "neck": 0.937,
+      "chest": 0.8006,
+      "lower_front": 0.6164,
+      "hem": 0.3381,
+      "sleeve_left": 0.5739,
+      "sleeve_right": 0.7156
+     },
+     "intrusion": {
+      "neck": 0.0225,
+      "chest": 0.1964,
+      "lower_front": 0.0226,
+      "hem": 0.0,
+      "sleeve_left": 0.0035,
+      "sleeve_right": 0.0804
+     }
+    },
+    {
+     "frame": 3,
+     "score": 0.6882,
+     "zones": {
+      "neck": 0.9574,
+      "chest": 0.7718,
+      "lower_front": 0.6216,
+      "hem": 0.3243,
+      "sleeve_left": 0.5447,
+      "sleeve_right": 0.7629
+     },
+     "intrusion": {
+      "neck": 0.0246,
+      "chest": 0.1952,
+      "lower_front": 0.0205,
+      "hem": 0.0,
+      "sleeve_left": 0.0004,
+      "sleeve_right": 0.0294
+     }
+    },
+    {
+     "frame": 6,
+     "score": 0.6644,
+     "zones": {
+      "neck": 0.9383,
+      "chest": 0.732,
+      "lower_front": 0.6364,
+      "hem": 0.2854,
+      "sleeve_left": 0.5461,
+      "sleeve_right": 0.6905
+     },
+     "intrusion": {
+      "neck": 0.0241,
+      "chest": 0.1893,
+      "lower_front": 0.0292,
+      "hem": 0.0,
+      "sleeve_left": 0.004,
+      "sleeve_right": 0.0235
+     }
+    },
+    {
+     "frame": 9,
+     "score": 0.6637,
+     "zones": {
+      "neck": 0.8518,
+      "chest": 0.7843,
+      "lower_front": 0.6544,
+      "hem": 0.2569,
+      "sleeve_left": 0.6335,
+      "sleeve_right": 0.6452
+     },
+     "intrusion": {
+      "neck": 0.0237,
+      "chest": 0.1996,
+      "lower_front": 0.0209,
+      "hem": 0.0,
+      "sleeve_left": 0.0196,
+      "sleeve_right": 0.0525
+     }
+    },
+    {
+     "frame": 12,
+     "score": 0.6982,
+     "zones": {
+      "neck": 0.7358,
+      "chest": 0.7949,
+      "lower_front": 0.8103,
+      "hem": 0.3549,
+      "sleeve_left": 0.7265,
+      "sleeve_right": 0.6435
+     },
+     "intrusion": {
+      "neck": 0.0274,
+      "chest": 0.1803,
+      "lower_front": 0.0655,
+      "hem": 0.0,
+      "sleeve_left": 0.0311,
+      "sleeve_right": 0.1593
+     }
+    },
+    {
+     "frame": 15,
+     "score": 0.6744,
+     "zones": {
+      "neck": 0.7043,
+      "chest": 0.7675,
+      "lower_front": 0.7632,
+      "hem": 0.3305,
+      "sleeve_left": 0.7046,
+      "sleeve_right": 0.6894
+     },
+     "intrusion": {
+      "neck": 0.0303,
+      "chest": 0.179,
+      "lower_front": 0.0578,
+      "hem": 0.0,
+      "sleeve_left": 0.0243,
+      "sleeve_right": 0.1363
+     }
+    },
+    {
+     "frame": 18,
+     "score": 0.6477,
+     "zones": {
+      "neck": 0.7657,
+      "chest": 0.7386,
+      "lower_front": 0.6633,
+      "hem": 0.3207,
+      "sleeve_left": 0.4993,
+      "sleeve_right": 0.7924
+     },
+     "intrusion": {
+      "neck": 0.033,
+      "chest": 0.193,
+      "lower_front": 0.0433,
+      "hem": 0.0,
+      "sleeve_left": 0.0271,
+      "sleeve_right": 0.0318
+     }
+    },
+    {
+     "frame": 21,
+     "score": 0.6741,
+     "zones": {
+      "neck": 0.7714,
+      "chest": 0.748,
+      "lower_front": 0.6589,
+      "hem": 0.3294,
+      "sleeve_left": 0.694,
+      "sleeve_right": 0.8221
+     },
+     "intrusion": {
+      "neck": 0.0285,
+      "chest": 0.2247,
+      "lower_front": 0.0535,
+      "hem": 0.0,
+      "sleeve_left": 0.0122,
+      "sleeve_right": 0.0183
+     }
+    },
+    {
+     "frame": 24,
+     "score": 0.6573,
+     "zones": {
+      "neck": 0.7719,
+      "chest": 0.7736,
+      "lower_front": 0.6599,
+      "hem": 0.2987,
+      "sleeve_left": 0.4654,
+      "sleeve_right": 0.8625
+     },
+     "intrusion": {
+      "neck": 0.0488,
+      "chest": 0.2465,
+      "lower_front": 0.2523,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0007
+     }
+    },
+    {
+     "frame": 27,
+     "score": 0.7084,
+     "zones": {
+      "neck": 0.8791,
+      "chest": 0.7132,
+      "lower_front": 0.8186,
+      "hem": 0.4701,
+      "sleeve_left": 0.5356,
+      "sleeve_right": 0.6654
+     },
+     "intrusion": {
+      "neck": 0.0483,
+      "chest": 0.2147,
+      "lower_front": 0.0126,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0018
+     }
+    },
+    {
+     "frame": 30,
+     "score": 0.6936,
+     "zones": {
+      "neck": 0.8406,
+      "chest": 0.7164,
+      "lower_front": 0.7806,
+      "hem": 0.424,
+      "sleeve_left": 0.4662,
+      "sleeve_right": 0.8003
+     },
+     "intrusion": {
+      "neck": 0.0433,
+      "chest": 0.1666,
+      "lower_front": 0.0323,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0
+     }
+    },
+    {
+     "frame": 33,
+     "score": 0.6419,
+     "zones": {
+      "neck": 0.6815,
+      "chest": 0.8399,
+      "lower_front": 0.7231,
+      "hem": 0.3517,
+      "sleeve_left": 0.349,
+      "sleeve_right": 0.634
+     },
+     "intrusion": {
+      "neck": 0.049,
+      "chest": 0.1356,
+      "lower_front": 0.0327,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.015
+     }
+    },
+    {
+     "frame": 36,
+     "score": 0.6349,
+     "zones": {
+      "neck": 0.5699,
+      "chest": 0.8888,
+      "lower_front": 0.6385,
+      "hem": 0.3882,
+      "sleeve_left": 0.5515,
+      "sleeve_right": 0.5763
+     },
+     "intrusion": {
+      "neck": 0.0682,
+      "chest": 0.156,
+      "lower_front": 0.0207,
+      "hem": 0.0,
+      "sleeve_left": 0.0167,
+      "sleeve_right": 0.084
+     }
+    },
+    {
+     "frame": 39,
+     "score": 0.6198,
+     "zones": {
+      "neck": 0.488,
+      "chest": 0.8065,
+      "lower_front": 0.6479,
+      "hem": 0.4252,
+      "sleeve_left": 0.6295,
+      "sleeve_right": 0.6427
+     },
+     "intrusion": {
+      "neck": 0.0847,
+      "chest": 0.2117,
+      "lower_front": 0.022,
+      "hem": 0.0,
+      "sleeve_left": 0.0114,
+      "sleeve_right": 0.0137
+     }
+    },
+    {
+     "frame": 42,
+     "score": 0.6589,
+     "zones": {
+      "neck": 0.5022,
+      "chest": 0.7929,
+      "lower_front": 0.7268,
+      "hem": 0.4916,
+      "sleeve_left": 0.7222,
+      "sleeve_right": 0.6886
+     },
+     "intrusion": {
+      "neck": 0.0943,
+      "chest": 0.1865,
+      "lower_front": 0.1631,
+      "hem": 0.0,
+      "sleeve_left": 0.0012,
+      "sleeve_right": 0.0261
+     }
+    },
+    {
+     "frame": 51,
+     "score": 0.599,
+     "zones": {
+      "neck": 0.5613,
+      "chest": 0.8015,
+      "lower_front": 0.7044,
+      "hem": 0.282,
+      "sleeve_left": 0.4117,
+      "sleeve_right": 0.6196
+     },
+     "intrusion": {
+      "neck": 0.1018,
+      "chest": 0.1903,
+      "lower_front": 0.1892,
+      "hem": 0.0,
+      "sleeve_left": 0.0104,
+      "sleeve_right": 0.0126
+     }
+    },
+    {
+     "frame": 54,
+     "score": 0.6658,
+     "zones": {
+      "neck": 0.7088,
+      "chest": 0.7677,
+      "lower_front": 0.6877,
+      "hem": 0.2933,
+      "sleeve_left": 0.5603,
+      "sleeve_right": 0.9455
+     },
+     "intrusion": {
+      "neck": 0.0895,
+      "chest": 0.214,
+      "lower_front": 0.005,
+      "hem": 0.0,
+      "sleeve_left": 0.0057,
+      "sleeve_right": 0.0152
+     }
+    },
+    {
+     "frame": 57,
+     "score": 0.689,
+     "zones": {
+      "neck": 0.7716,
+      "chest": 0.7745,
+      "lower_front": 0.7532,
+      "hem": 0.3438,
+      "sleeve_left": 0.5222,
+      "sleeve_right": 0.8659
+     },
+     "intrusion": {
+      "neck": 0.0559,
+      "chest": 0.1915,
+      "lower_front": 0.0037,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0225
+     }
+    },
+    {
+     "frame": 60,
+     "score": 0.7434,
+     "zones": {
+      "neck": 0.7531,
+      "chest": 0.7715,
+      "lower_front": 0.8428,
+      "hem": 0.5997,
+      "sleeve_left": 0.5237,
+      "sleeve_right": 0.8898
+     },
+     "intrusion": {
+      "neck": 0.0487,
+      "chest": 0.1937,
+      "lower_front": 0.1003,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0205
+     }
+    },
+    {
+     "frame": 63,
+     "score": 0.7101,
+     "zones": {
+      "neck": 0.7408,
+      "chest": 0.7954,
+      "lower_front": 0.8151,
+      "hem": 0.5576,
+      "sleeve_left": 0.2809,
+      "sleeve_right": 0.8831
+     },
+     "intrusion": {
+      "neck": 0.0237,
+      "chest": 0.2022,
+      "lower_front": 0.0707,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0191
+     }
+    },
+    {
+     "frame": 66,
+     "score": 0.7278,
+     "zones": {
+      "neck": 0.6878,
+      "chest": 0.7844,
+      "lower_front": 0.8962,
+      "hem": 0.5806,
+      "sleeve_left": 0.3765,
+      "sleeve_right": 0.9019
+     },
+     "intrusion": {
+      "neck": 0.0335,
+      "chest": 0.2328,
+      "lower_front": 0.0542,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0238
+     }
+    },
+    {
+     "frame": 69,
+     "score": 0.7481,
+     "zones": {
+      "neck": 0.7144,
+      "chest": 0.7636,
+      "lower_front": 0.9469,
+      "hem": 0.5636,
+      "sleeve_left": 0.4918,
+      "sleeve_right": 0.9123
+     },
+     "intrusion": {
+      "neck": 0.0308,
+      "chest": 0.2145,
+      "lower_front": 0.068,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0164
+     }
+    },
+    {
+     "frame": 72,
+     "score": 0.7127,
+     "zones": {
+      "neck": 0.6756,
+      "chest": 0.765,
+      "lower_front": 0.7945,
+      "hem": 0.5314,
+      "sleeve_left": 0.5697,
+      "sleeve_right": 0.9081
+     },
+     "intrusion": {
+      "neck": 0.0229,
+      "chest": 0.1948,
+      "lower_front": 0.0483,
+      "hem": 0.0,
+      "sleeve_left": 0.0042,
+      "sleeve_right": 0.0207
+     }
+    },
+    {
+     "frame": 75,
+     "score": 0.6986,
+     "zones": {
+      "neck": 0.665,
+      "chest": 0.7746,
+      "lower_front": 0.7392,
+      "hem": 0.5282,
+      "sleeve_left": 0.5829,
+      "sleeve_right": 0.866
+     },
+     "intrusion": {
+      "neck": 0.0226,
+      "chest": 0.1978,
+      "lower_front": 0.0317,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.014
+     }
+    },
+    {
+     "frame": 78,
+     "score": 0.6988,
+     "zones": {
+      "neck": 0.6907,
+      "chest": 0.7793,
+      "lower_front": 0.7409,
+      "hem": 0.5071,
+      "sleeve_left": 0.5666,
+      "sleeve_right": 0.849
+     },
+     "intrusion": {
+      "neck": 0.0186,
+      "chest": 0.1868,
+      "lower_front": 0.0152,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0129
+     }
+    },
+    {
+     "frame": 81,
+     "score": 0.7111,
+     "zones": {
+      "neck": 0.707,
+      "chest": 0.7751,
+      "lower_front": 0.7554,
+      "hem": 0.533,
+      "sleeve_left": 0.5973,
+      "sleeve_right": 0.852
+     },
+     "intrusion": {
+      "neck": 0.0173,
+      "chest": 0.1875,
+      "lower_front": 0.0153,
+      "hem": 0.0,
+      "sleeve_left": 0.0001,
+      "sleeve_right": 0.009
+     }
+    },
+    {
+     "frame": 84,
+     "score": 0.7868,
+     "zones": {
+      "neck": 0.785,
+      "chest": 0.824,
+      "lower_front": 0.8769,
+      "hem": 0.6172,
+      "sleeve_left": 0.5897,
+      "sleeve_right": 0.969
+     },
+     "intrusion": {
+      "neck": 0.0156,
+      "chest": 0.1607,
+      "lower_front": 0.0289,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0206
+     }
+    },
+    {
+     "frame": 87,
+     "score": 0.7583,
+     "zones": {
+      "neck": 0.713,
+      "chest": 0.8659,
+      "lower_front": 0.7571,
+      "hem": 0.6215,
+      "sleeve_left": 0.6421,
+      "sleeve_right": 0.904
+     },
+     "intrusion": {
+      "neck": 0.0222,
+      "chest": 0.1339,
+      "lower_front": 0.2383,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0152
+     }
+    },
+    {
+     "frame": 90,
+     "score": 0.7242,
+     "zones": {
+      "neck": 0.697,
+      "chest": 0.8832,
+      "lower_front": 0.6697,
+      "hem": 0.5658,
+      "sleeve_left": 0.6022,
+      "sleeve_right": 0.8501
+     },
+     "intrusion": {
+      "neck": 0.0373,
+      "chest": 0.0872,
+      "lower_front": 0.302,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0104
+     }
+    },
+    {
+     "frame": 93,
+     "score": 0.7358,
+     "zones": {
+      "neck": 0.7674,
+      "chest": 0.8299,
+      "lower_front": 0.7408,
+      "hem": 0.5643,
+      "sleeve_left": 0.5704,
+      "sleeve_right": 0.85
+     },
+     "intrusion": {
+      "neck": 0.0239,
+      "chest": 0.1195,
+      "lower_front": 0.1882,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0037
+     }
+    },
+    {
+     "frame": 96,
+     "score": 0.7055,
+     "zones": {
+      "neck": 0.802,
+      "chest": 0.765,
+      "lower_front": 0.6729,
+      "hem": 0.5188,
+      "sleeve_left": 0.5757,
+      "sleeve_right": 0.8391
+     },
+     "intrusion": {
+      "neck": 0.0179,
+      "chest": 0.1636,
+      "lower_front": 0.2165,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0187
+     }
+    },
+    {
+     "frame": 99,
+     "score": 0.6902,
+     "zones": {
+      "neck": 0.7931,
+      "chest": 0.7151,
+      "lower_front": 0.664,
+      "hem": 0.5361,
+      "sleeve_left": 0.5315,
+      "sleeve_right": 0.8644
+     },
+     "intrusion": {
+      "neck": 0.0165,
+      "chest": 0.2189,
+      "lower_front": 0.2118,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0181
+     }
+    },
+    {
+     "frame": 102,
+     "score": 0.7055,
+     "zones": {
+      "neck": 0.8392,
+      "chest": 0.6563,
+      "lower_front": 0.7339,
+      "hem": 0.5405,
+      "sleeve_left": 0.5705,
+      "sleeve_right": 0.8864
+     },
+     "intrusion": {
+      "neck": 0.02,
+      "chest": 0.2764,
+      "lower_front": 0.2464,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0176
+     }
+    },
+    {
+     "frame": 105,
+     "score": 0.7196,
+     "zones": {
+      "neck": 0.8318,
+      "chest": 0.6541,
+      "lower_front": 0.7734,
+      "hem": 0.5538,
+      "sleeve_left": 0.6098,
+      "sleeve_right": 0.9099
+     },
+     "intrusion": {
+      "neck": 0.0202,
+      "chest": 0.2998,
+      "lower_front": 0.2203,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0058
+     }
+    },
+    {
+     "frame": 108,
+     "score": 0.7395,
+     "zones": {
+      "neck": 0.8027,
+      "chest": 0.6685,
+      "lower_front": 0.8345,
+      "hem": 0.5758,
+      "sleeve_left": 0.6539,
+      "sleeve_right": 0.9312
+     },
+     "intrusion": {
+      "neck": 0.0139,
+      "chest": 0.2924,
+      "lower_front": 0.1819,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0047
+     }
+    },
+    {
+     "frame": 111,
+     "score": 0.7168,
+     "zones": {
+      "neck": 0.842,
+      "chest": 0.7537,
+      "lower_front": 0.655,
+      "hem": 0.5128,
+      "sleeve_left": 0.6486,
+      "sleeve_right": 0.8726
+     },
+     "intrusion": {
+      "neck": 0.0125,
+      "chest": 0.2145,
+      "lower_front": 0.2874,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0183
+     }
+    },
+    {
+     "frame": 114,
+     "score": 0.6584,
+     "zones": {
+      "neck": 0.8047,
+      "chest": 0.8134,
+      "lower_front": 0.4382,
+      "hem": 0.4893,
+      "sleeve_left": 0.554,
+      "sleeve_right": 0.7768
+     },
+     "intrusion": {
+      "neck": 0.0457,
+      "chest": 0.1532,
+      "lower_front": 0.4501,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0619
+     }
+    },
+    {
+     "frame": 117,
+     "score": 0.6761,
+     "zones": {
+      "neck": 0.8437,
+      "chest": 0.8341,
+      "lower_front": 0.4736,
+      "hem": 0.503,
+      "sleeve_left": 0.5265,
+      "sleeve_right": 0.7608
+     },
+     "intrusion": {
+      "neck": 0.0235,
+      "chest": 0.0898,
+      "lower_front": 0.3649,
+      "hem": 0.0,
+      "sleeve_left": 0.0001,
+      "sleeve_right": 0.1054
+     }
+    },
+    {
+     "frame": 120,
+     "score": 0.7045,
+     "zones": {
+      "neck": 0.8805,
+      "chest": 0.7817,
+      "lower_front": 0.5701,
+      "hem": 0.5516,
+      "sleeve_left": 0.5243,
+      "sleeve_right": 0.8376
+     },
+     "intrusion": {
+      "neck": 0.0502,
+      "chest": 0.0452,
+      "lower_front": 0.2772,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0521
+     }
+    },
+    {
+     "frame": 138,
+     "score": 0.6527,
+     "zones": {
+      "neck": 0.7585,
+      "chest": 0.7538,
+      "lower_front": 0.4684,
+      "hem": 0.5597,
+      "sleeve_left": 0.5865,
+      "sleeve_right": 0.7622
+     },
+     "intrusion": {
+      "neck": 0.0655,
+      "chest": 0.1012,
+      "lower_front": 0.4918,
+      "hem": 0.0,
+      "sleeve_left": 0.0017,
+      "sleeve_right": 0.0108
+     }
+    },
+    {
+     "frame": 141,
+     "score": 0.6883,
+     "zones": {
+      "neck": 0.7803,
+      "chest": 0.8214,
+      "lower_front": 0.5757,
+      "hem": 0.4913,
+      "sleeve_left": 0.5533,
+      "sleeve_right": 0.8275
+     },
+     "intrusion": {
+      "neck": 0.0327,
+      "chest": 0.1008,
+      "lower_front": 0.3504,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0113
+     }
+    },
+    {
+     "frame": 144,
+     "score": 0.7348,
+     "zones": {
+      "neck": 0.762,
+      "chest": 0.8739,
+      "lower_front": 0.6896,
+      "hem": 0.5198,
+      "sleeve_left": 0.6678,
+      "sleeve_right": 0.813
+     },
+     "intrusion": {
+      "neck": 0.0218,
+      "chest": 0.0649,
+      "lower_front": 0.2966,
+      "hem": 0.0,
+      "sleeve_left": 0.0001,
+      "sleeve_right": 0.0351
+     }
+    },
+    {
+     "frame": 147,
+     "score": 0.7434,
+     "zones": {
+      "neck": 0.7414,
+      "chest": 0.8385,
+      "lower_front": 0.721,
+      "hem": 0.5259,
+      "sleeve_left": 0.7448,
+      "sleeve_right": 0.8788
+     },
+     "intrusion": {
+      "neck": 0.025,
+      "chest": 0.0854,
+      "lower_front": 0.2459,
+      "hem": 0.0,
+      "sleeve_left": 0.0003,
+      "sleeve_right": 0.0198
+     }
+    },
+    {
+     "frame": 150,
+     "score": 0.7435,
+     "zones": {
+      "neck": 0.771,
+      "chest": 0.7801,
+      "lower_front": 0.7604,
+      "hem": 0.5148,
+      "sleeve_left": 0.7874,
+      "sleeve_right": 0.8627
+     },
+     "intrusion": {
+      "neck": 0.0307,
+      "chest": 0.0708,
+      "lower_front": 0.1954,
+      "hem": 0.0,
+      "sleeve_left": 0.0015,
+      "sleeve_right": 0.0097
+     }
+    },
+    {
+     "frame": 153,
+     "score": 0.7547,
+     "zones": {
+      "neck": 0.7779,
+      "chest": 0.745,
+      "lower_front": 0.7974,
+      "hem": 0.5725,
+      "sleeve_left": 0.8026,
+      "sleeve_right": 0.8729
+     },
+     "intrusion": {
+      "neck": 0.0372,
+      "chest": 0.0671,
+      "lower_front": 0.1785,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0205
+     }
+    },
+    {
+     "frame": 156,
+     "score": 0.7515,
+     "zones": {
+      "neck": 0.7561,
+      "chest": 0.7129,
+      "lower_front": 0.8125,
+      "hem": 0.6562,
+      "sleeve_left": 0.7567,
+      "sleeve_right": 0.8545
+     },
+     "intrusion": {
+      "neck": 0.0302,
+      "chest": 0.0802,
+      "lower_front": 0.1945,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.022
+     }
+    },
+    {
+     "frame": 159,
+     "score": 0.7405,
+     "zones": {
+      "neck": 0.7645,
+      "chest": 0.748,
+      "lower_front": 0.7791,
+      "hem": 0.53,
+      "sleeve_left": 0.7596,
+      "sleeve_right": 0.893
+     },
+     "intrusion": {
+      "neck": 0.0278,
+      "chest": 0.105,
+      "lower_front": 0.2047,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0267
+     }
+    }
+   ]
+  },
+  "S11": {
+   "file": "gfx/s11_e1_band_graphic.mp4",
+   "frames_scored": 54,
+   "frames_unscored": 0,
+   "median": 0.7099992561521857,
+   "p10": 0.6657516109825393,
+   "min": 0.6455439555249601,
+   "zones_median": {
+    "neck": 0.732796813131749,
+    "chest": 0.7653375680478318,
+    "lower_front": 0.7526230333563926,
+    "hem": 0.37888744016469,
+    "sleeve_left": 0.653055852383224,
+    "sleeve_right": 0.8475451342866767
+   },
+   "intrusion_p90": {
+    "neck": 0.13284811079803724,
+    "chest": 0.27302277623123955,
+    "lower_front": 0.13794700692978593,
+    "hem": 0.0,
+    "sleeve_left": 0.044631889267853185,
+    "sleeve_right": 0.07135524564695685
+   },
+   "worst_zone": "hem",
+   "score_std": 0.027657830892785524,
+   "zone_std": {
+    "neck": 0.07472990594053949,
+    "chest": 0.051654399303923994,
+    "lower_front": 0.0558037053830485,
+    "hem": 0.1215947156919613,
+    "sleeve_left": 0.07761898462199521,
+    "sleeve_right": 0.10504289082360209
+   },
+   "zone_std_mean": 0.08107410029417843,
+   "per_frame": [
+    {
+     "frame": 0,
+     "score": 0.7228,
+     "zones": {
+      "neck": 0.8103,
+      "chest": 0.811,
+      "lower_front": 0.7211,
+      "hem": 0.5067,
+      "sleeve_left": 0.54,
+      "sleeve_right": 0.838
+     },
+     "intrusion": {
+      "neck": 0.057,
+      "chest": 0.1868,
+      "lower_front": 0.0808,
+      "hem": 0.0,
+      "sleeve_left": 0.0104,
+      "sleeve_right": 0.0362
+     }
+    },
+    {
+     "frame": 3,
+     "score": 0.7325,
+     "zones": {
+      "neck": 0.709,
+      "chest": 0.8339,
+      "lower_front": 0.7122,
+      "hem": 0.4441,
+      "sleeve_left": 0.8766,
+      "sleeve_right": 0.8556
+     },
+     "intrusion": {
+      "neck": 0.0542,
+      "chest": 0.1951,
+      "lower_front": 0.2086,
+      "hem": 0.0,
+      "sleeve_left": 0.0306,
+      "sleeve_right": 0.0503
+     }
+    },
+    {
+     "frame": 6,
+     "score": 0.7281,
+     "zones": {
+      "neck": 0.8809,
+      "chest": 0.8251,
+      "lower_front": 0.7248,
+      "hem": 0.3188,
+      "sleeve_left": 0.7017,
+      "sleeve_right": 0.8275
+     },
+     "intrusion": {
+      "neck": 0.0796,
+      "chest": 0.177,
+      "lower_front": 0.1173,
+      "hem": 0.0,
+      "sleeve_left": 0.0027,
+      "sleeve_right": 0.0328
+     }
+    },
+    {
+     "frame": 9,
+     "score": 0.7267,
+     "zones": {
+      "neck": 0.8723,
+      "chest": 0.8392,
+      "lower_front": 0.7232,
+      "hem": 0.2884,
+      "sleeve_left": 0.7151,
+      "sleeve_right": 0.83
+     },
+     "intrusion": {
+      "neck": 0.0954,
+      "chest": 0.1418,
+      "lower_front": 0.1085,
+      "hem": 0.0,
+      "sleeve_left": 0.0541,
+      "sleeve_right": 0.0311
+     }
+    },
+    {
+     "frame": 12,
+     "score": 0.725,
+     "zones": {
+      "neck": 0.7313,
+      "chest": 0.8053,
+      "lower_front": 0.783,
+      "hem": 0.4791,
+      "sleeve_left": 0.6515,
+      "sleeve_right": 0.8383
+     },
+     "intrusion": {
+      "neck": 0.1332,
+      "chest": 0.1792,
+      "lower_front": 0.1056,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0056
+     }
+    },
+    {
+     "frame": 15,
+     "score": 0.6648,
+     "zones": {
+      "neck": 0.743,
+      "chest": 0.7406,
+      "lower_front": 0.7203,
+      "hem": 0.3309,
+      "sleeve_left": 0.5023,
+      "sleeve_right": 0.8716
+     },
+     "intrusion": {
+      "neck": 0.1721,
+      "chest": 0.1496,
+      "lower_front": 0.0423,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0084
+     }
+    },
+    {
+     "frame": 18,
+     "score": 0.6613,
+     "zones": {
+      "neck": 0.7343,
+      "chest": 0.7092,
+      "lower_front": 0.6993,
+      "hem": 0.3208,
+      "sleeve_left": 0.657,
+      "sleeve_right": 0.8347
+     },
+     "intrusion": {
+      "neck": 0.1247,
+      "chest": 0.2593,
+      "lower_front": 0.0406,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0
+     }
+    },
+    {
+     "frame": 21,
+     "score": 0.6688,
+     "zones": {
+      "neck": 0.7183,
+      "chest": 0.7429,
+      "lower_front": 0.734,
+      "hem": 0.3444,
+      "sleeve_left": 0.5616,
+      "sleeve_right": 0.8475
+     },
+     "intrusion": {
+      "neck": 0.1318,
+      "chest": 0.2328,
+      "lower_front": 0.1007,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0099
+     }
+    },
+    {
+     "frame": 24,
+     "score": 0.6455,
+     "zones": {
+      "neck": 0.7301,
+      "chest": 0.6992,
+      "lower_front": 0.7252,
+      "hem": 0.269,
+      "sleeve_left": 0.6257,
+      "sleeve_right": 0.7676
+     },
+     "intrusion": {
+      "neck": 0.1778,
+      "chest": 0.2733,
+      "lower_front": 0.1,
+      "hem": 0.0,
+      "sleeve_left": 0.0193,
+      "sleeve_right": 0.0195
+     }
+    },
+    {
+     "frame": 27,
+     "score": 0.6568,
+     "zones": {
+      "neck": 0.7136,
+      "chest": 0.7777,
+      "lower_front": 0.7273,
+      "hem": 0.2861,
+      "sleeve_left": 0.6122,
+      "sleeve_right": 0.7005
+     },
+     "intrusion": {
+      "neck": 0.1308,
+      "chest": 0.2113,
+      "lower_front": 0.0677,
+      "hem": 0.0,
+      "sleeve_left": 0.0354,
+      "sleeve_right": 0.0816
+     }
+    },
+    {
+     "frame": 30,
+     "score": 0.6786,
+     "zones": {
+      "neck": 0.728,
+      "chest": 0.8242,
+      "lower_front": 0.7172,
+      "hem": 0.2741,
+      "sleeve_left": 0.7225,
+      "sleeve_right": 0.7014
+     },
+     "intrusion": {
+      "neck": 0.1116,
+      "chest": 0.1812,
+      "lower_front": 0.0466,
+      "hem": 0.0,
+      "sleeve_left": 0.0013,
+      "sleeve_right": 0.0855
+     }
+    },
+    {
+     "frame": 33,
+     "score": 0.6599,
+     "zones": {
+      "neck": 0.7115,
+      "chest": 0.8101,
+      "lower_front": 0.7174,
+      "hem": 0.2871,
+      "sleeve_left": 0.7276,
+      "sleeve_right": 0.5583
+     },
+     "intrusion": {
+      "neck": 0.1117,
+      "chest": 0.1853,
+      "lower_front": 0.0477,
+      "hem": 0.0,
+      "sleeve_left": 0.0007,
+      "sleeve_right": 0.2234
+     }
+    },
+    {
+     "frame": 36,
+     "score": 0.6861,
+     "zones": {
+      "neck": 0.6697,
+      "chest": 0.8101,
+      "lower_front": 0.7309,
+      "hem": 0.6412,
+      "sleeve_left": 0.6919,
+      "sleeve_right": 0.381
+     },
+     "intrusion": {
+      "neck": 0.1129,
+      "chest": 0.1751,
+      "lower_front": 0.0546,
+      "hem": 0.0,
+      "sleeve_left": 0.0009,
+      "sleeve_right": 0.373
+     }
+    },
+    {
+     "frame": 39,
+     "score": 0.7172,
+     "zones": {
+      "neck": 0.645,
+      "chest": 0.7973,
+      "lower_front": 0.7526,
+      "hem": 0.7938,
+      "sleeve_left": 0.6541,
+      "sleeve_right": 0.5388
+     },
+     "intrusion": {
+      "neck": 0.1217,
+      "chest": 0.1483,
+      "lower_front": 0.0992,
+      "hem": 0.0,
+      "sleeve_left": 0.0289,
+      "sleeve_right": 0.2685
+     }
+    },
+    {
+     "frame": 42,
+     "score": 0.7604,
+     "zones": {
+      "neck": 0.6428,
+      "chest": 0.8089,
+      "lower_front": 0.8041,
+      "hem": 0.6945,
+      "sleeve_left": 0.7325,
+      "sleeve_right": 0.9136
+     },
+     "intrusion": {
+      "neck": 0.1232,
+      "chest": 0.1245,
+      "lower_front": 0.1023,
+      "hem": 0.0,
+      "sleeve_left": 0.0385,
+      "sleeve_right": 0.0188
+     }
+    },
+    {
+     "frame": 45,
+     "score": 0.7144,
+     "zones": {
+      "neck": 0.6442,
+      "chest": 0.7442,
+      "lower_front": 0.7708,
+      "hem": 0.5814,
+      "sleeve_left": 0.6456,
+      "sleeve_right": 0.9364
+     },
+     "intrusion": {
+      "neck": 0.1083,
+      "chest": 0.0865,
+      "lower_front": 0.0629,
+      "hem": 0.0,
+      "sleeve_left": 0.0423,
+      "sleeve_right": 0.0254
+     }
+    },
+    {
+     "frame": 48,
+     "score": 0.7214,
+     "zones": {
+      "neck": 0.6956,
+      "chest": 0.7983,
+      "lower_front": 0.7526,
+      "hem": 0.4593,
+      "sleeve_left": 0.7274,
+      "sleeve_right": 0.9056
+     },
+     "intrusion": {
+      "neck": 0.1168,
+      "chest": 0.0686,
+      "lower_front": 0.0492,
+      "hem": 0.0,
+      "sleeve_left": 0.0402,
+      "sleeve_right": 0.0386
+     }
+    },
+    {
+     "frame": 51,
+     "score": 0.7165,
+     "zones": {
+      "neck": 0.749,
+      "chest": 0.8151,
+      "lower_front": 0.806,
+      "hem": 0.3746,
+      "sleeve_left": 0.596,
+      "sleeve_right": 0.8597
+     },
+     "intrusion": {
+      "neck": 0.0937,
+      "chest": 0.1114,
+      "lower_front": 0.0486,
+      "hem": 0.0,
+      "sleeve_left": 0.0365,
+      "sleeve_right": 0.0101
+     }
+    },
+    {
+     "frame": 54,
+     "score": 0.7221,
+     "zones": {
+      "neck": 0.7764,
+      "chest": 0.792,
+      "lower_front": 0.8271,
+      "hem": 0.3142,
+      "sleeve_left": 0.7317,
+      "sleeve_right": 0.831
+     },
+     "intrusion": {
+      "neck": 0.0759,
+      "chest": 0.1524,
+      "lower_front": 0.0453,
+      "hem": 0.0,
+      "sleeve_left": 0.0196,
+      "sleeve_right": 0.0091
+     }
+    },
+    {
+     "frame": 57,
+     "score": 0.7221,
+     "zones": {
+      "neck": 0.7614,
+      "chest": 0.8155,
+      "lower_front": 0.8217,
+      "hem": 0.3177,
+      "sleeve_left": 0.7008,
+      "sleeve_right": 0.8389
+     },
+     "intrusion": {
+      "neck": 0.08,
+      "chest": 0.1806,
+      "lower_front": 0.0464,
+      "hem": 0.0,
+      "sleeve_left": 0.0131,
+      "sleeve_right": 0.0124
+     }
+    },
+    {
+     "frame": 60,
+     "score": 0.7346,
+     "zones": {
+      "neck": 0.7691,
+      "chest": 0.7799,
+      "lower_front": 0.937,
+      "hem": 0.3036,
+      "sleeve_left": 0.6302,
+      "sleeve_right": 0.8985
+     },
+     "intrusion": {
+      "neck": 0.078,
+      "chest": 0.253,
+      "lower_front": 0.0462,
+      "hem": 0.0,
+      "sleeve_left": 0.0077,
+      "sleeve_right": 0.0405
+     }
+    },
+    {
+     "frame": 63,
+     "score": 0.6851,
+     "zones": {
+      "neck": 0.8309,
+      "chest": 0.6789,
+      "lower_front": 0.8262,
+      "hem": 0.2978,
+      "sleeve_left": 0.6032,
+      "sleeve_right": 0.7898
+     },
+     "intrusion": {
+      "neck": 0.0524,
+      "chest": 0.1864,
+      "lower_front": 0.042,
+      "hem": 0.0,
+      "sleeve_left": 0.003,
+      "sleeve_right": 0.0143
+     }
+    },
+    {
+     "frame": 66,
+     "score": 0.6976,
+     "zones": {
+      "neck": 0.9241,
+      "chest": 0.6534,
+      "lower_front": 0.7855,
+      "hem": 0.3733,
+      "sleeve_left": 0.5899,
+      "sleeve_right": 0.7738
+     },
+     "intrusion": {
+      "neck": 0.0651,
+      "chest": 0.1041,
+      "lower_front": 0.0685,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0184
+     }
+    },
+    {
+     "frame": 69,
+     "score": 0.7169,
+     "zones": {
+      "neck": 0.9278,
+      "chest": 0.6445,
+      "lower_front": 0.7337,
+      "hem": 0.5497,
+      "sleeve_left": 0.6022,
+      "sleeve_right": 0.8085
+     },
+     "intrusion": {
+      "neck": 0.073,
+      "chest": 0.1211,
+      "lower_front": 0.0705,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0228
+     }
+    },
+    {
+     "frame": 72,
+     "score": 0.7254,
+     "zones": {
+      "neck": 0.922,
+      "chest": 0.6681,
+      "lower_front": 0.7106,
+      "hem": 0.5246,
+      "sleeve_left": 0.6449,
+      "sleeve_right": 0.8865
+     },
+     "intrusion": {
+      "neck": 0.0772,
+      "chest": 0.1126,
+      "lower_front": 0.079,
+      "hem": 0.0,
+      "sleeve_left": 0.0057,
+      "sleeve_right": 0.0423
+     }
+    },
+    {
+     "frame": 75,
+     "score": 0.7239,
+     "zones": {
+      "neck": 0.9187,
+      "chest": 0.6718,
+      "lower_front": 0.7682,
+      "hem": 0.4019,
+      "sleeve_left": 0.709,
+      "sleeve_right": 0.8737
+     },
+     "intrusion": {
+      "neck": 0.0758,
+      "chest": 0.103,
+      "lower_front": 0.0467,
+      "hem": 0.0,
+      "sleeve_left": 0.0088,
+      "sleeve_right": 0.0613
+     }
+    },
+    {
+     "frame": 78,
+     "score": 0.7435,
+     "zones": {
+      "neck": 0.8621,
+      "chest": 0.7284,
+      "lower_front": 0.8178,
+      "hem": 0.3505,
+      "sleeve_left": 0.757,
+      "sleeve_right": 0.9714
+     },
+     "intrusion": {
+      "neck": 0.072,
+      "chest": 0.0977,
+      "lower_front": 0.0491,
+      "hem": 0.0,
+      "sleeve_left": 0.0012,
+      "sleeve_right": 0.0415
+     }
+    },
+    {
+     "frame": 81,
+     "score": 0.7429,
+     "zones": {
+      "neck": 0.8353,
+      "chest": 0.7391,
+      "lower_front": 0.8935,
+      "hem": 0.3363,
+      "sleeve_left": 0.6938,
+      "sleeve_right": 0.9251
+     },
+     "intrusion": {
+      "neck": 0.0729,
+      "chest": 0.1128,
+      "lower_front": 0.0575,
+      "hem": 0.0,
+      "sleeve_left": 0.0216,
+      "sleeve_right": 0.0476
+     }
+    },
+    {
+     "frame": 84,
+     "score": 0.7107,
+     "zones": {
+      "neck": 0.798,
+      "chest": 0.7833,
+      "lower_front": 0.7775,
+      "hem": 0.3292,
+      "sleeve_left": 0.6571,
+      "sleeve_right": 0.8471
+     },
+     "intrusion": {
+      "neck": 0.0736,
+      "chest": 0.1174,
+      "lower_front": 0.0497,
+      "hem": 0.0,
+      "sleeve_left": 0.0218,
+      "sleeve_right": 0.0571
+     }
+    },
+    {
+     "frame": 87,
+     "score": 0.7072,
+     "zones": {
+      "neck": 0.7864,
+      "chest": 0.8225,
+      "lower_front": 0.702,
+      "hem": 0.3199,
+      "sleeve_left": 0.6904,
+      "sleeve_right": 0.8684
+     },
+     "intrusion": {
+      "neck": 0.0749,
+      "chest": 0.1751,
+      "lower_front": 0.0733,
+      "hem": 0.0,
+      "sleeve_left": 0.0197,
+      "sleeve_right": 0.0454
+     }
+    },
+    {
+     "frame": 90,
+     "score": 0.7008,
+     "zones": {
+      "neck": 0.7599,
+      "chest": 0.7655,
+      "lower_front": 0.7407,
+      "hem": 0.3205,
+      "sleeve_left": 0.6978,
+      "sleeve_right": 0.9147
+     },
+     "intrusion": {
+      "neck": 0.0802,
+      "chest": 0.2428,
+      "lower_front": 0.0657,
+      "hem": 0.0,
+      "sleeve_left": 0.0389,
+      "sleeve_right": 0.027
+     }
+    },
+    {
+     "frame": 93,
+     "score": 0.6905,
+     "zones": {
+      "neck": 0.7362,
+      "chest": 0.7281,
+      "lower_front": 0.7776,
+      "hem": 0.329,
+      "sleeve_left": 0.6623,
+      "sleeve_right": 0.9016
+     },
+     "intrusion": {
+      "neck": 0.0941,
+      "chest": 0.2916,
+      "lower_front": 0.0968,
+      "hem": 0.0,
+      "sleeve_left": 0.0313,
+      "sleeve_right": 0.0231
+     }
+    },
+    {
+     "frame": 96,
+     "score": 0.6691,
+     "zones": {
+      "neck": 0.7183,
+      "chest": 0.6974,
+      "lower_front": 0.7972,
+      "hem": 0.374,
+      "sleeve_left": 0.4505,
+      "sleeve_right": 0.9052
+     },
+     "intrusion": {
+      "neck": 0.1016,
+      "chest": 0.2723,
+      "lower_front": 0.1508,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0632
+     }
+    },
+    {
+     "frame": 99,
+     "score": 0.6871,
+     "zones": {
+      "neck": 0.7312,
+      "chest": 0.7573,
+      "lower_front": 0.691,
+      "hem": 0.4117,
+      "sleeve_left": 0.5844,
+      "sleeve_right": 0.9316
+     },
+     "intrusion": {
+      "neck": 0.0939,
+      "chest": 0.2384,
+      "lower_front": 0.0509,
+      "hem": 0.0,
+      "sleeve_left": 0.0013,
+      "sleeve_right": 0.0397
+     }
+    },
+    {
+     "frame": 102,
+     "score": 0.6808,
+     "zones": {
+      "neck": 0.693,
+      "chest": 0.7973,
+      "lower_front": 0.736,
+      "hem": 0.3519,
+      "sleeve_left": 0.5132,
+      "sleeve_right": 0.9155
+     },
+     "intrusion": {
+      "neck": 0.1136,
+      "chest": 0.1501,
+      "lower_front": 0.0753,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0499
+     }
+    },
+    {
+     "frame": 105,
+     "score": 0.673,
+     "zones": {
+      "neck": 0.67,
+      "chest": 0.7652,
+      "lower_front": 0.7274,
+      "hem": 0.3797,
+      "sleeve_left": 0.5428,
+      "sleeve_right": 0.9097
+     },
+     "intrusion": {
+      "neck": 0.1288,
+      "chest": 0.1305,
+      "lower_front": 0.0742,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0577
+     }
+    },
+    {
+     "frame": 108,
+     "score": 0.6471,
+     "zones": {
+      "neck": 0.6228,
+      "chest": 0.7645,
+      "lower_front": 0.7227,
+      "hem": 0.3589,
+      "sleeve_left": 0.4834,
+      "sleeve_right": 0.8475
+     },
+     "intrusion": {
+      "neck": 0.118,
+      "chest": 0.1259,
+      "lower_front": 0.0465,
+      "hem": 0.0,
+      "sleeve_left": 0.0002,
+      "sleeve_right": 0.0455
+     }
+    },
+    {
+     "frame": 111,
+     "score": 0.6885,
+     "zones": {
+      "neck": 0.6977,
+      "chest": 0.7777,
+      "lower_front": 0.729,
+      "hem": 0.4569,
+      "sleeve_left": 0.604,
+      "sleeve_right": 0.7983
+     },
+     "intrusion": {
+      "neck": 0.0996,
+      "chest": 0.1594,
+      "lower_front": 0.0464,
+      "hem": 0.0,
+      "sleeve_left": 0.0462,
+      "sleeve_right": 0.0354
+     }
+    },
+    {
+     "frame": 114,
+     "score": 0.7249,
+     "zones": {
+      "neck": 0.7125,
+      "chest": 0.7708,
+      "lower_front": 0.7782,
+      "hem": 0.6362,
+      "sleeve_left": 0.5904,
+      "sleeve_right": 0.7963
+     },
+     "intrusion": {
+      "neck": 0.0995,
+      "chest": 0.1477,
+      "lower_front": 0.0551,
+      "hem": 0.0,
+      "sleeve_left": 0.0104,
+      "sleeve_right": 0.0363
+     }
+    },
+    {
+     "frame": 117,
+     "score": 0.7093,
+     "zones": {
+      "neck": 0.6882,
+      "chest": 0.7702,
+      "lower_front": 0.7954,
+      "hem": 0.5256,
+      "sleeve_left": 0.611,
+      "sleeve_right": 0.8006
+     },
+     "intrusion": {
+      "neck": 0.1031,
+      "chest": 0.147,
+      "lower_front": 0.054,
+      "hem": 0.0,
+      "sleeve_left": 0.005,
+      "sleeve_right": 0.0373
+     }
+    },
+    {
+     "frame": 120,
+     "score": 0.7199,
+     "zones": {
+      "neck": 0.7001,
+      "chest": 0.7794,
+      "lower_front": 0.7658,
+      "hem": 0.6082,
+      "sleeve_left": 0.6948,
+      "sleeve_right": 0.7114
+     },
+     "intrusion": {
+      "neck": 0.1073,
+      "chest": 0.1632,
+      "lower_front": 0.074,
+      "hem": 0.0,
+      "sleeve_left": 0.049,
+      "sleeve_right": 0.0324
+     }
+    },
+    {
+     "frame": 123,
+     "score": 0.684,
+     "zones": {
+      "neck": 0.7237,
+      "chest": 0.7654,
+      "lower_front": 0.607,
+      "hem": 0.5334,
+      "sleeve_left": 0.7317,
+      "sleeve_right": 0.7328
+     },
+     "intrusion": {
+      "neck": 0.0991,
+      "chest": 0.2331,
+      "lower_front": 0.2672,
+      "hem": 0.0,
+      "sleeve_left": 0.0294,
+      "sleeve_right": 0.0325
+     }
+    },
+    {
+     "frame": 126,
+     "score": 0.7222,
+     "zones": {
+      "neck": 0.7286,
+      "chest": 0.7566,
+      "lower_front": 0.7569,
+      "hem": 0.5816,
+      "sleeve_left": 0.6907,
+      "sleeve_right": 0.7961
+     },
+     "intrusion": {
+      "neck": 0.1321,
+      "chest": 0.2704,
+      "lower_front": 0.2116,
+      "hem": 0.0,
+      "sleeve_left": 0.0381,
+      "sleeve_right": 0.0423
+     }
+    },
+    {
+     "frame": 129,
+     "score": 0.7307,
+     "zones": {
+      "neck": 0.8064,
+      "chest": 0.7158,
+      "lower_front": 0.8118,
+      "hem": 0.4934,
+      "sleeve_left": 0.6492,
+      "sleeve_right": 0.8915
+     },
+     "intrusion": {
+      "neck": 0.1468,
+      "chest": 0.3295,
+      "lower_front": 0.0784,
+      "hem": 0.0,
+      "sleeve_left": 0.0539,
+      "sleeve_right": 0.0337
+     }
+    },
+    {
+     "frame": 132,
+     "score": 0.7266,
+     "zones": {
+      "neck": 0.7469,
+      "chest": 0.7157,
+      "lower_front": 0.8791,
+      "hem": 0.3853,
+      "sleeve_left": 0.7051,
+      "sleeve_right": 0.9416
+     },
+     "intrusion": {
+      "neck": 0.1435,
+      "chest": 0.322,
+      "lower_front": 0.0447,
+      "hem": 0.0,
+      "sleeve_left": 0.0274,
+      "sleeve_right": 0.0225
+     }
+    },
+    {
+     "frame": 135,
+     "score": 0.6863,
+     "zones": {
+      "neck": 0.7372,
+      "chest": 0.6584,
+      "lower_front": 0.804,
+      "hem": 0.3781,
+      "sleeve_left": 0.652,
+      "sleeve_right": 0.9151
+     },
+     "intrusion": {
+      "neck": 0.1633,
+      "chest": 0.3422,
+      "lower_front": 0.0676,
+      "hem": 0.0,
+      "sleeve_left": 0.0071,
+      "sleeve_right": 0.0326
+     }
+    },
+    {
+     "frame": 138,
+     "score": 0.6679,
+     "zones": {
+      "neck": 0.7117,
+      "chest": 0.6523,
+      "lower_front": 0.7648,
+      "hem": 0.3936,
+      "sleeve_left": 0.6143,
+      "sleeve_right": 0.8901
+     },
+     "intrusion": {
+      "neck": 0.1129,
+      "chest": 0.3213,
+      "lower_front": 0.0805,
+      "hem": 0.0,
+      "sleeve_left": 0.0059,
+      "sleeve_right": 0.0394
+     }
+    },
+    {
+     "frame": 141,
+     "score": 0.6739,
+     "zones": {
+      "neck": 0.7007,
+      "chest": 0.7459,
+      "lower_front": 0.7333,
+      "hem": 0.3372,
+      "sleeve_left": 0.6011,
+      "sleeve_right": 0.8993
+     },
+     "intrusion": {
+      "neck": 0.1202,
+      "chest": 0.236,
+      "lower_front": 0.0765,
+      "hem": 0.0,
+      "sleeve_left": 0.0094,
+      "sleeve_right": 0.0378
+     }
+    },
+    {
+     "frame": 144,
+     "score": 0.6802,
+     "zones": {
+      "neck": 0.6835,
+      "chest": 0.747,
+      "lower_front": 0.7621,
+      "hem": 0.3732,
+      "sleeve_left": 0.6071,
+      "sleeve_right": 0.8763
+     },
+     "intrusion": {
+      "neck": 0.1139,
+      "chest": 0.2476,
+      "lower_front": 0.0746,
+      "hem": 0.0,
+      "sleeve_left": 0.0453,
+      "sleeve_right": 0.0457
+     }
+    },
+    {
+     "frame": 147,
+     "score": 0.7215,
+     "zones": {
+      "neck": 0.7233,
+      "chest": 0.7438,
+      "lower_front": 0.8063,
+      "hem": 0.5291,
+      "sleeve_left": 0.6205,
+      "sleeve_right": 0.8821
+     },
+     "intrusion": {
+      "neck": 0.1195,
+      "chest": 0.2387,
+      "lower_front": 0.1163,
+      "hem": 0.0,
+      "sleeve_left": 0.0384,
+      "sleeve_right": 0.0427
+     }
+    },
+    {
+     "frame": 150,
+     "score": 0.7518,
+     "zones": {
+      "neck": 0.7825,
+      "chest": 0.7692,
+      "lower_front": 0.7572,
+      "hem": 0.6074,
+      "sleeve_left": 0.7356,
+      "sleeve_right": 0.8692
+     },
+     "intrusion": {
+      "neck": 0.1253,
+      "chest": 0.2268,
+      "lower_front": 0.0581,
+      "hem": 0.0,
+      "sleeve_left": 0.0431,
+      "sleeve_right": 0.0413
+     }
+    },
+    {
+     "frame": 153,
+     "score": 0.7232,
+     "zones": {
+      "neck": 0.8169,
+      "chest": 0.799,
+      "lower_front": 0.6759,
+      "hem": 0.514,
+      "sleeve_left": 0.7109,
+      "sleeve_right": 0.7677
+     },
+     "intrusion": {
+      "neck": 0.1016,
+      "chest": 0.2197,
+      "lower_front": 0.1468,
+      "hem": 0.0,
+      "sleeve_left": 0.0856,
+      "sleeve_right": 0.0705
+     }
+    },
+    {
+     "frame": 156,
+     "score": 0.7031,
+     "zones": {
+      "neck": 0.8225,
+      "chest": 0.703,
+      "lower_front": 0.6776,
+      "hem": 0.5435,
+      "sleeve_left": 0.738,
+      "sleeve_right": 0.7198
+     },
+     "intrusion": {
+      "neck": 0.087,
+      "chest": 0.1599,
+      "lower_front": 0.1823,
+      "hem": 0.0,
+      "sleeve_left": 0.0052,
+      "sleeve_right": 0.0717
+     }
+    },
+    {
+     "frame": 159,
+     "score": 0.7074,
+     "zones": {
+      "neck": 0.8099,
+      "chest": 0.7069,
+      "lower_front": 0.7451,
+      "hem": 0.4353,
+      "sleeve_left": 0.7401,
+      "sleeve_right": 0.8038
+     },
+     "intrusion": {
+      "neck": 0.0642,
+      "chest": 0.1172,
+      "lower_front": 0.1041,
+      "hem": 0.0,
+      "sleeve_left": 0.0004,
+      "sleeve_right": 0.0282
+     }
+    }
+   ]
+  },
+  "S12": {
+   "file": "gfx/s12_e1_graphic.mp4",
+   "frames_scored": 36,
+   "frames_unscored": 2,
+   "median": 0.7457163936198383,
+   "p10": 0.6975029194075044,
+   "min": 0.6575065303807431,
+   "zones_median": {
+    "neck": 0.9063885824706488,
+    "chest": 0.7962277365790412,
+    "lower_front": 0.7675061497591286,
+    "hem": 0.5175341354972496,
+    "sleeve_left": 0.6521123480863437,
+    "sleeve_right": 0.7260532220090574
+   },
+   "intrusion_p90": {
+    "neck": 0.08791647236129471,
+    "chest": 0.18744720322656389,
+    "lower_front": 0.2558328766289124,
+    "hem": 0.0,
+    "sleeve_left": 0.03127319701580875,
+    "sleeve_right": 0.08771949410529145
+   },
+   "worst_zone": "hem",
+   "score_std": 0.030528775910269066,
+   "zone_std": {
+    "neck": 0.06651598828161075,
+    "chest": 0.05335452344530693,
+    "lower_front": 0.09783349395260242,
+    "hem": 0.14957142549215846,
+    "sleeve_left": 0.10646111373509609,
+    "sleeve_right": 0.09092519764680024
+   },
+   "zone_std_mean": 0.09411029042559582,
+   "per_frame": [
+    {
+     "frame": 0,
+     "score": 0.75,
+     "zones": {
+      "neck": 0.9103,
+      "chest": 0.8477,
+      "lower_front": 0.8036,
+      "hem": 0.2837,
+      "sleeve_left": 0.6685,
+      "sleeve_right": 0.8586
+     },
+     "intrusion": {
+      "neck": 0.0446,
+      "chest": 0.1379,
+      "lower_front": 0.0377,
+      "hem": 0.0,
+      "sleeve_left": 0.0068,
+      "sleeve_right": 0.0195
+     }
+    },
+    {
+     "frame": 3,
+     "score": 0.755,
+     "zones": {
+      "neck": 0.9111,
+      "chest": 0.8177,
+      "lower_front": 0.7897,
+      "hem": 0.4049,
+      "sleeve_left": 0.6423,
+      "sleeve_right": 0.8541
+     },
+     "intrusion": {
+      "neck": 0.0554,
+      "chest": 0.1355,
+      "lower_front": 0.0273,
+      "hem": 0.0,
+      "sleeve_left": 0.0007,
+      "sleeve_right": 0.0166
+     }
+    },
+    {
+     "frame": 6,
+     "score": 0.7996,
+     "zones": {
+      "neck": 0.9141,
+      "chest": 0.8076,
+      "lower_front": 0.9087,
+      "hem": 0.5093,
+      "sleeve_left": 0.7135,
+      "sleeve_right": 0.854
+     },
+     "intrusion": {
+      "neck": 0.0463,
+      "chest": 0.1252,
+      "lower_front": 0.055,
+      "hem": 0.0,
+      "sleeve_left": 0.0043,
+      "sleeve_right": 0.0108
+     }
+    },
+    {
+     "frame": 9,
+     "score": 0.8042,
+     "zones": {
+      "neck": 0.9583,
+      "chest": 0.8499,
+      "lower_front": 0.8888,
+      "hem": 0.5138,
+      "sleeve_left": 0.6639,
+      "sleeve_right": 0.7886
+     },
+     "intrusion": {
+      "neck": 0.0445,
+      "chest": 0.1247,
+      "lower_front": 0.0764,
+      "hem": 0.0,
+      "sleeve_left": 0.0046,
+      "sleeve_right": 0.0065
+     }
+    },
+    {
+     "frame": 12,
+     "score": 0.7463,
+     "zones": {
+      "neck": 0.9519,
+      "chest": 0.7973,
+      "lower_front": 0.7888,
+      "hem": 0.4013,
+      "sleeve_left": 0.7643,
+      "sleeve_right": 0.622
+     },
+     "intrusion": {
+      "neck": 0.0458,
+      "chest": 0.1453,
+      "lower_front": 0.1596,
+      "hem": 0.0,
+      "sleeve_left": 0.0016,
+      "sleeve_right": 0.0357
+     }
+    },
+    {
+     "frame": 15,
+     "score": 0.7354,
+     "zones": {
+      "neck": 0.8827,
+      "chest": 0.7588,
+      "lower_front": 0.7619,
+      "hem": 0.5202,
+      "sleeve_left": 0.7093,
+      "sleeve_right": 0.6786
+     },
+     "intrusion": {
+      "neck": 0.0384,
+      "chest": 0.1496,
+      "lower_front": 0.1695,
+      "hem": 0.0,
+      "sleeve_left": 0.003,
+      "sleeve_right": 0.0512
+     }
+    },
+    {
+     "frame": 18,
+     "score": 0.7553,
+     "zones": {
+      "neck": 0.8102,
+      "chest": 0.7553,
+      "lower_front": 0.684,
+      "hem": 0.7938,
+      "sleeve_left": 0.6022,
+      "sleeve_right": 0.8837
+     },
+     "intrusion": {
+      "neck": 0.047,
+      "chest": 0.0998,
+      "lower_front": 0.2049,
+      "hem": 0.0,
+      "sleeve_left": 0.009,
+      "sleeve_right": 0.0017
+     }
+    },
+    {
+     "frame": 21,
+     "score": 0.7378,
+     "zones": {
+      "neck": 0.7956,
+      "chest": 0.7754,
+      "lower_front": 0.6501,
+      "hem": 0.6716,
+      "sleeve_left": 0.7281,
+      "sleeve_right": 0.8124
+     },
+     "intrusion": {
+      "neck": 0.0582,
+      "chest": 0.0971,
+      "lower_front": 0.0937,
+      "hem": 0.0,
+      "sleeve_left": 0.0003,
+      "sleeve_right": 0.0563
+     }
+    },
+    {
+     "frame": 24,
+     "score": 0.7476,
+     "zones": {
+      "neck": 0.8244,
+      "chest": 0.778,
+      "lower_front": 0.7094,
+      "hem": 0.6862,
+      "sleeve_left": 0.5973,
+      "sleeve_right": 0.8372
+     },
+     "intrusion": {
+      "neck": 0.0536,
+      "chest": 0.0923,
+      "lower_front": 0.1503,
+      "hem": 0.0,
+      "sleeve_left": 0.0002,
+      "sleeve_right": 0.06
+     }
+    },
+    {
+     "frame": 27,
+     "score": 0.7584,
+     "zones": {
+      "neck": 0.8767,
+      "chest": 0.7973,
+      "lower_front": 0.7818,
+      "hem": 0.5699,
+      "sleeve_left": 0.5332,
+      "sleeve_right": 0.8854
+     },
+     "intrusion": {
+      "neck": 0.091,
+      "chest": 0.0828,
+      "lower_front": 0.0814,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0063
+     }
+    },
+    {
+     "frame": 30,
+     "score": 0.7406,
+     "zones": {
+      "neck": 0.9053,
+      "chest": 0.7857,
+      "lower_front": 0.7583,
+      "hem": 0.4767,
+      "sleeve_left": 0.5155,
+      "sleeve_right": 0.8837
+     },
+     "intrusion": {
+      "neck": 0.0839,
+      "chest": 0.1051,
+      "lower_front": 0.067,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0
+     }
+    },
+    {
+     "frame": 33,
+     "score": 0.7464,
+     "zones": {
+      "neck": 0.911,
+      "chest": 0.8117,
+      "lower_front": 0.7672,
+      "hem": 0.4038,
+      "sleeve_left": 0.5662,
+      "sleeve_right": 0.9066
+     },
+     "intrusion": {
+      "neck": 0.059,
+      "chest": 0.1196,
+      "lower_front": 0.0605,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0001
+     }
+    },
+    {
+     "frame": 36,
+     "score": 0.7385,
+     "zones": {
+      "neck": 0.9098,
+      "chest": 0.8154,
+      "lower_front": 0.7837,
+      "hem": 0.3103,
+      "sleeve_left": 0.658,
+      "sleeve_right": 0.8359
+     },
+     "intrusion": {
+      "neck": 0.0541,
+      "chest": 0.1604,
+      "lower_front": 0.0631,
+      "hem": 0.0,
+      "sleeve_left": 0.0011,
+      "sleeve_right": 0.0028
+     }
+    },
+    {
+     "frame": 39,
+     "score": 0.7674,
+     "zones": {
+      "neck": 0.9151,
+      "chest": 0.8716,
+      "lower_front": 0.7762,
+      "hem": 0.3588,
+      "sleeve_left": 0.7529,
+      "sleeve_right": 0.8209
+     },
+     "intrusion": {
+      "neck": 0.0369,
+      "chest": 0.1119,
+      "lower_front": 0.0591,
+      "hem": 0.0,
+      "sleeve_left": 0.0283,
+      "sleeve_right": 0.0105
+     }
+    },
+    {
+     "frame": 42,
+     "score": 0.7451,
+     "zones": {
+      "neck": 0.9383,
+      "chest": 0.8001,
+      "lower_front": 0.7958,
+      "hem": 0.3416,
+      "sleeve_left": 0.7442,
+      "sleeve_right": 0.7261
+     },
+     "intrusion": {
+      "neck": 0.0515,
+      "chest": 0.1976,
+      "lower_front": 0.0573,
+      "hem": 0.0,
+      "sleeve_left": 0.0029,
+      "sleeve_right": 0.0013
+     }
+    },
+    {
+     "frame": 45,
+     "score": 0.7509,
+     "zones": {
+      "neck": 0.9446,
+      "chest": 0.8042,
+      "lower_front": 0.8583,
+      "hem": 0.3061,
+      "sleeve_left": 0.7132,
+      "sleeve_right": 0.7204
+     },
+     "intrusion": {
+      "neck": 0.0561,
+      "chest": 0.1773,
+      "lower_front": 0.0537,
+      "hem": 0.0,
+      "sleeve_left": 0.0343,
+      "sleeve_right": 0.0096
+     }
+    },
+    {
+     "frame": 48,
+     "score": 0.736,
+     "zones": {
+      "neck": 0.9326,
+      "chest": 0.762,
+      "lower_front": 0.8387,
+      "hem": 0.3214,
+      "sleeve_left": 0.6966,
+      "sleeve_right": 0.7336
+     },
+     "intrusion": {
+      "neck": 0.0402,
+      "chest": 0.1703,
+      "lower_front": 0.0557,
+      "hem": 0.0,
+      "sleeve_left": 0.0473,
+      "sleeve_right": 0.0509
+     }
+    },
+    {
+     "frame": 51,
+     "score": 0.7392,
+     "zones": {
+      "neck": 0.8987,
+      "chest": 0.7754,
+      "lower_front": 0.8709,
+      "hem": 0.3779,
+      "sleeve_left": 0.6481,
+      "sleeve_right": 0.6993
+     },
+     "intrusion": {
+      "neck": 0.0336,
+      "chest": 0.1512,
+      "lower_front": 0.0855,
+      "hem": 0.0,
+      "sleeve_left": 0.011,
+      "sleeve_right": 0.0708
+     }
+    },
+    {
+     "frame": 54,
+     "score": 0.753,
+     "zones": {
+      "neck": 0.9214,
+      "chest": 0.7916,
+      "lower_front": 0.7839,
+      "hem": 0.6245,
+      "sleeve_left": 0.5276,
+      "sleeve_right": 0.6761
+     },
+     "intrusion": {
+      "neck": 0.0482,
+      "chest": 0.109,
+      "lower_front": 0.114,
+      "hem": 0.0,
+      "sleeve_left": 0.0009,
+      "sleeve_right": 0.0815
+     }
+    },
+    {
+     "frame": 57,
+     "score": 0.7434,
+     "zones": {
+      "neck": 0.8992,
+      "chest": 0.8088,
+      "lower_front": 0.7448,
+      "hem": 0.6459,
+      "sleeve_left": 0.5025,
+      "sleeve_right": 0.6525
+     },
+     "intrusion": {
+      "neck": 0.0468,
+      "chest": 0.0926,
+      "lower_front": 0.1408,
+      "hem": 0.0,
+      "sleeve_left": 0.0021,
+      "sleeve_right": 0.09
+     }
+    },
+    {
+     "frame": 60,
+     "score": 0.7037,
+     "zones": {
+      "neck": 0.9106,
+      "chest": 0.8184,
+      "lower_front": 0.6002,
+      "hem": 0.5721,
+      "sleeve_left": 0.4637,
+      "sleeve_right": 0.648
+     },
+     "intrusion": {
+      "neck": 0.0544,
+      "chest": 0.0806,
+      "lower_front": 0.2819,
+      "hem": 0.0,
+      "sleeve_left": 0.0011,
+      "sleeve_right": 0.084
+     }
+    },
+    {
+     "frame": 63,
+     "score": 0.7559,
+     "zones": {
+      "neck": 0.8361,
+      "chest": 0.8209,
+      "lower_front": 0.7688,
+      "hem": 0.6705,
+      "sleeve_left": 0.6326,
+      "sleeve_right": 0.6588
+     },
+     "intrusion": {
+      "neck": 0.0549,
+      "chest": 0.0756,
+      "lower_front": 0.0656,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0715
+     }
+    },
+    {
+     "frame": 66,
+     "score": 0.7546,
+     "zones": {
+      "neck": 0.7994,
+      "chest": 0.78,
+      "lower_front": 0.7671,
+      "hem": 0.6999,
+      "sleeve_left": 0.6562,
+      "sleeve_right": 0.757
+     },
+     "intrusion": {
+      "neck": 0.0805,
+      "chest": 0.0637,
+      "lower_front": 0.041,
+      "hem": 0.0,
+      "sleeve_left": 0.0152,
+      "sleeve_right": 0.0684
+     }
+    },
+    {
+     "frame": 69,
+     "score": 0.7506,
+     "zones": {
+      "neck": 0.7578,
+      "chest": 0.7952,
+      "lower_front": 0.744,
+      "hem": 0.7713,
+      "sleeve_left": 0.5989,
+      "sleeve_right": 0.7586
+     },
+     "intrusion": {
+      "neck": 0.0948,
+      "chest": 0.121,
+      "lower_front": 0.0404,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0665
+     }
+    },
+    {
+     "frame": 72,
+     "score": 0.7634,
+     "zones": {
+      "neck": 0.9432,
+      "chest": 0.8117,
+      "lower_front": 0.7778,
+      "hem": 0.4682,
+      "sleeve_left": 0.7681,
+      "sleeve_right": 0.692
+     },
+     "intrusion": {
+      "neck": 0.0384,
+      "chest": 0.1183,
+      "lower_front": 0.2179,
+      "hem": 0.0,
+      "sleeve_left": 0.0152,
+      "sleeve_right": 0.0263
+     }
+    },
+    {
+     "frame": 75,
+     "score": 0.7544,
+     "zones": {
+      "neck": 0.9302,
+      "chest": 0.8895,
+      "lower_front": 0.5364,
+      "hem": 0.6039,
+      "sleeve_left": 0.7355,
+      "sleeve_right": 0.7453
+     },
+     "intrusion": {
+      "neck": 0.0516,
+      "chest": 0.086,
+      "lower_front": 0.3317,
+      "hem": 0.0,
+      "sleeve_left": 0.0134,
+      "sleeve_right": 0.0233
+     }
+    },
+    {
+     "frame": 78,
+     "score": 0.7463,
+     "zones": {
+      "neck": 0.9512,
+      "chest": 0.8863,
+      "lower_front": 0.5181,
+      "hem": 0.606,
+      "sleeve_left": 0.7474,
+      "sleeve_right": 0.6522
+     },
+     "intrusion": {
+      "neck": 0.0603,
+      "chest": 0.1002,
+      "lower_front": 0.4218,
+      "hem": 0.0,
+      "sleeve_left": 0.0083,
+      "sleeve_right": 0.0097
+     }
+    },
+    {
+     "frame": 81,
+     "score": 0.6745,
+     "zones": {
+      "neck": 0.8514,
+      "chest": 0.7538,
+      "lower_front": 0.4703,
+      "hem": 0.5295,
+      "sleeve_left": 0.7644,
+      "sleeve_right": 0.6581
+     },
+     "intrusion": {
+      "neck": 0.0729,
+      "chest": 0.1327,
+      "lower_front": 0.4755,
+      "hem": 0.0,
+      "sleeve_left": 0.0079,
+      "sleeve_right": 0.0016
+     }
+    },
+    {
+     "frame": 84,
+     "score": 0.6575,
+     "zones": {
+      "neck": 0.6758,
+      "chest": 0.6405,
+      "lower_front": 0.7353,
+      "hem": 0.4574,
+      "sleeve_left": 0.7394,
+      "sleeve_right": 0.726
+     },
+     "intrusion": {
+      "neck": 0.071,
+      "chest": 0.292,
+      "lower_front": 0.1499,
+      "hem": 0.0,
+      "sleeve_left": 0.0765,
+      "sleeve_right": 0.0
+     }
+    },
+    {
+     "frame": 87,
+     "score": 0.6913,
+     "zones": {
+      "neck": 0.7256,
+      "chest": 0.6937,
+      "lower_front": 0.7678,
+      "hem": 0.4753,
+      "sleeve_left": 0.7074,
+      "sleeve_right": 0.7714
+     },
+     "intrusion": {
+      "neck": 0.0848,
+      "chest": 0.2402,
+      "lower_front": 0.1112,
+      "hem": 0.0,
+      "sleeve_left": 0.0528,
+      "sleeve_right": 0.0203
+     }
+    },
+    {
+     "frame": 90,
+     "score": 0.7132,
+     "zones": {
+      "neck": 0.8193,
+      "chest": 0.6917,
+      "lower_front": 0.8759,
+      "hem": 0.4604,
+      "sleeve_left": 0.6321,
+      "sleeve_right": 0.6892
+     },
+     "intrusion": {
+      "neck": 0.0522,
+      "chest": 0.2099,
+      "lower_front": 0.1005,
+      "hem": 0.0,
+      "sleeve_left": 0.0216,
+      "sleeve_right": 0.0386
+     }
+    },
+    {
+     "frame": 99,
+     "score": 0.6636,
+     "zones": {
+      "neck": 0.8461,
+      "chest": 0.6969,
+      "lower_front": 0.6917,
+      "hem": 0.5148,
+      "sleeve_left": 0.4292,
+      "sleeve_right": 0.6168
+     },
+     "intrusion": {
+      "neck": 0.1444,
+      "chest": 0.0805,
+      "lower_front": 0.0161,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0854
+     }
+    },
+    {
+     "frame": 102,
+     "score": 0.723,
+     "zones": {
+      "neck": 0.8241,
+      "chest": 0.7185,
+      "lower_front": 0.7067,
+      "hem": 0.8272,
+      "sleeve_left": 0.4294,
+      "sleeve_right": 0.7019
+     },
+     "intrusion": {
+      "neck": 0.0992,
+      "chest": 0.1217,
+      "lower_front": 0.1998,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.1506
+     }
+    },
+    {
+     "frame": 105,
+     "score": 0.7337,
+     "zones": {
+      "neck": 0.8594,
+      "chest": 0.7396,
+      "lower_front": 0.6957,
+      "hem": 0.8448,
+      "sleeve_left": 0.4369,
+      "sleeve_right": 0.6735
+     },
+     "intrusion": {
+      "neck": 0.0677,
+      "chest": 0.1288,
+      "lower_front": 0.2297,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.1329
+     }
+    },
+    {
+     "frame": 108,
+     "score": 0.7216,
+     "zones": {
+      "neck": 0.9075,
+      "chest": 0.7404,
+      "lower_front": 0.8385,
+      "hem": 0.5433,
+      "sleeve_left": 0.4405,
+      "sleeve_right": 0.6177
+     },
+     "intrusion": {
+      "neck": 0.0806,
+      "chest": 0.1719,
+      "lower_front": 0.092,
+      "hem": 0.0,
+      "sleeve_left": 0.0002,
+      "sleeve_right": 0.1521
+     }
+    },
+    {
+     "frame": 111,
+     "score": 0.7186,
+     "zones": {
+      "neck": 0.9276,
+      "chest": 0.8004,
+      "lower_front": 0.6906,
+      "hem": 0.5517,
+      "sleeve_left": 0.5561,
+      "sleeve_right": 0.5648
+     },
+     "intrusion": {
+      "neck": 0.0634,
+      "chest": 0.144,
+      "lower_front": 0.1512,
+      "hem": 0.0,
+      "sleeve_left": 0.0053,
+      "sleeve_right": 0.004
+     }
+    }
+   ]
+  }
+ },
+ "decision": {
+  "reference_floor": 0.6787730352698917,
+  "zone_floors": {
+   "neck": 0.712796813131749,
+   "chest": 0.7453375680478318,
+   "lower_front": 0.7068260573085134,
+   "hem": 0.35888744016469,
+   "sleeve_left": 0.5505316378905023,
+   "sleeve_right": 0.7060532220090574
+  },
+  "intrusion_ceilings": {
+   "neck": 0.15284811079803723,
+   "chest": 0.29302277623123957,
+   "lower_front": 0.3187841086091187,
+   "hem": 0.02,
+   "sleeve_left": 0.06463188926785318,
+   "sleeve_right": 0.10771949410529146
+  },
+  "ranked": [
+   "S06_c1",
+   "S06_c2",
+   "S06_e1",
+   "S09_c2",
+   "S09_e1d",
+   "S09_c1"
+  ],
+  "best": "S06_c1",
+  "best_passes": false,
+  "passing": [],
+  "rule": "pass = candidate median \u2265 min(reference medians) \u2212 tolerance AND every zone median \u2265 that zone's reference minimum \u2212 tolerance AND every zone's p90 foreign-class intrusion \u2264 the references' maximum + tolerance; best = highest median"
+ }
+}

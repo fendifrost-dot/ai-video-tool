@@ -1,0 +1,893 @@
+{
+ "anchor": "heroes/anchor_hook_s11_f0080.jpg",
+ "anchor_master": "heroes/anchor_hook_master_s11_f0080.jpg",
+ "thresholds": {
+  "pose_strict_max": 0.2,
+  "pose_strict_mean": 0.06,
+  "pose_head_max": 0.06,
+  "pose_arm_angle_max_deg": 20.0,
+  "pose_moderate_max": 0.35,
+  "pose_legs_max": 0.3,
+  "pose_min_presence": 0.5,
+  "identity_ssim_min": 0.75,
+  "identity_lab_max": 22.0,
+  "silhouette_iou_anatomy_min": 0.75,
+  "silhouette_boundary_p90_max": 0.1,
+  "construction_score_min": 0.65,
+  "construction_zone_min": 0.35,
+  "construction_min_garment_frac": 0.03,
+  "material_body_de_max": 10.0,
+  "material_stripe_de_max": 16.0,
+  "material_texture_ratio": [
+   0.4,
+   2.5
+  ],
+  "material_stripe_height_ratio": [
+   0.5,
+   1.8
+  ],
+  "anatomy_hand_skin_dab": 10.0,
+  "anatomy_hand_skin_dL": 60.0,
+  "anatomy_hand_skin_ratio_min": 0.4,
+  "anatomy_component_min_share": 0.95
+ },
+ "candidates": {
+  "S06_c2_f80": {
+   "candidate": "s06_e1e2.mp4#80",
+   "source": "cuts/S06_master_61.597-68.499.mp4#80",
+   "checks": {
+    "pose": {
+     "pass": true,
+     "torso_px": 415.28045654296875,
+     "strict_max": 0.06947183609008789,
+     "strict_mean": 0.023576297538561955,
+     "head_max": 0.029662419110536575,
+     "worst_landmark": "shoulder_l",
+     "arm_angle_max_deg": 5.22271728515625,
+     "arm_angles_deg": {
+      "upper_l": 5.22271728515625,
+      "upper_r": 0.6663131713867188
+     },
+     "relocalised": {
+      "hands_verified_in_place": [
+       "hand_r"
+      ],
+      "landmark_displacements_excluded": {
+       "wrist_r": 0.04789203032851219,
+       "index_r": 0.026395151391625404
+      }
+     },
+     "moderate_max": 0.02468458190560341,
+     "legs_max": null,
+     "displacements": {
+      "nose": 0.01609507016837597,
+      "eye_l": 0.017338017001748085,
+      "eye_r": 0.029662419110536575,
+      "ear_l": 0.01814854145050049,
+      "ear_r": 0.005133949685841799,
+      "shoulder_l": 0.06947183609008789,
+      "shoulder_r": 0.02835841290652752,
+      "elbow_l": 0.013914967887103558,
+      "elbow_r": 0.014063463546335697
+     }
+    },
+    "identity": {
+     "pass": true,
+     "ssim": 0.858429192233414,
+     "lab_residual": 12.197578430175781,
+     "face_box": [
+      308,
+      359,
+      517,
+      567
+     ]
+    },
+    "silhouette": {
+     "pass": true,
+     "iou_anatomy": 0.8513969713532457,
+     "iou_total": 0.893498350623079,
+     "boundary_p90_torso": 0.06975766271352768
+    },
+    "construction": {
+     "pass": true,
+     "score": 0.6826009411355618,
+     "zones": {
+      "neck": 0.7231779498580023,
+      "chest": 0.7405341138323623,
+      "lower_front": 0.7322278529045447,
+      "hem": 0.5268885732616677,
+      "sleeve_left": 0.653329553620442,
+      "sleeve_right": 0.620200107736675
+     },
+     "intrusion": {
+      "neck": 0.107806872383919,
+      "chest": 0.18052407289872155,
+      "lower_front": 0.2131897203325775,
+      "hem": 0.0,
+      "sleeve_left": 0.08701119584617881,
+      "sleeve_right": 0.1905235739998244
+     },
+     "worst_zone": "hem",
+     "landmark_found": true,
+     "garment_frac": 0.31701497395833333
+    },
+    "material": {
+     "pass": true,
+     "body_de": 5.477225575051661,
+     "stripe_de": 7.0,
+     "texture_ratio": 2.1050668758327777,
+     "stripe_height_ratio": 1.0433369447453955,
+     "candidate_body": {
+      "lab": [
+       174.0,
+       131.0,
+       144.0
+      ],
+      "texture": 97.36074829101562,
+      "px": 60343
+     },
+     "candidate_stripe": {
+      "lab": [
+       12.0,
+       130.0,
+       126.0
+      ],
+      "texture": 14848.6806640625,
+      "px": 88590
+     },
+     "anchor_body": {
+      "lab": [
+       179.0,
+       133.0,
+       145.0
+      ],
+      "texture": 46.250667572021484,
+      "px": 58975
+     },
+     "anchor_stripe": {
+      "lab": [
+       19.0,
+       130.0,
+       126.0
+      ],
+      "texture": 2677.517822265625,
+      "px": 49556
+     }
+    },
+    "edit_locality": {
+     "pass": null,
+     "outside_garment_lab_mean": 5.0719499588012695,
+     "garment_frac": 0.31701497395833333
+    },
+    "anatomy": {
+     "pass": true,
+     "hands": {
+      "hand_r": {
+       "skin_fraction_source": 0.8261696462533282,
+       "skin_fraction_at_source_location": 0.8425256751616584,
+       "skin_ratio": 1.0197974217311234,
+       "in_garment_mask": 0.003803727653100038,
+       "skin_fraction_at_candidate_landmark": 0.9138603332151719,
+       "repainted": false
+      }
+     },
+     "repainted_hands": [],
+     "strict_landmarks_present": true,
+     "largest_component_share": 0.9995042261279716,
+     "components": 2
+    }
+   },
+   "failing": [],
+   "pose_lock": "PASS",
+   "verdict": "PASS"
+  },
+  "S06_c2_f19": {
+   "candidate": "s06_e1e2.mp4#19",
+   "source": "cuts/S06_master_61.597-68.499.mp4#19",
+   "checks": {
+    "pose": {
+     "pass": true,
+     "torso_px": 438.11346435546875,
+     "strict_max": 0.06185649335384369,
+     "strict_mean": 0.03253623012166757,
+     "head_max": 0.03866451606154442,
+     "worst_landmark": "index_l",
+     "arm_angle_max_deg": 2.630695343017578,
+     "arm_angles_deg": {
+      "upper_l": 1.219329833984375,
+      "fore_l": 2.630695343017578,
+      "upper_r": 0.6921234130859375,
+      "fore_r": 1.6620941162109375
+     },
+     "relocalised": {
+      "hands_verified_in_place": [],
+      "landmark_displacements_excluded": {}
+     },
+     "moderate_max": 0.07412579655647278,
+     "legs_max": 0.11802182346582413,
+     "displacements": {
+      "nose": 0.033388651907444,
+      "eye_l": 0.03269442170858383,
+      "eye_r": 0.03866451606154442,
+      "ear_l": 0.018360471352934837,
+      "ear_r": 0.02546597085893154,
+      "shoulder_l": 0.019594116136431694,
+      "shoulder_r": 0.017854729667305946,
+      "elbow_l": 0.011252308264374733,
+      "elbow_r": 0.01692969910800457,
+      "wrist_l": 0.057761453092098236,
+      "wrist_r": 0.03940603509545326,
+      "index_l": 0.06185649335384369,
+      "index_r": 0.04974212497472763
+     }
+    },
+    "identity": {
+     "pass": true,
+     "ssim": 0.8249013171103474,
+     "lab_residual": 15.152756690979004,
+     "face_box": [
+      363,
+      358,
+      599,
+      595
+     ]
+    },
+    "silhouette": {
+     "pass": true,
+     "iou_anatomy": 0.8244577157533187,
+     "iou_total": 0.9100743769120806,
+     "boundary_p90_torso": 0.0751410722732544
+    },
+    "construction": {
+     "pass": true,
+     "score": 0.696297159530552,
+     "zones": {
+      "neck": 0.6650410001969091,
+      "chest": 0.7795325010909228,
+      "lower_front": 0.7489853915571831,
+      "hem": 0.6573956262048805,
+      "sleeve_left": 0.6468779661158085,
+      "sleeve_right": 0.5531161536468994
+     },
+     "intrusion": {
+      "neck": 0.11241577487118509,
+      "chest": 0.12692628528779032,
+      "lower_front": 0.15684241706161137,
+      "hem": 0.0,
+      "sleeve_left": 0.058916311003896826,
+      "sleeve_right": 0.34045025417574437
+     },
+     "worst_zone": "sleeve_right",
+     "landmark_found": true,
+     "garment_frac": 0.3185232204861111
+    },
+    "material": {
+     "pass": false,
+     "body_de": 6.324555320336759,
+     "stripe_de": 7.0,
+     "texture_ratio": 2.5127204089956274,
+     "stripe_height_ratio": 0.9281505728314239,
+     "candidate_body": {
+      "lab": [
+       173.0,
+       131.0,
+       145.0
+      ],
+      "texture": 116.21499633789062,
+      "px": 57466
+     },
+     "candidate_stripe": {
+      "lab": [
+       12.0,
+       130.0,
+       126.0
+      ],
+      "texture": 13307.19140625,
+      "px": 102114
+     },
+     "anchor_body": {
+      "lab": [
+       179.0,
+       133.0,
+       145.0
+      ],
+      "texture": 46.250667572021484,
+      "px": 58975
+     },
+     "anchor_stripe": {
+      "lab": [
+       19.0,
+       130.0,
+       126.0
+      ],
+      "texture": 2677.517822265625,
+      "px": 49556
+     }
+    },
+    "edit_locality": {
+     "pass": null,
+     "outside_garment_lab_mean": 5.2805495262146,
+     "garment_frac": 0.3185232204861111
+    },
+    "anatomy": {
+     "pass": false,
+     "hands": {
+      "hand_r": {
+       "skipped": "hand at the frame edge"
+      }
+     },
+     "repainted_hands": [],
+     "strict_landmarks_present": false,
+     "largest_component_share": 1.0,
+     "components": 1
+    }
+   },
+   "failing": [
+    "material",
+    "anatomy"
+   ],
+   "pose_lock": "PASS",
+   "verdict": "FAIL"
+  },
+  "S06_e1_f80": {
+   "candidate": "s06_e1.mp4#80",
+   "source": "cuts/S06_master_61.597-68.499.mp4#80",
+   "checks": {
+    "pose": {
+     "pass": true,
+     "torso_px": 415.28045654296875,
+     "strict_max": 0.0791158378124237,
+     "strict_mean": 0.026870634629934404,
+     "head_max": 0.02477489970624447,
+     "worst_landmark": "shoulder_l",
+     "arm_angle_max_deg": 1.7424163818359375,
+     "arm_angles_deg": {
+      "upper_l": 1.673065185546875,
+      "upper_r": 1.7424163818359375
+     },
+     "relocalised": {
+      "hands_verified_in_place": [
+       "hand_r"
+      ],
+      "landmark_displacements_excluded": {
+       "wrist_r": 0.005208082962781191,
+       "index_r": 0.016217375174164772
+      }
+     },
+     "moderate_max": 0.08868835121393204,
+     "legs_max": null,
+     "displacements": {
+      "nose": 0.022362425923347473,
+      "eye_l": 0.02477489970624447,
+      "eye_r": 0.02254863828420639,
+      "ear_l": 0.02083987556397915,
+      "ear_r": 0.00048492770292796195,
+      "shoulder_l": 0.0791158378124237,
+      "shoulder_r": 0.03071371652185917,
+      "elbow_l": 0.03034226782619953,
+      "elbow_r": 0.010653122328221798
+     }
+    },
+    "identity": {
+     "pass": false,
+     "ssim": 0.7694017447740324,
+     "lab_residual": 24.33280372619629,
+     "face_box": [
+      308,
+      359,
+      517,
+      567
+     ]
+    },
+    "silhouette": {
+     "pass": true,
+     "iou_anatomy": 0.8046116137622175,
+     "iou_total": 0.8214379616877426,
+     "boundary_p90_torso": 0.07833652198314667
+    },
+    "construction": {
+     "pass": true,
+     "score": 0.7252621204468669,
+     "zones": {
+      "neck": 0.7469100455857745,
+      "chest": 0.7864449454182287,
+      "lower_front": 0.9087091314258497,
+      "hem": 0.4213521514582419,
+      "sleeve_left": 0.5764542647589963,
+      "sleeve_right": 0.7667879949534897
+     },
+     "intrusion": {
+      "neck": 0.06040696561842189,
+      "chest": 0.1638829586839131,
+      "lower_front": 0.06390977443609022,
+      "hem": 0.0,
+      "sleeve_left": 0.028798924564396877,
+      "sleeve_right": 0.08153590898317137
+     },
+     "worst_zone": "hem",
+     "landmark_found": true,
+     "garment_frac": 0.37431966145833334
+    },
+    "material": {
+     "pass": true,
+     "body_de": 6.0,
+     "stripe_de": 5.0,
+     "texture_ratio": 1.290230268299251,
+     "stripe_height_ratio": 0.608361204013378,
+     "candidate_body": {
+      "lab": [
+       177.0,
+       129.0,
+       141.0
+      ],
+      "texture": 59.67401123046875,
+      "px": 68501
+     },
+     "candidate_stripe": {
+      "lab": [
+       14.0,
+       130.0,
+       126.0
+      ],
+      "texture": 4089.22998046875,
+      "px": 129548
+     },
+     "anchor_body": {
+      "lab": [
+       179.0,
+       133.0,
+       145.0
+      ],
+      "texture": 46.250667572021484,
+      "px": 58975
+     },
+     "anchor_stripe": {
+      "lab": [
+       19.0,
+       130.0,
+       126.0
+      ],
+      "texture": 2677.517822265625,
+      "px": 49556
+     }
+    },
+    "edit_locality": {
+     "pass": null,
+     "outside_garment_lab_mean": 4.024584770202637,
+     "garment_frac": 0.37431966145833334
+    },
+    "anatomy": {
+     "pass": true,
+     "hands": {
+      "hand_r": {
+       "skin_fraction_source": 0.8261696462533282,
+       "skin_fraction_at_source_location": 0.8478508938759984,
+       "skin_ratio": 1.026243093922652,
+       "in_garment_mask": 0.3883605933815139,
+       "skin_fraction_at_candidate_landmark": 0.8353037097431716,
+       "repainted": false
+      }
+     },
+     "repainted_hands": [],
+     "strict_landmarks_present": true,
+     "largest_component_share": 1.0,
+     "components": 1
+    }
+   },
+   "failing": [
+    "identity"
+   ],
+   "pose_lock": "FAIL",
+   "verdict": "FAIL"
+  },
+  "S09_c2_f30": {
+   "candidate": "s09_e1e2.mp4#30",
+   "source": "cuts/S09_master_74.868-78.835.mp4#30",
+   "checks": {
+    "pose": {
+     "pass": false,
+     "torso_px": 421.22265625,
+     "strict_max": 0.14401191473007202,
+     "strict_mean": 0.03968207209577991,
+     "head_max": 0.0294642336666584,
+     "worst_landmark": "elbow_r",
+     "arm_angle_max_deg": 6.2982177734375,
+     "arm_angles_deg": {
+      "upper_l": 3.2102279663085938,
+      "upper_r": 6.2982177734375
+     },
+     "relocalised": {
+      "hands_verified_in_place": [],
+      "landmark_displacements_excluded": {}
+     },
+     "moderate_max": 0.37958213686943054,
+     "legs_max": null,
+     "displacements": {
+      "nose": 0.01157469768077135,
+      "eye_l": 0.0033913434017449617,
+      "eye_r": 0.020996343344449997,
+      "ear_l": 0.009862598031759262,
+      "ear_r": 0.0294642336666584,
+      "shoulder_l": 0.044302187860012054,
+      "shoulder_r": 0.03774493932723999,
+      "elbow_l": 0.05579039081931114,
+      "elbow_r": 0.14401191473007202
+     }
+    },
+    "identity": {
+     "pass": false,
+     "ssim": 0.7340064985037037,
+     "lab_residual": 26.106412887573242,
+     "face_box": [
+      296,
+      362,
+      515,
+      581
+     ]
+    },
+    "silhouette": {
+     "pass": true,
+     "iou_anatomy": 0.8780200886797574,
+     "iou_total": 0.9161146956478247,
+     "boundary_p90_torso": 0.07351173460483551
+    },
+    "construction": {
+     "pass": true,
+     "score": 0.744575396391103,
+     "zones": {
+      "neck": 0.8310674547148428,
+      "chest": 0.7606441776253097,
+      "lower_front": 0.8178974621766384,
+      "hem": 0.6167219070686468,
+      "sleeve_left": 0.49082828201988105,
+      "sleeve_right": 0.8303025434419437
+     },
+     "intrusion": {
+      "neck": 0.03589527027027027,
+      "chest": 0.03592934564431955,
+      "lower_front": 0.04647473560517039,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.018081850130370707
+     },
+     "worst_zone": "sleeve_left",
+     "landmark_found": true,
+     "garment_frac": 0.23072048611111112
+    },
+    "material": {
+     "pass": true,
+     "body_de": 5.385164807134504,
+     "stripe_de": 5.0,
+     "texture_ratio": 1.2850040022813622,
+     "stripe_height_ratio": 0.6346153846153846,
+     "candidate_body": {
+      "lab": [
+       175.0,
+       130.0,
+       147.0
+      ],
+      "texture": 59.43229293823242,
+      "px": 35596
+     },
+     "candidate_stripe": {
+      "lab": [
+       14.0,
+       130.0,
+       126.0
+      ],
+      "texture": 10941.685546875,
+      "px": 38944
+     },
+     "anchor_body": {
+      "lab": [
+       179.0,
+       133.0,
+       145.0
+      ],
+      "texture": 46.250667572021484,
+      "px": 58975
+     },
+     "anchor_stripe": {
+      "lab": [
+       19.0,
+       130.0,
+       126.0
+      ],
+      "texture": 2677.517822265625,
+      "px": 49556
+     }
+    },
+    "edit_locality": {
+     "pass": null,
+     "outside_garment_lab_mean": 5.04363489151001,
+     "garment_frac": 0.23072048611111112
+    },
+    "anatomy": {
+     "pass": true,
+     "hands": {},
+     "repainted_hands": [],
+     "strict_landmarks_present": true,
+     "largest_component_share": 1.0,
+     "components": 1
+    }
+   },
+   "failing": [
+    "pose",
+    "identity"
+   ],
+   "pose_lock": "FAIL",
+   "verdict": "FAIL"
+  },
+  "S09_c2_f78": {
+   "candidate": "s09_e1e2.mp4#78",
+   "source": "cuts/S09_master_74.868-78.835.mp4#78",
+   "checks": {
+    "pose": {
+     "pass": true,
+     "torso_px": 403.7992248535156,
+     "strict_max": 0.03856391832232475,
+     "strict_mean": 0.01567517187107693,
+     "head_max": 0.013425231911242008,
+     "worst_landmark": "wrist_l",
+     "arm_angle_max_deg": 4.595878601074219,
+     "arm_angles_deg": {
+      "upper_l": 4.595878601074219,
+      "fore_l": 0.3084716796875,
+      "upper_r": 0.4205322265625,
+      "fore_r": 0.1313629150390625
+     },
+     "relocalised": {
+      "hands_verified_in_place": [],
+      "landmark_displacements_excluded": {}
+     },
+     "moderate_max": 0.05230139195919037,
+     "legs_max": null,
+     "displacements": {
+      "nose": 0.013425231911242008,
+      "eye_l": 0.010314556770026684,
+      "eye_r": 0.013024228624999523,
+      "ear_l": 0.0017716537695378065,
+      "ear_r": 0.006825088988989592,
+      "shoulder_l": 0.026261260733008385,
+      "shoulder_r": 0.014065955765545368,
+      "elbow_l": 0.03062889166176319,
+      "elbow_r": 0.002090244321152568,
+      "wrist_l": 0.03856391832232475,
+      "wrist_r": 0.015455859713256359
+     }
+    },
+    "identity": {
+     "pass": true,
+     "ssim": 0.7732545024894306,
+     "lab_residual": 20.857223510742188,
+     "face_box": [
+      407,
+      373,
+      627,
+      592
+     ]
+    },
+    "silhouette": {
+     "pass": true,
+     "iou_anatomy": 0.8524657800213572,
+     "iou_total": 0.9062413531327378,
+     "boundary_p90_torso": 0.06732949614524841
+    },
+    "construction": {
+     "pass": false,
+     "score": 0.0,
+     "zones": {
+      "neck": 0.0,
+      "chest": 0.0,
+      "lower_front": 0.0,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.0
+     },
+     "intrusion": null,
+     "worst_zone": null,
+     "landmark_found": false,
+     "garment_frac": 0.22559353298611112
+    },
+    "material": {
+     "pass": true,
+     "body_de": 8.602325267042627,
+     "stripe_de": 12.0,
+     "texture_ratio": 0.9744814045471359,
+     "stripe_height_ratio": null,
+     "candidate_body": {
+      "lab": [
+       171.0,
+       130.0,
+       146.0
+      ],
+      "texture": 45.07041549682617,
+      "px": 40827
+     },
+     "candidate_stripe": {
+      "lab": [
+       31.0,
+       130.0,
+       126.0
+      ],
+      "texture": 2283.2890625,
+      "px": 31916
+     },
+     "anchor_body": {
+      "lab": [
+       179.0,
+       133.0,
+       145.0
+      ],
+      "texture": 46.250667572021484,
+      "px": 58975
+     },
+     "anchor_stripe": {
+      "lab": [
+       19.0,
+       130.0,
+       126.0
+      ],
+      "texture": 2677.517822265625,
+      "px": 49556
+     }
+    },
+    "edit_locality": {
+     "pass": null,
+     "outside_garment_lab_mean": 5.635990142822266,
+     "garment_frac": 0.22559353298611112
+    },
+    "anatomy": {
+     "pass": true,
+     "hands": {},
+     "repainted_hands": [],
+     "strict_landmarks_present": true,
+     "largest_component_share": 0.9977433500261933,
+     "components": 4
+    }
+   },
+   "failing": [
+    "construction"
+   ],
+   "pose_lock": "PASS",
+   "verdict": "FAIL"
+  },
+  "S09_e1d_f30": {
+   "candidate": "s09_e1d.mp4#30",
+   "source": "cuts/S09_master_74.868-78.835.mp4#30",
+   "checks": {
+    "pose": {
+     "pass": false,
+     "torso_px": 421.22265625,
+     "strict_max": 0.2968590557575226,
+     "strict_mean": 0.08876501329036222,
+     "head_max": 0.023711182177066803,
+     "worst_landmark": "elbow_r",
+     "arm_angle_max_deg": 21.764495849609375,
+     "arm_angles_deg": {
+      "upper_l": 21.764495849609375,
+      "upper_r": 10.88092041015625
+     },
+     "relocalised": {
+      "hands_verified_in_place": [],
+      "landmark_displacements_excluded": {}
+     },
+     "moderate_max": 0.509604811668396,
+     "legs_max": null,
+     "displacements": {
+      "nose": 0.0040445164777338505,
+      "eye_l": 0.01537297572940588,
+      "eye_r": 0.019865652546286583,
+      "ear_l": 0.02334020473062992,
+      "ear_r": 0.023711182177066803,
+      "shoulder_l": 0.06037983298301697,
+      "shoulder_r": 0.07311198860406876,
+      "elbow_l": 0.2821997106075287,
+      "elbow_r": 0.2968590557575226
+     }
+    },
+    "identity": {
+     "pass": true,
+     "ssim": 0.7895625591454895,
+     "lab_residual": 16.161027908325195,
+     "face_box": [
+      296,
+      362,
+      515,
+      581
+     ]
+    },
+    "silhouette": {
+     "pass": true,
+     "iou_anatomy": 0.9358854204215029,
+     "iou_total": 0.9297806428507476,
+     "boundary_p90_torso": 0.032080844044685364
+    },
+    "construction": {
+     "pass": true,
+     "score": 0.7012717212078867,
+     "zones": {
+      "neck": 0.8073217277387004,
+      "chest": 0.6936589944116125,
+      "lower_front": 0.5536527197815876,
+      "hem": 0.5558692592164248,
+      "sleeve_left": 0.851673532262385,
+      "sleeve_right": 0.871143409922238
+     },
+     "intrusion": {
+      "neck": 0.06319469811616135,
+      "chest": 0.16456951913538348,
+      "lower_front": 0.2899229695031308,
+      "hem": 0.0,
+      "sleeve_left": 0.0,
+      "sleeve_right": 0.005443279865655221
+     },
+     "worst_zone": "lower_front",
+     "landmark_found": true,
+     "garment_frac": 0.229609375
+    },
+    "material": {
+     "pass": true,
+     "body_de": 4.898979485566356,
+     "stripe_de": 0.0,
+     "texture_ratio": 1.891017033099135,
+     "stripe_height_ratio": 0.79533275713051,
+     "candidate_body": {
+      "lab": [
+       175.0,
+       131.0,
+       143.0
+      ],
+      "texture": 87.46080017089844,
+      "px": 31901
+     },
+     "candidate_stripe": {
+      "lab": [
+       19.0,
+       130.0,
+       126.0
+      ],
+      "texture": 9519.154296875,
+      "px": 29637
+     },
+     "anchor_body": {
+      "lab": [
+       179.0,
+       133.0,
+       145.0
+      ],
+      "texture": 46.250667572021484,
+      "px": 58975
+     },
+     "anchor_stripe": {
+      "lab": [
+       19.0,
+       130.0,
+       126.0
+      ],
+      "texture": 2677.517822265625,
+      "px": 49556
+     }
+    },
+    "edit_locality": {
+     "pass": null,
+     "outside_garment_lab_mean": 5.468482971191406,
+     "garment_frac": 0.229609375
+    },
+    "anatomy": {
+     "pass": true,
+     "hands": {},
+     "repainted_hands": [],
+     "strict_landmarks_present": true,
+     "largest_component_share": 1.0,
+     "components": 1
+    }
+   },
+   "failing": [
+    "pose"
+   ],
+   "pose_lock": "FAIL",
+   "verdict": "FAIL"
+  }
+ }
+}
