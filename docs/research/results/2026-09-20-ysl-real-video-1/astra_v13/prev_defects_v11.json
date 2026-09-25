@@ -1,0 +1,136 @@
+{
+ "draft_id": "YSL_IceOn_bars24-46_v11",
+ "final_verdict": "REPAIR_REQUIRED",
+ "sequence_defects": [
+  {
+   "defect_id": "SEQ-LOOK2-PRODUCT-TRUTH",
+   "severity": "major",
+   "recommended_owner": "wardrobe_generation",
+   "time_range": [
+    0,
+    3.934
+   ],
+   "description": "PRESENT: Look 2 retains a smooth, coated appearance and chalk-bright seam outlines rather than the reference's worn black denim."
+  },
+  {
+   "defect_id": "LOOK2-PRODUCT-TRUTH",
+   "severity": "major",
+   "recommended_owner": "wardrobe_generation",
+   "time_range": [
+    0,
+    14.754
+   ],
+   "description": "PRESENT: pale hardware proportions and exaggerated pocket-flap edging remain inconsistent with the Look 2 product."
+  },
+  {
+   "defect_id": "LOOK2-CUT-CONSTRUCTION-DRIFT",
+   "severity": "major",
+   "recommended_owner": "temporal_propagation",
+   "time_range": [
+    3.167,
+    14.754
+   ],
+   "description": "PRESENT: pre-hook cuts still exchange jacket length, wear treatment and hardware proportions."
+  },
+  {
+   "defect_id": "LOOK1-CONSTRUCTION-MISMATCH",
+   "severity": "major",
+   "recommended_owner": "wardrobe_generation",
+   "time_range": [
+    23.607,
+    29.508
+   ],
+   "description": "PRESENT: the lower fronts still separate below the zipper, with pale material exposed in the opening. This is distinct from permitted shirt-and-tie visibility at the neck."
+  },
+  {
+   "defect_id": "HOOK-LOOK1-GARMENT-TRUTH",
+   "severity": "note",
+   "recommended_owner": "wardrobe_generation",
+   "time_range": [
+    15.738,
+    39.344
+   ],
+   "description": "PRESENT under the documented styling exception: shirt/tie and cuff treatments remain variant. The permitted collar and tie knot above a closed zip are not classified as an open-jacket defect."
+  },
+  {
+   "defect_id": "SEQ-LOOK1-PRODUCT-TRUTH",
+   "severity": "major",
+   "recommended_owner": "wardrobe_generation",
+   "time_range": [
+    15.738,
+    43.279
+   ],
+   "description": "PRESENT: unresolved hook body, waistband and pocket differences prevent a single consistent product realization. Accepted late-hook styling variance is not assigned an additional release block."
+  },
+  {
+   "defect_id": "S06-S08-GARMENT-RESET",
+   "severity": "major",
+   "recommended_owner": "temporal_propagation",
+   "time_range": [
+    20.625,
+    24.773
+   ],
+   "description": "PRESENT: the city insert still separates visibly different Look 1 jacket bodies."
+  },
+  {
+   "defect_id": "S08-HEM-CONSTRUCTION-DRIFT",
+   "severity": "major",
+   "recommended_owner": "temporal_propagation",
+   "time_range": [
+    24.583,
+    29.508
+   ],
+   "description": "PRESENT: S08's waistband and lower closure do not maintain one construction through the arm-crossing and torso-turning poses."
+  },
+  {
+   "defect_id": "HOOK-GARMENT-RESET",
+   "severity": "note",
+   "recommended_owner": "temporal_propagation",
+   "time_range": [
+    29.508,
+    43.279
+   ],
+   "description": "PRESENT within the accepted late-hook styling tolerance; the cross-cut garment variance itself remains nonblocking."
+  },
+  {
+   "defect_id": "S11-CHEST-BAND-INCOMPLETE",
+   "severity": "major",
+   "recommended_owner": "temporal_propagation",
+   "time_range": [
+    33.443,
+    39.344
+   ],
+   "description": "PRESENT: beige wedges interrupt the wearer-right chest stripe rather than allowing a complete band to follow the garment."
+  },
+  {
+   "defect_id": "S11-BAND-PATCH-OCCLUSION",
+   "severity": "major",
+   "recommended_owner": "compositing_mask",
+   "time_range": [
+    33.443,
+    39.344
+   ],
+   "description": "PRESENT: the replacement chest band remains visibly graphic and incorrectly integrated with garment and neck-layer occlusion."
+  },
+  {
+   "defect_id": "S08-HEM-REPAIR-MASK-DAMAGE",
+   "severity": "major",
+   "recommended_owner": "compositing_mask",
+   "time_range": [
+    23.607,
+    29.508
+   ],
+   "description": "PRESENT: the bounded hem repair has not cleared the visible damage. Abrupt notches and pale residue remain instead of a consistently finished fabric boundary."
+  },
+  {
+   "defect_id": "S06-SHOULDER-MATTE-CUTOUT",
+   "severity": "major",
+   "recommended_owner": "compositing_mask",
+   "time_range": [
+    20.5,
+    21.639
+   ],
+   "description": "PRESENT: the revised matte still removes part of the moving upper-arm silhouette at the sampled repair checkpoint."
+  }
+ ]
+}
