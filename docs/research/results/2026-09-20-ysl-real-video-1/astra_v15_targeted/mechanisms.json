@@ -1,0 +1,136 @@
+{
+ "mode": "poll",
+ "status": "completed",
+ "billed": true,
+ "responseId": "resp_07d08d95094aedfc006ab6b3e79b0487d2a83ef37aeac0cd56",
+ "actualCostUsd": 0.8439,
+ "usage": {
+  "input_tokens": 19067,
+  "input_tokens_details": {
+   "cache_write_tokens": 19064,
+   "cached_tokens": 0
+  },
+  "output_tokens": 13065,
+  "output_tokens_details": {
+   "reasoning_tokens": 11394
+  },
+  "total_tokens": 32132
+ },
+ "storedPath": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/astra-reviews/YSL_IceOn_bars24-46_v15/mechanisms.json",
+ "storeError": null,
+ "review": {
+  "mechanisms": [
+   {
+    "evidence": "PREVIOUS S11 00:36.375 clips the viewer-left band and has white trim. THIS S11 00:36.375 and THIS S11 00:38.333 show complete, fabric-following bands, mastic cuffs/waist, and the anchor's flared collar, broad stripe and gold chest motif.",
+    "mechanism_id": "S11-APPROVED-ROLL",
+    "defect_ids": [
+     "S11-CHEST-BAND-INCOMPLETE",
+     "S11-BAND-PATCH-OCCLUSION"
+    ],
+    "confidence": 0.98,
+    "verdict": "IMPROVED"
+   },
+   {
+    "evidence": "PREVIOUS S08 00:26.542 versus THIS S08 00:26.542 shows the shadowed under-hand tail reduced and its boundary bridged into mastic fabric. THIS S08 00:28.500 also has cleaner side contours; the center-opening detail remains unresolved.",
+    "mechanism_id": "S08-HEM-REPAIR-V4",
+    "defect_ids": [
+     "S08-HEM-REPAIR-MASK-DAMAGE"
+    ],
+    "confidence": 0.9,
+    "verdict": "IMPROVED"
+   },
+   {
+    "evidence": "Single-garment continuity still fails: THIS S08 00:26.542 has a compact collar, high closure and straight hem; THIS S06 00:16.708 shows navy forearm panels; THIS S09 00:30.458 retains white ribbing. Corrected S11 does not resolve these contrasts; S08 deviates most.",
+    "mechanism_id": "HOOK-LOOK-ONE-GARMENT",
+    "defect_ids": [
+     "S08-LOOK1-CONSTRUCTION",
+     "S09-WHITE-WAISTBAND",
+     "HOOK-WORDMARK-CONTINUITY",
+     "S09-WORDMARK-EXTRA-MARK"
+    ],
+    "confidence": 0.95,
+    "verdict": "UNCHANGED"
+   }
+  ],
+  "readiness_reason": "Major S08 construction, S09 waist-trim and cross-shot branding discrepancies remain, so the hook's single-garment mechanism is not acceptable.",
+  "ready_for_full_review": false,
+  "summary": "S11 now matches the approved construction. S08's hem cleanup improves, with one center-opening detail uncertain. The hook still reads as different garment variants: S08 is the strongest construction outlier, while S09 retains conspicuous white waist ribbing.",
+  "defects": [
+   {
+    "severity": "note",
+    "shot_id": "S08",
+    "recommended_owner": "compositing_mask",
+    "category": "artifact",
+    "description": "UNCERTAIN (confidence 0.25): A thin pale extension remains at the lower center opening; these samples do not distinguish residual shirt material from legitimate zipper tape or hardware.",
+    "defect_id": "S08-HEM-REPAIR-MASK-DAMAGE",
+    "evidence": "PREVIOUS S08 00:28.500 shows an outer-right pale island and central strip; THIS S08 00:28.500 removes the outer island but retains a narrow light projection at the center split.",
+    "requires_treatment_change": false,
+    "time_range": [
+     28.5,
+     28.5
+    ],
+    "recommended_action": "Inspect the native composite against the shirt, garment and zipper layers at this instant. Extend the repair only if the projection is confirmed shirt residue; preserve legitimate closure hardware."
+   },
+   {
+    "severity": "major",
+    "shot_id": "S08",
+    "recommended_owner": "wardrobe_generation",
+    "category": "continuity",
+    "description": "S08 remains a different construction: compact stand collar, higher closure and straight split-front hem instead of the approved flared collar and shaped waist. Its exposed sleeve treatment also conflicts with S06.",
+    "defect_id": "S08-LOOK1-CONSTRUCTION",
+    "evidence": "THIS S08 00:24.583 and THIS S08 00:28.500 retain the compact neckline and straight lower body through the turn. Unlike THIS S06 00:16.708, the exposed crossed sleeves show thin seams rather than broad navy panels.",
+    "requires_treatment_change": false,
+    "time_range": [
+     24.583,
+     28.5
+    ],
+    "recommended_action": "Rebuild S08 from the approved on-artist construction, correcting collar, closure and waist together. Reconcile sleeve-panel placement against the same reference while preserving the real performance and hand occlusions."
+   },
+   {
+    "severity": "major",
+    "shot_id": "S09",
+    "recommended_owner": "wardrobe_generation",
+    "category": "wardrobe",
+    "description": "Broad white ribbed waist trim persists, and the cuffs use knit ribbing rather than the approved plain mastic finish. The contrasting waistband prevents continuity with the corrected anchor-matching jacket.",
+    "defect_id": "S09-WHITE-WAISTBAND",
+    "evidence": "THIS S09 00:29.833 and THIS S09 00:30.458 retain the bright waist strip and cuff channels across the lean; THIS S11 00:36.375 has mastic fabric finishes without the white ribbed section.",
+    "requires_treatment_change": false,
+    "time_range": [
+     29.833,
+     31.125
+    ],
+    "recommended_action": "Replace S09's knit trim with the approved mastic fabric construction and propagate it through the crossed-arm poses; avoid another pasted horizontal cover patch."
+   },
+   {
+    "severity": "major",
+    "shot_id": null,
+    "recommended_owner": "brand_repair",
+    "category": "continuity",
+    "description": "Wearer-left chest branding changes from narrow pale single-line lettering to a broader stacked gold motif. Relative scale and placement within the navy stripe differ; S11 follows the approved realization, while the other sampled rolls do not.",
+    "defect_id": "HOOK-WORDMARK-CONTINUITY",
+    "evidence": "THIS S06 00:20.625 and THIS S08 00:24.583 place light lettering toward the outer chest band; THIS S11 00:36.375 shows deeper navy coverage with stacked gold embroidery positioned farther inward.",
+    "requires_treatment_change": false,
+    "time_range": [
+     16.708,
+     38.333
+    ],
+    "recommended_action": "Use the approved on-artist embroidery layout, color and garment-relative placement across the hook shots. Preserve the corrected S11 reference rather than matching it back to inconsistent branding."
+   },
+   {
+    "severity": "minor",
+    "shot_id": "S09",
+    "recommended_owner": "brand_repair",
+    "category": "artifact",
+    "description": "An additional gold embroidery-like island appears separately from the main pale wordmark, breaking sampled branding consistency during the crossed-arm passage.",
+    "defect_id": "S09-WORDMARK-EXTRA-MARK",
+    "evidence": "THIS S09 00:31.125 contains a small gold dash nearer the zipper inside the navy band, alongside the outer pale wordmark; THIS S09 00:29.833 shows no corresponding extra mark.",
+    "requires_treatment_change": false,
+    "time_range": [
+     31.125,
+     31.125
+    ],
+    "recommended_action": "Remove the non-anchor island inside the chest stripe and track a single approved embroidery element through the remaining S09 poses."
+   }
+  ]
+ }
+}
