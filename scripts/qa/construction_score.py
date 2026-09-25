@@ -161,6 +161,27 @@ def score_frame(im, mask, centres, radius, stripe_ids, anchor_hists, max_stripe_
     worst = min(ZONES, key=lambda z: per[z])
     return {"score": float(total), "landmark": lm, "zones": per, "intrusion": intr, "worst_zone": worst}, cls, zs
 
+def build_anchor_model(anchor, amaster, classes=6, class_radius=28.0, max_stripe_frac=0.12, min_stripe_peak=0.25, band=(0.12, 0.7)):
+    """Everything the score needs, learned from the anchor alone (reused by hero_gate.py):
+    colour classes, the stripe landmark, the body class, the anchor's zone histograms."""
+    amask = garment_mask(amaster, anchor)
+    centres, shares = learn_classes(anchor, amask, classes)
+    acls = classify(anchor, centres, class_radius)
+    # the stripe landmark is searched over EVERY learned class; the body is whatever dominates the
+    # torso window around it (so trousers, shirt or skin never masquerade as the garment body)
+    alm = landmark(acls, amask, list(range(len(centres))), max_stripe_frac, min_stripe_peak, band)
+    if alm is None: raise SystemExit("anchor: no horizontal stripe landmark found — the score needs one (chest band / yoke / placket stripe)")
+    r, h = alm["row"], alm["height"]
+    win = np.zeros_like(amask); win[max(0, r - 3 * h):r + 5 * h] = 255; win &= amask
+    counts = np.bincount(acls[win > 0], minlength=len(centres) + 1)[: len(centres)]; counts[alm["class"]] = 0
+    body_id = int(counts.argmax())
+    azs = zones_for(amask, alm); ahists = {z: zone_hist(acls, azs[z], len(centres)) for z in ZONES}
+    return {"anchor": anchor, "master": amaster, "mask": amask, "centres": centres, "shares": shares, "cls": acls, "landmark": alm, "body_class": body_id,
+            "stripe_ids": [alm["class"]], "zones": azs, "hists": ahists, "class_radius": class_radius, "max_stripe_frac": max_stripe_frac, "min_stripe_peak": min_stripe_peak, "band": band}
+
+def score_with_model(model, im, mask):
+    return score_frame(im, mask, model["centres"], model["class_radius"], model["stripe_ids"], model["hists"], model["max_stripe_frac"], model["min_stripe_peak"], model["band"])
+
 def draw(im, zs, lm):
     ov = im.copy()
     colours = {"neck": (0, 255, 255), "chest": (0, 0, 255), "lower_front": (0, 255, 0), "hem": (0, 165, 255), "sleeve_left": (255, 0, 255), "sleeve_right": (255, 128, 0)}
@@ -197,20 +218,9 @@ def main():
     a = ap.parse_args()
     W, H = (int(x) for x in a.size.lower().split("x")); os.makedirs(a.out, exist_ok=True)
     anchor = cv2.resize(cv2.imread(a.anchor), (W, H), interpolation=cv2.INTER_AREA); amaster = cv2.resize(cv2.imread(a.anchor_master), (W, H), interpolation=cv2.INTER_AREA)
-    amask = garment_mask(amaster, anchor)
-    centres, shares = learn_classes(anchor, amask, a.classes)
-    acls = classify(anchor, centres, a.class_radius)
-    # the stripe landmark is searched over EVERY learned class; the body is whatever dominates the
-    # torso window around it (so trousers, shirt or skin never masquerade as the garment body)
     band = tuple(float(x) for x in a.landmark_band.split(","))
-    alm = landmark(acls, amask, list(range(len(centres))), a.max_stripe_frac, a.min_stripe_peak, band)
-    if alm is None: raise SystemExit("anchor: no horizontal stripe landmark found — the score needs one (chest band / yoke / placket stripe)")
-    r, h = alm["row"], alm["height"]
-    win = np.zeros_like(amask); win[max(0, r - 3 * h):r + 5 * h] = 255; win &= amask
-    counts = np.bincount(acls[win > 0], minlength=len(centres) + 1)[: len(centres)]; counts[alm["class"]] = 0
-    body_id = int(counts.argmax())
-    stripe_ids = [alm["class"]]
-    azs = zones_for(amask, alm); ahists = {z: zone_hist(acls, azs[z], len(centres)) for z in ZONES}
+    model = build_anchor_model(anchor, amaster, a.classes, a.class_radius, a.max_stripe_frac, a.min_stripe_peak, band)
+    amask, centres, shares, acls, alm, body_id, stripe_ids, azs, ahists = (model[k] for k in ("mask", "centres", "shares", "cls", "landmark", "body_class", "stripe_ids", "zones", "hists"))
     report = {"anchor": a.anchor, "classes": [{"lab": [round(float(x), 1) for x in c], "share": round(float(s), 3)} for c, s in zip(centres, shares)], "stripe_class": alm["class"], "body_class": body_id,
               "anchor_landmark": alm, "anchor_zone_hists": {z: (None if h is None else [round(float(x), 3) for x in h]) for z, h in ahists.items()}, "weights": WEIGHTS, "candidates": {}, "references": {}}
     tiles = [cv2.resize(draw(anchor, azs, alm), None, fx=0.35, fy=0.35)]
