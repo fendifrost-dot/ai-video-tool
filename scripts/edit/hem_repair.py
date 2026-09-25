@@ -67,7 +67,15 @@ def intruder_map(im, a):
     lab = cv2.cvtColor(im, cv2.COLOR_BGR2LAB).astype(np.float32)
     g = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY).astype(np.float32)
     gx = cv2.blur(np.abs(cv2.Sobel(g, cv2.CV_32F, 1, 0, ksize=3)), (9, 9))
-    return (lab[..., 0] > a.intruder_l_min) & (lab[..., 2] < a.intruder_b_max) & (lab[..., 1] < a.intruder_a_max) & (gx > a.intruder_texture_min)
+    lit = (lab[..., 0] > a.intruder_l_min) & (lab[..., 2] < a.intruder_b_max) & (lab[..., 1] < a.intruder_a_max) & (gx > a.intruder_texture_min)
+    # in SHADOW the same shirt is darker and warmer (S08 f69 under the crossing hand: L 105–114,
+    # b 138–141 — both outside the lit thresholds) but its stripes are still there: texture far
+    # above the smooth garment's (gx 25–110 vs 5–10) with a plausible lightness is the shirt too
+    shaded = (gx > a.intruder_texture_hi) & (lab[..., 0] > a.intruder_l_min - 20) & (lab[..., 2] < a.intruder_b_max + 6) & (lab[..., 1] < a.intruder_a_max)
+    # ...but only as a CONTINUATION of lit shirt: a ribbed hem band or a seam is textured too, so a
+    # shaded pixel counts only within --intruder-grow px of pixels the lit rule accepted
+    near_lit = cv2.dilate(lit.astype(np.uint8), np.ones((2 * a.intruder_grow + 1,) * 2, np.uint8)) > 0
+    return lit | (shaded & near_lit)
 
 
 def analyse_columns(im, cls, mask, region, jacket_ids, r, h, dark_l=70, smooth_max=10.0, extend=110, climb_max=24, win=8, win_ok=5, max_run=150):
@@ -187,6 +195,10 @@ def main():
     ap.add_argument("--zone", default="2.5,11", help="hem region rows as multiples of the stripe height below the stripe row (lo,hi)")
     ap.add_argument("--intruder-l-min", type=float, default=110.0); ap.add_argument("--intruder-b-max", type=float, default=137.0)
     ap.add_argument("--intruder-a-max", type=float, default=134.0); ap.add_argument("--intruder-texture-min", type=float, default=12.0)
+    ap.add_argument("--intruder-grow", type=int, default=25, help="px: shaded-shirt pixels count only this close to lit-shirt pixels")
+    ap.add_argument("--intruder-texture-hi", type=float, default=40.0, help="horizontal-gradient energy above which a pixel is the intruder even in shadow (colour thresholds relaxed)")
+    ap.add_argument("--hole-max", type=float, default=0.03, help="an unchanged hole enclosed by the changed region up to this fraction of the frame counts as garment region (the source's own shirt tail)")
+    ap.add_argument("--row-bridge", type=int, default=60, help="row-wise closing radius (px) on the changed-region mask so an unchanged shirt tail flanked by repainted trousers counts as garment region")
     ap.add_argument("--min-blob", type=int, default=40, help="ignore intruding blobs smaller than this many pixels")
     ap.add_argument("--temporal", type=int, default=3, help="temporal median window on the repair mask (odd; 1 = off)")
     ap.add_argument("--feather", type=float, default=2.0)
@@ -214,7 +226,21 @@ def main():
 
     masks = []; regions = []; clss = []; before = []; gmasks = []; lms = []
     for k in range(n):
-        m = C.garment_mask(master[k], edit[k]); cls = C.classify(edit[k], centres, a.class_radius); clss.append(cls); gmasks.append(m)
+        m = C.garment_mask(master[k], edit[k]); cls = C.classify(edit[k], centres, a.class_radius); clss.append(cls)
+        # the changed-region mask has HOLES where the edit kept the source's pixels — the source's
+        # own untucked shirt tail is exactly such a hole (unchanged white shirt between a repainted
+        # jacket and repainted trousers); an enclosed hole of at most --hole-max of the frame is
+        # part of the garment region, otherwise the tail is never seen as an intruder (S08 f69)
+        nh, hl, hs_, _ = cv2.connectedComponentsWithStats((m == 0).astype(np.uint8), connectivity=4)
+        for hj in range(1, nh):
+            x, y, w_, h_, ar = hs_[hj]
+            if ar <= a.hole_max * H * W and x > 0 and y > 0 and x + w_ < W and y + h_ < H: m[hl == hj] = 255
+        # ...and a hole that reaches the border through a hand in front of it (the hand is unchanged
+        # too) is still garment where it lies BETWEEN changed pixels on its row: close each row over
+        # gaps of at most --row-bridge px
+        if a.row_bridge > 0:
+            m = cv2.morphologyEx(m, cv2.MORPH_CLOSE, np.ones((1, 2 * a.row_bridge + 1), np.uint8))
+        gmasks.append(m)
         lms.append(C.landmark(cls, m, [stripe], 0.12, 0.25, (0.12, 0.7)))
     # the stripe's measured height jitters frame to frame (24–40 px on S08); the hem region is laid
     # out with the clip's MEDIAN stripe height so the zone does not breathe with the landmark

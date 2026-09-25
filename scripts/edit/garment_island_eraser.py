@@ -55,7 +55,7 @@ def main():
     ap.add_argument("--out", required=True); ap.add_argument("--qa-dir", default=None)
     ap.add_argument("--size", default="720x1280"); ap.add_argument("--fps", type=int, default=24)
     ap.add_argument("--leak-thresh", type=float, default=14.0); ap.add_argument("--skin-de", type=float, default=20.0, help="Lab distance (L down-weighted) to the nearest skin cluster below which a pixel is skin"); ap.add_argument("--skin-share", type=float, default=0.3, help="an island with at least this share of skin pixels (edit or master) is anatomy"); ap.add_argument("--skin-clusters", type=int, default=4); ap.add_argument("--skin-lw", type=float, default=0.5, help="weight of the L difference in skin distances (skin varies most in L)"); ap.add_argument("--debug", action="store_true", help="also list the rejected candidates and why in the QA json"); ap.add_argument("--skin-spread", type=float, default=60.0, help="sampled face/hand pixels farther than this (L half-weighted) from their median are not skin (glasses, cap, collar)"); ap.add_argument("--ring-change", type=float, default=30.0, help="Lab change vs the master a ring pixel needs to count as painted garment"); ap.add_argument("--ring-dab", type=float, default=9.0, help="chroma distance to the body colour a ring pixel may have and still count as body")
-    ap.add_argument("--chroma-tol", type=float, default=10.0, help="a pixel farther than this in ab from its Look class's chroma is not that colour"); ap.add_argument("--structure-frac", type=float, default=0.005, help="a connected region of one non-body Look class larger than this fraction of the frame is the Look's own structure (band, tie), never island material"); ap.add_argument("--face-scale", type=float, default=1.6, help="face box scale (about the face landmarks) that is never island material"); ap.add_argument("--face-share", type=float, default=0.3, help="an island with more than this share inside the face box hangs from the face (collar, tie) and is never touched; a smaller overlap is cut out of the island"); ap.add_argument("--edge-pad", type=int, default=4, help="pixels beyond the changed region that still count as garment for island material (silhouette-edge marks)"); ap.add_argument("--stripe-pad", type=int, default=6, help="rows above and below the stripe landmark in which the stripe class is structure"); ap.add_argument("--hole-max", type=float, default=0.03, help="an unchanged hole in the changed region larger than this fraction of the frame is background, not a leak"); ap.add_argument("--min-frac", type=float, default=0.0002); ap.add_argument("--max-frac", type=float, default=0.006, help="an island is small by nature; a region larger than this fraction of the frame is a garment part, not a mark")
+    ap.add_argument("--chroma-tol", type=float, default=10.0, help="a pixel farther than this in ab from its Look class's chroma is not that colour"); ap.add_argument("--structure-frac", type=float, default=0.005, help="a connected region of one non-body Look class larger than this fraction of the frame is the Look's own structure (band, tie), never island material"); ap.add_argument("--face-scale", type=float, default=1.6, help="face box scale (about the face landmarks) that is never island material"); ap.add_argument("--face-share", type=float, default=0.3, help="an island with more than this share inside the face box hangs from the face (collar, tie) and is never touched; a smaller overlap is cut out of the island"); ap.add_argument("--edge-pad", type=int, default=4, help="pixels beyond the changed region that still count as garment for island material (silhouette-edge marks)"); ap.add_argument("--zone-stripe-max", type=float, default=-1.0, help="a zone whose anchor histogram has at most this share of the stripe class is stripe-free in the Look: stripe-class pixels there are island seeds; -1 = off (default: on S06 collar-3 the sleeve stripes were only partly taken — the band rows and the zone boxes cut them into pieces — so this stays opt-in until a stripe is handled as one structure)"); ap.add_argument("--line-max-thick", type=float, default=7.0, help="an island whose maximal inscribed radius is at most this (px) and whose extent is 16× it is a line (a stripe, a seam), which the skin test never claims"); ap.add_argument("--stripe-pad", type=int, default=6, help="rows above and below the stripe landmark in which the stripe class is structure"); ap.add_argument("--hole-max", type=float, default=0.03, help="an unchanged hole in the changed region larger than this fraction of the frame is background, not a leak"); ap.add_argument("--min-frac", type=float, default=0.0002); ap.add_argument("--max-frac", type=float, default=0.006, help="an island is small by nature; a region larger than this fraction of the frame is a garment part, not a mark")
     ap.add_argument("--enclose-margin", type=int, default=6); ap.add_argument("--grow-px", type=int, default=12, help="how far a seed grows through connected non-body pixels (a badge's Look-coloured parts)"); ap.add_argument("--body-dab", type=float, default=6.0, help="chroma radius around the body class that counts as the same fabric (its shadows/highlights)"); ap.add_argument("--enclose-min", type=float, default=0.6, help="fraction of the in-garment ring around an island that must be garment body"); ap.add_argument("--ring-in-min", type=float, default=0.15, help="fraction of the ring that must lie inside the garment at all (an island at the silhouette edge)"); ap.add_argument("--feather", type=float, default=2.0)
     a = ap.parse_args()
     W, H = (int(x) for x in a.size.lower().split("x"))
@@ -143,6 +143,14 @@ def main():
             rows = np.zeros((H, W), bool); rows[max(0, lmk["top"] - a.stripe_pad):min(H, lmk["bottom"] + a.stripe_pad + 1)] = True
             nonbody &= ~(rows & np.isin(cls, model["stripe_ids"]))
         seed = (nonbody & (leak | foreign)).astype(np.uint8)
+        # a Look colour where the Look has none of it: in every zone whose ANCHOR histogram holds
+        # (almost) no stripe class — plain sleeves on this jacket — a run of stripe-class pixels is
+        # a generator's stripe, not the garment's (the chest band and the tie live in other zones)
+        if lmk is not None and a.zone_stripe_max >= 0:
+            zs = zones_for(filled, lmk)
+            for zn, hist in model["hists"].items():
+                if zn in ("chest", "neck") or hist is None or any(hist[c] > a.zone_stripe_max for c in model["stripe_ids"]): continue
+                seed |= ((zs[zn] > 0) & np.isin(cls, model["stripe_ids"]) & nonbody).astype(np.uint8)
         seed = cv2.morphologyEx(seed, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
         # a leaked patch is partly made of Look colours (a navy or white part of a badge classifies
         # as the stripe or the collar): grow each seed through connected NON-body pixels, a bounded
@@ -162,11 +170,12 @@ def main():
         out = np.zeros((H, W), np.uint8); recs = []
         for j in range(1, nlab):
             area = stats[j, cv2.CC_STAT_AREA] / (H * W)
-            if area < a.min_frac or area > a.max_frac: continue
             sel = lab == j; sd = sel & (seed > 0)
             rec = {"frame": i, "area_frac": float(area), "centre": [float(cents[j][0]), float(cents[j][1])], "seed_share": float(sd.sum() / max(1, sel.sum()))}
             def reject(why):
                 if a.debug: rejected.append({**rec, "rejected": why})
+            if area < a.min_frac: continue
+            if area > a.max_frac: reject("too large for an island"); continue
             if sd.sum() < 0.25 * sel.sum(): reject("mostly grown, hardly betrayed"); continue   # not an island
             ring = cv2.dilate(sel.astype(np.uint8), np.ones((2 * a.enclose_margin + 1,) * 2, np.uint8)).astype(bool) & ~sel
             # ring pixels the edit actually PAINTED: strongly changed vs the master (a re-rendered wall
@@ -197,7 +206,13 @@ def main():
             # painted a sleeve, and a badge hallucinated on that sleeve is not anatomy
             rec["skin_share_edit"] = skin_share(Le) if skin_lab is not None else None
             rec["edit_lab"] = [float(x) for x in np.median(Le[sd], axis=0)]
-            if skin_lab is not None and rec["skin_share_edit"] >= a.skin_share: reject("skin"); continue
+            # a LINE is never skin: a run whose thickest point is ≤ --line-max-thick px and whose
+            # extent is ≥ 8× that (a piped seam, a stripe drawn along a sleeve) has no anatomy of that
+            # shape — dark navy and dark skin share a colour, they do not share a shape
+            dt = cv2.distanceTransform(sel.astype(np.uint8), cv2.DIST_L2, 3); thick = float(dt.max())
+            ext = float(np.hypot(stats[j, cv2.CC_STAT_WIDTH], stats[j, cv2.CC_STAT_HEIGHT])); rec["thickness"] = thick; rec["extent"] = ext
+            linear = thick <= a.line_max_thick and ext >= 8 * max(1.0, thick) * 2
+            if skin_lab is not None and rec["skin_share_edit"] >= a.skin_share and not linear: reject("skin"); continue
             rec["reason"] = "source_leak" if leak[sd].mean() > 0.5 else "foreign_colour"
             if rec["reason"] == "foreign_colour":
                 # a badge has a pale rim the highlight class absorbs: take the thin ring of brightest-class

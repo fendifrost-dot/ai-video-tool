@@ -140,19 +140,30 @@ def snap_to_band(frames, track, anchors, owner, reach, tol, min_conf):
         L = band_run(nearpx[:, : Wp // 3].mean(axis=1), reach, Hp); R = band_run(nearpx[:, -(Wp // 3):].mean(axis=1), reach, Hp)
         if L is None or R is None: continue
         offs[k] = (L[0], R[0], R[1], L[1])                                     # TL, TR, BR, BL along the vertical axis
-    if not offs: return track, {}
+    if not offs: return track, {}, anchors
     ks = sorted(offs); sm = {}
     for i, k in enumerate(ks):
         win = np.array([offs[j] for j in ks[max(0, i - 2):i + 3]]); sm[k] = tuple(float(x) for x in np.median(win, axis=0))
-    out = list(track)
+    out = list(track); snapped = {}
     for k, d in sm.items():
         t = track[k]; af, aq = anchors[owner[k]]; q = warp_quad(t["H"], aq).astype(np.float32)
         hq = float((np.linalg.norm(q[3] - q[0]) + np.linalg.norm(q[2] - q[1])) / 2)
         vax = ((q[3] - q[0]) + (q[2] - q[1])) / 2 / max(hq, 1e-6)
-        q2 = np.array([q[i] + vax * d[i] for i in range(4)], np.float32)
-        H2 = cv2.getPerspectiveTransform(aq.astype(np.float32), q2)
-        out[k] = {**t, "H": H2, "quad": q2, "snap": list(d)}
-    return out, sm
+        snapped[k] = np.array([q[i] + vax * d[i] for i in range(4)], np.float32)
+    # the anchors' own quads snap too (their frame's snapped plane), and every H is re-derived from
+    # the snapped anchor quad: the occluder test warps the anchor's texture by H, so anchor and
+    # frame must be snapped alike or the offset itself reads as an occluder
+    new_anchors = list(anchors)
+    for i, (af, aq) in enumerate(anchors):
+        if af in snapped and owner[af] == i: new_anchors[i] = (af, snapped[af])
+    for k, q2 in snapped.items():
+        t = track[k]; af, aq2 = new_anchors[owner[k]]
+        out[k] = {**t, "H": cv2.getPerspectiveTransform(aq2.astype(np.float32), q2), "quad": q2, "snap": list(sm[k])}
+    for k, t in enumerate(out):
+        if k in snapped or t is None or t.get("H") is None: continue
+        af, aq2 = new_anchors[owner[k]]; q = warp_quad(t["H"], anchors[owner[k]][1]).astype(np.float32)
+        out[k] = {**t, "H": cv2.getPerspectiveTransform(aq2.astype(np.float32), q), "quad": q}
+    return out, sm, new_anchors
 
 def main():
     ap = argparse.ArgumentParser()
@@ -161,7 +172,7 @@ def main():
     ap.add_argument("--anchors", default=None, help="several anchors 'frame:x1,y1,...,x4,y4;frame:...' — each frame uses whichever anchor's track is most confident there (re-anchoring across occlusions/turns)")
     ap.add_argument("--matte", default=None); ap.add_argument("--opaque", action="store_true")
     ap.add_argument("--min-confidence", type=float, default=0.35); ap.add_argument("--max-occlusion", type=float, default=0.5, help="a frame whose plane is more than this fraction occluded gets no graphic"); ap.add_argument("--edge-feather", type=float, default=1.2)
-    ap.add_argument("--resid-thresh", type=float, default=34.0); ap.add_argument("--name", default=None)
+    ap.add_argument("--resid-thresh", type=float, default=34.0); ap.add_argument("--min-occluder-frac", type=float, default=0.15, help="an occluder blob must cover at least this fraction of the plane (and enter from its border); the generator's lettering at the plane's edge is smaller"); ap.add_argument("--name", default=None)
     ap.add_argument("--skin-occluder", action="store_true", help="also treat YCrCb skin as occluder (only for garments far from skin tones)")
     ap.add_argument("--motion-model", choices=("similarity", "affine", "homography"), default="affine")
     ap.add_argument("--track-expand", type=float, default=1.0, help="track the texture of a quad this many times larger (about the same centre) than the graphic's quad — for a graphic on a plain panel surrounded by trackable garment structure")
@@ -169,6 +180,7 @@ def main():
     ap.add_argument("--max-shape-drift", type=float, default=1.3, help="a tracked quad whose edge lengths (scale-normalised) drift more than this factor from the anchor's is degenerate and gets confidence 0")
     ap.add_argument("--erase-above", type=float, default=0.0, help="fraction of the plane height ABOVE the plane to repaint with the surrounding garment colour before compositing — removes stray marks a generator drew next to the true graphic (0 = off)")
     ap.add_argument("--erase-below", type=float, default=0.0, help="same, below the plane")
+    ap.add_argument("--erase-beside", default="0,0", help="stray-mark eraser LEFT,RIGHT of the plane in its own rows, as fractions of the plane width (marks mode only: islands enclosed by band colour)")
     ap.add_argument("--erase-extend", default="0,0", help="widen the erase bands sideways: 'left,right' fractions of the plane width (stray marks often sit beside the graphic's column)")
     ap.add_argument("--erase-mode", choices=["marks", "flat"], default="marks", help="marks: inpaint only off-colour ISLANDS inside the band (occluder-safe — anything touching the band edge is left alone); flat: repaint the whole band")
     ap.add_argument("--erase-thresh", type=float, default=16.0, help="marks mode: Lab distance from the band's garment colour that counts as off-colour")
@@ -254,7 +266,7 @@ def main():
                 track[j] = {**tracks[io][j], "H": Ho, "quad": q, "confidence": max(ta["confidence"], tb["confidence"])}; owner[j] = io
     snap_offsets = {}
     if a.snap_reach > 0:
-        track, snap_offsets = snap_to_band(frames, track, anchors, owner, a.snap_reach, a.snap_tol, a.min_confidence)
+        track, snap_offsets, anchors = snap_to_band(frames, track, anchors, owner, a.snap_reach, a.snap_tol, a.min_confidence)
         if snap_offsets:
             v = np.array(list(snap_offsets.values())); print(f"band snap: {len(snap_offsets)} frames, mean corner offsets TL/TR/BR/BL {np.round(v.mean(axis=0), 1).tolist()} px, p95 |offset| {np.percentile(np.abs(v), 95):.1f} px")
     anchor = frames[a.anchor_frame]
@@ -286,6 +298,7 @@ def main():
     if a.soften > 0: gbgr = cv2.GaussianBlur(gbgr, (0, 0), a.soften)
     # plane extension comes AFTER the colour match so the match sees only the true graphic plane
     a.erase_extend = [float(x) for x in a.erase_extend.split(",")][:2] + [0.0, 0.0]
+    a.erase_beside = ([float(x) for x in a.erase_beside.split(",")] + [0.0, 0.0])[:2]
     ext = [float(x) for x in a.extend.split(",")]
     if any(e > 0 for e in ext):
         el, er, et, eb = ext
@@ -313,7 +326,7 @@ def main():
         extra = None
         if matte is not None and k < len(matte):
             extra = (cv2.cvtColor(matte[k], cv2.COLOR_BGR2GRAY) < 128).astype(np.uint8) * 255
-        occ, plane = occlusion_mask(f, anchor, t["H"], quad, extra_mask=extra, resid_thresh=a.resid_thresh, use_skin=a.skin_occluder)
+        occ, plane = occlusion_mask(f, anchor, t["H"], quad, extra_mask=extra, resid_thresh=a.resid_thresh, use_skin=a.skin_occluder, min_blob_frac=a.min_occluder_frac)
         # a plane that is MOSTLY hidden (an arm sweeping across it) is not drawn at all: the part
         # the occluder test leaves "visible" is motion blur and skin the residual missed, and a
         # graphic painted on a forearm is worse than the generator's lettering under it
@@ -326,16 +339,25 @@ def main():
         # is far from the surrounding garment (the generator's stray glyphs), inpainting them from
         # their neighbourhood; a LARGE off-colour blob is an occluder (hand, tie, hair) and is left
         # alone. Mode "flat" repaints the whole band with the ring median shaded by the footage.
-        if a.erase_above > 0 or a.erase_below > 0:
+        if a.erase_above > 0 or a.erase_below > 0 or any(x > 0 for x in a.erase_beside):
             pq = warp_quad(t["H"], quad); v = (pq[3] - pq[0] + pq[2] - pq[1]) / 2   # plane vertical axis (px)
             uax = (pq[1] - pq[0] + pq[2] - pq[3]) / 2; ul, ur = uax * a.erase_extend[0], uax * a.erase_extend[1]
+            erase_quads = []
             for frac, sign in ((a.erase_above, -1), (a.erase_below, +1)):
                 if frac <= 0: continue
                 top = (pq[0] - v * frac if sign < 0 else pq[3]) - ul
                 topr = (pq[1] - v * frac if sign < 0 else pq[2]) + ur
                 bot = (pq[0] if sign < 0 else pq[3] + v * frac) - ul
                 botr = (pq[1] if sign < 0 else pq[2] + v * frac) + ur
-                eq = quad_array([top, topr, botr, bot])
+                erase_quads.append(quad_array([top, topr, botr, bot]))
+            # BESIDE the plane, in its own rows: the generator's lettering that the plane does not
+            # cover (a mark drawn nearer the zip than the true one) is an island on the band there
+            bl, br = a.erase_beside
+            if bl > 0: erase_quads.append(quad_array([pq[0] - uax * bl, pq[0], pq[3], pq[3] - uax * bl]))
+            if br > 0: erase_quads.append(quad_array([pq[1], pq[1] + uax * br, pq[2] + uax * br, pq[2]]))
+            n_ab = sum(1 for frac in (a.erase_above, a.erase_below) if frac > 0)
+            for qi, eq in enumerate(erase_quads):
+                beside = qi >= n_ab
                 em = quad_mask(f.shape, eq) > 0
                 ring = (quad_mask(f.shape, eq, dilate_px=10) > 0) & ~(quad_mask(f.shape, eq, dilate_px=2) > 0) & ~(quad_mask(f.shape, pq, dilate_px=4) > 0)
                 if em.sum() < 20 or ring.sum() < 50: continue
@@ -352,6 +374,13 @@ def main():
                     # touching the band's edge (tie, hand, the real stripe, a fold) continues outside it
                     # and is not a mark, whatever its size (the edge shared with the plane is exempt).
                     edge = (em & ~cv2.erode(em.astype(np.uint8), np.ones((5, 5), np.uint8)).astype(bool)) & ~(quad_mask(f.shape, pq, dilate_px=8) > 0)   # the side shared with the plane doesn't count: marks sit right next to the graphic
+                    if beside:
+                        # a region in the band's own rows: lettering fills the band's height, so its top and
+                        # bottom edges are not evidence of an occluder — only the outer side edge is
+                        top_e, bot_e = eq[:2], eq[2:]
+                        strip = np.zeros(f.shape[:2], np.uint8)
+                        cv2.line(strip, tuple(np.round(eq[0]).astype(int)), tuple(np.round(eq[1]).astype(int)), 255, 7); cv2.line(strip, tuple(np.round(eq[3]).astype(int)), tuple(np.round(eq[2]).astype(int)), 255, 7)
+                        edge = edge & ~(strip > 0)
                     for i in range(1, n_lab):
                         blob = lab_img == i
                         if stats[i, cv2.CC_STAT_AREA] < a.erase_max_blob * band_area and not (blob & edge).any(): marks[blob] = 255
