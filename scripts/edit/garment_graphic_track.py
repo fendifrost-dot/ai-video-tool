@@ -182,6 +182,11 @@ def main():
     ap.add_argument("--erase-below", type=float, default=0.0, help="same, below the plane")
     ap.add_argument("--erase-beside", default="0,0", help="stray-mark eraser LEFT,RIGHT of the plane in its own rows, as fractions of the plane width (marks mode only: islands enclosed by band colour)")
     ap.add_argument("--erase-extend", default="0,0", help="widen the erase bands sideways: 'left,right' fractions of the plane width (stray marks often sit beside the graphic's column)")
+    ap.add_argument("--plane-mode", choices=["band", "opaque"], default="band", help="band: keep the footage's own band texture, inpaint the generator's lettering inside the plane from the band and paint only the graphic's mark, never outside the band-coloured region; opaque: paint the whole graphic plane")
+    ap.add_argument("--band-min-frac", type=float, default=0.6, help="band mode: below this band-coloured share of the plane (a white or fully lettered generator band) the frame falls back to the opaque plane")
+    ap.add_argument("--band-dab", type=float, default=12.0, help="band mode: a and b (Lab) tolerance for band / body membership (chroma-led, shading-invariant)")
+    ap.add_argument("--band-dl", type=float, default=45.0, help="band mode: L tolerance for band membership (white lettering on a navy band is far in L, the band's own shading is not)")
+    ap.add_argument("--mark-thresh", type=float, default=60.0, help="band mode: summed BGR difference from the graphic's background colour above which a graphic pixel is the mark")
     ap.add_argument("--erase-mode", choices=["marks", "flat"], default="marks", help="marks: inpaint only off-colour ISLANDS inside the band (occluder-safe — anything touching the band edge is left alone); flat: repaint the whole band")
     ap.add_argument("--erase-thresh", type=float, default=16.0, help="marks mode: Lab distance from the band's garment colour that counts as off-colour")
     ap.add_argument("--erase-max-blob", type=float, default=0.25, help="marks mode: an off-colour blob larger than this fraction of the band is an occluder, not a mark")
@@ -312,10 +317,30 @@ def main():
     Hg = graphic_to_plane_h(gw, gh, quad)   # graphic → anchor plane
     # soft edge on the graphic so the warped patch never shows a hard rectangle
     galpha_f = galpha.astype(np.float32) / 255.0
+    # the graphic's MARK: pixels that differ from the graphic's own background colour (its median)
+    g_bg = np.median(gbgr[galpha > 127].reshape(-1, 3), axis=0)
+    gmark = (np.abs(gbgr.astype(np.float32) - g_bg[None, None, :]).sum(axis=2) > a.mark_thresh).astype(np.uint8) * 255
+    gmark = cv2.dilate(gmark, np.ones((3, 3), np.uint8)); gmark_f = cv2.GaussianBlur(gmark.astype(np.float32) / 255.0, (0, 0), 0.8)
     if a.edge_feather > 0:
         er = cv2.erode(galpha, np.ones((3, 3), np.uint8)); galpha_f = cv2.GaussianBlur(er.astype(np.float32) / 255.0, (0, 0), a.edge_feather)
 
     out_frames, per = [], []
+    # per-CLIP plane mode: whether the generator's band under the plane is band-coloured is judged
+    # once, on the measured anchor frames (the plane's colour matched to the graphic's background),
+    # so the mode never flips frame to frame (a flip would read as the patch flickering)
+    clip_band = a.plane_mode == "band"
+    if a.plane_mode == "band":
+        fr_ = []
+        for af_, aq_ in anchors:
+            pl_ = quad_mask(frames[af_].shape, aq_) > 0
+            if pl_.sum() < 50: continue
+            lab_ = cv2.GaussianBlur(cv2.cvtColor(frames[af_], cv2.COLOR_BGR2LAB), (0, 0), 1.0).astype(np.float32)
+            g_ref = cv2.cvtColor(np.uint8([[np.median(gbgr[galpha > 127].reshape(-1, 3), axis=0)]]), cv2.COLOR_BGR2LAB)[0, 0].astype(np.float32)
+            def near_to(ref__): return (np.abs(lab_[..., 1] - ref__[1]) < a.band_dab) & (np.abs(lab_[..., 2] - ref__[2]) < a.band_dab) & (np.abs(lab_[..., 0] - ref__[0]) < a.band_dl)
+            pre_ = near_to(g_ref) & pl_; ref__ = np.median(lab_[pre_].reshape(-1, 3), axis=0) if pre_.sum() > 50 else g_ref
+            fr_.append(float(near_to(ref__)[pl_].mean()))                              # share of the anchor plane that is band-coloured (chroma-led, re-centred: the same rule as per frame)
+        clip_band = bool(fr_) and float(np.median(fr_)) >= a.band_min_frac
+        print(f"plane mode: {'band-integrated' if clip_band else 'opaque (fallback)'} — anchor band share {[round(x, 2) for x in fr_]}", flush=True)
     for k, f in enumerate(frames):
         t = track[k]; rec = {"frame": k, "confidence": 0.0 if t is None else t["confidence"], "applied": False, "occlusion": None, "gain": None}
         if t is None or t["H"] is None or t["confidence"] < a.min_confidence:
@@ -406,9 +431,51 @@ def main():
                 low = cv2.GaussianBlur(L, (0, 0), 6); mod = np.clip(low / max(1.0, low[pl0].mean()), 0.5, 1.5)
                 mod = 1.0 + a.shading * (mod - 1.0)
                 wg = np.clip(wg.astype(np.float32) * mod[..., None], 0, 255).astype(np.uint8)
-        alpha = np.clip(wa * (1.0 - occ), 0, 1)[..., None]
-        comp = (f.astype(np.float32) * (1 - alpha) + wg.astype(np.float32) * alpha).astype(np.uint8)
         pl = plane > 0
+        if clip_band and pl.sum() > 50:
+            # BAND-INTEGRATED plane: the footage's own band (its weave, folds and shading) stays; only
+            # the generator's lettering inside the plane is inpainted from the band around it, and
+            # only the graphic's MARK (pixels that differ from the graphic's background) is painted
+            # on. The plane never paints outside the band it sits on: the band region is the
+            # band-coloured component around the plane, so an edge that overshoots onto the body
+            # colour leaves the body untouched.
+            lab_f = cv2.GaussianBlur(cv2.cvtColor(f, cv2.COLOR_BGR2LAB), (0, 0), 1.0).astype(np.float32)
+            # the EXPECTED band colour is the illuminated graphic's own background (what the plane
+            # would paint), not the frame's median: a generator band that is white or lettered
+            # under the plane must not be mistaken for the band
+            g_bg_lit = cv2.cvtColor(np.uint8([[np.median(g_lit[galpha > 127].reshape(-1, 3), axis=0)]]), cv2.COLOR_BGR2LAB)[0, 0].astype(np.float32)
+            # band membership is CHROMA-led (a/b within --band-dab of the expected colour, L within a
+            # loose --band-dl): the band's own shading and folds change L, not chroma, and the
+            # reference is then re-centred on the pixels that qualified so the frame's own band
+            # colour, not the graphic's, is the standard
+            def chroma_near(ref_, dab, dl):
+                return (np.abs(lab_f[..., 1] - ref_[1]) < dab) & (np.abs(lab_f[..., 2] - ref_[2]) < dab) & (np.abs(lab_f[..., 0] - ref_[0]) < dl)
+            pre = chroma_near(g_bg_lit, a.band_dab, a.band_dl) & pl & (occ < 0.3)
+            ref = np.median(lab_f[pre].reshape(-1, 3), axis=0) if pre.sum() > 50 else g_bg_lit
+            band_like_full = chroma_near(ref, a.band_dab, a.band_dl)
+            near = cv2.dilate(plane, np.ones((21, 21), np.uint8)) > 0
+            band_like = band_like_full & near
+            band_frac = float(band_like[pl & (occ < 0.3)].mean()) if (pl & (occ < 0.3)).any() else 0.0
+            rec["band_frac"] = band_frac
+        if clip_band and pl.sum() > 50:
+            # three kinds of pixel under the plane: BAND-like (the footage's band stays, the mark goes
+            # on top), BODY-like (the garment colour around the band: the plane overshot the band's
+            # edge, leave it alone) and everything else (the generator's lettering, a white or
+            # off-colour band segment: paint the opaque plane there). Occluders are already excluded
+            # through (1 - occ).
+            ring = (cv2.dilate(plane, np.ones((41, 41), np.uint8)) > 0) & ~(cv2.dilate(plane, np.ones((9, 9), np.uint8)) > 0) & ~band_like_full
+            body_ref = np.median(lab_f[ring].reshape(-1, 3), axis=0) if ring.sum() > 50 else None
+            # the body is also chroma-led, with no L bound at all: the same mastic in shadow is the body
+            body_like = ((np.abs(lab_f[..., 1] - body_ref[1]) < a.band_dab) & (np.abs(lab_f[..., 2] - body_ref[2]) < a.band_dab) & ~band_like) if body_ref is not None else np.zeros_like(band_like)
+            mark_alpha = cv2.warpPerspective(gmark_f, H, (w, h), flags=cv2.INTER_LINEAR)
+            paint = ((cv2.dilate((pl & ~band_like & ~body_like).astype(np.uint8), np.ones((7, 7), np.uint8)) > 0) & pl).astype(np.float32)   # lettering edges are half band-coloured
+            paint = cv2.GaussianBlur(paint, (0, 0), 1.0)                                   # soft edge between kept band and painted plane
+            alpha = np.clip(np.maximum(mark_alpha * (~body_like).astype(np.float32), paint) * wa * (1.0 - occ), 0, 1)   # the mark never lands on the body beyond the band's end
+            rec["band_region_frac"] = float(band_like[pl].mean()); rec["painted_frac"] = float((paint[pl] > 0.5).mean())
+            alpha = alpha[..., None]
+        else:
+            alpha = np.clip(wa * (1.0 - occ), 0, 1)[..., None]
+        comp = (f.astype(np.float32) * (1 - alpha) + wg.astype(np.float32) * alpha).astype(np.uint8)
         rec.update({"applied": True, "occlusion": float(occ[pl].mean()) if pl.any() else None, "gain": round(gain, 3), "chroma": [round(da, 2), round(db, 2)]})
         out_frames.append(comp); per.append(rec)
 

@@ -140,7 +140,7 @@ def smooth_columns(arr, kind, ker=31):
     return np.round(out).astype(int)
 
 
-def fill_columns(im, top, bot, kind, feather, overlap=2, overlap_below=3, min_cols=4, cls_map=None, jacket_ids=(), split_max_w=40, remnant_fn=None):
+def fill_columns(im, top, bot, kind, feather, overlap=2, overlap_below=3, min_cols=4, cls_map=None, jacket_ids=(), split_max_w=40, remnant_fn=None, remnant_reach=9):
     out = im.copy().astype(np.float32); H, W = im.shape[:2]; filled = np.zeros((H, W), np.uint8); rng_ = np.random.default_rng(0)
     x = 0
     while x < W:   # drop slivers narrower than min_cols
@@ -183,7 +183,7 @@ def fill_columns(im, top, bot, kind, feather, overlap=2, overlap_below=3, min_co
         out8 = np.clip(out, 0, 255).astype(np.uint8)
         if remnant_fn is not None:
             # pale remnants the column fill missed, within reach of the repaint: inpaint from the surroundings
-            near = cv2.dilate(filled, np.ones((9, 9), np.uint8)); rem = (remnant_fn(out8) & (near > 0) & (filled == 0)).astype(np.uint8) * 255
+            near = cv2.dilate(filled, np.ones((remnant_reach, remnant_reach), np.uint8)); rem = (remnant_fn(out8) & (near > 0) & (filled == 0)).astype(np.uint8) * 255
             rem = cv2.dilate(rem, np.ones((3, 3), np.uint8))
             if rem.any(): out8 = cv2.inpaint(out8, rem, 3, cv2.INPAINT_TELEA); filled = filled | rem
         return out8, filled
@@ -202,6 +202,8 @@ def main():
     ap.add_argument("--intruder-l-bright", type=float, default=170.0, help="L above which a colour-neutral pixel is the intruder without the texture test")
     ap.add_argument("--intruder-grow", type=int, default=25, help="px: shaded-shirt pixels count only this close to lit-shirt pixels")
     ap.add_argument("--intruder-texture-hi", type=float, default=40.0, help="horizontal-gradient energy above which a pixel is the intruder even in shadow (colour thresholds relaxed)")
+    ap.add_argument("--remnant-reach", type=int, default=9, help="px: intruder remnants the column fill missed are inpainted when within this distance of a repainted column (a rib edge running UP the front, beside the fill)")
+    ap.add_argument("--split-max-w", type=int, default=40, help="a tail group up to this many columns wide, flanked by jacket on both sides at its own rows, is the gap between the jacket fronts and is filled with jacket")
     ap.add_argument("--hole-max", type=float, default=0.03, help="an unchanged hole enclosed by the changed region up to this fraction of the frame counts as garment region (the source's own shirt tail)")
     ap.add_argument("--row-bridge", type=int, default=60, help="row-wise closing radius (px) on the changed-region mask so an unchanged shirt tail flanked by repainted trousers counts as garment region")
     ap.add_argument("--min-blob", type=int, default=40, help="ignore intruding blobs smaller than this many pixels")
@@ -297,7 +299,7 @@ def main():
     out_frames = []; after = []; repaired = 0; fill_px = []
     for k in range(n):
         if kinds[k].any():
-            im2, filled = fill_columns(edit[k], tops[k], bots[k], kinds[k], a.feather, cls_map=clss[k], jacket_ids=jacket_ids, remnant_fn=lambda im_: intruder_map(im_, a)); out_frames.append(im2); fill_px.append(int((filled > 0).sum()))
+            im2, filled = fill_columns(edit[k], tops[k], bots[k], kinds[k], a.feather, cls_map=clss[k], jacket_ids=jacket_ids, split_max_w=a.split_max_w, remnant_reach=a.remnant_reach, remnant_fn=lambda im_: intruder_map(im_, a)); out_frames.append(im2); fill_px.append(int((filled > 0).sum()))
             if filled.any(): repaired += 1
             reg = regions[k]
             if reg:
