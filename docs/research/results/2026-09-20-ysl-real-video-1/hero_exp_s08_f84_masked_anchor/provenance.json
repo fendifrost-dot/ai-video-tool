@@ -1,0 +1,46 @@
+{
+ "experiment": "masked flux-general inpaint with the APPROVED REALISATION as the IP-Adapter image (the registry's recorded gap), S08 f84",
+ "date_utc": "2026-09-26",
+ "look_ids": {
+  "c0_pose_controlnet": "3c26fd6f-e5ca-4036-8336-d3caf5ed2f35",
+  "c1_no_controlnet": "eaf2b73d-1e88-4047-b533-7e599a918418"
+ },
+ "c0": {
+  "result": "failed at depth_submit",
+  "fal_error": "cc_submit_fal-ai/dwpose_400: model_not_allowed",
+  "meaning": "the pose controlnet's preprocessor is not on the Control Center allowlist"
+ },
+ "c1": {
+  "result": "failed at flux-inpaint",
+  "fal_error": "fal_timeout_fal-ai/flux-general/inpainting_after_948s",
+  "flux_last_status": "http_502",
+  "duration_ms": 1078122,
+  "step_timings_ms": {
+   "flux_poll": 941929,
+   "pad_upload": 392,
+   "flux_submit": 291,
+   "pad_prepare": 433,
+   "evf_sam_poll": 115536,
+   "evf_sam_submit": 324,
+   "face_guard_poll": 4605,
+   "face_guard_submit": 296
+  },
+  "mask_coverage": 0.1928,
+  "mask_guard_stats": {
+   "coverage_after": 0.1928,
+   "coverage_before": 0.3495,
+   "removed_fraction": 0.1566
+  },
+  "flux_input_debug": "{'seed': 777, 'model': 'fal-ai/flux-general/inpainting', 'pad_size': {'width': 1088, 'height': 1920}, 'strength': 0.72, 'image_size': {'width': 768, 'height': 1344}, 'garment_path': '65cf99cb-fd18-4168-b9ab-dfbfd42112ca/8d4a4d22-41c0-43ab-ba99-92750f81e335/2a14a72b-e7de-4ecb-9c24-4142b672d175.jpg', 'payload_keys': ['guidance_scale', 'image_size', 'image_url', 'ip_adapters', 'mask_url', 'negative_prompt', 'num_images', 'num_inference_steps', 'output_format', 'prompt', 'seed', 'strength'], 'guidance_scale': 5, 'controlnet_repo': None, 'heavy_flux_path': True, 'image_size_sent': True, 'ip_adapter"
+ },
+ "request": {
+  "inpaintModelKey": "flux-general",
+  "ipAdapterImagePath": "project-references/\u2026/heroes/S06/anchor_hook_s11_f0080.jpg",
+  "ipAdapterScale": 0.9,
+  "controlnet": "none (c1) / pose (c0)",
+  "faceGuard": true,
+  "seed": 777,
+  "scene": "project-references/\u2026/heroes/S08/S08_f0084_source.png"
+ },
+ "conclusion": "fal-ai/flux-general/inpainting times out at 948 s with the queue status endpoint answering 502 \u2014 the same failure recorded in August for the Guarded-Grok chain. The only masked engine that conditions on a reference image is unavailable on the provider; the lane cannot be tested further from here. Billed: the two evf-sam passes only (cents); no flux output."
+}
