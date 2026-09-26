@@ -1,0 +1,41 @@
+{
+ "video": "s08_e1.mp4",
+ "graphic": "gfx/band_wearer_left.png",
+ "anchors": [
+  {
+   "frame": 88,
+   "quad": [
+    [
+     367.0,
+     707.0
+    ],
+    [
+     487.0,
+     703.0
+    ],
+    [
+     487.0,
+     738.0
+    ],
+    [
+     367.0,
+     742.0
+    ]
+   ]
+  }
+ ],
+ "anchorAuto": false,
+ "minConfidence": 0.35,
+ "qa": {
+  "frames": 161,
+  "fps": 24.0,
+  "confidence_mean": 0.9466545513308837,
+  "confidence_min": 0.5859375,
+  "frames_lost": [],
+  "lost_fraction": 0.0,
+  "corner_jitter_px_mean": 1.1765804498825434,
+  "corner_jitter_px_p95": 2.24094820022583,
+  "frames_not_applied": [],
+  "occlusion_mean": 0.0032083562442234586
+ }
+}
