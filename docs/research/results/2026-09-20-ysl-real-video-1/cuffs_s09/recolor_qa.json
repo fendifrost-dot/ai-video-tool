@@ -1,0 +1,26 @@
+{
+ "edit": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/gfx/s09_e1e2B_hem.mp4",
+ "out": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/gfx/s09_e1e2B_hem_cuffs.mp4",
+ "frames": 89,
+ "zone": "wrists",
+ "target": {
+  "L_med": 179.0,
+  "L_p10": 164.0,
+  "L_p90": 188.0,
+  "a_med": 133.0,
+  "b_med": 145.0
+ },
+ "frames_recoloured": 31,
+ "intruder_px_median": 0.0,
+ "intruder_px_max": 1189,
+ "before_med": [
+  171.0,
+  131.0,
+  141.0
+ ],
+ "after_med": [
+  177.0,
+  133.0,
+  145.0
+ ]
+}
