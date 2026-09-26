@@ -1,0 +1,101 @@
+{
+ "mode": "poll",
+ "status": "completed",
+ "billed": true,
+ "responseId": "resp_0daa91de7f7e1623006ab7addd5fa887d29d972d8376cced6c",
+ "actualCostUsd": 0.5797,
+ "usage": {
+  "input_tokens": 22479,
+  "input_tokens_details": {
+   "cache_write_tokens": 22476,
+   "cached_tokens": 0
+  },
+  "output_tokens": 7099,
+  "output_tokens_details": {
+   "reasoning_tokens": 5971
+  },
+  "total_tokens": 29578
+ },
+ "storedPath": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/astra-reviews/YSL_IceOn_bars24-46_v18/mechanisms.json",
+ "storeError": null,
+ "review": {
+  "mechanisms": [
+   {
+    "evidence": "PREVIOUS\u2192THIS S11 0:35.625: the darker, hard-edged rectangle disappears into the navy band. THIS S11 0:38.583 retains one small mark without an obvious rectangular tonal join or spill onto mastic fabric; placement remains within the wearer-left stripe.",
+    "mechanism_id": "S11-BAND-PATCH-INTEGRATION",
+    "defect_ids": [],
+    "confidence": 0.94,
+    "verdict": "IMPROVED"
+   },
+   {
+    "evidence": "PREVIOUS\u2192THIS S08 0:28.750: the bright inner-front rib is reduced, but the lower split and hanging strands remain. THIS S08 0:24.333 still exposes white ribbing beneath crossed hands, separate from the improved inner-front edge.",
+    "mechanism_id": "S08-HEM-V5",
+    "defect_ids": [
+     "S08-HEM-REMNANTS",
+     "S08-HAND-OCCLUSION-RIBBING"
+    ],
+    "confidence": 0.87,
+    "verdict": "IMPROVED"
+   },
+   {
+    "evidence": "THIS S06 0:19.417 and THIS S11 0:35.625: small single marks, open collars, partial zips. THIS S09 0:31.208: thinner band, more lateral lettering, possible residue; no evident rectangle or mastic spill. Missing S06/S09 before frames limit comparative confidence.",
+    "mechanism_id": "HOOK-WORDMARK-INTEGRATION",
+    "defect_ids": [
+     "S09-WORDMARK-RESIDUE"
+    ],
+    "confidence": 0.3,
+    "verdict": "UNCERTAIN"
+   }
+  ],
+  "readiness_reason": "Remaining major S08 lower-front and hand-occlusion defects block full review, while hook-wide wordmark integration still requires confirmation.",
+  "ready_for_full_review": false,
+  "summary": "Partial repair success: S11's rectangular backing is visibly reduced, but S08's hem repair is incomplete; S09's possible band residue remains unresolved.",
+  "defects": [
+   {
+    "severity": "major",
+    "shot_id": "S08",
+    "recommended_owner": "compositing_mask",
+    "category": "wardrobe",
+    "description": "The lower closure still separates into unfinished fronts with trailing material instead of the approved jacket's continuous zipped hem. Removing the bright rib edge has not completed the gap repair.",
+    "defect_id": "S08-HEM-REMNANTS",
+    "evidence": "THIS S08 0:25.792 shows a pale vertical remnant beside the opening; THIS S08 0:27.292 retains a central gap; THIS S08 0:28.750 exposes thin gray strands against the trousers.",
+    "requires_treatment_change": false,
+    "time_range": [
+     25.792,
+     28.75
+    ],
+    "recommended_action": "Extend the tracked lower-front repair across the remaining split and trailing remnants, preserving the zipper and a coherent mastic hem. Check the entire repaired passage for consistent coverage."
+   },
+   {
+    "severity": "major",
+    "shot_id": "S08",
+    "recommended_owner": "compositing_mask",
+    "category": "artifact",
+    "description": "Unrepaired white ribbing and short dangling strips remain beneath the crossing hands, visibly interrupting the jacket's lower edge.",
+    "defect_id": "S08-HAND-OCCLUSION-RIBBING",
+    "evidence": "PREVIOUS S08 0:24.333 and THIS S08 0:24.333 show essentially unchanged ribbed material below the wrists. This establishes the residual at the supplied instant, not throughout the unsampled 24.5\u201325.5 s interval.",
+    "requires_treatment_change": false,
+    "time_range": [
+     24.333,
+     24.333
+    ],
+    "recommended_action": "Reconstruct the garment beneath separate hand and cuff occlusion masks, then propagate through the crossed-hand passage without painting over the real hands."
+   },
+   {
+    "severity": "note",
+    "shot_id": "S09",
+    "recommended_owner": "brand_repair",
+    "category": "wardrobe",
+    "description": "UNCERTAIN: Detached pale flecks on the wearer-left band may be residual generator lettering; these samples do not establish whether they are lettering or fabric highlights.",
+    "defect_id": "S09-WORDMARK-RESIDUE",
+    "evidence": "THIS S09 0:30.708 and THIS S09 0:31.208 contain isolated light spots between the zipper and main wordmark. No complete secondary word is readable.",
+    "requires_treatment_change": false,
+    "time_range": [
+     30.708,
+     31.208
+    ],
+    "recommended_action": "Inspect native-resolution band crops and layer-disabled comparisons. Remove only confirmed lettering residue, retaining fabric illumination; verify mark placement against S06 and S11 before approving continuity."
+   }
+  ]
+ }
+}
