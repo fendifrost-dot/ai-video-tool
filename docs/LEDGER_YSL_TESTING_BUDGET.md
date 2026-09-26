@@ -40,12 +40,21 @@ Two figures were also found to be overstated in the results doc and are correcte
 | 15 | 09-25 | xAI | S06 collar-lining test: hook Look constraints strengthened as data (solid navy inner faces, plain shoulders), one `grok-video-edit-proxy` roll (`v4e-anchor-e1-lining-1-S06`, asset `7b6f7b0b`) — collar inside still tan (3/3 rolls against the anchor's own tan-inside collar), full-length outer sleeve stripes added; killed, S06 keeps collar-2 | $0.56 (`actualCostUsd`) | — | $17.80 |
 
 | 16 | 09-25 | OpenAI | Astra TARGETED review of v15 (`mechanisms` part, 18 frames incl. 6 v13 before-frames, 4 refs): S11 approved roll IMPROVED 0.98, S08 hem v4 IMPROVED 0.9, hook one-garment UNCHANGED (S08 construction, S09 white ribbing, wordmark continuity S11 vs S06/S08) | $0.8439 | — | $18.64 |
+| 17 | 09-26 | OpenAI | Astra project-level review of v17, `sequence` part, attempt 1 — INCOMPLETE (max_output_tokens 16000 hit: 9.7k reasoning + a cut JSON; billed usage 38,421 in / 16,000 out returned by the proxy after its fix) | $1.1842 | — | $19.82 |
+| 18 | 09-26 | OpenAI | Astra project-level review of v17, `sequence` part, attempt 2 (maxOutputTokens 32000; 43 frames @ 1 s + 6 refs, v13 defect ids + repair notes) — REPAIR_REQUIRED; RESOLVED: SEQ-LOOK2-PRODUCT-TRUTH, S11-CHEST-BAND-INCOMPLETE, S09 waistband; top three remaining defects are all S08 | $1.1129 | — | $20.94 |
+| 19 | 09-26 | OpenAI | Astra TARGETED review of v18 (`mechanisms` part, 24 frames incl. 8 v17 before-frames, 3 refs): S11-BAND-PATCH-INTEGRATION IMPROVED 0.94, S08-HEM-V5 IMPROVED 0.87 (hand-occluded ribbing and the split fronts remain), HOOK-WORDMARK-INTEGRATION UNCERTAIN 0.3 (possible S09 residue → chroma-led membership fix → v19) | $0.5797 | — | $21.52 |
 
-**YSL testing budget used: ≈ $18.64 · remaining: ≈ $31.36 of $50.** Rows 2 and 12 are the unverified amounts and are carried at their upper estimates.
+**YSL testing budget used: ≈ $21.52 · remaining: ≈ $28.48 of $50.** Rows 2 and 12 are the unverified amounts and are carried at their upper estimates.
 
-## Second constraint: the OpenAI credit balance
+## OpenAI capacity: three different things (corrected 2026-09-26)
 
-Fendi's $30 OpenAI top-up funds every Astra call regardless of which budget it is booked to. Spent: ≈ $24.00 (scope 0) + $1.09 + $0.76 + $0.46 + $0.88 + $0.91 + $1.06 + $0.84 (v10, v11, v13 sequence reviews; v15 targeted) = **≈ $30.00 → ≈ $0 left** — every further Astra pass needs a top-up. A three-level full Astra review has cost ≈ $8; a single-part review of ~30 frames has cost $0.76–1.09. So the project-level review of the assembled section must be designed as **one part** (≈ $1.5) until the OpenAI balance is topped up. This is a resource limit, not a budget breach; it does not stop $0 work.
+Earlier revisions of this file reconstructed a "remaining OpenAI balance" from the historical $30 top-up (rev 20) minus the estimated Astra spend and concluded ≈ $0 — and rev 35/36 handoffs declared Astra unavailable on that basis. That inference was wrong and is withdrawn. Fendi checked the OpenAI Platform Limits screen on 2026-09-26: **organization spend $29.52 of a $100.00 organization spend limit, reset in 6 days.** Three things are kept apart from here on:
+
+1. **YSL project budget** — this file's table; the authoritative internal ceiling ($50 hard, CODE RED above it). Every YSL-related OpenAI/Astra call is a row here at its actual billed cost.
+2. **OpenAI organization spend limit** — an account-level platform constraint ($29.52 / $100.00 at the last check). It is not the YSL budget and is not derived from this file.
+3. **Actual API availability** — the OpenAI API is authoritative. Astra is treated as available unless an actual request returns a billing/quota/credit error; only then is the failure recorded here, and only if Astra is genuinely blocking further production does OpenAI capacity become a CODE RED.
+
+The historical OpenAI spend above (scope 0 ≈ $24.00; rows 4, 5, 7, 9, 10, 14, 16) remains as provenance and is never used to infer present availability. Cost shape for planning: a three-level full Astra review has cost ≈ $8; a single-part review of ~30–45 frames $0.76–1.09.
 
 ## Rules applied
 
