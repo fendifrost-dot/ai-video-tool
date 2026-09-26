@@ -1,0 +1,405 @@
+{
+ "draft": "out/YSL_IceOn_bars24-46_v19.mp4",
+ "timeline": {
+  "expected_seconds": 43.2787,
+  "draft_seconds": 43.279,
+  "duration_delta_ms": 0.3,
+  "audio_present": true,
+  "audio_seconds": 43.279,
+  "video_frames": 1037,
+  "expected_frames": 1039,
+  "cuts": [
+   {
+    "shot": "S01",
+    "draft_t": 0.0,
+    "frame": 0,
+    "frames": 95,
+    "transitionIn": "cut"
+   },
+   {
+    "shot": "S02",
+    "draft_t": 3.9583,
+    "frame": 95,
+    "frames": 47,
+    "transitionIn": "cut"
+   },
+   {
+    "shot": "S03",
+    "draft_t": 5.9167,
+    "frame": 142,
+    "frames": 141,
+    "transitionIn": "cut"
+   },
+   {
+    "shot": "S04",
+    "draft_t": 11.7917,
+    "frame": 283,
+    "frames": 71,
+    "transitionIn": "cut"
+   },
+   {
+    "shot": "S05",
+    "draft_t": 14.75,
+    "frame": 354,
+    "frames": 24,
+    "transitionIn": "cut"
+   },
+   {
+    "shot": "S06",
+    "draft_t": 15.75,
+    "frame": 378,
+    "frames": 141,
+    "transitionIn": "flash"
+   },
+   {
+    "shot": "S07",
+    "draft_t": 21.625,
+    "frame": 519,
+    "frames": 48,
+    "transitionIn": "cut"
+   },
+   {
+    "shot": "S08",
+    "draft_t": 23.625,
+    "frame": 567,
+    "frames": 141,
+    "transitionIn": "cut"
+   },
+   {
+    "shot": "S09",
+    "draft_t": 29.5,
+    "frame": 708,
+    "frames": 48,
+    "transitionIn": "cut"
+   },
+   {
+    "shot": "S10",
+    "draft_t": 31.5,
+    "frame": 756,
+    "frames": 47,
+    "transitionIn": "cut"
+   },
+   {
+    "shot": "S11",
+    "draft_t": 33.4583,
+    "frame": 803,
+    "frames": 141,
+    "transitionIn": "glitch"
+   },
+   {
+    "shot": "S12",
+    "draft_t": 39.3333,
+    "frame": 944,
+    "frames": 95,
+    "transitionIn": "cut"
+   }
+  ],
+  "verdict": "OK"
+ },
+ "slots": [
+  {
+   "shot": "S01",
+   "look": "YSL Trucker Jacket \u2014 French Black Denim",
+   "file": "env8/S01g_env.mp4",
+   "frames": 95,
+   "garment_frac": 0.2644921303910819,
+   "mask_source": "edit",
+   "temporal_residual": {
+    "mean": 3.0145825553447643,
+    "p95": 5.209217858314513,
+    "masked": true
+   },
+   "anchor_similarity": {
+    "mean": 0.8607096948272017,
+    "min": 0.787823136179811
+   },
+   "silhouette": {
+    "area_mean": 0.1307342493603801,
+    "iou_mean": 0.7984185413330073,
+    "iou_p05": 0.670437446639659,
+    "garment_seen": 0.3422197947188161,
+    "measurable": false,
+    "iou_p05_master": 0.7642055270147364,
+    "ratio_to_master": 0.8772999185947142
+   },
+   "notes": [
+    "silhouette_low_contrast"
+   ],
+   "verdict": "OK",
+   "flags": []
+  },
+  {
+   "shot": "S03",
+   "look": "YSL Trucker Jacket \u2014 French Black Denim",
+   "file": "env8/S03g_env.mp4",
+   "frames": 141,
+   "garment_frac": 0.33649487170015757,
+   "mask_source": "edit",
+   "temporal_residual": {
+    "mean": 3.240149223804474,
+    "p95": 5.629344534873961,
+    "masked": true
+   },
+   "anchor_similarity": {
+    "mean": 0.7439875229265293,
+    "min": 0.6720691905360816
+   },
+   "silhouette": {
+    "area_mean": 0.12202379303339243,
+    "iou_mean": 0.7968898036364972,
+    "iou_p05": 0.6825351382558399,
+    "garment_seen": 0.28923688637409883,
+    "measurable": false,
+    "iou_p05_master": 0.762380034147378,
+    "ratio_to_master": 0.8952689048568354
+   },
+   "notes": [
+    "silhouette_low_contrast"
+   ],
+   "verdict": "OK",
+   "flags": []
+  },
+  {
+   "shot": "S04",
+   "look": "YSL Trucker Jacket \u2014 French Black Denim",
+   "file": "env8/S04g_env.mp4",
+   "frames": 71,
+   "garment_frac": 0.3220655748728482,
+   "mask_source": "edit",
+   "temporal_residual": {
+    "mean": 2.9507617047854833,
+    "p95": 5.665978050231933,
+    "masked": true
+   },
+   "anchor_similarity": {
+    "mean": 0.8119702709506917,
+    "min": 0.7038709105979072
+   },
+   "silhouette": {
+    "area_mean": 0.13600935910602505,
+    "iou_mean": 0.7942199195643508,
+    "iou_p05": 0.6370970923796866,
+    "garment_seen": 0.31465758403091054,
+    "measurable": false,
+    "iou_p05_master": 0.7683273071134968,
+    "ratio_to_master": 0.829200116254068
+   },
+   "notes": [
+    "silhouette_low_contrast"
+   ],
+   "verdict": "OK",
+   "flags": []
+  },
+  {
+   "shot": "S06",
+   "look": "Saint Laurent Track Jacket \u2014 Mastic Cotton Navy Stripe",
+   "file": "env8/S06B_env.mp4",
+   "frames": 141,
+   "garment_frac": 0.3011406465474783,
+   "mask_source": "edit",
+   "temporal_residual": {
+    "mean": 4.598782253265381,
+    "p95": 8.338623094558715,
+    "masked": true
+   },
+   "anchor_similarity": {
+    "mean": 0.8389417327732226,
+    "min": 0.7645962443482721
+   },
+   "silhouette": {
+    "area_mean": 0.22808486782161155,
+    "iou_mean": 0.8623427594726172,
+    "iou_p05": 0.7771466933117366,
+    "garment_seen": 0.5932499942543085,
+    "measurable": true,
+    "iou_p05_master": 0.7621442040475229,
+    "ratio_to_master": 1.0196845809290944
+   },
+   "wordmark": {
+    "confidence_mean": 0.9274279293819144,
+    "confidence_min": 0.21000000000000002,
+    "corner_jitter_px_p95": 5.475167655944823,
+    "frames_not_applied": [
+     26,
+     27,
+     28,
+     29,
+     31
+    ],
+    "lost_fraction": 0.0
+   },
+   "verdict": "OK",
+   "flags": []
+  },
+  {
+   "shot": "S08",
+   "look": "Saint Laurent Track Jacket \u2014 Mastic Cotton Navy Stripe",
+   "file": "env8/S08B_env.mp4",
+   "frames": 141,
+   "garment_frac": 0.2890401521867612,
+   "mask_source": "edit",
+   "temporal_residual": {
+    "mean": 2.9685110909598214,
+    "p95": 5.450228619575497,
+    "masked": true
+   },
+   "anchor_similarity": {
+    "mean": 0.7465720988289353,
+    "min": 0.7090502444096631
+   },
+   "silhouette": {
+    "area_mean": 0.21865248996503153,
+    "iou_mean": 0.8873831240135086,
+    "iou_p05": 0.8221769935660997,
+    "garment_seen": 0.5977477064071788,
+    "measurable": true,
+    "iou_p05_master": 0.7768142206907629,
+    "ratio_to_master": 1.0583959094299267
+   },
+   "wordmark": {
+    "confidence_mean": 0.9466545513308837,
+    "confidence_min": 0.5859375,
+    "corner_jitter_px_p95": 2.24094820022583,
+    "frames_not_applied": [],
+    "lost_fraction": 0.0
+   },
+   "verdict": "OK",
+   "flags": []
+  },
+  {
+   "shot": "S09",
+   "look": "Saint Laurent Track Jacket \u2014 Mastic Cotton Navy Stripe",
+   "file": "env8/S09B_env.mp4",
+   "frames": 48,
+   "garment_frac": 0.2893191867404514,
+   "mask_source": "edit",
+   "temporal_residual": {
+    "mean": 3.0307805614268526,
+    "p95": 5.4387646198272686,
+    "masked": true
+   },
+   "anchor_similarity": {
+    "mean": 0.7404300910996934,
+    "min": 0.7057809592254096
+   },
+   "silhouette": {
+    "area_mean": 0.21276477955005788,
+    "iou_mean": 0.8591177075715701,
+    "iou_p05": 0.7796452703459319,
+    "garment_seen": 0.5449989620495798,
+    "measurable": true,
+    "iou_p05_master": 0.7553262200187558,
+    "ratio_to_master": 1.0321967511290315
+   },
+   "wordmark": {
+    "confidence_mean": 0.9156701655796597,
+    "confidence_min": 0.5079365079365079,
+    "corner_jitter_px_p95": 5.273361873626712,
+    "frames_not_applied": [],
+    "lost_fraction": 0.0
+   },
+   "verdict": "OK",
+   "flags": []
+  },
+  {
+   "shot": "S11",
+   "look": "Saint Laurent Track Jacket \u2014 Mastic Cotton Navy Stripe",
+   "file": "env8/S11B_env.mp4",
+   "frames": 141,
+   "garment_frac": 0.2950948704688731,
+   "mask_source": "edit",
+   "temporal_residual": {
+    "mean": 3.235796697650637,
+    "p95": 5.377710628509519,
+    "masked": true
+   },
+   "anchor_similarity": {
+    "mean": 0.8751842187304655,
+    "min": 0.8133108459112345
+   },
+   "silhouette": {
+    "area_mean": 0.21733868634259257,
+    "iou_mean": 0.8752289883961794,
+    "iou_p05": 0.7915537259658798,
+    "garment_seen": 0.5612531864193306,
+    "measurable": true,
+    "iou_p05_master": 0.7480448763460062,
+    "ratio_to_master": 1.0581634217353406
+   },
+   "wordmark": {
+    "confidence_mean": 0.9818148319931188,
+    "confidence_min": 0.8,
+    "corner_jitter_px_p95": 3.1119721174240107,
+    "frames_not_applied": [],
+    "lost_fraction": 0.0
+   },
+   "verdict": "OK",
+   "flags": []
+  },
+  {
+   "shot": "S12",
+   "look": "Saint Laurent Track Jacket \u2014 Mastic Cotton Navy Stripe",
+   "file": "env7/S12b_env.mp4",
+   "frames": 95,
+   "garment_frac": 0.2845898323282164,
+   "mask_source": "edit",
+   "temporal_residual": {
+    "mean": 3.5491876348536064,
+    "p95": 6.5450054645538325,
+    "masked": true
+   },
+   "anchor_similarity": {
+    "mean": 0.8447996423358732,
+    "min": 0.8080166902923982
+   },
+   "silhouette": {
+    "area_mean": 0.2259511490314327,
+    "iou_mean": 0.883625445431626,
+    "iou_p05": 0.7939769857285187,
+    "garment_seen": 0.6028356667548326,
+    "measurable": true,
+    "iou_p05_master": 0.7882247515543224,
+    "ratio_to_master": 1.0072977081255738
+   },
+   "wordmark": {
+    "confidence_mean": 0.883234691779856,
+    "confidence_min": 0.28125,
+    "corner_jitter_px_p95": 23.308178901672363,
+    "frames_not_applied": [],
+    "lost_fraction": 0.0
+   },
+   "verdict": "OK",
+   "flags": []
+  }
+ ],
+ "looks": {
+  "YSL Trucker Jacket \u2014 French Black Denim": {
+   "shots": 3,
+   "anchor_similarity_mean": 0.8055558295681409,
+   "anchor_similarity_spread": 0.11672217190067247,
+   "verdict": "OK"
+  },
+  "Saint Laurent Track Jacket \u2014 Mastic Cotton Navy Stripe": {
+   "shots": 5,
+   "anchor_similarity_mean": 0.8091855567536381,
+   "anchor_similarity_spread": 0.1347541276307721,
+   "verdict": "OK"
+  }
+ },
+ "thresholds": {
+  "max_residual": 12.0,
+  "min_anchor_sim": 0.55,
+  "max_anchor_spread": 0.2,
+  "min_silhouette_iou": 0.85,
+  "min_silhouette_ratio": 0.9,
+  "min_silhouette_seen": 0.45
+ },
+ "summary": {
+  "timeline": "OK",
+  "slots_check": [],
+  "looks": {
+   "YSL Trucker Jacket \u2014 French Black Denim": "OK",
+   "Saint Laurent Track Jacket \u2014 Mastic Cotton Navy Stripe": "OK"
+  }
+ }
+}
