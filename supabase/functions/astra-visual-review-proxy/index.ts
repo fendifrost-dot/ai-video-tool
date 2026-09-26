@@ -33,6 +33,8 @@ const USD_PER_INPUT_TOKEN = 10 / 1_000_000;
 const USD_PER_OUTPUT_TOKEN = 50 / 1_000_000;
 const EST_TOKENS_PER_IMAGE = 1600; // ~720x1280 JPEG, conservative
 const EST_OUTPUT_TOKENS = 6000;
+const DEFAULT_MAX_OUTPUT_TOKENS = 16000;
+const MAX_OUTPUT_TOKENS_CAP = 40000; // gpt-6-astra: $50 / 1M output → at most $2.00 of output per part
 const DEFAULT_MAX_COST_USD = 2.0;
 const MAX_IMAGES = 120;
 
@@ -50,6 +52,7 @@ type Body = {
   references?: ImagePart[]; // garment refs, identity anchors, source sheets
   jsonSchema?: { name: string; schema: Record<string, unknown> };
   maxCostUsd?: number;
+  maxOutputTokens?: number; // reasoning + JSON share this budget; a 43-frame sequence re-review with a long defect list needs more than the 16k default (capped at MAX_OUTPUT_TOKENS_CAP)
   dryRun?: boolean;
 };
 
@@ -122,7 +125,12 @@ serve(async (req) => {
     const status = String(payload.status ?? "unknown");
     if (status !== "completed") {
       const err = payload.error ?? payload.incomplete_details ?? null;
-      return json(200, { mode, status, responseId: body.responseId, error: status === "failed" || status === "cancelled" || status === "incomplete" ? "openai_" + status : undefined, detail: err });
+      // an incomplete/failed response is still BILLED for what it consumed: return its usage and
+      // priced cost (and the partial text) so the ledger records the actual amount, not a guess
+      const usageP = (payload.usage as Record<string, number>) ?? {};
+      const billedCostUsd = Object.keys(usageP).length ? Number((((usageP.input_tokens ?? 0) * USD_PER_INPUT_TOKEN) + ((usageP.output_tokens ?? 0) * USD_PER_OUTPUT_TOKEN)).toFixed(4)) : null;
+      const partial = status === "incomplete" ? extractReview(payload).outText.slice(0, 4000) : undefined;
+      return json(200, { mode, status, responseId: body.responseId, error: status === "failed" || status === "cancelled" || status === "incomplete" ? "openai_" + status : undefined, detail: err, usage: usageP, billedCostUsd, partialText: partial });
     }
     const { review, outText } = extractReview(payload);
     const usage = (payload.usage as Record<string, number>) ?? {};
@@ -133,10 +141,12 @@ serve(async (req) => {
   }
 
   const maxCostUsd = body.maxCostUsd ?? DEFAULT_MAX_COST_USD;
+  const maxOutputTokens = Math.min(MAX_OUTPUT_TOKENS_CAP, Math.max(4000, Math.floor(body.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS)));
   const textChars = (body.instructions ?? "").length + JSON.stringify(body.jsonSchema!.schema).length;
   const estInput = (frames.length + refs.length) * EST_TOKENS_PER_IMAGE + Math.ceil(textChars / 3.5);
   const estimatedCostUsd = Number((estInput * USD_PER_INPUT_TOKEN + EST_OUTPUT_TOKENS * USD_PER_OUTPUT_TOKEN).toFixed(4));
-  const plan = { model, partId: body.partId ?? "default", frames: frames.length, references: refs.length, estimatedInputTokens: estInput, estimatedCostUsd, maxCostUsd };
+  const worstCaseCostUsd = Number((estInput * USD_PER_INPUT_TOKEN + maxOutputTokens * USD_PER_OUTPUT_TOKEN).toFixed(4));
+  const plan = { model, partId: body.partId ?? "default", frames: frames.length, references: refs.length, estimatedInputTokens: estInput, estimatedCostUsd, worstCaseCostUsd, maxOutputTokens, maxCostUsd };
 
   if (body.dryRun) return json(200, { dryRun: true, billed: false, keyConfigured: !!apiKey, ...plan });
   if (!apiKey) return json(500, { error: "openai_api_key_missing", detail: `Set Edge Function secret ${KEY_ENV_NAMES.join(" or ")}.` });
@@ -159,7 +169,7 @@ serve(async (req) => {
     reasoning: { effort: body.reasoningEffort ?? "high" },
     input: [{ role: "user", content }],
     text: { format: { type: "json_schema", name: body.jsonSchema!.name, schema: body.jsonSchema!.schema, strict: true } },
-    max_output_tokens: 16000,
+    max_output_tokens: maxOutputTokens,
     background: true,
     store: true,
   };
