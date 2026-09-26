@@ -1,0 +1,216 @@
+{
+ "draft_id": "YSL_IceOn_bars24-46_v13",
+ "final_verdict": "REPAIR_REQUIRED",
+ "sequence_defects": [
+  {
+   "severity": "major",
+   "shot_id": "S01",
+   "recommended_owner": "wardrobe_generation",
+   "category": "wardrobe",
+   "description": "PRESENT: Look 2 still reads as smooth coated material with chalk-bright seam outlines, rather than the reference's worn black denim.",
+   "defect_id": "SEQ-LOOK2-PRODUCT-TRUTH",
+   "evidence": "S01@00:01.500 and S01@00:02.500 show broad smooth highlights and conspicuously pale stitching across the fronts and pocket edges.",
+   "requires_treatment_change": false,
+   "time_range": [
+    0,
+    3.934
+   ],
+   "recommended_action": "Regenerate the material treatment against the denim reference while preserving the source performance."
+  },
+  {
+   "severity": "major",
+   "shot_id": null,
+   "recommended_owner": "wardrobe_generation",
+   "category": "wardrobe",
+   "description": "PRESENT: hardware proportions and exaggerated pocket-flap edging remain product-inaccurate. The macro emphasizes the mismatch rather than establishing garment authenticity.",
+   "defect_id": "LOOK2-PRODUCT-TRUTH",
+   "evidence": "S01@00:03.500 shows large pale fasteners; S02@00:04.500 enlarges the outlined flaps and buttons; S04@00:12.500 retains conspicuous hardware.",
+   "requires_treatment_change": false,
+   "time_range": [
+    0,
+    14.754
+   ],
+   "recommended_action": "Use one reference-matched hardware and pocket construction across performance renders and the macro."
+  },
+  {
+   "severity": "major",
+   "shot_id": null,
+   "recommended_owner": "temporal_propagation",
+   "category": "continuity",
+   "description": "PRESENT: pre-hook cuts exchange jacket length, wear distribution and fastener treatment instead of maintaining one Look 2 garment.",
+   "defect_id": "LOOK2-CUT-CONSTRUCTION-DRIFT",
+   "evidence": "S01@00:03.500 has longer outlined fronts; S03@00:06.500 introduces a shorter, more washed body and cuffs; S04@00:12.500 changes the front hardware presentation again.",
+   "requires_treatment_change": false,
+   "time_range": [
+    3.167,
+    14.754
+   ],
+   "recommended_action": "Propagate one approved jacket construction across cuts, accounting for pose and S04's crop."
+  },
+  {
+   "severity": "major",
+   "shot_id": "S08",
+   "recommended_owner": "wardrobe_generation",
+   "category": "wardrobe",
+   "description": "PRESENT: the lower fronts separate beneath the zipper and expose pale underlying material. This is a lower-closure failure, not permitted shirt-and-tie visibility at the neck.",
+   "defect_id": "LOOK1-CONSTRUCTION-MISMATCH",
+   "evidence": "S08@00:27.500 shows a triangular opening below the closure; S08@00:28.500 exposes a pale strip between the lower fronts.",
+   "requires_treatment_change": false,
+   "time_range": [
+    23.607,
+    29.508
+   ],
+   "recommended_action": "Restore the approved closed lower front and continuous zipper-to-hem construction."
+  },
+  {
+   "severity": "note",
+   "shot_id": null,
+   "recommended_owner": "wardrobe_generation",
+   "category": "wardrobe",
+   "description": "PRESENT under the documented nonblocking styling exception: tie, shirt and cuff variants persist. Approved neck-layer visibility is not classified as an open-jacket defect.",
+   "defect_id": "HOOK-LOOK1-GARMENT-TRUTH",
+   "evidence": "S06@00:17.500 uses a fine-striped tie; S09@00:30.500 has ribbed mastic cuffs; S11@00:35.500 displays broad white cuffs.",
+   "requires_treatment_change": false,
+   "time_range": [
+    15.738,
+    39.344
+   ],
+   "recommended_action": "Retain the recorded exception; do not introduce an additional release block for these styling differences."
+  },
+  {
+   "severity": "major",
+   "shot_id": null,
+   "recommended_owner": "wardrobe_generation",
+   "category": "wardrobe",
+   "description": "PRESENT: unapproved body and pocket construction still prevents a consistent product realization. Accepted late-hook styling differences are not counted as an additional release block.",
+   "defect_id": "SEQ-LOOK1-PRODUCT-TRUTH",
+   "evidence": "S08@00:25.500 presents a long, comparatively flat front; S12@00:39.500 shows high angular pocket openings unlike the reference's lower slit-pocket construction.",
+   "requires_treatment_change": false,
+   "time_range": [
+    15.738,
+    43.279
+   ],
+   "recommended_action": "Use the approved realization as the shared body and pocket anchor, preserving documented styling tolerances."
+  },
+  {
+   "severity": "major",
+   "shot_id": null,
+   "recommended_owner": "temporal_propagation",
+   "category": "continuity",
+   "description": "PRESENT: the city insert still separates visibly different Look 1 jacket bodies rather than concealing a continuous garment realization.",
+   "defect_id": "S06-S08-GARMENT-RESET",
+   "evidence": "S06@00:21.500 has a short gathered body and broad flared collar; S08@00:24.500 returns with straighter elongated fronts and a much smaller upright collar.",
+   "requires_treatment_change": false,
+   "time_range": [
+    20.625,
+    24.773
+   ],
+   "recommended_action": "Match S08's collar, body proportions and waistband to the approved hook anchor before propagation."
+  },
+  {
+   "severity": "major",
+   "shot_id": "S08",
+   "recommended_owner": "temporal_propagation",
+   "category": "continuity",
+   "description": "PRESENT: waistband definition and lower-front geometry change across sampled arm-crossing and turning poses, independently of the remaining edge-mask damage.",
+   "defect_id": "S08-HEM-CONSTRUCTION-DRIFT",
+   "evidence": "S08@00:25.500 has an irregular central termination; S08@00:26.500 develops unequal lower fronts; S08@00:27.500 restores a more defined band around an open central split.",
+   "requires_treatment_change": false,
+   "time_range": [
+    24.583,
+    29.508
+   ],
+   "recommended_action": "Propagate a single pose-aware waistband and closure model throughout S08."
+  },
+  {
+   "severity": "note",
+   "shot_id": null,
+   "recommended_owner": "temporal_propagation",
+   "category": "continuity",
+   "description": "PRESENT within accepted late-hook tolerance: cross-cut garment variants remain visible but are not independently release-blocking.",
+   "defect_id": "HOOK-GARMENT-RESET",
+   "evidence": "S09@00:30.500 has a continuous pale ribbed hem; S11@00:35.500 uses separated white waistband sections; S12@00:39.500 returns to a mastic waistband.",
+   "requires_treatment_change": false,
+   "time_range": [
+    29.508,
+    43.279
+   ],
+   "recommended_action": "Track the variance without expanding the exception to cover defective band or matte integration."
+  },
+  {
+   "severity": "major",
+   "shot_id": "S11",
+   "recommended_owner": "temporal_propagation",
+   "category": "wardrobe",
+   "description": "PRESENT: the wearer-right chest stripe loses sections to beige wedges instead of remaining a complete band that follows the garment.",
+   "defect_id": "S11-CHEST-BAND-INCOMPLETE",
+   "evidence": "S11@00:35.500 shows a rectangular stripe segment; S11@00:36.500 introduces a diagonal beige interruption; S11@00:37.500 leaves the wearer-right segment visibly truncated.",
+   "requires_treatment_change": false,
+   "time_range": [
+    33.443,
+    39.344
+   ],
+   "recommended_action": "Track a complete stripe through garment deformation and preserve its continuity under folds."
+  },
+  {
+   "severity": "major",
+   "shot_id": "S11",
+   "recommended_owner": "compositing_mask",
+   "category": "artifact",
+   "description": "PRESENT: the replacement band reads as a graphic overlay, with hard patch boundaries and implausible integration around the neck-layer opening.",
+   "defect_id": "S11-BAND-PATCH-OCCLUSION",
+   "evidence": "S11@00:33.500 exposes an abrupt horizontal patch around the tie opening; S11@00:35.500 shows squared ends and mismatched stripe levels beside the neck layer.",
+   "requires_treatment_change": false,
+   "time_range": [
+    33.443,
+    39.344
+   ],
+   "recommended_action": "Rebuild garment-surface warping, shading and neck-layer occlusion; do not solve this by enlarging the stripe."
+  },
+  {
+   "severity": "major",
+   "shot_id": "S08",
+   "recommended_owner": "compositing_mask",
+   "category": "artifact",
+   "description": "PRESENT: smoothing has not produced a consistently finished fabric boundary. Angular bites and pale remnants remain along the repaired lower edge.",
+   "defect_id": "S08-HEM-REPAIR-MASK-DAMAGE",
+   "evidence": "S08@00:25.500 retains pale central fringe; S08@00:26.500 has an abrupt lower-edge step; S08@00:28.500 shows a notched edge and pale residue near the split.",
+   "requires_treatment_change": false,
+   "time_range": [
+    23.607,
+    29.508
+   ],
+   "recommended_action": "Reconstruct the fabric silhouette and underlying occlusion rather than applying further edge smoothing alone."
+  },
+  {
+   "severity": "major",
+   "shot_id": "S06",
+   "recommended_owner": "compositing_mask",
+   "category": "artifact",
+   "description": "PRESENT: the moving wearer-right shoulder/upper-arm silhouette remains eroded into a stepped cutout.",
+   "defect_id": "S06-SHOULDER-MATTE-CUTOUT",
+   "evidence": "S06@00:21.500 shows a squared recess on the screen-left upper arm above the raised hand. S06@00:20.500 supplies the preceding extended-arm contour.",
+   "requires_treatment_change": false,
+   "time_range": [
+    20.5,
+    21.639
+   ],
+   "recommended_action": "Recover the missing sleeve silhouette from the source-aligned garment render and rebuild the motion-aware alpha."
+  },
+  {
+   "severity": "major",
+   "shot_id": "S06",
+   "recommended_owner": "wardrobe_generation",
+   "category": "wardrobe",
+   "description": "NEW: regenerated S06 satisfies the mastic exterior but exposes tan inward-facing collar surfaces instead of the required navy interior.",
+   "defect_id": "S06-COLLAR-FACING-MISMATCH",
+   "evidence": "S06@00:17.500 and S06@00:18.500 show broad tan inner collar faces with dark edging only; S09@00:30.500 provides a visibly dark interior comparison.",
+   "requires_treatment_change": false,
+   "time_range": [
+    15.738,
+    21.639
+   ],
+   "recommended_action": "Constrain the collar's separate inner and outer surfaces: navy inward, mastic outward, retaining approved neck styling."
+  }
+ ]
+}

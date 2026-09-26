@@ -1,0 +1,122 @@
+# Astra project-level review of v17 (sequence part, 43 frames @ 1 s + 6 refs) — 2026-09-26
+
+Verdict: **REPAIR_REQUIRED** · cost $1.1129 (attempt 1 incomplete at 16k output tokens: $1.1842; attempt 2 with 32k: $1.1129)
+
+Overall: {"visual_coherence": 6, "wardrobe_conformance": 5, "summary": "Performance-led, but garment continuity and mattes block release. RESOLVED: SEQ-LOOK2-PRODUCT-TRUTH\u2014dark washed-denim body (S01@00:02.500); S11-CHEST-BAND-INCOMPLETE\u2014complete stripe (S11@00:35.500). S09 waistband is now mastic (S09@00:30.500). S11 patch integration remains imperfect. Scores describe sampled appearance, not native timing/quality.", "identity_preservation": 8, "edit_transition_conformance": 8, "environment_conformance": 9, "treatment_conformance": 7}
+
+## Defects (Astra's ranking by release cost, question 16)
+
+Highest→lowest: 1 S08-HEM-REPAIR-MASK-DAMAGE; 2 LOOK1-CONSTRUCTION-MISMATCH; 3 S08-HEM-CONSTRUCTION-DRIFT; 4 S06-SHOULDER-MATTE-CUTOUT; 5 SEQ-LOOK1-PRODUCT-TRUTH; 6 LOOK2-PRODUCT-TRUTH; 7 S06-S08-GARMENT-RESET; 8 LOOK2-CUT-CONSTRUCTION-DRIFT; 9 S06-COLLAR-FACING-MISMATCH; 10 S11-BAND-PATCH-OCCLUSION; 11 HOOK-GARMENT-RESET; 12 HOOK-LOOK1-GARMENT-TRUTH. Replace S08’s transformation, preserving Fendi’s real performance and specified source range.
+
+| id | severity | owner | shot | draft time | description | evidence |
+|---|---|---|---|---|---|---|
+| LOOK2-PRODUCT-TRUTH | major | wardrobe_generation | — | 0.0–14.8 | PRESENT: oversized, bright hardware and exaggerated pocket-flap edging still depart from the product. The improved dark-denim material does not repair these construction errors. | S01@00:02.500 shows prominent button discs and outlined flaps; S02@00:04.500 enlarges the double-edged pocket construction; S04@00:12.500 retains disproportionate fasteners. |
+| LOOK2-CUT-CONSTRUCTION-DRIFT | major | temporal_propagation | — | 3.2–14.8 | PRESENT: pre-hook cuts still exchange garment length, cuff wear and fastener treatment rather than maintaining one trucker jacket. | S01@00:03.500 has elongated fronts and comparatively plain cuff edging. S03@00:06.500 introduces a squarer hem and heavily patterned cuffs; S04@00:12.500 changes the placket/fastener realization again. |
+| LOOK1-CONSTRUCTION-MISMATCH | major | wardrobe_generation | S08 | 23.6–29.5 | PRESENT: the lower zipper does not maintain a joined jacket front down to the waistband. The resulting split-front geometry is a closure failure, unrelated to permitted shirt-and-tie visibility at the neck. | S08@00:26.500 shows separated lower panels; S08@00:27.500 exposes a central V below the zipper; S08@00:28.500 retains the opening during the turn. |
+| HOOK-LOOK1-GARMENT-TRUTH | note | wardrobe_generation | — | 15.7–39.3 | PRESENT under the existing nonblocking styling exception: shirt/tie variants and S09's pale ribbed cuffs remain. Approved neck-layer visibility is not an open-jacket defect. | S06@00:17.500 has densely striped neckwear; S09@00:30.500 retains pale ribbed cuffs; S11@00:35.500 uses broader tie stripes and mastic cuffs. |
+| SEQ-LOOK1-PRODUCT-TRUTH | major | wardrobe_generation | — | 15.7–43.3 | PRESENT: S08's compact collar and plain jacket body, followed by S12's prominent pocket construction, do not establish one product-faithful Look 1. Accepted late-hook styling differences are not additional release blocks. | S08@00:24.500 has a shallow collar and high closure; S11@00:36.500 restores a broader standing-collar silhouette; S12@00:39.500 introduces conspicuous pocket shapes below the stripe. |
+| S06-S08-GARMENT-RESET | major | temporal_propagation | — | 20.6–24.8 | PRESENT: the city insert separates two visibly different Look 1 realizations. Collar height, closure position, body length and waistband treatment reset on the return. | S06@00:21.500 has a broad standing collar and fitted waistband; after the insert, S08@00:24.500 returns with a compact collar, higher closure and straighter lower body. |
+| S08-HEM-CONSTRUCTION-DRIFT | major | temporal_propagation | S08 | 24.6–29.5 | PRESENT: waistband definition and lower-panel geometry still change across sampled poses. The garment does not maintain a consistent sewn hem independently of the remaining mask remnants. | S08@00:26.500 has weak band definition and uneven panel ends; S08@00:27.500 gains a clearer horizontal band; S08@00:28.500 returns to a flatter, irregular lower edge. |
+| HOOK-GARMENT-RESET | note | temporal_propagation | — | 29.5–43.3 | PRESENT within accepted late-hook tolerance: collar silhouette, stripe width and body proportions still vary across S09, S11 and S12. These differences are not independently release-blocking. | S09@00:30.500 shows a wide navy-lined collar; S11@00:35.500 has a broader chest band and different collar opening; S12@00:40.500 returns to a narrower band and smaller collar. |
+| S11-BAND-PATCH-OCCLUSION | minor | compositing_mask | S11 | 33.4–39.3 | PRESENT, reduced: a darker rectangular patch remains visible within the wearer-left band. Missing stripe sections and neck-layer occlusion are no longer reproduced; the residual issue is fabric integration, not lettering. | S11@00:34.500 and S11@00:35.500 show a hard tonal join beside the mark-bearing rectangle; S11@00:37.500 retains the flat patch appearance as the torso leans. |
+| S08-HEM-REPAIR-MASK-DAMAGE | major | compositing_mask | S08 | 23.6–29.5 | PRESENT: the shirt-tail repair is incomplete. Pale remnants and angular lower-edge discontinuities remain around the crossing hands and central hem. | S08@00:24.500 retains a narrow pale remnant below the overlapping wrists; S08@00:25.500 shows a pale block beneath the hands; S08@00:28.500 exposes a dangling light strip at the lower opening. |
+| S06-SHOULDER-MATTE-CUTOUT | major | compositing_mask | S06 | 20.5–21.6 | PRESENT: the moving wearer-right shoulder and upper-arm outline remains eroded into a stepped cutout rather than a continuous fabric silhouette. | S06@00:20.500 provides the preceding shoulder contour; S06@00:21.500 shows the screen-left shoulder descending through abrupt vertical steps and notches toward the raised arm. |
+| S06-COLLAR-FACING-MISMATCH | major | wardrobe_generation | S06 | 15.7–21.6 | PRESENT: the standing collar exposes tan inward-facing surfaces instead of the required navy interior. The mastic exterior and visible neckwear do not excuse the facing-color mismatch. | S06@00:17.500 exposes both tan inner collar faces; S06@00:19.500 retains them during the lean; S06@00:20.500 makes the inward-facing color especially clear. |
+
+## Answers
+
+**1. Does Fendi remain recognizably the same real person throughout the performance shots?**
+Recognizably yes at sampled instants; no obvious replacement identity appears. Whether every pose and gesture remains untouched from the master is UNCERTAIN, confidence 0.3, without matched source footage.
+_Evidence:_ Against the untouched identity anchor, S01@00:02.500, S06@00:19.500 and S12@00:42.500 retain recognizable facial proportions, beard, glasses and expression range.
+
+**2. Is the YSL / Saint Laurent wardrobe actually and convincingly worn by Fendi?**
+The garments are visibly on his body, not merely product cutaways. Convincing wear is inconsistent: the two-look strategy reads, but inaccurate construction, changing garment bodies and damaged edges undermine product authenticity.
+_Evidence:_ S03@00:09.500 shows sleeves and torso following his pose; S06@00:17.500 establishes the mastic/navy look; S08@00:27.500 exposes the lower-closure failure.
+
+**3. Does the wardrobe remain stable during movement?**
+Not consistently at the sampled poses. S08's lower construction changes, and the documented cross-shot resets prevent one stable garment realization. This finding does not establish between-sample flicker.
+_Evidence:_ S08@00:26.500, S08@00:27.500 and S08@00:28.500 show changing waistband definition and lower-panel outlines across crossing and turning poses.
+
+**3b. Are between-sample flicker, fabric shimmer and motion continuity verified?**
+UNVERIFIABLE FROM SAMPLES
+_Evidence:_ Confidence 0.1. The interval between S08@00:26.500 and S08@00:27.500 is unsampled. Inspect native-rate playback and frame differences for flicker, fabric shimmer and transient geometry changes.
+
+**4. Where exactly does the wordmark/logo break?**
+UNCERTAIN at 00:21.500: the bright fragments could be residual duplication or a highlight; confidence 0.3. No confirmed wrong-side or missing mark elsewhere. Exact lettering is excluded. Inspect that native frame before authorizing brand repair.
+_Evidence:_ S06@00:21.500 has ambiguous separated bright flecks in the mark area. S08@00:27.500 and S12@00:40.500 show localized wearer-left marks.
+
+**5. Is any lettering visibly oversized or mis-scaled, especially in S11 and S12?**
+No obvious oversized mark is established in S11 or S12. Their sampled scale is compatible with a small chest mark. The remaining S11 rectangle is an integration issue, not evidence of oversized lettering.
+_Evidence:_ S11@00:35.500 and S12@00:39.500 keep the mark a small fraction of the wearer-left band. S12@00:42.500 preserves that localized scale.
+
+**6. Are there other garment defects beyond the ShotSpec QA labels?**
+The concrete failures are construction-specific: collar facing, lower closure, pocket design and cross-cut garment variants. S09's waistband color repair is visible. Its cuffs remain covered once by the nonblocking styling exception.
+_Evidence:_ S06@00:19.500 exposes tan collar facing; S09@00:30.500 shows the repaired mastic waistband but pale cuffs; S12@00:39.500 shows the pocket variant.
+
+**7. Does native-resolution transformation/upscale hurt quality relative to the source?**
+UNVERIFIABLE FROM SAMPLES
+_Evidence:_ Confidence 0.1. S04@00:13.500 and S11@00:35.500 are downscaled samples; no matched source contact sheet is supplied. Compare native draft/source frames at equal scale and grade, including pre-upscale renders.
+
+**8. Does the environment convincingly eliminate the original closet?**
+Yes at the supplied instants. The white door, shelves and hanging clothes no longer read. The single-panel pre-hook room and multiplied reflective hook room form an intentional environmental progression.
+_Evidence:_ S01@00:01.500 replaces the closet with charcoal walls and a single panel; S06@00:18.500 introduces multiple icy panels; S12@00:41.500 retains the transformed room without recognizable closet fixtures.
+
+**9. Do matte/composite boundaries remain believable during movement?**
+Not throughout. The shoulder cutout and unfinished hand/hem boundaries visibly expose compositing. These are observed silhouette and occlusion failures, not inferred native-resolution softness.
+_Evidence:_ S06@00:21.500 has a stepped upper-arm silhouette. S08@00:25.500 leaves pale material below the hands, and S08@00:28.500 retains a narrow lower-edge remnant.
+
+**10. Does B-roll feel intentional and compatible with the treatment?**
+Yes in function: product, diamond and night-city inserts support fashion, ice and luxury motifs without introducing another performing face. S02 nevertheless amplifies inaccurate hardware instead of authenticating the garment.
+_Evidence:_ S02@00:04.500 supplies the hardware close-up; S05@00:15.500 presents a refracting diamond; S07@00:22.500 carries blue-white night reflections into the cutaway.
+
+**11. Do transitions work visually at the sampled instants?**
+The sampled mirror-effect states and performer return are visually legible and remain within the icy palette. A pale entrance overlay is visible; its precise glitch character and duration cannot be inferred.
+_Evidence:_ S10@00:31.500 is dark and reflective; S10@00:32.500 shows a bright inverted state; S11@00:33.500 carries a pale overlay on the returning performer.
+
+**11b. Are whiteout completion, strobe/glitch cadence, duration and exact cut boundaries verified?**
+UNVERIFIABLE FROM SAMPLES
+_Evidence:_ Confidence 0.1. S05@00:15.500 does not capture a whiteout; S11@00:33.500 captures only one overlay state. Inspect every native frame around both transitions and the complete S10 effect.
+
+**11c. Do cuts, flashes, strobes and the hard out land musically?**
+UNVERIFIABLE FROM SAMPLES
+_Evidence:_ Confidence 0.0. Silent S05@00:15.500 and S12@00:42.500 cannot establish beat landing or the final hit. Check native video with audio against the song clock and assembler boundary frames.
+
+**12. Does the edit return to the performer in the intended slots after B-roll/FX?**
+Yes for the first three returns at sampled instants. The intended performance slots visibly contain Fendi and the correct look family; this does not establish exact source-range or synchronization accuracy.
+_Evidence:_ S03@00:06.500 returns after the macro; S06@00:16.500 returns after the diamond; S08@00:24.500 returns after the city insert.
+
+**12a. Does the final FX insert return to S11 performance?**
+Yes. The performer visibly resumes in the intended S11 slot, rather than the FX sequence continuing in his place.
+_Evidence:_ S10@00:32.500 remains the mirror insert; S11@00:33.500 contains Fendi under the overlay; S11@00:34.500 clearly resumes the performance.
+
+**12b. Is lip/gesture synchronization within one native frame after inserts?**
+UNVERIFIABLE FROM SAMPLES
+_Evidence:_ Confidence 0.0. S03@00:06.500 and S11@00:34.500 show performance but provide no audible reference. Compare native audio, mouth/gesture frames and source timestamps after every insert to the song clock.
+
+**13a. Does every shot substantially conform? Audit S01–S03.**
+No overall. S01 conforms environmentally and reads as denim, but construction truth fails. S02 delivers a jacket insert without product accuracy. S03 preserves the gesture-led medium setup while retaining garment drift.
+_Evidence:_ S01@00:02.500 establishes dark denim in the cold room; S02@00:05.500 emphasizes inaccurate flap/hardware details; S03@00:07.500 retains the arm-up performance.
+
+**13b. ShotSpec audit: S04–S06.**
+S04 supplies the tighter performance framing but retains Look 2 construction errors. S05 provides the specified diamond motif; whiteout verification remains with native FX QA. S06 delivers the visual look/room change but fails collar-facing and matte requirements.
+_Evidence:_ S04@00:12.500 is visibly tighter than the preceding setup; S05@00:15.500 shows the diamond; S06@00:16.500 introduces the mastic jacket and multiplied mirror environment.
+
+**13c. ShotSpec audit: S07–S09.**
+S07 substantially conforms visually. S08 keeps the intended performance environment but fails garment construction, propagation and masking. S09 supplies the crossed-arm performance; its waistband repair is visible, with cuffs remaining under the accepted exception.
+_Evidence:_ S07@00:23.500 maintains the night-city motif; S08@00:28.500 shows the unfinished lower garment; S09@00:30.500 presents crossed arms and the mastic waistband.
+
+**13d. ShotSpec audit: S10–S12.**
+S10 provides the mirror-multiplication motif. S11 restores the complete band and direct performance, with minor patch integration remaining. S12 preserves the performance slot but not exact product construction. None of these samples certifies cadence or the hard out.
+_Evidence:_ S10@00:32.500 supplies a bright mirror-effect state; S11@00:36.500 has a complete chest band; S12@00:40.500 retains the pocket/body variant.
+
+**14. Does the complete sequence resemble the intended luxury-fashion and high-energy rap treatment?**
+Broadly yes: the two-look progression, cold reflective world and performance/cutaway structure survive. Designer-commercial credibility is weaker than environmental execution because garment truth remains inconsistent. Visible gestures supply energy; musical rhythm is not certified.
+_Evidence:_ S04@00:14.500 retains the dark pre-hook look; S06@00:16.500 changes both wardrobe and room intensity; S07@00:22.500 extends the blue-white luxury/night vocabulary.
+
+**15. Does this look like a real Fendi video enhanced by AVT, or AI content built around his song?**
+A recognizable Fendi performance remains the spine—not a replaced synthetic lead. However, conspicuous wardrobe morphing and mask damage make the enhancement visibly artificial. The environment succeeds technically while the unstable garments undermine the promised luxury finish.
+_Evidence:_ S03@00:07.500 centers recognizable Fendi and an expressive gesture. S06@00:21.500 exposes silhouette erosion; S08@00:25.500 exposes the garment repair beneath his hands.
+
+**16. Rank remaining defects by release-intent cost and name the highest-value shot replacement.**
+Highest→lowest: 1 S08-HEM-REPAIR-MASK-DAMAGE; 2 LOOK1-CONSTRUCTION-MISMATCH; 3 S08-HEM-CONSTRUCTION-DRIFT; 4 S06-SHOULDER-MATTE-CUTOUT; 5 SEQ-LOOK1-PRODUCT-TRUTH; 6 LOOK2-PRODUCT-TRUTH; 7 S06-S08-GARMENT-RESET; 8 LOOK2-CUT-CONSTRUCTION-DRIFT; 9 S06-COLLAR-FACING-MISMATCH; 10 S11-BAND-PATCH-OCCLUSION; 11 HOOK-GARMENT-RESET; 12 HOOK-LOOK1-GARMENT-TRUTH. Replace S08’s transformation, preserving Fendi’s real performance and specified source range.
+_Evidence:_ S08@00:25.500 combines conspicuous remnants with garment instability across a sustained performance slot. S06@00:21.500 damages the human silhouette. S11@00:35.500 leaves a smaller finishing distraction. Ranking reflects visible release impact, not generation cost.

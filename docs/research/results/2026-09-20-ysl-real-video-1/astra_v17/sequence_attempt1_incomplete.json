@@ -1,0 +1,23 @@
+{
+ "mode": "poll",
+ "status": "incomplete",
+ "responseId": "resp_03ba9bbbd7fe5282006ab793a40a1487d2ab28f7803308d879",
+ "error": "openai_incomplete",
+ "detail": {
+  "reason": "max_output_tokens"
+ },
+ "usage": {
+  "input_tokens": 38421,
+  "input_tokens_details": {
+   "cache_write_tokens": 38418,
+   "cached_tokens": 0
+  },
+  "output_tokens": 16000,
+  "output_tokens_details": {
+   "reasoning_tokens": 9740
+  },
+  "total_tokens": 54421
+ },
+ "billedCostUsd": 1.1842,
+ "partialText": "{\n  \"defects\": [\n    {\n      \"severity\": \"major\",\n      \"shot_id\": \"S01\",\n      \"recommended_owner\": \"wardrobe_generation\",\n      \"category\": \"wardrobe\",\n      \"description\": \"PRESENT, reduced: darkening has not fully changed the material read. Broad, smooth highlights and pale collar/placket seams still suggest coated fabric rather than the product's washed black denim.\",\n      \"defect_id\": \"SEQ-LOOK2-PRODUCT-TRUTH\",\n      \"evidence\": \"S01@00:01.500 and S01@00:03.500 retain smooth reflective front panels and light perimeter lines. The product reference has more diffuse, mottled denim shading and tonal stitching.\",\n      \"requires_treatment_change\": false,\n      \"time_range\": [0, 3.934],\n      \"recommended_action\": \"Repair material appearance using the product's diffuse denim texture and tonal stitching; preserve the approved construction, face and performance.\"\n    },\n    {\n      \"severity\": \"major\",\n      \"shot_id\": null,\n      \"recommended_owner\": \"wardrobe_generation\",\n      \"category\": \"wardrobe\",\n      \"description\": \"PRESENT: oversized bright button discs and exaggerated pocket-flap edging remain. The insert magnifies these deviations instead of establishing product authenticity.\",\n      \"defect_id\": \"LOOK2-PRODUCT-TRUTH\",\n      \"evidence\": \"S01@00:02.500 shows large pale fasteners; S02@00:04.500 exposes doubled bright flap borders; S04@00:12.500 retains conspicuous button and pocket-edge treatment.\",\n      \"requires_treatment_change\": false,\n      \"time_range\": [0, 14.754],\n      \"recommended_action\": \"Correct hardware proportions and flap construction once, then apply that realization consistently to performance shots and the macro.\"\n    },\n    {\n      \"severity\": \"major\",\n      \"shot_id\": null,\n      \"recommended_owner\": \"temporal_propagation\",\n      \"category\": \"continuity\",\n      \"description\": \"PRESENT: pre-hook cuts still exchange garment length, cuff distress and fastener treatment. These are construction changes, not merely pose-dependent folds.\",\n      \"defect_id\": \"LOOK2-CUT-CONSTRUCTION-DRIFT\",\n      \"evidence\": \"S01@00:03.500 has longer asymmetric fronts and relatively simple cuffs; S03@00:06.500 changes to a shorter body and heavily outlined cuffs; S04@00:13.500 changes the lower fastening treatment again.\",\n      \"requires_treatment_change\": false,\n      \"time_range\": [3.167, 14.754],\n      \"recommended_action\": \"Propagate one approved trucker construction across all source ranges, including hem length, cuffs, wear distribution and button layout.\"\n    },\n    {\n      \"severity\": \"major\",\n      \"shot_id\": \"S08\",\n      \"recommended_owner\": \"wardrobe_generation\",\n      \"category\": \"wardrobe\",\n      \"description\": \"PRESENT: the lower fronts separate beneath the zipper and expose pale underlying material. This remains a lower-closure failure, unrelated to approved neck-layer visibility.\",\n      \"defect_id\": \"LOOK1-CONSTRUCTION-MISMATCH\",\n      \"evidence\": \"S08@00:25.500 exposes a pale flap beneath the crossing hand; S08@00:27.500 has an inverted-V lower opening; S08@00:28.500 shows a narrow light tail between the fronts.\",\n      \"requires_treatment_change\": false,\n      \"time_range\": [23.607, 29.508],\n      \"recommended_action\": \"Reconstruct a closed lower zipper and connected waistband over the real performance. Keep the approved visible shirt collar and tie at the neck.\"\n    },\n    {\n      \"severity\": \"note\",\n      \"shot_id\": null,\n      \"recommended_owner\": \"wardrobe_generation\",\n      \"category\": \"wardrobe\",\n      \"description\": \"PRESENT under the documented styling exception: shirt, tie and cuff variants remain nonblocking. Visible neck layers are not classified as an open jacket.\",\n      \"defect_id\": \"HOOK-LOOK1-GARMENT-TRUTH\",\n      \"evidence\": \"S06@00:18.500 uses a densely striped tie; S09@00:30.500 retains pale ribbed cuffs; S11@00:36.500 has broader diagonal tie stripes and mastic cuffs.\",\n      \"requires_treatment_change\": false,\n      \"time_range\": [15.738, 39.344],\n      \"recommended_action\": \"Reta"
+}
