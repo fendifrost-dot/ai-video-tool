@@ -43,8 +43,9 @@ Two figures were also found to be overstated in the results doc and are correcte
 | 17 | 09-26 | OpenAI | Astra project-level review of v17, `sequence` part, attempt 1 — INCOMPLETE (max_output_tokens 16000 hit: 9.7k reasoning + a cut JSON; billed usage 38,421 in / 16,000 out returned by the proxy after its fix) | $1.1842 | — | $19.82 |
 | 18 | 09-26 | OpenAI | Astra project-level review of v17, `sequence` part, attempt 2 (maxOutputTokens 32000; 43 frames @ 1 s + 6 refs, v13 defect ids + repair notes) — REPAIR_REQUIRED; RESOLVED: SEQ-LOOK2-PRODUCT-TRUTH, S11-CHEST-BAND-INCOMPLETE, S09 waistband; top three remaining defects are all S08 | $1.1129 | — | $20.94 |
 | 19 | 09-26 | OpenAI | Astra TARGETED review of v18 (`mechanisms` part, 24 frames incl. 8 v17 before-frames, 3 refs): S11-BAND-PATCH-INTEGRATION IMPROVED 0.94, S08-HEM-V5 IMPROVED 0.87 (hand-occluded ribbing and the split fronts remain), HOOK-WORDMARK-INTEGRATION UNCERTAIN 0.3 (possible S09 residue → chroma-led membership fix → v19) | $0.5797 | — | $21.52 |
+| 20 | 09-26 | fal | Masked flux-general inpaint with the approved realisation as IP-Adapter image, S08 f84 (the registry's recorded gap): c0 rejected at the pose preprocessor (dwpose not allowlisted), c1 timed out after 948 s at fal (status 502) — no output; two evf-sam passes billed | $0.05 (upper estimate; fal shows no completed flux job) | — | $21.57 |
 
-**YSL testing budget used: ≈ $21.52 · remaining: ≈ $28.48 of $50.** Rows 2 and 12 are the unverified amounts and are carried at their upper estimates.
+**YSL testing budget used: ≈ $21.57 · remaining: ≈ $28.43 of $50.** Rows 2 and 12 are the unverified amounts and are carried at their upper estimates.
 
 ## OpenAI capacity: three different things (corrected 2026-09-26)
 
