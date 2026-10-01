@@ -102,6 +102,9 @@ def camera_path(move, n, fps, handheld=0.0):
 def cover_fit(img, W, H, scale=1.0):
     h, w = img.shape[:2]; s = max(W / w, H / h) * scale
     out = cv2.resize(img, (int(round(w * s)), int(round(h * s))), interpolation=cv2.INTER_LANCZOS4 if s > 1 else cv2.INTER_AREA)
+    if out.shape[0] < H or out.shape[1] < W:                      # scale < 1 (a wide lens shows more plate than exists): reflect-pad to cover
+        ph, pw = max(0, H - out.shape[0]), max(0, W - out.shape[1])
+        out = cv2.copyMakeBorder(out, ph // 2, ph - ph // 2, pw // 2, pw - pw // 2, cv2.BORDER_REFLECT_101)
     y0 = (out.shape[0] - H) // 2; x0 = (out.shape[1] - W) // 2
     return out[y0:y0 + H, x0:x0 + W]
 
@@ -190,6 +193,7 @@ def main():
     ap.add_argument("--far-weight", type=float, default=0.35, help="parallax weight of the farthest plate pixel relative to the performer's plane")
     ap.add_argument("--dof-max-px", type=float, default=14.0, help="plate blur (px at 1080 wide) one full depth unit away from focus, at dof = 1")
     ap.add_argument("--overscan", type=float, default=None, help="plate overscan factor; auto from the move when absent")
+    ap.add_argument("--max-overscan", type=float, default=2.2, help="cap for the auto overscan (whip pans beyond it rely on the reflect border)")
     ap.add_argument("--sheet", default=None, help="contact sheet path (default next to --out)")
     ap.add_argument("--range", default=None, help="a:b frame range of the matte to render (default all)")
     ap.add_argument("--label", default=None, help="burn a small label into the output (for contact videos)")
@@ -219,7 +223,7 @@ def main():
         if a.plate_depth: cv2.imwrite(a.plate_depth, (depth0 * 65535).astype(np.uint16))
     max_pan = float(max(np.abs(path["px"]).max(), np.abs(path["py"]).max(), np.abs(path["orbit"]).max() * a.near_weight))
     min_zoom = float(min(path["zoom"].min(), 1.0)); kst = abs(float(angle.get("keystone", 0.0)))
-    over = a.overscan or (1.0 + 2 * max_pan * a.near_weight + (1 / min_zoom - 1) + kst + 0.08)
+    over = a.overscan or min(a.max_overscan, 1.0 + 2 * max_pan * a.near_weight + (1 / min_zoom - 1) + kst + 0.08)   # beyond the cap the reflect border carries a whip; upscaling a plate 4x buys nothing
     comp = float(lens["compression"])
     PW, PH = int(round(W * over)), int(round(H * over))
     plate = cover_fit(plate0, PW, PH, scale=comp).astype(np.float32)
@@ -237,6 +241,7 @@ def main():
     ox, oy = (PW - W) / 2, (PH - H) / 2
     feet_plate_y = int(np.clip(oy + H / 2 + (feet_y - H / 2) * fs + fy_ * H, 0, PH - 1))
     dn_p = float(np.median(depth[max(0, feet_plate_y - 8):feet_plate_y + 8, int(PW * 0.3):int(PW * 0.7)]))
+    if not np.isfinite(dn_p): raise SystemExit(f"performer plane depth undefined (feet_plate_y={feet_plate_y}, depth shape {depth.shape}, plate {PW}x{PH})")
     print(f"performer plane: feet row {feet_y}, plate depth {dn_p:.3f}; overscan {over:.3f}; lens {lens_spec}; move {move}", flush=True)
     # parallax weight relative to the performer: 1 at his plane, near_weight at dn=1, far_weight at dn=0
     w_par = np.where(depth >= dn_p, 1 + (a.near_weight - 1) * (depth - dn_p) / max(1e-3, 1 - dn_p), a.far_weight + (1 - a.far_weight) * depth / max(1e-3, dn_p)).astype(np.float32)
