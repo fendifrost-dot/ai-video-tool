@@ -1,0 +1,6 @@
+{
+ "note": "Artist (Fendi) verdicts on generated clips, used to calibrate the realism gate's identity threshold. verdict: character = does it read as him; realism = would a viewer clock it as AI.",
+ "labels": [
+  {"clip": "test5_higgsfield_dop_turbo_orbit", "identity_dist_median": 0.635, "judge_ai_likelihood": 0.83, "artist": {"character": "superb", "realism": "superb", "garment": "not pristine, acceptable for B-roll"}, "date": "2026-10-01"}
+ ]
+}
