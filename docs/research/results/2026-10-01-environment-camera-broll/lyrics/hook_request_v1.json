@@ -1,0 +1,63 @@
+{
+ "projectId": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+ "lines": [
+  {
+   "ref": "H1",
+   "text": "You don't gotta cut the lights on / This ice on",
+   "section": "hook"
+  },
+  {
+   "ref": "H2",
+   "text": "YSL I wear em like they white ones",
+   "section": "hook"
+  },
+  {
+   "ref": "H3",
+   "text": "I don't follow brands, follow designers",
+   "section": "hook"
+  },
+  {
+   "ref": "H4",
+   "text": "The rims 21, don't ride no minors",
+   "section": "hook"
+  },
+  {
+   "ref": "H5",
+   "text": "More cameras in the whip than a camera crew",
+   "section": "hook"
+  },
+  {
+   "ref": "H6",
+   "text": "All this ice around me, need a Canada Goose",
+   "section": "hook"
+  },
+  {
+   "ref": "H7",
+   "text": "So clean but I don't do what the janitor do",
+   "section": "hook"
+  },
+  {
+   "ref": "H8",
+   "text": "My money talk for me and it be rambling too",
+   "section": "hook"
+  }
+ ],
+ "heroDescription": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers",
+ "environment": "a dark mirrored corridor with tall vertical white light strips on black panels and a wet black floor that reflects them",
+ "style": "High-end fashion editorial meets 90s house club; YSL campaign film with Helmut Newton lighting: hard key, crushed blacks, off-white and gold accents; opulent, cool, confident",
+ "lockedRules": [
+  "do not redescribe chains, watches or rings (jewelry is locked in the artist's baked prompts)",
+  "no readable text or logos on screen",
+  "no crowds",
+  "keep hands simple and few",
+  "the artist never raps or lip-syncs in B-roll"
+ ],
+ "rendererLimits": [
+  "image-to-video from one still (6-10 s)",
+  "struggles with readable text, crowds, complex hand action, fast physics",
+  "animals and liquids can read fake unless simple and slow",
+  "the still is composited on the plate first, so the environment should stay"
+ ],
+ "clipSeconds": 8,
+ "maxCostUsd": 0.5
+}

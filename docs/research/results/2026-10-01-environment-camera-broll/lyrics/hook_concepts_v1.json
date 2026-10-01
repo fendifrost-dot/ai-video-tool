@@ -1,0 +1,358 @@
+{
+ "ok": true,
+ "billed": true,
+ "model": "grok-4.6",
+ "usage": {
+  "prompt_tokens": 12726,
+  "completion_tokens": 8742
+ },
+ "actualCostUsd": 0.1693,
+ "result": {
+  "lines": [
+   {
+    "ref": "H1",
+    "text": "You don't gotta cut the lights on / This ice on",
+    "concepts": [
+     {
+      "kind": "literal",
+      "title": "Frost does the switch",
+      "what_we_see": "Nobody touches a switch. A thin clear glaze of ice creeps over the already-wet black floor and the lower panels until the existing white light strips ricochet so hard the corridor reads fully lit.",
+      "why_it_lands": "The lyric becomes a physical fact: the ice itself is the light, so the lights never have to come on.",
+      "camera": "slow low-angle 35mm push-in along the floor",
+      "motion_and_fx": "frost bloom spreading toward camera over eight seconds, slow flare on the strips, faint vapor, no shatter",
+      "realism_risk": "medium",
+      "risk_reason": "a spreading ice glaze on a wet floor can read CG if the growth is not kept slow and simple",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers stands still with arms down in the dark mirrored corridor as a thin clear frost slowly spreads across the wet black floor and the lower black panels, the tall vertical white light strips catching in the ice and flaring brighter with no new lights switching on, camera a slow low-angle 35mm push-in riding the floor reflections, cool still air with faint vapor, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "surreal",
+      "title": "The corridor ices itself",
+      "what_we_see": "The vertical white light strips thicken into slow-growing ice columns that glow from inside; each of his slow steps sends a silent white crack skating ahead through the black floor like frozen lightning.",
+      "why_it_lands": "The boast leaves his body and takes the architecture: the whole hall becomes the ice, so light is already on.",
+      "camera": "lateral 50mm track, slight dutch as the cracks race",
+      "motion_and_fx": "slow inward growth of ice on the strips, single-file light-cracks in the floor, no debris, no fast shatter",
+      "realism_risk": "high",
+      "risk_reason": "transforming light strips into growing ice and drawing light-filled cracks is complex physics for a still-to-video pass",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers walks slowly down the dark mirrored corridor, arms relaxed, each footfall sending a silent white-light crack racing through the wet black floor while the tall vertical white light strips thicken into slow-growing ice columns glowing from within, camera a lateral 50mm track holding him in profile, glassy hush and cold breath in the air, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "performance",
+      "title": "He arrives, the lights answer",
+      "what_we_see": "He stands centered in the corridor, chin slightly lifted, unmoving. The camera finds him and the existing strips give one slow extra pulse of brightness, as if his presence threw the switch.",
+      "why_it_lands": "The performance is the claim: he does not cut the lights on; they come up because he is there.",
+      "camera": "locked medium, then a very slow dolly-in to chest-up",
+      "motion_and_fx": "one slow blink, faint breathing, a single delayed pulse on the white strips, reflections sliding on the wet floor",
+      "realism_risk": "low",
+      "risk_reason": "mostly a still portrait with a simple light pulse, well inside image-to-video limits",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers stands centered facing camera in the dark mirrored corridor, arms down, chin slightly lifted, the tall vertical white light strips holding then giving one slow extra pulse of brightness as the camera dollies in, wet black floor reflections sliding, cool still air, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     }
+    ]
+   },
+   {
+    "ref": "H2",
+    "text": "YSL I wear em like they white ones",
+    "concepts": [
+     {
+      "kind": "literal",
+      "title": "Worn Like a White Shirt",
+      "what_we_see": "He walks the mirrored corridor treating the cream knit like a throwaway white tee: one hand rises once to the stand collar, then drops, while the vertical strips bleach the fabric pale.",
+      "why_it_lands": "The lyric is luxury with no ritual. Casual body language plus blown-out cream makes the piece read as a white basic without a logo ever appearing.",
+      "camera": "slow 35mm side dolly, slight low angle",
+      "motion_and_fx": "unhurried walk; one brief collar touch then a still hand; strip lights bloom on the knit; wet-floor reflections slide with him",
+      "realism_risk": "low",
+      "risk_reason": "Single walker, one simple hand beat, light bloom on existing wardrobe; no new objects or fast physics.",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers walks slowly down the dark mirrored corridor as if the cream knit were a basic white shirt, one hand rising once to the stand collar then falling away and staying still, hard vertical white light strips bleaching the jacket pale against crushed blacks, wet black floor sliding with long strip reflections, slow 35mm side dolly at a slight low angle, cool off-white bloom and hard key from the panels, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "surreal",
+      "title": "Corridor Goes White",
+      "what_we_see": "The mirrored panels and wet floor slowly bloom into a white-out until the corridor is a blank white void and he is the only color left, cream jacket and navy band holding in the middle.",
+      "why_it_lands": "The white ones become the entire room. He wears the real piece against a white void a camera can actually expose.",
+      "camera": "slow 40mm push down the corridor, whites eating the edges of frame",
+      "motion_and_fx": "gradual overexposure of mirrors, strips, and floor; he keeps a slow walk; atmosphere only; no extra hands",
+      "realism_risk": "medium",
+      "risk_reason": "Global exposure bloom from one still can work as atmosphere, but a full white-out of multiple reflections may smear or flicker.",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers walks slowly toward camera as the dark mirrored corridor blooms into a slow white-out, tall vertical white light strips flaring until the black panels and wet floor go blank white around him, he remains the only color in the frame, cream knit and navy band holding, no hand business, slow 40mm push with whites eating the edges, hard key and crushed blacks collapsing into overexposure, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "performance",
+      "title": "Newton Walk",
+      "what_we_see": "He comes down the corridor toward camera with campaign-film posture, chin tucked, glasses catching the strips, mouth still, wearing the jacket like it cost nothing.",
+      "why_it_lands": "The hook is an attitude, not a product shot. Hard key and a walk sell wearing it like whites without lip-sync or logos.",
+      "camera": "slow 50mm push-in, then a gentle orbit to three-quarter",
+      "motion_and_fx": "measured walk; hard key from the vertical strips; crushed blacks; chest-band gold catching; floor reflections tracking him",
+      "realism_risk": "low",
+      "risk_reason": "Straightforward walk and camera move on the existing plate; no complex hands, crowds, or physics.",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers walks straight toward camera with unbothered campaign-film posture, chin slightly down, glasses catching the tall vertical white light strips, mouth still, hands low and simple at his sides, hard Helmut Newton key from the black panels, crushed blacks, wet black floor reflections tracking with him, slow 50mm push-in then a gentle orbit to three-quarter, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "needs_plate_change": false
+     }
+    ]
+   },
+   {
+    "ref": "H3",
+    "text": "I don't follow brands, follow designers",
+    "concepts": [
+     {
+      "kind": "literal",
+      "title": "Chalk Line, Not Barcode",
+      "what_we_see": "He walks the mirrored corridor in a straight line, refusing the repeating blink of the vertical light strips. A single cream tailor\u2019s chalk stroke draws itself on the wet black floor and he steps only on that mark.",
+      "why_it_lands": "Brands are the barcode rhythm of identical lights; the designer is the unique chalk line he actually follows.",
+      "camera": "35mm reverse dolly, horizon locked, centered",
+      "motion_and_fx": "Light strips blink in a cold even rhythm he never matches; a thin cream chalk stroke lengthens slowly on the wet floor; haze drifts; reflections stretch with the dolly.",
+      "realism_risk": "medium",
+      "risk_reason": "A self-drawing line on a reflective wet floor can smear or swim over 8 seconds.",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers walks a straight center line down the dark mirrored corridor, arms relaxed at his sides, never turning his head toward the tall vertical white light strips that blink in a cold barcode rhythm he refuses to match. A single thin cream chalk stroke slowly draws itself along the wet black floor ahead of him and he places each step only on that mark. Reverse dolly on a 35mm lens, horizon locked, hard key from the strips, crushed blacks, the chalk catching a faint gold edge. Slow club haze, stretched floor reflections, no fast physics. keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "surreal",
+      "title": "Gold Plates Won't Stick",
+      "what_we_see": "Blank gold plates try to tag his cream jacket as he walks; they fail, slide off, and drop onto the wet floor with small slow splashes. He never looks down. He keeps walking into a hard white shaft of light that opens like a tailor\u2019s cut.",
+      "why_it_lands": "Brands want to adhere to him and cannot; he follows the cut itself \u2014 the designer\u2019s act, not the label.",
+      "camera": "40mm lateral track, slight push as the light shaft opens",
+      "motion_and_fx": "A few blank gold plates slide down the knit and fall; tiny slow splashes on black water; a hard white shaft widens ahead of him; haze in the crushed blacks.",
+      "realism_risk": "high",
+      "risk_reason": "Rigid plates sliding off fabric plus liquid contact often tear, stick, or pop in image-to-video.",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers walks forward without looking down as blank gold plates try to stick to his cream jacket, fail, and slide off onto the wet black floor with small slow splashes. He follows a hard white shaft of light that cuts through the corridor like a tailor opening a path. Slow 40mm tracking shot beside him, Helmut Newton hard key, crushed blacks, plates glinting gold with no marks on them. Cool haze, simple slow motion, hands still at his sides. keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "performance",
+      "title": "The Fitting, Not The Ad",
+      "what_we_see": "He takes three unhurried steps toward camera in the hard key of one light strip, then stops in a still stare through the glasses \u2014 mouth closed, no sell, like a designer at a private fitting.",
+      "why_it_lands": "A brand would pitch the lens; a designer owns the room. The withheld performance is the lyric.",
+      "camera": "50mm slow push into the glasses",
+      "motion_and_fx": "Three measured steps then a freeze; one strip flares as hard key; wet floor reflection breathes; thin haze drifts across crushed blacks.",
+      "realism_risk": "low",
+      "risk_reason": "Single-subject walk and a slow push on a locked plate; no extra objects or fast physics.",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers stands in the dark mirrored corridor, mouth closed, then takes three unhurried steps toward camera and stops in a still stare through the glasses, hands hanging simple at his sides. Slow 50mm push-in, hard key from one vertical white light strip sculpting his face, crushed blacks, wet floor reflecting the strips. Cool haze drift, confident stillness, no speaking. keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     }
+    ]
+   },
+   {
+    "ref": "H4",
+    "text": "The rims 21, don't ride no minors",
+    "concepts": [
+     {
+      "kind": "literal",
+      "title": "Empty Cabin, 21s",
+      "what_we_see": "New plate: the mirrored corridor now holds a matte-black coupe nosed against the light strips, one huge chrome 21-inch rim filling the lower frame at his knee; he stands at the driver's door and the far seat stays empty and dark.",
+      "why_it_lands": "The wheel is physically a 21 in his world, and the vacant cabin is the line made flesh: he rides grown, and no one else is in the car.",
+      "camera": "low 35mm dolly along the chrome rim, then a short rise to his chest",
+      "motion_and_fx": "the rim turns once, very slowly; white strip-light crawls across the spokes; a single ripple slides over the wet floor reflection",
+      "realism_risk": "high",
+      "risk_reason": "A full car, spinning chrome, and wet dual reflections are a lot for a single still to invent without warping metal or the body.",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers stands at the driver's door of a matte-black coupe, a huge chrome rim at his knee turning once very slowly, the far seat empty and dark, camera dollies low along the wheel then rises to his chest, hard white vertical strips flaring on the spokes, wet black floor taking a slow ripple, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": true
+     },
+     {
+      "kind": "surreal",
+      "title": "Only Full Rings Survive",
+      "what_we_see": "The tall white light strips peel off the black panels and curl into giant slow-spinning rim-shapes that roll the length of the corridor; smaller incomplete rings try to form at the edges and collapse before they reach him.",
+      "why_it_lands": "Size becomes a law of the hallway: only the big 21 rings hold together; anything lesser dies out before it can ride with him.",
+      "camera": "35mm slow orbit around him as the light-rims pass",
+      "motion_and_fx": "vertical strips bend into wide circular rims of white light turning slowly; faint smaller rings flicker and vanish; the wet floor mirrors only the large ones",
+      "realism_risk": "medium",
+      "risk_reason": "Slow light-bending can read as a practical gag; if the rings spin too fast or multiply, the corridor walls will smear.",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers stands still in the corridor as the vertical white light strips peel off the walls and curl into giant slow-spinning rim-shapes rolling past him, smaller faint rings collapsing at the edges, camera orbits slowly at chest height, hard key from the remaining strips, crushed blacks, cool wet-floor glow, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "performance",
+      "title": "Rim-Height Walk",
+      "what_we_see": "He walks the empty corridor straight at us with an unhurried, heavy stride, arms still at his sides, never glancing down, as if the floor were rolling under him on big wheels.",
+      "why_it_lands": "The lens sits at wheel height so his body reads like the car itself; solitude and pace do the work of 'don't ride no minors' without a second person.",
+      "camera": "low 24mm slow push, lens at shin height",
+      "motion_and_fx": "steady walk, almost no arm swing, light strips sliding rearward in the mirrors, mouth closed, jacket barely shifting",
+      "realism_risk": "low",
+      "risk_reason": "A simple walk and slow push on the existing plate; stays inside renderer limits if hands stay quiet.",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers walks slowly toward camera down the dark mirrored corridor, arms still, mouth closed, camera at shin height pushing in on a 24mm, vertical white strips sliding past in the wet black floor, hard key, crushed blacks, cool confident pace, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     }
+    ]
+   },
+   {
+    "ref": "H5",
+    "text": "More cameras in the whip than a camera crew",
+    "concepts": [
+     {
+      "kind": "literal",
+      "title": "Backseat Full of Glass",
+      "what_we_see": "New plate: night interior of a black luxury sedan. He sits alone in the rear while unbranded cinema cameras and still cameras occupy every other seat, the dash and the parcel shelf, all lenses aimed at him.",
+      "why_it_lands": "The flex becomes inventory: the car is so camera-heavy it visibly outnumbers a working film unit, with him unbothered in the middle of it.",
+      "camera": "locked wide from the front cabin, slow push toward him",
+      "motion_and_fx": "soft idle vibration through the cabin, red tally lights breathing on, rain-smeared city glow sliding on tinted glass",
+      "realism_risk": "medium",
+      "risk_reason": "Many distinct camera bodies plus window light smear can mush or crawl in image-to-video; tally blinks may flicker unnaturally.",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers sits motionless in the rear of a black luxury sedan at night, unbranded cinema cameras and still cameras crowding the other seats, the dash and the parcel shelf, every lens aimed inward at him, slow push from the front of the cabin, red tally lights breathing on, rain-smeared city glow sliding across the tinted glass, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "needs_plate_change": true
+     },
+     {
+      "kind": "surreal",
+      "title": "Lenses in the Glass",
+      "what_we_see": "In the mirrored corridor, round camera lenses press out of the black panels as if a full crew is shooting him from behind two-way glass, dozens of dark circles replacing his reflections.",
+      "why_it_lands": "The boast turns architectural: he is not riding with cameras, the world around him is already a camera crew, watching from the walls.",
+      "camera": "slow chest-height orbit",
+      "motion_and_fx": "lenses ease a few inches out of the glass in a staggered, slow bloom; faint iris stops breathing; vertical light strips flare like muted strobes",
+      "realism_risk": "high",
+      "risk_reason": "Many objects emerging from reflective surfaces plus irising glass will tear, smear, or duplicate badly in image-to-video.",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers stands still in the dark mirrored corridor as round unbranded camera lenses slowly press out of the black panels around him, replacing the reflections, a slow chest-height orbit, vertical white light strips flaring like muted strobes on the wet black floor, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "performance",
+      "title": "Every Angle Already Rolling",
+      "what_we_see": "He stands in the dark mirrored corridor as if the hallway itself is a rolling car, holding still then turning his head once toward an unseen lens while sequential flashes rake the vertical light strips and catch in his glasses.",
+      "why_it_lands": "He does not chase coverage; the space behaves like a crew already hired, so the line reads as posture, not explanation.",
+      "camera": "slow 35mm dolly in to a tight three-quarter",
+      "motion_and_fx": "sequential strobe flares travel down the white light strips, floor reflections pulse, single slow head turn, no mouth movement, hands still at his sides",
+      "realism_risk": "low",
+      "risk_reason": "Single subject, one simple head turn, and light flares on an existing plate are within image-to-video limits.",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers stands in the dark mirrored corridor, hands still at his sides, then turns his head once toward an unseen lens as sequential strobe flares travel down the tall vertical white light strips and catch in his glasses, slow 35mm dolly in to a tight three-quarter, wet black floor pulsing with the flashes, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "needs_plate_change": false
+     }
+    ]
+   },
+   {
+    "ref": "H6",
+    "text": "All this ice around me, need a Canada Goose",
+    "concepts": [
+     {
+      "kind": "literal",
+      "title": "Black Ice Spreads",
+      "what_we_see": "The wet black floor flash-freezes into a sheet of black ice creeping toward his shoes while frost blooms up the vertical light strips, turning the corridor into a freezer; a single plume of breath hangs in front of his glasses.",
+      "why_it_lands": "Ice stops being slang and becomes weather closing in, so the need for a heavy winter coat reads as survival inside his own world.",
+      "camera": "low locked wide then slow push on 35mm so the ice sheet grows into frame",
+      "motion_and_fx": "slow crystallization across the floor and light strips, one held breath of vapor, no hand movement",
+      "realism_risk": "medium",
+      "risk_reason": "slow frost and vapor can still look synthetic on mirrored wet surfaces; renderer is weak on liquids",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers stands motionless as the wet black floor slowly crystallizes into black ice spreading toward his shoes and frost creeps up the tall vertical white light strips, a thin white breath vapor hangs in the cold air in front of his glasses, camera starts low and locked then executes a slow push in on 35mm, hard key from the light strips with crushed blacks and cool off-white reflections, atmosphere of sudden freeze in the club corridor, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "surreal",
+      "title": "Private Blizzard",
+      "what_we_see": "Slow-motion ice shards the size of coins orbit him at chest height, each catching a hard white specular from the light strips and never falling, a contained storm that only exists in his three feet of space.",
+      "why_it_lands": "The ice around him becomes a visible personal climate a camera can witness, the kind of freeze a Canada Goose was built to survive.",
+      "camera": "slow 180-degree orbit at chest height, 50mm",
+      "motion_and_fx": "ice shards drifting and slowly rotating in a tight radius with specular flares, no fast physics, artist barely turns with the orbit",
+      "realism_risk": "high",
+      "risk_reason": "multiple floating ice pieces with refraction and orbit physics often read as CG",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers is encircled by slow-drifting coin-sized ice shards that orbit at chest height catching hard white flares from the vertical light strips, he remains almost still with a slight turn of the head, camera performs a slow chest-height orbit, atmosphere of a contained frozen storm inside the dark mirrored corridor with crushed blacks and gold-tinged highlights on the ice, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "performance",
+      "title": "Jacket Against the Freeze",
+      "what_we_see": "He holds a still defiant stance dead center in the infinite black-panel reflections, faint frost gathering on his glasses, a thin breath vapor the only sign the ice has reached him.",
+      "why_it_lands": "The performance sells isolation and chill without any mouth movement; the mirrors multiply the ice around him until a heavier coat feels inevitable.",
+      "camera": "slow push on 85mm from a slight low angle, hard side key from one vertical strip",
+      "motion_and_fx": "almost still, one slow blink, faint vapor, arms at his sides",
+      "realism_risk": "low",
+      "risk_reason": "static performance with only breath vapor and a slow camera move sits well inside renderer limits",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers holds a still defiant stance in the center of the dark mirrored corridor with a faint frost gathering on his clear-framed glasses and a thin breath vapor, camera executes a slow push in on 85mm from a slight low angle with hard side key from a vertical light strip, crushed blacks, cool confident atmosphere, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "needs_plate_change": false
+     }
+    ]
+   },
+   {
+    "ref": "H7",
+    "text": "So clean but I don't do what the janitor do",
+    "concepts": [
+     {
+      "kind": "literal",
+      "title": "Spotless, no mop",
+      "what_we_see": "He stands idle in the wet corridor, cream jacket and black trousers perfectly dry and lint-free, never bending toward the floor that already gleams as if someone else did the work.",
+      "why_it_lands": "The line becomes physical: he is clean, and janitor labor is simply absent from his body.",
+      "camera": "slow push from a locked wide to a waist-up medium",
+      "motion_and_fx": "almost no body movement besides a slight breath; faint steam lifts off the wet black floor; light-strip reflections hold still",
+      "realism_risk": "low",
+      "risk_reason": "single still figure, slow camera, simple steam; no extra props or hand work",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers stands idle in the dark mirrored corridor, cream knit and black trousers perfectly dry and lint-free above the wet black floor, he never bends or reaches, slow push from a locked wide to a waist-up medium as hard vertical white light strips rake his silhouette, faint steam lifting from the already-gleaming wet floor, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "surreal",
+      "title": "The floor shines for him",
+      "what_we_see": "A slow ring of extra gloss expands outward from his shoes across the wet black floor while he stands with empty hands, as if the corridor mops itself and he refuses the job.",
+      "why_it_lands": "Pushes \u201cso clean\u201d past reality: cleanliness happens around him, so he never has to do what a janitor does.",
+      "camera": "locked low tilt from the spreading floor shine up to his face",
+      "motion_and_fx": "slow radial sheen traveling across the wet floor; reflections of the white light strips sharpen inside the ring; his hands stay still at his sides",
+      "realism_risk": "medium",
+      "risk_reason": "animated floor reflections and liquid sheen can look fake if they move too fast or break perspective",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers stands with both hands hanging still at his sides as a slow circular sheen of extra brightness expands across the wet black floor from his shoes, reflections of the tall vertical white light strips sharpening inside that ring, he never stoops, locked low camera tilting slowly from the floor up to his face, cool thin steam, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "performance",
+      "title": "Chin lift, no labor",
+      "what_we_see": "He turns a few degrees toward his reflection in a black panel, then looks away with a small chin lift, hands never leaving his sides \u2014 presence instead of cleanup.",
+      "why_it_lands": "The delivery is refusal in posture: he is the clean thing in the room, not the person who keeps it clean.",
+      "camera": "slow orbit, three-quarter around him",
+      "motion_and_fx": "vertical white light strips slide across the cream jacket as he turns; crushed blacks hold; a tiny catchlight in the glasses; no mouth movement",
+      "realism_risk": "low",
+      "risk_reason": "small head turn and slow orbit on a locked plate; simple hands, no physics",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers turns his head a few degrees toward his reflection in a tall black panel then looks away with a small chin lift, hands remaining still at his sides, slow orbit around him as the vertical white light strips slide across the cream jacket, hard side key and crushed blacks, wet floor reflections gliding with the move, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     }
+    ]
+   },
+   {
+    "ref": "H8",
+    "text": "My money talk for me and it be rambling too",
+    "concepts": [
+     {
+      "kind": "literal",
+      "title": "Talking Stacks at His Feet",
+      "what_we_see": "He stands motionless with hands at his sides while thick stacks of cash sit on the wet black floor around his shoes; a few bills slowly lift and drop at the corners like mouths that will not stop rambling.",
+      "why_it_lands": "The lyric is made physical: the money itself talks, and it rambles, so he never has to.",
+      "camera": "slow low-angle push from the stacks up toward his still figure",
+      "motion_and_fx": "gentle independent flutter of a handful of bills, their edges catching the hard white strips, reflections of the paper skating on the wet floor",
+      "realism_risk": "high",
+      "risk_reason": "several small paper objects moving independently tend to smear or look fake in image-to-video",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers standing still with hands at his sides, thick stacks of cash with no visible printing on the wet black floor around his shoes, a few bills slowly lifting and dropping at the corners like speaking mouths rambling on, slow low-angle push from the floor toward him, hard vertical white light strips catching the paper edges and wet reflections, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "surreal",
+      "title": "Money Double in the Glass",
+      "what_we_see": "He stays composed and silent while his reflection in the tall black panels is a loosely assembled figure of drifting bills that never stop spilling more paper down the corridor, rambling without end.",
+      "why_it_lands": "The metaphor becomes a camera-witnessable double: money talks for him and it will not shut up.",
+      "camera": "slow orbit at chest height holding him and the money-filled reflection together",
+      "motion_and_fx": "slow lazy spill of a few bills from the reflection, tumbling, multiplied in the opposing mirrors and the wet floor",
+      "realism_risk": "high",
+      "risk_reason": "a paper humanoid plus falling bills generated from a still often composites badly and breaks physics",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers standing composed and silent, his reflection in the tall black panels a loosely assembled figure of drifting bills with no visible printing that keep spilling more paper down the corridor as if rambling, slow orbit at chest height, hard white light strips, crushed blacks, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     },
+     {
+      "kind": "performance",
+      "title": "Closed Mouth, Endless Corridor",
+      "what_we_see": "Tight on his face as he holds a still, knowing look through the clear glasses, mouth closed; behind him the light strips recede and multiply in the mirrors like a speech that rambles on without him.",
+      "why_it_lands": "He performs the lyric by not speaking \u2014 presence plus the infinite corridor lets the money do the rambling.",
+      "camera": "slow push-in to a tight portrait, then a slight pull that reveals the receding lights",
+      "motion_and_fx": "almost no body motion, only atmosphere: lights breathing, reflections sliding on the wet floor",
+      "realism_risk": "low",
+      "risk_reason": "simple facial stillness and a slow camera move on the existing plate, no extra objects or fast physics",
+      "broll_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers holding a still knowing look through the glasses with his mouth closed, slow push-in to a tight portrait then a slight pull revealing the receding vertical white light strips multiplying in the mirrors, hard key, crushed blacks, wet floor reflections sliding, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+      "needs_plate_change": false
+     }
+    ]
+   }
+  ]
+ },
+ "failures": [],
+ "lines": 8,
+ "clipSeconds": 8,
+ "estInputTokens": 9232,
+ "estOutputTokens": 5480,
+ "estimatedCostUsd": 0.1099,
+ "maxCostUsd": 0.5,
+ "parallel": 8
+}
