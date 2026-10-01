@@ -27,6 +27,7 @@ The plate gets a slow push (default 1.5 % over the clip) so it is not a dead sti
 and the foreground gets a light cool grade so it sits in the cold room.
 """
 import argparse, os, subprocess, sys, tempfile
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "_lib")); from jobs import job  # resource governor + registry (scripts/_lib/jobs.py)
 import numpy as np
 from PIL import Image, ImageFilter
 
@@ -45,8 +46,9 @@ def largest_component(mask):
 
 RVM_URL = "https://github.com/PeterL1n/RobustVideoMatting/releases/download/v1.0.0/rvm_mobilenetv3_fp32.onnx"
 
-def rvm_alphas(model_path, frame_paths, downsample_ratio, fgr_dir=None):
-    """RobustVideoMatting (ONNX, CPU): recurrent video human matting -> list of float32 alphas."""
+def rvm_alphas(model_path, frame_paths, downsample_ratio, fgr_dir=None, out_arr=None):
+    """RobustVideoMatting (ONNX, CPU): recurrent video human matting -> float16 alphas, written frame by frame into
+    `out_arr` (a disk-backed memmap of shape (n, H, W)) when given, so a 1080p clip never sits in RAM as a list."""
     import onnxruntime as ort
     if not os.path.exists(model_path):
         os.makedirs(os.path.dirname(model_path), exist_ok=True)
@@ -58,14 +60,15 @@ def rvm_alphas(model_path, frame_paths, downsample_ratio, fgr_dir=None):
     for i, fp in enumerate(frame_paths):
         src = (np.asarray(Image.open(fp).convert("RGB")).astype(np.float32) / 255.0).transpose(2, 0, 1)[None]
         fgr, pha, *rec = sess.run(None, {"src": src, "r1i": rec[0], "r2i": rec[1], "r3i": rec[2], "r4i": rec[3], "downsample_ratio": dsr})
-        out.append(pha[0, 0].astype(np.float16))          # float16: a 1080p clip of alphas would not fit in memory as float32
+        if out_arr is not None: out_arr[i] = pha[0, 0].astype(np.float16)
+        else: out.append(pha[0, 0].astype(np.float16))          # float16: a 1080p clip of alphas would not fit in memory as float32
         # decontaminated foreground colour (RVM predicts it): used at the edge so the closet
         # never bleeds into the fringe
         fg8 = (np.clip(fgr[0].transpose(1, 2, 0), 0, 1) * 255).astype(np.uint8)
         if fgr_dir: Image.fromarray(fg8).save(os.path.join(fgr_dir, f"fgr_{i:05d}.png"))   # straight to disk: a 1080p clip's foregrounds are ~1 GB in memory
         else: fgrs.append(fg8)
         if i % 48 == 0: print(f"rvm {i+1}/{len(frame_paths)}", file=sys.stderr)
-    return out, (None if fgr_dir else fgrs)
+    return (out_arr if out_arr is not None else out), (None if fgr_dir else fgrs)
 
 def fill_holes(mask):
     from scipy import ndimage
@@ -166,6 +169,7 @@ def main():
     ap.add_argument("--export-matte", default=None, help="directory: write the finished matte as alpha_%05d.png (8-bit) and the decontaminated performer as fg_%05d.png (before the cool grade) so other stages (camera_engine.py) can re-composite without re-matting")
     ap.add_argument("--matte-only", action="store_true", help="with --export-matte: stop after the export (no plate composite, no video)")
     a = ap.parse_args()
+    _job = job("composite", need_gb=2.3, out=a.out)   # measured 2026-10-01: 2.1 GB peak for a 7 s 1080p take after the memory rebudget (was 5.5 GB); _job.__enter__()
     W, H = (int(x) for x in a.size.lower().split("x"))
     sessions = []
     if a.matte == "rembg" and not (a.mask_cache and os.path.exists(a.mask_cache)):
@@ -202,19 +206,22 @@ def main():
         def plate_at(i): return pl
 
     from scipy import ndimage
-    # pass 1: soft union masks
-    soft = []
+    # MEMORY BUDGET (2026-10-01 audit): a 7 s 1080p take used to hold ≈ 5.5 GB — soft masks, hard mattes, their
+    # temporal-median copy and a float32 background stack all resident at once — and was OOM-killed on an 8 GB box
+    # whenever anything else ran. Every per-frame array is now a disk-backed float16 memmap in the temp folder
+    # (page cache, reclaimable), and the background prior is computed from uint8 frames in row chunks. Resident
+    # memory for the same take is now bounded by one frame's worth of float32 intermediates (< 1 GB).
+    soft = np.lib.format.open_memmap(os.path.join(tmp, "soft.npy"), mode="w+", dtype=np.float16, shape=(n, H, W))
+    have_soft = False
     if a.mask_cache and os.path.exists(a.mask_cache):
         cached = np.load(a.mask_cache)["soft"]
-        if cached.shape[0] == n: soft = [cached[i] for i in range(n)]; print("masks from cache", file=sys.stderr)
+        if cached.shape[0] == n: soft[:] = cached.astype(np.float16); del cached; have_soft = True; print("masks from cache", file=sys.stderr)
     fgrs = None
-    if not soft and a.matte == "rvm":
-        soft, _ = rvm_alphas(a.rvm_model, [os.path.join(tmp, f) for f in frames], a.rvm_downsample, fgr_dir=tmp)
-        if a.mask_cache: np.savez_compressed(a.mask_cache, soft=np.stack(soft).astype(np.float16))
-    elif soft and a.matte == "rvm":
-        fgrs = None  # cached masks: no fgr; the raw frame is used at the edge
+    if not have_soft and a.matte == "rvm":
+        rvm_alphas(a.rvm_model, [os.path.join(tmp, f) for f in frames], a.rvm_downsample, fgr_dir=tmp, out_arr=soft); have_soft = True
+        if a.mask_cache: np.savez_compressed(a.mask_cache, soft=np.asarray(soft))
     plate_stats = None
-    if not soft:
+    if not have_soft:
         from rembg import remove
         for i, f in enumerate(frames):
             im = Image.open(os.path.join(tmp, f)).convert("RGB")
@@ -222,16 +229,25 @@ def main():
             for sess in sessions:
                 m = np.asarray(remove(im, session=sess, only_mask=True)).astype(np.float32) / 255.0
                 u = m if u is None else np.maximum(u, m)
-            soft.append(u)
+            soft[i] = u.astype(np.float16)
             if i % 24 == 0: print(f"matte {i+1}/{n}", file=sys.stderr)
-        if a.mask_cache: np.savez_compressed(a.mask_cache, soft=np.stack(soft).astype(np.float16))
-    # masked static-background prior: median over frames of pixels the segmenters call background
-    step = max(1, n // 24)
-    stack = np.stack([np.asarray(Image.open(os.path.join(tmp, frames[i])).convert("RGB")).astype(np.float32) for i in range(0, n, step)])
-    bgmask = np.stack([soft[i] < 0.2 for i in range(0, n, step)])
-    masked = np.where(bgmask[..., None], stack, np.nan)
-    with np.errstate(all="ignore"):
-        bg_med = np.nanmedian(masked, axis=0)
+        if a.mask_cache: np.savez_compressed(a.mask_cache, soft=np.asarray(soft))
+    soft.flush()
+    # masked static-background prior: median over sampled frames of pixels the segmenters call background,
+    # computed in row chunks from uint8 frames (never a float32 stack of the whole sample set)
+    step = max(1, n // 24); sidx = list(range(0, n, step))
+    stack8 = np.stack([np.asarray(Image.open(os.path.join(tmp, frames[i])).convert("RGB")) for i in sidx])      # uint8 (m, H, W, 3)
+    bgmask = np.stack([np.asarray(soft[i]) < 0.2 for i in sidx])                                                 # bool  (m, H, W)
+    bg_med = np.empty((H, W, 3), np.float32); static_score = np.empty((H, W), np.float32) if a.static_peel > 0 else None
+    ROWS = 96
+    for r0 in range(0, H, ROWS):
+        r1 = min(H, r0 + ROWS); chunk = stack8[:, r0:r1].astype(np.float32)
+        with np.errstate(all="ignore"):
+            bg_med[r0:r1] = np.nanmedian(np.where(bgmask[:, r0:r1][..., None], chunk, np.nan), axis=0)
+        if static_score is not None:
+            med_all = np.median(chunk, axis=0); static_score[r0:r1] = (np.abs(chunk - med_all).sum(axis=3) < 20).mean(axis=0)
+        del chunk
+    del stack8, bgmask
     have_bg = ~np.isnan(bg_med[..., 0])
     # pixels the performer covers in every sampled frame get the nearest observed background
     # value (the closet door / wall is near-uniform, so nearest-neighbour is a fair prior)
@@ -241,17 +257,12 @@ def main():
         have_bg = np.ones_like(have_bg)
     bg_med = np.nan_to_num(bg_med)
     vstruct = np.ones((a.close_v, 3), bool)
-    # static score: fraction of sampled frames whose pixel stays within 20 (sum-RGB) of the plain
-    # temporal median — closet objects beside the performer are static for the whole clip,
-    # Fendi is not (even a locked-off performer sways/gestures)
-    static_score = None
-    if a.static_peel > 0:
-        med_all = np.median(stack, axis=0)
-        static_score = (np.abs(stack - med_all).sum(axis=3) < 20).mean(axis=0)
-    alphas = []
+    # (static_score — the fraction of sampled frames whose pixel stays within 20 sum-RGB of the plain temporal
+    # median; closet objects are static for the whole clip, the performer is not — was computed above, chunked)
+    A = np.lib.format.open_memmap(os.path.join(tmp, "hard.npy"), mode="w+", dtype=np.float16, shape=(n, H, W))
     for i, f in enumerate(frames):
         if a.matte == "rvm":
-            hard = soft[i].astype(np.float32) > 0.5
+            hard = np.asarray(soft[i]).astype(np.float32) > 0.5
             lab, k = ndimage.label(hard)
             if k > 1:
                 sizes = ndimage.sum(hard, lab, range(1, k + 1)); big = 1 + int(np.argmax(sizes))
@@ -289,7 +300,7 @@ def main():
                         hard = np.isin(lab, [c for c in range(1, k + 1) if sizes[c - 1] >= 0.03 * sizes[big - 1]])
                     hard = fill_holes(hard)
             keep = ndimage.binary_dilation(hard, iterations=2)
-            al = np.where(keep, soft[i].astype(np.float32), 0.0).astype(np.float32)
+            al = np.where(keep, np.asarray(soft[i]).astype(np.float32), 0.0).astype(np.float32)
             # remap: below alpha-lo is background (shadow/door bleed RVM keeps half-transparent),
             # above alpha-hi is body; smoothstep between, then the Gaussian feather below
             t = np.clip((al - a.alpha_lo) / max(1e-3, a.alpha_hi - a.alpha_lo), 0, 1)
@@ -302,9 +313,9 @@ def main():
                 if a.refine_debug and str(i) in a.refine_debug.split(","):
                     dbg = np.zeros((*t.shape, 3), np.uint8); dbg[band] = (60, 60, 60); dbg[shadow_bg] = (255, 0, 0); dbg[t >= 0.98] = (0, 160, 0)
                     Image.fromarray(dbg).save(os.path.splitext(a.out)[0] + f"_refine_{i:05d}.png")
-            alphas.append(t.astype(np.float16))
+            A[i] = t.astype(np.float16)
             continue
-        hard = soft[i] > 0.4
+        hard = np.asarray(soft[i]) > 0.4
         hard = ndimage.binary_closing(hard, structure=vstruct)
         hard = fill_holes(hard)
         # keep the largest component plus any component >= 3 % of it that overlaps it horizontally
@@ -333,17 +344,16 @@ def main():
                 sizes = ndimage.sum(hard, lab, range(1, k + 1)); big = 1 + int(np.argmax(sizes))
                 hard = (lab == big) | np.isin(lab, [c for c in range(1, k + 1) if sizes[c - 1] >= 0.03 * sizes[big - 1]])
         hard = fill_holes(hard)
-        alphas.append(hard.astype(np.float16))
-    A = np.stack(alphas); del alphas
-    Am = np.empty_like(A); h = a.temporal // 2
-    for i in range(n):
-        lo, hi = max(0, i - h), min(n, i + h + 1)
+        A[i] = hard.astype(np.float16)
+    A.flush(); h = a.temporal // 2
+    def temporal_alpha(i):
+        lo, hi = max(0, i - h), min(n, i + h + 1); win = np.asarray(A[lo:hi])
         # median removes one-frame matte pops; max keeps a fast, motion-blurred limb that the
         # matter drops for a few frames (the plate is static, so the cost is a slight widening)
-        Am[i] = (np.max(A[lo:hi], axis=0) if a.temporal_mode == "max" else np.median(A[lo:hi].astype(np.float32), axis=0)).astype(np.float16)
+        return np.max(win, axis=0).astype(np.float32) if a.temporal_mode == "max" else np.median(win.astype(np.float32), axis=0)
     out_frames = []
     for i in range(n):
-        al = Image.fromarray((Am[i].astype(np.float32) * 255).astype(np.uint8))
+        al = Image.fromarray((temporal_alpha(i) * 255).astype(np.uint8))
         al = al.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(a.feather))
         al = np.asarray(al).astype(np.float32)[..., None] / 255.0
         fg = np.asarray(Image.open(os.path.join(tmp, frames[i])).convert("RGB")).astype(np.float32)
