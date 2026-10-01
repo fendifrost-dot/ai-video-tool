@@ -1,0 +1,81 @@
+{
+ "section": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/out/YSL_IceOn_bars24-46_v21rc_base.mp4",
+ "out": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/out/YSL_IceOn_bars24-46_v21rc.mp4",
+ "bpm": 122.0,
+ "bar_seconds": 1.9672131147540983,
+ "inserts": [
+  {
+   "ref": "V1",
+   "slot": "S03",
+   "mode": "split",
+   "song": [
+    55.08195245901639,
+    57.04916557377049
+   ],
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll_batch1/V1_literal.mp4",
+   "verdict": "REVIEW",
+   "title": "Off-Axis Walk",
+   "head_skipped": 0.75,
+   "section_time": [
+    7.868852459016395,
+    9.83606557377049
+   ]
+  },
+  {
+   "ref": "V2",
+   "slot": "S05",
+   "mode": "replace",
+   "song": [
+    61.9672,
+    62.9508
+   ],
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll_batch1/V2_literal.mp4",
+   "verdict": "REVIEW",
+   "title": "Eyes meet the lens",
+   "head_skipped": 0.75,
+   "section_time": [
+    14.754100000000001,
+    15.737700000000004
+   ]
+  },
+  {
+   "ref": "V5",
+   "slot": "S08",
+   "mode": "split",
+   "song": [
+    72.78687049180327,
+    74.75408360655737
+   ],
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll_batch1/V5_literal.mp4",
+   "verdict": "REVIEW",
+   "title": "The Untaken Patch of Day",
+   "head_skipped": 0.75,
+   "section_time": [
+    25.573770491803273,
+    27.540983606557376
+   ]
+  }
+ ],
+ "skipped": [
+  {
+   "ref": "V3",
+   "why": "gate REJECT"
+  },
+  {
+   "ref": "V4",
+   "why": "gate REJECT"
+  },
+  {
+   "ref": "V6",
+   "why": "gate REJECT"
+  },
+  {
+   "ref": "V7",
+   "why": "gate REJECT"
+  },
+  {
+   "ref": "V8",
+   "why": "gate REJECT"
+  }
+ ]
+}
