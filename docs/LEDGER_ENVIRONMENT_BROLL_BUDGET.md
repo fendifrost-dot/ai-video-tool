@@ -17,8 +17,10 @@ Rules (same as the YSL ledger): every paid call is a row; the "Actual billed" co
 | 5 | 10-01 | OpenAI | realism gate tier 2 (gpt-6-astra judge, 10 frames): real S11 cut $0.0799, B-roll test 3 $0.0996, test 1 $0.0993 | $0.279 | — | $1.994 |
 | 6 | 10-01 | xAI | B-roll test 4: lyric H6 literal "Black Ice Spreads", 8 s 720p from the v2 composited anchor, request `5c6840e5…`, asset `184de925…` | $0.562 | — | $2.556 |
 | 7 | 10-01 | OpenAI | realism gate tier 2 on test 4 ($0.1109) and test 2 ($0.1043) | $0.215 | — | $2.771 |
+| 8 | 10-01 | Higgsfield | B-roll test 5: DoP turbo orbit from the v2 composited anchor through CC `video-providers-higgsfield-generate` (job `62825072…`), 5.4 s 720p — billed to the Higgsfield organisation balance, not the xAI/OpenAI keys | not yet read from the Higgsfield dashboard | ≈ $0.42 (dop-turbo 5 s list) | $3.191 |
+| 9 | 10-01 | OpenAI | realism gate tier 2 on test 5 | $0.095 | — | $3.286 |
 
-**Used $2.771 · remaining $47.229 of $50.**
+**Used $3.286 (of which $0.42 is a carried Higgsfield estimate) · remaining $46.714 of $50.** Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; replace the estimate with the billed figure when read.
 
 ## Price facts learned
 
