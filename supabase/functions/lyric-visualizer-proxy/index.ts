@@ -177,4 +177,3 @@ serve(async (req) => {
   const failures = results.filter((r) => !r.result).map((r) => ({ ref: r.ref, error: r.error, detail: r.detail }));
   return json(200, { ok: failures.length === 0, billed: usage.prompt_tokens > 0, model, usage, actualCostUsd, result: { lines }, failures, ...plan });
 });
-});
