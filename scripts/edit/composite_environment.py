@@ -143,6 +143,7 @@ def main():
     ap.add_argument("--cool", type=float, default=0.06); ap.add_argument("--feather", type=float, default=3.0)
     ap.add_argument("--models", default="u2net_human_seg,isnet-general-use", help="comma-separated rembg models; masks are unioned"); ap.add_argument("--crf", type=int, default=16)
     ap.add_argument("--plate-gain", type=float, default=1.0)
+    ap.add_argument("--match-plate", type=float, default=0.0, help="plate-aware grade strength 0–1: fit the performer's exposure key, contrast and colour bias to the plate's (statistics taken once over sampled plate frames, so nothing flickers); replaces the fixed --cool tint when > 0")
     ap.add_argument("--plate-offset", type=float, default=0.0, help="video plate: start this many seconds into the plate")
     ap.add_argument("--plate-loop", action="store_true", help="video plate: loop when shorter than the take (default: hold the last frame)")
     ap.add_argument("--bg-tol", type=float, default=30.0, help="sum-RGB distance below which a pixel matches the static background")
@@ -212,6 +213,7 @@ def main():
         if a.mask_cache: np.savez_compressed(a.mask_cache, soft=np.stack(soft).astype(np.float16))
     elif soft and a.matte == "rvm":
         fgrs = None  # cached masks: no fgr; the raw frame is used at the edge
+    plate_stats = None
     if not soft:
         from rembg import remove
         for i, f in enumerate(frames):
@@ -356,9 +358,28 @@ def main():
             Image.fromarray(np.clip(al[..., 0] * 255, 0, 255).astype(np.uint8)).save(os.path.join(a.export_matte, f"alpha_{i:05d}.png"))
             Image.fromarray(np.clip(fg, 0, 255).astype(np.uint8)).save(os.path.join(a.export_matte, f"fg_{i:05d}.png"))
             if a.matte_only: continue
-        # light cool grade on the performer so he sits in the room
-        fg = fg * np.array([1 - a.cool, 1 - a.cool * 0.4, 1 + a.cool * 0.6], np.float32)
-        fg = np.clip((fg - 128) * 1.06 + 124, 0, 255)
+        if a.match_plate > 0:
+            # plate-aware grade: move the performer's key, contrast and colour bias toward the plate's (fitted once, see plate_stats)
+            if plate_stats is None:
+                import cv2 as _cv
+                ps = []
+                for j in range(0, n, max(1, n // 8)):
+                    pj = np.clip(plate_at(j), 0, 255).astype(np.uint8); lab = _cv.cvtColor(pj, _cv.COLOR_RGB2LAB).astype(np.float32); ps.append((lab[..., 0].mean(), lab[..., 0].std(), lab[..., 1].mean(), lab[..., 2].mean()))
+                ps = np.array(ps).mean(0)
+                fl = _cv.cvtColor(np.clip(fg, 0, 255).astype(np.uint8), _cv.COLOR_RGB2LAB).astype(np.float32); m = al[..., 0] > 0.5
+                fs = (fl[..., 0][m].mean(), fl[..., 0][m].std(), fl[..., 1][m].mean(), fl[..., 2][m].mean()) if m.sum() > 100 else (ps[0], ps[1], ps[2], ps[3])
+                k = a.match_plate
+                # a performer is lit brighter than his background in the reference footage: aim at the plate key + one third of the gap, not the plate key itself
+                plate_stats = {"L_gain": 1 + ((ps[1] / max(fs[1], 1e-3)) - 1) * k * 0.5, "L_shift": ((ps[0] + 0.33 * (fs[0] - ps[0])) - fs[0]) * k, "a_shift": (ps[2] - fs[2]) * k * 0.6, "b_shift": (ps[3] - fs[3]) * k * 0.6, "fg_L_mean": float(fs[0])}
+            import cv2 as _cv
+            lab = _cv.cvtColor(np.clip(fg, 0, 255).astype(np.uint8), _cv.COLOR_RGB2LAB).astype(np.float32)
+            lab[..., 0] = np.clip((lab[..., 0] - plate_stats["fg_L_mean"]) * plate_stats["L_gain"] + plate_stats["fg_L_mean"] + plate_stats["L_shift"], 0, 255)
+            lab[..., 1] = np.clip(lab[..., 1] + plate_stats["a_shift"], 0, 255); lab[..., 2] = np.clip(lab[..., 2] + plate_stats["b_shift"], 0, 255)
+            fg = _cv.cvtColor(lab.astype(np.uint8), _cv.COLOR_LAB2RGB).astype(np.float32)
+        else:
+            # light cool grade on the performer so he sits in the room
+            fg = fg * np.array([1 - a.cool, 1 - a.cool * 0.4, 1 + a.cool * 0.6], np.float32)
+            fg = np.clip((fg - 128) * 1.06 + 124, 0, 255)
         # slow push on the plate
         z = 1 + a.zoom * (i / max(1, n - 1))
         pli = plate_at(i)
