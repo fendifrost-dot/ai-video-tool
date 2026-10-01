@@ -1,0 +1,82 @@
+[
+ {
+  "id": "H2_snowman",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_kling",
+  "still_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar_H2_snowman_mupzkryg_1.png",
+  "prompt": "He holds still mid-stride, breathing, snow falling past him, the streetlight flaring; the snow head does not change. Slow push in on a low wide lens, nothing else moves."
+ },
+ {
+  "id": "H4_kids_car",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_kling",
+  "still_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar_H4_kids_car_mupzlxlw_2.png",
+  "prompt": "The kids stand still under the weight of the car, shoulders braced, breath clouding; rain streaks the streetlight; the Bentley's brake lights pulse. Static wide shot, nothing else moves."
+ },
+ {
+  "id": "H5_reporters",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_kling",
+  "still_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar_H5_reporters_mupzmhoq_1.png",
+  "prompt": "The reporters hold their positions and a single flash fires; the boom mic sways slightly; the car's door stays open. Slight handheld drift, nothing else moves."
+ },
+ {
+  "id": "H8_money_mouths",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_kling",
+  "still_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar_H8_money_mouths_mupzphf5_2.png",
+  "prompt": "The old woman stirs her cereal slowly; the hanging bulb sways a little, its shadow moving over the stack of bills; the bills stay put. Slow creep in on the money, nothing else moves."
+ },
+ {
+  "id": "H1_bear2",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_kling",
+  "stills": 2,
+  "prompt": "Interior, a snow-covered 1990s living room at night, frost on an old television, a floral couch. A real adult polar bear stands on all fours on the carpet beside the couch, head low, wearing a diamond tennis chain and a gold Cuban link around its neck, breath visible in the cold. 35mm lens, single warm practical lamp, hard shadows, wildlife-documentary realism.",
+  "motion": "The bear stands on all fours and breathes, breath clouding, its head turning slowly toward camera; snow drifts down. Slow dolly in, nothing else moves."
+ },
+ {
+  "id": "H1_switch2",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_kling",
+  "stills": 2,
+  "prompt": "Interior, a dark apartment hallway at night, 1990s wallpaper and a wall-mounted phone. An old man in a bathrobe and slippers, seen from behind, reaches for the light switch; through the half-open door beside him, snow is falling inside the next room and blue arctic light spills across the floor. 35mm lens, practical lamp in frame, deep shadows.",
+  "motion": "His hand reaches the switch; the arctic light in the doorway brightens and snow drifts into the hallway. Camera holds, slight handheld drift."
+ },
+ {
+  "id": "P_runway_k",
+  "kind": "plate",
+  "aspect": "16:9",
+  "seconds": 5,
+  "route": "kling_t2v",
+  "prompt": "A fashion show in a bare 1990s community-centre gym at night: a narrow plywood runway, folding chairs, a few models in oversized cream and black streetwear standing and walking slowly far behind, a single row of hot tungsten par cans above, smoke. The centre foreground is empty floor. 35mm lens, locked-off wide, deep focus."
+ },
+ {
+  "id": "P_bentley_k",
+  "kind": "plate",
+  "aspect": "16:9",
+  "seconds": 5,
+  "route": "kling_t2v",
+  "prompt": "A wet night avenue under sodium streetlights, a black Bentley truck on chrome 21-inch rims parked in the middle distance with its brake lights on, four kids in hoodies standing behind it holding a wheel-less sedan on their shoulders. The centre foreground is empty wet asphalt. 35mm lens, locked-off wide, deep focus, long reflections, nothing moves but breath and rain."
+ },
+ {
+  "id": "P_press_k",
+  "kind": "plate",
+  "aspect": "16:9",
+  "seconds": 5,
+  "route": "kling_t2v",
+  "prompt": "A night street outside a brownstone: a black luxury sedan stopped in the middle distance, doors open, reporters with camcorders and a boom mic standing beside it filming toward camera, flashes popping. The centre foreground stays empty. 35mm lens, locked-off wide, deep focus, grain."
+ }
+]

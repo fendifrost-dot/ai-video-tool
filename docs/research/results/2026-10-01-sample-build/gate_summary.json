@@ -1,0 +1,897 @@
+{
+ "worlds_bar/H1_bear": {
+  "route": "still_runway",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.9,
+  "judge_summary": "FAIL. The room is convincingly textured, but the bear reads as an animated, plush-like character rather than a photographed living subject. The stiff body performance and poorly motivated smoke reinforce that impression. No human is present, so human skin and hand realism cannot be assessed.",
+  "tells": [
+   "The rounded torso, evenly groomed fur and small forepaws resting like hands on the thighs produce a strong plush/CG-character appearance. This is a subject-rendering issue, not merely the unusual premise of a bear on a sofa.",
+   "The head lowers substantially while the torso, forepaws and extended legs remain almost locked in their initial pose. There is little accompanying shoulder movement, weight redistribution or cushion response, making the action read as a head animation on a static body.",
+   "A dense plume develops beside the muzzle and spreads over the screen-left armrest, but its connection to an exhalation is unconvincing: the mouth stays essentially closed and the cloud initially appears behind/beside the cheek rather than clearly issuing from the mouth or nostrils. It reads as an added smoke effect."
+  ],
+  "look": {
+   "look_distance": 1.16,
+   "z": {
+    "grain": 0.37,
+    "sat": -1.65,
+    "luma": 0.39,
+    "contrast": 0.69,
+    "hi_clip": 0.0,
+    "lo_crush": -0.11,
+    "warm": 1.2,
+    "tint": 2.43
+   },
+   "furthest": [
+    "tint",
+    "sat",
+    "warm"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar/H1_bear.mp4",
+  "provider_job": "df840746-196f-4b0d-8cfa-85280b0d3569"
+ },
+ "worlds_bar/H2_snowman": {
+  "route": "still_runway",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [
+   "scene_drift"
+  ],
+  "judge": 0.77,
+  "judge_summary": "FAIL primarily because the prominent snow-head face appears to remodel during the approach rather than remain a stable physical costume piece. The unusual headwear alone is not a realism problem; its changing facial construction is. Much of the person and street otherwise reads convincingly photographed.",
+  "tells": [
+   "The snow head's facial construction changes across the shot: initially narrow, sharply scowling eye openings become larger, rounder sockets with conspicuous humanlike eyeballs, while the eyebrow contours and mouth slit reshape. The transition looks like an evolving generated face rather than simply a rigid prop getting closer or turning.",
+   "The snow head's lower rim and cheek relief subtly change around the wearer's forehead, giving the supposed solid sculpt a soft, reforming quality. This is most apparent once the head fills the frame."
+  ],
+  "look": {
+   "look_distance": 2.16,
+   "z": {
+    "grain": -0.08,
+    "sat": -2.11,
+    "luma": 1.27,
+    "contrast": 4.8,
+    "hi_clip": 0.05,
+    "lo_crush": 0.19,
+    "warm": -2.88,
+    "tint": 0.14
+   },
+   "furthest": [
+    "contrast",
+    "warm",
+    "sat"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "OFF_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar/H2_snowman.mp4",
+  "provider_job": "efb1c467-d2f0-4a48-a516-6fdde3e8d212"
+ },
+ "worlds_bar/H3_atelier": {
+  "route": "still_runway",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.86,
+  "judge_summary": "The workshop and person initially read as photographed, but the cigarette loses its attachment to the mouth and appears to become a longer object attached to the collar. This conspicuous prop-continuity failure breaks realism during the head turn.",
+  "tells": [
+   "The cigarette initially sits between his lips. As he raises his head, it separates from his mouth without either hand touching it, develops an elongated brown section, and follows his collar/shoulder instead. It reads as an object being redrawn rather than a cigarette moving physically."
+  ],
+  "look": {
+   "look_distance": 0.84,
+   "z": {
+    "grain": -0.14,
+    "sat": -0.29,
+    "luma": 0.32,
+    "contrast": 0.66,
+    "hi_clip": 0.0,
+    "lo_crush": 0.11,
+    "warm": 1.71,
+    "tint": 1.42
+   },
+   "furthest": [
+    "warm",
+    "tint",
+    "contrast"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar/H3_atelier.mp4",
+  "provider_job": "3820e92f-757d-4a09-a21a-a667a6d733be"
+ },
+ "worlds_bar/H4_kids_car": {
+  "route": "still_runway",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [
+   "warp_err"
+  ],
+  "judge": 0.93,
+  "judge_summary": "FAIL. The environment looks convincing, but the central action reads as synthetic: four small figures casually transport a full-size car at head height without convincing weight or load-bearing movement. This is conspicuous at phone size, regardless of the strong nighttime treatment.",
+  "tells": [
+   "The full-size sedan is supported at roughly head height by four small figures using bent arms and narrow, upright stances. Even allowing for its stripped condition, the visible body and remaining running gear imply substantial weight, yet there is no convincing bracing, shoulder compression, or exertion. It reads as a weightless object rather than a heavy shared load.",
+   "As the figures alternate steps, the car travels away on an unusually smooth, nearly level path. Their changing leg positions produce little corresponding rocking, uneven lift, or compensating torso movement; the vehicle appears to glide with the group rather than respond to their individual support."
+  ],
+  "look": {
+   "look_distance": 1.16,
+   "z": {
+    "grain": 0.92,
+    "sat": -2.18,
+    "luma": -0.26,
+    "contrast": -1.57,
+    "hi_clip": 0.0,
+    "lo_crush": -0.16,
+    "warm": 1.61,
+    "tint": 0.13
+   },
+   "furthest": [
+    "sat",
+    "warm",
+    "contrast"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar/H4_kids_car.mp4",
+  "provider_job": "0f0091fa-26e1-4bb2-9db7-f724d5348e68"
+ },
+ "worlds_bar/H5_reporters": {
+  "route": "still_runway",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.97,
+  "judge_summary": "FAIL. The photographic setting is convincing, but the moving crowd visibly multiplies into near-identical people. These temporal continuity failures would undermine realism at normal playback speed.",
+  "tells": [
+   "The backward-cap camera operator appears to split into two overlapping men with matching caps and gray-green outerwear. One continues carrying the camera while a second, camera-less version materializes immediately in front of him.",
+   "The brown-jacketed man likewise becomes two near-identical men, sharing the same hair, jacket, blue sweater and pale trousers. At 2.75s both are separately visible, then run up the steps together, making this look like person duplication rather than ordinary motion blur.",
+   "The runners' lower bodies become stretched and smeared during the exit. The trailing man's leg extends almost horizontally across the steps while his other leg loses a clear planted-foot relationship, producing a sliding, rubbery impression."
+  ],
+  "look": {
+   "look_distance": 1.52,
+   "z": {
+    "grain": 0.6,
+    "sat": -2.57,
+    "luma": -0.75,
+    "contrast": 0.1,
+    "hi_clip": 0.0,
+    "lo_crush": 0.12,
+    "warm": -1.83,
+    "tint": 2.76
+   },
+   "furthest": [
+    "tint",
+    "sat",
+    "warm"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar/H5_reporters.mp4",
+  "provider_job": "b8ddf775-5d48-4ed5-a5b8-8aea1b1fdbda"
+ },
+ "worlds_bar/H6_club_frost": {
+  "route": "still_runway",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.68,
+  "judge_summary": "Convincing individual frames, but the atmospheric motion undermines the clip. The ceiling smoke appears effectively frozen while the man moves, and his breath persists as an unusually sustained cloud. These give the sequence an animated-still quality.",
+  "tells": [
+   "The wispy smoke left of the disco ball retains essentially the same distinctive curls throughout the five seconds. It follows the framing change without appreciable independent drift or diffusion, making the atmosphere look baked into a still background.",
+   "A dense breath cloud remains continuously attached to the mouth region across successive wiping strokes. Its sustained opacity and limited breakup look more like a persistent fog effect than clearly evolving exhaled condensation.",
+   "The wiping cloth repeatedly retains a very similar upright, scalloped fold arrangement through opposite-direction strokes, with little visible compression or trailing deformation against the counter. The contact feels somewhat rigid."
+  ],
+  "look": {
+   "look_distance": 1.1,
+   "z": {
+    "grain": 0.59,
+    "sat": -1.81,
+    "luma": 0.65,
+    "contrast": 0.47,
+    "hi_clip": 0.0,
+    "lo_crush": 0.04,
+    "warm": -1.6,
+    "tint": 1.69
+   },
+   "furthest": [
+    "sat",
+    "tint",
+    "warm"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar/H6_club_frost.mp4",
+  "provider_job": "51191775-3e4f-46e3-93b0-63c4bb80bb55"
+ },
+ "worlds_bar/H8_money_mouths": {
+  "route": "still_runway",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.98,
+  "judge_summary": "FAIL. The person and kitchen initially look credible, but the central money stack visibly transforms into an upright, hinged arrangement before collapsing back. Its changing construction and rubber-band behavior are conspicuous enough to break realism at normal playback speed.",
+  "tells": [
+   "The secured top notes rise into an unsupported upright formation, with several sheets standing at different angles, then fold back down as a broad panel. This reads as an object animating itself rather than loose paper responding naturally to handling or airflow.",
+   "The money and red restraints lose consistent construction during the movement: the initially flat, banded bundle becomes intersecting upright note panels with a red strip running up their face while red bands remain around the lower stack. It does not preserve a believable continuous wrapping arrangement.",
+   "After the collapse, the top layer remains raised over a large dark gap and bends as a thick, unified flap despite the bands crossing it. The stack reads more like a deforming hinged object than compressed individual banknotes."
+  ],
+  "look": {
+   "look_distance": 2.09,
+   "z": {
+    "grain": -0.48,
+    "sat": 2.25,
+    "luma": 1.14,
+    "contrast": 1.03,
+    "hi_clip": 0.0,
+    "lo_crush": 0.05,
+    "warm": 4.33,
+    "tint": 2.93
+   },
+   "furthest": [
+    "warm",
+    "tint",
+    "sat"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "OFF_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar/H8_money_mouths.mp4",
+  "provider_job": "692c37cb-7bd0-4f56-bc31-662fcaf37753"
+ },
+ "worlds_bar/P_runway": {
+  "route": "runway_t2v",
+  "verdict": "PASS",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.17,
+  "judge_summary": "PASS at the supplied phone-viewing scale. The sequence reads as photographed runway footage, with no concrete AI tell likely to stand out at normal speed. Fine skin and finger detail is limited by resolution and motion softness, but there is no clearly visible deformation or temporal redraw.",
+  "tells": [],
+  "look": {
+   "look_distance": 2.46,
+   "z": {
+    "grain": 1.67,
+    "sat": 4.54,
+    "luma": -0.23,
+    "contrast": 0.32,
+    "hi_clip": 0.01,
+    "lo_crush": 0.22,
+    "warm": 4.97,
+    "tint": 0.44
+   },
+   "furthest": [
+    "warm",
+    "sat",
+    "grain"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "OFF_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar/P_runway.mp4",
+  "provider_job": "80f68a45-6807-4eef-8130-f4dc25f7f59e"
+ },
+ "worlds_bar/P_bentley": {
+  "route": "runway_t2v",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.8,
+  "judge_summary": "The photographic surface is convincing, but the central sedan's suspended, unusually steady movement is a conspicuous realism break. A lightweight practical prop could explain the concept, but the visible mechanics do not convincingly establish that explanation.",
+  "tells": [
+   "The bronze sedan travels with its wheels visibly above the roadway, without convincing visible support. Its front wheel hangs well above the runners' foot-contact plane, making the vehicle read as floating rather than rolling or being credibly carried.",
+   "Across the running strides, the suspended sedan maintains an exceptionally level, steady glide. The runners' bodies rise and fall, but there is little corresponding vehicle bounce, tilt, or clear load-bearing interaction, producing a composited or generated-motion impression."
+  ],
+  "look": {
+   "look_distance": 2.37,
+   "z": {
+    "grain": 2.22,
+    "sat": 4.52,
+    "luma": -0.46,
+    "contrast": 0.9,
+    "hi_clip": 0.0,
+    "lo_crush": 0.18,
+    "warm": 4.27,
+    "tint": -0.61
+   },
+   "furthest": [
+    "sat",
+    "warm",
+    "grain"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "OFF_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar/P_bentley.mp4",
+  "provider_job": "f4956f85-88c2-4fa5-8f20-f02345de7420"
+ },
+ "worlds_bar/P_press": {
+  "route": "runway_t2v",
+  "verdict": "REJECT",
+  "tier1": "REJECT",
+  "flags": [
+   "warp_err"
+  ],
+  "judge": 0.22,
+  "judge_summary": "PASS at the supplied phone-viewing scale. The strip reads as a staged, photographed tracking shot. Some facial and equipment detail is soft, but there is no conspicuous anatomical failure, identity change, background morph or lighting mismatch that would clearly reveal AI at normal speed.",
+  "tells": [],
+  "look": {
+   "look_distance": 1.61,
+   "z": {
+    "grain": 1.36,
+    "sat": 2.28,
+    "luma": -2.52,
+    "contrast": -1.57,
+    "hi_clip": 0.0,
+    "lo_crush": 0.61,
+    "warm": -1.44,
+    "tint": 1.55
+   },
+   "furthest": [
+    "luma",
+    "sat",
+    "contrast"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar/P_press.mp4",
+  "provider_job": "14e2c162-f919-477e-b196-6463d6cb2614"
+ },
+ "worlds_bar/P_arctic_room": {
+  "route": "runway_t2v",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.96,
+  "judge_summary": "FAIL. The central penguin reads as a stylized animated model rather than a photographed animal, and the room has a miniature-render quality. These cues are visible at phone size without frame inspection. No human appears, so realism of a real person cannot be assessed.",
+  "tells": [
+   "The penguin has an exceptionally smooth, molded-looking body, broad clean highlights, sharply bounded color patches, and rigid blade-like flippers. Its surface and silhouette read as a plastic animated character rather than photographed plumage.",
+   "As the penguin raises and turns its head, its neck and torso bend with a soft, rubbery character-animation quality while the lower body stays nearly fixed. The changing poses reinforce the synthetic-model appearance.",
+   "The accumulated snow resembles rounded cotton batting, particularly around the foreground floor and furniture bases. Its softly sculpted clumps contribute to a miniature-set or rendered appearance rather than convincingly granular snow."
+  ],
+  "look": {
+   "look_distance": 3.44,
+   "z": {
+    "grain": 4.51,
+    "sat": -1.18,
+    "luma": 4.16,
+    "contrast": 3.93,
+    "hi_clip": 0.0,
+    "lo_crush": 0.05,
+    "warm": -5.5,
+    "tint": 3.13
+   },
+   "furthest": [
+    "warm",
+    "grain",
+    "luma"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "OFF_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar/P_arctic_room.mp4",
+  "provider_job": "a9ec58dd-a209-4552-85e0-e9b4f0c31678"
+ },
+ "motion_shootout/H3_atelier__dop": {
+  "route": "still_dop",
+  "verdict": "PASS",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.24,
+  "judge_summary": "PASS at phone-viewing scale. The strip reads predominantly as photographed footage, with consistent anatomy, convincing material detail, and coherent interaction with the garment. The unusually luminous cigarette ember is a mild concern, but there is no clear normal-speed AI giveaway in the supplied frames.",
+  "tells": [
+   "The cigarette tip stays conspicuously orange-white and luminous across several seconds, even after the visible exhalation ends. Its sustained glow looks slightly exaggerated, although exposure and color grading could account for it."
+  ],
+  "look": {
+   "look_distance": 0.88,
+   "z": {
+    "grain": 0.5,
+    "sat": 0.44,
+    "luma": 1.16,
+    "contrast": 1.43,
+    "hi_clip": 0.0,
+    "lo_crush": 0.08,
+    "warm": 1.39,
+    "tint": 0.67
+   },
+   "furthest": [
+    "contrast",
+    "warm",
+    "luma"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/motion_shootout/H3_atelier__dop.mp4",
+  "provider_job": "b20bfb21-cf6d-41e8-ae20-bcd099015e51"
+ },
+ "motion_shootout/H3_atelier__kling": {
+  "route": "still_kling",
+  "verdict": "PASS",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.16,
+  "judge_summary": "PASS: The strip reads as photographed footage at phone-viewing scale. The restrained movement does not reveal clear anatomical, identity, garment, or background morphing. No concrete AI tell stands out strongly enough to flag at normal viewing speed.",
+  "tells": [],
+  "look": {
+   "look_distance": 1.02,
+   "z": {
+    "grain": 0.44,
+    "sat": 1.21,
+    "luma": 0.33,
+    "contrast": 1.27,
+    "hi_clip": 0.0,
+    "lo_crush": 0.16,
+    "warm": 1.88,
+    "tint": 1.17
+   },
+   "furthest": [
+    "warm",
+    "contrast",
+    "sat"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/motion_shootout/H3_atelier__kling.mp4",
+  "provider_job": "d59ad5a5-f3ab-4b97-aaed-5437157560eb"
+ },
+ "motion_shootout/H1_bear__dop": {
+  "route": "still_dop",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.93,
+  "judge_summary": "FAIL. The room is convincing, but the bear reads as an animated, plush-like digital character rather than a photographed animal or practical performer. Its uniformly rounded body, groomed surface and isolated head animation remain noticeable at phone-viewing scale. There is no human subject in this strip.",
+  "tells": [
+   "The subject has a conspicuously plush-like silhouette: a bulbous upright torso, rounded shoulders and short, arm-like forelimbs resting symmetrically over its thighs. The anatomy and surface together read as a designed character rather than a live polar bear.",
+   "The head turns and the mouth changes while the torso, forepaws and seated contact remain almost perfectly locked. The lack of accompanying weight shifts or shoulder movement gives the performance a rigid, separately animated-head quality.",
+   "The closer views reveal an unusually uniform, short-pile fur surface across the chest and limbs, with tidy sculpted ridges around the forehead and cheeks. Despite fine strand detail, the underlying forms look like groomed CGI or synthetic plush rather than irregular animal fur."
+  ],
+  "look": {
+   "look_distance": 1.14,
+   "z": {
+    "grain": 1.2,
+    "sat": -1.11,
+    "luma": 0.93,
+    "contrast": 1.55,
+    "hi_clip": 0.0,
+    "lo_crush": -0.03,
+    "warm": 1.2,
+    "tint": 1.76
+   },
+   "furthest": [
+    "tint",
+    "contrast",
+    "warm"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/motion_shootout/H1_bear__dop.mp4",
+  "provider_job": "bd17e670-2c2b-4c5b-b954-f6a1d391c8db"
+ },
+ "motion_shootout/H1_bear__kling": {
+  "route": "still_kling",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.9,
+  "judge_summary": "FAIL. The clip depicts a polar bear rather than a person. Although the room is convincingly textured and lit, the bear reads as an animated plush/CG character rather than a photographed living animal. Its toy-like proportions and nearly immobilized body beneath an independently moving face are the most noticeable tells.",
+  "tells": [
+   "The bear has a plush-character silhouette: a broad, upright human-like torso, short rounded hind legs and compact forepaws resting like hands. Together with the rounded head and abbreviated muzzle, this reads as a constructed character rather than natural bear anatomy. The issue is the rendering and proportions, not simply the unusual couch setting.",
+   "The eyes blink and the head gradually turns, but the large torso, forelimbs and planted paws remain almost perfectly locked in the same pose. There is little accompanying shoulder movement, weight adjustment or visible breathing, producing an animated-still or animatronic impression.",
+   "Fur on the forehead, cheeks and chest has an unusually uniform, short-pile appearance. The softly rounded facial volumes and dark glossy eyes reinforce the stuffed-animal look despite convincing individual surface detail."
+  ],
+  "look": {
+   "look_distance": 1.21,
+   "z": {
+    "grain": 1.65,
+    "sat": -0.32,
+    "luma": 0.01,
+    "contrast": 1.09,
+    "hi_clip": 0.0,
+    "lo_crush": 0.01,
+    "warm": 1.52,
+    "tint": 2.31
+   },
+   "furthest": [
+    "tint",
+    "grain",
+    "warm"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/motion_shootout/H1_bear__kling.mp4",
+  "provider_job": "d9a05863-9d92-4487-a009-0493e73df6b5"
+ },
+ "motion_shootout/H6_club_frost__dop": {
+  "route": "still_dop",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.8,
+  "judge_summary": "FAIL. The person is largely convincing, but the central cleaning action exposes synthetic-looking surface changes and prop continuity problems. Those changes are more revealing than the face or lighting.",
+  "tells": [
+   "The frost clears into an unusually smooth, sharply outlined patch that expands and reshapes between wipes. Dense branching deposits become uniformly polished wood without convincing streaks, displaced residue, or accumulation on the cloth. Across the sequence, the clearing reads more like an animated mask than material being wiped away.",
+   "The glassware loses continuity during the wipe. At 3.53s, an amber-containing tumbler stands separately to the left of two taller glasses; at 4.13s, that separate tumbler is no longer visibly accounted for, although nobody picks it up. The later arrangement does not preserve a clear, stable relationship between those glasses."
+  ],
+  "look": {
+   "look_distance": 0.86,
+   "z": {
+    "grain": 0.73,
+    "sat": -0.38,
+    "luma": 0.58,
+    "contrast": 1.21,
+    "hi_clip": 0.0,
+    "lo_crush": 0.09,
+    "warm": -1.57,
+    "tint": 0.97
+   },
+   "furthest": [
+    "warm",
+    "contrast",
+    "tint"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/motion_shootout/H6_club_frost__dop.mp4",
+  "provider_job": "111ce9d6-c954-4d00-959c-4a4b543b6fa2"
+ },
+ "motion_shootout/H6_club_frost__kling": {
+  "route": "still_kling",
+  "verdict": "PASS",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.16,
+  "judge_summary": "PASS: This strip reads as photographed footage at phone-viewing scale. The person, clothing, props, and environment remain convincingly consistent across the sampled motion, with no concrete AI tell likely to stand out at normal speed.",
+  "tells": [],
+  "look": {
+   "look_distance": 1.1,
+   "z": {
+    "grain": 1.77,
+    "sat": 0.06,
+    "luma": 0.19,
+    "contrast": 0.72,
+    "hi_clip": 0.0,
+    "lo_crush": 0.19,
+    "warm": -1.58,
+    "tint": 1.85
+   },
+   "furthest": [
+    "tint",
+    "grain",
+    "warm"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/motion_shootout/H6_club_frost__kling.mp4",
+  "provider_job": "52145c6b-40b1-46df-bb18-11f29c844c13"
+ },
+ "worlds_bar2/H2_snowman": {
+  "route": "still_kling",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.83,
+  "judge_summary": "The person and street are convincing, but the snow headpiece develops a living, blinking face. That conspicuous temporal change breaks the impression of an ordinary photographed practical prop; the unusual costume itself is not the problem.",
+  "tells": [
+   "The eyes embedded in the snow headpiece change gaze and aperture, then visibly close at 4.42s and reopen at 5.00s. The surrounding sculpted eyelid area changes with them, making the apparently solid snow face look independently animated rather than like a stable physical sculpture. This is the strongest normal-speed synthetic tell."
+  ],
+  "look": {
+   "look_distance": 1.36,
+   "z": {
+    "grain": 1.64,
+    "sat": -1.41,
+    "luma": 1.45,
+    "contrast": 0.72,
+    "hi_clip": 0.0,
+    "lo_crush": 0.07,
+    "warm": -2.56,
+    "tint": -0.95
+   },
+   "furthest": [
+    "warm",
+    "grain",
+    "luma"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar2/H2_snowman.mp4",
+  "provider_job": "5effdbf0-a475-4d50-b8d9-d853d257d09b"
+ },
+ "worlds_bar2/H4_kids_car": {
+  "route": "still_kling",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.84,
+  "judge_summary": "The still frames look convincingly photographic, but the carrying action fails the motion-realism gate. The sedan appears almost weightless, while the figures' stepping is insufficiently connected to their upper-body movement and forward travel.",
+  "tells": [
+   "The four figures hold a large metal car body at head height with remarkably upright, relaxed postures. Their changing foot support produces almost no corresponding load shift, shoulder compression or vehicle bob. Even allowing for a stripped shell, the sustained weightless handling looks synthetic.",
+   "The legs repeatedly alternate between lifted and planted positions while the torsos and supported car glide very slowly with nearly locked vertical placement. The mismatch between stepping, body-weight transfer and displacement gives the group a walking-in-place, animated-still appearance."
+  ],
+  "look": {
+   "look_distance": 1.84,
+   "z": {
+    "grain": 2.35,
+    "sat": -2.52,
+    "luma": -1.74,
+    "contrast": -2.43,
+    "hi_clip": 0.0,
+    "lo_crush": -0.08,
+    "warm": -0.24,
+    "tint": 2.51
+   },
+   "furthest": [
+    "sat",
+    "tint",
+    "contrast"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar2/H4_kids_car.mp4",
+  "provider_job": "1658231d-cf89-4858-9c20-e3a8bd96ad50"
+ },
+ "worlds_bar2/H5_reporters": {
+  "route": "still_kling",
+  "verdict": "PASS",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.26,
+  "judge_summary": "PASS at phone-viewing scale. The strip largely reads as photographed footage, with stable people, equipment, and surroundings. The main reservation is an animated-still quality to the restrained body movement, rather than a conspicuous anatomical or rendering failure.",
+  "tells": [
+   "The operators' feet, lower bodies, and much of their clothing remain almost locked in place while expressions and the overhead microphone move. This gives the sequence a slightly animated-still quality, although holding position while filming is plausible."
+  ],
+  "look": {
+   "look_distance": 1.26,
+   "z": {
+    "grain": 2.07,
+    "sat": -0.69,
+    "luma": -0.82,
+    "contrast": -0.18,
+    "hi_clip": 0.0,
+    "lo_crush": 0.21,
+    "warm": -1.39,
+    "tint": 2.28
+   },
+   "furthest": [
+    "tint",
+    "grain",
+    "warm"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar2/H5_reporters.mp4",
+  "provider_job": "54c39042-601c-4818-a174-778e7634c04e"
+ },
+ "worlds_bar2/H8_money_mouths": {
+  "route": "still_kling",
+  "verdict": "PASS",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.2,
+  "judge_summary": "PASS at phone-viewing scale. The framing changes and stirring action read plausibly, without a clear normal-speed AI tell. Fine currency printing and much of the face are not sufficiently visible for close verification, but neither creates an obvious realism failure here.",
+  "tells": [],
+  "look": {
+   "look_distance": 2.71,
+   "z": {
+    "grain": 0.44,
+    "sat": 2.35,
+    "luma": 2.52,
+    "contrast": 1.46,
+    "hi_clip": 0.0,
+    "lo_crush": -0.01,
+    "warm": 6.02,
+    "tint": 2.9
+   },
+   "furthest": [
+    "warm",
+    "tint",
+    "luma"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "OFF_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar2/H8_money_mouths.mp4",
+  "provider_job": "c039568f-6619-43ff-84f3-260a182280f3"
+ },
+ "worlds_bar2/H1_bear2": {
+  "route": "still_kling",
+  "verdict": "REJECT",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.72,
+  "judge_summary": "FAIL. The room is convincingly photographic, but the bear increasingly reads as an animated, plush-like asset as it faces the camera. The main giveaway is the subject's surface and facial rendering, rather than background instability. No person is visible, so human skin, hands and identity cannot be assessed.",
+  "tells": [
+   "As the bear turns forward, the face has a conspicuously soft, toy-like finish: smooth muzzle contours, tiny glossy eyes and rounded cheeks with little convincing separation between dense fur and underlying anatomy. The final open-mouth expression strengthens the animated-character impression.",
+   "The shoulders and forelegs have an unusually uniform, short plush-pile texture. Despite the neck lifting and turning, there is little visible compression or disruption of that surface around the neck and shoulder junction.",
+   "The apparent breath remains a broad fog bank beside the sofa and below the muzzle as the head rises. Its connection to the mouth becomes unclear, making it read more like an ambient smoke layer than distinct exhalations. Residual drifting vapor could explain some of this."
+  ],
+  "look": {
+   "look_distance": 2.03,
+   "z": {
+    "grain": 2.78,
+    "sat": -1.59,
+    "luma": 2.66,
+    "contrast": 1.77,
+    "hi_clip": 0.0,
+    "lo_crush": 0.02,
+    "warm": 0.45,
+    "tint": 3.51
+   },
+   "furthest": [
+    "tint",
+    "grain",
+    "luma"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "OFF_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar2/H1_bear2.mp4",
+  "provider_job": "9da64ac3-eb13-4ce5-b71f-b2b3409d14ba"
+ },
+ "worlds_bar2/H1_switch2": {
+  "route": "still_kling",
+  "verdict": "PASS",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.16,
+  "judge_summary": "PASS at phone-viewing scale. The sequence reads as photographed footage with theatrical lighting and a snow effect. The sudden snow plume is stylized but not physically implausible or an obvious AI giveaway. The small, shadowed face limits fine skin assessment, but no noticeable identity drift or plastic rendering appears.",
+  "tells": [],
+  "look": {
+   "look_distance": 1.56,
+   "z": {
+    "grain": 0.84,
+    "sat": 1.34,
+    "luma": -0.8,
+    "contrast": -2.46,
+    "hi_clip": 0.0,
+    "lo_crush": -0.07,
+    "warm": -3.06,
+    "tint": -0.94
+   },
+   "furthest": [
+    "warm",
+    "contrast",
+    "sat"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar2/H1_switch2.mp4",
+  "provider_job": "1ff9d03b-75ae-4a89-9f23-be3747567bcd"
+ },
+ "worlds_bar2/P_runway_k": {
+  "route": "kling_t2v",
+  "verdict": "PASS",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.12,
+  "judge_summary": "PASS. The sequence reads as photographed runway footage. No concrete AI tell stands out at this viewing scale. Fine facial and finger detail is limited by the wide framing, but the visible motion, clothing, environment, and lighting remain convincing.",
+  "tells": [],
+  "look": {
+   "look_distance": 3.08,
+   "z": {
+    "grain": 2.1,
+    "sat": -6.09,
+    "luma": 1.95,
+    "contrast": 2.05,
+    "hi_clip": 0.0,
+    "lo_crush": -0.08,
+    "warm": -2.69,
+    "tint": 4.4
+   },
+   "furthest": [
+    "sat",
+    "tint",
+    "warm"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "OFF_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar2/P_runway_k.mp4",
+  "provider_job": "fbe4f986-4cb1-47fc-95c8-73c3009bf5f5"
+ },
+ "worlds_bar2/P_bentley_k": {
+  "route": "kling_t2v",
+  "verdict": "PASS",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.22,
+  "judge_summary": "PASS at the supplied phone-viewing scale. No concrete AI tell stands out across the sequence; the people, vehicle and environment remain visually coherent. Faces and gripping hands are too small and shadowed to validate fine anatomy, but that limited detail does not itself look conspicuously synthetic.",
+  "tells": [],
+  "look": {
+   "look_distance": 1.81,
+   "z": {
+    "grain": 1.55,
+    "sat": -2.92,
+    "luma": -1.78,
+    "contrast": -2.56,
+    "hi_clip": 0.0,
+    "lo_crush": -0.19,
+    "warm": -1.62,
+    "tint": 1.72
+   },
+   "furthest": [
+    "sat",
+    "contrast",
+    "luma"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "ON_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar2/P_bentley_k.mp4",
+  "provider_job": "5b4d2f39-65f2-4ea8-bad4-9162df508814"
+ },
+ "worlds_bar2/P_press_k": {
+  "route": "kling_t2v",
+  "verdict": "PASS",
+  "tier1": "PASS",
+  "flags": [],
+  "judge": 0.22,
+  "judge_summary": "PASS at phone-viewing scale. The scene reads as photographed, with no conspicuous anatomical errors, morphing, or lighting mismatches. The unusually static crew creates a slight animated-still impression, but not a decisive AI tell. Faces and hands are too small to assess fine detail.",
+  "tells": [
+   "The crew maintain nearly identical poses and hand positions across five seconds while the framing gradually tightens. This gives a mildly frozen, animated-plate quality, although a held production setup could look similar."
+  ],
+  "look": {
+   "look_distance": 2.87,
+   "z": {
+    "grain": 4.56,
+    "sat": -3.16,
+    "luma": 1.38,
+    "contrast": -0.39,
+    "hi_clip": 0.0,
+    "lo_crush": 0.0,
+    "warm": -4.51,
+    "tint": 3.57
+   },
+   "furthest": [
+    "grain",
+    "warm",
+    "tint"
+   ],
+   "aspect_in_bank": false,
+   "verdict": "OFF_BAR",
+   "bank": "Fendi realism bar 2026-10-01 (four Higgsfield reels)"
+  },
+  "storage_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar2/P_press_k.mp4",
+  "provider_job": "feb01f0d-8fe3-4e3b-a67b-9d03d490a8c8"
+ }
+}

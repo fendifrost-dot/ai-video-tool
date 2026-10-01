@@ -1,0 +1,92 @@
+[
+ {
+  "id": "H3_atelier__dop",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_dop",
+  "still_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar_H3_atelier_mupzlcex_2.png",
+  "prompt": "The tailor holds his pose, breathing; the cigarette smoke drifts; the bulb sways very slightly. Slow dolly in, nothing else moves.",
+  "motion": ""
+ },
+ {
+  "id": "H3_atelier__kling",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_kling",
+  "still_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar_H3_atelier_mupzlcex_2.png",
+  "prompt": "The tailor holds his pose, breathing; the cigarette smoke drifts; the bulb sways very slightly. Slow dolly in, nothing else moves.",
+  "motion": ""
+ },
+ {
+  "id": "H3_atelier__runway45",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_runway45",
+  "still_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar_H3_atelier_mupzlcex_2.png",
+  "prompt": "The tailor holds his pose, breathing; the cigarette smoke drifts; the bulb sways very slightly. Slow dolly in, nothing else moves.",
+  "motion": ""
+ },
+ {
+  "id": "H1_bear__dop",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_dop",
+  "still_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar_H1_bear_mupzk7ao_2.png",
+  "prompt": "The bear holds its pose on the couch, chest rising with breath, breath clouding in the cold; snow drifts down. Slow dolly in, nothing else moves.",
+  "motion": ""
+ },
+ {
+  "id": "H1_bear__kling",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_kling",
+  "still_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar_H1_bear_mupzk7ao_2.png",
+  "prompt": "The bear holds its pose on the couch, chest rising with breath, breath clouding in the cold; snow drifts down. Slow dolly in, nothing else moves.",
+  "motion": ""
+ },
+ {
+  "id": "H1_bear__runway45",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_runway45",
+  "still_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar_H1_bear_mupzk7ao_2.png",
+  "prompt": "The bear holds its pose on the couch, chest rising with breath, breath clouding in the cold; snow drifts down. Slow dolly in, nothing else moves.",
+  "motion": ""
+ },
+ {
+  "id": "H6_club_frost__dop",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_dop",
+  "still_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar_H6_club_frost_mupzn3w7_2.png",
+  "prompt": "The bartender holds his pose, breath clouding; frost creeps slowly across the mirror; the mirror ball turns. Slow push toward the bar, nothing else moves.",
+  "motion": ""
+ },
+ {
+  "id": "H6_club_frost__kling",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_kling",
+  "still_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar_H6_club_frost_mupzn3w7_2.png",
+  "prompt": "The bartender holds his pose, breath clouding; frost creeps slowly across the mirror; the mirror ball turns. Slow push toward the bar, nothing else moves.",
+  "motion": ""
+ },
+ {
+  "id": "H6_club_frost__runway45",
+  "kind": "world",
+  "aspect": "9:16",
+  "seconds": 5,
+  "route": "still_runway45",
+  "still_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/worlds/worlds_bar_H6_club_frost_mupzn3w7_2.png",
+  "prompt": "The bartender holds his pose, breath clouding; frost creeps slowly across the mirror; the mirror ball turns. Slow push toward the bar, nothing else moves.",
+  "motion": ""
+ }
+]
