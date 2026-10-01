@@ -143,6 +143,8 @@ def main():
     ap.add_argument("--cool", type=float, default=0.06); ap.add_argument("--feather", type=float, default=3.0)
     ap.add_argument("--models", default="u2net_human_seg,isnet-general-use", help="comma-separated rembg models; masks are unioned"); ap.add_argument("--crf", type=int, default=16)
     ap.add_argument("--plate-gain", type=float, default=1.0)
+    ap.add_argument("--plate-offset", type=float, default=0.0, help="video plate: start this many seconds into the plate")
+    ap.add_argument("--plate-loop", action="store_true", help="video plate: loop when shorter than the take (default: hold the last frame)")
     ap.add_argument("--bg-tol", type=float, default=30.0, help="sum-RGB distance below which a pixel matches the static background")
     ap.add_argument("--band-px", type=int, default=20, help="the background prior may only remove pixels within this many px of the matte edge")
     ap.add_argument("--close-v", type=int, default=61, help="vertical closing kernel height (bridges hip/waist gaps)")
@@ -174,12 +176,29 @@ def main():
     frames = sorted(f for f in os.listdir(tmp) if f.startswith("f_"))
     n = len(frames)
 
-    plate = Image.open(a.plate).convert("RGB")
-    # cover-fit plate to the raster
-    pr = plate.width / plate.height; tr = W / H
-    if pr > tr: plate = plate.resize((int(H * pr), H), Image.LANCZOS)
-    else: plate = plate.resize((W, int(W / pr)), Image.LANCZOS)
-    pl = np.asarray(plate).astype(np.float32) * a.plate_gain
+    def cover_fit_plate(img):
+        pr = img.width / img.height; tr = W / H
+        if pr > tr: img = img.resize((int(H * pr), H), Image.LANCZOS)
+        else: img = img.resize((W, int(W / pr)), Image.LANCZOS)
+        return np.asarray(img.convert("RGB")).astype(np.float32) * a.plate_gain
+    # The plate is a still OR a video (a LIVING plate: a generated world with action behind the performer).
+    # A video plate is decoded at the output fps and read frame-for-frame; shorter plates hold their last
+    # frame (or loop with --plate-loop); --plate-offset starts the plate later in its own timeline.
+    plate_frames = None
+    if a.plate.lower().endswith((".mp4", ".mov", ".webm", ".mkv")):
+        ptmp = tempfile.mkdtemp(prefix="avt_plate_")
+        run(["ffmpeg", "-v", "error", "-y", "-ss", f"{a.plate_offset:.3f}", "-i", a.plate, "-vf", f"fps={a.fps}", os.path.join(ptmp, "p_%05d.png")])
+        plate_frames = sorted(os.path.join(ptmp, f) for f in os.listdir(ptmp) if f.startswith("p_"))
+        if not plate_frames: raise SystemExit("video plate decoded to no frames")
+        pl = cover_fit_plate(Image.open(plate_frames[0])); _plate_cache = {0: pl}
+        def plate_at(i):
+            k = (i % len(plate_frames)) if a.plate_loop else min(i, len(plate_frames) - 1)
+            if k not in _plate_cache:
+                _plate_cache.clear(); _plate_cache[k] = cover_fit_plate(Image.open(plate_frames[k]))
+            return _plate_cache[k]
+    else:
+        pl = cover_fit_plate(Image.open(a.plate))
+        def plate_at(i): return pl
 
     from scipy import ndimage
     # pass 1: soft union masks
@@ -342,9 +361,10 @@ def main():
         fg = np.clip((fg - 128) * 1.06 + 124, 0, 255)
         # slow push on the plate
         z = 1 + a.zoom * (i / max(1, n - 1))
+        pli = plate_at(i)
         cw, ch = int(W / z), int(H / z)
-        x0 = (pl.shape[1] - cw) // 2; y0 = (pl.shape[0] - ch) // 2
-        bgc = Image.fromarray(np.clip(pl[y0:y0 + ch, x0:x0 + cw], 0, 255).astype(np.uint8)).resize((W, H), Image.LANCZOS)
+        x0 = (pli.shape[1] - cw) // 2; y0 = (pli.shape[0] - ch) // 2
+        bgc = Image.fromarray(np.clip(pli[y0:y0 + ch, x0:x0 + cw], 0, 255).astype(np.uint8)).resize((W, H), Image.LANCZOS)
         bg = np.asarray(bgc).astype(np.float32)
         comp = fg * al + bg * (1 - al)
         p = os.path.join(tmp, f"c_{i:05d}.png")
