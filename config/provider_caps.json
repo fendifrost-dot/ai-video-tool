@@ -1,0 +1,6 @@
+{
+  "_about": "Provider request limits the batch runners honour before a call is made (data, not code). max_prompt_chars: the longest promptText the provider accepts; refusal_patterns: substrings in an error that mean the provider will refuse every further submit in this run (balance, quota), so the runner stops that provider instead of cascading.",
+  "runway":     {"max_prompt_chars": 1000, "refusal_patterns": ["not have enough credits", "insufficient credits", "quota"]},
+  "higgsfield": {"max_prompt_chars": 2000, "refusal_patterns": ["insufficient", "balance", "quota"]},
+  "xai":        {"max_prompt_chars": 4096, "refusal_patterns": ["used all available credits", "spending limit"]}
+}
