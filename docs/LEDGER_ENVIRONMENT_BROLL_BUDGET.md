@@ -11,10 +11,11 @@ Rules (same as the YSL ledger): every paid call is a row; the "Actual billed" co
 | — | 10-01 | xAI | B-roll submit #0 from the raw closet anchor — **422 at xAI** (`image` must be an `ImageUrl` struct, proxy sent a bare string); not generated | $0 | — | $0 |
 | 1 | 10-01 | xAI | B-roll test 1 (`grok-imagine-video`, 6 s, 720p, 9:16) from the raw closet anchor `heroes/S06/anchor_hook_s11_f0080.jpg`, request `b129f167…`, asset `11a23812…` | $0.422 | gate estimated $0.30 at the $0.05/s list rate | $0.422 |
 | 2 | 10-01 | xAI | B-roll test 2, same model/duration, from the anchor **composited onto the stage plate** `heroes/S06/anchor_hook_s11_f0080_onstage.jpg`, request `519ac36d…`, asset `c1176226…` | $0.422 | gate now prices at the measured $0.0703/s ($0.4218) | $0.844 |
+| 3 | 10-01 | xAI | B-roll test 3, same model, **10 s** 720p 9:16 from the composited anchor — crane wide-to-close distance/angle change, request `fb2fa54a…`, asset `d68c4100…` | $0.702 | gate $0.703 | $1.546 |
 
-**Used $0.844 · remaining $49.156 of $50.**
+**Used $1.546 · remaining $48.454 of $50.**
 
 ## Price facts learned
 
-- `grok-imagine-video` image-to-video, 6 s at 720p 9:16, bills **$0.422** (= $0.0703 per generated second), not the $0.05/s list rate; the proxy's `maxCostUsd` gate prices at the measured rate so the gate fails safe.
+- `grok-imagine-video` image-to-video, 6 s at 720p 9:16, bills **$0.422** and 10 s bills **$0.702** (= $0.0703 per generated second, linear), not the $0.05/s list rate; the proxy's `maxCostUsd` gate prices at the measured rate so the gate fails safe.
 - Submit-time 4xx errors at xAI are unbilled (the first 422 above).
