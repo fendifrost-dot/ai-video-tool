@@ -103,7 +103,10 @@ function costFromTicks(payload: unknown): number | null {
   return null;
 }
 
-async function signImage(admin: ReturnType<typeof createClient>, path: string, preferred?: string): Promise<{ url: string; bucket: string } | null> {
+// NOTE: `ReturnType<typeof createClient>` resolves the schema param to `never` under
+// Deno check, while instantiated clients carry `<any, "public", any>` — use the bare
+// `SupabaseClient` default generics, same pattern as `_shared/jacketInpaintPipeline.ts`.
+async function signImage(admin: import("https://esm.sh/@supabase/supabase-js@2.45.0").SupabaseClient, path: string, preferred?: string): Promise<{ url: string; bucket: string } | null> {
   const buckets = preferred ? [preferred, ...IMAGE_BUCKETS.filter((b) => b !== preferred)] : IMAGE_BUCKETS;
   for (const bucket of buckets) {
     const { data, error } = await admin.storage.from(bucket).createSignedUrl(path, SIGN_TTL);
