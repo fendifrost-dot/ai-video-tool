@@ -118,3 +118,6 @@ verify_jwt = true
 
 [functions.lyric-visualizer-proxy]
 verify_jwt = true
+
+[functions.world-still-proxy]
+verify_jwt = true
