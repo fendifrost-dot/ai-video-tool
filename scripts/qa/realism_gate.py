@@ -28,6 +28,12 @@ photographed footage. Two tiers, both general (nothing knows a shot, a project o
   (skin, hands, text, physics, morphing, lighting inconsistency, uncanny motion) with severity and
   time, an `ai_likelihood` in [0,1] and a verdict. The final gate is the stricter of the two tiers.
 
+A third axis, LOOK (`--look-bank`), answers a different question: not "is it photographed" but "is it shot
+the way the artist's reference reels are shot" — exposure key, tonal range, saturation, warmth, grain, frame.
+It is a z-distance to the bank built by scripts/qa/look_fingerprint.py from the reference clips, reported as
+ON_BAR / OFF_BAR beside the realism verdict and never folded into it: a clip can be perfectly photographic
+and off the bar (a bright flat phone take), or on the bar and still rejected (an AI tell).
+
   python3 scripts/qa/realism_gate.py --clip broll/x.mp4 --ref cuts/S11_master.mp4 --ref cuts/S06_master.mp4 \
       --out qa/x_realism.json [--ref-stats qa/real_stats.json] [--judge --jwt /tmp/jwt.txt --anon /tmp/anon.txt]
 
@@ -322,7 +328,12 @@ def main():
     ap.add_argument("--clip", required=True, nargs="+"); ap.add_argument("--ref", action="append", default=[], help="real footage clip(s); repeatable"); ap.add_argument("--ref-stats", default=None, help="cache of the reference statistics")
     ap.add_argument("--out", required=True, help="JSON report (one object per clip)"); ap.add_argument("--judge", action="store_true"); ap.add_argument("--jwt", default="/tmp/jwt.txt"); ap.add_argument("--anon", default="/tmp/anon.txt")
     ap.add_argument("--judge-frames", type=int, default=10); ap.add_argument("--project-id", default=os.environ.get("AVT_PROJECT_ID")); ap.add_argument("--no-face", action="store_true"); ap.add_argument("--z-warn", type=float, default=2.5); ap.add_argument("--z-morph", type=float, default=3.0)
+    ap.add_argument("--look-bank", default=None, help="look_fingerprint.py bank (the artist's reference reels): adds a 'look' axis — look_distance and its furthest metrics — and a LOOK flag past --look-max; it never changes the realism verdict, it sits beside it")
+    ap.add_argument("--look-max", type=float, default=2.0)
     a = ap.parse_args()
+    bank = json.load(open(a.look_bank)) if a.look_bank else None
+    if bank:
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from look_fingerprint import score as look_score
     face = None if a.no_face else Face(); emb = Embedder()
     if not a.ref and not (a.ref_stats and os.path.exists(a.ref_stats)): raise SystemExit("need --ref real footage or a cached --ref-stats")
     ref = reference_stats(a.ref, face, emb, a.ref_stats); ref_id = np.array(ref["_identity"], np.float32) if ref.get("_identity") else None
@@ -337,8 +348,11 @@ def main():
             final = "REJECT" if verdict == "REJECT" or t2 == "FAIL" or (like is not None and like >= 0.5) else ("REVIEW" if verdict == "REVIEW" or t2 == "UNCERTAIN" or (like is not None and like >= 0.3) else "PASS")
         else:
             final = verdict
-        rep["verdict"] = final; reports.append(rep)
-        print(json.dumps({"clip": os.path.basename(clip), "verdict": final, "tier1": verdict, "scene_drift_p95": summary.get("scene_drift"), "identity_dist_median": summary.get("identity_dist_median"), "z": z, "flags": flags, "morph": morph, "tier2": rep.get("tier2", {}).get("review", {}).get("ai_likelihood") if a.judge else None}), flush=True)
+        rep["verdict"] = final
+        if bank:
+            lk = look_score(clip, bank); rep["look"] = {"look_distance": lk["look_distance"], "z": lk["z"], "furthest": lk["furthest"], "aspect_in_bank": lk["aspect_in_bank"], "verdict": "ON_BAR" if lk["look_distance"] <= a.look_max else "OFF_BAR", "bank": bank.get("label")}
+        reports.append(rep)
+        print(json.dumps({"clip": os.path.basename(clip), "verdict": final, "look": rep.get("look", {}).get("verdict"), "look_distance": rep.get("look", {}).get("look_distance"), "tier1": verdict, "scene_drift_p95": summary.get("scene_drift"), "identity_dist_median": summary.get("identity_dist_median"), "z": z, "flags": flags, "morph": morph, "tier2": rep.get("tier2", {}).get("review", {}).get("ai_likelihood") if a.judge else None}), flush=True)
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True); json.dump({"reference": ref, "reports": reports}, open(a.out, "w"), indent=1)
 
 
