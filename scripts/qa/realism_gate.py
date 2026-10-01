@@ -41,6 +41,7 @@ Reference statistics are computed once from the real cuts and cached (`--ref-sta
 provider is then judged against the same truth.
 """
 import argparse, base64, json, os, sys, time, urllib.request
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "_lib")); from jobs import job  # resource governor + registry (scripts/_lib/jobs.py)
 import cv2, numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(HERE, "..", "edit"))
 
@@ -331,6 +332,7 @@ def main():
     ap.add_argument("--look-bank", default=None, help="look_fingerprint.py bank (the artist's reference reels): adds a 'look' axis — look_distance and its furthest metrics — and a LOOK flag past --look-max; it never changes the realism verdict, it sits beside it")
     ap.add_argument("--look-max", type=float, default=2.0)
     a = ap.parse_args()
+    _job = job("gate", need_gb=2.5, out=a.out); _job.__enter__()
     bank = json.load(open(a.look_bank)) if a.look_bank else None
     if bank:
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); from look_fingerprint import score as look_score
