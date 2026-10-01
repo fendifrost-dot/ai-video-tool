@@ -1,0 +1,283 @@
+{
+ "provider": "higgsfield",
+ "model": "dop-turbo",
+ "still": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/heroes/S06/anchor_hook_s11_f0080_onstage_v3.jpg",
+ "seconds": 5,
+ "seed": 4242,
+ "plan": [
+  {
+   "ref": "V1",
+   "text": "and it be rambling too",
+   "kind": "literal",
+   "title": "Off-Axis Walk",
+   "risk": "low",
+   "camera": "35mm side-track, slow matching dolly, slightly behind his shoulder at chest height",
+   "prompt": "Camera move: 35mm side-track, slow matching dolly, slightly behind his shoulder at chest height. a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers walks a slow rambling path down the dark mirrored corridor, drifting off the center line toward one wall then the other, arms hanging still at his sides. Side-tracking 35mm camera dollies with him at chest height, slightly behind his shoulder. Hard key from the tall vertical white light strips, crushed blacks, wet black floor sliding with his reflections. keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+   "job": "e9007252-c703-4fa2-894e-a17d586051bf",
+   "result_url": "https://cloud-cdn.higgsfield.ai/45ee058b-986d-49f2-adc9-280bbafe42a2/88e2aad6-f26d-42f9-9494-a870d9471e95.mp4",
+   "cost_usd_est": 0.416,
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll_batch1/V1_literal.mp4",
+   "stored_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/broll/higgsfield_dop-turbo_V1_literal_e9007252.mp4",
+   "gate": {
+    "verdict": "REJECT",
+    "tier1": "REVIEW",
+    "identity": 0.5761646032333374,
+    "scene_drift": 0.13801538944244385,
+    "flags": [
+     "drift_1s",
+     "face_ratio_std",
+     "identity",
+     "sat_mean",
+     "warp_err"
+    ],
+    "judge": 0.77,
+    "judge_verdict": "FAIL",
+    "tells": [
+     "Facial proportions fluctuate beyond the head turn: the initially broad nose and heavy mouth/jaw become noticeably narrow",
+     "The glasses appear to change construction. The early rounded lenses and delicate bridge give way to a more angular, heav",
+     "The gold chest embroidery changes its arrangement and stroke pattern across the clip instead of retaining a consistent t"
+    ],
+    "judge_cost": 0.1124
+   }
+  },
+  {
+   "ref": "V2",
+   "text": "know you see it",
+   "kind": "literal",
+   "title": "Eyes meet the lens",
+   "risk": "low",
+   "camera": "slow 50mm push-in from medium close-up into a tight face",
+   "prompt": "Camera move: slow 50mm push-in from medium close-up into a tight face. a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers turns his head a few degrees until his eyes lock through the glasses with camera, a hard key sending a slow glint across both lenses, crushed blacks, vertical white light strips holding on the wet black floor, slow 50mm push-in from medium close-up, cool club air, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+   "job": "773bc1a7-3280-4148-b20e-472481b1cf58",
+   "result_url": "https://cloud-cdn.higgsfield.ai/45ee058b-986d-49f2-adc9-280bbafe42a2/9773e93c-1ecf-41fb-834a-416743316903.mp4",
+   "cost_usd_est": 0.416,
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll_batch1/V2_literal.mp4",
+   "stored_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/broll/higgsfield_dop-turbo_V2_literal_773bc1a7.mp4",
+   "gate": {
+    "verdict": "REJECT",
+    "tier1": "REVIEW",
+    "identity": 0.4646871089935303,
+    "scene_drift": 0.17372196912765503,
+    "flags": [
+     "identity",
+     "noise_hf",
+     "sat_mean"
+    ],
+    "judge": 0.79,
+    "judge_verdict": "FAIL",
+    "tells": [
+     "The glasses' temple decoration changes appearance: gold hardware becomes a chunky pale patterned section, then returns t",
+     "The opening face has a broader, softer mouth and lower-face shape; subsequent frames resolve into a noticeably narrower,",
+     "The gold chest embroidery changes its stroke pattern and arrangement. The compact stacked mark in the middle frames beco"
+    ],
+    "judge_cost": 0.1047
+   }
+  },
+  {
+   "ref": "V3",
+   "text": "Yves Saint Laurent on the weekend",
+   "kind": "literal",
+   "title": "Saturday runway walk",
+   "risk": "medium",
+   "camera": "50mm slow push, slightly below eye level, holding him center as the corridor recedes",
+   "prompt": "Camera move: 50mm slow push, slightly below eye level, holding him center as the corridor recedes. a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers walks a slow runway pace down the dark mirrored corridor, tall vertical white light strips raking hard across the cream knit while a thin gold rim finds the navy chest band, wet black floor doubling the lights under each step, arms hanging easy, mouth closed, 50mm slow push slightly below eye level, hard Helmut Newton key, crushed blacks, cool Saturday-night atmosphere, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+   "job": "23c11343-094a-49c6-9669-570090e51f90",
+   "result_url": "https://cloud-cdn.higgsfield.ai/45ee058b-986d-49f2-adc9-280bbafe42a2/da4b94fe-5af2-4428-909e-87c649f8a4f9.mp4",
+   "cost_usd_est": 0.416,
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll_batch1/V3_literal.mp4",
+   "stored_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/broll/higgsfield_dop-turbo_V3_literal_23c11343.mp4",
+   "gate": {
+    "verdict": "REJECT",
+    "tier1": "REJECT",
+    "identity": 0.5596400499343872,
+    "scene_drift": 0.10771012306213379,
+    "flags": [
+     "drift_1s",
+     "identity",
+     "warp_err"
+    ],
+    "judge": 0.88,
+    "judge_verdict": "FAIL",
+    "tells": [
+     "The glasses change construction: relatively rounded, thin frames become oversized square frames, then repeatedly alterna",
+     "The face does not maintain fully stable proportions. The opening face has a broader lower face and different mouth shape",
+     "The cheeks and area around the mouth have unusually uniform, softened shading compared with the crisp beard boundary and"
+    ],
+    "judge_cost": 0.0991
+   }
+  },
+  {
+   "ref": "V4",
+   "text": "Fly on a week day",
+   "kind": "literal",
+   "title": "Soles Leave the Floor",
+   "risk": "medium",
+   "camera": "low 35mm slow push that stays under the hovering soles",
+   "prompt": "Camera move: low 35mm slow push that stays under the hovering soles. a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers lifts a few inches off the wet black floor and drifts slowly forward down the dark mirrored corridor, arms hanging still at his sides, hard key from the tall vertical white light strips cutting the cream knit, crushed blacks in the panels, off-white reflections stretching under his soles. Low 35mm slow push staying under the gap between feet and floor. keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+   "job": "38ae3d0d-c652-4e15-b3c0-c9a4e2cc55ed",
+   "result_url": "https://cloud-cdn.higgsfield.ai/45ee058b-986d-49f2-adc9-280bbafe42a2/43090a01-7aad-4550-bc48-cf95c3c5abf8.mp4",
+   "cost_usd_est": 0.416,
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll_batch1/V4_literal.mp4",
+   "stored_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/broll/higgsfield_dop-turbo_V4_literal_38ae3d0d.mp4",
+   "gate": {
+    "verdict": "REJECT",
+    "tier1": "REJECT",
+    "identity": 0.5567777156829834,
+    "scene_drift": 0.09800159931182861,
+    "flags": [
+     "drift_1s",
+     "face_jitter",
+     "face_ratio_std",
+     "identity",
+     "noise_hf",
+     "sat_mean",
+     "warp_err"
+    ],
+    "judge": 0.84,
+    "judge_verdict": "FAIL",
+    "tells": [
+     "The side walls reflect the opposite lights, corridor, and wet floor, yet show no corresponding reflection of the promine",
+     "The eyewear changes from relatively shallow, rounded lenses with a warm-toned thin frame into much taller, squarer silve",
+     "The face becomes noticeably more uniformly smoothed and sculpted after the opening, especially around the lips, cheeks, "
+    ],
+    "judge_cost": 0.1023
+   }
+  },
+  {
+   "ref": "V5",
+   "text": "Never take a cheat day",
+   "kind": "literal",
+   "title": "The Untaken Patch of Day",
+   "risk": "low",
+   "camera": "low side dolly, 35mm, locked horizon, holding him and the light patch in the same frame",
+   "prompt": "Camera move: low side dolly, 35mm, locked horizon, holding him and the light patch in the same frame. a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers walks the dark edge of a warm rectangular patch of daylight lying on the wet black floor, never stepping into the sun. Low side dolly on a 35mm lens, locked horizon, keeping him and the light patch in frame. Dust motes drift in the warm patch while the vertical white light strips stay cold and hard; reflections slide across the wet floor. keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+   "job": "3347a038-efb8-458c-b8ed-85d3ef4ac004",
+   "result_url": "https://cloud-cdn.higgsfield.ai/45ee058b-986d-49f2-adc9-280bbafe42a2/f2f0d01a-bae3-4c89-a81d-0e07262ee98f.mp4",
+   "cost_usd_est": 0.416,
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll_batch1/V5_literal.mp4",
+   "stored_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/broll/higgsfield_dop-turbo_V5_literal_3347a038.mp4",
+   "gate": {
+    "verdict": "REJECT",
+    "tier1": "REVIEW",
+    "identity": 0.5725637972354889,
+    "scene_drift": 0.10514354705810547,
+    "flags": [
+     "drift_1s",
+     "face_ratio_std",
+     "identity",
+     "sat_mean",
+     "warp_err"
+    ],
+    "judge": 0.79,
+    "judge_verdict": "FAIL",
+    "tells": [
+     "The glasses appear to redraw their lens and rim geometry: the relatively shallow, rounded eyewear at the opening becomes",
+     "The opening face has a noticeably different mouth projection and lower-face contour from the following frames. By 1.17s\u2013"
+    ],
+    "judge_cost": 0.099
+   }
+  },
+  {
+   "ref": "V6",
+   "text": "Feel free today",
+   "kind": "literal",
+   "title": "The Jacket Takes Air",
+   "risk": "medium",
+   "camera": "locked medium-wide, slight low angle",
+   "prompt": "Camera move: locked medium-wide, slight low angle. a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers stands centered in a dark mirrored corridor with tall vertical white light strips on black panels and a wet black floor that reflects them. A slow tunnel of cool air moves down the hall and ripples the cream knit so the jacket lifts a few inches off his chest; his arms stay simple at his sides, eyes nearly closed. Locked medium-wide camera at a slight low angle, hard key from the vertical strips, crushed blacks, off-white highlights skating on the wet floor. keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+   "job": "0ee03f58-2112-4ae2-bda4-281806bd4360",
+   "result_url": "https://cloud-cdn.higgsfield.ai/45ee058b-986d-49f2-adc9-280bbafe42a2/22e4d257-3f6a-4116-b75a-bf1610887878.mp4",
+   "cost_usd_est": 0.416,
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll_batch1/V6_literal.mp4",
+   "stored_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/broll/higgsfield_dop-turbo_V6_literal_0ee03f58.mp4",
+   "gate": {
+    "verdict": "REJECT",
+    "tier1": "REVIEW",
+    "identity": 0.542985737323761,
+    "scene_drift": 0.12969636917114258,
+    "flags": [
+     "face_ratio_std",
+     "identity",
+     "sat_mean"
+    ],
+    "judge": 0.76,
+    "judge_verdict": "FAIL",
+    "tells": [
+     "The glasses appear to redraw rather than simply change perspective: relatively thin, rounded frames become heavy, square",
+     "The gold chest marking changes from fine stacked lettering into a heavier outlined badge-like form, then returns to fine"
+    ],
+    "judge_cost": 0.098
+   }
+  },
+  {
+   "ref": "V7",
+   "text": "Fly enough to fly away",
+   "kind": "surreal",
+   "title": "Light strips become vapor trails",
+   "risk": "medium",
+   "camera": "locked wide that eases into a slow push",
+   "prompt": "Camera move: locked wide that eases into a slow push. a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers stands still in the dark mirrored corridor while the tall vertical white light strips smear backward into long slow vapor trails, wet floor reflections stretch with them, camera locked then slow push, hard Helmut Newton key, crushed blacks, pressurized cool atmosphere, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+   "job": "62d057c3-6653-4ca7-a3d8-13697d6e9c59",
+   "result_url": "https://cloud-cdn.higgsfield.ai/45ee058b-986d-49f2-adc9-280bbafe42a2/23efc9d1-836b-4d22-87f4-53570c4e14cc.mp4",
+   "cost_usd_est": 0.416,
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll_batch1/V7_surreal.mp4",
+   "stored_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/broll/higgsfield_dop-turbo_V7_surreal_62d057c3.mp4",
+   "gate": {
+    "verdict": "REJECT",
+    "tier1": "REVIEW",
+    "identity": 0.5008001923561096,
+    "scene_drift": 0.1414947509765625,
+    "flags": [
+     "face_ratio_std",
+     "identity",
+     "noise_hf",
+     "sat_mean"
+    ],
+    "judge": 0.8,
+    "judge_verdict": "FAIL",
+    "tells": [
+     "The chest embroidery changes design: small gold lettering becomes a chunky dark-backed badge, then returns to fine gold ",
+     "The glasses appear to redraw between poses. The conspicuous thick, pale temples and boxier lenses in the early side view",
+     "Facial proportions and beard definition drift from the softer, broader-looking opening face to a more sharply sculpted j"
+    ],
+    "judge_cost": 0.1032
+   }
+  },
+  {
+   "ref": "V8",
+   "text": "Drive like a getaway driver on the highway",
+   "kind": "literal",
+   "title": "Corridor as wet highway",
+   "risk": "medium",
+   "camera": "low 35mm dolly backward at chest height, tracking him so the floor reflections race toward the lens",
+   "prompt": "Camera move: low 35mm dolly backward at chest height, tracking him so the floor reflections race toward the lens. a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers walks a low coiled stride down the dark mirrored corridor, arms hanging simple at his sides, as the tall vertical white light strips and wet black floor reflections rush past like night highway lamps and dashed lanes. Low 35mm dolly backward at chest height tracking him, hard key raking the glasses and cap brim, crushed blacks, cool off-white flare off the wet floor. keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
+   "job": "089b91c9-cf09-4753-bdee-31199bab4500",
+   "result_url": "https://cloud-cdn.higgsfield.ai/45ee058b-986d-49f2-adc9-280bbafe42a2/398faff1-dd96-4e7a-9924-516c47e2a895.mp4",
+   "cost_usd_est": 0.416,
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll_batch1/V8_literal.mp4",
+   "stored_path": "3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/broll/higgsfield_dop-turbo_V8_literal_089b91c9.mp4",
+   "gate": {
+    "verdict": "REJECT",
+    "tier1": "REJECT",
+    "identity": 0.6128003597259521,
+    "scene_drift": 0.14587688446044922,
+    "flags": [
+     "drift_1s",
+     "face_jitter",
+     "face_ratio_std",
+     "identity",
+     "sat_mean",
+     "warp_err"
+    ],
+    "judge": 0.84,
+    "judge_verdict": "FAIL",
+    "tells": [
+     "A dark, striped, tie-like strip suddenly trails over the right shoulder and appears to blend into the upper sleeve. It i",
+     "The cap's rear adjustment strap changes from a short, close-fitting closure to a conspicuously long tab projecting towar",
+     "The small gold back marking changes its apparent spacing and arrangement across the rear views. The lettering is too sma"
+    ],
+    "judge_cost": 0.1023
+   }
+  }
+ ]
+}
