@@ -1,0 +1,42 @@
+{
+ "ok": true,
+ "jobId": "699962b7-4066-42cc-8ec0-e631276c7ef3",
+ "providerJobId": "62825072-5ba3-4280-ad5b-3f6739adacbc",
+ "status": "queued",
+ "resultUrl": null,
+ "costEstimateCents": null,
+ "costFinalCents": null,
+ "provider": "higgsfield",
+ "modelVariant": "dop-turbo",
+ "providerMetadata": {
+  "id": "62825072-5ba3-4280-ad5b-3f6739adacbc",
+  "type": "image2video",
+  "created_at": "2026-10-01T05:03:05.397810Z",
+  "jobs": [
+   {
+    "id": "2a7584ce-599b-476d-b19e-92aa0ef1581f",
+    "job_set_type": "image2video",
+    "status": "queued",
+    "results": null
+   }
+  ],
+  "input_params": {
+   "prompt": "Slow cinematic orbit to the left while pushing in on the man standing still in a dark mirrored corridor with vertical white light strips; he breathes naturally and turns his head slightly toward camera; the light strips pulse softly, thin fog drifts across the wet floor, dust sparkles catch the light, subtle anamorphic flare. Keep his face, glasses, cap, body and the cream and navy jacket exactly as in the image. Keep the environment the same, only add motion and atmosphere.",
+   "seed": 23143,
+   "motions": [
+    {
+     "id": "31177282-bde3-4870-b283-1135ca0a201a",
+     "strength": 1
+    }
+   ],
+   "input_images": [
+    {
+     "type": "image_url",
+     "image_url": "https://qoyxgnkvjukovkrvdaiq.supabase.co/storage/v1/object/sign/project-references/3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/heroes/S06/anchor_hook_s11_f0080_onstage_v2.jpg?token=eyJraWQiOiI5ZTc5ZGY2OS04Y2JjLTQxOTktYmFiMy1hN2JlOTE0Njk5MjciLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJwcm9qZWN0LXJlZmVyZW5jZXMvM2NhMTA5MzUtOGMzZC00NDc5LTlhMGMtOGJmZTgwNTA4NDBjLzc2NGE2M2QyLTkzY2QtNDRmMy05MDVmLTI5MmYxNGFiMmY1MS9oZXJvZXMvUzA2L2FuY2hvcl9ob29rX3MxMV9mMDA4MF9vbnN0YWdlX3YyLmpwZyIsInNjb3BlIjoiZG93bmxvYWQiLCJpYXQiOjE3OTA4MzA5ODEsImV4cCI6MTc5MDgzODE4MX0.gBrvRkQ3H0cmflK1vOBTdNv6Kcwtz9FHQjZN2WxO2Mk"
+    }
+   ],
+   "input_images_end": [],
+   "enhance_prompt": true
+  }
+ }
+}
