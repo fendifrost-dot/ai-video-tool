@@ -1,0 +1,241 @@
+{
+ "spec": {
+  "move": {
+   "type": "crane",
+   "amount": 0.12,
+   "direction": "down"
+  },
+  "lens": "clean_50"
+ },
+ "lens": {
+  "description": "50 mm neutral: the control preset \u2014 no lens character beyond a light vignette and grain",
+  "focal_mm": 50,
+  "compression": 1.0,
+  "distortion": 0.0,
+  "dof": 0.35,
+  "bokeh_aspect": 1.0,
+  "flare": 0.0,
+  "flare_color": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "flare_threshold": 0.9,
+  "flare_length": 0.2,
+  "halation": 0.0,
+  "halation_color": [
+   1.0,
+   1.0,
+   1.0
+  ],
+  "chromatic": 0.0,
+  "vignette": 0.15,
+  "grain": 0.015,
+  "contrast": 1.0,
+  "saturation": 1.0,
+  "motion_blur": 1.0
+ },
+ "size": [
+  1080,
+  1920
+ ],
+ "fps": 24,
+ "frames": 96,
+ "performer_plane_depth": 0.580193817615509,
+ "overscan": 1.464,
+ "edge_reveal_frames": [],
+ "path": [
+  {
+   "frame": 0,
+   "zoom": 1.0,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.0,
+    0.0
+   ],
+   "orbit": 0.0,
+   "roll": 0.0,
+   "vel_px": [
+    0.0,
+    0.0
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 8,
+   "zoom": 1.00084,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.0,
+    0.00241
+   ],
+   "orbit": 0.0,
+   "roll": 0.0,
+   "vel_px": [
+    0.0,
+    1.06
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 16,
+   "zoom": 1.00317,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.0,
+    0.00907
+   ],
+   "orbit": 0.0,
+   "roll": 0.0,
+   "vel_px": [
+    0.0,
+    1.99
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 24,
+   "zoom": 1.00669,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.0,
+    0.01911
+   ],
+   "orbit": 0.0,
+   "roll": 0.0,
+   "vel_px": [
+    0.0,
+    2.71
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 32,
+   "zoom": 1.01109,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.0,
+    0.03167
+   ],
+   "orbit": 0.0,
+   "roll": 0.0,
+   "vel_px": [
+    0.0,
+    3.22
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 40,
+   "zoom": 1.01607,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.0,
+    0.04591
+   ],
+   "orbit": 0.0,
+   "roll": 0.0,
+   "vel_px": [
+    0.0,
+    3.53
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 48,
+   "zoom": 1.02133,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.0,
+    0.06095
+   ],
+   "orbit": 0.0,
+   "roll": 0.0,
+   "vel_px": [
+    0.0,
+    3.64
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 56,
+   "zoom": 1.02658,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.0,
+    0.07593
+   ],
+   "orbit": 0.0,
+   "roll": 0.0,
+   "vel_px": [
+    0.0,
+    3.53
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 64,
+   "zoom": 1.0315,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.0,
+    0.09001
+   ],
+   "orbit": 0.0,
+   "roll": 0.0,
+   "vel_px": [
+    0.0,
+    3.22
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 72,
+   "zoom": 1.03581,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.0,
+    0.1023
+   ],
+   "orbit": 0.0,
+   "roll": 0.0,
+   "vel_px": [
+    0.0,
+    2.71
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 80,
+   "zoom": 1.03919,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.0,
+    0.11197
+   ],
+   "orbit": 0.0,
+   "roll": 0.0,
+   "vel_px": [
+    0.0,
+    1.99
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 88,
+   "zoom": 1.04135,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.0,
+    0.11814
+   ],
+   "orbit": 0.0,
+   "roll": 0.0,
+   "vel_px": [
+    0.0,
+    1.06
+   ],
+   "edge_reveal": false
+  }
+ ]
+}

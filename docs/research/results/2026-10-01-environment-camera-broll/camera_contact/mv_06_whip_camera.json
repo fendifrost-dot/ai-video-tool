@@ -1,0 +1,287 @@
+{
+ "spec": {
+  "move": {
+   "type": "whip_pan",
+   "amount": 0.9,
+   "direction": "right",
+   "ease": "snap",
+   "start": 0.0,
+   "end": 0.22
+  },
+  "lens": "handheld_24",
+  "handheld": 0.5
+ },
+ "lens": {
+  "description": "24 mm documentary: wide, barrel distortion, deep focus, more grain, handheld energy by default",
+  "focal_mm": 24,
+  "compression": 0.9,
+  "distortion": -0.07,
+  "dof": 0.2,
+  "bokeh_aspect": 1.0,
+  "flare": 0.3,
+  "flare_color": [
+   1.0,
+   0.85,
+   0.7
+  ],
+  "flare_threshold": 0.85,
+  "flare_length": 0.3,
+  "halation": 0.1,
+  "halation_color": [
+   0.9,
+   0.9,
+   1.0
+  ],
+  "chromatic": 0.7,
+  "vignette": 0.3,
+  "grain": 0.05,
+  "contrast": 1.04,
+  "saturation": 0.96,
+  "motion_blur": 1.2,
+  "handheld_default": 0.6
+ },
+ "size": [
+  1080,
+  1920
+ ],
+ "fps": 24,
+ "frames": 96,
+ "performer_plane_depth": 0.35939574241638184,
+ "overscan": 2.2,
+ "edge_reveal_frames": [
+  1,
+  11,
+  12,
+  13,
+  14,
+  15,
+  16,
+  17,
+  18,
+  19,
+  20,
+  21,
+  28,
+  29,
+  30,
+  31,
+  32,
+  33,
+  34,
+  35,
+  36,
+  37,
+  38,
+  39,
+  40,
+  41,
+  42,
+  43,
+  44,
+  45,
+  46,
+  87,
+  88,
+  89,
+  90,
+  91,
+  92,
+  93,
+  94,
+  95
+ ],
+ "path": [
+  {
+   "frame": 0,
+   "zoom": 1.00155,
+   "plate_zoom": 1.0,
+   "pan": [
+    -0.90428,
+    0.00342
+   ],
+   "orbit": 0.0,
+   "roll": -0.11,
+   "vel_px": [
+    0.0,
+    0.0
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 8,
+   "zoom": 0.99854,
+   "plate_zoom": 1.0,
+   "pan": [
+    -0.08234,
+    0.00117
+   ],
+   "orbit": 0.0,
+   "roll": 0.182,
+   "vel_px": [
+    39.15,
+    -1.34
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 16,
+   "zoom": 0.99749,
+   "plate_zoom": 1.0,
+   "pan": [
+    -0.00263,
+    0.00048
+   ],
+   "orbit": 0.0,
+   "roll": 0.252,
+   "vel_px": [
+    1.12,
+    0.07
+   ],
+   "edge_reveal": true
+  },
+  {
+   "frame": 24,
+   "zoom": 0.99951,
+   "plate_zoom": 1.0,
+   "pan": [
+    -0.00275,
+    -4e-05
+   ],
+   "orbit": 0.0,
+   "roll": 0.029,
+   "vel_px": [
+    0.64,
+    0.37
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 32,
+   "zoom": 0.99947,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.00255,
+    -0.00296
+   ],
+   "orbit": 0.0,
+   "roll": 0.02,
+   "vel_px": [
+    0.25,
+    -1.18
+   ],
+   "edge_reveal": true
+  },
+  {
+   "frame": 40,
+   "zoom": 0.99935,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.00518,
+    -0.00327
+   ],
+   "orbit": 0.0,
+   "roll": 0.023,
+   "vel_px": [
+    -0.16,
+    -0.03
+   ],
+   "edge_reveal": true
+  },
+  {
+   "frame": 48,
+   "zoom": 1.0021,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.00134,
+    -0.00016
+   ],
+   "orbit": 0.0,
+   "roll": -0.228,
+   "vel_px": [
+    0.07,
+    1.5
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 56,
+   "zoom": 1.00255,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.00053,
+    0.00088
+   ],
+   "orbit": 0.0,
+   "roll": -0.235,
+   "vel_px": [
+    -0.18,
+    -0.06
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 64,
+   "zoom": 0.99991,
+   "plate_zoom": 1.0,
+   "pan": [
+    0.00096,
+    0.00105
+   ],
+   "orbit": 0.0,
+   "roll": 0.043,
+   "vel_px": [
+    -0.63,
+    -0.52
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 72,
+   "zoom": 0.99964,
+   "plate_zoom": 1.0,
+   "pan": [
+    -0.00376,
+    0.0031
+   ],
+   "orbit": 0.0,
+   "roll": 0.07,
+   "vel_px": [
+    -0.12,
+    0.95
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 80,
+   "zoom": 0.9999,
+   "plate_zoom": 1.0,
+   "pan": [
+    -0.00518,
+    0.00248
+   ],
+   "orbit": 0.0,
+   "roll": 0.039,
+   "vel_px": [
+    0.34,
+    -0.17
+   ],
+   "edge_reveal": false
+  },
+  {
+   "frame": 88,
+   "zoom": 0.99768,
+   "plate_zoom": 1.0,
+   "pan": [
+    -0.00013,
+    -0.00117
+   ],
+   "orbit": 0.0,
+   "roll": 0.23,
+   "vel_px": [
+    0.06,
+    -1.56
+   ],
+   "edge_reveal": true
+  }
+ ]
+}
