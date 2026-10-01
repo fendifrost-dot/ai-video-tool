@@ -1,0 +1,43 @@
+{
+ "request": {
+  "endpoint": "video-providers-higgsfield-model",
+  "method": "POST",
+  "body": {
+   "promptText": "Replace only the man's jacket with the Saint Laurent track jacket shown in the reference images, worn zipped fully closed. Garment truth: sand-beige (mastic) cotton body; ONE narrow navy horizontal stripe across the chest, interrupted by the zip; a small gold SAINT LAURENT wordmark on the wearer's left chest only; plain shoulders; a navy stripe running down the INSIDE of each sleeve (not the outer sleeve); a stand collar that is navy inside and mastic outside; cropped boxy fit. Keep everything else exactly as in the source video: his face, hair, glasses, skin, hands, trousers, shoes, the room, the lighting, the camera move and his performance timing. The new jacket must follow his body motion and the original folds and shadows; no other change.",
+   "mode": "video_to_video",
+   "modelVariant": "genjutsu-object-swap",
+   "referenceVideoUrl": "<signed project-clips/.../cuts/S06_master.mp4>",
+   "referenceImageUrls": [
+    "<signed project-references/.../looks/white-ice/genjutsu_refs/clean_track_flat_front.jpg>",
+    "<signed project-references/.../looks/white-ice/genjutsu_refs/clean_track_onmodel.jpg>",
+    "<signed project-references/.../looks/white-ice/genjutsu_refs/clean_track_detail_collar_zip.jpg>",
+    "<signed project-references/.../looks/white-ice/genjutsu_refs/clean_track_detail_sleeve_inside_worn.jpg>",
+    "<signed project-references/.../looks/white-ice/genjutsu_refs/clean_track_detail_sleeve_inside_flat.jpg>"
+   ],
+   "resolution": "720p",
+   "duration": 7,
+   "avt_user_id": "3ca10935-8c3d-4479-9a0c-8bfe8050840c",
+   "avt_project_id": "764a63d2-93cd-44f3-905f-292f14ab2f51"
+  }
+ },
+ "response": {
+  "ok": true,
+  "jobId": "7b5b40ee-de84-405f-860b-a82030a6c738",
+  "providerJobId": "c6008c10-7f18-45fe-a85a-e90c7b3e46dc",
+  "status": "queued",
+  "resultUrl": null,
+  "costEstimateCents": 477,
+  "resolution": "720p",
+  "costFinalCents": null,
+  "provider": "higgsfield",
+  "modelVariant": "genjutsu-object-swap",
+  "modelPath": "/higgsfield/genjutsu/object-swap/v1.0",
+  "statusHost": "https://api.higgsfield.ai",
+  "providerMetadata": {
+   "status": "queued",
+   "request_id": "c6008c10-7f18-45fe-a85a-e90c7b3e46dc",
+   "status_url": "https://platform.higgsfield.ai/requests/c6008c10-7f18-45fe-a85a-e90c7b3e46dc/status",
+   "cancel_url": "https://platform.higgsfield.ai/requests/c6008c10-7f18-45fe-a85a-e90c7b3e46dc/cancel"
+  }
+ }
+}
