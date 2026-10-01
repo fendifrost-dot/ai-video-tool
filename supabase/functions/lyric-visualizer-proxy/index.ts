@@ -168,5 +168,5 @@ serve(async (req) => {
   const usage = payload.usage ?? {};
   const actualCostUsd = usage.prompt_tokens != null && usage.completion_tokens != null
     ? Number(((usage.prompt_tokens * price.input + usage.completion_tokens * price.output) / 1_000_000).toFixed(4)) : null;
-  return json(200, { ok: !!parsed, billed: true, model, usage, actualCostUsd, result: parsed, rawText: parsed ? undefined : text.slice(0, 4000), ...plan });
+  return json(200, { ok: !!parsed, billed: true, usage, actualCostUsd, result: parsed, rawText: parsed ? undefined : text.slice(0, 4000), ...plan });
 });
