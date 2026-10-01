@@ -32,12 +32,12 @@ const corsHeaders = {
 };
 
 const XAI_BASE_URL = "https://api.x.ai/v1";
-const DEFAULT_MODEL = Deno.env.get("LYRIC_VISUALIZER_MODEL")?.trim() || "grok-4.6";
+const DEFAULT_MODEL = Deno.env.get("LYRIC_VISUALIZER_MODEL")?.trim() || "grok-4-fast";   // grok-4.6 took > 150 s per line (gateway idle timeout); grok-4-fast ≈ 18 s with the same schema
 const MAX_LINES = 40;
 const MAX_LYRIC_CHARS = 6000;
 const MAX_OUTPUT_TOKENS = 12000;
 // xAI list prices per 1M tokens for the default model (2026-09); the gate is an estimate, the ledger uses usage
-const PRICE_PER_M: Record<string, { input: number; output: number }> = { "grok-4.6": { input: 3, output: 15 } };
+const PRICE_PER_M: Record<string, { input: number; output: number }> = { "grok-4.6": { input: 3, output: 15 }, "grok-4-fast": { input: 0.2, output: 0.5 } };
 const DEFAULT_MAX_COST_USD = 0.5;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
