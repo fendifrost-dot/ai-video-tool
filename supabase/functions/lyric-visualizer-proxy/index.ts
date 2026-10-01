@@ -57,6 +57,8 @@ type Body = {
   rendererLimits?: string[];
   /** seconds per B-roll clip the prompts are written for */
   clipSeconds?: number;
+  /** the artist's own creative exemplars — the bar every scene is held to (data, never hard-coded) */
+  exemplars?: string[];
   model?: string;
   maxCostUsd?: number;
   dryRun?: boolean;
@@ -69,23 +71,28 @@ const SCHEMA = {
   name: "lyric_visualisation",
   strict: true,
   schema: {
-    type: "object", additionalProperties: false, required: ["ref", "text", "concepts"],
+    type: "object", additionalProperties: false, required: ["ref", "text", "scenes"],
     properties: {
-          ref: { type: "string" }, text: { type: "string" },
-          concepts: { type: "array", items: { type: "object", additionalProperties: false,
-            required: ["kind", "title", "what_we_see", "why_it_lands", "camera", "motion_and_fx", "realism_risk", "risk_reason", "broll_prompt", "needs_plate_change"],
-            properties: {
-              kind: { type: "string", enum: ["literal", "surreal", "performance"] },
-              title: { type: "string" },
-              what_we_see: { type: "string", description: "one or two sentences a director would say" },
-              why_it_lands: { type: "string" },
-              camera: { type: "string", description: "lens + move in the production's vocabulary (push, orbit, crane, whip, dolly zoom, locked macro)" },
-              motion_and_fx: { type: "string" },
-              realism_risk: { type: "string", enum: ["low", "medium", "high"] },
-              risk_reason: { type: "string" },
-              broll_prompt: { type: "string", description: "the full image-to-video prompt: hero description verbatim, action, camera, atmosphere, 'keep the environment the same', locked rules honoured" },
-              needs_plate_change: { type: "boolean", description: "true when the concept cannot live on the current environment plate" },
-            } } },
+      ref: { type: "string" }, text: { type: "string" },
+      scenes: { type: "array", items: { type: "object", additionalProperties: false,
+        required: ["kind", "title", "logline", "world", "artist_presence", "characters", "beats", "camera", "fx", "renderer", "realism_risk", "risk_reason", "render_prompt", "performance_plate_prompt"],
+        properties: {
+          kind: { type: "string", enum: ["world", "performance_plate", "garment_character"], description: "world = a scene the artist is absent from or appears in as a character; performance_plate = what happens BEHIND the artist while he raps in the foreground; garment_character = the artist in the locked garment animated from his still" },
+          title: { type: "string" },
+          logline: { type: "string", description: "one sentence a director would say" },
+          world: { type: "string", description: "the place: architecture, weather, light, surfaces, time of day, what is impossible about it" },
+          artist_presence: { type: "string", enum: ["absent", "character_in_world", "performing_foreground"] },
+          characters: { type: "array", items: { type: "object", additionalProperties: false, required: ["who", "wardrobe", "jewelry", "behaviour"],
+            properties: { who: { type: "string" }, wardrobe: { type: "string" }, jewelry: { type: "string", description: "specific pieces: diamond tennis chains, Cuban links, grills — or 'none'" }, behaviour: { type: "string", description: "what they do, as if it were normal" } } } },
+          beats: { type: "array", items: { type: "object", additionalProperties: false, required: ["at_seconds", "action"], properties: { at_seconds: { type: "number" }, action: { type: "string" } } }, description: "the shot in order: what happens at which second" },
+          camera: { type: "string" },
+          fx: { type: "string" },
+          renderer: { type: "string", enum: ["world_video", "performance_plate_video", "garment_image_to_video"], description: "world_video / performance_plate_video = text-to-video world builder; garment_image_to_video = the wardrobe-faithful animator from the artist's still" },
+          realism_risk: { type: "string", enum: ["low", "medium", "high"] },
+          risk_reason: { type: "string" },
+          render_prompt: { type: "string", description: "the full prompt for the renderer: world, characters with wardrobe and jewelry, beats in order, camera, light, 'photographed, not animated'; for garment_image_to_video start with the hero description verbatim" },
+          performance_plate_prompt: { type: "string", description: "for performance_plate scenes: the plate video prompt with the centre-foreground left clear for the artist and the action staged mid/background; empty string otherwise" },
+        } } },
     },
   },
 };
@@ -131,18 +138,20 @@ serve(async (req) => {
   const rules = (body.lockedRules ?? []).map((r) => `- ${r}`).join("\n") || "- (none)";
   const limits = (body.rendererLimits ?? []).map((r) => `- ${r}`).join("\n") || "- (none stated)";
 
+  const exemplars = (body.exemplars ?? []).map((e, n) => `${n + 1}. ${e}`).join("\n") || "- (none supplied)";
   const system = [
-    "You are the creative director of a photoreal music video. Your job is to BRING EVERY LYRIC TO LIFE: turn each line into images a viewer would remember, shot so they read as real footage.",
-    "For every line produce exactly three concepts, one of each kind: literal (the words made physically real in the artist's world — if the lyric says boots are alligators, the boots snap and bite; if money talks, the bills have something to say), surreal (the metaphor pushed past reality but staged like something a camera could witness), performance (the artist delivering the line, with an environment and camera idea that embodies it).",
-    "Rules: the hero description is reused VERBATIM at the start of every broll_prompt; the environment stays the same unless needs_plate_change is true (and then say what the new plate is in what_we_see); never put words or logos on screen; no crowds; keep hands simple; prompts describe camera, motion and atmosphere in filmmaker language and end with: keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere.",
-    "Be specific and visual, never generic (no 'luxury vibes', no 'cinematic lighting' on its own). Prefer one striking idea per concept over a list of things. Each prompt is for one clip of about " + clipSeconds + " seconds.",
-    "Rate realism_risk honestly against the renderer limits; a high-risk concept is still welcome when the idea is strong — the gate downstream decides.",
+    "You are the creative director of a photoreal, big-budget-looking music video. The job is to BRING EVERY LYRIC TO LIFE at the level of the artist's own exemplars below — worlds and characters a viewer remembers, staged so a camera could have witnessed them. Dull is a failure: a man walking down a corridor is not a scene.",
+    "For every line produce three scenes, one of each kind: (1) world — a place and its inhabitants built around the line, the artist absent or present as a character (a model opens a door, flicks a switch, the room is the arctic: penguins and polar bears in diamond tennis chains and Cuban links, a half-snowman half-human in urban winter gear with diamond gold teeth walking around as if everything is normal); (2) performance_plate — the artist raps in the foreground while the line plays out BEHIND him with real depth (a fashion show running behind him; a Bentley truck passing followed by four kids carrying a wheel-less car on their shoulders, one at each wheel; a luxury car pulling up and reporters hopping out to film him); (3) garment_character — the artist in the locked garment, animated from his still, doing one thing the line implies.",
+    "Specify everything: the world's architecture, weather, light and surfaces; every character's wardrobe and jewelry by name (diamond tennis chains, Cuban links, grills, gold teeth), and the behaviour that makes the impossible read as normal; the beats in order with seconds; the camera; the FX. Characters other than the artist are invented people or creatures — never a real public figure. No readable text or logos. No crowds beyond what the beat needs.",
+    "render_prompt must be self-contained and photographic: lenses, light, textures, motion; end with 'photographed on a cinema camera, photoreal, no animation look'. For garment_character scenes the render_prompt starts with the hero description VERBATIM and ends with: keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere. For performance_plate scenes also write performance_plate_prompt: the plate alone, the centre-foreground left clear for the artist, the action staged in the mid-ground and background so the space reads deep.",
+    "Each scene is for one clip of about " + clipSeconds + " seconds. Rate realism_risk honestly against the renderer limits; a high-risk idea is welcome when it is strong — the gate downstream decides.",
+    "The artist's exemplars (this is the bar):\n" + exemplars,
     "Locked rules (must hold in every prompt):\n" + rules,
     "Renderer limits:\n" + limits,
   ].join("\n\n");
-  const context = { heroDescription: body.heroDescription, environment: body.environment, style: body.style ?? null };
+  const context = { heroDescription: body.heroDescription, currentEnvironment: body.environment, style: body.style ?? null };
   const estInputTokens = body.lines.length * Math.ceil((system.length + JSON.stringify(context).length + 200 + JSON.stringify(SCHEMA).length) / 3.5);
-  const estOutputTokens = Math.min(MAX_OUTPUT_TOKENS, body.lines.length * 3 * 220 + 200);
+  const estOutputTokens = Math.min(MAX_OUTPUT_TOKENS, body.lines.length * 3 * 450 + 200);
   const price = PRICE_PER_M[model] ?? { input: 5, output: 25 };
   const estimatedCostUsd = Number(((estInputTokens * price.input + estOutputTokens * price.output) / 1_000_000).toFixed(4));
   const maxCostUsd = Number(body.maxCostUsd ?? DEFAULT_MAX_COST_USD);
@@ -155,7 +164,7 @@ serve(async (req) => {
       method: "POST",
       headers: { Authorization: `Bearer ${xaiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model, temperature: 0.9, max_tokens: 2500,
+        model, temperature: 1.0, max_tokens: 4000,
         response_format: { type: "json_schema", json_schema: SCHEMA },
         messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify({ ...context, line }) }],
       }),
