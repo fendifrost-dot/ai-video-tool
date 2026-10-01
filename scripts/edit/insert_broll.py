@@ -61,7 +61,8 @@ def main():
         # 1. replace an overlapping generated slot
         if a.replace_generated:
             for s in slots:
-                if s["kind"] == "generated" and s["used"] < a.max_per_slot and s["song"][0] < l1 and s["song"][1] > l0:
+                ov = min(s["song"][1], l1) - max(s["song"][0], l0)
+                if s["kind"] == "generated" and s["used"] < a.max_per_slot and ov >= 0.5 * (s["song"][1] - s["song"][0]):   # at least half the slot sits on the lyric
                     inserts.append({"ref": ref, "slot": s["shot"], "mode": "replace", "song": s["song"], "file": p["file"], "verdict": v, "title": p.get("title")}); s["used"] += 1; placed = True; break
         # 2. cut into the performance slot on a bar line
         if not placed and not a.no_perf_split:
