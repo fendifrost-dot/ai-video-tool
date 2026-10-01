@@ -46,7 +46,11 @@ ARC_TEMPLATE = np.array([[38.2946, 51.6963], [73.5318, 51.5014], [56.0252, 71.73
 # three Grok B-roll clips and two camera renders — see docs/research/results/2026-10-01-environment-camera-broll/realism/):
 SCENE_DRIFT_REJECT = 0.28      # the world re-drew itself (closet→city measured 0.306; real locked footage 0.125; a whip pan 0.246)
 SCENE_DRIFT_REVIEW = 0.22
-IDENTITY_REJECT = 0.55         # ArcFace distance to the real artist: another person
+# Identity is a REVIEW signal, not a REJECT, until it is calibrated against the artist's own verdicts: on 2026-10-01 the
+# artist judged the Higgsfield DoP clip (distance 0.635) as "character lock superb" while ArcFace called it another person —
+# tinted eyewear, a face that is small at 540p sampling and a reference centroid built from motion-blurred dance frames all
+# inflate the distance. Labels accumulate in --labels (clip name → artist verdict) and the thresholds move with them.
+IDENTITY_REJECT = None         # set from --labels once ≥ 10 artist-labelled clips exist
 IDENTITY_REVIEW = 0.40
 # Realism metrics are measured on the PERFORMER (the face region the landmarker finds) so a dark stage plate and a
 # bright closet compare like for like; whole-frame exposure/colour stats are reported but never judged (they measure
@@ -163,7 +167,7 @@ def face_vec(lm):
 
 def per_frame_metrics(frames, face, dis, emb=None, ref_identity=None):
     g = [cv2.cvtColor(f, cv2.COLOR_BGR2GRAY).astype(np.float32) for f in frames]; H, W = g[0].shape
-    rows = []; prev_vec = None; ratios = []; scene0 = None; ids = []
+    rows = []; prev_vec = None; prev_io = None; prev_k = -9; ratios = []; scene0 = None; ids = []
     for k, f in enumerate(frames):
         L = g[k]; m = {}
         blur = cv2.GaussianBlur(L, (0, 0), 1.2); hf = L - blur
@@ -183,9 +187,12 @@ def per_frame_metrics(frames, face, dis, emb=None, ref_identity=None):
                 if ie is not None:
                     ids.append(ie)
                     if ref_identity is not None: m["identity_dist"] = float(1.0 - np.dot(ie, ref_identity))
-            vec, rat = face_vec(lm); ratios.append(rat)
-            if prev_vec is not None: m["face_jitter"] = float(np.mean(np.abs(vec - prev_vec) / (np.abs(prev_vec) + 0.05)))
-            prev_vec = vec
+            vec, rat = face_vec(lm); ratios.append(rat); io = float(np.linalg.norm(lm[33] - lm[263]))
+            # jitter is only meaningful between two frames of the same head pose: a turn (inter-ocular distance changing
+            # by more than a quarter) or a gap in detection resets the comparison instead of scoring as a re-draw
+            if prev_vec is not None and prev_io is not None and abs(io - prev_io) <= 0.25 * max(io, prev_io) and k == prev_k + 1:
+                m["face_jitter"] = float(np.mean(np.abs(vec - prev_vec) / (np.abs(prev_vec) + 0.05)))
+            prev_vec, prev_io, prev_k = vec, io, k
             hull = cv2.convexHull(lm.astype(np.int32)); mask = np.zeros((H, W), np.uint8); cv2.fillConvexPoly(mask, hull, 255)
             mask = cv2.dilate(mask, np.ones((9, 9), np.uint8)); fm = mask > 0
             if fm.sum() > 400:
@@ -259,7 +266,7 @@ def tier1_verdict(summary, ref, z_warn=2.5, z_morph=3.0):
     if sd > SCENE_DRIFT_REJECT: morph.append("scene_drift")
     elif sd > SCENE_DRIFT_REVIEW: flags.append("scene_drift")
     idd = summary.get("identity_dist_median")
-    if idd is not None and idd > IDENTITY_REJECT: morph.append("identity")
+    if idd is not None and IDENTITY_REJECT is not None and idd > IDENTITY_REJECT: morph.append("identity")
     elif idd is not None and idd > IDENTITY_REVIEW: flags.append("identity")
     verdict = "REJECT" if morph else ("REVIEW" if len(flags) >= 2 else "PASS")
     return verdict, z, sorted(set(flags)), morph
