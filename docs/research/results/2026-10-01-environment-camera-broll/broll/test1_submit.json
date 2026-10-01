@@ -1,0 +1,2 @@
+200
+{"mode":"submit","model":"grok-imagine-video","duration":6,"aspectRatio":"9:16","resolution":"720p","imageBucket":"project-references","estimatedCostUsd":0.3,"maxCostUsd":0.6,"promptVersion":"broll_v1","promptChars":379,"billed":true,"submitted":true,"requestId":"b129f167-a77f-98c5-bd3e-82cbb1be49cb","submit":{"httpStatus":200,"accepted":true}}
