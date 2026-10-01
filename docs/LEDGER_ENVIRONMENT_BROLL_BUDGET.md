@@ -19,8 +19,13 @@ Rules (same as the YSL ledger): every paid call is a row; the "Actual billed" co
 | 7 | 10-01 | OpenAI | realism gate tier 2 on test 4 ($0.1109) and test 2 ($0.1043) | $0.215 | — | $2.771 |
 | 8 | 10-01 | Higgsfield | B-roll test 5: DoP turbo orbit from the v2 composited anchor through CC `video-providers-higgsfield-generate` (job `62825072…`), 5.4 s 720p — billed to the Higgsfield organisation balance, not the xAI/OpenAI keys | not yet read from the Higgsfield dashboard | ≈ $0.42 (dop-turbo 5 s list) | $3.191 |
 | 9 | 10-01 | OpenAI | realism gate tier 2 on test 5 | $0.095 | — | $3.286 |
+| 10 | 10-01 | xAI | `lyric-visualizer-proxy`: 8 verse lines of the v20 section → 24 concepts | $0.168 | — | $3.454 |
+| 11 | 10-01 | Higgsfield | tests 6–7: DoP **preview** and **turbo** from the hard-matte v3 still, same prompt/seed (jobs `5f944064…`, `94a54eaa…`) | balance-billed | ≈ $0.573 + $0.416 list | $4.443 |
+| 12 | 10-01 | OpenAI | judge on tests 6–7 | $0.204 | — | $4.647 |
+| 13 | 10-01 | Higgsfield | **B-roll batch 1**: 8 lyric concepts (V1–V8) × DoP turbo from the v3 still, seed 4242 (`broll_batch1/manifest.json`) | balance-billed | ≈ 8 × $0.416 = $3.328 list | $7.975 |
+| 14 | 10-01 | OpenAI | judge on batch 1 untrimmed (8 clips, $0.821) and head-trimmed (8 clips, $0.811) | $1.632 | — | $9.607 |
 
-**Used $3.286 (of which $0.42 is a carried Higgsfield estimate) · remaining $46.714 of $50.** Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; replace the estimate with the billed figure when read.
+**Used $9.607 (of which $4.737 is carried Higgsfield list-price estimate, billed to the Higgsfield organisation balance) · remaining $40.393 of $50.** Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; replace the estimate with the billed figure when read.
 
 ## Price facts learned
 
