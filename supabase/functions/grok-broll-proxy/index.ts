@@ -197,7 +197,7 @@ serve(async (req) => {
   const rate = PRICE_USD_PER_SECOND[model] ?? Math.max(...Object.values(PRICE_USD_PER_SECOND));
   const estimatedCostUsd = Number((rate * duration).toFixed(4));
   const maxCostUsd = body.maxCostUsd ?? DEFAULT_MAX_COST_USD;
-  const xaiBody = { model, prompt: body.prompt ?? "", image: imageUrl, duration, aspect_ratio: body.aspectRatio ?? "9:16", resolution: body.resolution ?? "720p" };
+  const xaiBody = { model, prompt: body.prompt ?? "", image: { url: imageUrl }, duration, aspect_ratio: body.aspectRatio ?? "9:16", resolution: body.resolution ?? "720p" }; // image is an ImageUrl struct: a bare string is a 422 at xAI
   const plan = { mode, model, duration, aspectRatio: xaiBody.aspect_ratio, resolution: xaiBody.resolution, imageBucket, estimatedCostUsd, maxCostUsd, promptVersion: body.promptVersion ?? null, promptChars: (body.prompt ?? "").length };
   if (body.dryRun) return json(200, { dryRun: true, billed: false, ...plan });
   if (estimatedCostUsd > maxCostUsd) return json(400, { error: "cost_ceiling_exceeded", ...plan });
