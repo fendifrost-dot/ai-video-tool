@@ -1,0 +1,2 @@
+200
+{"mode":"submit","model":"grok-imagine-video","duration":8,"aspectRatio":"9:16","resolution":"720p","imageBucket":"project-references","estimatedCostUsd":0.5624,"maxCostUsd":0.7,"promptVersion":"lyric_v1_H6_literal_black_ice","promptChars":889,"billed":true,"submitted":true,"requestId":"5c6840e5-ff14-9fe6-b04a-76a510b1fec7","submit":{"httpStatus":200,"accepted":true}}
