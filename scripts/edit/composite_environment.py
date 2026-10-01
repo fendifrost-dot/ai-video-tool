@@ -45,7 +45,7 @@ def largest_component(mask):
 
 RVM_URL = "https://github.com/PeterL1n/RobustVideoMatting/releases/download/v1.0.0/rvm_mobilenetv3_fp32.onnx"
 
-def rvm_alphas(model_path, frame_paths, downsample_ratio):
+def rvm_alphas(model_path, frame_paths, downsample_ratio, fgr_dir=None):
     """RobustVideoMatting (ONNX, CPU): recurrent video human matting -> list of float32 alphas."""
     import onnxruntime as ort
     if not os.path.exists(model_path):
@@ -58,12 +58,14 @@ def rvm_alphas(model_path, frame_paths, downsample_ratio):
     for i, fp in enumerate(frame_paths):
         src = (np.asarray(Image.open(fp).convert("RGB")).astype(np.float32) / 255.0).transpose(2, 0, 1)[None]
         fgr, pha, *rec = sess.run(None, {"src": src, "r1i": rec[0], "r2i": rec[1], "r3i": rec[2], "r4i": rec[3], "downsample_ratio": dsr})
-        out.append(pha[0, 0].astype(np.float32))
+        out.append(pha[0, 0].astype(np.float16))          # float16: a 1080p clip of alphas would not fit in memory as float32
         # decontaminated foreground colour (RVM predicts it): used at the edge so the closet
         # never bleeds into the fringe
-        fgrs.append((np.clip(fgr[0].transpose(1, 2, 0), 0, 1) * 255).astype(np.uint8))
+        fg8 = (np.clip(fgr[0].transpose(1, 2, 0), 0, 1) * 255).astype(np.uint8)
+        if fgr_dir: Image.fromarray(fg8).save(os.path.join(fgr_dir, f"fgr_{i:05d}.png"))   # straight to disk: a 1080p clip's foregrounds are ~1 GB in memory
+        else: fgrs.append(fg8)
         if i % 48 == 0: print(f"rvm {i+1}/{len(frame_paths)}", file=sys.stderr)
-    return out, fgrs
+    return out, (None if fgr_dir else fgrs)
 
 def fill_holes(mask):
     from scipy import ndimage
@@ -158,6 +160,8 @@ def main():
     ap.add_argument("--refine-ncc", type=float, default=0.55); ap.add_argument("--refine-band", type=int, default=14)
     ap.add_argument("--refine-debug", default=None, help="write band/shadow masks for frame indices (comma list) as PNGs next to --out")
     ap.add_argument("--mask-cache", default=None, help="npz path; segmenter masks are saved here and reused if present (matte logic can then be iterated without re-running rembg)")
+    ap.add_argument("--export-matte", default=None, help="directory: write the finished matte as alpha_%05d.png (8-bit) and the decontaminated performer as fg_%05d.png (before the cool grade) so other stages (camera_engine.py) can re-composite without re-matting")
+    ap.add_argument("--matte-only", action="store_true", help="with --export-matte: stop after the export (no plate composite, no video)")
     a = ap.parse_args()
     W, H = (int(x) for x in a.size.lower().split("x"))
     sessions = []
@@ -185,8 +189,7 @@ def main():
         if cached.shape[0] == n: soft = [cached[i] for i in range(n)]; print("masks from cache", file=sys.stderr)
     fgrs = None
     if not soft and a.matte == "rvm":
-        soft, fgrs = rvm_alphas(a.rvm_model, [os.path.join(tmp, f) for f in frames], a.rvm_downsample)
-        for i, fg8 in enumerate(fgrs): Image.fromarray(fg8).save(os.path.join(tmp, f"fgr_{i:05d}.png"))
+        soft, _ = rvm_alphas(a.rvm_model, [os.path.join(tmp, f) for f in frames], a.rvm_downsample, fgr_dir=tmp)
         if a.mask_cache: np.savez_compressed(a.mask_cache, soft=np.stack(soft).astype(np.float16))
     elif soft and a.matte == "rvm":
         fgrs = None  # cached masks: no fgr; the raw frame is used at the edge
@@ -227,7 +230,7 @@ def main():
     alphas = []
     for i, f in enumerate(frames):
         if a.matte == "rvm":
-            hard = soft[i] > 0.5
+            hard = soft[i].astype(np.float32) > 0.5
             lab, k = ndimage.label(hard)
             if k > 1:
                 sizes = ndimage.sum(hard, lab, range(1, k + 1)); big = 1 + int(np.argmax(sizes))
@@ -265,7 +268,7 @@ def main():
                         hard = np.isin(lab, [c for c in range(1, k + 1) if sizes[c - 1] >= 0.03 * sizes[big - 1]])
                     hard = fill_holes(hard)
             keep = ndimage.binary_dilation(hard, iterations=2)
-            al = np.where(keep, soft[i], 0.0).astype(np.float32)
+            al = np.where(keep, soft[i].astype(np.float32), 0.0).astype(np.float32)
             # remap: below alpha-lo is background (shadow/door bleed RVM keeps half-transparent),
             # above alpha-hi is body; smoothstep between, then the Gaussian feather below
             t = np.clip((al - a.alpha_lo) / max(1e-3, a.alpha_hi - a.alpha_lo), 0, 1)
@@ -278,7 +281,7 @@ def main():
                 if a.refine_debug and str(i) in a.refine_debug.split(","):
                     dbg = np.zeros((*t.shape, 3), np.uint8); dbg[band] = (60, 60, 60); dbg[shadow_bg] = (255, 0, 0); dbg[t >= 0.98] = (0, 160, 0)
                     Image.fromarray(dbg).save(os.path.splitext(a.out)[0] + f"_refine_{i:05d}.png")
-            alphas.append(t)
+            alphas.append(t.astype(np.float16))
             continue
         hard = soft[i] > 0.4
         hard = ndimage.binary_closing(hard, structure=vstruct)
@@ -309,17 +312,17 @@ def main():
                 sizes = ndimage.sum(hard, lab, range(1, k + 1)); big = 1 + int(np.argmax(sizes))
                 hard = (lab == big) | np.isin(lab, [c for c in range(1, k + 1) if sizes[c - 1] >= 0.03 * sizes[big - 1]])
         hard = fill_holes(hard)
-        alphas.append(hard.astype(np.float32))
-    A = np.stack(alphas)
-    Am = A.copy(); h = a.temporal // 2
+        alphas.append(hard.astype(np.float16))
+    A = np.stack(alphas); del alphas
+    Am = np.empty_like(A); h = a.temporal // 2
     for i in range(n):
         lo, hi = max(0, i - h), min(n, i + h + 1)
         # median removes one-frame matte pops; max keeps a fast, motion-blurred limb that the
         # matter drops for a few frames (the plate is static, so the cost is a slight widening)
-        Am[i] = np.max(A[lo:hi], axis=0) if a.temporal_mode == "max" else np.median(A[lo:hi], axis=0)
+        Am[i] = (np.max(A[lo:hi], axis=0) if a.temporal_mode == "max" else np.median(A[lo:hi].astype(np.float32), axis=0)).astype(np.float16)
     out_frames = []
     for i in range(n):
-        al = Image.fromarray((Am[i] * 255).astype(np.uint8))
+        al = Image.fromarray((Am[i].astype(np.float32) * 255).astype(np.uint8))
         al = al.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(a.feather))
         al = np.asarray(al).astype(np.float32)[..., None] / 255.0
         fg = np.asarray(Image.open(os.path.join(tmp, frames[i])).convert("RGB")).astype(np.float32)
@@ -329,6 +332,11 @@ def main():
             fgr = np.asarray(Image.open(fgr_p).convert("RGB")).astype(np.float32)
             w = np.clip((0.97 - al) / 0.5, 0, 1)  # 0 deep inside, 1 at the edge
             fg = fg * (1 - w) + fgr * w
+        if a.export_matte:
+            os.makedirs(a.export_matte, exist_ok=True)
+            Image.fromarray(np.clip(al[..., 0] * 255, 0, 255).astype(np.uint8)).save(os.path.join(a.export_matte, f"alpha_{i:05d}.png"))
+            Image.fromarray(np.clip(fg, 0, 255).astype(np.uint8)).save(os.path.join(a.export_matte, f"fg_{i:05d}.png"))
+            if a.matte_only: continue
         # light cool grade on the performer so he sits in the room
         fg = fg * np.array([1 - a.cool, 1 - a.cool * 0.4, 1 + a.cool * 0.6], np.float32)
         fg = np.clip((fg - 128) * 1.06 + 124, 0, 255)
@@ -341,6 +349,8 @@ def main():
         comp = fg * al + bg * (1 - al)
         p = os.path.join(tmp, f"c_{i:05d}.png")
         Image.fromarray(np.clip(comp, 0, 255).astype(np.uint8)).save(p)
+    if a.export_matte and a.matte_only:
+        print(f"exported matte for {n} frames to {a.export_matte}"); return
     run(["ffmpeg", "-v", "error", "-y", "-framerate", str(a.fps), "-i", os.path.join(tmp, "c_%05d.png"),
          "-c:v", "libx264", "-preset", "medium", "-crf", str(a.crf), "-pix_fmt", "yuv420p", "-movflags", "+faststart", a.out])
     print(f"wrote {a.out} ({n} frames @ {a.fps} fps)")
