@@ -112,3 +112,6 @@ verify_jwt = true
 # reviewing completed drafts against treatment intent. Key stays server-side.
 [functions.astra-visual-review-proxy]
 verify_jwt = true
+
+[functions.grok-broll-proxy]
+verify_jwt = true
