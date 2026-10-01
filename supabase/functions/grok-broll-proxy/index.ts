@@ -48,6 +48,8 @@ type Body = {
   projectId: string;
   /** the still to animate: a storage path (bucket searched in IMAGE_BUCKETS order) or an https URL */
   imagePath?: string;
+  /** true permits a text-to-video "world" clip when no still is given (scenes the artist is absent from; performance plates) */
+  allowTextToVideo?: boolean;
   imageBucket?: string;
   imageUrl?: string;
   prompt?: string;
@@ -178,7 +180,7 @@ serve(async (req) => {
           user_id: userId, project_id: body.projectId, shot_id: shotUuid, asset_type: "generated_clip", file_url: storedPath, source_tool: "grok", approval_status: "pending",
           notes: body.label ?? null,
           metadata_json: {
-            bucket: "project-clips", mime_type: "video/mp4", file_size_bytes: byteLength, lane: "grok_broll_image_to_video", model, grok_request_id: requestId, shot_label: shotLabel,
+            bucket: "project-clips", mime_type: "video/mp4", file_size_bytes: byteLength, lane: body.imagePath || body.imageUrl ? "grok_broll_image_to_video" : "grok_broll_text_to_video", model, grok_request_id: requestId, shot_label: shotLabel,
             prompt_version: body.promptVersion ?? null, source_image_path: body.imagePath ?? body.imageUrl ?? null, actual_cost_usd: actualCostUsd, final_status: status,
             duration_seconds: body.duration ?? null, aspect_ratio: body.aspectRatio ?? null, resolution: body.resolution ?? null,
           },
@@ -200,13 +202,18 @@ serve(async (req) => {
     if (!signed) return json(404, { error: "image_not_resolvable", imagePath: body.imagePath });
     imageUrl = signed.url; imageBucket = signed.bucket;
   }
-  if (!imageUrl) return json(400, { error: "image_required" });
+  // No image = TEXT-TO-VIDEO: a "world" clip (a scene the artist is absent from, or a performance plate to composite him
+  // in front of). xAI /videos/generations takes the same body without `image`. Allowed only when the caller says so.
+  const textToVideo = !imageUrl;
+  if (textToVideo && !body.allowTextToVideo) return json(400, { error: "image_required", detail: "pass allowTextToVideo: true for a world clip with no still" });
+  if (textToVideo && !(body.prompt ?? "").trim()) return json(400, { error: "prompt_required" });
   const duration = Math.min(Math.max(1, Number(body.duration ?? 5)), MAX_DURATION_SECONDS);
   const rate = PRICE_USD_PER_SECOND[model] ?? Math.max(...Object.values(PRICE_USD_PER_SECOND));
   const estimatedCostUsd = Number((rate * duration).toFixed(4));
   const maxCostUsd = body.maxCostUsd ?? DEFAULT_MAX_COST_USD;
-  const xaiBody = { model, prompt: body.prompt ?? "", image: { url: imageUrl }, duration, aspect_ratio: body.aspectRatio ?? "9:16", resolution: body.resolution ?? "720p" }; // image is an ImageUrl struct: a bare string is a 422 at xAI
-  const plan = { mode, model, duration, aspectRatio: xaiBody.aspect_ratio, resolution: xaiBody.resolution, imageBucket, estimatedCostUsd, maxCostUsd, promptVersion: body.promptVersion ?? null, promptChars: (body.prompt ?? "").length };
+  const xaiBody: Record<string, unknown> = { model, prompt: body.prompt ?? "", duration, aspect_ratio: body.aspectRatio ?? "9:16", resolution: body.resolution ?? "720p" };
+  if (imageUrl) xaiBody.image = { url: imageUrl };   // image is an ImageUrl struct: a bare string is a 422 at xAI; absent = text-to-video
+  const plan = { mode, model, duration, aspectRatio: body.aspectRatio ?? "9:16", resolution: body.resolution ?? "720p", imageBucket, textToVideo, estimatedCostUsd, maxCostUsd, promptVersion: body.promptVersion ?? null, promptChars: (body.prompt ?? "").length };
   if (body.dryRun) return json(200, { dryRun: true, billed: false, ...plan });
   if (estimatedCostUsd > maxCostUsd) return json(400, { error: "cost_ceiling_exceeded", ...plan });
 
