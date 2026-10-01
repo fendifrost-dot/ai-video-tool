@@ -62,14 +62,15 @@ type Body = {
   dryRun?: boolean;
 };
 
+// One xAI call PER LINE, run in parallel: a whole-song call outlives the gateway's 150 s idle window (seen live
+// 2026-10-01: eight hook lines in one call → 504 IDLE_TIMEOUT), while per-line calls finish in ~20–40 s together.
+const PARALLEL = 8;
 const SCHEMA = {
   name: "lyric_visualisation",
   strict: true,
   schema: {
-    type: "object", additionalProperties: false, required: ["lines"],
+    type: "object", additionalProperties: false, required: ["ref", "text", "concepts"],
     properties: {
-      lines: { type: "array", items: { type: "object", additionalProperties: false, required: ["ref", "text", "concepts"],
-        properties: {
           ref: { type: "string" }, text: { type: "string" },
           concepts: { type: "array", items: { type: "object", additionalProperties: false,
             required: ["kind", "title", "what_we_see", "why_it_lands", "camera", "motion_and_fx", "realism_risk", "risk_reason", "broll_prompt", "needs_plate_change"],
@@ -85,7 +86,6 @@ const SCHEMA = {
               broll_prompt: { type: "string", description: "the full image-to-video prompt: hero description verbatim, action, camera, atmosphere, 'keep the environment the same', locked rules honoured" },
               needs_plate_change: { type: "boolean", description: "true when the concept cannot live on the current environment plate" },
             } } },
-        } } },
     },
   },
 };
@@ -140,33 +140,41 @@ serve(async (req) => {
     "Locked rules (must hold in every prompt):\n" + rules,
     "Renderer limits:\n" + limits,
   ].join("\n\n");
-  const user = JSON.stringify({ heroDescription: body.heroDescription, environment: body.environment, style: body.style ?? null, lines: body.lines });
-
-  const estInputTokens = Math.ceil((system.length + user.length + JSON.stringify(SCHEMA).length) / 3.5);
+  const context = { heroDescription: body.heroDescription, environment: body.environment, style: body.style ?? null };
+  const estInputTokens = body.lines.length * Math.ceil((system.length + JSON.stringify(context).length + 200 + JSON.stringify(SCHEMA).length) / 3.5);
   const estOutputTokens = Math.min(MAX_OUTPUT_TOKENS, body.lines.length * 3 * 220 + 200);
   const price = PRICE_PER_M[model] ?? { input: 5, output: 25 };
   const estimatedCostUsd = Number(((estInputTokens * price.input + estOutputTokens * price.output) / 1_000_000).toFixed(4));
   const maxCostUsd = Number(body.maxCostUsd ?? DEFAULT_MAX_COST_USD);
-  const plan = { model, lines: body.lines.length, clipSeconds, estInputTokens, estOutputTokens, estimatedCostUsd, maxCostUsd };
-  if (estimatedCostUsd > maxCostUsd) return json(200, { ok: false, error: "cost_gate", ...plan });
-  if (body.dryRun) return json(200, { ok: true, dryRun: true, billed: false, ...plan });
+  const plan = { lines: body.lines.length, clipSeconds, estInputTokens, estOutputTokens, estimatedCostUsd, maxCostUsd, parallel: PARALLEL };
+  if (estimatedCostUsd > maxCostUsd) return json(200, { ok: false, error: "cost_gate", model, ...plan });
+  if (body.dryRun) return json(200, { ok: true, dryRun: true, billed: false, model, ...plan });
 
-  const res = await fetch(`${XAI_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${xaiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model, temperature: 0.9, max_tokens: MAX_OUTPUT_TOKENS,
-      response_format: { type: "json_schema", json_schema: SCHEMA },
-      messages: [{ role: "system", content: system }, { role: "user", content: user }],
-    }),
-  });
-  const payload = (await res.json().catch(() => ({}))) as { choices?: Array<{ message?: { content?: string } }>; usage?: Record<string, number>; error?: { message?: string } };
-  if (!res.ok) return json(200, { ok: false, billed: false, error: "xai_error", httpStatus: res.status, detail: payload.error?.message ?? null, ...plan });
-  const text = String(payload.choices?.[0]?.message?.content ?? "");
-  let parsed: unknown = null;
-  try { parsed = JSON.parse(text); } catch { /* returned raw below */ }
-  const usage = payload.usage ?? {};
-  const actualCostUsd = usage.prompt_tokens != null && usage.completion_tokens != null
-    ? Number(((usage.prompt_tokens * price.input + usage.completion_tokens * price.output) / 1_000_000).toFixed(4)) : null;
-  return json(200, { ok: !!parsed, billed: true, usage, actualCostUsd, result: parsed, rawText: parsed ? undefined : text.slice(0, 4000), ...plan });
+  async function oneLine(line: Body["lines"][number]) {
+    const res = await fetch(`${XAI_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${xaiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model, temperature: 0.9, max_tokens: 2500,
+        response_format: { type: "json_schema", json_schema: SCHEMA },
+        messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify({ ...context, line }) }],
+      }),
+    });
+    const payload = (await res.json().catch(() => ({}))) as { choices?: Array<{ message?: { content?: string } }>; usage?: Record<string, number>; error?: { message?: string } };
+    if (!res.ok) return { ref: line.ref, error: `xai_${res.status}`, detail: payload.error?.message ?? null, usage: null, result: null };
+    const text = String(payload.choices?.[0]?.message?.content ?? "");
+    let parsed: unknown = null;
+    try { parsed = JSON.parse(text); } catch { /* reported as parse_error below */ }
+    return { ref: line.ref, error: parsed ? null : "parse_error", detail: parsed ? null : text.slice(0, 500), usage: payload.usage ?? null, result: parsed };
+  }
+  const results: Array<Awaited<ReturnType<typeof oneLine>>> = [];
+  for (let i = 0; i < body.lines.length; i += PARALLEL) {
+    results.push(...(await Promise.all(body.lines.slice(i, i + PARALLEL).map(oneLine))));
+  }
+  const usage = results.reduce((acc, r) => ({ prompt_tokens: acc.prompt_tokens + (r.usage?.prompt_tokens ?? 0), completion_tokens: acc.completion_tokens + (r.usage?.completion_tokens ?? 0) }), { prompt_tokens: 0, completion_tokens: 0 });
+  const actualCostUsd = Number(((usage.prompt_tokens * price.input + usage.completion_tokens * price.output) / 1_000_000).toFixed(4));
+  const lines = results.filter((r) => r.result).map((r) => r.result);
+  const failures = results.filter((r) => !r.result).map((r) => ({ ref: r.ref, error: r.error, detail: r.detail }));
+  return json(200, { ok: failures.length === 0, billed: usage.prompt_tokens > 0, model, usage, actualCostUsd, result: { lines }, failures, ...plan });
+});
 });
