@@ -63,6 +63,15 @@ MORPH = ("drift_1s", "face_jitter")       # single-event metrics: the clip is su
 P95 = ("drift_1s", "face_jitter", "warp_err", "scene_drift", "identity_dist")
 
 
+def fit_frame(f, size):
+    """Scale a frame into the sampling box without changing its aspect: the box is (w, h); a frame of another
+    aspect (a 16:9 world clip from a text-to-video model, say) is scaled by whichever side hits the box first and
+    returned at that size rather than squashed or padded, so texture/noise statistics stay comparable with the
+    9:16 references and no letterbox bars leak into black_frac or the judge's frames."""
+    w, h = size; fh, fw = f.shape[:2]; s = min(w / fw, h / fh); nw, nh = max(1, int(round(fw * s))), max(1, int(round(fh * s)))
+    return cv2.resize(f, (nw, nh), interpolation=cv2.INTER_AREA)
+
+
 def read_frames(path, size, max_frames, fps_target):
     cap = cv2.VideoCapture(path); fps = cap.get(cv2.CAP_PROP_FPS) or 24.0; n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     step = max(1, int(round(fps / fps_target))); out = []; i = 0
@@ -70,7 +79,7 @@ def read_frames(path, size, max_frames, fps_target):
         ok, f = cap.read()
         if not ok: break
         if i % step == 0:
-            out.append(cv2.resize(f, size, interpolation=cv2.INTER_AREA))
+            out.append(fit_frame(f, size))
             if len(out) >= max_frames: break
         i += 1
     return out, fps / step
@@ -294,7 +303,7 @@ def judge(clip, jwt, anon, n_frames=10, max_tokens=6000, project_id=None, base="
     for i in np.linspace(0, n - 1, n_frames).astype(int):
         cap.set(cv2.CAP_PROP_POS_FRAMES, int(i)); ok, f = cap.read()
         if not ok: continue
-        f = cv2.resize(f, (540, 960), interpolation=cv2.INTER_AREA); ok, buf = cv2.imencode(".jpg", f, [cv2.IMWRITE_JPEG_QUALITY, 82])
+        f = fit_frame(f, (540, 960)); ok, buf = cv2.imencode(".jpg", f, [cv2.IMWRITE_JPEG_QUALITY, 82])
         frames.append({"label": f"t={i / fps:.2f}s", "dataUrl": "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode()})
     hdr = {"Authorization": "Bearer " + jwt, "apikey": anon, "Content-Type": "application/json"}
     def call(body):
