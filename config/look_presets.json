@@ -1,0 +1,12 @@
+{
+  "_about": "Look preambles prepended to generation prompts (worlds, plates, B-roll). Data, not code: pick one with --look-preset. 'film_bar_v1' is transcribed from the on-screen system prompt in the artist's reference reel (Seedance 2.0 on Higgsfield, instagram.com/reel/DZzBfSyh8hY) and the shot-level phrasing it pairs with; the reference bank docs/research/references/realism_bar/look_bank.json carries the measured statistics of the bar.",
+  "film_bar_v1": {
+    "preamble": "You are a world-class cinematographer and master gaffer. Generate images indistinguishable from 35mm or 70mm motion-picture film. Optics: Arri Alexa 65 or Panavision Millennium DXL2 sensors; specific focal lengths (35mm for environmental shots, 85mm for portraits). Lighting: Rembrandt lighting, negative fill or motivated lighting; high dynamic range with soft highlight roll-off and deep, textured shadows. Color science: Kodak Vision3 5219 film emulation; natural skin texture with no plastic look; a professional grade with rich micro-contrast.",
+    "shot_suffix": "24fps film grain. Cinematic, gritty, found-footage aesthetic. No clean or polished shots; it always feels captured in the moment.",
+    "measured_bar": {"aspect": "4:3 (1024x768)", "fps": 24, "luma_mean": 56, "contrast_p95_p5": 135, "saturation_mean": 111, "clipped_whites": 0.0, "crushed_blacks": 0.09, "warm_lab_b": 5.7, "grain": 0.97}
+  },
+  "handheld_doc_v1": {
+    "preamble": "",
+    "shot_suffix": "Handheld camera work: raw, unstable, documentary-style. Harsh overexposed sunlight, long shadows. Mood chaotic, rebellious and surreal. No clean or polished shots; always feels captured in the moment."
+  }
+}
