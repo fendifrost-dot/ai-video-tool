@@ -24,12 +24,18 @@ Rules (same as the YSL ledger): every paid call is a row; the "Actual billed" co
 | 12 | 10-01 | OpenAI | judge on tests 6–7 | $0.204 | — | $4.647 |
 | 13 | 10-01 | Higgsfield | **B-roll batch 1**: 8 lyric concepts (V1–V8) × DoP turbo from the v3 still, seed 4242 (`broll_batch1/manifest.json`) | balance-billed | ≈ 8 × $0.416 = $3.328 list | $7.975 |
 | 14 | 10-01 | OpenAI | judge on batch 1 untrimmed (8 clips, $0.821) and head-trimmed (8 clips, $0.811) | $1.632 | — | $9.607 |
+| 15 | 10-01 | xAI | world clip: the artist's arctic-room exemplar, `grok-imagine-video` text-to-video 10 s (stopgap; request `eed968bf…`) | $0.70 | — | $10.307 |
+| 16 | 10-01 | OpenAI | judge on the Grok arctic room ($0.1069) and the Runway arctic room ($0.1017) | $0.209 | — | $10.516 |
+| 17 | 10-01 | Runway | arctic room on gen4.5 text-to-video 5 s (CC envelope estimate 75 credits) and the rims-street performance plate 10 s (150 credits) — billed to the Runway account behind Control Center | not read | ≈ $0.75 + $1.50 | $12.766 |
+| 18 | 10-01 | Higgsfield | Kling 2.5 turbo pro text-to-video ×2 (arctic room, rims plate; 10 s each) through the new CC catalogue function — queued at Higgsfield for > 45 min at the time of writing | balance-billed when they complete | ≈ 2 × $0.70 | $14.166 |
+| 19 | 10-01 | xAI | `lyric-visualizer-proxy` v2 at the artist's bar: grok-4.6 attempts timed out at the gateway (8 line-calls + 8 chunk-calls, billing unknown — carried as an estimate); grok-4-fast runs: 16 lines / 48 scenes $0.694 + probe $0.044 | $0.738 | ≈ $1.50 possible for the timed-out grok-4.6 calls | $16.404 |
 
-**Used $9.607 (of which $4.737 is carried Higgsfield list-price estimate, billed to the Higgsfield organisation balance) · remaining $40.393 of $50.** Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; replace the estimate with the billed figure when read.
+**Used $16.404 (of which $6.14 Higgsfield list estimate, $2.25 Runway estimate and $1.50 possible timed-out xAI calls are carried, not billed figures) · remaining $33.596 of $50.** Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; Runway spend on the Runway account. Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; replace the estimate with the billed figure when read.
 
 ## Price facts learned
 
 - `grok-imagine-video` image-to-video, 6 s at 720p 9:16, bills **$0.422** and 10 s bills **$0.702** (= $0.0703 per generated second, linear), not the $0.05/s list rate; the proxy's `maxCostUsd` gate prices at the measured rate so the gate fails safe.
 - Submit-time 4xx errors at xAI are unbilled (the first 422 above).
 - Realism judge (gpt-6-astra, 10 frames at 540x960, medium reasoning): **$0.08–0.11 per clip** — cheap enough to run on every generated clip.
-- `lyric-visualizer-proxy` (grok-4.6): ≈ $0.02 per lyric line (three concepts with prompts).
+- `lyric-visualizer-proxy`: grok-4.6 ≈ $0.02 per line but > 150 s per line at the v2 schema (gateway idle timeout); **grok-4-fast ≈ $0.04 per line in ≈ 18 s** — the default now.
+- Runway gen4.5 text-to-video: 15 ¢/s (5 s = $0.75, 10 s = $1.50). Kling 2.5 turbo pro via Higgsfield: ≈ 7 ¢/s list.
