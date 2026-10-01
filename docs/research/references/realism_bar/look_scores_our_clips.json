@@ -1,0 +1,345 @@
+{
+ "bank": "docs/research/references/realism_bar/look_bank.json",
+ "reports": [
+  {
+   "clip": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cuts/S06_master_61_597-68_499_1789946035591_ksdvi0.mp4",
+   "metrics": {
+    "grain": 0.8706436157226562,
+    "sat": 57.72543288258575,
+    "luma": 158.04652404785156,
+    "contrast": 223.0,
+    "hi_clip": 0.06089283751099384,
+    "lo_crush": 0.017524186455584873,
+    "warm": 10.924495657431834,
+    "tint": -4.953570250659624,
+    "aspect": 0.562,
+    "fps": 30.0,
+    "frame": "1080x1920",
+    "frames_sampled": 24
+   },
+   "z": {
+    "grain": -0.21,
+    "sat": -4.79,
+    "luma": 13.33,
+    "contrast": 5.41,
+    "hi_clip": 0.12,
+    "lo_crush": -0.15,
+    "warm": 2.93,
+    "tint": 0.58
+   },
+   "look_distance": 5.46,
+   "furthest": [
+    "luma",
+    "contrast",
+    "sat"
+   ],
+   "aspect_in_bank": false
+  },
+  {
+   "clip": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/worlds/plate_rims_kling25.mp4",
+   "metrics": {
+    "grain": 2.806540608406067,
+    "sat": 47.45123046875,
+    "luma": 64.31711196899414,
+    "contrast": 142.0,
+    "hi_clip": 0.004207899305555556,
+    "lo_crush": 0.0006336805555555555,
+    "warm": 1.1988498263888943,
+    "tint": -0.680499131944444,
+    "aspect": 1.778,
+    "fps": 24.0,
+    "frame": "1920x1080",
+    "frames_sampled": 24
+   },
+   "z": {
+    "grain": 3.67,
+    "sat": -5.72,
+    "luma": 1.14,
+    "contrast": 0.41,
+    "hi_clip": 0.01,
+    "lo_crush": -0.19,
+    "warm": -2.57,
+    "tint": 3.08
+   },
+   "look_distance": 2.82,
+   "furthest": [
+    "sat",
+    "grain",
+    "tint"
+   ],
+   "aspect_in_bank": false
+  },
+  {
+   "clip": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/worlds/world3_arctic_kling25.mp4",
+   "metrics": {
+    "grain": 1.1199547052383423,
+    "sat": 72.90185546875,
+    "luma": 133.70993041992188,
+    "contrast": 174.0,
+    "hi_clip": 1.5190972222222222e-05,
+    "lo_crush": 0.022760416666666665,
+    "warm": -8.002996961805557,
+    "tint": 1.985985243055552,
+    "aspect": 1.778,
+    "fps": 24.0,
+    "frame": "1920x1080",
+    "frames_sampled": 24
+   },
+   "z": {
+    "grain": 0.29,
+    "sat": -3.42,
+    "luma": 10.16,
+    "contrast": 2.39,
+    "hi_clip": 0.0,
+    "lo_crush": -0.14,
+    "warm": -7.77,
+    "tint": 4.64
+   },
+   "look_distance": 5.03,
+   "furthest": [
+    "luma",
+    "warm",
+    "tint"
+   ],
+   "aspect_in_bank": false
+  },
+  {
+   "clip": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/plates/plate_rims_runway_gen45_10s.mp4",
+   "metrics": {
+    "grain": 1.1776501536369324,
+    "sat": 89.81239006156552,
+    "luma": 58.5402774810791,
+    "contrast": 158.0,
+    "hi_clip": 0.006432085532102023,
+    "lo_crush": 0.1102689368953386,
+    "warm": 2.075759949428331,
+    "tint": -3.196838582893591,
+    "aspect": 0.562,
+    "fps": 24.0,
+    "frame": "720x1280",
+    "frames_sampled": 24
+   },
+   "z": {
+    "grain": 0.41,
+    "sat": -1.9,
+    "luma": 0.39,
+    "contrast": 1.4,
+    "hi_clip": 0.01,
+    "lo_crush": 0.03,
+    "warm": -2.07,
+    "tint": 1.61
+   },
+   "look_distance": 1.26,
+   "furthest": [
+    "warm",
+    "sat",
+    "tint"
+   ],
+   "aspect_in_bank": false
+  },
+  {
+   "clip": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll_batch1/V2_literal.mp4",
+   "metrics": {
+    "grain": 0.9100931882858276,
+    "sat": 77.90768950637643,
+    "luma": 78.17584609985352,
+    "contrast": 231.5,
+    "hi_clip": 0.019488648856640284,
+    "lo_crush": 0.168684036939314,
+    "warm": 1.9583718117853977,
+    "tint": -3.111698136543538,
+    "aspect": 0.562,
+    "fps": 30.0,
+    "frame": "720x1280",
+    "frames_sampled": 24
+   },
+   "z": {
+    "grain": -0.13,
+    "sat": -2.97,
+    "luma": 2.94,
+    "contrast": 5.94,
+    "hi_clip": 0.04,
+    "lo_crush": 0.15,
+    "warm": -2.14,
+    "tint": 1.66
+   },
+   "look_distance": 2.74,
+   "furthest": [
+    "contrast",
+    "sat",
+    "luma"
+   ],
+   "aspect_in_bank": false
+  },
+  {
+   "clip": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll/hf3_dop_turbo_v3.mp4",
+   "metrics": {
+    "grain": 0.8463403284549713,
+    "sat": 80.31543604331574,
+    "luma": 61.515804290771484,
+    "contrast": 220.5,
+    "hi_clip": 0.011024076517150396,
+    "lo_crush": 0.2122203441072999,
+    "warm": 0.680548455364999,
+    "tint": -2.9505160235268306,
+    "aspect": 0.562,
+    "fps": 30.0,
+    "frame": "720x1280",
+    "frames_sampled": 24
+   },
+   "z": {
+    "grain": -0.25,
+    "sat": -2.75,
+    "luma": 0.77,
+    "contrast": 5.26,
+    "hi_clip": 0.02,
+    "lo_crush": 0.24,
+    "warm": -2.86,
+    "tint": 1.75
+   },
+   "look_distance": 2.43,
+   "furthest": [
+    "contrast",
+    "warm",
+    "sat"
+   ],
+   "aspect_in_bank": false
+  },
+  {
+   "clip": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/genjutsu/S06_genjutsu_swap_720p_conformed.mp4",
+   "metrics": {
+    "grain": 0.6874842643737793,
+    "sat": 57.91522235048373,
+    "luma": 166.79009246826172,
+    "contrast": 221.0,
+    "hi_clip": 0.005632283421284081,
+    "lo_crush": 0.02009812005277045,
+    "warm": 12.425491974494278,
+    "tint": -4.121283393799473,
+    "aspect": 0.562,
+    "fps": 30.0,
+    "frame": "720x1280",
+    "frames_sampled": 24
+   },
+   "z": {
+    "grain": -0.57,
+    "sat": -4.77,
+    "luma": 14.46,
+    "contrast": 5.29,
+    "hi_clip": 0.01,
+    "lo_crush": -0.15,
+    "warm": 3.78,
+    "tint": 1.07
+   },
+   "look_distance": 5.87,
+   "furthest": [
+    "luma",
+    "contrast",
+    "sat"
+   ],
+   "aspect_in_bank": false
+  },
+  {
+   "clip": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/broll/world1_arctic_room.mp4",
+   "metrics": {
+    "grain": 0.8662696182727814,
+    "sat": 103.57444687225154,
+    "luma": 110.67515563964844,
+    "contrast": 193.0,
+    "hi_clip": 1.1680958663148637e-05,
+    "lo_crush": 0.10570649186455586,
+    "warm": -8.474169277704483,
+    "tint": 2.4268229166666657,
+    "aspect": 0.562,
+    "fps": 24.0,
+    "frame": "720x1280",
+    "frames_sampled": 24
+   },
+   "z": {
+    "grain": -0.21,
+    "sat": -0.66,
+    "luma": 7.17,
+    "contrast": 3.56,
+    "hi_clip": 0.0,
+    "lo_crush": 0.02,
+    "warm": -8.04,
+    "tint": 4.9
+   },
+   "look_distance": 4.38,
+   "furthest": [
+    "warm",
+    "luma",
+    "tint"
+   ],
+   "aspect_in_bank": false
+  },
+  {
+   "clip": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/living/S11_on_rims_plate_720.mp4",
+   "metrics": {
+    "grain": 0.9385116100311279,
+    "sat": 86.46603726912929,
+    "luma": 58.836002349853516,
+    "contrast": 145.0,
+    "hi_clip": 0.0019823273966578714,
+    "lo_crush": 0.11311153254177661,
+    "warm": 2.8829100703606088,
+    "tint": -4.243161142260334,
+    "aspect": 0.562,
+    "fps": 24.0,
+    "frame": "720x1280",
+    "frames_sampled": 24
+   },
+   "z": {
+    "grain": -0.07,
+    "sat": -2.2,
+    "luma": 0.42,
+    "contrast": 0.59,
+    "hi_clip": 0.0,
+    "lo_crush": 0.04,
+    "warm": -1.62,
+    "tint": 1.0
+   },
+   "look_distance": 1.06,
+   "furthest": [
+    "sat",
+    "warm",
+    "tint"
+   ],
+   "aspect_in_bank": false
+  },
+  {
+   "clip": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cam/mv_01_push.mp4",
+   "metrics": {
+    "grain": 1.7257373332977295,
+    "sat": 94.33883643909411,
+    "luma": 34.32721519470215,
+    "contrast": 134.0,
+    "hi_clip": 0.0009454705364995603,
+    "lo_crush": 0.46111340149516267,
+    "warm": 1.750029545954277,
+    "tint": -2.1113181618293737,
+    "aspect": 0.562,
+    "fps": 24.0,
+    "frame": "1080x1920",
+    "frames_sampled": 24
+   },
+   "z": {
+    "grain": 1.5,
+    "sat": -1.49,
+    "luma": -2.76,
+    "contrast": -0.08,
+    "hi_clip": 0.0,
+    "lo_crush": 0.73,
+    "warm": -2.26,
+    "tint": 2.24
+   },
+   "look_distance": 1.69,
+   "furthest": [
+    "luma",
+    "warm",
+    "tint"
+   ],
+   "aspect_in_bank": false
+  }
+ ]
+}
