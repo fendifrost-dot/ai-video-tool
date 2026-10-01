@@ -20,6 +20,7 @@
  *                 "video-providers-fal-generate" |
  *                 "video-providers-grok-generate" |
  *                 "video-providers-higgsfield-generate" |
+ *                 "video-providers-higgsfield-model" |
  *                 "video-providers-job-status" |
  *                 "video-providers-job-result" |
  *                 "ai-draft-treatment",
@@ -54,6 +55,8 @@ const ALLOWED_ENDPOINTS = new Set([
   "video-providers-fal-generate",
   "video-providers-grok-generate",
   "video-providers-higgsfield-generate",
+  // Higgsfield catalogue (Kling / Hailuo text-to-video and image-to-video): the world-builder lane
+  "video-providers-higgsfield-model",
   "image-providers-grok-edit",
   "video-providers-job-status",
   "video-providers-job-result",
