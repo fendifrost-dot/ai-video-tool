@@ -55,9 +55,20 @@ def pick(line, prefer, max_risk, override=None):
     return cands[0] if cands else None
 
 
-def prompt_for(c):
+def prompt_for(c, look=None):
+    """look = a preset from config/look_presets.json: its preamble leads, its shot_suffix closes; absent = bare prompt."""
     cam = c["camera"].strip().rstrip("."); body = c["broll_prompt"].strip()
-    return f"Camera move: {cam}. {body}"
+    core = f"Camera move: {cam}. {body}"
+    if not look: return core
+    pre = (look.get("preamble") or "").strip(); suf = (look.get("shot_suffix") or "").strip()
+    return " ".join(x for x in (pre, core, suf) if x)
+
+
+def load_look(name, path=os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "config", "look_presets.json")):
+    if not name: return None
+    presets = json.load(open(path)); look = presets.get(name)
+    if not look: raise SystemExit(f"unknown look preset {name!r}; known: {', '.join(k for k in presets if not k.startswith('_'))}")
+    return look
 
 
 def hf_submit(api, user_id, project, still_url, prompt, model, seed):
@@ -88,8 +99,8 @@ def main():
     ap.add_argument("--pick", action="append", default=[], help="ref=kind override"); ap.add_argument("--only", default=None, help="comma-separated refs")
     ap.add_argument("--seconds", type=int, default=5); ap.add_argument("--seed", type=int, default=None); ap.add_argument("--max-usd", type=float, default=8.0)
     ap.add_argument("--judge", action="store_true"); ap.add_argument("--ref-stats", default=None); ap.add_argument("--prompt-version", default="lyric_broll_v1")
-    ap.add_argument("--dry-run", action="store_true")
-    a = ap.parse_args()
+    ap.add_argument("--dry-run", action="store_true"); ap.add_argument("--look-preset", default=None, help="name in config/look_presets.json; its preamble and shot suffix wrap every prompt")
+    a = ap.parse_args(); look = load_look(a.look_preset)
     api = Api(open(a.jwt).read(), open(a.anon).read()); os.makedirs(a.out, exist_ok=True)
     user_id = a.user or a.still.split("/")[0]; overrides = dict(p.split("=") for p in a.pick); prefer = a.prefer.split(",")
     lines = []
@@ -100,7 +111,7 @@ def main():
     for L in lines:
         c = pick(L, prefer, a.max_risk, overrides.get(L["ref"]))
         if c is None: print(f"{L['ref']}: no concept within risk {a.max_risk}", flush=True); continue
-        plan.append({"ref": L["ref"], "text": L["text"], "kind": c["kind"], "title": c["title"], "risk": c["realism_risk"], "camera": c["camera"], "prompt": prompt_for(c)})
+        plan.append({"ref": L["ref"], "text": L["text"], "kind": c["kind"], "title": c["title"], "risk": c["realism_risk"], "camera": c["camera"], "prompt": prompt_for(c, look), "look_preset": a.look_preset})
     est = len(plan) * (HF_LIST_USD_PER_CLIP.get(a.model, 0.6) if a.provider == "higgsfield" else 0.0703 * a.seconds)
     print(f"plan: {len(plan)} clips via {a.provider}/{a.model}, est ${est:.2f}" + (" + judge" if a.judge else ""), flush=True)
     for p in plan: print(f"  {p['ref']:<4} [{p['kind']}/{p['risk']}] {p['title']}", flush=True)
