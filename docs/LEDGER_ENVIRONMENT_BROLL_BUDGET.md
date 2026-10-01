@@ -30,8 +30,9 @@ Rules (same as the YSL ledger): every paid call is a row; the "Actual billed" co
 | 18 | 10-01 | Higgsfield | Kling 2.5 turbo pro text-to-video ×2 (arctic room, rims plate; 10 s each) through the new CC catalogue function — queued at Higgsfield for > 45 min at the time of writing | balance-billed when they complete | ≈ 2 × $0.70 | $14.166 |
 | 19 | 10-01 | xAI | `lyric-visualizer-proxy` v2 at the artist's bar: grok-4.6 attempts timed out at the gateway (8 line-calls + 8 chunk-calls, billing unknown — carried as an estimate); grok-4-fast runs: 16 lines / 48 scenes $0.694 + probe $0.044 | $0.738 | ≈ $1.50 possible for the timed-out grok-4.6 calls | $16.404 |
 | 20 | 10-01 | OpenAI | judge on the two Kling 2.5 catalogue clips (arctic room $0.0586, rims-street plate $0.0405) — both jobs completed after ≈ 4.5 h in the Higgsfield queue | $0.099 | — | $16.503 |
+| 21 | 10-01 | OpenAI | judge on Fendi's four reference reels (the realism bar; all PASS 0.04–0.10) | $0.199 | — | $16.702 |
 
-**Used $16.503 (of which $6.14 Higgsfield list estimate, $2.25 Runway estimate and $1.50 possible timed-out xAI calls are carried, not billed figures) · remaining $33.497 of $50.** Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; Runway spend on the Runway account. Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; replace the estimate with the billed figure when read.
+**Used $16.702 (of which $6.14 Higgsfield list estimate, $2.25 Runway estimate and $1.50 possible timed-out xAI calls are carried, not billed figures) · remaining $33.298 of $50.** Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; Runway spend on the Runway account. Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; replace the estimate with the billed figure when read.
 
 ## Price facts learned
 
