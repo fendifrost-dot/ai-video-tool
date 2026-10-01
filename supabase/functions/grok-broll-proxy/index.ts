@@ -33,9 +33,11 @@ const OUTPUT_SIGN_TTL = 604800;
 const DEFAULT_MODEL = "grok-imagine-video";
 const DEFAULT_MAX_COST_USD = 1.0;
 const MAX_DURATION_SECONDS = 15;
-// xAI list prices per generated second (2026-09); unknown models price at the dearest known rate so the gate fails safe
+// Price per generated second used by the maxCostUsd gate. The list rate for grok-imagine-video is $0.05/s, but the
+// first live 6 s 720p 9:16 image-to-video billed $0.422 (usage ticks, 2026-10-01) = $0.0703/s, so the gate prices at
+// the measured rate; unknown models price at the dearest known rate so the gate fails safe. The ledger uses billed ticks.
 const PRICE_USD_PER_SECOND: Record<string, number> = {
-  "grok-imagine-video": 0.05,
+  "grok-imagine-video": 0.0703,
   "grok-imagine-video-1.5": 0.08,
 };
 const IMAGE_BUCKETS = ["project-references", "look-composites", "project-exports", "project-clips", "wardrobe-refs", "product-assets", "artist-assets"];
@@ -54,7 +56,8 @@ type Body = {
   aspectRatio?: string;
   resolution?: string;
   maxCostUsd?: number;
-  shotId?: string;
+  shotId?: string;        // shots.id uuid (optional)
+  shotLabel?: string;     // treatment label such as the shot code; kept in metadata, never in shot_id
   promptVersion?: string;
   /** free-text label stored with the asset (e.g. the treatment's camera_direction) */
   label?: string;
@@ -159,6 +162,8 @@ serve(async (req) => {
     const { data: existing } = await admin.from("project_assets").select("id, file_url").eq("project_id", body.projectId).contains("metadata_json", { grok_request_id: requestId }).maybeSingle();
     let storedPath = existing?.file_url as string | undefined; let assetId = existing?.id as string | undefined; let byteLength: number | null = null; let persistError: string | null = null;
     const actualCostUsd = costFromTicks(payload);
+    // shot_id is a uuid column: a treatment label passed as shotId is kept as metadata.shot_label instead of losing the row
+    const shotUuid = body.shotId && UUID_RE.test(body.shotId) ? body.shotId : null; const shotLabel = body.shotLabel ?? (shotUuid ? null : (body.shotId ?? null));
     if (!storedPath) {
       const outputUrl = extractVideoUrl(payload);
       if (!outputUrl) return json(200, { mode, status, requestId, error: "no_output_url", payload });
@@ -170,10 +175,10 @@ serve(async (req) => {
       if (upErr) persistError = `storage_upload: ${upErr.message}`;
       else {
         const { data: row, error: aErr } = await admin.from("project_assets").insert({
-          user_id: userId, project_id: body.projectId, shot_id: body.shotId ?? null, asset_type: "generated_clip", file_url: storedPath, source_tool: "grok", approval_status: "pending",
+          user_id: userId, project_id: body.projectId, shot_id: shotUuid, asset_type: "generated_clip", file_url: storedPath, source_tool: "grok", approval_status: "pending",
           notes: body.label ?? null,
           metadata_json: {
-            bucket: "project-clips", mime_type: "video/mp4", file_size_bytes: byteLength, lane: "grok_broll_image_to_video", model, grok_request_id: requestId,
+            bucket: "project-clips", mime_type: "video/mp4", file_size_bytes: byteLength, lane: "grok_broll_image_to_video", model, grok_request_id: requestId, shot_label: shotLabel,
             prompt_version: body.promptVersion ?? null, source_image_path: body.imagePath ?? body.imageUrl ?? null, actual_cost_usd: actualCostUsd, final_status: status,
             duration_seconds: body.duration ?? null, aspect_ratio: body.aspectRatio ?? null, resolution: body.resolution ?? null,
           },
