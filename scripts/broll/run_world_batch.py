@@ -23,19 +23,22 @@ Each shot's clip is persisted to project-clips/<user>/<project>/worlds/<run>/<id
 scripts/qa/realism_gate.py with the look axis; the manifest records cost estimates, verdicts and distances.
 """
 import argparse, json, os, subprocess, sys, time, urllib.request
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "_lib")); from jobs import job  # resource governor + registry (scripts/_lib/jobs.py)
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(ROOT, "scripts", "qa"))
 from run_broll_batch import Api, SUPA, load_look  # noqa: E402
 
+CAPS = json.load(open(os.path.join(ROOT, "config", "provider_caps.json")))
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36"
 PROXY = f"{SUPA}/functions/v1/proxy-provider-call"
 RUNWAY_RATE = {"gen4_turbo": 0.05, "gen4.5": 0.15}; KLING_RATE = 0.07; STILL_RATE = 0.07
 
 
-def wrap(prompt, look, motion=None, max_chars=1000, preamble=True):
+def wrap(prompt, look, motion=None, max_chars=1000, preamble=True, provider=None):
     """Preamble + scene (+ motion) + suffix. Providers cap the prompt (Runway: 1000 chars): the preamble is dropped
     first, then the suffix, never the scene. For image-to-video the still already carries the look, so the caller
     passes preamble=False and the prompt is the motion sentence plus the suffix."""
+    if provider: max_chars = int(CAPS.get(provider, {}).get("max_prompt_chars", max_chars))
     pre = (look or {}).get("preamble", "").strip() if preamble else ""; suf = (look or {}).get("shot_suffix", "").strip()
     core = prompt.strip() + (f" {motion.strip()}" if motion else "")
     for parts in ((pre, core, suf), (core, suf), (core,)):
@@ -69,6 +72,16 @@ def motion_submit(api, user, project, shot, prompt, still_url=None):
     return r
 
 
+def provider_of(route):
+    return "runway" if route in ("still_runway", "still_runway45", "runway_t2v") else "higgsfield"
+
+
+def refused(provider, r):
+    """True when the provider's error means every further submit in this run will fail the same way."""
+    text = json.dumps(r).lower()
+    return any(pat.lower() in text for pat in CAPS.get(provider, {}).get("refusal_patterns", []))
+
+
 def status(api, provider, job):
     return api.post(PROXY, {"endpoint": "video-providers-job-status", "method": "GET", "query": {"provider": provider, "id": job}}, timeout=60)
 
@@ -88,7 +101,9 @@ def main():
     ap.add_argument("--jwt", default="/tmp/jwt.txt"); ap.add_argument("--anon", default="/tmp/anon.txt"); ap.add_argument("--look-preset", default=None); ap.add_argument("--look-bank", default=None)
     ap.add_argument("--ref-stats", default=None); ap.add_argument("--judge", action="store_true"); ap.add_argument("--max-usd", type=float, default=12.0); ap.add_argument("--resume", action="store_true"); ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--poll-minutes", type=float, default=90); ap.add_argument("--run", default=None, help="run name (defaults to the out folder's basename)")
+    ap.add_argument("--resubmit-unknown", action="store_true", help="resubmit shots left in 'submitting' by a crashed run (only after checking the provider logs)")
     a = ap.parse_args(); os.makedirs(a.out, exist_ok=True); run = a.run or os.path.basename(os.path.normpath(a.out))
+    _job = job("batch", need_gb=0.3, out=a.out); _job.__enter__()
     api = Api(open(a.jwt).read(), open(a.anon).read()); look = load_look(a.look_preset); bank = json.load(open(a.look_bank)) if a.look_bank else None
     shots = json.load(open(a.shots)); mpath = os.path.join(a.out, "manifest.json")
     man = json.load(open(mpath)) if a.resume and os.path.exists(mpath) else {"run": run, "look_preset": a.look_preset, "shots": {}}
@@ -100,10 +115,21 @@ def main():
     if est > a.max_usd: raise SystemExit(f"estimate exceeds --max-usd {a.max_usd}")
     if a.dry_run: return
     # 1. stills + motion submits
+    exhausted = set()
     for s in shots:
         st = man["shots"].setdefault(s["id"], {"shot": s})
         if st.get("job"): continue
-        prompt = wrap(s["prompt"], look); still_url = None
+        if st.get("submitting"):
+            # WRITE-AHEAD RECONCILIATION: a previous run recorded the submit before the call and then died before
+            # recording the answer. The provider may have accepted (and billed) it. Never resubmit blindly: report
+            # it and skip, unless --resubmit-unknown says the operator has checked Control Center's
+            # tool_execution_logs for this provider/model/time and found nothing.
+            if not a.resubmit_unknown:
+                print(s["id"], "UNRECONCILED submit from", time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(st["submitting"]["time"])), "UTC", st["submitting"]["provider"], st["submitting"].get("model"), "— check Control Center tool_execution_logs, then rerun with --resubmit-unknown or set the job id in the manifest"); continue
+            st.pop("submitting")
+        prov = provider_of(s["route"])
+        if prov in exhausted: st["skipped"] = f"{prov} refused earlier in this run"; continue
+        prompt = wrap(s["prompt"], look, provider="xai" if s["route"].startswith("still") else provider_of(s["route"])); still_url = None
         if s["route"].startswith("still"):
             if s.get("still_path") and not st.get("still"): st["still"] = {"candidates": [], "picked": s["still_path"], "cost_usd": 0.0}
             if not st.get("still"):
@@ -115,10 +141,15 @@ def main():
                 best = min(cands, key=lambda c: c["look_distance"]); st["still"] = {"candidates": cands, "picked": best["path"], "cost_usd": r.get("actualCostUsd")}
                 print(s["id"], "stills", [round(c["look_distance"], 2) for c in cands], "→", os.path.basename(best["local"]))
             still_url = api.sign("project-references", st["still"]["picked"], ttl=86400)
-        mprompt = wrap(s.get("motion") or s["prompt"], look, preamble=False) if still_url else prompt
+        mprompt = wrap(s.get("motion") or s["prompt"], look, preamble=False, provider=prov) if still_url else wrap(s["prompt"], look, provider=prov)
+        st["submitting"] = {"provider": prov, "model": s.get("model") or s["route"], "time": time.time(), "prompt": mprompt}; json.dump(man, open(mpath, "w"), indent=1)   # write-ahead: the record exists before the money moves
         r = motion_submit(api, a.user, a.project, s, mprompt, still_url)
-        if not r.get("ok"): st["submit_error"] = r; print(s["id"], "submit failed", json.dumps(r)[:400]); json.dump(man, open(mpath, "w"), indent=1); continue
-        st["job"] = {"provider": r["_provider"], "id": r["providerJobId"], "estimate_usd": round((r.get("costEstimateCents") or 0) / 100, 3), "prompt": mprompt, "submitted": time.time()}
+        if not r.get("ok"):
+            st.pop("submitting"); st["submit_error"] = r; print(s["id"], "submit failed", json.dumps(r)[:400])
+            if refused(prov, r): exhausted.add(prov); print(f"{prov}: refusal pattern matched — no further {prov} submits this run")
+            json.dump(man, open(mpath, "w"), indent=1); continue
+        st.pop("submitting")
+        st["job"] = {"provider": r["_provider"], "id": r.get("providerJobId") or r.get("jobId"), "estimate_usd": round((r.get("costEstimateCents") or 0) / 100, 3), "prompt": mprompt, "submitted": time.time()}
         print(s["id"], "submitted", r["_provider"], r["providerJobId"][:8], f"~${st['job']['estimate_usd']}"); json.dump(man, open(mpath, "w"), indent=1)
     # 2. poll
     t0 = time.time()

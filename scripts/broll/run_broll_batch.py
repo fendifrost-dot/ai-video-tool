@@ -24,6 +24,7 @@ Output: <out>/manifest.json (per line: concept, prompt, provider job, file, gate
 judge report billed amounts.
 """
 import argparse, base64, json, os, subprocess, sys, time, urllib.request
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "_lib")); from jobs import job  # resource governor + registry (scripts/_lib/jobs.py)
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 SUPA = "https://qoyxgnkvjukovkrvdaiq.supabase.co"
 HF_LIST_USD_PER_CLIP = {"dop-lite": 0.135, "dop-preview": 0.573, "dop-turbo": 0.416}     # 5 s list prices (pixazo catalogue, 2026-10)
@@ -101,6 +102,7 @@ def main():
     ap.add_argument("--judge", action="store_true"); ap.add_argument("--ref-stats", default=None); ap.add_argument("--prompt-version", default="lyric_broll_v1")
     ap.add_argument("--dry-run", action="store_true"); ap.add_argument("--look-preset", default=None, help="name in config/look_presets.json; its preamble and shot suffix wrap every prompt")
     a = ap.parse_args(); look = load_look(a.look_preset)
+    _job = job("batch", need_gb=0.3, out=a.out); _job.__enter__()
     api = Api(open(a.jwt).read(), open(a.anon).read()); os.makedirs(a.out, exist_ok=True)
     user_id = a.user or a.still.split("/")[0]; overrides = dict(p.split("=") for p in a.pick); prefer = a.prefer.split(",")
     lines = []
