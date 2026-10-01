@@ -1,0 +1,970 @@
+{
+ "ok": true,
+ "actualCostUsd": 0.3437,
+ "result": {
+  "lines": [
+   {
+    "ref": "H1",
+    "text": "You don't gotta cut the lights on / This ice on",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Arctic Penthouse Glow",
+      "logline": "Model opens a blacked-out penthouse door; the dark room is an arctic night lit only by diamond jewelry on polar bears and a snowman in YSL gear.",
+      "world": "Midnight black penthouse with floor-to-ceiling glass, black marble floors and walls, heavy velvet curtains, no artificial lights on; outside snow falls against city skyline.",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "elegant female model in black silk gown",
+        "wardrobe": "floor-length black silk gown with off-shoulder cut",
+        "jewelry": "none",
+        "behaviour": "opens heavy black door and flicks wall switch that does nothing"
+       },
+       {
+        "who": "polar bear in tailored cream suit",
+        "wardrobe": "cream double-breasted suit with stand collar",
+        "jewelry": "diamond tennis chains, Cuban links, grills",
+        "behaviour": "walks slowly across marble floor as if it is normal"
+       },
+       {
+        "who": "half-snowman half-human in urban winter gear",
+        "wardrobe": "cream knit track jacket over striped shirt and tie, black trousers",
+        "jewelry": "diamond tennis chains, Cuban links, gold teeth",
+        "behaviour": "stands by window casually adjusting cuff as if everything is normal"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "model pushes open black door"
+       },
+       {
+        "at_seconds": 2.5,
+        "action": "flicks light switch; room stays dark"
+       },
+       {
+        "at_seconds": 4,
+        "action": "polar bear walks past her into frame"
+       },
+       {
+        "at_seconds": 6.5,
+        "action": "snowman turns head slightly toward camera"
+       }
+      ],
+      "camera": "medium-wide dolly in from doorway, hard side key light from off-screen jewelry glow, crushed blacks",
+      "fx": "diamond facets catch and throw soft gold light across surfaces",
+      "renderer": "world_video",
+      "realism_risk": "medium",
+      "risk_reason": "anthropomorphic animals in luxury clothing",
+      "render_prompt": "Pitch-black marble penthouse at midnight, floor-to-ceiling glass, snow falling outside, elegant model in black silk gown opens heavy door and flicks switch that does nothing, polar bear in cream double-breasted suit with diamond tennis chains and Cuban links walks calmly across floor, half-snowman in cream knit track jacket with diamond tennis chains and gold teeth stands by window adjusting cuff, everything feels normal, hard key light only from jewelry facets, crushed blacks, off-white and gold palette, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Runway Ice Light",
+      "logline": "Dark runway show lit solely by models' massive diamond jewelry as they walk.",
+      "world": "Black lacquer runway in a 90s house club interior, velvet walls, single hard key light source absent, only jewelry illuminating the space.",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "model in cream silk slip dress",
+        "wardrobe": "cream silk slip dress",
+        "jewelry": "diamond tennis chains, Cuban links",
+        "behaviour": "walks slowly down runway, jewelry throwing light onto walls"
+       },
+       {
+        "who": "model in black tailored coat",
+        "wardrobe": "black tailored coat open over cream knit top",
+        "jewelry": "diamond tennis chains, grills",
+        "behaviour": "passes first model, turns at end of runway"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "first model steps onto runway"
+       },
+       {
+        "at_seconds": 3.5,
+        "action": "second model crosses paths"
+       },
+       {
+        "at_seconds": 6,
+        "action": "both reach end and turn in sync"
+       }
+      ],
+      "camera": "locked wide shot, centre-foreground left empty, deep space behind, hard editorial lighting",
+      "fx": "jewelry facets pulse soft gold light across black surfaces",
+      "renderer": "performance_plate_video",
+      "realism_risk": "low",
+      "risk_reason": "simple runway action, no text or crowds",
+      "render_prompt": "Black lacquer runway in dark 90s club, two models walk in cream silk and black coat, only their diamond tennis chains and Cuban links casting light, deep space behind empty centre foreground, opulent cool confident, hard key crushed blacks, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": "Black lacquer runway in dark 90s club, two models walk in cream silk and black coat, only their diamond tennis chains and Cuban links casting light, deep space behind empty centre foreground, opulent cool confident, hard key crushed blacks, photographed on a cinema camera, photoreal, no animation look"
+     },
+     {
+      "kind": "garment_character",
+      "title": "Ice Light Switch",
+      "logline": "Artist flicks a switch in darkness; his ice immediately floods the room with light.",
+      "world": "Same black marble penthouse, midnight, windows to snowy city.",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "artist reaches for wall switch"
+       },
+       {
+        "at_seconds": 2,
+        "action": "flicks switch down"
+       },
+       {
+        "at_seconds": 3.5,
+        "action": "his diamond jewelry ignites and lights the entire room"
+       }
+      ],
+      "camera": "medium close-up on artist, slight push in",
+      "fx": "sudden soft gold flare from jewelry facets",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "low",
+      "risk_reason": "single figure, simple hand motion",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers reaches for wall switch in dark marble room, flicks it, his ice immediately floods the space with light, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "H2",
+    "text": "YSL I wear em like they white ones",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Arctic Switch",
+      "logline": "A model opens an ordinary door and the room beyond becomes the arctic where jeweled animals move like residents.",
+      "world": "dim corridor of black marble and gold sconces under hard key light with crushed blacks, opening into a vast white ice cavern with reflective frozen surfaces and pale blue glow at night",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "elegant model",
+        "wardrobe": "black silk YSL slip dress with off-white piping",
+        "jewelry": "none",
+        "behaviour": "walks calmly to door, turns handle, flicks wall switch"
+       },
+       {
+        "who": "penguin",
+        "wardrobe": "none",
+        "jewelry": "diamond tennis chain",
+        "behaviour": "waddles across ice as if it belongs there"
+       },
+       {
+        "who": "polar bear",
+        "wardrobe": "none",
+        "jewelry": "thick Cuban link",
+        "behaviour": "stands upright and adjusts posture like a resident"
+       },
+       {
+        "who": "snowman hybrid",
+        "wardrobe": "black puffer jacket and grey cargo pants",
+        "jewelry": "diamond gold teeth",
+        "behaviour": "walks through the ice room normally"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "model approaches plain black door in marble corridor"
+       },
+       {
+        "at_seconds": 3,
+        "action": "model opens door revealing arctic interior"
+       },
+       {
+        "at_seconds": 5,
+        "action": "model flicks switch, ice cavern fully illuminates"
+       },
+       {
+        "at_seconds": 7,
+        "action": "animals continue their normal movements"
+       }
+      ],
+      "camera": "steady tracking shot following model from corridor into room, 35mm lens, hard side key light",
+      "fx": "subtle ice particle drift on switch",
+      "renderer": "world_video",
+      "realism_risk": "medium",
+      "risk_reason": "multiple animals with precise jewelry",
+      "render_prompt": "beautiful model in black silk YSL slip dress opens ordinary black door in marble corridor and flicks the light switch; the room inside instantly becomes a vast arctic ice cavern with reflective frozen surfaces and pale blue glow at night; inside, penguins wear diamond tennis chains and polar bears wear thick Cuban links while a snowman hybrid with diamond gold teeth in black puffer jacket and grey cargo pants walks as if everything is normal; hard key lighting, crushed blacks, off-white and gold accents; photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Runway White Tees",
+      "logline": "Behind the artist, high-fashion models stride a runway while casually tossing white tees like everyday wear.",
+      "world": "opulent 90s house club runway stage of black marble and gold mirrors under hard key light with crushed blacks, off-white and gold accents at night",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "model in cream YSL suit",
+        "wardrobe": "cream double-breasted YSL suit",
+        "jewelry": "none",
+        "behaviour": "strides runway and casually drops a folded white tee onto the floor"
+       },
+       {
+        "who": "model in navy evening gown",
+        "wardrobe": "navy silk evening gown with gold accents",
+        "jewelry": "none",
+        "behaviour": "walks past and tosses another white tee over her shoulder"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "first model enters from left striding toward camera"
+       },
+       {
+        "at_seconds": 3,
+        "action": "model drops folded white tee onto runway"
+       },
+       {
+        "at_seconds": 5,
+        "action": "second model passes tossing another white tee"
+       },
+       {
+        "at_seconds": 7,
+        "action": "teeshirts settle on the marble floor"
+       }
+      ],
+      "camera": "locked wide shot with deep depth of field, centre foreground left empty, 50mm lens",
+      "fx": "none",
+      "renderer": "performance_plate_video",
+      "realism_risk": "low",
+      "risk_reason": "simple runway walk with two models",
+      "render_prompt": "opulent 90s house club runway of black marble and gold mirrors under hard key light with crushed blacks, off-white and gold accents at night; models in cream YSL suit and navy silk evening gown stride the runway and casually toss folded white tees onto the floor as if it were normal; centre foreground left completely clear; photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": "opulent 90s house club runway of black marble and gold mirrors under hard key light with crushed blacks, off-white and gold accents at night; models in cream YSL suit and navy silk evening gown stride the runway and casually toss folded white tees onto the floor as if it were normal; centre foreground left completely clear; photographed on a cinema camera, photoreal, no animation look"
+     },
+     {
+      "kind": "garment_character",
+      "title": "Casual YSL",
+      "logline": "The artist tugs the collar of his cream knit track jacket like it is an ordinary white tee.",
+      "world": "open dark space with hard key light and crushed blacks",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "artist stands still then raises right hand"
+       },
+       {
+        "at_seconds": 3,
+        "action": "artist tugs the stand collar outward casually"
+       },
+       {
+        "at_seconds": 6,
+        "action": "artist releases collar and lowers hand"
+       }
+      ],
+      "camera": "medium close-up, 50mm lens, hard key from left",
+      "fx": "none",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "low",
+      "risk_reason": "simple hand gesture from still",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers; keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere; photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "H3",
+    "text": "I don't follow brands, follow designers",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Designer Sanctum",
+      "logline": "At midnight in a hidden marble atelier, custom-clad figures reject logos and worship pure design under hard gold light.",
+      "world": "Midnight marble atelier with towering fluted columns, black lacquer floors reflecting off-white walls and gold leaf details, hard directional key light from crystal sconces, crushed shadows, silent and opulent.",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "lead designer",
+        "wardrobe": "ivory silk tunic with raw edges",
+        "jewelry": "none",
+        "behaviour": "adjusts a single perfect seam on a floating dress form as if every stitch is sacred"
+       },
+       {
+        "who": "tailor assistant",
+        "wardrobe": "charcoal wool trousers and cream linen shirt",
+        "jewelry": "none",
+        "behaviour": "cuts fabric with slow precision, treating the cloth like living material"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "wide shot of the empty atelier"
+       },
+       {
+        "at_seconds": 2,
+        "action": "lead designer enters frame and inspects a jacket on the form"
+       },
+       {
+        "at_seconds": 5,
+        "action": "tailor assistant steps forward and begins precise cutting"
+       }
+      ],
+      "camera": "slow dolly forward at eye level, 35mm lens, deep focus",
+      "fx": "subtle gold rim light flare on edges",
+      "renderer": "world_video",
+      "realism_risk": "low",
+      "risk_reason": "simple elegant interior with two figures",
+      "render_prompt": "Midnight marble atelier with towering fluted columns, black lacquer floors reflecting off-white walls and gold leaf details, hard directional key light from crystal sconces, crushed shadows. A lead designer in ivory silk tunic with raw edges inspects a jacket on a dress form with quiet reverence while a tailor assistant in charcoal wool trousers and cream linen shirt cuts fabric with precision. Slow dolly forward at eye level, 35mm lens. Photographed on a cinema camera, photoreal, no animation look.",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Procession of Pure Form",
+      "logline": "Behind the rapper, a line of designer-clad figures walks a private runway in total silence, proving they follow only the creators.",
+      "world": "Long black runway inside a dimly lit 90s club ballroom, off-white walls, gold accents catching hard sidelight, crushed blacks everywhere.",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "first model",
+        "wardrobe": "asymmetric black wool coat with raw seams",
+        "jewelry": "none",
+        "behaviour": "walks the runway slowly with perfect posture"
+       },
+       {
+        "who": "second model",
+        "wardrobe": "cream silk blouse and high-waisted tailored trousers",
+        "jewelry": "none",
+        "behaviour": "follows exactly five paces behind, turning once at the end"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "first model enters from right and walks left across mid-ground"
+       },
+       {
+        "at_seconds": 4,
+        "action": "second model enters and follows the same path with deliberate pace"
+       },
+       {
+        "at_seconds": 7,
+        "action": "both models exit frame left"
+       }
+      ],
+      "camera": "locked tripod, 50mm lens, centre foreground left empty",
+      "fx": "none",
+      "renderer": "performance_plate_video",
+      "realism_risk": "low",
+      "risk_reason": "controlled runway walk, two figures max",
+      "render_prompt": "Long black runway inside a dimly lit 90s club ballroom, off-white walls, gold accents catching hard sidelight. First model in asymmetric black wool coat with raw seams walks slowly from right to left, followed five paces behind by second model in cream silk blouse and high-waisted tailored trousers. Centre foreground left completely clear. Photographed on a cinema camera, photoreal, no animation look.",
+      "performance_plate_prompt": "Long black runway inside a dimly lit 90s club ballroom, off-white walls, gold accents catching hard sidelight. First model in asymmetric black wool coat with raw seams walks slowly from right to left, followed five paces behind by second model in cream silk blouse and high-waisted tailored trousers. Centre foreground left completely clear. Photographed on a cinema camera, photoreal, no animation look."
+     },
+     {
+      "kind": "garment_character",
+      "title": "Designer Choice",
+      "logline": "The artist turns his back on a single discarded brand tag and adjusts his own custom collar instead.",
+      "world": "same open marble atelier at midnight with gold light accents",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "artist stands still facing away from camera"
+       },
+       {
+        "at_seconds": 2,
+        "action": "slowly turns torso left and raises hand to straighten his stand collar"
+       },
+       {
+        "at_seconds": 5,
+        "action": "lowers hand and stares forward with calm authority"
+       }
+      ],
+      "camera": "medium shot, slight push in",
+      "fx": "hard key light catching gold lettering on chest band",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "low",
+      "risk_reason": "simple turn and collar adjustment from still",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere. Photographed on a cinema camera, photoreal, no animation look.",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "H4",
+    "text": "The rims 21, don't ride no minors",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Midnight 21-Inch Valet",
+      "logline": "Giant-rimmed Bentleys glide through a velvet-rope valet zone while children are turned away at the curb.",
+      "world": "Desert night, hard moonlight on polished concrete and chrome, low-slung black glass architecture, reflective puddles, opulent and empty.",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "tall valet in black double-breasted coat",
+        "wardrobe": "black double-breasted coat, black trousers, black gloves",
+        "jewelry": "diamond tennis chains, Cuban links",
+        "behaviour": "opens Bentley door then waves off approaching children"
+       },
+       {
+        "who": "four small children carrying a wheel-less sedan",
+        "wardrobe": "hoodies, jeans, sneakers",
+        "jewelry": "none",
+        "behaviour": "run toward the curb with the car on their shoulders then stop at the rope"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "Bentley truck with massive 21-inch chrome rims rolls slowly past camera"
+       },
+       {
+        "at_seconds": 3,
+        "action": "valet opens door, diamond light flares off rims"
+       },
+       {
+        "at_seconds": 5,
+        "action": "children approach with wheel-less car, valet blocks them with rope"
+       },
+       {
+        "at_seconds": 7,
+        "action": "truck pulls away into dark"
+       }
+      ],
+      "camera": "low tracking shot, 35mm, slight parallax on rims",
+      "fx": "hard moonlight rim-light on chrome, subtle lens flare on diamonds",
+      "renderer": "world_video",
+      "realism_risk": "medium",
+      "risk_reason": "children carrying car requires precise weight and balance",
+      "render_prompt": "Midnight desert valet under hard moonlight, polished concrete reflecting chrome, Bentley truck with enormous 21-inch rims cruising slowly, tall valet in black double-breasted coat opens door then stops four small children carrying a wheel-less sedan on their shoulders, children in hoodies and jeans looking disappointed at velvet rope, diamond tennis chains glint on valet, no text, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Rims Rolling Past",
+      "logline": "Bentley with 21s glides behind the artist while four kids run with a wheel-less car then scatter as another car arrives.",
+      "world": "Wide empty nighttime avenue, wet asphalt, distant neon glow, deep space behind the clear foreground.",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "driver in black leather coat",
+        "wardrobe": "black leather coat, black trousers",
+        "jewelry": "diamond tennis chains",
+        "behaviour": "cruises slowly in Bentley"
+       },
+       {
+        "who": "four kids carrying wheel-less car",
+        "wardrobe": "streetwear hoodies and sneakers",
+        "jewelry": "none",
+        "behaviour": "run behind the Bentley carrying the car then exit frame"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "Bentley truck with huge 21-inch rims drives left to right"
+       },
+       {
+        "at_seconds": 3,
+        "action": "four kids sprint behind it carrying wheel-less sedan on shoulders"
+       },
+       {
+        "at_seconds": 6,
+        "action": "kids exit frame, second luxury car pulls up in deep background"
+       },
+       {
+        "at_seconds": 7,
+        "action": "reporters step out and lift cameras"
+       }
+      ],
+      "camera": "static wide shot, deep focus, 35mm, foreground left completely clear",
+      "fx": "wet asphalt reflections, rim light on chrome",
+      "renderer": "performance_plate_video",
+      "realism_risk": "medium",
+      "risk_reason": "multiple moving elements at different depths",
+      "render_prompt": "Nighttime wet avenue, Bentley truck with massive 21-inch chrome rims drives slowly left to right, four kids run behind carrying a sedan with no wheels on their shoulders, second luxury car stops deep in background, reporters hop out filming, centre-foreground left completely clear, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": "Nighttime wet avenue, Bentley truck with massive 21-inch chrome rims drives slowly left to right, four kids run behind carrying a sedan with no wheels on their shoulders, second luxury car stops deep in background, reporters hop out filming, centre-foreground left completely clear, photographed on a cinema camera, photoreal, no animation look"
+     },
+     {
+      "kind": "garment_character",
+      "title": "Rims Check",
+      "logline": "The artist steps beside a parked Bentley and glances down at its massive rims.",
+      "world": "Same midnight valet zone, open concrete, moonlight on chrome.",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "artist walks into frame from right"
+       },
+       {
+        "at_seconds": 3,
+        "action": "stops beside Bentley front wheel"
+       },
+       {
+        "at_seconds": 5,
+        "action": "looks down at the 21-inch rim, slight head tilt"
+       }
+      ],
+      "camera": "medium tracking shot, eye level",
+      "fx": "hard moonlight on cream jacket and chrome",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "low",
+      "risk_reason": "simple walk and head turn from still",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "H5",
+    "text": "More cameras in the whip than a camera crew",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Camera Car Interior",
+      "logline": "A Rolls-Royce Phantom interior at night where every surface is replaced by DSLR and cinema cameras that swivel and flash as if it were ordinary.",
+      "world": "Nighttime luxury car interior, black lacquered wood and cream leather, rain on tinted windows, harsh off-camera flash bursts creating high-contrast Helmut Newton lighting.",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "chauffeur",
+        "wardrobe": "black suit with stand collar",
+        "jewelry": "none",
+        "behaviour": "drives normally while dozens of cameras mounted on every surface auto-focus and trigger flashes"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "wide shot of Phantom interior packed with cameras"
+       },
+       {
+        "at_seconds": 3,
+        "action": "cameras pan and tilt toward each other"
+       },
+       {
+        "at_seconds": 6,
+        "action": "rear window shows paparazzi silhouettes outside"
+       }
+      ],
+      "camera": "slow dolly forward through the cabin, 35mm lens, shallow depth of field",
+      "fx": "strobing camera flashes, subtle rain streaks on glass",
+      "renderer": "world_video",
+      "realism_risk": "medium",
+      "risk_reason": "many small mechanical objects moving simultaneously",
+      "render_prompt": "Nighttime luxury car interior, black lacquered wood and cream leather, rain on tinted windows, harsh off-camera flash bursts. A chauffeur in a black suit drives while dozens of DSLR and cinema cameras mounted everywhere auto-focus and flash as if normal. Slow dolly forward, 35mm lens. Photographed on a cinema camera, photoreal, no animation look.",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Pull-Up with Cameras",
+      "logline": "A blacked-out Maybach pulls up behind the artist and its doors open to release a swarm of mounted cameras on robotic arms.",
+      "world": "Rain-slicked urban street at night, opulent storefronts in soft focus, hard key light from streetlamps creating crushed shadows.",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "Maybach driver",
+        "wardrobe": "black leather jacket",
+        "jewelry": "none",
+        "behaviour": "parks the car then sits still while camera rigs deploy from the doors"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "Maybach glides into frame and stops"
+       },
+       {
+        "at_seconds": 3,
+        "action": "doors open and multiple camera arms extend outward"
+       },
+       {
+        "at_seconds": 6,
+        "action": "cameras swivel and record toward the foreground"
+       }
+      ],
+      "camera": "locked wide shot with deep focus, artist zone left empty in center foreground",
+      "fx": "rain reflections, lens flares from flashes",
+      "renderer": "performance_plate_video",
+      "realism_risk": "medium",
+      "risk_reason": "multiple articulated arms extending from car",
+      "render_prompt": "Rain-slicked urban street at night, Maybach pulling up, doors opening to reveal robotic camera arms deploying and swiveling. Photographed on a cinema camera, photoreal, no animation look.",
+      "performance_plate_prompt": "Rain-slicked urban street at night, Maybach pulling up and stopping in the mid-ground, doors opening to reveal robotic camera arms deploying and swiveling toward the empty center-foreground space, deep focus, no one in the immediate foreground."
+     },
+     {
+      "kind": "garment_character",
+      "title": "Tie Camera Click",
+      "logline": "The artist in the locked outfit sits inside the car and clicks a shutter on a camera mounted on the dashboard.",
+      "world": "same Phantom interior as world scene, night, rain, hard flashes",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "artist reaches forward"
+       },
+       {
+        "at_seconds": 4,
+        "action": "presses shutter button on dashboard camera"
+       },
+       {
+        "at_seconds": 7,
+        "action": "camera flash fires"
+       }
+      ],
+      "camera": "medium close-up, slight handheld",
+      "fx": "single flash burst at second 7",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "low",
+      "risk_reason": "simple hand motion on one object",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere. Photographed on a cinema camera, photoreal, no animation look.",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "H6",
+    "text": "All this ice around me, need a Canada Goose",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Diamond Ice Lounge Freeze",
+      "logline": "A 90s house club interior turned arctic by cascading diamond jewelry that chills the air.",
+      "world": "Opulent black-and-gold 90s house club with mirrored walls and crushed velvet booths; temperature visibly dropping, frost crawling across surfaces, hard key lighting with deep shadows and gold rim lights.",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "tall female model in cream Canada Goose parka",
+        "wardrobe": "cream Canada Goose parka over black silk slip dress and heels",
+        "jewelry": "diamond tennis chains and Cuban links",
+        "behaviour": "shivers dramatically then pulls parka tighter while dancing in place as if the cold is normal"
+       },
+       {
+        "who": "male dancer in navy Canada Goose bomber",
+        "wardrobe": "navy Canada Goose bomber jacket with black trousers",
+        "jewelry": "diamond tennis chains and grills",
+        "behaviour": "casually exhales visible breath and keeps dancing to the beat"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "Camera pushes into the club as frost rapidly spreads across the floor"
+       },
+       {
+        "at_seconds": 3,
+        "action": "Female model pulls Canada Goose hood up while diamond chains glint and ice crystals form on her lashes"
+       },
+       {
+        "at_seconds": 6,
+        "action": "Male dancer exhales a thick cloud of breath and keeps moving as if nothing unusual"
+       }
+      ],
+      "camera": "slow dolly push-in from doorway, low angle, 35mm lens",
+      "fx": "visible breath, fast-forming frost on surfaces, subtle ice particle drift",
+      "renderer": "world_video",
+      "realism_risk": "medium",
+      "risk_reason": "frost growth and breath volume are stylized but still within renderer range",
+      "render_prompt": "Opulent black-and-gold 90s house club interior with mirrored walls; frost rapidly spreads across the floor under hard key lighting and crushed blacks; tall female model in cream Canada Goose parka over black silk slip dress pulls hood up as diamond tennis chains and Cuban links glint and ice crystals form; male dancer in navy Canada Goose bomber exhales thick visible breath while dancing; visible breath and fast-forming frost, photoreal, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Ice Storm Runway Behind",
+      "logline": "Artist raps foreground while behind him a line of models in Canada Goose jackets struts through falling ice shards in a luxury atrium.",
+      "world": "Sleek marble atrium with gold accents and floor-to-ceiling windows; hard side lighting creates dramatic shadows, off-white and gold palette.",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "three models in Canada Goose outerwear",
+        "wardrobe": "cream and navy Canada Goose parkas and bombers over evening wear",
+        "jewelry": "diamond tennis chains and Cuban links",
+        "behaviour": "walk single-file through falling ice shards as if on a runway, turning and posing at the far wall"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "First model enters frame left and strides past toward background"
+       },
+       {
+        "at_seconds": 3,
+        "action": "Second and third models follow, ice shards falling around them"
+       },
+       {
+        "at_seconds": 6,
+        "action": "All three models turn in unison at the back wall and pose"
+       }
+      ],
+      "camera": "static medium-wide on the plate, deep focus, 50mm lens",
+      "fx": "slow-falling ice shards, subtle lens flare from gold accents",
+      "renderer": "performance_plate_video",
+      "realism_risk": "low",
+      "risk_reason": "simple motion, few characters, clear foreground space",
+      "render_prompt": "Sleek marble atrium with gold accents; three models in cream and navy Canada Goose parkas stride single-file through falling ice shards, turning to pose at the far wall; centre-foreground left completely clear, deep space, photoreal, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": "Sleek marble atrium with gold accents; three models in cream and navy Canada Goose parkas stride single-file through falling ice shards, turning to pose at the far wall; centre-foreground left completely clear, deep space, photoreal, photographed on a cinema camera, photoreal, no animation look"
+     },
+     {
+      "kind": "garment_character",
+      "title": "Canada Goose Activation",
+      "logline": "Artist stands in the frozen atrium and slowly zips up an unseen Canada Goose as ice builds around him.",
+      "world": "Sleek marble atrium continuing the performance plate environment, hard side lighting, off-white and gold.",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "Artist reaches up and begins zipping an invisible parka"
+       },
+       {
+        "at_seconds": 4,
+        "action": "Shoulders shrug as if pulling on sleeves, breath visible"
+       },
+       {
+        "at_seconds": 7,
+        "action": "Holds collar closed, frost forming on the navy cap brim"
+       }
+      ],
+      "camera": "medium shot, slight low angle, 50mm lens",
+      "fx": "visible breath, light frost on surfaces and cap",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "low",
+      "risk_reason": "simple motion on locked hero image, minimal environment change",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere. He slowly zips an invisible parka, shrugs shoulders, exhales visible breath, frost forms on cap brim, hard side lighting, photoreal, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "H7",
+    "text": "So clean but I don't do what the janitor do",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Spotless Penthouse Living",
+      "logline": "A pristine marble penthouse where residents move through immaculate space without ever cleaning.",
+      "world": "Opulent high-rise penthouse at night, floor-to-ceiling windows overlooking city lights, white Carrara marble floors and walls with gold veining, soft directional key light from floor lamps, crushed shadows, off-white and gold palette, surfaces mirror-like and dust-free.",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "elegant woman in tailored suit",
+        "wardrobe": "cream silk blouse, high-waisted black trousers, pointed heels",
+        "jewelry": "none",
+        "behaviour": "walks across polished marble, leaving no footprints, casually dropping a silk scarf that lands perfectly folded"
+       },
+       {
+        "who": "man in luxury loungewear",
+        "wardrobe": "black velvet robe over cream trousers",
+        "jewelry": "diamond tennis chain, Cuban links",
+        "behaviour": "pours champagne onto marble without a splash, glass stays pristine"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "wide shot of empty marble corridor"
+       },
+       {
+        "at_seconds": 2,
+        "action": "woman enters frame from right, crosses without touching surfaces"
+       },
+       {
+        "at_seconds": 5,
+        "action": "man appears from left, pours champagne, both exit leaving space untouched"
+       }
+      ],
+      "camera": "slow dolly forward at eye level, 35mm lens, hard key light with deep shadows",
+      "fx": "subtle lens flare on gold accents",
+      "renderer": "world_video",
+      "realism_risk": "low",
+      "risk_reason": "simple interior with few moving elements",
+      "render_prompt": "Opulent high-rise penthouse at night, white Carrara marble floors and walls with gold veining, soft directional key light, crushed shadows, off-white and gold palette, surfaces mirror-like; elegant woman in cream silk blouse and high-waisted black trousers crosses without touching anything, man in black velvet robe pours champagne that lands perfectly; photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Clean Runway Behind",
+      "logline": "Models stride through an immaculate white runway space while the foreground stays empty for the artist.",
+      "world": "Minimalist white runway set with gold trim, hard Helmut Newton style lighting, deep black background, polished floor reflecting lights.",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "model in cream coat",
+        "wardrobe": "long cream wool coat, black boots",
+        "jewelry": "none",
+        "behaviour": "walks the runway slowly, perfectly clean, never touching floor with hands"
+       },
+       {
+        "who": "second model in black suit",
+        "wardrobe": "black double-breasted suit, white shirt",
+        "jewelry": "none",
+        "behaviour": "follows, drops nothing, exits frame leaving space spotless"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "empty runway in deep focus"
+       },
+       {
+        "at_seconds": 2,
+        "action": "first model enters from background and walks forward"
+       },
+       {
+        "at_seconds": 5,
+        "action": "second model follows then both exit, runway remains pristine"
+       }
+      ],
+      "camera": "static wide shot with deep focus, 50mm lens, hard side key",
+      "fx": "none",
+      "renderer": "performance_plate_video",
+      "realism_risk": "low",
+      "risk_reason": "controlled runway action, few characters",
+      "render_prompt": "Minimalist white runway with gold trim, hard lighting, deep black background; models in cream coat and black suit walk the runway leaving everything spotless; photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": "Minimalist white runway with gold trim, hard lighting, deep black background; centre-foreground left completely clear; models in cream coat and black suit walk the runway in mid-ground and background leaving everything spotless, deep space"
+     },
+     {
+      "kind": "garment_character",
+      "title": "Tie Adjustment in Clean Light",
+      "logline": "Artist straightens his tie while standing perfectly clean in the same space.",
+      "world": "open \u2014 invent the world per scene; the performance plate is whatever place and action best serves the line (not a corridor)",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "artist stands still, hands at sides"
+       },
+       {
+        "at_seconds": 3,
+        "action": "slowly raises hand to adjust striped tie"
+       },
+       {
+        "at_seconds": 6,
+        "action": "hand lowers, posture remains impeccable"
+       }
+      ],
+      "camera": "medium shot, slight push in, hard key light from above left",
+      "fx": "none",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "low",
+      "risk_reason": "simple single-character motion from still",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers; keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "H8",
+    "text": "My money talk for me and it be rambling too",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Vault of Rambling Bills",
+      "logline": "In a marble-lined bank vault at midnight, stacks of cash grow mouths and ramble endlessly.",
+      "world": "opulent marble bank vault, midnight, single overhead spotlight with crushed blacks, gold-veined floors, walls of safety-deposit boxes reflecting light, air thick with floating currency dust",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "tall stacks of hundred-dollar bills",
+        "wardrobe": "none",
+        "jewelry": "none",
+        "behaviour": "lips form on the edges of the bills and speak rapidly in overlapping murmurs as if gossiping nonstop"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "camera pushes slowly into the vault; first stack of bills opens a mouth"
+       },
+       {
+        "at_seconds": 3,
+        "action": "second and third stacks join, voices overlapping in a low rambling chant"
+       },
+       {
+        "at_seconds": 6,
+        "action": "loose bills flutter upward like they are arguing, then settle"
+       }
+      ],
+      "camera": "slow dolly forward at eye level, 35mm lens, hard key from above creating sharp shadows",
+      "fx": "subtle floating paper dust, gentle mouth animation on paper edges",
+      "renderer": "world_video",
+      "realism_risk": "medium",
+      "risk_reason": "paper mouths are unusual but still photographic",
+      "render_prompt": "opulent marble bank vault at midnight, single hard overhead spotlight, crushed blacks, gold-veined floors; tall stacks of hundred-dollar bills form talking mouths on their edges and ramble in overlapping murmurs as if gossiping nonstop, loose bills flutter upward then settle; slow dolly forward at eye level, 35mm lens, hard key lighting; photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Cash Avalanche Behind the Mic",
+      "logline": "Behind the foreground performance space, an endless river of cash flows through a luxury foyer while oversized bills keep talking.",
+      "world": "grand marble foyer of a private bank at night, warm gold sconce lighting mixed with cool moonlight through tall windows, reflective black marble floor",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "river of loose hundred-dollar bills",
+        "wardrobe": "none",
+        "jewelry": "none",
+        "behaviour": "flowing steadily across the floor from left to right while individual bills open paper mouths and ramble"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "wide river of bills begins flowing across the black marble floor behind the empty foreground"
+       },
+       {
+        "at_seconds": 4,
+        "action": "larger bundled stacks slide into frame, their edges forming mouths that keep talking"
+       },
+       {
+        "at_seconds": 7,
+        "action": "flow continues uninterrupted, depth emphasized by perspective"
+       }
+      ],
+      "camera": "locked wide shot, 35mm lens, deep focus so mid-ground and background read clearly",
+      "fx": "subtle paper motion and soft mouth openings",
+      "renderer": "performance_plate_video",
+      "realism_risk": "low",
+      "risk_reason": "simple flowing paper with minor mouth detail",
+      "render_prompt": "grand marble bank foyer at night, warm gold sconce light mixed with cool moonlight, reflective black marble floor; river of loose hundred-dollar bills flowing steadily left to right, individual bills forming paper mouths that ramble; centre-foreground left completely clear and empty; photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": "grand marble bank foyer at night, warm gold sconce light mixed with cool moonlight, reflective black marble floor; river of loose hundred-dollar bills flowing steadily left to right, individual bills forming paper mouths that ramble; centre-foreground left completely clear and empty; photographed on a cinema camera, photoreal, no animation look"
+     },
+     {
+      "kind": "garment_character",
+      "title": "Money in His Pocket",
+      "logline": "The artist stands still while a thick roll of cash in his trouser pocket visibly bulges and vibrates as if talking.",
+      "world": "same opulent marble foyer at night, hard editorial lighting, off-white and gold accents",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "artist stands relaxed, left hand in pocket"
+       },
+       {
+        "at_seconds": 3,
+        "action": "thick money roll visibly shifts and pushes against the fabric"
+       },
+       {
+        "at_seconds": 6,
+        "action": "pocket fabric twitches once more as if the cash is still rambling"
+       }
+      ],
+      "camera": "medium shot, slight low angle, 50mm lens",
+      "fx": "subtle fabric stretch and pocket movement only",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "low",
+      "risk_reason": "fabric motion only, no complex hands",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers; keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "performance_plate_prompt": ""
+     }
+    ]
+   }
+  ]
+ },
+ "failures": [],
+ "errors": []
+}

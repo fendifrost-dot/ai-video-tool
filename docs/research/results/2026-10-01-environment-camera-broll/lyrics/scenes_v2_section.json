@@ -1,0 +1,962 @@
+{
+ "ok": true,
+ "actualCostUsd": 0.3506,
+ "result": {
+  "lines": [
+   {
+    "ref": "V1",
+    "text": "and it be rambling too",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Rambling Estate Paths",
+      "logline": "A vast midnight estate whose winding marble paths lead nowhere straight while inhabitants stroll as if the maze is ordinary.",
+      "world": "Midnight opulent YSL estate, endless curving marble paths under hard key light, crushed blacks, off-white walls with gold trim, fountains reflecting moonlight, light mist, 2am",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "lean suited man",
+        "wardrobe": "cream double-breasted suit, navy loafers",
+        "jewelry": "none",
+        "behaviour": "walks slowly along the curving path, gesturing and talking to himself as if continuing a long monologue"
+       },
+       {
+        "who": "woman in silk gown",
+        "wardrobe": "floor-length cream silk gown with gold sash",
+        "jewelry": "none",
+        "behaviour": "follows the same winding path at her own pace, occasionally glancing at a gold compact mirror"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "camera follows the curved marble path as the suited man enters frame"
+       },
+       {
+        "at_seconds": 3,
+        "action": "woman in silk gown appears from an archway and begins walking the same rambling route"
+       },
+       {
+        "at_seconds": 6,
+        "action": "both continue their unhurried, winding stroll under hard key light"
+       }
+      ],
+      "camera": "slow tracking shot at eye level, slight Dutch angle to emphasize curves, 35mm lens",
+      "fx": "subtle lens flare on gold accents, light mist drifting low",
+      "renderer": "world_video",
+      "realism_risk": "low",
+      "risk_reason": "simple path and two figures",
+      "render_prompt": "Midnight opulent YSL estate, endless curving marble paths under hard key light, crushed blacks, off-white walls with gold trim, fountains reflecting moonlight, light mist, 2am; a lean suited man in cream double-breasted suit walks slowly along the curving path gesturing as if mid-monologue; a woman in floor-length cream silk gown follows at her own pace glancing at a gold compact mirror; both treat the maze-like paths as normal; slow tracking shot, 35mm lens, hard key lighting, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Rambling Runway Behind Him",
+      "logline": "Models drift along an endlessly looping runway that folds back on itself while the artist raps in the foreground.",
+      "world": "90s house club runway set inside a grand mirrored ballroom, hard key lighting, crushed blacks, off-white and gold surfaces",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "model in cream suit",
+        "wardrobe": "cream tailored suit, black shirt, no tie",
+        "jewelry": "none",
+        "behaviour": "walks the folding runway in a continuous loop, turning corners that should not exist"
+       },
+       {
+        "who": "model in navy gown",
+        "wardrobe": "navy silk evening gown",
+        "jewelry": "none",
+        "behaviour": "follows the same looping runway path, maintaining distance"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "first model enters from left and begins walking the curving runway"
+       },
+       {
+        "at_seconds": 3,
+        "action": "second model appears and follows the looping path"
+       },
+       {
+        "at_seconds": 6,
+        "action": "both continue the endless, non-linear runway walk behind the clear foreground space"
+       }
+      ],
+      "camera": "static wide shot with deep focus, foreground left empty, mid-ground runway action only",
+      "fx": "mirror reflections, subtle god rays",
+      "renderer": "performance_plate_video",
+      "realism_risk": "medium",
+      "risk_reason": "looping runway geometry",
+      "render_prompt": "90s house club runway set inside a grand mirrored ballroom, hard key lighting, crushed blacks, off-white and gold surfaces; models walk an endlessly folding runway as if it is normal; centre-foreground left completely clear; static wide shot, deep focus, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": "90s house club runway set inside a grand mirrored ballroom, hard key lighting, crushed blacks, off-white and gold surfaces; models walk an endlessly folding runway as if it is normal; centre-foreground left completely clear; static wide shot, deep focus, photographed on a cinema camera, photoreal, no animation look"
+     },
+     {
+      "kind": "garment_character",
+      "title": "Rambling Forward Step",
+      "logline": "The artist takes a single slow, meandering step that feels like it could continue forever.",
+      "world": "open space with opulent off-white and gold backdrop, hard key light",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "artist begins a slow, slightly unsteady forward step"
+       },
+       {
+        "at_seconds": 4,
+        "action": "his body continues the rambling motion as if the step keeps unfolding"
+       },
+       {
+        "at_seconds": 7,
+        "action": "completes the extended step and settles"
+       }
+      ],
+      "camera": "medium shot, slight low angle, locked off",
+      "fx": "hard key rim light on shoulders",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "low",
+      "risk_reason": "single figure, minimal motion",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers; keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "V2",
+    "text": "know you see it",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Visible Ice Ballroom",
+      "logline": "A velvet-walled ballroom at midnight where floating diamond tennis chains and grills snap into visibility under shifting spotlights while guests sip champagne as if nothing changed.",
+      "world": "Opulent 1920s-style ballroom with black marble floors, mirrored ceilings, heavy gold curtains, 2 a.m. moonlight through tall arched windows, hard directional key light creating crushed blacks and bright gold highlights on surfaces.",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "woman in emerald gown",
+        "wardrobe": "floor-length emerald silk gown with high slit",
+        "jewelry": "diamond tennis chains, Cuban links, grills",
+        "behaviour": "sips from coupe glass while her massive diamond tennis chain materializes around her neck and she continues conversation"
+       },
+       {
+        "who": "man in tuxedo",
+        "wardrobe": "tailored black velvet tuxedo",
+        "jewelry": "diamond tennis chains, Cuban links, grills",
+        "behaviour": "adjusts cuff while a grill flashes into view on his teeth and he smiles normally"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "empty marble floor reflects moonlight"
+       },
+       {
+        "at_seconds": 2,
+        "action": "spotlights hit center, diamond chains appear on guests"
+       },
+       {
+        "at_seconds": 5,
+        "action": "guests glance at each other\u2019s new jewelry but keep drinking and talking"
+       },
+       {
+        "at_seconds": 7,
+        "action": "chains pulse once then hold steady under hard light"
+       }
+      ],
+      "camera": "slow dolly forward at eye level, 35mm lens, slight parallax on reflections",
+      "fx": "subtle shimmer on diamond edges only when light hits",
+      "renderer": "world_video",
+      "realism_risk": "medium",
+      "risk_reason": "sudden materialization of jewelry requires clean reveal without artifacts",
+      "render_prompt": "Opulent 1920s-style ballroom with black marble floors, mirrored ceilings, heavy gold curtains, 2 a.m. moonlight through tall arched windows, hard directional key light creating crushed blacks and bright gold highlights. A woman in emerald gown and a man in velvet tuxedo wear diamond tennis chains, Cuban links and grills that snap into visibility under spotlights while they sip champagne and converse normally. Photographed on a cinema camera, photoreal, no animation look.",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Spotlit Reveal Runway",
+      "logline": "Single model walks directly toward camera in deep space; each step triggers a hard spotlight that makes her diamond jewelry flare into brilliance.",
+      "world": "Dark runway corridor with polished black floor and distant gold wall, single hard overhead spotlight chasing the model, off-white and gold palette.",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "model in cream silk dress",
+        "wardrobe": "long cream silk column dress",
+        "jewelry": "diamond tennis chains, Cuban links, grills",
+        "behaviour": "walks straight forward, jewelry catching light on each step as if showing it off"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "model enters frame from deep background"
+       },
+       {
+        "at_seconds": 3,
+        "action": "first spotlight hits, tennis chains flash"
+       },
+       {
+        "at_seconds": 6,
+        "action": "second spotlight hits, Cuban links and grill catch light"
+       },
+       {
+        "at_seconds": 8,
+        "action": "model stops mid-ground, full jewelry illuminated"
+       }
+      ],
+      "camera": "static wide lens, deep focus, center-foreground kept empty",
+      "fx": "hard specular blooms on jewelry only",
+      "renderer": "performance_plate_video",
+      "realism_risk": "low",
+      "risk_reason": "simple model walk with clean light cues",
+      "render_prompt": "Dark runway corridor with polished black floor and distant gold wall, single hard overhead spotlight chasing a model in cream silk dress who walks straight toward camera. Diamond tennis chains, Cuban links and grills flare under each new spotlight while she moves normally. Photographed on a cinema camera, photoreal, no animation look.",
+      "performance_plate_prompt": "Dark runway corridor with polished black floor and distant gold wall, single hard overhead spotlight chasing a model in cream silk dress who walks straight toward camera. Diamond tennis chains, Cuban links and grills flare under each new spotlight while she moves normally. Center-foreground kept completely clear. Photographed on a cinema camera, photoreal, no animation look."
+     },
+     {
+      "kind": "garment_character",
+      "title": "Turn and Show",
+      "logline": "Artist slowly turns his head and shoulders toward camera, making the cream track jacket and tie visible under the same hard editorial light.",
+      "world": "open \u2014 invent the world per scene; the performance plate is whatever place and action best serves the line (not a corridor)",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "artist stands in three-quarter profile"
+       },
+       {
+        "at_seconds": 3,
+        "action": "slow turn of head and torso brings face and jacket front to camera"
+       },
+       {
+        "at_seconds": 6,
+        "action": "slight shoulder roll settles the knit fabric"
+       },
+       {
+        "at_seconds": 8,
+        "action": "final direct look holds"
+       }
+      ],
+      "camera": "tight 50mm medium close-up, locked off",
+      "fx": "none",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "low",
+      "risk_reason": "simple head-and-shoulder turn from still",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere. Photographed on a cinema camera, photoreal, no animation look.",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "V3",
+    "text": "Yves Saint Laurent on the weekend",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Weekend Penthouse Terrace",
+      "logline": "A sprawling marble terrace high above the city becomes a private YSL weekend escape where the impossible is treated as routine.",
+      "world": "Rooftop terrace of a brutalist high-rise at dusk, polished white marble floors reflecting gold light, infinity pool edge dissolving into the skyline, warm golden hour sun cutting hard shadows, opulent 90s club atmosphere.",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "three elegant models in YSL tailoring",
+        "wardrobe": "cream double-breasted blazers with wide lapels, black silk trousers, open-neck shirts",
+        "jewelry": "none",
+        "behaviour": "casually lounging on low white leather sofas, sipping champagne, one lighting a cigarette as if the city below is their private garden"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "wide establishing shot of the terrace"
+       },
+       {
+        "at_seconds": 3,
+        "action": "camera slowly tracks right as one model stands and adjusts her blazer"
+       },
+       {
+        "at_seconds": 6,
+        "action": "golden light flares across marble"
+       }
+      ],
+      "camera": "slow tracking shot at eye level, 35mm lens, hard side key light with deep crushed blacks",
+      "fx": "subtle lens flare on marble edges",
+      "renderer": "world_video",
+      "realism_risk": "low",
+      "risk_reason": "simple architectural scene with few characters",
+      "render_prompt": "High-end fashion editorial meets 90s house club; YSL campaign film with Helmut Newton lighting: hard key, crushed blacks, off-white and gold accents; opulent, cool, confident. Rooftop terrace of a brutalist high-rise at dusk, polished white marble floors reflecting gold light, infinity pool edge dissolving into the skyline. Three elegant models in cream double-breasted blazers with wide lapels, black silk trousers, open-neck shirts casually lounging on low white leather sofas, sipping champagne, one lighting a cigarette as if the city below is their private garden. Slow tracking shot at eye level, 35mm lens, hard side key light with deep crushed blacks, subtle lens flare on marble edges, photographed on a cinema camera, photoreal, no animation look.",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Weekend Runway Behind Artist",
+      "logline": "A private weekend fashion parade of YSL pieces unfolds in the deep background while the foreground stays open.",
+      "world": "Minimalist white cube gallery turned runway, black marble floor, dramatic spotlight beams cutting through haze, gold accents on the walls.",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "two male models walking the runway",
+        "wardrobe": "tailored cream trousers, navy silk shirts, cream knit cardigans draped over shoulders",
+        "jewelry": "none",
+        "behaviour": "walking slowly toward camera then turning, one adjusting cuff, treating the space like their personal weekend showcase"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "models enter from far background"
+       },
+       {
+        "at_seconds": 4,
+        "action": "first model reaches mid-ground, second follows"
+       },
+       {
+        "at_seconds": 7,
+        "action": "both turn and walk back into deep background"
+       }
+      ],
+      "camera": "static wide shot with deep depth of field, 50mm lens, hard overhead key light",
+      "fx": "light haze catching spotlight beams",
+      "renderer": "performance_plate_video",
+      "realism_risk": "low",
+      "risk_reason": "controlled runway with only two figures",
+      "render_prompt": "High-end fashion editorial meets 90s house club; YSL campaign film with Helmut Newton lighting: hard key, crushed blacks, off-white and gold accents; opulent, cool, confident. Minimalist white cube gallery turned runway, black marble floor, dramatic spotlight beams cutting through haze. Two male models in tailored cream trousers, navy silk shirts, cream knit cardigans draped over shoulders walking slowly toward camera then turning, one adjusting cuff. Static wide shot with deep depth of field, 50mm lens, hard overhead key light, light haze catching spotlight beams, photographed on a cinema camera, photoreal, no animation look.",
+      "performance_plate_prompt": "Minimalist white cube gallery turned runway, black marble floor, dramatic spotlight beams cutting through haze, gold accents on the walls. Two male models in tailored cream trousers, navy silk shirts, cream knit cardigans draped over shoulders walking slowly toward camera then turning, one adjusting cuff. Static wide shot with deep depth of field, centre-foreground left completely clear, 50mm lens, hard overhead key light, light haze catching spotlight beams, photographed on a cinema camera, photoreal, no animation look."
+     },
+     {
+      "kind": "garment_character",
+      "title": "Weekend Button Adjustment",
+      "logline": "The artist, already in his cream knit track jacket and navy cap, makes a small Saturday-morning adjustment to his collar.",
+      "world": "open \u2014 invent the world per scene; the performance plate is whatever place and action best serves the line (not a corridor)",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "artist raises left hand to adjust striped tie inside stand collar"
+       },
+       {
+        "at_seconds": 4,
+        "action": "slight head tilt, confident gaze forward"
+       }
+      ],
+      "camera": "medium close-up, slight push-in, 85mm lens, hard key from left",
+      "fx": "none",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "low",
+      "risk_reason": "simple hand and head motion from still",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere. Medium close-up, slight push-in, 85mm lens, hard key from left, photographed on a cinema camera, photoreal, no animation look.",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "V4",
+    "text": "Fly on a week day",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Midweek Jet Lounge",
+      "logline": "An ultra-luxury private terminal where weekday travelers move like it's the weekend.",
+      "world": "Marble and gold-leaf private aviation lounge at 10 a.m. Tuesday, floor-to-ceiling windows overlooking a rain-slick tarmac, soft diffused daylight mixed with warm gold sconces, polished white marble floors reflecting brass trim and cream leather seating.",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "female flight attendant in cream wool suit",
+        "wardrobe": "cream wool double-breasted suit with gold buttons, silk blouse",
+        "jewelry": "diamond tennis chain, small gold hoop earrings",
+        "behaviour": "walks calmly through the lounge carrying a silver tray with champagne flutes as if it is perfectly normal for a Tuesday morning"
+       },
+       {
+        "who": "male passenger in tailored navy overcoat",
+        "wardrobe": "navy cashmere overcoat over cream knit polo and black trousers",
+        "jewelry": "Cuban link bracelet, gold watch",
+        "behaviour": "sits on a leather sofa checking his phone while a falcon perches on his armrest like an ordinary pet"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "wide shot of empty marble corridor leading into the lounge"
+       },
+       {
+        "at_seconds": 2,
+        "action": "attendant enters frame left and crosses slowly"
+       },
+       {
+        "at_seconds": 5,
+        "action": "falcon passenger remains still in background"
+       },
+       {
+        "at_seconds": 7,
+        "action": "rain starts streaking the windows"
+       }
+      ],
+      "camera": "slow dolly forward at eye level, 35mm lens, slight low angle",
+      "fx": "subtle film grain, soft lens flare from gold sconces",
+      "renderer": "world_video",
+      "realism_risk": "medium",
+      "risk_reason": "falcon on armrest is unusual but contained",
+      "render_prompt": "Ultra-luxury private aviation lounge at 10 a.m. Tuesday, marble floors, gold trim, cream leather, rain-streaked windows, female attendant in cream wool suit with diamond tennis chain crossing calmly with champagne tray, male passenger in navy cashmere coat with Cuban link bracelet seated with a falcon on his armrest, soft daylight mixed with warm gold lighting, slow dolly forward, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Runway Takeoff Behind Artist",
+      "logline": "A private jet rolls and lifts off directly behind the artist while he raps.",
+      "world": "Private tarmac at golden hour, asphalt still wet from earlier rain, low sun casting long shadows and lens flares.",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "ground crew member",
+        "wardrobe": "dark navy jumpsuit with reflective stripes",
+        "jewelry": "none",
+        "behaviour": "waves the jet forward then steps back"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "empty tarmac in mid-ground"
+       },
+       {
+        "at_seconds": 2,
+        "action": "white Gulfstream rolls into frame from right"
+       },
+       {
+        "at_seconds": 5,
+        "action": "jet accelerates and lifts off, climbing steeply"
+       },
+       {
+        "at_seconds": 8,
+        "action": "ground crew member steps out of frame"
+       }
+      ],
+      "camera": "locked tripod, 50mm lens, deep focus so jet stays sharp behind clear foreground space",
+      "fx": "engine heat haze, golden lens flare",
+      "renderer": "performance_plate_video",
+      "realism_risk": "low",
+      "risk_reason": "straightforward aircraft movement",
+      "render_prompt": "Private tarmac at golden hour, wet asphalt, white Gulfstream jet rolls in from right, accelerates and takes off steeply, single ground crew member waves it forward then exits frame, center foreground left completely clear, deep space, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": "Private tarmac at golden hour, wet asphalt, white Gulfstream jet rolls in from right, accelerates and takes off steeply, single ground crew member waves it forward then exits frame, center foreground left completely clear, deep space, photographed on a cinema camera, photoreal, no animation look"
+     },
+     {
+      "kind": "garment_character",
+      "title": "Weekday Lift-Off Pose",
+      "logline": "Artist stands on tarmac, jacket catching wind as the jet climbs behind him.",
+      "world": "open tarmac at golden hour, same location as performance plate",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "artist stands centered, wind lifts the hem of his cream track jacket"
+       },
+       {
+        "at_seconds": 3,
+        "action": "he slowly turns his head toward the climbing jet"
+       },
+       {
+        "at_seconds": 6,
+        "action": "jacket fabric ripples naturally in the breeze"
+       }
+      ],
+      "camera": "medium full shot, 35mm lens, slight low angle",
+      "fx": "wind on fabric, subtle lens flare",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "low",
+      "risk_reason": "simple motion on locked hero",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "V5",
+    "text": "Never take a cheat day",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "All-Night Diamond Gym",
+      "logline": "A subterranean marble gym where sculpted athletes train through a velvet midnight without pause.",
+      "world": "Opulent 90s-house basement gym: black marble floors, mirrored walls with gold trim, low warm key light mixed with cyan rim lights, steam rising from marble benches, clock reads 3:17 a.m.",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "female bodybuilder",
+        "wardrobe": "black velvet tracksuit with gold piping",
+        "jewelry": "diamond tennis chain, gold Cuban link bracelet",
+        "behaviour": "performs endless deadlifts as if it were routine"
+       },
+       {
+        "who": "male trainer",
+        "wardrobe": "cream silk shirt unbuttoned at the collar, black trousers",
+        "jewelry": "thick gold chain, diamond grills",
+        "behaviour": "walks the floor checking form while eating a protein shake like fine wine"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "wide shot reveals the marble gym"
+       },
+       {
+        "at_seconds": 3,
+        "action": "female bodybuilder racks the bar and starts another set"
+       },
+       {
+        "at_seconds": 6,
+        "action": "male trainer checks his watch and nods approval"
+       }
+      ],
+      "camera": "slow dolly in from 18 ft, 35 mm lens, f/2.8, hard side key",
+      "fx": "subtle steam and lens flare on gold surfaces",
+      "renderer": "world_video",
+      "realism_risk": "low",
+      "risk_reason": "all elements are practical and photoreal",
+      "render_prompt": "opulent black marble gym with gold trim, steam in the air, hard key light and cyan rims, a sculpted woman in black velvet tracksuit and diamond tennis chain deadlifting without rest, a man in cream silk shirt and gold Cuban link checking form, clock reads 3:17 a.m., photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Runway of Relentless Stride",
+      "logline": "Behind the artist, models stride an endless gold runway in perfect rhythm while luxury cars idle.",
+      "world": "long black-and-gold runway stretching into deep perspective, dark club atmosphere with gold uplights, faint haze, models walking in sync",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "female model",
+        "wardrobe": "cream silk gown with navy band",
+        "jewelry": "diamond tennis chain",
+        "behaviour": "walks forward with measured steps never stopping"
+       },
+       {
+        "who": "male model",
+        "wardrobe": "black tailored suit, white striped shirt, striped tie",
+        "jewelry": "gold Cuban link",
+        "behaviour": "walks the opposite direction maintaining eye contact with camera"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "models enter from both sides of the runway"
+       },
+       {
+        "at_seconds": 4,
+        "action": "a matte black Bentley rolls slowly behind them and stops"
+       },
+       {
+        "at_seconds": 7,
+        "action": "models turn and continue walking without pause"
+       }
+      ],
+      "camera": "locked wide shot, 28 mm, deep focus, artist foreground space left empty",
+      "fx": "light haze catching gold edges",
+      "renderer": "performance_plate_video",
+      "realism_risk": "low",
+      "risk_reason": "simple runway motion, no complex hands or text",
+      "render_prompt": "long black-and-gold runway in dark club lighting, two models walking in opposite directions without stopping, matte black Bentley idling behind them, deep space, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": "long black-and-gold runway in dark club lighting, two models walking in opposite directions without stopping, matte black Bentley idling behind them, deep space, centre-foreground left completely clear, photographed on a cinema camera, photoreal, no animation look"
+     },
+     {
+      "kind": "garment_character",
+      "title": "No Cheat Day Motion",
+      "logline": "The artist steps forward with determined stride inside the locked cream knit track jacket.",
+      "world": "same opulent marble gym environment as world scene, hard key light, steam, gold accents",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "artist stands still in the frame"
+       },
+       {
+        "at_seconds": 2,
+        "action": "he takes one decisive step forward"
+       },
+       {
+        "at_seconds": 5,
+        "action": "he rolls his shoulders back and continues walking with purpose"
+       }
+      ],
+      "camera": "medium tracking shot at eye level, 50 mm, f/2.2",
+      "fx": "subtle steam passing behind him",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "medium",
+      "risk_reason": "image-to-video may soften fine garment details slightly",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "V6",
+    "text": "Feel free today",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Floating Terrace Liberation",
+      "logline": "A nighttime rooftop garden where guests drift inches above marble floors in high fashion, weightless and unbound.",
+      "world": "Open-air marble terrace atop a 1970s brutalist high-rise, midnight, cool blue moonlight mixed with warm gold uplights on the stone, infinity edge overlooking a glittering city grid, black lacquered surfaces and white orchids in gold planters.",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "tall woman in silk slip dress",
+        "wardrobe": "ivory silk slip dress with high slits",
+        "jewelry": "none",
+        "behaviour": "steps off the terrace edge and hovers above the city lights, smiling calmly as if it is normal"
+       },
+       {
+        "who": "man in cream double-breasted suit",
+        "wardrobe": "cream double-breasted suit with wide lapels",
+        "jewelry": "none",
+        "behaviour": "leans back in a floating lounge chair reading a magazine while his chair slowly rotates"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "Wide shot of the empty terrace under moonlight"
+       },
+       {
+        "at_seconds": 2,
+        "action": "Woman steps off the edge and begins to hover"
+       },
+       {
+        "at_seconds": 5,
+        "action": "Man in cream suit floats into frame on lounge chair, rotating slowly"
+       }
+      ],
+      "camera": "slow dolly forward at eye level, slight low angle, 35mm lens, subtle parallax on the city grid below",
+      "fx": "soft lens flare from gold uplights, gentle fabric drift on the silk dress",
+      "renderer": "world_video",
+      "realism_risk": "medium",
+      "risk_reason": "hovering bodies are physically delicate but stylistically strong",
+      "render_prompt": "Midnight on a marble rooftop terrace overlooking a glittering city grid, cool moonlight and warm gold uplights, tall woman in ivory silk slip dress steps off the edge and hovers weightless above the city lights smiling calmly, man in cream double-breasted suit floats slowly past on a rotating lounge chair reading a magazine, both behaving as if weightless flight is normal, high-end fashion editorial, Helmut Newton lighting, hard key, crushed blacks, opulent cool surfaces, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Unlocked Doors Behind Him",
+      "logline": "Behind the artist, a sequence of heavy gold doors swing open one after another revealing endless bright sky.",
+      "world": "Long dark corridor of black marble and gold trim that opens into blinding daylight, hard sidelight cutting across the walls.",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "young man in black turtleneck",
+        "wardrobe": "slim black turtleneck and tailored trousers",
+        "jewelry": "none",
+        "behaviour": "pushes open successive heavy gold doors and steps through each into bright light"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "First gold door swings open, light floods the corridor"
+       },
+       {
+        "at_seconds": 3,
+        "action": "Young man in black turtleneck walks through and opens the next door"
+       },
+       {
+        "at_seconds": 6,
+        "action": "Final door opens revealing pure white sky, man disappears into light"
+       }
+      ],
+      "camera": "locked tripod, deep focus, 50mm lens, centre-foreground kept clear",
+      "fx": "strong shafts of light and dust motes when doors open",
+      "renderer": "performance_plate_video",
+      "realism_risk": "low",
+      "risk_reason": "simple doors and light, easy to stage deep",
+      "render_prompt": "Long black marble corridor with gold trim, successive heavy gold doors swing open one after another revealing blinding daylight, young man in black turtleneck pushes each door open and walks through, final door opens to pure white sky, hard sidelight, crushed blacks, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": "Long black marble corridor with gold trim, successive heavy gold doors swing open one after another revealing blinding daylight, young man in black turtleneck pushes each door open and walks through, final door opens to pure white sky, mid-ground and background action only, centre-foreground left completely clear, hard sidelight, crushed blacks, photographed on a cinema camera, photoreal, no animation look"
+     },
+     {
+      "kind": "garment_character",
+      "title": "Jacket Unzips to Sky",
+      "logline": "The artist stands in his locked outfit as the track jacket slowly unzips itself revealing bright open sky inside.",
+      "world": "open \u2014 invent the world per scene; the performance plate is whatever place and action best serves the line (not a corridor)",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "Artist stands still in his cream knit track jacket"
+       },
+       {
+        "at_seconds": 3,
+        "action": "Jacket zipper lowers on its own"
+       },
+       {
+        "at_seconds": 6,
+        "action": "Inside the open jacket, bright white sky and clouds replace the interior"
+       }
+      ],
+      "camera": "slow push-in on the torso and face, 85mm lens",
+      "fx": "subtle internal light bloom when jacket opens",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "medium",
+      "risk_reason": "zipper animation and sky reveal inside clothing requires clean motion",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "V7",
+    "text": "Fly enough to fly away",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Floating Runway Lounge",
+      "logline": "A glass-walled penthouse runway at dusk where models in couture levitate inches above the floor and glide forward like they are taking flight.",
+      "world": "Opulent glass-and-marble sky lounge at golden hour, polished white marble floor reflecting warm sunset, floor-to-ceiling windows overlooking city lights far below, floating crystal chandeliers casting hard directional light and deep shadows, off-white and gold palette.",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "tall model in cream silk gown",
+        "wardrobe": "cream silk gown with structured shoulders",
+        "jewelry": "none",
+        "behaviour": "glides forward a few inches above the marble as if walking on air, calm and elegant"
+       },
+       {
+        "who": "second model in black velvet suit",
+        "wardrobe": "black velvet suit with open collar",
+        "jewelry": "none",
+        "behaviour": "lifts off the floor in a slow controlled ascent, turning mid-air as though the room is a runway to the sky"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "camera pushes in across empty marble runway"
+       },
+       {
+        "at_seconds": 2,
+        "action": "first model lifts and glides forward"
+       },
+       {
+        "at_seconds": 5,
+        "action": "second model rises and passes her in mid-air"
+       },
+       {
+        "at_seconds": 7,
+        "action": "both continue gliding toward open glass doors that reveal open sky"
+       }
+      ],
+      "camera": "slow forward dolly on track, low angle rising slightly, 35mm lens, hard key light from left, crushed blacks",
+      "fx": "subtle levitation shimmer on floor reflections",
+      "renderer": "world_video",
+      "realism_risk": "medium",
+      "risk_reason": "levitation requires clean lift-off plates",
+      "render_prompt": "Opulent glass-and-marble sky lounge at golden hour, polished white marble floor reflecting warm sunset, floor-to-ceiling windows overlooking city lights, floating crystal chandeliers casting hard directional light, tall model in cream silk gown gliding forward inches above marble, second model in black velvet suit rising and passing her in mid-air, calm elegant motion, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Skyline Takeoff Behind Him",
+      "logline": "Behind the artist, a lone luxury jet rolls past on a rooftop runway then lifts off straight into the night sky.",
+      "world": "Rooftop private airfield at night, wet tarmac reflecting gold runway lights, dark sky above, hard key lighting from side, deep blacks, reflective surfaces.",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "ground crew member in black coveralls",
+        "wardrobe": "black coveralls",
+        "jewelry": "none",
+        "behaviour": "signals the jet with illuminated wands then steps aside as the plane accelerates"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "empty wet tarmac in mid-ground"
+       },
+       {
+        "at_seconds": 2,
+        "action": "private jet rolls into frame from right"
+       },
+       {
+        "at_seconds": 4,
+        "action": "jet accelerates, nose lifts, takes off upward"
+       },
+       {
+        "at_seconds": 7,
+        "action": "jet climbs out of frame leaving runway lights and reflections"
+       }
+      ],
+      "camera": "static wide shot, 35mm lens, deep focus, centre-foreground left empty",
+      "fx": "subtle heat haze from engines",
+      "renderer": "performance_plate_video",
+      "realism_risk": "low",
+      "risk_reason": "realistic jet motion and lighting",
+      "render_prompt": "Rooftop private airfield at night, wet tarmac reflecting gold runway lights, dark sky, hard side key lighting, crushed blacks, private jet rolling in from right, accelerating and taking off upward, single ground crew member signalling with wands then stepping aside, deep space behind empty centre foreground, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": "Rooftop private airfield at night, wet tarmac reflecting gold runway lights, dark sky, hard side key lighting, private jet rolling in from right, accelerating and taking off upward, single ground crew member signalling with wands then stepping aside, deep space behind empty centre foreground, photographed on a cinema camera, photoreal, no animation look"
+     },
+     {
+      "kind": "garment_character",
+      "title": "Levitation Step",
+      "logline": "The artist steps forward and rises a few inches off the ground in a single smooth motion.",
+      "world": "open \u2014 invent the world per scene; the performance plate is whatever place and action best serves the line (not a corridor)",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "artist stands in locked pose"
+       },
+       {
+        "at_seconds": 3,
+        "action": "lifts one foot and begins to rise"
+       },
+       {
+        "at_seconds": 6,
+        "action": "both feet clear the ground, body ascends a few inches, calm expression"
+       }
+      ],
+      "camera": "medium shot, slight low angle, 50mm lens",
+      "fx": "subtle floor reflection shift",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "medium",
+      "risk_reason": "clean lift-off from still image",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere",
+      "performance_plate_prompt": ""
+     }
+    ]
+   },
+   {
+    "ref": "V8",
+    "text": "Drive like a getaway driver on the highway",
+    "scenes": [
+     {
+      "kind": "world",
+      "title": "Midnight Highway Evasion",
+      "logline": "A lone black Rolls-Royce speeds down an infinite elevated highway while a second identical car in gold is left burning in the median.",
+      "world": "Endless six-lane elevated highway at 2 a.m., wet asphalt reflecting sodium lights, low fog rolling between concrete pillars, no other traffic visible, city skyline far below like a jewelry box.",
+      "artist_presence": "absent",
+      "characters": [
+       {
+        "who": "driver in black leather coat",
+        "wardrobe": "black leather coat, black driving gloves",
+        "jewelry": "none",
+        "behaviour": "grips wheel and stares straight ahead, calm as if on a Sunday drive while the car drifts lanes at 140 mph"
+       },
+       {
+        "who": "gold Rolls-Royce burning in median",
+        "wardrobe": "none",
+        "jewelry": "none",
+        "behaviour": "flames licking the bodywork but the car remains perfectly upright and still on its rims"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "Camera locked on empty highway as black Rolls enters frame at full speed"
+       },
+       {
+        "at_seconds": 2.5,
+        "action": "Gold Rolls appears stationary in median, already on fire"
+       },
+       {
+        "at_seconds": 5,
+        "action": "Black Rolls drifts across three lanes without braking"
+       },
+       {
+        "at_seconds": 7,
+        "action": "Black Rolls exits frame right, leaving only the burning gold car and fog"
+       }
+      ],
+      "camera": "Low tracking shot, 35 mm anamorphic, slight lens flare from streetlights, locked height two feet above road",
+      "fx": "Heat shimmer from burning car, light reflections on wet asphalt, subtle lens flare",
+      "renderer": "world_video",
+      "realism_risk": "medium",
+      "risk_reason": "Fast vehicle motion and fire interaction may test motion coherence",
+      "render_prompt": "Endless elevated highway at 2 a.m., wet asphalt, sodium lights, low fog between concrete pillars, city skyline far below; a black Rolls-Royce speeds past camera left to right at 140 mph, a second identical Rolls-Royce in gold sits burning in the median, driver in black leather coat calm at the wheel, no other traffic, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     },
+     {
+      "kind": "performance_plate",
+      "title": "Highway Chase Plate",
+      "logline": "Behind the artist a blacked-out Bentley Continental GT and a police cruiser chase each other on an empty elevated highway while the artist raps in foreground.",
+      "world": "Same elevated highway at night, center foreground completely clear for artist, mid-ground and background contain the pursuit.",
+      "artist_presence": "performing_foreground",
+      "characters": [
+       {
+        "who": "black Bentley Continental GT",
+        "wardrobe": "none",
+        "jewelry": "none",
+        "behaviour": "weaving lanes at high speed, headlights cutting through fog"
+       },
+       {
+        "who": "white police cruiser",
+        "wardrobe": "none",
+        "jewelry": "none",
+        "behaviour": "pursuing the Bentley but never catching it, red and blue lights reflecting on wet road"
+       }
+      ],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "Bentley enters from left in mid-ground, police cruiser follows"
+       },
+       {
+        "at_seconds": 3,
+        "action": "Bentley drifts right, cruiser mirrors the move"
+       },
+       {
+        "at_seconds": 5.5,
+        "action": "Both cars exit right, empty highway remains for two seconds"
+       },
+       {
+        "at_seconds": 7.5,
+        "action": "Distant tail lights fade into fog"
+       }
+      ],
+      "camera": "Static wide shot, center foreground negative space left empty, action staged 15\u201340 ft behind",
+      "fx": "Headlight beams slicing fog, red-blue light reflections on wet asphalt",
+      "renderer": "performance_plate_video",
+      "realism_risk": "low",
+      "risk_reason": "Mid-ground vehicle motion is within renderer limits",
+      "render_prompt": "Elevated highway at night, wet asphalt, sodium lights, low fog, empty center-foreground reserved for artist, black Bentley Continental GT and white police cruiser chase each other left to right in mid-ground and background, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": "Elevated highway at night, wet asphalt, sodium lights, low fog, empty center-foreground reserved for artist, black Bentley Continental GT and white police cruiser chase each other left to right in mid-ground and background, photographed on a cinema camera, photoreal, no animation look"
+     },
+     {
+      "kind": "garment_character",
+      "title": "Getaway Grip",
+      "logline": "Artist sits in driver seat of invisible car, hands on invisible wheel, body leaning into a sharp right turn while the highway blurs past.",
+      "world": "Dark highway night, motion-blurred lights streaking past, artist alone in frame.",
+      "artist_presence": "character_in_world",
+      "characters": [],
+      "beats": [
+       {
+        "at_seconds": 0,
+        "action": "Artist seated, hands at ten-and-two on invisible wheel"
+       },
+       {
+        "at_seconds": 2,
+        "action": "Body leans hard right as if taking a high-speed turn"
+       },
+       {
+        "at_seconds": 5,
+        "action": "Hands adjust grip slightly, shoulders roll with the motion"
+       },
+       {
+        "at_seconds": 7,
+        "action": "Head turns left, eyes focused forward on the implied road"
+       }
+      ],
+      "camera": "Medium close-up, 50 mm, shallow depth of field, car interior implied but unseen",
+      "fx": "Light streaks passing left to right, subtle motion blur on background",
+      "renderer": "garment_image_to_video",
+      "realism_risk": "low",
+      "risk_reason": "Simple seated performance with minimal hand action",
+      "render_prompt": "a lean Black man with a connected short beard, clear-framed glasses, a navy baseball cap, wearing a cream knit track jacket zipped up with a navy chest band carrying small gold lettering, a white striped shirt and a striped tie inside the stand collar, black trousers, seated in driver position, hands gripping invisible wheel, body leaning into sharp right turn, dark highway night with light streaks passing, keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere, photographed on a cinema camera, photoreal, no animation look",
+      "performance_plate_prompt": ""
+     }
+    ]
+   }
+  ]
+ },
+ "failures": [],
+ "errors": []
+}
