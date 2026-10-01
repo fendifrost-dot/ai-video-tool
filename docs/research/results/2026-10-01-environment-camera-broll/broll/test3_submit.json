@@ -1,0 +1,2 @@
+200
+{"mode":"submit","model":"grok-imagine-video","duration":10,"aspectRatio":"9:16","resolution":"720p","imageBucket":"project-references","estimatedCostUsd":0.703,"maxCostUsd":0.9,"promptVersion":"broll_v3_crane_distance","promptChars":659,"billed":true,"submitted":true,"requestId":"fb2fa54a-eba9-9333-af5b-2be31b612d85","submit":{"httpStatus":200,"accepted":true}}
