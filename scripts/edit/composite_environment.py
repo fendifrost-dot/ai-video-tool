@@ -26,7 +26,7 @@ rembg-union rewrite still passed the performer's shadow on the door as body):
 The plate gets a slow push (default 1.5 % over the clip) so it is not a dead still,
 and the foreground gets a light cool grade so it sits in the cold room.
 """
-import argparse, os, subprocess, sys, tempfile
+import argparse, json, os, subprocess, sys, tempfile
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "_lib")); from jobs import job  # resource governor + registry (scripts/_lib/jobs.py)
 import numpy as np
 from PIL import Image, ImageFilter
@@ -168,6 +168,16 @@ def main():
     ap.add_argument("--mask-cache", default=None, help="npz path; segmenter masks are saved here and reused if present (matte logic can then be iterated without re-running rembg)")
     ap.add_argument("--export-matte", default=None, help="directory: write the finished matte as alpha_%05d.png (8-bit) and the decontaminated performer as fg_%05d.png (before the cool grade) so other stages (camera_engine.py) can re-composite without re-matting")
     ap.add_argument("--matte-only", action="store_true", help="with --export-matte: stop after the export (no plate composite, no video)")
+    # --- performer placement + FOREGROUND OCCLUDER (Fendi, 2026-10-02: his takes are waist-up, so a world built around him
+    # must put something in FRONT of him — the car at the curb, the stoop rail — and he may stand deeper in the frame) ----
+    ap.add_argument("--fg-place", default=None, help="place the performer layer: 'scale,cx,cy' as fractions of the output frame (scale 1 = as shot; cx,cy = where the take's centre lands). Default: as shot, full frame")
+    ap.add_argument("--fg-anchor", default="bottom", choices=["bottom", "centre"], help="with --fg-place: 'bottom' keeps the take's bottom edge at cy (a waist-up take sits ON the thing that occludes it); 'centre' centres it on cy")
+    ap.add_argument("--occluder-from-plate", default=None, help="PNG mask in the PLATE's own geometry (white = in front of the performer): those plate pixels are lifted on top of him with the plate's zoom, so the layer stays registered")
+    ap.add_argument("--occluder-auto", default=None, help="'x0,y0,x1,y1' fractions of the plate: cut the salient object inside that box out of the plate's first frame (rembg isnet-general-use), use it as the occluder mask and save it next to --out as occluder_mask.png for inspection and reuse")
+    ap.add_argument("--occluder-below", type=float, default=None, help="fraction of the plate height: every plate pixel below this line is in front of the performer (a soft horizon; the crude fallback when no object mask exists)")
+    ap.add_argument("--occluder", default=None, help="an RGBA cutout (PNG with alpha) composited in front of the performer in OUTPUT coordinates; place it with --occluder-place")
+    ap.add_argument("--occluder-place", default="0,0,1", help="with --occluder: 'x,y,w' fractions of the output frame — left, top, width (height follows the cutout's aspect)")
+    ap.add_argument("--occluder-feather", type=float, default=1.5, help="Gaussian feather (px) on occluder edges")
     a = ap.parse_args()
     _job = job("composite", need_gb=2.3, out=a.out)   # measured 2026-10-01: 2.1 GB peak for a 7 s 1080p take after the memory rebudget (was 5.5 GB); _job.__enter__()
     W, H = (int(x) for x in a.size.lower().split("x"))
@@ -177,6 +187,9 @@ def main():
         sessions = [new_session(m.strip()) for m in a.models.split(",") if m.strip()]
 
     tmp = tempfile.mkdtemp(prefix="avt_env_")
+    import atexit, shutil
+    _tmps = [tmp]
+    atexit.register(lambda: [shutil.rmtree(t, ignore_errors=True) for t in _tmps])   # frames + memmaps are gigabytes; a leak here filled the disk (2026-10-02)
     run(["ffmpeg", "-v", "error", "-y", "-i", a.inp, "-vf", f"scale={W}:{H}:flags=lanczos,fps={a.fps}", os.path.join(tmp, "f_%05d.png")])
     frames = sorted(f for f in os.listdir(tmp) if f.startswith("f_"))
     n = len(frames)
@@ -191,7 +204,7 @@ def main():
     # frame (or loop with --plate-loop); --plate-offset starts the plate later in its own timeline.
     plate_frames = None
     if a.plate.lower().endswith((".mp4", ".mov", ".webm", ".mkv")):
-        ptmp = tempfile.mkdtemp(prefix="avt_plate_")
+        ptmp = tempfile.mkdtemp(prefix="avt_plate_"); _tmps.append(ptmp)
         run(["ffmpeg", "-v", "error", "-y", "-ss", f"{a.plate_offset:.3f}", "-i", a.plate, "-vf", f"fps={a.fps}", os.path.join(ptmp, "p_%05d.png")])
         plate_frames = sorted(os.path.join(ptmp, f) for f in os.listdir(ptmp) if f.startswith("p_"))
         if not plate_frames: raise SystemExit("video plate decoded to no frames")
@@ -221,6 +234,47 @@ def main():
         rvm_alphas(a.rvm_model, [os.path.join(tmp, f) for f in frames], a.rvm_downsample, fgr_dir=tmp, out_arr=soft); have_soft = True
         if a.mask_cache: np.savez_compressed(a.mask_cache, soft=np.asarray(soft))
     plate_stats = None
+    # ---- occluder in plate geometry (mask over the cover-fit plate) ------------------------------------------------
+    occ_plate_mask = None   # float32 HxW in the fitted plate's pixel grid, 1 = in front of the performer; sources are unioned
+    if a.occluder_auto or a.occluder_from_plate or a.occluder_below is not None:
+        pl0 = plate_at(0); PH, PW = pl0.shape[:2]; occ_plate_mask = np.zeros((PH, PW), np.float32)
+        if a.occluder_from_plate:
+            m = Image.open(a.occluder_from_plate).convert("L").resize((PW, PH), Image.BILINEAR)
+            occ_plate_mask = np.maximum(occ_plate_mask, np.asarray(m).astype(np.float32) / 255.0)
+        if a.occluder_auto:
+            x0f, y0f, x1f, y1f = (float(v) for v in a.occluder_auto.split(","))
+            bx0, by0, bx1, by1 = int(x0f * PW), int(y0f * PH), int(x1f * PW), int(y1f * PH)
+            from rembg import new_session, remove
+            crop = Image.fromarray(np.clip(pl0[by0:by1, bx0:bx1], 0, 255).astype(np.uint8))
+            cut = remove(crop, session=new_session("isnet-general-use"), only_mask=True)
+            auto = np.zeros((PH, PW), np.float32); auto[by0:by1, bx0:bx1] = np.asarray(cut.convert("L")).astype(np.float32) / 255.0
+            occ_plate_mask = np.maximum(occ_plate_mask, auto)
+            Image.fromarray((auto * 255).astype(np.uint8)).save(os.path.splitext(a.out)[0] + "_occluder_mask.png")
+        if a.occluder_below is not None:
+            below = np.zeros((PH, PW), np.float32); below[int(a.occluder_below * PH):, :] = 1.0
+            occ_plate_mask = np.maximum(occ_plate_mask, below)
+        if a.occluder_feather > 0:
+            occ_plate_mask = np.asarray(Image.fromarray((occ_plate_mask * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(a.occluder_feather))).astype(np.float32) / 255.0
+    # ---- RGBA cutout occluder in output coordinates -----------------------------------------------------------------
+    occ_cut = None
+    if a.occluder:
+        im = Image.open(a.occluder).convert("RGBA"); ox, oy, ow = (float(v) for v in a.occluder_place.split(","))
+        tw = max(1, int(ow * W)); th = max(1, int(tw * im.height / im.width)); im = im.resize((tw, th), Image.LANCZOS)
+        canvas = Image.new("RGBA", (W, H), (0, 0, 0, 0)); canvas.paste(im, (int(ox * W), int(oy * H)), im)
+        arr = np.asarray(canvas).astype(np.float32); occ_cut = (arr[..., :3], arr[..., 3:4] / 255.0)
+        if a.occluder_feather > 0:
+            occ_cut = (occ_cut[0], np.asarray(Image.fromarray((occ_cut[1][..., 0] * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(a.occluder_feather))).astype(np.float32)[..., None] / 255.0)
+    # ---- performer placement (scale + position of the take inside the output frame) ---------------------------------
+    fg_affine = None
+    if a.fg_place:
+        sc, cx, cy = (float(v) for v in a.fg_place.split(","))
+        tx = cx * W - sc * W / 2
+        ty = (cy * H - sc * H) if a.fg_anchor == "bottom" else (cy * H - sc * H / 2)
+        fg_affine = np.array([[sc, 0, tx], [0, sc, ty]], np.float32)
+    def place(img, is_alpha=False):
+        if fg_affine is None: return img
+        import cv2 as _cv
+        return _cv.warpAffine(img, fg_affine, (W, H), flags=_cv.INTER_LINEAR, borderMode=_cv.BORDER_CONSTANT, borderValue=0)
     if not have_soft:
         from rembg import remove
         for i, f in enumerate(frames):
@@ -367,7 +421,7 @@ def main():
             os.makedirs(a.export_matte, exist_ok=True)
             Image.fromarray(np.clip(al[..., 0] * 255, 0, 255).astype(np.uint8)).save(os.path.join(a.export_matte, f"alpha_{i:05d}.png"))
             Image.fromarray(np.clip(fg, 0, 255).astype(np.uint8)).save(os.path.join(a.export_matte, f"fg_{i:05d}.png"))
-            if a.matte_only: continue
+            if a.matte_only and a.match_plate <= 0: continue
         if a.match_plate > 0:
             # plate-aware grade: move the performer's key, contrast and colour bias toward the plate's (fitted once, see plate_stats)
             if plate_stats is None:
@@ -381,11 +435,14 @@ def main():
                 k = a.match_plate
                 # a performer is lit brighter than his background in the reference footage: aim at the plate key + one third of the gap, not the plate key itself
                 plate_stats = {"L_gain": 1 + ((ps[1] / max(fs[1], 1e-3)) - 1) * k * 0.5, "L_shift": ((ps[0] + 0.33 * (fs[0] - ps[0])) - fs[0]) * k, "a_shift": (ps[2] - fs[2]) * k * 0.6, "b_shift": (ps[3] - fs[3]) * k * 0.6, "fg_L_mean": float(fs[0])}
+                if a.export_matte:   # the grade travels with the matte so camera_engine.py re-composites with the same numbers
+                    json.dump({k2: float(v2) for k2, v2 in plate_stats.items()}, open(os.path.join(a.export_matte, "grade.json"), "w"), indent=1)
             import cv2 as _cv
             lab = _cv.cvtColor(np.clip(fg, 0, 255).astype(np.uint8), _cv.COLOR_RGB2LAB).astype(np.float32)
             lab[..., 0] = np.clip((lab[..., 0] - plate_stats["fg_L_mean"]) * plate_stats["L_gain"] + plate_stats["fg_L_mean"] + plate_stats["L_shift"], 0, 255)
             lab[..., 1] = np.clip(lab[..., 1] + plate_stats["a_shift"], 0, 255); lab[..., 2] = np.clip(lab[..., 2] + plate_stats["b_shift"], 0, 255)
             fg = _cv.cvtColor(lab.astype(np.uint8), _cv.COLOR_LAB2RGB).astype(np.float32)
+            if a.export_matte and a.matte_only: continue
         else:
             # light cool grade on the performer so he sits in the room
             fg = fg * np.array([1 - a.cool, 1 - a.cool * 0.4, 1 + a.cool * 0.6], np.float32)
@@ -397,7 +454,16 @@ def main():
         x0 = (pli.shape[1] - cw) // 2; y0 = (pli.shape[0] - ch) // 2
         bgc = Image.fromarray(np.clip(pli[y0:y0 + ch, x0:x0 + cw], 0, 255).astype(np.uint8)).resize((W, H), Image.LANCZOS)
         bg = np.asarray(bgc).astype(np.float32)
+        if fg_affine is not None:
+            fg = place(fg); al = place(al[..., 0])[..., None]
         comp = fg * al + bg * (1 - al)
+        # occluder: plate pixels (registered with the plate's crop/zoom) and/or an RGBA cutout, IN FRONT of the performer
+        if occ_plate_mask is not None:
+            om = occ_plate_mask[y0:y0 + ch, x0:x0 + cw]
+            om = np.asarray(Image.fromarray((om * 255).astype(np.uint8)).resize((W, H), Image.BILINEAR)).astype(np.float32)[..., None] / 255.0
+            comp = bg * om + comp * (1 - om)
+        if occ_cut is not None:
+            comp = occ_cut[0] * occ_cut[1] + comp * (1 - occ_cut[1])
         p = os.path.join(tmp, f"c_{i:05d}.png")
         Image.fromarray(np.clip(comp, 0, 255).astype(np.uint8)).save(p)
     if a.export_matte and a.matte_only:

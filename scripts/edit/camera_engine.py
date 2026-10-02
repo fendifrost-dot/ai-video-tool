@@ -184,7 +184,10 @@ def lens_post(frame, lens, vel_px, grain_rng, vignette_map):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--matte-dir", required=True, help="alpha_%05d.png + fg_%05d.png from composite_environment.py --export-matte")
-    ap.add_argument("--plate", required=True); ap.add_argument("--plate-depth", default=None, help="16-bit PNG, bigger = nearer; computed with Depth-Anything-v2 if absent")
+    ap.add_argument("--plate", required=True, help="a still, or a VIDEO (living plate): decoded at --fps and read frame-for-frame; depth is measured on its first frame (plate cameras in our worlds move slowly — the parallax field holds)")
+    ap.add_argument("--plate-depth", default=None, help="16-bit PNG, bigger = nearer; computed with Depth-Anything-v2 if absent")
+    ap.add_argument("--plate-offset", type=float, default=0.0, help="video plate: start this many seconds into the plate"); ap.add_argument("--plate-loop", action="store_true", help="video plate: loop when shorter than the matte (default: hold the last frame)")
+    ap.add_argument("--plate-depth-every", type=int, default=0, help="video plate: recompute depth every N plate frames (0 = first frame only)")
     ap.add_argument("--spec", required=True, help="JSON (inline or path): move, lens, angle, framing, handheld, focus")
     ap.add_argument("--out", required=True); ap.add_argument("--audio", default=None, help="clip whose audio track is copied onto the output")
     ap.add_argument("--fps", type=int, default=24); ap.add_argument("--size", default="1080x1920"); ap.add_argument("--crf", type=int, default=16)
@@ -214,8 +217,21 @@ def main():
     grade = spec.get("grade", {"cool": 0.06, "contrast": 1.06})
     path = camera_path(move, n, a.fps, handheld)
 
-    # ---- plate, depth, overscan
-    plate0 = cv2.imread(a.plate)
+    # ---- plate (still or video), depth, overscan
+    plate_frames = None
+    if a.plate.lower().endswith((".mp4", ".mov", ".webm", ".mkv")):
+        ptmp = tempfile.mkdtemp(prefix="avt_cam_plate_")
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{a.plate_offset:.3f}", "-i", a.plate, "-vf", f"fps={a.fps}", os.path.join(ptmp, "p_%05d.png")], check=True)
+        plate_frames = sorted(os.path.join(ptmp, f) for f in os.listdir(ptmp) if f.startswith("p_"))
+        if not plate_frames: raise SystemExit("video plate decoded to no frames")
+        plate0 = cv2.imread(plate_frames[0])
+    else:
+        plate0 = cv2.imread(a.plate)
+    # the compositor's plate-aware grade travels with the matte export (grade.json) unless the spec sets its own grade
+    gpath = os.path.join(a.matte_dir, "grade.json")
+    if "grade" not in spec and os.path.exists(gpath):
+        try: grade = json.load(open(gpath))
+        except Exception: pass
     if a.plate_depth and os.path.exists(a.plate_depth):
         d16 = cv2.imread(a.plate_depth, cv2.IMREAD_UNCHANGED); depth0 = (d16.astype(np.float32) / (65535.0 if d16.dtype == np.uint16 else 255.0))
     else:
@@ -228,6 +244,11 @@ def main():
     PW, PH = int(round(W * over)), int(round(H * over))
     plate = cover_fit(plate0, PW, PH, scale=comp).astype(np.float32)
     depth = cover_fit((depth0 * 65535).astype(np.uint16), PW, PH, scale=comp).astype(np.float32) / 65535.0
+    def plate_frame(i):
+        """The fitted plate for output frame i (a still: always the same array)."""
+        if plate_frames is None: return plate
+        k = (i % len(plate_frames)) if a.plate_loop else min(i, len(plate_frames) - 1)
+        return cover_fit(cv2.imread(plate_frames[k]), PW, PH, scale=comp).astype(np.float32)
 
     # ---- performer plane: depth at the feet (lowest alpha rows), median over the clip
     feet = []
@@ -250,9 +271,10 @@ def main():
     # ---- depth of field on the plate (precomputed levels; focus on the performer's plane or the plate's near/far)
     focus_dn = dn_p if focus == "performer" else (float(focus) if not isinstance(focus, str) else 0.5)
     dof_amt = np.clip(np.abs(depth - focus_dn) * lens["dof"] * 1.6, 0, 1)
-    levels = dof_levels(plate, a.dof_max_px * (W / 1080.0), lens["bokeh_aspect"], levels=4)
-    plate_dof = blend_levels(levels, dof_amt) if lens["dof"] > 0 else plate
-    del levels
+    def plate_with_dof(pl):
+        if lens["dof"] <= 0: return pl
+        lv = dof_levels(pl, a.dof_max_px * (W / 1080.0), lens["bokeh_aspect"], levels=4); out = blend_levels(lv, dof_amt); del lv; return out
+    plate_dof = plate_with_dof(plate)
 
     # ---- geometry helpers
     xs, ys = np.meshgrid(np.arange(W, dtype=np.float32), np.arange(H, dtype=np.float32)); cx, cy = W / 2, H / 2
@@ -271,6 +293,7 @@ def main():
         zpix = 1 + (Z - 1) * wp; zpix = zpix * (1 + (PZ - 1) * wp)
         mx = ox + cx + dx / zpix - (px * W) * wp - orb * W * wo
         my = oy + cy + dy / zpix - (py * H) * wp
+        if plate_frames is not None and i > 0: plate_dof = plate_with_dof(plate_frame(i))   # living plate: this frame's picture through the same depth field
         bg = cv2.remap(plate_dof, mx.astype(np.float32), my.astype(np.float32), cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
         # --- performer: rigid layer at weight 1 (framing first, then the camera)
         al = cv2.imread(os.path.join(a.matte_dir, alphas[i]), cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.0
@@ -282,8 +305,15 @@ def main():
         if focus != "performer" and lens["dof"] > 0:                                           # focus on the plate: the performer softens instead
             k = max(1, int(a.dof_max_px * lens["dof"] * 0.6) | 1); fg_w = cv2.GaussianBlur(fg_w, (k, k), 0); al_w = cv2.GaussianBlur(al_w, (k, k), 0)[..., None] if al_w.ndim == 2 else cv2.GaussianBlur(al_w[..., 0], (k, k), 0)[..., None]
         # the performer's grade so he sits in the room (the same light cool the compositor applied)
-        cool = float(grade.get("cool", 0.0)); fg_w = fg_w * np.array([1 - cool, 1 - cool * 0.4, 1 + cool * 0.6], np.float32)
-        fg_w = np.clip((fg_w - 128) * float(grade.get("contrast", 1.0)) + 124, 0, 255)
+        if "L_gain" in grade:
+            # the compositor's plate-aware grade (composite_environment.py --match-plate), same numbers, same result
+            lab = cv2.cvtColor(np.clip(fg_w, 0, 255).astype(np.uint8), cv2.COLOR_BGR2LAB).astype(np.float32)
+            lab[..., 0] = np.clip((lab[..., 0] - grade["fg_L_mean"]) * grade["L_gain"] + grade["fg_L_mean"] + grade["L_shift"], 0, 255)
+            lab[..., 1] = np.clip(lab[..., 1] + grade["a_shift"], 0, 255); lab[..., 2] = np.clip(lab[..., 2] + grade["b_shift"], 0, 255)
+            fg_w = cv2.cvtColor(lab.astype(np.uint8), cv2.COLOR_LAB2BGR).astype(np.float32)
+        else:
+            cool = float(grade.get("cool", 0.0)); fg_w = fg_w * np.array([1 - cool, 1 - cool * 0.4, 1 + cool * 0.6], np.float32)
+            fg_w = np.clip((fg_w - 128) * float(grade.get("contrast", 1.0)) + 124, 0, 255)
         frame = fg_w * al_w + bg * (1 - al_w)
         # --- angle: keystone (+ = looking up, bottom wider) and roll, as one perspective warp of the whole frame
         k = float(angle.get("keystone", 0.0)); rd = roll + float(angle.get("roll_deg", 0.0))
@@ -318,7 +348,11 @@ def main():
     idx = [int(n * f) for f in (0.0, 0.33, 0.66, 0.98)]; tiles = [cv2.resize(cv2.imread(os.path.join(tmp, f"c_{i:05d}.png")), (W // 3, H // 3)) for i in idx]
     cv2.imwrite(a.sheet or (base + "_sheet.jpg"), np.hstack(tiles), [cv2.IMWRITE_JPEG_QUALITY, 86])
     for f in os.listdir(tmp): os.remove(os.path.join(tmp, f))
-    os.rmdir(tmp); print(f"wrote {a.out} ({n} frames @ {a.fps} fps)")
+    os.rmdir(tmp)
+    if plate_frames is not None:
+        for f in plate_frames: os.remove(f)
+        os.rmdir(os.path.dirname(plate_frames[0]))
+    print(f"wrote {a.out} ({n} frames @ {a.fps} fps)")
 
 
 if __name__ == "__main__":
