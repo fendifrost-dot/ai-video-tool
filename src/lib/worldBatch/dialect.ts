@@ -26,6 +26,8 @@ export const BatchShotSchema = z
     route: z.enum(WORLD_BATCH_ROUTES),
     stills: z.number().int().min(1).max(4).default(2),
     still_path: z.string().nullish(),
+    /** false = accept a still that looks like stacked panels (a real horizon across the whole frame can read as one) */
+    panel_check: z.boolean().default(true),
     model: z.string().nullish(),
     // seedance_ref
     source_path: z.string().nullish(),

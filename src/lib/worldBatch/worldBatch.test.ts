@@ -22,6 +22,11 @@ import {
   statusFromEnvelope,
   stillPrompt,
   submitShot,
+  PANEL_SEAM_FRAC_MIN,
+  PANEL_SEAM_STRAIGHT_MIN,
+  describeSeam,
+  isStackedPanels,
+  panelSeam,
   type BatchJobRow,
   type BatchShot,
   type RunnerDeps,
@@ -265,5 +270,68 @@ describe("planRun / runPlan — no double spend", () => {
       job({ shotId: "b", status: "failed", estimateUsd: 0.35, stillCostUsd: 0.14 }),
       job({ shotId: "c", external_job_id: "j2", status: "running", estimateUsd: 0.35, stillCostUsd: 0.14 }),
     ])).toBeCloseTo(3.698 + 0.14 + 0.35 + 0.14, 6);
+  });
+});
+
+describe("a still that is two pictures", () => {
+  const W = 720, H = 1280;                                                                         // block-averaged by 4 for the first pass
+  /** luma picture from a function of (x, y) */
+  const pic = (f: (x: number, y: number) => number) => Float32Array.from({ length: W * H }, (_, i) => f(i % W, Math.floor(i / W)));
+  const tex = (x: number, y: number) => 8 * Math.sin(x / 11) + 6 * Math.cos(y / 17);
+  const STACKED = pic((x, y) => (y < 480 ? 70 : 150) + tex(x, y));                                  // two panels, a one-pixel edge at y = 480
+  const SIDE_BY_SIDE = pic((x, y) => (x < 360 ? 60 : 170) + tex(x, y));
+  const ONE_PICTURE = pic((x, y) => 40 + y * 0.12 + tex(x, y));                                     // a graded street, no edge
+  // a kerb photographed square-on: it crosses the whole frame, but it wanders and has thickness
+  const KERB = pic((x, y) => { const e = 1101.5 + 1.2 * Math.sin(x / 40) + (x % 13 < 6 ? 1 : -1); const t = Math.min(1, Math.max(0, (y - e) / 2)); return 150 - 80 * t + tex(x, y); });
+
+  it("finds the seam of stacked and of side-by-side panels", () => {
+    const row = panelSeam(STACKED, W, H);
+    expect(row.axis).toBe("row");
+    expect(row.frac).toBeGreaterThan(0.95);
+    expect(row.straight).toBeGreaterThan(0.95);
+    expect(row.at).toBeCloseTo(480 / H, 2);
+    expect(isStackedPanels(row)).toBe(true);
+    const col = panelSeam(SIDE_BY_SIDE, W, H);
+    expect(col.axis).toBe("column");
+    expect(isStackedPanels(col)).toBe(true);
+    expect(describeSeam(row)).toMatch(/^a ruler-straight edge across \d+ % of the frame, 3[78] % from the top$/);
+  });
+
+  it("leaves one picture alone — a graded frame, and a real edge that crosses the whole frame", () => {
+    expect(isStackedPanels(panelSeam(ONE_PICTURE, W, H))).toBe(false);
+    const kerb = panelSeam(KERB, W, H);
+    expect(kerb.frac).toBeGreaterThan(PANEL_SEAM_FRAC_MIN);          // it does span the frame …
+    expect(kerb.straight).toBeLessThan(PANEL_SEAM_STRAIGHT_MIN);     // … but no ruler drew it
+    expect(isStackedPanels(kerb)).toBe(false);
+  });
+
+  const seamOf = (frac: number, straight = 0.8) => ({ frac, straight, at: 0.4, axis: "row" as const });
+
+  it("the motion model gets the first candidate that is one picture", async () => {
+    const d = deps({ inspectStill: vi.fn(async (path) => (path.endsWith("a.png") ? seamOf(0.86) : seamOf(0.87, 0.09))) });
+    const r = await submitShot(WORLD, CTX, d);
+    expect(r.stillPath).toBe("u/p/worlds/b.png");
+    expect((d.callProxy as ReturnType<typeof vi.fn>).mock.calls[0][1]).toMatchObject({ referenceImageUrl: "https://signed/project-references/u/p/worlds/b.png" });
+  });
+
+  it("when every candidate is stacked panels nothing is spent on motion, and a retry will not reuse them", async () => {
+    const d = deps({ inspectStill: vi.fn(async () => seamOf(0.84)) });
+    await expect(submitShot(WORLD, CTX, d)).rejects.toThrow("stacked panels (a ruler-straight edge across 84 % of the frame, 40 % from the top)");
+    expect(d.callProxy).not.toHaveBeenCalled();
+    const row = (d.insertJob as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(row.request_payload_json.settings).toMatchObject({ batchShotId: "H1_tailor", stillPath: null, stillCandidates: ["u/p/worlds/a.png", "u/p/worlds/b.png"], stillCostUsd: 0.14, estimateUsd: 0 });
+    expect(d.updateJob).toHaveBeenCalledWith("row-1", expect.objectContaining({ status: "failed" }));
+    // the failed row carries no still to reuse → the shot is ready again and will generate afresh
+    const failed = job({ shotId: "H1_tailor", status: "failed", stillPath: null, stillCostUsd: 0.14, estimateUsd: 0 });
+    expect(shotState(WORLD, [failed])).toMatchObject({ state: "failed", reuseStillPath: null });
+    expect(spentEstimateUsd([failed])).toBeCloseTo(0.14, 5);
+  });
+
+  it("a check that cannot run, or a shot that opts out, does not block the shot", async () => {
+    const broken = deps({ inspectStill: vi.fn(async () => { throw new Error("canvas tainted"); }) });
+    expect((await submitShot(WORLD, CTX, broken)).stillPath).toBe("u/p/worlds/a.png");
+    const optOut = deps({ inspectStill: vi.fn(async () => seamOf(0.95)) });
+    expect((await submitShot({ ...WORLD, panel_check: false }, CTX, optOut)).stillPath).toBe("u/p/worlds/a.png");
+    expect(optOut.inspectStill).not.toHaveBeenCalled();
   });
 });

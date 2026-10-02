@@ -17,7 +17,8 @@
 import type { LookPreset } from "@/lib/shotCompiler";
 import { missingInput, type BatchShot } from "./dialect";
 import { estimateBatchUsd, estimateShotUsd } from "./estimate";
-import { buildMotionRequest, motionPrompt, stillPrompt } from "./requests";
+import { buildMotionRequest, motionPrompt, providerOfRoute, stillPrompt } from "./requests";
+import { describeSeam, isStackedPanels, type PanelSeam } from "./stillCheck";
 
 export type BatchJobSettings = {
   batchRun: string;
@@ -56,6 +57,8 @@ export type RunnerDeps = {
     actualCostUsd?: number | null;
     error?: string;
   }>;
+  /** Look at a generated still for the stacked-panels seam (stillCheck.ts). Absent or throwing = not checked. */
+  inspectStill?(path: string): Promise<PanelSeam | null>;
   insertJob(row: {
     project_id: string;
     provider: "higgsfield" | "runway";
@@ -167,6 +170,34 @@ export async function submitShot(
     stillCandidates = r.stills.map((s) => s.path);
     stillPath = stillCandidates[0]; // the look-bank pick lives in the scripts lane; the candidates are recorded
     stillCostUsd = r.actualCostUsd ?? null;
+    if (deps.inspectStill && shot.panel_check !== false) {
+      // A still that came back as two pictures stacked must not reach the motion model: take the first candidate
+      // that is one picture; if none is, stop here with the stills on record (they are paid for) and no motion spend.
+      const inspect = deps.inspectStill;
+      const seams = await Promise.all(stillCandidates.map((p) => inspect(p).catch(() => null)));
+      const whole = stillCandidates.filter((_, i) => !isStackedPanels(seams[i]));
+      if (whole.length === 0) {
+        const worst = seams.find((s) => isStackedPanels(s))!;
+        const message = `every still came back as stacked panels (${describeSeam(worst)}) — describe the scene by depth (in front, behind), not by halves of the frame; "panel_check": false on the shot accepts it as it is`;
+        const rowId = await deps.insertJob({
+          project_id: ctx.projectId,
+          provider: providerOfRoute(shot.route),
+          status: "queued",
+          request_payload_json: {
+            promptText: stillPrompt(shot, ctx.look),
+            mode: "still_only",
+            settings: {
+              batchRun: ctx.runId, batchShotId: shot.id, route: shot.route, kind: shot.kind, estimateUsd: 0, lookPreset: ctx.lookPresetId,
+              // no stillPath: a retry must generate again, not reuse a picture that is two pictures
+              stillPath: null, stillCandidates, stillCostUsd,
+            } satisfies BatchJobSettings,
+          },
+        });
+        await deps.updateJob(rowId, { status: "failed", error_text: message.slice(0, 500) });
+        throw new Error(`${shot.id}: ${message}`);
+      }
+      stillPath = whole[0];
+    }
   }
   const stillUrl = stillPath ? await deps.sign("project-references", stillPath) : null;
   const sourceUrl = shot.route === "seedance_ref" ? await deps.sign("project-clips", shot.source_path!) : null;

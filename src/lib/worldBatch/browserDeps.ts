@@ -5,6 +5,32 @@
 import { supabase } from "@/lib/supabase";
 import { buildStoragePath, signedUrl, uploadToBucket } from "@/lib/storage";
 import { statusFromEnvelope, type BatchJobRow, type RunnerDeps } from "./runner";
+import { panelSeam, type PanelSeam } from "./stillCheck";
+
+/** The still as a small luma picture, read through its signed link (the bucket allows cross-origin reads). */
+async function stillSeam(url: string): Promise<PanelSeam | null> {
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  const loaded = await new Promise<boolean>((resolve) => {
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = url;
+  });
+  if (!loaded || !img.naturalWidth || !img.naturalHeight) return null;
+  // the still at its own size: the check needs the seam's one-pixel straightness, which a thumbnail averages away
+  const w = img.naturalWidth;
+  const h = img.naturalHeight;
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const g = canvas.getContext("2d");
+  if (!g) return null;
+  g.drawImage(img, 0, 0);
+  const px = g.getImageData(0, 0, w, h).data;
+  const luma = new Float32Array(w * h);
+  for (let i = 0; i < w * h; i++) luma[i] = 0.299 * px[i * 4] + 0.587 * px[i * 4 + 1] + 0.114 * px[i * 4 + 2];
+  return panelSeam(luma, w, h);
+}
 
 /** Read the proxy's own error text out of a non-2xx invoke (supabase-js hands back the Response as error.context). */
 async function detailOf(error: unknown, data: unknown): Promise<string> {
@@ -38,6 +64,7 @@ export async function browserRunnerDeps(): Promise<RunnerDeps> {
   return {
     userId,
     sign: (bucket, path) => signedUrl(bucket, path, 86400),
+    inspectStill: async (path) => stillSeam(await signedUrl("project-references", path, 600)),
     generateStills: async (body) => {
       const { data, error } = await supabase.functions.invoke<Record<string, unknown>>("world-still-proxy", { body });
       if (error || !data) return { ok: false, error: await detailOf(error, data) };
