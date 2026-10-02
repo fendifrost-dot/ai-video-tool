@@ -15,9 +15,11 @@
     ],
     "zoom_alternate": true,
     "angle_gate": {
-      "_doc": "A generated angle re-draws the performer. It is cut onto a sung line only when its fidelity report (scripts/qa/reference_fidelity.py → <angle>_fidelity.json) shows the face is still his and the mouth follows the take; the lip fit also sets where the angle sits on the take's clock.",
+      "_doc": "A generated angle re-draws the performer. It is cut in only through its fidelity report (scripts/qa/reference_fidelity.py → <angle>_fidelity.json): the camera must really have moved (camera_change — 2026-10-02: a near-copy scored 0.09, three real angles 0.69–0.89), and on a sung line the face must still be his and the mouth must follow the take; the lip fit also sets where the angle sits on the take's clock. An angle that does not show his face (over the shoulder) has nothing to sync.",
       "identity_max": 0.25,
-      "lip_best_fit_min": 0.6
+      "lip_best_fit_min": 0.6,
+      "camera_change_min": 0.3,
+      "allow_face_hidden": true
     }
   },
   "sections": {
@@ -148,11 +150,6 @@
           "weight": 3
         },
         {
-          "name": "over_shoulder",
-          "sentence": "from behind his shoulder looking past him into the scene, 35mm, handheld",
-          "weight": 2
-        },
-        {
           "name": "high_wide",
           "sentence": "a high wide angle from above head height, 24mm, slow descend",
           "weight": 2
@@ -253,5 +250,8 @@
       "transition_on_the_1": "cut",
       "transition_elsewhere": "cut"
     }
+  },
+  "_removed_angles": {
+    "over_shoulder": "Tested 2026-10-02 (Seedance 2.5 reference-to-video, $3.70): 'from behind his shoulder looking past him' came back with the performer still facing the camera AND a second copy of him in the foreground, seen from behind — two of him in one frame. The request says '@Video1 is the performer, rapping to camera … the same mouth movements', which an over-the-shoulder camera contradicts. Not offered again until the angle prompt can say the camera is behind him and his face is not in the shot. No measurement here catches a duplicate: identity scored 0.021 and the lip fit 0.595."
   }
 }
