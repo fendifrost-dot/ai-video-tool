@@ -335,12 +335,13 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
           return "Set the project's visual style first — it is the environment the scene is staged in";
         return null;
       },
-      regenerate: async (spec) => {
+      regenerate: async (spec, mode) => {
         setRegeneratingSpecId(spec.id);
         try {
           return await regenerateShotFromLyrics({
             projectId,
             spec,
+            mode,
             lyricLines: lyricLinesQuery.data,
             template: chosenTemplate?.name ?? DEFAULT_MOTION_TEMPLATE,
             templateContext,
