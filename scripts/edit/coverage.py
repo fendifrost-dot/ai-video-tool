@@ -77,6 +77,48 @@ def section_of(t0, t1, lyric_lines):
 
 
 # ----------------------------------------------------------------------------- plan
+# The treatment writes the camera as prose ("50mm macro, slight push-in", "24mm wide shot, locked frame"); the same
+# patterns as src/lib/treatment/coverage.ts MOTION_WORDS read it into the engine's move vocabulary. The director's
+# camera on a slot is honoured on its FIRST sub-slot (an explicit static included, within the budget); the rest of the
+# slot's sub-slots are drawn from the section's vocabulary so the line still gets its coverage.
+MOTION_WORDS = [
+    ("static", r"\b(locked[- ]?(off|frame)?|static|tripod|no (camera )?move(ment)?|still camera|fixed (frame|camera))\b"),
+    ("dolly_zoom", r"\b(dolly[- ]?zoom|vertigo|zolly)\b"),
+    ("snap_zoom", r"\b(snap[- ]?zoom|crash[- ]?zoom|zoom (in|out)|zoom)\b"),
+    ("whip_pan", r"\b(whip[- ]?pan|whip)\b"),
+    ("orbit", r"\b(orbit|arc(ing)?|circl(e|ing)|360)\b"),
+    ("crane", r"\b(crane|jib|boom|rise[s]? (up|over)|descend(s|ing)?|lift(s|ing)? (up|over))\b"),
+    ("pedestal", r"\b(pedestal|tilt(s|ing)? (up|down))\b"),
+    ("push", r"\b(push(es|ing)?[- ]?in|push|dolly[- ]?in|track(s|ing)? in|move(s|ing)? (in|closer)|creep(s|ing)? in)\b"),
+    ("pull", r"\b(pull(s|ing)?[- ]?(out|back)|dolly[- ]?(out|back)|track(s|ing)? (out|back)|move(s|ing)? (out|back|away)|widen(s|ing)?)\b"),
+    ("truck", r"\b(truck(s|ing)?|lateral|slide(s|ing)?|track(s|ing)? (left|right|along|with)|crab)\b"),
+    ("pan", r"\b(pan(s|ning)?)\b"),
+    ("handheld", r"\b(hand[- ]?held|drift(s|ing)?|breath(es|ing)?|sway)\b"),
+]
+CARD_TO_ENGINE = {"dolly": "push", "truck": "truck", "pedestal": "pedestal", "crane": "crane", "orbit": "orbit", "whip_pan": "whip_pan", "zoom": "snap_zoom", "pan": "pan", "tilt": "pedestal", "handheld": "handheld", "steadicam": "handheld", "gimbal": "handheld", "jib": "crane", "static": "static"}
+
+
+def classify_motion(cm):
+    """Engine move named by a shot's cameraMotion (prose first, then the typed field); '' when nothing is named."""
+    import re
+    cm = cm or {}; desc = cm.get("description") or ""
+    for move, pat in MOTION_WORDS:
+        if re.search(pat, desc, re.I): return move
+    t = cm.get("type") or "static"
+    if t != "static": return CARD_TO_ENGINE.get(t, t)
+    return "" if desc.strip() else "static"
+
+
+def directors_move(cm, moves):
+    """The slot's written camera as a move spec from the section vocabulary (amount/lens/handheld from the nearest preset)."""
+    name = classify_motion(cm)
+    if not name: return None
+    for m in moves:
+        if m["type"] == name: return dict(m)
+    base = next((m for m in moves if m["type"] not in ("static",)), moves[0])
+    return dict(base, type=name) if name in ("push", "pull", "truck", "pedestal", "crane", "orbit", "whip_pan", "snap_zoom", "dolly_zoom", "static", "pan", "handheld") else None
+
+
 def plan(a):
     spec = json.load(open(a.shotspecs)); renders = json.load(open(a.renders)); presets = json.load(open(a.presets))
     rules = presets["rules"]; bar = 240.0 / a.bpm
@@ -87,7 +129,8 @@ def plan(a):
             l.setdefault("start", l.get("start_seconds")); l.setdefault("end", l.get("end_seconds"))
     shots = sorted(spec["shots"], key=lambda s: s["timeline"]["start"]); sec0 = shots[0]["timeline"]["start"]
     out_shots, out_renders, angle_reqs, plan_slots = [], {}, [], []
-    static_total = 0.0; total = 0.0; prev_move = None; prev_zoom_dir = None; framing_i = 0; prev_angle = None
+    static_total = 0.0; total = 0.0; prev_move = None; prev_zoom_dir = None; framing_i = 0; prev_angle = None; static_run = 0.0
+    max_run = float(rules.get("max_static_run_s", 4.0)); share_max = float(rules.get("static_share_max", 0.12)); honoured = 0
     os.makedirs(a.out, exist_ok=True)
     for s in shots:
         sid = s["id"]; t0, t1 = s["timeline"]["start"], s["timeline"]["end"]; r = renders.get(sid)
@@ -104,14 +147,20 @@ def plan(a):
         rng = rng_for(sid, a.seed); subs = []
         n_sub = len(edges) - 1; n_gen = int(round(n_sub * float(P.get("generated_angle_share", 0)))) if a.angles else 0
         gen_idx = set(int(i) for i in rng.choice(n_sub, size=min(n_gen, n_sub), replace=False)) if n_gen else set()
+        written = directors_move(s.get("cameraMotion"), P["moves"])
         for i in range(n_sub):
             u0, u1 = edges[i], edges[i + 1]; dur = u1 - u0
-            move = weighted(rng, P["moves"], exclude=prev_move if rules.get("no_repeat_move_consecutive") else None)
-            if rules.get("zoom_alternate") and move["type"] in ("push", "pull") and prev_zoom_dir == move["type"]:
-                move = dict(move, type="pull" if move["type"] == "push" else "push")
-            if move["type"] == "static" and total > 0 and (static_total + dur) / (total + dur) > float(rules.get("static_share_max", 0.12)):
-                move = weighted(rng, [m for m in P["moves"] if m["type"] != "static"])
-            if move["type"] == "static": static_total += dur
+            static_would_break = (total > 0 and (static_total + dur) / (total + dur) > share_max) or static_run + dur > max_run
+            if i == 0 and written and not (written["type"] == "static" and static_would_break):
+                move = written; honoured += 1          # the director's camera leads the slot
+            else:
+                move = weighted(rng, P["moves"], exclude=prev_move if rules.get("no_repeat_move_consecutive") else None)
+                if rules.get("zoom_alternate") and move["type"] in ("push", "pull") and prev_zoom_dir == move["type"]:
+                    move = dict(move, type="pull" if move["type"] == "push" else "push")
+                if move["type"] == "static" and static_would_break:
+                    move = weighted(rng, [m for m in P["moves"] if m["type"] != "static"])
+            if move["type"] == "static": static_total += dur; static_run += dur
+            else: static_run = 0.0
             total += dur
             framing = rules["framing_rotation"][framing_i % len(rules["framing_rotation"])]; framing_i += 1
             sub_id = f"{sid}{chr(97 + i)}"
@@ -140,7 +189,7 @@ def plan(a):
             out_renders[sub_id] = {"file": entry["angle_file"] if entry["source"] == "angle" and os.path.exists(entry.get("angle_file", "")) else entry["variant"], "masterStart": r.get("masterStart"), "_fallback": entry["variant"]}
         plan_slots.append({"slot": sid, "section": section, "song": [t0, t1], "source": r["file"], "masterStart": r.get("masterStart"), "matte_dir": r.get("matte_dir"), "plate": r.get("plate"), "subs": subs})
     cov = {"bpm": a.bpm, "presets": a.presets, "seed": a.seed, "section_song": [sec0, shots[-1]["timeline"]["end"]], "slots": plan_slots,
-           "stats": {"performance_slots": len(plan_slots), "cuts": sum(len(p["subs"]) for p in plan_slots), "generated_angles": len(angle_reqs), "static_share": round(static_total / max(1e-6, total), 3)}}
+           "stats": {"performance_slots": len(plan_slots), "cuts": sum(len(p["subs"]) for p in plan_slots), "generated_angles": len(angle_reqs), "static_share": round(static_total / max(1e-6, total), 3), "directors_cameras_honoured": honoured}}
     json.dump(cov, open(os.path.join(a.out, "coverage_plan.json"), "w"), indent=1)
     out_spec = dict(spec); out_spec["shots"] = out_shots; json.dump(out_spec, open(os.path.join(a.out, "shotspecs_coverage.json"), "w"), indent=1)
     json.dump(out_renders, open(os.path.join(a.out, "renders_coverage.json"), "w"), indent=1)
