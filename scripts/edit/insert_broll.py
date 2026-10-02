@@ -44,6 +44,7 @@ def main():
     ap.add_argument("--bpm", type=float, required=True); ap.add_argument("--out", required=True); ap.add_argument("--bars", type=float, default=1.0); ap.add_argument("--skip-head", type=float, default=0.75)
     ap.add_argument("--min-verdict", choices=["PASS", "REVIEW"], default="REVIEW"); ap.add_argument("--replace-generated", action="store_true"); ap.add_argument("--max-per-slot", type=int, default=1)
     ap.add_argument("--crf", type=int, default=17); ap.add_argument("--no-perf-split", action="store_true", help="only replace generated slots, never cut into performance")
+    ap.add_argument("--snap", choices=["nearest", "next"], default="nearest", help="bar line the insert starts on: the nearest to the lyric's start (a line sung just after the 1 lands on that 1) or the next one")
     a = ap.parse_args()
     asm = json.load(open(a.assembly)); man = json.load(open(a.manifest)); lmap = json.load(open(a.lyric_map))
     W, H, fps, dur = probe(a.section); sec0 = float(asm["sectionSong"][0]); bar = 240.0 / a.bpm
@@ -69,7 +70,7 @@ def main():
             for s in slots:
                 if s["kind"] != "performance" or s["used"] >= a.max_per_slot: continue
                 if s["song"][1] <= l0 or s["song"][0] >= l1: continue
-                start = max(s["song"][0], l0); k = int((start - sec0) / bar + 0.999999); t0 = sec0 + k * bar
+                start = max(s["song"][0], l0); k = int(round((l0 - sec0) / bar)) if a.snap == "nearest" else int((start - sec0) / bar + 0.999999); t0 = max(s["song"][0], sec0 + k * bar)
                 t1 = min(t0 + a.bars * bar, s["song"][1], l1 + bar)
                 if t1 - t0 < 0.5 * bar or t0 >= s["song"][1]: continue
                 inserts.append({"ref": ref, "slot": s["shot"], "mode": "split", "song": [t0, t1], "file": p["file"], "verdict": v, "title": p.get("title")}); s["used"] += 1; placed = True; break
