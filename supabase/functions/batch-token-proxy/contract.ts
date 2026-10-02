@@ -33,6 +33,8 @@ export function parseRequest(body: unknown): ParsedRequest {
   if (typeof action !== "string" || !(BATCH_ACTIONS as readonly string[]).includes(action)) {
     return { ok: false, error: `action must be one of ${BATCH_ACTIONS.join(", ")}` };
   }
+  // `.includes` on a widened string[] does not narrow, so assert once here.
+  const act = action as BatchAction;
 
   // Guard against a caller trying to steer whose session is minted. These keys are
   // meaningless to this function; their presence means the caller misunderstands the
