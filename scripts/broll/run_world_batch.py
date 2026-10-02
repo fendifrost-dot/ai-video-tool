@@ -9,8 +9,13 @@ shots.json — a list of shots; every creative choice is data here, nothing in t
   {"id": "H1_bear", "kind": "world" | "plate", "aspect": "9:16" | "16:9" | "4:3", "seconds": 5,
    "prompt": "the scene, one subject, in the register of the reference reels",
    "motion": "what moves and how the camera moves (used by image-to-video)",
-   "route": "still_runway" | "still_runway45" | "still_kling" | "still_dop" | "runway_t2v" | "kling_t2v",
-   "stills": 2, "still_path": "<existing project-references path, to reuse a still instead of generating>"}
+   "route": "still_runway" | "still_runway45" | "still_kling" | "still_dop" | "runway_t2v" | "kling_t2v" | "seedance_ref",
+   "stills": 2, "still_path": "<existing project-references path, to reuse a still instead of generating>",
+   -- seedance_ref only (kind "angle": a real take re-shot from a new camera, optionally inside a world):
+   "source_path": "<project-clips path of the trimmed performance cut (4–30 s; every input second is billed)>",
+   "source_local": "<local copy of that cut, for the fidelity check>", "angle": "the new camera, in one sentence",
+   "keep": ["clear-lens glasses, not tinted", "navy cap", "camo shirt with the flag patch"],
+   "still_path": "<optional world still (project-references) the performer is placed into>", "resolution": "720p"}
 
 Routes (all through AVT edge functions; keys live in Control Center):
   still_*     xAI image (world-still-proxy, 2k, n = stills) → pick the still nearest the look bank → image-to-video
@@ -18,6 +23,10 @@ Routes (all through AVT edge functions; keys live in Control Center):
               (≈ 7 ¢/s) or Higgsfield DoP (camera-move model, ≈ $0.42 per 5 s turbo)
   runway_t2v  Runway gen4.5 text-to-video (15 ¢/s), ratio from aspect
   kling_t2v   Kling 2.5 turbo pro text-to-video (≈ 7 ¢/s; renders 16:9; queue has run to hours)
+  seedance_ref Seedance 2.5 reference-to-video via the Higgsfield catalogue: @Video1 = the real take, @Image1 = an
+              optional world still; duration = the source's seconds (a longer ask comes back stretched); $0.2468 /
+              $0.4622 / $1.1372 per second at 480p/720p/1080p, INPUT seconds billed too. The result is checked against
+              its source by scripts/qa/reference_fidelity.py (identity, lip-motion fit) and recorded as "fidelity".
 The look preset's preamble leads every prompt and its shot suffix closes it (config/look_presets.json).
 Each shot's clip is persisted to project-clips/<user>/<project>/worlds/<run>/<id>.mp4 and gated by
 scripts/qa/realism_gate.py with the look axis; the manifest records cost estimates, verdicts and distances.
@@ -32,6 +41,28 @@ CAPS = json.load(open(os.path.join(ROOT, "config", "provider_caps.json")))
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36"
 PROXY = f"{SUPA}/functions/v1/proxy-provider-call"
 RUNWAY_RATE = {"gen4_turbo": 0.05, "gen4.5": 0.15}; KLING_RATE = 0.07; STILL_RATE = 0.07
+SEEDANCE_RATE = {"480p": 0.2468, "720p": 0.4622, "1080p": 1.1372}   # per second, input + output (Higgsfield catalogue, 2026-10)
+
+
+def angle_prompt(shot, look, with_image):
+    """The reference-to-video prompt: what must not change comes first (identity, wardrobe constants, the mouth on the
+    clock), then the new camera, then the environment if a still is supplied, then the look suffix."""
+    keep = ", ".join(shot.get("keep", [])) or "his face, hair, skin and every piece of wardrobe"
+    parts = [f"@Video1 is the performer, rapping to camera. Re-shoot the exact same performance from a second camera: {shot['angle']}",
+             f"Keep everything identical to @Video1 — {keep} — and most of all the same mouth movements at the same moments, word for word, in sync with @Video1 from the first frame to the last."]
+    if with_image: parts.append(f"Place him inside the environment of @Image1, lit by that environment's light sources; the environment is still, only he and the camera move.")
+    else: parts.append("The same room, the same light.")
+    if look and look.get("shot_suffix"): parts.append(look["shot_suffix"])
+    return " ".join(parts)
+
+
+def source_seconds(shot):
+    if shot.get("source_seconds"): return float(shot["source_seconds"])
+    if shot.get("source_local") and os.path.exists(shot["source_local"]):
+        out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", shot["source_local"]], capture_output=True, text=True).stdout.strip()
+        try: return float(out)
+        except ValueError: pass
+    return float(shot.get("seconds", 5))
 
 
 def wrap(prompt, look, motion=None, max_chars=1000, preamble=True, provider=None):
@@ -55,6 +86,13 @@ def still(api, project, prompt, aspect, n, label, dry):
 def motion_submit(api, user, project, shot, prompt, still_url=None):
     route = shot["route"]; sec = int(shot.get("seconds", 5)); aspect = shot.get("aspect", "9:16")
     audit = {"avt_user_id": user, "avt_project_id": project}
+    if route == "seedance_ref":
+        sec = max(4, min(30, int(round(source_seconds(shot))))); res = shot.get("resolution", "720p")
+        b = {"promptText": prompt, "mode": "reference_to_video", "modelVariant": "seedance-2.5-reference", "referenceVideoUrls": [shot["_source_url"]],
+             "referenceImageUrls": [still_url] if still_url else [], "duration": sec, "resolution": res, "aspectRatio": aspect, "generate_audio": False, **audit}
+        r = api.post(PROXY, {"endpoint": "video-providers-higgsfield-model", "method": "POST", "body": b}, timeout=170); r["_provider"] = "higgsfield"; r["_rate"] = SEEDANCE_RATE[res]
+        r["_list_usd"] = round(SEEDANCE_RATE[res] * (sec + source_seconds(shot)), 3)   # the catalogue estimate counts output only
+        return r
     if route == "still_dop":
         b = {"promptText": prompt, "mode": "image_to_video", "referenceImageUrl": still_url, "modelVariant": shot.get("model", "dop-turbo"), **audit}
         r = api.post(PROXY, {"endpoint": "video-providers-higgsfield-generate", "method": "POST", "body": b}, timeout=170); r["_provider"] = "higgsfield"; r["_rate"] = 0.083
@@ -105,11 +143,12 @@ def main():
     a = ap.parse_args(); os.makedirs(a.out, exist_ok=True); run = a.run or os.path.basename(os.path.normpath(a.out))
     _job = job("batch", need_gb=0.3, out=a.out); _job.__enter__()
     api = Api(open(a.jwt).read(), open(a.anon).read()); look = load_look(a.look_preset); bank = json.load(open(a.look_bank)) if a.look_bank else None
-    shots = json.load(open(a.shots)); mpath = os.path.join(a.out, "manifest.json")
+    shots = json.load(open(a.shots)); mpath = os.path.join(a.out, "manifest.json"); by_id = {s["id"]: s for s in shots}
     man = json.load(open(mpath)) if a.resume and os.path.exists(mpath) else {"run": run, "look_preset": a.look_preset, "shots": {}}
     est = 0.0
     for s in shots:
         sec = 10 if int(s.get("seconds", 5)) > 5 else 5; r = s["route"]
+        if r == "seedance_ref": est += SEEDANCE_RATE[s.get("resolution", "720p")] * 2 * source_seconds(s); continue
         est += (STILL_RATE * int(s.get("stills", 2)) if r.startswith("still") and not s.get("still_path") else 0) + sec * (RUNWAY_RATE["gen4_turbo"] if r == "still_runway" else RUNWAY_RATE["gen4.5"] if r in ("runway_t2v", "still_runway45") else 0.083 if r == "still_dop" else KLING_RATE)
     print(f"estimate ${est:.2f} for {len(shots)} shots (gate judge extra ≈ ${0.08 * len(shots):.2f})")
     if est > a.max_usd: raise SystemExit(f"estimate exceeds --max-usd {a.max_usd}")
@@ -141,7 +180,12 @@ def main():
                 best = min(cands, key=lambda c: c["look_distance"]); st["still"] = {"candidates": cands, "picked": best["path"], "cost_usd": r.get("actualCostUsd")}
                 print(s["id"], "stills", [round(c["look_distance"], 2) for c in cands], "→", os.path.basename(best["local"]))
             still_url = api.sign("project-references", st["still"]["picked"], ttl=86400)
-        mprompt = wrap(s.get("motion") or s["prompt"], look, preamble=False, provider=prov) if still_url else wrap(s["prompt"], look, provider=prov)
+        if s["route"] == "seedance_ref":
+            s["_source_url"] = api.sign("project-clips", s["source_path"], ttl=86400)
+            if s.get("still_path"): still_url = api.sign("project-references", s["still_path"], ttl=86400); st["still"] = {"candidates": [], "picked": s["still_path"], "cost_usd": 0.0}
+            mprompt = angle_prompt(s, look, bool(still_url))
+        else:
+            mprompt = wrap(s.get("motion") or s["prompt"], look, preamble=False, provider=prov) if still_url else wrap(s["prompt"], look, provider=prov)
         st["submitting"] = {"provider": prov, "model": s.get("model") or s["route"], "time": time.time(), "prompt": mprompt}; json.dump(man, open(mpath, "w"), indent=1)   # write-ahead: the record exists before the money moves
         r = motion_submit(api, a.user, a.project, s, mprompt, still_url)
         if not r.get("ok"):
@@ -149,7 +193,7 @@ def main():
             if refused(prov, r): exhausted.add(prov); print(f"{prov}: refusal pattern matched — no further {prov} submits this run")
             json.dump(man, open(mpath, "w"), indent=1); continue
         st.pop("submitting")
-        st["job"] = {"provider": r["_provider"], "id": r.get("providerJobId") or r.get("jobId"), "estimate_usd": round((r.get("costEstimateCents") or 0) / 100, 3), "prompt": mprompt, "submitted": time.time()}
+        st["job"] = {"provider": r["_provider"], "id": r.get("providerJobId") or r.get("jobId"), "estimate_usd": r.get("_list_usd") or round((r.get("costEstimateCents") or 0) / 100, 3), "prompt": mprompt, "submitted": time.time()}
         print(s["id"], "submitted", r["_provider"], r["providerJobId"][:8], f"~${st['job']['estimate_usd']}"); json.dump(man, open(mpath, "w"), indent=1)
     # 2. poll
     t0 = time.time()
@@ -163,6 +207,12 @@ def main():
                 p = os.path.join(a.out, f"{k}.mp4"); n = fetch(r["resultUrl"], p); st["file"] = p; st["bytes"] = n
                 sp = f"{a.user}/{a.project}/worlds/{run}/{k}.mp4"; api.upload("project-clips", sp, open(p, "rb").read(), "video/mp4"); st["storage_path"] = sp
                 print(k, "done", n // 1000, "KB")
+                src = by_id[k].get("source_local") if by_id[k].get("route") == "seedance_ref" else None
+                if src and os.path.exists(src):
+                    fp = os.path.join(a.out, f"{k}_fidelity.json")
+                    subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "qa", "reference_fidelity.py"), "--source", src, "--result", p, "--out", fp], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    if os.path.exists(fp):
+                        f = json.load(open(fp)); st["fidelity"] = {"identity": f["identity_src_vs_result"], "lip": f["lip"]}; print(k, "fidelity identity", f["identity_src_vs_result"], "lip", f["lip"]["best_fit"])
             elif s_ in ("failed", "canceled", "nsfw", "error"): st["failed"] = r; print(k, "FAILED", json.dumps(r)[:300])
         json.dump(man, open(mpath, "w"), indent=1)
         if [k for k, st in man["shots"].items() if st.get("job") and not st.get("file") and not st.get("failed")]: time.sleep(30)
