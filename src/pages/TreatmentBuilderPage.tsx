@@ -23,6 +23,7 @@ import { useArtist } from "@/lib/queries/artists";
 import { useArtistLooks } from "@/lib/queries/looks";
 import { useSongAnalysis } from "@/lib/queries/songAnalyses";
 import { useProjectShots, useBulkCreateShots } from "@/lib/queries/shots";
+import { useLyricLines } from "@/lib/queries/lyricLines";
 import { buildClipGrid, gridSummary } from "@/lib/treatment/grid";
 import {
   suggestConcepts,
@@ -73,6 +74,7 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
   const artistQuery = useArtist(project?.artist_id ?? undefined);
   const looksQuery = useArtistLooks(project?.artist_id ?? undefined);
   const shotsQuery = useProjectShots(projectId);
+  const lyricLinesQuery = useLyricLines(projectId);
   const bulkCreate = useBulkCreateShots();
 
   const saved = useMemo(
@@ -546,7 +548,7 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
             </div>
 
             {view === "storyboard" ? (
-              <ShotStoryboard specs={specs} energyById={energyById} />
+              <ShotStoryboard specs={specs} energyById={energyById} lyricLines={lyricLinesQuery.data} />
             ) : (
               <Card className="p-0">
                 <div className="max-h-[28rem] overflow-auto">
