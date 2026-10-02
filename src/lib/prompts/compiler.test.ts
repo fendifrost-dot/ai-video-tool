@@ -29,6 +29,7 @@ function makeProject(overrides: Partial<VideoProject> = {}): VideoProject {
     mood: "grimy",
     visual_style: "35mm film grain",
     color_palette: ["#1a1a1a", "#ff3355"],
+    creative_exemplars: [],
     wardrobe_notes: null,
     lyrics: null,
     song_structure_json: {},

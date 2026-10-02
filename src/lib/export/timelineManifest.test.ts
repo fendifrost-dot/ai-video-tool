@@ -16,6 +16,7 @@ function project(): VideoProject {
     mood: null,
     visual_style: "noir",
     color_palette: [],
+    creative_exemplars: [],
     wardrobe_notes: null,
     lyrics: null,
     song_structure_json: [],

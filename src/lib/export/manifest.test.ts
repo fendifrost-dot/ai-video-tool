@@ -20,6 +20,7 @@ function project(over: Partial<VideoProject> = {}): VideoProject {
     mood: "grimy",
     visual_style: "35mm",
     color_palette: ["#000", "#f55"],
+    creative_exemplars: [],
     wardrobe_notes: null,
     lyrics: "[Intro]\n...\n[Verse 1]\n...",
     song_structure_json: [
