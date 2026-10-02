@@ -11,7 +11,7 @@
  * not the individual lane internals (those have their own unit tests).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { TreatmentBuilderPage } from "./TreatmentBuilderPage";
 import { setEngineeringMode, _internal } from "@/lib/ux/engineeringMode";
@@ -53,6 +53,7 @@ const SAVED_TREATMENT = {
 // --- module mocks -----------------------------------------------------------
 
 vi.mock("@/lib/queries/projects", () => ({
+  useUpdateProject: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useProject: () => ({
     data: {
       id: "p1",
@@ -149,6 +150,14 @@ describe("TreatmentBuilderPage integration", () => {
     // One per clip in the saved treatment — the block only renders under the page's
     // ShotOverrideProvider, so this also proves the provider is mounted.
     expect(screen.getAllByTestId("shot-override")).toHaveLength(2);
+  });
+
+  it("has a place for the director's own example scenes on the brief", () => {
+    render(<TreatmentBuilderPage projectId="p1" />);
+    const box = screen.getByTestId("creative-exemplars") as HTMLTextAreaElement;
+    expect(box.value).toBe("");
+    fireEvent.change(box, { target: { value: "a model opens a door; the room is the arctic" } });
+    expect(box.value).toContain("arctic");
   });
 
   it("offers a template picker on the brief (B4)", () => {

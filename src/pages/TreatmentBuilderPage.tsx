@@ -18,7 +18,7 @@ import { PageHeader } from "@/components/AppShell";
 import { SongAnalysisCard } from "@/components/projects/SongAnalysisCard";
 import { ShotStoryboard } from "@/components/treatment/ShotStoryboard";
 import type { ShotEnergy } from "@/components/treatment/ShotCard";
-import { useProject } from "@/lib/queries/projects";
+import { useProject, useUpdateProject } from "@/lib/queries/projects";
 import { useArtist } from "@/lib/queries/artists";
 import { useArtistLooks } from "@/lib/queries/looks";
 import { useSongAnalysis } from "@/lib/queries/songAnalyses";
@@ -110,6 +110,29 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
   const [projectType, setProjectType] = useState<ProjectType>("music_video");
   const [mood, setMood] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
+  // The director's own example scenes — the bar regenerated shots are held to. Stored on the project
+  // (video_projects.creative_exemplars), one scene per line here.
+  const updateProject = useUpdateProject();
+  const savedExemplars = useMemo(
+    () => ((project as { creative_exemplars?: string[] | null } | null | undefined)?.creative_exemplars ?? []).filter(Boolean),
+    [project],
+  );
+  const [exemplarsText, setExemplarsText] = useState<string | null>(null);
+  const exemplarsValue = exemplarsText ?? savedExemplars.join("\n");
+  const exemplarList = useMemo(
+    () => exemplarsValue.split("\n").map((l) => l.trim()).filter(Boolean),
+    [exemplarsValue],
+  );
+  async function saveExemplars() {
+    if (exemplarsText === null || exemplarList.join("\n") === savedExemplars.join("\n")) return;
+    try {
+      await updateProject.mutateAsync({ id: projectId, patch: { creative_exemplars: exemplarList } as never });
+      setExemplarsText(null);
+      toast.success("Your examples are saved — every regenerate is held to them");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save your examples");
+    }
+  }
   const [targetDuration, setTargetDuration] = useState("30");
   const [concepts, setConcepts] = useState<ConceptSuggestion[] | null>(null);
   const [chosenConcept, setChosenConcept] = useState("");
@@ -325,6 +348,7 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
               templateContext.artist.description || templateContext.artist.name || "",
             environment: project?.visual_style ?? "",
             style: effectiveMood || null,
+            exemplars: exemplarList,
           });
         } finally {
           setRegeneratingSpecId(null);
@@ -343,6 +367,7 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
       project?.visual_style,
       effectiveMood,
       regeneratingSpecId,
+      exemplarList,
     ],
   );
 
@@ -560,6 +585,21 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
                 placeholder="constraints, must-have shots, references…"
               />
             </div>
+          </div>
+
+          <div>
+            <label htmlFor="creative-exemplars" className="text-xs text-foreground/60">
+              Your bar — scenes at the level you want, one per line (sent with every "From the lyrics")
+            </label>
+            <textarea
+              id="creative-exemplars"
+              data-testid="creative-exemplars"
+              className="mt-1 h-28 w-full rounded-md border border-border bg-background/60 p-2 text-sm"
+              value={exemplarsValue}
+              onChange={(e) => setExemplarsText(e.target.value)}
+              onBlur={() => void saveExemplars()}
+              placeholder="A model opens a door and flicks the switch; inside, the room is the arctic…"
+            />
           </div>
 
           {/* B4 — a production template leads the brief. Its body is rendered with this
