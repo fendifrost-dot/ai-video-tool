@@ -1,0 +1,15 @@
+{
+ "identity_src_vs_result": 0.21,
+ "identity_per_frame_p95": 0.377,
+ "frames_src": 120,
+ "frames_res": 121,
+ "lip_corr_raw": -0.107,
+ "lip_corr_best": {
+  "corr": 0.564,
+  "retime": 0.71,
+  "offset_s": 0.25,
+  "n": 120
+ },
+ "mouth_open_src_mean": 0.197,
+ "mouth_open_res_mean": 0.125
+}
