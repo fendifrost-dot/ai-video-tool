@@ -303,6 +303,7 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
           // An empty field is "not overridden", never "set this to nothing" — that is
           // what lets the coverage planner keep filling it.
           direction: draft.direction.trim() || null,
+          frame: draft.frame.trim() || null,
           cameraMotion:
             draft.cameraMotionType || draft.cameraMotionDescription.trim()
               ? {
