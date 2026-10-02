@@ -115,3 +115,62 @@ Verified on the bumped lockfile: `tsc` clean, whole suite and `vite build` (figu
 after every Lovable message, `git fetch` and read what it committed; its summary is not evidence.
 
 Whole suite after this round (`npx vitest run`): 146 files passed, 1 skipped; 1556 tests passed, 1 skipped.
+
+## 10. The combined test round — what the new capabilities did (night, 2026-10-02)
+
+Fendi: "Disregard the $50 limit for testing. Let's push forward … We've wired in new capabilities. Let's test and see what the results are." Everything paid ran from the signed-in app's new **Runs** page (`/projects/<id>/runs`, advanced menu) — the shots.json dialect submitted as `provider_jobs` through `proxy-provider-call`, write-ahead, with a per-press ceiling — because no agent session can hold a credential. Run `run-20261002-1320`.
+
+**Spend, list rates: $16.00.** Seedance 2.5 ×4 = $14.79 (4 s in + 4 s out at 720p, $3.698 each) · two xAI stills $0.14 · Runway gen4.5 image-to-video 5 s $0.75 · eight single-scene visualiser calls ≈ $0.32. Ledger now ≈ $56.90 against the $50 line, on Fendi's word.
+
+### 10.1 Seedance re-angles (measured against each 4 s source, `reference_fidelity.py`)
+
+| Angle | What came back | Identity (≤ 0.25) | Lip on the take's clock | Lip best fit (≥ 0.6) | Gate | Clock shift |
+|---|---|---|---|---|---|---|
+| `S06c_low_hero` | nearly the source framing — the camera barely moved | 0.016 | 0.636 | 0.72 | cut in | −0.10 s |
+| `S08a_side_tight` | a real side angle | 0.076 | 0.228 | 0.494 | **not on a sung line** | — |
+| `S11c_low_hero` | a real low angle that pushes in to a tight face shot | 0.045 | 0.611 | 0.658 | cut in | +0.02 s |
+| `S12b_side_tight` | a real tighter, lower side angle, the fashion show kept behind him | 0.078 | 0.491 | 0.649 | cut in | −0.06 s |
+
+Reading: **the face holds on every one** (worst 0.078 against a 0.25 limit); wardrobe held with `keep[]`. Three of four are usable on a sung line once the angle is put on the take's clock by its own lip fit; one drifted too far. One of four spent its $3.70 on a framing we already had — the angle sentence has to ask for a bigger change than "low hero" when the source is already a low medium shot.
+
+Wired from this: `camera_coverage.py plan` no longer cuts an angle in because the file exists. `angle_gate()` reads `<angle>_fidelity.json` (rules in `config/coverage_presets.json` → `rules.angle_gate`), refuses a sung line when identity or the lip fit fails or when nobody measured the angle, and moves the angle's `masterStart` by the fit's drift over the window actually used.
+
+### 10.2 The world shot — the take standing IN a plate, behind something
+
+The stoop still came back with the stoop small and far, and four boys crouched at a sedan at the curb. A waist-up take cannot stand on that stoop (his legs would show). He can stand at the foot of it, behind the car's hood. That needed three things the camera engine did not have, now in `camera_engine.py`:
+
+* `place {scale, at, plane}` — the take anchored to a plate point, moving with it under the camera;
+* `occlude {margin, soft}` — plate nearer than his plane (the plate's depth map) drawn in front of him: the hood hides his cut edge with no hand-made mask; on a living plate `--plate-depth-every N` re-measures it so the occluder can move;
+* `move.about` + `move.parallax` — a pull-back about the point he stands on; as a lens zoom (parallax 0) the hood and he keep the relation they were placed in. With depth parallax the first run showed his cut edge for 28 frames — and the engine reported exactly those frames.
+
+Measured: on the still plate, a 5 s pull-back from him to the whole street, cut edge hidden on every frame. On the living plate (Runway gen4.5 from the same still, after Higgsfield refused Kling with `403 not_enough_credits`; the saved still was reused, no second still charge): the boys lift the car, it rises in front of him and hides him, and from frame 76 — when the car has left — the engine reports the cut edge. So the shot is good for ≈ 3 s and is cut before that. **Honest limits:** he is ≈ 12 % of the frame's height at the wide end and the 720p plate allows only a 2× start, so this is a world shot, not a performance close-up; the car has wheels (the prompt asked for none).
+
+### 10.3 bar5 — the angles and the world shot in the cut
+
+`YSL_IceOn_bars24-46_bar5_angles` (1080p master, 720p proxy delivered): bar4 with `S06c`, `S11c`, `S12b` replaced by their gated angles and `S11a` replaced by the stoop shot (5 beats, cut while the car is in front of him). Coverage QA **PASS**: 16 performance cuts, 89 % moving, longest static 3.93 s, mean cut 1.16 bars; inserts 4/4 PASS; 43.279 s on the clock. One hand decision: the `S11a`/`S11b` boundary moved one beat later to let the lift play.
+
+### 10.4 "From the lyrics" at the director's bar — three passes on the live app
+
+| Pass | What was sent | Card 06 "…follow designers / the rims 21 don't ride no minors" (B-roll) | Card 07 "more cameras in the whip than a camera crew" (performance) |
+|---|---|---|---|
+| 1 | every card as `literal`, no examples | the artist with a rim and an empty seat | the artist seated in a car in a Canada Goose, static |
+| 2 | mode by the card's role, standing rules, the director's four examples (new "Your bar" box, saved on the project) | adults turning a rim on a stand — no artist, camera moves, flat | car doors open on a camera array, reporters, flashes — staged around him; camera still "static" |
+| 3 | + "Push it further" (the proxy's `surreal` reading) on insert cards; a generated "static" no longer pins the camera; **the old card's framing and camera no longer sent as "already chosen"** | a slow truck reveals the Bentley and four figures at its wheels torquing the last bolts, the car settles, a toy car rolls in and is kicked away, the headlights snap on — wide, 35mm anamorphic | a slow dolly reveals the Bentley behind him, reporters swarm it shooting through the open windows — push, medium wide |
+
+The step that moved the insert card was the last one: the request had been telling the generator that the scene's framing and camera were "already chosen" — the generated close-up macro it was meant to replace. That is now sent only for a card the director overrode. Results land unsaved, as designed; nothing was saved on the YSL storyboard.
+
+Still open here: the regenerated scene's full `render_prompt` has no column on `shot_overrides`, so a compiled world shot is built from the direction sentence.
+
+### 10.5 Faults found by running it
+
+| Fault | Where | Fix |
+|---|---|---|
+| Since rev 52 the planner wrote the 4 s trim's file seconds into `t0`/`t1`, the slot's song window: every sub-slot after an angle got a move window like 18.2–18.7 and the slot lost its window | `camera_coverage.py plan` | renamed; a re-plan now equals bar4's plan (test) |
+| `--help` was a traceback on two tools (an unescaped `%05d` in a help string) | `camera_engine.py`, `composite_environment.py` | escaped; a test scans every script's help strings |
+| `--plate-depth-every` was accepted and ignored | `camera_engine.py` | implemented for the occlusion depth |
+| Overscan added the worst zoom and the worst pan wherever they occurred, cropping the plate on a zoom about an off-centre point | `camera_engine.py` | computed frame by frame; a zoom-in also keeps the plate's own pixels (`--max-plate-res`) |
+| Higgsfield's refusal word `not_enough_credits` was not in the refusal patterns | `config/provider_caps.json`, `src/lib/worldBatch/rates.ts` | added; the Runs page stops submitting to a provider that says it |
+| Lovable's migration tool now scaffolds drizzle (`drizzle/`, `drizzle.config.ts`, three dev dependencies, lockfile) while its agent reported "no package.json/bun.lock/config changes"; after the next publish it also edited `batch-token-proxy/contract.ts` and a visualiser test for its Deno check | Lovable | read, verified (tsc clean, suite green, build ok); recorded as the standing rule: its summary is not evidence |
+
+Verified on main `df1ac7e`: `npx vitest run` → 148 files, 1593 tests passed, 1 skipped; `tsc` clean; `python3 -m pytest scripts/edit/tests` → 13 passed.
+
