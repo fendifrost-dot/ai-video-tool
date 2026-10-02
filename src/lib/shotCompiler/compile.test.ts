@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { parseShotSpec } from "@/lib/treatment/shotSpec";
+import type { LyricLine } from "@/lib/lyrics/lyricsForShot";
 import {
   compileToWorldBatch,
+  compositorArgs,
+  phrasesFromCoveragePlan,
+  phrasesFromShotSpecs,
+  toCoveragePlan,
   toShotsJson,
   toStubsJson,
+  type PlannerAngleRequest,
+  type PlannerPlan,
   snapDurationForRoute,
   snapKlingOrRunway,
   snapSeedance,
@@ -129,7 +137,8 @@ describe("compileToWorldBatch", () => {
     expect(s.angle).toContain("low hero");
     expect(s.prompt).toContain("@Video1");
     expect(s.prompt).toContain("clear-lens glasses, not tinted");
-    expect(s.heroStillUrl).toBeUndefined();
+    expect(s.source_seconds).toBe(4);
+    expect(s.source_window).toEqual([66.885, 68.853]);
     expect(result.gateHints.requireReferenceFidelity).toBe(true);
     expect(result.gateHints.requireCoverageQa).toBe(true);
   });
@@ -198,6 +207,9 @@ describe("compileToWorldBatch", () => {
     expect(result.shots[0].kind).toBe("plate");
     expect(result.shots[0].seconds).toBe(10);
     expect(result.shots[0].still_path).toBe("project-references/u/p/hero.jpg");
+    expect(result.shots[0].prompt).toBe("locked hero, cold room");
+    expect(result.shots[0].motion).toBe("slow push-in, camera only");
+    expect("heroStillUrl" in result.shots[0]).toBe(false);
     expect(result.stubs).toHaveLength(0);
   });
 
@@ -229,7 +241,11 @@ describe("compileToWorldBatch", () => {
     expect(s.seconds).toBe(5);
     expect(s.motion).toContain("door opens");
     expect(s.motion).toContain("push 0.16");
-    expect(s.prompt).toContain("arctic room");
+    // the dialect's prompt is THE SCENE: run_world_batch.py wraps it in the look preset itself, so the compiler
+    // must not pre-wrap (the preamble and suffix used to be sent twice)
+    expect(s.prompt).toBe("arctic room, one subject, door in the far wall");
+    expect(s.prompt).not.toContain(LOOK_PRESETS[DEFAULT_LOOK_PRESET_ID].preamble.slice(0, 20));
+    expect(s.prompt).not.toContain(LOOK_PRESETS[DEFAULT_LOOK_PRESET_ID].shot_suffix);
     expect(result.lookPresetId).toBe(DEFAULT_LOOK_PRESET_ID);
   });
 
@@ -340,5 +356,123 @@ describe("compileToWorldBatch", () => {
     expect(result.stubs.map((s) => s.route)).toEqual(["take_move", "living_plate"]);
     expect(JSON.parse(toShotsJson(result))).toHaveLength(1);
     expect(JSON.parse(toStubsJson(result))).toHaveLength(2);
+  });
+});
+
+describe("stubs reach the scripts lane", () => {
+  it("take_move stubs → coverage_plan.json that camera_coverage.py render consumes", () => {
+    const result = compileToWorldBatch({
+      phrases: [
+        {
+          kind: "coverage_take", id: "S06a", slot: "S06", section: "hook", song: [66.885, 68.853], move: MOVE,
+          framing: "medium", sourcePath: "/x/S06_live.mp4", sourceSeconds: 1.968, transition: "cut",
+          matteDir: "/x/mattes/S06", plate: "/x/P_runway_k.mp4", plateLoop: true, masterStart: 61.597,
+        },
+        {
+          kind: "coverage_take", id: "S06b", slot: "S06", section: "hook", song: [68.853, 70.82],
+          move: { ...MOVE, type: "pull" }, framing: "close_up", sourcePath: "/x/S06_live.mp4", sourceSeconds: 1.968,
+          matteDir: "/x/mattes/S06", plate: "/x/P_runway_k.mp4", plateLoop: true, masterStart: 61.597,
+        },
+      ],
+    });
+    const plan = toCoveragePlan(result, { outDir: "/x/bar5", bpm: 122 });
+    expect(plan.slots).toHaveLength(1);
+    const slot = plan.slots[0];
+    expect(slot.slot).toBe("S06");
+    expect(slot.song).toEqual([66.885, 70.82]);
+    expect(slot.source).toBe("/x/S06_live.mp4");
+    expect(slot.masterStart).toBe(61.597);
+    expect(slot.matte_dir).toBe("/x/mattes/S06");
+    expect(slot.plate_loop).toBe(true);
+    expect(slot.subs.map((x) => x.id)).toEqual(["S06a", "S06b"]);
+    expect(slot.subs[0].variant).toBe("/x/bar5/variants/S06a_push.mp4");
+    expect(slot.subs[1].variant).toBe("/x/bar5/variants/S06b_pull.mp4");
+    expect(slot.subs[0].source).toBe("take");
+    expect(slot.subs[0].lens).toBe("anamorphic_35");
+  });
+
+  it("living_plate stub carries the compositor's placement + occluder as argv", () => {
+    const result = compileToWorldBatch({
+      phrases: [
+        {
+          kind: "living_plate", id: "S11_stoop", takePath: "/x/S11_cut.mp4", platePath: "/x/stoop.jpg", song: [84.59, 88.5],
+          placement: { matchPlate: 0.7, fgPlace: [0.3, 0.25, 0.48], fgAnchor: "bottom", occluderAuto: [0, 0.33, 1, 1], occluderBelow: 0.47 },
+        },
+      ],
+    });
+    const args = compositorArgs(result.stubs[0], "/x/S11_env.mp4");
+    expect(args.join(" ")).toBe(
+      "scripts/edit/composite_environment.py --in /x/S11_cut.mp4 --plate /x/stoop.jpg --out /x/S11_env.mp4 --match-plate 0.7 --fg-place 0.3,0.25,0.48 --fg-anchor bottom --occluder-auto 0,0.33,1,1 --occluder-below 0.47",
+    );
+  });
+});
+
+describe("phrases come from the planner and the storyboard (A2)", () => {
+  const plan: PlannerPlan = {
+    bpm: 122,
+    slots: [
+      {
+        slot: "S06", section: "hook", song: [66.885, 70.82], source: "/x/S06_live.mp4", masterStart: 61.597,
+        matte_dir: "/x/mattes/S06", plate: "/x/P_runway_k.mp4", plate_loop: true,
+        subs: [
+          { id: "S06a", slot: "S06", section: "hook", song: [66.885, 68.853], move: { type: "orbit", amount: 0.1, ease: "in_out" }, handheld: 0.25, lens: "anamorphic_35", framing: "medium", source: "take", transition: "whip_left" },
+          { id: "S06c", slot: "S06", section: "hook", song: [68.853, 70.82], move: { type: "snap_zoom", amount: 0.3, ease: "linear" }, handheld: 0.5, lens: "handheld_24", framing: "close_up", source: "angle", angle: "a low hero angle" },
+        ],
+      },
+    ],
+  };
+  const angles: PlannerAngleRequest[] = [
+    { id: "S06c_low_hero", kind: "angle", route: "seedance_ref", aspect: "9:16", resolution: "720p", source_path: null, source_local: "/x/S06_live.mp4", source_window: [68.853, 70.82], masterStart: 61.597, angle: "a low hero angle from knee height looking up, 28mm, fast push-in", keep: [] },
+  ];
+
+  it("coverage_plan.json + angle_requests.json → take + angle phrases; keep[] and project-clips paths supplied by the caller", () => {
+    const phrases = phrasesFromCoveragePlan(plan, angles, { keep: KEEP, sourcePaths: { S06: "project-clips/u/p/S06_live.mp4" } });
+    expect(phrases.map((p) => p.kind)).toEqual(["coverage_take", "coverage_angle"]);
+    const take = phrases[0] as Extract<CompilerPhrase, { kind: "coverage_take" }>;
+    expect(take.sourcePath).toBe("project-clips/u/p/S06_live.mp4");
+    expect(take.sourceLocal).toBe("/x/S06_live.mp4");
+    expect(take.move).toEqual({ type: "orbit", amount: 0.1, ease: "in_out", handheld: 0.25, lens: "anamorphic_35", start: undefined, end: undefined, direction: undefined });
+    expect(take.transition).toBe("whip_left");
+    expect(take.masterStart).toBe(61.597);
+    const angle = phrases[1] as Extract<CompilerPhrase, { kind: "coverage_angle" }>;
+    expect(angle.id).toBe("S06c_low_hero");
+    expect(angle.keep).toEqual(KEEP);
+    expect(angle.angle).toContain("knee height");
+    expect(angle.sourceSeconds).toBeCloseTo(1.967, 2);
+    // and the whole thing compiles to one $0 stub + one seedance shot in the dialect
+    const result = compileToWorldBatch({ phrases });
+    expect(result.stubs).toHaveLength(1);
+    expect(result.shots).toHaveLength(1);
+    expect(result.shots[0].route).toBe("seedance_ref");
+    expect(result.shots[0].source_window).toEqual([68.853, 70.82]);
+  });
+
+  it("storyboard cards that are not performance → world phrases with the lyric sung inside the window", () => {
+    const spec = parseShotSpec({
+      id: "clip-09", purpose: "the tailor at his bench, Yves Saint Laurent on the weekend", kind: "broll", shotType: "b_roll",
+      timeline: { start: 47.2, end: 49.2 },
+      environment: { description: "a Paris atelier, overcast window light" },
+      cameraMotion: { type: "dolly", description: "push 0.16 · anamorphic_35 · handheld 0.25" },
+      transitionIn: { preset: "whip_left" }, requiredElements: ["the tape measure"],
+      fx: [{ type: "dust", description: "dust in the window light" }],
+    });
+    const perf = parseShotSpec({ id: "clip-10", purpose: "him on the stoop", shotType: "performance", timeline: { start: 49.2, end: 51.2 } });
+    const lines: LyricLine[] = [
+      { lineIndex: 0, section: "verse", text: "Yves Saint Laurent on the weekend", start: 47.6, end: 49.0, confidence: 0.9, words: [] },
+      { lineIndex: 1, section: "verse", text: "rambling too", start: 49.5, end: 50.4, confidence: 0.9, words: [] },
+    ];
+    const phrases = phrasesFromShotSpecs([spec, perf], lines);
+    expect(phrases).toHaveLength(1);
+    const w = phrases[0] as Extract<CompilerPhrase, { kind: "world" }>;
+    expect(w.id).toBe("clip-09");
+    expect(w.lyric).toBe("Yves Saint Laurent on the weekend");
+    expect(w.prompt).toContain("Paris atelier");
+    expect(w.prompt).toContain("Must include: the tape measure.");
+    expect(w.camera).toEqual({ type: "push", amount: 0.16, ease: "in_out", handheld: 0.25, lens: "anamorphic_35" });
+    expect(w.motion.entrance).toBe("arrives on a whip left");
+    expect(w.motion.secondary).toBe("dust in the window light");
+    const shot = compileToWorldBatch({ phrases }).shots[0];
+    expect(shot.kind).toBe("world");
+    expect(shot.prompt).toBe(w.prompt);
   });
 });

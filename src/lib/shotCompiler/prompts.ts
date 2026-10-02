@@ -1,5 +1,7 @@
 /**
  * Prompt locks + look-preset wrap — mirrors scripts/broll/run_world_batch.py wrap() / angle_prompt().
+ * wrapPrompt() is for previews and for callers that bypass the executor; compileToWorldBatch() emits the RAW scene
+ * because run_world_batch.py wraps it itself.
  */
 
 import type { LookPreset, MotionContract } from "./types";
@@ -8,7 +10,7 @@ export const PROMPT_LOCKS = {
   noOnScreenText: "No on-screen text, captions, logos, or watermarks.",
   noExtraCharacters: "No extra characters not named in the beat.",
   identityHold:
-    "Keep face, proportions, glasses, and skin unchanged; wardrobe changes only under occlusion when wardrobe refs are supplied.",
+    "Keep face, proportions and skin unchanged; wardrobe changes only under occlusion when wardrobe refs are supplied.",
   diegeticOnly: "Diegetic sound only — the song bed is timeline-side.",
 } as const;
 

@@ -1,7 +1,9 @@
 /**
  * Shot compiler types — amended after Claude review (rev D).
- * Payload dialect = shots.json in scripts/broll/run_world_batch.py lines 8–20, verbatim.
- * Stubs (take_move, living_plate) stay out of the paid shots array.
+ * Payload dialect = shots.json in scripts/broll/run_world_batch.py lines 8–20, verbatim: `prompt` is THE SCENE and
+ * `motion` the motion sentence — the executor wraps them in the look preset itself (wrap()), so the compiler never
+ * pre-wraps. Stubs (take_move, living_plate) stay out of the paid shots array; toCoveragePlan() turns take_move
+ * stubs into the coverage_plan.json that scripts/edit/camera_coverage.py render consumes.
  */
 
 /** Typed camera move — same fields as config/coverage_presets.json move entries (+ optional window). */
@@ -53,13 +55,35 @@ export type WorldBatchShot = {
   /** seedance_ref: wardrobe / identity constants — required */
   keep?: string[];
   resolution?: "480p" | "720p" | "1080p";
-  /** Optional hero / plate still for i2v routes; worlds may omit. */
-  heroStillUrl?: string;
+  /** seedance_ref: the source's own seconds (run_world_batch.py prefers this over `seconds`). */
+  source_seconds?: number;
+  /** seedance_ref: [start, end] of the sung window on the song clock, for the fidelity check and the cut. */
+  source_window?: [number, number];
+  /** seedance_ref: master time at the source file's first frame (the assembler's clock). */
+  masterStart?: number;
 };
 
 export type CompilerStubRoute = "take_move" | "living_plate";
 
-/** Non-provider stub for coverage.py / camera_engine / composite_environment. */
+/** How the compositor places the real take against a plate (composite_environment.py flags, as data). */
+export type CompositorPlacement = {
+  /** --match-plate weight 0–1 (plate-aware grade on the performer). */
+  matchPlate?: number;
+  /** --fg-place scale,cx,cy */
+  fgPlace?: [number, number, number];
+  /** --fg-anchor */
+  fgAnchor?: "bottom" | "centre";
+  /** --occluder-auto x0,y0,x1,y1 (fractions of the plate): the salient object in the box is lifted in front of him. */
+  occluderAuto?: [number, number, number, number];
+  /** --occluder-below y (fraction): everything below this horizon is in front. */
+  occluderBelow?: number;
+  /** --occluder-from-plate mask path (plate geometry). */
+  occluderFromPlate?: string;
+  /** --occluder-feather px */
+  occluderFeather?: number;
+};
+
+/** Non-provider stub for scripts/edit/camera_coverage.py (take_move) / composite_environment.py (living_plate). */
 export type CompilerStub = {
   id: string;
   route: CompilerStubRoute;
@@ -76,9 +100,12 @@ export type CompilerStub = {
   section?: string;
   matteDir?: string;
   plate?: string;
+  plateLoop?: boolean;
+  masterStart?: number;
   /** living_plate */
   takePath?: string;
   platePath?: string;
+  placement?: CompositorPlacement;
 };
 
 /**
@@ -104,6 +131,9 @@ export type CompilerPhrase =
       transition?: string;
       matteDir?: string;
       plate?: string;
+      plateLoop?: boolean;
+      /** master time at the source file's first frame — camera_coverage.py / assemble_section.py clock */
+      masterStart?: number;
     }
   | {
       kind: "coverage_angle";
@@ -123,6 +153,7 @@ export type CompilerPhrase =
       transition?: string;
       stillPath?: string;
       resolution?: "480p" | "720p" | "1080p";
+      masterStart?: number;
     }
   | {
       kind: "world";
@@ -155,6 +186,7 @@ export type CompilerPhrase =
       takePath: string;
       platePath: string;
       song: [number, number];
+      placement?: CompositorPlacement;
     };
 
 export type LookPreset = {

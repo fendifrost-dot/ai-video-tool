@@ -37,4 +37,13 @@ export {
   wrapPrompt,
 } from "./prompts";
 
-export { compileToWorldBatch, toShotsJson, toStubsJson } from "./compile";
+export { compileToWorldBatch, compositorArgs, toCoveragePlan, toShotsJson, toStubsJson, variantPath } from "./compile";
+export type { CoveragePlan, CoveragePlanSlot, CoveragePlanSub } from "./compile";
+export type { CompositorPlacement } from "./types";
+export {
+  cameraFromSpec,
+  motionContractFromSpec,
+  phrasesFromCoveragePlan,
+  phrasesFromShotSpecs,
+} from "./fromPlanner";
+export type { PlannerAngleRequest, PlannerPlan, PlannerSlot, PlannerSub } from "./fromPlanner";
