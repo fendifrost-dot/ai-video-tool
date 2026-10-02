@@ -36,6 +36,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(ROOT, "scripts", "qa"))
 from run_broll_batch import Api, SUPA, load_look  # noqa: E402
+from auth import Session  # noqa: E402
 
 CAPS = json.load(open(os.path.join(ROOT, "config", "provider_caps.json")))
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36"
@@ -142,7 +143,7 @@ def main():
     ap.add_argument("--resubmit-unknown", action="store_true", help="resubmit shots left in 'submitting' by a crashed run (only after checking the provider logs)")
     a = ap.parse_args(); os.makedirs(a.out, exist_ok=True); run = a.run or os.path.basename(os.path.normpath(a.out))
     _job = job("batch", need_gb=0.3, out=a.out); _job.__enter__()
-    api = Api(open(a.jwt).read(), open(a.anon).read()); look = load_look(a.look_preset); bank = json.load(open(a.look_bank)) if a.look_bank else None
+    auth = Session.from_args(a); api = Api(auth); look = load_look(a.look_preset); bank = json.load(open(a.look_bank)) if a.look_bank else None
     shots = json.load(open(a.shots)); mpath = os.path.join(a.out, "manifest.json"); by_id = {s["id"]: s for s in shots}
     man = json.load(open(mpath)) if a.resume and os.path.exists(mpath) else {"run": run, "look_preset": a.look_preset, "shots": {}}
     est = 0.0
@@ -200,7 +201,6 @@ def main():
     while time.time() - t0 < a.poll_minutes * 60:
         pending = [k for k, st in man["shots"].items() if st.get("job") and not st.get("file") and not st.get("failed")]
         if not pending: break
-        api = Api(open(a.jwt).read(), open(a.anon).read())   # the JWT file may be refreshed while a long poll runs
         for k in pending:
             st = man["shots"][k]; r = status(api, st["job"]["provider"], st["job"]["id"]); s_ = r.get("status")
             if r.get("resultUrl"):
@@ -220,7 +220,9 @@ def main():
     done = [k for k, st in man["shots"].items() if st.get("file")]
     if done and a.ref_stats:
         cmd = [sys.executable, os.path.join(ROOT, "scripts", "qa", "realism_gate.py"), "--clip", *[man["shots"][k]["file"] for k in done], "--ref-stats", a.ref_stats, "--out", os.path.join(a.out, "gate.json"), "--no-face"]
-        if a.judge: cmd += ["--judge", "--jwt", a.jwt, "--anon", a.anon, "--project-id", a.project]
+        if a.judge:
+            cmd += ["--judge", "--anon", a.anon, "--project-id", a.project]
+            if auth.pinned(): cmd += ["--jwt", a.jwt]
         if a.look_bank: cmd += ["--look-bank", a.look_bank]
         subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         if os.path.exists(os.path.join(a.out, "gate.json")):

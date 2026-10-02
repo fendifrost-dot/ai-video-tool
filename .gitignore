@@ -36,3 +36,7 @@ docs/reconstruct/artifacts/**/.ppm/
 
 # local AVT render outputs written by Claude/Cursor sessions
 _avt_outputs/
+
+# Python bytecode from the pipeline scripts
+__pycache__/
+*.pyc

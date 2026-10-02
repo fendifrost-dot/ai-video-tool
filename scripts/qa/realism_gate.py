@@ -42,6 +42,7 @@ provider is then judged against the same truth.
 """
 import argparse, base64, json, os, sys, time, urllib.request
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "_lib")); from jobs import job  # resource governor + registry (scripts/_lib/jobs.py)
+from auth import Session  # long-lived batch credential -> fresh user session (scripts/_lib/auth.py)
 import cv2, numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(HERE, "..", "edit"))
 
@@ -305,16 +306,17 @@ Look for AI tells: waxy or over-smooth skin, plastic specular sheen, impossible 
 Return ai_likelihood (0 = indistinguishable from a camera, 1 = obviously AI), a verdict (PASS only when a casual viewer would NOT clock it; FAIL when a tell would be noticed at normal speed; UNCERTAIN only when the strip cannot show it), the concrete tells with the frame label where each is visible, and the strengths that make it read real."""
 
 
-def judge(clip, jwt, anon, n_frames=10, max_tokens=6000, project_id=None, base="https://qoyxgnkvjukovkrvdaiq.supabase.co/functions/v1/astra-visual-review-proxy"):
+def judge(clip, auth, n_frames=10, max_tokens=6000, project_id=None, base="https://qoyxgnkvjukovkrvdaiq.supabase.co/functions/v1/astra-visual-review-proxy"):
     cap = cv2.VideoCapture(clip); n = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)); fps = cap.get(cv2.CAP_PROP_FPS) or 24.0; frames = []
     for i in np.linspace(0, n - 1, n_frames).astype(int):
         cap.set(cv2.CAP_PROP_POS_FRAMES, int(i)); ok, f = cap.read()
         if not ok: continue
         f = fit_frame(f, (540, 960)); ok, buf = cv2.imencode(".jpg", f, [cv2.IMWRITE_JPEG_QUALITY, 82])
         frames.append({"label": f"t={i / fps:.2f}s", "dataUrl": "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode()})
-    hdr = {"Authorization": "Bearer " + jwt, "apikey": anon, "Content-Type": "application/json"}
     def call(body):
-        req = urllib.request.Request(base, data=json.dumps(body).encode(), headers=hdr); return json.loads(urllib.request.urlopen(req, timeout=180).read().decode())
+        # Headers per call, not once per judge(): the poll below runs up to ten minutes per
+        # clip and a whole gate pass can outlive the access token it started with.
+        req = urllib.request.Request(base, data=json.dumps(body).encode(), headers=auth.headers()); return json.loads(urllib.request.urlopen(req, timeout=180).read().decode())
     sub = call({"mode": "submit", "projectId": project_id, "draftId": "realism-gate", "partId": os.path.basename(clip), "instructions": JUDGE_BRIEF, "frames": frames, "references": [], "jsonSchema": JUDGE_SCHEMA, "maxOutputTokens": max_tokens, "reasoningEffort": "medium"})
     rid = sub.get("responseId")
     if not rid: return {"error": "submit_failed", "payload": sub}
@@ -344,7 +346,7 @@ def main():
         summary, _ = clip_stats(clip, face, emb, ref_id); verdict, z, flags, morph = tier1_verdict(summary, ref, a.z_warn, a.z_morph)
         rep = {"clip": clip, "tier1": {"verdict": verdict, "z": z, "flags": flags, "morphing": morph, "metrics": summary}}
         if a.judge:
-            jwt = open(a.jwt).read().strip(); anon = open(a.anon).read().strip(); r = judge(clip, jwt, anon, a.judge_frames, project_id=a.project_id)
+            r = judge(clip, Session.from_args(a), a.judge_frames, project_id=a.project_id)
             rv = r.get("review") or {}; rep["tier2"] = {"status": r.get("status"), "actualCostUsd": r.get("actualCostUsd"), "review": rv, "error": r.get("error")}
             t2 = rv.get("verdict"); like = rv.get("ai_likelihood")
             final = "REJECT" if verdict == "REJECT" or t2 == "FAIL" or (like is not None and like >= 0.5) else ("REVIEW" if verdict == "REVIEW" or t2 == "UNCERTAIN" or (like is not None and like >= 0.3) else "PASS")
