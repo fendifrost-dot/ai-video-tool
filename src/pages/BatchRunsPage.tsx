@@ -1,0 +1,321 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { PageHeader } from "@/components/AppShell";
+import { BatchRunView, type BatchRowView } from "@/components/runs/BatchRunView";
+import { useProject } from "@/lib/queries/projects";
+import { useLyricLines } from "@/lib/queries/lyricLines";
+import { useShotOverrides } from "@/lib/queries/shotOverrides";
+import { providerJobsKeys, useProjectProviderJobs } from "@/lib/providerJobs/queries";
+import { triggerServerIngest } from "@/lib/providerJobs/api";
+import { applyCoverageDefaults, DEFAULT_COVERAGE_PRESETS } from "@/lib/treatment/coverage";
+import { applyShotOverrides } from "@/lib/treatment/overrides";
+import { parseSavedStructuredTreatment, structuredTreatmentToShotSpecs } from "@/lib/treatment/api";
+import { LOOK_PRESETS, compileToWorldBatch, phrasesFromShotSpecs, resolveLookPreset } from "@/lib/shotCompiler";
+import {
+  PROVIDER_REFUSALS,
+  batchJobsByRun,
+  estimateShotUsd,
+  parseShotsJson,
+  planRun,
+  resultUrlOf,
+  runPlan,
+  shotState,
+  spentEstimateUsd,
+  type BatchJobRow,
+  type BatchShot,
+} from "@/lib/worldBatch";
+import {
+  browserRunnerDeps,
+  clipSeconds,
+  markJobFailed,
+  pollBatchJob,
+  uploadSourceClip,
+  uploadStill,
+} from "@/lib/worldBatch/browserDeps";
+
+/**
+ * Runs — the batch runner in the app. The same shot list the scripts run (shots.json) is submitted, polled and saved
+ * from the owner's signed-in browser, so a paid round needs no login copied to any machine.
+ */
+type Patch = { source_path?: string; source_seconds?: number; still_path?: string };
+type Saved = {
+  shotsText: string;
+  runId: string;
+  ceilingUsd: number;
+  lookPresetId: string;
+  patches: Record<string, Patch>;
+  unselected: string[];
+};
+
+const POLL_MS = 20_000;
+
+function defaultRunId(now = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `run-${now.getFullYear()}${p(now.getMonth() + 1)}${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}`;
+}
+
+function loadSaved(key: string): Partial<Saved> {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? "{}") as Partial<Saved>;
+  } catch {
+    return {};
+  }
+}
+
+export default function BatchRunsPage({ projectId }: { projectId: string }) {
+  const storeKey = `avt.batchRuns.${projectId}`;
+  const initial = useMemo(() => loadSaved(storeKey), [storeKey]);
+  const [shotsText, setShotsText] = useState(initial.shotsText ?? "");
+  const [loadedText, setLoadedText] = useState(initial.shotsText ?? "");
+  const [runId, setRunId] = useState(initial.runId ?? defaultRunId());
+  const [ceilingUsd, setCeilingUsd] = useState(initial.ceilingUsd ?? 25);
+  const [lookPresetId, setLookPresetId] = useState(initial.lookPresetId ?? "film_bar_v1");
+  const [patches, setPatches] = useState<Record<string, Patch>>(initial.patches ?? {});
+  const [unselected, setUnselected] = useState<string[]>(initial.unselected ?? []);
+  const [running, setRunning] = useState(false);
+  const [busy, setBusy] = useState<Record<string, string>>({});
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const [log, setLog] = useState<string[]>([]);
+  const ingestTried = useRef<Set<string>>(new Set());
+
+  const qc = useQueryClient();
+  const jobsQuery = useProjectProviderJobs(projectId);
+  const projectQuery = useProject(projectId);
+  const lyricLinesQuery = useLyricLines(projectId);
+  const overridesQuery = useShotOverrides(projectId);
+
+  useEffect(() => {
+    try {
+      const saved: Saved = { shotsText: loadedText, runId, ceilingUsd, lookPresetId, patches, unselected };
+      localStorage.setItem(storeKey, JSON.stringify(saved));
+    } catch {
+      // storage is a convenience here; the jobs table is the record
+    }
+  }, [storeKey, loadedText, runId, ceilingUsd, lookPresetId, patches, unselected]);
+
+  const say = useCallback((line: string) => {
+    const t = new Date().toISOString().slice(11, 19);
+    setLog((l) => [...l.slice(-199), `${t} ${line}`]);
+  }, []);
+
+  const parsed = useMemo(
+    () => (loadedText.trim() ? parseShotsJson(loadedText) : { shots: [] as BatchShot[], errors: [] as string[] }),
+    [loadedText],
+  );
+  const shots = useMemo(
+    () => parsed.shots.map((s) => ({ ...s, ...(patches[s.id] ?? {}) }) as BatchShot),
+    [parsed.shots, patches],
+  );
+  const runJobs = useMemo(
+    () => batchJobsByRun((jobsQuery.data ?? []) as unknown as BatchJobRow[]).get(runId) ?? [],
+    [jobsQuery.data, runId],
+  );
+  const selectedShots = useMemo(() => shots.filter((s) => !unselected.includes(s.id)), [shots, unselected]);
+  const plan = useMemo(() => planRun(selectedShots, runJobs), [selectedShots, runJobs]);
+
+  const rows: BatchRowView[] = useMemo(
+    () =>
+      shots.map((shot) => {
+        const state = shotState(shot, runJobs);
+        const job = "job" in state ? state.job : null;
+        return {
+          shot,
+          state,
+          estimateUsd: estimateShotUsd(shot),
+          selected: !unselected.includes(shot.id),
+          resultUrl: job ? resultUrlOf(job) : null,
+          storedPath: job?.result_asset_id ? `asset ${job.result_asset_id}` : null,
+          note: notes[shot.id] ?? null,
+          busy: busy[shot.id] ?? null,
+        };
+      }),
+    [shots, runJobs, unselected, notes, busy],
+  );
+
+  const refetchJobs = useCallback(
+    () => qc.invalidateQueries({ queryKey: providerJobsKeys.forProject(projectId) }),
+    [qc, projectId],
+  );
+
+  // Poll the jobs the provider has, and save each finished clip once.
+  const live = runJobs.filter((j) => (j.status === "queued" || j.status === "running") && j.external_job_id);
+  const toIngest = runJobs.filter((j) => j.status === "succeeded" && !j.result_asset_id && !ingestTried.current.has(j.id));
+  const liveKey = live.map((j) => j.id).join(",");
+  const ingestKey = toIngest.map((j) => j.id).join(",");
+  useEffect(() => {
+    if (!liveKey) return;
+    let stop = false;
+    const tick = async () => {
+      for (const j of live) {
+        if (stop) return;
+        try {
+          const state = await pollBatchJob(j);
+          if (state !== "running") say(`${String((j.request_payload_json as { settings?: { batchShotId?: string } })?.settings?.batchShotId)} ${state}`);
+        } catch (e) {
+          say(`poll failed: ${e instanceof Error ? e.message : String(e)}`);
+        }
+      }
+      if (!stop) await refetchJobs();
+    };
+    const h = setInterval(tick, POLL_MS);
+    void tick();
+    return () => {
+      stop = true;
+      clearInterval(h);
+    };
+    // `live` is derived from liveKey; depending on the array would restart the timer every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveKey, refetchJobs, say]);
+  useEffect(() => {
+    if (!ingestKey) return;
+    for (const j of toIngest) {
+      ingestTried.current.add(j.id);
+      const shotId = String((j.request_payload_json as { settings?: { batchShotId?: string } })?.settings?.batchShotId);
+      triggerServerIngest(j.id)
+        .then((r) => {
+          const err = r.errors.find((x) => x.jobId === j.id);
+          if (err) {
+            setNotes((n) => ({ ...n, [shotId]: `not saved to the library: ${err.error}` }));
+            say(`${shotId} ingest failed: ${err.error}`);
+          } else say(`${shotId} saved to the library`);
+          return refetchJobs();
+        })
+        .catch((e) => {
+          const m = e instanceof Error ? e.message : String(e);
+          setNotes((n) => ({ ...n, [shotId]: `not saved to the library: ${m}` }));
+          say(`${shotId} ingest failed: ${m}`);
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ingestKey, refetchJobs, say]);
+
+  const load = useCallback(
+    (text: string) => {
+      setShotsText(text);
+      setLoadedText(text);
+      setUnselected([]);
+      const r = parseShotsJson(text);
+      say(`loaded ${r.shots.length} shot(s)${r.errors.length ? `, ${r.errors.length} rejected` : ""}`);
+    },
+    [say],
+  );
+
+  const attach = useCallback(
+    async (shotId: string, file: File, kind: "source" | "still") => {
+      setBusy((b) => ({ ...b, [shotId]: kind === "source" ? "uploading the source clip…" : "uploading the still…" }));
+      try {
+        if (kind === "source") {
+          const [path, seconds] = await Promise.all([uploadSourceClip(projectId, runId, shotId, file), clipSeconds(file)]);
+          setPatches((p) => ({ ...p, [shotId]: { ...p[shotId], source_path: path, ...(seconds ? { source_seconds: seconds } : {}) } }));
+          say(`${shotId} source clip stored (${seconds ? `${seconds} s` : "duration unread"})`);
+        } else {
+          const path = await uploadStill(projectId, runId, shotId, file);
+          setPatches((p) => ({ ...p, [shotId]: { ...p[shotId], still_path: path } }));
+          say(`${shotId} still stored`);
+        }
+      } catch (e) {
+        say(`${shotId} upload failed: ${e instanceof Error ? e.message : String(e)}`);
+      } finally {
+        setBusy((b) => {
+          const { [shotId]: _gone, ...rest } = b;
+          return rest;
+        });
+      }
+    },
+    [projectId, runId, say],
+  );
+
+  const run = useCallback(async () => {
+    setRunning(true);
+    try {
+      const { id: presetId, look } = resolveLookPreset(lookPresetId);
+      const deps = await browserRunnerDeps();
+      say(`submitting ${plan.submit.length} shot(s), estimate $${plan.estimateUsd.toFixed(2)}`);
+      const out = await runPlan(
+        plan,
+        { projectId, runId, lookPresetId: presetId, look },
+        deps,
+        {
+          ceilingUsd,
+          refusalPatterns: PROVIDER_REFUSALS,
+          onProgress: (shotId, phase) => {
+            setBusy((b) => {
+              if (phase === "submitting") return { ...b, [shotId]: "submitting…" };
+              const { [shotId]: _gone, ...rest } = b;
+              return rest;
+            });
+            if (phase !== "submitting") void refetchJobs();
+          },
+        },
+      );
+      for (const s of out.submitted) say(`submitted → ${s.providerJobId}`);
+      for (const f of out.failed) say(`FAILED ${f.error}`);
+      for (const s of out.skipped) say(`skipped ${s.shot.id}: ${s.why}`);
+    } catch (e) {
+      say(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRunning(false);
+      void refetchJobs();
+    }
+  }, [plan, projectId, runId, lookPresetId, ceilingUsd, refetchJobs, say]);
+
+  const saved = useMemo(() => parseSavedStructuredTreatment(projectQuery.data?.treatment_json), [projectQuery.data?.treatment_json]);
+  const fromStoryboard = useCallback(() => {
+    if (!saved) {
+      say("this project has no saved treatment to compile");
+      return;
+    }
+    const specs = applyCoverageDefaults(
+      applyShotOverrides(structuredTreatmentToShotSpecs(saved), overridesQuery.data),
+      DEFAULT_COVERAGE_PRESETS,
+      lyricLinesQuery.data,
+    );
+    const phrases = phrasesFromShotSpecs(specs, lyricLinesQuery.data ?? []);
+    const compiled = compileToWorldBatch({ phrases, lookPresetId }).shots;
+    const text = JSON.stringify(compiled, null, 1);
+    setShotsText(text);
+    setLoadedText(text);
+    // a whole storyboard is many paid shots: nothing is ticked until the director ticks it
+    setUnselected(compiled.map((s) => s.id));
+    say(`compiled ${compiled.length} world shot(s) from the storyboard — tick the ones to run`);
+  }, [saved, overridesQuery.data, lyricLinesQuery.data, lookPresetId, say]);
+
+  return (
+    <>
+      <PageHeader title="Runs" subtitle="Submit a shot list to the providers from here; every job is recorded before it is sent" variant="compact" />
+      <div className="px-4 py-6 md:px-8">
+        <BatchRunView
+          runId={runId}
+          onRunId={(v) => setRunId(v.replace(/[^A-Za-z0-9_.-]/g, "_").slice(0, 60))}
+          lookPresetId={lookPresetId}
+          lookPresetIds={Object.keys(LOOK_PRESETS)}
+          onLookPreset={setLookPresetId}
+          ceilingUsd={ceilingUsd}
+          onCeiling={setCeilingUsd}
+          shotsText={shotsText}
+          onShotsText={setShotsText}
+          onLoad={() => load(shotsText)}
+          onLoadFile={(f) => void f.text().then(load)}
+          onFromStoryboard={saved ? fromStoryboard : undefined}
+          parseErrors={parsed.errors}
+          rows={rows}
+          plan={plan}
+          running={running}
+          log={log}
+          spentUsd={spentEstimateUsd(runJobs)}
+          onToggle={(id) => setUnselected((u) => (u.includes(id) ? u.filter((x) => x !== id) : [...u, id]))}
+          onAttachSource={(id, f) => void attach(id, f, "source")}
+          onAttachStill={(id, f) => void attach(id, f, "still")}
+          onMarkFailed={(id) => {
+            const st = rows.find((r) => r.shot.id === id)?.state;
+            if (st?.state !== "unreconciled") return;
+            void markJobFailed(st.job.id, "marked failed by the operator after checking the provider")
+              .then(refetchJobs)
+              .catch((e) => say(e instanceof Error ? e.message : String(e)));
+          }}
+          onRun={() => void run()}
+        />
+      </div>
+    </>
+  );
+}
