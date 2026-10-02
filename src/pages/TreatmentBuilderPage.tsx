@@ -24,6 +24,7 @@ import { useArtistLooks } from "@/lib/queries/looks";
 import { useSongAnalysis } from "@/lib/queries/songAnalyses";
 import { useProjectShots, useBulkCreateShots } from "@/lib/queries/shots";
 import { useLyricLines } from "@/lib/queries/lyricLines";
+import { applyCoverageDefaults, DEFAULT_COVERAGE_PRESETS } from "@/lib/treatment/coverage";
 import { buildClipGrid, gridSummary } from "@/lib/treatment/grid";
 import {
   suggestConcepts,
@@ -74,7 +75,6 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
   const artistQuery = useArtist(project?.artist_id ?? undefined);
   const looksQuery = useArtistLooks(project?.artist_id ?? undefined);
   const shotsQuery = useProjectShots(projectId);
-  const lyricLinesQuery = useLyricLines(projectId);
   const bulkCreate = useBulkCreateShots();
 
   const saved = useMemo(
@@ -101,7 +101,12 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
   // Chronological cinematic shot cards consume the generalized Shot Spec.
   // `treatmentClipToShotSpec` keys each spec by the clip key, so the energy
   // accent from the beat grid can be looked up by spec id.
-  const specs = useMemo(() => (current ? structuredTreatmentToShotSpecs(current) : []), [current]);
+  const lyricLinesQuery = useLyricLines(projectId);
+  // coverage defaults (Fendi 2026-10-02): every performance card gets a camera move and a framing unless the director set one
+  const specs = useMemo(
+    () => (current ? applyCoverageDefaults(structuredTreatmentToShotSpecs(current), DEFAULT_COVERAGE_PRESETS, lyricLinesQuery.data) : []),
+    [current, lyricLinesQuery.data],
+  );
   const energyById = useMemo(() => {
     const map: Record<string, ShotEnergy> = {};
     for (const c of current?.clips ?? []) {
