@@ -115,9 +115,15 @@ export function motionSentence(motion: MotionScene["motion"]): string {
 
 /** Scene → the override fields. Pure, so the mapping is tested without a network. */
 export function sceneToOverride(scene: MotionScene): RegeneratedShot {
-  const move = moveToCard(scene.camera?.move);
+  // A generated "static" is not a decision: the generator falls back to it, and written into the override it would pin
+  // the card still against the coverage plan (measured live 2026-10-02: a performance card came back "static · 24mm"
+  // with the standing rule "the camera moves" in the request). Leave the move unset so the coverage plan keeps the
+  // card moving; a director who wants a locked frame sets it by hand.
+  const rawMove = scene.camera?.move?.trim();
+  const isStatic = (rawMove ?? "").toLowerCase() === "static";
+  const move = isStatic ? null : moveToCard(rawMove);
   const descParts = [
-    scene.camera?.move?.trim(),
+    isStatic ? "" : rawMove,
     scene.camera?.lens?.trim(),
     scene.transition?.object?.trim() ? `into: ${scene.transition.object.trim()}` : "",
   ].filter(Boolean);

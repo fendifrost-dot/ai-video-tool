@@ -120,6 +120,14 @@ describe("scene → override fields", () => {
     expect(out.direction).toContain("the gator boots snap at the air");
   });
 
+  it("a generated 'static' does not pin the camera: the move stays unset and the word stays out of the description", () => {
+    const r = sceneToOverride({ camera: { move: "static", lens: "24mm" }, transition: { object: "a rolling wheel", preset: "cut" } });
+    expect(r.cameraMotion.type).toBeNull();
+    expect(r.cameraMotion.description).toBe("24mm · into: a rolling wheel");
+    // a real move is still carried, word and type
+    expect(sceneToOverride({ camera: { move: "push", lens: "50mm" } }).cameraMotion).toEqual({ type: "dolly", description: "push · 50mm" });
+  });
+
   it("falls back to the purpose when the scene has no motion beats", () => {
     expect(sceneToOverride({ purpose: "Make it physical" }).direction).toBe("Make it physical");
   });
