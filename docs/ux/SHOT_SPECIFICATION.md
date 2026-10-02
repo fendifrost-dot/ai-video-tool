@@ -118,6 +118,10 @@ These spec fields have **no column** and are handled as noted (mirrored in
 - `fx`, `references`, `previs`, `generation` (beyond `engine`),
   `reconstruction`, `qa` → **dropped** on export; they live only in the Shot Spec
   JSON. Persist the full spec in `treatment_json` to keep them.
+- `transitionIn.preset` / `transitionOut.preset` (a name from
+  `config/transition_presets.json`, timed in beats by the assembler) → dropped;
+  only the DB family (`transition_in_type`) maps. The preset lives in the Shot
+  Spec JSON.
 - per-block `references[]` on wardrobe/environment/lighting → dropped.
 - `source.mediaId` / `source.uri` → dropped (only `range` maps, to `trim_*`).
 - `provenance` → only `created_at`/`updated_at` survive; `source`/`author`/
