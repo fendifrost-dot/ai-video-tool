@@ -68,7 +68,7 @@ def test_the_near_plate_hides_his_cut_edge(tmp_path):
 
 def test_zoom_about_his_point_keeps_him_put_and_the_occluder_on_him(tmp_path):
     md = world(str(tmp_path))
-    spec = {"move": {"type": "pull", "amount": 1.0, "ease": "linear", "about": [0.3, 0.65], "parallax": 0},
+    spec = {"move": {"type": "pull", "amount": 1.0, "ease": "linear", "about": [0.3, 0.55], "parallax": 0},
             "place": {"scale": 0.3, "at": [0.3, 0.65], "plane": 0.3}, "occlude": {"margin": 0.05, "soft": 0.02}}
     frames, cam = render(str(tmp_path), md, spec, "pull")
     first, last = red(frames[0]), red(frames[-1])
@@ -76,6 +76,11 @@ def test_zoom_about_his_point_keeps_him_put_and_the_occluder_on_him(tmp_path):
     assert abs(x0 - W * 0.3) <= 3 and abs(x1 - W * 0.3) <= 3, "the point he stands on does not move while the lens zooms"
     w0 = np.where(first)[1].max() - np.where(first)[1].min(); w1 = np.where(last)[1].max() - np.where(last)[1].min()
     assert 1.8 <= w0 / w1 <= 2.2, "the pull starts twice as tight"
+    # the occluder keeps its place on him: the part of him ABOVE the block is twice as tall at twice the zoom, and the
+    # block's edge crosses him at the same height of his body (it slid when the pan was not scaled with the zoom)
+    h0 = np.where(first)[0].max() - np.where(first)[0].min(); h1 = np.where(last)[0].max() - np.where(last)[0].min()
+    assert 1.8 <= h0 / h1 <= 2.2, (h0, h1)
+    assert abs(np.where(first)[0].max() - np.where(last)[0].max()) <= 3, "the block's edge is at the zoom's fixed point: it must not move on screen"
     assert cam["edge_reveal_frames"] == [], "a zoom scales the occluder with him: the cut edge stays hidden at every focal length"
     assert cam["overscan"] <= 1.0 + 1e-6 and cam["path"][0]["zoom"] == 2.0
 
