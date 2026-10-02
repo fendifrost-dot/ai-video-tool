@@ -81,7 +81,7 @@ describe("Lane E2 second-clip portability", () => {
     expect(a.criteria.map((c) => `${c.id}:${c.verdict}`)).toEqual(
       b.criteria.map((c) => `${c.id}:${c.verdict}`),
     );
-  });
+  }, 60_000); // two full 720×1280 raster evaluations: > 5 s on a 2-core box
 
   it("PASSes when provenance is omitted entirely", () => {
     const report = evaluateVideoQa(anonymousClipInput());
@@ -109,5 +109,5 @@ describe("Lane E2 preservation FAIL escalation contract", () => {
       expect(json.escalate).toEqual(PRESERVATION_FAIL_ESCALATE);
     }
     expect(evaluateVideoQa(happyPathMp4Input()).escalate).toBeNull();
-  });
+  }, 60_000); // two full 720×1280 raster evaluations: > 5 s on a 2-core box
 });
