@@ -16,7 +16,9 @@ project-references/<user>/<project>/worlds/around/. Costs: ≈ $0.14 (grok 2k) /
 """
 import argparse, json, os, sys, time, urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(HERE, "..", "_lib"))
 from run_broll_batch import Api, SUPA  # noqa: E402
+from auth import Session  # noqa: E402
 PROXY = f"{SUPA}/functions/v1/proxy-provider-call"
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36"
 
@@ -34,7 +36,7 @@ def main():
     ap.add_argument("--no-keep-preamble", action="store_true"); ap.add_argument("--jwt", default="/tmp/jwt.txt"); ap.add_argument("--anon", default="/tmp/anon.txt")
     ap.add_argument("--poll-s", type=int, default=10); ap.add_argument("--max-wait-s", type=int, default=900)
     a = ap.parse_args(); os.makedirs(a.out, exist_ok=True)
-    api = Api(open(a.jwt).read(), open(a.anon).read())
+    api = Api(Session.from_args(a))
     base = f"{a.user}/{a.project}/worlds/around"; stamp = time.strftime("%Y%m%d-%H%M%S")
     refs = []
     for i, p in enumerate([a.still] + a.extra_ref):

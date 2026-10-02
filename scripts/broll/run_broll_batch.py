@@ -25,6 +25,7 @@ judge report billed amounts.
 """
 import argparse, base64, json, os, subprocess, sys, time, urllib.request
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "_lib")); from jobs import job  # resource governor + registry (scripts/_lib/jobs.py)
+from auth import Session  # long-lived batch credential -> fresh user session (scripts/_lib/auth.py)
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 SUPA = "https://qoyxgnkvjukovkrvdaiq.supabase.co"
 HF_LIST_USD_PER_CLIP = {"dop-lite": 0.135, "dop-preview": 0.573, "dop-turbo": 0.416}     # 5 s list prices (pixazo catalogue, 2026-10)
@@ -32,8 +33,14 @@ RISK = {"low": 0, "medium": 1, "high": 2}
 
 
 class Api:
-    def __init__(self, jwt, anon):
-        self.h = {"Authorization": "Bearer " + jwt.strip(), "apikey": anon.strip(), "Content-Type": "application/json"}
+    """Headers are built PER REQUEST, not frozen at construction: a batch runs for hours and
+    a Supabase access token lasts one, so a header dict captured at startup is a run that
+    dies at minute 61 (stall audit 2026-10-01, root cause B). Session handles the refresh."""
+    def __init__(self, auth):
+        self.auth = auth
+    @property
+    def h(self):
+        return self.auth.headers()
     def post(self, url, body, timeout=120):
         req = urllib.request.Request(url, data=json.dumps(body).encode(), headers=self.h)
         try: return json.loads(urllib.request.urlopen(req, timeout=timeout).read().decode())
@@ -103,7 +110,7 @@ def main():
     ap.add_argument("--dry-run", action="store_true"); ap.add_argument("--look-preset", default=None, help="name in config/look_presets.json; its preamble and shot suffix wrap every prompt")
     a = ap.parse_args(); look = load_look(a.look_preset)
     _job = job("batch", need_gb=0.3, out=a.out); _job.__enter__()
-    api = Api(open(a.jwt).read(), open(a.anon).read()); os.makedirs(a.out, exist_ok=True)
+    auth = Session.from_args(a); api = Api(auth); os.makedirs(a.out, exist_ok=True)
     user_id = a.user or a.still.split("/")[0]; overrides = dict(p.split("=") for p in a.pick); prefer = a.prefer.split(",")
     lines = []
     for f in a.concepts:
@@ -156,7 +163,11 @@ def main():
     # ---- gate
     files = [p["file"] for p in plan if p.get("file")]
     if files and a.ref_stats:
-        cmd = [sys.executable, os.path.join(ROOT, "scripts", "qa", "realism_gate.py"), "--ref-stats", a.ref_stats, "--clip", *files, "--out", os.path.join(a.out, "gate.json"), "--project-id", a.project, "--jwt", a.jwt, "--anon", a.anon]
+        cmd = [sys.executable, os.path.join(ROOT, "scripts", "qa", "realism_gate.py"), "--ref-stats", a.ref_stats, "--clip", *files, "--out", os.path.join(a.out, "gate.json"), "--project-id", a.project, "--anon", a.anon]
+        # Pass --jwt down only when the operator pinned one here. Otherwise the child resolves
+        # its own session from the credential, so a gate that starts in hour three is not
+        # handed the token this process was given in hour one.
+        if auth.pinned(): cmd += ["--jwt", a.jwt]
         if a.judge: cmd.append("--judge")
         subprocess.run(cmd, check=False, env={**os.environ, "AVT_PROJECT_ID": a.project})
         if os.path.exists(os.path.join(a.out, "gate.json")):

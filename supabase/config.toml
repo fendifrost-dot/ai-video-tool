@@ -121,3 +121,11 @@ verify_jwt = true
 
 [functions.world-still-proxy]
 verify_jwt = true
+
+# Batch credential → user session exchange for unattended runners (scripts/_lib/auth.py).
+# verify_jwt = false because the `session` action arrives with no JWT at all — that is the
+# point of it. It authenticates itself: `session` by the hashed credential in the
+# x-batch-secret header, and enroll/list/revoke by validating a real user bearer token
+# inside the function. The owner is read from the credential row, never from the request.
+[functions.batch-token-proxy]
+verify_jwt = false
