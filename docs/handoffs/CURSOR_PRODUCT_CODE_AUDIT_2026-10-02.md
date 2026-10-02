@@ -1,10 +1,10 @@
 # Cursor — product / code audit handoff (no implementation)
 
-**Date:** 2026-10-02  
-**Scope:** clothing swap, environments, camera / angles, and the product path toward a finished cut.  
+**Date:** 2026-10-02 (rev B — added Control Center connection audit)  
+**Scope:** clothing swap, environments, camera / angles, AVT↔Control Center provider connections, path toward a finished cut.  
 **Out of scope:** security, auth hardening, RLS, spend-gate policy, implementation (this document only).  
-**Baseline:** canonical `main` @ `fea6ba3` (`github.com/fendifrost-dot/ai-video-tool`). Pre-flight passed (Lovable-managed, project `qoyxgnkvjukovkrvdaiq`).  
-**Companion docs (do not duplicate):** Claude stall audit [`docs/research/results/2026-10-01-sample-build/STALL_AUDIT_2026-10-01.md`](../research/results/2026-10-01-sample-build/STALL_AUDIT_2026-10-01.md); product plan [`docs/plans/PLAN_2026-10-01_LYRIC_LOCK_AND_TRANSITIONS.md`](../plans/PLAN_2026-10-01_LYRIC_LOCK_AND_TRANSITIONS.md); Claude latest [`docs/handoffs/CLAUDE_LATEST.md`](CLAUDE_LATEST.md) rev 47+.
+**Baseline:** AVT `main` @ `fea6ba3` (`github.com/fendifrost-dot/ai-video-tool`); CC read-only clone @ `3bfc770` (`github.com/fendifrost-dot/fendi-control-center`, ref `wkzwcfmvnwolgrdpnygc`). Pre-flight passed.  
+**Companion docs (do not duplicate):** Claude stall audit [`docs/research/results/2026-10-01-sample-build/STALL_AUDIT_2026-10-01.md`](../research/results/2026-10-01-sample-build/STALL_AUDIT_2026-10-01.md); product plan [`docs/plans/PLAN_2026-10-01_LYRIC_LOCK_AND_TRANSITIONS.md`](../plans/PLAN_2026-10-01_LYRIC_LOCK_AND_TRANSITIONS.md); Claude latest [`docs/handoffs/CLAUDE_LATEST.md`](CLAUDE_LATEST.md) rev 47+; AVT proxy design [`docs/control_center_provider_proxy.md`](../control_center_provider_proxy.md).
 
 Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / **RECOMMENDATION**.
 
@@ -12,7 +12,7 @@ Evidence labels: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISION** / *
 
 ## 1. One-paragraph verdict
 
-The environment / camera / world lane has real production momentum in the **scripts lane** (bar look, Kling i2v route, living plates, Seedance multi-angle, lyric timing in the storyboard, transitions engine, batch credentials, sample cut `bar1`). What is missing for a finished **product** is not another provider smoke — it is (a) **one declared garment policy** so Hero Frame stops showing three competing stories, (b) **bridging the scripts toolchain into Treatment → Produce**, and (c) closing the **remaining plan items** (override, regenerate-from-lyrics, brief-fidelity axis, batch-from-storyboard, transitions on cards). Plumbing stalls Claude already fixed or queued; this audit is about product seams and missed hardening around them.
+The environment / camera / world lane has real production momentum in the **scripts lane** (bar look, Kling i2v route, living plates, Seedance multi-angle, lyric timing in the storyboard, transitions engine, batch credentials, sample cut `bar1`). Control Center already carries the live world/garment catalogue (DoP, Kling, Genjutsu, Seedance 2.5, image_edit). What is missing for a finished **product** is not another provider smoke — it is (a) **one declared garment policy** so Hero Frame stops showing three competing stories, (b) **bridging the scripts toolchain into Treatment → Produce** (and exposing the Higgsfield *catalogue*, not only DoP, in `providerJobs`), (c) closing **CC contract footguns** (job-result host parity, cost estimates, fal-run allowlist for Lane A / dwpose), and (d) the **remaining plan items** (override, regenerate-from-lyrics, brief-fidelity, batch-from-storyboard, transitions on cards). Plumbing stalls Claude already fixed or queued; this audit is about product seams and missed hardening around them.
 
 ---
 
@@ -81,8 +81,9 @@ Ordered by impact on finishing a cut. Security omitted.
    - **VERIFIED:** `ROW_UNMAPPED_FIELDS` in `shotSpec.ts` includes `framing`, `cameraAngle`, `lens`, `generation`, `reconstruction`, `qa`.  
    - Camera engine and compositor cannot be driven from DB rows without notes/JSON side channels. Treatment plans are not executable workers.
 
-3. **Provider surface lies to the operator**  
-   - **VERIFIED:** `HiggsfieldProvider.apiReady = false` while CC DoP / catalogue / Seedance are live via `proxy-provider-call`. Same pattern for Veo/Pika/Fal. Prompt Lab can submit; the badge says manual.
+3. **Provider surface lies to the operator + Prompt Lab only hits DoP**  
+   - **VERIFIED:** `HiggsfieldProvider.apiReady = false` while CC DoP / catalogue / Seedance are live via `proxy-provider-call`. Same pattern for Veo/Pika/Fal.  
+   - **VERIFIED:** `src/lib/providerJobs/api.ts` `ENDPOINT_BY_PROVIDER.higgsfield` → `video-providers-higgsfield-generate` only. Scripts reach `higgsfield-model` (Kling / Genjutsu / Seedance / image_edit) by naming the endpoint explicitly; the app provider job path cannot.
 
 ### P1 — Pipeline completeness gaps
 
@@ -128,6 +129,66 @@ Ordered by impact on finishing a cut. Security omitted.
 
 ---
 
+## 4b. Control Center connection audit (AVT ↔ CC)
+
+Read-only against CC clone `3bfc770`. No CC edits. Security omitted.
+
+### Topology (what AVT actually uses)
+
+| CC function | AVT transport | Role today |
+|-------------|---------------|------------|
+| `video-providers-higgsfield-generate` | `proxy-provider-call` | DoP image-to-video (character B-roll) |
+| `video-providers-higgsfield-model` | `proxy-provider-call` (scripts) | Catalogue: Kling t2v/i2v, Hailuo, Genjutsu v2v, Seedance 2.5 ref-to-video, Grok/Qwen image_edit |
+| `video-providers-runway-generate` | `proxy-provider-call` | Runway gen |
+| `video-providers-runway-video-edit` | `runway-video-edit-proxy` → `callControlCenter` | Aleph / Omni / Seedance2_5 edit |
+| `video-providers-grok-generate` | `proxy-provider-call` | xAI video generations (Prompt Lab / legacy) |
+| `video-providers-{veo,pika,fal}-generate` | `proxy-provider-call` | Present; product use light |
+| `video-providers-job-status` / `job-result` | `proxy-provider-call` GET | Poll / fetch |
+| `switchx-restyle` + `fal-queue-poll` | direct CC URL + `X-Proxy-Secret` | Fal VTON, SAM-3, fal-run whitelist, Lucy |
+| `compose-look` | `compose-look-proxy` | Virtual Samples |
+| `faceswap-generate` (+ callback) | `faceswap-proxy` | Identity graft |
+| `train-style-lora` | `train-style-lora-proxy` | Style LoRA |
+| `ai-draft-treatment` / `research-provider-docs` | allowlisted on `proxy-provider-call` | Treatment draft / research |
+
+**VERIFIED catalogue modes on `higgsfield-model`:** `text_to_video`, `image_to_video`, `video_to_video` (Genjutsu), `reference_to_video` (Seedance **2.5** only — not 2.0), `image_edit` (grok-image-2, qwen-image-3-edit). Scripts already call these correctly with explicit `mode` / `modelVariant`.
+
+### CC product findings (prioritized)
+
+| P | Finding | Evidence |
+|---|---------|----------|
+| **P0** | **Lane A fal-run allowlist has no optical-flow / warp / EbSynth model** — only depth/canny/openpose, flux inpaint, ffmpeg helpers, kolors VTON, Lucy. Propagation stays `disabled` on AVT until CC allowlists a flow model (or a dedicated worker). | CC `switchx-restyle/index.ts` ALLOWED set L652–673; AVT `wardrobe-video-propagate-proxy` README |
+| **P0** | **App `providerJobs` cannot reach Higgsfield catalogue** — maps `higgsfield` → DoP generate only. Worlds/Seedance/Genjutsu/image_edit are scripts-only unless endpoint is overridden. | AVT `providerJobs/api.ts` L40–48 |
+| **P1** | **`job-result` missing api-host fallback for Higgsfield** — `job-status` tries `platform` then `api.higgsfield.ai`; `job-result` only hits `platform.higgsfield.ai`. Catalogue / image_edit jobs that live on the api host can poll OK and fail on result fetch. | CC `job-status` L39–40 + fallback; `job-result` L46–176 platform-only |
+| **P1** | **Cost envelope inconsistency** — DoP returns `costEstimateCents: null`; Runway edit returns `ccProviderEstimateCents` / `avtAuthorizedMaxCents` (deliberately not `costEstimateCents`); Seedance estimate is **output seconds only** (comments admit input seconds also bill — scripts compensate); Genjutsu estimate uses `duration` while billing is **source** seconds. AVT cost UI / ledgers paper over this. | CC higgsfield-generate L192; runway-video-edit; higgsfield-model L79–81, L241; env ledger note |
+| **P1** | **`fal-ai/dwpose` not on fal-run allowlist** — pose-conditioned masked inpaint path stays `model_not_allowed` (Aug/Sept evidence). openpose preprocessor *is* allowlisted; dwpose is not. | CC ALLOWED set; AVT CLAUDE_LATEST / hero_exp provenance |
+| **P1** | **AVT allowlists `image-providers-grok-edit` but CC has no such function** — dead endpoint on `proxy-provider-call` until implemented or removed from the set. | AVT `proxy-provider-call` L60; CC functions dir has no `image-providers-*` |
+| **P2** | Mode auto-inference keys off singular `referenceVideoUrl`, not `referenceVideoUrls[]` — Seedance callers must pass `mode`/`modelVariant` (scripts do; a naive UI might not). | CC higgsfield-model L124 |
+| **P2** | Seedance audio refs / Genjutsu input-seconds field not first-class in the CC estimate API | Comments vs implementation |
+| **P2** | No CC balance preflight (plan A4) — Runway org credits readable; Higgsfield still dashboard | Plan + stall audit |
+| **P2** | `kling-restyle`, `fal-storage-upload` exist on CC, unused by AVT | CC config vs AVT grep |
+| **P2** | Proxy contract doc lives only on AVT (`docs/control_center_provider_proxy.md`); CC has no copy — easy for CC-only agents to drift | Both repos |
+
+### What is already solid on CC (do not re-break)
+
+- Dual Higgsfield surface (DoP vs catalogue) with explicit modes — the right split.  
+- Job-status api-host fallback for catalogue (status path).  
+- Runway video-edit cost gate (`avtAuthorizedMaxCents`) and Omni contract (no ratio / contentModeration in edit mode) — tested.  
+- fal-run allowlist discipline (refuse unknown models) — correct; needs *additions*, not loosening.  
+- Compose-look / faceswap / train-style-lora paths still the Virtual Samples backbone.
+
+### CC-side recommended next actions (for Claude Code on CC when lock allows)
+
+1. Mirror job-status’s api-host fallback into `job-result` for Higgsfield.  
+2. Allowlist one optical-flow/warp Fal model (named) when Lane A is un-parked — or document “Lane A blocked at CC” in AVT UI.  
+3. Add `fal-ai/dwpose` if masked+pose inpaint is still a candidate.  
+4. Expose catalogue estimate fields: `inputSeconds` for Seedance/Genjutsu; unify a `costEstimateCents` alias for DoP/edit so AVT UI does not special-case.  
+5. Balance read endpoint (Runway first) for batch preflight.  
+6. Drop or implement `image-providers-grok-edit` on both sides.
+
+AVT-side (no CC lock needed): extend `ENDPOINT_BY_PROVIDER` / Prompt Lab for catalogue modes; flip `apiReady` for Higgsfield; remove dead allowlist entry if CC will not build it.
+
+---
+
 ## 5. Clothing swap — honest state for next agent
 
 | Track | Product role today | Hardening note |
@@ -149,18 +210,25 @@ Ordered by impact on finishing a cut. Security omitted.
 1. Garment supersede text (what ships vs research vs parked).  
 2. Calibration ratings → look/realism thresholds.  
 3. Genjutsu stage 2/3 spend vs hold.  
-4. Whether the next product surface is B3–B5 in the app or scripts-only B6 first.
+4. Whether the next product surface is B3–B5 in the app or scripts-only B6 first.  
+5. Lift CC lock briefly for job-result host parity + (optional) dwpose / flow allowlist — or keep scripts-only and accept the gaps.
 
-**Harden (Claude / next implementer), small → large:**
+**Harden AVT (no CC lock):**
 
 1. Adapter: visualiser `scenes` → world/broll runners (or delete the dead concepts path).  
-2. Flip or explain Higgsfield `apiReady`.  
-3. Persist or deliberately drop ShotSpec camera/lens/reconstruction fields.  
-4. Foreground occluder in `composite_environment`.  
-5. Brief-fidelity axis (B5) once cards carry required elements.  
-6. Render worker (A6) for composite wall-clock — scripts lane stays the brain.
+2. Flip Higgsfield `apiReady`; route Prompt Lab / `providerJobs` to `higgsfield-model` for world/Seedance/Genjutsu (or a mode selector).  
+3. Remove or implement `image-providers-grok-edit` allowlist entry.  
+4. Persist or deliberately drop ShotSpec camera/lens/reconstruction fields.  
+5. Foreground occluder in `composite_environment`.  
+6. Brief-fidelity axis (B5); render worker (A6).
 
-**Do not:** reopen chest/sleeve paint; scale Lane A without an engine; treat Produce Video (Veo-default) as the env lane; fold look into the realism verdict.
+**Harden CC (when lock lifted):**
+
+1. `job-result` api-host fallback (parity with job-status).  
+2. Cost estimate: input seconds + DoP non-null estimate.  
+3. fal-run allowlist: flow model (Lane A) and/or `dwpose` if still needed.
+
+**Do not:** reopen chest/sleeve paint; scale Lane A without a CC-allowlisted engine; treat Produce Video (Veo-default) as the env lane; fold look into the realism verdict; edit CC from an AVT-only session without an explicit lock lift.
 
 ---
 

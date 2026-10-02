@@ -2,36 +2,37 @@
 
 > **Convention.** This file is always Cursor's most recent handoff. Cursor overwrites it each time it lands work; dated notes live alongside in `docs/`. Claude and ChatGPT: "check Cursor's work" means read this file first, then the commits it names. Claude's side is `docs/handoffs/CLAUDE_LATEST.md`.
 
-**Updated:** 2026-10-02 · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`.
+**Updated:** 2026-10-02 (rev B — CC connection audit) · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`.
 
 ## Product / code audit (NO implementation) — 2026-10-02
 
-**Full write-up:** [`docs/handoffs/CURSOR_PRODUCT_CODE_AUDIT_2026-10-02.md`](CURSOR_PRODUCT_CODE_AUDIT_2026-10-02.md)
+**Full write-up:** [`docs/handoffs/CURSOR_PRODUCT_CODE_AUDIT_2026-10-02.md`](CURSOR_PRODUCT_CODE_AUDIT_2026-10-02.md) (§4b = Control Center)
 
-Requested while Claude owns camera movement / testing. Scope: clothing swap, environments, camera/angles, path to a finished cut. **Security omitted by request.** Audit only — no code changes beyond this handoff.
+Requested while Claude owns camera movement / testing. Scope: clothing swap, environments, camera/angles, **AVT↔Control Center endpoints**, path to a finished cut. **Security omitted by request.** Audit only — no AVT product code, no CC edits.
 
-**Baseline:** `main` @ `fea6ba3`. Complements (does not replace) Claude’s stall audit and lyric-lock plan.
+**Baseline:** AVT `main` @ `fea6ba3`; CC read-only @ `3bfc770` (`fendi-control-center`). Complements Claude’s stall audit and lyric-lock plan.
 
 ### Verdict (short)
 
-Scripts-lane env/camera/world work is real and advancing. The finish-product gap is: (1) one declared garment policy so Hero Frame stops showing three lanes as equal, (2) bridge scripts → Treatment/Produce (edge proxies have no `src/` callers; look presets CLI-only; ShotSpec camera fields unmapped), (3) close plan B3–B6 / C2–C4 (override, regenerate-from-lyrics, brief fidelity, batch-from-storyboard, transitions on cards).
+Scripts-lane env/camera/world work is real; CC already hosts the live catalogue (DoP, Kling, Genjutsu, Seedance 2.5, image_edit). Finish-product gap: (1) one garment policy, (2) bridge scripts → Treatment/Produce **and** expose catalogue (not only DoP) in `providerJobs`, (3) CC footguns (job-result host, cost estimates, fal-run allowlist), (4) plan B3–B6 / C2–C4.
 
 ### Top missed / harden items
 
 | P | Item |
 |---|------|
-| P0 | Visualiser v2 `scenes[]` ≠ `run_broll_batch` `concepts[]` schema |
-| P0 | ShotSpec `framing` / `cameraAngle` / `lens` / `reconstruction` in `ROW_UNMAPPED_FIELDS` |
-| P0 | Higgsfield `apiReady: false` while CC DoP/catalogue/Seedance are live |
-| P1 | Camera engine still-plate only vs living video plates — document ordered recipe |
-| P1 | Look finishing + brief-fidelity not in acceptance chain |
-| P1 | Foreground occluder layer for world-around composites |
-| P1 | Lane A propagate engine still disabled (ARCH-1); §6 durable queue still open |
-| P2 | Plan remainder B3–B7 / C2–C4; hook master cuts; 9:16 plates; tests for gate/camera runners |
+| P0 | Visualiser v2 `scenes[]` ≠ `run_broll_batch` `concepts[]` |
+| P0 | ShotSpec camera fields in `ROW_UNMAPPED_FIELDS` |
+| P0 | Higgsfield `apiReady: false` + Prompt Lab maps only to DoP, not catalogue |
+| P0 | CC `fal-run` allowlist has no optical-flow model → Lane A stays disabled |
+| P1 | CC `job-result` missing api-host fallback (status has it; result does not) |
+| P1 | Cost envelopes inconsistent (DoP null; Seedance output-only; Genjutsu duration vs source) |
+| P1 | AVT allowlists `image-providers-grok-edit` but CC has no such function |
+| P1 | Camera still-plate vs living plates; brief-fidelity missing; foreground occluder |
+| P2 | Plan remainder B3–B7 / C2–C4; dwpose not allowlisted; balance preflight |
 
 ### Do not (from this audit)
 
-Reopen chest/sleeve paint · scale Lane A without a Fal flow model · treat Produce Video as the env lane · fold look into the realism verdict · implement from this handoff without Fendi choosing the garment supersede.
+Reopen chest/sleeve paint · scale Lane A without a CC-allowlisted Fal flow model · treat Produce Video as the env lane · fold look into the realism verdict · edit CC without an explicit lock lift · implement from this handoff without Fendi choosing the garment supersede.
 
 ---
 
