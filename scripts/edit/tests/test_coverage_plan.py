@@ -68,3 +68,19 @@ def test_an_angle_nobody_measured_is_not_cut_onto_a_sung_line(tmp_path):
     for u in (u for u in cov["slots"][0]["subs"] if u["source"] == "angle"):
         assert not u["angle_gate"]["use"] and "no fidelity report" in u["angle_gate"]["reason"]
         assert rend[u["id"]]["file"] == u["variant"]
+
+
+def test_an_angle_that_did_not_move_the_camera_is_not_cut_in(tmp_path):
+    fid = {"identity_src_vs_result": 0.02, "camera_change": {"score": 0.09}, "lip": {"best_fit": {"corr": 0.72, "retime": 1.0, "offset_s": 0.0}}}
+    cov, rend, _, _ = plan(str(tmp_path), fidelity=fid)
+    for u in (u for u in cov["slots"][0]["subs"] if u["source"] == "angle"):
+        assert not u["angle_gate"]["use"] and "camera change" in u["angle_gate"]["reason"]
+        assert rend[u["id"]]["file"] == u["variant"]
+
+
+def test_an_angle_without_his_face_has_nothing_to_sync(tmp_path):
+    fid = {"identity_src_vs_result": None, "camera_change": {"score": 1.0, "face_visible_share": 0.0}, "lip": None}
+    cov, rend, _, _ = plan(str(tmp_path), fidelity=fid)
+    for u in (u for u in cov["slots"][0]["subs"] if u["source"] == "angle"):
+        assert u["angle_gate"]["use"] and "face not in frame" in u["angle_gate"]["reason"] and u["angle_gate"]["clock_shift_s"] == 0.0
+        assert rend[u["id"]]["file"] == u["angle_file"]
