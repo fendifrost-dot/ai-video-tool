@@ -44,8 +44,10 @@ from auth import Session  # noqa: E402
 CAPS = json.load(open(os.path.join(ROOT, "config", "provider_caps.json")))
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36"
 PROXY = f"{SUPA}/functions/v1/proxy-provider-call"
-RUNWAY_RATE = {"gen4_turbo": 0.05, "gen4.5": 0.15}; KLING_RATE = 0.07; STILL_RATE = 0.07
-SEEDANCE_RATE = {"480p": 0.2468, "720p": 0.4622, "1080p": 1.1372}   # per second, input + output (Higgsfield catalogue, 2026-10)
+# rates are data: config/provider_rates.json (the app's in-browser runner reads the same numbers)
+RATES = json.load(open(os.path.join(ROOT, "config", "provider_rates.json")))
+RUNWAY_RATE = RATES["runway"]; KLING_RATE = RATES["kling_usd_per_s"]; STILL_RATE = RATES["still_usd_each"]; DOP_RATE = RATES["dop_usd_per_s"]
+SEEDANCE_RATE = RATES["seedance_usd_per_s"]   # per second, input + output (Higgsfield catalogue, 2026-10)
 
 
 def angle_prompt(shot, look, with_image):
@@ -99,7 +101,7 @@ def motion_submit(api, user, project, shot, prompt, still_url=None):
         return r
     if route == "still_dop":
         b = {"promptText": prompt, "mode": "image_to_video", "referenceImageUrl": still_url, "modelVariant": shot.get("model", "dop-turbo"), **audit}
-        r = api.post(PROXY, {"endpoint": "video-providers-higgsfield-generate", "method": "POST", "body": b}, timeout=170); r["_provider"] = "higgsfield"; r["_rate"] = 0.083
+        r = api.post(PROXY, {"endpoint": "video-providers-higgsfield-generate", "method": "POST", "body": b}, timeout=170); r["_provider"] = "higgsfield"; r["_rate"] = DOP_RATE
         return r
     if route in ("still_runway", "still_runway45", "runway_t2v"):
         model = "gen4_turbo" if route == "still_runway" else "gen4.5"
@@ -153,7 +155,7 @@ def main():
     for s in shots:
         sec = 10 if int(s.get("seconds", 5)) > 5 else 5; r = s["route"]
         if r == "seedance_ref": est += SEEDANCE_RATE[s.get("resolution", "720p")] * 2 * source_seconds(s); continue
-        est += (STILL_RATE * int(s.get("stills", 2)) if r.startswith("still") and not s.get("still_path") else 0) + sec * (RUNWAY_RATE["gen4_turbo"] if r == "still_runway" else RUNWAY_RATE["gen4.5"] if r in ("runway_t2v", "still_runway45") else 0.083 if r == "still_dop" else KLING_RATE)
+        est += (STILL_RATE * int(s.get("stills", 2)) if r.startswith("still") and not s.get("still_path") else 0) + sec * (RUNWAY_RATE["gen4_turbo"] if r == "still_runway" else RUNWAY_RATE["gen4.5"] if r in ("runway_t2v", "still_runway45") else DOP_RATE if r == "still_dop" else KLING_RATE)
     print(f"estimate ${est:.2f} for {len(shots)} shots (gate judge extra ≈ ${0.08 * len(shots):.2f})")
     if est > a.max_usd: raise SystemExit(f"estimate exceeds --max-usd {a.max_usd}")
     if a.dry_run: return
