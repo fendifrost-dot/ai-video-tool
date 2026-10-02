@@ -166,7 +166,7 @@ def main():
     ap.add_argument("--refine-ncc", type=float, default=0.55); ap.add_argument("--refine-band", type=int, default=14)
     ap.add_argument("--refine-debug", default=None, help="write band/shadow masks for frame indices (comma list) as PNGs next to --out")
     ap.add_argument("--mask-cache", default=None, help="npz path; segmenter masks are saved here and reused if present (matte logic can then be iterated without re-running rembg)")
-    ap.add_argument("--export-matte", default=None, help="directory: write the finished matte as alpha_%05d.png (8-bit) and the decontaminated performer as fg_%05d.png (before the cool grade) so other stages (camera_engine.py) can re-composite without re-matting")
+    ap.add_argument("--export-matte", default=None, help="directory: write the finished matte as alpha_%%05d.png (8-bit) and the decontaminated performer as fg_%%05d.png (before the cool grade) so other stages (camera_engine.py) can re-composite without re-matting")
     ap.add_argument("--matte-only", action="store_true", help="with --export-matte: stop after the export (no plate composite, no video)")
     # --- performer placement + FOREGROUND OCCLUDER (Fendi, 2026-10-02: his takes are waist-up, so a world built around him
     # must put something in FRONT of him — the car at the curb, the stoop rail — and he may stand deeper in the frame) ----
