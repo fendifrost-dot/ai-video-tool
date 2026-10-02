@@ -36,8 +36,10 @@ Rules (same as the YSL ledger): every paid call is a row; the "Actual billed" co
 | 24 | 10-01 | Higgsfield | motion shootout on 3 stills: DoP turbo ×3 (≈ $0.42) + Kling 2.5 turbo pro image-to-video ×3 ($0.35); world batch 2: Kling i2v ×6 + Kling text-to-video plates ×3 ($0.35 each) | balance-billed | ≈ $5.45 list | $28.162 |
 | 25 | 10-01 | OpenAI | judge on 26 generated clips (11 + 6 + 9) | $2.220 | — | $30.382 |
 | 26 | 10-01 | Runway + OpenAI | shootout gen4.5 image-to-video ×3 after Fendi's top-up (all REJECT 0.30–0.93) + judge ×3 | $0.25 judge | $2.25 Runway list | $32.882 |
+| 27 | 10-02 | Higgsfield + OpenAI | **Seedance 2.5 reference-to-video T1**: S11 performance (4 s, 720p) + Bentley plate still → same performance from a new angle inside the street, 5 s 720p 9:16 (request `3c23e12d…`, judge PASS 0.06) + judge | $0.08 judge | $4.16 list ((4 in + 5 out) s × $0.4622; CC estimate showed $2.31 for the output seconds only) | $37.122 |
+| 28 | 10-02 | Higgsfield + OpenAI | Seedance 2.5 **T2 angle-only** (no image): same 4 s source → second camera in the same room, 4 s, lip-sync emphasised in the prompt (request `f7cab370…`) + judge | $0.08 judge | $3.70 list (8 s × $0.4622) | $40.902 |
 
-**Used $32.882 (of which ≈ $11.59 Higgsfield list estimate, $9.25 Runway list estimate and $1.78 possible unbilled xAI calls are carried, not billed figures) · remaining $17.118 of $50.** Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; Runway spend on the Runway account. Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; replace the estimate with the billed figure when read.
+**Used $40.902 (of which ≈ $19.45 Higgsfield list estimate, $9.25 Runway list estimate and $1.78 possible unbilled xAI calls are carried, not billed figures) · remaining $9.098 of $50.** Seedance input seconds are billed by the provider's pricing page ("per second of input video + output"); the Control Center estimate counts output only, so the list figure here is the conservative one until "Spend today" is read. Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; Runway spend on the Runway account. Higgsfield spend is visible as "Spend today" on open.higgsfield.ai; replace the estimate with the billed figure when read.
 
 ## Price facts learned
 
@@ -46,3 +48,4 @@ Rules (same as the YSL ledger): every paid call is a row; the "Actual billed" co
 - Realism judge (gpt-6-astra, 10 frames at 540x960, medium reasoning): **$0.08–0.11 per clip** — cheap enough to run on every generated clip.
 - `lyric-visualizer-proxy`: grok-4.6 ≈ $0.02 per line but > 150 s per line at the v2 schema (gateway idle timeout); **grok-4-fast ≈ $0.04 per line in ≈ 18 s** — the default now.
 - Runway gen4.5 text-to-video: 15 ¢/s (5 s = $0.75, 10 s = $1.50). Kling 2.5 turbo pro via Higgsfield: ≈ 7 ¢/s list.
+- Seedance 2.5 reference-to-video via Higgsfield: $0.2468 / $0.4622 / $1.1372 per second at 480p / 720p / 1080p, input video seconds billed too — so a 4 s source feeding a 5 s result at 720p is ≈ $4.16, not $2.31. Trim the source to the sung bar before sending.
