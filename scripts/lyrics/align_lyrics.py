@@ -193,7 +193,7 @@ def place(lyric_words, trans_words, match):
     for i in range(n):
         if times[i]: continue
         prev = max([k for k in idx if k < i], default=None); nxt = min([k for k in idx if k > i], default=None)
-        if prev is None: t1 = times[nxt][0]; t0 = max(0.0, t1 - 0.35 * (nxt - i + 1)); times[i] = (round(t0 + 0.35 * (i - 0), 3), round(t0 + 0.35 * (i + 1), 3), False); continue
+        if prev is None: t1 = times[nxt][0]; st = max(0.0, t1 - 0.35 * (nxt - i)); times[i] = (round(st, 3), round(min(t1, st + 0.35), 3), False); continue
         if nxt is None: t0 = times[prev][1]; times[i] = (round(t0 + 0.35 * (i - prev - 1), 3), round(t0 + 0.35 * (i - prev), 3), False); continue
         t0, t1 = times[prev][1], times[nxt][0]; span = max(0.0, t1 - t0); k = nxt - prev - 1; pos = i - prev - 1
         s = t0 + span * pos / k; e = t0 + span * (pos + 1) / k
@@ -206,6 +206,7 @@ def main():
     ap.add_argument("--song", required=True); ap.add_argument("--lyrics", required=True, help="text file, blank lines between sections"); ap.add_argument("--out", required=True)
     ap.add_argument("--model", default="small"); ap.add_argument("--transcript", default=None, help="reuse a transcript_words.json"); ap.add_argument("--project", default=None); ap.add_argument("--bpm", type=float, default=None)
     ap.add_argument("--lrc", default=None, help="optional LRC file: [mm:ss.xx] line — overrides line starts")
+    ap.add_argument("--sql", default=None, help="also write an upsert for public.lyric_lines (needs --project and --user)"); ap.add_argument("--user", default=None)
     ap.add_argument("--window", type=float, default=30.0); ap.add_argument("--hop", type=float, default=20.0); ap.add_argument("--max-line-seconds", type=float, default=10.0)
     a = ap.parse_args()
     text = open(a.lyrics).read(); lines = parse_lyrics(text); labels = label_sections(lines)
@@ -247,6 +248,13 @@ def main():
         if l["suspect"]: l["confidence"] = 0.0
     rep = {"project_id": a.project, "song": os.path.basename(a.song), "bpm": a.bpm, "model": a.model, "generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "coverage": round(coverage, 3), "lines_reordered": fixed, "lines": out_lines}
     json.dump(rep, open(a.out, "w"), indent=1)
+    if a.sql:
+        if not (a.project and a.user): raise SystemExit("--sql needs --project and --user")
+        q = lambda v: str(v).replace("'", "''")
+        rows = [f"('{a.user}','{a.project}',{l['line_index']},'{q(l['section'])}',{l['block']},'{q(l['text'])}',{l['start']},{l['end']},{l['confidence']},'{q(json.dumps([{k: w[k] for k in ('w', 'start', 'end', 'matched')} for w in l['words']], ensure_ascii=False))}'::jsonb,'align_lyrics')" for l in out_lines]
+        with open(a.sql, "w") as f:
+            f.write("insert into public.lyric_lines (user_id, project_id, line_index, section, block, text, start_seconds, end_seconds, confidence, words_json, source) values\n" + ",\n".join(rows) +
+                    "\non conflict (project_id, line_index) do update set section=excluded.section, block=excluded.block, text=excluded.text, start_seconds=excluded.start_seconds, end_seconds=excluded.end_seconds, confidence=excluded.confidence, words_json=excluded.words_json, source=excluded.source, updated_at=now();\n")
     low = [l for l in out_lines if l["confidence"] < 0.5]
     print(f"{len(out_lines)} lines, word coverage {coverage:.0%}, {len(low)} low-confidence line(s){', reordered ' + str(fixed) if fixed else ''}")
     for l in out_lines: print(f"{l['start']:7.2f}–{l['end']:7.2f}  {l['section']:<5} {l['confidence']:.2f}  {l['text']}{'   ?suspect' if l['suspect'] else ''}")
