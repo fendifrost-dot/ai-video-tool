@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import { Clapperboard } from "lucide-react";
+import { Clapperboard, Video } from "lucide-react";
 import type { ShotSpec } from "@/lib/treatment/shotSpec";
+import { measureCoverage, DEFAULT_COVERAGE_PRESETS } from "@/lib/treatment/coverage";
 import { lyricsForShot, lyricStateForShot, type LyricLine } from "@/lib/lyrics/lyricsForShot";
 import { ShotCard, type ShotEnergy } from "./ShotCard";
 import { formatDuration } from "./shotLabels";
@@ -37,6 +38,9 @@ export function ShotStoryboard({
     [specs],
   );
 
+  // Coverage, measured on the cards against the rules the cut is held to (config/coverage_presets.json).
+  const coverage = useMemo(() => measureCoverage(ordered, DEFAULT_COVERAGE_PRESETS, lyricLines), [ordered, lyricLines]);
+
   const runtime = useMemo(() => {
     if (ordered.length === 0) return 0;
     const end = Math.max(...ordered.map((s) => s.timeline.end));
@@ -66,6 +70,33 @@ export function ShotStoryboard({
           {ordered.length} shot{ordered.length > 1 ? "s" : ""} · {formatDuration(runtime)} runtime
         </span>
       </div>
+      {/* Coverage: camera movement and angle changes are the norm; a static camera is the rare, explicit choice. */}
+      {coverage.sections.length > 0 && (
+        <div
+          className={
+            coverage.pass
+              ? "mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-[10px] text-emerald-300"
+              : "mb-3 flex flex-col gap-1 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[10px] text-amber-200"
+          }
+          data-testid="coverage-report"
+        >
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <Video className="h-3 w-3" />
+            <span className="font-semibold uppercase tracking-wider">Coverage {coverage.pass ? "on the norm" : "needs camera movement"}</span>
+            {coverage.sections.map((s) => (
+              <span key={s.section} className="opacity-80">
+                {s.section}: {Math.round((1 - s.staticShare) * 100)} % moving · longest static {s.longestStaticRunSeconds.toFixed(1)} s
+              </span>
+            ))}
+          </div>
+          {!coverage.pass &&
+            coverage.findings.map((f, i) => (
+              <span key={i} className="opacity-90">
+                {f.detail}
+              </span>
+            ))}
+        </div>
+      )}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {ordered.map((spec, i) => (
           <ShotCard
@@ -73,6 +104,7 @@ export function ShotStoryboard({
             spec={spec}
             index={i + 1}
             energy={energyById?.[spec.id] ?? null}
+            coverageFlag={coverage.flaggedShotIds[spec.id]}
             lyrics={lyricLines ? lyricsForShot(lyricLines, spec.timeline) : undefined}
             lyricState={lyricLines ? lyricStateForShot(lyricLines, spec.timeline) : "unknown"}
           />

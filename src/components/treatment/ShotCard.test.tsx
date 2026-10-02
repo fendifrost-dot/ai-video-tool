@@ -62,4 +62,27 @@ describe("ShotStoryboard", () => {
     render(<ShotStoryboard specs={[]} />);
     expect(screen.getByText("No shots yet.")).toBeInTheDocument();
   });
+
+  it("warns where a static camera puts the section over the coverage rule, and flags those cards", () => {
+    const locked = (id: string, start: number) =>
+      parseShotSpec({ id, purpose: `line ${id}`, shotType: "performance", timeline: { start, end: start + 4 }, cameraMotion: { type: "static", description: "24mm wide shot, locked frame" } });
+    render(<ShotStoryboard specs={[locked("a", 0), locked("b", 4), locked("c", 8)]} />);
+    expect(screen.getByTestId("coverage-report")).toHaveTextContent(/needs camera movement/);
+    expect(screen.getByTestId("coverage-report")).toHaveTextContent(/static camera/);
+    expect(screen.getAllByTestId("coverage-flag").length).toBe(3);
+  });
+
+  it("reports coverage on the norm when every card moves", () => {
+    const moving = (id: string, start: number, desc: string) =>
+      parseShotSpec({ id, purpose: `line ${id}`, shotType: "performance", timeline: { start, end: start + 4 }, cameraMotion: { type: "static", description: desc } });
+    render(<ShotStoryboard specs={[moving("a", 0, "slow push-in"), moving("b", 4, "lateral truck"), moving("c", 8, "crash zoom")]} />);
+    expect(screen.getByTestId("coverage-report")).toHaveTextContent(/on the norm/);
+    expect(screen.queryAllByTestId("coverage-flag").length).toBe(0);
+  });
+
+  it("names the transition preset on the card", () => {
+    const spec = parseShotSpec({ id: "h1", purpose: "hook 1", shotType: "performance", timeline: { start: 0, end: 4 }, transitionIn: { type: "whip_pan", preset: "whip_left" } });
+    render(<ShotCard spec={spec} index={1} />);
+    expect(screen.getByText(/whip left · 0.5 beats/)).toBeInTheDocument();
+  });
 });

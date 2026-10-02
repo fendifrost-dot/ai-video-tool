@@ -16,6 +16,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { ShotSpec } from "@/lib/treatment/shotSpec";
 import type { ShotLyric } from "@/lib/lyrics/lyricsForShot";
+import { transitionPresetLabel } from "@/lib/treatment/transitions";
 import { PrevisFrame } from "./PrevisFrame";
 import {
   cameraAngleLabel,
@@ -111,6 +112,7 @@ export function ShotCard({
   energy,
   lyrics,
   lyricState,
+  coverageFlag,
   className,
 }: {
   spec: ShotSpec;
@@ -121,6 +123,8 @@ export function ShotCard({
   lyrics?: ShotLyric[];
   /** "instrumental" when the song is aligned and nothing is sung here; "unknown" before alignment. */
   lyricState?: "lyrics" | "instrumental" | "unknown";
+  /** Coverage finding for this card (measureCoverage): shown as a warning beside the movement line. */
+  coverageFlag?: string;
   className?: string;
 }) {
   const duration = Math.max(0, spec.timeline.end - spec.timeline.start);
@@ -136,7 +140,8 @@ export function ShotCard({
   const transitionOut =
     spec.transitionOut.type !== "cut" ? transitionLabel(spec.transitionOut.type) : "";
   const transitionIn =
-    spec.transitionIn.type !== "cut" ? transitionLabel(spec.transitionIn.type) : "";
+    transitionPresetLabel(spec.transitionIn) ||
+    (spec.transitionIn.type !== "cut" ? transitionLabel(spec.transitionIn.type) : "");
 
   return (
     <Card className={cn("overflow-hidden", className)}>
@@ -222,6 +227,15 @@ export function ShotCard({
         {/* Filmmaker fields -------------------------------------------------- */}
         <div className="space-y-1.5">
           <Field icon={<Move className="h-3.5 w-3.5" />} label="Movement" value={movement} />
+          {/* Coverage warning (measureCoverage): a static card that puts its section over the rule. */}
+          {coverageFlag && (
+            <div className="flex gap-2 text-[10px]" data-testid="coverage-flag">
+              <span className="mt-0.5 shrink-0 text-amber-300/70">
+                <Move className="h-3 w-3" />
+              </span>
+              <span className="rounded-full bg-amber-500/15 px-2 py-0.5 font-medium text-amber-200">{coverageFlag}</span>
+            </div>
+          )}
           <Field icon={<Aperture className="h-3.5 w-3.5" />} label="Lens" value={lens} />
           <Field
             icon={<MapPin className="h-3.5 w-3.5" />}
