@@ -22,3 +22,11 @@ Fendi's test: take one quality still of the real performance (S11 frame 18, `sou
 ## Next on the API lane (needs a session: Claude Code with the batch credential)
 
 `world_around.py --still source_S11_f18.jpg --model qwen-image-3-edit --aspect 9:16 --prompt "<pass-5 prompt + far-side pair>"` and the same with `grok-image-2`; gate the picks with `realism_gate.py --look-bank`; then `run_world_batch.py --route seedance_ref` with the S11 4 s cut and the chosen still, prompt = the zoom-out reveal.
+
+## Addendum — the fresh-generation test and Fendi's pick
+
+Fendi asked whether Grok "is incapable of having two boys on each side". A fresh text-to-image generation (no reference, 9:16, Quality 2.0, the staging as one prompt, `fresh_generation_4up_two_per_side.jpg`) put two boys on each side in **four of four** variations, all backs to camera, empty wheel wells. The earlier failures were the edit chain on a side view (where the far pair is mostly hidden by the car body) — not a capability limit. Pass 7 (`pass7_car_closer.jpg`) confirmed the chain will not reframe the man either.
+
+**Fendi's pick: the far-right variation** (`FENDI_PICK_kids_car_from_behind.jpg`) — "the best, most realistic one; even though it added an extra boy that's perfectly fine." It is now the reference for the kids-carrying-the-car concept: from behind, walking away down the middle of the street, parked cars both sides, overcast, grain, the car's weight visibly on shoulders. Rule for the shot list (Fendi): from behind or three-quarter rear ask for four; side-on from the stoop ask for two on the near side and let the car hide the rest ("people's minds may drift to believe there are two other people on the other side of the car they can't see").
+
+Lower half: Fendi's performance is not full-body, so the plate has to occlude him below the waist — the stoop wall/railing and the passing car; the mechanical answer is a foreground-occluder layer in `composite_environment.py` (the car and the boys matted in front of the performer layer), not a prompt. For wide ends, Seedance can carry a full-body render (it did for the Bentley test) while the tight start stays the real take.
