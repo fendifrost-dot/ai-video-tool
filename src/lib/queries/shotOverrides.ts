@@ -19,6 +19,7 @@ type ShotOverrideRow = {
   project_id: string;
   spec_id: string;
   direction: string | null;
+  frame?: string | null;
   camera_motion: unknown;
   framing: string | null;
   transition_in: unknown;
@@ -52,12 +53,13 @@ const table = () =>
   (supabase as unknown as { from: (t: string) => UntypedTable }).from("shot_overrides");
 
 const SELECT =
-  "id, project_id, spec_id, direction, camera_motion, framing, transition_in, required_elements, notes, updated_at";
+  "id, project_id, spec_id, direction, frame, camera_motion, framing, transition_in, required_elements, notes, updated_at";
 
 function fromRow(row: ShotOverrideRow): ShotOverride {
   return {
     specId: row.spec_id,
     direction: row.direction,
+    frame: row.frame ?? null,
     cameraMotion: (row.camera_motion ?? null) as ShotOverride["cameraMotion"],
     framing: row.framing,
     transitionIn: (row.transition_in ?? null) as ShotOverride["transitionIn"],
@@ -92,6 +94,7 @@ export type UpsertShotOverrideInput = {
   specId: string;
   /** Only the fields the director actually set; anything omitted is written as null (= not overridden). */
   direction?: string | null;
+  frame?: string | null;
   cameraMotion?: ShotOverride["cameraMotion"];
   framing?: string | null;
   transitionIn?: ShotOverride["transitionIn"];
@@ -114,6 +117,7 @@ export function useUpsertShotOverride() {
             project_id: input.projectId,
             spec_id: input.specId,
             direction: input.direction ?? null,
+            frame: input.frame ?? null,
             camera_motion: input.cameraMotion ?? null,
             framing: input.framing ?? null,
             transition_in: input.transitionIn ?? null,
