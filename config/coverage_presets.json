@@ -13,7 +13,12 @@
       "wide",
       "medium_close"
     ],
-    "zoom_alternate": true
+    "zoom_alternate": true,
+    "angle_gate": {
+      "_doc": "A generated angle re-draws the performer. It is cut onto a sung line only when its fidelity report (scripts/qa/reference_fidelity.py → <angle>_fidelity.json) shows the face is still his and the mouth follows the take; the lip fit also sets where the angle sits on the take's clock.",
+      "identity_max": 0.25,
+      "lip_best_fit_min": 0.6
+    }
   },
   "sections": {
     "verse": {
