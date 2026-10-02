@@ -178,8 +178,17 @@ def plan(a):
                 if ang["name"] == prev_angle and len(P["angles"]) > 1: ang = weighted(rng, [x for x in P["angles"] if x["name"] != prev_angle])
                 prev_angle = ang["name"]
                 entry.update({"source": "angle", "angle": ang["name"], "angle_sentence": ang["sentence"], "angle_file": os.path.join(a.out, "angles", f"{sub_id}_{ang['name']}.mp4")})
+                # Seedance bills every INPUT second and needs >= 4 s: the request names the 4 s TRIM of the take that
+                # ends on the sub-slot's last frame (file seconds, via the shotspecs sync), and the masterStart that
+                # trim starts at — the angle file lands on the assembler's clock without a second guess.
+                sync = spec.get("sync") or {}; off = float(sync.get("offsetSeconds", 0.0)); drift = 1 + float(sync.get("driftPpm", 0.0)) / 1e6
+                f_u0 = (u0 - off) / drift - float(r.get("masterStart", 0.0)); f_u1 = (u1 - off) / drift - float(r.get("masterStart", 0.0))
+                need = max(4.0, f_u1 - f_u0); t1 = f_u1; t0 = max(0.0, t1 - need)
+                if t0 == 0.0: t1 = min(probe(r["file"])[3], t0 + need)      # a window at the head of the take: the trim runs forward instead
                 angle_reqs.append({"id": f"{sub_id}_{ang['name']}", "kind": "angle", "route": "seedance_ref", "aspect": "9:16", "resolution": "720p", "source_path": r.get("source_path"), "source_local": r["file"],
-                                   "source_window": [round(u0, 3), round(u1, 3)], "masterStart": r.get("masterStart"), "angle": ang["sentence"], "keep": r.get("keep", []), "prompt": "(angle shot)"})
+                                   "source_window": [round(u0, 3), round(u1, 3)], "source_trim": [round(t0, 3), round(t1, 3)], "masterStart": round(float(r.get("masterStart", 0.0)) + t0, 4),
+                                   "angle": ang["sentence"], "keep": r.get("keep", []), "prompt": "(angle shot)"})
+                entry["angle_masterStart"] = round(float(r.get("masterStart", 0.0)) + t0, 4)
             subs.append(entry); prev_move = move["type"]
             if move["type"] in ("push", "pull"): prev_zoom_dir = move["type"]
             on_the_1 = abs(((u0 - sec0) / bar) - round((u0 - sec0) / bar)) < 0.05 and (round((u0 - sec0) / bar) % 4 == 0)
@@ -189,7 +198,8 @@ def plan(a):
             shot["framing"] = framing; shot["transitionIn"] = {"preset": tr} if i > 0 or tr != "cut" else {"type": "cut"}
             shot["coverage"] = {"source": entry["source"], "section": section, "angle": entry.get("angle")}
             out_shots.append(shot)
-            out_renders[sub_id] = {"file": entry["angle_file"] if entry["source"] == "angle" and os.path.exists(entry.get("angle_file", "")) else entry["variant"], "masterStart": r.get("masterStart"), "_fallback": entry["variant"]}
+            use_angle = entry["source"] == "angle" and os.path.exists(entry.get("angle_file", ""))
+            out_renders[sub_id] = {"file": entry["angle_file"] if use_angle else entry["variant"], "masterStart": entry["angle_masterStart"] if use_angle else r.get("masterStart"), "_fallback": entry["variant"]}
         plan_slots.append({"slot": sid, "section": section, "song": [t0, t1], "source": r["file"], "masterStart": r.get("masterStart"), "matte_dir": r.get("matte_dir"), "plate": r.get("plate"), "plate_loop": bool(r.get("plate_loop")), "subs": subs})
     cov = {"bpm": a.bpm, "presets": a.presets, "seed": a.seed, "section_song": [sec0, shots[-1]["timeline"]["end"]], "slots": plan_slots,
            "stats": {"performance_slots": len(plan_slots), "cuts": sum(len(p["subs"]) for p in plan_slots), "generated_angles": len(angle_reqs), "static_share": round(static_total / max(1e-6, total), 3), "directors_cameras_honoured": honoured}}
