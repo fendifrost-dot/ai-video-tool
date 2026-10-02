@@ -84,7 +84,9 @@ def angle_gate(angle_file, gate, window, sung):
     """Whether a returned angle may be cut in, from its fidelity report (scripts/qa/reference_fidelity.py writes
     <angle>_fidelity.json beside the file). A generated angle re-draws the performer: it goes on a SUNG line only when
     the face is still his (identity ≤ identity_max) and the mouth follows the take (lip best-fit ≥ lip_best_fit_min);
-    off the mic the face alone decides. An angle with no report has not been looked at and is not cut onto a sung line.
+    off the mic the face alone decides. It is not cut in at all when the camera did not move (camera_change below
+    camera_change_min): that is a low-resolution copy of a shot the take already gives. An angle that does not show
+    his face has nothing to sync and passes on the camera change alone (allow_face_hidden). An angle with no report has not been looked at and is not cut onto a sung line.
     The report's fit (result_t = retime · source_t + offset) is also where the angle's lips sit against the take's
     clock; `clock_shift_s` is the mean of that drift over the window actually used, and the caller moves the angle's
     masterStart by it so the picture lands under the words.
@@ -97,9 +99,16 @@ def angle_gate(angle_file, gate, window, sung):
     d = json.load(open(rep_path)); ident = d.get("identity_src_vs_result"); lip = d.get("lip") or {}
     if isinstance(lip, str): lip = json.loads(lip)
     fit = lip.get("best_fit") or {}
-    out.update({"identity": ident, "lip_best_fit": fit.get("corr"), "lip_on_source_clock": lip.get("corr_on_source_clock")})
-    id_max = float(gate.get("identity_max", 0.25)); lip_min = float(gate.get("lip_best_fit_min", 0.6))
-    if ident is None or ident > id_max: out["reason"] = f"identity {ident} above {id_max}"; return out
+    cc = d.get("camera_change") or {}
+    out.update({"identity": ident, "lip_best_fit": fit.get("corr"), "lip_on_source_clock": lip.get("corr_on_source_clock"), "camera_change": cc.get("score")})
+    id_max = float(gate.get("identity_max", 0.25)); lip_min = float(gate.get("lip_best_fit_min", 0.6)); cc_min = float(gate.get("camera_change_min", 0.0))
+    # an "angle" that came back as the source's own framing is a 720p copy of a shot the take already gives at full size
+    if cc.get("score") is not None and cc["score"] < cc_min: out["reason"] = f"camera change {cc['score']} below {cc_min} — the angle is the source's own framing"; return out
+    if ident is None:
+        # his face is not in the angle (over the shoulder, from behind): no identity to drift and no mouth to be out of sync
+        if gate.get("allow_face_hidden", True) and cc.get("score") is not None: out.update({"use": True, "reason": "face not in frame — nothing to sync"}); return out
+        out["reason"] = "identity not measured"; return out
+    if ident > id_max: out["reason"] = f"identity {ident} above {id_max}"; return out
     if sung and (fit.get("corr") is None or fit["corr"] < lip_min): out["reason"] = f"lip best-fit {fit.get('corr')} below {lip_min} on a sung line"; return out
     if fit.get("corr") is not None and fit["corr"] >= lip_min:
         mid = 0.5 * (window[0] + window[1]); out["clock_shift_s"] = round(float(fit.get("retime", 1.0)) * mid + float(fit.get("offset_s", 0.0)) - mid, 4)
