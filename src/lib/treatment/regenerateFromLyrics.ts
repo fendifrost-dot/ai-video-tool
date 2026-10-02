@@ -3,7 +3,8 @@
  * "a per-box generate-a-new-storyboard-prompt specifically matching details from the
  * lyrics"; "we have the ability to bring every lyric to life so we should do so").
  *
- * The call goes to `lyric-visualizer-proxy` in `mode: "literal"` — every noun the line
+ * The call goes to `lyric-visualizer-proxy` in the mode the card's role asks for (`modeForSpec`): `performance` for a
+ * performance card (the line staged behind the real take), otherwise `mode: "literal"` — every noun the line
  * says becomes a physical thing in frame — with the box's window so the beats fit the
  * clock, and with a prompt template (motion_story_v1) so the motion contract drives the
  * generator rather than merely describing what it should do.
@@ -159,9 +160,41 @@ export type RegenerateInput = {
   lockedRules?: string[];
   rendererLimits?: string[];
   exemplars?: string[];
+  /** Which reading of the line to ask for. Defaults by the card's role — see `modeForSpec`. */
+  mode?: RegenerateMode;
   section?: string | null;
   dryRun?: boolean;
 };
+
+export type RegenerateMode = "literal" | "surreal" | "performance";
+
+/**
+ * The reading a card asks for by default. A PERFORMANCE card is the artist's real take: the line has to be staged in
+ * the world around and behind him (the proxy's `performance` mode), not written as a new scene he would have to be
+ * re-shot or re-dressed for. Every other card is cut between his takes: the line made physically real (`literal`).
+ */
+export function modeForSpec(spec: Pick<ShotSpec, "shotType">): RegenerateMode {
+  return spec.shotType === "performance" ? "performance" : "literal";
+}
+
+/**
+ * The production rules every regenerate carries, by the card's role. They are facts about how this tool makes a video
+ * (performance is real footage; inserts are cut between takes; the camera moves), not about any one project.
+ */
+export function standingRules(spec: Pick<ShotSpec, "shotType">): string[] {
+  const camera =
+    "The camera moves — push, pull, truck, orbit, crane or handheld — unless the line itself asks for stillness.";
+  return spec.shotType === "performance"
+    ? [
+        "The artist is real footage that already exists: keep his wardrobe, hair and props exactly as filmed, and never seat or place him somewhere he was not shot.",
+        "Stage the line in the world around and behind him — people, vehicles, set dressing, weather — with real depth; leave the centre foreground clear for him.",
+        camera,
+      ]
+    : [
+        "The artist does not appear in this shot: it is cut between his performance takes. Build the line with other people, objects and places.",
+        camera,
+      ];
+}
 
 export class NoLyricsInWindowError extends Error {
   constructor() {
@@ -185,7 +218,7 @@ export async function regenerateShotFromLyrics(input: RegenerateInput): Promise<
     {
       body: {
         projectId: input.projectId,
-        mode: "literal",
+        mode: input.mode ?? modeForSpec(input.spec),
         template: input.template === null ? undefined : (input.template ?? DEFAULT_MOTION_TEMPLATE),
         templateContext: input.templateContext,
         // One box, one call: the whole window's words as a single line, so the scene is
@@ -208,7 +241,7 @@ export async function regenerateShotFromLyrics(input: RegenerateInput): Promise<
         heroDescription: input.heroDescription,
         environment: input.environment,
         style: input.style ?? undefined,
-        lockedRules: input.lockedRules,
+        lockedRules: [...standingRules(input.spec), ...(input.lockedRules ?? [])],
         rendererLimits: input.rendererLimits,
         exemplars: input.exemplars,
         clipSeconds: Math.max(

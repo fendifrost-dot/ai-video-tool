@@ -9,6 +9,8 @@ import {
   presetToTransitionType,
   sceneToOverride,
   type MotionScene,
+  modeForSpec,
+  standingRules,
 } from "./regenerateFromLyrics";
 import { applyShotOverride, type ShotOverride } from "./overrides";
 import { parseShotSpec } from "./shotSpec";
@@ -227,5 +229,25 @@ describe("extractScene", () => {
     expect(extractScene({ ok: true, result: { lines: [] } })).toBeNull();
     expect(extractScene({ ok: true, result: { lines: [{ ref: "a", scenes: [] }] } })).toBeNull();
     expect(extractScene(null)).toBeNull();
+  });
+});
+
+describe("the card's role decides the reading and the standing rules", () => {
+  const perf = parseShotSpec({ id: "p", purpose: "p", shotType: "performance", timeline: { start: 0, end: 4 } });
+  const broll = parseShotSpec({ id: "b", purpose: "b", shotType: "b_roll", kind: "broll", timeline: { start: 4, end: 8 } });
+
+  it("a performance card stages the line behind the real take; every other card makes the line literal", () => {
+    expect(modeForSpec(perf)).toBe("performance");
+    expect(modeForSpec(broll)).toBe("literal");
+  });
+
+  it("a performance card never re-dresses or re-seats the artist; an insert never shows him; the camera moves", () => {
+    const p = standingRules(perf).join(" ");
+    expect(p).toContain("real footage that already exists");
+    expect(p).toContain("never seat or place him somewhere he was not shot");
+    expect(p).toContain("around and behind him");
+    const b = standingRules(broll).join(" ");
+    expect(b).toContain("The artist does not appear in this shot");
+    for (const rules of [standingRules(perf), standingRules(broll)]) expect(rules.at(-1)).toContain("The camera moves");
   });
 });
