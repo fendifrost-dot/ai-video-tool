@@ -26,14 +26,14 @@ Every item names its files, its cost, and what it depends on. "Scripts lane" = d
 
 The root cause of "the clips don't line up with what I'm saying": the pipeline has **no lyric timing**. `video_projects.lyrics` is one text blob; shots carry a `timeline` but nothing says which words are sung inside it; the visualiser was fed lines by hand; the batch shot list was hand-written. Everything below hangs off fixing that first.
 
-### B1. Lyric timing — the foundation (scripts lane first, then app)
+### B1. Lyric timing — the foundation (scripts lane first, then app) — **done 2026-10-02** (`align_lyrics.py`, `lyric_lines` migration applied, YSL seeded; results in `docs/research/results/2026-10-02-lyric-lock-and-transitions/`)
 
 What: every lyric line gets `start`/`end` on the song clock, and every word inside it too.
 How: forced alignment of the lyrics text against the song's vocal — `whisperx` (or `stable-ts`) with the known lyrics as the transcript, run once per song, output `lyric_lines` rows `{project_id, section, line_index, text, start, end, words:[{w,start,end}]}`. Deterministic, $0, ≈ 2 min per song on CPU. A manual LRC/SRT import is the fallback for a song the aligner struggles with (ad-libs, heavy effects).
 Where: `scripts/lyrics/align_lyrics.py` (new) → a new table `lyric_lines` (migration; RLS = owner, same shape as `project_assets`) → `src/lib/queries/lyricLines.ts`. The existing `treat/lyric_windows_section.json` becomes an export of this table, not a hand file.
 Depends on: nothing. Enables everything else in B.
 
-### B2. Lyrics inside every storyboard box (app)
+### B2. Lyrics inside every storyboard box (app) — **done 2026-10-02, live**
 
 What: a shot whose `timeline` is 11–15 s shows the lines (and the partial words at the edges) sung in 11–15 s, in the card, above the treatment text; a shot with no lyrics says "instrumental"; the hook is marked as hook.
 Where: `ShotCard.tsx` gains a `lyrics` block fed by `ShotStoryboard.tsx` from `lyric_lines` ∩ `spec.timeline` (pure function in `src/lib/treatment/lyricsForShot.ts`, unit-tested). No new state; it is a join on the timeline.
@@ -75,7 +75,7 @@ Order inside B: B1 → B2 → B3 → B4 → B5 → B6, with B7 in parallel. B1�
 
 Today the shot spec declares seven transition types (`cut, crossfade, fade_black, fade_white, whip_pan, glitch, flash`) and the assembler implements three of them as ffmpeg fades plus a two-frame flash. A music-video cut lives on the grid; the transitions have to too.
 
-### C1. A transitions engine in the assembler (scripts lane)
+### C1. A transitions engine in the assembler (scripts lane) — **done 2026-10-02** (`transitions.py`, `transition_presets.json`, assembler handles)
 
 What: `scripts/edit/transitions.py` — every transition is a function of (outgoing frames, incoming frames, duration on the beat grid, params) producing frames; applied by `assemble_section.py` across each cut so the song clock never moves (the transition straddles the cut point, half in each shot, exact frame budget kept). The library, all deterministic: hard cut on the beat; crossfade; dip to black/white; flash frame; whip-pan with directional motion blur (reusing `camera_engine.py`'s whip); speed ramp into the cut (ramp the last beat of the outgoing shot); zoom-punch (scale the incoming shot from 1.15 → 1.0 over two frames); match cut by motion vector (pick the cut frame where the two shots' flow directions agree); light leak and film burn overlays (procedural, grain-matched to the look bank); strobe/stutter on sixteenth notes; luma wipe; glitch (block displacement + channel split, not just a white frame). ffmpeg's `xfade` covers the simple ones; the rest are frame-level in numpy.
 Where: `scripts/edit/transitions.py` (new), `assemble_section.py` calls it; `config/transition_presets.json` names each with default duration in beats, parameters, and the look it suits.
