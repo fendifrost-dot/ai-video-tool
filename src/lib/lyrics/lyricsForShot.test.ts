@@ -33,6 +33,11 @@ describe("lyricsForShot", () => {
     expect(r[0].text).toBe("cost a home");
     expect(lyricsAsText(r)).toBe("…cost a home / Got everything but the kitchen");
   });
+  it("ignores a line stretched over a gap by the aligner", () => {
+    const stretched = [line(9, "Freezin every season", 90, 143)];
+    expect(lyricsForShot(stretched, { start: 100, end: 104 })).toEqual([]);
+    expect(lyricStateForShot(stretched, { start: 100, end: 104 })).toBe("instrumental");
+  });
   it("marks instrumental windows", () => {
     expect(lyricStateForShot(lines, { start: 15, end: 19 })).toBe("instrumental");
     expect(lyricStateForShot([], { start: 15, end: 19 })).toBe("unknown");

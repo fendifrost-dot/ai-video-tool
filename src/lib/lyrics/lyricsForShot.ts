@@ -34,6 +34,9 @@ export type ShotLyric = {
 };
 
 const EPS = 0.05;
+/** A sung line is a few seconds; anything longer is the aligner bridging a gap (an unsung written repeat, an
+ *  instrumental) and is not shown as lyrics. */
+export const MAX_LINE_SECONDS = 10;
 
 /** Lines (and the words of them) sung inside [start, end). */
 export function lyricsForShot(
@@ -42,6 +45,7 @@ export function lyricsForShot(
 ): ShotLyric[] {
   const out: ShotLyric[] = [];
   for (const line of lines) {
+    if (line.end - line.start > MAX_LINE_SECONDS) continue;
     if (line.end <= window.start + EPS || line.start >= window.end - EPS) continue;
     const cutIn = line.start < window.start - EPS;
     const cutOut = line.end > window.end + EPS;
