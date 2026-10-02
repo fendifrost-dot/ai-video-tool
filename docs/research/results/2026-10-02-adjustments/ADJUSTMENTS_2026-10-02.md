@@ -174,3 +174,41 @@ Still open here: the regenerated scene's full `render_prompt` has no column on `
 
 Verified on main `df1ac7e`: `npx vitest run` → 148 files, 1593 tests passed, 1 skipped; `tsc` clean; `python3 -m pytest scripts/edit/tests` → 13 passed.
 
+## 11. Round 2, after the Higgsfield top-up (late night, 2026-10-02)
+
+Fendi added $50 to the Higgsfield API balance. Runs `run-20261002-r2`, `-sb`, `-sb2`, all from the Runs page. **Spend ≈ $9.93 at list** (Seedance ×2 $7.40 · five stills + Kling 5 s clips at $0.49 = $2.45 · two visualiser calls ≈ $0.08); of that ≈ $9.15 is Higgsfield, leaving ≈ $40.85 of the top-up by list rates.
+
+### 11.1 The open items from § 10, tested
+
+| Open item | What was run | Result |
+|---|---|---|
+| Larger angle asks | `S06c_high_wide` — "a high wide angle from well above his head height looking down at him" | A real high, wide, full-body angle (Seedance drew his legs and shoes). Identity 0.062, lip best-fit 0.625, camera change 1.0 → passes the gate. |
+| Larger angle asks | `S08a_over_shoulder` — "from behind his right shoulder … not his face" | **Two of him**: he still faces the camera, and a second copy of him stands in the foreground seen from behind. Identity 0.021 and lip 0.595 say nothing about it. The angle is retired from the hook presets (`_removed_angles` records why): the angle prompt says "rapping to camera", which an over-the-shoulder camera contradicts. |
+| World shot with him larger, and held | `P_stoop_close` → Kling 2.5 | A plate with a solid stone wall in front of the stoop. The take stands behind the wall at scale 0.30; a 2.3× pull-back starts with him at ≈ 40 % of the frame; **the cut edge is hidden on all 120 frames** while the boys leave the wall and push the car out of frame. The wall, not the car, is what hides him — so the occluder never leaves. |
+| Storyboard → Runs, end to end | card 06 regenerated, saved, "Compile from the storyboard", run | First pass (as merged): the still's prompt was the whole five-beat direction plus "Must include: rims 21, designers, no minors", and the motion prompt ended "arrives on a match cut … truck 0.16, ease in_out, anamorphic_35, handheld 0.25". The still came back as two scenes in one image. After the fixes below: the still is one picture (black Bentley, a 21-inch rim, a man reaching for the door at a rain-slick marble curb), and the motion prompt is the direction plus "The camera trucks left to right slowly." |
+
+**bar6** (`YSL_IceOn_bars24-46_bar6_wall`, 1080p master, 720p proxy delivered): bar5 with `S06c` taken from the high wide angle and `S11a`+`S11b` replaced by the wall shot as one two-bar world shot. Coverage QA **PASS**: 15 performance cuts, 89 % moving, longest static 3.93 s, mean cut 1.23 bars; inserts 4/4 PASS; 43.279 s on the clock.
+
+### 11.2 What was built from it
+
+* **`camera_change` in `reference_fidelity.py`** — how far the camera actually moved (picture difference at the same moments; the face's size, position and turn). The six angles bought today: the near-copy 0.09, the five real ones 0.56–1.0. `angle_gate` refuses below `camera_change_min` 0.3: on bar5's plan that is `S06c_low_hero`, correctly — the 1080p move on the take beats a 720p copy of it. An angle without his face reports instead of exiting, and has nothing to sync.
+* **Stacked-panels check on generated stills** (`src/lib/worldBatch/stillCheck.ts`, mirrored as `panel_seam` in `run_world_batch.py`, identical numbers on the same stills). A still prompt that described the frame "upper half / lower half" returned a diptych on both candidates, and the runner paid Kling to animate it. Two measures: how completely a line crosses the frame, and whether it is ruler-straight at full size. The second is the one that decides — a kerb photographed square-on crosses 0.70–0.90 of the frame (straightness 0.15), the panel seam 0.92 (straightness 0.75). The runner takes the first candidate that is one picture; if none is, it stops before motion and a retry generates again. **Limit:** it finds a hard seam. A blended two-scene collage (the first storyboard still) passes it; that failure is prevented at the prompt, below.
+* **The frame** — `shot_overrides.frame` (migration `20261002210000`), `ShotOverride.frame`, `ShotSpec.openingFrame`, a second field on the card ("the frame it opens on"), filled by "From the lyrics" with the generator's own `visual` (which was being dropped). The compiler's still prompt is the frame; with no frame, the first beat of the direction only. The direction is the motion prompt.
+* **Motion prompt in words** — `cameraMoveToSentence` (Cursor's `prompts.ts`) now says "The camera pushes in slowly." instead of the 2.5D engine's parameters; transitions no longer enter the motion sentence (they belong to the edit).
+* **Camera engine: pan under zoom** — the plate's pan reaches the screen multiplied by the zoom; the performer's did not. A zoom about an off-centre point slid him against the plate (on the wall plate his cut edge sat above the wall for 28 frames, and the engine said so). Both layers now take zoom × pan. The test that should have caught it only checked his width; it now checks that the occluder's edge stays at the same height on him.
+
+### 11.3 Prompt rules learned (for anyone writing a still prompt)
+
+* Describe a frame by **depth** — nearest the camera, behind it, beyond — never by halves or regions of the picture.
+* A still prompt is **one moment**. Beats separated by semicolons come back as panels.
+* The thing that hides a waist-up take's cut edge should be something that **stays** (a wall, a parapet, a counter), with the action in front of it.
+
+### 11.4 Still open
+
+* A duplicate of the performer in a generated angle is not caught by any measurement here; the gate refused that clip on a lip score 0.005 under the line. A question to the judge ("does the same person appear twice?") is the natural place.
+* `seedanceAnglePrompt` cannot express a camera that does not see his face.
+* The world plates still come back at whatever distance the image model chooses; the prompt got him from ≈ 12 % to ≈ 16 % of the frame at the wide end. The pull-back is what makes him read.
+* The other 24 storyboard cards are the generated treatment, not regenerated ones; compiling them all would animate flat inserts. Regenerate, read, save, then compile.
+
+Verified on main `a180b01` + this round's files: `npx vitest run` → 148 files, 1601 passed, 1 skipped; `tsc` clean; `python3 -m pytest scripts/edit/tests` → 15 passed.
+
