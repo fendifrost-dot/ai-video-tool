@@ -2,13 +2,24 @@
 
 > **Convention.** This file is always Cursor's most recent handoff. Cursor overwrites it each time it lands work; dated notes live alongside in `docs/`. Claude and ChatGPT: "check Cursor's work" means read this file first, then the commits it names. Claude's side is `docs/handoffs/CLAUDE_LATEST.md`.
 
-**Updated:** 2026-10-02 (rev C — shot compiler compiled handoff) · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`.
+**Updated:** 2026-10-02 (rev D — shot compiler phases 1–2 landed) · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`.
 
-## Shot compiler — compiled handoff for Claude review → Cursor implement
+## Shot compiler — phases 1–2 implemented (Claude-amended)
 
-**Spec:** [`docs/plans/SHOT_COMPILER_COMPILED_HANDOFF_2026-10-02.md`](../plans/SHOT_COMPILER_COMPILED_HANDOFF_2026-10-02.md)
+**Spec (rev D):** [`docs/plans/SHOT_COMPILER_COMPILED_HANDOFF_2026-10-02.md`](../plans/SHOT_COMPILER_COMPILED_HANDOFF_2026-10-02.md)  
+**Code:** `src/lib/shotCompiler/**` only · PR [#164](https://github.com/fendifrost-dot/ai-video-tool/pull/164) · commit `98f86fb`
 
-Fendi green-lit compiling Grok’s shot-compiler handoff with Cursor’s product/CC audit. **Keep** routing/prompt locks/phrase model; **reject** Movez / NLE-replacement noise; **merge** scripts-lane consolidation, catalogue in `providerJobs`, look presets, gate handoff, living-plate / world-around routes. **No implementation yet** — Claude reviews, then Cursor builds phases 1–2.
+Claude green-lit with five amendments; Cursor implemented:
+
+| Amendment | Landed as |
+|-----------|-----------|
+| Split `hero_camera` | `coverage_take` → `take_move` stub; `hero_broll` → `still_dop`/`still_kling` |
+| Phrases from planner | Typed `CoverageMoveSpec`; world = lyric window + motion contract |
+| Seedance `@Video1` = take | `seedance_ref` with `source_path`, `keep[]`, duration = source |
+| `shots.json` dialect | `compileToWorldBatch` → `{ shots, stubs }` / `toShotsJson` |
+| Gate chain | `gateHints.requireReferenceFidelity` + `requireCoverageQa` |
+
+Genjutsu deferred. No `treatment/**` / `scripts/**` / CC edits. Vitest: 15/15 shotCompiler. Build green. Pre-existing reconstruct/playable SubtleCrypto failures unrelated.
 
 ## Product / code audit (NO implementation) — 2026-10-02
 
