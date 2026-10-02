@@ -16,7 +16,7 @@ import {
   DEFAULT_TRANSITION_PRESET_NAMES,
   DEFAULT_TRANSITION_PRESETS,
 } from "@/lib/treatment/transitions";
-import { NoLyricsInWindowError } from "@/lib/treatment/regenerateFromLyrics";
+import { NoLyricsInWindowError, type RegenerateMode } from "@/lib/treatment/regenerateFromLyrics";
 import { cameraMotionLabel, framingLabel } from "./shotLabels";
 import { useShotOverrideContext, type ShotOverrideDraft } from "./shotOverrideContext";
 
@@ -130,9 +130,9 @@ export function ShotOverrideBlock({ spec }: { spec: ShotSpec }) {
     }
   }
 
-  async function handleRegenerate() {
+  async function handleRegenerate(mode?: RegenerateMode) {
     try {
-      const r = await ctx!.regenerate(spec);
+      const r = await ctx!.regenerate(spec, mode);
       setDraft((d) => ({
         ...d,
         direction: r.direction || d.direction,
@@ -172,21 +172,39 @@ export function ShotOverrideBlock({ spec }: { spec: ShotSpec }) {
             <span className="text-[10px] text-foreground/40">
               Empty fields keep the generated value.
             </span>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 px-2 text-[11px]"
-              onClick={handleRegenerate}
-              disabled={blockedReason !== null || regenerating}
-              title={blockedReason ?? "Write this box from the words sung inside its window"}
-            >
-              {regenerating ? (
-                <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
-              ) : (
-                <Wand2 className="mr-1.5 h-3 w-3" />
+            <span className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 px-2 text-[11px]"
+                onClick={() => void handleRegenerate()}
+                disabled={blockedReason !== null || regenerating}
+                title={blockedReason ?? "Write this box from the words sung inside its window"}
+                data-testid="regenerate-from-lyrics"
+              >
+                {regenerating ? (
+                  <Loader2 className="mr-1.5 h-3 w-3 animate-spin" />
+                ) : (
+                  <Wand2 className="mr-1.5 h-3 w-3" />
+                )}
+                From the lyrics
+              </Button>
+              {/* A card cut between the takes has a second reading: the line's image pushed past the literal — the
+                  register of the director's own examples. A performance card is his real take, so it has one. */}
+              {spec.shotType !== "performance" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-[11px]"
+                  onClick={() => void handleRegenerate("surreal")}
+                  disabled={blockedReason !== null || regenerating}
+                  title={blockedReason ?? "The same words, pushed past the literal: an invented scene shot like a real event"}
+                  data-testid="regenerate-further"
+                >
+                  Push it further
+                </Button>
               )}
-              From the lyrics
-            </Button>
+            </span>
           </div>
 
           <Textarea

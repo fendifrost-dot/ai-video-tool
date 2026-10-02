@@ -1,6 +1,6 @@
 import { createContext, useContext, type ReactNode } from "react";
 import type { ShotOverride } from "@/lib/treatment/overrides";
-import type { RegeneratedShot } from "@/lib/treatment/regenerateFromLyrics";
+import type { RegeneratedShot, RegenerateMode } from "@/lib/treatment/regenerateFromLyrics";
 import type { ShotSpec } from "@/lib/treatment/shotSpec";
 
 /**
@@ -39,7 +39,8 @@ export type ShotOverrideContextValue = {
    * the card drops them in UNSAVED so the director reads them before committing.
    * Rejects with NoLyricsInWindowError when the window is instrumental.
    */
-  regenerate: (spec: ShotSpec) => Promise<RegeneratedShot>;
+  /** `mode` picks the reading of the line; absent, the card's role decides (see `modeForSpec`). */
+  regenerate: (spec: ShotSpec, mode?: RegenerateMode) => Promise<RegeneratedShot>;
   /**
    * Null when the box can be regenerated; otherwise the reason it cannot, shown as the
    * button's tooltip. A reason rather than a bare false, because "the button is grey"

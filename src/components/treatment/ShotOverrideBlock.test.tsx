@@ -165,6 +165,27 @@ describe("required elements", () => {
   });
 });
 
+describe("the second reading: Push it further", () => {
+  const insert: ShotSpec = { ...spec, id: "sp-insert", shotType: "b_roll" };
+
+  it("a card cut between the takes can ask for the line pushed past the literal", async () => {
+    const c = ctx();
+    mount(c, insert);
+    open();
+    fireEvent.click(screen.getByText("Push it further"));
+    await waitFor(() => expect(c.regenerate).toHaveBeenCalledWith(insert, "surreal"));
+    expect(c.save).not.toHaveBeenCalled();
+    expect(await screen.findByText("· unsaved")).toBeInTheDocument();
+  });
+
+  it("a performance card has one reading — it is his real take", () => {
+    mount(ctx());
+    open();
+    expect(screen.queryByText("Push it further")).not.toBeInTheDocument();
+    expect(screen.getByText("From the lyrics")).toBeInTheDocument();
+  });
+});
+
 describe("From the lyrics (B4)", () => {
   it("fills the fields but does NOT save — the director commits", async () => {
     const c = ctx();
@@ -172,7 +193,7 @@ describe("From the lyrics (B4)", () => {
     open();
     fireEvent.click(screen.getByText("From the lyrics"));
 
-    await waitFor(() => expect(c.regenerate).toHaveBeenCalledWith(spec));
+    await waitFor(() => expect(c.regenerate).toHaveBeenCalledWith(spec, undefined));
     expect(c.save).not.toHaveBeenCalled();
     await waitFor(() =>
       expect(
