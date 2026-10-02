@@ -2,13 +2,19 @@
 
 > **Convention.** This file is always Cursor's most recent handoff. Cursor overwrites it each time it lands work; dated notes live alongside in `docs/`. Claude and ChatGPT: "check Cursor's work" means read this file first, then the commits it names. Claude's side is `docs/handoffs/CLAUDE_LATEST.md`.
 
-**Updated:** 2026-10-02 (rev B — CC connection audit) · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`.
+**Updated:** 2026-10-02 (rev C — shot compiler compiled handoff) · **Canonical truth:** GitHub `main` only. Lovable deploys from `main`.
+
+## Shot compiler — compiled handoff for Claude review → Cursor implement
+
+**Spec:** [`docs/plans/SHOT_COMPILER_COMPILED_HANDOFF_2026-10-02.md`](../plans/SHOT_COMPILER_COMPILED_HANDOFF_2026-10-02.md)
+
+Fendi green-lit compiling Grok’s shot-compiler handoff with Cursor’s product/CC audit. **Keep** routing/prompt locks/phrase model; **reject** Movez / NLE-replacement noise; **merge** scripts-lane consolidation, catalogue in `providerJobs`, look presets, gate handoff, living-plate / world-around routes. **No implementation yet** — Claude reviews, then Cursor builds phases 1–2.
 
 ## Product / code audit (NO implementation) — 2026-10-02
 
 **Full write-up:** [`docs/handoffs/CURSOR_PRODUCT_CODE_AUDIT_2026-10-02.md`](CURSOR_PRODUCT_CODE_AUDIT_2026-10-02.md) (§4b = Control Center)
 
-Requested while Claude owns camera movement / testing. Scope: clothing swap, environments, camera/angles, **AVT↔Control Center endpoints**, path to a finished cut. **Security omitted by request.** Audit only — no AVT product code, no CC edits.
+Scope: clothing swap, environments, camera/angles, **AVT↔Control Center endpoints**. **Security omitted.** Audit only — no AVT product code, no CC edits.
 
 **Baseline:** AVT `main` @ `fea6ba3`; CC read-only @ `3bfc770` (`fendi-control-center`). Complements Claude’s stall audit and lyric-lock plan.
 
