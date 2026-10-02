@@ -1,0 +1,77 @@
+{
+ "section": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/out/YSL_IceOn_bars24-46_bar1_base.mp4",
+ "out": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/bar2/YSL_IceOn_bars24-46_bar2_lyriclocked.mp4",
+ "bpm": 122.0,
+ "bar_seconds": 1.9672131147540983,
+ "inserts": [
+  {
+   "ref": "L_ysl_weekend",
+   "slot": "S01",
+   "mode": "split",
+   "song": [
+    47.2131,
+    49.18031311475409
+   ],
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/motion_shootout/H3_atelier__kling.mp4",
+   "verdict": "PASS",
+   "title": "Yves Saint Laurent on the weekend \u2014 the tailor",
+   "head_skipped": 0.2,
+   "section_time": [
+    0.0,
+    1.9672131147540952
+   ]
+  },
+  {
+   "ref": "L_lights_1",
+   "slot": "S06",
+   "mode": "split",
+   "song": [
+    62.95080491803279,
+    64.91801803278689
+   ],
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/worlds_bar2/H1_switch2.mp4",
+   "verdict": "PASS",
+   "title": "cut the lights on \u2014 the old man at the switch",
+   "head_skipped": 0.2,
+   "section_time": [
+    15.73770491803279,
+    17.704918032786892
+   ]
+  },
+  {
+   "ref": "L_ice_2",
+   "slot": "S10",
+   "mode": "replace",
+   "song": [
+    78.6885,
+    80.6557
+   ],
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/motion_shootout/H6_club_frost__kling.mp4",
+   "verdict": "PASS",
+   "title": "this ice on \u2014 club frost",
+   "head_skipped": 0.2,
+   "section_time": [
+    31.475400000000008,
+    33.4426
+   ]
+  },
+  {
+   "ref": "L_lights_3",
+   "slot": "S12",
+   "mode": "split",
+   "song": [
+    86.5574,
+    88.5246131147541
+   ],
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/worlds_bar2/H1_switch2.mp4",
+   "verdict": "PASS",
+   "title": "cut the lights on \u2014 the switch, repeat",
+   "head_skipped": 0.2,
+   "section_time": [
+    39.344300000000004,
+    41.311513114754106
+   ]
+  }
+ ],
+ "skipped": []
+}

@@ -1,0 +1,36 @@
+{
+ "plan": [
+  {
+   "ref": "L_ysl_weekend",
+   "title": "Yves Saint Laurent on the weekend \u2014 the tailor",
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/motion_shootout/H3_atelier__kling.mp4",
+   "gate": {
+    "verdict": "PASS"
+   }
+  },
+  {
+   "ref": "L_lights_1",
+   "title": "cut the lights on \u2014 the old man at the switch",
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/worlds_bar2/H1_switch2.mp4",
+   "gate": {
+    "verdict": "PASS"
+   }
+  },
+  {
+   "ref": "L_ice_2",
+   "title": "this ice on \u2014 club frost",
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/motion_shootout/H6_club_frost__kling.mp4",
+   "gate": {
+    "verdict": "PASS"
+   }
+  },
+  {
+   "ref": "L_lights_3",
+   "title": "cut the lights on \u2014 the switch, repeat",
+   "file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/worlds_bar2/H1_switch2.mp4",
+   "gate": {
+    "verdict": "PASS"
+   }
+  }
+ ]
+}
