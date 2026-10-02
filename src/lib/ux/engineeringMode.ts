@@ -36,6 +36,7 @@ export const DEFAULT_ENGINEERING_MODE: EngineeringMode = "creative";
  * - `prompt`        — Prompt Lab (prompt engineering)
  * - `timeline`      — music-video editor / timeline
  * - `continuity`    — temporal continuity locking
+ * - `runs`          — batch runs: a shot list submitted to the providers from the app
  */
 export const ADVANCED_DESTINATION_KEYS = [
   "shots",
@@ -44,6 +45,7 @@ export const ADVANCED_DESTINATION_KEYS = [
   "prompt",
   "timeline",
   "continuity",
+  "runs",
 ] as const;
 
 export type AdvancedDestinationKey = (typeof ADVANCED_DESTINATION_KEYS)[number];
