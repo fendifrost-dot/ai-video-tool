@@ -46,6 +46,7 @@ import { Route as ProjectsIdExportRouteImport } from './routes/projects.$id.expo
 import { Route as ProjectsIdHeroFrameRouteImport } from './routes/projects.$id.hero-frame'
 import { Route as ProjectsIdPromptRouteImport } from './routes/projects.$id.prompt'
 import { Route as ProjectsIdReviewRouteImport } from './routes/projects.$id.review'
+import { Route as ProjectsIdRunsRouteImport } from './routes/projects.$id.runs'
 import { Route as ProjectsIdShotsRouteImport } from './routes/projects.$id.shots'
 import { Route as ProjectsIdTimelineRouteImport } from './routes/projects.$id.timeline'
 import { Route as ProjectsIdTreatmentRouteImport } from './routes/projects.$id.treatment'
@@ -240,6 +241,11 @@ const ProjectsIdReviewRoute = ProjectsIdReviewRouteImport.update({
   path: '/review',
   getParentRoute: () => ProjectsIdRoute,
 } as any)
+const ProjectsIdRunsRoute = ProjectsIdRunsRouteImport.update({
+  id: '/runs',
+  path: '/runs',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
 const ProjectsIdShotsRoute = ProjectsIdShotsRouteImport.update({
   id: '/shots',
   path: '/shots',
@@ -317,6 +323,7 @@ export interface FileRoutesByFullPath {
   '/projects/$id/hero-frame': typeof ProjectsIdHeroFrameRoute
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
+  '/projects/$id/runs': typeof ProjectsIdRunsRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/timeline': typeof ProjectsIdTimelineRoute
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
@@ -355,6 +362,7 @@ export interface FileRoutesByTo {
   '/projects/$id/hero-frame': typeof ProjectsIdHeroFrameRoute
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
+  '/projects/$id/runs': typeof ProjectsIdRunsRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/timeline': typeof ProjectsIdTimelineRoute
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
@@ -403,6 +411,7 @@ export interface FileRoutesById {
   '/projects/$id/hero-frame': typeof ProjectsIdHeroFrameRoute
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
+  '/projects/$id/runs': typeof ProjectsIdRunsRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
   '/projects/$id/timeline': typeof ProjectsIdTimelineRoute
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
@@ -452,6 +461,7 @@ export interface FileRouteTypes {
     | '/projects/$id/hero-frame'
     | '/projects/$id/prompt'
     | '/projects/$id/review'
+    | '/projects/$id/runs'
     | '/projects/$id/shots'
     | '/projects/$id/timeline'
     | '/projects/$id/treatment'
@@ -490,6 +500,7 @@ export interface FileRouteTypes {
     | '/projects/$id/hero-frame'
     | '/projects/$id/prompt'
     | '/projects/$id/review'
+    | '/projects/$id/runs'
     | '/projects/$id/shots'
     | '/projects/$id/timeline'
     | '/projects/$id/treatment'
@@ -537,6 +548,7 @@ export interface FileRouteTypes {
     | '/projects/$id/hero-frame'
     | '/projects/$id/prompt'
     | '/projects/$id/review'
+    | '/projects/$id/runs'
     | '/projects/$id/shots'
     | '/projects/$id/timeline'
     | '/projects/$id/treatment'
@@ -824,6 +836,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsIdReviewRouteImport
       parentRoute: typeof ProjectsIdRoute
     }
+    '/projects/$id/runs': {
+      id: '/projects/$id/runs'
+      path: '/runs'
+      fullPath: '/projects/$id/runs'
+      preLoaderRoute: typeof ProjectsIdRunsRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
     '/projects/$id/shots': {
       id: '/projects/$id/shots'
       path: '/shots'
@@ -1016,6 +1035,7 @@ interface ProjectsIdRouteChildren {
   ProjectsIdHeroFrameRoute: typeof ProjectsIdHeroFrameRoute
   ProjectsIdPromptRoute: typeof ProjectsIdPromptRoute
   ProjectsIdReviewRoute: typeof ProjectsIdReviewRoute
+  ProjectsIdRunsRoute: typeof ProjectsIdRunsRoute
   ProjectsIdShotsRoute: typeof ProjectsIdShotsRouteWithChildren
   ProjectsIdTimelineRoute: typeof ProjectsIdTimelineRoute
   ProjectsIdTreatmentRoute: typeof ProjectsIdTreatmentRoute
@@ -1031,6 +1051,7 @@ const ProjectsIdRouteChildren: ProjectsIdRouteChildren = {
   ProjectsIdHeroFrameRoute: ProjectsIdHeroFrameRoute,
   ProjectsIdPromptRoute: ProjectsIdPromptRoute,
   ProjectsIdReviewRoute: ProjectsIdReviewRoute,
+  ProjectsIdRunsRoute: ProjectsIdRunsRoute,
   ProjectsIdShotsRoute: ProjectsIdShotsRouteWithChildren,
   ProjectsIdTimelineRoute: ProjectsIdTimelineRoute,
   ProjectsIdTreatmentRoute: ProjectsIdTreatmentRoute,
