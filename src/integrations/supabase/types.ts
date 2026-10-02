@@ -184,6 +184,86 @@ export type Database = {
         }
         Relationships: []
       }
+      batch_credential_mints: {
+        Row: {
+          at: string
+          credential_id: string | null
+          id: string
+          ip_hash: string | null
+          outcome: string
+          owner_user_id: string | null
+          reason: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          at?: string
+          credential_id?: string | null
+          id?: string
+          ip_hash?: string | null
+          outcome: string
+          owner_user_id?: string | null
+          reason?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          at?: string
+          credential_id?: string | null
+          id?: string
+          ip_hash?: string | null
+          outcome?: string
+          owner_user_id?: string | null
+          reason?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_credential_mints_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "batch_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      batch_credentials: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          label: string
+          last_used_at: string | null
+          note: string | null
+          owner_user_id: string
+          revoked_at: string | null
+          secret_sha256: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          label: string
+          last_used_at?: string | null
+          note?: string | null
+          owner_user_id: string
+          revoked_at?: string | null
+          secret_sha256: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          label?: string
+          last_used_at?: string | null
+          note?: string | null
+          owner_user_id?: string
+          revoked_at?: string | null
+          secret_sha256?: string
+        }
+        Relationships: []
+      }
       character_features: {
         Row: {
           artist_id: string
