@@ -271,9 +271,18 @@ def main():
     # ---- depth of field on the plate (precomputed levels; focus on the performer's plane or the plate's near/far)
     focus_dn = dn_p if focus == "performer" else (float(focus) if not isinstance(focus, str) else 0.5)
     dof_amt = np.clip(np.abs(depth - focus_dn) * lens["dof"] * 1.6, 0, 1)
-    def plate_with_dof(pl):
+    dof_amt_half = cv2.resize(dof_amt, (PW // 2, PH // 2), interpolation=cv2.INTER_AREA)
+    dof_mix = np.clip(dof_amt * 8.0, 0, 1)[..., None]            # where the plate is in focus keep the full-res pixels
+    def plate_with_dof(pl, fast=False):
         if lens["dof"] <= 0: return pl
-        lv = dof_levels(pl, a.dof_max_px * (W / 1080.0), lens["bokeh_aspect"], levels=4); out = blend_levels(lv, dof_amt); del lv; return out
+        if not fast:
+            lv = dof_levels(pl, a.dof_max_px * (W / 1080.0), lens["bokeh_aspect"], levels=4); out = blend_levels(lv, dof_amt); del lv; return out
+        # video plates, per frame: the blur pyramid at half resolution (a defocus is low-frequency), blended back
+        # under the sharp full-res plate where the focus map says sharp — ~4× cheaper, same picture
+        half = cv2.resize(pl, (PW // 2, PH // 2), interpolation=cv2.INTER_AREA)
+        lv = dof_levels(half, a.dof_max_px * (W / 1080.0) / 2.0, lens["bokeh_aspect"], levels=4); bl = blend_levels(lv, dof_amt_half); del lv
+        up = cv2.resize(bl, (PW, PH), interpolation=cv2.INTER_LINEAR)
+        return pl * (1 - dof_mix) + up * dof_mix
     plate_dof = plate_with_dof(plate)
 
     # ---- geometry helpers
@@ -293,7 +302,7 @@ def main():
         zpix = 1 + (Z - 1) * wp; zpix = zpix * (1 + (PZ - 1) * wp)
         mx = ox + cx + dx / zpix - (px * W) * wp - orb * W * wo
         my = oy + cy + dy / zpix - (py * H) * wp
-        if plate_frames is not None and i > 0: plate_dof = plate_with_dof(plate_frame(i))   # living plate: this frame's picture through the same depth field
+        if plate_frames is not None and i > 0: plate_dof = plate_with_dof(plate_frame(i), fast=True)   # living plate: this frame's picture through the same depth field
         bg = cv2.remap(plate_dof, mx.astype(np.float32), my.astype(np.float32), cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
         # --- performer: rigid layer at weight 1 (framing first, then the camera)
         al = cv2.imread(os.path.join(a.matte_dir, alphas[i]), cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.0
