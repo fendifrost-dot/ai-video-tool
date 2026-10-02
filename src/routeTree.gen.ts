@@ -9,85 +9,55 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as ProjectsRouteImport } from './routes/projects'
-import { Route as ProductsRouteImport } from './routes/products'
-import { Route as LooksRouteImport } from './routes/looks'
-import { Route as DesignStudioRouteImport } from './routes/design-studio'
-import { Route as CollectionsRouteImport } from './routes/collections'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as ArtistsRouteImport } from './routes/artists'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
-import { Route as ProductsIndexRouteImport } from './routes/products.index'
-import { Route as LooksIndexRouteImport } from './routes/looks.index'
-import { Route as DesignStudioIndexRouteImport } from './routes/design-studio.index'
-import { Route as CollectionsIndexRouteImport } from './routes/collections.index'
+import { Route as ArtistsRouteImport } from './routes/artists'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as CollectionsRouteImport } from './routes/collections'
+import { Route as DesignStudioRouteImport } from './routes/design-studio'
+import { Route as LooksRouteImport } from './routes/looks'
+import { Route as ProductsRouteImport } from './routes/products'
+import { Route as ProjectsRouteImport } from './routes/projects'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ArtistsIndexRouteImport } from './routes/artists.index'
-import { Route as ProjectsNewRouteImport } from './routes/projects.new'
-import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
-import { Route as ProductsNewRouteImport } from './routes/products.new'
-import { Route as ProductsIdRouteImport } from './routes/products.$id'
-import { Route as LibraryPropsRouteImport } from './routes/library.props'
-import { Route as LibraryLocationsRouteImport } from './routes/library.locations'
-import { Route as DesignStudioNewRouteImport } from './routes/design-studio.new'
-import { Route as DesignStudioProductIdRouteImport } from './routes/design-studio.$productId'
-import { Route as CollectionsIdRouteImport } from './routes/collections.$id'
-import { Route as ArtistsNewRouteImport } from './routes/artists.new'
 import { Route as ArtistsIdRouteImport } from './routes/artists.$id'
-import { Route as ProjectsIdIndexRouteImport } from './routes/projects.$id.index'
+import { Route as ArtistsNewRouteImport } from './routes/artists.new'
+import { Route as CollectionsIndexRouteImport } from './routes/collections.index'
+import { Route as CollectionsIdRouteImport } from './routes/collections.$id'
+import { Route as DesignStudioIndexRouteImport } from './routes/design-studio.index'
+import { Route as DesignStudioProductIdRouteImport } from './routes/design-studio.$productId'
+import { Route as DesignStudioNewRouteImport } from './routes/design-studio.new'
+import { Route as LibraryLocationsRouteImport } from './routes/library.locations'
+import { Route as LibraryPropsRouteImport } from './routes/library.props'
+import { Route as LooksIndexRouteImport } from './routes/looks.index'
+import { Route as ProductsIndexRouteImport } from './routes/products.index'
+import { Route as ProductsIdRouteImport } from './routes/products.$id'
+import { Route as ProductsNewRouteImport } from './routes/products.new'
+import { Route as ProjectsIndexRouteImport } from './routes/projects.index'
+import { Route as ProjectsIdRouteImport } from './routes/projects.$id'
+import { Route as ProjectsNewRouteImport } from './routes/projects.new'
 import { Route as ArtistsIdIndexRouteImport } from './routes/artists.$id.index'
-import { Route as ProjectsIdVideoRouteImport } from './routes/projects.$id.video'
-import { Route as ProjectsIdTreatmentRouteImport } from './routes/projects.$id.treatment'
-import { Route as ProjectsIdTimelineRouteImport } from './routes/projects.$id.timeline'
-import { Route as ProjectsIdShotsRouteImport } from './routes/projects.$id.shots'
-import { Route as ProjectsIdReviewRouteImport } from './routes/projects.$id.review'
-import { Route as ProjectsIdPromptRouteImport } from './routes/projects.$id.prompt'
-import { Route as ProjectsIdHeroFrameRouteImport } from './routes/projects.$id.hero-frame'
-import { Route as ProjectsIdExportRouteImport } from './routes/projects.$id.export'
-import { Route as ProjectsIdCoverFlightRouteImport } from './routes/projects.$id.cover-flight'
-import { Route as ProjectsIdContinuityRouteImport } from './routes/projects.$id.continuity'
-import { Route as ProjectsIdAssetsRouteImport } from './routes/projects.$id.assets'
-import { Route as ProductsIdManufacturingRouteImport } from './routes/products.$id.manufacturing'
 import { Route as ArtistsIdLooksRouteImport } from './routes/artists.$id.looks'
+import { Route as ProductsIdManufacturingRouteImport } from './routes/products.$id.manufacturing'
+import { Route as ProjectsIdIndexRouteImport } from './routes/projects.$id.index'
+import { Route as ProjectsIdAssetsRouteImport } from './routes/projects.$id.assets'
+import { Route as ProjectsIdContinuityRouteImport } from './routes/projects.$id.continuity'
+import { Route as ProjectsIdCoverFlightRouteImport } from './routes/projects.$id.cover-flight'
+import { Route as ProjectsIdExportRouteImport } from './routes/projects.$id.export'
+import { Route as ProjectsIdHeroFrameRouteImport } from './routes/projects.$id.hero-frame'
+import { Route as ProjectsIdPromptRouteImport } from './routes/projects.$id.prompt'
+import { Route as ProjectsIdReviewRouteImport } from './routes/projects.$id.review'
+import { Route as ProjectsIdShotsRouteImport } from './routes/projects.$id.shots'
+import { Route as ProjectsIdTimelineRouteImport } from './routes/projects.$id.timeline'
+import { Route as ProjectsIdTreatmentRouteImport } from './routes/projects.$id.treatment'
+import { Route as ProjectsIdVideoRouteImport } from './routes/projects.$id.video'
 import { Route as ArtistsIdLooksIndexRouteImport } from './routes/artists.$id.looks.index'
-import { Route as ProjectsIdShotsShotIdRouteImport } from './routes/projects.$id.shots.$shotId'
-import { Route as ArtistsIdLooksNewRouteImport } from './routes/artists.$id.looks.new'
 import { Route as ArtistsIdLooksLookIdRouteImport } from './routes/artists.$id.looks.$lookId'
+import { Route as ArtistsIdLooksNewRouteImport } from './routes/artists.$id.looks.new'
+import { Route as ProjectsIdShotsShotIdRouteImport } from './routes/projects.$id.shots.$shotId'
 
-const SettingsRoute = SettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProjectsRoute = ProjectsRouteImport.update({
-  id: '/projects',
-  path: '/projects',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProductsRoute = ProductsRouteImport.update({
-  id: '/products',
-  path: '/products',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LooksRoute = LooksRouteImport.update({
-  id: '/looks',
-  path: '/looks',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DesignStudioRoute = DesignStudioRouteImport.update({
-  id: '/design-studio',
-  path: '/design-studio',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CollectionsRoute = CollectionsRouteImport.update({
-  id: '/collections',
-  path: '/collections',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ArtistsRoute = ArtistsRouteImport.update({
@@ -95,89 +65,44 @@ const ArtistsRoute = ArtistsRouteImport.update({
   path: '/artists',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ProjectsRoute,
+const CollectionsRoute = CollectionsRouteImport.update({
+  id: '/collections',
+  path: '/collections',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const ProductsIndexRoute = ProductsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ProductsRoute,
+const DesignStudioRoute = DesignStudioRouteImport.update({
+  id: '/design-studio',
+  path: '/design-studio',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const LooksIndexRoute = LooksIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => LooksRoute,
+const LooksRoute = LooksRouteImport.update({
+  id: '/looks',
+  path: '/looks',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const DesignStudioIndexRoute = DesignStudioIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DesignStudioRoute,
+const ProductsRoute = ProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const CollectionsIndexRoute = CollectionsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => CollectionsRoute,
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ArtistsIndexRoute = ArtistsIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => ArtistsRoute,
-} as any)
-const ProjectsNewRoute = ProjectsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => ProjectsRoute,
-} as any)
-const ProjectsIdRoute = ProjectsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => ProjectsRoute,
-} as any)
-const ProductsNewRoute = ProductsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => ProductsRoute,
-} as any)
-const ProductsIdRoute = ProductsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => ProductsRoute,
-} as any)
-const LibraryPropsRoute = LibraryPropsRouteImport.update({
-  id: '/library/props',
-  path: '/library/props',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LibraryLocationsRoute = LibraryLocationsRouteImport.update({
-  id: '/library/locations',
-  path: '/library/locations',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DesignStudioNewRoute = DesignStudioNewRouteImport.update({
-  id: '/new',
-  path: '/new',
-  getParentRoute: () => DesignStudioRoute,
-} as any)
-const DesignStudioProductIdRoute = DesignStudioProductIdRouteImport.update({
-  id: '/$productId',
-  path: '/$productId',
-  getParentRoute: () => DesignStudioRoute,
-} as any)
-const CollectionsIdRoute = CollectionsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => CollectionsRoute,
-} as any)
-const ArtistsNewRoute = ArtistsNewRouteImport.update({
-  id: '/new',
-  path: '/new',
   getParentRoute: () => ArtistsRoute,
 } as any)
 const ArtistsIdRoute = ArtistsIdRouteImport.update({
@@ -185,64 +110,99 @@ const ArtistsIdRoute = ArtistsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ArtistsRoute,
 } as any)
-const ProjectsIdIndexRoute = ProjectsIdIndexRouteImport.update({
+const ArtistsNewRoute = ArtistsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ArtistsRoute,
+} as any)
+const CollectionsIndexRoute = CollectionsIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => ProjectsIdRoute,
+  getParentRoute: () => CollectionsRoute,
+} as any)
+const CollectionsIdRoute = CollectionsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => CollectionsRoute,
+} as any)
+const DesignStudioIndexRoute = DesignStudioIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DesignStudioRoute,
+} as any)
+const DesignStudioProductIdRoute = DesignStudioProductIdRouteImport.update({
+  id: '/$productId',
+  path: '/$productId',
+  getParentRoute: () => DesignStudioRoute,
+} as any)
+const DesignStudioNewRoute = DesignStudioNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => DesignStudioRoute,
+} as any)
+const LibraryLocationsRoute = LibraryLocationsRouteImport.update({
+  id: '/library/locations',
+  path: '/library/locations',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LibraryPropsRoute = LibraryPropsRouteImport.update({
+  id: '/library/props',
+  path: '/library/props',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LooksIndexRoute = LooksIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LooksRoute,
+} as any)
+const ProductsIndexRoute = ProductsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProductsRoute,
+} as any)
+const ProductsIdRoute = ProductsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ProductsRoute,
+} as any)
+const ProductsNewRoute = ProductsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ProductsRoute,
+} as any)
+const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProjectsRoute,
+} as any)
+const ProjectsIdRoute = ProjectsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ProjectsRoute,
+} as any)
+const ProjectsNewRoute = ProjectsNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => ProjectsRoute,
 } as any)
 const ArtistsIdIndexRoute = ArtistsIdIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ArtistsIdRoute,
 } as any)
-const ProjectsIdVideoRoute = ProjectsIdVideoRouteImport.update({
-  id: '/video',
-  path: '/video',
-  getParentRoute: () => ProjectsIdRoute,
+const ArtistsIdLooksRoute = ArtistsIdLooksRouteImport.update({
+  id: '/looks',
+  path: '/looks',
+  getParentRoute: () => ArtistsIdRoute,
 } as any)
-const ProjectsIdTreatmentRoute = ProjectsIdTreatmentRouteImport.update({
-  id: '/treatment',
-  path: '/treatment',
-  getParentRoute: () => ProjectsIdRoute,
+const ProductsIdManufacturingRoute = ProductsIdManufacturingRouteImport.update({
+  id: '/manufacturing',
+  path: '/manufacturing',
+  getParentRoute: () => ProductsIdRoute,
 } as any)
-const ProjectsIdTimelineRoute = ProjectsIdTimelineRouteImport.update({
-  id: '/timeline',
-  path: '/timeline',
-  getParentRoute: () => ProjectsIdRoute,
-} as any)
-const ProjectsIdShotsRoute = ProjectsIdShotsRouteImport.update({
-  id: '/shots',
-  path: '/shots',
-  getParentRoute: () => ProjectsIdRoute,
-} as any)
-const ProjectsIdReviewRoute = ProjectsIdReviewRouteImport.update({
-  id: '/review',
-  path: '/review',
-  getParentRoute: () => ProjectsIdRoute,
-} as any)
-const ProjectsIdPromptRoute = ProjectsIdPromptRouteImport.update({
-  id: '/prompt',
-  path: '/prompt',
-  getParentRoute: () => ProjectsIdRoute,
-} as any)
-const ProjectsIdHeroFrameRoute = ProjectsIdHeroFrameRouteImport.update({
-  id: '/hero-frame',
-  path: '/hero-frame',
-  getParentRoute: () => ProjectsIdRoute,
-} as any)
-const ProjectsIdExportRoute = ProjectsIdExportRouteImport.update({
-  id: '/export',
-  path: '/export',
-  getParentRoute: () => ProjectsIdRoute,
-} as any)
-const ProjectsIdCoverFlightRoute = ProjectsIdCoverFlightRouteImport.update({
-  id: '/cover-flight',
-  path: '/cover-flight',
-  getParentRoute: () => ProjectsIdRoute,
-} as any)
-const ProjectsIdContinuityRoute = ProjectsIdContinuityRouteImport.update({
-  id: '/continuity',
-  path: '/continuity',
+const ProjectsIdIndexRoute = ProjectsIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => ProjectsIdRoute,
 } as any)
 const ProjectsIdAssetsRoute = ProjectsIdAssetsRouteImport.update({
@@ -250,35 +210,75 @@ const ProjectsIdAssetsRoute = ProjectsIdAssetsRouteImport.update({
   path: '/assets',
   getParentRoute: () => ProjectsIdRoute,
 } as any)
-const ProductsIdManufacturingRoute = ProductsIdManufacturingRouteImport.update({
-  id: '/manufacturing',
-  path: '/manufacturing',
-  getParentRoute: () => ProductsIdRoute,
+const ProjectsIdContinuityRoute = ProjectsIdContinuityRouteImport.update({
+  id: '/continuity',
+  path: '/continuity',
+  getParentRoute: () => ProjectsIdRoute,
 } as any)
-const ArtistsIdLooksRoute = ArtistsIdLooksRouteImport.update({
-  id: '/looks',
-  path: '/looks',
-  getParentRoute: () => ArtistsIdRoute,
+const ProjectsIdCoverFlightRoute = ProjectsIdCoverFlightRouteImport.update({
+  id: '/cover-flight',
+  path: '/cover-flight',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdExportRoute = ProjectsIdExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdHeroFrameRoute = ProjectsIdHeroFrameRouteImport.update({
+  id: '/hero-frame',
+  path: '/hero-frame',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdPromptRoute = ProjectsIdPromptRouteImport.update({
+  id: '/prompt',
+  path: '/prompt',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdReviewRoute = ProjectsIdReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdShotsRoute = ProjectsIdShotsRouteImport.update({
+  id: '/shots',
+  path: '/shots',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdTimelineRoute = ProjectsIdTimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdTreatmentRoute = ProjectsIdTreatmentRouteImport.update({
+  id: '/treatment',
+  path: '/treatment',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdVideoRoute = ProjectsIdVideoRouteImport.update({
+  id: '/video',
+  path: '/video',
+  getParentRoute: () => ProjectsIdRoute,
 } as any)
 const ArtistsIdLooksIndexRoute = ArtistsIdLooksIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ArtistsIdLooksRoute,
 } as any)
-const ProjectsIdShotsShotIdRoute = ProjectsIdShotsShotIdRouteImport.update({
-  id: '/$shotId',
-  path: '/$shotId',
-  getParentRoute: () => ProjectsIdShotsRoute,
+const ArtistsIdLooksLookIdRoute = ArtistsIdLooksLookIdRouteImport.update({
+  id: '/$lookId',
+  path: '/$lookId',
+  getParentRoute: () => ArtistsIdLooksRoute,
 } as any)
 const ArtistsIdLooksNewRoute = ArtistsIdLooksNewRouteImport.update({
   id: '/new',
   path: '/new',
   getParentRoute: () => ArtistsIdLooksRoute,
 } as any)
-const ArtistsIdLooksLookIdRoute = ArtistsIdLooksLookIdRouteImport.update({
-  id: '/$lookId',
-  path: '/$lookId',
-  getParentRoute: () => ArtistsIdLooksRoute,
+const ProjectsIdShotsShotIdRoute = ProjectsIdShotsShotIdRouteImport.update({
+  id: '/$shotId',
+  path: '/$shotId',
+  getParentRoute: () => ProjectsIdShotsRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -565,53 +565,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/settings': {
-      id: '/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/projects': {
-      id: '/projects'
-      path: '/projects'
-      fullPath: '/projects'
-      preLoaderRoute: typeof ProjectsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/products': {
-      id: '/products'
-      path: '/products'
-      fullPath: '/products'
-      preLoaderRoute: typeof ProductsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/looks': {
-      id: '/looks'
-      path: '/looks'
-      fullPath: '/looks'
-      preLoaderRoute: typeof LooksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/design-studio': {
-      id: '/design-studio'
-      path: '/design-studio'
-      fullPath: '/design-studio'
-      preLoaderRoute: typeof DesignStudioRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/collections': {
-      id: '/collections'
-      path: '/collections'
-      fullPath: '/collections'
-      preLoaderRoute: typeof CollectionsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/artists': {
@@ -621,123 +579,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArtistsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/projects/': {
-      id: '/projects/'
-      path: '/'
-      fullPath: '/projects/'
-      preLoaderRoute: typeof ProjectsIndexRouteImport
-      parentRoute: typeof ProjectsRoute
+    '/collections': {
+      id: '/collections'
+      path: '/collections'
+      fullPath: '/collections'
+      preLoaderRoute: typeof CollectionsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/products/': {
-      id: '/products/'
-      path: '/'
-      fullPath: '/products/'
-      preLoaderRoute: typeof ProductsIndexRouteImport
-      parentRoute: typeof ProductsRoute
+    '/design-studio': {
+      id: '/design-studio'
+      path: '/design-studio'
+      fullPath: '/design-studio'
+      preLoaderRoute: typeof DesignStudioRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/looks/': {
-      id: '/looks/'
-      path: '/'
-      fullPath: '/looks/'
-      preLoaderRoute: typeof LooksIndexRouteImport
-      parentRoute: typeof LooksRoute
+    '/looks': {
+      id: '/looks'
+      path: '/looks'
+      fullPath: '/looks'
+      preLoaderRoute: typeof LooksRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/design-studio/': {
-      id: '/design-studio/'
-      path: '/'
-      fullPath: '/design-studio/'
-      preLoaderRoute: typeof DesignStudioIndexRouteImport
-      parentRoute: typeof DesignStudioRoute
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/collections/': {
-      id: '/collections/'
-      path: '/'
-      fullPath: '/collections/'
-      preLoaderRoute: typeof CollectionsIndexRouteImport
-      parentRoute: typeof CollectionsRoute
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/artists/': {
       id: '/artists/'
       path: '/'
       fullPath: '/artists/'
       preLoaderRoute: typeof ArtistsIndexRouteImport
-      parentRoute: typeof ArtistsRoute
-    }
-    '/projects/new': {
-      id: '/projects/new'
-      path: '/new'
-      fullPath: '/projects/new'
-      preLoaderRoute: typeof ProjectsNewRouteImport
-      parentRoute: typeof ProjectsRoute
-    }
-    '/projects/$id': {
-      id: '/projects/$id'
-      path: '/$id'
-      fullPath: '/projects/$id'
-      preLoaderRoute: typeof ProjectsIdRouteImport
-      parentRoute: typeof ProjectsRoute
-    }
-    '/products/new': {
-      id: '/products/new'
-      path: '/new'
-      fullPath: '/products/new'
-      preLoaderRoute: typeof ProductsNewRouteImport
-      parentRoute: typeof ProductsRoute
-    }
-    '/products/$id': {
-      id: '/products/$id'
-      path: '/$id'
-      fullPath: '/products/$id'
-      preLoaderRoute: typeof ProductsIdRouteImport
-      parentRoute: typeof ProductsRoute
-    }
-    '/library/props': {
-      id: '/library/props'
-      path: '/library/props'
-      fullPath: '/library/props'
-      preLoaderRoute: typeof LibraryPropsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/library/locations': {
-      id: '/library/locations'
-      path: '/library/locations'
-      fullPath: '/library/locations'
-      preLoaderRoute: typeof LibraryLocationsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/design-studio/new': {
-      id: '/design-studio/new'
-      path: '/new'
-      fullPath: '/design-studio/new'
-      preLoaderRoute: typeof DesignStudioNewRouteImport
-      parentRoute: typeof DesignStudioRoute
-    }
-    '/design-studio/$productId': {
-      id: '/design-studio/$productId'
-      path: '/$productId'
-      fullPath: '/design-studio/$productId'
-      preLoaderRoute: typeof DesignStudioProductIdRouteImport
-      parentRoute: typeof DesignStudioRoute
-    }
-    '/collections/$id': {
-      id: '/collections/$id'
-      path: '/$id'
-      fullPath: '/collections/$id'
-      preLoaderRoute: typeof CollectionsIdRouteImport
-      parentRoute: typeof CollectionsRoute
-    }
-    '/artists/new': {
-      id: '/artists/new'
-      path: '/new'
-      fullPath: '/artists/new'
-      preLoaderRoute: typeof ArtistsNewRouteImport
       parentRoute: typeof ArtistsRoute
     }
     '/artists/$id': {
@@ -747,12 +642,110 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArtistsIdRouteImport
       parentRoute: typeof ArtistsRoute
     }
-    '/projects/$id/': {
-      id: '/projects/$id/'
+    '/artists/new': {
+      id: '/artists/new'
+      path: '/new'
+      fullPath: '/artists/new'
+      preLoaderRoute: typeof ArtistsNewRouteImport
+      parentRoute: typeof ArtistsRoute
+    }
+    '/collections/': {
+      id: '/collections/'
       path: '/'
-      fullPath: '/projects/$id/'
-      preLoaderRoute: typeof ProjectsIdIndexRouteImport
-      parentRoute: typeof ProjectsIdRoute
+      fullPath: '/collections/'
+      preLoaderRoute: typeof CollectionsIndexRouteImport
+      parentRoute: typeof CollectionsRoute
+    }
+    '/collections/$id': {
+      id: '/collections/$id'
+      path: '/$id'
+      fullPath: '/collections/$id'
+      preLoaderRoute: typeof CollectionsIdRouteImport
+      parentRoute: typeof CollectionsRoute
+    }
+    '/design-studio/': {
+      id: '/design-studio/'
+      path: '/'
+      fullPath: '/design-studio/'
+      preLoaderRoute: typeof DesignStudioIndexRouteImport
+      parentRoute: typeof DesignStudioRoute
+    }
+    '/design-studio/$productId': {
+      id: '/design-studio/$productId'
+      path: '/$productId'
+      fullPath: '/design-studio/$productId'
+      preLoaderRoute: typeof DesignStudioProductIdRouteImport
+      parentRoute: typeof DesignStudioRoute
+    }
+    '/design-studio/new': {
+      id: '/design-studio/new'
+      path: '/new'
+      fullPath: '/design-studio/new'
+      preLoaderRoute: typeof DesignStudioNewRouteImport
+      parentRoute: typeof DesignStudioRoute
+    }
+    '/library/locations': {
+      id: '/library/locations'
+      path: '/library/locations'
+      fullPath: '/library/locations'
+      preLoaderRoute: typeof LibraryLocationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/library/props': {
+      id: '/library/props'
+      path: '/library/props'
+      fullPath: '/library/props'
+      preLoaderRoute: typeof LibraryPropsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/looks/': {
+      id: '/looks/'
+      path: '/'
+      fullPath: '/looks/'
+      preLoaderRoute: typeof LooksIndexRouteImport
+      parentRoute: typeof LooksRoute
+    }
+    '/products/': {
+      id: '/products/'
+      path: '/'
+      fullPath: '/products/'
+      preLoaderRoute: typeof ProductsIndexRouteImport
+      parentRoute: typeof ProductsRoute
+    }
+    '/products/$id': {
+      id: '/products/$id'
+      path: '/$id'
+      fullPath: '/products/$id'
+      preLoaderRoute: typeof ProductsIdRouteImport
+      parentRoute: typeof ProductsRoute
+    }
+    '/products/new': {
+      id: '/products/new'
+      path: '/new'
+      fullPath: '/products/new'
+      preLoaderRoute: typeof ProductsNewRouteImport
+      parentRoute: typeof ProductsRoute
+    }
+    '/projects/': {
+      id: '/projects/'
+      path: '/'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof ProjectsIndexRouteImport
+      parentRoute: typeof ProjectsRoute
+    }
+    '/projects/$id': {
+      id: '/projects/$id'
+      path: '/$id'
+      fullPath: '/projects/$id'
+      preLoaderRoute: typeof ProjectsIdRouteImport
+      parentRoute: typeof ProjectsRoute
+    }
+    '/projects/new': {
+      id: '/projects/new'
+      path: '/new'
+      fullPath: '/projects/new'
+      preLoaderRoute: typeof ProjectsNewRouteImport
+      parentRoute: typeof ProjectsRoute
     }
     '/artists/$id/': {
       id: '/artists/$id/'
@@ -761,74 +754,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArtistsIdIndexRouteImport
       parentRoute: typeof ArtistsIdRoute
     }
-    '/projects/$id/video': {
-      id: '/projects/$id/video'
-      path: '/video'
-      fullPath: '/projects/$id/video'
-      preLoaderRoute: typeof ProjectsIdVideoRouteImport
-      parentRoute: typeof ProjectsIdRoute
+    '/artists/$id/looks': {
+      id: '/artists/$id/looks'
+      path: '/looks'
+      fullPath: '/artists/$id/looks'
+      preLoaderRoute: typeof ArtistsIdLooksRouteImport
+      parentRoute: typeof ArtistsIdRoute
     }
-    '/projects/$id/treatment': {
-      id: '/projects/$id/treatment'
-      path: '/treatment'
-      fullPath: '/projects/$id/treatment'
-      preLoaderRoute: typeof ProjectsIdTreatmentRouteImport
-      parentRoute: typeof ProjectsIdRoute
+    '/products/$id/manufacturing': {
+      id: '/products/$id/manufacturing'
+      path: '/manufacturing'
+      fullPath: '/products/$id/manufacturing'
+      preLoaderRoute: typeof ProductsIdManufacturingRouteImport
+      parentRoute: typeof ProductsIdRoute
     }
-    '/projects/$id/timeline': {
-      id: '/projects/$id/timeline'
-      path: '/timeline'
-      fullPath: '/projects/$id/timeline'
-      preLoaderRoute: typeof ProjectsIdTimelineRouteImport
-      parentRoute: typeof ProjectsIdRoute
-    }
-    '/projects/$id/shots': {
-      id: '/projects/$id/shots'
-      path: '/shots'
-      fullPath: '/projects/$id/shots'
-      preLoaderRoute: typeof ProjectsIdShotsRouteImport
-      parentRoute: typeof ProjectsIdRoute
-    }
-    '/projects/$id/review': {
-      id: '/projects/$id/review'
-      path: '/review'
-      fullPath: '/projects/$id/review'
-      preLoaderRoute: typeof ProjectsIdReviewRouteImport
-      parentRoute: typeof ProjectsIdRoute
-    }
-    '/projects/$id/prompt': {
-      id: '/projects/$id/prompt'
-      path: '/prompt'
-      fullPath: '/projects/$id/prompt'
-      preLoaderRoute: typeof ProjectsIdPromptRouteImport
-      parentRoute: typeof ProjectsIdRoute
-    }
-    '/projects/$id/hero-frame': {
-      id: '/projects/$id/hero-frame'
-      path: '/hero-frame'
-      fullPath: '/projects/$id/hero-frame'
-      preLoaderRoute: typeof ProjectsIdHeroFrameRouteImport
-      parentRoute: typeof ProjectsIdRoute
-    }
-    '/projects/$id/export': {
-      id: '/projects/$id/export'
-      path: '/export'
-      fullPath: '/projects/$id/export'
-      preLoaderRoute: typeof ProjectsIdExportRouteImport
-      parentRoute: typeof ProjectsIdRoute
-    }
-    '/projects/$id/cover-flight': {
-      id: '/projects/$id/cover-flight'
-      path: '/cover-flight'
-      fullPath: '/projects/$id/cover-flight'
-      preLoaderRoute: typeof ProjectsIdCoverFlightRouteImport
-      parentRoute: typeof ProjectsIdRoute
-    }
-    '/projects/$id/continuity': {
-      id: '/projects/$id/continuity'
-      path: '/continuity'
-      fullPath: '/projects/$id/continuity'
-      preLoaderRoute: typeof ProjectsIdContinuityRouteImport
+    '/projects/$id/': {
+      id: '/projects/$id/'
+      path: '/'
+      fullPath: '/projects/$id/'
+      preLoaderRoute: typeof ProjectsIdIndexRouteImport
       parentRoute: typeof ProjectsIdRoute
     }
     '/projects/$id/assets': {
@@ -838,19 +782,75 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsIdAssetsRouteImport
       parentRoute: typeof ProjectsIdRoute
     }
-    '/products/$id/manufacturing': {
-      id: '/products/$id/manufacturing'
-      path: '/manufacturing'
-      fullPath: '/products/$id/manufacturing'
-      preLoaderRoute: typeof ProductsIdManufacturingRouteImport
-      parentRoute: typeof ProductsIdRoute
+    '/projects/$id/continuity': {
+      id: '/projects/$id/continuity'
+      path: '/continuity'
+      fullPath: '/projects/$id/continuity'
+      preLoaderRoute: typeof ProjectsIdContinuityRouteImport
+      parentRoute: typeof ProjectsIdRoute
     }
-    '/artists/$id/looks': {
-      id: '/artists/$id/looks'
-      path: '/looks'
-      fullPath: '/artists/$id/looks'
-      preLoaderRoute: typeof ArtistsIdLooksRouteImport
-      parentRoute: typeof ArtistsIdRoute
+    '/projects/$id/cover-flight': {
+      id: '/projects/$id/cover-flight'
+      path: '/cover-flight'
+      fullPath: '/projects/$id/cover-flight'
+      preLoaderRoute: typeof ProjectsIdCoverFlightRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/export': {
+      id: '/projects/$id/export'
+      path: '/export'
+      fullPath: '/projects/$id/export'
+      preLoaderRoute: typeof ProjectsIdExportRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/hero-frame': {
+      id: '/projects/$id/hero-frame'
+      path: '/hero-frame'
+      fullPath: '/projects/$id/hero-frame'
+      preLoaderRoute: typeof ProjectsIdHeroFrameRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/prompt': {
+      id: '/projects/$id/prompt'
+      path: '/prompt'
+      fullPath: '/projects/$id/prompt'
+      preLoaderRoute: typeof ProjectsIdPromptRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/review': {
+      id: '/projects/$id/review'
+      path: '/review'
+      fullPath: '/projects/$id/review'
+      preLoaderRoute: typeof ProjectsIdReviewRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/shots': {
+      id: '/projects/$id/shots'
+      path: '/shots'
+      fullPath: '/projects/$id/shots'
+      preLoaderRoute: typeof ProjectsIdShotsRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/timeline': {
+      id: '/projects/$id/timeline'
+      path: '/timeline'
+      fullPath: '/projects/$id/timeline'
+      preLoaderRoute: typeof ProjectsIdTimelineRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/treatment': {
+      id: '/projects/$id/treatment'
+      path: '/treatment'
+      fullPath: '/projects/$id/treatment'
+      preLoaderRoute: typeof ProjectsIdTreatmentRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/video': {
+      id: '/projects/$id/video'
+      path: '/video'
+      fullPath: '/projects/$id/video'
+      preLoaderRoute: typeof ProjectsIdVideoRouteImport
+      parentRoute: typeof ProjectsIdRoute
     }
     '/artists/$id/looks/': {
       id: '/artists/$id/looks/'
@@ -859,12 +859,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArtistsIdLooksIndexRouteImport
       parentRoute: typeof ArtistsIdLooksRoute
     }
-    '/projects/$id/shots/$shotId': {
-      id: '/projects/$id/shots/$shotId'
-      path: '/$shotId'
-      fullPath: '/projects/$id/shots/$shotId'
-      preLoaderRoute: typeof ProjectsIdShotsShotIdRouteImport
-      parentRoute: typeof ProjectsIdShotsRoute
+    '/artists/$id/looks/$lookId': {
+      id: '/artists/$id/looks/$lookId'
+      path: '/$lookId'
+      fullPath: '/artists/$id/looks/$lookId'
+      preLoaderRoute: typeof ArtistsIdLooksLookIdRouteImport
+      parentRoute: typeof ArtistsIdLooksRoute
     }
     '/artists/$id/looks/new': {
       id: '/artists/$id/looks/new'
@@ -873,12 +873,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ArtistsIdLooksNewRouteImport
       parentRoute: typeof ArtistsIdLooksRoute
     }
-    '/artists/$id/looks/$lookId': {
-      id: '/artists/$id/looks/$lookId'
-      path: '/$lookId'
-      fullPath: '/artists/$id/looks/$lookId'
-      preLoaderRoute: typeof ArtistsIdLooksLookIdRouteImport
-      parentRoute: typeof ArtistsIdLooksRoute
+    '/projects/$id/shots/$shotId': {
+      id: '/projects/$id/shots/$shotId'
+      path: '/$shotId'
+      fullPath: '/projects/$id/shots/$shotId'
+      preLoaderRoute: typeof ProjectsIdShotsShotIdRouteImport
+      parentRoute: typeof ProjectsIdShotsRoute
     }
   }
 }
