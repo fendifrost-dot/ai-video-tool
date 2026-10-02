@@ -15,6 +15,7 @@ import {
   Shirt,
   Navigation,
   SlidersHorizontal,
+  ListVideo,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/queries/projects";
@@ -58,6 +59,7 @@ export const advancedItems: readonly NavItem[] = [
   { to: "/projects/$id/prompt", label: "Prompt Lab", icon: Wand2, key: "prompt" },
   { to: "/projects/$id/timeline", label: "Music Video Editor", icon: Film, key: "timeline" },
   { to: "/projects/$id/continuity", label: "Continuity", icon: Lock, key: "continuity" },
+  { to: "/projects/$id/runs", label: "Runs", icon: ListVideo, key: "runs" },
 ] as const;
 
 export function ProjectSidebar({ projectId }: { projectId: string }) {
