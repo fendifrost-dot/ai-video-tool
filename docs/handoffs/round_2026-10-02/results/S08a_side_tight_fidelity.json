@@ -4,6 +4,14 @@
  "fps_sampled": 30.0,
  "frames_src": 81,
  "frames_res": 36,
+ "camera_change": {
+  "picture": 0.893,
+  "face_visible_share": 0.371,
+  "face_size_ratio": 1.366,
+  "face_centre_shift": 0.083,
+  "face_turn_change": 0.24,
+  "score": 0.893
+ },
  "identity_src_vs_result": 0.076,
  "identity_per_frame_p95": 1.018,
  "lip": {

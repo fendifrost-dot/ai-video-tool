@@ -22,3 +22,22 @@ What is here is the measurement:
 * `bar5_cut_checks.jpg`, `bar5_coverage_qa.json` — the cut with the gated angles and the stoop shot in it (QA PASS).
 
 Read with `docs/research/results/2026-10-02-adjustments/ADJUSTMENTS_2026-10-02.md` § 10.
+
+## Round 2 (`round2/`, after the Higgsfield top-up)
+
+The four fidelity reports above were re-measured with `camera_change` (how far the camera really moved).
+
+| Shot | Library asset | What it is |
+|---|---|---|
+| `S06c_high_wide` | `2ca8dfde-d2d4-48d0-816e-fc85126b96f8` | Seedance high wide, full body — passes the gate |
+| `S08a_over_shoulder` | `8c62c943-c8c4-45ba-9438-e5cd5d053293` | Seedance over-the-shoulder — came back with two of him; kept as the example |
+| `P_stoop_wall` | `96c0f11a-b39c-4284-aa5b-e8aa3baf9daa` | a still that is two pictures stacked, animated by Kling — the reason for the panel check |
+| `P_stoop_wall2` | `07ebce01-b1ca-4dc0-8894-744030b45385` | one picture with a kerb across the whole frame — the still the first version of the panel check wrongly flagged |
+| `P_stoop_close` | `29512213-b50e-4025-873d-d520514d4386` | the living plate the wall shot is built on |
+| storyboard card `c006`, first compile | `9c4f842d-d2be-4a44-8c1b-c8e945afd54a` | two scenes in one still (the direction's beats as a still prompt) |
+| storyboard card `c006`, after the fix | run `run-20261002-sb2` | one picture, then the clip: the Bentley, the rim, the door |
+
+`round2/` holds the two new fidelity reports and comparisons, the stills named above, the wall shot's camera spec and strip,
+and bar6's cut checks and coverage QA (PASS).
+Read with `ADJUSTMENTS_2026-10-02.md` § 11.
+
