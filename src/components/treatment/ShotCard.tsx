@@ -18,6 +18,7 @@ import type { ShotSpec } from "@/lib/treatment/shotSpec";
 import type { ShotLyric } from "@/lib/lyrics/lyricsForShot";
 import { transitionPresetLabel } from "@/lib/treatment/transitions";
 import { PrevisFrame } from "./PrevisFrame";
+import { ShotOverrideBlock } from "./ShotOverrideBlock";
 import {
   cameraAngleLabel,
   cameraMotionLabel,
@@ -175,6 +176,17 @@ export function ShotCard({
                   {energy}
                 </span>
               )}
+              {/* ---- B3 override tag (Claude Code lane) ------------------- */}
+              {spec.origin === "override" && (
+                <span
+                  className="rounded-full bg-fuchsia-500/15 px-2 py-0.5 text-[10px] font-medium text-fuchsia-300"
+                  title="This box carries a manual override of the generated treatment"
+                  data-testid="shot-overridden-tag"
+                >
+                  overridden
+                </span>
+              )}
+              {/* ---- end B3 override tag --------------------------------- */}
             </div>
             {spec.title && (
               <h3 className="mt-1 truncate text-sm font-semibold text-foreground">{spec.title}</h3>
@@ -276,6 +288,13 @@ export function ShotCard({
             {transitionOut && <span>Out: {transitionOut}</span>}
           </div>
         )}
+
+        {/* ---- B3/B4 override block (Claude Code lane) --------------------
+            Renders nothing unless a ShotOverrideProvider is mounted above, so
+            read-only surfaces and the card's own tests are unaffected. Kept as
+            one delimited block so the coverage badge can land beside it. */}
+        <ShotOverrideBlock spec={spec} />
+        {/* ---- end B3/B4 override block ------------------------------------ */}
       </div>
     </Card>
   );

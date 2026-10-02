@@ -19,11 +19,33 @@
 // video_projects / artist / look rows). Output is strict JSON the app can store on shots
 // (shot_type lyric_visual, notes "LYRIC: …") or feed straight into grok-broll-proxy.
 //
+// ADDITIVE (B4, 2026-10-02) — absent from a request, nothing below changes:
+//   mode             "all" (default, today's three scenes) | "literal" | "surreal" | "performance".
+//                    The non-default modes return ONE scene, for regenerating a single
+//                    storyboard box. `mode: "all"` is proven byte-identical to the prompt
+//                    that shipped before this field existed (legacyPrompt.golden.ts).
+//   template         a SEED `prompt_templates` row, by name or by its template_json basename
+//                    ("motion_story_v1"). Rendered with templateContext and placed AHEAD of
+//                    the standing instructions. Unfilled {{slots}} are stripped, never sent.
+//   shot             the storyboard box's window/section/framing/camera move, so the beats fit it.
+// The template is resolved before the cost gate, so a dry run reports the template name.
+//
 // Required secrets: XAI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
+import {
+  buildSystemPrompt,
+  isLyricMode,
+  renderTemplate,
+  scenesPerLine,
+  templateMatches,
+  templateSlots,
+  type LyricMode,
+  type ShotWindow,
+  type TemplateContext,
+} from "./contract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,6 +84,17 @@ type Body = {
   model?: string;
   maxCostUsd?: number;
   dryRun?: boolean;
+
+  // --- additive (B4, 2026-10-02). Absent = exactly the behaviour above. ----
+  /** Which scenes to come back with; "all" (default) is today's three. */
+  mode?: LyricMode;
+  /** A seed `prompt_templates` row, by name or by its template_json basename
+   *  ("motion_story_v1"). Rendered and placed ahead of the standing instructions. */
+  template?: string;
+  /** Slot values for the template. Any slot not supplied is stripped, never left braced. */
+  templateContext?: TemplateContext;
+  /** The storyboard box this scene is written for, so the beats fit its window. */
+  shot?: ShotWindow;
 };
 
 // One xAI call PER LINE, run in parallel: a whole-song call outlives the gateway's 150 s idle window (seen live
@@ -93,6 +126,56 @@ const SCHEMA = {
           render_prompt: { type: "string", description: "the full prompt for the renderer: world, characters with wardrobe and jewelry, beats in order, camera, light, 'photographed, not animated'; for garment_image_to_video start with the hero description verbatim" },
           performance_plate_prompt: { type: "string", description: "for performance_plate scenes: the plate video prompt with the centre-foreground left clear for the artist and the action staged mid/background; empty string otherwise" },
         } } },
+    },
+  },
+};
+
+// Single-scene schema for the non-"all" modes (B4). It is the motion_story_v1 scene
+// contract — purpose, visual, the motion beats (entrance → primary → secondary → exit),
+// the camera move/framing/angle, the sound cue and the transition OBJECT that becomes the
+// next scene — so the template actually drives the generator instead of only describing
+// what it should do. `config/treatment_templates/motion_story_v1.json` is the source.
+//
+// A separate schema on purpose: "all" keeps the three-scene SCHEMA above untouched, so no
+// existing caller sees its output shape move.
+const SCENE_SCHEMA = {
+  name: "lyric_scene_motion",
+  strict: true,
+  schema: {
+    type: "object", additionalProperties: false, required: ["ref", "text", "scene"],
+    properties: {
+      ref: { type: "string" }, text: { type: "string" },
+      scene: { type: "object", additionalProperties: false,
+        required: ["title", "purpose", "visual", "motion", "camera", "sound", "transition", "required_elements", "realism_risk", "risk_reason", "render_prompt"],
+        properties: {
+          title: { type: "string" },
+          purpose: { type: "string", description: "the exact idea this scene adds — one sentence" },
+          visual: { type: "string", description: "composition, character, objects, light, surfaces" },
+          motion: { type: "object", additionalProperties: false, required: ["entrance", "primary", "secondary", "exit"],
+            properties: {
+              entrance: { type: "string", description: "how the scene arrives" },
+              primary: { type: "string", description: "the main action" },
+              secondary: { type: "string", description: "the reaction to it" },
+              exit: { type: "string", description: "how it leaves" },
+            } },
+          camera: { type: "object", additionalProperties: false, required: ["move", "framing", "angle", "lens"],
+            properties: {
+              move: { type: "string", enum: ["push", "pull", "truck", "pedestal", "crane", "orbit", "whip_pan", "snap_zoom", "dolly_zoom", "static"], description: "static only when motivated" },
+              framing: { type: "string", enum: ["extreme_wide", "wide", "medium_wide", "medium", "medium_close", "close", "extreme_close"] },
+              angle: { type: "string", enum: ["eye", "low", "high", "over_shoulder", "birds_eye", "worms_eye", "dutch", "pov"] },
+              lens: { type: "string" },
+            } },
+          sound: { type: "string", description: "music cue, ambience, synchronised tactile effect" },
+          transition: { type: "object", additionalProperties: false, required: ["object", "preset"],
+            properties: {
+              object: { type: "string", description: "the visible object that physically becomes the next scene" },
+              preset: { type: "string", enum: ["cut", "crossfade_1", "crossfade_2", "dip_black", "dip_white", "flash", "whip_left", "whip_right", "whip_up", "zoom_punch", "speed_ramp", "strobe_16", "luma_wipe", "glitch", "light_leak", "film_burn", "match_cut"] },
+            } },
+          required_elements: { type: "array", items: { type: "string" }, description: "the things that MUST be in frame, named as the lyric names them" },
+          realism_risk: { type: "string", enum: ["low", "medium", "high"] },
+          risk_reason: { type: "string" },
+          render_prompt: { type: "string", description: "the full self-contained prompt for the renderer, ending 'photographed on a cinema camera, photoreal, no animation look'" },
+        } },
     },
   },
 };
@@ -139,23 +222,45 @@ serve(async (req) => {
   const limits = (body.rendererLimits ?? []).map((r) => `- ${r}`).join("\n") || "- (none stated)";
 
   const exemplars = (body.exemplars ?? []).map((e, n) => `${n + 1}. ${e}`).join("\n") || "- (none supplied)";
-  const system = [
-    "You are the creative director of a photoreal, big-budget-looking music video. The job is to BRING EVERY LYRIC TO LIFE at the level of the artist's own exemplars below — worlds and characters a viewer remembers, staged so a camera could have witnessed them. Dull is a failure: a man walking down a corridor is not a scene.",
-    "For every line produce three scenes, one of each kind: (1) world — a place and its inhabitants built around the line, the artist absent or present as a character (a model opens a door, flicks a switch, the room is the arctic: penguins and polar bears in diamond tennis chains and Cuban links, a half-snowman half-human in urban winter gear with diamond gold teeth walking around as if everything is normal); (2) performance_plate — the artist raps in the foreground while the line plays out BEHIND him with real depth (a fashion show running behind him; a Bentley truck passing followed by four kids carrying a wheel-less car on their shoulders, one at each wheel; a luxury car pulling up and reporters hopping out to film him); (3) garment_character — the artist in the locked garment, animated from his still, doing one thing the line implies.",
-    "Specify everything: the world's architecture, weather, light and surfaces; every character's wardrobe and jewelry by name (diamond tennis chains, Cuban links, grills, gold teeth), and the behaviour that makes the impossible read as normal; the beats in order with seconds; the camera; the FX. Characters other than the artist are invented people or creatures — never a real public figure. No readable text or logos. No crowds beyond what the beat needs.",
-    "render_prompt must be self-contained and photographic: lenses, light, textures, motion; end with 'photographed on a cinema camera, photoreal, no animation look'. For garment_character scenes the render_prompt starts with the hero description VERBATIM and ends with: keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere. For performance_plate scenes also write performance_plate_prompt: the plate alone, the centre-foreground left clear for the artist, the action staged in the mid-ground and background so the space reads deep.",
-    "Each scene is for one clip of about " + clipSeconds + " seconds. Rate realism_risk honestly against the renderer limits; a high-risk idea is welcome when it is strong — the gate downstream decides.",
-    "The artist's exemplars (this is the bar):\n" + exemplars,
-    "Locked rules (must hold in every prompt):\n" + rules,
-    "Renderer limits:\n" + limits,
-  ].join("\n\n");
+
+  // --- mode + template (additive; absent = the behaviour that shipped) ------
+  if (body.mode !== undefined && !isLyricMode(body.mode)) return json(400, { error: "bad_mode", detail: "mode must be all | literal | surreal | performance" });
+  const mode: LyricMode = body.mode ?? "all";
+
+  // The template is resolved BEFORE the cost gate and the dry run, so a dry run can
+  // report which template it would have used — that is the whole point of asking for
+  // one. Seed rows only: a template is a global, not something a caller can inject.
+  let templateName: string | null = null;
+  let templateBody: string | null = null;
+  if (body.template?.trim()) {
+    const { data: templates, error: tErr } = await admin
+      .from("prompt_templates")
+      .select("name, template_body, default_settings_json")
+      .eq("is_seed", true);
+    if (tErr) return json(500, { error: "template_query_failed", detail: tErr.message });
+    const row = (templates ?? []).find((t) => templateMatches(t, body.template!));
+    if (!row) return json(400, { error: "unknown_template", detail: body.template, available: (templates ?? []).map((t) => t.name) });
+    templateName = row.name;
+    templateBody = renderTemplate(row.template_body, templateSlots(body.templateContext));
+  }
+
+  const system = buildSystemPrompt({
+    mode,
+    clipSeconds,
+    exemplars,
+    rules,
+    limits,
+    templateBody,
+    shot: body.shot ?? null,
+  });
   const context = { heroDescription: body.heroDescription, currentEnvironment: body.environment, style: body.style ?? null };
-  const estInputTokens = body.lines.length * Math.ceil((system.length + JSON.stringify(context).length + 200 + JSON.stringify(SCHEMA).length) / 3.5);
-  const estOutputTokens = Math.min(MAX_OUTPUT_TOKENS, body.lines.length * 3 * 450 + 200);
+  const activeSchema = mode === "all" ? SCHEMA : SCENE_SCHEMA;
+  const estInputTokens = body.lines.length * Math.ceil((system.length + JSON.stringify(context).length + 200 + JSON.stringify(activeSchema).length) / 3.5);
+  const estOutputTokens = Math.min(MAX_OUTPUT_TOKENS, body.lines.length * scenesPerLine(mode) * 450 + 200);
   const price = PRICE_PER_M[model] ?? { input: 5, output: 25 };
   const estimatedCostUsd = Number(((estInputTokens * price.input + estOutputTokens * price.output) / 1_000_000).toFixed(4));
   const maxCostUsd = Number(body.maxCostUsd ?? DEFAULT_MAX_COST_USD);
-  const plan = { lines: body.lines.length, clipSeconds, estInputTokens, estOutputTokens, estimatedCostUsd, maxCostUsd, parallel: PARALLEL };
+  const plan = { lines: body.lines.length, mode, template: templateName, clipSeconds, estInputTokens, estOutputTokens, estimatedCostUsd, maxCostUsd, parallel: PARALLEL };
   if (estimatedCostUsd > maxCostUsd) return json(200, { ok: false, error: "cost_gate", model, ...plan });
   if (body.dryRun) return json(200, { ok: true, dryRun: true, billed: false, model, ...plan });
 
@@ -165,7 +270,7 @@ serve(async (req) => {
       headers: { Authorization: `Bearer ${xaiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model, temperature: 1.0, max_tokens: 4000,
-        response_format: { type: "json_schema", json_schema: SCHEMA },
+        response_format: { type: "json_schema", json_schema: mode === "all" ? SCHEMA : SCENE_SCHEMA },
         messages: [{ role: "system", content: system }, { role: "user", content: JSON.stringify({ ...context, line }) }],
       }),
     });

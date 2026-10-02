@@ -92,6 +92,23 @@ vi.mock("@/lib/queries/shots", () => ({
   useBulkCreateShots: () => ({ mutateAsync: vi.fn() }),
 }));
 
+// The page's react-query hooks are mocked the same way the rest are: the test asserts the
+// surface is wired, not that react-query works. (Before these three were added the file
+// threw "No QueryClient set" from useLyricLines and both tests were red.)
+vi.mock("@/lib/queries/lyricLines", () => ({
+  useLyricLines: () => ({ data: [] }),
+}));
+
+vi.mock("@/lib/queries/shotOverrides", () => ({
+  useShotOverrides: () => ({ data: {} }),
+  useUpsertShotOverride: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteShotOverride: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
+vi.mock("@/lib/queries/promptTemplates", () => ({
+  usePromptTemplates: () => ({ data: [] }),
+}));
+
 beforeEach(() => {
   localStorage.clear();
   _internal.reset();
@@ -125,5 +142,17 @@ describe("TreatmentBuilderPage integration", () => {
     // director's surface — engineering-stage vocabulary must never leak into it.
     const text = container.textContent ?? "";
     expect(text).not.toMatch(/keyframe|\bSAM\b|temporal|reconstruction|propagation/i);
+  });
+
+  it("gives every storyboard box an override control (B3)", () => {
+    render(<TreatmentBuilderPage projectId="p1" />);
+    // One per clip in the saved treatment — the block only renders under the page's
+    // ShotOverrideProvider, so this also proves the provider is mounted.
+    expect(screen.getAllByTestId("shot-override")).toHaveLength(2);
+  });
+
+  it("offers a template picker on the brief (B4)", () => {
+    render(<TreatmentBuilderPage projectId="p1" />);
+    expect(screen.getByText("Template (optional)")).toBeInTheDocument();
   });
 });
