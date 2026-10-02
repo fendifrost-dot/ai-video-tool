@@ -34,7 +34,7 @@ handheld from camera_engine.camera_path, the lens stack from lens_presets.json) 
 The move spans exactly the sub-slot's window inside the source clip, so the assembler can cut the sub-slot out of the
 variant with the slot's own masterStart. Nothing here knows a project or a song.
 """
-import argparse, hashlib, json, math, os, subprocess, sys
+import argparse, hashlib, json, math, os, subprocess, sys, threading
 import numpy as np, cv2
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(ROOT, "scripts", "_lib"))
@@ -240,36 +240,49 @@ def render(a):
             todo.append((p, sub))
     print(f"{len(todo)} variants to render")
     os.makedirs(os.path.join(os.path.dirname(a.plan), "variants"), exist_ok=True)
-    with job("coverage", need_gb=1.0, out=a.plan):
-        for p, sub in todo:
-            if p.get("matte_dir") and p.get("plate") and os.path.isdir(p["matte_dir"]):
-                # 2.5D renders only the sub-slot's WINDOW (+ the assembler's handle on each side), not the whole slot:
-                # a slot cut three ways used to be rendered three times over. The variant's masterStart moves with it.
-                n_m = len([f for f in os.listdir(p["matte_dir"]) if f.startswith("alpha_")])
-                w0, w1 = float(sub["move"].get("start", 0.0)), float(sub["move"].get("end", 1.0)); hnd = int(round(a.handle * a.fps))
-                f0 = max(0, int(math.floor(w0 * n_m)) - hnd); f1 = min(n_m, int(math.ceil(w1 * n_m)) + hnd)
-                span = max(1, f1 - f0)
-                move = dict(sub["move"], start=round((w0 * n_m - f0) / span, 5), end=round((w1 * n_m - f0) / span, 5))
-                spec = {"move": move, "lens": sub["lens"], "handheld": sub["handheld"]}
-                cmd = [sys.executable, os.path.join(HERE, "camera_engine.py"), "--matte-dir", p["matte_dir"], "--plate", p["plate"], "--spec", json.dumps(spec), "--out", sub["variant"], "--audio", p["source"], "--size", a.size, "--fps", str(a.fps), "--crf", str(a.crf), "--range", f"{f0}:{f1}"]
-                if p.get("plate_loop"): cmd.append("--plate-loop")
-                run(cmd)
-                # the window starts f0 frames into the slot: shift the variant's masterStart so the assembler's clock holds
+    lock = threading.Lock()
+
+    def one(p, sub):
+        if p.get("matte_dir") and p.get("plate") and os.path.isdir(p["matte_dir"]):
+            # 2.5D renders only the sub-slot's WINDOW (+ the assembler's handle on each side), not the whole slot:
+            # a slot cut three ways used to be rendered three times over. The variant's masterStart moves with it.
+            n_m = len([f for f in os.listdir(p["matte_dir"]) if f.startswith("alpha_")])
+            w0, w1 = float(sub["move"].get("start", 0.0)), float(sub["move"].get("end", 1.0)); hnd = int(round(a.handle * a.fps))
+            f0 = max(0, int(math.floor(w0 * n_m)) - hnd); f1 = min(n_m, int(math.ceil(w1 * n_m)) + hnd)
+            span = max(1, f1 - f0)
+            move = dict(sub["move"], start=round((w0 * n_m - f0) / span, 5), end=round((w1 * n_m - f0) / span, 5))
+            spec = {"move": move, "lens": sub["lens"], "handheld": sub["handheld"]}
+            cmd = [sys.executable, os.path.join(HERE, "camera_engine.py"), "--matte-dir", p["matte_dir"], "--plate", p["plate"], "--spec", json.dumps(spec), "--out", sub["variant"], "--audio", p["source"], "--size", a.size, "--fps", str(a.fps), "--crf", str(a.crf), "--range", f"{f0}:{f1}"]
+            if p.get("plate_loop"): cmd.append("--plate-loop")
+            run(cmd)
+            # the window starts f0 frames into the slot: shift the variant's masterStart so the assembler's clock holds
+            with lock:
                 rpath = os.path.join(os.path.dirname(a.plan), "renders_coverage.json"); R = json.load(open(rpath))
                 if sub["id"] in R and R[sub["id"]].get("file") == sub["variant"] and p.get("masterStart") is not None:
                     R[sub["id"]]["masterStart"] = round(float(p["masterStart"]) + f0 / a.fps, 4); R[sub["id"]]["window_frames"] = [f0, f1]
                     json.dump(R, open(rpath, "w"), indent=1)
-                mode = f"2.5d[{f0}:{f1}]"
-            else:
-                render_2d(p["source"], sub["variant"], sub["move"], sub["handheld"], sub["lens"], a.fps, W, H, a.crf); mode = "2d"
-            print(sub["id"], mode, sub["move"]["type"], os.path.basename(sub["variant"]), flush=True)
+            mode = f"2.5d[{f0}:{f1}]"
+        else:
+            render_2d(p["source"], sub["variant"], sub["move"], sub["handheld"], sub["lens"], a.fps, W, H, a.crf); mode = "2d"
+        print(sub["id"], mode, sub["move"]["type"], os.path.basename(sub["variant"]), flush=True)
+
+    # --workers renders variants side by side (2.5D variants are engine subprocesses; 2D ones are cv2 work that
+    # releases the GIL). The governor's need_gb is per worker: ~1.5 GB at 1080p for an engine process.
+    workers = max(1, int(a.workers))
+    with job("coverage", need_gb=1.5 * workers, out=a.plan):
+        if workers == 1:
+            for p, sub in todo: one(p, sub)
+        else:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=workers) as ex:
+                for f in [ex.submit(one, p, sub) for p, sub in todo]: f.result()
 
 
 def main():
     ap = argparse.ArgumentParser(); sp = ap.add_subparsers(dest="cmd", required=True)
     p = sp.add_parser("plan"); p.add_argument("--shotspecs", required=True); p.add_argument("--renders", required=True); p.add_argument("--out", required=True); p.add_argument("--bpm", type=float, required=True)
     p.add_argument("--lyric-lines", default=None); p.add_argument("--presets", default=PRESETS_DEFAULT); p.add_argument("--angles", type=int, default=1, help="0 = no generated-angle requests (camera moves only)"); p.add_argument("--seed", type=int, default=7)
-    r = sp.add_parser("render"); r.add_argument("--plan", required=True); r.add_argument("--size", default="1080x1920"); r.add_argument("--fps", type=int, default=24); r.add_argument("--crf", type=int, default=16); r.add_argument("--force", action="store_true"); r.add_argument("--handle", type=float, default=1.0, help="seconds rendered beyond the sub-slot window on each side (the assembler's transition handles)")
+    r = sp.add_parser("render"); r.add_argument("--plan", required=True); r.add_argument("--size", default="1080x1920"); r.add_argument("--fps", type=int, default=24); r.add_argument("--crf", type=int, default=16); r.add_argument("--force", action="store_true"); r.add_argument("--handle", type=float, default=1.0, help="seconds rendered beyond the sub-slot window on each side (the assembler's transition handles)"); r.add_argument("--workers", type=int, default=1, help="variants rendered side by side (2 on an 8 GB / 2-core box)")
     a = ap.parse_args()
     plan(a) if a.cmd == "plan" else render(a)
 

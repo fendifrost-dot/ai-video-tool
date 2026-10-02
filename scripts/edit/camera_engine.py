@@ -128,12 +128,17 @@ def blend_levels(levels, amount):
     return a * (1 - w) + b * w
 
 
+_DISTORT_MAPS = {}
 def radial_distort(img, k1):
     if abs(k1) < 1e-6: return img
-    H, W = img.shape[:2]; cx, cy = W / 2, H / 2; r0 = math.hypot(cx, cy)
-    xs, ys = np.meshgrid(np.arange(W, dtype=np.float32), np.arange(H, dtype=np.float32))
-    nx, ny = (xs - cx) / r0, (ys - cy) / r0; r2 = nx * nx + ny * ny; f = 1 + k1 * r2
-    return cv2.remap(img, (cx + nx * f * r0).astype(np.float32), (cy + ny * f * r0).astype(np.float32), cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+    H, W = img.shape[:2]; key = (W, H, round(k1, 5))
+    maps = _DISTORT_MAPS.get(key)
+    if maps is None:                                     # the maps depend only on the frame size and k1: build once per run
+        cx, cy = W / 2, H / 2; r0 = math.hypot(cx, cy)
+        xs, ys = np.meshgrid(np.arange(W, dtype=np.float32), np.arange(H, dtype=np.float32))
+        nx, ny = (xs - cx) / r0, (ys - cy) / r0; r2 = nx * nx + ny * ny; f = 1 + k1 * r2
+        maps = _DISTORT_MAPS[key] = ((cx + nx * f * r0).astype(np.float32), (cy + ny * f * r0).astype(np.float32))
+    return cv2.remap(img, maps[0], maps[1], cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
 
 
 def chromatic(img, px):
