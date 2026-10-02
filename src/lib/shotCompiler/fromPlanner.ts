@@ -177,9 +177,12 @@ export function phrasesFromShotSpecs(
   for (const spec of specs) {
     if (spec.shotType === "performance") continue;
     const lines = lyricsForShot(lyricLines, spec.timeline).map((l) => l.text).join(" / ");
+    // A box the director overrode (by hand, or from the lyrics) is described by its DIRECTION: the generated purpose
+    // and environment describe the scene that was replaced, and leading with them would compile the old picture with
+    // the new elements pasted on.
+    const overridden = spec.origin === "override" && spec.performanceDirection.trim().length > 0;
     const scene = [
-      spec.environment.description || spec.environment.location,
-      spec.purpose,
+      ...(overridden ? [spec.performanceDirection] : [spec.environment.description || spec.environment.location, spec.purpose]),
       spec.requiredElements.length ? `Must include: ${spec.requiredElements.join(", ")}.` : "",
     ]
       .map((s) => s?.trim())

@@ -475,4 +475,20 @@ describe("phrases come from the planner and the storyboard (A2)", () => {
     expect(shot.kind).toBe("world");
     expect(shot.prompt).toBe(w.prompt);
   });
+
+  it("an overridden card compiles from the director's direction, not from the scene it replaced", () => {
+    const card = parseShotSpec({
+      id: "clip-06", purpose: "Close-up of white YSL logo on black jacket fabric", kind: "broll", shotType: "b_roll",
+      timeline: { start: 19, end: 23 }, environment: { description: "Black background" },
+      performanceDirection: "Four boys shoulder a wheel-less sedan off the curb; the Bentley idles past; they walk it out of frame.",
+      requiredElements: ["a wheel-less sedan carried on shoulders"], origin: "override",
+    });
+    const w = phrasesFromShotSpecs([card], [])[0] as Extract<CompilerPhrase, { kind: "world" }>;
+    expect(w.prompt).toBe("Four boys shoulder a wheel-less sedan off the curb; the Bentley idles past; they walk it out of frame. Must include: a wheel-less sedan carried on shoulders.");
+    expect(w.prompt).not.toContain("YSL logo");
+    expect(w.prompt).not.toContain("Black background");
+    // a generated card (no override) is unchanged
+    const gen = phrasesFromShotSpecs([{ ...card, origin: "generated" }], [])[0] as Extract<CompilerPhrase, { kind: "world" }>;
+    expect(gen.prompt.startsWith("Black background Close-up of white YSL logo")).toBe(true);
+  });
 });
