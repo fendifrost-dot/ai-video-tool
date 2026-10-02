@@ -1,5 +1,11 @@
 # The combined test round — paid half (runbook, rev 2 · 2026-10-02)
 
+> **Done, another way (2026-10-02, night).** The round ran from the signed-in app's **Runs** page
+> (Projects → the project → Advanced → Runs): paste or load a `shots.json`, attach the source clips, press Run, confirm the amount. No
+> machine credential was needed. Results and what they say: `docs/research/results/2026-10-02-adjustments/ADJUSTMENTS_2026-10-02.md`
+> § 10 and `docs/handoffs/round_2026-10-02/results/`. The steps below still work for a runner that has
+> `AVT_BATCH_SECRET`; they are no longer the only way.
+
 Rev 1 of this file could not be run: it asked for a browser JWT in `/tmp/jwt.txt` (no agent session has one) and for
 inputs that only existed in a chat attachment and in the Cowork sandbox's scratch disk. Both are fixed here:
 
