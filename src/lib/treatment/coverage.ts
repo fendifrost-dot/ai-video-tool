@@ -1,6 +1,6 @@
 /**
  * Coverage defaults for the storyboard (Fendi, 2026-10-02): a performance card gets a camera move and a framing by
- * default; "static" is an explicit choice, never the absence of one. The scripts lane (scripts/edit/coverage.py) cuts
+ * default; "static" is an explicit choice, never the absence of one. The scripts lane (scripts/edit/camera_coverage.py) cuts
  * every performance slot into moving sub-shots from config/coverage_presets.json; this module gives the cards the same
  * defaults at treatment time so what the storyboard shows is what the cut will do. The presets below mirror the JSON
  * (the test asserts they agree); the JSON is the source of truth.
