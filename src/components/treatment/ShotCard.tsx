@@ -7,6 +7,7 @@ import {
   MapPin,
   Megaphone,
   Move,
+  Quote,
   Scissors,
   Shirt,
   Sparkles,
@@ -14,6 +15,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { ShotSpec } from "@/lib/treatment/shotSpec";
+import type { ShotLyric } from "@/lib/lyrics/lyricsForShot";
 import { PrevisFrame } from "./PrevisFrame";
 import {
   cameraAngleLabel,
@@ -107,12 +109,18 @@ export function ShotCard({
   spec,
   index,
   energy,
+  lyrics,
+  lyricState,
   className,
 }: {
   spec: ShotSpec;
   /** 1-based position on the timeline, shown as the slate number. */
   index?: number;
   energy?: ShotEnergy | null;
+  /** The lyric lines sung inside this shot's window (lyricsForShot). */
+  lyrics?: ShotLyric[];
+  /** "instrumental" when the song is aligned and nothing is sung here; "unknown" before alignment. */
+  lyricState?: "lyrics" | "instrumental" | "unknown";
   className?: string;
 }) {
   const duration = Math.max(0, spec.timeline.end - spec.timeline.start);
@@ -169,6 +177,39 @@ export function ShotCard({
             <p className="mt-0.5 text-sm leading-snug text-foreground/80">{spec.purpose}</p>
           </div>
         </div>
+
+        {/* Lyrics sung inside this window ------------------------------------ */}
+        {lyrics && lyrics.length > 0 ? (
+          <div
+            className="rounded-lg border border-amber-400/20 bg-amber-400/5 px-3 py-2"
+            data-testid="shot-lyrics"
+          >
+            <div className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-300/80">
+              <Quote className="h-3 w-3" />
+              Lyrics in this shot
+              {lyrics.some((l) => l.section === "hook") && (
+                <span className="ml-1 rounded-full bg-amber-400/15 px-1.5 py-px text-[9px] normal-case tracking-normal text-amber-200">
+                  hook
+                </span>
+              )}
+            </div>
+            {lyrics.map((l) => (
+              <p key={l.lineIndex} className="text-sm italic leading-snug text-foreground/90">
+                {l.cutIn ? "…" : ""}
+                {l.text}
+                {l.cutOut ? "…" : ""}
+                <span className="ml-2 font-mono text-[10px] not-italic text-foreground/35">
+                  {formatTimecode(l.start)}
+                </span>
+              </p>
+            ))}
+          </div>
+        ) : lyricState === "instrumental" ? (
+          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-foreground/40">
+            <Quote className="h-3 w-3" />
+            Instrumental — no lyrics in this window
+          </div>
+        ) : null}
 
         {/* Camera chips: framing · angle ------------------------------------ */}
         {(framing || angle) && (

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Clapperboard } from "lucide-react";
 import type { ShotSpec } from "@/lib/treatment/shotSpec";
+import { lyricsForShot, lyricStateForShot, type LyricLine } from "@/lib/lyrics/lyricsForShot";
 import { ShotCard, type ShotEnergy } from "./ShotCard";
 import { formatDuration } from "./shotLabels";
 
@@ -17,10 +18,13 @@ export function ShotStoryboard({
   specs,
   /** Optional beat-energy accent per shot id (from the clip grid). */
   energyById,
+  /** Timed lyric lines of the song (useLyricLines); each card shows the lines sung inside its window. */
+  lyricLines,
   className,
 }: {
   specs: ShotSpec[];
   energyById?: Record<string, ShotEnergy>;
+  lyricLines?: LyricLine[];
   className?: string;
 }) {
   const ordered = useMemo(
@@ -69,6 +73,8 @@ export function ShotStoryboard({
             spec={spec}
             index={i + 1}
             energy={energyById?.[spec.id] ?? null}
+            lyrics={lyricLines ? lyricsForShot(lyricLines, spec.timeline) : undefined}
+            lyricState={lyricLines ? lyricStateForShot(lyricLines, spec.timeline) : "unknown"}
           />
         ))}
       </div>
