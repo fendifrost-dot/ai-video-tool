@@ -538,6 +538,65 @@ export type Database = {
         }
         Relationships: []
       }
+      lyric_lines: {
+        Row: {
+          block: number | null
+          confidence: number
+          created_at: string
+          end_seconds: number
+          id: string
+          line_index: number
+          project_id: string
+          section: string
+          source: string
+          start_seconds: number
+          text: string
+          updated_at: string
+          user_id: string
+          words_json: Json
+        }
+        Insert: {
+          block?: number | null
+          confidence?: number
+          created_at?: string
+          end_seconds: number
+          id?: string
+          line_index: number
+          project_id: string
+          section?: string
+          source?: string
+          start_seconds: number
+          text: string
+          updated_at?: string
+          user_id: string
+          words_json?: Json
+        }
+        Update: {
+          block?: number | null
+          confidence?: number
+          created_at?: string
+          end_seconds?: number
+          id?: string
+          line_index?: number
+          project_id?: string
+          section?: string
+          source?: string
+          start_seconds?: number
+          text?: string
+          updated_at?: string
+          user_id?: string
+          words_json?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lyric_lines_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       manufacturing_packages: {
         Row: {
           created_at: string
@@ -1983,6 +2042,31 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      lyric_lines_in_window: {
+        Args: { p_end: number; p_project: string; p_start: number }
+        Returns: {
+          block: number | null
+          confidence: number
+          created_at: string
+          end_seconds: number
+          id: string
+          line_index: number
+          project_id: string
+          section: string
+          source: string
+          start_seconds: number
+          text: string
+          updated_at: string
+          user_id: string
+          words_json: Json
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "lyric_lines"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       reap_stale_jacket_inpaints: { Args: never; Returns: Json }
     }
     Enums: {
