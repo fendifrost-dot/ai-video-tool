@@ -1,0 +1,3453 @@
+{
+ "project_id": "764a63d2-93cd-44f3-905f-292f14ab2f51",
+ "song": "song.wav",
+ "bpm": 122.0,
+ "model": "small",
+ "generated": "2026-10-02T02:09:25Z",
+ "coverage": 0.685,
+ "lines_reordered": 0,
+ "lines": [
+  {
+   "line_index": 0,
+   "section": "verse",
+   "block": 0,
+   "text": "You don\u2019t gotta cut the lights on",
+   "start": 14.33,
+   "end": 16.72,
+   "confidence": 0.29,
+   "words": [
+    {
+     "w": "You",
+     "start": 14.33,
+     "end": 14.68,
+     "matched": false
+    },
+    {
+     "w": "don\u2019t",
+     "start": 15.03,
+     "end": 15.38,
+     "matched": false
+    },
+    {
+     "w": "gotta",
+     "start": 15.73,
+     "end": 16.08,
+     "matched": false
+    },
+    {
+     "w": "cut",
+     "start": 16.43,
+     "end": 16.78,
+     "matched": false
+    },
+    {
+     "w": "the",
+     "start": 16.08,
+     "end": 16.18,
+     "matched": true
+    },
+    {
+     "w": "lights",
+     "start": 16.18,
+     "end": 16.44,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 16.44,
+     "end": 16.72,
+     "matched": true
+    }
+   ],
+   "beat_start": 29.14,
+   "beat_end": 34.0,
+   "suspect": false
+  },
+  {
+   "line_index": 1,
+   "section": "verse",
+   "block": 0,
+   "text": "This ice on",
+   "start": 16.72,
+   "end": 17.52,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "This",
+     "start": 16.72,
+     "end": 16.987,
+     "matched": false
+    },
+    {
+     "w": "ice",
+     "start": 16.987,
+     "end": 17.253,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 17.253,
+     "end": 17.52,
+     "matched": false
+    }
+   ],
+   "beat_start": 34.0,
+   "beat_end": 35.62,
+   "suspect": true
+  },
+  {
+   "line_index": 2,
+   "section": "verse",
+   "block": 0,
+   "text": "YSL I wear em like They white ones",
+   "start": 17.52,
+   "end": 19.48,
+   "confidence": 0.88,
+   "words": [
+    {
+     "w": "YSL",
+     "start": 17.52,
+     "end": 18.1,
+     "matched": true
+    },
+    {
+     "w": "I",
+     "start": 18.1,
+     "end": 18.26,
+     "matched": true
+    },
+    {
+     "w": "wear",
+     "start": 18.26,
+     "end": 18.4,
+     "matched": true
+    },
+    {
+     "w": "em",
+     "start": 18.4,
+     "end": 18.5,
+     "matched": true
+    },
+    {
+     "w": "like",
+     "start": 18.5,
+     "end": 18.7,
+     "matched": false
+    },
+    {
+     "w": "They",
+     "start": 18.7,
+     "end": 18.98,
+     "matched": true
+    },
+    {
+     "w": "white",
+     "start": 18.98,
+     "end": 19.16,
+     "matched": true
+    },
+    {
+     "w": "ones",
+     "start": 19.16,
+     "end": 19.48,
+     "matched": true
+    }
+   ],
+   "beat_start": 35.62,
+   "beat_end": 39.61,
+   "suspect": false
+  },
+  {
+   "line_index": 3,
+   "section": "verse",
+   "block": 0,
+   "text": "I don\u2019t follow brands",
+   "start": 19.48,
+   "end": 20.4,
+   "confidence": 0.5,
+   "words": [
+    {
+     "w": "I",
+     "start": 19.48,
+     "end": 19.82,
+     "matched": true
+    },
+    {
+     "w": "don\u2019t",
+     "start": 19.82,
+     "end": 19.95,
+     "matched": false
+    },
+    {
+     "w": "follow",
+     "start": 19.95,
+     "end": 20.08,
+     "matched": false
+    },
+    {
+     "w": "brands",
+     "start": 20.08,
+     "end": 20.4,
+     "matched": true
+    }
+   ],
+   "beat_start": 39.61,
+   "beat_end": 41.48,
+   "suspect": false
+  },
+  {
+   "line_index": 4,
+   "section": "verse",
+   "block": 0,
+   "text": "Follow designers",
+   "start": 20.54,
+   "end": 21.28,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "Follow",
+     "start": 20.54,
+     "end": 20.68,
+     "matched": true
+    },
+    {
+     "w": "designers",
+     "start": 20.96,
+     "end": 21.28,
+     "matched": true
+    }
+   ],
+   "beat_start": 41.76,
+   "beat_end": 43.27,
+   "suspect": false
+  },
+  {
+   "line_index": 5,
+   "section": "verse",
+   "block": 0,
+   "text": "The rims 21 don\u2019t ride",
+   "start": 21.28,
+   "end": 22.68,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "The",
+     "start": 21.28,
+     "end": 21.66,
+     "matched": true
+    },
+    {
+     "w": "rims",
+     "start": 21.66,
+     "end": 21.94,
+     "matched": true
+    },
+    {
+     "w": "21",
+     "start": 21.94,
+     "end": 22.28,
+     "matched": true
+    },
+    {
+     "w": "don\u2019t",
+     "start": 22.1,
+     "end": 22.52,
+     "matched": true
+    },
+    {
+     "w": "ride",
+     "start": 22.48,
+     "end": 22.68,
+     "matched": true
+    }
+   ],
+   "beat_start": 43.27,
+   "beat_end": 46.12,
+   "suspect": false
+  },
+  {
+   "line_index": 6,
+   "section": "verse",
+   "block": 0,
+   "text": "No minors",
+   "start": 22.68,
+   "end": 23.38,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "No",
+     "start": 22.68,
+     "end": 22.86,
+     "matched": true
+    },
+    {
+     "w": "minors",
+     "start": 22.86,
+     "end": 23.38,
+     "matched": true
+    }
+   ],
+   "beat_start": 46.12,
+   "beat_end": 47.54,
+   "suspect": false
+  },
+  {
+   "line_index": 7,
+   "section": "verse",
+   "block": 0,
+   "text": "More cameras in the whip",
+   "start": 23.38,
+   "end": 24.32,
+   "confidence": 0.6,
+   "words": [
+    {
+     "w": "More",
+     "start": 23.38,
+     "end": 23.58,
+     "matched": true
+    },
+    {
+     "w": "cameras",
+     "start": 23.58,
+     "end": 23.86,
+     "matched": true
+    },
+    {
+     "w": "in",
+     "start": 23.86,
+     "end": 24.06,
+     "matched": false
+    },
+    {
+     "w": "the",
+     "start": 24.06,
+     "end": 24.14,
+     "matched": true
+    },
+    {
+     "w": "whip",
+     "start": 24.14,
+     "end": 24.32,
+     "matched": false
+    }
+   ],
+   "beat_start": 47.54,
+   "beat_end": 49.45,
+   "suspect": false
+  },
+  {
+   "line_index": 8,
+   "section": "verse",
+   "block": 0,
+   "text": "Than a camera crew",
+   "start": 24.32,
+   "end": 25.12,
+   "confidence": 0.5,
+   "words": [
+    {
+     "w": "Than",
+     "start": 24.32,
+     "end": 24.48,
+     "matched": true
+    },
+    {
+     "w": "a",
+     "start": 24.48,
+     "end": 24.63,
+     "matched": false
+    },
+    {
+     "w": "camera",
+     "start": 24.63,
+     "end": 24.78,
+     "matched": false
+    },
+    {
+     "w": "crew",
+     "start": 24.78,
+     "end": 25.12,
+     "matched": true
+    }
+   ],
+   "beat_start": 49.45,
+   "beat_end": 51.08,
+   "suspect": false
+  },
+  {
+   "line_index": 9,
+   "section": "verse",
+   "block": 0,
+   "text": "All this ice around me",
+   "start": 25.14,
+   "end": 26.24,
+   "confidence": 0.8,
+   "words": [
+    {
+     "w": "All",
+     "start": 25.14,
+     "end": 25.48,
+     "matched": true
+    },
+    {
+     "w": "this",
+     "start": 25.48,
+     "end": 25.56,
+     "matched": false
+    },
+    {
+     "w": "ice",
+     "start": 25.56,
+     "end": 25.74,
+     "matched": true
+    },
+    {
+     "w": "around",
+     "start": 25.74,
+     "end": 25.98,
+     "matched": true
+    },
+    {
+     "w": "me",
+     "start": 25.98,
+     "end": 26.24,
+     "matched": true
+    }
+   ],
+   "beat_start": 51.12,
+   "beat_end": 53.35,
+   "suspect": false
+  },
+  {
+   "line_index": 10,
+   "section": "verse",
+   "block": 0,
+   "text": "Need a Canada goose",
+   "start": 26.24,
+   "end": 27.04,
+   "confidence": 0.75,
+   "words": [
+    {
+     "w": "Need",
+     "start": 26.24,
+     "end": 26.36,
+     "matched": false
+    },
+    {
+     "w": "a",
+     "start": 26.36,
+     "end": 26.48,
+     "matched": true
+    },
+    {
+     "w": "Canada",
+     "start": 26.48,
+     "end": 26.72,
+     "matched": true
+    },
+    {
+     "w": "goose",
+     "start": 26.72,
+     "end": 27.04,
+     "matched": true
+    }
+   ],
+   "beat_start": 53.35,
+   "beat_end": 54.98,
+   "suspect": false
+  },
+  {
+   "line_index": 11,
+   "section": "verse",
+   "block": 0,
+   "text": "So clean but I don\u2019t do",
+   "start": 27.04,
+   "end": 28.2,
+   "confidence": 0.67,
+   "words": [
+    {
+     "w": "So",
+     "start": 27.04,
+     "end": 27.44,
+     "matched": true
+    },
+    {
+     "w": "clean",
+     "start": 27.44,
+     "end": 27.7,
+     "matched": true
+    },
+    {
+     "w": "but",
+     "start": 27.7,
+     "end": 27.86,
+     "matched": true
+    },
+    {
+     "w": "I",
+     "start": 27.86,
+     "end": 28.0,
+     "matched": true
+    },
+    {
+     "w": "don\u2019t",
+     "start": 28.0,
+     "end": 28.1,
+     "matched": false
+    },
+    {
+     "w": "do",
+     "start": 28.1,
+     "end": 28.2,
+     "matched": false
+    }
+   ],
+   "beat_start": 54.98,
+   "beat_end": 57.34,
+   "suspect": false
+  },
+  {
+   "line_index": 12,
+   "section": "verse",
+   "block": 0,
+   "text": "What the janitor do",
+   "start": 28.2,
+   "end": 29.0,
+   "confidence": 0.75,
+   "words": [
+    {
+     "w": "What",
+     "start": 28.2,
+     "end": 28.32,
+     "matched": true
+    },
+    {
+     "w": "the",
+     "start": 28.32,
+     "end": 28.4,
+     "matched": false
+    },
+    {
+     "w": "janitor",
+     "start": 28.4,
+     "end": 28.72,
+     "matched": true
+    },
+    {
+     "w": "do",
+     "start": 28.72,
+     "end": 29.0,
+     "matched": true
+    }
+   ],
+   "beat_start": 57.34,
+   "beat_end": 58.97,
+   "suspect": false
+  },
+  {
+   "line_index": 13,
+   "section": "verse",
+   "block": 0,
+   "text": "My money talk for me",
+   "start": 29.0,
+   "end": 30.02,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "My",
+     "start": 29.0,
+     "end": 29.26,
+     "matched": true
+    },
+    {
+     "w": "money",
+     "start": 29.26,
+     "end": 29.42,
+     "matched": true
+    },
+    {
+     "w": "talk",
+     "start": 29.42,
+     "end": 29.68,
+     "matched": true
+    },
+    {
+     "w": "for",
+     "start": 29.68,
+     "end": 29.9,
+     "matched": true
+    },
+    {
+     "w": "me",
+     "start": 29.9,
+     "end": 30.02,
+     "matched": true
+    }
+   ],
+   "beat_start": 58.97,
+   "beat_end": 61.04,
+   "suspect": false
+  },
+  {
+   "line_index": 14,
+   "section": "verse",
+   "block": 0,
+   "text": "and it be rambling too",
+   "start": 30.02,
+   "end": 31.0,
+   "confidence": 0.4,
+   "words": [
+    {
+     "w": "and",
+     "start": 30.02,
+     "end": 30.127,
+     "matched": false
+    },
+    {
+     "w": "it",
+     "start": 30.127,
+     "end": 30.233,
+     "matched": false
+    },
+    {
+     "w": "be",
+     "start": 30.233,
+     "end": 30.34,
+     "matched": false
+    },
+    {
+     "w": "rambling",
+     "start": 30.34,
+     "end": 30.64,
+     "matched": true
+    },
+    {
+     "w": "too",
+     "start": 30.64,
+     "end": 31.0,
+     "matched": true
+    }
+   ],
+   "beat_start": 61.04,
+   "beat_end": 63.03,
+   "suspect": false
+  },
+  {
+   "line_index": 15,
+   "section": "adlib",
+   "block": 1,
+   "text": "Woooooo",
+   "start": 40.64,
+   "end": 41.04,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "Woooooo",
+     "start": 40.64,
+     "end": 41.04,
+     "matched": true
+    }
+   ],
+   "beat_start": 82.63,
+   "beat_end": 83.45,
+   "suspect": false
+  },
+  {
+   "line_index": 16,
+   "section": "verse",
+   "block": 2,
+   "text": "know you see it",
+   "start": 41.04,
+   "end": 47.6,
+   "confidence": 0.75,
+   "words": [
+    {
+     "w": "know",
+     "start": 41.04,
+     "end": 44.3,
+     "matched": false
+    },
+    {
+     "w": "you",
+     "start": 44.3,
+     "end": 45.98,
+     "matched": true
+    },
+    {
+     "w": "see",
+     "start": 45.98,
+     "end": 47.38,
+     "matched": true
+    },
+    {
+     "w": "it",
+     "start": 47.38,
+     "end": 47.6,
+     "matched": true
+    }
+   ],
+   "beat_start": 83.45,
+   "beat_end": 96.79,
+   "suspect": false
+  },
+  {
+   "line_index": 17,
+   "section": "verse",
+   "block": 2,
+   "text": "Yves Saint Laurent",
+   "start": 47.6,
+   "end": 48.34,
+   "confidence": 0.67,
+   "words": [
+    {
+     "w": "Yves",
+     "start": 47.6,
+     "end": 47.96,
+     "matched": true
+    },
+    {
+     "w": "Saint",
+     "start": 47.96,
+     "end": 48.06,
+     "matched": false
+    },
+    {
+     "w": "Laurent",
+     "start": 48.06,
+     "end": 48.34,
+     "matched": true
+    }
+   ],
+   "beat_start": 96.79,
+   "beat_end": 98.29,
+   "suspect": false
+  },
+  {
+   "line_index": 18,
+   "section": "verse",
+   "block": 2,
+   "text": "On the weekend",
+   "start": 48.34,
+   "end": 48.98,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "On",
+     "start": 48.34,
+     "end": 48.58,
+     "matched": true
+    },
+    {
+     "w": "the",
+     "start": 48.58,
+     "end": 48.72,
+     "matched": true
+    },
+    {
+     "w": "weekend",
+     "start": 48.72,
+     "end": 48.98,
+     "matched": true
+    }
+   ],
+   "beat_start": 98.29,
+   "beat_end": 99.59,
+   "suspect": false
+  },
+  {
+   "line_index": 19,
+   "section": "verse",
+   "block": 2,
+   "text": "Fly on a week day",
+   "start": 48.98,
+   "end": 50.1,
+   "confidence": 0.8,
+   "words": [
+    {
+     "w": "Fly",
+     "start": 48.98,
+     "end": 49.38,
+     "matched": true
+    },
+    {
+     "w": "on",
+     "start": 49.38,
+     "end": 49.6,
+     "matched": true
+    },
+    {
+     "w": "a",
+     "start": 49.6,
+     "end": 49.68,
+     "matched": false
+    },
+    {
+     "w": "week",
+     "start": 49.68,
+     "end": 49.88,
+     "matched": true
+    },
+    {
+     "w": "day",
+     "start": 49.88,
+     "end": 50.1,
+     "matched": true
+    }
+   ],
+   "beat_start": 99.59,
+   "beat_end": 101.87,
+   "suspect": false
+  },
+  {
+   "line_index": 20,
+   "section": "verse",
+   "block": 2,
+   "text": "Never take a cheat day",
+   "start": 50.1,
+   "end": 51.14,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "Never",
+     "start": 50.1,
+     "end": 50.34,
+     "matched": true
+    },
+    {
+     "w": "take",
+     "start": 50.34,
+     "end": 50.52,
+     "matched": true
+    },
+    {
+     "w": "a",
+     "start": 50.52,
+     "end": 50.66,
+     "matched": true
+    },
+    {
+     "w": "cheat",
+     "start": 50.66,
+     "end": 50.84,
+     "matched": true
+    },
+    {
+     "w": "day",
+     "start": 50.84,
+     "end": 51.14,
+     "matched": true
+    }
+   ],
+   "beat_start": 101.87,
+   "beat_end": 103.98,
+   "suspect": false
+  },
+  {
+   "line_index": 21,
+   "section": "verse",
+   "block": 2,
+   "text": "Feel free today",
+   "start": 51.14,
+   "end": 52.02,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "Feel",
+     "start": 51.14,
+     "end": 51.54,
+     "matched": true
+    },
+    {
+     "w": "free",
+     "start": 51.54,
+     "end": 51.74,
+     "matched": true
+    },
+    {
+     "w": "today",
+     "start": 51.74,
+     "end": 52.02,
+     "matched": true
+    }
+   ],
+   "beat_start": 103.98,
+   "beat_end": 105.77,
+   "suspect": false
+  },
+  {
+   "line_index": 22,
+   "section": "verse",
+   "block": 2,
+   "text": "Fly enough to fly away",
+   "start": 52.02,
+   "end": 53.08,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "Fly",
+     "start": 52.02,
+     "end": 52.3,
+     "matched": true
+    },
+    {
+     "w": "enough",
+     "start": 52.3,
+     "end": 52.48,
+     "matched": true
+    },
+    {
+     "w": "to",
+     "start": 52.48,
+     "end": 52.62,
+     "matched": true
+    },
+    {
+     "w": "fly",
+     "start": 52.62,
+     "end": 52.8,
+     "matched": true
+    },
+    {
+     "w": "away",
+     "start": 52.8,
+     "end": 53.08,
+     "matched": true
+    }
+   ],
+   "beat_start": 105.77,
+   "beat_end": 107.93,
+   "suspect": false
+  },
+  {
+   "line_index": 23,
+   "section": "verse",
+   "block": 2,
+   "text": "Drive like a getaway driver",
+   "start": 53.08,
+   "end": 54.26,
+   "confidence": 0.8,
+   "words": [
+    {
+     "w": "Drive",
+     "start": 53.08,
+     "end": 53.32,
+     "matched": true
+    },
+    {
+     "w": "like",
+     "start": 53.32,
+     "end": 53.52,
+     "matched": true
+    },
+    {
+     "w": "a",
+     "start": 53.52,
+     "end": 53.64,
+     "matched": false
+    },
+    {
+     "w": "getaway",
+     "start": 53.64,
+     "end": 53.96,
+     "matched": true
+    },
+    {
+     "w": "driver",
+     "start": 53.96,
+     "end": 54.26,
+     "matched": true
+    }
+   ],
+   "beat_start": 107.93,
+   "beat_end": 110.33,
+   "suspect": false
+  },
+  {
+   "line_index": 24,
+   "section": "verse",
+   "block": 2,
+   "text": "On the highway",
+   "start": 54.26,
+   "end": 54.86,
+   "confidence": 0.67,
+   "words": [
+    {
+     "w": "On",
+     "start": 54.26,
+     "end": 54.5,
+     "matched": true
+    },
+    {
+     "w": "the",
+     "start": 54.5,
+     "end": 54.6,
+     "matched": false
+    },
+    {
+     "w": "highway",
+     "start": 54.6,
+     "end": 54.86,
+     "matched": true
+    }
+   ],
+   "beat_start": 110.33,
+   "beat_end": 111.55,
+   "suspect": false
+  },
+  {
+   "line_index": 25,
+   "section": "verse",
+   "block": 2,
+   "text": "In the city",
+   "start": 54.86,
+   "end": 55.26,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "In",
+     "start": 54.86,
+     "end": 55.02,
+     "matched": true
+    },
+    {
+     "w": "the",
+     "start": 55.02,
+     "end": 55.16,
+     "matched": true
+    },
+    {
+     "w": "city",
+     "start": 55.16,
+     "end": 55.26,
+     "matched": true
+    }
+   ],
+   "beat_start": 111.55,
+   "beat_end": 112.36,
+   "suspect": false
+  },
+  {
+   "line_index": 26,
+   "section": "verse",
+   "block": 2,
+   "text": "where the murder rate high",
+   "start": 55.26,
+   "end": 56.26,
+   "confidence": 0.6,
+   "words": [
+    {
+     "w": "where",
+     "start": 55.26,
+     "end": 55.46,
+     "matched": false
+    },
+    {
+     "w": "the",
+     "start": 55.46,
+     "end": 55.56,
+     "matched": true
+    },
+    {
+     "w": "murder",
+     "start": 55.56,
+     "end": 55.74,
+     "matched": false
+    },
+    {
+     "w": "rate",
+     "start": 55.74,
+     "end": 56.0,
+     "matched": true
+    },
+    {
+     "w": "high",
+     "start": 56.0,
+     "end": 56.26,
+     "matched": true
+    }
+   ],
+   "beat_start": 112.36,
+   "beat_end": 114.4,
+   "suspect": false
+  },
+  {
+   "line_index": 27,
+   "section": "verse",
+   "block": 2,
+   "text": "But we living",
+   "start": 56.26,
+   "end": 56.82,
+   "confidence": 0.67,
+   "words": [
+    {
+     "w": "But",
+     "start": 56.26,
+     "end": 56.42,
+     "matched": true
+    },
+    {
+     "w": "we",
+     "start": 56.42,
+     "end": 56.54,
+     "matched": true
+    },
+    {
+     "w": "living",
+     "start": 56.54,
+     "end": 56.82,
+     "matched": false
+    }
+   ],
+   "beat_start": 114.4,
+   "beat_end": 115.53,
+   "suspect": false
+  },
+  {
+   "line_index": 28,
+   "section": "verse",
+   "block": 2,
+   "text": "Listen what they rap bout",
+   "start": 56.82,
+   "end": 57.88,
+   "confidence": 0.8,
+   "words": [
+    {
+     "w": "Listen",
+     "start": 56.82,
+     "end": 57.22,
+     "matched": true
+    },
+    {
+     "w": "what",
+     "start": 57.22,
+     "end": 57.42,
+     "matched": true
+    },
+    {
+     "w": "they",
+     "start": 57.42,
+     "end": 57.52,
+     "matched": true
+    },
+    {
+     "w": "rap",
+     "start": 57.52,
+     "end": 57.66,
+     "matched": false
+    },
+    {
+     "w": "bout",
+     "start": 57.66,
+     "end": 57.88,
+     "matched": true
+    }
+   ],
+   "beat_start": 115.53,
+   "beat_end": 117.69,
+   "suspect": false
+  },
+  {
+   "line_index": 29,
+   "section": "verse",
+   "block": 2,
+   "text": "Laugh cause we did it",
+   "start": 58.02,
+   "end": 58.8,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "Laugh",
+     "start": 58.02,
+     "end": 58.2,
+     "matched": true
+    },
+    {
+     "w": "cause",
+     "start": 58.2,
+     "end": 58.38,
+     "matched": true
+    },
+    {
+     "w": "we",
+     "start": 58.38,
+     "end": 58.52,
+     "matched": true
+    },
+    {
+     "w": "did",
+     "start": 58.52,
+     "end": 58.68,
+     "matched": true
+    },
+    {
+     "w": "it",
+     "start": 58.68,
+     "end": 58.8,
+     "matched": true
+    }
+   ],
+   "beat_start": 117.97,
+   "beat_end": 119.56,
+   "suspect": false
+  },
+  {
+   "line_index": 30,
+   "section": "verse",
+   "block": 2,
+   "text": "what im whippin cost a home",
+   "start": 58.8,
+   "end": 59.68,
+   "confidence": 0.67,
+   "words": [
+    {
+     "w": "what",
+     "start": 58.8,
+     "end": 58.9,
+     "matched": false
+    },
+    {
+     "w": "im",
+     "start": 58.9,
+     "end": 59.0,
+     "matched": true
+    },
+    {
+     "w": "whippin",
+     "start": 59.0,
+     "end": 59.24,
+     "matched": false
+    },
+    {
+     "w": "cost",
+     "start": 59.24,
+     "end": 59.38,
+     "matched": true
+    },
+    {
+     "w": "a",
+     "start": 59.38,
+     "end": 59.54,
+     "matched": true
+    },
+    {
+     "w": "home",
+     "start": 59.54,
+     "end": 59.68,
+     "matched": true
+    }
+   ],
+   "beat_start": 119.56,
+   "beat_end": 121.35,
+   "suspect": false
+  },
+  {
+   "line_index": 31,
+   "section": "verse",
+   "block": 2,
+   "text": "Got everything but the kitchen",
+   "start": 59.68,
+   "end": 60.8,
+   "confidence": 0.8,
+   "words": [
+    {
+     "w": "Got",
+     "start": 59.68,
+     "end": 59.82,
+     "matched": true
+    },
+    {
+     "w": "everything",
+     "start": 59.82,
+     "end": 60.08,
+     "matched": true
+    },
+    {
+     "w": "but",
+     "start": 60.08,
+     "end": 60.36,
+     "matched": true
+    },
+    {
+     "w": "the",
+     "start": 60.36,
+     "end": 60.48,
+     "matched": true
+    },
+    {
+     "w": "kitchen",
+     "start": 60.48,
+     "end": 60.8,
+     "matched": false
+    }
+   ],
+   "beat_start": 121.35,
+   "beat_end": 123.63,
+   "suspect": false
+  },
+  {
+   "line_index": 32,
+   "section": "hook",
+   "block": 3,
+   "text": "You don\u2019t gotta",
+   "start": 60.8,
+   "end": 63.16,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "You",
+     "start": 60.8,
+     "end": 61.26,
+     "matched": true
+    },
+    {
+     "w": "don\u2019t",
+     "start": 61.26,
+     "end": 63.16,
+     "matched": true
+    },
+    {
+     "w": "gotta",
+     "start": 63.16,
+     "end": 63.16,
+     "matched": true
+    }
+   ],
+   "beat_start": 123.63,
+   "beat_end": 128.43,
+   "suspect": false
+  },
+  {
+   "line_index": 33,
+   "section": "hook",
+   "block": 3,
+   "text": "cut the lights on",
+   "start": 63.16,
+   "end": 63.94,
+   "confidence": 0.5,
+   "words": [
+    {
+     "w": "cut",
+     "start": 63.16,
+     "end": 63.28,
+     "matched": false
+    },
+    {
+     "w": "the",
+     "start": 63.28,
+     "end": 63.38,
+     "matched": true
+    },
+    {
+     "w": "lights",
+     "start": 63.38,
+     "end": 63.64,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 63.64,
+     "end": 63.94,
+     "matched": true
+    }
+   ],
+   "beat_start": 128.43,
+   "beat_end": 130.01,
+   "suspect": false
+  },
+  {
+   "line_index": 34,
+   "section": "hook",
+   "block": 3,
+   "text": "This ice on",
+   "start": 63.94,
+   "end": 64.84,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "This",
+     "start": 63.94,
+     "end": 64.24,
+     "matched": false
+    },
+    {
+     "w": "ice",
+     "start": 64.24,
+     "end": 64.54,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 64.54,
+     "end": 64.84,
+     "matched": false
+    }
+   ],
+   "beat_start": 130.01,
+   "beat_end": 131.84,
+   "suspect": true
+  },
+  {
+   "line_index": 35,
+   "section": "hook",
+   "block": 3,
+   "text": "YSL I wear em Like",
+   "start": 64.84,
+   "end": 65.9,
+   "confidence": 0.8,
+   "words": [
+    {
+     "w": "YSL",
+     "start": 64.84,
+     "end": 65.24,
+     "matched": true
+    },
+    {
+     "w": "I",
+     "start": 65.32,
+     "end": 65.48,
+     "matched": true
+    },
+    {
+     "w": "wear",
+     "start": 65.48,
+     "end": 65.6,
+     "matched": false
+    },
+    {
+     "w": "em",
+     "start": 65.6,
+     "end": 65.72,
+     "matched": true
+    },
+    {
+     "w": "Like",
+     "start": 65.72,
+     "end": 65.9,
+     "matched": true
+    }
+   ],
+   "beat_start": 131.84,
+   "beat_end": 134.0,
+   "suspect": false
+  },
+  {
+   "line_index": 36,
+   "section": "hook",
+   "block": 3,
+   "text": "they white ones",
+   "start": 65.9,
+   "end": 66.39,
+   "confidence": 0.67,
+   "words": [
+    {
+     "w": "they",
+     "start": 65.9,
+     "end": 66.18,
+     "matched": true
+    },
+    {
+     "w": "white",
+     "start": 66.18,
+     "end": 66.34,
+     "matched": true
+    },
+    {
+     "w": "ones",
+     "start": 66.34,
+     "end": 66.39,
+     "matched": false
+    }
+   ],
+   "beat_start": 134.0,
+   "beat_end": 134.99,
+   "suspect": false
+  },
+  {
+   "line_index": 37,
+   "section": "hook",
+   "block": 4,
+   "text": "You don\u2019t gotta",
+   "start": 66.34,
+   "end": 66.39,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "You",
+     "start": 66.34,
+     "end": 66.39,
+     "matched": false
+    },
+    {
+     "w": "don\u2019t",
+     "start": 66.34,
+     "end": 66.39,
+     "matched": false
+    },
+    {
+     "w": "gotta",
+     "start": 66.34,
+     "end": 66.39,
+     "matched": false
+    }
+   ],
+   "beat_start": 134.89,
+   "beat_end": 134.99,
+   "suspect": true
+  },
+  {
+   "line_index": 38,
+   "section": "hook",
+   "block": 4,
+   "text": "cut the lights on",
+   "start": 66.34,
+   "end": 66.39,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "cut",
+     "start": 66.34,
+     "end": 66.39,
+     "matched": false
+    },
+    {
+     "w": "the",
+     "start": 66.34,
+     "end": 66.39,
+     "matched": false
+    },
+    {
+     "w": "lights",
+     "start": 66.34,
+     "end": 66.39,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 66.34,
+     "end": 66.39,
+     "matched": false
+    }
+   ],
+   "beat_start": 134.89,
+   "beat_end": 134.99,
+   "suspect": true
+  },
+  {
+   "line_index": 39,
+   "section": "hook",
+   "block": 4,
+   "text": "This ice on",
+   "start": 66.34,
+   "end": 66.39,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "This",
+     "start": 66.34,
+     "end": 66.39,
+     "matched": false
+    },
+    {
+     "w": "ice",
+     "start": 66.34,
+     "end": 66.39,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 66.34,
+     "end": 66.39,
+     "matched": false
+    }
+   ],
+   "beat_start": 134.89,
+   "beat_end": 134.99,
+   "suspect": true
+  },
+  {
+   "line_index": 40,
+   "section": "hook",
+   "block": 4,
+   "text": "YSL I wear em Like",
+   "start": 66.34,
+   "end": 73.78,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "YSL",
+     "start": 66.34,
+     "end": 66.94,
+     "matched": true
+    },
+    {
+     "w": "I",
+     "start": 66.94,
+     "end": 67.44,
+     "matched": true
+    },
+    {
+     "w": "wear",
+     "start": 67.44,
+     "end": 69.76,
+     "matched": true
+    },
+    {
+     "w": "em",
+     "start": 69.76,
+     "end": 73.58,
+     "matched": true
+    },
+    {
+     "w": "Like",
+     "start": 73.58,
+     "end": 73.78,
+     "matched": true
+    }
+   ],
+   "beat_start": 134.89,
+   "beat_end": 150.02,
+   "suspect": false
+  },
+  {
+   "line_index": 41,
+   "section": "hook",
+   "block": 4,
+   "text": "they white ones",
+   "start": 73.78,
+   "end": 74.7,
+   "confidence": 0.33,
+   "words": [
+    {
+     "w": "they",
+     "start": 73.78,
+     "end": 74.01,
+     "matched": false
+    },
+    {
+     "w": "white",
+     "start": 74.01,
+     "end": 74.24,
+     "matched": false
+    },
+    {
+     "w": "ones",
+     "start": 74.24,
+     "end": 74.7,
+     "matched": true
+    }
+   ],
+   "beat_start": 150.02,
+   "beat_end": 151.89,
+   "suspect": false
+  },
+  {
+   "line_index": 42,
+   "section": "hook",
+   "block": 5,
+   "text": "You don\u2019t gotta",
+   "start": 78.0,
+   "end": 78.86,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "You",
+     "start": 78.0,
+     "end": 78.52,
+     "matched": true
+    },
+    {
+     "w": "don\u2019t",
+     "start": 78.52,
+     "end": 78.8,
+     "matched": true
+    },
+    {
+     "w": "gotta",
+     "start": 78.8,
+     "end": 78.86,
+     "matched": true
+    }
+   ],
+   "beat_start": 158.6,
+   "beat_end": 160.35,
+   "suspect": false
+  },
+  {
+   "line_index": 43,
+   "section": "hook",
+   "block": 5,
+   "text": "cut the lights on",
+   "start": 78.86,
+   "end": 80.233,
+   "confidence": 0.25,
+   "words": [
+    {
+     "w": "cut",
+     "start": 78.86,
+     "end": 79.66,
+     "matched": false
+    },
+    {
+     "w": "the",
+     "start": 79.66,
+     "end": 79.94,
+     "matched": true
+    },
+    {
+     "w": "lights",
+     "start": 79.94,
+     "end": 80.087,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 80.087,
+     "end": 80.233,
+     "matched": false
+    }
+   ],
+   "beat_start": 160.35,
+   "beat_end": 163.14,
+   "suspect": false
+  },
+  {
+   "line_index": 44,
+   "section": "hook",
+   "block": 5,
+   "text": "This ice on",
+   "start": 80.233,
+   "end": 80.673,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "This",
+     "start": 80.233,
+     "end": 80.38,
+     "matched": false
+    },
+    {
+     "w": "ice",
+     "start": 80.38,
+     "end": 80.527,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 80.527,
+     "end": 80.673,
+     "matched": false
+    }
+   ],
+   "beat_start": 163.14,
+   "beat_end": 164.04,
+   "suspect": true
+  },
+  {
+   "line_index": 45,
+   "section": "hook",
+   "block": 5,
+   "text": "YSL I wear em Like",
+   "start": 80.673,
+   "end": 81.62,
+   "confidence": 0.6,
+   "words": [
+    {
+     "w": "YSL",
+     "start": 80.673,
+     "end": 80.82,
+     "matched": false
+    },
+    {
+     "w": "I",
+     "start": 80.82,
+     "end": 80.92,
+     "matched": true
+    },
+    {
+     "w": "wear",
+     "start": 81.2,
+     "end": 81.36,
+     "matched": true
+    },
+    {
+     "w": "em",
+     "start": 81.36,
+     "end": 81.41,
+     "matched": false
+    },
+    {
+     "w": "Like",
+     "start": 81.36,
+     "end": 81.62,
+     "matched": true
+    }
+   ],
+   "beat_start": 164.04,
+   "beat_end": 165.96,
+   "suspect": false
+  },
+  {
+   "line_index": 46,
+   "section": "hook",
+   "block": 5,
+   "text": "they white ones",
+   "start": 81.62,
+   "end": 85.86,
+   "confidence": 0.33,
+   "words": [
+    {
+     "w": "they",
+     "start": 81.62,
+     "end": 82.0,
+     "matched": false
+    },
+    {
+     "w": "white",
+     "start": 82.0,
+     "end": 82.1,
+     "matched": true
+    },
+    {
+     "w": "ones",
+     "start": 82.1,
+     "end": 85.86,
+     "matched": false
+    }
+   ],
+   "beat_start": 165.96,
+   "beat_end": 174.58,
+   "suspect": false
+  },
+  {
+   "line_index": 47,
+   "section": "hook",
+   "block": 6,
+   "text": "You don\u2019t gotta",
+   "start": 85.86,
+   "end": 86.72,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "You",
+     "start": 85.86,
+     "end": 86.38,
+     "matched": true
+    },
+    {
+     "w": "don\u2019t",
+     "start": 86.38,
+     "end": 86.62,
+     "matched": true
+    },
+    {
+     "w": "gotta",
+     "start": 86.62,
+     "end": 86.72,
+     "matched": true
+    }
+   ],
+   "beat_start": 174.58,
+   "beat_end": 176.33,
+   "suspect": false
+  },
+  {
+   "line_index": 48,
+   "section": "hook",
+   "block": 6,
+   "text": "cut the lights on",
+   "start": 86.72,
+   "end": 87.87,
+   "confidence": 0.25,
+   "words": [
+    {
+     "w": "cut",
+     "start": 86.72,
+     "end": 87.54,
+     "matched": false
+    },
+    {
+     "w": "the",
+     "start": 87.54,
+     "end": 87.82,
+     "matched": true
+    },
+    {
+     "w": "lights",
+     "start": 87.82,
+     "end": 87.87,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 87.82,
+     "end": 87.87,
+     "matched": false
+    }
+   ],
+   "beat_start": 176.33,
+   "beat_end": 178.67,
+   "suspect": false
+  },
+  {
+   "line_index": 49,
+   "section": "hook",
+   "block": 6,
+   "text": "This ice on",
+   "start": 87.82,
+   "end": 87.87,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "This",
+     "start": 87.82,
+     "end": 87.87,
+     "matched": false
+    },
+    {
+     "w": "ice",
+     "start": 87.82,
+     "end": 87.87,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 87.82,
+     "end": 87.87,
+     "matched": false
+    }
+   ],
+   "beat_start": 178.57,
+   "beat_end": 178.67,
+   "suspect": true
+  },
+  {
+   "line_index": 50,
+   "section": "hook",
+   "block": 6,
+   "text": "YSL I wear em Like",
+   "start": 87.82,
+   "end": 89.5,
+   "confidence": 0.8,
+   "words": [
+    {
+     "w": "YSL",
+     "start": 87.82,
+     "end": 87.87,
+     "matched": false
+    },
+    {
+     "w": "I",
+     "start": 87.68,
+     "end": 88.24,
+     "matched": true
+    },
+    {
+     "w": "wear",
+     "start": 88.24,
+     "end": 89.18,
+     "matched": true
+    },
+    {
+     "w": "em",
+     "start": 89.18,
+     "end": 89.36,
+     "matched": true
+    },
+    {
+     "w": "Like",
+     "start": 89.36,
+     "end": 89.5,
+     "matched": true
+    }
+   ],
+   "beat_start": 178.57,
+   "beat_end": 181.98,
+   "suspect": false
+  },
+  {
+   "line_index": 51,
+   "section": "hook",
+   "block": 6,
+   "text": "they white ones",
+   "start": 89.5,
+   "end": 90.42,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "they",
+     "start": 89.5,
+     "end": 89.78,
+     "matched": true
+    },
+    {
+     "w": "white",
+     "start": 89.78,
+     "end": 89.96,
+     "matched": true
+    },
+    {
+     "w": "ones",
+     "start": 89.96,
+     "end": 90.42,
+     "matched": true
+    }
+   ],
+   "beat_start": 181.98,
+   "beat_end": 183.85,
+   "suspect": false
+  },
+  {
+   "line_index": 52,
+   "section": "hook",
+   "block": 7,
+   "text": "Freezin every season",
+   "start": 90.42,
+   "end": 142.94,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "Freezin",
+     "start": 90.42,
+     "end": 142.06,
+     "matched": false
+    },
+    {
+     "w": "every",
+     "start": 142.06,
+     "end": 142.48,
+     "matched": true
+    },
+    {
+     "w": "season",
+     "start": 142.48,
+     "end": 142.94,
+     "matched": true
+    }
+   ],
+   "beat_start": 183.85,
+   "beat_end": 290.64,
+   "suspect": true
+  },
+  {
+   "line_index": 53,
+   "section": "hook",
+   "block": 7,
+   "text": "We party",
+   "start": 142.94,
+   "end": 142.99,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "We",
+     "start": 142.94,
+     "end": 142.99,
+     "matched": false
+    },
+    {
+     "w": "party",
+     "start": 142.94,
+     "end": 142.99,
+     "matched": false
+    }
+   ],
+   "beat_start": 290.64,
+   "beat_end": 290.75,
+   "suspect": false
+  },
+  {
+   "line_index": 54,
+   "section": "hook",
+   "block": 7,
+   "text": "like new years evenin",
+   "start": 142.94,
+   "end": 142.99,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "like",
+     "start": 142.94,
+     "end": 142.99,
+     "matched": false
+    },
+    {
+     "w": "new",
+     "start": 142.94,
+     "end": 142.99,
+     "matched": false
+    },
+    {
+     "w": "years",
+     "start": 142.94,
+     "end": 142.99,
+     "matched": false
+    },
+    {
+     "w": "evenin",
+     "start": 142.94,
+     "end": 142.99,
+     "matched": false
+    }
+   ],
+   "beat_start": 290.64,
+   "beat_end": 290.75,
+   "suspect": true
+  },
+  {
+   "line_index": 55,
+   "section": "hook",
+   "block": 7,
+   "text": "Diamonds dancin",
+   "start": 142.94,
+   "end": 142.99,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "Diamonds",
+     "start": 142.94,
+     "end": 142.99,
+     "matched": false
+    },
+    {
+     "w": "dancin",
+     "start": 142.94,
+     "end": 142.99,
+     "matched": false
+    }
+   ],
+   "beat_start": 290.64,
+   "beat_end": 290.75,
+   "suspect": false
+  },
+  {
+   "line_index": 56,
+   "section": "hook",
+   "block": 7,
+   "text": "Like the disco",
+   "start": 142.94,
+   "end": 142.99,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "Like",
+     "start": 142.94,
+     "end": 142.99,
+     "matched": false
+    },
+    {
+     "w": "the",
+     "start": 142.94,
+     "end": 142.99,
+     "matched": false
+    },
+    {
+     "w": "disco",
+     "start": 142.94,
+     "end": 142.99,
+     "matched": false
+    }
+   ],
+   "beat_start": 290.64,
+   "beat_end": 290.75,
+   "suspect": true
+  },
+  {
+   "line_index": 57,
+   "section": "hook",
+   "block": 7,
+   "text": "Get fly I know",
+   "start": 142.94,
+   "end": 147.968,
+   "confidence": 0.5,
+   "words": [
+    {
+     "w": "Get",
+     "start": 142.94,
+     "end": 143.42,
+     "matched": true
+    },
+    {
+     "w": "fly",
+     "start": 143.42,
+     "end": 146.94,
+     "matched": false
+    },
+    {
+     "w": "I",
+     "start": 146.94,
+     "end": 147.64,
+     "matched": true
+    },
+    {
+     "w": "know",
+     "start": 147.64,
+     "end": 147.968,
+     "matched": false
+    }
+   ],
+   "beat_start": 290.64,
+   "beat_end": 300.87,
+   "suspect": false
+  },
+  {
+   "line_index": 58,
+   "section": "hook",
+   "block": 7,
+   "text": "That you see it",
+   "start": 147.968,
+   "end": 149.28,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "That",
+     "start": 147.968,
+     "end": 148.296,
+     "matched": false
+    },
+    {
+     "w": "you",
+     "start": 148.296,
+     "end": 148.624,
+     "matched": false
+    },
+    {
+     "w": "see",
+     "start": 148.624,
+     "end": 148.952,
+     "matched": false
+    },
+    {
+     "w": "it",
+     "start": 148.952,
+     "end": 149.28,
+     "matched": false
+    }
+   ],
+   "beat_start": 300.87,
+   "beat_end": 303.54,
+   "suspect": true
+  },
+  {
+   "line_index": 59,
+   "section": "hook",
+   "block": 8,
+   "text": "Freezin every season",
+   "start": 149.28,
+   "end": 150.82,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "Freezin",
+     "start": 149.28,
+     "end": 149.96,
+     "matched": true
+    },
+    {
+     "w": "every",
+     "start": 149.96,
+     "end": 150.34,
+     "matched": true
+    },
+    {
+     "w": "season",
+     "start": 150.34,
+     "end": 150.82,
+     "matched": true
+    }
+   ],
+   "beat_start": 303.54,
+   "beat_end": 306.67,
+   "suspect": false
+  },
+  {
+   "line_index": 60,
+   "section": "hook",
+   "block": 8,
+   "text": "We party",
+   "start": 150.82,
+   "end": 151.52,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "We",
+     "start": 150.82,
+     "end": 151.12,
+     "matched": true
+    },
+    {
+     "w": "party",
+     "start": 151.12,
+     "end": 151.52,
+     "matched": true
+    }
+   ],
+   "beat_start": 306.67,
+   "beat_end": 308.09,
+   "suspect": false
+  },
+  {
+   "line_index": 61,
+   "section": "hook",
+   "block": 8,
+   "text": "like new years evenin",
+   "start": 151.52,
+   "end": 152.9,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "like",
+     "start": 151.52,
+     "end": 151.94,
+     "matched": true
+    },
+    {
+     "w": "new",
+     "start": 151.94,
+     "end": 152.12,
+     "matched": true
+    },
+    {
+     "w": "years",
+     "start": 152.12,
+     "end": 152.42,
+     "matched": true
+    },
+    {
+     "w": "evenin",
+     "start": 152.42,
+     "end": 152.9,
+     "matched": true
+    }
+   ],
+   "beat_start": 308.09,
+   "beat_end": 310.9,
+   "suspect": false
+  },
+  {
+   "line_index": 62,
+   "section": "hook",
+   "block": 8,
+   "text": "Diamonds dancin",
+   "start": 152.9,
+   "end": 153.86,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "Diamonds",
+     "start": 152.9,
+     "end": 153.42,
+     "matched": true
+    },
+    {
+     "w": "dancin",
+     "start": 153.42,
+     "end": 153.86,
+     "matched": true
+    }
+   ],
+   "beat_start": 310.9,
+   "beat_end": 312.85,
+   "suspect": false
+  },
+  {
+   "line_index": 63,
+   "section": "hook",
+   "block": 8,
+   "text": "Like the disco",
+   "start": 154.12,
+   "end": 154.72,
+   "confidence": 0.67,
+   "words": [
+    {
+     "w": "Like",
+     "start": 154.12,
+     "end": 154.12,
+     "matched": true
+    },
+    {
+     "w": "the",
+     "start": 154.12,
+     "end": 154.36,
+     "matched": false
+    },
+    {
+     "w": "disco",
+     "start": 154.36,
+     "end": 154.72,
+     "matched": true
+    }
+   ],
+   "beat_start": 313.38,
+   "beat_end": 314.6,
+   "suspect": false
+  },
+  {
+   "line_index": 64,
+   "section": "hook",
+   "block": 8,
+   "text": "Get fly I know",
+   "start": 154.72,
+   "end": 155.82,
+   "confidence": 0.5,
+   "words": [
+    {
+     "w": "Get",
+     "start": 154.72,
+     "end": 155.0,
+     "matched": false
+    },
+    {
+     "w": "fly",
+     "start": 155.0,
+     "end": 155.28,
+     "matched": false
+    },
+    {
+     "w": "I",
+     "start": 155.28,
+     "end": 155.54,
+     "matched": true
+    },
+    {
+     "w": "know",
+     "start": 155.54,
+     "end": 155.82,
+     "matched": true
+    }
+   ],
+   "beat_start": 314.6,
+   "beat_end": 316.83,
+   "suspect": false
+  },
+  {
+   "line_index": 65,
+   "section": "hook",
+   "block": 8,
+   "text": "That you see it",
+   "start": 155.82,
+   "end": 156.8,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "That",
+     "start": 155.82,
+     "end": 156.12,
+     "matched": true
+    },
+    {
+     "w": "you",
+     "start": 156.12,
+     "end": 156.28,
+     "matched": true
+    },
+    {
+     "w": "see",
+     "start": 156.28,
+     "end": 156.56,
+     "matched": true
+    },
+    {
+     "w": "it",
+     "start": 156.56,
+     "end": 156.8,
+     "matched": true
+    }
+   ],
+   "beat_start": 316.83,
+   "beat_end": 318.83,
+   "suspect": false
+  },
+  {
+   "line_index": 66,
+   "section": "hook",
+   "block": 9,
+   "text": "Freezin every season",
+   "start": 156.8,
+   "end": 158.76,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "Freezin",
+     "start": 156.8,
+     "end": 157.84,
+     "matched": true
+    },
+    {
+     "w": "every",
+     "start": 157.84,
+     "end": 158.2,
+     "matched": true
+    },
+    {
+     "w": "season",
+     "start": 158.2,
+     "end": 158.76,
+     "matched": true
+    }
+   ],
+   "beat_start": 318.83,
+   "beat_end": 322.81,
+   "suspect": false
+  },
+  {
+   "line_index": 67,
+   "section": "hook",
+   "block": 9,
+   "text": "We party",
+   "start": 158.76,
+   "end": 159.42,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "We",
+     "start": 158.76,
+     "end": 159.0,
+     "matched": true
+    },
+    {
+     "w": "party",
+     "start": 159.0,
+     "end": 159.42,
+     "matched": true
+    }
+   ],
+   "beat_start": 322.81,
+   "beat_end": 324.15,
+   "suspect": false
+  },
+  {
+   "line_index": 68,
+   "section": "hook",
+   "block": 9,
+   "text": "like new years evenin",
+   "start": 159.42,
+   "end": 160.86,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "like",
+     "start": 159.42,
+     "end": 159.76,
+     "matched": true
+    },
+    {
+     "w": "new",
+     "start": 159.76,
+     "end": 160.02,
+     "matched": true
+    },
+    {
+     "w": "years",
+     "start": 160.02,
+     "end": 160.3,
+     "matched": true
+    },
+    {
+     "w": "evenin",
+     "start": 160.3,
+     "end": 160.86,
+     "matched": true
+    }
+   ],
+   "beat_start": 324.15,
+   "beat_end": 327.08,
+   "suspect": false
+  },
+  {
+   "line_index": 69,
+   "section": "hook",
+   "block": 9,
+   "text": "Diamonds dancin",
+   "start": 160.86,
+   "end": 161.74,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "Diamonds",
+     "start": 160.86,
+     "end": 161.24,
+     "matched": true
+    },
+    {
+     "w": "dancin",
+     "start": 161.24,
+     "end": 161.74,
+     "matched": true
+    }
+   ],
+   "beat_start": 327.08,
+   "beat_end": 328.87,
+   "suspect": false
+  },
+  {
+   "line_index": 70,
+   "section": "hook",
+   "block": 9,
+   "text": "Like the disco",
+   "start": 161.88,
+   "end": 162.6,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "Like",
+     "start": 161.88,
+     "end": 162.02,
+     "matched": true
+    },
+    {
+     "w": "the",
+     "start": 162.02,
+     "end": 162.22,
+     "matched": true
+    },
+    {
+     "w": "disco",
+     "start": 162.22,
+     "end": 162.6,
+     "matched": true
+    }
+   ],
+   "beat_start": 329.16,
+   "beat_end": 330.62,
+   "suspect": false
+  },
+  {
+   "line_index": 71,
+   "section": "hook",
+   "block": 9,
+   "text": "Get fly I know",
+   "start": 162.6,
+   "end": 163.72,
+   "confidence": 0.75,
+   "words": [
+    {
+     "w": "Get",
+     "start": 162.6,
+     "end": 162.92,
+     "matched": false
+    },
+    {
+     "w": "fly",
+     "start": 162.92,
+     "end": 163.26,
+     "matched": true
+    },
+    {
+     "w": "I",
+     "start": 163.22,
+     "end": 163.36,
+     "matched": true
+    },
+    {
+     "w": "know",
+     "start": 163.36,
+     "end": 163.72,
+     "matched": true
+    }
+   ],
+   "beat_start": 330.62,
+   "beat_end": 332.9,
+   "suspect": false
+  },
+  {
+   "line_index": 72,
+   "section": "hook",
+   "block": 9,
+   "text": "That you see it",
+   "start": 163.72,
+   "end": 164.72,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "That",
+     "start": 163.72,
+     "end": 163.96,
+     "matched": true
+    },
+    {
+     "w": "you",
+     "start": 163.96,
+     "end": 164.2,
+     "matched": true
+    },
+    {
+     "w": "see",
+     "start": 164.2,
+     "end": 164.5,
+     "matched": true
+    },
+    {
+     "w": "it",
+     "start": 164.5,
+     "end": 164.72,
+     "matched": true
+    }
+   ],
+   "beat_start": 332.9,
+   "beat_end": 334.93,
+   "suspect": false
+  },
+  {
+   "line_index": 73,
+   "section": "hook",
+   "block": 10,
+   "text": "Freezin every season",
+   "start": 164.72,
+   "end": 166.62,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "Freezin",
+     "start": 164.72,
+     "end": 165.7,
+     "matched": true
+    },
+    {
+     "w": "every",
+     "start": 165.7,
+     "end": 166.08,
+     "matched": true
+    },
+    {
+     "w": "season",
+     "start": 166.08,
+     "end": 166.62,
+     "matched": true
+    }
+   ],
+   "beat_start": 334.93,
+   "beat_end": 338.79,
+   "suspect": false
+  },
+  {
+   "line_index": 74,
+   "section": "hook",
+   "block": 10,
+   "text": "We party",
+   "start": 166.62,
+   "end": 167.28,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "We",
+     "start": 166.62,
+     "end": 166.9,
+     "matched": true
+    },
+    {
+     "w": "party",
+     "start": 166.9,
+     "end": 167.28,
+     "matched": true
+    }
+   ],
+   "beat_start": 338.79,
+   "beat_end": 340.14,
+   "suspect": false
+  },
+  {
+   "line_index": 75,
+   "section": "hook",
+   "block": 10,
+   "text": "like new years evenin",
+   "start": 167.28,
+   "end": 168.7,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "like",
+     "start": 167.28,
+     "end": 167.64,
+     "matched": true
+    },
+    {
+     "w": "new",
+     "start": 167.64,
+     "end": 167.9,
+     "matched": true
+    },
+    {
+     "w": "years",
+     "start": 167.9,
+     "end": 168.2,
+     "matched": true
+    },
+    {
+     "w": "evenin",
+     "start": 168.2,
+     "end": 168.7,
+     "matched": true
+    }
+   ],
+   "beat_start": 340.14,
+   "beat_end": 343.02,
+   "suspect": false
+  },
+  {
+   "line_index": 76,
+   "section": "hook",
+   "block": 10,
+   "text": "Diamonds dancin",
+   "start": 168.7,
+   "end": 169.62,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "Diamonds",
+     "start": 168.7,
+     "end": 169.12,
+     "matched": true
+    },
+    {
+     "w": "dancin",
+     "start": 169.12,
+     "end": 169.62,
+     "matched": true
+    }
+   ],
+   "beat_start": 343.02,
+   "beat_end": 344.89,
+   "suspect": false
+  },
+  {
+   "line_index": 77,
+   "section": "hook",
+   "block": 10,
+   "text": "Like the disco",
+   "start": 169.62,
+   "end": 170.5,
+   "confidence": 0.67,
+   "words": [
+    {
+     "w": "Like",
+     "start": 169.62,
+     "end": 169.9,
+     "matched": false
+    },
+    {
+     "w": "the",
+     "start": 169.9,
+     "end": 170.18,
+     "matched": true
+    },
+    {
+     "w": "disco",
+     "start": 170.18,
+     "end": 170.5,
+     "matched": true
+    }
+   ],
+   "beat_start": 344.89,
+   "beat_end": 346.68,
+   "suspect": false
+  },
+  {
+   "line_index": 78,
+   "section": "hook",
+   "block": 10,
+   "text": "Get fly I know",
+   "start": 170.5,
+   "end": 171.6,
+   "confidence": 0.75,
+   "words": [
+    {
+     "w": "Get",
+     "start": 170.5,
+     "end": 170.86,
+     "matched": false
+    },
+    {
+     "w": "fly",
+     "start": 170.86,
+     "end": 171.1,
+     "matched": true
+    },
+    {
+     "w": "I",
+     "start": 171.1,
+     "end": 171.36,
+     "matched": true
+    },
+    {
+     "w": "know",
+     "start": 171.36,
+     "end": 171.6,
+     "matched": true
+    }
+   ],
+   "beat_start": 346.68,
+   "beat_end": 348.92,
+   "suspect": false
+  },
+  {
+   "line_index": 79,
+   "section": "hook",
+   "block": 10,
+   "text": "That you see it",
+   "start": 171.6,
+   "end": 172.64,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "That",
+     "start": 171.6,
+     "end": 171.84,
+     "matched": true
+    },
+    {
+     "w": "you",
+     "start": 171.84,
+     "end": 172.04,
+     "matched": true
+    },
+    {
+     "w": "see",
+     "start": 172.04,
+     "end": 172.38,
+     "matched": true
+    },
+    {
+     "w": "it",
+     "start": 172.38,
+     "end": 172.64,
+     "matched": true
+    }
+   ],
+   "beat_start": 348.92,
+   "beat_end": 351.03,
+   "suspect": false
+  },
+  {
+   "line_index": 80,
+   "section": "hook",
+   "block": 11,
+   "text": "You don\u2019t gotta",
+   "start": 172.64,
+   "end": 173.32,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "You",
+     "start": 172.64,
+     "end": 173.04,
+     "matched": true
+    },
+    {
+     "w": "don\u2019t",
+     "start": 173.04,
+     "end": 173.32,
+     "matched": true
+    },
+    {
+     "w": "gotta",
+     "start": 173.32,
+     "end": 173.32,
+     "matched": true
+    }
+   ],
+   "beat_start": 351.03,
+   "beat_end": 352.42,
+   "suspect": false
+  },
+  {
+   "line_index": 81,
+   "section": "hook",
+   "block": 11,
+   "text": "cut the lights on",
+   "start": 173.32,
+   "end": 173.87,
+   "confidence": 0.25,
+   "words": [
+    {
+     "w": "cut",
+     "start": 173.32,
+     "end": 173.43,
+     "matched": false
+    },
+    {
+     "w": "the",
+     "start": 173.43,
+     "end": 173.54,
+     "matched": false
+    },
+    {
+     "w": "lights",
+     "start": 173.54,
+     "end": 173.82,
+     "matched": true
+    },
+    {
+     "w": "on",
+     "start": 173.82,
+     "end": 173.87,
+     "matched": false
+    }
+   ],
+   "beat_start": 352.42,
+   "beat_end": 353.54,
+   "suspect": false
+  },
+  {
+   "line_index": 82,
+   "section": "hook",
+   "block": 11,
+   "text": "This ice on",
+   "start": 173.82,
+   "end": 174.1,
+   "confidence": 0.33,
+   "words": [
+    {
+     "w": "This",
+     "start": 173.82,
+     "end": 173.87,
+     "matched": false
+    },
+    {
+     "w": "ice",
+     "start": 173.82,
+     "end": 173.87,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 173.82,
+     "end": 174.1,
+     "matched": true
+    }
+   ],
+   "beat_start": 353.43,
+   "beat_end": 354.0,
+   "suspect": false
+  },
+  {
+   "line_index": 83,
+   "section": "hook",
+   "block": 11,
+   "text": "YSL I wear em Like",
+   "start": 174.92,
+   "end": 176.06,
+   "confidence": 0.8,
+   "words": [
+    {
+     "w": "YSL",
+     "start": 174.92,
+     "end": 175.44,
+     "matched": true
+    },
+    {
+     "w": "I",
+     "start": 175.44,
+     "end": 175.62,
+     "matched": true
+    },
+    {
+     "w": "wear",
+     "start": 175.62,
+     "end": 175.78,
+     "matched": true
+    },
+    {
+     "w": "em",
+     "start": 175.78,
+     "end": 175.88,
+     "matched": true
+    },
+    {
+     "w": "Like",
+     "start": 175.88,
+     "end": 176.06,
+     "matched": false
+    }
+   ],
+   "beat_start": 355.67,
+   "beat_end": 357.99,
+   "suspect": false
+  },
+  {
+   "line_index": 84,
+   "section": "hook",
+   "block": 11,
+   "text": "they white ones",
+   "start": 176.06,
+   "end": 176.86,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "they",
+     "start": 176.06,
+     "end": 176.34,
+     "matched": true
+    },
+    {
+     "w": "white",
+     "start": 176.34,
+     "end": 176.54,
+     "matched": true
+    },
+    {
+     "w": "ones",
+     "start": 176.54,
+     "end": 176.86,
+     "matched": true
+    }
+   ],
+   "beat_start": 357.99,
+   "beat_end": 359.62,
+   "suspect": false
+  },
+  {
+   "line_index": 85,
+   "section": "hook",
+   "block": 12,
+   "text": "You don\u2019t gotta",
+   "start": 180.32,
+   "end": 181.18,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "You",
+     "start": 180.32,
+     "end": 180.84,
+     "matched": true
+    },
+    {
+     "w": "don\u2019t",
+     "start": 180.84,
+     "end": 181.06,
+     "matched": true
+    },
+    {
+     "w": "gotta",
+     "start": 181.06,
+     "end": 181.18,
+     "matched": true
+    }
+   ],
+   "beat_start": 366.65,
+   "beat_end": 368.4,
+   "suspect": false
+  },
+  {
+   "line_index": 86,
+   "section": "hook",
+   "block": 12,
+   "text": "cut the lights on",
+   "start": 181.18,
+   "end": 181.96,
+   "confidence": 0.75,
+   "words": [
+    {
+     "w": "cut",
+     "start": 181.18,
+     "end": 181.34,
+     "matched": true
+    },
+    {
+     "w": "the",
+     "start": 181.34,
+     "end": 181.42,
+     "matched": true
+    },
+    {
+     "w": "lights",
+     "start": 181.42,
+     "end": 181.66,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 181.66,
+     "end": 181.96,
+     "matched": true
+    }
+   ],
+   "beat_start": 368.4,
+   "beat_end": 369.99,
+   "suspect": false
+  },
+  {
+   "line_index": 87,
+   "section": "hook",
+   "block": 12,
+   "text": "This ice on",
+   "start": 181.96,
+   "end": 182.8,
+   "confidence": 0.0,
+   "words": [
+    {
+     "w": "This",
+     "start": 181.96,
+     "end": 182.24,
+     "matched": false
+    },
+    {
+     "w": "ice",
+     "start": 182.24,
+     "end": 182.52,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 182.52,
+     "end": 182.8,
+     "matched": false
+    }
+   ],
+   "beat_start": 369.99,
+   "beat_end": 371.69,
+   "suspect": true
+  },
+  {
+   "line_index": 88,
+   "section": "hook",
+   "block": 12,
+   "text": "YSL I wear em Like",
+   "start": 182.8,
+   "end": 183.94,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "YSL",
+     "start": 182.8,
+     "end": 183.32,
+     "matched": true
+    },
+    {
+     "w": "I",
+     "start": 183.32,
+     "end": 183.46,
+     "matched": true
+    },
+    {
+     "w": "wear",
+     "start": 183.46,
+     "end": 183.62,
+     "matched": true
+    },
+    {
+     "w": "em",
+     "start": 183.62,
+     "end": 183.76,
+     "matched": true
+    },
+    {
+     "w": "Like",
+     "start": 183.76,
+     "end": 183.94,
+     "matched": true
+    }
+   ],
+   "beat_start": 371.69,
+   "beat_end": 374.01,
+   "suspect": false
+  },
+  {
+   "line_index": 89,
+   "section": "hook",
+   "block": 12,
+   "text": "they white ones",
+   "start": 183.94,
+   "end": 184.74,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "they",
+     "start": 183.94,
+     "end": 184.2,
+     "matched": true
+    },
+    {
+     "w": "white",
+     "start": 184.2,
+     "end": 184.4,
+     "matched": true
+    },
+    {
+     "w": "ones",
+     "start": 184.4,
+     "end": 184.74,
+     "matched": true
+    }
+   ],
+   "beat_start": 374.01,
+   "beat_end": 375.64,
+   "suspect": false
+  },
+  {
+   "line_index": 90,
+   "section": "hook",
+   "block": 13,
+   "text": "You don\u2019t gotta",
+   "start": 188.22,
+   "end": 189.06,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "You",
+     "start": 188.22,
+     "end": 188.64,
+     "matched": true
+    },
+    {
+     "w": "don\u2019t",
+     "start": 188.64,
+     "end": 189.06,
+     "matched": true
+    },
+    {
+     "w": "gotta",
+     "start": 189.06,
+     "end": 189.06,
+     "matched": true
+    }
+   ],
+   "beat_start": 382.71,
+   "beat_end": 384.42,
+   "suspect": false
+  },
+  {
+   "line_index": 91,
+   "section": "hook",
+   "block": 13,
+   "text": "cut the lights on",
+   "start": 189.06,
+   "end": 189.57,
+   "confidence": 0.25,
+   "words": [
+    {
+     "w": "cut",
+     "start": 189.06,
+     "end": 189.18,
+     "matched": false
+    },
+    {
+     "w": "the",
+     "start": 189.18,
+     "end": 189.3,
+     "matched": false
+    },
+    {
+     "w": "lights",
+     "start": 189.3,
+     "end": 189.52,
+     "matched": true
+    },
+    {
+     "w": "on",
+     "start": 189.52,
+     "end": 189.57,
+     "matched": false
+    }
+   ],
+   "beat_start": 384.42,
+   "beat_end": 385.46,
+   "suspect": false
+  },
+  {
+   "line_index": 92,
+   "section": "hook",
+   "block": 13,
+   "text": "This ice on",
+   "start": 189.52,
+   "end": 189.88,
+   "confidence": 0.33,
+   "words": [
+    {
+     "w": "This",
+     "start": 189.52,
+     "end": 189.57,
+     "matched": false
+    },
+    {
+     "w": "ice",
+     "start": 189.52,
+     "end": 189.57,
+     "matched": false
+    },
+    {
+     "w": "on",
+     "start": 189.52,
+     "end": 189.88,
+     "matched": true
+    }
+   ],
+   "beat_start": 385.36,
+   "beat_end": 386.09,
+   "suspect": false
+  },
+  {
+   "line_index": 93,
+   "section": "hook",
+   "block": 13,
+   "text": "YSL I wear em Like",
+   "start": 189.88,
+   "end": 191.82,
+   "confidence": 0.8,
+   "words": [
+    {
+     "w": "YSL",
+     "start": 189.88,
+     "end": 191.24,
+     "matched": true
+    },
+    {
+     "w": "I",
+     "start": 191.24,
+     "end": 191.36,
+     "matched": true
+    },
+    {
+     "w": "wear",
+     "start": 191.36,
+     "end": 191.52,
+     "matched": true
+    },
+    {
+     "w": "em",
+     "start": 191.52,
+     "end": 191.64,
+     "matched": false
+    },
+    {
+     "w": "Like",
+     "start": 191.64,
+     "end": 191.82,
+     "matched": true
+    }
+   ],
+   "beat_start": 386.09,
+   "beat_end": 390.03,
+   "suspect": false
+  },
+  {
+   "line_index": 94,
+   "section": "hook",
+   "block": 13,
+   "text": "they white ones",
+   "start": 191.82,
+   "end": 193.08,
+   "confidence": 1.0,
+   "words": [
+    {
+     "w": "they",
+     "start": 191.82,
+     "end": 192.08,
+     "matched": true
+    },
+    {
+     "w": "white",
+     "start": 192.08,
+     "end": 192.26,
+     "matched": true
+    },
+    {
+     "w": "ones",
+     "start": 192.26,
+     "end": 193.08,
+     "matched": true
+    }
+   ],
+   "beat_start": 390.03,
+   "beat_end": 392.6,
+   "suspect": false
+  }
+ ]
+}
