@@ -2102,6 +2102,7 @@ export type Database = {
           bpm: number | null
           color_palette: string[]
           created_at: string
+          creative_exemplars: string[]
           genre: string | null
           id: string
           lyrics: string | null
@@ -2122,6 +2123,7 @@ export type Database = {
           bpm?: number | null
           color_palette?: string[]
           created_at?: string
+          creative_exemplars?: string[]
           genre?: string | null
           id?: string
           lyrics?: string | null
@@ -2142,6 +2144,7 @@ export type Database = {
           bpm?: number | null
           color_palette?: string[]
           created_at?: string
+          creative_exemplars?: string[]
           genre?: string | null
           id?: string
           lyrics?: string | null
