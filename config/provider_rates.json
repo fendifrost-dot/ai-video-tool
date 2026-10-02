@@ -1,0 +1,9 @@
+{
+  "_about": "List rates the batch runners estimate with BEFORE a call is made (data, not code). USD per output second unless stated. Read by scripts/broll/run_world_batch.py and mirrored in src/lib/worldBatch/rates.ts (a test holds the two together). seedance bills input seconds as well as output seconds, so its estimate is rate x (source seconds x 2).",
+  "still_usd_each": 0.07,
+  "runway": {"gen4_turbo": 0.05, "gen4.5": 0.15},
+  "kling_usd_per_s": 0.07,
+  "dop_usd_per_s": 0.083,
+  "seedance_usd_per_s": {"480p": 0.2468, "720p": 0.4622, "1080p": 1.1372},
+  "judge_usd_each": 0.08
+}
