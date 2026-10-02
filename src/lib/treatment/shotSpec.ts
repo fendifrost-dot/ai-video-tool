@@ -350,9 +350,28 @@ export const ShotSpecSchema = z.object({
   reconstruction: ReconstructionRequirementsSchema.default({}),
   qa: z.array(QaRequirementSchema).default([]),
 
+  /**
+   * Named elements the shot MUST contain — the director's non-negotiables for this
+   * box ("the gator boots", "the car carried on four shoulders"). Free strings on
+   * purpose: nothing here knows a project. Filled by a manual override or by
+   * regenerating the box from its lyrics.
+   */
+  requiredElements: z.array(z.string()).default([]),
+
   // --- lifecycle ------------------------------------------------------------
   status: z.enum(SHOT_STATUSES).default("draft"),
   provenance: ProvenanceSchema.default({}),
+
+  /**
+   * Whether this spec is still what the generator produced, or carries a manual
+   * override (see src/lib/treatment/overrides.ts).
+   *
+   * NAMING NOTE: the 2026-10-02 B3 brief called this field `source`, but `source`
+   * is already taken on this schema by SourceMediaSchema (where the pixels come
+   * from) and the row mappers read it. Overwriting it would silently break
+   * shotSpecToShotRow. `origin` is the same idea under a free name.
+   */
+  origin: z.enum(["generated", "override"]).default("generated"),
 });
 export type ShotSpec = z.infer<typeof ShotSpecSchema>;
 

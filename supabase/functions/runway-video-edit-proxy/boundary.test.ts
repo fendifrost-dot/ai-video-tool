@@ -118,9 +118,25 @@ describe("proxy-provider-call stays fail-closed", () => {
     expect(code).toContain("ALLOWED_ENDPOINTS.has(endpoint)");
     expect(code).not.toMatch(/ALLOWED_ENDPOINTS\s*=\s*null/);
     const listed = [...allowlistSource.matchAll(/^\s{2}"([a-z0-9-]+)",$/gm)].map((m) => m[1]);
-    // Exactly one endpoint was added; the rest of the surface is unchanged.
-    expect(listed).toContain("video-providers-runway-video-edit");
-    expect(listed).toContain("video-providers-runway-generate");
-    expect(listed.length).toBe(12);
+    // Pin the whole set rather than its size: an added endpoint then shows up in this
+    // diff, named, instead of as a number nobody can read. (It was a bare count until
+    // 2026-10-02, which failed uninformatively the moment a legitimate entry landed.)
+    expect(listed.sort()).toEqual(
+      [
+        "ai-draft-treatment",
+        "image-providers-grok-edit",
+        "research-provider-docs",
+        "video-providers-fal-generate",
+        "video-providers-grok-generate",
+        "video-providers-higgsfield-generate",
+        "video-providers-higgsfield-model",
+        "video-providers-job-result",
+        "video-providers-job-status",
+        "video-providers-pika-generate",
+        "video-providers-runway-generate",
+        "video-providers-runway-video-edit",
+        "video-providers-veo-generate",
+      ].sort(),
+    );
   });
 });

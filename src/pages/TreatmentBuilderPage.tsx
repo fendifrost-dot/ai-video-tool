@@ -25,6 +25,31 @@ import { useSongAnalysis } from "@/lib/queries/songAnalyses";
 import { useProjectShots, useBulkCreateShots } from "@/lib/queries/shots";
 import { useLyricLines } from "@/lib/queries/lyricLines";
 import { applyCoverageDefaults, DEFAULT_COVERAGE_PRESETS } from "@/lib/treatment/coverage";
+import { applyShotOverrides } from "@/lib/treatment/overrides";
+import {
+  useShotOverrides,
+  useUpsertShotOverride,
+  useDeleteShotOverride,
+} from "@/lib/queries/shotOverrides";
+import { usePromptTemplates } from "@/lib/queries/promptTemplates";
+import {
+  DEFAULT_MOTION_TEMPLATE,
+  linesForSpec,
+  regenerateShotFromLyrics,
+} from "@/lib/treatment/regenerateFromLyrics";
+import { renderPromptTemplate, templateSlotsFor } from "@/lib/treatment/promptTemplate";
+import {
+  ShotOverrideProvider,
+  type ShotOverrideContextValue,
+  type ShotOverrideDraft,
+} from "@/components/treatment/shotOverrideContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { buildClipGrid, gridSummary } from "@/lib/treatment/grid";
 import {
   suggestConcepts,
@@ -94,6 +119,9 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
   const [committing, setCommitting] = useState(false);
   const [committed, setCommitted] = useState(false);
   const [view, setView] = useState<"storyboard" | "grid">("storyboard");
+  // B4: a seed prompt template whose rendered body leads the brief. Null = none.
+  const [templateId, setTemplateId] = useState<string | null>(null);
+  const [regeneratingSpecId, setRegeneratingSpecId] = useState<string | null>(null);
 
   const current = treatment ?? saved;
   const effectiveMood = mood ?? project?.mood ?? "";
@@ -102,10 +130,20 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
   // `treatmentClipToShotSpec` keys each spec by the clip key, so the energy
   // accent from the beat grid can be looked up by spec id.
   const lyricLinesQuery = useLyricLines(projectId);
-  // coverage defaults (Fendi 2026-10-02): every performance card gets a camera move and a framing unless the director set one
+  const overridesQuery = useShotOverrides(projectId);
+  // Order matters (B3): overrides FIRST so an explicit choice wins outright, then the
+  // coverage defaults (Fendi 2026-10-02) so a field the director cleared is refilled by
+  // the planner rather than left blank on the card.
   const specs = useMemo(
-    () => (current ? applyCoverageDefaults(structuredTreatmentToShotSpecs(current), DEFAULT_COVERAGE_PRESETS, lyricLinesQuery.data) : []),
-    [current, lyricLinesQuery.data],
+    () =>
+      current
+        ? applyCoverageDefaults(
+            applyShotOverrides(structuredTreatmentToShotSpecs(current), overridesQuery.data),
+            DEFAULT_COVERAGE_PRESETS,
+            lyricLinesQuery.data,
+          )
+        : [],
+    [current, lyricLinesQuery.data, overridesQuery.data],
   );
   const energyById = useMemo(() => {
     const map: Record<string, ShotEnergy> = {};
@@ -114,6 +152,47 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
     }
     return map;
   }, [current]);
+
+  // B4 — the template picker. Seed rows of category "universal" only: a template is a
+  // global the whole tool shares, not a per-project prompt.
+  const promptTemplatesQuery = usePromptTemplates();
+  const universalTemplates = useMemo(
+    () => (promptTemplatesQuery.data ?? []).filter((t) => t.is_seed && t.category === "universal"),
+    [promptTemplatesQuery.data],
+  );
+  const chosenTemplate = useMemo(
+    () => universalTemplates.find((t) => t.id === templateId) ?? null,
+    [universalTemplates, templateId],
+  );
+
+  const templateContext = useMemo(
+    () => ({
+      project: { title: project?.song_title ?? null, audience: null },
+      look: {
+        name: (looksQuery.data ?? [])[0]?.name ?? null,
+        preamble: project?.visual_style ?? null,
+      },
+      artist: {
+        name: artistQuery.data?.name ?? null,
+        description: (artistQuery.data?.identity_profile_json as Record<string, unknown> | null)
+          ? Object.entries(artistQuery.data!.identity_profile_json as Record<string, unknown>)
+              .filter(([, v]) => typeof v === "string" && (v as string).length > 0)
+              .map(([k, v]) => `${k}: ${v}`)
+              .join("; ")
+          : null,
+      },
+    }),
+    [project?.song_title, project?.visual_style, looksQuery.data, artistQuery.data],
+  );
+
+  /** The template's body with this project's values in it and every unfilled slot stripped. */
+  const renderedTemplate = useMemo(
+    () =>
+      chosenTemplate
+        ? renderPromptTemplate(chosenTemplate.template_body, templateSlotsFor(templateContext))
+        : "",
+    [chosenTemplate, templateContext],
+  );
 
   const grid = useMemo(() => {
     if (projectType === "music_video" && analysis) return buildClipGrid({ analysis });
@@ -149,7 +228,9 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
       artistProfile,
       visualStyle: project?.visual_style,
       mood: effectiveMood,
-      additionalNotes: [project?.notes, notes].filter(Boolean).join("\n"),
+      // B4: the rendered template leads the brief, ahead of the project's own notes.
+      // Data path only — ai-draft-treatment in Control Center is locked and unchanged.
+      additionalNotes: [renderedTemplate, project?.notes, notes].filter(Boolean).join("\n\n"),
       analysisSummary: analysis
         ? {
             bpm: analysis.bpm,
@@ -181,6 +262,82 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
     }),
 
     [projectType, chosenConcept, current, effectiveMood, project, notes, looksQuery.data],
+  );
+
+  // --- B3/B4: what the storyboard cards need to edit their own box ---------
+  const upsertOverride = useUpsertShotOverride();
+  const deleteOverride = useDeleteShotOverride();
+
+  const overrideContext: ShotOverrideContextValue = useMemo(
+    () => ({
+      projectId,
+      overrides: overridesQuery.data ?? {},
+      saving: upsertOverride.isPending || deleteOverride.isPending,
+      save: async (specId: string, draft: ShotOverrideDraft) => {
+        await upsertOverride.mutateAsync({
+          projectId,
+          specId,
+          // An empty field is "not overridden", never "set this to nothing" — that is
+          // what lets the coverage planner keep filling it.
+          direction: draft.direction.trim() || null,
+          cameraMotion:
+            draft.cameraMotionType || draft.cameraMotionDescription.trim()
+              ? {
+                  type: draft.cameraMotionType || null,
+                  description: draft.cameraMotionDescription.trim() || null,
+                }
+              : null,
+          framing: draft.framing || null,
+          // The preset is what is stored; applyShotOverride derives the DB family from it.
+          transitionIn: draft.transitionInPreset ? { preset: draft.transitionInPreset } : null,
+          requiredElements: draft.requiredElements.length ? draft.requiredElements : null,
+          notes: draft.notes.trim() || null,
+        });
+      },
+      reset: async (specId: string) => {
+        await deleteOverride.mutateAsync({ projectId, specId });
+      },
+      regenerateBlockedReason: (spec) => {
+        if (linesForSpec(spec, lyricLinesQuery.data).length === 0)
+          return "Instrumental — nothing to regenerate from";
+        if (!templateContext.artist.description && !templateContext.artist.name)
+          return "Set the artist's identity profile first — the scene is written around it";
+        if (!project?.visual_style)
+          return "Set the project's visual style first — it is the environment the scene is staged in";
+        return null;
+      },
+      regenerate: async (spec) => {
+        setRegeneratingSpecId(spec.id);
+        try {
+          return await regenerateShotFromLyrics({
+            projectId,
+            spec,
+            lyricLines: lyricLinesQuery.data,
+            template: chosenTemplate?.name ?? DEFAULT_MOTION_TEMPLATE,
+            templateContext,
+            heroDescription:
+              templateContext.artist.description || templateContext.artist.name || "",
+            environment: project?.visual_style ?? "",
+            style: effectiveMood || null,
+          });
+        } finally {
+          setRegeneratingSpecId(null);
+        }
+      },
+      regeneratingSpecId,
+    }),
+    [
+      projectId,
+      overridesQuery.data,
+      upsertOverride,
+      deleteOverride,
+      lyricLinesQuery.data,
+      templateContext,
+      chosenTemplate,
+      project?.visual_style,
+      effectiveMood,
+      regeneratingSpecId,
+    ],
   );
 
   async function handleApplyPlan(plan: CreativeDirectorPlan) {
@@ -398,6 +555,35 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
               />
             </div>
           </div>
+
+          {/* B4 — a production template leads the brief. Its body is rendered with this
+              project's own values and every unfilled slot is stripped, so no placeholder
+              ever reaches the generator. */}
+          <div>
+            <label className="text-xs text-foreground/60">Template (optional)</label>
+            <Select
+              value={templateId ?? "_none_"}
+              onValueChange={(v) => setTemplateId(v === "_none_" ? null : v)}
+            >
+              <SelectTrigger className="h-9 text-xs">
+                <SelectValue placeholder="No template" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none_">No template</SelectItem>
+                {universalTemplates.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {chosenTemplate && (
+              <p className="mt-1 text-[11px] leading-snug text-foreground/45">
+                {chosenTemplate.description ??
+                  "This template leads the brief for concepts and the full treatment."}
+              </p>
+            )}
+          </div>
         </Card>
 
         {/* ---- Step 2: concept ------------------------------------------- */}
@@ -553,7 +739,13 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
             </div>
 
             {view === "storyboard" ? (
-              <ShotStoryboard specs={specs} energyById={energyById} lyricLines={lyricLinesQuery.data} />
+              <ShotOverrideProvider value={overrideContext}>
+                <ShotStoryboard
+                  specs={specs}
+                  energyById={energyById}
+                  lyricLines={lyricLinesQuery.data}
+                />
+              </ShotOverrideProvider>
             ) : (
               <Card className="p-0">
                 <div className="max-h-[28rem] overflow-auto">
