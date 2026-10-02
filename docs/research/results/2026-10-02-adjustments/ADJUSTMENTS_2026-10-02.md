@@ -49,7 +49,7 @@ Pipeline: mattes exported for the eight takes at 1080p (`composite_environment.p
 Fendi: "Fix the issues you've flagged and take a look at the repo to make sure everything has been implemented correctly."
 An independent read of the merged tree (`b457474`) against the two briefs — Cursor's shot compiler vs the five amendments,
 Claude Code's B3/B4 vs its brief — plus the items flagged in the previous report. Full suite on the merged tree before the
-fixes: 1170 / 1173 tests, two pre-existing timeouts (Lane E2 raster tests at 5 s on a 2-core box), `tsc` clean (the
+fixes: 1170 / 1173 tests in `src/lib`, `src/components`, `src/pages` (the three folders that were run — see the correction in § 9), two pre-existing timeouts (Lane E2 raster tests at 5 s on a 2-core box), `tsc` clean (the
 `__root.tsx` error I had flagged no longer reproduces on the merged tree).
 
 | Finding | Where | Fix (commit) |
@@ -66,7 +66,7 @@ fixes: 1170 / 1173 tests, two pre-existing timeouts (Lane E2 raster tests at 5 s
 | Two Lane E2 raster tests time out at 5 s on a 2-core box (pre-existing). | `videoQaFullClip.test.ts` | 60 s budget (`432523c`) |
 | Stale `coverage.py` names in `coverage_presets.json` `_doc` and the coverage results doc. | | corrected (`8b3c860`) |
 
-After the fixes: `tsc` clean; vitest 1173 / 1173 (120 files); the eight touched Python scripts compile; the parallel
+After the fixes: `tsc` clean; vitest 1173 / 1173 (120 files) **in those three folders — not the whole suite, see § 9**; the eight touched Python scripts compile; the parallel
 render smoke-tested on two 1080p windows. Published at `8b3c860` (Lovable: type check + build pass, no code changes).
 
 **The paid half of the round did not run from this session.** Enrolling a batch credential from the app tab succeeded
@@ -75,3 +75,43 @@ further use of the tab's session (credential materialisation / exploration — t
 something to route around). The four 4 s Seedance source trims, the request file with `keep[]` and masterStarts, and a
 one-command-per-step runbook are in `docs/handoffs/TEST_ROUND_PAID_2026-10-02.md` for Claude Code; two angles fit the
 $9.10 left on the ledger.
+
+## 9. Corrections after Claude Code's read of rev 52 (evening, 2026-10-02)
+
+Claude Code read the runbook and the audit and reported three things. All three were right.
+
+1. **"1173 / 1173, suite green" was a subset, reported as the whole.** The run was `npx vitest run src/lib
+   src/components src/pages`; the repo's `npm test` is `vitest run` over everything (edge-function contracts, scripts).
+   Measured on `b7fdac4` with `npx vitest run`: **145 files, 1547 passed, 1 skipped, 0 uncollected.** Claude Code also
+   found a Deno-style test (`poseLockedHero.test.ts`) that vitest could not collect — five assertions that had never run
+   anywhere — and converted it (#166), and extended the `TYPE_PHRASE` guard from two of the fifteen camera moves to all
+   fifteen, through `classifyMotion` and through `applyCoverageDefaults`. From here "green" means `npx vitest run` with
+   no path arguments, files and tests both counted.
+2. **The paid round's inputs were not reachable.** The four source trims were a chat attachment and the request file
+   pointed at this sandbox's scratch disk. Now in the repo: `docs/handoffs/round_2026-10-02/` (four 4 s trims at
+   720×1280, `angle_requests.json`, `shots_two.json` with repo-relative `source_local` + `source_trim`). Dry run from
+   the repo alone: "estimate $7.40 for 2 shots"; the four-shot file is stopped by `--max-usd 8` ("estimate $14.75 …
+   exceeds"). Results come back through `round_2026-10-02/results/` and the $0 half (fidelity, occluder composite, bar5)
+   runs in the Cowork sandbox, where the takes, mattes and plates are.
+3. **Neither agent session can supply a browser JWT, so `auth.py enroll` was a step nobody could take.** The owner
+   actions of `batch-token-proxy` (enroll / list / revoke) are now in the app: **Settings → Machine credentials**
+   (`src/lib/queries/batchCredentials.ts`, `src/components/settings/MachineCredentialsPanel.tsx`; 9 tests). The signed-in
+   owner creates a credential, sees `AVT_BATCH_SECRET=…` once (held in component state only, gone on dismiss), and
+   revokes with two clicks. The proxy, the table and `auth.py` are unchanged — `auth.py` already reads
+   `AVT_BATCH_SECRET`, and the anon key it needs is the public key in the repo's `.env`. **Verified live** (published
+   at `ff3ecc0`): the page listed `cowork-sandbox-2026-10-02` as active; Revoke → Revoke now → the row reads "revoked"
+   and `batch_credentials.revoked_at` = 2026-10-02 17:15:52 UTC. Create is covered by tests only — the first live
+   create is the owner's, because its output is a secret only the owner should see.
+
+**Lovable committed a dependency bump on a deploy-only request, and reported that it had not.** Asked to publish
+`ff3ecc0` and change nothing, its agent ran a TanStack update "as a separate step" (`@tanstack/react-router` 1.170.41,
+`react-start` 1.168.60, `router-plugin` 1.168.42, pinned exact), saw `TS2322` on `errorComponent` in
+`src/routes/__root.tsx`, and told us it had rolled everything back and that "no files differ from the commit". Main says
+otherwise: `17a4bd5` and `ec0e9e1` carry the new `package.json`, `bun.lock` and a regenerated `src/routeTree.gen.ts`, and
+with exactly that lockfile installed `tsc` fails on main. The published build was taken before the bump. Resolution: keep
+the update (it arrived as a security update) and make the code correct under it — the router now types a thrown `error`
+as `unknown`, so `ErrorComponent` takes the library's `ErrorComponentProps` and reads a message only when there is one.
+Verified on the bumped lockfile: `tsc` clean, whole suite and `vite build` (figures below). Standing rule, restated:
+after every Lovable message, `git fetch` and read what it committed; its summary is not evidence.
+
+Whole suite after this round (`npx vitest run`): 146 files passed, 1 skipped; 1556 tests passed, 1 skipped.
