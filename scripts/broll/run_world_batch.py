@@ -139,6 +139,43 @@ def look_of(path, bank):
     return score(path, bank)
 
 
+PANEL_SEAM_FRAC_MIN = 0.6; PANEL_SEAM_STRAIGHT_MIN = 0.5; PANEL_SEAM_JUMP = 18.0
+def panel_seam(path, jump=PANEL_SEAM_JUMP):
+    """Is this still two pictures? An image model asked for "the stoop in the upper half, the car in the lower half"
+    returns two photographs stacked. Two measurements (same numbers as src/lib/worldBatch/stillCheck.ts):
+      frac      at a small size (block-averaged to ~320), the share of one row/column across which the luma jumps —
+                0.92 on the diptych's seam, but 0.70–0.90 for a kerb shot square-on: a real edge can span the frame;
+      straight  at full size, the share of columns whose strongest jump is on the SAME single row — a panel seam is
+                ruler-straight and one pixel thick (0.75), a real edge wanders and has thickness (kerb 0.15, and
+                ≤ 0.13 across 24 ordinary world stills)."""
+    import numpy as np
+    from PIL import Image
+    L = np.asarray(Image.open(path).convert("L")).astype(np.float32); h, w = L.shape
+    k = max(1, int(np.ceil(max(w, h) / 320.0))); sh, sw = h // k, w // k
+    S = L[:sh * k, :sw * k].reshape(sh, k, sw, k).mean(axis=(1, 3))
+    # first pass, small: the jump over TWO small rows (a seam rarely falls on a block boundary); skip the outer 8 %
+    cands = []
+    rows = (np.abs(S[2:] - S[:-2]) > jump).mean(axis=1); cols = (np.abs(S[:, 2:] - S[:, :-2]) > jump).mean(axis=0)
+    for axis, fr, n in (("row", rows, sh), ("column", cols, sw)):
+        lo, hi = int(np.ceil(n * 0.08)), int(np.floor(n * 0.92)) - 2
+        order = sorted(range(lo, hi), key=lambda t: -fr[t])[:6]
+        cands += [(axis, t, float(fr[t]), n) for t in order]
+    # second pass, full size, on the most complete lines: is it ruler-straight?
+    best = None
+    for axis, line, frac, n in cands:
+        A = L if axis == "row" else L.T; a = line * k; b = min(A.shape[0] - 1, a + 3 * k); straight = 0.0
+        if b - a >= 2:
+            g = np.abs(np.diff(A[a:b + 1], axis=0)); arg = g.argmax(axis=0); strong = g.max(axis=0) > 12
+            if strong.any():
+                mode = np.bincount(arg[strong]).argmax(); straight = float(((arg == mode) & strong).mean())
+        seam = {"frac": round(frac, 3), "straight": round(straight, 3), "at": round((line + 1.5) / n, 3), "axis": axis}
+        rank = lambda x: (1 + x["straight"]) if x["frac"] >= PANEL_SEAM_FRAC_MIN else x["frac"]
+        if best is None or rank(seam) > rank(best): best = seam
+    return best or {"frac": 0.0, "straight": 0.0, "at": 0.0, "axis": "row"}
+
+def stacked_panels(seam): return seam["frac"] >= PANEL_SEAM_FRAC_MIN and seam["straight"] >= PANEL_SEAM_STRAIGHT_MIN
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--shots", required=True); ap.add_argument("--out", required=True); ap.add_argument("--project", required=True); ap.add_argument("--user", required=True)
@@ -182,8 +219,13 @@ def main():
                 if not r.get("ok"): st["still_error"] = r; print(s["id"], "still failed", json.dumps(r)[:300]); json.dump(man, open(mpath, "w"), indent=1); continue
                 cands = []
                 for i, im in enumerate(r["stills"]):
-                    p = os.path.join(a.out, f"{s['id']}_still{i + 1}.png"); fetch(im["previewUrl"], p); d = look_of(p, bank)["look_distance"] if bank else 0.0; cands.append({"path": im["path"], "local": p, "look_distance": d})
-                best = min(cands, key=lambda c: c["look_distance"]); st["still"] = {"candidates": cands, "picked": best["path"], "cost_usd": r.get("actualCostUsd")}
+                    p = os.path.join(a.out, f"{s['id']}_still{i + 1}.png"); fetch(im["previewUrl"], p); d = look_of(p, bank)["look_distance"] if bank else 0.0; cands.append({"path": im["path"], "local": p, "look_distance": d, "panel_seam": panel_seam(p)})
+                # a still that came back as two pictures stacked never reaches the motion model (src/lib/worldBatch/stillCheck.ts)
+                whole = cands if s.get("panel_check") is False else [c for c in cands if not stacked_panels(c["panel_seam"])]
+                if not whole:
+                    st["still_error"] = {"error": "stacked_panels", "candidates": cands, "cost_usd": r.get("actualCostUsd")}
+                    print(s["id"], "every still came back as stacked panels", [c["panel_seam"] for c in cands], "— describe the scene by depth, not by halves of the frame"); json.dump(man, open(mpath, "w"), indent=1); continue
+                best = min(whole, key=lambda c: c["look_distance"]); st["still"] = {"candidates": cands, "picked": best["path"], "cost_usd": r.get("actualCostUsd")}
                 print(s["id"], "stills", [round(c["look_distance"], 2) for c in cands], "→", os.path.basename(best["local"]))
             still_url = api.sign("project-references", st["still"]["picked"], ttl=86400)
         if s["route"] == "seedance_ref":
