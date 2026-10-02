@@ -1,0 +1,49 @@
+[
+ {
+  "id": "S06c_low_hero",
+  "kind": "angle",
+  "route": "seedance_ref",
+  "aspect": "9:16",
+  "resolution": "720p",
+  "source_local": "docs/handoffs/round_2026-10-02/S06c_low_hero_src.mp4",
+  "source_window": [
+   66.885,
+   68.853
+  ],
+  "source_trim": [
+   0.0,
+   4.0
+  ],
+  "masterStart": 63.9987,
+  "angle": "a low hero angle from knee height looking up, 28mm, fast push-in",
+  "keep": [
+   "clear-lens glasses, not tinted",
+   "cream Saint Laurent track jacket, zipped, stand collar, one narrow navy chest stripe"
+  ],
+  "prompt": "(angle shot)"
+ },
+ {
+  "id": "S11c_low_hero",
+  "kind": "angle",
+  "route": "seedance_ref",
+  "aspect": "9:16",
+  "resolution": "720p",
+  "source_local": "docs/handoffs/round_2026-10-02/S11c_low_hero_src.mp4",
+  "source_window": [
+   84.59,
+   86.557
+  ],
+  "source_trim": [
+   0.0,
+   4.0
+  ],
+  "masterStart": 81.7036,
+  "angle": "a low hero angle from knee height looking up, 28mm, fast push-in",
+  "keep": [
+   "clear-lens glasses, not tinted",
+   "navy cap",
+   "camo shirt with the flag patch"
+  ],
+  "prompt": "(angle shot)"
+ }
+]
