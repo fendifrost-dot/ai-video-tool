@@ -3,7 +3,7 @@
 WORLD AROUND — build the environment around a real performance frame, through the app's provider lane.
 
     python3 scripts/broll/world_around.py --still frame.png --prompt "…" --out run/ --project <uuid> --user <uuid> \\
-        [--model grok-image-2|qwen-image-3-edit] [--resolution 2k] [--aspect 9:16] [--extra-ref img.jpg …] [--jwt /tmp/jwt.txt]
+        [--model grok-image-2|qwen-image-3-edit] [--resolution 2k] [--aspect 9:16] [--extra-ref img.jpg …] [--empty] [--jwt /tmp/jwt.txt]
 
 Why (Fendi, 2026-10-02): a plate generated WITHOUT the performer and composited behind him reads as detached; a plate
 generated AROUND him (the real frame is the first reference, the model keeps him and rebuilds the scene) carries his light
@@ -25,6 +25,12 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 KEEP = ("Keep the person exactly as they are: same face, beard, glasses, hat, clothing, same pose and hands, same position "
         "and size in the frame, same camera height and lens. Rebuild only the environment around them, and light them with "
         "that environment's light so they belong to it. ")
+# --empty: the plate will have the REAL take composited back over it (composite_environment.py --fg-place, with a
+# foreground occluder lifted out of the plate). A generated figure left where he stands then peeks out beside the real
+# one (measured 2026-10-02 on the stoop plate). So the second pass asks for the same scene with the spot empty.
+EMPTY = ("Then remove the person entirely: the same scene, the same camera, the same light, with the place where they "
+         "stood empty — nothing and nobody there, the surface and background continued naturally. No people in the frame "
+         "other than those the scene description names. ")
 
 
 def main():
@@ -33,7 +39,7 @@ def main():
     ap.add_argument("--project", required=True); ap.add_argument("--user", required=True)
     ap.add_argument("--model", default="grok-image-2", choices=["grok-image-2", "qwen-image-3-edit"]); ap.add_argument("--resolution", default="2k")
     ap.add_argument("--aspect", default="9:16"); ap.add_argument("--extra-ref", action="append", default=[], help="more reference images (a world still, a wardrobe reference)")
-    ap.add_argument("--no-keep-preamble", action="store_true"); ap.add_argument("--jwt", default="/tmp/jwt.txt"); ap.add_argument("--anon", default="/tmp/anon.txt")
+    ap.add_argument("--no-keep-preamble", action="store_true"); ap.add_argument("--empty", action="store_true", help="the plate is for compositing the real take back over it: ask for the scene with the performer's spot EMPTY (his light and perspective are kept from the reference frame)"); ap.add_argument("--jwt", default="/tmp/jwt.txt"); ap.add_argument("--anon", default="/tmp/anon.txt")
     ap.add_argument("--poll-s", type=int, default=10); ap.add_argument("--max-wait-s", type=int, default=900)
     a = ap.parse_args(); os.makedirs(a.out, exist_ok=True)
     api = Api(Session.from_args(a))
@@ -42,7 +48,7 @@ def main():
     for i, p in enumerate([a.still] + a.extra_ref):
         ext = os.path.splitext(p)[1].lower() or ".png"; mime = "image/png" if ext == ".png" else "image/jpeg"
         sp = f"{base}/{stamp}_ref{i}{ext}"; api.upload("project-references", sp, open(p, "rb").read(), mime); refs.append(api.sign("project-references", sp, 86400))
-    prompt = ("" if a.no_keep_preamble else KEEP) + a.prompt
+    prompt = ("" if a.no_keep_preamble else KEEP) + a.prompt + (" " + EMPTY if a.empty else "")
     body = {"endpoint": "video-providers-higgsfield-model", "method": "POST", "body": {"promptText": prompt, "mode": "image_edit", "modelVariant": a.model, "referenceImageUrls": refs, "resolution": a.resolution, "aspectRatio": a.aspect, "avt_user_id": a.user, "avt_project_id": a.project}}
     rec = {"submitting": body["body"], "t": time.time()}; json.dump(rec, open(os.path.join(a.out, a.model + ".json"), "w"), indent=1)   # write-ahead
     r = api.post(PROXY, body, timeout=170); rec["envelope"] = r; json.dump(rec, open(os.path.join(a.out, a.model + ".json"), "w"), indent=1)
