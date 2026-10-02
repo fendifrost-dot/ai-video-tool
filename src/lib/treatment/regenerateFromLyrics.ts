@@ -202,6 +202,26 @@ export function standingRules(spec: Pick<ShotSpec, "shotType">): string[] {
       ];
 }
 
+/**
+ * What the request says about the box it is writing for. The window and the section always go. The framing and the
+ * camera go ONLY when the director set them (an overridden card): the proxy states them as "already chosen", and a
+ * GENERATED close-up handed back as a constraint keeps every regenerate inside the scene it is meant to replace
+ * (measured live 2026-10-02: "rims 21 don't ride no minors" came back as a macro of a rim in both readings, because
+ * the card it was replacing was a "50mm macro, slight push-in" close-up).
+ */
+export function shotContext(
+  spec: Pick<ShotSpec, "timeline" | "framing" | "cameraMotion" | "origin">,
+  section: string | null,
+) {
+  const base = { start: spec.timeline.start, end: spec.timeline.end, section };
+  if (spec.origin !== "override") return base;
+  return {
+    ...base,
+    framing: spec.framing,
+    cameraMotion: spec.cameraMotion.description || spec.cameraMotion.type,
+  };
+}
+
 export class NoLyricsInWindowError extends Error {
   constructor() {
     super("Instrumental — nothing to regenerate from");
@@ -237,13 +257,7 @@ export async function regenerateShotFromLyrics(input: RegenerateInput): Promise<
             seconds: Math.max(0, input.spec.timeline.end - input.spec.timeline.start),
           },
         ],
-        shot: {
-          start: input.spec.timeline.start,
-          end: input.spec.timeline.end,
-          section: input.section ?? lines[0]?.section ?? null,
-          framing: input.spec.framing,
-          cameraMotion: input.spec.cameraMotion.description || input.spec.cameraMotion.type,
-        },
+        shot: shotContext(input.spec, input.section ?? lines[0]?.section ?? null),
         heroDescription: input.heroDescription,
         environment: input.environment,
         style: input.style ?? undefined,

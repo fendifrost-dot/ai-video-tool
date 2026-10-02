@@ -10,6 +10,7 @@ import {
   sceneToOverride,
   type MotionScene,
   modeForSpec,
+  shotContext,
   standingRules,
 } from "./regenerateFromLyrics";
 import { applyShotOverride, type ShotOverride } from "./overrides";
@@ -257,5 +258,27 @@ describe("the card's role decides the reading and the standing rules", () => {
     const b = standingRules(broll).join(" ");
     expect(b).toContain("The artist does not appear in this shot");
     for (const rules of [standingRules(perf), standingRules(broll)]) expect(rules.at(-1)).toContain("The camera moves");
+  });
+});
+
+describe("what the request says about the box it replaces", () => {
+  const card = {
+    timeline: { start: 19.2, end: 23.1 },
+    framing: "close_up" as const,
+    cameraMotion: { type: "dolly" as const, description: "50mm macro, slight push-in" },
+  };
+
+  it("a generated card's framing and camera are NOT handed back as constraints", () => {
+    expect(shotContext({ ...card, origin: "generated" }, "verse")).toEqual({ start: 19.2, end: 23.1, section: "verse" });
+  });
+
+  it("the director's own framing and camera are", () => {
+    expect(shotContext({ ...card, origin: "override" }, "verse")).toEqual({
+      start: 19.2,
+      end: 23.1,
+      section: "verse",
+      framing: "close_up",
+      cameraMotion: "50mm macro, slight push-in",
+    });
   });
 });
