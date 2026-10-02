@@ -174,6 +174,7 @@ def main():
     ap.add_argument("--fg-anchor", default="bottom", choices=["bottom", "centre"], help="with --fg-place: 'bottom' keeps the take's bottom edge at cy (a waist-up take sits ON the thing that occludes it); 'centre' centres it on cy")
     ap.add_argument("--occluder-from-plate", default=None, help="PNG mask in the PLATE's own geometry (white = in front of the performer): those plate pixels are lifted on top of him with the plate's zoom, so the layer stays registered")
     ap.add_argument("--occluder-auto", default=None, help="'x0,y0,x1,y1' fractions of the plate: cut the salient object inside that box out of the plate's first frame (rembg isnet-general-use), use it as the occluder mask and save it next to --out as occluder_mask.png for inspection and reuse")
+    ap.add_argument("--occluder-auto-track", action="store_true", help="with --occluder-auto and a VIDEO plate: re-cut the salient object on every plate frame, so an occluder that moves (a car carried away, people crossing) stays an occluder and leaves no hole where it was (≈ 1 s per frame on CPU)")
     ap.add_argument("--occluder-below", type=float, default=None, help="fraction of the plate height: every plate pixel below this line is in front of the performer (a soft horizon; the crude fallback when no object mask exists)")
     ap.add_argument("--occluder", default=None, help="an RGBA cutout (PNG with alpha) composited in front of the performer in OUTPUT coordinates; place it with --occluder-place")
     ap.add_argument("--occluder-place", default="0,0,1", help="with --occluder: 'x,y,w' fractions of the output frame — left, top, width (height follows the cutout's aspect)")
@@ -235,26 +236,45 @@ def main():
         if a.mask_cache: np.savez_compressed(a.mask_cache, soft=np.asarray(soft))
     plate_stats = None
     # ---- occluder in plate geometry (mask over the cover-fit plate) ------------------------------------------------
-    occ_plate_mask = None   # float32 HxW in the fitted plate's pixel grid, 1 = in front of the performer; sources are unioned
+    # 1 = in front of the performer; sources are unioned. The STATIC sources (a mask file, the horizon) are built once.
+    # The AUTO source is the salient object in a box of the plate: once on the plate's first frame for a still or a
+    # locked plate, or per plate frame with --occluder-auto-track when the object MOVES (a car carried off, people
+    # crossing) — a first-frame mask over a moving object would lift the street where the car used to be.
+    occ_plate_mask = None; occ_static = None; occ_box = None; _occ_session = None; _occ_cache = {}
+    def _feather(m):
+        if a.occluder_feather <= 0: return m
+        return np.asarray(Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(a.occluder_feather))).astype(np.float32) / 255.0
+    def _auto_mask(pl_frame):
+        nonlocal _occ_session
+        from rembg import new_session, remove
+        if _occ_session is None: _occ_session = new_session("isnet-general-use")
+        PH_, PW_ = pl_frame.shape[:2]; bx0, by0, bx1, by1 = int(occ_box[0] * PW_), int(occ_box[1] * PH_), int(occ_box[2] * PW_), int(occ_box[3] * PH_)
+        crop = Image.fromarray(np.clip(pl_frame[by0:by1, bx0:bx1], 0, 255).astype(np.uint8))
+        cut = remove(crop, session=_occ_session, only_mask=True)
+        auto = np.zeros((PH_, PW_), np.float32); auto[by0:by1, bx0:bx1] = np.asarray(cut.convert("L")).astype(np.float32) / 255.0
+        return auto
     if a.occluder_auto or a.occluder_from_plate or a.occluder_below is not None:
-        pl0 = plate_at(0); PH, PW = pl0.shape[:2]; occ_plate_mask = np.zeros((PH, PW), np.float32)
+        pl0 = plate_at(0); PH, PW = pl0.shape[:2]; occ_static = np.zeros((PH, PW), np.float32)
         if a.occluder_from_plate:
             m = Image.open(a.occluder_from_plate).convert("L").resize((PW, PH), Image.BILINEAR)
-            occ_plate_mask = np.maximum(occ_plate_mask, np.asarray(m).astype(np.float32) / 255.0)
-        if a.occluder_auto:
-            x0f, y0f, x1f, y1f = (float(v) for v in a.occluder_auto.split(","))
-            bx0, by0, bx1, by1 = int(x0f * PW), int(y0f * PH), int(x1f * PW), int(y1f * PH)
-            from rembg import new_session, remove
-            crop = Image.fromarray(np.clip(pl0[by0:by1, bx0:bx1], 0, 255).astype(np.uint8))
-            cut = remove(crop, session=new_session("isnet-general-use"), only_mask=True)
-            auto = np.zeros((PH, PW), np.float32); auto[by0:by1, bx0:bx1] = np.asarray(cut.convert("L")).astype(np.float32) / 255.0
-            occ_plate_mask = np.maximum(occ_plate_mask, auto)
-            Image.fromarray((auto * 255).astype(np.uint8)).save(os.path.splitext(a.out)[0] + "_occluder_mask.png")
+            occ_static = np.maximum(occ_static, np.asarray(m).astype(np.float32) / 255.0)
         if a.occluder_below is not None:
             below = np.zeros((PH, PW), np.float32); below[int(a.occluder_below * PH):, :] = 1.0
-            occ_plate_mask = np.maximum(occ_plate_mask, below)
-        if a.occluder_feather > 0:
-            occ_plate_mask = np.asarray(Image.fromarray((occ_plate_mask * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(a.occluder_feather))).astype(np.float32) / 255.0
+            occ_static = np.maximum(occ_static, below)
+        occ_plate_mask = occ_static
+        if a.occluder_auto:
+            occ_box = tuple(float(v) for v in a.occluder_auto.split(","))
+            auto0 = _auto_mask(pl0)
+            Image.fromarray((auto0 * 255).astype(np.uint8)).save(os.path.splitext(a.out)[0] + "_occluder_mask.png")
+            occ_plate_mask = np.maximum(occ_static, auto0)
+        occ_plate_mask = _feather(occ_plate_mask)
+    def occ_mask_at(i):
+        """the occluder mask for output frame i (plate geometry): static, or re-cut on that plate frame when tracking"""
+        if occ_plate_mask is None or not (a.occluder_auto and a.occluder_auto_track and plate_frames is not None): return occ_plate_mask
+        k = (i % len(plate_frames)) if a.plate_loop else min(i, len(plate_frames) - 1)
+        if k not in _occ_cache:
+            _occ_cache.clear(); _occ_cache[k] = _feather(np.maximum(occ_static, _auto_mask(plate_at(i))))
+        return _occ_cache[k]
     # ---- RGBA cutout occluder in output coordinates -----------------------------------------------------------------
     occ_cut = None
     if a.occluder:
@@ -459,7 +479,7 @@ def main():
         comp = fg * al + bg * (1 - al)
         # occluder: plate pixels (registered with the plate's crop/zoom) and/or an RGBA cutout, IN FRONT of the performer
         if occ_plate_mask is not None:
-            om = occ_plate_mask[y0:y0 + ch, x0:x0 + cw]
+            om = occ_mask_at(i)[y0:y0 + ch, x0:x0 + cw]
             om = np.asarray(Image.fromarray((om * 255).astype(np.uint8)).resize((W, H), Image.BILINEAR)).astype(np.float32)[..., None] / 255.0
             comp = bg * om + comp * (1 - om)
         if occ_cut is not None:
