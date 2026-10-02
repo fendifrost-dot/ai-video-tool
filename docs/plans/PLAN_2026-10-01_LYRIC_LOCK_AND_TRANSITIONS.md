@@ -81,7 +81,9 @@ What: `scripts/edit/transitions.py` — every transition is a function of (outgo
 Where: `scripts/edit/transitions.py` (new), `assemble_section.py` calls it; `config/transition_presets.json` names each with default duration in beats, parameters, and the look it suits.
 Cost: $0.
 
-### C2. Transitions as data on the storyboard (app)
+### C2. Transitions as data on the storyboard (app) — **done 2026-10-02 (presets on the cards; picker lands with B3's override block)**
+
+Landed: `TransitionSchema.preset` (name from `config/transition_presets.json`; the DB family stays in `type`), `src/lib/treatment/transitions.ts` (mirror of the presets + `section_defaults`, sync-tested; `transitionInFromPreset(name, bpm)`, `transitionPresetLabel`), `applyCoverageDefaults` fills the section's transition on its first card, `ShotCard` names the preset with its beats. The per-card picker is a select in the B3 override block (Claude Code brief).
 
 What: each card's `transitionIn` gets the full preset list with duration in beats (not seconds — the grid is 122 BPM, one beat = 0.49 s), and a per-section default ("hook: whip-pans and flashes on the 1; verse: hard cuts on the 1, crossfades on the 3"). Beat-quantised durations end up exact on the clock.
 Where: `shotSpec.ts` `TransitionSchema` gains `beats`, `preset`, `params`; `ShotCard.tsx` picker; the DB enum `shot_transition_type` extends.
@@ -91,7 +93,9 @@ Where: `shotSpec.ts` `TransitionSchema` gains `beats`, `preset`, `params`; `Shot
 What: a page that takes Fendi's cut, shows each cut point with the outgoing and incoming shots, and lets him pick a transition and preview it in place — the sample renders only the four seconds around the cut (≈ 2 s of compute each), so trying ten transitions on a cut costs seconds, not a re-render. His picks write back to the cards (C2).
 Where: app page `TransitionsPage.tsx`; preview via a new edge function `transition-preview-proxy` that calls the scripts-lane engine (needs the render worker to be instant; until then it renders in the sandbox on request).
 
-### C4. Cut-point QA
+### C4. Cut-point QA — **partly done 2026-10-02 (coverage side)**
+
+Landed: `scripts/qa/coverage_qa.py` on the rendered section (static share, longest static run, cadence, repeats) and `measureCoverage` on the storyboard (same rules, same numbers, shown where the treatment is written: the storyboard strip + per-card flags). Still open: the beat-landing / lyric-boundary / whip-spacing checks in `native_media_qa.py`.
 
 What: deterministic checks in `native_media_qa.py`: every cut lands within ±1 frame of a beat (or is flagged as intentional), no transition crosses a lyric line boundary unless the card says so, no two whip-pans within a bar. The report is part of every assembly.
 
@@ -106,12 +110,14 @@ Order inside C: C1 → C2 → C4 → C3. C1 alone upgrades the next sample.
 | # | Item | Status |
 |---|---|---|
 | E1 | `config/coverage_presets.json` — per section: move vocabulary with odds, cut cadence in bars, generated-angle share, angle sentences, transition on the 1; rules: static share ≤ 12 %, longest static run ≤ 4 s, no consecutive repeat of a move or a framing, pushes and pulls alternate, framing rotation | **done** |
-| E2 | `scripts/edit/coverage.py plan` — every performance slot → sub-slots on the bar grid, a move per cut drawn deterministically under the rules, generated-angle requests for the Seedance lane, `shotspecs_coverage.json` + `renders_coverage.json` for the assembler | **done** |
-| E3 | `scripts/edit/coverage.py render` — the 2D virtual camera over the finished slot clip (zoom / pan / roll / handheld + the lens stack), or the 2.5D camera (`camera_engine.py`) when a matte export exists | **done** (2D measured on bar2; 2.5D needs matte exports per take — `composite_environment.py --export-matte`) |
+| E2 | `scripts/edit/camera_coverage.py plan` — every performance slot → sub-slots on the bar grid, a move per cut drawn deterministically under the rules, generated-angle requests for the Seedance lane, `shotspecs_coverage.json` + `renders_coverage.json` for the assembler | **done** |
+| E3 | `scripts/edit/camera_coverage.py render` — the 2D virtual camera over the finished slot clip (zoom / pan / roll / handheld + the lens stack), or the 2.5D camera (`camera_engine.py`) when a matte export exists | **done** (2D measured on bar2; 2.5D needs matte exports per take — `composite_environment.py --export-matte`) |
 | E4 | Generated angles per line (Seedance 2.5 reference-to-video, `run_world_batch.py --route seedance_ref`, requests written by the planner) | **waits on the batch credential** |
 | E5 | `scripts/qa/coverage_qa.py` — moving share, longest static run, consecutive repeats, cut cadence; PASS/FAIL against the presets | **done** |
 | E6 | App: `applyCoverageDefaults` gives every performance card a move and a framing at treatment time (the director's own choice wins) | **done, tested** |
-| E7 | The story-led motion template Fendi supplied (`config/treatment_templates/motion_story_v1.json` + seed prompt template) feeding the generators' per-scene motion contract | **template + seed done; generator wiring with B4** |
+| E7 | The story-led motion template Fendi supplied (`config/treatment_templates/motion_story_v1.json` + seed prompt template) feeding the generators' per-scene motion contract | **template + seed done; generator wiring with B4 (Claude Code brief)** |
+| E8 | Adjustments after bar3 (2026-10-02): the generators write the camera as prose and left `type=static` on every card, so E6 never fired on a real treatment → `classifyMotion` / `MOTION_WORDS` read the prose into the move vocabulary (app + planner, same patterns); draws stay inside the static share/run budget; `measureCoverage` + the storyboard strip and card flags; the planner honours the director's written camera on a slot's first cut and enforces `max_static_run_s`; `scripts/edit/coverage.py` renamed `camera_coverage.py` (it shadowed the `coverage` package for rembg/numba) | **done, tested** |
+| E9 | 2.5D moves on living plates: `camera_engine.py` takes a VIDEO plate (depth from its first frame) and the compositor's plate grade travels with the matte export (`grade.json`); `composite_environment.py` gains performer placement (`--fg-place`) and the FOREGROUND OCCLUDER layer (`--occluder-auto` box → rembg cutout of the plate object, `--occluder-from-plate` mask, `--occluder-below` horizon, `--occluder` RGBA cutout; sources union) so waist-up takes read full-body behind a car / stoop rail — measured on S11 + the stoop plate | **done; bar4 (1080p, 2.5D) rendering** |
 
 ## Part D — Fendi's next steps
 
