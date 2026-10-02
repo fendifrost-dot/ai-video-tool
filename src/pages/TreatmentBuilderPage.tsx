@@ -25,7 +25,7 @@ import { useSongAnalysis } from "@/lib/queries/songAnalyses";
 import { useProjectShots, useBulkCreateShots } from "@/lib/queries/shots";
 import { useLyricLines } from "@/lib/queries/lyricLines";
 import { applyCoverageDefaults, DEFAULT_COVERAGE_PRESETS } from "@/lib/treatment/coverage";
-import { applyShotOverrides } from "@/lib/treatment/overrides";
+import { applyShotOverrides, isEmptyOverride } from "@/lib/treatment/overrides";
 import {
   useShotOverrides,
   useUpsertShotOverride,
@@ -274,7 +274,7 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
       overrides: overridesQuery.data ?? {},
       saving: upsertOverride.isPending || deleteOverride.isPending,
       save: async (specId: string, draft: ShotOverrideDraft) => {
-        await upsertOverride.mutateAsync({
+        const row = {
           projectId,
           specId,
           // An empty field is "not overridden", never "set this to nothing" — that is
@@ -292,7 +292,13 @@ export function TreatmentBuilderPage({ projectId }: { projectId: string }) {
           transitionIn: draft.transitionInPreset ? { preset: draft.transitionInPreset } : null,
           requiredElements: draft.requiredElements.length ? draft.requiredElements : null,
           notes: draft.notes.trim() || null,
-        });
+        };
+        // A draft with every field empty states nothing: that is a reset, not an all-null row.
+        if (isEmptyOverride(row)) {
+          if (overridesQuery.data?.[specId]) await deleteOverride.mutateAsync({ projectId, specId });
+          return;
+        }
+        await upsertOverride.mutateAsync(row);
       },
       reset: async (specId: string) => {
         await deleteOverride.mutateAsync({ projectId, specId });
