@@ -232,6 +232,11 @@ export type Fx = z.infer<typeof FxSchema>;
 export const TransitionSchema = z.object({
   type: z.enum(TRANSITION_TYPES).default("cut"),
   durationSeconds: z.number().min(0).nullable().default(null),
+  /**
+   * Name of a preset in config/transition_presets.json (the assembler's vocabulary, timed in beats on the project's
+   * grid). `type` stays the DB family nearest to it; the preset is the truth when both are present.
+   */
+  preset: z.string().nullable().default(null),
 });
 export type Transition = z.infer<typeof TransitionSchema>;
 
@@ -390,6 +395,8 @@ export function deserializeShotSpec(json: string): ShotSpec {
 
 /** Fields on a ShotSpec that have NO home in the `shots` row (lossy on export). */
 export const ROW_UNMAPPED_FIELDS = [
+  "transitionIn.preset",
+  "transitionOut.preset",
   "framing",
   "cameraAngle",
   "lens",
