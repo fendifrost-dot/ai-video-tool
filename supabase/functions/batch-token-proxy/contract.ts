@@ -33,6 +33,8 @@ export function parseRequest(body: unknown): ParsedRequest {
   if (typeof action !== "string" || !(BATCH_ACTIONS as readonly string[]).includes(action)) {
     return { ok: false, error: `action must be one of ${BATCH_ACTIONS.join(", ")}` };
   }
+  // `.includes` on a widened string[] does not narrow, so assert once here.
+  const act = action as BatchAction;
 
   // Guard against a caller trying to steer whose session is minted. These keys are
   // meaningless to this function; their presence means the caller misunderstands the
@@ -46,7 +48,7 @@ export function parseRequest(body: unknown): ParsedRequest {
     }
   }
 
-  if (action === "enroll") {
+  if (act === "enroll") {
     const label = typeof b.label === "string" ? b.label.trim() : "";
     if (!label || label.length > 80)
       return { ok: false, error: "enroll needs a label of 1–80 characters" };
@@ -57,17 +59,17 @@ export function parseRequest(body: unknown): ParsedRequest {
         return { ok: false, error: "expiresInDays must be 1–3650" };
       expiresInDays = Math.floor(d);
     }
-    return { ok: true, action, label, expiresInDays };
+    return { ok: true, action: act, label, expiresInDays };
   }
 
-  if (action === "revoke") {
+  if (act === "revoke") {
     const credentialId = typeof b.credentialId === "string" ? b.credentialId.trim() : "";
     if (!/^[0-9a-f-]{36}$/i.test(credentialId))
       return { ok: false, error: "revoke needs a credentialId (uuid)" };
-    return { ok: true, action, credentialId };
+    return { ok: true, action: act, credentialId };
   }
 
-  return { ok: true, action };
+  return { ok: true, action: act };
 }
 
 /** The runner's secret travels in its own header, never in the body or a query string. */

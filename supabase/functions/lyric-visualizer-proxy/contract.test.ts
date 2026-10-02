@@ -13,8 +13,8 @@ import {
   shotInstruction,
   templateMatches,
   templateSlots,
-} from "./contract";
-import { legacySystemPrompt } from "./legacyPrompt.golden";
+} from "./contract.ts";
+import { legacySystemPrompt } from "./legacyPrompt.golden.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const indexSource = readFileSync(resolve(here, "./index.ts"), "utf8");
