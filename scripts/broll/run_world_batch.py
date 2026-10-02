@@ -14,6 +14,9 @@ shots.json — a list of shots; every creative choice is data here, nothing in t
    -- seedance_ref only (kind "angle": a real take re-shot from a new camera, optionally inside a world):
    "source_path": "<project-clips path of the trimmed performance cut (4–30 s; every input second is billed)>",
    "source_local": "<local copy of that cut, for the fidelity check>", "angle": "the new camera, in one sentence",
+   "source_trim": [t0, t1]  -- optional: with source_local and NO source_path, the script cuts [t0, t1] (file seconds) out of
+                              source_local, uploads it to project-clips/<user>/<project>/seedance/ and uses that (camera_coverage.py
+                              plan writes angle_requests.json this way),
    "keep": ["clear-lens glasses, not tinted", "navy cap", "camo shirt with the flag patch"],
    "still_path": "<optional world still (project-references) the performer is placed into>", "resolution": "720p"}
 
@@ -182,6 +185,16 @@ def main():
                 print(s["id"], "stills", [round(c["look_distance"], 2) for c in cands], "→", os.path.basename(best["local"]))
             still_url = api.sign("project-references", st["still"]["picked"], ttl=86400)
         if s["route"] == "seedance_ref":
+            if not s.get("source_path") and s.get("source_local") and s.get("source_trim"):
+                # the planner names the TRIM of the local take (4 s ending on the sub-slot's last frame): cut it and
+                # put it in project-clips once, recorded in the manifest so a resume does not upload it twice
+                if not st.get("source_upload"):
+                    t0, t1 = float(s["source_trim"][0]), float(s["source_trim"][1]); trim = os.path.join(a.out, f"{s['id']}_src.mp4")
+                    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{t0:.3f}", "-i", s["source_local"], "-t", f"{t1 - t0:.3f}", "-c:v", "libx264", "-crf", "16", "-preset", "medium", "-c:a", "aac", trim], check=True)
+                    sp = f"{a.user}/{a.project}/seedance/{run}_{s['id']}_src.mp4"; api.upload("project-clips", sp, open(trim, "rb").read(), "video/mp4")
+                    st["source_upload"] = {"path": sp, "local": trim, "trim": [t0, t1]}; json.dump(man, open(mpath, "w"), indent=1)
+                s["source_path"] = st["source_upload"]["path"]; s["source_local"] = st["source_upload"]["local"]
+            if not s.get("source_path"): st["skipped"] = "seedance_ref needs source_path or source_local + source_trim"; print(s["id"], st["skipped"]); continue
             s["_source_url"] = api.sign("project-clips", s["source_path"], ttl=86400)
             if s.get("still_path"): still_url = api.sign("project-references", s["still_path"], ttl=86400); st["still"] = {"candidates": [], "picked": s["still_path"], "cost_usd": 0.0}
             mprompt = angle_prompt(s, look, bool(still_url))
