@@ -18,6 +18,6 @@ export const PROMPT_CAPS: Record<"runway" | "higgsfield" | "xai", number> = { ru
 /** Substrings in a provider error that mean every further submit in this run will be refused (provider_caps.json). */
 export const PROVIDER_REFUSALS: Record<"runway" | "higgsfield" | "xai", string[]> = {
   runway: ["not have enough credits", "insufficient credits", "quota"],
-  higgsfield: ["insufficient", "balance", "quota"],
+  higgsfield: ["insufficient", "balance", "quota", "not_enough_credits"],
   xai: ["used all available credits", "spending limit"],
 };
