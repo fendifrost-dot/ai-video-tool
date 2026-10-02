@@ -1378,6 +1378,56 @@ export type Database = {
           },
         ]
       }
+      shot_overrides: {
+        Row: {
+          camera_motion: Json | null
+          direction: string | null
+          framing: string | null
+          id: string
+          notes: string | null
+          project_id: string
+          required_elements: string[] | null
+          spec_id: string
+          transition_in: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          camera_motion?: Json | null
+          direction?: string | null
+          framing?: string | null
+          id?: string
+          notes?: string | null
+          project_id: string
+          required_elements?: string[] | null
+          spec_id: string
+          transition_in?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          camera_motion?: Json | null
+          direction?: string | null
+          framing?: string | null
+          id?: string
+          notes?: string | null
+          project_id?: string
+          required_elements?: string[] | null
+          spec_id?: string
+          transition_in?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shot_overrides_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shots: {
         Row: {
           camera_direction: string | null
