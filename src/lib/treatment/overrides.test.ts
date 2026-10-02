@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { applyCoverageDefaults, DEFAULT_COVERAGE_PRESETS } from "./coverage";
+import {
+  applyCoverageDefaults,
+  CARD_TO_ENGINE,
+  classifyMotion,
+  DEFAULT_COVERAGE_PRESETS,
+} from "./coverage";
 import {
   applyShotOverride,
   applyShotOverrides,
   effectiveTreatment,
   isEmptyOverride,
   isOverridden,
+  TYPE_PHRASE,
   type ShotOverride,
 } from "./overrides";
-import { parseShotSpec, type ShotSpec } from "./shotSpec";
+import { CAMERA_MOTIONS, parseShotSpec, type ShotSpec } from "./shotSpec";
 
 /**
  * The property these tests exist for: an override states ONLY what the director
@@ -184,7 +190,9 @@ describe("overrides run BEFORE the coverage planner", () => {
 
   it("a type stated WITHOUT a description survives the planner (the prose is replaced, not kept)", () => {
     // The planner reads prose first; the generated prose named the generated move and used to win.
-    const generated = spec({ cameraMotion: { type: "dolly", description: "push 0.16 · anamorphic_35 · handheld 0.25" } });
+    const generated = spec({
+      cameraMotion: { type: "dolly", description: "push 0.16 · anamorphic_35 · handheld 0.25" },
+    });
     const out = run(generated, { "clip-07": override({ cameraMotion: { type: "truck" } }) });
     expect(out.cameraMotion.type).toBe("truck");
     expect(out.cameraMotion.description).not.toContain("push");
@@ -224,5 +232,45 @@ describe("the schema carries the new fields", () => {
     const s = parseShotSpec({ id: "x", purpose: "p", timeline: { start: 0, end: 1 } });
     expect(s.origin).toBe("generated");
     expect(s.requiredElements).toEqual([]);
+  });
+});
+
+describe("TYPE_PHRASE round-trips through the coverage planner's prose classifier", () => {
+  // The whole type-only override fix rests on one invariant: the phrase written in place of
+  // the generated prose must classify back to the move the director picked. MOTION_WORDS
+  // lives in coverage.ts — another lane's file — so a pattern edited there could silently
+  // send a type-only override back to the generated move, which is exactly the bug this
+  // table was introduced to fix. The Record<CameraMotion, string> type catches a MISSING
+  // phrase; only this catches a WRONG one.
+  it.each([...CAMERA_MOTIONS])("%s", (type) => {
+    const phrase = TYPE_PHRASE[type];
+    expect(phrase.trim(), `${type} has a phrase`).not.toBe("");
+    expect(classifyMotion({ type, description: phrase })).toBe(CARD_TO_ENGINE[type] ?? type);
+  });
+
+  it("every move survives applyCoverageDefaults when stated without a description", () => {
+    // End to end, for all fifteen: the planner must not replace the director's choice.
+    const generated = {
+      type: "dolly" as const,
+      description: "push 0.16 · anamorphic_35 · handheld 0.25",
+    };
+    for (const type of CAMERA_MOTIONS) {
+      const s = parseShotSpec({
+        id: "clip-07",
+        purpose: "p",
+        shotType: "performance",
+        timeline: { start: 12, end: 18 },
+        cameraMotion: generated,
+      });
+      const out = applyCoverageDefaults(
+        applyShotOverrides([s], { "clip-07": override({ cameraMotion: { type } }) }),
+        DEFAULT_COVERAGE_PRESETS,
+      )[0];
+      expect(out.cameraMotion.type, `${type} survived`).toBe(type);
+      expect(out.cameraMotion.description, `${type} lost the generated prose`).not.toContain(
+        "push 0.16",
+      );
+      expect(out.origin).toBe("override");
+    }
   });
 });
