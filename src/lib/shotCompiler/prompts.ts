@@ -46,7 +46,29 @@ export function motionContractToSentence(m: MotionContract): string {
   return [m.entrance, m.primary, m.secondary, m.exit].filter((s) => s?.trim()).join(" ");
 }
 
-/** Camera move object → compact motion clause (for world / broll prompts). */
+/**
+ * Camera move object → what the camera does, in words a video model reads (for world / broll prompts).
+ *
+ * This used to emit the 2.5D engine's own parameters — "truck 0.16, ease in_out, anamorphic_35, handheld 0.25". They
+ * mean something to scripts/edit/camera_engine.py and nothing to an image-to-video model, which received them as the
+ * tail of its prompt on the first storyboard → Runs test (2026-10-02). The amount becomes a pace, the handheld number
+ * becomes the word, and the lens preset name is dropped (the look preset already carries the lens).
+ */
+const CAMERA_WORDS: Record<string, (d?: string) => string> = {
+  push: () => "pushes in",
+  pull: () => "pulls back",
+  truck: (d) => `trucks ${d === "left" ? "right to left" : "left to right"}`,
+  pan: (d) => `pans ${d === "left" ? "left" : "right"}`,
+  pedestal: (d) => `rises ${d === "down" ? "down" : "up"}`.replace("rises down", "lowers"),
+  crane: (d) => (d === "up" ? "cranes up" : "cranes down"),
+  orbit: (d) => `arcs ${d === "left" ? "left" : "right"} around the subject`,
+  whip_pan: (d) => `whips ${d === "left" ? "left" : "right"}`,
+  snap_zoom: () => "snaps in",
+  dolly_zoom: () => "holds the subject while the background rushes (dolly zoom)",
+  handheld: () => "is handheld, breathing with the action",
+  static: () => "is locked off",
+};
+
 export function cameraMoveToSentence(move: {
   type: string;
   amount: number;
@@ -55,14 +77,12 @@ export function cameraMoveToSentence(move: {
   lens?: string;
   direction?: string;
 }): string {
-  const bits = [
-    `${move.type} ${move.amount}`,
-    move.ease ? `ease ${move.ease}` : "",
-    move.direction ? move.direction : "",
-    move.lens ? move.lens : "",
-    move.handheld != null ? `handheld ${move.handheld}` : "",
-  ].filter(Boolean);
-  return bits.join(", ");
+  const words = CAMERA_WORDS[move.type];
+  if (!words) return "";
+  const still = move.type === "static" || move.type === "handheld" || move.type === "dolly_zoom";
+  const pace = still ? "" : move.type === "whip_pan" || move.type === "snap_zoom" ? "" : move.amount >= 0.2 ? " fast" : " slowly";
+  const hand = move.type !== "handheld" && (move.handheld ?? 0) >= 0.3 ? ", handheld" : "";
+  return `The camera ${words(move.direction)}${pace}${hand}.`;
 }
 
 /**

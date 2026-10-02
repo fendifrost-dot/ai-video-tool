@@ -156,12 +156,44 @@ export function cameraFromSpec(spec: ShotSpec): CoverageMoveSpec {
 /** The motion contract (motion_story_v1: entrance / primary / secondary / exit) read from a card's fields. */
 export function motionContractFromSpec(spec: ShotSpec): MotionContract {
   const fx = spec.fx.map((f) => f.description || f.type).filter(Boolean).join("; ");
+  // The transitions are the EDIT's (the assembler cuts them between clips). Written into the motion sentence — "arrives
+  // on a match cut" — a video model tries to draw them inside the clip.
   return {
-    entrance: spec.transitionIn?.preset ? `arrives on a ${spec.transitionIn.preset.replace(/_/g, " ")}` : "",
+    entrance: "",
     primary: spec.performanceDirection || spec.purpose,
     secondary: fx,
-    exit: spec.transitionOut?.preset ? `leaves on a ${spec.transitionOut.preset.replace(/_/g, " ")}` : "",
+    exit: "",
   };
+}
+
+/**
+ * The still's prompt for a world card: ONE picture.
+ *
+ * An overridden card is described by what the director (or "From the lyrics") wrote, never by the generated purpose
+ * and environment it replaced. What was written is two things: the FRAME the shot opens on (shot_overrides.frame →
+ * spec.openingFrame) and the DIRECTION — a sentence of beats, "a slow truck reveals the car; the
+ * models step inside; the doorman stops the younger pair". The still is drawn from the frame. Given the direction, an
+ * image model draws every beat at once: the first storyboard → Runs test (2026-10-02) came back as two pictures
+ * stacked, one per beat. A card with a direction and no frame therefore gives the still its FIRST beat only.
+ * The lyric's required elements are named only when there is no frame to carry them ("no minors" is not an object).
+ */
+export function worldScene(spec: ShotSpec, overridden: boolean): string {
+  if (!overridden) {
+    return [
+      spec.environment.description || spec.environment.location,
+      spec.purpose,
+      spec.requiredElements.length ? `Must include: ${spec.requiredElements.join(", ")}.` : "",
+    ]
+      .map((s) => s?.trim())
+      .filter(Boolean)
+      .join(" ");
+  }
+  const frame = spec.openingFrame?.trim();
+  if (frame) return frame;
+  const firstBeat = spec.performanceDirection.split(/;|(?<=[.!?])\s/)[0]?.trim() ?? "";
+  return [firstBeat.replace(/[.;]*$/, "."), spec.requiredElements.length ? `In the picture: ${spec.requiredElements.join(", ")}.` : ""]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /**
@@ -181,13 +213,7 @@ export function phrasesFromShotSpecs(
     // and environment describe the scene that was replaced, and leading with them would compile the old picture with
     // the new elements pasted on.
     const overridden = spec.origin === "override" && spec.performanceDirection.trim().length > 0;
-    const scene = [
-      ...(overridden ? [spec.performanceDirection] : [spec.environment.description || spec.environment.location, spec.purpose]),
-      spec.requiredElements.length ? `Must include: ${spec.requiredElements.join(", ")}.` : "",
-    ]
-      .map((s) => s?.trim())
-      .filter(Boolean)
-      .join(" ");
+    const scene = worldScene(spec, overridden);
     out.push({
       kind: "world",
       id: spec.id,
