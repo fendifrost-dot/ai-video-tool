@@ -15,6 +15,8 @@ export type BatchRowView = {
   selected: boolean;
   resultUrl: string | null;
   storedPath: string | null;
+  /** Signed links to the stills this shot generated or was given: the picked one first, then the other candidates. */
+  stillUrls: string[];
   note: string | null;
   busy: string | null;
 };
@@ -247,8 +249,13 @@ export function BatchRunView(p: BatchRunViewProps) {
                       the provider before submitting this shot again.
                     </p>
                   )}
-                  {(r.resultUrl || r.storedPath || r.note) && (
+                  {(r.resultUrl || r.storedPath || r.note || r.stillUrls.length > 0) && (
                     <p className="mt-1 flex flex-wrap items-center gap-x-3 text-xs">
+                      {r.stillUrls.map((u, i) => (
+                        <a key={u} href={u} target="_blank" rel="noreferrer" className="text-primary underline" data-testid="still-url">
+                          {i === 0 ? "Still" : `Candidate ${i + 1}`}
+                        </a>
+                      ))}
                       {r.resultUrl && (
                         <a href={r.resultUrl} target="_blank" rel="noreferrer" className="text-primary underline" data-testid="result-url">
                           Result clip

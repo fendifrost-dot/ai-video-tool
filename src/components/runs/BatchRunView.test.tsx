@@ -12,7 +12,7 @@ const doneJob: BatchJobRow = {
 };
 
 function row(shot: typeof ANGLE, jobs: BatchJobRow[] = [], over: Partial<BatchRowView> = {}): BatchRowView {
-  return { shot, state: shotState(shot, jobs), estimateUsd: 3.698, selected: true, resultUrl: null, storedPath: null, note: null, busy: null, ...over };
+  return { shot, state: shotState(shot, jobs), estimateUsd: 3.698, selected: true, resultUrl: null, storedPath: null, stillUrls: [], note: null, busy: null, ...over };
 }
 
 function props(over: Partial<BatchRunViewProps> = {}): BatchRunViewProps {
@@ -75,9 +75,16 @@ describe("BatchRunView", () => {
     );
     expect((screen.getByTestId("result-url") as HTMLAnchorElement).href).toBe("https://cdn.example/clip.mp4");
     expect(screen.getByTestId("stored-path").textContent).toBe("saved: asset asset-9");
+    expect(screen.queryByTestId("still-url")).toBeNull();
     expect(screen.getByTestId("plan-summary").textContent).toBe("Nothing to submit.");
     fireEvent.click(screen.getByTestId("mark-failed"));
     expect(onMarkFailed).toHaveBeenCalledWith("LOST");
+  });
+
+  it("a shot's stills are linked — the picked one first — so the picture can be judged before motion is paid for", () => {
+    render(<BatchRunView {...props({ rows: [row(READY, [], { stillUrls: ["https://signed/a.png", "https://signed/b.png"] })], plan: planRun([READY], []) })} />);
+    const links = screen.getAllByTestId("still-url") as HTMLAnchorElement[];
+    expect(links.map((l) => [l.textContent, l.href])).toEqual([["Still", "https://signed/a.png"], ["Candidate 2", "https://signed/b.png"]]);
   });
 
   it("parse errors are shown by shot", () => {
