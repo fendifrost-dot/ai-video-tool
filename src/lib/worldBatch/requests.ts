@@ -1,0 +1,96 @@
+/**
+ * The provider request for one shot — the same endpoint and body run_world_batch.py's motion_submit() sends, so a shot
+ * list behaves identically from the script and from the app.
+ */
+import { seedanceAnglePrompt, wrapPrompt, type LookPreset } from "@/lib/shotCompiler";
+import type { BatchShot } from "./dialect";
+import { billedSeconds, sourceSeconds } from "./estimate";
+import { PROMPT_CAPS } from "./rates";
+
+export type MotionRequest = {
+  endpoint: "video-providers-higgsfield-model" | "video-providers-higgsfield-generate" | "video-providers-runway-generate";
+  provider: "higgsfield" | "runway";
+  modelVariant: string;
+  body: Record<string, unknown>;
+};
+
+export function providerOfRoute(route: BatchShot["route"]): "higgsfield" | "runway" {
+  return route === "still_runway" || route === "still_runway45" || route === "runway_t2v" ? "runway" : "higgsfield";
+}
+
+/** The prompt that generates the still (xAI): preamble + scene + suffix. */
+export function stillPrompt(shot: BatchShot, look: LookPreset | null): string {
+  return wrapPrompt(shot.prompt, look, { maxChars: PROMPT_CAPS.xai });
+}
+
+/** The prompt the motion model receives (run_world_batch.py main loop, step 1). */
+export function motionPrompt(shot: BatchShot, look: LookPreset | null, hasStill: boolean): string {
+  if (shot.route === "seedance_ref") return seedanceAnglePrompt(shot.angle ?? "", shot.keep, look, hasStill);
+  const cap = PROMPT_CAPS[providerOfRoute(shot.route)];
+  // image-to-video: the still already carries the look — the prompt is the motion sentence plus the suffix
+  return hasStill
+    ? wrapPrompt(shot.motion || shot.prompt, look, { preamble: false, maxChars: cap })
+    : wrapPrompt(shot.prompt, look, { maxChars: cap });
+}
+
+export function buildMotionRequest(
+  shot: BatchShot,
+  ctx: { prompt: string; stillUrl?: string | null; sourceUrl?: string | null; userId: string; projectId: string },
+): MotionRequest {
+  const audit = { avt_user_id: ctx.userId, avt_project_id: ctx.projectId };
+  const stillUrl = ctx.stillUrl ?? null;
+  if (shot.route === "seedance_ref") {
+    if (!ctx.sourceUrl) throw new Error(`${shot.id}: seedance_ref needs the source clip's URL`);
+    const sec = Math.max(4, Math.min(30, Math.round(sourceSeconds(shot))));
+    return {
+      endpoint: "video-providers-higgsfield-model",
+      provider: "higgsfield",
+      modelVariant: "seedance-2.5-reference",
+      body: {
+        promptText: ctx.prompt,
+        mode: "reference_to_video",
+        modelVariant: "seedance-2.5-reference",
+        referenceVideoUrls: [ctx.sourceUrl],
+        referenceImageUrls: stillUrl ? [stillUrl] : [],
+        duration: sec,
+        resolution: shot.resolution,
+        aspectRatio: shot.aspect,
+        generate_audio: false,
+        ...audit,
+      },
+    };
+  }
+  if (shot.route === "still_dop") {
+    const model = shot.model ?? "dop-turbo";
+    return {
+      endpoint: "video-providers-higgsfield-generate",
+      provider: "higgsfield",
+      modelVariant: model,
+      body: { promptText: ctx.prompt, mode: "image_to_video", referenceImageUrl: stillUrl, modelVariant: model, ...audit },
+    };
+  }
+  const duration = billedSeconds(shot);
+  if (providerOfRoute(shot.route) === "runway") {
+    const model = shot.route === "still_runway" ? "gen4_turbo" : "gen4.5";
+    const body: Record<string, unknown> = {
+      promptText: ctx.prompt,
+      mode: stillUrl ? "image_to_video" : "text_to_video",
+      modelVariant: model,
+      duration,
+      aspectRatio: shot.aspect,
+      ...audit,
+    };
+    if (stillUrl) body.referenceImageUrl = stillUrl;
+    return { endpoint: "video-providers-runway-generate", provider: "runway", modelVariant: model, body };
+  }
+  const model = stillUrl ? "kling-2.5-turbo-pro-i2v" : "kling-2.5-turbo-pro-t2v";
+  const body: Record<string, unknown> = {
+    promptText: ctx.prompt,
+    mode: stillUrl ? "image_to_video" : "text_to_video",
+    modelVariant: model,
+    duration,
+    ...audit,
+  };
+  if (stillUrl) body.referenceImageUrl = stillUrl;
+  return { endpoint: "video-providers-higgsfield-model", provider: "higgsfield", modelVariant: model, body };
+}
