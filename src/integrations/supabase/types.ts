@@ -1382,6 +1382,7 @@ export type Database = {
         Row: {
           camera_motion: Json | null
           direction: string | null
+          frame: string | null
           framing: string | null
           id: string
           notes: string | null
@@ -1395,6 +1396,7 @@ export type Database = {
         Insert: {
           camera_motion?: Json | null
           direction?: string | null
+          frame?: string | null
           framing?: string | null
           id?: string
           notes?: string | null
@@ -1408,6 +1410,7 @@ export type Database = {
         Update: {
           camera_motion?: Json | null
           direction?: string | null
+          frame?: string | null
           framing?: string | null
           id?: string
           notes?: string | null
