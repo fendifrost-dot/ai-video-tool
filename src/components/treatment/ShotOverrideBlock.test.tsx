@@ -27,6 +27,7 @@ const spec: ShotSpec = parseShotSpec({
 
 const regenerated: RegeneratedShot = {
   direction: "The stair lights come up; the gator boots snap.",
+  frame: "A marble stairwell at night, one man mid-step, alligator boots catching the tread lights.",
   cameraMotion: { type: "zoom", description: "snap_zoom · anamorphic_35" },
   framing: "close_up",
   cameraAngle: "low",
@@ -85,6 +86,7 @@ describe("saving", () => {
     await waitFor(() => expect(c.save).toHaveBeenCalledTimes(1));
     expect(c.save).toHaveBeenCalledWith("clip-07", {
       direction: "He turns away on the last word",
+      frame: "",
       cameraMotionType: "",
       cameraMotionDescription: "",
       framing: "",
@@ -203,6 +205,14 @@ describe("From the lyrics (B4)", () => {
     expect(screen.getByDisplayValue("snap_zoom · anamorphic_35")).toBeInTheDocument();
     expect(screen.getByText("alligator boots")).toBeInTheDocument();
     expect(screen.getByText("· unsaved")).toBeInTheDocument();
+    // the frame — the picture the shot opens on — arrives with it and is saved with it
+    expect(screen.getByTestId("override-frame")).toHaveValue("A marble stairwell at night, one man mid-step, alligator boots catching the tread lights.");
+    fireEvent.click(screen.getByText("Save"));
+    await waitFor(() => expect(c.save).toHaveBeenCalledTimes(1));
+    expect((c.save as ReturnType<typeof vi.fn>).mock.calls[0][1]).toMatchObject({
+      direction: "The stair lights come up; the gator boots snap.",
+      frame: "A marble stairwell at night, one man mid-step, alligator boots catching the tread lights.",
+    });
   });
 
   it("then saves what was regenerated through the same path a hand edit uses", async () => {

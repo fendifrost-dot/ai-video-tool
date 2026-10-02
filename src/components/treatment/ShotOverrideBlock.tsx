@@ -45,6 +45,7 @@ const TRANSITION_OPTIONS = DEFAULT_TRANSITION_PRESET_NAMES;
 function emptyDraft(): ShotOverrideDraft {
   return {
     direction: "",
+    frame: "",
     cameraMotionType: "",
     cameraMotionDescription: "",
     framing: "",
@@ -72,6 +73,7 @@ export function ShotOverrideBlock({ spec }: { spec: ShotSpec }) {
       stored
         ? {
             direction: stored.direction ?? "",
+            frame: stored.frame ?? "",
             cameraMotionType: stored.cameraMotion?.type ?? "",
             cameraMotionDescription: stored.cameraMotion?.description ?? "",
             framing: stored.framing ?? "",
@@ -136,6 +138,7 @@ export function ShotOverrideBlock({ spec }: { spec: ShotSpec }) {
       setDraft((d) => ({
         ...d,
         direction: r.direction || d.direction,
+        frame: r.frame || d.frame,
         cameraMotionType: r.cameraMotion.type ?? d.cameraMotionType,
         cameraMotionDescription: r.cameraMotion.description || d.cameraMotionDescription,
         framing: r.framing ?? d.framing,
@@ -213,6 +216,19 @@ export function ShotOverrideBlock({ spec }: { spec: ShotSpec }) {
             placeholder={placeholders.direction}
             rows={3}
             className="text-xs"
+            aria-label="What happens in this shot"
+          />
+
+          {/* The frame is the picture the shot opens on; the direction above is what then happens in it. A still is
+              drawn from the frame alone — a sentence of several beats draws every beat at once. */}
+          <Textarea
+            value={draft.frame}
+            onChange={(e) => set("frame", e.target.value)}
+            placeholder="The frame it opens on: the place, who and what is in the picture, the light"
+            rows={2}
+            className="text-xs"
+            aria-label="The frame the shot opens on"
+            data-testid="override-frame"
           />
 
           <div className="grid grid-cols-2 gap-2">

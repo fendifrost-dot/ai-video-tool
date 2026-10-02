@@ -16,6 +16,8 @@ import type { ShotSpec } from "@/lib/treatment/shotSpec";
 
 export type ShotOverrideDraft = {
   direction: string;
+  /** What the picture shows when the shot opens — the still. */
+  frame: string;
   cameraMotionType: string;
   cameraMotionDescription: string;
   framing: string;
