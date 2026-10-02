@@ -1,0 +1,493 @@
+{
+ "bpm": 122.0,
+ "presets": "/tmp/avt-main-build/config/coverage_presets.json",
+ "seed": 7,
+ "section_song": [
+  47.2131,
+  90.4918
+ ],
+ "slots": [
+  {
+   "slot": "S01",
+   "section": "verse",
+   "song": [
+    47.2131,
+    51.1475
+   ],
+   "source": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/living2/S01_live.mp4",
+   "masterStart": 45.859,
+   "matte_dir": null,
+   "plate": null,
+   "subs": [
+    {
+     "id": "S01a",
+     "slot": "S01",
+     "section": "verse",
+     "song": [
+      47.2131,
+      51.1475
+     ],
+     "move": {
+      "type": "pull",
+      "amount": 0.14,
+      "ease": "in_out",
+      "start": 0.0,
+      "end": 1.0,
+      "direction": "left"
+     },
+     "handheld": 0.25,
+     "lens": "anamorphic_35",
+     "framing": "medium",
+     "source": "take",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S01a_pull.mp4"
+    }
+   ]
+  },
+  {
+   "slot": "S03",
+   "section": "verse",
+   "song": [
+    53.1148,
+    59.0164
+   ],
+   "source": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/living2/S03_live.mp4",
+   "masterStart": 51.761,
+   "matte_dir": null,
+   "plate": null,
+   "subs": [
+    {
+     "id": "S03a",
+     "slot": "S03",
+     "section": "verse",
+     "song": [
+      53.1148,
+      57.0492
+     ],
+     "move": {
+      "type": "push",
+      "amount": 0.16,
+      "ease": "in_out",
+      "start": 0.0,
+      "end": 0.6667,
+      "direction": "right"
+     },
+     "handheld": 0.25,
+     "lens": "anamorphic_35",
+     "framing": "close",
+     "source": "take",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S03a_push.mp4"
+    },
+    {
+     "id": "S03b",
+     "slot": "S03",
+     "section": "verse",
+     "song": [
+      57.0492,
+      59.0164
+     ],
+     "move": {
+      "type": "pull",
+      "amount": 0.14,
+      "ease": "in_out",
+      "start": 0.6667,
+      "end": 1.0,
+      "direction": "left"
+     },
+     "handheld": 0.25,
+     "lens": "anamorphic_35",
+     "framing": "wide",
+     "source": "take",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S03b_pull.mp4"
+    }
+   ]
+  },
+  {
+   "slot": "S04",
+   "section": "verse",
+   "song": [
+    59.0164,
+    61.9672
+   ],
+   "source": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/living2/S04_live.mp4",
+   "masterStart": 57.663,
+   "matte_dir": null,
+   "plate": null,
+   "subs": [
+    {
+     "id": "S04a",
+     "slot": "S04",
+     "section": "verse",
+     "song": [
+      59.0164,
+      61.9672
+     ],
+     "move": {
+      "type": "truck",
+      "amount": 0.07,
+      "ease": "in_out",
+      "start": 0.0,
+      "end": 1.0,
+      "direction": "right"
+     },
+     "handheld": 0.35,
+     "lens": "handheld_24",
+     "framing": "medium_close",
+     "source": "take",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S04a_truck.mp4"
+    }
+   ]
+  },
+  {
+   "slot": "S06",
+   "section": "hook",
+   "song": [
+    62.9508,
+    68.8525
+   ],
+   "source": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/living2/S06_live.mp4",
+   "masterStart": 61.597,
+   "matte_dir": null,
+   "plate": null,
+   "subs": [
+    {
+     "id": "S06a",
+     "slot": "S06",
+     "section": "hook",
+     "song": [
+      62.9508,
+      64.918
+     ],
+     "move": {
+      "type": "orbit",
+      "amount": 0.08,
+      "ease": "in_out",
+      "start": 0.0,
+      "end": 0.3333,
+      "direction": "left"
+     },
+     "handheld": 0.3,
+     "lens": "anamorphic_35",
+     "framing": "medium",
+     "source": "take",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S06a_orbit.mp4"
+    },
+    {
+     "id": "S06b",
+     "slot": "S06",
+     "section": "hook",
+     "song": [
+      64.918,
+      66.8852
+     ],
+     "move": {
+      "type": "push",
+      "amount": 0.24,
+      "ease": "in",
+      "start": 0.3333,
+      "end": 0.6667,
+      "direction": "left"
+     },
+     "handheld": 0.4,
+     "lens": "anamorphic_35",
+     "framing": "close",
+     "source": "take",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S06b_push.mp4"
+    },
+    {
+     "id": "S06c",
+     "slot": "S06",
+     "section": "hook",
+     "song": [
+      66.8852,
+      68.8525
+     ],
+     "move": {
+      "type": "snap_zoom",
+      "amount": 0.22,
+      "ease": "snap",
+      "start": 0.6667,
+      "end": 1.0,
+      "direction": "left"
+     },
+     "handheld": 0.4,
+     "lens": "anamorphic_35",
+     "framing": "wide",
+     "source": "angle",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S06c_snap_zoom.mp4",
+     "angle": "low_hero",
+     "angle_sentence": "a low hero angle from knee height looking up, 28mm, fast push-in",
+     "angle_file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/angles/S06c_low_hero.mp4"
+    }
+   ]
+  },
+  {
+   "slot": "S08",
+   "section": "hook",
+   "song": [
+    70.8197,
+    76.7213
+   ],
+   "source": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/living2/S08_live.mp4",
+   "masterStart": 69.466,
+   "matte_dir": null,
+   "plate": null,
+   "subs": [
+    {
+     "id": "S08a",
+     "slot": "S08",
+     "section": "hook",
+     "song": [
+      70.8197,
+      72.7869
+     ],
+     "move": {
+      "type": "static",
+      "amount": 0.0,
+      "ease": "linear",
+      "start": 0.0,
+      "end": 0.3333,
+      "direction": "left"
+     },
+     "handheld": 0.6,
+     "lens": "handheld_24",
+     "framing": "medium_close",
+     "source": "angle",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S08a_static.mp4",
+     "angle": "high_wide",
+     "angle_sentence": "a high wide angle from above head height, 24mm, slow descend",
+     "angle_file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/angles/S08a_high_wide.mp4"
+    },
+    {
+     "id": "S08b",
+     "slot": "S08",
+     "section": "hook",
+     "song": [
+      72.7869,
+      74.7541
+     ],
+     "move": {
+      "type": "orbit",
+      "amount": 0.08,
+      "ease": "in_out",
+      "start": 0.3333,
+      "end": 0.6667,
+      "direction": "left"
+     },
+     "handheld": 0.3,
+     "lens": "anamorphic_35",
+     "framing": "medium",
+     "source": "take",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S08b_orbit.mp4"
+    },
+    {
+     "id": "S08c",
+     "slot": "S08",
+     "section": "hook",
+     "song": [
+      74.7541,
+      76.7213
+     ],
+     "move": {
+      "type": "whip_pan",
+      "amount": 0.35,
+      "ease": "snap",
+      "start": 0.6667,
+      "end": 1.0,
+      "direction": "right"
+     },
+     "handheld": 0.3,
+     "lens": "handheld_24",
+     "framing": "close",
+     "source": "take",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S08c_whip_pan.mp4"
+    }
+   ]
+  },
+  {
+   "slot": "S09",
+   "section": "hook",
+   "song": [
+    76.7213,
+    78.6885
+   ],
+   "source": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/living2/S09_live.mp4",
+   "masterStart": 74.868,
+   "matte_dir": null,
+   "plate": null,
+   "subs": [
+    {
+     "id": "S09a",
+     "slot": "S09",
+     "section": "hook",
+     "song": [
+      76.7213,
+      78.6885
+     ],
+     "move": {
+      "type": "orbit",
+      "amount": 0.08,
+      "ease": "in_out",
+      "start": 0.0,
+      "end": 1.0,
+      "direction": "right"
+     },
+     "handheld": 0.3,
+     "lens": "anamorphic_35",
+     "framing": "wide",
+     "source": "take",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S09a_orbit.mp4"
+    }
+   ]
+  },
+  {
+   "slot": "S11",
+   "section": "hook",
+   "song": [
+    80.6557,
+    86.5574
+   ],
+   "source": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/living2/S11_live.mp4",
+   "masterStart": 79.302,
+   "matte_dir": null,
+   "plate": null,
+   "subs": [
+    {
+     "id": "S11a",
+     "slot": "S11",
+     "section": "hook",
+     "song": [
+      80.6557,
+      82.6229
+     ],
+     "move": {
+      "type": "snap_zoom",
+      "amount": 0.22,
+      "ease": "snap",
+      "start": 0.0,
+      "end": 0.3333,
+      "direction": "right"
+     },
+     "handheld": 0.4,
+     "lens": "anamorphic_35",
+     "framing": "medium_close",
+     "source": "take",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S11a_snap_zoom.mp4"
+    },
+    {
+     "id": "S11b",
+     "slot": "S11",
+     "section": "hook",
+     "song": [
+      82.6229,
+      84.5901
+     ],
+     "move": {
+      "type": "pull",
+      "amount": 0.24,
+      "ease": "in",
+      "start": 0.3333,
+      "end": 0.6667,
+      "direction": "right"
+     },
+     "handheld": 0.4,
+     "lens": "anamorphic_35",
+     "framing": "medium",
+     "source": "take",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S11b_pull.mp4"
+    },
+    {
+     "id": "S11c",
+     "slot": "S11",
+     "section": "hook",
+     "song": [
+      84.5901,
+      86.5574
+     ],
+     "move": {
+      "type": "orbit",
+      "amount": 0.08,
+      "ease": "in_out",
+      "start": 0.6667,
+      "end": 1.0,
+      "direction": "left"
+     },
+     "handheld": 0.3,
+     "lens": "anamorphic_35",
+     "framing": "close",
+     "source": "angle",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S11c_orbit.mp4",
+     "angle": "low_hero",
+     "angle_sentence": "a low hero angle from knee height looking up, 28mm, fast push-in",
+     "angle_file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/angles/S11c_low_hero.mp4"
+    }
+   ]
+  },
+  {
+   "slot": "S12",
+   "section": "hook",
+   "song": [
+    86.5574,
+    90.4918
+   ],
+   "source": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/living2/S12_live.mp4",
+   "masterStart": 85.204,
+   "matte_dir": null,
+   "plate": null,
+   "subs": [
+    {
+     "id": "S12a",
+     "slot": "S12",
+     "section": "hook",
+     "song": [
+      86.5574,
+      88.5246
+     ],
+     "move": {
+      "type": "static",
+      "amount": 0.0,
+      "ease": "linear",
+      "start": 0.0,
+      "end": 0.5,
+      "direction": "left"
+     },
+     "handheld": 0.6,
+     "lens": "handheld_24",
+     "framing": "wide",
+     "source": "take",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S12a_static.mp4"
+    },
+    {
+     "id": "S12b",
+     "slot": "S12",
+     "section": "hook",
+     "song": [
+      88.5246,
+      90.4918
+     ],
+     "move": {
+      "type": "dolly_zoom",
+      "amount": 0.15,
+      "ease": "in_out",
+      "start": 0.5,
+      "end": 1.0,
+      "direction": "left"
+     },
+     "handheld": 0.2,
+     "lens": "anamorphic_35",
+     "framing": "medium_close",
+     "source": "angle",
+     "variant": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/variants/S12b_dolly_zoom.mp4",
+     "angle": "side_tight",
+     "angle_sentence": "a tighter angle from his right side, chest-up, 50mm, handheld",
+     "angle_file": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/cov/angles/S12b_side_tight.mp4"
+    }
+   ]
+  }
+ ],
+ "stats": {
+  "performance_slots": 8,
+  "cuts": 16,
+  "generated_angles": 4,
+  "static_share": 0.108
+ }
+}

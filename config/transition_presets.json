@@ -1,26 +1,177 @@
 {
   "_doc": "Music-video transitions as data (plan C1/C2, 2026-10-02). Durations are in BEATS of the project's BPM so every transition lands on the grid; `side` says where the frames are taken from: 'in' = the incoming shot's head, 'out' = the outgoing shot's tail, 'both' = straddles the cut (half each side). Params are the engine's (scripts/edit/transitions.py). A card's transitionIn names a preset (and may override beats/params); the section default per kind is the suggestion a storyboard offers.",
   "presets": {
-    "cut":          {"type": "cut", "beats": 0, "side": "none", "suits": "every line on the 1; the default"},
-    "crossfade_1":  {"type": "crossfade", "beats": 1, "side": "both", "suits": "verse mood shots, world → world"},
-    "crossfade_2":  {"type": "crossfade", "beats": 2, "side": "both", "suits": "slow sections, dissolving into a world"},
-    "dip_black":    {"type": "dip_black", "beats": 1, "side": "both", "suits": "a breath before a new scene"},
-    "dip_white":    {"type": "dip_white", "beats": 0.5, "side": "both", "suits": "bright, icy — the ice-on motif"},
-    "flash":        {"type": "flash", "beats": 0.25, "side": "in", "params": {"frames": 2}, "suits": "camera flashes, paparazzi, the hook's 1"},
-    "whip_left":    {"type": "whip_pan", "beats": 0.5, "side": "both", "params": {"direction": "left", "blur": 48}, "suits": "hook cuts, performance → world on the 1"},
-    "whip_right":   {"type": "whip_pan", "beats": 0.5, "side": "both", "params": {"direction": "right", "blur": 48}, "suits": "as whip_left, alternate direction"},
-    "whip_up":      {"type": "whip_pan", "beats": 0.5, "side": "both", "params": {"direction": "up", "blur": 48}, "suits": "crane / lift cuts"},
-    "zoom_punch":   {"type": "zoom_punch", "beats": 0.5, "side": "in", "params": {"scale": 1.18}, "suits": "a hit on the 1, a close-up landing"},
-    "speed_ramp":   {"type": "speed_ramp", "beats": 1, "side": "out", "params": {"factor": 2.5}, "suits": "the last beat of a shot rushes into the cut"},
-    "strobe_16":    {"type": "strobe", "beats": 1, "side": "in", "params": {"period_beats": 0.25, "duty": 0.5}, "suits": "club / strobe moments, sixteenth notes"},
-    "luma_wipe":    {"type": "luma_wipe", "beats": 1, "side": "both", "params": {"softness": 0.15}, "suits": "light-driven reveals (headlights, flash)"},
-    "glitch":       {"type": "glitch", "beats": 0.5, "side": "in", "params": {"blocks": 14, "shift": 0.06, "split": 6}, "suits": "digital hits, the money/camera lines"},
-    "light_leak":   {"type": "light_leak", "beats": 1, "side": "both", "params": {"warmth": 1.0}, "suits": "film-bar sections; a warm wash across the cut"},
-    "film_burn":    {"type": "film_burn", "beats": 0.75, "side": "both", "params": {"intensity": 1.0}, "suits": "found-footage / Super-8 feel"}
+    "cut": {
+      "type": "cut",
+      "beats": 0,
+      "side": "none",
+      "suits": "every line on the 1; the default"
+    },
+    "crossfade_1": {
+      "type": "crossfade",
+      "beats": 1,
+      "side": "both",
+      "suits": "verse mood shots, world → world"
+    },
+    "crossfade_2": {
+      "type": "crossfade",
+      "beats": 2,
+      "side": "both",
+      "suits": "slow sections, dissolving into a world"
+    },
+    "dip_black": {
+      "type": "dip_black",
+      "beats": 1,
+      "side": "both",
+      "suits": "a breath before a new scene"
+    },
+    "dip_white": {
+      "type": "dip_white",
+      "beats": 0.5,
+      "side": "both",
+      "suits": "bright, icy — the ice-on motif"
+    },
+    "flash": {
+      "type": "flash",
+      "beats": 0.25,
+      "side": "in",
+      "params": {
+        "frames": 2
+      },
+      "suits": "camera flashes, paparazzi, the hook's 1"
+    },
+    "whip_left": {
+      "type": "whip_pan",
+      "beats": 0.5,
+      "side": "both",
+      "params": {
+        "direction": "left",
+        "blur": 48
+      },
+      "suits": "hook cuts, performance → world on the 1"
+    },
+    "whip_right": {
+      "type": "whip_pan",
+      "beats": 0.5,
+      "side": "both",
+      "params": {
+        "direction": "right",
+        "blur": 48
+      },
+      "suits": "as whip_left, alternate direction"
+    },
+    "whip_up": {
+      "type": "whip_pan",
+      "beats": 0.5,
+      "side": "both",
+      "params": {
+        "direction": "up",
+        "blur": 48
+      },
+      "suits": "crane / lift cuts"
+    },
+    "zoom_punch": {
+      "type": "zoom_punch",
+      "beats": 0.5,
+      "side": "in",
+      "params": {
+        "scale": 1.18
+      },
+      "suits": "a hit on the 1, a close-up landing"
+    },
+    "speed_ramp": {
+      "type": "speed_ramp",
+      "beats": 1,
+      "side": "out",
+      "params": {
+        "factor": 2.5
+      },
+      "suits": "the last beat of a shot rushes into the cut"
+    },
+    "strobe_16": {
+      "type": "strobe",
+      "beats": 1,
+      "side": "in",
+      "params": {
+        "period_beats": 0.25,
+        "duty": 0.5
+      },
+      "suits": "club / strobe moments, sixteenth notes"
+    },
+    "luma_wipe": {
+      "type": "luma_wipe",
+      "beats": 1,
+      "side": "both",
+      "params": {
+        "softness": 0.15
+      },
+      "suits": "light-driven reveals (headlights, flash)"
+    },
+    "glitch": {
+      "type": "glitch",
+      "beats": 0.5,
+      "side": "in",
+      "params": {
+        "blocks": 14,
+        "shift": 0.06,
+        "split": 6
+      },
+      "suits": "digital hits, the money/camera lines"
+    },
+    "light_leak": {
+      "type": "light_leak",
+      "beats": 1,
+      "side": "both",
+      "params": {
+        "warmth": 1.0
+      },
+      "suits": "film-bar sections; a warm wash across the cut"
+    },
+    "film_burn": {
+      "type": "film_burn",
+      "beats": 0.75,
+      "side": "both",
+      "params": {
+        "intensity": 1.0
+      },
+      "suits": "found-footage / Super-8 feel"
+    },
+    "match_cut": {
+      "type": "crossfade",
+      "beats": 0.25,
+      "side": "both",
+      "suits": "an object that physically becomes the next scene (treatment template motion_story_v1): a six-frame dissolve across the matched object; the motion-vector match cut lands in the engine later"
+    }
   },
   "section_defaults": {
-    "hook":  {"on_the_1": ["whip_left", "whip_right", "flash"], "elsewhere": ["cut"]},
-    "verse": {"on_the_1": ["cut"], "on_the_3": ["crossfade_1"], "elsewhere": ["cut"]},
-    "bridge": {"on_the_1": ["dip_black"], "elsewhere": ["cut"]}
+    "hook": {
+      "on_the_1": [
+        "whip_left",
+        "whip_right",
+        "flash"
+      ],
+      "elsewhere": [
+        "cut"
+      ]
+    },
+    "verse": {
+      "on_the_1": [
+        "cut"
+      ],
+      "on_the_3": [
+        "crossfade_1"
+      ],
+      "elsewhere": [
+        "cut"
+      ]
+    },
+    "bridge": {
+      "on_the_1": [
+        "dip_black"
+      ],
+      "elsewhere": [
+        "cut"
+      ]
+    }
   }
 }

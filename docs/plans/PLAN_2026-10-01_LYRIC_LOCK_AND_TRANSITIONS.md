@@ -99,6 +99,20 @@ Order inside C: C1 → C2 → C4 → C3. C1 alone upgrades the next sample.
 
 ---
 
+## Part E — Coverage: movement and angle changes as the norm (Fendi, 2026-10-02)
+
+"Music videos are almost always filled with lots of camera movement and switching of angles … I would have to do each performance shot 3–6× to get the different camera angle cuts … this should be the norm for the tool, not the exception."
+
+| # | Item | Status |
+|---|---|---|
+| E1 | `config/coverage_presets.json` — per section: move vocabulary with odds, cut cadence in bars, generated-angle share, angle sentences, transition on the 1; rules: static share ≤ 12 %, longest static run ≤ 4 s, no consecutive repeat of a move or a framing, pushes and pulls alternate, framing rotation | **done** |
+| E2 | `scripts/edit/coverage.py plan` — every performance slot → sub-slots on the bar grid, a move per cut drawn deterministically under the rules, generated-angle requests for the Seedance lane, `shotspecs_coverage.json` + `renders_coverage.json` for the assembler | **done** |
+| E3 | `scripts/edit/coverage.py render` — the 2D virtual camera over the finished slot clip (zoom / pan / roll / handheld + the lens stack), or the 2.5D camera (`camera_engine.py`) when a matte export exists | **done** (2D measured on bar2; 2.5D needs matte exports per take — `composite_environment.py --export-matte`) |
+| E4 | Generated angles per line (Seedance 2.5 reference-to-video, `run_world_batch.py --route seedance_ref`, requests written by the planner) | **waits on the batch credential** |
+| E5 | `scripts/qa/coverage_qa.py` — moving share, longest static run, consecutive repeats, cut cadence; PASS/FAIL against the presets | **done** |
+| E6 | App: `applyCoverageDefaults` gives every performance card a move and a framing at treatment time (the director's own choice wins) | **done, tested** |
+| E7 | The story-led motion template Fendi supplied (`config/treatment_templates/motion_story_v1.json` + seed prompt template) feeding the generators' per-scene motion contract | **template + seed done; generator wiring with B4** |
+
 ## Part D — Fendi's next steps
 
 (Fendi inserts his own items here; everything above is sequenced so that B1 and C1 can start immediately and A5 waits on his decision.)

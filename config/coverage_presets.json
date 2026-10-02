@@ -1,0 +1,252 @@
+{
+  "_doc": "Coverage as data (Fendi, 2026-10-02): music videos are built from camera movement and angle changes; a static single-angle performance shot is the rare exception. For every performance line the tool buys COVERAGE the way a low-budget shoot does — several passes of the same performance from different cameras — from one real take: (1) camera moves on the real take (scripts/edit/coverage.py, $0, pixel-true, lip-locked; 2.5D via camera_engine.py when a matte export exists, 2D otherwise), (2) new angles from the same take (Seedance 2.5 reference-to-video, ~$4 per angle, lip motion close not locked → cutaways between on-mic lines), (3) cuts between them on the beat grid with angle rotation. Sections come from lyric_lines (verse/hook/bridge/adlib) or the shot's section field; 'default' covers the rest. Move odds are relative weights; the planner draws deterministically (seeded by shot id) and applies the rotation rules. Amounts are fractions of the frame (push 0.18 = 18 % tighter by the end). Lens names are scripts/edit/lens_presets.json. Whip pans live in the TRANSITIONS (config/transition_presets.json), not in the move vocabulary: a whip as an in-shot move on a one-bar cut arrives from off-frame and shows the frame edge (measured on bar3, 2026-10-02); as a transition it straddles the cut and never does.",
+  "version": 1,
+  "rules": {
+    "static_share_max": 0.12,
+    "max_static_run_s": 4.0,
+    "no_repeat_move_consecutive": true,
+    "no_repeat_angle_consecutive": true,
+    "min_cut_bars": 1,
+    "framing_rotation": [
+      "medium",
+      "close_up",
+      "wide",
+      "medium_close"
+    ],
+    "zoom_alternate": true
+  },
+  "sections": {
+    "verse": {
+      "angles_per_line": 2,
+      "cut_every_bars": 2,
+      "generated_angle_share": 0.25,
+      "moves": [
+        {
+          "type": "push",
+          "amount": 0.16,
+          "ease": "in_out",
+          "handheld": 0.25,
+          "lens": "anamorphic_35",
+          "weight": 4
+        },
+        {
+          "type": "pull",
+          "amount": 0.14,
+          "ease": "in_out",
+          "handheld": 0.25,
+          "lens": "anamorphic_35",
+          "weight": 2
+        },
+        {
+          "type": "truck",
+          "amount": 0.07,
+          "ease": "in_out",
+          "handheld": 0.35,
+          "lens": "handheld_24",
+          "weight": 2
+        },
+        {
+          "type": "static",
+          "amount": 0.0,
+          "ease": "linear",
+          "handheld": 0.5,
+          "lens": "handheld_24",
+          "weight": 2
+        },
+        {
+          "type": "pedestal",
+          "amount": 0.05,
+          "ease": "in_out",
+          "handheld": 0.2,
+          "lens": "portrait_85",
+          "weight": 1
+        }
+      ],
+      "angles": [
+        {
+          "name": "side_tight",
+          "sentence": "a tighter angle from his right side, chest-up, 50mm, slow handheld drift",
+          "weight": 3
+        },
+        {
+          "name": "low_wide",
+          "sentence": "a low wide angle from waist height, 24mm, slow push-in",
+          "weight": 2
+        },
+        {
+          "name": "profile",
+          "sentence": "a near-profile from his left, 85mm, locked off with a slow breathing handheld",
+          "weight": 2
+        }
+      ],
+      "transition_on_the_1": "cut",
+      "transition_elsewhere": "cut"
+    },
+    "hook": {
+      "angles_per_line": 3,
+      "cut_every_bars": 1,
+      "generated_angle_share": 0.34,
+      "moves": [
+        {
+          "type": "snap_zoom",
+          "amount": 0.22,
+          "ease": "snap",
+          "handheld": 0.4,
+          "lens": "anamorphic_35",
+          "weight": 3
+        },
+        {
+          "type": "push",
+          "amount": 0.24,
+          "ease": "in",
+          "handheld": 0.4,
+          "lens": "anamorphic_35",
+          "weight": 3
+        },
+        {
+          "type": "truck",
+          "amount": 0.1,
+          "ease": "snap",
+          "handheld": 0.5,
+          "lens": "handheld_24",
+          "weight": 2
+        },
+        {
+          "type": "orbit",
+          "amount": 0.08,
+          "ease": "in_out",
+          "handheld": 0.3,
+          "lens": "anamorphic_35",
+          "weight": 2
+        },
+        {
+          "type": "dolly_zoom",
+          "amount": 0.15,
+          "ease": "in_out",
+          "handheld": 0.2,
+          "lens": "anamorphic_35",
+          "weight": 1
+        },
+        {
+          "type": "static",
+          "amount": 0.0,
+          "ease": "linear",
+          "handheld": 0.6,
+          "lens": "handheld_24",
+          "weight": 1
+        }
+      ],
+      "angles": [
+        {
+          "name": "low_hero",
+          "sentence": "a low hero angle from knee height looking up, 28mm, fast push-in",
+          "weight": 3
+        },
+        {
+          "name": "over_shoulder",
+          "sentence": "from behind his shoulder looking past him into the scene, 35mm, handheld",
+          "weight": 2
+        },
+        {
+          "name": "high_wide",
+          "sentence": "a high wide angle from above head height, 24mm, slow descend",
+          "weight": 2
+        },
+        {
+          "name": "side_tight",
+          "sentence": "a tighter angle from his right side, chest-up, 50mm, handheld",
+          "weight": 2
+        }
+      ],
+      "transition_on_the_1": "whip_left",
+      "transition_elsewhere": "cut"
+    },
+    "bridge": {
+      "angles_per_line": 1,
+      "cut_every_bars": 2,
+      "generated_angle_share": 0.0,
+      "moves": [
+        {
+          "type": "pull",
+          "amount": 0.2,
+          "ease": "out",
+          "handheld": 0.15,
+          "lens": "portrait_85",
+          "weight": 3
+        },
+        {
+          "type": "static",
+          "amount": 0.0,
+          "ease": "linear",
+          "handheld": 0.3,
+          "lens": "portrait_85",
+          "weight": 2
+        },
+        {
+          "type": "crane",
+          "amount": 0.06,
+          "ease": "in_out",
+          "handheld": 0.1,
+          "lens": "anamorphic_35",
+          "weight": 1
+        }
+      ],
+      "angles": [],
+      "transition_on_the_1": "dip_black",
+      "transition_elsewhere": "cut"
+    },
+    "default": {
+      "angles_per_line": 2,
+      "cut_every_bars": 2,
+      "generated_angle_share": 0.25,
+      "moves": [
+        {
+          "type": "push",
+          "amount": 0.16,
+          "ease": "in_out",
+          "handheld": 0.25,
+          "lens": "anamorphic_35",
+          "weight": 4
+        },
+        {
+          "type": "truck",
+          "amount": 0.07,
+          "ease": "in_out",
+          "handheld": 0.35,
+          "lens": "handheld_24",
+          "weight": 2
+        },
+        {
+          "type": "pull",
+          "amount": 0.14,
+          "ease": "in_out",
+          "handheld": 0.25,
+          "lens": "anamorphic_35",
+          "weight": 2
+        },
+        {
+          "type": "static",
+          "amount": 0.0,
+          "ease": "linear",
+          "handheld": 0.5,
+          "lens": "handheld_24",
+          "weight": 1
+        }
+      ],
+      "angles": [
+        {
+          "name": "side_tight",
+          "sentence": "a tighter angle from his right side, chest-up, 50mm, slow handheld drift",
+          "weight": 3
+        },
+        {
+          "name": "low_wide",
+          "sentence": "a low wide angle from waist height, 24mm, slow push-in",
+          "weight": 2
+        }
+      ],
+      "transition_on_the_1": "cut",
+      "transition_elsewhere": "cut"
+    }
+  }
+}

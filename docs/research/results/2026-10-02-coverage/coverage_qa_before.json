@@ -1,0 +1,83 @@
+{
+ "verdict": "FAIL",
+ "performance_cuts": 8,
+ "moving_share": 0.0,
+ "static_share": 1.0,
+ "static_share_max": 0.12,
+ "longest_static_run_s": 36.39,
+ "max_static_run_s": 4.0,
+ "mean_cut_bars": 2.31,
+ "cut_cadence_bars_by_section": {
+  "default": 2.31
+ },
+ "repeated_moves": [],
+ "repeated_framings": [
+  [
+   "S01",
+   "S03",
+   "medium"
+  ],
+  [
+   "S06",
+   "S08",
+   "medium"
+  ],
+  [
+   "S08",
+   "S09",
+   "medium"
+  ],
+  [
+   "S09",
+   "S11",
+   "medium"
+  ],
+  [
+   "S11",
+   "S12",
+   "medium"
+  ]
+ ],
+ "moves": [
+  [
+   "S01",
+   "static",
+   "medium"
+  ],
+  [
+   "S03",
+   "static",
+   "medium"
+  ],
+  [
+   "S04",
+   "static",
+   "medium_close"
+  ],
+  [
+   "S06",
+   "static",
+   "medium"
+  ],
+  [
+   "S08",
+   "static",
+   "medium"
+  ],
+  [
+   "S09",
+   "static",
+   "medium"
+  ],
+  [
+   "S11",
+   "static",
+   "medium"
+  ],
+  [
+   "S12",
+   "static",
+   "medium"
+  ]
+ ]
+}
