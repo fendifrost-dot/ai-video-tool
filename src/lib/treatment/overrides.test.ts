@@ -55,9 +55,9 @@ describe("only the stated fields are replaced", () => {
   it("replaces the camera move and leaves the direction alone", () => {
     const out = applyShotOverride(spec(), override({ cameraMotion: { type: "orbit" } }));
     expect(out.cameraMotion.type).toBe("orbit");
-    // the generated description survives: a director who picks a move has not
-    // thereby deleted how it was described
-    expect(out.cameraMotion.description).toBe(spec().cameraMotion.description);
+    // the generated description does NOT survive a stated type: it named the generated move ("push …") and the
+    // coverage planner reads prose first, so keeping it would hand the box back to the old move
+    expect(out.cameraMotion.description).toBe("orbit");
     expect(out.performanceDirection).toBe(spec().performanceDirection);
   });
 
@@ -180,6 +180,17 @@ describe("overrides run BEFORE the coverage planner", () => {
       }),
     });
     expect(out.cameraMotion).toEqual({ type: "crane", description: "rise off his shoulder" });
+  });
+
+  it("a type stated WITHOUT a description survives the planner (the prose is replaced, not kept)", () => {
+    // The planner reads prose first; the generated prose named the generated move and used to win.
+    const generated = spec({ cameraMotion: { type: "dolly", description: "push 0.16 · anamorphic_35 · handheld 0.25" } });
+    const out = run(generated, { "clip-07": override({ cameraMotion: { type: "truck" } }) });
+    expect(out.cameraMotion.type).toBe("truck");
+    expect(out.cameraMotion.description).not.toContain("push");
+    expect(out.origin).toBe("override");
+    const locked = run(generated, { "clip-07": override({ cameraMotion: { type: "static" } }) });
+    expect(locked.cameraMotion.type).toBe("static");
   });
 
   it("an explicit static with a description is a choice, and is kept", () => {

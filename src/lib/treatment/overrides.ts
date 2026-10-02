@@ -68,6 +68,25 @@ function asFraming(v: unknown): Framing | null {
     ? (v as Framing)
     : null;
 }
+/** The phrase the coverage planner's `classifyMotion` reads back to each typed move (see coverage.ts MOTION_WORDS). */
+export const TYPE_PHRASE: Record<CameraMotion, string> = {
+  static: "locked frame",
+  pan: "pan",
+  tilt: "tilt up",
+  dolly: "dolly in",
+  truck: "truck",
+  pedestal: "pedestal",
+  handheld: "handheld",
+  steadicam: "steadicam, handheld drift",
+  gimbal: "gimbal, handheld drift",
+  crane: "crane",
+  jib: "jib",
+  zoom: "zoom",
+  orbit: "orbit",
+  whip_pan: "whip pan",
+  drone: "drone",
+};
+
 function asCameraMotion(v: unknown): CameraMotion | null {
   return typeof v === "string" && (CAMERA_MOTIONS as readonly string[]).includes(v)
     ? (v as CameraMotion)
@@ -123,7 +142,10 @@ export function applyShotOverride(
         // A stated type replaces the generated one; a stated description alone keeps
         // the type but says how, which is how a director usually talks.
         type: motionType ?? next.cameraMotion.type,
-        description: motionDesc ?? next.cameraMotion.description,
+        // The coverage planner reads the PROSE first (the generators write cameras as text), so a type stated
+        // without a description must not keep the generated prose — that prose names the generated move and
+        // would win. The type's own phrase goes in instead; it classifies back to the same move.
+        description: motionDesc ?? (motionType ? TYPE_PHRASE[motionType] : next.cameraMotion.description),
       },
     };
     touched = true;

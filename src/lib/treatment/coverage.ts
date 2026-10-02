@@ -154,8 +154,10 @@ export function applyCoverageDefaults(
       prevMove = move.type; if (move.type === "push" || move.type === "pull") prevZoom = move.type; landed = move.type;
     } else {
       // The prose names a camera: make the typed field agree with it (an explicit "locked frame" stays static).
+      // A typed field that already maps to the same engine move is left alone ("tilt" stays tilt, not pedestal).
       const cardType = ENGINE_TO_CARD[named] ?? (named as CameraMotion);
-      if (spec.cameraMotion.type !== cardType) next = { ...next, cameraMotion: { ...spec.cameraMotion, type: cardType } };
+      const agrees = (CARD_TO_ENGINE[spec.cameraMotion.type] ?? spec.cameraMotion.type) === named;
+      if (!agrees && spec.cameraMotion.type !== cardType) next = { ...next, cameraMotion: { ...spec.cameraMotion, type: cardType } };
       prevMove = named; if (named === "push" || named === "pull") prevZoom = named; landed = named;
     }
     b.total += secs; if (landed === "static") { b.statics += secs; b.run += secs; } else b.run = 0;
