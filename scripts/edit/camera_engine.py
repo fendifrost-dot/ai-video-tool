@@ -123,8 +123,10 @@ def camera_path(move, n, fps, handheld=0.0):
     if about is not None:
         # zoom ABOUT a point (fractions of the frame at zoom 1) instead of the frame centre: the pan that keeps that point
         # where it is while the zoom changes. A pull that starts tight on a performer standing off-centre ends on the wide frame.
+        # (the pan is in PLATE terms — the picture shifts by zoom × pan on screen — so the pan that holds a point is
+        # (1/zoom − 1) × its offset from the centre)
         ax, ay = float(about[0]) - 0.5, float(about[1]) - 0.5
-        px = px + (1 - zoom * plate_zoom) * ax; py = py + (1 - zoom * plate_zoom) * ay
+        px = px + (1 / (zoom * plate_zoom) - 1) * ax; py = py + (1 / (zoom * plate_zoom) - 1) * ay
     if handheld > 0:
         hh = handheld_noise(n, fps, handheld)
         px = px + hh["px"]; py = py + hh["py"]; roll = roll + hh["roll"]; zoom = zoom * (1 + hh["zoom"])
@@ -394,9 +396,13 @@ def main():
             # world-anchored: the take's bottom-centre sits on a plate point, so it moves with that point under the camera
             # (scale 1 = the take as tall as the frame, whatever resolution the matte was exported at)
             Zw = Z * PZ; s_p = ps * Zw * (H / al.shape[0])
-            tx = cx + Zw * (pax * W - cx) + px * W - s_p * (al.shape[1] / 2); ty = cy + Zw * (pay * H - cy) + py * H - s_p * al.shape[0]
+            # the pan reaches the screen multiplied by the zoom, exactly as it does for the plate point he stands on
+            tx = cx + Zw * (pax * W - cx + px * W) - s_p * (al.shape[1] / 2); ty = cy + Zw * (pay * H - cy + py * H) - s_p * al.shape[0]
         else:
-            s_p = fs * Z; tx = cx - cx * s_p + (fx_ + px) * W + fx_ * 0; ty = cy - cy * s_p + (fy_ + py) * H
+            # (the pan is multiplied by the zoom here too: the plate under his feet moves by zoom × pan on screen, and at
+            # px·W he slid against it whenever the camera panned while zoomed — invisible on a 1 % handheld drift,
+            # obvious on a zoom about an off-centre point)
+            s_p = fs * Z; tx = cx - cx * s_p + fx_ * W + Z * PZ * px * W; ty = cy - cy * s_p + fy_ * H + Z * PZ * py * H
         M = np.array([[s_p, 0, tx], [0, s_p, ty]], np.float32)
         fg_w = cv2.warpAffine(fg, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0))
         al_w = cv2.warpAffine(al, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)[..., None]
