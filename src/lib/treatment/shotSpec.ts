@@ -372,6 +372,12 @@ export const ShotSpecSchema = z.object({
    * shotSpecToShotRow. `origin` is the same idea under a free name.
    */
   origin: z.enum(["generated", "override"]).default("generated"),
+  /**
+   * The picture the shot opens on, when an override states it (shot_overrides.frame). Empty on a generated card. The
+   * compiler draws the still from this and keeps the direction for the motion; it is a separate field from
+   * environment.description because a generated card has one of those too, and that one describes the old scene.
+   */
+  openingFrame: z.string().default(""),
 });
 export type ShotSpec = z.infer<typeof ShotSpecSchema>;
 

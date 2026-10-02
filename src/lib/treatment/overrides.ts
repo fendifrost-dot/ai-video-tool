@@ -32,6 +32,11 @@ import { DEFAULT_TRANSITION_PRESETS, transitionInFromPreset } from "./transition
 export type ShotOverride = {
   specId: string;
   direction: string | null;
+  /**
+   * What the picture shows when the shot opens — place, people, objects, light. The still is drawn from this;
+   * `direction` is what then happens. Optional so rows written before the column existed read as "not set".
+   */
+  frame?: string | null;
   cameraMotion: { type?: string | null; description?: string | null } | null;
   framing: string | null;
   transitionIn: {
@@ -48,6 +53,7 @@ export type ShotOverride = {
 /** The fields a director can override, in the order the card shows them. */
 export const OVERRIDABLE_FIELDS = [
   "direction",
+  "frame",
   "cameraMotion",
   "framing",
   "transitionIn",
@@ -105,6 +111,7 @@ export function isEmptyOverride(o: ShotOverride | null | undefined): boolean {
   const transition = o.transitionIn;
   return (
     !o.direction?.trim() &&
+    !o.frame?.trim() &&
     !motion?.type &&
     !motion?.description?.trim() &&
     !o.framing &&
@@ -130,6 +137,17 @@ export function applyShotOverride(
 
   if (override.direction?.trim()) {
     next = { ...next, performanceDirection: override.direction.trim() };
+    touched = true;
+  }
+
+  if (override.frame?.trim()) {
+    // The frame replaces the generated environment's description: it IS the scene now, and everything that reads
+    // "where are we and what is in the picture" (the card, the compiler) reads it from there.
+    next = {
+      ...next,
+      openingFrame: override.frame.trim(),
+      environment: { ...next.environment, description: override.frame.trim() },
+    };
     touched = true;
   }
 

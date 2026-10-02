@@ -50,6 +50,8 @@ export type MotionScene = {
 /** What the card drops into its (unsaved) override fields. */
 export type RegeneratedShot = {
   direction: string;
+  /** The scene as ONE picture (the generator's `visual`): what the still shows when the shot opens. */
+  frame: string;
   cameraMotion: { type: CameraMotion | null; description: string };
   framing: Framing | null;
   cameraAngle: CameraAngle | null;
@@ -129,6 +131,7 @@ export function sceneToOverride(scene: MotionScene): RegeneratedShot {
   ].filter(Boolean);
   return {
     direction: motionSentence(scene.motion) || (scene.purpose ?? "").trim(),
+    frame: (scene.visual ?? "").trim(),
     cameraMotion: { type: move, description: descParts.join(" · ") },
     framing: framingToCard(scene.camera?.framing),
     cameraAngle: angleToCard(scene.camera?.angle),
