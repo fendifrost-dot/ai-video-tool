@@ -1,0 +1,70 @@
+[
+ {
+  "id": "S06c_low_hero",
+  "kind": "angle",
+  "route": "seedance_ref",
+  "aspect": "9:16",
+  "resolution": "720p",
+  "source_path": null,
+  "source_local": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/living2/S06_live.mp4",
+  "source_window": [
+   66.885,
+   68.853
+  ],
+  "masterStart": 61.597,
+  "angle": "a low hero angle from knee height looking up, 28mm, fast push-in",
+  "keep": [],
+  "prompt": "(angle shot)"
+ },
+ {
+  "id": "S08a_high_wide",
+  "kind": "angle",
+  "route": "seedance_ref",
+  "aspect": "9:16",
+  "resolution": "720p",
+  "source_path": null,
+  "source_local": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/living2/S08_live.mp4",
+  "source_window": [
+   70.82,
+   72.787
+  ],
+  "masterStart": 69.466,
+  "angle": "a high wide angle from above head height, 24mm, slow descend",
+  "keep": [],
+  "prompt": "(angle shot)"
+ },
+ {
+  "id": "S11c_low_hero",
+  "kind": "angle",
+  "route": "seedance_ref",
+  "aspect": "9:16",
+  "resolution": "720p",
+  "source_path": null,
+  "source_local": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/living2/S11_live.mp4",
+  "source_window": [
+   84.59,
+   86.557
+  ],
+  "masterStart": 79.302,
+  "angle": "a low hero angle from knee height looking up, 28mm, fast push-in",
+  "keep": [],
+  "prompt": "(angle shot)"
+ },
+ {
+  "id": "S12b_side_tight",
+  "kind": "angle",
+  "route": "seedance_ref",
+  "aspect": "9:16",
+  "resolution": "720p",
+  "source_path": null,
+  "source_local": "/tmp/claude-0/-home-claude/12ba9676-4e1a-539a-95e3-7f886da01d75/scratchpad/ysl/living2/S12_live.mp4",
+  "source_window": [
+   88.525,
+   90.492
+  ],
+  "masterStart": 85.204,
+  "angle": "a tighter angle from his right side, chest-up, 50mm, handheld",
+  "keep": [],
+  "prompt": "(angle shot)"
+ }
+]
