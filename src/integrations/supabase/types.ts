@@ -639,6 +639,27 @@ export type Database = {
         }
         Relationships: []
       }
+      job_runner_config: {
+        Row: {
+          created_at: string
+          cron_key: string
+          function_url: string
+          id: boolean
+        }
+        Insert: {
+          created_at?: string
+          cron_key: string
+          function_url: string
+          id?: boolean
+        }
+        Update: {
+          created_at?: string
+          cron_key?: string
+          function_url?: string
+          id?: boolean
+        }
+        Relationships: []
+      }
       location_library: {
         Row: {
           category: string | null
@@ -1449,7 +1470,11 @@ export type Database = {
           created_at: string
           error_text: string | null
           external_job_id: string | null
+          finalized_at: string | null
           id: string
+          progress_claimed_at: string | null
+          progress_failures: number
+          progress_note: string | null
           project_id: string
           prompt_id: string | null
           provider: Database["public"]["Enums"]["provider_name"]
@@ -1464,7 +1489,11 @@ export type Database = {
           created_at?: string
           error_text?: string | null
           external_job_id?: string | null
+          finalized_at?: string | null
           id?: string
+          progress_claimed_at?: string | null
+          progress_failures?: number
+          progress_note?: string | null
           project_id: string
           prompt_id?: string | null
           provider: Database["public"]["Enums"]["provider_name"]
@@ -1479,7 +1508,11 @@ export type Database = {
           created_at?: string
           error_text?: string | null
           external_job_id?: string | null
+          finalized_at?: string | null
           id?: string
+          progress_claimed_at?: string | null
+          progress_failures?: number
+          progress_note?: string | null
           project_id?: string
           prompt_id?: string | null
           provider?: Database["public"]["Enums"]["provider_name"]
@@ -2464,6 +2497,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_provider_jobs: {
+        Args: { p_limit?: number; p_user?: string }
+        Returns: {
+          created_at: string
+          error_text: string | null
+          external_job_id: string | null
+          finalized_at: string | null
+          id: string
+          progress_claimed_at: string | null
+          progress_failures: number
+          progress_note: string | null
+          project_id: string
+          prompt_id: string | null
+          provider: Database["public"]["Enums"]["provider_name"]
+          request_payload_json: Json
+          response_payload_json: Json
+          result_asset_id: string | null
+          status: Database["public"]["Enums"]["provider_job_status"]
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "provider_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      kick_provider_jobs: { Args: never; Returns: undefined }
       lyric_lines_in_window: {
         Args: { p_end: number; p_project: string; p_start: number }
         Returns: {
