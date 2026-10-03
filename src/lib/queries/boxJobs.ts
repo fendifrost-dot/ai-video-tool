@@ -1,27 +1,31 @@
 /**
- * The jobs the storyboard started (Generate image / Generate clip), followed to the end.
+ * The jobs the storyboard started (Generate image / Generate clip), read from their rows.
  *
- * A clip takes minutes. Its job row is the record: this hook polls the provider for the rows that are still live,
- * has the server save each finished clip, and puts the saved clip on the box it was made for — once. Everything is
- * read back from the jobs table, so closing the page loses nothing; reopening it picks the jobs up where they are.
+ * A clip takes minutes, and it finishes on the SERVER: the edge function `provider-jobs-tick` asks the provider,
+ * saves the clip and puts it on the shot it was made for, once a minute, whether or not this page — or any page — is
+ * open (supabase/migrations/20261003200000_provider_job_progress.sql). This hook shows where each shot's job stands
+ * and, while one is unfinished, asks the server for a tick so a watched job does not wait for the next minute. It
+ * does none of the work: closing the page stops nothing, and reopening it reads the result.
+ *
+ * The one thing left to the page is a CHECK, not progress: an image the server had to finish by itself (the page
+ * that asked for it was closed) is on its shot unselected, marked unchecked; opening the storyboard runs the
+ * stacked-panels check on it (it needs the picture decoded) and only then selects it.
  */
 import { useEffect, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Json } from "@/integrations/supabase/aliases";
-import { triggerServerIngest } from "@/lib/providerJobs/api";
+import { isUnfinished, useJobProgress, type ProgressRow } from "@/lib/providerJobs/progress";
 import { providerJobsKeys, useProjectProviderJobs } from "@/lib/providerJobs/queries";
 import { projectAssetsKeys } from "@/lib/queries/projectAssets";
 import { applyAssignmentOps, fetchAssignments, storyboardKeys } from "@/lib/queries/storyboard";
 import { STORYBOARD_RUN } from "@/lib/storyboard/generate";
-import { planAssign } from "@/lib/storyboard/media";
-import { fileRestagedClip } from "@/lib/storyboard/restage";
-import { settingsOf, type BatchJobRow } from "@/lib/worldBatch";
-import { pollBatchJob } from "@/lib/worldBatch/browserDeps";
+import { planAssign, type AssignmentOp } from "@/lib/storyboard/media";
+import { describeSeam, isStackedPanels, settingsOf, type BatchJobRow, type PanelSeam } from "@/lib/worldBatch";
+import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 
-const POLL_MS = 20_000;
-/** A submit that has not reported a provider id after this long never will. */
-const UNREPORTED_AFTER_MS = 5 * 60_000;
+/** A submit that has not reported a provider id after this long never will (the server marks it; this is for a backend that has not yet). */
+const UNREPORTED_AFTER_MS = 10 * 60_000;
 
 export type BoxJobStatus = {
   kind: "image" | "clip";
@@ -32,6 +36,7 @@ export type BoxJobStatus = {
 };
 
 type Payload = { mode?: string; shotId?: string; settings?: Record<string, unknown> };
+type JobRow = BatchJobRow & Pick<ProgressRow, "finalized_at" | "progress_note">;
 
 /** A restaged take: the job was given a cut of a take, and its clip keeps that take's place on the song. */
 export function restagedFrom(job: Pick<BatchJobRow, "request_payload_json">): { sourceAssetId: string; songStart: number; sourceWindow: [number, number] | null; seconds: number | null } | null {
@@ -43,15 +48,26 @@ const payloadOf = (j: Pick<BatchJobRow, "request_payload_json">) => (j.request_p
 const isStill = (j: Pick<BatchJobRow, "request_payload_json">) => payloadOf(j).mode === "still_only";
 
 /** Where a box's latest job stands. Pure — exported for its tests. */
-export function boxJobStatus(job: BatchJobRow, now: number): BoxJobStatus {
+export function boxJobStatus(job: JobRow, now: number): BoxJobStatus {
   const kind = isStill(job) ? "image" : "clip";
   const at = job.created_at;
   if (job.status === "failed") return { kind, state: "failed", message: job.error_text || `the ${kind} failed`, at };
   if (job.status === "succeeded") {
-    if (kind === "image" || job.result_asset_id) return { kind, state: "done", message: kind === "image" ? "image ready" : "clip ready", at };
-    return { kind, state: "saving", message: "clip rendered — saving it to the project", at };
+    if (kind === "image") {
+      return payloadOf(job).settings?.panelCheck === "pending"
+        ? { kind, state: "saving", message: "image drawn while this page was closed — checking it now", at }
+        : { kind, state: "done", message: "image ready", at };
+    }
+    const attached = !!payloadOf(job).settings?.attachedAt || !payloadOf(job).shotId;
+    if (job.result_asset_id && (attached || job.finalized_at)) {
+      // finished without reaching its shot (the shot is gone): said, not hidden
+      return { kind, state: "done", message: attached ? "clip ready" : job.progress_note || "clip saved to the project's library", at };
+    }
+    // the server gave up saving it: the reason is on the job
+    if (job.finalized_at) return { kind, state: "failed", message: job.error_text || job.progress_note || "the clip rendered but could not be saved — it can be saved again from Runs", at };
+    return { kind, state: "saving", message: job.result_asset_id ? "clip saved — putting it on this shot" : "clip rendered — saving it to the project", at };
   }
-  if (!job.external_job_id && now - Date.parse(job.created_at) > UNREPORTED_AFTER_MS) {
+  if (!job.external_job_id && kind === "clip" && now - Date.parse(job.created_at) > UNREPORTED_AFTER_MS) {
     return { kind, state: "failed", message: "the submit never reported back — check Runs before generating again", at };
   }
   const restaged = !!restagedFrom(job);
@@ -59,8 +75,8 @@ export function boxJobStatus(job: BatchJobRow, now: number): BoxJobStatus {
 }
 
 /** The storyboard's jobs, newest first per box key. */
-export function latestBoxJobs(jobs: readonly BatchJobRow[]): Map<string, BatchJobRow> {
-  const out = new Map<string, BatchJobRow>();
+export function latestBoxJobs<T extends BatchJobRow>(jobs: readonly T[]): Map<string, T> {
+  const out = new Map<string, T>();
   for (const j of [...jobs].sort((a, b) => b.created_at.localeCompare(a.created_at))) {
     const s = settingsOf(j);
     if (!s || s.batchRun !== STORYBOARD_RUN) continue;
@@ -69,90 +85,89 @@ export function latestBoxJobs(jobs: readonly BatchJobRow[]): Map<string, BatchJo
   return out;
 }
 
+/**
+ * What the check of a server-finished image decides. Pure. `seams` are the candidates' measurements, in order
+ * (null = could not be measured: treated as one picture, exactly as the live check does).
+ */
+export function planStillCheck(input: {
+  candidates: readonly { path: string; assetId: string | null }[];
+  seams: readonly (PanelSeam | null)[];
+  select: boolean;
+}): { whole: string[]; stacked: string[]; picked: string | null; selectAssetId: string | null; removeAssetIds: string[]; error: string | null } {
+  const stackedAt = input.candidates.map((_, i) => isStackedPanels(input.seams[i]));
+  const whole = input.candidates.filter((_, i) => !stackedAt[i]);
+  const stacked = input.candidates.filter((_, i) => stackedAt[i]);
+  const picked = whole[0] ?? null;
+  const worst = input.seams.find((s) => isStackedPanels(s));
+  return {
+    whole: whole.map((c) => c.path),
+    stacked: stacked.map((c) => c.path),
+    picked: picked?.path ?? null,
+    selectAssetId: input.select && picked?.assetId ? picked.assetId : null,
+    // a picture that is two pictures is never left on the shot
+    removeAssetIds: stacked.map((c) => c.assetId).filter((x): x is string => !!x),
+    error: whole.length === 0 && worst ? `every still came back as stacked panels (${describeSeam(worst)}) — describe the scene by depth (in front, behind), not by halves of the frame` : null,
+  };
+}
+
 export function useBoxJobs(projectId: string) {
   const qc = useQueryClient();
   const jobsQuery = useProjectProviderJobs(projectId);
   const jobs = useMemo(
-    () => ((jobsQuery.data ?? []) as unknown as BatchJobRow[]).filter((j) => settingsOf(j)?.batchRun === STORYBOARD_RUN),
+    () => ((jobsQuery.data ?? []) as unknown as JobRow[]).filter((j) => settingsOf(j)?.batchRun === STORYBOARD_RUN),
     [jobsQuery.data],
   );
-  const ingestTried = useRef<Set<string>>(new Set());
-  const attachTried = useRef<Set<string>>(new Set());
+  const checkTried = useRef<Set<string>>(new Set());
 
   const refetch = () => qc.invalidateQueries({ queryKey: providerJobsKeys.forProject(projectId) });
+  const reread = async () => {
+    await refetch();
+    void qc.invalidateQueries({ queryKey: storyboardKeys.assignments(projectId) });
+    void qc.invalidateQueries({ queryKey: storyboardKeys.syncs(projectId) });
+    void qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(projectId) });
+  };
 
-  // 1. ask the provider about the clips still rendering
-  const live = jobs.filter((j) => (j.status === "queued" || j.status === "running") && j.external_job_id);
-  const liveKey = live.map((j) => j.id).join(",");
-  useEffect(() => {
-    if (!liveKey) return;
-    let stop = false;
-    const tick = async () => {
-      for (const j of live) {
-        if (stop) return;
-        await pollBatchJob(j).catch(() => undefined);
-      }
-      if (!stop) await refetch();
-    };
-    const h = setInterval(tick, POLL_MS);
-    void tick();
-    return () => {
-      stop = true;
-      clearInterval(h);
-    };
-    // `live` is derived from liveKey
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveKey, projectId]);
+  // The server moves the jobs. While one is unfinished this page asks it to, and reads the rows again.
+  useJobProgress(jobs, reread);
 
-  // 2. have the server save each finished clip
-  const toIngest = jobs.filter((j) => j.status === "succeeded" && !j.result_asset_id && !isStill(j) && !ingestTried.current.has(j.id));
-  const ingestKey = toIngest.map((j) => j.id).join(",");
+  // An image the server finished by itself is unchecked: look at it now, and only then let it be the shot's picture.
+  const toCheck = jobs.filter((j) => j.status === "succeeded" && isStill(j) && payloadOf(j).settings?.panelCheck === "pending" && !checkTried.current.has(j.id));
+  const checkKey = toCheck.map((j) => j.id).join(",");
   useEffect(() => {
-    if (!ingestKey) return;
-    for (const j of toIngest) {
-      ingestTried.current.add(j.id);
-      void triggerServerIngest(j.id)
-        .catch(() => undefined)
-        .then(() => {
-          void refetch();
-          void qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(projectId) });
-        });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ingestKey, projectId]);
-
-  // 3. put each saved clip on its box, once (the job remembers, so taking the clip off the box later stays taken off)
-  const toAttach = jobs.filter(
-    (j) => j.status === "succeeded" && j.result_asset_id && !isStill(j) && payloadOf(j).shotId && !payloadOf(j).settings?.attachedAt && !attachTried.current.has(j.id),
-  );
-  const attachKey = toAttach.map((j) => j.id).join(",");
-  useEffect(() => {
-    if (!attachKey) return;
+    if (!checkKey) return;
     void (async () => {
-      for (const j of toAttach) {
-        attachTried.current.add(j.id);
+      const deps = await browserRunnerDeps().catch(() => null);
+      if (!deps?.inspectStill) return;
+      for (const j of toCheck) {
+        checkTried.current.add(j.id);
         const p = payloadOf(j);
+        const recorded = ((j.response_payload_json ?? {}) as { stills?: { path?: string; assetId?: string | null }[] }).stills ?? [];
+        const candidates = recorded.filter((s): s is { path: string; assetId: string | null } => typeof s?.path === "string").map((s) => ({ path: s.path, assetId: s.assetId ?? null }));
         try {
-          // a restaged take is filed as a take in sync before it is put on the shot, so the shot plays it by the song clock
-          const restaged = restagedFrom(j);
-          if (restaged) await fileRestagedClip({ projectId, assetId: j.result_asset_id!, ...restaged });
-          const ops = planAssign({ assignments: await fetchAssignments(projectId), shotId: p.shotId!, assetId: j.result_asset_id!, role: restaged ? "performance" : "generated_clip", select: true });
-          await applyAssignmentOps(projectId, ops);
+          const inspect = deps.inspectStill;
+          const seams = await Promise.all(candidates.map((c) => inspect(c.path).catch(() => null)));
+          const plan = planStillCheck({ candidates, seams, select: p.settings?.selectStill === true });
+          if (p.shotId) {
+            const current = await fetchAssignments(projectId);
+            const ops: AssignmentOp[] = current.filter((a) => a.shotId === p.shotId && a.role === "generated_image" && plan.removeAssetIds.includes(a.assetId)).map((a) => ({ op: "delete" as const, id: a.id }));
+            if (plan.selectAssetId) ops.push(...planAssign({ assignments: current, shotId: p.shotId, assetId: plan.selectAssetId, role: "generated_image", select: true }));
+            if (ops.length) await applyAssignmentOps(projectId, ops);
+          }
           await supabase
             .from("provider_jobs")
-            .update({ request_payload_json: { ...p, settings: { ...p.settings, attachedAt: new Date().toISOString() } } as unknown as Json })
+            .update({
+              ...(plan.error ? { status: "failed", error_text: plan.error.slice(0, 500) } : {}),
+              request_payload_json: { ...p, referenceImagePath: plan.picked, settings: { ...p.settings, stillPath: plan.picked, panelCheck: plan.error ? "rejected" : "passed" } } as unknown as Json,
+            } as never)
             .eq("id", j.id);
         } catch {
-          // left for the next load: the clip is saved and listed in the box's media picker either way
+          // left for the next load: the pictures stay on the shot unselected and the job still says unchecked
         }
       }
-      void qc.invalidateQueries({ queryKey: storyboardKeys.assignments(projectId) });
-      void qc.invalidateQueries({ queryKey: storyboardKeys.syncs(projectId) });
-      void qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(projectId) });
-      void refetch();
+      await reread();
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [attachKey, projectId]);
+  }, [checkKey, projectId]);
 
   const byKey = useMemo(() => {
     const now = Date.now();
@@ -161,5 +176,5 @@ export function useBoxJobs(projectId: string) {
     return out;
   }, [jobs]);
 
-  return { byKey, jobs, refetch };
+  return { byKey, jobs, refetch, unfinished: jobs.filter(isUnfinished).length };
 }
