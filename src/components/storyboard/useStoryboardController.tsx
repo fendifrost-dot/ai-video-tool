@@ -283,7 +283,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         const his = directorSet(box.override);
         const state = machineContext({
           box,
-          performance: take ? { takeName: take.asset.name, range: { start: take.sourceIn!, end: take.sourceOut! }, shows: take.asset.shows ?? null } : null,
+          performance: take ? { takeName: take.asset.name, range: { start: take.sourceIn!, end: take.sourceOut! }, shows: take.asset.shows ?? null, filmedIn: take.asset.filmedIn ?? null } : null,
           media: m.items.filter((i) => !i.base).map((i) => ({ role: i.role, name: i.asset.name, selected: i.selected })),
           look: { name: inputs.looks[0]?.name ?? null, description: box.spec.wardrobe.description },
           constraints: [directorNotes(project?.notes, doc.notes)],
