@@ -25,11 +25,11 @@ import {
   type ProgressDeps,
   type ProgressJob,
 } from "../../../supabase/functions/_shared/jobProgress";
-import { BatchShotSchema, submitShot, submitStills, statusFromEnvelope, type BatchJobRow, type RunnerDeps } from "@/lib/worldBatch";
+import { BatchShotSchema, failureReason, submitShot, submitStills, statusFromEnvelope, type BatchJobRow, type RunnerDeps } from "@/lib/worldBatch";
 import { planAssign, type Assignment } from "@/lib/storyboard/media";
 import { boxJobStatus, planStillCheck } from "@/lib/queries/boxJobs";
 import { isUnfinished } from "./progress";
-import { statusFromEnvelope as serverStatusFromEnvelope } from "../../../supabase/functions/_shared/jobProgress";
+import { failureReason as serverFailureReason, statusFromEnvelope as serverStatusFromEnvelope } from "../../../supabase/functions/_shared/jobProgress";
 
 const T0 = Date.parse("2026-10-03T12:00:00.000Z");
 
@@ -249,6 +249,45 @@ describe("a clip job finishes with the page closed", () => {
     expect(w.only().finalized_at).toBeTruthy();
     expect(w.assignments).toHaveLength(0);
     expect(boxJobStatus(w.only() as unknown as BatchJobRow, T0)).toMatchObject({ state: "failed", message: "content policy" });
+  });
+
+  it("a render the provider refused says why in the provider's own words, not only 'failed'", async () => {
+    // the envelope a restaging came back with when the provider's balance had run out (fresh section, 2026-10-03):
+    // the sentence was in the response and the job said "failed"
+    const refused = {
+      ok: true,
+      status: "failed",
+      provider: "higgsfield",
+      resultUrl: null,
+      httpStatus: 200,
+      providerMetadata: { error: "Your credit balance is too low to complete this request. Please top up your balance and try again.", status: "failed" },
+    };
+    const w = world();
+    const s = await submitShot(clipShot, ctx(), w.client);
+    w.provider.set(s.providerJobId, refused);
+    await w.tick();
+    expect(w.only()).toMatchObject({ status: "failed", error_text: "Your credit balance is too low to complete this request. Please top up your balance and try again." });
+    expect(boxJobStatus(w.only() as unknown as BatchJobRow, T0)).toMatchObject({ state: "failed", message: expect.stringContaining("credit balance is too low") });
+    // the app's own poll and the server's read one envelope the same way
+    const envelopes: (Record<string, unknown> | null)[] = [
+      refused,
+      { status: "failed", errorMessage: "content policy", providerMetadata: { error: "something else" } },
+      { status: "failed", error: { message: "bad input" } },
+      { status: "failed", providerMetadata: { detail: "queue timeout" } },
+      { status: "nsfw" },
+      { status: "failed" },
+      { status: "failed", providerMetadata: "not an object" },
+      {},
+      null,
+    ];
+    for (const env of envelopes) expect(serverFailureReason(env)).toBe(failureReason(env));
+    expect(failureReason(envelopes[1])).toBe("content policy");
+    expect(failureReason(envelopes[2])).toBe("bad input");
+    expect(failureReason(envelopes[3])).toBe("queue timeout");
+    expect(failureReason(envelopes[4])).toBe("the provider reported: nsfw");
+    expect(failureReason(envelopes[5])).toBe("the provider reported a failure and did not say why");
+    expect(failureReason(envelopes[6])).toBe("the provider reported a failure and did not say why");
+    expect(failureReason({ status: "failed", errorMessage: "x".repeat(900) })).toHaveLength(500);
   });
 
   it("gives up honestly: a save that keeps failing, a render that never ends, a submit that never reported", async () => {
