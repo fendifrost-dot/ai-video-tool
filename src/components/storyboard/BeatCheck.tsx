@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { aspectCss } from "@/lib/project/aspect";
-import { beatLine, checkAnswers, VERDICT_LABEL, type BeatVerdict, type ChangePoint, type MeasuredBeat } from "@/lib/storyboard/beatCheck";
+import { beatLine, checkAnswers, isDrift, unaskedLine, VERDICT_LABEL, type BeatVerdict, type MeasuredBeat } from "@/lib/storyboard/beatCheck";
 import type { BoxMediaItem } from "@/lib/storyboard/media";
 import { cn } from "@/lib/utils";
 import { FrameThumb } from "./FrameThumb";
@@ -60,7 +60,6 @@ export function BeatCheckPanel({ item }: { item: BoxMediaItem }) {
   // nothing asked and nothing found: there is nothing to say about this clip
   if (timed.length === 0 && (!shown || shown.unasked.length === 0) && !busy) return null;
 
-  const unaskedLine = (c: ChangePoint) => `${c.kind === "light" ? "the light changes" : "the picture jumps"} at ${c.begins.toFixed(2)} s — nothing in the request asked for a change there`;
 
   return (
     <div className="space-y-2 rounded-lg border border-border/70 bg-white/[0.02] p-2.5" data-testid="beat-check" data-asset-id={asset.id} data-verdict={shown?.verdict ?? (busy ? "measuring" : "unmeasured")} data-mode={request.mode}>
@@ -101,7 +100,7 @@ export function BeatCheckPanel({ item }: { item: BoxMediaItem }) {
         ))}
 
       {shown?.unasked.map((c) => (
-        <p key={c.begins} className="text-[11px] leading-snug text-amber-200/90" data-testid="beat-check-unasked" data-begins={c.begins}>
+        <p key={c.begins} className={cn("text-[11px] leading-snug", isDrift(c) ? "text-foreground/55" : "text-amber-200/90")} data-testid="beat-check-unasked" data-begins={c.begins} data-arrived={c.arrived} data-drift={isDrift(c) ? "true" : "false"}>
           {unaskedLine(c)}
         </p>
       ))}
