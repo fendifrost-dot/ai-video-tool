@@ -168,6 +168,8 @@ export type TreatmentContext = {
   additionalNotes?: string | null;
   analysisSummary?: Record<string, unknown> | null;
   looks?: { name: string; description?: string | null }[];
+  /** The project has real performance footage in sync with the song: the artist is that footage, not a drawn one. */
+  hasPerformanceFootage?: boolean;
 };
 
 function contextBody(input: TreatmentContext): Record<string, unknown> {
@@ -182,7 +184,25 @@ function contextBody(input: TreatmentContext): Record<string, unknown> {
     additional_notes: input.additionalNotes ?? null,
     analysis: input.analysisSummary ?? null,
     looks: (input.looks ?? []).map((l) => ({ name: l.name, description: l.description ?? null })),
+    has_performance_footage: input.hasPerformanceFootage === true,
   };
+}
+
+/**
+ * The treatment writer: AVT's own edge function (treatment-writer-proxy). It writes the treatment text when asked
+ * to, and one scene for every shot of the grid it is handed.
+ */
+async function callTreatmentWriter(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new ProviderCallError("UNAUTHORISED", "Not signed in.");
+  const { data, error } = await supabase.functions.invoke<{ ok: boolean } & Record<string, unknown>>("treatment-writer-proxy", { body });
+  if (error) {
+    // the reply says why (the writer is not deployed, the model refused, …): say that, not "non-2xx"
+    const failure = await functionFailure(error, data);
+    throw new ProviderCallError("INTERNAL", `The treatment writer failed${failure.status ? ` (${failure.status})` : ""}: ${failure.reason}`);
+  }
+  if (!data || data.ok === false) throw new ProviderCallError(String(data?.errorCode ?? "PROVIDER_API_ERROR"), String(data?.errorMessage ?? "The treatment writer returned nothing"));
+  return data;
 }
 
 async function callTreatmentEndpoint(
@@ -243,13 +263,21 @@ const DEP_KINDS = new Set(["look_composite", "faceswap_still", "reference_image"
  * the permanent records one to one (src/lib/storyboard/build.ts decides which records it may rewrite).
  */
 export async function draftTreatmentClips(
-  input: TreatmentContext & { concept: string; grid: GridClip[] },
+  input: TreatmentContext & {
+    concept: string;
+    grid: GridClip[];
+    /** true = the writer writes the treatment text too; false = `concept` is the director's text, kept as written. */
+    writeText?: boolean;
+    /** The words sung inside each shot, by its key — so each scene answers its own words. */
+    clipLyrics?: Readonly<Record<string, string>>;
+  },
 ): Promise<StructuredTreatment> {
-  const data = await callTreatmentEndpoint({
+  const data = await callTreatmentWriter({
     mode: "full_treatment",
     ...contextBody(input),
     concept: input.concept,
-    clip_grid: input.grid,
+    write_text: input.writeText === true,
+    clip_grid: input.grid.map((g) => ({ ...g, lyrics: input.clipLyrics?.[g.key] ?? "" })),
   });
 
   const t = (data.treatment ?? {}) as Record<string, unknown>;
@@ -291,13 +319,13 @@ export async function draftTreatmentClips(
       wardrobe: String(m.wardrobe ?? "").trim(),
       environment: String(m.environment ?? "").trim(),
       recommended_tool: TOOLS.has(tool) ? tool : "manual",
-      lyric_ref: m.lyric_ref ? String(m.lyric_ref) : null,
+      lyric_ref: m.lyric_ref && String(m.lyric_ref).trim() ? String(m.lyric_ref).trim() : null,
       priority: PRIORITIES.has(priority) ? priority : "normal",
       dependencies: deps,
     };
   });
 
-  const concept = String(t.concept ?? input.concept).trim();
+  const concept = String(t.concept || input.concept).trim();
   const narrative = String(t.narrative ?? "").trim();
   const sections = Array.isArray(t.sections)
     ? (t.sections as Array<Record<string, unknown>>).map((s) => ({
