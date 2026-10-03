@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { formatDuration, formatTimecode, shotTypeLabel } from "@/components/treatment/shotLabels";
 import type { StoryboardBox } from "@/lib/storyboard/boxes";
 import { BoxMediaView, ROLE_STYLE, mediaLabel } from "./BoxMediaView";
+import { BeatStrip } from "./TimedBeats";
+import { ContinuityChips } from "./Continuity";
 import { useStoryboard } from "./useStoryboardController";
 
 const ENERGY_STYLES: Record<string, string> = {
@@ -129,6 +131,9 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
             <Quote className="h-3 w-3" /> Instrumental — no lyrics in this window
           </div>
         ) : null}
+
+        <ContinuityChips box={box} />
+        <BeatStrip box={box} compact />
 
         {coverageFlag && <p className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-200">{coverageFlag}</p>}
 

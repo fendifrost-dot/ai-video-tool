@@ -11,6 +11,8 @@ import { BoxEditor } from "./BoxEditor";
 import { BoxMediaView, ROLE_STYLE, mediaLabel } from "./BoxMediaView";
 import { frameBoxStyle } from "@/lib/project/aspect";
 import { FrameStrip } from "./FrameStrip";
+import { BeatStrip } from "./TimedBeats";
+import { ContinuityChips } from "./Continuity";
 import { Overlay } from "./Overlay";
 import { useStoryboard } from "./useStoryboardController";
 
@@ -177,6 +179,8 @@ export function FocusView() {
             <p className="text-sm leading-relaxed text-foreground/85" data-testid="focus-scene">
               {sceneText(box)}
             </p>
+            <ContinuityChips box={box} />
+            <BeatStrip box={box} />
           </div>
 
           {/* Side: actions, then tabs ------------------------------------------ */}

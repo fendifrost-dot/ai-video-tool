@@ -3,6 +3,7 @@ import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { DEFAULT_PROJECT_ASPECT, frameBoxStyle, type ProjectAspect } from "@/lib/project/aspect";
 import { cn } from "@/lib/utils";
 import { formatTimecode } from "@/components/treatment/shotLabels";
+import { pictureAt, pictureFilter } from "@/lib/storyboard/events";
 import { segmentAt, videoStateAt, type MediaAsset, type TimelineSegment } from "@/lib/storyboard/media";
 import { ROLE_STYLE, mediaLabel } from "./BoxMediaView";
 import { safePlay } from "./RangeVideo";
@@ -41,6 +42,9 @@ export function SequencePlayer({
 }) {
   const audio = useRef<HTMLAudioElement>(null);
   const videos = useRef(new Map<string, HTMLVideoElement>());
+  // the picture layer (every video and image) and the white laid over it: a shot's timed effects are put on these
+  const pictureLayer = useRef<HTMLDivElement>(null);
+  const flashLayer = useRef<HTMLDivElement>(null);
   const [playing, setPlaying] = useState(false);
   const [t, setT] = useState(0);
   const [activeId, setActiveId] = useState<string | null>(timeline[0]?.shotId ?? null);
@@ -78,6 +82,13 @@ export function SequencePlayer({
         setActiveId(seg.shotId);
         onSegment?.(seg);
       }
+      // the shot's timed effects, at this moment of the song — the arithmetic a render applies (events.ts pictureAt)
+      const p = seg && seg.events?.length ? pictureAt(seg.events, Math.max(0, now - seg.start)) : null;
+      if (pictureLayer.current) {
+        pictureLayer.current.style.filter = p ? pictureFilter(p) : "none";
+        pictureLayer.current.dataset.brightness = String(p ? p.brightness : 1);
+      }
+      if (flashLayer.current) flashLayer.current.style.opacity = String(p ? p.flash : 0);
       const activeAsset = seg?.media.kind === "video" ? seg.media.assetId : null;
       for (const [id, el] of videos.current) {
         if (id !== activeAsset) {
@@ -192,6 +203,7 @@ export function SequencePlayer({
   return (
     <div className="space-y-3" data-testid="sequence-player" data-active-shot={active?.key ?? ""} data-playing={playing ? "true" : "false"}>
       <div className="relative mx-auto overflow-hidden rounded-xl bg-black" style={frameBoxStyle(aspect, "68vh")} data-testid="sequence-stage" data-media-kind={active?.media.kind ?? "none"} data-aspect={aspect}>
+        <div ref={pictureLayer} className="absolute inset-0" data-testid="sequence-picture">
         {videoAssetIds.map((id) => {
           const src = urlOf(id);
           if (!src) return null;
@@ -212,6 +224,8 @@ export function SequencePlayer({
           );
         })}
         {activeImage && <img src={activeImage} alt="" className="absolute inset-0 h-full w-full object-contain" />}
+        </div>
+        <div ref={flashLayer} className="pointer-events-none absolute inset-0 bg-white" style={{ opacity: 0 }} data-testid="sequence-flash" aria-hidden />
         {active?.media.kind === "none" && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 px-8 text-center" data-testid="sequence-slate">
             <span className="font-mono text-3xl font-semibold text-white/25">{String(active.index).padStart(2, "0")}</span>

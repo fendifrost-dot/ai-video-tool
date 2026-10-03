@@ -21,10 +21,26 @@ export function ConfirmHost({ request, onClose }: { request: ConfirmRequest | nu
             <figcaption className="min-w-0 break-words text-[11px] leading-snug text-foreground/60">{request.picture.caption}</figcaption>
           </figure>
         ) : null}
-        <div className="flex justify-end gap-2 pt-1">
+        <div className="flex flex-wrap justify-end gap-2 pt-1">
           <Button size="sm" variant="ghost" onClick={onClose} data-testid="confirm-cancel">
             Cancel
           </Button>
+          {request.secondary && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                const work = request.secondary!.onConfirm;
+                onClose();
+                void Promise.resolve()
+                  .then(() => work())
+                  .catch(() => undefined);
+              }}
+              data-testid={request.secondary.testId}
+            >
+              {request.secondary.label}
+            </Button>
+          )}
           <Button
             size="sm"
             onClick={() => {

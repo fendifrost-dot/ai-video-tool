@@ -7,6 +7,9 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { parseShotSpec } from "@/lib/treatment/shotSpec";
 import { boxFromRow, boxWrite, type BoxRow, type StoryboardBox } from "@/lib/storyboard/boxes";
 import { boxMedia, type Assignment, type MediaAsset, type TakeSync } from "@/lib/storyboard/media";
+import { resolveEvents, type EventClock } from "@/lib/storyboard/events";
+import { temporalPlan } from "@/lib/storyboard/temporal";
+import { NO_CONTINUITY } from "@/lib/continuity/entities";
 import { BoxCard } from "./BoxCard";
 import { FocusView } from "./FocusView";
 import { MediaPicker } from "./MediaPicker";
@@ -19,6 +22,7 @@ vi.mock("@/lib/queries/storyboard", () => ({ useTakeSyncs: () => ({ data: [] }) 
 vi.mock("./signedUrls", async (orig) => ({ ...(await orig<typeof import("./signedUrls")>()), signRefs: vi.fn(async () => ({})) }));
 
 const AT = "2026-10-03T12:00:00.000Z";
+const CLOCK: EventClock = {};
 function box(id: string, key: string, start: number, end: number, extra: Partial<BoxRow> = {}): StoryboardBox {
   const w = boxWrite({
     key,
@@ -72,6 +76,22 @@ function controller(over: Partial<StoryboardController> = {}): StoryboardControl
     resetBox: fn(),
     rewrite: fn(),
     restoreVersion: fn(),
+    eventsOf: (b) => resolveEvents(b.spec.events, { start: b.start, end: b.end }, CLOCK),
+    clock: CLOCK,
+    saveEvents: fn(),
+    splitAtBeats: fn(),
+    clipPlanOf: (b) => temporalPlan({ route: "still_kling", resolved: resolveEvents(b.spec.events, { start: b.start, end: b.end }, CLOCK), shotSeconds: b.end - b.start }),
+    entities: [],
+    looks: [],
+    continuityOf: () => NO_CONTINUITY,
+    entityUsage: new Map(),
+    picturesOf: () => [],
+    entityBusyOf: () => null,
+    createEntity: vi.fn(async () => null),
+    saveEntity: fn(),
+    generateEntityPicture: vi.fn(),
+    useShotImageFor: fn(),
+    saveContinuity: fn(),
     toggleLock: fn(),
     split: fn(),
     mergeWithNext: vi.fn(),

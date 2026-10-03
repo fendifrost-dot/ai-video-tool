@@ -7,6 +7,8 @@ import { cameraMotionLabel, formatTimecode, framingLabel, shotTypeLabel } from "
 import { MIN_BOX_SECONDS, type BoxOverride, type StoryboardBox } from "@/lib/storyboard/boxes";
 import { CAMERA_MOTIONS, FRAMINGS, SHOT_TYPES } from "@/lib/treatment/shotSpec";
 import { DEFAULT_TRANSITION_PRESET_NAMES, DEFAULT_TRANSITION_PRESETS } from "@/lib/treatment/transitions";
+import { BeatsEditor } from "./TimedBeats";
+import { ShotContinuityEditor } from "./Continuity";
 import { useStoryboard } from "./useStoryboardController";
 
 type Draft = {
@@ -46,6 +48,9 @@ function overrideOf(d: Draft, prev: BoxOverride | null): BoxOverride {
     transitionIn: d.transitionInPreset ? { preset: d.transitionInPreset } : null,
     requiredElements: d.requiredElements.length ? d.requiredElements : null,
     notes: d.notes.trim() || null,
+    // edited in their own blocks (Timed beats, Continuity): this form carries them through untouched
+    events: prev?.events ?? null,
+    continuity: prev?.continuity ?? null,
     manual: prev?.manual ?? null,
   };
 }
@@ -204,6 +209,9 @@ export function BoxEditor({ box }: { box: StoryboardBox }) {
         )}
         {dirty && <span className="text-[11px] text-amber-300/80">unsaved</span>}
       </div>
+
+      <BeatsEditor box={box} />
+      <ShotContinuityEditor box={box} />
 
       <SplitMerge box={box} />
     </div>

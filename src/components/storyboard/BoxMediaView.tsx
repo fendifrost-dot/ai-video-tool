@@ -3,6 +3,7 @@ import { ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PrevisFrame } from "@/components/treatment/PrevisFrame";
 import type { StoryboardBox } from "@/lib/storyboard/boxes";
+import { pictureAt, type Picture } from "@/lib/storyboard/events";
 import type { AssignmentRole, BoxMediaItem } from "@/lib/storyboard/media";
 import { RangeVideo } from "./RangeVideo";
 import { mediaRefKey, playbackRef } from "./signedUrls";
@@ -31,7 +32,20 @@ export function mediaLabel(item: Pick<BoxMediaItem, "role" | "base"> & { asset?:
 }
 
 /** One piece of media, played or shown — always the whole frame, never cropped. */
-export function MediaItemView({ item, url, mode, testId }: { item: BoxMediaItem; url: string | undefined; mode: "card" | "focus"; testId?: string }) {
+export function MediaItemView({
+  item,
+  url,
+  mode,
+  testId,
+  picture,
+}: {
+  item: BoxMediaItem;
+  url: string | undefined;
+  mode: "card" | "focus";
+  testId?: string;
+  /** The shot's timed effects, as a function of seconds into the shot. */
+  picture?: (secondsIntoShot: number) => Picture;
+}) {
   const fileKey = mediaRefKey(playbackRef(item.asset));
   if (!url) {
     return (
@@ -63,6 +77,8 @@ export function MediaItemView({ item, url, mode, testId }: { item: BoxMediaItem;
         showControls={mode === "focus"}
         testId={testId}
         posterKey={mode === "focus" ? fileKey : undefined}
+        // the range starts `leadIn` seconds into the shot (a take whose recording begins inside it)
+        picture={picture ? (s) => picture(s + item.leadIn) : undefined}
       />
     </div>
   );
@@ -72,6 +88,9 @@ export function MediaItemView({ item, url, mode, testId }: { item: BoxMediaItem;
 export function BoxMediaView({ box, mode }: { box: StoryboardBox; mode: "card" | "focus" }) {
   const sb = useStoryboard();
   const item = sb.mediaOf(box.id).showing;
+  const resolved = sb.eventsOf(box);
+  const hasEffects = resolved.some((e) => e.effect);
+  const picture = hasEffects ? (s: number) => pictureAt(resolved, s) : undefined;
   if (!item) {
     return (
       <div className={cn(mode === "focus" && "mx-auto w-full max-w-4xl")} data-testid="box-media-empty">
@@ -89,10 +108,10 @@ export function BoxMediaView({ box, mode }: { box: StoryboardBox; mode: "card" |
       {mode === "card" ? (
         // the board tile keeps its shape; inside it sits the project's frame, and the media is fitted whole into that
         <div className="absolute inset-y-0 left-1/2 max-w-full -translate-x-1/2" style={{ aspectRatio: aspectCss(sb.aspect) }} data-testid="box-media-frame" data-aspect={sb.aspect}>
-          <MediaItemView item={item} url={sb.urlFor(item.asset)} mode={mode} testId="box-media-player" />
+          <MediaItemView item={item} url={sb.urlFor(item.asset)} mode={mode} testId="box-media-player" picture={picture} />
         </div>
       ) : (
-        <MediaItemView item={item} url={sb.urlFor(item.asset)} mode={mode} testId="box-media-player" />
+        <MediaItemView item={item} url={sb.urlFor(item.asset)} mode={mode} testId="box-media-player" picture={picture} />
       )}
       <span className={cn("pointer-events-none absolute left-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-medium backdrop-blur", ROLE_STYLE[item.role])}>
         {mediaLabel(item)}

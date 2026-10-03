@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { pictureFilter, type Picture } from "@/lib/storyboard/events";
 import { FrameThumb } from "./FrameThumb";
 
 /** Start a media element without letting a refused or unsupported play() surface as an error. */
@@ -32,6 +33,7 @@ export function RangeVideo({
   className,
   testId,
   posterKey,
+  picture,
 }: {
   src: string;
   /** In-point inside the file, seconds. */
@@ -49,6 +51,11 @@ export function RangeVideo({
    * so the shot has a picture before the video has loaded — and in a window where the browser loads no video at all.
    */
   posterKey?: string;
+  /**
+   * What the edit does to the picture at a moment of the range (seconds from the in-point): the shot's timed effects.
+   * Applied to the playing video frame by frame — the same arithmetic Review and a render use.
+   */
+  picture?: (secondsIntoRange: number) => Picture;
 }) {
   const holder = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
@@ -57,6 +64,36 @@ export function RangeVideo({
   const [muted, setMuted] = useState(true);
   const [at, setAt] = useState(0);
   const [failed, setFailed] = useState(false);
+  const flash = useRef<HTMLDivElement>(null);
+
+  /** Put the shot's effect on the frame that is showing now. */
+  const paint = () => {
+    const v = video.current;
+    if (!v) return;
+    const p = picture ? picture(Math.max(0, v.currentTime - start)) : null;
+    v.style.filter = p ? pictureFilter(p) : "none";
+    if (flash.current) flash.current.style.opacity = String(p ? p.flash : 0);
+  };
+
+  // while it plays, follow it every frame: a flash is over in a few of them
+  useEffect(() => {
+    if (!picture) {
+      paint();
+      return;
+    }
+    if (!playing) {
+      paint();
+      return;
+    }
+    let raf = 0;
+    const tick = () => {
+      paint();
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, picture, start]);
 
   useEffect(() => {
     if (!lazy || inView) return;
@@ -108,6 +145,7 @@ export function RangeVideo({
       else v.pause();
     }
     setAt(Math.max(0, v.currentTime - start));
+    paint();
   };
 
   const toggle = () => {
@@ -134,9 +172,11 @@ export function RangeVideo({
           onPlay={() => setPlaying(true)}
           onPause={() => setPlaying(false)}
           onError={() => setFailed(true)}
+          onSeeked={paint}
           onClick={toggle}
         />
       )}
+      {picture && <div ref={flash} className="pointer-events-none absolute inset-0 bg-white" style={{ opacity: 0 }} data-testid="range-video-flash" aria-hidden />}
       {failed && (
         <div className="absolute inset-0 flex items-center justify-center px-4 text-center text-xs text-white/60">
           This file could not be played in the browser.

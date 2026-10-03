@@ -21,8 +21,25 @@ import {
   useWriteBoxes,
 } from "@/lib/queries/storyboard";
 import { useTreatmentInputs } from "@/lib/queries/treatmentInputs";
+import { useContinuityEntities, useContinuityMutations } from "@/lib/queries/continuity";
+import {
+  canonicalWords,
+  continuitySource,
+  entityUsage as usageOfEntities,
+  indexEntities,
+  resolveContinuity,
+  withReference,
+  type ContinuityEntity,
+  type EntityKind,
+  type EntityPatch,
+  type LookRef,
+  type ShotContinuity,
+} from "@/lib/continuity/entities";
+import type { ContinuityOverride } from "@/lib/treatment/overrides";
+import { useEventClock } from "@/lib/queries/eventClock";
 import { providerJobsKeys } from "@/lib/providerJobs/queries";
 import {
+  BLANK_OVERRIDE,
   applyOverride,
   directorSet,
   editedOverride,
@@ -30,15 +47,18 @@ import {
   neighbourSummaries,
   planMerge,
   planSplit,
+  planSplitAtBeats,
   rewrittenOverride,
   writeOf,
   type BoxOverride,
   type StoryboardBox,
 } from "@/lib/storyboard/boxes";
+import { resolveEvents, type EventClock, type ResolvedEvent, type ShotEvent } from "@/lib/storyboard/events";
+import { ALTERNATIVE_LABEL, beatLines, type TemporalPlan } from "@/lib/storyboard/temporal";
 import { ensureStoryboardMaterialized, type MaterializeResult } from "@/lib/storyboard/build";
 import { aspectOfProject, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
-import { boxShot, clipEstimateUsd, generateBoxClip, generateBoxImage, imageEstimateUsd } from "@/lib/storyboard/generate";
-import { restageBox, restageEstimateUsd, restageSeconds, restageSource } from "@/lib/storyboard/restage";
+import { boxShot, clipEstimateUsd, clipTemporalPlan, entityShot, generateBoxClip, generateBoxImage, generateEntityReference, imageEstimateUsd, imageTemporalPlan } from "@/lib/storyboard/generate";
+import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
 import {
   boxMedia,
   imageForClip,
@@ -73,6 +93,8 @@ export type ConfirmRequest = {
    * into a runway whose centre line the model then drew straight through him, and nothing had shown that picture.
    */
   picture?: { url?: string; caption: string };
+  /** A second thing the director can choose instead (its own button, beside the first). */
+  secondary?: { label: string; testId: string; onConfirm: () => void | Promise<void> };
 };
 
 export type BoxEstimates = {
@@ -113,7 +135,36 @@ export type StoryboardController = {
   saveEdit: (box: StoryboardBox, next: BoxOverride) => Promise<void>;
   resetBox: (box: StoryboardBox) => Promise<void>;
   rewrite: (box: StoryboardBox, mode?: RegenerateMode) => Promise<void>;
-  restoreVersion: (box: StoryboardBox, entry: { direction?: string; purpose?: string; frame?: string }) => Promise<void>;
+  restoreVersion: (box: StoryboardBox, entry: { direction?: string; purpose?: string; frame?: string; events?: ShotEvent[] }) => Promise<void>;
+  /** The shot's timed events, placed on the song (a lyric or beat trigger looked up in the lyric timing / beat map). */
+  eventsOf: (box: StoryboardBox) => ResolvedEvent[];
+  /** What a lyric or beat trigger can hang on: the project's timed lines and the song's beats. */
+  clock: EventClock;
+  /** Save the shot's timed events (the director's list is exactly the shot's events). */
+  saveEvents: (box: StoryboardBox, events: ShotEvent[]) => Promise<void>;
+  /** Cut the shot at its beats: every state becomes a shot of its own. */
+  splitAtBeats: (box: StoryboardBox) => Promise<void>;
+  /** What generating a clip (or restaging) does with this shot's timed events. */
+  clipPlanOf: (box: StoryboardBox) => TemporalPlan;
+  /** The project's continuity entities: places, props and lighting states, each described once. */
+  entities: ContinuityEntity[];
+  /** The artist's wardrobe looks — the existing Look records a shot can point at. */
+  looks: LookRef[];
+  /** What a shot's continuity references resolve to. */
+  continuityOf: (box: StoryboardBox) => ShotContinuity;
+  /** Which shots (by number) point at each entity, by its key. */
+  entityUsage: ReadonlyMap<string, number[]>;
+  /** An entity's reference pictures, the approved one first. */
+  picturesOf: (entity: ContinuityEntity) => MediaAsset[];
+  entityBusyOf: (entityId: string) => string | null;
+  createEntity: (kind: EntityKind, name: string) => Promise<ContinuityEntity | null>;
+  saveEntity: (entity: ContinuityEntity, patch: EntityPatch) => Promise<void>;
+  /** Draw reference pictures of an entity from its canonical description (asks first: it costs money). */
+  generateEntityPicture: (entity: ContinuityEntity) => void;
+  /** Make the image this shot shows the approved picture of an entity. */
+  useShotImageFor: (box: StoryboardBox, entity: ContinuityEntity) => Promise<void>;
+  /** Point the shot at entities (or take a reference away). */
+  saveContinuity: (box: StoryboardBox, refs: ContinuityOverride) => Promise<void>;
   toggleLock: (box: StoryboardBox) => Promise<void>;
   split: (box: StoryboardBox, atSeconds: number) => Promise<void>;
   mergeWithNext: (box: StoryboardBox) => void;
@@ -160,6 +211,8 @@ export function useStoryboardController(projectId: string): StoryboardController
   const jobs = useBoxJobs(projectId);
   const writeBoxes = useWriteBoxes(projectId);
   const applyOps = useApplyAssignmentOps(projectId);
+  const entitiesQuery = useContinuityEntities(projectId);
+  const entityMutations = useContinuityMutations(projectId);
 
   const boxes = useMemo(() => boxesQuery.data ?? [], [boxesQuery.data]);
   const assignments = useMemo(() => assignmentsQuery.data ?? [], [assignmentsQuery.data]);
@@ -172,6 +225,7 @@ export function useStoryboardController(projectId: string): StoryboardController
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<ConfirmRequest | null>(null);
   const [migrated, setMigrated] = useState<MaterializeResult | null>(null);
+  const [entityBusy, setEntityBusy] = useState<Record<string, string>>({});
 
   const setBusyFor = useCallback((id: string, text: string | null) => {
     setBusy((b) => {
@@ -209,18 +263,40 @@ export function useStoryboardController(projectId: string): StoryboardController
     return out;
   }, [boxes, assignments, media.byId, syncs]);
 
+  // --- continuity: the entities, and what each shot's references resolve to -----------------------------------------
+  const entities = useMemo(() => entitiesQuery.data ?? [], [entitiesQuery.data]);
+  const entityIndex = useMemo(() => indexEntities(entities), [entities]);
+  const looks = useMemo<LookRef[]>(() => inputs.looks.map((l) => ({ id: l.id, name: l.name, description: l.description ?? null })), [inputs.looks]);
+  const continuityOf = useCallback((box: StoryboardBox) => resolveContinuity(box.spec, entityIndex, looks), [entityIndex, looks]);
+  const entityUsage = useMemo(() => usageOfEntities(boxes.map((b, i) => ({ number: i + 1, spec: b.spec }))), [boxes]);
+  const picturesOf = useCallback(
+    (entity: ContinuityEntity): MediaAsset[] => {
+      const ids = [entity.approvedAssetId, ...entity.referenceAssetIds].filter((x, i, all): x is string => !!x && all.indexOf(x) === i);
+      return ids.map((id) => media.byId.get(id)).filter((a): a is MediaAsset => !!a);
+    },
+    [media.byId],
+  );
+
   const refs = useMemo(() => {
     const seen = new Map<string, { bucket: string; path: string }>();
     for (const m of mediaByBox.values()) for (const i of m.items) {
       const r = playbackRef(i.asset);
       seen.set(mediaRefKey(r), r);
     }
+    // an entity's reference pictures are shown too
+    for (const e of entities) for (const a of picturesOf(e)) {
+      const r = playbackRef(a);
+      seen.set(mediaRefKey(r), r);
+    }
     return [...seen.values()];
-  }, [mediaByBox]);
+  }, [mediaByBox, entities, picturesOf]);
   const urls = useSignedRefs(refs);
   const urlFor = useCallback((asset: MediaAsset) => urls[mediaRefKey(playbackRef(asset))], [urls]);
 
   const beatGrid = useMemo(() => (analysis ? buildClipGrid({ analysis }) : []), [analysis]);
+  // what a timed event's trigger is looked up in: the lyric timing and the song's beats
+  const clock = useEventClock(projectId);
+  const eventsOf = useCallback((box: StoryboardBox) => resolveEvents(box.spec.events, { start: box.start, end: box.end }, clock), [clock]);
 
   const library = useMemo(
     () =>
@@ -288,11 +364,18 @@ export function useStoryboardController(projectId: string): StoryboardController
         const m = mediaByBox.get(box.id) ?? EMPTY_MEDIA;
         const take = m.items.find((i) => i.role === "performance" && i.sourceIn != null && i.sourceOut != null);
         const his = directorSet(box.override);
+        // the scene is rewritten INSIDE the entities the shot points at, in their canonical words
+        const held = continuityOf(box);
         const state = machineContext({
           box,
           performance: take ? { takeName: take.asset.name, range: { start: take.sourceIn!, end: take.sourceOut! }, shows: take.asset.shows ?? null, filmedIn: take.asset.filmedIn ?? null } : null,
           media: m.items.filter((i) => !i.base).map((i) => ({ role: i.role, name: i.asset.name, selected: i.selected })),
-          look: { name: inputs.looks[0]?.name ?? null, description: box.spec.wardrobe.description },
+          look: { name: (held.look ?? inputs.looks[0])?.name ?? null, description: held.look?.description ?? box.spec.wardrobe.description },
+          continuity: {
+            location: held.location ? { name: held.location.name, words: canonicalWords(held.location) } : null,
+            props: held.props.map((p) => ({ name: p.name, words: canonicalWords(p) })),
+            lighting: held.lighting ? { name: held.lighting.name, words: canonicalWords(held.lighting) } : null,
+          },
           constraints: [directorNotes(project?.notes, doc.notes)],
         });
         const r = await regenerateShotFromLyrics({
@@ -321,21 +404,36 @@ export function useStoryboardController(projectId: string): StoryboardController
           framing: r.framing,
           transitionIn: r.transitionIn.preset ? { preset: r.transitionIn.preset } : null,
           requiredElements: r.requiredElements.length ? r.requiredElements : null,
+          // the rewrite writes the shot's timed beats too (an empty list = this scene is one state); beats the
+          // director set by hand are his and are kept (rewrittenOverride)
+          events: r.events,
         });
         const at = new Date().toISOString();
         await writeBoxes.mutateAsync({ updates: [{ id: box.id, write: applyOverride(box, next, at, "rewrite") }] });
         toast.success("Scene rewritten — the earlier version is under Versions");
       }),
-    [run, rewriteBlockedReason, mediaByBox, inputs, doc, project, projectId, lyricLines, boxes, writeBoxes],
+    [run, rewriteBlockedReason, mediaByBox, inputs, doc, project, projectId, lyricLines, boxes, writeBoxes, continuityOf],
+  );
+
+  const saveEvents = useCallback(
+    (box: StoryboardBox, events: ShotEvent[]) =>
+      run(box, "saving…", async () => {
+        const next: BoxOverride = { ...(box.override ?? BLANK_OVERRIDE), events };
+        await writeBoxes.mutateAsync({ updates: [{ id: box.id, write: applyOverride(box, editedOverride(box.override, next), new Date().toISOString(), "edit") }] });
+        toast.success(events.length ? "Timed beats saved" : "Timed beats removed — the shot is one state");
+      }),
+    [run, writeBoxes],
   );
 
   const restoreVersion = useCallback(
-    (box: StoryboardBox, entry: { direction?: string; purpose?: string; frame?: string }) =>
+    (box: StoryboardBox, entry: { direction?: string; purpose?: string; frame?: string; events?: ShotEvent[] }) =>
       run(box, "restoring…", async () => {
         const next: BoxOverride = {
-          ...(box.override ?? { direction: null, cameraMotion: null, framing: null, transitionIn: null, requiredElements: null, notes: null }),
+          ...(box.override ?? BLANK_OVERRIDE),
           direction: entry.direction || entry.purpose || null,
           frame: entry.frame ?? null,
+          // a version is the scene AND the beats it had (a version from before beats existed leaves them as they are)
+          ...(entry.events ? { events: entry.events } : {}),
         };
         await writeBoxes.mutateAsync({ updates: [{ id: box.id, write: applyOverride(box, editedOverride(box.override, next), new Date().toISOString(), "edit") }] });
         toast.success("Earlier version restored");
@@ -355,7 +453,7 @@ export function useStoryboardController(projectId: string): StoryboardController
   const split = useCallback(
     (box: StoryboardBox, atSeconds: number) =>
       run(box, "splitting…", async () => {
-        const plan = planSplit(box, atSeconds, boxes.map((b) => b.key), new Date().toISOString());
+        const plan = planSplit(box, atSeconds, boxes.map((b) => b.key), new Date().toISOString(), clock);
         const res = await writeBoxes.mutateAsync({ updates: [{ id: box.id, write: plan.first }], inserts: [plan.second] });
         // the take plays in both halves (its range follows each window); other footage stays on the first half
         const newId = res.inserted[0];
@@ -367,7 +465,22 @@ export function useStoryboardController(projectId: string): StoryboardController
         }
         toast.success("Split into two shots");
       }),
-    [run, boxes, writeBoxes, assignments, applyOps],
+    [run, boxes, writeBoxes, assignments, applyOps, clock],
+  );
+
+  const splitAtBeats = useCallback(
+    (box: StoryboardBox) =>
+      run(box, "splitting at the beats…", async () => {
+        const plan = planSplitAtBeats(box, boxes.map((b) => b.key), new Date().toISOString(), clock);
+        const res = await writeBoxes.mutateAsync({ updates: [{ id: box.id, write: plan.first }], inserts: plan.rest });
+        // the take plays in every piece (its range follows each window); other footage stays on the first piece
+        const takeRows = assignments.filter((a) => a.shotId === box.id && a.role === "performance" && !media.byId.get(a.assetId)?.derivedFrom);
+        for (const newId of res.inserted) {
+          for (const a of takeRows) await applyOps.mutateAsync(planAssign({ assignments: [], shotId: newId, assetId: a.assetId, role: "performance", select: a.isPrimary }));
+        }
+        toast.success(`Split into ${plan.rest.length + 1} shots at ${plan.cuts.map((c) => `${c.toFixed(1)} s`).join(", ")}${plan.kept ? ` — ${plan.kept} beat${plan.kept === 1 ? "" : "s"} too close to a cut stayed as beats` : ""}`);
+      }),
+    [run, boxes, writeBoxes, assignments, applyOps, clock, media.byId],
   );
 
   const mergeWithNext = useCallback(
@@ -385,7 +498,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         testId: "confirm-merge",
         onConfirm: () =>
           run(box, "merging…", async () => {
-            const write = planMerge(box, next, new Date().toISOString());
+            const write = planMerge(box, next, new Date().toISOString(), clock);
             await applyOps.mutateAsync(planMoveAll(assignments, next.id, box.id));
             await removeMergedBox(projectId, next.id, box.id);
             await writeBoxes.mutateAsync({ updates: [{ id: box.id, write }] });
@@ -396,7 +509,7 @@ export function useStoryboardController(projectId: string): StoryboardController
           }),
       });
     },
-    [boxes, run, applyOps, assignments, projectId, writeBoxes, focusId, qc],
+    [boxes, run, applyOps, assignments, projectId, writeBoxes, focusId, qc, clock],
   );
 
   // --- footage --------------------------------------------------------------------------------------------------
@@ -465,12 +578,28 @@ export function useStoryboardController(projectId: string): StoryboardController
     [mediaByBox],
   );
   const selectedStillPath = useCallback((box: StoryboardBox): string | null => selectedStill(box)?.path ?? null, [selectedStill]);
+  /**
+   * The place a performance shot is restaged into. A shot set in one of the project's locations uses THAT location's
+   * approved picture — the same picture for every shot set there — before any image of its own.
+   */
+  const placeStill = useCallback(
+    (box: StoryboardBox): { asset: MediaAsset; of: { key: string; name: string } | null } | null => {
+      const source = continuitySource(continuityOf(box), { forPlate: true });
+      const canonical = source.placeAssetId ? media.byId.get(source.placeAssetId) : null;
+      if (canonical && canonical.bucket === "project-references") return { asset: canonical, of: source.placeOf };
+      const own = selectedStill(box);
+      return own ? { asset: own, of: null } : null;
+    },
+    [continuityOf, media.byId, selectedStill],
+  );
 
   const estimatesOf = useCallback(
     (box: StoryboardBox): BoxEstimates => {
       try {
-        const still = selectedStillPath(box);
-        const image = imageEstimateUsd(boxShot(box, lyricLines, { aspect }));
+        const continuity = continuityOf(box);
+        const isPerformance = box.spec.shotType === "performance";
+        const still = isPerformance ? (placeStill(box)?.asset.path ?? null) : selectedStillPath(box);
+        const image = imageEstimateUsd(boxShot(box, lyricLines, { aspect, continuity }));
         // a performance shot with a take in sync: the clip is the take, restaged in this shot's scene
         if (box.spec.shotType === "performance") {
           const src = restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs);
@@ -481,12 +610,12 @@ export function useStoryboardController(projectId: string): StoryboardController
             return { image, clip: restageEstimateUsd(seconds) + (still ? 0 : image), clipDrawsImage: !still, restage };
           }
         }
-        return { image, clip: clipEstimateUsd(boxShot(box, lyricLines, { stillPath: still, aspect })), clipDrawsImage: !still };
+        return { image, clip: clipEstimateUsd(boxShot(box, lyricLines, { stillPath: still, aspect, continuity })), clipDrawsImage: !still };
       } catch {
         return null;
       }
     },
-    [selectedStillPath, lyricLines, aspect, mediaByBox, syncs],
+    [selectedStillPath, placeStill, continuityOf, lyricLines, aspect, mediaByBox, syncs],
   );
 
   // where the image model has no picture of the project's shape, say what is asked for instead, before the spend
@@ -506,22 +635,37 @@ export function useStoryboardController(projectId: string): StoryboardController
         toast.info("This shot has no scene to draw yet — write or regenerate its scene first");
         return;
       }
+      const imagePlan = imageTemporalPlan(box, clock);
+      const continuity = continuityOf(box);
+      const source = continuitySource(continuity, { forPlate: !!est.restage });
+      const held = source.lines.length
+        ? ` It is drawn from the project's own description of ${[continuity.location?.name, ...continuity.props.map((p) => p.name), continuity.lighting?.name].filter(Boolean).join(", ")} — the same words every shot that points there is drawn from.${source.notes.length ? ` ${source.notes.join(" ")}` : ""}`
+        : "";
+      const opening = imagePlan.mode === "opening_state" ? ` This shot changes ${imagePlan.beats === 1 ? "once" : `${imagePlan.beats} times`} while it plays: the image is the frame it OPENS on, before its beats.` : "";
       setConfirm({
         title: `Generate an image for shot ${numberById.get(box.id) ?? ""}?`,
         body: est.restage
-          ? `About ${usd(est.image)} at list price. This is a performance shot: the image is the PLACE from this shot's scene, drawn empty — your take keeps showing, and "Restage" puts your real performance in this place.${shapeNote}`
-          : `About ${usd(est.image)} at list price. The image is drawn from this shot's scene and put on this shot only.${shapeNote}`,
+          ? `About ${usd(est.image)} at list price. This is a performance shot: the image is the PLACE from this shot's scene, drawn empty — your take keeps showing, and "Restage" puts your real performance in this place.${held}${opening}${shapeNote}`
+          : `About ${usd(est.image)} at list price. The image is drawn from this shot's scene and put on this shot only.${held}${opening}${shapeNote}`,
         confirmLabel: `Generate image · ${usd(est.image)}`,
         testId: "confirm-generate-image",
         onConfirm: () =>
           run(box, "drawing the image…", async () => {
-            const r = await generateBoxImage({ projectId, box, lyricLines, aspect, select: !est.restage });
+            const r = await generateBoxImage({ projectId, box, lyricLines, aspect, select: !est.restage, continuity });
             afterGeneration();
             toast.success(r.rejected > 0 ? `Image ready (${r.rejected} of ${r.candidates} came back as stacked panels and was left out)` : "Image ready");
           }).finally(afterGeneration),
       });
     },
-    [estimatesOf, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote],
+    [estimatesOf, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, clock, continuityOf],
+  );
+
+  const clipPlanOf = useCallback(
+    (box: StoryboardBox): TemporalPlan => {
+      const isRestage = box.spec.shotType === "performance" && restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs).ok;
+      return isRestage ? restageTemporalPlan(box, clock) : clipTemporalPlan(box, clock);
+    },
+    [clock, mediaByBox, syncs],
   );
 
   const generateClip = useCallback(
@@ -535,9 +679,13 @@ export function useStoryboardController(projectId: string): StoryboardController
         toast.info(est.clipBlocked);
         return;
       }
-      const stillAsset = selectedStill(box);
+      const continuity = continuityOf(box);
+      // a performance shot set in one of the project's locations is restaged into that location's approved picture
+      const place = est.restage ? placeStill(box) : null;
+      const stillAsset = est.restage ? (place?.asset ?? null) : selectedStill(box);
       const still = stillAsset?.path ?? null;
-      const picture = (caption: string) => (stillAsset ? { url: urlFor(stillAsset), caption: `${caption} — ${stillAsset.name}` } : undefined);
+      const picture = (caption: string) =>
+        stillAsset ? { url: urlFor(stillAsset), caption: place?.of ? `The approved picture of ${place.of.name} — the place of every shot set there` : `${caption} — ${stillAsset.name}` } : undefined;
       if (est.restage) {
         const r = est.restage;
         const src = restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs);
@@ -545,13 +693,19 @@ export function useStoryboardController(projectId: string): StoryboardController
           toast.info(src.why);
           return;
         }
+        const restagePlan = restageTemporalPlan(box, clock);
+        const timed =
+          restagePlan.mode === "timed_script"
+            ? ` This shot changes while it plays — ${beatLines(resolveEvents(box.spec.events, { start: box.start, end: box.end }, clock)).join(" · ")}. The model is given these beats as a script with times. Whether it keeps to them has not been measured: look at the frames at each beat when it comes back.`
+            : "";
         setConfirm({
           title: `Restage your take for shot ${numberById.get(box.id) ?? ""}?`,
           body:
             `About ${usd(est.clip)} at list price. Your real performance from ${r.takeName} (${mmss(r.takeIn)}–${mmss(r.takeOut)} of the take) is re-shot inside this shot's scene: ` +
-            `${r.seconds} s of the take go to the video model with this shot's image as the place` +
+            `${r.seconds} s of the take go to the video model with ${place?.of ? `the approved picture of ${place.of.name} as the place — the same picture every shot set there is restaged into` : "this shot's image as the place"}` +
             (est.clipDrawsImage ? " (the shot has no image yet, so one is drawn first)" : "") +
             ". He keeps his face and what he wears in the take. The result stays on the song clock and lands on this shot only; it takes several minutes." +
+            timed +
             (est.clipDrawsImage ? shapeNote : ""),
           confirmLabel: `Restage take · ${usd(est.clip)}`,
           testId: "confirm-generate-clip",
@@ -561,14 +715,50 @@ export function useStoryboardController(projectId: string): StoryboardController
               let stillPath = still;
               if (!stillPath) {
                 setBusyFor(box.id, "drawing the place first…");
-                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false });
+                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false, continuity });
                 afterGeneration();
                 stillPath = img.picked;
               }
-              await restageBox({ projectId, box, lyricLines, source: src.source, stillPath, maxSeconds: r.seconds, aspect, onStage: (t) => setBusyFor(box.id, t) });
+              await restageBox({ projectId, box, lyricLines, source: src.source, stillPath, maxSeconds: r.seconds, aspect, temporal: restagePlan, continuity, onStage: (t) => setBusyFor(box.id, t) });
               afterGeneration();
               toast.success("The take is being restaged — it will appear on this shot when it is done");
             }).finally(afterGeneration),
+        });
+        return;
+      }
+      const submitClip = (temporal: TemporalPlan) =>
+        run(box, still ? "sending the clip to render…" : "drawing the image first…", async () => {
+          // The image is its own job with its own record (not a step hidden inside the clip's submit): if this page
+          // closes while it is drawn, the picture is still filed on the shot by the server.
+          let stillPath = still;
+          if (!stillPath) {
+            const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity });
+            afterGeneration();
+            stillPath = img.picked;
+            setBusyFor(box.id, "sending the clip to render…");
+          }
+          await generateBoxClip({ projectId, box, lyricLines, stillPath, aspect, temporal, continuity });
+          afterGeneration();
+          toast.success(temporal.mode === "ordered" ? "Clip is rendering with the beats in order — its timing is the model's own" : "Clip is rendering — it will appear on this shot when it is done");
+        }).finally(afterGeneration);
+      const clipPlan = clipTemporalPlan(box, clock);
+      if (clipPlan.mode === "refused" && clipPlan.alternatives.length === 0) {
+        // nothing can be asked of any model until the beat says what changes
+        toast.info(clipPlan.reason);
+        return;
+      }
+      if (clipPlan.mode === "refused") {
+        // a shot that changes is never handed to a model that draws one state as if it were one state
+        setConfirm({
+          title: `Shot ${numberById.get(box.id) ?? ""} changes while it plays`,
+          body:
+            `${clipPlan.reason} So a clip of the whole shot is not generated. What can be done instead: ` +
+            clipPlan.alternatives.map((a) => ALTERNATIVE_LABEL[a]).join(". ") +
+            `. (An effect is set on the beat itself, under Timed beats.) "In order" costs about ${usd(est.clip)} at list price and makes no promise about when each beat happens.`,
+          confirmLabel: "Split at the beats",
+          testId: "confirm-split-beats",
+          onConfirm: () => splitAtBeats(box),
+          secondary: { label: `Generate in order · ${usd(est.clip)}`, testId: "confirm-generate-ordered", onConfirm: () => submitClip(clipTemporalPlan(box, clock, { allowOrdered: true })) },
         });
         return;
       }
@@ -578,19 +768,101 @@ export function useStoryboardController(projectId: string): StoryboardController
           `About ${usd(est.clip)} at list price` +
           (est.clipDrawsImage ? " — this shot has no image yet, so one is drawn first and the clip is made from it." : " — made from this shot's image.") +
           " The clip takes a few minutes and lands on this shot only." +
+          (clipPlan.mode === "single" && clipPlan.effects > 0 ? ` Its ${clipPlan.effects === 1 ? "effect is" : `${clipPlan.effects} effects are`} made by the edit when the shot plays, not drawn into the clip.` : "") +
           (est.clipDrawsImage ? shapeNote : ""),
         confirmLabel: `Generate clip · ${usd(est.clip)}`,
         testId: "confirm-generate-clip",
         picture: picture("The clip is made from this image"),
-        onConfirm: () =>
-          run(box, "sending the clip to render…", async () => {
-            await generateBoxClip({ projectId, box, lyricLines, stillPath: still, aspect });
-            afterGeneration();
-            toast.success("Clip is rendering — it will appear on this shot when it is done");
-          }).finally(afterGeneration),
+        onConfirm: () => submitClip(clipPlan),
       });
     },
-    [estimatesOf, selectedStill, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor],
+    [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats],
+  );
+
+  // --- continuity entities ----------------------------------------------------------------------------------------
+  const entityRun = useCallback(async (entityId: string, text: string, work: () => Promise<void>) => {
+    setEntityBusy((b) => ({ ...b, [entityId]: text }));
+    try {
+      await work();
+    } catch (e) {
+      toast.error(message(e));
+    } finally {
+      setEntityBusy((b) => {
+        const { [entityId]: _gone, ...rest } = b;
+        return rest;
+      });
+    }
+  }, []);
+
+  const createEntity = useCallback(
+    async (kind: EntityKind, name: string) => {
+      try {
+        return await entityMutations.create.mutateAsync({ kind, name, takenKeys: entities.map((e) => e.key) });
+      } catch (e) {
+        toast.error(message(e));
+        return null;
+      }
+    },
+    [entityMutations.create, entities],
+  );
+
+  const saveEntity = useCallback(
+    (entity: ContinuityEntity, patch: EntityPatch) =>
+      entityRun(entity.id, "saving…", async () => {
+        await entityMutations.update.mutateAsync({ id: entity.id, patch });
+      }),
+    [entityRun, entityMutations.update],
+  );
+
+  const generateEntityPicture = useCallback(
+    (entity: ContinuityEntity) => {
+      let estimate = 0;
+      try {
+        estimate = imageEstimateUsd(entityShot(entity, aspect));
+      } catch (e) {
+        toast.info(message(e));
+        return;
+      }
+      const used = entityUsage.get(entity.key)?.length ?? 0;
+      setConfirm({
+        title: `Draw reference pictures of ${entity.name}?`,
+        body:
+          `About ${usd(estimate)} at list price. ${entity.kind === "location" ? "The place is drawn empty, from its description here" : "The object is drawn alone, from its description here"}, and the pictures are kept with ${entity.name}. ` +
+          `Nothing is approved for you: choose the one that is right.` +
+          (entity.kind === "location" ? ` The approved picture is the place every performance shot set in ${entity.name} is restaged into${used ? ` (${used} shot${used === 1 ? "" : "s"} now)` : ""}.` : " The image model reads a prop's description, not its picture: the picture is the reference for your eye."),
+        confirmLabel: `Draw pictures · ${usd(estimate)}`,
+        testId: "confirm-entity-picture",
+        onConfirm: () =>
+          entityRun(entity.id, "drawing…", async () => {
+            const r = await generateEntityReference({ projectId, entity, aspect });
+            afterGeneration();
+            if (r.assetIds.length === 0) throw new Error("No picture came back whole.");
+            await entityMutations.update.mutateAsync({ id: entity.id, patch: { referenceAssetIds: [...new Set([...entity.referenceAssetIds, ...r.assetIds])] } });
+            toast.success(`${r.assetIds.length} picture${r.assetIds.length === 1 ? "" : "s"} of ${entity.name} ready — approve the one that is right`);
+          }),
+      });
+    },
+    [aspect, entityUsage, entityRun, projectId, afterGeneration, entityMutations.update],
+  );
+
+  const useShotImageFor = useCallback(
+    (box: StoryboardBox, entity: ContinuityEntity) =>
+      entityRun(entity.id, "saving…", async () => {
+        const image = selectedStill(box);
+        if (!image) throw new Error("This shot has no image of its own to use.");
+        await entityMutations.update.mutateAsync({ id: entity.id, patch: withReference(entity, image.id, true) });
+        toast.success(`This shot's image is now the approved picture of ${entity.name}`);
+      }),
+    [entityRun, selectedStill, entityMutations.update],
+  );
+
+  const saveContinuity = useCallback(
+    (box: StoryboardBox, refs: ContinuityOverride) =>
+      run(box, "saving…", async () => {
+        const next: BoxOverride = { ...(box.override ?? BLANK_OVERRIDE), continuity: { ...(box.override?.continuity ?? {}), ...refs } };
+        await writeBoxes.mutateAsync({ updates: [{ id: box.id, write: applyOverride(box, editedOverride(box.override, next), new Date().toISOString(), "edit") }] });
+      }),
+    [run, writeBoxes],
   );
 
   const loading = boxesQuery.isLoading || inputs.projectQuery.isLoading;
@@ -626,6 +898,22 @@ export function useStoryboardController(projectId: string): StoryboardController
     resetBox,
     rewrite,
     restoreVersion,
+    eventsOf,
+    clock,
+    saveEvents,
+    splitAtBeats,
+    clipPlanOf,
+    entities,
+    looks,
+    continuityOf,
+    entityUsage,
+    picturesOf,
+    entityBusyOf: (id) => entityBusy[id] ?? null,
+    createEntity,
+    saveEntity,
+    generateEntityPicture,
+    useShotImageFor,
+    saveContinuity,
     toggleLock,
     split,
     mergeWithNext,

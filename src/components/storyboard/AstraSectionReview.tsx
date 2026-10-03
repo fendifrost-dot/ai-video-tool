@@ -13,6 +13,7 @@ import {
   reviewBrief,
   reviewEstimateUsd,
   saveStoredReview,
+  reviewFrameTimes,
   sectionPictures,
   showsOf,
   submitSectionReview,
@@ -20,6 +21,7 @@ import {
   type StoredSectionReview,
 } from "@/lib/storyboard/astraSection";
 import type { MediaAsset, TimelineSegment } from "@/lib/storyboard/media";
+import { beatLines } from "@/lib/storyboard/temporal";
 import { cn } from "@/lib/utils";
 import { ConfirmHost } from "./ConfirmHost";
 import { mediaRefKey, playbackRef, signRefs } from "./signedUrls";
@@ -92,12 +94,13 @@ export function AstraSectionReview({
         lyrics: lyricsForShot((lyricLines ?? []) as LyricLine[], { start: s.start, end: s.end })
           .map((l) => l.text)
           .join(" / "),
+        beats: beatLines(s.events ?? []),
       })),
     [section, assets, lyricLines],
   );
   const tooMany = shots.length > MAX_REVIEW_SHOTS;
   const brief = useMemo(() => (shots.length ? reviewBrief({ songTitle, treatment, notes, takeWears, shots }) : ""), [shots, songTitle, treatment, notes, takeWears]);
-  const pictureCount = section.reduce((n, s) => n + (s.media.kind === "video" ? 3 : s.media.kind === "image" ? 1 : 0), 0);
+  const pictureCount = section.reduce((n, s) => n + (s.media.kind === "video" ? reviewFrameTimes(s).length : s.media.kind === "image" ? 1 : 0), 0);
   const estimate = reviewEstimateUsd(pictureCount, brief.length);
 
   const run = async () => {
