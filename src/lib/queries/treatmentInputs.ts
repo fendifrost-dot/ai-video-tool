@@ -46,7 +46,10 @@ export function useTreatmentInputs(projectId: string) {
   /** The artist as the scene writer must describe him: his identity profile, else his name. */
   const heroDescription = templateContext.artist.description || templateContext.artist.name || "";
 
-  /** Everything the treatment model is told. `notes` are the director's; `footageNote` states the real footage. */
+  /**
+   * Everything the treatment model is told. `notes` are the director's — the one notes text the Treatment page shows
+   * (treatmentDoc.directorNotes); `footageNote` states the real footage.
+   */
   const treatmentContext = (notes: string, footageNote: string): TreatmentContext => {
     const energyCurve = analysis?.energy_curve_json ?? [];
     const bucket = Math.max(1, Math.floor(energyCurve.length / 12));
@@ -65,7 +68,7 @@ export function useTreatmentInputs(projectId: string) {
       artistProfile: artistDescription ? artistDescription.join("\n") : (artistQuery.data?.name ?? null),
       visualStyle: project?.visual_style,
       mood: project?.mood ?? "",
-      additionalNotes: [footageNote, project?.notes, notes].map((s) => (s ?? "").trim()).filter(Boolean).join("\n\n"),
+      additionalNotes: [footageNote, notes].map((s) => (s ?? "").trim()).filter(Boolean).join("\n\n"),
       analysisSummary: analysis
         ? {
             bpm: analysis.bpm,
