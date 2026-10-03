@@ -32,6 +32,20 @@ async def desktop(b, out):
     await pg.goto(f"{BASE}/projects/{P}/storyboard"); await pg.wait_for_selector("[data-testid=box-card]", timeout=60000); await pg.wait_for_timeout(2500)
     out["board"] = await pg.evaluate("() => ({cards: document.querySelectorAll('[data-testid=box-card]').length, header: document.querySelector('[data-testid=storyboard-page]').innerText.slice(0,120), c006: document.querySelector('[data-box-key=c006] [data-testid=box-media]')?.dataset.mediaRole, c009: document.querySelector('[data-box-key=c009] [data-testid=box-media]')?.dataset.mediaRole, c002: [document.querySelector('[data-box-key=c002] [data-testid=box-media]')?.dataset.mediaRole, document.querySelector('[data-box-key=c002] [data-testid=box-media]')?.dataset.mediaBase]})")
     await pg.screenshot(path="shot_board_desktop.png")
+    # ---- post-production-test hardening: timed beats inside a shot, continuity entities, jobs moved by the server
+    out["beats_card"] = await pg.evaluate("() => { const c=document.querySelector('[data-box-key=c007]'); const s=c.querySelector('[data-testid=beats-strip]'); return {beats: s?.dataset.beats, lines: [...c.querySelectorAll('[data-testid=beats-line]')].map(l => ({offset:+l.dataset.offset, by:l.dataset.placedBy, text:l.innerText.replace(/\\s+/g,' ')})), marks: c.querySelectorAll('[data-testid=beats-mark]').length, other: document.querySelectorAll('[data-box-key=c005] [data-testid=beats-strip]').length}; }")
+    out["continuity_card"] = await pg.evaluate("() => [...document.querySelectorAll('[data-box-key=c007] [data-testid=box-continuity] [data-entity-kind]')].map(e => [e.dataset.entityKind, e.dataset.entityKey])")
+    out["job_c012"] = await pg.evaluate("() => document.querySelector('[data-box-key=c012] [data-testid=box-status]')?.innerText ?? null")
+    await pg.click("[data-testid=continuity-toggle]"); await pg.wait_for_selector("[data-testid=entity-card]"); await pg.wait_for_timeout(800)
+    out["continuity_panel"] = await pg.evaluate("() => ({summary: document.querySelector('[data-testid=continuity-summary]').innerText, cards: [...document.querySelectorAll('[data-testid=entity-card]')].map(c => ({key:c.dataset.entityKey, kind:c.dataset.entityKind, usage:c.querySelector('[data-testid=entity-usage]').innerText, pictures:[...c.querySelectorAll('[data-testid=entity-picture]')].map(p => p.dataset.approved), loaded:[...c.querySelectorAll('[data-testid=entity-picture] img')].every(i => i.complete && i.naturalWidth > 0)}))})")
+    await pg.click("[data-testid=continuity-toggle]")
+    await pg.click("[data-box-key=c007] [data-testid=box-open]"); await pg.wait_for_selector("[data-testid=focus-view]"); await pg.wait_for_selector("[data-testid=beats-editor]", timeout=15000); await pg.wait_for_timeout(600)
+    out["beats_focus"] = await pg.evaluate("() => ({strip: document.querySelector('[data-testid=focus-view] [data-testid=beats-strip]')?.dataset.beats, state: document.querySelector('[data-testid=focus-view] [data-testid=beats-state]')?.innerText ?? null, rows: document.querySelectorAll('[data-testid=beat-row]').length, plan: document.querySelector('[data-testid=beats-plan]')?.dataset.plan ?? null, planText: document.querySelector('[data-testid=beats-plan]')?.innerText ?? '', stateSelect: [...document.querySelectorAll('[data-testid=beat-lighting-state]')].map(e => e.value), lightInput: [...document.querySelectorAll('[data-testid=beat-lighting]')].map(e => e.value), source: document.querySelector('[data-testid=shot-continuity-source]')?.innerText ?? '', place: document.querySelector('[data-testid=shot-continuity-location]')?.value, notes: [...document.querySelectorAll('[data-testid=beats-note]')].map(e => e.innerText)})")
+    await pg.click("[data-testid=focus-close]"); await pg.wait_for_timeout(400)
+    # the clip of a shot that changes: the confirm says the beats go as a timed script, and whose picture the place is
+    await pg.click("[data-box-key=c007] [data-testid=box-generate-clip]"); await pg.wait_for_selector("[data-testid=confirm-dialog]", timeout=10000)
+    out["beats_confirm"] = (await pg.inner_text("[data-testid=confirm-dialog]")).replace("\n", " ")[:900]
+    await pg.click("[data-testid=confirm-cancel]"); await pg.wait_for_timeout(400)
     # focus view on a performance box: the take's range plays in place
     await pg.click("[data-box-key=c005] [data-testid=box-open]"); await pg.wait_for_selector("[data-testid=focus-view]"); await pg.wait_for_timeout(2500)
     f = []
@@ -74,6 +88,27 @@ async def desktop(b, out):
     await pg.click("[data-testid=media-picker-close]")
     out["assign_broll_c008"] = await pg.evaluate("() => document.querySelector('[data-box-key=c008] [data-testid=box-media]')?.dataset.mediaRole")
     out["desktop_logs"] = pg.logs[:6]
+    # ---- Treatment: an edit keeps what it replaced, and an earlier version can be restored
+    await pg.goto(f"{BASE}/projects/{P}/treatment"); await pg.wait_for_selector("[data-testid=treatment-saved-text]", timeout=60000); await pg.wait_for_timeout(800)
+    tv = {"before": await pg.inner_text("[data-testid=treatment-saved-text]")}
+    await pg.click("[data-testid=treatment-view-versions]"); await pg.wait_for_timeout(500)
+    tv["versions_before"] = await pg.locator("[data-testid=treatment-version]").count()
+    await pg.click("[data-testid=treatment-view-current]"); await pg.click("[data-testid=treatment-edit]")
+    await pg.fill("[data-testid=treatment-text]", "A new idea entirely: everything happens under water."); await pg.click("[data-testid=treatment-save]")
+    await pg.wait_for_function("() => document.querySelector('[data-testid=treatment-saved-text]')?.innerText.includes('under water')", timeout=15000)
+    await pg.click("[data-testid=treatment-view-versions]"); await pg.wait_for_selector("[data-testid=treatment-version]", timeout=15000)
+    tv["versions_after_edit"] = await pg.locator("[data-testid=treatment-version]").count()
+    tv["kept"] = await pg.evaluate("() => { const v=document.querySelector('[data-testid=treatment-version]'); return {by: v.dataset.replacedBy, text: v.innerText.replace(/\\s+/g,' ').slice(0,200)}; }")
+    await pg.click("[data-testid=treatment-version-open]"); await pg.click("[data-testid=treatment-version-restore]"); await pg.click("[data-testid=confirm-restore-treatment]")
+    await pg.click("[data-testid=treatment-view-current]")
+    await pg.wait_for_function("() => document.querySelector('[data-testid=treatment-saved-text]')?.innerText.includes('single hard light')", timeout=15000)
+    tv["after_restore"] = await pg.inner_text("[data-testid=treatment-saved-text]")
+    await pg.click("[data-testid=treatment-view-versions]"); await pg.wait_for_timeout(800)
+    tv["versions_after_restore"] = await pg.evaluate("() => [...document.querySelectorAll('[data-testid=treatment-version]')].map(v => v.dataset.replacedBy)")
+    out["treatment_versions"] = tv
+    # ---- Export: the render contract, as it is — and no claim to render
+    await pg.goto(f"{BASE}/projects/{P}/export"); await pg.wait_for_selector("[data-testid=render-contract]", timeout=60000); await pg.wait_for_timeout(800)
+    out["render_contract"] = await pg.evaluate("() => ({ready: document.querySelector('[data-testid=render-contract]').dataset.ready, summary: document.querySelector('[data-testid=render-contract-summary]').innerText, notes: document.querySelector('[data-testid=render-contract-notes]')?.innerText ?? '', blockers: document.querySelector('[data-testid=render-contract-blockers]')?.innerText ?? '', boundary: document.querySelector('[data-testid=render-contract-boundary]').innerText})")
     # ---- Review
     await pg.goto(f"{BASE}/projects/{P}/review"); await pg.wait_for_selector("[data-testid=sequence-audio]", state="attached", timeout=60000); await pg.wait_for_timeout(3000)
     out["review_checks"] = await pg.evaluate("() => [...document.querySelectorAll('[data-testid=review-check]')].map(e => e.innerText.replace(/\\n/g,' '))")
@@ -91,6 +126,12 @@ async def desktop(b, out):
         return r
     out["from_shot_5"] = await run_from(5, 9)
     out["from_shot_8"] = await run_from(8, 9)
+    # shot 7 changes while it plays: the edit's blackout lands on the sung line, on the song clock, and holds to the cut
+    await pg.click("[data-testid=review-shot] >> nth=6"); fx = []
+    for i in range(9):
+        await pg.wait_for_timeout(500)
+        fx.append(await pg.evaluate("() => { const a=document.querySelector('[data-testid=sequence-audio]'); const p=document.querySelector('[data-testid=sequence-player]'); const l=document.querySelector('[data-testid=sequence-picture]'); return {t:+a.currentTime.toFixed(2), active:p.dataset.activeShot, filter: l.style.filter || 'none'}; }"))
+    out["effect_shot_7"] = fx
     # shot 10 shows its take RESTAGED: a clip made from the take, played by the song clock like the take itself; shot 11 is not it
     out["from_shot_10"] = await run_from(10, 5)
     out["from_shot_42"] = await run_from(42, 8)
@@ -270,6 +311,39 @@ def report(r):
     want("voice director: opens", vd.get("opened") and vd["opened"]["panel"])
     want("voice director: closes back to the button", vd.get("closed_again") and vd["closed_again"]["button"] and not vd["closed_again"]["panel"])
     want("voice director: expanded on desktop", (r.get("desktop_voice_director") or {}).get("panel") is True and (r.get("desktop_voice_director") or {}).get("button") is False)
+    # ---- post-production-test hardening
+    bc = r.get("beats_card") or {}
+    lines = bc.get("lines") or []
+    want("beats: the card shows the shot's two timed beats, one line each", bc.get("beats") == "2" and len(lines) == 2 and bc.get("marks") == 2 and bc.get("other") == 0)
+    want("beats: a beat hung on a sung line sits where the line is sung", len(lines) == 2 and lines[0]["by"] == "lyric" and abs(lines[0]["offset"] - 1.61) < 0.02 and "the house lights die" in lines[0]["text"] and abs(lines[1]["offset"] - 2.6) < 0.02)
+    want("beats: a beat that switches to a lighting state says that state's own words", len(lines) == 2 and "Blackout, ice key" in lines[1]["text"] and "the only light is the glitter" in lines[1]["text"])
+    bf = r.get("beats_focus") or {}
+    want("beats: the full-screen shot shows them and its editor opens on them", bf.get("strip") == "2" and bf.get("rows") == 2 and bf.get("stateSelect") == ["", "BLACKOUT_ICE_KEY"])
+    want("beats: the record keeps the pointer to the lighting state, not a copy of its words", bf.get("lightInput") == ["the house lights die", ""])
+    want("beats: generating says what it does with them before anything is spent", bf.get("plan") == "timed_script" and "not been measured" in bf.get("planText", ""))
+    want("beats: a light change asked of the footage under the edit's own blackout is pointed out", len(bf.get("notes") or []) == 1 and "seen through it" in bf["notes"][0])
+    conf = r.get("beats_confirm", "")
+    want("beats: the restage confirm lists the beats, says the timing is unmeasured", "This shot changes while it plays" in conf and "script with times" in conf and "not been measured" in conf)
+    want("continuity: the shot points at its place and its light", r.get("continuity_card") == [["location", "BLACK_RUNWAY"], ["lighting", "RUNWAY_NORMAL"]])
+    want("continuity: restaging uses the place's approved picture, the same for every shot set there", "approved picture of Black Runway" in conf and "approved picture of Black Runway" in bf.get("source", "") and bf.get("place") == "BLACK_RUNWAY")
+    cp = r.get("continuity_panel") or {}
+    cards = {c["key"]: c for c in cp.get("cards", [])}
+    want("continuity: the project's entities, each once, with the shots that use them", cp.get("summary") == "1 location · 2 lighting states" and cards.get("BLACK_RUNWAY", {}).get("usage") == "Used by shots 4, 7" and cards.get("BLACKOUT_ICE_KEY", {}).get("usage") == "Used by shot 7")
+    want("continuity: the place's approved picture is shown", cards.get("BLACK_RUNWAY", {}).get("pictures") == ["true"] and cards.get("BLACK_RUNWAY", {}).get("loaded") is True)
+    fx = r.get("effect_shot_7") or []
+    on7 = [x for x in fx if x["active"] == "c007"]
+    want("effect: as filmed before the beat", any(x["filter"] == "none" and x["t"] < 23.53 + 1.55 for x in on7))
+    want("effect: the blackout is on the picture after the beat and holds", any("brightness(0.1) contrast(1.6)" in x["filter"] and x["t"] > 23.53 + 1.9 for x in on7))
+    want("effect: the next shot starts as filmed", all(x["filter"] == "none" for x in fx if x["active"] == "c008") )
+    tv = r.get("treatment_versions") or {}
+    want("treatment: an edit keeps the version it replaced", tv.get("versions_before") == 0 and tv.get("versions_after_edit") == 1 and (tv.get("kept") or {}).get("by") == "edit" and "single hard light" in (tv.get("kept") or {}).get("text", ""))
+    want("treatment: an earlier version is restored, and what it replaced is kept too", "single hard light" in tv.get("after_restore", "") and tv.get("versions_after_restore") == ["restore", "edit"])
+    rc = r.get("render_contract") or {}
+    want("export: the render contract is the whole cut, frame by frame", "43 shots" in rc.get("summary", "") and "at 30 fps" in rc.get("summary", "") and "1080×1920" in rc.get("summary", ""))
+    want("export: it says what a render would and would not contain, and that the app does not render", "effects are applied on shot 7" in rc.get("notes", "") and "must already be in the footage" in rc.get("notes", "") and "does not make the finished video" in rc.get("boundary", ""))
+    log = open("backend.log").read()
+    want("jobs: the page asks the server to move its unfinished job", "provider-jobs-tick" in log and (r.get("job_c012") or "").startswith("rendering the clip"))
+    want("jobs: the page polls no provider and saves no clip itself", "proxy-provider-call" not in log and "ingest-provider-job" not in log)
     print("\nRESULT:", "FAIL" if (bad or errs) else "PASS", "· samples off the song clock by > 0.1 s:", bad, "· errors:", errs)
     sys.exit(1 if (bad or errs) else 0)
 asyncio.run(main())

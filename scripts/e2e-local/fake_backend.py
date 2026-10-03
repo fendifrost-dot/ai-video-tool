@@ -42,6 +42,31 @@ def select(table, q):
         if k == "limit": rows = rows[: int(v)]
     return rows
 
+def keep_treatment_version(old, new):
+    """What the database's own trigger does (supabase/migrations/20261003180000_treatment_versions.sql): when a
+    project's treatment text or its notes / mood / visual direction change, the row that is being replaced is kept."""
+    obj = lambda v: v if isinstance(v, dict) else {}
+    st = lambda v: v if isinstance(v, str) else ""
+    def text_of(j):
+        t = obj(j.get("treatment"))
+        if isinstance(t.get("text"), str): return t["text"]
+        return "\n\n".join(x for x in [st(j.get("concept")).strip(), st(j.get("narrative")).strip()] if x) or st(j.get("text")).strip()
+    oj, nj = obj(old.get("treatment_json")), obj(new.get("treatment_json")); ot, nt = obj(oj.get("treatment")), obj(nj.get("treatment"))
+    old_text, new_text = text_of(oj), text_of(nj)
+    old_dn, new_dn = st(ot.get("notes")).strip(), st(nt.get("notes")).strip(); old_notes = st(old.get("notes")).strip()
+    text_changed = old_text != new_text
+    context_changed = old_notes != st(new.get("notes")).strip() or old_dn != new_dn or st(old.get("mood")) != st(new.get("mood")) or st(old.get("visual_style")) != st(new.get("visual_style"))
+    if not (text_changed or context_changed): return
+    if not (old_text or old_notes or old_dn or st(old.get("mood")) or st(old.get("visual_style"))): return
+    labelled = st(nt.get("change")) if st(nt.get("change")) and st(nt.get("change_at")) != st(ot.get("change_at")) else None
+    T.setdefault("treatment_versions", []).append({
+        "id": str(uuid.uuid4()), "project_id": old.get("id"), "user_id": old.get("user_id"), "created_at": now(),
+        "replaced_by": "context" if not text_changed else (labelled or ("delete" if new_text == "" else "edit")),
+        "treatment_text": old_text, "treatment_mode": st(ot.get("mode")) or None, "treatment_model": st(ot.get("model")) or st(oj.get("model")) or None,
+        "treatment_updated_at": st(ot.get("updated_at")) or st(oj.get("generated_at")) or None,
+        "notes": (old_notes if (old_dn == "" or old_dn == old_notes) else "\n\n".join(x for x in [old_notes, old_dn] if x)) or None,
+        "mood": old.get("mood"), "visual_style": old.get("visual_style"), "treatment_json": {k: v for k, v in oj.items() if k != "astra_review"}})
+
 def hear(body):
     """The stand-in transcriber. The test song is a rising tone (200 Hz + 10 Hz per second), so the window says
     where it was cut from; what is "heard" is the fixture's lyric lines that fall inside it, word by word."""
@@ -137,6 +162,8 @@ class H(BaseHTTPRequestHandler):
             return self.media(rest)
         if p.startswith("/storage/v1/"): return self.out(200, {})
         if p.startswith("/functions/v1/lyric-align-proxy"): return self.out(200, hear(body or {}))
+        # the server's job mover: here it finds nothing to move (generation is not exercised); what matters is that the page ASKS it and does no moving itself
+        if p.startswith("/functions/v1/provider-jobs-tick"): return self.out(200, {"ok": True, "scope": "user", "claimed": 0, "reports": []})
         if p.startswith("/functions/v1/"): return self.out(200, {"ok": True, "jobs": [], "results": []})
         if p.startswith("/rest/v1/rpc/"): return self.out(200, None)
         if p.startswith("/rest/v1/"):
@@ -167,7 +194,9 @@ class H(BaseHTTPRequestHandler):
                 return self.out(201)
             rows = select(table, q)
             if self.command == "PATCH":
-                for r in rows: r.update(body or {}); r["updated_at"] = now()
+                for r in rows:
+                    if table == "video_projects": keep_treatment_version(r, {**r, **(body or {})})
+                    r.update(body or {}); r["updated_at"] = now()
                 if "return=representation" in prefer: return self.out(200, (rows[0] if rows else None) if single else rows)
                 return self.out(204)
             if self.command == "DELETE":

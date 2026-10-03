@@ -19,10 +19,23 @@ const TYPES = ["vfx", "performance", "lyric_visual", "performance", "performance
 const KIND: Record<string, string> = { performance: "performance", b_roll: "broll", narrative: "broll", lyric_visual: "broll", vfx: "broll" };
 const uuid = (n: number, p = "aaaaaaaa") => `${p}-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
+// Shot 7 changes while it plays — the room as lit, the lights die on a sung line (an effect the edit makes), then a
+// lighting state of the project takes over and the camera starts in — and is set in one of the project's places, as
+// shot 4 is. (The hook requirement of the first production test, on stand-in data.)
+const EXTRA: Record<string, Record<string, unknown>> = {
+  c004: { continuity: { location: "BLACK_RUNWAY" } },
+  c007: {
+    continuity: { location: "BLACK_RUNWAY", lighting: "RUNWAY_NORMAL" },
+    events: [
+      { id: "e1", at: 1.6, trigger: { kind: "lyric", ref: "All this ice around me" }, lighting: "the house lights die", effect: { type: "blackout", seconds: null, level: null } },
+      { id: "e2", at: 2.6, trigger: { kind: "time", ref: "" }, lightingState: "BLACKOUT_ICE_KEY", camera: "a slow push toward him begins" },
+    ],
+  },
+};
 const specs = CUTS.slice(0, -1).map((start, i) => {
   const key = `c${String(i + 1).padStart(3, "0")}`;
   const shotType = TYPES[i % TYPES.length];
-  return parseShotSpec({ id: key, purpose: `Scene ${i + 1}: what happens in shot ${i + 1} of the board.`, shotType, kind: KIND[shotType], timeline: { start, end: CUTS[i + 1] } });
+  return parseShotSpec({ id: key, purpose: `Scene ${i + 1}: what happens in shot ${i + 1} of the board.`, shotType, kind: KIND[shotType], timeline: { start, end: CUTS[i + 1] }, ...(EXTRA[key] ?? {}) });
 });
 const plan = planMaterialize({ specs, existing: [], at: AT, sections: Object.fromEntries(specs.map((s, i) => [s.id, i < 4 ? "intro" : i % 5 === 0 ? "hook" : "verse"])) });
 const shots = plan.inserts.map((w, i) => ({ id: uuid(i + 1), project_id: P, user_id: U, shot_number: i + 1, status: "planned", priority: "normal", created_at: AT, updated_at: AT, locked_look_id: null, ...w }));
@@ -63,6 +76,16 @@ const fixtures = {
     performance_syncs: [
       { id: uuid(1, "dddddddd"), project_id: P, user_id: U, performance_asset_id: assets[1].id, song_asset_id: assets[0].id, offset_seconds: 0.8538, drift_ppm: 0, status: "manual", method: "manual", confidence_json: {}, notes: null, created_at: AT, updated_at: AT },
       { id: uuid(2, "dddddddd"), project_id: P, user_id: U, performance_asset_id: assets[5].id, song_asset_id: assets[0].id, offset_seconds: 35.29, drift_ppm: 0, status: "confirmed", method: "derived", confidence_json: {}, notes: null, created_at: AT, updated_at: AT },
+    ],
+    continuity_entities: [
+      { id: uuid(1, "99999999"), project_id: P, user_id: U, kind: "location", key: "BLACK_RUNWAY", name: "Black Runway", description: "A long black runway between black walls, a white centre line, rows of empty black chairs on both sides.", constraints: "The centre line is always white.", approved_asset_id: assets[3].id, reference_asset_ids: [assets[3].id], archived: false, created_at: AT, updated_at: AT },
+      { id: uuid(2, "99999999"), project_id: P, user_id: U, kind: "lighting", key: "RUNWAY_NORMAL", name: "Runway, lights up", description: "Even white house light from above; the whole room is visible.", constraints: "", approved_asset_id: null, reference_asset_ids: [], archived: false, created_at: AT, updated_at: AT },
+      { id: uuid(3, "99999999"), project_id: P, user_id: U, kind: "lighting", key: "BLACKOUT_ICE_KEY", name: "Blackout, ice key", description: "House lights off; the only light is the glitter off the stones he wears; the room is black.", constraints: "", approved_asset_id: null, reference_asset_ids: [], archived: false, created_at: AT, updated_at: AT },
+    ],
+    // a clip still rendering for shot 12: the page asks the server to move it and moves nothing itself
+    provider_jobs: [
+      { id: uuid(1, "77777777"), project_id: P, user_id: U, prompt_id: null, provider: "higgsfield", status: "running", external_job_id: "ext-local-1", result_asset_id: null, error_text: null, finalized_at: null, progress_note: null,
+        request_payload_json: { promptText: "local", mode: "image_to_video", shotId: shotId("c012"), settings: { batchRun: "storyboard", batchShotId: "c012", route: "still_kling", kind: "world", estimateUsd: 0.35, lookPreset: "film_bar_v1" } }, response_payload_json: {}, created_at: AT, updated_at: AT },
     ],
     lyric_lines: LYR.map(([s, e, text], i) => ({ id: uuid(i + 1, "eeeeeeee"), project_id: P, user_id: U, line_index: i, section: null, block: null, text, start_seconds: s, end_seconds: e, confidence: 0.9, words_json: null, source: "align_lyrics", created_at: AT, updated_at: AT })),
     song_analyses: [P, P2].map((project_id, i) => ({ id: uuid(i + 1, "ffffffff"), project_id, user_id: U, bpm: 122, duration_seconds: 201.87, beats_json: [], drops_json: [], energy_curve_json: [], sections_json: [], created_at: AT, updated_at: AT })),

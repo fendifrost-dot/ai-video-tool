@@ -30,10 +30,18 @@ full-screen shot follow it when Setup changes it to 16:9; **lyric timing** in Se
 has timed lines it is run again, compared with the saved timing and discarded, and on the project with plain lyrics
 only it is run and saved; at phone size nothing overflows, the shell does not cover the full-screen shot, swiping
 moves between shots, the fill-the-screen mode covers the viewport where the browser has no full screen, and the
-**Voice Director** is a button that opens to a sheet and closes back to the button (expanded on desktop).
+**Voice Director** is a button that opens to a sheet and closes back to the button (expanded on desktop). And, from
+the post-production-test hardening: a shot's **timed beats** on the card, in the full-screen shot and its editor (one
+hung on a sung line sits where the line is sung; one that switches to a lighting state says that state's words and
+keeps the pointer), the edit's **effect** on the picture in Review on the song clock, **continuity entities** (the
+shot's place and light, the project's entities with the shots that use them, the place's approved picture as what a
+restaging uses), **treatment versions** (an edit keeps what it replaced; a version is restored), Export's **render
+contract**, and that a page with an unfinished job **asks the server** to move it and polls no provider itself.
 
 The stand-in understands `eq / neq / is / in / not.* / order / limit`, inserts, upserts (`on_conflict`), updates and
 deletes, single-object requests, signed storage links with range requests, and returns `[]` for tables it has no
-fixtures for. `lyric-align-proxy` is answered by a stand-in transcriber that reads the window's place in the song
+fixtures for. It also does what the database's treatment-history trigger does (an update that changes a project's
+treatment or its notes keeps the replaced one in `treatment_versions`), and answers `provider-jobs-tick` with "nothing
+to move". `lyric-align-proxy` is answered by a stand-in transcriber that reads the window's place in the song
 from its tone and "hears" the fixture's lyric lines inside it; every other edge function answers `{ ok: true }` —
 generation is not exercised here.
