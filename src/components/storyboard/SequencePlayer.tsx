@@ -4,15 +4,10 @@ import { DEFAULT_PROJECT_ASPECT, frameBoxStyle, type ProjectAspect } from "@/lib
 import { cn } from "@/lib/utils";
 import { formatTimecode } from "@/components/treatment/shotLabels";
 import { pictureAt, pictureFilter } from "@/lib/storyboard/events";
-import { segmentAt, videoStateAt, type MediaAsset, type TimelineSegment } from "@/lib/storyboard/media";
+import { DRIFT_TOLERANCE, segmentAt, videoStateAt, videoTick, type MediaAsset, type TimelineSegment } from "@/lib/storyboard/media";
 import { ROLE_STYLE, mediaLabel } from "./BoxMediaView";
 import { safePlay } from "./RangeVideo";
 import { mediaRefKey, playbackRef, useSignedRefs, type MediaRef } from "./signedUrls";
-
-/** How far a video may run from where the song says it should be before it is pulled back with a seek, seconds. */
-const DRIFT_TOLERANCE = 0.2;
-/** Smaller errors than that are closed by nudging the speed; below this the video simply runs. About one frame. */
-const NUDGE_ABOVE = 0.03;
 
 /**
  * The storyboard played as one continuous piece: the SONG is the clock, and at every moment the stage shows the
@@ -98,21 +93,17 @@ export function SequencePlayer({
         const state = videoStateAt(seg!, now, el.duration);
         if (!state) continue;
         // it holds its first frame inside a take's lead-in, and its last frame once the media has run out before
-        // the shot has (asking an ended video to play would restart it at zero)
-        const run = isPlaying && !state.hold;
-        const drift = el.currentTime - state.at;
-        if (Math.abs(drift) > DRIFT_TOLERANCE) {
+        // the shot has — or once the element itself has played to its end (media.ts videoTick)
+        const tick = videoTick({ state, currentTime: el.currentTime, ended: el.ended, playing: isPlaying });
+        if (tick.seekTo != null) {
           try {
-            el.currentTime = state.at;
+            el.currentTime = tick.seekTo;
           } catch {
             // not seekable yet
           }
-          el.playbackRate = 1;
-        } else if (run) {
-          // a few hundredths out (a seek that landed late): close it by running slightly fast or slow, not by jumping
-          el.playbackRate = Math.abs(drift) > NUDGE_ABOVE ? (drift > 0 ? 0.94 : 1.06) : 1;
         }
-        if (run) {
+        if (tick.seekTo != null || tick.run) el.playbackRate = tick.rate;
+        if (tick.run) {
           if (el.paused) safePlay(el);
         } else if (!el.paused) el.pause();
       }

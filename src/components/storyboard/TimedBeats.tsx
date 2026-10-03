@@ -335,7 +335,7 @@ export function BeatsEditor({ box }: { box: StoryboardBox }) {
               </Button>
             </>
           )}
-          {plan.mode === "timed_script" && <p>Restaging gives the model these beats as a script with times. {plan.measured ? "" : "How closely it keeps to them has not been measured — the frames at each beat are the check."}</p>}
+          {plan.mode === "timed_script" && <p data-testid="beats-timing">Restaging gives the model these beats as a script with times. {plan.timing}</p>}
           {plan.mode === "opening_state" && <p>{plan.note}</p>}
         </div>
       )}

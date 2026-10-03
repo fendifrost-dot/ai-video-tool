@@ -711,7 +711,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         const restagePlan = restageTemporalPlan(box, clock);
         const timed =
           restagePlan.mode === "timed_script"
-            ? ` This shot changes while it plays — ${beatLines(resolveEvents(box.spec.events, { start: box.start, end: box.end }, clock)).join(" · ")}. The model is given these beats as a script with times. Whether it keeps to them has not been measured: look at the frames at each beat when it comes back.`
+            ? ` This shot changes while it plays — ${beatLines(resolveEvents(box.spec.events, { start: box.start, end: box.end }, clock)).join(" · ")}. The model is given these beats as a script with times. ${restagePlan.timing}`
             : "";
         setConfirm({
           title: `Restage your take for shot ${numberById.get(box.id) ?? ""}?`,
