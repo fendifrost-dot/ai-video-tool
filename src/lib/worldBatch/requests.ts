@@ -25,7 +25,8 @@ export function stillPrompt(shot: BatchShot, look: LookPreset | null): string {
 
 /** The prompt the motion model receives (run_world_batch.py main loop, step 1). */
 export function motionPrompt(shot: BatchShot, look: LookPreset | null, hasStill: boolean): string {
-  if (shot.route === "seedance_ref") return seedanceAnglePrompt(shot.angle ?? "", shot.keep, look, hasStill);
+  // a shot asked for with timed changes is not also told that its place never changes
+  if (shot.route === "seedance_ref") return seedanceAnglePrompt(shot.angle ?? "", shot.keep, look, hasStill, { timedChanges: !!shot.temporal });
   const cap = PROMPT_CAPS[providerOfRoute(shot.route)];
   // image-to-video: the still already carries the look — the prompt is the motion sentence plus the suffix
   return hasStill
