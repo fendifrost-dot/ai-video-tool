@@ -41,6 +41,7 @@ import { boxShot, clipEstimateUsd, generateBoxClip, generateBoxImage, imageEstim
 import { restageBox, restageEstimateUsd, restageSeconds, restageSource } from "@/lib/storyboard/restage";
 import {
   boxMedia,
+  imageForClip,
   planAssign,
   planDeselect,
   planMove,
@@ -451,8 +452,7 @@ export function useStoryboardController(projectId: string): StoryboardController
   // --- generation -----------------------------------------------------------------------------------------------
   const selectedStillPath = useCallback(
     (box: StoryboardBox): string | null => {
-      const items = (mediaByBox.get(box.id) ?? EMPTY_MEDIA).items.filter((i) => i.role === "generated_image");
-      const pick = items.find((i) => i.selected) ?? items[0];
+      const pick = imageForClip((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items);
       return pick && pick.asset.bucket === "project-references" ? pick.asset.path : null;
     },
     [mediaByBox],
