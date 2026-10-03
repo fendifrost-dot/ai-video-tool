@@ -36,6 +36,7 @@ import {
   type StoryboardBox,
 } from "@/lib/storyboard/boxes";
 import { ensureStoryboardMaterialized, type MaterializeResult } from "@/lib/storyboard/build";
+import { aspectOfProject, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
 import { boxShot, clipEstimateUsd, generateBoxClip, generateBoxImage, imageEstimateUsd } from "@/lib/storyboard/generate";
 import {
   boxMedia,
@@ -88,6 +89,8 @@ export type StoryboardController = {
   /** What the one-time move from the old storyboard did, when it ran in this session. */
   migrated: MaterializeResult | null;
   hasTreatment: boolean;
+  /** The project's frame: what every stage is shaped as and what images and clips are asked for. */
+  aspect: ProjectAspect;
 
   saveEdit: (box: StoryboardBox, next: BoxOverride) => Promise<void>;
   resetBox: (box: StoryboardBox) => Promise<void>;
@@ -144,6 +147,7 @@ export function useStoryboardController(projectId: string): StoryboardController
   const assignments = useMemo(() => assignmentsQuery.data ?? [], [assignmentsQuery.data]);
   const syncs = useMemo(() => syncsQuery.data ?? [], [syncsQuery.data]);
   const doc = useMemo(() => parseTreatmentDoc(project?.treatment_json), [project?.treatment_json]);
+  const aspect = aspectOfProject(project);
 
   const [busy, setBusy] = useState<Record<string, string>>({});
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -446,16 +450,20 @@ export function useStoryboardController(projectId: string): StoryboardController
       try {
         const still = selectedStillPath(box);
         return {
-          image: imageEstimateUsd(boxShot(box, lyricLines)),
-          clip: clipEstimateUsd(boxShot(box, lyricLines, { stillPath: still })),
+          image: imageEstimateUsd(boxShot(box, lyricLines, { aspect })),
+          clip: clipEstimateUsd(boxShot(box, lyricLines, { stillPath: still, aspect })),
           clipDrawsImage: !still,
         };
       } catch {
         return null;
       }
     },
-    [selectedStillPath, lyricLines],
+    [selectedStillPath, lyricLines, aspect],
   );
+
+  // where the image model has no picture of the project's shape, say what is asked for instead, before the spend
+  const asked = stillRequestAspect(aspect);
+  const shapeNote = asked.exact ? "" : ` The image model has no ${aspect}: the picture is drawn at ${asked.aspect} and shown whole inside the ${aspect} frame, not cropped.`;
 
   const afterGeneration = useCallback(() => {
     void qc.invalidateQueries({ queryKey: storyboardKeys.assignments(projectId) });
@@ -472,18 +480,18 @@ export function useStoryboardController(projectId: string): StoryboardController
       }
       setConfirm({
         title: `Generate an image for shot ${numberById.get(box.id) ?? ""}?`,
-        body: `About ${usd(est.image)} at list price. The image is drawn from this shot's scene and put on this shot only.`,
+        body: `About ${usd(est.image)} at list price. The image is drawn from this shot's scene and put on this shot only.${shapeNote}`,
         confirmLabel: `Generate image · ${usd(est.image)}`,
         testId: "confirm-generate-image",
         onConfirm: () =>
           run(box, "drawing the image…", async () => {
-            const r = await generateBoxImage({ projectId, box, lyricLines });
+            const r = await generateBoxImage({ projectId, box, lyricLines, aspect });
             afterGeneration();
             toast.success(r.rejected > 0 ? `Image ready (${r.rejected} of ${r.candidates} came back as stacked panels and was left out)` : "Image ready");
           }).finally(afterGeneration),
       });
     },
-    [estimatesOf, numberById, run, projectId, lyricLines, afterGeneration],
+    [estimatesOf, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote],
   );
 
   const generateClip = useCallback(
@@ -499,18 +507,19 @@ export function useStoryboardController(projectId: string): StoryboardController
         body:
           `About ${usd(est.clip)} at list price` +
           (est.clipDrawsImage ? " — this shot has no image yet, so one is drawn first and the clip is made from it." : " — made from this shot's image.") +
-          " The clip takes a few minutes and lands on this shot only.",
+          " The clip takes a few minutes and lands on this shot only." +
+          (est.clipDrawsImage ? shapeNote : ""),
         confirmLabel: `Generate clip · ${usd(est.clip)}`,
         testId: "confirm-generate-clip",
         onConfirm: () =>
           run(box, "sending the clip to render…", async () => {
-            await generateBoxClip({ projectId, box, lyricLines, stillPath: still });
+            await generateBoxClip({ projectId, box, lyricLines, stillPath: still, aspect });
             afterGeneration();
             toast.success("Clip is rendering — it will appear on this shot when it is done");
           }).finally(afterGeneration),
       });
     },
-    [estimatesOf, selectedStillPath, numberById, run, projectId, lyricLines, afterGeneration],
+    [estimatesOf, selectedStillPath, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote],
   );
 
   const loading = boxesQuery.isLoading || inputs.projectQuery.isLoading;
@@ -541,6 +550,7 @@ export function useStoryboardController(projectId: string): StoryboardController
     library,
     migrated,
     hasTreatment: hasTreatment(doc),
+    aspect,
     saveEdit,
     resetBox,
     rewrite,

@@ -67,6 +67,7 @@ function controller(over: Partial<StoryboardController> = {}): StoryboardControl
     ],
     migrated: null,
     hasTreatment: true,
+    aspect: "9:16",
     saveEdit: fn(),
     resetBox: fn(),
     rewrite: fn(),

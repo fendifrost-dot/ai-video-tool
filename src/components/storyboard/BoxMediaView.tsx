@@ -1,3 +1,4 @@
+import { aspectCss } from "@/lib/project/aspect";
 import { ImageOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { PrevisFrame } from "@/components/treatment/PrevisFrame";
@@ -80,7 +81,14 @@ export function BoxMediaView({ box, mode }: { box: StoryboardBox; mode: "card" |
       data-media-role={item.role}
       data-media-base={item.base ? "true" : "false"}
     >
-      <MediaItemView item={item} url={sb.urlFor(item.asset)} mode={mode} testId="box-media-player" />
+      {mode === "card" ? (
+        // the board tile keeps its shape; inside it sits the project's frame, and the media is fitted whole into that
+        <div className="absolute inset-y-0 left-1/2 max-w-full -translate-x-1/2" style={{ aspectRatio: aspectCss(sb.aspect) }} data-testid="box-media-frame" data-aspect={sb.aspect}>
+          <MediaItemView item={item} url={sb.urlFor(item.asset)} mode={mode} testId="box-media-player" />
+        </div>
+      ) : (
+        <MediaItemView item={item} url={sb.urlFor(item.asset)} mode={mode} testId="box-media-player" />
+      )}
       <span className={cn("pointer-events-none absolute left-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-medium backdrop-blur", ROLE_STYLE[item.role])}>
         {mediaLabel(item)}
       </span>

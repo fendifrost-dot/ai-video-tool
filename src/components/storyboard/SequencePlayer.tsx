@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
+import { DEFAULT_PROJECT_ASPECT, frameBoxStyle, type ProjectAspect } from "@/lib/project/aspect";
 import { cn } from "@/lib/utils";
 import { formatTimecode } from "@/components/treatment/shotLabels";
 import { segmentAt, videoStateAt, type MediaAsset, type TimelineSegment } from "@/lib/storyboard/media";
@@ -26,6 +27,7 @@ export function SequencePlayer({
   song,
   onSegment,
   jumpTo,
+  aspect = DEFAULT_PROJECT_ASPECT,
 }: {
   timeline: TimelineSegment[];
   assets: ReadonlyMap<string, MediaAsset>;
@@ -34,6 +36,8 @@ export function SequencePlayer({
   onSegment?: (segment: TimelineSegment | null) => void;
   /** Jump to a song time (a shot picked from the list). `n` changes on every request so the same time can be asked twice. */
   jumpTo?: { t: number; n: number } | null;
+  /** The project's frame: the stage takes its shape. */
+  aspect?: ProjectAspect;
 }) {
   const audio = useRef<HTMLAudioElement>(null);
   const videos = useRef(new Map<string, HTMLVideoElement>());
@@ -174,7 +178,7 @@ export function SequencePlayer({
 
   return (
     <div className="space-y-3" data-testid="sequence-player" data-active-shot={active?.key ?? ""} data-playing={playing ? "true" : "false"}>
-      <div className="relative aspect-video w-full overflow-hidden rounded-xl bg-black" data-testid="sequence-stage" data-media-kind={active?.media.kind ?? "none"}>
+      <div className="relative mx-auto overflow-hidden rounded-xl bg-black" style={frameBoxStyle(aspect, "68vh")} data-testid="sequence-stage" data-media-kind={active?.media.kind ?? "none"} data-aspect={aspect}>
         {videoAssetIds.map((id) => {
           const src = urlOf(id);
           if (!src) return null;

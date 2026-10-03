@@ -9,6 +9,7 @@ import type { BoxMediaItem } from "@/lib/storyboard/media";
 import { sceneText } from "./BoxCard";
 import { BoxEditor } from "./BoxEditor";
 import { BoxMediaView, ROLE_STYLE, mediaLabel } from "./BoxMediaView";
+import { frameBoxStyle } from "@/lib/project/aspect";
 import { Overlay } from "./Overlay";
 import { useStoryboard } from "./useStoryboardController";
 
@@ -115,8 +116,11 @@ export function FocusView() {
           <div className="space-y-3">
             <div
               ref={stage}
-              className={cn("touch-pan-y overflow-hidden bg-black", fill ? "fixed inset-0 z-[80] m-0" : "relative aspect-video w-full rounded-xl")}
+              className={cn("touch-pan-y overflow-hidden bg-black", fill ? "fixed inset-0 z-[80] m-0" : "relative mx-auto rounded-xl")}
+              // the stage is the project's frame, as large as fits the screen; filling the screen drops the frame
+              style={fill ? undefined : frameBoxStyle(sb.aspect, "70vh")}
               data-fill={fill ? "true" : "false"}
+              data-aspect={sb.aspect}
               onTouchStart={(e) => {
                 touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
               }}
