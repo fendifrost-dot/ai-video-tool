@@ -2266,6 +2266,7 @@ export type Database = {
       video_projects: {
         Row: {
           artist_id: string | null
+          aspect_ratio: string
           bpm: number | null
           color_palette: string[]
           created_at: string
@@ -2287,6 +2288,7 @@ export type Database = {
         }
         Insert: {
           artist_id?: string | null
+          aspect_ratio?: string
           bpm?: number | null
           color_palette?: string[]
           created_at?: string
@@ -2308,6 +2310,7 @@ export type Database = {
         }
         Update: {
           artist_id?: string | null
+          aspect_ratio?: string
           bpm?: number | null
           color_palette?: string[]
           created_at?: string

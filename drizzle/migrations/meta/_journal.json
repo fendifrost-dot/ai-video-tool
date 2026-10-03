@@ -22,6 +22,13 @@
       "when": 1790992587750,
       "tag": "0002_storyboard_boxes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791004954036,
+      "tag": "0003_project_aspect_ratio",
+      "breakpoints": true
     }
   ]
 }
