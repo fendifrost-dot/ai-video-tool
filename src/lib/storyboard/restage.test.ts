@@ -8,7 +8,8 @@ vi.mock("@/lib/queries/storyboard", () => ({}));
 import { parseShotSpec } from "@/lib/treatment/shotSpec";
 import { buildMotionRequest, estimateShotUsd, missingInput } from "@/lib/worldBatch";
 import { boxFromRow, boxWrite, type BoxRow } from "./boxes";
-import { boxMedia, isOriginalTake, type Assignment, type MediaAsset, type TakeSync } from "./media";
+import { boxMedia, buildTimeline, isOriginalTake, type Assignment, type MediaAsset, type TakeSync } from "./media";
+import { verifyCut } from "./verify";
 import { clipLyrics } from "./build";
 import { footageSummary, setupStatus } from "./setup";
 import { boxShot, placePrompt } from "./generate";
@@ -131,11 +132,25 @@ describe("a restaged take is one moment of a take, not a take of the song", () =
     const m = boxMedia({ box: box(47.06, 50.98), assignments: [assign("a1", "re1", "performance", { isPrimary: true })], assets, syncs: late });
     expect(m.showing?.asset.id).toBe("re1");
     expect(m.showing?.note).toBeNull();
-    expect(m.showing?.leadIn).toBe(0);
     expect(m.showing?.sourceIn).toBe(0);
+    // it is said to cover the shot, and it is still placed to the millisecond: the 7 ms stay a lead-in, the clip is not slid
+    expect(m.showing?.leadIn).toBeCloseTo(0.007, 4);
     // more than a frame short is still said
     const short = [sync(), sync({ id: "s2", performanceAssetId: "re1", offsetSeconds: 47.2, method: "derived" })];
     expect(boxMedia({ box: box(47.06, 50.98), assignments: [assign("a1", "re1", "performance", { isPrimary: true })], assets, syncs: short }).showing?.note).toMatch(/only part/);
+  });
+
+  it("holds against the song clock in 'Check this cut', placed where its own sync says — not slid to the cut", () => {
+    // found on the live project: counting the 7 ms as nothing put the clip 7 ms early and the check caught it
+    const late = [sync(), sync({ id: "s2", performanceAssetId: "re1", offsetSeconds: 47.067, method: "derived" })];
+    const boxes = [box(47.06, 50.98)];
+    const assignments = [assign("a1", "re1", "performance", { isPrimary: true })];
+    const timeline = buildTimeline({ boxes, assignments, assets, syncs: late });
+    const report = verifyCut({ timeline, boxes: boxes.map((b) => ({ id: b.id, key: b.key, start: b.start, end: b.end })), assignments, assets, syncs: late, fileSeconds: new Map([["re1", 4.04]]), songSeconds: null });
+    const byId = Object.fromEntries(report.checks.map((c) => [c.id, c]));
+    expect(byId.sync.ok, byId.sync.failures.join("; ")).toBe(true);
+    expect(byId.resume?.ok ?? true).toBe(true);
+    expect(byId.hold?.ok ?? true, byId.hold?.failures.join("; ")).toBe(true);
   });
 
   it("is never the base layer of another shot", () => {

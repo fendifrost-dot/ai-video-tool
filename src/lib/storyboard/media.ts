@@ -145,12 +145,13 @@ export function takeRangeForBox(
   const lo = Math.max(0, s);
   const hi = takeDurationSeconds != null ? Math.min(takeDurationSeconds, e) : e;
   if (hi - lo < 0.1) return null;
-  // short of the window by less than a frame at either end is not "part of the shot": nothing a viewer could see
-  // (a clip cut for this very shot starts on a frame boundary, a few milliseconds from the shot's own start)
-  if (lo - s < FRAME_SLACK && e - hi < FRAME_SLACK) return { start: Math.round(lo * 1e4) / 1e4, end: Math.round(hi * 1e4) / 1e4, coverage: "full", leadIn: 0 };
   // the song time at which the clamped range begins, relative to the box
-  const leadIn = Math.max(0, lo * k + sync.offsetSeconds - box.start);
-  return { start: Math.round(lo * 1e4) / 1e4, end: Math.round(hi * 1e4) / 1e4, coverage: "partial", leadIn: Math.round(leadIn * 1e4) / 1e4 };
+  const leadIn = Math.round(Math.max(0, lo * k + sync.offsetSeconds - box.start) * 1e4) / 1e4;
+  // short of the window by less than a frame at either end is not "part of the shot": nothing a viewer could see
+  // (a clip cut for this very shot starts on a frame boundary, a few milliseconds from the shot's own start). It is
+  // still PLACED exactly: those milliseconds stay a lead-in, so the footage is never slid to meet the cut.
+  if (lo - s < FRAME_SLACK && e - hi < FRAME_SLACK) return { start: Math.round(lo * 1e4) / 1e4, end: Math.round(hi * 1e4) / 1e4, coverage: "full", leadIn };
+  return { start: Math.round(lo * 1e4) / 1e4, end: Math.round(hi * 1e4) / 1e4, coverage: "partial", leadIn };
 }
 
 /** A sync the cut can rely on: the director confirmed it, or set it by hand. A measurement nobody confirmed is not one. */

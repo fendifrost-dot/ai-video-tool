@@ -163,7 +163,8 @@ describe("checking a cut on its real files", () => {
           const seg = segmentAt(timeline, t);
           if (!follows || !seg || seg.media.kind !== "video") return;
           const state = videoStateAt(seg, t, seg.media.assetId === "take" ? 3 : 2);
-          if (state) (videos.get(seg.media.assetId) as { currentTime: number }).currentTime = state.at;
+          const el = videos.get(seg.media.assetId) as { currentTime: number } | undefined;
+          if (state && el) el.currentTime = state.at;
         },
       } as unknown as HTMLAudioElement;
       return { audio, videos };
@@ -184,6 +185,22 @@ describe("checking a cut on its real files", () => {
       expect(r.player.ok).toBe(false);
       expect(r.player.failures).toEqual(["clip.mp4: the player's link points at take.mp4, not at clip.mp4"]);
       expect(r.ok).toBe(false);
+    });
+
+    it("asks a player that is showing a section only for that section's files — the cut is still checked whole", async () => {
+      // the page's player holds the take's video only (the section it shows has no AI clip in it)
+      const sectionPlayer = fakePlayer(good);
+      sectionPlayer.videos.delete("clip");
+      const section = timeline.filter((s) => s.media.kind === "video" && s.media.assetId === "take");
+      expect(section.length).toBeGreaterThan(0);
+      const whole = await runReviewCheck(input({ player: sectionPlayer }));
+      expect(whole.player.failures).toEqual(["clip.mp4: the player has no video for it"]);
+      const scoped = await runReviewCheck(input({ player: sectionPlayer, playerTimeline: section }));
+      expect(scoped.player).toMatchObject({ ok: true, detail: "1 video link and the song compared" });
+      expect(scoped.player.label).toMatch(/the section it is showing/);
+      // every shot of the cut is still in the cut check
+      expect(scoped.cut.cuts.length).toBe(timeline.length);
+      expect(scoped.live.samples.every((x) => section.some((seg) => seg.key === x.key))).toBe(true);
     });
 
     it("does not touch the player when the window is not on screen, and says why", async () => {

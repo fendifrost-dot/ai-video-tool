@@ -74,6 +74,11 @@ export type ReviewCheckInput = {
   onProgress?: (text: string) => void;
   /** The page's own player, for the checks that read it. Null when there is no player on the page. */
   player?: PlayerHandle | null;
+  /**
+   * The shots the page's player is showing, when that is a SECTION of the cut. The cut is always checked whole; the
+   * player can only be read for what it holds. Not given = the player shows the whole cut.
+   */
+  playerTimeline?: readonly TimelineSegment[];
 };
 
 /** The player's elements on the page. */
@@ -141,14 +146,15 @@ async function liveCheck(input: ReviewCheckInput, fileSeconds: ReadonlyMap<strin
   if (!wasPaused) audio.pause();
   const back = audio.currentTime;
   // a moment just inside every cut, and the middle of every shot — spread over the song
+  const shown = input.playerTimeline ?? input.timeline;
   const moments = spread(
-    input.timeline.flatMap((s) => [s.start + 0.3, (s.start + s.end) / 2]).filter((t, i, all) => all.indexOf(t) === i),
+    shown.flatMap((s) => [s.start + 0.3, (s.start + s.end) / 2]).filter((t, i, all) => all.indexOf(t) === i),
     24,
   );
   const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
   const samples: LiveSample[] = [];
   for (const t of moments) {
-    const seg = segmentAt(input.timeline, t);
+    const seg = segmentAt(shown, t);
     if (!seg) continue;
     audio.currentTime = t;
     await wait(120);
@@ -266,9 +272,12 @@ export async function runReviewCheck(input: ReviewCheckInput): Promise<ReviewChe
   // ---- the page's player holds the right links -------------------------------------------------------------------
   const playerFailures: string[] = [];
   let held = 0;
+  // a player showing a section holds that section's files only: it is asked for those, not for the whole cut's
+  const section = input.playerTimeline ? new Set(input.playerTimeline.flatMap((s) => (s.media.kind === "video" ? [s.media.assetId] : []))) : null;
   if (input.player) {
     for (const u of used.values()) {
       if (!u.asset.isVideo) continue;
+      if (section && !section.has(u.asset.id)) continue;
       const el = input.player.videos.get(u.asset.id);
       const want = input.playbackRef(u.asset).path;
       if (!el) {
@@ -287,7 +296,7 @@ export async function runReviewCheck(input: ReviewCheckInput): Promise<ReviewChe
   }
   const player: CheckResult = {
     id: "player",
-    label: "The player on this page holds the link of each shot's own file",
+    label: input.playerTimeline ? "The player on this page holds the link of each shot's own file (the section it is showing)" : "The player on this page holds the link of each shot's own file",
     ok: playerFailures.length === 0,
     detail: input.player ? `${held} video link${held === 1 ? "" : "s"}${input.song ? " and the song" : ""} compared` : "no player on this page",
     failures: playerFailures,
