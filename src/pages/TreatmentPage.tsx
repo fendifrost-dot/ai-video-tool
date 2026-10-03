@@ -146,7 +146,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
       await saveNotes();
       const res = await writeStoryboardFromTreatment({
         projectId,
-        context: inputs.treatmentContext(notesValue, footageNote),
+        context: inputs.treatmentContext(notesValue, footageNote, setup.counts.takesSynced > 0),
         treatmentText: aiWritesText ? "" : doc.text,
         aiWritesText,
         treatmentJson: project.treatment_json,
