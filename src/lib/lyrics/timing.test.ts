@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { wavInfo } from "../../../supabase/functions/lyric-align-proxy/contract";
 import { alignLyrics, type TranscriptWord } from "./align";
 import type { LyricLine } from "./lyricsForShot";
-import { HOP_SECONDS, STT_SAMPLE_RATE, WINDOW_SECONDS, compareWithSaved, encodeWav16, estimateTimingUsd, fillHoles, findHoles, hearHoles, hearSong, lyricLineRows, planHoleWindows, planWindows, stampWindow, timeLyrics, windowSamples } from "./timing";
+import { HOP_SECONDS, STT_SAMPLE_RATE, WINDOW_SECONDS, compareWithSaved, corroborated, encodeWav16, estimateTimingUsd, fillHoles, findHoles, hearHoles, hearSong, hostedPrompt, isRunaway, lyricLineRows, planHoleWindows, planWindows, stampWindow, timeLyrics, windowSamples } from "./timing";
 
 const LYRICS = `Lights down low, we don't need the sun
 Glass on the table, night just begun
@@ -39,6 +39,38 @@ const hearing = (truth: TranscriptWord[], calls: { cutAt: number; seconds: numbe
     if (meta.cutAt === deafBefore) return [];
     return truth.filter((w) => w.start >= meta.cutAt && w.end <= meta.cutAt + seconds).map((w) => ({ w: w.w, start: w.start - meta.cutAt, end: w.end - meta.cutAt }));
   };
+
+describe("what a hosted transcriber is not trusted with", () => {
+  it("knows a runaway word from a sung one", () => {
+    expect(isRunaway("W" + "o".repeat(200))).toBe(true);
+    expect(isRunaway("Woooooooo")).toBe(true);
+    expect(isRunaway("Woooooo")).toBe(false); // seven: a real ad-lib as written
+    expect(isRunaway("Freezin")).toBe(false);
+    expect(isRunaway("a".repeat(33))).toBe(true);
+  });
+
+  it("leaves held-sound lines out of its vocabulary", () => {
+    expect(hostedPrompt("Lights down low\nWoooooo\nknow you see it\nYeahhhh ayyyy\n\nGlass on the table")).toBe("Lyrics: Lights down low / know you see it / Glass on the table");
+    expect(hostedPrompt("Woooooo")).toBeNull();
+  });
+
+  it("drops a runaway word, tries a deaf window earlier and then later, and does not send a few seconds of tail", async () => {
+    const mono = new Float32Array(STT_SAMPLE_RATE * 64);
+    const calls: number[] = [];
+    const heard = await hearSong(mono, STT_SAMPLE_RATE, LYRICS, async (wav, meta) => {
+      calls.push(meta.cutAt);
+      if (meta.cutAt === 0) return [{ w: "W" + "o".repeat(150), start: 0, end: 29 }];
+      if (meta.cutAt === 7) return [{ w: "Lights", start: 5, end: 5.3 }]; // 12 s on the song clock
+      return [];
+    });
+    // window 0: a runaway (dropped) → cannot be cut earlier → cut at 7. window 20: 13, then 27. window 40: 33, then 47.
+    // window 60 is 4 s of tail: not sent; its retry at 53 is 11 s and is; 67 is past the end.
+    expect(calls).toEqual([0, 7, 20, 13, 27, 40, 33, 47, 53]);
+    expect(heard.words.map((w) => [w.w, w.start])).toEqual([["Lights", 12]]);
+    expect(heard.parts[0]).toMatchObject({ cutAt: 0, words: 0, text: "" });
+    expect(heard.silent).toBe(3);
+  });
+});
 
 describe("hearing a song in windows", () => {
   it("cuts a window every 20 s while one starts inside the song", () => {
@@ -142,27 +174,21 @@ describe("the second listen", () => {
     });
     return out;
   };
-  /** A transcriber that gives up on a window when it waits more than 5 s for a word: at its start, or after one. */
-  const impatient = (truth: TranscriptWord[], calls: { cutAt: number; seconds: number; prompt: string | null }[]) =>
+  /** A transcriber that loses the verse (25–45 s) whenever it is handed more than 20 s at once, and hears it in a short cut. */
+  const losesTheVerse = (truth: TranscriptWord[], calls: { cutAt: number; seconds: number; prompt: string | null }[]) =>
     async (wav: Uint8Array, meta: { prompt: string | null; language: string; cutAt: number }) => {
       const seconds = wavInfo(wav)!.seconds;
       calls.push({ cutAt: meta.cutAt, seconds, prompt: meta.prompt });
-      const out: TranscriptWord[] = [];
-      let last = meta.cutAt;
-      for (const w of truth.filter((x) => x.start >= meta.cutAt && x.end <= meta.cutAt + seconds)) {
-        if (w.start - last > 5) break;
-        out.push({ w: w.w, start: w.start - meta.cutAt, end: w.end - meta.cutAt });
-        last = w.end;
-      }
-      return out;
+      return truth
+        .filter((x) => x.start >= meta.cutAt && x.end <= meta.cutAt + seconds && !(seconds > 20 && x.start >= 25 && x.start < 45))
+        .map((w) => ({ w: w.w, start: w.start - meta.cutAt, end: w.end - meta.cutAt }));
     };
   const mono = new Float32Array(STT_SAMPLE_RATE * 75);
 
   it("finds the stretch where a run of lines went unfound, and leaves alone a run with no room to be sung in", async () => {
     const truth = spaced();
-    const first = await hearSong(mono, STT_SAMPLE_RATE, LYRICS, impatient(truth, []));
+    const first = await hearSong(mono, STT_SAMPLE_RATE, LYRICS, losesTheVerse(truth, []));
     const timing = timeLyrics(LYRICS, first.words, first.windows);
-    // the verse opens 6 s into the only window that could hear it: nothing of it comes back
     expect(timing.lines.map((l) => l.words.some((w) => w.matched))).toEqual([true, true, false, false, false, true, true]);
     const holes = findHoles(timing.lines, 75);
     expect(holes).toHaveLength(1);
@@ -170,30 +196,37 @@ describe("the second listen", () => {
     expect(holes[0].from).toBeCloseTo(9.16, 1);
     expect(holes[0].to).toBeCloseTo(61, 1);
     expect(holes[0].lines[0]).toBe("Woke up late with the city in my ear");
-    expect(planHoleWindows(holes[0])).toEqual([8, 13, 18, 23, 28, 33, 38, 43, 48, 53, 58]);
+    // from a lead before the hole, every 5 s, while a cut starts inside it
+    expect(planHoleWindows(holes[0])).toEqual([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]);
+    expect(planHoleWindows({ ...holes[0], from: 30.9, to: 62.7 })).toEqual([20, 25, 30, 35, 40, 45, 50, 55, 60]);
     // the same unfound run squeezed between two found lines: written, not sung — nothing to listen to again
     const squeezed = timing.lines.map((l) => (l.line_index >= 5 ? { ...l, start: l.start - 51, end: l.end - 51 } : l));
     expect(findHoles(squeezed, 75)).toEqual([]);
     // one unfound line is not a hole
     expect(findHoles(timing.lines.filter((l) => l.line_index !== 3 && l.line_index !== 4), 75)).toEqual([]);
+    // a line the aligner had to bridge is not an anchor: the hole reaches past it to the last line really heard
+    const bridged = timing.lines.map((l) => (l.line_index === 1 ? { ...l, suspect: true } : l));
+    expect(findHoles(bridged, 75)[0]).toMatchObject({ lineFrom: 1, lineTo: 4 });
   });
 
-  it("hears the stretch again in short windows with the missing lines as vocabulary, and the verse is found", async () => {
+  it("hears the stretch again in short windows, and the verse is found", async () => {
     const truth = spaced();
-    const first = await hearSong(mono, STT_SAMPLE_RATE, LYRICS, impatient(truth, []));
+    const first = await hearSong(mono, STT_SAMPLE_RATE, LYRICS, losesTheVerse(truth, []));
     const before = timeLyrics(LYRICS, first.words, first.windows);
     const holes = findHoles(before.lines, 75);
     const calls: { cutAt: number; seconds: number; prompt: string | null }[] = [];
     const progress: number[] = [];
-    const again = await hearHoles(mono, STT_SAMPLE_RATE, holes, impatient(truth, calls), { maxCalls: first.windows * 2, onProgress: (p) => progress.push(p.done) });
+    const again = await hearHoles(mono, STT_SAMPLE_RATE, LYRICS, holes, losesTheVerse(truth, calls), { maxCalls: first.windows * 2, onProgress: (p) => progress.push(p.done) });
     // never more than twice the first pass's calls
-    expect(calls.map((c) => c.cutAt)).toEqual([8, 13, 18, 23, 28, 33, 38, 43]);
+    expect(calls.map((c) => c.cutAt)).toEqual([0, 5, 10, 15, 20, 25, 30, 35]);
     expect(calls.every((c) => c.seconds === 15)).toBe(true);
-    expect(calls[0].prompt).toBe("Lyrics: Woke up late with the city in my ear / Counting every reason that I'm still right here / Momma said patience, baby, give it one more year");
+    // the same vocabulary as the first pass: the missing lines are NOT fed back as the prompt
+    expect(calls[0].prompt).toBe(hostedPrompt(LYRICS));
     expect(progress).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
     expect(again.parts.every((p) => p.pass === 2)).toBe(true);
-    // the window cut at 23 opens 3 s before the verse: it hears all of it
-    expect(again.parts.find((p) => p.cutAt === 23)!.words).toBe(26);
+    // the cut at 25 holds the whole verse
+    expect(again.parts.find((p) => p.cutAt === 25)!.words).toBe(26);
+    expect(again.trusted).toBe(5); // the five cuts that reach the verse each agree with a neighbour on it
     expect(again.heard[0].map((w) => w.w)).toEqual(truth.filter((w) => w.start >= 26 && w.start < 40).map((w) => w.w));
 
     const filled = fillHoles(first.words, holes, again.heard);
@@ -205,6 +238,32 @@ describe("the second listen", () => {
     expect(after.lines[2].start).toBe(26);
     // what the first pass had right is untouched
     expect(after.lines.filter((l) => l.line_index < 2 || l.line_index > 4).map((l) => l.start)).toEqual(before.lines.filter((l) => l.line_index < 2 || l.line_index > 4).map((l) => l.start));
+  });
+
+  it("leaves out lyrics only one cut wrote: a transcriber fills an instrumental with its prompt", async () => {
+    const truth = spaced();
+    const first = await hearSong(mono, STT_SAMPLE_RATE, LYRICS, losesTheVerse(truth, []));
+    const holes = findHoles(timeLyrics(LYRICS, first.words, first.windows).lines, 75);
+    // this one hears nothing real in the hole, and in every cut "hears" the verse's first line, starting 2 s in
+    const inventing = async (wav: Uint8Array, meta: { prompt: string | null; language: string; cutAt: number }) => {
+      const seconds = wavInfo(wav)!.seconds;
+      const real = truth.filter((x) => x.start >= meta.cutAt && x.end <= meta.cutAt + seconds && !(x.start >= 25 && x.start < 45)).map((w) => ({ w: w.w, start: w.start - meta.cutAt, end: w.end - meta.cutAt }));
+      const invented = "Woke up late with the city in my ear".split(" ").map((w, i) => ({ w, start: 2 + i * 0.4, end: 2.3 + i * 0.4 }));
+      return [...real, ...invented].sort((a, b) => a.start - b.start);
+    };
+    const again = await hearHoles(mono, STT_SAMPLE_RATE, LYRICS, holes, inventing, { maxCalls: 13 });
+    // the same words, but at a different moment of the song in every cut: no two cuts agree
+    expect(again.heard[0]).toEqual([]);
+    expect(fillHoles(first.words, holes, again.heard).replaced).toBe(0);
+  });
+
+  it("keeps a word only when another cut heard the same word at the same moment", () => {
+    const w = (word: string, start: number) => ({ w: word, start, end: start + 0.3, edge: 1 });
+    const a = { cutAt: 0, seconds: 15, words: [w("woke", 6), w("up", 6.4), w("late", 6.8), w("with", 7.2)] };
+    const b = { cutAt: 5, seconds: 15, words: [w("Woke", 6.1), w("up", 6.5), w("early", 6.7), w("with", 7.4)] };
+    const c = { cutAt: 10, seconds: 15, words: [w("woke", 12), w("up", 12.4), w("late", 12.8)] }; // same words, six seconds later
+    expect(corroborated([a, b, c]).map((ws) => ws.map((x) => x.w))).toEqual([["woke", "up", "with"], ["Woke", "up", "with"], []]);
+    expect(corroborated([a])).toEqual([[]]); // nobody else was listening
   });
 
   it("keeps the first pass where the second listen heard no more of the missing lines", () => {

@@ -72,10 +72,10 @@ export async function runLyricTiming(input: {
   const holes = findHoles(timing.lines, mono.length / STT_SAMPLE_RATE);
   if (holes.length) {
     try {
-      const again = await hearHoles(mono, STT_SAMPLE_RATE, holes, hear, { onProgress: (p) => input.onProgress?.({ stage: "listening_again", ...p }), signal: input.signal, maxCalls: heard.windows * 2 });
+      const again = await hearHoles(mono, STT_SAMPLE_RATE, input.lyrics, holes, hear, { onProgress: (p) => input.onProgress?.({ stage: "listening_again", ...p }), signal: input.signal, maxCalls: heard.windows * 2 });
       parts = [...parts, ...again.parts];
       const filled = fillHoles(heard.words, holes, again.heard);
-      second = { holes: holes.length, calls: again.calls, replaced: filled.replaced, coverageBefore: timing.coverage, coverageAfter: timing.coverage, used: false };
+      second = { holes: holes.length, calls: again.calls, trusted: again.trusted, replaced: filled.replaced, coverageBefore: timing.coverage, coverageAfter: timing.coverage, used: false };
       if (filled.replaced > 0) {
         input.onProgress?.({ stage: "aligning", done: heard.windows, total: heard.windows });
         await new Promise((r) => setTimeout(r, 20));
@@ -89,7 +89,7 @@ export async function runLyricTiming(input: {
     } catch (e) {
       if (e instanceof DOMException && e.name === "AbortError") throw e;
       // the first pass stands: a second listen that fails is not a reason to lose it
-      second = { holes: holes.length, calls: 0, replaced: 0, coverageBefore: timing.coverage, coverageAfter: timing.coverage, used: false };
+      second = { holes: holes.length, calls: 0, trusted: 0, replaced: 0, coverageBefore: timing.coverage, coverageAfter: timing.coverage, used: false };
     }
   }
   return { ...timing, provider, model, estimatedCostUsd: Math.round(cost * 10000) / 10000, parts, second };

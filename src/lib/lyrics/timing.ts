@@ -18,6 +18,10 @@ export const WINDOW_SECONDS = 30;
 export const HOP_SECONDS = 20;
 /** A silent window is cut again this much earlier (the script's third attempt; its VAD attempt has no hosted form). */
 export const RETRY_SHIFT_SECONDS = -7;
+/** …and, when that hears nothing either (or the song starts here), this much later. */
+export const RETRY_SHIFTS = [RETRY_SHIFT_SECONDS, -RETRY_SHIFT_SECONDS] as const;
+/** A window with less audio than this is not sent: a hosted transcriber handed a few seconds writes its prompt back. */
+export const MIN_WINDOW_SECONDS = 5;
 /** List price of the hosted transcriber, USD per minute of audio sent (lyric-align-proxy/contract.ts). */
 export const STT_USD_PER_MINUTE = 0.006;
 export const DEFAULT_LYRIC_LANGUAGE = "en";
@@ -88,6 +92,29 @@ export function stampWindow(heard: readonly TranscriptWord[], cutAt: number, t0:
   return out;
 }
 
+/** "Woooooooooo…": one sound held for a line is the transcriber running away, not a word sung at that moment. */
+export function isRunaway(word: string): boolean {
+  return word.length > 32 || /(.)\1{7,}/u.test(word);
+}
+
+const STRETCHED = /(.)\1{3,}/u;
+
+/**
+ * The lyrics as the hosted transcriber's vocabulary. Lines that are only a held sound ("Woooooo") are left out: given
+ * one in its prompt, the transcriber writes it over the whole window (measured on YSL, 2026-10-03 — two windows came
+ * back as a single 200-character word and the verse under them was lost).
+ */
+export function hostedPrompt(lyrics: string): string | null {
+  const kept = lyrics
+    .split("\n")
+    .filter((line) => {
+      const tokens = line.trim().split(/\s+/).filter(Boolean);
+      return tokens.length === 0 || !tokens.every((t) => STRETCHED.test(t));
+    })
+    .join("\n");
+  return vocabularyPrompt(kept);
+}
+
 /** One call to the transcriber: which stretch of the song it was handed and what came back. */
 export type HeardPart = { t0: number; cutAt: number; seconds: number; retry: boolean; words: number; kept: number; text: string; pass: 1 | 2 };
 
@@ -103,7 +130,7 @@ export async function hearSong(
   opts: { language?: string; onProgress?: (p: TimingProgress) => void; signal?: AbortSignal } = {},
 ): Promise<{ words: TranscriptWord[]; windows: number; retried: number; silent: number; parts: HeardPart[] }> {
   const duration = mono.length / sampleRate;
-  const prompt = vocabularyPrompt(lyrics);
+  const prompt = hostedPrompt(lyrics);
   const language = opts.language ?? DEFAULT_LYRIC_LANGUAGE;
   const starts = planWindows(duration);
   const all: WindowWord[] = [];
@@ -114,12 +141,15 @@ export async function hearSong(
     if (opts.signal?.aborted) throw new DOMException("Stopped", "AbortError");
     const t0 = starts[n];
     let got = 0;
-    for (const [attempt, shift] of [0, RETRY_SHIFT_SECONDS].entries()) {
+    const tried = new Set<number>();
+    for (const [attempt, shift] of [0, ...RETRY_SHIFTS].entries()) {
       const cutAt = Math.max(0, t0 + shift);
-      if (attempt > 0 && cutAt === t0) break; // the first window cannot be cut any earlier
+      if (tried.has(cutAt)) continue; // the first window cannot be cut any earlier
+      tried.add(cutAt);
       const samples = windowSamples(mono, sampleRate, cutAt, WINDOW_SECONDS);
-      if (samples.length < sampleRate * 0.5) break; // under half a second left: nothing to hear
-      const heard = await hear(encodeWav16(samples, sampleRate), { prompt, language, cutAt });
+      // a few seconds at the end of the song: the window before this one already heard them
+      if (samples.length < sampleRate * MIN_WINDOW_SECONDS) continue;
+      const heard = (await hear(encodeWav16(samples, sampleRate), { prompt, language, cutAt })).filter((h) => !isRunaway(h.w.trim()));
       const stamped = stampWindow(heard, cutAt, t0, attempt > 0);
       parts.push({ t0, cutAt, seconds: Math.round((samples.length / sampleRate) * 10) / 10, retry: attempt > 0, words: heard.length, kept: stamped.length, text: heard.map((h) => h.w.trim()).join(" "), pass: 1 });
       got = stamped.length;
@@ -136,20 +166,28 @@ export async function hearSong(
 // ---------------------------------------------------------------------------------------------------------------------
 // The second listen
 //
-// A hosted transcriber handed thirty seconds that open on a beat can stop writing before the singing starts, and a
-// whole verse comes back as nothing (measured on YSL, 2026-10-03: seventeen sung lines unheard in both windows that
-// covered them). So where the first pass leaves a run of lines unfound WITH song time to spare between the found
-// lines either side, that stretch is heard again in short windows a few seconds apart — one of them opens on the
-// singing — with the missing lines themselves as the vocabulary. What the second listen heard replaces the first only
-// where it heard more of those lines' words, and the new timing is kept only if the aligner's own coverage went up.
+// A hosted transcriber handed thirty seconds can lose a sung verse entirely (measured on YSL, 2026-10-03: seventeen
+// sung lines unheard in both windows that covered them). So where the first pass leaves a run of lines unfound WITH
+// song time to spare between the found lines either side, that stretch is heard again in short windows a few seconds
+// apart, so every moment of it is heard by three different cuts.
+//
+// A transcriber with the lyrics in its prompt will also write lyrics over an instrumental. So the second listen
+// keeps a word only when another window, cut elsewhere, heard the same word at the same moment; what a single cut
+// wrote is left out. What survives replaces the first pass only where it holds more of the missing lines' words, and
+// the new timing is kept only if the aligner's own coverage went up.
 
 export const HOLE_WINDOW_SECONDS = 15;
 export const HOLE_HOP_SECONDS = 5;
+/** The second listen starts this long before the hole, so the hole's first seconds are heard by three cuts too. */
+export const HOLE_LEAD_SECONDS = 10;
+/** Two windows heard "the same word at the same moment" when they agree within this, seconds. */
+export const AGREE_SECONDS = 0.5;
 
 /** A run of consecutive lyric lines with no word found, and the stretch of the song they must be in. */
 export type Hole = { lineFrom: number; lineTo: number; from: number; to: number; lines: string[] };
 
-const found = (l: AlignedLine) => l.words.some((w) => w.matched);
+/** A line that anchors the timing: some word of it was heard, and the aligner did not have to bridge a gap to place it. */
+const found = (l: AlignedLine) => !l.suspect && l.words.some((w) => w.matched);
 
 export function findHoles(lines: readonly AlignedLine[], songSeconds: number, minLines = 2, minSeconds = 4): Hole[] {
   const holes: Hole[] = [];
@@ -171,45 +209,69 @@ export function findHoles(lines: readonly AlignedLine[], songSeconds: number, mi
   return holes;
 }
 
-/** Where a hole is re-cut: a second before it starts, then every hop while a cut starts inside it. */
+/** Where a hole is re-cut: from a lead before it, every hop, while a cut starts inside it. */
 export function planHoleWindows(hole: Hole, hop = HOLE_HOP_SECONDS): number[] {
   const out: number[] = [];
-  for (let t = Math.max(0, Math.floor(hole.from - 1)); t < hole.to; t += hop) out.push(t);
+  const first = Math.max(0, Math.floor((hole.from - HOLE_LEAD_SECONDS) / hop) * hop);
+  for (let t = first; t < hole.to; t += hop) out.push(t);
   return out;
 }
 
-/** Hear the holes again. Returns, per hole, what was heard inside it (merged, on the song clock). */
+/**
+ * Of what several overlapping windows heard, the words another window bears out: the same word, at the same moment
+ * of the song, from a different cut. A word only one cut wrote is left out — that is what an invented line looks like.
+ */
+export function corroborated(windows: readonly { cutAt: number; seconds: number; words: readonly WindowWord[] }[]): WindowWord[][] {
+  return windows.map((a, i) =>
+    a.words.filter((w) => {
+      const key = norm(w.w);
+      return windows.some((b, k) => k !== i && b.words.some((x) => Math.abs(x.start - w.start) <= AGREE_SECONDS && norm(x.w) === key));
+    }),
+  );
+}
+
+/** Hear the holes again. Returns, per hole, the words two cuts agree on inside it (merged, on the song clock). */
 export async function hearHoles(
   mono: Float32Array,
   sampleRate: number,
+  lyrics: string,
   holes: readonly Hole[],
   hear: HearWindow,
   opts: { language?: string; onProgress?: (p: TimingProgress) => void; signal?: AbortSignal; maxCalls?: number } = {},
-): Promise<{ heard: TranscriptWord[][]; parts: HeardPart[]; calls: number }> {
+): Promise<{ heard: TranscriptWord[][]; parts: HeardPart[]; calls: number; trusted: number }> {
   const language = opts.language ?? DEFAULT_LYRIC_LANGUAGE;
+  const prompt = hostedPrompt(lyrics);
   const plan = holes.map((h) => planHoleWindows(h));
   const total = Math.min(opts.maxCalls ?? Infinity, plan.reduce((n, p) => n + p.length, 0));
   const heard: TranscriptWord[][] = [];
   const parts: HeardPart[] = [];
   let calls = 0;
+  let trusted = 0;
   for (const [k, hole] of holes.entries()) {
-    const prompt = ("Lyrics: " + hole.lines.join(" / ")).slice(0, 900);
-    const words: WindowWord[] = [];
+    const windows: { cutAt: number; seconds: number; words: WindowWord[] }[] = [];
     for (const cutAt of plan[k]) {
       if (calls >= total) break;
       if (opts.signal?.aborted) throw new DOMException("Stopped", "AbortError");
       const samples = windowSamples(mono, sampleRate, cutAt, HOLE_WINDOW_SECONDS);
-      if (samples.length < sampleRate * 0.5) break;
-      const got = await hear(encodeWav16(samples, sampleRate), { prompt, language, cutAt });
-      const stamped = stampWindow(got, cutAt, cutAt, false, HOLE_WINDOW_SECONDS, HOLE_HOP_SECONDS).filter((w) => w.start >= hole.from && w.start < hole.to);
-      words.push(...stamped);
+      if (samples.length < sampleRate * MIN_WINDOW_SECONDS) break;
+      const got = (await hear(encodeWav16(samples, sampleRate), { prompt, language, cutAt })).filter((h) => !isRunaway(h.w.trim()));
+      const seconds = samples.length / sampleRate;
+      windows.push({ cutAt, seconds, words: stampWindow(got, cutAt, cutAt, false, HOLE_WINDOW_SECONDS, HOLE_HOP_SECONDS) });
       calls += 1;
-      parts.push({ t0: cutAt, cutAt, seconds: Math.round((samples.length / sampleRate) * 10) / 10, retry: false, words: got.length, kept: stamped.length, text: got.map((h) => h.w.trim()).join(" "), pass: 2 });
+      parts.push({ t0: cutAt, cutAt, seconds: Math.round(seconds * 10) / 10, retry: false, words: got.length, kept: 0, text: got.map((h) => h.w.trim()).join(" "), pass: 2 });
       opts.onProgress?.({ done: calls, total });
     }
+    const borneOut = corroborated(windows);
+    const words: WindowWord[] = [];
+    windows.forEach((_, i) => {
+      const inside = borneOut[i].filter((x) => x.start >= hole.from && x.start < hole.to);
+      parts[parts.length - windows.length + i].kept = inside.length;
+      if (inside.length) trusted += 1;
+      words.push(...inside);
+    });
     heard.push(mergeWindows(words));
   }
-  return { heard, parts, calls };
+  return { heard, parts, calls, trusted };
 }
 
 /**
@@ -234,7 +296,7 @@ export function fillHoles(words: readonly TranscriptWord[], holes: readonly Hole
   return { words: out, replaced };
 }
 
-export type SecondListen = { holes: number; calls: number; replaced: number; coverageBefore: number; coverageAfter: number; used: boolean };
+export type SecondListen = { holes: number; calls: number; trusted: number; replaced: number; coverageBefore: number; coverageAfter: number; used: boolean };
 
 export type TimingResult = AlignResult & { transcriptWords: number; windows: number; lowConfidence: number; suspect: number };
 
