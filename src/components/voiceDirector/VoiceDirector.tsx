@@ -99,8 +99,9 @@ export function VoiceDirector({ projectId }: { projectId: string }) {
 
   const holding = phase === "recording";
 
+  // On a phone the shell's navigation bar is fixed to the bottom of the screen: sit above it, not on it.
   return (
-    <div className="pointer-events-auto fixed bottom-4 right-4 z-40 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-white/10 bg-background/90 p-3 shadow-xl backdrop-blur">
+    <div className="pointer-events-auto fixed bottom-28 right-4 z-40 w-[min(22rem,calc(100vw-2rem))] rounded-2xl md:bottom-4 border border-white/10 bg-background/90 p-3 shadow-xl backdrop-blur">
       <p className="text-[10px] uppercase tracking-[0.2em] text-foreground/50">Director · Phase 1</p>
       <p className="mt-1 text-xs text-foreground/70">
         Hold to talk. Read-only — I will not add shots or draft treatments.
