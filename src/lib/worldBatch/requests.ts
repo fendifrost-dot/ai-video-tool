@@ -94,3 +94,31 @@ export function buildMotionRequest(
   if (stillUrl) body.referenceImageUrl = stillUrl;
   return { endpoint: "video-providers-higgsfield-model", provider: "higgsfield", modelVariant: model, body };
 }
+
+/**
+ * Why the still generator did not draw, in words. It answers with a code ("xai_error", "cost_gate") and, beside it,
+ * what the image model itself said — "the image failed — xai_error" told the director nothing about a refusal that
+ * the second attempt was bound to repeat.
+ */
+export function stillFailure(data: Record<string, unknown>): string {
+  const code = typeof data.error === "string" && data.error ? data.error : "the image generator failed";
+  if (code === "cost_gate") return `this would cost about $${Number(data.estimatedCostUsd ?? 0).toFixed(2)}, above the limit of $${Number(data.maxCostUsd ?? 0).toFixed(2)} for one request`;
+  const detail = data.detail as { error?: unknown; message?: unknown; code?: unknown; _raw?: unknown } | string | null | undefined;
+  const said =
+    typeof detail === "string"
+      ? detail
+      : detail && typeof detail === "object"
+        ? typeof detail.error === "string"
+          ? detail.error
+          : detail.error && typeof detail.error === "object" && typeof (detail.error as { message?: unknown }).message === "string"
+            ? (detail.error as { message: string }).message
+            : typeof detail.message === "string"
+              ? detail.message
+              : typeof detail._raw === "string"
+                ? detail._raw
+                : ""
+        : "";
+  const status = typeof data.httpStatus === "number" ? ` (${data.httpStatus})` : "";
+  const who = code === "xai_error" ? "the image model refused" : code;
+  return said.trim() ? `${who}${status}: ${said.trim().slice(0, 300)}` : `${who}${status}`;
+}

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { LOOK_PRESETS } from "@/lib/shotCompiler";
+import { stillFailure } from "./requests";
 import {
   BatchShotSchema,
   PROMPT_CAPS,
@@ -379,5 +380,19 @@ describe("a still on its own (the storyboard's Generate image)", () => {
     const plain = deps();
     await submitShot(BatchShotSchema.parse({ id: "c006", route: "still_kling", prompt: "x", still_path: "u/p/worlds/a.png" }), { ...CTX, shotIds: undefined }, plain);
     expect("shotId" in (plain.insertJob as ReturnType<typeof vi.fn>).mock.calls[0][0].request_payload_json).toBe(false);
+  });
+});
+
+describe("why the still generator did not draw", () => {
+  it("says what the image model itself said, not only a code", () => {
+    expect(stillFailure({ ok: false, error: "xai_error", httpStatus: 400, detail: { error: "Generated image rejected by content moderation." } })).toBe("the image model refused (400): Generated image rejected by content moderation.");
+    expect(stillFailure({ ok: false, error: "xai_error", httpStatus: 429, detail: { error: { message: "Rate limit reached" } } })).toBe("the image model refused (429): Rate limit reached");
+    expect(stillFailure({ ok: false, error: "xai_error", httpStatus: 502, detail: { _raw: "<html>Bad gateway</html>" } })).toBe("the image model refused (502): <html>Bad gateway</html>");
+    // nothing said: the code and the status are all there is
+    expect(stillFailure({ ok: false, error: "xai_error", httpStatus: 500, detail: {} })).toBe("the image model refused (500)");
+    expect(stillFailure({ ok: false })).toBe("the image generator failed");
+  });
+  it("a request above the cost limit says both numbers", () => {
+    expect(stillFailure({ ok: false, error: "cost_gate", estimatedCostUsd: 0.28, maxCostUsd: 0.2 })).toBe("this would cost about $0.28, above the limit of $0.20 for one request");
   });
 });

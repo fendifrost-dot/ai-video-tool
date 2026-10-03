@@ -3,6 +3,7 @@
  * from runner.ts so the rules there stay testable without any of it.
  */
 import { supabase } from "@/lib/supabase";
+import { stillFailure } from "./requests";
 import { buildStoragePath, signedUrl, uploadToBucket } from "@/lib/storage";
 import { statusFromEnvelope, type BatchJobRow, type RunnerDeps } from "./runner";
 import { panelSeam, type PanelSeam } from "./stillCheck";
@@ -68,6 +69,8 @@ export async function browserRunnerDeps(): Promise<RunnerDeps> {
     generateStills: async (body) => {
       const { data, error } = await supabase.functions.invoke<Record<string, unknown>>("world-still-proxy", { body });
       if (error || !data) return { ok: false, error: await detailOf(error, data) };
+      // the generator answers 200 with ok:false and the image model's own reason beside a code: say the reason
+      if (data.ok === false) return { ...(data as object), ok: false, error: stillFailure(data) };
       return data as Awaited<ReturnType<RunnerDeps["generateStills"]>>;
     },
     insertJob: async (row) => {
