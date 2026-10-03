@@ -7,6 +7,7 @@
  * markdown + show provenance.
  */
 
+import { functionFailure } from "@/lib/functionsError";
 import { supabase } from "@/lib/supabase";
 import { ProviderCallError } from "@/lib/providerJobs/api";
 
@@ -193,7 +194,11 @@ async function callTreatmentEndpoint(
   const { data, error } = await supabase.functions.invoke<
     { ok: boolean } & Record<string, unknown>
   >("proxy-provider-call", { body: { endpoint: "ai-draft-treatment", method: "POST", body } });
-  if (error) throw new ProviderCallError("INTERNAL", error.message || "proxy failed");
+  if (error) {
+    // the reply says why (the writer is not reachable, the provider refused, …): say that, not "non-2xx"
+    const failure = await functionFailure(error, data);
+    throw new ProviderCallError("INTERNAL", `The treatment writer could not be reached${failure.status ? ` (${failure.status})` : ""}: ${failure.reason}`);
+  }
   if (!data || data.ok === false) {
     throw new ProviderCallError(
       String(data?.errorCode ?? "PROVIDER_API_ERROR"),
