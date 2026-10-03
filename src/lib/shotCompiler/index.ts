@@ -35,6 +35,7 @@ export {
   negativePromptLocks,
   seedanceAnglePrompt,
   PLACE_LIGHT,
+  PLACE_LIGHT_CHANGING,
   wrapPrompt,
 } from "./prompts";
 

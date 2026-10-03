@@ -97,15 +97,28 @@ export const PLACE_LIGHT =
   "He has no bright outline, halo or cut-out edge against the background, and he has the same focus and grain as the place. " +
   "The environment is still, only he and the camera move.";
 
+const STILL_PLACE = "The environment is still, only he and the camera move.";
+/**
+ * The same, for a shot whose request carries timed changes of the place or its light. "The environment is still"
+ * beside "from 4.7 s the pool of light dies" is one request saying two things: the first restaging asked for with a
+ * timed script would have been told both.
+ */
+export const PLACE_LIGHT_CHANGING = PLACE_LIGHT.replace(
+  STILL_PLACE,
+  "The environment changes only as the timed changes say, at the seconds they say; until then and apart from them it is still, and only he and the camera move.",
+);
+
 /**
  * Seedance angle prompt — mirror run_world_batch.py angle_prompt().
  * @Video1 = real take (identity from the clip). keep[] wardrobe constants required.
+ * `opts.timedChanges` = the angle sentence carries a script of changes inside the shot (storyboard/temporal.ts).
  */
 export function seedanceAnglePrompt(
   angle: string,
   keep: string[],
   look: LookPreset | null | undefined,
   withImage: boolean,
+  opts: { timedChanges?: boolean } = {},
 ): string {
   const keepStr = keep.filter(Boolean).join(", ") || "his face, hair, skin and every piece of wardrobe";
   const parts = [
@@ -113,7 +126,7 @@ export function seedanceAnglePrompt(
     `Keep everything identical to @Video1 — ${keepStr} — and most of all the same mouth movements at the same moments, word for word, in sync with @Video1 from the first frame to the last.`,
   ];
   if (withImage) {
-    parts.push(PLACE_LIGHT);
+    parts.push(opts.timedChanges ? PLACE_LIGHT_CHANGING : PLACE_LIGHT);
   } else {
     parts.push("The same room, the same light.");
   }
