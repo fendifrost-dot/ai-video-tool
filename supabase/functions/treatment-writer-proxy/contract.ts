@@ -83,12 +83,14 @@ export function contextBlocks(ctx: WriterContext): string {
     .join("\n\n");
 }
 
-const FOOTAGE_RULES =
-  "The project has the artist's REAL performance footage, in sync with the song. That footage is the spine of the video: " +
-  "a `performance` shot IS that footage — his real performance, either as filmed or re-shot inside the place you describe. " +
-  "So for a performance shot write the PLACE he performs in and how the camera sees him there; he wears exactly what the notes say he wears in the footage, in every shot he is in. " +
-  "He appears ONLY in performance shots: every other shot shows the world around him — places, objects, details, other people — and never his face. " +
-  "While words are being delivered, most shots are performance; cutaways land on held notes, gaps between lines and repeats of the hook, and no more than two shots in a row leave him.";
+const FOOTAGE_RULES = [
+  "The project has the artist's REAL performance footage, in sync with the song. That footage is the spine of the video: a `performance` shot IS that footage — his real performance, as filmed or re-shot inside the place you describe.",
+  "- For a performance shot write the PLACE he performs in and how the camera sees him there. He keeps the body position and framing he was filmed in (the notes say how), so put him where a man could be standing like that. He wears exactly what the notes say he wears in the footage, in every shot he is in.",
+  "- He appears ONLY in performance shots. Every other shot shows the world around him — places, objects, details, other people — and never his face.",
+  "- Cut it like a real music video: his performance carries the song, and the picture keeps leaving him and coming back. Of every three shots about two are performance and one is a cutaway. Never four performance shots in a row; never more than two cutaways in a row.",
+  "- A cutaway goes where the words name something that can be shown — an object, a place, a move: show THAT thing, in the treatment's world. Where there are no words, a cutaway carries the section's mood.",
+  "- Performance shots that follow each other may stay in one place, but each is a different frame of him — wide, medium, close on the face, low angle, profile, a slow push, a slow orbit — and you say which.",
+].join("\n");
 const NO_FOOTAGE_RULES =
   "There is no real footage of the artist yet: a `performance` shot is him performing the words to camera in the place you describe, dressed in one of the looks on file.";
 
@@ -114,7 +116,7 @@ export function shotsSystemPrompt(ctx: WriterContext, treatment: string, outline
       "- `scene_description` is what the camera SEES, in one or two concrete sentences: who or what, where, doing what. No abstractions, no 'symbolising', no camera jargon.",
       "- When the shot has words, the picture answers THOSE words — name what they name, show what they claim. When it has none, it carries the mood of its section.",
       "- `shot_type`: performance = the artist delivering the words to camera; b_roll = an insert of the world (an object, a detail, a place); narrative = a staged moment with people; lyric_visual = the lyric made literally, physically real; transition = a move that carries one place into the next; vfx = something impossible, shot as if it happened.",
-      "- Do not stage the same picture twice in a row, and do not repeat a cutaway idea the song has already used.",
+      "- Never write the same sentence for two shots, never stage the same picture twice in a row, and do not repeat a cutaway idea the song has already used.",
       "- Keep to the places the treatment and the notes name. One clear subject per shot. Photoreal and filmable; nothing that needs readable text or logos.",
       "- `priority`: hero for the two or three shots the whole video is remembered by, high for the first shot of a hook, normal otherwise.",
     ].join("\n"),

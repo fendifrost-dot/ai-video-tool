@@ -24,6 +24,11 @@ describe("what the treatment writer is told", () => {
     expect(withTake).toContain("REAL performance footage");
     expect(withTake).toContain("write the PLACE he performs in");
     expect(withTake).toContain("He appears ONLY in performance shots");
+    // the cut: he carries the song, the picture leaves him and comes back, and no two frames of him are the same
+    expect(withTake).toContain("about two are performance and one is a cutaway");
+    expect(withTake).toContain("Never four performance shots in a row");
+    expect(withTake).toContain("each is a different frame of him");
+    expect(withTake).toContain("He keeps the body position and framing he was filmed in");
     expect(withTake).not.toContain("Wardrobe looks on file");
     const without = treatmentSystemPrompt({ ...ctx, hasPerformanceFootage: false });
     expect(without).toContain("There is no real footage of the artist yet");
