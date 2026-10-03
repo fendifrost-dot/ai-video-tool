@@ -320,10 +320,10 @@ def report(r):
     bf = r.get("beats_focus") or {}
     want("beats: the full-screen shot shows them and its editor opens on them", bf.get("strip") == "2" and bf.get("rows") == 2 and bf.get("stateSelect") == ["", "BLACKOUT_ICE_KEY"])
     want("beats: the record keeps the pointer to the lighting state, not a copy of its words", bf.get("lightInput") == ["the house lights die", ""])
-    want("beats: generating says what it does with them before anything is spent", bf.get("plan") == "timed_script" and "not been measured" in bf.get("planText", ""))
+    want("beats: generating says what it does with them before anything is spent", bf.get("plan") == "timed_script" and "measured so far" in bf.get("planText", "") and "early on average" in bf.get("planText", ""))
     want("beats: a light change asked of the footage under the edit's own blackout is pointed out", len(bf.get("notes") or []) == 1 and "seen through it" in bf["notes"][0])
     conf = r.get("beats_confirm", "")
-    want("beats: the restage confirm lists the beats, says the timing is unmeasured", "This shot changes while it plays" in conf and "script with times" in conf and "not been measured" in conf)
+    want("beats: the restage confirm lists the beats, says what the timing measured", "This shot changes while it plays" in conf and "script with times" in conf and "measured so far" in conf and "early on average" in conf)
     want("continuity: the shot points at its place and its light", r.get("continuity_card") == [["location", "BLACK_RUNWAY"], ["lighting", "RUNWAY_NORMAL"]])
     want("continuity: restaging uses the place's approved picture, the same for every shot set there", "approved picture of Black Runway" in conf and "approved picture of Black Runway" in bf.get("source", "") and bf.get("place") == "BLACK_RUNWAY")
     cp = r.get("continuity_panel") or {}
