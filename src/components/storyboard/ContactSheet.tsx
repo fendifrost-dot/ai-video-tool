@@ -82,7 +82,8 @@ export function ContactSheet({
             const fractions: readonly number[] = close && s.media.kind === "video" ? SHEET_AT_CLOSE : [SHEET_AT];
             return (
               <figure key={s.shotId} className="space-y-1" data-testid="contact-sheet-shot" data-box-key={s.key} data-media-kind={s.media.kind}>
-                <div className={cn("grid gap-1", fractions.length > 1 ? "grid-cols-3" : "grid-cols-1")}>
+                {/* looked at closely, every shot is a row of three cells: an image (one picture) is the size of one frame, not of three */}
+                <div className={cn("grid gap-1", close ? "grid-cols-3" : "grid-cols-1")}>
                   {fractions.map((fraction, i) => {
                     const { at } = sheetFrame(s, asset?.durationSeconds ?? null, fraction);
                     return (
