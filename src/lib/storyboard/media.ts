@@ -482,6 +482,28 @@ export function videoStateAt(segment: TimelineSegment, t: number, fileSeconds: n
   return { at, hold };
 }
 
+/** How far a playing video may run from where the song says it should be before it is pulled back with a seek, seconds. */
+export const DRIFT_TOLERANCE = 0.2;
+/** Smaller errors than that are closed by nudging the speed; below this the video simply runs. About one frame. */
+export const NUDGE_ABOVE = 0.03;
+
+/**
+ * What the player does with the active video on one tick of the song clock: seek it, and whether it runs and how
+ * fast. Pure, so the one case that cannot be staged by hand is tested: a video that has played to its own END.
+ * A video running a few hundredths ahead of the song reaches its last frame before the arithmetic says the media
+ * has run out; it is paused and ended, and `play()` on an ended video restarts it at zero — for one tick the take's
+ * FIRST frame was on screen at the take's end (the local run caught it at 191.19 s of a take that ends at 191.22 s).
+ * An ended video holds its last frame; it runs again only once a seek has taken it off its end.
+ */
+export function videoTick(input: { state: { at: number; hold: "lead_in" | "ran_out" | null }; currentTime: number; ended: boolean; playing: boolean }): { seekTo: number | null; run: boolean; rate: number } {
+  const drift = input.currentTime - input.state.at;
+  const seek = Math.abs(drift) > DRIFT_TOLERANCE;
+  // a seek takes it off its end, so it may run again from there
+  const run = input.playing && !input.state.hold && (seek || !input.ended);
+  const rate = !seek && run && Math.abs(drift) > NUDGE_ABOVE ? (drift > 0 ? 0.94 : 1.06) : 1;
+  return { seekTo: seek ? input.state.at : null, run, rate };
+}
+
 /** Gaps and overlaps between consecutive boxes (a healthy board has none): what Review reports before it plays. */
 export function timelineIssues(timeline: readonly TimelineSegment[]): string[] {
   const out: string[] = [];

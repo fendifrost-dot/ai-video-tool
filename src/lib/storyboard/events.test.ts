@@ -32,7 +32,7 @@ import {
   wordsInShot,
   type EventClock,
 } from "./events";
-import { assertPlanCovers, beatLines, orderedScript, ROUTE_TEMPORAL, stateScene, temporalPlan, timedScript, type TemporalRoute } from "./temporal";
+import { assertPlanCovers, beatLines, orderedScript, ROUTE_TEMPORAL, stateScene, temporalPlan, timedScript, timingSaid, type TemporalRoute } from "./temporal";
 import { applyOverride, boxFromRow, boxWrite, hasDirectedChange, machineContext, parseBoxOverride, planMerge, planSplit, planSplitAtBeats, rewrittenOverride, sceneOf, type BoxRow, type StoryboardBox } from "./boxes";
 import { clipShot, clipTemporalPlan, imageTemporalPlan } from "./generate";
 import { restageShot, restageTemporalPlan } from "./restage";
@@ -409,6 +409,22 @@ describe("generating a shot that changes is never a flattened prompt", () => {
       expect(cap.note.length, route).toBeGreaterThan(20);
       if (route !== "image") expect(cap.measured, route).toBe(false);
     }
+  });
+
+  it("what was measured of a route's timing is said in numbers, and a route nobody measured says so", () => {
+    // Seedance was measured on the fresh section: the change was drawn, about a second early — that is not "keeps to time"
+    const e = ROUTE_TEMPORAL.seedance_ref.evidence!;
+    expect(ROUTE_TEMPORAL.seedance_ref.measured).toBe(false);
+    expect(e.errorsSeconds).toEqual([-1.02, -0.94]);
+    expect(timingSaid("seedance_ref")).toBe("On the 2 restagings measured so far (3 October 2026) the change asked for was drawn and began 1.0 s early on average (−1.02 s, −0.94 s). Each clip is measured against its beats when it comes back.");
+    expect(timingSaid("seedance_ref")).not.toMatch(/works|accurate|reliabl/i);
+    for (const route of ONE_STATE) {
+      expect(ROUTE_TEMPORAL[route].evidence, route).toBeUndefined();
+      expect(timingSaid(route), route).toContain("has not been measured");
+    }
+    // the plan a director is shown before paying carries the same sentence
+    const plan = temporalPlan({ route: "seedance_ref", resolved, shotSeconds: 4 });
+    expect(plan.mode === "timed_script" && plan.timing).toBe(timingSaid("seedance_ref"));
   });
 
   it("a shot with no directed change generates as it always did, on every route", () => {

@@ -37,6 +37,7 @@ import {
   takeRangeForBox,
   timelineIssues,
   videoStateAt,
+  videoTick,
   type Assignment,
   type MediaAsset,
   type TakeSync,
@@ -589,5 +590,26 @@ describe("what a shot's video does at a moment of the song", () => {
 
   it("is not asked of an image or an empty shot", () => {
     expect(videoStateAt({ ...seg(), media: { kind: "none" } }, 189)).toBeNull();
+  });
+
+  it("a video that has played to its own end holds its last frame — it is never asked to play again from zero", () => {
+    // the take is 190.375 s long; the video ran 0.03 s ahead of the song and ended while the arithmetic still said "running"
+    const state = videoStateAt(seg(), 191.17, 190.375)!;
+    expect(state).toEqual({ at: 190.32, hold: null });
+    const ended = videoTick({ state, currentTime: 190.375, ended: true, playing: true });
+    expect(ended).toEqual({ seekTo: null, run: false, rate: 1 });
+    // the same moment with the video still running: it runs, nudged back toward the song
+    expect(videoTick({ state, currentTime: 190.36, ended: false, playing: true })).toMatchObject({ seekTo: null, run: true });
+    // scrubbed back while ended: the seek takes it off its end and it runs from there
+    const back = videoStateAt(seg(), 189, 190.375)!;
+    expect(videoTick({ state: back, currentTime: 190.375, ended: true, playing: true })).toEqual({ seekTo: back.at, run: true, rate: 1 });
+    // far from where the song says: a seek, at normal speed; a frame or two out: a nudge, no seek
+    expect(videoTick({ state: back, currentTime: back.at - 1, ended: false, playing: true })).toEqual({ seekTo: back.at, run: true, rate: 1 });
+    expect(videoTick({ state: back, currentTime: back.at + 0.1, ended: false, playing: true })).toEqual({ seekTo: null, run: true, rate: 0.94 });
+    expect(videoTick({ state: back, currentTime: back.at - 0.1, ended: false, playing: true })).toEqual({ seekTo: null, run: true, rate: 1.06 });
+    expect(videoTick({ state: back, currentTime: back.at + 0.01, ended: false, playing: true })).toEqual({ seekTo: null, run: true, rate: 1 });
+    // paused, or holding: it does not run
+    expect(videoTick({ state: back, currentTime: back.at, ended: false, playing: false }).run).toBe(false);
+    expect(videoTick({ state: { at: 190.325, hold: "ran_out" }, currentTime: 190.325, ended: false, playing: true }).run).toBe(false);
   });
 });

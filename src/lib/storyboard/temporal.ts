@@ -25,10 +25,19 @@ export type TemporalSupport = "timed_script" | "none";
 /** The generation routes the storyboard uses, and the still. */
 export type TemporalRoute = "image" | "still_kling" | "kling_t2v" | "still_dop" | "still_runway" | "still_runway45" | "runway_t2v" | "seedance_ref";
 
+/**
+ * What AVT has measured of a route keeping to the times it is given: for each returned clip read frame by frame
+ * (storyboard/beatCheck.ts), where the asked change BEGAN relative to where it was asked — seconds, negative is
+ * early. A fact about clips already made, not a promise about the next one.
+ */
+export type TimingEvidence = { on: string; errorsSeconds: readonly number[]; where: string };
+
 export type RouteTemporal = {
   support: TemporalSupport;
-  /** True only when AVT has measured that the route follows what it is given. Nothing here is, yet. */
+  /** True only when measurement shows the route KEEPS to the times it is given. Seedance has been measured and did not (its evidence), so nothing here is, yet. */
   measured: boolean;
+  /** What was measured, when anything was. */
+  evidence?: TimingEvidence;
   /** Why, in words a director reads. */
   note: string;
 };
@@ -46,9 +55,26 @@ export const ROUTE_TEMPORAL: Record<TemporalRoute, RouteTemporal> = {
   seedance_ref: {
     support: "timed_script",
     measured: false,
-    note: "Seedance reference-to-video takes a script with times; how closely it keeps to them has not been measured here, so the frames at each beat are the check",
+    // the fresh-section test: c038 asked at 4.69 s, began at 3.67 s; c035 asked at 1.90 s, began at 0.96 s
+    evidence: { on: "3 October 2026", errorsSeconds: [-1.02, -0.94], where: "docs/research/results/2026-10-03-fresh-section/RESULTS.md" },
+    note: "Seedance reference-to-video takes a script with times; on the restagings measured it drew the change asked for, about a second early, so every clip is measured when it comes back",
   },
 };
+
+const signed = (n: number) => `${n < 0 ? "−" : "+"}${Math.abs(n).toFixed(2)} s`;
+
+/**
+ * What a director is told about a route's timing before anything is spent: what was measured, in numbers, or that
+ * nothing has been. Never "it works".
+ */
+export function timingSaid(route: TemporalRoute): string {
+  const e = ROUTE_TEMPORAL[route].evidence;
+  if (!e || e.errorsSeconds.length === 0) return "How closely it keeps to them has not been measured — the frames at each beat are the check.";
+  const mean = e.errorsSeconds.reduce((a, b) => a + b, 0) / e.errorsSeconds.length;
+  const n = e.errorsSeconds.length;
+  const where = Math.abs(mean) <= 0.25 ? "on time" : `${Math.abs(mean).toFixed(1)} s ${mean < 0 ? "early" : "late"} on average`;
+  return `On the ${n} restaging${n === 1 ? "" : "s"} measured so far (${e.on}) the change asked for was drawn and began ${where} (${e.errorsSeconds.map(signed).join(", ")}). Each clip is measured against its beats when it comes back.`;
+}
 
 export type TemporalPlan =
   /** Nothing in the shot has to be drawn changing: generate as always. (Effects are the edit's and are not sent.) */
@@ -56,7 +82,7 @@ export type TemporalPlan =
   /** The image of a shot that changes: the opening state, said plainly. */
   | { mode: "opening_state"; beats: number; note: string }
   /** The route takes a timed script and is given one. `asked` is the script as data: what a check of the footage is held against. */
-  | { mode: "timed_script"; script: string; beats: number; measured: boolean; note: string; asked: AskedBeat[] }
+  | { mode: "timed_script"; script: string; beats: number; measured: boolean; note: string; /** What has been measured of this route's timing, said to the director (timingSaid). */ timing: string; asked: AskedBeat[] }
   /** The route cannot: nothing is generated. `alternatives` are the mechanisms the storyboard offers instead. */
   | { mode: "refused"; beats: number; reason: string; alternatives: TemporalAlternative[] }
   /** Asked for by name: the beats in order, with no claim about when. */
@@ -151,7 +177,7 @@ export function temporalPlan(input: { route: TemporalRoute; resolved: readonly R
   }
   if (cap.support === "timed_script") {
     const asked = askedBeats(input.resolved, input.shotSeconds);
-    return { mode: "timed_script", script: scriptOf(asked), beats: directed.length, measured: cap.measured, note: cap.note, asked };
+    return { mode: "timed_script", script: scriptOf(asked), beats: directed.length, measured: cap.measured, note: cap.note, timing: timingSaid(input.route), asked };
   }
   if (input.allowOrdered) {
     return { mode: "ordered", script: orderedScript(input.resolved, input.shotSeconds), beats: directed.length, note: `${cap.note}. It is told the beats in order; when each happens is its own choice.`, asked: askedBeats(input.resolved, input.shotSeconds) };
