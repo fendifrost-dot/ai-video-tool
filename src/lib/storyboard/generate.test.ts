@@ -45,4 +45,10 @@ describe("every picture the storyboard draws", () => {
       expect(prompt.match(/fills the frame from edge to edge/g)).toHaveLength(1);
     }
   });
+
+  it("is asked for as the scene, never as a scan of film — no leak, scratch or hair", () => {
+    expect(FULL_BLEED).toMatch(/not a scan of a film frame/);
+    expect(FULL_BLEED).toMatch(/no light leak at the edges/);
+    expect(FULL_BLEED).toMatch(/no scratches, dust or hair/);
+  });
 });

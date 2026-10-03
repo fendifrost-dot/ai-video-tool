@@ -30,11 +30,14 @@ const EMPTY_SET = "An empty set, photographed with nobody in it: no people, no f
  */
 export const NO_MARKS = "Nothing in the picture carries a logo, a brand mark or readable lettering.";
 /**
- * The picture is the whole frame. Asked for a "film" look, an image model sometimes draws the film too — a dark
- * border, a rounded frame line — and the clip made from it carries that border through every frame of the shot
- * (Astra's second look at the first live section: "a thin dark rectangular border surrounds the image").
+ * The picture is the whole frame, and it is the scene — not a photograph of film. Asked for a "film" look, an image
+ * model sometimes draws the film too: a dark border, a rounded frame line, and on a dark scene the scan itself
+ * (a glow leaking in at the edges, scratches, a hair). The clip made from it carries that through every frame of the
+ * shot (Astra's second look at the first live section: "a thin dark rectangular border surrounds the image").
  */
-export const FULL_BLEED = "The picture fills the frame from edge to edge: no border, no frame line, no rounded corners, no letterbox bars.";
+export const FULL_BLEED =
+  "The picture fills the frame from edge to edge: no border, no frame line, no rounded corners, no letterbox bars. " +
+  "It is the scene itself, not a scan of a film frame: no film edge, no light leak at the edges, no scratches, dust or hair on the picture.";
 /** A place said in fewer words than this is a label ("backstage"), not a picture: the scene is needed to draw it. */
 const PLACE_WORDS = 6;
 
