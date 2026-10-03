@@ -33,6 +33,9 @@ export type BatchJobSettings = {
   stillCostUsd?: number | null;
   sourceWindow?: [number, number] | null;
   masterStart?: number | null;
+  /** The asset the source clip was cut from, and how many seconds were asked for (a restaged take). */
+  sourceAssetId?: string | null;
+  sourceSeconds?: number | null;
 };
 
 /** The slice of a provider_jobs row the runner reads. */
@@ -234,6 +237,7 @@ export async function submitShot(
     stillCostUsd,
     sourceWindow: shot.source_window ?? null,
     masterStart: shot.masterStart ?? null,
+    ...(shot.source_asset_id ? { sourceAssetId: shot.source_asset_id, sourceSeconds: shot.source_seconds ?? null } : {}),
   };
   // WRITE-AHEAD: the record exists before the money moves.
   const rowId = await deps.insertJob({

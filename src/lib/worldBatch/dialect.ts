@@ -35,6 +35,8 @@ export const BatchShotSchema = z
     source_trim: z.tuple([z.number(), z.number()]).nullish(),
     source_seconds: z.number().positive().nullish(),
     source_window: z.tuple([z.number(), z.number()]).nullish(),
+    /** The project asset the source clip was cut from (the storyboard's restaging: the result keeps that take's clock). */
+    source_asset_id: z.string().nullish(),
     masterStart: z.number().nullish(),
     angle: z.string().nullish(),
     keep: z.array(z.string()).default([]),
