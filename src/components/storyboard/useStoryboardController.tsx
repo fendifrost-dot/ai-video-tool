@@ -398,7 +398,9 @@ export function useStoryboardController(projectId: string): StoryboardController
       run(box, "adding…", async () => {
         const r = role ?? roleForAsset(asset);
         if (!r) throw new Error("That file cannot be put on a shot");
-        await applyOps.mutateAsync(planAssign({ assignments, shotId: box.id, assetId: asset.id, role: r }));
+        // an image put on a performance shot is the place his take can be restaged in: the take keeps showing
+        const select = !(box.spec.shotType === "performance" && r === "generated_image");
+        await applyOps.mutateAsync(planAssign({ assignments, shotId: box.id, assetId: asset.id, role: r, select }));
       }),
     [run, applyOps, assignments],
   );

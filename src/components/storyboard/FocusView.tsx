@@ -258,7 +258,7 @@ function MediaList({ box, items, showing }: { box: StoryboardBox; items: BoxMedi
             {item.kind === "video" && <FrameStrip item={item} url={sb.urlFor(item.asset)} aspect={sb.aspect} />}
             {/* an image is seen here too, whether or not it is what the shot shows: a place drawn for a take is never "showing" */}
             {item.kind === "image" && sb.urlFor(item.asset) && (
-              <img src={sb.urlFor(item.asset)} alt={item.asset.name} loading="lazy" className="max-h-56 rounded border border-border/50 object-contain" data-testid="focus-media-image" />
+              <img src={sb.urlFor(item.asset)} alt={item.asset.name} className="max-h-56 rounded border border-border/50 object-contain" data-testid="focus-media-image" />
             )}
             <div className="flex flex-wrap items-center gap-1.5">
               {!isShowing && item.role !== "reference" && (

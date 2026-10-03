@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { takeRangeForBox, isUsableSync, type AssignmentRole, type MediaAsset } from "@/lib/storyboard/media";
 import { useTakeSyncs } from "@/lib/queries/storyboard";
-import { ROLE_LABEL, ROLE_STYLE } from "./BoxMediaView";
+import { ROLE_LABEL, ROLE_STYLE, mediaLabel } from "./BoxMediaView";
 import { RangeVideo } from "./RangeVideo";
 import { mediaRefKey, playbackRef, signRefs } from "./signedUrls";
 import { Overlay } from "./Overlay";
@@ -112,7 +112,7 @@ export function MediaPicker() {
                 const already = onBox.has(`${asset.id}:${role}`);
                 return (
                   <li key={asset.id} className="flex items-center gap-2 px-4 py-2" data-testid="media-row" data-asset-id={asset.id} data-role={role}>
-                    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", ROLE_STYLE[role])}>{ROLE_LABEL[role]}</span>
+                    <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", ROLE_STYLE[role])}>{mediaLabel({ role, base: false, asset })}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-xs text-foreground/85">{asset.name}</span>
                       <span className="block text-[10px] text-foreground/40">
