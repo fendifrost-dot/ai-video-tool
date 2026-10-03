@@ -216,7 +216,7 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
             />
 
             {/* the check is of the whole cut, whatever section is being looked at: a section cannot be right inside a cut that is not */}
-            <CutCheck timeline={whole} boxes={boxes} assignments={assignments} assets={media.byId} syncs={syncs} song={checkSong} />
+            <CutCheck timeline={whole} boxes={boxes} assignments={assignments} assets={media.byId} syncs={syncs} song={checkSong} playerTimeline={inSection ? timeline : undefined} />
           </>
         )}
       </div>
