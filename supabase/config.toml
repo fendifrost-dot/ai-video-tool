@@ -119,6 +119,11 @@ verify_jwt = true
 [functions.lyric-visualizer-proxy]
 verify_jwt = true
 
+# Setup → "Time the lyrics to the song": one 30 s window of the song in, the words heard in it out.
+# User JWT required; the project must be the caller's. Stores nothing.
+[functions.lyric-align-proxy]
+verify_jwt = true
+
 [functions.world-still-proxy]
 verify_jwt = true
 
