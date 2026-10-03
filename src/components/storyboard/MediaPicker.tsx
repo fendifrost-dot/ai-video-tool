@@ -8,6 +8,7 @@ import { useTakeSyncs } from "@/lib/queries/storyboard";
 import { ROLE_LABEL, ROLE_STYLE } from "./BoxMediaView";
 import { RangeVideo } from "./RangeVideo";
 import { mediaRefKey, playbackRef, signRefs } from "./signedUrls";
+import { Overlay } from "./Overlay";
 import { useStoryboard } from "./useStoryboardController";
 
 const TABS: { id: AssignmentRole | "all"; label: string }[] = [
@@ -59,6 +60,7 @@ export function MediaPicker() {
   };
 
   return (
+    <Overlay>
     <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/70 p-0 md:items-center md:p-6" data-testid="media-picker" onClick={() => sb.openPicker(null)}>
       <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl border border-border bg-background md:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -147,5 +149,6 @@ export function MediaPicker() {
         </div>
       </div>
     </div>
+    </Overlay>
   );
 }

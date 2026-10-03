@@ -204,12 +204,16 @@ describe("the full-screen shot view", () => {
 
   it("shows the same record, its position, and moves to the neighbours; back returns to the board", () => {
     const sb = controller({ focusId: "r2" });
-    render(
+    const { container } = render(
       <StoryboardProvider value={sb}>
         <FocusView />
       </StoryboardProvider>,
     );
     const view = screen.getByTestId("focus-view");
+    // drawn on the document body, above the app shell — inside the page it slid under the phone header and its
+    // Back button could not be reached
+    expect(container.querySelector('[data-testid="focus-view"]')).toBeNull();
+    expect(view.parentElement).toBe(document.body);
     expect(view.getAttribute("data-box-key")).toBe("c002");
     expect(screen.getByTestId("focus-position").textContent).toBe("02 / 03");
     expect(screen.getByTestId("focus-scene").textContent).toBe("scene c002");
@@ -220,6 +224,25 @@ describe("the full-screen shot view", () => {
     fireEvent.keyDown(window, { key: "ArrowRight" });
     expect(sb.openFocus).toHaveBeenLastCalledWith("r3");
     fireEvent.click(screen.getByTestId("focus-close"));
+    expect(sb.openFocus).toHaveBeenLastCalledWith(null);
+  });
+
+  it("fills the screen inside the page where the browser offers no full screen (a phone), and Escape leaves that first", () => {
+    const sb = controller({ focusId: "r2" });
+    render(
+      <StoryboardProvider value={sb}>
+        <FocusView />
+      </StoryboardProvider>,
+    );
+    const stage = screen.getByTestId("focus-stage");
+    expect(stage.getAttribute("data-fill")).toBe("false");
+    fireEvent.click(screen.getByTestId("focus-fullscreen"));
+    expect(stage.getAttribute("data-fill")).toBe("true");
+    expect(screen.getByTestId("focus-fill-position").textContent).toBe("02 / 03");
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(stage.getAttribute("data-fill")).toBe("false");
+    expect(sb.openFocus).not.toHaveBeenCalledWith(null);
+    fireEvent.keyDown(window, { key: "Escape" });
     expect(sb.openFocus).toHaveBeenLastCalledWith(null);
   });
 

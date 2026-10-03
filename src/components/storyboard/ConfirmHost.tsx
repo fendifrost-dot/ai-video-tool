@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Overlay } from "./Overlay";
 import type { ConfirmRequest } from "./useStoryboardController";
 
 /**
@@ -12,6 +13,7 @@ export function ConfirmHost({ request, onClose }: { request: ConfirmRequest | nu
   const [working, setWorking] = useState(false);
   if (!request) return null;
   return (
+    <Overlay>
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4" data-testid="confirm-dialog" onClick={() => !working && onClose()}>
       <div className="w-full max-w-sm space-y-3 rounded-2xl border border-border bg-background p-5" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-sm font-semibold">{request.title}</h2>
@@ -37,5 +39,6 @@ export function ConfirmHost({ request, onClose }: { request: ConfirmRequest | nu
         </div>
       </div>
     </div>
+    </Overlay>
   );
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Film, Image as ImageIcon, LayoutGrid, Loader2, Lock, Maximize, Plus, Quote, Wand2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Film, Image as ImageIcon, LayoutGrid, Loader2, Lock, Maximize, Minimize, Plus, Quote, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -9,6 +9,7 @@ import type { BoxMediaItem } from "@/lib/storyboard/media";
 import { sceneText } from "./BoxCard";
 import { BoxEditor } from "./BoxEditor";
 import { BoxMediaView, ROLE_STYLE, mediaLabel } from "./BoxMediaView";
+import { Overlay } from "./Overlay";
 import { useStoryboard } from "./useStoryboardController";
 
 type Tab = "details" | "media" | "versions";
@@ -27,6 +28,20 @@ export function FocusView() {
   const [tab, setTab] = useState<Tab>("details");
   const stage = useRef<HTMLDivElement>(null);
   const touch = useRef<{ x: number; y: number } | null>(null);
+  // "Fill the screen" inside the page — what a phone gets, where the browser's own full screen is not offered
+  // for anything but a video. The stage covers everything; swiping still moves between shots.
+  const [fill, setFill] = useState(false);
+
+  const toggleFullScreen = useCallback(() => {
+    if (fill) return setFill(false);
+    if (typeof document !== "undefined" && document.fullscreenElement) return void document.exitFullscreen?.();
+    const el = stage.current;
+    if (el?.requestFullscreen) {
+      void el.requestFullscreen().catch(() => setFill(true));
+      return;
+    }
+    setFill(true);
+  }, [fill]);
 
   const go = useCallback(
     (delta: number) => {
@@ -43,7 +58,10 @@ export function FocusView() {
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
       if (e.key === "ArrowRight") go(1);
       else if (e.key === "ArrowLeft") go(-1);
-      else if (e.key === "Escape") sb.openFocus(null);
+      else if (e.key === "Escape") {
+        if (fill) setFill(false);
+        else sb.openFocus(null);
+      }
     };
     window.addEventListener("keydown", onKey);
     // the board behind must not scroll while a shot is open
@@ -53,7 +71,7 @@ export function FocusView() {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [box, go, sb]);
+  }, [box, go, sb, fill]);
 
   if (!box) return null;
   const number = index + 1;
@@ -65,13 +83,14 @@ export function FocusView() {
   const blocked = sb.rewriteBlockedReason(box);
 
   return (
+    <Overlay>
     <div className="fixed inset-0 z-50 flex flex-col bg-background" data-testid="focus-view" data-box-key={box.key} data-box-number={number}>
       {/* Header ------------------------------------------------------------------ */}
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
         <button type="button" onClick={() => go(-1)} disabled={index === 0} aria-label="Previous shot" className="rounded-md p-2 text-foreground/70 hover:bg-white/5 disabled:opacity-25" data-testid="focus-prev">
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <span className="font-mono text-sm tabular-nums" data-testid="focus-position">
+        <span className="whitespace-nowrap font-mono text-sm tabular-nums" data-testid="focus-position">
           {String(number).padStart(2, "0")} <span className="text-foreground/35">/ {String(sb.boxes.length).padStart(2, "0")}</span>
         </span>
         <button type="button" onClick={() => go(1)} disabled={index === sb.boxes.length - 1} aria-label="Next shot" className="rounded-md p-2 text-foreground/70 hover:bg-white/5 disabled:opacity-25" data-testid="focus-next">
@@ -84,7 +103,9 @@ export function FocusView() {
         <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold text-primary">{shotTypeLabel(box.spec.shotType)}</span>
         {box.locked && <Lock className="h-3 w-3 text-foreground/40" />}
         <Button size="sm" variant="outline" className="ml-auto h-8 text-[11px]" onClick={() => sb.openFocus(null)} data-testid="focus-close">
-          <LayoutGrid className="mr-1.5 h-3.5 w-3.5" /> Back to storyboard
+          <LayoutGrid className="mr-1.5 h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Back to storyboard</span>
+          <span className="sm:hidden">Storyboard</span>
         </Button>
       </div>
 
@@ -94,7 +115,8 @@ export function FocusView() {
           <div className="space-y-3">
             <div
               ref={stage}
-              className="relative aspect-video w-full touch-pan-y overflow-hidden rounded-xl bg-black"
+              className={cn("touch-pan-y overflow-hidden bg-black", fill ? "fixed inset-0 z-[80] m-0" : "relative aspect-video w-full rounded-xl")}
+              data-fill={fill ? "true" : "false"}
               onTouchStart={(e) => {
                 touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
               }}
@@ -114,13 +136,18 @@ export function FocusView() {
               </div>
               <button
                 type="button"
-                onClick={() => void stage.current?.requestFullscreen?.().catch(() => toast.info("This browser does not allow full screen here"))}
-                aria-label="Full screen"
-                className="absolute right-2 top-2 rounded-md bg-black/55 p-1.5 text-white/90 backdrop-blur hover:bg-black/75"
+                onClick={toggleFullScreen}
+                aria-label={fill ? "Leave full screen" : "Full screen"}
+                className="absolute right-2 top-2 z-10 rounded-md bg-black/55 p-1.5 text-white/90 backdrop-blur hover:bg-black/75"
                 data-testid="focus-fullscreen"
               >
-                <Maximize className="h-3.5 w-3.5" />
+                {fill ? <Minimize className="h-4 w-4" /> : <Maximize className="h-3.5 w-3.5" />}
               </button>
+              {fill && (
+                <span className="pointer-events-none absolute left-1/2 top-2 z-10 -translate-x-1/2 rounded bg-black/55 px-1.5 py-0.5 font-mono text-[10px] text-white/80 backdrop-blur" data-testid="focus-fill-position">
+                  {String(number).padStart(2, "0")} / {String(sb.boxes.length).padStart(2, "0")}
+                </span>
+              )}
             </div>
             <p className="text-center text-[10px] text-foreground/35 md:hidden">Swipe left or right to move between shots</p>
 
@@ -190,6 +217,7 @@ export function FocusView() {
         </div>
       </div>
     </div>
+    </Overlay>
   );
 }
 
