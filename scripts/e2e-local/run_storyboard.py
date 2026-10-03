@@ -40,6 +40,13 @@ async def desktop(b, out):
         f.append(await pg.evaluate("() => { const v=document.querySelector('[data-testid=focus-stage] video'); return v? {ct:+v.currentTime.toFixed(2), paused:v.paused, rs:v.readyState}:null; }"))
     out["focus_c005_take"] = {"pos": await pg.inner_text("[data-testid=focus-position]"), "expected_range": [round(15.69-OFFSET,2), round(19.61-OFFSET,2)], "samples": f}
     await pg.screenshot(path="shot_focus_desktop.png")
+    # the shot's footage as frames: five across the range it plays, and a poster under the player
+    await pg.click("[data-testid=focus-tab-media]")
+    try: await pg.wait_for_function("() => { const f=[...document.querySelectorAll('[data-testid=focus-media-frame]')]; return f.length >= 5 && f.every(e => e.dataset.state !== 'loading'); }", timeout=60000)
+    except Exception: pass
+    out["focus_frames"] = await pg.evaluate("() => { const f=[...document.querySelectorAll('[data-testid=focus-media-frame]')]; return {n: f.length, ready: f.filter(e=>e.dataset.state==='ready').length, times: f.map(e=>+(+e.dataset.time).toFixed(2)), poster: document.querySelector('[data-testid=range-video-poster]')?.dataset.state}; }")
+    await pg.screenshot(path="shot_focus_frames.png")
+    await pg.click("[data-testid=focus-tab-details]")
     await pg.click("[data-testid=focus-next]"); await pg.wait_for_timeout(2500)
     out["focus_next"] = {"pos": await pg.inner_text("[data-testid=focus-position]"), "media": await pg.evaluate("() => { const m=document.querySelector('[data-testid=focus-stage] [data-testid=box-media]'); const v=m.querySelector('video'); return {role:m.dataset.mediaRole, file:v&&v.currentSrc.split('?')[0].split('/').pop(), ct:v&&+v.currentTime.toFixed(2), paused:v&&v.paused}; }")}
     # full screen
@@ -84,6 +91,16 @@ async def desktop(b, out):
         files: [...document.querySelectorAll('[data-testid=review-verify-file]')].map(e => [e.dataset.use, e.dataset.ok, e.textContent.slice(0,160)]),
         cuts: document.querySelectorAll('[data-testid=review-verify-cut]').length,
         notChecked: document.querySelector('[data-testid=review-verify-not-checked]').innerText}; }""")
+    # ---- the cut at a glance: one frame per shot, decoded from the files without a player
+    await pg.click("[data-testid=contact-sheet-toggle]")
+    try: await pg.wait_for_function("() => { const f=[...document.querySelectorAll('[data-testid=contact-sheet-frame]')]; return f.length > 30 && f.every(e => e.dataset.state !== 'loading'); }", timeout=120000)
+    except Exception: pass
+    out["contact_sheet"] = await pg.evaluate("""() => { const shots=[...document.querySelectorAll('[data-testid=contact-sheet-shot]')]; const f=[...document.querySelectorAll('[data-testid=contact-sheet-frame]')];
+      const lit = (c) => { try { const d=c.getContext('2d').getImageData(0,0,c.width,c.height).data; let s=0; for (let i=0;i<d.length;i+=97) s+=d[i]; return s>0; } catch (e) { return false; } };
+      return {shots: shots.length, frames: f.length, ready: f.filter(e=>e.dataset.state==='ready').length, failed: f.filter(e=>e.dataset.state==='failed').map(e=>e.dataset.note), drawn: f.filter(e=>e.dataset.state==='ready' && lit(e)).length,
+        images: document.querySelectorAll('[data-testid=contact-sheet-image]').length, c001: f[0] && +f[0].dataset.time, c002: f[1] && +f[1].dataset.time}; }""")
+    await pg.locator("[data-testid=contact-sheet-card]").screenshot(path="shot_contact_sheet.png")
+    await pg.click("[data-testid=contact-sheet-toggle]")
     # ---- the project frame: 9:16 by default; changed in Setup, Review and the full-screen shot follow
     FRAME = "() => { const st=document.querySelector('[data-testid=sequence-stage]'); const r=st.getBoundingClientRect(); return {aspect: st.dataset.aspect, ratio: +(r.width/r.height).toFixed(3)}; }"
     out["frame_default"] = await pg.evaluate(FRAME)
@@ -197,6 +214,10 @@ def report(r):
     want("check this cut: passes", cc.get("ok") == "true")
     want("check this cut: every line holds, the player read back", all(c[1] == "true" for c in cc.get("checks", [])) and len(cc.get("checks", [])) >= 12)
     want("check this cut: 43 shots listed", cc.get("cuts") == 43)
+    cs = r.get("contact_sheet") or {}
+    want("contact sheet: a frame drawn for every shot on an MP4", cs.get("shots") == 43 and cs.get("drawn", 0) >= 39 and cs.get("images") == 1)
+    ff = r.get("focus_frames") or {}
+    want("focus: five frames across the shot's range, and a poster", ff.get("n") == 5 and ff.get("ready") == 5 and ff.get("poster") == "ready" and ff.get("times", [0])[0] >= 14.8 and ff.get("times", [99])[-1] <= 18.8)
     want("frame: 9:16 by default", (r.get("frame_default") or {}).get("aspect") == "9:16" and abs((r.get("frame_default") or {}).get("ratio", 0) - 9 / 16) < 0.01)
     want("frame: Review follows 16:9", (r.get("frame_16_9") or {}).get("aspect") == "16:9" and abs((r.get("frame_16_9") or {}).get("ratio", 0) - 16 / 9) < 0.02)
     want("frame: the full-screen shot follows 16:9", (r.get("focus_frame_16_9") or {}).get("aspect") == "16:9")
