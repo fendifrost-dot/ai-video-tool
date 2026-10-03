@@ -13,6 +13,7 @@ const VERDICT_STYLE: Record<BeatVerdict, string> = {
   on_time: "bg-emerald-500/15 text-emerald-300",
   displaced: "bg-amber-500/15 text-amber-200",
   not_seen: "bg-rose-500/15 text-rose-300",
+  unmeasured: "bg-sky-500/15 text-sky-200",
 };
 
 const clip = (n: number, max: number) => Math.round(Math.max(0, Math.min(n, Math.max(0, max - 0.05))) * 1000) / 1000;

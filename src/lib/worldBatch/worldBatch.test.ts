@@ -65,10 +65,10 @@ function deps(over: Partial<RunnerDeps> = {}): RunnerDeps & { calls: string[] } 
   return {
     calls,
     userId: "user-1",
-    sign: vi.fn(async (bucket, path) => { calls.push(`sign:${bucket}`); return `https://signed/${bucket}/${path}`; }),
+    sign: vi.fn(async (bucket: "project-clips" | "project-references", path: string) => { calls.push(`sign:${bucket}`); return `https://signed/${bucket}/${path}`; }),
     generateStills: vi.fn(async () => { calls.push("stills"); return { ok: true, stills: [{ path: "u/p/worlds/a.png" }, { path: "u/p/worlds/b.png" }], actualCostUsd: 0.14 }; }),
     insertJob: vi.fn(async () => { calls.push("insert"); return "row-1"; }),
-    updateJob: vi.fn(async (_id, patch) => { calls.push(`update:${String(patch.status)}`); }),
+    updateJob: vi.fn(async (_id: string, patch: Record<string, unknown>) => { calls.push(`update:${String(patch.status)}`); }),
     callProxy: vi.fn(async () => { calls.push("proxy"); return { ok: true, providerJobId: "job-abc", status: "queued", costEstimateCents: 185 }; }),
     ...over,
   };
@@ -310,7 +310,7 @@ describe("a still that is two pictures", () => {
   const seamOf = (frac: number, straight = 0.8) => ({ frac, straight, at: 0.4, axis: "row" as const });
 
   it("the motion model gets the first candidate that is one picture", async () => {
-    const d = deps({ inspectStill: vi.fn(async (path) => (path.endsWith("a.png") ? seamOf(0.86) : seamOf(0.87, 0.09))) });
+    const d = deps({ inspectStill: vi.fn(async (path: string) => (path.endsWith("a.png") ? seamOf(0.86) : seamOf(0.87, 0.09))) });
     const r = await submitShot(WORLD, CTX, d);
     expect(r.stillPath).toBe("u/p/worlds/b.png");
     expect((d.callProxy as ReturnType<typeof vi.fn>).mock.calls[0][1]).toMatchObject({ referenceImageUrl: "https://signed/project-references/u/p/worlds/b.png" });
