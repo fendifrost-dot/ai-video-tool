@@ -168,18 +168,19 @@ export async function hearSong(
 //
 // A hosted transcriber handed thirty seconds can lose a sung verse entirely (measured on YSL, 2026-10-03: seventeen
 // sung lines unheard in both windows that covered them). So where the first pass leaves a run of lines unfound WITH
-// song time to spare between the found lines either side, that stretch is heard again in windows seven seconds
-// apart, so every moment of it is heard by four different cuts.
+// song time to spare between the found lines either side, that stretch is heard again in short windows a few seconds
+// apart, so every moment of it is heard by three different cuts.
 //
 // A transcriber with the lyrics in its prompt will also write lyrics over an instrumental. So the second listen
 // keeps a word only when another window, cut elsewhere, heard the same word at the same moment; what a single cut
 // wrote is left out. What survives replaces the first pass only where it holds more of the missing lines' words, and
 // the new timing is kept only if the aligner's own coverage went up.
 
-// Whole windows, cut at a different phase from the first pass: on YSL a 30 s window heard a verse from one cut and
-// nothing from a cut seven seconds away, and 15 s windows heard worse than either.
-export const HOLE_WINDOW_SECONDS = WINDOW_SECONDS;
-export const HOLE_HOP_SECONDS = 7;
+// Measured on YSL, same first pass (29 % of the words): 15 s windows 5 s apart took it to 50 %, 30 s windows 7 s
+// apart to 41 %. The hosted transcriber is erratic by cut — one cut hears a verse, a cut seven seconds away hears
+// nothing — so more, shorter cuts with agreement between them is what works.
+export const HOLE_WINDOW_SECONDS = 15;
+export const HOLE_HOP_SECONDS = 5;
 /** The second listen starts this long before the hole, so the hole's first seconds are heard by several cuts too. */
 export const HOLE_LEAD_SECONDS = 10;
 /** Two windows heard "the same word at the same moment" when they agree within this, seconds. */
