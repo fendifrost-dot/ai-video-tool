@@ -90,7 +90,7 @@ export function MediaPicker() {
         {preview && (
           <div className="relative aspect-video w-full shrink-0 bg-black">
             {preview.asset.isVideo ? (
-              <RangeVideo src={preview.url} {...rangeOf(preview.asset)} autoPlay showControls />
+              <RangeVideo src={preview.url} {...rangeOf(preview.asset)} autoPlay showControls posterKey={mediaRefKey(playbackRef(preview.asset))} />
             ) : (
               <img src={preview.url} alt="" className="absolute inset-0 h-full w-full object-contain" />
             )}

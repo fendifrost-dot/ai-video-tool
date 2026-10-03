@@ -5,6 +5,7 @@ import { PrevisFrame } from "@/components/treatment/PrevisFrame";
 import type { StoryboardBox } from "@/lib/storyboard/boxes";
 import type { AssignmentRole, BoxMediaItem } from "@/lib/storyboard/media";
 import { RangeVideo } from "./RangeVideo";
+import { mediaRefKey, playbackRef } from "./signedUrls";
 import { useStoryboard } from "./useStoryboardController";
 
 export const ROLE_LABEL: Record<AssignmentRole, string> = {
@@ -29,6 +30,7 @@ export function mediaLabel(item: Pick<BoxMediaItem, "role" | "base">): string {
 
 /** One piece of media, played or shown — always the whole frame, never cropped. */
 export function MediaItemView({ item, url, mode, testId }: { item: BoxMediaItem; url: string | undefined; mode: "card" | "focus"; testId?: string }) {
+  const fileKey = mediaRefKey(playbackRef(item.asset));
   if (!url) {
     return (
       <div className="absolute inset-0 flex items-center justify-center gap-2 text-xs text-white/50">
@@ -58,6 +60,7 @@ export function MediaItemView({ item, url, mode, testId }: { item: BoxMediaItem;
         autoPlay={mode === "focus"}
         showControls={mode === "focus"}
         testId={testId}
+        posterKey={mode === "focus" ? fileKey : undefined}
       />
     </div>
   );

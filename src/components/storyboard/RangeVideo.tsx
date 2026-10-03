@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FrameThumb } from "./FrameThumb";
 
 /** Start a media element without letting a refused or unsupported play() surface as an error. */
 export function safePlay(el: HTMLMediaElement): void {
@@ -30,6 +31,7 @@ export function RangeVideo({
   loop = true,
   className,
   testId,
+  posterKey,
 }: {
   src: string;
   /** In-point inside the file, seconds. */
@@ -42,6 +44,11 @@ export function RangeVideo({
   loop?: boolean;
   className?: string;
   testId?: string;
+  /**
+   * The file's identity (bucket:path). Given, the in-point's frame is drawn under the player straight from the file,
+   * so the shot has a picture before the video has loaded — and in a window where the browser loads no video at all.
+   */
+  posterKey?: string;
 }) {
   const holder = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
@@ -114,6 +121,7 @@ export function RangeVideo({
 
   return (
     <div ref={holder} className={cn("relative h-full w-full bg-black", className)} data-testid={testId}>
+      {posterKey && inView && !failed && <FrameThumb fileKey={posterKey} url={src} seconds={start} className="absolute inset-0" testId="range-video-poster" maxWidth={720} />}
       {inView && !failed && (
         <video
           ref={video}

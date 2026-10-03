@@ -10,6 +10,7 @@ import { sceneText } from "./BoxCard";
 import { BoxEditor } from "./BoxEditor";
 import { BoxMediaView, ROLE_STYLE, mediaLabel } from "./BoxMediaView";
 import { frameBoxStyle } from "@/lib/project/aspect";
+import { FrameStrip } from "./FrameStrip";
 import { Overlay } from "./Overlay";
 import { useStoryboard } from "./useStoryboardController";
 
@@ -254,6 +255,7 @@ function MediaList({ box, items, showing }: { box: StoryboardBox; items: BoxMedi
               </p>
             )}
             {item.note && <p className="text-[10px] text-amber-300/90">{item.note}</p>}
+            {item.kind === "video" && <FrameStrip item={item} url={sb.urlFor(item.asset)} aspect={sb.aspect} />}
             <div className="flex flex-wrap items-center gap-1.5">
               {!isShowing && item.role !== "reference" && (
                 <Button size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => void sb.select(item, box)} data-testid="focus-media-show">
