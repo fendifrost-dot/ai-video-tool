@@ -61,6 +61,8 @@ const MAX_OUTPUT_TOKENS = 12000;
 // xAI list prices per 1M tokens for the default model (2026-09); the gate is an estimate, the ledger uses usage
 const PRICE_PER_M: Record<string, { input: number; output: number }> = { "grok-4.6": { input: 3, output: 15 }, "grok-4-fast": { input: 0.2, output: 0.5 } };
 const DEFAULT_MAX_COST_USD = 0.5;
+/** A treatment is a page, not a book: a longer one is cut rather than refused (the box still gets written). */
+const MAX_TREATMENT_CHARS = 8000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type Body = {
@@ -95,6 +97,14 @@ type Body = {
   templateContext?: TemplateContext;
   /** The storyboard box this scene is written for, so the beats fit its window. */
   shot?: ShotWindow;
+
+  // --- additive (storyboard redesign, 2026-10-03). Absent = exactly the behaviour above. ----
+  /** The project's one treatment: the creative brief the scene serves. */
+  treatment?: string;
+  /** One line each about the boxes before and after this one. */
+  neighbours?: { before?: string | null; after?: string | null };
+  /** Locked facts about the box, as data (window, take range, footage on it, look, what the director fixed). */
+  projectState?: Record<string, unknown>;
 };
 
 // One xAI call PER LINE, run in parallel: a whole-song call outlives the gateway's 150 s idle window (seen live
@@ -252,6 +262,10 @@ serve(async (req) => {
     limits,
     templateBody,
     shot: body.shot ?? null,
+    treatment: typeof body.treatment === "string" ? body.treatment.slice(0, MAX_TREATMENT_CHARS) : null,
+    neighbours: body.neighbours ?? null,
+    projectState: body.projectState ?? null,
+    hasExemplars: (body.exemplars ?? []).length > 0,
   });
   const context = { heroDescription: body.heroDescription, currentEnvironment: body.environment, style: body.style ?? null };
   const activeSchema = mode === "all" ? SCHEMA : SCENE_SCHEMA;

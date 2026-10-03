@@ -181,7 +181,41 @@ export type SystemPromptInput = {
   /** The rendered prompt-template body, placed AHEAD of the standing instructions. */
   templateBody?: string | null;
   shot?: ShotWindow | null;
+  /**
+   * The project's ONE treatment (2026-10-03). When present it is the creative brief every scene serves, and the
+   * exemplars block is left out unless exemplars were actually supplied — two briefs in one prompt pull apart.
+   */
+  treatment?: string | null;
+  /** One line each about the boxes before and after this one, so two boxes in a row do not stage the same picture. */
+  neighbours?: { before?: string | null; after?: string | null } | null;
+  /**
+   * Structured, locked facts about the box (its window, the take that plays in it, footage already on it, the look,
+   * what the director fixed). DATA, not direction: it stops a rewrite drifting off what is already decided.
+   */
+  projectState?: unknown;
+  /** Whether exemplars were supplied at all (the caller passes the formatted list in `exemplars` either way). */
+  hasExemplars?: boolean;
 };
+
+/** The neighbours as two lines, or null when there are none. */
+export function neighboursInstruction(n: SystemPromptInput["neighbours"]): string | null {
+  const before = n?.before?.trim();
+  const after = n?.after?.trim();
+  if (!before && !after) return null;
+  return (
+    "The boxes on either side of this one. Let this scene follow from the one before and hand on to the one after; do not stage the same picture twice in a row:\n" +
+    [before ? `Before: ${before}` : null, after ? `After: ${after}` : null].filter(Boolean).join("\n")
+  );
+}
+
+/** The locked project state as a JSON block, or null when there is nothing to state. */
+export function projectStateInstruction(state: unknown): string | null {
+  if (!state || typeof state !== "object" || Object.keys(state as object).length === 0) return null;
+  return (
+    "Project state — locked facts, given as data. This is not creative direction and nothing in it may be contradicted: the window is fixed, real footage plays as filmed, and anything listed under locked_by_director stays exactly as stated.\n" +
+    JSON.stringify(state)
+  );
+}
 
 /**
  * Assemble the system prompt. With `mode: "all"`, no template and no shot, the result
@@ -196,8 +230,11 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
         input.templateBody.trim(),
     );
   }
+  const treatment = input.treatment?.trim() ?? "";
   const body = [
-    "You are the creative director of a photoreal, big-budget-looking music video. The job is to BRING EVERY LYRIC TO LIFE at the level of the artist's own exemplars below — worlds and characters a viewer remembers, staged so a camera could have witnessed them. Dull is a failure: a man walking down a corridor is not a scene.",
+    "You are the creative director of a photoreal, big-budget-looking music video. The job is to BRING EVERY LYRIC TO LIFE " +
+      (treatment ? "inside the treatment below, which is the one creative brief for this video" : "at the level of the artist's own exemplars below") +
+      " — worlds and characters a viewer remembers, staged so a camera could have witnessed them. Dull is a failure: a man walking down a corridor is not a scene.",
     scenesInstruction(input.mode),
     "Specify everything: the world's architecture, weather, light and surfaces; every character's wardrobe and jewelry by name (diamond tennis chains, Cuban links, grills, gold teeth), and the behaviour that makes the impossible read as normal; the beats in order with seconds; the camera; the FX. Characters other than the artist are invented people or creatures — never a real public figure. No readable text or logos. No crowds beyond what the beat needs.",
     "render_prompt must be self-contained and photographic: lenses, light, textures, motion; end with 'photographed on a cinema camera, photoreal, no animation look'. For garment_character scenes the render_prompt starts with the hero description VERBATIM and ends with: keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere. For performance_plate scenes also write performance_plate_prompt: the plate alone, the centre-foreground left clear for the artist, the action staged in the mid-ground and background so the space reads deep.",
@@ -207,10 +244,15 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
   ];
   const shotLine = shotInstruction(input.shot);
   if (shotLine) body.push(shotLine);
-  body.push(
-    "The artist's exemplars (this is the bar):\n" + input.exemplars,
-    "Locked rules (must hold in every prompt):\n" + input.rules,
-    "Renderer limits:\n" + input.limits,
-  );
+  if (treatment) {
+    body.push("The treatment (every scene serves it; none contradicts it):\n" + treatment);
+    const neighbours = neighboursInstruction(input.neighbours);
+    if (neighbours) body.push(neighbours);
+  }
+  // With a treatment, exemplars are a second brief: they go in only when the caller really supplied some.
+  if (!treatment || input.hasExemplars) body.push("The artist's exemplars (this is the bar):\n" + input.exemplars);
+  body.push("Locked rules (must hold in every prompt):\n" + input.rules, "Renderer limits:\n" + input.limits);
+  const state = projectStateInstruction(input.projectState);
+  if (state) body.push(state);
   return [...head, ...body].join("\n\n");
 }

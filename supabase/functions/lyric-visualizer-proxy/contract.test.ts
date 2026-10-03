@@ -6,6 +6,8 @@ import {
   buildSystemPrompt,
   isLyricMode,
   LYRIC_MODES,
+  neighboursInstruction,
+  projectStateInstruction,
   renderTemplate,
   scenesInstruction,
   scenesPerLine,
@@ -232,5 +234,55 @@ describe("the dry run reports the template it would have used", () => {
 describe("the cost gate stays honest about the mode", () => {
   it("estimates one scene per line outside 'all'", () => {
     expect(flat).toContain("body.lines.length * scenesPerLine(mode) * 450");
+  });
+});
+
+describe("the treatment is the one creative brief (2026-10-03)", () => {
+  const base = { ...ARGS, mode: "literal" as const };
+
+  it("absent, the prompt is exactly what it was", () => {
+    expect(buildSystemPrompt({ ...base, treatment: null, neighbours: null, projectState: null, hasExemplars: true })).toBe(buildSystemPrompt(base));
+    expect(buildSystemPrompt({ ...base, treatment: "   " })).toBe(buildSystemPrompt(base));
+    expect(buildSystemPrompt({ ...ARGS, mode: "all", treatment: "" })).toBe(
+      legacySystemPrompt(ARGS.clipSeconds, ARGS.exemplars, ARGS.rules, ARGS.limits),
+    );
+  });
+
+  it("present, it replaces the exemplars as the brief", () => {
+    const p = buildSystemPrompt({ ...base, exemplars: "- (none supplied)", treatment: "A winter palace of ice.", hasExemplars: false });
+    expect(p).toContain("The treatment (every scene serves it; none contradicts it):\nA winter palace of ice.");
+    expect(p).toContain("inside the treatment below, which is the one creative brief for this video");
+    expect(p).not.toContain("exemplars");
+  });
+
+  it("exemplars go in beside a treatment only when some were really supplied", () => {
+    const p = buildSystemPrompt({ ...base, treatment: "A winter palace of ice.", hasExemplars: true });
+    expect(p).toContain("The artist's exemplars (this is the bar):");
+  });
+
+  it("neighbours are stated only with a treatment, and only the ones that exist", () => {
+    expect(neighboursInstruction(null)).toBeNull();
+    expect(neighboursInstruction({ before: " ", after: null })).toBeNull();
+    expect(neighboursInstruction({ before: "insert: a Bentley at the kerb", after: null })).toMatch(/Before: insert: a Bentley at the kerb$/);
+    const p = buildSystemPrompt({ ...base, treatment: "T", neighbours: { before: "performance: he raps", after: "insert: the rim" } });
+    expect(p).toContain("Before: performance: he raps\nAfter: insert: the rim");
+    expect(buildSystemPrompt({ ...base, neighbours: { before: "x", after: "y" } })).toBe(buildSystemPrompt(base));
+  });
+
+  it("project state is carried as data, after the rules, and says it is not direction", () => {
+    expect(projectStateInstruction(null)).toBeNull();
+    expect(projectStateInstruction({})).toBeNull();
+    const state = { song_window_seconds: [32, 36.2], performance_source: { take: "Take 1", source_range_seconds: [31.15, 35.35] } };
+    const p = buildSystemPrompt({ ...base, treatment: "T", projectState: state });
+    expect(p.endsWith(JSON.stringify(state))).toBe(true);
+    expect(p).toContain("locked facts, given as data. This is not creative direction");
+    expect(p.indexOf("Locked rules")).toBeLessThan(p.indexOf("Project state"));
+  });
+
+  it("the function passes the three fields through and caps the treatment", () => {
+    expect(flat).toContain("treatment: typeof body.treatment === \"string\" ? body.treatment.slice(0, MAX_TREATMENT_CHARS) : null");
+    expect(flat).toContain("neighbours: body.neighbours ?? null");
+    expect(flat).toContain("projectState: body.projectState ?? null");
+    expect(flat).toContain("hasExemplars: (body.exemplars ?? []).length > 0");
   });
 });
