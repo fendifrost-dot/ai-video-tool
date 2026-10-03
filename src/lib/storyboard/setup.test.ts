@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { footageSummary, parseLrc, setupStatus } from "./setup";
-import { clearTreatment, fingerprint, hasTreatment, parseTreatmentDoc, storyboardIsStale, withTreatmentDoc } from "@/lib/treatment/treatmentDoc";
+import { clearTreatment, directorNotes, fingerprint, hasTreatment, parseTreatmentDoc, storyboardIsStale, withTreatmentDoc } from "@/lib/treatment/treatmentDoc";
 
 const media = (id: string, footageRole: "performance" | "b_roll" | "reference" | null, over = {}) => ({
   id,
@@ -127,5 +127,15 @@ describe("the one treatment", () => {
     expect(doc.text).toBe("");
     const saved = parseTreatmentDoc(withTreatmentDoc(null, { ...doc, footageConfirmedAt: "t" }));
     expect(saved.footageConfirmedAt).toBe("t");
+  });
+});
+
+describe("the director's notes are one text", () => {
+  it("reads an older project's two notes together, once each, and nothing when there are none", () => {
+    expect(directorNotes("Keep it vertical.", "No crowds.")).toBe("Keep it vertical.\n\nNo crowds.");
+    expect(directorNotes("Keep it vertical.", "")).toBe("Keep it vertical.");
+    expect(directorNotes(null, " No crowds. ")).toBe("No crowds.");
+    expect(directorNotes("Same.", "Same.")).toBe("Same.");
+    expect(directorNotes(null, undefined)).toBe("");
   });
 });
