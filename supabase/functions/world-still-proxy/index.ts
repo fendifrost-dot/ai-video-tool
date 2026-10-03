@@ -43,6 +43,12 @@ type Body = {
   promptVersion?: string;
   maxCostUsd?: number;
   dryRun?: boolean;
+  /**
+   * The provider_jobs row this request belongs to (the caller's own, in this project). When given, the pictures are
+   * written on that row the moment they are filed — so the paid result is on record even if the page that asked is
+   * gone before the answer arrives, and the server can finish the job (provider-jobs-tick).
+   */
+  jobRowId?: string;
 };
 
 function json(status: number, body: unknown) {
@@ -95,7 +101,7 @@ serve(async (req) => {
   try { payload = JSON.parse(text); } catch { payload = { _raw: text.slice(0, 1500) }; }
   if (!res.ok) return json(200, { ok: false, billed: false, error: "xai_error", httpStatus: res.status, detail: payload, ...plan });
   const data = (payload.data as Array<{ b64_json?: string; url?: string }> | undefined) ?? [];
-  const stills: Array<{ path: string; previewUrl: string | null; bytes: number }> = [];
+  const stills: Array<{ path: string; previewUrl: string | null; bytes: number; assetId: string | null }> = [];
   const stamp = Date.now().toString(36);
   for (let i = 0; i < data.length; i++) {
     let bytes: Uint8Array | null = null;
@@ -106,11 +112,23 @@ serve(async (req) => {
     const { error: upErr } = await admin.storage.from("project-references").upload(path, bytes, { contentType: "image/png", upsert: true });
     if (upErr) return json(200, { ok: false, billed: true, error: "storage_upload", detail: upErr.message, ...plan });
     const { data: signed } = await admin.storage.from("project-references").createSignedUrl(path, SIGN_TTL);
-    stills.push({ path, previewUrl: signed?.signedUrl ?? null, bytes: bytes.length });
-    await admin.from("project_assets").insert({
+    const { data: filed } = await admin.from("project_assets").insert({
       user_id: userId, project_id: body.projectId, asset_type: "reference_image", file_url: path, source_tool: "grok", approval_status: "pending", notes: body.sceneTitle ?? body.shotLabel ?? null,
       metadata_json: { bucket: "project-references", mime_type: "image/png", file_size_bytes: bytes.length, lane: "world_still", model, resolution, aspect_ratio: aspect, prompt_version: body.promptVersion ?? null, shot_label: body.shotLabel ?? null, scene_title: body.sceneTitle ?? null, actual_cost_usd: rate },
-    });
+    }).select("id").maybeSingle();
+    stills.push({ path, previewUrl: signed?.signedUrl ?? null, bytes: bytes.length, assetId: (filed?.id as string | undefined) ?? null });
   }
-  return json(200, { ok: stills.length > 0, billed: true, actualCostUsd: Number((rate * stills.length).toFixed(4)), stills, ...plan });
+  const actualCostUsd = Number((rate * stills.length).toFixed(4));
+  // Write the pictures on the job they belong to. The row's status is left alone: the page that asked checks the
+  // pictures and finishes the job; if it is gone, the server does (provider-jobs-tick), from exactly this record.
+  if (body.jobRowId && UUID_RE.test(body.jobRowId) && stills.length > 0) {
+    await admin
+      .from("provider_jobs")
+      .update({ response_payload_json: { stills: stills.map((x) => ({ path: x.path, assetId: x.assetId })), actualCostUsd, recordedAt: new Date().toISOString() } })
+      .eq("id", body.jobRowId)
+      .eq("user_id", userId)
+      .eq("project_id", body.projectId)
+      .in("status", ["queued", "running"]);
+  }
+  return json(200, { ok: stills.length > 0, billed: true, actualCostUsd, stills, ...plan });
 });
