@@ -25,7 +25,8 @@ export type MotionContract = {
   exit: string;
 };
 
-export type AspectRatio = "9:16" | "16:9" | "4:3";
+/** A shape a provider can be asked for. The PROJECT frame is src/lib/project/aspect.ts; this is the request made of a model. */
+export type AspectRatio = "9:16" | "16:9" | "4:3" | "1:1" | "3:4";
 
 export type WorldBatchRoute =
   | "still_runway"
