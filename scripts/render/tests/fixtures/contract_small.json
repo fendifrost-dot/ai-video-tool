@@ -1,0 +1,312 @@
+{
+ "version": 2,
+ "clock": "song",
+ "frame": {
+  "aspect": "9:16",
+  "width": 1080,
+  "height": 1920,
+  "fit": "contain",
+  "background": "#000000"
+ },
+ "fps": 10,
+ "range": {
+  "song_in": 0,
+  "song_out": 13
+ },
+ "frames": 130,
+ "duration_seconds": 13,
+ "audio": {
+  "asset_id": "song",
+  "bucket": "project-audio",
+  "path": "u/p/song.wav",
+  "song_in": 0
+ },
+ "segments": [
+  {
+   "shot_id": "r1",
+   "key": "c001",
+   "index": 1,
+   "section": "hook",
+   "scene": "scene c001",
+   "song_in": 0,
+   "song_out": 4,
+   "frame_in": 0,
+   "frame_out": 40,
+   "media": {
+    "kind": "video",
+    "asset_id": "take1",
+    "bucket": "project-references",
+    "path": "u/p/take1.mp4",
+    "role": "performance",
+    "source_in": 0,
+    "source_out": 3.1462,
+    "lead_in": 0.8538,
+    "source_seconds": 8,
+    "base_layer": true,
+    "frames": {
+     "lead": 9,
+     "play": 31,
+     "tail": 0,
+     "source_first": 0.0462
+    }
+   },
+   "effects": [],
+   "picture_runs": [],
+   "direction": [],
+   "transition_in": {
+    "declared": "cut",
+    "realized": "cut"
+   }
+  },
+  {
+   "shot_id": "r2",
+   "key": "c002",
+   "index": 2,
+   "section": "hook",
+   "scene": "scene c002",
+   "song_in": 4,
+   "song_out": 8,
+   "frame_in": 40,
+   "frame_out": 80,
+   "media": {
+    "kind": "video",
+    "asset_id": "clip1",
+    "bucket": "project-clips",
+    "path": "u/p/clip1.mp4",
+    "role": "generated_clip",
+    "source_in": 0,
+    "source_out": 4,
+    "lead_in": 0,
+    "source_seconds": 5,
+    "base_layer": false,
+    "frames": {
+     "lead": 0,
+     "play": 40,
+     "tail": 0,
+     "source_first": 0
+    }
+   },
+   "effects": [
+    {
+     "event_id": "e1",
+     "song_time": 5,
+     "offset": 1,
+     "type": "blackout",
+     "seconds": 0.25,
+     "level": 0.1,
+     "contrast": 1.6
+    },
+    {
+     "event_id": "e3",
+     "song_time": 7,
+     "offset": 3,
+     "type": "flash",
+     "seconds": 0.3,
+     "level": 1,
+     "contrast": 1
+    }
+   ],
+   "picture_runs": [
+    {
+     "frame_in": 51,
+     "frame_out": 52,
+     "brightness": 0.64,
+     "contrast": 1.24,
+     "flash": 0
+    },
+    {
+     "frame_in": 52,
+     "frame_out": 53,
+     "brightness": 0.28,
+     "contrast": 1.48,
+     "flash": 0
+    },
+    {
+     "frame_in": 53,
+     "frame_out": 70,
+     "brightness": 0.1,
+     "contrast": 1.6,
+     "flash": 0
+    },
+    {
+     "frame_in": 70,
+     "frame_out": 71,
+     "brightness": 0.1,
+     "contrast": 1.6,
+     "flash": 1
+    },
+    {
+     "frame_in": 71,
+     "frame_out": 72,
+     "brightness": 0.1,
+     "contrast": 1.6,
+     "flash": 0.667
+    },
+    {
+     "frame_in": 72,
+     "frame_out": 73,
+     "brightness": 0.1,
+     "contrast": 1.6,
+     "flash": 0.333
+    },
+    {
+     "frame_in": 73,
+     "frame_out": 80,
+     "brightness": 0.1,
+     "contrast": 1.6,
+     "flash": 0
+    }
+   ],
+   "direction": [
+    {
+     "song_time": 6.5,
+     "offset": 2.5,
+     "lighting": "",
+     "camera": "a slow push begins",
+     "action": "",
+     "visual": "",
+     "lighting_state": null
+    }
+   ],
+   "transition_in": {
+    "declared": "crossfade_1",
+    "realized": "cut"
+   }
+  },
+  {
+   "shot_id": "r3",
+   "key": "c003",
+   "index": 3,
+   "section": "hook",
+   "scene": "scene c003",
+   "song_in": 8,
+   "song_out": 10,
+   "frame_in": 80,
+   "frame_out": 100,
+   "media": {
+    "kind": "image",
+    "asset_id": "still1",
+    "bucket": "project-references",
+    "path": "u/p/still1.png",
+    "role": "generated_image"
+   },
+   "effects": [
+    {
+     "event_id": "e1",
+     "song_time": 9,
+     "offset": 1,
+     "type": "fade_out",
+     "seconds": 0.6,
+     "level": 0,
+     "contrast": 1
+    }
+   ],
+   "picture_runs": [
+    {
+     "frame_in": 91,
+     "frame_out": 92,
+     "brightness": 0.833,
+     "contrast": 1,
+     "flash": 0
+    },
+    {
+     "frame_in": 92,
+     "frame_out": 93,
+     "brightness": 0.667,
+     "contrast": 1,
+     "flash": 0
+    },
+    {
+     "frame_in": 93,
+     "frame_out": 94,
+     "brightness": 0.5,
+     "contrast": 1,
+     "flash": 0
+    },
+    {
+     "frame_in": 94,
+     "frame_out": 95,
+     "brightness": 0.333,
+     "contrast": 1,
+     "flash": 0
+    },
+    {
+     "frame_in": 95,
+     "frame_out": 96,
+     "brightness": 0.167,
+     "contrast": 1,
+     "flash": 0
+    },
+    {
+     "frame_in": 96,
+     "frame_out": 100,
+     "brightness": 0,
+     "contrast": 1,
+     "flash": 0
+    }
+   ],
+   "direction": [],
+   "transition_in": {
+    "declared": "cut",
+    "realized": "cut"
+   }
+  },
+  {
+   "shot_id": "r4",
+   "key": "c004",
+   "index": 4,
+   "section": "hook",
+   "scene": "scene c004",
+   "song_in": 10,
+   "song_out": 12,
+   "frame_in": 100,
+   "frame_out": 120,
+   "media": {
+    "kind": "video",
+    "asset_id": "clip2",
+    "bucket": "project-clips",
+    "path": "u/p/clip2.mp4",
+    "role": "generated_clip",
+    "source_in": 0,
+    "source_out": 1.2,
+    "lead_in": 0,
+    "source_seconds": 1.2,
+    "base_layer": false,
+    "frames": {
+     "lead": 0,
+     "play": 13,
+     "tail": 7,
+     "source_first": 0
+    }
+   },
+   "effects": [],
+   "picture_runs": [],
+   "direction": [],
+   "transition_in": {
+    "declared": "cut",
+    "realized": "cut"
+   }
+  },
+  {
+   "shot_id": "r5",
+   "key": "c005",
+   "index": 5,
+   "section": "hook",
+   "scene": "scene c005",
+   "song_in": 12,
+   "song_out": 13,
+   "frame_in": 120,
+   "frame_out": 130,
+   "media": {
+    "kind": "none"
+   },
+   "effects": [],
+   "picture_runs": [],
+   "direction": [],
+   "transition_in": {
+    "declared": "cut",
+    "realized": "cut"
+   }
+  }
+ ]
+}
