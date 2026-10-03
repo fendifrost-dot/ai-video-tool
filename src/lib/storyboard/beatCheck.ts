@@ -4,22 +4,30 @@
  * the event eventually occurs. We need measured temporal adherence.")
  *
  * A clip that was asked for with a script — "from 1.9 s: the room goes dark" — is measured here against that script.
- * Every frame of the clip is reduced to a small grid of colour (media/frameSeries.ts), and this module finds the
- * moments at which the picture goes from one steady state to another:
+ * Every frame of the clip is reduced to a small grid of colour (media/frameSeries.ts). Two things are then looked for:
  *
- *   1. CHANGE POINTS. The frames are cut where cutting them explains the most of how they differ (the split that
- *      leaves two runs each as alike as possible), again inside each run, for as long as a cut separates two states
- *      that differ by more than the frames inside them do. A man performing moves in every frame; that is noise
- *      inside a run, not a change of state.
- *   2. WHEN IT BEGINS. A change is not instant. Around each cut the frames are placed on the line from the state
- *      before to the state after (0 = still the old picture, 1 = the new one): the change BEGINS at the last frame
- *      still on the old side and has ARRIVED at the first frame on the new side.
- *   3. AGAINST THE SCRIPT. The asked beats and the changes found are paired in order. For each beat:
+ *   1. A CHANGE OF LIGHT. Each frame is summed up as the light of the whole picture: how bright it is, how much
+ *      contrast it has, which way its colour leans. A man performing moves in every frame and a camera drifts, and
+ *      neither moves these numbers — measured on real restaged takes they stay within about a hundredth of
+ *      themselves — while a light that dies, comes up or changes colour moves them by many times that. The frames are
+ *      cut where cutting them explains the most of how these numbers differ, again inside each run, for as long as a
+ *      cut separates two runs that differ by more than the frames inside them do.
+ *   2. A JUMP OF THE PICTURE. Two frames next to each other that are different pictures (a cut inside the clip).
+ *      Ordinary movement is not a change of state and is not reported: on real clips it moves the grid as much as a
+ *      small staged change would, so nothing honest can be said about it from colour alone.
+ *
+ *   WHEN IT BEGINS. A change is not instant. Around each cut the frames are placed on the line from the state before
+ *   to the state after (0 = still the old light, 1 = the new one): the change BEGINS at the first frame from which
+ *   the picture never goes back, and has ARRIVED at the first frame on the new side.
+ *
+ *   AGAINST THE SCRIPT. The asked beats and the changes found are paired in order. For each beat:
  *        error = when the change began − when it was asked for.
+ *   A beat that asked for something other than light (a camera move, an action) and has no change near it is
+ *   UNMEASURED, not failed: it is for the eye.
  *
- * What this measures is THAT the picture changed and WHEN. Whether the change is the one that was asked for (the
- * light died, not the camera cut away) is not something arithmetic on colour can say: the frames before, at and after
- * each beat are shown beside the numbers, and that judgement stays with whoever looks.
+ * What this measures is THAT the light changed and WHEN. Whether the change is the one that was asked for (the pool
+ * died and points of light came up, not the whole frame fading) is not something arithmetic on colour can say: the
+ * frames before, at and after each beat are shown beside the numbers, and that judgement stays with whoever looks.
  *
  * Pure module: numbers in, numbers out.
  */
@@ -38,14 +46,15 @@ export type ChangePoint = {
   size: number;
   /** The same, in units of how much the frames inside each state differ from their own state. */
   strength: number;
-  /** "light" when the picture as a whole got brighter, darker or changed colour; "picture" when it is the layout that changed. */
+  /** "light" = the light of the whole picture changed (brighter, darker, another colour); "picture" = two neighbouring frames are different pictures (a jump). */
   kind: "light" | "picture";
   /** Mean brightness before and after, 0–1. */
   lumaBefore: number;
   lumaAfter: number;
 };
 
-export type BeatVerdict = "on_time" | "displaced" | "not_seen";
+/** `unmeasured` = the beat asked for something colour cannot time (a camera move, an action) and nothing was found near it. */
+export type BeatVerdict = "on_time" | "displaced" | "not_seen" | "unmeasured";
 
 export type MeasuredBeat = AskedChange & {
   verdict: BeatVerdict;
@@ -56,65 +65,101 @@ export type MeasuredBeat = AskedChange & {
 };
 
 export type BeatCheck = {
-  version: 2;
+  version: 3;
   measuredAt: string;
   frames: number;
   fps: number;
   clipSeconds: number;
-  /** How much the frames of one steady state differ from that state, 0–1: the floor a change has to rise above. */
+  /** How much the light of a frame differs from the light of the run it is in, 0–1: the floor a change has to rise above. */
   noise: number;
   beats: MeasuredBeat[];
   /** Changes of the picture nobody asked for (a cut, a jump). */
   unasked: ChangePoint[];
-  /** Everything asked for was seen on time / seen, but not when asked / something asked for was not seen. */
+  /** Everything that could be measured was seen on time / seen, but not when asked / a change of light that was asked for was not seen. */
   verdict: "kept" | "displaced" | "not_kept";
-  /** The picture's distance from how the clip opens, frame by frame (t, distance 0–1, brightness 0–1): the curve the numbers were read from. */
+  /** The light's distance from how the clip opens, frame by frame (t, distance, brightness 0–1): the curve the numbers were read from. */
   series: [number, number, number][];
 };
 
 /** A change that begins within this of its asked time is on time: six frames at 24 fps, half a beat at 120 BPM. */
 export const ON_TIME_SECONDS = 0.25;
-/** Two states are different states when they differ by at least this much per cell value (about 6 of 255)… */
-export const MIN_CHANGE = 0.024;
 /**
- * …and by at least this many times what could be expected between the means of two runs of the SAME state: the
- * frames inside a state differ from it (he moves, the sensor is noisy), so two runs of it differ by about that much
- * divided by the root of their lengths. Frames next to each other are alike, so a run counts for fewer independent
- * frames than it has (`CORRELATED_FRAMES` of them are one).
+ * The light of two runs is a different light when their summaries (brightness, contrast, colour lean — each 0–1) are
+ * at least this far apart. Measured: a restaged take of a man performing under a moving camera holds its brightness
+ * within about ±0.01 over four seconds; a room that goes dark moves it by 0.1 and more.
  */
-export const MIN_STRENGTH = 1.5;
+export const LIGHT_SHIFT = 0.035;
+/**
+ * …and at least this many times what two runs of the SAME light would show: the frames inside a run differ from it,
+ * so two runs of it differ by about that much divided by the root of their lengths. Frames next to each other are
+ * alike, so a run counts for fewer independent frames than it has (`CORRELATED_FRAMES` of them are one).
+ */
+export const MIN_STRENGTH = 3;
 export const CORRELATED_FRAMES = 4;
 /** Two changes closer together than this are one change still under way (a light that takes a second to die is not three events). */
 export const SAME_CHANGE_GAP_SECONDS = 0.25;
 /** A state lasts at least this long on each side of a change. */
 export const MIN_STATE_SECONDS = 0.2;
-/** A change of the whole picture's brightness or colour of at least this much is a change of LIGHT. */
-export const LIGHT_SHIFT = 0.035;
+/** Two neighbouring frames are different PICTURES when their grids differ by at least this much per cell value… */
+export const JUMP_SIZE = 0.06;
+/** …and by this many times what neighbouring frames of this clip usually differ by. */
+export const JUMP_TIMES_USUAL = 4;
 
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
 type Series = { t: number[]; x: Float64Array[]; d: number; prefix: Float64Array[]; sq: Float64Array };
 
-function build(frames: readonly FrameSig[]): Series | null {
-  const usable = frames.filter((f) => Number.isFinite(f.t) && Array.isArray(f.cells) && f.cells.length > 0).sort((a, b) => a.t - b.t);
-  if (usable.length === 0) return null;
-  const d = usable[0].cells.length;
-  const same = usable.filter((f) => f.cells.length === d);
-  const x = same.map((f) => Float64Array.from(f.cells));
+function seriesOf(t: number[], x: Float64Array[]): Series {
+  const d = x[0]?.length ?? 0;
   // prefix sums of the vectors and of their squared lengths: the mean and spread of any run in O(d)
   const prefix: Float64Array[] = [new Float64Array(d)];
-  const sq = new Float64Array(same.length + 1);
+  const sq = new Float64Array(x.length + 1);
   for (let i = 0; i < x.length; i++) {
     const next = new Float64Array(d);
-    let s = 0;
+    let sum = 0;
     for (let j = 0; j < d; j++) {
       next[j] = prefix[i][j] + x[i][j];
-      s += x[i][j] * x[i][j];
+      sum += x[i][j] * x[i][j];
     }
     prefix.push(next);
-    sq[i + 1] = sq[i] + s;
+    sq[i + 1] = sq[i] + sum;
   }
-  return { t: same.map((f) => f.t), x, d, prefix, sq };
+  return { t, x, d, prefix, sq };
+}
+
+/** Mean brightness of a frame's cells (r, g, b triples), 0–1. */
+const lumaOf = (v: readonly number[] | Float64Array): number => {
+  let y = 0;
+  const n = Math.floor(v.length / 3);
+  for (let i = 0; i < n; i++) y += 0.2126 * v[i * 3] + 0.7152 * v[i * 3 + 1] + 0.0722 * v[i * 3 + 2];
+  return n ? y / n : 0;
+};
+
+/**
+ * The light of one frame as four numbers, each 0–1: how bright the picture is, how far its cells are from that
+ * brightness (a lit pool in a dark room has a lot; an evenly lit room has little), and which way its colour leans
+ * (red–green, blue–yellow). Where a figure stands and how he moves leaves all four nearly as they were.
+ */
+export function lightOf(cells: readonly number[]): [number, number, number, number] {
+  const n = Math.floor(cells.length / 3);
+  if (n === 0) return [0, 0, 0, 0];
+  let y = 0;
+  let rg = 0;
+  let by = 0;
+  const ys = new Array<number>(n);
+  for (let i = 0; i < n; i++) {
+    const r = cells[i * 3];
+    const g = cells[i * 3 + 1];
+    const b = cells[i * 3 + 2];
+    ys[i] = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    y += ys[i];
+    rg += r - g;
+    by += b - (r + g) / 2;
+  }
+  y /= n;
+  let spreadY = 0;
+  for (let i = 0; i < n; i++) spreadY += (ys[i] - y) * (ys[i] - y);
+  return [y, Math.sqrt(spreadY / n), rg / n, by / n];
 }
 
 function meanOf(s: Series, a: number, b: number): Float64Array {
@@ -136,51 +181,11 @@ function spread(s: Series, a: number, b: number): number {
   return Math.max(0, s.sq[b] - s.sq[a] - sumSq / n);
 }
 
+/** How far apart two summaries are (the straight-line distance between them). */
 function distance(u: Float64Array, v: Float64Array): number {
-  let s = 0;
-  for (let j = 0; j < u.length; j++) s += (u[j] - v[j]) * (u[j] - v[j]);
-  return Math.sqrt(s / u.length);
-}
-
-const lumaOf = (v: Float64Array | readonly number[]): number => {
-  // cells are r, g, b triples
-  let y = 0;
-  const n = Math.floor(v.length / 3);
-  for (let i = 0; i < n; i++) y += 0.2126 * v[i * 3] + 0.7152 * v[i * 3 + 1] + 0.0722 * v[i * 3 + 2];
-  return n ? y / n : 0;
-};
-
-const tintOf = (v: Float64Array): [number, number] => {
-  // how far the picture as a whole leans red–cyan and blue–yellow
-  let rg = 0;
-  let by = 0;
-  const n = Math.floor(v.length / 3);
-  for (let i = 0; i < n; i++) {
-    rg += v[i * 3] - v[i * 3 + 1];
-    by += v[i * 3 + 2] - (v[i * 3] + v[i * 3 + 1]) / 2;
-  }
-  return n ? [rg / n, by / n] : [0, 0];
-};
-
-type Cut = { k: number; a: number; b: number; size: number; strength: number };
-
-/** The best place to cut the run [a, b) in two, with at least `m` frames on each side. */
-function bestCut(s: Series, a: number, b: number, m: number): Cut | null {
-  if (b - a < 2 * m) return null;
-  const whole = spread(s, a, b);
-  let best = -1;
-  let bestWithin = Infinity;
-  for (let k = a + m; k <= b - m; k++) {
-    const within = spread(s, a, k) + spread(s, k, b);
-    if (within < bestWithin) {
-      bestWithin = within;
-      best = k;
-    }
-  }
-  if (best < 0 || !(whole > 0)) return null;
-  const size = distance(meanOf(s, a, best), meanOf(s, best, b));
-  const noise = Math.sqrt(bestWithin / ((b - a) * s.d));
-  return { k: best, a, b, size, strength: strengthOf(size, noise, best - a, b - best) };
+  let sum = 0;
+  for (let j = 0; j < u.length; j++) sum += (u[j] - v[j]) * (u[j] - v[j]);
+  return Math.sqrt(sum);
 }
 
 /** How many times larger a difference between two runs is than two runs of one state would show. */
@@ -190,25 +195,105 @@ function strengthOf(size: number, noise: number, n1: number, n2: number): number
   return expected > 1e-6 ? size / expected : size > 0 ? 999 : 0;
 }
 
+type Cut = { k: number; a: number; b: number; size: number; strength: number };
+
+/** The best place to cut the run [a, b) in two, with at least `m` frames on each side. */
+function bestCut(s: Series, a: number, b: number, m: number): Cut | null {
+  if (b - a < 2 * m) return null;
+  let best = -1;
+  let bestWithin = Infinity;
+  for (let k = a + m; k <= b - m; k++) {
+    const within = spread(s, a, k) + spread(s, k, b);
+    if (within < bestWithin) {
+      bestWithin = within;
+      best = k;
+    }
+  }
+  if (best < 0) return null;
+  const size = distance(meanOf(s, a, best), meanOf(s, best, b));
+  const noise = Math.sqrt(bestWithin / (b - a));
+  return { k: best, a, b, size, strength: strengthOf(size, noise, best - a, b - best) };
+}
+
+/** The change of light across the cuts edges[i+1 … j+1]: from the light before the first of them to the light after the last. */
+function lightChange(s: Series, edges: readonly number[], i: number, j: number): ChangePoint {
+  const runStart = edges[i];
+  const firstCut = edges[i + 1];
+  const lastCut = edges[j + 1];
+  const runEnd = edges[j + 2];
+  const before = meanOf(s, runStart, firstCut);
+  const after = meanOf(s, lastCut, runEnd);
+  const size = distance(before, after);
+  // every frame, on the line from the light before (0) to the light after (1)
+  const dir = new Float64Array(s.d);
+  let len = 0;
+  for (let q = 0; q < s.d; q++) {
+    dir[q] = after[q] - before[q];
+    len += dir[q] * dir[q];
+  }
+  const along = (f: number) => {
+    let p = 0;
+    for (let q = 0; q < s.d; q++) p += (s.x[f][q] - before[q]) * dir[q];
+    return len > 0 ? p / len : 0;
+  };
+  // A cut sits where the two runs are most alike within themselves; the change itself can start before it and arrive
+  // after it. It BEGINS at the first frame from which the light never goes back to what it was.
+  let begin = lastCut;
+  while (begin - 1 >= runStart && along(begin - 1) > 0.2) begin--;
+  let arrive = begin;
+  for (let f = begin; f < runEnd; f++) {
+    arrive = f;
+    if (along(f) >= 0.8) break;
+  }
+  let half = begin;
+  for (let f = begin; f <= arrive; f++) {
+    half = f;
+    if (along(f) >= 0.5) break;
+  }
+  const noise = Math.sqrt((spread(s, runStart, firstCut) + spread(s, lastCut, runEnd)) / Math.max(1, firstCut - runStart + runEnd - lastCut));
+  return {
+    begins: round3(s.t[begin] - s.t[0]),
+    half: round3(s.t[half] - s.t[0]),
+    arrived: round3(s.t[arrive] - s.t[0]),
+    size: round3(size),
+    strength: round3(Math.min(999, strengthOf(size, noise, firstCut - runStart, runEnd - lastCut))),
+    kind: "light",
+    lumaBefore: round3(before[0]),
+    lumaAfter: round3(after[0]),
+  };
+}
+
+const median = (values: readonly number[]): number => {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((p, q) => p - q);
+  return sorted[Math.floor(sorted.length / 2)];
+};
+
 /**
- * Every moment in a clip at which the picture goes from one steady state to another, in time order. `max` bounds how
- * many are looked for.
+ * Every moment in a clip at which the LIGHT goes from one steady state to another, and every JUMP of the picture, in
+ * time order. `max` bounds how many changes of light are looked for.
  */
 export function findChanges(frames: readonly FrameSig[], max = 6): { changes: ChangePoint[]; noise: number; fps: number; clipSeconds: number; series: [number, number, number][] } {
-  const s = build(frames);
-  if (!s || s.t.length < 4) return { changes: [], noise: 0, fps: 0, clipSeconds: 0, series: [] };
-  const n = s.t.length;
-  const span = s.t[n - 1] - s.t[0];
+  const usable = frames.filter((f) => Number.isFinite(f.t) && Array.isArray(f.cells) && f.cells.length >= 3).sort((a, b) => a.t - b.t);
+  const cellsLength = usable[0]?.cells.length ?? 0;
+  const same = usable.filter((f) => f.cells.length === cellsLength);
+  if (same.length < 4) return { changes: [], noise: 0, fps: 0, clipSeconds: 0, series: [] };
+  const t = same.map((f) => f.t);
+  const n = t.length;
+  const span = t[n - 1] - t[0];
   const fps = span > 0 ? (n - 1) / span : 0;
   const m = Math.max(3, Math.round(MIN_STATE_SECONDS * (fps || 24)));
+  const s = seriesOf(t, same.map((f) => Float64Array.from(lightOf(f.cells))));
+
+  // --- the light: cut the frames where the light of the whole picture changes
   const cuts: Cut[] = [];
   const queue: [number, number][] = [[0, n]];
   while (queue.length > 0 && cuts.length < max) {
-    // the most significant cut of any run still open
+    // the largest change of any run still open
     let pick: { cut: Cut; at: number } | null = null;
     queue.forEach(([a, b], at) => {
       const c = bestCut(s, a, b, m);
-      if (c && c.size >= MIN_CHANGE && c.strength >= MIN_STRENGTH && (!pick || c.size * Math.min(c.strength, 8) > pick.cut.size * Math.min(pick.cut.strength, 8))) pick = { cut: c, at };
+      if (c && c.size >= LIGHT_SHIFT && c.strength >= MIN_STRENGTH && (!pick || c.size > pick.cut.size)) pick = { cut: c, at };
     });
     if (!pick) break;
     const { cut, at } = pick as { cut: Cut; at: number };
@@ -217,83 +302,44 @@ export function findChanges(frames: readonly FrameSig[], max = 6): { changes: Ch
   }
   cuts.sort((p, q) => p.k - q.k);
   const edges = [0, ...cuts.map((c) => c.k), n];
-
-  /** The change across the cuts edges[i+1 … j+1]: from the state before the first of them to the state after the last. */
-  const changeAcross = (i: number, j: number): ChangePoint => {
-    const runStart = edges[i];
-    const firstCut = edges[i + 1];
-    const lastCut = edges[j + 1];
-    const runEnd = edges[j + 2];
-    const before = meanOf(s, runStart, firstCut);
-    const after = meanOf(s, lastCut, runEnd);
-    const size = distance(before, after);
-    // every frame, on the line from the state before (0) to the state after (1)
-    const dir = new Float64Array(s.d);
-    let len = 0;
-    for (let q = 0; q < s.d; q++) {
-      dir[q] = after[q] - before[q];
-      len += dir[q] * dir[q];
-    }
-    const along = (f: number) => {
-      let p = 0;
-      for (let q = 0; q < s.d; q++) p += (s.x[f][q] - before[q]) * dir[q];
-      return len > 0 ? p / len : 0;
-    };
-    // A cut sits where the two runs are most alike within themselves; the change itself can start before it and
-    // arrive after it. It BEGINS at the first frame from which the picture never goes back to the old state.
-    let begin = lastCut;
-    while (begin - 1 >= runStart && along(begin - 1) > 0.2) begin--;
-    let arrive = begin;
-    for (let f = begin; f < runEnd; f++) {
-      arrive = f;
-      if (along(f) >= 0.8) break;
-    }
-    let half = begin;
-    for (let f = begin; f <= arrive; f++) {
-      half = f;
-      if (along(f) >= 0.5) break;
-    }
-    const noise = Math.sqrt((spread(s, runStart, firstCut) + spread(s, lastCut, runEnd)) / (Math.max(1, firstCut - runStart + runEnd - lastCut) * s.d));
-    const lumaBefore = lumaOf(before);
-    const lumaAfter = lumaOf(after);
-    const [rg0, by0] = tintOf(before);
-    const [rg1, by1] = tintOf(after);
-    const light = Math.abs(lumaAfter - lumaBefore) >= LIGHT_SHIFT || Math.hypot(rg1 - rg0, by1 - by0) >= LIGHT_SHIFT;
-    return {
-      begins: round3(s.t[begin] - s.t[0]),
-      half: round3(s.t[half] - s.t[0]),
-      arrived: round3(s.t[arrive] - s.t[0]),
-      size: round3(size),
-      strength: round3(Math.min(999, strengthOf(size, noise, firstCut - runStart, runEnd - lastCut))),
-      kind: light ? "light" : "picture",
-      lumaBefore: round3(lumaBefore),
-      lumaAfter: round3(lumaAfter),
-    };
-  };
-
-  // Cuts that follow each other with no steady state between them are ONE change still under way: a light that
-  // takes a second to die is cut into several steps above, and is one event.
+  // Cuts that follow each other with no steady light between them are ONE change still under way: a light that takes
+  // a second to die is cut into several steps above, and is one event.
   const groups: [number, number][] = [];
   for (let i = 0; i < cuts.length; i++) {
     const last = groups[groups.length - 1];
-    if (last) {
-      const prev = changeAcross(last[0], last[1]);
-      const next = changeAcross(i, i);
-      if (next.begins - prev.arrived <= SAME_CHANGE_GAP_SECONDS) {
-        last[1] = i;
-        continue;
-      }
+    if (last && lightChange(s, edges, i, i).begins - lightChange(s, edges, last[0], last[1]).arrived <= SAME_CHANGE_GAP_SECONDS) {
+      last[1] = i;
+      continue;
     }
     groups.push([i, i]);
   }
-  const changes = groups.map(([i, j]) => changeAcross(i, j)).filter((c) => c.size >= MIN_CHANGE);
-  // the floor: how much frames differ from the state they are in, over the whole clip
+  const light = groups.map(([i, j]) => lightChange(s, edges, i, j)).filter((c) => c.size >= LIGHT_SHIFT);
+
+  // --- the picture: two neighbouring frames that are different pictures (a cut inside the clip)
+  const grid = same.map((f) => f.cells);
+  const step = (i: number) => {
+    let sum = 0;
+    for (let j = 0; j < cellsLength; j++) sum += (grid[i][j] - grid[i - 1][j]) * (grid[i][j] - grid[i - 1][j]);
+    return Math.sqrt(sum / cellsLength);
+  };
+  const steps = grid.map((_, i) => (i === 0 ? 0 : step(i)));
+  const usual = median(steps.slice(1));
+  const jumps: ChangePoint[] = [];
+  for (let i = 1; i < n; i++) {
+    if (steps[i] < JUMP_SIZE || steps[i] < JUMP_TIMES_USUAL * usual) continue;
+    const at = round3(t[i] - t[0]);
+    // a light that snaps is a jump too: it is reported once, as the change of light it is
+    if (light.some((c) => at >= c.begins - 0.1 && at <= c.arrived + 0.1)) continue;
+    jumps.push({ begins: at, half: at, arrived: at, size: round3(steps[i]), strength: round3(usual > 1e-6 ? steps[i] / usual : 999), kind: "picture", lumaBefore: round3(lumaOf(grid[i - 1])), lumaAfter: round3(lumaOf(grid[i])) });
+  }
+
+  // the floor: how much the light of a frame differs from the light of the run it is in, over the whole clip
   let within = 0;
   for (let i = 0; i + 1 < edges.length; i++) within += spread(s, edges[i], edges[i + 1]);
-  const noise = Math.sqrt(within / (n * s.d));
-  const open = meanOf(s, 0, Math.min(n, Math.max(m, 3)));
-  const series = s.x.map((v, i): [number, number, number] => [round3(s.t[i] - s.t[0]), round3(distance(v, open)), round3(lumaOf(v))]);
-  return { changes, noise: round3(noise), fps: round3(fps), clipSeconds: round3(span + (fps > 0 ? 1 / fps : 0)), series };
+  const noise = Math.sqrt(within / n);
+  const open = meanOf(s, 0, Math.min(n, m));
+  const series = s.x.map((v, i): [number, number, number] => [round3(t[i] - t[0]), round3(distance(v, open)), round3(v[0])]);
+  return { changes: [...light, ...jumps].sort((p, q) => p.begins - q.begins), noise: round3(noise), fps: round3(fps), clipSeconds: round3(span + (fps > 0 ? 1 / fps : 0)), series };
 }
 
 /**
@@ -348,11 +394,14 @@ export function measureBeats(frames: readonly FrameSig[], asked: readonly AskedC
   const beats: MeasuredBeat[] = timed.map((b, i) => {
     const change = pairs[i] != null ? found.changes[pairs[i]!] : null;
     const error = change ? round3(change.begins - b.offset) : null;
-    return { ...b, change, error, verdict: !change ? "not_seen" : Math.abs(error!) <= ON_TIME_SECONDS ? "on_time" : "displaced" };
+    // a beat that asked for no change of light (a camera move, an action) and has nothing near it was not measured —
+    // colour cannot time it — which is not the same as it not having happened
+    const asksLight = b.kinds.length === 0 || b.kinds.includes("lighting");
+    return { ...b, change, error, verdict: !change ? (asksLight ? "not_seen" : "unmeasured") : Math.abs(error!) <= ON_TIME_SECONDS ? "on_time" : "displaced" };
   });
   const verdict = beats.some((b) => b.verdict === "not_seen") ? "not_kept" : beats.some((b) => b.verdict === "displaced") ? "displaced" : "kept";
   return {
-    version: 2,
+    version: 3,
     measuredAt,
     frames: frames.length,
     fps: found.fps,
@@ -369,7 +418,7 @@ export function measureBeats(frames: readonly FrameSig[], asked: readonly AskedC
 export function parseBeatCheck(value: unknown): BeatCheck | null {
   if (!value || typeof value !== "object") return null;
   const v = value as Partial<BeatCheck>;
-  if (v.version !== 2 || !Array.isArray(v.beats) || typeof v.measuredAt !== "string") return null;
+  if (v.version !== 3 || !Array.isArray(v.beats) || typeof v.measuredAt !== "string") return null;
   return v as BeatCheck;
 }
 
@@ -384,9 +433,14 @@ const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : "±"}${Math.abs(n
 
 /** One beat's result in words. */
 export function beatLine(b: MeasuredBeat): string {
-  if (!b.change || b.error == null) return `asked at ${b.offset.toFixed(2)} s — no change of the picture was found near it`;
+  if (!b.change || b.error == null) {
+    return b.verdict === "unmeasured"
+      ? `asked at ${b.offset.toFixed(2)} s — not a change of light, and colour cannot time it: look at the frames`
+      : `asked at ${b.offset.toFixed(2)} s — no change of the light was found near it`;
+  }
   const took = Math.max(0, b.change.arrived - b.change.begins);
-  return `asked at ${b.offset.toFixed(2)} s — the ${b.change.kind === "light" ? "light" : "picture"} begins to change at ${b.change.begins.toFixed(2)} s (${signed(b.error)})${took >= 0.1 ? `, arrived by ${b.change.arrived.toFixed(2)} s` : ""}`;
+  const what = b.change.kind === "light" ? `the light begins to change at ${b.change.begins.toFixed(2)} s` : `the picture jumps at ${b.change.begins.toFixed(2)} s`;
+  return `asked at ${b.offset.toFixed(2)} s — ${what} (${signed(b.error)})${took >= 0.1 ? `, arrived by ${b.change.arrived.toFixed(2)} s` : ""}`;
 }
 
-export const VERDICT_LABEL: Record<BeatVerdict, string> = { on_time: "on time", displaced: "not on time", not_seen: "not seen" };
+export const VERDICT_LABEL: Record<BeatVerdict, string> = { on_time: "on time", displaced: "not on time", not_seen: "not seen", unmeasured: "for the eye" };

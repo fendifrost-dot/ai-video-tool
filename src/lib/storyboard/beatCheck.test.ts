@@ -36,12 +36,14 @@ function clip(seconds: number, lookAt: (t: number) => Look, seed = 7, fps = FPS)
     const look = lookAt(t);
     const tint = look.tint ?? [1, 1, 1];
     const cells: number[] = [];
-    const sway = Math.sin(t * 9) * 1.2 + (r() - 0.5) * 0.8; // he moves
+    const sway = Math.sin(t * 9) * 1.2 + (r() - 0.5) * 0.15; // he moves
     for (let y = 0; y < GRID; y++) {
       for (let x = 0; x < GRID; x++) {
         const sx = x + (look.shift ?? 0);
         const room = 0.08 + 0.1 * (y / GRID) + 0.05 * Math.sin(sx * 0.9);
-        const figure = Math.abs(x - GRID / 2 - sway) < 1.6 && y > 2 ? 0.25 + 0.1 * Math.sin(t * 13 + y) : 0;
+        // a figure with a soft edge (a cell he half covers is half his), so moving him moves the picture, not its sum
+        const cover = y > 2 ? Math.max(0, Math.min(1, 2.1 - Math.abs(x - GRID / 2 - sway))) : 0;
+        const figure = cover * (0.25 + 0.04 * Math.sin(t * 13 + y));
         const v = (room + figure) * look.light;
         for (let c = 0; c < 3; c++) cells.push(Math.max(0, Math.min(1, v * tint[c] + (r() - 0.5) * 0.012)));
       }
@@ -49,6 +51,13 @@ function clip(seconds: number, lookAt: (t: number) => Look, seed = 7, fps = FPS)
     frames.push({ t, cells });
   }
   return frames;
+}
+
+/** The same picture turned upside down and moved half a frame sideways: another picture, under the same light. */
+function flip(cells: number[]): number[] {
+  const out: number[] = [];
+  for (let y = GRID - 1; y >= 0; y--) for (let x = 0; x < GRID; x++) out.push(...cells.slice((y * GRID + ((x + GRID / 2) % GRID)) * 3, (y * GRID + ((x + GRID / 2) % GRID)) * 3 + 3));
+  return out;
 }
 
 const beat = (offset: number, says = "light: the room goes dark", id = "e1"): AskedChange => ({ id, offset, kinds: ["lighting"], says });
@@ -95,11 +104,20 @@ describe("finding where a picture changes", () => {
     expect(changes[0].begins).toBeCloseTo(2, 1);
   });
 
-  it("a change of layout with the light held is a change of picture", () => {
-    const { changes } = findChanges(clip(4, (t) => ({ light: 1, shift: t < 2.5 ? 0 : 3.5 })));
+  it("the picture sliding sideways under a steady light is movement, not a change of state", () => {
+    // a camera that drifts for the whole shot, and a subject that steps to a new place half-way through
+    expect(findChanges(clip(4, (t) => ({ light: 1, shift: t * 1.2 }))).changes).toEqual([]);
+    expect(findChanges(clip(4, (t) => ({ light: 1, shift: t < 2.5 ? 0 : 3.5 }))).changes).toEqual([]);
+  });
+
+  it("two neighbouring frames that are different pictures are a jump", () => {
+    // from 2.5 s the clip is another picture altogether (the room upside down), under the same light
+    const frames = clip(4, () => ({ light: 1 })).map((f) => (f.t < 2.5 ? f : { t: f.t, cells: flip(f.cells) }));
+    const { changes } = findChanges(frames);
     expect(changes).toHaveLength(1);
     expect(changes[0].kind).toBe("picture");
-    expect(changes[0].begins).toBeCloseTo(2.5, 1);
+    expect(changes[0].begins).toBeCloseTo(2.5, 2);
+    expect(changes[0].arrived).toBe(changes[0].begins);
   });
 
   it("finds two changes in order", () => {
@@ -135,7 +153,18 @@ describe("holding the footage against the script", () => {
     const check = measureBeats(clip(4, () => ({ light: 1 })), [beat(1.9)], AT);
     expect(check.verdict).toBe("not_kept");
     expect(check.beats[0]).toMatchObject({ verdict: "not_seen", change: null, error: null });
-    expect(beatLine(check.beats[0])).toBe("asked at 1.90 s — no change of the picture was found near it");
+    expect(beatLine(check.beats[0])).toBe("asked at 1.90 s — no change of the light was found near it");
+  });
+
+  it("a beat that asked for a camera move is not failed for want of a change of light: it is for the eye", () => {
+    const push: AskedChange = { id: "e1", offset: 1.9, kinds: ["camera"], says: "camera: a slow push toward him begins" };
+    const check = measureBeats(clip(4, (t) => ({ light: 1, shift: t < 1.9 ? 0 : (t - 1.9) * 1.5 })), [push], AT);
+    expect(check.beats[0]).toMatchObject({ verdict: "unmeasured", change: null, error: null });
+    expect(check.verdict).toBe("kept");
+    expect(beatLine(check.beats[0])).toBe("asked at 1.90 s — not a change of light, and colour cannot time it: look at the frames");
+    // a beat that asked for light AND a camera move is held to the light
+    const both = measureBeats(clip(4, () => ({ light: 1 })), [{ ...push, kinds: ["lighting", "camera"] }], AT);
+    expect(both.beats[0].verdict).toBe("not_seen");
   });
 
   it("a change far from the beat is another event, not the beat arriving late", () => {
@@ -193,6 +222,6 @@ describe("the check is a record", () => {
     expect(checkAnswers(stored, asked)).toBe(true);
     expect(checkAnswers(stored, [{ ...asked[0], offset: 2.4 }])).toBe(false);
     expect(checkAnswers(null, asked)).toBe(false);
-    expect(parseBeatCheck({ version: 1, beats: [] })).toBeNull();
+    expect(parseBeatCheck({ version: 2, beats: [], measuredAt: AT })).toBeNull();
   });
 });
