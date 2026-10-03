@@ -16,7 +16,9 @@
 //   clip_grid        [{ key, start, end, section, energy, lyrics }] — the shots to write
 //   song_title, lyrics, artist_profile, visual_style, mood, additional_notes, analysis, looks,
 //   has_performance_footage, project_type
+//   continuity_entities  [{ key, kind: location|prop|lighting, name, description }] — what a shot may point at by key
 // Reply: { ok, model, treatment: { concept, narrative, sections, clips[] }, usage, actualCostUsd }
+//        A clip may carry `timed_beats` — moments inside the shot at which something changes (_shared/timedBeats.ts).
 //        or { ok: false, errorCode, errorMessage } with a non-2xx status.
 //
 // Required secrets: XAI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
@@ -24,7 +26,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
-import { acceptShots, chunkGrid, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, type GridShot, type WriterContext } from "./contract.ts";
+import { acceptShots, writerEntities, chunkGrid, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, type GridShot, type WriterContext } from "./contract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -94,6 +96,7 @@ serve(async (req) => {
     analysis: body.analysis ?? null,
     looks: Array.isArray(body.looks) ? (body.looks as { name: string; description?: string | null }[]) : [],
     hasPerformanceFootage: body.has_performance_footage === true,
+    entities: writerEntities(body.continuity_entities),
   };
   const writeText = body.write_text === true;
   const given = text(body.concept) ?? "";
@@ -157,9 +160,9 @@ serve(async (req) => {
       let why = "";
       for (let attempt = 0; attempt < 2 && got.missing.length > 0; attempt++) {
         const left = chunk.filter((s) => got.missing.includes(s.key));
-        const r = await ask(system, shotsUserMessage(left), SHOTS_SCHEMA, 400 + left.length * 420);
+        const r = await ask(system, shotsUserMessage(left), SHOTS_SCHEMA, 400 + left.length * 560);
         if (!r.ok) { why = r.why; continue; }
-        const more = acceptShots(left, r.value);
+        const more = acceptShots(left, r.value, ctx.entities);
         got = { clips: [...got.clips, ...more.clips], missing: more.missing };
       }
       return { ...got, why };

@@ -6,6 +6,8 @@
 //   2. the SHOTS — one scene for every shot of the grid it is handed, written inside that treatment.
 // The grid owns timing: the writer is told each shot's window and the words sung in it, and never moves a cut.
 
+import { acceptTimedBeats, TIMED_BEATS_PROPERTY, timedBeatsRules } from "../_shared/timedBeats.ts";
+
 export const SHOT_TYPES = ["performance", "b_roll", "narrative", "lyric_visual", "transition", "vfx"] as const;
 export const PRIORITIES = ["normal", "high", "hero"] as const;
 
@@ -24,7 +26,46 @@ export type WriterContext = {
   looks?: { name: string; description?: string | null }[];
   /** The project has real performance footage in sync with the song. */
   hasPerformanceFootage?: boolean;
+  /** The project's continuity entities — places, props and lighting states described once. A shot points at them by key. */
+  entities?: WriterEntity[];
 };
+
+export type WriterEntity = { key: string; kind: "location" | "prop" | "lighting"; name: string; description?: string | null };
+
+/** The entities a writer may point at, cleaned: a key, a known kind, a name. */
+export function writerEntities(value: unknown): WriterEntity[] {
+  if (!Array.isArray(value)) return [];
+  const out: WriterEntity[] = [];
+  for (const raw of value.slice(0, 60)) {
+    const r = (raw ?? {}) as Record<string, unknown>;
+    const key = typeof r.key === "string" ? r.key.trim() : "";
+    const kind = r.kind === "location" || r.kind === "prop" || r.kind === "lighting" ? r.kind : null;
+    const name = typeof r.name === "string" ? r.name.trim() : "";
+    if (!key || !kind || !name || out.some((e) => e.key === key)) continue;
+    out.push({ key, kind, name: name.slice(0, 120), description: typeof r.description === "string" ? r.description.trim().slice(0, 600) : null });
+  }
+  return out;
+}
+
+const KIND_HEAD = { location: "Places", prop: "Props", lighting: "Lighting states" } as const;
+
+/** The entities as a block the writer reads, or null when the project has none. */
+export function entitiesBlock(entities: readonly WriterEntity[] | undefined): string | null {
+  const list = entities ?? [];
+  if (list.length === 0) return null;
+  const group = (kind: WriterEntity["kind"]) => {
+    const of = list.filter((e) => e.kind === kind);
+    return of.length ? `${KIND_HEAD[kind]}:\n${of.map((e) => `- ${e.key} — ${e.name}${e.description ? `: ${e.description}` : ""}`).join("\n")}` : null;
+  };
+  return [
+    "The project's continuity entities — each is described ONCE, here, and looks the same in every shot. A shot set in one of these places, showing one of these props or lit by one of these lighting states points at it by its KEY (`continuity`) and does not describe it again differently:",
+    group("location"),
+    group("prop"),
+    group("lighting"),
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
 
 export const TREATMENT_SCHEMA = {
   name: "treatment",
@@ -47,7 +88,7 @@ export const SHOTS_SCHEMA = {
     type: "object", additionalProperties: false, required: ["clips"],
     properties: {
       clips: { type: "array", items: { type: "object", additionalProperties: false,
-        required: ["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "lyric_ref", "priority"],
+        required: ["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "lyric_ref", "priority", "timed_beats", "continuity"],
         properties: {
           key: { type: "string", description: "the shot's key, exactly as given" },
           shot_type: { type: "string", enum: [...SHOT_TYPES] },
@@ -58,6 +99,14 @@ export const SHOTS_SCHEMA = {
           wardrobe: { type: "string", description: "what the artist wears in this shot, or 'none' when he is not in it" },
           lyric_ref: { type: "string", description: "the words of this shot's lyrics that the picture answers, verbatim — an empty string when it answers none" },
           priority: { type: "string", enum: [...PRIORITIES] },
+          timed_beats: TIMED_BEATS_PROPERTY,
+          continuity: { type: "object", additionalProperties: false, required: ["location", "props", "lighting"],
+            description: "the project's continuity entities this shot points at, by KEY exactly as given — empty when the project has none or none fits",
+            properties: {
+              location: { type: "string", description: "the key of the place this shot is set in, or an empty string" },
+              props: { type: "array", items: { type: "string" }, description: "the keys of the props seen in this shot" },
+              lighting: { type: "string", description: "the key of the lighting state the shot OPENS in, or an empty string" },
+            } },
         } } },
     },
   },
@@ -100,9 +149,13 @@ export function treatmentSystemPrompt(ctx: WriterContext): string {
     `You are the director of a ${projectLabel(ctx.projectType)}. Write its treatment: ONE idea, strong enough to hold the whole song, that a crew could shoot and a viewer would remember.`,
     "It must come out of this song's own words and this artist — not a stock idea that would fit any song. Stage it in a small number of places that return, so the video feels like one world. Everything must be photoreal and filmable.",
     ctx.hasPerformanceFootage ? FOOTAGE_RULES : NO_FOOTAGE_RULES,
+    ctx.entities?.length ? `The project already has these places, props and lighting states on file — stage the video in them where they fit, by name:\n${ctx.entities.map((e) => `- ${e.name}${e.description ? `: ${e.description}` : ""}`).join("\n")}` : null,
     "Do not write shot lists, timecodes, or camera specs here. Do not mention AI, prompts or generators.",
+    "A shot may change while it plays. When the idea needs that — the light dying on a word, a move that begins on a hit — say in plain words what changes and on which words; the storyboard places it on the song.",
     contextBlocks(ctx),
-  ].join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 /** The system prompt of the calls that write the shots. `treatment` is the one brief every shot serves. */
@@ -120,10 +173,14 @@ export function shotsSystemPrompt(ctx: WriterContext, treatment: string, outline
       "- Keep to the places the treatment and the notes name. One clear subject per shot. Photoreal and filmable; nothing that needs readable text or logos.",
       "- `priority`: hero for the two or three shots the whole video is remembered by, high for the first shot of a hook, normal otherwise.",
     ].join("\n"),
+    timedBeatsRules("scene_description"),
+    entitiesBlock(ctx.entities),
     ctx.hasPerformanceFootage ? FOOTAGE_RULES : NO_FOOTAGE_RULES,
     `The whole storyboard, so you know what comes before and after your shots (context only — write only the shots you are handed):\n${outline.map(outlineLine).join("\n")}`,
     contextBlocks({ ...ctx, lyrics: null }),
-  ].join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 function projectLabel(type: string | null | undefined): string {
@@ -154,16 +211,34 @@ export function chunkGrid<T>(grid: readonly T[], size: number): T[][] {
 }
 
 /** The shots a call returned, kept only when they are shots it was handed (a key it invented is dropped). */
-export function acceptShots(chunk: readonly GridShot[], returned: unknown): { clips: Record<string, unknown>[]; missing: string[] } {
+export function acceptShots(chunk: readonly GridShot[], returned: unknown, entities: readonly WriterEntity[] = []): { clips: Record<string, unknown>[]; missing: string[] } {
+  const keysOf = (kind: WriterEntity["kind"]) => new Set(entities.filter((e) => e.kind === kind).map((e) => e.key));
+  const places = keysOf("location");
+  const props = keysOf("prop");
+  const lights = keysOf("lighting");
+  // a reference is kept only when it is to an entity the project has, of the right kind — a key the model made up is dropped
+  const continuityOf = (raw: unknown) => {
+    const r = (raw ?? {}) as Record<string, unknown>;
+    const one = (v: unknown, known: Set<string>) => (typeof v === "string" && known.has(v.trim()) ? v.trim() : "");
+    return {
+      location: one(r.location, places),
+      props: Array.isArray(r.props) ? [...new Set(r.props.map((p) => one(p, props)).filter(Boolean))] : [],
+      lighting: one(r.lighting, lights),
+    };
+  };
   const wanted = new Set(chunk.map((s) => s.key));
   const list = Array.isArray((returned as { clips?: unknown })?.clips) ? ((returned as { clips: unknown[] }).clips as Record<string, unknown>[]) : [];
   const seen = new Set<string>();
-  const clips = list.filter((c) => {
-    const key = String(c?.key ?? "");
-    if (!wanted.has(key) || seen.has(key)) return false;
-    if (!String(c.scene_description ?? "").trim()) return false;
-    seen.add(key);
-    return true;
-  });
+  const seconds = new Map(chunk.map((s) => [s.key, s.end - s.start]));
+  const clips = list
+    .filter((c) => {
+      const key = String(c?.key ?? "");
+      if (!wanted.has(key) || seen.has(key)) return false;
+      if (!String(c.scene_description ?? "").trim()) return false;
+      seen.add(key);
+      return true;
+    })
+    // a shot's timed beats are kept only when they are beats inside ITS window (never repaired, never invented)
+    .map((c) => ({ ...c, timed_beats: acceptTimedBeats(c.timed_beats, seconds.get(String(c.key)) ?? 0, lights), continuity: continuityOf(c.continuity) }));
   return { clips, missing: chunk.map((s) => s.key).filter((k) => !seen.has(k)) };
 }
