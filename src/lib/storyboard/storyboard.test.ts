@@ -35,9 +35,11 @@ import {
   segmentAt,
   takeRangeForBox,
   timelineIssues,
+  videoStateAt,
   type Assignment,
   type MediaAsset,
   type TakeSync,
+  type TimelineSegment,
 } from "./media";
 
 const AT = "2026-10-03T12:00:00.000Z";
@@ -526,5 +528,50 @@ describe("who wrote which field", () => {
   it("a field he empties is no longer his, or anyone's", () => {
     const o = editedOverride({ ...blank, direction: "x", framing: "wide", manual: ["direction", "framing"] }, { ...blank, direction: "x" });
     expect(o.manual).toEqual(["direction"]);
+  });
+});
+
+describe("what a shot's video does at a moment of the song", () => {
+  const seg = (over: Partial<Extract<TimelineSegment["media"], { kind: "video" }>> = {}, start = 188, end = 194): TimelineSegment => ({
+    shotId: "s1",
+    key: "c042",
+    index: 42,
+    start,
+    end,
+    section: null,
+    scene: "",
+    note: null,
+    media: { kind: "video", assetId: "take", role: "performance", sourceIn: 187.15, sourceOut: 190.34, leadIn: 0, base: true, ...over },
+  });
+
+  it("runs in place while the take covers the shot", () => {
+    expect(videoStateAt(seg(), 189, 190.4)).toEqual({ at: 188.15, hold: null });
+  });
+
+  it("holds the last frame once the take has run out before the shot has, and never asks for a time past the file", () => {
+    const s = videoStateAt(seg(), 192.5, 190.375)!;
+    expect(s.hold).toBe("ran_out");
+    expect(s.at).toBeLessThanOrEqual(190.375);
+    expect(s.at).toBeGreaterThan(190);
+  });
+
+  it("a file shorter than its recorded length still holds rather than restarting", () => {
+    expect(videoStateAt(seg({ sourceOut: null }), 193, 190.375)!.hold).toBe("ran_out");
+  });
+
+  it("a cut that lands on the out-point is not run out: the take carries on into the next shot", () => {
+    const first = seg({ sourceIn: 10, sourceOut: 14 }, 10.85, 14.85);
+    expect(videoStateAt(first, 14.849, 190)!.hold).toBeNull();
+    expect(videoStateAt(first, 14.85, 190)!.hold).toBeNull();
+  });
+
+  it("holds the first frame inside a take's lead-in", () => {
+    const s = videoStateAt(seg({ sourceIn: 0, sourceOut: 3.07, leadIn: 0.85 }, 0, 3.92), 0.4, 190)!;
+    expect(s).toEqual({ at: 0, hold: "lead_in" });
+    expect(videoStateAt(seg({ sourceIn: 0, sourceOut: 3.07, leadIn: 0.85 }, 0, 3.92), 1.85, 190)).toEqual({ at: 1, hold: null });
+  });
+
+  it("is not asked of an image or an empty shot", () => {
+    expect(videoStateAt({ ...seg(), media: { kind: "none" } }, 189)).toBeNull();
   });
 });

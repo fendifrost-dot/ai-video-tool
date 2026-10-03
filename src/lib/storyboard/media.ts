@@ -418,6 +418,29 @@ export function mediaTimeAt(segment: TimelineSegment, t: number): number | null 
   return segment.media.sourceOut != null ? Math.min(at, segment.media.sourceOut) : at;
 }
 
+/** How far past its out-point media must be asked for before it counts as run out (a cut lands on the out-point itself). */
+export const RAN_OUT_SLACK = 0.04;
+
+/**
+ * What a shot's video should be doing at song time `t`: where its playhead belongs, and whether it runs or holds.
+ * It holds its first frame inside a take's lead-in (the recording has not started yet), and its LAST frame once the
+ * media has run out before the shot has — a take that ends mid-shot, a clip shorter than its window. A cut that
+ * lands exactly on the out-point is not "run out": the same take carries on in the next shot without a pause.
+ * `fileSeconds` is the real length of the file when the player knows it.
+ */
+export function videoStateAt(segment: TimelineSegment, t: number, fileSeconds: number | null = null): { at: number; hold: "lead_in" | "ran_out" | null } | null {
+  const m = segment.media;
+  if (m.kind !== "video") return null;
+  const target = mediaTimeAt(segment, t);
+  if (target == null) return null;
+  const wanted = m.sourceIn + Math.max(0, t - segment.start - m.leadIn);
+  const fileEnd = fileSeconds != null && Number.isFinite(fileSeconds) && fileSeconds > 0 ? fileSeconds : null;
+  const ranOut = (m.sourceOut != null && wanted > m.sourceOut + RAN_OUT_SLACK) || (fileEnd != null && wanted >= fileEnd - RAN_OUT_SLACK);
+  const at = fileEnd != null ? Math.min(target, Math.max(0, fileEnd - 0.05)) : target;
+  const hold = t < segment.start + m.leadIn ? "lead_in" : ranOut ? "ran_out" : null;
+  return { at, hold };
+}
+
 /** Gaps and overlaps between consecutive boxes (a healthy board has none): what Review reports before it plays. */
 export function timelineIssues(timeline: readonly TimelineSegment[]): string[] {
   const out: string[] = [];
