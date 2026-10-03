@@ -64,6 +64,8 @@ describe("what a restaging asks for and costs", () => {
     expect(restageSeconds(2)).toBe(4);
     expect(restageSeconds(5.88)).toBe(6);
     expect(restageSeconds(4.01)).toBe(5);
+    // the cut opens on the frame showing when the shot starts, up to a frame early: a shot a hair under a whole second needs the next one
+    expect(restageSeconds(3.98)).toBe(5);
     // a cut that has to open 1.4 s early pays for that too
     expect(restageSeconds(3.92, 1.4)).toBe(6);
     expect(restageSeconds(RESTAGE_MAX_SECONDS + 0.5)).toBeNull();
@@ -121,6 +123,19 @@ describe("a restaged take is one moment of a take, not a take of the song", () =
     expect(m.showing?.note).toBeNull();
     // the take as filmed is still there underneath, one click away
     expect(m.items.some((i) => i.base && i.asset.id === "take1")).toBe(true);
+  });
+
+  it("covers its shot when it starts a few milliseconds off the shot's own start (a cut lands on a frame, not on a millisecond)", () => {
+    // the first live restaging: the shot starts at 47.060, the clip's first frame sits at 47.067
+    const late = [sync(), sync({ id: "s2", performanceAssetId: "re1", offsetSeconds: 47.067, method: "derived" })];
+    const m = boxMedia({ box: box(47.06, 50.98), assignments: [assign("a1", "re1", "performance", { isPrimary: true })], assets, syncs: late });
+    expect(m.showing?.asset.id).toBe("re1");
+    expect(m.showing?.note).toBeNull();
+    expect(m.showing?.leadIn).toBe(0);
+    expect(m.showing?.sourceIn).toBe(0);
+    // more than a frame short is still said
+    const short = [sync(), sync({ id: "s2", performanceAssetId: "re1", offsetSeconds: 47.2, method: "derived" })];
+    expect(boxMedia({ box: box(47.06, 50.98), assignments: [assign("a1", "re1", "performance", { isPrimary: true })], assets, syncs: short }).showing?.note).toMatch(/only part/);
   });
 
   it("is never the base layer of another shot", () => {

@@ -31,6 +31,8 @@ import { resolveLookPreset } from "@/lib/shotCompiler";
 export const RESTAGE_MIN_SECONDS = 4;
 export const RESTAGE_MAX_SECONDS = 12;
 export const RESTAGE_RESOLUTION = "720p" as const;
+/** A cut opens on the frame showing when the shot starts — up to a frame before it. The cut is that much longer. */
+export const FRAME_ALLOWANCE = 0.042;
 export const DERIVED_SYNC_METHOD = "derived";
 
 export type RestageSource = { take: MediaAsset; sync: TakeSync; takeIn: number; takeOut: number };
@@ -51,7 +53,7 @@ export function restageSource(items: readonly BoxMediaItem[], syncs: readonly Ta
  * Whole seconds to ask the model for. `lead` is how far before the shot the cut has to open (0 when the browser cuts
  * to the frame). Null = too long to restage in one piece.
  */
-export function restageSeconds(shotSeconds: number, lead = 0): number | null {
+export function restageSeconds(shotSeconds: number, lead = FRAME_ALLOWANCE): number | null {
   const need = Math.ceil(shotSeconds + lead - 1e-3);
   const seconds = Math.max(RESTAGE_MIN_SECONDS, need);
   return seconds > RESTAGE_MAX_SECONDS ? null : seconds;
@@ -183,7 +185,7 @@ export async function restageBox(input: {
     // no encoder here: the cut has to open on the sync frame before the shot, and run long enough to cover it from there
     const key = track.keyframeAt(input.source.takeIn);
     const lead = key ? Math.max(0, input.source.takeIn - Math.max(0, shownAt(track, key))) : 0;
-    const seconds = restageSeconds(shotSeconds, lead);
+    const seconds = restageSeconds(shotSeconds, lead + FRAME_ALLOWANCE);
     if (!seconds || seconds > input.maxSeconds) {
       throw new Error(
         `this browser cannot cut the take to the frame, and the nearest clean cut starts ${lead.toFixed(1)} s before this shot — ` +

@@ -110,6 +110,9 @@ export function isPlayableRole(role: AssignmentRole): boolean {
 // The performance range of a box
 // ---------------------------------------------------------------------------
 
+/** Less than a frame of picture: footage this much short of a shot's window covers the shot. */
+export const FRAME_SLACK = 0.04;
+
 export type TakeRange = {
   /** In/out inside the take, seconds — the song window mapped through the sync. */
   start: number;
@@ -142,6 +145,9 @@ export function takeRangeForBox(
   const lo = Math.max(0, s);
   const hi = takeDurationSeconds != null ? Math.min(takeDurationSeconds, e) : e;
   if (hi - lo < 0.1) return null;
+  // short of the window by less than a frame at either end is not "part of the shot": nothing a viewer could see
+  // (a clip cut for this very shot starts on a frame boundary, a few milliseconds from the shot's own start)
+  if (lo - s < FRAME_SLACK && e - hi < FRAME_SLACK) return { start: Math.round(lo * 1e4) / 1e4, end: Math.round(hi * 1e4) / 1e4, coverage: "full", leadIn: 0 };
   // the song time at which the clamped range begins, relative to the box
   const leadIn = Math.max(0, lo * k + sync.offsetSeconds - box.start);
   return { start: Math.round(lo * 1e4) / 1e4, end: Math.round(hi * 1e4) / 1e4, coverage: "partial", leadIn: Math.round(leadIn * 1e4) / 1e4 };
