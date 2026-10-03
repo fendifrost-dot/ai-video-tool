@@ -356,7 +356,33 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
     sourceTool: a.source_tool,
     providerJobId: meta.provider_job_id ?? null,
     createdAt: a.created_at,
+    derivedFrom: derivedOf(a.metadata_json),
+    shows: typeof (a.metadata_json as { shows?: unknown } | null)?.shows === "string" ? ((a.metadata_json as { shows: string }).shows.trim() || null) : null,
   };
+}
+
+function derivedOf(meta: unknown): MediaAsset["derivedFrom"] {
+  const d = (meta as { derived_from?: { asset_id?: unknown; song_start?: unknown } } | null)?.derived_from;
+  if (!d || typeof d.asset_id !== "string") return null;
+  return { assetId: d.asset_id, songStart: typeof d.song_start === "number" ? d.song_start : null };
+}
+
+/** Say what a piece of footage shows (wardrobe, place). Kept on the asset; the file is not touched. */
+export function useSetFootageShows(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ assetId, shows }: { assetId: string; shows: string }) => {
+      const { data, error } = await supabase.from("project_assets").select("metadata_json").eq("id", assetId).single();
+      if (error) throw new Error(`could not read the footage: ${error.message}`);
+      const meta = { ...((data?.metadata_json ?? {}) as Record<string, unknown>) };
+      const text = shows.trim();
+      if (text) meta.shows = text;
+      else delete meta.shows;
+      const { error: upErr } = await supabase.from("project_assets").update({ metadata_json: meta as never }).eq("id", assetId);
+      if (upErr) throw new Error(`could not save the description: ${upErr.message}`);
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(projectId) }),
+  });
 }
 
 /** Every asset of the project as media, by id, plus the song. */

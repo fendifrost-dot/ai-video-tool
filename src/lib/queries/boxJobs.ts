@@ -15,6 +15,7 @@ import { projectAssetsKeys } from "@/lib/queries/projectAssets";
 import { applyAssignmentOps, fetchAssignments, storyboardKeys } from "@/lib/queries/storyboard";
 import { STORYBOARD_RUN } from "@/lib/storyboard/generate";
 import { planAssign } from "@/lib/storyboard/media";
+import { fileRestagedClip } from "@/lib/storyboard/restage";
 import { settingsOf, type BatchJobRow } from "@/lib/worldBatch";
 import { pollBatchJob } from "@/lib/worldBatch/browserDeps";
 
@@ -31,6 +32,13 @@ export type BoxJobStatus = {
 };
 
 type Payload = { mode?: string; shotId?: string; settings?: Record<string, unknown> };
+
+/** A restaged take: the job was given a cut of a take, and its clip keeps that take's place on the song. */
+export function restagedFrom(job: Pick<BatchJobRow, "request_payload_json">): { sourceAssetId: string; songStart: number; sourceWindow: [number, number] | null; seconds: number | null } | null {
+  const s = settingsOf(job as BatchJobRow);
+  if (!s || s.route !== "seedance_ref" || !s.sourceAssetId || typeof s.masterStart !== "number") return null;
+  return { sourceAssetId: s.sourceAssetId, songStart: s.masterStart, sourceWindow: s.sourceWindow ?? null, seconds: s.sourceSeconds ?? null };
+}
 const payloadOf = (j: Pick<BatchJobRow, "request_payload_json">) => (j.request_payload_json ?? {}) as Payload;
 const isStill = (j: Pick<BatchJobRow, "request_payload_json">) => payloadOf(j).mode === "still_only";
 
@@ -46,7 +54,8 @@ export function boxJobStatus(job: BatchJobRow, now: number): BoxJobStatus {
   if (!job.external_job_id && now - Date.parse(job.created_at) > UNREPORTED_AFTER_MS) {
     return { kind, state: "failed", message: "the submit never reported back — check Runs before generating again", at };
   }
-  return { kind, state: "working", message: kind === "image" ? "drawing the image…" : "rendering the clip — a few minutes", at };
+  const restaged = !!restagedFrom(job);
+  return { kind, state: "working", message: kind === "image" ? "drawing the image…" : restaged ? "restaging the take — several minutes" : "rendering the clip — a few minutes", at };
 }
 
 /** The storyboard's jobs, newest first per box key. */
@@ -124,7 +133,10 @@ export function useBoxJobs(projectId: string) {
         attachTried.current.add(j.id);
         const p = payloadOf(j);
         try {
-          const ops = planAssign({ assignments: await fetchAssignments(projectId), shotId: p.shotId!, assetId: j.result_asset_id!, role: "generated_clip", select: true });
+          // a restaged take is filed as a take in sync before it is put on the shot, so the shot plays it by the song clock
+          const restaged = restagedFrom(j);
+          if (restaged) await fileRestagedClip({ projectId, assetId: j.result_asset_id!, ...restaged });
+          const ops = planAssign({ assignments: await fetchAssignments(projectId), shotId: p.shotId!, assetId: j.result_asset_id!, role: restaged ? "performance" : "generated_clip", select: true });
           await applyAssignmentOps(projectId, ops);
           await supabase
             .from("provider_jobs")
@@ -135,6 +147,7 @@ export function useBoxJobs(projectId: string) {
         }
       }
       void qc.invalidateQueries({ queryKey: storyboardKeys.assignments(projectId) });
+      void qc.invalidateQueries({ queryKey: storyboardKeys.syncs(projectId) });
       void qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(projectId) });
       void refetch();
     })();
