@@ -42,6 +42,7 @@ export function CutCheck({
   assets,
   syncs,
   song,
+  playerTimeline,
 }: {
   timeline: readonly TimelineSegment[];
   boxes: readonly { id: string; key: string; start: number; end: number }[];
@@ -49,6 +50,8 @@ export function CutCheck({
   assets: ReadonlyMap<string, MediaAsset>;
   syncs: readonly TakeSync[];
   song: { ref: MediaRef; name: string; analysisSeconds: number | null } | null;
+  /** The shots the page's player is showing when that is a section; the check itself is always of the whole cut. */
+  playerTimeline?: readonly TimelineSegment[];
 }) {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
@@ -75,6 +78,7 @@ export function CutCheck({
         sign: (refs) => signRefs(refs),
         onProgress: setProgress,
         player: playerOnPage(),
+        playerTimeline,
       });
       setReport(r);
     } catch (e) {
@@ -84,7 +88,7 @@ export function CutCheck({
       setRunning(false);
       setProgress("");
     }
-  }, [timeline, boxes, assignments, assets, syncs, song]);
+  }, [timeline, boxes, assignments, assets, syncs, song, playerTimeline]);
 
   const download = () => {
     if (!report) return;
