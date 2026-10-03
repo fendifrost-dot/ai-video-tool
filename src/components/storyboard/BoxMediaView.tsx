@@ -26,7 +26,7 @@ export function mediaLabel(item: Pick<BoxMediaItem, "role" | "base">): string {
   return item.base ? "Your take · base layer" : ROLE_LABEL[item.role];
 }
 
-/** One piece of media, played or shown. `fit` is "cover" on the board (a tile) and "contain" full-screen (the frame). */
+/** One piece of media, played or shown — always the whole frame, never cropped. */
 export function MediaItemView({ item, url, mode, testId }: { item: BoxMediaItem; url: string | undefined; mode: "card" | "focus"; testId?: string }) {
   if (!url) {
     return (
@@ -40,8 +40,9 @@ export function MediaItemView({ item, url, mode, testId }: { item: BoxMediaItem;
       <img
         src={url}
         alt=""
-        loading="lazy"
-        className={cn("absolute inset-0 h-full w-full", mode === "card" ? "object-cover" : "object-contain")}
+        loading={mode === "card" ? "lazy" : "eager"}
+        // the whole frame, on the board too: a tile that crops a vertical image shows a picture that was never made
+        className="absolute inset-0 h-full w-full object-contain"
         data-testid={testId}
       />
     );

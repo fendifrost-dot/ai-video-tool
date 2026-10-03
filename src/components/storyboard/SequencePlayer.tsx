@@ -256,6 +256,14 @@ export function SequencePlayer({
             sync(audio.current?.currentTime ?? t, false);
           }}
           onSeeked={() => sync(audio.current?.currentTime ?? t, !audio.current?.paused)}
+          // The frame loop above stops when the tab is in the background; the song's own clock does not. Following it
+          // here as well keeps the right shot on the stage when the director comes back to the tab.
+          onTimeUpdate={() => {
+            const a = audio.current;
+            if (!a) return;
+            setT(a.currentTime);
+            sync(a.currentTime, !a.paused);
+          }}
           data-testid="sequence-audio"
         />
       ) : (
