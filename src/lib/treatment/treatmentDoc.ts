@@ -125,3 +125,13 @@ export function clearTreatment(existing: unknown, at: string): Record<string, un
   delete v.sections;
   return v;
 }
+
+/**
+ * The director's notes are ONE text. Older projects hold two (a notes column on the project, written before the
+ * Treatment page existed and shown nowhere since, and the notes kept with the treatment): they are read together,
+ * shown in the one notes field, and saved back as one — so nothing the writer is told is hidden from the director.
+ */
+export function directorNotes(projectNotes: string | null | undefined, docNotes: string | null | undefined): string {
+  const parts = [projectNotes, docNotes].map((s) => (s ?? "").trim()).filter(Boolean);
+  return parts.filter((p, i) => parts.indexOf(p) === i).join("\n\n");
+}
