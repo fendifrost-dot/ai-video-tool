@@ -16,7 +16,7 @@ function asset(id: string, over: Partial<MediaAsset> = {}): MediaAsset {
   return { id, assetType: "generated_clip", footageRole: null, bucket: "project-clips", path: `u/p/${id}.mp4`, playback: null, name: `${id}.mp4`, mime: "video/mp4", isVideo: true, isImage: false, durationSeconds: 5, shotId: null, sourceTool: null, providerJobId: null, createdAt: AT, ...over };
 }
 const sync = (over: Partial<TakeSync> = {}): TakeSync => ({ id: "s1", projectId: "p1", songAssetId: "song", performanceAssetId: "take1", offsetSeconds: 0.8538, driftPpm: 0, method: "manual", status: "confirmed", ...over });
-const take = asset("take1", { footageRole: "performance", assetType: "reference_video", bucket: "project-references", durationSeconds: 190.34, name: "take1.mp4", shows: "a camouflage shirt, dark cap and sunglasses" });
+const take = asset("take1", { footageRole: "performance", assetType: "reference_video", bucket: "project-references", durationSeconds: 190.34, name: "take1.mp4", shows: "a camouflage shirt, dark cap and sunglasses", filmedIn: "a walk-in closet, in front of a white door" });
 function box(start: number, end: number, shotType: "performance" | "b_roll" = "performance") {
   const spec = parseShotSpec({ id: "c013", purpose: "backstage of a runway show, racks of white garments under one hard light", shotType, kind: shotType === "performance" ? "performance" : "broll", timeline: { start, end }, cameraMotion: { type: "dolly", description: "a slow push toward him" } });
   const w = boxWrite({ key: "c013", start, end, section: "verse", generated: spec, override: null, locked: false, origin: "treatment", history: [] });
@@ -138,8 +138,11 @@ describe("a restaged take is one moment of a take, not a take of the song", () =
     expect(isOriginalTake(derived)).toBe(false);
     const s = setupStatus({ hasSong: true, songSeconds: 200, analysed: true, bpm: 122, lyricsText: "a", lyricLines: 95, media: [take, derived], syncs: [{ performanceAssetId: "take1", status: "confirmed" }], footageConfirmedAt: AT });
     expect(s.counts.takes).toBe(1);
-    const note = footageSummary({ takes: [{ name: take.name, songStart: 0.85, songEnd: 191, shows: take.shows }], broll: [] });
-    expect(note).toMatch(/it shows: a camouflage shirt, dark cap and sunglasses/);
-    expect(note).toMatch(/restaged/);
+    const note = footageSummary({ takes: [{ name: take.name, songStart: 0.85, songEnd: 191, shows: take.shows, filmedIn: take.filmedIn }], broll: [] });
+    expect(note).toMatch(/in it he wears: a camouflage shirt, dark cap and sunglasses/);
+    expect(note).toMatch(/it was filmed in: a walk-in closet, in front of a white door/);
+    expect(note).toMatch(/the place it was filmed in is replaced/);
+    // the place never reaches the list of things a restaged shot keeps
+    expect(restageKeep(take).join(" ")).not.toMatch(/closet|door/);
   });
 });

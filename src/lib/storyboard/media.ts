@@ -62,8 +62,12 @@ export type MediaAsset = {
    * first frame. It is a version of one moment — never the base layer of other shots, never counted as a take.
    */
   derivedFrom?: { assetId: string; songStart: number | null } | null;
-  /** What the footage shows, in the director's words (Setup): wardrobe, place. Told to the writer and the models. */
+  /**
+   * What the footage shows, in the director's words (Setup). `shows` is what he WEARS — the thing a restaged shot
+   * keeps; `filmedIn` is the place it was shot — the thing a restaged shot replaces. Both are told to the writer.
+   */
   shows?: string | null;
+  filmedIn?: string | null;
 };
 
 /** A take of the song as filmed: performance footage that was not made from another take. */

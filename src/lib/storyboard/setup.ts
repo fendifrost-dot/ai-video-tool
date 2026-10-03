@@ -131,15 +131,17 @@ export function setupStatus(input: {
 
 /** What the treatment writer is told about the real footage: facts, as a short structured note. */
 export function footageSummary(input: {
-  takes: { name: string; songStart: number; songEnd: number; shows?: string | null }[];
+  takes: { name: string; songStart: number; songEnd: number; shows?: string | null; filmedIn?: string | null }[];
   broll: { name: string; seconds: number | null; shows?: string | null }[];
 }): string {
   const lines: string[] = [];
   if (input.takes.length) {
     lines.push(
       "REAL PERFORMANCE FOOTAGE (already shot, in sync with the song): " +
-        input.takes.map((t) => `${t.name} covers song ${mmss(t.songStart)}–${mmss(t.songEnd)}${t.shows?.trim() ? ` — it shows: ${t.shows.trim()}` : ""}`).join("; ") +
-        ". Performance boxes use this footage: as filmed, or restaged (the same performance re-shot inside the scene the box describes — he keeps what he wears in the take).",
+        input.takes
+          .map((t) => `${t.name} covers song ${mmss(t.songStart)}–${mmss(t.songEnd)}${t.shows?.trim() ? ` — in it he wears: ${t.shows.trim()}` : ""}${t.filmedIn?.trim() ? ` — it was filmed in: ${t.filmedIn.trim()}` : ""}`)
+          .join("; ") +
+        ". Performance boxes use this footage: as filmed, or restaged — the same performance re-shot inside the place the box describes. He keeps what he wears in the take; the place it was filmed in is replaced. Write a performance box's scene as the PLACE he performs in, and never dress him in anything else.",
     );
   }
   if (input.broll.length) {
