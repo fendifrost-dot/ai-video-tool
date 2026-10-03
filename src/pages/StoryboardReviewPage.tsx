@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Check, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
@@ -14,6 +14,7 @@ import { aspectOfProject } from "@/lib/project/aspect";
 import { useProject } from "@/lib/queries/projects";
 import { useSongAnalysis } from "@/lib/queries/songAnalyses";
 import { buildTimeline, isOriginalTake, isUsableSync, timelineIssues, type TimelineSegment } from "@/lib/storyboard/media";
+import { normalSection, sectionFromSearch, sectionOf, type ReviewSection } from "@/lib/storyboard/section";
 import { cn } from "@/lib/utils";
 
 /**
@@ -34,16 +35,32 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
   const [active, setActive] = useState<TimelineSegment | null>(null);
   const [jump, setJump] = useState<{ t: number; n: number } | null>(null);
 
-  const timeline = useMemo(() => buildTimeline({ boxes, assignments, assets: media.byId, syncs }), [boxes, assignments, media.byId, syncs]);
-  const issues = useMemo(() => timelineIssues(timeline), [timeline]);
+  const whole = useMemo(() => buildTimeline({ boxes, assignments, assets: media.byId, syncs }), [boxes, assignments, media.byId, syncs]);
+  // a section of the song to look at on its own: the shots from one number to another (kept in the link, so it can be sent)
+  const [section, setSection] = useState<ReviewSection | null>(() => sectionFromSearch(typeof window === "undefined" ? "" : window.location.search));
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    if (section) {
+      url.searchParams.set("from", String(section.from));
+      url.searchParams.set("to", String(section.to));
+    } else {
+      url.searchParams.delete("from");
+      url.searchParams.delete("to");
+    }
+    if (url.href !== window.location.href) window.history.replaceState(window.history.state, "", url.href);
+  }, [section]);
+  const timeline = useMemo(() => sectionOf(whole, section), [whole, section]);
+  const inSection = section != null && timeline.length > 0 && timeline.length < whole.length;
+  const issues = useMemo(() => timelineIssues(whole), [whole]);
   const songPath = media.song?.file_url ?? null;
   const songName = songPath?.split("/").pop() ?? "the song";
   const song = useMemo(() => (songPath ? { bucket: "project-audio", path: songPath } : null), [songPath]);
 
-  const withFootage = timeline.filter((s) => s.media.kind !== "none").length;
+  const withFootage = whole.filter((s) => s.media.kind !== "none").length;
   const songSeconds = analysis?.duration_seconds ?? null;
   const checkSong = useMemo(() => (song ? { ref: song, name: songName, analysisSeconds: songSeconds } : null), [song, songName, songSeconds]);
-  const covered = timeline.length ? timeline[timeline.length - 1].end - timeline[0].start : 0;
+  const covered = whole.length ? whole[whole.length - 1].end - whole[0].start : 0;
   const takes = media.list.filter(isOriginalTake);
   const takesSynced = takes.filter((t) => syncs.some((s) => s.performanceAssetId === t.id && isUsableSync(s))).length;
 
@@ -53,7 +70,7 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
       label: "Shots cover the song",
       detail: issues.length ? issues.join("; ") : `${covered.toFixed(1)} s of shots${songSeconds ? ` for a ${songSeconds.toFixed(1)} s song` : ""}`,
     },
-    { ok: withFootage === timeline.length, label: "Every shot has footage", detail: `${withFootage} of ${timeline.length}` },
+    { ok: withFootage === whole.length, label: "Every shot has footage", detail: `${withFootage} of ${whole.length}` },
     { ok: takes.length === takesSynced, label: "Takes in sync with the song", detail: takes.length ? `${takesSynced} of ${takes.length}` : "no takes in the project" },
   ];
 
@@ -63,7 +80,7 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
       <div className="mx-auto max-w-5xl space-y-5 px-4 py-4 md:px-8 md:py-6" data-testid="review-page">
         {boxesQuery.isLoading ? (
           <Loader2 className="h-5 w-5 animate-spin" />
-        ) : timeline.length === 0 ? (
+        ) : whole.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border py-14 text-center text-sm text-foreground/60">
             There are no shots to play yet.{" "}
             <Link to="/projects/$id/storyboard" params={{ id: projectId }} className="underline">
@@ -73,6 +90,48 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
           </div>
         ) : (
           <>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-foreground/60" data-testid="review-section" data-section={inSection ? `${section!.from}-${section!.to}` : "all"}>
+              <span>Play</span>
+              <select
+                className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+                value={section?.from ?? 1}
+                onChange={(e) => setSection(normalSection({ from: Number(e.target.value), to: section?.to ?? whole.length }, whole.length))}
+                aria-label="First shot of the section"
+                data-testid="review-section-from"
+              >
+                {whole.map((s) => (
+                  <option key={s.shotId} value={s.index}>
+                    shot {String(s.index).padStart(2, "0")} · {formatTimecode(s.start)}
+                  </option>
+                ))}
+              </select>
+              <span>to</span>
+              <select
+                className="h-8 rounded-md border border-border bg-background px-2 text-xs"
+                value={section?.to ?? whole.length}
+                onChange={(e) => setSection(normalSection({ from: section?.from ?? 1, to: Number(e.target.value) }, whole.length))}
+                aria-label="Last shot of the section"
+                data-testid="review-section-to"
+              >
+                {whole.map((s) => (
+                  <option key={s.shotId} value={s.index}>
+                    shot {String(s.index).padStart(2, "0")} · {formatTimecode(s.end)}
+                  </option>
+                ))}
+              </select>
+              {inSection ? (
+                <>
+                  <span className="text-foreground/45" data-testid="review-section-summary">
+                    {timeline.length} shots · {(timeline[timeline.length - 1].end - timeline[0].start).toFixed(1)} s of the song
+                  </span>
+                  <button type="button" className="underline hover:text-foreground" onClick={() => setSection(null)} data-testid="review-section-clear">
+                    whole song
+                  </button>
+                </>
+              ) : (
+                <span className="text-foreground/45">the whole song</span>
+              )}
+            </div>
             <SequencePlayer timeline={timeline} assets={media.byId} song={song} onSegment={setActive} jumpTo={jump} aspect={aspect} />
             <p className="text-[11px] leading-relaxed text-foreground/45" data-testid="review-truth">
               This is a preview assembled in your browser from lighter copies of the footage. Cuts land on the shot boundaries; transitions, camera moves on your takes and the final grade are not shown. A
@@ -100,7 +159,7 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
                       {s.media.kind === "none" ? (
                         <span className="shrink-0 text-[10px] text-foreground/30">no footage</span>
                       ) : (
-                        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", ROLE_STYLE[s.media.role])}>{mediaLabel({ role: s.media.role, base: s.media.base })}</span>
+                        <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", ROLE_STYLE[s.media.role])}>{mediaLabel({ role: s.media.role, base: s.media.base, asset: media.byId.get(s.media.assetId) })}</span>
                       )}
                      </button>
                     </li>
@@ -135,9 +194,10 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
               </Card>
             </div>
 
-            <ContactSheet timeline={timeline} assets={media.byId} aspect={aspect} />
+            <ContactSheet timeline={timeline} assets={media.byId} aspect={aspect} close={inSection} />
 
-            <CutCheck timeline={timeline} boxes={boxes} assignments={assignments} assets={media.byId} syncs={syncs} song={checkSong} />
+            {/* the check is of the whole cut, whatever section is being looked at: a section cannot be right inside a cut that is not */}
+            <CutCheck timeline={whole} boxes={boxes} assignments={assignments} assets={media.byId} syncs={syncs} song={checkSong} />
           </>
         )}
       </div>
