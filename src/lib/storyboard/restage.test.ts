@@ -13,7 +13,7 @@ import { verifyCut } from "./verify";
 import { clipLyrics } from "./build";
 import { footageSummary, setupStatus } from "./setup";
 import { boxShot, placePrompt } from "./generate";
-import { NEVER_WIDER, restageAngle, restageEstimateUsd, restageKeep, restageSeconds, restageShot, restageSource, restageTemporalPlan, RESTAGE_MAX_SECONDS } from "./restage";
+import { NEVER_WIDER, TAKE_FRAMING, restageAngle, restageEstimateUsd, restageKeep, restageSeconds, restageShot, restageSource, restageTemporalPlan, RESTAGE_MAX_SECONDS } from "./restage";
 
 const AT = "2026-10-03T00:00:00Z";
 function asset(id: string, over: Partial<MediaAsset> = {}): MediaAsset {
@@ -100,7 +100,11 @@ describe("what a restaging asks for and costs", () => {
     expect(req.shot.angle).toBe(`a medium shot from the waist up, the camera pushing slowly toward him. ${NEVER_WIDER}`);
     // a wide frame is asked for without asking for the body the take never filmed
     const wide = restageAngle({ ...b, spec: { ...b.spec, framing: "wide" } });
-    expect(wide).toContain("framed as far down as @Video1 frames him and no further");
+    // "wide" is never said of him: asked for a wide shot, the model drew him small and whole, legs and feet invented
+    expect(wide).toContain(TAKE_FRAMING);
+    expect(wide).not.toMatch(/wide shot/);
+    expect(wide).toContain("cut off at the same place on his body, no smaller");
+    for (const framing of ["extreme_wide", "medium_wide"] as const) expect(restageAngle({ ...b, spec: { ...b.spec, framing } })).toContain(TAKE_FRAMING);
     expect(wide).not.toMatch(/whole body|knees/);
     expect(missingInput(req.shot)).toBe("");
     expect(estimateShotUsd(req.shot)).toBeCloseTo(restageEstimateUsd(4), 4);

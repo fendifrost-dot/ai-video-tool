@@ -73,11 +73,17 @@ export function restageKeep(take: Pick<MediaAsset, "shows">): string[] {
   return shows ? [`his face, skin and build`, shows] : ["his face, skin and build", "every piece of his wardrobe and everything he wears, exactly as in @Video1"];
 }
 
+/**
+ * A take filmed from the thighs up has no knees or feet to show: the widest frame of him is the take's own. The word
+ * "wide" is never said — asked for "a wide shot of him in the place, framed as far down as @Video1 frames him", the
+ * model put him small and whole in the room and drew the legs and feet the take never filmed (the first restaging of
+ * the fresh section). The place is wide; he is framed as he was filmed.
+ */
+export const TAKE_FRAMING = "he fills the frame exactly as he does in @Video1 — cut off at the same place on his body, no smaller — with the place seen around and behind him";
 const FRAMING_WORDS: Record<string, string> = {
-  // a take filmed from the thighs up has no knees or feet to show: the widest frame of him is the take's own
-  extreme_wide: "a wide shot of him in the place, framed as far down as @Video1 frames him and no further",
-  wide: "a wide shot of him in the place, framed as far down as @Video1 frames him and no further",
-  medium_wide: "a medium-wide shot, framed as far down as @Video1 frames him and no further",
+  extreme_wide: TAKE_FRAMING,
+  wide: TAKE_FRAMING,
+  medium_wide: TAKE_FRAMING,
   medium: "a medium shot from the waist up",
   medium_close: "a medium close-up of his chest and face",
   close_up: "a close-up of his face",

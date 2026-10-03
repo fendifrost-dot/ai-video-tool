@@ -6,7 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { askedBeats, temporalPlan } from "./temporal";
 import { resolveEvents } from "./events";
-import { beatLine, checkAnswers, findChanges, measureBeats, ON_TIME_SECONDS, pairBeats, parseBeatCheck, type AskedChange, type FrameSig } from "./beatCheck";
+import { beatLine, checkAnswers, findChanges, isDrift, measureBeats, ON_TIME_SECONDS, pairBeats, parseBeatCheck, unaskedLine, type AskedChange, type FrameSig } from "./beatCheck";
 
 const GRID = 12;
 const FPS = 24;
@@ -95,6 +95,25 @@ describe("finding where a picture changes", () => {
     expect(changes[0].arrived).toBeGreaterThan(2.15);
     expect(changes[0].arrived).toBeLessThanOrEqual(2.5);
     expect(changes[0].half).toBeGreaterThan(changes[0].begins);
+  });
+
+  it("a camera pushing in on a lit floor is one drift, not a string of events", () => {
+    // the brightness of a real restaged take whose camera pushed in on a pool of light, every sixth of a second
+    const measured = [0.122, 0.125, 0.133, 0.138, 0.147, 0.155, 0.165, 0.173, 0.186, 0.202, 0.218, 0.237, 0.26, 0.286, 0.3, 0.295, 0.289, 0.284, 0.276, 0.269, 0.26, 0.264, 0.265, 0.266, 0.265];
+    const at = (t: number) => {
+      const i = Math.min(measured.length - 2, Math.floor(t * 6));
+      return measured[i] + (measured[i + 1] - measured[i]) * (t * 6 - i);
+    };
+    const { changes } = findChanges(clip(4, (t) => ({ light: at(t) / 0.122 })));
+    expect(changes).toHaveLength(1);
+    expect(changes[0].begins).toBeLessThan(1.1);
+    expect(changes[0].arrived).toBeGreaterThan(1.7);
+    expect(isDrift(changes[0])).toBe(true);
+    expect(unaskedLine(changes[0])).toMatch(/^the picture brightens between \d\.\d\d s and \d\.\d\d s — a drift/);
+    // a light that snaps is said as a moment
+    const snap = findChanges(clip(4, step(1.9, 1, 0.25))).changes[0];
+    expect(isDrift(snap)).toBe(false);
+    expect(unaskedLine(snap)).toBe("the light changes at 1.92 s — nothing in the request asked for a change there");
   });
 
   it("a change of colour with the brightness held is a change of light", () => {

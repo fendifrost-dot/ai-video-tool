@@ -98,6 +98,10 @@ export const MIN_STRENGTH = 3;
 export const CORRELATED_FRAMES = 4;
 /** Two changes closer together than this are one change still under way (a light that takes a second to die is not three events). */
 export const SAME_CHANGE_GAP_SECONDS = 0.25;
+/** A run between two cuts that itself covers this share of the way from the light before to the light after is the change still under way. */
+export const STILL_TRAVELLING = 0.15;
+/** A change that takes at least this long to arrive is a drift (a camera move, a slow fade), not a moment. */
+export const DRIFT_SECONDS = 0.5;
 /** A state lasts at least this long on each side of a change. */
 export const MIN_STATE_SECONDS = 0.2;
 /** Two neighbouring frames are different PICTURES when their grids differ by at least this much per cell value… */
@@ -304,10 +308,30 @@ export function findChanges(frames: readonly FrameSig[], max = 6): { changes: Ch
   const edges = [0, ...cuts.map((c) => c.k), n];
   // Cuts that follow each other with no steady light between them are ONE change still under way: a light that takes
   // a second to die is cut into several steps above, and is one event.
+  // The same holds when the run between two cuts is not a steady light at all but the change still travelling: a
+  // camera pushing in on a lit floor brightens the picture for two seconds, and that is one drift, not two events.
+  const travelling = (from: number, to: number): boolean => {
+    const a = edges[to]; // the run between cut `to - 1` and cut `to`
+    const b = edges[to + 1];
+    const third = Math.max(1, Math.floor((b - a) / 3));
+    if (b - a < 3) return true;
+    const before = meanOf(s, edges[from], edges[from + 1]);
+    const after = meanOf(s, edges[to + 1], edges[to + 2]);
+    const first = meanOf(s, a, a + third);
+    const last = meanOf(s, b - third, b);
+    let along = 0;
+    let len = 0;
+    for (let q = 0; q < s.d; q++) {
+      along += (last[q] - first[q]) * (after[q] - before[q]);
+      len += (after[q] - before[q]) * (after[q] - before[q]);
+    }
+    // the run itself covers a real share of the way from the light before to the light after
+    return len > 0 && along / len >= STILL_TRAVELLING;
+  };
   const groups: [number, number][] = [];
   for (let i = 0; i < cuts.length; i++) {
     const last = groups[groups.length - 1];
-    if (last && lightChange(s, edges, i, i).begins - lightChange(s, edges, last[0], last[1]).arrived <= SAME_CHANGE_GAP_SECONDS) {
+    if (last && (lightChange(s, edges, i, i).begins - lightChange(s, edges, last[0], last[1]).arrived <= SAME_CHANGE_GAP_SECONDS || travelling(last[0], i))) {
       last[1] = i;
       continue;
     }
@@ -441,6 +465,20 @@ export function beatLine(b: MeasuredBeat): string {
   const took = Math.max(0, b.change.arrived - b.change.begins);
   const what = b.change.kind === "light" ? `the light begins to change at ${b.change.begins.toFixed(2)} s` : `the picture jumps at ${b.change.begins.toFixed(2)} s`;
   return `asked at ${b.offset.toFixed(2)} s — ${what} (${signed(b.error)})${took >= 0.1 ? `, arrived by ${b.change.arrived.toFixed(2)} s` : ""}`;
+}
+
+/** True when a change takes long enough to arrive that it is a drift rather than a moment. */
+export function isDrift(c: Pick<ChangePoint, "begins" | "arrived" | "kind">): boolean {
+  return c.kind === "light" && c.arrived - c.begins >= DRIFT_SECONDS;
+}
+
+/** A change nobody asked for, in words: a moment is said as a moment, a drift as a drift (a camera pushing in on a lit floor brightens the whole picture). */
+export function unaskedLine(c: ChangePoint): string {
+  if (c.kind === "picture") return `the picture jumps at ${c.begins.toFixed(2)} s — nothing in the request asked for a change there`;
+  if (isDrift(c)) {
+    return `the picture ${c.lumaAfter >= c.lumaBefore ? "brightens" : "darkens"} between ${c.begins.toFixed(2)} s and ${c.arrived.toFixed(2)} s — a drift, as a camera move or a slow change of light makes; nothing in the request asked for a change of light`;
+  }
+  return `the light changes at ${c.begins.toFixed(2)} s — nothing in the request asked for a change there`;
 }
 
 export const VERDICT_LABEL: Record<BeatVerdict, string> = { on_time: "on time", displaced: "not on time", not_seen: "not seen", unmeasured: "for the eye" };
