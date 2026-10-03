@@ -50,7 +50,7 @@ export function useTreatmentInputs(projectId: string) {
    * Everything the treatment model is told. `notes` are the director's — the one notes text the Treatment page shows
    * (treatmentDoc.directorNotes); `footageNote` states the real footage.
    */
-  const treatmentContext = (notes: string, footageNote: string): TreatmentContext => {
+  const treatmentContext = (notes: string, footageNote: string, hasPerformanceFootage = false): TreatmentContext => {
     const energyCurve = analysis?.energy_curve_json ?? [];
     const bucket = Math.max(1, Math.floor(energyCurve.length / 12));
     const energyProfile = energyCurve.length
@@ -78,6 +78,7 @@ export function useTreatmentInputs(projectId: string) {
           }
         : null,
       looks: usableLooks.slice(0, 25).map((l) => ({ name: l.name, description: l.description })),
+      hasPerformanceFootage,
     };
   };
 
