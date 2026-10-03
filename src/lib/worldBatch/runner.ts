@@ -449,3 +449,22 @@ export function statusFromEnvelope(env: Record<string, unknown> | null | undefin
   if (["failed", "canceled", "cancelled", "nsfw", "error"].includes(s)) return "failed";
   return "running";
 }
+
+/**
+ * Why a job failed, in the provider's own words where it gave any. The envelope's own errorMessage first; then what
+ * the provider itself said, which the proxy passes through under providerMetadata — a restaging refused for a low
+ * balance was recorded as "failed" and nothing else while the provider's sentence sat unread in the response
+ * (the fresh section). The status word alone is the last resort.
+ */
+export function failureReason(env: Record<string, unknown> | null | undefined): string {
+  const text = (v: unknown): string => {
+    if (typeof v === "string") return v.trim();
+    const m = v && typeof v === "object" ? (v as { message?: unknown }).message : null;
+    return typeof m === "string" ? m.trim() : "";
+  };
+  const meta = (env?.providerMetadata && typeof env.providerMetadata === "object" ? env.providerMetadata : {}) as Record<string, unknown>;
+  const said = [env?.errorMessage, env?.error, meta.error, meta.detail, meta.message, meta.failure_reason].map(text).find(Boolean);
+  if (said) return said.slice(0, 500);
+  const status = typeof env?.status === "string" ? env.status.trim() : "";
+  return status && !["failed", "error"].includes(status.toLowerCase()) ? `the provider reported: ${status}` : "the provider reported a failure and did not say why";
+}

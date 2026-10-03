@@ -5,7 +5,7 @@
 import { supabase } from "@/lib/supabase";
 import { stillFailure } from "./requests";
 import { buildStoragePath, signedUrl, uploadToBucket } from "@/lib/storage";
-import { statusFromEnvelope, type BatchJobRow, type RunnerDeps } from "./runner";
+import { failureReason, statusFromEnvelope, type BatchJobRow, type RunnerDeps } from "./runner";
 import { panelSeam, type PanelSeam } from "./stillCheck";
 
 /** The still as a small luma picture, read through its signed link (the bucket allows cross-origin reads). */
@@ -153,7 +153,7 @@ export async function pollBatchJob(row: Pick<BatchJobRow, "id" | "provider" | "e
   const state = statusFromEnvelope(data);
   if (state !== "running") {
     const patch: Record<string, unknown> = { status: state, response_payload_json: data };
-    if (state === "failed") patch.error_text = String(data.errorMessage ?? data.status ?? "the provider reported a failure").slice(0, 500);
+    if (state === "failed") patch.error_text = failureReason(data);
     const { error: upErr } = await supabase.from("provider_jobs").update(patch as never).eq("id", row.id);
     if (upErr) throw new Error(upErr.message);
   }
