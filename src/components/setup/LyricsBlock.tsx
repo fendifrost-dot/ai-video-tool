@@ -279,7 +279,7 @@ export function LyricsBlock({
                       </span>{" "}
                       · {p.words} word{p.words === 1 ? "" : "s"}
                       {p.retry ? " · second try, cut earlier" : ""}
-                      {p.pass === 2 ? " · listened again" : ""}
+                      {p.pass === 2 ? (p.kept > 0 ? ` · listened again, ${p.kept} borne out by another cut` : p.words > 0 ? " · listened again — no other cut heard the same, left out" : " · listened again") : ""}
                       {p.text ? <span className="block text-foreground/45">{p.text}</span> : <span className="block text-amber-200/70">nothing heard</span>}
                     </li>
                   ))}
