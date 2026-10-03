@@ -1,0 +1,7 @@
+fixtures.json
+session.json
+media/
+*.log
+*.out
+*.png
+result.json

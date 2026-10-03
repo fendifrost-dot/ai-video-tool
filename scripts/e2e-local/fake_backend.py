@@ -1,0 +1,163 @@
+"""Local stand-in for the app's backend: enough of PostgREST, auth and storage for a browser run on fixtures.
+
+In memory only. It signs nothing and checks nothing: the session it hands out is a made-up token for a made-up
+user, good for this process alone. Never point it at, or copy anything into it from, a real project."""
+import json, os, re, sys, uuid, mimetypes, datetime
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qsl, unquote
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+FX = json.load(open(os.path.join(HERE, "fixtures.json")))
+T = FX["tables"]
+LOG = open(os.path.join(HERE, "backend.log"), "a")
+RESERVED = {"select", "order", "limit", "offset", "on_conflict", "columns"}
+
+def now(): return datetime.datetime.utcnow().isoformat() + "Z"
+
+def match(row, col, expr):
+    v = row.get(col)
+    neg = False
+    if expr.startswith("not."): neg, expr = True, expr[4:]
+    op, _, arg = expr.partition(".")
+    if op == "eq": r = str(v) == arg if v is not None else False
+    elif op == "neq": r = str(v) != arg
+    elif op == "is": r = (v is None) if arg == "null" else (str(v).lower() == arg)
+    elif op == "in": r = str(v) in [a.strip('"') for a in arg.strip("()").split(",")]
+    elif op in ("gt", "gte", "lt", "lte"):
+        try: a, b = float(v), float(arg)
+        except Exception: a, b = str(v), arg
+        r = {"gt": a > b, "gte": a >= b, "lt": a < b, "lte": a <= b}[op]
+    elif op in ("like", "ilike"): r = True
+    else: r = True
+    return (not r) if neg else r
+
+def select(table, q):
+    rows = [r for r in T.get(table, []) if all(match(r, k, v) for k, v in q if k not in RESERVED and k not in ("or", "and"))]
+    for k, v in q:
+        if k == "order":
+            for part in reversed(v.split(",")):
+                col, *mods = part.split(".")
+                rows.sort(key=lambda r: (r.get(col) is None, r.get(col) if r.get(col) is not None else 0), reverse=("desc" in mods))
+    for k, v in q:
+        if k == "limit": rows = rows[: int(v)]
+    return rows
+
+class H(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+    def log_message(self, *a): pass
+    def cors(self):
+        self.send_header("Access-Control-Allow-Origin", self.headers.get("Origin") or "*")
+        self.send_header("Access-Control-Allow-Headers", self.headers.get("Access-Control-Request-Headers") or "*")
+        self.send_header("Access-Control-Allow-Methods", "GET,POST,PATCH,PUT,DELETE,OPTIONS,HEAD")
+        self.send_header("Access-Control-Expose-Headers", "Content-Range, Accept-Ranges, Content-Length")
+        self.send_header("Access-Control-Allow-Credentials", "true")
+    def out(self, code, body=None, headers=None):
+        data = b"" if body is None else json.dumps(body).encode()
+        self.send_response(code); self.cors()
+        self.send_header("Content-Type", "application/json")
+        for k, v in (headers or {}).items(): self.send_header(k, v)
+        self.send_header("Content-Length", str(len(data))); self.end_headers()
+        if self.command != "HEAD": self.wfile.write(data)
+    def body(self):
+        n = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(n) if n else b""
+        try: return json.loads(raw) if raw else None
+        except Exception: return None
+    def do_OPTIONS(self):
+        self.send_response(204); self.cors(); self.send_header("Content-Length", "0"); self.end_headers()
+    def do_HEAD(self): self.route()
+    def do_GET(self): self.route()
+    def do_POST(self): self.route()
+    def do_PATCH(self): self.route()
+    def do_PUT(self): self.route()
+    def do_DELETE(self): self.route()
+
+    def media(self, name):
+        path = os.path.join(HERE, "media", os.path.basename(name))
+        if not os.path.exists(path): return self.out(404, {"error": "no such file"})
+        size = os.path.getsize(path); start, end = 0, size - 1; code = 200
+        rng = self.headers.get("Range")
+        if rng:
+            m = re.match(r"bytes=(\d*)-(\d*)", rng)
+            if m:
+                if m.group(1): start = int(m.group(1))
+                if m.group(2): end = min(size - 1, int(m.group(2)))
+                code = 206
+        self.send_response(code); self.cors()
+        self.send_header("Content-Type", mimetypes.guess_type(path)[0] or "application/octet-stream")
+        self.send_header("Accept-Ranges", "bytes"); self.send_header("Content-Length", str(end - start + 1))
+        if code == 206: self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.end_headers()
+        if self.command == "HEAD": return
+        with open(path, "rb") as f:
+            f.seek(start); left = end - start + 1
+            try:
+                while left > 0:
+                    chunk = f.read(min(65536, left))
+                    if not chunk: break
+                    self.wfile.write(chunk); left -= len(chunk)
+            except (BrokenPipeError, ConnectionResetError): pass
+
+    def route(self):
+        u = urlparse(self.path); p = unquote(u.path); q = parse_qsl(u.query, keep_blank_values=True)
+        body = self.body() if self.command in ("POST", "PATCH", "PUT", "DELETE") else None
+        LOG.write(f"{self.command} {p} {u.query[:160]}\n"); LOG.flush()
+        if p.startswith("/auth/v1/user"): return self.out(200, FX["user"])
+        if p.startswith("/auth/v1/token"): return self.out(200, FX["session"])
+        if p.startswith("/auth/v1/"): return self.out(200, {})
+        if p.startswith("/storage/v1/object/sign/"):
+            rest = p[len("/storage/v1/object/sign/"):]
+            if self.command == "POST":
+                bucket = rest.split("/")[0]
+                if isinstance(body, dict) and "paths" in body:
+                    return self.out(200, [{"path": x, "signedURL": f"/object/sign/{bucket}/{x}?token=local", "error": None} for x in body["paths"]])
+                return self.out(200, {"signedURL": f"/object/sign/{rest}?token=local"})
+            return self.media(rest)
+        if p.startswith("/storage/v1/"): return self.out(200, {})
+        if p.startswith("/functions/v1/"): return self.out(200, {"ok": True, "jobs": [], "results": []})
+        if p.startswith("/rest/v1/rpc/"): return self.out(200, None)
+        if p.startswith("/rest/v1/"):
+            table = p[len("/rest/v1/"):].strip("/")
+            accept = self.headers.get("Accept", ""); prefer = self.headers.get("Prefer", "")
+            single = "vnd.pgrst.object" in accept
+            if self.command in ("GET", "HEAD"):
+                rows = select(table, q)
+                hdr = {"Content-Range": f"0-{max(0, len(rows) - 1)}/{len(rows)}"}
+                if single:
+                    if len(rows) != 1: return self.out(406, {"code": "PGRST116", "message": "JSON object requested, multiple (or no) rows returned", "details": f"{len(rows)} rows", "hint": None})
+                    return self.out(200, rows[0], hdr)
+                return self.out(200, rows, hdr)
+            T.setdefault(table, [])
+            if self.command == "POST":
+                items = body if isinstance(body, list) else [body or {}]
+                conflict = dict(q).get("on_conflict"); outrows = []
+                for it in items:
+                    hit = None
+                    if conflict and "merge-duplicates" in prefer:
+                        cols = conflict.split(",")
+                        hit = next((r for r in T[table] if all(str(r.get(c)) == str(it.get(c)) for c in cols)), None)
+                    if hit: hit.update(it); hit["updated_at"] = now(); outrows.append(hit)
+                    else:
+                        row = {"id": str(uuid.uuid4()), "created_at": now(), "updated_at": now(), **it}
+                        T[table].append(row); outrows.append(row)
+                if "return=representation" in prefer: return self.out(201, outrows[0] if single else outrows)
+                return self.out(201)
+            rows = select(table, q)
+            if self.command == "PATCH":
+                for r in rows: r.update(body or {}); r["updated_at"] = now()
+                if "return=representation" in prefer: return self.out(200, (rows[0] if rows else None) if single else rows)
+                return self.out(204)
+            if self.command == "DELETE":
+                ids = {id(r) for r in rows}; T[table][:] = [r for r in T[table] if id(r) not in ids]
+                if "return=representation" in prefer: return self.out(200, rows)
+                return self.out(204)
+        return self.out(404, {"error": "not handled", "path": p})
+
+if __name__ == "__main__":
+    import base64, time
+    b64 = lambda d: base64.urlsafe_b64encode(json.dumps(d).encode()).decode().rstrip("=")
+    exp = int(time.time()) + 86400
+    token = f"{b64({'alg': 'HS256', 'typ': 'JWT'})}.{b64({'sub': FX['user']['id'], 'role': 'authenticated', 'aud': 'authenticated', 'exp': exp, 'email': FX['user']['email']})}.c2ln"
+    FX["session"] = {"access_token": token, "refresh_token": "local-refresh", "token_type": "bearer", "expires_in": 86400, "expires_at": exp, "user": FX["user"]}
+    json.dump(FX["session"], open(os.path.join(HERE, "session.json"), "w"))
+    ThreadingHTTPServer(("127.0.0.1", 54399), H).serve_forever()
