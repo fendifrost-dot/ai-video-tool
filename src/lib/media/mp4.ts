@@ -27,6 +27,8 @@ export type Mp4Track = {
   syncCount: number;
   /** The first media time presented at movie time 0 (edit list), seconds. */
   startOffset: number;
+  /** One sample by its number in the track. */
+  sample: (index: number) => Mp4Sample | null;
   /** Frame lookups (video tracks only). */
   sampleAt: (seconds: number) => Mp4Sample | null;
   /** The sync sample at or before the sample at `seconds`. */
@@ -265,7 +267,7 @@ function parseTrack(v: DataView, trak: Box, bytes: Uint8Array): Mp4Track | null 
     return key < 0 ? null : sample(key);
   };
 
-  return { kind, timescale, duration: timescale ? durationUnits / timescale : 0, format, codec, description, width, height, sampleCount, syncCount: syncSet ? syncSet.length : sampleCount, startOffset, sampleAt, keyframeAt };
+  return { kind, timescale, duration: timescale ? durationUnits / timescale : 0, format, codec, description, width, height, sampleCount, syncCount: syncSet ? syncSet.length : sampleCount, startOffset, sample, sampleAt, keyframeAt };
 }
 
 /** Parse a `moov` box (the bytes of the whole box, header included). `brand` is the file's major brand if known. */
