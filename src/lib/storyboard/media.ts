@@ -57,7 +57,19 @@ export type MediaAsset = {
   sourceTool: string | null;
   providerJobId: string | null;
   createdAt: string;
+  /**
+   * Set on a take that was made FROM another take (the storyboard's "restage"): which take, and the song time of its
+   * first frame. It is a version of one moment — never the base layer of other shots, never counted as a take.
+   */
+  derivedFrom?: { assetId: string; songStart: number | null } | null;
+  /** What the footage shows, in the director's words (Setup): wardrobe, place. Told to the writer and the models. */
+  shows?: string | null;
 };
+
+/** A take of the song as filmed: performance footage that was not made from another take. */
+export function isOriginalTake(a: Pick<MediaAsset, "footageRole" | "isVideo" | "derivedFrom">): boolean {
+  return a.footageRole === "performance" && a.isVideo && !a.derivedFrom;
+}
 
 /** A take's sync, as stored: which take, and how its clock maps to the song's. */
 export type TakeSync = PerformanceSync & { id: string; performanceAssetId: string; updatedAt?: string };
@@ -234,6 +246,8 @@ export function boxMedia(input: {
     if (!isUsableSync(sync) || takesOnBox.has(sync.performanceAssetId)) continue;
     const asset = input.assets.get(sync.performanceAssetId);
     if (!asset || !asset.isVideo) continue;
+    // a restaged clip is one moment of a take: it shows where it was put, never underneath other shots
+    if (asset.derivedFrom) continue;
     const r = takeRangeForBox(box, sync, asset.durationSeconds);
     if (!r) continue;
     items.push({

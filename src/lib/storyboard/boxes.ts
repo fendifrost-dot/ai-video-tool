@@ -566,7 +566,7 @@ export type BoxMachineContext = {
   song_window_seconds: [number, number];
   section: string | null;
   box_type: string;
-  performance_source: { take: string; source_range_seconds: [number, number] } | null;
+  performance_source: { take: string; source_range_seconds: [number, number]; what_the_take_shows?: string } | null;
   assigned_media: { role: string; name: string; selected: boolean }[];
   look: { name: string; description: string } | null;
   locked_by_director: { framing?: string; camera_move?: string; must_be_in_frame?: string[] };
@@ -575,7 +575,7 @@ export type BoxMachineContext = {
 
 export function machineContext(input: {
   box: StoryboardBox;
-  performance?: { takeName: string; range: { start: number; end: number } } | null;
+  performance?: { takeName: string; range: { start: number; end: number }; shows?: string | null } | null;
   media?: { role: string; name: string; selected: boolean }[];
   look?: { name?: string | null; description?: string | null } | null;
   constraints?: (string | null | undefined)[];
@@ -595,7 +595,11 @@ export function machineContext(input: {
     section: box.section,
     box_type: box.spec.shotType,
     performance_source: input.performance
-      ? { take: input.performance.takeName, source_range_seconds: [round2(input.performance.range.start), round2(input.performance.range.end)] }
+      ? {
+          take: input.performance.takeName,
+          source_range_seconds: [round2(input.performance.range.start), round2(input.performance.range.end)],
+          ...(input.performance.shows?.trim() ? { what_the_take_shows: input.performance.shows.trim() } : {}),
+        }
       : null,
     assigned_media: input.media ?? [],
     look: lookName || lookDescription ? { name: lookName, description: lookDescription } : null,

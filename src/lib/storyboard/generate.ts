@@ -95,11 +95,14 @@ export async function generateBoxImage(input: {
   lookPresetId?: string;
   /** The project's frame. */
   aspect?: ProjectAspect;
+  /** false = keep what the shot shows (a performance shot keeps showing its take; the image is the place to restage it in). */
+  select?: boolean;
 }): Promise<BoxImageResult> {
   const deps = await browserRunnerDeps();
   const shot = boxShot(input.box, input.lyricLines, { lookPresetId: input.lookPresetId, aspect: input.aspect });
   const res = await submitStills(shot, runContext(input.projectId, input.box, input.lookPresetId), deps);
-  const assetIds = await attachStills({ projectId: input.projectId, box: input.box, paths: res.whole, picked: res.picked, select: true });
+  // on a performance shot the image is the PLACE the take can be restaged in — the take stays what the shot shows
+  const assetIds = await attachStills({ projectId: input.projectId, box: input.box, paths: res.whole, picked: res.picked, select: input.select ?? true });
   // the job points at the image it produced, so nothing downstream mistakes it for a clip still waiting to be saved
   if (assetIds[0]) await deps.updateJob(res.rowId, { result_asset_id: assetIds[0] });
   return { assetIds, picked: res.picked!, candidates: res.candidates.length, rejected: res.candidates.length - res.whole.length, costUsd: res.costUsd };

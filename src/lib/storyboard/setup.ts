@@ -8,7 +8,7 @@
  *
  * Pure module.
  */
-import { isUsableSync, type MediaAsset, type TakeSync } from "./media";
+import { isOriginalTake, isUsableSync, type MediaAsset, type TakeSync } from "./media";
 
 export type SetupItemState = "done" | "todo" | "working" | "optional";
 
@@ -43,7 +43,7 @@ export function setupStatus(input: {
   syncs: readonly Pick<TakeSync, "performanceAssetId" | "status">[];
   footageConfirmedAt: string | null;
 }): SetupStatus {
-  const takes = input.media.filter((m) => m.footageRole === "performance" && m.isVideo);
+  const takes = input.media.filter(isOriginalTake);
   const broll = input.media.filter((m) => m.footageRole === "b_roll");
   const references = input.media.filter((m) => m.footageRole === "reference" || (m.assetType === "reference_image" && (!m.sourceTool || m.sourceTool === "manual")));
   const usable = new Set(input.syncs.filter(isUsableSync).map((s) => s.performanceAssetId));
@@ -131,21 +131,21 @@ export function setupStatus(input: {
 
 /** What the treatment writer is told about the real footage: facts, as a short structured note. */
 export function footageSummary(input: {
-  takes: { name: string; songStart: number; songEnd: number }[];
-  broll: { name: string; seconds: number | null }[];
+  takes: { name: string; songStart: number; songEnd: number; shows?: string | null }[];
+  broll: { name: string; seconds: number | null; shows?: string | null }[];
 }): string {
   const lines: string[] = [];
   if (input.takes.length) {
     lines.push(
       "REAL PERFORMANCE FOOTAGE (already shot, in sync with the song): " +
-        input.takes.map((t) => `${t.name} covers song ${mmss(t.songStart)}–${mmss(t.songEnd)}`).join("; ") +
-        ". Performance boxes use this footage as filmed.",
+        input.takes.map((t) => `${t.name} covers song ${mmss(t.songStart)}–${mmss(t.songEnd)}${t.shows?.trim() ? ` — it shows: ${t.shows.trim()}` : ""}`).join("; ") +
+        ". Performance boxes use this footage: as filmed, or restaged (the same performance re-shot inside the scene the box describes — he keeps what he wears in the take).",
     );
   }
   if (input.broll.length) {
     lines.push(
       "REAL B-ROLL (the director's own footage, available for inserts): " +
-        input.broll.map((b) => `${b.name}${b.seconds ? ` (${b.seconds.toFixed(0)} s)` : ""}`).join("; ") +
+        input.broll.map((b) => `${b.name}${b.seconds ? ` (${b.seconds.toFixed(0)} s)` : ""}${b.shows?.trim() ? ` — ${b.shows.trim()}` : ""}`).join("; ") +
         ".",
     );
   }
