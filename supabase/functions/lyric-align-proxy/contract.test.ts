@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_AUDIO_BYTES, estimateUsd, parseTranscribeRequest, providerOrder, wavInfo, wordsFromOpenAi, wordsFromXai } from "./contract";
+import { MAX_AUDIO_BYTES, estimateUsd, heardFromOpenAi, isRunaway, parseTranscribeRequest, providerOrder, wavInfo, wordsFromOpenAi, wordsFromXai } from "./contract";
 
 const P = "11111111-1111-4111-8111-111111111111";
 
@@ -93,5 +93,36 @@ describe("lyric-align-proxy contract", () => {
     expect(providerOrder("XAI", { openai: true, xai: true })).toEqual(["xai", "openai"]);
     expect(providerOrder(undefined, { openai: false, xai: true })).toEqual(["xai"]);
     expect(providerOrder(undefined, { openai: false, xai: false })).toEqual([]);
+  });
+  it("drops what the model itself marks as a loop or as not speech, and a runaway word", () => {
+    const body = {
+      words: [
+        { word: "W" + "o".repeat(180), start: 0.2, end: 9.8 }, // a runaway: one sound for ten seconds
+        { word: "know", start: 10.2, end: 10.5 },
+        { word: "you", start: 10.5, end: 10.7 },
+        { word: "la", start: 14.1, end: 14.3 }, // inside a segment that compresses like a loop
+        { word: "la", start: 14.3, end: 14.5 },
+        { word: "thanks", start: 21, end: 21.4 }, // inside a segment the model thinks is not speech
+        { word: "designers", start: 26, end: 26.6 },
+      ],
+      segments: [
+        { start: 0, end: 10, avg_logprob: -0.4, compression_ratio: 1.1, no_speech_prob: 0.1 },
+        { start: 10, end: 12, avg_logprob: -0.22, compression_ratio: 1.3, no_speech_prob: 0.05 },
+        { start: 14, end: 16, avg_logprob: -0.3, compression_ratio: 3.4, no_speech_prob: 0.1 },
+        { start: 20, end: 22, avg_logprob: -1.3, compression_ratio: 0.9, no_speech_prob: 0.82 },
+        { start: 25, end: 28, avg_logprob: -1.2, compression_ratio: 1.0, no_speech_prob: 0.2 }, // unsure, but speech: kept
+      ],
+    };
+    const heard = heardFromOpenAi(body);
+    expect(heard.dropped).toBe(4);
+    expect(heard.words).toEqual([
+      { w: "know", start: 10.2, end: 10.5, p: 0.803 },
+      { w: "you", start: 10.5, end: 10.7, p: 0.803 },
+      { w: "designers", start: 26, end: 26.6, p: 0.301 },
+    ]);
+    // without segments there is nothing to judge by but the word itself
+    expect(heardFromOpenAi({ words: body.words }).words.map((w) => w.w)).toEqual(["know", "you", "la", "la", "thanks", "designers"]);
+    expect(isRunaway("Woooooo")).toBe(false);
+    expect(wordsFromXai({ words: [{ text: "o".repeat(40), start: 0, end: 1 }, { text: "ice", start: 1, end: 1.3, confidence: 0.9 }] })).toEqual([{ w: "ice", start: 1, end: 1.3, p: 0.9 }]);
   });
 });

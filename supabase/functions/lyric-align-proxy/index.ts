@@ -20,7 +20,7 @@ import {
   parseTranscribeRequest,
   providerOrder,
   wavInfo,
-  wordsFromOpenAi,
+  heardFromOpenAi,
   wordsFromXai,
   type HeardWord,
   type SttProvider,
@@ -83,7 +83,7 @@ async function withTimeout(url: string, init: RequestInit): Promise<Response> {
   }
 }
 
-type Heard = { ok: true; words: HeardWord[]; model: string } | { ok: false; error: string };
+type Heard = { ok: true; words: HeardWord[]; dropped?: number; model: string } | { ok: false; error: string };
 
 async function hearWithOpenAi(key: string, wav: Uint8Array, prompt: string | null, language: string | null): Promise<Heard> {
   const form = new FormData();
@@ -91,6 +91,9 @@ async function hearWithOpenAi(key: string, wav: Uint8Array, prompt: string | nul
   form.append("model", OPENAI_MODEL);
   form.append("response_format", "verbose_json");
   form.append("timestamp_granularities[]", "word");
+  // segments carry the model's own confidence (avg_logprob, compression_ratio, no_speech_prob): contract.ts drops the
+  // words of a segment it marks as a loop or as not speech
+  form.append("timestamp_granularities[]", "segment");
   form.append("temperature", "0");
   if (language) form.append("language", language.slice(0, 2));
   if (prompt) form.append("prompt", prompt);
@@ -100,7 +103,8 @@ async function hearWithOpenAi(key: string, wav: Uint8Array, prompt: string | nul
     const detail = String((body as { error?: { message?: string } }).error?.message ?? "").slice(0, 200);
     return { ok: false, error: `openai ${res.status}${detail ? `: ${detail}` : ""}` };
   }
-  return { ok: true, words: wordsFromOpenAi(body), model: OPENAI_MODEL };
+  const heard = heardFromOpenAi(body);
+  return { ok: true, words: heard.words, dropped: heard.dropped, model: OPENAI_MODEL };
 }
 
 async function hearWithXai(key: string, wav: Uint8Array, language: string | null): Promise<Heard> {
@@ -164,7 +168,7 @@ Deno.serve(async (req) => {
     try {
       const heard = provider === "openai" ? await hearWithOpenAi(openAiKey, wav, prompt, language) : await hearWithXai(xaiKey, wav, language);
       if (heard.ok) {
-        return json(req, 200, { ok: true, provider, model: heard.model, words: heard.words, seconds: Math.round(info.seconds * 1000) / 1000, estimatedCostUsd: estimateUsd(provider, info.seconds), triedBefore: errors });
+        return json(req, 200, { ok: true, provider, model: heard.model, words: heard.words, dropped: heard.dropped ?? 0, seconds: Math.round(info.seconds * 1000) / 1000, estimatedCostUsd: estimateUsd(provider, info.seconds), triedBefore: errors });
       }
       errors.push(heard.error);
     } catch (e) {

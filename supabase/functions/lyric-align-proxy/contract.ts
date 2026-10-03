@@ -58,19 +58,76 @@ export function wavInfo(bytes: Uint8Array): { sampleRate: number; channels: numb
 
 const num = (x: unknown): number | null => (typeof x === "number" && Number.isFinite(x) ? x : null);
 
-/** OpenAI `verbose_json` with word timestamps → words. */
-export function wordsFromOpenAi(json: unknown): HeardWord[] {
-  const list = (json as { words?: unknown } | null)?.words;
+/**
+ * A "word" that is one sound held for a line — "Wooooooooooo…" — is the transcriber running away with itself, not
+ * something sung at that moment: the same character eight times in a row, or longer than any word.
+ */
+export function isRunaway(word: string): boolean {
+  return word.length > 32 || /(.)\1{7,}/u.test(word);
+}
+
+// Whisper's own measures of a segment it should not have written (the thresholds its reference decoder uses):
+// text that compresses too well is a loop, and a quiet stretch it was unsure of is not speech.
+export const COMPRESSION_RATIO_MAX = 2.4;
+export const NO_SPEECH_PROB_MAX = 0.6;
+export const AVG_LOGPROB_MIN = -1.0;
+
+type Segment = { start: number; end: number; avgLogprob: number | null; compressionRatio: number | null; noSpeechProb: number | null };
+
+function segmentsOf(json: unknown): Segment[] {
+  const list = (json as { segments?: unknown } | null)?.segments;
   if (!Array.isArray(list)) return [];
+  const out: Segment[] = [];
+  for (const item of list) {
+    const r = item as { start?: unknown; end?: unknown; avg_logprob?: unknown; compression_ratio?: unknown; no_speech_prob?: unknown };
+    const start = num(r.start);
+    const end = num(r.end);
+    if (start === null || end === null) continue;
+    out.push({ start, end, avgLogprob: num(r.avg_logprob), compressionRatio: num(r.compression_ratio), noSpeechProb: num(r.no_speech_prob) });
+  }
+  return out;
+}
+
+const badSegment = (s: Segment): boolean =>
+  (s.compressionRatio !== null && s.compressionRatio > COMPRESSION_RATIO_MAX) ||
+  (s.noSpeechProb !== null && s.avgLogprob !== null && s.noSpeechProb > NO_SPEECH_PROB_MAX && s.avgLogprob < AVG_LOGPROB_MIN);
+
+/**
+ * OpenAI `verbose_json` with word (and, when asked for, segment) timestamps → the words worth keeping, and how many
+ * were dropped. A word is dropped when it is a runaway, or when the segment it sits in is one the model itself marks
+ * as a loop or as not speech. A kept word carries its segment's confidence as `p`.
+ */
+export function heardFromOpenAi(json: unknown): { words: HeardWord[]; dropped: number } {
+  const list = (json as { words?: unknown } | null)?.words;
+  if (!Array.isArray(list)) return { words: [], dropped: 0 };
+  const segments = segmentsOf(json);
   const out: HeardWord[] = [];
+  let dropped = 0;
   for (const item of list) {
     const r = item as { word?: unknown; start?: unknown; end?: unknown };
     const w = typeof r.word === "string" ? r.word.trim() : "";
     const start = num(r.start);
     const end = num(r.end);
-    if (w && start !== null && end !== null && end >= start) out.push({ w, start, end });
+    if (!w || start === null || end === null || end < start) continue;
+    if (isRunaway(w)) {
+      dropped += 1;
+      continue;
+    }
+    const mid = (start + end) / 2;
+    const seg = segments.find((s) => mid >= s.start && mid <= s.end) ?? null;
+    if (seg && badSegment(seg)) {
+      dropped += 1;
+      continue;
+    }
+    const p = seg && seg.avgLogprob !== null ? Math.round(Math.min(1, Math.exp(seg.avgLogprob)) * 1000) / 1000 : null;
+    out.push(p === null ? { w, start, end } : { w, start, end, p });
   }
-  return out;
+  return { words: out, dropped };
+}
+
+/** OpenAI `verbose_json` with word timestamps → words. */
+export function wordsFromOpenAi(json: unknown): HeardWord[] {
+  return heardFromOpenAi(json).words;
 }
 
 /** xAI `/v1/stt` → words. */
@@ -85,7 +142,7 @@ export function wordsFromXai(json: unknown): HeardWord[] {
     const start = num(r.start);
     const end = num(r.end);
     const p = num(r.confidence);
-    if (w && start !== null && end !== null && end >= start) out.push(p === null ? { w, start, end } : { w, start, end, p });
+    if (w && !isRunaway(w) && start !== null && end !== null && end >= start) out.push(p === null ? { w, start, end } : { w, start, end, p });
   }
   return out;
 }
