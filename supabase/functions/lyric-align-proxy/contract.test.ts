@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_AUDIO_BYTES, estimateUsd, heardFromOpenAi, isRunaway, parseTranscribeRequest, providerOrder, wavInfo, wordsFromOpenAi, wordsFromXai } from "./contract";
+import { MAX_AUDIO_BYTES, estimateUsd, heardFromOpenAi, isRunaway, parseTranscribeRequest, providerOrder, wavInfo, wordsFromOpenAi, wordsFromXai } from "./contract.ts";
 
 const P = "11111111-1111-4111-8111-111111111111";
 
@@ -122,7 +122,7 @@ describe("lyric-align-proxy contract", () => {
       { w: "designers", start: 26, end: 26.6, p: 0.301 },
     ]);
     // without segments there is nothing to judge by but the word itself
-    expect(heardFromOpenAi({ words: body.words }).words.map((w) => w.w)).toEqual(["know", "you", "la", "la", "minors", "designers"]);
+    expect(heardFromOpenAi({ words: body.words }).words.map((w: { w: string }) => w.w)).toEqual(["know", "you", "la", "la", "minors", "designers"]);
     expect(isRunaway("Woooooo")).toBe(false);
     expect(wordsFromXai({ words: [{ text: "o".repeat(40), start: 0, end: 1 }, { text: "ice", start: 1, end: 1.3, confidence: 0.9 }] })).toEqual([{ w: "ice", start: 1, end: 1.3, p: 0.9 }]);
   });
