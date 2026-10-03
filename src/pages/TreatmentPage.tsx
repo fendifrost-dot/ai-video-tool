@@ -84,7 +84,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
       .filter(isOriginalTake)
       .map((m) => ({ m, sync: syncs.find((s) => s.performanceAssetId === m.id && isUsableSync(s)) }))
       .filter((x) => x.sync)
-      .map(({ m, sync }) => ({ name: m.name, songStart: Math.max(0, sync!.offsetSeconds), songEnd: sync!.offsetSeconds + (m.durationSeconds ?? 0), shows: m.shows }));
+      .map(({ m, sync }) => ({ name: m.name, songStart: Math.max(0, sync!.offsetSeconds), songEnd: sync!.offsetSeconds + (m.durationSeconds ?? 0), shows: m.shows, filmedIn: m.filmedIn }));
     const broll = media.list.filter((m) => m.footageRole === "b_roll").map((m) => ({ name: m.name, seconds: m.durationSeconds, shows: m.shows }));
     return footageSummary({ takes, broll });
   }, [media.list, syncs]);

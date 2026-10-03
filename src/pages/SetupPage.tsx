@@ -369,6 +369,7 @@ function TakeRow({
   const save = useSaveTakeSync(projectId);
   const saveShows = useSetFootageShows(projectId);
   const [shows, setShows] = useState<string>(take.shows ?? "");
+  const [filmedIn, setFilmedIn] = useState<string>(take.filmedIn ?? "");
   const [busy, setBusy] = useState<string | null>(null);
   const [measured, setMeasured] = useState<MatchResult | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -495,29 +496,29 @@ function TakeRow({
           not a take
         </button>
       </div>
-      <label className="block text-[10px] text-foreground/50">
-        What this take shows — what he wears and where he is. The treatment is written knowing this, and a restaged shot keeps it.
-        <div className="mt-0.5 flex items-center gap-2">
-          <Input
-            value={shows}
-            onChange={(e) => setShows(e.target.value)}
-            placeholder="e.g. waist-up, black leather jacket, gold chain, sunglasses; a white studio wall"
-            className="h-8 flex-1 text-xs"
-            maxLength={400}
-            data-testid="setup-take-shows"
-          />
+      <div className="space-y-1.5" data-testid="setup-take-describe">
+        <p className="text-[10px] text-foreground/50">What this take shows. The treatment is written knowing it; a restaged shot keeps what he wears and replaces the place.</p>
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="min-w-[14rem] flex-1 text-[10px] text-foreground/50">
+            What he wears
+            <Input value={shows} onChange={(e) => setShows(e.target.value)} placeholder="e.g. black leather jacket, gold chain, dark sunglasses" className="mt-0.5 h-8 text-xs" maxLength={300} data-testid="setup-take-shows" />
+          </label>
+          <label className="min-w-[14rem] flex-1 text-[10px] text-foreground/50">
+            Where it was filmed
+            <Input value={filmedIn} onChange={(e) => setFilmedIn(e.target.value)} placeholder="e.g. waist-up against a white studio wall" className="mt-0.5 h-8 text-xs" maxLength={300} data-testid="setup-take-filmed-in" />
+          </label>
           <Button
             size="sm"
             variant="outline"
             className="h-8 text-[11px]"
-            disabled={saveShows.isPending || shows.trim() === (take.shows ?? "")}
-            onClick={() => saveShows.mutate({ assetId: take.id, shows }, { onSuccess: () => toast.success("Saved"), onError: (e) => toast.error(message(e)) })}
+            disabled={saveShows.isPending || (shows.trim() === (take.shows ?? "") && filmedIn.trim() === (take.filmedIn ?? ""))}
+            onClick={() => saveShows.mutate({ assetId: take.id, shows, filmedIn }, { onSuccess: () => toast.success("Saved"), onError: (e) => toast.error(message(e)) })}
             data-testid="setup-take-shows-save"
           >
             Save
           </Button>
         </div>
-      </label>
+      </div>
       {busy && <p className="text-[11px] text-foreground/55">{busy}</p>}
       {note && (
         <p className="text-[11px] text-amber-200/90" data-testid="setup-take-note">
