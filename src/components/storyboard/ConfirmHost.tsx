@@ -15,6 +15,12 @@ export function ConfirmHost({ request, onClose }: { request: ConfirmRequest | nu
       <div className="w-full max-w-sm space-y-3 rounded-2xl border border-border bg-background p-5" onClick={(e) => e.stopPropagation()}>
         <h2 className="text-sm font-semibold">{request.title}</h2>
         <p className="text-xs leading-relaxed text-foreground/70">{request.body}</p>
+        {request.picture ? (
+          <figure className="flex items-center gap-3 rounded-lg border border-border/60 bg-white/[0.03] p-2" data-testid="confirm-picture">
+            {request.picture.url ? <img src={request.picture.url} alt="" className="h-24 w-auto rounded border border-border/50 object-contain" data-testid="confirm-picture-image" /> : null}
+            <figcaption className="min-w-0 break-words text-[11px] leading-snug text-foreground/60">{request.picture.caption}</figcaption>
+          </figure>
+        ) : null}
         <div className="flex justify-end gap-2 pt-1">
           <Button size="sm" variant="ghost" onClick={onClose} data-testid="confirm-cancel">
             Cancel

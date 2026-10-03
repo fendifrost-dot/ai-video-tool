@@ -67,6 +67,12 @@ export type ConfirmRequest = {
   confirmLabel: string;
   testId: string;
   onConfirm: () => void | Promise<void>;
+  /**
+   * The picture the paid work is made from, shown before the press. A shot can hold several images (and one put on
+   * it from another shot): "this shot's image" in words does not say which — the first live section restaged a take
+   * into a runway whose centre line the model then drew straight through him, and nothing had shown that picture.
+   */
+  picture?: { url?: string; caption: string };
 };
 
 export type BoxEstimates = {
@@ -450,13 +456,15 @@ export function useStoryboardController(projectId: string): StoryboardController
   );
 
   // --- generation -----------------------------------------------------------------------------------------------
-  const selectedStillPath = useCallback(
-    (box: StoryboardBox): string | null => {
+  /** The image a clip (or a restaging) of this shot is made from, when the shot has one. */
+  const selectedStill = useCallback(
+    (box: StoryboardBox): MediaAsset | null => {
       const pick = imageForClip((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items);
-      return pick && pick.asset.bucket === "project-references" ? pick.asset.path : null;
+      return pick && pick.asset.bucket === "project-references" ? pick.asset : null;
     },
     [mediaByBox],
   );
+  const selectedStillPath = useCallback((box: StoryboardBox): string | null => selectedStill(box)?.path ?? null, [selectedStill]);
 
   const estimatesOf = useCallback(
     (box: StoryboardBox): BoxEstimates => {
@@ -527,7 +535,9 @@ export function useStoryboardController(projectId: string): StoryboardController
         toast.info(est.clipBlocked);
         return;
       }
-      const still = selectedStillPath(box);
+      const stillAsset = selectedStill(box);
+      const still = stillAsset?.path ?? null;
+      const picture = (caption: string) => (stillAsset ? { url: urlFor(stillAsset), caption: `${caption} — ${stillAsset.name}` } : undefined);
       if (est.restage) {
         const r = est.restage;
         const src = restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs);
@@ -545,6 +555,7 @@ export function useStoryboardController(projectId: string): StoryboardController
             (est.clipDrawsImage ? shapeNote : ""),
           confirmLabel: `Restage take · ${usd(est.clip)}`,
           testId: "confirm-generate-clip",
+          picture: picture("The place he is put in"),
           onConfirm: () =>
             run(box, "restaging the take…", async () => {
               let stillPath = still;
@@ -570,6 +581,7 @@ export function useStoryboardController(projectId: string): StoryboardController
           (est.clipDrawsImage ? shapeNote : ""),
         confirmLabel: `Generate clip · ${usd(est.clip)}`,
         testId: "confirm-generate-clip",
+        picture: picture("The clip is made from this image"),
         onConfirm: () =>
           run(box, "sending the clip to render…", async () => {
             await generateBoxClip({ projectId, box, lyricLines, stillPath: still, aspect });
@@ -578,7 +590,7 @@ export function useStoryboardController(projectId: string): StoryboardController
           }).finally(afterGeneration),
       });
     },
-    [estimatesOf, selectedStillPath, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor],
+    [estimatesOf, selectedStill, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor],
   );
 
   const loading = boxesQuery.isLoading || inputs.projectQuery.isLoading;

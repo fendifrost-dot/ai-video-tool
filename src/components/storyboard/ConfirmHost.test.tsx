@@ -34,3 +34,24 @@ describe("a confirmation never waits for the work before it", () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+describe("paid work shows the picture it is made from", () => {
+  it("shows the image and says what it is, before the press", () => {
+    render(
+      <ConfirmHost
+        request={{ title: "Restage your take for shot 17?", body: "About $3.70", confirmLabel: "Restage take", testId: "confirm-generate-clip", onConfirm: () => undefined, picture: { url: "https://example.test/place.png", caption: "The place he is put in — storyboard_c018" } }}
+        onClose={() => undefined}
+      />,
+    );
+    expect(screen.getByTestId("confirm-picture").textContent).toContain("The place he is put in — storyboard_c018");
+    expect((screen.getByTestId("confirm-picture-image") as HTMLImageElement).src).toBe("https://example.test/place.png");
+  });
+
+  it("says which image even when its link is not ready, and shows nothing when there is no image", () => {
+    const { rerender } = render(<ConfirmHost request={{ title: "t", body: "b", confirmLabel: "Go", testId: "confirm-x", onConfirm: () => undefined, picture: { caption: "The clip is made from this image — still_1" } }} onClose={() => undefined} />);
+    expect(screen.getByTestId("confirm-picture").textContent).toContain("still_1");
+    expect(screen.queryByTestId("confirm-picture-image")).toBeNull();
+    rerender(<ConfirmHost request={{ title: "t", body: "b", confirmLabel: "Go", testId: "confirm-x", onConfirm: () => undefined }} onClose={() => undefined} />);
+    expect(screen.queryByTestId("confirm-picture")).toBeNull();
+  });
+});
