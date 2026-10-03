@@ -22,6 +22,28 @@ export const DEFAULT_BOX_LOOK = "film_bar_v1";
 
 /** A performance box is his real take: what is generated for it is the world AROUND him, never a stand-in for him. */
 const PLATE_LINE = "The centre foreground is empty and clear: no person stands there.";
+const EMPTY_SET = "An empty set, photographed with nobody in it: no people, no figures, no faces, no reflections of people.";
+/** A place said in fewer words than this is a label ("backstage"), not a picture: the scene is needed to draw it. */
+const PLACE_WORDS = 6;
+
+/**
+ * The picture drawn for a PERFORMANCE shot: the place he performs in, with nobody in it. The scene of such a shot is
+ * written about him ("he performs on the runway…"), and an image model handed that sentence draws a man — a
+ * stranger the take would then be restaged next to. So the place is taken from where it is said on its own: the
+ * frame the director wrote, else the place the writer named; only when neither says enough is the scene used, and
+ * then it is told plainly to leave him out.
+ */
+export function placePrompt(spec: Pick<StoryboardBox["spec"], "openingFrame" | "environment" | "purpose" | "performanceDirection" | "origin">): string {
+  const frame = spec.openingFrame?.trim();
+  const named = (spec.environment.description || spec.environment.location || "").trim();
+  const scene = (spec.origin === "override" && spec.performanceDirection.trim() ? spec.performanceDirection : spec.purpose).trim();
+  const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
+  const place = frame || (words(named) >= PLACE_WORDS ? named : "");
+  const body = place
+    ? place
+    : `${named ? `${named.replace(/[.;]*$/, "")}. ` : ""}Only the place of this scene, without the performer it mentions: ${scene}`;
+  return `${EMPTY_SET} ${body.replace(/\s+$/, "")}${/[.!?]$/.test(body.trim()) ? "" : "."} ${PLATE_LINE}`;
+}
 
 /**
  * The one shot a box compiles to. `stillPath` set = the box already has its image; the clip is made from it.
@@ -29,8 +51,12 @@ const PLATE_LINE = "The centre foreground is empty and clear: no person stands t
  */
 export function boxShot(box: StoryboardBox, lyricLines: readonly LyricLine[] | undefined, opts: { lookPresetId?: string; stillPath?: string | null; aspect?: ProjectAspect } = {}): BatchShot {
   const isPerformance = box.spec.shotType === "performance";
-  // the compiler writes world shots for boxes that are not real performance; a performance box asks for its plate
-  const spec = isPerformance ? { ...box.spec, shotType: "b_roll" as const, kind: "broll" as const } : box.spec;
+  // the compiler writes world shots for boxes that are not real performance; a performance box asks for its place,
+  // drawn empty (the frame field carries the whole prompt, so nothing about him reaches the image model)
+  const place = isPerformance ? placePrompt(box.spec) : "";
+  const spec = isPerformance
+    ? { ...box.spec, shotType: "b_roll" as const, kind: "broll" as const, origin: "override" as const, openingFrame: place, performanceDirection: box.spec.performanceDirection || box.spec.purpose, requiredElements: [] }
+    : box.spec;
   const phrases = phrasesFromShotSpecs([spec], lyricLines ?? [], { stillPaths: opts.stillPath ? { [box.key]: opts.stillPath } : undefined });
   // the picture is asked for in the project's frame (or the nearest shape the image model has; see aspect.ts)
   const aspectDefault = stillRequestAspect(opts.aspect ?? DEFAULT_PROJECT_ASPECT).aspect;
@@ -38,6 +64,8 @@ export function boxShot(box: StoryboardBox, lyricLines: readonly LyricLine[] | u
   if (!compiled) throw new Error("This box has no scene to generate from — write or regenerate its scene first.");
   const shot = BatchShotSchema.parse({ ...compiled, ...(opts.stillPath ? { still_path: opts.stillPath } : {}) });
   if (isPerformance && !shot.prompt.includes(PLATE_LINE)) shot.prompt = `${shot.prompt.trim()} ${PLATE_LINE}`;
+  // the place is still: its motion sentence is the camera's, never a person's action
+  if (isPerformance) shot.motion = "";
   return shot;
 }
 

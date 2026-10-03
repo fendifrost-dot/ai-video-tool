@@ -23,7 +23,7 @@ import { performanceToSong } from "@/lib/sync/performanceSync";
 import { BatchShotSchema, PROVIDER_RATES, submitShot, type BatchShot, type SubmitResult } from "@/lib/worldBatch";
 import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 import type { StoryboardBox } from "./boxes";
-import { boxShot, DEFAULT_BOX_LOOK, STORYBOARD_RUN } from "./generate";
+import { DEFAULT_BOX_LOOK, STORYBOARD_RUN } from "./generate";
 import type { BoxMediaItem, MediaAsset, TakeSync } from "./media";
 import { resolveLookPreset } from "@/lib/shotCompiler";
 
@@ -68,11 +68,42 @@ export function restageKeep(take: Pick<MediaAsset, "shows">): string[] {
   return shows ? [`his face, skin and build`, shows] : ["his face, skin and build", "every piece of his wardrobe and everything he wears, exactly as in @Video1"];
 }
 
-/** The camera sentence of the restaged shot: the shot's own framing and move. */
-export function restageAngle(box: StoryboardBox, lyricLines: readonly LyricLine[] | undefined): string {
-  const compiled = boxShot(box, lyricLines);
-  const motion = (compiled.motion ?? "").trim();
-  return motion || "a medium shot from chest height, the camera easing slowly toward him.";
+const FRAMING_WORDS: Record<string, string> = {
+  extreme_wide: "an extreme wide shot, him small in the place",
+  wide: "a wide shot, his whole body in the place",
+  medium_wide: "a medium-wide shot from the knees up",
+  medium: "a medium shot from the waist up",
+  medium_close: "a medium close-up of his chest and face",
+  close_up: "a close-up of his face",
+  extreme_close_up: "an extreme close-up of his face",
+  insert: "a medium shot from the waist up",
+};
+const ANGLE_WORDS: Record<string, string> = { low: "from a low angle", high: "from a high angle", birds_eye: "from directly above", dutch: "on a tilted horizon", over_shoulder: "over a shoulder", worms_eye: "from the floor looking up" };
+const MOVE_WORDS: Record<string, string> = {
+  static: "the camera locked off",
+  dolly: "the camera pushing slowly toward him",
+  truck: "the camera tracking slowly sideways past him",
+  pan: "the camera panning slowly across him",
+  tilt: "the camera tilting slowly up him",
+  pedestal: "the camera rising slowly",
+  crane: "the camera rising slowly on a crane",
+  jib: "the camera rising slowly on a jib",
+  orbit: "the camera orbiting slowly around him",
+  handheld: "handheld, breathing with him",
+  steadicam: "the camera gliding slowly toward him",
+  gimbal: "the camera gliding slowly toward him",
+  zoom: "a slow zoom toward him",
+  whip_pan: "the camera locked off",
+  drone: "the camera drifting slowly toward him",
+};
+
+/** The camera sentence of the restaged shot: the shot's own framing, angle and move — never his action. */
+export function restageAngle(box: StoryboardBox): string {
+  const spec = box.spec;
+  const framing = (spec.framing && FRAMING_WORDS[spec.framing]) || "a medium shot from the waist up";
+  const angle = spec.cameraAngle ? ANGLE_WORDS[spec.cameraAngle] : "";
+  const move = MOVE_WORDS[spec.cameraMotion.type ?? ""] ?? "the camera easing slowly toward him";
+  return `${[framing, angle].filter(Boolean).join(" ")}, ${move}.`;
 }
 
 export type RestageRequest = { shot: BatchShot; songStart: number; takeStart: number; seconds: number };
@@ -106,7 +137,7 @@ export function restageShot(input: {
     source_window: [Math.round(input.cut.start * 1000) / 1000, Math.round((input.cut.start + input.cut.seconds) * 1000) / 1000],
     source_asset_id: input.source.take.id,
     masterStart: songStart,
-    angle: restageAngle(input.box, input.lyricLines),
+    angle: restageAngle(input.box),
     keep: restageKeep(input.source.take),
     resolution: RESTAGE_RESOLUTION,
     still_path: input.stillPath,

@@ -11,6 +11,7 @@ import { boxFromRow, boxWrite, type BoxRow } from "./boxes";
 import { boxMedia, isOriginalTake, type Assignment, type MediaAsset, type TakeSync } from "./media";
 import { clipLyrics } from "./build";
 import { footageSummary, setupStatus } from "./setup";
+import { boxShot, placePrompt } from "./generate";
 import { restageEstimateUsd, restageKeep, restageSeconds, restageShot, restageSource, RESTAGE_MAX_SECONDS } from "./restage";
 
 const AT = "2026-10-03T00:00:00Z";
@@ -91,7 +92,8 @@ describe("what a restaging asks for and costs", () => {
     // the clip's first frame sits where the cut began: take time through the take's own sync
     expect(req.songStart).toBeCloseTo(47.054, 3);
     expect(req.shot).toMatchObject({ id: "c013", route: "seedance_ref", kind: "angle", aspect: "9:16", seconds: 4, source_seconds: 4, source_asset_id: "take1", masterStart: req.songStart, still_path: "u/p/stills/c013.png", resolution: "720p" });
-    expect(req.shot.angle).toMatch(/push/i);
+    // the camera sentence is the shot's own framing and move, and says nothing of what he does
+    expect(req.shot.angle).toBe("a medium shot from the waist up, the camera pushing slowly toward him.");
     expect(missingInput(req.shot)).toBe("");
     expect(estimateShotUsd(req.shot)).toBeCloseTo(restageEstimateUsd(4), 4);
     const motion = buildMotionRequest(req.shot, { prompt: "x", stillUrl: "https://s/still", sourceUrl: "https://s/src", userId: "u", projectId: "p" });
@@ -166,5 +168,36 @@ describe("the words the writer is told each shot has to answer", () => {
     expect(out.c014).toBe("Never take a cheat day / Feel free today");
     expect(out.c019).toBeUndefined();
     expect(clipLyrics(grid, undefined)).toEqual({});
+  });
+});
+
+describe("the place drawn for a performance shot", () => {
+  it("is the place alone: the frame the director wrote, else the place the writer named, never the sentence about him", () => {
+    const b = box(47.06, 50.98);
+    const writer = { ...b.spec, environment: { ...b.spec.environment, description: "A backstage fitting room: racks of white and black garments, a wall of bulb mirrors, warm tungsten light." } };
+    const fromWriter = placePrompt(writer);
+    expect(fromWriter).toMatch(/^An empty set, photographed with nobody in it/);
+    expect(fromWriter).toContain("A backstage fitting room: racks of white and black garments");
+    expect(fromWriter).not.toContain("backstage of a runway show, racks of white garments under one hard light");
+    expect(fromWriter).toMatch(/no person stands there\.$/);
+    const directed = placePrompt({ ...writer, openingFrame: "A black runway in near darkness, one line of white light on the floor." });
+    expect(directed).toContain("A black runway in near darkness");
+    expect(directed).not.toContain("fitting room");
+  });
+
+  it("falls back to the scene only when the place is a mere label, and then says to leave him out", () => {
+    const b = box(47.06, 50.98);
+    const label = placePrompt({ ...b.spec, environment: { ...b.spec.environment, description: "backstage" }, purpose: "The artist stands in the fitting room, racks behind him." });
+    expect(label).toContain("backstage. Only the place of this scene, without the performer it mentions: The artist stands in the fitting room, racks behind him.");
+    expect(label).toMatch(/^An empty set/);
+  });
+
+  it("is what the shot's image request carries, with no motion of a person in it", () => {
+    const b = box(47.06, 50.98);
+    const shot = boxShot({ ...b, spec: { ...b.spec, openingFrame: "A black runway in near darkness, one line of white light on the floor." } }, []);
+    expect(shot.prompt).toContain("An empty set, photographed with nobody in it");
+    expect(shot.prompt).toContain("A black runway in near darkness");
+    expect(shot.prompt).not.toMatch(/backstage of a runway show/);
+    expect(shot.motion).toBe("");
   });
 });
