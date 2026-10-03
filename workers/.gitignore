@@ -1,0 +1,7 @@
+# Local compute venv — never commit
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+# Heavy per-frame outputs live on T7, never in git
+warp_worker/artifacts/**/composite/
