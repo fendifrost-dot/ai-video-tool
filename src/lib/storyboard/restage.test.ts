@@ -3,11 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 // the plan is pure; the effects reach the browser's Supabase client, which a test has no use for
 vi.mock("@/lib/supabase", () => ({ supabase: {} }));
 vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
+vi.mock("@/lib/queries/storyboard", () => ({}));
 
 import { parseShotSpec } from "@/lib/treatment/shotSpec";
 import { buildMotionRequest, estimateShotUsd, missingInput } from "@/lib/worldBatch";
 import { boxFromRow, boxWrite, type BoxRow } from "./boxes";
 import { boxMedia, isOriginalTake, type Assignment, type MediaAsset, type TakeSync } from "./media";
+import { clipLyrics } from "./build";
 import { footageSummary, setupStatus } from "./setup";
 import { restageEstimateUsd, restageKeep, restageSeconds, restageShot, restageSource, RESTAGE_MAX_SECONDS } from "./restage";
 
@@ -144,5 +146,25 @@ describe("a restaged take is one moment of a take, not a take of the song", () =
     expect(note).toMatch(/the place it was filmed in is replaced/);
     // the place never reaches the list of things a restaged shot keeps
     expect(restageKeep(take).join(" ")).not.toMatch(/closet|door/);
+  });
+});
+
+describe("the words the writer is told each shot has to answer", () => {
+  const lines = [
+    { lineIndex: 0, text: "Never take a cheat day", start: 50.1, end: 51.14, words: [] },
+    { lineIndex: 1, text: "Feel free today", start: 51.14, end: 52.02, words: [] },
+    { lineIndex: 2, text: "an unsung repeat", start: 60, end: 75, words: [] },
+  ] as never;
+  it("are the lines sung inside its window, by key; a shot with no words has no entry", () => {
+    const grid = [
+      { key: "c013", start: 47.06, end: 50.98 },
+      { key: "c014", start: 50.98, end: 54.9 },
+      { key: "c019", start: 62, end: 66 },
+    ];
+    const out = clipLyrics(grid, lines);
+    expect(out.c013).toBe("Never take a cheat day");
+    expect(out.c014).toBe("Never take a cheat day / Feel free today");
+    expect(out.c019).toBeUndefined();
+    expect(clipLyrics(grid, undefined)).toEqual({});
   });
 });

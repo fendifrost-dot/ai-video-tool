@@ -4,7 +4,7 @@
  */
 import { supabase } from "@/lib/supabase";
 import type { Json } from "@/integrations/supabase/aliases";
-import type { LyricLine } from "@/lib/lyrics/lyricsForShot";
+import { lyricsForShot, type LyricLine } from "@/lib/lyrics/lyricsForShot";
 import type { SongAnalysis } from "@/lib/songAnalysis/types";
 import {
   draftTreatmentClips,
@@ -151,12 +151,12 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
   const beatGrid = buildClipGrid({ analysis: input.analysis, durationSeconds: input.durationSeconds ?? null });
   const grid = input.boxes.length > 0 ? gridFromBoxes(input.boxes, beatGrid) : beatGrid;
   if (grid.length === 0) throw new Error("The song has not been analysed yet — Setup needs its length and beat before boxes can be cut.");
-  const concept = input.aiWritesText
-    ? (input.conceptHint?.trim() || "Write the concept for this video yourself, from the lyrics, the artist and the real footage listed in the notes.")
-    : input.treatmentText.trim();
-  if (!concept) throw new Error("Write the treatment first, or let the AI write it.");
+  // when the writer writes the text, `concept` is only a hint from the director (empty = none)
+  const concept = input.aiWritesText ? (input.conceptHint?.trim() ?? "") : input.treatmentText.trim();
+  if (!input.aiWritesText && !concept) throw new Error("Write the treatment first, or let the AI write it.");
 
-  const draft = await draftTreatmentClips({ ...input.context, concept, grid });
+  const draft = await draftTreatmentClips({ ...input.context, concept, grid, writeText: input.aiWritesText, clipLyrics: clipLyrics(grid, input.lyricLines) });
+  if (input.aiWritesText && !draft.concept.trim()) throw new Error("The writer returned no treatment — nothing was changed. Try again.");
   const at = new Date().toISOString();
   const drafted = structuredTreatmentToShotSpecs(draft);
   const sections = Object.fromEntries(draft.clips.map((c) => [c.key, c.section]));
@@ -196,4 +196,15 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
   };
   await saveTreatmentJson(input.projectId, withTreatmentDoc(base, doc));
   return { doc, written: plan.written, kept: plan.kept, draft };
+}
+
+/** The words sung inside each shot of a grid, by key — what the writer is told each shot has to answer. */
+export function clipLyrics(grid: readonly { key: string; start: number; end: number }[], lines: readonly LyricLine[] | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!lines?.length) return out;
+  for (const g of grid) {
+    const sung = lyricsForShot(lines as LyricLine[], { start: g.start, end: g.end });
+    if (sung.length) out[g.key] = sung.map((l) => l.text).join(" / ");
+  }
+  return out;
 }
