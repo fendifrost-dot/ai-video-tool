@@ -21,6 +21,7 @@ function project(over: Partial<VideoProject> = {}): VideoProject {
     visual_style: "35mm",
     color_palette: ["#000", "#f55"],
     creative_exemplars: [],
+    aspect_ratio: "9:16",
     wardrobe_notes: null,
     lyrics: "[Intro]\n...\n[Verse 1]\n...",
     song_structure_json: [
