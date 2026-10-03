@@ -55,6 +55,14 @@ async def desktop(b, out):
     await pg.evaluate("() => document.exitFullscreen && document.fullscreenElement && document.exitFullscreen()")
     await pg.click("[data-testid=focus-close]"); await pg.wait_for_timeout(500)
     out["back_to_board"] = await pg.evaluate("() => ({focus: !!document.querySelector('[data-testid=focus-view]'), cards: document.querySelectorAll('[data-testid=box-card]').length})")
+    # a performance shot's clip is the take restaged: the button says so, with the price, and the confirm says what goes
+    out["restage"] = {"clip": (await pg.inner_text("[data-box-key=c005] [data-testid=box-generate-clip]")).strip(), "image": (await pg.inner_text("[data-box-key=c005] [data-testid=box-generate-image]")).strip(),
+        "broll_clip": (await pg.inner_text("[data-box-key=c006] [data-testid=box-generate-clip]")).strip(),
+        "c010": await pg.evaluate("() => { const m=document.querySelector('[data-box-key=c010] [data-testid=box-media]'); return {role: m?.dataset.mediaRole, base: m?.dataset.mediaBase, text: document.querySelector('[data-box-key=c010]').innerText.includes('restaged')}; }"),
+        "c011_base": await pg.evaluate("() => { const m=document.querySelector('[data-box-key=c011] [data-testid=box-media]'); return m ? [m.dataset.mediaRole, m.dataset.mediaBase] : null; }")}
+    await pg.click("[data-box-key=c005] [data-testid=box-generate-clip]"); await pg.wait_for_selector("[data-testid=confirm-generate-clip]", timeout=10000)
+    out["restage"]["confirm"] = (await pg.inner_text("[data-testid=confirm-dialog]")).replace("\n", " ")[:520]
+    await pg.click("[data-testid=confirm-cancel]"); await pg.wait_for_timeout(400)
     # assign the b-roll to a box from the picker, on the board
     await pg.click("[data-box-key=c008] [data-testid=box-add-media]"); await pg.wait_for_selector("[data-testid=media-picker]")
     await pg.click("[data-testid=media-tab-b_roll]"); await pg.wait_for_timeout(300)
@@ -79,6 +87,8 @@ async def desktop(b, out):
         return r
     out["from_shot_5"] = await run_from(5, 9)
     out["from_shot_8"] = await run_from(8, 9)
+    # shot 10 shows its take RESTAGED: a clip made from the take, played by the song clock like the take itself; shot 11 is not it
+    out["from_shot_10"] = await run_from(10, 5)
     out["from_shot_42"] = await run_from(42, 8)
     await pg.screenshot(path="shot_review_desktop.png")
     await pg.click("[data-testid=sequence-play]"); await pg.wait_for_timeout(300)
@@ -196,10 +206,10 @@ async def main():
 def report(r):
     bad = 0
     for k, v in r.items():
-        if k in ("play_from_top", "from_shot_5", "from_shot_8", "from_shot_42"):
+        if k in ("play_from_top", "from_shot_5", "from_shot_8", "from_shot_10", "from_shot_42"):
             print(k)
             for s in v:
-                exp = round(s["t"] - OFFSET, 3) if s["file"] == "take.mp4" else None
+                exp = round(s["t"] - OFFSET, 3) if s["file"] == "take.mp4" else round(s["t"] - 35.29, 3) if s["file"] == "restaged.mp4" else None
                 d = None if exp is None or s["vt"] is None else round(s["vt"] - max(0, exp), 3)
                 # a take that has run out holds its last frame: not a sync error
                 held = s["vpaused"] and s["file"] == "take.mp4" and s["t"] - OFFSET > 190.3
@@ -214,6 +224,13 @@ def report(r):
     want("check this cut: passes", cc.get("ok") == "true")
     want("check this cut: every line holds, the player read back", all(c[1] == "true" for c in cc.get("checks", [])) and len(cc.get("checks", [])) >= 12)
     want("check this cut: 43 shots listed", cc.get("cuts") == 43)
+    rs = r.get("restage") or {}
+    want("restage: a performance shot offers its take restaged, priced", rs.get("clip", "").startswith("Restage") and "$3.84" in rs.get("clip", "") and rs.get("image", "").startswith("Place") and rs.get("broll_clip", "").startswith("Clip"))
+    want("restage: the confirm names the take, its range and the seconds", "performance take.mp4" in rs.get("confirm", "") and "4 s of the take" in rs.get("confirm", "") and "0:14.8" in rs.get("confirm", ""))
+    want("restage: the restaged clip shows on its shot as the take, restaged", (rs.get("c010") or {}).get("role") == "performance" and (rs.get("c010") or {}).get("text") is True)
+    want("restage: the next shot's base layer is the take as filmed", rs.get("c011_base") is None or rs.get("c011_base") == ["performance", "true"])
+    r10 = r.get("from_shot_10") or []
+    want("restage: Review plays the restaged clip on shot 10, then leaves it", any(s["file"] == "restaged.mp4" for s in r10) and any(s["active"] != r10[0]["active"] and s["file"] != "restaged.mp4" for s in r10))
     cs = r.get("contact_sheet") or {}
     want("contact sheet: a frame drawn for every shot on an MP4", cs.get("shots") == 43 and cs.get("drawn", 0) >= 39 and cs.get("images") == 1)
     ff = r.get("focus_frames") or {}

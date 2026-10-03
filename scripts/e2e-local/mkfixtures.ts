@@ -35,10 +35,13 @@ const assets = [
   asset(3, { asset_type: "generated_clip", source_tool: "higgsfield", shot_id: shotId("c006"), file_url: "clip.mp4", metadata_json: { mime_type: "video/mp4", duration_seconds: 5, provider_job_id: "job-1" } }),
   asset(4, { asset_type: "reference_image", source_tool: "grok", shot_id: shotId("c009"), file_url: "still.png", metadata_json: { mime_type: "image/png", shot_label: "storyboard_c009", bucket: "project-references" } }),
   asset(5, { asset_type: "reference_video", footage_role: "b_roll", file_url: "broll.webm", metadata_json: { original_filename: "street b-roll.webm", mime_type: "video/webm", duration_seconds: 8 } }),
+  // shot 10's take, restaged: four seconds made from the take, filed as a take whose first frame sits at 35.29 s of the song
+  asset(6, { asset_type: "generated_clip", source_tool: "higgsfield", footage_role: "performance", shot_id: shotId("c010"), file_url: "restaged.mp4", metadata_json: { mime_type: "video/mp4", duration_seconds: 4, provider_job_id: "job-2", derived_from: { asset_id: uuid(2, "bbbbbbbb"), source_window: [34.4362, 38.4362], song_start: 35.29 } } }),
 ];
 const assignments = [
   { id: uuid(1, "cccccccc"), project_id: P, shot_id: shotId("c006"), asset_id: assets[2].id, role: "generated_clip", source_in_seconds: 0, source_out_seconds: null, is_primary: true, sort_order: 1, created_at: AT, updated_at: AT },
   { id: uuid(2, "cccccccc"), project_id: P, shot_id: shotId("c009"), asset_id: assets[3].id, role: "generated_image", source_in_seconds: null, source_out_seconds: null, is_primary: true, sort_order: 1, created_at: AT, updated_at: AT },
+  { id: uuid(3, "cccccccc"), project_id: P, shot_id: shotId("c010"), asset_id: assets[5].id, role: "performance", source_in_seconds: null, source_out_seconds: null, is_primary: true, sort_order: 1, created_at: AT, updated_at: AT },
 ];
 const LYR: [number, number, string][] = [
   [14.68, 16.72, "You don't gotta cut the lights on"], [16.72, 17.52, "This ice on"], [17.52, 19.48, "YSL I wear em like They white ones"], [19.48, 20.4, "I don't follow brands"],
@@ -57,7 +60,10 @@ const fixtures = {
     shots,
     project_assets: [...assets, { ...assets[0], id: uuid(9, "bbbbbbbb"), project_id: P2 }],
     shot_asset_assignments: assignments,
-    performance_syncs: [{ id: uuid(1, "dddddddd"), project_id: P, user_id: U, performance_asset_id: assets[1].id, song_asset_id: assets[0].id, offset_seconds: 0.8538, drift_ppm: 0, status: "manual", method: "manual", confidence_json: {}, notes: null, created_at: AT, updated_at: AT }],
+    performance_syncs: [
+      { id: uuid(1, "dddddddd"), project_id: P, user_id: U, performance_asset_id: assets[1].id, song_asset_id: assets[0].id, offset_seconds: 0.8538, drift_ppm: 0, status: "manual", method: "manual", confidence_json: {}, notes: null, created_at: AT, updated_at: AT },
+      { id: uuid(2, "dddddddd"), project_id: P, user_id: U, performance_asset_id: assets[5].id, song_asset_id: assets[0].id, offset_seconds: 35.29, drift_ppm: 0, status: "confirmed", method: "derived", confidence_json: {}, notes: null, created_at: AT, updated_at: AT },
+    ],
     lyric_lines: LYR.map(([s, e, text], i) => ({ id: uuid(i + 1, "eeeeeeee"), project_id: P, user_id: U, line_index: i, section: null, block: null, text, start_seconds: s, end_seconds: e, confidence: 0.9, words_json: null, source: "align_lyrics", created_at: AT, updated_at: AT })),
     song_analyses: [P, P2].map((project_id, i) => ({ id: uuid(i + 1, "ffffffff"), project_id, user_id: U, bpm: 122, duration_seconds: 201.87, beats_json: [], drops_json: [], energy_curve_json: [], sections_json: [], created_at: AT, updated_at: AT })),
   },
