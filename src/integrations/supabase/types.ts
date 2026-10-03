@@ -2263,6 +2263,62 @@ export type Database = {
           },
         ]
       }
+      treatment_versions: {
+        Row: {
+          created_at: string
+          id: string
+          mood: string | null
+          notes: string | null
+          project_id: string
+          replaced_by: string
+          treatment_json: Json | null
+          treatment_mode: string | null
+          treatment_model: string | null
+          treatment_text: string
+          treatment_updated_at: string | null
+          user_id: string
+          visual_style: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mood?: string | null
+          notes?: string | null
+          project_id: string
+          replaced_by?: string
+          treatment_json?: Json | null
+          treatment_mode?: string | null
+          treatment_model?: string | null
+          treatment_text?: string
+          treatment_updated_at?: string | null
+          user_id: string
+          visual_style?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mood?: string | null
+          notes?: string | null
+          project_id?: string
+          replaced_by?: string
+          treatment_json?: Json | null
+          treatment_mode?: string | null
+          treatment_model?: string | null
+          treatment_text?: string
+          treatment_updated_at?: string | null
+          user_id?: string
+          visual_style?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_projects: {
         Row: {
           artist_id: string | null
@@ -2371,6 +2427,7 @@ export type Database = {
         }
       }
       reap_stale_jacket_inpaints: { Args: never; Returns: Json }
+      treatment_text_of: { Args: { j: Json }; Returns: string }
     }
     Enums: {
       approval_status: "pending" | "approved" | "rejected" | "archived"
