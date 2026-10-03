@@ -29,6 +29,27 @@
       "when": 1791004954036,
       "tag": "0003_project_aspect_ratio",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791050831298,
+      "tag": "0004_treatment_versions",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791050858907,
+      "tag": "0005_continuity_entities",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791050915712,
+      "tag": "0006_provider_job_progress",
+      "breakpoints": true
     }
   ]
 }

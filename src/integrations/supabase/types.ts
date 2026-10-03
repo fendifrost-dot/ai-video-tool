@@ -451,6 +451,69 @@ export type Database = {
         }
         Relationships: []
       }
+      continuity_entities: {
+        Row: {
+          approved_asset_id: string | null
+          archived: boolean
+          constraints: string
+          created_at: string
+          description: string
+          id: string
+          key: string
+          kind: string
+          name: string
+          project_id: string
+          reference_asset_ids: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_asset_id?: string | null
+          archived?: boolean
+          constraints?: string
+          created_at?: string
+          description?: string
+          id?: string
+          key: string
+          kind: string
+          name: string
+          project_id: string
+          reference_asset_ids?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          approved_asset_id?: string | null
+          archived?: boolean
+          constraints?: string
+          created_at?: string
+          description?: string
+          id?: string
+          key?: string
+          kind?: string
+          name?: string
+          project_id?: string
+          reference_asset_ids?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "continuity_entities_approved_asset_id_fkey"
+            columns: ["approved_asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "continuity_entities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       export_packages: {
         Row: {
           created_at: string
@@ -573,6 +636,27 @@ export type Database = {
           old_user_id?: string | null
           row_id?: string | null
           tbl?: string | null
+        }
+        Relationships: []
+      }
+      job_runner_config: {
+        Row: {
+          created_at: string
+          cron_key: string
+          function_url: string
+          id: boolean
+        }
+        Insert: {
+          created_at?: string
+          cron_key: string
+          function_url: string
+          id?: boolean
+        }
+        Update: {
+          created_at?: string
+          cron_key?: string
+          function_url?: string
+          id?: boolean
         }
         Relationships: []
       }
@@ -1386,7 +1470,11 @@ export type Database = {
           created_at: string
           error_text: string | null
           external_job_id: string | null
+          finalized_at: string | null
           id: string
+          progress_claimed_at: string | null
+          progress_failures: number
+          progress_note: string | null
           project_id: string
           prompt_id: string | null
           provider: Database["public"]["Enums"]["provider_name"]
@@ -1401,7 +1489,11 @@ export type Database = {
           created_at?: string
           error_text?: string | null
           external_job_id?: string | null
+          finalized_at?: string | null
           id?: string
+          progress_claimed_at?: string | null
+          progress_failures?: number
+          progress_note?: string | null
           project_id: string
           prompt_id?: string | null
           provider: Database["public"]["Enums"]["provider_name"]
@@ -1416,7 +1508,11 @@ export type Database = {
           created_at?: string
           error_text?: string | null
           external_job_id?: string | null
+          finalized_at?: string | null
           id?: string
+          progress_claimed_at?: string | null
+          progress_failures?: number
+          progress_note?: string | null
           project_id?: string
           prompt_id?: string | null
           provider?: Database["public"]["Enums"]["provider_name"]
@@ -2263,6 +2359,62 @@ export type Database = {
           },
         ]
       }
+      treatment_versions: {
+        Row: {
+          created_at: string
+          id: string
+          mood: string | null
+          notes: string | null
+          project_id: string
+          replaced_by: string
+          treatment_json: Json | null
+          treatment_mode: string | null
+          treatment_model: string | null
+          treatment_text: string
+          treatment_updated_at: string | null
+          user_id: string
+          visual_style: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mood?: string | null
+          notes?: string | null
+          project_id: string
+          replaced_by?: string
+          treatment_json?: Json | null
+          treatment_mode?: string | null
+          treatment_model?: string | null
+          treatment_text?: string
+          treatment_updated_at?: string | null
+          user_id: string
+          visual_style?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mood?: string | null
+          notes?: string | null
+          project_id?: string
+          replaced_by?: string
+          treatment_json?: Json | null
+          treatment_mode?: string | null
+          treatment_model?: string | null
+          treatment_text?: string
+          treatment_updated_at?: string | null
+          user_id?: string
+          visual_style?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       video_projects: {
         Row: {
           artist_id: string | null
@@ -2345,6 +2497,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_provider_jobs: {
+        Args: { p_limit?: number; p_user?: string }
+        Returns: {
+          created_at: string
+          error_text: string | null
+          external_job_id: string | null
+          finalized_at: string | null
+          id: string
+          progress_claimed_at: string | null
+          progress_failures: number
+          progress_note: string | null
+          project_id: string
+          prompt_id: string | null
+          provider: Database["public"]["Enums"]["provider_name"]
+          request_payload_json: Json
+          response_payload_json: Json
+          result_asset_id: string | null
+          status: Database["public"]["Enums"]["provider_job_status"]
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "provider_jobs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      kick_provider_jobs: { Args: never; Returns: undefined }
       lyric_lines_in_window: {
         Args: { p_end: number; p_project: string; p_start: number }
         Returns: {
@@ -2371,6 +2552,7 @@ export type Database = {
         }
       }
       reap_stale_jacket_inpaints: { Args: never; Returns: Json }
+      treatment_text_of: { Args: { j: Json }; Returns: string }
     }
     Enums: {
       approval_status: "pending" | "approved" | "rejected" | "archived"
