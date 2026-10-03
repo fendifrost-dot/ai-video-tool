@@ -67,6 +67,8 @@ export function boxJobStatus(job: JobRow, now: number): BoxJobStatus {
     if (job.finalized_at) return { kind, state: "failed", message: job.error_text || job.progress_note || "the clip rendered but could not be saved — it can be saved again from Runs", at };
     return { kind, state: "saving", message: job.result_asset_id ? "clip saved — putting it on this shot" : "clip rendered — saving it to the project", at };
   }
+  // closed by the server without an outcome (a job from before the server moved jobs): it is not still working
+  if (job.finalized_at) return { kind, state: "failed", message: job.progress_note || `this ${kind} never finished — generate it again`, at };
   if (!job.external_job_id && kind === "clip" && now - Date.parse(job.created_at) > UNREPORTED_AFTER_MS) {
     return { kind, state: "failed", message: "the submit never reported back — check Runs before generating again", at };
   }
