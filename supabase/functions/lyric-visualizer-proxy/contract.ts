@@ -203,7 +203,7 @@ export function neighboursInstruction(n: SystemPromptInput["neighbours"]): strin
   const after = n?.after?.trim();
   if (!before && !after) return null;
   return (
-    "The boxes on either side of this one. Let this scene follow from the one before and hand on to the one after; do not stage the same picture twice in a row:\n" +
+    "The boxes on either side of this one. Let this scene follow from the one before and hand on to the one after; do not stage the same picture twice in a row. They are context only: write what is seen inside this box, and never mention the other boxes, \"the next scene\" or \"the previous shot\" in anything you write:\n" +
     [before ? `Before: ${before}` : null, after ? `After: ${after}` : null].filter(Boolean).join("\n")
   );
 }
