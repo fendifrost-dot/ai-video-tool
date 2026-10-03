@@ -23,6 +23,12 @@ export const DEFAULT_BOX_LOOK = "film_bar_v1";
 /** A performance box is his real take: what is generated for it is the world AROUND him, never a stand-in for him. */
 const PLATE_LINE = "The centre foreground is empty and clear: no person stands there.";
 const EMPTY_SET = "An empty set, photographed with nobody in it: no people, no figures, no faces, no reflections of people.";
+/**
+ * Every picture the storyboard draws: an image model left to itself puts a maker's mark on anything that has one in
+ * the world (the first live section's white sneakers came back with a sportswear logo, its runway with lettering on
+ * the wall). A cutaway that shows somebody's trademark cannot be released.
+ */
+export const NO_MARKS = "Nothing in the picture carries a logo, a brand mark or readable lettering.";
 /** A place said in fewer words than this is a label ("backstage"), not a picture: the scene is needed to draw it. */
 const PLACE_WORDS = 6;
 
@@ -66,6 +72,7 @@ export function boxShot(box: StoryboardBox, lyricLines: readonly LyricLine[] | u
   if (isPerformance && !shot.prompt.includes(PLATE_LINE)) shot.prompt = `${shot.prompt.trim()} ${PLATE_LINE}`;
   // the place is still: its motion sentence is the camera's, never a person's action
   if (isPerformance) shot.motion = "";
+  if (!shot.prompt.includes(NO_MARKS)) shot.prompt = `${shot.prompt.trim()} ${NO_MARKS}`;
   return shot;
 }
 

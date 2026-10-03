@@ -6,7 +6,7 @@ vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 
 import { parseShotSpec } from "@/lib/treatment/shotSpec";
 import { boxFromRow, boxWrite, type BoxRow } from "./boxes";
-import { boxShot } from "./generate";
+import { boxShot, NO_MARKS } from "./generate";
 
 function box(shotType: "b_roll" | "performance") {
   const spec = parseShotSpec({ id: "c001", purpose: "a ring on a marble console under one hard light", shotType, kind: shotType === "performance" ? "performance" : "broll", timeline: { start: 0, end: 4 } });
@@ -27,5 +27,14 @@ describe("a box's generation request follows the project's frame", () => {
 
   it("asks for the nearest shape the image model has when it has no 4:5", () => {
     expect(boxShot(box("b_roll"), [], { aspect: "4:5" }).aspect).toBe("3:4");
+  });
+});
+
+describe("every picture the storyboard draws", () => {
+  it("is asked for without logos, brand marks or lettering — a cutaway and a performance shot's place alike", () => {
+    expect(boxShot(box("b_roll"), []).prompt.endsWith(NO_MARKS)).toBe(true);
+    const place = boxShot(box("performance"), []).prompt;
+    expect(place).toContain(NO_MARKS);
+    expect(place.match(/Nothing in the picture carries a logo/g)).toHaveLength(1);
   });
 });
