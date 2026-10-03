@@ -217,7 +217,7 @@ export function projectStateInstruction(state: unknown): string | null {
     take && typeof take === "object"
       ? " This box plays the artist's real performance (performance_source): he is the man in that footage and he wears" +
         (typeof take.he_wears === "string" && take.he_wears.trim() ? " exactly what he_wears says — never dress him in anything else." : " what he wears in it — do not describe other clothes on him.") +
-        " Write this box's scene as the PLACE he performs in and how the camera sees him there: the footage can be re-shot inside that place" +
+        " Write this box's scene as the PLACE he performs in and how the camera sees him there: the footage can be re-shot inside that place. In `visual`, describe that place alone, with nobody in it — it is drawn empty and he is put into it" +
         (typeof take.filmed_in === "string" && take.filmed_in.trim() ? ", so the place it was filmed in (filmed_in) is replaced by yours, not described." : ".")
       : "";
   return (
