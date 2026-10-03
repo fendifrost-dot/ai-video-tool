@@ -50,13 +50,22 @@ RUNWAY_RATE = RATES["runway"]; KLING_RATE = RATES["kling_usd_per_s"]; STILL_RATE
 SEEDANCE_RATE = RATES["seedance_usd_per_s"]   # per second, input + output (Higgsfield catalogue, 2026-10)
 
 
+# The same sentence as src/lib/shotCompiler/prompts.ts PLACE_LIGHT (a test there reads this file): the light is said
+# both ways — what the place has, and what must not be added — and his edge and texture are named.
+PLACE_LIGHT = (
+    "Place him inside the environment of @Image1, lit only by the light that environment has: where @Image1 is dark he is dark, "
+    "and nothing adds a key light, a fill light or a glow on him that the place does not have. "
+    "He has no bright outline, halo or cut-out edge against the background, and he has the same focus and grain as the place. "
+    "The environment is still, only he and the camera move.")
+
+
 def angle_prompt(shot, look, with_image):
     """The reference-to-video prompt: what must not change comes first (identity, wardrobe constants, the mouth on the
     clock), then the new camera, then the environment if a still is supplied, then the look suffix."""
     keep = ", ".join(shot.get("keep", [])) or "his face, hair, skin and every piece of wardrobe"
     parts = [f"@Video1 is the performer, rapping to camera. Re-shoot the exact same performance from a second camera: {shot['angle']}",
              f"Keep everything identical to @Video1 — {keep} — and most of all the same mouth movements at the same moments, word for word, in sync with @Video1 from the first frame to the last."]
-    if with_image: parts.append(f"Place him inside the environment of @Image1, lit by that environment's light sources; the environment is still, only he and the camera move.")
+    if with_image: parts.append(PLACE_LIGHT)
     else: parts.append("The same room, the same light.")
     if look and look.get("shot_suffix"): parts.append(look["shot_suffix"])
     return " ".join(parts)
