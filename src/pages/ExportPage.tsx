@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Download, Package } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { useAssignments, useProjectMedia, useStoryboardBoxes, useTakeSyncs } from "@/lib/queries/storyboard";
+import { aspectOfProject } from "@/lib/project/aspect";
 import { buildTimeline, renderPlan } from "@/lib/storyboard/media";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -180,6 +181,7 @@ export default function ExportPage({ projectId }: { projectId: string }) {
                 buildTimeline({ boxes: boxesQuery.data ?? [], assignments: assignmentsQuery.data ?? [], assets: storyboardMedia.byId, syncs: syncsQuery.data ?? [] }),
                 storyboardMedia.byId,
                 storyboardMedia.song ? { assetId: storyboardMedia.song.id, bucket: "project-audio", path: storyboardMedia.song.file_url } : null,
+                aspectOfProject(projectQuery.data),
               )
             : undefined,
         onProgress: setProgress,

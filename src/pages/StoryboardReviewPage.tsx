@@ -3,11 +3,14 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Check, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { ROLE_STYLE, mediaLabel } from "@/components/storyboard/BoxMediaView";
+import { CutCheck } from "@/components/storyboard/CutCheck";
 import { SequencePlayer } from "@/components/storyboard/SequencePlayer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatTimecode } from "@/components/treatment/shotLabels";
 import { useAssignments, useProjectMedia, useStoryboardBoxes, useTakeSyncs } from "@/lib/queries/storyboard";
+import { aspectOfProject } from "@/lib/project/aspect";
+import { useProject } from "@/lib/queries/projects";
 import { useSongAnalysis } from "@/lib/queries/songAnalyses";
 import { buildTimeline, isUsableSync, timelineIssues, type TimelineSegment } from "@/lib/storyboard/media";
 import { cn } from "@/lib/utils";
@@ -26,15 +29,19 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
   const syncs = useMemo(() => syncsData ?? [], [syncsData]);
   const media = useProjectMedia(projectId);
   const analysis = useSongAnalysis(projectId).data ?? null;
+  const aspect = aspectOfProject(useProject(projectId).data);
   const [active, setActive] = useState<TimelineSegment | null>(null);
   const [jump, setJump] = useState<{ t: number; n: number } | null>(null);
 
   const timeline = useMemo(() => buildTimeline({ boxes, assignments, assets: media.byId, syncs }), [boxes, assignments, media.byId, syncs]);
   const issues = useMemo(() => timelineIssues(timeline), [timeline]);
-  const song = media.song ? { bucket: "project-audio", path: media.song.file_url } : null;
+  const songPath = media.song?.file_url ?? null;
+  const songName = songPath?.split("/").pop() ?? "the song";
+  const song = useMemo(() => (songPath ? { bucket: "project-audio", path: songPath } : null), [songPath]);
 
   const withFootage = timeline.filter((s) => s.media.kind !== "none").length;
   const songSeconds = analysis?.duration_seconds ?? null;
+  const checkSong = useMemo(() => (song ? { ref: song, name: songName, analysisSeconds: songSeconds } : null), [song, songName, songSeconds]);
   const covered = timeline.length ? timeline[timeline.length - 1].end - timeline[0].start : 0;
   const takes = media.list.filter((m) => m.footageRole === "performance" && m.isVideo);
   const takesSynced = takes.filter((t) => syncs.some((s) => s.performanceAssetId === t.id && isUsableSync(s))).length;
@@ -65,7 +72,7 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
           </div>
         ) : (
           <>
-            <SequencePlayer timeline={timeline} assets={media.byId} song={song} onSegment={setActive} jumpTo={jump} />
+            <SequencePlayer timeline={timeline} assets={media.byId} song={song} onSegment={setActive} jumpTo={jump} aspect={aspect} />
             <p className="text-[11px] leading-relaxed text-foreground/45" data-testid="review-truth">
               This is a preview assembled in your browser from lighter copies of the footage. Cuts land on the shot boundaries; transitions, camera moves on your takes and the final grade are not shown. A
               finished render is not made in the app yet.
@@ -126,6 +133,8 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
                 </div>
               </Card>
             </div>
+
+            <CutCheck timeline={timeline} boxes={boxes} assignments={assignments} assets={media.byId} syncs={syncs} song={checkSong} />
           </>
         )}
       </div>

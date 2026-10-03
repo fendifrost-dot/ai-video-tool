@@ -7,21 +7,22 @@ import { PageHeader } from "@/components/AppShell";
 import { AssetUploadDropzone } from "@/components/assets/AssetUploadDropzone";
 import { AudioUploader, type StagedAudio } from "@/components/projects/AudioUploader";
 import { SongAnalysisCard } from "@/components/projects/SongAnalysisCard";
+import { LyricsBlock } from "@/components/setup/LyricsBlock";
 import { RangeVideo } from "@/components/storyboard/RangeVideo";
 import { mediaRefKey, playbackRef, signRefs } from "@/components/storyboard/signedUrls";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { lyricLinesKeys } from "@/lib/queries/lyricLines";
 import { projectAssetsKeys } from "@/lib/queries/projectAssets";
+import type { TablesUpdate } from "@/integrations/supabase/aliases";
+import { PROJECT_ASPECTS, aspectLabel, aspectOfProject, isProjectAspect } from "@/lib/project/aspect";
 import { projectsKeys, useSetProjectAudio, useUpdateProject } from "@/lib/queries/projects";
 import { useProjectMedia, useSaveTakeSync, useSetFootageRole, useTakeSyncs } from "@/lib/queries/storyboard";
 import { useTreatmentInputs } from "@/lib/queries/treatmentInputs";
 import { buildStoragePath, makeUploadFilename, uploadToBucket } from "@/lib/storage";
 import { saveTreatment } from "@/lib/storyboard/build";
 import { isUsableSync, type FootageRole, type MediaAsset, type TakeSync } from "@/lib/storyboard/media";
-import { parseLrc, setupStatus, type SetupItem } from "@/lib/storyboard/setup";
+import { setupStatus, type SetupItem } from "@/lib/storyboard/setup";
 import { NoAudioError, TooLargeError, matchTakeInBrowser } from "@/lib/storyboard/syncAudio";
 import { isConfidentMatch, type MatchResult } from "@/lib/storyboard/syncMatch";
 import { supabase } from "@/lib/supabase";
@@ -46,6 +47,7 @@ export default function SetupPage({ projectId }: { projectId: string }) {
   const syncsData = useTakeSyncs(projectId).data;
   const syncs = useMemo(() => syncsData ?? [], [syncsData]);
   const setRole = useSetFootageRole(projectId);
+  const updateProject = useUpdateProject();
   const doc = useMemo(() => parseTreatmentDoc(project?.treatment_json), [project?.treatment_json]);
 
   const status = useMemo(
@@ -70,6 +72,18 @@ export default function SetupPage({ projectId }: { projectId: string }) {
   const [showAll, setShowAll] = useState(false);
   // footage already in the project that nobody has said what it is: uploads first, everything else on request
   const untagged = media.list.filter((m) => m.isVideo && !m.footageRole && (showAll || m.sourceTool === "manual" || m.assetType === "reference_video"));
+
+  const aspect = aspectOfProject(project);
+  const setAspect = async (next: string) => {
+    if (!isProjectAspect(next) || next === aspect) return;
+    try {
+      // (the column is newer than the generated row type)
+      await updateProject.mutateAsync({ id: projectId, patch: { aspect_ratio: next } as unknown as TablesUpdate<"video_projects"> });
+      toast.success(`Frame set to ${next}`);
+    } catch (e) {
+      toast.error(message(e));
+    }
+  };
 
   const refreshAssets = () => void qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(projectId) });
 
@@ -106,6 +120,24 @@ export default function SetupPage({ projectId }: { projectId: string }) {
               <ChecklistRow key={item.id} item={item} />
             ))}
           </ul>
+          <label className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-3 text-xs text-foreground/70" data-testid="setup-frame">
+            <span className="font-medium text-foreground/85">Frame</span>
+            <select
+              className={selectClass}
+              value={aspect}
+              disabled={updateProject.isPending}
+              onChange={(e) => void setAspect(e.target.value)}
+              aria-label="The shape of the video"
+              data-testid="setup-aspect"
+            >
+              {PROJECT_ASPECTS.map((a) => (
+                <option key={a} value={a}>
+                  {aspectLabel(a)}
+                </option>
+              ))}
+            </select>
+            <span className="text-[11px] text-foreground/45">Images and clips are made in this shape. Footage of another shape is shown whole inside it, never cropped.</span>
+          </label>
           <div className="flex flex-wrap items-center gap-2 border-t border-border/50 pt-3">
             {doc.footageConfirmedAt ? (
               <Button size="sm" variant="ghost" className="text-[11px] text-foreground/60" onClick={() => void confirmFootage(false)} data-testid="setup-unconfirm">
@@ -142,7 +174,14 @@ export default function SetupPage({ projectId }: { projectId: string }) {
             <SongUpload projectId={projectId} />
           )}
           {media.song && <SongAnalysisCard projectId={projectId} />}
-          <LyricsBlock projectId={projectId} lyrics={project?.lyrics ?? ""} timedLines={lyricLines?.length ?? 0} songSeconds={analysis?.duration_seconds ?? null} />
+          <LyricsBlock
+            projectId={projectId}
+            lyrics={project?.lyrics ?? ""}
+            savedLines={lyricLines ?? []}
+            song={media.song ? { bucket: "project-audio", path: media.song.file_url } : null}
+            songSeconds={analysis?.duration_seconds ?? null}
+            bpm={analysis?.bpm ?? null}
+          />
         </Card>
 
         {/* ---- Performance ------------------------------------------------------- */}
@@ -289,95 +328,6 @@ function SongUpload({ projectId }: { projectId: string }) {
           {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />} Upload song
         </Button>
       )}
-    </div>
-  );
-}
-
-/** The lyrics as text, and where each line falls on the song. */
-function LyricsBlock({ projectId, lyrics, timedLines, songSeconds }: { projectId: string; lyrics: string; timedLines: number; songSeconds: number | null }) {
-  const qc = useQueryClient();
-  const update = useUpdateProject();
-  const [text, setText] = useState<string | null>(null);
-  const [lrc, setLrc] = useState("");
-  const [openLrc, setOpenLrc] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const value = text ?? lyrics;
-  const parsed = useMemo(() => (lrc.trim() ? parseLrc(lrc, songSeconds) : null), [lrc, songSeconds]);
-
-  const importLrc = async () => {
-    if (!parsed || parsed.lines.length === 0) return;
-    setBusy(true);
-    try {
-      const { data } = await supabase.auth.getUser();
-      if (!data.user) throw new Error("Not signed in");
-      const rows = parsed.lines.map((l) => ({
-        user_id: data.user!.id,
-        project_id: projectId,
-        line_index: l.lineIndex,
-        section: l.section,
-        text: l.text,
-        start_seconds: l.start,
-        end_seconds: l.end,
-        confidence: 1,
-        words_json: [],
-        source: "lrc",
-      }));
-      const { error } = await supabase.from("lyric_lines").insert(rows);
-      if (error) throw new Error(error.message);
-      if (!lyrics.trim()) await update.mutateAsync({ id: projectId, patch: { lyrics: parsed.lines.map((l) => l.text).join("\n") } });
-      await qc.invalidateQueries({ queryKey: lyricLinesKeys.forProject(projectId) });
-      setLrc("");
-      setOpenLrc(false);
-      toast.success(`${rows.length} lines placed on the song`);
-    } catch (e) {
-      toast.error(message(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="space-y-2" data-testid="setup-lyrics">
-      <label className="block text-xs text-foreground/60">
-        Lyrics
-        <Textarea
-          className="mt-1 text-sm"
-          rows={5}
-          value={value}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={() => text !== null && text !== lyrics && void update.mutateAsync({ id: projectId, patch: { lyrics: text } }).then(() => setText(null))}
-          placeholder="Paste the lyrics. Leave empty for an instrumental."
-          data-testid="setup-lyrics-text"
-        />
-      </label>
-      {timedLines > 0 ? (
-        <p className="text-[11px] text-emerald-300/90" data-testid="setup-lyrics-timed">
-          {timedLines} lines are placed on the song — every shot shows the words sung inside it.
-        </p>
-      ) : value.trim() ? (
-        <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-[11px] text-amber-100/90" data-testid="setup-lyrics-untimed">
-          <p>
-            The lyrics are not placed on the song yet. Timing them automatically is not in the app yet; it is done for the project by the alignment tool (ask Claude to run it), or you can paste timed lyrics
-            here.
-          </p>
-          <button type="button" className="underline" onClick={() => setOpenLrc((v) => !v)} data-testid="setup-lrc-toggle">
-            {openLrc ? "Hide" : "Paste timed lyrics (LRC)"}
-          </button>
-          {openLrc && (
-            <div className="space-y-2">
-              <Textarea rows={5} value={lrc} onChange={(e) => setLrc(e.target.value)} placeholder={"[00:12.50] first line\n[00:15.80] second line"} className="font-mono text-xs" data-testid="setup-lrc-text" />
-              {parsed && (
-                <p>
-                  {parsed.lines.length} line{parsed.lines.length === 1 ? "" : "s"} read{parsed.skipped.length ? `, ${parsed.skipped.length} row${parsed.skipped.length === 1 ? "" : "s"} without a time skipped` : ""}.
-                </p>
-              )}
-              <Button size="sm" disabled={busy || !parsed || parsed.lines.length === 0} onClick={() => void importLrc()} data-testid="setup-lrc-import">
-                {busy && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />} Place these lines on the song
-              </Button>
-            </div>
-          )}
-        </div>
-      ) : null}
     </div>
   );
 }

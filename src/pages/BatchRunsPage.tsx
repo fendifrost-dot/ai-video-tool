@@ -8,6 +8,7 @@ import { useStoryboardBoxes } from "@/lib/queries/storyboard";
 import { providerJobsKeys, useProjectProviderJobs } from "@/lib/providerJobs/queries";
 import { triggerServerIngest } from "@/lib/providerJobs/api";
 import { signedUrl } from "@/lib/storage";
+import { aspectOfProject, stillRequestAspect } from "@/lib/project/aspect";
 import { LOOK_PRESETS, compileToWorldBatch, phrasesFromShotSpecs, resolveLookPreset } from "@/lib/shotCompiler";
 import {
   PROVIDER_REFUSALS,
@@ -297,14 +298,15 @@ export default function BatchRunsPage({ projectId }: { projectId: string }) {
       return;
     }
     const phrases = phrasesFromShotSpecs(boxes.map((b) => b.spec), lyricLinesQuery.data ?? []);
-    const compiled = compileToWorldBatch({ phrases, lookPresetId }).shots;
+    // asked for in the project's frame (or the nearest shape the image model has)
+    const compiled = compileToWorldBatch({ phrases, lookPresetId, aspectDefault: stillRequestAspect(aspectOfProject(projectQuery.data)).aspect }).shots;
     const text = JSON.stringify(compiled, null, 1);
     setShotsText(text);
     setLoadedText(text);
     // a whole storyboard is many paid shots: nothing is ticked until the director ticks it
     setUnselected(compiled.map((s) => s.id));
     say(`compiled ${compiled.length} world shot(s) from the storyboard — tick the ones to run`);
-  }, [boxes, lyricLinesQuery.data, lookPresetId, say]);
+  }, [boxes, lyricLinesQuery.data, lookPresetId, say, projectQuery.data]);
 
   return (
     <>
