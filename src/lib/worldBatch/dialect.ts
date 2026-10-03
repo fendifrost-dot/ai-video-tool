@@ -19,7 +19,7 @@ export const BatchShotSchema = z
   .object({
     id: z.string().min(1).max(80).regex(/^[A-Za-z0-9_.-]+$/, "id: letters, digits, _ . - only (it names files)"),
     kind: z.enum(["world", "plate", "angle"]).default("world"),
-    aspect: z.enum(["9:16", "16:9", "4:3"]).default("9:16"),
+    aspect: z.enum(["9:16", "16:9", "4:3", "1:1", "3:4"]).default("9:16"),
     seconds: z.number().positive().max(30).default(5),
     prompt: z.string().default(""),
     motion: z.string().default(""),
