@@ -41,6 +41,8 @@ export const BatchShotSchema = z
     angle: z.string().nullish(),
     keep: z.array(z.string()).default([]),
     resolution: z.enum(["480p", "720p", "1080p"]).default("720p"),
+    /** How this shot's timed events were put into its prompt (storyboard/temporal.ts). Recorded on the job. */
+    temporal: z.object({ mode: z.enum(["timed_script", "ordered"]), beats: z.number().int().min(1), measured: z.boolean().default(false) }).nullish(),
   })
   .passthrough();
 export type BatchShot = z.infer<typeof BatchShotSchema>;

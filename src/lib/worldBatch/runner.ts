@@ -36,6 +36,23 @@ export type BatchJobSettings = {
   /** The asset the source clip was cut from, and how many seconds were asked for (a restaged take). */
   sourceAssetId?: string | null;
   sourceSeconds?: number | null;
+  /**
+   * How the shot's timed events were handed to the model, when it has any that must be drawn: "timed_script" (a
+   * script with times, to a model that takes one) or "ordered" (the beats in order, asked for by name — the timing
+   * is NOT kept). Absent = the shot was one state. Never claims the result follows the beats: `measured` says
+   * whether anything has checked.
+   */
+  temporal?: { mode: "timed_script" | "ordered"; beats: number; measured: boolean } | null;
+  /** An image job: whether the picked picture becomes what the shot shows (false on a performance shot — it is the place). */
+  selectStill?: boolean;
+  /**
+   * Set by the server when it finished an image job by itself (the page that asked was gone): "pending" until the
+   * storyboard has looked at the pictures for stacked panels, then "passed" or "rejected".
+   */
+  panelCheck?: "pending" | "passed" | "rejected";
+  /** When the result was put on its shot, and by whom ("server" = provider-jobs-tick). */
+  attachedAt?: string;
+  attachedBy?: string;
 };
 
 /** The slice of a provider_jobs row the runner reads. */
@@ -82,6 +99,10 @@ export type RunContext = {
    * is what the server ingest files the finished clip under — so a clip generated for a box lands on that box.
    */
   shotIds?: Record<string, string>;
+  /** An image job: whether the picked picture becomes what the shot shows. Recorded so the server can finish the job as asked. */
+  selectStill?: boolean;
+  /** An image job drawn for a continuity entity (not a shot): the entity the pictures are kept with. */
+  entityId?: string;
 };
 
 /** The box record a shot belongs to, as the job payload carries it (absent when the shot is not a box). */
@@ -238,6 +259,7 @@ export async function submitShot(
     sourceWindow: shot.source_window ?? null,
     masterStart: shot.masterStart ?? null,
     ...(shot.source_asset_id ? { sourceAssetId: shot.source_asset_id, sourceSeconds: shot.source_seconds ?? null } : {}),
+    ...(shot.temporal ? { temporal: shot.temporal } : {}),
   };
   // WRITE-AHEAD: the record exists before the money moves.
   const rowId = await deps.insertJob({
@@ -312,8 +334,9 @@ export async function submitStills(shot: BatchShot, ctx: RunContext, deps: Runne
     estimateUsd: 0, // the still's cost is carried in stillCostUsd once the generator reports it
     lookPreset: ctx.lookPresetId,
     stillPath: null,
+    selectStill: ctx.selectStill ?? true,
   };
-  const payload = { promptText: prompt, mode: "still_only", aspectRatio: shot.aspect, ...shotIdOf(ctx, shot) };
+  const payload = { promptText: prompt, mode: "still_only", aspectRatio: shot.aspect, ...shotIdOf(ctx, shot), ...(ctx.entityId ? { entityId: ctx.entityId } : {}) };
   const rowId = await deps.insertJob({ project_id: ctx.projectId, provider: "grok", status: "queued", request_payload_json: { ...payload, settings } });
   let r: Awaited<ReturnType<RunnerDeps["generateStills"]>>;
   try {
@@ -326,6 +349,8 @@ export async function submitStills(shot: BatchShot, ctx: RunContext, deps: Runne
       shotLabel: `${ctx.runId}_${shot.id}`,
       promptVersion: "world_bar_v1",
       dryRun: false,
+      // the pictures are written on this job's row by the server the moment they exist
+      jobRowId: rowId,
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
