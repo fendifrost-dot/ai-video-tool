@@ -445,6 +445,8 @@ describe("the browser does not own progress", () => {
     // the server said it is done with it — whatever state that is
     expect(isUnfinished(row({ status: "running", finalized_at: "2026-10-03T12:00:00Z" }) as never)).toBe(false);
     expect(isUnfinished(row({ status: "failed" }) as never)).toBe(false);
+    // and a job closed without an outcome is not shown as still working
+    expect(boxJobStatus({ ...row({ status: "running", finalized_at: "2026-10-03T12:00:00Z" }), provider: "higgsfield", error_text: null, created_at: "2026-09-01T00:00:00Z", response_payload_json: {} } as never, T0)).toMatchObject({ state: "failed", message: "this clip never finished — generate it again" });
   });
 });
 
