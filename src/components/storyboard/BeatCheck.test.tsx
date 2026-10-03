@@ -139,6 +139,13 @@ describe("the frames worth looking at for a beat", () => {
       ["asked", 1.95],
       ["after", 2.35],
     ]);
+    // a change that came EARLY: "before" is before the change, not before the asking (by then it had happened)
+    expect(framesForBeat({ ...ASKED[0], offset: 4.69, change: change(3.667, 3.708), error: -1.023, verdict: "displaced" }, 6.04).map((f) => [f.label, f.t])).toEqual([
+      ["before", 3.367],
+      ["changes", 3.717],
+      ["asked", 4.74],
+      ["after", 5.09],
+    ]);
     // a beat near the end stays inside the clip
     expect(framesForBeat({ ...ASKED[0], offset: 3.8, change: null, error: null, verdict: "not_seen" }, 4).every((f) => f.t <= 3.95)).toBe(true);
   });

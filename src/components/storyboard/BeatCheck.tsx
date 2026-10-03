@@ -18,14 +18,21 @@ const VERDICT_STYLE: Record<BeatVerdict, string> = {
 
 const clip = (n: number, max: number) => Math.round(Math.max(0, Math.min(n, Math.max(0, max - 0.05))) * 1000) / 1000;
 
-/** The moments of a clip worth looking at for one beat: just before it was asked, at it, where the change began, and after. */
+/**
+ * The moments of a clip worth looking at for one beat: before anything happened, where the change began, where it was
+ * asked, and after both. "Before" is before the EARLIER of the two — a change that came a second early had already
+ * happened by the frame just before it was asked for, and that frame was shown as "before".
+ */
 export function framesForBeat(b: MeasuredBeat, clipSeconds: number): { t: number; label: string }[] {
-  const out: { t: number; label: string }[] = [
-    { t: clip(b.offset - 0.3, clipSeconds), label: "before" },
-    { t: clip(b.offset + 0.05, clipSeconds), label: "asked" },
-  ];
-  if (b.change && Math.abs(b.change.begins - b.offset) > 0.12) out.push({ t: clip(b.change.begins + 0.05, clipSeconds), label: "changes" });
-  out.push({ t: clip(Math.max(b.offset, b.change?.arrived ?? b.offset) + 0.4, clipSeconds), label: "after" });
+  const begins = b.change?.begins ?? null;
+  const arrived = b.change?.arrived ?? null;
+  const first = begins != null ? Math.min(b.offset, begins) : b.offset;
+  const last = arrived != null ? Math.max(b.offset, arrived) : b.offset;
+  const out: { t: number; label: string }[] = [{ t: clip(first - 0.3, clipSeconds), label: "before" }];
+  const apart = begins != null && Math.abs(begins - b.offset) > 0.12;
+  if (apart) out.push({ t: clip(begins! + 0.05, clipSeconds), label: "changes" });
+  out.push({ t: clip(b.offset + 0.05, clipSeconds), label: "asked" });
+  out.push({ t: clip(last + 0.4, clipSeconds), label: "after" });
   return out.sort((x, y) => x.t - y.t);
 }
 
