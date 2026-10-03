@@ -15,7 +15,7 @@ import { storyboardKeys, useAssignments, useProjectMedia, useStoryboardBoxes, us
 import { useTreatmentInputs } from "@/lib/queries/treatmentInputs";
 import { unlockedForGeneration } from "@/lib/storyboard/boxes";
 import { deleteTreatment, saveTreatment, writeStoryboardFromTreatment } from "@/lib/storyboard/build";
-import { isUsableSync } from "@/lib/storyboard/media";
+import { isOriginalTake, isUsableSync } from "@/lib/storyboard/media";
 import { footageSummary, setupStatus } from "@/lib/storyboard/setup";
 import { hasTreatment, parseTreatmentDoc, storyboardIsStale, type TreatmentDoc } from "@/lib/treatment/treatmentDoc";
 import { cn } from "@/lib/utils";
@@ -79,11 +79,11 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
   /** What the writer is told about the real footage — facts, not direction. */
   const footageNote = useMemo(() => {
     const takes = media.list
-      .filter((m) => m.footageRole === "performance" && m.isVideo)
+      .filter(isOriginalTake)
       .map((m) => ({ m, sync: syncs.find((s) => s.performanceAssetId === m.id && isUsableSync(s)) }))
       .filter((x) => x.sync)
-      .map(({ m, sync }) => ({ name: m.name, songStart: Math.max(0, sync!.offsetSeconds), songEnd: sync!.offsetSeconds + (m.durationSeconds ?? 0) }));
-    const broll = media.list.filter((m) => m.footageRole === "b_roll").map((m) => ({ name: m.name, seconds: m.durationSeconds }));
+      .map(({ m, sync }) => ({ name: m.name, songStart: Math.max(0, sync!.offsetSeconds), songEnd: sync!.offsetSeconds + (m.durationSeconds ?? 0), shows: m.shows }));
+    const broll = media.list.filter((m) => m.footageRole === "b_roll").map((m) => ({ name: m.name, seconds: m.durationSeconds, shows: m.shows }));
     return footageSummary({ takes, broll });
   }, [media.list, syncs]);
 

@@ -17,11 +17,11 @@ import { projectAssetsKeys } from "@/lib/queries/projectAssets";
 import type { TablesUpdate } from "@/integrations/supabase/aliases";
 import { PROJECT_ASPECTS, aspectLabel, aspectOfProject, isProjectAspect } from "@/lib/project/aspect";
 import { projectsKeys, useSetProjectAudio, useUpdateProject } from "@/lib/queries/projects";
-import { useProjectMedia, useSaveTakeSync, useSetFootageRole, useTakeSyncs } from "@/lib/queries/storyboard";
+import { useProjectMedia, useSaveTakeSync, useSetFootageRole, useSetFootageShows, useTakeSyncs } from "@/lib/queries/storyboard";
 import { useTreatmentInputs } from "@/lib/queries/treatmentInputs";
 import { buildStoragePath, makeUploadFilename, uploadToBucket } from "@/lib/storage";
 import { saveTreatment } from "@/lib/storyboard/build";
-import { isUsableSync, type FootageRole, type MediaAsset, type TakeSync } from "@/lib/storyboard/media";
+import { isOriginalTake, isUsableSync, type FootageRole, type MediaAsset, type TakeSync } from "@/lib/storyboard/media";
 import { setupStatus, type SetupItem } from "@/lib/storyboard/setup";
 import { NoAudioError, TooLargeError, matchTakeInBrowser } from "@/lib/storyboard/syncAudio";
 import { isConfidentMatch, type MatchResult } from "@/lib/storyboard/syncMatch";
@@ -66,7 +66,7 @@ export default function SetupPage({ projectId }: { projectId: string }) {
     [media.song, media.list, analysis, project?.lyrics, lyricLines, syncs, doc.footageConfirmedAt],
   );
 
-  const takes = media.list.filter((m) => m.footageRole === "performance" && m.isVideo);
+  const takes = media.list.filter(isOriginalTake);
   const broll = media.list.filter((m) => m.footageRole === "b_roll");
   const references = media.list.filter((m) => m.footageRole === "reference");
   const [showAll, setShowAll] = useState(false);
@@ -367,6 +367,8 @@ function TakeRow({
   onUntag: () => void;
 }) {
   const save = useSaveTakeSync(projectId);
+  const saveShows = useSetFootageShows(projectId);
+  const [shows, setShows] = useState<string>(take.shows ?? "");
   const [busy, setBusy] = useState<string | null>(null);
   const [measured, setMeasured] = useState<MatchResult | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -493,6 +495,29 @@ function TakeRow({
           not a take
         </button>
       </div>
+      <label className="block text-[10px] text-foreground/50">
+        What this take shows — what he wears and where he is. The treatment is written knowing this, and a restaged shot keeps it.
+        <div className="mt-0.5 flex items-center gap-2">
+          <Input
+            value={shows}
+            onChange={(e) => setShows(e.target.value)}
+            placeholder="e.g. waist-up, black leather jacket, gold chain, sunglasses; a white studio wall"
+            className="h-8 flex-1 text-xs"
+            maxLength={400}
+            data-testid="setup-take-shows"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-[11px]"
+            disabled={saveShows.isPending || shows.trim() === (take.shows ?? "")}
+            onClick={() => saveShows.mutate({ assetId: take.id, shows }, { onSuccess: () => toast.success("Saved"), onError: (e) => toast.error(message(e)) })}
+            data-testid="setup-take-shows-save"
+          >
+            Save
+          </Button>
+        </div>
+      </label>
       {busy && <p className="text-[11px] text-foreground/55">{busy}</p>}
       {note && (
         <p className="text-[11px] text-amber-200/90" data-testid="setup-take-note">

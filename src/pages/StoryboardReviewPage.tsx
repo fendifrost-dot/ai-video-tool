@@ -13,7 +13,7 @@ import { useAssignments, useProjectMedia, useStoryboardBoxes, useTakeSyncs } fro
 import { aspectOfProject } from "@/lib/project/aspect";
 import { useProject } from "@/lib/queries/projects";
 import { useSongAnalysis } from "@/lib/queries/songAnalyses";
-import { buildTimeline, isUsableSync, timelineIssues, type TimelineSegment } from "@/lib/storyboard/media";
+import { buildTimeline, isOriginalTake, isUsableSync, timelineIssues, type TimelineSegment } from "@/lib/storyboard/media";
 import { cn } from "@/lib/utils";
 
 /**
@@ -44,7 +44,7 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
   const songSeconds = analysis?.duration_seconds ?? null;
   const checkSong = useMemo(() => (song ? { ref: song, name: songName, analysisSeconds: songSeconds } : null), [song, songName, songSeconds]);
   const covered = timeline.length ? timeline[timeline.length - 1].end - timeline[0].start : 0;
-  const takes = media.list.filter((m) => m.footageRole === "performance" && m.isVideo);
+  const takes = media.list.filter(isOriginalTake);
   const takesSynced = takes.filter((t) => syncs.some((s) => s.performanceAssetId === t.id && isUsableSync(s))).length;
 
   const checks: { ok: boolean; label: string; detail: string }[] = [
