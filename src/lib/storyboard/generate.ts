@@ -41,6 +41,12 @@ export const NO_MARKS = "Nothing in the picture carries a logo, a brand mark or 
 export const FULL_BLEED =
   "The picture fills the frame from edge to edge: no border, no frame line, no rounded corners, no letterbox bars. " +
   "It is the scene itself, not a scan of a film frame: no film edge, no light leak at the edges, no scratches, dust or hair on the picture.";
+/**
+ * A cutaway set in one of the project's places is a picture of ITS SUBJECT in that place. The place's canonical words
+ * describe the whole room, and an image model handed them draws the whole room — the first cutaway drawn this way
+ * (white sneakers on the runway) came back as an establishing shot of the runway with the sneakers small in a corner.
+ */
+export const SUBJECT_FIRST = "The picture is of this shot's own subject, close enough to fill the frame; the place is what is seen around and behind it, only as far as the frame reaches.";
 /** A place said in fewer words than this is a label ("backstage"), not a picture: the scene is needed to draw it. */
 const PLACE_WORDS = 6;
 
@@ -81,9 +87,15 @@ export function boxShot(box: StoryboardBox, lyricLines: readonly LyricLine[] | u
   // the compiler writes world shots for boxes that are not real performance; a performance box asks for its place,
   // drawn empty (the frame field carries the whole prompt, so nothing about him reaches the image model)
   const place = isPerformance ? placePrompt(box.spec, canonicalPlace) : "";
+  // A cutaway set in one of the project's locations says the place ONCE — in the location's own words, below. The
+  // shot's own sentence about the place (a writer fills that field with a paraphrase of the entity) is left out:
+  // two descriptions of one room dilute the subject and are never quite the same room.
+  const heldPlace = !isPerformance && !!opts.continuity?.location && !!canonicalWords(opts.continuity.location);
   const spec = isPerformance
     ? { ...box.spec, shotType: "b_roll" as const, kind: "broll" as const, origin: "override" as const, openingFrame: place, performanceDirection: box.spec.performanceDirection || box.spec.purpose, requiredElements: [] }
-    : box.spec;
+    : heldPlace
+      ? { ...box.spec, environment: { ...box.spec.environment, description: "", location: "" } }
+      : box.spec;
   const phrases = phrasesFromShotSpecs([spec], lyricLines ?? [], { stillPaths: opts.stillPath ? { [box.key]: opts.stillPath } : undefined });
   // the picture is asked for in the project's frame (or the nearest shape the image model has; see aspect.ts)
   const aspectDefault = stillRequestAspect(opts.aspect ?? DEFAULT_PROJECT_ASPECT).aspect;
@@ -99,6 +111,7 @@ export function boxShot(box: StoryboardBox, lyricLines: readonly LyricLine[] | u
     if (canonicalPlace && line.includes(canonicalPlace)) continue;
     if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
   }
+  if (heldPlace && !shot.prompt.includes(SUBJECT_FIRST)) shot.prompt = `${shot.prompt.trim()} ${SUBJECT_FIRST}`;
   for (const line of [NO_MARKS, FULL_BLEED]) if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
   return shot;
 }
