@@ -357,8 +357,14 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
     providerJobId: meta.provider_job_id ?? null,
     createdAt: a.created_at,
     derivedFrom: derivedOf(a.metadata_json),
-    shows: typeof (a.metadata_json as { shows?: unknown } | null)?.shows === "string" ? ((a.metadata_json as { shows: string }).shows.trim() || null) : null,
+    shows: textOf(a.metadata_json, "shows"),
+    filmedIn: textOf(a.metadata_json, "filmed_in"),
   };
+}
+
+function textOf(meta: unknown, key: string): string | null {
+  const v = (meta as Record<string, unknown> | null)?.[key];
+  return typeof v === "string" && v.trim() ? v.trim() : null;
 }
 
 function derivedOf(meta: unknown): MediaAsset["derivedFrom"] {
@@ -367,17 +373,18 @@ function derivedOf(meta: unknown): MediaAsset["derivedFrom"] {
   return { assetId: d.asset_id, songStart: typeof d.song_start === "number" ? d.song_start : null };
 }
 
-/** Say what a piece of footage shows (wardrobe, place). Kept on the asset; the file is not touched. */
+/** Say what a piece of footage shows: what he wears, and where it was filmed. Kept on the asset; the file is not touched. */
 export function useSetFootageShows(projectId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ assetId, shows }: { assetId: string; shows: string }) => {
+    mutationFn: async ({ assetId, shows, filmedIn = "" }: { assetId: string; shows: string; filmedIn?: string }) => {
       const { data, error } = await supabase.from("project_assets").select("metadata_json").eq("id", assetId).single();
       if (error) throw new Error(`could not read the footage: ${error.message}`);
       const meta = { ...((data?.metadata_json ?? {}) as Record<string, unknown>) };
-      const text = shows.trim();
-      if (text) meta.shows = text;
-      else delete meta.shows;
+      for (const [key, value] of [["shows", shows], ["filmed_in", filmedIn]] as const) {
+        if (value.trim()) meta[key] = value.trim();
+        else delete meta[key];
+      }
       const { error: upErr } = await supabase.from("project_assets").update({ metadata_json: meta as never }).eq("id", assetId);
       if (upErr) throw new Error(`could not save the description: ${upErr.message}`);
     },
