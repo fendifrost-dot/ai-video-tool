@@ -16,6 +16,7 @@
 import { DEFAULT_FRAME_FIT, DEFAULT_PROJECT_ASPECT, frameSize, type FrameFit, type ProjectAspect } from "@/lib/project/aspect";
 import { sourceRangeForSongRange, type PerformanceSync } from "@/lib/sync/performanceSync";
 import { orderBoxes, type StoryboardBox } from "./boxes";
+import { resolveEvents, type EventClock, type ResolvedEvent } from "./events";
 
 export const ASSIGNMENT_ROLES = ["performance", "b_roll", "generated_image", "generated_clip", "reference"] as const;
 export type AssignmentRole = (typeof ASSIGNMENT_ROLES)[number];
@@ -398,6 +399,13 @@ export type TimelineSegment = {
   /** What the box says happens — shown when there is no media, and carried for the renderer's log. */
   scene: string;
   note: string | null;
+  /**
+   * The shot's timed events, placed on the song (events.ts). The ones with an effect change the picture as it plays
+   * — Review applies them and a render applies the same arithmetic; the rest are direction, carried for the record.
+   */
+  events: ResolvedEvent[];
+  /** The transition the shot record declares into this shot. Review plays every one as a cut; it is carried so a render contract can say so. */
+  transitionIn?: { type: string | null; preset: string | null } | null;
 };
 
 /**
@@ -410,6 +418,8 @@ export function buildTimeline(input: {
   assignments: readonly Assignment[];
   assets: ReadonlyMap<string, MediaAsset>;
   syncs: readonly TakeSync[];
+  /** The lyric timing and the beat map, for events that hang on a word or a beat. Without it they sit at their stored time. */
+  clock?: EventClock;
 }): TimelineSegment[] {
   return orderBoxes(input.boxes).map((box, i) => {
     const { showing } = boxMedia({ box, assignments: input.assignments, assets: input.assets, syncs: input.syncs });
@@ -419,7 +429,9 @@ export function buildTimeline(input: {
       : showing.kind === "image"
         ? { kind: "image", assetId: showing.asset.id, role: showing.role, base: false }
         : { kind: "video", assetId: showing.asset.id, role: showing.role, sourceIn: showing.sourceIn ?? 0, sourceOut: showing.sourceOut, leadIn: showing.leadIn, base: showing.base };
-    return { shotId: box.id, key: box.key, index: i + 1, start: box.start, end: box.end, section: box.section, media, scene, note: showing?.note ?? null };
+    const events = box.spec.events.length ? resolveEvents(box.spec.events, { start: box.start, end: box.end }, input.clock ?? {}) : [];
+    const transitionIn = { type: box.spec.transitionIn?.type ?? null, preset: box.spec.transitionIn?.preset ?? null };
+    return { shotId: box.id, key: box.key, index: i + 1, start: box.start, end: box.end, section: box.section, media, scene, note: showing?.note ?? null, events, transitionIn };
   });
 }
 
@@ -478,86 +490,7 @@ export function timelineIssues(timeline: readonly TimelineSegment[]): string[] {
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// The render plan — the boundary a renderer reads
-// ---------------------------------------------------------------------------
-
-export type RenderPlan = {
-  version: 1;
-  /** Every time in the plan is on this clock unless it says source_*. */
-  clock: "song";
-  frame: { aspect: ProjectAspect; width: number; height: number; fit: FrameFit };
-  song: { asset_id: string; bucket: string; path: string } | null;
-  duration_seconds: number;
-  segments: {
-    shot_id: string;
-    key: string;
-    index: number;
-    song_in: number;
-    song_out: number;
-    section: string | null;
-    scene: string;
-    media:
-      | { kind: "none" }
-      | { kind: "image"; asset_id: string; bucket: string; path: string; role: AssignmentRole }
-      | {
-          kind: "video";
-          asset_id: string;
-          bucket: string;
-          /** The original file — a renderer reads this, never the lighter copy the browser plays. */
-          path: string;
-          role: AssignmentRole;
-          source_in: number;
-          source_out: number | null;
-          lead_in: number;
-          /** True when the take shows only because nothing was selected on the shot. */
-          base_layer: boolean;
-        };
-  }[];
-};
-
-/**
- * The storyboard as a renderer would be handed it: the same timeline Review plays, with every segment's media
- * resolved to its ORIGINAL file and its in/out. A render service added later consumes this and nothing else — it
- * needs no knowledge of treatments, overrides or assignments.
- */
-export function renderPlan(
-  timeline: readonly TimelineSegment[],
-  assets: ReadonlyMap<string, MediaAsset>,
-  song: { assetId: string; bucket: string; path: string } | null,
-  aspect: ProjectAspect = DEFAULT_PROJECT_ASPECT,
-): RenderPlan {
-  return {
-    version: 1,
-    clock: "song",
-    // the frame every segment is rendered into; media of another shape is fitted whole (never cropped) unless an
-    // edit decision says otherwise
-    frame: { aspect, ...frameSize(aspect), fit: DEFAULT_FRAME_FIT },
-    song: song ? { asset_id: song.assetId, bucket: song.bucket, path: song.path } : null,
-    duration_seconds: timeline.length ? Math.round((timeline[timeline.length - 1].end - timeline[0].start) * 1000) / 1000 : 0,
-    segments: timeline.map((s) => {
-      const base = { shot_id: s.shotId, key: s.key, index: s.index, song_in: s.start, song_out: s.end, section: s.section, scene: s.scene };
-      if (s.media.kind === "none") return { ...base, media: { kind: "none" as const } };
-      const a = assets.get(s.media.assetId);
-      if (!a) return { ...base, media: { kind: "none" as const } };
-      if (s.media.kind === "image") return { ...base, media: { kind: "image" as const, asset_id: a.id, bucket: a.bucket, path: a.path, role: s.media.role } };
-      return {
-        ...base,
-        media: {
-          kind: "video" as const,
-          asset_id: a.id,
-          bucket: a.bucket,
-          path: a.path,
-          role: s.media.role,
-          source_in: s.media.sourceIn,
-          source_out: s.media.sourceOut,
-          lead_in: s.media.leadIn,
-          base_layer: s.media.base,
-        },
-      };
-    }),
-  };
-}
+// The render contract — the one document a renderer executes — is made from this timeline in renderContract.ts.
 
 /** Images drawn in one go are filed within moments of each other; a later "Generate" is a later batch. */
 const SAME_BATCH_MS = 90_000;

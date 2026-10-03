@@ -29,7 +29,8 @@ async function saveTreatmentJson(projectId: string, value: Record<string, unknow
 
 /** Save the treatment text (the director's, or the AI's) — the one place the text is written. */
 export async function saveTreatment(projectId: string, existing: unknown, doc: TreatmentDoc): Promise<Record<string, unknown>> {
-  const next = withTreatmentDoc(existing, doc);
+  // the text that is replaced is kept by the database (treatment_versions); this says what replaced it
+  const next = withTreatmentDoc(existing, doc, { what: "edit", at: new Date().toISOString() });
   await saveTreatmentJson(projectId, next);
   return next;
 }
@@ -194,7 +195,8 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
     model: draft.model,
     generated_at: at,
   };
-  await saveTreatmentJson(input.projectId, withTreatmentDoc(base, doc));
+  // a new text replaces the old one: the old one is kept as a version, labelled as replaced by this generation
+  await saveTreatmentJson(input.projectId, input.aiWritesText ? withTreatmentDoc(base, doc, { what: "generate", at }) : withTreatmentDoc(base, doc));
   return { doc, written: plan.written, kept: plan.kept, draft };
 }
 

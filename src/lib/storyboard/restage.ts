@@ -11,6 +11,7 @@
  * clock exactly as they address the master: never by a stored range, never stretched. It is never offered as the
  * base layer of other shots (it is a version of one moment, not a take of the song).
  */
+import { canonicalWords, type ShotContinuity } from "@/lib/continuity/entities";
 import { supabase } from "@/lib/supabase";
 import type { Json } from "@/integrations/supabase/aliases";
 import type { LyricLine } from "@/lib/lyrics/lyricsForShot";
@@ -23,7 +24,9 @@ import { performanceToSong } from "@/lib/sync/performanceSync";
 import { BatchShotSchema, PROVIDER_RATES, submitShot, type BatchShot, type SubmitResult } from "@/lib/worldBatch";
 import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 import type { StoryboardBox } from "./boxes";
-import { DEFAULT_BOX_LOOK, STORYBOARD_RUN } from "./generate";
+import { resolveEvents, type EventClock } from "./events";
+import { pointsAtEntities, DEFAULT_BOX_LOOK, STORYBOARD_RUN } from "./generate";
+import { assertPlanCovers, temporalPlan, type TemporalPlan } from "./temporal";
 import type { BoxMediaItem, MediaAsset, TakeSync } from "./media";
 import { resolveLookPreset } from "@/lib/shotCompiler";
 
@@ -116,6 +119,14 @@ export function restageAngle(box: StoryboardBox): string {
   return `${[framing, angle].filter(Boolean).join(" ")}, ${move}. ${NEVER_WIDER}`;
 }
 
+/**
+ * What a restaging does with the shot's timed events. The restage model takes a script with times, so a shot that
+ * changes is given one — said to the director as what it is: asked for, not yet measured.
+ */
+export function restageTemporalPlan(box: StoryboardBox, clock: EventClock = {}): TemporalPlan {
+  return temporalPlan({ route: "seedance_ref", resolved: resolveEvents(box.spec.events, { start: box.start, end: box.end }, clock), shotSeconds: box.end - box.start });
+}
+
 export type RestageRequest = { shot: BatchShot; songStart: number; takeStart: number; seconds: number };
 
 /** The frame the clip is asked for in: the project's own where the model has it. */
@@ -133,8 +144,22 @@ export function restageShot(input: {
   stillPath: string;
   cut: { start: number; seconds: number };
   aspect?: ProjectAspect;
+  /** The shot's timed events as the restage model is given them (restageTemporalPlan). Required: a shot is never restaged without saying what happens to its beats. */
+  temporal: TemporalPlan;
+  /** What the shot's continuity references resolve to. Required when it has any (generate.ts pointsAtEntities). */
+  continuity?: ShotContinuity;
 }): RestageRequest {
   const seconds = Math.round(input.cut.seconds);
+  const plan = input.temporal;
+  if (pointsAtEntities(input.box.spec) && !input.continuity) {
+    throw new Error("This shot points at the project's continuity entities and the restaging was built without them. Nothing was generated.");
+  }
+  // the place is the picture; what the words still have to carry is the light the shot opens in
+  const light = input.continuity?.lighting && canonicalWords(input.continuity.lighting) ? `The light: ${canonicalWords(input.continuity.lighting)}` : "";
+  if (plan.mode === "refused") throw new Error(`${plan.reason} Nothing was generated.`);
+  assertPlanCovers(input.box.spec, plan);
+  // the cut opens on the shot's first frame, so the script's seconds are the clip's own
+  const script = plan.mode === "timed_script" ? plan.script : "";
   const songStart = Math.round(performanceToSong(input.cut.start, input.source.sync) * 1000) / 1000;
   const shot = BatchShotSchema.parse({
     id: input.box.key,
@@ -147,7 +172,8 @@ export function restageShot(input: {
     source_window: [Math.round(input.cut.start * 1000) / 1000, Math.round((input.cut.start + input.cut.seconds) * 1000) / 1000],
     source_asset_id: input.source.take.id,
     masterStart: songStart,
-    angle: restageAngle(input.box),
+    angle: [restageAngle(input.box), light, script].filter(Boolean).join(" "),
+    ...(plan.mode === "timed_script" ? { temporal: { mode: "timed_script" as const, beats: plan.beats, measured: plan.measured } } : {}),
     keep: restageKeep(input.source.take),
     resolution: RESTAGE_RESOLUTION,
     still_path: input.stillPath,
@@ -171,6 +197,10 @@ export async function restageBox(input: {
   /** The seconds the director agreed to pay for: a cut that would need more is refused, not sent. */
   maxSeconds: number;
   aspect?: ProjectAspect;
+  /** The shot's timed events as the model is given them (restageTemporalPlan). */
+  temporal: TemporalPlan;
+  /** What the shot's continuity references resolve to. */
+  continuity?: ShotContinuity;
   onStage?: (text: string) => void;
 }): Promise<RestageResult> {
   const say = input.onStage ?? (() => undefined);
@@ -208,7 +238,7 @@ export async function restageBox(input: {
   say("uploading the cut…");
   const sourcePath = buildStoragePath(deps.userId, input.projectId, "seedance", `${STORYBOARD_RUN}_${input.box.key}_${Date.now()}_src.mp4`);
   await uploadBytesToBucket("project-clips", sourcePath, cut.bytes, "video/mp4", { upsert: true });
-  const req = restageShot({ box: input.box, lyricLines: input.lyricLines, source: input.source, sourcePath, stillPath: input.stillPath, cut: { start: cut.start, seconds: cut.seconds }, aspect: input.aspect });
+  const req = restageShot({ box: input.box, lyricLines: input.lyricLines, source: input.source, sourcePath, stillPath: input.stillPath, cut: { start: cut.start, seconds: cut.seconds }, aspect: input.aspect, temporal: input.temporal, continuity: input.continuity });
   say("sending it to render…");
   const { id, look } = resolveLookPreset(DEFAULT_BOX_LOOK);
   const result = await submitShot(req.shot, { projectId: input.projectId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [input.box.key]: input.box.id } }, deps);

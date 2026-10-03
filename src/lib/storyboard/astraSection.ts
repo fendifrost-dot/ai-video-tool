@@ -8,6 +8,7 @@
  *
  * The call goes through astra-visual-review-proxy (submit, then poll — a review outlives one request).
  */
+import { EFFECT_DEFAULTS, isAsFilmed, pictureAt, pictureFilter, PICTURE_AS_FILMED, type Picture } from "./events";
 import { supabase } from "@/lib/supabase";
 import { functionFailureText } from "@/lib/functionsError";
 import { frameOf } from "@/lib/media/frames";
@@ -81,6 +82,8 @@ export type ReviewShot = {
   shows: string;
   scene: string;
   lyrics: string;
+  /** The shot's timed beats, one line each (temporal.ts beatLines). Empty or absent = the shot is one state. */
+  beats?: readonly string[];
 };
 
 const ROLE_WORDS: Record<AssignmentRole, string> = {
@@ -117,7 +120,7 @@ export function reviewBrief(input: { songTitle?: string | null; treatment: strin
     input.takeWears?.trim() ? `In his real footage the artist wears: ${input.takeWears.trim()}. That is what he must be wearing in every shot he is in.` : null,
     "The shots, as planned:\n" +
       input.shots
-        .map((s) => `SHOT ${String(s.number).padStart(2, "0")} (${clock(s.start)}–${clock(s.end)}, ${(s.end - s.start).toFixed(1)} s) — shows ${s.shows}.\n  Scene: ${s.scene.trim() || "(not written)"}\n  Words: ${s.lyrics.trim() ? `"${s.lyrics.trim()}"` : "(none)"}`)
+        .map((s) => `SHOT ${String(s.number).padStart(2, "0")} (${clock(s.start)}–${clock(s.end)}, ${(s.end - s.start).toFixed(1)} s) — shows ${s.shows}.\n  Scene: ${s.scene.trim() || "(not written)"}\n  Words: ${s.lyrics.trim() ? `"${s.lyrics.trim()}"` : "(none)"}${s.beats?.length ? `\n  Changes inside the shot (seconds from its first frame): ${s.beats.join(" | ")}` : ""}`)
         .join("\n"),
     [
       "Judge it as a piece of a real music video, not as a technology demo:",
@@ -128,6 +131,7 @@ export function reviewBrief(input: { songTitle?: string | null; treatment: strin
       "- continuity, transition, rhythm: do neighbouring shots cut together, does the order build;",
       "- realism and artifact: does generated material sit next to the real footage without giving itself away — warped faces or hands, melted detail, a pasted-on look, a soft or plastic picture;",
       "- product_truth: anything that is not what it is said to be (a shot said to show something it does not).",
+      "A shot that lists changes inside it is meant to CHANGE while it plays: it has an extra frame taken just after each change. Judge whether each change is there, at its moment. An \"effect\" is made by the edit and is already in the frames you see.",
       "Every finding is about ONE shot, named by its number, and says what to do to that shot. Do not report a finding you cannot see in the frames. If a shot is fine, do not invent a finding for it. Be direct.",
     ].join("\n"),
   ]
@@ -172,14 +176,49 @@ export const REVIEW_FRAMES = [
   { fraction: 0.92, position: "close" },
 ] as const;
 
+/** The most frames one shot contributes: its three, and one after each of its first changes. */
+export const REVIEW_FRAMES_MAX = 6;
+/** How long after a beat its frame is taken when the beat has no effect of its own length. */
+const AFTER_BEAT_SECONDS = 0.3;
+
+/**
+ * Where a shot's review frames are taken, on the song clock: the opening, middle and close, and — for a shot that
+ * changes — one just after each change, once an effect has landed. In time order. Pure.
+ */
+export function reviewFrameTimes(seg: Pick<TimelineSegment, "start" | "end" | "events">): { songTime: number; position: string }[] {
+  const seconds = seg.end - seg.start;
+  const out: { songTime: number; position: string }[] = REVIEW_FRAMES.map((f) => ({ songTime: seg.start + seconds * f.fraction, position: f.position }));
+  const seen = new Set<number>();
+  for (const e of seg.events ?? []) {
+    if (out.length >= REVIEW_FRAMES_MAX) break;
+    const settle = e.effect ? (e.effect.seconds ?? EFFECT_DEFAULTS[e.effect.type].seconds) + 0.05 : AFTER_BEAT_SECONDS;
+    const offset = Math.round(Math.min(Math.max(0, seconds - 0.05), e.offset + settle) * 100) / 100;
+    if (seen.has(offset)) continue;
+    seen.add(offset);
+    out.push({ songTime: seg.start + offset, position: `after the change at ${offset_(e.offset)}` });
+  }
+  return out.sort((a, b) => a.songTime - b.songTime);
+}
+const offset_ = (s: number) => `${s.toFixed(1)} s`;
+
 export type ReviewPicture = { label: string; dataUrl: string };
 
-function toJpeg(source: CanvasImageSource, width: number, height: number, maxWidth = 512): string {
+/** One frame as a small JPEG, with the edit's effect at that moment applied — the reviewer sees what Review plays. */
+function toJpeg(source: CanvasImageSource, width: number, height: number, picture: Picture = PICTURE_AS_FILMED, maxWidth = 512): string {
   const scale = Math.min(1, maxWidth / width);
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(2, Math.round(width * scale));
   canvas.height = Math.max(2, Math.round(height * scale));
-  canvas.getContext("2d")?.drawImage(source, 0, 0, canvas.width, canvas.height);
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.filter = pictureFilter(picture);
+    ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+    ctx.filter = "none";
+    if (picture.flash > 0) {
+      ctx.fillStyle = `rgba(255,255,255,${picture.flash})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+  }
   return canvas.toDataURL("image/jpeg", 0.82);
 }
 
@@ -206,7 +245,10 @@ export async function sectionPictures(input: {
     if (seg.media.kind === "image") {
       try {
         const bitmap = await createImageBitmap(await (await fetch(link.url)).blob());
+        // a held image is shown as the shot opens and, when the edit changes its light, as it ends
         pictures.push({ label: frameLabel({ number: seg.index }, seg.start, "held image"), dataUrl: toJpeg(bitmap, bitmap.width, bitmap.height) });
+        const closing = pictureAt(seg.events ?? [], seg.end - seg.start - 0.05);
+        if (!isAsFilmed(closing)) pictures.push({ label: frameLabel({ number: seg.index }, seg.end, "held image, as the shot ends"), dataUrl: toJpeg(bitmap, bitmap.width, bitmap.height, closing) });
         bitmap.close();
       } catch {
         unreadable.push(seg.index);
@@ -214,13 +256,13 @@ export async function sectionPictures(input: {
       continue;
     }
     let got = 0;
-    for (const f of REVIEW_FRAMES) {
-      const songTime = seg.start + (seg.end - seg.start) * f.fraction;
+    for (const f of reviewFrameTimes(seg)) {
+      const songTime = f.songTime;
       const state = videoStateAt(seg, songTime, asset.durationSeconds);
       if (!state) continue;
       const r = await frameOf(link.key, link.url, state.at);
       if (!r.ok) continue;
-      pictures.push({ label: frameLabel({ number: seg.index }, songTime, f.position), dataUrl: toJpeg(r.frame, r.frame.displayWidth, r.frame.displayHeight) });
+      pictures.push({ label: frameLabel({ number: seg.index }, songTime, f.position), dataUrl: toJpeg(r.frame, r.frame.displayWidth, r.frame.displayHeight, pictureAt(seg.events ?? [], songTime - seg.start)) });
       r.frame.close();
       got += 1;
     }

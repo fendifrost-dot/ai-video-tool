@@ -25,7 +25,8 @@ import {
   type ShotSpec,
   type ShotTypeLiteral,
 } from "@/lib/treatment/shotSpec";
-import { applyShotOverride, isEmptyOverride, type ShotOverride } from "@/lib/treatment/overrides";
+import { applyShotOverride, isEmptyOverride, type ContinuityOverride, type ShotOverride } from "@/lib/treatment/overrides";
+import { storedEvent, EVENT_FACETS, eventStates, isDirected, mergeEvents, resolveEvents, sanitizeEvents, splitEvents, type EventClock, type ResolvedEvent, type ShotEvent, type ShotState } from "./events";
 
 // ---------------------------------------------------------------------------
 // Shapes
@@ -42,7 +43,7 @@ export type BoxOverride = Omit<ShotOverride, "specId"> & {
   manual?: OverrideField[] | null;
 };
 
-export const OVERRIDE_FIELDS = ["direction", "frame", "cameraMotion", "framing", "transitionIn", "requiredElements", "notes", "shotType"] as const;
+export const OVERRIDE_FIELDS = ["direction", "frame", "cameraMotion", "framing", "transitionIn", "requiredElements", "notes", "shotType", "events", "continuity"] as const;
 export type OverrideField = (typeof OVERRIDE_FIELDS)[number];
 
 export type BoxHistoryEntry = {
@@ -53,6 +54,8 @@ export type BoxHistoryEntry = {
   purpose?: string;
   direction?: string;
   frame?: string;
+  /** The shot's timed events at that moment (absent on entries written before events existed, and on a one-state shot). */
+  events?: ShotEvent[];
   note?: string;
 };
 
@@ -125,6 +128,17 @@ export function isEmptyBoxOverride(o: BoxOverride | null | undefined): boolean {
   return isEmptyOverride({ ...o, specId: "" } as ShotOverride) && !asShotType(o.shotType);
 }
 
+function parseContinuity(value: unknown): ContinuityOverride | null {
+  if (!value || typeof value !== "object") return null;
+  const v = value as Record<string, unknown>;
+  const out: ContinuityOverride = {};
+  if (typeof v.location === "string") out.location = v.location.trim();
+  if (Array.isArray(v.props)) out.props = v.props.filter((x): x is string => typeof x === "string" && !!x.trim()).map((x) => x.trim());
+  if (typeof v.lighting === "string") out.lighting = v.lighting.trim();
+  if (typeof v.look === "string") out.look = v.look.trim();
+  return Object.keys(out).length ? out : null;
+}
+
 /** A stored override_json value → BoxOverride (null when it holds nothing usable). */
 export function parseBoxOverride(value: unknown): BoxOverride | null {
   if (!value || typeof value !== "object") return null;
@@ -138,6 +152,9 @@ export function parseBoxOverride(value: unknown): BoxOverride | null {
     transitionIn: (v.transitionIn && typeof v.transitionIn === "object" ? v.transitionIn : null) as BoxOverride["transitionIn"],
     requiredElements: Array.isArray(v.requiredElements) ? (v.requiredElements.filter((x) => typeof x === "string") as string[]) : null,
     notes: str(v.notes),
+    // a list is kept even when empty: "no events" is something a director can say about a shot the writer gave some
+    events: Array.isArray(v.events) ? sanitizeEvents(v.events) : null,
+    continuity: parseContinuity(v.continuity),
     shotType: asShotType(v.shotType),
     manual: Array.isArray(v.manual) ? (v.manual.filter((f) => (OVERRIDE_FIELDS as readonly unknown[]).includes(f)) as OverrideField[]) : null,
     updatedAt: typeof v.updatedAt === "string" ? v.updatedAt : undefined,
@@ -254,6 +271,7 @@ function snapshot(spec: ShotSpec, event: BoxHistoryEntry["event"], at: string, n
     purpose: spec.purpose,
     direction: spec.performanceDirection || undefined,
     frame: spec.openingFrame || undefined,
+    ...(spec.events.length ? { events: spec.events } : {}),
     ...(note ? { note } : {}),
   };
 }
@@ -429,22 +447,26 @@ export type SplitPlan = { first: BoxWrite; second: BoxWrite };
  * the original record (id, key, footage); the second is a new record with a new key and a copy of the scene, so
  * neither half is ever empty or overlapping.
  */
-export function planSplit(box: StoryboardBox, atSeconds: number, existingKeys: readonly string[], at: string): SplitPlan {
+export function planSplit(box: StoryboardBox, atSeconds: number, existingKeys: readonly string[], at: string, clock: EventClock = {}): SplitPlan {
   const cut = round2(atSeconds);
   if (!(cut - box.start >= MIN_BOX_SECONDS && box.end - cut >= MIN_BOX_SECONDS)) {
     throw new Error(`a split leaves both halves at least ${MIN_BOX_SECONDS} s — choose a point inside the box`);
   }
   const key2 = nextKey(existingKeys, box.key);
   const note = `split at ${cut.toFixed(2)} s`;
+  // a shot's timed events go with their moment: each half keeps the ones that happen inside it
+  const halves = box.spec.events.length ? splitEvents(resolveEvents(box.spec.events, { start: box.start, end: box.end }, clock), cut - box.start) : null;
+  const withEvents = (events: ShotEvent[] | undefined): BoxOverride | null =>
+    halves ? { ...(box.override ?? BLANK_OVERRIDE), events: events ?? [] } : box.override;
   return {
-    first: writeOf(box, { end: cut, history: withHistory(box.history, snapshot(box.spec, "split", at, note)) }),
+    first: writeOf(box, { end: cut, override: withEvents(halves?.first), history: withHistory(box.history, snapshot(box.spec, "split", at, note)) }),
     second: boxWrite({
       key: key2,
       start: cut,
       end: box.end,
       section: box.section,
       generated: box.generated,
-      override: box.override,
+      override: withEvents(halves?.second),
       locked: box.locked,
       origin: "split",
       history: [{ at, event: "split", note: `${note} from ${box.key}` }],
@@ -452,15 +474,135 @@ export function planSplit(box: StoryboardBox, atSeconds: number, existingKeys: r
   };
 }
 
+/** The scene a box states: the director's (or a rewrite's) direction when there is one, else the generated scene. */
+export function sceneOf(spec: ShotSpec): string {
+  return spec.origin === "override" && spec.performanceDirection ? spec.performanceDirection : spec.purpose;
+}
+
+function withChanges(base: string, state: ShotState, kinds: readonly (typeof EVENT_FACETS)[number][]): string {
+  const now = kinds
+    .filter((f) => state[f])
+    .map((f) => state[f])
+    .join("; ");
+  const b = base.trim();
+  if (!now) return b;
+  if (!b) return `${now.charAt(0).toUpperCase()}${now.slice(1)}.`;
+  return `${b}${/[.!?]$/.test(b) ? "" : "."} Now: ${now}.`;
+}
+
+export type SplitAtBeatsPlan = {
+  /** The original record, shortened to the opening state. */
+  first: BoxWrite;
+  /** One new record per later state, in song order. */
+  rest: BoxWrite[];
+  /** The song times the shot is cut at. */
+  cuts: number[];
+  /** Beats that could not become a cut (a piece would be shorter than MIN_BOX_SECONDS): they stay as events. */
+  kept: number;
+};
+
+/**
+ * Split a shot at its timed beats, so that every state is a shot of its own — the mechanism for footage that has to
+ * be DRAWN by a generator that draws one state. Each new shot's scene is the base scene with what has changed by
+ * then; what changed at the cut is no longer an event (it is the shot). Effects, and beats too close to a cut to
+ * stand as a shot, stay as events on the piece they fall in.
+ */
+export function planSplitAtBeats(box: StoryboardBox, existingKeys: readonly string[], at: string, clock: EventClock = {}): SplitAtBeatsPlan {
+  const seconds = box.end - box.start;
+  const resolved = resolveEvents(box.spec.events, { start: box.start, end: box.end }, clock);
+  const states = eventStates(resolved, seconds);
+  // the cuts: where a state begins, far enough from the cut before it and from the end
+  const cutOffsets: number[] = [];
+  let kept = 0;
+  for (const st of states.slice(states[0].eventId === null ? 1 : 0)) {
+    const prev = cutOffsets[cutOffsets.length - 1] ?? 0;
+    if (st.from < 0.02) continue;
+    if (st.from - prev >= MIN_BOX_SECONDS && seconds - st.from >= MIN_BOX_SECONDS) cutOffsets.push(round2(box.start + st.from) - box.start);
+    else kept++;
+  }
+  if (cutOffsets.length === 0) throw new Error("this shot has no beat far enough from its ends to cut at — every piece has to be at least half a second");
+  const bounds = [0, ...cutOffsets, seconds];
+  const stateAt = (offset: number): ShotState => [...states].reverse().find((st) => st.from <= offset + 0.02) ?? states[0];
+  const base = sceneOf(box.spec);
+  const performance = box.spec.shotType === "performance";
+  const baseFrame = box.spec.openingFrame.trim() || (performance ? "" : base);
+  const taken = new Set(existingKeys);
+  const eventsIn = (lo: number, hi: number, foldAtStart: boolean): ShotEvent[] => {
+    const out: ShotEvent[] = [];
+    for (const e of resolved as ResolvedEvent[]) {
+      if (e.offset < lo - 0.02 || e.offset >= hi - 0.02) continue;
+      const plain = storedEvent(e);
+      const atStart = foldAtStart && Math.abs(e.offset - lo) < 0.02;
+      // what changed AT the cut is the new shot's own scene now; only an effect is left of it
+      const kept2: ShotEvent = atStart ? { ...plain, visual: "", camera: "", lighting: "", action: "", lightingState: null } : plain;
+      if (atStart && !kept2.effect) continue;
+      out.push({ ...kept2, at: Math.max(0, Math.round((e.offset - lo) * 1000) / 1000), trigger: kept2.trigger.kind === "beat" || atStart ? { kind: "time", ref: "" } : kept2.trigger });
+    }
+    return sanitizeEvents(out, hi - lo);
+  };
+  const note = `split at its beats (${cutOffsets.map((c) => (box.start + c).toFixed(2)).join(", ")} s)`;
+  const first = writeOf(box, {
+    end: round2(box.start + bounds[1]),
+    override: { ...(box.override ?? BLANK_OVERRIDE), events: eventsIn(0, bounds[1], false) },
+    history: withHistory(box.history, snapshot(box.spec, "split", at, note)),
+  });
+  const rest: BoxWrite[] = [];
+  for (let i = 1; i < bounds.length - 1; i++) {
+    const lo = bounds[i];
+    const hi = bounds[i + 1];
+    const st = stateAt(lo);
+    const key = nextKey(taken, box.key);
+    taken.add(key);
+    const frame = baseFrame ? withChanges(baseFrame, st, performance ? ["lighting", "visual"] : ["lighting", "visual", "action"]) : null;
+    rest.push(
+      boxWrite({
+        key,
+        start: round2(box.start + lo),
+        end: i === bounds.length - 2 ? box.end : round2(box.start + hi),
+        section: box.section,
+        generated: box.generated,
+        override: {
+          ...(box.override ?? BLANK_OVERRIDE),
+          direction: withChanges(base, st, EVENT_FACETS),
+          frame: frame || (box.override?.frame ?? null),
+          // the camera of a later state is the newest camera phrase said so far
+          ...(st.camera ? { cameraMotion: { type: null, description: st.camera } } : {}),
+          // a state that IS one of the project's lighting states: the new shot points at it, like any shot lit that way
+          ...(st.lightingState ? { continuity: { ...(box.override?.continuity ?? {}), lighting: st.lightingState } } : {}),
+          events: eventsIn(lo, hi, true),
+        },
+        locked: box.locked,
+        origin: "split",
+        history: [{ at, event: "split", note: `${note} from ${box.key}` }],
+      }),
+    );
+  }
+  return { first, rest, cuts: cutOffsets.map((c) => round2(box.start + c)), kept };
+}
+
+/** True when a shot has change that a generator would have to draw. */
+export function hasDirectedChange(spec: Pick<ShotSpec, "events">): boolean {
+  return spec.events.some((e) => isDirected(e));
+}
+
+/** An override that states nothing — the starting point when only one field is being set. */
+export const BLANK_OVERRIDE: BoxOverride = { direction: null, cameraMotion: null, framing: null, transitionIn: null, requiredElements: null, notes: null };
+
 /**
  * Merge a box with the one that follows it. The earlier record survives and takes the whole window; the later
  * record's scene is written into the survivor's history so nothing it said is lost. The caller moves the later
  * record's footage onto the survivor before removing that record.
  */
-export function planMerge(box: StoryboardBox, next: StoryboardBox, at: string): BoxWrite {
+export function planMerge(box: StoryboardBox, next: StoryboardBox, at: string, clock: EventClock = {}): BoxWrite {
   if (Math.abs(next.start - box.end) > 0.02) throw new Error("only the box that follows directly can be merged in");
+  // both shots' timed events stay at their moments in the one shot
+  const merged =
+    box.spec.events.length || next.spec.events.length
+      ? mergeEvents(resolveEvents(box.spec.events, { start: box.start, end: box.end }, clock), resolveEvents(next.spec.events, { start: next.start, end: next.end }, clock), next.start - box.start)
+      : null;
   return writeOf(box, {
     end: next.end,
+    ...(merged ? { override: { ...(box.override ?? BLANK_OVERRIDE), events: merged } } : {}),
     locked: box.locked || next.locked,
     history: withHistory(box.history, snapshot(next.spec, "merge", at, `merged ${next.key} (${next.start.toFixed(2)}–${next.end.toFixed(2)} s) into ${box.key}`)),
   });
@@ -489,6 +631,10 @@ function stated(o: BoxOverride | null | undefined, f: OverrideField): boolean {
       return !!o.notes?.trim();
     case "shotType":
       return !!asShotType(o.shotType);
+    case "events":
+      return Array.isArray(o.events);
+    case "continuity":
+      return !!o.continuity && Object.keys(o.continuity).length > 0;
   }
 }
 
@@ -533,6 +679,9 @@ export function rewrittenOverride(prev: BoxOverride | null, written: Partial<Box
     requiredElements: take("requiredElements"),
     notes: prev?.notes ?? null,
     shotType: prev?.shotType ?? null,
+    // a rewrite may write the shot's timed events; the ones the director set by hand are his
+    events: his.has("events") ? (prev?.events ?? null) : written.events !== undefined ? (written.events ?? null) : (prev?.events ?? null),
+    continuity: prev?.continuity ?? null,
     manual: [...his],
   };
 }
@@ -569,7 +718,9 @@ export type BoxMachineContext = {
   performance_source: { take: string; source_range_seconds: [number, number]; he_wears?: string; filmed_in?: string } | null;
   assigned_media: { role: string; name: string; selected: boolean }[];
   look: { name: string; description: string } | null;
-  locked_by_director: { framing?: string; camera_move?: string; must_be_in_frame?: string[] };
+  locked_by_director: { framing?: string; camera_move?: string; must_be_in_frame?: string[]; timed_events?: { at_seconds: number; on?: string; changes: string }[] };
+  /** The project's continuity entities this shot points at: the scene is set IN them, in their words. Absent = none. */
+  continuity?: { place?: { name: string; is: string }; props?: { name: string; is: string }[]; light?: { name: string; is: string } };
   constraints: string[];
 };
 
@@ -578,6 +729,8 @@ export function machineContext(input: {
   performance?: { takeName: string; range: { start: number; end: number }; shows?: string | null; filmedIn?: string | null } | null;
   media?: { role: string; name: string; selected: boolean }[];
   look?: { name?: string | null; description?: string | null } | null;
+  /** What the shot's continuity references resolve to (continuity/entities.ts), as name + canonical words. */
+  continuity?: { location?: { name: string; words: string } | null; props?: { name: string; words: string }[]; lighting?: { name: string; words: string } | null } | null;
   constraints?: (string | null | undefined)[];
 }): BoxMachineContext {
   const { box } = input;
@@ -588,6 +741,23 @@ export function machineContext(input: {
   if (his.has("cameraMotion") && (o?.cameraMotion?.type || o?.cameraMotion?.description))
     locked.camera_move = [o.cameraMotion?.type, o.cameraMotion?.description].filter(Boolean).join(" — ");
   if (o?.requiredElements?.length && his.has("requiredElements")) locked.must_be_in_frame = o.requiredElements;
+  // the beats the director placed are his: a rewrite writes the scene around them and returns them unchanged
+  if (his.has("events") && box.spec.events.length) {
+    locked.timed_events = box.spec.events.map((e) => ({
+      at_seconds: e.at,
+      ...(e.trigger.kind !== "time" ? { on: `${e.trigger.kind} ${e.trigger.ref}` } : {}),
+      changes: [...EVENT_FACETS.filter((f) => e[f]).map((f) => `${f}: ${e[f]}`), ...(e.effect ? [`effect: ${e.effect.type}`] : [])].join("; "),
+    }));
+  }
+  const c = input.continuity;
+  const held: BoxMachineContext["continuity"] | null =
+    c && (c.location || c.props?.length || c.lighting)
+      ? {
+          ...(c.location ? { place: { name: c.location.name, is: c.location.words } } : {}),
+          ...(c.props?.length ? { props: c.props.map((p) => ({ name: p.name, is: p.words })) } : {}),
+          ...(c.lighting ? { light: { name: c.lighting.name, is: c.lighting.words } } : {}),
+        }
+      : null;
   const lookName = (input.look?.name ?? box.spec.wardrobe.name ?? "").trim();
   const lookDescription = (input.look?.description ?? box.spec.wardrobe.description ?? "").trim();
   return {
@@ -605,6 +775,7 @@ export function machineContext(input: {
     assigned_media: input.media ?? [],
     look: lookName || lookDescription ? { name: lookName, description: lookDescription } : null,
     locked_by_director: locked,
+    ...(held ? { continuity: held } : {}),
     constraints: (input.constraints ?? []).map((c) => (c ?? "").trim()).filter(Boolean),
   };
 }

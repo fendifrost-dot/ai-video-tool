@@ -13,7 +13,7 @@ import { verifyCut } from "./verify";
 import { clipLyrics } from "./build";
 import { footageSummary, setupStatus } from "./setup";
 import { boxShot, placePrompt } from "./generate";
-import { NEVER_WIDER, restageAngle, restageEstimateUsd, restageKeep, restageSeconds, restageShot, restageSource, RESTAGE_MAX_SECONDS } from "./restage";
+import { NEVER_WIDER, restageAngle, restageEstimateUsd, restageKeep, restageSeconds, restageShot, restageSource, restageTemporalPlan, RESTAGE_MAX_SECONDS } from "./restage";
 
 const AT = "2026-10-03T00:00:00Z";
 function asset(id: string, over: Partial<MediaAsset> = {}): MediaAsset {
@@ -90,6 +90,7 @@ describe("what a restaging asks for and costs", () => {
       sourcePath: "u/p/seedance/storyboard_c013_src.mp4",
       stillPath: "u/p/stills/c013.png",
       cut: { start: 46.2, seconds: 4.0000003 },
+      temporal: restageTemporalPlan(b),
     });
     expect(req.seconds).toBe(4);
     // the clip's first frame sits where the cut began: take time through the take's own sync
@@ -109,7 +110,7 @@ describe("what a restaging asks for and costs", () => {
 
   it("asks for the project's frame", () => {
     const b = box(47.06, 50.98);
-    const base = { box: b, lyricLines: [], source: { take, sync: sync(), takeIn: 46.2, takeOut: 50.12 }, sourcePath: "a.mp4", stillPath: "b.png", cut: { start: 46.2, seconds: 4 } };
+    const base = { box: b, lyricLines: [], source: { take, sync: sync(), takeIn: 46.2, takeOut: 50.12 }, sourcePath: "a.mp4", stillPath: "b.png", cut: { start: 46.2, seconds: 4 }, temporal: restageTemporalPlan(b) };
     expect(restageShot({ ...base, aspect: "16:9" }).shot.aspect).toBe("16:9");
     expect(restageShot({ ...base, aspect: "4:5" }).shot.aspect).toBe("3:4");
   });

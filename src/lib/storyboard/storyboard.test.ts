@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { renderContract } from "./renderContract";
 import { parseShotSpec, type ShotSpec } from "@/lib/treatment/shotSpec";
 import {
   applyGenerated,
@@ -30,7 +31,6 @@ import {
   planMove,
   planMoveAll,
   planSelect,
-  renderPlan,
   roleForAsset,
   segmentAt,
   takeRangeForBox,
@@ -429,14 +429,15 @@ describe("the timeline Review plays", () => {
     expect(segmentAt(timeline, -1)).toBeNull();
   });
 
-  it("the render plan names the ORIGINAL file of every segment, its in/out and the record it came from", () => {
+  it("the render contract names the ORIGINAL file of every segment, its in/out and the record it came from", () => {
     const withCopy = new Map(assets);
     withCopy.set("take1", { ...take, playback: { bucket: "project-clips", path: "u/p/take1_720p.mp4" } });
-    const plan = renderPlan(timeline, withCopy, { assetId: "song", bucket: "project-audio", path: "u/p/song.wav" });
+    const song = { assetId: "song", bucket: "project-audio", path: "u/p/song.wav" };
+    const plan = renderContract({ timeline, assets: withCopy, song });
     // the frame a renderer draws into: the project's, 9:16 when it has never been set, media fitted whole
-    expect(plan.frame).toEqual({ aspect: "9:16", width: 1080, height: 1920, fit: "contain" });
-    expect(renderPlan(timeline, withCopy, null, "16:9").frame).toEqual({ aspect: "16:9", width: 1920, height: 1080, fit: "contain" });
-    expect(plan).toMatchObject({ version: 1, clock: "song", duration_seconds: 12, song: { asset_id: "song", path: "u/p/song.wav" } });
+    expect(plan.frame).toEqual({ aspect: "9:16", width: 1080, height: 1920, fit: "contain", background: "#000000" });
+    expect(renderContract({ timeline, assets: withCopy, song: null, aspect: "16:9" }).frame).toMatchObject({ aspect: "16:9", width: 1920, height: 1080, fit: "contain" });
+    expect(plan).toMatchObject({ version: 2, clock: "song", duration_seconds: 12, audio: { asset_id: "song", path: "u/p/song.wav", song_in: 0 } });
     expect(plan.segments.map((s) => [s.shot_id, s.key, s.song_in, s.song_out, s.media.kind])).toEqual([
       ["r1", "c001", 0, 4, "video"],
       ["r2", "c002", 4, 8, "video"],
@@ -544,6 +545,7 @@ describe("what a shot's video does at a moment of the song", () => {
     section: null,
     scene: "",
     note: null,
+    events: [],
     media: { kind: "video", assetId: "take", role: "performance", sourceIn: 187.15, sourceOut: 190.34, leadIn: 0, base: true, ...over },
   });
 

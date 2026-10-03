@@ -13,8 +13,11 @@ import { compileToWorldBatch, phrasesFromShotSpecs, resolveLookPreset } from "@/
 import { BatchShotSchema, PROVIDER_RATES, estimateShotUsd, submitShot, submitStills, type BatchShot, type SubmitResult } from "@/lib/worldBatch";
 import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 import { applyAssignmentOps, fetchAssignments } from "@/lib/queries/storyboard";
+import { canonicalWords, continuitySource, referencePrompt, type ContinuityEntity, type ShotContinuity } from "@/lib/continuity/entities";
 import type { StoryboardBox } from "./boxes";
+import { resolveEvents, type EventClock } from "./events";
 import { planAssign } from "./media";
+import { assertPlanCovers, temporalPlan, type TemporalPlan } from "./temporal";
 
 /** Every job the storyboard starts carries this run id, so the box jobs can be told apart from a Runs-page batch. */
 export const STORYBOARD_RUN = "storyboard";
@@ -48,7 +51,9 @@ const PLACE_WORDS = 6;
  * frame the director wrote, else the place the writer named; only when neither says enough is the scene used, and
  * then it is told plainly to leave him out.
  */
-export function placePrompt(spec: Pick<StoryboardBox["spec"], "openingFrame" | "environment" | "purpose" | "performanceDirection" | "origin">): string {
+export function placePrompt(spec: Pick<StoryboardBox["spec"], "openingFrame" | "environment" | "purpose" | "performanceDirection" | "origin">, canonicalPlace = ""): string {
+  // a shot set in one of the project's locations is drawn from THAT location's words — the same in every such shot
+  if (canonicalPlace.trim()) return `${EMPTY_SET} ${canonicalPlace.trim()} ${PLATE_LINE}`;
   const frame = spec.openingFrame?.trim();
   const named = (spec.environment.description || spec.environment.location || "").trim();
   const scene = (spec.origin === "override" && spec.performanceDirection.trim() ? spec.performanceDirection : spec.purpose).trim();
@@ -64,11 +69,18 @@ export function placePrompt(spec: Pick<StoryboardBox["spec"], "openingFrame" | "
  * The one shot a box compiles to. `stillPath` set = the box already has its image; the clip is made from it.
  * Throws when the box has nothing to draw (no scene text at all).
  */
-export function boxShot(box: StoryboardBox, lyricLines: readonly LyricLine[] | undefined, opts: { lookPresetId?: string; stillPath?: string | null; aspect?: ProjectAspect } = {}): BatchShot {
+export function boxShot(box: StoryboardBox, lyricLines: readonly LyricLine[] | undefined, opts: BoxShotOptions = {}): BatchShot {
   const isPerformance = box.spec.shotType === "performance";
+  // A shot that points at continuity entities is generated FROM them. A request built without them would quietly
+  // recreate the place from the shot's own prose — the thing the entities exist to stop.
+  if (pointsAtEntities(box.spec) && !opts.continuity) {
+    throw new Error("This shot points at the project's continuity entities and the request was built without them. Nothing was generated.");
+  }
+  const source = opts.continuity ? continuitySource(opts.continuity, { forPlate: isPerformance }) : null;
+  const canonicalPlace = isPerformance && opts.continuity?.location ? canonicalWords(opts.continuity.location) : "";
   // the compiler writes world shots for boxes that are not real performance; a performance box asks for its place,
   // drawn empty (the frame field carries the whole prompt, so nothing about him reaches the image model)
-  const place = isPerformance ? placePrompt(box.spec) : "";
+  const place = isPerformance ? placePrompt(box.spec, canonicalPlace) : "";
   const spec = isPerformance
     ? { ...box.spec, shotType: "b_roll" as const, kind: "broll" as const, origin: "override" as const, openingFrame: place, performanceDirection: box.spec.performanceDirection || box.spec.purpose, requiredElements: [] }
     : box.spec;
@@ -81,7 +93,70 @@ export function boxShot(box: StoryboardBox, lyricLines: readonly LyricLine[] | u
   if (isPerformance && !shot.prompt.includes(PLATE_LINE)) shot.prompt = `${shot.prompt.trim()} ${PLATE_LINE}`;
   // the place is still: its motion sentence is the camera's, never a person's action
   if (isPerformance) shot.motion = "";
+  // the entities' canonical words: identical in every shot that points at the same entity (the place of a
+  // performance shot is already its whole picture, above)
+  for (const line of source?.lines ?? []) {
+    if (canonicalPlace && line.includes(canonicalPlace)) continue;
+    if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
+  }
   for (const line of [NO_MARKS, FULL_BLEED]) if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
+  return shot;
+}
+
+export type BoxShotOptions = {
+  lookPresetId?: string;
+  stillPath?: string | null;
+  aspect?: ProjectAspect;
+  /** What the shot's continuity references resolve to (continuity/entities.ts resolveContinuity). Required when it has any. */
+  continuity?: ShotContinuity;
+};
+
+/** True when the shot record points at a place, a prop or a lighting state of the project. */
+export function pointsAtEntities(spec: Pick<StoryboardBox["spec"], "continuity">): boolean {
+  const c = spec.continuity;
+  return !!c && (!!c.location || (c.props?.length ?? 0) > 0 || !!c.lighting);
+}
+
+/** The route a cutaway's clip is made on (image → motion). */
+export const CLIP_ROUTE = "still_kling" as const;
+
+/**
+ * What generating a clip for this box does with its timed events. A shot with change that must be DRAWN is not
+ * handed to a model that draws one state: the plan comes back "refused" with the mechanisms on offer, unless the
+ * director asked for the beats in order (`allowOrdered`). Performance shots are restaged — see restage.ts.
+ */
+export function clipTemporalPlan(box: StoryboardBox, clock: EventClock = {}, opts: { allowOrdered?: boolean } = {}): TemporalPlan {
+  const window = { start: box.start, end: box.end };
+  return temporalPlan({ route: CLIP_ROUTE, resolved: resolveEvents(box.spec.events, window, clock), shotSeconds: box.end - box.start, allowOrdered: opts.allowOrdered });
+}
+
+/** What the image of this box is, when the box changes while it plays: the state it opens in. */
+export function imageTemporalPlan(box: StoryboardBox, clock: EventClock = {}): TemporalPlan {
+  return temporalPlan({ route: "image", resolved: resolveEvents(box.spec.events, { start: box.start, end: box.end }, clock), shotSeconds: box.end - box.start });
+}
+
+/**
+ * The clip request of a box with its timed events accounted for. Throws on a refused plan: nothing reaches a
+ * provider flattened. "ordered" puts the beats, in order and without times, where the motion sentence goes and
+ * marks the request so the job says how it was asked for.
+ */
+export function clipShot(
+  box: StoryboardBox,
+  lyricLines: readonly LyricLine[] | undefined,
+  opts: BoxShotOptions & { temporal: TemporalPlan },
+): BatchShot {
+  const shot = boxShot(box, lyricLines, opts);
+  const plan = opts.temporal;
+  if (plan.mode === "refused") throw new Error(`${plan.reason} Nothing was generated.`);
+  assertPlanCovers(box.spec, plan);
+  if (plan.mode === "ordered") {
+    if (!plan.script) throw new Error("This shot's beats say nothing a clip could show.");
+    return BatchShotSchema.parse({ ...shot, motion: [shot.motion, plan.script].filter(Boolean).join(" "), temporal: { mode: "ordered", beats: plan.beats, measured: false } });
+  }
+  if (plan.mode === "timed_script") {
+    // no image-to-motion route takes a timed script today; if one is declared, this is where its form goes
+    return BatchShotSchema.parse({ ...shot, motion: [shot.motion, plan.script].filter(Boolean).join(" "), temporal: { mode: "timed_script", beats: plan.beats, measured: plan.measured } });
+  }
   return shot;
 }
 
@@ -141,10 +216,12 @@ export async function generateBoxImage(input: {
   aspect?: ProjectAspect;
   /** false = keep what the shot shows (a performance shot keeps showing its take; the image is the place to restage it in). */
   select?: boolean;
+  /** What the shot's continuity references resolve to. */
+  continuity?: ShotContinuity;
 }): Promise<BoxImageResult> {
   const deps = await browserRunnerDeps();
-  const shot = boxShot(input.box, input.lyricLines, { lookPresetId: input.lookPresetId, aspect: input.aspect });
-  const res = await submitStills(shot, runContext(input.projectId, input.box, input.lookPresetId), deps);
+  const shot = boxShot(input.box, input.lyricLines, { lookPresetId: input.lookPresetId, aspect: input.aspect, continuity: input.continuity });
+  const res = await submitStills(shot, { ...runContext(input.projectId, input.box, input.lookPresetId), selectStill: input.select ?? true }, deps);
   // on a performance shot the image is the PLACE the take can be restaged in — the take stays what the shot shows
   const assetIds = await attachStills({ projectId: input.projectId, box: input.box, paths: res.whole, picked: res.picked, select: input.select ?? true });
   // the job points at the image it produced, so nothing downstream mistakes it for a clip still waiting to be saved
@@ -165,13 +242,44 @@ export async function generateBoxClip(input: {
   stillPath: string | null;
   /** The project's frame. */
   aspect?: ProjectAspect;
+  /** What is done with the box's timed events (clipTemporalPlan). A refused plan never gets here. */
+  temporal: TemporalPlan;
+  /** What the shot's continuity references resolve to. */
+  continuity?: ShotContinuity;
 }): Promise<SubmitResult> {
   const deps = await browserRunnerDeps();
-  const shot = boxShot(input.box, input.lyricLines, { lookPresetId: input.lookPresetId, stillPath: input.stillPath, aspect: input.aspect });
+  const shot = clipShot(input.box, input.lyricLines, { lookPresetId: input.lookPresetId, stillPath: input.stillPath, aspect: input.aspect, temporal: input.temporal, continuity: input.continuity });
   const result = await submitShot(shot, runContext(input.projectId, input.box, input.lookPresetId), deps);
   // an image drawn on the way to the clip belongs to the box too (as a version; the clip will be what shows)
   if (!input.stillPath && result.stillPath) {
     await attachStills({ projectId: input.projectId, box: input.box, paths: [result.stillPath], picked: result.stillPath, select: true }).catch(() => undefined);
   }
   return result;
+}
+
+/** The run id of pictures drawn for a continuity entity (not for a shot). */
+export const ENTITY_RUN = "continuity";
+
+/** The one picture request of an entity's own reference picture. Pure. */
+export function entityShot(entity: ContinuityEntity, aspect: ProjectAspect = DEFAULT_PROJECT_ASPECT): BatchShot {
+  const prompt = [referencePrompt(entity), NO_MARKS, FULL_BLEED].join(" ");
+  // a place is drawn in the project's frame; an object is drawn square, whole
+  return BatchShotSchema.parse({ id: `ent_${entity.key}`, kind: entity.kind === "location" ? "plate" : "world", route: CLIP_ROUTE, aspect: entity.kind === "location" ? stillRequestAspect(aspect).aspect : "1:1", prompt, motion: "", stills: 2 });
+}
+
+/**
+ * Draw reference pictures of an entity from its canonical words. They are filed as the project's own assets (the
+ * generator does that) and their ids are handed back for the entity to keep; nothing is approved here.
+ */
+export async function generateEntityReference(input: { projectId: string; entity: ContinuityEntity; aspect?: ProjectAspect }): Promise<{ assetIds: string[]; costUsd: number | null }> {
+  const deps = await browserRunnerDeps();
+  const shot = entityShot(input.entity, input.aspect);
+  const { id, look } = resolveLookPreset(DEFAULT_BOX_LOOK);
+  const res = await submitStills(shot, { projectId: input.projectId, runId: ENTITY_RUN, lookPresetId: id, look, shotIds: {}, selectStill: false, entityId: input.entity.id }, deps);
+  const { data, error } = await supabase.from("project_assets").select("id, file_url").eq("project_id", input.projectId).in("file_url", res.whole);
+  if (error) throw new Error(`could not find the generated picture: ${error.message}`);
+  const byPath = new Map((data ?? []).map((r) => [r.file_url, r.id]));
+  const assetIds = res.whole.map((p) => byPath.get(p)).filter((x): x is string => !!x);
+  if (assetIds[0]) await deps.updateJob(res.rowId, { result_asset_id: assetIds[0] });
+  return { assetIds, costUsd: res.costUsd };
 }

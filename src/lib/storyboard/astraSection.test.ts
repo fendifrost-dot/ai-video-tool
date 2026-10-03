@@ -2,8 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/supabase", () => ({ supabase: {} }));
 
-import { frameLabel, parseSectionReview, readStoredReview, reviewBrief, reviewEstimateUsd, SECTION_REVIEW_SCHEMA, showsOf, type ReviewShot } from "./astraSection";
+import { frameLabel, parseSectionReview, reviewFrameTimes, REVIEW_FRAMES_MAX, readStoredReview, reviewBrief, reviewEstimateUsd, SECTION_REVIEW_SCHEMA, showsOf, type ReviewShot } from "./astraSection";
 import type { TimelineSegment } from "./media";
+import { resolveEvents } from "./events";
 
 const shots: ReviewShot[] = [
   { number: 13, key: "c013", shotId: "id13", start: 47.06, end: 50.98, shows: "the artist's real performance, re-shot…", scene: "He performs in the backstage fitting room.", lyrics: "Yves Saint Laurent / On the weekend" },
@@ -77,5 +78,41 @@ describe("what comes back", () => {
     expect(readStoredReview({ astra_review: { summary: "x" } })).toBeNull();
     const kept = readStoredReview({ treatment: {}, astra_review: { at: "2026-10-03T10:00:00Z", from: 13, to: 22, verdict: "pass", summary: "Good.", strengths: [], release: "", findings: [], costUsd: 0.81, model: "gpt-6-astra" } });
     expect(kept).toMatchObject({ from: 13, to: 22, verdict: "pass", costUsd: 0.81 });
+  });
+});
+
+describe("a shot that changes is reviewed as one that changes", () => {
+  const events = resolveEvents(
+    [
+      { id: "e1", at: 1.2, trigger: { kind: "time", ref: "" }, visual: "", camera: "", lighting: "the house lights die", action: "", lightingState: null, effect: { type: "blackout", seconds: null, level: null } },
+      { id: "e2", at: 2.4, trigger: { kind: "time", ref: "" }, visual: "", camera: "a slow push begins", lighting: "", action: "", lightingState: null, effect: null },
+    ],
+    { start: 60, end: 64 },
+    {},
+  );
+
+  it("is told the changes, shot by shot", () => {
+    const brief = reviewBrief({ treatment: "T", shots: [{ ...shots[0], beats: ["0:01.2 light: the house lights die; effect: blackout", "0:02.4 camera: a slow push begins"] }, shots[1]] });
+    expect(brief).toContain("Changes inside the shot (seconds from its first frame): 0:01.2 light: the house lights die; effect: blackout | 0:02.4 camera: a slow push begins");
+    expect(brief).toContain("is meant to CHANGE while it plays");
+    // a shot with none says nothing about changes
+    expect(brief.split("SHOT 14")[1]).not.toContain("Changes inside the shot");
+  });
+
+  it("gets a frame just after each change, once its effect has landed, in time order", () => {
+    const frames = reviewFrameTimes({ start: 60, end: 64, events });
+    expect(frames.map((f) => [Number(f.songTime.toFixed(2)), f.position])).toEqual([
+      [60.32, "opening"],
+      [61.5, "after the change at 1.2 s"],
+      [62, "middle"],
+      [62.7, "after the change at 2.4 s"],
+      [63.68, "close"],
+    ]);
+  });
+
+  it("a shot that does not change keeps its three frames, and no shot sends more than the cap", () => {
+    expect(reviewFrameTimes({ start: 0, end: 4, events: [] })).toHaveLength(3);
+    const many = resolveEvents(Array.from({ length: 10 }, (_, i) => ({ id: `e${i + 1}`, at: 0.3 * (i + 1), trigger: { kind: "time" as const, ref: "" }, visual: "", camera: "", lighting: "", action: "a", lightingState: null, effect: null })), { start: 0, end: 4 }, {});
+    expect(reviewFrameTimes({ start: 0, end: 4, events: many })).toHaveLength(REVIEW_FRAMES_MAX);
   });
 });

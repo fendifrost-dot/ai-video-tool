@@ -1,0 +1,171 @@
+/**
+ * A shot that changes, and the generators that can and cannot draw a change (Fendi, 2026-10-03: "Generation
+ * providers that support temporal/keyframe direction should receive these events in their appropriate form.
+ * Providers that cannot support them must fail honestly or use an explicitly defined alternative mechanism. Never
+ * silently flatten a temporal shot into one static prompt and claim compliance.")
+ *
+ * What each route can do with change inside a shot is DATA here, with what it rests on:
+ *
+ *   timed_script   the model takes a script with times and is given one, in its own form;
+ *   none           the model draws one continuous move from one picture and one sentence. It is never handed a shot
+ *                  with directed events as if the shot were one state.
+ *
+ * For a route that cannot, the storyboard does not generate; it says so and offers the mechanisms that are defined:
+ *   • SPLIT AT THE BEATS — each state becomes its own shot (a cut on the beat), which every route can draw;
+ *   • an EFFECT — a light change made by the edit, exactly on the clock, on whatever the shot shows (events.ts);
+ *   • IN ORDER, NOT ON TIME — asked for by name: the model is told the beats in order, the job is recorded as
+ *     "ordered", and nothing anywhere calls the result timed. The frames at each beat are there to be looked at.
+ *
+ * Pure module.
+ */
+import { EFFECT_LABEL, EVENT_FACETS, FACET_LABEL, drawnFacets, eventStates, isDirected, offsetLabel, type ResolvedEvent, type ShotState } from "./events";
+
+export type TemporalSupport = "timed_script" | "none";
+
+/** The generation routes the storyboard uses, and the still. */
+export type TemporalRoute = "image" | "still_kling" | "kling_t2v" | "still_dop" | "still_runway" | "still_runway45" | "runway_t2v" | "seedance_ref";
+
+export type RouteTemporal = {
+  support: TemporalSupport;
+  /** True only when AVT has measured that the route follows what it is given. Nothing here is, yet. */
+  measured: boolean;
+  /** Why, in words a director reads. */
+  note: string;
+};
+
+const ONE_MOVE = "draws one continuous move from one picture and one sentence — it cannot place a change at a set time";
+
+export const ROUTE_TEMPORAL: Record<TemporalRoute, RouteTemporal> = {
+  image: { support: "none", measured: true, note: "an image is one moment: it is drawn as the shot OPENS, before any of its beats" },
+  still_kling: { support: "none", measured: false, note: `Kling image-to-video ${ONE_MOVE}` },
+  kling_t2v: { support: "none", measured: false, note: `Kling text-to-video ${ONE_MOVE}` },
+  still_dop: { support: "none", measured: false, note: `DoP image-to-video ${ONE_MOVE}` },
+  still_runway: { support: "none", measured: false, note: `Runway image-to-video ${ONE_MOVE}` },
+  still_runway45: { support: "none", measured: false, note: `Runway image-to-video ${ONE_MOVE}` },
+  runway_t2v: { support: "none", measured: false, note: `Runway text-to-video ${ONE_MOVE}` },
+  seedance_ref: {
+    support: "timed_script",
+    measured: false,
+    note: "Seedance reference-to-video takes a script with times; how closely it keeps to them has not been measured here, so the frames at each beat are the check",
+  },
+};
+
+export type TemporalPlan =
+  /** Nothing in the shot has to be drawn changing: generate as always. (Effects are the edit's and are not sent.) */
+  | { mode: "single"; effects: number }
+  /** The image of a shot that changes: the opening state, said plainly. */
+  | { mode: "opening_state"; beats: number; note: string }
+  /** The route takes a timed script and is given one. */
+  | { mode: "timed_script"; script: string; beats: number; measured: boolean; note: string }
+  /** The route cannot: nothing is generated. `alternatives` are the mechanisms the storyboard offers instead. */
+  | { mode: "refused"; beats: number; reason: string; alternatives: TemporalAlternative[] }
+  /** Asked for by name: the beats in order, with no claim about when. */
+  | { mode: "ordered"; script: string; beats: number; note: string };
+
+export type TemporalAlternative = "split" | "effect" | "ordered";
+
+export const ALTERNATIVE_LABEL: Record<TemporalAlternative, string> = {
+  split: "Split the shot at its beats — each state becomes its own shot, cut on the beat",
+  effect: "Make the light change an effect — the edit does it, exactly on the clock",
+  ordered: "Generate with the beats in order — the timing is not kept",
+};
+
+/** The events a generator would have to draw. */
+export function directedEvents<T extends ResolvedEvent>(resolved: readonly T[]): T[] {
+  return resolved.filter((e) => isDirected(e));
+}
+
+function statePhrases(s: ShotState): string {
+  return EVENT_FACETS.filter((f) => s[f])
+    .map((f) => `${FACET_LABEL[f].toLowerCase()}: ${s[f]}`)
+    .join("; ");
+}
+
+/**
+ * The beats as a script WITH times, in seconds from the first frame — the form a model that reads times is given.
+ * Each line is what holds FROM that moment (the newest phrase of every kind), so a line is never ambiguous about
+ * whether an earlier change still stands.
+ */
+export function timedScript(resolved: readonly ResolvedEvent[], shotSeconds: number): string {
+  const states = eventStates(resolved, shotSeconds).filter((s) => s.eventId !== null || statePhrases(s));
+  const lines = states.filter((s) => statePhrases(s)).map((s) => `from ${s.from.toFixed(1)} s: ${statePhrases(s)}`);
+  if (lines.length === 0) return "";
+  return `Timed changes inside this shot, in seconds from its first frame. Each holds until the next; nothing else changes: ${lines.join(". ")}.`;
+}
+
+/** The beats in order, WITHOUT times — only ever sent when the director asked for "in order, not on time". */
+export function orderedScript(resolved: readonly ResolvedEvent[], shotSeconds: number): string {
+  const states = eventStates(resolved, shotSeconds).filter((s) => statePhrases(s));
+  if (states.length === 0) return "";
+  const words = ["First", "Then", "Then", "Then", "Then", "Then", "Then", "Then", "Then", "Then", "Then", "Then"];
+  return states.map((s, i) => `${i === 0 && s.eventId === null ? "It opens" : (words[i] ?? "Then")}: ${statePhrases(s)}`).join(". ") + ".";
+}
+
+/**
+ * What generating does with this shot's events on this route. The only place that decides it.
+ * `allowOrdered` is true only when the director pressed "in order, not on time".
+ */
+export function temporalPlan(input: { route: TemporalRoute; resolved: readonly ResolvedEvent[]; shotSeconds: number; allowOrdered?: boolean }): TemporalPlan {
+  const directed = directedEvents(input.resolved);
+  const effects = input.resolved.filter((e) => e.effect).length;
+  if (directed.length === 0) return { mode: "single", effects };
+  const cap = ROUTE_TEMPORAL[input.route];
+  if (input.route === "image") return { mode: "opening_state", beats: directed.length, note: cap.note };
+  // a beat that points at a lighting state the project has no words for cannot be asked of any model
+  const wordless = directed.filter((e) => !drawnFacets(e).some((f) => e[f].trim()));
+  if (wordless.length > 0) {
+    return {
+      mode: "refused",
+      beats: directed.length,
+      reason: `The beat at ${wordless.map((e) => offsetLabel(e.offset)).join(", ")} switches to a lighting state (${wordless.map((e) => e.lightingState).join(", ")}) that has no description in this project, so there is nothing to ask a model for.`,
+      alternatives: [],
+    };
+  }
+  if (cap.support === "timed_script") {
+    return { mode: "timed_script", script: timedScript(input.resolved, input.shotSeconds), beats: directed.length, measured: cap.measured, note: cap.note };
+  }
+  if (input.allowOrdered) {
+    return { mode: "ordered", script: orderedScript(input.resolved, input.shotSeconds), beats: directed.length, note: `${cap.note}. It is told the beats in order; when each happens is its own choice.` };
+  }
+  // an effect can stand in for a change of light only; a split and "in order" are always there
+  const lightOnly = directed.every((e) => drawnFacets(e).every((f) => f === "lighting"));
+  const alternatives: TemporalAlternative[] = lightOnly ? ["effect", "split", "ordered"] : ["split", "ordered"];
+  return {
+    mode: "refused",
+    beats: directed.length,
+    reason: `This shot changes ${directed.length === 1 ? "once" : `${directed.length} times`} while it plays (${directed.map((e) => offsetLabel(e.offset)).join(", ")}), and ${cap.note}.`,
+    alternatives,
+  };
+}
+
+/** The shot's beats, one line each, for a confirmation or a record. */
+export function beatLines(resolved: readonly ResolvedEvent[]): string[] {
+  return resolved.map((e) => {
+    const parts = EVENT_FACETS.filter((f) => e[f].trim()).map((f) => `${FACET_LABEL[f].toLowerCase()}: ${e[f].trim()}`);
+    if (e.effect) parts.push(`effect: ${EFFECT_LABEL[e.effect.type].toLowerCase()}`);
+    return `${offsetLabel(e.offset)} ${parts.join("; ")}`;
+  });
+}
+
+/**
+ * The scene of one state, for a shot made by splitting at the beats: the base scene with what has changed by then.
+ * The base stays the subject of the sentence; the changes are added as what now holds.
+ */
+export function stateScene(base: string, state: ShotState): string {
+  const now = statePhrases(state);
+  const b = base.trim().replace(/\s+$/, "");
+  if (!now) return b;
+  return `${b}${/[.!?]$/.test(b) ? "" : "."} Now — ${now}.`;
+}
+
+/**
+ * The last line of defence against a flattened shot: a plan that says "nothing changes" (or "the opening state") is
+ * not accepted for a clip of a shot whose events have to be drawn. A stale or mistaken plan fails here, loudly,
+ * before anything is sent.
+ */
+export function assertPlanCovers(spec: { events: readonly Pick<ResolvedEvent, "lighting" | "camera" | "action" | "visual" | "lightingState" | "effect">[] }, plan: TemporalPlan): void {
+  const directed = spec.events.filter((e) => isDirected(e)).length;
+  if (directed > 0 && (plan.mode === "single" || plan.mode === "opening_state")) {
+    throw new Error(`This shot changes ${directed === 1 ? "once" : `${directed} times`} while it plays and the request said nothing about it. Nothing was generated.`);
+  }
+}
