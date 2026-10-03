@@ -722,6 +722,76 @@ export type Database = {
           },
         ]
       }
+      performance_syncs: {
+        Row: {
+          confidence_json: Json
+          created_at: string
+          drift_ppm: number
+          id: string
+          method: string
+          notes: string | null
+          offset_seconds: number
+          performance_asset_id: string | null
+          project_id: string
+          song_asset_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          confidence_json?: Json
+          created_at?: string
+          drift_ppm?: number
+          id?: string
+          method?: string
+          notes?: string | null
+          offset_seconds: number
+          performance_asset_id?: string | null
+          project_id: string
+          song_asset_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          confidence_json?: Json
+          created_at?: string
+          drift_ppm?: number
+          id?: string
+          method?: string
+          notes?: string | null
+          offset_seconds?: number
+          performance_asset_id?: string | null
+          project_id?: string
+          song_asset_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_syncs_performance_asset_id_fkey"
+            columns: ["performance_asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_syncs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "performance_syncs_song_asset_id_fkey"
+            columns: ["song_asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_assets: {
         Row: {
           asset_role: Database["public"]["Enums"]["product_asset_role"]
@@ -907,6 +977,7 @@ export type Database = {
           asset_type: Database["public"]["Enums"]["project_asset_type"]
           created_at: string
           file_url: string
+          footage_role: string | null
           id: string
           metadata_json: Json
           notes: string | null
@@ -923,6 +994,7 @@ export type Database = {
           asset_type: Database["public"]["Enums"]["project_asset_type"]
           created_at?: string
           file_url: string
+          footage_role?: string | null
           id?: string
           metadata_json?: Json
           notes?: string | null
@@ -939,6 +1011,7 @@ export type Database = {
           asset_type?: Database["public"]["Enums"]["project_asset_type"]
           created_at?: string
           file_url?: string
+          footage_role?: string | null
           id?: string
           metadata_json?: Json
           notes?: string | null
@@ -1378,6 +1451,76 @@ export type Database = {
           },
         ]
       }
+      shot_asset_assignments: {
+        Row: {
+          asset_id: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          notes: string | null
+          project_id: string
+          role: string
+          shot_id: string
+          sort_order: number
+          source_in_seconds: number | null
+          source_out_seconds: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          notes?: string | null
+          project_id: string
+          role: string
+          shot_id: string
+          sort_order?: number
+          source_in_seconds?: number | null
+          source_out_seconds?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          notes?: string | null
+          project_id?: string
+          role?: string
+          shot_id?: string
+          sort_order?: number
+          source_in_seconds?: number | null
+          source_out_seconds?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shot_asset_assignments_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shot_asset_assignments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shot_asset_assignments_shot_id_fkey"
+            columns: ["shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shot_overrides: {
         Row: {
           camera_motion: Json | null
@@ -1433,14 +1576,19 @@ export type Database = {
       }
       shots: {
         Row: {
+          box_origin: string | null
           camera_direction: string | null
           created_at: string
           duration_seconds: number | null
           environment: string | null
+          generated_json: Json | null
+          history_json: Json
           id: string
           lighting: string | null
+          locked: boolean
           locked_look_id: string | null
           notes: string | null
+          override_json: Json | null
           priority: Database["public"]["Enums"]["shot_priority"]
           project_id: string
           recommended_tool: Database["public"]["Enums"]["provider_name"] | null
@@ -1448,6 +1596,8 @@ export type Database = {
           shot_number: number
           shot_type: Database["public"]["Enums"]["shot_type"] | null
           song_section: string | null
+          spec_json: Json | null
+          spec_key: string | null
           status: Database["public"]["Enums"]["shot_status"]
           timestamp_end: number | null
           timestamp_start: number | null
@@ -1465,14 +1615,19 @@ export type Database = {
           wardrobe: string | null
         }
         Insert: {
+          box_origin?: string | null
           camera_direction?: string | null
           created_at?: string
           duration_seconds?: number | null
           environment?: string | null
+          generated_json?: Json | null
+          history_json?: Json
           id?: string
           lighting?: string | null
+          locked?: boolean
           locked_look_id?: string | null
           notes?: string | null
+          override_json?: Json | null
           priority?: Database["public"]["Enums"]["shot_priority"]
           project_id: string
           recommended_tool?: Database["public"]["Enums"]["provider_name"] | null
@@ -1480,6 +1635,8 @@ export type Database = {
           shot_number: number
           shot_type?: Database["public"]["Enums"]["shot_type"] | null
           song_section?: string | null
+          spec_json?: Json | null
+          spec_key?: string | null
           status?: Database["public"]["Enums"]["shot_status"]
           timestamp_end?: number | null
           timestamp_start?: number | null
@@ -1497,14 +1654,19 @@ export type Database = {
           wardrobe?: string | null
         }
         Update: {
+          box_origin?: string | null
           camera_direction?: string | null
           created_at?: string
           duration_seconds?: number | null
           environment?: string | null
+          generated_json?: Json | null
+          history_json?: Json
           id?: string
           lighting?: string | null
+          locked?: boolean
           locked_look_id?: string | null
           notes?: string | null
+          override_json?: Json | null
           priority?: Database["public"]["Enums"]["shot_priority"]
           project_id?: string
           recommended_tool?: Database["public"]["Enums"]["provider_name"] | null
@@ -1512,6 +1674,8 @@ export type Database = {
           shot_number?: number
           shot_type?: Database["public"]["Enums"]["shot_type"] | null
           song_section?: string | null
+          spec_json?: Json | null
+          spec_key?: string | null
           status?: Database["public"]["Enums"]["shot_status"]
           timestamp_end?: number | null
           timestamp_start?: number | null
