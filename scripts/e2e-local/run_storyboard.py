@@ -111,6 +111,20 @@ async def desktop(b, out):
         images: document.querySelectorAll('[data-testid=contact-sheet-image]').length, c001: f[0] && +f[0].dataset.time, c002: f[1] && +f[1].dataset.time}; }""")
     await pg.locator("[data-testid=contact-sheet-card]").screenshot(path="shot_contact_sheet.png")
     await pg.click("[data-testid=contact-sheet-toggle]")
+    # ---- a section of the cut: the player, the list and the frames show shots 5-10 only; the link carries it
+    await pg.select_option("[data-testid=review-section-from]", "5"); await pg.select_option("[data-testid=review-section-to]", "10"); await pg.wait_for_timeout(1200)
+    sec = {"attr": await pg.get_attribute("[data-testid=review-section]", "data-section"), "summary": await pg.inner_text("[data-testid=review-section-summary]"), "rows": await pg.locator("[data-testid=review-shot]").count(),
+        "url": pg.url.split("?")[-1], "stage": await pg.evaluate(STAGE), "scrub_min": await pg.get_attribute("[data-testid=sequence-scrub]", "min")}
+    await pg.click("[data-testid=contact-sheet-toggle]")
+    try: await pg.wait_for_function("() => { const f=[...document.querySelectorAll('[data-testid=contact-sheet-frame]')]; return f.length >= 15 && f.every(e => e.dataset.state !== 'loading'); }", timeout=120000)
+    except Exception: pass
+    sec["sheet"] = await pg.evaluate("() => ({close: document.querySelector('[data-testid=contact-sheet]')?.dataset.close, shots: document.querySelectorAll('[data-testid=contact-sheet-shot]').length, frames: document.querySelectorAll('[data-testid=contact-sheet-frame]').length, ready: [...document.querySelectorAll('[data-testid=contact-sheet-frame]')].filter(e=>e.dataset.state==='ready').length, c010: [...document.querySelectorAll('[data-box-key=c010] [data-testid=contact-sheet-frame]')].map(e=>+(+e.dataset.time).toFixed(2))})")
+    await pg.click("[data-testid=sequence-play]"); await pg.wait_for_timeout(1500); sec["playing"] = await pg.evaluate(STAGE)
+    await pg.click("[data-testid=sequence-play]"); await pg.wait_for_timeout(300)
+    await pg.click("[data-testid=contact-sheet-toggle]")
+    await pg.click("[data-testid=review-section-clear]"); await pg.wait_for_timeout(800)
+    sec["cleared"] = {"attr": await pg.get_attribute("[data-testid=review-section]", "data-section"), "rows": await pg.locator("[data-testid=review-shot]").count(), "url_has_from": "from=" in pg.url}
+    out["section"] = sec
     # ---- the project frame: 9:16 by default; changed in Setup, Review and the full-screen shot follow
     FRAME = "() => { const st=document.querySelector('[data-testid=sequence-stage]'); const r=st.getBoundingClientRect(); return {aspect: st.dataset.aspect, ratio: +(r.width/r.height).toFixed(3)}; }"
     out["frame_default"] = await pg.evaluate(FRAME)
@@ -231,6 +245,11 @@ def report(r):
     want("restage: the next shot's base layer is the take as filmed", rs.get("c011_base") is None or rs.get("c011_base") == ["performance", "true"])
     r10 = r.get("from_shot_10") or []
     want("restage: Review plays the restaged clip on shot 10, then leaves it", any(s["file"] == "restaged.mp4" for s in r10) and any(s["active"] != r10[0]["active"] and s["file"] != "restaged.mp4" for s in r10))
+    sec = r.get("section") or {}
+    want("section: shots 5-10 only, 23.5 s, in the link", sec.get("attr") == "5-10" and sec.get("rows") == 6 and "from=5" in sec.get("url", "") and "to=10" in sec.get("url", "") and "23.5 s" in sec.get("summary", ""))
+    want("section: the playhead starts where the section starts and plays inside it", abs(float(sec.get("scrub_min") or 0) - 15.69) < 0.01 and 15.6 < (sec.get("stage") or {}).get("t", 0) < 15.8 and (sec.get("playing") or {}).get("active") == "c005")
+    want("section: three frames a shot, the restaged take's from its own file", (sec.get("sheet") or {}).get("close") == "true" and (sec.get("sheet") or {}).get("shots") == 6 and (sec.get("sheet") or {}).get("ready", 0) >= 12 and len((sec.get("sheet") or {}).get("c010", [])) == 3 and max((sec.get("sheet") or {}).get("c010", [9])) < 4.1)
+    want("section: cleared back to the whole song", (sec.get("cleared") or {}).get("attr") == "all" and (sec.get("cleared") or {}).get("rows") == 43 and (sec.get("cleared") or {}).get("url_has_from") is False)
     cs = r.get("contact_sheet") or {}
     want("contact sheet: a frame drawn for every shot on an MP4", cs.get("shots") == 43 and cs.get("drawn", 0) >= 39 and cs.get("images") == 1)
     ff = r.get("focus_frames") or {}
