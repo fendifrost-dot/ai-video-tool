@@ -54,8 +54,9 @@ export function timedBeatsRules(sceneField: string): string {
     `- \`${sceneField}\` is then how the shot OPENS. Each beat is one moment after that, and what it changes holds until a later beat changes it again.`,
     "- `at_seconds` is counted from the shot's first frame and lies inside the shot's own length. When the change lands on words sung in this shot, quote them in `on_words` exactly as given; the beat is then placed where they are sung.",
     "- Say each change in a few plain words (twelve at most) under the kind it is — `lighting`, `camera`, `action`, `picture` — and leave the others empty.",
-    "- `effect` is for a change to the exposure of the whole picture, which the edit makes exactly on time: `blackout` (the light goes and only the brightest things still read), `dim`, `lights_up`, `flash`, `fade_out`. Use it together with the `lighting` words that say what the change is. Everything else is `none`.",
-    "- When the project has lighting states on file and the light switches to one of them, give its key in `lighting_state` instead of describing that light again.",
+    "- `effect` is for a change to the exposure of the SAME picture, which the edit makes exactly on time: `blackout` (the light goes and only the brightest things still read), `dim`, `lights_up`, `flash`, `fade_out`. Use it together with the `lighting` words that say what the change is. Everything else is `none`.",
+    "- When the light becomes a DIFFERENT light — a beam, points of light, a colour, one of the project's lighting states — the footage has to show it: `effect` is `none`. When the project has lighting states on file and the light switches to one of them, give its key in `lighting_state` instead of describing that light again. Never give a `lighting_state` and an exposure effect on the same beat.",
+    "- A beat is a CHANGE: something that is already so when the shot opens is the shot's scene, not a beat at 0 seconds.",
     `- At most ${WRITTEN_BEATS_MAX} beats in a shot, never two at the same second.`,
   ].join("\n");
 }
@@ -79,7 +80,9 @@ export function acceptTimedBeats(returned: unknown, shotSeconds: number, lightin
     // a lighting state is kept only when it is one the project has (when the caller says which those are)
     const state = words(r.lighting_state, 60);
     const lighting_state = state && (!lightingKeys || lightingKeys.has(state)) ? state : "";
-    const beat: WrittenBeat = { at_seconds: at, on_words: words(r.on_words), lighting: words(r.lighting), camera: words(r.camera), action: words(r.action), picture: words(r.picture), effect, lighting_state };
+    // a switch to a lighting state is a light the footage shows: no exposure effect is kept on the same beat
+    const kept: WrittenEffect = lighting_state && effect !== "flash" ? "none" : effect;
+    const beat: WrittenBeat = { at_seconds: at, on_words: words(r.on_words), lighting: words(r.lighting), camera: words(r.camera), action: words(r.action), picture: words(r.picture), effect: kept, lighting_state };
     if (!beat.lighting && !beat.camera && !beat.action && !beat.picture && beat.effect === "none" && !beat.lighting_state) continue;
     if (taken.has(at)) continue;
     taken.add(at);
