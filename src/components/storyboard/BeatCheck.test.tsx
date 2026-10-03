@@ -14,7 +14,7 @@ const AT = "2026-10-03T19:00:00Z";
 const ASKED = [{ id: "e1", offset: 1.9, kinds: ["lighting"], says: "light: the room goes dark" }];
 const change = (begins: number, arrived = begins) => ({ begins, half: begins, arrived, size: 0.12, strength: 14, kind: "light" as const, lumaBefore: 0.3, lumaAfter: 0.08 });
 const check = (over: Partial<BeatCheck> = {}): BeatCheck => ({
-  version: 2,
+  version: 3,
   measuredAt: AT,
   frames: 96,
   fps: 24,
