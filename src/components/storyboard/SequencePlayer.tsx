@@ -134,6 +134,7 @@ export function SequencePlayer({
         setT(a.currentTime);
         sync(a.currentTime, !a.paused);
         if (end > 0 && a.currentTime >= end) a.pause();
+        else if (a.currentTime < start - 0.05) a.currentTime = start;
       }
       raf = requestAnimationFrame(tick);
     };
@@ -144,13 +145,25 @@ export function SequencePlayer({
   const seek = useCallback(
     (to: number) => {
       const a = audio.current;
-      const clamped = Math.max(0, Math.min(end || to, to));
+      const clamped = Math.max(start, Math.min(end || to, to));
       if (a) a.currentTime = clamped;
       setT(clamped);
       sync(clamped, !!a && !a.paused);
     },
-    [end, sync],
+    [start, end, sync],
   );
+
+  // the timeline is the whole song or a section of it: when it changes, the playhead goes to where it starts
+  useEffect(() => {
+    const a = audio.current;
+    const now = a?.currentTime ?? 0;
+    if (now < start - 0.01 || (end > 0 && now > end)) {
+      if (a && !a.paused) a.pause();
+      seek(start + 0.001);
+    }
+    // only when the section itself changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [start, end]);
 
   useEffect(() => {
     if (jumpTo) seek(jumpTo.t + 0.001);
@@ -162,7 +175,7 @@ export function SequencePlayer({
     const a = audio.current;
     if (!a) return;
     if (a.paused) {
-      if (end > 0 && a.currentTime >= end - 0.05) a.currentTime = start;
+      if ((end > 0 && a.currentTime >= end - 0.05) || a.currentTime < start) a.currentTime = start;
       safePlay(a);
     } else a.pause();
   };
@@ -213,7 +226,7 @@ export function SequencePlayer({
         )}
         {active && active.media.kind !== "none" && (
           <span className={cn("pointer-events-none absolute right-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-medium backdrop-blur", ROLE_STYLE[active.media.role])}>
-            {mediaLabel({ role: active.media.role, base: active.media.base })}
+            {mediaLabel({ role: active.media.role, base: active.media.base, asset: assets.get(active.media.assetId) })}
           </span>
         )}
       </div>
@@ -238,10 +251,10 @@ export function SequencePlayer({
       <div className="relative h-8 w-full select-none">
         <input
           type="range"
-          min={0}
+          min={start}
           max={end || 1}
           step={0.01}
-          value={Math.min(t, end || 1)}
+          value={Math.max(start, Math.min(t, end || 1))}
           onChange={(e) => seek(Number(e.target.value))}
           className="absolute inset-x-0 top-1/2 h-1 w-full -translate-y-1/2 cursor-pointer accent-primary"
           aria-label="Position in the song"
@@ -252,7 +265,7 @@ export function SequencePlayer({
             <span
               key={s.shotId}
               className={cn("pointer-events-none absolute top-0 h-2 w-px", s.shotId === activeId ? "bg-primary" : "bg-foreground/25")}
-              style={{ left: `${(s.start / end) * 100}%` }}
+              style={{ left: `${((s.start - start) / Math.max(0.001, end - start)) * 100}%` }}
             />
           ))}
       </div>
