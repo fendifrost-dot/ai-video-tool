@@ -46,14 +46,35 @@ type StagedFile = {
   progress?: number;
 };
 
+/** What real footage is: a performance take, the director's own B-roll, or a look/location reference. */
+export type UploadFootageRole = "performance" | "b_roll" | "reference";
+
+/** The asset type a piece of real footage is filed under (it is an input to the video, never a generated clip). */
+function typeForFootage(file: File): ProjectAssetType {
+  return file.type.startsWith("video/") || /\.(mp4|mov|webm|m4v|mkv)$/i.test(file.name) ? "reference_video" : "reference_image";
+}
+
 export function AssetUploadDropzone({
   projectId,
   shotId,
   onUploaded,
+  footageRole,
+  hint,
+  accept,
+  testId,
 }: {
   projectId: string;
   shotId?: string;
   onUploaded?: () => void;
+  /**
+   * Set when this drop zone takes one kind of REAL footage (Setup). Every file dropped here is filed as that kind —
+   * no type to pick, and never guessed to be a generated clip.
+   */
+  footageRole?: UploadFootageRole;
+  /** The line under "Drop files here" (what belongs in this zone). */
+  hint?: string;
+  accept?: string;
+  testId?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [staged, setStaged] = useState<StagedFile[]>([]);
@@ -77,13 +98,14 @@ export function AssetUploadDropzone({
     const incoming = Array.from(files);
     const captured: StagedFile[] = await Promise.all(
       incoming.map(async (file) => {
+        const assetType = footageRole ? typeForFootage(file) : guessAssetType(file);
         if (file.size > STREAM_THRESHOLD_BYTES) {
-          return { file, assetType: guessAssetType(file) };
+          return { file, assetType };
         }
         const bytes = await file.arrayBuffer();
         return {
           file: new File([bytes], file.name, { type: file.type }),
-          assetType: guessAssetType(file),
+          assetType,
         };
       }),
     );
@@ -175,6 +197,7 @@ export function AssetUploadDropzone({
             source_tool: "manual",
             approval_status: "pending",
             metadata_json: metadata as Json,
+            ...(footageRole ? { footage_role: footageRole } : {}),
           });
 
           // Kick off the ~720p scrub-proxy transcode for videos so the Hero
@@ -241,12 +264,14 @@ export function AssetUploadDropzone({
           Drop files here, or <span className="text-primary">click to choose</span>
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Images, videos, LUTs, overlays, exports. Up to {MAX_UPLOAD_LABEL} per file.
+          {hint ?? "Images, videos, LUTs, overlays, exports."} Up to {MAX_UPLOAD_LABEL} per file.
         </p>
         <input
           ref={inputRef}
           type="file"
           multiple
+          accept={accept}
+          data-testid={testId}
           className="hidden"
           onChange={async (e) => {
             // Stage (which materialises bytes) MUST complete before we clear
@@ -295,15 +320,17 @@ export function AssetUploadDropzone({
                   <span className="whitespace-nowrap text-[10px] text-muted-foreground">
                     {formatSize(s.file.size)}
                   </span>
-                  <div className="flex min-w-[11rem] flex-col gap-1">
-                    <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                      Asset type
-                    </Label>
-                    <AssetTypeSelect
-                      value={s.assetType}
-                      onChange={(v) => updateType(i, v)}
-                    />
-                  </div>
+                  {!footageRole && (
+                    <div className="flex min-w-[11rem] flex-col gap-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Asset type
+                      </Label>
+                      <AssetTypeSelect
+                        value={s.assetType}
+                        onChange={(v) => updateType(i, v)}
+                      />
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => removeStaged(i)}
