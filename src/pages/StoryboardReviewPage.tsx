@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Check, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { ROLE_STYLE, mediaLabel } from "@/components/storyboard/BoxMediaView";
+import { ContactSheet } from "@/components/storyboard/ContactSheet";
 import { CutCheck } from "@/components/storyboard/CutCheck";
 import { SequencePlayer } from "@/components/storyboard/SequencePlayer";
 import { Button } from "@/components/ui/button";
@@ -133,6 +134,8 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
                 </div>
               </Card>
             </div>
+
+            <ContactSheet timeline={timeline} assets={media.byId} aspect={aspect} />
 
             <CutCheck timeline={timeline} boxes={boxes} assignments={assignments} assets={media.byId} syncs={syncs} song={checkSong} />
           </>
