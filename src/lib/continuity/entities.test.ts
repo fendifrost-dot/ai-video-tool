@@ -239,6 +239,26 @@ describe("a lighting state is one description, used by shots and by beats", () =
     expect(r[0].lightingFromState).toBeUndefined();
   });
 
+  it("a beat that says a few words of its own AND switches to a state gives the model both: its words, then what the state is", () => {
+    // as the treatment writer wrote the first lights-out beat: "the pool dies" says nothing about what the new light IS
+    const DISCO = entityFromRow(row({ kind: "lighting", key: "DISCO", name: "Diamond disco light", description: "The room goes dark and one hard white beam strikes the mirror ball, which throws hundreds of small sharp points of white light drifting slowly across the floor, the walls and anyone standing there", constraints: "White light only, no colour" }))!;
+    const c = eventClock(null, null, [DISCO]);
+    const own = resolveEvents([ev({ id: "e1", at: 4.7, lightingState: "DISCO", lighting: "pool dies, only diamond points remain" })], { start: 0, end: 5.88 }, c);
+    expect(own[0].stateWords).toBe(canonicalWords(DISCO));
+    const plan = temporalPlan({ route: "seedance_ref", resolved: own, shotSeconds: 5.88 });
+    expect(plan.mode === "timed_script" && plan.script).toBe(
+      "Timed changes inside this shot, in seconds from its first frame. Each holds until the next; nothing else changes: from 4.7 s: light: pool dies, only diamond points remain — " +
+        "The room goes dark and one hard white beam strikes the mirror ball, which throws hundreds of small sharp points of white light drifting slowly across the floor, the walls and anyone standing there. White light only, no colour.",
+    );
+    // the state's words are whole — longer than a beat's own phrase may be — and the same in every beat that switches to it
+    const bare = resolveEvents([ev({ id: "e1", at: 1, lightingState: "DISCO" })], { start: 0, end: 4 }, c);
+    const p2 = temporalPlan({ route: "seedance_ref", resolved: bare, shotSeconds: 4 });
+    expect(p2.mode === "timed_script" && p2.script).toContain(`from 1.0 s: light: ${canonicalWords(DISCO)}`);
+    // the record still stores only the pointer and the beat's own words
+    expect(splitEvents(own, 2).second[0]).toMatchObject({ lighting: "pool dies, only diamond points remain", lightingState: "DISCO" });
+    expect("stateWords" in splitEvents(own, 2).second[0]).toBe(false);
+  });
+
   it("the timed script a model is given carries the state's words", () => {
     const plan = temporalPlan({ route: "seedance_ref", resolved: resolveEvents(EVENTS, { start: 60, end: 64 }, clock), shotSeconds: 4 });
     expect(plan.mode === "timed_script" && plan.script).toContain("from 1.2 s: light: House lights off; the only light is the glitter off the stones he wears; the room is black.");
