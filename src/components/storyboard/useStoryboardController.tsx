@@ -55,7 +55,7 @@ import {
 import { energyForWindow } from "@/lib/storyboard/rewrite";
 import { buildClipGrid, type ClipEnergy } from "@/lib/treatment/grid";
 import { DEFAULT_MOTION_TEMPLATE, regenerateShotFromLyrics, type RegenerateMode } from "@/lib/treatment/regenerateFromLyrics";
-import { hasTreatment, parseTreatmentDoc } from "@/lib/treatment/treatmentDoc";
+import { directorNotes, hasTreatment, parseTreatmentDoc } from "@/lib/treatment/treatmentDoc";
 import { mediaRefKey, playbackRef, useSignedRefs } from "./signedUrls";
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
@@ -286,7 +286,7 @@ export function useStoryboardController(projectId: string): StoryboardController
           performance: take ? { takeName: take.asset.name, range: { start: take.sourceIn!, end: take.sourceOut! }, shows: take.asset.shows ?? null } : null,
           media: m.items.filter((i) => !i.base).map((i) => ({ role: i.role, name: i.asset.name, selected: i.selected })),
           look: { name: inputs.looks[0]?.name ?? null, description: box.spec.wardrobe.description },
-          constraints: [doc.notes, project?.notes],
+          constraints: [directorNotes(project?.notes, doc.notes)],
         });
         const r = await regenerateShotFromLyrics({
           projectId,
