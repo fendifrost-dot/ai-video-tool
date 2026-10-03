@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { wavInfo } from "../../../supabase/functions/lyric-align-proxy/contract";
 import { alignLyrics, type TranscriptWord } from "./align";
 import type { LyricLine } from "./lyricsForShot";
-import { HOP_SECONDS, STT_SAMPLE_RATE, WINDOW_SECONDS, compareWithSaved, encodeWav16, estimateTimingUsd, hearSong, lyricLineRows, planWindows, stampWindow, timeLyrics, windowSamples } from "./timing";
+import { HOP_SECONDS, STT_SAMPLE_RATE, WINDOW_SECONDS, compareWithSaved, encodeWav16, estimateTimingUsd, fillHoles, findHoles, hearHoles, hearSong, lyricLineRows, planHoleWindows, planWindows, stampWindow, timeLyrics, windowSamples } from "./timing";
 
 const LYRICS = `Lights down low, we don't need the sun
 Glass on the table, night just begun
@@ -122,6 +122,99 @@ describe("hearing a song in windows", () => {
     }, { signal: ctl.signal });
     await expect(run).rejects.toThrow(/Stopped/);
     expect(calls.length).toBe(1);
+  });
+});
+
+describe("the second listen", () => {
+  /** The lyrics sung with each block at a given time: the hook at 3 s, the verse at 26 s, the hook again at 61 s. */
+  const spaced = (): TranscriptWord[] => {
+    const out: TranscriptWord[] = [];
+    const starts = [3, 26, 61];
+    LYRICS.split("\n\n").forEach((block, b) => {
+      let t = starts[b];
+      for (const line of block.split("\n")) {
+        for (const w of line.split(" ")) {
+          out.push({ w, start: Math.round(t * 1000) / 1000, end: Math.round((t + 0.3) * 1000) / 1000 });
+          t += 0.38;
+        }
+        t += 0.5;
+      }
+    });
+    return out;
+  };
+  /** A transcriber that gives up on a window when it waits more than 5 s for a word: at its start, or after one. */
+  const impatient = (truth: TranscriptWord[], calls: { cutAt: number; seconds: number; prompt: string | null }[]) =>
+    async (wav: Uint8Array, meta: { prompt: string | null; language: string; cutAt: number }) => {
+      const seconds = wavInfo(wav)!.seconds;
+      calls.push({ cutAt: meta.cutAt, seconds, prompt: meta.prompt });
+      const out: TranscriptWord[] = [];
+      let last = meta.cutAt;
+      for (const w of truth.filter((x) => x.start >= meta.cutAt && x.end <= meta.cutAt + seconds)) {
+        if (w.start - last > 5) break;
+        out.push({ w: w.w, start: w.start - meta.cutAt, end: w.end - meta.cutAt });
+        last = w.end;
+      }
+      return out;
+    };
+  const mono = new Float32Array(STT_SAMPLE_RATE * 75);
+
+  it("finds the stretch where a run of lines went unfound, and leaves alone a run with no room to be sung in", async () => {
+    const truth = spaced();
+    const first = await hearSong(mono, STT_SAMPLE_RATE, LYRICS, impatient(truth, []));
+    const timing = timeLyrics(LYRICS, first.words, first.windows);
+    // the verse opens 6 s into the only window that could hear it: nothing of it comes back
+    expect(timing.lines.map((l) => l.words.some((w) => w.matched))).toEqual([true, true, false, false, false, true, true]);
+    const holes = findHoles(timing.lines, 75);
+    expect(holes).toHaveLength(1);
+    expect(holes[0]).toMatchObject({ lineFrom: 2, lineTo: 4 });
+    expect(holes[0].from).toBeCloseTo(9.16, 1);
+    expect(holes[0].to).toBeCloseTo(61, 1);
+    expect(holes[0].lines[0]).toBe("Woke up late with the city in my ear");
+    expect(planHoleWindows(holes[0])).toEqual([8, 13, 18, 23, 28, 33, 38, 43, 48, 53, 58]);
+    // the same unfound run squeezed between two found lines: written, not sung — nothing to listen to again
+    const squeezed = timing.lines.map((l) => (l.line_index >= 5 ? { ...l, start: l.start - 51, end: l.end - 51 } : l));
+    expect(findHoles(squeezed, 75)).toEqual([]);
+    // one unfound line is not a hole
+    expect(findHoles(timing.lines.filter((l) => l.line_index !== 3 && l.line_index !== 4), 75)).toEqual([]);
+  });
+
+  it("hears the stretch again in short windows with the missing lines as vocabulary, and the verse is found", async () => {
+    const truth = spaced();
+    const first = await hearSong(mono, STT_SAMPLE_RATE, LYRICS, impatient(truth, []));
+    const before = timeLyrics(LYRICS, first.words, first.windows);
+    const holes = findHoles(before.lines, 75);
+    const calls: { cutAt: number; seconds: number; prompt: string | null }[] = [];
+    const progress: number[] = [];
+    const again = await hearHoles(mono, STT_SAMPLE_RATE, holes, impatient(truth, calls), { maxCalls: first.windows * 2, onProgress: (p) => progress.push(p.done) });
+    // never more than twice the first pass's calls
+    expect(calls.map((c) => c.cutAt)).toEqual([8, 13, 18, 23, 28, 33, 38, 43]);
+    expect(calls.every((c) => c.seconds === 15)).toBe(true);
+    expect(calls[0].prompt).toBe("Lyrics: Woke up late with the city in my ear / Counting every reason that I'm still right here / Momma said patience, baby, give it one more year");
+    expect(progress).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(again.parts.every((p) => p.pass === 2)).toBe(true);
+    // the window cut at 23 opens 3 s before the verse: it hears all of it
+    expect(again.parts.find((p) => p.cutAt === 23)!.words).toBe(26);
+    expect(again.heard[0].map((w) => w.w)).toEqual(truth.filter((w) => w.start >= 26 && w.start < 40).map((w) => w.w));
+
+    const filled = fillHoles(first.words, holes, again.heard);
+    expect(filled.replaced).toBe(1);
+    const after = timeLyrics(LYRICS, filled.words, first.windows);
+    expect(before.coverage).toBeLessThan(0.6);
+    expect(after.coverage).toBe(1);
+    expect(after.suspect).toBe(0);
+    expect(after.lines[2].start).toBe(26);
+    // what the first pass had right is untouched
+    expect(after.lines.filter((l) => l.line_index < 2 || l.line_index > 4).map((l) => l.start)).toEqual(before.lines.filter((l) => l.line_index < 2 || l.line_index > 4).map((l) => l.start));
+  });
+
+  it("keeps the first pass where the second listen heard no more of the missing lines", () => {
+    const words: TranscriptWord[] = [{ w: "Lights", start: 3, end: 3.3 }, { w: "woke", start: 30, end: 30.3 }, { w: "Glass", start: 61, end: 61.3 }];
+    const hole = { lineFrom: 2, lineTo: 4, from: 9, to: 61, lines: ["Woke up late with the city in my ear", "Counting every reason"] };
+    expect(fillHoles(words, [hole], [[{ w: "nonsense", start: 31, end: 31.3 }, { w: "up", start: 32, end: 32.3 }]])).toEqual({ words, replaced: 0 });
+    expect(fillHoles(words, [hole], [[]]).replaced).toBe(0);
+    const better = fillHoles(words, [hole], [[{ w: "Woke", start: 26, end: 26.3 }, { w: "up", start: 26.4, end: 26.7 }]]);
+    expect(better.replaced).toBe(1);
+    expect(better.words.map((w) => w.w)).toEqual(["Lights", "Woke", "up", "Glass"]);
   });
 });
 

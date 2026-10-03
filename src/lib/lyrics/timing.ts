@@ -10,7 +10,7 @@
  * Nothing here saves. The result is shown first — and, when the project already has timed lines, compared with
  * them — and stored only when the director says so.
  */
-import { alignLyrics, mergeWindows, pyRound, vocabularyPrompt, type AlignResult, type AlignedLine, type TranscriptWord, type WindowWord } from "./align";
+import { alignLyrics, mergeWindows, norm, pyRound, vocabularyPrompt, type AlignResult, type AlignedLine, type TranscriptWord, type WindowWord } from "./align";
 import type { LyricLine } from "./lyricsForShot";
 
 export const STT_SAMPLE_RATE = 16000;
@@ -88,6 +88,9 @@ export function stampWindow(heard: readonly TranscriptWord[], cutAt: number, t0:
   return out;
 }
 
+/** One call to the transcriber: which stretch of the song it was handed and what came back. */
+export type HeardPart = { t0: number; cutAt: number; seconds: number; retry: boolean; words: number; kept: number; text: string; pass: 1 | 2 };
+
 export type HearWindow = (wav: Uint8Array, meta: { prompt: string | null; language: string; cutAt: number }) => Promise<TranscriptWord[]>;
 export type TimingProgress = { done: number; total: number };
 
@@ -98,12 +101,13 @@ export async function hearSong(
   lyrics: string,
   hear: HearWindow,
   opts: { language?: string; onProgress?: (p: TimingProgress) => void; signal?: AbortSignal } = {},
-): Promise<{ words: TranscriptWord[]; windows: number; retried: number; silent: number }> {
+): Promise<{ words: TranscriptWord[]; windows: number; retried: number; silent: number; parts: HeardPart[] }> {
   const duration = mono.length / sampleRate;
   const prompt = vocabularyPrompt(lyrics);
   const language = opts.language ?? DEFAULT_LYRIC_LANGUAGE;
   const starts = planWindows(duration);
   const all: WindowWord[] = [];
+  const parts: HeardPart[] = [];
   let retried = 0;
   let silent = 0;
   for (let n = 0; n < starts.length; n++) {
@@ -117,6 +121,7 @@ export async function hearSong(
       if (samples.length < sampleRate * 0.5) break; // under half a second left: nothing to hear
       const heard = await hear(encodeWav16(samples, sampleRate), { prompt, language, cutAt });
       const stamped = stampWindow(heard, cutAt, t0, attempt > 0);
+      parts.push({ t0, cutAt, seconds: Math.round((samples.length / sampleRate) * 10) / 10, retry: attempt > 0, words: heard.length, kept: stamped.length, text: heard.map((h) => h.w.trim()).join(" "), pass: 1 });
       got = stamped.length;
       all.push(...stamped);
       if (attempt > 0) retried += 1;
@@ -125,8 +130,111 @@ export async function hearSong(
     if (!got) silent += 1;
     opts.onProgress?.({ done: n + 1, total: starts.length });
   }
-  return { words: mergeWindows(all), windows: starts.length, retried, silent };
+  return { words: mergeWindows(all), windows: starts.length, retried, silent, parts };
 }
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The second listen
+//
+// A hosted transcriber handed thirty seconds that open on a beat can stop writing before the singing starts, and a
+// whole verse comes back as nothing (measured on YSL, 2026-10-03: seventeen sung lines unheard in both windows that
+// covered them). So where the first pass leaves a run of lines unfound WITH song time to spare between the found
+// lines either side, that stretch is heard again in short windows a few seconds apart — one of them opens on the
+// singing — with the missing lines themselves as the vocabulary. What the second listen heard replaces the first only
+// where it heard more of those lines' words, and the new timing is kept only if the aligner's own coverage went up.
+
+export const HOLE_WINDOW_SECONDS = 15;
+export const HOLE_HOP_SECONDS = 5;
+
+/** A run of consecutive lyric lines with no word found, and the stretch of the song they must be in. */
+export type Hole = { lineFrom: number; lineTo: number; from: number; to: number; lines: string[] };
+
+const found = (l: AlignedLine) => l.words.some((w) => w.matched);
+
+export function findHoles(lines: readonly AlignedLine[], songSeconds: number, minLines = 2, minSeconds = 4): Hole[] {
+  const holes: Hole[] = [];
+  let i = 0;
+  while (i < lines.length) {
+    if (found(lines[i])) {
+      i += 1;
+      continue;
+    }
+    let j = i;
+    while (j + 1 < lines.length && !found(lines[j + 1])) j += 1;
+    const before = lines[i - 1];
+    const after = lines[j + 1];
+    const from = before ? before.end : 0;
+    const to = after ? after.start : songSeconds;
+    if (j - i + 1 >= minLines && to - from >= minSeconds) holes.push({ lineFrom: lines[i].line_index, lineTo: lines[j].line_index, from, to, lines: lines.slice(i, j + 1).map((l) => l.text) });
+    i = j + 1;
+  }
+  return holes;
+}
+
+/** Where a hole is re-cut: a second before it starts, then every hop while a cut starts inside it. */
+export function planHoleWindows(hole: Hole, hop = HOLE_HOP_SECONDS): number[] {
+  const out: number[] = [];
+  for (let t = Math.max(0, Math.floor(hole.from - 1)); t < hole.to; t += hop) out.push(t);
+  return out;
+}
+
+/** Hear the holes again. Returns, per hole, what was heard inside it (merged, on the song clock). */
+export async function hearHoles(
+  mono: Float32Array,
+  sampleRate: number,
+  holes: readonly Hole[],
+  hear: HearWindow,
+  opts: { language?: string; onProgress?: (p: TimingProgress) => void; signal?: AbortSignal; maxCalls?: number } = {},
+): Promise<{ heard: TranscriptWord[][]; parts: HeardPart[]; calls: number }> {
+  const language = opts.language ?? DEFAULT_LYRIC_LANGUAGE;
+  const plan = holes.map((h) => planHoleWindows(h));
+  const total = Math.min(opts.maxCalls ?? Infinity, plan.reduce((n, p) => n + p.length, 0));
+  const heard: TranscriptWord[][] = [];
+  const parts: HeardPart[] = [];
+  let calls = 0;
+  for (const [k, hole] of holes.entries()) {
+    const prompt = ("Lyrics: " + hole.lines.join(" / ")).slice(0, 900);
+    const words: WindowWord[] = [];
+    for (const cutAt of plan[k]) {
+      if (calls >= total) break;
+      if (opts.signal?.aborted) throw new DOMException("Stopped", "AbortError");
+      const samples = windowSamples(mono, sampleRate, cutAt, HOLE_WINDOW_SECONDS);
+      if (samples.length < sampleRate * 0.5) break;
+      const got = await hear(encodeWav16(samples, sampleRate), { prompt, language, cutAt });
+      const stamped = stampWindow(got, cutAt, cutAt, false, HOLE_WINDOW_SECONDS, HOLE_HOP_SECONDS).filter((w) => w.start >= hole.from && w.start < hole.to);
+      words.push(...stamped);
+      calls += 1;
+      parts.push({ t0: cutAt, cutAt, seconds: Math.round((samples.length / sampleRate) * 10) / 10, retry: false, words: got.length, kept: stamped.length, text: got.map((h) => h.w.trim()).join(" "), pass: 2 });
+      opts.onProgress?.({ done: calls, total });
+    }
+    heard.push(mergeWindows(words));
+  }
+  return { heard, parts, calls };
+}
+
+/**
+ * The first pass's transcript with each hole's stretch replaced by the second listen — where the second listen heard
+ * more of the hole's own words than the first did.
+ */
+export function fillHoles(words: readonly TranscriptWord[], holes: readonly Hole[], heard: readonly TranscriptWord[][]): { words: TranscriptWord[]; replaced: number } {
+  let out = [...words];
+  let replaced = 0;
+  for (const [k, hole] of holes.entries()) {
+    const vocabulary = new Set(hole.lines.flatMap((l) => l.split(/\s+/).map(norm)).filter(Boolean));
+    const hits = (list: readonly TranscriptWord[]) => list.filter((w) => vocabulary.has(norm(w.w))).length;
+    const inside = (w: TranscriptWord) => w.start >= hole.from && w.start < hole.to;
+    const first = out.filter(inside);
+    const second = heard[k] ?? [];
+    if (hits(second) > hits(first)) {
+      out = [...out.filter((w) => !inside(w)), ...second];
+      replaced += 1;
+    }
+  }
+  out.sort((a, b) => a.start - b.start);
+  return { words: out, replaced };
+}
+
+export type SecondListen = { holes: number; calls: number; replaced: number; coverageBefore: number; coverageAfter: number; used: boolean };
 
 export type TimingResult = AlignResult & { transcriptWords: number; windows: number; lowConfidence: number; suspect: number };
 

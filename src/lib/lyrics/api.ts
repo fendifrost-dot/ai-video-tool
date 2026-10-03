@@ -4,7 +4,7 @@
 import { supabase } from "@/lib/supabase";
 import { decodeMono } from "@/lib/storyboard/syncAudio";
 import type { AlignedLine, TranscriptWord } from "./align";
-import { STT_SAMPLE_RATE, hearSong, lyricLineRows, timeLyrics, type TimingProgress, type TimingResult } from "./timing";
+import { STT_SAMPLE_RATE, fillHoles, findHoles, hearHoles, hearSong, lyricLineRows, timeLyrics, type HearWindow, type HeardPart, type SecondListen, type TimingProgress, type TimingResult } from "./timing";
 
 function toBase64(bytes: Uint8Array): string {
   let bin = "";
@@ -15,7 +15,7 @@ function toBase64(bytes: Uint8Array): string {
 
 type ProxyReply = { ok?: boolean; errorMessage?: string; words?: TranscriptWord[]; provider?: string; model?: string; estimatedCostUsd?: number | null };
 
-export type TimingRun = TimingResult & { provider: string | null; model: string | null; estimatedCostUsd: number };
+export type TimingRun = TimingResult & { provider: string | null; model: string | null; estimatedCostUsd: number; parts: HeardPart[]; second: SecondListen | null };
 
 /** Hear one window through lyric-align-proxy. */
 async function hearWindow(projectId: string, wav: Uint8Array, prompt: string | null, language: string): Promise<ProxyReply> {
@@ -37,33 +37,62 @@ async function hearWindow(projectId: string, wav: Uint8Array, prompt: string | n
 }
 
 /**
- * Time a project's lyrics against its song: decode the song, hear it window by window, align. Returns the timing for
- * the director to look at; saves nothing.
+ * Time a project's lyrics against its song: decode the song, hear it window by window, align, then hear again the
+ * stretches where lines went unfound. Returns the timing for the director to look at; saves nothing.
  */
-export async function runLyricTiming(input: { projectId: string; songUrl: string; lyrics: string; bpm?: number | null; onProgress?: (p: TimingProgress & { stage: "reading" | "listening" | "aligning" }) => void; signal?: AbortSignal }): Promise<TimingRun> {
+export async function runLyricTiming(input: {
+  projectId: string;
+  songUrl: string;
+  lyrics: string;
+  bpm?: number | null;
+  onProgress?: (p: TimingProgress & { stage: "reading" | "listening" | "listening_again" | "aligning" }) => void;
+  signal?: AbortSignal;
+}): Promise<TimingRun> {
   input.onProgress?.({ stage: "reading", done: 0, total: 0 });
   const mono = await decodeMono(input.songUrl, "The song", STT_SAMPLE_RATE);
   let provider: string | null = null;
   let model: string | null = null;
   let cost = 0;
-  const heard = await hearSong(
-    mono,
-    STT_SAMPLE_RATE,
-    input.lyrics,
-    async (wav, meta) => {
-      const reply = await hearWindow(input.projectId, wav, meta.prompt, meta.language);
-      provider = reply.provider ?? provider;
-      model = reply.model ?? model;
-      cost += reply.estimatedCostUsd ?? 0;
-      return reply.words ?? [];
-    },
-    { onProgress: (p) => input.onProgress?.({ stage: "listening", ...p }), signal: input.signal },
-  );
+  const hear: HearWindow = async (wav, meta) => {
+    const reply = await hearWindow(input.projectId, wav, meta.prompt, meta.language);
+    provider = reply.provider ?? provider;
+    model = reply.model ?? model;
+    cost += reply.estimatedCostUsd ?? 0;
+    return reply.words ?? [];
+  };
+  const heard = await hearSong(mono, STT_SAMPLE_RATE, input.lyrics, hear, { onProgress: (p) => input.onProgress?.({ stage: "listening", ...p }), signal: input.signal });
   input.onProgress?.({ stage: "aligning", done: heard.windows, total: heard.windows });
   // let the page paint before the alignment table is filled
   await new Promise((r) => setTimeout(r, 20));
-  const timing = timeLyrics(input.lyrics, heard.words, heard.windows, input.bpm);
-  return { ...timing, provider, model, estimatedCostUsd: Math.round(cost * 10000) / 10000 };
+  let timing = timeLyrics(input.lyrics, heard.words, heard.windows, input.bpm);
+  let parts = heard.parts;
+  let second: SecondListen | null = null;
+
+  // the second listen: stretches where lines went unfound with song time to spare are heard again (timing.ts)
+  const holes = findHoles(timing.lines, mono.length / STT_SAMPLE_RATE);
+  if (holes.length) {
+    try {
+      const again = await hearHoles(mono, STT_SAMPLE_RATE, holes, hear, { onProgress: (p) => input.onProgress?.({ stage: "listening_again", ...p }), signal: input.signal, maxCalls: heard.windows * 2 });
+      parts = [...parts, ...again.parts];
+      const filled = fillHoles(heard.words, holes, again.heard);
+      second = { holes: holes.length, calls: again.calls, replaced: filled.replaced, coverageBefore: timing.coverage, coverageAfter: timing.coverage, used: false };
+      if (filled.replaced > 0) {
+        input.onProgress?.({ stage: "aligning", done: heard.windows, total: heard.windows });
+        await new Promise((r) => setTimeout(r, 20));
+        const retimed = timeLyrics(input.lyrics, filled.words, heard.windows, input.bpm);
+        second.coverageAfter = retimed.coverage;
+        if (retimed.coverage > timing.coverage) {
+          timing = retimed;
+          second.used = true;
+        }
+      }
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") throw e;
+      // the first pass stands: a second listen that fails is not a reason to lose it
+      second = { holes: holes.length, calls: 0, replaced: 0, coverageBefore: timing.coverage, coverageAfter: timing.coverage, used: false };
+    }
+  }
+  return { ...timing, provider, model, estimatedCostUsd: Math.round(cost * 10000) / 10000, parts, second };
 }
 
 /**
