@@ -52,7 +52,7 @@ export const SHOTS_SCHEMA = {
           key: { type: "string", description: "the shot's key, exactly as given" },
           shot_type: { type: "string", enum: [...SHOT_TYPES] },
           scene_description: { type: "string", description: "what the camera sees, in one or two concrete sentences" },
-          environment: { type: "string", description: "the place, in a few words" },
+          environment: { type: "string", description: "the place itself with NOBODY in it, in one full sentence a set designer could build from: what stands where, the surfaces, the light. Never mention the artist here" },
           camera_direction: { type: "string", description: "framing and the one camera move" },
           lighting: { type: "string" },
           wardrobe: { type: "string", description: "what the artist wears in this shot, or 'none' when he is not in it" },
