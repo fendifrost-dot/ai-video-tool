@@ -33,7 +33,7 @@ export function planWindows(durationSeconds: number, hop = HOP_SECONDS): number[
   return out;
 }
 
-/** What timing a song of this length costs at list price (every window is sent whole; retries are not counted). */
+/** What the first pass over a song of this length costs at list price (every window sent whole; retries and the second listen are not counted — together they can as much as triple it). */
 export function estimateTimingUsd(durationSeconds: number): number {
   const seconds = planWindows(durationSeconds).reduce((sum, t0) => sum + Math.min(WINDOW_SECONDS, Math.max(0, durationSeconds - t0)), 0);
   return Math.round((seconds / 60) * STT_USD_PER_MINUTE * 100) / 100;
@@ -168,17 +168,19 @@ export async function hearSong(
 //
 // A hosted transcriber handed thirty seconds can lose a sung verse entirely (measured on YSL, 2026-10-03: seventeen
 // sung lines unheard in both windows that covered them). So where the first pass leaves a run of lines unfound WITH
-// song time to spare between the found lines either side, that stretch is heard again in short windows a few seconds
-// apart, so every moment of it is heard by three different cuts.
+// song time to spare between the found lines either side, that stretch is heard again in windows seven seconds
+// apart, so every moment of it is heard by four different cuts.
 //
 // A transcriber with the lyrics in its prompt will also write lyrics over an instrumental. So the second listen
 // keeps a word only when another window, cut elsewhere, heard the same word at the same moment; what a single cut
 // wrote is left out. What survives replaces the first pass only where it holds more of the missing lines' words, and
 // the new timing is kept only if the aligner's own coverage went up.
 
-export const HOLE_WINDOW_SECONDS = 15;
-export const HOLE_HOP_SECONDS = 5;
-/** The second listen starts this long before the hole, so the hole's first seconds are heard by three cuts too. */
+// Whole windows, cut at a different phase from the first pass: on YSL a 30 s window heard a verse from one cut and
+// nothing from a cut seven seconds away, and 15 s windows heard worse than either.
+export const HOLE_WINDOW_SECONDS = WINDOW_SECONDS;
+export const HOLE_HOP_SECONDS = 7;
+/** The second listen starts this long before the hole, so the hole's first seconds are heard by several cuts too. */
 export const HOLE_LEAD_SECONDS = 10;
 /** Two windows heard "the same word at the same moment" when they agree within this, seconds. */
 export const AGREE_SECONDS = 0.5;

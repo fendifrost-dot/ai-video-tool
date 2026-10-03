@@ -174,13 +174,14 @@ describe("the second listen", () => {
     });
     return out;
   };
-  /** A transcriber that loses the verse (25–45 s) whenever it is handed more than 20 s at once, and hears it in a short cut. */
+  /** A transcriber that loses the verse (25–45 s) from every cut the first pass makes, and hears it from cuts in between. */
+  const FIRST_PASS_CUTS = new Set([0, 20, 13, 27, 40, 33, 47, 60, 53, 67]);
   const losesTheVerse = (truth: TranscriptWord[], calls: { cutAt: number; seconds: number; prompt: string | null }[]) =>
     async (wav: Uint8Array, meta: { prompt: string | null; language: string; cutAt: number }) => {
       const seconds = wavInfo(wav)!.seconds;
       calls.push({ cutAt: meta.cutAt, seconds, prompt: meta.prompt });
       return truth
-        .filter((x) => x.start >= meta.cutAt && x.end <= meta.cutAt + seconds && !(seconds > 20 && x.start >= 25 && x.start < 45))
+        .filter((x) => x.start >= meta.cutAt && x.end <= meta.cutAt + seconds && !(FIRST_PASS_CUTS.has(meta.cutAt) && x.start >= 25 && x.start < 45))
         .map((w) => ({ w: w.w, start: w.start - meta.cutAt, end: w.end - meta.cutAt }));
     };
   const mono = new Float32Array(STT_SAMPLE_RATE * 75);
@@ -196,9 +197,9 @@ describe("the second listen", () => {
     expect(holes[0].from).toBeCloseTo(9.16, 1);
     expect(holes[0].to).toBeCloseTo(61, 1);
     expect(holes[0].lines[0]).toBe("Woke up late with the city in my ear");
-    // from a lead before the hole, every 5 s, while a cut starts inside it
-    expect(planHoleWindows(holes[0])).toEqual([0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]);
-    expect(planHoleWindows({ ...holes[0], from: 30.9, to: 62.7 })).toEqual([20, 25, 30, 35, 40, 45, 50, 55, 60]);
+    // from a lead before the hole, every 7 s, while a cut starts inside it
+    expect(planHoleWindows(holes[0])).toEqual([0, 7, 14, 21, 28, 35, 42, 49, 56]);
+    expect(planHoleWindows({ ...holes[0], from: 30.9, to: 62.7 })).toEqual([14, 21, 28, 35, 42, 49, 56]);
     // the same unfound run squeezed between two found lines: written, not sung — nothing to listen to again
     const squeezed = timing.lines.map((l) => (l.line_index >= 5 ? { ...l, start: l.start - 51, end: l.end - 51 } : l));
     expect(findHoles(squeezed, 75)).toEqual([]);
@@ -209,7 +210,7 @@ describe("the second listen", () => {
     expect(findHoles(bridged, 75)[0]).toMatchObject({ lineFrom: 1, lineTo: 4 });
   });
 
-  it("hears the stretch again in short windows, and the verse is found", async () => {
+  it("hears the stretch again from cuts the first pass did not make, and the verse is found", async () => {
     const truth = spaced();
     const first = await hearSong(mono, STT_SAMPLE_RATE, LYRICS, losesTheVerse(truth, []));
     const before = timeLyrics(LYRICS, first.words, first.windows);
@@ -218,14 +219,14 @@ describe("the second listen", () => {
     const progress: number[] = [];
     const again = await hearHoles(mono, STT_SAMPLE_RATE, LYRICS, holes, losesTheVerse(truth, calls), { maxCalls: first.windows * 2, onProgress: (p) => progress.push(p.done) });
     // never more than twice the first pass's calls
-    expect(calls.map((c) => c.cutAt)).toEqual([0, 5, 10, 15, 20, 25, 30, 35]);
-    expect(calls.every((c) => c.seconds === 15)).toBe(true);
+    expect(calls.map((c) => c.cutAt)).toEqual([0, 7, 14, 21, 28, 35, 42, 49]);
+    expect(calls.map((c) => c.seconds)).toEqual([30, 30, 30, 30, 30, 30, 30, 26]);
     // the same vocabulary as the first pass: the missing lines are NOT fed back as the prompt
     expect(calls[0].prompt).toBe(hostedPrompt(LYRICS));
     expect(progress).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
     expect(again.parts.every((p) => p.pass === 2)).toBe(true);
-    // the cut at 25 holds the whole verse
-    expect(again.parts.find((p) => p.cutAt === 25)!.words).toBe(26);
+    // the cut at 14 holds the whole verse
+    expect(again.parts.find((p) => p.cutAt === 14)!.words).toBe(26);
     expect(again.trusted).toBe(5); // the five cuts that reach the verse each agree with a neighbour on it
     expect(again.heard[0].map((w) => w.w)).toEqual(truth.filter((w) => w.start >= 26 && w.start < 40).map((w) => w.w));
 
