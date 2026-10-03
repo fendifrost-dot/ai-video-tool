@@ -15,6 +15,7 @@ import { Progress } from "@/components/ui/progress";
 import { useProject, useProjectAudio } from "@/lib/queries/projects";
 import { useArtist } from "@/lib/queries/artists";
 import { useProjectShots } from "@/lib/queries/shots";
+import { storyboardShotRows } from "@/lib/storyboard/boxes";
 import { useProjectPrompts } from "@/lib/queries/prompts";
 import { useProjectAssets } from "@/lib/queries/projectAssets";
 import { usePromptTemplates } from "@/lib/queries/promptTemplates";
@@ -54,7 +55,11 @@ const DEFAULT_TARGETS: Record<TimelineRenderTarget, boolean> = {
 export default function ExportPage({ projectId }: { projectId: string }) {
   const projectQuery = useProject(projectId);
   const artistQuery = useArtist(projectQuery.data?.artist_id ?? undefined);
-  const shotsQuery = useProjectShots(projectId);
+  const allShotRowsQuery = useProjectShots(projectId);
+  // the storyboard is the shot list: one count here, on the storyboard and in the package (a leftover row of the old
+  // hand-made shot list made this page say one shot more than the storyboard and the render contract beside it)
+  const shotRows = useMemo(() => (allShotRowsQuery.data ? storyboardShotRows(allShotRowsQuery.data) : undefined), [allShotRowsQuery.data]);
+  const shotsQuery = { data: shotRows, isLoading: allShotRowsQuery.isLoading };
   const promptsQuery = useProjectPrompts(projectId);
   const assetsQuery = useProjectAssets(projectId);
   const audioQuery = useProjectAudio(projectId);
