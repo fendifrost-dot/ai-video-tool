@@ -8,7 +8,7 @@ vi.mock("@/lib/queries/storyboard", () => ({}));
 import { parseShotSpec } from "@/lib/treatment/shotSpec";
 import { buildMotionRequest, estimateShotUsd, missingInput } from "@/lib/worldBatch";
 import { boxFromRow, boxWrite, type BoxRow } from "./boxes";
-import { boxMedia, buildTimeline, isOriginalTake, type Assignment, type MediaAsset, type TakeSync } from "./media";
+import { boxMedia, buildTimeline, imageForClip, isOriginalTake, type Assignment, type BoxMediaItem, type MediaAsset, type TakeSync } from "./media";
 import { verifyCut } from "./verify";
 import { clipLyrics } from "./build";
 import { footageSummary, setupStatus } from "./setup";
@@ -233,5 +233,30 @@ describe("the place drawn for a performance shot", () => {
     expect(shot.prompt).toContain("A black runway in near darkness");
     expect(shot.prompt).not.toMatch(/backstage of a runway show/);
     expect(shot.motion).toBe("");
+  });
+});
+
+describe("the image a clip is made from", () => {
+  const image = (id: string, createdAt: string, selected = false): BoxMediaItem => ({
+    assignmentId: `a-${id}`,
+    asset: asset(id, { assetType: "generated_still", isVideo: false, isImage: true, mime: "image/png", durationSeconds: null, bucket: "project-references", createdAt }),
+    role: "generated_image",
+    kind: "image",
+    sourceIn: null,
+    sourceOut: null,
+    leadIn: 0,
+    selected,
+    base: false,
+    note: null,
+  });
+  it("is the first image of the latest batch drawn for the shot — a place drawn again replaces the one before it", () => {
+    const first = [image("old1", "2026-10-03T10:39:00Z"), image("old2", "2026-10-03T10:39:02Z")];
+    const again = [image("new1", "2026-10-03T11:20:00Z"), image("new2", "2026-10-03T11:20:03Z")];
+    expect(imageForClip(first)?.asset.id).toBe("old1");
+    expect(imageForClip([...first, ...again])?.asset.id).toBe("new1");
+  });
+  it("is the one the director chose, whenever he chose one", () => {
+    expect(imageForClip([image("old1", "2026-10-03T10:39:00Z", true), image("new1", "2026-10-03T11:20:00Z")])?.asset.id).toBe("old1");
+    expect(imageForClip([])).toBeNull();
   });
 });

@@ -558,3 +558,21 @@ export function renderPlan(
     }),
   };
 }
+
+/** Images drawn in one go are filed within moments of each other; a later "Generate" is a later batch. */
+const SAME_BATCH_MS = 90_000;
+
+/**
+ * The image a shot's clip is made from when the director has not chosen one: the first image of the LATEST batch
+ * drawn for the shot. (Not simply the first on the shot: an image generated again is generated to replace the one
+ * before it, and a clip made from the old one would ignore what was just drawn.)
+ */
+export function imageForClip(items: readonly BoxMediaItem[]): BoxMediaItem | null {
+  const images = items.filter((i) => i.role === "generated_image" && i.kind === "image");
+  if (images.length === 0) return null;
+  const chosen = images.find((i) => i.selected);
+  if (chosen) return chosen;
+  const at = (i: BoxMediaItem) => Date.parse(i.asset.createdAt) || 0;
+  const newest = Math.max(...images.map(at));
+  return images.find((i) => newest - at(i) <= SAME_BATCH_MS) ?? images[0];
+}
