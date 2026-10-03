@@ -17,7 +17,7 @@ import { unlockedForGeneration } from "@/lib/storyboard/boxes";
 import { deleteTreatment, saveTreatment, writeStoryboardFromTreatment } from "@/lib/storyboard/build";
 import { isOriginalTake, isUsableSync } from "@/lib/storyboard/media";
 import { footageSummary, setupStatus } from "@/lib/storyboard/setup";
-import { hasTreatment, parseTreatmentDoc, storyboardIsStale, type TreatmentDoc } from "@/lib/treatment/treatmentDoc";
+import { directorNotes, hasTreatment, parseTreatmentDoc, storyboardIsStale, type TreatmentDoc } from "@/lib/treatment/treatmentDoc";
 import { cn } from "@/lib/utils";
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -54,7 +54,9 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
 
   const moodValue = mood ?? project?.mood ?? "";
   const visualValue = visual ?? project?.visual_style ?? "";
-  const notesValue = notes ?? doc.notes;
+  // one notes text: an older project's notes column and the treatment's notes are read together and saved as one
+  const storedNotes = directorNotes(project?.notes, doc.notes);
+  const notesValue = notes ?? storedNotes;
 
   useEffect(() => {
     if (!editing) setDraft(doc.text);
@@ -107,10 +109,12 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
     }
   };
 
+  /** Save the notes field as the project's one notes text (and empty the older second copy). */
   const saveNotes = async () => {
-    if (notes === null || notes === doc.notes || !project) return;
+    if (notes === null || notes === storedNotes || !project) return;
     try {
-      await saveTreatment(projectId, project.treatment_json, { ...doc, notes });
+      await updateProject.mutateAsync({ id: projectId, patch: { notes: notes.trim() || null } });
+      if (doc.notes) await saveTreatment(projectId, project.treatment_json, { ...doc, notes: "" });
       await refresh();
       setNotes(null);
     } catch (e) {
@@ -122,7 +126,8 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
     if (!project) return;
     setWorking("Saving…");
     try {
-      await saveTreatment(projectId, project.treatment_json, { ...doc, text, mode, updatedAt: new Date().toISOString(), model: mode === "manual" ? null : doc.model, notes: notesValue });
+      await saveNotes();
+      await saveTreatment(projectId, project.treatment_json, { ...doc, text, mode, updatedAt: new Date().toISOString(), model: mode === "manual" ? null : doc.model, notes: "" });
       await refresh();
       setEditing(false);
       toast.success("Treatment saved");
@@ -138,6 +143,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
     if (!project) return;
     setWorking(aiWritesText ? "Writing the treatment and the shots — this takes a minute or two…" : "Writing the shots from the treatment — this takes a minute or two…");
     try {
+      await saveNotes();
       const res = await writeStoryboardFromTreatment({
         projectId,
         context: inputs.treatmentContext(notesValue, footageNote),
@@ -148,7 +154,8 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
         assignments,
         analysis,
         lyricLines,
-        notes: notesValue,
+        // the notes live on the project; nothing is kept a second time with the treatment
+        notes: "",
       });
       await refresh();
       setEditing(false);
