@@ -86,6 +86,18 @@ export function cameraMoveToSentence(move: {
 }
 
 /**
+ * How he is put into the place. Told only "lit by that environment's light sources", the model keeps the take's own
+ * even light on him whatever the place looks like: in a blacked-out place he came back front-lit, and against a dark
+ * one with a pale fringe round him — a cut-out, not a man standing there. So the light is said both ways (what the
+ * place has, and what must not be added) and the edge and the texture are named.
+ */
+export const PLACE_LIGHT =
+  "Place him inside the environment of @Image1, lit only by the light that environment has: where @Image1 is dark he is dark, " +
+  "and nothing adds a key light, a fill light or a glow on him that the place does not have. " +
+  "He has no bright outline, halo or cut-out edge against the background, and he has the same focus and grain as the place. " +
+  "The environment is still, only he and the camera move.";
+
+/**
  * Seedance angle prompt — mirror run_world_batch.py angle_prompt().
  * @Video1 = real take (identity from the clip). keep[] wardrobe constants required.
  */
@@ -101,9 +113,7 @@ export function seedanceAnglePrompt(
     `Keep everything identical to @Video1 — ${keepStr} — and most of all the same mouth movements at the same moments, word for word, in sync with @Video1 from the first frame to the last.`,
   ];
   if (withImage) {
-    parts.push(
-      "Place him inside the environment of @Image1, lit by that environment's light sources; the environment is still, only he and the camera move.",
-    );
+    parts.push(PLACE_LIGHT);
   } else {
     parts.push("The same room, the same light.");
   }

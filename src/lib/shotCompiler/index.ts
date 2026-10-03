@@ -34,6 +34,7 @@ export {
   motionContractToSentence,
   negativePromptLocks,
   seedanceAnglePrompt,
+  PLACE_LIGHT,
   wrapPrompt,
 } from "./prompts";
 

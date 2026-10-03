@@ -19,6 +19,7 @@ import {
   snapSeedance,
   wrapPrompt,
   seedanceAnglePrompt,
+  PLACE_LIGHT,
   LOOK_PRESETS,
   DEFAULT_LOOK_PRESET_ID,
   type CompilerPhrase,
@@ -88,6 +89,21 @@ describe("prompt wrap + seedance angle", () => {
   it("seedance with world still references @Image1", () => {
     const p = seedanceAnglePrompt("side tight", KEEP, null, true);
     expect(p).toContain("@Image1");
+  });
+
+  it("a restaged performer takes the place's light and nothing more — said both ways, with his edge named", () => {
+    const p = seedanceAnglePrompt("side tight", KEEP, null, true);
+    expect(p).toContain(PLACE_LIGHT);
+    expect(PLACE_LIGHT).toMatch(/where @Image1 is dark he is dark/);
+    expect(PLACE_LIGHT).toMatch(/nothing adds a key light, a fill light or a glow/);
+    expect(PLACE_LIGHT).toMatch(/no bright outline, halo or cut-out edge/);
+    expect(seedanceAnglePrompt("side tight", KEEP, null, false)).not.toContain("@Image1");
+  });
+
+  it("the script's angle prompt says the same sentence", () => {
+    const py = readFileSync(resolve(process.cwd(), "scripts/broll/run_world_batch.py"), "utf8");
+    const said = [...py.matchAll(/^\s+"([^"]+)"\)?$/gm)].map((m) => m[1]).join("");
+    expect(said).toContain(PLACE_LIGHT);
   });
 });
 
