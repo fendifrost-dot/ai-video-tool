@@ -8,6 +8,7 @@
  */
 import { supabase } from "@/lib/supabase";
 import type { LyricLine } from "@/lib/lyrics/lyricsForShot";
+import { DEFAULT_PROJECT_ASPECT, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
 import { compileToWorldBatch, phrasesFromShotSpecs, resolveLookPreset } from "@/lib/shotCompiler";
 import { BatchShotSchema, PROVIDER_RATES, estimateShotUsd, submitShot, submitStills, type BatchShot, type SubmitResult } from "@/lib/worldBatch";
 import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
@@ -26,12 +27,14 @@ const PLATE_LINE = "The centre foreground is empty and clear: no person stands t
  * The one shot a box compiles to. `stillPath` set = the box already has its image; the clip is made from it.
  * Throws when the box has nothing to draw (no scene text at all).
  */
-export function boxShot(box: StoryboardBox, lyricLines: readonly LyricLine[] | undefined, opts: { lookPresetId?: string; stillPath?: string | null } = {}): BatchShot {
+export function boxShot(box: StoryboardBox, lyricLines: readonly LyricLine[] | undefined, opts: { lookPresetId?: string; stillPath?: string | null; aspect?: ProjectAspect } = {}): BatchShot {
   const isPerformance = box.spec.shotType === "performance";
   // the compiler writes world shots for boxes that are not real performance; a performance box asks for its plate
   const spec = isPerformance ? { ...box.spec, shotType: "b_roll" as const, kind: "broll" as const } : box.spec;
   const phrases = phrasesFromShotSpecs([spec], lyricLines ?? [], { stillPaths: opts.stillPath ? { [box.key]: opts.stillPath } : undefined });
-  const compiled = compileToWorldBatch({ phrases, lookPresetId: opts.lookPresetId ?? DEFAULT_BOX_LOOK }).shots[0];
+  // the picture is asked for in the project's frame (or the nearest shape the image model has; see aspect.ts)
+  const aspectDefault = stillRequestAspect(opts.aspect ?? DEFAULT_PROJECT_ASPECT).aspect;
+  const compiled = compileToWorldBatch({ phrases, lookPresetId: opts.lookPresetId ?? DEFAULT_BOX_LOOK, aspectDefault }).shots[0];
   if (!compiled) throw new Error("This box has no scene to generate from — write or regenerate its scene first.");
   const shot = BatchShotSchema.parse({ ...compiled, ...(opts.stillPath ? { still_path: opts.stillPath } : {}) });
   if (isPerformance && !shot.prompt.includes(PLATE_LINE)) shot.prompt = `${shot.prompt.trim()} ${PLATE_LINE}`;
@@ -90,9 +93,11 @@ export async function generateBoxImage(input: {
   box: StoryboardBox;
   lyricLines: readonly LyricLine[] | undefined;
   lookPresetId?: string;
+  /** The project's frame. */
+  aspect?: ProjectAspect;
 }): Promise<BoxImageResult> {
   const deps = await browserRunnerDeps();
-  const shot = boxShot(input.box, input.lyricLines, { lookPresetId: input.lookPresetId });
+  const shot = boxShot(input.box, input.lyricLines, { lookPresetId: input.lookPresetId, aspect: input.aspect });
   const res = await submitStills(shot, runContext(input.projectId, input.box, input.lookPresetId), deps);
   const assetIds = await attachStills({ projectId: input.projectId, box: input.box, paths: res.whole, picked: res.picked, select: true });
   // the job points at the image it produced, so nothing downstream mistakes it for a clip still waiting to be saved
@@ -111,9 +116,11 @@ export async function generateBoxClip(input: {
   lookPresetId?: string;
   /** Storage path of the box's selected generated image, when it has one. */
   stillPath: string | null;
+  /** The project's frame. */
+  aspect?: ProjectAspect;
 }): Promise<SubmitResult> {
   const deps = await browserRunnerDeps();
-  const shot = boxShot(input.box, input.lyricLines, { lookPresetId: input.lookPresetId, stillPath: input.stillPath });
+  const shot = boxShot(input.box, input.lyricLines, { lookPresetId: input.lookPresetId, stillPath: input.stillPath, aspect: input.aspect });
   const result = await submitShot(shot, runContext(input.projectId, input.box, input.lookPresetId), deps);
   // an image drawn on the way to the clip belongs to the box too (as a version; the clip will be what shows)
   if (!input.stillPath && result.stillPath) {

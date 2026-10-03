@@ -13,6 +13,7 @@
  *
  * Pure module.
  */
+import { DEFAULT_FRAME_FIT, DEFAULT_PROJECT_ASPECT, frameSize, type FrameFit, type ProjectAspect } from "@/lib/project/aspect";
 import { sourceRangeForSongRange, type PerformanceSync } from "@/lib/sync/performanceSync";
 import { orderBoxes, type StoryboardBox } from "./boxes";
 
@@ -460,6 +461,7 @@ export type RenderPlan = {
   version: 1;
   /** Every time in the plan is on this clock unless it says source_*. */
   clock: "song";
+  frame: { aspect: ProjectAspect; width: number; height: number; fit: FrameFit };
   song: { asset_id: string; bucket: string; path: string } | null;
   duration_seconds: number;
   segments: {
@@ -494,10 +496,18 @@ export type RenderPlan = {
  * resolved to its ORIGINAL file and its in/out. A render service added later consumes this and nothing else — it
  * needs no knowledge of treatments, overrides or assignments.
  */
-export function renderPlan(timeline: readonly TimelineSegment[], assets: ReadonlyMap<string, MediaAsset>, song: { assetId: string; bucket: string; path: string } | null): RenderPlan {
+export function renderPlan(
+  timeline: readonly TimelineSegment[],
+  assets: ReadonlyMap<string, MediaAsset>,
+  song: { assetId: string; bucket: string; path: string } | null,
+  aspect: ProjectAspect = DEFAULT_PROJECT_ASPECT,
+): RenderPlan {
   return {
     version: 1,
     clock: "song",
+    // the frame every segment is rendered into; media of another shape is fitted whole (never cropped) unless an
+    // edit decision says otherwise
+    frame: { aspect, ...frameSize(aspect), fit: DEFAULT_FRAME_FIT },
     song: song ? { asset_id: song.assetId, bucket: song.bucket, path: song.path } : null,
     duration_seconds: timeline.length ? Math.round((timeline[timeline.length - 1].end - timeline[0].start) * 1000) / 1000 : 0,
     segments: timeline.map((s) => {

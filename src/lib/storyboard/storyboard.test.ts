@@ -433,6 +433,9 @@ describe("the timeline Review plays", () => {
     const withCopy = new Map(assets);
     withCopy.set("take1", { ...take, playback: { bucket: "project-clips", path: "u/p/take1_720p.mp4" } });
     const plan = renderPlan(timeline, withCopy, { assetId: "song", bucket: "project-audio", path: "u/p/song.wav" });
+    // the frame a renderer draws into: the project's, 9:16 when it has never been set, media fitted whole
+    expect(plan.frame).toEqual({ aspect: "9:16", width: 1080, height: 1920, fit: "contain" });
+    expect(renderPlan(timeline, withCopy, null, "16:9").frame).toEqual({ aspect: "16:9", width: 1920, height: 1080, fit: "contain" });
     expect(plan).toMatchObject({ version: 1, clock: "song", duration_seconds: 12, song: { asset_id: "song", path: "u/p/song.wav" } });
     expect(plan.segments.map((s) => [s.shot_id, s.key, s.song_in, s.song_out, s.media.kind])).toEqual([
       ["r1", "c001", 0, 4, "video"],

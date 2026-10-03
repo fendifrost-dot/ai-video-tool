@@ -76,7 +76,7 @@ export function setupStatus(input: {
       id: "lyric_timing",
       label: "Lyric timing",
       state: !hasLyrics ? "optional" : input.lyricLines > 0 ? "done" : "todo",
-      detail: !hasLyrics ? "Nothing to time" : input.lyricLines > 0 ? `${input.lyricLines} lines on the song clock` : "The lyrics are not timed to the song yet",
+      detail: !hasLyrics ? "Nothing to time" : input.lyricLines > 0 ? `${input.lyricLines} lines on the song clock` : "Not timed yet — press “Time the lyrics to the song” below",
       blocking: hasLyrics,
     },
     {
