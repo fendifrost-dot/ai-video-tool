@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { acceptTimedBeats, WRITTEN_BEATS_MAX, WRITTEN_EFFECTS } from "../_shared/timedBeats.ts";
-import { acceptShots, writerEntities, chunkGrid, contextBlocks, outlineLine, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, type GridShot } from "./contract.ts";
+import { acceptShots, writerEntities, chunkGrid, contextBlocks, outlineLine, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot } from "./contract.ts";
 
 const grid: GridShot[] = [
   { key: "c001", start: 0, end: 3.92, section: "intro", energy: "low", lyrics: "" },
@@ -78,6 +78,58 @@ describe("the grid owns the shots", () => {
   });
 });
 
+describe("the board is one board: no shot repeats another, and no shot contradicts the treatment", () => {
+  it("is told a performance shot answers its words through the world around him, and that the treatment binds the shots", () => {
+    const p = shotsSystemPrompt({ ...ctx, hasPerformanceFootage: true }, "On every hook the lights go out.", grid);
+    expect(p).toContain("A performance shot is its own picture too.");
+    expect(p).toContain("the world around him can answer the words");
+    expect(p).toContain("is binding on the shots");
+    expect(p).toContain("as a timed beat on those words when it happens inside the shot, as the state the shot opens in when it has already happened");
+  });
+
+  it("finds the shots that came back with another shot's sentence — the first keeps it", () => {
+    const clips = [
+      { key: "c001", scene_description: "He stands on the runway facing forward, delivering the line." },
+      { key: "c002", scene_description: "A white sneaker on the black floor." },
+      { key: "c003", scene_description: "he stands on the runway, facing forward — delivering the line" },
+      { key: "c004", scene_description: "He stands on the runway facing forward, delivering the line." },
+      { key: "c005", scene_description: "" },
+    ];
+    expect(repeatedScenes(clips)).toEqual(["c003", "c004"]);
+    expect(repeatedScenes(clips.slice(0, 2))).toEqual([]);
+  });
+
+  it("asks for them again with every sentence already used, and with each shot's own words", () => {
+    const m = JSON.parse(rewriteUserMessage([grid[1], grid[2]], ["He stands on the runway.", "He stands on the runway.", " "]));
+    expect(m.note).toContain("Write each again as its own picture");
+    expect(m.sentences_already_used).toEqual(["He stands on the runway."]);
+    expect(m.shots.map((s: { key: string; lyrics: string }) => [s.key, s.lyrics])).toEqual([
+      ["c002", "Never take a cheat day / Feel free today"],
+      ["c003", "You don't gotta cut the lights on"],
+    ]);
+  });
+
+  it("a rewrite replaces a repeat only when it is a sentence no shot has", () => {
+    const clips = [
+      { key: "c001", scene_description: "He stands on the runway." },
+      { key: "c002", scene_description: "He stands on the runway." },
+      { key: "c003", scene_description: "He stands on the runway." },
+    ];
+    const out = withRewrites(clips, [
+      { key: "c002", scene_description: "Points of light cross his chest as the room goes dark behind him." },
+      { key: "c003", scene_description: "He stands on the runway." }, // handed back the same: left as it was
+    ]);
+    expect(out.replaced).toEqual(["c002"]);
+    expect(out.clips.map((c) => c.scene_description)).toEqual(["He stands on the runway.", "Points of light cross his chest as the room goes dark behind him.", "He stands on the runway."]);
+    // two rewrites that are the same new sentence: only the first is taken
+    const twice = withRewrites(clips, [
+      { key: "c002", scene_description: "Frost climbs the back wall." },
+      { key: "c003", scene_description: "Frost climbs the back wall." },
+    ]);
+    expect(twice.replaced).toEqual(["c002"]);
+  });
+});
+
 describe("a writer can make a shot change while it plays", () => {
   it("is told what timed beats are for, and that most shots have none", () => {
     const p = shotsSystemPrompt(ctx, "ONE IDEA.", grid);
@@ -85,6 +137,9 @@ describe("a writer can make a shot change while it plays", () => {
     expect(p).toContain("Most shots are ONE state from the first frame to the last: return an empty list for those.");
     expect(p).toContain("`scene_description` is then how the shot OPENS.");
     expect(p).toContain("At most 4 beats in a shot");
+    // a different light is the footage's — never an exposure effect; and a beat is a change, not the opening state
+    expect(p).toContain("Never give a `lighting_state` and an exposure effect on the same beat.");
+    expect(p).toContain("A beat is a CHANGE");
     // and the treatment itself stays prose: it is told a change can be said, not handed a format
     const t = treatmentSystemPrompt(ctx);
     expect(t).toContain("A shot may change while it plays.");
@@ -96,6 +151,24 @@ describe("a writer can make a shot change while it plays", () => {
     expect(beats.type).toBe("array");
     expect(beats.items.required).toEqual(["at_seconds", "on_words", "lighting", "camera", "action", "picture", "effect", "lighting_state"]);
     expect(beats.items.properties.effect.enum).toEqual(WRITTEN_EFFECTS);
+  });
+
+  it("a beat that switches to a lighting state keeps no exposure effect (a flash may stay)", () => {
+    const keys = new Set(["DISCO"]);
+    const got = acceptTimedBeats(
+      [
+        { at_seconds: 1.2, on_words: "", lighting: "room goes dark", camera: "", action: "", picture: "", effect: "blackout", lighting_state: "DISCO" },
+        { at_seconds: 2, on_words: "", lighting: "", camera: "", action: "", picture: "", effect: "flash", lighting_state: "DISCO" },
+        { at_seconds: 3, on_words: "", lighting: "house lights die", camera: "", action: "", picture: "", effect: "blackout", lighting_state: "" },
+      ],
+      4,
+      keys,
+    );
+    expect(got.map((b) => [b.at_seconds, b.effect, b.lighting_state])).toEqual([
+      [1.2, "none", "DISCO"],
+      [2, "flash", "DISCO"],
+      [3, "blackout", ""],
+    ]);
   });
 
   it("keeps a returned beat only when it is a beat inside its own shot", () => {

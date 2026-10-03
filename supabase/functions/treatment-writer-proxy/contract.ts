@@ -170,6 +170,8 @@ export function shotsSystemPrompt(ctx: WriterContext, treatment: string, outline
       "- When the shot has words, the picture answers THOSE words — name what they name, show what they claim. When it has none, it carries the mood of its section.",
       "- `shot_type`: performance = the artist delivering the words to camera; b_roll = an insert of the world (an object, a detail, a place); narrative = a staged moment with people; lyric_visual = the lyric made literally, physically real; transition = a move that carries one place into the next; vfx = something impossible, shot as if it happened.",
       "- Never write the same sentence for two shots, never stage the same picture twice in a row, and do not repeat a cutaway idea the song has already used.",
+      "- A performance shot is its own picture too. He cannot be redirected — but the world around him can answer the words: say where in the place he stands in THIS shot and what the place and the light are doing around him. When its words name something the place can show or do, it happens there, on those words.",
+      "- What the treatment says happens on certain words, or every time a section returns (in every hook), is binding on the shots: each shot in which those words are sung carries it — as a timed beat on those words when it happens inside the shot, as the state the shot opens in when it has already happened. A shot never contradicts the treatment.",
       "- Keep to the places the treatment and the notes name. One clear subject per shot. Photoreal and filmable; nothing that needs readable text or logos.",
       "- `priority`: hero for the two or three shots the whole video is remembered by, high for the first shot of a hook, normal otherwise.",
     ].join("\n"),
@@ -200,6 +202,55 @@ export function shotsUserMessage(chunk: readonly GridShot[]): string {
   return JSON.stringify({
     shots: chunk.map((s) => ({ key: s.key, seconds: Math.round((s.end - s.start) * 10) / 10, section: s.section ?? "", energy: s.energy ?? "", lyrics: (s.lyrics ?? "").trim() })),
   });
+}
+
+const sceneKey = (s: unknown) =>
+  String(s ?? "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+
+/**
+ * The shots whose scene is, word for word, the scene of a shot before them. The runs are written at once and none
+ * sees another's sentences, so a writer asked for forty shots hands back the same sentence many times ("he stands on
+ * the runway facing forward, delivering the line…"): those are found here and asked for again, once. The first shot
+ * of every such group keeps its sentence.
+ */
+export function repeatedScenes(clips: readonly Record<string, unknown>[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const c of clips) {
+    const k = sceneKey(c.scene_description);
+    if (!k) continue;
+    if (seen.has(k)) out.push(String(c.key ?? ""));
+    else seen.add(k);
+  }
+  return out.filter(Boolean);
+}
+
+/** The second ask for shots that came back with a sentence another shot already has. */
+export function rewriteUserMessage(chunk: readonly GridShot[], used: readonly string[]): string {
+  return JSON.stringify({
+    note: "These shots came back with a scene another shot of this storyboard already has, word for word. Write each again as its own picture — what is different in THIS shot: where he is in the place, what the place and the light do around him on its words, what the camera sees. None may repeat a sentence below.",
+    sentences_already_used: [...new Set(used.map((u) => u.trim()).filter(Boolean))].slice(0, 60),
+    shots: chunk.map((s) => ({ key: s.key, seconds: Math.round((s.end - s.start) * 10) / 10, section: s.section ?? "", energy: s.energy ?? "", lyrics: (s.lyrics ?? "").trim() })),
+  });
+}
+
+/**
+ * The board after the second ask: a rewritten shot replaces the repeated one only when its new scene is a sentence no
+ * shot has (a repeat handed back again is left as it was — nothing is invented to make it differ).
+ */
+export function withRewrites(clips: readonly Record<string, unknown>[], rewrites: readonly Record<string, unknown>[]): { clips: Record<string, unknown>[]; replaced: string[] } {
+  const used = new Set(clips.map((c) => sceneKey(c.scene_description)));
+  const byKey = new Map<string, Record<string, unknown>>();
+  for (const r of rewrites) {
+    const k = sceneKey(r.scene_description);
+    if (!k || used.has(k)) continue;
+    used.add(k);
+    byKey.set(String(r.key ?? ""), r);
+  }
+  return { clips: clips.map((c) => byKey.get(String(c.key ?? "")) ?? c), replaced: [...byKey.keys()] };
 }
 
 /** The grid in runs of at most `size` shots, in order: each run is one call, so no call outlives the gateway. */

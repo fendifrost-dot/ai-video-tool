@@ -17,7 +17,8 @@
 //   song_title, lyrics, artist_profile, visual_style, mood, additional_notes, analysis, looks,
 //   has_performance_footage, project_type
 //   continuity_entities  [{ key, kind: location|prop|lighting, name, description }] — what a shot may point at by key
-// Reply: { ok, model, treatment: { concept, narrative, sections, clips[] }, usage, actualCostUsd }
+// Reply: { ok, model, treatment: { concept, narrative, sections, clips[] }, missing, repeated, rewritten, usage, actualCostUsd }
+//        `repeated` = shots that came back with another shot's sentence; `rewritten` = those written again as their own.
 //        A clip may carry `timed_beats` — moments inside the shot at which something changes (_shared/timedBeats.ts).
 //        or { ok: false, errorCode, errorMessage } with a non-2xx status.
 //
@@ -26,7 +27,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
-import { acceptShots, writerEntities, chunkGrid, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, type GridShot, type WriterContext } from "./contract.ts";
+import { acceptShots, writerEntities, chunkGrid, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type WriterContext } from "./contract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -168,11 +169,27 @@ serve(async (req) => {
       return { ...got, why };
     }),
   );
-  const clips = written.flatMap((w) => w.clips);
+  let clips = written.flatMap((w) => w.clips);
   const missing = written.flatMap((w) => w.missing);
   if (clips.length === 0) return fail(502, "PROVIDER_API_ERROR", `No shot was written: ${written.find((w) => w.why)?.why ?? "the model returned nothing usable"}`);
 
+  // 3. shots that came back with another shot's sentence are asked for again, once (the runs cannot see each other)
+  const repeated = new Set(repeatedScenes(clips));
+  let rewritten: string[] = [];
+  if (repeated.size > 0) {
+    const used = clips.map((c) => String(c.scene_description ?? ""));
+    const again = await Promise.all(
+      chunkGrid(grid.filter((g) => repeated.has(g.key)), SHOTS_PER_CALL).map(async (chunk) => {
+        const r = await ask(system, rewriteUserMessage(chunk, used), SHOTS_SCHEMA, 400 + chunk.length * 560);
+        return r.ok ? acceptShots(chunk, r.value, ctx.entities).clips : [];
+      }),
+    );
+    const merged = withRewrites(clips, again.flat());
+    clips = merged.clips;
+    rewritten = merged.replaced;
+  }
+
   const price = PRICE_PER_M[model] ?? { input: 5, output: 25 };
   const actualCostUsd = Number(((usage.prompt_tokens * price.input + usage.completion_tokens * price.output) / 1_000_000).toFixed(4));
-  return json(200, { ok: true, model, treatment: { concept, narrative, sections, clips }, missing, usage, actualCostUsd });
+  return json(200, { ok: true, model, treatment: { concept, narrative, sections, clips }, missing, repeated: [...repeated], rewritten, usage, actualCostUsd });
 });
