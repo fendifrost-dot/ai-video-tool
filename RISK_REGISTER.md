@@ -47,6 +47,13 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
   open** until Part B policy — copy+checksum and `artist_looks` ref-switch
   already done.) ·
   **Owner:** Platform / Products (AVT)
+- **Measured 2026-10-03 (read-only triage of the Lovable scan, 61 entries):** the open
+  surface is wider than the five tables and one bucket described here — `*_open_test`
+  is live on **30 tables** (incl. `video_projects`, `shots`, `project_assets`,
+  `provider_jobs`), `single_tenant_all` on 22 of them, open/anonymous policies on
+  **all 12 buckets**, and the app signs every visitor in anonymously. No foreign rows
+  found. Nothing was changed. Evidence, classes and a fix order:
+  [`docs/security/SECURITY_TRIAGE_2026-10-03.md`](docs/security/SECURITY_TRIAGE_2026-10-03.md).
 - **Summary:** Any anonymous (`anon`) caller can read, write, and delete real user
   data across several core tables and the `look-composites` storage bucket.
 - **Root cause:** Migration `supabase/migrations/20260523171003_541284ed-e697-4b53-9f4a-3b39b5a76fb9.sql`
