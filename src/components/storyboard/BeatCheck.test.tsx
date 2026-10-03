@@ -95,7 +95,7 @@ describe("a clip asked for with timed changes", () => {
         <BeatCheckPanel item={item(asset({ beatCheck: none }))} />
       </StoryboardProvider>,
     );
-    expect(screen.getByTestId("beat-check-beat").textContent).toContain("no change of the picture was found near it");
+    expect(screen.getByTestId("beat-check-beat").textContent).toContain("no change of the light was found near it");
     expect(screen.getByTestId("beat-check").getAttribute("data-verdict")).toBe("not_kept");
   });
 });
