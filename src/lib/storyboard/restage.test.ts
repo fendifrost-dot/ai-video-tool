@@ -13,7 +13,7 @@ import { verifyCut } from "./verify";
 import { clipLyrics } from "./build";
 import { footageSummary, setupStatus } from "./setup";
 import { boxShot, placePrompt } from "./generate";
-import { NEVER_WIDER, TAKE_FRAMING, restageAngle, restageEstimateUsd, restageKeep, restageSeconds, restageShot, restageSource, restageTemporalPlan, RESTAGE_MAX_SECONDS } from "./restage";
+import { NEVER_WIDER, OPENS_WIDEST, TAKE_FRAMING, restageAngle, restageEstimateUsd, restageKeep, restageSeconds, restageShot, restageSource, restageTemporalPlan, RESTAGE_MAX_SECONDS } from "./restage";
 
 const AT = "2026-10-03T00:00:00Z";
 function asset(id: string, over: Partial<MediaAsset> = {}): MediaAsset {
@@ -97,7 +97,21 @@ describe("what a restaging asks for and costs", () => {
     expect(req.songStart).toBeCloseTo(47.054, 3);
     expect(req.shot).toMatchObject({ id: "c013", route: "seedance_ref", kind: "angle", aspect: "9:16", seconds: 4, source_seconds: 4, source_asset_id: "take1", masterStart: req.songStart, still_path: "u/p/stills/c013.png", resolution: "720p" });
     // the camera sentence is the shot's own framing and move, and says nothing of what he does
-    expect(req.shot.angle).toBe(`a medium shot from the waist up, the camera pushing slowly toward him. ${NEVER_WIDER}`);
+    // a move that closes on him says the framing named is where it STARTS: asked for "waist up, pushing toward him",
+    // the model opened on the whole of him (legs the take never filmed) and pushed in until it reached the waist
+    expect(req.shot.angle).toBe(`a medium shot from the waist up, and that is the widest frame of the shot: it opens there, the camera pushing slowly closer from there. ${NEVER_WIDER}`);
+    expect(NEVER_WIDER).toContain("in any frame from the first to the last");
+    for (const type of ["dolly", "steadicam", "gimbal", "zoom", "drone"] as const) {
+      const closing = restageAngle({ ...b, spec: { ...b.spec, cameraMotion: { ...b.spec.cameraMotion, type } } });
+      expect(closing).toContain(OPENS_WIDEST);
+      expect(closing).not.toMatch(/toward him/);
+    }
+    // a move that does not close on him has no start to name
+    for (const type of ["static", "truck", "pan", "orbit", "handheld"] as const) {
+      expect(restageAngle({ ...b, spec: { ...b.spec, cameraMotion: { ...b.spec.cameraMotion, type } } })).not.toContain(OPENS_WIDEST);
+    }
+    // the take's own framing reads as a sentence with a closing move too
+    expect(restageAngle({ ...b, spec: { ...b.spec, framing: "wide" } })).toBe(`${TAKE_FRAMING}, ${OPENS_WIDEST}, the camera pushing slowly closer from there. ${NEVER_WIDER}`);
     // a wide frame is asked for without asking for the body the take never filmed
     const wide = restageAngle({ ...b, spec: { ...b.spec, framing: "wide" } });
     // "wide" is never said of him: asked for a wide shot, the model drew him small and whole, legs and feet invented

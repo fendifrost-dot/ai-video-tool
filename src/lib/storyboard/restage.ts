@@ -93,7 +93,6 @@ const FRAMING_WORDS: Record<string, string> = {
 const ANGLE_WORDS: Record<string, string> = { low: "from a low angle", high: "from a high angle", birds_eye: "from directly above", dutch: "on a tilted horizon", over_shoulder: "over a shoulder", worms_eye: "from the floor looking up" };
 const MOVE_WORDS: Record<string, string> = {
   static: "the camera locked off",
-  dolly: "the camera pushing slowly toward him",
   truck: "the camera tracking slowly sideways past him",
   pan: "the camera panning slowly across him",
   tilt: "the camera tilting slowly up him",
@@ -102,27 +101,41 @@ const MOVE_WORDS: Record<string, string> = {
   jib: "the camera rising slowly on a jib",
   orbit: "the camera orbiting slowly around him",
   handheld: "handheld, breathing with him",
-  steadicam: "the camera gliding slowly toward him",
-  gimbal: "the camera gliding slowly toward him",
-  zoom: "a slow zoom toward him",
   whip_pan: "the camera locked off",
-  drone: "the camera drifting slowly toward him",
 };
+/**
+ * The moves that close on him. Asked for "a medium shot from the waist up, the camera pushing slowly toward him", the
+ * model opened far back on the whole of him — legs and feet drawn that the take never filmed — and pushed in until it
+ * reached the framing named (the fresh section's second restaging). A framing beside a closing move says where the
+ * move ENDS as easily as where it starts, so these say which: the framing named is the shot's first and widest frame.
+ */
+const CLOSING_MOVES: Record<string, string> = {
+  dolly: "the camera pushing slowly closer",
+  steadicam: "the camera gliding slowly closer",
+  gimbal: "the camera gliding slowly closer",
+  zoom: "a slow zoom closer",
+  drone: "the camera drifting slowly closer",
+};
+const CLOSING_DEFAULT = "the camera easing slowly closer";
+export const OPENS_WIDEST = "and that is the widest frame of the shot: it opens there";
 
 /**
  * What the model must not do when it re-frames him: draw the parts of him the take never filmed. Asked for a wider
  * shot than the take, it invents them — the first live section came back with shorts on a man filmed in jeans from
  * the thighs up.
  */
-export const NEVER_WIDER = "Never show more of his body than @Video1 shows: whatever is out of frame in @Video1 stays out of frame here.";
+export const NEVER_WIDER = "Never show more of his body than @Video1 shows, in any frame from the first to the last: whatever is out of frame in @Video1 stays out of frame here.";
 
 /** The camera sentence of the restaged shot: the shot's own framing, angle and move — never his action. */
 export function restageAngle(box: StoryboardBox): string {
   const spec = box.spec;
   const framing = (spec.framing && FRAMING_WORDS[spec.framing]) || "a medium shot from the waist up";
   const angle = spec.cameraAngle ? ANGLE_WORDS[spec.cameraAngle] : "";
-  const move = MOVE_WORDS[spec.cameraMotion.type ?? ""] ?? "the camera easing slowly toward him";
-  return `${[framing, angle].filter(Boolean).join(" ")}, ${move}. ${NEVER_WIDER}`;
+  const type = spec.cameraMotion.type ?? "";
+  const framed = [framing, angle].filter(Boolean).join(" ");
+  const held = MOVE_WORDS[type];
+  if (held) return `${framed}, ${held}. ${NEVER_WIDER}`;
+  return `${framed}, ${OPENS_WIDEST}, ${CLOSING_MOVES[type] ?? CLOSING_DEFAULT} from there. ${NEVER_WIDER}`;
 }
 
 /**
