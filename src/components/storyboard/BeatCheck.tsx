@@ -13,6 +13,7 @@ const VERDICT_STYLE: Record<BeatVerdict, string> = {
   on_time: "bg-emerald-500/15 text-emerald-300",
   displaced: "bg-amber-500/15 text-amber-200",
   not_seen: "bg-rose-500/15 text-rose-300",
+  unmeasured: "bg-white/10 text-foreground/70",
 };
 
 const clip = (n: number, max: number) => Math.round(Math.max(0, Math.min(n, Math.max(0, max - 0.05))) * 1000) / 1000;
@@ -59,7 +60,7 @@ export function BeatCheckPanel({ item }: { item: BoxMediaItem }) {
   // nothing asked and nothing found: there is nothing to say about this clip
   if (timed.length === 0 && (!shown || shown.unasked.length === 0) && !busy) return null;
 
-  const unaskedLine = (c: ChangePoint) => `the ${c.kind === "light" ? "light" : "picture"} changes at ${c.begins.toFixed(2)} s — nothing in the request asked for a change there`;
+  const unaskedLine = (c: ChangePoint) => `${c.kind === "light" ? "the light changes" : "the picture jumps"} at ${c.begins.toFixed(2)} s — nothing in the request asked for a change there`;
 
   return (
     <div className="space-y-2 rounded-lg border border-border/70 bg-white/[0.02] p-2.5" data-testid="beat-check" data-asset-id={asset.id} data-verdict={shown?.verdict ?? (busy ? "measuring" : "unmeasured")} data-mode={request.mode}>
@@ -107,8 +108,8 @@ export function BeatCheckPanel({ item }: { item: BoxMediaItem }) {
 
       {shown && timed.length > 0 && (
         <p className="text-[10px] leading-snug text-foreground/45" data-testid="beat-check-note">
-          {shown.frames} frames at {shown.fps.toFixed(0)} per second were read. On time = the change begins within a quarter of a second of where it was asked. The numbers say that the picture changed and when; whether it is the change that was asked
-          for is what the frames are for.
+          {shown.frames} frames at {shown.fps.toFixed(0)} per second were read. What is measured is the light of the whole picture (how bright, how much contrast, which colour). On time = the change begins within a quarter of a second of where it was
+          asked. The numbers say that the light changed and when; whether it is the change that was asked for is what the frames are for.
         </p>
       )}
       {!shown && !busy && timed.length > 0 && <p className="text-[11px] text-foreground/50">Not measured yet.</p>}

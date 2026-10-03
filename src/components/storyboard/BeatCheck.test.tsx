@@ -14,7 +14,7 @@ const AT = "2026-10-03T19:00:00Z";
 const ASKED = [{ id: "e1", offset: 1.9, kinds: ["lighting"], says: "light: the room goes dark" }];
 const change = (begins: number, arrived = begins) => ({ begins, half: begins, arrived, size: 0.12, strength: 14, kind: "light" as const, lumaBefore: 0.3, lumaAfter: 0.08 });
 const check = (over: Partial<BeatCheck> = {}): BeatCheck => ({
-  version: 2,
+  version: 3,
   measuredAt: AT,
   frames: 96,
   fps: 24,
@@ -56,6 +56,7 @@ describe("a clip asked for with timed changes", () => {
     // already measured for this script: it is not measured again by itself
     expect(c.measureClip).not.toHaveBeenCalled();
     expect(screen.getByTestId("beat-check-note").textContent).toContain("whether it is the change that was asked for is what the frames are for");
+    expect(screen.getByTestId("beat-check-note").textContent).toContain("the light of the whole picture");
   });
 
   it("is measured the first time it is seen, once", () => {
@@ -95,7 +96,7 @@ describe("a clip asked for with timed changes", () => {
         <BeatCheckPanel item={item(asset({ beatCheck: none }))} />
       </StoryboardProvider>,
     );
-    expect(screen.getByTestId("beat-check-beat").textContent).toContain("no change of the picture was found near it");
+    expect(screen.getByTestId("beat-check-beat").textContent).toContain("no change of the light was found near it");
     expect(screen.getByTestId("beat-check").getAttribute("data-verdict")).toBe("not_kept");
   });
 });
@@ -111,12 +112,13 @@ describe("a clip asked for as one state", () => {
     expect(container.querySelector('[data-testid="beat-check"]')).toBeNull();
   });
   it("says so when the picture jumps and nobody asked it to", () => {
-    render(
+    const c2 = render(
       <StoryboardProvider value={sb({ requestOf: () => single })}>
         <BeatCheckPanel item={item(asset({ beatCheck: check({ beats: [], verdict: "kept", unasked: [change(2.1)] }) }))} />
       </StoryboardProvider>,
     );
     expect(screen.getByTestId("beat-check-unasked").textContent).toBe("the light changes at 2.10 s — nothing in the request asked for a change there");
+    expect(c2).toBeDefined();
   });
   it("footage the app did not generate is not measured", () => {
     const c = sb({ requestOf: () => null });
