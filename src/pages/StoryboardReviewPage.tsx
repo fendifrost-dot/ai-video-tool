@@ -3,18 +3,21 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Check, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
 import { ROLE_STYLE, mediaLabel } from "@/components/storyboard/BoxMediaView";
+import { AstraSectionReview } from "@/components/storyboard/AstraSectionReview";
 import { ContactSheet } from "@/components/storyboard/ContactSheet";
 import { CutCheck } from "@/components/storyboard/CutCheck";
 import { SequencePlayer } from "@/components/storyboard/SequencePlayer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { formatTimecode } from "@/components/treatment/shotLabels";
+import { useLyricLines } from "@/lib/queries/lyricLines";
 import { useAssignments, useProjectMedia, useStoryboardBoxes, useTakeSyncs } from "@/lib/queries/storyboard";
 import { aspectOfProject } from "@/lib/project/aspect";
 import { useProject } from "@/lib/queries/projects";
 import { useSongAnalysis } from "@/lib/queries/songAnalyses";
 import { buildTimeline, isOriginalTake, isUsableSync, timelineIssues, type TimelineSegment } from "@/lib/storyboard/media";
 import { normalSection, sectionFromSearch, sectionOf, type ReviewSection } from "@/lib/storyboard/section";
+import { directorNotes, parseTreatmentDoc } from "@/lib/treatment/treatmentDoc";
 import { cn } from "@/lib/utils";
 
 /**
@@ -31,7 +34,10 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
   const syncs = useMemo(() => syncsData ?? [], [syncsData]);
   const media = useProjectMedia(projectId);
   const analysis = useSongAnalysis(projectId).data ?? null;
-  const aspect = aspectOfProject(useProject(projectId).data);
+  const project = useProject(projectId).data ?? null;
+  const aspect = aspectOfProject(project);
+  const lyricLines = useLyricLines(projectId).data;
+  const treatmentDoc = useMemo(() => parseTreatmentDoc(project?.treatment_json), [project?.treatment_json]);
   const [active, setActive] = useState<TimelineSegment | null>(null);
   const [jump, setJump] = useState<{ t: number; n: number } | null>(null);
 
@@ -195,6 +201,19 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
             </div>
 
             <ContactSheet timeline={timeline} assets={media.byId} aspect={aspect} close={inSection} />
+
+            <AstraSectionReview
+              projectId={projectId}
+              section={timeline}
+              isSection={inSection}
+              assets={media.byId}
+              lyricLines={lyricLines}
+              treatment={treatmentDoc.text}
+              notes={directorNotes(project?.notes, treatmentDoc.notes)}
+              songTitle={project?.song_title ?? null}
+              takeWears={takes.find((t) => t.shows)?.shows ?? null}
+              projectJson={project?.treatment_json}
+            />
 
             {/* the check is of the whole cut, whatever section is being looked at: a section cannot be right inside a cut that is not */}
             <CutCheck timeline={whole} boxes={boxes} assignments={assignments} assets={media.byId} syncs={syncs} song={checkSong} />
