@@ -68,6 +68,11 @@ export async function buildAndDownloadPackage(input: {
   audioAsset: ProjectAsset | null;
   options: ExportOptions;
   timeline?: TimelineExportBundle;
+  /**
+   * The storyboard's render plan (src/lib/storyboard/media.ts `renderPlan`): every shot record, the media selected
+   * on it and its in/out, on the song clock. Written as `storyboard_timeline.json` — the file a render service reads.
+   */
+  storyboardPlan?: unknown;
   onProgress?: (p: ExportProgress) => void;
 }): Promise<void> {
   const {
@@ -80,6 +85,7 @@ export async function buildAndDownloadPackage(input: {
     audioAsset,
     options,
     timeline,
+    storyboardPlan,
     onProgress,
   } = input;
 
@@ -117,6 +123,7 @@ export async function buildAndDownloadPackage(input: {
   const zip = new JSZip();
   const root = zip.folder(slug(project.title))!;
   root.file("project_manifest.json", JSON.stringify(manifest, null, 2));
+  if (storyboardPlan) root.file("storyboard_timeline.json", JSON.stringify(storyboardPlan, null, 2));
   root.file("shot_list.csv", shotListCsv);
   root.file("prompt_log.csv", promptLogCsv);
   root.file("edit_decision_notes.md", editNotes);
