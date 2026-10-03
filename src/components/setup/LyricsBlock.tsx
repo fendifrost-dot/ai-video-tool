@@ -20,7 +20,7 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const clock = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
 const LRC_TAG = /^\s*\[\d+:\d+(?:\.\d+)?\]/m;
 
-type Progress = { stage: "reading" | "listening" | "aligning"; done: number; total: number };
+type Progress = { stage: "reading" | "listening" | "listening_again" | "aligning"; done: number; total: number };
 
 /**
  * The lyrics, and where each line falls on the song.
@@ -169,7 +169,9 @@ export function LyricsBlock({
       ? "Reading the song…"
       : progress.stage === "listening"
         ? `Listening to the song — part ${Math.min(progress.done + 1, progress.total)} of ${progress.total}`
-        : "Placing the lines…";
+        : progress.stage === "listening_again"
+          ? `Listening again where lines were not found — part ${Math.min(progress.done + 1, progress.total)} of ${progress.total}`
+          : "Placing the lines…";
 
   return (
     <div className="space-y-2" data-testid="setup-lyrics">
@@ -243,6 +245,14 @@ export function LyricsBlock({
                 {run.suspect > 0 ? ` · ${run.suspect} line${run.suspect === 1 ? "" : "s"} not found in the song (written but not sung, or over an instrumental)` : ""}
                 {run.lowConfidence - run.suspect > 0 ? ` · ${run.lowConfidence - run.suspect} to check` : ""}
               </p>
+              {run.second && (
+                <p className="text-foreground/55" data-testid="setup-lyrics-second" data-used={run.second.used ? "true" : "false"}>
+                  {run.second.used
+                    ? `Listened again to ${run.second.holes} stretch${run.second.holes === 1 ? "" : "es"} where lines were missing: words heard went from ${Math.round(run.second.coverageBefore * 100)}% to ${Math.round(run.second.coverageAfter * 100)}%.`
+                    : `Listened again to ${run.second.holes} stretch${run.second.holes === 1 ? "" : "es"} where lines were missing; it found nothing more.`}
+                  {run.estimatedCostUsd > 0 ? ` This run cost about $${run.estimatedCostUsd.toFixed(2)}.` : ""}
+                </p>
+              )}
               {comparison && (
                 <p className={comparison.beyond1s > 0 ? "text-amber-200" : "text-emerald-300/90"} data-testid="setup-lyrics-compare">
                   Against the timing already saved: {comparison.compared} lines compared, half of them within {comparison.medianSeconds.toFixed(2)} s, {comparison.beyond1s} more than a second apart.
@@ -259,6 +269,22 @@ export function LyricsBlock({
                   </li>
                 ))}
               </ul>
+              <details className="text-[10px] text-foreground/55" data-testid="setup-lyrics-heard">
+                <summary className="cursor-pointer">What was heard, part by part</summary>
+                <ul className="mt-1 max-h-48 space-y-1 overflow-y-auto pr-1">
+                  {run.parts.map((p, i) => (
+                    <li key={i} data-testid="setup-lyrics-part" data-words={p.words} data-cut={p.cutAt}>
+                      <span className="font-mono tabular-nums text-foreground/70">
+                        {clock(p.cutAt)}–{clock(p.cutAt + p.seconds)}
+                      </span>{" "}
+                      · {p.words} word{p.words === 1 ? "" : "s"}
+                      {p.retry ? " · second try, cut earlier" : ""}
+                      {p.pass === 2 ? " · listened again" : ""}
+                      {p.text ? <span className="block text-foreground/45">{p.text}</span> : <span className="block text-amber-200/70">nothing heard</span>}
+                    </li>
+                  ))}
+                </ul>
+              </details>
               <div className="flex flex-wrap items-center gap-2">
                 <Button size="sm" disabled={busy} onClick={() => void save()} data-testid="setup-lyrics-save">
                   {busy && !progress && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
