@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Json, ProjectAsset, TablesInsert, TablesUpdate } from "@/integrations/supabase/aliases";
 import { bucketForAssetType, projectAssetsKeys, useProjectAssets } from "@/lib/queries/projectAssets";
+import { useProjectAudio } from "@/lib/queries/projects";
 import { shotsKeys } from "@/lib/queries/shots";
 import { resolveScrubSource } from "@/lib/video/scrubProxy";
 import { boxesFromRows, type BoxRow, type BoxWrite, type StoryboardBox } from "@/lib/storyboard/boxes";
@@ -361,15 +362,19 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
 /** Every asset of the project as media, by id, plus the song. */
 export function useProjectMedia(projectId: string | undefined) {
   const assetsQuery = useProjectAssets(projectId);
+  // the song is its own query: the asset list leaves the audio asset out
+  const songQuery = useProjectAudio(projectId);
   const media = useMemo(() => {
     const all = (assetsQuery.data ?? []).map(mediaAssetOf);
-    return {
-      list: all,
-      byId: new Map(all.map((a) => [a.id, a])),
-      song: (assetsQuery.data ?? []).filter((a) => a.asset_type === "audio").sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null,
-    };
+    return { list: all, byId: new Map(all.map((a) => [a.id, a])) };
   }, [assetsQuery.data]);
-  return { ...media, isLoading: assetsQuery.isLoading, error: assetsQuery.error, refetch: assetsQuery.refetch };
+  return {
+    ...media,
+    song: songQuery.data ?? null,
+    isLoading: assetsQuery.isLoading || songQuery.isLoading,
+    error: assetsQuery.error ?? songQuery.error,
+    refetch: assetsQuery.refetch,
+  };
 }
 
 /** Say what a piece of footage is (or clear it). The file is not touched. */
