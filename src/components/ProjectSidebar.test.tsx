@@ -2,7 +2,7 @@
  * Lane H — integration / UX QA.
  *
  * Locks the merged Wave 1+2 acceptance criteria for the project rail:
- *   • Primary rail is the creative funnel (Treatment → Assets → Produce Video →
+ *   • Primary rail is the creative workflow (Setup → Treatment → Storyboard →
  *     Review → Export) and exposes NO engineering / Architecture-C surfaces in
  *     the default creative mode.
  *   • Flipping to Advanced (engineering mode) reveals the engineering
@@ -64,13 +64,17 @@ describe("ProjectSidebar rail composition", () => {
     render(<ProjectSidebar projectId={PROJECT_ID} />);
 
     // Primary funnel is always present.
-    for (const label of ["Treatment", "Assets", "Produce Video", "Review", "Export"]) {
+    for (const label of ["Setup", "Treatment", "Storyboard", "Review", "Export"]) {
       expect(labelCount(label)).toBeGreaterThanOrEqual(1);
     }
+    expect(primaryItems.map((i) => i.key)).toEqual(["setup", "treatment", "storyboard", "review", "export"]);
 
     // Engineering surfaces (incl. Architecture-C keyframe/temporal studios) are
     // NOT in the default rail.
     for (const label of [
+      "Assets",
+      "Produce Video",
+      "Clip Scorecards",
       "Shot List",
       "Cover Flight",
       "Hero Frame",
@@ -87,6 +91,9 @@ describe("ProjectSidebar rail composition", () => {
     render(<ProjectSidebar projectId={PROJECT_ID} />);
 
     for (const label of [
+      "Assets",
+      "Produce Video",
+      "Clip Scorecards",
       "Shot List",
       "Cover Flight",
       "Hero Frame",

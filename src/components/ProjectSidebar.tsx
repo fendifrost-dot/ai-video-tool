@@ -16,6 +16,9 @@ import {
   Navigation,
   SlidersHorizontal,
   ListVideo,
+  LayoutGrid,
+  Download,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/queries/projects";
@@ -37,17 +40,25 @@ type NavItem = {
   key: string;
 };
 
-/** Primary creative funnel — always visible. */
+/**
+ * The creative workflow — always visible: Setup → Treatment → Storyboard → Review → Export.
+ * The storyboard is the production workspace; everything a shot needs is reached from its box.
+ */
 export const primaryItems: readonly NavItem[] = [
+  { to: "/projects/$id/setup", label: "Setup", icon: Upload, key: "setup" },
   { to: "/projects/$id/treatment", label: "Treatment", icon: FileText, key: "treatment" },
-  { to: "/projects/$id/assets", label: "Assets", icon: ImageIcon, key: "assets" },
-  { to: "/projects/$id/video", label: "Produce Video", icon: Video, key: "video" },
+  { to: "/projects/$id/storyboard", label: "Storyboard", icon: LayoutGrid, key: "storyboard" },
   { to: "/projects/$id/review", label: "Review", icon: Eye, key: "review" },
-  { to: "/projects/$id/export", label: "Export", icon: Upload, key: "export" },
+  { to: "/projects/$id/export", label: "Export", icon: Download, key: "export" },
 ] as const;
 
-/** Engineering destinations — revealed in engineering mode (Lane G store). */
+/**
+ * Engineering destinations — revealed in engineering mode (Lane G store). Nothing was removed when the workflow was
+ * simplified: the library, the look-driven composer, the clip scorecards and the specialist studios all live here.
+ */
 export const advancedItems: readonly NavItem[] = [
+  { to: "/projects/$id/assets", label: "Assets", icon: ImageIcon, key: "assets" },
+  { to: "/projects/$id/video", label: "Produce Video", icon: Video, key: "video" },
   { to: "/projects/$id/shots", label: "Shot List", icon: Clapperboard, key: "shots" },
   {
     to: "/projects/$id/cover-flight",
@@ -59,6 +70,7 @@ export const advancedItems: readonly NavItem[] = [
   { to: "/projects/$id/prompt", label: "Prompt Lab", icon: Wand2, key: "prompt" },
   { to: "/projects/$id/timeline", label: "Music Video Editor", icon: Film, key: "timeline" },
   { to: "/projects/$id/continuity", label: "Continuity", icon: Lock, key: "continuity" },
+  { to: "/projects/$id/scorecards", label: "Clip Scorecards", icon: ClipboardCheck, key: "scorecards" },
   { to: "/projects/$id/runs", label: "Runs", icon: ListVideo, key: "runs" },
 ] as const;
 
