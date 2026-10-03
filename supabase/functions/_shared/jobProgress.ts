@@ -81,6 +81,26 @@ export function statusFromEnvelope(env: Record<string, unknown> | null | undefin
   return "running";
 }
 
+/**
+ * The same reading the runner makes (src/lib/worldBatch/runner.ts failureReason — a test holds the two equal).
+ * Why a job failed, in the provider's own words where it gave any. The envelope's own errorMessage first; then what
+ * the provider itself said, which the proxy passes through under providerMetadata — a restaging refused for a low
+ * balance was recorded as "failed" and nothing else while the provider's sentence sat unread in the response
+ * (the fresh section). The status word alone is the last resort.
+ */
+export function failureReason(env: Record<string, unknown> | null | undefined): string {
+  const text = (v: unknown): string => {
+    if (typeof v === "string") return v.trim();
+    const m = v && typeof v === "object" ? (v as { message?: unknown }).message : null;
+    return typeof m === "string" ? m.trim() : "";
+  };
+  const meta = (env?.providerMetadata && typeof env.providerMetadata === "object" ? env.providerMetadata : {}) as Record<string, unknown>;
+  const said = [env?.errorMessage, env?.error, meta.error, meta.detail, meta.message, meta.failure_reason].map(text).find(Boolean);
+  if (said) return said.slice(0, 500);
+  const status = typeof env?.status === "string" ? env.status.trim() : "";
+  return status && !["failed", "error"].includes(status.toLowerCase()) ? `the provider reported: ${status}` : "the provider reported a failure and did not say why";
+}
+
 /** A restaged take: the job was given a cut of a take, and its clip keeps that take's place on the song. */
 export function restagedFrom(job: ProgressJob): { sourceAssetId: string; songStart: number; sourceWindow: unknown; seconds: number | null } | null {
   const s = settingsOf(job);
@@ -160,7 +180,7 @@ export async function advanceJob(input: ProgressJob, deps: ProgressDeps): Promis
         return { jobId: job.id, did, state: "waiting" };
       }
       if (state === "failed") {
-        await set({ status: "failed", error_text: String(env.errorMessage ?? env.status ?? "the provider reported a failure").slice(0, 500), response_payload_json: env });
+        await set({ status: "failed", error_text: failureReason(env), response_payload_json: env });
         return await finish();
       }
       await set({ status: "succeeded", response_payload_json: env });
