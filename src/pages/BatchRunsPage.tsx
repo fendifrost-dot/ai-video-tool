@@ -4,13 +4,10 @@ import { PageHeader } from "@/components/AppShell";
 import { BatchRunView, type BatchRowView } from "@/components/runs/BatchRunView";
 import { useProject } from "@/lib/queries/projects";
 import { useLyricLines } from "@/lib/queries/lyricLines";
-import { useShotOverrides } from "@/lib/queries/shotOverrides";
+import { useStoryboardBoxes } from "@/lib/queries/storyboard";
 import { providerJobsKeys, useProjectProviderJobs } from "@/lib/providerJobs/queries";
 import { triggerServerIngest } from "@/lib/providerJobs/api";
 import { signedUrl } from "@/lib/storage";
-import { applyCoverageDefaults, DEFAULT_COVERAGE_PRESETS } from "@/lib/treatment/coverage";
-import { applyShotOverrides } from "@/lib/treatment/overrides";
-import { parseSavedStructuredTreatment, structuredTreatmentToShotSpecs } from "@/lib/treatment/api";
 import { LOOK_PRESETS, compileToWorldBatch, phrasesFromShotSpecs, resolveLookPreset } from "@/lib/shotCompiler";
 import {
   PROVIDER_REFUSALS,
@@ -85,7 +82,7 @@ export default function BatchRunsPage({ projectId }: { projectId: string }) {
   const jobsQuery = useProjectProviderJobs(projectId);
   const projectQuery = useProject(projectId);
   const lyricLinesQuery = useLyricLines(projectId);
-  const overridesQuery = useShotOverrides(projectId);
+  const boxesQuery = useStoryboardBoxes(projectId);
 
   useEffect(() => {
     try {
@@ -260,10 +257,12 @@ export default function BatchRunsPage({ projectId }: { projectId: string }) {
     try {
       const { id: presetId, look } = resolveLookPreset(lookPresetId);
       const deps = await browserRunnerDeps();
+      // a shot compiled from the storyboard is filed under its box's record, so its clip lands on that box
+      const shotIds = Object.fromEntries((boxesQuery.data ?? []).map((b) => [b.key, b.id]));
       say(`submitting ${plan.submit.length} shot(s), estimate $${plan.estimateUsd.toFixed(2)}`);
       const out = await runPlan(
         plan,
-        { projectId, runId, lookPresetId: presetId, look },
+        { projectId, runId, lookPresetId: presetId, look, shotIds },
         deps,
         {
           ceilingUsd,
@@ -287,20 +286,17 @@ export default function BatchRunsPage({ projectId }: { projectId: string }) {
       setRunning(false);
       void refetchJobs();
     }
-  }, [plan, projectId, runId, lookPresetId, ceilingUsd, refetchJobs, say]);
+  }, [plan, projectId, runId, lookPresetId, ceilingUsd, refetchJobs, say, boxesQuery.data]);
 
-  const saved = useMemo(() => parseSavedStructuredTreatment(projectQuery.data?.treatment_json), [projectQuery.data?.treatment_json]);
+  // The storyboard IS the shot list: the boxes are read from their own records (generated + the director's edits,
+  // already resolved), never from the treatment's stored clips.
+  const boxes = boxesQuery.data ?? [];
   const fromStoryboard = useCallback(() => {
-    if (!saved) {
-      say("this project has no saved treatment to compile");
+    if (boxes.length === 0) {
+      say("this project has no storyboard shots to compile");
       return;
     }
-    const specs = applyCoverageDefaults(
-      applyShotOverrides(structuredTreatmentToShotSpecs(saved), overridesQuery.data),
-      DEFAULT_COVERAGE_PRESETS,
-      lyricLinesQuery.data,
-    );
-    const phrases = phrasesFromShotSpecs(specs, lyricLinesQuery.data ?? []);
+    const phrases = phrasesFromShotSpecs(boxes.map((b) => b.spec), lyricLinesQuery.data ?? []);
     const compiled = compileToWorldBatch({ phrases, lookPresetId }).shots;
     const text = JSON.stringify(compiled, null, 1);
     setShotsText(text);
@@ -308,7 +304,7 @@ export default function BatchRunsPage({ projectId }: { projectId: string }) {
     // a whole storyboard is many paid shots: nothing is ticked until the director ticks it
     setUnselected(compiled.map((s) => s.id));
     say(`compiled ${compiled.length} world shot(s) from the storyboard — tick the ones to run`);
-  }, [saved, overridesQuery.data, lyricLinesQuery.data, lookPresetId, say]);
+  }, [boxes, lyricLinesQuery.data, lookPresetId, say]);
 
   return (
     <>
@@ -326,7 +322,7 @@ export default function BatchRunsPage({ projectId }: { projectId: string }) {
           onShotsText={setShotsText}
           onLoad={() => load(shotsText)}
           onLoadFile={(f) => void f.text().then(load)}
-          onFromStoryboard={saved ? fromStoryboard : undefined}
+          onFromStoryboard={boxes.length > 0 ? fromStoryboard : undefined}
           parseErrors={parsed.errors}
           rows={rows}
           plan={plan}

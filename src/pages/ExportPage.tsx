@@ -3,6 +3,8 @@ import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Package } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
+import { useAssignments, useProjectMedia, useStoryboardBoxes, useTakeSyncs } from "@/lib/queries/storyboard";
+import { buildTimeline, renderPlan } from "@/lib/storyboard/media";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -55,6 +57,11 @@ export default function ExportPage({ projectId }: { projectId: string }) {
   const audioQuery = useProjectAudio(projectId);
   const templatesQuery = usePromptTemplates();
   const manifestsQuery = useProjectTimelineManifests(projectId);
+  // the storyboard's own timeline: one segment per shot record with the media selected on it
+  const boxesQuery = useStoryboardBoxes(projectId);
+  const assignmentsQuery = useAssignments(projectId);
+  const syncsQuery = useTakeSyncs(projectId);
+  const storyboardMedia = useProjectMedia(projectId);
   const songQuery = useSongAnalysis(projectId);
   const storyboardQuery = useProjectStoryboard(projectId);
   const [manifestId, setManifestId] = useState<string | null>(null);
@@ -167,6 +174,14 @@ export default function ExportPage({ projectId }: { projectId: string }) {
         audioAsset: audioQuery.data ?? null,
         options,
         timeline: timelineBundle,
+        storyboardPlan:
+          (boxesQuery.data ?? []).length > 0
+            ? renderPlan(
+                buildTimeline({ boxes: boxesQuery.data ?? [], assignments: assignmentsQuery.data ?? [], assets: storyboardMedia.byId, syncs: syncsQuery.data ?? [] }),
+                storyboardMedia.byId,
+                storyboardMedia.song ? { assetId: storyboardMedia.song.id, bucket: "project-audio", path: storyboardMedia.song.file_url } : null,
+              )
+            : undefined,
         onProgress: setProgress,
       });
       toast.success("Package downloaded");
@@ -218,7 +233,7 @@ export default function ExportPage({ projectId }: { projectId: string }) {
     <>
       <PageHeader
         title="Export"
-        subtitle="Build a zip with manifest, shot list, prompt log, and (optionally) the actual files for Premiere / After Effects import."
+        subtitle="Build a zip with the manifest, the shot list, the storyboard's timeline, the prompt log and (optionally) the files, for Premiere / After Effects. A finished render is not made in the app yet."
       />
       <div className="space-y-6 px-8 py-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
