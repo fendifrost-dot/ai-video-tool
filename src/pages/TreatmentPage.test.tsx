@@ -13,8 +13,14 @@ const state = vi.hoisted(() => ({
   boxes: [] as unknown[],
   assignments: [] as unknown[],
   hasSong: true,
+  versions: [] as unknown[],
+  entities: [
+    { id: "e1", key: "BLACK_RUNWAY", kind: "location", name: "Black Runway", description: "A long black runway.", archived: false },
+    { id: "e2", key: "OLD_STREET", kind: "location", name: "Old Street", description: "Gone.", archived: true },
+  ] as unknown[],
 }));
 const calls = vi.hoisted(() => ({
+  restore: vi.fn(async (..._args: unknown[]) => undefined),
   saveTreatment: vi.fn(async (..._args: unknown[]) => ({})),
   deleteTreatment: vi.fn(async (..._args: unknown[]) => undefined),
   write: vi.fn(async (..._args: unknown[]) => ({ written: 2, kept: 1 })),
@@ -32,6 +38,12 @@ vi.mock("@/lib/queries/projects", () => ({
   projectsKeys: { detail: (id: string) => ["p", id] },
   useUpdateProject: () => ({ mutateAsync: vi.fn(async () => ({})) }),
 }));
+vi.mock("@/lib/queries/treatmentVersions", () => ({
+  treatmentVersionsKeys: { forProject: (id: string) => ["tv", id] },
+  useTreatmentVersions: () => ({ data: state.versions, isLoading: false, isError: false, error: null }),
+  useRestoreTreatmentVersion: () => ({ mutateAsync: calls.restore }),
+}));
+vi.mock("@/lib/queries/continuity", () => ({ useContinuityEntities: () => ({ data: state.entities }) }));
 vi.mock("@/lib/queries/treatmentInputs", () => ({
   useTreatmentInputs: () => ({
     project: { id: "p1", treatment_json: state.treatmentJson, lyrics: state.lyrics, mood: "opulent", visual_style: "luxury runway", notes: "" },
@@ -74,6 +86,7 @@ beforeEach(() => {
   state.boxes = [];
   state.assignments = [];
   state.hasSong = true;
+  state.versions = [];
   Object.values(calls).forEach((f) => f.mockClear());
 });
 
@@ -150,6 +163,8 @@ describe("TreatmentPage", () => {
     fireEvent.click(screen.getByTestId("confirm-generate-treatment"));
     await waitFor(() => expect(calls.write).toHaveBeenCalledTimes(1));
     expect(calls.write.mock.calls[0][0]).toMatchObject({ aiWritesText: true, treatmentText: "" });
+    // the writer is handed the project's own places, props and lighting states to point shots at — not the archived ones
+    expect((calls.write.mock.calls[0][0] as { context: { entities: unknown[] } }).context.entities).toEqual([{ key: "BLACK_RUNWAY", kind: "location", name: "Black Runway", description: "A long black runway." }]);
   });
 
   it("an edited treatment is behind its shots until they are rewritten — and only the shots that are not the director's", () => {
@@ -166,5 +181,61 @@ describe("TreatmentPage", () => {
     expect(screen.getByTestId("treatment-write-shots").textContent).toContain("Rewrite the 1 shot that is not yours");
     fireEvent.click(screen.getByTestId("treatment-write-shots"));
     expect(screen.getByTestId("confirm-dialog").textContent).toMatch(/1 of the 3 shots are rewritten\. 2 are yours/);
+  });
+
+  describe("Current and Versions", () => {
+    const V1 = { id: "v1", projectId: "p1", replacedAt: "2026-10-03T10:04:12Z", replacedBy: "generate", text: "The treatment that was here before.", mode: "manual", model: null, writtenAt: "2026-10-01T00:00:00Z", notes: "the earlier notes", mood: "opulent", visualStyle: "an earlier world" };
+    const V2 = { ...V1, id: "v2", replacedAt: "2026-10-02T08:00:00Z", replacedBy: "edit", text: "An even earlier one.", notes: "" };
+
+    it("regenerating and deleting say the current text is kept and can be restored", () => {
+      state.treatmentJson = SAVED;
+      render(<TreatmentPage projectId="p1" />);
+      fireEvent.click(screen.getByTestId("treatment-regenerate"));
+      expect(screen.getByTestId("confirm-dialog").textContent).toMatch(/kept under Versions and can be restored/);
+      fireEvent.click(screen.getByTestId("confirm-cancel"));
+      fireEvent.click(screen.getByTestId("treatment-delete"));
+      expect(screen.getByTestId("confirm-dialog").textContent).toMatch(/kept under Versions and can be restored/);
+    });
+
+    it("lists the earlier versions, newest first, and opens one to read it whole", () => {
+      state.treatmentJson = SAVED;
+      state.versions = [V1, V2];
+      render(<TreatmentPage projectId="p1" />);
+      expect(screen.getByTestId("treatment-view-versions").textContent).toContain("2");
+      fireEvent.click(screen.getByTestId("treatment-view-versions"));
+      // the current treatment is not shown under Versions, and is not gone
+      expect(screen.queryByTestId("treatment-saved-text")).toBeNull();
+      const rows = screen.getAllByTestId("treatment-version");
+      expect(rows.map((r) => r.getAttribute("data-version-id"))).toEqual(["v1", "v2"]);
+      expect(rows[0].textContent).toMatch(/replaced when the AI wrote a new treatment/);
+      fireEvent.click(screen.getAllByTestId("treatment-version-open")[0]);
+      expect(screen.getByTestId("treatment-version-text").textContent).toBe("The treatment that was here before.");
+      expect(screen.getByTestId("treatment-version-notes").textContent).toBe("the earlier notes");
+      expect(screen.getByTestId("treatment-version-differs").textContent).toMatch(/the treatment text, the notes, the visual direction/);
+      fireEvent.click(screen.getByTestId("treatment-view-current"));
+      expect(screen.getByTestId("treatment-saved-text")).toBeTruthy();
+    });
+
+    it("restoring asks first, says what is current is kept, and restores that version", async () => {
+      state.treatmentJson = SAVED;
+      state.versions = [V1];
+      render(<TreatmentPage projectId="p1" />);
+      fireEvent.click(screen.getByTestId("treatment-view-versions"));
+      fireEvent.click(screen.getByTestId("treatment-version-open"));
+      fireEvent.click(screen.getByTestId("treatment-version-restore"));
+      expect(calls.restore).not.toHaveBeenCalled();
+      expect(screen.getByTestId("confirm-dialog").textContent).toMatch(/What is current now is kept as a version of its own/);
+      expect(screen.getByTestId("confirm-dialog").textContent).toMatch(/shots, their footage and your edits are not touched/);
+      fireEvent.click(screen.getByTestId("confirm-restore-treatment"));
+      await waitFor(() => expect(calls.restore).toHaveBeenCalledTimes(1));
+      expect(calls.restore.mock.calls[0][0]).toMatchObject({ version: { id: "v1" }, currentTreatmentJson: SAVED });
+    });
+
+    it("with no versions yet, says what will be kept from now on", () => {
+      state.treatmentJson = SAVED;
+      render(<TreatmentPage projectId="p1" />);
+      fireEvent.click(screen.getByTestId("treatment-view-versions"));
+      expect(screen.getByTestId("treatment-versions-empty").textContent).toMatch(/what was there is kept here/);
+    });
   });
 });

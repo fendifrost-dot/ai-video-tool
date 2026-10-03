@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useEventClock } from "@/lib/queries/eventClock";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Check, Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
@@ -41,7 +42,9 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
   const [active, setActive] = useState<TimelineSegment | null>(null);
   const [jump, setJump] = useState<{ t: number; n: number } | null>(null);
 
-  const whole = useMemo(() => buildTimeline({ boxes, assignments, assets: media.byId, syncs }), [boxes, assignments, media.byId, syncs]);
+  // what a timed event's trigger is looked up in: the lyric timing and the song's beats
+  const clock = useEventClock(projectId);
+  const whole = useMemo(() => buildTimeline({ boxes, assignments, assets: media.byId, syncs, clock }), [boxes, assignments, media.byId, syncs, clock]);
   // a section of the song to look at on its own: the shots from one number to another (kept in the link, so it can be sent)
   const [section, setSection] = useState<ReviewSection | null>(() => sectionFromSearch(typeof window === "undefined" ? "" : window.location.search));
   useEffect(() => {

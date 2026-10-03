@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useContinuityEntities } from "@/lib/queries/continuity";
 import { Link } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowRight, Loader2, Pencil, RefreshCw, Save, Sparkles, Trash2, Wand2 } from "lucide-react";
@@ -10,7 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmHost } from "@/components/storyboard/ConfirmHost";
 import type { ConfirmRequest } from "@/components/storyboard/useStoryboardController";
+import { TreatmentVersions } from "@/components/treatment/TreatmentVersions";
 import { projectsKeys, useUpdateProject } from "@/lib/queries/projects";
+import { treatmentVersionsKeys, useRestoreTreatmentVersion, useTreatmentVersions } from "@/lib/queries/treatmentVersions";
 import { storyboardKeys, useAssignments, useProjectMedia, useStoryboardBoxes, useTakeSyncs } from "@/lib/queries/storyboard";
 import { useTreatmentInputs } from "@/lib/queries/treatmentInputs";
 import { unlockedForGeneration } from "@/lib/storyboard/boxes";
@@ -18,6 +21,7 @@ import { deleteTreatment, saveTreatment, writeStoryboardFromTreatment } from "@/
 import { isOriginalTake, isUsableSync } from "@/lib/storyboard/media";
 import { footageSummary, setupStatus } from "@/lib/storyboard/setup";
 import { directorNotes, hasTreatment, parseTreatmentDoc, storyboardIsStale, type TreatmentDoc } from "@/lib/treatment/treatmentDoc";
+import { currentSnapshot, versionReason, type TreatmentVersion } from "@/lib/treatment/versions";
 import { cn } from "@/lib/utils";
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -30,6 +34,7 @@ const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 export default function TreatmentPage({ projectId }: { projectId: string }) {
   const qc = useQueryClient();
   const inputs = useTreatmentInputs(projectId);
+  const entitiesQuery = useContinuityEntities(projectId);
   const { project, analysis, lyricLines } = inputs;
   const boxesData = useStoryboardBoxes(projectId).data;
   const assignmentsData = useAssignments(projectId).data;
@@ -39,11 +44,16 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
   const syncs = useMemo(() => syncsData ?? [], [syncsData]);
   const media = useProjectMedia(projectId);
   const updateProject = useUpdateProject();
+  const versionsQuery = useTreatmentVersions(projectId);
+  const versions = useMemo(() => versionsQuery.data ?? [], [versionsQuery.data]);
+  const restoreVersion = useRestoreTreatmentVersion(projectId);
 
   const doc = useMemo(() => parseTreatmentDoc(project?.treatment_json), [project?.treatment_json]);
   const exists = hasTreatment(doc);
 
   const [tab, setTab] = useState<"ai" | "manual">("ai");
+  // the treatment card shows what is current, or the versions that came before it
+  const [view, setView] = useState<"current" | "versions">("current");
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const [mood, setMood] = useState<string | null>(null);
@@ -98,12 +108,15 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
     await Promise.all([
       qc.invalidateQueries({ queryKey: projectsKeys.detail(projectId) }),
       qc.invalidateQueries({ queryKey: storyboardKeys.boxes(projectId) }),
+      // whatever was just replaced is a version now
+      qc.invalidateQueries({ queryKey: treatmentVersionsKeys.forProject(projectId) }),
     ]);
   };
 
   const saveField = async (patch: { mood?: string; visual_style?: string }) => {
     try {
       await updateProject.mutateAsync({ id: projectId, patch });
+      void qc.invalidateQueries({ queryKey: treatmentVersionsKeys.forProject(projectId) });
     } catch (e) {
       toast.error(message(e));
     }
@@ -146,7 +159,11 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
       await saveNotes();
       const res = await writeStoryboardFromTreatment({
         projectId,
-        context: inputs.treatmentContext(notesValue, footageNote, setup.counts.takesSynced > 0),
+        // the project's places, props and lighting states: the writer points shots at them instead of describing them again
+        context: {
+          ...inputs.treatmentContext(notesValue, footageNote, setup.counts.takesSynced > 0),
+          entities: (entitiesQuery.data ?? []).filter((e) => !e.archived).map((e) => ({ key: e.key, kind: e.kind, name: e.name, description: e.description })),
+        },
         treatmentText: aiWritesText ? "" : doc.text,
         aiWritesText,
         treatmentJson: project.treatment_json,
@@ -178,7 +195,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
         : `${open} of the ${boxes.length} shots are rewritten. ${kept} ${kept === 1 ? "is" : "are"} yours (edited, locked or holding footage) and ${kept === 1 ? "stays" : "stay"} exactly as ${kept === 1 ? "it is" : "they are"}.`;
     setConfirm({
       title: aiWritesText ? (exists ? "Write a new treatment?" : "Let the AI write the treatment?") : "Write the shots from this treatment?",
-      body: (aiWritesText ? (exists ? "The current treatment text is replaced by a new one. " : "The AI writes the treatment from the lyrics, the project and your footage. ") : "The treatment text is kept word for word. ") + effect,
+      body: (aiWritesText ? (exists ? "A new treatment text is written. The current one is kept under Versions and can be restored. " : "The AI writes the treatment from the lyrics, the project and your footage. ") : "The treatment text is kept word for word. ") + effect,
       confirmLabel: aiWritesText ? "Generate treatment" : "Write the shots",
       testId: aiWritesText ? "confirm-generate-treatment" : "confirm-write-shots",
       onConfirm: () => write(aiWritesText),
@@ -188,7 +205,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
   const askDelete = () =>
     setConfirm({
       title: "Delete the treatment?",
-      body: "The treatment text is deleted. The storyboard's shots, the footage on them and your edits stay exactly as they are.",
+      body: "The treatment text is taken away; it is kept under Versions and can be restored. The storyboard's shots, the footage on them and your edits stay exactly as they are.",
       confirmLabel: "Delete treatment",
       testId: "confirm-delete-treatment",
       onConfirm: async () => {
@@ -200,6 +217,35 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
           toast.success("Treatment deleted");
         } catch (e) {
           toast.error(message(e));
+        }
+      },
+    });
+
+  const askRestore = (version: TreatmentVersion) =>
+    setConfirm({
+      title: "Restore this version?",
+      body:
+        `This version (${versionReason(version)}) becomes the current treatment, with the notes, mood and visual direction it had. ` +
+        "What is current now is kept as a version of its own, so this can be undone. The storyboard's shots, their footage and your edits are not touched.",
+      confirmLabel: "Restore version",
+      testId: "confirm-restore-treatment",
+      onConfirm: async () => {
+        if (!project) return;
+        setWorking("Restoring…");
+        try {
+          await restoreVersion.mutateAsync({ version, currentTreatmentJson: project.treatment_json });
+          // the fields on the page follow the project again
+          setMood(null);
+          setVisual(null);
+          setNotes(null);
+          setEditing(false);
+          await refresh();
+          setView("current");
+          toast.success("Version restored — what it replaced is under Versions");
+        } catch (e) {
+          toast.error(message(e));
+        } finally {
+          setWorking(null);
         }
       },
     });
@@ -284,15 +330,50 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
         <Card className="space-y-4 p-4 md:p-5" data-testid="treatment-card">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Treatment</h2>
-            {exists && !editing && (
-              <span className="text-[10px] text-foreground/40" data-testid="treatment-author">
-                {doc.mode === "manual" ? "written by you" : `written by the AI${doc.model ? ` (${doc.model})` : ""}`}
-                {doc.updatedAt ? ` · ${doc.updatedAt.slice(0, 10)}` : ""}
-              </span>
-            )}
+            <div className="flex gap-1 rounded-lg bg-white/5 p-0.5" role="tablist" aria-label="Current treatment or its earlier versions">
+              {(
+                [
+                  ["current", "Current"],
+                  ["versions", `Versions${versions.length ? ` · ${versions.length}` : ""}`],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === id}
+                  onClick={() => setView(id)}
+                  className={cn("rounded-md px-2.5 py-1 text-[11px] font-medium", view === id ? "glass-raised text-foreground" : "text-foreground/50 hover:text-foreground/80")}
+                  data-testid={`treatment-view-${id}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {!exists && !editing && (
+          {view === "versions" && (
+            <div className="space-y-2">
+              {versionsQuery.isError ? (
+                <p className="text-xs text-rose-300" data-testid="treatment-versions-error">
+                  {message(versionsQuery.error)}
+                </p>
+              ) : versionsQuery.isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <TreatmentVersions versions={versions} current={currentSnapshot(project)} busy={busy} onRestore={askRestore} />
+              )}
+            </div>
+          )}
+
+          {view === "current" && exists && !editing && (
+            <p className="text-right text-[10px] text-foreground/40" data-testid="treatment-author">
+              {doc.mode === "manual" ? "written by you" : `written by the AI${doc.model ? ` (${doc.model})` : ""}`}
+              {doc.updatedAt ? ` · ${doc.updatedAt.slice(0, 10)}` : ""}
+            </p>
+          )}
+
+          {view === "current" && !exists && !editing && (
             <>
               <div className="flex gap-1 rounded-lg bg-white/5 p-0.5">
                 {(
@@ -333,7 +414,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
             </>
           )}
 
-          {exists && !editing && (
+          {view === "current" && exists && !editing && (
             <>
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90" data-testid="treatment-saved-text">
                 {doc.text}
@@ -352,7 +433,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
             </>
           )}
 
-          {editing && (
+          {view === "current" && editing && (
             <div className="space-y-3">
               <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={12} className="text-sm" data-testid="treatment-text" />
               <div className="flex flex-wrap items-center gap-2">

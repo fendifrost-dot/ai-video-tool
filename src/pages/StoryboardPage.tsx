@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { BoxCard, sceneText } from "@/components/storyboard/BoxCard";
 import { ROLE_STYLE, mediaLabel } from "@/components/storyboard/BoxMediaView";
 import { ConfirmHost } from "@/components/storyboard/ConfirmHost";
+import { ContinuityPanel } from "@/components/storyboard/Continuity";
 import { FocusView } from "@/components/storyboard/FocusView";
 import { MediaPicker } from "@/components/storyboard/MediaPicker";
 import { StoryboardProvider, useStoryboardController } from "@/components/storyboard/useStoryboardController";
@@ -71,6 +72,8 @@ export default function StoryboardPage({ projectId }: { projectId: string }) {
                 </Button>
               </div>
             </div>
+
+            <ContinuityPanel />
 
             {sb.migrated && (
               <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-200" data-testid="storyboard-migrated">

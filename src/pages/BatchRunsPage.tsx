@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { hasDirectedChange } from "@/lib/storyboard/boxes";
 import { useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "@/components/AppShell";
 import { BatchRunView, type BatchRowView } from "@/components/runs/BatchRunView";
@@ -6,7 +7,7 @@ import { useProject } from "@/lib/queries/projects";
 import { useLyricLines } from "@/lib/queries/lyricLines";
 import { useStoryboardBoxes } from "@/lib/queries/storyboard";
 import { providerJobsKeys, useProjectProviderJobs } from "@/lib/providerJobs/queries";
-import { triggerServerIngest } from "@/lib/providerJobs/api";
+import { useJobProgress, type ProgressRow } from "@/lib/providerJobs/progress";
 import { signedUrl } from "@/lib/storage";
 import { aspectOfProject, stillRequestAspect } from "@/lib/project/aspect";
 import { LOOK_PRESETS, compileToWorldBatch, phrasesFromShotSpecs, resolveLookPreset } from "@/lib/shotCompiler";
@@ -28,7 +29,6 @@ import {
   browserRunnerDeps,
   clipSeconds,
   markJobFailed,
-  pollBatchJob,
   uploadSourceClip,
   uploadStill,
 } from "@/lib/worldBatch/browserDeps";
@@ -47,7 +47,6 @@ type Saved = {
   unselected: string[];
 };
 
-const POLL_MS = 20_000;
 
 function defaultRunId(now = new Date()): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -76,7 +75,6 @@ export default function BatchRunsPage({ projectId }: { projectId: string }) {
   const [busy, setBusy] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [log, setLog] = useState<string[]>([]);
-  const ingestTried = useRef<Set<string>>(new Set());
   const [stillLinks, setStillLinks] = useState<Record<string, string>>({});
 
   const qc = useQueryClient();
@@ -165,57 +163,23 @@ export default function BatchRunsPage({ projectId }: { projectId: string }) {
     [qc, projectId],
   );
 
-  // Poll the jobs the provider has, and save each finished clip once.
-  const live = runJobs.filter((j) => (j.status === "queued" || j.status === "running") && j.external_job_id);
-  const toIngest = runJobs.filter((j) => j.status === "succeeded" && !j.result_asset_id && !ingestTried.current.has(j.id));
-  const liveKey = live.map((j) => j.id).join(",");
-  const ingestKey = toIngest.map((j) => j.id).join(",");
-  useEffect(() => {
-    if (!liveKey) return;
-    let stop = false;
-    const tick = async () => {
-      for (const j of live) {
-        if (stop) return;
-        try {
-          const state = await pollBatchJob(j);
-          if (state !== "running") say(`${String((j.request_payload_json as { settings?: { batchShotId?: string } })?.settings?.batchShotId)} ${state}`);
-        } catch (e) {
-          say(`poll failed: ${e instanceof Error ? e.message : String(e)}`);
-        }
-      }
-      if (!stop) await refetchJobs();
-    };
-    const h = setInterval(tick, POLL_MS);
-    void tick();
-    return () => {
-      stop = true;
-      clearInterval(h);
-    };
-    // `live` is derived from liveKey; depending on the array would restart the timer every render
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveKey, refetchJobs, say]);
-  useEffect(() => {
-    if (!ingestKey) return;
-    for (const j of toIngest) {
-      ingestTried.current.add(j.id);
-      const shotId = String((j.request_payload_json as { settings?: { batchShotId?: string } })?.settings?.batchShotId);
-      triggerServerIngest(j.id)
-        .then((r) => {
-          const err = r.errors.find((x) => x.jobId === j.id);
-          if (err) {
-            setNotes((n) => ({ ...n, [shotId]: `not saved to the library: ${err.error}` }));
-            say(`${shotId} ingest failed: ${err.error}`);
-          } else say(`${shotId} saved to the library`);
-          return refetchJobs();
-        })
-        .catch((e) => {
-          const m = e instanceof Error ? e.message : String(e);
-          setNotes((n) => ({ ...n, [shotId]: `not saved to the library: ${m}` }));
-          say(`${shotId} ingest failed: ${m}`);
-        });
+  // The server moves the jobs (provider-jobs-tick): it asks the provider, saves each finished clip and — for a job
+  // made for a storyboard shot — puts it on the shot. This page asks for a tick while a job is unfinished and reads
+  // the rows; it polls nothing and saves nothing itself, so closing it stops nothing.
+  const seen = useRef<Map<string, string>>(new Map());
+  useJobProgress(runJobs as unknown as ProgressRow[], async (reply) => {
+    for (const r of reply?.reports ?? []) {
+      const job = runJobs.find((j) => j.id === r.jobId);
+      const shotId = String(settingsOf(job as BatchJobRow)?.batchShotId ?? r.jobId);
+      const line = `${shotId}: ${r.did.join(" → ") || r.state}${r.note ? ` (${r.note})` : ""}`;
+      // say each thing once: a job that is still rendering reports the same line every tick
+      if (seen.current.get(r.jobId) === line) continue;
+      seen.current.set(r.jobId, line);
+      if (r.state === "retry" && r.note) setNotes((n) => ({ ...n, [shotId]: `not finished yet: ${r.note}` }));
+      say(line);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ingestKey, refetchJobs, say]);
+    await refetchJobs();
+  });
 
   const load = useCallback(
     (text: string) => {
@@ -297,7 +261,16 @@ export default function BatchRunsPage({ projectId }: { projectId: string }) {
       say("this project has no storyboard shots to compile");
       return;
     }
-    const phrases = phrasesFromShotSpecs(boxes.map((b) => b.spec), lyricLinesQuery.data ?? []);
+    // A shot that changes while it plays is never compiled into one static request (storyboard/temporal.ts): it is
+    // left out here, by name. Its clip is made on the storyboard, where its beats are split, made effects, or asked
+    // for in order.
+    const changing = boxes.filter((b) => hasDirectedChange(b.spec));
+    const single = boxes.filter((b) => !hasDirectedChange(b.spec));
+    if (changing.length > 0) {
+      say(`left out ${changing.length} shot(s) that change while they play — ${changing.map((b) => b.key).join(", ")}: generate those from the storyboard, where their timed beats are handled`);
+    }
+    if (single.length === 0) return;
+    const phrases = phrasesFromShotSpecs(single.map((b) => b.spec), lyricLinesQuery.data ?? []);
     // asked for in the project's frame (or the nearest shape the image model has)
     const compiled = compileToWorldBatch({ phrases, lookPresetId, aspectDefault: stillRequestAspect(aspectOfProject(projectQuery.data)).aspect }).shots;
     const text = JSON.stringify(compiled, null, 1);
