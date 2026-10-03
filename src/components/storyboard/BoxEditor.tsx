@@ -98,7 +98,7 @@ export function BoxEditor({ box }: { box: StoryboardBox }) {
         <Textarea value={draft.direction} onChange={(e) => set("direction", e.target.value)} placeholder={placeholders.direction} rows={4} className="mt-1 text-sm" data-testid="box-editor-direction" />
       </label>
       <label className="block text-[11px] text-foreground/55">
-        The frame it opens on (an image is drawn from this)
+        {box.spec.shotType === "performance" ? "The place he performs in (drawn with nobody in it — your take is restaged there)" : "The frame it opens on (an image is drawn from this)"}
         <Textarea value={draft.frame} onChange={(e) => set("frame", e.target.value)} placeholder={placeholders.frame} rows={2} className="mt-1 text-sm" data-testid="box-editor-frame" />
       </label>
 
