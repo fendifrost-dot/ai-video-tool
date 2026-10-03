@@ -138,3 +138,10 @@ verify_jwt = true
 # inside the function. The owner is read from the credential row, never from the request.
 [functions.batch-token-proxy]
 verify_jwt = false
+
+# Moves submitted provider jobs to their end on the server (poll → save → put on the shot), so a job finishes with
+# no page open. Called by the scheduler (pg_cron → pg_net, header x-cron-key checked against job_runner_config) and
+# by a signed-in page for its own user's jobs (the user JWT is verified inside the function). The scheduler has no
+# user, hence verify_jwt = false; an unauthenticated call is refused in-code.
+[functions.provider-jobs-tick]
+verify_jwt = false
