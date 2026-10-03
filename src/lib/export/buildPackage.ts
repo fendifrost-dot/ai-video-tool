@@ -69,8 +69,9 @@ export async function buildAndDownloadPackage(input: {
   options: ExportOptions;
   timeline?: TimelineExportBundle;
   /**
-   * The storyboard's render plan (src/lib/storyboard/media.ts `renderPlan`): every shot record, the media selected
-   * on it and its in/out, on the song clock. Written as `storyboard_timeline.json` — the file a render service reads.
+   * The storyboard's render contract (src/lib/storyboard/renderContract.ts): what Review plays, written down frame by
+   * frame — every shot record, the media on it, where its picture starts, its holds and the edit's effects, on the
+   * song clock. Written as `storyboard_timeline.json` — the one file a renderer executes (scripts/render).
    */
   storyboardPlan?: unknown;
   onProgress?: (p: ExportProgress) => void;
