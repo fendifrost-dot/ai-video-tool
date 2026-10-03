@@ -47,7 +47,10 @@ import { Route as ProjectsIdHeroFrameRouteImport } from './routes/projects.$id.h
 import { Route as ProjectsIdPromptRouteImport } from './routes/projects.$id.prompt'
 import { Route as ProjectsIdReviewRouteImport } from './routes/projects.$id.review'
 import { Route as ProjectsIdRunsRouteImport } from './routes/projects.$id.runs'
+import { Route as ProjectsIdScorecardsRouteImport } from './routes/projects.$id.scorecards'
+import { Route as ProjectsIdSetupRouteImport } from './routes/projects.$id.setup'
 import { Route as ProjectsIdShotsRouteImport } from './routes/projects.$id.shots'
+import { Route as ProjectsIdStoryboardRouteImport } from './routes/projects.$id.storyboard'
 import { Route as ProjectsIdTimelineRouteImport } from './routes/projects.$id.timeline'
 import { Route as ProjectsIdTreatmentRouteImport } from './routes/projects.$id.treatment'
 import { Route as ProjectsIdVideoRouteImport } from './routes/projects.$id.video'
@@ -246,9 +249,24 @@ const ProjectsIdRunsRoute = ProjectsIdRunsRouteImport.update({
   path: '/runs',
   getParentRoute: () => ProjectsIdRoute,
 } as any)
+const ProjectsIdScorecardsRoute = ProjectsIdScorecardsRouteImport.update({
+  id: '/scorecards',
+  path: '/scorecards',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdSetupRoute = ProjectsIdSetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
 const ProjectsIdShotsRoute = ProjectsIdShotsRouteImport.update({
   id: '/shots',
   path: '/shots',
+  getParentRoute: () => ProjectsIdRoute,
+} as any)
+const ProjectsIdStoryboardRoute = ProjectsIdStoryboardRouteImport.update({
+  id: '/storyboard',
+  path: '/storyboard',
   getParentRoute: () => ProjectsIdRoute,
 } as any)
 const ProjectsIdTimelineRoute = ProjectsIdTimelineRouteImport.update({
@@ -324,7 +342,10 @@ export interface FileRoutesByFullPath {
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
   '/projects/$id/runs': typeof ProjectsIdRunsRoute
+  '/projects/$id/scorecards': typeof ProjectsIdScorecardsRoute
+  '/projects/$id/setup': typeof ProjectsIdSetupRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
+  '/projects/$id/storyboard': typeof ProjectsIdStoryboardRoute
   '/projects/$id/timeline': typeof ProjectsIdTimelineRoute
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
   '/projects/$id/video': typeof ProjectsIdVideoRoute
@@ -363,7 +384,10 @@ export interface FileRoutesByTo {
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
   '/projects/$id/runs': typeof ProjectsIdRunsRoute
+  '/projects/$id/scorecards': typeof ProjectsIdScorecardsRoute
+  '/projects/$id/setup': typeof ProjectsIdSetupRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
+  '/projects/$id/storyboard': typeof ProjectsIdStoryboardRoute
   '/projects/$id/timeline': typeof ProjectsIdTimelineRoute
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
   '/projects/$id/video': typeof ProjectsIdVideoRoute
@@ -412,7 +436,10 @@ export interface FileRoutesById {
   '/projects/$id/prompt': typeof ProjectsIdPromptRoute
   '/projects/$id/review': typeof ProjectsIdReviewRoute
   '/projects/$id/runs': typeof ProjectsIdRunsRoute
+  '/projects/$id/scorecards': typeof ProjectsIdScorecardsRoute
+  '/projects/$id/setup': typeof ProjectsIdSetupRoute
   '/projects/$id/shots': typeof ProjectsIdShotsRouteWithChildren
+  '/projects/$id/storyboard': typeof ProjectsIdStoryboardRoute
   '/projects/$id/timeline': typeof ProjectsIdTimelineRoute
   '/projects/$id/treatment': typeof ProjectsIdTreatmentRoute
   '/projects/$id/video': typeof ProjectsIdVideoRoute
@@ -462,7 +489,10 @@ export interface FileRouteTypes {
     | '/projects/$id/prompt'
     | '/projects/$id/review'
     | '/projects/$id/runs'
+    | '/projects/$id/scorecards'
+    | '/projects/$id/setup'
     | '/projects/$id/shots'
+    | '/projects/$id/storyboard'
     | '/projects/$id/timeline'
     | '/projects/$id/treatment'
     | '/projects/$id/video'
@@ -501,7 +531,10 @@ export interface FileRouteTypes {
     | '/projects/$id/prompt'
     | '/projects/$id/review'
     | '/projects/$id/runs'
+    | '/projects/$id/scorecards'
+    | '/projects/$id/setup'
     | '/projects/$id/shots'
+    | '/projects/$id/storyboard'
     | '/projects/$id/timeline'
     | '/projects/$id/treatment'
     | '/projects/$id/video'
@@ -549,7 +582,10 @@ export interface FileRouteTypes {
     | '/projects/$id/prompt'
     | '/projects/$id/review'
     | '/projects/$id/runs'
+    | '/projects/$id/scorecards'
+    | '/projects/$id/setup'
     | '/projects/$id/shots'
+    | '/projects/$id/storyboard'
     | '/projects/$id/timeline'
     | '/projects/$id/treatment'
     | '/projects/$id/video'
@@ -843,11 +879,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsIdRunsRouteImport
       parentRoute: typeof ProjectsIdRoute
     }
+    '/projects/$id/scorecards': {
+      id: '/projects/$id/scorecards'
+      path: '/scorecards'
+      fullPath: '/projects/$id/scorecards'
+      preLoaderRoute: typeof ProjectsIdScorecardsRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/setup': {
+      id: '/projects/$id/setup'
+      path: '/setup'
+      fullPath: '/projects/$id/setup'
+      preLoaderRoute: typeof ProjectsIdSetupRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
     '/projects/$id/shots': {
       id: '/projects/$id/shots'
       path: '/shots'
       fullPath: '/projects/$id/shots'
       preLoaderRoute: typeof ProjectsIdShotsRouteImport
+      parentRoute: typeof ProjectsIdRoute
+    }
+    '/projects/$id/storyboard': {
+      id: '/projects/$id/storyboard'
+      path: '/storyboard'
+      fullPath: '/projects/$id/storyboard'
+      preLoaderRoute: typeof ProjectsIdStoryboardRouteImport
       parentRoute: typeof ProjectsIdRoute
     }
     '/projects/$id/timeline': {
@@ -1036,7 +1093,10 @@ interface ProjectsIdRouteChildren {
   ProjectsIdPromptRoute: typeof ProjectsIdPromptRoute
   ProjectsIdReviewRoute: typeof ProjectsIdReviewRoute
   ProjectsIdRunsRoute: typeof ProjectsIdRunsRoute
+  ProjectsIdScorecardsRoute: typeof ProjectsIdScorecardsRoute
+  ProjectsIdSetupRoute: typeof ProjectsIdSetupRoute
   ProjectsIdShotsRoute: typeof ProjectsIdShotsRouteWithChildren
+  ProjectsIdStoryboardRoute: typeof ProjectsIdStoryboardRoute
   ProjectsIdTimelineRoute: typeof ProjectsIdTimelineRoute
   ProjectsIdTreatmentRoute: typeof ProjectsIdTreatmentRoute
   ProjectsIdVideoRoute: typeof ProjectsIdVideoRoute
@@ -1052,7 +1112,10 @@ const ProjectsIdRouteChildren: ProjectsIdRouteChildren = {
   ProjectsIdPromptRoute: ProjectsIdPromptRoute,
   ProjectsIdReviewRoute: ProjectsIdReviewRoute,
   ProjectsIdRunsRoute: ProjectsIdRunsRoute,
+  ProjectsIdScorecardsRoute: ProjectsIdScorecardsRoute,
+  ProjectsIdSetupRoute: ProjectsIdSetupRoute,
   ProjectsIdShotsRoute: ProjectsIdShotsRouteWithChildren,
+  ProjectsIdStoryboardRoute: ProjectsIdStoryboardRoute,
   ProjectsIdTimelineRoute: ProjectsIdTimelineRoute,
   ProjectsIdTreatmentRoute: ProjectsIdTreatmentRoute,
   ProjectsIdVideoRoute: ProjectsIdVideoRoute,
