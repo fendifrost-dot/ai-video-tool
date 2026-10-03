@@ -55,6 +55,10 @@ async def desktop(b, out):
     await pg.evaluate("() => document.exitFullscreen && document.fullscreenElement && document.exitFullscreen()")
     await pg.click("[data-testid=focus-close]"); await pg.wait_for_timeout(500)
     out["back_to_board"] = await pg.evaluate("() => ({focus: !!document.querySelector('[data-testid=focus-view]'), cards: document.querySelectorAll('[data-testid=box-card]').length})")
+    # an image on a shot is seen in the shot's media list (a place drawn for a take is never what the shot shows)
+    await pg.click("[data-box-key=c009] [data-testid=box-open]"); await pg.wait_for_selector("[data-testid=focus-view]"); await pg.click("[data-testid=focus-tab-media]"); await pg.wait_for_timeout(1500)
+    out["media_image"] = await pg.evaluate("() => { const i=document.querySelector('[data-testid=focus-media-image]'); return {n: document.querySelectorAll('[data-testid=focus-media-image]').length, loaded: !!i && i.complete && i.naturalWidth > 0}; }")
+    await pg.click("[data-testid=focus-close]"); await pg.wait_for_timeout(400)
     # a performance shot's clip is the take restaged: the button says so, with the price, and the confirm says what goes
     out["restage"] = {"clip": (await pg.inner_text("[data-box-key=c005] [data-testid=box-generate-clip]")).strip(), "image": (await pg.inner_text("[data-box-key=c005] [data-testid=box-generate-image]")).strip(),
         "broll_clip": (await pg.inner_text("[data-box-key=c006] [data-testid=box-generate-clip]")).strip(),
@@ -238,6 +242,7 @@ def report(r):
     want("check this cut: passes", cc.get("ok") == "true")
     want("check this cut: every line holds, the player read back", all(c[1] == "true" for c in cc.get("checks", [])) and len(cc.get("checks", [])) >= 12)
     want("check this cut: 43 shots listed", cc.get("cuts") == 43)
+    want("media list: an image on a shot is shown", (r.get("media_image") or {}).get("n") == 1 and (r.get("media_image") or {}).get("loaded") is True)
     rs = r.get("restage") or {}
     want("restage: a performance shot offers its take restaged, priced", rs.get("clip", "").startswith("Restage") and "$3.84" in rs.get("clip", "") and rs.get("image", "").startswith("Place") and rs.get("broll_clip", "").startswith("Clip"))
     want("restage: the confirm names the take, its range and the seconds", "performance take.mp4" in rs.get("confirm", "") and "4 s of the take" in rs.get("confirm", "") and "0:14.8" in rs.get("confirm", ""))
