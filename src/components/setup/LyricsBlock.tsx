@@ -219,7 +219,7 @@ export function LyricsBlock({
             <Button size="sm" variant={timedLines > 0 ? "outline" : "default"} disabled={busy || !song} onClick={() => void align()} data-testid="setup-lyrics-align">
               {busy && progress ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Timer className="mr-1.5 h-3.5 w-3.5" />}
               {timedLines > 0 ? "Time them again" : "Time the lyrics to the song"}
-              {estimate !== null && estimate > 0 ? ` · about $${estimate.toFixed(2)}` : ""}
+              {estimate !== null && estimate > 0 ? ` · about $${estimate.toFixed(2)}–$${(estimate * 3).toFixed(2)}` : ""}
             </Button>
             {busy && progress && (
               <>
@@ -250,7 +250,11 @@ export function LyricsBlock({
                   {run.second.used
                     ? `Listened again to ${run.second.holes} stretch${run.second.holes === 1 ? "" : "es"} where lines were missing: words heard went from ${Math.round(run.second.coverageBefore * 100)}% to ${Math.round(run.second.coverageAfter * 100)}%.`
                     : `Listened again to ${run.second.holes} stretch${run.second.holes === 1 ? "" : "es"} where lines were missing; it found nothing more.`}
-                  {run.estimatedCostUsd > 0 ? ` This run cost about $${run.estimatedCostUsd.toFixed(2)}.` : ""}
+                </p>
+              )}
+              {run.estimatedCostUsd > 0 && (
+                <p className="text-foreground/45" data-testid="setup-lyrics-cost">
+                  This run cost about ${run.estimatedCostUsd.toFixed(2)}. Nothing is saved until you say so.
                 </p>
               )}
               {comparison && (
