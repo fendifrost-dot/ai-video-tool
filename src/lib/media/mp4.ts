@@ -29,6 +29,12 @@ export type Mp4Track = {
   startOffset: number;
   /** One sample by its number in the track. */
   sample: (index: number) => Mp4Sample | null;
+  /** The sample description box (`stsd`), whole — what a file cut from this one needs to carry unchanged. */
+  stsd: Uint8Array | null;
+  /** How long sample `index` lasts, in the track's own units. */
+  sampleDelta: (index: number) => number;
+  /** How much later than its decode time sample `index` is shown (reordered frames), in the track's own units. */
+  compositionOffset: (index: number) => number;
   /** Frame lookups (video tracks only). */
   sampleAt: (seconds: number) => Mp4Sample | null;
   /** The sync sample at or before the sample at `seconds`. */
@@ -248,6 +254,30 @@ function parseTrack(v: DataView, trak: Box, bytes: Uint8Array): Mp4Track | null 
     }
     return null;
   };
+  const sampleDelta = (index: number): number => {
+    if (!stts) return 0;
+    const n = v.getUint32(stts.body + 4);
+    let remaining = index;
+    for (let i = 0; i < n; i++) {
+      const count = v.getUint32(stts.body + 8 + i * 8);
+      if (remaining < count) return v.getUint32(stts.body + 12 + i * 8);
+      remaining -= count;
+    }
+    return n ? v.getUint32(stts.body + 12 + (n - 1) * 8) : 0;
+  };
+  const ctts = child(v, stbl, "ctts");
+  const compositionOffset = (index: number): number => {
+    if (!ctts) return 0;
+    const signed = v.getUint8(ctts.body) === 1;
+    const n = v.getUint32(ctts.body + 4);
+    let remaining = index;
+    for (let i = 0; i < n; i++) {
+      const count = v.getUint32(ctts.body + 8 + i * 8);
+      if (remaining < count) return signed ? v.getInt32(ctts.body + 12 + i * 8) : v.getUint32(ctts.body + 12 + i * 8);
+      remaining -= count;
+    }
+    return 0;
+  };
   const sample = (index: number): Mp4Sample | null => {
     if (index < 0 || index >= sampleCount) return null;
     const offset = offsetOf(index);
@@ -267,7 +297,7 @@ function parseTrack(v: DataView, trak: Box, bytes: Uint8Array): Mp4Track | null 
     return key < 0 ? null : sample(key);
   };
 
-  return { kind, timescale, duration: timescale ? durationUnits / timescale : 0, format, codec, description, width, height, sampleCount, syncCount: syncSet ? syncSet.length : sampleCount, startOffset, sample, sampleAt, keyframeAt };
+  return { kind, timescale, duration: timescale ? durationUnits / timescale : 0, format, codec, description, width, height, sampleCount, syncCount: syncSet ? syncSet.length : sampleCount, startOffset, sample, sampleAt, keyframeAt, stsd: stsd ? bytes.slice(stsd.start, stsd.end) : null, sampleDelta, compositionOffset };
 }
 
 /** Parse a `moov` box (the bytes of the whole box, header included). `brand` is the file's major brand if known. */
