@@ -11,7 +11,7 @@ vi.mock("@/lib/queries/storyboard", () => ({}));
 import { parseShotSpec, type ShotEvent } from "@/lib/treatment/shotSpec";
 import { applyOverride, boxFromRow, boxWrite, machineContext, planSplitAtBeats, type BoxRow, type StoryboardBox } from "@/lib/storyboard/boxes";
 import { eventClock, resolveEvents, splitEvents } from "@/lib/storyboard/events";
-import { boxShot, entityShot, FULL_BLEED, NO_MARKS, pointsAtEntities } from "@/lib/storyboard/generate";
+import { boxShot, entityShot, FULL_BLEED, NO_MARKS, pointsAtEntities, SUBJECT_FIRST } from "@/lib/storyboard/generate";
 import { restageShot, restageTemporalPlan } from "@/lib/storyboard/restage";
 import { temporalPlan } from "@/lib/storyboard/temporal";
 import type { MediaAsset, TakeSync } from "@/lib/storyboard/media";
@@ -43,11 +43,11 @@ const ALL = [RUNWAY, STREET, SEDAN, NORMAL, ICE];
 const index = indexEntities(ALL);
 const LOOKS = [{ id: "look1", name: "Black suit", description: "double-breasted, no shirt" }];
 
-function box(key: string, over: { shotType?: "b_roll" | "performance"; continuity?: Record<string, unknown>; events?: ShotEvent[]; purpose?: string; start?: number; end?: number } = {}): StoryboardBox {
+function box(key: string, over: { shotType?: "b_roll" | "performance"; continuity?: Record<string, unknown>; events?: ShotEvent[]; purpose?: string; start?: number; end?: number; environment?: { location: string; description: string } } = {}): StoryboardBox {
   const start = over.start ?? 60;
   const end = over.end ?? 64;
   const shotType = over.shotType ?? "b_roll";
-  const spec = parseShotSpec({ id: key, purpose: over.purpose ?? "a ring on a marble console under one hard light", shotType, kind: shotType === "performance" ? "performance" : "broll", timeline: { start, end }, continuity: over.continuity ?? {}, events: over.events ?? [] });
+  const spec = parseShotSpec({ id: key, purpose: over.purpose ?? "a ring on a marble console under one hard light", shotType, kind: shotType === "performance" ? "performance" : "broll", timeline: { start, end }, continuity: over.continuity ?? {}, events: over.events ?? [], ...(over.environment ? { environment: over.environment } : {}) });
   const w = boxWrite({ key, start, end, section: "hook", generated: spec, override: null, locked: false, origin: "treatment", history: [] });
   return boxFromRow({ id: `r_${key}`, project_id: "p1", shot_number: 1, ...w, updated_at: AT } as BoxRow)!;
 }
@@ -129,6 +129,29 @@ describe("shots that point at the same entity are generated from the same source
     // each still shows its own scene
     expect(pa).toContain("white sneakers");
     expect(pb).toContain("a sedan idles");
+  });
+
+  it("a cutaway set in a location says the place once — in the location's words — and is a picture of its own subject", () => {
+    const wrote = box("c040", {
+      continuity: { location: "BLACK_RUNWAY" },
+      purpose: "White sneakers step onto the gloss black floor.",
+      // what a writer puts in the shot's own place field: the entity, paraphrased
+      environment: { location: "", description: "A long indoor runway at night with a glossy floor and seats on both sides." },
+    });
+    const p = boxShot(wrote, [], { continuity: of(wrote) }).prompt;
+    expect(p).not.toContain("A long indoor runway at night with a glossy floor");
+    expect(p.match(/black runway between black walls/g)).toHaveLength(1);
+    // the subject leads, the place follows, and the request says which of the two the picture is of
+    expect(p.indexOf("White sneakers")).toBeLessThan(p.indexOf("The place — the same place"));
+    expect(p).toContain(SUBJECT_FIRST);
+    // a cutaway that points at no location keeps its own words for the place
+    const free = box("c041", { purpose: "Rain on a windscreen.", environment: { location: "", description: "A wet street at night under sodium lamps." } });
+    const pf = boxShot(free, [], { continuity: of(free) }).prompt;
+    expect(pf).toContain("A wet street at night under sodium lamps.");
+    expect(pf).not.toContain(SUBJECT_FIRST);
+    // and the place drawn for a performance shot is the whole place, not a subject in it
+    const perf = box("c015", { shotType: "performance", continuity: { location: "BLACK_RUNWAY" } });
+    expect(boxShot(perf, [], { continuity: of(perf) }).prompt).not.toContain(SUBJECT_FIRST);
   });
 
   it("a prop and a lighting state are carried the same way; the standing rules still close the request", () => {
