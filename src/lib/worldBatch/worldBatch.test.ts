@@ -22,6 +22,7 @@ import {
   statusFromEnvelope,
   stillPrompt,
   submitShot,
+  submitStills,
   PANEL_SEAM_FRAC_MIN,
   PANEL_SEAM_STRAIGHT_MIN,
   describeSeam,
@@ -333,5 +334,50 @@ describe("a still that is two pictures", () => {
     const optOut = deps({ inspectStill: vi.fn(async () => seamOf(0.95)) });
     expect((await submitShot({ ...WORLD, panel_check: false }, CTX, optOut)).stillPath).toBe("u/p/worlds/a.png");
     expect(optOut.inspectStill).not.toHaveBeenCalled();
+  });
+});
+
+describe("a still on its own (the storyboard's Generate image)", () => {
+  const CTX = { projectId: "p", runId: "storyboard", lookPresetId: "film_bar_v1", look: LOOK_PRESETS.film_bar_v1, shotIds: { c006: "shot-uuid-6" } };
+  const shot = BatchShotSchema.parse({ id: "c006", route: "still_kling", prompt: "a Bentley at the kerb" });
+
+  it("records the job before the generator is called, files it under the box, and ends on the picked still", async () => {
+    const d = deps();
+    const r = await submitStills(shot, CTX, d);
+    expect(d.calls).toEqual(["insert", "stills", "update:succeeded"]);
+    const inserted = (d.insertJob as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(inserted.provider).toBe("grok");
+    expect(inserted.request_payload_json).toMatchObject({ mode: "still_only", shotId: "shot-uuid-6", settings: { batchRun: "storyboard", batchShotId: "c006", stillPath: null } });
+    expect(r).toMatchObject({ rowId: "row-1", picked: "u/p/worlds/a.png", candidates: ["u/p/worlds/a.png", "u/p/worlds/b.png"], costUsd: 0.14 });
+    const patch = (d.updateJob as ReturnType<typeof vi.fn>).mock.calls[0][1];
+    expect(patch.request_payload_json.settings).toMatchObject({ stillPath: "u/p/worlds/a.png", stillCostUsd: 0.14 });
+    // no motion model was called
+    expect(d.callProxy).not.toHaveBeenCalled();
+  });
+
+  it("a still that is two pictures stacked is never the box's image", async () => {
+    const stacked = { frac: 0.95, straight: 0.9, at: 0.5, axis: "row" as const };
+    const first = deps({ inspectStill: vi.fn(async (p: string) => (p.endsWith("a.png") ? stacked : null)) });
+    expect((await submitStills(shot, CTX, first)).picked).toBe("u/p/worlds/b.png");
+    const all = deps({ inspectStill: vi.fn(async () => stacked) });
+    await expect(submitStills(shot, CTX, all)).rejects.toThrow(/stacked panels/);
+    expect(all.calls.at(-1)).toBe("update:failed");
+    // the stills are paid for: they stay on the record
+    expect((all.updateJob as ReturnType<typeof vi.fn>).mock.calls[0][1].request_payload_json.settings.stillCandidates).toHaveLength(2);
+  });
+
+  it("a generator failure is recorded on the row", async () => {
+    const d = deps({ generateStills: vi.fn(async () => ({ ok: false, error: "rate limited" })) });
+    await expect(submitStills(shot, CTX, d)).rejects.toThrow(/rate limited/);
+    expect(d.calls).toEqual(["insert", "update:failed"]);
+  });
+
+  it("a clip submitted for a box carries the box's record id, which the ingest files the clip under", async () => {
+    const d = deps();
+    await submitShot(BatchShotSchema.parse({ id: "c006", route: "still_kling", prompt: "x", still_path: "u/p/worlds/a.png" }), CTX, d);
+    expect((d.insertJob as ReturnType<typeof vi.fn>).mock.calls[0][0].request_payload_json.shotId).toBe("shot-uuid-6");
+    const plain = deps();
+    await submitShot(BatchShotSchema.parse({ id: "c006", route: "still_kling", prompt: "x", still_path: "u/p/worlds/a.png" }), { ...CTX, shotIds: undefined }, plain);
+    expect("shotId" in (plain.insertJob as ReturnType<typeof vi.fn>).mock.calls[0][0].request_payload_json).toBe(false);
   });
 });

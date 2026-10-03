@@ -61,7 +61,7 @@ export type RunnerDeps = {
   inspectStill?(path: string): Promise<PanelSeam | null>;
   insertJob(row: {
     project_id: string;
-    provider: "higgsfield" | "runway";
+    provider: "higgsfield" | "runway" | "grok";
     status: "queued";
     request_payload_json: Record<string, unknown>;
   }): Promise<string>;
@@ -69,7 +69,23 @@ export type RunnerDeps = {
   callProxy(endpoint: string, body: Record<string, unknown>): Promise<Record<string, unknown>>;
 };
 
-export type RunContext = { projectId: string; runId: string; lookPresetId: string; look: LookPreset | null };
+export type RunContext = {
+  projectId: string;
+  runId: string;
+  lookPresetId: string;
+  look: LookPreset | null;
+  /**
+   * The storyboard box record each shot belongs to (batch shot id → `shots.id`). Written on the job as `shotId`, which
+   * is what the server ingest files the finished clip under — so a clip generated for a box lands on that box.
+   */
+  shotIds?: Record<string, string>;
+};
+
+/** The box record a shot belongs to, as the job payload carries it (absent when the shot is not a box). */
+function shotIdOf(ctx: RunContext, shot: BatchShot): { shotId?: string } {
+  const id = ctx.shotIds?.[shot.id];
+  return id ? { shotId: id } : {};
+}
 
 export function settingsOf(job: Pick<BatchJobRow, "request_payload_json">): BatchJobSettings | null {
   const s = (job.request_payload_json as { settings?: Partial<BatchJobSettings> } | null)?.settings;
@@ -186,6 +202,7 @@ export async function submitShot(
           request_payload_json: {
             promptText: stillPrompt(shot, ctx.look),
             mode: "still_only",
+            ...shotIdOf(ctx, shot),
             settings: {
               batchRun: ctx.runId, batchShotId: shot.id, route: shot.route, kind: shot.kind, estimateUsd: 0, lookPreset: ctx.lookPresetId,
               // no stillPath: a retry must generate again, not reuse a picture that is two pictures
@@ -230,6 +247,7 @@ export async function submitShot(
       duration: req.body.duration ?? null,
       aspectRatio: shot.aspect,
       referenceImagePath: stillPath,
+      ...shotIdOf(ctx, shot),
       settings,
     },
   });
@@ -260,6 +278,81 @@ export async function submitShot(
     throw new Error(`${shot.id}: accepted by the provider as ${providerJobId}, but its record could not be updated — ${message}`);
   }
   return { rowId, providerJobId, prompt, stillPath };
+}
+
+export type StillsResult = {
+  rowId: string;
+  prompt: string;
+  /** Every still the generator returned (all are paid for and on record). */
+  candidates: string[];
+  /** The candidates that are one picture (not stacked panels). */
+  whole: string[];
+  /** The still the box shows: the first whole candidate. Null when every candidate came back as panels. */
+  picked: string | null;
+  costUsd: number | null;
+};
+
+/**
+ * Generate the still of one shot and stop there (the storyboard's "Generate image"). Same rules as a motion submit:
+ * the job row exists before the call, the stills are checked for the stacked-panels seam, and a result that is two
+ * pictures is recorded as a failure with the stills kept — it is never shown as the box's image.
+ */
+export async function submitStills(shot: BatchShot, ctx: RunContext, deps: RunnerDeps): Promise<StillsResult> {
+  if (!shot.prompt.trim()) throw new Error(`${shot.id}: needs a scene to draw`);
+  const prompt = stillPrompt(shot, ctx.look);
+  const settings: BatchJobSettings = {
+    batchRun: ctx.runId,
+    batchShotId: shot.id,
+    route: shot.route,
+    kind: shot.kind,
+    estimateUsd: 0, // the still's cost is carried in stillCostUsd once the generator reports it
+    lookPreset: ctx.lookPresetId,
+    stillPath: null,
+  };
+  const payload = { promptText: prompt, mode: "still_only", aspectRatio: shot.aspect, ...shotIdOf(ctx, shot) };
+  const rowId = await deps.insertJob({ project_id: ctx.projectId, provider: "grok", status: "queued", request_payload_json: { ...payload, settings } });
+  let r: Awaited<ReturnType<RunnerDeps["generateStills"]>>;
+  try {
+    r = await deps.generateStills({
+      projectId: ctx.projectId,
+      prompt,
+      n: shot.stills,
+      aspectRatio: shot.aspect,
+      resolution: "2k",
+      shotLabel: `${ctx.runId}_${shot.id}`,
+      promptVersion: "world_bar_v1",
+      dryRun: false,
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    await deps.updateJob(rowId, { status: "failed", error_text: message.slice(0, 500) });
+    throw new Error(`${shot.id}: still failed — ${message}`);
+  }
+  if (!r.ok || !r.stills?.length) {
+    const message = r.error ?? "no stills returned";
+    await deps.updateJob(rowId, { status: "failed", error_text: message.slice(0, 500) });
+    throw new Error(`${shot.id}: still failed — ${message}`);
+  }
+  const candidates = r.stills.map((x) => x.path);
+  let whole = candidates;
+  let rejected: string | null = null;
+  if (deps.inspectStill && shot.panel_check !== false) {
+    const inspect = deps.inspectStill;
+    const seams = await Promise.all(candidates.map((p) => inspect(p).catch(() => null)));
+    whole = candidates.filter((_, i) => !isStackedPanels(seams[i]));
+    if (whole.length === 0) {
+      rejected = `every still came back as stacked panels (${describeSeam(seams.find((x) => isStackedPanels(x))!)}) — describe the scene by depth (in front, behind), not by halves of the frame`;
+    }
+  }
+  const picked = whole[0] ?? null;
+  const costUsd = r.actualCostUsd ?? null;
+  await deps.updateJob(rowId, {
+    status: picked ? "succeeded" : "failed",
+    ...(rejected ? { error_text: rejected.slice(0, 500) } : {}),
+    request_payload_json: { ...payload, referenceImagePath: picked, settings: { ...settings, stillPath: picked, stillCandidates: candidates, stillCostUsd: costUsd } },
+  });
+  if (!picked) throw new Error(`${shot.id}: ${rejected}`);
+  return { rowId, prompt, candidates, whole, picked, costUsd };
 }
 
 export type RunOutcome = { submitted: SubmitResult[]; failed: { shotId: string; error: string }[]; skipped: Plan["skip"] };
