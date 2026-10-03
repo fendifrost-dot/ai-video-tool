@@ -66,36 +66,34 @@ export function isRunaway(word: string): boolean {
   return word.length > 32 || /(.)\1{7,}/u.test(word);
 }
 
-// Whisper's own measures of a segment it should not have written (the thresholds its reference decoder uses):
-// text that compresses too well is a loop, and a quiet stretch it was unsure of is not speech.
+// Whisper's own measure of a segment it should not have written: text that compresses too well is a loop (the
+// threshold its reference decoder uses). Its "no speech" measure is NOT used: it is taken at the first instant of the
+// window, so a window that opens on a beat and has a verse later is marked "no speech" — on YSL that rule threw away
+// two windows of correctly heard lyrics (2026-10-03).
 export const COMPRESSION_RATIO_MAX = 2.4;
-export const NO_SPEECH_PROB_MAX = 0.6;
-export const AVG_LOGPROB_MIN = -1.0;
 
-type Segment = { start: number; end: number; avgLogprob: number | null; compressionRatio: number | null; noSpeechProb: number | null };
+type Segment = { start: number; end: number; avgLogprob: number | null; compressionRatio: number | null };
 
 function segmentsOf(json: unknown): Segment[] {
   const list = (json as { segments?: unknown } | null)?.segments;
   if (!Array.isArray(list)) return [];
   const out: Segment[] = [];
   for (const item of list) {
-    const r = item as { start?: unknown; end?: unknown; avg_logprob?: unknown; compression_ratio?: unknown; no_speech_prob?: unknown };
+    const r = item as { start?: unknown; end?: unknown; avg_logprob?: unknown; compression_ratio?: unknown };
     const start = num(r.start);
     const end = num(r.end);
     if (start === null || end === null) continue;
-    out.push({ start, end, avgLogprob: num(r.avg_logprob), compressionRatio: num(r.compression_ratio), noSpeechProb: num(r.no_speech_prob) });
+    out.push({ start, end, avgLogprob: num(r.avg_logprob), compressionRatio: num(r.compression_ratio) });
   }
   return out;
 }
 
-const badSegment = (s: Segment): boolean =>
-  (s.compressionRatio !== null && s.compressionRatio > COMPRESSION_RATIO_MAX) ||
-  (s.noSpeechProb !== null && s.avgLogprob !== null && s.noSpeechProb > NO_SPEECH_PROB_MAX && s.avgLogprob < AVG_LOGPROB_MIN);
+const badSegment = (s: Segment): boolean => s.compressionRatio !== null && s.compressionRatio > COMPRESSION_RATIO_MAX;
 
 /**
  * OpenAI `verbose_json` with word (and, when asked for, segment) timestamps → the words worth keeping, and how many
  * were dropped. A word is dropped when it is a runaway, or when the segment it sits in is one the model itself marks
- * as a loop or as not speech. A kept word carries its segment's confidence as `p`.
+ * as a loop. A kept word carries its segment's confidence as `p`.
  */
 export function heardFromOpenAi(json: unknown): { words: HeardWord[]; dropped: number } {
   const list = (json as { words?: unknown } | null)?.words;

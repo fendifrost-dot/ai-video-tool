@@ -94,7 +94,7 @@ describe("lyric-align-proxy contract", () => {
     expect(providerOrder(undefined, { openai: false, xai: true })).toEqual(["xai"]);
     expect(providerOrder(undefined, { openai: false, xai: false })).toEqual([]);
   });
-  it("drops what the model itself marks as a loop or as not speech, and a runaway word", () => {
+  it("drops what the model itself marks as a loop, and a runaway word — and keeps a verse in a window that opens on a beat", () => {
     const body = {
       words: [
         { word: "W" + "o".repeat(180), start: 0.2, end: 9.8 }, // a runaway: one sound for ten seconds
@@ -102,7 +102,7 @@ describe("lyric-align-proxy contract", () => {
         { word: "you", start: 10.5, end: 10.7 },
         { word: "la", start: 14.1, end: 14.3 }, // inside a segment that compresses like a loop
         { word: "la", start: 14.3, end: 14.5 },
-        { word: "thanks", start: 21, end: 21.4 }, // inside a segment the model thinks is not speech
+        { word: "minors", start: 21, end: 21.4 }, // the window opened on a beat, so the model's "no speech" figure is high: still sung
         { word: "designers", start: 26, end: 26.6 },
       ],
       segments: [
@@ -114,14 +114,15 @@ describe("lyric-align-proxy contract", () => {
       ],
     };
     const heard = heardFromOpenAi(body);
-    expect(heard.dropped).toBe(4);
+    expect(heard.dropped).toBe(3);
     expect(heard.words).toEqual([
       { w: "know", start: 10.2, end: 10.5, p: 0.803 },
       { w: "you", start: 10.5, end: 10.7, p: 0.803 },
+      { w: "minors", start: 21, end: 21.4, p: 0.273 },
       { w: "designers", start: 26, end: 26.6, p: 0.301 },
     ]);
     // without segments there is nothing to judge by but the word itself
-    expect(heardFromOpenAi({ words: body.words }).words.map((w) => w.w)).toEqual(["know", "you", "la", "la", "thanks", "designers"]);
+    expect(heardFromOpenAi({ words: body.words }).words.map((w) => w.w)).toEqual(["know", "you", "la", "la", "minors", "designers"]);
     expect(isRunaway("Woooooo")).toBe(false);
     expect(wordsFromXai({ words: [{ text: "o".repeat(40), start: 0, end: 1 }, { text: "ice", start: 1, end: 1.3, confidence: 0.9 }] })).toEqual([{ w: "ice", start: 1, end: 1.3, p: 0.9 }]);
   });

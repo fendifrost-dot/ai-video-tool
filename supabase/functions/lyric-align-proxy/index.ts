@@ -91,8 +91,8 @@ async function hearWithOpenAi(key: string, wav: Uint8Array, prompt: string | nul
   form.append("model", OPENAI_MODEL);
   form.append("response_format", "verbose_json");
   form.append("timestamp_granularities[]", "word");
-  // segments carry the model's own confidence (avg_logprob, compression_ratio, no_speech_prob): contract.ts drops the
-  // words of a segment it marks as a loop or as not speech
+  // segments carry the model's own measures (avg_logprob, compression_ratio): contract.ts drops the words of a
+  // segment that is a loop
   form.append("timestamp_granularities[]", "segment");
   form.append("temperature", "0");
   if (language) form.append("language", language.slice(0, 2));
