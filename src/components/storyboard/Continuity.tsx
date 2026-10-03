@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, ChevronDown, ImagePlus, Lightbulb, Loader2, MapPin, Package, Plus, Save, Shirt } from "lucide-react";
+import { Check, ChevronDown, ImagePlus, Lightbulb, Loader2, MapPin, Maximize2, Package, Plus, Save, Shirt, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { ENTITY_KINDS, KIND_LABEL, KIND_PLURAL, continuitySource, hasContinuity, type ContinuityEntity, type EntityKind } from "@/lib/continuity/entities";
 import type { StoryboardBox } from "@/lib/storyboard/boxes";
 import { imageForClip } from "@/lib/storyboard/media";
+import { Overlay } from "./Overlay";
 import { useStoryboard } from "./useStoryboardController";
 
 const KIND_ICON: Record<EntityKind, typeof MapPin> = { location: MapPin, prop: Package, lighting: Lightbulb };
@@ -199,6 +200,9 @@ function EntityCard({ entity }: { entity: ContinuityEntity }) {
   const pictures = sb.picturesOf(entity);
   const used = sb.entityUsage.get(entity.key) ?? [];
   const Icon = KIND_ICON[entity.kind];
+  // a picture is approved by looking at it: a thumbnail the height of a thumb says nothing about a place
+  const [lookingAt, setLookingAt] = useState<string | null>(null);
+  const looked = pictures.find((a) => a.id === lookingAt) ?? null;
 
   return (
     <div className={cn("space-y-2 rounded-xl border border-border p-3", entity.archived && "opacity-60")} data-testid="entity-card" data-entity-key={entity.key} data-entity-kind={entity.kind}>
@@ -234,24 +238,38 @@ function EntityCard({ entity }: { entity: ContinuityEntity }) {
                 const approved = a.id === entity.approvedAssetId;
                 const url = sb.urlFor(a);
                 return (
-                  <button
-                    key={a.id}
-                    type="button"
-                    disabled={!!busy || approved}
-                    onClick={() => void sb.saveEntity(entity, { approvedAssetId: a.id })}
-                    className={cn("relative h-20 overflow-hidden rounded-md border", approved ? "border-emerald-400" : "border-border hover:border-foreground/40")}
-                    title={approved ? "The approved picture" : "Approve this picture"}
-                    data-testid="entity-picture"
-                    data-approved={approved}
-                    data-asset-id={a.id}
-                  >
-                    {url ? <img src={url} alt="" className="h-full w-auto" /> : <span className="flex h-full w-14 items-center justify-center text-[9px] text-foreground/40">…</span>}
-                    {approved && (
-                      <span className="absolute left-1 top-1 inline-flex items-center rounded bg-emerald-500/90 p-0.5 text-black" aria-label="The approved picture">
-                        <Check className="h-3 w-3" />
-                      </span>
+                  <div key={a.id} className="relative">
+                    <button
+                      type="button"
+                      disabled={!!busy || approved}
+                      onClick={() => void sb.saveEntity(entity, { approvedAssetId: a.id })}
+                      className={cn("relative block h-28 overflow-hidden rounded-md border", approved ? "border-emerald-400" : "border-border hover:border-foreground/40")}
+                      title={approved ? "The approved picture" : "Approve this picture"}
+                      data-testid="entity-picture"
+                      data-approved={approved}
+                      data-asset-id={a.id}
+                    >
+                      {url ? <img src={url} alt="" className="h-full w-auto" /> : <span className="flex h-full w-14 items-center justify-center text-[9px] text-foreground/40">…</span>}
+                      {approved && (
+                        <span className="absolute left-1 top-1 inline-flex items-center rounded bg-emerald-500/90 p-0.5 text-black" aria-label="The approved picture">
+                          <Check className="h-3 w-3" />
+                        </span>
+                      )}
+                    </button>
+                    {url && (
+                      <button
+                        type="button"
+                        onClick={() => setLookingAt(a.id)}
+                        className="absolute right-1 top-1 inline-flex items-center rounded bg-black/65 p-1 text-white/85 hover:bg-black/85"
+                        aria-label="Look at this picture large"
+                        title="Look at it large"
+                        data-testid="entity-picture-look"
+                        data-asset-id={a.id}
+                      >
+                        <Maximize2 className="h-3 w-3" />
+                      </button>
                     )}
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -261,6 +279,36 @@ function EntityCard({ entity }: { entity: ContinuityEntity }) {
             </p>
           )}
         </div>
+      )}
+
+      {looked && sb.urlFor(looked) && (
+        <Overlay>
+          <div className="fixed inset-0 z-[80] flex flex-col items-center justify-center gap-3 bg-black/90 p-4" onClick={() => setLookingAt(null)} data-testid="entity-picture-large" data-asset-id={looked.id}>
+            <img src={sb.urlFor(looked)} alt={`${entity.name} — reference picture`} className="max-h-[82vh] max-w-full rounded-md object-contain" onClick={(e) => e.stopPropagation()} />
+            <div className="flex flex-wrap items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <span className="text-xs text-white/70">
+                {entity.name} · {looked.id === entity.approvedAssetId ? "the approved picture" : "not approved"}
+              </span>
+              {looked.id !== entity.approvedAssetId && (
+                <Button
+                  size="sm"
+                  className="h-8 text-[11px]"
+                  disabled={!!busy}
+                  onClick={() => {
+                    void sb.saveEntity(entity, { approvedAssetId: looked.id });
+                    setLookingAt(null);
+                  }}
+                  data-testid="entity-picture-approve"
+                >
+                  <Check className="mr-1 h-3.5 w-3.5" /> Approve this picture
+                </Button>
+              )}
+              <Button size="sm" variant="outline" className="h-8 text-[11px]" onClick={() => setLookingAt(null)} data-testid="entity-picture-close">
+                <X className="mr-1 h-3.5 w-3.5" /> Close
+              </Button>
+            </div>
+          </div>
+        </Overlay>
       )}
 
       <div className="flex flex-wrap items-center gap-2">

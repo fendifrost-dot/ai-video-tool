@@ -55,6 +55,9 @@ import {
 } from "@/lib/storyboard/boxes";
 import { resolveEvents, type EventClock, type ResolvedEvent, type ShotEvent } from "@/lib/storyboard/events";
 import { ALTERNATIVE_LABEL, beatLines, type TemporalPlan } from "@/lib/storyboard/temporal";
+import type { AskedChange } from "@/lib/storyboard/beatCheck";
+import { measureClip as measureClipFile, saveBeatCheck } from "@/lib/queries/beatCheck";
+import { settingsOf } from "@/lib/worldBatch";
 import { ensureStoryboardMaterialized, type MaterializeResult } from "@/lib/storyboard/build";
 import { aspectOfProject, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
 import { boxShot, clipEstimateUsd, clipTemporalPlan, entityShot, generateBoxClip, generateBoxImage, generateEntityReference, imageEstimateUsd, imageTemporalPlan } from "@/lib/storyboard/generate";
@@ -96,6 +99,8 @@ export type ConfirmRequest = {
   /** A second thing the director can choose instead (its own button, beside the first). */
   secondary?: { label: string; testId: string; onConfirm: () => void | Promise<void> };
 };
+
+export type ClipRequest = { mode: "timed_script" | "ordered" | "single"; asked: AskedChange[]; prompt: string; route: string | null; submittedAt: string };
 
 export type BoxEstimates = {
   image: number;
@@ -146,6 +151,16 @@ export type StoryboardController = {
   splitAtBeats: (box: StoryboardBox) => Promise<void>;
   /** What generating a clip (or restaging) does with this shot's timed events. */
   clipPlanOf: (box: StoryboardBox) => TemporalPlan;
+  /**
+   * How a generated clip was asked for: the script's lines as data (empty = it was asked for as one state), whether
+   * the times were promised ("timed_script") or only the order, and the exact words the provider was given. Null for
+   * footage the app did not generate.
+   */
+  requestOf: (asset: MediaAsset) => ClipRequest | null;
+  /** Measure a clip against its script (or re-measure it) and keep the result on the clip. */
+  measureClip: (asset: MediaAsset) => Promise<void>;
+  /** A clip being measured right now. */
+  measuringOf: (assetId: string) => boolean;
   /** The project's continuity entities: places, props and lighting states, each described once. */
   entities: ContinuityEntity[];
   /** The artist's wardrobe looks — the existing Look records a shot can point at. */
@@ -779,6 +794,47 @@ export function useStoryboardController(projectId: string): StoryboardController
     [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats],
   );
 
+  // --- what a clip was asked for, and whether it did it --------------------------------------------------------------
+  const requestOf = useCallback(
+    (asset: MediaAsset): ClipRequest | null => {
+      const job = jobs.jobs.find((j) => j.result_asset_id === asset.id);
+      const settings = job ? settingsOf(job) : null;
+      if (!job || !settings) return null;
+      const payload = (job.request_payload_json ?? {}) as { promptText?: unknown };
+      const t = settings.temporal ?? null;
+      return {
+        mode: t?.mode ?? "single",
+        asked: (t?.asked ?? []).map((b) => ({ id: b.id, offset: b.offset, kinds: b.kinds ?? [], says: b.says ?? "" })),
+        prompt: typeof payload.promptText === "string" ? payload.promptText : "",
+        route: settings.route ?? null,
+        submittedAt: job.created_at,
+      };
+    },
+    [jobs.jobs],
+  );
+  const [measuring, setMeasuring] = useState<Record<string, boolean>>({});
+  const measureClip = useCallback(
+    async (asset: MediaAsset) => {
+      const url = urlFor(asset);
+      const request = requestOf(asset);
+      if (!url || !request || !asset.isVideo) return;
+      setMeasuring((m) => ({ ...m, [asset.id]: true }));
+      try {
+        const check = await measureClipFile(asset, url, request.asked);
+        await saveBeatCheck(asset.id, check);
+        await qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(projectId) });
+      } catch (e) {
+        toast.error(`The clip could not be measured: ${message(e)}`);
+      } finally {
+        setMeasuring((m) => {
+          const { [asset.id]: _gone, ...rest } = m;
+          return rest;
+        });
+      }
+    },
+    [urlFor, requestOf, qc, projectId],
+  );
+
   // --- continuity entities ----------------------------------------------------------------------------------------
   const entityRun = useCallback(async (entityId: string, text: string, work: () => Promise<void>) => {
     setEntityBusy((b) => ({ ...b, [entityId]: text }));
@@ -903,6 +959,9 @@ export function useStoryboardController(projectId: string): StoryboardController
     saveEvents,
     splitAtBeats,
     clipPlanOf,
+    requestOf,
+    measureClip,
+    measuringOf: (id) => !!measuring[id],
     entities,
     looks,
     continuityOf,

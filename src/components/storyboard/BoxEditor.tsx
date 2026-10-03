@@ -227,13 +227,33 @@ function SplitMerge({ box }: { box: StoryboardBox }) {
   const [at, setAt] = useState(() => Math.round(((box.start + box.end) / 2) * 100) / 100);
   useEffect(() => setAt(Math.round(((box.start + box.end) / 2) * 100) / 100), [box.id, box.start, box.end]);
   const isLast = sb.boxes[sb.boxes.length - 1]?.id === box.id;
+  // a cut belongs on the beat: the song's own beats inside this shot are where the slider can be stepped to
+  const beats = (sb.clock.beats ?? []).filter((t) => t >= lo && t <= hi);
+  const current = Math.min(hi, Math.max(lo, at));
+  const onBeat = beats.some((t) => Math.abs(t - current) < 0.011);
+  const step = (dir: 1 | -1) => {
+    const next = dir > 0 ? beats.find((t) => t > current + 0.011) : [...beats].reverse().find((t) => t < current - 0.011);
+    if (next != null) setAt(Math.round(next * 100) / 100);
+  };
   return (
     <div className="space-y-2 border-t border-border/50 pt-3" data-testid="box-split-merge">
       <p className="text-[11px] text-foreground/55">Timing — this shot covers {formatTimecode(box.start)}–{formatTimecode(box.end)} of the song.</p>
       {canSplit && (
         <div className="flex flex-wrap items-center gap-2">
           <input type="range" min={lo} max={hi} step={0.01} value={Math.min(hi, Math.max(lo, at))} onChange={(e) => setAt(Number(e.target.value))} className="h-1 min-w-[8rem] flex-1 accent-primary" aria-label="Split point" data-testid="box-split-at" />
-          <span className="font-mono text-[11px] tabular-nums text-foreground/70">{at.toFixed(2)} s</span>
+          <span className="font-mono text-[11px] tabular-nums text-foreground/70" data-testid="box-split-time" data-on-beat={onBeat ? "true" : "false"}>
+            {at.toFixed(2)} s{onBeat ? " · on the beat" : ""}
+          </span>
+          {beats.length > 0 && (
+            <span className="inline-flex items-center gap-0.5">
+              <Button size="sm" variant="ghost" className="h-8 px-1.5 text-[11px]" onClick={() => step(-1)} aria-label="Move the split to the beat before" data-testid="box-split-prev-beat">
+                ‹ beat
+              </Button>
+              <Button size="sm" variant="ghost" className="h-8 px-1.5 text-[11px]" onClick={() => step(1)} aria-label="Move the split to the next beat" data-testid="box-split-next-beat">
+                beat ›
+              </Button>
+            </span>
+          )}
           <Button size="sm" variant="outline" className="h-8 text-[11px]" disabled={!!sb.busyOf(box.id)} onClick={() => void sb.split(box, at)} data-testid="box-split">
             <Scissors className="mr-1.5 h-3.5 w-3.5" /> Split shot here
           </Button>

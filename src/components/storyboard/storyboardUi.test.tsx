@@ -81,6 +81,9 @@ function controller(over: Partial<StoryboardController> = {}): StoryboardControl
     saveEvents: fn(),
     splitAtBeats: fn(),
     clipPlanOf: (b) => temporalPlan({ route: "still_kling", resolved: resolveEvents(b.spec.events, { start: b.start, end: b.end }, CLOCK), shotSeconds: b.end - b.start }),
+    requestOf: () => null,
+    measureClip: fn(),
+    measuringOf: () => false,
     entities: [],
     looks: [],
     continuityOf: () => NO_CONTINUITY,
@@ -336,6 +339,27 @@ describe("the full-screen shot view", () => {
     expect(sb.saveEdit).toHaveBeenCalledWith(sb.boxes[0], expect.objectContaining({ direction: "a new scene" }));
     fireEvent.click(screen.getByTestId("box-split"));
     expect(sb.split).toHaveBeenCalledWith(sb.boxes[0], 2);
+  });
+
+  it("the split point steps to the song's beats, so a cut can be put on one", () => {
+    const sb = controller({ focusId: "r1", clock: { beats: [0.2, 0.98, 1.47, 1.96, 2.45, 2.94, 3.43, 3.9] } });
+    render(
+      <StoryboardProvider value={sb}>
+        <FocusView />
+      </StoryboardProvider>,
+    );
+    // the slider opens in the middle of the shot (2.00 s): not on a beat
+    expect(screen.getByTestId("box-split-time").getAttribute("data-on-beat")).toBe("false");
+    fireEvent.click(screen.getByTestId("box-split-next-beat"));
+    expect(screen.getByTestId("box-split-time").textContent).toBe("2.45 s · on the beat");
+    fireEvent.click(screen.getByTestId("box-split-prev-beat"));
+    fireEvent.click(screen.getByTestId("box-split-prev-beat"));
+    expect(screen.getByTestId("box-split-time").textContent).toBe("1.47 s · on the beat");
+    fireEvent.click(screen.getByTestId("box-split"));
+    expect(sb.split).toHaveBeenCalledWith(sb.boxes[0], 1.47);
+    // beats too near the ends of the shot to leave a shot on each side are not offered
+    for (let i = 0; i < 6; i++) fireEvent.click(screen.getByTestId("box-split-prev-beat"));
+    expect(screen.getByTestId("box-split-time").textContent).toBe("0.98 s · on the beat");
   });
 
   it("earlier versions are listed and can be brought back", () => {

@@ -132,6 +132,19 @@ describe("the project's continuity entities", () => {
     expect(pictures.map((p) => p.getAttribute("data-approved"))).toEqual(["true", "false"]);
     fireEvent.click(pictures[1]);
     expect(sb.saveEntity).toHaveBeenCalledWith(RUNWAY, { approvedAssetId: "pic2" });
+    // a picture can be looked at large before it is approved — and approved from there
+    expect(screen.queryByTestId("entity-picture-large")).toBeNull();
+    fireEvent.click(runway.getAllByTestId("entity-picture-look")[1]);
+    expect(screen.getByTestId("entity-picture-large").getAttribute("data-asset-id")).toBe("pic2");
+    (sb.saveEntity as ReturnType<typeof vi.fn>).mockClear();
+    fireEvent.click(screen.getByTestId("entity-picture-approve"));
+    expect(sb.saveEntity).toHaveBeenCalledWith(RUNWAY, { approvedAssetId: "pic2" });
+    expect(screen.queryByTestId("entity-picture-large")).toBeNull();
+    // the approved one is looked at without an approve button
+    fireEvent.click(runway.getAllByTestId("entity-picture-look")[0]);
+    expect(screen.queryByTestId("entity-picture-approve")).toBeNull();
+    fireEvent.click(screen.getByTestId("entity-picture-close"));
+    expect(screen.queryByTestId("entity-picture-large")).toBeNull();
     // a place with no picture says what that means; a lighting state has no pictures at all
     expect(within(cards[1]).getByTestId("entity-no-picture").textContent).toContain("held by the description alone");
     expect(within(cards[3]).queryByTestId("entity-generate-picture")).toBeNull();

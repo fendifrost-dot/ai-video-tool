@@ -249,7 +249,8 @@ export function BeatsEditor({ box }: { box: StoryboardBox }) {
               <select
                 className={cn(inputClass, "flex-1")}
                 value={r.lightingState ?? ""}
-                onChange={(e) => patch(r._key, { lightingState: e.target.value || null })}
+                // a state is a light the footage shows: an exposure effect cannot be on the same beat
+                onChange={(e) => patch(r._key, { lightingState: e.target.value || null, ...(e.target.value && r.effect && r.effect.type !== "flash" ? { effect: null } : {}) })}
                 aria-label="The lighting state the light switches to at this beat"
                 data-testid="beat-lighting-state"
               >
@@ -270,7 +271,13 @@ export function BeatsEditor({ box }: { box: StoryboardBox }) {
             <select
               className={cn(inputClass, "flex-1")}
               value={r.effect?.type ?? ""}
-              onChange={(e) => patch(r._key, { effect: e.target.value ? { type: e.target.value as (typeof SHOT_EVENT_EFFECTS)[number], seconds: null, level: null } : null })}
+              onChange={(e) =>
+                patch(r._key, {
+                  effect: e.target.value ? { type: e.target.value as (typeof SHOT_EVENT_EFFECTS)[number], seconds: null, level: null } : null,
+                  // an exposure effect is the edit's change of light; a lighting state is the footage's — one or the other
+                  ...(e.target.value && e.target.value !== "flash" && r.lightingState ? { lightingState: null } : {}),
+                })
+              }
               aria-label="An effect the edit makes at this beat"
               data-testid="beat-effect"
             >
@@ -282,9 +289,14 @@ export function BeatsEditor({ box }: { box: StoryboardBox }) {
               ))}
             </select>
           </label>
-          {r.effect && (r.lighting.trim() || r.lightingState) && (
+          {r.effect && r.effect.type !== "flash" && r.lighting.trim() && !r.lightingState && (
             <p className="text-[10px] leading-snug text-foreground/45" data-testid="beat-effect-note">
               The edit makes this change of light. Its words say what the effect is; they are not also asked of a generator.
+            </p>
+          )}
+          {r.lightingState && (
+            <p className="text-[10px] leading-snug text-foreground/45" data-testid="beat-state-note">
+              A lighting state is a light the footage has to show: the generator is asked for it at this moment. An exposure effect cannot be on the same beat — put one on a beat of its own.
             </p>
           )}
         </div>
