@@ -451,6 +451,69 @@ export type Database = {
         }
         Relationships: []
       }
+      continuity_entities: {
+        Row: {
+          approved_asset_id: string | null
+          archived: boolean
+          constraints: string
+          created_at: string
+          description: string
+          id: string
+          key: string
+          kind: string
+          name: string
+          project_id: string
+          reference_asset_ids: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          approved_asset_id?: string | null
+          archived?: boolean
+          constraints?: string
+          created_at?: string
+          description?: string
+          id?: string
+          key: string
+          kind: string
+          name: string
+          project_id: string
+          reference_asset_ids?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          approved_asset_id?: string | null
+          archived?: boolean
+          constraints?: string
+          created_at?: string
+          description?: string
+          id?: string
+          key?: string
+          kind?: string
+          name?: string
+          project_id?: string
+          reference_asset_ids?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "continuity_entities_approved_asset_id_fkey"
+            columns: ["approved_asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "continuity_entities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       export_packages: {
         Row: {
           created_at: string
