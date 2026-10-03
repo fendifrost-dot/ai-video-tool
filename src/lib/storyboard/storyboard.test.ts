@@ -7,6 +7,7 @@ import {
   boxFromRow,
   boxWrite,
   boxesFromRows,
+  storyboardShotRows,
   directorSet,
   editedOverride,
   legacyKeyOf,
@@ -58,6 +59,16 @@ const box = (id: string, key: string, start: number, end: number, extra: Partial
 describe("box records", () => {
   it("a row without a key is not a storyboard box", () => {
     expect(boxFromRow({ ...rowOf("r1", "c001", 0, 4), spec_key: null })).toBeNull();
+  });
+
+  it("the storyboard is the shot list: a leftover row of the old shot list is not counted as a shot of the video", () => {
+    const rows = [rowOf("r1", "c001", 0, 4), rowOf("r2", "c002", 4, 8), { id: "old", spec_key: null }];
+    // one count everywhere: what the storyboard shows, what Export counts and what the package carries
+    expect(storyboardShotRows(rows).map((r) => r.id)).toEqual(["r1", "r2"]);
+    expect(boxesFromRows(rows.filter((r): r is BoxRow => "project_id" in r)).length).toBe(2);
+    // a project that has no storyboard yet keeps the rows it has
+    expect(storyboardShotRows([{ id: "a", spec_key: null }, { id: "b" }]).map((r) => r.id)).toEqual(["a", "b"]);
+    expect(storyboardShotRows([])).toEqual([]);
   });
 
   it("identity is the record and its key, never the position: re-ordering keeps both", () => {

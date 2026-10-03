@@ -26,7 +26,7 @@ import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 import type { StoryboardBox } from "./boxes";
 import { resolveEvents, type EventClock } from "./events";
 import { pointsAtEntities, DEFAULT_BOX_LOOK, STORYBOARD_RUN } from "./generate";
-import { assertPlanCovers, temporalPlan, type TemporalPlan } from "./temporal";
+import { assertPlanCovers, scriptOf, temporalPlan, type TemporalPlan } from "./temporal";
 import type { BoxMediaItem, MediaAsset, TakeSync } from "./media";
 import { resolveLookPreset } from "@/lib/shotCompiler";
 
@@ -158,8 +158,12 @@ export function restageShot(input: {
   const light = input.continuity?.lighting && canonicalWords(input.continuity.lighting) ? `The light: ${canonicalWords(input.continuity.lighting)}` : "";
   if (plan.mode === "refused") throw new Error(`${plan.reason} Nothing was generated.`);
   assertPlanCovers(input.box.spec, plan);
-  // the cut opens on the shot's first frame, so the script's seconds are the clip's own
-  const script = plan.mode === "timed_script" ? plan.script : "";
+  // The script's seconds are the CLIP's. A cut made to the frame opens on the shot's first frame (within a frame);
+  // a cut that had to open on an earlier sync frame carries that much footage first, and every time moves by it.
+  const lead = Math.max(0, input.source.takeIn - input.cut.start);
+  const shift = lead > FRAME_ALLOWANCE ? Math.round(lead * 1000) / 1000 : 0;
+  const asked = plan.mode === "timed_script" ? plan.asked.map((b) => ({ ...b, offset: Math.round((b.offset + shift) * 1000) / 1000 })) : [];
+  const script = plan.mode === "timed_script" ? scriptOf(asked) : "";
   const songStart = Math.round(performanceToSong(input.cut.start, input.source.sync) * 1000) / 1000;
   const shot = BatchShotSchema.parse({
     id: input.box.key,
@@ -173,7 +177,7 @@ export function restageShot(input: {
     source_asset_id: input.source.take.id,
     masterStart: songStart,
     angle: [restageAngle(input.box), light, script].filter(Boolean).join(" "),
-    ...(plan.mode === "timed_script" ? { temporal: { mode: "timed_script" as const, beats: plan.beats, measured: plan.measured } } : {}),
+    ...(plan.mode === "timed_script" ? { temporal: { mode: "timed_script" as const, beats: plan.beats, measured: plan.measured, asked } } : {}),
     keep: restageKeep(input.source.take),
     resolution: RESTAGE_RESOLUTION,
     still_path: input.stillPath,

@@ -18,6 +18,7 @@ import {
   beatsInShot,
   drawnFacets,
   effectKeys,
+  effectOf,
   eventNotes,
   eventStates,
   isDirected,
@@ -247,6 +248,30 @@ describe("a change of light is made by the footage or by the edit — never aske
     expect(temporalPlan({ route: "still_kling", resolved: resolveEvents([EDIT_EVENTS[0]], { start: 60, end: 64 }, CLOCK), shotSeconds: 4 })).toEqual({ mode: "single", effects: 1 });
   });
 
+  it("a switch to a lighting state is the footage's: an exposure effect is never kept on the same beat", () => {
+    const states = new Map([["DISCO", "points of white light drift across the room"]]);
+    // as a writer returned it: the room goes dark (blackout) AND the light becomes the project's disco state
+    const written = ev({ id: "e1", at: 1.2, lighting: "room goes dark", lightingState: "DISCO", effect: { type: "blackout", seconds: null, level: null } });
+    // saved, the beat keeps the state and loses the effect — no exposure change makes points of light
+    expect(sanitizeEvents([written], 4)[0]).toMatchObject({ lightingState: "DISCO", effect: null, lighting: "room goes dark" });
+    // a record stored before the rule is read the same way
+    const [r] = resolveEvents([written], { start: 0, end: 4 }, { lightingStates: states });
+    expect(r.effect).toBeNull();
+    expect(drawnFacets(r)).toEqual(["lighting"]);
+    expect(pictureAt([r], 3)).toEqual({ brightness: 1, contrast: 1, flash: 0 });
+    expect(effectKeys([r])).toEqual([]);
+    // so the generator that takes a script is given the change, and the one that cannot refuses
+    const plan = temporalPlan({ route: "seedance_ref", resolved: [r], shotSeconds: 4 });
+    expect(plan.mode === "timed_script" && plan.script).toContain("from 1.2 s: light: room goes dark");
+    expect(temporalPlan({ route: "still_kling", resolved: [r], shotSeconds: 4 }).mode).toBe("refused");
+    // a state with no words of the beat's own reads as the state's description
+    const [bare] = resolveEvents([ev({ id: "e1", at: 1.2, lightingState: "DISCO", effect: { type: "dim", seconds: null, level: null } })], { start: 0, end: 4 }, { lightingStates: states });
+    expect(bare).toMatchObject({ lighting: "points of white light drift across the room", lightingFromState: true, effect: null });
+    // a flash is not a light that holds: it may sit on the switch
+    expect(effectOf({ effect: { type: "flash", seconds: null, level: null }, lightingState: "DISCO" })).toMatchObject({ type: "flash" });
+    expect(sanitizeEvents([ev({ id: "e1", at: 1, lightingState: "DISCO", effect: { type: "flash", seconds: null, level: null } })], 4)[0].effect).toMatchObject({ type: "flash" });
+  });
+
   it("says so when the footage is asked for a light change the edit's effect would cover", () => {
     expect(eventNotes(resolved)).toEqual([]);
     const both = resolveEvents([EDIT_EVENTS[0], ev({ id: "e2", at: 2.4, lighting: "the stones he wears are the only light" })], { start: 60, end: 64 }, CLOCK);
@@ -456,7 +481,12 @@ describe("generating a shot that changes is never a flattened prompt", () => {
     const b = box();
     const shot = clipShot(b, LINES, { temporal: clipTemporalPlan(b, CLOCK, { allowOrdered: true }) });
     expect(shot.motion).toContain("First: light: the house lights die.");
-    expect(shot.temporal).toEqual({ mode: "ordered", beats: 2, measured: false });
+    // the beats go along as data too — what the director wanted and when — though no time was promised
+    expect(shot.temporal).toMatchObject({ mode: "ordered", beats: 2, measured: false });
+    expect(shot.temporal?.asked?.map((a) => [a.id, a.offset, a.kinds])).toEqual([
+      ["e1", 1.31, ["lighting"]],
+      ["e2", 2.4, ["lighting", "camera"]],
+    ]);
   });
 
   it("a shot with no events builds exactly the request it built before", () => {
@@ -472,7 +502,20 @@ describe("generating a shot that changes is never a flattened prompt", () => {
     const base = { box: b, lyricLines: LINES, source: { take, sync, takeIn: 60, takeOut: 64 }, sourcePath: "a.mp4", stillPath: "b.png", cut: { start: 60, seconds: 4 } };
     const req = restageShot({ ...base, temporal: restageTemporalPlan(b, CLOCK) });
     expect(req.shot.angle).toContain("from 1.3 s: light: the house lights die");
-    expect(req.shot.temporal).toEqual({ mode: "timed_script", beats: 2, measured: false });
+    expect(req.shot.temporal).toMatchObject({ mode: "timed_script", beats: 2, measured: false });
+    // the job carries the script as data — the moments and the words — so the footage can be measured against it
+    expect(req.shot.temporal?.asked).toEqual([
+      { id: "e1", offset: 1.31, kinds: ["lighting"], says: "light: the house lights die" },
+      { id: "e2", offset: 2.4, kinds: ["lighting", "camera"], says: "light: the stones he wears are the only light; camera: a slow push toward him begins" },
+    ]);
+    // a cut that could only open on an earlier sync frame carries that footage first: every time the model is
+    // given, and every time the footage is measured against, moves by it
+    const early = restageShot({ ...base, cut: { start: 59.2, seconds: 5 }, temporal: restageTemporalPlan(b, CLOCK) });
+    expect(early.shot.angle).toContain("from 2.1 s: light: the house lights die");
+    expect(early.shot.temporal?.asked?.map((a) => a.offset)).toEqual([2.11, 3.2]);
+    // a cut made to the frame opens up to a frame early: that is not a shift
+    const exact = restageShot({ ...base, cut: { start: 59.97, seconds: 4 }, temporal: restageTemporalPlan(b, CLOCK) });
+    expect(exact.shot.temporal?.asked?.map((a) => a.offset)).toEqual([1.31, 2.4]);
     // and cannot be handed a plan that ignores the beats
     expect(() => restageShot({ ...base, temporal: { mode: "single", effects: 0 } })).toThrow(/said nothing about it/);
   });

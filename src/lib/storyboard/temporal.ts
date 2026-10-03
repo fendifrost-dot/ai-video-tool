@@ -18,7 +18,7 @@
  *
  * Pure module.
  */
-import { EFFECT_LABEL, EVENT_FACETS, FACET_LABEL, drawnFacets, eventStates, isDirected, offsetLabel, type ResolvedEvent, type ShotState } from "./events";
+import { EFFECT_LABEL, EVENT_FACETS, FACET_LABEL, drawnFacets, eventStates, isDirected, offsetLabel, type EventFacet, type ResolvedEvent, type ShotState } from "./events";
 
 export type TemporalSupport = "timed_script" | "none";
 
@@ -55,12 +55,19 @@ export type TemporalPlan =
   | { mode: "single"; effects: number }
   /** The image of a shot that changes: the opening state, said plainly. */
   | { mode: "opening_state"; beats: number; note: string }
-  /** The route takes a timed script and is given one. */
-  | { mode: "timed_script"; script: string; beats: number; measured: boolean; note: string }
+  /** The route takes a timed script and is given one. `asked` is the script as data: what a check of the footage is held against. */
+  | { mode: "timed_script"; script: string; beats: number; measured: boolean; note: string; asked: AskedBeat[] }
   /** The route cannot: nothing is generated. `alternatives` are the mechanisms the storyboard offers instead. */
   | { mode: "refused"; beats: number; reason: string; alternatives: TemporalAlternative[] }
   /** Asked for by name: the beats in order, with no claim about when. */
-  | { mode: "ordered"; script: string; beats: number; note: string };
+  | { mode: "ordered"; script: string; beats: number; note: string; asked: AskedBeat[] };
+
+/**
+ * One line of a script, as data: the moment a state begins (seconds from the shot's first frame), which kinds of
+ * thing change there, and the words the model is given for what holds from then. The request and the check of what
+ * came back are both made from this list, so the footage is measured against exactly what was asked.
+ */
+export type AskedBeat = { id: string; offset: number; kinds: EventFacet[]; says: string };
 
 export type TemporalAlternative = "split" | "effect" | "ordered";
 
@@ -81,16 +88,35 @@ function statePhrases(s: ShotState): string {
     .join("; ");
 }
 
+/** The states of a shot that say something, as the lines a script is made of. */
+export function askedBeats(resolved: readonly ResolvedEvent[], shotSeconds: number): AskedBeat[] {
+  const states = eventStates(resolved, shotSeconds);
+  const out: AskedBeat[] = [];
+  states.forEach((s, i) => {
+    const says = statePhrases(s);
+    if (!says) return;
+    const prev = i > 0 ? states[i - 1] : null;
+    out.push({ id: s.eventId ?? "open", offset: Math.round(s.from * 1000) / 1000, kinds: EVENT_FACETS.filter((f) => s[f] && s[f] !== (prev?.[f] ?? "")), says });
+  });
+  return out;
+}
+
+/**
+ * A script WITH times from its lines. `lead` = seconds of footage the clip has before the shot's first frame (a cut
+ * that had to open on an earlier sync frame): the times given to the model are the CLIP's, so they are moved by it.
+ */
+export function scriptOf(asked: readonly AskedBeat[], lead = 0): string {
+  if (asked.length === 0) return "";
+  return `Timed changes inside this shot, in seconds from its first frame. Each holds until the next; nothing else changes: ${asked.map((b) => `from ${(b.offset + lead).toFixed(1)} s: ${b.says}`).join(". ")}.`;
+}
+
 /**
  * The beats as a script WITH times, in seconds from the first frame — the form a model that reads times is given.
  * Each line is what holds FROM that moment (the newest phrase of every kind), so a line is never ambiguous about
  * whether an earlier change still stands.
  */
 export function timedScript(resolved: readonly ResolvedEvent[], shotSeconds: number): string {
-  const states = eventStates(resolved, shotSeconds).filter((s) => s.eventId !== null || statePhrases(s));
-  const lines = states.filter((s) => statePhrases(s)).map((s) => `from ${s.from.toFixed(1)} s: ${statePhrases(s)}`);
-  if (lines.length === 0) return "";
-  return `Timed changes inside this shot, in seconds from its first frame. Each holds until the next; nothing else changes: ${lines.join(". ")}.`;
+  return scriptOf(askedBeats(resolved, shotSeconds));
 }
 
 /** The beats in order, WITHOUT times — only ever sent when the director asked for "in order, not on time". */
@@ -122,10 +148,11 @@ export function temporalPlan(input: { route: TemporalRoute; resolved: readonly R
     };
   }
   if (cap.support === "timed_script") {
-    return { mode: "timed_script", script: timedScript(input.resolved, input.shotSeconds), beats: directed.length, measured: cap.measured, note: cap.note };
+    const asked = askedBeats(input.resolved, input.shotSeconds);
+    return { mode: "timed_script", script: scriptOf(asked), beats: directed.length, measured: cap.measured, note: cap.note, asked };
   }
   if (input.allowOrdered) {
-    return { mode: "ordered", script: orderedScript(input.resolved, input.shotSeconds), beats: directed.length, note: `${cap.note}. It is told the beats in order; when each happens is its own choice.` };
+    return { mode: "ordered", script: orderedScript(input.resolved, input.shotSeconds), beats: directed.length, note: `${cap.note}. It is told the beats in order; when each happens is its own choice.`, asked: askedBeats(input.resolved, input.shotSeconds) };
   }
   // an effect can stand in for a change of light only; a split and "in order" are always there
   const lightOnly = directed.every((e) => drawnFacets(e).every((f) => f === "lighting"));

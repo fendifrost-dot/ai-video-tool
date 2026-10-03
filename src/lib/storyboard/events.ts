@@ -65,12 +65,27 @@ const phrase = (v: unknown): string => (typeof v === "string" ? v.replace(/\s+/g
 type Drawable = Pick<ShotEvent, EventFacet> & { lightingState?: string | null; effect?: ShotEvent["effect"] | null };
 
 /**
+ * A beat's light is made by ONE of the two: the edit (an exposure effect on whatever the footage shows) or the
+ * footage (a light the generator draws). A switch to one of the project's LIGHTING STATES is always the footage's —
+ * a state is a described light (a beam, points of light, a colour), and no change of exposure makes one. So a beat
+ * that switches to a state carries no exposure effect: with both, the state was asked of nobody and the edit
+ * darkened a picture that never changed (the first board the writer wrote with a lighting state on file did exactly
+ * that on every hook). A flash is not a change of light that holds — it may sit on the same beat.
+ */
+export function effectOf<T extends { effect?: ShotEvent["effect"] | null; lightingState?: string | null }>(e: T): ShotEvent["effect"] | null {
+  if (!e.effect) return null;
+  return e.lightingState && e.effect.type !== "flash" ? null : e.effect;
+}
+
+/**
  * The kinds of change an event asks the FOOTAGE to show. A change of light that carries an effect is made by the
  * edit — its words name what the effect is, and it is not also asked of a generator (the picture would be darkened
- * twice). Camera, action and picture changes are always the footage's.
+ * twice). A switch to a lighting state is always the footage's. Camera, action and picture changes are always the
+ * footage's.
  */
 export function drawnFacets(e: Drawable): EventFacet[] {
-  return EVENT_FACETS.filter((f) => (f === "lighting" ? !e.effect && (e.lighting.trim().length > 0 || !!e.lightingState) : e[f].trim().length > 0));
+  const lightDrawn = !!e.lightingState || (!e.effect && e.lighting.trim().length > 0);
+  return EVENT_FACETS.filter((f) => (f === "lighting" ? lightDrawn : e[f].trim().length > 0));
 }
 
 /**
@@ -119,6 +134,7 @@ export function sanitizeEvents(value: unknown, shotSeconds?: number | null): Sho
         : null;
     let at = typeof r.at === "number" && Number.isFinite(r.at) ? Math.max(0, r.at) : 0;
     if (shotSeconds != null && shotSeconds > 0) at = Math.min(at, Math.max(0, shotSeconds - 0.05));
+    const lightingState = typeof r.lightingState === "string" && r.lightingState.trim() ? r.lightingState.trim() : null;
     const e: ShotEvent = {
       id: typeof r.id === "string" && r.id.trim() ? r.id.trim() : "",
       at: round3(at),
@@ -128,8 +144,9 @@ export function sanitizeEvents(value: unknown, shotSeconds?: number | null): Sho
       camera: phrase(r.camera),
       lighting: phrase(r.lighting),
       action: phrase(r.action),
-      lightingState: typeof r.lightingState === "string" && r.lightingState.trim() ? r.lightingState.trim() : null,
-      effect,
+      lightingState,
+      // a switch to a lighting state is the footage's: an exposure effect is not kept on the same beat (effectOf)
+      effect: effectOf({ effect, lightingState }),
     };
     if (!hasContent(e)) continue;
     out.push(e);
@@ -242,6 +259,8 @@ export function resolveEvents(events: readonly ShotEvent[], window: { start: num
     const state = e.lightingState && !e.lighting.trim() ? clock.lightingStates?.get(e.lightingState) : undefined;
     return {
       ...e,
+      // a record written before the rule existed is read by it: the state is the footage's, the effect is not applied
+      effect: effectOf(e),
       ...(state ? { lighting: state, lightingFromState: true } : {}),
       offset: clamped,
       songTime: round3(window.start + clamped),

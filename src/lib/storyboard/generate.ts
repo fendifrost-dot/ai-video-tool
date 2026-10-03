@@ -151,11 +151,11 @@ export function clipShot(
   assertPlanCovers(box.spec, plan);
   if (plan.mode === "ordered") {
     if (!plan.script) throw new Error("This shot's beats say nothing a clip could show.");
-    return BatchShotSchema.parse({ ...shot, motion: [shot.motion, plan.script].filter(Boolean).join(" "), temporal: { mode: "ordered", beats: plan.beats, measured: false } });
+    return BatchShotSchema.parse({ ...shot, motion: [shot.motion, plan.script].filter(Boolean).join(" "), temporal: { mode: "ordered", beats: plan.beats, measured: false, asked: plan.asked } });
   }
   if (plan.mode === "timed_script") {
     // no image-to-motion route takes a timed script today; if one is declared, this is where its form goes
-    return BatchShotSchema.parse({ ...shot, motion: [shot.motion, plan.script].filter(Boolean).join(" "), temporal: { mode: "timed_script", beats: plan.beats, measured: plan.measured } });
+    return BatchShotSchema.parse({ ...shot, motion: [shot.motion, plan.script].filter(Boolean).join(" "), temporal: { mode: "timed_script", beats: plan.beats, measured: plan.measured, asked: plan.asked } });
   }
   return shot;
 }

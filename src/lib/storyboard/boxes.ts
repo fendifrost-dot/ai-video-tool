@@ -231,6 +231,17 @@ export function orderBoxes<T extends { start: number; key: string }>(boxes: read
   return [...boxes].sort((a, b) => (a.start !== b.start ? a.start - b.start : a.key.localeCompare(b.key)));
 }
 
+/**
+ * The rows of `shots` that are the project's shots. The storyboard IS the shot list: once a project has storyboard
+ * records, a row without a key is a leftover of the shot list that came before it (made by hand, never written by a
+ * treatment) and is not a shot of the video — it is not counted and not exported. A project that has no storyboard
+ * yet keeps the rows it has.
+ */
+export function storyboardShotRows<T extends { spec_key?: string | null }>(rows: readonly T[]): T[] {
+  const keyed = rows.filter((r) => !!r.spec_key);
+  return keyed.length > 0 ? keyed : [...rows];
+}
+
 export function boxesFromRows(rows: readonly BoxRow[]): StoryboardBox[] {
   return orderBoxes(rows.map(boxFromRow).filter((b): b is StoryboardBox => !!b));
 }
