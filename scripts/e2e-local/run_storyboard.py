@@ -2,7 +2,9 @@
 Drives the REAL app in Chromium against the stand-in backend, at desktop and phone size:
 the board, the full-screen shot (the take's range playing in place), assigning footage, Review played against the
 song (sampled every half second: which shot is on the stage, which file, and how far its playhead is from where the
-song clock says it should be), swiping between shots on a phone, and the fill-the-screen mode a phone gets.
+song clock says it should be), Review's "Check this cut", the project frame (9:16, then 16:9), timing lyrics to the
+song in Setup (a project that has timed lines, and one that has none), swiping between shots on a phone, the
+fill-the-screen mode a phone gets, and the Voice Director collapsed to a button on a phone.
 
   bash scripts/e2e-local/make_media.sh && npx tsx scripts/e2e-local/mkfixtures.ts && bash scripts/e2e-local/start.sh
   python3 scripts/e2e-local/run_storyboard.py        # writes result.json + screenshots beside this file
@@ -12,7 +14,7 @@ import asyncio, json, os, sys
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 CHROME = os.environ.get("CHROME_PATH")  # leave unset to use Playwright's own browser
 from playwright.async_api import async_playwright
-BASE = "http://127.0.0.1:5200"; P = "11111111-1111-4111-8111-111111111111"
+BASE = "http://127.0.0.1:5200"; P = "11111111-1111-4111-8111-111111111111"; P2 = "44444444-4444-4444-8444-444444444444"
 SESSION = open("session.json").read()
 INIT = "try { localStorage.setItem('sb-localhost-auth-token', %s); } catch (e) {}" % json.dumps(SESSION)
 OFFSET = 0.8538
@@ -74,6 +76,44 @@ async def desktop(b, out):
     await pg.screenshot(path="shot_review_desktop.png")
     await pg.click("[data-testid=sequence-play]"); await pg.wait_for_timeout(300)
     out["paused"] = await pg.evaluate(STAGE)
+    # ---- Check this cut: the files opened and decoded, the cut run against the song clock, the player read back
+    await pg.click("[data-testid=review-verify]"); await pg.wait_for_selector("[data-testid=review-verify-result]", timeout=180000)
+    out["check_cut"] = await pg.evaluate("""() => { const r=document.querySelector('[data-testid=review-verify-result]');
+      return {ok: r.dataset.ok, window: r.dataset.window, summary: document.querySelector('[data-testid=review-verify-summary]').innerText,
+        checks: [...document.querySelectorAll('[data-testid=review-verify-check]')].map(e => [e.dataset.id, e.dataset.ok, e.innerText.replace(/\\n/g,' ').slice(0,200)]),
+        files: [...document.querySelectorAll('[data-testid=review-verify-file]')].map(e => [e.dataset.use, e.dataset.ok, e.textContent.slice(0,160)]),
+        cuts: document.querySelectorAll('[data-testid=review-verify-cut]').length,
+        notChecked: document.querySelector('[data-testid=review-verify-not-checked]').innerText}; }""")
+    # ---- the project frame: 9:16 by default; changed in Setup, Review and the full-screen shot follow
+    FRAME = "() => { const st=document.querySelector('[data-testid=sequence-stage]'); const r=st.getBoundingClientRect(); return {aspect: st.dataset.aspect, ratio: +(r.width/r.height).toFixed(3)}; }"
+    out["frame_default"] = await pg.evaluate(FRAME)
+    await pg.goto(f"{BASE}/projects/{P}/setup"); await pg.wait_for_selector("[data-testid=setup-aspect]", timeout=60000); await pg.wait_for_timeout(1500)
+    out["setup_frame_default"] = await pg.input_value("[data-testid=setup-aspect]")
+    await pg.select_option("[data-testid=setup-aspect]", "16:9"); await pg.wait_for_timeout(1500)
+    await pg.goto(f"{BASE}/projects/{P}/review"); await pg.wait_for_selector("[data-testid=sequence-audio]", state="attached", timeout=60000); await pg.wait_for_timeout(2000)
+    out["frame_16_9"] = await pg.evaluate(FRAME)
+    await pg.goto(f"{BASE}/projects/{P}/storyboard"); await pg.wait_for_selector("[data-testid=box-card]", timeout=60000); await pg.wait_for_timeout(1500)
+    await pg.click("[data-box-key=c005] [data-testid=box-open]"); await pg.wait_for_selector("[data-testid=focus-view]"); await pg.wait_for_timeout(1200)
+    out["focus_frame_16_9"] = await pg.evaluate("() => { const st=document.querySelector('[data-testid=focus-stage]'); const r=st.getBoundingClientRect(); return {aspect: st.dataset.aspect, ratio: +(r.width/r.height).toFixed(3)}; }")
+    await pg.click("[data-testid=focus-close]")
+    await pg.goto(f"{BASE}/projects/{P}/setup"); await pg.wait_for_selector("[data-testid=setup-aspect]", timeout=60000); await pg.wait_for_timeout(1500)
+    await pg.select_option("[data-testid=setup-aspect]", "9:16"); await pg.wait_for_timeout(1500)
+    out["setup_frame_restored"] = await pg.input_value("[data-testid=setup-aspect]")
+    # ---- lyric timing on a project that already has timed lines: time again, compare, discard — nothing saved
+    out["lyrics_timed_before"] = await pg.inner_text("[data-testid=setup-lyrics-timed]")
+    await pg.click("[data-testid=setup-lyrics-align]"); await pg.wait_for_selector("[data-testid=setup-lyrics-preview]", timeout=180000)
+    out["lyrics_retime"] = {"summary": await pg.inner_text("[data-testid=setup-lyrics-summary]"), "compare": await pg.inner_text("[data-testid=setup-lyrics-compare]"),
+        "lines": await pg.evaluate("() => [...document.querySelectorAll('[data-testid=setup-lyrics-line]')].slice(0,4).map(e => e.innerText.replace(/\\s+/g,' '))"), "save_label": await pg.inner_text("[data-testid=setup-lyrics-save]")}
+    await pg.click("[data-testid=setup-lyrics-discard]"); await pg.wait_for_timeout(400)
+    out["lyrics_retime_discarded"] = {"preview_gone": await pg.locator("[data-testid=setup-lyrics-preview]").count() == 0, "still": await pg.inner_text("[data-testid=setup-lyrics-timed]")}
+    # ---- lyric timing on a project that has a song and plain lyrics only: time, look, save
+    await pg.goto(f"{BASE}/projects/{P2}/setup"); await pg.wait_for_selector("[data-testid=setup-lyrics-untimed]", timeout=60000); await pg.wait_for_timeout(1500)
+    out["untimed_before"] = (await pg.inner_text("[data-testid=setup-lyrics-untimed]")).replace("\n", " ")[:160]
+    await pg.click("[data-testid=setup-lyrics-align]"); await pg.wait_for_selector("[data-testid=setup-lyrics-preview]", timeout=180000)
+    out["untimed_preview"] = {"summary": await pg.inner_text("[data-testid=setup-lyrics-summary]"), "lines": await pg.evaluate("() => [...document.querySelectorAll('[data-testid=setup-lyrics-line]')].map(e => e.innerText.replace(/\\s+/g,' '))")}
+    await pg.click("[data-testid=setup-lyrics-save]"); await pg.wait_for_selector("[data-testid=setup-lyrics-timed]", timeout=30000)
+    out["untimed_saved"] = await pg.inner_text("[data-testid=setup-lyrics-timed]")
+    out["desktop_voice_director"] = await pg.evaluate("() => { const vis = (e) => !!e && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().width > 0; return {panel: vis(document.querySelector('[data-testid=voice-director-panel]')), button: vis(document.querySelector('[data-testid=voice-director-open]'))}; }")
     out["review_logs"] = pg.logs[:6]
 async def mobile(b, out):
     pg = await new_page(b, viewport={"width": 390, "height": 844}, has_touch=True, is_mobile=True, device_scale_factor=2)
@@ -82,6 +122,13 @@ async def mobile(b, out):
     await pg.goto(f"{BASE}/projects/{P}/storyboard"); await pg.wait_for_selector("[data-testid=box-card]", timeout=60000); await pg.wait_for_timeout(2500)
     out["m_board"] = await pg.evaluate("() => ({w: innerWidth, scrollW: document.documentElement.scrollWidth, cards: document.querySelectorAll('[data-testid=box-card]').length, cardW: Math.round(document.querySelector('[data-testid=box-card]').getBoundingClientRect().width)})")
     await pg.screenshot(path="shot_board_mobile.png")
+    # the Voice Director is a button on a phone: it opens to a sheet and closes back to the button
+    VD = "() => { const vis = (e) => !!e && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().width > 0; const b=document.querySelector('[data-testid=voice-director-open]'); const r=b? b.getBoundingClientRect():null; return {panel: vis(document.querySelector('[data-testid=voice-director-panel]')), button: vis(b), buttonSize: r? [Math.round(r.width), Math.round(r.height)]:null}; }"
+    vd = {"closed": await pg.evaluate(VD)}
+    await pg.tap("[data-testid=voice-director-open]"); await pg.wait_for_timeout(300); vd["opened"] = await pg.evaluate(VD)
+    await pg.screenshot(path="shot_voice_director_mobile.png")
+    await pg.tap("[data-testid=voice-director-close]"); await pg.wait_for_timeout(300); vd["closed_again"] = await pg.evaluate(VD)
+    out["m_voice_director"] = vd
     await pg.evaluate("() => document.querySelector('[data-box-key=c006]').scrollIntoView({block:'start'})"); await pg.wait_for_timeout(600)
     await pg.screenshot(path="shot_board_mobile_c006.png")
     await pg.tap("[data-box-key=c006] [data-testid=box-open]"); await pg.wait_for_selector("[data-testid=focus-view]"); await pg.wait_for_timeout(2000)
@@ -135,15 +182,32 @@ def report(r):
         if k in ("play_from_top", "from_shot_5", "from_shot_8", "from_shot_42"):
             print(k)
             for s in v:
-                exp = round(s["t"] - OFFSET, 3) if s["file"] == "take.webm" else None
+                exp = round(s["t"] - OFFSET, 3) if s["file"] == "take.mp4" else None
                 d = None if exp is None or s["vt"] is None else round(s["vt"] - max(0, exp), 3)
                 # a take that has run out holds its last frame: not a sync error
-                held = s["vpaused"] and s["file"] == "take.webm" and s["t"] - OFFSET > 190.3
+                held = s["vpaused"] and s["file"] == "take.mp4" and s["t"] - OFFSET > 190.3
                 if d is not None and abs(d) > 0.1 and not held and s["t"] > OFFSET + 0.1: bad += 1
                 print("  ", s["t"], s["active"], s["kind"], s["file"], s["vt"], "drift", d, "held" if held else "")
         else:
             print(k, json.dumps(v)[:300])
     errs = [k for k in r if k.endswith("_error")]
+    def want(name, cond):
+        if not cond: errs.append("EXPECTED " + name)
+    cc = r.get("check_cut") or {}
+    want("check this cut: passes", cc.get("ok") == "true")
+    want("check this cut: every line holds, the player read back", all(c[1] == "true" for c in cc.get("checks", [])) and len(cc.get("checks", [])) >= 12)
+    want("check this cut: 43 shots listed", cc.get("cuts") == 43)
+    want("frame: 9:16 by default", (r.get("frame_default") or {}).get("aspect") == "9:16" and abs((r.get("frame_default") or {}).get("ratio", 0) - 9 / 16) < 0.01)
+    want("frame: Review follows 16:9", (r.get("frame_16_9") or {}).get("aspect") == "16:9" and abs((r.get("frame_16_9") or {}).get("ratio", 0) - 16 / 9) < 0.02)
+    want("frame: the full-screen shot follows 16:9", (r.get("focus_frame_16_9") or {}).get("aspect") == "16:9")
+    want("frame: restored to 9:16", r.get("setup_frame_restored") == "9:16")
+    want("lyrics: time again shows a comparison and saves nothing", "15" in (r.get("lyrics_retime") or {}).get("compare", "") and (r.get("lyrics_retime_discarded") or {}).get("preview_gone") is True)
+    want("lyrics: an untimed project is timed and saved", "15" in (r.get("untimed_saved") or ""))
+    vd = r.get("m_voice_director") or {}
+    want("voice director: a button on a phone", vd.get("closed") and vd["closed"]["button"] and not vd["closed"]["panel"])
+    want("voice director: opens", vd.get("opened") and vd["opened"]["panel"])
+    want("voice director: closes back to the button", vd.get("closed_again") and vd["closed_again"]["button"] and not vd["closed_again"]["panel"])
+    want("voice director: expanded on desktop", (r.get("desktop_voice_director") or {}).get("panel") is True and (r.get("desktop_voice_director") or {}).get("button") is False)
     print("\nRESULT:", "FAIL" if (bad or errs) else "PASS", "· samples off the song clock by > 0.1 s:", bad, "· errors:", errs)
     sys.exit(1 if (bad or errs) else 0)
 asyncio.run(main())

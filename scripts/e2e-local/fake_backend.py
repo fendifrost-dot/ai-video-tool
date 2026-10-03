@@ -42,6 +42,28 @@ def select(table, q):
         if k == "limit": rows = rows[: int(v)]
     return rows
 
+def hear(body):
+    """The stand-in transcriber. The test song is a rising tone (200 Hz + 10 Hz per second), so the window says
+    where it was cut from; what is "heard" is the fixture's lyric lines that fall inside it, word by word."""
+    import base64, struct
+    wav = base64.b64decode(body.get("audioBase64") or "")
+    rate = struct.unpack_from("<I", wav, 24)[0]
+    n = min(rate, (len(wav) - 44) // 2)
+    pcm = struct.unpack_from(f"<{n}h", wav, 44)
+    crossings = sum(1 for i in range(1, n) if (pcm[i - 1] < 0) != (pcm[i] < 0))
+    seconds = n / rate
+    cut = round(((crossings / (2 * seconds)) - 200 - 5 * seconds) / 10)   # mean frequency over the stretch = 200 + 10*(cut + seconds/2)
+    length = (len(wav) - 44) / 2 / rate
+    words = []
+    for start, end, text in FX.get("sung", []):
+        parts = text.split()
+        step = (end - start) / len(parts)
+        for i, w in enumerate(parts):
+            a, b = start + i * step, start + (i + 1) * step
+            if a >= cut and b <= cut + length: words.append({"w": w, "start": round(a - cut, 3), "end": round(b - cut, 3), "p": 0.9})
+    LOG.write(f"  heard window at {cut} s ({length:.1f} s): {len(words)} words\n"); LOG.flush()
+    return {"ok": True, "provider": "local", "model": "stand-in", "words": words, "seconds": length, "estimatedCostUsd": 0, "triedBefore": []}
+
 class H(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     def log_message(self, *a): pass
@@ -114,6 +136,7 @@ class H(BaseHTTPRequestHandler):
                 return self.out(200, {"signedURL": f"/object/sign/{rest}?token=local"})
             return self.media(rest)
         if p.startswith("/storage/v1/"): return self.out(200, {})
+        if p.startswith("/functions/v1/lyric-align-proxy"): return self.out(200, hear(body or {}))
         if p.startswith("/functions/v1/"): return self.out(200, {"ok": True, "jobs": [], "results": []})
         if p.startswith("/rest/v1/rpc/"): return self.out(200, None)
         if p.startswith("/rest/v1/"):
