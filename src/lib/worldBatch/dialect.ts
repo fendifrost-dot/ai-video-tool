@@ -42,7 +42,15 @@ export const BatchShotSchema = z
     keep: z.array(z.string()).default([]),
     resolution: z.enum(["480p", "720p", "1080p"]).default("720p"),
     /** How this shot's timed events were put into its prompt (storyboard/temporal.ts). Recorded on the job. */
-    temporal: z.object({ mode: z.enum(["timed_script", "ordered"]), beats: z.number().int().min(1), measured: z.boolean().default(false) }).nullish(),
+    temporal: z
+      .object({
+        mode: z.enum(["timed_script", "ordered"]),
+        beats: z.number().int().min(1),
+        measured: z.boolean().default(false),
+        /** The script as data: each moment a state begins, in seconds from the CLIP's first frame, and what was said. What the returned footage is measured against. */
+        asked: z.array(z.object({ id: z.string(), offset: z.number().min(0), kinds: z.array(z.string()).default([]), says: z.string().default("") })).optional(),
+      })
+      .nullish(),
   })
   .passthrough();
 export type BatchShot = z.infer<typeof BatchShotSchema>;

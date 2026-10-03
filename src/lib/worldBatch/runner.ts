@@ -42,7 +42,7 @@ export type BatchJobSettings = {
    * is NOT kept). Absent = the shot was one state. Never claims the result follows the beats: `measured` says
    * whether anything has checked.
    */
-  temporal?: { mode: "timed_script" | "ordered"; beats: number; measured: boolean } | null;
+  temporal?: { mode: "timed_script" | "ordered"; beats: number; measured: boolean; asked?: { id: string; offset: number; kinds: string[]; says: string }[] } | null;
   /** An image job: whether the picked picture becomes what the shot shows (false on a performance shot — it is the place). */
   selectStill?: boolean;
   /**
