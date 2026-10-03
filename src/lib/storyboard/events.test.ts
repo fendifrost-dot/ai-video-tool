@@ -37,6 +37,7 @@ import { applyOverride, boxFromRow, boxWrite, hasDirectedChange, machineContext,
 import { clipShot, clipTemporalPlan, imageTemporalPlan } from "./generate";
 import { restageShot, restageTemporalPlan } from "./restage";
 import { buildTimeline, type MediaAsset, type TakeSync } from "./media";
+import { motionPrompt } from "@/lib/worldBatch";
 
 const AT = "2026-10-03T12:00:00.000Z";
 const ev = (over: Partial<ShotEvent> & { at: number }): ShotEvent => ({ id: "", trigger: { kind: "time", ref: "" }, visual: "", camera: "", lighting: "", action: "", lightingState: null, effect: null, ...over });
@@ -508,6 +509,14 @@ describe("generating a shot that changes is never a flattened prompt", () => {
       { id: "e1", offset: 1.31, kinds: ["lighting"], says: "light: the house lights die" },
       { id: "e2", offset: 2.4, kinds: ["lighting", "camera"], says: "light: the stones he wears are the only light; camera: a slow push toward him begins" },
     ]);
+    // the request the provider receives says the place changes as the script says — not that the place is still
+    const said = motionPrompt(req.shot, null, true);
+    expect(said).toContain("from 1.3 s: light: the house lights die");
+    expect(said).toContain("The environment changes only as the timed changes say, at the seconds they say");
+    expect(said).not.toContain("The environment is still, only he and the camera move.");
+    // a restaging with no beats is told, as before, that only he and the camera move
+    const plain = restageShot({ ...base, box: box([], { shotType: "performance" }), temporal: { mode: "single", effects: 0 } });
+    expect(motionPrompt(plain.shot, null, true)).toContain("The environment is still, only he and the camera move.");
     // a cut that could only open on an earlier sync frame carries that footage first: every time the model is
     // given, and every time the footage is measured against, moves by it
     const early = restageShot({ ...base, cut: { start: 59.2, seconds: 5 }, temporal: restageTemporalPlan(b, CLOCK) });

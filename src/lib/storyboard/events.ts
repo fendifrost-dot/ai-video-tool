@@ -174,6 +174,12 @@ export type EventClock = {
    * a state and says nothing else about the light reads as that description — the same words wherever the state is used.
    */
   lightingStates?: ReadonlyMap<string, string> | null;
+  /**
+   * The same lighting states, by key → their FULL canonical words (description and constraints). What a generator is
+   * given when a beat switches to the state: the state's own words, whole and the same in every shot — a few words
+   * of the beat's own ("the pool dies") do not say what the new light IS.
+   */
+  lightingWords?: ReadonlyMap<string, string> | null;
 };
 
 /**
@@ -183,11 +189,20 @@ export type EventClock = {
 export function eventClock(
   lyricLines: readonly LyricLine[] | null | undefined,
   beatMap: readonly { t: number }[] | null | undefined,
-  lightingStates?: readonly { key: string; kind: string; description: string }[] | null,
+  lightingStates?: readonly { key: string; kind: string; description: string; constraints?: string | null }[] | null,
 ): EventClock {
   const states = new Map<string, string>();
-  for (const e of lightingStates ?? []) if (e.kind === "lighting" && e.description.trim()) states.set(e.key, phrase(e.description));
-  return { lyricLines: lyricLines ?? null, beats: (beatMap ?? []).map((b) => b.t).filter((t) => typeof t === "number" && Number.isFinite(t)), lightingStates: states };
+  const words = new Map<string, string>();
+  const sentence = (v: string | null | undefined) => {
+    const t = (v ?? "").replace(/\s+/g, " ").trim();
+    return t ? (/[.!?]$/.test(t) ? t : `${t}.`) : "";
+  };
+  for (const e of lightingStates ?? []) {
+    if (e.kind !== "lighting" || !e.description.trim()) continue;
+    states.set(e.key, phrase(e.description));
+    words.set(e.key, [sentence(e.description), sentence(e.constraints)].filter(Boolean).join(" "));
+  }
+  return { lyricLines: lyricLines ?? null, beats: (beatMap ?? []).map((b) => b.t).filter((t) => typeof t === "number" && Number.isFinite(t)), lightingStates: states, lightingWords: words };
 }
 
 export type ResolvedEvent = ShotEvent & {
@@ -202,6 +217,8 @@ export type ResolvedEvent = ShotEvent & {
   placedBy: ShotEventTrigger | "fallback";
   /** True when `lighting` is the canonical description of the lighting state the event points at, not words of its own. */
   lightingFromState?: boolean;
+  /** The full canonical words of the lighting state the event switches to, when the project has them. */
+  stateWords?: string;
 };
 
 const norm = (s: string) =>
@@ -257,8 +274,10 @@ export function resolveEvents(events: readonly ShotEvent[], window: { start: num
     const clamped = round3(Math.max(0, Math.min(offset, Math.max(0, seconds - 0.05))));
     // a lighting state pointed at, with no words of the event's own: the state's canonical description is the phrase
     const state = e.lightingState && !e.lighting.trim() ? clock.lightingStates?.get(e.lightingState) : undefined;
+    const stateWords = e.lightingState ? clock.lightingWords?.get(e.lightingState) : undefined;
     return {
       ...e,
+      ...(stateWords ? { stateWords } : {}),
       // a record written before the rule existed is read by it: the state is the footage's, the effect is not applied
       effect: effectOf(e),
       ...(state ? { lighting: state, lightingFromState: true } : {}),
@@ -312,6 +331,11 @@ export type ShotState = {
   action: string;
   visual: string;
   lightingState: string | null;
+  /**
+   * The light as a generator is told it: the beat's own words and, when the light switched to one of the project's
+   * lighting states, that state's full canonical words. Empty = `lighting` is all there is to say.
+   */
+  lightingWords: string;
 };
 
 /**
@@ -320,7 +344,7 @@ export type ShotState = {
  * Events at the same moment are one state. Effects do not open a state: they are not drawn.
  */
 export function eventStates(resolved: readonly ResolvedEvent[], shotSeconds: number): ShotState[] {
-  const states: ShotState[] = [{ from: 0, to: shotSeconds, eventId: null, lighting: "", camera: "", action: "", visual: "", lightingState: null }];
+  const states: ShotState[] = [{ from: 0, to: shotSeconds, eventId: null, lighting: "", camera: "", action: "", visual: "", lightingState: null, lightingWords: "" }];
   for (const e of resolved) {
     if (!isDirected(e)) continue;
     const last = states[states.length - 1];
@@ -328,7 +352,12 @@ export function eventStates(resolved: readonly ResolvedEvent[], shotSeconds: num
     const next: ShotState = sameMoment ? last : { ...last, from: e.offset, to: shotSeconds, eventId: e.id };
     const drawn = drawnFacets(e);
     for (const f of drawn) if (e[f].trim()) next[f] = e[f].trim();
-    if (e.lightingState && drawn.includes("lighting")) next.lightingState = e.lightingState;
+    if (drawn.includes("lighting")) {
+      if (e.lightingState) next.lightingState = e.lightingState;
+      const own = e.lightingFromState ? "" : e.lighting.trim();
+      // the beat's own words, then what the state it switches to IS — its canonical words, whole
+      next.lightingWords = e.lightingState && e.stateWords ? (own ? `${own.replace(/[.;]*$/, "")} — ${e.stateWords}` : e.stateWords) : own;
+    }
     if (!sameMoment) {
       // an event at the very start replaces the opening state rather than leaving a zero-length one in front of it
       if (e.offset < 0.02 && states.length === 1) states[0] = { ...next, from: 0 };
@@ -473,7 +502,7 @@ export function effectKeys(resolved: readonly ResolvedEvent[]): { event_id: stri
  * The event as the shot record stores it: without where it was placed, and without a lighting phrase that was its
  * lighting state's description (the record keeps the pointer, so the event keeps following the state).
  */
-export function storedEvent({ offset: _o, songTime: _s, placedBy: _p, lightingFromState, ...e }: ResolvedEvent): ShotEvent {
+export function storedEvent({ offset: _o, songTime: _s, placedBy: _p, stateWords: _w, lightingFromState, ...e }: ResolvedEvent): ShotEvent {
   return lightingFromState ? { ...e, lighting: "" } : e;
 }
 

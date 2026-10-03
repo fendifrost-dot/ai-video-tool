@@ -83,8 +83,10 @@ export function directedEvents<T extends ResolvedEvent>(resolved: readonly T[]):
 }
 
 function statePhrases(s: ShotState): string {
-  return EVENT_FACETS.filter((f) => s[f])
-    .map((f) => `${FACET_LABEL[f].toLowerCase()}: ${s[f]}`)
+  // the light is said in full: a switch to one of the project's lighting states carries that state's canonical words
+  const said = (f: EventFacet) => (f === "lighting" && s.lightingWords ? s.lightingWords.replace(/[.\s]+$/, "") : s[f]);
+  return EVENT_FACETS.filter((f) => s[f] || (f === "lighting" && s.lightingWords))
+    .map((f) => `${FACET_LABEL[f].toLowerCase()}: ${said(f)}`)
     .join("; ");
 }
 
