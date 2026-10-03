@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MAX_AUDIO_BYTES, estimateUsd, heardFromOpenAi, isRunaway, parseTranscribeRequest, providerOrder, wavInfo, wordsFromOpenAi, wordsFromXai } from "./contract";
+import { MAX_AUDIO_BYTES, estimateUsd, heardFromOpenAi, isRunaway, parseTranscriptRequest, providerOrder, wavInfo, wordsFromOpenAi, wordsFromXai } from "./contract.ts";
 
 const P = "11111111-1111-4111-8111-111111111111";
 
