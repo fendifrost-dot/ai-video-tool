@@ -232,7 +232,12 @@ const TOOLS = new Set(["runway", "veo", "gemini", "grok", "higgsfield", "pika", 
 const PRIORITIES = new Set(["low", "normal", "high", "hero"]);
 const DEP_KINDS = new Set(["look_composite", "faceswap_still", "reference_image", "other"]);
 
-export async function draftFullTreatment(
+/**
+ * Ask the treatment model for a clip-by-clip plan over a given grid and return it WITHOUT saving anything. The grid
+ * owns timing and keys: handed the storyboard's own boxes it writes for exactly those boxes, so the result maps onto
+ * the permanent records one to one (src/lib/storyboard/build.ts decides which records it may rewrite).
+ */
+export async function draftTreatmentClips(
   input: TreatmentContext & { concept: string; grid: GridClip[] },
 ): Promise<StructuredTreatment> {
   const data = await callTreatmentEndpoint({
@@ -307,6 +312,14 @@ export async function draftFullTreatment(
     generated_at: new Date().toISOString(),
     text: [concept, narrative].filter(Boolean).join("\n\n"),
   };
+  return structured;
+}
+
+/** The old builder's one-step generate-and-save. Kept for callers that still store a structured treatment whole. */
+export async function draftFullTreatment(
+  input: TreatmentContext & { concept: string; grid: GridClip[] },
+): Promise<StructuredTreatment> {
+  const structured = await draftTreatmentClips(input);
 
   const { error: updateError } = await supabase
     .from("video_projects")

@@ -173,7 +173,24 @@ export type RegenerateInput = {
   mode?: RegenerateMode;
   section?: string | null;
   dryRun?: boolean;
+  /**
+   * The project's one treatment. With it, the rewrite serves the treatment (no exemplars are sent), and a box with
+   * no lyrics in it can still be rewritten — from the treatment and its place in the song.
+   */
+  treatment?: string | null;
+  /** One line each about the boxes before and after this one. */
+  neighbours?: { before: string | null; after: string | null } | null;
+  /** Locked facts about the box, as data (see boxes.ts `machineContext`). Never prose. */
+  projectState?: Record<string, unknown> | null;
+  /**
+   * The framing and camera the DIRECTOR fixed on this box. When given (even empty) it replaces the "is this card an
+   * override" guess of `shotContext`: only what he set is stated as already chosen, never what a rewrite wrote.
+   */
+  directorFixed?: { framing?: string | null; cameraMotion?: string | null } | null;
 };
+
+/** What an instrumental box is rewritten from: there are no words, so the request says so in place of a lyric. */
+export const INSTRUMENTAL_LINE = "(instrumental — no words are sung in this window; stage the treatment for this part of the song)";
 
 export type RegenerateMode = "literal" | "surreal" | "performance";
 
@@ -240,7 +257,9 @@ export function linesForSpec(spec: ShotSpec, lyricLines: LyricLine[] | undefined
 
 export async function regenerateShotFromLyrics(input: RegenerateInput): Promise<RegeneratedShot> {
   const lines = linesForSpec(input.spec, input.lyricLines);
-  if (lines.length === 0) throw new NoLyricsInWindowError();
+  const treatment = input.treatment?.trim() ?? "";
+  // Without a treatment the lyric is all there is to write from; with one, an instrumental box has its brief.
+  if (lines.length === 0 && !treatment) throw new NoLyricsInWindowError();
 
   const { data, error } = await supabase.functions.invoke<Record<string, unknown>>(
     "lyric-visualizer-proxy",
@@ -255,18 +274,30 @@ export async function regenerateShotFromLyrics(input: RegenerateInput): Promise<
         lines: [
           {
             ref: input.spec.id,
-            text: lines.map((l) => l.text).join(" "),
+            text: lines.length > 0 ? lines.map((l) => l.text).join(" ") : INSTRUMENTAL_LINE,
             section: input.section ?? lines[0]?.section,
             seconds: Math.max(0, input.spec.timeline.end - input.spec.timeline.start),
           },
         ],
-        shot: shotContext(input.spec, input.section ?? lines[0]?.section ?? null),
+        shot: input.directorFixed
+          ? {
+              start: input.spec.timeline.start,
+              end: input.spec.timeline.end,
+              section: input.section ?? lines[0]?.section ?? null,
+              ...(input.directorFixed.framing ? { framing: input.directorFixed.framing } : {}),
+              ...(input.directorFixed.cameraMotion ? { cameraMotion: input.directorFixed.cameraMotion } : {}),
+            }
+          : shotContext(input.spec, input.section ?? lines[0]?.section ?? null),
         heroDescription: input.heroDescription,
         environment: input.environment,
         style: input.style ?? undefined,
         lockedRules: [...standingRules(input.spec), ...(input.lockedRules ?? [])],
         rendererLimits: input.rendererLimits,
-        exemplars: input.exemplars,
+        // one creative brief: when the treatment is sent, exemplars are not
+        exemplars: treatment ? undefined : input.exemplars,
+        treatment: treatment || undefined,
+        neighbours: treatment && (input.neighbours?.before || input.neighbours?.after) ? input.neighbours : undefined,
+        projectState: input.projectState ?? undefined,
         clipSeconds: Math.max(
           4,
           Math.min(15, Math.round(input.spec.timeline.end - input.spec.timeline.start)),
