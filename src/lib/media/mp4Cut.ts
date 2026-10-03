@@ -1,5 +1,6 @@
 /**
- * Cut a stretch out of a video to the frame — the cut starts on the frame showing at the moment asked for, not on
+ * Cut a stretch out of a video to the frame — the cut starts on the frame SHOWING at the moment asked for (the one
+ * whose time on screen contains that moment, so the cut never begins after it), not on
  * the sync frame before it (which in a long-GOP master can be seconds earlier).
  *
  * The frames are decoded from the sync frame, the ones before the moment are dropped, and the rest are encoded
@@ -148,8 +149,8 @@ export async function cutVideoExact(read: RangeRead, track: Mp4Track, start: num
   if (!config) throw new Error("this browser has no H.264 encoder");
 
   const startUs = Math.round(start * 1e6);
-  const endUs = Math.round((start + seconds) * 1e6);
-  const halfUs = Math.round(frameSeconds * 5e5);
+  const frameUs = Math.round(frameSeconds * 1e6);
+  const lengthUs = Math.round(seconds * 1e6);
   const out: EncodedSample[] = [];
   let avcC: Uint8Array | null = null;
   let firstUs: number | null = null;
@@ -171,11 +172,11 @@ export async function cutVideoExact(read: RangeRead, track: Mp4Track, start: num
   const decoder = new Decoder({
     output: (frame) => {
       try {
-        // the frame showing at `start` is the first one kept: the one whose time is nearest it
-        if (failure || frame.timestamp < startUs - halfUs || frame.timestamp >= endUs - halfUs) return;
+        // the first frame kept is the one SHOWING at `start`: it came on at or before that moment and is still up
+        if (failure || frame.timestamp + frameUs <= startUs + 500) return;
         if (firstUs == null) firstUs = frame.timestamp;
         const timestamp = frame.timestamp - firstUs;
-        if (timestamp < 0) return; // a reordered frame from before the opening one
+        if (timestamp < 0 || timestamp >= lengthUs - 500) return; // before the opening frame, or past the length asked for
         const retimed = new VideoFrame(frame, { timestamp, duration: Math.round(frameSeconds * 1e6) });
         try {
           encoder.encode(retimed, { keyFrame: kept === 0 });

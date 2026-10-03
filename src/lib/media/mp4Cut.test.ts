@@ -118,12 +118,13 @@ describe("cutting to the frame", () => {
     };
     try {
       const log = { encoded: [] as number[], keyRequests: [] as boolean[] };
-      // 24 fps, a sync frame every 12 frames: 0.7 s is frame 17 (16.8), well inside a group
+      // 24 fps, a sync frame every 12 frames: at 0.7 s frame 16 is on screen (0.667–0.708), well inside a group
       const cut = await cutVideoExact(read, track, 0.7, 1, codecs(log));
       expect(cut.method).toBe("exact");
       expect(cut.frames).toBe(24);
-      // the cut starts on the frame nearest 0.7 s — not on the sync frame at 0.5 s
-      expect(cut.start).toBeCloseTo(17 / 24, 3);
+      // the cut starts on the frame SHOWING at 0.7 s — never after the moment asked for, and not on the sync frame at 0.5 s
+      expect(cut.start).toBeCloseTo(16 / 24, 3);
+      expect(cut.start).toBeLessThanOrEqual(0.7);
       expect(cut.seconds).toBeCloseTo(1, 2);
       expect(log.encoded[0]).toBe(0);
       expect(log.encoded[1]).toBeCloseTo(1e6 / 24, -1);
