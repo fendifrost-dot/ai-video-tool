@@ -13,7 +13,7 @@ import { verifyCut } from "./verify";
 import { clipLyrics } from "./build";
 import { footageSummary, setupStatus } from "./setup";
 import { boxShot, placePrompt } from "./generate";
-import { restageEstimateUsd, restageKeep, restageSeconds, restageShot, restageSource, RESTAGE_MAX_SECONDS } from "./restage";
+import { NEVER_WIDER, restageAngle, restageEstimateUsd, restageKeep, restageSeconds, restageShot, restageSource, RESTAGE_MAX_SECONDS } from "./restage";
 
 const AT = "2026-10-03T00:00:00Z";
 function asset(id: string, over: Partial<MediaAsset> = {}): MediaAsset {
@@ -96,7 +96,11 @@ describe("what a restaging asks for and costs", () => {
     expect(req.songStart).toBeCloseTo(47.054, 3);
     expect(req.shot).toMatchObject({ id: "c013", route: "seedance_ref", kind: "angle", aspect: "9:16", seconds: 4, source_seconds: 4, source_asset_id: "take1", masterStart: req.songStart, still_path: "u/p/stills/c013.png", resolution: "720p" });
     // the camera sentence is the shot's own framing and move, and says nothing of what he does
-    expect(req.shot.angle).toBe("a medium shot from the waist up, the camera pushing slowly toward him.");
+    expect(req.shot.angle).toBe(`a medium shot from the waist up, the camera pushing slowly toward him. ${NEVER_WIDER}`);
+    // a wide frame is asked for without asking for the body the take never filmed
+    const wide = restageAngle({ ...b, spec: { ...b.spec, framing: "wide" } });
+    expect(wide).toContain("framed as far down as @Video1 frames him and no further");
+    expect(wide).not.toMatch(/whole body|knees/);
     expect(missingInput(req.shot)).toBe("");
     expect(estimateShotUsd(req.shot)).toBeCloseTo(restageEstimateUsd(4), 4);
     const motion = buildMotionRequest(req.shot, { prompt: "x", stillUrl: "https://s/still", sourceUrl: "https://s/src", userId: "u", projectId: "p" });

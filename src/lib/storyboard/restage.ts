@@ -71,9 +71,10 @@ export function restageKeep(take: Pick<MediaAsset, "shows">): string[] {
 }
 
 const FRAMING_WORDS: Record<string, string> = {
-  extreme_wide: "an extreme wide shot, him small in the place",
-  wide: "a wide shot, his whole body in the place",
-  medium_wide: "a medium-wide shot from the knees up",
+  // a take filmed from the thighs up has no knees or feet to show: the widest frame of him is the take's own
+  extreme_wide: "a wide shot of him in the place, framed as far down as @Video1 frames him and no further",
+  wide: "a wide shot of him in the place, framed as far down as @Video1 frames him and no further",
+  medium_wide: "a medium-wide shot, framed as far down as @Video1 frames him and no further",
   medium: "a medium shot from the waist up",
   medium_close: "a medium close-up of his chest and face",
   close_up: "a close-up of his face",
@@ -99,13 +100,20 @@ const MOVE_WORDS: Record<string, string> = {
   drone: "the camera drifting slowly toward him",
 };
 
+/**
+ * What the model must not do when it re-frames him: draw the parts of him the take never filmed. Asked for a wider
+ * shot than the take, it invents them — the first live section came back with shorts on a man filmed in jeans from
+ * the thighs up.
+ */
+export const NEVER_WIDER = "Never show more of his body than @Video1 shows: whatever is out of frame in @Video1 stays out of frame here.";
+
 /** The camera sentence of the restaged shot: the shot's own framing, angle and move — never his action. */
 export function restageAngle(box: StoryboardBox): string {
   const spec = box.spec;
   const framing = (spec.framing && FRAMING_WORDS[spec.framing]) || "a medium shot from the waist up";
   const angle = spec.cameraAngle ? ANGLE_WORDS[spec.cameraAngle] : "";
   const move = MOVE_WORDS[spec.cameraMotion.type ?? ""] ?? "the camera easing slowly toward him";
-  return `${[framing, angle].filter(Boolean).join(" ")}, ${move}.`;
+  return `${[framing, angle].filter(Boolean).join(" ")}, ${move}. ${NEVER_WIDER}`;
 }
 
 export type RestageRequest = { shot: BatchShot; songStart: number; takeStart: number; seconds: number };
