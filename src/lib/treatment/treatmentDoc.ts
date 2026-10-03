@@ -28,6 +28,9 @@ export type TreatmentDoc = {
   footageConfirmedAt: string | null;
 };
 
+/** What a write to the treatment was — the label the kept previous version carries. */
+export type TreatmentChange = "generate" | "edit" | "delete" | "restore";
+
 /** A short fingerprint of a text (whitespace-insensitive), to tell "the boxes were written from THIS treatment". */
 export function fingerprint(text: string): string {
   const s = text.replace(/\s+/g, " ").trim();
@@ -97,8 +100,9 @@ export function storyboardIsStale(doc: TreatmentDoc): boolean {
  * Write the doc back into `treatment_json`, keeping every other key (the last generation's clips stay as its record).
  * `text` / `concept` mirror the treatment for readers that predate it.
  */
-export function withTreatmentDoc(existing: unknown, doc: TreatmentDoc): Record<string, unknown> {
+export function withTreatmentDoc(existing: unknown, doc: TreatmentDoc, change?: { what: TreatmentChange; at: string }): Record<string, unknown> {
   const v = { ...asObject(existing) };
+  const prior = asObject(v.treatment);
   v.treatment = {
     text: doc.text,
     mode: doc.mode,
@@ -106,6 +110,10 @@ export function withTreatmentDoc(existing: unknown, doc: TreatmentDoc): Record<s
     model: doc.model,
     notes: doc.notes,
     storyboard: doc.storyboard,
+    // What this write was. The database keeps the version being replaced (treatment_versions) and labels it with
+    // this; the stamp is what tells it the label belongs to THIS write and not to an earlier one.
+    change: change?.what ?? (typeof prior.change === "string" ? prior.change : undefined),
+    change_at: change?.at ?? (typeof prior.change_at === "string" ? prior.change_at : undefined),
   };
   v.setup = { ...asObject(v.setup), footage_confirmed_at: doc.footageConfirmedAt };
   v.text = doc.text;
@@ -121,7 +129,7 @@ export function withTreatmentDoc(existing: unknown, doc: TreatmentDoc): Record<s
  */
 export function clearTreatment(existing: unknown, at: string): Record<string, unknown> {
   const doc = parseTreatmentDoc(existing);
-  const v = withTreatmentDoc(existing, { ...doc, text: "", mode: "manual", updatedAt: at, model: null, storyboard: null });
+  const v = withTreatmentDoc(existing, { ...doc, text: "", mode: "manual", updatedAt: at, model: null, storyboard: null }, { what: "delete", at });
   delete v.sections;
   return v;
 }

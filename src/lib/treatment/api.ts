@@ -7,6 +7,8 @@
  * markdown + show provenance.
  */
 
+import { eventsFromWritten } from "@/lib/storyboard/writtenBeats";
+import type { ShotEvent } from "./shotSpec";
 import { functionFailure } from "@/lib/functionsError";
 import { supabase } from "@/lib/supabase";
 import { ProviderCallError } from "@/lib/providerJobs/api";
@@ -142,6 +144,10 @@ export type TreatmentClip = {
   lyric_ref: string | null;
   priority: string;
   dependencies: TreatmentDependency[];
+  /** Change inside the shot, as the writer wrote it and already read into the shot's own events. Absent = one state. */
+  events?: ShotEvent[];
+  /** The project's continuity entities the writer pointed this shot at, by key (only keys the project has). */
+  continuity?: { location: string | null; props: string[]; lighting: string | null };
 };
 
 export type StructuredTreatment = {
@@ -170,6 +176,8 @@ export type TreatmentContext = {
   looks?: { name: string; description?: string | null }[];
   /** The project has real performance footage in sync with the song: the artist is that footage, not a drawn one. */
   hasPerformanceFootage?: boolean;
+  /** The project's continuity entities — what a shot may point at by key instead of describing again. */
+  entities?: { key: string; kind: "location" | "prop" | "lighting"; name: string; description?: string | null }[];
 };
 
 function contextBody(input: TreatmentContext): Record<string, unknown> {
@@ -185,6 +193,7 @@ function contextBody(input: TreatmentContext): Record<string, unknown> {
     analysis: input.analysisSummary ?? null,
     looks: (input.looks ?? []).map((l) => ({ name: l.name, description: l.description ?? null })),
     has_performance_footage: input.hasPerformanceFootage === true,
+    continuity_entities: (input.entities ?? []).map((e) => ({ key: e.key, kind: e.kind, name: e.name, description: e.description ?? null })),
   };
 }
 
@@ -287,6 +296,7 @@ export async function draftTreatmentClips(
     if (key) modelClips.set(key, c);
   }
 
+  const known = knownKeys(input.entities);
   // Merge: grid owns timing; model owns creative fields. Missing clips get
   // a safe placeholder rather than dropping timeline coverage.
   const clips: TreatmentClip[] = input.grid.map((g) => {
@@ -322,6 +332,8 @@ export async function draftTreatmentClips(
       lyric_ref: m.lyric_ref && String(m.lyric_ref).trim() ? String(m.lyric_ref).trim() : null,
       priority: PRIORITIES.has(priority) ? priority : "normal",
       dependencies: deps,
+      events: eventsFromWritten(m.timed_beats, g.end - g.start, input.clipLyrics?.[g.key] ?? "", known.lighting),
+      continuity: pointedAt(m.continuity, known),
     };
   });
 
@@ -393,6 +405,24 @@ import {
   type ShotTypeLiteral,
 } from "@/lib/treatment/shotSpec";
 
+type KnownKeys = { location: Set<string>; prop: Set<string>; lighting: Set<string> };
+
+function knownKeys(entities: TreatmentContext["entities"]): KnownKeys {
+  const of = (kind: string) => new Set((entities ?? []).filter((e) => e.kind === kind).map((e) => e.key));
+  return { location: of("location"), prop: of("prop"), lighting: of("lighting") };
+}
+
+/** The entities a written shot points at — only keys the project has, of the right kind. */
+export function pointedAt(raw: unknown, known: KnownKeys): { location: string | null; props: string[]; lighting: string | null } {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const one = (v: unknown, set: Set<string>) => (typeof v === "string" && set.has(v.trim()) ? v.trim() : null);
+  return {
+    location: one(r.location, known.location),
+    props: Array.isArray(r.props) ? [...new Set(r.props.map((p) => one(p, known.prop)).filter((x): x is string => !!x))] : [],
+    lighting: one(r.lighting, known.lighting),
+  };
+}
+
 function specKindFromShotType(shotType: string): ShotKind {
   if (shotType === "performance") return "performance";
   if (shotType === "b_roll") return "broll";
@@ -434,6 +464,8 @@ export function treatmentClipToShotSpec(
     cameraMotion: { description: clip.camera_direction },
     fx: shotType === "vfx" ? [{ type: "vfx", description: clip.scene_description }] : [],
     references: clip.lyric_ref ? [{ kind: "note", note: `lyric: ${clip.lyric_ref}` }] : [],
+    events: clip.events ?? [],
+    continuity: clip.continuity ?? {},
     generation: {
       required: !!engine && engine !== "manual",
       engine,

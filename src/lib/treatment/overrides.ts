@@ -27,6 +27,27 @@ import {
   type TransitionType,
 } from "./shotSpec";
 import { DEFAULT_TRANSITION_PRESETS, transitionInFromPreset } from "./transitions";
+import { sanitizeEvents } from "@/lib/storyboard/events";
+import type { ShotEvent } from "./shotSpec";
+
+/**
+ * The continuity entities a director pointed a shot at. A key that is ABSENT was not touched; an empty string (or an
+ * empty list) says "none" on purpose — it takes away a reference the generator made.
+ */
+export type ContinuityOverride = {
+  /** continuity_entities.key of the place. */
+  location?: string;
+  /** continuity_entities.key of each prop. */
+  props?: string[];
+  /** continuity_entities.key of the lighting state the shot opens in. */
+  lighting?: string;
+  /** The wardrobe look: an existing Look record (artist_looks.id). Applied to the shot's wardrobe.lookId — looks are not duplicated as entities. */
+  look?: string;
+};
+
+function statesContinuity(c: ContinuityOverride | null | undefined): boolean {
+  return !!c && (typeof c.location === "string" || Array.isArray(c.props) || typeof c.lighting === "string" || typeof c.look === "string");
+}
 
 /** One row of `shot_overrides`, in app shape. Null = not overridden. */
 export type ShotOverride = {
@@ -47,6 +68,13 @@ export type ShotOverride = {
   } | null;
   requiredElements: string[] | null;
   notes: string | null;
+  /**
+   * The timed events inside the shot. Absent or null = not changed (the generated events stand); a list — even an
+   * empty one — is exactly the shot's events.
+   */
+  events?: ShotEvent[] | null;
+  /** The continuity entities the shot points at. Absent or null = not changed. */
+  continuity?: ContinuityOverride | null;
   updatedAt?: string;
 };
 
@@ -59,6 +87,8 @@ export const OVERRIDABLE_FIELDS = [
   "transitionIn",
   "requiredElements",
   "notes",
+  "events",
+  "continuity",
 ] as const;
 export type OverridableField = (typeof OVERRIDABLE_FIELDS)[number];
 
@@ -119,7 +149,9 @@ export function isEmptyOverride(o: ShotOverride | null | undefined): boolean {
     !transition?.preset &&
     transition?.durationSeconds == null &&
     !(o.requiredElements && o.requiredElements.length > 0) &&
-    !o.notes?.trim()
+    !o.notes?.trim() &&
+    !Array.isArray(o.events) &&
+    !statesContinuity(o.continuity)
   );
 }
 
@@ -209,6 +241,27 @@ export function applyShotOverride(
     next = {
       ...next,
       provenance: { ...next.provenance, source: "human", notes: override.notes.trim() },
+    };
+    touched = true;
+  }
+
+  if (Array.isArray(override.events)) {
+    // the director's list IS the shot's events (an empty list = the shot is one state again)
+    next = { ...next, events: sanitizeEvents(override.events, Math.max(0, next.timeline.end - next.timeline.start)) };
+    touched = true;
+  }
+
+  if (statesContinuity(override.continuity)) {
+    const c = override.continuity!;
+    next = {
+      ...next,
+      continuity: {
+        location: typeof c.location === "string" ? c.location.trim() || null : next.continuity.location,
+        props: Array.isArray(c.props) ? c.props.filter((x) => typeof x === "string" && x.trim()) : next.continuity.props,
+        lighting: typeof c.lighting === "string" ? c.lighting.trim() || null : next.continuity.lighting,
+      },
+      // the look is the existing Look record the shot's wardrobe already points at
+      ...(typeof c.look === "string" ? { wardrobe: { ...next.wardrobe, lookId: c.look.trim() || null } } : {}),
     };
     touched = true;
   }

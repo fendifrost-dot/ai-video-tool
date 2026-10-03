@@ -247,6 +247,78 @@ export const PrevisSchema = z.object({
 });
 export type Previs = z.infer<typeof PrevisSchema>;
 
+// ============================================================================
+// Change inside a shot — timed events (Fendi, 2026-10-03)
+//
+// A shot's base fields describe ONE state. Directing needs change within the shot: the lights die on a word, the
+// camera starts to push a beat later. An event is one moment inside the shot and what changes at it. It is small on
+// purpose: a time, what the time hangs on, and at most one short phrase per kind of change — never a paragraph.
+// Nothing here knows a project.
+// ============================================================================
+
+/** What an event's time hangs on. "time" = the offset as typed; "lyric" = the moment these words are sung; "beat" = the nth beat inside the shot. */
+export const SHOT_EVENT_TRIGGERS = ["time", "lyric", "beat"] as const;
+export type ShotEventTrigger = (typeof SHOT_EVENT_TRIGGERS)[number];
+
+/**
+ * An effect is a change the EDIT makes to the picture, exactly and on the clock, whatever footage the shot shows:
+ * Review plays it and a render applies the same arithmetic (src/lib/storyboard/events.ts `pictureAt`). The other
+ * kinds of change (visual, camera, lighting, action) have to be IN the footage.
+ */
+export const SHOT_EVENT_EFFECTS = ["dim", "blackout", "lights_up", "flash", "fade_out"] as const;
+export type ShotEventEffectType = (typeof SHOT_EVENT_EFFECTS)[number];
+
+/** The longest a single phrase of an event may be: a beat is a few words, not a scene. */
+export const SHOT_EVENT_PHRASE_MAX = 140;
+export const SHOT_EVENTS_MAX = 12;
+
+export const ShotEventSchema = z.object({
+  /** Stable inside the shot ("e1"): names the event to people and to a provider's reply. */
+  id: z.string().min(1),
+  /** Seconds from the shot's own start. For a lyric or beat trigger this is the fallback when it cannot be found. */
+  at: z.number().min(0),
+  trigger: z
+    .object({
+      kind: z.enum(SHOT_EVENT_TRIGGERS).default("time"),
+      /** The words (lyric) or the beat number (beat). Empty for "time". */
+      ref: z.string().default(""),
+    })
+    .default({}),
+  /** What changes in the picture. */
+  visual: z.string().max(SHOT_EVENT_PHRASE_MAX).default(""),
+  /** What the camera starts doing. */
+  camera: z.string().max(SHOT_EVENT_PHRASE_MAX).default(""),
+  /** What the light does. */
+  lighting: z.string().max(SHOT_EVENT_PHRASE_MAX).default(""),
+  /** What the subject does. */
+  action: z.string().max(SHOT_EVENT_PHRASE_MAX).default(""),
+  /** A lighting state the project keeps as a continuity entity, switched to at this moment (its key). */
+  lightingState: z.string().nullable().default(null),
+  effect: z
+    .object({
+      type: z.enum(SHOT_EVENT_EFFECTS),
+      /** How long the change takes, seconds. Null = the effect's own default. */
+      seconds: z.number().positive().max(10).nullable().default(null),
+      /** How much light is left, 0–1 (dim). Null = the effect's own default. */
+      level: z.number().min(0).max(1).nullable().default(null),
+    })
+    .nullable()
+    .default(null),
+});
+export type ShotEvent = z.infer<typeof ShotEventSchema>;
+
+/**
+ * What a shot points at instead of describing again: the project's continuity entities (a place, the props, a
+ * lighting state) by their key (continuity_entities.key). The wardrobe look is `wardrobe.lookId`, as it always was.
+ * Keys only — the canonical description and reference picture live on the entity, once.
+ */
+export const ContinuityRefsSchema = z.object({
+  location: z.string().nullable().default(null),
+  props: z.array(z.string()).default([]),
+  lighting: z.string().nullable().default(null),
+});
+export type ContinuityRefs = z.infer<typeof ContinuityRefsSchema>;
+
 /**
  * Generation requirements — what a generative engine needs to author this shot.
  * `required: false` means the shot is captured/stock and does not need genAI.
@@ -378,6 +450,14 @@ export const ShotSpecSchema = z.object({
    * environment.description because a generated card has one of those too, and that one describes the old scene.
    */
   openingFrame: z.string().default(""),
+
+  /**
+   * Change inside the shot: timed events, in order. Empty = the shot is one state. The base fields above are the
+   * state the shot OPENS in; each event says what changes from its moment on.
+   */
+  events: z.array(ShotEventSchema).max(SHOT_EVENTS_MAX).default([]),
+  /** The continuity entities this shot points at (place, props, lighting state), by key. */
+  continuity: ContinuityRefsSchema.default({}),
 });
 export type ShotSpec = z.infer<typeof ShotSpecSchema>;
 
@@ -433,6 +513,8 @@ export const ROW_UNMAPPED_FIELDS = [
   "qa",
   "source.range (partially → trim_in/out)",
   "wardrobe.references / environment.references / lighting.references",
+  "events",
+  "continuity",
 ] as const;
 
 const SPEC_STATUS_TO_ROW: Record<ShotStatusLiteral, Shot["status"]> = {

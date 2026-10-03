@@ -28,6 +28,8 @@ import {
   type TransitionType,
 } from "./shotSpec";
 import { lyricsForShot, type LyricLine } from "@/lib/lyrics/lyricsForShot";
+import { eventsFromWritten } from "@/lib/storyboard/writtenBeats";
+import type { ShotEvent } from "./shotSpec";
 
 /** The default template: the Opus 5.5 motion-design guide, seeded as a prompt template. */
 export const DEFAULT_MOTION_TEMPLATE = "motion_story_v1";
@@ -45,6 +47,8 @@ export type MotionScene = {
   realism_risk?: string;
   risk_reason?: string;
   render_prompt?: string;
+  /** Change inside the shot, as the writer returns it (supabase/functions/_shared/timedBeats.ts). */
+  timed_beats?: unknown;
 };
 
 /** What the card drops into its (unsaved) override fields. */
@@ -60,6 +64,8 @@ export type RegeneratedShot = {
   renderPrompt: string;
   realismRisk: string | null;
   scene: MotionScene;
+  /** The shot's timed events as written (empty = the shot is one state). */
+  events: ShotEvent[];
 };
 
 // ---------------------------------------------------------------------------
@@ -116,7 +122,7 @@ export function motionSentence(motion: MotionScene["motion"]): string {
 }
 
 /** Scene → the override fields. Pure, so the mapping is tested without a network. */
-export function sceneToOverride(scene: MotionScene): RegeneratedShot {
+export function sceneToOverride(scene: MotionScene, shot: { seconds: number; sung?: string } = { seconds: 0 }): RegeneratedShot {
   // A generated "static" is not a decision: the generator falls back to it, and written into the override it would pin
   // the card still against the coverage plan (measured live 2026-10-02: a performance card came back "static · 24mm"
   // with the standing rule "the camera moves" in the request). Leave the move unset so the coverage plan keeps the
@@ -143,6 +149,7 @@ export function sceneToOverride(scene: MotionScene): RegeneratedShot {
     renderPrompt: (scene.render_prompt ?? "").trim(),
     realismRisk: scene.realism_risk ?? null,
     scene,
+    events: eventsFromWritten(scene.timed_beats, shot.seconds, shot.sung ?? ""),
   };
 }
 
@@ -313,7 +320,7 @@ export async function regenerateShotFromLyrics(input: RegenerateInput): Promise<
   }
   const scene = extractScene(data);
   if (!scene) throw new Error("The visualiser returned no scene");
-  return sceneToOverride(scene);
+  return sceneToOverride(scene, { seconds: Math.max(0, input.spec.timeline.end - input.spec.timeline.start), sung: lines.map((l) => l.text).join(" ") });
 }
 
 /** Pull the one scene out of the proxy envelope. Exported for the mapping tests. */
