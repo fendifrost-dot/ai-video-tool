@@ -6,7 +6,7 @@ vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 
 import { parseShotSpec } from "@/lib/treatment/shotSpec";
 import { boxFromRow, boxWrite, type BoxRow } from "./boxes";
-import { boxShot, NO_MARKS } from "./generate";
+import { boxShot, FULL_BLEED, NO_MARKS } from "./generate";
 
 function box(shotType: "b_roll" | "performance") {
   const spec = parseShotSpec({ id: "c001", purpose: "a ring on a marble console under one hard light", shotType, kind: shotType === "performance" ? "performance" : "broll", timeline: { start: 0, end: 4 } });
@@ -32,9 +32,17 @@ describe("a box's generation request follows the project's frame", () => {
 
 describe("every picture the storyboard draws", () => {
   it("is asked for without logos, brand marks or lettering — a cutaway and a performance shot's place alike", () => {
-    expect(boxShot(box("b_roll"), []).prompt.endsWith(NO_MARKS)).toBe(true);
+    expect(boxShot(box("b_roll"), []).prompt).toContain(NO_MARKS);
     const place = boxShot(box("performance"), []).prompt;
     expect(place).toContain(NO_MARKS);
     expect(place.match(/Nothing in the picture carries a logo/g)).toHaveLength(1);
+  });
+
+  it("is asked for as the whole frame — no border, frame line or bars — once", () => {
+    for (const kind of ["b_roll", "performance"] as const) {
+      const prompt = boxShot(box(kind), []).prompt;
+      expect(prompt.endsWith(FULL_BLEED)).toBe(true);
+      expect(prompt.match(/fills the frame from edge to edge/g)).toHaveLength(1);
+    }
   });
 });

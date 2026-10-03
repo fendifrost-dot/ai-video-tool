@@ -29,6 +29,12 @@ const EMPTY_SET = "An empty set, photographed with nobody in it: no people, no f
  * the wall). A cutaway that shows somebody's trademark cannot be released.
  */
 export const NO_MARKS = "Nothing in the picture carries a logo, a brand mark or readable lettering.";
+/**
+ * The picture is the whole frame. Asked for a "film" look, an image model sometimes draws the film too — a dark
+ * border, a rounded frame line — and the clip made from it carries that border through every frame of the shot
+ * (Astra's second look at the first live section: "a thin dark rectangular border surrounds the image").
+ */
+export const FULL_BLEED = "The picture fills the frame from edge to edge: no border, no frame line, no rounded corners, no letterbox bars.";
 /** A place said in fewer words than this is a label ("backstage"), not a picture: the scene is needed to draw it. */
 const PLACE_WORDS = 6;
 
@@ -72,7 +78,7 @@ export function boxShot(box: StoryboardBox, lyricLines: readonly LyricLine[] | u
   if (isPerformance && !shot.prompt.includes(PLATE_LINE)) shot.prompt = `${shot.prompt.trim()} ${PLATE_LINE}`;
   // the place is still: its motion sentence is the camera's, never a person's action
   if (isPerformance) shot.motion = "";
-  if (!shot.prompt.includes(NO_MARKS)) shot.prompt = `${shot.prompt.trim()} ${NO_MARKS}`;
+  for (const line of [NO_MARKS, FULL_BLEED]) if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
   return shot;
 }
 
