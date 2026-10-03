@@ -100,8 +100,18 @@ def transcribe(song, model_name, out_json, window=30.0, hop=20.0, log=None, voca
                 if got: break
             if log: print(f"window {t0:.0f}-{t0 + window:.0f}s: {got} words{' (retry ' + str(attempt) + ')' if attempt else ''}", file=log, flush=True)
             t0 += hop
+    out = merge_windows(words)
+    json.dump(out, open(out_json, "w"), indent=0)
+    return out
+
+
+def merge_windows(words):
+    """Words from overlapping windows → one transcript. Each word carries `edge`, its distance from the nearer edge of
+    the window it was heard in; where two windows heard the same slot, the word deeper inside its window wins.
+    (The app's hosted path — src/lib/lyrics/align.ts — is this function and the three below, held equal by
+    scripts/lyrics/make_parity_fixtures.py + align.parity.test.ts.)"""
     # de-duplicate overlaps: two words within 0.25 s with the same normalised text → keep the one deeper inside its window
-    words.sort(key=lambda w: w["start"]); out = []
+    words = sorted(words, key=lambda w: w["start"]); out = []
     for w in words:
         if out and abs(w["start"] - out[-1]["start"]) < 0.25 and norm(w["w"]) == norm(out[-1]["w"]):
             if w["edge"] > out[-1]["edge"]: out[-1] = w
@@ -111,8 +121,7 @@ def transcribe(song, model_name, out_json, window=30.0, hop=20.0, log=None, voca
             if w["edge"] > out[-1]["edge"]: out[-1] = w
             continue
         out.append(w)
-    for w in out: w.pop("edge", None)
-    json.dump(out, open(out_json, "w"), indent=0)
+    out = [{k: v for k, v in w.items() if k != "edge"} for w in out]
     return out
 
 
@@ -201,28 +210,18 @@ def place(lyric_words, trans_words, match):
     return times
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--song", required=True); ap.add_argument("--lyrics", required=True, help="text file, blank lines between sections"); ap.add_argument("--out", required=True)
-    ap.add_argument("--model", default="small"); ap.add_argument("--transcript", default=None, help="reuse a transcript_words.json"); ap.add_argument("--project", default=None); ap.add_argument("--bpm", type=float, default=None)
-    ap.add_argument("--lrc", default=None, help="optional LRC file: [mm:ss.xx] line — overrides line starts")
-    ap.add_argument("--sql", default=None, help="also write an upsert for public.lyric_lines (needs --project and --user)"); ap.add_argument("--user", default=None)
-    ap.add_argument("--window", type=float, default=30.0); ap.add_argument("--hop", type=float, default=20.0); ap.add_argument("--max-line-seconds", type=float, default=10.0)
-    a = ap.parse_args()
-    text = open(a.lyrics).read(); lines = parse_lyrics(text); labels = label_sections(lines)
-    tw = json.load(open(a.transcript)) if a.transcript and os.path.exists(a.transcript) else transcribe(a.song, a.model, os.path.splitext(a.out)[0] + ".transcript_words.json", a.window, a.hop, log=sys.stderr, vocabulary=[t for _, t in lines])
-    tw = [w for w in tw if norm(w["w"])]
+def build_lines(text, trans_words, lrc=None, bpm=None, max_line_seconds=10.0):
+    """Lyrics text + transcript words → timed lines. The whole of the alignment after transcription, as one function:
+    {"lines": [...], "coverage": share of lyric words matched directly, "lines_reordered": n}."""
+    lines = parse_lyrics(text); labels = label_sections(lines)
+    tw = [w for w in trans_words if norm(w["w"])]
     lyric_words, owner = [], []
     for li, (b, t) in enumerate(lines):
         for w in t.split():
             if norm(w): lyric_words.append(w); owner.append(li)
     match = align(lyric_words, tw, [lines[o][0] for o in owner]); times = place(lyric_words, tw, match)
     coverage = sum(1 for m in match if m is not None) / max(1, len(match))
-    lrc = {}
-    if a.lrc:
-        for raw in open(a.lrc):
-            m = re.match(r"\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)", raw.strip())
-            if m: lrc[" ".join(norm(w) for w in m.group(3).split())] = int(m.group(1)) * 60 + float(m.group(2))
+    lrc = lrc or {}
     out_lines = []
     for li, (b, t) in enumerate(lines):
         ws = [{"w": lyric_words[i], "start": times[i][0], "end": times[i][1], "matched": times[i][2]} for i in range(len(lyric_words)) if owner[i] == li]
@@ -234,19 +233,39 @@ def main():
             for w in ws: w["start"] = round(w["start"] + shift, 3); w["end"] = round(w["end"] + shift, 3)
         conf = sum(1 for w in ws if w["matched"]) / len(ws)
         rec = {"line_index": li, "section": labels[b], "block": b, "text": t, "start": round(start, 3), "end": round(end, 3), "confidence": round(conf, 2), "words": ws}
-        if a.bpm: rec["beat_start"] = round(start * a.bpm / 60.0, 2); rec["beat_end"] = round(end * a.bpm / 60.0, 2)
+        if bpm: rec["beat_start"] = round(start * bpm / 60.0, 2); rec["beat_end"] = round(end * bpm / 60.0, 2)
         out_lines.append(rec)
     # monotonic sanity: a line may not start before the previous one ends by more than a beat
     fixed = 0
     for p, q in zip(out_lines, out_lines[1:]):
         if q["start"] < p["start"]: q["start"], q["end"] = p["end"], max(p["end"] + 0.5, q["end"]); q["confidence"] = 0.0; fixed += 1
-    # a line stretched over more than --max-line-seconds is the aligner bridging a gap (a written repeat that is not
+    # a line stretched over more than max_line_seconds is the aligner bridging a gap (a written repeat that is not
     # sung, an instrumental): it is kept for the record but marked suspect and its confidence zeroed, so a storyboard
     # fades it and nothing downstream treats the stretch as sung
     for l in out_lines:
-        l["suspect"] = (l["end"] - l["start"]) > a.max_line_seconds or (l["confidence"] == 0 and len(l["words"]) >= 3)
+        l["suspect"] = (l["end"] - l["start"]) > max_line_seconds or (l["confidence"] == 0 and len(l["words"]) >= 3)
         if l["suspect"]: l["confidence"] = 0.0
-    rep = {"project_id": a.project, "song": os.path.basename(a.song), "bpm": a.bpm, "model": a.model, "generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "coverage": round(coverage, 3), "lines_reordered": fixed, "lines": out_lines}
+    return {"lines": out_lines, "coverage": round(coverage, 3), "lines_reordered": fixed}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--song", required=True); ap.add_argument("--lyrics", required=True, help="text file, blank lines between sections"); ap.add_argument("--out", required=True)
+    ap.add_argument("--model", default="small"); ap.add_argument("--transcript", default=None, help="reuse a transcript_words.json"); ap.add_argument("--project", default=None); ap.add_argument("--bpm", type=float, default=None)
+    ap.add_argument("--lrc", default=None, help="optional LRC file: [mm:ss.xx] line — overrides line starts")
+    ap.add_argument("--sql", default=None, help="also write an upsert for public.lyric_lines (needs --project and --user)"); ap.add_argument("--user", default=None)
+    ap.add_argument("--window", type=float, default=30.0); ap.add_argument("--hop", type=float, default=20.0); ap.add_argument("--max-line-seconds", type=float, default=10.0)
+    a = ap.parse_args()
+    text = open(a.lyrics).read(); lines = parse_lyrics(text)
+    tw = json.load(open(a.transcript)) if a.transcript and os.path.exists(a.transcript) else transcribe(a.song, a.model, os.path.splitext(a.out)[0] + ".transcript_words.json", a.window, a.hop, log=sys.stderr, vocabulary=[t for _, t in lines])
+    lrc = {}
+    if a.lrc:
+        for raw in open(a.lrc):
+            m = re.match(r"\[(\d+):(\d+(?:\.\d+)?)\]\s*(.*)", raw.strip())
+            if m: lrc[" ".join(norm(w) for w in m.group(3).split())] = int(m.group(1)) * 60 + float(m.group(2))
+    built = build_lines(text, tw, lrc=lrc, bpm=a.bpm, max_line_seconds=a.max_line_seconds)
+    out_lines, coverage, fixed = built["lines"], built["coverage"], built["lines_reordered"]
+    rep = {"project_id": a.project, "song": os.path.basename(a.song), "bpm": a.bpm, "model": a.model, "generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "coverage": coverage, "lines_reordered": fixed, "lines": out_lines}
     json.dump(rep, open(a.out, "w"), indent=1)
     if a.sql:
         if not (a.project and a.user): raise SystemExit("--sql needs --project and --user")
