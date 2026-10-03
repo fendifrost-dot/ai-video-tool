@@ -46,6 +46,7 @@ import {
   type ShotWindow,
   type TemplateContext,
 } from "./contract.ts";
+import { TIMED_BEATS_PROPERTY } from "../_shared/timedBeats.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -156,8 +157,10 @@ const SCENE_SCHEMA = {
     properties: {
       ref: { type: "string" }, text: { type: "string" },
       scene: { type: "object", additionalProperties: false,
-        required: ["title", "purpose", "visual", "motion", "camera", "sound", "transition", "required_elements", "realism_risk", "risk_reason", "render_prompt"],
+        required: ["title", "purpose", "visual", "motion", "camera", "sound", "transition", "required_elements", "realism_risk", "risk_reason", "render_prompt", "timed_beats"],
         properties: {
+          // change inside the shot, in the one form both writers use (_shared/timedBeats.ts); empty for a one-state shot
+          timed_beats: TIMED_BEATS_PROPERTY,
           title: { type: "string" },
           purpose: { type: "string", description: "the exact idea this scene adds — one sentence" },
           visual: { type: "string", description: "composition, character, objects, light, surfaces" },

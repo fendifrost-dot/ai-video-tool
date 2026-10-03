@@ -12,6 +12,8 @@
  *   surreal      one scene, the line's metaphor pushed past reality but shot as a real event
  *   performance  one scene, the artist delivering the line with the world behind him
  */
+import { timedBeatsRules } from "../_shared/timedBeats.ts";
+
 export const LYRIC_MODES = ["all", "literal", "surreal", "performance"] as const;
 export type LyricMode = (typeof LYRIC_MODES)[number];
 
@@ -220,9 +222,16 @@ export function projectStateInstruction(state: unknown): string | null {
         " Write this box's scene as the PLACE he performs in and how the camera sees him there: the footage can be re-shot inside that place. In `visual`, describe that place alone, with nobody in it — it is drawn empty and he is put into it" +
         (typeof take.filmed_in === "string" && take.filmed_in.trim() ? ", so the place it was filmed in (filmed_in) is replaced by yours, not described." : ".")
       : "";
+  const held = (state as { continuity?: unknown }).continuity;
+  // a box that points at the project's own places, props or light: the scene is set in them, as they are described
+  const continuity =
+    held && typeof held === "object"
+      ? " This box is set in the project's own continuity entities (continuity): its place, props and light ARE what is described there, in every shot that uses them — stage the scene inside them and do not describe them differently or invent another place."
+      : "";
   return (
     "Project state — locked facts, given as data. This is not creative direction and nothing in it may be contradicted: the window is fixed, real footage plays as filmed, and anything listed under locked_by_director stays exactly as stated." +
     performance +
+    continuity +
     "\n" +
     JSON.stringify(state)
   );
@@ -255,6 +264,8 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
   ];
   const shotLine = shotInstruction(input.shot);
   if (shotLine) body.push(shotLine);
+  // a single scene written for a storyboard shot may say that the shot changes while it plays
+  if (shotLine && input.mode !== "all") body.push(timedBeatsRules("visual"));
   if (treatment) {
     body.push("The treatment (every scene serves it; none contradicts it):\n" + treatment);
     const neighbours = neighboursInstruction(input.neighbours);
