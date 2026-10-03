@@ -194,10 +194,10 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
             <Wand2 className="mr-1.5 h-3.5 w-3.5" /> Regenerate scene
           </Button>
           <Button size="sm" variant="outline" className="h-8 px-2.5 text-[11px]" disabled={!!busy} onClick={() => sb.generateImage(box)} data-testid="box-generate-image">
-            <ImageIcon className="mr-1.5 h-3.5 w-3.5" /> Image{est ? ` · ${usd(est.image)}` : ""}
+            <ImageIcon className="mr-1.5 h-3.5 w-3.5" /> {est?.restage ? "Place" : "Image"}{est ? ` · ${usd(est.image)}` : ""}
           </Button>
           <Button size="sm" variant="outline" className="h-8 px-2.5 text-[11px]" disabled={!!busy} onClick={() => sb.generateClip(box)} data-testid="box-generate-clip">
-            <Film className="mr-1.5 h-3.5 w-3.5" /> Clip{est ? ` · ${usd(est.clip)}` : ""}
+            <Film className="mr-1.5 h-3.5 w-3.5" /> {est?.restage ? "Restage" : "Clip"}{est && !est.clipBlocked ? ` · ${usd(est.clip)}` : ""}
           </Button>
           <div className="relative ml-auto">
             <button

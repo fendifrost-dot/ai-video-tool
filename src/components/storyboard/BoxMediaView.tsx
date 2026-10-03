@@ -24,8 +24,10 @@ export const ROLE_STYLE: Record<AssignmentRole, string> = {
   reference: "bg-white/10 text-foreground/70",
 };
 
-export function mediaLabel(item: Pick<BoxMediaItem, "role" | "base">): string {
-  return item.base ? "Your take · base layer" : ROLE_LABEL[item.role];
+export function mediaLabel(item: Pick<BoxMediaItem, "role" | "base"> & { asset?: Pick<BoxMediaItem["asset"], "derivedFrom"> }): string {
+  if (item.base) return "Your take · base layer";
+  if (item.role === "performance" && item.asset?.derivedFrom) return "Your take · restaged";
+  return ROLE_LABEL[item.role];
 }
 
 /** One piece of media, played or shown — always the whole frame, never cropped. */

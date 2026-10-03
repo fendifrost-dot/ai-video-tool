@@ -186,10 +186,10 @@ export function FocusView() {
                 <Wand2 className="mr-2 h-4 w-4" /> Regenerate scene
               </Button>
               <Button variant="outline" disabled={!!busy} onClick={() => sb.generateImage(box)} data-testid="focus-generate-image">
-                <ImageIcon className="mr-2 h-4 w-4" /> Generate image{est ? ` · ${usd(est.image)}` : ""}
+                <ImageIcon className="mr-2 h-4 w-4" /> {est?.restage ? "Generate the place" : "Generate image"}{est ? ` · ${usd(est.image)}` : ""}
               </Button>
               <Button variant="outline" disabled={!!busy} onClick={() => sb.generateClip(box)} data-testid="focus-generate-clip">
-                <Film className="mr-2 h-4 w-4" /> Generate clip{est ? ` · ${usd(est.clip)}` : ""}
+                <Film className="mr-2 h-4 w-4" /> {est?.restage ? "Restage the take" : "Generate clip"}{est && !est.clipBlocked ? ` · ${usd(est.clip)}` : ""}
               </Button>
             </div>
             {(busy || (job && job.state !== "done")) && (

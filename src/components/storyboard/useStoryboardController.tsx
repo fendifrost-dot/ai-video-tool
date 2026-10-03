@@ -38,6 +38,7 @@ import {
 import { ensureStoryboardMaterialized, type MaterializeResult } from "@/lib/storyboard/build";
 import { aspectOfProject, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
 import { boxShot, clipEstimateUsd, generateBoxClip, generateBoxImage, imageEstimateUsd } from "@/lib/storyboard/generate";
+import { restageBox, restageEstimateUsd, restageSeconds, restageSource } from "@/lib/storyboard/restage";
 import {
   boxMedia,
   planAssign,
@@ -57,6 +58,8 @@ import { DEFAULT_MOTION_TEMPLATE, regenerateShotFromLyrics, type RegenerateMode 
 import { hasTreatment, parseTreatmentDoc } from "@/lib/treatment/treatmentDoc";
 import { mediaRefKey, playbackRef, useSignedRefs } from "./signedUrls";
 
+const mmss = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
+
 export type ConfirmRequest = {
   title: string;
   body: string;
@@ -65,7 +68,15 @@ export type ConfirmRequest = {
   onConfirm: () => void | Promise<void>;
 };
 
-export type BoxEstimates = { image: number; clip: number; clipDrawsImage: boolean } | null;
+export type BoxEstimates = {
+  image: number;
+  clip: number;
+  clipDrawsImage: boolean;
+  /** Set on a performance shot with a take in sync: its clip is the take itself, restaged in the shot's scene. */
+  restage?: { seconds: number; takeName: string; takeIn: number; takeOut: number } | null;
+  /** Why this shot's clip cannot be made right now (a performance shot too long to restage). */
+  clipBlocked?: string | null;
+} | null;
 
 export type StoryboardController = {
   projectId: string;
@@ -272,7 +283,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         const his = directorSet(box.override);
         const state = machineContext({
           box,
-          performance: take ? { takeName: take.asset.name, range: { start: take.sourceIn!, end: take.sourceOut! } } : null,
+          performance: take ? { takeName: take.asset.name, range: { start: take.sourceIn!, end: take.sourceOut! }, shows: take.asset.shows ?? null } : null,
           media: m.items.filter((i) => !i.base).map((i) => ({ role: i.role, name: i.asset.name, selected: i.selected })),
           look: { name: inputs.looks[0]?.name ?? null, description: box.spec.wardrobe.description },
           constraints: [doc.notes, project?.notes],
@@ -449,16 +460,23 @@ export function useStoryboardController(projectId: string): StoryboardController
     (box: StoryboardBox): BoxEstimates => {
       try {
         const still = selectedStillPath(box);
-        return {
-          image: imageEstimateUsd(boxShot(box, lyricLines, { aspect })),
-          clip: clipEstimateUsd(boxShot(box, lyricLines, { stillPath: still, aspect })),
-          clipDrawsImage: !still,
-        };
+        const image = imageEstimateUsd(boxShot(box, lyricLines, { aspect }));
+        // a performance shot with a take in sync: the clip is the take, restaged in this shot's scene
+        if (box.spec.shotType === "performance") {
+          const src = restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs);
+          if (src.ok) {
+            const seconds = restageSeconds(src.source.takeOut - src.source.takeIn);
+            const restage = { seconds: seconds ?? 0, takeName: src.source.take.name, takeIn: src.source.takeIn, takeOut: src.source.takeOut };
+            if (!seconds) return { image, clip: 0, clipDrawsImage: !still, restage, clipBlocked: `A shot of ${(box.end - box.start).toFixed(1)} s is too long to restage in one piece — split it first` };
+            return { image, clip: restageEstimateUsd(seconds) + (still ? 0 : image), clipDrawsImage: !still, restage };
+          }
+        }
+        return { image, clip: clipEstimateUsd(boxShot(box, lyricLines, { stillPath: still, aspect })), clipDrawsImage: !still };
       } catch {
         return null;
       }
     },
-    [selectedStillPath, lyricLines, aspect],
+    [selectedStillPath, lyricLines, aspect, mediaByBox, syncs],
   );
 
   // where the image model has no picture of the project's shape, say what is asked for instead, before the spend
@@ -480,12 +498,14 @@ export function useStoryboardController(projectId: string): StoryboardController
       }
       setConfirm({
         title: `Generate an image for shot ${numberById.get(box.id) ?? ""}?`,
-        body: `About ${usd(est.image)} at list price. The image is drawn from this shot's scene and put on this shot only.${shapeNote}`,
+        body: est.restage
+          ? `About ${usd(est.image)} at list price. This is a performance shot: the image is the PLACE from this shot's scene, drawn empty — your take keeps showing, and "Restage" puts your real performance in this place.${shapeNote}`
+          : `About ${usd(est.image)} at list price. The image is drawn from this shot's scene and put on this shot only.${shapeNote}`,
         confirmLabel: `Generate image · ${usd(est.image)}`,
         testId: "confirm-generate-image",
         onConfirm: () =>
           run(box, "drawing the image…", async () => {
-            const r = await generateBoxImage({ projectId, box, lyricLines, aspect });
+            const r = await generateBoxImage({ projectId, box, lyricLines, aspect, select: !est.restage });
             afterGeneration();
             toast.success(r.rejected > 0 ? `Image ready (${r.rejected} of ${r.candidates} came back as stacked panels and was left out)` : "Image ready");
           }).finally(afterGeneration),
@@ -501,7 +521,44 @@ export function useStoryboardController(projectId: string): StoryboardController
         toast.info("This shot has no scene to generate from yet — write or regenerate its scene first");
         return;
       }
+      if (est.clipBlocked) {
+        toast.info(est.clipBlocked);
+        return;
+      }
       const still = selectedStillPath(box);
+      if (est.restage) {
+        const r = est.restage;
+        const src = restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs);
+        if (!src.ok) {
+          toast.info(src.why);
+          return;
+        }
+        setConfirm({
+          title: `Restage your take for shot ${numberById.get(box.id) ?? ""}?`,
+          body:
+            `About ${usd(est.clip)} at list price. Your real performance from ${r.takeName} (${mmss(r.takeIn)}–${mmss(r.takeOut)} of the take) is re-shot inside this shot's scene: ` +
+            `${r.seconds} s of the take go to the video model with this shot's image as the place` +
+            (est.clipDrawsImage ? " (the shot has no image yet, so one is drawn first)" : "") +
+            ". He keeps his face and what he wears in the take. The result stays on the song clock and lands on this shot only; it takes several minutes." +
+            (est.clipDrawsImage ? shapeNote : ""),
+          confirmLabel: `Restage take · ${usd(est.clip)}`,
+          testId: "confirm-generate-clip",
+          onConfirm: () =>
+            run(box, "restaging the take…", async () => {
+              let stillPath = still;
+              if (!stillPath) {
+                setBusyFor(box.id, "drawing the place first…");
+                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false });
+                afterGeneration();
+                stillPath = img.picked;
+              }
+              await restageBox({ projectId, box, lyricLines, source: src.source, stillPath, maxSeconds: r.seconds, aspect, onStage: (t) => setBusyFor(box.id, t) });
+              afterGeneration();
+              toast.success("The take is being restaged — it will appear on this shot when it is done");
+            }).finally(afterGeneration),
+        });
+        return;
+      }
       setConfirm({
         title: `Generate a clip for shot ${numberById.get(box.id) ?? ""}?`,
         body:
@@ -519,7 +576,7 @@ export function useStoryboardController(projectId: string): StoryboardController
           }).finally(afterGeneration),
       });
     },
-    [estimatesOf, selectedStillPath, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote],
+    [estimatesOf, selectedStillPath, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor],
   );
 
   const loading = boxesQuery.isLoading || inputs.projectQuery.isLoading;
