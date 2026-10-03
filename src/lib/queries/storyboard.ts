@@ -5,6 +5,7 @@
  * Every rule lives in src/lib/storyboard/** as a plan; this file only carries a plan to the database. One write path
  * per thing, so a box written by the generator, by the director, by a split or by a migration is the same kind of row.
  */
+import { parseBeatCheck } from "@/lib/storyboard/beatCheck";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -359,6 +360,7 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
     derivedFrom: derivedOf(a.metadata_json),
     shows: textOf(a.metadata_json, "shows"),
     filmedIn: textOf(a.metadata_json, "filmed_in"),
+    beatCheck: parseBeatCheck((a.metadata_json as { beat_check?: unknown } | null)?.beat_check),
   };
 }
 
