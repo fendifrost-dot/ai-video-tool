@@ -185,3 +185,55 @@ keep `generate_video` on approval until the first job passes — the credit quot
 spend, so the budget cap has to be enforced by the runner's own rule, not by the permission; block what AVT never
 uses and that publishes or changes things (`deploy_website`, `publish_website`, `website_*`, `tiktok_*`,
 `sandbox_exec`, `apps_invoke`, `cancel_trial_auto_renewal`, `participate_in_contest`).
+
+## Update 23:45 CT — permissions set, the cap and the reconcile rule made executable
+
+**Correction to the 22:05 note.** The checks were no-spend, not read-only: one test clip was imported into the
+Higgsfield media library. And "neither connector can make a purchase" was too broad: Higgsfield's connector lists
+app-only tools "Confirm Billing Purchase" and "Confirm Trial Cancellation". App-only tools have no permission
+setting and are driven by a person in the connector's own widget, not by Claude's tool calls.
+
+**Connector permissions as set (Claude → Customize → Connectors), 2026-10-03 23:40 CT:**
+- Higgsfield: interactive tools (48, incl. Generate Video, Deploy/Publish Website, Cancel Trial Auto-renewal) =
+  Needs approval. Read-only tools (38) = Always allow. Write/delete: Import Media URL = Always allow; Invoke App
+  Action, Create Website, Rename Website Subdomain, Enter App Contest = Blocked; the rest = Needs approval.
+  Generate Video had become "Always allow" when this session first used it; it is back on Needs approval.
+- Runway: interactive (21) = Needs approval; read-only (9) = Always allow; write/delete = Needs approval.
+- The blanket setting for a group hides per-tool switches, so the website / TikTok tools in the interactive group
+  are on approval rather than blocked. A run with nobody to approve cannot use them either way.
+
+**The credit cap is code** (`supabase/migrations/20261004030000_subscription_route_gate.sql`, NOT applied):
+`authorize_subscription_submit(job, quote, runner)` is the only way a row gets "submit started". It refuses when the
+route is off (`subscription_route_config.enabled`, default false), the quote is above `max_credits_per_job` (60),
+or the month's credits plus the quote pass `max_credits_per_month` (1,200), and it writes the start mark in the same
+statement that checked. Limit of this: it gates AVT's record, not Higgsfield. A session that called Generate Video
+without asking the gate would not be stopped by it — which is why Generate Video stays on approval until a job has
+passed, and why the plan's own credit balance is the outer bound. The CLI runner has its own per-job cap in Python
+and does not yet use the monthly cap.
+
+**Accepted by the provider, then the session dies before the job id is saved.** The row already says "submit
+started" (written before the provider is called). From then on `authorize_subscription_submit` answers
+"unreconciled" for that row, to every runner, forever: nothing resubmits it. Reconciling is a separate act: look at
+Higgsfield's own job list and credit transactions since the start time. If the job is there,
+`record_subscription_submit(job, id)` attaches it (once; a second id is refused). If it is not there,
+`clear_unreconciled_submit(job, evidence)` removes the mark and keeps the evidence on the row; only then can the job
+be authorized again. Scenarios: `supabase/tests/subscription_route_gate.sql`, run against a throwaway Postgres 16 —
+all thirteen answers as expected.
+
+**Still a claim until a real job proves it:** that the server fetches, stores and assigns the clip after the session
+has stopped. Tested with stand-ins only (`billing.test.ts`). The first live job must be run with the session ended
+after the result link is written, and the row watched to `attachedBy: "server"`.
+
+**Economics, qualified (Fendi / ChatGPT):** $1.38 per 4 s 720p restage holds only if all 1,200 credits are used.
+At $59 a month the plan costs $5.90 per restage at 10 a month, $3.69 at 16, $1.97 at 30, $1.40 at 42, against
+$3.70 on the API. Break-even is about 16 comparable restages a month, before tax; retries spend the same allowance.
+
+## For the testing agent — the one capped end-to-end test (not scheduled; needs the plan and Fendi's word)
+
+One `seedance_ref` job, 4 s, 720p, audio off, on an existing shot whose API restage already exists for comparison.
+Before: apply the migration, set `enabled = true` with `max_credits_per_month = 60` for the test, merge PR #167,
+redeploy `provider-jobs-tick`, publish. Run: park the job, authorize (expect quote 28), submit through the
+connector, write the id, wait, write the result link, END THE SESSION. Pass means: clip stored, on its shot,
+`attachedBy: "server"`, `billing.actualCredits` matches Higgsfield's transactions, and the take check
+(lip timing, framing) is no worse than the API restage of the same shot. Then, and only then, `verifiedRoutes`.
+No generation is to be started by the integration agent without the testing agent's go.
