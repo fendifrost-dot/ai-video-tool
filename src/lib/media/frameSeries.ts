@@ -51,10 +51,12 @@ export function cellsOf(rgba: Uint8ClampedArray | Uint8Array, side: number, grid
 }
 
 /**
- * Decode [from, to) of a file and return every frame shown in it, in order. Throws when the browser cannot decode the
- * file or the stretch is too long to measure.
+ * Decode [from, to) of a file and hand every frame shown in it to `onFrame` with its own presentation time (seconds
+ * on the file's clock). The frame is closed when `onFrame` returns, so it is read inside the call. Frames arrive in
+ * the order the decoder gives them — collect and sort by time when order matters. Throws when the browser cannot
+ * decode the file or the stretch is too long to read frame by frame.
  */
-export async function frameSeries(read: RangeRead, track: Mp4Track, from = 0, to: number = track.duration, grid = SERIES_GRID): Promise<SeriesFrame[]> {
+export async function eachFrame(read: RangeRead, track: Mp4Track, from: number, to: number, onFrame: (frame: VideoFrame, t: number) => void): Promise<void> {
   if (typeof VideoDecoder === "undefined" || typeof EncodedVideoChunk === "undefined") throw new Error("this browser has no video decoder");
   if (!track.codec) throw new Error(`no decoder is known here for ${track.format || "this file"}`);
   const start = Math.max(0, from);
@@ -77,21 +79,13 @@ export async function frameSeries(read: RangeRead, track: Mp4Track, from = 0, to
   const config: VideoDecoderConfig = { codec: track.codec, codedWidth: track.width ?? undefined, codedHeight: track.height ?? undefined, ...(track.description ? { description: track.description } : {}) };
   if (!(await VideoDecoder.isConfigSupported(config).then((s) => s.supported, () => false))) throw new Error(`this browser cannot decode ${track.codec}`);
 
-  const side = grid * PIXELS_PER_CELL;
-  const canvas = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(side, side) : Object.assign(document.createElement("canvas"), { width: side, height: side });
-  const ctx = canvas.getContext("2d", { willReadFrequently: true }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
-  if (!ctx) throw new Error("this browser gave no canvas to measure on");
-
-  const out: SeriesFrame[] = [];
   let failure: Error | null = null;
   const decoder = new VideoDecoder({
     output: (frame) => {
       try {
         const t = frame.timestamp / 1e6;
         if (failure || t < start - 1e-4 || t >= end - 1e-4) return;
-        // the whole frame squeezed onto the raster: the measure is of the picture's layout, not its shape
-        ctx.drawImage(frame, 0, 0, side, side);
-        out.push({ t: Math.round(t * 1000) / 1000, cells: cellsOf(ctx.getImageData(0, 0, side, side).data, side, grid) });
+        onFrame(frame, Math.round(t * 1000) / 1000);
       } catch (e) {
         failure = failure ?? (e instanceof Error ? e : new Error(String(e)));
       } finally {
@@ -119,5 +113,22 @@ export async function frameSeries(read: RangeRead, track: Mp4Track, from = 0, to
     }
   }
   if (failure) throw failure;
+}
+
+/**
+ * Decode [from, to) of a file and return every frame shown in it, in order, each reduced to a small grid of colour.
+ * Throws when the browser cannot decode the file or the stretch is too long to measure.
+ */
+export async function frameSeries(read: RangeRead, track: Mp4Track, from = 0, to: number = track.duration, grid = SERIES_GRID): Promise<SeriesFrame[]> {
+  const side = grid * PIXELS_PER_CELL;
+  const canvas = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(side, side) : Object.assign(document.createElement("canvas"), { width: side, height: side });
+  const ctx = canvas.getContext("2d", { willReadFrequently: true }) as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+  if (!ctx) throw new Error("this browser gave no canvas to measure on");
+  const out: SeriesFrame[] = [];
+  await eachFrame(read, track, from, to, (frame, t) => {
+    // the whole frame squeezed onto the raster: the measure is of the picture's layout, not its shape
+    ctx.drawImage(frame, 0, 0, side, side);
+    out.push({ t, cells: cellsOf(ctx.getImageData(0, 0, side, side).data, side, grid) });
+  });
   return out.sort((a, b) => a.t - b.t);
 }
