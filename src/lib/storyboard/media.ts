@@ -18,6 +18,7 @@ import { sourceRangeForSongRange, type PerformanceSync } from "@/lib/sync/perfor
 import { orderBoxes, type StoryboardBox } from "./boxes";
 import { resolveEvents, type EventClock, type ResolvedEvent } from "./events";
 import type { BeatCheck } from "./beatCheck";
+import type { TakeCheck } from "./takeCheck";
 
 export const ASSIGNMENT_ROLES = ["performance", "b_roll", "generated_image", "generated_clip", "reference"] as const;
 export type AssignmentRole = (typeof ASSIGNMENT_ROLES)[number];
@@ -72,6 +73,8 @@ export type MediaAsset = {
   filmedIn?: string | null;
   /** The clip measured against the script it was asked for with (beatCheck.ts), once it has been. */
   beatCheck?: BeatCheck | null;
+  /** A restaged clip held against the take it was made from — lips and framing (takeCheck.ts), once it has been. */
+  takeCheck?: TakeCheck | null;
 };
 
 /** A take of the song as filmed: performance footage that was not made from another take. */
