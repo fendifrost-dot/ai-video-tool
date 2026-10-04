@@ -14,7 +14,7 @@ const AT = "2026-10-03T19:00:00Z";
 const ASKED = [{ id: "e1", offset: 1.9, kinds: ["lighting"], says: "light: the room goes dark" }];
 const change = (begins: number, arrived = begins) => ({ begins, half: begins, arrived, size: 0.12, strength: 14, kind: "light" as const, lumaBefore: 0.3, lumaAfter: 0.08 });
 const check = (over: Partial<BeatCheck> = {}): BeatCheck => ({
-  version: 3,
+  version: 4,
   measuredAt: AT,
   frames: 96,
   fps: 24,
@@ -98,6 +98,28 @@ describe("a clip asked for with timed changes", () => {
     );
     expect(screen.getByTestId("beat-check-beat").textContent).toContain("no change of the light was found near it");
     expect(screen.getByTestId("beat-check").getAttribute("data-verdict")).toBe("not_kept");
+  });
+});
+
+describe("a clip whose light changes more times than it was asked to", () => {
+  it("is given no timing: it says it cannot tell which change was asked for, and shows every change it could be", () => {
+    const opening = { ...change(0.5, 0.625), lumaBefore: 0.03, lumaAfter: 0.12 };
+    const ball = { ...change(0.958, 1.125), lumaBefore: 0.12, lumaAfter: 0.17 };
+    const unsure = check({ beats: [{ ...ASKED[0], change: null, error: null, verdict: "undetermined", candidates: [opening, ball], askedNear: 1 }], verdict: "undetermined" });
+    render(
+      <StoryboardProvider value={sb({})}>
+        <BeatCheckPanel item={item(asset({ beatCheck: unsure }))} />
+      </StoryboardProvider>,
+    );
+    expect(screen.getByTestId("beat-check").getAttribute("data-verdict")).toBe("undetermined");
+    const beat = screen.getByTestId("beat-check-beat");
+    expect([beat.getAttribute("data-verdict"), beat.getAttribute("data-error"), beat.getAttribute("data-begins"), beat.getAttribute("data-candidates")]).toEqual(["undetermined", "", "", "0.5,0.958"]);
+    expect(beat.textContent).toContain("cannot tell which");
+    expect(beat.textContent).toContain("the light changes twice near it (0.50 s to 0.63 s, brighter; 0.96 s to 1.13 s, brighter) and one change was asked for. Which of them is the one asked for cannot be told from the light, so no timing is given");
+    // no number that could be read as a timing
+    expect(beat.textContent).not.toMatch(/[+−]\d\.\d\d s/);
+    expect(within(beat).getAllByTestId("beat-check-frame").map((f) => Number(f.getAttribute("data-seconds")))).toEqual([0.2, 0.725, 1.225, 1.95]);
+    expect(screen.getByTestId("beat-check-note").textContent).toContain("Where the light changes more times than it was asked to, no timing is given");
   });
 });
 

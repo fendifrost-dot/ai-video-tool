@@ -13,6 +13,7 @@ import { frameBoxStyle } from "@/lib/project/aspect";
 import { FrameStrip } from "./FrameStrip";
 import { BeatCheckPanel } from "./BeatCheck";
 import { TakeCheckPanel } from "./TakeCheck";
+import { AcceptanceChip, AcceptancePanel } from "./Acceptance";
 import { BeatStrip } from "./TimedBeats";
 import { ContinuityChips } from "./Continuity";
 import { Overlay } from "./Overlay";
@@ -240,6 +241,8 @@ function MediaList({ box, items, showing }: { box: StoryboardBox; items: BoxMedi
       {items.length === 0 && <p className="text-xs text-foreground/50">Nothing is on this shot yet. Generate an image or a clip, or put your own footage on it.</p>}
       {items.map((item) => {
         const isShowing = showing === item;
+        // whether a generated clip does what it was asked to — not whether it plays
+        const accepted = item.kind === "video" ? sb.acceptanceOf(item.asset) : null;
         return (
           <div
             key={item.assignmentId ?? `base-${item.asset.id}`}
@@ -252,6 +255,7 @@ function MediaList({ box, items, showing }: { box: StoryboardBox; items: BoxMedi
             <div className="flex items-center gap-2">
               <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", ROLE_STYLE[item.role])}>{mediaLabel(item)}</span>
               <span className="min-w-0 flex-1 truncate text-xs text-foreground/80">{item.asset.name}</span>
+              {accepted && <AcceptanceChip verdict={accepted.verdict} />}
               {isShowing && <span className="text-[10px] font-medium text-primary">showing</span>}
             </div>
             {item.kind === "video" && item.sourceIn != null && (
@@ -266,6 +270,8 @@ function MediaList({ box, items, showing }: { box: StoryboardBox; items: BoxMedi
             {item.kind === "video" && <BeatCheckPanel item={item} />}
             {/* a restaged clip held against the take it was made from: his lips on the take's moments, no more of him in frame */}
             {item.kind === "video" && <TakeCheckPanel item={item} />}
+            {/* and what all of that comes to: each thing asked of the clip — measured, judged by eye, or not yet looked at */}
+            {item.kind === "video" && <AcceptancePanel item={item} shot={{ number: sb.numberOf(box.id), start: box.start, end: box.end }} />}
             {/* an image is seen here too, whether or not it is what the shot shows: a place drawn for a take is never "showing" */}
             {item.kind === "image" && sb.urlFor(item.asset) && (
               <img src={sb.urlFor(item.asset)} alt={item.asset.name} className="max-h-56 rounded border border-border/50 object-contain" data-testid="focus-media-image" />

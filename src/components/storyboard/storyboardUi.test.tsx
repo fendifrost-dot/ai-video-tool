@@ -87,6 +87,8 @@ function controller(over: Partial<StoryboardController> = {}): StoryboardControl
     takeOf: () => null,
     checkAgainstTake: fn(),
     checkingOf: () => null,
+    acceptanceOf: () => null,
+    judge: fn(),
     entities: [],
     looks: [],
     continuityOf: () => NO_CONTINUITY,

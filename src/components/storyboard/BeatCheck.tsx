@@ -14,6 +14,7 @@ const VERDICT_STYLE: Record<BeatVerdict, string> = {
   displaced: "bg-amber-500/15 text-amber-200",
   not_seen: "bg-rose-500/15 text-rose-300",
   unmeasured: "bg-white/10 text-foreground/70",
+  undetermined: "bg-sky-500/15 text-sky-200",
 };
 
 const clip = (n: number, max: number) => Math.round(Math.max(0, Math.min(n, Math.max(0, max - 0.05))) * 1000) / 1000;
@@ -24,6 +25,12 @@ const clip = (n: number, max: number) => Math.round(Math.max(0, Math.min(n, Math
  * happened by the frame just before it was asked for, and that frame was shown as "before".
  */
 export function framesForBeat(b: MeasuredBeat, clipSeconds: number): { t: number; label: string }[] {
+  // which change is the beat's could not be told: every change it could be is shown, each as it has arrived, with
+  // the frame before the first of them and the frame where it was asked
+  if (b.verdict === "undetermined" && b.candidates && b.candidates.length > 0) {
+    const out = [{ t: clip(b.candidates[0].begins - 0.3, clipSeconds), label: "before" }, ...b.candidates.map((c, i) => ({ t: clip(c.arrived + 0.1, clipSeconds), label: `change ${i + 1}` })), { t: clip(b.offset + 0.05, clipSeconds), label: "asked" }];
+    return out.sort((x, y) => x.t - y.t);
+  }
   const begins = b.change?.begins ?? null;
   const arrived = b.change?.arrived ?? null;
   const first = begins != null ? Math.min(b.offset, begins) : b.offset;
@@ -88,7 +95,7 @@ export function BeatCheckPanel({ item }: { item: BoxMediaItem }) {
 
       {shown &&
         shown.beats.map((b) => (
-          <div key={b.id} className="space-y-1.5" data-testid="beat-check-beat" data-event-id={b.id} data-asked={b.offset} data-begins={b.change?.begins ?? ""} data-arrived={b.change?.arrived ?? ""} data-error={b.error ?? ""} data-verdict={b.verdict} data-kind={b.change?.kind ?? ""}>
+          <div key={b.id} className="space-y-1.5" data-testid="beat-check-beat" data-event-id={b.id} data-asked={b.offset} data-begins={b.change?.begins ?? ""} data-arrived={b.change?.arrived ?? ""} data-error={b.error ?? ""} data-verdict={b.verdict} data-kind={b.change?.kind ?? ""} data-candidates={b.candidates?.map((c) => c.begins).join(",") ?? ""}>
             <p className="text-[11px] leading-snug text-foreground/80">
               <span className={cn("mr-1.5 rounded-full px-1.5 py-px text-[10px] font-medium", VERDICT_STYLE[b.verdict])}>{VERDICT_LABEL[b.verdict]}</span>
               <span className="italic text-foreground/60">“{b.says}”</span> — {beatLine(b)}
@@ -115,7 +122,8 @@ export function BeatCheckPanel({ item }: { item: BoxMediaItem }) {
       {shown && timed.length > 0 && (
         <p className="text-[10px] leading-snug text-foreground/45" data-testid="beat-check-note">
           {shown.frames} frames at {shown.fps.toFixed(0)} per second were read. What is measured is the light of the whole picture (how bright, how much contrast, which colour). On time = the change begins within a quarter of a second of where it was
-          asked. The numbers say that the light changed and when; whether it is the change that was asked for is what the frames are for.
+          asked. The numbers say that the light changed and when; whether it is the change that was asked for is what the frames are for. Where the light changes more times than it was asked to, no timing is given: this cannot tell which change is
+          the one that was asked for.
         </p>
       )}
       {!shown && !busy && timed.length > 0 && <p className="text-[11px] text-foreground/50">Not measured yet.</p>}

@@ -58,6 +58,8 @@ import { ALTERNATIVE_LABEL, beatLines, type TemporalPlan } from "@/lib/storyboar
 import type { AskedChange } from "@/lib/storyboard/beatCheck";
 import { measureClip as measureClipFile, saveBeatCheck } from "@/lib/queries/beatCheck";
 import { measureAgainstTake, saveTakeCheck } from "@/lib/queries/takeCheck";
+import { askOfJob, saveJudgement } from "@/lib/queries/acceptance";
+import { acceptanceOf as acceptanceFor, type Acceptance, type Requirement } from "@/lib/storyboard/acceptance";
 import { settingsOf } from "@/lib/worldBatch";
 import { ensureStoryboardMaterialized, type MaterializeResult } from "@/lib/storyboard/build";
 import { aspectOfProject, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
@@ -168,6 +170,13 @@ export type StoryboardController = {
   checkAgainstTake: (asset: MediaAsset) => Promise<void>;
   /** What a check in flight is doing, when one is. */
   checkingOf: (assetId: string) => string | null;
+  /**
+   * A generated clip held against everything it was asked for: what was measured, what a person judged by looking,
+   * and what nothing has looked at yet. Null for footage the app did not generate.
+   */
+  acceptanceOf: (asset: MediaAsset) => Acceptance | null;
+  /** Record what was decided by looking at the clip (or, with `finding` null, take that back). */
+  judge: (asset: MediaAsset, requirement: Requirement, finding: "meets" | "fails" | null, note: string) => Promise<void>;
   /** The project's continuity entities: places, props and lighting states, each described once. */
   entities: ContinuityEntity[];
   /** The artist's wardrobe looks — the existing Look records a shot can point at. */
@@ -723,7 +732,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         setConfirm({
           title: `Restage your take for shot ${numberById.get(box.id) ?? ""}?`,
           body:
-            `About ${usd(est.clip)} at list price. Your real performance from ${r.takeName} (${mmss(r.takeIn)}–${mmss(r.takeOut)} of the take) is re-shot inside this shot's scene: ` +
+            `About ${usd(est.clip)} at the rate this provider has charged for restaging. Your real performance from ${r.takeName} (${mmss(r.takeIn)}–${mmss(r.takeOut)} of the take) is re-shot inside this shot's scene: ` +
             `${r.seconds} s of the take go to the video model with ${place?.of ? `the approved picture of ${place.of.name} as the place — the same picture every shot set there is restaged into` : "this shot's image as the place"}` +
             (est.clipDrawsImage ? " (the shot has no image yet, so one is drawn first)" : "") +
             ". He keeps his face and what he wears in the take. The result stays on the song clock and lands on this shot only; it takes several minutes." +
@@ -883,6 +892,28 @@ export function useStoryboardController(projectId: string): StoryboardController
     [takeOf, urlFor, qc, projectId],
   );
 
+  // --- whether a clip does what it was asked to ---------------------------------------------------------------------------
+  const acceptanceOf = useCallback(
+    (asset: MediaAsset): Acceptance | null => {
+      if (!asset.isVideo) return null;
+      const job = jobs.jobs.find((j) => j.result_asset_id === asset.id);
+      const ask = job ? askOfJob(job) : null;
+      return ask ? acceptanceFor({ ask, beatCheck: asset.beatCheck ?? null, takeCheck: asset.takeCheck ?? null, record: asset.acceptance ?? null }) : null;
+    },
+    [jobs.jobs],
+  );
+  const judge = useCallback(
+    async (asset: MediaAsset, requirement: Requirement, finding: "meets" | "fails" | null, note: string) => {
+      try {
+        await saveJudgement(asset.id, requirement, finding, note);
+        await qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(projectId) });
+      } catch (e) {
+        toast.error(`The judgement could not be kept: ${message(e)}`);
+      }
+    },
+    [qc, projectId],
+  );
+
   // --- continuity entities ----------------------------------------------------------------------------------------
   const entityRun = useCallback(async (entityId: string, text: string, work: () => Promise<void>) => {
     setEntityBusy((b) => ({ ...b, [entityId]: text }));
@@ -1013,6 +1044,8 @@ export function useStoryboardController(projectId: string): StoryboardController
     takeOf,
     checkAgainstTake,
     checkingOf: (id) => checking[id] ?? null,
+    acceptanceOf,
+    judge,
     entities,
     looks,
     continuityOf,
