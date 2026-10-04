@@ -85,3 +85,43 @@ See the checkpoint in chat for the table; the short form: (1) Higgsfield plan cr
 test next, needs a plan, estimated 55–80 % per second, unverified; (2) 480p drafts for timing/framing retests —
 usable now, 47 % per second at list; (3) SuperGrok Heavy — owned and idle, but no documented agent route for
 images; manual use only; (4) Runway, OpenAI, Fal — nothing to route.
+
+## Update 21:55 CT — connectors connected (Fendi: "the connection is the most important thing … hit the on switch when it's time")
+
+| Connector | Where | State | Billing when used |
+| --- | --- | --- | --- |
+| Higgsfield — `https://mcp.higgsfield.ai/mcp` | Fendi's Claude account (custom connector) | **Connected.** 48 interactive tools, all "Needs approval". No plan bought: the plan offer was skipped ("Skip & proceed to MCP"), the 3-day trial was NOT started (it renews at $49/mo). | Plan credits (account is Free, 10 credits) |
+| Runway — `https://mcp.runwayml.com/mcp` | Fendi's Claude account (custom connector) | **Connected**, workspace "Fendi" (Personal · Free). 21 interactive tools, "Needs approval". Scope granted: view name/email; access workspace, generations, content; create, edit, delete content; use available credits. | Runway web-app credits (102), NOT the API account's credits |
+
+Higgsfield tools seen on the connector page (names as shown): Generate Video, Generate Image, Generate Audio,
+Generate 3D, Upload Local Media, Manage Reference Elements, Motion Control (Recast), Reframe Video, Outpaint Image,
+Remove Background, Upscale Image, Upscale Video, Voice Change, Dubbing, Create Voice, Show Generations (By IDs),
+Wait For Generation Jobs, Check Balance, Show Plans & Credit Top-ups, Get MCP Preferences, plus Ads / Marketing /
+Shorts / TikTok / Website tools AVT does not use. Two to leave alone: "Cancel Trial Auto-renewal", "Credit Reset".
+Runway tools seen: Generate Image, Edit Video (Aleph 2.0), Expand Video (Aleph 2.0), Enhance Video Draft, Enhance
+Frame Rate, Convert Video to HDR, and others not read.
+
+Both connectors are connected at the account level and **not enabled in the integration agent's running chat**, so
+no connector tool has been called yet: the parameter read and the credit quote are still open. A new Claude session
+with the two connectors switched on (or this chat's connector toggle) can do them with no spend: Check Balance,
+then the Generate Video tool's schema for Seedance 2.5 with a video reference.
+
+The connector route and the CLI route spend the same plan credits. The connector needs no computer; the CLI runner
+(`scripts/runner/`) needs a signed-in one. Which of the two becomes AVT's runner is decided when the plan exists:
+a scheduled Claude session can claim parked jobs and call the connector, with the same claim / write-ahead /
+reconcile rules the script uses.
+
+## Grok image MCP — prepared, not enabled
+
+Fendi asked for it to be enabled. It cannot be done from a cloud session: the login it uses is the Grok CLI's own
+file on the Mac (`~/.grok/auth.json`), and that file is not copied anywhere. It also remains an undocumented use of
+that login (see the verdict above) — the risk is to the SuperGrok Heavy account. If it is to be tried, on the Mac:
+
+1. `git clone https://github.com/notfixingit3/grok-image-mcp ~/agent-tools/grok-image-mcp && cd $_ && go build -o grok-image-mcp .`
+   (build from source; do not use the release binary). Read `main.go` first — only `oauth.go` and the request
+   destinations were read in the audit.
+2. Register it with **OAuth only**, so it can never fall back to the paid API key:
+   `{"mcpServers":{"grok-image-mcp":{"command":"/Users/gocrazyglobal/agent-tools/grok-image-mcp/grok-image-mcp","env":{"GROK_IMAGE_AUTH":"oauth","GROK_IMAGE_MODEL":"grok-imagine-image"}}}}`
+3. `get_configuration_status` must say "Grok subscription OAuth is active". One `generate_image`, then check
+   console.x.ai usage: the image must NOT appear there. A 403 means the tier has no such access — stop.
+4. Not wired into AVT. AVT's stills go through `world-still-proxy` on the API key until a documented route exists.
