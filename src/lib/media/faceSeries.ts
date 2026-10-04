@@ -64,6 +64,34 @@ export function closerWindows(w: number, h: number): [number, number, number][] 
   return out;
 }
 
+/** How much of the picture around a face the closer reading takes in: this many times the face's own extent. */
+const CLOSE_ON = 2.2;
+
+/**
+ * The square of the frame to read a face again in, close: centred on the face, a little over twice its extent, kept
+ * inside the frame. Null when the face already fills that much of the picture (nothing is gained). Pure — exported
+ * for its test. [x, y, side] in the frame's pixels.
+ */
+export function closeOn(points: readonly Point[], w: number, h: number): [number, number, number] | null {
+  if (points.length === 0) return null;
+  let x0 = Infinity;
+  let y0 = Infinity;
+  let x1 = -Infinity;
+  let y1 = -Infinity;
+  for (const p of points) {
+    if (p.x < x0) x0 = p.x;
+    if (p.x > x1) x1 = p.x;
+    if (p.y < y0) y0 = p.y;
+    if (p.y > y1) y1 = p.y;
+  }
+  const extent = Math.max(x1 - x0, y1 - y0);
+  const side = Math.round(Math.min(w, h, extent * CLOSE_ON));
+  if (!(extent > 4) || side >= Math.min(w, h) * 0.9) return null;
+  const x = Math.round(Math.max(0, Math.min(w - side, (x0 + x1) / 2 - side / 2)));
+  const y = Math.round(Math.max(0, Math.min(h - side, (y0 + y1) / 2 - side / 2)));
+  return [x, y, side];
+}
+
 function canvasOf(w: number, h: number): { canvas: OffscreenCanvas | HTMLCanvasElement; ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D } {
   const canvas = typeof OffscreenCanvas !== "undefined" ? new OffscreenCanvas(w, h) : Object.assign(document.createElement("canvas"), { width: w, height: h });
   const ctx = canvas.getContext("2d") as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null;
@@ -110,6 +138,16 @@ export async function faceSeries(read: RangeRead, track: Mp4Track, from = 0, to:
           lastWindow = i;
           break;
         }
+      }
+    }
+    // read again close on the face itself: a mouth a few pixels tall in the whole frame is measured to the pixel there
+    if (points) {
+      const near = closeOn(points, sw, sh);
+      if (near) {
+        const [x, y, side] = near;
+        close.ctx.drawImage(frame, x, y, side, side, 0, 0, WINDOW_SIDE, WINDOW_SIDE);
+        const again = faces.detect(close.canvas).faceLandmarks[0];
+        if (again) points = again.map((p) => ({ x: x + p.x * side, y: y + p.y * side }));
       }
     }
     out.push({ t, face: points ? faceOf(points, sw, sh) : null });
