@@ -6,6 +6,7 @@
  * per thing, so a box written by the generator, by the director, by a split or by a migration is the same kind of row.
  */
 import { parseBeatCheck } from "@/lib/storyboard/beatCheck";
+import { parseTakeCheck } from "@/lib/storyboard/takeCheck";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -361,6 +362,7 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
     shows: textOf(a.metadata_json, "shows"),
     filmedIn: textOf(a.metadata_json, "filmed_in"),
     beatCheck: parseBeatCheck((a.metadata_json as { beat_check?: unknown } | null)?.beat_check),
+    takeCheck: parseTakeCheck((a.metadata_json as { take_check?: unknown } | null)?.take_check),
   };
 }
 
