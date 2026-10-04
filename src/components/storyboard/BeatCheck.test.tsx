@@ -49,8 +49,9 @@ describe("a clip asked for with timed changes", () => {
     expect(panel.getAttribute("data-verdict")).toBe("displaced");
     const beat = within(panel).getByTestId("beat-check-beat");
     expect([beat.getAttribute("data-asked"), beat.getAttribute("data-begins"), beat.getAttribute("data-error"), beat.getAttribute("data-verdict")]).toEqual(["1.9", "2.75", "0.85", "displaced"]);
-    expect(beat.textContent).toContain("not on time");
-    expect(beat.textContent).toContain("asked at 1.90 s — the light begins to change at 2.75 s (+0.85 s), arrived by 3.10 s");
+    // "a change": detected and timed, not identified as the change that was asked for
+    expect(beat.textContent).toContain("a change, not on time");
+    expect(beat.textContent).toContain("asked at 1.90 s — a change of light begins at 2.75 s (+0.85 s), arrived by 3.10 s");
     // frames: before it was asked, where it was asked, where it began, and after it arrived
     expect(within(beat).getAllByTestId("beat-check-frame").map((f) => Number(f.getAttribute("data-seconds")))).toEqual([1.6, 1.95, 2.8, 3.5]);
     // already measured for this script: it is not measured again by itself

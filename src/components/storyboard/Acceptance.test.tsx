@@ -36,7 +36,7 @@ describe("does the clip do what it was asked", () => {
       </StoryboardProvider>,
     );
     const panel = screen.getByTestId("acceptance");
-    expect([panel.getAttribute("data-verdict"), panel.getAttribute("data-fails"), panel.getAttribute("data-open")]).toEqual(["unverified", "0", "5"]);
+    expect([panel.getAttribute("data-verdict"), panel.getAttribute("data-fails"), panel.getAttribute("data-open")]).toEqual(["unverified", "0", "7"]);
     expect(screen.getByTestId("acceptance-chip").textContent).toBe("not yet verified");
     expect(screen.getAllByTestId("acceptance-requirement").map((e) => [e.getAttribute("data-requirement"), e.getAttribute("data-finding"), e.getAttribute("data-source")])).toEqual([
       ["timing", "unverified", "none"],
@@ -44,6 +44,8 @@ describe("does the clip do what it was asked", () => {
       ["lips", "unverified", "none"],
       ["lighting", "unverified", "none"],
       ["camera", "unverified", "none"],
+      ["integrity", "unverified", "none"],
+      ["action", "unverified", "none"],
     ]);
     // lip sync: the exact stretch to watch with the song, and the way there
     expect(screen.getByTestId("acceptance-watch").textContent).toContain("watch shot 39 with the song, 2:36.86–2:40.78");
@@ -62,7 +64,7 @@ describe("does the clip do what it was asked", () => {
     );
     expect(screen.getByTestId("acceptance").getAttribute("data-verdict")).toBe("fails");
     expect(screen.getByTestId("acceptance-chip").textContent).toBe("fails what was asked");
-    expect(screen.getByTestId("acceptance-line").textContent).toBe("fails lighting, camera and movement · not verified: timing, framing, lip sync");
+    expect(screen.getByTestId("acceptance-line").textContent).toBe("fails lighting, camera and movement · not verified: timing, framing, lip sync, bodies and objects, action");
     const timing = line("timing");
     expect([timing.getAttribute("data-finding"), timing.getAttribute("data-source")]).toEqual(["undetermined", "measured"]);
     expect(timing.textContent).toContain("cannot tell");
@@ -93,6 +95,32 @@ describe("does the clip do what it was asked", () => {
     // and a judgement can be taken back
     fireEvent.click(within(line("timing")).getByTestId("acceptance-take-back"));
     expect(c.judge).toHaveBeenCalledWith(a, "timing", null, "");
+  });
+
+  it("a second opinion's finding on the clip is its own line, marked as a model's review — and someone who looked can overrule it", async () => {
+    const cutaway: ClipAsk = { asked: [], fromTake: false };
+    const reviewed = [{ severity: "major" as const, area: "realism", finding: "The moving sneaker appears empty and disconnected from a leg.", at: "2026-10-03T21:28:49.082Z" }];
+    const a = asset({ acceptance: withJudgement(null, "integrity", "fails", "the stepping sneaker has no leg in it until the last frames", AT) });
+    const c = sb(a, { acceptanceOf: (x: MediaAsset) => acceptanceOf({ ask: cutaway, beatCheck: null, takeCheck: null, record: x.acceptance ?? null, reviewed }) });
+    render(
+      <StoryboardProvider value={c}>
+        <AcceptancePanel item={item(a)} shot={SHOT} />
+      </StoryboardProvider>,
+    );
+    expect(screen.getByTestId("acceptance-line").textContent).toBe("fails bodies and objects, second opinion · not verified: lighting, camera and movement, action");
+    const review = line("review");
+    expect([review.getAttribute("data-finding"), review.getAttribute("data-source")]).toEqual(["fails", "reviewed"]);
+    expect(review.textContent).toContain("reviewed by a model");
+    expect(review.textContent).toContain("The moving sneaker appears empty and disconnected from a leg.");
+    const integrity = line("integrity");
+    expect([integrity.getAttribute("data-finding"), integrity.getAttribute("data-source")]).toEqual(["fails", "by_eye"]);
+    expect(integrity.textContent).toContain("no leg in it");
+    // no lip-sync line and no stretch to watch on a clip that was not made from a take
+    expect(screen.queryByTestId("acceptance-watch")).toBeNull();
+    fireEvent.click(within(review).getByTestId("acceptance-meets"));
+    fireEvent.change(screen.getByTestId("acceptance-note"), { target: { value: "the leg is there" } });
+    fireEvent.click(screen.getByTestId("acceptance-keep"));
+    await waitFor(() => expect(c.judge).toHaveBeenCalledWith(a, "review", "meets", "the leg is there"));
   });
 
   it("footage the app did not generate has nothing asked of it", () => {

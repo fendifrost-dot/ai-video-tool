@@ -122,7 +122,7 @@ export function BeatCheckPanel({ item }: { item: BoxMediaItem }) {
       {shown && timed.length > 0 && (
         <p className="text-[10px] leading-snug text-foreground/45" data-testid="beat-check-note">
           {shown.frames} frames at {shown.fps.toFixed(0)} per second were read. What is measured is the light of the whole picture (how bright, how much contrast, which colour). On time = the change begins within a quarter of a second of where it was
-          asked. The numbers say that the light changed and when; whether it is the change that was asked for is what the frames are for. Where the light changes more times than it was asked to, no timing is given: this cannot tell which change is
+          asked. The numbers say that the light changed and when — a time here is when A change of light begins, even where the clip changes only once; whether it is the change that was asked for is what the frames are for. Where the light changes more times than it was asked to, no timing is given: this cannot tell which change is
           the one that was asked for.
         </p>
       )}
