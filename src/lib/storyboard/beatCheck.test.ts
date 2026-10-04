@@ -6,7 +6,8 @@
 import { describe, expect, it } from "vitest";
 import { askedBeats, temporalPlan } from "./temporal";
 import { resolveEvents } from "./events";
-import { beatLine, checkAnswers, findChanges, isDrift, measureBeats, ON_TIME_SECONDS, pairBeats, parseBeatCheck, unaskedLine, type AskedChange, type FrameSig } from "./beatCheck";
+import { beatLine, checkAnswers, findChanges, isDrift, measureBeats, ON_TIME_SECONDS, pairBeats, parseBeatCheck, unaskedLine, VERDICT_LABEL, type AskedChange, type FrameSig } from "./beatCheck";
+import { C038, FIRST_C035, framesOf, RETEST_C035 } from "./__fixtures__/realCurves";
 
 const GRID = 12;
 const FPS = 24;
@@ -242,5 +243,108 @@ describe("the check is a record", () => {
     expect(checkAnswers(stored, [{ ...asked[0], offset: 2.4 }])).toBe(false);
     expect(checkAnswers(null, asked)).toBe(false);
     expect(parseBeatCheck({ version: 2, beats: [], measuredAt: AT })).toBeNull();
+    // a check made before "cannot tell which" existed may hold a timing against the wrong change: it is measured again
+    expect(parseBeatCheck({ ...check, version: 3 })).toBeNull();
+  });
+});
+
+describe("which change is the one that was asked for", () => {
+  it("more changes of light than were asked for: no beat is timed, and the changes it could be are listed", () => {
+    // the clip opens dark, comes up at 0.6 s, and the change that was asked for at 1.9 s happens at 1.9 s
+    const check = measureBeats(clip(4, (t) => ({ light: t < 0.6 ? 0.3 : t < 1.9 ? 1 : 1.6 })), [beat(1.9, "light: the mirror ball comes alive")], AT);
+    expect(check.verdict).toBe("undetermined");
+    const b = check.beats[0];
+    expect(b).toMatchObject({ verdict: "undetermined", change: null, error: null, askedNear: 1 });
+    expect(b.candidates!.map((c) => Math.round(c.begins * 10) / 10)).toEqual([0.6, 1.9]);
+    // neither is called unasked: one of them was asked for
+    expect(check.unasked).toEqual([]);
+    expect(beatLine(b)).toMatch(/^asked at 1\.90 s — the light changes twice near it \(0\.\d\d s, brighter; 1\.\d\d s, brighter\) and one change was asked for\. Which of them is the one asked for cannot be told from the light, so no timing is given: the frames are the check$/);
+    expect(VERDICT_LABEL.undetermined).toBe("cannot tell which");
+  });
+
+  it("a room that goes dark and comes up again has changed twice — and a beat that asked for the blackout is not told nothing was seen", () => {
+    // before, the two were joined into a change from the light it had to the light it has again (none), dropped, and
+    // reported as two jumps of the picture; the beat was "not seen"
+    const frames = clip(8, (t) => ({ light: t < 2 ? 1 : t < 6.5 ? 0.3 : 1 }));
+    const { changes } = findChanges(frames);
+    expect(changes.map((c) => [c.kind, Math.round(c.begins * 10) / 10, c.lumaAfter < c.lumaBefore ? "darker" : "brighter"])).toEqual([
+      ["light", 2, "darker"],
+      ["light", 6.5, "brighter"],
+    ]);
+    const check = measureBeats(frames, [beat(1.9, "light: the room goes dark", "e1"), beat(6.5, "light: the room comes back", "e2")], AT);
+    expect(check.beats.map((b) => b.verdict)).toEqual(["on_time", "on_time"]);
+    expect(check.unasked).toEqual([]);
+    // a short one, inside a clip that changes again after it
+    const short = findChanges(clip(6, (t) => ({ light: t < 1 ? 0.3 : t < 2 ? 1 : t < 3 ? 0.3 : 1.5 })), 5).changes;
+    expect(short.map((c) => [c.kind, Math.round(c.begins)])).toEqual([
+      ["light", 1],
+      ["light", 2],
+      ["light", 3],
+    ]);
+  });
+
+  it("looking for a stretch lit differently from both its sides finds none in a room that does not change", () => {
+    let found = 0;
+    for (let seed = 101; seed <= 160; seed++) found += findChanges(clip(seed % 2 ? 4 : 8, () => ({ light: 1 }), seed), 5).changes.length;
+    expect(found).toBe(0);
+  });
+
+  it("three changes for two beats: neither beat is timed", () => {
+    const check = measureBeats(clip(6, (t) => ({ light: t < 1 ? 0.3 : t < 2 ? 1 : t < 3 ? 0.3 : 1.5 })), [beat(1.5, "a", "e1"), beat(2.6, "b", "e2")], AT);
+    expect(check.beats.map((b) => [b.verdict, b.error, b.askedNear, b.candidates?.length])).toEqual([
+      ["undetermined", null, 2, 3],
+      ["undetermined", null, 2, 2],
+    ]);
+    expect(check.verdict).toBe("undetermined");
+  });
+
+  it("a change out of reach of the beat is another event and does not make the beat's own change uncertain", () => {
+    const check = measureBeats(clip(8, (t) => ({ light: t < 2 ? 1 : t < 6.5 ? 0.3 : 1 })), [beat(1.9)], AT);
+    expect(check.beats[0].verdict).toBe("on_time");
+    expect(check.unasked).toHaveLength(1);
+  });
+
+  it("a beat that was not seen outranks one that could not be told", () => {
+    const check = measureBeats(clip(8, (t) => ({ light: t < 0.6 ? 0.3 : t < 1.9 ? 1 : 1.6 })), [beat(1.9, "a", "e1"), beat(6, "b", "e2")], AT);
+    expect(check.beats.map((b) => b.verdict)).toEqual(["undetermined", "not_seen"]);
+    expect(check.verdict).toBe("not_kept");
+  });
+
+  it("a camera's drift near the beat does not make a change that happens at a moment uncertain", () => {
+    // the picture brightens slowly for the whole clip, and the room goes dark at 2 s
+    const check = measureBeats(clip(4, (t) => ({ light: (1 + 0.12 * t) * (t < 2 ? 1 : 0.3) })), [beat(1.9)], AT);
+    expect(check.beats[0].verdict).toBe("on_time");
+  });
+
+  describe("on the light of real clips (the fresh section, 3–4 October 2026)", () => {
+    const asked = (offset: number): AskedChange[] => [{ id: "e1", offset, kinds: ["lighting"], says: "light: the mirror ball comes alive" }];
+
+    it("the retest — opens dark, comes up, THEN the mirror ball: it does not time the opening as the mirror ball", () => {
+      const check = measureBeats(framesOf(RETEST_C035), asked(1.9), AT);
+      const b = check.beats[0];
+      // the first version of this check answered "displaced, −1.40 s": the opening coming up, timed as the change asked for
+      expect(b.verdict).toBe("undetermined");
+      expect(b.error).toBeNull();
+      expect(b.change).toBeNull();
+      expect(check.verdict).toBe("undetermined");
+      expect(b.candidates).toHaveLength(2);
+      const [opening, ball] = b.candidates!;
+      expect(opening.begins).toBeGreaterThanOrEqual(0.33);
+      expect(opening.begins).toBeLessThanOrEqual(0.58);
+      // what a person read off the frames (the ball comes alive at 0.96 s) is one of the two — and the check does not pick it
+      expect(ball.begins).toBeGreaterThanOrEqual(0.9);
+      expect(ball.begins).toBeLessThanOrEqual(1.05);
+      expect(check.unasked.filter((c) => c.kind === "light")).toEqual([]);
+    });
+
+    it("the first clip of the same shot and the blackout shot each change once: they keep their timing", () => {
+      const first = measureBeats(framesOf(FIRST_C035), asked(1.9), AT).beats[0];
+      expect(first.verdict).toBe("displaced");
+      expect(first.error).toBeGreaterThan(-1.03);
+      expect(first.error).toBeLessThan(-0.9);
+      const blackout = measureBeats(framesOf(C038), asked(4.69), AT).beats[0];
+      expect(blackout.verdict).toBe("displaced");
+      expect(blackout.error).toBeCloseTo(-1.02, 1);
+    });
   });
 });

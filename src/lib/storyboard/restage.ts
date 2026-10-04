@@ -21,7 +21,7 @@ import { trimVideo } from "@/lib/media/mp4Trim";
 import { DEFAULT_PROJECT_ASPECT, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
 import { buildStoragePath, signedUrl, uploadBytesToBucket } from "@/lib/storage";
 import { performanceToSong } from "@/lib/sync/performanceSync";
-import { BatchShotSchema, PROVIDER_RATES, submitShot, type BatchShot, type SubmitResult } from "@/lib/worldBatch";
+import { BatchShotSchema, seedanceUsd, submitShot, type BatchShot, type SubmitResult } from "@/lib/worldBatch";
 import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 import type { StoryboardBox } from "./boxes";
 import { resolveEvents, type EventClock } from "./events";
@@ -62,9 +62,9 @@ export function restageSeconds(shotSeconds: number, lead = FRAME_ALLOWANCE): num
   return seconds > RESTAGE_MAX_SECONDS ? null : seconds;
 }
 
-/** List price: the model bills the seconds it is given and the seconds it returns. */
+/** What a restage of this many seconds costs: the rate the provider has been seen to charge (worldBatch/estimate.ts). */
 export function restageEstimateUsd(seconds: number): number {
-  return PROVIDER_RATES.seedance_usd_per_s[RESTAGE_RESOLUTION] * 2 * seconds;
+  return seedanceUsd(RESTAGE_RESOLUTION, seconds);
 }
 
 /** What is kept of him, word for word — the take's own description when Setup has one. */
