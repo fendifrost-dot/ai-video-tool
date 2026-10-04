@@ -6,7 +6,7 @@
  * closer, a stretch with no face. What the check says is held against what was put in.
  */
 import { describe, expect, it } from "vitest";
-import { closerWindows } from "@/lib/media/faceSeries";
+import { closeOn, closerWindows } from "@/lib/media/faceSeries";
 import { EYE_A, EYE_B, LIP_LOWER, LIP_UPPER, SYNC_SECONDS, WIDER_RATIO, checkAgainstTake, faceOf, fitLips, framingLine, framingOf, lipLine, minCorr, parseTakeCheck, type FaceFrame, type FaceSample } from "./takeCheck";
 
 const FPS = 24;
@@ -203,6 +203,11 @@ describe("the whole check, its words and its record", () => {
     const clip = asFrames(series(said, { seed: 2, reach: (t) => 14 - 2 * t, gap: [3, 4] }), 4);
     const c = checkAgainstTake(takeFrames, 155.99, clip, "2026-10-04T00:00:00Z");
     expect(c).toMatchObject({ version: 1, frames: 96, faceFrames: 72, faceFrom: 0, takeFrames: 96, takeFaceFrames: 96 });
+    // what was measured is kept with the verdict: the take's mouth from 0 of its stretch, the clip's with its reach
+    expect(c.series.take).toHaveLength(96);
+    expect(c.series.take[0][0]).toBe(0);
+    expect(c.series.clip).toHaveLength(72);
+    expect(c.series.clip[0]).toHaveLength(3);
     expect(c.faceTo).toBeCloseTo(2.958, 2);
     expect(c.lip.verdict).toBe("in_sync");
     expect(c.framing.verdict).toBe("wider");
@@ -248,5 +253,15 @@ describe("the closer squares a frame is looked at again in", () => {
     expect(wins).toHaveLength(15);
     expect(closerWindows(1920, 1080).every(([x, y, side]) => side === 648 && x + side <= 1920 && y + side <= 1080)).toBe(true);
     expect(closerWindows(0, 0)).toEqual([]);
+  });
+  it("a face that was found is read again close on itself, inside the frame", () => {
+    // a small face high in a tall frame: a square a little over twice its extent, centred on it
+    const face = [{ x: 500, y: 300 }, { x: 600, y: 300 }, { x: 550, y: 420 }];
+    expect(closeOn(face, 1080, 1920)).toEqual([418, 228, 264]);
+    // at the edge of the frame the square stays inside it
+    expect(closeOn([{ x: 0, y: 0 }, { x: 100, y: 120 }], 1080, 1920)).toEqual([0, 0, 264]);
+    // a face that already fills the picture is not read again
+    expect(closeOn([{ x: 100, y: 100 }, { x: 600, y: 700 }], 720, 1280)).toBeNull();
+    expect(closeOn([], 720, 1280)).toBeNull();
   });
 });

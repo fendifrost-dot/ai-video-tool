@@ -61,6 +61,11 @@ export type TakeCheck = {
     /** His face was found from the clip's first moments (a figure too small or too dark to read is not measured). */
     openingSeen: boolean;
   };
+  /**
+   * What was measured, kept so the verdict can be looked at and re-judged without reading the files again: the
+   * take's mouth over its stretch [t, mouth], and the clip's [t, mouth, reach]. Both from 0.
+   */
+  series: { take: [number, number][]; clip: [number, number, number][] };
 };
 
 /** Landmark indices of the face mesh: outer eye corners, inner lips (the pair the script used). */
@@ -273,11 +278,14 @@ export function checkAgainstTake(takeFrames: readonly FaceFrame[], takeStart: nu
     takeFaceFrames: take.length,
     lip: fitLips(take, clip),
     framing: framingOf(take, clip, first),
+    series: { take: take.map((x) => [x.t, x.mouth]), clip: clip.map((x) => [x.t, x.mouth, x.reach]) },
   };
 }
 
 const num = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const numOrNull = (v: unknown): number | null => (num(v) ? v : null);
+
+const rows = (raw: unknown, width: number): number[][] => (Array.isArray(raw) ? raw.filter((r): r is number[] => Array.isArray(r) && r.length === width && r.every(num)) : []);
 
 /** A stored check, read back. Anything that is not one (an older shape, a hand edit) is no check. */
 export function parseTakeCheck(raw: unknown): TakeCheck | null {
@@ -298,6 +306,7 @@ export function parseTakeCheck(raw: unknown): TakeCheck | null {
     takeFaceFrames: num(v.takeFaceFrames) ? v.takeFaceFrames : 0,
     lip: { verdict: lip.verdict, best, onClock: numOrNull(lip.onClock), worstLag: numOrNull(lip.worstLag), compared: num(lip.compared) ? lip.compared : 0 },
     framing: { verdict: fr.verdict, takeReach: numOrNull(fr.takeReach), openingReach: numOrNull(fr.openingReach), widestReach: numOrNull(fr.widestReach), widestAt: numOrNull(fr.widestAt), ratio: numOrNull(fr.ratio), openingSeen: fr.openingSeen === true },
+    series: { take: rows(v.series?.take, 2) as [number, number][], clip: rows(v.series?.clip, 3) as [number, number, number][] },
   };
 }
 
