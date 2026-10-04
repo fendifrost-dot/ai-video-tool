@@ -1,7 +1,12 @@
 import { AlertTriangle, Camera, Loader2, Scan } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Finding, FootageAnalysis } from "@/lib/storyboard/footage";
-import type { Compatibility } from "@/lib/storyboard/compatibility";
+import {
+  isMandatory,
+  type Authority,
+  type Compatibility,
+  type Requirement,
+} from "@/lib/storyboard/compatibility";
 import type { Staleness, StoredFootageAnalysis } from "@/lib/storyboard/footageRecord";
 import type { BoxMediaItem } from "@/lib/storyboard/media";
 import { cn } from "@/lib/utils";
@@ -31,6 +36,22 @@ const ROUTE_STYLE: Record<Compatibility["route"]["choice"], string> = {
   restage: "bg-amber-500/15 text-amber-200",
   reshoot: "bg-rose-500/15 text-rose-300",
 };
+/**
+ * The three authorities, in the order a director needs them: what was ASKED FOR first — a miss there is a reject —
+ * then what the take itself forces, then what is only advice.
+ */
+const GROUPS: [Authority, string, string][] = [
+  ["approved", "Required by the treatment", "asked for; mandatory until explicitly revised"],
+  ["source", "Required by the take", "measured off the footage; binding where it was measured"],
+  ["advisory", "Guidance", "inferred, so a miss is a note rather than a reject"],
+];
+
+const VERIFY_STYLE: Record<Requirement["verification"], string> = {
+  measured: "bg-emerald-500/10 text-emerald-300/90",
+  estimated: "bg-amber-500/10 text-amber-200/90",
+  unverifiable: "bg-rose-500/10 text-rose-200/80",
+};
+
 const STATUS_STYLE: Record<Finding<unknown>["status"], string> = {
   measured: "bg-emerald-500/10 text-emerald-300/90",
   estimated: "bg-amber-500/10 text-amber-200/90",
@@ -201,34 +222,51 @@ export function FootageAnalysisPanel({ item }: { item: BoxMediaItem }) {
 
           <details className="group">
             <summary className="cursor-pointer text-[10px] uppercase tracking-wider text-foreground/40 hover:text-foreground/60">
-              What the background must be ({spec.hard.length} required, {spec.preferences.length}{" "}
-              preferred)
+              What the background must be ({spec.requirements.filter(isMandatory).length} required,{" "}
+              {spec.requirements.filter((r) => !isMandatory(r)).length} guidance)
             </summary>
             <div className="mt-1 space-y-1.5">
-              <div>
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-foreground/40">
-                  Required — measured off this take
-                </p>
-                <ul className="space-y-0.5 text-[11px] leading-snug text-foreground/75">
-                  {spec.hard.map((c, i) => (
-                    <li key={i} data-testid="footage-hard">
-                      <span className="text-foreground/40">[{c.kind}]</span> {c.text}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <p className="text-[9px] font-semibold uppercase tracking-wider text-foreground/40">
-                  Preferred — estimated, so a miss is a note, not a reject
-                </p>
-                <ul className="space-y-0.5 text-[11px] leading-snug text-foreground/60">
-                  {spec.preferences.map((c, i) => (
-                    <li key={i} data-testid="footage-preference">
-                      <span className="text-foreground/40">[{c.kind}]</span> {c.text}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {GROUPS.map(([authority, title, note]) => {
+                const rows = spec.requirements.filter((r) => r.authority === authority);
+                if (!rows.length) return null;
+                return (
+                  <div key={authority}>
+                    <p className="text-[9px] font-semibold uppercase tracking-wider text-foreground/40">
+                      {title}{" "}
+                      <span className="normal-case tracking-normal text-foreground/30">
+                        — {note}
+                      </span>
+                    </p>
+                    <ul className="space-y-0.5 text-[11px] leading-snug text-foreground/75">
+                      {rows.map((r, i) => (
+                        <li
+                          key={i}
+                          data-testid={isMandatory(r) ? "footage-required" : "footage-guidance"}
+                          data-authority={r.authority}
+                          data-verification={r.verification}
+                        >
+                          <span
+                            className={cn(
+                              "mr-1 rounded px-1 py-px text-[9px]",
+                              VERIFY_STYLE[r.verification],
+                            )}
+                          >
+                            {r.verification === "estimated"
+                              ? `est ${r.confidence ?? ""}`
+                              : r.verification}
+                          </span>
+                          <span className="text-foreground/40">[{r.kind}]</span> {r.text}
+                          {r.needsToVerify && (
+                            <span className="block text-amber-200/45">
+                              AVT cannot check this: {r.needsToVerify}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })}
               {spec.conflicts.length > 0 && (
                 <div>
                   <p className="text-[9px] font-semibold uppercase tracking-wider text-amber-200/60">

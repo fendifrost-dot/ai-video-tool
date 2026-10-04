@@ -131,8 +131,8 @@ describe("after a real take has been read", () => {
 
   it("separates what the background MUST be from what it should be", () => {
     show(c);
-    const hard = screen.getAllByTestId("footage-hard").map((n) => n.textContent ?? "");
-    const pref = screen.getAllByTestId("footage-preference").map((n) => n.textContent ?? "");
+    const hard = screen.getAllByTestId("footage-required").map((n) => n.textContent ?? "");
+    const pref = screen.getAllByTestId("footage-guidance").map((n) => n.textContent ?? "");
     expect(hard.join(" ")).toContain("1080 × 1920");
     expect(hard.join(" ")).toContain("locked off");
     expect(pref.join(" ")).toContain("thigh up");
@@ -147,7 +147,7 @@ describe("after a real take has been read", () => {
         .getAllByTestId("footage-gap")
         .map((n) => n.textContent)
         .join(" "),
-    ).toContain("no matte step");
+    ).toContain("matting exists but only as a local script");
   });
 
   it("shows the frames to look at to judge the reading", () => {

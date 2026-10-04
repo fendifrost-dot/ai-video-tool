@@ -1,0 +1,85 @@
+{
+ "run": "/tmp/avtsb/run",
+ "environment": "agent-operated harness on a build box \u2014 NOT AVT, and not evidence of unattended production",
+ "technical": {
+  "timing": {
+   "expectedFrames": 75,
+   "sourceCutFrames": 75,
+   "outputFrames": 75,
+   "framesMatch": true,
+   "fpsMatch": true,
+   "note": "the composite is frame for frame with the cut it was made from: nothing was retimed or dropped",
+   "sourceCutFramesDecoded": 75,
+   "outputFramesDecoded": 75,
+   "verdict": "frame for frame with the cut"
+  },
+  "performanceUntouched": {
+   "method": "least-squares fit of output = gain x source + offset over the eroded matte core",
+   "gain": 0.9993,
+   "offset": -1.19,
+   "residual255": 1.31,
+   "verdict": "his pixels are the take's pixels"
+  },
+  "matteLeaks": {
+   "framesAffected": 7,
+   "ofFrames": 75,
+   "worstPx": 14760,
+   "worstShareOfBody": 0.024,
+   "frames": [
+    {
+     "frame": 2,
+     "seconds": 0.067,
+     "detachedPx": 2646,
+     "largestPx": 2646
+    },
+    {
+     "frame": 3,
+     "seconds": 0.1,
+     "detachedPx": 2646,
+     "largestPx": 2646
+    },
+    {
+     "frame": 4,
+     "seconds": 0.133,
+     "detachedPx": 2646,
+     "largestPx": 2646
+    },
+    {
+     "frame": 9,
+     "seconds": 0.3,
+     "detachedPx": 11201,
+     "largestPx": 11201
+    },
+    {
+     "frame": 14,
+     "seconds": 0.467,
+     "detachedPx": 14760,
+     "largestPx": 14760
+    },
+    {
+     "frame": 48,
+     "seconds": 1.6,
+     "detachedPx": 3452,
+     "largestPx": 3452
+    },
+    {
+     "frame": 49,
+     "seconds": 1.633,
+     "detachedPx": 8387,
+     "largestPx": 8387
+    }
+   ]
+  },
+  "temporalStability": {
+   "medianAreaJump": 0.0076,
+   "maxAreaJump": 0.0437,
+   "framesOver2pct": 7,
+   "note": "the matted area, frame to frame. Large jumps are limbs the matter gains or drops, which read as flicker"
+  }
+ },
+ "notChecked": [
+  "lip sync \u2014 a comparison against the performance, not a property of one file; and this take carries no audio track",
+  "whether the background's perspective and light are plausible for this room",
+  "whether any of it looks right: edge quality, halos and spill are judged by eye, from the diagnostic render"
+ ]
+}

@@ -65,14 +65,17 @@ describe("S06 — he performs to camera in a closet, framed thigh up", () => {
   it("recommends a composite, and says what AVT cannot do to deliver one", () => {
     const spec = compatibilityOf(a);
     expect(spec.route.choice).toBe("composite");
-    expect(spec.gaps.join(" ")).toContain("no matte step");
-    expect(spec.hard.some((h) => h.text.includes("1080 × 1920"))).toBe(true);
-    expect(spec.hard.some((h) => h.text.includes("arib-std-b67"))).toBe(true);
+    // corrected 4 October: matting DOES exist (composite_environment.py, RobustVideoMatting). The gap is
+    // that it is a local script with measured failure modes, not that nothing can matte.
+    expect(spec.gaps.join(" ")).toContain("matting exists but only as a local script");
+    expect(spec.gaps.join(" ")).toContain("12 of 75 frames");
+    expect(spec.requirements.some((h) => h.text.includes("1080 × 1920"))).toBe(true);
+    expect(spec.requirements.some((h) => h.text.includes("arib-std-b67"))).toBe(true);
   });
 
   it("will not reframe to show what was not filmed", () => {
     const spec = compatibilityOf(a);
-    expect(spec.hard.some((h) => h.kind === "reframe")).toBe(true);
+    expect(spec.requirements.some((h) => h.kind === "reframe")).toBe(true);
   });
 });
 
@@ -101,8 +104,10 @@ describe("S09 — the same room and man, framed and positioned differently", () 
   });
 
   it("gives advice that differs from S06's where the footage differs", () => {
-    const here = compatibilityOf(a).hard.find((h) => h.from === "subject.position")!.text;
-    const there = compatibilityOf(s06).hard.find((h) => h.from === "subject.position")!.text;
+    const here = compatibilityOf(a).requirements.find((h) => h.from === "subject.position")!.text;
+    const there = compatibilityOf(s06).requirements.find(
+      (h) => h.from === "subject.position",
+    )!.text;
     expect(here).not.toBe(there);
   });
 });

@@ -5,30 +5,64 @@
  * and into one recommendation with its reasons. It is advisory: nothing here regenerates a clip, replaces an asset,
  * edits a treatment or touches a timeline.
  *
- * ── THE RULE THAT DECIDES HARD FROM PREFERRED ────────────────────────────────────────────────────────────────────
- * A constraint is HARD only where the finding behind it was MEASURED. A finding that was ESTIMATED produces a
- * PREFERENCE, however confident it sounds. A finding that is UNKNOWN produces neither — it produces a named risk, so
- * that the thing nobody checked is visible instead of quietly becoming a requirement.
+ * ── AUTHORITY IS NOT EVIDENCE ────────────────────────────────────────────────────────────────────────────────────
+ * An earlier version of this module said: a constraint is hard only where the finding behind it was MEASURED. That
+ * was wrong, and wrong in a way that quietly lost requirements. It collapsed two different questions into one:
  *
- * This is not a stylistic choice. The restaging that failed in October failed on light and camera move, both of which
- * are estimates off this footage; promoting them to requirements would have put a number on the brief that the
- * footage cannot support, and the generator would have been held to a standard nobody measured. A preference that is
- * missed is a note; a hard constraint that is missed is a reject. Only measurements earn that.
+ *   AUTHORITY      who says this must hold — and therefore what happens when it does not
+ *   VERIFICATION   whether AVT can check that it held, and how well
+ *
+ * They are independent. A line in the approved treatment is MANDATORY whether or not anything here can measure it;
+ * if AVT cannot measure it, what changes is that its verification reads `unverifiable` — the obligation does not
+ * soften. Under the old rule "the lighting must come from frame left, because the treatment says so" would have been
+ * demoted to a preference the moment it turned out that light direction is only ever estimated here. A tool that
+ * downgrades the director's requirements to match its own instruments is not being careful; it is losing the brief.
+ *
+ * So:
+ *   authority "approved"   the user or the approved treatment asked for it. Mandatory until explicitly revised.
+ *                          Nothing in this file may weaken, reinterpret or drop one.
+ *   authority "source"     a technical constraint read off the take, binding WITHIN THE SCOPE IT WAS MEASURED IN —
+ *                          the raster, the frame rate, the colour transfer, where he actually is.
+ *   authority "advisory"   read off the take but inferred. Guidance, carried with its confidence.
+ *
+ *   verification "measured"      checkable, and checked
+ *   verification "estimated"     checkable only approximately; the confidence says how approximately
+ *   verification "unverifiable"  AVT cannot check this at all. Named, with what it would take.
+ *
+ * Where an approved requirement and a source measurement disagree, that is a CONFLICT and both sides are reported as
+ * they are. Neither is silently weakened to make the other fit.
  */
 import type { FootageAnalysis, Finding } from "./footage";
 
-export const COMPATIBILITY_VERSION = 1 as const;
+export const COMPATIBILITY_VERSION = 2 as const;
 
 export type ConstraintKind =
   "composition" | "camera" | "light" | "colour" | "focus" | "floor" | "reframe" | "separation";
 
-export type Constraint = {
+/** Who says this must hold — and so what it means when it does not. */
+export type Authority = "approved" | "source" | "advisory";
+
+/** Whether AVT can check that it held. Independent of authority: a mandatory thing may be uncheckable. */
+export type Verification = "measured" | "estimated" | "unverifiable";
+
+export type Requirement = {
+  authority: Authority;
+  verification: Verification;
   kind: ConstraintKind;
   /** Written for whoever is asking for the background — a sentence, not a field. */
   text: string;
-  /** The finding it came from, so a reader can go and look at it. */
+  /** Where the obligation comes from: a line of the treatment, or the finding it was read off. */
   from: string;
+  /** The confidence of the finding behind it, when the verification is an estimate. */
+  confidence: number | null;
+  /** What AVT would need in order to check this, when it cannot. Present only on `unverifiable`. */
+  needsToVerify?: string;
 };
+
+/** Mandatory: a miss is a reject, not a note. True for the treatment's own asks and for the take's hard facts. */
+export function isMandatory(r: Requirement): boolean {
+  return r.authority === "approved" || r.authority === "source";
+}
 
 export type RouteChoice = "keep" | "composite" | "restage" | "reshoot";
 
@@ -64,8 +98,8 @@ export type Conflict = {
 export type Compatibility = {
   version: typeof COMPATIBILITY_VERSION;
   forAnalyzer: FootageAnalysis["version"];
-  hard: Constraint[];
-  preferences: Constraint[];
+  /** Everything the background has to satisfy or should, each carrying its authority and its verification. */
+  requirements: Requirement[];
   route: Route;
   /** Said in the take's own terms, for the person holding the camera next time. */
   capture: string[];
@@ -84,20 +118,37 @@ const COVERAGE_ORDER = [
   "full_body",
 ] as const;
 
-const isMeasured = (f: Finding<unknown>) => f.status === "measured";
-const isEstimated = (f: Finding<unknown>) => f.status === "estimated";
+/**
+ * A requirement read off the take. Its AUTHORITY follows from how well the footage establishes it — a measured fact
+ * binds, an inference advises — and its VERIFICATION records which of those it was. This is the only place the two
+ * are allowed to move together, because here they genuinely have the same cause.
+ */
+function fromFinding(
+  f: Finding<unknown>,
+  c: Omit<Requirement, "authority" | "verification" | "confidence">,
+): Requirement | null {
+  if (f.status === "measured")
+    return { ...c, authority: "source", verification: "measured", confidence: null };
+  if (f.status === "estimated")
+    return { ...c, authority: "advisory", verification: "estimated", confidence: f.confidence };
+  return null;
+}
 
-/** Put a constraint on the hard list when its finding was measured, the preference list when it was estimated. */
-function place(hard: Constraint[], prefs: Constraint[], f: Finding<unknown>, c: Constraint): void {
-  if (isMeasured(f)) hard.push(c);
-  else if (isEstimated(f)) prefs.push(c);
+/**
+ * A requirement the user or the approved treatment stated. MANDATORY, whatever AVT can see. `verification` says only
+ * whether anything here can check it; `needsToVerify` says what it would take when it cannot.
+ */
+function fromTreatment(c: Omit<Requirement, "authority" | "confidence">): Requirement {
+  return { ...c, authority: "approved", confidence: null };
 }
 
 const pct = (n: number) => `${Math.round(n * 100)} %`;
 
 export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}): Compatibility {
-  const hard: Constraint[] = [];
-  const preferences: Constraint[] = [];
+  const requirements: Requirement[] = [];
+  const add = (r: Requirement | null) => {
+    if (r) requirements.push(r);
+  };
   const capture: string[] = [];
   const conflicts: Conflict[] = [];
   const gaps: string[] = [];
@@ -106,27 +157,34 @@ export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}
   // ── composition ─────────────────────────────────────────────────────────────────────────────────────────────────
   const pos = a.subject.position;
   if (pos.value) {
-    place(hard, preferences, pos, {
-      kind: "composition",
-      text: `Leave the performer's place clear: his eye-line sits at ${pct(pos.value.x)} across and ${pct(pos.value.y)} down the frame. Put nothing of interest there, and nothing that has to be read behind his head and shoulders.`,
-      from: "subject.position",
-    });
+    add(
+      fromFinding(pos, {
+        kind: "composition",
+        text: `Leave the performer's place clear: his eye-line sits at ${pct(pos.value.x)} across and ${pct(pos.value.y)} down the frame. Put nothing of interest there, and nothing that has to be read behind his head and shoulders.`,
+        from: "subject.position",
+      }),
+    );
   }
   const travel = a.subject.travel;
   if (travel.value) {
     const room = Math.max(travel.value.x, travel.value.y);
-    place(hard, preferences, travel, {
-      kind: "composition",
-      text:
-        room < 0.02
-          ? "He holds his place: the background can carry detail close around him without his crossing it."
-          : `He moves across ${pct(travel.value.x)} of the frame and ${pct(travel.value.y)} down it. Keep that band clear of anything the eye has to follow.`,
-      from: "subject.travel",
-    });
+    add(
+      fromFinding(travel, {
+        kind: "composition",
+        text:
+          room < 0.02
+            ? "He holds his place: the background can carry detail close around him without his crossing it."
+            : `He moves across ${pct(travel.value.x)} of the frame and ${pct(travel.value.y)} down it. Keep that band clear of anything the eye has to follow.`,
+        from: "subject.travel",
+      }),
+    );
   }
   const cov = a.subject.coverage;
   if (cov.value) {
-    preferences.push({
+    requirements.push({
+      authority: "advisory",
+      verification: "estimated",
+      confidence: null,
       kind: "composition",
       text: `The take frames him ${cov.value.replace(/_/g, " ")}. A background built for a fuller figure will not match: there is no footage of the rest of him.`,
       from: "subject.coverage",
@@ -134,7 +192,10 @@ export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}
   }
   const edges = a.subject.faceNearEdge;
   if (edges.value && edges.value.length) {
-    hard.push({
+    requirements.push({
+      authority: "source",
+      verification: "measured",
+      confidence: null,
       kind: "composition",
       text: `He passes close to the ${edges.value.join(" and ")} edge. A background whose subject matter runs to that edge will collide with him.`,
       from: "subject.faceNearEdge",
@@ -145,13 +206,19 @@ export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}
   const stability = a.camera.stability;
   const source = a.camera.motionSource;
   if (stability.value === "locked" && source.value === "still") {
-    hard.push({
+    requirements.push({
+      authority: "source",
+      verification: "measured",
+      confidence: null,
       kind: "camera",
       text: "The camera does not move. The background must be locked off too — any drift in it will read as the room sliding behind a man who is standing still.",
       from: "camera.stability + camera.motionSource",
     });
   } else if (stability.value && stability.value !== "locked") {
-    preferences.push({
+    requirements.push({
+      authority: "advisory",
+      verification: "estimated",
+      confidence: null,
       kind: "camera",
       text: `The picture is not steady (${stability.value.replace(/_/g, " ")}). A background plate must carry the same movement or be stabilised to match; a locked plate behind an unsteady foreground reads as a cut-out.`,
       from: "camera.stability",
@@ -172,34 +239,43 @@ export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}
   // ── light ───────────────────────────────────────────────────────────────────────────────────────────────────────
   const key = a.light.keyDirection;
   if (key.value) {
-    place(hard, preferences, key, {
-      kind: "light",
-      text:
-        key.value === "even"
-          ? "The light is even across the frame. A background with a strong, directional key will not sit with him."
-          : `The brighter side of the picture is ${key.value.replace(/_/g, " ")}. Light the background from the same side; a background keyed from the opposite side is the single most visible mismatch in a composite.`,
-      from: "light.keyDirection",
-    });
+    add(
+      fromFinding(key, {
+        kind: "light",
+        text:
+          key.value === "even"
+            ? "The light is even across the frame. A background with a strong, directional key will not sit with him."
+            : `The brighter side of the picture is ${key.value.replace(/_/g, " ")}. Light the background from the same side; a background keyed from the opposite side is the single most visible mismatch in a composite.`,
+        from: "light.keyDirection",
+      }),
+    );
   }
   const soft = a.light.softness;
   if (soft.value) {
-    place(hard, preferences, soft, {
-      kind: "light",
-      text: `His light reads ${soft.value}. Match that: ${soft.value === "soft" ? "no hard-edged shadows in the background" : "a background lit flatter than he is will look pasted behind him"}.`,
-      from: "light.softness",
-    });
+    add(
+      fromFinding(soft, {
+        kind: "light",
+        text: `His light reads ${soft.value}. Match that: ${soft.value === "soft" ? "no hard-edged shadows in the background" : "a background lit flatter than he is will look pasted behind him"}.`,
+        from: "light.softness",
+      }),
+    );
   }
   const exposure = a.light.exposure;
   if (exposure.value) {
-    place(hard, preferences, exposure, {
-      kind: "light",
-      text: `Mean brightness is ${exposure.value.mean.toFixed(2)} of full scale. Build the background to that, not brighter: he cannot be relit.`,
-      from: "light.exposure",
-    });
+    add(
+      fromFinding(exposure, {
+        kind: "light",
+        text: `Mean brightness is ${exposure.value.mean.toFixed(2)} of full scale. Build the background to that, not brighter: he cannot be relit.`,
+        from: "light.exposure",
+      }),
+    );
   }
   const clip = a.light.clipping;
   if (clip.value && (clip.value.white > 0.02 || clip.value.black > 0.05)) {
-    hard.push({
+    requirements.push({
+      authority: "source",
+      verification: "measured",
+      confidence: null,
       kind: "light",
       text: `${pct(clip.value.white)} of the picture is blown out and ${pct(clip.value.black)} is crushed. Those areas carry no detail to match to, so keep the background away from them.`,
       from: "light.clipping",
@@ -210,24 +286,29 @@ export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}
   }
   const cast = a.light.colourCast;
   if (cast.value) {
-    place(hard, preferences, cast, {
-      kind: "colour",
-      text:
-        cast.value.strength > 0.08
-          ? `The take carries a colour cast (r ${cast.value.r.toFixed(2)} g ${cast.value.g.toFixed(2)} b ${cast.value.b.toFixed(2)}). Grade the background to it rather than correcting him.`
-          : "The take is close to neutral; a strongly tinted background will have to be graded back towards it.",
-      from: "light.colourCast",
-    });
+    add(
+      fromFinding(cast, {
+        kind: "colour",
+        text:
+          cast.value.strength > 0.08
+            ? `The take carries a colour cast (r ${cast.value.r.toFixed(2)} g ${cast.value.g.toFixed(2)} b ${cast.value.b.toFixed(2)}). Grade the background to it rather than correcting him.`
+            : "The take is close to neutral; a strongly tinted background will have to be graded back towards it.",
+        from: "light.colourCast",
+      }),
+    );
   }
   const transfer = a.file.transfer;
   if (transfer.value) {
-    hard.push({
+    requirements.push({
+      authority: "source",
+      verification: "measured",
+      confidence: null,
       kind: "colour",
       text: `The file is tagged ${transfer.value}. A background generated in ordinary sRGB will not match it until one of the two is converted, and converting him is what loses his skin.`,
       from: "file.transfer",
     });
     gaps.push(
-      `AVT has no colour-transfer step: nothing in the pipeline converts ${transfer.value} footage to the space a generated plate is produced in, or back`,
+      `nothing in the APP converts ${transfer.value} footage to the space a generated plate is produced in, or back; the harness does it with one explicit zscale/tonemap pass and tags the result bt709`,
     );
   }
 
@@ -235,7 +316,10 @@ export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}
   const dof = a.focus.depthOfField;
   const svb = a.focus.subjectVsBackground;
   if (dof.value && svb.value !== null) {
-    preferences.push({
+    requirements.push({
+      authority: "advisory",
+      verification: "estimated",
+      confidence: null,
       kind: "focus",
       text:
         dof.value === "shallow"
@@ -248,7 +332,10 @@ export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}
   }
   const blurred = a.focus.blurredFrames;
   if (blurred.value !== null && blurred.value > 0.1) {
-    hard.push({
+    requirements.push({
+      authority: "source",
+      verification: "measured",
+      confidence: null,
       kind: "focus",
       text: `${pct(blurred.value)} of frames are soft with movement. On those frames his edge cannot be cut cleanly, whatever the background is.`,
       from: "focus.blurredFrames",
@@ -260,7 +347,10 @@ export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}
   }
   const res = a.file.resolution;
   if (res.value) {
-    hard.push({
+    requirements.push({
+      authority: "source",
+      verification: "measured",
+      confidence: null,
       kind: "focus",
       text: `The background must be delivered at ${res.value.width} × ${res.value.height} or larger. Anything smaller has to be scaled up into him.`,
       from: "file.resolution",
@@ -270,7 +360,10 @@ export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}
   // ── separation ──────────────────────────────────────────────────────────────────────────────────────────────────
   const sep = a.separation.difficulty;
   if (sep.value) {
-    preferences.push({
+    requirements.push({
+      authority: "advisory",
+      verification: "estimated",
+      confidence: null,
       kind: "separation",
       text:
         sep.value === "hard"
@@ -286,7 +379,10 @@ export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}
   const feet = a.floor.feetVisible;
   const contact = a.floor.contactNeeded;
   if (contact.value === true) {
-    preferences.push({
+    requirements.push({
+      authority: "advisory",
+      verification: "estimated",
+      confidence: null,
       kind: "floor",
       text: "His feet are likely in frame, so the background needs a floor at the right height and a contact shadow under him, or he will float.",
       from: "floor.contactNeeded",
@@ -295,18 +391,81 @@ export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}
       "AVT has no contact-shadow step: a composite that shows his feet has nothing to ground them with",
     );
   } else if (contact.value === false) {
-    preferences.push({
+    requirements.push({
+      authority: "advisory",
+      verification: "estimated",
+      confidence: null,
       kind: "floor",
       text: "The frame ends above his feet, so no floor contact and no contact shadow has to be matched — one fewer thing for the background to get wrong.",
       from: "floor.contactNeeded",
     });
   }
   if (feet.value === false) {
-    hard.push({
+    requirements.push({
+      authority: "source",
+      verification: "measured",
+      confidence: null,
       kind: "reframe",
       text: "Do not reframe wider or lower than the take. There is no footage of his legs or feet; a background that reveals them will reveal nothing.",
       from: "floor.feetVisible + subject.coverage",
     });
+  }
+
+  // ── what the treatment asked for ────────────────────────────────────────────────────────────────────────────────
+  // These are MANDATORY. They are carried whether or not anything here can check them; where it cannot, the
+  // requirement still stands and its verification says so. The conflict pass below reports where one of them and the
+  // footage disagree — it never drops one to make the take fit.
+  if (intent.wantsCoverage) {
+    requirements.push(
+      fromTreatment({
+        kind: "composition",
+        text: `The treatment frames him ${intent.wantsCoverage.replace(/_/g, " ")}. The background must be built for that framing.`,
+        from: "treatment.wantsCoverage",
+        verification: cov.value ? "estimated" : "unverifiable",
+        ...(cov.value
+          ? {}
+          : {
+              needsToVerify:
+                "his face was not readable, so there is no reach to read a framing off",
+            }),
+      }),
+    );
+  }
+  if (intent.wantsCameraMove) {
+    requirements.push(
+      fromTreatment({
+        kind: "camera",
+        text: `The treatment asks for a ${intent.wantsCameraMove}. The background has to carry that move.`,
+        from: "treatment.wantsCameraMove",
+        verification: "estimated",
+        needsToVerify:
+          "camera movement here is read from whole-cell frame matching, which sees that the picture moved but not the path it took; whether a delivered move is the one asked for is not checked",
+      }),
+    );
+  }
+  if (intent.wantsKeyDirection) {
+    requirements.push(
+      fromTreatment({
+        kind: "light",
+        text: `The treatment lights him from ${intent.wantsKeyDirection.replace(/_/g, " ")}. Light the background to agree with it.`,
+        from: "treatment.wantsKeyDirection",
+        verification: "estimated",
+        needsToVerify:
+          "key direction is inferred from where the picture is brighter, not from where a lamp stands",
+      }),
+    );
+  }
+  if (intent.wantsFloorContact) {
+    requirements.push(
+      fromTreatment({
+        kind: "floor",
+        text: "The treatment puts him on a visible floor: the background needs a floor at the right height and a contact shadow under him.",
+        from: "treatment.wantsFloorContact",
+        verification: "unverifiable",
+        needsToVerify:
+          "nothing here sees a foot or a floor; feet are inferred from where his eyes are and where the frame ends",
+      }),
+    );
   }
 
   // ── the treatment, where it is known ────────────────────────────────────────────────────────────────────────────
@@ -375,10 +534,24 @@ export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}
     );
 
   // ── route ───────────────────────────────────────────────────────────────────────────────────────────────────────
-  const route = routeFor(a, { hardCount: hard.length, risks, conflicts });
+  const route = routeFor(a, {
+    hardCount: requirements.filter(isMandatory).length,
+    risks,
+    conflicts,
+  });
   if (route.choice === "composite") {
+    // CORRECTED 4 October. This previously read "AVT has no matte step for ordinary footage", which was wrong:
+    // scripts/edit/composite_environment.py pulls a per-frame matte with RobustVideoMatting and has done for
+    // months. The real gap is narrower and was measured by running it on S06 — see
+    // docs/research/results/2026-10-04-composite/.
     gaps.push(
-      "AVT has no matte step for ordinary footage: scripts/edit/composite_environment.py composites against a plate with hand-set occluder bands, and nothing pulls a per-frame matte of him",
+      "matting exists but only as a local script: scripts/edit/composite_environment.py (RobustVideoMatting) runs on a build box, and nothing in the app, an edge function or a job queue can call it",
+    );
+    gaps.push(
+      "measured on S06, 2.5 s: a detached piece of the room travelled with him on 12 of 75 frames (worst 36k px), and motion-blurred limb edges keep a light fringe from the old background — a matte is not a solved step here, it is a step with known failure modes",
+    );
+    gaps.push(
+      "AVT has no colour-transfer step of its own: the HLG → BT.709 conversion these takes need was done by the harness (scripts/qa/composite_take.py), not by anything the app runs",
     );
   }
   if (route.choice === "restage") {
@@ -390,8 +563,7 @@ export function compatibilityOf(a: FootageAnalysis, intent: TreatmentIntent = {}
   return {
     version: COMPATIBILITY_VERSION,
     forAnalyzer: a.version,
-    hard,
-    preferences,
+    requirements,
     route,
     capture,
     conflicts,
