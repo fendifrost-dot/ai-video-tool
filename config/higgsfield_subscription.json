@@ -1,0 +1,17 @@
+{
+  "_about": "The Higgsfield subscription (plan-credit) route, run by scripts/runner/higgsfield_subscription_runner.py through Higgsfield's own CLI (@higgsfield/cli). Data, not code. Nothing here is verified until `verified` says so: job_type and param names must be read from `higgsfield model list --video` / `higgsfield model get <job_type>` on a signed-in machine with an active paid plan (the CLI answers nothing without one). An operation with verified=false is never submitted. `enabled` stays false until one live job has been checked end to end.",
+  "enabled": false,
+  "max_credits_per_job": 60,
+  "cli": {"package": "@higgsfield/cli", "checked_version": "1.1.26", "binary": "higgsfield"},
+  "operations": {
+    "seedance_ref": {
+      "verified": false,
+      "avt_model": "seedance-2.5-reference",
+      "job_type": null,
+      "params": {"prompt": "prompt", "duration": "duration", "resolution": "resolution", "aspect_ratio": "aspect-ratio", "generate_audio": null},
+      "video_reference_flag": "--video-references",
+      "image_reference_flag": "--image-references",
+      "_open": "job_type for Seedance 2.5 reference-to-video; whether duration/resolution/aspect are accepted with a video reference; whether audio can be switched off; whether input seconds are billed as on the API; the credit quote for 4 s at 720p"
+    }
+  }
+}

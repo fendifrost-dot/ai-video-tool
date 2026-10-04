@@ -15,6 +15,7 @@
  * Every effect arrives through `RunnerDeps`, so the rules are testable without a network.
  */
 import type { LookPreset } from "@/lib/shotCompiler";
+import { apiBilling, decideAfterApiRefusal, type BillingRecord, type SubscriptionRouting } from "./billing";
 import { missingInput, type BatchShot } from "./dialect";
 import { estimateBatchUsd, estimateShotUsd } from "./estimate";
 import { buildMotionRequest, motionPrompt, providerOfRoute, stillPrompt } from "./requests";
@@ -53,6 +54,8 @@ export type BatchJobSettings = {
   /** When the result was put on its shot, and by whom ("server" = provider-jobs-tick). */
   attachedAt?: string;
   attachedBy?: string;
+  /** Which money pays for this job (billing.ts). Absent on rows written before routes were kept: those ran on the API. */
+  billing?: BillingRecord;
 };
 
 /** The slice of a provider_jobs row the runner reads. */
@@ -103,6 +106,10 @@ export type RunContext = {
   selectStill?: boolean;
   /** An image job drawn for a continuity entity (not a shot): the entity the pictures are kept with. */
   entityId?: string;
+  /** When a job the API refused for lack of funds may wait for the subscription runner instead. Absent = never. */
+  subscriptionRouting?: SubscriptionRouting;
+  /** The clock, for the record of a move (tests set it). */
+  now?: () => Date;
 };
 
 /** The box record a shot belongs to, as the job payload carries it (absent when the shot is not a box). */
@@ -149,8 +156,10 @@ export function shotState(shot: BatchShot, runJobs: readonly BatchJobRow[]): Sho
       const blocked = missingInput(shot);
       return blocked ? { state: "blocked", reason: blocked } : { state: "failed", job: latest, reuseStillPath: still };
     }
-    // queued / running: with an upstream id the provider has it; without one the submit never reported back
-    return latest.external_job_id ? { state: "running", job: latest } : { state: "unreconciled", job: latest };
+    // queued / running: with an upstream id the provider has it; a job waiting for the subscription runner is live
+    // too (the runner owns its submit); otherwise the submit never reported back
+    if (latest.external_job_id || settingsOf(latest)?.billing?.route === "subscription") return { state: "running", job: latest };
+    return { state: "unreconciled", job: latest };
   }
   const blocked = missingInput(shot);
   return blocked ? { state: "blocked", reason: blocked } : { state: "ready" };
@@ -180,7 +189,14 @@ export function planRun(shots: readonly BatchShot[], runJobs: readonly BatchJobR
   return plan;
 }
 
-export type SubmitResult = { rowId: string; providerJobId: string; prompt: string; stillPath: string | null };
+export type SubmitResult = {
+  rowId: string;
+  providerJobId: string;
+  prompt: string;
+  stillPath: string | null;
+  /** The API refused for lack of funds and the job now waits for the subscription runner (no provider job yet). */
+  awaitingRunner?: boolean;
+};
 
 /** Submit one shot. Throws after recording the failure on its row. */
 export async function submitShot(
@@ -261,27 +277,38 @@ export async function submitShot(
     ...(shot.source_asset_id ? { sourceAssetId: shot.source_asset_id, sourceSeconds: shot.source_seconds ?? null } : {}),
     ...(shot.temporal ? { temporal: shot.temporal } : {}),
   };
+  settings.billing = apiBilling(req.provider, settings.estimateUsd);
   // WRITE-AHEAD: the record exists before the money moves.
-  const rowId = await deps.insertJob({
-    project_id: ctx.projectId,
-    provider: req.provider,
-    status: "queued",
-    request_payload_json: {
-      promptText: prompt,
-      mode: req.body.mode ?? null,
-      modelVariant: req.modelVariant,
-      duration: req.body.duration ?? null,
-      aspectRatio: shot.aspect,
-      referenceImagePath: stillPath,
-      ...shotIdOf(ctx, shot),
-      settings,
-    },
-  });
+  const payload = {
+    promptText: prompt,
+    mode: req.body.mode ?? null,
+    modelVariant: req.modelVariant,
+    duration: req.body.duration ?? null,
+    aspectRatio: shot.aspect,
+    referenceImagePath: stillPath,
+    ...shotIdOf(ctx, shot),
+    settings,
+  };
+  const rowId = await deps.insertJob({ project_id: ctx.projectId, provider: req.provider, status: "queued", request_payload_json: payload });
   let env: Record<string, unknown>;
   try {
     env = await deps.callProxy(req.endpoint, req.body);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
+    // The API said no before taking the job. Only a confirmed lack of funds, with routing switched on and this
+    // operation verified there, parks the SAME row for the subscription runner — one row, one submit, no second job.
+    const decision = decideAfterApiRefusal({
+      provider: req.provider, route: shot.route, errorText: message, accepted: false,
+      routing: ctx.subscriptionRouting, now: (ctx.now?.() ?? new Date()).toISOString(),
+    });
+    if (decision.action === "move_to_subscription") {
+      await deps.updateJob(rowId, {
+        status: "queued",
+        error_text: null,
+        request_payload_json: { ...payload, settings: { ...settings, billing: decision.billing } },
+      });
+      return { rowId, providerJobId: "", prompt, stillPath, awaitingRunner: true };
+    }
     await deps.updateJob(rowId, { status: "failed", error_text: message.slice(0, 500) });
     throw new Error(`${shot.id}: ${message}`);
   }
@@ -335,6 +362,7 @@ export async function submitStills(shot: BatchShot, ctx: RunContext, deps: Runne
     lookPreset: ctx.lookPresetId,
     stillPath: null,
     selectStill: ctx.selectStill ?? true,
+    billing: apiBilling("xai", null),
   };
   const payload = { promptText: prompt, mode: "still_only", aspectRatio: shot.aspect, ...shotIdOf(ctx, shot), ...(ctx.entityId ? { entityId: ctx.entityId } : {}) };
   const rowId = await deps.insertJob({ project_id: ctx.projectId, provider: "grok", status: "queued", request_payload_json: { ...payload, settings } });

@@ -64,12 +64,20 @@ export const STILL_GRACE_MS = 2 * 60_000;
 /** Steps that fail this many times are given up on, with the reason on the job. */
 export const MAX_FAILURES = 6;
 
+/** A job waiting for the subscription runner is left alone this long; after that the server stops looking (it never fails it). */
+export const RUNNER_GIVE_UP_AFTER_MS = 24 * 60 * 60_000;
+
 export const DERIVED_SYNC_METHOD = "derived";
 
 type Settings = Record<string, unknown>;
 const payloadOf = (job: ProgressJob) => (job.request_payload_json ?? {}) as Record<string, unknown>;
 export const settingsOf = (job: ProgressJob): Settings => ((payloadOf(job).settings ?? {}) as Settings);
 export const isStillJob = (job: ProgressJob) => payloadOf(job).mode === "still_only";
+/**
+ * A job paid from plan credits (src/lib/worldBatch/billing.ts). Its submit, its status and its clip belong to the
+ * subscription runner — a signed-in computer — not to Control Center, which has never heard of the job.
+ */
+export const onSubscriptionRoute = (job: ProgressJob): boolean => (settingsOf(job).billing as { route?: unknown } | undefined)?.route === "subscription";
 export const shotIdOf = (job: ProgressJob): string | null => (typeof payloadOf(job).shotId === "string" && payloadOf(job).shotId ? (payloadOf(job).shotId as string) : null);
 
 /** The same reading of a status envelope the runner uses (src/lib/worldBatch/runner.ts statusFromEnvelope). */
@@ -163,6 +171,19 @@ export async function advanceJob(input: ProgressJob, deps: ProgressDeps): Promis
     // 1. a job the provider has not finished
     if (job.status === "queued" || job.status === "running") {
       if (isStillJob(job)) return await advanceStill(job, deps, did, set, finish, age);
+      if (onSubscriptionRoute(job)) {
+        // The runner owns this job until it has a saved clip. The server neither asks Control Center about it nor
+        // fails it: a failed row is retried, and a retry of a job the runner may already have sent is a second charge.
+        const started = !!(settingsOf(job).billing as { runner?: { submitStartedAt?: string } }).runner?.submitStartedAt;
+        const note = job.external_job_id
+          ? "the subscription runner is rendering this job"
+          : started
+            ? "the subscription runner began a submit and has not recorded a job — check Higgsfield's own job list; it is not resubmitted"
+            : "waiting for the subscription runner (a signed-in computer) — the server cannot run this job itself";
+        if (age > RUNNER_GIVE_UP_AFTER_MS) return await finish(`${note}; the server stopped looking after ${Math.round(RUNNER_GIVE_UP_AFTER_MS / 3_600_000)} hours`);
+        if (job.progress_note !== note) await set({ progress_note: note });
+        return { jobId: job.id, did, state: "waiting", note };
+      }
       if (!job.external_job_id) {
         if (age < UNREPORTED_AFTER_MS) return { jobId: job.id, did, state: "waiting", note: "the submit has not reported a provider job yet" };
         await set({ status: "failed", error_text: "the submit never reported a provider job — nothing was recorded as sent" });
@@ -191,6 +212,12 @@ export async function advanceJob(input: ProgressJob, deps: ProgressDeps): Promis
 
     // 2. the clip is rendered: save it
     if (!job.result_asset_id) {
+      if (onSubscriptionRoute(job)) {
+        // Control Center cannot fetch a clip made on the plan: the runner saves it and writes the asset on the row
+        const note = "rendered on plan credits — the subscription runner has not saved the clip yet";
+        if (age > RUNNER_GIVE_UP_AFTER_MS) return await finish(note);
+        return { jobId: job.id, did, state: "waiting", note };
+      }
       if (!job.external_job_id) return await finish("rendered, but there is no provider job id to fetch it by");
       const assetId = await deps.saveClip(job);
       job = { ...job, result_asset_id: assetId };
