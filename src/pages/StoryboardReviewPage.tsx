@@ -10,7 +10,8 @@ import { CutCheck } from "@/components/storyboard/CutCheck";
 import { AcceptanceChip } from "@/components/storyboard/Acceptance";
 import { asksByAsset } from "@/lib/queries/acceptance";
 import { useProjectProviderJobs } from "@/lib/providerJobs/queries";
-import { acceptanceLine, cutAcceptance, cutAcceptanceLine } from "@/lib/storyboard/acceptance";
+import { acceptanceLine, cutAcceptance, cutAcceptanceLine, reviewedByAsset } from "@/lib/storyboard/acceptance";
+import { readStoredReview } from "@/lib/storyboard/astraSection";
 import { SequencePlayer } from "@/components/storyboard/SequencePlayer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -81,7 +82,9 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
   // on the job that made it; what was measured and what was judged by eye is on the clip.
   const jobsData = useProjectProviderJobs(projectId).data;
   const asks = useMemo(() => asksByAsset((jobsData ?? []) as never), [jobsData]);
-  const accepted = useMemo(() => cutAcceptance(whole, media.byId, asks), [whole, media.byId, asks]);
+  // …and what the last second opinion found, tied to the clip each shot was showing when it looked
+  const reviewed = useMemo(() => reviewedByAsset(readStoredReview(project?.treatment_json), assignments, media.byId, asks), [project?.treatment_json, assignments, media.byId, asks]);
+  const accepted = useMemo(() => cutAcceptance(whole, media.byId, asks, reviewed), [whole, media.byId, asks, reviewed]);
   const acceptedHere = useMemo(() => new Map(accepted.clips.map((c) => [c.shotId, c])), [accepted]);
   const shownAccepted = accepted.clips.filter((c) => timeline.some((s) => s.shotId === c.shotId));
 
@@ -221,7 +224,7 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
               <Card className="space-y-2 p-4" data-testid="review-acceptance" data-verdict={accepted.verdict} data-fails={accepted.fails} data-open={accepted.open} data-meets={accepted.meets}>
                 <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">What was asked for</h2>
                 <p className="text-xs text-foreground/55">
-                  A clip that plays is not thereby the clip that was asked for. Each generated clip is held against its own request — timing, framing, lip sync, lighting, camera — by what was measured off the file and what was judged by eye; what nothing has
+                  A clip that plays is not thereby the clip that was asked for. Each generated clip is held against its own request — timing, framing, lip sync, lighting, camera, whole bodies and objects, the action — by what was measured off the file, what a second opinion found and what was judged by eye; what nothing has
                   looked at is not counted as met. In the whole cut: {cutAcceptanceLine(accepted)}.
                 </p>
                 <ul className="space-y-1.5">
