@@ -131,7 +131,10 @@ export function AstraSectionReview({
         const r = await pollSectionReview({ projectId, draftId: sent.draftId, responseId: sent.responseId });
         if (r.done) {
           const parsed = parseSectionReview(r.review, shots);
-          const record: StoredSectionReview = { at: new Date().toISOString(), from, to, model: r.model, costUsd: r.costUsd, ...parsed };
+          // each finding keeps WHICH clip the shot was showing: a finding is about what was looked at, not about
+          // whatever is put on the shot afterwards
+          const shownBy = new Map(section.map((seg) => [seg.shotId, seg.media.kind === "none" ? null : seg.media.assetId]));
+          const record: StoredSectionReview = { at: new Date().toISOString(), from, to, model: r.model, costUsd: r.costUsd, ...parsed, findings: parsed.findings.map((f) => ({ ...f, assetId: f.shotId ? (shownBy.get(f.shotId) ?? null) : null })) };
           setFresh(record);
           await saveStoredReview(projectId, record).catch(() => undefined);
           void qc.invalidateQueries({ queryKey: projectsKeys.detail(projectId) });

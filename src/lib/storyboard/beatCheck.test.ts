@@ -154,7 +154,10 @@ describe("holding the footage against the script", () => {
     expect(check.beats[0].error).toBeCloseTo(0.1, 1);
     expect(Math.abs(check.beats[0].error!)).toBeLessThanOrEqual(ON_TIME_SECONDS);
     expect(check.unasked).toEqual([]);
-    expect(beatLine(check.beats[0])).toMatch(/^asked at 1\.90 s — the light begins to change at 2\.00 s \(\+0\.10 s\)$/);
+    expect(beatLine(check.beats[0])).toMatch(/^asked at 1\.90 s — a change of light begins at 2\.00 s \(\+0\.10 s\)$/);
+    // detected, not identified: the label says "a change"
+    expect(VERDICT_LABEL.on_time).toBe("a change, on time");
+    expect(VERDICT_LABEL.displaced).toBe("a change, not on time");
   });
 
   it("it happened, but not when asked: the displacement is the result, not a pass", () => {

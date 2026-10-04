@@ -19,6 +19,13 @@ describe("what a clip was asked for, off the job that made it", () => {
     expect(askOfJob(job({ ...BASE, sourceAssetId: "take", sourceWindow: null }))!.fromTake).toBe(false);
   });
 
+  it("a job that drew pictures made no clip: nothing is asked of its picture", () => {
+    const still = { request_payload_json: { promptText: "…", mode: "still_only", settings: { ...BASE, route: "still_kling" } }, result_asset_id: "picture" };
+    expect(askOfJob(still)).toBeNull();
+    // so a shot with one clip and the picture it was made from has ONE generated clip
+    expect([...asksByAsset([still, job({ ...BASE, route: "still_kling" }, "clip")]).keys()]).toEqual(["clip"]);
+  });
+
   it("a job the storyboard did not start says nothing; a job with no result is not listed", () => {
     expect(askOfJob(job(null))).toBeNull();
     const asks = asksByAsset([job(BASE, "a"), job(BASE, null), job(null, "b")]);

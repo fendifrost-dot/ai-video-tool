@@ -1,0 +1,397 @@
+{
+ "clip": "/tmp/avtsb/takes/S06.mp4",
+ "scaler": "ffmpeg swscale bilinear",
+ "analysis": {
+  "version": 1,
+  "analyzedAt": "2026-10-04T10:21:32.925Z",
+  "range": [
+   0,
+   6.97
+  ],
+  "sampled": {
+   "faceFrames": 209,
+   "lightFrames": 209,
+   "detailFrames": 209,
+   "dropped": {
+    "noFace": 0,
+    "tooDark": 0,
+    "tooSmall": 0
+   }
+  },
+  "file": {
+   "resolution": {
+    "status": "measured",
+    "value": {
+     "width": 1080,
+     "height": 1920
+    },
+    "confidence": null,
+    "evidence": "the file's video track"
+   },
+   "aspect": {
+    "status": "measured",
+    "value": "9:16",
+    "confidence": null,
+    "evidence": "the track's stored width and height"
+   },
+   "fps": {
+    "status": "measured",
+    "value": 30,
+    "confidence": null,
+    "evidence": "the track's own timing"
+   },
+   "duration": {
+    "status": "measured",
+    "value": 6.97,
+    "confidence": null,
+    "evidence": "the track's duration"
+   },
+   "rotation": {
+    "status": "measured",
+    "value": 0,
+    "confidence": null,
+    "evidence": "the track's display matrix"
+   },
+   "codec": {
+    "status": "measured",
+    "value": "h264",
+    "confidence": null,
+    "evidence": "the track's sample description"
+   },
+   "transfer": {
+    "status": "measured",
+    "value": "arib-std-b67",
+    "confidence": null,
+    "evidence": "the track's colour information",
+    "limit": "a transfer curve is named, not verified against the pixels"
+   }
+  },
+  "subject": {
+   "faceCoverage": {
+    "status": "measured",
+    "value": 1,
+    "confidence": null,
+    "evidence": "his face was readable in 209 of 209 frames read (0 none found, 0 too dark to read, 0 too small for the landmarks to mean anything)"
+   },
+   "position": {
+    "status": "measured",
+    "value": {
+     "x": 0.5053,
+     "y": 0.3449
+    },
+    "confidence": null,
+    "evidence": "the median of his eye-line over the frames his face was read in"
+   },
+   "travel": {
+    "status": "measured",
+    "value": {
+     "x": 0.4056,
+     "y": 0.0331
+    },
+    "confidence": null,
+    "evidence": "the 5th-to-95th-percentile span of his eye-line, so one lost frame does not set it"
+   },
+   "scale": {
+    "status": "measured",
+    "value": 0.0571,
+    "confidence": null,
+    "evidence": "median eye distance over frame height"
+   },
+   "reach": {
+    "status": "measured",
+    "value": 11.4743,
+    "confidence": null,
+    "evidence": "median distance from his eye-line to the bottom of frame, in eye-distances"
+   },
+   "coverage": {
+    "status": "estimated",
+    "value": "thigh_up",
+    "confidence": 0.45,
+    "evidence": "a reach of 11.4743 eye-distances read against ordinary human proportion",
+    "limit": "a rule of thumb about bodies, not a measurement of this one; a crouch or a low camera will move it"
+   },
+   "faceNearEdge": {
+    "status": "measured",
+    "value": [],
+    "confidence": null,
+    "evidence": "his eye-line against a band 8 % in from each edge",
+    "limit": "his FACE only. Where his hands, elbows and shoulders are is not read here, so a body that leaves frame will not show up in this finding"
+   }
+  },
+  "camera": {
+   "unsteadySteps": {
+    "status": "measured",
+    "value": 0,
+    "confidence": null,
+    "evidence": "border movement above 0.004 of frame width, over 208 steps"
+   },
+   "worstStep": {
+    "status": "measured",
+    "value": 0,
+    "confidence": null,
+    "evidence": "the largest single-step border movement"
+   },
+   "stability": {
+    "status": "estimated",
+    "value": "locked",
+    "confidence": 0.6,
+    "evidence": "0 % of steps moved, worst 0 of frame width",
+    "limit": "a threshold on whole-pixel matching at 64 cells across: a slow push smaller than one cell reads as locked"
+   },
+   "motionSource": {
+    "status": "estimated",
+    "value": "still",
+    "confidence": 0.8,
+    "evidence": "the frame's border is taken to be background and the whole frame to include him; the two are compared",
+    "limit": "no optical flow and no depth: a camera that pans while he walks the other way is not resolved, and is reported as mixed or cannot_separate rather than guessed"
+   },
+   "drift": {
+    "status": "estimated",
+    "value": {
+     "x": 0,
+     "y": 0
+    },
+    "confidence": 0.4,
+    "evidence": "the sum of border movement over the stretch",
+    "limit": "accumulated whole-cell steps; it drifts with its own rounding and is an indication of direction, not a displacement"
+   }
+  },
+  "light": {
+   "exposure": {
+    "status": "measured",
+    "value": {
+     "mean": 0.5257,
+     "swing": 0.0299
+    },
+    "confidence": null,
+    "evidence": "median frame brightness and its 5th-to-95th-percentile span"
+   },
+   "clipping": {
+    "status": "measured",
+    "value": {
+     "black": 0.0112,
+     "white": 0
+    },
+    "confidence": null,
+    "evidence": "share of pixels at or beyond the ends of the range, median over frames"
+   },
+   "colourCast": {
+    "status": "measured",
+    "value": {
+     "r": 0.5312,
+     "g": 0.5125,
+     "b": 0.4436,
+     "strength": 0.1767
+    },
+    "confidence": null,
+    "evidence": "mean of each channel over every cell of every frame"
+   },
+   "keyDirection": {
+    "status": "estimated",
+    "value": "above",
+    "confidence": 0.6,
+    "evidence": "a brightness difference of 0.0356 across and 0.2705 down the picture",
+    "limit": "where the picture is brighter, not where a lamp is. A bright wall on one side reads the same as a key from that side, and this cannot tell them apart"
+   },
+   "softness": {
+    "status": "estimated",
+    "value": "medium",
+    "confidence": 0.35,
+    "evidence": "a left-to-right brightness difference of 0.3326 across the band he stands in, with 0.0112 of the picture clipped",
+    "limit": "UNCALIBRATED — no shadow edge is found and no light is measured. It reads how much the light models HIM, at the resolution of a 12-cell grid, which a wall behind him also contributes to. Treat it as a hint, never as a lighting spec"
+   }
+  },
+  "focus": {
+   "peakSharpness": {
+    "status": "measured",
+    "value": 0.1483,
+    "confidence": null,
+    "evidence": "median over frames of the sharpest tile in each",
+    "limit": "a number for this clip only. It is not comparable with another clip of a different size, bitrate or codec"
+   },
+   "blurredFrames": {
+    "status": "measured",
+    "value": 0,
+    "confidence": null,
+    "evidence": "frames whose sharpest tile falls below 0.6 of this clip's median"
+   },
+   "subjectVsBackground": {
+    "status": "estimated",
+    "value": 1.5567,
+    "confidence": 0.45,
+    "evidence": "sharpness in the tiles around his face against tiles 3 or more away",
+    "limit": "the tiles he stands in are guessed from his FACE, not from a cut-out of him. A hand waved into a background tile, or a chair beside him, lands in the wrong half"
+   },
+   "depthOfField": {
+    "status": "estimated",
+    "value": "deep",
+    "confidence": 0.35,
+    "evidence": "a subject-to-background sharpness ratio of 1.5567",
+    "limit": "says which is sharper, not an aperture and not a distance. A flat wall behind him reads as soft because there is nothing in it to be sharp"
+   }
+  },
+  "separation": {
+   "difficulty": {
+    "status": "estimated",
+    "value": "moderate",
+    "confidence": 0.4,
+    "evidence": "1 of the four things that make a cut-out hard are present",
+    "limit": "a reading of the picture, not an attempt at a matte. Hair, a cap's brim, a chain and anything reflective are the usual failures and are NOT measured here — no matte was pulled"
+   },
+   "reasons": [
+    "the background carries a lot of detail, which a matte has to follow rather than flood"
+   ],
+   "edgeContrast": {
+    "status": "measured",
+    "value": 0.1399,
+    "confidence": null,
+    "evidence": "brightness difference between the column he stands in and the columns two cells either side"
+   }
+  },
+  "floor": {
+   "feetVisible": {
+    "status": "estimated",
+    "value": false,
+    "confidence": 0.4,
+    "evidence": "a reach of 11.4743 eye-distances, against 24 for a whole standing body",
+    "limit": "inferred from where his eyes are and where the frame ends. Nothing here sees a foot: a crouch, a low camera or a step towards the lens all break it"
+   },
+   "contactNeeded": {
+    "status": "estimated",
+    "value": false,
+    "confidence": 0.6,
+    "evidence": "the frame ends above his feet, so there is no contact point to match and no contact shadow to invent",
+    "limit": "about whether a contact is NEEDED, not whether AVT can make one"
+   }
+  },
+  "audio": {
+   "present": {
+    "status": "measured",
+    "value": false,
+    "confidence": null,
+    "evidence": "the file's track list"
+   },
+   "lipSyncJudgeable": {
+    "status": "unknown",
+    "value": null,
+    "confidence": null,
+    "evidence": "a take is the reference, so there is nothing to hold it against",
+    "limit": "lip sync is a comparison between a clip and the take it was made from (storyboard/takeCheck.ts). It cannot be judged from one file alone, and this analysis does not try"
+   }
+  },
+  "notEstablished": [
+   "the lighting's geometry — how many sources, where they stand, how far, how large",
+   "focal length, aperture, sensor size, camera height and the distance to anything in frame",
+   "how a matte actually behaves on his hair, the brim of his cap, and anything reflective he is wearing — nothing here pulls one",
+   "anything about sound or sync — the file carries no audio track"
+  ]
+ },
+ "spec": {
+  "version": 1,
+  "forAnalyzer": 1,
+  "hard": [
+   {
+    "kind": "composition",
+    "text": "Leave the performer's place clear: his eye-line sits at 51 % across and 34 % down the frame. Put nothing of interest there, and nothing that has to be read behind his head and shoulders.",
+    "from": "subject.position"
+   },
+   {
+    "kind": "composition",
+    "text": "He moves across 41 % of the frame and 3 % down it. Keep that band clear of anything the eye has to follow.",
+    "from": "subject.travel"
+   },
+   {
+    "kind": "camera",
+    "text": "The camera does not move. The background must be locked off too — any drift in it will read as the room sliding behind a man who is standing still.",
+    "from": "camera.stability + camera.motionSource"
+   },
+   {
+    "kind": "light",
+    "text": "Mean brightness is 0.53 of full scale. Build the background to that, not brighter: he cannot be relit.",
+    "from": "light.exposure"
+   },
+   {
+    "kind": "colour",
+    "text": "The take carries a colour cast (r 0.53 g 0.51 b 0.44). Grade the background to it rather than correcting him.",
+    "from": "light.colourCast"
+   },
+   {
+    "kind": "colour",
+    "text": "The file is tagged arib-std-b67. A background generated in ordinary sRGB will not match it until one of the two is converted, and converting him is what loses his skin.",
+    "from": "file.transfer"
+   },
+   {
+    "kind": "focus",
+    "text": "The background must be delivered at 1080 × 1920 or larger. Anything smaller has to be scaled up into him.",
+    "from": "file.resolution"
+   },
+   {
+    "kind": "reframe",
+    "text": "Do not reframe wider or lower than the take. There is no footage of his legs or feet; a background that reveals them will reveal nothing.",
+    "from": "floor.feetVisible + subject.coverage"
+   }
+  ],
+  "preferences": [
+   {
+    "kind": "composition",
+    "text": "The take frames him thigh up. A background built for a fuller figure will not match: there is no footage of the rest of him.",
+    "from": "subject.coverage"
+   },
+   {
+    "kind": "light",
+    "text": "The brighter side of the picture is above. Light the background from the same side; a background keyed from the opposite side is the single most visible mismatch in a composite.",
+    "from": "light.keyDirection"
+   },
+   {
+    "kind": "light",
+    "text": "His light reads medium. Match that: a background lit flatter than he is will look pasted behind him.",
+    "from": "light.softness"
+   },
+   {
+    "kind": "focus",
+    "text": "The background is about as sharp as he is: a defocused plate will read as a different lens.",
+    "from": "focus.depthOfField"
+   },
+   {
+    "kind": "separation",
+    "text": "A matte is workable but not free; keep the background away from his edges in brightness and detail.",
+    "from": "separation.difficulty"
+   },
+   {
+    "kind": "floor",
+    "text": "The frame ends above his feet, so no floor contact and no contact shadow has to be matched — one fewer thing for the background to get wrong.",
+    "from": "floor.contactNeeded"
+   }
+  ],
+  "route": {
+   "choice": "composite",
+   "confidence": 0.6,
+   "because": [
+    "the camera is locked and he separates from the background well enough that a plate can go behind him",
+    "his performance, timing and lip movement survive a composite exactly, which is the thing a restaging kept failing"
+   ],
+   "risks": [
+    "AVT cannot pull the matte this needs today — see gaps"
+   ],
+   "rejected": [
+    {
+     "choice": "restage",
+     "why": "a generative restage re-renders his performance; this take does not need that risk"
+    },
+    {
+     "choice": "reshoot",
+     "why": "nothing in the footage is unusable"
+    }
+   ]
+  },
+  "capture": [
+   "The take frames him thigh up. If a shot may ever want him fuller, film it fuller — a crop can take away, nothing can add.",
+   "This take carries no sound. Record audio even when the music is added later: it is what sync is measured against."
+  ],
+  "conflicts": [],
+  "gaps": [
+   "AVT has no colour-transfer step: nothing in the pipeline converts arib-std-b67 footage to the space a generated plate is produced in, or back",
+   "AVT has no matte step for ordinary footage: scripts/edit/composite_environment.py composites against a plate with hand-set occluder bands, and nothing pulls a per-frame matte of him"
+  ]
+ }
+}

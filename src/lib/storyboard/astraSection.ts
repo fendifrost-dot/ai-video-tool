@@ -39,7 +39,8 @@ export type StoredSectionReview = {
   summary: string;
   strengths: string[];
   release: string;
-  findings: (SectionFinding & { shotId: string | null; key: string | null })[];
+  /** `assetId` = the clip the shot was showing when the review looked (absent on reviews made before it was recorded). */
+  findings: (SectionFinding & { shotId: string | null; key: string | null; assetId?: string | null })[];
 };
 
 export const SECTION_REVIEW_SCHEMA = {

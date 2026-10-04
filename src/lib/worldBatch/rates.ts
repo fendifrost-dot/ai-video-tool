@@ -9,8 +9,17 @@ export const PROVIDER_RATES = {
   kling_usd_per_s: 0.07,
   dop_usd_per_s: 0.083,
   seedance_usd_per_s: { "480p": 0.2468, "720p": 0.4622, "1080p": 1.1372 } as Record<string, number>,
-  /** What the provider has actually charged per second of output, where that has been read off its own billing (provider_rates.json → _seedance_charged). */
-  seedance_charged_usd_per_output_s: { "720p": 0.555 } as Record<string, number>,
+  /**
+   * The provider's published token rule for Seedance 2.5, which is what it charges by (provider_rates.json →
+   * _seedance_tokens has the rule in words and the scope of what has actually been charged).
+   */
+  seedance_tokens: {
+    usd_per_1000_tokens: { "480p": 0.0214, "720p": 0.0214, "1080p": 0.0234 } as Record<string, number>,
+    video_input_factor: 0.6,
+    pixels: { "480p": 409920, "720p": 921600, "1080p": 2073600 } as Record<string, number>,
+    frames_per_second: 24,
+    divisor: 1024,
+  },
   judge_usd_each: 0.08,
 } as const;
 

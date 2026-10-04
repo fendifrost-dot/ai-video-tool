@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Eye, Ruler, X } from "lucide-react";
+import { Check, Eye, Ruler, ScanSearch, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { acceptanceLine, FINDING_LABEL, SOURCE_LABEL, VERDICT_LABEL, type AcceptanceVerdict, type Finding, type Requirement } from "@/lib/storyboard/acceptance";
 import type { BoxMediaItem } from "@/lib/storyboard/media";
@@ -32,9 +32,10 @@ export function AcceptanceChip({ verdict, className }: { verdict: AcceptanceVerd
 
 /**
  * A generated clip held against everything it was asked for. Playing is not passing: each thing asked of the clip
- * has its own finding, and beside it where the finding comes from — MEASURED off the file, or decided BY EYE by
- * whoever looked. What nothing has looked at is said to be not verified, and a clip with anything failing or open is
- * not accepted. A judgement is recorded here with a note; it never changes a measurement.
+ * has its own finding, and beside it where the finding comes from — MEASURED off the file, REVIEWED by a model that
+ * was shown frames of the cut, or decided BY EYE by whoever looked. What nothing has looked at is said to be not
+ * verified, and a clip with anything failing or open is not accepted. A judgement is recorded here with a note; it
+ * never changes a measurement or a review.
  */
 export function AcceptancePanel({ item, shot }: { item: BoxMediaItem; shot?: { number: number; start: number; end: number } }) {
   const sb = useStoryboard();
@@ -70,7 +71,7 @@ export function AcceptancePanel({ item, shot }: { item: BoxMediaItem; shot?: { n
             <span className={cn("mr-1.5 rounded-full px-1.5 py-px text-[10px] font-medium", FINDING_STYLE[l.finding])}>{FINDING_LABEL[l.finding]}</span>
             <span className="font-medium text-foreground/90">{l.label}</span>
             <span className="mx-1.5 inline-flex items-center gap-0.5 text-[10px] text-foreground/45">
-              {l.source === "measured" ? <Ruler className="h-2.5 w-2.5" /> : l.source === "by_eye" ? <Eye className="h-2.5 w-2.5" /> : null}
+              {l.source === "measured" ? <Ruler className="h-2.5 w-2.5" /> : l.source === "reviewed" ? <ScanSearch className="h-2.5 w-2.5" /> : l.source === "by_eye" ? <Eye className="h-2.5 w-2.5" /> : null}
               {SOURCE_LABEL[l.source]}
               {l.judged ? ` · ${l.judged.at.slice(0, 10)}` : ""}
             </span>
@@ -78,8 +79,8 @@ export function AcceptancePanel({ item, shot }: { item: BoxMediaItem; shot?: { n
           </p>
           {l.judged && l.measured && (
             <p className="pl-4 text-[10px] leading-snug text-foreground/50" data-testid="acceptance-measured">
-              <Ruler className="mr-1 inline h-2.5 w-2.5" />
-              measured: {FINDING_LABEL[l.measured.finding]} — {l.measured.says}
+              {l.requirement === "review" ? <ScanSearch className="mr-1 inline h-2.5 w-2.5" /> : <Ruler className="mr-1 inline h-2.5 w-2.5" />}
+              {l.requirement === "review" ? "the review said" : "measured"}: {FINDING_LABEL[l.measured.finding]} — {l.measured.says}
             </p>
           )}
           {l.requirement === "lips" && shot && !l.judged && (
@@ -150,8 +151,8 @@ export function AcceptancePanel({ item, shot }: { item: BoxMediaItem; shot?: { n
       ))}
 
       <p className="text-[10px] leading-snug text-foreground/45" data-testid="acceptance-note-foot">
-        Measured is what was read off the file. By eye is what someone decided by looking, kept with its note and date — it settles the line and never changes a measurement. A clip that plays is not thereby a clip that does what it was asked: it is accepted only when
-        every line is met.
+        Measured is what was read off the file — and a timing is of a change of light, not of what changed. Reviewed is what a model said after being shown frames of the cut. By eye is what someone decided by looking, kept with its note and date — it settles the line
+        and never changes a measurement or a review. A clip that plays is not thereby a clip that does what it was asked: it is accepted only when every line is met.
       </p>
     </div>
   );

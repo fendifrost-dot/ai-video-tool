@@ -7,10 +7,15 @@ import { supabase } from "@/lib/supabase";
 import { parseAcceptance, withJudgement, type AcceptanceRecord, type ClipAsk, type Requirement } from "@/lib/storyboard/acceptance";
 import { settingsOf, type BatchJobRow } from "@/lib/worldBatch";
 
-/** What the job that made a clip asked for: its timed script, and whether it was restaged from a take. Null for a job that made no video. */
+/**
+ * What the job that made a clip asked for: its timed script, and whether it was restaged from a take. Null for a job
+ * that made no video — a job that drew pictures is not a clip, and counting its picture as one would make "the one
+ * generated clip on this shot" two.
+ */
 export function askOfJob(job: Pick<BatchJobRow, "request_payload_json">): ClipAsk | null {
   const s = settingsOf(job as BatchJobRow);
   if (!s) return null;
+  if ((job.request_payload_json as { mode?: unknown } | null)?.mode === "still_only") return null;
   const w = s.sourceWindow;
   return {
     asked: (s.temporal?.asked ?? []).map((b) => ({ id: b.id, offset: b.offset, kinds: b.kinds ?? [], says: b.says ?? "" })),

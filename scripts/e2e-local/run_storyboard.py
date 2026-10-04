@@ -364,7 +364,7 @@ def report(r):
     # ---- playing is not passing
     ac = r.get("acceptance") or {}
     b4 = ac.get("before") or {}; af = ac.get("judged") or {}
-    want("acceptance: a restaged clip with a timed script is asked five things", [l[0] for l in b4.get("lines", [])] == ["timing", "framing", "lips", "lighting", "camera"])
+    want("acceptance: a restaged clip with a timed script is asked seven things", [l[0] for l in b4.get("lines", [])] == ["timing", "framing", "lips", "lighting", "camera", "integrity", "action"])
     want("acceptance: timing is what was measured off the file; what nothing looked at is not verified", (b4.get("lines") or [[None] * 4])[0][2] == "measured" and all(l[1] == "unverified" and l[2] == "none" for l in b4.get("lines", [])[1:]) and b4.get("verdict") in ("fails", "unverified"))
     want("acceptance: lip sync names the exact stretch to watch with the song", "watch shot 10 with the song, 0:35.29–0:39.22" in (b4.get("watch") or ""))
     want("acceptance: a judgement by eye is kept on the clip with its note, marked as seen not measured", (af.get("lines") or [[None] * 4] * 5)[4][:3] == ["camera", "fails", "by_eye"] and "no push toward him" in (ac.get("camera_text") or "") and af.get("verdict") == "fails" and af.get("chip") == "fails")

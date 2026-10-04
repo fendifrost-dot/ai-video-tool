@@ -34,7 +34,7 @@ The look preset's preamble leads every prompt and its shot suffix closes it (con
 Each shot's clip is persisted to project-clips/<user>/<project>/worlds/<run>/<id>.mp4 and gated by
 scripts/qa/realism_gate.py with the look axis; the manifest records cost estimates, verdicts and distances.
 """
-import argparse, json, os, subprocess, sys, time, urllib.request
+import argparse, json, math, os, subprocess, sys, time, urllib.request
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "_lib")); from jobs import job  # resource governor + registry (scripts/_lib/jobs.py)
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(ROOT, "scripts", "qa"))
@@ -48,13 +48,16 @@ PROXY = f"{SUPA}/functions/v1/proxy-provider-call"
 RATES = json.load(open(os.path.join(ROOT, "config", "provider_rates.json")))
 RUNWAY_RATE = RATES["runway"]; KLING_RATE = RATES["kling_usd_per_s"]; STILL_RATE = RATES["still_usd_each"]; DOP_RATE = RATES["dop_usd_per_s"]
 SEEDANCE_RATE = RATES["seedance_usd_per_s"]   # list: per second, input + output (Higgsfield catalogue, 2026-10)
-SEEDANCE_CHARGED = RATES.get("seedance_charged_usd_per_output_s", {})   # what it has actually charged per OUTPUT second, where read off its billing
+SEEDANCE_TOKENS = RATES["seedance_tokens"]   # the provider's published token rule (provider_rates.json -> _seedance_tokens)
 
 
-def seedance_estimate(resolution, seconds):
-    """The charged rate where one has been observed for this resolution; else the list rate, input and output seconds both."""
-    charged = SEEDANCE_CHARGED.get(resolution)
-    return charged * seconds if charged is not None else SEEDANCE_RATE[resolution] * 2 * seconds
+def seedance_estimate(resolution, output_seconds, input_seconds=None):
+    """Seedance 2.5 by the provider's token rule (the same arithmetic as src/lib/worldBatch/estimate.ts seedanceUsd):
+    tokens = ceil(pixels x (input + output seconds) x 24 / 1024); rate per 1,000 tokens x 0.6 when there is a video input."""
+    t = SEEDANCE_TOKENS
+    input_seconds = output_seconds if input_seconds is None else input_seconds
+    tokens = math.ceil(t["pixels"][resolution] * (input_seconds + output_seconds) * t["frames_per_second"] / t["divisor"])
+    return tokens / 1000 * t["usd_per_1000_tokens"][resolution] * (t["video_input_factor"] if input_seconds > 0 else 1)
 
 
 # The same sentence as src/lib/shotCompiler/prompts.ts PLACE_LIGHT (a test there reads this file): the light is said

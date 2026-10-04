@@ -58,8 +58,15 @@ import { ALTERNATIVE_LABEL, beatLines, type TemporalPlan } from "@/lib/storyboar
 import type { AskedChange } from "@/lib/storyboard/beatCheck";
 import { measureClip as measureClipFile, saveBeatCheck } from "@/lib/queries/beatCheck";
 import { measureAgainstTake, saveTakeCheck } from "@/lib/queries/takeCheck";
-import { askOfJob, saveJudgement } from "@/lib/queries/acceptance";
-import { acceptanceOf as acceptanceFor, type Acceptance, type Requirement } from "@/lib/storyboard/acceptance";
+import { asksByAsset, saveJudgement } from "@/lib/queries/acceptance";
+import { acceptanceOf as acceptanceFor, reviewedByAsset, type Acceptance, type Requirement } from "@/lib/storyboard/acceptance";
+import { readStoredReview } from "@/lib/storyboard/astraSection";
+import { analyzeTake, saveFootageAnalysis } from "@/lib/queries/footageAnalysis";
+import {
+  pickAnalysis,
+  type Staleness,
+  type StoredFootageAnalysis,
+} from "@/lib/storyboard/footageRecord";
 import { settingsOf } from "@/lib/worldBatch";
 import { ensureStoryboardMaterialized, type MaterializeResult } from "@/lib/storyboard/build";
 import { aspectOfProject, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
@@ -170,6 +177,18 @@ export type StoryboardController = {
   checkAgainstTake: (asset: MediaAsset) => Promise<void>;
   /** What a check in flight is doing, when one is. */
   checkingOf: (assetId: string) => string | null;
+  /**
+   * Read a TAKE for what it is — framing, movement, light, focus, how hard he is to cut out — and what a background
+   * would have to be to sit with it (storyboard/footage.ts, storyboard/compatibility.ts). Advisory: it writes a
+   * record on the take and changes nothing else.
+   */
+  analyzeFootage: (asset: MediaAsset) => Promise<void>;
+  /** The reading kept for this take and the stretch in hand, with whether it may still be believed. */
+  footageAnalysisOf: (
+    asset: MediaAsset,
+  ) => { analysis: StoredFootageAnalysis; staleness: Staleness } | null;
+  /** What a reading in flight is doing, when one is. */
+  analyzingOf: (assetId: string) => string | null;
   /**
    * A generated clip held against everything it was asked for: what was measured, what a person judged by looking,
    * and what nothing has looked at yet. Null for footage the app did not generate.
@@ -732,7 +751,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         setConfirm({
           title: `Restage your take for shot ${numberById.get(box.id) ?? ""}?`,
           body:
-            `About ${usd(est.clip)} at the rate this provider has charged for restaging. Your real performance from ${r.takeName} (${mmss(r.takeIn)}–${mmss(r.takeOut)} of the take) is re-shot inside this shot's scene: ` +
+            `About ${usd(est.clip)} by the provider's own pricing rule. Your real performance from ${r.takeName} (${mmss(r.takeIn)}–${mmss(r.takeOut)} of the take) is re-shot inside this shot's scene: ` +
             `${r.seconds} s of the take go to the video model with ${place?.of ? `the approved picture of ${place.of.name} as the place — the same picture every shot set there is restaged into` : "this shot's image as the place"}` +
             (est.clipDrawsImage ? " (the shot has no image yet, so one is drawn first)" : "") +
             ". He keeps his face and what he wears in the take. The result stays on the song clock and lands on this shot only; it takes several minutes." +
@@ -892,15 +911,68 @@ export function useStoryboardController(projectId: string): StoryboardController
     [takeOf, urlFor, qc, projectId],
   );
 
+  // --- what a take IS, before anything is generated against it -------------------------------------------------------------
+  const [analyzing, setAnalyzing] = useState<Record<string, string>>({});
+  const analyzeFootage = useCallback(
+    async (asset: MediaAsset) => {
+      const url = urlFor(asset);
+      if (!asset.isVideo) return;
+      if (!url) {
+        toast.info("The file is still being opened — try again in a moment");
+        return;
+      }
+      const stage = (t: string) => setAnalyzing((m) => ({ ...m, [asset.id]: t }));
+      stage("opening the take…");
+      try {
+        const next = await analyzeTake({
+          asset: { id: asset.id, ...playbackRef(asset) },
+          url,
+          onStage: stage,
+        });
+        await saveFootageAnalysis(asset.id, next);
+        await qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(projectId) });
+      } catch (e) {
+        toast.error(`The take could not be read: ${message(e)}`);
+      } finally {
+        setAnalyzing((m) => {
+          const { [asset.id]: _gone, ...rest } = m;
+          return rest;
+        });
+      }
+    },
+    [urlFor, qc, projectId],
+  );
+
+  const footageAnalysisOf = useCallback((asset: MediaAsset) => {
+    const kept = asset.footageAnalyses ?? [];
+    if (!kept.length) return null;
+    const ref = playbackRef(asset);
+    // the whole file, until a shot's own stretch is plumbed through — a narrower reading still shows, marked stale
+    const first = kept[0];
+    return pickAnalysis(kept, {
+      fingerprint: {
+        bucket: ref.bucket,
+        path: ref.path,
+        bytes: first.fingerprint.bytes,
+        seconds: first.fingerprint.seconds,
+        width: first.fingerprint.width,
+        height: first.fingerprint.height,
+      },
+      range: first.analysis.range,
+    });
+  }, []);
+
   // --- whether a clip does what it was asked to ---------------------------------------------------------------------------
+  // what each generated clip was asked for (off the job that made it), and what the last second opinion found on it
+  const asks = useMemo(() => asksByAsset(jobs.jobs), [jobs.jobs]);
+  const reviewed = useMemo(() => reviewedByAsset(readStoredReview(project?.treatment_json), assignments, media.byId, asks), [project?.treatment_json, assignments, media.byId, asks]);
   const acceptanceOf = useCallback(
     (asset: MediaAsset): Acceptance | null => {
       if (!asset.isVideo) return null;
-      const job = jobs.jobs.find((j) => j.result_asset_id === asset.id);
-      const ask = job ? askOfJob(job) : null;
-      return ask ? acceptanceFor({ ask, beatCheck: asset.beatCheck ?? null, takeCheck: asset.takeCheck ?? null, record: asset.acceptance ?? null }) : null;
+      const ask = asks.get(asset.id);
+      return ask ? acceptanceFor({ ask, beatCheck: asset.beatCheck ?? null, takeCheck: asset.takeCheck ?? null, record: asset.acceptance ?? null, reviewed: reviewed.get(asset.id) ?? null }) : null;
     },
-    [jobs.jobs],
+    [asks, reviewed],
   );
   const judge = useCallback(
     async (asset: MediaAsset, requirement: Requirement, finding: "meets" | "fails" | null, note: string) => {
@@ -1044,6 +1116,9 @@ export function useStoryboardController(projectId: string): StoryboardController
     takeOf,
     checkAgainstTake,
     checkingOf: (id) => checking[id] ?? null,
+    analyzeFootage,
+    footageAnalysisOf,
+    analyzingOf: (id) => analyzing[id] ?? null,
     acceptanceOf,
     judge,
     entities,

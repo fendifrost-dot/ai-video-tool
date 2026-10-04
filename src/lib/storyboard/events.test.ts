@@ -416,7 +416,10 @@ describe("generating a shot that changes is never a flattened prompt", () => {
     const e = ROUTE_TEMPORAL.seedance_ref.evidence!;
     expect(ROUTE_TEMPORAL.seedance_ref.measured).toBe(false);
     expect(e.errorsSeconds).toEqual([-1.02, -0.94]);
-    expect(timingSaid("seedance_ref")).toBe("On the 2 restagings measured so far (3 October 2026) the change asked for was drawn and began 1.0 s early on average (−1.02 s, −0.94 s). Each clip is measured against its beats when it comes back.");
+    // a detected change and its time; that it was the change asked for is said to be a reading by eye, not a measurement
+    expect(e.identified).toBe("by_eye");
+    expect(timingSaid("seedance_ref")).toBe("On the 2 restagings measured so far (3 October 2026) a change of light began 1.0 s early on average (−1.02 s, −0.94 s). That it was the change asked for was read off the frames by eye, not measured. Each clip is measured against its beats when it comes back.");
+    expect(timingSaid("seedance_ref")).not.toMatch(/the change asked for was drawn/);
     expect(timingSaid("seedance_ref")).not.toMatch(/works|accurate|reliabl/i);
     for (const route of ONE_STATE) {
       expect(ROUTE_TEMPORAL[route].evidence, route).toBeUndefined();
