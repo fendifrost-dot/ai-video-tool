@@ -86,3 +86,20 @@
   - 41: full-length throughout (pre-fix "wide" wording), repeats 39's composition.
   - 42: the cue happens, but the state is a bright disco room (both edge strips still lit, luminous ball, rays), not the treatment's ice-only blackout — the DIAMOND_DISCO_LIGHT entity's own words ask for the ball's points of light; the treatment's hook asks for less. A creative mismatch between the lighting state as written and the treatment, not a transport defect.
 - SPEND (list): 0.14 + 0.14 + 0.35 + 3.70 + 5.55 + 3.70 + 0.15 (Astra) = $13.73, plus treatment/scene writer calls (cents, not recorded client-side). Failed retest: $0.
+
+## 2026-10-04 00:00–02:20 UTC — reconciliation, playback QA, one retest (rev 61)
+- Fendi: credits replenished; finish reconciliation + playback QA; ONE retest with the corrected framing prompt, cap $4; measure timing, framing, lighting, lip sync; no 1 s offset; return before further paid generations.
+- xAI console (signed in, team "Boltz", id 1a20564d…): balance $30.00. 3 Oct (CDT): spend $4.42 = Image & Video $4.06 + Text $0.36; 149 requests. AVT ran 29 succeeded still jobs 10:11–19:29 UTC that day × $0.14 = $4.06 → image spend reconciles exactly. Text $0.36 is the whole team's day.
+- Higgsfield console: "Log in" in this browser → actual charges not readable. Not signed in by me.
+- New measurement built: takeCheck (lips + framing) — commits 64a397a, f0ae99c, ed420f9, b53dce0, 0963f88 (series kept, close re-read), 226cebd (readable faces, log scale, record v2), 0aef034 (readable = 0.65 of the file's usual). Published 0aef034.
+  - Noise floor of the lip fit on made series (400 unrelated pairs a length): p99 0.82 / 0.64 / 0.52 / 0.44 at 1.5 / 2.5 / 4 / 6 s → minCorr = 1.05/√s, floor 0.5. The python script's wide search (retime 0.7–1.4) has a floor of 0.58 at 4 s: its "0.66 on the clock" was barely above chance.
+  - First real run on c038: agreement 0.08 — the reader draws a face on the silhouette with a shut mouth; also SQL on the stored series, lit part only: plain 0.28, smoothed 0.31, log 0.41 at lag −0.04, binary 0.37. → readable filter + log.
+  - `seen` (luma spread of the face box): lit 0.15–0.20; dark 0.03–0.12.
+- PLAYBACK: background tabs in the Claude tab group are `hidden` (not minimised — one Chrome window; the group's tabs are simply not the active tab). A window opened from the tab by a trusted click (`window.open(..., 'popup')`) is visible and can be driven from the opener (same origin). With computer-use full-screen approval the other apps are hidden so the popup is not occluded.
+  - Before retest: 89 samples; drift −0.061…+0.082 s; 0 stalls; Check this cut 13/13 incl. live 8/8.
+  - After retest: 89 samples; shot 39 plays 69280525; drift −0.062…−0.016 s; 13/13, live 8/8.
+- RETEST: job 630e136b submitted 01:55:12, tab away, attached by SERVER 01:59:06, asset 69280525. $3.70. Prompt = corrected framing sentence, same script "from 1.9 s", no offset.
+  - beat_check: begins 0.5, half 0.583, arrived 0.958, luma 0.032 → 0.169, strength 16.7 → error −1.40 "displaced". Luma series: 0.021 to 0.25 s; 0.039 at 0.42; 0.097 at 0.58; 0.123 at 0.75; 0.128 at 0.92; 0.138 at 1.0; 0.158 at 1.08; 0.167 at 1.17; 0.20 flash at 1.25; ~0.165 after. Frames: 0.20 dark; 0.55 lit, ball unlit, no points; ~0.85–1.0 no points; 1.12 points everywhere. → asked change ≈ 0.96–1.17 s (≈ −0.94 s); the check timed the unasked dark→lit before it.
+  - take_check (final code): 69280525 lips unclear 0.42 over 3.4 s (needs 0.57), best +0.08 s, face readable 84/97 (from 0.54 s); framing 13.8 vs take 11.7 = 1.18× at 2.92 s. ae0a116f: lips unclear 0.58 over 1.8 s (0.78), best +0.04; framing 29.8 = 2.54×. 4b872af2: lips unclear 0.48 over 3.6 s (0.56), best −0.06; readable 89/145 (to 3.67 s); framing kept 7.6 vs 11.5. 9d132fa4: readable 31/97 (from 2.63 s); framing 30.3 = 2.65×.
+- Spend: fresh section $13.73 + retest $3.70 = $17.43 at list, + ≤ $0.36 text.
+- Tests: vitest 182 files / 2060 tests; tsc; build; pytest 39; e2e-local PASS.
