@@ -6,8 +6,8 @@
  * closer, a stretch with no face. What the check says is held against what was put in.
  */
 import { describe, expect, it } from "vitest";
-import { closeOn, closerWindows } from "@/lib/media/faceSeries";
-import { EYE_A, EYE_B, LIP_LOWER, LIP_UPPER, SYNC_SECONDS, WIDER_RATIO, checkAgainstTake, faceOf, fitLips, framingLine, framingOf, lipLine, minCorr, parseTakeCheck, type FaceFrame, type FaceSample } from "./takeCheck";
+import { closeOn, closerWindows, lumaSpread } from "@/lib/media/faceSeries";
+import { EYE_A, EYE_B, LIP_LOWER, LIP_UPPER, MIN_SEEN, SYNC_SECONDS, WIDER_RATIO, checkAgainstTake, faceOf, fitLips, framingLine, framingOf, lipLine, minCorr, parseTakeCheck, readable, type FaceFrame, type FaceSample } from "./takeCheck";
 
 const FPS = 24;
 /** A deterministic pseudo-random stream (so a failure is the same failure every run). */
@@ -33,7 +33,7 @@ function speech(seed: number, seconds = 12): (t: number) => number {
   };
 }
 /** A series of faces: `mouth(t)` on the clip's own clock, a small measuring noise, `reach` and `size` as given. */
-function series(mouth: (t: number) => number, opts: { seconds?: number; from?: number; reach?: (t: number) => number; noise?: number; seed?: number; gap?: [number, number] } = {}): FaceSample[] {
+function series(mouth: (t: number) => number, opts: { seconds?: number; from?: number; reach?: (t: number) => number; noise?: number; seed?: number; gap?: [number, number]; seen?: (t: number) => number } = {}): FaceSample[] {
   const r = rng(opts.seed ?? 7);
   const out: FaceSample[] = [];
   const n = Math.round((opts.seconds ?? 4) * FPS);
@@ -41,7 +41,7 @@ function series(mouth: (t: number) => number, opts: { seconds?: number; from?: n
     const t = Math.round(((opts.from ?? 0) + i / FPS) * 1000) / 1000;
     if (opts.gap && t >= opts.gap[0] && t < opts.gap[1]) continue;
     const reach = opts.reach ? opts.reach(t) : 6;
-    out.push({ t, mouth: Math.max(0, mouth(t) + (r() - 0.5) * (opts.noise ?? 0.02)), size: 1 / (reach * 1.3), cx: 0.5, cy: 0.25, reach });
+    out.push({ t, mouth: Math.max(0, mouth(t) + (r() - 0.5) * (opts.noise ?? 0.02)), size: 1 / (reach * 1.3), cx: 0.5, cy: 0.25, reach, seen: opts.seen ? opts.seen(t) : 0.15 });
   }
   return out;
 }
@@ -50,7 +50,7 @@ const asFrames = (s: FaceSample[], seconds: number, from = 0): FaceFrame[] => {
   return Array.from({ length: Math.round(seconds * FPS) }, (_, i) => {
     const t = Math.round((from + i / FPS) * 1000) / 1000;
     const f = byT.get(t);
-    return { t, face: f ? { mouth: f.mouth, size: f.size, cx: f.cx, cy: f.cy, reach: f.reach } : null };
+    return { t, face: f ? { mouth: f.mouth, size: f.size, cx: f.cx, cy: f.cy, reach: f.reach, seen: f.seen } : null };
   });
 };
 
@@ -202,17 +202,18 @@ describe("the whole check, its words and its record", () => {
   it("re-bases the take to its stretch, and reports both measures with what was seen", () => {
     const clip = asFrames(series(said, { seed: 2, reach: (t) => 14 - 2 * t, gap: [3, 4] }), 4);
     const c = checkAgainstTake(takeFrames, 155.99, clip, "2026-10-04T00:00:00Z");
-    expect(c).toMatchObject({ version: 1, frames: 96, faceFrames: 72, faceFrom: 0, takeFrames: 96, takeFaceFrames: 96 });
+    expect(c).toMatchObject({ version: 2, frames: 96, faceFrames: 72, faceFrom: 0, takeFrames: 96, takeFaceFrames: 96 });
     // what was measured is kept with the verdict: the take's mouth from 0 of its stretch, the clip's with its reach
     expect(c.series.take).toHaveLength(96);
     expect(c.series.take[0][0]).toBe(0);
+    expect(c.series.take[0]).toHaveLength(3);
     expect(c.series.clip).toHaveLength(72);
-    expect(c.series.clip[0]).toHaveLength(3);
+    expect(c.series.clip[0]).toHaveLength(4);
     expect(c.faceTo).toBeCloseTo(2.958, 2);
     expect(c.lip.verdict).toBe("in_sync");
     expect(c.framing.verdict).toBe("wider");
     expect(lipLine(c)).toContain("His mouth moves with the take's");
-    expect(lipLine(c)).toContain("His face is found in 72 of 96 frames (to 2.96 s) — nothing is said about the rest.");
+    expect(lipLine(c)).toContain("His face can be read in 72 of 96 frames (to 2.96 s) — nothing is said about the rest.");
     expect(framingLine(c)).toContain("It shows more of his body than the take filmed");
     expect(framingLine(c)).toContain("the take's frame reaches 6.0 eye-widths below his eyes");
     // the record survives being stored and read back
@@ -231,14 +232,62 @@ describe("the whole check, its words and its record", () => {
     const dark = checkAgainstTake(takeFrames, 155.99, asFrames([], 4), "x");
     expect(dark.lip.verdict).toBe("unmeasured");
     expect(dark.framing.verdict).toBe("unmeasured");
-    expect(lipLine(dark)).toContain("his face is found in 0 of 96 frames of the clip and 96 of 96 of the take");
+    expect(lipLine(dark)).toContain("his face can be read in 0 of 96 frames of the clip and 96 of 96 of the take");
     expect(framingLine(dark)).toContain("could not be measured");
   });
 
   it("is no check when the record is not one", () => {
     expect(parseTakeCheck(null)).toBeNull();
     expect(parseTakeCheck({ version: 2 })).toBeNull();
-    expect(parseTakeCheck({ version: 1, measuredAt: "x", lip: { verdict: "fine" }, framing: { verdict: "kept" } })).toBeNull();
+    expect(parseTakeCheck({ version: 2, measuredAt: "x", lip: { verdict: "fine" }, framing: { verdict: "kept" } })).toBeNull();
+    // a check made before faces were tested for being readable is not kept
+    expect(parseTakeCheck({ version: 1, measuredAt: "x", lip: { verdict: "unclear", best: null, onClock: null, worstLag: null, compared: 0 }, framing: { verdict: "kept" } })).toBeNull();
+  });
+});
+
+describe("a face that is found but cannot be read", () => {
+  const said = speech(61);
+  const take = series(said, { seed: 1, seconds: 6 });
+
+  it("a silhouette is left out: the reader draws a face on it, with a shut mouth", () => {
+    // the lights go out at 3.7 s of 6: from there the reader still finds a face, sees almost nothing in it, and says the mouth is shut
+    const lit = (t: number) => (t < 3.7 ? 0.16 : 0.012);
+    const clip = series((t) => (t < 3.7 ? said(t) : 0.01), { seed: 2, seconds: 6, seen: lit });
+    // measured as it came, two seconds of "not rapping" are counted as his performance and pull the agreement down
+    const asItCame = fitLips(take, clip);
+    // read only where there is a face to read, it is on the take's moments
+    const read = readable(clip);
+    expect(read).toHaveLength(Math.round(3.7 * 24));
+    expect(read[read.length - 1].t).toBeLessThan(3.7);
+    const lip = fitLips(take, read);
+    expect(lip.verdict).toBe("in_sync");
+    expect(lip.compared).toBeGreaterThan(3.3);
+    expect(lip.compared).toBeLessThan(3.75);
+    expect(lip.best!.corr).toBeGreaterThan(asItCame.best!.corr + 0.1);
+    // and the check says how far it could read
+    const c = checkAgainstTake(asFrames(take, 6), 0, asFrames(clip, 6), "x");
+    expect(c).toMatchObject({ frames: 144, faceFrames: 89, lip: { verdict: "in_sync" } });
+    expect(c.faceTo).toBeLessThan(3.7);
+    expect(lipLine(c)).toContain("His face can be read in 89 of 144 frames (to 3.67 s) — nothing is said about the rest.");
+    // what was found is all kept, with how much there was to see
+    expect(c.series.clip).toHaveLength(144);
+    expect(c.series.clip[143][3]).toBe(0.012);
+  });
+
+  it("is judged against what the file's faces usually show, and never below a floor", () => {
+    // a dim clip whose faces are all alike is read
+    expect(readable(series(said, { seen: () => 0.05 }))).toHaveLength(96);
+    // a clip dark from end to end is not
+    expect(readable(series(said, { seen: () => MIN_SEEN / 2 }))).toHaveLength(0);
+    expect(readable([])).toEqual([]);
+  });
+
+  it("the spread of light across a face's pixels is what there is to see", () => {
+    const px = (values: number[]) => new Uint8ClampedArray(values.flatMap((v) => [v, v, v, 255]));
+    expect(lumaSpread(px([40, 40, 40, 40]))).toBe(0);
+    expect(lumaSpread(px([0, 255, 0, 255]))).toBe(0.5);
+    expect(lumaSpread(px([10, 14, 8, 12]))).toBeLessThan(0.02);
+    expect(lumaSpread(new Uint8ClampedArray(0))).toBe(0);
   });
 });
 
