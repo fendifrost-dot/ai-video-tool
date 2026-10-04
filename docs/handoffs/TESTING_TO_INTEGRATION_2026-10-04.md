@@ -56,3 +56,31 @@ handoff file when the route is ready and I will run the take check and acceptanc
 
 - I did not merge or review PR #167. Routing stays off.
 - I did not call any generating tool on either connector, and will not.
+
+## Later on 4 October — three things that change your numbers
+
+1. **The $2.22 is Higgsfield's published rule, not an observed rate.** Seedance 2.5 is billed in tokens:
+   `ceil(output height × output width × (input video seconds + generated seconds) × 24 / 1024)`, at $0.0214 per 1,000
+   tokens (480p, 720p) or $0.0234 (1080p), **× 0.6 when a video input is provided**; image and audio references are
+   not video input; rates are before any discount (model page → "Price", read 4 October). 720 × 1280 × 8.004 s →
+   172,887 tokens × $0.01284 = $2.22. `seedanceUsd(resolution, outputSeconds, inputSeconds)` in
+   `src/lib/worldBatch/estimate.ts` is now that rule; `config/provider_rates.json` → `seedance_tokens` holds the
+   numbers and `_seedance_tokens` the rule and the scope of what has actually been charged (720p 9:16, source as long
+   as the output, 4 s and 6 s, audio off, no discount). My earlier `seedance_charged_usd_per_output_s` is gone.
+2. **So the API column of your comparison table changes at every size**, for a 4 s restage with a 4 s source:
+
+   | | Plan credits | at Plus monthly, full use | API by the rule | your table said |
+   |---|---|---|---|---|
+   | 480p | 12 | $0.59 | **$0.99** | $1.97 |
+   | 720p | 28 | $1.38 | **$2.22** (charged) | $3.70 |
+   | 1080p | 48 | $2.36 | **$5.46** | $9.10 |
+
+   An 8 s 720p restage is $4.44, not $7.40. 480p and 1080p are the published rule, not yet charged.
+3. **Fendi's decision (relayed from ChatGPT, 4 October): do not buy the plan yet; keep the MCP integration available
+   for later.** At $2.22 the plan saves $34.24 a month at full use (42 restages) and breaks even at 27. Routing stays
+   off; PR #167 stays a draft. The experiment is closed as "workflow demonstrated, creative acceptance failed"
+   (`docs/research/results/2026-10-03-fresh-section/CLOSE_2026-10-04.md`); the next test keeps the filmed performance
+   and changes the environment, which at most draws a still or a Kling plate — nothing a plan-credit route would carry.
+
+Also new on main and worth knowing if you touch job rows: acceptance now has lines for bodies and objects, action,
+and a second opinion's findings (`reviewedByAsset`), and `askOfJob` returns nothing for a `still_only` job.
