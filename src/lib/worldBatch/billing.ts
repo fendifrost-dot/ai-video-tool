@@ -42,6 +42,12 @@ export type BillingRecord = {
   switchedFrom?: BillingRoute;
   switchReason?: string;
   switchedAt?: string;
+  /**
+   * Subscription route: the job's own inputs as signed links, written when the job is parked, so a runner that
+   * cannot sign storage links (a Claude session using the provider's connector) can hand them to the provider.
+   * They expire (`expiresAt`); a runner that finds them expired leaves the job and says so.
+   */
+  inputs?: { sourceUrl?: string | null; stillUrl?: string | null; expiresAt: string };
   /** Subscription route: what the runner has done, in order. A job with `submitStartedAt` and no job id is never resubmitted. */
   runner?: { id?: string; claimedAt?: string; submitStartedAt?: string; note?: string };
 };

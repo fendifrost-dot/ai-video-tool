@@ -78,6 +78,11 @@ export const isStillJob = (job: ProgressJob) => payloadOf(job).mode === "still_o
  * subscription runner — a signed-in computer — not to Control Center, which has never heard of the job.
  */
 export const onSubscriptionRoute = (job: ProgressJob): boolean => (settingsOf(job).billing as { route?: unknown } | undefined)?.route === "subscription";
+/** The finished clip's link as the subscription runner recorded it on the row (https only), or null. */
+export const subscriptionResultUrl = (job: ProgressJob): string | null => {
+  const u = (job.response_payload_json as { resultUrl?: unknown } | null)?.resultUrl;
+  return typeof u === "string" && /^https:\/\//i.test(u) ? u : null;
+};
 export const shotIdOf = (job: ProgressJob): string | null => (typeof payloadOf(job).shotId === "string" && payloadOf(job).shotId ? (payloadOf(job).shotId as string) : null);
 
 /** The same reading of a status envelope the runner uses (src/lib/worldBatch/runner.ts statusFromEnvelope). */
@@ -213,15 +218,24 @@ export async function advanceJob(input: ProgressJob, deps: ProgressDeps): Promis
     // 2. the clip is rendered: save it
     if (!job.result_asset_id) {
       if (onSubscriptionRoute(job)) {
-        // Control Center cannot fetch a clip made on the plan: the runner saves it and writes the asset on the row
-        const note = "rendered on plan credits — the subscription runner has not saved the clip yet";
-        if (age > RUNNER_GIVE_UP_AFTER_MS) return await finish(note);
-        return { jobId: job.id, did, state: "waiting", note };
-      }
+        // Control Center cannot fetch a clip made on the plan. The runner either saved it itself (the CLI runner
+        // writes the asset on the row) or recorded where it is (a connector session writes the link): then the
+        // server fetches and stores it, so the return does not depend on the runner staying up.
+        if (subscriptionResultUrl(job)) {
+          const assetId = await deps.saveClip(job);
+          job = { ...job, result_asset_id: assetId };
+          did.push("saved from the recorded link");
+        } else {
+          const note = "rendered on plan credits — the subscription runner has not recorded the clip yet";
+          if (age > RUNNER_GIVE_UP_AFTER_MS) return await finish(note);
+          return { jobId: job.id, did, state: "waiting", note };
+        }
+      } else {
       if (!job.external_job_id) return await finish("rendered, but there is no provider job id to fetch it by");
       const assetId = await deps.saveClip(job);
       job = { ...job, result_asset_id: assetId };
       did.push("saved");
+      }
     }
 
     // 3. put it on its shot, once

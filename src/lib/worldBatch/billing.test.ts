@@ -104,6 +104,7 @@ describe("the runner records the route on the row", () => {
     expect(id).toBe("row-1");
     expect(patch.status).toBe("queued");
     expect(patch.request_payload_json.settings.billing).toMatchObject({ route: "subscription", source: "higgsfield_plan_credits", switchedFrom: "api" });
+    expect(patch.request_payload_json.settings.billing.inputs).toEqual({ sourceUrl: "https://signed/project-clips/u/p/seedance/c035_src.mp4", stillUrl: null, expiresAt: "2026-10-05T01:00:00.000Z" });
     // the request itself is unchanged: same model, same duration, same references
     expect(patch.request_payload_json).toMatchObject({ modelVariant: "seedance-2.5-reference", mode: "reference_to_video" });
   });
@@ -174,6 +175,19 @@ describe("the server leaves a plan-credit job to its runner", () => {
     expect(r.state).toBe("finished");
     expect(r.note).toContain("it is not resubmitted");
     expect(calls.patches.some((p) => "status" in p)).toBe(false);
+  });
+  it("rendered with its link recorded: the server fetches and stores it itself, then puts it on its shot", async () => {
+    const j = job({ status: "succeeded", external_job_id: "hf_plan_1", response_payload_json: { resultUrl: "https://cdn.example/clip.mp4" }, request_payload_json: { shotId: "shot_1", settings: { batchRun: "storyboard", batchShotId: "c035", route: "still_kling", billing: { route: "subscription", source: "higgsfield_plan_credits" } } } });
+    const { d, calls } = server(j);
+    const r = await advanceJob(j, d);
+    expect(calls.save).toBe(1);
+    expect(r.did).toEqual(expect.arrayContaining(["saved from the recorded link", "on its shot"]));
+  });
+  it("a link that is not https is not fetched", async () => {
+    const j = job({ status: "succeeded", external_job_id: "hf_plan_1", response_payload_json: { resultUrl: "http://10.0.0.1/x" } });
+    const { d, calls } = server(j);
+    expect((await advanceJob(j, d)).state).toBe("waiting");
+    expect(calls.save).toBe(0);
   });
   it("rendered but not yet saved: waits for the runner instead of fetching through Control Center", async () => {
     const j = job({ status: "succeeded", external_job_id: "hf_plan_1" });

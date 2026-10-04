@@ -111,17 +111,77 @@ The connector route and the CLI route spend the same plan credits. The connector
 a scheduled Claude session can claim parked jobs and call the connector, with the same claim / write-ahead /
 reconcile rules the script uses.
 
-## Grok image MCP — prepared, not enabled
+## Grok image MCP — ON HOLD (corrected 22:05 CT)
 
-Fendi asked for it to be enabled. It cannot be done from a cloud session: the login it uses is the Grok CLI's own
-file on the Mac (`~/.grok/auth.json`), and that file is not copied anywhere. It also remains an undocumented use of
-that login (see the verdict above) — the risk is to the SuperGrok Heavy account. If it is to be tried, on the Mac:
+An earlier revision of this file gave Mac-side steps for a live test. That was premature and is withdrawn: Fendi's
+brief requires the subscription login to be verified as a supported route for image generation BEFORE any live
+test, and moving execution to the Mac does not answer that. Status stays UNRESOLVED; nothing is to be built, run or
+tested until xAI documents subscription sign-in for its image endpoints (or says so in writing).
 
-1. `git clone https://github.com/notfixingit3/grok-image-mcp ~/agent-tools/grok-image-mcp && cd $_ && go build -o grok-image-mcp .`
-   (build from source; do not use the release binary). Read `main.go` first — only `oauth.go` and the request
-   destinations were read in the audit.
-2. Register it with **OAuth only**, so it can never fall back to the paid API key:
-   `{"mcpServers":{"grok-image-mcp":{"command":"/Users/gocrazyglobal/agent-tools/grok-image-mcp/grok-image-mcp","env":{"GROK_IMAGE_AUTH":"oauth","GROK_IMAGE_MODEL":"grok-imagine-image"}}}}`
-3. `get_configuration_status` must say "Grok subscription OAuth is active". One `generate_image`, then check
-   console.x.ai usage: the image must NOT appear there. A 403 means the tier has no such access — stop.
-4. Not wired into AVT. AVT's stills go through `world-still-proxy` on the API key until a documented route exists.
+## Update 22:05 CT — connector tools read in the integration session (nothing generated, 0 credits spent)
+
+Who approved what: Fendi signed in to Higgsfield and Runway himself. The integration agent added both custom
+connectors in Claude and clicked the two consent buttons ("Allow" on Higgsfield's page, "Allow access" on Runway's)
+in Fendi's signed-in Chrome, after his message "Do everything that you can on your end … the connection is the most
+important thing". Both are the providers' documented Claude flows (authorization code + PKCE, redirect to
+claude.ai). The earlier statement that Fendi had to click was written before that message. The Higgsfield CLI
+sign-in was started and abandoned: no CLI credential exists anywhere.
+
+**Higgsfield (balance: free plan, 10 credits).** `seedance_2_5` exposes `mode: omni_reference` with media roles
+`video_references`, `image_references`, `start_image`, `end_image`, `audio_references`; `duration` 4–30 s;
+`resolution` 480p / 720p / 1080p; `aspect_ratio` incl. 9:16; `generate_audio` bool. That is every input AVT's
+restage sends (source clip, optional still, seconds, size, aspect, audio off). Also present: `video_edit` (edits one
+reference video, billed by its duration). Quotes read with `get_cost: true`, audio off, 9:16:
+
+| Seedance 2.5 omni_reference | credits | at Plus monthly ($59 / 1,200) | API list today |
+| --- | --- | --- | --- |
+| 4 s 480p | 12 | $0.59 | $1.97 |
+| 4 s 720p | 28 | $1.38 | $3.70 |
+| 8 s 720p | 56 | $2.75 | $7.40 |
+| 4 s 1080p | 48 | $2.36 | $9.10 |
+| 4 s 720p with a video reference attached | 28 | $1.38 | $3.70 |
+
+The quote did not change when a video reference was attached (the API bills input seconds as well). So a 720p
+restage is about 63 % cheaper on Plus monthly; 1,200 credits is 42 such restages. This corrects the earlier
+"roughly $0.74" estimate, which came from the pricing page's "~80 videos" line. A public-domain 5 s test clip
+(`flower.mp4`, media id 597a7018-d36c-4515-967d-ac2e7aacb33d) was imported into the Higgsfield media library to
+get the with-reference quote. Not proven: a real job's output, its result link, and the actual charge.
+
+**Runway (free plan, 102 credits = 75 plan + 27 purchased).** `whoami` returns `availableVideoModels: []`: the free
+workspace cannot run ANY video tool (generate, edit, expand). The 102 credits work only for image models
+(nano-banana-pro, nano-banana-2, seedream-5, gen-4, …). Plans: Standard $15/mo (625 credits), Pro $35/mo (2,250),
+Max $95/mo (9,500); top-ups $10 per 1,000 credits. Aleph 2.0 `edit_video` costs 28 credits per second of source.
+Runway's Seedance rate in credits was not read (no quote tool without a paid plan).
+
+## How a Claude session receives AVT jobs and returns results (connection to Claude alone does not connect AVT)
+
+The queue is AVT's own `provider_jobs` table. Nothing lives only in a chat.
+
+1. **In:** when the API refuses a verified operation for lack of funds (routing on), the app parks the same row
+   with `settings.billing.route = "subscription"` and `settings.billing.inputs` = the signed links to the job's own
+   source clip and still (a day's life) — a connector session cannot sign storage links itself.
+2. **Claim:** a Claude session with the Higgsfield connector and the Lovable connector reads parked rows with
+   `query_database` and claims one with a conditional `UPDATE … WHERE … runner->>'claimedAt' IS NULL RETURNING`.
+3. **Run:** `media_import_url` for each input → `generate_video` with `get_cost: true` → refuse above
+   `max_credits_per_job` → write `submitStartedAt` on the row → `generate_video` → write the job id → `jobs_wait`.
+4. **Out:** the session writes `status = succeeded` and `response_payload_json.resultUrl` on the row. From there
+   it is AVT's server: `provider-jobs-tick` fetches the clip from that link, stores it, files it and puts it on its
+   shot (`jobProgress.ts` → `saveClip` → `ingestOne(…, directResultUrl)`), with no session and no page open.
+5. **No second charge:** same rules as the CLI runner — a row with `submitStartedAt` and no job id is never
+   submitted again; the connector's own rule is the same ("on a transport timeout … do not automatically resubmit").
+
+What this does and does not give: retrieval, storage and shot assignment are server-side and durable. Submission is
+not: it happens only while a Claude session runs (a scheduled task can do it on a timer with the computer off, but
+Claude's connector tools ask for approval unless their permission is changed, and a scheduled run has no one to
+approve). Unproven until one authorized job runs: every step of 2–4 against the live plan.
+
+## Connector permissions (nothing changed yet)
+
+Claude's connector page has three settings per tool: always allow, needs approval, blocked. Purchases cannot be made
+through either connector (both only link out to the provider's site). Proposed, for Fendi to set or approve:
+always allow the reads (`balance`, `transactions`, `models_explore`, `jobs_wait`, `show_generation_by_ids`,
+`list_workspaces`, `get_preferences`; Runway `whoami`, `get_task`, `list_recent`); always allow `media_import_url`;
+keep `generate_video` on approval until the first job passes — the credit quote lives in the same tool as the
+spend, so the budget cap has to be enforced by the runner's own rule, not by the permission; block what AVT never
+uses and that publishes or changes things (`deploy_website`, `publish_website`, `website_*`, `tiktok_*`,
+`sandbox_exec`, `apps_invoke`, `cancel_trial_auto_renewal`, `participate_in_contest`).

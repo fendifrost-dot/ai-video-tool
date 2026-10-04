@@ -305,7 +305,14 @@ export async function submitShot(
       await deps.updateJob(rowId, {
         status: "queued",
         error_text: null,
-        request_payload_json: { ...payload, settings: { ...settings, billing: decision.billing } },
+        request_payload_json: {
+          ...payload,
+          settings: {
+            ...settings,
+            // the same signed links the API was just sent (a day's life), so the runner sends the same inputs
+            billing: { ...decision.billing, inputs: { sourceUrl, stillUrl, expiresAt: new Date((ctx.now?.() ?? new Date()).getTime() + 23 * 3_600_000).toISOString() } },
+          },
+        },
       });
       return { rowId, providerJobId: "", prompt, stillPath, awaitingRunner: true };
     }
