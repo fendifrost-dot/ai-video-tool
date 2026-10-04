@@ -6,13 +6,20 @@
  * was asked for missing, his mouth off the words. Those are what a clip is accepted or sent back on, and until this
  * existed nothing held them: a measurement was shown beside the clip and counted for nothing.
  *
- * Five things are asked of a generated clip. Each has ONE finding, and where the finding comes from is kept with it:
+ * These are asked of a generated clip. Each has ONE finding, and where the finding comes from is kept with it:
  *
- *   timing    the changes its script asked for happen when it asked           measured (beatCheck.ts)
- *   framing   it shows no more of him than the take it was made from          measured (takeCheck.ts)
- *   lips      his mouth moves on the take's moments                           NOT measured to a standard — see below
- *   lighting  the light is the light that was asked for                       by eye; a change nobody asked for is measured
- *   camera    the camera and the movement are what was asked for              by eye; a jump nobody asked for is measured
+ *   timing     the changes its script asked for happen when it asked          a change of light is DETECTED and timed
+ *                                                                              (beatCheck.ts); that it is the change
+ *                                                                              asked for is for the eye — see below
+ *   framing    it shows no more of him than the take it was made from         measured (takeCheck.ts)
+ *   lips       his mouth moves on the take's moments                          NOT measured to a standard — see below
+ *   lighting   the light is the light that was asked for                      by eye; a change nobody asked for is measured
+ *   camera     the camera and the movement are what was asked for             by eye; a jump nobody asked for is measured
+ *   integrity  bodies and objects are whole and connected (no empty shoe,     by eye — nothing measures it
+ *              no extra hand, nothing melting or detached)
+ *   action     what happens in the clip is what was asked to happen           by eye — nothing measures it
+ *   review     what a second opinion found on this clip (a model shown        reviewed — neither a measurement nor a
+ *              frames of the cut: astraSection.ts)                             person's judgement, and kept apart from both
  *
  * A finding is one of four, and they are not interchangeable:
  *   meets         something looked, and it does
@@ -20,10 +27,20 @@
  *   undetermined  a measurement was made and could not tell (the light changes twice where one change was asked for)
  *   unverified    nothing has looked — or what looked is not a measure that can be relied on
  *
- * MEASURED AND SEEN ARE KEPT APART. A measurement is what the code read off the file. A judgement is what a person
+ * TIMING: DETECTED IS NOT IDENTIFIED. The beat check finds where the light of the picture changes and when. It does
+ * not know WHAT changed. One change in a clip, where one was asked for, is still only "a change of light at 3.67 s":
+ * that it is the mirror ball coming alive and not, say, a door opening, is something only the frames show. So a
+ * detected change stands as a detected change. A beat with NO change near it, or whose only change is off its time,
+ * fails without anyone having to look — whatever that change is, nothing changed when it was asked to. A change that
+ * is ON time meets the requirement only once someone has looked and said it is the change that was asked for; until
+ * then the line reads "cannot tell".
+ *
+ * MEASURED, REVIEWED AND SEEN ARE KEPT APART. A measurement is what the code read off the file. A judgement is what a person
  * decided by looking (and listening), recorded with a note and a date. A judgement settles a requirement — the
  * measurement stays beside it, as measured, and is never rewritten to agree. Nothing a person read off the frames
- * is ever stored as a measurement.
+ * is ever stored as a measurement. A REVIEW is a third thing: a model was shown frames of the cut and said what it
+ * saw. A major finding of its on a clip counts against the clip until someone looks and overrules it — a defect that
+ * has been reported is not the same as a line nobody has looked at.
  *
  * LIPS. The lip check compares when his mouth opens in the clip with when it opens in the take. Its arithmetic is
  * tested on made series; its threshold has not been held against real footage whose answer is known, and nobody has
@@ -39,7 +56,7 @@ import { isDrift, MIN_STATE_SECONDS, type AskedChange, type BeatCheck } from "./
 import { framingLine, lipLine, type TakeCheck } from "./takeCheck";
 import type { MediaAsset, TimelineSegment } from "./media";
 
-export type Requirement = "timing" | "framing" | "lips" | "lighting" | "camera";
+export type Requirement = "timing" | "framing" | "lips" | "lighting" | "camera" | "integrity" | "action" | "review";
 export type Finding = "meets" | "fails" | "undetermined" | "unverified";
 
 /** What a person decided by looking. */
@@ -50,15 +67,18 @@ export type AcceptanceRecord = { version: 1; judged: Partial<Record<Requirement,
 /** What the code read off the file for one requirement. */
 export type Measured = { finding: Finding; says: string };
 
+/** One thing a second opinion said about a clip (astraSection.ts: a model shown frames of the cut). */
+export type ReviewedFinding = { severity: "blocker" | "major" | "minor"; area: string; finding: string; at: string };
+
 export type RequirementLine = {
   requirement: Requirement;
   label: string;
   /** The finding that stands. */
   finding: Finding;
-  /** Where it comes from: a measurement, a person's judgement, or nothing yet. */
-  source: "measured" | "by_eye" | "none";
+  /** Where it comes from: a measurement, a second opinion's review, a person's judgement, or nothing yet. */
+  source: "measured" | "reviewed" | "by_eye" | "none";
   says: string;
-  /** The measurement, whatever was judged by eye. Null when nothing measures this. */
+  /** The measurement (or, on the review line, what the review said), whatever was judged by eye. Null when nothing measures this. */
   measured: Measured | null;
   judged: Judgement | null;
 };
@@ -80,9 +100,12 @@ export const REQUIREMENT_LABEL: Record<Requirement, string> = {
   lips: "Lip sync",
   lighting: "Lighting",
   camera: "Camera and movement",
+  integrity: "Bodies and objects",
+  action: "Action",
+  review: "Second opinion",
 };
 export const FINDING_LABEL: Record<Finding, string> = { meets: "meets", fails: "fails", undetermined: "cannot tell", unverified: "not verified" };
-export const SOURCE_LABEL: Record<RequirementLine["source"], string> = { measured: "measured", by_eye: "by eye", none: "nothing has looked" };
+export const SOURCE_LABEL: Record<RequirementLine["source"], string> = { measured: "measured", reviewed: "reviewed by a model", by_eye: "by eye", none: "nothing has looked" };
 export const VERDICT_LABEL: Record<AcceptanceVerdict, string> = { meets: "does what was asked", fails: "fails what was asked", unverified: "not yet verified" };
 
 /**
@@ -92,7 +115,7 @@ export const VERDICT_LABEL: Record<AcceptanceVerdict, string> = { meets: "does w
  */
 export const LIP_MEASURE_VALIDATED = false;
 
-const REQUIREMENTS: readonly Requirement[] = ["timing", "framing", "lips", "lighting", "camera"];
+const REQUIREMENTS: readonly Requirement[] = ["timing", "framing", "lips", "lighting", "camera", "integrity", "action", "review"];
 const signed = (n: number) => `${n > 0 ? "+" : n < 0 ? "−" : "±"}${Math.abs(n).toFixed(2)} s`;
 const timedOf = (asked: readonly AskedChange[]) => asked.filter((b) => b.offset >= MIN_STATE_SECONDS / 2);
 
@@ -104,18 +127,22 @@ function timingOf(ask: ClipAsk, check: BeatCheck | null): Measured | null {
   const of = (v: string) => check.beats.filter((b) => b.verdict === v);
   const notSeen = of("not_seen");
   const displaced = of("displaced");
+  // Nothing changed when it was asked to: no change near the beat at all, or the only change near it is off its
+  // time. That holds whatever the change is, so it needs nobody to say what it is.
   if (notSeen.length + displaced.length > 0) {
     const parts = [
-      displaced.length ? `${displaced.length} of ${n} not when asked (${displaced.map((b) => signed(b.error ?? 0)).join(", ")})` : null,
-      notSeen.length ? `${notSeen.length} of ${n} not seen at all` : null,
+      displaced.length ? `${displaced.length} of ${n}: the only change of light near it began ${displaced.map((b) => signed(b.error ?? 0)).join(", ")} from where it was asked` : null,
+      notSeen.length ? `${notSeen.length} of ${n}: no change of light near it at all` : null,
     ].filter(Boolean);
-    return { finding: "fails", says: `${parts.join("; ")}` };
+    return { finding: "fails", says: `${parts.join("; ")} — whatever that change is, nothing changed when it was asked to` };
   }
   const unsure = of("undetermined");
   if (unsure.length > 0) return { finding: "undetermined", says: `the light changes more times than it was asked to, and which change is the one asked for cannot be told from the light — no timing is given for ${unsure.length} of ${n}` };
   const forEye = of("unmeasured");
   if (forEye.length > 0) return { finding: "unverified", says: `${forEye.length} of ${n} asked for something that is not a change of light: colour cannot time it` };
-  return { finding: "meets", says: `${n} of ${n} within a quarter of a second of where it was asked` };
+  // A change of light on time is a change of light on time. Whether it is the change that was asked for is not
+  // something the light can say.
+  return { finding: "undetermined", says: `a change of light begins within a quarter of a second of each of the ${n} it was asked for — whether it is the change that was asked for is not something the light can say: look at the frames beside the beat` };
 }
 
 function framingOf(ask: ClipAsk, check: TakeCheck | null): Measured | null {
@@ -157,19 +184,32 @@ const BY_EYE: Record<Requirement, string> = {
   lips: "watch the clip with the song",
   lighting: "nothing measures whether the light is the light that was asked for: look at it",
   camera: "nothing measures whether the camera and the movement are what was asked for: look at it",
+  integrity: "nothing measures whether bodies and objects are whole and connected — a limb missing, a shoe with no leg in it, a hand too many: look at it",
+  action: "nothing measures whether what happens is what was asked to happen: look at it",
+  review: "",
 };
+
+/** A review's findings that count against a clip: the ones it called a blocker or major. */
+function reviewOf(reviewed: readonly ReviewedFinding[] | null | undefined): Measured | null {
+  const counted = (reviewed ?? []).filter((f) => f.severity === "blocker" || f.severity === "major");
+  if (counted.length === 0) return null;
+  return { finding: "fails", says: counted.map((f) => `${f.severity} (${f.area}, ${f.at.slice(0, 10)}): ${f.finding}`).join(" · ") };
+}
 
 /**
  * A clip held against everything it was asked for. `record` is what has been judged by eye; the checks are what has
  * been measured. A requirement that does not apply to this clip (no timed script; not made from a take) has no line.
  */
-export function acceptanceOf(input: { ask: ClipAsk; beatCheck: BeatCheck | null; takeCheck: TakeCheck | null; record: AcceptanceRecord | null }): Acceptance {
+export function acceptanceOf(input: { ask: ClipAsk; beatCheck: BeatCheck | null; takeCheck: TakeCheck | null; record: AcceptanceRecord | null; reviewed?: readonly ReviewedFinding[] | null }): Acceptance {
   const measuredBy: Record<Requirement, Measured | null> = {
     timing: timingOf(input.ask, input.beatCheck),
     framing: framingOf(input.ask, input.takeCheck),
     lips: lipsOf(input.ask, input.takeCheck),
     lighting: lightingOf(input.beatCheck),
     camera: cameraOf(input.beatCheck),
+    integrity: null,
+    action: null,
+    review: reviewOf(input.reviewed),
   };
   const applies: Record<Requirement, boolean> = {
     timing: timedOf(input.ask.asked).length > 0,
@@ -177,13 +217,17 @@ export function acceptanceOf(input: { ask: ClipAsk; beatCheck: BeatCheck | null;
     lips: input.ask.fromTake,
     lighting: true,
     camera: true,
+    integrity: true,
+    action: true,
+    // a second opinion has a line only where it found something that counts
+    review: reviewOf(input.reviewed) !== null,
   };
   const lines = REQUIREMENTS.filter((r) => applies[r]).map((requirement): RequirementLine => {
     const measured = measuredBy[requirement];
     const judged = input.record?.judged[requirement] ?? null;
     const label = REQUIREMENT_LABEL[requirement];
     if (judged) return { requirement, label, finding: judged.finding, source: "by_eye", says: judged.note || (judged.finding === "meets" ? "looked at, and it does" : "looked at, and it does not"), measured, judged };
-    if (measured) return { requirement, label, finding: measured.finding, source: measured.finding === "unverified" ? "none" : "measured", says: measured.says, measured, judged: null };
+    if (measured) return { requirement, label, finding: measured.finding, source: measured.finding === "unverified" ? "none" : requirement === "review" ? "reviewed" : "measured", says: measured.says, measured, judged: null };
     return { requirement, label, finding: "unverified", source: "none", says: BY_EYE[requirement], measured: null, judged: null };
   });
   const fails = lines.filter((l) => l.finding === "fails").length;
@@ -229,14 +273,14 @@ export type CutAcceptance = { clips: ClipAcceptance[]; meets: number; fails: num
  * asset (from the job that made it); footage nothing was asked of — a take as filmed, an upload — is not in it and
  * is not counted. A cut with no generated clip has nothing to accept ("none").
  */
-export function cutAcceptance(timeline: readonly TimelineSegment[], assets: ReadonlyMap<string, MediaAsset>, asks: ReadonlyMap<string, ClipAsk>): CutAcceptance {
+export function cutAcceptance(timeline: readonly TimelineSegment[], assets: ReadonlyMap<string, MediaAsset>, asks: ReadonlyMap<string, ClipAsk>, reviewed?: ReadonlyMap<string, readonly ReviewedFinding[]>): CutAcceptance {
   const clips: ClipAcceptance[] = [];
   for (const seg of timeline) {
     if (seg.media.kind !== "video") continue;
     const asset = assets.get(seg.media.assetId);
     const ask = asks.get(seg.media.assetId);
     if (!asset || !ask) continue;
-    clips.push({ index: seg.index, key: seg.key, shotId: seg.shotId, start: seg.start, end: seg.end, assetId: asset.id, name: asset.name, acceptance: acceptanceOf({ ask, beatCheck: asset.beatCheck ?? null, takeCheck: asset.takeCheck ?? null, record: asset.acceptance ?? null }) });
+    clips.push({ index: seg.index, key: seg.key, shotId: seg.shotId, start: seg.start, end: seg.end, assetId: asset.id, name: asset.name, acceptance: acceptanceOf({ ask, beatCheck: asset.beatCheck ?? null, takeCheck: asset.takeCheck ?? null, record: asset.acceptance ?? null, reviewed: reviewed?.get(asset.id) ?? null }) });
   }
   const count = (v: AcceptanceVerdict) => clips.filter((c) => c.acceptance.verdict === v).length;
   const fails = count("fails");
@@ -250,4 +294,41 @@ export function cutAcceptanceLine(c: CutAcceptance): string {
   const n = c.clips.length;
   const parts = [c.fails ? `${c.fails} ${c.fails === 1 ? "fails" : "fail"} what was asked` : null, c.open ? `${c.open} not yet verified` : null, c.meets ? `${c.meets} ${c.meets === 1 ? "does" : "do"} what was asked` : null].filter(Boolean);
   return `${n} generated clip${n === 1 ? "" : "s"}: ${parts.join(", ")}`;
+}
+
+/** A stored review, as far as this needs it: when it was made and what it found on which shot (and, when the review recorded it, on which clip). */
+export type ReviewLike = { at: string; findings: readonly { shotId: string | null; assetId?: string | null; severity: ReviewedFinding["severity"]; area: string; finding: string }[] };
+
+/**
+ * Which clip each of a review's findings is about. A review looks at the cut as it stood: the finding belongs to the
+ * clip the shot was showing THEN, not to whatever is on the shot now. A review that recorded the clip says so. One
+ * that did not (an older review) is tied to a clip only when there is no choice: exactly one generated clip on that
+ * shot existed when the review was made. Otherwise the finding is tied to nothing — it is never guessed onto a clip
+ * made after the review looked.
+ */
+const madeBy = (createdAt: string | undefined, at: string) => {
+  const made = Date.parse(createdAt ?? "");
+  const then = Date.parse(at);
+  return Number.isFinite(made) && Number.isFinite(then) && made <= then;
+};
+
+export function reviewedByAsset(
+  review: ReviewLike | null | undefined,
+  assignments: readonly { shotId: string; assetId: string }[],
+  assets: ReadonlyMap<string, Pick<MediaAsset, "id" | "createdAt">>,
+  asks: ReadonlyMap<string, ClipAsk>,
+): Map<string, ReviewedFinding[]> {
+  const out = new Map<string, ReviewedFinding[]>();
+  if (!review) return out;
+  for (const f of review.findings) {
+    if (!f.shotId) continue;
+    let assetId = f.assetId ?? null;
+    if (!assetId) {
+      const then = [...new Set(assignments.filter((a) => a.shotId === f.shotId).map((a) => a.assetId))].filter((id) => asks.has(id) && madeBy(assets.get(id)?.createdAt, review.at));
+      assetId = then.length === 1 ? then[0] : null;
+    }
+    if (!assetId || !asks.has(assetId)) continue;
+    out.set(assetId, [...(out.get(assetId) ?? []), { severity: f.severity, area: f.area, finding: f.finding, at: review.at }]);
+  }
+  return out;
 }

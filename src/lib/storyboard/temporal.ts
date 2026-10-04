@@ -27,10 +27,13 @@ export type TemporalRoute = "image" | "still_kling" | "kling_t2v" | "still_dop" 
 
 /**
  * What AVT has measured of a route keeping to the times it is given: for each returned clip read frame by frame
- * (storyboard/beatCheck.ts), where the asked change BEGAN relative to where it was asked — seconds, negative is
- * early. A fact about clips already made, not a promise about the next one.
+ * (storyboard/beatCheck.ts), where A change of light BEGAN relative to where a change was asked — seconds, negative
+ * is early. Only clips with one change of light are counted (where there are more, the check cannot tell which was
+ * asked for). `identified` says how it is known that the change detected is the change that was asked for: the
+ * check cannot know that, so it is "by_eye" (someone read it off the frames, recorded in `where`) or "not".
+ * A fact about clips already made, not a promise about the next one.
  */
-export type TimingEvidence = { on: string; errorsSeconds: readonly number[]; where: string };
+export type TimingEvidence = { on: string; errorsSeconds: readonly number[]; identified: "by_eye" | "not"; where: string };
 
 export type RouteTemporal = {
   support: TemporalSupport;
@@ -56,8 +59,9 @@ export const ROUTE_TEMPORAL: Record<TemporalRoute, RouteTemporal> = {
     support: "timed_script",
     measured: false,
     // the fresh-section test: c038 asked at 4.69 s, began at 3.67 s; c035 asked at 1.90 s, began at 0.96 s
-    evidence: { on: "3 October 2026", errorsSeconds: [-1.02, -0.94], where: "docs/research/results/2026-10-03-fresh-section/RESULTS.md" },
-    note: "Seedance reference-to-video takes a script with times; on the restagings measured it drew the change asked for, about a second early, so every clip is measured when it comes back",
+    // (detected automatically; that each was the change asked for — the room going dark, the mirror ball coming alive — was read off the frames)
+    evidence: { on: "3 October 2026", errorsSeconds: [-1.02, -0.94], identified: "by_eye", where: "docs/research/results/2026-10-03-fresh-section/RESULTS.md" },
+    note: "Seedance reference-to-video takes a script with times; on the restagings measured a change of light came about a second before it was asked for, so every clip is measured when it comes back",
   },
 };
 
@@ -73,7 +77,8 @@ export function timingSaid(route: TemporalRoute): string {
   const mean = e.errorsSeconds.reduce((a, b) => a + b, 0) / e.errorsSeconds.length;
   const n = e.errorsSeconds.length;
   const where = Math.abs(mean) <= 0.25 ? "on time" : `${Math.abs(mean).toFixed(1)} s ${mean < 0 ? "early" : "late"} on average`;
-  return `On the ${n} restaging${n === 1 ? "" : "s"} measured so far (${e.on}) the change asked for was drawn and began ${where} (${e.errorsSeconds.map(signed).join(", ")}). Each clip is measured against its beats when it comes back.`;
+  const identity = e.identified === "by_eye" ? "That it was the change asked for was read off the frames by eye, not measured." : "Whether it was the change asked for has not been looked at.";
+  return `On the ${n} restaging${n === 1 ? "" : "s"} measured so far (${e.on}) a change of light began ${where} (${e.errorsSeconds.map(signed).join(", ")}). ${identity} Each clip is measured against its beats when it comes back.`;
 }
 
 export type TemporalPlan =

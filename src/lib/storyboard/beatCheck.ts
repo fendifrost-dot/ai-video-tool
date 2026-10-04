@@ -40,7 +40,9 @@
  * died and points of light came up, not the whole frame fading) is not something arithmetic on colour can say: the
  * frames before, at and after each beat are shown beside the numbers, and that judgement stays with whoever looks.
  * Everything here is AUTOMATIC detection; what a person reads off the frames is kept elsewhere (acceptance.ts), as
- * theirs.
+ * theirs. And a detection is of A change: even where a clip changes once and one change was asked for, the time
+ * given is when a change of light began — whether that change is the one asked for (the mirror ball, and not a door
+ * opening) is not established here, and acceptance does not treat an on-time change as met until someone has looked.
  *
  * Pure module: numbers in, numbers out.
  */
@@ -626,7 +628,8 @@ export function beatLine(b: MeasuredBeat): string {
       : `asked at ${b.offset.toFixed(2)} s — no change of the light was found near it`;
   }
   const took = Math.max(0, b.change.arrived - b.change.begins);
-  const what = b.change.kind === "light" ? `the light begins to change at ${b.change.begins.toFixed(2)} s` : `the picture jumps at ${b.change.begins.toFixed(2)} s`;
+  // "a change of light", never "the change": this finds that the light changed and when, not what it changed into
+  const what = b.change.kind === "light" ? `a change of light begins at ${b.change.begins.toFixed(2)} s` : `the picture jumps at ${b.change.begins.toFixed(2)} s`;
   return `asked at ${b.offset.toFixed(2)} s — ${what} (${signed(b.error)})${took >= 0.1 ? `, arrived by ${b.change.arrived.toFixed(2)} s` : ""}`;
 }
 
@@ -644,4 +647,5 @@ export function unaskedLine(c: ChangePoint): string {
   return `the light changes at ${c.begins.toFixed(2)} s — nothing in the request asked for a change there`;
 }
 
-export const VERDICT_LABEL: Record<BeatVerdict, string> = { on_time: "on time", displaced: "not on time", not_seen: "not seen", unmeasured: "for the eye", undetermined: "cannot tell which" };
+/** What is said of a beat. "A change" — detected, and timed against the ask; not identified as the change that was asked for. */
+export const VERDICT_LABEL: Record<BeatVerdict, string> = { on_time: "a change, on time", displaced: "a change, not on time", not_seen: "no change seen", unmeasured: "for the eye", undetermined: "cannot tell which" };

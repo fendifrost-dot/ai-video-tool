@@ -72,10 +72,10 @@ describe("what a restaging asks for and costs", () => {
     expect(restageSeconds(RESTAGE_MAX_SECONDS + 0.5)).toBeNull();
   });
 
-  it("prices a restage at what the provider has been seen to charge: $2.22 for four seconds, $3.33 for six", () => {
-    // read off Higgsfield's own billing on 4 October 2026; the list rate (seconds given and seconds returned) said $3.70 and $5.55
-    expect(restageEstimateUsd(4)).toBeCloseTo(2.22, 4);
-    expect(restageEstimateUsd(6)).toBeCloseTo(3.33, 4);
+  it("prices a restage by the provider's token rule: $2.22 for four seconds, $3.33 for six — the amounts charged", () => {
+    // Higgsfield's billing, 4 October 2026; AVT's earlier estimate (per-second list × 2, without the video-input rate) said $3.70 and $5.55
+    expect(restageEstimateUsd(4).toFixed(2)).toBe("2.22");
+    expect(restageEstimateUsd(6).toFixed(2)).toBe("3.33");
   });
 
   it("keeps what the take shows, in the director's words, or everything he wears when Setup does not say", () => {

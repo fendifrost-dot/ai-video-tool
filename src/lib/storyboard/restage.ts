@@ -62,7 +62,7 @@ export function restageSeconds(shotSeconds: number, lead = FRAME_ALLOWANCE): num
   return seconds > RESTAGE_MAX_SECONDS ? null : seconds;
 }
 
-/** What a restage of this many seconds costs: the rate the provider has been seen to charge (worldBatch/estimate.ts). */
+/** What a restage of this many seconds costs, by the provider's published token rule: a source as long as the output, at 720p (worldBatch/estimate.ts). */
 export function restageEstimateUsd(seconds: number): number {
   return seedanceUsd(RESTAGE_RESOLUTION, seconds);
 }
