@@ -1,9 +1,11 @@
 {
-  "_about": "List rates the batch runners estimate with BEFORE a call is made (data, not code). USD per output second unless stated. Read by scripts/broll/run_world_batch.py and mirrored in src/lib/worldBatch/rates.ts (a test holds the two together). seedance bills input seconds as well as output seconds, so its estimate is rate x (source seconds x 2).",
+  "_about": "List rates the batch runners estimate with BEFORE a call is made (data, not code). USD per output second unless stated. Read by scripts/broll/run_world_batch.py and mirrored in src/lib/worldBatch/rates.ts (a test holds the two together). seedance's LIST rate is per second of input and of output, so its list estimate is rate x (source seconds x 2); where seedance_charged_usd_per_output_s has a rate for the resolution, that is used instead (see _seedance_charged).",
   "still_usd_each": 0.07,
   "runway": {"gen4_turbo": 0.05, "gen4.5": 0.15},
   "kling_usd_per_s": 0.07,
   "dop_usd_per_s": 0.083,
   "seedance_usd_per_s": {"480p": 0.2468, "720p": 0.4622, "1080p": 1.1372},
+  "_seedance_charged": "What Higgsfield's API has actually charged for seedance reference-to-video, per second of OUTPUT, read from its own transaction history (open.higgsfield.ai, Billing) on 4 October 2026 and matched one for one, in order, with AVT's last five such jobs at 720p: 4 s $2.22, 4 s $2.22, 6 s $3.33, 4 s $2.22, 4 s $2.22 - each made from a source clip as long as its output. The list estimate (0.4622 x 2 per second) overstated every one of them by two thirds. A resolution with no rate here has not been observed and is estimated from the list rate.",
+  "seedance_charged_usd_per_output_s": {"720p": 0.555},
   "judge_usd_each": 0.08
 }
