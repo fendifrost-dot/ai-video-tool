@@ -285,3 +285,18 @@ for buying a plan now. So the billing-path test is **not scheduled and not waiti
 is ready to be tried the day there is (a) a plan and (b) a job wanted for its own sake — `c037` is noted as the
 candidate. Until then PR #167 stays a draft with routing off. A billing test's clip is judged by your acceptance
 record, never read as a creative pass.
+
+## Update 06:50 CT, Oct 4 — closed out against the testing agent's later note (main `2261a24`)
+
+Main merged in again (no conflicts). `billing.test.ts` no longer hard-codes a dollar figure: it holds the billing
+record to whatever estimate the row carries, so a rate-rule change cannot break it again.
+
+The API column of the 22:05 comparison table is superseded by Higgsfield's published token rule (testing agent's
+note): a 4 s restage with a 4 s source is $0.99 at 480p, $2.22 at 720p (charged), $5.46 at 1080p; 8 s 720p is $4.44.
+Plan credits for the same: 12 / 28 / 48 (56 for 8 s). On Plus monthly at full use that is $0.59 / $1.38 / $2.36.
+
+**Decision recorded (Fendi, relayed by the testing agent): do not buy the plan yet; keep the MCP integration
+available for later.** State this branch is left in: connectors connected with the permissions listed above;
+routing off; the database gate written and tested on a throwaway database, not applied; nothing deployed; PR #167 a
+draft. To switch on later: buy a plan → apply the migration → merge and deploy → one wanted job through the route,
+session ended before the clip lands → only then `enabled` and `verifiedRoutes`. Grok stays on hold.
