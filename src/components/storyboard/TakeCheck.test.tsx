@@ -21,6 +21,7 @@ const check = (over: Partial<TakeCheck> = {}): TakeCheck => ({
   takeFaceFrames: 96,
   lip: { verdict: "in_sync", best: { corr: 0.71, retime: 1, offset: 0.021, n: 58 }, onClock: 0.69, worstLag: 0.021, compared: 2.4 },
   framing: { verdict: "wider", takeReach: 6.1, openingReach: 13.8, widestReach: 14.2, widestAt: 0.08, ratio: 2.33, openingSeen: true },
+  series: { take: [], clip: [] },
   ...over,
 });
 function asset(over: Partial<MediaAsset> = {}): MediaAsset {
