@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { avcCodec, hevcCodec, parseWavHeader, sniffIsoBmff, vp9Codec } from "./mp4";
+import { avcCodec, hevcCodec, parseWavHeader, sniffIsoBmff, vp9Codec, rotationFromMatrix } from "./mp4";
 import { decodeFrameAt, probeAudio, probeVideo, type RangeRead } from "./probe";
 
 /**
@@ -155,5 +155,20 @@ describe("reading the song", () => {
 
   it("reports a link that does not resolve", async () => {
     expect(await probeAudio(reader(file("tiny.wav"), [], 404))).toMatchObject({ resolves: false, status: 404 });
+  });
+});
+
+describe("rotationFromMatrix", () => {
+  // the first two values of a tkhd display matrix, as 16.16 fixed read into floats
+  it("reads the four turns a camera writes", () => {
+    expect(rotationFromMatrix(1, 0)).toBe(0);
+    expect(rotationFromMatrix(0, 1)).toBe(90);
+    expect(rotationFromMatrix(-1, 0)).toBe(180);
+    expect(rotationFromMatrix(0, -1)).toBe(270);
+  });
+
+  it("never returns a negative turn", () => {
+    expect(rotationFromMatrix(0, -1)).toBeGreaterThanOrEqual(0);
+    expect(rotationFromMatrix(-0.0001, -1)).toBeGreaterThanOrEqual(0);
   });
 });

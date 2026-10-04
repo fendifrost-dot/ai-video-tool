@@ -13,6 +13,8 @@ import { frameBoxStyle } from "@/lib/project/aspect";
 import { FrameStrip } from "./FrameStrip";
 import { BeatCheckPanel } from "./BeatCheck";
 import { TakeCheckPanel } from "./TakeCheck";
+import { FootageAnalysisPanel } from "./FootageAnalysis";
+import { isOriginalTake } from "@/lib/storyboard/media";
 import { AcceptanceChip, AcceptancePanel } from "./Acceptance";
 import { BeatStrip } from "./TimedBeats";
 import { ContinuityChips } from "./Continuity";
@@ -266,6 +268,9 @@ function MediaList({ box, items, showing }: { box: StoryboardBox; items: BoxMedi
             )}
             {item.note && <p className="text-[10px] text-amber-300/90">{item.note}</p>}
             {item.kind === "video" && <FrameStrip item={item} url={sb.urlFor(item.asset)} aspect={sb.aspect} />}
+            {/* what the TAKE is — framing, movement, light, focus — and what a background would have to be for it. On the
+                source take only: a generated clip's properties are the ones it was asked for, not ones to design against */}
+            {item.kind === "video" && isOriginalTake(item.asset) && <FootageAnalysisPanel item={item} />}
             {/* a generated clip held against what it was asked for: where the picture changed, and where it was asked to */}
             {item.kind === "video" && <BeatCheckPanel item={item} />}
             {/* a restaged clip held against the take it was made from: his lips on the take's moments, no more of him in frame */}

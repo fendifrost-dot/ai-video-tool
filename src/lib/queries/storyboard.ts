@@ -16,6 +16,7 @@ import { bucketForAssetType, projectAssetsKeys, useProjectAssets } from "@/lib/q
 import { useProjectAudio } from "@/lib/queries/projects";
 import { shotsKeys } from "@/lib/queries/shots";
 import { resolveScrubSource } from "@/lib/video/scrubProxy";
+import { parseFootageAnalyses } from "@/lib/queries/footageAnalysis";
 import { boxesFromRows, type BoxRow, type BoxWrite, type StoryboardBox } from "@/lib/storyboard/boxes";
 import {
   isImagePath,
@@ -364,6 +365,7 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
     filmedIn: textOf(a.metadata_json, "filmed_in"),
     beatCheck: parseBeatCheck((a.metadata_json as { beat_check?: unknown } | null)?.beat_check),
     takeCheck: parseTakeCheck((a.metadata_json as { take_check?: unknown } | null)?.take_check),
+    footageAnalyses: parseFootageAnalyses((a.metadata_json as { footage_analysis?: unknown } | null)?.footage_analysis),
     acceptance: parseAcceptance((a.metadata_json as { acceptance?: unknown } | null)?.acceptance),
   };
 }
