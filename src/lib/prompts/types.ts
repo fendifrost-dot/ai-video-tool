@@ -1,3 +1,4 @@
+import type { RealismOptions, RealismResult } from "./realism";
 import type {
   Artist,
   ArtistIdentityProfile,
@@ -46,6 +47,15 @@ export type CompileInput = {
    * Stored as a path inside the `look-composites` bucket.
    */
   lockedLookImagePath?: string | null;
+  /**
+   * Optional photographic-realism modifier. Omitted means the compiler behaves exactly as
+   * it did before this existed — same prompt text, same negatives, byte for byte.
+   *
+   * `identity` is required when present because realism may only describe a face when the
+   * person is invented; guessing it either flattens a real likeness or leaves an invented
+   * extra undescribed. See `src/lib/prompts/realism.ts`.
+   */
+  realism?: RealismOptions;
 };
 
 export type PromptOverrides = {
@@ -97,6 +107,13 @@ export type CompiledPrompt = {
    * entry to a signed URL.
    */
   referenceImagePaths: string[];
+
+  /**
+   * What the realism modifier added, withheld and could not verify. Null when realism was
+   * not asked for. Carried on the compiled prompt so a stored prompt keeps its own caveats
+   * rather than reading as a plain instruction.
+   */
+  realism: RealismResult | null;
 
   /** Bookkeeping so the UI can store result back to the prompts table. */
   context: {

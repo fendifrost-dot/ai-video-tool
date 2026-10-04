@@ -5,12 +5,8 @@ import type {
   Shot,
   VideoProject,
 } from "@/integrations/supabase/aliases";
-import type {
-  CompileInput,
-  CompiledPrompt,
-  PromptOverrides,
-  PromptVariables,
-} from "./types";
+import { applyRealism } from "./realism";
+import type { CompileInput, CompiledPrompt, PromptOverrides, PromptVariables } from "./types";
 
 /**
  * Compile a prompt template against a project/artist/shot context.
@@ -28,6 +24,15 @@ import type {
  *
  * The compiler does not know about providers — provider-specific tweaks happen
  * in each provider's `formatPrompt()` (see src/lib/providers/*.ts).
+ *
+ * Realism (optional, default off):
+ *  - When `input.realism` is absent the output is unchanged in every field, so every
+ *    existing caller and stored prompt is unaffected.
+ *  - When present, the modifier runs LAST, after substitution and the negative merge, so
+ *    it can see the treatment's own words and withhold anything that would contradict
+ *    them. It appends to the prompt body and the negatives; it rewrites neither.
+ *  - It stays provider-agnostic on purpose: `applyCapability` already drops the negative
+ *    block for providers that do not accept one.
  *
  * Phase A reference handling:
  *  - `lockedCharacterFeaturePaths` (plural) drives the new `referenceImagePaths`
@@ -55,10 +60,9 @@ export function compilePrompt(input: CompileInput): CompiledPrompt {
   const settings = cloneSettings(template.default_settings_json);
 
   const referenceImagePaths = pickReferencePaths(input);
-  const referenceImagePath =
-    referenceImagePaths[0] ?? input.lockedReferenceAssetPath ?? null;
+  const referenceImagePath = referenceImagePaths[0] ?? input.lockedReferenceAssetPath ?? null;
 
-  return {
+  const base: CompiledPrompt = {
     templateId: template.id,
     templateName: template.name,
     templateProvider: template.provider,
@@ -69,12 +73,17 @@ export function compilePrompt(input: CompileInput): CompiledPrompt {
     unfilledPlaceholders: unfilled,
     referenceImagePath,
     referenceImagePaths,
+    realism: null,
     context: {
       projectId: project.id,
       artistId: artist?.id ?? null,
       shotId: shot?.id ?? null,
     },
   };
+
+  if (!input.realism) return base;
+  const { prompt, realism } = applyRealism(base, input.realism);
+  return { ...prompt, realism };
 }
 
 /**
@@ -133,9 +142,7 @@ export function buildVariables(input: {
       mood: project.mood ?? undefined,
       visual_style: project.visual_style ?? undefined,
       color_palette:
-        project.color_palette.length > 0
-          ? project.color_palette.join(", ")
-          : undefined,
+        project.color_palette.length > 0 ? project.color_palette.join(", ") : undefined,
       genre: project.genre ?? undefined,
       bpm: project.bpm != null ? String(project.bpm) : undefined,
       title: project.title,
@@ -173,7 +180,10 @@ function combineDistinguishing(identity: ArtistIdentityProfile): string | undefi
   return joined || undefined;
 }
 
-function pickDuration(overrides: PromptOverrides | undefined, shot: Shot | null): string | undefined {
+function pickDuration(
+  overrides: PromptOverrides | undefined,
+  shot: Shot | null,
+): string | undefined {
   const explicit = overrides?.duration_seconds ?? shot?.duration_seconds ?? null;
   if (explicit == null) return undefined;
   return String(explicit);
@@ -295,7 +305,12 @@ export function tidy(text: string): string {
   // Stray leading/trailing punctuation per line
   out = out
     .split("\n")
-    .map((line) => line.trim().replace(/^[.,;\s]+/, "").replace(/[\s,;]+$/, ""))
+    .map((line) =>
+      line
+        .trim()
+        .replace(/^[.,;\s]+/, "")
+        .replace(/[\s,;]+$/, ""),
+    )
     .join("\n");
   return out.trim();
 }
