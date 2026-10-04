@@ -237,3 +237,39 @@ connector, write the id, wait, write the result link, END THE SESSION. Pass mean
 `attachedBy: "server"`, `billing.actualCredits` matches Higgsfield's transactions, and the take check
 (lip timing, framing) is no worse than the API restage of the same shot. Then, and only then, `verifiedRoutes`.
 No generation is to be started by the integration agent without the testing agent's go.
+
+## Update 00:05 CT, Oct 4 — Higgsfield's ACTUAL API charges read (open.higgsfield.ai, Fendi's signed-in Chrome, read-only)
+
+The retest report could not read these ("its console is signed out"). It is signed in now. Balance **$49.60**;
+auto top-up off; October: **$80.30 over 81 requests** (10/1 29, 10/2 13, 10/3 38, 10/4 1). By model: Seedance 2.5
+$54.64, Kling 2.5 Turbo Pro i2v $12.60, DoP $5.84, Genjutsu $4.77, Kling t2v $2.45. Latest transactions, newest first:
+
+| Date | Type | Amount |
+| --- | --- | --- |
+| Oct 4 | Usage | −$2.22 |
+| Oct 3 | Top-up | +$50.00 |
+| Oct 3 | Usage | −$2.22 |
+| Oct 3 | Usage | −$3.33 |
+| Oct 3 | Usage | −$2.22 |
+| Oct 3 | Usage | −$0.35 (×4) |
+| Oct 3 | Usage | −$2.22 |
+
+Reading (by amount, order and proportion — the console's rows carry no AVT job id, so this is a match, not a join):
+the fresh section's three restagings (4 s, 6 s, 4 s) were charged **$2.22, $3.33, $2.22 = $7.77**, where AVT
+recorded $3.70, $5.55, $3.70 = $12.95; the Oct 4 retest was charged **$2.22**, recorded $3.70. That is $0.555 per
+OUTPUT second at 720p. AVT's estimate (`seedance_usd_per_s` 0.4622 × source seconds × 2) overstates Seedance by
+about 67 %. Nothing was changed in `config/provider_rates.json` / `rates.ts` / `estimate.ts` — they are shared with
+the testing agent and the ceilings are computed from them; the correction is theirs to land (rate 0.555 per output
+second at 720p, no doubling; 480p and 1080p not yet observed). A fifth $2.22 on Oct 3 sits before the Kling
+charges and is not attributed here.
+
+**What this does to the subscription case.** Against the real $2.22, a 28-credit restage on Plus monthly ($1.38 at
+full use) saves about 38 %, not 63 %, and break-even is about **27** comparable restages a month, not 16
+($59 / $2.22). With restaging itself judged not ready for unattended use (retest: timing early, lighting failed,
+lip sync unverified) and filmed performance preferred, the plan does not pay for itself on restaging at current
+volume. The connections cost nothing to keep.
+
+**The billing-path test** (section above) is amended: it must ride on a generation the testing agent already plans
+for its own reasons — not a further creative retry of c035, which is paused — and its pass criteria are the
+plumbing ones only (stored, assigned by the server, credits match). Creative acceptance of the clip is the testing
+agent's separate verdict.
