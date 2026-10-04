@@ -18,8 +18,10 @@ import {
   planRun,
   resultUrlOf,
   runPlan,
+  seedanceUsd,
   shotState,
   spentEstimateUsd,
+  usd,
   statusFromEnvelope,
   stillPrompt,
   submitShot,
@@ -76,8 +78,10 @@ function deps(over: Partial<RunnerDeps> = {}): RunnerDeps & { calls: string[] } 
 
 describe("rates and caps are the config files", () => {
   it("PROVIDER_RATES mirrors config/provider_rates.json", () => {
-    const { _about, _seedance_charged, ...file } = JSON.parse(readFileSync(root("config/provider_rates.json"), "utf8"));
-    expect(typeof _seedance_charged).toBe("string");
+    const { _about, _seedance_tokens, ...file } = JSON.parse(readFileSync(root("config/provider_rates.json"), "utf8"));
+    // the rule in words, and the scope of what has actually been charged, travel with the numbers
+    expect(_seedance_tokens).toContain("billable video tokens = ceil(output height x output width x (input video seconds + generated video seconds) x 24 / 1024)");
+    expect(_seedance_tokens).toContain("SCOPE OF WHAT HAS BEEN CHARGED");
     expect(_about).toBeTruthy();
     expect(PROVIDER_RATES).toEqual(file);
   });
@@ -123,14 +127,26 @@ describe("dialect", () => {
 });
 
 describe("estimate — run_world_batch.py's arithmetic", () => {
-  it("seedance is estimated at what the provider has been seen to charge, where it has been seen; at the list rate where it has not", () => {
-    // 720p: five charges read off Higgsfield's own billing — $0.555 per second of output (a 4 s restage is $2.22, not the list's $3.70)
-    expect(estimateShotUsd(ANGLE)).toBeCloseTo(0.555 * 4, 6);
-    expect(estimateShotUsd({ ...ANGLE, source_trim: [0, 6] })).toBeCloseTo(3.33, 6);
-    // 480p and 1080p have not been observed: the list rate, which is per second of input as well as of output
-    expect(estimateShotUsd({ ...ANGLE, resolution: "480p" })).toBeCloseTo(0.2468 * 2 * 4, 6);
-    expect(estimateShotUsd({ ...ANGLE, resolution: "1080p" })).toBeCloseTo(1.1372 * 2 * 4, 6);
-    expect(estimateShotUsd({ ...ANGLE, resolution: "1080p", source_seconds: 6 })).toBeCloseTo(1.1372 * 2 * 6, 6);
+  it("seedance is priced by the provider's token rule: input and output seconds both, at six tenths of the rate when there is a video input", () => {
+    // 720p, 4 s from a 4 s source: 921,600 px × 8 s × 24 / 1024 = 172,800 tokens × $0.0214 × 0.6 per thousand — $2.22, the amount charged
+    expect(estimateShotUsd(ANGLE)).toBeCloseTo(2.218752, 6);
+    expect(usd(estimateShotUsd(ANGLE))).toBe("$2.22");
+    // 6 s: $3.33 — charged too
+    expect(usd(estimateShotUsd({ ...ANGLE, source_trim: [0, 6] }))).toBe("$3.33");
+    // the sources AVT actually sent were 4.004 s and 6.006 s: still $2.22 and $3.33
+    expect(usd(seedanceUsd("720p", 4, 4.004))).toBe("$2.22");
+    expect(usd(seedanceUsd("720p", 6, 6.006))).toBe("$3.33");
+    // the same rule at the other sizes (published, not yet charged): 480p $0.99, 1080p $5.46 for 4 s
+    expect(usd(estimateShotUsd({ ...ANGLE, resolution: "480p" }))).toBe("$0.99");
+    expect(usd(estimateShotUsd({ ...ANGLE, resolution: "1080p" }))).toBe("$5.46");
+    // without a video input the rule gives the provider's per-second figures: $0.2056, $0.4622, $1.1372
+    expect(seedanceUsd("480p", 1, 0)).toBeCloseTo(0.2056, 3);
+    expect(seedanceUsd("720p", 1, 0)).toBeCloseTo(0.4622, 4);
+    expect(seedanceUsd("1080p", 1, 0)).toBeCloseTo(1.1372, 4);
+    // a source longer than what it returns is paid for: 4 s out of a 10 s source
+    expect(usd(seedanceUsd("720p", 4, 10))).toBe("$3.88");
+    // source_seconds, when the shot says it, is what is billed (1080p, 6 s: 2,073,600 px × 12 s)
+    expect(estimateShotUsd({ ...ANGLE, resolution: "1080p", source_seconds: 6 })).toBeCloseTo(8.188128, 6);
   });
   it("still routes add the stills unless one is supplied; seconds snap to 5 or 10", () => {
     expect(estimateShotUsd(WORLD)).toBeCloseTo(0.07 * 2 + 5 * 0.07, 6);
@@ -187,7 +203,7 @@ describe("submitShot — write-ahead", () => {
     expect(out).toMatchObject({ rowId: "row-1", providerJobId: "job-abc", stillPath: null });
     const row = (d.insertJob as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(row).toMatchObject({ project_id: "proj", provider: "higgsfield", status: "queued" });
-    expect(row.request_payload_json.settings).toMatchObject({ batchRun: "r1", batchShotId: "S06c_low_hero", route: "seedance_ref", estimateUsd: 2.22, sourcePath: "u/p/seedance/S06c_src.mp4", sourceWindow: [66.885, 68.853], masterStart: 63.9987 });
+    expect(row.request_payload_json.settings).toMatchObject({ batchRun: "r1", batchShotId: "S06c_low_hero", route: "seedance_ref", estimateUsd: 2.219, sourcePath: "u/p/seedance/S06c_src.mp4", sourceWindow: [66.885, 68.853], masterStart: 63.9987 });
     expect((d.updateJob as ReturnType<typeof vi.fn>).mock.calls[0][1]).toMatchObject({ external_job_id: "job-abc", status: "queued" });
   });
   it("a refused call is recorded on the row and rethrown with the shot's name", async () => {

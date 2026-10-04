@@ -14,16 +14,22 @@ export function sourceSeconds(shot: BatchShot): number {
 }
 
 /**
- * A seedance reference-to-video job of `seconds`, made from a source clip as long. What the provider has been seen to
- * charge for the resolution, where it has been seen: per second of output. Where it has not, the list rate — which
- * is per second of input as well as of output.
+ * What a Seedance 2.5 job costs, by the provider's own published rule: it bills TOKENS —
+ *   ceil(output pixels × (input video seconds + generated seconds) × 24 / 1024)
+ * — at a rate per thousand that is multiplied by 0.6 when the job has a video input. So a restage (which always has
+ * one: the cut of the take) pays for the seconds it is given as well as the seconds it returns, at six tenths of the
+ * rate. At 720p, 4 s from a 4 s source: $2.22 — the amount charged. The rule has been held against real charges only
+ * at 720p 9:16 with a source as long as the output; elsewhere it is the published rule, not yet charged
+ * (config/provider_rates.json → _seedance_tokens). `inputSeconds` 0 = no video input.
  */
-export function seedanceUsd(resolution: string, seconds: number): number {
-  const charged = R.seedance_charged_usd_per_output_s[resolution];
-  return charged != null ? charged * seconds : R.seedance_usd_per_s[resolution] * 2 * seconds;
+export function seedanceUsd(resolution: string, outputSeconds: number, inputSeconds: number = outputSeconds): number {
+  const t = R.seedance_tokens;
+  const tokens = Math.ceil((t.pixels[resolution] * (inputSeconds + outputSeconds) * t.frames_per_second) / t.divisor);
+  return (tokens / 1000) * t.usd_per_1000_tokens[resolution] * (inputSeconds > 0 ? t.video_input_factor : 1);
 }
 
 export function estimateShotUsd(shot: BatchShot): number {
+  // a restage is given a cut of the take as long as what it returns
   if (shot.route === "seedance_ref") return seedanceUsd(shot.resolution, sourceSeconds(shot));
   const still = shot.route.startsWith("still") && !shot.still_path ? R.still_usd_each * shot.stills : 0;
   const perSecond =
