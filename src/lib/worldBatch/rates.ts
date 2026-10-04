@@ -9,6 +9,8 @@ export const PROVIDER_RATES = {
   kling_usd_per_s: 0.07,
   dop_usd_per_s: 0.083,
   seedance_usd_per_s: { "480p": 0.2468, "720p": 0.4622, "1080p": 1.1372 } as Record<string, number>,
+  /** What the provider has actually charged per second of output, where that has been read off its own billing (provider_rates.json → _seedance_charged). */
+  seedance_charged_usd_per_output_s: { "720p": 0.555 } as Record<string, number>,
   judge_usd_each: 0.08,
 } as const;
 

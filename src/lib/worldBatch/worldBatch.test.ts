@@ -76,7 +76,8 @@ function deps(over: Partial<RunnerDeps> = {}): RunnerDeps & { calls: string[] } 
 
 describe("rates and caps are the config files", () => {
   it("PROVIDER_RATES mirrors config/provider_rates.json", () => {
-    const { _about, ...file } = JSON.parse(readFileSync(root("config/provider_rates.json"), "utf8"));
+    const { _about, _seedance_charged, ...file } = JSON.parse(readFileSync(root("config/provider_rates.json"), "utf8"));
+    expect(typeof _seedance_charged).toBe("string");
     expect(_about).toBeTruthy();
     expect(PROVIDER_RATES).toEqual(file);
   });
@@ -95,10 +96,10 @@ describe("dialect", () => {
     const { shots, errors } = parseShotsJson(text);
     expect(errors).toEqual([]);
     expect(shots.map((s) => s.id)).toEqual(["S06c_low_hero", "S08a_side_tight", "S11c_low_hero", "S12b_side_tight"]);
-    // run_world_batch.py measures the files (it prints $14.75 for these four, $7.40 for two); the browser has no
-    // ffprobe and uses source_trim, 4.0 s each
-    expect(estimateBatchUsd(shots).toFixed(2)).toBe("14.79");
-    expect(estimateBatchUsd(shots.slice(0, 2)).toFixed(2)).toBe("7.40");
+    // run_world_batch.py measures the files; the browser has no ffprobe and uses source_trim, 4.0 s each. At the rate
+    // the provider has been seen to charge at 720p (the list rate put these at $14.79 and $7.40)
+    expect(estimateBatchUsd(shots).toFixed(2)).toBe("8.88");
+    expect(estimateBatchUsd(shots.slice(0, 2)).toFixed(2)).toBe("4.44");
     // …and every one of them is blocked in the browser until its source clip is in storage
     expect(shots.every((s) => missingInput(s).includes("source clip"))).toBe(true);
   });
@@ -122,8 +123,13 @@ describe("dialect", () => {
 });
 
 describe("estimate — run_world_batch.py's arithmetic", () => {
-  it("seedance bills input and output seconds", () => {
-    expect(estimateShotUsd(ANGLE)).toBeCloseTo(0.4622 * 2 * 4, 6);
+  it("seedance is estimated at what the provider has been seen to charge, where it has been seen; at the list rate where it has not", () => {
+    // 720p: five charges read off Higgsfield's own billing — $0.555 per second of output (a 4 s restage is $2.22, not the list's $3.70)
+    expect(estimateShotUsd(ANGLE)).toBeCloseTo(0.555 * 4, 6);
+    expect(estimateShotUsd({ ...ANGLE, source_trim: [0, 6] })).toBeCloseTo(3.33, 6);
+    // 480p and 1080p have not been observed: the list rate, which is per second of input as well as of output
+    expect(estimateShotUsd({ ...ANGLE, resolution: "480p" })).toBeCloseTo(0.2468 * 2 * 4, 6);
+    expect(estimateShotUsd({ ...ANGLE, resolution: "1080p" })).toBeCloseTo(1.1372 * 2 * 4, 6);
     expect(estimateShotUsd({ ...ANGLE, resolution: "1080p", source_seconds: 6 })).toBeCloseTo(1.1372 * 2 * 6, 6);
   });
   it("still routes add the stills unless one is supplied; seconds snap to 5 or 10", () => {
@@ -181,7 +187,7 @@ describe("submitShot — write-ahead", () => {
     expect(out).toMatchObject({ rowId: "row-1", providerJobId: "job-abc", stillPath: null });
     const row = (d.insertJob as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(row).toMatchObject({ project_id: "proj", provider: "higgsfield", status: "queued" });
-    expect(row.request_payload_json.settings).toMatchObject({ batchRun: "r1", batchShotId: "S06c_low_hero", route: "seedance_ref", estimateUsd: 3.698, sourcePath: "u/p/seedance/S06c_src.mp4", sourceWindow: [66.885, 68.853], masterStart: 63.9987 });
+    expect(row.request_payload_json.settings).toMatchObject({ batchRun: "r1", batchShotId: "S06c_low_hero", route: "seedance_ref", estimateUsd: 2.22, sourcePath: "u/p/seedance/S06c_src.mp4", sourceWindow: [66.885, 68.853], masterStart: 63.9987 });
     expect((d.updateJob as ReturnType<typeof vi.fn>).mock.calls[0][1]).toMatchObject({ external_job_id: "job-abc", status: "queued" });
   });
   it("a refused call is recorded on the row and rethrown with the shot's name", async () => {
@@ -240,7 +246,7 @@ describe("planRun / runPlan — no double spend", () => {
   it("a run above the ceiling submits nothing", async () => {
     const d = deps();
     const plan = planRun([ANGLE, { ...ANGLE, id: "S11c_low_hero" }], []);
-    await expect(runPlan(plan, CTX, d, { ceilingUsd: 5 })).rejects.toThrow("estimate $7.40 exceeds the ceiling $5.00 — nothing was submitted");
+    await expect(runPlan(plan, CTX, d, { ceilingUsd: 4 })).rejects.toThrow("estimate $4.44 exceeds the ceiling $4.00 — nothing was submitted");
     expect(d.calls).toEqual([]);
   });
   it("one failure does not stop the rest; a refusal pattern stops that provider", async () => {
