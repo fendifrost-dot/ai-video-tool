@@ -11,7 +11,7 @@ import { StoryboardProvider, type StoryboardController } from "./useStoryboardCo
 vi.mock("./FrameThumb", () => ({ FrameThumb: ({ seconds, testId, fileKey }: { seconds: number; testId?: string; fileKey: string }) => <i data-testid={testId} data-seconds={seconds} data-file={fileKey} /> }));
 
 const check = (over: Partial<TakeCheck> = {}): TakeCheck => ({
-  version: 1,
+  version: 2,
   measuredAt: "2026-10-04T00:00:00Z",
   frames: 97,
   faceFrames: 60,
@@ -49,7 +49,7 @@ describe("a restaged clip held against its take", () => {
     const lip = screen.getByTestId("take-check-lip");
     expect(lip.textContent).toContain("lips in sync");
     expect(lip.textContent).toContain("His mouth moves with the take's — +0.02 s (1 frame late) at its worst (agreement 0.71 over 2.4 s).");
-    expect(lip.textContent).toContain("His face is found in 60 of 97 frames (to 2.46 s) — nothing is said about the rest.");
+    expect(lip.textContent).toContain("His face can be read in 60 of 97 frames (to 2.46 s) — nothing is said about the rest.");
     expect([lip.getAttribute("data-lag"), lip.getAttribute("data-corr"), lip.getAttribute("data-on-clock")]).toEqual(["0.021", "0.71", "0.69"]);
     const framing = screen.getByTestId("take-check-framing");
     expect(framing.textContent).toContain("shows more of him");
