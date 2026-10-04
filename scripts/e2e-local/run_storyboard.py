@@ -44,7 +44,7 @@ async def desktop(b, out):
     await pg.click("[data-testid=focus-close]"); await pg.wait_for_timeout(400)
     # the clip of a shot that changes: the confirm says the beats go as a timed script, and whose picture the place is
     await pg.click("[data-box-key=c007] [data-testid=box-generate-clip]"); await pg.wait_for_selector("[data-testid=confirm-dialog]", timeout=10000)
-    out["beats_confirm"] = (await pg.inner_text("[data-testid=confirm-dialog]")).replace("\n", " ")[:900]
+    out["beats_confirm"] = (await pg.inner_text("[data-testid=confirm-dialog]")).replace("\n", " ")[:1200]
     await pg.click("[data-testid=confirm-cancel]"); await pg.wait_for_timeout(400)
     # focus view on a performance box: the take's range plays in place
     await pg.click("[data-box-key=c005] [data-testid=box-open]"); await pg.wait_for_selector("[data-testid=focus-view]"); await pg.wait_for_timeout(2500)
@@ -81,6 +81,21 @@ async def desktop(b, out):
     await pg.click("[data-box-key=c005] [data-testid=box-generate-clip]"); await pg.wait_for_selector("[data-testid=confirm-generate-clip]", timeout=10000)
     out["restage"]["confirm"] = (await pg.inner_text("[data-testid=confirm-dialog]")).replace("\n", " ")[:520]
     await pg.click("[data-testid=confirm-cancel]"); await pg.wait_for_timeout(400)
+    # ---- does the clip do what it was asked: shot 10's restaged clip, held against its request — measured, and judged by eye
+    await pg.click("[data-box-key=c010] [data-testid=box-open]"); await pg.wait_for_selector("[data-testid=focus-view]"); await pg.click("[data-testid=focus-tab-media]")
+    await pg.wait_for_selector("[data-testid=acceptance]", timeout=20000)
+    try: await pg.wait_for_function("() => { const b=document.querySelector('[data-testid=beat-check]'); return b && !['measuring','unmeasured'].includes(b.dataset.verdict); }", timeout=90000)
+    except Exception: pass
+    ACC = "() => { const a=document.querySelector('[data-testid=acceptance]'); return {verdict: a.dataset.verdict, line: a.querySelector('[data-testid=acceptance-line]').innerText, lines: [...a.querySelectorAll('[data-testid=acceptance-requirement]')].map(e => [e.dataset.requirement, e.dataset.finding, e.dataset.source, e.dataset.measured]), chip: document.querySelector('[data-testid=focus-media-item] [data-testid=acceptance-chip]')?.dataset.verdict, watch: a.querySelector('[data-testid=acceptance-watch]')?.innerText ?? null, beat: document.querySelector('[data-testid=beat-check]')?.dataset.verdict}; }"
+    acc = {"before": await pg.evaluate(ACC)}
+    await pg.click("[data-testid=acceptance-requirement][data-requirement=camera] [data-testid=acceptance-fails]")
+    await pg.fill("[data-testid=acceptance-note]", "no push toward him"); await pg.click("[data-testid=acceptance-keep]")
+    try: await pg.wait_for_selector("[data-testid=acceptance-requirement][data-requirement=camera][data-source=by_eye]", timeout=15000)
+    except Exception: pass
+    acc["judged"] = await pg.evaluate(ACC)
+    acc["camera_text"] = await pg.evaluate("() => document.querySelector('[data-testid=acceptance-requirement][data-requirement=camera]')?.innerText.replace(/\\n/g,' ') ?? null")
+    out["acceptance"] = acc
+    await pg.click("[data-testid=focus-close]"); await pg.wait_for_timeout(400)
     # assign the b-roll to a box from the picker, on the board
     await pg.click("[data-box-key=c008] [data-testid=box-add-media]"); await pg.wait_for_selector("[data-testid=media-picker]")
     await pg.click("[data-testid=media-tab-b_roll]"); await pg.wait_for_timeout(300)
@@ -146,6 +161,11 @@ async def desktop(b, out):
         files: [...document.querySelectorAll('[data-testid=review-verify-file]')].map(e => [e.dataset.use, e.dataset.ok, e.textContent.slice(0,160)]),
         cuts: document.querySelectorAll('[data-testid=review-verify-cut]').length,
         notChecked: document.querySelector('[data-testid=review-verify-not-checked]').innerText}; }""")
+    # ---- and beside it, apart: whether the cut's generated clips do what they were asked
+    out["review_acceptance"] = await pg.evaluate("""() => { const c=document.querySelector('[data-testid=review-acceptance]');
+      return {card: c ? {verdict: c.dataset.verdict, fails: c.dataset.fails, clips: [...c.querySelectorAll('[data-testid=review-acceptance-clip]')].map(e => [e.dataset.boxKey, e.dataset.verdict, e.innerText.replace(/\\n/g,' ').slice(0,160)])} : null,
+        said: document.querySelector('[data-testid=review-verify-accepted]')?.innerText ?? null, chips: [...document.querySelectorAll('[data-testid=review-shot] [data-testid=acceptance-chip]')].map(e => e.dataset.verdict),
+        check: [...document.querySelectorAll('[data-testid=review-check]')].map(e => [e.dataset.ok, e.innerText.replace(/\\n/g,' ')]).filter(c => c[1].includes('Generated clips'))}; }""")
     # ---- the cut at a glance: one frame per shot, decoded from the files without a player
     await pg.click("[data-testid=contact-sheet-toggle]")
     try: await pg.wait_for_function("() => { const f=[...document.querySelectorAll('[data-testid=contact-sheet-frame]')]; return f.length > 30 && f.every(e => e.dataset.state !== 'loading'); }", timeout=120000)
@@ -285,7 +305,7 @@ def report(r):
     want("check this cut: 43 shots listed", cc.get("cuts") == 43)
     want("media list: an image on a shot is shown", (r.get("media_image") or {}).get("n") == 1 and (r.get("media_image") or {}).get("loaded") is True)
     rs = r.get("restage") or {}
-    want("restage: a performance shot offers its take restaged, priced", rs.get("clip", "").startswith("Restage") and "$3.84" in rs.get("clip", "") and rs.get("image", "").startswith("Place") and rs.get("broll_clip", "").startswith("Clip"))
+    want("restage: a performance shot offers its take restaged, priced", rs.get("clip", "").startswith("Restage") and "$2.36" in rs.get("clip", "") and rs.get("image", "").startswith("Place") and rs.get("broll_clip", "").startswith("Clip"))
     want("restage: the confirm names the take, its range and the seconds", "performance take.mp4" in rs.get("confirm", "") and "4 s of the take" in rs.get("confirm", "") and "0:14.8" in rs.get("confirm", ""))
     want("restage: the restaged clip shows on its shot as the take, restaged", (rs.get("c010") or {}).get("role") == "performance" and (rs.get("c010") or {}).get("text") is True)
     want("restage: the next shot's base layer is the take as filmed", rs.get("c011_base") is None or rs.get("c011_base") == ["performance", "true"])
@@ -341,6 +361,16 @@ def report(r):
     rc = r.get("render_contract") or {}
     want("export: the render contract is the whole cut, frame by frame", "43 shots" in rc.get("summary", "") and "at 30 fps" in rc.get("summary", "") and "1080×1920" in rc.get("summary", ""))
     want("export: it says what a render would and would not contain, and that the app does not render", "effects are applied on shot 7" in rc.get("notes", "") and "must already be in the footage" in rc.get("notes", "") and "does not make the finished video" in rc.get("boundary", ""))
+    # ---- playing is not passing
+    ac = r.get("acceptance") or {}
+    b4 = ac.get("before") or {}; af = ac.get("judged") or {}
+    want("acceptance: a restaged clip with a timed script is asked five things", [l[0] for l in b4.get("lines", [])] == ["timing", "framing", "lips", "lighting", "camera"])
+    want("acceptance: timing is what was measured off the file; what nothing looked at is not verified", (b4.get("lines") or [[None] * 4])[0][2] == "measured" and all(l[1] == "unverified" and l[2] == "none" for l in b4.get("lines", [])[1:]) and b4.get("verdict") in ("fails", "unverified"))
+    want("acceptance: lip sync names the exact stretch to watch with the song", "watch shot 10 with the song, 0:35.29–0:39.22" in (b4.get("watch") or ""))
+    want("acceptance: a judgement by eye is kept on the clip with its note, marked as seen not measured", (af.get("lines") or [[None] * 4] * 5)[4][:3] == ["camera", "fails", "by_eye"] and "no push toward him" in (ac.get("camera_text") or "") and af.get("verdict") == "fails" and af.get("chip") == "fails")
+    ra = r.get("review_acceptance") or {}
+    want("acceptance: Review lists the clip against what it was asked, apart from whether the cut plays", (ra.get("card") or {}).get("verdict") == "fails" and [c[:2] for c in (ra.get("card") or {}).get("clips", [])] == [["c010", "fails"]] and "camera and movement" in (ra.get("card") or {}).get("clips", [[0, 0, ""]])[0][2])
+    want("acceptance: a cut that plays says that is not the same as its clips doing what was asked", cc.get("ok") == "true" and "not whether its clips do what they were asked" in (ra.get("said") or "") and ra.get("chips") == ["fails"] and [c[0] for c in ra.get("check", [])] == ["false"])
     log = open("backend.log").read()
     want("jobs: the page asks the server to move its unfinished job", "provider-jobs-tick" in log and (r.get("job_c012") or "").startswith("rendering the clip"))
     want("jobs: the page polls no provider and saves no clip itself", "proxy-provider-call" not in log and "ingest-provider-job" not in log)

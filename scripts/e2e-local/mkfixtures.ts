@@ -86,6 +86,10 @@ const fixtures = {
     provider_jobs: [
       { id: uuid(1, "77777777"), project_id: P, user_id: U, prompt_id: null, provider: "higgsfield", status: "running", external_job_id: "ext-local-1", result_asset_id: null, error_text: null, finalized_at: null, progress_note: null,
         request_payload_json: { promptText: "local", mode: "image_to_video", shotId: shotId("c012"), settings: { batchRun: "storyboard", batchShotId: "c012", route: "still_kling", kind: "world", estimateUsd: 0.35, lookPreset: "film_bar_v1" } }, response_payload_json: {}, created_at: AT, updated_at: AT },
+      // the job that made shot 10's restaged clip: what the clip was asked for (a timed change of light) and the stretch of the take it was made from
+      { id: uuid(2, "77777777"), project_id: P, user_id: U, prompt_id: null, provider: "higgsfield", status: "succeeded", external_job_id: "ext-local-2", result_asset_id: assets[5].id, error_text: null, finalized_at: AT, progress_note: null,
+        request_payload_json: { promptText: "local restage", mode: "reference_to_video", shotId: shotId("c010"), settings: { batchRun: "storyboard", batchShotId: "c010", route: "seedance_ref", kind: "performance", estimateUsd: 3.84, lookPreset: "film_bar_v1", sourceAssetId: assets[1].id, sourceWindow: [34.4362, 38.4362], masterStart: 35.29, sourceSeconds: 4,
+          temporal: { mode: "timed_script", beats: 1, measured: false, asked: [{ id: "e1", offset: 1.9, kinds: ["lighting"], says: "light: the room goes dark" }] } } }, response_payload_json: {}, created_at: AT, updated_at: AT },
     ],
     lyric_lines: LYR.map(([s, e, text], i) => ({ id: uuid(i + 1, "eeeeeeee"), project_id: P, user_id: U, line_index: i, section: null, block: null, text, start_seconds: s, end_seconds: e, confidence: 0.9, words_json: null, source: "align_lyrics", created_at: AT, updated_at: AT })),
     song_analyses: [P, P2].map((project_id, i) => ({ id: uuid(i + 1, "ffffffff"), project_id, user_id: U, bpm: 122, duration_seconds: 201.87, beats_json: [], drops_json: [], energy_curve_json: [], sections_json: [], created_at: AT, updated_at: AT })),
