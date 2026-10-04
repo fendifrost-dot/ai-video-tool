@@ -275,6 +275,9 @@ describe("a face that is found but cannot be read", () => {
   });
 
   it("is judged against what the file's faces usually show, and never below a floor", () => {
+    // the fresh section's own numbers: lit 0.19–0.20, dark with a mirror ball's points crossing the face up to 0.12
+    const real = series(said, { seconds: 6, seen: (t) => (t < 3.7 ? 0.195 : t < 4.2 ? 0.118 : 0.04) });
+    expect(readable(real)).toHaveLength(Math.round(3.7 * 24));
     // a dim clip whose faces are all alike is read
     expect(readable(series(said, { seen: () => 0.05 }))).toHaveLength(96);
     // a clip dark from end to end is not

@@ -282,8 +282,12 @@ const faces = (frames: readonly FaceFrame[], rebase = 0): FaceSample[] =>
 
 /** A face with less to see than this is not read, whatever the rest of the file looks like. */
 export const MIN_SEEN = 0.02;
-/** …nor one with less than this share of what the file's faces usually show: the stretch where the lights are out. */
-export const SEEN_SHARE = 0.4;
+/**
+ * …nor one with less than this share of what the file's faces usually show: the stretch where the lights are out.
+ * Set on the fresh section's clips: his lit face spreads 0.15–0.20, the same face in the dark 0.03–0.12 (the points of
+ * a mirror ball crossing it are the top of that), so two-thirds of the usual keeps every lit frame and no dark one.
+ */
+export const SEEN_SHARE = 0.65;
 
 /**
  * The faces that can be READ. The reader finds a face in a silhouette and gives it a shut mouth; measured as it
