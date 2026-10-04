@@ -64,6 +64,24 @@ export function closerWindows(w: number, h: number): [number, number, number][] 
   return out;
 }
 
+/** The face's box is drawn this many pixels a side to measure how much of it there is to see. */
+const SEEN_SIDE = 48;
+
+/** The spread of light across a raster of pixels (rgba): the standard deviation of its luma, 0–1. Pure — exported for its test. */
+export function lumaSpread(rgba: Uint8ClampedArray | Uint8Array): number {
+  const n = rgba.length >> 2;
+  if (n === 0) return 0;
+  let sum = 0;
+  let sq = 0;
+  for (let i = 0; i < rgba.length; i += 4) {
+    const l = (0.299 * rgba[i] + 0.587 * rgba[i + 1] + 0.114 * rgba[i + 2]) / 255;
+    sum += l;
+    sq += l * l;
+  }
+  const mean = sum / n;
+  return Math.round(Math.sqrt(Math.max(0, sq / n - mean * mean)) * 10000) / 10000;
+}
+
 /** How much of the picture around a face the closer reading takes in: this many times the face's own extent. */
 const CLOSE_ON = 2.2;
 
@@ -113,6 +131,28 @@ export async function faceSeries(read: RangeRead, track: Mp4Track, from = 0, to:
   const fh = Math.max(2, Math.round(h * scale));
   const full = canvasOf(fw, fh);
   const close = canvasOf(WINDOW_SIDE, WINDOW_SIDE);
+  const sample = canvasOf(SEEN_SIDE, SEEN_SIDE);
+  const sampleCtx = (sample.canvas.getContext("2d", { willReadFrequently: true }) ?? sample.ctx) as OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D;
+  /** How much there is to see where the landmarks say his face is: the spread of light across that box, 0–1. */
+  const seenOf = (frame: VideoFrame, points: readonly Point[], sw: number, sh: number): number => {
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const p of points) {
+      if (p.x < x0) x0 = p.x;
+      if (p.x > x1) x1 = p.x;
+      if (p.y < y0) y0 = p.y;
+      if (p.y > y1) y1 = p.y;
+    }
+    x0 = Math.max(0, x0);
+    y0 = Math.max(0, y0);
+    x1 = Math.min(sw, x1);
+    y1 = Math.min(sh, y1);
+    if (!(x1 - x0 > 2) || !(y1 - y0 > 2)) return 0;
+    sampleCtx.drawImage(frame, x0, y0, x1 - x0, y1 - y0, 0, 0, SEEN_SIDE, SEEN_SIDE);
+    return lumaSpread(sampleCtx.getImageData(0, 0, SEEN_SIDE, SEEN_SIDE).data);
+  };
   const windows = closerWindows(w, h);
   let lastWindow = -1;
   const out: FaceFrame[] = [];
@@ -150,7 +190,8 @@ export async function faceSeries(read: RangeRead, track: Mp4Track, from = 0, to:
         if (again) points = again.map((p) => ({ x: x + p.x * side, y: y + p.y * side }));
       }
     }
-    out.push({ t, face: points ? faceOf(points, sw, sh) : null });
+    const face = points ? faceOf(points, sw, sh) : null;
+    out.push({ t, face: face && points ? { ...face, seen: seenOf(frame, points, sw, sh) } : null });
   });
   return out.sort((a, b) => a.t - b.t);
 }
