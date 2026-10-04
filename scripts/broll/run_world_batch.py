@@ -47,7 +47,14 @@ PROXY = f"{SUPA}/functions/v1/proxy-provider-call"
 # rates are data: config/provider_rates.json (the app's in-browser runner reads the same numbers)
 RATES = json.load(open(os.path.join(ROOT, "config", "provider_rates.json")))
 RUNWAY_RATE = RATES["runway"]; KLING_RATE = RATES["kling_usd_per_s"]; STILL_RATE = RATES["still_usd_each"]; DOP_RATE = RATES["dop_usd_per_s"]
-SEEDANCE_RATE = RATES["seedance_usd_per_s"]   # per second, input + output (Higgsfield catalogue, 2026-10)
+SEEDANCE_RATE = RATES["seedance_usd_per_s"]   # list: per second, input + output (Higgsfield catalogue, 2026-10)
+SEEDANCE_CHARGED = RATES.get("seedance_charged_usd_per_output_s", {})   # what it has actually charged per OUTPUT second, where read off its billing
+
+
+def seedance_estimate(resolution, seconds):
+    """The charged rate where one has been observed for this resolution; else the list rate, input and output seconds both."""
+    charged = SEEDANCE_CHARGED.get(resolution)
+    return charged * seconds if charged is not None else SEEDANCE_RATE[resolution] * 2 * seconds
 
 
 # The same sentence as src/lib/shotCompiler/prompts.ts PLACE_LIGHT (a test there reads this file): the light is said
@@ -200,7 +207,7 @@ def main():
     est = 0.0
     for s in shots:
         sec = 10 if int(s.get("seconds", 5)) > 5 else 5; r = s["route"]
-        if r == "seedance_ref": est += SEEDANCE_RATE[s.get("resolution", "720p")] * 2 * source_seconds(s); continue
+        if r == "seedance_ref": est += seedance_estimate(s.get("resolution", "720p"), source_seconds(s)); continue
         est += (STILL_RATE * int(s.get("stills", 2)) if r.startswith("still") and not s.get("still_path") else 0) + sec * (RUNWAY_RATE["gen4_turbo"] if r == "still_runway" else RUNWAY_RATE["gen4.5"] if r in ("runway_t2v", "still_runway45") else DOP_RATE if r == "still_dop" else KLING_RATE)
     print(f"estimate ${est:.2f} for {len(shots)} shots (gate judge extra ≈ ${0.08 * len(shots):.2f})")
     if est > a.max_usd: raise SystemExit(f"estimate exceeds --max-usd {a.max_usd}")

@@ -81,7 +81,7 @@ export function TakeCheckPanel({ item }: { item: BoxMediaItem }) {
             ))}
           </div>
           <p className="text-[10px] leading-snug text-foreground/45" data-testid="take-check-note">
-            His face was read on {check.faceFrames} of {check.frames} frames of the clip and {check.takeFaceFrames} of {check.takeFrames} of the take. Lip sync here is WHEN his mouth moves, not its shape, and says nothing about a stretch where his face is not seen. In sync = within two frames.
+            His face was read on {check.faceFrames} of {check.frames} frames of the clip and {check.takeFaceFrames} of {check.takeFrames} of the take. Lip sync here is WHEN his mouth moves, not its shape, and says nothing about a stretch where his face is not seen. In sync = within two frames. The lip reading is a pointer, not a verdict: its threshold comes from made series and has not been held against real footage whose answer is known, so it does not settle lip sync — watching the clip with the song does.
           </p>
         </>
       )}

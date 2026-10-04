@@ -13,11 +13,18 @@ export function sourceSeconds(shot: BatchShot): number {
   return shot.seconds;
 }
 
+/**
+ * A seedance reference-to-video job of `seconds`, made from a source clip as long. What the provider has been seen to
+ * charge for the resolution, where it has been seen: per second of output. Where it has not, the list rate — which
+ * is per second of input as well as of output.
+ */
+export function seedanceUsd(resolution: string, seconds: number): number {
+  const charged = R.seedance_charged_usd_per_output_s[resolution];
+  return charged != null ? charged * seconds : R.seedance_usd_per_s[resolution] * 2 * seconds;
+}
+
 export function estimateShotUsd(shot: BatchShot): number {
-  if (shot.route === "seedance_ref") {
-    // input seconds are billed as well as output seconds
-    return R.seedance_usd_per_s[shot.resolution] * 2 * sourceSeconds(shot);
-  }
+  if (shot.route === "seedance_ref") return seedanceUsd(shot.resolution, sourceSeconds(shot));
   const still = shot.route.startsWith("still") && !shot.still_path ? R.still_usd_each * shot.stills : 0;
   const perSecond =
     shot.route === "still_runway"

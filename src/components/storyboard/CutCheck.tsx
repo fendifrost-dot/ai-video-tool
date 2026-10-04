@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { formatTimecode } from "@/components/treatment/shotLabels";
 import type { Assignment, MediaAsset, TakeSync, TimelineSegment } from "@/lib/storyboard/media";
 import { runReviewCheck, type PlayerHandle, type ReviewCheckReport } from "@/lib/storyboard/reviewCheck";
+import { acceptanceLine, cutAcceptanceLine, type CutAcceptance } from "@/lib/storyboard/acceptance";
 import { cn } from "@/lib/utils";
 import { mediaRefKey, playbackRef, signRefs, type MediaRef } from "./signedUrls";
 
@@ -43,6 +44,7 @@ export function CutCheck({
   syncs,
   song,
   playerTimeline,
+  accepted,
 }: {
   timeline: readonly TimelineSegment[];
   boxes: readonly { id: string; key: string; start: number; end: number }[];
@@ -52,6 +54,8 @@ export function CutCheck({
   song: { ref: MediaRef; name: string; analysisSeconds: number | null } | null;
   /** The shots the page's player is showing when that is a section; the check itself is always of the whole cut. */
   playerTimeline?: readonly TimelineSegment[];
+  /** The cut's generated clips held against what they were asked for. What this check proves is that the cut PLAYS; that is said beside it. */
+  accepted?: CutAcceptance;
 }) {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
@@ -92,13 +96,21 @@ export function CutCheck({
 
   const download = () => {
     if (!report) return;
-    const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }));
+    const url = URL.createObjectURL(new Blob([JSON.stringify(full(report), null, 2)], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url;
     a.download = `cut-check-${report.at.slice(0, 19).replace(/[:T]/g, "-")}.json`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
+
+  // the saved report carries both answers, apart: whether the cut plays, and whether its clips do what they were asked
+  const full = (r: ReviewCheckReport) => ({
+    ...r,
+    acceptance: accepted
+      ? { verdict: accepted.verdict, line: cutAcceptanceLine(accepted), clips: accepted.clips.map((c) => ({ shot: c.index, key: c.key, assetId: c.assetId, name: c.name, verdict: c.acceptance.verdict, says: acceptanceLine(c.acceptance), lines: c.acceptance.lines.map((l) => ({ requirement: l.requirement, finding: l.finding, source: l.source, says: l.says, measured: l.measured })) })) }
+      : null,
+  });
 
   const rows: { id: string; state: "ok" | "bad" | "skipped"; label: string; detail: string; failures: string[] }[] = [];
   if (report) {
@@ -168,6 +180,13 @@ export function CutCheck({
               {report.cut.cuts.length} shots · {report.cut.samples} moments of the song stepped through
             </span>
           </p>
+
+          {accepted && accepted.verdict !== "none" && (
+            <p className={cn("text-xs", accepted.verdict === "meets" ? "text-emerald-300/90" : accepted.verdict === "fails" ? "text-rose-300" : "text-amber-200")} data-testid="review-verify-accepted" data-verdict={accepted.verdict}>
+              {accepted.verdict === "meets" ? "And its clips do what they were asked." : "That is whether the cut plays — not whether its clips do what they were asked."}{" "}
+              <span className="font-normal text-foreground/55">{cutAcceptanceLine(accepted)} (see “What was asked for”).</span>
+            </p>
+          )}
 
           <div className="space-y-1.5">
             {rows.map((r) => (
@@ -256,7 +275,7 @@ export function CutCheck({
           <details className="text-[10px] text-foreground/40">
             <summary className="cursor-pointer">The full report as text</summary>
             <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-all" data-testid="review-verify-json">
-              {JSON.stringify(report)}
+              {JSON.stringify(full(report))}
             </pre>
           </details>
         </div>

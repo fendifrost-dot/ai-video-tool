@@ -7,6 +7,10 @@ import { ROLE_STYLE, mediaLabel } from "@/components/storyboard/BoxMediaView";
 import { AstraSectionReview } from "@/components/storyboard/AstraSectionReview";
 import { ContactSheet } from "@/components/storyboard/ContactSheet";
 import { CutCheck } from "@/components/storyboard/CutCheck";
+import { AcceptanceChip } from "@/components/storyboard/Acceptance";
+import { asksByAsset } from "@/lib/queries/acceptance";
+import { useProjectProviderJobs } from "@/lib/providerJobs/queries";
+import { acceptanceLine, cutAcceptance, cutAcceptanceLine } from "@/lib/storyboard/acceptance";
 import { SequencePlayer } from "@/components/storyboard/SequencePlayer";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -73,6 +77,14 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
   const takes = media.list.filter(isOriginalTake);
   const takesSynced = takes.filter((t) => syncs.some((s) => s.performanceAssetId === t.id && isUsableSync(s))).length;
 
+  // Whether each generated clip does what it was asked to — which is not whether it plays. What each was asked for is
+  // on the job that made it; what was measured and what was judged by eye is on the clip.
+  const jobsData = useProjectProviderJobs(projectId).data;
+  const asks = useMemo(() => asksByAsset((jobsData ?? []) as never), [jobsData]);
+  const accepted = useMemo(() => cutAcceptance(whole, media.byId, asks), [whole, media.byId, asks]);
+  const acceptedHere = useMemo(() => new Map(accepted.clips.map((c) => [c.shotId, c])), [accepted]);
+  const shownAccepted = accepted.clips.filter((c) => timeline.some((s) => s.shotId === c.shotId));
+
   const checks: { ok: boolean; label: string; detail: string }[] = [
     {
       ok: issues.length === 0 && (!songSeconds || Math.abs(songSeconds - covered) < 1.5),
@@ -81,6 +93,7 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
     },
     { ok: withFootage === whole.length, label: "Every shot has footage", detail: `${withFootage} of ${whole.length}` },
     { ok: takes.length === takesSynced, label: "Takes in sync with the song", detail: takes.length ? `${takesSynced} of ${takes.length}` : "no takes in the project" },
+    ...(accepted.verdict === "none" ? [] : [{ ok: accepted.verdict === "meets", label: "Generated clips do what was asked", detail: cutAcceptanceLine(accepted).replace(/^\d+ generated clips?: /, "") }]),
   ];
 
   return (
@@ -170,6 +183,7 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
                       ) : (
                         <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", ROLE_STYLE[s.media.role])}>{mediaLabel({ role: s.media.role, base: s.media.base, asset: media.byId.get(s.media.assetId) })}</span>
                       )}
+                      {acceptedHere.has(s.shotId) && <AcceptanceChip verdict={acceptedHere.get(s.shotId)!.acceptance.verdict} />}
                      </button>
                     </li>
                   ))}
@@ -203,6 +217,28 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
               </Card>
             </div>
 
+            {shownAccepted.length > 0 && (
+              <Card className="space-y-2 p-4" data-testid="review-acceptance" data-verdict={accepted.verdict} data-fails={accepted.fails} data-open={accepted.open} data-meets={accepted.meets}>
+                <h2 className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">What was asked for</h2>
+                <p className="text-xs text-foreground/55">
+                  A clip that plays is not thereby the clip that was asked for. Each generated clip is held against its own request — timing, framing, lip sync, lighting, camera — by what was measured off the file and what was judged by eye; what nothing has
+                  looked at is not counted as met. In the whole cut: {cutAcceptanceLine(accepted)}.
+                </p>
+                <ul className="space-y-1.5">
+                  {shownAccepted.map((c) => (
+                    <li key={c.shotId} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs" data-testid="review-acceptance-clip" data-box-key={c.key} data-asset-id={c.assetId} data-verdict={c.acceptance.verdict}>
+                      <span className="w-7 shrink-0 font-mono text-sm font-semibold tabular-nums text-foreground/35">{String(c.index).padStart(2, "0")}</span>
+                      <AcceptanceChip verdict={c.acceptance.verdict} />
+                      <span className="text-foreground/75">{acceptanceLine(c.acceptance)}</span>
+                      <Link to="/projects/$id/storyboard" params={{ id: projectId }} className="text-[10px] text-foreground/40 underline decoration-dotted underline-offset-2 hover:text-foreground/70">
+                        judge it on the shot
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </Card>
+            )}
+
             <ContactSheet timeline={timeline} assets={media.byId} aspect={aspect} close={inSection} />
 
             <AstraSectionReview
@@ -219,7 +255,7 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
             />
 
             {/* the check is of the whole cut, whatever section is being looked at: a section cannot be right inside a cut that is not */}
-            <CutCheck timeline={whole} boxes={boxes} assignments={assignments} assets={media.byId} syncs={syncs} song={checkSong} playerTimeline={inSection ? timeline : undefined} />
+            <CutCheck timeline={whole} boxes={boxes} assignments={assignments} assets={media.byId} syncs={syncs} song={checkSong} playerTimeline={inSection ? timeline : undefined} accepted={accepted} />
           </>
         )}
       </div>

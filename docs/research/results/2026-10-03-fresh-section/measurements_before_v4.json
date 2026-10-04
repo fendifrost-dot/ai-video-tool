@@ -1,0 +1,50 @@
+{
+  "_about": "The measurement records kept on the five generated clips of the fresh section (shots 39-42) as they stood on 4 October 2026, read from project_assets.metadata_json before beat check v4 was published. Each clip is measured again the first time it is opened under v4, and its beat_check record is then replaced; these are the records that replacement removes. The per-frame series are left out (they are read again from the same file and come out the same; the three timed clips' curves are in src/lib/storyboard/__fixtures__/realCurves.ts). The retest's -1.40 s is the misattributed number: v3 timed the clip's dark opening coming up as the change that was asked for.",
+  "says_e1_c035": "light: the pool dies and the mirror ball comes alive — The room goes dark and one hard white beam strikes the diamond mirror ball, which throws hundreds of small sharp points of white light drifting slowly across the floor, the walls and anyone standing there. White light only, no colour",
+  "says_e1_c038": "light: pool dies, only diamond points remain — The room goes dark and one hard white beam strikes the diamond mirror ball, which throws hundreds of small sharp points of white light drifting slowly across the floor, the walls and anyone standing there. White light only, no colour",
+  "clips": [
+    {
+      "asset": "c2045712-b98f-4c0d-864e-e4ef6380ec42", "shot_key": "c036", "selected": true,
+      "beat_check": {"version": 3, "measuredAt": "2026-10-03T20:48:09.985Z", "frames": 121, "fps": 24, "clipSeconds": 5.042, "noise": 0.005, "beats": [], "unasked": [], "verdict": "kept"},
+      "take_check": null
+    },
+    {
+      "asset": "9d132fa4-a7e0-4f61-ab45-8a584036a871", "shot_key": "c037", "selected": true,
+      "beat_check": {"version": 3, "measuredAt": "2026-10-03T20:47:47.730Z", "frames": 97, "fps": 24, "clipSeconds": 4.042, "noise": 0.018, "beats": [],
+        "unasked": [{"begins": 0.917, "half": 1.458, "arrived": 1.875, "kind": "light", "lumaBefore": 0.136, "lumaAfter": 0.275, "size": 0.172, "strength": 18.263}], "verdict": "kept"},
+      "take_check": {"version": 2, "measuredAt": "2026-10-04T02:12:39.746Z", "frames": 97, "faceFrames": 31, "faceFrom": 2.625, "faceTo": 4, "takeFrames": 240, "takeFaceFrames": 240,
+        "framing": {"verdict": "wider", "ratio": 2.65, "takeReach": 11.43, "widestReach": 30.26, "widestAt": 2.708, "openingReach": null, "openingSeen": false},
+        "lip": {"verdict": "unclear", "best": {"corr": 0.476, "n": 62, "offset": -0.3333, "retime": 1}, "compared": 1.017, "onClock": -0.067, "worstLag": -0.333}}
+    },
+    {
+      "asset": "4b872af2-0616-4e82-a4f3-d3d27c13cac7", "shot_key": "c038", "selected": true,
+      "beat_check": {"version": 3, "measuredAt": "2026-10-03T20:34:59.683Z", "frames": 145, "fps": 24, "clipSeconds": 6.042, "noise": 0.004,
+        "beats": [{"id": "e1", "offset": 4.69, "kinds": ["lighting"], "verdict": "displaced", "error": -1.023,
+          "change": {"begins": 3.667, "half": 3.708, "arrived": 3.708, "kind": "light", "lumaBefore": 0.161, "lumaAfter": 0.093, "size": 0.101, "strength": 72.288}}],
+        "unasked": [], "verdict": "displaced"},
+      "take_check": {"version": 2, "measuredAt": "2026-10-04T02:11:37.447Z", "frames": 145, "faceFrames": 89, "faceFrom": 0, "faceTo": 3.667, "takeFrames": 360, "takeFaceFrames": 352,
+        "framing": {"verdict": "kept", "ratio": 0.66, "takeReach": 11.52, "widestReach": 7.64, "widestAt": 2.333, "openingReach": 6.68, "openingSeen": true},
+        "lip": {"verdict": "unclear", "best": {"corr": 0.485, "n": 206, "offset": -0.0625, "retime": 1.03}, "compared": 3.554, "onClock": 0.387, "worstLag": -0.061}}
+    },
+    {
+      "asset": "ae0a116f-98f9-4a1f-9255-d908b38b9905", "shot_key": "c035", "selected": false,
+      "beat_check": {"version": 3, "measuredAt": "2026-10-03T20:43:50.153Z", "frames": 97, "fps": 24, "clipSeconds": 4.042, "noise": 0.02,
+        "beats": [{"id": "e1", "offset": 1.9, "kinds": ["lighting"], "verdict": "displaced", "error": -0.942,
+          "change": {"begins": 0.958, "half": 0.958, "arrived": 1.125, "kind": "light", "lumaBefore": 0.11, "lumaAfter": 0.164, "size": 0.058, "strength": 6.14}}],
+        "unasked": [], "verdict": "displaced"},
+      "take_check": {"version": 2, "measuredAt": "2026-10-04T02:10:31.004Z", "frames": 97, "faceFrames": 44, "faceFrom": 0.917, "faceTo": 4, "takeFrames": 240, "takeFaceFrames": 240,
+        "framing": {"verdict": "wider", "ratio": 2.54, "takeReach": 11.73, "widestReach": 29.8, "widestAt": 2.167, "openingReach": null, "openingSeen": false},
+        "lip": {"verdict": "unclear", "best": {"corr": 0.585, "n": 110, "offset": 0.0417, "retime": 1}, "compared": 1.819, "onClock": 0.495, "worstLag": 0.042}}
+    },
+    {
+      "asset": "69280525-6475-463b-8ffc-34fb1c8afa9c", "shot_key": "c035", "selected": true,
+      "beat_check": {"version": 3, "measuredAt": "2026-10-04T02:00:11.852Z", "frames": 97, "fps": 24, "clipSeconds": 4.042, "noise": 0.017,
+        "beats": [{"id": "e1", "offset": 1.9, "kinds": ["lighting"], "verdict": "displaced", "error": -1.4,
+          "change": {"begins": 0.5, "half": 0.583, "arrived": 0.958, "kind": "light", "lumaBefore": 0.032, "lumaAfter": 0.169, "size": 0.167, "strength": 16.717}}],
+        "unasked": [], "verdict": "displaced"},
+      "take_check": {"version": 2, "measuredAt": "2026-10-04T02:09:51.388Z", "frames": 97, "faceFrames": 84, "faceFrom": 0.542, "faceTo": 4, "takeFrames": 240, "takeFaceFrames": 240,
+        "framing": {"verdict": "wider", "ratio": 1.18, "takeReach": 11.73, "widestReach": 13.81, "widestAt": 2.917, "openingReach": null, "openingSeen": false},
+        "lip": {"verdict": "unclear", "best": {"corr": 0.417, "n": 204, "offset": 0, "retime": 1.02}, "compared": 3.386, "onClock": 0.328, "worstLag": 0.078}}
+    }
+  ]
+}

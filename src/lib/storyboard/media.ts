@@ -19,6 +19,7 @@ import { orderBoxes, type StoryboardBox } from "./boxes";
 import { resolveEvents, type EventClock, type ResolvedEvent } from "./events";
 import type { BeatCheck } from "./beatCheck";
 import type { TakeCheck } from "./takeCheck";
+import type { AcceptanceRecord } from "./acceptance";
 
 export const ASSIGNMENT_ROLES = ["performance", "b_roll", "generated_image", "generated_clip", "reference"] as const;
 export type AssignmentRole = (typeof ASSIGNMENT_ROLES)[number];
@@ -75,6 +76,8 @@ export type MediaAsset = {
   beatCheck?: BeatCheck | null;
   /** A restaged clip held against the take it was made from — lips and framing (takeCheck.ts), once it has been. */
   takeCheck?: TakeCheck | null;
+  /** What a person has judged of the clip by looking — whether it does what it was asked to (acceptance.ts). */
+  acceptance?: AcceptanceRecord | null;
 };
 
 /** A take of the song as filmed: performance footage that was not made from another take. */

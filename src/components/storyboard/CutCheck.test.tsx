@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ReviewCheckReport } from "@/lib/storyboard/reviewCheck";
 import type { TimelineSegment } from "@/lib/storyboard/media";
+import type { CutAcceptance } from "@/lib/storyboard/acceptance";
 
 const run = vi.fn();
 vi.mock("@/lib/storyboard/reviewCheck", () => ({ runReviewCheck: (...a: unknown[]) => run(...a) }));
@@ -70,6 +71,38 @@ describe("Check this cut", () => {
     await waitFor(() => expect(screen.getByTestId("review-verify-result").dataset.ok).toBe("false"));
     expect(screen.getByTestId("review-verify-summary").textContent).toContain("Something does not hold");
     expect(screen.getAllByTestId("review-verify-check")[2].textContent).toContain("0.412 s from the song clock");
+  });
+
+  it("a cut that plays is not thereby a cut whose clips do what they were asked: both are said, apart, and both are in the report", async () => {
+    run.mockResolvedValue(report());
+    const line = { requirement: "framing" as const, label: "Framing", finding: "fails" as const, source: "measured" as const, says: "2.54× as far", measured: { finding: "fails" as const, says: "2.54× as far" }, judged: null };
+    const accepted: CutAcceptance = {
+      clips: [{ index: 39, key: "c035", shotId: "r39", start: 156.86, end: 160.78, assetId: "clip", name: "clip.mp4", acceptance: { verdict: "fails", lines: [line], fails: 1, open: 0 } }],
+      meets: 0,
+      fails: 1,
+      open: 0,
+      verdict: "fails",
+    };
+    render(<CutCheck {...props} accepted={accepted} />);
+    fireEvent.click(screen.getByTestId("review-verify"));
+    // everything that can be checked without watching it holds…
+    await waitFor(() => expect(screen.getByTestId("review-verify-result").dataset.ok).toBe("true"));
+    // …and that is said to be about playing only
+    const said = screen.getByTestId("review-verify-accepted");
+    expect(said.dataset.verdict).toBe("fails");
+    expect(said.textContent).toContain("That is whether the cut plays — not whether its clips do what they were asked.");
+    expect(said.textContent).toContain("1 generated clip: 1 fails what was asked");
+    const saved = JSON.parse(screen.getByTestId("review-verify-json").textContent ?? "{}");
+    expect(saved.ok).toBe(true);
+    expect(saved.acceptance).toMatchObject({ verdict: "fails", clips: [{ shot: 39, key: "c035", verdict: "fails", says: "fails framing", lines: [{ requirement: "framing", finding: "fails", source: "measured" }] }] });
+  });
+
+  it("a cut with no generated clip says nothing about acceptance", async () => {
+    run.mockResolvedValue(report());
+    render(<CutCheck {...props} accepted={{ clips: [], meets: 0, fails: 0, open: 0, verdict: "none" }} />);
+    fireEvent.click(screen.getByTestId("review-verify"));
+    await waitFor(() => expect(screen.getByTestId("review-verify-result").dataset.ok).toBe("true"));
+    expect(screen.queryByTestId("review-verify-accepted")).toBeNull();
   });
 
   it("shows the reason when the check itself cannot run", async () => {

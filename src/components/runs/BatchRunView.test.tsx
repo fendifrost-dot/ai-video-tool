@@ -32,7 +32,7 @@ describe("BatchRunView", () => {
     const rows = screen.getAllByTestId("shot-row");
     expect(rows.map((r) => r.getAttribute("data-state"))).toEqual(["blocked", "ready"]);
     expect(screen.getByTestId("shot-blocked").textContent).toContain("source clip");
-    expect(screen.getByTestId("plan-summary").textContent).toBe("1 to submit · estimate $3.70 · ceiling $25.00");
+    expect(screen.getByTestId("plan-summary").textContent).toBe("1 to submit · estimate $2.22 · ceiling $25.00");
   });
 
   it("nothing is submitted without a second click that names the amount", () => {
@@ -41,7 +41,7 @@ describe("BatchRunView", () => {
     fireEvent.click(screen.getByTestId("run"));
     expect(onRun).not.toHaveBeenCalled();
     const confirm = screen.getByTestId("confirm-run");
-    expect(confirm.textContent).toBe("Spend up to $3.70 — submit 1");
+    expect(confirm.textContent).toBe("Spend up to $2.22 — submit 1");
     fireEvent.click(confirm);
     expect(onRun).toHaveBeenCalledTimes(1);
   });
