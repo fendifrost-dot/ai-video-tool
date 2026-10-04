@@ -23,6 +23,14 @@ export type Mp4Track = {
   description: Uint8Array | null;
   width: number | null;
   height: number | null;
+  /**
+   * Degrees the picture is turned by before it is shown, from the track header's display matrix: 0, 90, 180 or 270.
+   * A phone take is often stored 1920 × 1080 with a 90° turn and SHOWN 1080 × 1920 — a measurement of where a man
+   * stands in it is transposed unless this is read.
+   */
+  rotation: number;
+  /** The transfer characteristic the file names (`colr`), e.g. "arib-std-b67" for HLG. Null where it names none. */
+  transfer: string | null;
   sampleCount: number;
   syncCount: number;
   /** The first media time presented at movie time 0 (edit list), seconds. */
@@ -125,6 +133,23 @@ export function vp9Codec(vpcC: Uint8Array): string | null {
   return `vp09.${pad(vpcC[4])}.${pad(vpcC[5])}.${pad(vpcC[6] >> 4)}`;
 }
 
+/** ISO/IEC 23001-8 transfer characteristics, for the few a camera actually writes. */
+const TRANSFER_NAMES: Record<number, string> = {
+  1: "bt709",
+  6: "bt601",
+  16: "smpte2084",
+  18: "arib-std-b67",
+};
+
+/**
+ * Degrees from a track header's 3 × 3 display matrix. Only the first two of its nine 16.16 fixed-point values are
+ * needed: the picture's own x axis, as the file asks for it to be drawn. Pure — exported for its test.
+ */
+export function rotationFromMatrix(a: number, b: number): number {
+  const deg = Math.round((Math.atan2(b, a) * 180) / Math.PI);
+  return ((deg % 360) + 360) % 360;
+}
+
 function parseTrack(v: DataView, trak: Box, bytes: Uint8Array): Mp4Track | null {
   const mdia = child(v, trak, "mdia");
   if (!mdia) return null;
@@ -158,6 +183,19 @@ function parseTrack(v: DataView, trak: Box, bytes: Uint8Array): Mp4Track | null 
     }
   }
 
+  // how the picture is turned before it is shown (tkhd's display matrix)
+  let rotation = 0;
+  const tkhd = child(v, trak, "tkhd");
+  if (tkhd) {
+    const tv = v.getUint8(tkhd.body);
+    // version 0: 4+4+4+4+4 before the reserved run; version 1: 8+8+4+4+8
+    const afterIds = tkhd.body + 4 + (tv === 1 ? 32 : 20);
+    const matrix = afterIds + 8 + 2 + 2 + 2 + 2; // reserved, layer, alternate group, volume, reserved
+    if (matrix + 8 <= tkhd.end) {
+      rotation = rotationFromMatrix(v.getInt32(matrix) / 65536, v.getInt32(matrix + 4) / 65536);
+    }
+  }
+
   // sample description
   const stsd = child(v, stbl, "stsd");
   let format = "";
@@ -165,6 +203,7 @@ function parseTrack(v: DataView, trak: Box, bytes: Uint8Array): Mp4Track | null 
   let description: Uint8Array | null = null;
   let width: number | null = null;
   let height: number | null = null;
+  let transfer: string | null = null;
   if (stsd && v.getUint32(stsd.body + 4) > 0) {
     const entry = [...boxes(v, stsd.body + 8, stsd.end)][0];
     if (entry) {
@@ -181,6 +220,9 @@ function parseTrack(v: DataView, trak: Box, bytes: Uint8Array): Mp4Track | null 
             description = payload.slice();
             codec = hevcCodec(format, payload);
           } else if (c.type === "vpcC") codec = vp9Codec(payload);
+          else if (c.type === "colr" && payload.byteLength >= 10 && fourcc(v, c.body) === "nclx") {
+            transfer = TRANSFER_NAMES[v.getUint16(c.body + 6)] ?? null;
+          }
         }
       }
     }
@@ -297,7 +339,7 @@ function parseTrack(v: DataView, trak: Box, bytes: Uint8Array): Mp4Track | null 
     return key < 0 ? null : sample(key);
   };
 
-  return { kind, timescale, duration: timescale ? durationUnits / timescale : 0, format, codec, description, width, height, sampleCount, syncCount: syncSet ? syncSet.length : sampleCount, startOffset, sample, sampleAt, keyframeAt, stsd: stsd ? bytes.slice(stsd.start, stsd.end) : null, sampleDelta, compositionOffset };
+  return { kind, timescale, duration: timescale ? durationUnits / timescale : 0, format, codec, description, width, height, rotation, transfer, sampleCount, syncCount: syncSet ? syncSet.length : sampleCount, startOffset, sample, sampleAt, keyframeAt, stsd: stsd ? bytes.slice(stsd.start, stsd.end) : null, sampleDelta, compositionOffset };
 }
 
 /** Parse a `moov` box (the bytes of the whole box, header included). `brand` is the file's major brand if known. */

@@ -61,6 +61,12 @@ import { measureAgainstTake, saveTakeCheck } from "@/lib/queries/takeCheck";
 import { asksByAsset, saveJudgement } from "@/lib/queries/acceptance";
 import { acceptanceOf as acceptanceFor, reviewedByAsset, type Acceptance, type Requirement } from "@/lib/storyboard/acceptance";
 import { readStoredReview } from "@/lib/storyboard/astraSection";
+import { analyzeTake, saveFootageAnalysis } from "@/lib/queries/footageAnalysis";
+import {
+  pickAnalysis,
+  type Staleness,
+  type StoredFootageAnalysis,
+} from "@/lib/storyboard/footageRecord";
 import { settingsOf } from "@/lib/worldBatch";
 import { ensureStoryboardMaterialized, type MaterializeResult } from "@/lib/storyboard/build";
 import { aspectOfProject, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
@@ -171,6 +177,18 @@ export type StoryboardController = {
   checkAgainstTake: (asset: MediaAsset) => Promise<void>;
   /** What a check in flight is doing, when one is. */
   checkingOf: (assetId: string) => string | null;
+  /**
+   * Read a TAKE for what it is — framing, movement, light, focus, how hard he is to cut out — and what a background
+   * would have to be to sit with it (storyboard/footage.ts, storyboard/compatibility.ts). Advisory: it writes a
+   * record on the take and changes nothing else.
+   */
+  analyzeFootage: (asset: MediaAsset) => Promise<void>;
+  /** The reading kept for this take and the stretch in hand, with whether it may still be believed. */
+  footageAnalysisOf: (
+    asset: MediaAsset,
+  ) => { analysis: StoredFootageAnalysis; staleness: Staleness } | null;
+  /** What a reading in flight is doing, when one is. */
+  analyzingOf: (assetId: string) => string | null;
   /**
    * A generated clip held against everything it was asked for: what was measured, what a person judged by looking,
    * and what nothing has looked at yet. Null for footage the app did not generate.
@@ -893,6 +911,57 @@ export function useStoryboardController(projectId: string): StoryboardController
     [takeOf, urlFor, qc, projectId],
   );
 
+  // --- what a take IS, before anything is generated against it -------------------------------------------------------------
+  const [analyzing, setAnalyzing] = useState<Record<string, string>>({});
+  const analyzeFootage = useCallback(
+    async (asset: MediaAsset) => {
+      const url = urlFor(asset);
+      if (!asset.isVideo) return;
+      if (!url) {
+        toast.info("The file is still being opened — try again in a moment");
+        return;
+      }
+      const stage = (t: string) => setAnalyzing((m) => ({ ...m, [asset.id]: t }));
+      stage("opening the take…");
+      try {
+        const next = await analyzeTake({
+          asset: { id: asset.id, ...playbackRef(asset) },
+          url,
+          onStage: stage,
+        });
+        await saveFootageAnalysis(asset.id, next);
+        await qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(projectId) });
+      } catch (e) {
+        toast.error(`The take could not be read: ${message(e)}`);
+      } finally {
+        setAnalyzing((m) => {
+          const { [asset.id]: _gone, ...rest } = m;
+          return rest;
+        });
+      }
+    },
+    [urlFor, qc, projectId],
+  );
+
+  const footageAnalysisOf = useCallback((asset: MediaAsset) => {
+    const kept = asset.footageAnalyses ?? [];
+    if (!kept.length) return null;
+    const ref = playbackRef(asset);
+    // the whole file, until a shot's own stretch is plumbed through — a narrower reading still shows, marked stale
+    const first = kept[0];
+    return pickAnalysis(kept, {
+      fingerprint: {
+        bucket: ref.bucket,
+        path: ref.path,
+        bytes: first.fingerprint.bytes,
+        seconds: first.fingerprint.seconds,
+        width: first.fingerprint.width,
+        height: first.fingerprint.height,
+      },
+      range: first.analysis.range,
+    });
+  }, []);
+
   // --- whether a clip does what it was asked to ---------------------------------------------------------------------------
   // what each generated clip was asked for (off the job that made it), and what the last second opinion found on it
   const asks = useMemo(() => asksByAsset(jobs.jobs), [jobs.jobs]);
@@ -1047,6 +1116,9 @@ export function useStoryboardController(projectId: string): StoryboardController
     takeOf,
     checkAgainstTake,
     checkingOf: (id) => checking[id] ?? null,
+    analyzeFootage,
+    footageAnalysisOf,
+    analyzingOf: (id) => analyzing[id] ?? null,
     acceptanceOf,
     judge,
     entities,
