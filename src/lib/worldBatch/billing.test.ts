@@ -87,7 +87,7 @@ describe("the runner records the route on the row", () => {
     const d = deps();
     await submitShot(ANGLE, CTX, d);
     const row = (d.insertJob as ReturnType<typeof vi.fn>).mock.calls[0][0];
-    expect(row.request_payload_json.settings.billing).toEqual({ route: "api", source: "higgsfield_api_balance", estimateUsd: 3.698 });
+    expect(row.request_payload_json.settings.billing).toEqual({ route: "api", source: "higgsfield_api_balance", estimateUsd: 2.22 });
   });
   it("routing off: an empty balance is a failure, exactly as before", async () => {
     const d = deps({ callProxy: vi.fn(async () => { throw new Error("403 not_enough_credits"); }) });
@@ -130,7 +130,7 @@ describe("a parked job is never submitted twice", () => {
   it("its billing reads back in words", () => {
     expect(describeBilling(billingOf(parked))).toBe("plan credits — credits not yet known");
     expect(describeBilling({ route: "subscription", source: "higgsfield_plan_credits", actualCredits: 24, switchedFrom: "api" })).toBe("plan credits — 24 credits (moved from the API: balance empty)");
-    expect(describeBilling({ route: "api", source: "higgsfield_api_balance", estimateUsd: 3.698 })).toBe("API balance — about $3.70");
+    expect(describeBilling({ route: "api", source: "higgsfield_api_balance", estimateUsd: 2.22 })).toBe("API balance — about $2.22");
     expect(describeBilling(null)).toContain("API balance");
   });
 });
