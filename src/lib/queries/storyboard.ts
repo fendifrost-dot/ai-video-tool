@@ -7,6 +7,7 @@
  */
 import { parseBeatCheck } from "@/lib/storyboard/beatCheck";
 import { parseTakeCheck } from "@/lib/storyboard/takeCheck";
+import { parseAcceptance } from "@/lib/storyboard/acceptance";
 import { useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
@@ -363,6 +364,7 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
     filmedIn: textOf(a.metadata_json, "filmed_in"),
     beatCheck: parseBeatCheck((a.metadata_json as { beat_check?: unknown } | null)?.beat_check),
     takeCheck: parseTakeCheck((a.metadata_json as { take_check?: unknown } | null)?.take_check),
+    acceptance: parseAcceptance((a.metadata_json as { acceptance?: unknown } | null)?.acceptance),
   };
 }
 
