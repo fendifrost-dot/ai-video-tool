@@ -12,6 +12,7 @@ import { BoxMediaView, ROLE_STYLE, mediaLabel } from "./BoxMediaView";
 import { frameBoxStyle } from "@/lib/project/aspect";
 import { FrameStrip } from "./FrameStrip";
 import { BeatCheckPanel } from "./BeatCheck";
+import { TakeCheckPanel } from "./TakeCheck";
 import { BeatStrip } from "./TimedBeats";
 import { ContinuityChips } from "./Continuity";
 import { Overlay } from "./Overlay";
@@ -263,6 +264,8 @@ function MediaList({ box, items, showing }: { box: StoryboardBox; items: BoxMedi
             {item.kind === "video" && <FrameStrip item={item} url={sb.urlFor(item.asset)} aspect={sb.aspect} />}
             {/* a generated clip held against what it was asked for: where the picture changed, and where it was asked to */}
             {item.kind === "video" && <BeatCheckPanel item={item} />}
+            {/* a restaged clip held against the take it was made from: his lips on the take's moments, no more of him in frame */}
+            {item.kind === "video" && <TakeCheckPanel item={item} />}
             {/* an image is seen here too, whether or not it is what the shot shows: a place drawn for a take is never "showing" */}
             {item.kind === "image" && sb.urlFor(item.asset) && (
               <img src={sb.urlFor(item.asset)} alt={item.asset.name} className="max-h-56 rounded border border-border/50 object-contain" data-testid="focus-media-image" />

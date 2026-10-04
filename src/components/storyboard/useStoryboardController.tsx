@@ -57,6 +57,7 @@ import { resolveEvents, type EventClock, type ResolvedEvent, type ShotEvent } fr
 import { ALTERNATIVE_LABEL, beatLines, type TemporalPlan } from "@/lib/storyboard/temporal";
 import type { AskedChange } from "@/lib/storyboard/beatCheck";
 import { measureClip as measureClipFile, saveBeatCheck } from "@/lib/queries/beatCheck";
+import { measureAgainstTake, saveTakeCheck } from "@/lib/queries/takeCheck";
 import { settingsOf } from "@/lib/worldBatch";
 import { ensureStoryboardMaterialized, type MaterializeResult } from "@/lib/storyboard/build";
 import { aspectOfProject, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
@@ -161,6 +162,12 @@ export type StoryboardController = {
   measureClip: (asset: MediaAsset) => Promise<void>;
   /** A clip being measured right now. */
   measuringOf: (assetId: string) => boolean;
+  /** The take a restaged clip was made from, and the stretch of it (on the take's own clock) — from the job that made the clip. */
+  takeOf: (asset: MediaAsset) => { take: MediaAsset; window: [number, number] } | null;
+  /** Hold a restaged clip against its take (lips, framing) and keep the result on the clip. */
+  checkAgainstTake: (asset: MediaAsset) => Promise<void>;
+  /** What a check in flight is doing, when one is. */
+  checkingOf: (assetId: string) => string | null;
   /** The project's continuity entities: places, props and lighting states, each described once. */
   entities: ContinuityEntity[];
   /** The artist's wardrobe looks — the existing Look records a shot can point at. */
@@ -835,6 +842,47 @@ export function useStoryboardController(projectId: string): StoryboardController
     [urlFor, requestOf, qc, projectId],
   );
 
+  // --- a restaged clip against the take it was made from ----------------------------------------------------------------
+  const takeOf = useCallback(
+    (asset: MediaAsset): { take: MediaAsset; window: [number, number] } | null => {
+      const job = jobs.jobs.find((j) => j.result_asset_id === asset.id);
+      const settings = job ? settingsOf(job) : null;
+      const w = settings?.sourceWindow;
+      if (!settings?.sourceAssetId || !w || !(w[1] > w[0])) return null;
+      const take = media.byId.get(settings.sourceAssetId);
+      return take && take.isVideo ? { take, window: [w[0], w[1]] } : null;
+    },
+    [jobs.jobs, media.byId],
+  );
+  const [checking, setChecking] = useState<Record<string, string>>({});
+  const checkAgainstTake = useCallback(
+    async (asset: MediaAsset) => {
+      const from = takeOf(asset);
+      const clipUrl = urlFor(asset);
+      const takeUrl = from ? urlFor(from.take) : undefined;
+      if (!from || !asset.isVideo) return;
+      if (!clipUrl || !takeUrl) {
+        toast.info("The files are still being opened — try again in a moment");
+        return;
+      }
+      const stage = (t: string) => setChecking((m) => ({ ...m, [asset.id]: t }));
+      stage("loading the face reader…");
+      try {
+        const check = await measureAgainstTake({ clip: playbackRef(asset), clipUrl, take: playbackRef(from.take), takeUrl, window: from.window, onStage: stage });
+        await saveTakeCheck(asset.id, check);
+        await qc.invalidateQueries({ queryKey: projectAssetsKeys.forProject(projectId) });
+      } catch (e) {
+        toast.error(`The clip could not be held against its take: ${message(e)}`);
+      } finally {
+        setChecking((m) => {
+          const { [asset.id]: _gone, ...rest } = m;
+          return rest;
+        });
+      }
+    },
+    [takeOf, urlFor, qc, projectId],
+  );
+
   // --- continuity entities ----------------------------------------------------------------------------------------
   const entityRun = useCallback(async (entityId: string, text: string, work: () => Promise<void>) => {
     setEntityBusy((b) => ({ ...b, [entityId]: text }));
@@ -962,6 +1010,9 @@ export function useStoryboardController(projectId: string): StoryboardController
     requestOf,
     measureClip,
     measuringOf: (id) => !!measuring[id],
+    takeOf,
+    checkAgainstTake,
+    checkingOf: (id) => checking[id] ?? null,
     entities,
     looks,
     continuityOf,
