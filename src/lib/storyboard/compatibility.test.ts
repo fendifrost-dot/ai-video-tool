@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzeFootage, type AnalysisInput, type FileFacts } from "./footage";
-import { compatibilityOf, routeFor, type TreatmentIntent } from "./compatibility";
+import { compatibilityOf, isMandatory, routeFor, type TreatmentIntent } from "./compatibility";
 import type { FaceFrame } from "./takeCheck";
 import type { SeriesFrame } from "@/lib/media/frameSeries";
 import { DETAIL_TILES, type DetailFrame } from "@/lib/media/detailSeries";
@@ -45,43 +45,78 @@ const analysis = (over: Partial<AnalysisInput> = {}) =>
     "2026-10-04T00:00:00.000Z",
   );
 
-describe("hard is for what was measured; preferred is for what was estimated", () => {
-  // This is the rule the whole module turns on, so it is tested on the findings themselves rather than by example.
-  it("puts no estimated finding on the hard list", () => {
-    const a = analysis();
+describe("authority is not evidence", () => {
+  // The rule this module was corrected on (4 October): who says a thing must hold, and whether AVT can check it,
+  // are different questions. An earlier version collapsed them and demoted the treatment's own asks to preferences
+  // the moment a property turned out to be one AVT only estimates.
+  const a = analysis();
+
+  it("never files an inference as a binding source constraint", () => {
     const c = compatibilityOf(a);
-    const estimatedFields = new Set<string>();
-    for (const [group, obj] of Object.entries(a) as [string, Record<string, unknown>][]) {
-      if (!obj || typeof obj !== "object") continue;
-      for (const [k, v] of Object.entries(obj)) {
-        if (v && typeof v === "object" && (v as { status?: string }).status === "estimated")
-          estimatedFields.add(`${group}.${k}`);
-      }
+    for (const r of c.requirements) {
+      if (r.authority === "source") expect(r.verification, r.from).toBe("measured");
+      if (r.authority === "advisory") expect(r.verification, r.from).toBe("estimated");
     }
-    // a hard constraint may cite several findings; none of them may be an estimate alone
-    for (const h of c.hard) {
-      const sole = !h.from.includes("+");
-      if (sole)
-        expect(estimatedFields.has(h.from), `${h.from} is an estimate and must not be hard`).toBe(
-          false,
-        );
-    }
-    expect(c.hard.length).toBeGreaterThan(0);
-    expect(c.preferences.length).toBeGreaterThan(0);
+    expect(c.requirements.some((r) => r.authority === "source")).toBe(true);
+    expect(c.requirements.some((r) => r.authority === "advisory")).toBe(true);
   });
 
-  it("files the camera's own stability as a preference, because it is estimated", () => {
+  it("keeps a treatment requirement MANDATORY even where it can only be estimated", () => {
+    const c = compatibilityOf(a, { wantsKeyDirection: "frame_left" } satisfies TreatmentIntent);
+    const r = c.requirements.find((x) => x.from === "treatment.wantsKeyDirection")!;
+    expect(r.authority).toBe("approved");
+    expect(isMandatory(r)).toBe(true);
+    // …and says plainly that the checking is the weak part, not the obligation
+    expect(r.verification).toBe("estimated");
+    expect(r.needsToVerify).toContain("not from where a lamp stands");
+  });
+
+  it("keeps a treatment requirement MANDATORY even where it cannot be checked at all", () => {
+    const c = compatibilityOf(a, { wantsFloorContact: true });
+    const r = c.requirements.find((x) => x.from === "treatment.wantsFloorContact")!;
+    expect(isMandatory(r)).toBe(true);
+    expect(r.verification).toBe("unverifiable");
+    expect(r.needsToVerify).toContain("nothing here sees a foot");
+  });
+
+  it("does not quietly drop a treatment ask the footage cannot satisfy", () => {
+    const c = compatibilityOf(a, { wantsCoverage: "full_body" });
+    // the requirement is carried…
+    expect(c.requirements.some((r) => r.from === "treatment.wantsCoverage" && isMandatory(r))).toBe(
+      true,
+    );
+    // …AND the disagreement is reported, with neither side softened
+    const conflict = c.conflicts.find((x) => x.wants.includes("full body"))!;
+    expect(conflict.footage).toContain("thigh up");
+    expect(conflict.resolvableBy).toBeNull();
+  });
+
+  it("carries a treatment ask even when the footage cannot be read at all", () => {
+    const blind = analysis({
+      faces: Array.from({ length: 30 }, (_, i) => ({ t: i / 30, face: null })),
+    });
+    const r = compatibilityOf(blind, { wantsCoverage: "full_body" }).requirements.find(
+      (x) => x.from === "treatment.wantsCoverage",
+    )!;
+    expect(isMandatory(r)).toBe(true);
+    expect(r.verification).toBe("unverifiable");
+  });
+
+  it("makes a locked camera binding, because stillness is measured on both readings", () => {
+    const c = compatibilityOf(a);
+    const r = c.requirements.find((x) => x.kind === "camera" && x.text.includes("locked off"))!;
+    expect(r.authority).toBe("source");
+    expect(isMandatory(r)).toBe(true);
+  });
+
+  it("files the camera's own stability as guidance, because it is estimated", () => {
     const moving = Array.from({ length: 30 }, (_, i) =>
       detail(i / 30, i === 0 ? {} : { shift: [0.02, 0], borderShift: [0.02, 0] }),
     );
     const c = compatibilityOf(analysis({ detail: moving }));
-    expect(c.preferences.some((p) => p.from === "camera.stability")).toBe(true);
-    expect(c.hard.some((p) => p.from === "camera.stability")).toBe(false);
-  });
-
-  it("makes a locked camera a hard constraint, because stillness is measured on both readings", () => {
-    const c = compatibilityOf(analysis());
-    expect(c.hard.some((h) => h.kind === "camera" && h.text.includes("locked off"))).toBe(true);
+    const r = c.requirements.find((x) => x.from === "camera.stability")!;
+    expect(r.authority).toBe("advisory");
+    expect(isMandatory(r)).toBe(false);
   });
 });
 
@@ -137,7 +172,7 @@ describe("the route", () => {
 
   it("names what AVT cannot do for the route it picked", () => {
     const c = compatibilityOf(analysis());
-    expect(c.gaps.join(" ")).toContain("no matte step");
+    expect(c.gaps.join(" ")).toContain("matting exists but only as a local script");
   });
 });
 
@@ -195,7 +230,9 @@ describe("the capture checklist is built from this take, not from a list of good
 describe("colour", () => {
   it("makes a tagged transfer a hard constraint and names the gap it opens", () => {
     const c = compatibilityOf(analysis({ file: { ...FILE, transfer: "arib-std-b67" } }));
-    expect(c.hard.some((h) => h.kind === "colour" && h.text.includes("arib-std-b67"))).toBe(true);
+    expect(c.requirements.some((h) => h.kind === "colour" && h.text.includes("arib-std-b67"))).toBe(
+      true,
+    );
     expect(c.gaps.join(" ")).toContain("no colour-transfer step");
   });
 });
