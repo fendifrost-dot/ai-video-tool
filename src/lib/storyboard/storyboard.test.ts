@@ -34,6 +34,7 @@ import {
   planSelect,
   roleForAsset,
   segmentAt,
+  sourceOfDerived,
   takeRangeForBox,
   timelineIssues,
   videoStateAt,
@@ -303,6 +304,24 @@ describe("the performance range of a box", () => {
     const b = takeRangeForBox({ start: 42, end: 44 }, sync(), 190.34)!;
     expect(b.start - a.start).toBeCloseTo(2, 6);
     expect(b.end).toBeCloseTo(a.end, 6);
+  });
+});
+
+describe("which take a clip was made from", () => {
+  const record = { derivedFrom: { assetId: "take", songStart: 62.749, sourceWindow: [61.895, 65.832] as [number, number], method: "composite" as const } };
+  it("is read off the job that made it", () => {
+    expect(sourceOfDerived({ derivedFrom: null }, { sourceAssetId: "take", sourceWindow: [46.2, 50.2] })).toEqual({ assetId: "take", window: [46.2, 50.2] });
+  });
+  it("is read off the clip's own record when no job made it — a composite filed from outside the app", () => {
+    expect(sourceOfDerived(record, null)).toEqual({ assetId: "take", window: [61.895, 65.832] });
+  });
+  it("the job's word comes first", () => {
+    expect(sourceOfDerived(record, { sourceAssetId: "other", sourceWindow: [1, 5] })).toEqual({ assetId: "other", window: [1, 5] });
+  });
+  it("is nobody's when neither names a take and a stretch of it", () => {
+    expect(sourceOfDerived({ derivedFrom: null }, null)).toBeNull();
+    expect(sourceOfDerived({ derivedFrom: { assetId: "take", songStart: 0 } }, null)).toBeNull();
+    expect(sourceOfDerived({ derivedFrom: null }, { sourceAssetId: "take", sourceWindow: [5, 5] })).toBeNull();
   });
 });
 

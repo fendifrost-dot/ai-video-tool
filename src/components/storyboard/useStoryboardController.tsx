@@ -81,6 +81,7 @@ import {
   planMoveAll,
   planSelect,
   roleForAsset,
+  sourceOfDerived,
   type AssignmentRole,
   type BoxMedia,
   type BoxMediaItem,
@@ -874,11 +875,9 @@ export function useStoryboardController(projectId: string): StoryboardController
   const takeOf = useCallback(
     (asset: MediaAsset): { take: MediaAsset; window: [number, number] } | null => {
       const job = jobs.jobs.find((j) => j.result_asset_id === asset.id);
-      const settings = job ? settingsOf(job) : null;
-      const w = settings?.sourceWindow;
-      if (!settings?.sourceAssetId || !w || !(w[1] > w[0])) return null;
-      const take = media.byId.get(settings.sourceAssetId);
-      return take && take.isVideo ? { take, window: [w[0], w[1]] } : null;
+      const from = sourceOfDerived(asset, job ? settingsOf(job) : null);
+      const take = from ? media.byId.get(from.assetId) : null;
+      return from && take && take.isVideo ? { take, window: from.window } : null;
     },
     [jobs.jobs, media.byId],
   );

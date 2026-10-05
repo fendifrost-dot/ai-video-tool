@@ -12,7 +12,8 @@ What it checks, all of it arithmetic over the files themselves:
                for shows up as a number instead of as a feeling
   matte        pieces of the room that travelled with him (components detached from his body), per frame
   stability    how much the matted area jumps between frames — a proxy for flicker
-  colour       the mean and spread of the output against the cut
+  colour       the output read the way a player reads an HD file — as BT.709 — against the frames that were
+               blended. An encode that used another matrix, or left the file untagged, shows up here as a colour bias
 
 What it does NOT check, and says so in the output: whether the lips match the words (no audio here, and lip sync is
 a comparison against a performance, not a property of one file), whether the background's perspective and light are
@@ -30,12 +31,25 @@ def ffmpeg() -> str:
     return shutil.which("ffmpeg") or __import__("imageio_ffmpeg").get_ffmpeg_exe()
 
 
-def frames_to(path: str, out_dir: str, fps: int) -> int:
+# every frame the file holds, once each (no resampling to a rate: a 29.97 file read at "30" gains a frame), read as
+# BT.709 limited range — what the cut is tagged as, and what a player assumes of an HD file that does not say
+AS_709 = "scale=in_color_matrix=bt709:in_range=tv,format=rgb24"
+
+
+def frames_to(path: str, out_dir: str) -> int:
     os.makedirs(out_dir, exist_ok=True)
     if not os.listdir(out_dir):
-        subprocess.run([ffmpeg(), "-v", "error", "-y", "-i", path, "-vf", f"fps={fps}",
+        subprocess.run([ffmpeg(), "-v", "error", "-y", "-i", path, "-vf", AS_709, "-fps_mode", "passthrough",
                         os.path.join(out_dir, "f_%05d.png")], check=True)
     return len([f for f in os.listdir(out_dir) if f.endswith(".png")])
+
+
+def tags_of(path: str) -> str | None:
+    out = subprocess.run([ffmpeg(), "-hide_banner", "-i", path], capture_output=True, text=True).stderr
+    for line in out.splitlines():
+        if "Video:" in line:
+            return "bt709" if "bt709" in line else None
+    return None
 
 
 def main() -> None:
@@ -45,14 +59,32 @@ def main() -> None:
     ap.add_argument("--leak-min", type=int, default=2000, help="a detached piece smaller than this is not counted")
     a = ap.parse_args()
     record = json.load(open(os.path.join(a.run, "record.json")))
-    fps = int(round(record["source"]["fps"]))
+    from fractions import Fraction
+    fps = float(Fraction(record["cut"]["rate"])) if record.get("cut") else float(round(record["source"]["fps"]))
     matte = os.path.join(a.run, "matte")
 
     src_dir = os.path.join(a.run, "_verify_src")
     out_dir = os.path.join(a.run, "_verify_out")
-    n_src = frames_to(os.path.join(a.run, "source_bt709.mp4"), src_dir, fps)
-    n_out = frames_to(os.path.join(a.run, "composite.mp4"), out_dir, fps)
+    n_src = frames_to(os.path.join(a.run, "source_bt709.mp4"), src_dir)
+    n_out = frames_to(os.path.join(a.run, "composite.mp4"), out_dir)
     n = min(n_src, n_out)
+
+    # ── colour: does a player see what was blended? ─────────────────────────────────────────────────────────────
+    blended = os.path.join(a.run, "frames")
+    col_abs, col_bias = [], []
+    for i in range(0, n, max(1, n // 12)):
+        want = os.path.join(blended, f"c_{i:05d}.png")
+        if not os.path.exists(want):
+            continue
+        w = np.asarray(Image.open(want).convert("RGB")).astype(np.float32)
+        g = np.asarray(Image.open(os.path.join(out_dir, f"f_{i + 1:05d}.png")).convert("RGB")).astype(np.float32)
+        # the coloured pixels are where a wrong matrix shows; greys survive any matrix
+        sat = (w.max(axis=2) - w.min(axis=2)) > 40
+        col_abs.append(float(np.abs(g - w).mean()))
+        if sat.sum() > 2000:
+            col_bias.append(np.abs((g - w)[sat]).mean(axis=0))
+    sat_err = float(np.mean(col_bias)) if col_bias else None
+    tagged = tags_of(os.path.join(a.run, "composite.mp4"))
 
     # ── performance: are his pixels still his? ──────────────────────────────────────────────────────────────────
     gains, offsets, resid = [], [], []
@@ -105,6 +137,18 @@ def main() -> None:
                     "his pixels are the take's pixels"
                     if gains and abs(np.mean(gains) - 1) < 0.01 and abs(np.mean(offsets)) < 2
                     else "the performer was graded: a gain or offset was applied that nobody asked for"
+                ),
+            },
+            "colour": {
+                "method": "the output decoded as BT.709 limited range, against the blended frames; `saturated` is over pixels whose channels differ by more than 40",
+                "fileSays": tagged,
+                "meanAbs255": round(float(np.mean(col_abs)), 2) if col_abs else None,
+                "saturatedMeanAbs255": round(sat_err, 2) if sat_err is not None else None,
+                "verdict": (
+                    "not checked: the blended frames are not in the run folder" if not col_abs
+                    else "a player sees the colours that were blended" if tagged == "bt709" and (sat_err is None or sat_err < 4) and np.mean(col_abs) < 3
+                    else "the file is not tagged, so a player has to guess how to read it" if tagged != "bt709" and (sat_err is None or sat_err < 4)
+                    else "read as BT.709 the colours are not the blended ones: the encode used another matrix"
                 ),
             },
             "matteLeaks": {
