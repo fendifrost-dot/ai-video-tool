@@ -9,6 +9,38 @@ the browser you already have. The cloud container has no browser and no enrolled
 
 ---
 
+## Before you run it — corrections from the integration agent (4 October, before any image exists)
+
+The agent this was handed to (integration session, browser access) **did not run it** and found these. Nothing was
+generated; $0 spent.
+
+1. **The script on `eec517e` would not have stopped spending.** `generate()` read `images[].signedUrl`;
+   `world-still-proxy` returns `stills[].previewUrl`. Every answer read as empty and `while len(saved) < n` asked
+   again — a billed $0.28 call each loop, no pictures saved, no end. Reproduced with a stand-in for the network
+   (25 billed calls, 0 saved, stopped only by the harness). **Fixed here**: the proxy's real answer is read; an
+   empty answer, a refusal or an error stops the run with what was said; a short answer gets at most three top-up
+   calls per arm; the spend cannot pass the estimate by more than those. Tests: `scripts/qa/tests/`.
+2. **The arms were not interleaved.** The comment said so and the shuffled `order` was never used: all 41 control
+   were drawn, then all 41 treatment. The calls now run in one fixed shuffled order (`plan_calls`, recorded in
+   `generation.json`). This is the script's own stated control, implemented — not a new one.
+3. **A blind read was not possible.** `blind_key.json` named anonymised files that did not exist; the only pictures
+   on disk had the arm in their filename. Scoring now writes the copies to `<out>/blind/`. Read those, then the key.
+4. **`droppedNoFace` was one number**; § 4 asks whether it is lopsided. `droppedNoFaceByArm` is now beside it. The
+   proxy's own billed total is written to `generation.json` (`billedUsdReportedByProxy`).
+5. **Running without `--confirm` does not check your sign-in.** It prints the cost and exits before it reads any
+   credential. The first billed call is the first time auth is used.
+6. **The treatment arm is the positive text only.** `arms.json` carries `negativeTreatment`; neither the script nor
+   `world-still-proxy` sends a negative prompt. That is what this route ships, so the experiment tests what ships —
+   but a result here says nothing about the negatives.
+7. **§ 1 was not done and will not be done from a cloud session.** It asks for the user's session token to be read
+   out of the browser and moved into a file or a CLI. The integration agent does not lift session tokens out of the
+   browser (the browser tool withholds them, and Fendi's standing direction on the Higgsfield sign-in was the
+   same). The run belongs on the Mac, where a credential can live: Fendi enrols once
+   (`python3 scripts/_lib/auth.py enroll`, or Settings → Machine credentials in the app), then a session ON THE
+   MAC runs § 2. No endpoint, metric, sample size or decision rule was touched.
+
+---
+
 ## 0 · There is no permission to grant
 
 The token is **the ordinary session of the signed-in user** — not an elevated scope, not a new grant.
