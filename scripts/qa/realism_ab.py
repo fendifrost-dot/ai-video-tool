@@ -45,7 +45,7 @@ text. xAI's images endpoint exposes no seed, so runs cannot be seed-locked: that
 n and by the fixed decision rule, not by pretending the pairs are matched. Images are written
 with anonymised names plus a separate key file, so visual judgement can be made blind.
 """
-import argparse, glob, json, os, random, sys, time, urllib.error, urllib.request
+import argparse, glob, json, os, random, shutil, sys, time, urllib.error, urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -149,11 +149,81 @@ def report(control, treatment):
 # ---------------------------------------------------------------------------
 # Generation
 # ---------------------------------------------------------------------------
-def generate(auth, project, prompt, n, out_dir, tag, resolution, aspect):
-    """Ask for n images of one arm, MAX_N_PER_CALL at a time. Returns saved paths."""
-    saved = []
-    while len(saved) < n:
-        want = min(MAX_N_PER_CALL, n - len(saved))
+MAX_TOPUP_CALLS = 3  # per arm, when the provider returns fewer pictures than asked
+
+
+def urls_of(res):
+    """The pictures in one world-still-proxy answer: {ok, billed, actualCostUsd, stills: [{path, previewUrl}]}.
+    (The first version of this script read `images[].signedUrl`, which the proxy has never returned: every answer
+    read as empty and the loop asked again, billed, without end. The older names are still accepted.)"""
+    items = res.get("stills") or res.get("images") or res.get("results") or []
+    return [u for u in ((i.get("previewUrl") or i.get("signedUrl") or i.get("url")) for i in items if isinstance(i, dict)) if u]
+
+
+def plan_calls(n, seed=20261004):
+    """Every call of the run, both arms, in one fixed shuffled order — so provider-side drift over the run falls on
+    both arms alike. Each call asks for at most MAX_N_PER_CALL pictures; each arm's calls add up to n."""
+    calls = []
+    for tag in ("control", "treatment"):
+        left = n
+        while left > 0:
+            want = min(MAX_N_PER_CALL, left)
+            calls.append((tag, want))
+            left -= want
+    random.Random(seed).shuffle(calls)
+    return calls
+
+
+def ext_of(data):
+    return ".png" if data[:8] == b"\x89PNG\r\n\x1a\n" else ".jpg"
+
+
+def run_generation(post, fetch, arms, n, out_dir, sleep=time.sleep):
+    """Run every planned call. Never asks again on an answer it cannot use: a refusal, an error or an empty answer
+    stops the run with what was said, and the spend can never pass the estimate by more than the top-up calls.
+    `post(tag, prompt, want)` returns the proxy's JSON; `fetch(url)` returns bytes. Returns (saved, billedUsd)."""
+    saved = {"control": [], "treatment": []}
+    billed = 0.0
+    ceiling = 2 * n * PRICE_USD_PER_IMAGE + 2 * MAX_TOPUP_CALLS * MAX_N_PER_CALL * PRICE_USD_PER_IMAGE
+
+    def one(tag, want):
+        nonlocal billed
+        if billed + want * PRICE_USD_PER_IMAGE > ceiling + 1e-9:
+            raise SystemExit(f"stopped: ${billed:.2f} billed, the next call would pass the ceiling of ${ceiling:.2f}")
+        res = post(tag, arms[tag], want)
+        urls = urls_of(res)
+        if res.get("billed"):
+            billed += float(res.get("actualCostUsd") or len(urls) * PRICE_USD_PER_IMAGE)
+        if res.get("ok") is False or not urls:
+            raise SystemExit(
+                f"{tag}: the proxy returned no usable picture ({res.get('error') or 'empty answer'}; "
+                f"billed={res.get('billed')}; detail={json.dumps(res.get('detail'))[:300]}). "
+                f"Stopped after ${billed:.2f}; nothing was asked again. Saved so far: "
+                f"{len(saved['control'])} control, {len(saved['treatment'])} treatment."
+            )
+        for url in urls[: n - len(saved[tag])]:
+            data = fetch(url)
+            p = os.path.join(out_dir, f"{tag}_{len(saved[tag]):03d}{ext_of(data)}")
+            with open(p, "wb") as f:
+                f.write(data)
+            saved[tag].append(p)
+        sleep(1.0)
+
+    for tag, want in plan_calls(n):
+        one(tag, want)
+    for tag in ("control", "treatment"):  # the provider may return fewer than asked: a bounded top-up, then stop
+        for _ in range(MAX_TOPUP_CALLS):
+            short = n - len(saved[tag])
+            if short <= 0:
+                break
+            one(tag, min(MAX_N_PER_CALL, short))
+        if len(saved[tag]) < n:
+            raise SystemExit(f"{tag}: {len(saved[tag])} of {n} pictures after {MAX_TOPUP_CALLS} top-up calls; ${billed:.2f} billed. Score what exists with --score-only, and say so.")
+    return saved, round(billed, 4)
+
+
+def proxy_post(auth, project, resolution, aspect):
+    def post(tag, prompt, want):
         body = {
             "projectId": project,
             "prompt": prompt,
@@ -164,26 +234,12 @@ def generate(auth, project, prompt, n, out_dir, tag, resolution, aspect):
             "shotLabel": f"realism-ab-{tag}",
             "maxCostUsd": want * PRICE_USD_PER_IMAGE + 0.01,
         }
-        req = urllib.request.Request(
-            ENDPOINT,
-            data=json.dumps(body).encode(),
-            headers={**auth.headers(), "Content-Type": "application/json"},
-            method="POST",
-        )
+        req = urllib.request.Request(ENDPOINT, data=json.dumps(body).encode(), headers={**auth.headers(), "Content-Type": "application/json"}, method="POST")
         try:
-            res = json.loads(urllib.request.urlopen(req, timeout=300).read())
+            return json.loads(urllib.request.urlopen(req, timeout=300).read())
         except urllib.error.HTTPError as e:
             raise SystemExit(f"{tag}: HTTP {e.code} {e.read().decode()[:400]}")
-        for item in res.get("images", res.get("results", [])):
-            url = item.get("signedUrl") or item.get("url")
-            if not url:
-                continue
-            data = urllib.request.urlopen(url, timeout=300).read()
-            p = os.path.join(out_dir, f"{tag}_{len(saved):03d}.jpg")
-            open(p, "wb").write(data)
-            saved.append(p)
-        time.sleep(1.0)
-    return saved
+    return post
 
 
 def main():
@@ -213,27 +269,29 @@ def main():
 
         auth = Session.from_args(a)
         os.makedirs(run, exist_ok=True)
-        # Interleave the arms so provider-side drift over the run hits both equally.
-        order = ["control", "treatment"] * a.n
-        random.Random(20261004).shuffle(order)
-        for tag in ("control", "treatment"):
-            generate(auth, a.project, arms[tag], a.n, run, tag, a.resolution, a.aspect)
+        # The arms' calls are interleaved in one fixed order (plan_calls) so provider-side drift hits both equally.
+        _, billed_usd = run_generation(proxy_post(auth, a.project, a.resolution, a.aspect), lambda u: urllib.request.urlopen(u, timeout=300).read(), arms, a.n, run)
+        print(f"billed, as the proxy reported it: ${billed_usd:.2f}")
         json.dump(arms, open(os.path.join(run, "arms.json"), "w"), indent=1)
+        json.dump({"billedUsdReportedByProxy": billed_usd, "callOrder": plan_calls(a.n)}, open(os.path.join(run, "generation.json"), "w"), indent=1)
 
     score = scorer()
     groups = {"control": [], "treatment": []}
     dropped = 0
+    dropped_by_arm = {"control": 0, "treatment": 0}
     for p in sorted(glob.glob(os.path.join(run, "*.jpg")) + glob.glob(os.path.join(run, "*.png"))):
         tag = "treatment" if os.path.basename(p).startswith("treatment") else "control"
         m = score(p)
         if m is None:
             dropped += 1
+            dropped_by_arm[tag] += 1
             continue
         m["_file"] = os.path.basename(p)
         groups[tag].append(m)
 
     out = report(groups["control"], groups["treatment"])
     out["droppedNoFace"] = dropped
+    out["droppedNoFaceByArm"] = dropped_by_arm  # lopsided = one arm is being compared on a filtered sample
     out["route"] = {"endpoint": "world-still-proxy", "model": MODEL, "seedLocked": False}
     out["notMeasured"] = [
         "whether a viewer prefers either arm — this counts texture, it does not judge a picture",
@@ -247,6 +305,12 @@ def main():
     random.Random(7).shuffle(files)
     key = {f"blind_{i:03d}": f for i, f in enumerate(files)}
     json.dump(key, open(os.path.join(run, "blind_key.json"), "w"), indent=1)
+    # The pictures themselves under their anonymised names: the originals carry the arm in the filename, so a
+    # blind read has to be made from this folder, with blind_key.json left closed until it is done.
+    blind_dir = os.path.join(run, "blind")
+    os.makedirs(blind_dir, exist_ok=True)
+    for name, f in key.items():
+        shutil.copyfile(os.path.join(run, f), os.path.join(blind_dir, name + os.path.splitext(f)[1]))
 
 
 if __name__ == "__main__":
