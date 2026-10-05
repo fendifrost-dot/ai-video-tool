@@ -8,7 +8,8 @@ export const PROVIDER_RATES = {
   runway: { gen4_turbo: 0.05, "gen4.5": 0.15 } as Record<string, number>,
   kling_usd_per_s: 0.07,
   dop_usd_per_s: 0.083,
-  seedance_usd_per_s: { "480p": 0.2468, "720p": 0.4622, "1080p": 1.1372 } as Record<string, number>,
+  /** The provider's per-second figures for a job WITHOUT a video input (16:9), all three sizes. */
+  seedance_usd_per_s: { "480p": 0.2056, "720p": 0.4622, "1080p": 1.1372 } as Record<string, number>,
   /**
    * The provider's published token rule for Seedance 2.5, which is what it charges by (provider_rates.json →
    * _seedance_tokens has the rule in words and the scope of what has actually been charged).
@@ -19,6 +20,8 @@ export const PROVIDER_RATES = {
     pixels: { "480p": 409920, "720p": 921600, "1080p": 2073600 } as Record<string, number>,
     frames_per_second: 24,
     divisor: 1024,
+    /** The sizes at which a real charge has matched the rule. Any other size is the published rule, never charged. */
+    charged: ["720p"] as string[],
   },
   judge_usd_each: 0.08,
 } as const;
