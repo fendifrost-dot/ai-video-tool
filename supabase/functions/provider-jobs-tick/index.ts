@@ -23,7 +23,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { callControlCenter, controlCenterConfig } from "../_shared/controlCenterClient.ts";
 import { ingestOne } from "../_shared/ingestClip.ts";
-import { advanceJobs, type AssignmentOp, type ProgressDeps, type ProgressJob } from "../_shared/jobProgress.ts";
+import { advanceJobs, onSubscriptionRoute, subscriptionResultUrl, type AssignmentOp, type ProgressDeps, type ProgressJob } from "../_shared/jobProgress.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -95,6 +95,8 @@ Deno.serve(async (req) => {
         cc.url,
         cc.key,
         admin as any,
+        // a plan-credit job: Control Center has never heard of it; its runner wrote where the clip is
+        onSubscriptionRoute(job) ? subscriptionResultUrl(job) : null,
       );
       return out.assetId;
     },

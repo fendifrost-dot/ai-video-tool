@@ -27,6 +27,11 @@ export async function ingestOne(
   ccUrl: string,
   ccKey: string,
   admin: ReturnType<typeof createClient>,
+  /**
+   * Where the finished clip is, when Control Center does not know the job: a plan-credit job run through the
+   * provider's own connector records its result URL on the row, and the server fetches it from there. https only.
+   */
+  directResultUrl?: string | null,
 ): Promise<{ jobId: string; assetId: string; sizeBytes: number }> {
   // 1. Already ingested? Bail idempotently.
   if (row.result_asset_id) {
@@ -73,8 +78,11 @@ export async function ingestOne(
   // 3. Fetch resultUrl (small JSON envelope, never hits the size ceiling).
   const ctrlMeta = new AbortController();
   const metaTimer = setTimeout(() => ctrlMeta.abort(), 30_000);
-  let resultUrl: string;
-  try {
+  let resultUrl = "";
+  if (directResultUrl) {
+    if (!/^https:\/\//i.test(directResultUrl)) throw new Error("the recorded result link is not an https link");
+    resultUrl = directResultUrl;
+  } else try {
     const metaResp = await fetch(
       `${ccUrl.replace(/\/$/, "")}/functions/v1/video-providers-job-result?${urlParams.toString()}`,
       { method: "GET", headers: { "x-api-key": ccKey }, signal: ctrlMeta.signal },

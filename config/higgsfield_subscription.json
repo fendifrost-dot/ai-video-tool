@@ -1,0 +1,64 @@
+{
+  "_about": "The Higgsfield subscription (plan-credit) route, run by scripts/runner/higgsfield_subscription_runner.py through Higgsfield's own CLI (@higgsfield/cli). Data, not code. Nothing here is verified until `verified` says so: job_type and param names must be read from `higgsfield model list --video` / `higgsfield model get <job_type>` on a signed-in machine with an active paid plan (the CLI answers nothing without one). An operation with verified=false is never submitted. `enabled` stays false until one live job has been checked end to end.",
+  "enabled": false,
+  "max_credits_per_job": 60,
+  "cli": {
+    "package": "@higgsfield/cli",
+    "checked_version": "1.1.26",
+    "binary": "higgsfield"
+  },
+  "operations": {
+    "seedance_ref": {
+      "verified": false,
+      "avt_model": "seedance-2.5-reference",
+      "job_type": null,
+      "params": {
+        "prompt": "prompt",
+        "duration": "duration",
+        "resolution": "resolution",
+        "aspect_ratio": "aspect-ratio",
+        "generate_audio": null
+      },
+      "video_reference_flag": "--video-references",
+      "image_reference_flag": "--image-references",
+      "_open": "schema and quote are read (see connector); NOT yet proven: that a live omni_reference job with AVT's real source clip returns a usable restage, that the result link is fetchable by the server, and what was actually charged. CLI job_type name is still unread (the CLI needs a paid plan).",
+      "connector": {
+        "model": "seedance_2_5",
+        "params": {
+          "mode": "omni_reference",
+          "duration": "4-30 s",
+          "resolution": [
+            "480p",
+            "720p",
+            "1080p"
+          ],
+          "aspect_ratio": [
+            "auto",
+            "21:9",
+            "16:9",
+            "4:3",
+            "1:1",
+            "3:4",
+            "9:16"
+          ],
+          "generate_audio": "bool (AVT sends false)"
+        },
+        "media_roles": {
+          "source clip": "video_references",
+          "still": "image_references"
+        },
+        "inputs": "media_import_url(https link, max 50 MB) -> media_id; raw links are not accepted in medias[].value",
+        "quote": "generate_video with get_cost:true submits nothing",
+        "status": "jobs_wait (15 s long-poll) -> result URLs",
+        "read_2026_10_03": {
+          "credits_4s_480p": 12,
+          "credits_4s_720p": 28,
+          "credits_8s_720p": 56,
+          "credits_4s_1080p": 48,
+          "credits_4s_720p_with_video_reference": 28,
+          "note": "a video reference did not change the quote; quotes are for seedance_2_5 omni_reference, audio off"
+        }
+      }
+    }
+  }
+}
