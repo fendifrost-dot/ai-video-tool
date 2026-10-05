@@ -345,3 +345,13 @@ concrete production need reactivates it; whoever picks it up merges main first a
 generation on approval; `SUBSCRIPTION_ROUTING.enabled = false`, `verifiedRoutes = []`; database gate migration
 written and tested on a throwaway database, not applied; nothing deployed; PR #167 draft; Grok on hold; $0 spent by
 this session.
+
+## Correction, 4 October 20:15 CT — the 480p "inconsistency" above is withdrawn (doc only; the branch stays parked)
+
+The parked section says the 480p restage estimate "may be about 20 % low (about $1.18)". **That was wrong.** The two
+figures are both Higgsfield's, for the same model and size: $0.2056 per generated second with NO video input, and
+$0.2468 as the model page's headline for a job WITH a video input (one second in + one second out at 0.6× the rate).
+Both give **$0.99** for a 4 s restage from a 4 s source. Nothing was multiplied. Resolved on main in PR #174, with
+the trace in `docs/handoffs/TESTING_TO_INTEGRATION_2026-10-04.md` (last section) and in
+`config/provider_rates.json` → `_seedance_tokens`. Status by size: 720p charged; 480p and 1080p the published rule,
+never charged. The purchase-attribution correction is now made in the testing handoff on main as well.
