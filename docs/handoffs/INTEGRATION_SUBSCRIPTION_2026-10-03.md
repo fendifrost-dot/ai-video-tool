@@ -295,8 +295,53 @@ The API column of the 22:05 comparison table is superseded by Higgsfield's publi
 note): a 4 s restage with a 4 s source is $0.99 at 480p, $2.22 at 720p (charged), $5.46 at 1080p; 8 s 720p is $4.44.
 Plan credits for the same: 12 / 28 / 48 (56 for 8 s). On Plus monthly at full use that is $0.59 / $1.38 / $2.36.
 
-**Decision recorded (Fendi, relayed by the testing agent): do not buy the plan yet; keep the MCP integration
-available for later.** State this branch is left in: connectors connected with the permissions listed above;
+**Recommendation recorded (ChatGPT's, relayed by the testing agent — NOT a purchase decision by Fendi; corrected
+4 October 19:45 CT, see the last section): do not buy the plan yet; keep the MCP integration available for later.** State this branch is left in: connectors connected with the permissions listed above;
 routing off; the database gate written and tested on a throwaway database, not applied; nothing deployed; PR #167 a
 draft. To switch on later: buy a plan → apply the migration → merge and deploy → one wanted job through the route,
 session ended before the clip lands → only then `enabled` and `verifiedRoutes`. Grok stays on hold.
+
+## PARKED — 4 October 2026, 19:45 CT (Fendi: "Keep PR #167 parked, routing disabled, and purchases paused")
+
+No paid generations, no deployment, no further merges of main into this branch. The branch stays as it is until a
+concrete production need reactivates it; whoever picks it up merges main first and re-runs the suite.
+
+**Three corrections to the record, on Fendi's instruction:**
+
+1. **"Do not buy the plan yet" is ChatGPT's recommendation, not a purchase decision by Fendi.** An earlier section
+   of this file, following the testing agent's note, called it "Fendi's decision". Fendi has made no purchase
+   decision either way. **No purchase is authorized** — no plan, no trial, no top-up, on Higgsfield or Runway — and
+   nothing in this file should be read as standing permission to buy later. (The same wording is in
+   `TESTING_TO_INTEGRATION_2026-10-04.md` on main, item 3; that file is the testing agent's and was left as it is.)
+
+2. **What the subscription connections are still for.** Compositing keeps the filmed performance: the artist's take
+   is real footage and is not regenerated, so performance restaging is not what a plan would be bought for. The
+   things that ARE generated around the take — backgrounds, plates, B-roll — may still go through the subscription
+   connections where the connector supports the operation and it is cheaper than the API for that operation. An
+   earlier line here said the next test draws "nothing a plan-credit route would carry"; that was too strong. The
+   route as built carries one operation (`seedance_ref`); a still or a Kling plate through the connector would need
+   its own operation verified, its own quote and its own break-even — none of which has been read yet.
+
+3. **Pricing is established by its own tests, not by the routing test.** `billing.test.ts` only holds the billing
+   record to whatever estimate the job row carries; it says nothing about whether that estimate is right. That is
+   established separately, and was checked on this branch (71 tests in `src/lib/worldBatch` and
+   `src/lib/storyboard/restage.test.ts`, all passing):
+   - `worldBatch.test.ts` → "seedance is priced by the provider's token rule" asserts the documented formula
+     (`ceil(height × width × (input s + output s) × 24 / 1024)` tokens, $0.0214 per 1,000 at 720p, × 0.6 with a video
+     input) against fixed dollar outcomes: 4 s from a 4 s source = 172,800 tokens = $2.218752 → **$2.22, the amount
+     charged**; 6 s = **$3.33, charged**; the durations AVT really sent (4.004 s, 6.006 s) → still $2.22 and $3.33.
+   - `restage.test.ts` asserts the same two charged amounts through `restageEstimateUsd`.
+   - Recomputed by hand, outside the repo's code: 1280 × 720 × 8 × 24 / 1024 = 172,800 → $2.2188; with 4.004 s,
+     172,887 → $2.2199; 6.006 + 6 s → 259,330 → $3.3298. They agree.
+   - **One open inconsistency, at 480p only.** The rule with the configured 854 × 480 pixels gives $0.2056 per
+     second without a video input, and the test asserts that figure as "the provider's per-second figure" — but the
+     provider's per-second list in the same config says $0.2468 (720p and 1080p reproduce their list figures
+     exactly: $0.4622, $1.1372). So either the 480p pixel count is not 854 × 480 or the list differs; the 480p
+     restage estimate ($0.99) may be about 20 % low (about $1.18). Nothing has been charged at 480p or 1080p, so
+     both remain the published rule, unverified. Left for the owner of `config/provider_rates.json` — not changed
+     here.
+
+**State at parking:** connectors (Higgsfield, Runway) connected in Fendi's Claude account, reads on always-allow,
+generation on approval; `SUBSCRIPTION_ROUTING.enabled = false`, `verifiedRoutes = []`; database gate migration
+written and tested on a throwaway database, not applied; nothing deployed; PR #167 draft; Grok on hold; $0 spent by
+this session.
