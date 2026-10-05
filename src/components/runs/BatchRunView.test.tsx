@@ -35,6 +35,17 @@ describe("BatchRunView", () => {
     expect(screen.getByTestId("plan-summary").textContent).toBe("1 to submit · estimate $2.22 · ceiling $25.00");
   });
 
+  it("says when an estimate rests on a published rate that has never been charged — and says nothing at the charged size", () => {
+    render(<BatchRunView {...props()} />); // 720p: charged
+    expect(screen.queryByTestId("plan-price-basis")).toBeNull();
+    const low = { ...READY, id: "S12_480", resolution: "480p" as const };
+    render(<BatchRunView {...props({ rows: [row(low)], plan: planRun([low], []) })} />);
+    const note = screen.getByTestId("plan-price-basis").textContent ?? "";
+    expect(note).toContain("Seedance at 480p");
+    expect(note).toContain("never yet charged at that size");
+    expect(note).toContain("not a verified price");
+  });
+
   it("nothing is submitted without a second click that names the amount", () => {
     const onRun = vi.fn();
     render(<BatchRunView {...props({ onRun })} />);

@@ -18,7 +18,9 @@ import {
   planRun,
   resultUrlOf,
   runPlan,
+  seedancePriceBasis,
   seedanceUsd,
+  unchargedSeedanceSizes,
   shotState,
   spentEstimateUsd,
   usd,
@@ -126,6 +128,69 @@ describe("dialect", () => {
   });
 });
 
+describe("Seedance price — the rule against the provider's own published figures, and what has actually been charged", () => {
+  // Read from open.higgsfield.ai on 4 October 2026 (text-to-video, reference-to-video and video-edit pages; 16:9).
+  // These are the provider's numbers, typed here — not derived from the config — so the rule is tested against them.
+  const PUBLISHED_NO_VIDEO_INPUT_PER_GENERATED_S = { "480p": 0.2056, "720p": 0.4622, "1080p": 1.1372 };
+  const PUBLISHED_WITH_VIDEO_INPUT_PER_COMBINED_S = { "480p": 0.1234, "720p": 0.2773, "1080p": 0.6823 };
+  const round4 = (n: number) => Math.round(n * 1e4) / 1e4;
+  // the rule, spelled out with no reference to the module under test
+  const byHand = (w: number, h: number, combinedSeconds: number, usdPer1000: number, videoInput: boolean) =>
+    (Math.ceil((w * h * combinedSeconds * 24) / 1024) / 1000) * usdPer1000 * (videoInput ? 0.6 : 1);
+
+  it("reproduces all six published per-second figures from the configured sizes", () => {
+    for (const res of ["480p", "720p", "1080p"] as const) {
+      // no video input: one generated second
+      expect(round4(seedanceUsd(res, 1, 0))).toBe(PUBLISHED_NO_VIDEO_INPUT_PER_GENERATED_S[res]);
+      // a video input: per second of input + generated together (two seconds in, two out, divided by four)
+      expect(round4(seedanceUsd(res, 2, 2) / 4)).toBe(PUBLISHED_WITH_VIDEO_INPUT_PER_COMBINED_S[res]);
+      // and the list of per-second figures in the config is the no-video-input one at every size
+      expect(PROVIDER_RATES.seedance_usd_per_s[res]).toBe(PUBLISHED_NO_VIDEO_INPUT_PER_GENERATED_S[res]);
+    }
+  });
+
+  it("480p: $0.2056 and $0.2468 are the same model and size under different billing — and give the same 4 s restage", () => {
+    // $0.2056 = one generated second, NO video input, full rate
+    expect(byHand(854, 480, 1, 0.0214, false)).toBeCloseTo(0.2056, 4);
+    // $0.2468 = the pages' "from" headline for a job WITH a video input: one second in + one second out (two combined
+    // seconds) at six tenths of the rate, rounded up to four places — a price per OUTPUT second when input = output
+    const headline = byHand(854, 480, 2, 0.0214, true);
+    expect(headline).toBeCloseTo(0.24672, 5);
+    expect(Math.ceil(headline * 1e4) / 1e4).toBe(0.2468);
+    // a 4 s restage from a 4 s source, each way: 76,860 tokens at $0.01284 per thousand, or four output seconds at the headline
+    expect(Math.ceil((854 * 480 * 8 * 24) / 1024)).toBe(76860);
+    expect(usd(byHand(854, 480, 8, 0.0214, true))).toBe("$0.99");
+    expect(usd(4 * 0.2468)).toBe("$0.99");
+    expect(usd(seedanceUsd("480p", 4, 4))).toBe("$0.99");
+    // what the mixed-up figure used to produce, and must not: the no-input rate, or the headline, times combined seconds
+    expect(usd(0.2468 * 8)).toBe("$1.97");
+    expect(usd(seedanceUsd("480p", 4, 4))).not.toBe("$1.97");
+  });
+
+  it("720p is the charged case and is unchanged: 172,800 tokens, $2.22; six seconds, $3.33", () => {
+    expect(Math.ceil((1280 * 720 * 8 * 24) / 1024)).toBe(172800);
+    expect(byHand(1280, 720, 8, 0.0214, true)).toBeCloseTo(2.218752, 6);
+    expect(seedanceUsd("720p", 4, 4)).toBeCloseTo(2.218752, 6);
+    expect(usd(seedanceUsd("720p", 4, 4.004))).toBe("$2.22"); // as sent, as charged
+    expect(usd(seedanceUsd("720p", 6, 6.006))).toBe("$3.33"); // as sent, as charged
+  });
+
+  it("says which sizes have been charged and which are only the published rule", () => {
+    expect(PROVIDER_RATES.seedance_tokens.charged).toEqual(["720p"]);
+    expect(seedancePriceBasis("720p")).toBe("charged");
+    expect(seedancePriceBasis("480p")).toBe("published");
+    expect(seedancePriceBasis("1080p")).toBe("published"); // formula-tested above; no charge has been seen at 1080p
+    expect(usd(seedanceUsd("1080p", 4, 4))).toBe("$5.46");
+    expect(unchargedSeedanceSizes([ANGLE])).toEqual([]);
+    expect(unchargedSeedanceSizes([ANGLE, { ...ANGLE, resolution: "480p" }, { ...ANGLE, resolution: "1080p" }, WORLD])).toEqual(["1080p", "480p"]);
+  });
+
+  it("a size with no published rate is refused, not priced as nothing", () => {
+    expect(() => seedanceUsd("4k", 4, 4)).toThrow("cannot be priced");
+    expect(() => estimateShotUsd({ ...ANGLE, resolution: "2k" as never })).toThrow("not submitted");
+  });
+});
+
 describe("estimate — run_world_batch.py's arithmetic", () => {
   it("seedance is priced by the provider's token rule: input and output seconds both, at six tenths of the rate when there is a video input", () => {
     // 720p, 4 s from a 4 s source: 921,600 px × 8 s × 24 / 1024 = 172,800 tokens × $0.0214 × 0.6 per thousand — $2.22, the amount charged
@@ -139,10 +204,7 @@ describe("estimate — run_world_batch.py's arithmetic", () => {
     // the same rule at the other sizes (published, not yet charged): 480p $0.99, 1080p $5.46 for 4 s
     expect(usd(estimateShotUsd({ ...ANGLE, resolution: "480p" }))).toBe("$0.99");
     expect(usd(estimateShotUsd({ ...ANGLE, resolution: "1080p" }))).toBe("$5.46");
-    // without a video input the rule gives the provider's per-second figures: $0.2056, $0.4622, $1.1372
-    expect(seedanceUsd("480p", 1, 0)).toBeCloseTo(0.2056, 3);
-    expect(seedanceUsd("720p", 1, 0)).toBeCloseTo(0.4622, 4);
-    expect(seedanceUsd("1080p", 1, 0)).toBeCloseTo(1.1372, 4);
+    // (the provider's own per-second figures are held in their own test below)
     // a source longer than what it returns is paid for: 4 s out of a 10 s source
     expect(usd(seedanceUsd("720p", 4, 10))).toBe("$3.88");
     // source_seconds, when the shot says it, is what is billed (1080p, 6 s: 2,073,600 px × 12 s)

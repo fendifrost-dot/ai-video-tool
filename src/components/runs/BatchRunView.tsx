@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { usd, type BatchShot, type Plan, type ShotState } from "@/lib/worldBatch";
+import { unchargedSeedanceSizes, usd, type BatchShot, type Plan, type ShotState } from "@/lib/worldBatch";
 
 /**
  * The Runs page, presentational. A shot list (the shots.json dialect) → what each shot needs, what a press of Run would
@@ -281,6 +281,11 @@ export function BatchRunView(p: BatchRunViewProps) {
               ? "Nothing to submit."
               : `${p.plan.submit.length} to submit · estimate ${usd(p.plan.estimateUsd)} · ceiling ${usd(p.ceilingUsd)}`}
           </p>
+          {!nothing && unchargedSeedanceSizes(p.plan.submit.map((x) => x.shot)).length > 0 && (
+            <p className="text-sm text-foreground/60" data-testid="plan-price-basis">
+              Includes Seedance at {unchargedSeedanceSizes(p.plan.submit.map((x) => x.shot)).join(" and ")}: priced by the provider's published rule, never yet charged at that size — an estimate, not a verified price.
+            </p>
+          )}
           {over && !nothing && (
             <p className="text-sm text-destructive" role="alert">
               The estimate is above the ceiling. Raise the ceiling or untick shots.

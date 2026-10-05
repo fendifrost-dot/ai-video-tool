@@ -47,7 +47,7 @@ PROXY = f"{SUPA}/functions/v1/proxy-provider-call"
 # rates are data: config/provider_rates.json (the app's in-browser runner reads the same numbers)
 RATES = json.load(open(os.path.join(ROOT, "config", "provider_rates.json")))
 RUNWAY_RATE = RATES["runway"]; KLING_RATE = RATES["kling_usd_per_s"]; STILL_RATE = RATES["still_usd_each"]; DOP_RATE = RATES["dop_usd_per_s"]
-SEEDANCE_RATE = RATES["seedance_usd_per_s"]   # list: per second, input + output (Higgsfield catalogue, 2026-10)
+SEEDANCE_RATE = RATES["seedance_usd_per_s"]   # the provider's per-second figure for a job WITHOUT a video input (16:9); a restage is priced by seedance_estimate
 SEEDANCE_TOKENS = RATES["seedance_tokens"]   # the provider's published token rule (provider_rates.json -> _seedance_tokens)
 
 
@@ -56,6 +56,9 @@ def seedance_estimate(resolution, output_seconds, input_seconds=None):
     tokens = ceil(pixels x (input + output seconds) x 24 / 1024); rate per 1,000 tokens x 0.6 when there is a video input."""
     t = SEEDANCE_TOKENS
     input_seconds = output_seconds if input_seconds is None else input_seconds
+    if resolution not in t["pixels"] or resolution not in t["usd_per_1000_tokens"]:
+        # a size with no published rate cannot be priced, so it cannot be authorized
+        raise SystemExit(f"Seedance at {resolution} cannot be priced: no published rate is on file for that size, so it is not submitted")
     tokens = math.ceil(t["pixels"][resolution] * (input_seconds + output_seconds) * t["frames_per_second"] / t["divisor"])
     return tokens / 1000 * t["usd_per_1000_tokens"][resolution] * (t["video_input_factor"] if input_seconds > 0 else 1)
 
@@ -116,7 +119,10 @@ def motion_submit(api, user, project, shot, prompt, still_url=None):
         b = {"promptText": prompt, "mode": "reference_to_video", "modelVariant": "seedance-2.5-reference", "referenceVideoUrls": [shot["_source_url"]],
              "referenceImageUrls": [still_url] if still_url else [], "duration": sec, "resolution": res, "aspectRatio": aspect, "generate_audio": False, **audit}
         r = api.post(PROXY, {"endpoint": "video-providers-higgsfield-model", "method": "POST", "body": b}, timeout=170); r["_provider"] = "higgsfield"; r["_rate"] = SEEDANCE_RATE[res]
-        r["_list_usd"] = round(SEEDANCE_RATE[res] * (sec + source_seconds(shot)), 3)   # the catalogue estimate counts output only
+        # what the manifest records is the same figure the budget was checked against: the token rule, both durations,
+        # the video-input rate (this line used the no-video-input rate x combined seconds: $3.70 for the $2.22 restage)
+        r["_list_usd"] = round(seedance_estimate(res, sec, source_seconds(shot)), 3)
+        r["_price_basis"] = "charged" if res in SEEDANCE_TOKENS.get("charged", []) else "published rule, never charged at this size"
         return r
     if route == "still_dop":
         b = {"promptText": prompt, "mode": "image_to_video", "referenceImageUrl": still_url, "modelVariant": shot.get("model", "dop-turbo"), **audit}

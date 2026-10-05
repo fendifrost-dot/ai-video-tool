@@ -76,11 +76,39 @@ handoff file when the route is ready and I will run the take check and acceptanc
    | 1080p | 48 | $2.36 | **$5.46** | $9.10 |
 
    An 8 s 720p restage is $4.44, not $7.40. 480p and 1080p are the published rule, not yet charged.
-3. **Fendi's decision (relayed from ChatGPT, 4 October): do not buy the plan yet; keep the MCP integration available
-   for later.** At $2.22 the plan saves $34.24 a month at full use (42 restages) and breaks even at 27. Routing stays
+3. **ChatGPT's recommendation (4 October), not a decision by Fendi: do not buy the plan yet; keep the MCP integration
+   available for later.** *(Corrected 4 October, 20:10 CT, on Fendi's instruction: this line first read "Fendi's
+   decision". Delaying the purchase was ChatGPT's recommendation. Fendi has made no purchase decision, and **no
+   purchase is authorized** — no plan, trial or top-up.)* At $2.22 the plan saves $34.24 a month at full use (42 restages) and breaks even at 27. Routing stays
    off; PR #167 stays a draft. The experiment is closed as "workflow demonstrated, creative acceptance failed"
    (`docs/research/results/2026-10-03-fresh-section/CLOSE_2026-10-04.md`); the next test keeps the filmed performance
    and changes the environment, which at most draws a still or a Kling plate — nothing a plan-credit route would carry.
 
 Also new on main and worth knowing if you touch job rows: acceptance now has lines for bodies and objects, action,
 and a second opinion's findings (`reviewedByAsset`), and `askOfJob` returns nothing for a `still_only` job.
+
+## 480p pricing — resolved, 4 October 20:10 CT (integration agent, on Fendi's instruction; $0, nothing generated)
+
+The integration handoff flagged $0.2056 vs $0.2468 per second at 480p and guessed the estimate "may be about 20 %
+low". **It is not.** Both figures are Higgsfield's, for the same model and the same 854 × 480 size; they differ in
+how the video input is treated and in the unit of time:
+
+| | what it is | where it is published |
+|---|---|---|
+| $0.2056 / s | NO video input, per second of generated video, $0.0214 per 1,000 tokens | text-to-video and reference-to-video pages |
+| $0.1234 / s | WITH a video input, per second of input + generated video combined, $0.01284 per 1,000 | video-edit page |
+| $0.2468 / s | the "from" headline of the reference-to-video and video-edit pages: one second in + one second out with a video input (2 × $0.1234, rounded up) — a price per OUTPUT second when the source is as long as the output | those pages' header |
+
+A 4 s restage from a 4 s source, each way: 854 × 480 × 8 s × 24 / 1024 = 76,860 tokens × $0.01284 = **$0.99**;
+4 output seconds × $0.2468 = **$0.99**. The old $1.97 came from multiplying a per-second figure by the combined
+seconds without the video-input rate. The estimate was already $0.99 and stays $0.99.
+
+What changed on main (PR, same day): `seedance_usd_per_s` 480p is now 0.2056, so that list is the no-video-input
+figure at all three sizes; `seedance_tokens.charged = ["720p"]` and `seedancePriceBasis()` say which sizes a real
+charge has matched; the Runs page says so under an estimate that includes 480p or 1080p; a size with no published
+rate throws instead of pricing as NaN (which no ceiling would have stopped); `run_world_batch.py` records the rule's
+figure in its manifest (it recorded $3.70 for the $2.22 restage). Tests hold the rule to the provider's six
+published per-second figures, typed in the test, and to the two charged amounts.
+
+Status by size: **720p — charged** ($2.22, $3.33; unchanged). **480p and 1080p — the published rule, consistent
+with the provider's own per-second figures, never charged**: estimates, not verified prices.

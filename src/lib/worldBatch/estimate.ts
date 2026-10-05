@@ -24,8 +24,28 @@ export function sourceSeconds(shot: BatchShot): number {
  */
 export function seedanceUsd(resolution: string, outputSeconds: number, inputSeconds: number = outputSeconds): number {
   const t = R.seedance_tokens;
+  // a size the rule has no numbers for cannot be priced, so it cannot be authorized: say so rather than return NaN
+  // (NaN is not above any ceiling, and a run would go ahead with no bound on what it costs)
+  if (!(t.pixels[resolution] > 0) || !(t.usd_per_1000_tokens[resolution] > 0)) {
+    throw new Error(`Seedance at ${resolution} cannot be priced — no published rate is on file for that size, so it is not submitted`);
+  }
   const tokens = Math.ceil((t.pixels[resolution] * (inputSeconds + outputSeconds) * t.frames_per_second) / t.divisor);
   return (tokens / 1000) * t.usd_per_1000_tokens[resolution] * (inputSeconds > 0 ? t.video_input_factor : 1);
+}
+
+/**
+ * What a Seedance estimate at this size rests on. "charged": a real charge has matched the rule at this size (720p).
+ * "published": the provider's published rule and per-second figures agree with the estimate, and nothing has been
+ * charged at this size yet (480p, 1080p) — an estimate, not a verified price.
+ */
+export type PriceBasis = "charged" | "published";
+export function seedancePriceBasis(resolution: string): PriceBasis {
+  return R.seedance_tokens.charged.includes(resolution) ? "charged" : "published";
+}
+
+/** The Seedance sizes in a shot list whose price has never been charged, for the line under an estimate. */
+export function unchargedSeedanceSizes(shots: readonly BatchShot[]): string[] {
+  return [...new Set(shots.filter((s) => s.route === "seedance_ref" && seedancePriceBasis(s.resolution) === "published").map((s) => s.resolution))].sort();
 }
 
 export function estimateShotUsd(shot: BatchShot): number {
