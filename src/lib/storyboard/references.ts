@@ -7,12 +7,17 @@
  * not fit is reported (`notSent`), never quietly dropped; what the shot needs and does not have is a problem
  * (`problems`), said before any money moves.
  *
- * Order, most decisive first — the endpoint takes few (xAI images/edits: 3 on grok-imagine-image-quality):
+ * Order, most decisive first — the endpoint takes few (xAI images/edits: 3 on grok-imagine-image-quality), and xAI
+ * edits the FIRST picture, so the picture a screen must show stays <IMAGE_0>:
  *   1. the picture another shot's screen must show / the position a cut must hold (links.ts)
- *   2. the place, when the shot is set in an approved location
+ *   2. the people in it (the cast's identity pictures — casting/cast.ts decides who): a wrong face is unusable, a
+ *      wrong second garment is a retry
  *   3. the exact garments the shot is dressed in (a picture of each, never a summary)
- *   4. extra references another module adds (the cast: identities — casting/cast.ts owns those)
+ *   4. the place, when the shot is set in an approved location (its words are in the prompt anyway)
  *   5. props with an approved picture
+ *
+ * A picture that does NOT fit is never a quiet demotion: a garment or an identity left out is a problem the director
+ * sees before spend, and an identity left out blocks the shot — the still would draw a stranger in his jacket.
  *
  * A performance still is the empty PLACE his take is restaged into: nobody is drawn, so garments and people are not
  * sent with it (they would put a stranger in the plate).
@@ -103,13 +108,16 @@ export function planStillReferences(input: ReferenceInput): ReferencePlan {
   }
 
   const place = input.continuity.location;
-  if (place?.approvedAssetId) wanted.push({ source: "project_asset", id: place.approvedAssetId, role: "place", label: place.name });
+  const placeRef: StillReference | null = place?.approvedAssetId ? { source: "project_asset", id: place.approvedAssetId, role: "place", label: place.name } : null;
 
   if (input.isPerformance) {
+    // the plate is the place, drawn empty: the place picture leads and nobody is sent with it
+    if (placeRef) wanted.push(placeRef);
     // the plate is drawn empty: a garment or a person sent with it would put somebody in it
     for (const g of input.garments) if (g.onFile) notSent.push({ ref: { source: "character_feature", id: g.id, role: "garment", label: g.onFile.label }, why: "a performance still is the empty place; he is his take" });
     for (const r of input.extra ?? []) notSent.push({ ref: r, why: "a performance still is the empty place; nobody is drawn in it" });
   } else {
+    wanted.push(...(input.extra ?? []));
     for (const g of input.garments) {
       if (!g.onFile) {
         problems.push({ level: "blocking", text: `A garment this shot is dressed in (${g.id}) is not in the artist's wardrobe.`, fix: "Choose the garment again from the wardrobe, or take it off the shot." });
@@ -117,7 +125,7 @@ export function planStillReferences(input: ReferenceInput): ReferencePlan {
       }
       wanted.push({ source: "character_feature", id: g.id, role: "garment", label: g.onFile.label });
     }
-    wanted.push(...(input.extra ?? []));
+    if (placeRef) wanted.push(placeRef);
   }
 
   for (const p of input.continuity.props) if (p.approvedAssetId) wanted.push({ source: "project_asset", id: p.approvedAssetId, role: "prop", label: p.name });
@@ -129,7 +137,10 @@ export function planStillReferences(input: ReferenceInput): ReferencePlan {
   const sent = unique.slice(0, cap);
   for (const r of unique.slice(cap)) notSent.push({ ref: r, why: `the image endpoint takes ${cap} reference picture${cap === 1 ? "" : "s"}; the ones before it are more decisive` });
   for (const n of notSent) {
-    if (n.ref.role === "garment" && !input.isPerformance) {
+    if (input.isPerformance) continue;
+    if (n.ref.role === "cast") {
+      problems.push({ level: "blocking", text: `${n.ref.label}'s identity picture does not fit in this request (${cap} pictures): the still would draw a stranger.`, fix: "Take a prop or a second garment off the shot, or split the look across shots." });
+    } else if (n.ref.role === "garment") {
       problems.push({ level: "warning", text: `${n.ref.label} does not fit in this request: it is described in words only.`, fix: "Take a less important reference off the shot, or split the look across shots." });
     }
   }
@@ -141,4 +152,23 @@ export function referenceSummary(plan: Pick<ReferencePlan, "sent" | "notSent">):
   const sent = plan.sent.map((r) => `${r.label} (${r.role})`).join(", ");
   const left = plan.notSent.map((n) => `${n.ref.label} (${n.ref.role}: ${n.why})`).join(", ");
   return [sent ? `Sent as pictures: ${sent}.` : "No reference pictures are sent.", left ? `Not sent: ${left}.` : ""].filter(Boolean).join(" ");
+}
+
+/** The roles a still cannot do without: a picture of these that is not actually delivered means the shot is not generated. */
+export const REQUIRED_ROLES: ReadonlySet<ReferenceRole> = new Set<ReferenceRole>(["screen", "garment", "cast"]);
+
+/**
+ * What stands in the way when the pictures a shot needs cannot go with the request — the generator does not take
+ * them (not deployed, probe failed). "Not sent" is a record, not a permission: a shot that needs a screen picture, an
+ * exact garment or an identity is BLOCKED, never drawn from words and logged.
+ */
+export function undeliveredProblem(sent: readonly StillReference[], delivered: boolean): ReferenceProblem | null {
+  if (delivered) return null;
+  const needed = sent.filter((r) => REQUIRED_ROLES.has(r.role));
+  if (needed.length === 0) return null;
+  return {
+    level: "blocking",
+    text: `This shot needs its pictures (${needed.map((r) => `${r.label} — ${r.role}`).join(", ")}) and the image generator is not taking reference pictures.`,
+    fix: "Redeploy world-still-proxy with reference delivery, then generate. Nothing was generated.",
+  };
 }

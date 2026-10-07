@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { acceptTimedBeats, WRITTEN_BEATS_MAX, WRITTEN_EFFECTS } from "../_shared/timedBeats.ts";
-import { acceptLinks, acceptProduction, linkedShots, linkUserMessage, PRODUCTION_RULES, acceptShots, writerEntities, chunkGrid, contextBlocks, outlineLine, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_DECIDES, TREATMENT_SCHEMA, withRewrites, type GridShot } from "./contract.ts";
+import { acceptCast, CAST_RULES, acceptLinks, acceptProduction, linkedShots, linkUserMessage, PRODUCTION_RULES, acceptShots, writerEntities, chunkGrid, contextBlocks, outlineLine, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_DECIDES, TREATMENT_SCHEMA, withRewrites, type GridShot } from "./contract.ts";
 
 const grid: GridShot[] = [
   { key: "c001", start: 0, end: 3.92, section: "intro", energy: "low", lyrics: "" },
@@ -53,7 +53,7 @@ describe("what the treatment writer is told", () => {
 
   it("the schemas ask for exactly what the storyboard stores", () => {
     expect(TREATMENT_SCHEMA.schema.required).toEqual(["concept", "narrative", "sections"]);
-    expect(SHOTS_SCHEMA.schema.properties.clips.items.required).toEqual(["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "wardrobe_from", "lyric_ref", "priority", "timed_beats", "continuity", "production"]);
+    expect(SHOTS_SCHEMA.schema.properties.clips.items.required).toEqual(["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "wardrobe_from", "lyric_ref", "priority", "timed_beats", "continuity", "cast", "production"]);
     expect(SHOTS_SCHEMA.schema.properties.clips.items.properties.wardrobe_from.enum).toEqual(["footage", "treatment", "none"]);
     expect(SHOTS_SCHEMA.schema.properties.clips.items.properties.shot_type.enum).toContain("performance");
   });
@@ -315,5 +315,34 @@ describe("shots the treatment ties together (links)", () => {
     expect(system).toContain("`continuity.links`");
     expect(system).toContain(PRODUCTION_RULES);
     expect(PRODUCTION_RULES).toContain("never from what would be easier");
+  });
+});
+
+describe("who is in a shot (cast)", () => {
+  const people = new Set(["FENDI", "THE_RIDER"]);
+  it("keeps members the variation has, by key, with what they do HERE; drops a key the model made up", () => {
+    expect(acceptCast({ members: [
+      { key: "THE_RIDER", action: "settles a hand on the horse's neck", placement: "centre, among the models", framing: "medium, side-on" },
+      { key: "A_STRANGER", action: "walks by", placement: "", framing: "" },
+      { key: "THE_RIDER", action: "twice", placement: "", framing: "" },
+    ], open: false, none: false }, people)).toEqual({ members: [{ key: "THE_RIDER", action: "settles a hand on the horse's neck", placement: "centre, among the models", framing: "medium, side-on" }], open: false, none: false });
+  });
+  it("silence is never ambiguous: none and open are kept as said; none with members is contradictory and read as none-without-members", () => {
+    expect(acceptCast({ members: [], open: true, none: false }, people)).toEqual({ members: [], open: true, none: false });
+    expect(acceptCast({ members: [], open: true, none: true }, people)).toEqual({ members: [], open: false, none: true });
+    expect(acceptCast({ members: [{ key: "FENDI", action: "", placement: "", framing: "" }], open: false, none: true }, people).none).toBe(false);
+    expect(acceptCast(undefined, people)).toEqual({ members: [], open: false, none: false });
+  });
+  it("the writer is told the People and how to cast them — and never to cast the artist on the director's behalf", () => {
+    const entities = writerEntities([{ key: "THE_RIDER", kind: "character", name: "The rider", description: "One beautiful Black woman among the walking models." }]);
+    expect(entities).toEqual([{ key: "THE_RIDER", kind: "character", name: "The rider", description: "One beautiful Black woman among the walking models." }]);
+    const system = shotsSystemPrompt({ hasPerformanceFootage: true, entities }, "a treatment", [{ key: "c001", start: 0, end: 4, lyrics: "" }]);
+    expect(system).toContain("People:\n- THE_RIDER — The rider: One beautiful Black woman among the walking models.");
+    expect(system).toContain(CAST_RULES);
+    expect(CAST_RULES).toContain("The artist is a member only in the shots the treatment puts him in");
+  });
+  it("accepted shots carry their cast", () => {
+    const r = acceptShots([{ key: "c001", start: 0, end: 4 }], { clips: [{ key: "c001", scene_description: "she rides", cast: { members: [{ key: "THE_RIDER", action: "rides", placement: "", framing: "wide" }], open: false, none: false } }] }, [{ key: "THE_RIDER", kind: "character", name: "The rider" }]);
+    expect(r.clips[0].cast).toEqual({ members: [{ key: "THE_RIDER", action: "rides", placement: "", framing: "wide" }], open: false, none: false });
   });
 });

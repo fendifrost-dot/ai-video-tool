@@ -30,7 +30,8 @@ export type WriterContext = {
   entities?: WriterEntity[];
 };
 
-export type WriterEntity = { key: string; kind: "location" | "prop" | "lighting"; name: string; description?: string | null };
+export type WriterEntity = { key: string; kind: "location" | "prop" | "lighting" | "character"; name: string; description?: string | null };
+export const ENTITY_KINDS = ["location", "prop", "lighting", "character"] as const;
 
 /** The entities a writer may point at, cleaned: a key, a known kind, a name. */
 export function writerEntities(value: unknown): WriterEntity[] {
@@ -39,7 +40,7 @@ export function writerEntities(value: unknown): WriterEntity[] {
   for (const raw of value.slice(0, 60)) {
     const r = (raw ?? {}) as Record<string, unknown>;
     const key = typeof r.key === "string" ? r.key.trim() : "";
-    const kind = r.kind === "location" || r.kind === "prop" || r.kind === "lighting" ? r.kind : null;
+    const kind = ENTITY_KINDS.find((k) => k === r.kind) ?? null;
     const name = typeof r.name === "string" ? r.name.trim() : "";
     if (!key || !kind || !name || out.some((e) => e.key === key)) continue;
     out.push({ key, kind, name: name.slice(0, 120), description: typeof r.description === "string" ? r.description.trim().slice(0, 600) : null });
@@ -47,7 +48,7 @@ export function writerEntities(value: unknown): WriterEntity[] {
   return out;
 }
 
-const KIND_HEAD = { location: "Places", prop: "Props", lighting: "Lighting states" } as const;
+const KIND_HEAD = { location: "Places", prop: "Props", lighting: "Lighting states", character: "People" } as const;
 
 /** The entities as a block the writer reads, or null when the project has none. */
 export function entitiesBlock(entities: readonly WriterEntity[] | undefined): string | null {
@@ -58,10 +59,11 @@ export function entitiesBlock(entities: readonly WriterEntity[] | undefined): st
     return of.length ? `${KIND_HEAD[kind]}:\n${of.map((e) => `- ${e.key} — ${e.name}${e.description ? `: ${e.description}` : ""}`).join("\n")}` : null;
   };
   return [
-    "The project's continuity entities — each is described ONCE, here, and looks the same in every shot. A shot set in one of these places, showing one of these props or lit by one of these lighting states points at it by its KEY (`continuity`) and does not describe it again differently:",
+    "The project's continuity entities — each is described ONCE, here, and looks the same in every shot. A shot set in one of these places, showing one of these props or lit by one of these lighting states points at it by its KEY (`continuity`) and does not describe it again differently. A shot that one of these PEOPLE is in points at them by KEY in `cast.members` and says what they do there:",
     group("location"),
     group("prop"),
     group("lighting"),
+    group("character"),
   ]
     .filter(Boolean)
     .join("\n");
@@ -105,7 +107,7 @@ export const SHOTS_SCHEMA = {
     type: "object", additionalProperties: false, required: ["clips"],
     properties: {
       clips: { type: "array", items: { type: "object", additionalProperties: false,
-        required: ["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "wardrobe_from", "lyric_ref", "priority", "timed_beats", "continuity", "production"],
+        required: ["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "wardrobe_from", "lyric_ref", "priority", "timed_beats", "continuity", "cast", "production"],
         properties: {
           key: { type: "string", description: "the shot's key, exactly as given" },
           shot_type: { type: "string", enum: [...SHOT_TYPES] },
@@ -131,6 +133,19 @@ export const SHOTS_SCHEMA = {
                     shot: { type: "string", description: "the other shot's key, exactly as the outline gives it" },
                     note: { type: "string", description: "the relationship in a few words: which screen, which door, which position" },
                   } } },
+            } },
+          cast: { type: "object", additionalProperties: false, required: ["members", "open", "none"],
+            description: "who is in this shot. `members` names people from the People list by KEY with what each does here; `none` is true when no person is in the shot; `open` is true when people appear whom the treatment does not name (extras, a crowd) — their casting is left open on purpose",
+            properties: {
+              members: { type: "array", items: { type: "object", additionalProperties: false, required: ["key", "action", "placement", "framing"],
+                properties: {
+                  key: { type: "string", description: "the person's key, exactly as given in People" },
+                  action: { type: "string", description: "what they do in THIS shot, one phrase" },
+                  placement: { type: "string", description: "where they are in the frame and the place, one phrase" },
+                  framing: { type: "string", description: "how the camera holds them here (wide, medium, close, from behind…), one phrase" },
+                } } },
+              open: { type: "boolean" },
+              none: { type: "boolean" },
             } },
           production: { type: "object", additionalProperties: false, required: ["method", "note"],
             description: "how this shot gets made",
@@ -184,6 +199,15 @@ export const VISUAL_DIRECTION_LABEL =
 export const TREATMENT_DECIDES =
   "- The treatment decides. Where it says who is in a shot, where the shot is, what he wears there, or that the picture stays away from him for a stretch, write exactly that: these rules fill only what the treatment leaves open. Never swap something the treatment names for something easier or more usual.";
 
+/**
+ * How the writer casts a shot. The people are described once (the People list); a shot points at them by key and
+ * says only what they do in it. Nobody is cast on the director's behalf: the artist is in a shot only where the
+ * treatment puts him, and silence is never ambiguous (`none` / `open`).
+ */
+export const CAST_RULES = [
+  "- `cast`: who is in the shot. `members` lists each person from the People list who is in it, by KEY, with what they do, where they are and how they are framed in THIS shot — never describe who they are again (that is on their record). The artist is a member only in the shots the treatment puts him in. `none: true` when no person is in the shot (a place, an object, animals). `open: true` when people the treatment does not name are in it (a crowd, extras, a crew) — their casting is left open on purpose. A person the treatment names who is not in People cannot be cast: write them into the scene and leave `members` without them.",
+].join("\n");
+
 /** How the writer chooses `production.method`. It says what the shot needs — not what is easy. */
 export const PRODUCTION_RULES = [
   "- `production.method` — how this shot gets made, chosen from what the shot NEEDS, never from what would be easier:",
@@ -233,6 +257,7 @@ export function shotsSystemPrompt(ctx: WriterContext, treatment: string, outline
       "- What the treatment links across shots stays linked: a picture seen on a screen is the picture of the shot it names; a cut the treatment describes (the same position in a new place, a door that opens onto somewhere else, a reveal) is written into BOTH shots — the one that hands over says what it ends on, the one that receives opens on it.",
       "- Say every such tie in `continuity.links`, on the shot that owes it, naming the other shot by its key from the outline: `screen_shows` (a screen, monitor or reflection here shows that shot's picture), `match_position` (he or the subject holds the place in the frame it had there while the world around changes), `reveals` (this shot reveals what that shot was inside of or opening onto), `continues` (the same action carries on across the cut). Only shots of this storyboard; never a key you were not given.",
       PRODUCTION_RULES,
+      CAST_RULES,
       "- A performance shot is its own picture too. He cannot be redirected — but the world around him can answer the words: say where in the place he stands in THIS shot and what the place and the light are doing around him. When its words name something the place can show or do, it happens there, on those words.",
       "- What the treatment says happens on certain words, or every time a section returns (in every hook), is binding on the shots: each shot in which those words are sung carries it — as a timed beat on those words when it happens inside the shot, as the state the shot opens in when it has already happened. A shot never contradicts the treatment.",
       "- Keep to the places the treatment names — and, where it leaves the place open, the ones the notes name. One clear subject per shot; a crowd, a formation or a group the treatment asks for IS the subject. Photoreal and filmable: an impossible event the treatment asks for is written as a thing that physically happens in front of the camera, never softened into something ordinary. No readable text or logos — except a mark the treatment itself calls for: name that one mark, where the treatment puts it, and nothing else.",
@@ -337,6 +362,7 @@ export function acceptShots(
   const places = keysOf("location");
   const props = keysOf("prop");
   const lights = keysOf("lighting");
+  const people = keysOf("character");
   // a reference is kept only when it is to an entity the project has, of the right kind — a key the model made up is dropped
   const continuityOf = (raw: unknown) => {
     const r = (raw ?? {}) as Record<string, unknown>;
@@ -365,6 +391,7 @@ export function acceptShots(
       ...c,
       timed_beats: acceptTimedBeats(c.timed_beats, seconds.get(String(c.key)) ?? 0, lights),
       continuity: continuityOf({ ...((c.continuity ?? {}) as Record<string, unknown>), key: c.key }),
+      cast: acceptCast(c.cast, people),
       production: acceptProduction(c.production),
     }));
   return { clips, missing: chunk.map((s) => s.key).filter((k) => !seen.has(k)) };
@@ -426,4 +453,24 @@ export function linkUserMessage(chunk: readonly GridShot[], clips: readonly Reco
     current: chunk.map((s) => scene(s.key)),
     shots: chunk.map((s) => ({ key: s.key, seconds: Math.round((s.end - s.start) * 10) / 10, section: s.section ?? "", energy: s.energy ?? "", lyrics: (s.lyrics ?? "").trim() })),
   });
+}
+
+/**
+ * A shot's cast, kept only for people the variation has (a key the model made up is dropped, never invented into a
+ * character). `open` and `none` are kept as said; both true is contradictory and read as `none`.
+ */
+export function acceptCast(raw: unknown, people: ReadonlySet<string>): { members: { key: string; action: string; placement: string; framing: string }[]; open: boolean; none: boolean } {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const members: { key: string; action: string; placement: string; framing: string }[] = [];
+  const phrase = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 240) : "");
+  if (Array.isArray(r.members)) {
+    for (const m of r.members.slice(0, 12)) {
+      const o = (m ?? {}) as Record<string, unknown>;
+      const key = typeof o.key === "string" ? o.key.trim() : "";
+      if (!key || !people.has(key) || members.some((x) => x.key === key)) continue;
+      members.push({ key, action: phrase(o.action), placement: phrase(o.placement), framing: phrase(o.framing) });
+    }
+  }
+  const none = r.none === true && members.length === 0;
+  return { members, open: r.open === true && !none, none };
 }

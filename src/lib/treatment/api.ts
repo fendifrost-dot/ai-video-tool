@@ -155,6 +155,8 @@ export type TreatmentClip = {
   continuity?: { location: string | null; props: string[]; lighting: string | null; links?: ShotLink[] };
   /** How the writer says the shot gets made. Absent on a clip written before this was asked. */
   production?: { method: ProductionMethod | ""; note: string };
+  /** Who the writer put in the shot, by character key (only keys the variation has). Absent on a clip written before this was asked. */
+  cast?: { members: CastRef[]; open: boolean; none: boolean };
 };
 
 export type StructuredTreatment = {
@@ -344,6 +346,7 @@ export async function draftTreatmentClips(
       events: eventsFromWritten(m.timed_beats, g.end - g.start, input.clipLyrics?.[g.key] ?? "", known.lighting),
       continuity: { ...pointedAt(m.continuity, known), links: linksOf(m.continuity, boardKeys, g.key) },
       production: productionOf(m.production),
+      cast: castOf(m.cast, known.character),
     };
   });
 
@@ -408,6 +411,7 @@ import {
   PRODUCTION_METHODS,
   RENDER_ENGINES,
   SHOT_LINK_KINDS,
+  type CastRef,
   type ProductionMethod,
   type ShotLink,
   SHOT_PRIORITIES,
@@ -419,11 +423,28 @@ import {
   type ShotTypeLiteral,
 } from "@/lib/treatment/shotSpec";
 
-type KnownKeys = { location: Set<string>; prop: Set<string>; lighting: Set<string> };
+type KnownKeys = { location: Set<string>; prop: Set<string>; lighting: Set<string>; character: Set<string> };
 
 function knownKeys(entities: TreatmentContext["entities"]): KnownKeys {
   const of = (kind: string) => new Set((entities ?? []).filter((e) => e.kind === kind).map((e) => e.key));
-  return { location: of("location"), prop: of("prop"), lighting: of("lighting") };
+  return { location: of("location"), prop: of("prop"), lighting: of("lighting"), character: of("character") };
+}
+
+/** The people a written shot casts — only characters the variation has; what each does here is this shot's own. */
+export function castOf(raw: unknown, people: ReadonlySet<string>): { members: CastRef[]; open: boolean; none: boolean } {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const phrase = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 240) : "");
+  const members: CastRef[] = [];
+  if (Array.isArray(r.members)) {
+    for (const m of r.members) {
+      const o = (m ?? {}) as Record<string, unknown>;
+      const key = typeof o.key === "string" ? o.key.trim() : "";
+      if (!key || !people.has(key) || members.some((x) => x.key === key)) continue;
+      members.push({ key, action: phrase(o.action), placement: phrase(o.placement), framing: phrase(o.framing), identityMode: null });
+    }
+  }
+  const none = r.none === true && members.length === 0;
+  return { members, open: r.open === true && !none, none };
 }
 
 /** The entities a written shot points at — only keys the project has, of the right kind. */
@@ -503,6 +524,7 @@ export function treatmentClipToShotSpec(
     events: clip.events ?? [],
     continuity: clip.continuity ?? {},
     production: clip.production ?? {},
+    cast: clip.cast ?? {},
     generation: {
       required: !!engine && engine !== "manual",
       engine,

@@ -4,13 +4,13 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/supabase", () => ({ supabase: {} }));
 vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 
-import { linksOf, productionOf, treatmentClipToShotSpec, type TreatmentClip } from "@/lib/treatment/api";
+import { castOf, linksOf, productionOf, treatmentClipToShotSpec, type TreatmentClip } from "@/lib/treatment/api";
 import type { ContinuityEntity, ShotContinuity } from "@/lib/continuity/entities";
 import { NO_CONTINUITY } from "@/lib/continuity/entities";
 import { applyOverride, BLANK_OVERRIDE, boxFromRow, boxWrite, editedOverride, type BoxRow, type StoryboardBox } from "./boxes";
 import { boxShot, previewStillRequest } from "./generate";
 import { danglingLinks, linkPictureNeeds, linkPromptLines, linksOfBox } from "./links";
-import { planStillReferences, referenceLegend } from "./references";
+import { planStillReferences, referenceLegend, undeliveredProblem } from "./references";
 import { productionRoute } from "./route";
 
 // A board shaped like a treatment that ties shots together (an opening show seen later on a monitor, a control room
@@ -118,12 +118,12 @@ describe("references: the linked shot's picture, the place, exact garments — s
     const plan = planStillReferences({ isPerformance: false, continuity: continuity(place), linkNeeds: needs, garments: [{ id: "g-coat", onFile: { id: "g-coat", label: "black leather coat" } }], cap: 3 });
     expect(plan.sent.map((r) => [r.role, r.id])).toEqual([
       ["screen", "asset-c001-still"],
-      ["place", "asset-corner"],
       ["garment", "g-coat"],
+      ["place", "asset-corner"],
     ]);
     expect(plan.legend).toBe(referenceLegend(plan.sent));
-    expect(plan.legend).toMatch(/^Reference pictures: <IMAGE_0> is the exact picture the screen shows \(shot 1\) — put this picture on the screen, as it is; <IMAGE_1> is the place, the Chicago corner/);
-    expect(plan.legend).toContain("<IMAGE_2> is a garment worn in this shot, black leather coat: reproduce it exactly");
+    expect(plan.legend).toMatch(/^Reference pictures: <IMAGE_0> is the exact picture the screen shows \(shot 1\) — put this picture on the screen, as it is; <IMAGE_1> is a garment worn in this shot, black leather coat: reproduce it exactly/);
+    expect(plan.legend).toContain("<IMAGE_2> is the place, the Chicago corner");
   });
 
   it("over the endpoint's limit the rest are NOT dropped silently: each is listed with why, and a garment left out is a warning", () => {
@@ -138,9 +138,12 @@ describe("references: the linked shot's picture, the place, exact garments — s
       ],
       cap: 3,
     });
-    expect(plan.sent.map((r) => r.id)).toEqual(["asset-corner", "g1", "g2"]);
-    expect(plan.notSent).toEqual([{ ref: expect.objectContaining({ id: "g3" }), why: expect.stringContaining("takes 3 reference pictures") }]);
-    expect(plan.problems).toEqual([expect.objectContaining({ level: "warning", text: "sneakers does not fit in this request: it is described in words only." })]);
+    expect(plan.sent.map((r) => r.id)).toEqual(["g1", "g2", "g3"]);
+    expect(plan.notSent).toEqual([{ ref: expect.objectContaining({ id: "asset-corner" }), why: expect.stringContaining("takes 3 reference pictures") }]);
+    // the place's words are in the prompt anyway: leaving its picture out is not a problem to raise
+    expect(plan.problems).toEqual([]);
+    const four = planStillReferences({ isPerformance: false, continuity: continuity(null), linkNeeds: [], garments: [{ id: "g1", onFile: { id: "g1", label: "trucker jacket" } }, { id: "g2", onFile: { id: "g2", label: "jeans" } }, { id: "g3", onFile: { id: "g3", label: "sneakers" } }, { id: "g4", onFile: { id: "g4", label: "belt" } }], cap: 3 });
+    expect(four.problems).toEqual([expect.objectContaining({ level: "warning", text: "belt does not fit in this request: it is described in words only." })]);
   });
 
   it("a garment id that is not in the wardrobe is blocking — never invented, never replaced", () => {
@@ -223,16 +226,51 @@ describe("each shot is routed by how it has to be made — a method the app cann
 });
 
 describe("people cast in a shot reach its request as pictures (casting decides who; references.ts sends them)", () => {
-  it("a cast identity picture is sent after the place and garments, and never with a performance plate", () => {
+  it("a cast identity picture is sent right after the linked picture, before garments and the place — and never with a performance plate", () => {
     const rider = { source: "project_asset" as const, id: "asset-rider", role: "cast" as const, label: "The rider" };
     const narrative = planStillReferences({ isPerformance: false, continuity: NO_CONTINUITY, linkNeeds: [], garments: [{ id: "g1", onFile: { id: "g1", label: "denim jacket" } }], extra: [rider], cap: 3 });
     expect(narrative.sent.map((r) => [r.role, r.label])).toEqual([
-      ["garment", "denim jacket"],
       ["cast", "The rider"],
+      ["garment", "denim jacket"],
     ]);
-    expect(narrative.legend).toContain("<IMAGE_1> is The rider: the same person");
+    expect(narrative.legend).toContain("<IMAGE_0> is The rider: the same person");
     const plate = planStillReferences({ isPerformance: true, continuity: NO_CONTINUITY, linkNeeds: [], garments: [], extra: [rider], cap: 3 });
     expect(plate.sent).toEqual([]);
     expect(plate.notSent.map((n) => n.ref.label)).toEqual(["The rider"]);
+  });
+});
+
+describe("the people the writer cast reach the saved shot", () => {
+  it("a cast member the variation has survives write → row → reload; a made-up key does not", () => {
+    const c = clip("c001", { cast: castOf({ members: [{ key: "THE_RIDER", action: "rides between walls of fire", placement: "centre", framing: "side-on" }, { key: "NOBODY", action: "", placement: "", framing: "" }], open: false, none: false }, new Set(["THE_RIDER", "FENDI"])) });
+    const b = saved(c, 1);
+    expect(b.spec.cast).toEqual({ members: [{ key: "THE_RIDER", action: "rides between walls of fire", placement: "centre", framing: "side-on", identityMode: null }], open: false, none: false });
+    expect(saved(clip("c002", { cast: castOf({ members: [], open: false, none: true }, new Set()) }), 2).spec.cast).toEqual({ members: [], open: false, none: true });
+  });
+});
+
+describe("a picture the shot cannot do without is never a quiet demotion", () => {
+  const fendi = { source: "character_feature" as const, id: "face-1", role: "cast" as const, label: "Fendi" };
+  it("an identity that does not fit the cap BLOCKS the shot (the still would draw a stranger)", () => {
+    const plan = planStillReferences({
+      isPerformance: false,
+      continuity: NO_CONTINUITY,
+      linkNeeds: [{ link: { kind: "screen_shows", direction: "out", otherKey: "c001", other: { id: "r1", key: "c001", shotNumber: 1, spec: {} as never }, note: "" }, role: "screen", level: "blocking", still: { assetId: "s1" } }],
+      garments: [{ id: "g1", onFile: { id: "g1", label: "jacket" } }, { id: "g2", onFile: { id: "g2", label: "jeans" } }, { id: "g3", onFile: { id: "g3", label: "sneakers" } }],
+      extra: [fendi],
+      cap: 3,
+    });
+    // screen first, identity second, then the garments that fit
+    expect(plan.sent.map((r) => r.role)).toEqual(["screen", "cast", "garment"]);
+    expect(plan.problems.some((p) => p.level === "blocking")).toBe(false);
+    const tight = planStillReferences({ isPerformance: false, continuity: NO_CONTINUITY, linkNeeds: [], garments: [{ id: "g1", onFile: { id: "g1", label: "jacket" } }], extra: [fendi], cap: 1 });
+    expect(tight.sent.map((r) => r.role)).toEqual(["cast"]);
+    const noRoom = planStillReferences({ isPerformance: false, continuity: NO_CONTINUITY, linkNeeds: [], garments: [], extra: [fendi, { ...fendi, id: "face-2", label: "The rider" }], cap: 1 });
+    expect(noRoom.problems).toEqual([expect.objectContaining({ level: "blocking", text: expect.stringContaining("The rider's identity picture does not fit") })]);
+  });
+  it("when the generator cannot take pictures, a shot that needs a screen picture, a garment or an identity is blocked, not logged", () => {
+    expect(undeliveredProblem([fendi], true)).toBeNull();
+    expect(undeliveredProblem([{ source: "project_asset", id: "p", role: "place", label: "the corner" }], false)).toBeNull();
+    expect(undeliveredProblem([fendi], false)).toMatchObject({ level: "blocking", text: expect.stringContaining("Fendi — cast"), fix: expect.stringContaining("Nothing was generated") });
   });
 });
