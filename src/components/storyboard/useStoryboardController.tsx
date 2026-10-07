@@ -24,7 +24,7 @@ import { useTreatmentInputs } from "@/lib/queries/treatmentInputs";
 import { useWardrobe } from "@/lib/queries/wardrobe";
 import { DEFAULT_STILL_REFERENCE_CAP, useStillReferenceSupport } from "@/lib/queries/stillReferences";
 import { linkPictureNeeds, linkPromptLines, linksOfBox, type ResolvedLink } from "@/lib/storyboard/links";
-import { planStillReferences, referenceSummary, type ReferenceProblem, type StillReference } from "@/lib/storyboard/references";
+import { planStillReferences, referenceSummary, undeliveredProblem, type ReferenceProblem, type StillReference } from "@/lib/storyboard/references";
 import { useCharacterFeatures } from "@/lib/queries/characterFeatures";
 import { productionRoute, routeLine, type ProductionRoute } from "@/lib/storyboard/route";
 import type { StillReferencesOnJob } from "@/lib/worldBatch/runner";
@@ -772,7 +772,8 @@ export function useStoryboardController(projectId: string): StoryboardController
   const generationNotes = useCallback(
     (box: StoryboardBox): { text: string; blocked: string | null } => {
       const r = referencesOf(box);
-      const blocking = r.problems.find((p) => p.level === "blocking");
+      // a shot that needs a screen picture, an exact garment or an identity is not drawn from words when the pictures cannot go
+      const blocking = r.problems.find((p) => p.level === "blocking") ?? undeliveredProblem(r.sent, r.delivered);
       const pictures = r.sent.length || r.notSent.length ? ` ${referenceSummary({ sent: r.delivered ? r.sent : [], notSent: r.delivered ? r.notSent : [...r.notSent, ...r.sent.map((ref) => ({ ref, why: "the image generator does not take reference pictures yet" }))] })}` : "";
       const warnings = r.problems.filter((p) => p.level === "warning").map((p) => ` NOTE: ${p.text}`).join("");
       return { text: ` ${routeLine(routeOf(box))}${pictures}${warnings}`, blocked: blocking ? `${blocking.text} ${blocking.fix}` : null };
@@ -841,8 +842,8 @@ export function useStoryboardController(projectId: string): StoryboardController
       setConfirm({
         title: `Generate an image for shot ${numberById.get(box.id) ?? ""}?`,
         body: est.restage
-          ? `About ${usd(est.image)} at list price. This is a performance shot: the image is the PLACE from this shot's scene, drawn empty — your take keeps showing, and "Restage" puts your real performance in this place.${held}${opening}${shapeNote}${old}${notes.text}`
-          : `About ${usd(est.image)} at list price. The image is drawn from this shot's scene and put on this shot only.${held}${opening}${shapeNote}${old}${notes.text}`,
+          ? `About ${usd(est.image)} at list price${references.delivered && references.sent.length ? " (the edits route is assumed to cost the same as a plain still; unverified)" : ""}. This is a performance shot: the image is the PLACE from this shot's scene, drawn empty — your take keeps showing, and "Restage" puts your real performance in this place.${held}${opening}${shapeNote}${old}${notes.text}`
+          : `About ${usd(est.image)} at list price${references.delivered && references.sent.length ? " (the edits route is assumed to cost the same as a plain still; unverified)" : ""}. The image is drawn from this shot's scene and put on this shot only.${held}${opening}${shapeNote}${old}${notes.text}`,
         confirmLabel: `Generate image · ${usd(est.image)}`,
         testId: "confirm-generate-image",
         onConfirm: () =>

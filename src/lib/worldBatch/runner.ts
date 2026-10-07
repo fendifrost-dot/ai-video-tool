@@ -370,6 +370,10 @@ export async function submitStills(shot: BatchShot, ctx: RunContext, deps: Runne
   if (!shot.prompt.trim()) throw new Error(`${shot.id}: needs a scene to draw`);
   const refs = ctx.stillReferences?.[shot.id] ?? null;
   const deliver = !!refs?.delivered && refs.sent.length > 0;
+  // the last guard before money: a still that needs a screen picture, a garment or an identity is not drawn without them
+  if (refs && !deliver && refs.sent.some((r) => r.role === "screen" || r.role === "garment" || r.role === "cast")) {
+    throw new Error(`${shot.id}: this shot needs its reference pictures and the image generator is not taking them — nothing was generated`);
+  }
   // the legend names the pictures by position: it goes in only when the pictures do
   const prompt = deliver && refs!.legend ? `${stillPrompt(shot, ctx.look)} ${refs!.legend}` : stillPrompt(shot, ctx.look);
   const settings: BatchJobSettings = {

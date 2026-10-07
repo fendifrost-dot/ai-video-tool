@@ -154,7 +154,7 @@ export function ShotProductionEditor({ box }: { box: StoryboardBox }) {
       {sb.wardrobe.length > 0 && (
         <div className="space-y-1">
           <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-foreground/50">
-            <Shirt className="h-3 w-3" /> Exact garments (sent as pictures)
+            <Shirt className="h-3 w-3" /> Exact garments (sent as pictures — the model reproduces them; check the result)
           </span>
           <div className="flex flex-wrap gap-1">
             {sb.wardrobe.map((w) => {
@@ -186,7 +186,7 @@ export function ShotProductionEditor({ box }: { box: StoryboardBox }) {
         <span className="text-[10px] uppercase tracking-wide text-foreground/50">Pictures its image is drawn with (up to {refs.cap})</span>
         {!refs.delivered && refs.sent.length > 0 && (
           <p className="text-[11px] text-amber-200/90" data-testid="shot-references-undelivered">
-            The image generator does not take reference pictures yet: these are described in words only, and the job records that they were not sent.
+            The image generator does not take reference pictures yet. A shot that needs a screen picture, an exact garment or an identity is not generated until it does; the rest are described in words only, and the job records that they were not sent.
           </p>
         )}
         {refs.sent.length === 0 && refs.notSent.length === 0 && <p className="text-[11px] text-foreground/45">None — drawn from words.</p>}
