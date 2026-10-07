@@ -9,8 +9,8 @@ Supersedes the morning handoff (`IB_LINKS_ROUTING_REFERENCES_2026-10-07.md`) whe
 | Interrupted Broadcast variation | **active**; saved treatment unchanged (5,615 chars); 0 shots; **6 characters** created from the treatment's own words (FENDI → artist record; THE_RIDER, WOMAN_AT_THE_SWITCH recurring; THE_JANITOR fictional; THE_MODELS, THE_CREW background) |
 | Cast migration `20261007170000` | applied (3 columns on `continuity_entities`) |
 | Writer with People + cast per shot (#188) | merged `2b857ab`; `treatment-writer-proxy` **redeployed** 16:3x UTC; frontend published `b8cfda9` |
-| Reference delivery (#185, Class C, three reviews recorded) | merged `7babdc4`; `world-still-proxy` redeploy **requested** 16:4x UTC — check: dry-run answer carries `referencesAccepted: true` |
-| IB storyboard | **NOT WRITTEN** — one press in the app (below) |
+| Reference delivery (#185, Class C, three reviews recorded) | merged `7babdc4`; `world-still-proxy` **redeployed** (Lovable report 16:4x UTC, read 17:02: "deployed successfully, no errors", carrying `_shared/stillReferences.ts` + `_shared/xaiImageEdits.ts` from `7babdc4`; no commit made). OBSERVED from the deploy report, not yet VERIFIED by a call: the first signed-in dry run must answer `referencesAccepted: true` |
+| IB storyboard | **NOT WRITTEN** — one press in the app (below). Re-checked 17:02 UTC: 0 shots |
 
 ## 1. The storyboard write — exact blocker, one press
 
