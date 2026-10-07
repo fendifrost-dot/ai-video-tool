@@ -17,8 +17,13 @@
 //   song_title, lyrics, artist_profile, visual_style, mood, additional_notes, analysis, looks,
 //   has_performance_footage, project_type
 //   continuity_entities  [{ key, kind: location|prop|lighting, name, description }] — what a shot may point at by key
-// Reply: { ok, model, treatment: { concept, narrative, sections, clips[] }, missing, repeated, rewritten, usage, actualCostUsd }
+//   avt_variation_id the video variation the board belongs to (evidence only — the grid and the text come in on the request)
+// Reply: { ok, model, treatment: { concept, narrative, sections, clips[] }, beats, allocation, coverage, runId, missing,
+//          repeated, rewritten, relinked, usage, actualCostUsd, estimatedCostUsd }
 //        `repeated` = shots that came back with another shot's sentence; `rewritten` = those written again as their own.
+//        Before the shots are written, the treatment's BEATS are read out once and the grid's shots allotted to them
+//        (beats.ts): each shot is written inside its beat; `coverage` says whether the board carries every beat, its
+//        people and its ties. Every run leaves a row in writer_runs (its variation, treatment revision, outcome, cost).
 //        A clip may carry `timed_beats` — moments inside the shot at which something changes (_shared/timedBeats.ts).
 //        or { ok: false, errorCode, errorMessage } with a non-2xx status.
 //
@@ -27,7 +32,8 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
-import { acceptShots, writerEntities, chunkGrid, linkedShots, linkUserMessage, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type WriterContext } from "./contract.ts";
+import { costOf, estimateCostUsd, fingerprint, SHOTS_PER_CALL, acceptShots, writerEntities, chunkGrid, linkedShots, linkUserMessage, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type WriterContext } from "./contract.ts";
+import { acceptBeats, allocateBeats, BEATS_SCHEMA, beatsSystemPrompt, coverageOf, shotBriefs, withRequiredLinks, type Allocation, type Beat, type ShotBrief } from "./beats.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,19 +43,9 @@ const corsHeaders = {
 
 const XAI_BASE_URL = "https://api.x.ai/v1";
 const DEFAULT_MODEL = Deno.env.get("TREATMENT_WRITER_MODEL")?.trim() || "grok-4-fast";
-const PRICE_PER_M: Record<string, { input: number; output: number }> = { "grok-4.6": { input: 3, output: 15 }, "grok-4-fast": { input: 0.2, output: 0.5 } };
 const MAX_SHOTS = 160;
-const SHOTS_PER_CALL = 9;
 const MAX_TEXT = 12000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function json(status: number, body: unknown) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-const fail = (status: number, errorCode: string, errorMessage: string) => json(status, { ok: false, errorCode, errorMessage });
-const text = (v: unknown, max = MAX_TEXT) => (typeof v === "string" ? v.slice(0, max) : null);
-
-type Usage = { prompt_tokens: number; completion_tokens: number };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -78,6 +74,8 @@ serve(async (req) => {
   const { data: project, error: pErr } = await admin.from("video_projects").select("id, user_id").eq("id", projectId).maybeSingle();
   if (pErr) return fail(500, "INTERNAL", `The project could not be read: ${pErr.message}`);
   if (!project || project.user_id !== userData.user.id) return fail(403, "FORBIDDEN", "This project is not yours");
+
+  const variationId = typeof body.avt_variation_id === "string" && UUID_RE.test(body.avt_variation_id) ? body.avt_variation_id : null;
 
   const rawGrid = Array.isArray(body.clip_grid) ? (body.clip_grid as Record<string, unknown>[]) : [];
   const grid: GridShot[] = rawGrid
@@ -152,8 +150,40 @@ serve(async (req) => {
   }
   const treatment = [concept, narrative].filter(Boolean).join("\n\n");
 
-  // 2. the shots, a few per call, all at once
-  const system = shotsSystemPrompt(ctx, treatment, grid);
+  // the run's evidence: who, for which variation and treatment revision, what it should cost — then its outcome
+  const contextChars = [ctx.artistProfile, ctx.visualStyle, ctx.mood, ctx.notes, ctx.lyrics].reduce((n, t) => n + (t?.length ?? 0), 0) + JSON.stringify(ctx.entities ?? []).length;
+  const estimatedCostUsd = estimateCostUsd(model, grid.length, treatment.length, contextChars);
+  const { data: runRow } = await admin
+    .from("writer_runs")
+    .insert({ user_id: userData.user.id, project_id: projectId, variation_id: variationId, treatment_fingerprint: fingerprint(treatment), treatment_chars: treatment.length, mode: "full_treatment", model, status: "running", shots_asked: grid.length, estimated_cost_usd: estimatedCostUsd })
+    .select("id")
+    .maybeSingle();
+  const runId: string | null = runRow?.id ?? null;
+  const finish = async (patch: Record<string, unknown>) => {
+    if (!runId) return;
+    await admin.from("writer_runs").update({ ...patch, usage_json: usage, finished_at: new Date().toISOString() }).eq("id", runId);
+  };
+  const failRun = async (status: number, code: string, message: string) => {
+    await finish({ status: "failed", error_text: message, actual_cost_usd: usage.prompt_tokens + usage.completion_tokens > 0 ? costOf(model, usage) : null });
+    return fail(status, code, message);
+  };
+
+  // 2. the treatment's beats, read once, and the grid allotted to them — so the shots carry the whole treatment in
+  //    its order, with its people, its wardrobe and its ties, before any shot is written
+  let beats: Beat[] = [];
+  let allocation: Allocation | null = null;
+  let briefs: Record<string, ShotBrief> = {};
+  {
+    const r = await ask(beatsSystemPrompt(ctx.entities ?? [], ctx.hasPerformanceFootage === true), JSON.stringify({ treatment }), BEATS_SCHEMA, 6000);
+    if (!r.ok) return failRun(502, "PROVIDER_API_ERROR", `The treatment's beats could not be read: ${r.why}`);
+    beats = acceptBeats(r.value, ctx.entities ?? []);
+    if (beats.length === 0) return failRun(502, "PROVIDER_API_ERROR", "The treatment's beats came back empty — nothing was written");
+    allocation = allocateBeats(beats, grid);
+    briefs = shotBriefs(beats, allocation);
+  }
+
+  // 3. the shots, a few per call, all at once — each inside its beat
+  const system = shotsSystemPrompt(ctx, treatment, grid, true);
   const chunks = chunkGrid(grid, SHOTS_PER_CALL);
   const boardKeys = grid.map((g) => g.key);
   const written = await Promise.all(
@@ -162,7 +192,7 @@ serve(async (req) => {
       let why = "";
       for (let attempt = 0; attempt < 2 && got.missing.length > 0; attempt++) {
         const left = chunk.filter((s) => got.missing.includes(s.key));
-        const r = await ask(system, shotsUserMessage(left), SHOTS_SCHEMA, 400 + left.length * 560);
+        const r = await ask(system, shotsUserMessage(left, briefs), SHOTS_SCHEMA, 400 + left.length * 560);
         if (!r.ok) { why = r.why; continue; }
         const more = acceptShots(left, r.value, ctx.entities, boardKeys);
         got = { clips: [...got.clips, ...more.clips], missing: more.missing };
@@ -172,16 +202,16 @@ serve(async (req) => {
   );
   let clips = written.flatMap((w) => w.clips);
   const missing = written.flatMap((w) => w.missing);
-  if (clips.length === 0) return fail(502, "PROVIDER_API_ERROR", `No shot was written: ${written.find((w) => w.why)?.why ?? "the model returned nothing usable"}`);
+  if (clips.length === 0) return failRun(502, "PROVIDER_API_ERROR", `No shot was written: ${written.find((w) => w.why)?.why ?? "the model returned nothing usable"}`);
 
-  // 3. shots that came back with another shot's sentence are asked for again, once (the runs cannot see each other)
+  // 4. shots that came back with another shot's sentence are asked for again, once (the runs cannot see each other)
   const repeated = new Set(repeatedScenes(clips));
   let rewritten: string[] = [];
   if (repeated.size > 0) {
     const used = clips.map((c) => String(c.scene_description ?? ""));
     const again = await Promise.all(
       chunkGrid(grid.filter((g) => repeated.has(g.key)), SHOTS_PER_CALL).map(async (chunk) => {
-        const r = await ask(system, rewriteUserMessage(chunk, used), SHOTS_SCHEMA, 400 + chunk.length * 560);
+        const r = await ask(system, rewriteUserMessage(chunk, used, briefs), SHOTS_SCHEMA, 400 + chunk.length * 560);
         return r.ok ? acceptShots(chunk, r.value, ctx.entities, boardKeys).clips : [];
       }),
     );
@@ -190,14 +220,16 @@ serve(async (req) => {
     rewritten = merged.replaced;
   }
 
-  // 4. shots tied to other shots are written again once, beside their partners' scenes (the runs could not see them)
+  // 5. the ties the treatment states are links whether or not the writer wrote them; then shots tied to other shots
+  //    are written again once, beside their partners' scenes (the runs could not see them)
+  clips = withRequiredLinks(clips, briefs);
   const partners = linkedShots(clips);
   let relinked: string[] = [];
   if (partners.size > 0) {
     const again = await Promise.all(
       chunkGrid(grid.filter((g) => partners.has(g.key)), SHOTS_PER_CALL).map(async (chunk) => {
-        const r = await ask(system, linkUserMessage(chunk, clips, partners), SHOTS_SCHEMA, 400 + chunk.length * 560);
-        return r.ok ? acceptShots(chunk, r.value, ctx.entities, boardKeys).clips : [];
+        const r = await ask(system, linkUserMessage(chunk, clips, partners, briefs), SHOTS_SCHEMA, 400 + chunk.length * 560);
+        return r.ok ? withRequiredLinks(acceptShots(chunk, r.value, ctx.entities, boardKeys).clips, briefs) : [];
       }),
     );
     const byKey = new Map(again.flat().map((c) => [String(c.key), c]));
@@ -205,7 +237,11 @@ serve(async (req) => {
     relinked = [...byKey.keys()];
   }
 
-  const price = PRICE_PER_M[model] ?? { input: 5, output: 25 };
-  const actualCostUsd = Number(((usage.prompt_tokens * price.input + usage.completion_tokens * price.output) / 1_000_000).toFixed(4));
-  return json(200, { ok: true, model, treatment: { concept, narrative, sections, clips }, missing, repeated: [...repeated], rewritten, relinked, usage, actualCostUsd });
+  // 6. does the board carry the treatment? said here, kept with the run, shown to the director — never silently
+  const coverage = allocation ? coverageOf(beats, allocation, clips) : null;
+  // the actual cost is the provider's own token counts at list price; with no counts it is unknown, not estimated
+  const actualCostUsd = usage.prompt_tokens + usage.completion_tokens > 0 ? costOf(model, usage) : null;
+  await finish({ status: "succeeded", shots_written: clips.length, actual_cost_usd: actualCostUsd, beats_json: beats, allocation_json: allocation, coverage_json: coverage, clips_json: clips, missing_json: missing });
+  return json(200, { ok: true, model, treatment: { concept, narrative, sections, clips }, beats, allocation, coverage, runId, missing, repeated: [...repeated], rewritten, relinked, usage, actualCostUsd, estimatedCostUsd });
 });
+

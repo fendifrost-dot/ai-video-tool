@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { acceptTimedBeats, WRITTEN_BEATS_MAX, WRITTEN_EFFECTS } from "../_shared/timedBeats.ts";
-import { acceptCast, CAST_RULES, acceptLinks, acceptProduction, linkedShots, linkUserMessage, PRODUCTION_RULES, acceptShots, writerEntities, chunkGrid, contextBlocks, outlineLine, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_DECIDES, TREATMENT_SCHEMA, withRewrites, type GridShot } from "./contract.ts";
+import { acceptCast, CAST_RULES, costOf, estimateCostUsd, fingerprint, acceptLinks, acceptProduction, linkedShots, linkUserMessage, PRODUCTION_RULES, acceptShots, writerEntities, chunkGrid, contextBlocks, outlineLine, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_DECIDES, TREATMENT_SCHEMA, withRewrites, type GridShot } from "./contract.ts";
 
 const grid: GridShot[] = [
   { key: "c001", start: 0, end: 3.92, section: "intro", energy: "low", lyrics: "" },
@@ -56,6 +56,36 @@ describe("what the treatment writer is told", () => {
     expect(SHOTS_SCHEMA.schema.properties.clips.items.required).toEqual(["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "wardrobe_from", "lyric_ref", "priority", "timed_beats", "continuity", "cast", "production"]);
     expect(SHOTS_SCHEMA.schema.properties.clips.items.properties.wardrobe_from.enum).toEqual(["footage", "treatment", "none"]);
     expect(SHOTS_SCHEMA.schema.properties.clips.items.properties.shot_type.enum).toContain("performance");
+    // strict mode: a property that is not required is one the model never has to write — links were lost that way
+    const cont = SHOTS_SCHEMA.schema.properties.clips.items.properties.continuity;
+    expect(cont.required).toEqual(Object.keys(cont.properties));
+    expect(cont.required).toContain("links");
+  });
+
+  it("a run's evidence: the treatment's fingerprint is the app's, and the estimate is at list price from what is sent", () => {
+    expect(fingerprint("a b")).toMatch(/^3:[0-9a-z]+$/);
+    expect(fingerprint("a b")).toBe(fingerprint(" a   b "));
+    expect(fingerprint("a b")).not.toBe(fingerprint("a c"));
+    const small = estimateCostUsd("grok-4-fast", 10, 1000, 2000);
+    const big = estimateCostUsd("grok-4-fast", 43, 5600, 9000);
+    expect(small).toBeGreaterThan(0);
+    expect(big).toBeGreaterThan(small);
+    expect(big).toBeLessThan(0.1);
+    // an unknown model is priced at the dearest known rate, never cheaper
+    expect(estimateCostUsd("some-new-model", 43, 5600, 9000)).toBeGreaterThan(big);
+    expect(costOf("grok-4-fast", { prompt_tokens: 1_000_000, completion_tokens: 0 })).toBe(0.2);
+  });
+
+  it("when the board is allotted to the treatment's beats, each shot is handed its beat and the rules say to stay inside it", () => {
+    const briefs = { c002: { beat: "b02", title: "The viewer", scene: "a spare room", action: "he watches the CRT", people: ["ARTIST"], unnamedPeople: false, artistPerforms: false, wardrobe: "his exact denim look", first: true, last: true, links: [{ kind: "screen_shows" as const, shot: "c001", note: "the CRT" }] } };
+    const handed = JSON.parse(shotsUserMessage([grid[1]], briefs)) as { shots: { key: string; beat?: { people: string[]; must_link: unknown[] } }[] };
+    expect(handed.shots[0].beat?.people).toEqual(["ARTIST"]);
+    expect(handed.shots[0].beat?.must_link).toEqual([{ kind: "screen_shows", shot: "c001", note: "the CRT" }]);
+    expect(JSON.parse(shotsUserMessage([grid[0]], briefs)).shots[0]).not.toHaveProperty("beat");
+    const sys = shotsSystemPrompt({ ...ctx, hasPerformanceFootage: true }, "The treatment.", grid, true);
+    expect(sys).toContain("Write the shot INSIDE that beat and nowhere else");
+    expect(sys).toContain("A shot of a beat with people is never `none: true`");
+    expect(shotsSystemPrompt({ ...ctx, hasPerformanceFootage: true }, "The treatment.", grid)).not.toContain("INSIDE that beat");
   });
 });
 

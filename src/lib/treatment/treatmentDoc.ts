@@ -12,6 +12,8 @@
  * Pure module.
  */
 
+import { parseBeatCoverage, parseWriterRun, type BeatCoverage, type WriterRunRecord } from "./beatCoverage";
+
 export type TreatmentMode = "ai" | "manual";
 
 export type TreatmentDoc = {
@@ -22,8 +24,11 @@ export type TreatmentDoc = {
   model: string | null;
   /** Optional notes for the writer (constraints, must-haves). Mood and visual direction are project fields. */
   notes: string;
-  /** The treatment text the storyboard boxes were last written from, as a fingerprint, and when. */
-  storyboard: { from: string; at: string; written: number; kept: number } | null;
+  /**
+   * The treatment text the storyboard boxes were last written from, as a fingerprint, and when — and, from a writer
+   * that read the treatment's beats, whether the board carries them (`coverage`) and the run's evidence (`run`).
+   */
+  storyboard: { from: string; at: string; written: number; kept: number; coverage?: BeatCoverage | null; run?: WriterRunRecord | null } | null;
   /** When the director said the real footage is all in (Setup). Null = not confirmed. */
   footageConfirmedAt: string | null;
 };
@@ -65,7 +70,7 @@ export function parseTreatmentDoc(value: unknown): TreatmentDoc {
       notes: typeof t.notes === "string" ? t.notes : "",
       storyboard:
         typeof sb.from === "string" && typeof sb.at === "string"
-          ? { from: sb.from, at: sb.at, written: Number(sb.written ?? 0), kept: Number(sb.kept ?? 0) }
+          ? { from: sb.from, at: sb.at, written: Number(sb.written ?? 0), kept: Number(sb.kept ?? 0), coverage: parseBeatCoverage(sb.coverage), run: parseWriterRun(sb.run) }
           : null,
       footageConfirmedAt,
     };

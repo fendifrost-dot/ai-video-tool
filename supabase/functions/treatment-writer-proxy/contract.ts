@@ -7,8 +7,46 @@
 // The grid owns timing: the writer is told each shot's window and the words sung in it, and never moves a cut.
 
 import { acceptTimedBeats, TIMED_BEATS_PROPERTY, timedBeatsRules } from "../_shared/timedBeats.ts";
+import { BEAT_RULES, briefedShot, type ShotBrief } from "./beats.ts";
 
 export const SHOT_TYPES = ["performance", "b_roll", "narrative", "lyric_visual", "transition", "vfx"] as const;
+
+/** List prices per million tokens; a model not listed is priced at the dearest known, so an estimate never flatters. */
+export const PRICE_PER_M: Record<string, { input: number; output: number }> = { "grok-4.6": { input: 3, output: 15 }, "grok-4-fast": { input: 0.2, output: 0.5 } };
+export const SHOTS_PER_CALL = 9;
+
+/** The treatment's fingerprint, the same as the app's (src/lib/treatment/treatmentDoc.ts): length and a djb2 hash. */
+export function fingerprint(text: string): string {
+  const s = text.replace(/\s+/g, " ").trim();
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return `${s.length}:${(h >>> 0).toString(36)}`;
+}
+
+/** What a run should cost at the model's list price, from the sizes of what is sent and asked — an estimate, kept apart from the actual. */
+export function estimateCostUsd(model: string, shots: number, treatmentChars: number, contextChars: number): number {
+  const price = PRICE_PER_M[model] ?? { input: 5, output: 25 };
+  const perCall = Math.ceil((treatmentChars + contextChars + shots * 90) / 4) + 1800; // prompt tokens of one shots call (~4 chars a token + the rules)
+  const calls = Math.ceil(shots / SHOTS_PER_CALL) + 1; // + the beats call
+  const inputTokens = calls * perCall + Math.ceil(treatmentChars / 4);
+  const outputTokens = shots * 420 + 1600 + Math.ceil(shots / 3) * 420; // the shots, the beats, one re-ask of a third
+  return Number(((inputTokens * price.input + outputTokens * price.output) / 1_000_000).toFixed(4));
+}
+
+function json(status: number, body: unknown) {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+const fail = (status: number, errorCode: string, errorMessage: string) => json(status, { ok: false, errorCode, errorMessage });
+const text = (v: unknown, max = MAX_TEXT) => (typeof v === "string" ? v.slice(0, max) : null);
+
+type Usage = { prompt_tokens: number; completion_tokens: number };
+
+/** The cost of what the provider counted, at list price. */
+export function costOf(model: string, usage: { prompt_tokens: number; completion_tokens: number }): number {
+  const price = PRICE_PER_M[model] ?? { input: 5, output: 25 };
+  return Number(((usage.prompt_tokens * price.input + usage.completion_tokens * price.output) / 1_000_000).toFixed(4));
+}
+
 export const PRIORITIES = ["normal", "high", "hero"] as const;
 
 export type GridShot = { key: string; start: number; end: number; section?: string | null; energy?: string | null; lyrics?: string | null };
@@ -120,7 +158,7 @@ export const SHOTS_SCHEMA = {
           lyric_ref: { type: "string", description: "the words of this shot's lyrics that the picture answers, verbatim — an empty string when it answers none" },
           priority: { type: "string", enum: [...PRIORITIES] },
           timed_beats: TIMED_BEATS_PROPERTY,
-          continuity: { type: "object", additionalProperties: false, required: ["location", "props", "lighting"],
+          continuity: { type: "object", additionalProperties: false, required: ["location", "props", "lighting", "links"],
             description: "the project's continuity entities this shot points at, by KEY exactly as given — empty when the project has none or none fits",
             properties: {
               location: { type: "string", description: "the key of the place this shot is set in, or an empty string" },
@@ -243,7 +281,7 @@ export function treatmentSystemPrompt(ctx: WriterContext): string {
 }
 
 /** The system prompt of the calls that write the shots. `treatment` is the one brief every shot serves. */
-export function shotsSystemPrompt(ctx: WriterContext, treatment: string, outline: readonly GridShot[]): string {
+export function shotsSystemPrompt(ctx: WriterContext, treatment: string, outline: readonly GridShot[], allotted = false): string {
   return [
     `You are the director of a ${projectLabel(ctx.projectType)}, writing its storyboard shot by shot inside the treatment below. The treatment is the one creative brief: every shot belongs to its world and moves its idea forward.`,
     `The treatment:\n${treatment.trim()}`,
@@ -258,11 +296,12 @@ export function shotsSystemPrompt(ctx: WriterContext, treatment: string, outline
       "- Say every such tie in `continuity.links`, on the shot that owes it, naming the other shot by its key from the outline: `screen_shows` (a screen, monitor or reflection here shows that shot's picture), `match_position` (he or the subject holds the place in the frame it had there while the world around changes), `reveals` (this shot reveals what that shot was inside of or opening onto), `continues` (the same action carries on across the cut). Only shots of this storyboard; never a key you were not given.",
       PRODUCTION_RULES,
       CAST_RULES,
+      allotted ? BEAT_RULES : null,
       "- A performance shot is its own picture too. He cannot be redirected — but the world around him can answer the words: say where in the place he stands in THIS shot and what the place and the light are doing around him. When its words name something the place can show or do, it happens there, on those words.",
       "- What the treatment says happens on certain words, or every time a section returns (in every hook), is binding on the shots: each shot in which those words are sung carries it — as a timed beat on those words when it happens inside the shot, as the state the shot opens in when it has already happened. A shot never contradicts the treatment.",
       "- Keep to the places the treatment names — and, where it leaves the place open, the ones the notes name. One clear subject per shot; a crowd, a formation or a group the treatment asks for IS the subject. Photoreal and filmable: an impossible event the treatment asks for is written as a thing that physically happens in front of the camera, never softened into something ordinary. No readable text or logos — except a mark the treatment itself calls for: name that one mark, where the treatment puts it, and nothing else.",
       "- `priority`: hero for the two or three shots the whole video is remembered by, high for the first shot of a hook, normal otherwise.",
-    ].join("\n"),
+    ].filter(Boolean).join("\n"),
     timedBeatsRules("scene_description"),
     entitiesBlock(ctx.entities),
     ctx.hasPerformanceFootage ? FOOTAGE_RULES : NO_FOOTAGE_RULES,
@@ -285,11 +324,9 @@ export function outlineLine(s: GridShot): string {
   return `${s.key} ${clock(s.start)}–${clock(s.end)} [${s.section || "—"}${s.energy ? `, ${s.energy}` : ""}] ${words ? `"${words}"` : "(no words)"}`;
 }
 
-/** The shots handed to one call. */
-export function shotsUserMessage(chunk: readonly GridShot[]): string {
-  return JSON.stringify({
-    shots: chunk.map((s) => ({ key: s.key, seconds: Math.round((s.end - s.start) * 10) / 10, section: s.section ?? "", energy: s.energy ?? "", lyrics: (s.lyrics ?? "").trim() })),
-  });
+/** The shots handed to one call — each with its beat of the treatment when the board was allotted (beats.ts). */
+export function shotsUserMessage(chunk: readonly GridShot[], briefs: Readonly<Record<string, ShotBrief>> = {}): string {
+  return JSON.stringify({ shots: chunk.map((s) => briefedShot(s, briefs[s.key])) });
 }
 
 const sceneKey = (s: unknown) =>
@@ -317,11 +354,11 @@ export function repeatedScenes(clips: readonly Record<string, unknown>[]): strin
 }
 
 /** The second ask for shots that came back with a sentence another shot already has. */
-export function rewriteUserMessage(chunk: readonly GridShot[], used: readonly string[]): string {
+export function rewriteUserMessage(chunk: readonly GridShot[], used: readonly string[], briefs: Readonly<Record<string, ShotBrief>> = {}): string {
   return JSON.stringify({
     note: "These shots came back with a scene another shot of this storyboard already has, word for word. Write each again as its own picture — what is different in THIS shot: where he is in the place, what the place and the light do around him on its words, what the camera sees. None may repeat a sentence below.",
     sentences_already_used: [...new Set(used.map((u) => u.trim()).filter(Boolean))].slice(0, 60),
-    shots: chunk.map((s) => ({ key: s.key, seconds: Math.round((s.end - s.start) * 10) / 10, section: s.section ?? "", energy: s.energy ?? "", lyrics: (s.lyrics ?? "").trim() })),
+    shots: chunk.map((s) => briefedShot(s, briefs[s.key])),
   });
 }
 
@@ -441,7 +478,7 @@ export function linkedShots(clips: readonly Record<string, unknown>[]): Map<stri
 }
 
 /** The second ask for linked shots: each is written again knowing the scene of every shot it is tied to. */
-export function linkUserMessage(chunk: readonly GridShot[], clips: readonly Record<string, unknown>[], partners: ReadonlyMap<string, ReadonlySet<string>>): string {
+export function linkUserMessage(chunk: readonly GridShot[], clips: readonly Record<string, unknown>[], partners: ReadonlyMap<string, ReadonlySet<string>>, briefs: Readonly<Record<string, ShotBrief>> = {}): string {
   const byKey = new Map(clips.map((c) => [String(c.key ?? ""), c]));
   const scene = (k: string) => {
     const c = byKey.get(k);
@@ -451,7 +488,7 @@ export function linkUserMessage(chunk: readonly GridShot[], clips: readonly Reco
     note: "These shots are tied to other shots of this storyboard (a screen that shows another shot, a held position across a cut, a reveal, an action that carries on). They were written without seeing those shots. Write each again so that BOTH ends of every tie agree: what a screen shows is that shot's picture; what one shot ends on, the next opens on. Keep every tie in `continuity.links`. The linked shots' current scenes are below — do not rewrite them here.",
     linked_shots: [...new Set(chunk.flatMap((s) => [...(partners.get(s.key) ?? [])]))].filter((k) => !chunk.some((s) => s.key === k)).map(scene),
     current: chunk.map((s) => scene(s.key)),
-    shots: chunk.map((s) => ({ key: s.key, seconds: Math.round((s.end - s.start) * 10) / 10, section: s.section ?? "", energy: s.energy ?? "", lyrics: (s.lyrics ?? "").trim() })),
+    shots: chunk.map((s) => briefedShot(s, briefs[s.key])),
   });
 }
 

@@ -24,7 +24,7 @@ const calls = vi.hoisted(() => ({
   restore: vi.fn(async (..._args: unknown[]) => undefined),
   saveTreatment: vi.fn(async (..._args: unknown[]) => ({})),
   deleteTreatment: vi.fn(async (..._args: unknown[]) => undefined),
-  write: vi.fn(async (..._args: unknown[]) => ({ written: 2, kept: 1 })),
+  write: vi.fn(async (..._args: unknown[]) => ({ written: 2, kept: 1, draft: { coverage: null }, variationId: "v1", candidateVariationId: null, editsLeftBehind: 0 })),
 }));
 
 vi.mock("@tanstack/react-router", () => ({
@@ -41,6 +41,8 @@ vi.mock("@/lib/queries/projects", () => ({
 }));
 vi.mock("@/lib/queries/variations", () => ({
   useActiveVariation: () => ({ id: "v1", name: "Original", archived: false }),
+  useVariations: () => ({ data: [{ id: "v1", name: "Original", archived: false }], isLoading: false }),
+  variationsKeys: { forProject: (id: string) => ["video_variations", "project", id] },
 }));
 vi.mock("@/lib/queries/treatmentVersions", () => ({
   treatmentVersionsKeys: { forProject: (id: string) => ["tv", id] },
@@ -171,6 +173,51 @@ describe("TreatmentPage", () => {
     expect(calls.write.mock.calls[0][0]).toMatchObject({ aiWritesText: true, treatmentText: "" });
     // the writer is handed the project's own places, props and lighting states to point shots at — not the archived ones
     expect((calls.write.mock.calls[0][0] as { context: { entities: unknown[] } }).context.entities).toEqual([{ key: "BLACK_RUNWAY", kind: "location", name: "Black Runway", description: "A long black runway." }]);
+  });
+
+  it("a board that exists can be written again as a CANDIDATE: a new variation, this board untouched — and the board's coverage of the treatment is shown with its gaps", async () => {
+    const now = fingerprint("A new idea.");
+    const coverage = {
+      ok: false,
+      beats: [
+        { id: "b01", title: "The burning show", shots: ["c001", "c002"], people: [{ key: "THE_RIDER", castIn: [] }], emptied: ["c002"], ties: [] },
+        { id: "b02", title: "The viewer", shots: ["c003"], people: [{ key: "FENDI", castIn: ["c003"] }], emptied: [], ties: [{ kind: "screen_shows", to: "b01", fromShot: "c003", toShot: "c002", present: false }] },
+        { id: "b03", title: "The control room", shots: [], people: [], emptied: [], ties: [] },
+      ],
+      uncoveredBeats: ["b03"],
+      missingPeople: [{ beat: "b01", key: "THE_RIDER" }],
+      missingLinks: [{ beat: "b02", kind: "screen_shows", to: "b01" }],
+      anchors: [],
+      unanchored: [],
+    };
+    state.treatmentJson = { ...SAVED, treatment: { text: "A new idea.", mode: "manual", updated_at: "t", notes: "", storyboard: { from: now, at: "2026-10-07", written: 3, kept: 0, coverage, run: { id: "run1", model: "grok-4-fast", actualCostUsd: null, estimatedCostUsd: 0.04 } } } };
+    const from = (stamp: string) => ({ provenance: { treatment: stamp, createdAt: "2026-10-07T00:00:00Z" } });
+    state.boxes = [
+      { id: "r1", key: "c001", locked: false, override: null, generated: from(now) },
+      { id: "r2", key: "c002", locked: false, override: null, generated: from(now) },
+      { id: "r3", key: "c003", locked: false, override: { direction: null, cameraMotion: null, framing: null, transitionIn: null, requiredElements: null, notes: null, manual: ["continuity"] }, generated: from(now) },
+    ];
+    render(<TreatmentPage projectId="p1" />);
+    // the coverage is open because it has gaps, and says each one in words, by shot number
+    const cov = screen.getByTestId("treatment-coverage");
+    expect(cov.getAttribute("data-ok")).toBe("false");
+    expect(cov.textContent).toContain("2 of 3 beats of the treatment have shots");
+    const gaps = screen.getByTestId("treatment-coverage-gaps").textContent ?? "";
+    expect(gaps).toContain("“The control room” got no shot");
+    expect(gaps).toContain("“The burning show” puts THE_RIDER in it, and no shot of it casts them");
+    expect(gaps).toContain("shot 2 came back with nobody in it");
+    expect(gaps).toContain("“The viewer” is cut from “The burning show” (screen shows) and no shot carries that link");
+    // the run's cost is said as unknown, with the estimate apart — never the estimate as the cost
+    expect(screen.getByTestId("treatment-coverage-run").textContent).toContain("actual cost unknown");
+    expect(screen.getByTestId("treatment-coverage-run").textContent).toContain("estimate was $0.04");
+
+    // the candidate: confirmed first, named after this variation, this board kept as it is
+    fireEvent.click(screen.getByTestId("treatment-write-candidate"));
+    expect(screen.getByTestId("confirm-dialog").textContent).toMatch(/“Original · candidate 1”/);
+    expect(screen.getByTestId("confirm-dialog").textContent).toMatch(/this board stays exactly as it is/);
+    fireEvent.click(screen.getByTestId("confirm-write-candidate"));
+    await waitFor(() => expect(calls.write).toHaveBeenCalledTimes(1));
+    expect(calls.write.mock.calls[0][0]).toMatchObject({ aiWritesText: false, treatmentText: "A new idea.", candidate: { name: "Original · candidate 1" } });
   });
 
   it("an edited treatment is behind its shots until they are rewritten — and only the shots that are not the director's", () => {

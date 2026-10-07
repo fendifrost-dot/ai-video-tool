@@ -2686,6 +2686,96 @@ export type Database = {
           },
         ]
       }
+      writer_runs: {
+        Row: {
+          actual_cost_usd: number | null
+          allocation_json: Json | null
+          beats_json: Json | null
+          clips_json: Json | null
+          coverage_json: Json | null
+          created_at: string
+          error_text: string | null
+          estimated_cost_usd: number | null
+          finished_at: string | null
+          id: string
+          missing_json: Json | null
+          mode: string
+          model: string | null
+          project_id: string
+          shots_asked: number | null
+          shots_written: number | null
+          status: string
+          treatment_chars: number | null
+          treatment_fingerprint: string | null
+          usage_json: Json | null
+          user_id: string
+          variation_id: string | null
+        }
+        Insert: {
+          actual_cost_usd?: number | null
+          allocation_json?: Json | null
+          beats_json?: Json | null
+          clips_json?: Json | null
+          coverage_json?: Json | null
+          created_at?: string
+          error_text?: string | null
+          estimated_cost_usd?: number | null
+          finished_at?: string | null
+          id?: string
+          missing_json?: Json | null
+          mode?: string
+          model?: string | null
+          project_id: string
+          shots_asked?: number | null
+          shots_written?: number | null
+          status?: string
+          treatment_chars?: number | null
+          treatment_fingerprint?: string | null
+          usage_json?: Json | null
+          user_id: string
+          variation_id?: string | null
+        }
+        Update: {
+          actual_cost_usd?: number | null
+          allocation_json?: Json | null
+          beats_json?: Json | null
+          clips_json?: Json | null
+          coverage_json?: Json | null
+          created_at?: string
+          error_text?: string | null
+          estimated_cost_usd?: number | null
+          finished_at?: string | null
+          id?: string
+          missing_json?: Json | null
+          mode?: string
+          model?: string | null
+          project_id?: string
+          shots_asked?: number | null
+          shots_written?: number | null
+          status?: string
+          treatment_chars?: number | null
+          treatment_fingerprint?: string | null
+          usage_json?: Json | null
+          user_id?: string
+          variation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "writer_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "writer_runs_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
