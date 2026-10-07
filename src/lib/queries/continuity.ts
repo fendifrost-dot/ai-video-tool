@@ -52,6 +52,31 @@ export async function createContinuityEntity(input: { projectId: string; variati
   return entity;
 }
 
+/**
+ * Every entity of one variation copied to another (a candidate board must point at the same people, places and
+ * lighting states by the same keys, with the same approved pictures). Keys the target already has are skipped;
+ * archived ones are left behind. Returns how many were copied. Files are the project's — nothing is duplicated.
+ */
+export async function copyContinuityEntities(fromVariationId: string, toVariationId: string): Promise<number> {
+  const { data: source, error } = await table().select(COLUMNS).eq("variation_id", fromVariationId).eq("archived", false);
+  if (error) throw new Error(`could not read the entities to copy: ${error.message}`);
+  const { data: existing, error: e2 } = await table().select("key").eq("variation_id", toVariationId);
+  if (e2) throw new Error(`could not read the target's entities: ${e2.message}`);
+  const taken = new Set(((existing ?? []) as { key: string }[]).map((r) => r.key));
+  const rows = ((source ?? []) as EntityRow[])
+    .filter((r) => !taken.has(r.key))
+    .map((r) => ({
+      project_id: r.project_id, variation_id: toVariationId, kind: r.kind, key: r.key, name: r.name,
+      description: r.description ?? "", constraints: r.constraints ?? "",
+      approved_asset_id: r.approved_asset_id ?? null, reference_asset_ids: r.reference_asset_ids ?? [],
+      cast_role: r.cast_role ?? null, identity_mode: r.identity_mode ?? null, artist_id: r.artist_id ?? null,
+    }));
+  if (rows.length === 0) return 0;
+  const { error: e3 } = await table().insert(rows as never);
+  if (e3) throw new Error(`could not copy the entities: ${e3.message}`);
+  return rows.length;
+}
+
 export async function updateContinuityEntity(id: string, patch: EntityPatch): Promise<void> {
   const row: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (patch.name !== undefined) row.name = patch.name.replace(/\s+/g, " ").trim();

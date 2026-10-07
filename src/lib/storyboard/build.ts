@@ -18,6 +18,7 @@ import { applyCoverageDefaults, DEFAULT_COVERAGE_PRESETS } from "@/lib/treatment
 import { buildClipGrid } from "@/lib/treatment/grid";
 import type { ShotOverride } from "@/lib/treatment/overrides";
 import { clearTreatment, fingerprint, parseTreatmentDoc, withTreatmentDoc, type TreatmentDoc, type TreatmentMode } from "@/lib/treatment/treatmentDoc";
+import { copyContinuityEntities } from "@/lib/queries/continuity";
 import { applyAssignmentOps, fetchAssignments, fetchBoxes, fetchShotIndex, writeBoxes } from "@/lib/queries/storyboard";
 import { createVariation, readDirection, writeDirection } from "@/lib/queries/variations";
 import { planMaterialize, type StoryboardBox } from "./boxes";
@@ -204,6 +205,8 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
     });
     targetVariationId = made.id;
     candidateVariationId = made.id;
+    // the candidate's shots point at people, places and lighting states by key: the keys must exist there too
+    await copyContinuityEntities(input.variationId, made.id);
   }
 
   const draft = await draftTreatmentClips({ ...input.context, variationId: targetVariationId, concept, grid, writeText: input.aiWritesText, clipLyrics: clipLyrics(grid, input.lyricLines) });

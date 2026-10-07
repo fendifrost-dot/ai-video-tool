@@ -280,7 +280,7 @@ export function shotsSystemPrompt(ctx: WriterContext, treatment: string, outline
     "You are handed some shots of the storyboard. Each has a fixed window on the song and the words sung in it. Write ONE scene for each, and return every shot you were handed, by its key, changing nothing about its timing.",
     [
       "How to write a shot:",
-      "- `scene_description` is what the camera SEES, in one or two concrete sentences: who or what, where, doing what. No abstractions, no 'symbolising', no camera jargon.",
+      "- `scene_description` is what the camera SEES, in one or two concrete sentences: who or what, where, doing what. No abstractions, no 'symbolising', no camera jargon. People are named by their names in prose, never by their KEYS (the key goes in `cast.members`, the name in the sentence).",
       "- When the shot has words, the picture answers THOSE words — name what they name, show what they claim. When it has none, it carries the mood of its section.",
       "- `shot_type`: performance = the artist delivering the words to camera; b_roll = an insert of the world (an object, a detail, a place); narrative = a staged moment with people; lyric_visual = the lyric made literally, physically real; transition = a move that carries one place into the next; vfx = something impossible, shot as if it happened.",
       "- Never write the same sentence for two shots, never stage the same picture twice in a row, and do not repeat a cutaway idea the song has already used. A person, animal, vehicle, object or place the treatment brings back on purpose is not a repeat: it returns as the SAME one, named in the same words every time, doing the next thing the treatment gives it.",
