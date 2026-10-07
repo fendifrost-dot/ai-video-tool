@@ -47,6 +47,14 @@ const MAX_SHOTS = 160;
 const MAX_TEXT = 12000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+function json(status: number, body: unknown) {
+  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+}
+const fail = (status: number, errorCode: string, errorMessage: string) => json(status, { ok: false, errorCode, errorMessage });
+const text = (v: unknown, max = MAX_TEXT) => (typeof v === "string" ? v.slice(0, max) : null);
+
+type Usage = { prompt_tokens: number; completion_tokens: number };
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return fail(405, "INVALID_INPUT", "Method must be POST");
