@@ -9,6 +9,8 @@
 import { describe, expect, it } from "vitest";
 import { entityFromRow, indexEntities, type EntityRow } from "@/lib/continuity/entities";
 import { ShotSpecSchema } from "@/lib/treatment/shotSpec";
+import { boxFromRow, boxWrite, type BoxRow } from "@/lib/storyboard/boxes";
+import { boxShot } from "@/lib/storyboard/generate";
 import { compilePrompt } from "@/lib/prompts/compiler";
 import { castProblems, castRouteCheck, castSource, resolveCast } from "./cast";
 import type { Artist, PromptTemplate, Shot, VideoProject } from "@/integrations/supabase/aliases";
@@ -269,5 +271,76 @@ describe("4 · variations are isolated", () => {
     expect(castSource(b).referenceAssetIds).toEqual([]); // invented: nothing to match
     expect(castSource(a).lines[0]).toContain("Older man in a grey suit");
     expect(castSource(b).lines[0]).toContain("Young, in a hurry");
+  });
+});
+
+describe("5 · the storyboard's own generation route (not just the prompt compiler)", () => {
+  const index = indexEntities([entityFromRow(ARTIST_ROW)!, entityFromRow(DRIVER_ROW)!]);
+  const mkBox = (over: Record<string, unknown>) => {
+    const w = boxWrite({
+      key: "c001",
+      start: 0,
+      end: 4,
+      section: "verse",
+      generated: ShotSpecSchema.parse({
+        id: "c001",
+        purpose: "the car arrives",
+        timeline: { start: 0, end: 4 },
+        ...over,
+      }),
+      override: null,
+      locked: false,
+      origin: "treatment",
+      history: [],
+    });
+    return boxFromRow({
+      id: "r1",
+      project_id: "p1",
+      shot_number: 1,
+      ...w,
+      updated_at: "t",
+    } as BoxRow)!;
+  };
+
+  it("refuses to build a request for a shot that casts someone without the cast", () => {
+    // The failure this prevents: the shot says who is in it, the request is built without them,
+    // and the model casts whoever it likes — exactly what casting exists to stop.
+    const box = mkBox({
+      shotType: "b_roll",
+      kind: "broll",
+      cast: { members: [{ key: "DRIVER" }] },
+    });
+    expect(() => boxShot(box, [])).toThrow(/casts people and the request was built without them/);
+  });
+
+  it("carries the cast's words into the prompt the provider receives", () => {
+    const box = mkBox({
+      shotType: "b_roll",
+      kind: "broll",
+      cast: { members: [{ key: "DRIVER", action: "holds the door" }] },
+    });
+    const prompt = boxShot(box, [], { cast: resolveCast(box.spec, index) }).prompt;
+    expect(prompt).toContain("The driver — Older man in a grey suit");
+    expect(prompt).toContain("Action: holds the door.");
+    expect(prompt).toContain("consistent with the approved reference");
+  });
+
+  it("keeps people OUT of a performance plate", () => {
+    // A performance shot's image is the place drawn empty, for his real footage to be composited
+    // into. Putting a person in it would contradict the plate line and hand the compositor a frame
+    // with someone already standing there.
+    const box = mkBox({
+      shotType: "performance",
+      kind: "performance",
+      cast: { members: [{ key: "DRIVER" }] },
+    });
+    const prompt = boxShot(box, [], { cast: resolveCast(box.spec, index) }).prompt;
+    expect(prompt).not.toContain("The driver");
+    expect(prompt).not.toContain("Older man in a grey suit");
+  });
+
+  it("changes nothing for a shot that casts nobody", () => {
+    const box = mkBox({ shotType: "b_roll", kind: "broll" });
+    expect(boxShot(box, [])).toEqual(boxShot(box, [], { cast: resolveCast(box.spec, index) }));
   });
 });

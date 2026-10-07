@@ -683,9 +683,10 @@ export function useStoryboardController(projectId: string): StoryboardController
     (box: StoryboardBox): BoxEstimates => {
       try {
         const continuity = continuityOf(box);
+        const cast = castOf(box);
         const isPerformance = box.spec.shotType === "performance";
         const still = isPerformance ? (placeStill(box)?.asset.path ?? null) : selectedStillPath(box);
-        const image = imageEstimateUsd(boxShot(box, lyricLines, { aspect, continuity }));
+        const image = imageEstimateUsd(boxShot(box, lyricLines, { aspect, continuity, cast }));
         // a performance shot with a take in sync: the clip is the take, restaged in this shot's scene
         if (box.spec.shotType === "performance") {
           const src = restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs);
@@ -696,7 +697,7 @@ export function useStoryboardController(projectId: string): StoryboardController
             return { image, clip: restageEstimateUsd(seconds) + (still ? 0 : image), clipDrawsImage: !still, restage };
           }
         }
-        return { image, clip: clipEstimateUsd(boxShot(box, lyricLines, { stillPath: still, aspect, continuity })), clipDrawsImage: !still };
+        return { image, clip: clipEstimateUsd(boxShot(box, lyricLines, { stillPath: still, aspect, continuity, cast })), clipDrawsImage: !still };
       } catch {
         return null;
       }
@@ -738,7 +739,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         testId: "confirm-generate-image",
         onConfirm: () =>
           run(box, "drawing the image…", async () => {
-            const r = await generateBoxImage({ projectId, box, lyricLines, aspect, select: !est.restage, continuity });
+            const r = await generateBoxImage({ projectId, box, lyricLines, aspect, select: !est.restage, continuity, cast: castOf(box) });
             afterGeneration();
             toast.success(r.rejected > 0 ? `Image ready (${r.rejected} of ${r.candidates} came back as stacked panels and was left out)` : "Image ready");
           }).finally(afterGeneration),
@@ -804,7 +805,7 @@ export function useStoryboardController(projectId: string): StoryboardController
               let stillPath = still;
               if (!stillPath) {
                 setBusyFor(box.id, "drawing the place first…");
-                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false, continuity });
+                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false, continuity, cast: castOf(box) });
                 afterGeneration();
                 stillPath = img.picked;
               }
@@ -821,12 +822,12 @@ export function useStoryboardController(projectId: string): StoryboardController
           // closes while it is drawn, the picture is still filed on the shot by the server.
           let stillPath = still;
           if (!stillPath) {
-            const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity });
+            const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity, cast: castOf(box) });
             afterGeneration();
             stillPath = img.picked;
             setBusyFor(box.id, "sending the clip to render…");
           }
-          await generateBoxClip({ projectId, box, lyricLines, stillPath, aspect, temporal, continuity });
+          await generateBoxClip({ projectId, box, lyricLines, stillPath, aspect, temporal, continuity, cast: castOf(box) });
           afterGeneration();
           toast.success(temporal.mode === "ordered" ? "Clip is rendering with the beats in order — its timing is the model's own" : "Clip is rendering — it will appear on this shot when it is done");
         }).finally(afterGeneration);

@@ -8,12 +8,32 @@
  */
 import { supabase } from "@/lib/supabase";
 import type { LyricLine } from "@/lib/lyrics/lyricsForShot";
-import { DEFAULT_PROJECT_ASPECT, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
+import {
+  DEFAULT_PROJECT_ASPECT,
+  stillRequestAspect,
+  type ProjectAspect,
+} from "@/lib/project/aspect";
 import { compileToWorldBatch, phrasesFromShotSpecs, resolveLookPreset } from "@/lib/shotCompiler";
-import { BatchShotSchema, PROVIDER_RATES, estimateShotUsd, submitShot, submitStills, type BatchShot, type MadeFrom, type SubmitResult } from "@/lib/worldBatch";
+import {
+  BatchShotSchema,
+  PROVIDER_RATES,
+  estimateShotUsd,
+  submitShot,
+  submitStills,
+  type BatchShot,
+  type MadeFrom,
+  type SubmitResult,
+} from "@/lib/worldBatch";
 import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 import { applyAssignmentOps, fetchAssignments } from "@/lib/queries/storyboard";
-import { canonicalWords, continuitySource, referencePrompt, type ContinuityEntity, type ShotContinuity } from "@/lib/continuity/entities";
+import {
+  canonicalWords,
+  continuitySource,
+  referencePrompt,
+  type ContinuityEntity,
+  type ShotContinuity,
+} from "@/lib/continuity/entities";
+import { castSource, type ShotCast } from "@/lib/casting/cast";
 import { writtenFrom, type StoryboardBox } from "./boxes";
 import { activeVariationIdOf } from "@/lib/queries/variations";
 import { resolveEvents, type EventClock } from "./events";
@@ -26,7 +46,8 @@ export const DEFAULT_BOX_LOOK = "film_bar_v1";
 
 /** A performance box is his real take: what is generated for it is the world AROUND him, never a stand-in for him. */
 const PLATE_LINE = "The centre foreground is empty and clear: no person stands there.";
-const EMPTY_SET = "An empty set, photographed with nobody in it: no people, no figures, no faces, no reflections of people.";
+const EMPTY_SET =
+  "An empty set, photographed with nobody in it: no people, no figures, no faces, no reflections of people.";
 /**
  * Every picture the storyboard draws: an image model left to itself puts a maker's mark on anything that has one in
  * the world (the first live section's white sneakers came back with a sportswear logo, its runway with lettering on
@@ -36,7 +57,8 @@ const EMPTY_SET = "An empty set, photographed with nobody in it: no people, no f
  * forest floor is asking for that mark; a blanket "no logos" appended after its description tells the model to leave
  * out the subject of the picture.
  */
-export const NO_MARKS = "Nothing in the picture carries a logo, a brand mark or readable lettering other than what this description itself names.";
+export const NO_MARKS =
+  "Nothing in the picture carries a logo, a brand mark or readable lettering other than what this description itself names.";
 /**
  * The picture is the whole frame, and it is the scene — not a photograph of film. Asked for a "film" look, an image
  * model sometimes draws the film too: a dark border, a rounded frame line, and on a dark scene the scan itself
@@ -51,7 +73,8 @@ export const FULL_BLEED =
  * describe the whole room, and an image model handed them draws the whole room — the first cutaway drawn this way
  * (white sneakers on the runway) came back as an establishing shot of the runway with the sneakers small in a corner.
  */
-export const SUBJECT_FIRST = "The picture is of this shot's own subject, close enough to fill the frame; the place is what is seen around and behind it, only as far as the frame reaches.";
+export const SUBJECT_FIRST =
+  "The picture is of this shot's own subject, close enough to fill the frame; the place is what is seen around and behind it, only as far as the frame reaches.";
 /** A place said in fewer words than this is a label ("backstage"), not a picture: the scene is needed to draw it. */
 const PLACE_WORDS = 6;
 
@@ -62,12 +85,22 @@ const PLACE_WORDS = 6;
  * frame the director wrote, else the place the writer named; only when neither says enough is the scene used, and
  * then it is told plainly to leave him out.
  */
-export function placePrompt(spec: Pick<StoryboardBox["spec"], "openingFrame" | "environment" | "purpose" | "performanceDirection" | "origin">, canonicalPlace = ""): string {
+export function placePrompt(
+  spec: Pick<
+    StoryboardBox["spec"],
+    "openingFrame" | "environment" | "purpose" | "performanceDirection" | "origin"
+  >,
+  canonicalPlace = "",
+): string {
   // a shot set in one of the project's locations is drawn from THAT location's words — the same in every such shot
   if (canonicalPlace.trim()) return `${EMPTY_SET} ${canonicalPlace.trim()} ${PLATE_LINE}`;
   const frame = spec.openingFrame?.trim();
   const named = (spec.environment.description || spec.environment.location || "").trim();
-  const scene = (spec.origin === "override" && spec.performanceDirection.trim() ? spec.performanceDirection : spec.purpose).trim();
+  const scene = (
+    spec.origin === "override" && spec.performanceDirection.trim()
+      ? spec.performanceDirection
+      : spec.purpose
+  ).trim();
   const words = (s: string) => s.split(/\s+/).filter(Boolean).length;
   const place = frame || (words(named) >= PLACE_WORDS ? named : "");
   const body = place
@@ -80,34 +113,76 @@ export function placePrompt(spec: Pick<StoryboardBox["spec"], "openingFrame" | "
  * The one shot a box compiles to. `stillPath` set = the box already has its image; the clip is made from it.
  * Throws when the box has nothing to draw (no scene text at all).
  */
-export function boxShot(box: StoryboardBox, lyricLines: readonly LyricLine[] | undefined, opts: BoxShotOptions = {}): BatchShot {
+export function boxShot(
+  box: StoryboardBox,
+  lyricLines: readonly LyricLine[] | undefined,
+  opts: BoxShotOptions = {},
+): BatchShot {
   const isPerformance = box.spec.shotType === "performance";
   // A shot that points at continuity entities is generated FROM them. A request built without them would quietly
   // recreate the place from the shot's own prose — the thing the entities exist to stop.
   if (pointsAtEntities(box.spec) && !opts.continuity) {
-    throw new Error("This shot points at the project's continuity entities and the request was built without them. Nothing was generated.");
+    throw new Error(
+      "This shot points at the project's continuity entities and the request was built without them. Nothing was generated.",
+    );
   }
-  const source = opts.continuity ? continuitySource(opts.continuity, { forPlate: isPerformance }) : null;
-  const canonicalPlace = isPerformance && opts.continuity?.location ? canonicalWords(opts.continuity.location) : "";
+  // Same rule for the people in it: a shot that casts someone and is then built without the cast
+  // would be generated with whoever the model chooses, which is the thing casting exists to stop.
+  if (pointsAtCast(box.spec) && !opts.cast) {
+    throw new Error(
+      "This shot casts people and the request was built without them. Nothing was generated.",
+    );
+  }
+  const source = opts.continuity
+    ? continuitySource(opts.continuity, { forPlate: isPerformance })
+    : null;
+  // A performance shot's picture is the PLACE, drawn empty, for his real footage to be put into —
+  // so the cast does not go into it. Putting people in a plate would contradict PLATE_LINE and give
+  // the compositor a frame with someone already standing in it.
+  const cast = !isPerformance && opts.cast ? castSource(opts.cast) : null;
+  const canonicalPlace =
+    isPerformance && opts.continuity?.location ? canonicalWords(opts.continuity.location) : "";
   // the compiler writes world shots for boxes that are not real performance; a performance box asks for its place,
   // drawn empty (the frame field carries the whole prompt, so nothing about him reaches the image model)
   const place = isPerformance ? placePrompt(box.spec, canonicalPlace) : "";
   // A cutaway set in one of the project's locations says the place ONCE — in the location's own words, below. The
   // shot's own sentence about the place (a writer fills that field with a paraphrase of the entity) is left out:
   // two descriptions of one room dilute the subject and are never quite the same room.
-  const heldPlace = !isPerformance && !!opts.continuity?.location && !!canonicalWords(opts.continuity.location);
+  const heldPlace =
+    !isPerformance && !!opts.continuity?.location && !!canonicalWords(opts.continuity.location);
   const spec = isPerformance
-    ? { ...box.spec, shotType: "b_roll" as const, kind: "broll" as const, origin: "override" as const, openingFrame: place, performanceDirection: box.spec.performanceDirection || box.spec.purpose, requiredElements: [] }
+    ? {
+        ...box.spec,
+        shotType: "b_roll" as const,
+        kind: "broll" as const,
+        origin: "override" as const,
+        openingFrame: place,
+        performanceDirection: box.spec.performanceDirection || box.spec.purpose,
+        requiredElements: [],
+      }
     : heldPlace
       ? { ...box.spec, environment: { ...box.spec.environment, description: "", location: "" } }
       : box.spec;
-  const phrases = phrasesFromShotSpecs([spec], lyricLines ?? [], { stillPaths: opts.stillPath ? { [box.key]: opts.stillPath } : undefined });
+  const phrases = phrasesFromShotSpecs([spec], lyricLines ?? [], {
+    stillPaths: opts.stillPath ? { [box.key]: opts.stillPath } : undefined,
+  });
   // the picture is asked for in the project's frame (or the nearest shape the image model has; see aspect.ts)
   const aspectDefault = stillRequestAspect(opts.aspect ?? DEFAULT_PROJECT_ASPECT).aspect;
-  const compiled = compileToWorldBatch({ phrases, lookPresetId: opts.lookPresetId ?? DEFAULT_BOX_LOOK, aspectDefault }).shots[0];
-  if (!compiled) throw new Error("This box has no scene to generate from — write or regenerate its scene first.");
-  const shot = BatchShotSchema.parse({ ...compiled, ...(opts.stillPath ? { still_path: opts.stillPath } : {}) });
-  if (isPerformance && !shot.prompt.includes(PLATE_LINE)) shot.prompt = `${shot.prompt.trim()} ${PLATE_LINE}`;
+  const compiled = compileToWorldBatch({
+    phrases,
+    lookPresetId: opts.lookPresetId ?? DEFAULT_BOX_LOOK,
+    aspectDefault,
+  }).shots[0];
+  if (!compiled)
+    throw new Error(
+      "This box has no scene to generate from — write or regenerate its scene first.",
+    );
+  const shot = BatchShotSchema.parse({
+    ...compiled,
+    ...(opts.stillPath ? { still_path: opts.stillPath } : {}),
+  });
+  if (isPerformance && !shot.prompt.includes(PLATE_LINE))
+    shot.prompt = `${shot.prompt.trim()} ${PLATE_LINE}`;
   // the place is still: its motion sentence is the camera's, never a person's action
   if (isPerformance) shot.motion = "";
   // the entities' canonical words: identical in every shot that points at the same entity (the place of a
@@ -116,8 +191,14 @@ export function boxShot(box: StoryboardBox, lyricLines: readonly LyricLine[] | u
     if (canonicalPlace && line.includes(canonicalPlace)) continue;
     if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
   }
-  if (heldPlace && !shot.prompt.includes(SUBJECT_FIRST)) shot.prompt = `${shot.prompt.trim()} ${SUBJECT_FIRST}`;
-  for (const line of [NO_MARKS, FULL_BLEED]) if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
+  // who is in it, in the characters' own words — identical in every shot they are in
+  for (const line of cast?.lines ?? []) {
+    if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
+  }
+  if (heldPlace && !shot.prompt.includes(SUBJECT_FIRST))
+    shot.prompt = `${shot.prompt.trim()} ${SUBJECT_FIRST}`;
+  for (const line of [NO_MARKS, FULL_BLEED])
+    if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
   return shot;
 }
 
@@ -125,6 +206,8 @@ export type BoxShotOptions = {
   lookPresetId?: string;
   stillPath?: string | null;
   aspect?: ProjectAspect;
+  /** Who is in the shot. Required whenever the spec names anyone (`pointsAtCast`). */
+  cast?: ShotCast;
   /** What the shot's continuity references resolve to (continuity/entities.ts resolveContinuity). Required when it has any. */
   continuity?: ShotContinuity;
 };
@@ -135,6 +218,11 @@ export function pointsAtEntities(spec: Pick<StoryboardBox["spec"], "continuity">
   return !!c && (!!c.location || (c.props?.length ?? 0) > 0 || !!c.lighting);
 }
 
+/** True when the shot names people. Same discipline as `pointsAtEntities`: named, so it must be carried. */
+export function pointsAtCast(spec: Pick<StoryboardBox["spec"], "cast">): boolean {
+  return (spec.cast?.members?.length ?? 0) > 0;
+}
+
 /** The route a cutaway's clip is made on (image → motion). */
 export const CLIP_ROUTE = "still_kling" as const;
 
@@ -143,14 +231,27 @@ export const CLIP_ROUTE = "still_kling" as const;
  * handed to a model that draws one state: the plan comes back "refused" with the mechanisms on offer, unless the
  * director asked for the beats in order (`allowOrdered`). Performance shots are restaged — see restage.ts.
  */
-export function clipTemporalPlan(box: StoryboardBox, clock: EventClock = {}, opts: { allowOrdered?: boolean } = {}): TemporalPlan {
+export function clipTemporalPlan(
+  box: StoryboardBox,
+  clock: EventClock = {},
+  opts: { allowOrdered?: boolean } = {},
+): TemporalPlan {
   const window = { start: box.start, end: box.end };
-  return temporalPlan({ route: CLIP_ROUTE, resolved: resolveEvents(box.spec.events, window, clock), shotSeconds: box.end - box.start, allowOrdered: opts.allowOrdered });
+  return temporalPlan({
+    route: CLIP_ROUTE,
+    resolved: resolveEvents(box.spec.events, window, clock),
+    shotSeconds: box.end - box.start,
+    allowOrdered: opts.allowOrdered,
+  });
 }
 
 /** What the image of this box is, when the box changes while it plays: the state it opens in. */
 export function imageTemporalPlan(box: StoryboardBox, clock: EventClock = {}): TemporalPlan {
-  return temporalPlan({ route: "image", resolved: resolveEvents(box.spec.events, { start: box.start, end: box.end }, clock), shotSeconds: box.end - box.start });
+  return temporalPlan({
+    route: "image",
+    resolved: resolveEvents(box.spec.events, { start: box.start, end: box.end }, clock),
+    shotSeconds: box.end - box.start,
+  });
 }
 
 /**
@@ -169,11 +270,24 @@ export function clipShot(
   assertPlanCovers(box.spec, plan);
   if (plan.mode === "ordered") {
     if (!plan.script) throw new Error("This shot's beats say nothing a clip could show.");
-    return BatchShotSchema.parse({ ...shot, motion: [shot.motion, plan.script].filter(Boolean).join(" "), temporal: { mode: "ordered", beats: plan.beats, measured: false, asked: plan.asked } });
+    return BatchShotSchema.parse({
+      ...shot,
+      motion: [shot.motion, plan.script].filter(Boolean).join(" "),
+      temporal: { mode: "ordered", beats: plan.beats, measured: false, asked: plan.asked },
+    });
   }
   if (plan.mode === "timed_script") {
     // no image-to-motion route takes a timed script today; if one is declared, this is where its form goes
-    return BatchShotSchema.parse({ ...shot, motion: [shot.motion, plan.script].filter(Boolean).join(" "), temporal: { mode: "timed_script", beats: plan.beats, measured: plan.measured, asked: plan.asked } });
+    return BatchShotSchema.parse({
+      ...shot,
+      motion: [shot.motion, plan.script].filter(Boolean).join(" "),
+      temporal: {
+        mode: "timed_script",
+        beats: plan.beats,
+        measured: plan.measured,
+        asked: plan.asked,
+      },
+    });
   }
   return shot;
 }
@@ -196,21 +310,41 @@ export function madeFromBox(box: StoryboardBox): MadeFrom {
 
 function runContext(projectId: string, box: StoryboardBox, lookPresetId: string | undefined) {
   const { id, look } = resolveLookPreset(lookPresetId ?? DEFAULT_BOX_LOOK);
-  return { projectId, variationId: box.variationId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [box.key]: box.id }, madeFrom: { [box.key]: madeFromBox(box) } };
+  return {
+    projectId,
+    variationId: box.variationId,
+    runId: STORYBOARD_RUN,
+    lookPresetId: id,
+    look,
+    shotIds: { [box.key]: box.id },
+    madeFrom: { [box.key]: madeFromBox(box) },
+  };
 }
 
 /**
  * The stills the generator made are already project assets (it files them itself). Put them on the box: file them
  * under the box's record and assign them as generated images, the picked one selected when `select` is set.
  */
-export async function attachStills(input: { projectId: string; box: StoryboardBox; paths: string[]; picked: string | null; select: boolean }): Promise<string[]> {
+export async function attachStills(input: {
+  projectId: string;
+  box: StoryboardBox;
+  paths: string[];
+  picked: string | null;
+  select: boolean;
+}): Promise<string[]> {
   if (input.paths.length === 0) return [];
-  const { data, error } = await supabase.from("project_assets").select("id, file_url").eq("project_id", input.projectId).in("file_url", input.paths);
+  const { data, error } = await supabase
+    .from("project_assets")
+    .select("id, file_url")
+    .eq("project_id", input.projectId)
+    .in("file_url", input.paths);
   if (error) throw new Error(`could not find the generated image: ${error.message}`);
   const byPath = new Map((data ?? []).map((r) => [r.file_url, r.id]));
   const ids: string[] = [];
   // the picked still first, so it is the one selected
-  const ordered = [...input.paths].sort((a, b) => Number(b === input.picked) - Number(a === input.picked));
+  const ordered = [...input.paths].sort(
+    (a, b) => Number(b === input.picked) - Number(a === input.picked),
+  );
   for (const path of ordered) {
     const assetId = byPath.get(path);
     if (!assetId) continue;
@@ -231,7 +365,13 @@ export async function attachStills(input: { projectId: string; box: StoryboardBo
   return ids;
 }
 
-export type BoxImageResult = { assetIds: string[]; picked: string; candidates: number; rejected: number; costUsd: number | null };
+export type BoxImageResult = {
+  assetIds: string[];
+  picked: string;
+  candidates: number;
+  rejected: number;
+  costUsd: number | null;
+};
 
 /** "Generate image": draw the box's scene, check it, and put it on the box as the selected media. */
 export async function generateBoxImage(input: {
@@ -245,15 +385,41 @@ export async function generateBoxImage(input: {
   select?: boolean;
   /** What the shot's continuity references resolve to. */
   continuity?: ShotContinuity;
+  /** Who is in the shot. Required whenever the spec names anyone. */
+  cast?: ShotCast;
 }): Promise<BoxImageResult> {
   const deps = await browserRunnerDeps();
-  const shot = boxShot(input.box, input.lyricLines, { lookPresetId: input.lookPresetId, aspect: input.aspect, continuity: input.continuity });
-  const res = await submitStills(shot, { ...runContext(input.projectId, input.box, input.lookPresetId), selectStill: input.select ?? true }, deps);
+  const shot = boxShot(input.box, input.lyricLines, {
+    lookPresetId: input.lookPresetId,
+    aspect: input.aspect,
+    continuity: input.continuity,
+    cast: input.cast,
+  });
+  const res = await submitStills(
+    shot,
+    {
+      ...runContext(input.projectId, input.box, input.lookPresetId),
+      selectStill: input.select ?? true,
+    },
+    deps,
+  );
   // on a performance shot the image is the PLACE the take can be restaged in — the take stays what the shot shows
-  const assetIds = await attachStills({ projectId: input.projectId, box: input.box, paths: res.whole, picked: res.picked, select: input.select ?? true });
+  const assetIds = await attachStills({
+    projectId: input.projectId,
+    box: input.box,
+    paths: res.whole,
+    picked: res.picked,
+    select: input.select ?? true,
+  });
   // the job points at the image it produced, so nothing downstream mistakes it for a clip still waiting to be saved
   if (assetIds[0]) await deps.updateJob(res.rowId, { result_asset_id: assetIds[0] });
-  return { assetIds, picked: res.picked!, candidates: res.candidates.length, rejected: res.candidates.length - res.whole.length, costUsd: res.costUsd };
+  return {
+    assetIds,
+    picked: res.picked!,
+    candidates: res.candidates.length,
+    rejected: res.candidates.length - res.whole.length,
+    costUsd: res.costUsd,
+  };
 }
 
 /**
@@ -273,13 +439,32 @@ export async function generateBoxClip(input: {
   temporal: TemporalPlan;
   /** What the shot's continuity references resolve to. */
   continuity?: ShotContinuity;
+  /** Who is in the shot. Required whenever the spec names anyone. */
+  cast?: ShotCast;
 }): Promise<SubmitResult> {
   const deps = await browserRunnerDeps();
-  const shot = clipShot(input.box, input.lyricLines, { lookPresetId: input.lookPresetId, stillPath: input.stillPath, aspect: input.aspect, temporal: input.temporal, continuity: input.continuity });
-  const result = await submitShot(shot, runContext(input.projectId, input.box, input.lookPresetId), deps);
+  const shot = clipShot(input.box, input.lyricLines, {
+    lookPresetId: input.lookPresetId,
+    stillPath: input.stillPath,
+    aspect: input.aspect,
+    temporal: input.temporal,
+    continuity: input.continuity,
+    cast: input.cast,
+  });
+  const result = await submitShot(
+    shot,
+    runContext(input.projectId, input.box, input.lookPresetId),
+    deps,
+  );
   // an image drawn on the way to the clip belongs to the box too (as a version; the clip will be what shows)
   if (!input.stillPath && result.stillPath) {
-    await attachStills({ projectId: input.projectId, box: input.box, paths: [result.stillPath], picked: result.stillPath, select: true }).catch(() => undefined);
+    await attachStills({
+      projectId: input.projectId,
+      box: input.box,
+      paths: [result.stillPath],
+      picked: result.stillPath,
+      select: true,
+    }).catch(() => undefined);
   }
   return result;
 }
@@ -288,22 +473,54 @@ export async function generateBoxClip(input: {
 export const ENTITY_RUN = "continuity";
 
 /** The one picture request of an entity's own reference picture. Pure. */
-export function entityShot(entity: ContinuityEntity, aspect: ProjectAspect = DEFAULT_PROJECT_ASPECT): BatchShot {
+export function entityShot(
+  entity: ContinuityEntity,
+  aspect: ProjectAspect = DEFAULT_PROJECT_ASPECT,
+): BatchShot {
   const prompt = [referencePrompt(entity), NO_MARKS, FULL_BLEED].join(" ");
   // a place is drawn in the project's frame; an object is drawn square, whole
-  return BatchShotSchema.parse({ id: `ent_${entity.key}`, kind: entity.kind === "location" ? "plate" : "world", route: CLIP_ROUTE, aspect: entity.kind === "location" ? stillRequestAspect(aspect).aspect : "1:1", prompt, motion: "", stills: 2 });
+  return BatchShotSchema.parse({
+    id: `ent_${entity.key}`,
+    kind: entity.kind === "location" ? "plate" : "world",
+    route: CLIP_ROUTE,
+    aspect: entity.kind === "location" ? stillRequestAspect(aspect).aspect : "1:1",
+    prompt,
+    motion: "",
+    stills: 2,
+  });
 }
 
 /**
  * Draw reference pictures of an entity from its canonical words. They are filed as the project's own assets (the
  * generator does that) and their ids are handed back for the entity to keep; nothing is approved here.
  */
-export async function generateEntityReference(input: { projectId: string; entity: ContinuityEntity; aspect?: ProjectAspect }): Promise<{ assetIds: string[]; costUsd: number | null }> {
+export async function generateEntityReference(input: {
+  projectId: string;
+  entity: ContinuityEntity;
+  aspect?: ProjectAspect;
+}): Promise<{ assetIds: string[]; costUsd: number | null }> {
   const deps = await browserRunnerDeps();
   const shot = entityShot(input.entity, input.aspect);
   const { id, look } = resolveLookPreset(DEFAULT_BOX_LOOK);
-  const res = await submitStills(shot, { projectId: input.projectId, variationId: input.entity.variationId, runId: ENTITY_RUN, lookPresetId: id, look, shotIds: {}, selectStill: false, entityId: input.entity.id }, deps);
-  const { data, error } = await supabase.from("project_assets").select("id, file_url").eq("project_id", input.projectId).in("file_url", res.whole);
+  const res = await submitStills(
+    shot,
+    {
+      projectId: input.projectId,
+      variationId: input.entity.variationId,
+      runId: ENTITY_RUN,
+      lookPresetId: id,
+      look,
+      shotIds: {},
+      selectStill: false,
+      entityId: input.entity.id,
+    },
+    deps,
+  );
+  const { data, error } = await supabase
+    .from("project_assets")
+    .select("id, file_url")
+    .eq("project_id", input.projectId)
+    .in("file_url", res.whole);
   if (error) throw new Error(`could not find the generated picture: ${error.message}`);
   const byPath = new Map((data ?? []).map((r) => [r.file_url, r.id]));
   const assetIds = res.whole.map((p) => byPath.get(p)).filter((x): x is string => !!x);
