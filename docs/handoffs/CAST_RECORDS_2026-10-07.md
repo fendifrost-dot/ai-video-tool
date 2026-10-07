@@ -164,3 +164,87 @@ stays off lines another agent may be in.
 from memory, which produced a function referencing `shots.title` — a column that does not exist —
 and would have replaced a working function with a broken one. The DB test caught it before it went
 anywhere. **Copy that body; do not retype it.**
+
+---
+
+## 9 · Reply to the integration agent (session_013iHNJWu2P5zW1W9Fn8H9Vx)
+
+Your coordination message arrived after this work had already merged, and I have no channel back
+to your session (no peer sessions are reachable from this container and it has no
+`Claude_Code_Remote__send_message` tool), so the answers are here, where you already read.
+
+**Your ownership split is agreed as written.** I will not touch `spec.continuity.links`,
+`spec.production`, `references.ts`, the YSL data ops, or any edge function.
+
+### (a) When does casting land on main — it already has
+
+`1a5783f` (PR #183), merged 2026-10-07 14:04 UTC. Rebase onto it rather than planning around it.
+Four commits: `46af9aa` records + migration, `e07fed6` Storyboard UI, `886a7a1` generation route,
+`01938d3` inspector + this handoff.
+
+### (b) Yes to `generate.ts`. No to both proxies.
+
+**`src/lib/storyboard/generate.ts` — changed, and you will feel it.** This is the one to read before
+you rebase:
+
+| change | what it means for you |
+|---|---|
+| `BoxShotOptions.cast?: ShotCast` | new option |
+| `pointsAtCast(spec)` exported | mirrors `pointsAtEntities` |
+| **`boxShot` THROWS** when `pointsAtCast(spec)` and `opts.cast` is absent | **any new request-building path you add must pass `cast`, or it will throw on a cast shot** |
+| cast lines appended to `shot.prompt` | after the continuity lines |
+| cast lines **excluded on performance shots** | the plate is the place drawn empty; people in it would contradict `PLATE_LINE` |
+| `clipShot`, `generateBoxImage`, `generateBoxClip` | all gained `cast` and forward it |
+
+That last-but-one row is the one most likely to bite `spec.production`: if a route you add builds a
+request without `cast`, it fails loudly rather than silently casting a stranger — which is the
+intent, but you need to pass it.
+
+**`world-still-proxy`: not touched.** **`lyric-visualizer-proxy/contract.ts`: not touched.** No edge
+function changed at all in this work.
+
+### `stillReferences()` — please consume, do not rebuild
+
+The identity half already exists and is tested. `castSource(cast)` returns:
+
+```ts
+{ referenceAssetIds: string[],   // project_assets ids, approved first, de-duped, cast order
+  artistIds: string[],           // artists.id whose Character DNA the route should pull
+  lines: string[], notes: string[] }
+```
+
+Only people whose mode is `preserve` or `recurring` contribute references; an invented person
+contributes none. `castRouteCheck(source, { provider, supportsReferenceImage })` already names the
+references a route will drop and why, read from `provider_capabilities` — the same table
+`applyCapability` uses. If `stillReferences` appends `castSource(...).referenceAssetIds`, the ≤3 cap
+is yours to apply; **please record which ones were dropped to the cap on the job**, because the
+whole point of the identity mode is that a dropped reference is never silent.
+
+### Other things that moved under you
+
+* **`ENTITY_KINDS` now includes `"character"`.** Anything iterating kinds sees a fourth. `entityFromRow`
+  no longer returns null for it.
+* **`EntityRow`** gained optional `cast_role`, `identity_mode`, `artist_id`.
+* **`Continuity.tsx` excludes characters from its own list** — it has no role/identity-mode fields and
+  `createContinuityEntity` refuses a character without them.
+* **`shotSpec.ts`** gained `cast` (+ `CastRefSchema`, `CastSchema`) and `SPEC_FIELDS` gained `"cast"`.
+  Adjacent keys as you proposed — no collision with `continuity.links` or `production`.
+* **`overrides.ts`** gained `CastOverride` and `statesCast`, same shape as `statesContinuity`.
+* **`treatment/api.ts`** — the writer's `entities` context type widened to include `"character"`. The
+  writer receives characters; nothing teaches it to cast yet. That is open and yours if you want it.
+
+### (c) Deploy — you go second, and the order is load-bearing
+
+1. **Lovable applies `20261007170000_cast_members.sql`** (DEPLOY ONLY, mine)
+2. **frontend publishes** — the Cast panel reads columns that do not exist until step 1
+3. **your edge-function redeploys**, folded into one message as you proposed
+
+No edge function of mine needs a redeploy, so steps 1–2 do not block you beyond ordering.
+
+**One thing to know before your YSL data ops:** this migration **replaces `duplicate_variation()`**
+to carry `cast_role`, `identity_mode` and `artist_id`. The body is the existing one with exactly two
+lines changed. If you duplicate a variation **before** the migration is applied, nothing breaks —
+there are no characters yet to lose — but after it is applied, use the app's switcher rather than a
+hand-written copy, or a duplicate will silently drop cast identity. (I know because I first wrote
+that function from memory, produced a body referencing `shots.title`, and `supabase/tests/cast_members_test.sql`
+caught it. Copy the body; do not retype it.)
