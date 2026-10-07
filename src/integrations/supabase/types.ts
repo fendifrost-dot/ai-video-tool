@@ -466,6 +466,7 @@ export type Database = {
           reference_asset_ids: string[]
           updated_at: string
           user_id: string
+          variation_id: string | null
         }
         Insert: {
           approved_asset_id?: string | null
@@ -481,6 +482,7 @@ export type Database = {
           reference_asset_ids?: string[]
           updated_at?: string
           user_id?: string
+          variation_id?: string | null
         }
         Update: {
           approved_asset_id?: string | null
@@ -496,6 +498,7 @@ export type Database = {
           reference_asset_ids?: string[]
           updated_at?: string
           user_id?: string
+          variation_id?: string | null
         }
         Relationships: [
           {
@@ -510,6 +513,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "continuity_entities_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
             referencedColumns: ["id"]
           },
         ]
@@ -1484,6 +1494,7 @@ export type Database = {
           status: Database["public"]["Enums"]["provider_job_status"]
           updated_at: string
           user_id: string
+          variation_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1503,6 +1514,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["provider_job_status"]
           updated_at?: string
           user_id: string
+          variation_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1522,6 +1534,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["provider_job_status"]
           updated_at?: string
           user_id?: string
+          variation_id?: string | null
         }
         Relationships: [
           {
@@ -1545,6 +1558,13 @@ export type Database = {
             referencedRelation: "project_assets"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "provider_jobs_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       shot_asset_assignments: {
@@ -1562,6 +1582,7 @@ export type Database = {
           source_out_seconds: number | null
           updated_at: string
           user_id: string
+          variation_id: string | null
         }
         Insert: {
           asset_id: string
@@ -1577,6 +1598,7 @@ export type Database = {
           source_out_seconds?: number | null
           updated_at?: string
           user_id?: string
+          variation_id?: string | null
         }
         Update: {
           asset_id?: string
@@ -1592,6 +1614,7 @@ export type Database = {
           source_out_seconds?: number | null
           updated_at?: string
           user_id?: string
+          variation_id?: string | null
         }
         Relationships: [
           {
@@ -1613,6 +1636,13 @@ export type Database = {
             columns: ["shot_id"]
             isOneToOne: false
             referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shot_asset_assignments_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
             referencedColumns: ["id"]
           },
         ]
@@ -1708,6 +1738,7 @@ export type Database = {
           trim_out_seconds: number | null
           updated_at: string
           user_id: string
+          variation_id: string | null
           wardrobe: string | null
         }
         Insert: {
@@ -1747,6 +1778,7 @@ export type Database = {
           trim_out_seconds?: number | null
           updated_at?: string
           user_id: string
+          variation_id?: string | null
           wardrobe?: string | null
         }
         Update: {
@@ -1786,6 +1818,7 @@ export type Database = {
           trim_out_seconds?: number | null
           updated_at?: string
           user_id?: string
+          variation_id?: string | null
           wardrobe?: string | null
         }
         Relationships: [
@@ -1801,6 +1834,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shots_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
             referencedColumns: ["id"]
           },
         ]
@@ -2317,6 +2357,7 @@ export type Database = {
           song_analysis_id: string | null
           title: string | null
           updated_at: string
+          variation_id: string | null
           version_number: number
         }
         Insert: {
@@ -2332,6 +2373,7 @@ export type Database = {
           song_analysis_id?: string | null
           title?: string | null
           updated_at?: string
+          variation_id?: string | null
           version_number?: number
         }
         Update: {
@@ -2347,6 +2389,7 @@ export type Database = {
           song_analysis_id?: string | null
           title?: string | null
           updated_at?: string
+          variation_id?: string | null
           version_number?: number
         }
         Relationships: [
@@ -2362,6 +2405,13 @@ export type Database = {
             columns: ["song_analysis_id"]
             isOneToOne: false
             referencedRelation: "song_analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_manifests_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
             referencedColumns: ["id"]
           },
         ]
@@ -2421,6 +2471,7 @@ export type Database = {
           treatment_text: string
           treatment_updated_at: string | null
           user_id: string
+          variation_id: string | null
           visual_style: string | null
         }
         Insert: {
@@ -2436,6 +2487,7 @@ export type Database = {
           treatment_text?: string
           treatment_updated_at?: string | null
           user_id: string
+          variation_id?: string | null
           visual_style?: string | null
         }
         Update: {
@@ -2451,6 +2503,7 @@ export type Database = {
           treatment_text?: string
           treatment_updated_at?: string | null
           user_id?: string
+          variation_id?: string | null
           visual_style?: string | null
         }
         Relationships: [
@@ -2461,10 +2514,18 @@ export type Database = {
             referencedRelation: "video_projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "treatment_versions_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       video_projects: {
         Row: {
+          active_variation_id: string | null
           artist_id: string | null
           aspect_ratio: string
           bpm: number | null
@@ -2487,6 +2548,7 @@ export type Database = {
           wardrobe_notes: string | null
         }
         Insert: {
+          active_variation_id?: string | null
           artist_id?: string | null
           aspect_ratio?: string
           bpm?: number | null
@@ -2509,6 +2571,7 @@ export type Database = {
           wardrobe_notes?: string | null
         }
         Update: {
+          active_variation_id?: string | null
           artist_id?: string | null
           aspect_ratio?: string
           bpm?: number | null
@@ -2532,10 +2595,77 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "video_projects_active_variation_id_fkey"
+            columns: ["active_variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "video_projects_artist_id_fkey"
             columns: ["artist_id"]
             isOneToOne: false
             referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_variations: {
+        Row: {
+          archived: boolean
+          created_at: string
+          duplicated_from: string | null
+          id: string
+          mood: string | null
+          name: string
+          notes: string | null
+          project_id: string
+          treatment_json: Json
+          updated_at: string
+          user_id: string
+          visual_style: string | null
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          duplicated_from?: string | null
+          id?: string
+          mood?: string | null
+          name: string
+          notes?: string | null
+          project_id: string
+          treatment_json?: Json
+          updated_at?: string
+          user_id?: string
+          visual_style?: string | null
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          duplicated_from?: string | null
+          id?: string
+          mood?: string | null
+          name?: string
+          notes?: string | null
+          project_id?: string
+          treatment_json?: Json
+          updated_at?: string
+          user_id?: string
+          visual_style?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_variations_duplicated_from_fkey"
+            columns: ["duplicated_from"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_variations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2565,6 +2695,7 @@ export type Database = {
           status: Database["public"]["Enums"]["provider_job_status"]
           updated_at: string
           user_id: string
+          variation_id: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -2572,6 +2703,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      duplicate_variation: {
+        Args: { p_name: string; p_source: string }
+        Returns: string
       }
       kick_provider_jobs: { Args: never; Returns: undefined }
       lyric_lines_in_window: {
