@@ -16,8 +16,9 @@
  *   4. the place, when the shot is set in an approved location (its words are in the prompt anyway)
  *   5. props with an approved picture
  *
- * A picture that does NOT fit is never a quiet demotion: a garment or an identity left out is a problem the director
- * sees before spend, and an identity left out blocks the shot — the still would draw a stranger in his jacket.
+ * A picture that does NOT fit is never a quiet demotion: a screen picture, an exact garment or an identity left out
+ * BLOCKS the shot before spend. The cap is the route's limit, not a reason to weaken what the shot requires — the
+ * director takes a reference off, splits the shot, or relaxes a piece on purpose (unticks it).
  *
  * A performance still is the empty PLACE his take is restaged into: nobody is drawn, so garments and people are not
  * sent with it (they would put a stranger in the plate).
@@ -85,6 +86,9 @@ export function referenceLegend(sent: readonly StillReference[]): string {
   return `Reference pictures: ${sent.map((r, i) => `<IMAGE_${i}> ${ROLE_SENTENCE[r.role](r.label)}`).join("; ")}.`;
 }
 
+/** The roles a still cannot do without: a picture of these that is not actually delivered means the shot is not generated. */
+export const REQUIRED_ROLES: ReadonlySet<ReferenceRole> = new Set<ReferenceRole>(["screen", "garment", "cast"]);
+
 export function planStillReferences(input: ReferenceInput): ReferencePlan {
   const wanted: StillReference[] = [];
   const problems: ReferenceProblem[] = [];
@@ -138,11 +142,21 @@ export function planStillReferences(input: ReferenceInput): ReferencePlan {
   for (const r of unique.slice(cap)) notSent.push({ ref: r, why: `the image endpoint takes ${cap} reference picture${cap === 1 ? "" : "s"}; the ones before it are more decisive` });
   for (const n of notSent) {
     if (input.isPerformance) continue;
-    if (n.ref.role === "cast") {
-      problems.push({ level: "blocking", text: `${n.ref.label}'s identity picture does not fit in this request (${cap} pictures): the still would draw a stranger.`, fix: "Take a prop or a second garment off the shot, or split the look across shots." });
-    } else if (n.ref.role === "garment") {
-      problems.push({ level: "warning", text: `${n.ref.label} does not fit in this request: it is described in words only.`, fix: "Take a less important reference off the shot, or split the look across shots." });
-    }
+    if (!REQUIRED_ROLES.has(n.ref.role)) continue;
+    // a required picture that does not fit BLOCKS: the cap is the route's limit, not a licence to draw the shot from
+    // words. The way out is the director's: take a reference off, split the look across shots, or say in so many
+    // words that a piece need not be exact (untick it) — never a quiet downgrade.
+    const why =
+      n.ref.role === "cast" ? `${n.ref.label}'s identity picture does not fit in this request (${cap} pictures): the still would draw a stranger.`
+      : n.ref.role === "screen" ? `The picture the screen must show (${n.ref.label}) does not fit in this request (${cap} pictures): the screen would show something made up.`
+      : `${n.ref.label} is marked exact and does not fit in this request (${cap} pictures): it would be drawn from words.`;
+    problems.push({
+      level: "blocking",
+      text: why,
+      fix: n.ref.role === "garment"
+        ? "Take a prop or another garment off the shot, split the look across shots (production: multi_shot), or untick this piece so it is described in words on purpose."
+        : "Take a prop or a garment off the shot, or split it across shots (production: multi_shot) so every screen and every person gets its picture.",
+    });
   }
   return { sent, notSent, problems, legend: referenceLegend(sent), cap };
 }
@@ -153,9 +167,6 @@ export function referenceSummary(plan: Pick<ReferencePlan, "sent" | "notSent">):
   const left = plan.notSent.map((n) => `${n.ref.label} (${n.ref.role}: ${n.why})`).join(", ");
   return [sent ? `Sent as pictures: ${sent}.` : "No reference pictures are sent.", left ? `Not sent: ${left}.` : ""].filter(Boolean).join(" ");
 }
-
-/** The roles a still cannot do without: a picture of these that is not actually delivered means the shot is not generated. */
-export const REQUIRED_ROLES: ReadonlySet<ReferenceRole> = new Set<ReferenceRole>(["screen", "garment", "cast"]);
 
 /**
  * What stands in the way when the pictures a shot needs cannot go with the request — the generator does not take

@@ -67,6 +67,8 @@ serve(async (req) => {
   const userClient = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } });
   const { data: userData, error: userErr } = await userClient.auth.getUser();
   if (userErr || !userData?.user) return fail(401, "UNAUTHORISED", "Not signed in");
+  // paid route: anonymous visitors (the app signs everyone in anonymously) may not spend — same refusal as world-still-proxy
+  if ((userData.user as { is_anonymous?: boolean }).is_anonymous === true) return fail(403, "SIGN_IN_REQUIRED", "Sign in to write shots");
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return fail(400, "INVALID_INPUT", "Body is not valid JSON"); }

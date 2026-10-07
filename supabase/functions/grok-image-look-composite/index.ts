@@ -134,6 +134,7 @@ serve(async (req) => {
   });
   const { data: userData, error: userErr } = await userClient.auth.getUser();
   if (userErr || !userData?.user) return json(401, { error: "unauthenticated" });
+  if ((userData.user as { is_anonymous?: boolean }).is_anonymous === true) return json(403, { error: "sign_in_required" }); // paid route: no anonymous spend
   const userId = userData.user.id;
 
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });

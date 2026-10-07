@@ -204,6 +204,7 @@ Deno.serve(async (req) => {
   if (userError || !userData.user) {
     return json(req, 401, { ok: false, errorMessage: "Invalid bearer token" });
   }
+  if ((userData.user as { is_anonymous?: boolean }).is_anonymous === true) return json(req, 403, { ok: false, errorMessage: "Sign in to use the voice director" }); // paid route: no anonymous spend
 
   if (!takeTurn(userData.user.id)) {
     return json(req, 429, {
