@@ -45,6 +45,22 @@ describe("useProjectMedia", () => {
     expect(result.current.byId.get("a1")?.footageRole).toBe("performance");
   });
 
+  it("reads how a clip made from a take was made, and from which stretch", () => {
+    state.audio = null;
+    state.assets = [
+      row({ id: "restaged", asset_type: "generated_clip", metadata_json: { mime_type: "video/mp4", derived_from: { asset_id: "a1", source_window: [61.895, 65.899], song_start: 62.749 } } }),
+      row({ id: "composite", asset_type: "edited_clip", metadata_json: { mime_type: "video/mp4", derived_from: { asset_id: "a1", source_window: [61.895, 65.832], song_start: 62.749, method: "composite" } } }),
+      row({ id: "old", asset_type: "generated_clip", metadata_json: { mime_type: "video/mp4", derived_from: { asset_id: "a1", song_start: 10 } } }),
+    ];
+    const { result } = renderHook(() => useProjectMedia("p1"));
+    // a record written before the method was kept is a restaging
+    expect(result.current.byId.get("restaged")?.derivedFrom).toEqual({ assetId: "a1", songStart: 62.749, sourceWindow: [61.895, 65.899], method: "restaged" });
+    expect(result.current.byId.get("composite")?.derivedFrom).toEqual({ assetId: "a1", songStart: 62.749, sourceWindow: [61.895, 65.832], method: "composite" });
+    expect(result.current.byId.get("old")?.derivedFrom?.sourceWindow).toBeNull();
+    // an edited clip filed as his performance plays as his performance, not as a generated clip
+    expect(result.current.byId.get("composite")?.footageRole).toBe("performance");
+  });
+
   it("has no song when the project has none", () => {
     state.assets = [row({})];
     state.audio = null;

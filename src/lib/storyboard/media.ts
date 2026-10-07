@@ -63,10 +63,11 @@ export type MediaAsset = {
   providerJobId: string | null;
   createdAt: string;
   /**
-   * Set on a take that was made FROM another take (the storyboard's "restage"): which take, and the song time of its
-   * first frame. It is a version of one moment — never the base layer of other shots, never counted as a take.
+   * Set on a take that was made FROM another take: which take, the song time of its first frame, the stretch of the
+   * take it was made from (on the take's own clock), and HOW it was made. It is a version of one moment — never the
+   * base layer of other shots, never counted as a take.
    */
-  derivedFrom?: { assetId: string; songStart: number | null } | null;
+  derivedFrom?: { assetId: string; songStart: number | null; sourceWindow?: [number, number] | null; method?: DerivedMethod } | null;
   /**
    * What the footage shows, in the director's words (Setup). `shows` is what he WEARS — the thing a restaged shot
    * keeps; `filmedIn` is the place it was shot — the thing a restaged shot replaces. Both are told to the writer.
@@ -84,6 +85,28 @@ export type MediaAsset = {
 };
 
 /** A take of the song as filmed: performance footage that was not made from another take. */
+/**
+ * How a take made from another take was made. `restaged`: a video model re-shot the performance — every pixel of him
+ * is the model's. `composite`: he was cut out of the take and put over another background — every pixel of him is
+ * the camera's. They are told apart wherever a clip is named, because what can go wrong with each is different.
+ */
+export type DerivedMethod = "restaged" | "composite";
+
+/**
+ * Which take a clip was made from, and which stretch of it (on the take's own clock). The job that made the clip
+ * says so; a clip no job made — a composite filed from outside the app — carries the same two facts on its own
+ * record. Null when neither does: the clip cannot be held against a take nobody named.
+ */
+export function sourceOfDerived(
+  asset: Pick<MediaAsset, "derivedFrom">,
+  job: { sourceAssetId?: string | null; sourceWindow?: readonly number[] | null } | null | undefined,
+): { assetId: string; window: [number, number] } | null {
+  const assetId = job?.sourceAssetId ?? asset.derivedFrom?.assetId;
+  const w = job?.sourceWindow ?? asset.derivedFrom?.sourceWindow;
+  if (!assetId || !w || w.length !== 2 || !(w[1] > w[0])) return null;
+  return { assetId, window: [w[0], w[1]] };
+}
+
 export function isOriginalTake(a: Pick<MediaAsset, "footageRole" | "isVideo" | "derivedFrom">): boolean {
   return a.footageRole === "performance" && a.isVideo && !a.derivedFrom;
 }

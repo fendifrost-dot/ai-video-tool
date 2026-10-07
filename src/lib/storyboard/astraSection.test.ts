@@ -34,6 +34,10 @@ describe("what the reviewer is told", () => {
     expect(showsOf(seg({ kind: "none" }), null)).toMatch(/nothing yet/);
     expect(showsOf(seg({ kind: "video", assetId: "a", role: "performance", sourceIn: 0, sourceOut: 4, leadIn: 0, base: true }), { derivedFrom: null })).toBe("the artist's real performance footage");
     expect(showsOf(seg({ kind: "video", assetId: "a", role: "performance", sourceIn: 0, sourceOut: 4, leadIn: 0, base: false }), { derivedFrom: { assetId: "t", songStart: 0 } })).toMatch(/re-shot by a video model/);
+    // a composite is the take itself over another background: told apart from a restaging, where a model drew him
+    const composite = showsOf(seg({ kind: "video", assetId: "a", role: "performance", sourceIn: 0, sourceOut: 4, leadIn: 0, base: false }), { derivedFrom: { assetId: "t", songStart: 0, method: "composite" } });
+    expect(composite).toMatch(/cut out and placed over another background/);
+    expect(composite).not.toMatch(/video model/);
     expect(showsOf(seg({ kind: "image", assetId: "a", role: "generated_image", base: false }), null)).toMatch(/generated still/);
   });
 

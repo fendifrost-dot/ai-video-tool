@@ -11,6 +11,7 @@ import { resolveEvents, type EventClock } from "@/lib/storyboard/events";
 import { temporalPlan } from "@/lib/storyboard/temporal";
 import { NO_CONTINUITY } from "@/lib/continuity/entities";
 import { BoxCard } from "./BoxCard";
+import { mediaLabel } from "./BoxMediaView";
 import { FocusView } from "./FocusView";
 import { MediaPicker } from "./MediaPicker";
 import { StoryboardProvider, type StoryboardController } from "./useStoryboardController";
@@ -411,5 +412,14 @@ describe("putting footage on a shot", () => {
     const rows = screen.getAllByTestId("media-row");
     expect(within(rows[1]).getByTestId("media-row-assign").textContent).toContain("On this shot");
     expect((within(rows[1]).getByTestId("media-row-assign") as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("the name a piece of media goes by", () => {
+  it("tells a take over a new background from a take a model re-shot", () => {
+    expect(mediaLabel({ role: "performance", base: true })).toBe("Your take · base layer");
+    expect(mediaLabel({ role: "performance", base: false, asset: { derivedFrom: { assetId: "t", songStart: 0 } } })).toBe("Your take · restaged");
+    expect(mediaLabel({ role: "performance", base: false, asset: { derivedFrom: { assetId: "t", songStart: 0, method: "restaged" } } })).toBe("Your take · restaged");
+    expect(mediaLabel({ role: "performance", base: false, asset: { derivedFrom: { assetId: "t", songStart: 0, method: "composite" } } })).toBe("Your take · new background");
   });
 });

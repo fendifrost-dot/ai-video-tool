@@ -98,6 +98,7 @@ const ROLE_WORDS: Record<AssignmentRole, string> = {
 /** What a shot of the cut is showing, in words a reviewer needs: real, restaged, generated, nothing. */
 export function showsOf(seg: TimelineSegment, asset: Pick<MediaAsset, "derivedFrom"> | null | undefined): string {
   if (seg.media.kind === "none") return "nothing yet (no footage on this shot)";
+  if (seg.media.role === "performance" && asset?.derivedFrom?.method === "composite") return "the artist's real performance footage, cut out and placed over another background (he is the filmed footage itself; judge the edge around him and whether the light on him belongs to the place)";
   if (seg.media.role === "performance" && asset?.derivedFrom) return "the artist's real performance, re-shot by a video model inside a generated place (his mouth should still match the song)";
   return ROLE_WORDS[seg.media.role];
 }

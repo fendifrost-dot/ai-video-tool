@@ -60,7 +60,7 @@ export function TakeCheckPanel({ item }: { item: BoxMediaItem }) {
         )}
       </div>
 
-      {!check && !busy && <p className="text-[11px] leading-snug text-foreground/50">Not checked yet. A restaging is asked to keep his mouth on the take's moments and to show no more of him than the take filmed; this measures both.</p>}
+      {!check && !busy && <p className="text-[11px] leading-snug text-foreground/50">Not checked yet. A clip made from a take is asked to keep his mouth on the take's moments and to show no more of him than the take filmed; this measures both.</p>}
 
       {check && (
         <>
