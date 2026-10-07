@@ -2144,17 +2144,26 @@ export type Database = {
           end_frame: number
           id: string
           item_order: number
+          look_id: string | null
           manifest_id: string
           notes: string | null
+          output_asset_id: string | null
+          production_status: string
+          provenance_json: Json
           shot_id: string | null
           song_section: string | null
+          source_asset_id: string | null
+          source_in_seconds: number | null
+          source_out_seconds: number | null
           speed: number
           start_frame: number
           storyboard_node_id: string | null
+          sync_id: string | null
           text_overlays_json: Json
           track: string
           transition_in_json: Json
           transition_out_json: Json
+          treatment_shot_id: string | null
           trim_in_frame: number
           trim_out_frame: number | null
           updated_at: string
@@ -2169,17 +2178,26 @@ export type Database = {
           end_frame?: number
           id?: string
           item_order: number
+          look_id?: string | null
           manifest_id: string
           notes?: string | null
+          output_asset_id?: string | null
+          production_status?: string
+          provenance_json?: Json
           shot_id?: string | null
           song_section?: string | null
+          source_asset_id?: string | null
+          source_in_seconds?: number | null
+          source_out_seconds?: number | null
           speed?: number
           start_frame?: number
           storyboard_node_id?: string | null
+          sync_id?: string | null
           text_overlays_json?: Json
           track?: string
           transition_in_json?: Json
           transition_out_json?: Json
+          treatment_shot_id?: string | null
           trim_in_frame?: number
           trim_out_frame?: number | null
           updated_at?: string
@@ -2194,17 +2212,26 @@ export type Database = {
           end_frame?: number
           id?: string
           item_order?: number
+          look_id?: string | null
           manifest_id?: string
           notes?: string | null
+          output_asset_id?: string | null
+          production_status?: string
+          provenance_json?: Json
           shot_id?: string | null
           song_section?: string | null
+          source_asset_id?: string | null
+          source_in_seconds?: number | null
+          source_out_seconds?: number | null
           speed?: number
           start_frame?: number
           storyboard_node_id?: string | null
+          sync_id?: string | null
           text_overlays_json?: Json
           track?: string
           transition_in_json?: Json
           transition_out_json?: Json
+          treatment_shot_id?: string | null
           trim_in_frame?: number
           trim_out_frame?: number | null
           updated_at?: string
@@ -2233,6 +2260,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "timeline_items_output_asset_id_fkey"
+            columns: ["output_asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "timeline_items_shot_id_fkey"
             columns: ["shot_id"]
             isOneToOne: false
@@ -2240,10 +2274,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "timeline_items_source_asset_id_fkey"
+            columns: ["source_asset_id"]
+            isOneToOne: false
+            referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "timeline_items_storyboard_node_id_fkey"
             columns: ["storyboard_node_id"]
             isOneToOne: false
             referencedRelation: "storyboard_nodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_items_sync_id_fkey"
+            columns: ["sync_id"]
+            isOneToOne: false
+            referencedRelation: "performance_syncs"
             referencedColumns: ["id"]
           },
           {
