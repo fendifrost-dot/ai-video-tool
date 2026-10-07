@@ -2,6 +2,8 @@
   "version": "5",
   "remote": {
     "https://deno.land/std@0.224.0/async/delay.ts": "f90dd685b97c2f142b8069082993e437b1602b8e2561134827eeb7c12b95c499",
+    "https://deno.land/std@0.224.0/encoding/_util.ts": "beacef316c1255da9bc8e95afb1fa56ed69baef919c88dc06ae6cb7a6103d376",
+    "https://deno.land/std@0.224.0/encoding/base64.ts": "dd59695391584c8ffc5a296ba82bcdba6dd8a84d41a6a539fbee8e5075286eaf",
     "https://deno.land/std@0.224.0/http/server.ts": "f9313804bf6467a1704f45f76cb6cd0a3396a3b31c316035e6a4c2035d1ea514",
     "https://deno.land/x/imagescript@1.2.15/ImageScript.js": "9ce10c37a0e4fe43699689088c24f386fd401874057932bd57079ac729205038",
     "https://deno.land/x/imagescript@1.2.15/mod.ts": "18a6cb83c55e690c873505f6fe867364c678afb64934fe7aef593a6b92f79995",
@@ -68,7 +70,7 @@
         "npm:@cloudflare/vite-plugin@^1.25.5",
         "npm:@eslint/js@^9.32.0",
         "npm:@hookform/resolvers@^5.2.2",
-        "npm:@lovable.dev/vite-tanstack-config@2.23.1",
+        "npm:@lovable.dev/vite-tanstack-config@2.25.3",
         "npm:@radix-ui/react-accordion@^1.2.12",
         "npm:@radix-ui/react-alert-dialog@^1.1.15",
         "npm:@radix-ui/react-aspect-ratio@^1.1.8",

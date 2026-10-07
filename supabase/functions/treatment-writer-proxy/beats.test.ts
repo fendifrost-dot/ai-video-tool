@@ -69,10 +69,10 @@ describe("the shots are allotted to the beats, in the treatment's order", () => 
   it("pins beats with cues to the shots that sing them and fills the beats between by weight — later beats are never consumed", () => {
     const beats = [
       beat({ id: "forest", weight: 3, people: ["RIDER"], unnamedPeople: true }),
-      beat({ id: "viewer", weight: 1, people: ["ARTIST"], ties: [{ kind: "screen_shows", to: "forest", note: "the CRT" }] }),
+      beat({ id: "viewer", weight: 1, people: ["ARTIST"], ties: [{ kind: "screen_shows", to: "forest", note: "the CRT", words: "" }] }),
       beat({ id: "chicago", weight: 3, people: ["ARTIST"], artistPerforms: true, lyricCue: "You don’t gotta cut the lights on", wardrobe: "his exact leather coat" }),
       beat({ id: "crew", weight: 1, lyricCue: "more cameras in the whip" }), // sung BEFORE chicago: not an anchor
-      beat({ id: "suv", weight: 1, ties: [{ kind: "reveals", to: "crew", note: "the door" }] }),
+      beat({ id: "suv", weight: 1, ties: [{ kind: "reveals", to: "crew", note: "the door", words: "" }] }),
       beat({ id: "entrance", weight: 2, lyricCue: "this ice on" }),
     ];
     const a = allocateBeats(beats, grid, { lyricInserts: false });
@@ -109,7 +109,7 @@ describe("the shots are allotted to the beats, in the treatment's order", () => 
 describe("each shot is briefed with its beat, and the board is checked against the beats", () => {
   const beats = [
     beat({ id: "forest", people: ["RIDER"], unnamedPeople: true, weight: 1 }),
-    beat({ id: "viewer", people: ["ARTIST"], wardrobe: "his exact denim look", ties: [{ kind: "screen_shows", to: "forest", note: "the CRT" }], weight: 1 }),
+    beat({ id: "viewer", people: ["ARTIST"], wardrobe: "his exact denim look", ties: [{ kind: "screen_shows", to: "forest", note: "the CRT", words: "" }], weight: 1 }),
   ];
   const small = grid.slice(0, 4);
   const a = allocateBeats(beats, small);
