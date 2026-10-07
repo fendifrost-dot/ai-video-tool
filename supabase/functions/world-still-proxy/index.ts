@@ -70,6 +70,25 @@ function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
 
+type Filed = { path: string; previewUrl: string | null; bytes: number; assetId: string | null };
+
+/**
+ * File one drawn still: the project's bucket, a signed preview, a project_assets row. One function for both routes so
+ * the record of a still is the same whichever endpoint drew it; `extraMeta` says what differs (route, references).
+ */
+// deno-lint-ignore no-explicit-any
+async function fileStill(admin: any, input: { userId: string; projectId: string; bytes: Uint8Array; index: number; stamp: string; shotLabel?: string; sceneTitle?: string; promptVersion?: string; model: string; resolution: string; aspect: string; rate: number; extraMeta: Record<string, unknown> }): Promise<Filed | { error: string }> {
+  const path = `${input.userId}/${input.projectId}/worlds/${(input.shotLabel ?? "scene").replace(/[^A-Za-z0-9_-]/g, "_")}_${input.stamp}_${input.index + 1}.png`;
+  const { error: upErr } = await admin.storage.from("project-references").upload(path, input.bytes, { contentType: "image/png", upsert: true });
+  if (upErr) return { error: String(upErr.message ?? upErr) };
+  const { data: signed } = await admin.storage.from("project-references").createSignedUrl(path, SIGN_TTL);
+  const { data: filed } = await admin.from("project_assets").insert({
+    user_id: input.userId, project_id: input.projectId, asset_type: "reference_image", file_url: path, source_tool: "grok", approval_status: "pending", notes: input.sceneTitle ?? input.shotLabel ?? null,
+    metadata_json: { bucket: "project-references", mime_type: "image/png", file_size_bytes: input.bytes.length, lane: "world_still", model: input.model, resolution: input.resolution, aspect_ratio: input.aspect, prompt_version: input.promptVersion ?? null, shot_label: input.shotLabel ?? null, scene_title: input.sceneTitle ?? null, actual_cost_usd: input.rate, ...input.extraMeta },
+  }).select("id").maybeSingle();
+  return { path, previewUrl: signed?.signedUrl ?? null, bytes: input.bytes.length, assetId: (filed?.id as string | undefined) ?? null };
+}
+
 function b64ToBytes(b64: string): Uint8Array {
   const raw = b64.includes(",") ? b64.split(",")[1]! : b64;
   const bin = atob(raw); const out = new Uint8Array(bin.length);
@@ -90,6 +109,10 @@ serve(async (req) => {
   const { data: userData, error: userErr } = await userClient.auth.getUser();
   if (userErr || !userData?.user) return json(401, { error: "unauthenticated" });
   const userId = userData.user.id;
+  // Paid generation and the signing of private files are for a signed-in person, never an anonymous session: with the
+  // database's RLS as open as it is today (RISK-001), an anonymous caller could re-own a project and spend on, or read
+  // through, this route. The same refusal lyric-align-proxy makes.
+  if ((userData.user as { is_anonymous?: boolean }).is_anonymous === true) return json(403, { error: "sign_in_required", detail: "Sign in to generate pictures." });
 
   let body: Body;
   try { body = await req.json(); } catch { return json(400, { error: "invalid_json" }); }
@@ -115,6 +138,10 @@ serve(async (req) => {
     model, n, aspectRatio: aspect, resolution, estimatedCostUsd, maxCostUsd, promptChars: body.prompt.length, promptVersion: body.promptVersion ?? null,
     // what the app asks before it sends any picture
     referencesAccepted: true, maxReferences: refCap, referenceModel: REFERENCE_MODEL,
+    // a caller's model is set aside when pictures go: the edit model is the one whose limit was checked
+    ...(withRefs && body.model && body.model !== REFERENCE_MODEL ? { modelOverridden: true } : {}),
+    // the edits route is priced at the generations list rate until a billed run verifies it (handoff)
+    ...(withRefs ? { costBasis: "generations list rate; edits rate unverified" } : {}),
   };
   if (estimatedCostUsd > maxCostUsd) return json(200, { ok: false, error: "cost_gate", ...plan });
 
@@ -137,7 +164,8 @@ serve(async (req) => {
       ownArtists: new Set(((artistsRes.data ?? []) as { id: string }[]).map((a) => a.id)),
     });
     if (r.refused.length > 0) {
-      return json(403, { error: "reference_refused", detail: "Nothing was generated.", refused: r.refused.map((x) => ({ source: x.ref.source, id: x.ref.id, label: x.ref.label, why: x.why })) });
+      const refused = r.refused.map((x) => ({ source: x.ref.source, id: x.ref.id, label: x.ref.label, why: x.why }));
+      return json(403, { error: "reference_refused", detail: `${refused.map((x) => `${x.label || x.id}: ${x.why}`).join("; ")}. Nothing was generated.`, refused });
     }
     resolvedRefs = r.resolved;
   }
@@ -148,56 +176,55 @@ serve(async (req) => {
     for (const ref of resolvedRefs) {
       let url: string | null = null;
       for (const bucket of ref.buckets) {
-        const { data, error } = await admin.storage.from(bucket).createSignedUrl(ref.path, 600);
+        // signed AS THE CALLER, never with the service role: storage RLS (first path segment = the caller's uid) then
+        // decides, in the database, whether this file is theirs — a check no client-writable row can bend. The record
+        // checks before this (stillReferences.ts inFolderOf) still hold; this is the one that survives an open table.
+        const { data, error } = await userClient.storage.from(bucket).createSignedUrl(ref.path, 600);
         if (!error && data?.signedUrl) { url = data.signedUrl; break; }
       }
-      // only files inside the caller's own project / artist folders get here (stillReferences.ts inFolderOf)
-      if (!url) return json(200, { ok: false, billed: false, error: "reference_sign_failed", detail: `${ref.ref.label || ref.ref.id}: its file could not be read. Nothing was generated.`, ...plan });
+      if (!url) return json(200, { ok: false, billed: false, error: "reference_sign_failed", detail: `${ref.ref.label || ref.ref.id}: its file in ${ref.buckets[0]} could not be read as you. Nothing was generated.`, ...plan });
       images.push({ url, type: "image_url" });
     }
     // one edit call per candidate (the edits endpoint answers one picture); they run side by side
     const results = await Promise.allSettled(
-      Array.from({ length: n }, () => callXaiImageEditsDetailed({ apiKey: xaiKey, model, prompt: body.prompt, images, resolution, aspectRatio: aspect, timeoutMs: 120_000 })),
+      Array.from({ length: n }, () => callXaiImageEditsDetailed({ apiKey: xaiKey, model, prompt: body.prompt, images, resolution, aspectRatio: aspect, timeoutMs: 100_000 })),
     );
     const sentRefs = resolvedRefs.map((r) => ({ source: r.ref.source, id: r.ref.id, role: r.ref.role, label: r.ref.label }));
     const stills: Array<{ path: string; previewUrl: string | null; bytes: number; assetId: string | null }> = [];
     const stamp = Date.now().toString(36);
     const failures: string[] = [];
-    // what xAI drew is paid for whether or not it is filed: counted apart from what was stored
+    // what xAI drew is paid for whether or not it is filed: counted apart from what was stored. A timeout is the one
+    // outcome nobody can count: xAI may have finished and charged — said as such, never as "not billed".
     let drawn = 0;
+    let unknown = 0;
     for (let i = 0; i < results.length; i++) {
       const res = results[i];
       if (res.status !== "fulfilled") {
         const why = redactSigned(res.reason instanceof Error ? res.reason.message : String(res.reason));
         // a picture xAI made but could not be fetched was still made (and charged)
         if (/^xai_download|^xai_no_image/.test(why)) drawn++;
+        else if (/timeout/.test(why)) unknown++;
         failures.push(why);
         continue;
       }
       drawn++;
       const bytes = res.value.bytes;
-      const path = `${userId}/${body.projectId}/worlds/${(body.shotLabel ?? "scene").replace(/[^A-Za-z0-9_-]/g, "_")}_${stamp}_${i + 1}.png`;
-      const { error: upErr } = await admin.storage.from("project-references").upload(path, bytes, { contentType: "image/png", upsert: true });
-      if (upErr) { failures.push(`storage_upload: ${upErr.message}`); continue; }
-      const { data: signed } = await admin.storage.from("project-references").createSignedUrl(path, SIGN_TTL);
-      const { data: filed } = await admin.from("project_assets").insert({
-        user_id: userId, project_id: body.projectId, asset_type: "reference_image", file_url: path, source_tool: "grok", approval_status: "pending", notes: body.sceneTitle ?? body.shotLabel ?? null,
-        metadata_json: { bucket: "project-references", mime_type: "image/png", file_size_bytes: bytes.length, lane: "world_still", route: "images/edits", model, resolution, aspect_ratio: aspect, prompt_version: body.promptVersion ?? null, shot_label: body.shotLabel ?? null, scene_title: body.sceneTitle ?? null, actual_cost_usd: rate, references: sentRefs },
-      }).select("id").maybeSingle();
-      stills.push({ path, previewUrl: signed?.signedUrl ?? null, bytes: bytes.length, assetId: (filed?.id as string | undefined) ?? null });
+      const filed = await fileStill(admin, { userId, projectId: body.projectId, bytes, index: i, stamp, shotLabel: body.shotLabel, sceneTitle: body.sceneTitle, promptVersion: body.promptVersion, model, resolution, aspect, rate, extraMeta: { route: "images/edits", references: sentRefs, cost_basis: "generations list rate; edits rate unverified" } });
+      if ("error" in filed) { failures.push(`storage_upload: ${filed.error}`); continue; }
+      stills.push(filed);
     }
     const actualCostUsd = Number((rate * drawn).toFixed(4));
-    if (body.jobRowId && UUID_RE.test(body.jobRowId) && drawn > 0) {
+    if (body.jobRowId && UUID_RE.test(body.jobRowId) && (drawn > 0 || unknown > 0 || failures.length > 0)) {
       await admin
         .from("provider_jobs")
-        .update({ response_payload_json: { stills: stills.map((x) => ({ path: x.path, assetId: x.assetId })), actualCostUsd, references: sentRefs, failures, recordedAt: new Date().toISOString() } })
+        .update({ response_payload_json: { stills: stills.map((x) => ({ path: x.path, assetId: x.assetId })), actualCostUsd, possiblyBilled: unknown > 0, references: sentRefs, failures, recordedAt: new Date().toISOString() } })
         .eq("id", body.jobRowId)
         .eq("user_id", userId)
         .eq("project_id", body.projectId)
         .in("status", ["queued", "running"]);
     }
-    if (stills.length === 0) return json(200, { ok: false, billed: drawn > 0, actualCostUsd, error: "xai_error", detail: failures[0] ?? "no picture returned", ...plan, referencesSent: images.length });
-    return json(200, { ok: true, billed: true, actualCostUsd, stills, ...plan, referencesSent: images.length, references: sentRefs, failedCandidates: failures.length, failures });
+    if (stills.length === 0) return json(200, { ok: false, billed: drawn > 0 ? true : unknown > 0 ? "unknown" : false, actualCostUsd, error: "xai_error", detail: failures[0] ?? "no picture returned", ...plan, referencesSent: images.length });
+    return json(200, { ok: true, billed: true, possiblyBilled: unknown > 0, actualCostUsd, stills, ...plan, referencesSent: images.length, references: sentRefs, failedCandidates: failures.length, failures });
   }
 
   const res = await fetch(XAI_URL, {
@@ -215,15 +242,9 @@ serve(async (req) => {
     if (data[i].b64_json) bytes = b64ToBytes(data[i].b64_json!);
     else if (data[i].url) { const r = await fetch(data[i].url!); if (r.ok) bytes = new Uint8Array(await r.arrayBuffer()); }
     if (!bytes) continue;
-    const path = `${userId}/${body.projectId}/worlds/${(body.shotLabel ?? "scene").replace(/[^A-Za-z0-9_-]/g, "_")}_${stamp}_${i + 1}.png`;
-    const { error: upErr } = await admin.storage.from("project-references").upload(path, bytes, { contentType: "image/png", upsert: true });
-    if (upErr) return json(200, { ok: false, billed: true, error: "storage_upload", detail: upErr.message, ...plan });
-    const { data: signed } = await admin.storage.from("project-references").createSignedUrl(path, SIGN_TTL);
-    const { data: filed } = await admin.from("project_assets").insert({
-      user_id: userId, project_id: body.projectId, asset_type: "reference_image", file_url: path, source_tool: "grok", approval_status: "pending", notes: body.sceneTitle ?? body.shotLabel ?? null,
-      metadata_json: { bucket: "project-references", mime_type: "image/png", file_size_bytes: bytes.length, lane: "world_still", model, resolution, aspect_ratio: aspect, prompt_version: body.promptVersion ?? null, shot_label: body.shotLabel ?? null, scene_title: body.sceneTitle ?? null, actual_cost_usd: rate },
-    }).select("id").maybeSingle();
-    stills.push({ path, previewUrl: signed?.signedUrl ?? null, bytes: bytes.length, assetId: (filed?.id as string | undefined) ?? null });
+    const filed = await fileStill(admin, { userId, projectId: body.projectId, bytes, index: i, stamp, shotLabel: body.shotLabel, sceneTitle: body.sceneTitle, promptVersion: body.promptVersion, model, resolution, aspect, rate, extraMeta: { route: "images/generations" } });
+    if ("error" in filed) return json(200, { ok: false, billed: true, error: "storage_upload", detail: filed.error, ...plan });
+    stills.push(filed);
   }
   const actualCostUsd = Number((rate * stills.length).toFixed(4));
   // Write the pictures on the job they belong to. The row's status is left alone: the page that asked checks the

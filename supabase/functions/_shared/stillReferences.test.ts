@@ -131,4 +131,22 @@ describe("a still request's reference pictures are held to the caller before any
     });
     expect(r.resolved.map((x) => x.buckets)).toEqual([["artist-assets"], ["wardrobe-refs"]]);
   });
+
+  it("a picture row from before the multi-angle column (storage_path null, file_url set) is read from file_url — the same folder and image checks apply", () => {
+    const refs = parseReferenceRequest([
+      { source: "character_feature", id: id(14), role: "garment", label: "old row" },
+      { source: "character_feature", id: id(15), role: "garment", label: "old row, elsewhere" },
+    ]).refs;
+    const r = resolveReferences(refs, {
+      projectId: P,
+      assets: [],
+      features: [
+        { id: id(14), artist_id: "a1", storage_path: null, file_url: "u/a1/coat.jpg", feature_type: "wardrobe_outerwear" },
+        { id: id(15), artist_id: "a1", storage_path: null, file_url: "u/other/coat.jpg", feature_type: "wardrobe_outerwear" },
+      ],
+      ownArtists: new Set(["a1"]),
+    });
+    expect(r.resolved.map((x) => [x.ref.label, x.path])).toEqual([["old row", "u/a1/coat.jpg"]]);
+    expect(r.refused.map((x) => x.why)).toEqual(["its file is not in its artist's folder"]);
+  });
 });

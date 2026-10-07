@@ -76,7 +76,8 @@ export function resolveReferences(
         continue;
       }
       const meta = (a.metadata_json ?? {}) as Record<string, unknown>;
-      // the bucket the app reads it from (src/lib/queries/projectAssets.ts bucketForAssetType), unless the row says
+      // the bucket the app reads it from — src/lib/queries/projectAssets.ts `bucketForAssetType` is the source of truth
+      // (functions cannot import src/); change both together — unless the row says
       const bucket = typeof meta.bucket === "string" ? meta.bucket : a.asset_type === "reference_image" ? "project-references" : "project-clips";
       const mime = typeof meta.mime_type === "string" ? meta.mime_type : "";
       const path = (a.file_url ?? "").trim();
@@ -103,7 +104,8 @@ export function resolveReferences(
         refused.push({ ref, why: "not a picture of one of your artists" });
         continue;
       }
-      const path = (f.storage_path ?? "").trim();
+      // rows from before the multi-angle column carry the file in file_url only (src/lib/queries/characterFeatures.ts)
+      const path = (f.storage_path ?? f.file_url ?? "").trim();
       if (!path || /^https?:\/\//i.test(path) || path.includes("..") || !IMAGE_EXT.test(path)) {
         refused.push({ ref, why: "it has no stored image this route can sign" });
         continue;
