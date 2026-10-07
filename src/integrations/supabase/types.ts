@@ -455,10 +455,13 @@ export type Database = {
         Row: {
           approved_asset_id: string | null
           archived: boolean
+          artist_id: string | null
+          cast_role: string | null
           constraints: string
           created_at: string
           description: string
           id: string
+          identity_mode: string | null
           key: string
           kind: string
           name: string
@@ -471,10 +474,13 @@ export type Database = {
         Insert: {
           approved_asset_id?: string | null
           archived?: boolean
+          artist_id?: string | null
+          cast_role?: string | null
           constraints?: string
           created_at?: string
           description?: string
           id?: string
+          identity_mode?: string | null
           key: string
           kind: string
           name: string
@@ -487,10 +493,13 @@ export type Database = {
         Update: {
           approved_asset_id?: string | null
           archived?: boolean
+          artist_id?: string | null
+          cast_role?: string | null
           constraints?: string
           created_at?: string
           description?: string
           id?: string
+          identity_mode?: string | null
           key?: string
           kind?: string
           name?: string
@@ -506,6 +515,13 @@ export type Database = {
             columns: ["approved_asset_id"]
             isOneToOne: false
             referencedRelation: "project_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "continuity_entities_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
             referencedColumns: ["id"]
           },
           {
