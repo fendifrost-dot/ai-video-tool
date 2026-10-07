@@ -36,7 +36,19 @@ export function parseReferenceRequest(raw: unknown): { refs: ReferenceRequest[];
 }
 
 export type AssetRow = { id: string; project_id: string; file_url: string | null; asset_type: string | null; metadata_json: unknown };
-export type FeatureRow = { id: string; artist_id: string; storage_path: string | null; file_url: string | null };
+export type FeatureRow = { id: string; artist_id: string; storage_path: string | null; file_url: string | null; feature_type?: string | null };
+
+/**
+ * The row is the caller's — but the row names a FILE, and the row is written by the client. So the file itself must
+ * sit in the folder that belongs to what the row belongs to: a project asset under `<uid>/<projectId>/…`, an artist's
+ * picture under `<uid>/<artistId>/…`. (Storage writes are scoped to the writer's own first segment, so a file in the
+ * caller's project or artist folder was put there for that project or artist. The first segment is not required to
+ * be today's uid: older files sit under an earlier anonymous uid — RISK-002.) A row pointing anywhere else is refused.
+ */
+export function inFolderOf(path: string, ownerId: string): boolean {
+  const parts = path.split("/");
+  return parts.length >= 3 && parts[1] === ownerId && parts.every((p) => p !== "" && p !== "." && p !== "..");
+}
 
 export type ResolvedReference = { ref: ReferenceRequest; path: string; buckets: readonly string[] };
 
@@ -74,7 +86,11 @@ export function resolveReferences(
         refused.push({ ref, why: "it has no stored file this route can sign" });
         continue;
       }
-      if (!(mime.startsWith("image/") || IMAGE_EXT.test(path))) {
+      if (!inFolderOf(path, input.projectId)) {
+        refused.push({ ref, why: "its file is not in this project's folder" });
+        continue;
+      }
+      if (!(mime === "" || mime.startsWith("image/")) || !IMAGE_EXT.test(path)) {
         refused.push({ ref, why: "it is not an image" });
         continue;
       }
@@ -90,8 +106,24 @@ export function resolveReferences(
         refused.push({ ref, why: "it has no stored image this route can sign" });
         continue;
       }
-      resolved.push({ ref, path, buckets: FEATURE_BUCKETS });
+      if (!inFolderOf(path, f.artist_id)) {
+        refused.push({ ref, why: "its file is not in its artist's folder" });
+        continue;
+      }
+      // a wardrobe picture lives in wardrobe-refs; only an identity picture may be looked for elsewhere
+      resolved.push({ ref, path, buckets: (f.feature_type ?? "").startsWith("wardrobe_") ? ["wardrobe-refs"] : FEATURE_BUCKETS });
     }
   }
   return { resolved, refused };
+}
+
+/** A provider's error text with any signed-URL token taken out, so a URL it echoes never reaches the caller. */
+export function redactSigned(text: string): string {
+  return text.replace(/([?&](?:token|sig|signature|X-Amz-[A-Za-z-]+)=)[^&\s"']+/g, "$1…");
+}
+
+/** A whole number in [lo, hi], or the default when the value is missing or not a number. */
+export function boundedInt(value: unknown, dflt: number, lo: number, hi: number): number {
+  const n = Number(value ?? dflt);
+  return Number.isFinite(n) ? Math.max(lo, Math.min(hi, Math.floor(n))) : dflt;
 }

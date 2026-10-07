@@ -26,7 +26,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 import { getProviderCapability } from "../_shared/providerCapabilities.ts";
 import { callXaiImageEditsDetailed } from "../_shared/xaiImageEdits.ts";
-import { parseReferenceRequest, resolveReferences, type ResolvedReference } from "../_shared/stillReferences.ts";
+import { boundedInt, parseReferenceRequest, redactSigned, resolveReferences, type ResolvedReference } from "../_shared/stillReferences.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -107,10 +107,10 @@ serve(async (req) => {
   if (parsedRefs.refs.length > refCap) {
     return json(400, { error: "references_over_capability", detail: `${parsedRefs.refs.length} reference pictures were sent; ${REFERENCE_MODEL} takes ${refCap}. Nothing was generated.`, maxReferences: refCap });
   }
-  const model = withRefs ? REFERENCE_MODEL : (body.model ?? DEFAULT_MODEL); const n = Math.max(1, Math.min(MAX_N, Number(body.n ?? 1)));
+  const model = withRefs ? REFERENCE_MODEL : (body.model ?? DEFAULT_MODEL); const n = boundedInt(body.n, 1, 1, MAX_N);
   const aspect = body.aspectRatio ?? "9:16"; const resolution = body.resolution ?? "2k";
   const rate = PRICE_USD_PER_IMAGE[model] ?? Math.max(...Object.values(PRICE_USD_PER_IMAGE));
-  const estimatedCostUsd = Number((rate * n).toFixed(4)); const maxCostUsd = Number(body.maxCostUsd ?? DEFAULT_MAX_COST_USD);
+  const estimatedCostUsd = Number((rate * n).toFixed(4)); const maxCostUsd = Number.isFinite(Number(body.maxCostUsd)) ? Number(body.maxCostUsd) : DEFAULT_MAX_COST_USD;
   const plan = {
     model, n, aspectRatio: aspect, resolution, estimatedCostUsd, maxCostUsd, promptChars: body.prompt.length, promptVersion: body.promptVersion ?? null,
     // what the app asks before it sends any picture
@@ -125,11 +125,11 @@ serve(async (req) => {
     const featureIds = parsedRefs.refs.filter((r) => r.source === "character_feature").map((r) => r.id);
     const [assetsRes, featuresRes, artistsRes] = await Promise.all([
       assetIds.length ? admin.from("project_assets").select("id, project_id, file_url, asset_type, metadata_json").in("id", assetIds) : Promise.resolve({ data: [], error: null }),
-      featureIds.length ? admin.from("character_features").select("id, artist_id, storage_path, file_url").in("id", featureIds) : Promise.resolve({ data: [], error: null }),
+      featureIds.length ? admin.from("character_features").select("id, artist_id, storage_path, file_url, feature_type").in("id", featureIds) : Promise.resolve({ data: [], error: null }),
       featureIds.length ? admin.from("artists").select("id").eq("user_id", userId) : Promise.resolve({ data: [], error: null }),
     ]);
     const lookupErr = assetsRes.error ?? featuresRes.error ?? artistsRes.error;
-    if (lookupErr) return json(500, { error: "reference_lookup_failed", detail: lookupErr.message });
+    if (lookupErr) return json(500, { error: "reference_lookup_failed" });
     const r = resolveReferences(parsedRefs.refs, {
       projectId: body.projectId,
       assets: (assetsRes.data ?? []) as never,
@@ -151,6 +151,7 @@ serve(async (req) => {
         const { data, error } = await admin.storage.from(bucket).createSignedUrl(ref.path, 600);
         if (!error && data?.signedUrl) { url = data.signedUrl; break; }
       }
+      // only files inside the caller's own project / artist folders get here (stillReferences.ts inFolderOf)
       if (!url) return json(200, { ok: false, billed: false, error: "reference_sign_failed", detail: `${ref.ref.label || ref.ref.id}: its file could not be read. Nothing was generated.`, ...plan });
       images.push({ url, type: "image_url" });
     }
@@ -162,13 +163,22 @@ serve(async (req) => {
     const stills: Array<{ path: string; previewUrl: string | null; bytes: number; assetId: string | null }> = [];
     const stamp = Date.now().toString(36);
     const failures: string[] = [];
+    // what xAI drew is paid for whether or not it is filed: counted apart from what was stored
+    let drawn = 0;
     for (let i = 0; i < results.length; i++) {
       const res = results[i];
-      if (res.status !== "fulfilled") { failures.push(res.reason instanceof Error ? res.reason.message : String(res.reason)); continue; }
+      if (res.status !== "fulfilled") {
+        const why = redactSigned(res.reason instanceof Error ? res.reason.message : String(res.reason));
+        // a picture xAI made but could not be fetched was still made (and charged)
+        if (/^xai_download|^xai_no_image/.test(why)) drawn++;
+        failures.push(why);
+        continue;
+      }
+      drawn++;
       const bytes = res.value.bytes;
       const path = `${userId}/${body.projectId}/worlds/${(body.shotLabel ?? "scene").replace(/[^A-Za-z0-9_-]/g, "_")}_${stamp}_${i + 1}.png`;
       const { error: upErr } = await admin.storage.from("project-references").upload(path, bytes, { contentType: "image/png", upsert: true });
-      if (upErr) return json(200, { ok: false, billed: true, error: "storage_upload", detail: upErr.message, ...plan, referencesSent: images.length });
+      if (upErr) { failures.push(`storage_upload: ${upErr.message}`); continue; }
       const { data: signed } = await admin.storage.from("project-references").createSignedUrl(path, SIGN_TTL);
       const { data: filed } = await admin.from("project_assets").insert({
         user_id: userId, project_id: body.projectId, asset_type: "reference_image", file_url: path, source_tool: "grok", approval_status: "pending", notes: body.sceneTitle ?? body.shotLabel ?? null,
@@ -176,18 +186,18 @@ serve(async (req) => {
       }).select("id").maybeSingle();
       stills.push({ path, previewUrl: signed?.signedUrl ?? null, bytes: bytes.length, assetId: (filed?.id as string | undefined) ?? null });
     }
-    const actualCostUsd = Number((rate * stills.length).toFixed(4));
-    if (body.jobRowId && UUID_RE.test(body.jobRowId) && stills.length > 0) {
+    const actualCostUsd = Number((rate * drawn).toFixed(4));
+    if (body.jobRowId && UUID_RE.test(body.jobRowId) && drawn > 0) {
       await admin
         .from("provider_jobs")
-        .update({ response_payload_json: { stills: stills.map((x) => ({ path: x.path, assetId: x.assetId })), actualCostUsd, references: sentRefs, recordedAt: new Date().toISOString() } })
+        .update({ response_payload_json: { stills: stills.map((x) => ({ path: x.path, assetId: x.assetId })), actualCostUsd, references: sentRefs, failures, recordedAt: new Date().toISOString() } })
         .eq("id", body.jobRowId)
         .eq("user_id", userId)
         .eq("project_id", body.projectId)
         .in("status", ["queued", "running"]);
     }
-    if (stills.length === 0) return json(200, { ok: false, billed: false, error: "xai_error", detail: failures[0] ?? "no picture returned", ...plan, referencesSent: images.length });
-    return json(200, { ok: true, billed: true, actualCostUsd, stills, ...plan, referencesSent: images.length, references: sentRefs, failedCandidates: failures.length });
+    if (stills.length === 0) return json(200, { ok: false, billed: drawn > 0, actualCostUsd, error: "xai_error", detail: failures[0] ?? "no picture returned", ...plan, referencesSent: images.length });
+    return json(200, { ok: true, billed: true, actualCostUsd, stills, ...plan, referencesSent: images.length, references: sentRefs, failedCandidates: failures.length, failures });
   }
 
   const res = await fetch(XAI_URL, {
