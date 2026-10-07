@@ -94,9 +94,9 @@ sent to him to upload under Wardrobe (coat → Outerwear; each cap → Accessory
 exist, a shot that marks one of them exact stays blocked by `undeliveredProblem`.
 
 **DECISION (recommended, 7 Oct evening; Fendi asked whether shoes would hold us back): shoes are words only for
-now, never a reference picture.** The cap is 3 pictures, the face and the screen already take slots, and shoes read
+now — a per-shot choice, not a rule.** The cap is 3 pictures, the face and the screen already take slots, and shoes read
 small or cropped in 9:16 frames; a shoe picture would displace a jacket or cap that the model reproduces well. Revisit
-only per shot, on a full-length frame (the clean entrance), once the board exists.
+per shot on a full-length frame (the clean entrance) once the board exists; a shot that marks a shoe exact gets its picture or is blocked like any other.
 
 Collected on the page **"Interrupted Broadcast Choices"** (claude.ai artifact, private, version 2): the scene ×
 garment grid (17 pieces: 10 on file, the coat + 3 caps to upload), an "exact" line per scene, cast notes, and the

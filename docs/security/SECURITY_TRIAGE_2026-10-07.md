@@ -40,6 +40,10 @@ RECOMMENDATION (separate Class C PRs, in this order):
 1. Refuse anonymous JWTs on every paid proxy (`treatment-writer-proxy`, `grok-video-edit-proxy`,
    `video-providers-*`, `grok-image-look-composite`, `grok-voice-director-proxy`, `lyric-visualizer-proxy`) —
    one-line each, the pattern `lyric-align-proxy` already uses. Closes anonymous spend immediately.
+   **Done in code (PR #190):** `treatment-writer-proxy`, `grok-video-edit-proxy`, `grok-image-look-composite`,
+   `grok-voice-director-proxy`, `lyric-visualizer-proxy` refuse `is_anonymous` JWTs with 403. CODED, not LIVE until each is
+   redeployed from Lovable (no `video-providers-*` function exists in this repo). Verify: an anonymous session's call
+   returns 403 `sign_in_required` / `SIGN_IN_REQUIRED`; the director's signed-in call still returns 200.
 2. STOR-5: look-composite resolves pictures by record id through `_shared/stillReferences.ts`, signs as the caller,
    drops the URL pass-through.
 3. SEC-4 / RISK-001: remove the `_open_test` and anon policies, after the STOR-1…4 re-key so the director's legacy
