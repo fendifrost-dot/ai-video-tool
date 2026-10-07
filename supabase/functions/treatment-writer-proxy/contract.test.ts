@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { acceptTimedBeats, WRITTEN_BEATS_MAX, WRITTEN_EFFECTS } from "../_shared/timedBeats.ts";
-import { acceptShots, writerEntities, chunkGrid, contextBlocks, outlineLine, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot } from "./contract.ts";
+import { acceptShots, writerEntities, chunkGrid, contextBlocks, outlineLine, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_DECIDES, TREATMENT_SCHEMA, withRewrites, type GridShot } from "./contract.ts";
 
 const grid: GridShot[] = [
   { key: "c001", start: 0, end: 3.92, section: "intro", energy: "low", lyrics: "" },
@@ -15,7 +15,10 @@ describe("what the treatment writer is told", () => {
   it("is the project's own words and nothing blank", () => {
     const blocks = contextBlocks(ctx);
     expect(blocks).toContain("Visual direction:\nA runway at night.");
-    expect(blocks).toContain("these are constraints: nothing you write may break them:\nREAL PERFORMANCE FOOTAGE");
+    // the notes are two things: facts about the footage, and wishes the treatment may have moved on from
+    expect(blocks).toContain("is fact.");
+    expect(blocks).toContain("where a note and the treatment disagree, the treatment is the later decision and the treatment wins:\nREAL PERFORMANCE FOOTAGE");
+    expect(blocks).not.toContain("nothing you write may break them");
     expect(blocks).toContain("Lyrics:\nline one");
     expect(contextBlocks({ songTitle: "Song", mood: " " })).toBe("Song:\nSong");
   });
@@ -24,7 +27,7 @@ describe("what the treatment writer is told", () => {
     const withTake = treatmentSystemPrompt({ ...ctx, hasPerformanceFootage: true });
     expect(withTake).toContain("REAL performance footage");
     expect(withTake).toContain("write the PLACE he performs in");
-    expect(withTake).toContain("He appears ONLY in performance shots");
+    expect(withTake).toContain("He appears in performance shots.");
     // the cut: he carries the song, the picture leaves him and comes back, and no two frames of him are the same
     expect(withTake).toContain("about two are performance and one is a cutaway");
     expect(withTake).toContain("Never four performance shots in a row");
@@ -50,7 +53,8 @@ describe("what the treatment writer is told", () => {
 
   it("the schemas ask for exactly what the storyboard stores", () => {
     expect(TREATMENT_SCHEMA.schema.required).toEqual(["concept", "narrative", "sections"]);
-    expect(SHOTS_SCHEMA.schema.properties.clips.items.required).toEqual(["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "lyric_ref", "priority", "timed_beats", "continuity"]);
+    expect(SHOTS_SCHEMA.schema.properties.clips.items.required).toEqual(["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "wardrobe_from", "lyric_ref", "priority", "timed_beats", "continuity"]);
+    expect(SHOTS_SCHEMA.schema.properties.clips.items.properties.wardrobe_from.enum).toEqual(["footage", "treatment", "none"]);
     expect(SHOTS_SCHEMA.schema.properties.clips.items.properties.shot_type.enum).toContain("performance");
   });
 });
@@ -85,6 +89,29 @@ describe("the board is one board: no shot repeats another, and no shot contradic
     expect(p).toContain("the world around him can answer the words");
     expect(p).toContain("is binding on the shots");
     expect(p).toContain("as a timed beat on those words when it happens inside the shot, as the state the shot opens in when it has already happened");
+  });
+
+  it("is told the treatment decides — over the footage rules, the notes and the no-logo rule — and to say when the footage cannot deliver it", () => {
+    const p = shotsSystemPrompt({ ...ctx, hasPerformanceFootage: true }, "He stands at 79th and Lafayette in the leather coat. A monogram burns in the forest floor.", grid);
+    expect(p).toContain(TREATMENT_DECIDES);
+    // wardrobe: the treatment's garment is written, flagged, and never swapped for the footage's
+    expect(p).toContain("unless the treatment itself dresses him in something else");
+    expect(p).toContain("`wardrobe_from` is `treatment`");
+    expect(p).toContain("the footage's clothes are never written in their place");
+    expect(p).not.toContain("He wears exactly what the notes say he wears in the footage, in every shot he is in.");
+    // he may be in a scene of his own when the treatment stages one
+    expect(p).toContain("unless the treatment stages him in a scene of its own");
+    // the treatment's own run of scenes is the cut
+    expect(p).toContain("there the treatment's order is the cut");
+    // a mark the treatment calls for is not forbidden; an impossible event is not softened
+    expect(p).toContain("except a mark the treatment itself calls for");
+    expect(p).toContain("never softened into something ordinary");
+    expect(p).not.toContain("nothing that needs readable text or logos");
+    // what returns on purpose returns as the same thing; what is linked across shots is written into both
+    expect(p).toContain("is not a repeat: it returns as the SAME one");
+    expect(p).toContain("is written into BOTH shots");
+    // places: the treatment's first
+    expect(p).toContain("Keep to the places the treatment names — and, where it leaves the place open, the ones the notes name.");
   });
 
   it("finds the shots that came back with another shot's sentence — the first keeps it", () => {

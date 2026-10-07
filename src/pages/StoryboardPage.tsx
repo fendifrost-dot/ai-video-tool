@@ -27,6 +27,7 @@ export default function StoryboardPage({ projectId }: { projectId: string }) {
 
   const specs = useMemo(() => sb.boxes.map((b) => b.spec), [sb.boxes]);
   const coverage = useMemo(() => measureCoverage(specs, DEFAULT_COVERAGE_PRESETS, lyricLines), [specs, lyricLines]);
+  const staleCount = useMemo(() => sb.boxes.filter((b) => sb.staleOf(b)).length, [sb]);
   const runtime = sb.boxes.length ? Math.max(...sb.boxes.map((b) => b.end)) - Math.min(...sb.boxes.map((b) => b.start)) : 0;
   const filled = sb.boxes.filter((b) => sb.mediaOf(b.id).showing).length;
 
@@ -74,6 +75,17 @@ export default function StoryboardPage({ projectId }: { projectId: string }) {
             </div>
 
             <ContinuityPanel />
+
+            {staleCount > 0 && (
+              <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200" data-testid="storyboard-stale">
+                {staleCount === sb.boxes.length ? `All ${staleCount} shots were` : `${staleCount} of ${sb.boxes.length} shots were`} written from an earlier version of the treatment. Anything
+                generated from them follows the old scenes.{" "}
+                <Link to="/projects/$id/treatment" params={{ id: projectId }} className="underline underline-offset-2">
+                  Rewrite them from the treatment
+                </Link>
+                , or open a shot and regenerate its scene.
+              </p>
+            )}
 
             {sb.migrated && (
               <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2 text-xs text-emerald-200" data-testid="storyboard-migrated">

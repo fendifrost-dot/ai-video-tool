@@ -26,6 +26,7 @@ import {
   type ShotTypeLiteral,
 } from "@/lib/treatment/shotSpec";
 import { applyShotOverride, isEmptyOverride, type ContinuityOverride, type ShotOverride } from "@/lib/treatment/overrides";
+import { fingerprint } from "@/lib/treatment/treatmentDoc";
 import { storedEvent, EVENT_FACETS, eventStates, isDirected, mergeEvents, resolveEvents, sanitizeEvents, splitEvents, type EventClock, type ResolvedEvent, type ShotEvent, type ShotState } from "./events";
 
 // ---------------------------------------------------------------------------
@@ -41,6 +42,11 @@ export type BoxOverride = Omit<ShotOverride, "specId"> & {
    * rewrite wrote and keeps what he set; only these are told to the model as already decided.
    */
   manual?: OverrideField[] | null;
+  /**
+   * The fingerprint of the treatment that stood when the scene of this edit (its direction or frame) was last
+   * written — by a per-shot rewrite or by hand. Absent on an edit made before this was kept.
+   */
+  treatment?: string | null;
 };
 
 export const OVERRIDE_FIELDS = ["direction", "frame", "cameraMotion", "framing", "transitionIn", "requiredElements", "notes", "shotType", "events", "continuity"] as const;
@@ -158,6 +164,7 @@ export function parseBoxOverride(value: unknown): BoxOverride | null {
     shotType: asShotType(v.shotType),
     manual: Array.isArray(v.manual) ? (v.manual.filter((f) => (OVERRIDE_FIELDS as readonly unknown[]).includes(f)) as OverrideField[]) : null,
     updatedAt: typeof v.updatedAt === "string" ? v.updatedAt : undefined,
+    ...(typeof v.treatment === "string" && v.treatment ? { treatment: v.treatment } : {}),
   };
   return isEmptyBoxOverride(o) ? null : o;
 }
@@ -427,13 +434,74 @@ export function unlockedForGeneration(boxes: readonly StoryboardBox[], boxIdsWit
 // --- the director's edit ------------------------------------------------------
 
 /** Save (or clear) the director's edit of one box. An edit locks the box; clearing it hands the box back. */
-export function applyOverride(box: StoryboardBox, override: BoxOverride | null, at: string, event: "edit" | "rewrite" | "reset" = "edit"): BoxWrite {
-  const next = isEmptyBoxOverride(override) ? null : { ...override!, updatedAt: at };
+export function applyOverride(box: StoryboardBox, override: BoxOverride | null, at: string, event: "edit" | "rewrite" | "reset" = "edit", treatment?: string): BoxWrite {
+  // The scene of an edit is its direction and its frame. Writing either — a rewrite, or the director's own words —
+  // is a decision made under the treatment that stands now, and takes its stamp. Any other edit (a framing, a
+  // prop, a beat) leaves the scene where it was, and with it the stamp it had.
+  const sceneWritten = event === "rewrite" || (override?.direction ?? null) !== (box.override?.direction ?? null) || (override?.frame ?? null) !== (box.override?.frame ?? null);
+  const stamp = (sceneWritten ? treatment : undefined) ?? box.override?.treatment ?? undefined;
+  const { treatment: _was, ...rest } = override ?? {};
+  const next = isEmptyBoxOverride(override) ? null : ({ ...rest, updatedAt: at, ...(stamp ? { treatment: stamp } : {}) } as BoxOverride);
   return writeOf(box, {
     override: next,
     locked: next ? true : false,
     history: withHistory(box.history, snapshot(box.spec, next ? event : "reset", at)),
   });
+}
+
+// --- which treatment a shot was written from --------------------------------------
+
+/**
+ * Where a shot's scene comes from: the director's edit when it carries a scene (direction or frame), else what the
+ * generator wrote. `treatment` is the fingerprint of the treatment that scene was written from (null when it was
+ * written before stamps were kept), `at` when.
+ */
+export function writtenFrom(box: Pick<StoryboardBox, "generated" | "override">): { treatment: string | null; at: string | null } {
+  const o = box.override;
+  if (o && (o.direction || o.frame)) return { treatment: o.treatment || null, at: o.updatedAt || null };
+  return { treatment: box.generated.provenance.treatment || null, at: box.generated.provenance.createdAt || null };
+}
+
+/** A write and the save of the text it used are stamped moments apart; anything closer than this is the same act. */
+const SAME_WRITE_MS = 5000;
+
+/**
+ * True when a shot was written from another text than the treatment that stands now — the one thing a board-level
+ * stamp cannot say, because a whole-board write keeps the shots that are the director's and they stay as they were.
+ *   • a stamped shot: its stamp is not the current text's;
+ *   • a shot from before stamps: it was last written before the current text was saved;
+ *   • nothing to compare (no treatment, or no date on either side): not stale — an unknown is not an accusation.
+ */
+export function boxIsStale(box: Pick<StoryboardBox, "generated" | "override">, treatment: { text: string; updatedAt: string }): boolean {
+  if (!treatment.text.trim()) return false;
+  const w = writtenFrom(box);
+  if (w.treatment) return w.treatment !== fingerprint(treatment.text);
+  const written = w.at ? Date.parse(w.at) : NaN;
+  const saved = treatment.updatedAt ? Date.parse(treatment.updatedAt) : NaN;
+  if (!Number.isFinite(written) || !Number.isFinite(saved)) return false;
+  return written < saved - SAME_WRITE_MS;
+}
+
+// --- a wardrobe the footage cannot deliver ---------------------------------------
+
+/**
+ * What to tell the director about a shot the treatment dresses the artist for, when the writer said so
+ * (`wardrobe.source === "treatment"`). Null when there is nothing to tell.
+ *
+ * Why it is said rather than solved: a performance shot is his real take, and a restaging keeps the clothes he was
+ * filmed in. If the treatment puts him in something else, no route here makes that shot from the footage on file —
+ * and writing the footage's clothes into the scene instead would be changing the treatment without telling anyone.
+ * A shot that is not his take draws him from words alone: no picture of him or of the garment reaches the image model.
+ */
+export function wardrobeGap(spec: Pick<ShotSpec, "shotType" | "wardrobe">, footageShows?: string | null): string | null {
+  if (spec.wardrobe.source !== "treatment") return null;
+  const asked = spec.wardrobe.description.trim().replace(/[.\s]+$/, "");
+  if (!asked || /^none$/i.test(asked)) return null;
+  if (spec.shotType === "performance") {
+    const filmed = footageShows?.trim().replace(/[.\s]+$/, "");
+    return `The treatment dresses him in: ${asked}. ${filmed ? `Your footage shows him in ${filmed}.` : "That is not what your footage shows."} A restaging keeps the clothes he was filmed in, so this shot cannot be made as the treatment asks from the footage on file — it needs footage of him in that look, or a wardrobe change made another way.`;
+  }
+  return `He is in this shot wearing: ${asked}. No picture of him or of that garment is handed to the image model here — it draws both from the words alone, so neither will be the real one.`;
 }
 
 // --- split / merge -------------------------------------------------------------

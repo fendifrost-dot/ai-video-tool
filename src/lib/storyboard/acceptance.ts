@@ -55,6 +55,7 @@
 import { isDrift, MIN_STATE_SECONDS, type AskedChange, type BeatCheck } from "./beatCheck";
 import { framingLine, lipLine, type TakeCheck } from "./takeCheck";
 import type { MediaAsset, TimelineSegment } from "./media";
+import { REVIEW_CRITERIA, REVIEW_CRITERION_LABEL, criterionOf } from "./reviewCriteria";
 
 export type Requirement = "timing" | "framing" | "lips" | "lighting" | "camera" | "integrity" | "action" | "review";
 export type Finding = "meets" | "fails" | "undetermined" | "unverified";
@@ -193,7 +194,15 @@ const BY_EYE: Record<Requirement, string> = {
 function reviewOf(reviewed: readonly ReviewedFinding[] | null | undefined): Measured | null {
   const counted = (reviewed ?? []).filter((f) => f.severity === "blocker" || f.severity === "major");
   if (counted.length === 0) return null;
-  return { finding: "fails", says: counted.map((f) => `${f.severity} (${f.area}, ${f.at.slice(0, 10)}): ${f.finding}`).join(" · ") };
+  // said under the criterion each finding speaks to, in a fixed order: what is wrong with the idea, with him and his
+  // clothes, and with the photograph are three different repairs
+  const says = REVIEW_CRITERIA.map((criterion) => {
+    const of = counted.filter((f) => criterionOf(f.area) === criterion);
+    return of.length ? `${REVIEW_CRITERION_LABEL[criterion]} — ${of.map((f) => `${f.severity} (${f.area}, ${f.at.slice(0, 10)}): ${f.finding}`).join(" · ")}` : null;
+  })
+    .filter(Boolean)
+    .join(" ‖ ");
+  return { finding: "fails", says };
 }
 
 /**

@@ -66,6 +66,8 @@ function controller(over: Partial<StoryboardController> = {}): StoryboardControl
     busyOf: () => null,
     estimatesOf: () => ({ image: 0.14, clip: 0.35, clipDrawsImage: false }),
     rewriteBlockedReason: () => null,
+    staleOf: () => false,
+    wardrobeGapOf: () => null,
     library: [
       { asset: take, role: "performance" },
       { asset: clip, role: "generated_clip" },
@@ -423,3 +425,20 @@ describe("the name a piece of media goes by", () => {
     expect(mediaLabel({ role: "performance", base: false, asset: { derivedFrom: { assetId: "t", songStart: 0, method: "composite" } } })).toBe("Your take · new background");
   });
 });
+
+describe("a shot the treatment has moved on from", () => {
+  it("says so on its card, and only there", () => {
+    const sb = controller({ staleOf: (b) => b.key === "c001" });
+    render(
+      <StoryboardProvider value={sb}>
+        <BoxCard box={sb.boxes[0]} />
+        <BoxCard box={sb.boxes[1]} />
+      </StoryboardProvider>,
+    );
+    const tags = screen.getAllByTestId("box-stale");
+    expect(tags).toHaveLength(1);
+    expect(tags[0].textContent).toBe("earlier treatment");
+    expect(tags[0].closest('[data-testid="box-card"]')?.getAttribute("data-box-key")).toBe("c001");
+  });
+});
+

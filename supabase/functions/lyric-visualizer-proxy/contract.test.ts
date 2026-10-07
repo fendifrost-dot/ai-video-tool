@@ -240,6 +240,16 @@ describe("the cost gate stays honest about the mode", () => {
 describe("the treatment is the one creative brief (2026-10-03)", () => {
   const base = { ...ARGS, mode: "literal" as const };
 
+  it("present, it outranks the standing notes and may ask for a mark or a crowd", () => {
+    const p = buildSystemPrompt({ ...base, treatment: "A monogram burns in the forest; models cross in formation.", projectState: { constraints: ["PLACES (reuse these, do not invent others): the runway"] } });
+    expect(p).toContain("except a mark the treatment itself calls for");
+    expect(p).toContain("a crowd, a formation or a group the treatment asks for is what the beat needs");
+    expect(p).toContain("The one exception is `constraints`, the director's standing notes");
+    expect(p).toContain("the treatment is the later decision and wins");
+    // no notes sent: nothing is said about them
+    expect(buildSystemPrompt({ ...base, treatment: "T", projectState: { window: [0, 4] } })).not.toContain("The one exception is `constraints`");
+  });
+
   it("absent, the prompt is exactly what it was", () => {
     expect(buildSystemPrompt({ ...base, treatment: null, neighbours: null, projectState: null, hasExemplars: true })).toBe(buildSystemPrompt(base));
     expect(buildSystemPrompt({ ...base, treatment: "   " })).toBe(buildSystemPrompt(base));

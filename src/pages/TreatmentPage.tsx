@@ -16,7 +16,7 @@ import { projectsKeys, useUpdateProject } from "@/lib/queries/projects";
 import { treatmentVersionsKeys, useRestoreTreatmentVersion, useTreatmentVersions } from "@/lib/queries/treatmentVersions";
 import { storyboardKeys, useAssignments, useProjectMedia, useStoryboardBoxes, useTakeSyncs } from "@/lib/queries/storyboard";
 import { useTreatmentInputs } from "@/lib/queries/treatmentInputs";
-import { unlockedForGeneration } from "@/lib/storyboard/boxes";
+import { boxIsStale, unlockedForGeneration } from "@/lib/storyboard/boxes";
 import { deleteTreatment, saveTreatment, writeStoryboardFromTreatment } from "@/lib/storyboard/build";
 import { isOriginalTake, isUsableSync } from "@/lib/storyboard/media";
 import { footageSummary, setupStatus } from "@/lib/storyboard/setup";
@@ -102,7 +102,12 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
   const withMedia = useMemo(() => new Set(assignments.map((a) => a.shotId)), [assignments]);
   const open = useMemo(() => unlockedForGeneration(boxes, withMedia).length, [boxes, withMedia]);
   const kept = boxes.length - open;
-  const stale = storyboardIsStale(doc);
+  // Each shot answers for itself (boxes.ts `boxIsStale`). The board's own stamp cannot: a rewrite keeps the shots
+  // that are the director's, stamps the board as written from this treatment, and those shots are still the old one.
+  const staleBoxes = useMemo(() => boxes.filter((b) => boxIsStale(b, doc)), [boxes, doc]);
+  const staleOpen = useMemo(() => unlockedForGeneration(staleBoxes, withMedia).length, [staleBoxes, withMedia]);
+  const staleKept = staleBoxes.length - staleOpen;
+  const stale = storyboardIsStale(doc) || staleBoxes.length > 0;
 
   const refresh = async () => {
     await Promise.all([
@@ -195,7 +200,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
         : `${open} of the ${boxes.length} shots are rewritten. ${kept} ${kept === 1 ? "is" : "are"} yours (edited, locked or holding footage) and ${kept === 1 ? "stays" : "stay"} exactly as ${kept === 1 ? "it is" : "they are"}.`;
     setConfirm({
       title: aiWritesText ? (exists ? "Write a new treatment?" : "Let the AI write the treatment?") : "Write the shots from this treatment?",
-      body: (aiWritesText ? (exists ? "A new treatment text is written. The current one is kept under Versions and can be restored. " : "The AI writes the treatment from the lyrics, the project and your footage. ") : "The treatment text is kept word for word. ") + effect,
+      body: (aiWritesText ? (exists ? (doc.mode === "manual" ? "This REPLACES the treatment you wrote with one the AI writes from the lyrics and the project — it is not shown your text. Yours is kept under Versions and can be restored. To keep your treatment and only write its shots, cancel and use \"Rewrite the shots\" below. " : "A new treatment text is written. The current one is kept under Versions and can be restored. ") : "The AI writes the treatment from the lyrics, the project and your footage. ") : "The treatment text is kept word for word. ") + effect,
       confirmLabel: aiWritesText ? "Generate treatment" : "Write the shots",
       testId: aiWritesText ? "confirm-generate-treatment" : "confirm-write-shots",
       onConfirm: () => write(aiWritesText),
@@ -464,14 +469,23 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
               {boxes.length} shots.{" "}
               {!exists
                 ? "There is no treatment at the moment; the shots are as they were."
-                : stale
-                  ? "The treatment changed after the shots were written."
-                  : `Written from this treatment${doc.storyboard?.at ? ` on ${doc.storyboard.at.slice(0, 10)}` : ""}.`}{" "}
+                : staleBoxes.length > 0
+                  ? `${staleBoxes.length === boxes.length ? `All ${boxes.length}` : `${staleBoxes.length} of them`} ${staleBoxes.length === 1 ? "was" : "were"} written from an earlier version of this treatment.`
+                  : stale
+                    ? "The treatment changed after the shots were written."
+                    : `Written from this treatment${doc.storyboard?.at ? ` on ${doc.storyboard.at.slice(0, 10)}` : ""}.`}{" "}
               {kept > 0 && `${kept} ${kept === 1 ? "is" : "are"} yours and ${kept === 1 ? "is" : "are"} never rewritten from here.`}
+              {staleKept > 0 && (
+                <span data-testid="treatment-stale-kept">
+                  {" "}
+                  {staleKept} of yours {staleKept === 1 ? "is" : "are"} still from the earlier treatment: rewriting the rest does not touch {staleKept === 1 ? "it" : "them"}. Open {staleKept === 1 ? "it" : "each"} on the storyboard and
+                  regenerate its scene, or unlock it and take its footage off so it can be rewritten here.
+                </span>
+              )}
             </p>
           )}
           <div className="flex flex-wrap items-center gap-2">
-            {exists && (boxes.length === 0 || stale) && (
+            {exists && (boxes.length === 0 || staleOpen > 0 || (storyboardIsStale(doc) && open > 0)) && (
               <Button size="sm" onClick={() => askWrite(false)} disabled={busy} data-testid="treatment-write-shots">
                 <Wand2 className="mr-1.5 h-3.5 w-3.5" />
                 {boxes.length === 0 ? "Write the shots from this treatment" : `Rewrite the ${open} shot${open === 1 ? " that is" : "s that are"} not yours`}

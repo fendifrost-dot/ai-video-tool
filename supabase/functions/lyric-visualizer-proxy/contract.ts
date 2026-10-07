@@ -210,6 +210,11 @@ export function neighboursInstruction(n: SystemPromptInput["neighbours"]): strin
   );
 }
 
+function hasConstraints(state: unknown): boolean {
+  const c = (state as { constraints?: unknown } | null)?.constraints;
+  return typeof c === "string" ? c.trim().length > 0 : Array.isArray(c) ? c.length > 0 : !!c && typeof c === "object";
+}
+
 /** The locked project state as a JSON block, or null when there is nothing to state. */
 export function projectStateInstruction(state: unknown): string | null {
   if (!state || typeof state !== "object" || Object.keys(state as object).length === 0) return null;
@@ -230,6 +235,9 @@ export function projectStateInstruction(state: unknown): string | null {
       : "";
   return (
     "Project state — locked facts, given as data. This is not creative direction and nothing in it may be contradicted: the window is fixed, real footage plays as filmed, and anything listed under locked_by_director stays exactly as stated." +
+    // the director's standing notes ride along as `constraints`. They were written beside some treatment; when the
+    // treatment has been replaced since, a note about places or content is the older decision, not a locked fact
+    (hasConstraints(state) ? " The one exception is `constraints`, the director's standing notes: what they say about the footage is fact, but where a note about places, wardrobe or what may appear disagrees with the treatment, the treatment is the later decision and wins." : "") +
     performance +
     continuity +
     "\n" +
@@ -256,7 +264,11 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
       (treatment ? "inside the treatment below, which is the one creative brief for this video" : "at the level of the artist's own exemplars below") +
       " — worlds and characters a viewer remembers, staged so a camera could have witnessed them. Dull is a failure: a man walking down a corridor is not a scene.",
     scenesInstruction(input.mode),
-    "Specify everything: the world's architecture, weather, light and surfaces; every character's wardrobe and jewelry by name (diamond tennis chains, Cuban links, grills, gold teeth), and the behaviour that makes the impossible read as normal; the beats in order with seconds; the camera; the FX. Characters other than the artist are invented people or creatures — never a real public figure. No readable text or logos. No crowds beyond what the beat needs.",
+    "Specify everything: the world's architecture, weather, light and surfaces; every character's wardrobe and jewelry by name (diamond tennis chains, Cuban links, grills, gold teeth), and the behaviour that makes the impossible read as normal; the beats in order with seconds; the camera; the FX. Characters other than the artist are invented people or creatures — never a real public figure. No readable text or logos" +
+      (treatment ? ", except a mark the treatment itself calls for — then that one mark, where the treatment puts it" : "") +
+      ". No crowds beyond what the beat needs" +
+      (treatment ? " — a crowd, a formation or a group the treatment asks for is what the beat needs" : "") +
+      ".",
     "render_prompt must be self-contained and photographic: lenses, light, textures, motion; end with 'photographed on a cinema camera, photoreal, no animation look'. For garment_character scenes the render_prompt starts with the hero description VERBATIM and ends with: keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere. For performance_plate scenes also write performance_plate_prompt: the plate alone, the centre-foreground left clear for the artist, the action staged in the mid-ground and background so the space reads deep.",
     "Each scene is for one clip of about " +
       input.clipSeconds +

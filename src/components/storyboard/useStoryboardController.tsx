@@ -41,6 +41,8 @@ import { providerJobsKeys } from "@/lib/providerJobs/queries";
 import {
   BLANK_OVERRIDE,
   applyOverride,
+  boxIsStale,
+  wardrobeGap,
   directorSet,
   editedOverride,
   machineContext,
@@ -90,7 +92,7 @@ import {
 import { energyForWindow } from "@/lib/storyboard/rewrite";
 import { buildClipGrid, type ClipEnergy } from "@/lib/treatment/grid";
 import { DEFAULT_MOTION_TEMPLATE, regenerateShotFromLyrics, type RegenerateMode } from "@/lib/treatment/regenerateFromLyrics";
-import { directorNotes, hasTreatment, parseTreatmentDoc } from "@/lib/treatment/treatmentDoc";
+import { directorNotes, fingerprint, hasTreatment, parseTreatmentDoc } from "@/lib/treatment/treatmentDoc";
 import { mediaRefKey, playbackRef, useSignedRefs } from "./signedUrls";
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
@@ -145,6 +147,10 @@ export type StoryboardController = {
   /** What the one-time move from the old storyboard did, when it ran in this session. */
   migrated: MaterializeResult | null;
   hasTreatment: boolean;
+  /** True when this shot was written from another text than the treatment that stands now (boxes.ts `boxIsStale`). */
+  staleOf: (box: StoryboardBox) => boolean;
+  /** What the treatment asks him to wear in this shot that the footage or the image model cannot deliver (boxes.ts `wardrobeGap`), or null. */
+  wardrobeGapOf: (box: StoryboardBox) => string | null;
   /** The project's frame: what every stage is shaped as and what images and clips are asked for. */
   aspect: ProjectAspect;
 
@@ -235,6 +241,10 @@ export type StoryboardController = {
   askConfirm: (req: ConfirmRequest | null) => void;
 };
 
+/** Said before anything is generated from a shot that was written from another treatment than the one that stands. */
+export const STALE_SHOT_WARNING =
+  "NOTE: this shot was written from an earlier version of the treatment and has not been rewritten since — what is generated follows the old scene, not the treatment as it stands.";
+
 const Ctx = createContext<StoryboardController | null>(null);
 
 export function StoryboardProvider({ value, children }: { value: StoryboardController; children: ReactNode }) {
@@ -269,6 +279,11 @@ export function useStoryboardController(projectId: string): StoryboardController
   const assignments = useMemo(() => assignmentsQuery.data ?? [], [assignmentsQuery.data]);
   const syncs = useMemo(() => syncsQuery.data ?? [], [syncsQuery.data]);
   const doc = useMemo(() => parseTreatmentDoc(project?.treatment_json), [project?.treatment_json]);
+  const treatmentStamp = useMemo(() => (hasTreatment(doc) ? fingerprint(doc.text) : undefined), [doc]);
+  /** Whether a shot was written from another text than the treatment that stands now. */
+  const staleOf = useCallback((box: StoryboardBox) => boxIsStale(box, doc), [doc]);
+  /** What a generation is told about a shot the treatment has moved on from: it costs money and follows the old scene. */
+  const staleNote = useCallback((box: StoryboardBox) => (boxIsStale(box, doc) ? ` ${STALE_SHOT_WARNING}` : ""), [doc]);
   const aspect = aspectOfProject(project);
 
   const [busy, setBusy] = useState<Record<string, string>>({});
@@ -313,6 +328,15 @@ export function useStoryboardController(projectId: string): StoryboardController
     for (const b of boxes) out.set(b.id, boxMedia({ box: b, assignments, assets: media.byId, syncs }));
     return out;
   }, [boxes, assignments, media.byId, syncs]);
+
+  const wardrobeGapOf = useCallback(
+    (box: StoryboardBox) => {
+      // the real take under this shot says what he was filmed in
+      const take = (mediaByBox.get(box.id) ?? EMPTY_MEDIA).items.find((i) => i.base || (i.role === "performance" && !i.asset.derivedFrom));
+      return wardrobeGap(box.spec, take?.asset.shows ?? null);
+    },
+    [mediaByBox],
+  );
 
   // --- continuity: the entities, and what each shot's references resolve to -----------------------------------------
   const entities = useMemo(() => entitiesQuery.data ?? [], [entitiesQuery.data]);
@@ -389,10 +413,12 @@ export function useStoryboardController(projectId: string): StoryboardController
     (box: StoryboardBox, next: BoxOverride) =>
       run(box, "saving…", async () => {
         const at = new Date().toISOString();
-        await writeBoxes.mutateAsync({ updates: [{ id: box.id, write: applyOverride(box, editedOverride(box.override, next), at, "edit") }] });
+        // a scene he writes by hand is written under the treatment that stands now (applyOverride stamps it only
+        // when the scene itself changed)
+        await writeBoxes.mutateAsync({ updates: [{ id: box.id, write: applyOverride(box, editedOverride(box.override, next), at, "edit", treatmentStamp) }] });
         toast.success("Saved");
       }),
-    [run, writeBoxes],
+    [run, writeBoxes, treatmentStamp],
   );
 
   const resetBox = useCallback(
@@ -460,7 +486,7 @@ export function useStoryboardController(projectId: string): StoryboardController
           events: r.events,
         });
         const at = new Date().toISOString();
-        await writeBoxes.mutateAsync({ updates: [{ id: box.id, write: applyOverride(box, next, at, "rewrite") }] });
+        await writeBoxes.mutateAsync({ updates: [{ id: box.id, write: applyOverride(box, next, at, "rewrite", fingerprint(doc.text)) }] });
         toast.success("Scene rewritten — the earlier version is under Versions");
       }),
     [run, rewriteBlockedReason, mediaByBox, inputs, doc, project, projectId, lyricLines, boxes, writeBoxes, continuityOf],
@@ -692,12 +718,13 @@ export function useStoryboardController(projectId: string): StoryboardController
       const held = source.lines.length
         ? ` It is drawn from the project's own description of ${[continuity.location?.name, ...continuity.props.map((p) => p.name), continuity.lighting?.name].filter(Boolean).join(", ")} — the same words every shot that points there is drawn from.${source.notes.length ? ` ${source.notes.join(" ")}` : ""}`
         : "";
+      const old = staleNote(box);
       const opening = imagePlan.mode === "opening_state" ? ` This shot changes ${imagePlan.beats === 1 ? "once" : `${imagePlan.beats} times`} while it plays: the image is the frame it OPENS on, before its beats.` : "";
       setConfirm({
         title: `Generate an image for shot ${numberById.get(box.id) ?? ""}?`,
         body: est.restage
-          ? `About ${usd(est.image)} at list price. This is a performance shot: the image is the PLACE from this shot's scene, drawn empty — your take keeps showing, and "Restage" puts your real performance in this place.${held}${opening}${shapeNote}`
-          : `About ${usd(est.image)} at list price. The image is drawn from this shot's scene and put on this shot only.${held}${opening}${shapeNote}`,
+          ? `About ${usd(est.image)} at list price. This is a performance shot: the image is the PLACE from this shot's scene, drawn empty — your take keeps showing, and "Restage" puts your real performance in this place.${held}${opening}${shapeNote}${old}`
+          : `About ${usd(est.image)} at list price. The image is drawn from this shot's scene and put on this shot only.${held}${opening}${shapeNote}${old}`,
         confirmLabel: `Generate image · ${usd(est.image)}`,
         testId: "confirm-generate-image",
         onConfirm: () =>
@@ -708,7 +735,7 @@ export function useStoryboardController(projectId: string): StoryboardController
           }).finally(afterGeneration),
       });
     },
-    [estimatesOf, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, clock, continuityOf],
+    [estimatesOf, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, clock, continuityOf, staleNote],
   );
 
   const clipPlanOf = useCallback(
@@ -757,7 +784,9 @@ export function useStoryboardController(projectId: string): StoryboardController
             (est.clipDrawsImage ? " (the shot has no image yet, so one is drawn first)" : "") +
             ". He keeps his face and what he wears in the take. The result stays on the song clock and lands on this shot only; it takes several minutes." +
             timed +
-            (est.clipDrawsImage ? shapeNote : ""),
+            (est.clipDrawsImage ? shapeNote : "") +
+            staleNote(box) +
+            (wardrobeGapOf(box) ? ` NOTE: ${wardrobeGapOf(box)}` : ""),
           confirmLabel: `Restage take · ${usd(est.clip)}`,
           testId: "confirm-generate-clip",
           picture: picture("The place he is put in"),
@@ -820,14 +849,15 @@ export function useStoryboardController(projectId: string): StoryboardController
           (est.clipDrawsImage ? " — this shot has no image yet, so one is drawn first and the clip is made from it." : " — made from this shot's image.") +
           " The clip takes a few minutes and lands on this shot only." +
           (clipPlan.mode === "single" && clipPlan.effects > 0 ? ` Its ${clipPlan.effects === 1 ? "effect is" : `${clipPlan.effects} effects are`} made by the edit when the shot plays, not drawn into the clip.` : "") +
-          (est.clipDrawsImage ? shapeNote : ""),
+          (est.clipDrawsImage ? shapeNote : "") +
+          staleNote(box),
         confirmLabel: `Generate clip · ${usd(est.clip)}`,
         testId: "confirm-generate-clip",
         picture: picture("The clip is made from this image"),
         onConfirm: () => submitClip(clipPlan),
       });
     },
-    [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats],
+    [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats, staleNote, wardrobeGapOf],
   );
 
   // --- what a clip was asked for, and whether it did it --------------------------------------------------------------
@@ -1099,6 +1129,8 @@ export function useStoryboardController(projectId: string): StoryboardController
     library,
     migrated,
     hasTreatment: hasTreatment(doc),
+    staleOf,
+    wardrobeGapOf,
     aspect,
     saveEdit,
     resetBox,

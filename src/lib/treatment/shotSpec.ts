@@ -190,6 +190,13 @@ export const LookSchema = z.object({
   /** Optional pointer to a managed look/wardrobe asset (e.g. artist_looks.id). */
   lookId: z.string().nullable().default(null),
   references: z.array(ReferenceSchema).default([]),
+  /**
+   * Where this wardrobe comes from, when a writer said: "treatment" = the treatment dresses the artist in it for this
+   * shot; "footage" = it is what he was filmed in. Empty = nobody said. A performance shot whose wardrobe is the
+   * treatment's is one the footage on file may not be able to deliver — the storyboard says so rather than restaging
+   * him in the footage's clothes and calling it the shot.
+   */
+  source: z.enum(["", "footage", "treatment"]).default(""),
 });
 export type Look = z.infer<typeof LookSchema>;
 
@@ -370,6 +377,12 @@ export const ProvenanceSchema = z.object({
   /** Model id when source is "ai" / "derived". */
   model: z.string().nullable().default(null),
   notes: z.string().default(""),
+  /**
+   * The fingerprint of the treatment text this spec was written from (treatmentDoc.fingerprint). Empty on a spec
+   * written before this was kept, and on one nobody wrote from a treatment. It is what lets a shot say "I am from an
+   * earlier treatment" on its own, whatever the rest of the board has been through since.
+   */
+  treatment: z.string().default(""),
 });
 export type Provenance = z.infer<typeof ProvenanceSchema>;
 

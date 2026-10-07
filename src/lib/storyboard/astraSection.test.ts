@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/supabase", () => ({ supabase: {} }));
 
-import { frameLabel, parseSectionReview, reviewFrameTimes, REVIEW_FRAMES_MAX, readStoredReview, reviewBrief, reviewEstimateUsd, SECTION_REVIEW_SCHEMA, showsOf, type ReviewShot } from "./astraSection";
+import { frameLabel, parseSectionReview, reviewFrameTimes, REVIEW_FRAMES_MAX, readStoredReview, reviewBrief, reviewEstimateUsd, SECTION_REVIEW_SCHEMA, showsOf, type ReviewShot, INTENDED_NOT_DEFECT, criterionOf } from "./astraSection";
 import type { TimelineSegment } from "./media";
 import { resolveEvents } from "./events";
 
@@ -20,6 +20,14 @@ describe("what the reviewer is told", () => {
     expect(brief).toContain("In his real footage the artist wears: a camouflage shirt.");
     expect(brief).toContain('SHOT 14 (0:51.0–0:54.9, 3.9 s) — shows a generated clip.\n  Scene: A black car on a wet highway at night.\n  Words: "Drive like a getaway driver"');
     expect(brief).toContain("Every finding is about ONE shot, named by its number");
+    // the treatment is the authority: a note is not held against it, and he is held to the clothes the SHOT names
+    expect(brief).toContain("never report a shot for following the treatment against a note:\nNo logos.");
+    expect(brief).not.toContain("(constraints)");
+    expect(brief).toContain("unless the treatment or the shot's own scene dresses him in something else there");
+    expect(brief).not.toContain("That is what he must be wearing in every shot he is in.");
+    // what the treatment asks for is intended; how it was carried out is what is judged
+    expect(brief).toContain(INTENDED_NOT_DEFECT);
+    expect(brief.indexOf(INTENDED_NOT_DEFECT)).toBeLessThan(brief.indexOf("realism and artifact"));
     // nothing blank is sent
     expect(reviewBrief({ treatment: "", shots })).toContain("(none written)");
     expect(reviewBrief({ treatment: "T", shots })).not.toContain("The director's notes");
@@ -118,5 +126,14 @@ describe("a shot that changes is reviewed as one that changes", () => {
     expect(reviewFrameTimes({ start: 0, end: 4, events: [] })).toHaveLength(3);
     const many = resolveEvents(Array.from({ length: 10 }, (_, i) => ({ id: `e${i + 1}`, at: 0.3 * (i + 1), trigger: { kind: "time" as const, ref: "" }, visual: "", camera: "", lighting: "", action: "a", lightingState: null, effect: null })), { start: 0, end: 4 }, {});
     expect(reviewFrameTimes({ start: 0, end: 4, events: many })).toHaveLength(REVIEW_FRAMES_MAX);
+  });
+});
+
+describe("the criteria a review adds up to", () => {
+  it("keeps the idea, him and his clothes, and the photograph apart", () => {
+    expect(["treatment", "storyboard"].map(criterionOf)).toEqual(["creative_fidelity", "creative_fidelity"]);
+    expect(["identity", "wardrobe", "product_truth"].map(criterionOf)).toEqual(["identity_garment", "identity_garment", "identity_garment"]);
+    expect(["realism", "artifact"].map(criterionOf)).toEqual(["photorealism", "photorealism"]);
+    expect(["environment", "cinematography", "continuity", "transition", "rhythm", "something new"].map(criterionOf)).toEqual(Array(6).fill("craft"));
   });
 });

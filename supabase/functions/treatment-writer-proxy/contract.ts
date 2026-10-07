@@ -67,6 +67,9 @@ export function entitiesBlock(entities: readonly WriterEntity[] | undefined): st
     .join("\n");
 }
 
+/** Where a shot's wardrobe comes from. `treatment` on a shot whose footage shows something else is a gap to be told. */
+export const WARDROBE_SOURCES = ["footage", "treatment", "none"] as const;
+
 export const TREATMENT_SCHEMA = {
   name: "treatment",
   strict: true,
@@ -88,7 +91,7 @@ export const SHOTS_SCHEMA = {
     type: "object", additionalProperties: false, required: ["clips"],
     properties: {
       clips: { type: "array", items: { type: "object", additionalProperties: false,
-        required: ["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "lyric_ref", "priority", "timed_beats", "continuity"],
+        required: ["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "wardrobe_from", "lyric_ref", "priority", "timed_beats", "continuity"],
         properties: {
           key: { type: "string", description: "the shot's key, exactly as given" },
           shot_type: { type: "string", enum: [...SHOT_TYPES] },
@@ -96,7 +99,8 @@ export const SHOTS_SCHEMA = {
           environment: { type: "string", description: "the place itself with NOBODY in it, in one full sentence a set designer could build from: what stands where, the surfaces, the light. Never mention the artist here" },
           camera_direction: { type: "string", description: "framing and the one camera move" },
           lighting: { type: "string" },
-          wardrobe: { type: "string", description: "what the artist wears in this shot, or 'none' when he is not in it" },
+          wardrobe: { type: "string", description: "what the artist wears in this shot, or 'none' when he is not in it. Where the treatment names a garment for this part of the video, exactly that garment in the treatment's own words" },
+          wardrobe_from: { type: "string", enum: [...WARDROBE_SOURCES], description: "where that wardrobe comes from: `treatment` when the treatment dresses him in it for this shot; `footage` when he wears what he was filmed in (or the treatment says nothing about his clothes here); `none` when he is not in the shot" },
           lyric_ref: { type: "string", description: "the words of this shot's lyrics that the picture answers, verbatim — an empty string when it answers none" },
           priority: { type: "string", enum: [...PRIORITIES] },
           timed_beats: TIMED_BEATS_PROPERTY,
@@ -122,7 +126,7 @@ export function contextBlocks(ctx: WriterContext): string {
     line("The artist", ctx.artistProfile),
     line("Mood", ctx.mood),
     line("Visual direction", ctx.visualStyle),
-    line("The director's notes and the real footage — these are constraints: nothing you write may break them", ctx.notes),
+    line(NOTES_LABEL, ctx.notes),
     ctx.analysis ? `The song, measured:\n${JSON.stringify(ctx.analysis)}` : null,
     // looks dress a GENERATED artist; with real footage he wears what he was filmed in
     !ctx.hasPerformanceFootage && looks.length ? `Wardrobe looks on file:\n${looks.map((l) => `- ${l.name}${l.description ? `: ${l.description}` : ""}`).join("\n")}` : null,
@@ -132,13 +136,31 @@ export function contextBlocks(ctx: WriterContext): string {
     .join("\n\n");
 }
 
+/**
+ * What the notes are to the writer. They hold two different things: facts about the footage (what was filmed, in
+ * what, in which frame), which nothing can change — and the director's standing wishes about places, wardrobe and
+ * content, which were written beside SOME treatment. When the treatment is replaced, those wishes are the older
+ * decision. Told as one unbreakable block, the notes of the last concept overrule the new one ("reuse these places",
+ * "never another outfit", "no logos") and the board comes back as the old video.
+ */
+export const NOTES_LABEL =
+  "The director's notes and the real footage. What they say about the footage itself — what was filmed, what he wears in it, the frame — is fact. What they say about places, wardrobe and what may appear is the director's wish, and holds wherever the treatment does not say otherwise: where a note and the treatment disagree, the treatment is the later decision and the treatment wins";
+
+/**
+ * The treatment is the creative authority. The rules about footage below are how a video is cut when the treatment
+ * leaves it open; they are not a second brief. Said last in the footage rules, and again where it bites.
+ */
+export const TREATMENT_DECIDES =
+  "- The treatment decides. Where it says who is in a shot, where the shot is, what he wears there, or that the picture stays away from him for a stretch, write exactly that: these rules fill only what the treatment leaves open. Never swap something the treatment names for something easier or more usual.";
+
 const FOOTAGE_RULES = [
   "The project has the artist's REAL performance footage, in sync with the song. That footage is the spine of the video: a `performance` shot IS that footage — his real performance, as filmed or re-shot inside the place you describe.",
-  "- For a performance shot write the PLACE he performs in and how the camera sees him there. He keeps the body position and framing he was filmed in (the notes say how), so put him where a man could be standing like that. He wears exactly what the notes say he wears in the footage, in every shot he is in.",
-  "- He appears ONLY in performance shots. Every other shot shows the world around him — places, objects, details, other people — and never his face.",
-  "- Cut it like a real music video: his performance carries the song, and the picture keeps leaving him and coming back. Of every three shots about two are performance and one is a cutaway. Never four performance shots in a row; never more than two cutaways in a row.",
+  "- For a performance shot write the PLACE he performs in and how the camera sees him there. He keeps the body position and framing he was filmed in (the notes say how), so put him where a man could be standing like that. He wears what the notes say he wears in the footage — unless the treatment itself dresses him in something else for that part of the video: then `wardrobe` is exactly what the treatment names, `wardrobe_from` is `treatment`, and the footage's clothes are never written in their place. (That shot cannot come from the footage as filmed; saying so is how the director finds out before anything is made.)",
+  "- He appears in performance shots. Every other shot shows the world around him — places, objects, details, other people — and not his face, unless the treatment stages him in a scene of its own (watching, arriving, walking in): that shot is `narrative` and says what he does.",
+  "- Cut it like a real music video: his performance carries the song, and the picture keeps leaving him and coming back. Of every three shots about two are performance and one is a cutaway. Never four performance shots in a row; never more than two cutaways in a row — except where the treatment lays out its own run of scenes (an opening before he appears, a sequence that stays with other people): there the treatment's order is the cut.",
   "- A cutaway goes where the words name something that can be shown — an object, a place, a move: show THAT thing, in the treatment's world. Where there are no words, a cutaway carries the section's mood.",
   "- Performance shots that follow each other may stay in one place, but each is a different frame of him — wide, medium, close on the face, low angle, profile, a slow push, a slow orbit — and you say which.",
+  TREATMENT_DECIDES,
 ].join("\n");
 const NO_FOOTAGE_RULES =
   "There is no real footage of the artist yet: a `performance` shot is him performing the words to camera in the place you describe, dressed in one of the looks on file.";
@@ -169,10 +191,11 @@ export function shotsSystemPrompt(ctx: WriterContext, treatment: string, outline
       "- `scene_description` is what the camera SEES, in one or two concrete sentences: who or what, where, doing what. No abstractions, no 'symbolising', no camera jargon.",
       "- When the shot has words, the picture answers THOSE words — name what they name, show what they claim. When it has none, it carries the mood of its section.",
       "- `shot_type`: performance = the artist delivering the words to camera; b_roll = an insert of the world (an object, a detail, a place); narrative = a staged moment with people; lyric_visual = the lyric made literally, physically real; transition = a move that carries one place into the next; vfx = something impossible, shot as if it happened.",
-      "- Never write the same sentence for two shots, never stage the same picture twice in a row, and do not repeat a cutaway idea the song has already used.",
+      "- Never write the same sentence for two shots, never stage the same picture twice in a row, and do not repeat a cutaway idea the song has already used. A person, animal, vehicle, object or place the treatment brings back on purpose is not a repeat: it returns as the SAME one, named in the same words every time, doing the next thing the treatment gives it.",
+      "- What the treatment links across shots stays linked: a picture seen on a screen is the picture of the shot it names; a cut the treatment describes (the same position in a new place, a door that opens onto somewhere else, a reveal) is written into BOTH shots — the one that hands over says what it ends on, the one that receives opens on it.",
       "- A performance shot is its own picture too. He cannot be redirected — but the world around him can answer the words: say where in the place he stands in THIS shot and what the place and the light are doing around him. When its words name something the place can show or do, it happens there, on those words.",
       "- What the treatment says happens on certain words, or every time a section returns (in every hook), is binding on the shots: each shot in which those words are sung carries it — as a timed beat on those words when it happens inside the shot, as the state the shot opens in when it has already happened. A shot never contradicts the treatment.",
-      "- Keep to the places the treatment and the notes name. One clear subject per shot. Photoreal and filmable; nothing that needs readable text or logos.",
+      "- Keep to the places the treatment names — and, where it leaves the place open, the ones the notes name. One clear subject per shot; a crowd, a formation or a group the treatment asks for IS the subject. Photoreal and filmable: an impossible event the treatment asks for is written as a thing that physically happens in front of the camera, never softened into something ordinary. No readable text or logos — except a mark the treatment itself calls for: name that one mark, where the treatment puts it, and nothing else.",
       "- `priority`: hero for the two or three shots the whole video is remembered by, high for the first shot of a hook, normal otherwise.",
     ].join("\n"),
     timedBeatsRules("scene_description"),

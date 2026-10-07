@@ -139,6 +139,11 @@ export type TreatmentClip = {
   camera_direction: string;
   lighting: string;
   wardrobe: string;
+  /**
+   * Where the wardrobe comes from, as the writer said: "treatment" = the treatment dresses him in it for this shot
+   * (which the footage may not show), "footage" = what he was filmed in. Absent on a clip written before this was asked.
+   */
+  wardrobe_from?: "footage" | "treatment" | "";
   environment: string;
   recommended_tool: string;
   lyric_ref: string | null;
@@ -327,6 +332,7 @@ export async function draftTreatmentClips(
       camera_direction: String(m.camera_direction ?? "").trim(),
       lighting: String(m.lighting ?? "").trim(),
       wardrobe: String(m.wardrobe ?? "").trim(),
+      wardrobe_from: m.wardrobe_from === "treatment" || m.wardrobe_from === "footage" ? m.wardrobe_from : "",
       environment: String(m.environment ?? "").trim(),
       recommended_tool: TOOLS.has(tool) ? tool : "manual",
       lyric_ref: m.lyric_ref && String(m.lyric_ref).trim() ? String(m.lyric_ref).trim() : null,
@@ -437,7 +443,7 @@ function specKindFromShotType(shotType: string): ShotKind {
  */
 export function treatmentClipToShotSpec(
   clip: TreatmentClip,
-  provenance?: { model?: string; generatedAt?: string },
+  provenance?: { model?: string; generatedAt?: string; treatment?: string },
 ): ShotSpec {
   const shotType: ShotTypeLiteral = SPEC_SHOT_TYPES.includes(clip.shot_type as ShotTypeLiteral)
     ? (clip.shot_type as ShotTypeLiteral)
@@ -458,7 +464,7 @@ export function treatmentClipToShotSpec(
     shotType,
     priority,
     timeline: { start: clip.start, end: clip.end },
-    wardrobe: { description: clip.wardrobe },
+    wardrobe: { description: clip.wardrobe, source: clip.wardrobe_from ?? "" },
     environment: { description: clip.environment },
     lighting: { description: clip.lighting },
     cameraMotion: { description: clip.camera_direction },
@@ -475,13 +481,14 @@ export function treatmentClipToShotSpec(
       source: "ai",
       createdAt: provenance?.generatedAt ?? "",
       model: provenance?.model ?? null,
+      treatment: provenance?.treatment ?? "",
     },
   });
 }
 
 /** Convert every clip of a StructuredTreatment into Shot Specs. */
-export function structuredTreatmentToShotSpecs(treatment: StructuredTreatment): ShotSpec[] {
+export function structuredTreatmentToShotSpecs(treatment: StructuredTreatment, writtenFrom?: string): ShotSpec[] {
   return treatment.clips.map((c) =>
-    treatmentClipToShotSpec(c, { model: treatment.model, generatedAt: treatment.generated_at }),
+    treatmentClipToShotSpec(c, { model: treatment.model, generatedAt: treatment.generated_at, treatment: writtenFrom }),
   );
 }

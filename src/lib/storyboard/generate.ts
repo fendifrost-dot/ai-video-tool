@@ -10,11 +10,11 @@ import { supabase } from "@/lib/supabase";
 import type { LyricLine } from "@/lib/lyrics/lyricsForShot";
 import { DEFAULT_PROJECT_ASPECT, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
 import { compileToWorldBatch, phrasesFromShotSpecs, resolveLookPreset } from "@/lib/shotCompiler";
-import { BatchShotSchema, PROVIDER_RATES, estimateShotUsd, submitShot, submitStills, type BatchShot, type SubmitResult } from "@/lib/worldBatch";
+import { BatchShotSchema, PROVIDER_RATES, estimateShotUsd, submitShot, submitStills, type BatchShot, type MadeFrom, type SubmitResult } from "@/lib/worldBatch";
 import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 import { applyAssignmentOps, fetchAssignments } from "@/lib/queries/storyboard";
 import { canonicalWords, continuitySource, referencePrompt, type ContinuityEntity, type ShotContinuity } from "@/lib/continuity/entities";
-import type { StoryboardBox } from "./boxes";
+import { writtenFrom, type StoryboardBox } from "./boxes";
 import { resolveEvents, type EventClock } from "./events";
 import { planAssign } from "./media";
 import { assertPlanCovers, temporalPlan, type TemporalPlan } from "./temporal";
@@ -30,8 +30,12 @@ const EMPTY_SET = "An empty set, photographed with nobody in it: no people, no f
  * Every picture the storyboard draws: an image model left to itself puts a maker's mark on anything that has one in
  * the world (the first live section's white sneakers came back with a sportswear logo, its runway with lettering on
  * the wall). A cutaway that shows somebody's trademark cannot be released.
+ *
+ * It forbids the marks nobody asked for — not one the shot itself names. A treatment that cuts a monogram into a
+ * forest floor is asking for that mark; a blanket "no logos" appended after its description tells the model to leave
+ * out the subject of the picture.
  */
-export const NO_MARKS = "Nothing in the picture carries a logo, a brand mark or readable lettering.";
+export const NO_MARKS = "Nothing in the picture carries a logo, a brand mark or readable lettering other than what this description itself names.";
 /**
  * The picture is the whole frame, and it is the scene — not a photograph of film. Asked for a "film" look, an image
  * model sometimes draws the film too: a dark border, a rounded frame line, and on a dark scene the scan itself
@@ -183,9 +187,15 @@ export function clipEstimateUsd(shot: BatchShot): number {
   return estimateShotUsd(shot);
 }
 
+/** What a box was when a job was asked of it — kept on the job (runner.ts `MadeFrom`). */
+export function madeFromBox(box: StoryboardBox): MadeFrom {
+  const w = writtenFrom(box);
+  return { treatment: w.treatment, sceneWrittenAt: w.at, shotUpdatedAt: box.updatedAt || null };
+}
+
 function runContext(projectId: string, box: StoryboardBox, lookPresetId: string | undefined) {
   const { id, look } = resolveLookPreset(lookPresetId ?? DEFAULT_BOX_LOOK);
-  return { projectId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [box.key]: box.id } };
+  return { projectId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [box.key]: box.id }, madeFrom: { [box.key]: madeFromBox(box) } };
 }
 
 /**

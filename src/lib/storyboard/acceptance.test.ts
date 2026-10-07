@@ -128,12 +128,25 @@ describe("a clip held against what it was asked for", () => {
     const cutaway: ClipAsk = { asked: [], fromTake: false };
     const a = acceptanceOf({ ask: cutaway, beatCheck: null, takeCheck: null, record: null, reviewed });
     const line = finding(a, "review")!;
-    expect(line).toMatchObject({ label: "Second opinion", finding: "fails", source: "reviewed", says: "major (realism, 2026-10-03): The moving sneaker appears empty and disconnected from a leg." });
+    expect(line).toMatchObject({ label: "Second opinion", finding: "fails", source: "reviewed", says: "Photographic realism — major (realism, 2026-10-03): The moving sneaker appears empty and disconnected from a leg." });
     expect(a.verdict).toBe("fails");
     // overruled by someone who looked: the review is still shown as what the review said
     const over = finding(acceptanceOf({ ask: cutaway, beatCheck: null, takeCheck: null, record: withJudgement(null, "review", "meets", "the leg is there; the frame it saw was mid-blur", AT), reviewed }), "review")!;
     expect(over).toMatchObject({ finding: "meets", source: "by_eye" });
     expect(over.measured).toMatchObject({ finding: "fails" });
+    // the idea, him and his clothes, and the photograph are said apart, in that order — they are three different repairs
+    const mixed: ReviewedFinding[] = [
+      { severity: "major", area: "artifact", finding: "The bear's forelegs fuse.", at: "2026-10-07T03:00:00.000Z" },
+      { severity: "blocker", area: "wardrobe", finding: "He is in the camouflage shirt, not the leather coat.", at: "2026-10-07T03:00:00.000Z" },
+      { severity: "major", area: "treatment", finding: "The monogram is not in the forest floor.", at: "2026-10-07T03:00:00.000Z" },
+      { severity: "major", area: "cinematography", finding: "The frame is a wide where a close was written.", at: "2026-10-07T03:00:00.000Z" },
+    ];
+    expect(finding(acceptanceOf({ ask: cutaway, beatCheck: null, takeCheck: null, record: null, reviewed: mixed }), "review")!.says).toBe(
+      "Creative fidelity — major (treatment, 2026-10-07): The monogram is not in the forest floor. ‖ " +
+        "Identity and garment — blocker (wardrobe, 2026-10-07): He is in the camouflage shirt, not the leather coat. ‖ " +
+        "Photographic realism — major (artifact, 2026-10-07): The bear's forelegs fuse. ‖ " +
+        "Craft — major (cinematography, 2026-10-07): The frame is a wide where a close was written.",
+    );
     // nothing major said: no line at all
     expect(finding(acceptanceOf({ ask: cutaway, beatCheck: null, takeCheck: null, record: null, reviewed: [reviewed[1]] }), "review")).toBeUndefined();
     expect(finding(acceptanceOf({ ask: cutaway, beatCheck: null, takeCheck: null, record: null }), "review")).toBeUndefined();

@@ -53,7 +53,17 @@ export type BatchJobSettings = {
   /** When the result was put on its shot, and by whom ("server" = provider-jobs-tick). */
   attachedAt?: string;
   attachedBy?: string;
+  /** What the shot was when this was asked for (a storyboard job). Absent on a Runs-page batch and on older jobs. */
+  madeFrom?: MadeFrom;
 };
+
+/**
+ * The shot a job was generated from, as it stood at that moment: the fingerprint of the treatment its scene was
+ * written from (null = written before stamps were kept), when that scene was written, and when the shot's record was
+ * last changed. With the prompt already kept on the job, this is what lets a clip be traced back to the treatment
+ * behind it — and found again when that treatment is replaced.
+ */
+export type MadeFrom = { treatment: string | null; sceneWrittenAt: string | null; shotUpdatedAt: string | null };
 
 /** The slice of a provider_jobs row the runner reads. */
 export type BatchJobRow = {
@@ -103,7 +113,14 @@ export type RunContext = {
   selectStill?: boolean;
   /** An image job drawn for a continuity entity (not a shot): the entity the pictures are kept with. */
   entityId?: string;
+  /** What each shot was when it was asked for (batch shot id → its provenance). Recorded on the job as `madeFrom`. */
+  madeFrom?: Record<string, MadeFrom>;
 };
+
+function madeFromOf(ctx: RunContext, shot: BatchShot): { madeFrom?: MadeFrom } {
+  const m = ctx.madeFrom?.[shot.id];
+  return m ? { madeFrom: m } : {};
+}
 
 /** The box record a shot belongs to, as the job payload carries it (absent when the shot is not a box). */
 function shotIdOf(ctx: RunContext, shot: BatchShot): { shotId?: string } {
@@ -231,6 +248,7 @@ export async function submitShot(
               batchRun: ctx.runId, batchShotId: shot.id, route: shot.route, kind: shot.kind, estimateUsd: 0, lookPreset: ctx.lookPresetId,
               // no stillPath: a retry must generate again, not reuse a picture that is two pictures
               stillPath: null, stillCandidates, stillCostUsd,
+              ...madeFromOf(ctx, shot),
             } satisfies BatchJobSettings,
           },
         });
@@ -260,6 +278,7 @@ export async function submitShot(
     masterStart: shot.masterStart ?? null,
     ...(shot.source_asset_id ? { sourceAssetId: shot.source_asset_id, sourceSeconds: shot.source_seconds ?? null } : {}),
     ...(shot.temporal ? { temporal: shot.temporal } : {}),
+    ...madeFromOf(ctx, shot),
   };
   // WRITE-AHEAD: the record exists before the money moves.
   const rowId = await deps.insertJob({
@@ -335,6 +354,7 @@ export async function submitStills(shot: BatchShot, ctx: RunContext, deps: Runne
     lookPreset: ctx.lookPresetId,
     stillPath: null,
     selectStill: ctx.selectStill ?? true,
+    ...madeFromOf(ctx, shot),
   };
   const payload = { promptText: prompt, mode: "still_only", aspectRatio: shot.aspect, ...shotIdOf(ctx, shot), ...(ctx.entityId ? { entityId: ctx.entityId } : {}) };
   const rowId = await deps.insertJob({ project_id: ctx.projectId, provider: "grok", status: "queued", request_payload_json: { ...payload, settings } });

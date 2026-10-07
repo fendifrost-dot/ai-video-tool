@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { renderContract } from "./renderContract";
 import { parseShotSpec, type ShotSpec } from "@/lib/treatment/shotSpec";
+import { fingerprint } from "@/lib/treatment/treatmentDoc";
+import { structuredTreatmentToShotSpecs } from "@/lib/treatment/api";
 import {
+  BLANK_OVERRIDE,
   applyGenerated,
   applyOverride,
   boxFromRow,
+  boxIsStale,
   boxWrite,
   boxesFromRows,
   storyboardShotRows,
@@ -20,6 +24,8 @@ import {
   resolveSpec,
   rewrittenOverride,
   unlockedForGeneration,
+  wardrobeGap,
+  writtenFrom,
   type BoxRow,
   type StoryboardBox,
 } from "./boxes";
@@ -489,6 +495,92 @@ describe("the timeline Review plays", () => {
 
 // ---------------------------------------------------------------------------
 import { energyForWindow, gridFromBoxes, planRewrite } from "./rewrite";
+
+describe("which treatment a shot was written from", () => {
+  const OLD = "He walks a black runway under one white light.";
+  const NEW = "A fashion show burns in a forest; a woman mounts a horse.";
+  const stamped = (id: string, key: string, text: string, extra: Partial<BoxRow> = {}) => {
+    const w = boxWrite({ key, start: 0, end: 4, section: "verse", generated: spec(key, 0, 4, { provenance: { source: "ai", createdAt: AT, treatment: fingerprint(text) } } as Partial<ShotSpec>), override: null, locked: false, origin: "treatment", history: [] });
+    return boxFromRow({ id, project_id: "p1", shot_number: 1, ...w, updated_at: AT, ...extra } as BoxRow)!;
+  };
+  const treatment = (text: string, updatedAt = "2026-10-07T02:40:51.000Z") => ({ text, updatedAt });
+
+  it("a shot carries the stamp of the text it was written from", () => {
+    const b = stamped("r1", "c001", OLD);
+    expect(writtenFrom(b)).toEqual({ treatment: fingerprint(OLD), at: AT });
+    expect(boxIsStale(b, treatment(OLD))).toBe(false);
+    expect(boxIsStale(b, treatment(NEW))).toBe(true);
+    // whitespace is not a change of treatment
+    expect(boxIsStale(b, treatment(`  ${OLD.replace(/ /g, "  ")}\n`))).toBe(false);
+  });
+
+  it("a whole-board rewrite stamps what it writes and leaves the kept shots saying where THEY came from", () => {
+    const boxes = [stamped("r1", "c001", OLD), stamped("r2", "c002", OLD, { locked: true })];
+    const drafted = structuredTreatmentToShotSpecs(
+      { clips: ["c001", "c002"].map((key) => ({ key, start: 0, end: 4, section: "verse", energy: "mid", shot_type: "b_roll", scene_description: `new ${key}`, camera_direction: "", lighting: "", wardrobe: "", environment: "", recommended_tool: "manual", lyric_ref: null, priority: "normal", dependencies: [] })), model: "m", generated_at: "2026-10-07T03:00:00.000Z" } as never,
+      fingerprint(NEW),
+    );
+    const plan = planRewrite({ boxes, boxIdsWithMedia: new Set(), drafted, sections: {}, existingRows: [], lyricLines: undefined, at: "2026-10-07T03:00:00.000Z" });
+    expect(plan.updates.map((u) => u.id)).toEqual(["r1"]);
+    const rewritten = boxFromRow({ id: "r1", project_id: "p1", shot_number: 1, ...plan.updates[0].write, updated_at: AT } as BoxRow)!;
+    expect(boxIsStale(rewritten, treatment(NEW))).toBe(false);
+    // the locked one was kept: the board was "written from this treatment", and this shot still was not
+    expect(boxIsStale(boxes[1], treatment(NEW))).toBe(true);
+  });
+
+  it("a scene the director writes, or a per-shot rewrite, takes the stamp of the treatment that stands; a small edit does not", () => {
+    const b = stamped("r1", "c001", OLD);
+    const now = "2026-10-07T04:00:00.000Z";
+    const framing = boxFromRow({ id: "r1", project_id: "p1", shot_number: 1, ...applyOverride(b, { ...BLANK_OVERRIDE, framing: "close" }, now, "edit", fingerprint(NEW)), updated_at: now } as BoxRow)!;
+    expect(boxIsStale(framing, treatment(NEW))).toBe(true);
+    const scene = boxFromRow({ id: "r1", project_id: "p1", shot_number: 1, ...applyOverride(b, { ...BLANK_OVERRIDE, direction: "the rider turns to camera" }, now, "edit", fingerprint(NEW)), updated_at: now } as BoxRow)!;
+    expect(scene.override?.treatment).toBe(fingerprint(NEW));
+    expect(boxIsStale(scene, treatment(NEW))).toBe(false);
+    // a later small edit keeps the stamp the scene has
+    const later = boxFromRow({ id: "r1", project_id: "p1", shot_number: 1, ...applyOverride(scene, { ...scene.override!, framing: "wide" }, now, "edit", fingerprint("something else again")), updated_at: now } as BoxRow)!;
+    expect(later.override?.treatment).toBe(fingerprint(NEW));
+    const rewrite = boxFromRow({ id: "r1", project_id: "p1", shot_number: 1, ...applyOverride(b, { ...BLANK_OVERRIDE, direction: "old words kept" }, now, "rewrite", fingerprint(NEW)), updated_at: now } as BoxRow)!;
+    expect(boxIsStale(rewrite, treatment(NEW))).toBe(false);
+  });
+
+  it("a shot from before stamps is judged by when it was written against when the treatment was saved", () => {
+    const legacy = box("r1", "c001", 0, 4); // no stamp, no date
+    expect(writtenFrom(legacy).treatment).toBeNull();
+    // nothing to compare: an unknown is not an accusation
+    expect(boxIsStale(legacy, treatment(NEW))).toBe(false);
+    const dated = (createdAt: string) => boxFromRow({ ...rowOf("r1", "c001", 0, 4), generated_json: spec("c001", 0, 4, { provenance: { source: "ai", createdAt } } as Partial<ShotSpec>) } as BoxRow)!;
+    expect(boxIsStale(dated("2026-10-03T19:26:38.850Z"), treatment(NEW, "2026-10-07T02:40:51.627Z"))).toBe(true);
+    // written in the same act as the text was saved (moments apart), or after it
+    expect(boxIsStale(dated("2026-10-07T02:40:50.000Z"), treatment(NEW, "2026-10-07T02:40:51.627Z"))).toBe(false);
+    expect(boxIsStale(dated("2026-10-07T05:00:00.000Z"), treatment(NEW, "2026-10-07T02:40:51.627Z"))).toBe(false);
+    // no treatment at all: nothing is stale
+    expect(boxIsStale(dated("2026-10-03T19:26:38.850Z"), treatment(""))).toBe(false);
+  });
+});
+
+describe("a wardrobe the footage cannot deliver", () => {
+  const dressed = (shotType: "performance" | "narrative", source: "" | "footage" | "treatment", description = "his YSL leather coat.") =>
+    spec("c001", 0, 4, { shotType, wardrobe: { name: "", description, lookId: null, references: [], source } } as Partial<ShotSpec>);
+
+  it("is said on a performance shot the treatment dresses: a restaging keeps the clothes he was filmed in", () => {
+    const gap = wardrobeGap(dressed("performance", "treatment"), "a woodland-camouflage shirt, a navy cap");
+    expect(gap).toContain("The treatment dresses him in: his YSL leather coat.");
+    expect(gap).toContain("Your footage shows him in a woodland-camouflage shirt, a navy cap.");
+    expect(gap).toContain("cannot be made as the treatment asks from the footage on file");
+    expect(wardrobeGap(dressed("performance", "treatment"), null)).toContain("That is not what your footage shows.");
+  });
+
+  it("is said on any other shot he is in: the image model is shown neither him nor the garment", () => {
+    expect(wardrobeGap(dressed("narrative", "treatment", "his YSL denim look"))).toContain("No picture of him or of that garment is handed to the image model");
+  });
+
+  it("is not said when he wears the footage, when nobody said, or when he is not in the shot", () => {
+    expect(wardrobeGap(dressed("performance", "footage"))).toBeNull();
+    expect(wardrobeGap(dressed("performance", ""))).toBeNull();
+    expect(wardrobeGap(dressed("narrative", "treatment", "none"))).toBeNull();
+    expect(wardrobeGap(dressed("narrative", "treatment", "  "))).toBeNull();
+  });
+});
 
 describe("writing the storyboard from the treatment", () => {
   const beat = [
