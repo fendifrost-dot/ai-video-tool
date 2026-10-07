@@ -254,6 +254,8 @@ def main():
     ap.add_argument("--jwt")
     ap.add_argument("--anon")
     ap.add_argument("--confirm", action="store_true", help="required before any billed call")
+    ap.add_argument("--route", help="the endpoint the images came from; required to stamp a --score-only run honestly")
+    ap.add_argument("--model", help="the model the images came from, for the same reason")
     a = ap.parse_args()
 
     run = a.score_only or a.out
@@ -292,7 +294,14 @@ def main():
     out = report(groups["control"], groups["treatment"])
     out["droppedNoFace"] = dropped
     out["droppedNoFaceByArm"] = dropped_by_arm  # lopsided = one arm is being compared on a filtered sample
-    out["route"] = {"endpoint": "world-still-proxy", "model": MODEL, "seedLocked": False}
+    # Scoring can be pointed at images from ANY route (--score-only), so the route must be
+    # stated by the caller. It was hardcoded to world-still-proxy, which silently mislabelled
+    # a Runway gen-4 run on 2026-10-07 as a Grok one — a wrong provenance stamp on a result.
+    out["route"] = {
+        "endpoint": a.route or ("world-still-proxy" if not a.score_only else "unstated (--score-only; pass --route)"),
+        "model": a.model or (MODEL if not a.score_only else "unstated (--score-only; pass --model)"),
+        "seedLocked": False,
+    }
     out["notMeasured"] = [
         "whether a viewer prefers either arm — this counts texture, it does not judge a picture",
         "skin_sheen: floored at 0.000 on every still in calibration, so it is not an endpoint",
