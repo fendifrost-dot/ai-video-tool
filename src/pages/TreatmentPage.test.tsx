@@ -56,7 +56,9 @@ vi.mock("@/lib/queries/treatmentInputs", () => ({
   }),
 }));
 vi.mock("@/lib/queries/storyboard", () => ({
-  storyboardKeys: { boxes: (id: string) => ["b", id] },
+  storyboardKeys: { boxes: (id: string) => ["b", id], assignments: (id: string) => ["a", id] },
+  applyAssignmentOps: vi.fn(async () => undefined),
+  writeBoxes: vi.fn(async () => ({ updated: 0, inserted: [] })),
   useStoryboardBoxes: () => ({ data: state.boxes }),
   useAssignments: () => ({ data: state.assignments }),
   useTakeSyncs: () => ({ data: [] }),
@@ -203,6 +205,8 @@ describe("TreatmentPage", () => {
     expect(screen.getByTestId("treatment-stale-kept").textContent).toMatch(/2 of yours are still from the earlier treatment/);
     // nothing left that this button could rewrite
     expect(screen.queryByTestId("treatment-write-shots")).toBeNull();
+    // the one deliberate way through: hand those shots back to the treatment
+    expect(screen.getByTestId("treatment-release-kept").textContent).toContain("Release those 2 shots to be rewritten");
   });
 
   describe("Current and Versions", () => {

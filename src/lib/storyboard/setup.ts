@@ -141,7 +141,9 @@ export function footageSummary(input: {
         input.takes
           .map((t) => `${t.name} covers song ${mmss(t.songStart)}–${mmss(t.songEnd)}${t.shows?.trim() ? ` — in it he wears: ${t.shows.trim()}` : ""}${t.filmedIn?.trim() ? ` — it was filmed in: ${t.filmedIn.trim()}` : ""}`)
           .join("; ") +
-        ". Performance boxes use this footage: as filmed, or restaged — the same performance re-shot inside the place the box describes. He keeps what he wears in the take; the place it was filmed in is replaced. Write a performance box's scene as the PLACE he performs in, and never dress him in anything else.",
+        // a fact about the footage, not an order about the video: a shot MADE FROM this footage shows him in these
+        // clothes. What he wears where is the treatment's to say; a shot it dresses differently needs other footage.
+        ". Performance boxes can use this footage: as filmed, or restaged — the same performance re-shot inside the place the box describes. A restaging keeps what he wears in the take and replaces the place it was filmed in, so write a performance box's scene as the PLACE he performs in. A shot made from this footage shows him in these clothes: where the treatment dresses him in something else, this footage cannot be that shot.",
     );
   }
   if (input.broll.length) {

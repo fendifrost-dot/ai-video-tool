@@ -100,6 +100,26 @@ export function currentSnapshot(project: { treatment_json?: unknown; notes?: str
 
 const same = (a: string, b: string) => a.trim() === b.trim();
 
+/**
+ * The context fields — notes, mood, visual direction — that are still word for word what stood beside an EARLIER
+ * treatment text. `versions` is newest first (what the query returns).
+ *
+ * Why it is worth saying: these fields are the director's own, they are sent to every writer and to the reviewer,
+ * and nothing changes them when the treatment is replaced. A treatment rewritten into a different video keeps the
+ * last video's places, wardrobe rules and look riding along beside it. They are his to change — so the page says
+ * which ones have not moved since the treatment did, instead of rewriting them or quietly obeying them.
+ */
+export function contextFromEarlierTreatment(versions: readonly TreatmentVersion[], now: TreatmentSnapshot): ("notes" | "mood" | "visual")[] {
+  if (!now.text.trim()) return [];
+  const replaced = versions.find((v) => v.text.trim() && !same(v.text, now.text));
+  if (!replaced) return [];
+  const out: ("notes" | "mood" | "visual")[] = [];
+  if (now.visualStyle.trim() && same(replaced.visualStyle, now.visualStyle)) out.push("visual");
+  if (now.mood.trim() && same(replaced.mood, now.mood)) out.push("mood");
+  if (now.notes.trim() && same(replaced.notes, now.notes)) out.push("notes");
+  return out;
+}
+
 /** What differs between a version and the current brief — what a restore would change. Empty = nothing. */
 export function versionDiffers(v: TreatmentVersion, now: TreatmentSnapshot): ("text" | "notes" | "mood" | "visual")[] {
   const out: ("text" | "notes" | "mood" | "visual")[] = [];

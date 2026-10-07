@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderContract } from "./renderContract";
 import { parseShotSpec, type ShotSpec } from "@/lib/treatment/shotSpec";
 import { fingerprint } from "@/lib/treatment/treatmentDoc";
+import { planRelease } from "./rewrite";
 import { structuredTreatmentToShotSpecs } from "@/lib/treatment/api";
 import {
   BLANK_OVERRIDE,
@@ -555,6 +556,59 @@ describe("which treatment a shot was written from", () => {
     expect(boxIsStale(dated("2026-10-07T05:00:00.000Z"), treatment(NEW, "2026-10-07T02:40:51.627Z"))).toBe(false);
     // no treatment at all: nothing is stale
     expect(boxIsStale(dated("2026-10-03T19:26:38.850Z"), treatment(""))).toBe(false);
+  });
+});
+
+describe("releasing the director's shots to a replaced treatment", () => {
+  const OLD = "He walks a black runway under one white light.";
+  const NEW = "A fashion show burns in a forest; a woman mounts a horse.";
+  const made = (id: string, key: string, start: number, text: string, extra: Partial<BoxRow> = {}) => {
+    const w = boxWrite({ key, start, end: start + 4, section: "verse", generated: spec(key, start, start + 4, { purpose: `old ${key}`, provenance: { source: "ai", createdAt: AT, treatment: fingerprint(text) } } as Partial<ShotSpec>), override: null, locked: false, origin: "treatment", history: [] });
+    return boxFromRow({ id, project_id: "p1", shot_number: 1, ...w, updated_at: AT, ...extra } as BoxRow)!;
+  };
+  const on = (id: string, shotId: string, assetId: string, role: Assignment["role"], isPrimary: boolean): Assignment => ({ id, projectId: "p1", shotId, assetId, role, sourceIn: null, sourceOut: null, isPrimary, sortOrder: 1, notes: null, createdAt: AT, updatedAt: AT });
+  const boxes = [
+    made("r1", "c001", 0, OLD), // open already: a rewrite reaches it
+    made("r2", "c002", 4, OLD, { locked: true, override_json: { direction: "my runway scene", manual: ["direction"], treatment: fingerprint(OLD) } }),
+    made("r3", "c003", 8, OLD), // holds footage
+    made("r4", "c004", 12, NEW, { locked: true }), // the director's, and already of this treatment
+  ];
+  const assignments = [on("a1", "r3", "clip_old", "generated_clip", true), on("a2", "r3", "img_old", "generated_image", false), on("a3", "r4", "clip_new", "generated_clip", true)];
+  const now = "2026-10-07T05:00:00.000Z";
+  const plan = planRelease({ boxes, assignments, treatment: { text: NEW, updatedAt: "2026-10-07T02:40:51Z" }, at: now });
+
+  it("takes only the shots that are his AND from the earlier treatment", () => {
+    expect(plan.updates.map((u) => u.id)).toEqual(["r2", "r3"]);
+    expect([plan.released, plan.withFootage, plan.pieces]).toEqual([2, 1, 2]);
+  });
+
+  it("opens them, keeps the scene they had, and says what footage came off — nothing is deleted but the rows", () => {
+    const r2 = plan.updates[0].write;
+    expect(r2.locked).toBe(false);
+    expect(r2.override_json).toBeNull();
+    const last = r2.history_json[r2.history_json.length - 1];
+    expect(last).toMatchObject({ at: now, event: "reset", direction: "my runway scene", note: "released to be rewritten from the treatment" });
+    const r3 = plan.updates[1].write.history_json.slice(-1)[0];
+    expect(r3.note).toBe("released to be rewritten from the treatment; footage taken off — showing was clip_old (generated_clip); also on it: img_old (generated_image)");
+    // the footage of the released shots only; the shot that is already of this treatment keeps its clip
+    expect(plan.assignmentOps).toEqual([
+      { op: "delete", id: "a1" },
+      { op: "delete", id: "a2" },
+    ]);
+  });
+
+  it("after it, the whole-board rewrite reaches them", () => {
+    const after = boxes.map((b) => {
+      const u = plan.updates.find((x) => x.id === b.id);
+      return u ? boxFromRow({ id: b.id, project_id: "p1", shot_number: 1, ...u.write, updated_at: now } as BoxRow)! : b;
+    });
+    const left = new Set(assignments.filter((a) => !plan.assignmentOps.some((o) => o.op === "delete" && o.id === a.id)).map((a) => a.shotId));
+    expect(unlockedForGeneration(after, left).map((b) => b.id)).toEqual(["r1", "r2", "r3"]);
+  });
+
+  it("releases nothing when no shot of his is stale", () => {
+    expect(planRelease({ boxes, assignments, treatment: { text: OLD, updatedAt: AT }, at: now }).released).toBe(1); // r4 is of NEW: under OLD it is the stale one
+    expect(planRelease({ boxes: [boxes[0]], assignments: [], treatment: { text: NEW, updatedAt: AT }, at: now })).toMatchObject({ released: 0, updates: [], assignmentOps: [] });
   });
 });
 
