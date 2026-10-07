@@ -151,8 +151,10 @@ export type TreatmentClip = {
   dependencies: TreatmentDependency[];
   /** Change inside the shot, as the writer wrote it and already read into the shot's own events. Absent = one state. */
   events?: ShotEvent[];
-  /** The project's continuity entities the writer pointed this shot at, by key (only keys the project has). */
-  continuity?: { location: string | null; props: string[]; lighting: string | null };
+  /** The project's continuity entities the writer pointed this shot at, by key (only keys the project has) — and its links to other shots of the board. */
+  continuity?: { location: string | null; props: string[]; lighting: string | null; links?: ShotLink[] };
+  /** How the writer says the shot gets made. Absent on a clip written before this was asked. */
+  production?: { method: ProductionMethod | ""; note: string };
 };
 
 export type StructuredTreatment = {
@@ -302,6 +304,7 @@ export async function draftTreatmentClips(
   }
 
   const known = knownKeys(input.entities);
+  const boardKeys = new Set(input.grid.map((g) => g.key));
   // Merge: grid owns timing; model owns creative fields. Missing clips get
   // a safe placeholder rather than dropping timeline coverage.
   const clips: TreatmentClip[] = input.grid.map((g) => {
@@ -339,7 +342,8 @@ export async function draftTreatmentClips(
       priority: PRIORITIES.has(priority) ? priority : "normal",
       dependencies: deps,
       events: eventsFromWritten(m.timed_beats, g.end - g.start, input.clipLyrics?.[g.key] ?? "", known.lighting),
-      continuity: pointedAt(m.continuity, known),
+      continuity: { ...pointedAt(m.continuity, known), links: linksOf(m.continuity, boardKeys, g.key) },
+      production: productionOf(m.production),
     };
   });
 
@@ -401,7 +405,11 @@ export function parseSavedStructuredTreatment(value: unknown): StructuredTreatme
 
 import {
   parseShotSpec,
+  PRODUCTION_METHODS,
   RENDER_ENGINES,
+  SHOT_LINK_KINDS,
+  type ProductionMethod,
+  type ShotLink,
   SHOT_PRIORITIES,
   SHOT_TYPES as SPEC_SHOT_TYPES,
   type RenderEngine,
@@ -427,6 +435,28 @@ export function pointedAt(raw: unknown, known: KnownKeys): { location: string | 
     props: Array.isArray(r.props) ? [...new Set(r.props.map((p) => one(p, known.prop)).filter((x): x is string => !!x))] : [],
     lighting: one(r.lighting, known.lighting),
   };
+}
+
+/** The links a written shot carries — only to ANOTHER shot of this board, of a known kind. */
+export function linksOf(raw: unknown, board: ReadonlySet<string>, self: string): ShotLink[] {
+  const list = ((raw ?? {}) as { links?: unknown }).links;
+  if (!Array.isArray(list)) return [];
+  const out: ShotLink[] = [];
+  for (const l of list) {
+    const r = (l ?? {}) as Record<string, unknown>;
+    const kind = SHOT_LINK_KINDS.find((k) => k === r.kind);
+    const shot = typeof r.shot === "string" ? r.shot.trim() : "";
+    if (!kind || !shot || shot === self || !board.has(shot) || out.some((o) => o.kind === kind && o.shot === shot)) continue;
+    out.push({ kind, shot, note: typeof r.note === "string" ? r.note.trim().slice(0, 240) : "" });
+  }
+  return out;
+}
+
+/** The production method a writer gave, when it is a known one. */
+export function productionOf(raw: unknown): { method: ProductionMethod | ""; note: string } {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const method = PRODUCTION_METHODS.find((m) => m === r.method) ?? "";
+  return { method, note: method && typeof r.note === "string" ? r.note.trim().slice(0, 400) : "" };
 }
 
 function specKindFromShotType(shotType: string): ShotKind {
@@ -472,6 +502,7 @@ export function treatmentClipToShotSpec(
     references: clip.lyric_ref ? [{ kind: "note", note: `lyric: ${clip.lyric_ref}` }] : [],
     events: clip.events ?? [],
     continuity: clip.continuity ?? {},
+    production: clip.production ?? {},
     generation: {
       required: !!engine && engine !== "manual",
       engine,

@@ -24,6 +24,8 @@ import {
   type MadeFrom,
   type SubmitResult,
 } from "@/lib/worldBatch";
+import type { StillReferencesOnJob } from "@/lib/worldBatch/runner";
+import { stillPrompt } from "@/lib/worldBatch/requests";
 import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 import { applyAssignmentOps, fetchAssignments } from "@/lib/queries/storyboard";
 import {
@@ -197,6 +199,12 @@ export function boxShot(
   }
   if (heldPlace && !shot.prompt.includes(SUBJECT_FIRST))
     shot.prompt = `${shot.prompt.trim()} ${SUBJECT_FIRST}`;
+  // what this shot owes the shots it is linked to (links.ts). A performance plate is the empty place: only a screen in
+  // it can owe anything (the monitor on the wall shows another shot); the rest is about people, who are not drawn.
+  for (const line of opts.linkLines ?? []) {
+    if (isPerformance && !line.startsWith("The screen")) continue;
+    if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
+  }
   for (const line of [NO_MARKS, FULL_BLEED])
     if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
   return shot;
@@ -210,6 +218,8 @@ export type BoxShotOptions = {
   cast?: ShotCast;
   /** What the shot's continuity references resolve to (continuity/entities.ts resolveContinuity). Required when it has any. */
   continuity?: ShotContinuity;
+  /** What the shot owes the shots it is linked to, as prompt sentences (links.ts linkPromptLines). */
+  linkLines?: string[];
 };
 
 /** True when the shot record points at a place, a prop or a lighting state of the project. */
@@ -308,7 +318,7 @@ export function madeFromBox(box: StoryboardBox): MadeFrom {
   return { treatment: w.treatment, sceneWrittenAt: w.at, shotUpdatedAt: box.updatedAt || null };
 }
 
-function runContext(projectId: string, box: StoryboardBox, lookPresetId: string | undefined) {
+function runContext(projectId: string, box: StoryboardBox, lookPresetId: string | undefined, references?: StillReferencesOnJob | null) {
   const { id, look } = resolveLookPreset(lookPresetId ?? DEFAULT_BOX_LOOK);
   return {
     projectId,
@@ -318,6 +328,44 @@ function runContext(projectId: string, box: StoryboardBox, lookPresetId: string 
     look,
     shotIds: { [box.key]: box.id },
     madeFrom: { [box.key]: madeFromBox(box) },
+    ...(references ? { stillReferences: { [box.key]: references } } : {}),
+  };
+}
+
+/**
+ * The exact still request a box would send, built without sending anything: the prompt as the generator receives it
+ * (look preset applied; the reference legend appended only when the pictures go), the frame, the candidates, and the
+ * pictures — sent and not sent. What "inspect the request" shows, and what the tests hold.
+ */
+export function previewStillRequest(
+  box: StoryboardBox,
+  lyricLines: readonly LyricLine[] | undefined,
+  opts: BoxShotOptions & { references?: StillReferencesOnJob | null },
+): { endpoint: "world-still-proxy"; body: Record<string, unknown>; job: Record<string, unknown> } {
+  const shot = boxShot(box, lyricLines, opts);
+  const { id, look } = resolveLookPreset(opts.lookPresetId ?? DEFAULT_BOX_LOOK);
+  const refs = opts.references ?? null;
+  const deliver = !!refs?.delivered && refs.sent.length > 0;
+  const base = stillPrompt(shot, look);
+  const prompt = deliver && refs!.legend ? `${base} ${refs!.legend}` : base;
+  return {
+    endpoint: "world-still-proxy",
+    body: {
+      projectId: box.projectId,
+      prompt,
+      n: shot.stills,
+      aspectRatio: shot.aspect,
+      resolution: "2k",
+      shotLabel: `${STORYBOARD_RUN}_${shot.id}`,
+      promptVersion: "world_bar_v1",
+      ...(deliver ? { references: refs!.sent } : {}),
+    },
+    job: {
+      variation_id: box.variationId,
+      lookPreset: id,
+      madeFrom: madeFromBox(box),
+      references: refs ? { sent: deliver ? refs.sent : [], notSent: [...refs.notSent, ...(deliver ? [] : refs.sent.map((ref) => ({ ref, why: "the image generator does not take reference pictures yet (not deployed)" })))] } : null,
+    },
   };
 }
 
@@ -387,6 +435,10 @@ export async function generateBoxImage(input: {
   continuity?: ShotContinuity;
   /** Who is in the shot. Required whenever the spec names anyone. */
   cast?: ShotCast;
+  /** What the shot owes the shots it is linked to (links.ts). */
+  linkLines?: string[];
+  /** The reference pictures it is drawn with (references.ts), and whether they can be delivered. */
+  references?: StillReferencesOnJob | null;
 }): Promise<BoxImageResult> {
   const deps = await browserRunnerDeps();
   const shot = boxShot(input.box, input.lyricLines, {
@@ -394,11 +446,12 @@ export async function generateBoxImage(input: {
     aspect: input.aspect,
     continuity: input.continuity,
     cast: input.cast,
+    linkLines: input.linkLines,
   });
   const res = await submitStills(
     shot,
     {
-      ...runContext(input.projectId, input.box, input.lookPresetId),
+      ...runContext(input.projectId, input.box, input.lookPresetId, input.references),
       selectStill: input.select ?? true,
     },
     deps,
@@ -441,6 +494,8 @@ export async function generateBoxClip(input: {
   continuity?: ShotContinuity;
   /** Who is in the shot. Required whenever the spec names anyone. */
   cast?: ShotCast;
+  /** What the shot owes the shots it is linked to (links.ts). */
+  linkLines?: string[];
 }): Promise<SubmitResult> {
   const deps = await browserRunnerDeps();
   const shot = clipShot(input.box, input.lyricLines, {
@@ -450,6 +505,7 @@ export async function generateBoxClip(input: {
     temporal: input.temporal,
     continuity: input.continuity,
     cast: input.cast,
+    linkLines: input.linkLines,
   });
   const result = await submitShot(
     shot,

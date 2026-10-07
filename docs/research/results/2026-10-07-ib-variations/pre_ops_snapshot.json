@@ -1,0 +1,1284 @@
+{
+  "taken_at": "2026-10-07T13:40Z",
+  "variation_id": "86fe511a-b88a-47af-812f-7bf169c5c1af",
+  "restored_version": "4e97e41a-2647-4483-8a30-bd27b5dd27e0",
+  "treatment_json_before": {
+    "astra_review": {
+      "at": "2026-10-03T21:28:49.082Z",
+      "costUsd": 0.1486,
+      "findings": [
+        {
+          "area": "cinematography",
+          "finding": "The shot starts with the performer small and full-length beneath a dominant mirror ball, rather than in the planned thighs-up performance frame. It travels through a substantial scale change and reaches the intended framing only at the close, making the room reveal more prominent than his delivery.",
+          "fix": "Regenerate or replace with a thighs-up performance setup from the opening, using a locked camera or restrained push. Preserve the lighting change at 1.9 seconds, but keep the mirror ball secondary to his face and gestures.",
+          "key": "c035",
+          "severity": "major",
+          "shot": 39,
+          "shotId": "7f0cd31f-4933-4555-b156-93df23dbd459"
+        },
+        {
+          "area": "realism",
+          "finding": "The moving sneaker appears empty and disconnected from a leg in the opening and middle frames. It floats beside a second, planted shoe, then a trouser leg becomes visible near the close; this does not read as a continuous, weight-bearing step onto the runway.",
+          "fix": "Replace the insert with a low, tight shot of white sneakers worn on clearly connected lower legs. Show one simple heel-to-toe step beside the light strip, maintaining ankle continuity, floor contact and a matching reflection throughout the 3.9 seconds.",
+          "key": "c036",
+          "severity": "major",
+          "shot": 40,
+          "shotId": "bd106396-475b-4224-9ef4-d4a9c941eea1"
+        },
+        {
+          "area": "storyboard",
+          "finding": "The performer remains full-length throughout instead of thighs-up. The centered wide-to-nearer push repeats shot 39’s composition, including the large overhead mirror ball, rather than returning to a fresh, performance-led frame.",
+          "fix": "Swap or regenerate this shot as a locked thighs-up performance against the dark back wall. Keep the hard pool, but exclude most or all of the mirror ball so the return from the sneaker insert gives his delivery renewed emphasis.",
+          "key": "c037",
+          "severity": "major",
+          "shot": 41,
+          "shotId": "5bc992d1-826a-4618-8ec2-3b36f4132285"
+        },
+        {
+          "area": "treatment",
+          "finding": "After the scheduled blackout, the performer becomes a silhouette, but both runway strips remain illuminated and a brilliant mirror ball throws dense points and visible rays across the room. No sharp jewelry highlights establish his ice as the source, so the hook’s defining visual promise is missing.",
+          "fix": "Rebuild the post-4.7-second lighting state: extinguish the pool and runway strips, suppress the mirror ball’s luminous globe and radiating beams, and leave sparse, sharp glints visibly associated with his ice, carrying reflections onto the gloss floor and camouflage. Preserve his position and performance through the cue.",
+          "key": "c038",
+          "severity": "major",
+          "shot": 42,
+          "shotId": "5bfea45a-f265-4ed0-be48-7c1e424ae1b6"
+        }
+      ],
+      "from": 39,
+      "model": null,
+      "release": "Not ready to release. Replace shot 40’s disconnected sneaker motion, tighten the performance framing in shots 39 and 41, and rebuild shot 42’s blackout so the artist’s ice—not the runway strips and glowing mirror ball—provides the visual payoff.",
+      "strengths": [
+        "The vertical frames maintain a coherent black-runway world, with empty seating, glossy flooring and strong white perspective lines.",
+        "The camouflage shirt, flag patch, navy cap, glasses and beard remain broadly consistent across the performance shots.",
+        "Both scheduled lighting changes are visible: shot 39 introduces mirror-ball reflections, and shot 42 drops the hard pool and darkens the performer."
+      ],
+      "summary": "The runway world holds together, but the mirror ball commands more attention than the artist. The sneaker insert breaks physical credibility, and the repeated wide performance setups weaken the section’s momentum. The final lighting cue happens, but it delivers a brightly illuminated disco room rather than the promised ice-only blackout. Mouth-to-song synchronization cannot be verified from these frames.",
+      "to": 42,
+      "verdict": "revise"
+    },
+    "clips": [
+      {
+        "camera_direction": "wide locked shot centered on the runway length",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 3.92,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one pool of hard white light in the middle falling from above, everything else in deep black, with a large mirror ball hanging unlit at the far end.",
+        "events": [],
+        "key": "c001",
+        "lighting": "single hard white pool from high above with thin white floor lines",
+        "lyric_ref": null,
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "The empty gloss black runway stretches away under thin white edge lights set into the floor, with one hard pool of white light falling from above onto the center.",
+        "section": "intro",
+        "shot_type": "b_roll",
+        "start": 0,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "medium shot from thighs up, locked framing",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 7.84,
+        "energy": "mid",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one pool of hard white light in the middle falling from above, everything else in deep black, with a large mirror ball hanging unlit at the far end.",
+        "events": [],
+        "key": "c002",
+        "lighting": "single hard white pool from high above with thin white floor lines",
+        "lyric_ref": null,
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "The performer stands from the thighs up inside the single hard pool of light on the black runway, delivering the intro with upright posture and camo shirt visible.",
+        "section": "intro",
+        "shot_type": "performance",
+        "start": 3.92,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses"
+      },
+      {
+        "camera_direction": "low locked angle along the floor line",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 11.76,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one pool of hard white light in the middle falling from above, everything else in deep black, with a large mirror ball hanging unlit at the far end.",
+        "events": [],
+        "key": "c003",
+        "lighting": "thin white floor line only",
+        "lyric_ref": null,
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "Close detail of the thin white edge light running straight along the gloss black runway floor toward the dark back wall.",
+        "section": "intro",
+        "shot_type": "b_roll",
+        "start": 7.84,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "medium shot from thighs up, locked framing",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 15.69,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one pool of hard white light in the middle falling from above, everything else in deep black, with a large mirror ball hanging unlit at the far end.",
+        "events": [],
+        "key": "c004",
+        "lighting": "single hard white pool from high above with thin white floor lines",
+        "lyric_ref": "You don’t gotta",
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "The performer stands from the thighs up inside the single hard pool of light on the black runway, delivering the line with upright posture and camo shirt visible.",
+        "section": "intro",
+        "shot_type": "performance",
+        "start": 11.76,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses"
+      },
+      {
+        "camera_direction": "medium shot from thighs up, locked framing",
+        "continuity": {
+          "lighting": "DIAMOND_DISCO_LIGHT",
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 19.61,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one pool of hard white light in the middle falling from above, everything else in deep black, with a large mirror ball hanging unlit at the far end.",
+        "events": [],
+        "key": "c005",
+        "lighting": "room dark with only drifting diamond points of white light",
+        "lyric_ref": "cut the lights on / This ice on / YSL I wear em like They white ones / I",
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "The performer stands from the thighs up on the black runway now in full blackout, only sharp drifting points of white light from the diamond mirror ball moving across his camo shirt and the gloss floor.",
+        "section": "hook",
+        "shot_type": "performance",
+        "start": 15.69,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses"
+      },
+      {
+        "camera_direction": "medium shot from thighs up, locked framing",
+        "continuity": {
+          "lighting": "DIAMOND_DISCO_LIGHT",
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 23.53,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one pool of hard white light in the middle falling from above, everything else in deep black, with a large mirror ball hanging unlit at the far end.",
+        "events": [],
+        "key": "c006",
+        "lighting": "room dark with only drifting diamond points of white light",
+        "lyric_ref": "I don’t follow brands / Follow designers / The rims 21 don’t ride / No minors / More",
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "The performer stands from the thighs up on the black runway in blackout, only sharp drifting points of white light from the diamond mirror ball moving across his camo shirt and the gloss floor.",
+        "section": "hook",
+        "shot_type": "performance",
+        "start": 19.61,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, facing forward, locked framing",
+        "continuity": {
+          "lighting": "DIAMOND_DISCO_LIGHT",
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 27.45,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with gloss black floor, thin white edge lights set into the floor along each side, empty black chairs on both sides falling into darkness, and one large mirror ball hanging above the far end.",
+        "events": [],
+        "key": "c007",
+        "lighting": "complete darkness with drifting white points from the mirror ball",
+        "lyric_ref": "cameras in the whip / Than a camera crew / All this ice around me / Need a Canada goose / So",
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "Performer stands from the thighs up on the black runway in blackout, only sharp drifting points of white light from the diamond mirror ball moving across his camo shirt and the gloss floor as the line names ice and cameras.",
+        "section": "hook",
+        "shot_type": "performance",
+        "start": 23.53,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, facing forward, locked framing",
+        "continuity": {
+          "lighting": "DIAMOND_DISCO_LIGHT",
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 31.37,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with gloss black floor, thin white edge lights set into the floor along each side, empty black chairs on both sides falling into darkness, and one large mirror ball hanging above the far end.",
+        "events": [],
+        "key": "c008",
+        "lighting": "complete darkness with drifting white points from the mirror ball",
+        "lyric_ref": "clean but I don’t do / What the janitor do / My money talk for me / and it be rambling too",
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "Performer stands from the thighs up on the black runway in blackout, only sharp drifting points of white light from the diamond mirror ball moving across his camo shirt and the gloss floor while the line speaks of money talking.",
+        "section": "hook",
+        "shot_type": "performance",
+        "start": 27.45,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses"
+      },
+      {
+        "camera_direction": "low upward angle on the mirror ball",
+        "continuity": {
+          "lighting": "DIAMOND_DISCO_LIGHT",
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 35.29,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one pool of hard white light in the middle falling from above, everything else in deep black, with a large mirror ball hanging unlit at the far end.",
+        "events": [],
+        "key": "c009",
+        "lighting": "room dark with only drifting diamond points of white light",
+        "lyric_ref": null,
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "The diamond mirror ball hangs above the far end of the black runway, its cut stones catching a single beam and throwing sharp white points across the gloss floor.",
+        "section": "hook",
+        "shot_type": "b_roll",
+        "start": 31.37,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "Medium shot from thighs up, locked frame.",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 39.22,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights, empty black chairs on both sides, and a tall black back wall; one large mirror ball hangs unlit above the far end.",
+        "events": [],
+        "key": "c010",
+        "lighting": "Hard white overhead pool on the performer, deep black beyond.",
+        "lyric_ref": null,
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "The performer stands on the black runway under a single hard pool of light, facing forward in the camo shirt and cap, delivering the hook with upright posture.",
+        "section": "hook",
+        "shot_type": "performance",
+        "start": 35.29,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt with small flag patch, navy baseball cap, glasses, short beard, dark jeans"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, facing forward, locked framing",
+        "continuity": {
+          "lighting": "DIAMOND_DISCO_LIGHT",
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 43.14,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with gloss black floor, thin white edge lights set into the floor along each side, empty black chairs on both sides falling into darkness, and one large mirror ball hanging above the far end.",
+        "events": [],
+        "key": "c011",
+        "lighting": "complete darkness with drifting white points from the mirror ball",
+        "lyric_ref": "Woooooo / know",
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "Performer stands from the thighs up on the black runway in blackout, only sharp drifting points of white light from the diamond mirror ball moving across his camo shirt and the gloss floor on the sustained vocal.",
+        "section": "hook",
+        "shot_type": "performance",
+        "start": 39.22,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses"
+      },
+      {
+        "camera_direction": "Low angle locked frame looking up at the ball.",
+        "continuity": {
+          "lighting": "DIAMOND_DISCO_LIGHT",
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 47.06,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights, empty black chairs on both sides, and a tall black back wall; one large mirror ball hangs unlit above the far end.",
+        "events": [],
+        "key": "c012",
+        "lighting": "Room dark, only drifting white points visible on the floor.",
+        "lyric_ref": "know you see",
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "The diamond mirror ball hangs above the empty runway, spinning slowly while sharp white points of light drift across the gloss black floor.",
+        "section": "hook",
+        "shot_type": "b_roll",
+        "start": 43.14,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "Medium shot from thighs up, locked frame.",
+        "continuity": {
+          "lighting": null,
+          "location": null,
+          "props": []
+        },
+        "dependencies": [],
+        "end": 50.98,
+        "energy": "mid",
+        "environment": "Backstage fitting room with rows of garment racks holding white and black pieces and a wall of round bulb mirrors.",
+        "events": [],
+        "key": "c013",
+        "lighting": "Warm practical bulbs around the mirrors.",
+        "lyric_ref": "see it / Yves Saint Laurent / On the weekend / Fly on a week day / Never take a cheat day",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The performer stands in the fitting room in front of the bulb mirrors, facing forward in the camo shirt and cap, delivering the verse with upright posture as garment racks reflect behind him.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 47.06,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt with small flag patch, navy baseball cap, glasses, short beard, dark jeans"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, facing forward, locked framing",
+        "continuity": {
+          "lighting": "DIAMOND_DISCO_LIGHT",
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 54.9,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with gloss black floor, thin white edge lights set into the floor along each side, empty black chairs on both sides falling into darkness, and one large mirror ball hanging above the far end.",
+        "events": [],
+        "key": "c014",
+        "lighting": "complete darkness with drifting white points from the mirror ball",
+        "lyric_ref": "day / Feel free today / Fly enough to fly away / Drive like a getaway driver / On the highway",
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "Performer stands from the thighs up on the black runway in blackout, only sharp drifting points of white light from the diamond mirror ball moving across his camo shirt and the gloss floor during the line about flying away.",
+        "section": "hook",
+        "shot_type": "performance",
+        "start": 50.98,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses"
+      },
+      {
+        "camera_direction": "Locked frame at car height, slight push forward.",
+        "continuity": {
+          "lighting": null,
+          "location": null,
+          "props": []
+        },
+        "dependencies": [],
+        "end": 58.82,
+        "energy": "high",
+        "environment": "Wet city street at night outside the runway venue, black asphalt with standing water, distant highway lights.",
+        "events": [],
+        "key": "c015",
+        "lighting": "Dim streetlight glow on wet pavement.",
+        "lyric_ref": "In the city / where the murder rate high / But we living / Listen what they rap bout / Laugh cause we did it",
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "A black car sits parked on wet night pavement with reflections of streetlights on the glossy surface.",
+        "section": "hook",
+        "shot_type": "b_roll",
+        "start": 54.9,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "Profile medium shot, slow orbit right.",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 62.75,
+        "energy": "mid",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights, empty black chairs on both sides, and a tall black back wall; one large mirror ball hangs unlit above the far end.",
+        "events": [],
+        "key": "c016",
+        "lighting": "Hard white overhead pool on the performer, deep black beyond.",
+        "lyric_ref": "what im whippin cost a home / Got everything but the kitchen / You don’t",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The performer stands on the black runway in the single hard pool of light, facing forward in the camo shirt and cap, delivering the verse with upright posture.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 58.82,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt with small flag patch, navy baseball cap, glasses, short beard, dark jeans"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, facing forward, locked framing",
+        "continuity": {
+          "lighting": null,
+          "location": null,
+          "props": []
+        },
+        "dependencies": [],
+        "end": 66.67,
+        "energy": "mid",
+        "environment": "Backstage fitting room with a wall of bulb mirrors reflecting rows of black and white garments on racks under warm bulb lights.",
+        "events": [],
+        "key": "c017",
+        "lighting": "warm bulb light from the mirrors",
+        "lyric_ref": "don’t gotta / cut the lights on / This ice on / YSL I wear em Like / they white ones / You don’t gotta / cut the lights on / This ice on / YSL",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "Performer stands from the thighs up in the fitting room in front of the bulb mirrors, facing forward in the camo shirt and cap while the line repeats the ice and lights instruction, garment racks reflecting behind him.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 62.75,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses"
+      },
+      {
+        "camera_direction": "Close-up on the face and shoulders, locked frame.",
+        "continuity": {
+          "lighting": "DIAMOND_DISCO_LIGHT",
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 70.59,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights, empty black chairs on both sides, and a tall black back wall; one large mirror ball hangs unlit above the far end.",
+        "events": [],
+        "key": "c018",
+        "lighting": "Room dark, only drifting white points on the performer and floor.",
+        "lyric_ref": "YSL I wear em",
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "The performer stands on the black runway under drifting white points of light, facing forward in the camo shirt and cap, delivering the hook with upright posture.",
+        "section": "hook",
+        "shot_type": "performance",
+        "start": 66.67,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt with small flag patch, navy baseball cap, glasses, short beard, dark jeans"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, locked frame",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 73.53,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights, empty black chairs on both sides, and one hard white light pool in the middle.",
+        "events": [],
+        "key": "c019",
+        "lighting": "hard white overhead pool on the runway center, deep black everywhere else",
+        "lyric_ref": "em",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The artist stands on the black runway from the thighs up, facing forward in the single hard pool of light, delivering the line in his camouflage shirt and cap.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 70.59,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses, dark jeans"
+      },
+      {
+        "camera_direction": "low angle close-up on the sneakers, locked frame",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 76.47,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights, empty black chairs on both sides, and one hard white light pool in the middle.",
+        "events": [],
+        "key": "c019_2",
+        "lighting": "hard white overhead pool on the runway center, deep black everywhere else",
+        "lyric_ref": "Like / they white ones",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "A pair of white sneakers steps forward onto the glossy black runway floor.",
+        "section": "verse",
+        "shot_type": "lyric_visual",
+        "start": 73.53,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, facing forward, locked framing",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 79.41,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with gloss black floor, thin white edge lights set into the floor along each side, empty black chairs on both sides falling into darkness, and one large mirror ball hanging above the far end.",
+        "events": [],
+        "key": "c020",
+        "lighting": "single hard pool of white light from above",
+        "lyric_ref": "You don’t gotta / cut",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "Performer stands from the thighs up on the black runway under the single hard pool of light, facing forward in the camo shirt and cap as the line begins the lights instruction.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 76.47,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses"
+      },
+      {
+        "camera_direction": "slow push toward the mirrors, locked height",
+        "continuity": {
+          "lighting": null,
+          "location": null,
+          "props": []
+        },
+        "dependencies": [],
+        "end": 82.35,
+        "energy": "low",
+        "environment": "Backstage fitting room with a wall of round bulb mirrors and garment racks holding black and white designer pieces under warm practical bulbs.",
+        "events": [],
+        "key": "c020_2",
+        "lighting": "warm practical bulbs around the mirrors, soft fill on the racks",
+        "lyric_ref": "cut the lights on / This ice on / YSL I wear em Like / they white ones",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The wall of bulb mirrors in the fitting room reflects rows of black and white garments on racks.",
+        "section": "verse",
+        "shot_type": "b_roll",
+        "start": 79.41,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, facing forward, locked framing",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 85.29,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with gloss black floor, thin white edge lights set into the floor along each side, empty black chairs on both sides falling into darkness, and one large mirror ball hanging above the far end.",
+        "events": [],
+        "key": "c021",
+        "lighting": "single hard pool of white light from above",
+        "lyric_ref": "ones",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "Performer stands from the thighs up on the black runway under the single hard pool of light, facing forward in the camo shirt and cap as the line ends on the word ones.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 82.35,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses"
+      },
+      {
+        "camera_direction": "side angle on the chairs, locked frame",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 88.24,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights, empty black chairs on both sides, and one hard white light pool in the middle.",
+        "events": [],
+        "key": "c021_2",
+        "lighting": "hard white overhead pool on the runway center, deep black everywhere else",
+        "lyric_ref": "ones / You don’t gotta / cut the lights on / This ice on / YSL I",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "Front-row camera flashes pop in the darkness beside the black runway edge.",
+        "section": "verse",
+        "shot_type": "b_roll",
+        "start": 85.29,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, facing forward, locked framing",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 92.16,
+        "energy": "mid",
+        "environment": "A long indoor fashion-show runway at night with gloss black floor, thin white edge lights set into the floor along each side, empty black chairs on both sides falling into darkness, and one large mirror ball hanging above the far end.",
+        "events": [],
+        "key": "c022",
+        "lighting": "single hard pool of white light from above",
+        "lyric_ref": "wear em Like / they white ones",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "Performer stands from the thighs up on the black runway under the single hard pool of light, facing forward in the camo shirt and cap as the line names wearing them like white ones.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 88.24,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, facing forward, locked framing",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 96.08,
+        "energy": "mid",
+        "environment": "A long indoor fashion-show runway at night with gloss black floor, thin white edge lights set into the floor along each side, empty black chairs on both sides falling into darkness, and one large mirror ball hanging above the far end.",
+        "events": [],
+        "key": "c023",
+        "lighting": "single hard pool of white light from above",
+        "lyric_ref": null,
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "Performer stands from the thighs up on the black runway under the single hard pool of light, facing forward in the camo shirt and cap during the instrumental section.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 92.16,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses"
+      },
+      {
+        "camera_direction": "slow tracking shot along the chairs, locked height",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 101.96,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights, empty black chairs on both sides, and one hard white light pool in the middle.",
+        "events": [],
+        "key": "c024",
+        "lighting": "hard white overhead pool on the runway center, deep black everywhere else",
+        "lyric_ref": null,
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "Empty black chairs line the edge of the dark runway under the thin white floor lights.",
+        "section": "verse",
+        "shot_type": "b_roll",
+        "start": 96.08,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, locked frame",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 107.84,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one large mirror ball hanging unlit above the far end.",
+        "events": [],
+        "key": "c025",
+        "lighting": "hard white pool from above, deep black beyond",
+        "lyric_ref": null,
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The artist stands on the black runway under the single hard pool of light, facing forward from the thighs up, delivering the verse.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 101.96,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses, dark jeans"
+      },
+      {
+        "camera_direction": "slow push-in across the racks",
+        "continuity": {
+          "lighting": null,
+          "location": null,
+          "props": []
+        },
+        "dependencies": [],
+        "end": 111.76,
+        "energy": "mid",
+        "environment": "Backstage fitting room with garment racks of white and black pieces and a wall of bulb mirrors.",
+        "events": [],
+        "key": "c026",
+        "lighting": "warm bulb light from the mirrors",
+        "lyric_ref": null,
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "Rows of black garment racks line the wall of the fitting room under warm bulb lights.",
+        "section": "verse",
+        "shot_type": "b_roll",
+        "start": 107.84,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, locked frame",
+        "continuity": {
+          "lighting": null,
+          "location": null,
+          "props": []
+        },
+        "dependencies": [],
+        "end": 117.65,
+        "energy": "low",
+        "environment": "Backstage fitting room with garment racks of white and black pieces and a wall of bulb mirrors.",
+        "events": [],
+        "key": "c027",
+        "lighting": "warm bulb light from the mirrors",
+        "lyric_ref": null,
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The artist performs in the fitting room, seen from the thighs up in front of the bulb mirrors that reflect the racks behind him.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 111.76,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses, dark jeans"
+      },
+      {
+        "camera_direction": "low angle locked on the shoes",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 123.53,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor and thin white edge lights along each side.",
+        "events": [],
+        "key": "c028",
+        "lighting": "thin white edge light on the floor",
+        "lyric_ref": null,
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "A pair of white sneakers steps onto the gloss black runway floor under the thin white edge light.",
+        "section": "verse",
+        "shot_type": "b_roll",
+        "start": 117.65,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, locked frame",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 129.41,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one large mirror ball hanging unlit above the far end.",
+        "events": [],
+        "key": "c029",
+        "lighting": "hard white pool from above, deep black beyond",
+        "lyric_ref": null,
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The artist performs on the runway in the single pool of hard light, framed from the thighs up against the black back wall.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 123.53,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses, dark jeans"
+      },
+      {
+        "camera_direction": "locked medium shot on the car",
+        "continuity": {
+          "lighting": null,
+          "location": null,
+          "props": []
+        },
+        "dependencies": [],
+        "end": 135.29,
+        "energy": "low",
+        "environment": "Wet night street outside with the black car parked under distant city lights.",
+        "events": [],
+        "key": "c030",
+        "lighting": "dim wet-street reflections",
+        "lyric_ref": null,
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The black car sits on wet night pavement with street reflections on its glossy surface.",
+        "section": "verse",
+        "shot_type": "b_roll",
+        "start": 129.41,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, locked frame",
+        "continuity": {
+          "lighting": "DIAMOND_DISCO_LIGHT",
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 139.22,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one large mirror ball hanging unlit above the far end.",
+        "events": [],
+        "key": "c031",
+        "lighting": "DIAMOND_DISCO_LIGHT",
+        "lyric_ref": null,
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "The artist performs on the runway in complete darkness, his diamonds casting drifting white points of light across the gloss floor and his camo shirt.",
+        "section": "hook",
+        "shot_type": "performance",
+        "start": 135.29,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses, dark jeans"
+      },
+      {
+        "camera_direction": "slow upward tilt to the mirror ball",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 145.1,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one large mirror ball hanging unlit above the far end.",
+        "events": [],
+        "key": "c032",
+        "lighting": "dim edge lights only",
+        "lyric_ref": "We party / like new years evenin / Diamonds dancin / Like the disco / Get fly",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The diamond mirror ball hangs above the empty runway, its facets catching stray light and throwing small moving points across the gloss floor.",
+        "section": "verse",
+        "shot_type": "lyric_visual",
+        "start": 139.22,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "medium shot from the thighs up, locked frame",
+        "continuity": {
+          "lighting": null,
+          "location": null,
+          "props": []
+        },
+        "dependencies": [],
+        "end": 149.02,
+        "energy": "low",
+        "environment": "Backstage fitting room with garment racks of white and black pieces and a wall of bulb mirrors.",
+        "events": [],
+        "key": "c033",
+        "lighting": "warm bulb light from the mirrors",
+        "lyric_ref": "fly I know / That you see it",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The artist performs in the fitting room, framed from the thighs up with the bulb mirrors reflecting racks behind him.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 145.1,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses, dark jeans"
+      },
+      {
+        "camera_direction": "medium shot, locked frame",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 152.94,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one hard white light pool falling on the middle.",
+        "events": [],
+        "key": "c033_2",
+        "lighting": "hard white overhead pool on the runway, deep black beyond",
+        "lyric_ref": "it / Freezin every season / We party / like new years evenin",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The artist performs from the thighs up in the pool of hard white light on the black runway, facing forward in his camouflage shirt, navy cap and glasses.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 149.02,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, Cazal glasses, dark jeans"
+      },
+      {
+        "camera_direction": "low angle, slow push toward the ball",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 156.86,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one hard white light pool falling on the middle.",
+        "events": [],
+        "key": "c034_2",
+        "lighting": "hard white overhead pool on the runway, deep black beyond",
+        "lyric_ref": "Diamonds dancin / Like the disco / Get fly I know / That you see it / Freezin",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "Diamond mirror ball hangs above the empty black runway floor, its cut stones catching stray light in small white glints.",
+        "section": "verse",
+        "shot_type": "b_roll",
+        "start": 152.94,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "medium framing from the thighs up with a slow push toward the performer",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 160.78,
+        "energy": "mid",
+        "environment": "A long indoor fashion-show runway at night with gloss black floor, thin white edge lights set into the floor along each side, empty black chairs on both sides, and one hard white light pool falling from above onto the center while everything beyond drops to deep black.",
+        "events": [],
+        "key": "c035",
+        "lighting": "single hard white pool from above with deep black surroundings",
+        "lyric_ref": "Freezin every season / We party / like new years evenin",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The performer stands thighs-up on the black runway facing the camera in the single hard pool of light, delivering the verse with upright posture while front-row flashes pop in the darkness to his left.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 156.86,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt with a small flag patch on the chest, a navy baseball cap, glasses, a short beard, dark jeans"
+      },
+      {
+        "camera_direction": "low angle, locked frame",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 162.75,
+        "energy": "mid",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one hard white light pool falling on the middle.",
+        "events": [],
+        "key": "c036",
+        "lighting": "hard white overhead pool on the runway, deep black beyond",
+        "lyric_ref": "evenin / Diamonds dancin / Like the disco / Get",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "White sneakers step onto the gloss black runway floor beside the thin white edge light.",
+        "section": "verse",
+        "shot_type": "b_roll",
+        "start": 160.78,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "medium framing from the thighs up with a slow orbit to the right",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 164.71,
+        "energy": "mid",
+        "environment": "A long indoor fashion-show runway at night with gloss black floor, thin white edge lights set into the floor along each side, empty black chairs on both sides, and one hard white light pool falling from above onto the center while everything beyond drops to deep black.",
+        "events": [],
+        "key": "c036_2",
+        "lighting": "single hard white pool from above with deep black surroundings",
+        "lyric_ref": "Get fly I know / That you see it",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The performer stands thighs-up on the black runway facing the camera in the single hard pool of light, delivering the verse with upright posture while the thin white edge light runs straight along the floor beside him.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 162.75,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt with a small flag patch on the chest, a navy baseball cap, glasses, a short beard, dark jeans"
+      },
+      {
+        "camera_direction": "medium framing from the thighs up with a slow push toward the performer",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 168.63,
+        "energy": "mid",
+        "environment": "A long indoor fashion-show runway at night with gloss black floor, thin white edge lights set into the floor along each side, empty black chairs on both sides, and one hard white light pool falling from above onto the center while everything beyond drops to deep black.",
+        "events": [],
+        "key": "c037",
+        "lighting": "single hard white pool from above with deep black surroundings",
+        "lyric_ref": "Freezin every season / We party / like new years evenin",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The performer stands thighs-up on the black runway facing the camera in the single hard pool of light, delivering the verse with upright posture while the dark back wall rises behind him.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 164.71,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt with a small flag patch on the chest, a navy baseball cap, glasses, a short beard, dark jeans"
+      },
+      {
+        "camera_direction": "medium shot, locked frame",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 174.51,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one hard white light pool falling on the middle.",
+        "events": [
+          {
+            "action": "",
+            "at": 4.2,
+            "camera": "",
+            "effect": null,
+            "id": "e1",
+            "lighting": "pool dies, only diamond points remain",
+            "lightingState": "DIAMOND_DISCO_LIGHT",
+            "trigger": {
+              "kind": "lyric",
+              "ref": "cut the lights on"
+            },
+            "visual": ""
+          }
+        ],
+        "key": "c038",
+        "lighting": "hard white overhead pool on the runway, deep black beyond",
+        "lyric_ref": "evenin / Diamonds dancin / Like the disco / Get fly I know / That you see it / You don’t gotta / cut the lights on / This ice on",
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "The artist performs from the thighs up in the pool of hard white light on the black runway, facing forward in his camouflage shirt, navy cap and glasses; at the lyric the pool dies and only diamond points drift across the floor.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 168.63,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, Cazal glasses, dark jeans"
+      },
+      {
+        "camera_direction": "close-up on the face, locked frame",
+        "continuity": {
+          "lighting": "DIAMOND_DISCO_LIGHT",
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 178.43,
+        "energy": "high",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights along each side, empty black chairs on both sides, and one hard white light pool falling on the middle.",
+        "events": [],
+        "key": "c039",
+        "lighting": "room black, only diamond points drifting",
+        "lyric_ref": "YSL I wear em Like / they white ones",
+        "priority": "hero",
+        "recommended_tool": "manual",
+        "scene_description": "The artist performs from the thighs up in the dark runway, only sharp white diamond points drifting across his camouflage shirt and the gloss floor.",
+        "section": "hook",
+        "shot_type": "performance",
+        "start": 174.51,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, Cazal glasses, dark jeans"
+      },
+      {
+        "camera_direction": "medium shot, slow push toward the car",
+        "continuity": {
+          "lighting": null,
+          "location": null,
+          "props": []
+        },
+        "dependencies": [],
+        "end": 182.35,
+        "energy": "mid",
+        "environment": "Wet asphalt street at night with a black sedan parked under dim street lighting, puddles catching faint reflections.",
+        "events": [],
+        "key": "c040",
+        "lighting": "dim streetlight and wet reflections",
+        "lyric_ref": "You don’t gotta / cut the lights on / This ice",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "Black car sits on wet night pavement, reflections of distant streetlights stretching across the hood.",
+        "section": "verse",
+        "shot_type": "b_roll",
+        "start": 178.43,
+        "wardrobe": "none"
+      },
+      {
+        "camera_direction": "Medium shot on the performer with a slow push-in from the front.",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 188.24,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights running to the back wall, empty black chairs on both sides, and one hard white light pool falling on the center.",
+        "events": [],
+        "key": "c041",
+        "lighting": "Hard white overhead pool on the performer, deep black everywhere beyond.",
+        "lyric_ref": "ice on / YSL I wear em Like / they white ones",
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The performer stands on the black runway facing the camera, delivering the verse from the thighs up under the single hard light pool, his diamond earrings and grill catching the light.",
+        "section": "verse",
+        "shot_type": "performance",
+        "start": 182.35,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses, dark jeans"
+      },
+      {
+        "camera_direction": "Medium shot on the performer with a slow push-in from the front.",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": [
+            "DIAMOND_MIRROR_BALL"
+          ]
+        },
+        "dependencies": [],
+        "end": 194.12,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights running to the back wall, empty black chairs on both sides, and one hard white light pool falling on the center.",
+        "events": [
+          {
+            "action": "",
+            "at": 0.8,
+            "camera": "",
+            "effect": null,
+            "id": "e1",
+            "lighting": "room blacks out",
+            "lightingState": "DIAMOND_DISCO_LIGHT",
+            "trigger": {
+              "kind": "lyric",
+              "ref": "cut the lights on"
+            },
+            "visual": ""
+          }
+        ],
+        "key": "c042",
+        "lighting": "Hard white overhead pool on the performer, deep black everywhere beyond.",
+        "lyric_ref": "You don’t gotta / cut the lights on / This ice on / YSL I wear em Like / they white ones",
+        "priority": "high",
+        "recommended_tool": "manual",
+        "scene_description": "The performer stands on the black runway facing the camera, delivering the hook from the thighs up as the room blacks out and only his diamonds throw sharp white points across the gloss floor.",
+        "section": "outro",
+        "shot_type": "performance",
+        "start": 188.24,
+        "wardrobe": "woodland-camouflage short-sleeve military shirt, navy baseball cap, glasses, dark jeans"
+      },
+      {
+        "camera_direction": "Low angle locked frame on the runway floor.",
+        "continuity": {
+          "lighting": null,
+          "location": "PARIS_BLACK_RUNWAY",
+          "props": []
+        },
+        "dependencies": [],
+        "end": 201.87,
+        "energy": "low",
+        "environment": "A long indoor fashion-show runway at night with a gloss black floor, thin white edge lights running to the back wall, empty black chairs on both sides, and one hard white light pool falling on the center.",
+        "events": [
+          {
+            "action": "",
+            "at": 0,
+            "camera": "",
+            "effect": null,
+            "id": "e1",
+            "lighting": "pool begins to narrow",
+            "lightingState": null,
+            "trigger": {
+              "kind": "time",
+              "ref": ""
+            },
+            "visual": ""
+          }
+        ],
+        "key": "c043",
+        "lighting": "Hard white overhead pool narrowing slowly to a thin strip.",
+        "lyric_ref": null,
+        "priority": "normal",
+        "recommended_tool": "manual",
+        "scene_description": "The empty black runway floor under the single hard light pool, the pool slowly narrowing until only a thin vertical strip of light remains on the gloss surface.",
+        "section": "outro",
+        "shot_type": "b_roll",
+        "start": 194.12,
+        "wardrobe": "none"
+      }
+    ],
+    "concept": "YSL — “INTERRUPTED BROADCAST”\nProposed music-video treatment\n\nAn impossible Saint Laurent–inspired fashion show takes over Fendi’s television, then spills into his Chicago surroundings. Fire becomes snow. A luxury SUV contains a television control room. Every new location seems to be broadcasting the next—and Fendi remains composed as the world around him becomes increasingly extraordinary.\n\nOpening — The burning show\n\nWe begin high above a forest at night. At first, it reads as aerial footage of a wildfire: smoke obscures sections of the ground, flames crawl along the tree line, and wind pushes embers across the darkness.\n\nAs the camera advances, a deliberate shape emerges. An enormous YSL monogram has been cut into the forest floor. Fire surrounds its perimeter; inside its cleared strokes, models move in intersecting formations.\n\nFrom above, their movement appears disciplined. At ground level, it feels like organized chaos: models pass close to the lens, cross behind one another, and disappear into drifting smoke. No audience. No conventional runway. Everyone behaves as though this extraordinary location is completely normal.\n\nThe clothes receive proper fashion coverage: a compressed telephoto view of silhouettes through heat shimmer; a low tracking shot following boots through ash; a close view of leather catching firelight. These are specific garments with weight, construction, and texture.\n\nAmong the walking models, one beautiful Black woman approaches a horse. We see her hand settle against its neck, a boot enter the stirrup, and her weight shift into the saddle. She rides along the cleared route between walls of fire. The cuts alternate between her controlled movement and the models’ intersecting paths.\n\nA side-on shot of the rider suddenly loses its color.\n\nThe viewer\n\nWe pull back from that same image playing on a small black-and-white CRT television.\n\nFendi sits in his exact YSL denim look, watching. The room is spare and tangible: worn upholstery, television glass reflecting a lamp, cables disappearing behind the set. The fashion show feels like a strange transmission he has found late at night.\n\nThe rider turns toward the broadcast camera.\n\nThe television snaps to a white point. Every light in the room dies.\n\nA close-up reveals another woman’s hand at a wall switch. She flips it.\n\nChicago — The switch\n\nThe click lands with the vocal entrance.\n\nLight returns, but the room is gone. Fendi occupies the same position in the frame, now standing at 79th and Lafayette by the Red Line, wearing his exact YSL leather coat.\n\nThe woman completes her movement beside him. An illuminated storefront or practical fixture motivates the returning light. Passing traffic, the station environment, and people moving through the background establish a recognizable Chicago street.\n\nFendi performs directly to camera. We stay with him long enough for his presence and delivery to own the scene.\n\nOn “you don’t gotta cut the lights on, this ice on,” we move into an extreme close-up of his mouth. Diamond-set sections of the grill rotate like miniature mechanical reels, catching available streetlight before locking into alignment.\n\nThe lips, gums, and surrounding teeth remain stable. No glowing mouth, floating jewels, or cartoon symbols. The effect lasts just long enough to register, then resolves into the intact grill.\n\nThe cold front\n\nA bright reflection off the final diamond becomes a whiteout.\n\nA passing veil of snow reveals Fendi in his specified YSL jacket, performing in a blizzard. Wind moves the garment and drives snow consistently across the frame. His breath catches in the cold.\n\nA polar bear crosses behind him with a heavy chain settling into its fur. Elsewhere, penguins move through the foreground, their smaller jewelry partially disappearing beneath feathers.\n\nThe animals behave like animals: uneven steps, shifting weight, incidental glances. Their indifference makes the surreal styling more convincing. Fendi remains the center of the performance.\n\nThe camera crew\n\nOn “more cameras in the whip than a camera crew,” we cut inside a cramped mobile broadcast control room.\n\nMonitors show Fendi performing in Chicago and the blizzard. One carries the burning fashion show. Crew members adjust equipment while he raps across the screens.\n\nA camera operator shoulders a camera and reaches for the exit. We follow toward the opening door—\n\n—and cut outside to reveal a Maybach SUV.\n\nThe operator steps down from its passenger compartment. More crew members follow with full-size news cameras. The exterior shot holds long enough to let the impossible interior register without explaining it.\n\nOn “all this ice around me, need a Canada Goose,” the crew abruptly has to yield to geese crossing their path in miniature Canada Goose jackets. One goose pauses, forcing an impatient operator to stop.\n\nIt plays as a brief, deadpan interruption. Nobody performs the joke for the audience.\n\nThe clean entrance\n\nA news camera swings toward a nearby building. We cut into its view.\n\nOn “so clean, but I don’t do what the janitors do,” impeccably dressed models approach the entrance. A janitor is finishing the floor beside a yellow wet-floor sign.\n\nTheir movement recalls the formations inside the burning monogram. The camera drops toward the freshly cleaned surface, where shoes and garment silhouettes reflect sharply.\n\nFendi passes the camera and enters with them. The janitor pulls the caution sign aside just before his step.\n\nInside, a security monitor shows the woman on horseback.\n\nShe is arriving at this building.\n\nThe broadcast is now ahead of reality.",
+    "generated_at": "2026-10-03T19:26:38.850Z",
+    "model": "grok-4-fast",
+    "narrative": "",
+    "project_type": "music_video",
+    "sections": [
+      {
+        "intent": "Establish the empty black runway and place the first performance frame inside its single hard light pool.",
+        "name": "intro"
+      },
+      {
+        "intent": "Cut the lights so the diamond mirror ball alone illuminates him, turning jewelry into the only moving light source.",
+        "name": "hook"
+      },
+      {
+        "intent": "Answer each lyric with runway, fitting-room and night-street details while returning to varied performance frames.",
+        "name": "verse"
+      },
+      {
+        "intent": "Let the runway light slowly die, leaving only the faint edge glow and final performance shot.",
+        "name": "outro"
+      }
+    ],
+    "setup": {
+      "footage_confirmed_at": "2026-10-03T03:04:19.884Z"
+    },
+    "text": "YSL — “INTERRUPTED BROADCAST”\nProposed music-video treatment\n\nAn impossible Saint Laurent–inspired fashion show takes over Fendi’s television, then spills into his Chicago surroundings. Fire becomes snow. A luxury SUV contains a television control room. Every new location seems to be broadcasting the next—and Fendi remains composed as the world around him becomes increasingly extraordinary.\n\nOpening — The burning show\n\nWe begin high above a forest at night. At first, it reads as aerial footage of a wildfire: smoke obscures sections of the ground, flames crawl along the tree line, and wind pushes embers across the darkness.\n\nAs the camera advances, a deliberate shape emerges. An enormous YSL monogram has been cut into the forest floor. Fire surrounds its perimeter; inside its cleared strokes, models move in intersecting formations.\n\nFrom above, their movement appears disciplined. At ground level, it feels like organized chaos: models pass close to the lens, cross behind one another, and disappear into drifting smoke. No audience. No conventional runway. Everyone behaves as though this extraordinary location is completely normal.\n\nThe clothes receive proper fashion coverage: a compressed telephoto view of silhouettes through heat shimmer; a low tracking shot following boots through ash; a close view of leather catching firelight. These are specific garments with weight, construction, and texture.\n\nAmong the walking models, one beautiful Black woman approaches a horse. We see her hand settle against its neck, a boot enter the stirrup, and her weight shift into the saddle. She rides along the cleared route between walls of fire. The cuts alternate between her controlled movement and the models’ intersecting paths.\n\nA side-on shot of the rider suddenly loses its color.\n\nThe viewer\n\nWe pull back from that same image playing on a small black-and-white CRT television.\n\nFendi sits in his exact YSL denim look, watching. The room is spare and tangible: worn upholstery, television glass reflecting a lamp, cables disappearing behind the set. The fashion show feels like a strange transmission he has found late at night.\n\nThe rider turns toward the broadcast camera.\n\nThe television snaps to a white point. Every light in the room dies.\n\nA close-up reveals another woman’s hand at a wall switch. She flips it.\n\nChicago — The switch\n\nThe click lands with the vocal entrance.\n\nLight returns, but the room is gone. Fendi occupies the same position in the frame, now standing at 79th and Lafayette by the Red Line, wearing his exact YSL leather coat.\n\nThe woman completes her movement beside him. An illuminated storefront or practical fixture motivates the returning light. Passing traffic, the station environment, and people moving through the background establish a recognizable Chicago street.\n\nFendi performs directly to camera. We stay with him long enough for his presence and delivery to own the scene.\n\nOn “you don’t gotta cut the lights on, this ice on,” we move into an extreme close-up of his mouth. Diamond-set sections of the grill rotate like miniature mechanical reels, catching available streetlight before locking into alignment.\n\nThe lips, gums, and surrounding teeth remain stable. No glowing mouth, floating jewels, or cartoon symbols. The effect lasts just long enough to register, then resolves into the intact grill.\n\nThe cold front\n\nA bright reflection off the final diamond becomes a whiteout.\n\nA passing veil of snow reveals Fendi in his specified YSL jacket, performing in a blizzard. Wind moves the garment and drives snow consistently across the frame. His breath catches in the cold.\n\nA polar bear crosses behind him with a heavy chain settling into its fur. Elsewhere, penguins move through the foreground, their smaller jewelry partially disappearing beneath feathers.\n\nThe animals behave like animals: uneven steps, shifting weight, incidental glances. Their indifference makes the surreal styling more convincing. Fendi remains the center of the performance.\n\nThe camera crew\n\nOn “more cameras in the whip than a camera crew,” we cut inside a cramped mobile broadcast control room.\n\nMonitors show Fendi performing in Chicago and the blizzard. One carries the burning fashion show. Crew members adjust equipment while he raps across the screens.\n\nA camera operator shoulders a camera and reaches for the exit. We follow toward the opening door—\n\n—and cut outside to reveal a Maybach SUV.\n\nThe operator steps down from its passenger compartment. More crew members follow with full-size news cameras. The exterior shot holds long enough to let the impossible interior register without explaining it.\n\nOn “all this ice around me, need a Canada Goose,” the crew abruptly has to yield to geese crossing their path in miniature Canada Goose jackets. One goose pauses, forcing an impatient operator to stop.\n\nIt plays as a brief, deadpan interruption. Nobody performs the joke for the audience.\n\nThe clean entrance\n\nA news camera swings toward a nearby building. We cut into its view.\n\nOn “so clean, but I don’t do what the janitors do,” impeccably dressed models approach the entrance. A janitor is finishing the floor beside a yellow wet-floor sign.\n\nTheir movement recalls the formations inside the burning monogram. The camera drops toward the freshly cleaned surface, where shoes and garment silhouettes reflect sharply.\n\nFendi passes the camera and enters with them. The janitor pulls the caution sign aside just before his step.\n\nInside, a security monitor shows the woman on horseback.\n\nShe is arriving at this building.\n\nThe broadcast is now ahead of reality.",
+    "treatment": {
+      "change": "edit",
+      "change_at": "2026-10-07T02:40:51.627Z",
+      "mode": "manual",
+      "model": null,
+      "notes": "",
+      "storyboard": {
+        "at": "2026-10-03T19:26:38.850Z",
+        "from": "1046:xn6grt",
+        "kept": 15,
+        "written": 33
+      },
+      "text": "YSL — “INTERRUPTED BROADCAST”\nProposed music-video treatment\n\nAn impossible Saint Laurent–inspired fashion show takes over Fendi’s television, then spills into his Chicago surroundings. Fire becomes snow. A luxury SUV contains a television control room. Every new location seems to be broadcasting the next—and Fendi remains composed as the world around him becomes increasingly extraordinary.\n\nOpening — The burning show\n\nWe begin high above a forest at night. At first, it reads as aerial footage of a wildfire: smoke obscures sections of the ground, flames crawl along the tree line, and wind pushes embers across the darkness.\n\nAs the camera advances, a deliberate shape emerges. An enormous YSL monogram has been cut into the forest floor. Fire surrounds its perimeter; inside its cleared strokes, models move in intersecting formations.\n\nFrom above, their movement appears disciplined. At ground level, it feels like organized chaos: models pass close to the lens, cross behind one another, and disappear into drifting smoke. No audience. No conventional runway. Everyone behaves as though this extraordinary location is completely normal.\n\nThe clothes receive proper fashion coverage: a compressed telephoto view of silhouettes through heat shimmer; a low tracking shot following boots through ash; a close view of leather catching firelight. These are specific garments with weight, construction, and texture.\n\nAmong the walking models, one beautiful Black woman approaches a horse. We see her hand settle against its neck, a boot enter the stirrup, and her weight shift into the saddle. She rides along the cleared route between walls of fire. The cuts alternate between her controlled movement and the models’ intersecting paths.\n\nA side-on shot of the rider suddenly loses its color.\n\nThe viewer\n\nWe pull back from that same image playing on a small black-and-white CRT television.\n\nFendi sits in his exact YSL denim look, watching. The room is spare and tangible: worn upholstery, television glass reflecting a lamp, cables disappearing behind the set. The fashion show feels like a strange transmission he has found late at night.\n\nThe rider turns toward the broadcast camera.\n\nThe television snaps to a white point. Every light in the room dies.\n\nA close-up reveals another woman’s hand at a wall switch. She flips it.\n\nChicago — The switch\n\nThe click lands with the vocal entrance.\n\nLight returns, but the room is gone. Fendi occupies the same position in the frame, now standing at 79th and Lafayette by the Red Line, wearing his exact YSL leather coat.\n\nThe woman completes her movement beside him. An illuminated storefront or practical fixture motivates the returning light. Passing traffic, the station environment, and people moving through the background establish a recognizable Chicago street.\n\nFendi performs directly to camera. We stay with him long enough for his presence and delivery to own the scene.\n\nOn “you don’t gotta cut the lights on, this ice on,” we move into an extreme close-up of his mouth. Diamond-set sections of the grill rotate like miniature mechanical reels, catching available streetlight before locking into alignment.\n\nThe lips, gums, and surrounding teeth remain stable. No glowing mouth, floating jewels, or cartoon symbols. The effect lasts just long enough to register, then resolves into the intact grill.\n\nThe cold front\n\nA bright reflection off the final diamond becomes a whiteout.\n\nA passing veil of snow reveals Fendi in his specified YSL jacket, performing in a blizzard. Wind moves the garment and drives snow consistently across the frame. His breath catches in the cold.\n\nA polar bear crosses behind him with a heavy chain settling into its fur. Elsewhere, penguins move through the foreground, their smaller jewelry partially disappearing beneath feathers.\n\nThe animals behave like animals: uneven steps, shifting weight, incidental glances. Their indifference makes the surreal styling more convincing. Fendi remains the center of the performance.\n\nThe camera crew\n\nOn “more cameras in the whip than a camera crew,” we cut inside a cramped mobile broadcast control room.\n\nMonitors show Fendi performing in Chicago and the blizzard. One carries the burning fashion show. Crew members adjust equipment while he raps across the screens.\n\nA camera operator shoulders a camera and reaches for the exit. We follow toward the opening door—\n\n—and cut outside to reveal a Maybach SUV.\n\nThe operator steps down from its passenger compartment. More crew members follow with full-size news cameras. The exterior shot holds long enough to let the impossible interior register without explaining it.\n\nOn “all this ice around me, need a Canada Goose,” the crew abruptly has to yield to geese crossing their path in miniature Canada Goose jackets. One goose pauses, forcing an impatient operator to stop.\n\nIt plays as a brief, deadpan interruption. Nobody performs the joke for the audience.\n\nThe clean entrance\n\nA news camera swings toward a nearby building. We cut into its view.\n\nOn “so clean, but I don’t do what the janitors do,” impeccably dressed models approach the entrance. A janitor is finishing the floor beside a yellow wet-floor sign.\n\nTheir movement recalls the formations inside the burning monogram. The camera drops toward the freshly cleaned surface, where shoes and garment silhouettes reflect sharply.\n\nFendi passes the camera and enters with them. The janitor pulls the caution sign aside just before his step.\n\nInside, a security monitor shows the woman on horseback.\n\nShe is arriving at this building.\n\nThe broadcast is now ahead of reality.",
+      "updated_at": "2026-10-07T02:40:51.627Z"
+    },
+    "version": 2
+  }
+}

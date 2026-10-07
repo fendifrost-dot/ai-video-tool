@@ -21,6 +21,13 @@ import {
   useWriteBoxes,
 } from "@/lib/queries/storyboard";
 import { useTreatmentInputs } from "@/lib/queries/treatmentInputs";
+import { useWardrobe } from "@/lib/queries/wardrobe";
+import { DEFAULT_STILL_REFERENCE_CAP, useStillReferenceSupport } from "@/lib/queries/stillReferences";
+import { linkPictureNeeds, linkPromptLines, linksOfBox, type ResolvedLink } from "@/lib/storyboard/links";
+import { planStillReferences, referenceSummary, type ReferenceProblem, type StillReference } from "@/lib/storyboard/references";
+import { useCharacterFeatures } from "@/lib/queries/characterFeatures";
+import { productionRoute, routeLine, type ProductionRoute } from "@/lib/storyboard/route";
+import type { StillReferencesOnJob } from "@/lib/worldBatch/runner";
 import { useContinuityEntities, useContinuityMutations } from "@/lib/queries/continuity";
 import {
   canonicalWords,
@@ -73,7 +80,7 @@ import {
 import { settingsOf } from "@/lib/worldBatch";
 import { ensureStoryboardMaterialized, type MaterializeResult } from "@/lib/storyboard/build";
 import { aspectOfProject, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
-import { boxShot, clipEstimateUsd, clipTemporalPlan, entityShot, generateBoxClip, generateBoxImage, generateEntityReference, imageEstimateUsd, imageTemporalPlan } from "@/lib/storyboard/generate";
+import { boxShot, clipEstimateUsd, clipTemporalPlan, entityShot, generateBoxClip, generateBoxImage, generateEntityReference, imageEstimateUsd, imageTemporalPlan, previewStillRequest } from "@/lib/storyboard/generate";
 import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
 import {
   boxMedia,
@@ -221,7 +228,7 @@ export type StoryboardController = {
   generateEntityPicture: (entity: ContinuityEntity) => void;
   /** Make the image this shot shows the approved picture of an entity. */
   useShotImageFor: (box: StoryboardBox, entity: ContinuityEntity) => Promise<void>;
-  /** Point the shot at entities (or take a reference away). */
+  /** Point the shot at entities (or take a reference away) — and its links, garments and production method. */
   saveContinuity: (box: StoryboardBox, refs: ContinuityOverride) => Promise<void>;
   /** Who is in this shot, resolved against this variation's characters. */
   castOf: (box: StoryboardBox) => ShotCast;
@@ -229,6 +236,16 @@ export type StoryboardController = {
   castProblemsOf: (box: StoryboardBox) => CastProblem[];
   /** Put people in the shot, or take them out. An empty members list means nobody is cast. */
   saveCast: (box: StoryboardBox, cast: CastOverride) => Promise<void>;
+  /** The artist's wardrobe pictures a shot can be dressed in exactly (character_features of a wardrobe_* type). */
+  wardrobe: { id: string; label: string; featureType: string }[];
+  /** Every link that touches this shot, from both ends (links.ts). */
+  linksOf: (box: StoryboardBox) => ResolvedLink[];
+  /** How this shot gets made, and whether the storyboard can make it (route.ts). */
+  routeOf: (box: StoryboardBox) => ProductionRoute;
+  /** The reference pictures its still is drawn with, what does not fit, and what is missing (references.ts). */
+  referencesOf: (box: StoryboardBox) => StillReferencesOnJob & { problems: ReferenceProblem[]; cap: number };
+  /** The exact still request this shot would send — built, not sent. */
+  stillRequestOf: (box: StoryboardBox) => ReturnType<typeof previewStillRequest> | null;
   toggleLock: (box: StoryboardBox) => Promise<void>;
   split: (box: StoryboardBox, atSeconds: number) => Promise<void>;
   mergeWithNext: (box: StoryboardBox) => void;
@@ -352,6 +369,45 @@ export function useStoryboardController(projectId: string): StoryboardController
   const entityIndex = useMemo(() => indexEntities(entities), [entities]);
   const looks = useMemo<LookRef[]>(() => inputs.looks.map((l) => ({ id: l.id, name: l.name, description: l.description ?? null })), [inputs.looks]);
   const continuityOf = useCallback((box: StoryboardBox) => resolveContinuity(box.spec, entityIndex, looks), [entityIndex, looks]);
+
+  // --- cast: who is in each shot ------------------------------------------------------------------------------------
+  const castOf = useCallback((box: StoryboardBox) => resolveCast(box.spec, entityIndex), [entityIndex]);
+  const castProblemsOf = useCallback((box: StoryboardBox) => castProblems(castOf(box)), [castOf]);
+
+  // --- links between shots, the artist's wardrobe, and what the still generator takes ------------------------------
+  const board = useMemo(() => boxes.map((b, i) => ({ ...b, shotNumber: i + 1 })), [boxes]);
+  const linksOf = useCallback((box: StoryboardBox) => linksOfBox(box, board), [board]);
+  const wardrobeQuery = useWardrobe(project?.artist_id ?? undefined);
+  // the artist's own identity pictures (Character DNA, character_features `face`): what a shot that casts the artist
+  // is drawn against when the character record has no approved picture of its own — the artist record is the authority
+  const featuresQuery = useCharacterFeatures(project?.artist_id ?? undefined);
+  const artistFace = useMemo(() => {
+    const faces = (featuresQuery.data ?? []).filter((f) => f.feature_type === "face" && !!f.storage_path);
+    const pick = faces.find((f) => f.label === "neutral" && f.is_primary) ?? faces.find((f) => f.is_primary) ?? faces[0];
+    return pick ? { id: pick.id, artistId: project?.artist_id ?? "" } : null;
+  }, [featuresQuery.data, project?.artist_id]);
+  /** The identity pictures of the people cast in a shot (casting/cast.ts decides who must be matched). */
+  const castReferencesOf = useCallback(
+    (box: StoryboardBox): StillReference[] => {
+      const out: StillReference[] = [];
+      for (const m of castOf(box).members) {
+        if (m.mode === "invent") continue;
+        const own = m.entity.approvedAssetId ?? m.entity.referenceAssetIds[0] ?? null;
+        if (own) out.push({ source: "project_asset", id: own, role: "cast", label: m.entity.name });
+        else if (m.entity.cast.role === "primary_artist" && m.entity.cast.artistId && artistFace && m.entity.cast.artistId === artistFace.artistId)
+          out.push({ source: "character_feature", id: artistFace.id, role: "cast", label: m.entity.name });
+      }
+      return out;
+    },
+    [castOf, artistFace],
+  );
+  const wardrobe = useMemo(() => (wardrobeQuery.data ?? []).map((w) => ({ id: w.id, label: w.label, featureType: w.feature_type })), [wardrobeQuery.data]);
+  const supportData = useStillReferenceSupport(projectId).data;
+  const referenceSupport = useMemo(() => supportData ?? { accepted: false, max: DEFAULT_STILL_REFERENCE_CAP, model: null }, [supportData]);
+  const routeOf = useCallback(
+    (box: StoryboardBox) => productionRoute(box.spec, { hasTake: restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs).ok, links: linksOf(box) }),
+    [mediaByBox, syncs, linksOf],
+  );
   const entityUsage = useMemo(() => usageOfEntities(boxes.map((b, i) => ({ number: i + 1, spec: b.spec }))), [boxes]);
   const picturesOf = useCallback(
     (entity: ContinuityEntity): MediaAsset[] => {
@@ -679,6 +735,51 @@ export function useStoryboardController(projectId: string): StoryboardController
     [continuityOf, media.byId, selectedStill],
   );
 
+  const referencesOf = useCallback(
+    (box: StoryboardBox) => {
+      const needs = linkPictureNeeds(linksOf(box)).map((n) => {
+        const other = n.link.other ? boxes.find((b) => b.key === n.link.otherKey) : null;
+        const still = other ? selectedStill(other) : null;
+        return { ...n, still: still ? { assetId: still.id } : null };
+      });
+      const onFile = new Map(wardrobe.map((w) => [w.id, w]));
+      // while the wardrobe is still loading a garment is not reported missing
+      const loaded = wardrobeQuery.data !== undefined;
+      const plan = planStillReferences({
+        isPerformance: box.spec.shotType === "performance",
+        continuity: continuityOf(box),
+        linkNeeds: needs,
+        garments: box.spec.wardrobe.garments.map((id) => ({ id, onFile: onFile.has(id) ? { id, label: onFile.get(id)!.label } : loaded ? null : { id, label: id } })),
+        extra: castReferencesOf(box),
+        cap: referenceSupport.max,
+      });
+      return { sent: plan.sent, notSent: plan.notSent, legend: plan.legend, delivered: referenceSupport.accepted, problems: plan.problems, cap: plan.cap };
+    },
+    [linksOf, boxes, selectedStill, wardrobe, wardrobeQuery.data, continuityOf, referenceSupport, castReferencesOf],
+  );
+  const linkLinesOf = useCallback((box: StoryboardBox) => linkPromptLines(linksOf(box)), [linksOf]);
+  const stillRequestOf = useCallback(
+    (box: StoryboardBox) => {
+      try {
+        return previewStillRequest(box, lyricLines, { aspect, continuity: continuityOf(box), cast: castOf(box), linkLines: linkLinesOf(box), references: referencesOf(box) });
+      } catch {
+        return null;
+      }
+    },
+    [lyricLines, aspect, continuityOf, castOf, linkLinesOf, referencesOf],
+  );
+  /** What the confirmation says about the shot's route, links and pictures — and whether it may go at all. */
+  const generationNotes = useCallback(
+    (box: StoryboardBox): { text: string; blocked: string | null } => {
+      const r = referencesOf(box);
+      const blocking = r.problems.find((p) => p.level === "blocking");
+      const pictures = r.sent.length || r.notSent.length ? ` ${referenceSummary({ sent: r.delivered ? r.sent : [], notSent: r.delivered ? r.notSent : [...r.notSent, ...r.sent.map((ref) => ({ ref, why: "the image generator does not take reference pictures yet" }))] })}` : "";
+      const warnings = r.problems.filter((p) => p.level === "warning").map((p) => ` NOTE: ${p.text}`).join("");
+      return { text: ` ${routeLine(routeOf(box))}${pictures}${warnings}`, blocked: blocking ? `${blocking.text} ${blocking.fix}` : null };
+    },
+    [referencesOf, routeOf],
+  );
+
   const estimatesOf = useCallback(
     (box: StoryboardBox): BoxEstimates => {
       try {
@@ -722,8 +823,15 @@ export function useStoryboardController(projectId: string): StoryboardController
         toast.info("This shot has no scene to draw yet — write or regenerate its scene first");
         return;
       }
+      const notes = generationNotes(box);
+      if (notes.blocked) {
+        toast.info(notes.blocked);
+        return;
+      }
       const imagePlan = imageTemporalPlan(box, clock);
       const continuity = continuityOf(box);
+      const linkLines = linkLinesOf(box);
+      const references = referencesOf(box);
       const source = continuitySource(continuity, { forPlate: !!est.restage });
       const held = source.lines.length
         ? ` It is drawn from the project's own description of ${[continuity.location?.name, ...continuity.props.map((p) => p.name), continuity.lighting?.name].filter(Boolean).join(", ")} — the same words every shot that points there is drawn from.${source.notes.length ? ` ${source.notes.join(" ")}` : ""}`
@@ -733,19 +841,19 @@ export function useStoryboardController(projectId: string): StoryboardController
       setConfirm({
         title: `Generate an image for shot ${numberById.get(box.id) ?? ""}?`,
         body: est.restage
-          ? `About ${usd(est.image)} at list price. This is a performance shot: the image is the PLACE from this shot's scene, drawn empty — your take keeps showing, and "Restage" puts your real performance in this place.${held}${opening}${shapeNote}${old}`
-          : `About ${usd(est.image)} at list price. The image is drawn from this shot's scene and put on this shot only.${held}${opening}${shapeNote}${old}`,
+          ? `About ${usd(est.image)} at list price. This is a performance shot: the image is the PLACE from this shot's scene, drawn empty — your take keeps showing, and "Restage" puts your real performance in this place.${held}${opening}${shapeNote}${old}${notes.text}`
+          : `About ${usd(est.image)} at list price. The image is drawn from this shot's scene and put on this shot only.${held}${opening}${shapeNote}${old}${notes.text}`,
         confirmLabel: `Generate image · ${usd(est.image)}`,
         testId: "confirm-generate-image",
         onConfirm: () =>
           run(box, "drawing the image…", async () => {
-            const r = await generateBoxImage({ projectId, box, lyricLines, aspect, select: !est.restage, continuity, cast: castOf(box) });
+            const r = await generateBoxImage({ projectId, box, lyricLines, aspect, select: !est.restage, continuity, cast: castOf(box), linkLines, references });
             afterGeneration();
             toast.success(r.rejected > 0 ? `Image ready (${r.rejected} of ${r.candidates} came back as stacked panels and was left out)` : "Image ready");
           }).finally(afterGeneration),
       });
     },
-    [estimatesOf, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, clock, continuityOf, staleNote],
+    [estimatesOf, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, clock, continuityOf, staleNote, generationNotes, linkLinesOf, referencesOf],
   );
 
   const clipPlanOf = useCallback(
@@ -767,7 +875,20 @@ export function useStoryboardController(projectId: string): StoryboardController
         toast.info(est.clipBlocked);
         return;
       }
+      // a method the director or the writer chose that the storyboard cannot make is reported, never swapped
+      const route = routeOf(box);
+      if (!route.inferred && route.verdict !== "storyboard") {
+        toast.info(routeLine(route));
+        return;
+      }
+      const notes = generationNotes(box);
+      if (notes.blocked && !(est.restage && placeStill(box))) {
+        toast.info(notes.blocked);
+        return;
+      }
       const continuity = continuityOf(box);
+      const linkLines = linkLinesOf(box);
+      const references = referencesOf(box);
       // a performance shot set in one of the project's locations is restaged into that location's approved picture
       const place = est.restage ? placeStill(box) : null;
       const stillAsset = est.restage ? (place?.asset ?? null) : selectedStill(box);
@@ -805,7 +926,7 @@ export function useStoryboardController(projectId: string): StoryboardController
               let stillPath = still;
               if (!stillPath) {
                 setBusyFor(box.id, "drawing the place first…");
-                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false, continuity, cast: castOf(box) });
+                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false, continuity, cast: castOf(box), linkLines, references });
                 afterGeneration();
                 stillPath = img.picked;
               }
@@ -822,12 +943,12 @@ export function useStoryboardController(projectId: string): StoryboardController
           // closes while it is drawn, the picture is still filed on the shot by the server.
           let stillPath = still;
           if (!stillPath) {
-            const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity, cast: castOf(box) });
+            const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity, cast: castOf(box), linkLines, references });
             afterGeneration();
             stillPath = img.picked;
             setBusyFor(box.id, "sending the clip to render…");
           }
-          await generateBoxClip({ projectId, box, lyricLines, stillPath, aspect, temporal, continuity, cast: castOf(box) });
+          await generateBoxClip({ projectId, box, lyricLines, stillPath, aspect, temporal, continuity, cast: castOf(box), linkLines });
           afterGeneration();
           toast.success(temporal.mode === "ordered" ? "Clip is rendering with the beats in order — its timing is the model's own" : "Clip is rendering — it will appear on this shot when it is done");
         }).finally(afterGeneration);
@@ -867,7 +988,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         onConfirm: () => submitClip(clipPlan),
       });
     },
-    [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats, staleNote, wardrobeGapOf],
+    [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats, staleNote, wardrobeGapOf, routeOf, generationNotes, linkLinesOf, referencesOf],
   );
 
   // --- what a clip was asked for, and whether it did it --------------------------------------------------------------
@@ -1052,9 +1173,6 @@ export function useStoryboardController(projectId: string): StoryboardController
     [entityMutations.create, entities],
   );
 
-  // --- cast: who is in each shot ------------------------------------------------------------------------------------
-  const castOf = useCallback((box: StoryboardBox) => resolveCast(box.spec, entityIndex), [entityIndex]);
-  const castProblemsOf = useCallback((box: StoryboardBox) => castProblems(castOf(box)), [castOf]);
 
   const saveCast = useCallback(
     (box: StoryboardBox, cast: CastOverride) =>
@@ -1189,6 +1307,11 @@ export function useStoryboardController(projectId: string): StoryboardController
     castOf,
     castProblemsOf,
     saveCast,
+    wardrobe,
+    linksOf,
+    routeOf,
+    referencesOf,
+    stillRequestOf,
     toggleLock,
     split,
     mergeWithNext,

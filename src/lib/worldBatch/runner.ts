@@ -86,6 +86,8 @@ export type RunnerDeps = {
     stills?: { path: string; previewUrl?: string }[];
     actualCostUsd?: number | null;
     error?: string;
+    /** How many reference pictures the generator actually sent with the request (absent = it took none). */
+    referencesSent?: number;
   }>;
   /** Look at a generated still for the stacked-panels seam (stillCheck.ts). Absent or throwing = not checked. */
   inspectStill?(path: string): Promise<PanelSeam | null>;
@@ -119,6 +121,22 @@ export type RunContext = {
   entityId?: string;
   /** What each shot was when it was asked for (batch shot id → its provenance). Recorded on the job as `madeFrom`. */
   madeFrom?: Record<string, MadeFrom>;
+  /**
+   * The reference pictures each still is drawn with (batch shot id → plan; storyboard/references.ts). The job records
+   * what was sent and what was not, always. The pictures go to the generator only when `delivered` is true — the
+   * generator said it takes them (a free dry-run) — so a picture is never handed to a server that would drop it.
+   */
+  stillReferences?: Record<string, StillReferencesOnJob>;
+};
+
+/** What a still job records about its reference pictures. */
+export type StillReferencesOnJob = {
+  sent: { source: string; id: string; role: string; label: string }[];
+  notSent: { ref: { source: string; id: string; role: string; label: string }; why: string }[];
+  /** The sentences that tell the model what each picture is (appended to the prompt only when delivered). */
+  legend: string;
+  /** True: the pictures go with the request. False: the generator cannot take them; the job says they were not sent. */
+  delivered: boolean;
 };
 
 function madeFromOf(ctx: RunContext, shot: BatchShot): { madeFrom?: MadeFrom } {
@@ -350,7 +368,10 @@ export type StillsResult = {
  */
 export async function submitStills(shot: BatchShot, ctx: RunContext, deps: RunnerDeps): Promise<StillsResult> {
   if (!shot.prompt.trim()) throw new Error(`${shot.id}: needs a scene to draw`);
-  const prompt = stillPrompt(shot, ctx.look);
+  const refs = ctx.stillReferences?.[shot.id] ?? null;
+  const deliver = !!refs?.delivered && refs.sent.length > 0;
+  // the legend names the pictures by position: it goes in only when the pictures do
+  const prompt = deliver && refs!.legend ? `${stillPrompt(shot, ctx.look)} ${refs!.legend}` : stillPrompt(shot, ctx.look);
   const settings: BatchJobSettings = {
     batchRun: ctx.runId,
     batchShotId: shot.id,
@@ -362,7 +383,15 @@ export async function submitStills(shot: BatchShot, ctx: RunContext, deps: Runne
     selectStill: ctx.selectStill ?? true,
     ...madeFromOf(ctx, shot),
   };
-  const payload = { promptText: prompt, mode: "still_only", aspectRatio: shot.aspect, ...shotIdOf(ctx, shot), ...(ctx.entityId ? { entityId: ctx.entityId } : {}) };
+  const references = refs
+    ? {
+        references: {
+          sent: deliver ? refs.sent : [],
+          notSent: [...refs.notSent, ...(deliver ? [] : refs.sent.map((ref) => ({ ref, why: "the image generator does not take reference pictures yet (not deployed)" })))],
+        },
+      }
+    : {};
+  const payload = { promptText: prompt, mode: "still_only", aspectRatio: shot.aspect, ...shotIdOf(ctx, shot), ...(ctx.entityId ? { entityId: ctx.entityId } : {}), ...references };
   const rowId = await deps.insertJob({ project_id: ctx.projectId, ...(ctx.variationId ? { variation_id: ctx.variationId } : {}), provider: "grok", status: "queued", request_payload_json: { ...payload, settings } });
   let r: Awaited<ReturnType<RunnerDeps["generateStills"]>>;
   try {
@@ -377,6 +406,7 @@ export async function submitStills(shot: BatchShot, ctx: RunContext, deps: Runne
       dryRun: false,
       // the pictures are written on this job's row by the server the moment they exist
       jobRowId: rowId,
+      ...(deliver ? { references: refs!.sent.map(({ source, id, role, label }) => ({ source, id, role, label })) } : {}),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -387,6 +417,12 @@ export async function submitStills(shot: BatchShot, ctx: RunContext, deps: Runne
     const message = r.error ?? "no stills returned";
     await deps.updateJob(rowId, { status: "failed", error_text: message.slice(0, 500) });
     throw new Error(`${shot.id}: still failed — ${message}`);
+  }
+  if (deliver && (r.referencesSent ?? 0) !== refs!.sent.length) {
+    // paid for, and on record — but drawn without the pictures it was asked with: it is not this shot's image
+    const message = `the generator confirmed ${r.referencesSent ?? 0} of ${refs!.sent.length} reference pictures — this image was not drawn from them and is not used`;
+    await deps.updateJob(rowId, { status: "failed", error_text: message });
+    throw new Error(`${shot.id}: ${message}`);
   }
   const candidates = r.stills.map((x) => x.path);
   let whole = candidates;

@@ -27,7 +27,7 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
-import { acceptShots, writerEntities, chunkGrid, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type WriterContext } from "./contract.ts";
+import { acceptShots, writerEntities, chunkGrid, linkedShots, linkUserMessage, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type WriterContext } from "./contract.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -155,6 +155,7 @@ serve(async (req) => {
   // 2. the shots, a few per call, all at once
   const system = shotsSystemPrompt(ctx, treatment, grid);
   const chunks = chunkGrid(grid, SHOTS_PER_CALL);
+  const boardKeys = grid.map((g) => g.key);
   const written = await Promise.all(
     chunks.map(async (chunk) => {
       let got = acceptShots(chunk, null);
@@ -163,7 +164,7 @@ serve(async (req) => {
         const left = chunk.filter((s) => got.missing.includes(s.key));
         const r = await ask(system, shotsUserMessage(left), SHOTS_SCHEMA, 400 + left.length * 560);
         if (!r.ok) { why = r.why; continue; }
-        const more = acceptShots(left, r.value, ctx.entities);
+        const more = acceptShots(left, r.value, ctx.entities, boardKeys);
         got = { clips: [...got.clips, ...more.clips], missing: more.missing };
       }
       return { ...got, why };
@@ -181,7 +182,7 @@ serve(async (req) => {
     const again = await Promise.all(
       chunkGrid(grid.filter((g) => repeated.has(g.key)), SHOTS_PER_CALL).map(async (chunk) => {
         const r = await ask(system, rewriteUserMessage(chunk, used), SHOTS_SCHEMA, 400 + chunk.length * 560);
-        return r.ok ? acceptShots(chunk, r.value, ctx.entities).clips : [];
+        return r.ok ? acceptShots(chunk, r.value, ctx.entities, boardKeys).clips : [];
       }),
     );
     const merged = withRewrites(clips, again.flat());
@@ -189,7 +190,22 @@ serve(async (req) => {
     rewritten = merged.replaced;
   }
 
+  // 4. shots tied to other shots are written again once, beside their partners' scenes (the runs could not see them)
+  const partners = linkedShots(clips);
+  let relinked: string[] = [];
+  if (partners.size > 0) {
+    const again = await Promise.all(
+      chunkGrid(grid.filter((g) => partners.has(g.key)), SHOTS_PER_CALL).map(async (chunk) => {
+        const r = await ask(system, linkUserMessage(chunk, clips, partners), SHOTS_SCHEMA, 400 + chunk.length * 560);
+        return r.ok ? acceptShots(chunk, r.value, ctx.entities, boardKeys).clips : [];
+      }),
+    );
+    const byKey = new Map(again.flat().map((c) => [String(c.key), c]));
+    clips = clips.map((c) => byKey.get(String(c.key)) ?? c);
+    relinked = [...byKey.keys()];
+  }
+
   const price = PRICE_PER_M[model] ?? { input: 5, output: 25 };
   const actualCostUsd = Number(((usage.prompt_tokens * price.input + usage.completion_tokens * price.output) / 1_000_000).toFixed(4));
-  return json(200, { ok: true, model, treatment: { concept, narrative, sections, clips }, missing, repeated: [...repeated], rewritten, usage, actualCostUsd });
+  return json(200, { ok: true, model, treatment: { concept, narrative, sections, clips }, missing, repeated: [...repeated], rewritten, relinked, usage, actualCostUsd });
 });

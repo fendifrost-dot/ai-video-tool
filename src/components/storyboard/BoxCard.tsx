@@ -10,6 +10,7 @@ import { BoxMediaView, ROLE_STYLE, mediaLabel } from "./BoxMediaView";
 import { BeatStrip } from "./TimedBeats";
 import { CastChips } from "./Cast";
 import { ContinuityChips } from "./Continuity";
+import { ProductionChips } from "./ShotProduction";
 import { useStoryboard } from "./useStoryboardController";
 
 const ENERGY_STYLES: Record<string, string> = {
@@ -149,6 +150,7 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
 
         <ContinuityChips box={box} />
         <CastChips box={box} />
+            <ProductionChips box={box} />
         <BeatStrip box={box} compact />
 
         {coverageFlag && <p className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-200">{coverageFlag}</p>}

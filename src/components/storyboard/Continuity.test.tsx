@@ -45,6 +45,11 @@ function controller(boxes: StoryboardBox[], entities: ContinuityEntity[], over: 
     generateEntityPicture: vi.fn(),
     useShotImageFor: vi.fn(async () => undefined),
     saveContinuity: vi.fn(async () => undefined),
+    wardrobe: [],
+    linksOf: () => [],
+    routeOf: () => ({ method: "generate", inferred: true, verdict: "storyboard", path: "", where: null, limits: [] }),
+    referencesOf: () => ({ sent: [], notSent: [], legend: "", delivered: false, problems: [], cap: 3 }),
+    stillRequestOf: () => null,
     ...over,
   } as unknown as StoryboardController;
 }

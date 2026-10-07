@@ -29,6 +29,7 @@ import {
 import { DEFAULT_TRANSITION_PRESETS, transitionInFromPreset } from "./transitions";
 import { sanitizeEvents } from "@/lib/storyboard/events";
 import type { CastRef, ShotEvent } from "./shotSpec";
+import { PRODUCTION_METHODS, SHOT_LINK_KINDS, type ShotLink } from "./shotSpec";
 
 /**
  * The continuity entities a director pointed a shot at. A key that is ABSENT was not touched; an empty string (or an
@@ -43,15 +44,18 @@ export type ContinuityOverride = {
   lighting?: string;
   /** The wardrobe look: an existing Look record (artist_looks.id). Applied to the shot's wardrobe.lookId — looks are not duplicated as entities. */
   look?: string;
+  /** The shot's links to other shots of the board. A list — even an empty one — is exactly the shot's links. */
+  links?: { kind: string; shot: string; note?: string }[];
+  /** The exact garments (character_features ids). A list — even an empty one — is exactly the shot's garments. */
+  garments?: string[];
+  /** How the shot is made (shotSpec PRODUCTION_METHODS; "" = not said). */
+  production?: { method?: string; note?: string };
 };
 
 function statesContinuity(c: ContinuityOverride | null | undefined): boolean {
   return (
     !!c &&
-    (typeof c.location === "string" ||
-      Array.isArray(c.props) ||
-      typeof c.lighting === "string" ||
-      typeof c.look === "string")
+    (typeof c.location === "string" || Array.isArray(c.props) || typeof c.lighting === "string" || typeof c.look === "string" || Array.isArray(c.links) || Array.isArray(c.garments) || !!c.production)
   );
 }
 
@@ -304,23 +308,40 @@ export function applyShotOverride(
     next = {
       ...next,
       continuity: {
-        location:
-          typeof c.location === "string" ? c.location.trim() || null : next.continuity.location,
-        props: Array.isArray(c.props)
-          ? c.props.filter((x) => typeof x === "string" && x.trim())
-          : next.continuity.props,
-        lighting:
-          typeof c.lighting === "string" ? c.lighting.trim() || null : next.continuity.lighting,
+        location: typeof c.location === "string" ? c.location.trim() || null : next.continuity.location,
+        props: Array.isArray(c.props) ? c.props.filter((x) => typeof x === "string" && x.trim()) : next.continuity.props,
+        lighting: typeof c.lighting === "string" ? c.lighting.trim() || null : next.continuity.lighting,
+        links: Array.isArray(c.links) ? overrideLinks(c.links, next.id) : next.continuity.links,
       },
-      // the look is the existing Look record the shot's wardrobe already points at
-      ...(typeof c.look === "string"
-        ? { wardrobe: { ...next.wardrobe, lookId: c.look.trim() || null } }
-        : {}),
+      // the look is the existing Look record the shot's wardrobe already points at; the garments are its exact pieces
+      wardrobe: {
+        ...next.wardrobe,
+        ...(typeof c.look === "string" ? { lookId: c.look.trim() || null } : {}),
+        ...(Array.isArray(c.garments) ? { garments: [...new Set(c.garments.filter((g) => typeof g === "string" && g.trim()).map((g) => g.trim()))] } : {}),
+      },
+      ...(c.production ? { production: overrideProduction(c.production, next.production) } : {}),
     };
     touched = true;
   }
 
   return touched ? { ...next, origin: "override" } : spec;
+}
+
+/** A director's links, cleaned: known kinds, another shot's key, at most one link of a kind to a shot. */
+function overrideLinks(raw: readonly { kind: string; shot: string; note?: string }[], self: string): ShotLink[] {
+  const out: ShotLink[] = [];
+  for (const l of raw) {
+    const kind = SHOT_LINK_KINDS.find((k) => k === l?.kind);
+    const shot = typeof l?.shot === "string" ? l.shot.trim() : "";
+    if (!kind || !shot || shot === self || out.some((o) => o.kind === kind && o.shot === shot)) continue;
+    out.push({ kind, shot, note: typeof l.note === "string" ? l.note.trim().slice(0, 240) : "" });
+  }
+  return out;
+}
+
+function overrideProduction(raw: { method?: string; note?: string }, current: ShotSpec["production"]): ShotSpec["production"] {
+  const method = typeof raw.method === "string" ? (raw.method === "" ? "" : PRODUCTION_METHODS.find((m) => m === raw.method)) : current.method;
+  return { method: method ?? current.method, note: typeof raw.note === "string" ? raw.note.trim().slice(0, 400) : current.note };
 }
 
 /** Apply a whole map of overrides (keyed by spec id) to a list of specs. */

@@ -10,6 +10,7 @@ import { DEFAULT_TRANSITION_PRESET_NAMES, DEFAULT_TRANSITION_PRESETS } from "@/l
 import { BeatsEditor } from "./TimedBeats";
 import { ShotCastEditor } from "./Cast";
 import { ShotContinuityEditor } from "./Continuity";
+import { ShotProductionEditor } from "./ShotProduction";
 import { useStoryboard } from "./useStoryboardController";
 
 type Draft = {
@@ -213,6 +214,7 @@ export function BoxEditor({ box }: { box: StoryboardBox }) {
 
       <BeatsEditor box={box} />
       <ShotContinuityEditor box={box} />
+      <ShotProductionEditor box={box} />
 
       <ShotCastEditor box={box} />
 
