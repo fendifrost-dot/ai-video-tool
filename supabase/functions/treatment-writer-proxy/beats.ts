@@ -12,6 +12,8 @@ import type { GridShot, WriterEntity } from "./contract.ts";
 export const BEAT_TIE_KINDS = ["screen_shows", "match_position", "reveals", "continues"] as const;
 export type BeatTieKind = (typeof BEAT_TIE_KINDS)[number];
 
+export type BeatTie = { kind: BeatTieKind; to: string; note: string; words: string };
+
 /** One beat of the treatment, as the writer must respect it. */
 export type Beat = {
   id: string;
@@ -30,8 +32,8 @@ export type Beat = {
   wardrobe: string;
   /** The words of the song the treatment ties this beat to, verbatim ("" = none). */
   lyricCue: string;
-  /** How this beat is cut from an earlier one. */
-  ties: { kind: BeatTieKind; to: string; note: string }[];
+  /** How this beat is cut from an earlier one — with the treatment's own words that state it. */
+  ties: BeatTie[];
   /** Its share of the shots between its anchors, 1–5. */
   weight: number;
 };
@@ -55,11 +57,12 @@ export const BEATS_SCHEMA = {
           wardrobe: { type: "string", description: "what the artist wears here, exactly as the treatment names it; empty when it does not say or he is not in it" },
           lyric_cue: { type: "string", description: "the words of the song the treatment ties this beat to, copied verbatim; empty when it names none" },
           ties: { type: "array", description: "how this beat is cut from an EARLIER beat: a screen here shows that beat's picture; the subject holds its frame position from there; this reveals what that was inside of; the action continues from it",
-            items: { type: "object", additionalProperties: false, required: ["kind", "to", "note"],
+            items: { type: "object", additionalProperties: false, required: ["kind", "to", "note", "words"],
               properties: {
                 kind: { type: "string", enum: [...BEAT_TIE_KINDS] },
                 to: { type: "string", description: "the earlier beat's id" },
                 note: { type: "string", description: "which screen, which door, which position — a few words" },
+                words: { type: "string", description: "the treatment's own sentence that states this cut, copied verbatim" },
               } } },
           weight: { type: "integer", minimum: 1, maximum: 5, description: "how much of the song this beat deserves next to its neighbours: 1 a glimpse, 3 a scene, 5 a long sequence" },
         } } },
@@ -98,8 +101,8 @@ export function acceptBeats(raw: unknown, people: readonly WriterEntity[]): Beat
     const earlier = new Set(out.map((b) => b.id));
     const ties = Array.isArray(r.ties)
       ? (r.ties as Record<string, unknown>[])
-          .map((t) => ({ kind: BEAT_TIE_KINDS.find((k) => k === t?.kind) ?? null, to: str(t?.to, 24), note: str(t?.note, 240) }))
-          .filter((t): t is { kind: BeatTieKind; to: string; note: string } => !!t.kind && earlier.has(t.to))
+          .map((t) => ({ kind: BEAT_TIE_KINDS.find((k) => k === t?.kind) ?? null, to: str(t?.to, 24), note: str(t?.note, 240), words: str(t?.words, 400) }))
+          .filter((t): t is BeatTie => !!t.kind && earlier.has(t.to))
       : [];
     const weightRaw = Number(r.weight);
     out.push({
@@ -117,6 +120,46 @@ export function acceptBeats(raw: unknown, people: readonly WriterEntity[]): Beat
     });
   }
   return out;
+}
+
+/**
+ * The kind a cut's words state, read deterministically — the check a model's typing is held against. A picture that
+ * plays on a television, monitor, screen or in a reflection is `screen_shows`; the same position in the frame while
+ * the place changes is `match_position`; a door, an exterior that shows what an interior was inside of, is
+ * `reveals`; an action that carries on, a sound that lands, is `continues`. Null when the words say none of these.
+ */
+export function tieKindFromWords(words: string): BeatTieKind | null {
+  const w = ` ${norm(words)} `;
+  const has = (...res: RegExp[]) => res.some((r) => r.test(w));
+  if (has(/\b(television|tv|crt|monitor|monitors|screen|screens|broadcast camera|playing on|reflection|security footage)\b/)) return "screen_shows";
+  if (has(/\b(same position|position in the frame|place in the frame|holds? the frame|occupies the same)\b/)) return "match_position";
+  if (has(/\b(door|doorway|opens onto|opening door|inside of|step(s|ped)? (down|out)|exterior|reveal(s|ed)?|turns out)\b/)) return "reveals";
+  if (has(/\b(continues?|carries on|carry on|lands with|completes|follow(s)? through|same action)\b/)) return "continues";
+  return null;
+}
+
+export type TieCorrection = { beat: string; to: string; from: BeatTieKind; kind: BeatTieKind; words: string };
+
+/**
+ * Ties retyped from their own words where the words state another kind than the model chose — deterministic, and
+ * every change reported. A tie whose words state no kind keeps the model's.
+ */
+export function normalizeTieKinds(beats: readonly Beat[]): { beats: Beat[]; corrections: TieCorrection[] } {
+  const corrections: TieCorrection[] = [];
+  const out = beats.map((b) => ({
+    ...b,
+    ties: b.ties.map((t) => {
+      const stated = tieKindFromWords(`${t.words} ${t.note}`);
+      if (stated && stated !== t.kind) {
+        corrections.push({ beat: b.id, to: t.to, from: t.kind, kind: stated, words: t.words || t.note });
+        return { ...t, kind: stated };
+      }
+      return t;
+    }),
+  }));
+  // the same device named twice (once mistyped) collapses to one tie
+  for (const b of out) b.ties = b.ties.filter((t, i) => b.ties.findIndex((x) => x.kind === t.kind && x.to === t.to) === i);
+  return { beats: out, corrections };
 }
 
 const norm = (s: string) =>
@@ -153,8 +196,14 @@ export type Allocation = {
   uncovered: string[];
   /** Beats whose lyric cue was found on the song, with the shot it anchors to. */
   anchors: { beat: string; shot: string; cue: string }[];
-  /** Beats whose cue was NOT found after the beat before it (the words are not sung there, or not at all). */
-  unanchored: { beat: string; cue: string }[];
+  /** Beats whose cue the song never sings after the beat before it — and whether it is sung earlier, or never. */
+  unanchored: { beat: string; cue: string; sung: "earlier" | "never" }[];
+  /**
+   * A beat whose cue is sung only BEFORE its turn gets one shot there — a flash of it on its words — and continues in
+   * full where the treatment's order puts it. Lyric synchronisation is kept without reordering the narrative; the
+   * director sees every insert.
+   */
+  inserts: { beat: string; shot: string; cue: string; takenFrom: string }[];
 };
 
 /**
@@ -163,12 +212,14 @@ export type Allocation = {
  * getting at least one while shots remain. Beats after the last pin share what is left the same way. The order of the
  * treatment is the order of the board; a beat never takes shots from the beats after it.
  */
-export function allocateBeats(beats: readonly Beat[], grid: readonly GridShot[]): Allocation {
+export function allocateBeats(beats: readonly Beat[], grid: readonly GridShot[], options: { lyricInserts?: boolean } = {}): Allocation {
   const byShot: Record<string, string> = {};
   const byBeat: Record<string, string[]> = Object.fromEntries(beats.map((b) => [b.id, []]));
   const anchors: Allocation["anchors"] = [];
   const unanchored: Allocation["unanchored"] = [];
-  if (beats.length === 0 || grid.length === 0) return { byShot, byBeat, uncovered: beats.map((b) => b.id), anchors, unanchored };
+  const inserts: Allocation["inserts"] = [];
+  const lyricInserts = options.lyricInserts !== false;
+  if (beats.length === 0 || grid.length === 0) return { byShot, byBeat, uncovered: beats.map((b) => b.id), anchors, unanchored, inserts };
 
   // 1. pins: the earliest shot singing each cue, strictly increasing in beat order, never before the beat's own rank
   const pin: (number | null)[] = beats.map(() => null);
@@ -178,7 +229,7 @@ export function allocateBeats(beats: readonly Beat[], grid: readonly GridShot[])
     // strictly after the pin before it: two beats never share a shot
     const at = cueIndex(grid, b.lyricCue, Math.max(floor + 1, i));
     if (at < 0) {
-      unanchored.push({ beat: b.id, cue: b.lyricCue });
+      unanchored.push({ beat: b.id, cue: b.lyricCue, sung: cueIndex(grid, b.lyricCue, 0) >= 0 ? "earlier" : "never" });
       return;
     }
     pin[i] = at;
@@ -216,7 +267,24 @@ export function allocateBeats(beats: readonly Beat[], grid: readonly GridShot[])
     i = j;
   }
   if (previous && cursor < grid.length) give(previous, cursor, grid.length);
-  return { byShot, byBeat, uncovered: beats.filter((b) => byBeat[b.id].length === 0).map((b) => b.id), anchors, unanchored };
+
+  // 3. inserts: a cue sung only before its beat's turn gets that one shot as a flash of the beat, taken from the beat
+  //    that holds it — unless that would leave the holder with nothing
+  if (lyricInserts) {
+    for (const u of unanchored) {
+      if (u.sung !== "earlier") continue;
+      const at = cueIndex(grid, u.cue, 0);
+      if (at < 0) continue;
+      const key = grid[at].key;
+      const holder = byShot[key];
+      if (!holder || holder === u.beat || byBeat[holder].length < 2) continue;
+      byBeat[holder] = byBeat[holder].filter((k) => k !== key);
+      byShot[key] = u.beat;
+      byBeat[u.beat] = [key, ...byBeat[u.beat]];
+      inserts.push({ beat: u.beat, shot: key, cue: u.cue, takenFrom: holder });
+    }
+  }
+  return { byShot, byBeat, uncovered: beats.filter((b) => byBeat[b.id].length === 0).map((b) => b.id), anchors, unanchored, inserts };
 }
 
 /** `count` shots shared by weight, each weight getting at least one while shots remain, the rest by largest remainder. */
@@ -253,84 +321,196 @@ export type ShotBrief = {
   last: boolean;
   /** The ties this shot must say in `continuity.links`, resolved to shot keys. */
   links: { kind: BeatTieKind; shot: string; note: string }[];
+  /** A flash of the beat on its words, before the beat's own run (allocateBeats inserts). */
+  insert: boolean;
 };
 
 /** The brief of every allotted shot: the beat's facts, and the links its ties resolve to (first shot ← last shot of the earlier beat). */
 export function shotBriefs(beats: readonly Beat[], allocation: Allocation): Record<string, ShotBrief> {
   const out: Record<string, ShotBrief> = {};
   const byId = new Map(beats.map((b) => [b.id, b]));
+  const inserted = new Set(allocation.inserts.map((i) => i.shot));
   for (const b of beats) {
-    const shots = allocation.byBeat[b.id] ?? [];
-    shots.forEach((key, n) => {
-      const first = n === 0;
+    const all = allocation.byBeat[b.id] ?? [];
+    const run = all.filter((k) => !inserted.has(k));
+    all.forEach((key) => {
+      const insert = inserted.has(key);
+      const n = run.indexOf(key);
+      const first = !insert && n === 0;
       const links = first
         ? b.ties.flatMap((t) => {
-            const target = allocation.byBeat[t.to] ?? [];
+            const target = (allocation.byBeat[t.to] ?? []).filter((k) => !inserted.has(k));
             const to = target[target.length - 1];
             return to && byId.has(t.to) ? [{ kind: t.kind, shot: to, note: t.note }] : [];
           })
         : [];
-      out[key] = { beat: b.id, title: b.title, scene: b.scene, action: b.action, people: b.people, unnamedPeople: b.unnamedPeople, artistPerforms: b.artistPerforms, wardrobe: b.wardrobe, first, last: n === shots.length - 1, links };
+      out[key] = { beat: b.id, title: b.title, scene: b.scene, action: b.action, people: b.people, unnamedPeople: b.unnamedPeople, artistPerforms: b.artistPerforms, wardrobe: b.wardrobe, first, last: !insert && n === run.length - 1, links, insert };
     });
   }
   return out;
 }
 
+/** Methods that use the artist's real take: his body and action are the take's, so they can only show him performing. */
+export const TAKE_METHODS: ReadonlySet<string> = new Set(["footage", "restage", "edit_footage", "composite"]);
+
+export type ProductionCorrection = { shot: string; from: string; to: string; why: string };
+
+/**
+ * Production feasibility: a take-based method on a shot of a beat in which the artist does NOT perform (he sits, he
+ * watches, he walks in) is infeasible — the take shows him rapping, and nothing moves a rapping take into a seated
+ * man. Such a shot is re-routed to `generate` (drawn, with his identity pictures) and the change reported. Nothing
+ * else about the shot changes.
+ */
+export function withFeasibleProduction(clips: readonly Record<string, unknown>[], briefs: Readonly<Record<string, ShotBrief>>): { clips: Record<string, unknown>[]; corrections: ProductionCorrection[] } {
+  const corrections: ProductionCorrection[] = [];
+  const out = clips.map((c) => {
+    const key = String(c.key ?? "");
+    const brief = briefs[key];
+    const production = (c.production ?? {}) as { method?: string; note?: string };
+    const method = String(production.method ?? "");
+    if (!brief || brief.artistPerforms || !TAKE_METHODS.has(method)) return c;
+    const why = `the take shows him performing; in this beat he ${brief.action.slice(0, 80).replace(/\s+/g, " ") || "does something else"} — drawn with his identity pictures, not cut from the take`;
+    corrections.push({ shot: key, from: method, to: "generate", why });
+    return { ...c, production: { method: "generate", note: [production.note, why].filter(Boolean).join(" ") } };
+  });
+  return { clips: out, corrections };
+}
+
+/** The word-shingles of a text (three words in a row, normalised) — what two texts must share to be about the same thing. */
+function shingles(text: string, n = 3): Set<string> {
+  const words = norm(text).split(" ").filter((w) => w.length > 1);
+  const out = new Set<string>();
+  for (let i = 0; i + n <= words.length; i++) out.add(words.slice(i, i + n).join(" "));
+  return out;
+}
+
+export type TreatmentAudit = { ok: boolean; paragraphs: number; uncovered: { index: number; text: string }[] };
+
+/**
+ * The extracted beats held against the treatment itself: every paragraph of the treatment that says something
+ * (eight words or more) must share at least one three-word phrase with some beat's scene, action or title.
+ * A paragraph no beat answers is a part of the treatment the beats left out — and complete coverage of an
+ * incomplete beat list is not coverage of the treatment.
+ */
+export function auditBeatsAgainstTreatment(treatment: string, beats: readonly Beat[]): TreatmentAudit {
+  const paragraphs = treatment.split(/\n\s*\n/).map((p) => p.replace(/\s+/g, " ").trim()).filter((p) => p.split(" ").length >= 8);
+  const beatText = beats.map((b) => `${b.title}. ${b.scene} ${b.action}`).join("\n");
+  const have = shingles(beatText);
+  const uncovered: TreatmentAudit["uncovered"] = [];
+  paragraphs.forEach((p, index) => {
+    const mine = shingles(p);
+    let hit = false;
+    for (const sh of mine) if (have.has(sh)) { hit = true; break; }
+    if (!hit) uncovered.push({ index, text: p.slice(0, 120) });
+  });
+  return { ok: uncovered.length === 0, paragraphs: paragraphs.length, uncovered };
+}
+
+export type Verdict = "pass" | "gaps" | "fail";
+
 export type Coverage = {
+  /** True only when every section passes with nothing to say. */
   ok: boolean;
-  beats: {
-    id: string;
-    title: string;
-    shots: string[];
-    /** People the beat puts in it, and the shots of the beat that cast each; empty = nobody cast them. */
-    people: { key: string; castIn: string[] }[];
-    /** Shots of a beat WITH people that came back `none: true` — a scene with people silently written empty. */
-    emptied: string[];
-    ties: { kind: BeatTieKind; to: string; fromShot: string | null; toShot: string | null; present: boolean }[];
-  }[];
+  /** pass = nothing to say; gaps = the board carries the treatment but something was corrected, inserted or left unsynced; fail = something the treatment requires is not on the board. */
+  verdict: Verdict;
+  structural: {
+    verdict: Verdict;
+    beats: { id: string; title: string; shots: string[]; people: { key: string; castIn: string[] }[]; emptied: string[] }[];
+    uncoveredBeats: string[];
+    missingPeople: { beat: string; key: string }[];
+  };
+  lyrics: {
+    verdict: Verdict;
+    anchors: Allocation["anchors"];
+    inserts: Allocation["inserts"];
+    unanchored: Allocation["unanchored"];
+  };
+  relationships: {
+    verdict: Verdict;
+    ties: { beat: string; to: string; kind: BeatTieKind; statedKind: BeatTieKind | null; fromShot: string | null; toShot: string | null; typeOk: boolean; directionOk: boolean; targetOk: boolean; present: boolean }[];
+    corrected: TieCorrection[];
+    missing: { beat: string; kind: BeatTieKind; to: string }[];
+    mistyped: { beat: string; kind: BeatTieKind; statedKind: BeatTieKind; to: string }[];
+  };
+  production: { verdict: Verdict; corrected: ProductionCorrection[] };
+  treatment: TreatmentAudit & { verdict: Verdict };
+  // the flat fields earlier readers use (same facts, one level up)
+  beats: { id: string; title: string; shots: string[]; people: { key: string; castIn: string[] }[]; emptied: string[]; ties: { kind: BeatTieKind; to: string; fromShot: string | null; toShot: string | null; present: boolean }[] }[];
   uncoveredBeats: string[];
-  /** People a beat names that no shot of the beat casts. */
   missingPeople: { beat: string; key: string }[];
-  /** Ties the treatment states that no shot carries as a link. */
   missingLinks: { beat: string; kind: BeatTieKind; to: string }[];
   anchors: Allocation["anchors"];
   unanchored: Allocation["unanchored"];
 };
 
+const worst = (...vs: Verdict[]): Verdict => (vs.includes("fail") ? "fail" : vs.includes("gaps") ? "gaps" : "pass");
+
 /**
- * Whether the written shots carry the treatment: every beat has shots, every person a beat names is cast in one of
- * its shots, no shot of a peopled beat was emptied, every tie is a link from the beat's first shot to the earlier
- * beat's last. Said before anything is persisted; the director sees it beside the board.
+ * Whether the written shots carry the treatment, said in five parts so a board with a known failure never reads as
+ * an unqualified pass: structural (every beat has shots, every named person is cast, no peopled beat emptied), lyric
+ * alignment (cues anchored, inserted, or not sung where the beat is), relationships (each tie's kind against its own
+ * words, its direction, its target shot, and the link's presence), production feasibility (what was re-routed), and
+ * the beats against the treatment's paragraphs.
  */
-export function coverageOf(beats: readonly Beat[], allocation: Allocation, clips: readonly Record<string, unknown>[]): Coverage {
+export function coverageOf(
+  beats: readonly Beat[],
+  allocation: Allocation,
+  clips: readonly Record<string, unknown>[],
+  extra: { treatment?: string; tieCorrections?: TieCorrection[]; productionCorrections?: ProductionCorrection[] } = {},
+): Coverage {
   const byKey = new Map(clips.map((c) => [String(c.key ?? ""), c]));
+  const inserted = new Set(allocation.inserts.map((i) => i.shot));
   const castOf = (key: string) => {
     const cast = (byKey.get(key)?.cast ?? {}) as { members?: { key: string }[]; none?: boolean };
     return { members: new Set((cast.members ?? []).map((m) => m.key)), none: cast.none === true };
   };
   const linksOf = (key: string) => (((byKey.get(key)?.continuity ?? {}) as { links?: { kind: string; shot: string }[] }).links ?? []);
+  const order = new Map(beats.map((b, i) => [b.id, i]));
   const missingPeople: Coverage["missingPeople"] = [];
   const missingLinks: Coverage["missingLinks"] = [];
+  const mistyped: Coverage["relationships"]["mistyped"] = [];
+  const ties: Coverage["relationships"]["ties"] = [];
   const rows = beats.map((b) => {
     const shots = allocation.byBeat[b.id] ?? [];
+    const run = shots.filter((k) => !inserted.has(k));
     const people = b.people.map((key) => {
       const castIn = shots.filter((s) => castOf(s).members.has(key));
       if (shots.length > 0 && castIn.length === 0) missingPeople.push({ beat: b.id, key });
       return { key, castIn };
     });
     const emptied = b.people.length > 0 || b.unnamedPeople ? shots.filter((s) => byKey.has(s) && castOf(s).none) : [];
-    const ties = b.ties.map((t) => {
-      const fromShot = shots[0] ?? null;
-      const target = allocation.byBeat[t.to] ?? [];
+    const beatTies = b.ties.map((t) => {
+      const fromShot = run[0] ?? null;
+      const target = (allocation.byBeat[t.to] ?? []).filter((k) => !inserted.has(k));
       const toShot = target[target.length - 1] ?? null;
-      const present = !!fromShot && !!toShot && linksOf(fromShot).some((l) => l.kind === t.kind && l.shot === toShot);
+      const statedKind = tieKindFromWords(`${t.words} ${t.note}`);
+      const typeOk = statedKind === null || statedKind === t.kind;
+      const directionOk = (order.get(t.to) ?? Infinity) < (order.get(b.id) ?? -1);
+      const link = fromShot ? linksOf(fromShot).find((l) => l.shot === toShot) : undefined;
+      const targetOk = !!toShot && !!link;
+      const present = !!link && link.kind === t.kind;
       if (!present) missingLinks.push({ beat: b.id, kind: t.kind, to: t.to });
+      if (!typeOk && statedKind) mistyped.push({ beat: b.id, kind: t.kind, statedKind, to: t.to });
+      ties.push({ beat: b.id, to: t.to, kind: t.kind, statedKind, fromShot, toShot, typeOk, directionOk, targetOk, present });
       return { kind: t.kind, to: t.to, fromShot, toShot, present };
     });
-    return { id: b.id, title: b.title, shots, people, emptied, ties };
+    return { id: b.id, title: b.title, shots, people, emptied, ties: beatTies };
   });
+  const structuralVerdict: Verdict = allocation.uncovered.length || missingPeople.length || rows.some((r) => r.emptied.length) ? "fail" : "pass";
+  const lyricsVerdict: Verdict = allocation.unanchored.some((u) => u.sung === "earlier" && !allocation.inserts.some((i) => i.beat === u.beat)) ? "fail" : allocation.unanchored.length || allocation.inserts.length ? "gaps" : "pass";
+  const relationshipsVerdict: Verdict = missingLinks.length || mistyped.length || ties.some((t) => !t.directionOk) ? "fail" : (extra.tieCorrections?.length ?? 0) ? "gaps" : "pass";
+  const productionVerdict: Verdict = (extra.productionCorrections?.length ?? 0) ? "gaps" : "pass";
+  const audit = extra.treatment ? auditBeatsAgainstTreatment(extra.treatment, beats) : { ok: true, paragraphs: 0, uncovered: [] };
+  const treatmentVerdict: Verdict = audit.ok ? "pass" : "fail";
+  const verdict = worst(structuralVerdict, lyricsVerdict, relationshipsVerdict, productionVerdict, treatmentVerdict);
   return {
-    ok: allocation.uncovered.length === 0 && missingPeople.length === 0 && missingLinks.length === 0 && rows.every((r) => r.emptied.length === 0),
+    ok: verdict === "pass",
+    verdict,
+    structural: { verdict: structuralVerdict, beats: rows.map(({ ties: _t, ...r }) => r), uncoveredBeats: allocation.uncovered, missingPeople },
+    lyrics: { verdict: lyricsVerdict, anchors: allocation.anchors, inserts: allocation.inserts, unanchored: allocation.unanchored },
+    relationships: { verdict: relationshipsVerdict, ties, corrected: extra.tieCorrections ?? [], missing: missingLinks, mistyped },
+    production: { verdict: productionVerdict, corrected: extra.productionCorrections ?? [] },
+    treatment: { ...audit, verdict: treatmentVerdict },
     beats: rows,
     uncoveredBeats: allocation.uncovered,
     missingPeople,
@@ -375,7 +555,7 @@ export function briefedShot(s: GridShot, brief: ShotBrief | undefined) {
             unnamed_people: brief.unnamedPeople,
             artist_performs: brief.artistPerforms,
             wardrobe: brief.wardrobe,
-            position: brief.first && brief.last ? "the only shot of this beat" : brief.first ? "opens this beat" : brief.last ? "closes this beat" : "inside this beat",
+            position: brief.insert ? "a flash of this beat on its words — the beat continues in full later; show the one thing the words name" : brief.first && brief.last ? "the only shot of this beat" : brief.first ? "opens this beat" : brief.last ? "closes this beat" : "inside this beat",
             must_link: brief.links,
           },
         }
@@ -390,4 +570,5 @@ export const BEAT_RULES = [
   "- `wardrobe` of the beat is the artist's wardrobe in every shot of it he is in, in those words, with `wardrobe_from: treatment`.",
   "- `must_link` are ties the treatment states: say each one in `continuity.links` exactly as given (kind, shot) — the shot that opens the beat carries it, and its picture answers it (a screen shows that shot's picture; he holds the frame position that shot ends on; this reveals what that one was inside of).",
   "- A shot that `opens this beat` is where the beat's first thing happens; one that `closes this beat` is where its last thing happens; the shots between carry the rest in order.",
+  "- A shot marked `a flash of this beat on its words` sits where the song sings the beat's words, before the beat's own run: show the one thing those words name, from this beat, and nothing of the beats around it; the beat continues in full later.",
 ].join("\n");

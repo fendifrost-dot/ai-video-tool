@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acceptBeats, allocateBeats, BEATS_SCHEMA, beatsSystemPrompt, briefedShot, coverageOf, cueIndex, share, shotBriefs, withRequiredLinks, type Beat } from "./beats.ts";
+import { acceptBeats, allocateBeats, auditBeatsAgainstTreatment, BEATS_SCHEMA, beatsSystemPrompt, briefedShot, coverageOf, cueIndex, normalizeTieKinds, share, shotBriefs, tieKindFromWords, withFeasibleProduction, withRequiredLinks, type Beat } from "./beats.ts";
 import type { GridShot, WriterEntity } from "./contract.ts";
 
 const people: WriterEntity[] = [
@@ -35,7 +35,7 @@ describe("the beats are read out of the treatment and checked", () => {
     expect(got[0].weight).toBe(5);
     // a tie forward (to a beat not yet listed) is dropped; a tie back is kept
     expect(got[0].ties).toEqual([]);
-    expect(got[1].ties).toEqual([{ kind: "screen_shows", to: "b01", note: "the CRT" }]);
+    expect(got[1].ties).toEqual([{ kind: "screen_shows", to: "b01", note: "the CRT", words: "" }]);
     expect(got[1].wardrobe).toBe("his exact denim look");
     expect(got[1].weight).toBe(2);
   });
@@ -75,9 +75,10 @@ describe("the shots are allotted to the beats, in the treatment's order", () => 
       beat({ id: "suv", weight: 1, ties: [{ kind: "reveals", to: "crew", note: "the door" }] }),
       beat({ id: "entrance", weight: 2, lyricCue: "this ice on" }),
     ];
-    const a = allocateBeats(beats, grid);
+    const a = allocateBeats(beats, grid, { lyricInserts: false });
     expect(a.anchors.map((x) => `${x.beat}@${x.shot}`)).toEqual(["chicago@c007", "entrance@c011"]);
-    expect(a.unanchored).toEqual([{ beat: "crew", cue: "more cameras in the whip" }]);
+    // sung only before the beat's turn: not an anchor — and, with inserts on, a flash of the beat there (see below)
+    expect(a.unanchored).toEqual([{ beat: "crew", cue: "more cameras in the whip", sung: "earlier" }]);
     // before the first pin: six shots for forest (3) and viewer (1) → 1 + 3 and 1 + 1 of the four left
     expect(a.byBeat.forest).toEqual(["c001", "c002", "c003", "c004"]);
     expect(a.byBeat.viewer).toEqual(["c005", "c006"]);
@@ -98,7 +99,7 @@ describe("the shots are allotted to the beats, in the treatment's order", () => 
 
   it("a cue the song sings only before the beat's turn is not an anchor, and a gap before a pin stays with the beat before it", () => {
     const beats = [beat({ id: "a", weight: 1 }), beat({ id: "b", weight: 1, lyricCue: "cameras in the whip" }), beat({ id: "c", weight: 1, lyricCue: "this ice on" })];
-    const a = allocateBeats(beats, grid);
+    const a = allocateBeats(beats, grid, { lyricInserts: false });
     expect(a.byBeat.a).toEqual(["c001", "c002", "c003"]);
     expect(a.byBeat.b).toEqual(["c004", "c005", "c006"]);
     expect(a.byBeat.c).toEqual(["c007", "c008", "c009", "c010", "c011", "c012"]);
@@ -168,6 +169,143 @@ describe("each shot is briefed with its beat, and the board is checked against t
     const c = coverageOf(b2, a2, [{ key: "c001", cast: { members: [], none: false }, continuity: { links: [] } }]);
     expect(c.uncoveredBeats).toEqual(["two"]);
     expect(c.missingPeople).toEqual([{ beat: "one", key: "ARTIST" }]);
+    expect(c.ok).toBe(false);
+  });
+});
+
+describe("lyric synchronisation is never silently traded for narrative order", () => {
+  it("a beat whose words are sung only before its turn gets a flash shot there, taken from the beat that held it, and is reported as an insert", () => {
+    const beats = [
+      beat({ id: "forest", weight: 3, people: ["RIDER"] }),
+      beat({ id: "viewer", weight: 1, people: ["ARTIST"] }),
+      beat({ id: "chicago", weight: 3, lyricCue: "You don’t gotta cut the lights on" }),
+      beat({ id: "crew", weight: 1, lyricCue: "more cameras in the whip than a camera crew" }),
+    ];
+    const a = allocateBeats(beats, grid);
+    // "cameras in the whip" is sung at c004, inside the forest's run: the crew gets c004 as a flash and keeps its own run after chicago
+    expect(a.inserts).toEqual([{ beat: "crew", shot: "c004", cue: "more cameras in the whip than a camera crew", takenFrom: "forest" }]);
+    expect(a.byBeat.forest).toEqual(["c001", "c002", "c003"]);
+    expect(a.byBeat.crew[0]).toBe("c004");
+    expect(a.byBeat.crew.length).toBeGreaterThan(1);
+    expect(a.byShot.c004).toBe("crew");
+    const briefs = shotBriefs(beats, a);
+    expect(briefs.c004.insert).toBe(true);
+    expect(briefs.c004.first).toBe(false);
+    expect((briefedShot(grid[3], briefs.c004) as { beat: { position: string } }).beat.position).toContain("a flash of this beat on its words");
+    // the beat's own run still opens where the treatment puts it, so its ties land there, not on the flash
+    const own = a.byBeat.crew[1];
+    expect(briefs[own].first).toBe(true);
+    // with inserts off, the same cue is only reported
+    const off = allocateBeats(beats, grid, { lyricInserts: false });
+    expect(off.inserts).toEqual([]);
+    expect(off.unanchored).toEqual([{ beat: "crew", cue: "more cameras in the whip than a camera crew", sung: "earlier" }]);
+    expect(coverageOf(beats, off, []).lyrics.verdict).toBe("fail");
+    expect(coverageOf(beats, a, []).lyrics.verdict).toBe("gaps");
+  });
+
+  it("a cue the song never sings is reported as never, and an insert is never taken from a beat with one shot", () => {
+    const beats = [beat({ id: "a", weight: 1 }), beat({ id: "b", weight: 1 }), beat({ id: "c", lyricCue: "words never sung" })];
+    const a = allocateBeats(beats, grid.slice(0, 3));
+    expect(a.unanchored).toEqual([{ beat: "c", cue: "words never sung", sung: "never" }]);
+    const b2 = [beat({ id: "a", weight: 1 }), beat({ id: "b", weight: 1, lyricCue: "cameras in the whip" })];
+    const small = allocateBeats(b2, [grid[3], grid[4]]); // c004 sings the cue; a holds only c004
+    expect(small.inserts).toEqual([]);
+    expect(small.byBeat).toEqual({ a: ["c004"], b: ["c005"] });
+  });
+});
+
+describe("a tie is checked for type, direction and target — the CRT case", () => {
+  it("reads the kind a cut's own words state", () => {
+    expect(tieKindFromWords("We pull back from that same image playing on a small black-and-white CRT television.")).toBe("screen_shows");
+    expect(tieKindFromWords("Inside, a security monitor shows the woman on horseback.")).toBe("screen_shows");
+    expect(tieKindFromWords("Fendi occupies the same position in the frame, now standing at 79th and Lafayette")).toBe("match_position");
+    expect(tieKindFromWords("We follow toward the opening door — and cut outside to reveal a Maybach SUV.")).toBe("reveals");
+    expect(tieKindFromWords("The click lands with the vocal entrance.")).toBe("continues");
+    expect(tieKindFromWords("she rides along the cleared route")).toBeNull();
+  });
+
+  it("a tie typed against its own words is retyped from them, reported, and a duplicate device collapses to one", () => {
+    const beats = [
+      beat({ id: "rider" }),
+      beat({ id: "viewer", ties: [
+        { kind: "match_position", to: "rider", note: "same image on CRT", words: "We pull back from that same image playing on a small black-and-white CRT television." },
+        { kind: "reveals", to: "rider", note: "pull back from the image", words: "We pull back from that same image playing on a small black-and-white CRT television." },
+      ] }),
+    ];
+    const n = normalizeTieKinds(beats);
+    expect(n.beats[1].ties).toEqual([{ kind: "screen_shows", to: "rider", note: "same image on CRT", words: "We pull back from that same image playing on a small black-and-white CRT television." }]);
+    expect(n.corrections.map((c) => `${c.from}→${c.kind}`)).toEqual(["match_position→screen_shows", "reveals→screen_shows"]);
+    // a tie whose words state no kind keeps what the model said
+    const kept = normalizeTieKinds([beat({ id: "a" }), beat({ id: "b", ties: [{ kind: "continues", to: "a", note: "", words: "and then" }] })]);
+    expect(kept.corrections).toEqual([]);
+    expect(kept.beats[1].ties[0].kind).toBe("continues");
+  });
+
+  it("coverage fails a relationship whose link is of another kind, and says so by type, direction and target", () => {
+    const beats = [beat({ id: "rider" }), beat({ id: "viewer", ties: [{ kind: "screen_shows", to: "rider", note: "the CRT", words: "playing on a CRT television" }] })];
+    const a = allocateBeats(beats, grid.slice(0, 4));
+    expect(a.byBeat).toEqual({ rider: ["c001", "c002"], viewer: ["c003", "c004"] });
+    const wrongKind = [{ key: "c003", cast: { members: [], none: true }, continuity: { links: [{ kind: "match_position", shot: "c002", note: "" }] } }];
+    const c = coverageOf(beats, a, wrongKind);
+    expect(c.relationships.ties[0]).toMatchObject({ beat: "viewer", to: "rider", kind: "screen_shows", statedKind: "screen_shows", fromShot: "c003", toShot: "c002", typeOk: true, directionOk: true, targetOk: true, present: false });
+    expect(c.relationships.verdict).toBe("fail");
+    expect(c.verdict).toBe("fail");
+    expect(c.ok).toBe(false);
+    // a tie whose own kind contradicts its words is flagged even when a matching link exists
+    const mistyped = [beat({ id: "rider" }), beat({ id: "viewer", ties: [{ kind: "reveals", to: "rider", note: "", words: "playing on a CRT television" }] })];
+    const c2 = coverageOf(mistyped, allocateBeats(mistyped, grid.slice(0, 4)), [{ key: "c003", cast: { members: [], none: true }, continuity: { links: [{ kind: "reveals", shot: "c002", note: "" }] } }]);
+    expect(c2.relationships.mistyped).toEqual([{ beat: "viewer", kind: "reveals", statedKind: "screen_shows", to: "rider" }]);
+    expect(c2.relationships.verdict).toBe("fail");
+    // the right kind on the right shot passes
+    const right = [{ key: "c003", cast: { members: [], none: true }, continuity: { links: [{ kind: "screen_shows", shot: "c002", note: "" }] } }];
+    expect(coverageOf(beats, a, right).relationships.verdict).toBe("pass");
+  });
+});
+
+describe("production feasibility — a rapping take is not a seated man", () => {
+  it("re-routes a take-based method on a shot of a beat where the artist does not perform, and says why", () => {
+    const beats = [beat({ id: "viewer", people: ["ARTIST"], artistPerforms: false, action: "Fendi sits in his exact denim look, watching the CRT" }), beat({ id: "perf", people: ["ARTIST"], artistPerforms: true, action: "Fendi performs directly to camera" })];
+    const a = allocateBeats(beats, grid.slice(0, 2));
+    const briefs = shotBriefs(beats, a);
+    const clips = [
+      { key: "c001", production: { method: "restage", note: "" } },
+      { key: "c002", production: { method: "restage", note: "" } },
+    ];
+    const r = withFeasibleProduction(clips, briefs);
+    expect(r.corrections).toEqual([{ shot: "c001", from: "restage", to: "generate", why: expect.stringContaining("the take shows him performing; in this beat he Fendi sits") }]);
+    expect((r.clips[0].production as { method: string }).method).toBe("generate");
+    expect((r.clips[1].production as { method: string }).method).toBe("restage");
+    // generate on a non-performing beat is fine as it is
+    expect(withFeasibleProduction([{ key: "c001", production: { method: "generate", note: "" } }], briefs).corrections).toEqual([]);
+    const c = coverageOf(beats, a, r.clips, { productionCorrections: r.corrections });
+    expect(c.production).toEqual({ verdict: "gaps", corrected: r.corrections });
+    expect(c.verdict).not.toBe("pass");
+  });
+});
+
+describe("the beats are held against the treatment itself", () => {
+  const treatment = [
+    "Opening — The burning show",
+    "We begin high above a forest at night. At first, it reads as aerial footage of a wildfire: smoke obscures sections of the ground.",
+    "The camera crew",
+    "On “more cameras in the whip than a camera crew,” we cut inside a cramped mobile broadcast control room. Monitors show Fendi performing.",
+    "A camera operator shoulders a camera and reaches for the exit. We follow toward the opening door — and cut outside to reveal a Maybach SUV.",
+  ].join("\n\n");
+
+  it("a paragraph no beat shares a phrase with is reported, and a complete list passes", () => {
+    const partial = [beat({ id: "forest", title: "The burning show", scene: "high above a forest at night", action: "aerial footage of a wildfire, smoke obscures sections of the ground" })];
+    const audit = auditBeatsAgainstTreatment(treatment, partial);
+    expect(audit.paragraphs).toBe(3);
+    expect(audit.uncovered.map((u) => u.index)).toEqual([1, 2]);
+    expect(audit.ok).toBe(false);
+    const full = [...partial, beat({ id: "crew", title: "The camera crew", scene: "a cramped mobile broadcast control room", action: "monitors show Fendi performing; a camera operator shoulders a camera and reaches for the exit; cut outside to reveal a Maybach SUV" })];
+    expect(auditBeatsAgainstTreatment(treatment, full).ok).toBe(true);
+    // complete coverage of an incomplete beat list is not treatment coverage
+    const a = allocateBeats(partial, grid.slice(0, 2));
+    const c = coverageOf(partial, a, [{ key: "c001", cast: { members: [], none: true }, continuity: { links: [] } }, { key: "c002", cast: { members: [], none: true }, continuity: { links: [] } }], { treatment });
+    expect(c.structural.verdict).toBe("pass");
+    expect(c.treatment.verdict).toBe("fail");
+    expect(c.verdict).toBe("fail");
     expect(c.ok).toBe(false);
   });
 });

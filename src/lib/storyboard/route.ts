@@ -37,6 +37,11 @@ export type ProductionRoute = {
 export type RouteFacts = {
   /** A take of his real performance is in sync with this shot's window. */
   hasTake: boolean;
+  /**
+   * What the artist does in this shot, when he is cast in it with his real identity: the take shows him performing,
+   * so a method that cuts from the take can only show that. Null when he is not in the shot.
+   */
+  artist?: { performs: boolean; action: string } | null;
   links: readonly ResolvedLink[];
   /** The longest piece of take one restaging can carry (restage.ts), seconds. */
   maxRestageSeconds?: number;
@@ -54,6 +59,21 @@ export const METHOD_LABEL: Record<ProductionMethod, string> = {
 const STILL_TO_CLIP = "Grok still → Kling 2.5 turbo image-to-video";
 const RESTAGE = "his take + the place's picture → Seedance 2.5 reference-to-video";
 
+/** The methods that cut from his real take: his body and his action are the take's. */
+export const TAKE_METHODS: ReadonlySet<ProductionMethod> = new Set<ProductionMethod>(["footage", "restage", "edit_footage", "composite"]);
+
+/** Whether a cast member's action, in words, is performing the song (the one thing the take can show). */
+export function actionIsPerforming(action: string): boolean {
+  return /\b(perform|performs|performing|rap|raps|rapping|sing|sings|singing|deliver|delivers|delivering|to camera|the words|the line|the hook|the verse)\b/i.test(action);
+}
+
+/** The one limit a take-based method hits when the shot has him doing something the take does not show. */
+function takeCannotShow(facts: RouteFacts): string | null {
+  if (!facts.artist || facts.artist.performs) return null;
+  const doing = facts.artist.action.trim() ? `has him ${facts.artist.action.trim()}` : "does not have him performing";
+  return `The take shows him performing; this shot ${doing}. It has to be drawn with his identity pictures (generate), not cut from the take.`;
+}
+
 /** The method a shot asks for: the one it says, else the one its type has always meant. */
 export function methodOf(spec: Pick<ShotSpec, "production" | "shotType">, hasTake: boolean): { method: ProductionMethod; inferred: boolean } {
   const said = spec.production?.method;
@@ -67,6 +87,13 @@ export function productionRoute(spec: Pick<ShotSpec, "production" | "shotType" |
   const limits: string[] = [];
   const treatmentDresses = spec.wardrobe.source === "treatment";
   const base = { method, inferred };
+
+  // a take-based method on a shot where he does not perform is not made weaker: it is refused, with the reason
+  const cannot = TAKE_METHODS.has(method) ? takeCannotShow(facts) : null;
+  if (cannot) {
+    const path = method === "restage" ? RESTAGE : method === "footage" ? "the synced take, as filmed" : method === "composite" ? "his take, cut out → laid over this shot's approved place picture" : "his take → a video edit";
+    return { ...base, verdict: "unsupported", path, where: null, limits: [cannot] };
+  }
 
   switch (method) {
     case "footage":

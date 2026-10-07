@@ -11,7 +11,7 @@ import { applyOverride, BLANK_OVERRIDE, boxFromRow, boxWrite, editedOverride, ty
 import { boxShot, previewStillRequest } from "./generate";
 import { danglingLinks, linkPictureNeeds, linkPromptLines, linksOfBox } from "./links";
 import { planStillReferences, referenceLegend, undeliveredProblem } from "./references";
-import { productionRoute } from "./route";
+import { actionIsPerforming, productionRoute } from "./route";
 
 // A board shaped like a treatment that ties shots together (an opening show seen later on a monitor, a control room
 // that turns out to be inside a car, a close-up whose effect happens inside his real footage, a coat the take does
@@ -146,6 +146,26 @@ describe("references: the linked shot's picture, the place, exact garments — s
     expect(four.problems).toEqual([expect.objectContaining({ level: "blocking", text: "belt is marked exact and does not fit in this request (3 pictures): it would be drawn from words.", fix: expect.stringContaining("untick") })]);
   });
 
+  it("a required screen picture or an exact garment that overflows the cap BLOCKS the request — never dropped, never drawn from words", () => {
+    // the viewer: the screen's picture, his identity, the exact jacket — and a second exact piece: four for three slots
+    const screen = { link: { kind: "screen_shows", otherKey: "c008", other: { shotNumber: 8 } }, role: "screen", level: "blocking", still: { assetId: "asset-c008" } };
+    const plan = planStillReferences({
+      isPerformance: false,
+      continuity: continuity(null),
+      linkNeeds: [screen as never],
+      garments: [{ id: "g1", onFile: { id: "g1", label: "Trucker Jacket — French Black Denim" } }, { id: "g2", onFile: { id: "g2", label: "Mick Long Jeans" } }],
+      extra: [{ source: "project_asset", id: "asset-face", role: "cast", label: "Fendi" }],
+      cap: 3,
+    });
+    expect(plan.sent.map((r) => r.role)).toEqual(["screen", "cast", "garment"]);
+    expect(plan.notSent.map((n) => n.ref.label)).toEqual(["Mick Long Jeans"]);
+    expect(plan.problems).toEqual([expect.objectContaining({ level: "blocking", text: expect.stringContaining("Mick Long Jeans is marked exact and does not fit") })]);
+    // the screen itself past the cap is blocking too — never "something made up on the screen"
+    const screenLast = planStillReferences({ isPerformance: false, continuity: continuity(null), linkNeeds: [screen as never], garments: [{ id: "g1", onFile: { id: "g1", label: "jacket" } }], extra: [{ source: "project_asset", id: "a", role: "cast", label: "Fendi" }, { source: "project_asset", id: "b", role: "cast", label: "The rider" }], cap: 2 });
+    expect(screenLast.problems.filter((p) => p.level === "blocking").length).toBeGreaterThanOrEqual(1);
+    expect(screenLast.problems.some((p) => p.level === "warning")).toBe(false);
+  });
+
   it("a garment id that is not in the wardrobe is blocking — never invented, never replaced", () => {
     const plan = planStillReferences({ isPerformance: false, continuity: continuity(null), linkNeeds: [], garments: [{ id: "gone", onFile: null }], cap: 3 });
     expect(plan.problems[0]).toMatchObject({ level: "blocking" });
@@ -218,6 +238,22 @@ describe("each shot is routed by how it has to be made — a method the app cann
     const outside = byKey.get("c031")!;
     expect(productionRoute(outside.spec, { hasTake: false, links: linksOfBox(outside, numbered) })).toMatchObject({ method: "multi_shot", verdict: "storyboard" });
     expect(productionRoute(outside.spec, { hasTake: false, links: [] })).toMatchObject({ verdict: "unsupported" });
+  });
+
+  it("a rapping take is not a seated man: a take-based method on a shot where he does not perform is refused with the reason, and generate is not", () => {
+    const seated = { hasTake: true, links: [], artist: { performs: false, action: "sitting, watching the television, composed" } };
+    const spec = { ...byKey.get("c001")!.spec, production: { method: "restage" as const, note: "" } };
+    const r = productionRoute(spec, seated);
+    expect(r).toMatchObject({ method: "restage", verdict: "unsupported" });
+    expect(r.limits).toEqual(["The take shows him performing; this shot has him sitting, watching the television, composed. It has to be drawn with his identity pictures (generate), not cut from the take."]);
+    for (const method of ["footage", "composite", "edit_footage"] as const) expect(productionRoute({ ...spec, production: { method, note: "" } }, seated).verdict).toBe("unsupported");
+    expect(productionRoute({ ...spec, production: { method: "generate", note: "" } }, seated)).toMatchObject({ verdict: "storyboard" });
+    // performing, by type or by his action, keeps the take's routes
+    expect(productionRoute(spec, { ...seated, artist: { performs: true, action: "rapping to camera" } })).toMatchObject({ method: "restage", verdict: "storyboard" });
+    expect(actionIsPerforming("rapping directly to camera")).toBe(true);
+    expect(actionIsPerforming("sitting, watching the television")).toBe(false);
+    // not in the shot at all: nothing to refuse
+    expect(productionRoute(spec, { hasTake: true, links: [], artist: null })).toMatchObject({ verdict: "storyboard" });
   });
 
   it("a shot that says nothing keeps the route its type always had", () => {
