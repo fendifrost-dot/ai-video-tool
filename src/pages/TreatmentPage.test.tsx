@@ -5,6 +5,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import TreatmentPage from "./TreatmentPage";
+import { fingerprint } from "@/lib/treatment/treatmentDoc";
 
 const state = vi.hoisted(() => ({
   treatmentJson: null as unknown,
@@ -170,17 +171,38 @@ describe("TreatmentPage", () => {
   it("an edited treatment is behind its shots until they are rewritten — and only the shots that are not the director's", () => {
     const blank = { direction: null, cameraMotion: null, framing: null, transitionIn: null, requiredElements: null, notes: null };
     state.treatmentJson = { ...SAVED, treatment: { text: "A new idea.", mode: "manual", updated_at: "t", notes: "", storyboard: { from: "0:x", at: "2026-10-01", written: 3, kept: 0 } } };
+    // every shot says which treatment it was written from: these three, an earlier one
+    const from = (stamp: string) => ({ provenance: { treatment: stamp, createdAt: "2026-10-01T00:00:00Z" } });
     state.boxes = [
-      { id: "r1", key: "c001", locked: false, override: null },
-      { id: "r2", key: "c002", locked: true, override: { ...blank, direction: "mine" } },
-      { id: "r3", key: "c003", locked: false, override: null },
+      { id: "r1", key: "c001", locked: false, override: null, generated: from("9:old") },
+      { id: "r2", key: "c002", locked: true, override: { ...blank, direction: "mine", treatment: "9:old" }, generated: from("9:old") },
+      { id: "r3", key: "c003", locked: false, override: null, generated: from("9:old") },
     ];
     state.assignments = [{ shotId: "r3" }];
-    render(<TreatmentPage projectId="p1" />);
-    expect(screen.getByTestId("treatment-storyboard-status").textContent).toMatch(/treatment changed after the shots were written/);
+    const { unmount } = render(<TreatmentPage projectId="p1" />);
+    expect(screen.getByTestId("treatment-storyboard-status").textContent).toMatch(/All 3 were written from an earlier version of this treatment/);
+    expect(screen.getByTestId("treatment-stale-kept").textContent).toMatch(/2 of yours are still from the earlier treatment/);
     expect(screen.getByTestId("treatment-write-shots").textContent).toContain("Rewrite the 1 shot that is not yours");
     fireEvent.click(screen.getByTestId("treatment-write-shots"));
     expect(screen.getByTestId("confirm-dialog").textContent).toMatch(/1 of the 3 shots are rewritten\. 2 are yours/);
+    unmount();
+
+    // AFTER that rewrite the board is stamped as written from this treatment — and the two kept shots still are not.
+    // The page used to say "Written from this treatment" here.
+    const now = fingerprint("A new idea.");
+    state.treatmentJson = { ...SAVED, treatment: { text: "A new idea.", mode: "manual", updated_at: "t", notes: "", storyboard: { from: now, at: "2026-10-07", written: 1, kept: 2 } } };
+    state.boxes = [
+      { id: "r1", key: "c001", locked: false, override: null, generated: from(now) },
+      { id: "r2", key: "c002", locked: true, override: { ...blank, direction: "mine", treatment: "9:old" }, generated: from("9:old") },
+      { id: "r3", key: "c003", locked: false, override: null, generated: from("9:old") },
+    ];
+    render(<TreatmentPage projectId="p1" />);
+    const status = screen.getByTestId("treatment-storyboard-status").textContent ?? "";
+    expect(status).toMatch(/2 of them were written from an earlier version of this treatment/);
+    expect(status).not.toMatch(/Written from this treatment/);
+    expect(screen.getByTestId("treatment-stale-kept").textContent).toMatch(/2 of yours are still from the earlier treatment/);
+    // nothing left that this button could rewrite
+    expect(screen.queryByTestId("treatment-write-shots")).toBeNull();
   });
 
   describe("Current and Versions", () => {

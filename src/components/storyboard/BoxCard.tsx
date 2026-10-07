@@ -100,12 +100,26 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
                   edited
                 </span>
               )}
+              {sb.staleOf(box) && (
+                <span
+                  className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-300"
+                  title="Written from an earlier version of the treatment. Regenerate its scene, or rewrite it yourself, to bring it to the treatment as it stands."
+                  data-testid="box-stale"
+                >
+                  earlier treatment
+                </span>
+              )}
               {box.locked && (
                 <span className="inline-flex items-center gap-1 text-[10px] text-foreground/45" title="Whole-board generation skips this shot" data-testid="box-locked">
                   <Lock className="h-3 w-3" /> yours
                 </span>
               )}
             </div>
+            {sb.wardrobeGapOf(box) && (
+              <p className="mt-1 rounded border border-amber-500/30 bg-amber-500/5 px-2 py-1 text-[11px] leading-snug text-amber-200" data-testid="box-wardrobe-gap">
+                {sb.wardrobeGapOf(box)}
+              </p>
+            )}
             <p className="mt-1 line-clamp-4 text-sm leading-snug text-foreground/85" data-testid="box-scene">
               {sceneText(box)}
             </p>

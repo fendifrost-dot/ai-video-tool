@@ -25,7 +25,7 @@ import { BatchShotSchema, seedanceUsd, submitShot, type BatchShot, type SubmitRe
 import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 import type { StoryboardBox } from "./boxes";
 import { resolveEvents, type EventClock } from "./events";
-import { pointsAtEntities, DEFAULT_BOX_LOOK, STORYBOARD_RUN } from "./generate";
+import { madeFromBox, pointsAtEntities, DEFAULT_BOX_LOOK, STORYBOARD_RUN } from "./generate";
 import { assertPlanCovers, scriptOf, temporalPlan, type TemporalPlan } from "./temporal";
 import type { BoxMediaItem, MediaAsset, TakeSync } from "./media";
 import { resolveLookPreset } from "@/lib/shotCompiler";
@@ -264,7 +264,7 @@ export async function restageBox(input: {
   const req = restageShot({ box: input.box, lyricLines: input.lyricLines, source: input.source, sourcePath, stillPath: input.stillPath, cut: { start: cut.start, seconds: cut.seconds }, aspect: input.aspect, temporal: input.temporal, continuity: input.continuity });
   say("sending it to render…");
   const { id, look } = resolveLookPreset(DEFAULT_BOX_LOOK);
-  const result = await submitShot(req.shot, { projectId: input.projectId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [input.box.key]: input.box.id } }, deps);
+  const result = await submitShot(req.shot, { projectId: input.projectId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [input.box.key]: input.box.id }, madeFrom: { [input.box.key]: madeFromBox(input.box) } }, deps);
   return { ...result, songStart: req.songStart, seconds: req.seconds, estimateUsd: restageEstimateUsd(req.seconds) };
 }
 

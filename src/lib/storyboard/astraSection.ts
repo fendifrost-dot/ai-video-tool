@@ -14,8 +14,8 @@ import { functionFailureText } from "@/lib/functionsError";
 import { frameOf } from "@/lib/media/frames";
 import { videoStateAt, type AssignmentRole, type MediaAsset, type TimelineSegment } from "./media";
 
-export const REVIEW_AREAS = ["treatment", "storyboard", "identity", "wardrobe", "environment", "cinematography", "continuity", "transition", "rhythm", "realism", "artifact", "product_truth"] as const;
-export type ReviewArea = (typeof REVIEW_AREAS)[number];
+import { REVIEW_AREAS, type ReviewArea } from "./reviewCriteria";
+export { REVIEW_AREAS, REVIEW_CRITERIA, REVIEW_CRITERION_LABEL, criterionOf, type ReviewArea, type ReviewCriterion } from "./reviewCriteria";
 export const REVIEW_SEVERITIES = ["blocker", "major", "minor"] as const;
 
 export type SectionFinding = { shot: number; severity: (typeof REVIEW_SEVERITIES)[number]; area: ReviewArea; finding: string; fix: string };
@@ -105,6 +105,15 @@ export function showsOf(seg: TimelineSegment, asset: Pick<MediaAsset, "derivedFr
 
 const clock = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
 
+/**
+ * What a reviewer is told before it judges realism. Without it, a treatment's own ideas — an animal in a chain, a
+ * control room inside a car, a monogram burning in a forest — come back as realism findings, and the same review
+ * that should say "the bear's legs fuse on frame two" says "bears do not wear jewellery". The first is a defect; the
+ * second is the brief.
+ */
+export const INTENDED_NOT_DEFECT =
+  "What the treatment or a shot's own scene asks for is INTENDED, however impossible. Never report an intended thing for being there, for being strange, or for being unlike the real world. Report how it was carried out: whether it is in the frames at all, and whether its anatomy, materials, light and movement hold up as a photograph of a thing that really happened. A melted hand is a defect in any shot; a polar bear wearing a chain is a defect only if the treatment did not ask for one.";
+
 /** The label a frame carries: the reviewer reads the shot number off it. */
 export function frameLabel(shot: Pick<ReviewShot, "number">, songTime: number, position: string): string {
   return `SHOT ${String(shot.number).padStart(2, "0")} — ${position} — song ${clock(songTime)}`;
@@ -118,13 +127,18 @@ export function reviewBrief(input: { songTitle?: string | null; treatment: strin
     `You are reviewing a section of a music video${input.songTitle ? ` for "${input.songTitle}"` : ""} as its creative and production reviewer. You are shown frames from every shot of the section in song order — the opening, middle and close of each — labelled with the shot's number. You cannot hear the song; the words sung in each shot are given below.`,
     `The section runs ${clock(first.start)}–${clock(last.end)} of the song, shots ${first.number}–${last.number}.`,
     `The treatment — the one creative brief:\n${input.treatment.trim() || "(none written)"}`,
-    input.notes?.trim() ? `The director's notes (constraints):\n${input.notes.trim()}` : null,
-    input.takeWears?.trim() ? `In his real footage the artist wears: ${input.takeWears.trim()}. That is what he must be wearing in every shot he is in.` : null,
+    input.notes?.trim()
+      ? `The director's notes. What they say about the footage itself is fact. What they say about places, wardrobe and what may appear holds only where the treatment does not say otherwise — the treatment is the later decision, so never report a shot for following the treatment against a note:\n${input.notes.trim()}`
+      : null,
+    input.takeWears?.trim()
+      ? `In his real footage the artist wears: ${input.takeWears.trim()}. That is what he wears in every shot that is his footage — unless the treatment or the shot's own scene dresses him in something else there: then hold him to what it names, and report a shot that shows the footage's clothes instead.`
+      : null,
     "The shots, as planned:\n" +
       input.shots
         .map((s) => `SHOT ${String(s.number).padStart(2, "0")} (${clock(s.start)}–${clock(s.end)}, ${(s.end - s.start).toFixed(1)} s) — shows ${s.shows}.\n  Scene: ${s.scene.trim() || "(not written)"}\n  Words: ${s.lyrics.trim() ? `"${s.lyrics.trim()}"` : "(none)"}${s.beats?.length ? `\n  Changes inside the shot (seconds from its first frame): ${s.beats.join(" | ")}` : ""}`)
         .join("\n"),
     [
+      INTENDED_NOT_DEFECT,
       "Judge it as a piece of a real music video, not as a technology demo:",
       "- treatment: does the section deliver the treatment's idea and world;",
       "- storyboard: does each shot show the scene it was planned as, and answer its words;",

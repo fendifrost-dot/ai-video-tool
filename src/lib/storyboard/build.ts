@@ -159,7 +159,9 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
   const draft = await draftTreatmentClips({ ...input.context, concept, grid, writeText: input.aiWritesText, clipLyrics: clipLyrics(grid, input.lyricLines) });
   if (input.aiWritesText && !draft.concept.trim()) throw new Error("The writer returned no treatment — nothing was changed. Try again.");
   const at = new Date().toISOString();
-  const drafted = structuredTreatmentToShotSpecs(draft);
+  const text = input.aiWritesText ? [draft.concept, draft.narrative].filter(Boolean).join("\n\n") : input.treatmentText;
+  // every shot written now says which treatment it was written from; a shot that is kept keeps the stamp it had
+  const drafted = structuredTreatmentToShotSpecs(draft, fingerprint(text));
   const sections = Object.fromEntries(draft.clips.map((c) => [c.key, c.section]));
   const withMedia = new Set(input.assignments.map((a) => a.shotId));
   const plan = planRewrite({
@@ -173,7 +175,6 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
   });
   await writeBoxes(input.projectId, plan);
 
-  const text = input.aiWritesText ? [draft.concept, draft.narrative].filter(Boolean).join("\n\n") : input.treatmentText;
   const mode: TreatmentMode = input.aiWritesText ? "ai" : parseTreatmentDoc(input.treatmentJson).mode;
   const prior = parseTreatmentDoc(input.treatmentJson);
   const doc: TreatmentDoc = {
@@ -183,6 +184,8 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
     updatedAt: input.aiWritesText ? at : prior.updatedAt || at,
     model: draft.model || prior.model,
     notes: input.notes,
+    // `from` is the text the LAST WRITE used. It does not say every shot is from it: the kept ones are not, and each
+    // shot's own stamp (boxes.ts `boxIsStale`) is what answers that.
     storyboard: { from: fingerprint(text), at, written: plan.written, kept: plan.kept },
   };
   // the draft's clips are kept as the record of this generation; the boxes are the rows just written
