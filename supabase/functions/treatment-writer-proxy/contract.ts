@@ -33,14 +33,6 @@ export function estimateCostUsd(model: string, shots: number, treatmentChars: nu
   return Number(((inputTokens * price.input + outputTokens * price.output) / 1_000_000).toFixed(4));
 }
 
-function json(status: number, body: unknown) {
-  return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-}
-const fail = (status: number, errorCode: string, errorMessage: string) => json(status, { ok: false, errorCode, errorMessage });
-const text = (v: unknown, max = MAX_TEXT) => (typeof v === "string" ? v.slice(0, max) : null);
-
-type Usage = { prompt_tokens: number; completion_tokens: number };
-
 /** The cost of what the provider counted, at list price. */
 export function costOf(model: string, usage: { prompt_tokens: number; completion_tokens: number }): number {
   const price = PRICE_PER_M[model] ?? { input: 5, output: 25 };
