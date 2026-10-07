@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, ChevronDown, ImagePlus, Lightbulb, Loader2, MapPin, Maximize2, Package, Plus, Save, Shirt, X } from "lucide-react";
+import { Check, ChevronDown, ImagePlus, Lightbulb, Loader2, MapPin, Maximize2, Package, Plus, Save, Shirt, X, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,7 @@ import { imageForClip } from "@/lib/storyboard/media";
 import { Overlay } from "./Overlay";
 import { useStoryboard } from "./useStoryboardController";
 
-const KIND_ICON: Record<EntityKind, typeof MapPin> = { location: MapPin, prop: Package, lighting: Lightbulb };
+const KIND_ICON: Record<EntityKind, typeof MapPin> = { location: MapPin, prop: Package, lighting: Lightbulb, character: Users };
 const selectClass = "h-9 w-full rounded-md border border-border bg-background/60 px-2 text-xs text-foreground";
 const shotList = (numbers: readonly number[]) => (numbers.length ? `shot${numbers.length === 1 ? "" : "s"} ${numbers.join(", ")}` : "no shot yet");
 

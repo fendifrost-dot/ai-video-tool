@@ -182,7 +182,7 @@ export type TreatmentContext = {
   /** The project has real performance footage in sync with the song: the artist is that footage, not a drawn one. */
   hasPerformanceFootage?: boolean;
   /** The project's continuity entities — what a shot may point at by key instead of describing again. */
-  entities?: { key: string; kind: "location" | "prop" | "lighting"; name: string; description?: string | null }[];
+  entities?: { key: string; kind: "location" | "prop" | "lighting" | "character"; name: string; description?: string | null }[];
 };
 
 function contextBody(input: TreatmentContext): Record<string, unknown> {
