@@ -77,7 +77,7 @@ describe("what the treatment writer is told", () => {
   });
 
   it("when the board is allotted to the treatment's beats, each shot is handed its beat and the rules say to stay inside it", () => {
-    const briefs = { c002: { beat: "b02", title: "The viewer", scene: "a spare room", action: "he watches the CRT", people: ["ARTIST"], unnamedPeople: false, artistPerforms: false, wardrobe: "his exact denim look", first: true, last: true, links: [{ kind: "screen_shows" as const, shot: "c001", note: "the CRT" }] } };
+    const briefs = { c002: { beat: "b02", title: "The viewer", scene: "a spare room", action: "he watches the CRT", people: ["ARTIST"], unnamedPeople: false, artistPerforms: false, wardrobe: "his exact denim look", first: true, last: true, insert: false, links: [{ kind: "screen_shows" as const, shot: "c001", note: "the CRT" }] } };
     const handed = JSON.parse(shotsUserMessage([grid[1]], briefs)) as { shots: { key: string; beat?: { people: string[]; must_link: unknown[] } }[] };
     expect(handed.shots[0].beat?.people).toEqual(["ARTIST"]);
     expect(handed.shots[0].beat?.must_link).toEqual([{ kind: "screen_shows", shot: "c001", note: "the CRT" }]);
