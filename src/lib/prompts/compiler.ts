@@ -5,6 +5,7 @@ import type {
   Shot,
   VideoProject,
 } from "@/integrations/supabase/aliases";
+import { castSource } from "@/lib/casting/cast";
 import { applyRealism } from "./realism";
 import type { CompileInput, CompiledPrompt, PromptOverrides, PromptVariables } from "./types";
 
@@ -24,6 +25,14 @@ import type { CompileInput, CompiledPrompt, PromptOverrides, PromptVariables } f
  *
  * The compiler does not know about providers — provider-specific tweaks happen
  * in each provider's `formatPrompt()` (see src/lib/providers/*.ts).
+ *
+ * Cast (optional):
+ *  - `input.cast` is a shot's resolved cast. Its lines are appended to the prompt body and its
+ *    identity references are PREPENDED to `referenceImagePaths`, ahead of the artist's own
+ *    locked Character DNA: a shot that casts three people needs all three, and the one the
+ *    shot named comes first.
+ *  - Nothing here decides who is in a shot or what they look like. `resolveCast` did that from
+ *    the variation's own character records; this only carries it.
  *
  * Realism (optional, default off):
  *  - When `input.realism` is absent the output is unchanged in every field, so every
@@ -59,21 +68,33 @@ export function compilePrompt(input: CompileInput): CompiledPrompt {
 
   const settings = cloneSettings(template.default_settings_json);
 
-  const referenceImagePaths = pickReferencePaths(input);
+  const cast = input.cast ? castSource(input.cast) : null;
+
+  // The cast's own references come first: when a shot names people, those people are the subject.
+  const referenceImagePaths = dedupe([
+    ...(cast?.referenceAssetIds ?? []),
+    ...pickReferencePaths(input),
+  ]);
   const referenceImagePath = referenceImagePaths[0] ?? input.lockedReferenceAssetPath ?? null;
+
+  const withCast =
+    cast && cast.lines.length > 0
+      ? `${cleanedPrompt.trim().replace(/[.,;]+$/, "")}${cleanedPrompt.trim() ? ". " : ""}${cast.lines.join(" ")}`
+      : cleanedPrompt;
 
   const base: CompiledPrompt = {
     templateId: template.id,
     templateName: template.name,
     templateProvider: template.provider,
     templateCategory: template.category,
-    promptText: cleanedPrompt,
+    promptText: withCast,
     negativePrompt,
     settings,
     unfilledPlaceholders: unfilled,
     referenceImagePath,
     referenceImagePaths,
     realism: null,
+    cast,
     context: {
       projectId: project.id,
       artistId: artist?.id ?? null,
@@ -318,6 +339,17 @@ export function tidy(text: string): string {
 // ---------------------------------------------------------------------------
 // Settings clone
 // ---------------------------------------------------------------------------
+function dedupe(values: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const v of values) {
+    if (!v || seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+  return out;
+}
+
 function cloneSettings(value: Json | null | undefined): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return { ...(value as Record<string, unknown>) };

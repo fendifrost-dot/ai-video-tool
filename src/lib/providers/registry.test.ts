@@ -19,6 +19,7 @@ const baseCompiled: CompiledPrompt = {
   referenceImagePath: null,
   referenceImagePaths: [],
   realism: null,
+  cast: null,
   context: { projectId: "p1", artistId: null, shotId: null },
 };
 

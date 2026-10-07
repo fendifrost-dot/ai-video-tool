@@ -17,13 +17,14 @@
  *
  * Pure module: no react, no supabase, no project knowledge.
  */
+import { CAST_ROLES, IDENTITY_MODES, type CastFacts, type CastIdentityMode, type CastRole } from "@/lib/casting/cast";
 import type { ShotEvent, ShotSpec } from "@/lib/treatment/shotSpec";
 
-export const ENTITY_KINDS = ["location", "prop", "lighting"] as const;
+export const ENTITY_KINDS = ["location", "prop", "lighting", "character"] as const;
 export type EntityKind = (typeof ENTITY_KINDS)[number];
 
-export const KIND_LABEL: Record<EntityKind, string> = { location: "Location", prop: "Prop", lighting: "Lighting state" };
-export const KIND_PLURAL: Record<EntityKind, string> = { location: "Locations", prop: "Props", lighting: "Lighting states" };
+export const KIND_LABEL: Record<EntityKind, string> = { location: "Location", prop: "Prop", lighting: "Lighting state", character: "Character" };
+export const KIND_PLURAL: Record<EntityKind, string> = { location: "Locations", prop: "Props", lighting: "Lighting states", character: "Cast" };
 
 export type ContinuityEntity = {
   id: string;
@@ -42,6 +43,12 @@ export type ContinuityEntity = {
   approvedAssetId: string | null;
   /** Its other reference pictures, uploaded or generated for it (project_assets ids). */
   referenceAssetIds: string[];
+  /**
+   * The character-only facts, non-null exactly when `kind === "character"`. A cast member is an
+   * entity so it inherits variation scope, duplication and approved references; see
+   * `src/lib/casting/cast.ts` for why this is not a table of its own.
+   */
+  cast: CastFacts | null;
   archived: boolean;
   createdAt: string;
   updatedAt: string;
@@ -59,9 +66,27 @@ export type EntityRow = {
   approved_asset_id: string | null;
   reference_asset_ids: string[] | null;
   archived: boolean | null;
+  cast_role?: string | null;
+  identity_mode?: string | null;
+  artist_id?: string | null;
   created_at: string;
   updated_at: string;
 };
+
+/**
+ * The character columns, read defensively: a row whose kind is `character` but whose role or mode is
+ * missing or unrecognised still becomes a cast member, with the safest defaults. Dropping the row
+ * would lose a character the shots already point at; guessing a likeness would be worse, so the
+ * fallback is the mode that matches nobody.
+ */
+function castFactsFromRow(row: EntityRow): CastFacts | null {
+  if (row.kind !== "character") return null;
+  const role = (CAST_ROLES as readonly string[]).includes(row.cast_role ?? "") ? (row.cast_role as CastRole) : "fictional";
+  const identityMode = (IDENTITY_MODES as readonly string[]).includes(row.identity_mode ?? "")
+    ? (row.identity_mode as CastIdentityMode)
+    : "invent";
+  return { role, identityMode, artistId: row.artist_id ?? null };
+}
 
 export function entityFromRow(row: EntityRow): ContinuityEntity | null {
   if (!(ENTITY_KINDS as readonly string[]).includes(row.kind)) return null;
@@ -76,6 +101,7 @@ export function entityFromRow(row: EntityRow): ContinuityEntity | null {
     constraints: (row.constraints ?? "").trim(),
     approvedAssetId: row.approved_asset_id ?? null,
     referenceAssetIds: Array.isArray(row.reference_asset_ids) ? row.reference_asset_ids.filter((x) => typeof x === "string") : [],
+    cast: castFactsFromRow(row),
     archived: row.archived === true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -248,7 +274,10 @@ export function referencePrompt(e: Pick<ContinuityEntity, "kind" | "name" | "des
 }
 
 /** What an edit to an entity may change. The key is not here: shots point at it. */
-export type EntityPatch = Partial<Pick<ContinuityEntity, "name" | "description" | "constraints" | "approvedAssetId" | "referenceAssetIds" | "archived">>;
+export type EntityPatch = Partial<Pick<ContinuityEntity, "name" | "description" | "constraints" | "approvedAssetId" | "referenceAssetIds" | "archived">> & {
+  /** Character only. Changing a cast member's role or identity mode is an edit like any other. */
+  cast?: Partial<CastFacts>;
+};
 
 /** The entity's reference pictures with one more, without doubles; the first picture an entity gets is approved. */
 export function withReference(e: Pick<ContinuityEntity, "approvedAssetId" | "referenceAssetIds">, assetId: string, approve = false): EntityPatch {

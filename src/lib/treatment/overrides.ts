@@ -28,7 +28,7 @@ import {
 } from "./shotSpec";
 import { DEFAULT_TRANSITION_PRESETS, transitionInFromPreset } from "./transitions";
 import { sanitizeEvents } from "@/lib/storyboard/events";
-import type { ShotEvent } from "./shotSpec";
+import type { CastRef, ShotEvent } from "./shotSpec";
 
 /**
  * The continuity entities a director pointed a shot at. A key that is ABSENT was not touched; an empty string (or an
@@ -46,8 +46,36 @@ export type ContinuityOverride = {
 };
 
 function statesContinuity(c: ContinuityOverride | null | undefined): boolean {
-  return !!c && (typeof c.location === "string" || Array.isArray(c.props) || typeof c.lighting === "string" || typeof c.look === "string");
+  return (
+    !!c &&
+    (typeof c.location === "string" ||
+      Array.isArray(c.props) ||
+      typeof c.lighting === "string" ||
+      typeof c.look === "string")
+  );
 }
+
+/**
+ * A cast override states something when it names a list or either flag. An ABSENT cast is "not
+ * touched"; a cast with an empty `members` list IS a statement — the director removed everyone —
+ * and must not be mistaken for silence, which is why this tests for the key, not for length.
+ */
+function statesCast(c: CastOverride | null | undefined): boolean {
+  return (
+    !!c && (Array.isArray(c.members) || typeof c.open === "boolean" || typeof c.none === "boolean")
+  );
+}
+
+/**
+ * Who the director put in a shot. Mirrors ContinuityOverride: an absent key was not touched.
+ * `members` are full CastRefs rather than bare keys, because each one carries this shot's own
+ * direction (action, placement, framing) which belongs to the shot, not to the character.
+ */
+export type CastOverride = {
+  members?: CastRef[];
+  open?: boolean;
+  none?: boolean;
+};
 
 /** One row of `shot_overrides`, in app shape. Null = not overridden. */
 export type ShotOverride = {
@@ -75,6 +103,8 @@ export type ShotOverride = {
   events?: ShotEvent[] | null;
   /** The continuity entities the shot points at. Absent or null = not changed. */
   continuity?: ContinuityOverride | null;
+  /** Who is in the shot. Absent or null = not changed; an empty members list = nobody is cast. */
+  cast?: CastOverride | null;
   updatedAt?: string;
 };
 
@@ -151,7 +181,8 @@ export function isEmptyOverride(o: ShotOverride | null | undefined): boolean {
     !(o.requiredElements && o.requiredElements.length > 0) &&
     !o.notes?.trim() &&
     !Array.isArray(o.events) &&
-    !statesContinuity(o.continuity)
+    !statesContinuity(o.continuity) &&
+    !statesCast(o.cast)
   );
 }
 
@@ -195,7 +226,8 @@ export function applyShotOverride(
         // The coverage planner reads the PROSE first (the generators write cameras as text), so a type stated
         // without a description must not keep the generated prose — that prose names the generated move and
         // would win. The type's own phrase goes in instead; it classifies back to the same move.
-        description: motionDesc ?? (motionType ? TYPE_PHRASE[motionType] : next.cameraMotion.description),
+        description:
+          motionDesc ?? (motionType ? TYPE_PHRASE[motionType] : next.cameraMotion.description),
       },
     };
     touched = true;
@@ -247,7 +279,23 @@ export function applyShotOverride(
 
   if (Array.isArray(override.events)) {
     // the director's list IS the shot's events (an empty list = the shot is one state again)
-    next = { ...next, events: sanitizeEvents(override.events, Math.max(0, next.timeline.end - next.timeline.start)) };
+    next = {
+      ...next,
+      events: sanitizeEvents(override.events, Math.max(0, next.timeline.end - next.timeline.start)),
+    };
+    touched = true;
+  }
+
+  if (statesCast(override.cast)) {
+    const c = override.cast!;
+    next = {
+      ...next,
+      cast: {
+        members: Array.isArray(c.members) ? c.members : next.cast.members,
+        open: typeof c.open === "boolean" ? c.open : next.cast.open,
+        none: typeof c.none === "boolean" ? c.none : next.cast.none,
+      },
+    };
     touched = true;
   }
 
@@ -256,12 +304,18 @@ export function applyShotOverride(
     next = {
       ...next,
       continuity: {
-        location: typeof c.location === "string" ? c.location.trim() || null : next.continuity.location,
-        props: Array.isArray(c.props) ? c.props.filter((x) => typeof x === "string" && x.trim()) : next.continuity.props,
-        lighting: typeof c.lighting === "string" ? c.lighting.trim() || null : next.continuity.lighting,
+        location:
+          typeof c.location === "string" ? c.location.trim() || null : next.continuity.location,
+        props: Array.isArray(c.props)
+          ? c.props.filter((x) => typeof x === "string" && x.trim())
+          : next.continuity.props,
+        lighting:
+          typeof c.lighting === "string" ? c.lighting.trim() || null : next.continuity.lighting,
       },
       // the look is the existing Look record the shot's wardrobe already points at
-      ...(typeof c.look === "string" ? { wardrobe: { ...next.wardrobe, lookId: c.look.trim() || null } } : {}),
+      ...(typeof c.look === "string"
+        ? { wardrobe: { ...next.wardrobe, lookId: c.look.trim() || null } }
+        : {}),
     };
     touched = true;
   }

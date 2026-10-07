@@ -35,7 +35,8 @@ import {
   type LookRef,
   type ShotContinuity,
 } from "@/lib/continuity/entities";
-import type { ContinuityOverride } from "@/lib/treatment/overrides";
+import { castProblems, resolveCast, type CastFacts, type CastProblem, type ShotCast } from "@/lib/casting/cast";
+import type { ContinuityOverride, CastOverride } from "@/lib/treatment/overrides";
 import { useEventClock } from "@/lib/queries/eventClock";
 import { providerJobsKeys } from "@/lib/providerJobs/queries";
 import {
@@ -214,7 +215,7 @@ export type StoryboardController = {
   /** An entity's reference pictures, the approved one first. */
   picturesOf: (entity: ContinuityEntity) => MediaAsset[];
   entityBusyOf: (entityId: string) => string | null;
-  createEntity: (kind: EntityKind, name: string) => Promise<ContinuityEntity | null>;
+  createEntity: (kind: EntityKind, name: string, cast?: CastFacts) => Promise<ContinuityEntity | null>;
   saveEntity: (entity: ContinuityEntity, patch: EntityPatch) => Promise<void>;
   /** Draw reference pictures of an entity from its canonical description (asks first: it costs money). */
   generateEntityPicture: (entity: ContinuityEntity) => void;
@@ -222,6 +223,12 @@ export type StoryboardController = {
   useShotImageFor: (box: StoryboardBox, entity: ContinuityEntity) => Promise<void>;
   /** Point the shot at entities (or take a reference away). */
   saveContinuity: (box: StoryboardBox, refs: ContinuityOverride) => Promise<void>;
+  /** Who is in this shot, resolved against this variation's characters. */
+  castOf: (box: StoryboardBox) => ShotCast;
+  /** What is wrong with this shot's casting, before anything is generated. */
+  castProblemsOf: (box: StoryboardBox) => CastProblem[];
+  /** Put people in the shot, or take them out. An empty members list means nobody is cast. */
+  saveCast: (box: StoryboardBox, cast: CastOverride) => Promise<void>;
   toggleLock: (box: StoryboardBox) => Promise<void>;
   split: (box: StoryboardBox, atSeconds: number) => Promise<void>;
   mergeWithNext: (box: StoryboardBox) => void;
@@ -676,9 +683,10 @@ export function useStoryboardController(projectId: string): StoryboardController
     (box: StoryboardBox): BoxEstimates => {
       try {
         const continuity = continuityOf(box);
+        const cast = castOf(box);
         const isPerformance = box.spec.shotType === "performance";
         const still = isPerformance ? (placeStill(box)?.asset.path ?? null) : selectedStillPath(box);
-        const image = imageEstimateUsd(boxShot(box, lyricLines, { aspect, continuity }));
+        const image = imageEstimateUsd(boxShot(box, lyricLines, { aspect, continuity, cast }));
         // a performance shot with a take in sync: the clip is the take, restaged in this shot's scene
         if (box.spec.shotType === "performance") {
           const src = restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs);
@@ -689,7 +697,7 @@ export function useStoryboardController(projectId: string): StoryboardController
             return { image, clip: restageEstimateUsd(seconds) + (still ? 0 : image), clipDrawsImage: !still, restage };
           }
         }
-        return { image, clip: clipEstimateUsd(boxShot(box, lyricLines, { stillPath: still, aspect, continuity })), clipDrawsImage: !still };
+        return { image, clip: clipEstimateUsd(boxShot(box, lyricLines, { stillPath: still, aspect, continuity, cast })), clipDrawsImage: !still };
       } catch {
         return null;
       }
@@ -731,7 +739,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         testId: "confirm-generate-image",
         onConfirm: () =>
           run(box, "drawing the image…", async () => {
-            const r = await generateBoxImage({ projectId, box, lyricLines, aspect, select: !est.restage, continuity });
+            const r = await generateBoxImage({ projectId, box, lyricLines, aspect, select: !est.restage, continuity, cast: castOf(box) });
             afterGeneration();
             toast.success(r.rejected > 0 ? `Image ready (${r.rejected} of ${r.candidates} came back as stacked panels and was left out)` : "Image ready");
           }).finally(afterGeneration),
@@ -797,7 +805,7 @@ export function useStoryboardController(projectId: string): StoryboardController
               let stillPath = still;
               if (!stillPath) {
                 setBusyFor(box.id, "drawing the place first…");
-                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false, continuity });
+                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false, continuity, cast: castOf(box) });
                 afterGeneration();
                 stillPath = img.picked;
               }
@@ -814,12 +822,12 @@ export function useStoryboardController(projectId: string): StoryboardController
           // closes while it is drawn, the picture is still filed on the shot by the server.
           let stillPath = still;
           if (!stillPath) {
-            const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity });
+            const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity, cast: castOf(box) });
             afterGeneration();
             stillPath = img.picked;
             setBusyFor(box.id, "sending the clip to render…");
           }
-          await generateBoxClip({ projectId, box, lyricLines, stillPath, aspect, temporal, continuity });
+          await generateBoxClip({ projectId, box, lyricLines, stillPath, aspect, temporal, continuity, cast: castOf(box) });
           afterGeneration();
           toast.success(temporal.mode === "ordered" ? "Clip is rendering with the beats in order — its timing is the model's own" : "Clip is rendering — it will appear on this shot when it is done");
         }).finally(afterGeneration);
@@ -1033,15 +1041,28 @@ export function useStoryboardController(projectId: string): StoryboardController
   }, []);
 
   const createEntity = useCallback(
-    async (kind: EntityKind, name: string) => {
+    async (kind: EntityKind, name: string, cast?: CastFacts) => {
       try {
-        return await entityMutations.create.mutateAsync({ kind, name, takenKeys: entities.map((e) => e.key) });
+        return await entityMutations.create.mutateAsync({ kind, name, cast, takenKeys: entities.map((e) => e.key) });
       } catch (e) {
         toast.error(message(e));
         return null;
       }
     },
     [entityMutations.create, entities],
+  );
+
+  // --- cast: who is in each shot ------------------------------------------------------------------------------------
+  const castOf = useCallback((box: StoryboardBox) => resolveCast(box.spec, entityIndex), [entityIndex]);
+  const castProblemsOf = useCallback((box: StoryboardBox) => castProblems(castOf(box)), [castOf]);
+
+  const saveCast = useCallback(
+    (box: StoryboardBox, cast: CastOverride) =>
+      run(box, "saving…", async () => {
+        const next: BoxOverride = { ...(box.override ?? BLANK_OVERRIDE), cast: { ...(box.override?.cast ?? {}), ...cast } };
+        await writeBoxes.mutateAsync({ updates: [{ id: box.id, write: applyOverride(box, editedOverride(box.override, next), new Date().toISOString(), "edit") }] });
+      }),
+    [run, writeBoxes],
   );
 
   const saveEntity = useCallback(
@@ -1165,6 +1186,9 @@ export function useStoryboardController(projectId: string): StoryboardController
     generateEntityPicture,
     useShotImageFor,
     saveContinuity,
+    castOf,
+    castProblemsOf,
+    saveCast,
     toggleLock,
     split,
     mergeWithNext,

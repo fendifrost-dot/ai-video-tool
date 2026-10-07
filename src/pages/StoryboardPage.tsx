@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { BoxCard, sceneText } from "@/components/storyboard/BoxCard";
 import { ROLE_STYLE, mediaLabel } from "@/components/storyboard/BoxMediaView";
 import { ConfirmHost } from "@/components/storyboard/ConfirmHost";
+import { CastPanel } from "@/components/storyboard/Cast";
 import { ContinuityPanel } from "@/components/storyboard/Continuity";
 import { FocusView } from "@/components/storyboard/FocusView";
 import { MediaPicker } from "@/components/storyboard/MediaPicker";
@@ -77,6 +78,8 @@ export default function StoryboardPage({ projectId }: { projectId: string }) {
             </div>
 
             <ContinuityPanel />
+
+            <CastPanel />
 
             {staleCount > 0 && (
               <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200" data-testid="storyboard-stale">

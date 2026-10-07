@@ -327,6 +327,41 @@ export const ContinuityRefsSchema = z.object({
 export type ContinuityRefs = z.infer<typeof ContinuityRefsSchema>;
 
 /**
+ * One person in this shot. `key` names a `character` continuity entity; everything else is this
+ * shot's direction and is deliberately NOT stored on the entity — the same character stands
+ * differently in every shot, and a description that moved to the entity would follow them
+ * everywhere.
+ */
+export const CastRefSchema = z.object({
+  key: z.string().min(1),
+  /** What they are doing. */
+  action: z.string().default(""),
+  /** Where they are in the frame or the scene. */
+  placement: z.string().default(""),
+  /** How this shot frames them specifically (a wide shot can hold a close cast member). */
+  framing: z.string().default(""),
+  /** Overrides the character's own identity mode for this shot only. Null = use theirs. */
+  identityMode: z.enum(["preserve", "recurring", "invent"]).nullable().default(null),
+});
+export type CastRef = z.infer<typeof CastRefSchema>;
+
+/**
+ * Who is in this shot.
+ *
+ * `open` and `none` exist so that SILENCE IS NEVER AMBIGUOUS. An empty `members` with neither flag
+ * set means nobody has decided yet, and the app says so; `open` means the director chose to let the
+ * model cast it; `none` means there are no people. Those are three different things and were one
+ * before this existed. The default is all-empty and all-false: nothing is auto-cast, and in
+ * particular the artist is never added to a shot on their behalf.
+ */
+export const CastSchema = z.object({
+  members: z.array(CastRefSchema).default([]),
+  open: z.boolean().default(false),
+  none: z.boolean().default(false),
+});
+export type CastRefs = z.infer<typeof CastSchema>;
+
+/**
  * Generation requirements — what a generative engine needs to author this shot.
  * `required: false` means the shot is captured/stock and does not need genAI.
  */
@@ -471,6 +506,8 @@ export const ShotSpecSchema = z.object({
   events: z.array(ShotEventSchema).max(SHOT_EVENTS_MAX).default([]),
   /** The continuity entities this shot points at (place, props, lighting state), by key. */
   continuity: ContinuityRefsSchema.default({}),
+  /** Who is in this shot, by character key, with this shot's direction for each. */
+  cast: CastSchema.default({}),
 });
 export type ShotSpec = z.infer<typeof ShotSpecSchema>;
 
@@ -528,6 +565,7 @@ export const ROW_UNMAPPED_FIELDS = [
   "wardrobe.references / environment.references / lighting.references",
   "events",
   "continuity",
+  "cast",
 ] as const;
 
 const SPEC_STATUS_TO_ROW: Record<ShotStatusLiteral, Shot["status"]> = {

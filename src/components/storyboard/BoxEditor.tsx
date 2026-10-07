@@ -8,6 +8,7 @@ import { MIN_BOX_SECONDS, type BoxOverride, type StoryboardBox } from "@/lib/sto
 import { CAMERA_MOTIONS, FRAMINGS, SHOT_TYPES } from "@/lib/treatment/shotSpec";
 import { DEFAULT_TRANSITION_PRESET_NAMES, DEFAULT_TRANSITION_PRESETS } from "@/lib/treatment/transitions";
 import { BeatsEditor } from "./TimedBeats";
+import { ShotCastEditor } from "./Cast";
 import { ShotContinuityEditor } from "./Continuity";
 import { useStoryboard } from "./useStoryboardController";
 
@@ -212,6 +213,8 @@ export function BoxEditor({ box }: { box: StoryboardBox }) {
 
       <BeatsEditor box={box} />
       <ShotContinuityEditor box={box} />
+
+      <ShotCastEditor box={box} />
 
       <SplitMerge box={box} />
     </div>
