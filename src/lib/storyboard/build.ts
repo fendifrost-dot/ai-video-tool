@@ -18,26 +18,31 @@ import { buildClipGrid } from "@/lib/treatment/grid";
 import type { ShotOverride } from "@/lib/treatment/overrides";
 import { clearTreatment, fingerprint, parseTreatmentDoc, withTreatmentDoc, type TreatmentDoc, type TreatmentMode } from "@/lib/treatment/treatmentDoc";
 import { applyAssignmentOps, fetchAssignments, fetchBoxes, fetchShotIndex, writeBoxes } from "@/lib/queries/storyboard";
+import { writeDirection } from "@/lib/queries/variations";
 import { planMaterialize, type StoryboardBox } from "./boxes";
 import { planAssign, type Assignment } from "./media";
 import { gridFromBoxes, planRewrite } from "./rewrite";
 
-async function saveTreatmentJson(projectId: string, value: Record<string, unknown>): Promise<void> {
-  const { error } = await supabase.from("video_projects").update({ treatment_json: value as unknown as Json }).eq("id", projectId);
-  if (error) throw new Error(`could not save the treatment: ${error.message}`);
+async function saveTreatmentJson(projectId: string, value: Record<string, unknown>, variationId?: string | null): Promise<void> {
+  // the treatment is the variation's (queries/variations.ts): named, or the active one
+  try {
+    await writeDirection(projectId, { treatment_json: value as unknown as Json }, variationId);
+  } catch (e) {
+    throw new Error(`could not save the treatment: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }
 
 /** Save the treatment text (the director's, or the AI's) — the one place the text is written. */
-export async function saveTreatment(projectId: string, existing: unknown, doc: TreatmentDoc): Promise<Record<string, unknown>> {
+export async function saveTreatment(projectId: string, existing: unknown, doc: TreatmentDoc, variationId?: string | null): Promise<Record<string, unknown>> {
   // the text that is replaced is kept by the database (treatment_versions); this says what replaced it
   const next = withTreatmentDoc(existing, doc, { what: "edit", at: new Date().toISOString() });
-  await saveTreatmentJson(projectId, next);
+  await saveTreatmentJson(projectId, next, variationId);
   return next;
 }
 
 /** Delete the treatment text. The storyboard's shots, their footage and the director's edits are not touched. */
-export async function deleteTreatment(projectId: string, existing: unknown): Promise<void> {
-  await saveTreatmentJson(projectId, clearTreatment(existing, new Date().toISOString()));
+export async function deleteTreatment(projectId: string, existing: unknown, variationId?: string | null): Promise<void> {
+  await saveTreatmentJson(projectId, clearTreatment(existing, new Date().toISOString()), variationId);
 }
 
 async function fetchLegacyOverrides(projectId: string): Promise<Record<string, ShotOverride>> {
@@ -68,12 +73,14 @@ async function fetchLegacyOverrides(projectId: string): Promise<Record<string, S
  * an unselected candidate: nothing already made disappears, and nothing changes what a box shows until the director
  * picks it.
  */
-async function linkGeneratedClips(projectId: string, boxes: readonly StoryboardBox[], assignments: readonly Assignment[]): Promise<number> {
+async function linkGeneratedClips(projectId: string, variationId: string, boxes: readonly StoryboardBox[], assignments: readonly Assignment[]): Promise<number> {
   const byKey = new Map(boxes.map((b) => [b.key, b]));
+  // only jobs of this variation: another video's board may use the same keys
   const { data, error } = await supabase
     .from("provider_jobs")
     .select("id, result_asset_id, request_payload_json")
     .eq("project_id", projectId)
+    .eq("variation_id", variationId)
     .not("result_asset_id", "is", null);
   if (error) throw error;
   let linked = 0;
@@ -84,11 +91,11 @@ async function linkGeneratedClips(projectId: string, boxes: readonly StoryboardB
     if (!box || !job.result_asset_id) continue;
     const ops = planAssign({ assignments: current, shotId: box.id, assetId: job.result_asset_id, role: "generated_clip", select: false });
     if (ops.length === 0) continue;
-    await applyAssignmentOps(projectId, ops);
+    await applyAssignmentOps(projectId, ops, variationId);
     const { error: aErr } = await supabase.from("project_assets").update({ shot_id: box.id }).eq("id", job.result_asset_id).is("shot_id", null);
     if (aErr) throw aErr;
     linked++;
-    current = await fetchAssignments(projectId);
+    current = await fetchAssignments(projectId, variationId);
   }
   return linked;
 }
@@ -103,10 +110,12 @@ export type MaterializeResult = { created: number; updated: number; carriedEdits
  */
 export async function ensureStoryboardMaterialized(input: {
   projectId: string;
+  /** The variation whose board is empty. Its own treatment_json is what is materialised — never another's. */
+  variationId: string;
   treatmentJson: unknown;
   lyricLines: LyricLine[] | undefined;
 }): Promise<MaterializeResult | null> {
-  const existingBoxes = await fetchBoxes(input.projectId);
+  const existingBoxes = await fetchBoxes(input.projectId, input.variationId);
   if (existingBoxes.length > 0) return null;
   const saved = parseSavedStructuredTreatment(input.treatmentJson);
   if (!saved) return null;
@@ -114,10 +123,10 @@ export async function ensureStoryboardMaterialized(input: {
   const specs = applyCoverageDefaults(structuredTreatmentToShotSpecs(saved), DEFAULT_COVERAGE_PRESETS, input.lyricLines);
   const sections = Object.fromEntries(saved.clips.map((c) => [c.key, c.section]));
   const at = new Date().toISOString();
-  const plan = planMaterialize({ specs, overrides, sections, existing: await fetchShotIndex(input.projectId), at });
-  const res = await writeBoxes(input.projectId, plan);
-  const boxes = await fetchBoxes(input.projectId);
-  const linkedClips = await linkGeneratedClips(input.projectId, boxes, await fetchAssignments(input.projectId));
+  const plan = planMaterialize({ specs, overrides, sections, existing: await fetchShotIndex(input.projectId, input.variationId), at });
+  const res = await writeBoxes(input.projectId, plan, input.variationId);
+  const boxes = await fetchBoxes(input.projectId, input.variationId);
+  const linkedClips = await linkGeneratedClips(input.projectId, input.variationId, boxes, await fetchAssignments(input.projectId, input.variationId));
   return {
     created: res.inserted.length,
     updated: res.updated,
@@ -128,6 +137,8 @@ export async function ensureStoryboardMaterialized(input: {
 
 export type WriteStoryboardInput = {
   projectId: string;
+  /** The video variation the board belongs to: its treatment is written and its boxes are read and written. */
+  variationId: string;
   /** Everything the treatment model is told about the project (lyrics, artist, look, footage note, …). */
   context: TreatmentContext;
   /** The treatment text the boxes are written from. Empty with `aiWritesText` = let the model write it. */
@@ -169,11 +180,11 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
     boxIdsWithMedia: withMedia,
     drafted,
     sections,
-    existingRows: input.boxes.length === 0 ? await fetchShotIndex(input.projectId) : [],
+    existingRows: input.boxes.length === 0 ? await fetchShotIndex(input.projectId, input.variationId) : [],
     lyricLines: input.lyricLines,
     at,
   });
-  await writeBoxes(input.projectId, plan);
+  await writeBoxes(input.projectId, plan, input.variationId);
 
   const mode: TreatmentMode = input.aiWritesText ? "ai" : parseTreatmentDoc(input.treatmentJson).mode;
   const prior = parseTreatmentDoc(input.treatmentJson);
@@ -199,7 +210,7 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
     generated_at: at,
   };
   // a new text replaces the old one: the old one is kept as a version, labelled as replaced by this generation
-  await saveTreatmentJson(input.projectId, input.aiWritesText ? withTreatmentDoc(base, doc, { what: "generate", at }) : withTreatmentDoc(base, doc));
+  await saveTreatmentJson(input.projectId, input.aiWritesText ? withTreatmentDoc(base, doc, { what: "generate", at }) : withTreatmentDoc(base, doc), input.variationId);
   return { doc, written: plan.written, kept: plan.kept, draft };
 }
 

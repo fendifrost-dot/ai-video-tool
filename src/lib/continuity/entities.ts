@@ -28,6 +28,8 @@ export const KIND_PLURAL: Record<EntityKind, string> = { location: "Locations", 
 export type ContinuityEntity = {
   id: string;
   projectId: string;
+  /** The video variation this entity belongs to (null only on a row from before variations). */
+  variationId: string | null;
   kind: EntityKind;
   /** Its identity inside the project — what shots point at. Never changes once shots use it. */
   key: string;
@@ -48,6 +50,7 @@ export type ContinuityEntity = {
 export type EntityRow = {
   id: string;
   project_id: string;
+  variation_id?: string | null;
   kind: string;
   key: string;
   name: string;
@@ -65,6 +68,7 @@ export function entityFromRow(row: EntityRow): ContinuityEntity | null {
   return {
     id: row.id,
     projectId: row.project_id,
+    variationId: row.variation_id ?? null,
     kind: row.kind as EntityKind,
     key: row.key,
     name: row.name,

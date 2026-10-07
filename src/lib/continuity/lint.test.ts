@@ -30,6 +30,7 @@ function makeShot(overrides: Partial<Shot> = {}): Shot {
     id: "s1",
     user_id: "u1",
     project_id: "p1",
+    variation_id: "v1",
     shot_number: 1,
     spec_key: null,
     generated_json: null,

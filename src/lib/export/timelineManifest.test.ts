@@ -7,6 +7,7 @@ import type { TimelineItem } from "@/lib/timeline/types";
 function project(): VideoProject {
   return {
     id: "p1",
+    active_variation_id: "v1",
     user_id: "u1",
     artist_id: null,
     title: "Test MV",

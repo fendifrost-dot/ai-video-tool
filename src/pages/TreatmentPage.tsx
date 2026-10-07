@@ -1,3 +1,4 @@
+import { useActiveVariation } from "@/lib/queries/variations";
 import { useEffect, useMemo, useState } from "react";
 import { useContinuityEntities } from "@/lib/queries/continuity";
 import { Link } from "@tanstack/react-router";
@@ -36,6 +37,7 @@ const CONTEXT_FIELD_NAME = { visual: "visual direction", mood: "mood", notes: "n
 const listOf = (words: readonly string[]) => (words.length <= 1 ? words.join("") : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`);
 
 export default function TreatmentPage({ projectId }: { projectId: string }) {
+  const variation = useActiveVariation(projectId);
   const qc = useQueryClient();
   const inputs = useTreatmentInputs(projectId);
   const entitiesQuery = useContinuityEntities(projectId);
@@ -138,7 +140,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
     if (notes === null || notes === storedNotes || !project) return;
     try {
       await updateProject.mutateAsync({ id: projectId, patch: { notes: notes.trim() || null } });
-      if (doc.notes) await saveTreatment(projectId, project.treatment_json, { ...doc, notes: "" });
+      if (doc.notes) await saveTreatment(projectId, project.treatment_json, { ...doc, notes: "" }, project.active_variation_id);
       await refresh();
       setNotes(null);
     } catch (e) {
@@ -151,7 +153,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
     setWorking("Saving…");
     try {
       await saveNotes();
-      await saveTreatment(projectId, project.treatment_json, { ...doc, text, mode, updatedAt: new Date().toISOString(), model: mode === "manual" ? null : doc.model, notes: "" });
+      await saveTreatment(projectId, project.treatment_json, { ...doc, text, mode, updatedAt: new Date().toISOString(), model: mode === "manual" ? null : doc.model, notes: "" }, project.active_variation_id);
       await refresh();
       setEditing(false);
       toast.success("Treatment saved");
@@ -168,8 +170,10 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
     setWorking(aiWritesText ? "Writing the treatment and the shots — this takes a minute or two…" : "Writing the shots from the treatment — this takes a minute or two…");
     try {
       await saveNotes();
+      if (!project.active_variation_id) throw new Error("this project has no video variation");
       const res = await writeStoryboardFromTreatment({
         projectId,
+        variationId: project.active_variation_id,
         // the project's places, props and lighting states: the writer points shots at them instead of describing them again
         context: {
           ...inputs.treatmentContext(notesValue, footageNote, setup.counts.takesSynced > 0),
@@ -232,8 +236,10 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
         setWorking("Releasing the shots…");
         try {
           // the footage comes off first: a shot must never be left unlocked AND still showing a clip of the old scene
-          await applyAssignmentOps(projectId, plan.assignmentOps);
-          await writeBoxes(projectId, { updates: plan.updates });
+          const variationId = project?.active_variation_id;
+          if (!variationId) throw new Error("this project has no video variation");
+          await applyAssignmentOps(projectId, plan.assignmentOps, variationId);
+          await writeBoxes(projectId, { updates: plan.updates }, variationId);
           await Promise.all([refresh(), qc.invalidateQueries({ queryKey: storyboardKeys.assignments(projectId) })]);
           toast.success(`${n} shot${n === 1 ? "" : "s"} released — rewrite the shots to write ${n === 1 ? "it" : "them"} from this treatment`);
         } catch (e) {
@@ -254,7 +260,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
       onConfirm: async () => {
         if (!project) return;
         try {
-          await deleteTreatment(projectId, project.treatment_json);
+          await deleteTreatment(projectId, project.treatment_json, project.active_variation_id);
           await refresh();
           setEditing(false);
           toast.success("Treatment deleted");
@@ -308,7 +314,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
 
   return (
     <>
-      <PageHeader title="Treatment" subtitle="One treatment for the video. Let the AI write it, or write it yourself — the shots are written from it." variant="compact" />
+      <PageHeader title="Treatment" subtitle="One treatment for the video. Let the AI write it, or write it yourself — the shots are written from it." variant="compact" context={variation?.name ?? null} />
       <div className="mx-auto max-w-3xl space-y-5 px-4 py-4 md:px-8 md:py-6" data-testid="treatment-page">
         {!setup.ready && (
           <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-200" data-testid="treatment-gate">

@@ -302,15 +302,17 @@ export function useStoryboardController(projectId: string): StoryboardController
   }, []);
 
   // --- the one-time move from the old storyboard (treatment_json + shot_overrides) onto box records ---------------
-  const ensured = useRef(false);
+  // once per variation: another video of the same project has its own board to move or not
+  const ensured = useRef<string | null>(null);
   useEffect(() => {
-    if (ensured.current || !project || boxesQuery.isLoading || boxesQuery.data === undefined) return;
+    const variationId = project?.active_variation_id ?? null;
+    if (!project || !variationId || ensured.current === variationId || boxesQuery.isLoading || boxesQuery.data === undefined) return;
     if (boxesQuery.data.length > 0) {
-      ensured.current = true;
+      ensured.current = variationId;
       return;
     }
-    ensured.current = true;
-    void ensureStoryboardMaterialized({ projectId, treatmentJson: project.treatment_json, lyricLines })
+    ensured.current = variationId;
+    void ensureStoryboardMaterialized({ projectId, variationId, treatmentJson: project.treatment_json, lyricLines })
       .then((r) => {
         if (!r) return;
         setMigrated(r);

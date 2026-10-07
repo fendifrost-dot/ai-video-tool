@@ -1,3 +1,4 @@
+import { useActiveVariation } from "@/lib/queries/variations";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -53,6 +54,7 @@ const DEFAULT_TARGETS: Record<TimelineRenderTarget, boolean> = {
 };
 
 export default function ExportPage({ projectId }: { projectId: string }) {
+  const variation = useActiveVariation(projectId);
   const projectQuery = useProject(projectId);
   const artistQuery = useArtist(projectQuery.data?.artist_id ?? undefined);
   const allShotRowsQuery = useProjectShots(projectId);
@@ -253,6 +255,7 @@ export default function ExportPage({ projectId }: { projectId: string }) {
     <>
       <PageHeader
         title="Export"
+        context={variation?.name ?? null}
         subtitle="Build a zip with the manifest, the shot list, the storyboard's timeline, the prompt log and (optionally) the files, for Premiere / After Effects. A finished render is not made in the app yet."
       />
       <div className="space-y-6 px-8 py-6">

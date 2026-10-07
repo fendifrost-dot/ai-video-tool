@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/queries/projects";
+import { VariationSwitcher } from "@/components/VariationSwitcher";
 import { useProjectRail } from "@/lib/projectRail";
 import { useEngineeringMode } from "@/lib/ux/engineeringMode";
 import { EngineeringModeToggle } from "@/components/ux/EngineeringModeToggle";
@@ -172,6 +173,7 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                 >
                   {projectTitle}
                 </p>
+                <VariationSwitcher projectId={projectId} />
               </div>
             )}
             <Button
@@ -249,6 +251,9 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
       <nav className="md:hidden relative z-20 px-4">
         <div className="glass rounded-2xl p-1.5">
           <div className="flex gap-1 overflow-x-auto scrollbar-none">
+            <div className="shrink-0">
+              <VariationSwitcher projectId={projectId} compact />
+            </div>
             {primaryItems.map((item) => renderLink(item, "chip"))}
             <button
               type="button"

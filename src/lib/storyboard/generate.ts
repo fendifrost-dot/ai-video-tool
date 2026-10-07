@@ -15,6 +15,7 @@ import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 import { applyAssignmentOps, fetchAssignments } from "@/lib/queries/storyboard";
 import { canonicalWords, continuitySource, referencePrompt, type ContinuityEntity, type ShotContinuity } from "@/lib/continuity/entities";
 import { writtenFrom, type StoryboardBox } from "./boxes";
+import { activeVariationIdOf } from "@/lib/queries/variations";
 import { resolveEvents, type EventClock } from "./events";
 import { planAssign } from "./media";
 import { assertPlanCovers, temporalPlan, type TemporalPlan } from "./temporal";
@@ -195,7 +196,7 @@ export function madeFromBox(box: StoryboardBox): MadeFrom {
 
 function runContext(projectId: string, box: StoryboardBox, lookPresetId: string | undefined) {
   const { id, look } = resolveLookPreset(lookPresetId ?? DEFAULT_BOX_LOOK);
-  return { projectId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [box.key]: box.id }, madeFrom: { [box.key]: madeFromBox(box) } };
+  return { projectId, variationId: box.variationId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [box.key]: box.id }, madeFrom: { [box.key]: madeFromBox(box) } };
 }
 
 /**
@@ -215,14 +216,17 @@ export async function attachStills(input: { projectId: string; box: StoryboardBo
     if (!assetId) continue;
     ids.push(assetId);
     await supabase.from("project_assets").update({ shot_id: input.box.id }).eq("id", assetId);
+    // the box's own variation: the still goes on the board it was drawn for, whatever is active by now
+    const variationId = input.box.variationId ?? (await activeVariationIdOf(input.projectId));
+    if (!variationId) throw new Error("the box belongs to no video variation");
     const ops = planAssign({
-      assignments: await fetchAssignments(input.projectId),
+      assignments: await fetchAssignments(input.projectId, variationId),
       shotId: input.box.id,
       assetId,
       role: "generated_image",
       select: input.select && path === input.picked,
     });
-    await applyAssignmentOps(input.projectId, ops);
+    await applyAssignmentOps(input.projectId, ops, variationId);
   }
   return ids;
 }
@@ -298,7 +302,7 @@ export async function generateEntityReference(input: { projectId: string; entity
   const deps = await browserRunnerDeps();
   const shot = entityShot(input.entity, input.aspect);
   const { id, look } = resolveLookPreset(DEFAULT_BOX_LOOK);
-  const res = await submitStills(shot, { projectId: input.projectId, runId: ENTITY_RUN, lookPresetId: id, look, shotIds: {}, selectStill: false, entityId: input.entity.id }, deps);
+  const res = await submitStills(shot, { projectId: input.projectId, variationId: input.entity.variationId, runId: ENTITY_RUN, lookPresetId: id, look, shotIds: {}, selectStill: false, entityId: input.entity.id }, deps);
   const { data, error } = await supabase.from("project_assets").select("id, file_url").eq("project_id", input.projectId).in("file_url", res.whole);
   if (error) throw new Error(`could not find the generated picture: ${error.message}`);
   const byPath = new Map((data ?? []).map((r) => [r.file_url, r.id]));

@@ -18,7 +18,7 @@ import type { Json } from "@/integrations/supabase/aliases";
 import { isUnfinished, useJobProgress, type ProgressRow } from "@/lib/providerJobs/progress";
 import { providerJobsKeys, useProjectProviderJobs } from "@/lib/providerJobs/queries";
 import { projectAssetsKeys } from "@/lib/queries/projectAssets";
-import { applyAssignmentOps, fetchAssignments, storyboardKeys } from "@/lib/queries/storyboard";
+import { applyAssignmentOps, fetchAssignments, storyboardKeys, useActiveVariationId } from "@/lib/queries/storyboard";
 import { STORYBOARD_RUN } from "@/lib/storyboard/generate";
 import { planAssign, type AssignmentOp } from "@/lib/storyboard/media";
 import { describeSeam, isStackedPanels, settingsOf, type BatchJobRow, type PanelSeam } from "@/lib/worldBatch";
@@ -115,9 +115,15 @@ export function planStillCheck(input: {
 export function useBoxJobs(projectId: string) {
   const qc = useQueryClient();
   const jobsQuery = useProjectProviderJobs(projectId);
+  const variationId = useActiveVariationId(projectId);
+  // the jobs of THIS variation only: a job records the variation it was submitted against (provider_jobs.variation_id,
+  // set once at insert), so a board never shows another video's job — the two may share shot keys
   const jobs = useMemo(
-    () => ((jobsQuery.data ?? []) as unknown as JobRow[]).filter((j) => settingsOf(j)?.batchRun === STORYBOARD_RUN),
-    [jobsQuery.data],
+    () =>
+      ((jobsQuery.data ?? []) as unknown as (JobRow & { variation_id?: string | null })[]).filter(
+        (j) => settingsOf(j)?.batchRun === STORYBOARD_RUN && (!variationId || !j.variation_id || j.variation_id === variationId),
+      ),
+    [jobsQuery.data, variationId],
   );
   const checkTried = useRef<Set<string>>(new Set());
 
@@ -150,7 +156,7 @@ export function useBoxJobs(projectId: string) {
           const seams = await Promise.all(candidates.map((c) => inspect(c.path).catch(() => null)));
           const plan = planStillCheck({ candidates, seams, select: p.settings?.selectStill === true });
           if (p.shotId) {
-            const current = await fetchAssignments(projectId);
+            const current = variationId ? await fetchAssignments(projectId, variationId) : [];
             const ops: AssignmentOp[] = current.filter((a) => a.shotId === p.shotId && a.role === "generated_image" && plan.removeAssetIds.includes(a.assetId)).map((a) => ({ op: "delete" as const, id: a.id }));
             if (plan.selectAssetId) ops.push(...planAssign({ assignments: current, shotId: p.shotId, assetId: plan.selectAssetId, role: "generated_image", select: true }));
             if (ops.length) await applyAssignmentOps(projectId, ops);

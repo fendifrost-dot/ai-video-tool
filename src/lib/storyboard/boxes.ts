@@ -69,6 +69,8 @@ export type BoxHistoryEntry = {
 export type BoxRow = {
   id: string;
   project_id: string;
+  /** The video variation the box belongs to (null only on a row from before variations; the migration fills it). */
+  variation_id?: string | null;
   shot_number: number;
   song_section: string | null;
   timestamp_start: number | string | null;
@@ -93,6 +95,8 @@ export type StoryboardBox = {
   /** Stable text key: names files, jobs and the batch dialect's shot id. Never reassigned. */
   key: string;
   projectId: string;
+  /** The video variation this box is part of. */
+  variationId: string | null;
   shotNumber: number;
   /** The box's window on the song clock, seconds. */
   start: number;
@@ -219,6 +223,7 @@ export function boxFromRow(row: BoxRow): StoryboardBox | null {
     id: row.id,
     key: row.spec_key,
     projectId: row.project_id,
+    variationId: row.variation_id ?? null,
     shotNumber: row.shot_number,
     start,
     end,

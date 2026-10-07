@@ -282,21 +282,27 @@ Deno.serve(async (req) => {
         return json(req, 400, { ok: false, errorMessage: "projectId and transcript required" });
       }
 
-      const { data: project, error: projectErr } = await userClient
+      const { data: projectRow, error: projectErr } = await userClient
         .from("video_projects")
-        .select("id, title, mood, visual_style, lyrics, song_title, song_structure_json, treatment_json, user_id")
+        .select("id, title, lyrics, song_title, song_structure_json, user_id, active_variation_id")
         .eq("id", projectId)
         .maybeSingle();
       if (projectErr) return json(req, 500, { ok: false, errorMessage: projectErr.message });
-      if (!project || project.user_id !== userData.user.id) {
+      if (!projectRow || projectRow.user_id !== userData.user.id) {
         return json(req, 403, { ok: false, errorMessage: "Project not found" });
       }
+      // the creative direction is the ACTIVE video variation's (migration 20261007120000), as are the shots
+      const { data: variation } = projectRow.active_variation_id
+        ? await userClient.from("video_variations").select("mood, visual_style, treatment_json").eq("id", projectRow.active_variation_id).maybeSingle()
+        : { data: null };
+      const project = { ...projectRow, mood: variation?.mood ?? null, visual_style: variation?.visual_style ?? null, treatment_json: variation?.treatment_json ?? {} };
 
-      const { data: shots } = await userClient
+      let shotsQuery = userClient
         .from("shots")
         .select("shot_number, song_section, scene_description, duration_seconds, shot_type, status")
-        .eq("project_id", projectId)
-        .order("shot_number", { ascending: true });
+        .eq("project_id", projectId);
+      if (projectRow.active_variation_id) shotsQuery = shotsQuery.eq("variation_id", projectRow.active_variation_id);
+      const { data: shots } = await shotsQuery.order("shot_number", { ascending: true });
 
       const { data: analysis } = await userClient
         .from("song_analyses")

@@ -14,6 +14,8 @@ import { parseTreatmentDoc, withTreatmentDoc, type TreatmentMode } from "./treat
 export type TreatmentVersion = {
   id: string;
   projectId: string;
+  /** The video variation whose treatment this was (null on a row from before variations; the migration fills it). */
+  variationId: string | null;
   /** When it stopped being the current treatment. */
   replacedAt: string;
   /** What replaced it: generate | edit | delete | restore | context (only notes, mood or visual direction changed). */
@@ -31,6 +33,7 @@ export type TreatmentVersion = {
 export type TreatmentVersionRow = {
   id: string;
   project_id: string;
+  variation_id?: string | null;
   created_at: string;
   replaced_by: string | null;
   treatment_text: string | null;
@@ -46,6 +49,7 @@ export function versionFromRow(row: TreatmentVersionRow): TreatmentVersion {
   return {
     id: row.id,
     projectId: row.project_id,
+    variationId: row.variation_id ?? null,
     replacedAt: row.created_at,
     replacedBy: row.replaced_by || "edit",
     text: row.treatment_text ?? "",

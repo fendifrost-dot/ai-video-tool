@@ -10,6 +10,7 @@
  */
 import { EFFECT_DEFAULTS, isAsFilmed, pictureAt, pictureFilter, PICTURE_AS_FILMED, type Picture } from "./events";
 import { supabase } from "@/lib/supabase";
+import { readDirection, writeDirection } from "@/lib/queries/variations";
 import { functionFailureText } from "@/lib/functionsError";
 import { frameOf } from "@/lib/media/frames";
 import { videoStateAt, type AssignmentRole, type MediaAsset, type TimelineSegment } from "./media";
@@ -342,14 +343,18 @@ export function readStoredReview(projectJson: unknown): StoredSectionReview | nu
   };
 }
 
-/** Keep a review on the project. Only this key of the project's JSON is written. */
-export async function saveStoredReview(projectId: string, review: StoredSectionReview): Promise<void> {
-  const { data, error } = await supabase.from("video_projects").select("treatment_json").eq("id", projectId).single();
-  if (error) throw new Error(`the review could not be saved: ${error.message}`);
-  const base = data?.treatment_json && typeof data.treatment_json === "object" && !Array.isArray(data.treatment_json) ? (data.treatment_json as Record<string, unknown>) : {};
-  const { error: upErr } = await supabase
-    .from("video_projects")
-    .update({ treatment_json: { ...base, astra_review: review } as never })
-    .eq("id", projectId);
-  if (upErr) throw new Error(`the review could not be saved: ${upErr.message}`);
+/**
+ * Keep a review on the video variation it reviewed (named, else the active one). Only this key of its JSON is
+ * written: a review is of one board, and a late answer lands on the board it looked at.
+ */
+export async function saveStoredReview(projectId: string, review: StoredSectionReview, variationId?: string | null): Promise<void> {
+  const current = await readDirection(projectId, variationId).catch((e) => {
+    throw new Error(`the review could not be saved: ${e instanceof Error ? e.message : String(e)}`);
+  });
+  const base = current?.treatment_json && typeof current.treatment_json === "object" && !Array.isArray(current.treatment_json) ? (current.treatment_json as Record<string, unknown>) : {};
+  try {
+    await writeDirection(projectId, { treatment_json: { ...base, astra_review: review } as never }, variationId);
+  } catch (e) {
+    throw new Error(`the review could not be saved: ${e instanceof Error ? e.message : String(e)}`);
+  }
 }
