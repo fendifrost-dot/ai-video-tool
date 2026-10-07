@@ -1,32 +1,32 @@
 {
  "n": {
-  "control": 4,
-  "treatment": 4
+  "control": 6,
+  "treatment": 6
  },
  "endpoints": {
   "detail_mf_norm": {
    "role": "PRIMARY",
-   "control_mean": 253.49262036964348,
-   "treatment_mean": 560.7857717532931,
-   "relative_change": 1.2122370699957337,
-   "t": 0.8560096057615169,
-   "p": 0.39199246621709816
+   "control_mean": 694.8972419395935,
+   "treatment_mean": 602.4210657868535,
+   "relative_change": -0.1330789224238218,
+   "t": -0.16815108861393602,
+   "p": 0.8664644185874459
   },
   "noise_hf": {
    "role": "secondary",
-   "control_mean": 2.6318978369235992,
-   "treatment_mean": 3.0015259236097336,
-   "relative_change": 0.1404416544442118,
-   "t": 0.25090532029860174,
-   "p": 0.8018873109626338
+   "control_mean": 2.785088360309601,
+   "treatment_mean": 3.2805300652980804,
+   "relative_change": 0.1778908388944305,
+   "t": 0.41834724657477823,
+   "p": 0.6756932505647777
   },
   "sat_mean": {
    "role": "GUARD",
-   "control_mean": 104.84356641979161,
-   "treatment_mean": 110.1809898984616,
-   "relative_change": 0.05090845018804627,
-   "t": 0.3817036288190039,
-   "p": 0.7026812081276396
+   "control_mean": 111.67232893766455,
+   "treatment_mean": 107.84277294845826,
+   "relative_change": -0.03429279236497027,
+   "t": -0.3765768465826671,
+   "p": 0.7064880969279412
   }
  },
  "verdict": "NO MEASURED EFFECT at this sample size",
