@@ -515,6 +515,13 @@ export type Database = {
             referencedRelation: "video_projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "continuity_entities_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       export_packages: {
@@ -1551,6 +1558,13 @@ export type Database = {
             referencedRelation: "project_assets"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "provider_jobs_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       shot_asset_assignments: {
@@ -1622,6 +1636,13 @@ export type Database = {
             columns: ["shot_id"]
             isOneToOne: false
             referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shot_asset_assignments_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
             referencedColumns: ["id"]
           },
         ]
@@ -1717,8 +1738,8 @@ export type Database = {
           trim_out_seconds: number | null
           updated_at: string
           user_id: string
-          wardrobe: string | null
           variation_id: string | null
+          wardrobe: string | null
         }
         Insert: {
           box_origin?: string | null
@@ -1757,8 +1778,8 @@ export type Database = {
           trim_out_seconds?: number | null
           updated_at?: string
           user_id: string
-          wardrobe?: string | null
           variation_id?: string | null
+          wardrobe?: string | null
         }
         Update: {
           box_origin?: string | null
@@ -1797,8 +1818,8 @@ export type Database = {
           trim_out_seconds?: number | null
           updated_at?: string
           user_id?: string
-          wardrobe?: string | null
           variation_id?: string | null
+          wardrobe?: string | null
         }
         Relationships: [
           {
@@ -1813,6 +1834,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shots_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
             referencedColumns: ["id"]
           },
         ]
@@ -2329,8 +2357,8 @@ export type Database = {
           song_analysis_id: string | null
           title: string | null
           updated_at: string
-          version_number: number
           variation_id: string | null
+          version_number: number
         }
         Insert: {
           aspect_ratio?: string | null
@@ -2345,8 +2373,8 @@ export type Database = {
           song_analysis_id?: string | null
           title?: string | null
           updated_at?: string
-          version_number?: number
           variation_id?: string | null
+          version_number?: number
         }
         Update: {
           aspect_ratio?: string | null
@@ -2361,8 +2389,8 @@ export type Database = {
           song_analysis_id?: string | null
           title?: string | null
           updated_at?: string
-          version_number?: number
           variation_id?: string | null
+          version_number?: number
         }
         Relationships: [
           {
@@ -2377,6 +2405,13 @@ export type Database = {
             columns: ["song_analysis_id"]
             isOneToOne: false
             referencedRelation: "song_analyses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "timeline_manifests_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
             referencedColumns: ["id"]
           },
         ]
@@ -2436,8 +2471,8 @@ export type Database = {
           treatment_text: string
           treatment_updated_at: string | null
           user_id: string
-          visual_style: string | null
           variation_id: string | null
+          visual_style: string | null
         }
         Insert: {
           created_at?: string
@@ -2452,8 +2487,8 @@ export type Database = {
           treatment_text?: string
           treatment_updated_at?: string | null
           user_id: string
-          visual_style?: string | null
           variation_id?: string | null
+          visual_style?: string | null
         }
         Update: {
           created_at?: string
@@ -2468,8 +2503,8 @@ export type Database = {
           treatment_text?: string
           treatment_updated_at?: string | null
           user_id?: string
-          visual_style?: string | null
           variation_id?: string | null
+          visual_style?: string | null
         }
         Relationships: [
           {
@@ -2477,6 +2512,100 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_versions_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_projects: {
+        Row: {
+          active_variation_id: string | null
+          artist_id: string | null
+          aspect_ratio: string
+          bpm: number | null
+          color_palette: string[]
+          created_at: string
+          creative_exemplars: string[]
+          genre: string | null
+          id: string
+          lyrics: string | null
+          mood: string | null
+          notes: string | null
+          song_structure_json: Json
+          song_title: string | null
+          status: Database["public"]["Enums"]["project_status"]
+          title: string
+          treatment_json: Json
+          updated_at: string
+          user_id: string
+          visual_style: string | null
+          wardrobe_notes: string | null
+        }
+        Insert: {
+          active_variation_id?: string | null
+          artist_id?: string | null
+          aspect_ratio?: string
+          bpm?: number | null
+          color_palette?: string[]
+          created_at?: string
+          creative_exemplars?: string[]
+          genre?: string | null
+          id?: string
+          lyrics?: string | null
+          mood?: string | null
+          notes?: string | null
+          song_structure_json?: Json
+          song_title?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          title: string
+          treatment_json?: Json
+          updated_at?: string
+          user_id: string
+          visual_style?: string | null
+          wardrobe_notes?: string | null
+        }
+        Update: {
+          active_variation_id?: string | null
+          artist_id?: string | null
+          aspect_ratio?: string
+          bpm?: number | null
+          color_palette?: string[]
+          created_at?: string
+          creative_exemplars?: string[]
+          genre?: string | null
+          id?: string
+          lyrics?: string | null
+          mood?: string | null
+          notes?: string | null
+          song_structure_json?: Json
+          song_title?: string | null
+          status?: Database["public"]["Enums"]["project_status"]
+          title?: string
+          treatment_json?: Json
+          updated_at?: string
+          user_id?: string
+          visual_style?: string | null
+          wardrobe_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_projects_active_variation_id_fkey"
+            columns: ["active_variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "video_projects_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
             referencedColumns: ["id"]
           },
         ]
@@ -2526,90 +2655,17 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "video_variations_duplicated_from_fkey"
+            columns: ["duplicated_from"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "video_variations_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "video_projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      video_projects: {
-        Row: {
-          artist_id: string | null
-          aspect_ratio: string
-          bpm: number | null
-          color_palette: string[]
-          created_at: string
-          creative_exemplars: string[]
-          genre: string | null
-          id: string
-          lyrics: string | null
-          mood: string | null
-          notes: string | null
-          song_structure_json: Json
-          song_title: string | null
-          status: Database["public"]["Enums"]["project_status"]
-          title: string
-          treatment_json: Json
-          updated_at: string
-          user_id: string
-          visual_style: string | null
-          wardrobe_notes: string | null
-          active_variation_id: string | null
-        }
-        Insert: {
-          artist_id?: string | null
-          aspect_ratio?: string
-          bpm?: number | null
-          color_palette?: string[]
-          created_at?: string
-          creative_exemplars?: string[]
-          genre?: string | null
-          id?: string
-          lyrics?: string | null
-          mood?: string | null
-          notes?: string | null
-          song_structure_json?: Json
-          song_title?: string | null
-          status?: Database["public"]["Enums"]["project_status"]
-          title: string
-          treatment_json?: Json
-          updated_at?: string
-          user_id: string
-          visual_style?: string | null
-          wardrobe_notes?: string | null
-          active_variation_id?: string | null
-        }
-        Update: {
-          artist_id?: string | null
-          aspect_ratio?: string
-          bpm?: number | null
-          color_palette?: string[]
-          created_at?: string
-          creative_exemplars?: string[]
-          genre?: string | null
-          id?: string
-          lyrics?: string | null
-          mood?: string | null
-          notes?: string | null
-          song_structure_json?: Json
-          song_title?: string | null
-          status?: Database["public"]["Enums"]["project_status"]
-          title?: string
-          treatment_json?: Json
-          updated_at?: string
-          user_id?: string
-          visual_style?: string | null
-          wardrobe_notes?: string | null
-          active_variation_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "video_projects_artist_id_fkey"
-            columns: ["artist_id"]
-            isOneToOne: false
-            referencedRelation: "artists"
             referencedColumns: ["id"]
           },
         ]
@@ -2619,10 +2675,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      duplicate_variation: {
-        Args: { p_source: string; p_name: string }
-        Returns: string
-      }
       claim_provider_jobs: {
         Args: { p_limit?: number; p_user?: string }
         Returns: {
@@ -2643,6 +2695,7 @@ export type Database = {
           status: Database["public"]["Enums"]["provider_job_status"]
           updated_at: string
           user_id: string
+          variation_id: string | null
         }[]
         SetofOptions: {
           from: "*"
@@ -2650,6 +2703,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      duplicate_variation: {
+        Args: { p_name: string; p_source: string }
+        Returns: string
       }
       kick_provider_jobs: { Args: never; Returns: undefined }
       lyric_lines_in_window: {
