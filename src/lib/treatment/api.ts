@@ -7,6 +7,7 @@
  * markdown + show provenance.
  */
 
+import { parseBeatCoverage, parseWriterRun, type BeatCoverage, type WriterRunRecord } from "./beatCoverage";
 import { eventsFromWritten } from "@/lib/storyboard/writtenBeats";
 import type { ShotEvent } from "./shotSpec";
 import { functionFailure } from "@/lib/functionsError";
@@ -170,10 +171,15 @@ export type StructuredTreatment = {
   generated_at: string;
   /** Readable summary so legacy prose renderers still show something. */
   text: string;
+  /** From a writer that read the treatment's beats: the check of the board against them, and the run's evidence. */
+  coverage?: BeatCoverage | null;
+  run?: WriterRunRecord | null;
 };
 
 export type TreatmentContext = {
   projectId: string;
+  /** The video variation the board belongs to — kept with the writer run's evidence. */
+  variationId?: string | null;
   projectType: ProjectType;
   songTitle?: string | null;
   lyrics?: string | null;
@@ -292,6 +298,7 @@ export async function draftTreatmentClips(
 ): Promise<StructuredTreatment> {
   const data = await callTreatmentWriter({
     mode: "full_treatment",
+    avt_variation_id: input.variationId ?? null,
     ...contextBody(input),
     concept: input.concept,
     write_text: input.writeText === true,
@@ -369,6 +376,8 @@ export async function draftTreatmentClips(
     model: String(data.model ?? ""),
     generated_at: new Date().toISOString(),
     text: [concept, narrative].filter(Boolean).join("\n\n"),
+    coverage: parseBeatCoverage(data.coverage),
+    run: parseWriterRun({ id: data.runId ?? null, model: data.model ?? null, actualCostUsd: data.actualCostUsd ?? null, estimatedCostUsd: data.estimatedCostUsd ?? null }),
   };
   return structured;
 }

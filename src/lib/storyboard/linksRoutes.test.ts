@@ -143,7 +143,7 @@ describe("references: the linked shot's picture, the place, exact garments — s
     // the place's words are in the prompt anyway: leaving its picture out is not a problem to raise
     expect(plan.problems).toEqual([]);
     const four = planStillReferences({ isPerformance: false, continuity: continuity(null), linkNeeds: [], garments: [{ id: "g1", onFile: { id: "g1", label: "trucker jacket" } }, { id: "g2", onFile: { id: "g2", label: "jeans" } }, { id: "g3", onFile: { id: "g3", label: "sneakers" } }, { id: "g4", onFile: { id: "g4", label: "belt" } }], cap: 3 });
-    expect(four.problems).toEqual([expect.objectContaining({ level: "warning", text: "belt does not fit in this request: it is described in words only." })]);
+    expect(four.problems).toEqual([expect.objectContaining({ level: "blocking", text: "belt is marked exact and does not fit in this request (3 pictures): it would be drawn from words.", fix: expect.stringContaining("untick") })]);
   });
 
   it("a garment id that is not in the wardrobe is blocking — never invented, never replaced", () => {
@@ -251,6 +251,19 @@ describe("the people the writer cast reach the saved shot", () => {
 
 describe("a picture the shot cannot do without is never a quiet demotion", () => {
   const fendi = { source: "character_feature" as const, id: "face-1", role: "cast" as const, label: "Fendi" };
+  it("a screen picture that does not fit the cap BLOCKS (the control-room monitors cannot show something made up)", () => {
+    const screens = [1, 2, 3, 4].map((n) => ({ link: { kind: "screen_shows" as const, otherKey: `S${n}`, other: { shotNumber: n } }, role: "screen" as const, still: { assetId: `a${n}` } }));
+    const plan = planStillReferences({ isPerformance: false, continuity: NO_CONTINUITY, linkNeeds: screens as never, garments: [], cap: 3 });
+    expect(plan.sent.map((r) => r.id)).toEqual(["a1", "a2", "a3"]);
+    expect(plan.notSent.map((n) => n.ref.id)).toEqual(["a4"]);
+    expect(plan.problems).toEqual([expect.objectContaining({ level: "blocking", text: expect.stringContaining("shot 4) does not fit in this request (3 pictures)"), fix: expect.stringContaining("multi_shot") })]);
+    // a garment behind a screen, a face and another garment: the fourth is a block, not a warning
+    const full = planStillReferences({ isPerformance: false, continuity: NO_CONTINUITY, linkNeeds: [screens[0]] as never, garments: [{ id: "g1", onFile: { id: "g1", label: "jacket" } }, { id: "g2", onFile: { id: "g2", label: "jeans" } }], extra: [{ source: "character_feature", id: "face", role: "cast", label: "Fendi" }], cap: 3 });
+    expect(full.sent.map((r) => r.role)).toEqual(["screen", "cast", "garment"]);
+    expect(full.problems.map((p) => p.level)).toEqual(["blocking"]);
+    expect(full.problems[0].text).toContain("jeans is marked exact");
+  });
+
   it("an identity that does not fit the cap BLOCKS the shot (the still would draw a stranger)", () => {
     const plan = planStillReferences({
       isPerformance: false,
@@ -260,9 +273,13 @@ describe("a picture the shot cannot do without is never a quiet demotion", () =>
       extra: [fendi],
       cap: 3,
     });
-    // screen first, identity second, then the garments that fit
+    // screen first, identity second, then the garments that fit — and the two exact garments that do not fit BLOCK
     expect(plan.sent.map((r) => r.role)).toEqual(["screen", "cast", "garment"]);
-    expect(plan.problems.some((p) => p.level === "blocking")).toBe(false);
+    expect(plan.problems.map((p) => p.level)).toEqual(["blocking", "blocking"]);
+    expect(plan.problems.map((p) => p.text)).toEqual([expect.stringContaining("jeans is marked exact"), expect.stringContaining("sneakers is marked exact")]);
+    // the same shot with one exact garment fits and is clean
+    const fits = planStillReferences({ ...{ isPerformance: false, continuity: NO_CONTINUITY, cap: 3, extra: [fendi] }, linkNeeds: [], garments: [{ id: "g1", onFile: { id: "g1", label: "jacket" } }, { id: "g2", onFile: { id: "g2", label: "jeans" } }] });
+    expect(fits.problems).toEqual([]);
     const tight = planStillReferences({ isPerformance: false, continuity: NO_CONTINUITY, linkNeeds: [], garments: [{ id: "g1", onFile: { id: "g1", label: "jacket" } }], extra: [fendi], cap: 1 });
     expect(tight.sent.map((r) => r.role)).toEqual(["cast"]);
     const noRoom = planStillReferences({ isPerformance: false, continuity: NO_CONTINUITY, linkNeeds: [], garments: [], extra: [fendi, { ...fendi, id: "face-2", label: "The rider" }], cap: 1 });

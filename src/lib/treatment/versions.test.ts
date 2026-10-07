@@ -96,7 +96,7 @@ describe("restoring a version", () => {
     expect(restored.model).toBeNull();
     expect(w).toMatchObject({ notes: "the old notes", mood: "moody", visual_style: "night city" });
     // everything else in the record stays: the shots' fingerprint (so the page says they were written from another text), the last generation's clips, the stored review
-    expect(restored.storyboard).toEqual({ from: "9:abc", at: "t", written: 41, kept: 5 });
+    expect(restored.storyboard).toEqual({ from: "9:abc", at: "t", written: 41, kept: 5, coverage: null, run: null });
     expect(w.treatment_json.clips).toEqual([{ key: "c001" }]);
     expect(w.treatment_json.astra_review).toEqual({ verdict: "revise" });
   });

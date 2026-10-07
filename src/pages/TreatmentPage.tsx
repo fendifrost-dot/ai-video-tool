@@ -1,4 +1,5 @@
-import { useActiveVariation } from "@/lib/queries/variations";
+import { useActiveVariation, useVariations, variationsKeys } from "@/lib/queries/variations";
+import { coverageGaps, costLine, type BeatCoverage, type WriterRunRecord } from "@/lib/treatment/beatCoverage";
 import { useEffect, useMemo, useState } from "react";
 import { useContinuityEntities } from "@/lib/queries/continuity";
 import { Link } from "@tanstack/react-router";
@@ -18,7 +19,7 @@ import { treatmentVersionsKeys, useRestoreTreatmentVersion, useTreatmentVersions
 import { applyAssignmentOps, storyboardKeys, useAssignments, useProjectMedia, useStoryboardBoxes, useTakeSyncs, writeBoxes } from "@/lib/queries/storyboard";
 import { planRelease } from "@/lib/storyboard/rewrite";
 import { useTreatmentInputs } from "@/lib/queries/treatmentInputs";
-import { boxIsStale, unlockedForGeneration } from "@/lib/storyboard/boxes";
+import { boxIsStale, unlockedForGeneration, type StoryboardBox } from "@/lib/storyboard/boxes";
 import { deleteTreatment, saveTreatment, writeStoryboardFromTreatment } from "@/lib/storyboard/build";
 import { isOriginalTake, isUsableSync } from "@/lib/storyboard/media";
 import { footageSummary, setupStatus } from "@/lib/storyboard/setup";
@@ -38,6 +39,7 @@ const listOf = (words: readonly string[]) => (words.length <= 1 ? words.join("")
 
 export default function TreatmentPage({ projectId }: { projectId: string }) {
   const variation = useActiveVariation(projectId);
+  const variations = useVariations(projectId);
   const qc = useQueryClient();
   const inputs = useTreatmentInputs(projectId);
   const entitiesQuery = useContinuityEntities(projectId);
@@ -164,13 +166,24 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
     }
   };
 
-  /** One model call: the treatment text (when the AI writes it) and the scene of every shot it may write. */
-  const write = async (aiWritesText: boolean) => {
+  /** The name a candidate board gets: this variation's name and a count, so two candidates never share one. */
+  const candidateName = () => {
+    const base = variation?.name ?? "Board";
+    const n = (variations.data ?? []).filter((v) => v.name.startsWith(`${base} · candidate`)).length + 1;
+    return `${base} · candidate ${n}`;
+  };
+
+  /**
+   * One writer run: the treatment text (when the AI writes it) and the scene of every shot it may write. With
+   * `asCandidate` the shots go into a new variation and this board is left exactly as it is.
+   */
+  const write = async (aiWritesText: boolean, asCandidate = false) => {
     if (!project) return;
-    setWorking(aiWritesText ? "Writing the treatment and the shots — this takes a minute or two…" : "Writing the shots from the treatment — this takes a minute or two…");
+    setWorking(aiWritesText ? "Writing the treatment and the shots — this takes a minute or two…" : asCandidate ? "Reading the treatment's beats and writing a candidate board — this takes a minute or two…" : "Writing the shots from the treatment — this takes a minute or two…");
     try {
       await saveNotes();
       if (!project.active_variation_id) throw new Error("this project has no video variation");
+      const candidate = asCandidate ? candidateName() : null;
       const res = await writeStoryboardFromTreatment({
         projectId,
         variationId: project.active_variation_id,
@@ -188,10 +201,18 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
         lyricLines,
         // the notes live on the project; nothing is kept a second time with the treatment
         notes: "",
+        candidate: candidate ? { name: candidate } : null,
       });
       await refresh();
+      await qc.invalidateQueries({ queryKey: variationsKeys.forProject(projectId) });
       setEditing(false);
-      toast.success(`${aiWritesText ? "Treatment written" : "Shots written"} — ${res.written} shot${res.written === 1 ? "" : "s"} written${res.kept ? `, ${res.kept} of yours kept` : ""}`);
+      const cov = res.draft.coverage;
+      const covLine = cov ? (cov.ok ? "; the board carries every beat of the treatment" : `; ${coverageGaps(cov).length} gap${coverageGaps(cov).length === 1 ? "" : "s"} against the treatment — see Coverage`) : "";
+      if (res.candidateVariationId) {
+        toast.success(`Candidate written — ${res.written} shots in “${candidate}”; this board is untouched${res.editsLeftBehind ? ` (${res.editsLeftBehind} of your edits here were not carried over)` : ""}${covLine}. Switch to it under the project title to review it.`, { duration: 12000 });
+      } else {
+        toast.success(`${aiWritesText ? "Treatment written" : "Shots written"} — ${res.written} shot${res.written === 1 ? "" : "s"} written${res.kept ? `, ${res.kept} of yours kept` : ""}${covLine}`);
+      }
     } catch (e) {
       toast.error(message(e));
     } finally {
@@ -199,9 +220,19 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
     }
   };
 
-  const askWrite = (aiWritesText: boolean) => {
+  const askWrite = (aiWritesText: boolean, asCandidate = false) => {
     if (!setup.ready) {
       toast.info(`Setup is not finished — ${setup.blockedBy}`);
+      return;
+    }
+    if (asCandidate) {
+      setConfirm({
+        title: "Write a candidate board from this treatment?",
+        body: `The treatment's beats are read out first and every shot is written inside its beat, in the treatment's order. The shots go into a NEW variation, “${candidateName()}”, with this treatment and direction — this board stays exactly as it is${kept ? `, your ${kept} edited or locked shot${kept === 1 ? "" : "s"} included (they are not carried into the candidate)` : ""}. Nothing is made active; switch to the candidate under the project title to review it, and come back here any time.`,
+        confirmLabel: "Write the candidate",
+        testId: "confirm-write-candidate",
+        onConfirm: () => write(false, true),
+      });
       return;
     }
     const effect =
@@ -535,11 +566,18 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
               )}
             </p>
           )}
+          {boxes.length > 0 && doc.storyboard?.coverage && <CoverageBlock coverage={doc.storyboard.coverage} run={doc.storyboard.run ?? null} boxes={boxes} />}
           <div className="flex flex-wrap items-center gap-2">
             {exists && (boxes.length === 0 || staleOpen > 0 || (storyboardIsStale(doc) && open > 0)) && (
               <Button size="sm" onClick={() => askWrite(false)} disabled={busy} data-testid="treatment-write-shots">
                 <Wand2 className="mr-1.5 h-3.5 w-3.5" />
                 {boxes.length === 0 ? "Write the shots from this treatment" : `Rewrite the ${open} shot${open === 1 ? " that is" : "s that are"} not yours`}
+              </Button>
+            )}
+            {exists && boxes.length > 0 && (
+              <Button size="sm" variant="outline" onClick={() => askWrite(false, true)} disabled={busy} data-testid="treatment-write-candidate">
+                <Wand2 className="mr-1.5 h-3.5 w-3.5" />
+                Write a candidate board…
               </Button>
             )}
             {exists && staleKept > 0 && (
@@ -559,5 +597,59 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
       </div>
       <ConfirmHost request={confirm} onClose={() => setConfirm(null)} />
     </>
+  );
+}
+
+/**
+ * What the board carries of the treatment, beat by beat: the shots of each, who is cast, the ties — and every gap,
+ * said plainly. A shot count is not a success; this is what says whether the storyboard IS the treatment.
+ */
+function CoverageBlock({ coverage, run, boxes }: { coverage: BeatCoverage; run: WriterRunRecord | null; boxes: readonly StoryboardBox[] }) {
+  const [open, setOpen] = useState(!coverage.ok);
+  const number = (key: string) => {
+    const b = boxes.find((x) => x.key === key);
+    return b ? String(boxes.indexOf(b) + 1) : key;
+  };
+  const gaps = coverageGaps(coverage, number);
+  const beatsWithShots = coverage.beats.filter((b) => b.shots.length > 0).length;
+  return (
+    <div className={cn("rounded-lg border p-3 text-xs", coverage.ok ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-400/40 bg-amber-400/5")} data-testid="treatment-coverage" data-ok={coverage.ok}>
+      <button type="button" className="flex w-full items-center justify-between text-left" onClick={() => setOpen((o) => !o)} data-testid="treatment-coverage-toggle">
+        <span className="font-medium">
+          Coverage — {beatsWithShots} of {coverage.beats.length} beats of the treatment have shots
+          {coverage.ok ? "; every person and every tie is carried." : `; ${gaps.length} gap${gaps.length === 1 ? "" : "s"}.`}
+        </span>
+        <span className="text-foreground/50">{open ? "hide" : "show"}</span>
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          {gaps.length > 0 && (
+            <ul className="list-disc space-y-0.5 pl-4 text-amber-100/90" data-testid="treatment-coverage-gaps">
+              {gaps.map((g, i) => (
+                <li key={i}>{g}</li>
+              ))}
+            </ul>
+          )}
+          <ol className="space-y-1 text-foreground/75" data-testid="treatment-coverage-beats">
+            {coverage.beats.map((b) => (
+              <li key={b.id} className="flex flex-wrap gap-x-2" data-beat={b.id}>
+                <span className="font-medium text-foreground/90">{b.title}</span>
+                <span>{b.shots.length ? `shots ${number(b.shots[0])}${b.shots.length > 1 ? `–${number(b.shots[b.shots.length - 1])}` : ""}` : "no shot"}</span>
+                {b.people.length > 0 && <span>· {b.people.map((p) => `${p.key}${p.castIn.length ? "" : " (not cast)"}`).join(", ")}</span>}
+                {b.ties.map((t, i) => (
+                  <span key={i} className={t.present ? "" : "text-amber-200"}>
+                    · {t.kind.replace("_", " ")} → {coverage.beats.find((x) => x.id === t.to)?.title ?? t.to}
+                    {t.present ? "" : " (missing)"}
+                  </span>
+                ))}
+              </li>
+            ))}
+          </ol>
+          <p className="text-[11px] text-foreground/50" data-testid="treatment-coverage-run">
+            Writer run{run?.model ? ` (${run.model})` : ""}: {costLine(run)}.
+          </p>
+        </div>
+      )}
+    </div>
   );
 }

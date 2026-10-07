@@ -13,12 +13,13 @@ import {
   type StructuredTreatment,
   type TreatmentContext,
 } from "@/lib/treatment/api";
+import { coverageGaps } from "@/lib/treatment/beatCoverage";
 import { applyCoverageDefaults, DEFAULT_COVERAGE_PRESETS } from "@/lib/treatment/coverage";
 import { buildClipGrid } from "@/lib/treatment/grid";
 import type { ShotOverride } from "@/lib/treatment/overrides";
 import { clearTreatment, fingerprint, parseTreatmentDoc, withTreatmentDoc, type TreatmentDoc, type TreatmentMode } from "@/lib/treatment/treatmentDoc";
 import { applyAssignmentOps, fetchAssignments, fetchBoxes, fetchShotIndex, writeBoxes } from "@/lib/queries/storyboard";
-import { writeDirection } from "@/lib/queries/variations";
+import { createVariation, readDirection, writeDirection } from "@/lib/queries/variations";
 import { planMaterialize, type StoryboardBox } from "./boxes";
 import { planAssign, type Assignment } from "./media";
 import { gridFromBoxes, planRewrite } from "./rewrite";
@@ -154,9 +155,25 @@ export type WriteStoryboardInput = {
   durationSeconds?: number | null;
   lyricLines: LyricLine[] | undefined;
   notes: string;
+  /**
+   * Write into a NEW variation (a candidate) instead of this one: the current board stays exactly as it is, as a
+   * recoverable revision, and the corrected breakdown is reviewed beside it. The candidate copies this variation's
+   * direction and treatment text and starts with no director edits; it is not made active.
+   */
+  candidate?: { name: string } | null;
 };
 
-export type WriteStoryboardResult = { doc: TreatmentDoc; written: number; kept: number; draft: StructuredTreatment };
+export type WriteStoryboardResult = {
+  doc: TreatmentDoc;
+  written: number;
+  kept: number;
+  draft: StructuredTreatment;
+  /** The variation the shots were written into: this one, or the candidate just made. */
+  variationId: string;
+  candidateVariationId: string | null;
+  /** Director edits on the current board that were NOT carried into the candidate (its shots are new rows). */
+  editsLeftBehind: number;
+};
 
 /** One treatment-model call: (optionally) the treatment text, and the scene of every box it may rewrite. */
 export async function writeStoryboardFromTreatment(input: WriteStoryboardInput): Promise<WriteStoryboardResult> {
@@ -167,8 +184,36 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
   const concept = input.aiWritesText ? (input.conceptHint?.trim() ?? "") : input.treatmentText.trim();
   if (!input.aiWritesText && !concept) throw new Error("Write the treatment first, or let the AI write it.");
 
-  const draft = await draftTreatmentClips({ ...input.context, concept, grid, writeText: input.aiWritesText, clipLyrics: clipLyrics(grid, input.lyricLines) });
+  // a candidate is a new variation: the writer is told the candidate's id (its run is the candidate's evidence), the
+  // grid is this board's cut (so the candidate's shots are this board's windows, one to one), and nothing here changes
+  const text0 = input.aiWritesText ? "" : input.treatmentText;
+  let targetVariationId = input.variationId;
+  let candidateVariationId: string | null = null;
+  if (input.candidate) {
+    const direction = await readDirection(input.projectId, input.variationId);
+    const prior = parseTreatmentDoc(input.treatmentJson);
+    const made = await createVariation({
+      projectId: input.projectId,
+      name: input.candidate.name,
+      treatmentText: text0,
+      mood: direction?.mood ?? null,
+      visualStyle: direction?.visual_style ?? null,
+      notes: direction?.notes ?? null,
+      footageConfirmedAt: prior.footageConfirmedAt,
+      makeActive: false,
+    });
+    targetVariationId = made.id;
+    candidateVariationId = made.id;
+  }
+
+  const draft = await draftTreatmentClips({ ...input.context, variationId: targetVariationId, concept, grid, writeText: input.aiWritesText, clipLyrics: clipLyrics(grid, input.lyricLines) });
   if (input.aiWritesText && !draft.concept.trim()) throw new Error("The writer returned no treatment — nothing was changed. Try again.");
+  // a board that exists is never replaced in place by shots that do not carry the treatment: the gaps are said and
+  // nothing is written (a first write and a candidate are written and shown with their gaps — nothing is lost there)
+  if (!candidateVariationId && input.boxes.length > 0 && draft.coverage && !draft.coverage.ok) {
+    const gaps = coverageGaps(draft.coverage);
+    throw new Error(`The shots that came back do not carry the whole treatment, so the board was not replaced: ${gaps.slice(0, 4).join(" ")}${gaps.length > 4 ? ` (+${gaps.length - 4} more)` : ""} Write them into a candidate instead to review them beside this board.`);
+  }
   const at = new Date().toISOString();
   const text = input.aiWritesText ? [draft.concept, draft.narrative].filter(Boolean).join("\n\n") : input.treatmentText;
   // every shot written now says which treatment it was written from; a shot that is kept keeps the stamp it had
@@ -176,15 +221,16 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
   const sections = Object.fromEntries(draft.clips.map((c) => [c.key, c.section]));
   const withMedia = new Set(input.assignments.map((a) => a.shotId));
   const plan = planRewrite({
-    boxes: input.boxes,
-    boxIdsWithMedia: withMedia,
+    // into a candidate every shot is a new row: nothing of this board is kept there, nothing of it is touched
+    boxes: candidateVariationId ? [] : input.boxes,
+    boxIdsWithMedia: candidateVariationId ? new Set() : withMedia,
     drafted,
     sections,
-    existingRows: input.boxes.length === 0 ? await fetchShotIndex(input.projectId, input.variationId) : [],
+    existingRows: input.boxes.length === 0 || candidateVariationId ? await fetchShotIndex(input.projectId, targetVariationId) : [],
     lyricLines: input.lyricLines,
     at,
   });
-  await writeBoxes(input.projectId, plan, input.variationId);
+  await writeBoxes(input.projectId, plan, targetVariationId);
 
   const mode: TreatmentMode = input.aiWritesText ? "ai" : parseTreatmentDoc(input.treatmentJson).mode;
   const prior = parseTreatmentDoc(input.treatmentJson);
@@ -197,11 +243,13 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
     notes: input.notes,
     // `from` is the text the LAST WRITE used. It does not say every shot is from it: the kept ones are not, and each
     // shot's own stamp (boxes.ts `boxIsStale`) is what answers that.
-    storyboard: { from: fingerprint(text), at, written: plan.written, kept: plan.kept },
+    storyboard: { from: fingerprint(text), at, written: plan.written, kept: plan.kept, coverage: draft.coverage ?? null, run: draft.run ?? null },
   };
-  // the draft's clips are kept as the record of this generation; the boxes are the rows just written
-  const base = {
-    ...(input.treatmentJson && typeof input.treatmentJson === "object" ? (input.treatmentJson as Record<string, unknown>) : {}),
+  // the draft's clips are kept as the record of this generation, on the variation the shots were written into: this
+  // one's envelope, or the candidate's own (it starts from the text alone — nothing of this board's record moves)
+  const envelope = candidateVariationId ? (await readDirection(input.projectId, candidateVariationId))?.treatment_json : input.treatmentJson;
+  const record = {
+    ...(envelope && typeof envelope === "object" ? (envelope as Record<string, unknown>) : {}),
     version: 2,
     project_type: draft.project_type,
     sections: draft.sections,
@@ -210,8 +258,16 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
     generated_at: at,
   };
   // a new text replaces the old one: the old one is kept as a version, labelled as replaced by this generation
-  await saveTreatmentJson(input.projectId, input.aiWritesText ? withTreatmentDoc(base, doc, { what: "generate", at }) : withTreatmentDoc(base, doc), input.variationId);
-  return { doc, written: plan.written, kept: plan.kept, draft };
+  await saveTreatmentJson(input.projectId, input.aiWritesText ? withTreatmentDoc(record, doc, { what: "generate", at }) : withTreatmentDoc(record, doc), targetVariationId);
+  return {
+    doc,
+    written: plan.written,
+    kept: plan.kept,
+    draft,
+    variationId: targetVariationId,
+    candidateVariationId,
+    editsLeftBehind: candidateVariationId ? input.boxes.filter((b) => (b.override?.manual?.length ?? 0) > 0 || b.locked).length : 0,
+  };
 }
 
 /** The words sung inside each shot of a grid, by key — what the writer is told each shot has to answer. */
