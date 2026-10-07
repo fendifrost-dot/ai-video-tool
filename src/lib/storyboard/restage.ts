@@ -264,7 +264,7 @@ export async function restageBox(input: {
   const req = restageShot({ box: input.box, lyricLines: input.lyricLines, source: input.source, sourcePath, stillPath: input.stillPath, cut: { start: cut.start, seconds: cut.seconds }, aspect: input.aspect, temporal: input.temporal, continuity: input.continuity });
   say("sending it to render…");
   const { id, look } = resolveLookPreset(DEFAULT_BOX_LOOK);
-  const result = await submitShot(req.shot, { projectId: input.projectId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [input.box.key]: input.box.id }, madeFrom: { [input.box.key]: madeFromBox(input.box) } }, deps);
+  const result = await submitShot(req.shot, { projectId: input.projectId, variationId: input.box.variationId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [input.box.key]: input.box.id }, madeFrom: { [input.box.key]: madeFromBox(input.box) } }, deps);
   return { ...result, songStart: req.songStart, seconds: req.seconds, estimateUsd: restageEstimateUsd(req.seconds) };
 }
 

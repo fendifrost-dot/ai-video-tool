@@ -1,3 +1,4 @@
+import { useActiveVariation } from "@/lib/queries/variations";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Clapperboard, LayoutGrid, List, Loader2, Play, Video } from "lucide-react";
@@ -21,6 +22,7 @@ import { cn } from "@/lib/utils";
  * footage is put on and taken off here, and any box opens full screen.
  */
 export default function StoryboardPage({ projectId }: { projectId: string }) {
+  const variation = useActiveVariation(projectId);
   const sb = useStoryboardController(projectId);
   const lyricLines = useLyricLines(projectId).data;
   const [view, setView] = useState<"cards" | "list">("cards");
@@ -33,7 +35,7 @@ export default function StoryboardPage({ projectId }: { projectId: string }) {
 
   return (
     <StoryboardProvider value={sb}>
-      <PageHeader title="Storyboard" subtitle="Every shot of the video: write it, generate it, put your footage on it, watch it." variant="compact" />
+      <PageHeader title="Storyboard" subtitle="Every shot of the video: write it, generate it, put your footage on it, watch it." variant="compact" context={variation?.name ?? null} />
       <div className="space-y-4 px-4 py-4 md:px-8 md:py-6" data-testid="storyboard-page">
         {sb.loading ? (
           <Loader2 className="h-5 w-5 animate-spin" />

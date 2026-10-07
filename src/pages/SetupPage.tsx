@@ -90,7 +90,7 @@ export default function SetupPage({ projectId }: { projectId: string }) {
   const confirmFootage = async (on: boolean) => {
     if (!project) return;
     try {
-      await saveTreatment(projectId, project.treatment_json, { ...doc, footageConfirmedAt: on ? new Date().toISOString() : null });
+      await saveTreatment(projectId, project.treatment_json, { ...doc, footageConfirmedAt: on ? new Date().toISOString() : null }, project.active_variation_id);
       await qc.invalidateQueries({ queryKey: projectsKeys.detail(projectId) });
     } catch (e) {
       toast.error(message(e));

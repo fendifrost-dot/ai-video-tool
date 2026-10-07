@@ -15,6 +15,7 @@ import type { Artist, PromptTemplate, Shot, VideoProject } from "@/integrations/
 function makeProject(overrides: Partial<VideoProject> = {}): VideoProject {
   return {
     id: "p1",
+    active_variation_id: "v1",
     user_id: "u1",
     artist_id: "a1",
     title: "Midnight Roses",
@@ -69,6 +70,7 @@ function makeShot(overrides: Partial<Shot> = {}): Shot {
     id: "s1",
     user_id: "u1",
     project_id: "p1",
+    variation_id: "v1",
     shot_number: 1,
     spec_key: null,
     generated_json: null,

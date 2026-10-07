@@ -13,7 +13,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Json, ProjectAsset, TablesInsert, TablesUpdate } from "@/integrations/supabase/aliases";
 import { bucketForAssetType, projectAssetsKeys, useProjectAssets } from "@/lib/queries/projectAssets";
-import { useProjectAudio } from "@/lib/queries/projects";
+import { useProject, useProjectAudio } from "@/lib/queries/projects";
 import { shotsKeys } from "@/lib/queries/shots";
 import { resolveScrubSource } from "@/lib/video/scrubProxy";
 import { parseFootageAnalyses } from "@/lib/queries/footageAnalysis";
@@ -29,14 +29,25 @@ import {
   type TakeSync,
 } from "@/lib/storyboard/media";
 
+/**
+ * Boxes and assignments belong to one video variation (queries/variations.ts); syncs are the project's (a take's
+ * place on the song does not depend on which video it is cut into). A key with a variation is the only one a
+ * per-variation query uses; the project-wide key prefixes it, so invalidating by project reaches every variation.
+ */
 export const storyboardKeys = {
-  boxes: (projectId: string) => ["storyboard", "boxes", projectId] as const,
-  assignments: (projectId: string) => ["storyboard", "assignments", projectId] as const,
+  boxes: (projectId: string, variationId?: string | null) => (variationId ? (["storyboard", "boxes", projectId, variationId] as const) : (["storyboard", "boxes", projectId] as const)),
+  assignments: (projectId: string, variationId?: string | null) => (variationId ? (["storyboard", "assignments", projectId, variationId] as const) : (["storyboard", "assignments", projectId] as const)),
   syncs: (projectId: string) => ["storyboard", "syncs", projectId] as const,
 };
 
+/** The active variation's id, for the hooks here: read off the project row (projects.ts useProject lays it on). */
+export function useActiveVariationId(projectId: string | undefined): string | null {
+  const project = useProject(projectId);
+  return project.data?.active_variation_id ?? null;
+}
+
 const BOX_COLUMNS =
-  "id, project_id, shot_number, song_section, timestamp_start, timestamp_end, shot_type, scene_description, notes, spec_key, generated_json, override_json, locked, box_origin, history_json, created_at, updated_at";
+  "id, project_id, variation_id, shot_number, song_section, timestamp_start, timestamp_end, shot_type, scene_description, notes, spec_key, generated_json, override_json, locked, box_origin, history_json, created_at, updated_at";
 
 async function requireUserId(): Promise<string> {
   const { data } = await supabase.auth.getUser();
@@ -48,23 +59,25 @@ async function requireUserId(): Promise<string> {
 // Boxes
 // ---------------------------------------------------------------------------
 
-export async function fetchBoxes(projectId: string): Promise<StoryboardBox[]> {
+export async function fetchBoxes(projectId: string, variationId: string): Promise<StoryboardBox[]> {
   const { data, error } = await supabase
     .from("shots")
     .select(BOX_COLUMNS)
     .eq("project_id", projectId)
+    .eq("variation_id", variationId)
     .not("spec_key", "is", null)
     .order("timestamp_start", { ascending: true });
   if (error) throw error;
   return boxesFromRows((data ?? []) as unknown as BoxRow[]);
 }
 
-/** The storyboard: every box record of the project, in song order. */
+/** The storyboard: every box record of the project's ACTIVE variation, in song order. */
 export function useStoryboardBoxes(projectId: string | undefined) {
+  const variationId = useActiveVariationId(projectId);
   return useQuery<StoryboardBox[]>({
-    queryKey: storyboardKeys.boxes(projectId ?? "_none_"),
-    queryFn: () => fetchBoxes(projectId!),
-    enabled: !!projectId,
+    queryKey: storyboardKeys.boxes(projectId ?? "_none_", variationId ?? "_none_"),
+    queryFn: () => fetchBoxes(projectId!, variationId!),
+    enabled: !!projectId && !!variationId,
     staleTime: 15_000,
   });
 }
@@ -81,9 +94,9 @@ function toUpdate(write: BoxWrite): TablesUpdate<"shots"> {
   };
 }
 
-/** Rows for every shot of the project, as the materialise plan needs them (boxes and legacy shot-list rows alike). */
-export async function fetchShotIndex(projectId: string) {
-  const { data, error } = await supabase.from("shots").select("id, spec_key, notes, shot_number").eq("project_id", projectId);
+/** Rows for every shot of the variation, as the materialise plan needs them (boxes and legacy shot-list rows alike). */
+export async function fetchShotIndex(projectId: string, variationId: string) {
+  const { data, error } = await supabase.from("shots").select("id, spec_key, notes, shot_number").eq("project_id", projectId).eq("variation_id", variationId);
   if (error) throw error;
   return data ?? [];
 }
@@ -92,6 +105,7 @@ export async function fetchShotIndex(projectId: string) {
 export async function writeBoxes(
   projectId: string,
   plan: { updates?: { id: string; write: BoxWrite }[]; inserts?: BoxWrite[] },
+  variationId: string,
 ): Promise<{ updated: number; inserted: string[] }> {
   let updated = 0;
   for (const u of plan.updates ?? []) {
@@ -102,12 +116,12 @@ export async function writeBoxes(
   const inserted: string[] = [];
   if (plan.inserts?.length) {
     const userId = await requireUserId();
-    const { data: priors, error: pErr } = await supabase.from("shots").select("shot_number").eq("project_id", projectId);
+    const { data: priors, error: pErr } = await supabase.from("shots").select("shot_number").eq("project_id", projectId).eq("variation_id", variationId);
     if (pErr) throw pErr;
     let n = (priors ?? []).reduce((m, r) => Math.max(m, r.shot_number ?? 0), 0);
     const rows = plan.inserts.map((w) => {
       n += 1;
-      return { ...(toUpdate(w) as object), project_id: projectId, user_id: userId, shot_number: n, status: "planned" } as TablesInsert<"shots">;
+      return { ...(toUpdate(w) as object), project_id: projectId, variation_id: variationId, user_id: userId, shot_number: n, status: "planned" } as TablesInsert<"shots">;
     });
     const { data, error } = await supabase.from("shots").insert(rows).select("id");
     if (error) throw new Error(`could not create the boxes: ${error.message}`);
@@ -118,8 +132,12 @@ export async function writeBoxes(
 
 export function useWriteBoxes(projectId: string) {
   const qc = useQueryClient();
+  const variationId = useActiveVariationId(projectId);
   return useMutation({
-    mutationFn: (plan: { updates?: { id: string; write: BoxWrite }[]; inserts?: BoxWrite[] }) => writeBoxes(projectId, plan),
+    mutationFn: (plan: { updates?: { id: string; write: BoxWrite }[]; inserts?: BoxWrite[] }) => {
+      if (!variationId) throw new Error("the project's video variation is not loaded yet");
+      return writeBoxes(projectId, plan, variationId);
+    },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: storyboardKeys.boxes(projectId) });
       void qc.invalidateQueries({ queryKey: shotsKeys.forProject(projectId) });
@@ -174,23 +192,28 @@ function assignmentFromRow(r: AssignmentRow): Assignment {
   };
 }
 
-export async function fetchAssignments(projectId: string): Promise<Assignment[]> {
-  const { data, error } = await supabase.from("shot_asset_assignments").select("*").eq("project_id", projectId);
+export async function fetchAssignments(projectId: string, variationId: string): Promise<Assignment[]> {
+  const { data, error } = await supabase.from("shot_asset_assignments").select("*").eq("project_id", projectId).eq("variation_id", variationId);
   if (error) throw error;
   return ((data ?? []) as AssignmentRow[]).map(assignmentFromRow);
 }
 
 export function useAssignments(projectId: string | undefined) {
+  const variationId = useActiveVariationId(projectId);
   return useQuery<Assignment[]>({
-    queryKey: storyboardKeys.assignments(projectId ?? "_none_"),
-    queryFn: () => fetchAssignments(projectId!),
-    enabled: !!projectId,
+    queryKey: storyboardKeys.assignments(projectId ?? "_none_", variationId ?? "_none_"),
+    queryFn: () => fetchAssignments(projectId!, variationId!),
+    enabled: !!projectId && !!variationId,
     staleTime: 15_000,
   });
 }
 
-/** Carry an assignment plan to the table. Unselects run first so a box never shows two selected items mid-way. */
-export async function applyAssignmentOps(projectId: string, ops: readonly AssignmentOp[]): Promise<void> {
+/**
+ * Carry an assignment plan to the table. Unselects run first so a box never shows two selected items mid-way.
+ * An inserted row's variation is its shot's: the database fills it (trigger shot_asset_assignments_fill_variation);
+ * `variationId` sets it up front when the caller knows it, for stand-in backends without triggers.
+ */
+export async function applyAssignmentOps(projectId: string, ops: readonly AssignmentOp[], variationId?: string | null): Promise<void> {
   const now = new Date().toISOString();
   const ordered = [
     ...ops.filter((o) => o.op === "update" && o.patch.is_primary === false),
@@ -209,6 +232,7 @@ export async function applyAssignmentOps(projectId: string, ops: readonly Assign
       const { error } = await supabase.from("shot_asset_assignments").upsert(
         {
           project_id: projectId,
+          ...(variationId ? { variation_id: variationId } : {}),
           shot_id: o.shotId,
           asset_id: o.assetId,
           role: o.role,
@@ -227,8 +251,9 @@ export async function applyAssignmentOps(projectId: string, ops: readonly Assign
 
 export function useApplyAssignmentOps(projectId: string) {
   const qc = useQueryClient();
+  const variationId = useActiveVariationId(projectId);
   return useMutation({
-    mutationFn: (ops: readonly AssignmentOp[]) => applyAssignmentOps(projectId, ops),
+    mutationFn: (ops: readonly AssignmentOp[]) => applyAssignmentOps(projectId, ops, variationId),
     onSettled: () => void qc.invalidateQueries({ queryKey: storyboardKeys.assignments(projectId) }),
   });
 }

@@ -466,6 +466,7 @@ export type Database = {
           reference_asset_ids: string[]
           updated_at: string
           user_id: string
+          variation_id: string | null
         }
         Insert: {
           approved_asset_id?: string | null
@@ -481,6 +482,7 @@ export type Database = {
           reference_asset_ids?: string[]
           updated_at?: string
           user_id?: string
+          variation_id?: string | null
         }
         Update: {
           approved_asset_id?: string | null
@@ -496,6 +498,7 @@ export type Database = {
           reference_asset_ids?: string[]
           updated_at?: string
           user_id?: string
+          variation_id?: string | null
         }
         Relationships: [
           {
@@ -1484,6 +1487,7 @@ export type Database = {
           status: Database["public"]["Enums"]["provider_job_status"]
           updated_at: string
           user_id: string
+          variation_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1503,6 +1507,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["provider_job_status"]
           updated_at?: string
           user_id: string
+          variation_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1522,6 +1527,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["provider_job_status"]
           updated_at?: string
           user_id?: string
+          variation_id?: string | null
         }
         Relationships: [
           {
@@ -1562,6 +1568,7 @@ export type Database = {
           source_out_seconds: number | null
           updated_at: string
           user_id: string
+          variation_id: string | null
         }
         Insert: {
           asset_id: string
@@ -1577,6 +1584,7 @@ export type Database = {
           source_out_seconds?: number | null
           updated_at?: string
           user_id?: string
+          variation_id?: string | null
         }
         Update: {
           asset_id?: string
@@ -1592,6 +1600,7 @@ export type Database = {
           source_out_seconds?: number | null
           updated_at?: string
           user_id?: string
+          variation_id?: string | null
         }
         Relationships: [
           {
@@ -1709,6 +1718,7 @@ export type Database = {
           updated_at: string
           user_id: string
           wardrobe: string | null
+          variation_id: string | null
         }
         Insert: {
           box_origin?: string | null
@@ -1748,6 +1758,7 @@ export type Database = {
           updated_at?: string
           user_id: string
           wardrobe?: string | null
+          variation_id?: string | null
         }
         Update: {
           box_origin?: string | null
@@ -1787,6 +1798,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           wardrobe?: string | null
+          variation_id?: string | null
         }
         Relationships: [
           {
@@ -2318,6 +2330,7 @@ export type Database = {
           title: string | null
           updated_at: string
           version_number: number
+          variation_id: string | null
         }
         Insert: {
           aspect_ratio?: string | null
@@ -2333,6 +2346,7 @@ export type Database = {
           title?: string | null
           updated_at?: string
           version_number?: number
+          variation_id?: string | null
         }
         Update: {
           aspect_ratio?: string | null
@@ -2348,6 +2362,7 @@ export type Database = {
           title?: string | null
           updated_at?: string
           version_number?: number
+          variation_id?: string | null
         }
         Relationships: [
           {
@@ -2422,6 +2437,7 @@ export type Database = {
           treatment_updated_at: string | null
           user_id: string
           visual_style: string | null
+          variation_id: string | null
         }
         Insert: {
           created_at?: string
@@ -2437,6 +2453,7 @@ export type Database = {
           treatment_updated_at?: string | null
           user_id: string
           visual_style?: string | null
+          variation_id?: string | null
         }
         Update: {
           created_at?: string
@@ -2452,10 +2469,64 @@ export type Database = {
           treatment_updated_at?: string | null
           user_id?: string
           visual_style?: string | null
+          variation_id?: string | null
         }
         Relationships: [
           {
             foreignKeyName: "treatment_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      video_variations: {
+        Row: {
+          archived: boolean
+          created_at: string
+          duplicated_from: string | null
+          id: string
+          mood: string | null
+          name: string
+          notes: string | null
+          project_id: string
+          treatment_json: Json
+          updated_at: string
+          user_id: string
+          visual_style: string | null
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          duplicated_from?: string | null
+          id?: string
+          mood?: string | null
+          name: string
+          notes?: string | null
+          project_id: string
+          treatment_json?: Json
+          updated_at?: string
+          user_id?: string
+          visual_style?: string | null
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          duplicated_from?: string | null
+          id?: string
+          mood?: string | null
+          name?: string
+          notes?: string | null
+          project_id?: string
+          treatment_json?: Json
+          updated_at?: string
+          user_id?: string
+          visual_style?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "video_variations_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "video_projects"
@@ -2485,6 +2556,7 @@ export type Database = {
           user_id: string
           visual_style: string | null
           wardrobe_notes: string | null
+          active_variation_id: string | null
         }
         Insert: {
           artist_id?: string | null
@@ -2507,6 +2579,7 @@ export type Database = {
           user_id: string
           visual_style?: string | null
           wardrobe_notes?: string | null
+          active_variation_id?: string | null
         }
         Update: {
           artist_id?: string | null
@@ -2529,6 +2602,7 @@ export type Database = {
           user_id?: string
           visual_style?: string | null
           wardrobe_notes?: string | null
+          active_variation_id?: string | null
         }
         Relationships: [
           {
@@ -2545,6 +2619,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      duplicate_variation: {
+        Args: { p_source: string; p_name: string }
+        Returns: string
+      }
       claim_provider_jobs: {
         Args: { p_limit?: number; p_user?: string }
         Returns: {

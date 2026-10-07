@@ -39,6 +39,9 @@ vi.mock("@/lib/queries/projects", () => ({
   projectsKeys: { detail: (id: string) => ["p", id] },
   useUpdateProject: () => ({ mutateAsync: vi.fn(async () => ({})) }),
 }));
+vi.mock("@/lib/queries/variations", () => ({
+  useActiveVariation: () => ({ id: "v1", name: "Original", archived: false }),
+}));
 vi.mock("@/lib/queries/treatmentVersions", () => ({
   treatmentVersionsKeys: { forProject: (id: string) => ["tv", id] },
   useTreatmentVersions: () => ({ data: state.versions, isLoading: false, isError: false, error: null }),
@@ -47,7 +50,7 @@ vi.mock("@/lib/queries/treatmentVersions", () => ({
 vi.mock("@/lib/queries/continuity", () => ({ useContinuityEntities: () => ({ data: state.entities }) }));
 vi.mock("@/lib/queries/treatmentInputs", () => ({
   useTreatmentInputs: () => ({
-    project: { id: "p1", treatment_json: state.treatmentJson, lyrics: state.lyrics, mood: "opulent", visual_style: "luxury runway", notes: "" },
+    project: { id: "p1", active_variation_id: "v1", treatment_json: state.treatmentJson, lyrics: state.lyrics, mood: "opulent", visual_style: "luxury runway", notes: "" },
     projectQuery: { isLoading: false },
     analysis: { bpm: 122, duration_seconds: 200 },
     lyricLines: state.lyricLines,
@@ -132,7 +135,7 @@ describe("TreatmentPage", () => {
     expect(calls.deleteTreatment).not.toHaveBeenCalled();
     expect(screen.getByTestId("confirm-dialog").textContent).toMatch(/shots, the footage on them and your edits stay/);
     fireEvent.click(screen.getByTestId("confirm-delete-treatment"));
-    await waitFor(() => expect(calls.deleteTreatment).toHaveBeenCalledWith("p1", SAVED));
+    await waitFor(() => expect(calls.deleteTreatment).toHaveBeenCalledWith("p1", SAVED, "v1"));
   });
 
   it("carries nothing that competes with the treatment: no second brief, no section buttons, no prep list, no second planner", () => {

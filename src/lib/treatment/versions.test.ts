@@ -85,7 +85,7 @@ describe("what is kept when the treatment is replaced", () => {
 
 describe("restoring a version", () => {
   const version = (over: Partial<TreatmentVersion> = {}): TreatmentVersion =>
-    ({ id: "v1", projectId: "p1", replacedAt: "2026-10-03T10:04:00Z", replacedBy: "generate", text: "The first idea.", mode: "manual", model: null, writtenAt: "2026-10-01T09:00:00Z", notes: "the old notes", mood: "moody", visualStyle: "night city", ...over });
+    ({ id: "v1", projectId: "p1", variationId: "var1", replacedAt: "2026-10-03T10:04:00Z", replacedBy: "generate", text: "The first idea.", mode: "manual", model: null, writtenAt: "2026-10-01T09:00:00Z", notes: "the old notes", mood: "moody", visualStyle: "night city", ...over });
 
   it("is one write: the version's text, as written, with the notes, mood and visual direction it had", () => {
     const current = withTreatmentDoc({ clips: [{ key: "c001" }], astra_review: { verdict: "revise" } }, doc("A second idea.", { storyboard: { from: "9:abc", at: "t", written: 41, kept: 5 } }));
@@ -153,7 +153,7 @@ describe("the database keeps the version — the app cannot forget to", () => {
 });
 
 describe("context that was written beside an earlier treatment", () => {
-  const v = (text: string, over: Partial<TreatmentVersion> = {}): TreatmentVersion => ({ id: "v", projectId: "p", replacedAt: "2026-10-07T02:40:52Z", replacedBy: "edit", text, mode: "ai", model: "m", writtenAt: "2026-10-03T19:26:38Z", notes: "PLACES: the runway.", mood: "cold", visualStyle: "A Paris runway at night.", ...over });
+  const v = (text: string, over: Partial<TreatmentVersion> = {}): TreatmentVersion => ({ id: "v", projectId: "p", variationId: "var1", replacedAt: "2026-10-07T02:40:52Z", replacedBy: "edit", text, mode: "ai", model: "m", writtenAt: "2026-10-03T19:26:38Z", notes: "PLACES: the runway.", mood: "cold", visualStyle: "A Paris runway at night.", ...over });
   const now = { text: "A fashion show burns in a forest.", notes: "PLACES: the runway.", mood: "cold", visualStyle: "A Paris runway at night." };
 
   it("names the fields that have not moved since the treatment beside them was replaced", () => {

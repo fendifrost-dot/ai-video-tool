@@ -60,7 +60,8 @@ def keep_treatment_version(old, new):
     if not (old_text or old_notes or old_dn or st(old.get("mood")) or st(old.get("visual_style"))): return
     labelled = st(nt.get("change")) if st(nt.get("change")) and st(nt.get("change_at")) != st(ot.get("change_at")) else None
     T.setdefault("treatment_versions", []).append({
-        "id": str(uuid.uuid4()), "project_id": old.get("id"), "user_id": old.get("user_id"), "created_at": now(),
+        # on a video variation (20261007120000) the kept row carries the variation and its project
+        "id": str(uuid.uuid4()), "project_id": old.get("project_id") or old.get("id"), "variation_id": old.get("id") if "project_id" in old else None, "user_id": old.get("user_id"), "created_at": now(),
         "replaced_by": "context" if not text_changed else (labelled or ("delete" if new_text == "" else "edit")),
         "treatment_text": old_text, "treatment_mode": st(ot.get("mode")) or None, "treatment_model": st(ot.get("model")) or st(oj.get("model")) or None,
         "treatment_updated_at": st(ot.get("updated_at")) or st(oj.get("generated_at")) or None,
@@ -165,6 +166,21 @@ class H(BaseHTTPRequestHandler):
         # the server's job mover: here it finds nothing to move (generation is not exercised); what matters is that the page ASKS it and does no moving itself
         if p.startswith("/functions/v1/provider-jobs-tick"): return self.out(200, {"ok": True, "scope": "user", "claimed": 0, "reports": []})
         if p.startswith("/functions/v1/"): return self.out(200, {"ok": True, "jobs": [], "results": []})
+        if p.startswith("/rest/v1/rpc/duplicate_variation"):
+            # what the database's duplicate_variation() does (20261007120000): the direction, the shots (new ids), the
+            # entities and the assignments copied under a new variation; files shared; history not copied
+            src = next((v for v in T.get("video_variations", []) if v["id"] == (body or {}).get("p_source")), None)
+            if not src: return self.out(400, {"message": "variation not found"})
+            new_id = str(uuid.uuid4())
+            T["video_variations"].append({**src, "id": new_id, "name": (body or {}).get("p_name") or "Copy", "duplicated_from": src["id"], "created_at": now(), "updated_at": now()})
+            shot_map = {}
+            for s in [s for s in T.get("shots", []) if s.get("variation_id") == src["id"]]:
+                shot_map[s["id"]] = str(uuid.uuid4()); T["shots"].append({**s, "id": shot_map[s["id"]], "variation_id": new_id})
+            for a in [a for a in T.get("shot_asset_assignments", []) if a.get("shot_id") in shot_map]:
+                T["shot_asset_assignments"].append({**a, "id": str(uuid.uuid4()), "shot_id": shot_map[a["shot_id"]], "variation_id": new_id})
+            for e in [e for e in T.get("continuity_entities", []) if e.get("variation_id") == src["id"]]:
+                T["continuity_entities"].append({**e, "id": str(uuid.uuid4()), "variation_id": new_id})
+            return self.out(200, new_id)
         if p.startswith("/rest/v1/rpc/"): return self.out(200, None)
         if p.startswith("/rest/v1/"):
             table = p[len("/rest/v1/"):].strip("/")
@@ -189,13 +205,22 @@ class H(BaseHTTPRequestHandler):
                     if hit: hit.update(it); hit["updated_at"] = now(); outrows.append(hit)
                     else:
                         row = {"id": str(uuid.uuid4()), "created_at": now(), "updated_at": now(), **it}
+                        # the database's fill_variation triggers (20261007120000): a row that names no variation
+                        # takes its shot's (an assignment) or the project's active one
+                        if table in ("shots", "shot_asset_assignments", "continuity_entities", "provider_jobs", "timeline_manifests") and not row.get("variation_id"):
+                            if table == "shot_asset_assignments":
+                                shot = next((s for s in T.get("shots", []) if s["id"] == row.get("shot_id")), None)
+                                row["variation_id"] = shot.get("variation_id") if shot else None
+                            else:
+                                proj = next((x for x in T.get("video_projects", []) if x["id"] == row.get("project_id")), None)
+                                row["variation_id"] = proj.get("active_variation_id") if proj else None
                         T[table].append(row); outrows.append(row)
                 if "return=representation" in prefer: return self.out(201, outrows[0] if single else outrows)
                 return self.out(201)
             rows = select(table, q)
             if self.command == "PATCH":
                 for r in rows:
-                    if table == "video_projects": keep_treatment_version(r, {**r, **(body or {})})
+                    if table == "video_variations": keep_treatment_version(r, {**r, **(body or {})})
                     r.update(body or {}); r["updated_at"] = now()
                 if "return=representation" in prefer: return self.out(200, (rows[0] if rows else None) if single else rows)
                 return self.out(204)

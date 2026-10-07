@@ -38,7 +38,12 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 vi.mock("@/lib/queries/projects", () => ({
-  useProject: () => ({ data: { title: "YSL Acceptance" }, isLoading: false }),
+  useProject: () => ({ data: { title: "YSL Acceptance", active_variation_id: "v1" }, isLoading: false }),
+}));
+
+// the variation switcher under the title talks to the backend through these; the rail test is about the rail
+vi.mock("@/components/VariationSwitcher", () => ({
+  VariationSwitcher: ({ projectId }: { projectId: string }) => <div data-testid="variation-switcher" data-project={projectId} />,
 }));
 
 const PROJECT_ID = "p1";

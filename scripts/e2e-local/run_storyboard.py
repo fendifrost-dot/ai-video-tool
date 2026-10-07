@@ -121,6 +121,38 @@ async def desktop(b, out):
     await pg.click("[data-testid=treatment-view-versions]"); await pg.wait_for_timeout(800)
     tv["versions_after_restore"] = await pg.evaluate("() => [...document.querySelectorAll('[data-testid=treatment-version]')].map(v => v.dataset.replacedBy)")
     out["treatment_versions"] = tv
+    # ---- Video variations: a new one starts empty and leaves the first untouched; a duplicate carries the shots; the chip names it
+    vr = {"active_before": await pg.inner_text("[data-testid=variation-active-name]"), "chip_before": await pg.inner_text("[data-testid=page-context]")}
+    await pg.click("[data-testid=variation-switcher-trigger]"); await pg.click("[data-testid=variation-new]"); await pg.wait_for_selector("[data-testid=variation-dialog]")
+    await pg.fill("[data-testid=variation-name]", "Interrupted Broadcast"); await pg.fill("[data-testid=variation-treatment]", "A broadcast truck idles in the snow. The signal cuts in and out.")
+    await pg.click("[data-testid=variation-submit]")
+    await pg.wait_for_function("() => document.querySelector('[data-testid=variation-active-name]')?.innerText.includes('Interrupted Broadcast')", timeout=15000); await pg.wait_for_timeout(800)
+    await pg.click("[data-testid=treatment-view-current]"); await pg.wait_for_selector("[data-testid=treatment-saved-text]", timeout=15000)
+    vr["new_treatment"] = await pg.inner_text("[data-testid=treatment-saved-text]")
+    vr["chip_new"] = await pg.inner_text("[data-testid=page-context]")
+    await pg.goto(f"{BASE}/projects/{P}/storyboard"); await pg.wait_for_selector("[data-testid=variation-active-name]", timeout=60000); await pg.wait_for_timeout(2500)
+    vr["new_cards"] = await pg.locator("[data-box-key]").count()
+    vr["new_entities"] = await pg.evaluate("() => (document.querySelector('[data-testid=continuity-summary]')?.innerText ?? '')")
+    # back to the first: everything is as it was
+    await pg.click("[data-testid=variation-switcher-trigger]"); await pg.click("[data-testid=variation-option][data-active=false]")
+    await pg.wait_for_function("() => document.querySelector('[data-testid=variation-active-name]')?.innerText.includes('Original')", timeout=15000)
+    await pg.wait_for_selector("[data-box-key=c042]", timeout=30000); await pg.wait_for_timeout(800)
+    vr["first_cards"] = await pg.locator("[data-box-key]").count()
+    vr["first_c008"] = await pg.evaluate("() => document.querySelector('[data-box-key=c008] [data-testid=box-media]')?.dataset.mediaRole")
+    await pg.goto(f"{BASE}/projects/{P}/treatment"); await pg.wait_for_selector("[data-testid=treatment-view-current]", timeout=60000); await pg.click("[data-testid=treatment-view-current]"); await pg.wait_for_selector("[data-testid=treatment-saved-text]", timeout=15000)
+    vr["first_treatment"] = await pg.inner_text("[data-testid=treatment-saved-text]")
+    # a duplicate carries the shots and the footage on them
+    await pg.click("[data-testid=variation-switcher-trigger]"); await pg.click("[data-testid=variation-duplicate]"); await pg.wait_for_selector("[data-testid=variation-dialog]")
+    await pg.fill("[data-testid=variation-name]", "Runway alt"); await pg.click("[data-testid=variation-submit]")
+    await pg.wait_for_function("() => document.querySelector('[data-testid=variation-active-name]')?.innerText.includes('Runway alt')", timeout=15000)
+    await pg.goto(f"{BASE}/projects/{P}/storyboard"); await pg.wait_for_selector("[data-box-key=c042]", timeout=60000); await pg.wait_for_timeout(800)
+    vr["dup_cards"] = await pg.locator("[data-box-key]").count()
+    vr["dup_c008"] = await pg.evaluate("() => document.querySelector('[data-box-key=c008] [data-testid=box-media]')?.dataset.mediaRole")
+    vr["dup_shot_ids_differ"] = await pg.evaluate("() => { const a=[...document.querySelectorAll('[data-box-key]')].map(e=>e.dataset.boxId).filter(Boolean); return a.length > 0 && !a.some(x => x.startsWith('aaaaaaaa-')); }")
+    # leave the project in the first variation for the rest of the run
+    await pg.click("[data-testid=variation-switcher-trigger]"); await pg.click("[data-testid=variation-option]:has-text('Original')")
+    await pg.wait_for_function("() => document.querySelector('[data-testid=variation-active-name]')?.innerText.includes('Original')", timeout=15000); await pg.wait_for_timeout(500)
+    out["variations"] = vr
     # ---- Export: the render contract, as it is — and no claim to render
     await pg.goto(f"{BASE}/projects/{P}/export"); await pg.wait_for_selector("[data-testid=render-contract]", timeout=60000); await pg.wait_for_timeout(800)
     out["render_contract"] = await pg.evaluate("() => ({ready: document.querySelector('[data-testid=render-contract]').dataset.ready, summary: document.querySelector('[data-testid=render-contract-summary]').innerText, notes: document.querySelector('[data-testid=render-contract-notes]')?.innerText ?? '', blockers: document.querySelector('[data-testid=render-contract-blockers]')?.innerText ?? '', boundary: document.querySelector('[data-testid=render-contract-boundary]').innerText})")
@@ -358,6 +390,11 @@ def report(r):
     tv = r.get("treatment_versions") or {}
     want("treatment: an edit keeps the version it replaced", tv.get("versions_before") == 0 and tv.get("versions_after_edit") == 1 and (tv.get("kept") or {}).get("by") == "edit" and "single hard light" in (tv.get("kept") or {}).get("text", ""))
     want("treatment: an earlier version is restored, and what it replaced is kept too", "single hard light" in tv.get("after_restore", "") and tv.get("versions_after_restore") == ["restore", "edit"])
+    vr = r.get("variations") or {}
+    want("variations: the chip on the page names the one being worked in", vr.get("chip_before") == "Original" and vr.get("chip_new") == "Interrupted Broadcast")
+    want("variations: a new one starts with its own treatment, an empty board and no entities", "broadcast truck" in vr.get("new_treatment", "") and vr.get("new_cards") == 0 and "1 location" not in (vr.get("new_entities") or ""))
+    want("variations: switching back finds the first as it was", vr.get("first_cards") == 43 and vr.get("first_c008") == "b_roll" and "single hard light" in vr.get("first_treatment", ""))
+    want("variations: a duplicate carries the shots and their footage under new ids", vr.get("dup_cards") == 43 and vr.get("dup_c008") == "b_roll" and vr.get("dup_shot_ids_differ") is True)
     rc = r.get("render_contract") or {}
     want("export: the render contract is the whole cut, frame by frame", "43 shots" in rc.get("summary", "") and "at 30 fps" in rc.get("summary", "") and "1080×1920" in rc.get("summary", ""))
     want("export: it says what a render would and would not contain, and that the app does not render", "effects are applied on shot 7" in rc.get("notes", "") and "must already be in the footage" in rc.get("notes", "") and "does not make the finished video" in rc.get("boundary", ""))

@@ -57,8 +57,11 @@ export function AstraSectionReview({
   songTitle,
   takeWears,
   projectJson,
+  variationId,
 }: {
   projectId: string;
+  /** The video variation whose board is reviewed: the review is kept on it, even if another is active when it lands. */
+  variationId: string | null;
   /** The shots being looked at (the whole cut when no section is chosen). */
   section: readonly TimelineSegment[];
   isSection: boolean;
@@ -136,7 +139,7 @@ export function AstraSectionReview({
           const shownBy = new Map(section.map((seg) => [seg.shotId, seg.media.kind === "none" ? null : seg.media.assetId]));
           const record: StoredSectionReview = { at: new Date().toISOString(), from, to, model: r.model, costUsd: r.costUsd, ...parsed, findings: parsed.findings.map((f) => ({ ...f, assetId: f.shotId ? (shownBy.get(f.shotId) ?? null) : null })) };
           setFresh(record);
-          await saveStoredReview(projectId, record).catch(() => undefined);
+          await saveStoredReview(projectId, record, variationId).catch(() => undefined);
           void qc.invalidateQueries({ queryKey: projectsKeys.detail(projectId) });
           break;
         }

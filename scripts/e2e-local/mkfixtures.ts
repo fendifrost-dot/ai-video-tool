@@ -12,6 +12,9 @@ const U = "22222222-2222-4222-8222-222222222222";
 const A = "33333333-3333-4333-8333-333333333333";
 // a second project that has a song and plain lyrics and nothing else: Setup times its lyrics for the first time
 const P2 = "44444444-4444-4444-8444-444444444444";
+// the one video variation each project has (20261007120000): its direction lives there, and every board row names it
+const V = "55555555-5555-4555-8555-555555555555";
+const V2 = "66666666-6666-4666-8666-666666666666";
 const AT = "2026-10-03T03:00:00.000Z";
 // the real YSL board's cut points, and its song length
 const CUTS = [0, 3.92, 7.84, 11.76, 15.69, 19.61, 23.53, 27.45, 31.37, 35.29, 39.22, 43.14, 47.06, 50.98, 54.9, 58.82, 62.75, 66.67, 70.59, 76.47, 82.35, 88.24, 92.16, 96.08, 101.96, 107.84, 111.76, 117.65, 123.53, 129.41, 135.29, 139.22, 145.1, 150.98, 156.86, 160.78, 164.71, 168.63, 174.51, 178.43, 182.35, 188.24, 194.12, 201.87];
@@ -38,7 +41,7 @@ const specs = CUTS.slice(0, -1).map((start, i) => {
   return parseShotSpec({ id: key, purpose: `Scene ${i + 1}: what happens in shot ${i + 1} of the board.`, shotType, kind: KIND[shotType], timeline: { start, end: CUTS[i + 1] }, ...(EXTRA[key] ?? {}) });
 });
 const plan = planMaterialize({ specs, existing: [], at: AT, sections: Object.fromEntries(specs.map((s, i) => [s.id, i < 4 ? "intro" : i % 5 === 0 ? "hook" : "verse"])) });
-const shots = plan.inserts.map((w, i) => ({ id: uuid(i + 1), project_id: P, user_id: U, shot_number: i + 1, status: "planned", priority: "normal", created_at: AT, updated_at: AT, locked_look_id: null, ...w }));
+const shots = plan.inserts.map((w, i) => ({ id: uuid(i + 1), project_id: P, variation_id: V, user_id: U, shot_number: i + 1, status: "planned", priority: "normal", created_at: AT, updated_at: AT, locked_look_id: null, ...w }));
 const shotId = (key: string) => shots.find((s) => s.spec_key === key)!.id;
 
 const asset = (n: number, over: Record<string, unknown>) => ({ id: uuid(n, "bbbbbbbb"), project_id: P, user_id: U, shot_id: null, notes: null, source_tool: "manual", footage_role: null, created_at: `2026-10-0${1 + (n % 2)}T00:00:0${n}.000Z`, updated_at: AT, ...over });
@@ -52,9 +55,9 @@ const assets = [
   asset(6, { asset_type: "generated_clip", source_tool: "higgsfield", footage_role: "performance", shot_id: shotId("c010"), file_url: "restaged.mp4", metadata_json: { mime_type: "video/mp4", duration_seconds: 4, provider_job_id: "job-2", derived_from: { asset_id: uuid(2, "bbbbbbbb"), source_window: [34.4362, 38.4362], song_start: 35.29 } } }),
 ];
 const assignments = [
-  { id: uuid(1, "cccccccc"), project_id: P, shot_id: shotId("c006"), asset_id: assets[2].id, role: "generated_clip", source_in_seconds: 0, source_out_seconds: null, is_primary: true, sort_order: 1, created_at: AT, updated_at: AT },
-  { id: uuid(2, "cccccccc"), project_id: P, shot_id: shotId("c009"), asset_id: assets[3].id, role: "generated_image", source_in_seconds: null, source_out_seconds: null, is_primary: true, sort_order: 1, created_at: AT, updated_at: AT },
-  { id: uuid(3, "cccccccc"), project_id: P, shot_id: shotId("c010"), asset_id: assets[5].id, role: "performance", source_in_seconds: null, source_out_seconds: null, is_primary: true, sort_order: 1, created_at: AT, updated_at: AT },
+  { id: uuid(1, "cccccccc"), project_id: P, variation_id: V, shot_id: shotId("c006"), asset_id: assets[2].id, role: "generated_clip", source_in_seconds: 0, source_out_seconds: null, is_primary: true, sort_order: 1, created_at: AT, updated_at: AT },
+  { id: uuid(2, "cccccccc"), project_id: P, variation_id: V, shot_id: shotId("c009"), asset_id: assets[3].id, role: "generated_image", source_in_seconds: null, source_out_seconds: null, is_primary: true, sort_order: 1, created_at: AT, updated_at: AT },
+  { id: uuid(3, "cccccccc"), project_id: P, variation_id: V, shot_id: shotId("c010"), asset_id: assets[5].id, role: "performance", source_in_seconds: null, source_out_seconds: null, is_primary: true, sort_order: 1, created_at: AT, updated_at: AT },
 ];
 const LYR: [number, number, string][] = [
   [14.68, 16.72, "You don't gotta cut the lights on"], [16.72, 17.52, "This ice on"], [17.52, 19.48, "YSL I wear em like They white ones"], [19.48, 20.4, "I don't follow brands"],
@@ -64,11 +67,16 @@ const LYR: [number, number, string][] = [
 const fixtures = {
   user: { id: U, email: "local@example.test", aud: "authenticated", role: "authenticated", app_metadata: {}, user_metadata: {}, created_at: AT },
   tables: {
-    video_projects: [{ id: P, user_id: U, artist_id: A, title: "YSL (Ice On) — local copy", song_title: "YSL (Ice On)", genre: "house", bpm: 122, mood: "Opulent, cool, confident.", visual_style: "High-end fashion editorial meets 90s house club.", color_palette: null, wardrobe_notes: null,
-      lyrics: LYR.map((l) => l[2]).join("\n"), song_structure_json: null, status: "in_progress", notes: null, created_at: AT, updated_at: AT, creative_exemplars: null,
-      treatment_json: { treatment: { text: "A single hard light illuminates diamonds and designer pieces in mirror-multiplied darkness.", mode: "ai", updated_at: AT, model: "local", notes: null, storyboard: null }, setup: { footage_confirmed_at: AT } } },
+    video_projects: [{ id: P, user_id: U, artist_id: A, title: "YSL (Ice On) — local copy", song_title: "YSL (Ice On)", genre: "house", bpm: 122, mood: null, visual_style: null, color_palette: null, wardrobe_notes: null,
+      lyrics: LYR.map((l) => l[2]).join("\n"), song_structure_json: null, status: "in_progress", notes: null, created_at: AT, updated_at: AT, creative_exemplars: null, treatment_json: {}, active_variation_id: V },
       { id: P2, user_id: U, artist_id: A, title: "Untimed — local copy", song_title: "Untimed", genre: "house", bpm: 122, mood: null, visual_style: null, color_palette: null, wardrobe_notes: null,
-        lyrics: LYR.map((l) => l[2]).join("\n"), song_structure_json: null, status: "in_progress", notes: null, created_at: AT, updated_at: AT, creative_exemplars: null, treatment_json: null }],
+        lyrics: LYR.map((l) => l[2]).join("\n"), song_structure_json: null, status: "in_progress", notes: null, created_at: AT, updated_at: AT, creative_exemplars: null, treatment_json: {}, active_variation_id: V2 }],
+    // the direction of each project's one video (what used to be columns on the project)
+    video_variations: [
+      { id: V, project_id: P, user_id: U, name: "Original", mood: "Opulent, cool, confident.", visual_style: "High-end fashion editorial meets 90s house club.", notes: null, duplicated_from: null, archived: false, created_at: AT, updated_at: AT,
+        treatment_json: { treatment: { text: "A single hard light illuminates diamonds and designer pieces in mirror-multiplied darkness.", mode: "ai", updated_at: AT, model: "local", notes: null, storyboard: null }, setup: { footage_confirmed_at: AT } } },
+      { id: V2, project_id: P2, user_id: U, name: "Original", mood: null, visual_style: null, notes: null, duplicated_from: null, archived: false, created_at: AT, updated_at: AT, treatment_json: {} },
+    ],
     artists: [{ id: A, user_id: U, name: "Fendi Frost", created_at: AT, updated_at: AT }],
     shots,
     project_assets: [...assets, { ...assets[0], id: uuid(9, "bbbbbbbb"), project_id: P2 }],
@@ -78,16 +86,16 @@ const fixtures = {
       { id: uuid(2, "dddddddd"), project_id: P, user_id: U, performance_asset_id: assets[5].id, song_asset_id: assets[0].id, offset_seconds: 35.29, drift_ppm: 0, status: "confirmed", method: "derived", confidence_json: {}, notes: null, created_at: AT, updated_at: AT },
     ],
     continuity_entities: [
-      { id: uuid(1, "99999999"), project_id: P, user_id: U, kind: "location", key: "BLACK_RUNWAY", name: "Black Runway", description: "A long black runway between black walls, a white centre line, rows of empty black chairs on both sides.", constraints: "The centre line is always white.", approved_asset_id: assets[3].id, reference_asset_ids: [assets[3].id], archived: false, created_at: AT, updated_at: AT },
-      { id: uuid(2, "99999999"), project_id: P, user_id: U, kind: "lighting", key: "RUNWAY_NORMAL", name: "Runway, lights up", description: "Even white house light from above; the whole room is visible.", constraints: "", approved_asset_id: null, reference_asset_ids: [], archived: false, created_at: AT, updated_at: AT },
-      { id: uuid(3, "99999999"), project_id: P, user_id: U, kind: "lighting", key: "BLACKOUT_ICE_KEY", name: "Blackout, ice key", description: "House lights off; the only light is the glitter off the stones he wears; the room is black.", constraints: "", approved_asset_id: null, reference_asset_ids: [], archived: false, created_at: AT, updated_at: AT },
+      { id: uuid(1, "99999999"), project_id: P, variation_id: V, user_id: U, kind: "location", key: "BLACK_RUNWAY", name: "Black Runway", description: "A long black runway between black walls, a white centre line, rows of empty black chairs on both sides.", constraints: "The centre line is always white.", approved_asset_id: assets[3].id, reference_asset_ids: [assets[3].id], archived: false, created_at: AT, updated_at: AT },
+      { id: uuid(2, "99999999"), project_id: P, variation_id: V, user_id: U, kind: "lighting", key: "RUNWAY_NORMAL", name: "Runway, lights up", description: "Even white house light from above; the whole room is visible.", constraints: "", approved_asset_id: null, reference_asset_ids: [], archived: false, created_at: AT, updated_at: AT },
+      { id: uuid(3, "99999999"), project_id: P, variation_id: V, user_id: U, kind: "lighting", key: "BLACKOUT_ICE_KEY", name: "Blackout, ice key", description: "House lights off; the only light is the glitter off the stones he wears; the room is black.", constraints: "", approved_asset_id: null, reference_asset_ids: [], archived: false, created_at: AT, updated_at: AT },
     ],
     // a clip still rendering for shot 12: the page asks the server to move it and moves nothing itself
     provider_jobs: [
-      { id: uuid(1, "77777777"), project_id: P, user_id: U, prompt_id: null, provider: "higgsfield", status: "running", external_job_id: "ext-local-1", result_asset_id: null, error_text: null, finalized_at: null, progress_note: null,
+      { id: uuid(1, "77777777"), project_id: P, variation_id: V, user_id: U, prompt_id: null, provider: "higgsfield", status: "running", external_job_id: "ext-local-1", result_asset_id: null, error_text: null, finalized_at: null, progress_note: null,
         request_payload_json: { promptText: "local", mode: "image_to_video", shotId: shotId("c012"), settings: { batchRun: "storyboard", batchShotId: "c012", route: "still_kling", kind: "world", estimateUsd: 0.35, lookPreset: "film_bar_v1" } }, response_payload_json: {}, created_at: AT, updated_at: AT },
       // the job that made shot 10's restaged clip: what the clip was asked for (a timed change of light) and the stretch of the take it was made from
-      { id: uuid(2, "77777777"), project_id: P, user_id: U, prompt_id: null, provider: "higgsfield", status: "succeeded", external_job_id: "ext-local-2", result_asset_id: assets[5].id, error_text: null, finalized_at: AT, progress_note: null,
+      { id: uuid(2, "77777777"), project_id: P, variation_id: V, user_id: U, prompt_id: null, provider: "higgsfield", status: "succeeded", external_job_id: "ext-local-2", result_asset_id: assets[5].id, error_text: null, finalized_at: AT, progress_note: null,
         request_payload_json: { promptText: "local restage", mode: "reference_to_video", shotId: shotId("c010"), settings: { batchRun: "storyboard", batchShotId: "c010", route: "seedance_ref", kind: "performance", estimateUsd: 3.84, lookPreset: "film_bar_v1", sourceAssetId: assets[1].id, sourceWindow: [34.4362, 38.4362], masterStart: 35.29, sourceSeconds: 4,
           temporal: { mode: "timed_script", beats: 1, measured: false, asked: [{ id: "e1", offset: 1.9, kinds: ["lighting"], says: "light: the room goes dark" }] } } }, response_payload_json: {}, created_at: AT, updated_at: AT },
     ],
@@ -96,7 +104,7 @@ const fixtures = {
   },
   // what the stand-in transcriber "hears": the lyric lines at their true times
   sung: LYR,
-  ids: { P, P2, U, A },
+  ids: { P, P2, U, A, V, V2 },
 };
 writeFileSync("scripts/e2e-local/fixtures.json", JSON.stringify(fixtures));
 console.log("boxes", shots.length, "assets", assets.length);

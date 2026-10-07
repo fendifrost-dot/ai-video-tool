@@ -36,7 +36,9 @@ hung on a sung line sits where the line is sung; one that switches to a lighting
 keeps the pointer), the edit's **effect** on the picture in Review on the song clock, **continuity entities** (the
 shot's place and light, the project's entities with the shots that use them, the place's approved picture as what a
 restaging uses), **treatment versions** (an edit keeps what it replaced; a version is restored), Export's **render
-contract**, and that a page with an unfinished job **asks the server** to move it and polls no provider itself.
+contract**, **video variations** (a new one has its own treatment, an empty board and no entities while the first is
+untouched; a duplicate carries the shots and their footage under new ids; the page chip names the one being worked in),
+and that a page with an unfinished job **asks the server** to move it and polls no provider itself.
 
 The stand-in understands `eq / neq / is / in / not.* / order / limit`, inserts, upserts (`on_conflict`), updates and
 deletes, single-object requests, signed storage links with range requests, and returns `[]` for tables it has no

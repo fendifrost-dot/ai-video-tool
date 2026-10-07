@@ -75,19 +75,31 @@ export function useProjects() {
   });
 }
 
+/**
+ * The creative direction — treatment_json, mood, visual_style, notes — lives on the ACTIVE video variation
+ * (video_variations; migration 20261007120000), not on the project row any more. The project row is read with
+ * that variation laid over it, so everything that reads `project.treatment_json` reads the active video's, and
+ * `project.active_variation_id` says which that is. Writes to those fields go to the variation
+ * (queries/variations.ts updateVariation), never to the project row.
+ */
+export async function fetchProjectWithDirection(id: string): Promise<VideoProject | null> {
+  const { data, error } = await supabase.from("video_projects").select("*").eq("id", id).maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  if (!data.active_variation_id) return data;
+  const { data: v, error: vErr } = await supabase
+    .from("video_variations")
+    .select("treatment_json, mood, visual_style, notes")
+    .eq("id", data.active_variation_id)
+    .maybeSingle();
+  if (vErr) throw vErr;
+  return v ? { ...data, treatment_json: v.treatment_json, mood: v.mood, visual_style: v.visual_style, notes: v.notes } : data;
+}
+
 export function useProject(id: string | undefined) {
   return useQuery<VideoProject | null>({
     queryKey: id ? projectsKeys.detail(id) : ["video_projects", "detail", "_none_"],
-    queryFn: async () => {
-      if (!id) return null;
-      const { data, error } = await supabase
-        .from("video_projects")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-      if (error) throw error;
-      return data ?? null;
-    },
+    queryFn: async () => (id ? fetchProjectWithDirection(id) : null),
     enabled: !!id,
   });
 }
@@ -130,13 +142,23 @@ export function useCreateProject() {
       const user = userData.user;
       if (!user) throw new Error("Not signed in");
 
+      // the direction goes on the project's first variation, not on the project row
+      const { treatment_json, mood, visual_style, notes, ...projectFields } = payload;
       const { data, error } = await supabase
         .from("video_projects")
-        .insert({ ...payload, user_id: user.id })
+        .insert({ ...projectFields, user_id: user.id })
         .select("*")
         .single();
       if (error) throw error;
-      return data;
+      const { data: v, error: vErr } = await supabase
+        .from("video_variations")
+        .insert({ project_id: data.id, name: "Original", treatment_json: (treatment_json ?? {}) as never, mood: mood ?? null, visual_style: visual_style ?? null, notes: notes ?? null })
+        .select("*")
+        .single();
+      if (vErr) throw vErr;
+      const { error: aErr } = await supabase.from("video_projects").update({ active_variation_id: v.id }).eq("id", data.id);
+      if (aErr) throw aErr;
+      return { ...data, active_variation_id: v.id, treatment_json: v.treatment_json, mood: v.mood, visual_style: v.visual_style, notes: v.notes };
     },
     onSuccess: (project) => {
       qc.invalidateQueries({ queryKey: projectsKeys.list() });
@@ -145,6 +167,21 @@ export function useCreateProject() {
   });
 }
 
+/** The fields of a patch that belong to the active variation, split from the ones that belong to the project. */
+export function splitDirectionPatch(patch: TablesUpdate<"video_projects">): { direction: TablesUpdate<"video_variations">; project: TablesUpdate<"video_projects"> } {
+  const { treatment_json, mood, visual_style, notes, ...project } = patch;
+  const direction: TablesUpdate<"video_variations"> = {};
+  if (treatment_json !== undefined) direction.treatment_json = treatment_json;
+  if (mood !== undefined) direction.mood = mood;
+  if (visual_style !== undefined) direction.visual_style = visual_style;
+  if (notes !== undefined) direction.notes = notes;
+  return { direction, project };
+}
+
+/**
+ * Patch the project. A direction field in the patch (treatment_json, mood, visual_style, notes) is written to the
+ * ACTIVE variation; a caller that means another variation uses queries/variations.ts updateVariation directly.
+ */
 export function useUpdateProject() {
   const qc = useQueryClient();
   return useMutation({
@@ -155,18 +192,26 @@ export function useUpdateProject() {
       id: string;
       patch: TablesUpdate<"video_projects">;
     }): Promise<VideoProject> => {
-      const { data, error } = await supabase
-        .from("video_projects")
-        .update(patch)
-        .eq("id", id)
-        .select("*")
-        .single();
-      if (error) throw error;
-      return data;
+      const { direction, project } = splitDirectionPatch(patch);
+      if (Object.keys(project).length) {
+        const { error } = await supabase.from("video_projects").update(project).eq("id", id);
+        if (error) throw error;
+      }
+      if (Object.keys(direction).length) {
+        const { data: p, error: pErr } = await supabase.from("video_projects").select("active_variation_id").eq("id", id).maybeSingle();
+        if (pErr) throw pErr;
+        if (!p?.active_variation_id) throw new Error("this project has no active video variation to write the direction to");
+        const { error } = await supabase.from("video_variations").update(direction as never).eq("id", p.active_variation_id);
+        if (error) throw error;
+      }
+      const merged = await fetchProjectWithDirection(id);
+      if (!merged) throw new Error("project not found");
+      return merged;
     },
     onSuccess: (project) => {
       qc.invalidateQueries({ queryKey: projectsKeys.list() });
       qc.setQueryData(projectsKeys.detail(project.id), project);
+      qc.invalidateQueries({ queryKey: ["video_variations", "project", project.id] });
     },
   });
 }

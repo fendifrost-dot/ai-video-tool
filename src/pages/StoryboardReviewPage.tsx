@@ -1,3 +1,4 @@
+import { useActiveVariation } from "@/lib/queries/variations";
 import { useEffect, useMemo, useState } from "react";
 import { useEventClock } from "@/lib/queries/eventClock";
 import { Link } from "@tanstack/react-router";
@@ -32,6 +33,7 @@ import { cn } from "@/lib/utils";
  * is rendered, and nothing is claimed that the tool cannot do yet.
  */
 export default function StoryboardReviewPage({ projectId }: { projectId: string }) {
+  const variation = useActiveVariation(projectId);
   const boxesQuery = useStoryboardBoxes(projectId);
   const assignmentsData = useAssignments(projectId).data;
   const syncsData = useTakeSyncs(projectId).data;
@@ -101,7 +103,7 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
 
   return (
     <>
-      <PageHeader title="Review" subtitle="The storyboard played in order against the song, from the footage selected on each shot." variant="compact" />
+      <PageHeader title="Review" subtitle="The storyboard played in order against the song, from the footage selected on each shot." variant="compact" context={variation?.name ?? null} />
       <div className="mx-auto max-w-5xl space-y-5 px-4 py-4 md:px-8 md:py-6" data-testid="review-page">
         {boxesQuery.isLoading ? (
           <Loader2 className="h-5 w-5 animate-spin" />
@@ -255,6 +257,7 @@ export default function StoryboardReviewPage({ projectId }: { projectId: string 
               songTitle={project?.song_title ?? null}
               takeWears={takes.find((t) => t.shows)?.shows ?? null}
               projectJson={project?.treatment_json}
+              variationId={project?.active_variation_id ?? null}
             />
 
             {/* the check is of the whole cut, whatever section is being looked at: a section cannot be right inside a cut that is not */}

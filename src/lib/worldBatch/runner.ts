@@ -91,6 +91,8 @@ export type RunnerDeps = {
   inspectStill?(path: string): Promise<PanelSeam | null>;
   insertJob(row: {
     project_id: string;
+    /** The video variation the job is submitted against. Recorded on the row once; the user may switch while it runs. */
+    variation_id?: string | null;
     provider: "higgsfield" | "runway" | "grok";
     status: "queued";
     request_payload_json: Record<string, unknown>;
@@ -101,6 +103,8 @@ export type RunnerDeps = {
 
 export type RunContext = {
   projectId: string;
+  /** The video variation the shots belong to: written on every job row (provider_jobs.variation_id). */
+  variationId?: string | null;
   runId: string;
   lookPresetId: string;
   look: LookPreset | null;
@@ -238,6 +242,8 @@ export async function submitShot(
         const message = `every still came back as stacked panels (${describeSeam(worst)}) — describe the scene by depth (in front, behind), not by halves of the frame; "panel_check": false on the shot accepts it as it is`;
         const rowId = await deps.insertJob({
           project_id: ctx.projectId,
+    ...(ctx.variationId ? { variation_id: ctx.variationId } : {}),
+          ...(ctx.variationId ? { variation_id: ctx.variationId } : {}),
           provider: providerOfRoute(shot.route),
           status: "queued",
           request_payload_json: {
@@ -357,7 +363,7 @@ export async function submitStills(shot: BatchShot, ctx: RunContext, deps: Runne
     ...madeFromOf(ctx, shot),
   };
   const payload = { promptText: prompt, mode: "still_only", aspectRatio: shot.aspect, ...shotIdOf(ctx, shot), ...(ctx.entityId ? { entityId: ctx.entityId } : {}) };
-  const rowId = await deps.insertJob({ project_id: ctx.projectId, provider: "grok", status: "queued", request_payload_json: { ...payload, settings } });
+  const rowId = await deps.insertJob({ project_id: ctx.projectId, ...(ctx.variationId ? { variation_id: ctx.variationId } : {}), provider: "grok", status: "queued", request_payload_json: { ...payload, settings } });
   let r: Awaited<ReturnType<RunnerDeps["generateStills"]>>;
   try {
     r = await deps.generateStills({
