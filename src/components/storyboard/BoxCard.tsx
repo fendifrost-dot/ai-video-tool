@@ -8,6 +8,7 @@ import { formatDuration, formatTimecode, shotTypeLabel } from "@/components/trea
 import type { StoryboardBox } from "@/lib/storyboard/boxes";
 import { BoxMediaView, ROLE_STYLE, mediaLabel } from "./BoxMediaView";
 import { BeatStrip } from "./TimedBeats";
+import { CastChips } from "./Cast";
 import { ContinuityChips } from "./Continuity";
 import { useStoryboard } from "./useStoryboardController";
 
@@ -147,6 +148,7 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
         ) : null}
 
         <ContinuityChips box={box} />
+        <CastChips box={box} />
         <BeatStrip box={box} compact />
 
         {coverageFlag && <p className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-200">{coverageFlag}</p>}

@@ -340,7 +340,11 @@ export function ContinuityPanel() {
   const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState<EntityKind | null>(null);
   const [name, setName] = useState("");
-  const live = sb.entities.filter((e) => !e.archived);
+  // Characters are entities too, but they are not edited here: a cast member needs a role and an
+  // identity mode, which this panel has no fields for, and `createContinuityEntity` refuses a
+  // character without them. The Cast panel owns them. See src/components/storyboard/Cast.tsx.
+  const SET_KINDS = ENTITY_KINDS.filter((k) => k !== "character");
+  const live = sb.entities.filter((e) => !e.archived && e.kind !== "character");
   const count = (kind: EntityKind) => live.filter((e) => e.kind === kind).length;
 
   const add = async () => {
@@ -358,7 +362,7 @@ export function ContinuityPanel() {
         <MapPin className="h-3.5 w-3.5 text-foreground/50" />
         <span className="text-xs font-semibold">Continuity</span>
         <span className="text-[11px] text-foreground/45" data-testid="continuity-summary">
-          {live.length === 0 ? "places, props and lighting states the shots share — none yet" : ENTITY_KINDS.filter((k) => count(k) > 0).map((k) => `${count(k)} ${(count(k) === 1 ? KIND_LABEL[k] : KIND_PLURAL[k]).toLowerCase()}`).join(" · ")}
+          {live.length === 0 ? "places, props and lighting states the shots share — none yet" : SET_KINDS.filter((k) => count(k) > 0).map((k) => `${count(k)} ${(count(k) === 1 ? KIND_LABEL[k] : KIND_PLURAL[k]).toLowerCase()}`).join(" · ")}
         </span>
         <ChevronDown className={cn("ml-auto h-3.5 w-3.5 text-foreground/40 transition-transform", open && "rotate-180")} />
       </button>
@@ -368,7 +372,7 @@ export function ContinuityPanel() {
             Describe a place, a prop or a lighting state once, here. A shot then points at it instead of describing it again, and every shot that points at it is generated from these same words. A place's approved picture is the place every performance shot set
             there is restaged into. Wardrobe looks are the artist's Looks — a shot points at one the same way.
           </p>
-          {ENTITY_KINDS.map((kind) => {
+          {SET_KINDS.map((kind) => {
             const list = sb.entities.filter((e) => e.kind === kind);
             return (
               <div key={kind} className="space-y-2" data-testid={`continuity-${kind}`}>
