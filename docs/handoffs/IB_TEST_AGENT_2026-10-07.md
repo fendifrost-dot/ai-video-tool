@@ -163,3 +163,14 @@ Transactions"). Nothing was billed. The remaining sequence is unchanged and the 
 3. Shot 9 → **Generate image** ($0.14; expected "Sent as pictures: shot 8 (screen), Fendi (cast), Trucker Jacket (garment)").
 4. Control room / SUV exterior: **no such shots exist on this board** — either write them by hand (split shot 10) or
    drop §3 step 5 from this run.
+
+## Results — run 2, 7 Oct 2026 21:3x UTC: the writer repaired and run again into a candidate
+
+See `docs/research/results/2026-10-07-writer-beats/WRITER_BEATS_2026-10-07.md`. Short form:
+- PRs #193/#194/#195 live: beats read first, shots allotted by code, coverage checked and shown, `writer_runs`
+  evidence, candidate boards, required reference pictures block on overflow.
+- Run `7b266a8b-…` into **Interrupted Broadcast · candidate 2** (`a838e7da-0865-4995-b1ec-984fa6f87708`, not active):
+  18 beats, 43/43 shots, coverage ok, actual $0.0263. Every missing scene is back, in order; cast and links on every
+  shot. The old board (`d5a4fb03-…`) and Paris Black Runway are untouched.
+- Candidate shot 9 reconciled by hand: `screen_shows → c008` and the Trucker Jacket; shot 8 casts THE_RIDER.
+- To run the rider → CRT test, make candidate 2 active (switcher under the project title) and follow §3 from step 1.
