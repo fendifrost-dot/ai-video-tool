@@ -210,6 +210,10 @@ export function neighboursInstruction(n: SystemPromptInput["neighbours"]): strin
   );
 }
 
+/** Said whenever there is a treatment: the request's `currentEnvironment` is a look, and the treatment is the map. */
+export const LOOK_IS_NOT_PLACE =
+  "`currentEnvironment` and `style` in the request are the project's standing look and mood — how the video should feel. They are not where this scene is: the treatment says where the video goes, and a place `currentEnvironment` names that the treatment does not is not a place to stage anything.";
+
 function hasConstraints(state: unknown): boolean {
   const c = (state as { constraints?: unknown } | null)?.constraints;
   return typeof c === "string" ? c.trim().length > 0 : Array.isArray(c) ? c.length > 0 : !!c && typeof c === "object";
@@ -280,6 +284,9 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
   if (shotLine && input.mode !== "all") body.push(timedBeatsRules("visual"));
   if (treatment) {
     body.push("The treatment (every scene serves it; none contradicts it):\n" + treatment);
+    // the request carries the project's standing look (`currentEnvironment`, `style`). It was written beside whichever
+    // treatment stood then; read as "where we are", it moves every scene of a new treatment back into the old world
+    body.push(LOOK_IS_NOT_PLACE);
     const neighbours = neighboursInstruction(input.neighbours);
     if (neighbours) body.push(neighbours);
   }

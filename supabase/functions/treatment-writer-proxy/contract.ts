@@ -125,7 +125,7 @@ export function contextBlocks(ctx: WriterContext): string {
     line("Song", ctx.songTitle),
     line("The artist", ctx.artistProfile),
     line("Mood", ctx.mood),
-    line("Visual direction", ctx.visualStyle),
+    line(VISUAL_DIRECTION_LABEL, ctx.visualStyle),
     line(NOTES_LABEL, ctx.notes),
     ctx.analysis ? `The song, measured:\n${JSON.stringify(ctx.analysis)}` : null,
     // looks dress a GENERATED artist; with real footage he wears what he was filmed in
@@ -145,6 +145,10 @@ export function contextBlocks(ctx: WriterContext): string {
  */
 export const NOTES_LABEL =
   "The director's notes and the real footage. What they say about the footage itself — what was filmed, what he wears in it, the frame — is fact. What they say about places, wardrobe and what may appear is the director's wish, and holds wherever the treatment does not say otherwise: where a note and the treatment disagree, the treatment is the later decision and the treatment wins";
+
+/** The look the director set for the project. A look, not a list of places: the treatment says where the video is. */
+export const VISUAL_DIRECTION_LABEL =
+  "Visual direction — how the video should look and feel. Where it names places, wardrobe or things to show that the treatment does not, or that the treatment has replaced, the treatment decides and this is only the look";
 
 /**
  * The treatment is the creative authority. The rules about footage below are how a video is cut when the treatment

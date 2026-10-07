@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { clearTreatment, parseTreatmentDoc, withTreatmentDoc, type TreatmentDoc } from "./treatmentDoc";
-import { currentSnapshot, keptVersion, restoreWrite, versionAuthor, versionDiffers, versionExcerpt, versionFromRow, versionReason, type ProjectBrief, type TreatmentVersion, type TreatmentVersionRow } from "./versions";
+import { contextFromEarlierTreatment, currentSnapshot, keptVersion, restoreWrite, versionAuthor, versionDiffers, versionExcerpt, versionFromRow, versionReason, type ProjectBrief, type TreatmentVersion, type TreatmentVersionRow } from "./versions";
 
 const doc = (text: string, over: Partial<TreatmentDoc> = {}): TreatmentDoc => ({ text, mode: "ai", updatedAt: "2026-10-01T00:00:00Z", model: "m1", notes: "", storyboard: null, footageConfirmedAt: null, ...over });
 
@@ -151,3 +151,28 @@ describe("the database keeps the version — the app cannot forget to", () => {
     expect(sql).not.toMatch(/insert into public\.treatment_versions[\s\S]*select[\s\S]*from public\.video_projects/);
   });
 });
+
+describe("context that was written beside an earlier treatment", () => {
+  const v = (text: string, over: Partial<TreatmentVersion> = {}): TreatmentVersion => ({ id: "v", projectId: "p", replacedAt: "2026-10-07T02:40:52Z", replacedBy: "edit", text, mode: "ai", model: "m", writtenAt: "2026-10-03T19:26:38Z", notes: "PLACES: the runway.", mood: "cold", visualStyle: "A Paris runway at night.", ...over });
+  const now = { text: "A fashion show burns in a forest.", notes: "PLACES: the runway.", mood: "cold", visualStyle: "A Paris runway at night." };
+
+  it("names the fields that have not moved since the treatment beside them was replaced", () => {
+    expect(contextFromEarlierTreatment([v("He walks a black runway.")], now)).toEqual(["visual", "mood", "notes"]);
+    // one of them rewritten for the new treatment: it is not named
+    expect(contextFromEarlierTreatment([v("He walks a black runway.")], { ...now, visualStyle: "A broadcast that keeps getting ahead of reality." })).toEqual(["mood", "notes"]);
+    // an empty field carries nothing over
+    expect(contextFromEarlierTreatment([v("He walks a black runway.")], { ...now, notes: "  " })).toEqual(["visual", "mood"]);
+  });
+
+  it("looks past versions of the SAME text (a context-only change) to the last treatment that was replaced", () => {
+    const sameText = v(now.text, { replacedBy: "context", notes: "something else", mood: "warm", visualStyle: "other" });
+    expect(contextFromEarlierTreatment([sameText, v("He walks a black runway.")], now)).toEqual(["visual", "mood", "notes"]);
+  });
+
+  it("says nothing when no other treatment ever stood here, or there is no treatment now", () => {
+    expect(contextFromEarlierTreatment([], now)).toEqual([]);
+    expect(contextFromEarlierTreatment([v(now.text)], now)).toEqual([]);
+    expect(contextFromEarlierTreatment([v("He walks a black runway.")], { ...now, text: " " })).toEqual([]);
+  });
+});
+

@@ -14,7 +14,7 @@ const ctx = { songTitle: "Song", lyrics: "line one\nline two", artistProfile: "A
 describe("what the treatment writer is told", () => {
   it("is the project's own words and nothing blank", () => {
     const blocks = contextBlocks(ctx);
-    expect(blocks).toContain("Visual direction:\nA runway at night.");
+    expect(blocks).toContain("the treatment decides and this is only the look:\nA runway at night.");
     // the notes are two things: facts about the footage, and wishes the treatment may have moved on from
     expect(blocks).toContain("is fact.");
     expect(blocks).toContain("where a note and the treatment disagree, the treatment is the later decision and the treatment wins:\nREAL PERFORMANCE FOOTAGE");

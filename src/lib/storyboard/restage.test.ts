@@ -200,7 +200,10 @@ describe("a restaged take is one moment of a take, not a take of the song", () =
     const note = footageSummary({ takes: [{ name: take.name, songStart: 0.85, songEnd: 191, shows: take.shows, filmedIn: take.filmedIn }], broll: [] });
     expect(note).toMatch(/in it he wears: a camouflage shirt, dark cap and sunglasses/);
     expect(note).toMatch(/it was filmed in: a walk-in closet, in front of a white door/);
-    expect(note).toMatch(/the place it was filmed in is replaced/);
+    expect(note).toMatch(/replaces the place it was filmed in/);
+    // said as a fact about the footage, not as an order about the video: the treatment may dress him otherwise
+    expect(note).toMatch(/where the treatment dresses him in something else, this footage cannot be that shot/);
+    expect(note).not.toMatch(/never dress him in anything else/);
     // the place never reaches the list of things a restaged shot keeps
     expect(restageKeep(take).join(" ")).not.toMatch(/closet|door/);
   });

@@ -8,6 +8,7 @@ import {
   LYRIC_MODES,
   neighboursInstruction,
   projectStateInstruction,
+  LOOK_IS_NOT_PLACE,
   renderTemplate,
   scenesInstruction,
   scenesPerLine,
@@ -246,6 +247,9 @@ describe("the treatment is the one creative brief (2026-10-03)", () => {
     expect(p).toContain("a crowd, a formation or a group the treatment asks for is what the beat needs");
     expect(p).toContain("The one exception is `constraints`, the director's standing notes");
     expect(p).toContain("the treatment is the later decision and wins");
+    // the project's standing look rides in the request as `currentEnvironment`: it is a look, not the map
+    expect(p).toContain(LOOK_IS_NOT_PLACE);
+    expect(p.indexOf(LOOK_IS_NOT_PLACE)).toBeGreaterThan(p.indexOf("The treatment (every scene serves it"));
     // no notes sent: nothing is said about them
     expect(buildSystemPrompt({ ...base, treatment: "T", projectState: { window: [0, 4] } })).not.toContain("The one exception is `constraints`");
   });
