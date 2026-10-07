@@ -221,3 +221,18 @@ describe("each shot is routed by how it has to be made — a method the app cann
     expect(productionRoute(byKey.get("c001")!.spec, { hasTake: false, links: [] })).toMatchObject({ method: "generate", inferred: true, verdict: "storyboard" });
   });
 });
+
+describe("people cast in a shot reach its request as pictures (casting decides who; references.ts sends them)", () => {
+  it("a cast identity picture is sent after the place and garments, and never with a performance plate", () => {
+    const rider = { source: "project_asset" as const, id: "asset-rider", role: "cast" as const, label: "The rider" };
+    const narrative = planStillReferences({ isPerformance: false, continuity: NO_CONTINUITY, linkNeeds: [], garments: [{ id: "g1", onFile: { id: "g1", label: "denim jacket" } }], extra: [rider], cap: 3 });
+    expect(narrative.sent.map((r) => [r.role, r.label])).toEqual([
+      ["garment", "denim jacket"],
+      ["cast", "The rider"],
+    ]);
+    expect(narrative.legend).toContain("<IMAGE_1> is The rider: the same person");
+    const plate = planStillReferences({ isPerformance: true, continuity: NO_CONTINUITY, linkNeeds: [], garments: [], extra: [rider], cap: 3 });
+    expect(plate.sent).toEqual([]);
+    expect(plate.notSent.map((n) => n.ref.label)).toEqual(["The rider"]);
+  });
+});
