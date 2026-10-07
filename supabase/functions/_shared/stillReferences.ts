@@ -11,7 +11,9 @@ export type ReferenceRequest = { source: "project_asset" | "character_feature"; 
 
 /** Where an asset's or a picture's file may be signed from. Nothing else is reachable through this route. */
 export const ASSET_BUCKETS = ["project-references", "project-clips"] as const;
-export const FEATURE_BUCKETS = ["wardrobe-refs", "project-references", "look-composites"] as const;
+/** Where the artist's pictures live, by kind: wardrobe in wardrobe-refs, everything else (face, hair, Character DNA) in artist-assets. */
+export const WARDROBE_BUCKET = "wardrobe-refs";
+export const ARTIST_BUCKET = "artist-assets";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ROLES = new Set(["screen", "position", "place", "garment", "cast", "prop"]);
@@ -110,8 +112,8 @@ export function resolveReferences(
         refused.push({ ref, why: "its file is not in its artist's folder" });
         continue;
       }
-      // a wardrobe picture lives in wardrobe-refs; only an identity picture may be looked for elsewhere
-      resolved.push({ ref, path, buckets: (f.feature_type ?? "").startsWith("wardrobe_") ? ["wardrobe-refs"] : FEATURE_BUCKETS });
+      // one bucket per kind, never a fall-through: a same-named file elsewhere is not this picture
+      resolved.push({ ref, path, buckets: [(f.feature_type ?? "").startsWith("wardrobe_") ? WARDROBE_BUCKET : ARTIST_BUCKET] });
     }
   }
   return { resolved, refused };

@@ -114,4 +114,21 @@ describe("a still request's reference pictures are held to the caller before any
     expect(boundedInt(9, 1, 1, 4)).toBe(4);
     expect(boundedInt(undefined, 2, 1, 4)).toBe(2);
   });
+
+  it("an identity picture (face) is signed from artist-assets, a wardrobe picture from wardrobe-refs — one bucket each", () => {
+    const refs = parseReferenceRequest([
+      { source: "character_feature", id: id(12), role: "cast", label: "the artist" },
+      { source: "character_feature", id: id(13), role: "garment", label: "jacket" },
+    ]).refs;
+    const r = resolveReferences(refs, {
+      projectId: P,
+      assets: [],
+      features: [
+        { id: id(12), artist_id: "a1", storage_path: "u/a1/face/neutral.jpg", file_url: null, feature_type: "face" },
+        { id: id(13), artist_id: "a1", storage_path: "u/a1/jacket.png", file_url: null, feature_type: "wardrobe_outerwear" },
+      ],
+      ownArtists: new Set(["a1"]),
+    });
+    expect(r.resolved.map((x) => x.buckets)).toEqual([["artist-assets"], ["wardrobe-refs"]]);
+  });
 });
