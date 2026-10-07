@@ -118,7 +118,11 @@ async def desktop(b, out):
     await pg.click("[data-testid=treatment-view-current]")
     await pg.wait_for_function("() => document.querySelector('[data-testid=treatment-saved-text]')?.innerText.includes('single hard light')", timeout=15000)
     tv["after_restore"] = await pg.inner_text("[data-testid=treatment-saved-text]")
-    await pg.click("[data-testid=treatment-view-versions]"); await pg.wait_for_timeout(800)
+    # the restore ends by showing the current treatment again (after its refresh): opening Versions before it has
+    # finished is undone by it. Wait for the restore to say it is done, then open the list.
+    await pg.wait_for_function("() => document.body.innerText.includes('Version restored')", timeout=15000)
+    await pg.click("[data-testid=treatment-view-versions]")
+    await pg.wait_for_function("() => document.querySelectorAll('[data-testid=treatment-version]').length >= 2", timeout=15000)
     tv["versions_after_restore"] = await pg.evaluate("() => [...document.querySelectorAll('[data-testid=treatment-version]')].map(v => v.dataset.replacedBy)")
     out["treatment_versions"] = tv
     # ---- Video variations: a new one starts empty and leaves the first untouched; a duplicate carries the shots; the chip names it

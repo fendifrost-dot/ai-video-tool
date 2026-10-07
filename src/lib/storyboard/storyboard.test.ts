@@ -614,7 +614,7 @@ describe("releasing the director's shots to a replaced treatment", () => {
 
 describe("a wardrobe the footage cannot deliver", () => {
   const dressed = (shotType: "performance" | "narrative", source: "" | "footage" | "treatment", description = "his YSL leather coat.") =>
-    spec("c001", 0, 4, { shotType, wardrobe: { name: "", description, lookId: null, references: [], source } } as Partial<ShotSpec>);
+    spec("c001", 0, 4, { shotType, wardrobe: { name: "", description, lookId: null, references: [], source, garments: [] } } as Partial<ShotSpec>);
 
   it("is said on a performance shot the treatment dresses: a restaging keeps the clothes he was filmed in", () => {
     const gap = wardrobeGap(dressed("performance", "treatment"), "a woodland-camouflage shirt, a navy cap");

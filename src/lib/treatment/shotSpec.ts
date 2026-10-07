@@ -197,6 +197,12 @@ export const LookSchema = z.object({
    * him in the footage's clothes and calling it the shot.
    */
   source: z.enum(["", "footage", "treatment"]).default(""),
+  /**
+   * The exact garments this shot is dressed in: ids of the artist's wardrobe pictures (character_features rows of a
+   * wardrobe_* type). Each is sent to a generator that takes reference images, as a picture — never as a summary.
+   * Empty = no garment is held exactly (the words above are then an interpretation, and the storyboard says so).
+   */
+  garments: z.array(z.string()).default([]),
 });
 export type Look = z.infer<typeof LookSchema>;
 
@@ -314,6 +320,47 @@ export const ShotEventSchema = z.object({
 });
 export type ShotEvent = z.infer<typeof ShotEventSchema>;
 
+// ============================================================================
+// Links between shots (2026-10-07)
+//
+// A treatment ties shots together: a picture seen on a screen IS another shot's picture; a cut keeps the subject in
+// the same place of the frame in a new place; a door opens onto what the next shot reveals. Written once, by key, on
+// the shot that owes the relationship. The board reads every link from BOTH ends (storyboard/links.ts), so the other
+// shot never has to repeat it. Nothing here knows a project.
+// ============================================================================
+
+/**
+ * screen_shows   — a screen/monitor/reflection in THIS shot shows the picture of `shot`.
+ * match_position — the subject holds the frame position and pose it had in `shot`; the place around it changes.
+ * reveals        — THIS shot reveals what `shot` was hiding or opening onto (an interior → its exterior).
+ * continues      — THIS shot continues the action of `shot` across the cut (same people, same move).
+ */
+export const SHOT_LINK_KINDS = ["screen_shows", "match_position", "reveals", "continues"] as const;
+export type ShotLinkKind = (typeof SHOT_LINK_KINDS)[number];
+
+export const ShotLinkSchema = z.object({
+  kind: z.enum(SHOT_LINK_KINDS),
+  /** The other shot's key (spec id / spec_key) on the same board. */
+  shot: z.string().min(1),
+  /** What the relationship is, in the writer's or director's words ("the monitor on the left"). */
+  note: z.string().max(240).default(""),
+});
+export type ShotLink = z.infer<typeof ShotLinkSchema>;
+
+/**
+ * How a shot gets made — the production method, chosen per shot (storyboard/route.ts decides whether the app can do
+ * it). `""` = nobody said; the route is then read from the shot type as it always was.
+ */
+export const PRODUCTION_METHODS = ["footage", "restage", "generate", "edit_footage", "composite", "multi_shot"] as const;
+export type ProductionMethod = (typeof PRODUCTION_METHODS)[number];
+
+export const ProductionSchema = z.object({
+  method: z.enum(["", ...PRODUCTION_METHODS]).default(""),
+  /** Why — the effect or the constraint that decides it ("the grill rotates inside his real mouth"). */
+  note: z.string().max(400).default(""),
+});
+export type Production = z.infer<typeof ProductionSchema>;
+
 /**
  * What a shot points at instead of describing again: the project's continuity entities (a place, the props, a
  * lighting state) by their key (continuity_entities.key). The wardrobe look is `wardrobe.lookId`, as it always was.
@@ -323,6 +370,8 @@ export const ContinuityRefsSchema = z.object({
   location: z.string().nullable().default(null),
   props: z.array(z.string()).default([]),
   lighting: z.string().nullable().default(null),
+  /** What this shot owes another shot of the same board (see SHOT_LINK_KINDS). */
+  links: z.array(z.lazy(() => ShotLinkSchema)).default([]),
 });
 export type ContinuityRefs = z.infer<typeof ContinuityRefsSchema>;
 
@@ -504,10 +553,12 @@ export const ShotSpecSchema = z.object({
    * state the shot OPENS in; each event says what changes from its moment on.
    */
   events: z.array(ShotEventSchema).max(SHOT_EVENTS_MAX).default([]),
-  /** The continuity entities this shot points at (place, props, lighting state), by key. */
+  /** The continuity entities this shot points at (place, props, lighting state), by key — and its links to other shots. */
   continuity: ContinuityRefsSchema.default({}),
   /** Who is in this shot, by character key, with this shot's direction for each. */
   cast: CastSchema.default({}),
+  /** How this shot is made (storyboard/route.ts). */
+  production: ProductionSchema.default({}),
 });
 export type ShotSpec = z.infer<typeof ShotSpecSchema>;
 
@@ -566,6 +617,8 @@ export const ROW_UNMAPPED_FIELDS = [
   "events",
   "continuity",
   "cast",
+  "production",
+  "wardrobe.garments",
 ] as const;
 
 const SPEC_STATUS_TO_ROW: Record<ShotStatusLiteral, Shot["status"]> = {

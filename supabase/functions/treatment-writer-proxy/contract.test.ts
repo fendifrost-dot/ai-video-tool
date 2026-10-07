@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { acceptTimedBeats, WRITTEN_BEATS_MAX, WRITTEN_EFFECTS } from "../_shared/timedBeats.ts";
-import { acceptShots, writerEntities, chunkGrid, contextBlocks, outlineLine, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_DECIDES, TREATMENT_SCHEMA, withRewrites, type GridShot } from "./contract.ts";
+import { acceptLinks, acceptProduction, linkedShots, linkUserMessage, PRODUCTION_RULES, acceptShots, writerEntities, chunkGrid, contextBlocks, outlineLine, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_DECIDES, TREATMENT_SCHEMA, withRewrites, type GridShot } from "./contract.ts";
 
 const grid: GridShot[] = [
   { key: "c001", start: 0, end: 3.92, section: "intro", energy: "low", lyrics: "" },
@@ -53,7 +53,7 @@ describe("what the treatment writer is told", () => {
 
   it("the schemas ask for exactly what the storyboard stores", () => {
     expect(TREATMENT_SCHEMA.schema.required).toEqual(["concept", "narrative", "sections"]);
-    expect(SHOTS_SCHEMA.schema.properties.clips.items.required).toEqual(["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "wardrobe_from", "lyric_ref", "priority", "timed_beats", "continuity"]);
+    expect(SHOTS_SCHEMA.schema.properties.clips.items.required).toEqual(["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "wardrobe_from", "lyric_ref", "priority", "timed_beats", "continuity", "production"]);
     expect(SHOTS_SCHEMA.schema.properties.clips.items.properties.wardrobe_from.enum).toEqual(["footage", "treatment", "none"]);
     expect(SHOTS_SCHEMA.schema.properties.clips.items.properties.shot_type.enum).toContain("performance");
   });
@@ -251,10 +251,10 @@ describe("a writer points shots at the project's continuity entities", () => {
       { key: "c002", scene_description: "He raps backstage.", continuity: { location: "SOMEWHERE_ELSE", props: [], lighting: "" } },
     ] }, entities);
     const c3 = r.clips.find((c) => c.key === "c003")!;
-    expect(c3.continuity).toEqual({ location: "BLACK_RUNWAY", props: ["BLACK_SEDAN"], lighting: "" });
+    expect(c3.continuity).toEqual({ location: "BLACK_RUNWAY", props: ["BLACK_SEDAN"], lighting: "", links: [] });
     // the beat switches to a lighting state on file; a state that is not on file is not a beat
     expect((c3.timed_beats as { lighting_state: string }[]).map((b) => b.lighting_state)).toEqual(["ICE_KEY"]);
-    expect(r.clips.find((c) => c.key === "c002")!.continuity).toEqual({ location: "", props: [], lighting: "" });
+    expect(r.clips.find((c) => c.key === "c002")!.continuity).toEqual({ location: "", props: [], lighting: "", links: [] });
   });
 });
 
@@ -266,5 +266,54 @@ describe("the function", () => {
     expect(src).toContain('fail(502, "PROVIDER_API_ERROR", `The treatment was not written: ${r.why}`)');
     // the director's own text is never sent to be rewritten
     expect(src).toContain("if (writeText) {");
+  });
+});
+
+describe("shots the treatment ties together (links)", () => {
+  const board: GridShot[] = [
+    { key: "c001", start: 0, end: 4, lyrics: "" },
+    { key: "c002", start: 4, end: 8, lyrics: "" },
+    { key: "c030", start: 120, end: 124, lyrics: "more cameras in the whip" },
+  ];
+  const clip = (key: string, links: unknown[], extra: Record<string, unknown> = {}) => ({
+    key, shot_type: "b_roll", scene_description: `scene of ${key}`, environment: "", camera_direction: "", lighting: "", wardrobe: "none",
+    wardrobe_from: "none", lyric_ref: "", priority: "normal", timed_beats: [], continuity: { location: "", props: [], lighting: "", links }, production: { method: "generate", note: "" }, ...extra,
+  });
+
+  it("keeps a link to another shot of the board — even one outside the chunk — and drops invented, self and unknown links", () => {
+    const r = acceptShots([board[1]], { clips: [clip("c002", [
+      { kind: "screen_shows", shot: "c030", note: "the monitor on the left" },
+      { kind: "screen_shows", shot: "c099", note: "a shot that does not exist" },
+      { kind: "reveals", shot: "c002", note: "itself" },
+      { kind: "teleports", shot: "c001", note: "not a kind" },
+      { kind: "screen_shows", shot: "c030", note: "the same link twice" },
+    ])] }, [], board.map((b) => b.key));
+    expect((r.clips[0].continuity as { links: unknown[] }).links).toEqual([{ kind: "screen_shows", shot: "c030", note: "the monitor on the left" }]);
+  });
+
+  it("without the board's keys, a link may only point inside the chunk (nothing outside is guessed at)", () => {
+    expect(acceptLinks([{ kind: "reveals", shot: "c030", note: "" }], new Set(["c001", "c002"]), "c002")).toEqual([]);
+  });
+
+  it("keeps a production method only when it is a known word, and its note only with it", () => {
+    expect(acceptProduction({ method: "edit_footage", note: "the grill rotates inside his real mouth" })).toEqual({ method: "edit_footage", note: "the grill rotates inside his real mouth" });
+    expect(acceptProduction({ method: "magic", note: "x" })).toEqual({ method: "", note: "" });
+    expect(acceptProduction(null)).toEqual({ method: "", note: "" });
+  });
+
+  it("finds both ends of every link, and the second ask shows each linked shot its partners' scenes", () => {
+    const clips = [clip("c001", []), clip("c002", [{ kind: "screen_shows", shot: "c030", note: "" }]), clip("c030", [])];
+    const partners = linkedShots(clips);
+    expect([...partners.keys()].sort()).toEqual(["c002", "c030"]);
+    const msg = JSON.parse(linkUserMessage([board[2]], clips, partners));
+    expect(msg.linked_shots).toEqual([{ key: "c002", scene_description: "scene of c002", links: [{ kind: "screen_shows", shot: "c030", note: "" }] }]);
+    expect(msg.shots.map((s: { key: string }) => s.key)).toEqual(["c030"]);
+  });
+
+  it("tells the writer how to say a link and how to choose a production method", () => {
+    const system = shotsSystemPrompt({ hasPerformanceFootage: true }, "a treatment", board);
+    expect(system).toContain("`continuity.links`");
+    expect(system).toContain(PRODUCTION_RULES);
+    expect(PRODUCTION_RULES).toContain("never from what would be easier");
   });
 });

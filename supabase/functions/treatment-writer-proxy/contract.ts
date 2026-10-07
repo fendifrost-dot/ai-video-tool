@@ -67,6 +67,20 @@ export function entitiesBlock(entities: readonly WriterEntity[] | undefined): st
     .join("\n");
 }
 
+/**
+ * What one shot owes another (src/lib/treatment/shotSpec.ts SHOT_LINK_KINDS — the same four words):
+ * screen_shows = a screen in this shot shows that shot's picture; match_position = the subject keeps that shot's place in
+ * the frame while the world changes; reveals = this shot reveals what that one opened onto; continues = the same action
+ * carries across the cut.
+ */
+export const LINK_KINDS = ["screen_shows", "match_position", "reveals", "continues"] as const;
+
+/**
+ * How a shot gets made (shotSpec PRODUCTION_METHODS). The writer says what the shot NEEDS; whether the app can do it is
+ * decided downstream (storyboard/route.ts), and a method it cannot do is reported, never swapped for an easier shot.
+ */
+export const PRODUCTION_METHODS = ["footage", "restage", "generate", "edit_footage", "composite", "multi_shot"] as const;
+
 /** Where a shot's wardrobe comes from. `treatment` on a shot whose footage shows something else is a gap to be told. */
 export const WARDROBE_SOURCES = ["footage", "treatment", "none"] as const;
 
@@ -91,7 +105,7 @@ export const SHOTS_SCHEMA = {
     type: "object", additionalProperties: false, required: ["clips"],
     properties: {
       clips: { type: "array", items: { type: "object", additionalProperties: false,
-        required: ["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "wardrobe_from", "lyric_ref", "priority", "timed_beats", "continuity"],
+        required: ["key", "shot_type", "scene_description", "environment", "camera_direction", "lighting", "wardrobe", "wardrobe_from", "lyric_ref", "priority", "timed_beats", "continuity", "production"],
         properties: {
           key: { type: "string", description: "the shot's key, exactly as given" },
           shot_type: { type: "string", enum: [...SHOT_TYPES] },
@@ -110,6 +124,19 @@ export const SHOTS_SCHEMA = {
               location: { type: "string", description: "the key of the place this shot is set in, or an empty string" },
               props: { type: "array", items: { type: "string" }, description: "the keys of the props seen in this shot" },
               lighting: { type: "string", description: "the key of the lighting state the shot OPENS in, or an empty string" },
+              links: { type: "array", description: "what this shot owes ANOTHER shot of the storyboard, by that shot's key from the outline — empty when the treatment ties it to nothing",
+                items: { type: "object", additionalProperties: false, required: ["kind", "shot", "note"],
+                  properties: {
+                    kind: { type: "string", enum: [...LINK_KINDS] },
+                    shot: { type: "string", description: "the other shot's key, exactly as the outline gives it" },
+                    note: { type: "string", description: "the relationship in a few words: which screen, which door, which position" },
+                  } } },
+            } },
+          production: { type: "object", additionalProperties: false, required: ["method", "note"],
+            description: "how this shot gets made",
+            properties: {
+              method: { type: "string", enum: [...PRODUCTION_METHODS] },
+              note: { type: "string", description: "the effect or constraint that decides the method, in one sentence; empty when the method is the obvious one" },
             } },
         } } },
     },
@@ -157,6 +184,13 @@ export const VISUAL_DIRECTION_LABEL =
 export const TREATMENT_DECIDES =
   "- The treatment decides. Where it says who is in a shot, where the shot is, what he wears there, or that the picture stays away from him for a stretch, write exactly that: these rules fill only what the treatment leaves open. Never swap something the treatment names for something easier or more usual.";
 
+/** How the writer chooses `production.method`. It says what the shot needs — not what is easy. */
+export const PRODUCTION_RULES = [
+  "- `production.method` — how this shot gets made, chosen from what the shot NEEDS, never from what would be easier:",
+  "  footage = his real performance as filmed, place and clothes unchanged; restage = his real performance moved into the place you describe (his body and clothes are the take's); generate = a picture made from nothing (a world, an object, other people, animals); edit_footage = his real footage with something changed INSIDE it (an object in his mouth or hands moves, his clothes become a named garment); composite = his real performance cut out and laid over a made place; multi_shot = the moment only exists across a cut between this shot and a linked one (an interior that turns out to be inside a vehicle).",
+  "  When the method is not the obvious one for the shot type, `production.note` says in one sentence what decides it.",
+].join("\n");
+
 const FOOTAGE_RULES = [
   "The project has the artist's REAL performance footage, in sync with the song. That footage is the spine of the video: a `performance` shot IS that footage — his real performance, as filmed or re-shot inside the place you describe.",
   "- For a performance shot write the PLACE he performs in and how the camera sees him there. He keeps the body position and framing he was filmed in (the notes say how), so put him where a man could be standing like that. He wears what the notes say he wears in the footage — unless the treatment itself dresses him in something else for that part of the video: then `wardrobe` is exactly what the treatment names, `wardrobe_from` is `treatment`, and the footage's clothes are never written in their place. (That shot cannot come from the footage as filmed; saying so is how the director finds out before anything is made.)",
@@ -197,6 +231,8 @@ export function shotsSystemPrompt(ctx: WriterContext, treatment: string, outline
       "- `shot_type`: performance = the artist delivering the words to camera; b_roll = an insert of the world (an object, a detail, a place); narrative = a staged moment with people; lyric_visual = the lyric made literally, physically real; transition = a move that carries one place into the next; vfx = something impossible, shot as if it happened.",
       "- Never write the same sentence for two shots, never stage the same picture twice in a row, and do not repeat a cutaway idea the song has already used. A person, animal, vehicle, object or place the treatment brings back on purpose is not a repeat: it returns as the SAME one, named in the same words every time, doing the next thing the treatment gives it.",
       "- What the treatment links across shots stays linked: a picture seen on a screen is the picture of the shot it names; a cut the treatment describes (the same position in a new place, a door that opens onto somewhere else, a reveal) is written into BOTH shots — the one that hands over says what it ends on, the one that receives opens on it.",
+      "- Say every such tie in `continuity.links`, on the shot that owes it, naming the other shot by its key from the outline: `screen_shows` (a screen, monitor or reflection here shows that shot's picture), `match_position` (he or the subject holds the place in the frame it had there while the world around changes), `reveals` (this shot reveals what that shot was inside of or opening onto), `continues` (the same action carries on across the cut). Only shots of this storyboard; never a key you were not given.",
+      PRODUCTION_RULES,
       "- A performance shot is its own picture too. He cannot be redirected — but the world around him can answer the words: say where in the place he stands in THIS shot and what the place and the light are doing around him. When its words name something the place can show or do, it happens there, on those words.",
       "- What the treatment says happens on certain words, or every time a section returns (in every hook), is binding on the shots: each shot in which those words are sung carries it — as a timed beat on those words when it happens inside the shot, as the state the shot opens in when it has already happened. A shot never contradicts the treatment.",
       "- Keep to the places the treatment names — and, where it leaves the place open, the ones the notes name. One clear subject per shot; a crowd, a formation or a group the treatment asks for IS the subject. Photoreal and filmable: an impossible event the treatment asks for is written as a thing that physically happens in front of the camera, never softened into something ordinary. No readable text or logos — except a mark the treatment itself calls for: name that one mark, where the treatment puts it, and nothing else.",
@@ -289,7 +325,14 @@ export function chunkGrid<T>(grid: readonly T[], size: number): T[][] {
 }
 
 /** The shots a call returned, kept only when they are shots it was handed (a key it invented is dropped). */
-export function acceptShots(chunk: readonly GridShot[], returned: unknown, entities: readonly WriterEntity[] = []): { clips: Record<string, unknown>[]; missing: string[] } {
+export function acceptShots(
+  chunk: readonly GridShot[],
+  returned: unknown,
+  entities: readonly WriterEntity[] = [],
+  /** Every key of the board — a link may point outside the chunk, never outside the board. Default: the chunk's. */
+  boardKeys: readonly string[] = chunk.map((s) => s.key),
+): { clips: Record<string, unknown>[]; missing: string[] } {
+  const board = new Set(boardKeys);
   const keysOf = (kind: WriterEntity["kind"]) => new Set(entities.filter((e) => e.kind === kind).map((e) => e.key));
   const places = keysOf("location");
   const props = keysOf("prop");
@@ -302,6 +345,7 @@ export function acceptShots(chunk: readonly GridShot[], returned: unknown, entit
       location: one(r.location, places),
       props: Array.isArray(r.props) ? [...new Set(r.props.map((p) => one(p, props)).filter(Boolean))] : [],
       lighting: one(r.lighting, lights),
+      links: acceptLinks(r.links, board, String((raw as { key?: unknown })?.key ?? "")),
     };
   };
   const wanted = new Set(chunk.map((s) => s.key));
@@ -317,6 +361,69 @@ export function acceptShots(chunk: readonly GridShot[], returned: unknown, entit
       return true;
     })
     // a shot's timed beats are kept only when they are beats inside ITS window (never repaired, never invented)
-    .map((c) => ({ ...c, timed_beats: acceptTimedBeats(c.timed_beats, seconds.get(String(c.key)) ?? 0, lights), continuity: continuityOf(c.continuity) }));
+    .map((c) => ({
+      ...c,
+      timed_beats: acceptTimedBeats(c.timed_beats, seconds.get(String(c.key)) ?? 0, lights),
+      continuity: continuityOf({ ...((c.continuity ?? {}) as Record<string, unknown>), key: c.key }),
+      production: acceptProduction(c.production),
+    }));
   return { clips, missing: chunk.map((s) => s.key).filter((k) => !seen.has(k)) };
+}
+
+/** A shot's links, kept only when they are a known kind pointing at ANOTHER shot of the board (an invented key is dropped). */
+export function acceptLinks(raw: unknown, board: ReadonlySet<string>, self: string): { kind: string; shot: string; note: string }[] {
+  if (!Array.isArray(raw)) return [];
+  const out: { kind: string; shot: string; note: string }[] = [];
+  for (const l of raw.slice(0, 8)) {
+    const r = (l ?? {}) as Record<string, unknown>;
+    const kind = LINK_KINDS.find((k) => k === r.kind);
+    const shot = typeof r.shot === "string" ? r.shot.trim() : "";
+    if (!kind || !shot || shot === self || !board.has(shot) || out.some((o) => o.kind === kind && o.shot === shot)) continue;
+    out.push({ kind, shot, note: typeof r.note === "string" ? r.note.trim().slice(0, 240) : "" });
+  }
+  return out;
+}
+
+/** A shot's production method, kept only when it is one of the known words ("" = not said). */
+export function acceptProduction(raw: unknown): { method: string; note: string } {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const method = PRODUCTION_METHODS.find((m) => m === r.method) ?? "";
+  return { method, note: method && typeof r.note === "string" ? r.note.trim().slice(0, 400) : "" };
+}
+
+/**
+ * The shots a link touches, from either end, with the keys of their partners. The runs are written at once and none
+ * sees another's sentences, so a shot that hands over to a shot in another run cannot know what that shot opens on:
+ * these are written again, once, beside their partners' scenes (`linkUserMessage`).
+ */
+export function linkedShots(clips: readonly Record<string, unknown>[]): Map<string, Set<string>> {
+  const out = new Map<string, Set<string>>();
+  const add = (a: string, b: string) => {
+    if (!out.has(a)) out.set(a, new Set());
+    out.get(a)!.add(b);
+  };
+  for (const c of clips) {
+    const key = String(c.key ?? "");
+    const links = ((c.continuity as { links?: { shot: string }[] } | undefined)?.links ?? []) as { shot: string }[];
+    for (const l of links) {
+      add(key, l.shot);
+      add(l.shot, key);
+    }
+  }
+  return out;
+}
+
+/** The second ask for linked shots: each is written again knowing the scene of every shot it is tied to. */
+export function linkUserMessage(chunk: readonly GridShot[], clips: readonly Record<string, unknown>[], partners: ReadonlyMap<string, ReadonlySet<string>>): string {
+  const byKey = new Map(clips.map((c) => [String(c.key ?? ""), c]));
+  const scene = (k: string) => {
+    const c = byKey.get(k);
+    return c ? { key: k, scene_description: String(c.scene_description ?? ""), links: (c.continuity as { links?: unknown } | undefined)?.links ?? [] } : { key: k, scene_description: "(not written)", links: [] };
+  };
+  return JSON.stringify({
+    note: "These shots are tied to other shots of this storyboard (a screen that shows another shot, a held position across a cut, a reveal, an action that carries on). They were written without seeing those shots. Write each again so that BOTH ends of every tie agree: what a screen shows is that shot's picture; what one shot ends on, the next opens on. Keep every tie in `continuity.links`. The linked shots' current scenes are below — do not rewrite them here.",
+    linked_shots: [...new Set(chunk.flatMap((s) => [...(partners.get(s.key) ?? [])]))].filter((k) => !chunk.some((s) => s.key === k)).map(scene),
+    current: chunk.map((s) => scene(s.key)),
+    shots: chunk.map((s) => ({ key: s.key, seconds: Math.round((s.end - s.start) * 10) / 10, section: s.section ?? "", energy: s.energy ?? "", lyrics: (s.lyrics ?? "").trim() })),
+  });
 }

@@ -87,7 +87,7 @@ describe("a shot's timed events are part of the one shot record", () => {
   it("a shot with none is exactly what it was", () => {
     const spec = parseShotSpec({ id: "c001", purpose: "a ring on marble", shotType: "b_roll", kind: "broll", timeline: { start: 0, end: 4 } });
     expect(spec.events).toEqual([]);
-    expect(spec.continuity).toEqual({ location: null, props: [], lighting: null });
+    expect(spec.continuity).toEqual({ location: null, props: [], lighting: null, links: [] });
     expect(hasDirectedChange(spec)).toBe(false);
   });
 

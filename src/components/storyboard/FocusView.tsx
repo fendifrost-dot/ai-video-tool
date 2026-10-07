@@ -19,6 +19,7 @@ import { AcceptanceChip, AcceptancePanel } from "./Acceptance";
 import { BeatStrip } from "./TimedBeats";
 import { CastChips } from "./Cast";
 import { ContinuityChips } from "./Continuity";
+import { ProductionChips } from "./ShotProduction";
 import { Overlay } from "./Overlay";
 import { useStoryboard } from "./useStoryboardController";
 
@@ -187,6 +188,7 @@ export function FocusView() {
             </p>
             <ContinuityChips box={box} />
             <CastChips box={box} />
+            <ProductionChips box={box} />
             <BeatStrip box={box} />
           </div>
 
