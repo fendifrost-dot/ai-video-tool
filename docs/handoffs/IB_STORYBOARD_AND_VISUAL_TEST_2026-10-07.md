@@ -62,7 +62,7 @@ image playing on a small black-and-white CRT." So the CRT shows **the rider**, n
 |---|---|---|---|---|
 | 0 | THE_RIDER reference picture (character, not a shot) | — | none | $0.14 (2 candidates) → approve one |
 | 1 | The rider, side-on, riding the cleared route between walls of fire; the shot that loses its colour | 0 approved | `<IMAGE_0>` the rider (cast) | $0.14 |
-| 2 | **The viewer**: pull back from that same image on a black-and-white CRT; Fendi in his exact YSL denim look, watching | 1 chosen; denim piece ticked | `<IMAGE_0>` shot 1's still (screen) · `<IMAGE_1>` Fendi's face (cast) · `<IMAGE_2>` the ticked denim piece (garment); a second piece is words | $0.14 |
+| 2 | **The viewer**: pull back from that same image on a black-and-white CRT; Fendi in his denim look (the treatment's words), watching | 1 chosen; the viewer's exact piece ticked on the Choices page | `<IMAGE_0>` shot 1's still (screen) · `<IMAGE_1>` Fendi's face (cast) · `<IMAGE_2>` the one piece he marked exact for the viewer (garment); the rest of the outfit is words | $0.14 |
 | 3 | Control room (monitors show Fendi in Chicago, the blizzard, the burning show) → SUV exterior, linked `reveals` | 1 chosen | room: `<IMAGE_0>` shot 1's still (screen) | $0.28 |
 | | **stills, treatment fidelity** | | | **$0.70**; cap incl. one retry each **$1.40** |
 | 4 | motion on the two best stills, only after approval | | the still | Kling 2.5 turbo i2v 5 s ×2 = $0.70 |
@@ -79,9 +79,29 @@ until then). Seedance restage control ($2.22) is priced separately and not in th
 
 ## 4. Decisions only Fendi can make
 
-Collected on the page **"Interrupted Broadcast Choices"** (claude.ai artifact, private): the denim pieces (5 on
-file, photos), the blizzard jacket (3 on file), the leather coat (**not on file** — add photos or name a stand-in,
-labelled an interpretation), cast notes, and the test approval. Paste the copied answers back.
+**DECISION (Fendi, 7 Oct, evening): every look is showcased — a different outfit per scene, not one outfit
+through the video.** So the question is no longer "which pieces are the denim look" but which pieces go in which
+of his four scenes (the viewer, Chicago, the cold front, the clean entrance). The treatment still names denim for
+the viewer and the leather coat for Chicago; the rest is open. Per shot this lands in `wardrobe.garments` (the
+pictures that must be exact, ≤2 beside his face, ≤1 in the viewer shot where the screen takes a slot); everything
+else stays words.
+
+**Added from his screenshots (not yet in the Wardrobe; words only until uploaded):** Coat in Bubbled Lambskin Noir
+(front + back) — he says "we can also use this leather puffer" (whether it *is* the treatment's leather coat is his
+call, asked on the page); three caps — Cassandre Cap in Cotton Denim Twill Khaki, Y Varsity Cap in Gabardine Black
+and Ivory, Saint Laurent Cap in Cotton Gabardine Beige and Ivory ("I always wear hats"). Eight cropped files were
+sent to him to upload under Wardrobe (coat → Outerwear; each cap → Accessory, one row per hat). Until those rows
+exist, a shot that marks one of them exact stays blocked by `undeliveredProblem`.
+
+**DECISION (recommended, 7 Oct evening; Fendi asked whether shoes would hold us back): shoes are words only for
+now, never a reference picture.** The cap is 3 pictures, the face and the screen already take slots, and shoes read
+small or cropped in 9:16 frames; a shoe picture would displace a jacket or cap that the model reproduces well. Revisit
+only per shot, on a full-length frame (the clean entrance), once the board exists.
+
+Collected on the page **"Interrupted Broadcast Choices"** (claude.ai artifact, private, version 2): the scene ×
+garment grid (17 pieces: 10 on file, the coat + 3 caps to upload), an "exact" line per scene, cast notes, and the
+test approval. Paste the copied answers back; the first line reads `DECISION: every look shown, a different outfit
+per scene.`
 
 ## 5. Guardrails
 
