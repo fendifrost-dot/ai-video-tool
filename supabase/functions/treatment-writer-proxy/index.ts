@@ -18,6 +18,7 @@
 //   has_performance_footage, project_type
 //   continuity_entities  [{ key, kind: location|prop|lighting, name, description }] — what a shot may point at by key
 //   avt_variation_id the video variation the board belongs to (evidence only — the grid and the text come in on the request)
+//   lyric_inserts    false = a beat whose words are sung only before its turn gets no flash shot there (default true)
 // Reply: { ok, model, treatment: { concept, narrative, sections, clips[] }, beats, allocation, coverage, runId, missing,
 //          repeated, rewritten, relinked, usage, actualCostUsd, estimatedCostUsd }
 //        `repeated` = shots that came back with another shot's sentence; `rewritten` = those written again as their own.
@@ -33,7 +34,7 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 import { costOf, estimateCostUsd, fingerprint, SHOTS_PER_CALL, acceptShots, writerEntities, chunkGrid, linkedShots, linkUserMessage, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type WriterContext } from "./contract.ts";
-import { acceptBeats, allocateBeats, BEATS_SCHEMA, beatsSystemPrompt, coverageOf, shotBriefs, withRequiredLinks, type Allocation, type Beat, type ShotBrief } from "./beats.ts";
+import { acceptBeats, allocateBeats, BEATS_SCHEMA, beatsSystemPrompt, coverageOf, normalizeTieKinds, shotBriefs, withFeasibleProduction, withRequiredLinks, type Allocation, type Beat, type ShotBrief, type TieCorrection } from "./beats.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -179,14 +180,17 @@ serve(async (req) => {
   // 2. the treatment's beats, read once, and the grid allotted to them — so the shots carry the whole treatment in
   //    its order, with its people, its wardrobe and its ties, before any shot is written
   let beats: Beat[] = [];
+  let tieCorrections: TieCorrection[] = [];
   let allocation: Allocation | null = null;
   let briefs: Record<string, ShotBrief> = {};
   {
     const r = await ask(beatsSystemPrompt(ctx.entities ?? [], ctx.hasPerformanceFootage === true), JSON.stringify({ treatment }), BEATS_SCHEMA, 6000);
     if (!r.ok) return failRun(502, "PROVIDER_API_ERROR", `The treatment's beats could not be read: ${r.why}`);
-    beats = acceptBeats(r.value, ctx.entities ?? []);
+    const read = normalizeTieKinds(acceptBeats(r.value, ctx.entities ?? []));
+    beats = read.beats;
+    tieCorrections = read.corrections;
     if (beats.length === 0) return failRun(502, "PROVIDER_API_ERROR", "The treatment's beats came back empty — nothing was written");
-    allocation = allocateBeats(beats, grid);
+    allocation = allocateBeats(beats, grid, { lyricInserts: body.lyric_inserts !== false });
     briefs = shotBriefs(beats, allocation);
   }
 
@@ -245,8 +249,13 @@ serve(async (req) => {
     relinked = [...byKey.keys()];
   }
 
-  // 6. does the board carry the treatment? said here, kept with the run, shown to the director — never silently
-  const coverage = allocation ? coverageOf(beats, allocation, clips) : null;
+  // 6. a take-based method on a shot where he does not perform is re-routed, and said
+  const feasible = withFeasibleProduction(clips, briefs);
+  clips = feasible.clips;
+
+  // 7. does the board carry the treatment? said in parts, kept with the run, shown to the director — never an
+  //    unqualified pass while anything was corrected, inserted or left out
+  const coverage = allocation ? coverageOf(beats, allocation, clips, { treatment, tieCorrections, productionCorrections: feasible.corrections }) : null;
   // the actual cost is the provider's own token counts at list price; with no counts it is unknown, not estimated
   const actualCostUsd = usage.prompt_tokens + usage.completion_tokens > 0 ? costOf(model, usage) : null;
   await finish({ status: "succeeded", shots_written: clips.length, actual_cost_usd: actualCostUsd, beats_json: beats, allocation_json: allocation, coverage_json: coverage, clips_json: clips, missing_json: missing });

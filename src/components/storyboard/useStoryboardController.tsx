@@ -26,7 +26,7 @@ import { DEFAULT_STILL_REFERENCE_CAP, useStillReferenceSupport } from "@/lib/que
 import { linkPictureNeeds, linkPromptLines, linksOfBox, type ResolvedLink } from "@/lib/storyboard/links";
 import { planStillReferences, referenceSummary, undeliveredProblem, type ReferenceProblem, type StillReference } from "@/lib/storyboard/references";
 import { useCharacterFeatures } from "@/lib/queries/characterFeatures";
-import { productionRoute, routeLine, type ProductionRoute } from "@/lib/storyboard/route";
+import { actionIsPerforming, productionRoute, routeLine, type ProductionRoute } from "@/lib/storyboard/route";
 import type { StillReferencesOnJob } from "@/lib/worldBatch/runner";
 import { useContinuityEntities, useContinuityMutations } from "@/lib/queries/continuity";
 import {
@@ -405,8 +405,13 @@ export function useStoryboardController(projectId: string): StoryboardController
   const supportData = useStillReferenceSupport(projectId).data;
   const referenceSupport = useMemo(() => supportData ?? { accepted: false, max: DEFAULT_STILL_REFERENCE_CAP, model: null }, [supportData]);
   const routeOf = useCallback(
-    (box: StoryboardBox) => productionRoute(box.spec, { hasTake: restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs).ok, links: linksOf(box) }),
-    [mediaByBox, syncs, linksOf],
+    (box: StoryboardBox) => {
+      // the artist in this shot with his real identity, and what he does here: a take-based route can only show him performing
+      const him = castOf(box).members.find((m) => m.mode === "preserve");
+      const artist = him ? { performs: box.spec.shotType === "performance" || actionIsPerforming(him.ref.action), action: him.ref.action } : null;
+      return productionRoute(box.spec, { hasTake: restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs).ok, links: linksOf(box), artist });
+    },
+    [mediaByBox, syncs, linksOf, castOf],
   );
   const entityUsage = useMemo(() => usageOfEntities(boxes.map((b, i) => ({ number: i + 1, spec: b.spec }))), [boxes]);
   const picturesOf = useCallback(

@@ -201,7 +201,7 @@ describe("TreatmentPage", () => {
     // the coverage is open because it has gaps, and says each one in words, by shot number
     const cov = screen.getByTestId("treatment-coverage");
     expect(cov.getAttribute("data-ok")).toBe("false");
-    expect(cov.textContent).toContain("2 of 3 beats of the treatment have shots");
+    expect(cov.textContent).toContain("Coverage fails — 2 of 3 beats have shots");
     const gaps = screen.getByTestId("treatment-coverage-gaps").textContent ?? "";
     expect(gaps).toContain("“The control room” got no shot");
     expect(gaps).toContain("“The burning show” puts THE_RIDER in it, and no shot of it casts them");
@@ -218,6 +218,52 @@ describe("TreatmentPage", () => {
     fireEvent.click(screen.getByTestId("confirm-write-candidate"));
     await waitFor(() => expect(calls.write).toHaveBeenCalledTimes(1));
     expect(calls.write.mock.calls[0][0]).toMatchObject({ aiWritesText: false, treatmentText: "A new idea.", candidate: { name: "Original · candidate 1" } });
+  });
+
+  it("a sectioned coverage shows each part with its own word — never one unqualified pass — and says what was edited by hand since the write", () => {
+    const now = fingerprint("A new idea.");
+    const coverage = {
+      ok: false,
+      verdict: "gaps",
+      structural: { verdict: "pass", beats: [], uncoveredBeats: [], missingPeople: [] },
+      lyrics: { verdict: "gaps", anchors: [], inserts: [{ beat: "b14", shot: "c007", cue: "more cameras in the whip", takenFrom: "b04" }], unanchored: [{ beat: "b14", cue: "more cameras in the whip", sung: "earlier" }] },
+      relationships: { verdict: "gaps", ties: [], corrected: [{ beat: "b06", to: "b05", from: "match_position", kind: "screen_shows", words: "We pull back from that same image playing on a small CRT" }], missing: [], mistyped: [] },
+      production: { verdict: "gaps", corrected: [{ shot: "c010", from: "restage", to: "generate", why: "the take shows him performing; in this beat he sits watching" }] },
+      treatment: { verdict: "pass", ok: true, paragraphs: 20, uncovered: [] },
+      beats: [
+        { id: "b04", title: "The rider mounts", shots: ["c006", "c007"], people: [], emptied: [], ties: [] },
+        { id: "b05", title: "Rider loses colour", shots: ["c008"], people: [], emptied: [], ties: [] },
+        { id: "b06", title: "The viewer", shots: ["c009", "c010"], people: [{ key: "FENDI", castIn: ["c009"] }], emptied: [], ties: [{ kind: "screen_shows", to: "b05", fromShot: "c009", toShot: "c008", present: true }] },
+        { id: "b14", title: "The camera crew", shots: ["c007", "c027"], people: [], emptied: [], ties: [] },
+      ],
+      uncoveredBeats: [], missingPeople: [], missingLinks: [], anchors: [], unanchored: [{ beat: "b14", cue: "more cameras in the whip", sung: "earlier" }],
+    };
+    state.treatmentJson = { ...SAVED, treatment: { text: "A new idea.", mode: "manual", updated_at: "t", notes: "", storyboard: { from: now, at: "2026-10-07T21:36:00Z", written: 4, kept: 0, coverage, run: { id: "run2", model: "grok-4-fast", actualCostUsd: 0.0263, estimatedCostUsd: 0.0205 } } } };
+    const from = (stamp: string) => ({ provenance: { treatment: stamp, createdAt: "2026-10-07T21:36:00Z" } });
+    const blank = { direction: null, cameraMotion: null, framing: null, transitionIn: null, requiredElements: null, notes: null };
+    state.boxes = [
+      { id: "r6", key: "c006", locked: false, override: null, generated: from(now) },
+      { id: "r7", key: "c007", locked: false, override: null, generated: from(now) },
+      { id: "r8", key: "c008", locked: false, override: null, generated: from(now) },
+      // shot 9 was reconciled by hand after the write: a link and a garment
+      { id: "r9", key: "c009", locked: false, override: { ...blank, continuity: { links: [{ kind: "screen_shows", shot: "c008", note: "the CRT" }], garments: ["g1"] }, manual: ["continuity"], updatedAt: "2026-10-07T21:50:00Z" }, generated: from(now) },
+    ];
+    render(<TreatmentPage projectId="p1" />);
+    const cov = screen.getByTestId("treatment-coverage");
+    expect(cov.getAttribute("data-verdict")).toBe("gaps");
+    expect(cov.textContent).toContain("Coverage passes with gaps");
+    expect(cov.textContent).not.toMatch(/Coverage passes —/);
+    const sections = screen.getByTestId("treatment-coverage-sections");
+    expect(sections.querySelector('[data-section="structure"]')?.getAttribute("data-verdict")).toBe("pass");
+    expect(sections.querySelector('[data-section="lyric alignment"]')?.getAttribute("data-verdict")).toBe("gaps");
+    expect(sections.textContent).toContain("“The camera crew” is sung at shot 2 (“more cameras in the whip”), before its turn: that shot is a flash of it, taken from “The rider mounts”");
+    expect(sections.textContent).toContain("the writer said match position; its words (“We pull back from that same image playing on a small CRT…”) say screen shows — corrected");
+    expect(sections.textContent).toContain("restage → generate — the take shows him performing; in this beat he sits watching");
+    expect(sections.textContent).toContain("Beats against the treatment — nothing of the text left out: passes");
+    // the run's cost is the actual; the hand edit is said, and said to be outside this check
+    const run = screen.getByTestId("treatment-coverage-run").textContent ?? "";
+    expect(run).toContain("cost $0.0263 at list price (estimate was $0.02)");
+    expect(run).toContain("1 shot has been edited by hand since, and is not re-checked here");
   });
 
   it("an edited treatment is behind its shots until they are rewritten — and only the shots that are not the director's", () => {

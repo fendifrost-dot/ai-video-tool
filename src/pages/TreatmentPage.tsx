@@ -1,5 +1,5 @@
 import { useActiveVariation, useVariations, variationsKeys } from "@/lib/queries/variations";
-import { coverageGaps, costLine, type BeatCoverage, type WriterRunRecord } from "@/lib/treatment/beatCoverage";
+import { coverageGaps, coverageSections, costLine, verdictLabel, type BeatCoverage, type WriterRunRecord } from "@/lib/treatment/beatCoverage";
 import { useEffect, useMemo, useState } from "react";
 import { useContinuityEntities } from "@/lib/queries/continuity";
 import { Link } from "@tanstack/react-router";
@@ -207,7 +207,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
       await qc.invalidateQueries({ queryKey: variationsKeys.forProject(projectId) });
       setEditing(false);
       const cov = res.draft.coverage;
-      const covLine = cov ? (cov.ok ? "; the board carries every beat of the treatment" : `; ${coverageGaps(cov).length} gap${coverageGaps(cov).length === 1 ? "" : "s"} against the treatment — see Coverage`) : "";
+      const covLine = cov ? `; coverage ${verdictLabel(cov.verdict ?? (cov.ok ? "pass" : "fail"))} — see Coverage` : "";
       if (res.candidateVariationId) {
         toast.success(`Candidate written — ${res.written} shots in “${candidate}”; this board is untouched${res.editsLeftBehind ? ` (${res.editsLeftBehind} of your edits here were not carried over)` : ""}${covLine}. Switch to it under the project title to review it.`, { duration: 12000 });
       } else {
@@ -566,7 +566,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
               )}
             </p>
           )}
-          {boxes.length > 0 && doc.storyboard?.coverage && <CoverageBlock coverage={doc.storyboard.coverage} run={doc.storyboard.run ?? null} boxes={boxes} />}
+          {boxes.length > 0 && doc.storyboard?.coverage && <CoverageBlock coverage={doc.storyboard.coverage} run={doc.storyboard.run ?? null} boxes={boxes} writtenAt={doc.storyboard.at} />}
           <div className="flex flex-wrap items-center gap-2">
             {exists && (boxes.length === 0 || staleOpen > 0 || (storyboardIsStale(doc) && open > 0)) && (
               <Button size="sm" onClick={() => askWrite(false)} disabled={busy} data-testid="treatment-write-shots">
@@ -604,28 +604,50 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
  * What the board carries of the treatment, beat by beat: the shots of each, who is cast, the ties — and every gap,
  * said plainly. A shot count is not a success; this is what says whether the storyboard IS the treatment.
  */
-function CoverageBlock({ coverage, run, boxes }: { coverage: BeatCoverage; run: WriterRunRecord | null; boxes: readonly StoryboardBox[] }) {
-  const [open, setOpen] = useState(!coverage.ok);
+function CoverageBlock({ coverage, run, boxes, writtenAt }: { coverage: BeatCoverage; run: WriterRunRecord | null; boxes: readonly StoryboardBox[]; writtenAt: string }) {
+  const overall = coverage.verdict ?? (coverage.ok ? "pass" : "fail");
+  const [open, setOpen] = useState(overall !== "pass");
   const number = (key: string) => {
     const b = boxes.find((x) => x.key === key);
     return b ? String(boxes.indexOf(b) + 1) : key;
   };
-  const gaps = coverageGaps(coverage, number);
+  const sections = coverageSections(coverage, number);
   const beatsWithShots = coverage.beats.filter((b) => b.shots.length > 0).length;
+  // what the director changed on this board after the writer wrote it — the board is no longer only the writer's
+  const editedSince = boxes.filter((b) => (b.override?.updatedAt ?? "") > writtenAt && ((b.override?.manual?.length ?? 0) > 0 || b.override?.cast || b.override?.continuity)).length;
+  const tone = overall === "pass" ? "border-emerald-500/30 bg-emerald-500/5" : overall === "gaps" ? "border-amber-400/40 bg-amber-400/5" : "border-red-400/40 bg-red-400/5";
   return (
-    <div className={cn("rounded-lg border p-3 text-xs", coverage.ok ? "border-emerald-500/30 bg-emerald-500/5" : "border-amber-400/40 bg-amber-400/5")} data-testid="treatment-coverage" data-ok={coverage.ok}>
+    <div className={cn("rounded-lg border p-3 text-xs", tone)} data-testid="treatment-coverage" data-ok={coverage.ok} data-verdict={overall}>
       <button type="button" className="flex w-full items-center justify-between text-left" onClick={() => setOpen((o) => !o)} data-testid="treatment-coverage-toggle">
         <span className="font-medium">
-          Coverage — {beatsWithShots} of {coverage.beats.length} beats of the treatment have shots
-          {coverage.ok ? "; every person and every tie is carried." : `; ${gaps.length} gap${gaps.length === 1 ? "" : "s"}.`}
+          Coverage {verdictLabel(overall)} — {beatsWithShots} of {coverage.beats.length} beats have shots
+          {coverage.verdict ? `; ${sections.map((s) => `${s.name.split(" — ")[0].toLowerCase()} ${verdictLabel(s.verdict)}`).join(", ")}.` : "."}
         </span>
         <span className="text-foreground/50">{open ? "hide" : "show"}</span>
       </button>
       {open && (
         <div className="mt-2 space-y-2">
-          {gaps.length > 0 && (
+          {coverage.verdict && (
+            <ul className="space-y-1" data-testid="treatment-coverage-sections">
+              {sections.map((s) => (
+                <li key={s.name} data-section={s.name.split(" — ")[0].toLowerCase()} data-verdict={s.verdict ?? ""}>
+                  <span className={cn("font-medium", s.verdict === "fail" ? "text-red-200" : s.verdict === "gaps" ? "text-amber-100" : "text-foreground/85")}>
+                    {s.name}: {verdictLabel(s.verdict)}
+                  </span>
+                  {s.lines.length > 0 && (
+                    <ul className="list-disc pl-4 text-foreground/75">
+                      {s.lines.map((l, i) => (
+                        <li key={i}>{l}</li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          {!coverage.verdict && coverageGaps(coverage, number).length > 0 && (
             <ul className="list-disc space-y-0.5 pl-4 text-amber-100/90" data-testid="treatment-coverage-gaps">
-              {gaps.map((g, i) => (
+              {coverageGaps(coverage, number).map((g, i) => (
                 <li key={i}>{g}</li>
               ))}
             </ul>
@@ -634,7 +656,7 @@ function CoverageBlock({ coverage, run, boxes }: { coverage: BeatCoverage; run: 
             {coverage.beats.map((b) => (
               <li key={b.id} className="flex flex-wrap gap-x-2" data-beat={b.id}>
                 <span className="font-medium text-foreground/90">{b.title}</span>
-                <span>{b.shots.length ? `shots ${number(b.shots[0])}${b.shots.length > 1 ? `–${number(b.shots[b.shots.length - 1])}` : ""}` : "no shot"}</span>
+                <span>{b.shots.length ? `shots ${b.shots.map(number).join(", ")}` : "no shot"}</span>
                 {b.people.length > 0 && <span>· {b.people.map((p) => `${p.key}${p.castIn.length ? "" : " (not cast)"}`).join(", ")}</span>}
                 {b.ties.map((t, i) => (
                   <span key={i} className={t.present ? "" : "text-amber-200"}>
@@ -646,7 +668,8 @@ function CoverageBlock({ coverage, run, boxes }: { coverage: BeatCoverage; run: 
             ))}
           </ol>
           <p className="text-[11px] text-foreground/50" data-testid="treatment-coverage-run">
-            Writer run{run?.model ? ` (${run.model})` : ""}: {costLine(run)}.
+            Writer run{run?.model ? ` (${run.model})` : ""}: {costLine(run)}. This check is of what the writer wrote
+            {editedSince > 0 ? ` — ${editedSince} shot${editedSince === 1 ? " has" : "s have"} been edited by hand since, and ${editedSince === 1 ? "is" : "are"} not re-checked here` : "; nothing has been edited by hand since"}.
           </p>
         </div>
       )}
