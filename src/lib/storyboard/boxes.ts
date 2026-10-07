@@ -25,8 +25,9 @@ import {
   type ShotSpec,
   type ShotTypeLiteral,
 } from "@/lib/treatment/shotSpec";
-import { applyShotOverride, isEmptyOverride, type ContinuityOverride, type ShotOverride } from "@/lib/treatment/overrides";
+import { applyShotOverride, isEmptyOverride, type CastOverride, type ContinuityOverride, type ShotOverride } from "@/lib/treatment/overrides";
 import { fingerprint } from "@/lib/treatment/treatmentDoc";
+import { IDENTITY_MODES, type CastIdentityMode } from "@/lib/casting/cast";
 import { storedEvent, EVENT_FACETS, eventStates, isDirected, mergeEvents, resolveEvents, sanitizeEvents, splitEvents, type EventClock, type ResolvedEvent, type ShotEvent, type ShotState } from "./events";
 
 // ---------------------------------------------------------------------------
@@ -138,6 +139,27 @@ export function isEmptyBoxOverride(o: BoxOverride | null | undefined): boolean {
   return isEmptyOverride({ ...o, specId: "" } as ShotOverride) && !asShotType(o.shotType);
 }
 
+/** Who the director put in the shot, as stored: each key is kept only when it was stated (absent = not touched). */
+function parseCast(value: unknown): CastOverride | null {
+  if (!value || typeof value !== "object") return null;
+  const v = value as Record<string, unknown>;
+  const out: CastOverride = {};
+  if (Array.isArray(v.members)) {
+    out.members = v.members
+      .filter((m): m is Record<string, unknown> => !!m && typeof m === "object" && typeof (m as { key?: unknown }).key === "string" && !!(m as { key: string }).key.trim())
+      .map((m) => ({
+        key: (m.key as string).trim(),
+        action: typeof m.action === "string" ? m.action : "",
+        placement: typeof m.placement === "string" ? m.placement : "",
+        framing: typeof m.framing === "string" ? m.framing : "",
+        identityMode: (IDENTITY_MODES as readonly unknown[]).includes(m.identityMode) ? (m.identityMode as CastIdentityMode) : null,
+      }));
+  }
+  if (typeof v.open === "boolean") out.open = v.open;
+  if (typeof v.none === "boolean") out.none = v.none;
+  return Object.keys(out).length ? out : null;
+}
+
 function parseContinuity(value: unknown): ContinuityOverride | null {
   if (!value || typeof value !== "object") return null;
   const v = value as Record<string, unknown>;
@@ -172,6 +194,7 @@ export function parseBoxOverride(value: unknown): BoxOverride | null {
     // a list is kept even when empty: "no events" is something a director can say about a shot the writer gave some
     events: Array.isArray(v.events) ? sanitizeEvents(v.events) : null,
     continuity: parseContinuity(v.continuity),
+    cast: parseCast(v.cast),
     shotType: asShotType(v.shotType),
     manual: Array.isArray(v.manual) ? (v.manual.filter((f) => (OVERRIDE_FIELDS as readonly unknown[]).includes(f)) as OverrideField[]) : null,
     updatedAt: typeof v.updatedAt === "string" ? v.updatedAt : undefined,

@@ -548,3 +548,24 @@ describe("generating a shot that changes is never a flattened prompt", () => {
     expect(() => restageShot({ ...base, temporal: { mode: "single", effects: 0 } })).toThrow(/said nothing about it/);
   });
 });
+
+describe("the director's cast survives the round trip through the row", () => {
+  it("a cast edit is read back from the stored override, so a reload does not undo it", () => {
+    const b = box();
+    const generated = { ...b.generated!, cast: { members: [], open: false, none: true } };
+    const w0 = boxWrite({ key: b.key, start: 60, end: 64, section: "hook", generated, override: null, locked: false, origin: "treatment", history: [] });
+    const row = { id: "r18", project_id: "p1", shot_number: 18, ...w0, override_json: { cast: { none: false } }, updated_at: AT } as BoxRow;
+    // the stored override says "there are people": the resolved shot says so too
+    expect(boxFromRow(row)!.spec.cast?.none).toBe(false);
+    // members are kept with what each does here, and a mode the app does not know is read as "the entity's"
+    const members = [{ key: "FENDI", action: "watching", placement: "on the sofa", framing: "medium", identityMode: "preserve" }];
+    const o = parseBoxOverride({ cast: { members: [...members, { key: "X", identityMode: "nope" }], open: false } });
+    expect(o?.cast?.members).toEqual([...members, { key: "X", action: "", placement: "", framing: "", identityMode: null }]);
+    expect(o?.cast?.open).toBe(false);
+    expect(o?.cast?.none).toBeUndefined();
+    // and what is written is what is read
+    const w = applyOverride(b, { ...(b.override ?? {}), cast: { members, none: false } } as never, AT);
+    expect(parseBoxOverride(w.override_json)?.cast).toEqual({ members, none: false });
+    expect(w.spec_json.cast?.members.map((m) => m.key)).toEqual(["FENDI"]);
+  });
+});
