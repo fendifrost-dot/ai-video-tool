@@ -39,11 +39,11 @@ Ids you will use:
    ```sql
    select (select count(*) from shots where variation_id='d5a4fb03-c478-4696-bdd4-f0162dd805cd') shots,
           (select count(*) from continuity_entities where variation_id='d5a4fb03-c478-4696-bdd4-f0162dd805cd' and kind='character') characters,
-          (select length(treatment_text) from video_variations where id='d5a4fb03-c478-4696-bdd4-f0162dd805cd') treatment_chars;
+          (select length(treatment_json->>'text') from video_variations where id='d5a4fb03-c478-4696-bdd4-f0162dd805cd') treatment_chars,
+          (select md5(treatment_json->>'text') from video_variations where id='d5a4fb03-c478-4696-bdd4-f0162dd805cd') treatment_md5;
    ```
-   Expected `0 | 6 | 5615`. Anything else: stop and report (someone else moved first; do not "fix" it).
-   (If `treatment_text` is not the column name, read `src/lib/treatment/api.ts` for where the saved treatment lives;
-   do not guess a second table.)
+   Expected `0 | 6 | 5615 | 0d8addc33681e853080c27c96faf6792` (VERIFIED live 17:1x UTC). Anything else: stop and
+   report (someone else moved first; do not "fix" it).
 3. **The generator takes pictures** (free dry run, done by the app): open the project's storyboard; the first shot
    card's generate confirmation (`box-generate-image`) runs the probe `src/lib/queries/stillReferences.ts`. There are no
    shots yet, so do this after §2 step 1. Expected on the confirmation: no line "the image generator is not taking
@@ -66,7 +66,7 @@ Ids you will use:
    ```
    - `shots` ≈ 43–47; `cast_shots` > 0; `linked` ≥ 3; `routed` = `shots`.
    - `cast_shots = 0` with shots present ⇒ the old writer answered (its redeploy is not live) → stop, report, no stills.
-   - Treatment text unchanged: `treatment_chars` still `5615`.
+   - Treatment text unchanged: `treatment_md5` still `0d8addc33681e853080c27c96faf6792`.
 3. Find the test shots by their text (`select shot_number, left(generated_json->>'description',80) …`): the rider
    side-on between walls of fire that "loses its color"; **the viewer** (pull back from that image on a small
    black-and-white CRT); the control room (monitors); the SUV exterior. Record their shot numbers.
