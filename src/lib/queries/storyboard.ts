@@ -173,6 +173,10 @@ type AssignmentRow = {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  // this variation's own footage edit (20261008 migration); optional so a row read before it applies still parses
+  trim_head_seconds?: number | null;
+  trim_tail_seconds?: number | null;
+  excluded?: boolean | null;
 };
 
 function assignmentFromRow(r: AssignmentRow): Assignment {
@@ -184,6 +188,9 @@ function assignmentFromRow(r: AssignmentRow): Assignment {
     role: r.role as AssignmentRole,
     sourceIn: r.source_in_seconds,
     sourceOut: r.source_out_seconds,
+    trimHead: r.trim_head_seconds ?? 0,
+    trimTail: r.trim_tail_seconds ?? 0,
+    excluded: r.excluded ?? false,
     isPrimary: r.is_primary,
     sortOrder: r.sort_order,
     notes: r.notes,
@@ -240,6 +247,9 @@ export async function applyAssignmentOps(projectId: string, ops: readonly Assign
           source_in_seconds: o.sourceIn,
           source_out_seconds: o.sourceOut,
           sort_order: o.sortOrder,
+          ...(o.trim_head_seconds != null ? { trim_head_seconds: o.trim_head_seconds } : {}),
+          ...(o.trim_tail_seconds != null ? { trim_tail_seconds: o.trim_tail_seconds } : {}),
+          ...(o.excluded != null ? { excluded: o.excluded } : {}),
           updated_at: now,
         },
         { onConflict: "shot_id,asset_id,role" },

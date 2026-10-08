@@ -17,6 +17,7 @@ import { DEFAULT_FRAME_FIT, DEFAULT_PROJECT_ASPECT, frameSize, type FrameFit, ty
 import { sourceRangeForSongRange, type PerformanceSync } from "@/lib/sync/performanceSync";
 import { orderBoxes, type StoryboardBox } from "./boxes";
 import { resolveEvents, type EventClock, type ResolvedEvent } from "./events";
+import { editOf, isUsableSync, takeCoverage, takeRangeForBox, type TakeCoverage } from "./footageEdit";
 import type { BeatCheck } from "./beatCheck";
 import type { TakeCheck } from "./takeCheck";
 import type { StoredFootageAnalysis } from "./footageRecord";
@@ -37,6 +38,14 @@ export type Assignment = {
   /** In/out inside the asset, seconds. Null on a performance assignment (derived from the song window). */
   sourceIn: number | null;
   sourceOut: number | null;
+  /**
+   * THIS VARIATION'S own trim of the take, in seconds of the box from each end, and its decision to leave the
+   * take out. The sync stays the authority for where the recording sits on the song; these narrow what the box
+   * uses of it. See footageEdit.ts. Absent on a row written before the columns existed, which reads as no edit.
+   */
+  trimHead?: number | null;
+  trimTail?: number | null;
+  excluded?: boolean | null;
   isPrimary: boolean;
   sortOrder: number;
   notes: string | null;
@@ -146,54 +155,9 @@ export function isPlayableRole(role: AssignmentRole): boolean {
 // The performance range of a box
 // ---------------------------------------------------------------------------
 
-/** Less than a frame of picture: footage this much short of a shot's window covers the shot. */
-export const FRAME_SLACK = 0.04;
-
-export type TakeRange = {
-  /** In/out inside the take, seconds — the song window mapped through the sync. */
-  start: number;
-  end: number;
-  /** "full": the take covers the whole window. "partial": it covers part (the range is clamped to the take). */
-  coverage: "full" | "partial";
-  /**
-   * Seconds of the box that pass before the take has footage (0 unless the recording starts inside the box). The
-   * take is never slid to fill that gap: sliding it would break the sync.
-   */
-  leadIn: number;
-};
-
-/**
- * Where a box sits inside a take. The window is mapped, never scaled: one second of song is one second of take
- * (drift is parts per million and is carried by the mapping). Null when the take has nothing for this window.
- */
-export function takeRangeForBox(
-  box: Pick<StoryboardBox, "start" | "end">,
-  sync: Pick<PerformanceSync, "offsetSeconds" | "driftPpm"> & Partial<PerformanceSync>,
-  takeDurationSeconds: number | null,
-): TakeRange | null {
-  if (!(box.end > box.start)) return null;
-  const full = sourceRangeForSongRange({ start: box.start, end: box.end }, sync as PerformanceSync, takeDurationSeconds ?? undefined);
-  if (full) return { ...full, coverage: "full", leadIn: 0 };
-  // partly inside the recording: clamp to what was recorded
-  const k = 1 + (sync.driftPpm ?? 0) / 1e6;
-  const s = (box.start - sync.offsetSeconds) / k;
-  const e = (box.end - sync.offsetSeconds) / k;
-  const lo = Math.max(0, s);
-  const hi = takeDurationSeconds != null ? Math.min(takeDurationSeconds, e) : e;
-  if (hi - lo < 0.1) return null;
-  // the song time at which the clamped range begins, relative to the box
-  const leadIn = Math.round(Math.max(0, lo * k + sync.offsetSeconds - box.start) * 1e4) / 1e4;
-  // short of the window by less than a frame at either end is not "part of the shot": nothing a viewer could see
-  // (a clip cut for this very shot starts on a frame boundary, a few milliseconds from the shot's own start). It is
-  // still PLACED exactly: those milliseconds stay a lead-in, so the footage is never slid to meet the cut.
-  if (lo - s < FRAME_SLACK && e - hi < FRAME_SLACK) return { start: Math.round(lo * 1e4) / 1e4, end: Math.round(hi * 1e4) / 1e4, coverage: "full", leadIn };
-  return { start: Math.round(lo * 1e4) / 1e4, end: Math.round(hi * 1e4) / 1e4, coverage: "partial", leadIn };
-}
-
-/** A sync the cut can rely on: the director confirmed it, or set it by hand. A measurement nobody confirmed is not one. */
-export function isUsableSync(sync: Pick<PerformanceSync, "status">): boolean {
-  return sync.status === "confirmed" || sync.status === "manual";
-}
+// `takeRangeForBox`, `isUsableSync`, `TakeRange` and `FRAME_SLACK` moved to footageEdit.ts, which is the layer
+// below this one (it may not import boxMedia). Re-exported here so every existing importer keeps working.
+export { FRAME_SLACK, isUsableSync, takeRangeForBox, type TakeRange } from "./footageEdit";
 
 // ---------------------------------------------------------------------------
 // What a box shows
@@ -215,6 +179,12 @@ export type BoxMediaItem = {
   base: boolean;
   /** Set when the media does not fill the box, or only part of the take covers it. */
   note: string | null;
+  /**
+   * For a performance take PUT ON the box: how this variation's own trim and exclusion resolved against the sync,
+   * so the UI can say which it is and offer the way back. Null on the base layer, where nothing is decided yet,
+   * and on every other role.
+   */
+  edit: TakeCoverage | null;
 };
 
 export type BoxMedia = {
@@ -258,26 +228,17 @@ export function boxMedia(input: {
     let sourceOut = a.sourceOut;
     let note: string | null = null;
     let leadIn = 0;
+    let edit: TakeCoverage | null = null;
     if (a.role === "performance") {
       takesOnBox.add(asset.id);
-      const sync = syncByAsset.get(asset.id);
-      if (!sync || !isUsableSync(sync)) {
-        note = "this take is not matched to the song yet";
-        sourceIn = null;
-        sourceOut = null;
-      } else {
-        const r = takeRangeForBox(box, sync, asset.durationSeconds);
-        if (!r) {
-          note = "the take has no footage for this part of the song";
-          sourceIn = null;
-          sourceOut = null;
-        } else {
-          sourceIn = r.start;
-          sourceOut = r.end;
-          leadIn = r.leadIn;
-          if (r.coverage === "partial") note = "the take covers only part of this box";
-        }
-      }
+      // The sync says where the recording sits on the song; this variation's own row says how much of that
+      // coverage this box uses, and whether it uses it at all. Neither is derived from the other.
+      const c = takeCoverage({ box, sync: syncByAsset.get(asset.id) ?? null, takeDurationSeconds: asset.durationSeconds, edit: editOf(a) });
+      sourceIn = c.sourceIn;
+      sourceOut = c.sourceOut;
+      leadIn = c.leadIn;
+      note = c.note;
+      edit = c;
     } else if (kind === "video") {
       const inPoint = sourceIn ?? 0;
       const available = (sourceOut ?? asset.durationSeconds ?? Infinity) - inPoint;
@@ -285,7 +246,7 @@ export function boxMedia(input: {
       sourceOut = Number.isFinite(available) ? inPoint + Math.min(available, seconds) : inPoint + seconds;
       if (Number.isFinite(available) && available + 0.05 < seconds) note = `${available.toFixed(1)} s of footage for a ${seconds.toFixed(1)} s box`;
     }
-    items.push({ assignmentId: a.id, asset, role: a.role, kind, sourceIn, sourceOut, leadIn, selected: a.id === primaryId, base: false, note });
+    items.push({ assignmentId: a.id, asset, role: a.role, kind, sourceIn, sourceOut, leadIn, selected: a.id === primaryId, base: false, note, edit });
   }
 
   // the base layer: every usable take that covers the box and is not already on it
@@ -308,9 +269,13 @@ export function boxMedia(input: {
       selected: false,
       base: true,
       note: r.coverage === "partial" ? "the take covers only part of this box" : null,
+      // offered, not decided: the base layer is what the sync gives this box before anybody edits it
+      edit: null,
     });
   }
 
+  // an excluded take has no range, so the `sourceIn != null` test already drops it from `showing`: a take the
+  // director left out of this variation can never be what the box shows, even if its row is still flagged primary
   const selected = items.find((i) => i.selected && isPlayableRole(i.role) && (i.role !== "performance" || i.sourceIn != null)) ?? null;
   const base = items.find((i) => i.base) ?? null;
   return { items, showing: selected ?? base };
@@ -321,8 +286,8 @@ export function boxMedia(input: {
 // ---------------------------------------------------------------------------
 
 export type AssignmentOp =
-  | { op: "insert"; shotId: string; assetId: string; role: AssignmentRole; isPrimary: boolean; sourceIn: number | null; sourceOut: number | null; sortOrder: number }
-  | { op: "update"; id: string; patch: Partial<{ shot_id: string; is_primary: boolean; source_in_seconds: number | null; source_out_seconds: number | null; sort_order: number }> }
+  | { op: "insert"; shotId: string; assetId: string; role: AssignmentRole; isPrimary: boolean; sourceIn: number | null; sourceOut: number | null; sortOrder: number; trim_head_seconds?: number; trim_tail_seconds?: number; excluded?: boolean }
+  | { op: "update"; id: string; patch: Partial<{ shot_id: string; is_primary: boolean; source_in_seconds: number | null; source_out_seconds: number | null; sort_order: number; trim_head_seconds: number; trim_tail_seconds: number; excluded: boolean }> }
   | { op: "delete"; id: string };
 
 /** Put an asset on a box (selected by default: the director put it there to see it). Idempotent per (box, asset, role). */
