@@ -25,7 +25,7 @@
  */
 import { sourceRangeForSongRange, type PerformanceSync } from "@/lib/sync/performanceSync";
 import type { StoryboardBox } from "./boxes";
-import type { Assignment, AssignmentOp, AssignmentRole } from "./media";
+import type { Assignment, AssignmentOp, AssignmentRole, BoxMediaItem, MediaAsset } from "./media";
 
 /** Less than a frame of picture: footage this much short of a shot's window covers the shot. */
 export const FRAME_SLACK = 0.04;
@@ -53,7 +53,11 @@ export function takeRangeForBox(
   takeDurationSeconds: number | null,
 ): TakeRange | null {
   if (!(box.end > box.start)) return null;
-  const full = sourceRangeForSongRange({ start: box.start, end: box.end }, sync as PerformanceSync, takeDurationSeconds ?? undefined);
+  const full = sourceRangeForSongRange(
+    { start: box.start, end: box.end },
+    sync as PerformanceSync,
+    takeDurationSeconds ?? undefined,
+  );
   if (full) return { ...full, coverage: "full", leadIn: 0 };
   // partly inside the recording: clamp to what was recorded
   const k = 1 + (sync.driftPpm ?? 0) / 1e6;
@@ -67,8 +71,19 @@ export function takeRangeForBox(
   // short of the window by less than a frame at either end is not "part of the shot": nothing a viewer could see
   // (a clip cut for this very shot starts on a frame boundary, a few milliseconds from the shot's own start). It is
   // still PLACED exactly: those milliseconds stay a lead-in, so the footage is never slid to meet the cut.
-  if (lo - s < FRAME_SLACK && e - hi < FRAME_SLACK) return { start: Math.round(lo * 1e4) / 1e4, end: Math.round(hi * 1e4) / 1e4, coverage: "full", leadIn };
-  return { start: Math.round(lo * 1e4) / 1e4, end: Math.round(hi * 1e4) / 1e4, coverage: "partial", leadIn };
+  if (lo - s < FRAME_SLACK && e - hi < FRAME_SLACK)
+    return {
+      start: Math.round(lo * 1e4) / 1e4,
+      end: Math.round(hi * 1e4) / 1e4,
+      coverage: "full",
+      leadIn,
+    };
+  return {
+    start: Math.round(lo * 1e4) / 1e4,
+    end: Math.round(hi * 1e4) / 1e4,
+    coverage: "partial",
+    leadIn,
+  };
 }
 
 /** A sync the cut can rely on: the director confirmed it, or set it by hand. A measurement nobody confirmed is not one. */
@@ -116,7 +131,12 @@ export type TakeCoverage = {
   note: string | null;
 };
 
-const NOTHING = (from: CoverageFrom, note: string | null, leadIn = 0, tailOut = 0): TakeCoverage => ({
+const NOTHING = (
+  from: CoverageFrom,
+  note: string | null,
+  leadIn = 0,
+  tailOut = 0,
+): TakeCoverage => ({
   sourceIn: null,
   sourceOut: null,
   leadIn,
@@ -135,9 +155,15 @@ export function trimSeconds(v: unknown): number {
 }
 
 /** The edit stored on an assignment row. Columns absent (an older row, or a stand-in backend) read as no edit. */
-export function editOf(a: Pick<Assignment, "trimHead" | "trimTail" | "excluded"> | null | undefined): FootageEdit {
+export function editOf(
+  a: Pick<Assignment, "trimHead" | "trimTail" | "excluded"> | null | undefined,
+): FootageEdit {
   if (!a) return NO_EDIT;
-  return { head: trimSeconds(a.trimHead), tail: trimSeconds(a.trimTail), excluded: a.excluded === true };
+  return {
+    head: trimSeconds(a.trimHead),
+    tail: trimSeconds(a.trimTail),
+    excluded: a.excluded === true,
+  };
 }
 
 /**
@@ -146,23 +172,38 @@ export function editOf(a: Pick<Assignment, "trimHead" | "trimTail" | "excluded">
  */
 export function takeCoverage(input: {
   box: Pick<StoryboardBox, "start" | "end">;
-  sync: (Pick<PerformanceSync, "offsetSeconds" | "driftPpm" | "status"> & Partial<PerformanceSync>) | null | undefined;
+  sync:
+    | (Pick<PerformanceSync, "offsetSeconds" | "driftPpm" | "status"> & Partial<PerformanceSync>)
+    | null
+    | undefined;
   takeDurationSeconds: number | null;
   edit?: FootageEdit;
 }): TakeCoverage {
   const edit = input.edit ?? NO_EDIT;
   const { box } = input;
   if (edit.excluded) return NOTHING("excluded", "left out of this variation on purpose");
-  if (!input.sync || !isUsableSync(input.sync)) return NOTHING("unsynced", "this take is not matched to the song yet");
+  if (!input.sync || !isUsableSync(input.sync))
+    return NOTHING("unsynced", "this take is not matched to the song yet");
 
   const trimmed = { start: box.start + edit.head, end: box.end - edit.tail };
   const hasTrim = edit.head > 0 || edit.tail > 0;
   if (trimmed.end - trimmed.start < MIN_COVERAGE_SECONDS) {
-    return NOTHING("emptied", "trimmed to nothing — the take is not used on this shot", edit.head, edit.tail);
+    return NOTHING(
+      "emptied",
+      "trimmed to nothing — the take is not used on this shot",
+      edit.head,
+      edit.tail,
+    );
   }
 
   const r = takeRangeForBox(trimmed, input.sync, input.takeDurationSeconds);
-  if (!r) return NOTHING("uncovered", "the take has no footage for this part of the song", edit.head, edit.tail);
+  if (!r)
+    return NOTHING(
+      "uncovered",
+      "the take has no footage for this part of the song",
+      edit.head,
+      edit.tail,
+    );
 
   // the trim is part of the lead-in: the footage sits where the sync put it, and the trimmed head stays empty
   const leadIn = r4(edit.head + r.leadIn);
@@ -170,7 +211,8 @@ export function takeCoverage(input: {
   const tailOut = r4(Math.max(0, box.end - box.start - leadIn - played));
   // "full" is about the BOX, so a trim the director asked for is reported as partial coverage of it, with no scolding note
   const covered = leadIn < 0.04 && tailOut < 0.04 && r.coverage === "full";
-  const note = r.coverage === "partial" && !hasTrim ? "the take covers only part of this box" : null;
+  const note =
+    r.coverage === "partial" && !hasTrim ? "the take covers only part of this box" : null;
   return {
     sourceIn: r.start,
     sourceOut: r.end,
@@ -214,12 +256,19 @@ export function planFootageEdit(input: {
   role?: AssignmentRole;
 }): FootageEditPlan {
   const role = input.role ?? "performance";
-  const row = input.assignments.find((a) => a.shotId === input.box.id && a.assetId === input.assetId && a.role === role) ?? null;
+  const row =
+    input.assignments.find(
+      (a) => a.shotId === input.box.id && a.assetId === input.assetId && a.role === role,
+    ) ?? null;
   const current = editOf(row);
   const next = ((): FootageEdit => {
     switch (input.action.do) {
       case "trim":
-        return { head: trimSeconds(input.action.head), tail: trimSeconds(input.action.tail), excluded: false };
+        return {
+          head: trimSeconds(input.action.head),
+          tail: trimSeconds(input.action.tail),
+          excluded: false,
+        };
       case "exclude":
         return { ...current, excluded: true };
       case "restore":
@@ -232,11 +281,18 @@ export function planFootageEdit(input: {
   if (input.action.do === "trim") {
     const seconds = input.box.end - input.box.start;
     if (next.head + next.tail > seconds - MIN_COVERAGE_SECONDS) {
-      return { ops: [], refused: `a trim leaves at least ${MIN_COVERAGE_SECONDS} s of the ${seconds.toFixed(2)} s shot — to drop the take, leave it out instead` };
+      return {
+        ops: [],
+        refused: `a trim leaves at least ${MIN_COVERAGE_SECONDS} s of the ${seconds.toFixed(2)} s shot — to drop the take, leave it out instead`,
+      };
     }
   }
 
-  const patch = { trim_head_seconds: next.head, trim_tail_seconds: next.tail, excluded: next.excluded };
+  const patch = {
+    trim_head_seconds: next.head,
+    trim_tail_seconds: next.tail,
+    excluded: next.excluded,
+  };
   if (!row) {
     // an exclusion or a trim of an offered take: the row is the record of the decision
     if (next.head === 0 && next.tail === 0 && !next.excluded) return { ops: [], refused: null };
@@ -259,17 +315,34 @@ export function planFootageEdit(input: {
       refused: null,
     };
   }
-  if (current.head === next.head && current.tail === next.tail && current.excluded === next.excluded) return { ops: [], refused: null };
+  if (
+    current.head === next.head &&
+    current.tail === next.tail &&
+    current.excluded === next.excluded
+  )
+    return { ops: [], refused: null };
   // excluding what the box was showing clears the selection too, or the cut would still reach for it
   const primary = next.excluded ? { is_primary: false } : {};
   return { ops: [{ op: "update", id: row.id, patch: { ...patch, ...primary } }], refused: null };
+}
+
+/**
+ * Only an ORIGINAL take is cut this way. A restaged or composited clip is one shot's picture, made for that shot
+ * — trimming it would be trimming a render, not choosing coverage, and it is never offered under another shot.
+ */
+export function isSyncedTake(
+  item: Pick<BoxMediaItem, "role"> & { asset: Pick<MediaAsset, "derivedFrom"> },
+): boolean {
+  return item.role === "performance" && !item.asset.derivedFrom;
 }
 
 /** What to tell a director about one take on one box, in words, with no claim the module cannot support. */
 export function coverageLabel(c: TakeCoverage): string {
   switch (c.from) {
     case "sync":
-      return c.coverage === "full" ? "synced · covers the shot" : "synced · covers part of the shot";
+      return c.coverage === "full"
+        ? "synced · covers the shot"
+        : "synced · covers part of the shot";
     case "trimmed":
       return `trimmed · ${c.leadIn > 0 ? `${c.leadIn.toFixed(2)} s in` : "from the cut"}${c.tailOut > 0 ? `, ${c.tailOut.toFixed(2)} s short of the out` : ""}`;
     case "excluded":
