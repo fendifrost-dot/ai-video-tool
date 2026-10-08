@@ -190,7 +190,8 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
         // the project's places, props and lighting states: the writer points shots at them instead of describing them again
         context: {
           ...inputs.treatmentContext(notesValue, footageNote, setup.counts.takesSynced > 0),
-          entities: (entitiesQuery.data ?? []).filter((e) => !e.archived).map((e) => ({ key: e.key, kind: e.kind, name: e.name, description: e.description })),
+          // outfits are what he wears, resolved from the writer's own wardrobe words afterwards (wardrobe/outfits.ts) — not pointed at by the writer
+          entities: (entitiesQuery.data ?? []).filter((e) => !e.archived && e.kind !== "outfit").map((e) => ({ key: e.key, kind: e.kind as "location" | "prop" | "lighting" | "character", name: e.name, description: e.description })),
         },
         treatmentText: aiWritesText ? "" : doc.text,
         aiWritesText,

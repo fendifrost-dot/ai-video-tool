@@ -48,6 +48,8 @@ export type ContinuityOverride = {
   links?: { kind: string; shot: string; note?: string }[];
   /** The exact garments (character_features ids). A list — even an empty one — is exactly the shot's garments. */
   garments?: string[];
+  /** Which outfit the shot wears (shotSpec wardrobe.outfitMode / outfitKey): inherit its scene's, an exception, or none. */
+  outfit?: { mode?: string; key?: string | null };
   /** How the shot is made (shotSpec PRODUCTION_METHODS; "" = not said). */
   production?: { method?: string; note?: string };
 };
@@ -55,7 +57,7 @@ export type ContinuityOverride = {
 function statesContinuity(c: ContinuityOverride | null | undefined): boolean {
   return (
     !!c &&
-    (typeof c.location === "string" || Array.isArray(c.props) || typeof c.lighting === "string" || typeof c.look === "string" || Array.isArray(c.links) || Array.isArray(c.garments) || !!c.production)
+    (typeof c.location === "string" || Array.isArray(c.props) || typeof c.lighting === "string" || typeof c.look === "string" || Array.isArray(c.links) || Array.isArray(c.garments) || !!c.outfit || !!c.production)
   );
 }
 
@@ -318,6 +320,7 @@ export function applyShotOverride(
         ...next.wardrobe,
         ...(typeof c.look === "string" ? { lookId: c.look.trim() || null } : {}),
         ...(Array.isArray(c.garments) ? { garments: [...new Set(c.garments.filter((g) => typeof g === "string" && g.trim()).map((g) => g.trim()))] } : {}),
+        ...(c.outfit ? outfitChoice(c.outfit, next.wardrobe) : {}),
       },
       ...(c.production ? { production: overrideProduction(c.production, next.production) } : {}),
     };
@@ -325,6 +328,13 @@ export function applyShotOverride(
   }
 
   return touched ? { ...next, origin: "override" } : spec;
+}
+
+/** The director's outfit choice on a shot, cleaned: a known mode; a key only with `exception` (an inherited or absent outfit names none). */
+function outfitChoice(o: { mode?: string; key?: string | null }, was: ShotSpec["wardrobe"]): Pick<ShotSpec["wardrobe"], "outfitMode" | "outfitKey"> {
+  const mode = o.mode === "inherit" || o.mode === "exception" || o.mode === "none" ? o.mode : was.outfitMode;
+  const key = typeof o.key === "string" && o.key.trim() ? o.key.trim() : null;
+  return { outfitMode: mode, outfitKey: mode === "exception" ? (key ?? was.outfitKey) : null };
 }
 
 /** A director's links, cleaned: known kinds, another shot's key, at most one link of a kind to a shot. */

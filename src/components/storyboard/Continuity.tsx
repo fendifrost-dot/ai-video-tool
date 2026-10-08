@@ -10,7 +10,7 @@ import { imageForClip } from "@/lib/storyboard/media";
 import { Overlay } from "./Overlay";
 import { useStoryboard } from "./useStoryboardController";
 
-const KIND_ICON: Record<EntityKind, typeof MapPin> = { location: MapPin, prop: Package, lighting: Lightbulb, character: Users };
+const KIND_ICON: Record<EntityKind, typeof MapPin> = { location: MapPin, prop: Package, lighting: Lightbulb, character: Users, outfit: Shirt };
 const selectClass = "h-9 w-full rounded-md border border-border bg-background/60 px-2 text-xs text-foreground";
 const shotList = (numbers: readonly number[]) => (numbers.length ? `shot${numbers.length === 1 ? "" : "s"} ${numbers.join(", ")}` : "no shot yet");
 
@@ -355,8 +355,9 @@ export function ContinuityPanel() {
   // Characters are entities too, but they are not edited here: a cast member needs a role and an
   // identity mode, which this panel has no fields for, and `createContinuityEntity` refuses a
   // character without them. The Cast panel owns them. See src/components/storyboard/Cast.tsx.
-  const SET_KINDS = ENTITY_KINDS.filter((k) => k !== "character");
-  const live = sb.entities.filter((e) => !e.archived && e.kind !== "character");
+  // Outfits are entities too, owned by the Wardrobe panel (Outfits.tsx): they need pieces, which this panel has no fields for.
+  const SET_KINDS = ENTITY_KINDS.filter((k) => k !== "character" && k !== "outfit");
+  const live = sb.entities.filter((e) => !e.archived && e.kind !== "character" && e.kind !== "outfit");
   const count = (kind: EntityKind) => live.filter((e) => e.kind === kind).length;
 
   const add = async () => {
@@ -382,7 +383,7 @@ export function ContinuityPanel() {
         <div className="space-y-4 border-t border-border/60 p-3">
           <p className="text-[11px] leading-snug text-foreground/50">
             Describe a place, a prop or a lighting state once, here. A shot then points at it instead of describing it again, and every shot that points at it is generated from these same words. A place's approved picture is the place every performance shot set
-            there is restaged into. Wardrobe looks are the artist's Looks — a shot points at one the same way.
+            there is restaged into. What he wears is under Wardrobe: an outfit defined once, worn by a scene.
           </p>
           {SET_KINDS.map((kind) => {
             const list = sb.entities.filter((e) => e.kind === kind);

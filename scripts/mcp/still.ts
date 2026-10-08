@@ -17,10 +17,11 @@ import { entityFromRow, indexEntities, resolveContinuity, type ContinuityEntity,
 import { resolveCast, castProblems } from "@/lib/casting/cast";
 import { linksOfBox, linkPictureNeeds, linkPromptLines } from "@/lib/storyboard/links";
 import { planStillReferences, type StillReference } from "@/lib/storyboard/references";
-import { boxShot, entityShot, madeFromBox, DEFAULT_BOX_LOOK, STORYBOARD_RUN, ENTITY_RUN } from "@/lib/storyboard/generate";
+import { boxShot, clipShot, clipTemporalPlan, entityShot, madeFromBox, DEFAULT_BOX_LOOK, STORYBOARD_RUN, ENTITY_RUN } from "@/lib/storyboard/generate";
+import { eventClock } from "@/lib/storyboard/events";
 import { resolveLookPreset } from "@/lib/shotCompiler/lookPresets";
 import { WARDROBE_FEATURE_TYPES } from "@/lib/queries/wardrobe";
-import { submitStills, type RunnerDeps, type StillReferencesOnJob } from "@/lib/worldBatch/runner";
+import { submitShot, submitStills, type RunnerDeps, type StillReferencesOnJob } from "@/lib/worldBatch/runner";
 import { stillFailure } from "@/lib/worldBatch/requests";
 import { boxMedia, imageForClip, planAssign, type Assignment, type MediaAsset } from "@/lib/storyboard/media";
 import { mediaAssetOf } from "@/lib/queries/storyboard";
@@ -72,6 +73,8 @@ type Bundle = {
   characterFeatures: Record<string, unknown>[];
   looks: LookRef[];
   support: Record<string, unknown> | null;
+  /** The song analysis row (song_analyses), when fetched: its beat map is the clock timed events resolve on. */
+  analysis: Record<string, unknown> | null;
 };
 
 const BUNDLE_FILES = ["project", "shots", "entities", "assets", "assignments", "lyric_lines", "character_features", "looks", "support"] as const;
@@ -91,6 +94,7 @@ function readBundle(dir: string): Bundle {
     characterFeatures: b("character_features"),
     looks: existsSync(join(dir, "bundle", "looks.json")) ? b("looks") : [],
     support: existsSync(join(dir, "bundle", "support.json")) ? b("support") : null,
+    analysis: existsSync(join(dir, "bundle", "analysis.json")) ? ((b("analysis") as Record<string, unknown>[])[0] ?? null) : null,
   };
 }
 
@@ -119,8 +123,10 @@ const filedAssets = new Map<string, string>();
 function mcpDeps(fx: Effects, userId: string): RunnerDeps {
   return {
     userId,
-    sign: async () => {
-      throw new Error("signing is not needed for a still");
+    sign: async (bucket, path) => {
+      const r = fx.ask<{ url?: string }>("avt_signed_url", { bucket, path, expires_in: 86400 });
+      if (!r.url) throw new Error(`no signed url for ${bucket}/${path}`);
+      return r.url;
     },
     // the stacked-panels check reads the picture in a browser canvas; the driver does not look at pictures
     inspectStill: undefined,
@@ -143,8 +149,12 @@ function mcpDeps(fx: Effects, userId: string): RunnerDeps {
     updateJob: async (id, patch) => {
       fx.ask("avt_update", { table: "provider_jobs", filters: [{ column: "id", op: "eq", value: id }], values: patch });
     },
-    callProxy: async () => {
-      throw new Error("a still does not go through proxy-provider-call");
+    // the page's browserDeps: proxy-provider-call carries the Control Center call; a reply with ok:false is a failure
+    callProxy: async (endpoint, body) => {
+      const r = fx.ask<{ http_status?: number; answer?: Record<string, unknown> }>("avt_call", { function: "proxy-provider-call", method: "POST", body: { endpoint, method: "POST", body } });
+      const data = r.answer ?? (r as unknown as Record<string, unknown>);
+      if ((r.http_status && r.http_status >= 400) || data.ok === false) throw new Error(`proxy-provider-call ${r.http_status ?? ""}: ${JSON.stringify(data).slice(0, 400)}`);
+      return data;
     },
   };
 }
@@ -177,6 +187,7 @@ function cmdBundle(projectId: string, variationId: string, artistId: string | nu
     { file: "assignments", tool: "avt_select", args: { table: "shot_asset_assignments", filters: [{ column: "variation_id", op: "eq", value: variationId }], limit: 500 } },
     { file: "lyric_lines", tool: "avt_select", args: { table: "lyric_lines", columns: "line_index, section, text, start_seconds, end_seconds, confidence, words_json", filters: [{ column: "project_id", op: "eq", value: projectId }], order: { column: "line_index", ascending: true }, limit: 500 } },
     { file: "character_features", tool: "avt_select", args: { table: "character_features", filters: artistId ? [{ column: "artist_id", op: "eq", value: artistId }] : [], limit: 500 } },
+    { file: "analysis", tool: "avt_select", args: { table: "song_analyses", columns: "id, beat_map_json", filters: [{ column: "project_id", op: "eq", value: projectId }], limit: 1 } },
     { file: "support", tool: "avt_call", args: { function: "world-still-proxy", method: "POST", body: { projectId, prompt: "capability probe", dryRun: true, references: [] } } },
   ];
   console.log(JSON.stringify({ reads, note: "save each result as <workdir>/bundle/<file>.json (the rows array; for support, the call's body)" }, null, 2));
@@ -287,6 +298,44 @@ async function cmdShot(dir: string, key: string) {
   console.log("DONE " + JSON.stringify({ key, jobRowId: res.rowId, picked: res.picked, candidates: res.candidates.length, assetIds, costUsd: res.costUsd, referencesSent: references.delivered ? references.sent.length : 0, references: references.sent.map((r) => `${r.role}:${r.label}`), prompt: res.prompt }));
 }
 
+/**
+ * The clip of a cutaway box, from its selected image — the page's "Generate clip" (generate.ts generateBoxClip):
+ * clipShot → submitShot. The job is left queued/running with the provider's id; provider-jobs-tick (the server) saves
+ * the clip and puts it on the shot. A performance box is restaged from its take in the browser (the take is cut and
+ * uploaded there), which this driver cannot do: it refuses one.
+ */
+async function cmdClip(dir: string, key: string, opts: { ordered?: boolean; dryRun?: boolean } = {}) {
+  const w = loadWorld(dir);
+  const box = w.boxes.find((b) => b.key === key);
+  if (!box) throw new Error(`no box ${key} on the board`);
+  if (box.spec.shotType === "performance") throw new Error(`${key} is a performance shot: its clip is a restaging of the take, cut in the browser — not made here`);
+  const still = w.selectedStill(box.id);
+  if (!still) throw new Error(`${key} has no selected image — generate and choose one first (shot ${key})`);
+  const continuity = resolveContinuity(box.spec, w.entityIndex, w.looks);
+  const cast = resolveCast(box.spec, w.entityIndex);
+  const blockingCast = castProblems(cast).filter((p) => p.level === "blocking");
+  if (blockingCast.length) throw new Error(`${key}: cast problems — ${blockingCast.map((p) => p.text).join("; ")}`);
+  const linkLines = linkPromptLines(linksOfBox(box, w.board));
+  // the clock the page resolves timed events on: lyric timing, the song's beats (bundle/analysis.json when fetched), lighting states
+  const beats = w.bundle.analysis ? ((w.bundle.analysis as { beat_map_json?: { t: number }[] }).beat_map_json ?? null) : null;
+  const clock = eventClock(w.lyricLines, beats, w.entities.map((e) => ({ key: e.key, kind: e.kind, description: e.description, constraints: e.constraints })));
+  let plan = clipTemporalPlan(box, clock);
+  if (plan.mode === "refused") {
+    if (!opts.ordered || plan.alternatives.length === 0) throw new Error(`${key}: ${plan.reason} (alternatives: ${plan.alternatives.join(", ") || "none"}; "clip ${key},ordered" asks for the beats in order)`);
+    plan = clipTemporalPlan(box, clock, { allowOrdered: true });
+  }
+  const { id: lookPresetId, look } = resolveLookPreset(DEFAULT_BOX_LOOK);
+  const shot = clipShot(box, w.lyricLines, { aspect: w.aspect, continuity, cast, linkLines, stillPath: still.path, lookPresetId, temporal: plan });
+  if (opts.dryRun) {
+    console.log("DONE " + JSON.stringify({ key, dryRun: true, route: shot.route, seconds: shot.seconds, stillPath: still.path, temporal: plan.mode, motion: shot.motion, prompt: shot.prompt }));
+    return;
+  }
+  const fx = new Effects(dir, `clip-${key}`);
+  const deps = mcpDeps(fx, w.userId);
+  const res = await submitShot(shot, { projectId: w.projectId, variationId: box.variationId, runId: STORYBOARD_RUN, lookPresetId, look, shotIds: { [box.key]: box.id }, madeFrom: { [box.key]: madeFromBox(box) } }, deps);
+  console.log("DONE " + JSON.stringify({ key, jobRowId: res.rowId, providerJobId: res.providerJobId, stillPath: res.stillPath, temporal: plan.mode, prompt: res.prompt }));
+}
+
 /** Reference pictures of a continuity entity from its canonical words — nothing is approved here. */
 async function cmdEntity(dir: string, key: string) {
   const w = loadWorld(dir);
@@ -309,13 +358,17 @@ async function cmdEntity(dir: string, key: string) {
 
 async function main() {
   const [dir, cmd, arg] = process.argv.slice(2);
-  if (!dir || !cmd) throw new Error("usage: still.ts <workdir> bundle|entity <KEY>|shot <c0NN>");
+  if (!dir || !cmd) throw new Error("usage: still.ts <workdir> bundle|entity <KEY>|shot <c0NN>|clip <c0NN>[,ordered][,dry]");
   try {
     if (cmd === "bundle") {
       const [projectId, variationId, artistId] = (arg ?? "").split(",");
       if (!projectId || !variationId) throw new Error("bundle <projectId>,<variationId>[,<artistId>]");
       cmdBundle(projectId, variationId, artistId || null);
     } else if (cmd === "shot") await cmdShot(dir, arg);
+    else if (cmd === "clip") {
+      const [key, ...flags] = (arg ?? "").split(",");
+      await cmdClip(dir, key, { ordered: flags.includes("ordered"), dryRun: flags.includes("dry") });
+    }
     else if (cmd === "entity") await cmdEntity(dir, arg);
     else throw new Error(`unknown command ${cmd}`);
   } catch (e) {

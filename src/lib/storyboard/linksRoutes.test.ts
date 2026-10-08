@@ -103,7 +103,7 @@ describe("links written by the writer survive to the saved shot, and are read fr
 });
 
 describe("references: the linked shot's picture, the place, exact garments — sent, capped, or said", () => {
-  const place: ContinuityEntity = { id: "e1", projectId: "p1", variationId: "v-ib", kind: "location", key: "CORNER", name: "the Chicago corner", description: "a corner by the train", constraints: "", approvedAssetId: "asset-corner", referenceAssetIds: [], archived: false, createdAt: AT, updatedAt: AT, cast: null };
+  const place: ContinuityEntity = { id: "e1", projectId: "p1", variationId: "v-ib", kind: "location", key: "CORNER", name: "the Chicago corner", description: "a corner by the train", constraints: "", approvedAssetId: "asset-corner", referenceAssetIds: [], archived: false, createdAt: AT, updatedAt: AT, cast: null, outfit: null };
   const continuity = (location: ContinuityEntity | null): ShotContinuity => ({ ...NO_CONTINUITY, location });
 
   it("a screen shot whose source shot has no image yet is blocked before any spend", () => {

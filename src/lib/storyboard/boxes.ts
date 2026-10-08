@@ -171,6 +171,10 @@ function parseContinuity(value: unknown): ContinuityOverride | null {
   // links, garments and the production method are kept as written; overrides.ts cleans them when it applies them
   if (Array.isArray(v.links)) out.links = v.links.filter((l): l is { kind: string; shot: string; note?: string } => !!l && typeof l === "object" && typeof (l as { kind?: unknown }).kind === "string" && typeof (l as { shot?: unknown }).shot === "string");
   if (Array.isArray(v.garments)) out.garments = v.garments.filter((x): x is string => typeof x === "string" && !!x.trim()).map((x) => x.trim());
+  if (v.outfit && typeof v.outfit === "object") {
+    const o = v.outfit as Record<string, unknown>;
+    out.outfit = { ...(typeof o.mode === "string" ? { mode: o.mode } : {}), ...(typeof o.key === "string" || o.key === null ? { key: o.key as string | null } : {}) };
+  }
   if (v.production && typeof v.production === "object") {
     const pr = v.production as Record<string, unknown>;
     out.production = { ...(typeof pr.method === "string" ? { method: pr.method } : {}), ...(typeof pr.note === "string" ? { note: pr.note } : {}) };

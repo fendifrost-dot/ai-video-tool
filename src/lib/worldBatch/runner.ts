@@ -15,6 +15,7 @@
  * Every effect arrives through `RunnerDeps`, so the rules are testable without a network.
  */
 import type { LookPreset } from "@/lib/shotCompiler";
+import type { OutfitRecord } from "@/lib/wardrobe/outfits";
 import { missingInput, type BatchShot } from "./dialect";
 import { estimateBatchUsd, estimateShotUsd } from "./estimate";
 import { buildMotionRequest, motionPrompt, providerOfRoute, stillPrompt } from "./requests";
@@ -55,6 +56,12 @@ export type BatchJobSettings = {
   attachedBy?: string;
   /** What the shot was when this was asked for (a storyboard job). Absent on a Runs-page batch and on older jobs. */
   madeFrom?: MadeFrom;
+  /**
+   * The outfit the shot wore when this was asked for (src/lib/wardrobe/outfits.ts jobOutfitRecord): its key, the
+   * version given, the pieces sent and the words. What lets a picture or clip be called outdated when the outfit
+   * changes after it. Absent = the shot wore no outfit, or the job predates outfits.
+   */
+  outfit?: OutfitRecord | null;
 };
 
 /**
@@ -121,6 +128,8 @@ export type RunContext = {
   entityId?: string;
   /** What each shot was when it was asked for (batch shot id → its provenance). Recorded on the job as `madeFrom`. */
   madeFrom?: Record<string, MadeFrom>;
+  /** The outfit each shot wore when asked for (batch shot id → record). Recorded on the job as `settings.outfit`. */
+  outfits?: Record<string, OutfitRecord>;
   /**
    * The reference pictures each still is drawn with (batch shot id → plan; storyboard/references.ts). The job records
    * what was sent and what was not, always. The pictures go to the generator only when `delivered` is true — the
@@ -139,9 +148,10 @@ export type StillReferencesOnJob = {
   delivered: boolean;
 };
 
-function madeFromOf(ctx: RunContext, shot: BatchShot): { madeFrom?: MadeFrom } {
+function madeFromOf(ctx: RunContext, shot: BatchShot): { madeFrom?: MadeFrom; outfit?: OutfitRecord } {
   const m = ctx.madeFrom?.[shot.id];
-  return m ? { madeFrom: m } : {};
+  const o = ctx.outfits?.[shot.id];
+  return { ...(m ? { madeFrom: m } : {}), ...(o ? { outfit: o } : {}) };
 }
 
 /** The box record a shot belongs to, as the job payload carries it (absent when the shot is not a box). */

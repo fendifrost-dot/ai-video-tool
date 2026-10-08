@@ -22,6 +22,7 @@ const entity = (over: Partial<ContinuityEntity> & { key: string }): ContinuityEn
   approvedAssetId: null,
   referenceAssetIds: [],
   cast: null,
+  outfit: null,
   archived: false,
   createdAt: "t",
   updatedAt: "t",
