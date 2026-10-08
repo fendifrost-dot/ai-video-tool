@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acceptBeats, allocateBeats, auditBeatsAgainstTreatment, BEATS_SCHEMA, beatsSystemPrompt, briefedShot, coverageOf, cueIndex, normalizeTieKinds, share, shotBriefs, tieKindFromWords, withFeasibleProduction, withRequiredLinks, type Beat } from "./beats.ts";
+import { acceptBeats, allocateBeats, auditBeatsAgainstTreatment, BEATS_SCHEMA, beatsSystemPrompt, briefedShot, coverageOf, cueIndex, cueMatches, fewestBeats, normalizeTieKinds, paragraphsOf, share, shotBriefs, tieKindFromWords, withFeasibleProduction, withRequiredLinks, type Beat } from "./beats.ts";
 import type { GridShot, WriterEntity } from "./contract.ts";
 
 const people: WriterEntity[] = [
@@ -247,6 +247,88 @@ describe("lyric synchronisation is never silently traded for narrative order", (
     const small = allocateBeats(b2, [grid[3], grid[4]]); // c004 sings the cue; a holds only c004
     expect(small.inserts).toEqual([]);
     expect(small.byBeat).toEqual({ a: ["c004"], b: ["c005"] });
+  });
+});
+
+describe("a cue sung long before its beat's turn is a flash, not a pin — seen on Interrupted Broadcast · candidate 4", () => {
+  // forty shots; the hook is sung at shot 4 and again at 20 and 36; the crew's and janitor's words once each, at 6 and 7
+  const song: GridShot[] = Array.from({ length: 40 }, (_, i) => ({
+    key: `c${String(i + 1).padStart(3, "0")}`,
+    start: i * 4,
+    end: (i + 1) * 4,
+    lyrics: i === 3 || i === 19 || i === 35 ? "you don’t gotta cut the lights on" : i === 5 ? "more cameras in the whip than a camera crew" : i === 6 ? "so clean but I don’t do what the janitor do" : "",
+  }));
+  const beats = [
+    beat({ id: "show", weight: 3 }),
+    beat({ id: "chaos", weight: 3 }),
+    beat({ id: "ride", weight: 3 }),
+    beat({ id: "viewer", weight: 2 }),
+    beat({ id: "switch", weight: 3, lyricCue: "you don’t gotta cut the lights on" }),
+    beat({ id: "cold", weight: 2 }),
+    beat({ id: "crew", weight: 2, lyricCue: "more cameras in the whip than a camera crew" }),
+    beat({ id: "entrance", weight: 3, lyricCue: "so clean but I don’t do what the janitor do" }),
+  ];
+
+  it("lists every singing of a cue, and pins the one nearest the beat's turn by weight — a repeated hook is not pinned to its first singing", () => {
+    expect(cueMatches(song, "you don’t gotta cut the lights on")).toEqual([3, 19, 35]);
+    const a = allocateBeats(beats, song);
+    // the switch's turn by weight is shot 21 (11 of 21 weight before it): the singing at 20 is pinned, not the one at 4
+    expect(a.anchors).toEqual([{ beat: "switch", shot: "c020", cue: "you don’t gotta cut the lights on" }]);
+    // the opening keeps the board before the pin (19 shots, two of them lent to flashes below)
+    expect(a.byBeat.show.length + a.byBeat.chaos.length + a.byBeat.ride.length + a.byBeat.viewer.length).toBe(17);
+    expect(a.byBeat.show.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("a cue sung only before the pin before it is a flash on its words, and the beat keeps its turn in order", () => {
+    const a = allocateBeats(beats, song);
+    expect(a.unanchored).toEqual([
+      { beat: "crew", cue: "more cameras in the whip than a camera crew", sung: "earlier" },
+      { beat: "entrance", cue: "so clean but I don’t do what the janitor do", sung: "earlier" },
+    ]);
+    expect(a.inserts.map((i) => `${i.beat}@${i.shot}<${i.takenFrom}`)).toEqual(["crew@c006<chaos", "entrance@c007<chaos"]);
+    expect(a.byBeat.crew.slice(1).every((k) => k > "c020")).toBe(true);
+    expect(a.byBeat.entrance.slice(1).every((k) => k > "c020")).toBe(true);
+  });
+
+  it("a cue sung after the pin before it but long before the beat's own turn (before half-way to it) is a flash too, not a pin that crushes the beats before it", () => {
+    // no hook cue on the switch, and the crew's words sung at shot 10 (after its rank, 7): its turn by weight is shot 30
+    const noSwitchCue = beats.map((b) => (b.id === "switch" ? { ...b, lyricCue: "" } : b));
+    const sungAt10 = song.map((g, i) => (i === 9 ? { ...g, lyrics: "more cameras in the whip than a camera crew" } : i === 5 ? { ...g, lyrics: "" } : g));
+    const a = allocateBeats(noSwitchCue, sungAt10);
+    expect(a.anchors).toEqual([]);
+    expect(a.unanchored).toEqual([
+      { beat: "crew", cue: "more cameras in the whip than a camera crew", sung: "early", shot: "c010" },
+      // the eighth beat can never be pinned to the seventh shot: sung before its rank, so "earlier"
+      { beat: "entrance", cue: "so clean but I don’t do what the janitor do", sung: "earlier" },
+    ]);
+    expect(a.inserts.map((i) => `${i.beat}@${i.shot}`)).toEqual(["crew@c010", "entrance@c007"]);
+    // the opening is not crushed into seven shots (what pinning did on candidate 4)
+    expect(a.byBeat.show.length + a.byBeat.chaos.length + a.byBeat.ride.length + a.byBeat.viewer.length).toBeGreaterThan(14);
+    // with inserts off the early cues stay reported, and the lyric section fails rather than passes quietly
+    const off = allocateBeats(noSwitchCue, sungAt10, { lyricInserts: false });
+    expect(off.inserts).toEqual([]);
+    const c = coverageOf(noSwitchCue, off, song.map((g) => ({ key: g.key, cast: { members: [], none: false }, continuity: { links: [] } })));
+    expect(c.lyrics.verdict).toBe("fail");
+    // a cue sung at least half-way to the beat's turn is still a pin
+    const late = song.map((g, i) => (i === 16 ? { ...g, lyrics: "more cameras in the whip than a camera crew" } : i === 5 ? { ...g, lyrics: "" } : g));
+    expect(allocateBeats(noSwitchCue, late).anchors).toEqual([{ beat: "crew", shot: "c017", cue: "more cameras in the whip than a camera crew" }]);
+  });
+
+  it("a beat holding more than half the board is reported as lumped, and a reading with too few beats is told apart", () => {
+    const few = [beat({ id: "show", weight: 1 }), beat({ id: "viewer", weight: 1 }), beat({ id: "rest", weight: 5 })];
+    const a = allocateBeats(few, song);
+    const clips = song.map((g) => ({ key: g.key, cast: { members: [], none: false }, continuity: { links: [] } }));
+    const c = coverageOf(few, a, clips, { beatReadings: [3, 3] });
+    expect(c.structural.lumped).toEqual([{ beat: "rest", shots: a.byBeat.rest.length, share: Math.round((100 * a.byBeat.rest.length) / 40) }]);
+    expect(c.structural.verdict).toBe("gaps");
+    expect(c.structural.readings).toEqual([3, 3]);
+    expect(c.ok).toBe(false);
+    // the fewest beats a reading may return: a quarter of the paragraphs, three at least, twelve at most
+    const paragraph = "one two three four five six seven eight nine.";
+    expect(paragraphsOf(Array(32).fill(paragraph).join("\n\n")).length).toBe(32);
+    expect(fewestBeats(Array(32).fill(paragraph).join("\n\n"))).toBe(8);
+    expect(fewestBeats(Array(2).fill(paragraph).join("\n\n"))).toBe(3);
+    expect(fewestBeats(Array(100).fill(paragraph).join("\n\n"))).toBe(12);
   });
 });
 

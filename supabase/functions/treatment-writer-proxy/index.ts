@@ -39,7 +39,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 import { streamed } from "./stream.ts";
 import { costOf, estimateCostUsd, fingerprint, SHOTS_PER_CALL, acceptShots, writerEntities, chunkGrid, linkedShots, linkUserMessage, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type WriterContext } from "./contract.ts";
-import { acceptBeats, allocateBeats, BEATS_SCHEMA, beatsSystemPrompt, coverageOf, normalizeTieKinds, shotBriefs, withFeasibleProduction, withRequiredLinks, type Allocation, type Beat, type ShotBrief, type TieCorrection } from "./beats.ts";
+import { acceptBeats, allocateBeats, BEATS_SCHEMA, beatsSystemPrompt, coverageOf, fewestBeats, normalizeTieKinds, paragraphsOf, shotBriefs, withFeasibleProduction, withRequiredLinks, type Allocation, type Beat, type ShotBrief, type TieCorrection } from "./beats.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -189,12 +189,25 @@ serve(async (req) => {
   //    its order, with its people, its wardrobe and its ties, before any shot is written
   let beats: Beat[] = [];
   let tieCorrections: TieCorrection[] = [];
+  const beatReadings: number[] = [];
   let allocation: Allocation | null = null;
   let briefs: Record<string, ShotBrief> = {};
   {
-    const r = await ask(beatsSystemPrompt(ctx.entities ?? [], ctx.hasPerformanceFootage === true), JSON.stringify({ treatment }), BEATS_SCHEMA, 6000);
+    const system = beatsSystemPrompt(ctx.entities ?? [], ctx.hasPerformanceFootage === true);
+    const r = await ask(system, JSON.stringify({ treatment }), BEATS_SCHEMA, 6000);
     if (!r.ok) return failRun(502, "PROVIDER_API_ERROR", `The treatment's beats could not be read: ${r.why}`);
-    const read = normalizeTieKinds(acceptBeats(r.value, ctx.entities ?? []));
+    let read = normalizeTieKinds(acceptBeats(r.value, ctx.entities ?? []));
+    beatReadings.push(read.beats.length);
+    // too few beats for the treatment's length: the reader folded scenes together — read it once more, with that said
+    const fewest = fewestBeats(treatment);
+    if (read.beats.length > 0 && read.beats.length < fewest) {
+      const again = await ask(system, JSON.stringify({ treatment, note: `A previous reading listed only ${read.beats.length} beats for a treatment of ${paragraphsOf(treatment).length} paragraphs — it folded several scenes into one beat. List every scene the treatment describes as its own beat, in order; expect at least ${fewest}.` }), BEATS_SCHEMA, 6000);
+      if (again.ok) {
+        const reread = normalizeTieKinds(acceptBeats(again.value, ctx.entities ?? []));
+        beatReadings.push(reread.beats.length);
+        if (reread.beats.length > read.beats.length) read = reread;
+      }
+    }
     beats = read.beats;
     tieCorrections = read.corrections;
     if (beats.length === 0) return failRun(502, "PROVIDER_API_ERROR", "The treatment's beats came back empty — nothing was written");
@@ -263,7 +276,7 @@ serve(async (req) => {
 
   // 7. does the board carry the treatment? said in parts, kept with the run, shown to the director — never an
   //    unqualified pass while anything was corrected, inserted or left out
-  const coverage = allocation ? coverageOf(beats, allocation, clips, { treatment, tieCorrections, productionCorrections: feasible.corrections }) : null;
+  const coverage = allocation ? coverageOf(beats, allocation, clips, { treatment, tieCorrections, productionCorrections: feasible.corrections, beatReadings }) : null;
   // the actual cost is the provider's own token counts at list price; with no counts it is unknown, not estimated
   const actualCostUsd = usage.prompt_tokens + usage.completion_tokens > 0 ? costOf(model, usage) : null;
   await finish({ status: "succeeded", shots_written: clips.length, actual_cost_usd: actualCostUsd, beats_json: beats, allocation_json: allocation, coverage_json: coverage, clips_json: clips, missing_json: missing });

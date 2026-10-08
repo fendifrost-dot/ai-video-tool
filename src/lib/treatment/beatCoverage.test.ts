@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { costLine, coverageGaps, parseBeatCoverage, parseWriterRun } from "./beatCoverage";
+import { costLine, coverageGaps, coverageSections, parseBeatCoverage, parseWriterRun } from "./beatCoverage";
 
 describe("a board's coverage of the treatment, read back and said in words", () => {
   it("reads a coverage and nothing that is not one", () => {
@@ -39,3 +39,24 @@ describe("a board's coverage of the treatment, read back and said in words", () 
     expect(parseWriterRun({ actualCostUsd: "0.1" })?.actualCostUsd).toBeNull();
   });
 });
+
+describe("the structural section tells a lumped reading and an early cue apart", () => {
+  it("a beat holding most of the board, the readings, and a cue sung long before its turn are parsed and said", () => {
+    const c = parseBeatCoverage({
+      ok: false,
+      verdict: "fail",
+      structural: { verdict: "gaps", lumped: [{ beat: "b06", shots: 36, share: 84 }], readings: [6, 6] },
+      lyrics: { verdict: "fail", inserts: [], unanchored: [] },
+      beats: [{ id: "b06", title: "The clean entrance", shots: [], people: [], emptied: [], ties: [] }],
+      uncoveredBeats: [], missingPeople: [], missingLinks: [], anchors: [],
+      unanchored: [{ beat: "b06", cue: "so clean", sung: "early", shot: "c008" }],
+    })!;
+    expect(c.lumped).toEqual([{ beat: "b06", shots: 36, share: 84 }]);
+    expect(c.readings).toEqual([6, 6]);
+    expect(c.unanchored).toEqual([{ beat: "b06", cue: "so clean", sung: "early", shot: "c008" }]);
+    const sections = coverageSections(c, (k) => k.replace("c0", "").replace(/^0/, ""));
+    expect(sections[0].lines).toEqual(["“The clean entrance” holds 36 shots — 84% of the board: the reader folded several scenes of the treatment into one beat (read twice: 6, then 6 beats)."]);
+    expect(sections[1].lines[0]).toMatch(/sung at shot 8 — long before the beat's turn; pinning it there would crush the beats before it — placed in order, NOT on its words/);
+  });
+});
+
