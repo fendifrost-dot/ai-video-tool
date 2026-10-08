@@ -6,16 +6,14 @@
 // through PostgREST (row-level security holds), files through Storage, generation through AVT's own edge functions.
 // Nothing downstream learns this function exists, and the session never leaves it.
 //
-// Money: a PAID function call names a budget the owner approved for that video and a max_usd. mcp_reserve
-// (migration 20261008040000) reserves it atomically against the budget and the daily cap, and the call is refused
-// when it would pass either; afterwards mcp_settle writes what the function reported it cost.
+// Money: no budgets or caps here, by the owner's decision (8 Oct 2026) — spend is controlled on the provider
+// accounts themselves. Every call is still the owner's own session, audited by batch_credential_mints.
 //
 // The credential may arrive as x-batch-secret, an Authorization bearer, the last path segment
 // (/functions/v1/avt-mcp/<secret>) for clients that only take a URL, or ?key=.
 //
 // verify_jwt = false in config.toml: callers hold a machine credential, not a Supabase JWT.
-// Required secrets: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY.
-// Optional: AVT_MCP_MAX_USD_PER_CALL (default 10), AVT_MCP_DAILY_CAP_USD (default 50).
+// Required secrets: SUPABASE_URL, SUPABASE_ANON_KEY.
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -26,19 +24,14 @@ import {
   TABLE_NOTES,
   TOOLS,
   TOOL_NAMES,
-  capsFrom,
   credentialFrom,
-  excerpt,
   functionPolicy,
   initializeResult,
   isRpcRequest,
   namesRowsById,
-  paidCallRefusal,
   parseFilters,
-  projectOf,
   rpcError,
   rpcResult,
-  settlement,
   tableAccess,
   toolText,
   validColumn,
@@ -76,8 +69,6 @@ type Ctx = {
   session: Session;
   // deno-lint-ignore no-explicit-any
   user: any;
-  // deno-lint-ignore no-explicit-any
-  admin: any;
 };
 
 async function sessionFor(secret: string, url: string, anonKey: string): Promise<Session> {
@@ -151,49 +142,13 @@ function dbResult({ data, error }: { data: unknown; error: { message: string } |
   return data;
 }
 
-async function budgetsOf(ctx: Ctx, projectId?: string) {
-  let q = ctx.user.from("mcp_budgets").select("id, label, project_id, approved_usd, status, note, created_at, approved_at").order("created_at", { ascending: false }).limit(100);
-  if (projectId) q = q.eq("project_id", projectId);
-  const budgets = dbResult(await q) as { id: string; approved_usd: number; status: string }[];
-  const ids = budgets.map((b) => b.id);
-  const spend = ids.length
-    ? (dbResult(await ctx.user.from("mcp_spend").select("budget_id, reserved_usd, actual_usd").in("budget_id", ids)) as { budget_id: string; reserved_usd: number; actual_usd: number | null }[])
-    : [];
-  return budgets.map((b) => {
-    const committed = spend.filter((s) => s.budget_id === b.id).reduce((a, s) => a + Number(s.actual_usd ?? s.reserved_usd), 0);
-    return { ...b, committed_usd: Math.round(committed * 10000) / 10000, remaining_usd: Math.round((Number(b.approved_usd) - committed) * 10000) / 10000 };
-  });
-}
-
 async function callFunction(ctx: Ctx, args: Record<string, unknown>) {
   const name = arg<string>(args, "function");
   const body = (arg<Record<string, unknown>>(args, "body") ?? {}) as Record<string, unknown>;
   const method = arg<string>(args, "method") === "GET" ? "GET" : "POST";
-  const policy = typeof name === "string" ? functionPolicy(name, FUNCTION_DOCS.map((f) => f.name), body) : null;
+  const policy = typeof name === "string" ? functionPolicy(name, FUNCTION_DOCS.map((f) => f.name)) : null;
   if (!policy) throw new ToolError(`no function "${name}" — avt_functions lists them`);
   if (policy.access === "blocked") throw new ToolError(`"${name}" cannot be called from here: ${policy.why}`);
-
-  const caps = capsFrom((k) => Deno.env.get(k));
-  let spendId: string | null = null;
-  let reservation: Record<string, unknown> | null = null;
-  if (policy.access === "paid") {
-    const refusal = paidCallRefusal({ budgetId: args.budget_id, maxUsd: args.max_usd }, caps);
-    if (refusal) throw new ToolError(refusal);
-    const { data, error } = await ctx.admin.rpc("mcp_reserve", {
-      p_budget_id: args.budget_id,
-      p_owner: ctx.session.userId,
-      p_credential: ctx.session.credentialId,
-      p_function: name,
-      p_usd: args.max_usd,
-      p_daily_cap: caps.dailyUsd,
-      p_project: projectOf(body),
-      p_request: excerpt({ method, body }),
-    });
-    if (error) throw new ToolError(`could not reserve the spend: ${error.message}`);
-    if (!data?.ok) return toolText({ refused: true, ...data }, true);
-    spendId = data.spend_id;
-    reservation = data;
-  }
 
   const target = new URL(`${ctx.url}/functions/v1/${name}`);
   if (method === "GET") for (const [k, v] of Object.entries(body)) target.searchParams.set(k, typeof v === "string" ? v : JSON.stringify(v));
@@ -216,20 +171,8 @@ async function callFunction(ctx: Ctx, args: Record<string, unknown>) {
     answer = { error: "function_unreachable", detail: e instanceof Error ? e.message : String(e) };
   }
 
-  let budget: Record<string, unknown> | null = null;
-  if (spendId) {
-    const s = settlement(status, answer);
-    await ctx.admin.rpc("mcp_settle", { p_spend_id: spendId, p_status: s.status, p_actual: s.actualUsd, p_http: status, p_response: excerpt(answer) });
-    budget = {
-      budget_id: args.budget_id,
-      reserved_usd: args.max_usd,
-      charged_usd: s.actualUsd ?? args.max_usd,
-      cost_basis: s.actualUsd === null ? "no cost reported — the reservation stands" : "cost reported by the function",
-      remaining_before_settle_usd: reservation?.remaining_usd,
-    };
-  }
   const failed = status < 200 || status >= 300 || (answer && typeof answer === "object" && (answer as { ok?: unknown }).ok === false);
-  return toolText({ function: name, http_status: status, answer, ...(budget ? { budget } : {}) }, !!failed);
+  return toolText({ function: name, http_status: status, answer }, !!failed);
 }
 
 async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
@@ -237,8 +180,7 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
     case "avt_whoami": {
       const { data: cred } = await ctx.user.from("batch_credentials").select("id, label, created_at, expires_at").eq("id", ctx.session.credentialId).maybeSingle();
       const { data: who } = await ctx.user.auth.getUser(ctx.session.accessToken);
-      const budgets = (await budgetsOf(ctx)).filter((b) => b.status !== "closed");
-      return toolText({ user_id: ctx.session.userId, email: who?.user?.email ?? null, credential: cred, caps: capsFrom((k) => Deno.env.get(k)), budgets });
+      return toolText({ user_id: ctx.session.userId, email: who?.user?.email ?? null, credential: cred });
     }
     case "avt_tables":
       return toolText(
@@ -307,37 +249,6 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
       if (error) throw new ToolError(error.message);
       return toolText(data);
     }
-    case "avt_budgets":
-      return toolText(await budgetsOf(ctx, typeof args.project_id === "string" ? args.project_id : undefined));
-    case "avt_budget_request": {
-      const usd = Number(args.usd);
-      if (typeof args.label !== "string" || !args.label.trim()) throw new ToolError("label is required");
-      if (!Number.isFinite(usd) || usd <= 0 || usd > 10000) throw new ToolError("usd must be between 0 and 10000");
-      const row = {
-        owner_user_id: ctx.session.userId,
-        label: args.label.trim().slice(0, 200),
-        approved_usd: Math.round(usd * 100) / 100,
-        status: "pending", // only the owner, in the app, approves
-        project_id: typeof args.project_id === "string" ? args.project_id : null,
-        note: typeof args.note === "string" ? args.note.slice(0, 4000) : null,
-        requested_by_credential: ctx.session.credentialId,
-      };
-      const data = dbResult(await ctx.user.from("mcp_budgets").insert(row).select("id, label, approved_usd, status").single());
-      return toolText({ requested: data, next: "Fendi approves it in AVT → Settings → AI budgets; until then paid calls on it are refused." });
-    }
-    case "avt_spend": {
-      const limit = Math.min(Math.max(Number(args.limit ?? 50) || 50, 1), 200);
-      return toolText(
-        dbResult(
-          await ctx.user
-            .from("mcp_spend")
-            .select("id, function_name, reserved_usd, actual_usd, status, http_status, created_at, settled_at")
-            .eq("budget_id", String(args.budget_id))
-            .order("created_at", { ascending: false })
-            .limit(limit),
-        ),
-      );
-    }
   }
   throw new ToolError(`unknown tool ${name}`);
 }
@@ -382,8 +293,7 @@ async function handleRequest(req: Request): Promise<Response> {
 
   const url = Deno.env.get("SUPABASE_URL") ?? "";
   const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!url || !anonKey || !serviceRoleKey) return json(500, { error: "server_misconfigured" });
+  if (!url || !anonKey) return json(500, { error: "server_misconfigured" });
 
   let payload: unknown;
   try {
@@ -409,7 +319,6 @@ async function handleRequest(req: Request): Promise<Response> {
     secret,
     session,
     user: createClient(url, anonKey, { global: { headers: { Authorization: `Bearer ${session.accessToken}` } }, auth: { persistSession: false, autoRefreshToken: false } }),
-    admin: createClient(url, serviceRoleKey, { auth: { persistSession: false } }),
   };
 
   const batch = Array.isArray(payload);

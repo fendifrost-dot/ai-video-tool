@@ -71,3 +71,8 @@ All VERIFIED from real output unless marked.
 1. Settings → Machine credentials → one per AI (`Claude`, `ChatGPT`, `Grok`) → copy each **MCP URL** into that app (never into chat).
 2. Settings → AI budgets → approve a budget for Interrupted Broadcast (candidate 4), e.g. $5.
 3. In the AI app: `avt_whoami`, then `avt_functions` → `world-still-proxy` with `dryRun: true` first.
+
+## Reversal — 8 Oct 2026 (Fendi: "remove all budgets in the tool … not needed")
+Budgets, caps and the ledger removed from `avt-mcp` and the app; `20261008070000_drop_mcp_budgets.sql` drops the four
+objects. Expected after it runs: the §"Verify" SQL above → `0 | 0 | 0`. Tool count is now **11**. The Grok handoff
+(`GROK_MCP_CREDENTIALS_2026-10-08.md`) no longer has a budget step.

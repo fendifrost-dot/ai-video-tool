@@ -148,7 +148,7 @@ verify_jwt = false
 
 # AVT as an MCP server for Claude, ChatGPT and Grok. Callers hold a MACHINE CREDENTIAL (batch_credentials), not a
 # Supabase JWT, so the platform must let the request through; the function exchanges the credential for an ordinary
-# user session via batch-token-proxy and refuses anything without one. Paid calls are charged to an owner-approved
-# budget (mcp_budgets / mcp_spend, migration 20261008040000).
+# user session via batch-token-proxy and refuses anything without one. No budgets or caps (owner's decision, 8 Oct
+# 2026): spend is controlled on the provider accounts.
 [functions.avt-mcp]
 verify_jwt = false

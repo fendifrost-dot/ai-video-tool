@@ -1,5 +1,5 @@
 // avt-mcp — the pure half: the MCP wire protocol, the tools and their arguments, which tables and functions an
-// outside AI may reach, and how a paid call is priced against a budget. No network or database here, so all of it
+// outside AI may reach. No network or database here, so all of it
 // is unit-tested (contract.test.ts); index.ts does the I/O.
 
 export const SERVER_NAME = "avt";
@@ -10,8 +10,7 @@ export const INSTRUCTIONS = [
   "AVT (AI Video Tool) — Fendi's film production app. You act as the owner, through a machine credential.",
   "Read and edit anything in his projects with avt_select / avt_insert / avt_update / avt_delete (row-level security still applies).",
   "Generate and edit pictures and video by calling AVT's own edge functions with avt_call; avt_functions lists them with the request each one takes.",
-  "PAID calls need a budget_id and a max_usd: the owner approves one budget per video before work starts (avt_budgets lists them; avt_budget_request asks for one).",
-  "A call that would take the budget past what was approved is refused. Prefer a dryRun first where a function offers one.",
+  "Generation is billed to the owner's provider accounts at list price; prefer a dryRun first where a function offers one.",
   "Projects: video_projects; boards: shots (per video_variations); casting/continuity: continuity_entities; generated files: project_assets + provider_jobs.",
 ].join("\n");
 
@@ -78,11 +77,10 @@ export function toolText(value: unknown, isError = false) {
 
 // ---------------------------------------------------------------------------------------------------- tables
 
-/** Never reachable from the generic tools: credentials, and the budget/spend ledger the caps are enforced from. */
+/** Never reachable from the generic tools: credentials. */
 export const HIDDEN_TABLES = new Set(["batch_credentials", "batch_credential_mints"]);
-/** Readable, never writable from the generic tools: the ledger (budgets are approved by the owner in the app) and
- * server-side configuration. */
-export const READ_ONLY_TABLES = new Set(["mcp_budgets", "mcp_spend", "provider_capabilities", "job_runner_config", "generation_feasibility"]);
+/** Readable, never writable from the generic tools: server-side configuration. */
+export const READ_ONLY_TABLES = new Set(["provider_capabilities", "job_runner_config", "generation_feasibility"]);
 /** RPCs an AI may call. claim_provider_jobs belongs to the job runner, not to a client. */
 export const RPC_ALLOWED = new Set(["duplicate_variation", "lyric_lines_in_window"]);
 
@@ -103,8 +101,6 @@ export const TABLE_NOTES: Record<string, string> = {
   artists: "artist records",
   artist_assets: "artist pictures (faces, looks)",
   character_features: "the artist's identity/wardrobe pictures (wardrobe.garments)",
-  mcp_budgets: "spend budgets the owner approved (read-only here)",
-  mcp_spend: "every paid call made through this server (read-only here)",
 };
 
 export function tableAccess(table: string, known: readonly string[]): "read" | "write" | null {
@@ -144,9 +140,6 @@ export function namesRowsById(filters: Filter[]): boolean {
 
 // ---------------------------------------------------------------------------------------------------- functions
 
-/** Functions that never reach a paid provider: callable without a budget. */
-export const FREE_FUNCTIONS = new Set(["upload-asset", "fetch-reference-image", "fal-queue-poll-proxy", "provider-jobs-tick", "ingest-provider-job"]);
-
 /** Functions an AI may not call: identity minting, server-to-server callbacks, research harnesses, itself. */
 export function blockedFunction(name: string): string | null {
   if (name === "avt-mcp") return "this server";
@@ -156,93 +149,12 @@ export function blockedFunction(name: string): string | null {
   return null;
 }
 
-export type FunctionPolicy = { name: string; access: "free" | "paid" | "blocked"; why?: string };
+export type FunctionPolicy = { name: string; access: "callable" | "blocked"; why?: string };
 
-/** proxy-provider-call forwards to Control Center: asking where a job stands is free, submitting one is not. */
-const CC_READ_ENDPOINT = /(?:job-status|status|poll|list|get)$/i;
-
-export function functionPolicy(name: string, known: readonly string[], body?: unknown): FunctionPolicy | null {
+export function functionPolicy(name: string, known: readonly string[]): FunctionPolicy | null {
   if (!known.includes(name)) return null;
   const why = blockedFunction(name);
-  if (why) return { name, access: "blocked", why };
-  if (name === "proxy-provider-call") {
-    const endpoint = body && typeof body === "object" ? (body as { endpoint?: unknown }).endpoint : undefined;
-    return { name, access: typeof endpoint === "string" && CC_READ_ENDPOINT.test(endpoint) ? "free" : "paid" };
-  }
-  return { name, access: FREE_FUNCTIONS.has(name) ? "free" : "paid" };
-}
-
-// ---------------------------------------------------------------------------------------------------- money
-
-const COST_KEYS = ["actualCostUsd", "actual_cost_usd", "costUsd", "cost_usd", "billedUsd", "billed_usd", "chargedUsd"];
-
-/** What the function says the call cost, when it says so (top level or one level down). Null when it does not. */
-export function reportedCostUsd(body: unknown): number | null {
-  const look = (o: unknown, depth: number): number | null => {
-    if (!o || typeof o !== "object" || Array.isArray(o)) return null;
-    for (const k of COST_KEYS) {
-      const v = (o as Record<string, unknown>)[k];
-      if (typeof v === "number" && Number.isFinite(v) && v >= 0) return v;
-    }
-    if (depth === 0) return null;
-    for (const v of Object.values(o as Record<string, unknown>)) {
-      const found = look(v, depth - 1);
-      if (found !== null) return found;
-    }
-    return null;
-  };
-  return look(body, 1);
-}
-
-/**
- * How a finished paid call is written on the ledger. A cost the function reports is the cost. Without one: a 4xx
- * was refused before any provider was reached (nothing spent); anything else may have been billed, so the
- * reservation stands.
- */
-export function settlement(httpStatus: number, body: unknown): { status: "settled" | "failed"; actualUsd: number | null } {
-  const reported = reportedCostUsd(body);
-  const ok = httpStatus >= 200 && httpStatus < 300 && !(body && typeof body === "object" && (body as { ok?: unknown }).ok === false);
-  if (reported !== null) return { status: ok ? "settled" : "failed", actualUsd: reported };
-  if (ok) return { status: "settled", actualUsd: null };
-  if (httpStatus >= 400 && httpStatus < 500) return { status: "failed", actualUsd: 0 };
-  return { status: "failed", actualUsd: null };
-}
-
-/** The project a function body is about, when it names one — a budget for one video does not pay for another. */
-export function projectOf(body: unknown): string | null {
-  if (!body || typeof body !== "object") return null;
-  const v = (body as Record<string, unknown>).projectId ?? (body as Record<string, unknown>).project_id;
-  return typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v) ? v : null;
-}
-
-/** A short, secret-free copy of a payload for the ledger. */
-export function excerpt(value: unknown, max = 2000): unknown {
-  try {
-    const s = JSON.stringify(value, (k, v) => (/token|secret|signed|authorization|apikey/i.test(k) ? "[redacted]" : v));
-    if (s === undefined) return null;
-    return s.length <= max ? JSON.parse(s) : { truncated: true, head: s.slice(0, max) };
-  } catch {
-    return null;
-  }
-}
-
-export type Caps = { perCallUsd: number; dailyUsd: number };
-
-export function capsFrom(get: (k: string) => string | undefined): Caps {
-  const n = (k: string, d: number) => {
-    const v = Number(get(k));
-    return Number.isFinite(v) && v > 0 ? v : d;
-  };
-  return { perCallUsd: n("AVT_MCP_MAX_USD_PER_CALL", 10), dailyUsd: n("AVT_MCP_DAILY_CAP_USD", 50) };
-}
-
-export function paidCallRefusal(args: { budgetId: unknown; maxUsd: unknown }, caps: Caps): string | null {
-  if (typeof args.budgetId !== "string" || !/^[0-9a-f-]{36}$/i.test(args.budgetId))
-    return "a paid function needs budget_id — the id of a budget the owner approved (avt_budgets lists them; avt_budget_request asks for one)";
-  if (typeof args.maxUsd !== "number" || !Number.isFinite(args.maxUsd) || args.maxUsd <= 0)
-    return "a paid function needs max_usd — the most this one call may cost, in US dollars (use the function's dryRun or price notes)";
-  if (args.maxUsd > caps.perCallUsd) return `max_usd $${args.maxUsd.toFixed(2)} is over the per-call cap $${caps.perCallUsd.toFixed(2)}`;
-  return null;
+  return why ? { name, access: "blocked", why } : { name, access: "callable" };
 }
 
 // ---------------------------------------------------------------------------------------------------- tools
@@ -260,7 +172,7 @@ const filtersSchema = {
 export const TOOLS = [
   {
     name: "avt_whoami",
-    description: "Who this server acts as, which credential is in use, the spend caps, and the approved budgets. Start here.",
+    description: "Who this server acts as and which credential is in use. Start here.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -317,20 +229,18 @@ export const TOOLS = [
   },
   {
     name: "avt_functions",
-    description: "AVT's edge functions (image/video generation, edits, uploads, polling): whether each is free or paid, what it does, and the request body it takes. Pass name for one function's full notes.",
+    description: "AVT's edge functions (image/video generation, edits, uploads, polling): whether each is callable, what it does, and the request body it takes. Pass name for one function's full notes.",
     inputSchema: { type: "object", properties: { name: { type: "string" } } },
   },
   {
     name: "avt_call",
-    description: "Call an AVT edge function as the owner. PAID functions need budget_id and max_usd; the call is refused if it would pass the budget or a cap. Returns the function's own answer and, for paid calls, the budget left.",
+    description: "Call an AVT edge function as the owner. Returns the function's own answer (HTTP status + body). Generation is billed to the owner's provider accounts.",
     inputSchema: {
       type: "object",
       properties: {
         function: { type: "string" },
         body: { type: "object" },
         method: { type: "string", enum: ["POST", "GET"], description: "default POST" },
-        budget_id: { type: "string" },
-        max_usd: { type: "number" },
       },
       required: ["function"],
     },
@@ -352,30 +262,6 @@ export const TOOLS = [
       properties: { bucket: { type: "string" }, prefix: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 1000 } },
       required: ["bucket"],
     },
-  },
-  {
-    name: "avt_budgets",
-    description: "Budgets for paid calls: approved amount, committed so far, remaining, status.",
-    inputSchema: { type: "object", properties: { project_id: { type: "string" } } },
-  },
-  {
-    name: "avt_budget_request",
-    description: "Ask the owner to approve a budget for a video (it stays pending until he approves it in AVT Settings → AI budgets).",
-    inputSchema: {
-      type: "object",
-      properties: {
-        label: { type: "string", description: 'e.g. "Interrupted Broadcast — candidate 4 stills + 6 clips"' },
-        usd: { type: "number", exclusiveMinimum: 0 },
-        project_id: { type: "string" },
-        note: { type: "string", description: "the plan and how the amount was worked out" },
-      },
-      required: ["label", "usd"],
-    },
-  },
-  {
-    name: "avt_spend",
-    description: "The paid calls made against a budget, newest first.",
-    inputSchema: { type: "object", properties: { budget_id: { type: "string" }, limit: { type: "integer", minimum: 1, maximum: 200 } }, required: ["budget_id"] },
   },
 ] as const;
 

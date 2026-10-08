@@ -5,18 +5,12 @@ import { describe, expect, it } from "vitest";
 import { FUNCTION_DOCS, KNOWN_TABLES } from "./catalog.generated";
 import {
   TOOLS,
-  capsFrom,
   credentialFrom,
-  excerpt,
   functionPolicy,
   initializeResult,
   isRpcRequest,
   namesRowsById,
-  paidCallRefusal,
   parseFilters,
-  projectOf,
-  reportedCostUsd,
-  settlement,
   tableAccess,
   validColumn,
   validSelect,
@@ -58,10 +52,9 @@ describe("the protocol", () => {
 });
 
 describe("tables", () => {
-  it("hides credentials and keeps the ledger read-only", () => {
+  it("hides credentials and keeps server configuration read-only", () => {
     expect(tableAccess("shots", KNOWN_TABLES)).toBe("write");
-    expect(tableAccess("mcp_budgets", KNOWN_TABLES)).toBe("read");
-    expect(tableAccess("mcp_spend", KNOWN_TABLES)).toBe("read");
+    expect(tableAccess("provider_capabilities", KNOWN_TABLES)).toBe("read");
     expect(tableAccess("batch_credentials", KNOWN_TABLES)).toBeNull();
     expect(tableAccess("pg_user", KNOWN_TABLES)).toBeNull();
   });
@@ -92,48 +85,17 @@ describe("functions", () => {
       expect(functionPolicy(n, NAMES)?.access).toBe("blocked");
     }
   });
-  it("charges generation to a budget and lets uploads and polls through free", () => {
-    expect(functionPolicy("world-still-proxy", NAMES)?.access).toBe("paid");
-    expect(functionPolicy("grok-video-edit-proxy", NAMES)?.access).toBe("paid");
-    expect(functionPolicy("upload-asset", NAMES)?.access).toBe("free");
-    expect(functionPolicy("proxy-provider-call", NAMES, { endpoint: "video-providers-job-status" })?.access).toBe("free");
-    expect(functionPolicy("proxy-provider-call", NAMES, { endpoint: "video-providers-runway-generate" })?.access).toBe("paid");
+  it("lets every other function through, with no budget or cap", () => {
+    expect(functionPolicy("world-still-proxy", NAMES)?.access).toBe("callable");
+    expect(functionPolicy("grok-video-edit-proxy", NAMES)?.access).toBe("callable");
+    expect(functionPolicy("upload-asset", NAMES)?.access).toBe("callable");
+    expect(functionPolicy("proxy-provider-call", NAMES)?.access).toBe("callable");
     expect(functionPolicy("nope", NAMES)).toBeNull();
   });
-});
-
-describe("money", () => {
-  const caps = { perCallUsd: 10, dailyUsd: 50 };
-  it("needs a budget and a price on every paid call, under the per-call cap", () => {
-    const budgetId = "00000000-0000-4000-8000-000000000000";
-    expect(paidCallRefusal({ budgetId, maxUsd: 0.14 }, caps)).toBeNull();
-    expect(paidCallRefusal({ budgetId: undefined, maxUsd: 0.14 }, caps)).toMatch(/budget_id/);
-    expect(paidCallRefusal({ budgetId, maxUsd: 0 }, caps)).toMatch(/max_usd/);
-    expect(paidCallRefusal({ budgetId, maxUsd: 12 }, caps)).toMatch(/per-call cap/);
-  });
-  it("reads caps from the environment, with defaults", () => {
-    expect(capsFrom(() => undefined)).toEqual({ perCallUsd: 10, dailyUsd: 50 });
-    expect(capsFrom((k) => (k === "AVT_MCP_DAILY_CAP_USD" ? "20" : "x"))).toEqual({ perCallUsd: 10, dailyUsd: 20 });
-  });
-  it("takes the cost the function reports, top level or one down", () => {
-    expect(reportedCostUsd({ ok: true, actualCostUsd: 0.0263 })).toBe(0.0263);
-    expect(reportedCostUsd({ result: { cost_usd: 0.14 } })).toBe(0.14);
-    expect(reportedCostUsd({ ok: true })).toBeNull();
-  });
-  it("settles: reported cost wins; a 4xx without one cost nothing; anything else keeps the reservation", () => {
-    expect(settlement(200, { ok: true, costUsd: 0.14 })).toEqual({ status: "settled", actualUsd: 0.14 });
-    expect(settlement(200, { ok: true })).toEqual({ status: "settled", actualUsd: null });
-    expect(settlement(400, { error: "invalid_request" })).toEqual({ status: "failed", actualUsd: 0 });
-    expect(settlement(200, { ok: false, error: "provider" })).toEqual({ status: "failed", actualUsd: null });
-    expect(settlement(502, null)).toEqual({ status: "failed", actualUsd: null });
-  });
-  it("finds the project a body is about", () => {
-    expect(projectOf({ projectId: "764a63d2-93cd-44f3-905f-292f14ab2f51" })).toBe("764a63d2-93cd-44f3-905f-292f14ab2f51");
-    expect(projectOf({ prompt: "x" })).toBeNull();
-  });
-  it("keeps secrets out of the ledger", () => {
-    expect(excerpt({ prompt: "p", accessToken: "t", signedUrl: "u" })).toEqual({ prompt: "p", accessToken: "[redacted]", signedUrl: "[redacted]" });
-    expect(excerpt({ big: "x".repeat(5000) })).toMatchObject({ truncated: true });
+  it("offers no budget, cap or ledger tool", () => {
+    expect(TOOLS.map((t) => t.name).filter((n) => /budget|spend|cap/.test(n))).toEqual([]);
+    expect(TOOLS.find((t) => t.name === "avt_call")!.inputSchema.properties).not.toHaveProperty("budget_id");
+    expect(TOOLS).toHaveLength(11);
   });
 });
 
