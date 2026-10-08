@@ -53,3 +53,21 @@ After step 4, with Fendi signed in: Settings shows **AI budgets** and the MCP UR
 
 ## Report back
 The three SQL numbers, the curl status + body, the `tools/list` count, and the first real paid call's `mcp_spend` row.
+
+## Results — 8 Oct 2026 05:52–06:0x UTC (Claude Code session, through the Lovable MCP; no browser)
+
+All VERIFIED from real output unless marked.
+- **Merge:** PR #202 → `main` at `1d708d7` (Fendi: "you can merge"). PR #203 merged in between (another session). Lovable
+  then committed `9581913` + `22c8b6e` unasked: both regenerate `src/integrations/supabase/types.ts` only (+144: `mcp_budgets`,
+  `mcp_spend`, `mcp_reserve`, `mcp_settle`). Benign; kept.
+- **Migration:** run as written in Lovable's SQL editor (`query_database`), no edits. Check → `tables 2 | fns 3 | policies 4`.
+- **Edge deploy:** `avt-mcp` deployed by Lovable's agent (first attempt: transient esm.sh timeout; retry ok). Anonymous POST →
+  `HTTP 401` `{"error":{"code":-32600,"message":"missing credential: create one in AVT Settings → Machine credentials …"}}`
+  = platform let it through, function refused it: `verify_jwt = false` is live.
+- **Publish:** live bundle `index-ta3jis66.js` → `settings-DO_xl8hY.js` contains the AI budgets panel.
+- **Not yet checked (needs a credential only Fendi creates):** `tools/list` = 14, `avt_whoami`, first paid call → `mcp_spend` row.
+
+## Owner steps remaining
+1. Settings → Machine credentials → one per AI (`Claude`, `ChatGPT`, `Grok`) → copy each **MCP URL** into that app (never into chat).
+2. Settings → AI budgets → approve a budget for Interrupted Broadcast (candidate 4), e.g. $5.
+3. In the AI app: `avt_whoami`, then `avt_functions` → `world-still-proxy` with `dryRun: true` first.
