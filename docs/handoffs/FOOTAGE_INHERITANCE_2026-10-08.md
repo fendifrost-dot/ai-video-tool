@@ -134,11 +134,37 @@ precisely because they were read, not run.
 
 ---
 
+## 4b · The ordering hazard this work hit — and the rule that comes out of it
+
+`20261008220000_outfits_and_scenes.sql` (wardrobe, #207) landed the same day as
+`20261008140000_footage_edits.sql` and **also replaces `duplicate_variation()`**, from the body it found at the
+time. Running later, its body won — and its `shot_asset_assignments` insert predates the footage columns. With
+both applied, duplicating a variation would have copied the footage rows but **silently reset every trim and
+undone every exclusion**.
+
+Reproduced on a throwaway, then fixed and re-run:
+
+```
+without the fix:  ERROR: the duplicate was reset to the full synced coverage: 0 / 0   FAILED footage_edits_test
+with the fix:     footage_edits · cast_members · outfits_and_scenes · video_variations — all four ok
+```
+
+`20261008230000_duplicate_variation_carries_footage_edits.sql` restores the two lost lines. **Neither earlier
+migration was edited** — both may already have been applied, and a migration that has run is not rewritten.
+
+> **Rule:** any migration adding a **variation-owned** column must extend `duplicate_variation()` in the same
+> change, starting from the body of the **latest** migration that defines it — not the one it remembers.
+> `git log -S'create or replace function public.duplicate_variation' -- supabase/migrations` finds that file.
+> Each feature's DB test asserts its own columns survive a duplicate, so a body written from the wrong ancestor
+> fails on a throwaway before it can ship. That is how this one was caught.
+
 ## 5 · Deployment
 
-1. **Lovable applies `supabase/migrations/20261008140000_footage_edits.sql`** (DEPLOY ONLY). It replaces
-   `duplicate_variation()` — the body is the one from `20261007170000_cast_members.sql` with one insert
-   column-list changed. **Copy it; do not retype it.**
+1. **Lovable applies, in this order (DEPLOY ONLY):**
+   `20261008140000_footage_edits.sql`, then — if it has not already gone with the wardrobe change —
+   `20261008220000_outfits_and_scenes.sql`, then **`20261008230000_duplicate_variation_carries_footage_edits.sql`
+   last**. The third must run after the second or duplication loses footage edits (§4b). All three are
+   idempotent, so re-running one that has already gone is safe.
 2. **Frontend publishes from `main`** — *after* step 1. The panel reads three columns that do not exist until
    then; before the migration it reads them as "nothing decided" and the trim controls would silently fail to
    save.
