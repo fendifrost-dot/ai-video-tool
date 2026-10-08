@@ -139,13 +139,15 @@ describe("every edge-function entrypoint boots and answers", () => {
     expect(FUNCTIONS).toContain("treatment-writer-proxy");
   });
 
-  it("treatment-writer-proxy is gated — the function whose helper went missing: a signed-in, well-formed request runs to the model call and comes back as the function's own 502, not an exception", async () => {
+  it("treatment-writer-proxy is gated — the function whose helper went missing: a signed-in, well-formed request runs to the model call and comes back as the function's own PROVIDER_API_ERROR (streamed: status 200, the failure in the body), not an exception", async () => {
     const b = booted.get("treatment-writer-proxy")!;
     expect(b.error).toBeNull();
     const body = { avt_project_id: "00000000-0000-4000-8000-000000000000", mode: "full_treatment", concept: "A treatment.", clip_grid: [{ key: "c001", start: 0, end: 4, section: "intro", energy: "low", lyrics: "" }] };
     const res = await b.handler!(new Request("https://stub.local/", { method: "POST", headers: { "content-type": "application/json", authorization: "Bearer stub" }, body: JSON.stringify(body) }));
-    expect(res.status).toBe(502);
-    expect(await res.json()).toMatchObject({ ok: false, errorCode: "PROVIDER_API_ERROR" });
+    // the work is streamed so the gateway never sees an idle connection: 200 from the first byte, the outcome in the body
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toContain("application/json");
+    expect(await res.json()).toMatchObject({ ok: false, status: 502, errorCode: "PROVIDER_API_ERROR" });
     // and a signed-out caller is refused, as JSON
     const out = await b.handler!(new Request("https://stub.local/", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }));
     expect(out.status).toBe(401);

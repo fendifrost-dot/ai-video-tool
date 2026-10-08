@@ -5,8 +5,10 @@
 // words for shots, it never cuts them.
 //
 // One call writes the treatment (or the director's own text is used word for word); then the grid is written in runs
-// of a few shots, in parallel, each inside that treatment and with the whole board as context — so no single model
-// call outlives the gateway's idle window however long the song is.
+// of a few shots, in parallel, each inside that treatment and with the whole board as context. The whole run is
+// longer than the gateway lets a connection sit idle (150 s), so once the request is accepted the answer is STREAMED:
+// a byte every few seconds while the model calls run, then the JSON. The status is 200 from the first byte; a failure
+// after that point is `ok: false` in the body (with the status it would have had), never a non-2xx.
 //
 // Request (POST, JSON):
 //   avt_project_id   the project
@@ -26,13 +28,16 @@
 //        (beats.ts): each shot is written inside its beat; `coverage` says whether the board carries every beat, its
 //        people and its ties. Every run leaves a row in writer_runs (its variation, treatment revision, outcome, cost).
 //        A clip may carry `timed_beats` — moments inside the shot at which something changes (_shared/timedBeats.ts).
-//        or { ok: false, errorCode, errorMessage } with a non-2xx status.
+//        or { ok: false, status, errorCode, errorMessage } — with that non-2xx status when the request was refused
+//        before the work began (bad input, not signed in, not the caller's project), with status 200 and the would-be
+//        status in the body once the stream has started.
 //
 // Required secrets: XAI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
+import { streamed } from "./stream.ts";
 import { costOf, estimateCostUsd, fingerprint, SHOTS_PER_CALL, acceptShots, writerEntities, chunkGrid, linkedShots, linkUserMessage, repeatedScenes, rewriteUserMessage, shotsSystemPrompt, shotsUserMessage, SHOTS_SCHEMA, treatmentSystemPrompt, TREATMENT_SCHEMA, withRewrites, type GridShot, type WriterContext } from "./contract.ts";
 import { acceptBeats, allocateBeats, BEATS_SCHEMA, beatsSystemPrompt, coverageOf, normalizeTieKinds, shotBriefs, withFeasibleProduction, withRequiredLinks, type Allocation, type Beat, type ShotBrief, type TieCorrection } from "./beats.ts";
 
@@ -51,7 +56,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 function json(status: number, body: unknown) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
-const fail = (status: number, errorCode: string, errorMessage: string) => json(status, { ok: false, errorCode, errorMessage });
+const fail = (status: number, errorCode: string, errorMessage: string) => json(status, { ok: false, status, errorCode, errorMessage });
 const text = (v: unknown, max = MAX_TEXT) => (typeof v === "string" ? v.slice(0, max) : null);
 
 type Usage = { prompt_tokens: number; completion_tokens: number };
@@ -109,6 +114,9 @@ serve(async (req) => {
   const writeText = body.write_text === true;
   const given = text(body.concept) ?? "";
   if (!writeText && !given.trim()) return fail(400, "INVALID_INPUT", "There is no treatment text to write the shots from");
+
+  // from here the work is long: it answers as a stream (see `streamed`)
+  return streamed(async () => {
 
   const model = typeof body.model === "string" && body.model.trim() ? body.model.trim() : DEFAULT_MODEL;
   const usage: Usage = { prompt_tokens: 0, completion_tokens: 0 };
@@ -260,5 +268,6 @@ serve(async (req) => {
   const actualCostUsd = usage.prompt_tokens + usage.completion_tokens > 0 ? costOf(model, usage) : null;
   await finish({ status: "succeeded", shots_written: clips.length, actual_cost_usd: actualCostUsd, beats_json: beats, allocation_json: allocation, coverage_json: coverage, clips_json: clips, missing_json: missing });
   return json(200, { ok: true, model, treatment: { concept, narrative, sections, clips }, beats, allocation, coverage, runId, missing, repeated: [...repeated], rewritten, relinked, usage, actualCostUsd, estimatedCostUsd });
+  }, corsHeaders);
 });
 

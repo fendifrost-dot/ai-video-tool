@@ -37,7 +37,7 @@ export type BeatCoverage = {
     id: string;
     title: string;
     shots: string[];
-    people: { key: string; castIn: string[] }[];
+    people: { key: string; castIn: string[]; onScreenIn: string[] }[];
     emptied: string[];
     ties: { kind: string; to: string; fromShot: string | null; toShot: string | null; present: boolean }[];
   }[];
@@ -86,7 +86,7 @@ export function parseBeatCoverage(value: unknown): BeatCoverage | null {
       id: str(b.id),
       title: str(b.title),
       shots: strs(b.shots),
-      people: Array.isArray(b.people) ? (b.people as Record<string, unknown>[]).map((p) => ({ key: str(p.key), castIn: strs(p.castIn) })) : [],
+      people: Array.isArray(b.people) ? (b.people as Record<string, unknown>[]).map((p) => ({ key: str(p.key), castIn: strs(p.castIn), onScreenIn: strs(p.onScreenIn) })) : [],
       emptied: strs(b.emptied),
       ties: Array.isArray(b.ties) ? (b.ties as Record<string, unknown>[]).map((t) => ({ kind: str(t.kind), to: str(t.to), fromShot: nul(t.fromShot), toShot: nul(t.toShot), present: t.present === true })) : [],
     })),
