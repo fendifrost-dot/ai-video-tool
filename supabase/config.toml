@@ -145,3 +145,10 @@ verify_jwt = false
 # user, hence verify_jwt = false; an unauthenticated call is refused in-code.
 [functions.provider-jobs-tick]
 verify_jwt = false
+
+# AVT as an MCP server for Claude, ChatGPT and Grok. Callers hold a MACHINE CREDENTIAL (batch_credentials), not a
+# Supabase JWT, so the platform must let the request through; the function exchanges the credential for an ordinary
+# user session via batch-token-proxy and refuses anything without one. Paid calls are charged to an owner-approved
+# budget (mcp_budgets / mcp_spend, migration 20261008040000).
+[functions.avt-mcp]
+verify_jwt = false
