@@ -460,6 +460,7 @@ export type Database = {
           constraints: string
           created_at: string
           description: string
+          garment_feature_ids: string[] | null
           id: string
           identity_mode: string | null
           key: string
@@ -470,6 +471,7 @@ export type Database = {
           updated_at: string
           user_id: string
           variation_id: string | null
+          version: number | null
         }
         Insert: {
           approved_asset_id?: string | null
@@ -479,6 +481,7 @@ export type Database = {
           constraints?: string
           created_at?: string
           description?: string
+          garment_feature_ids?: string[] | null
           id?: string
           identity_mode?: string | null
           key: string
@@ -489,6 +492,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           variation_id?: string | null
+          version?: number | null
         }
         Update: {
           approved_asset_id?: string | null
@@ -498,6 +502,7 @@ export type Database = {
           constraints?: string
           created_at?: string
           description?: string
+          garment_feature_ids?: string[] | null
           id?: string
           identity_mode?: string | null
           key?: string
@@ -508,6 +513,7 @@ export type Database = {
           updated_at?: string
           user_id?: string
           variation_id?: string | null
+          version?: number | null
         }
         Relationships: [
           {
@@ -2532,6 +2538,63 @@ export type Database = {
           },
           {
             foreignKeyName: "treatment_versions_variation_id_fkey"
+            columns: ["variation_id"]
+            isOneToOne: false
+            referencedRelation: "video_variations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      variation_scenes: {
+        Row: {
+          created_at: string
+          end_seconds: number
+          id: string
+          name: string
+          notes: string
+          outfit_key: string | null
+          project_id: string
+          start_seconds: number
+          updated_at: string
+          user_id: string
+          variation_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_seconds: number
+          id?: string
+          name: string
+          notes?: string
+          outfit_key?: string | null
+          project_id: string
+          start_seconds: number
+          updated_at?: string
+          user_id?: string
+          variation_id: string
+        }
+        Update: {
+          created_at?: string
+          end_seconds?: number
+          id?: string
+          name?: string
+          notes?: string
+          outfit_key?: string | null
+          project_id?: string
+          start_seconds?: number
+          updated_at?: string
+          user_id?: string
+          variation_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variation_scenes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "variation_scenes_variation_id_fkey"
             columns: ["variation_id"]
             isOneToOne: false
             referencedRelation: "video_variations"
