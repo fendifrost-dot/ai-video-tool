@@ -85,6 +85,7 @@ import { ensureStoryboardMaterialized, type MaterializeResult } from "@/lib/stor
 import { aspectOfProject, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
 import { boxShot, clipEstimateUsd, clipTemporalPlan, entityShot, generateBoxClip, generateBoxImage, generateEntityReference, imageEstimateUsd, imageTemporalPlan, previewStillRequest } from "@/lib/storyboard/generate";
 import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
+import { planFootageEdit, type FootageEditAction } from "@/lib/storyboard/footageEdit";
 import {
   boxMedia,
   imageForClip,
@@ -95,7 +96,9 @@ import {
   planSelect,
   roleForAsset,
   sourceOfDerived,
+  type Assignment,
   type AssignmentRole,
+  type TakeSync,
   type BoxMedia,
   type BoxMediaItem,
   type MediaAsset,
@@ -278,6 +281,12 @@ export type StoryboardController = {
   assign: (box: StoryboardBox, asset: MediaAsset, role?: AssignmentRole) => Promise<void>;
   select: (item: BoxMediaItem, box: StoryboardBox) => Promise<void>;
   showBaseLayer: (box: StoryboardBox) => Promise<void>;
+  /** This variation's own cut of one take on one shot: trim it, leave it out, put it back, or back to the sync. */
+  editFootage: (box: StoryboardBox, assetId: string, action: FootageEditAction) => Promise<void>;
+  /** The variation's own assignment row behind a media item, for reading the cut it carries. */
+  assignmentOf: (assignmentId: string) => Assignment | null;
+  /** The PROJECT's sync for a take — shared by every variation, and never written from a footage edit. */
+  syncOf: (assetId: string) => TakeSync | null;
   takeOff: (item: BoxMediaItem) => Promise<void>;
   moveTo: (item: BoxMediaItem, toBoxId: string) => Promise<void>;
   generateImage: (box: StoryboardBox) => void;
@@ -749,6 +758,27 @@ export function useStoryboardController(projectId: string): StoryboardController
 
   const showBaseLayer = useCallback(
     (box: StoryboardBox) => run(box, "switching…", async () => void (await applyOps.mutateAsync(planDeselect(assignments, box.id)))),
+    [run, applyOps, assignments],
+  );
+
+  /**
+   * An edit THIS VARIATION owns. The rows it writes are variation-scoped, so nothing here can reach Paris Black
+   * Runway or another candidate; and nothing here touches `performance_syncs`, which is the project's and stays
+   * the authority for where the recording sits on the song.
+   */
+  const assignmentOf = useCallback((id: string) => assignments.find((a) => a.id === id) ?? null, [assignments]);
+  const syncOf = useCallback((assetId: string) => syncs.find((x) => x.performanceAssetId === assetId) ?? null, [syncs]);
+
+  const editFootage = useCallback(
+    (box: StoryboardBox, assetId: string, action: FootageEditAction) =>
+      run(box, action.do === "exclude" ? "leaving it out…" : action.do === "trim" ? "trimming…" : "putting it back…", async () => {
+        const { ops, refused } = planFootageEdit({ assignments, box, assetId, action });
+        if (refused) {
+          toast.error(refused);
+          return;
+        }
+        if (ops.length) await applyOps.mutateAsync(ops);
+      }),
     [run, applyOps, assignments],
   );
 
@@ -1442,6 +1472,9 @@ export function useStoryboardController(projectId: string): StoryboardController
     assign,
     select,
     showBaseLayer,
+    editFootage,
+    assignmentOf,
+    syncOf,
     takeOff,
     moveTo,
     generateImage,

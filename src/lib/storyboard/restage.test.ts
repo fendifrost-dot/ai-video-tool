@@ -272,6 +272,7 @@ describe("the image a clip is made from", () => {
     selected,
     base: false,
     note: null,
+    edit: null,
   });
   it("is the first image of the latest batch drawn for the shot — a place drawn again replaces the one before it", () => {
     const first = [image("old1", "2026-10-03T10:39:00Z"), image("old2", "2026-10-03T10:39:02Z")];
