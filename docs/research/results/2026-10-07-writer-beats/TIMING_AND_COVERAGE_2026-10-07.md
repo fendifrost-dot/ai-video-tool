@@ -142,3 +142,27 @@ reviewable boards. The edge function is deployed at `02c287e` (streaming, cues a
 flashes, second reading, lumped) awaits the Lovable deploy once the workspace's credits renew at midnight CT — Lovable's
 chat refused for credits at 22:12 CT; the publish tool alone does not redeploy a function. Next run (≈ $0.02–0.03)
 goes into a new candidate after that deploy.
+
+## 9. Run 5 (2026-10-08 05:49 UTC, after PR #200 deployed) — the best board so far, with the lyric conflict stated honestly
+
+Run `05c89ef8` → **Interrupted Broadcast · candidate 5** (kept, not active). 105 s, **$0.0246 actual** (71,289 / 20,678
+tokens; estimate $0.0205). **22 beats in one reading** (18 / 8 / 6 before; the fewest-beats rule did not need a second
+reading). 43/43 shots.
+
+| part | verdict | what it says |
+|---|---|---|
+| Structure | **fail** (one item) | every beat has shots, every named person cast, nothing lumped; shot 1 (the aerial of the burning forest) came back with nobody in it while the opening beat lists THE_MODELS — strict, arguably right for an aerial. |
+| Lyric alignment | **fail** | the switch is pinned to the hook's singing nearest its turn (c017, 1:02.7; the grill close-up to the next, c021); the crew's words get a flash at c007 (0:23.5); the geese's words are sung in the same shot and *took the flash from the crew* (defect, fixed below); the janitor's words (c008) could not flash — the shot's holder, "The rider mounts", has one shot. So the three verse cues at 0:23–0:29 are still not all on their words — the conflict of §1, reported, not hidden. |
+| Relationships | **pass** | every tie typed, directed, targeted and present as a link. |
+| Production | **pass** | no take-based route on a non-performing shot. |
+| Treatment audit | fail (one item) | only the logline paragraph has no beat (a summary line; every scene paragraph is covered). |
+
+Prose check: no cast KEYS leaked into shot text on candidate 5 (candidate 4 had "THE_JANITOR" / "THE_RIDER" in four shots).
+
+**Defect found and fixed (PR #203, `1467455`, function redeployed):** two cues sung in one shot — the second cue's
+flash took the shot from the first cue's flash, silently. A flash is never taken from a flash now; the second cue is
+reported as not placed on its words.
+
+Boards to compare now: **candidate 2** (18 beats, narrative order, lyric gaps, two hand edits), **candidate 4** (6 beats,
+lyric order, crushed opening), **candidate 5** (22 beats, narrative order with flashes where the song allows). Spend on
+the writer this session: $0.0263 + $0.0287 + $0.0215 + $0.0246 = **$0.1011** (plus run 1, cents, not captured).
