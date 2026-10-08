@@ -11,6 +11,7 @@ import { BeatsEditor } from "./TimedBeats";
 import { ShotCastEditor } from "./Cast";
 import { ShotContinuityEditor } from "./Continuity";
 import { ShotProductionEditor } from "./ShotProduction";
+import { ShotOutfitEditor } from "./Outfits";
 import { useStoryboard } from "./useStoryboardController";
 
 type Draft = {
@@ -214,6 +215,7 @@ export function BoxEditor({ box }: { box: StoryboardBox }) {
 
       <BeatsEditor box={box} />
       <ShotContinuityEditor box={box} />
+      <ShotOutfitEditor box={box} />
       <ShotProductionEditor box={box} />
 
       <ShotCastEditor box={box} />

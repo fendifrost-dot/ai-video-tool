@@ -36,6 +36,7 @@ import {
   type ShotContinuity,
 } from "@/lib/continuity/entities";
 import { castSource, type ShotCast } from "@/lib/casting/cast";
+import { effectiveGarments, jobOutfitRecord, outfitWords, type ShotOutfit } from "@/lib/wardrobe/outfits";
 import { writtenFrom, type StoryboardBox } from "./boxes";
 import { activeVariationIdOf } from "@/lib/queries/variations";
 import { resolveEvents, type EventClock } from "./events";
@@ -141,7 +142,7 @@ export function boxShot(
   // A performance shot's picture is the PLACE, drawn empty, for his real footage to be put into —
   // so the cast does not go into it. Putting people in a plate would contradict PLATE_LINE and give
   // the compositor a frame with someone already standing in it.
-  const cast = !isPerformance && opts.cast ? castSource(opts.cast, { wears: wardrobeWords(box.spec, opts.continuity?.look ?? null) }) : null;
+  const cast = !isPerformance && opts.cast ? castSource(opts.cast, { wears: wardrobeWords(box.spec, opts.continuity?.look ?? null, opts.outfit ?? null) }) : null;
   const canonicalPlace =
     isPerformance && opts.continuity?.location ? canonicalWords(opts.continuity.location) : "";
   // the compiler writes world shots for boxes that are not real performance; a performance box asks for its place,
@@ -211,12 +212,15 @@ export function boxShot(
 }
 
 /**
- * What the shot dresses the artist in, in words: the Look record it points at when it has one, else what the writer
- * wrote on the shot (`wardrobe.description`, the treatment's own words — "his exact YSL denim look"). A writer's
- * "none" is nobody dressed him, not a garment. The exact pieces (`wardrobe.garments`) travel as pictures
- * (references.ts); these words are what the model is told either way.
+ * What the shot dresses the artist in, in words: the OUTFIT it wears (wardrobe/outfits.ts resolveOutfit — the
+ * scene's, or the shot's own exception) when it wears one; else the Look record it points at when it has one; else
+ * what the writer wrote on the shot (`wardrobe.description`, the treatment's own words — "his exact YSL denim look").
+ * A writer's "none" is nobody dressed him, not a garment. The exact pieces travel as pictures (references.ts);
+ * these words are what the model is told either way.
  */
-export function wardrobeWords(spec: Pick<StoryboardBox["spec"], "wardrobe">, look: { name: string; description: string | null } | null): string {
+export function wardrobeWords(spec: Pick<StoryboardBox["spec"], "wardrobe">, look: { name: string; description: string | null } | null, outfit: ShotOutfit | null = null): string {
+  if (outfit?.outfit) return outfitWords(outfit.outfit);
+  if (outfit && outfit.mode === "none") return "";
   const fromLook = look ? [look.name, look.description ?? ""].map((s) => s.trim()).filter(Boolean).join(": ") : "";
   if (fromLook) return fromLook;
   const name = (spec.wardrobe?.name ?? "").trim();
@@ -235,6 +239,8 @@ export type BoxShotOptions = {
   continuity?: ShotContinuity;
   /** What the shot owes the shots it is linked to, as prompt sentences (links.ts linkPromptLines). */
   linkLines?: string[];
+  /** What the shot wears (wardrobe/outfits.ts resolveOutfit): its words go on the artist's line; its record on the job. */
+  outfit?: ShotOutfit | null;
 };
 
 /** True when the shot record points at a place, a prop or a lighting state of the project. */
@@ -333,8 +339,11 @@ export function madeFromBox(box: StoryboardBox): MadeFrom {
   return { treatment: w.treatment, sceneWrittenAt: w.at, shotUpdatedAt: box.updatedAt || null };
 }
 
-function runContext(projectId: string, box: StoryboardBox, lookPresetId: string | undefined, references?: StillReferencesOnJob | null) {
+function runContext(projectId: string, box: StoryboardBox, lookPresetId: string | undefined, references?: StillReferencesOnJob | null, outfit?: ShotOutfit | null) {
   const { id, look } = resolveLookPreset(lookPresetId ?? DEFAULT_BOX_LOOK);
+  // the pieces the job is dressed with are the ones sent as garment pictures (the plan), else the outfit's own
+  const pieces = references ? references.sent.filter((r) => r.role === "garment").map((r) => r.id) : outfit ? effectiveGarments(box.spec, outfit).ids : [];
+  const record = outfit ? jobOutfitRecord(outfit, pieces) : null;
   return {
     projectId,
     variationId: box.variationId,
@@ -344,6 +353,7 @@ function runContext(projectId: string, box: StoryboardBox, lookPresetId: string 
     shotIds: { [box.key]: box.id },
     madeFrom: { [box.key]: madeFromBox(box) },
     ...(references ? { stillReferences: { [box.key]: references } } : {}),
+    ...(record ? { outfits: { [box.key]: record } } : {}),
   };
 }
 
@@ -379,6 +389,7 @@ export function previewStillRequest(
       variation_id: box.variationId,
       lookPreset: id,
       madeFrom: madeFromBox(box),
+      ...(opts.outfit?.outfit ? { outfit: jobOutfitRecord(opts.outfit, (refs?.sent ?? []).filter((r) => r.role === "garment").map((r) => r.id)) } : {}),
       references: refs ? { sent: deliver ? refs.sent : [], notSent: [...refs.notSent, ...(deliver ? [] : refs.sent.map((ref) => ({ ref, why: "the image generator does not take reference pictures yet (not deployed)" })))] } : null,
     },
   };
@@ -454,6 +465,8 @@ export async function generateBoxImage(input: {
   linkLines?: string[];
   /** The reference pictures it is drawn with (references.ts), and whether they can be delivered. */
   references?: StillReferencesOnJob | null;
+  /** What the shot wears (wardrobe/outfits.ts). */
+  outfit?: ShotOutfit | null;
 }): Promise<BoxImageResult> {
   const deps = await browserRunnerDeps();
   const shot = boxShot(input.box, input.lyricLines, {
@@ -462,11 +475,12 @@ export async function generateBoxImage(input: {
     continuity: input.continuity,
     cast: input.cast,
     linkLines: input.linkLines,
+    outfit: input.outfit,
   });
   const res = await submitStills(
     shot,
     {
-      ...runContext(input.projectId, input.box, input.lookPresetId, input.references),
+      ...runContext(input.projectId, input.box, input.lookPresetId, input.references, input.outfit),
       selectStill: input.select ?? true,
     },
     deps,
@@ -511,6 +525,8 @@ export async function generateBoxClip(input: {
   cast?: ShotCast;
   /** What the shot owes the shots it is linked to (links.ts). */
   linkLines?: string[];
+  /** What the shot wears (wardrobe/outfits.ts). */
+  outfit?: ShotOutfit | null;
 }): Promise<SubmitResult> {
   const deps = await browserRunnerDeps();
   const shot = clipShot(input.box, input.lyricLines, {
@@ -521,10 +537,11 @@ export async function generateBoxClip(input: {
     continuity: input.continuity,
     cast: input.cast,
     linkLines: input.linkLines,
+    outfit: input.outfit,
   });
   const result = await submitShot(
     shot,
-    runContext(input.projectId, input.box, input.lookPresetId),
+    runContext(input.projectId, input.box, input.lookPresetId, null, input.outfit),
     deps,
   );
   // an image drawn on the way to the clip belongs to the box too (as a version; the clip will be what shows)

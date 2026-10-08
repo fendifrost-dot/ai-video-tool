@@ -75,7 +75,7 @@ describe("what a job remembers of the shot it was made from", () => {
 
 
 describe("what the shot dresses the artist in", () => {
-  const wardrobe = (description: string, name = "") => ({ wardrobe: { name, description, lookId: null, references: [], source: "treatment" as const, garments: [] } });
+  const wardrobe = (description: string, name = "") => ({ wardrobe: { name, description, lookId: null, references: [], source: "treatment" as const, garments: [], outfitMode: "inherit" as const, outfitKey: null } });
   it("is the writer's words when the shot points at no Look record", () => {
     expect(wardrobeWords(wardrobe("exact YSL denim look"), null)).toBe("exact YSL denim look");
     expect(wardrobeWords(wardrobe("exact YSL denim look", "Look A"), null)).toBe("Look A: exact YSL denim look");

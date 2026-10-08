@@ -29,6 +29,8 @@ import { useCharacterFeatures } from "@/lib/queries/characterFeatures";
 import { actionIsPerforming, productionRoute, routeLine, type ProductionRoute } from "@/lib/storyboard/route";
 import type { StillReferencesOnJob } from "@/lib/worldBatch/runner";
 import { useContinuityEntities, useContinuityMutations } from "@/lib/queries/continuity";
+import { useSceneMutations, useScenes, type SceneWrite } from "@/lib/queries/scenes";
+import { effectiveGarments, isOutfit, jobOutfitRecord, outfitFlags, outfitOutdated, outfitRecordOf, resolveOutfit, scenesFromWriter, type Outfit, type OutfitFlag, type ProposedScene, type Scene, type ShotOutfit } from "@/lib/wardrobe/outfits";
 import {
   canonicalWords,
   continuitySource,
@@ -233,6 +235,29 @@ export type StoryboardController = {
   saveContinuity: (box: StoryboardBox, refs: ContinuityOverride) => Promise<void>;
   /** Who is in this shot, resolved against this variation's characters. */
   castOf: (box: StoryboardBox) => ShotCast;
+
+  // --- what he wears (wardrobe/outfits.ts) ---------------------------------------------------------------------------
+  /** This video's outfits: entities of kind `outfit`, archived ones left out. */
+  outfits: Outfit[];
+  /** This video's scenes: the stretches of the song that wear one outfit, in song order. */
+  scenes: Scene[];
+  /** What a shot wears: its scene's outfit, its own exception, or none — and where that came from. */
+  outfitOf: (box: StoryboardBox) => ShotOutfit;
+  /** The exact pieces a shot is dressed in (the outfit's, or the shot's own), with their labels; a missing piece has none. */
+  piecesOf: (box: StoryboardBox) => { id: string; label: string | null; from: "shot" | "outfit" | "none" }[];
+  /** What stands between a shot and being dressed as the treatment asks (missing selection, contradiction, missing piece). */
+  outfitFlagsOf: (box: StoryboardBox) => OutfitFlag[];
+  /** Why the shot's selected image no longer matches what it wears (the outfit changed since), or null. */
+  outfitOutdatedOf: (box: StoryboardBox) => string | null;
+  /** The scenes the writer's own wardrobe words imply, resolved against the outfits — for the director to adopt. */
+  proposedScenes: ProposedScene[];
+  createOutfit: (name: string, garmentFeatureIds: string[], description?: string) => Promise<Outfit | null>;
+  createScene: (scene: SceneWrite) => Promise<void>;
+  saveScene: (scene: Scene, patch: Partial<SceneWrite>) => Promise<void>;
+  removeScene: (scene: Scene) => Promise<void>;
+  /** Adopt the proposed scenes that resolved to one outfit (the unresolved ones wait for an outfit of that name). */
+  adoptProposedScenes: (proposed: readonly ProposedScene[]) => Promise<void>;
+  sceneBusy: boolean;
   /** What is wrong with this shot's casting, before anything is generated. */
   castProblemsOf: (box: StoryboardBox) => CastProblem[];
   /** Put people in the shot, or take them out. An empty members list means nobody is cast. */
@@ -371,6 +396,14 @@ export function useStoryboardController(projectId: string): StoryboardController
   const looks = useMemo<LookRef[]>(() => inputs.looks.map((l) => ({ id: l.id, name: l.name, description: l.description ?? null })), [inputs.looks]);
   const continuityOf = useCallback((box: StoryboardBox) => resolveContinuity(box.spec, entityIndex, looks), [entityIndex, looks]);
 
+  // --- what he wears: the outfits, the scenes, and what each shot resolves to (wardrobe/outfits.ts) -----------------
+  const scenesQuery = useScenes(projectId);
+  const sceneMutations = useSceneMutations(projectId);
+  const scenes = useMemo<Scene[]>(() => scenesQuery.data ?? [], [scenesQuery.data]);
+  const outfits = useMemo<Outfit[]>(() => entities.filter(isOutfit).filter((o) => !o.archived), [entities]);
+  const outfitOf = useCallback((box: StoryboardBox) => resolveOutfit(box.spec, { start: box.start }, scenes, entityIndex), [scenes, entityIndex]);
+  const proposedScenes = useMemo(() => scenesFromWriter(boxes, outfits), [boxes, outfits]);
+
   // --- cast: who is in each shot ------------------------------------------------------------------------------------
   const castOf = useCallback((box: StoryboardBox) => resolveCast(box.spec, entityIndex), [entityIndex]);
   const castProblemsOf = useCallback((box: StoryboardBox) => castProblems(castOf(box)), [castOf]);
@@ -403,6 +436,35 @@ export function useStoryboardController(projectId: string): StoryboardController
     [castOf, artistFace],
   );
   const wardrobe = useMemo(() => (wardrobeQuery.data ?? []).map((w) => ({ id: w.id, label: w.label, featureType: w.feature_type })), [wardrobeQuery.data]);
+  const wardrobeIds = useMemo(() => new Set(wardrobe.map((w) => w.id)), [wardrobe]);
+  const piecesOf = useCallback(
+    (box: StoryboardBox) => {
+      const g = effectiveGarments(box.spec, outfitOf(box));
+      const labels = new Map(wardrobe.map((w) => [w.id, w.label]));
+      return g.ids.map((id) => ({ id, label: labels.get(id) ?? null, from: g.from }));
+    },
+    [outfitOf, wardrobe],
+  );
+  const outfitFlagsOf = useCallback(
+    // while the wardrobe is still loading, no piece is reported missing
+    (box: StoryboardBox) => outfitFlags(box.spec, outfitOf(box), wardrobeQuery.data === undefined ? new Set(effectiveGarments(box.spec, outfitOf(box)).ids) : wardrobeIds, outfits),
+    [outfitOf, wardrobeIds, wardrobeQuery.data, outfits],
+  );
+  const sceneRun = useCallback(async (work: () => Promise<unknown>) => {
+    try {
+      await work();
+    } catch (e) {
+      toast.error(message(e));
+    }
+  }, []);
+  const createScene = useCallback((scene: SceneWrite) => sceneRun(() => sceneMutations.create.mutateAsync(scene)), [sceneRun, sceneMutations.create]);
+  const saveScene = useCallback((scene: Scene, patch: Partial<SceneWrite>) => sceneRun(() => sceneMutations.update.mutateAsync({ id: scene.id, patch })), [sceneRun, sceneMutations.update]);
+  const removeScene = useCallback((scene: Scene) => sceneRun(() => sceneMutations.remove.mutateAsync(scene.id)), [sceneRun, sceneMutations.remove]);
+  const adoptProposedScenes = useCallback(
+    (proposed: readonly ProposedScene[]) =>
+      sceneRun(() => sceneMutations.createMany.mutateAsync(proposed.map((p) => ({ name: p.name, start: p.start, end: p.end, outfitKey: p.outfitKey, notes: p.outfitKey ? `from the treatment's words: “${p.phrase}”` : `from the treatment's words: “${p.phrase}” — no outfit of that name yet` })))),
+    [sceneRun, sceneMutations.createMany],
+  );
   const supportData = useStillReferenceSupport(projectId).data;
   const referenceSupport = useMemo(() => supportData ?? { accepted: false, max: DEFAULT_STILL_REFERENCE_CAP, model: null }, [supportData]);
   const routeOf = useCallback(
@@ -751,40 +813,46 @@ export function useStoryboardController(projectId: string): StoryboardController
       const onFile = new Map(wardrobe.map((w) => [w.id, w]));
       // while the wardrobe is still loading a garment is not reported missing
       const loaded = wardrobeQuery.data !== undefined;
+      // the exact pieces: the outfit the shot wears (its scene's, or its own exception), or the shot's own garments
+      const pieces = effectiveGarments(box.spec, outfitOf(box)).ids;
       const plan = planStillReferences({
         isPerformance: box.spec.shotType === "performance",
         continuity: continuityOf(box),
         linkNeeds: needs,
-        garments: box.spec.wardrobe.garments.map((id) => ({ id, onFile: onFile.has(id) ? { id, label: onFile.get(id)!.label } : loaded ? null : { id, label: id } })),
+        garments: pieces.map((id) => ({ id, onFile: onFile.has(id) ? { id, label: onFile.get(id)!.label } : loaded ? null : { id, label: id } })),
         extra: castReferencesOf(box),
         cap: referenceSupport.max,
       });
       return { sent: plan.sent, notSent: plan.notSent, legend: plan.legend, delivered: referenceSupport.accepted, problems: plan.problems, cap: plan.cap };
     },
-    [linksOf, boxes, selectedStill, wardrobe, wardrobeQuery.data, continuityOf, referenceSupport, castReferencesOf],
+    [linksOf, boxes, selectedStill, wardrobe, wardrobeQuery.data, continuityOf, referenceSupport, castReferencesOf, outfitOf],
   );
   const linkLinesOf = useCallback((box: StoryboardBox) => linkPromptLines(linksOf(box)), [linksOf]);
   const stillRequestOf = useCallback(
     (box: StoryboardBox) => {
       try {
-        return previewStillRequest(box, lyricLines, { aspect, continuity: continuityOf(box), cast: castOf(box), linkLines: linkLinesOf(box), references: referencesOf(box) });
+        return previewStillRequest(box, lyricLines, { aspect, continuity: continuityOf(box), cast: castOf(box), linkLines: linkLinesOf(box), references: referencesOf(box), outfit: outfitOf(box) });
       } catch {
         return null;
       }
     },
-    [lyricLines, aspect, continuityOf, castOf, linkLinesOf, referencesOf],
+    [lyricLines, aspect, continuityOf, castOf, linkLinesOf, referencesOf, outfitOf],
   );
   /** What the confirmation says about the shot's route, links and pictures — and whether it may go at all. */
   const generationNotes = useCallback(
     (box: StoryboardBox): { text: string; blocked: string | null } => {
       const r = referencesOf(box);
-      // a shot that needs a screen picture, an exact garment or an identity is not drawn from words when the pictures cannot go
-      const blocking = r.problems.find((p) => p.level === "blocking") ?? undeliveredProblem(r.sent, r.delivered);
+      const o = outfitFlagsOf(box);
+      // a shot that needs a screen picture, an exact garment or an identity is not drawn from words when the pictures cannot go;
+      // an outfit whose piece the wardrobe no longer has, or a key this video has no outfit for, stops it the same way
+      const blocking = r.problems.find((p) => p.level === "blocking") ?? o.find((f) => f.level === "blocking") ?? undeliveredProblem(r.sent, r.delivered);
       const pictures = r.sent.length || r.notSent.length ? ` ${referenceSummary({ sent: r.delivered ? r.sent : [], notSent: r.delivered ? r.notSent : [...r.notSent, ...r.sent.map((ref) => ({ ref, why: "the image generator does not take reference pictures yet" }))] })}` : "";
-      const warnings = r.problems.filter((p) => p.level === "warning").map((p) => ` NOTE: ${p.text}`).join("");
-      return { text: ` ${routeLine(routeOf(box))}${pictures}${warnings}`, blocked: blocking ? `${blocking.text} ${blocking.fix}` : null };
+      const worn = outfitOf(box);
+      const wears = worn.outfit ? ` He wears “${worn.outfit.name}” v${worn.outfit.outfit.version} (${worn.source === "scene" ? `the scene “${worn.scene?.name}”` : "set on this shot"}).` : "";
+      const warnings = [...r.problems.filter((p) => p.level === "warning").map((p) => p.text), ...o.filter((f) => f.level === "warning").map((f) => f.text)].map((t) => ` NOTE: ${t}`).join("");
+      return { text: ` ${routeLine(routeOf(box))}${wears}${pictures}${warnings}`, blocked: blocking ? `${blocking.text} ${blocking.fix}` : null };
     },
-    [referencesOf, routeOf],
+    [referencesOf, routeOf, outfitFlagsOf, outfitOf],
   );
 
   const estimatesOf = useCallback(
@@ -854,7 +922,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         testId: "confirm-generate-image",
         onConfirm: () =>
           run(box, "drawing the image…", async () => {
-            const r = await generateBoxImage({ projectId, box, lyricLines, aspect, select: !est.restage, continuity, cast: castOf(box), linkLines, references });
+            const r = await generateBoxImage({ projectId, box, lyricLines, aspect, select: !est.restage, continuity, cast: castOf(box), linkLines, references, outfit: outfitOf(box) });
             afterGeneration();
             toast.success(r.rejected > 0 ? `Image ready (${r.rejected} of ${r.candidates} came back as stacked panels and was left out)` : "Image ready");
           }).finally(afterGeneration),
@@ -933,7 +1001,7 @@ export function useStoryboardController(projectId: string): StoryboardController
               let stillPath = still;
               if (!stillPath) {
                 setBusyFor(box.id, "drawing the place first…");
-                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false, continuity, cast: castOf(box), linkLines, references });
+                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false, continuity, cast: castOf(box), linkLines, references, outfit: outfitOf(box) });
                 afterGeneration();
                 stillPath = img.picked;
               }
@@ -950,12 +1018,12 @@ export function useStoryboardController(projectId: string): StoryboardController
           // closes while it is drawn, the picture is still filed on the shot by the server.
           let stillPath = still;
           if (!stillPath) {
-            const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity, cast: castOf(box), linkLines, references });
+            const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity, cast: castOf(box), linkLines, references, outfit: outfitOf(box) });
             afterGeneration();
             stillPath = img.picked;
             setBusyFor(box.id, "sending the clip to render…");
           }
-          await generateBoxClip({ projectId, box, lyricLines, stillPath, aspect, temporal, continuity, cast: castOf(box), linkLines });
+          await generateBoxClip({ projectId, box, lyricLines, stillPath, aspect, temporal, continuity, cast: castOf(box), linkLines, outfit: outfitOf(box) });
           afterGeneration();
           toast.success(temporal.mode === "ordered" ? "Clip is rendering with the beats in order — its timing is the model's own" : "Clip is rendering — it will appear on this shot when it is done");
         }).finally(afterGeneration);
@@ -996,6 +1064,20 @@ export function useStoryboardController(projectId: string): StoryboardController
       });
     },
     [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats, staleNote, wardrobeGapOf, routeOf, generationNotes, linkLinesOf, referencesOf],
+  );
+
+  // --- is what the shot shows still what it wears? (the outfit may have changed since the picture was made) ---------
+  const outfitOutdatedOf = useCallback(
+    (box: StoryboardBox) => {
+      const still = selectedStill(box);
+      if (!still) return null;
+      const job = jobs.jobs.find((j) => j.result_asset_id === still.id);
+      const resolved = outfitOf(box);
+      // a picture with no job (uploaded, or from before jobs recorded outfits) is not accused when the shot wears nothing
+      if (!job) return resolved.outfit ? `made before the shot wore “${resolved.outfit.name}”` : null;
+      return outfitOutdated(resolved, outfitRecordOf(settingsOf(job) as Record<string, unknown> | null), effectiveGarments(box.spec, resolved).ids);
+    },
+    [selectedStill, jobs.jobs, outfitOf],
   );
 
   // --- what a clip was asked for, and whether it did it --------------------------------------------------------------
@@ -1168,6 +1250,19 @@ export function useStoryboardController(projectId: string): StoryboardController
     }
   }, []);
 
+  const createOutfit = useCallback(
+    async (name: string, garmentFeatureIds: string[], description?: string) => {
+      try {
+        const e = await entityMutations.create.mutateAsync({ kind: "outfit", name, description, outfit: { garmentFeatureIds }, takenKeys: entities.map((x) => x.key) });
+        return isOutfit(e) ? e : null;
+      } catch (e) {
+        toast.error(message(e));
+        return null;
+      }
+    },
+    [entityMutations.create, entities],
+  );
+
   const createEntity = useCallback(
     async (kind: EntityKind, name: string, cast?: CastFacts) => {
       try {
@@ -1317,6 +1412,19 @@ export function useStoryboardController(projectId: string): StoryboardController
     entityBusyOf: (id) => entityBusy[id] ?? null,
     createEntity,
     saveEntity,
+    outfits,
+    scenes,
+    outfitOf,
+    piecesOf,
+    outfitFlagsOf,
+    outfitOutdatedOf,
+    proposedScenes,
+    createOutfit,
+    createScene,
+    saveScene,
+    removeScene,
+    adoptProposedScenes,
+    sceneBusy: sceneMutations.create.isPending || sceneMutations.update.isPending || sceneMutations.remove.isPending || sceneMutations.createMany.isPending,
     generateEntityPicture,
     useShotImageFor,
     saveContinuity,

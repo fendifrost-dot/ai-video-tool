@@ -12,7 +12,7 @@ import { ContinuityChips, ContinuityPanel, ShotContinuityEditor } from "./Contin
 import { StoryboardProvider, type StoryboardController } from "./useStoryboardController";
 
 const AT = "2026-10-03T12:00:00.000Z";
-const entity = (over: Partial<ContinuityEntity> & Pick<ContinuityEntity, "kind" | "key" | "name">): ContinuityEntity => ({ id: `id_${over.key}`, projectId: "p1", variationId: "v1", description: "", constraints: "", approvedAssetId: null, referenceAssetIds: [], archived: false, cast: null, createdAt: AT, updatedAt: AT, ...over });
+const entity = (over: Partial<ContinuityEntity> & Pick<ContinuityEntity, "kind" | "key" | "name">): ContinuityEntity => ({ id: `id_${over.key}`, projectId: "p1", variationId: "v1", description: "", constraints: "", approvedAssetId: null, referenceAssetIds: [], archived: false, cast: null, outfit: null, createdAt: AT, updatedAt: AT, ...over });
 const RUNWAY = entity({ kind: "location", key: "BLACK_RUNWAY", name: "Black Runway", description: "A long black runway between black walls.", approvedAssetId: "pic1", referenceAssetIds: ["pic1", "pic2"] });
 const STREET = entity({ kind: "location", key: "WET_STREET", name: "Wet Street", description: "A narrow street at night after rain." });
 const SEDAN = entity({ kind: "prop", key: "BLACK_SEDAN", name: "Black Sedan", description: "A black four-door sedan." });
