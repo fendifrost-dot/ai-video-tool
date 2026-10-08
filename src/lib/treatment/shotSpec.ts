@@ -203,8 +203,18 @@ export const LookSchema = z.object({
    * Empty = no garment is held exactly (the words above are then an interpretation, and the storyboard says so).
    */
   garments: z.array(z.string()).default([]),
+  /**
+   * Which outfit of this video the shot wears (continuity_entities of kind `outfit`, by key — src/lib/wardrobe/outfits.ts):
+   *   inherit    the outfit of the scene the shot falls in (the default: a shot wears what its scene wears)
+   *   exception  this shot wears `outfitKey` whatever its scene says — a deliberate exception
+   *   none       this shot wears no outfit on purpose (nobody dressed, or he is not in it)
+   * The outfit's pieces are the garment pictures sent; `garments` above, when set, are this shot's own pieces instead.
+   */
+  outfitMode: z.enum(["inherit", "exception", "none"]).default("inherit"),
+  outfitKey: z.string().nullable().default(null),
 });
 export type Look = z.infer<typeof LookSchema>;
+export type OutfitMode = Look["outfitMode"];
 
 export const EnvironmentSchema = z.object({
   description: z.string().default(""),

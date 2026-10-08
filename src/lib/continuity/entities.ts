@@ -20,11 +20,20 @@
 import { CAST_ROLES, IDENTITY_MODES, type CastFacts, type CastIdentityMode, type CastRole } from "@/lib/casting/cast";
 import type { ShotEvent, ShotSpec } from "@/lib/treatment/shotSpec";
 
-export const ENTITY_KINDS = ["location", "prop", "lighting", "character"] as const;
+export const ENTITY_KINDS = ["location", "prop", "lighting", "character", "outfit"] as const;
 export type EntityKind = (typeof ENTITY_KINDS)[number];
 
-export const KIND_LABEL: Record<EntityKind, string> = { location: "Location", prop: "Prop", lighting: "Lighting state", character: "Character" };
-export const KIND_PLURAL: Record<EntityKind, string> = { location: "Locations", prop: "Props", lighting: "Lighting states", character: "Cast" };
+export const KIND_LABEL: Record<EntityKind, string> = { location: "Location", prop: "Prop", lighting: "Lighting state", character: "Character", outfit: "Outfit" };
+export const KIND_PLURAL: Record<EntityKind, string> = { location: "Locations", prop: "Props", lighting: "Lighting states", character: "Cast", outfit: "Outfits" };
+
+/**
+ * The outfit-only facts, non-null exactly when `kind === "outfit"`. An outfit is what the artist wears in a scene,
+ * defined once for this video: its words (the entity's description and constraints, carried as `Wears: …`) and its
+ * exact pieces — the artist's own garment photographs (character_features rows of a wardrobe_* type, shared across
+ * projects), in the order they go as reference pictures. `version` is the database's: it moves when the name, the
+ * words or the pieces change, and a job records the version it was given (src/lib/wardrobe/outfits.ts).
+ */
+export type OutfitFacts = { garmentFeatureIds: string[]; version: number };
 
 export type ContinuityEntity = {
   id: string;
@@ -49,6 +58,8 @@ export type ContinuityEntity = {
    * `src/lib/casting/cast.ts` for why this is not a table of its own.
    */
   cast: CastFacts | null;
+  /** The outfit-only facts, non-null exactly when `kind === "outfit"`. */
+  outfit: OutfitFacts | null;
   archived: boolean;
   createdAt: string;
   updatedAt: string;
@@ -69,6 +80,8 @@ export type EntityRow = {
   cast_role?: string | null;
   identity_mode?: string | null;
   artist_id?: string | null;
+  garment_feature_ids?: string[] | null;
+  version?: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -88,6 +101,15 @@ function castFactsFromRow(row: EntityRow): CastFacts | null {
   return { role, identityMode, artistId: row.artist_id ?? null };
 }
 
+/** The outfit columns: a row of kind `outfit` always has a piece list (possibly empty) and a version (at least 1). */
+function outfitFactsFromRow(row: EntityRow): OutfitFacts | null {
+  if (row.kind !== "outfit") return null;
+  return {
+    garmentFeatureIds: Array.isArray(row.garment_feature_ids) ? row.garment_feature_ids.filter((x) => typeof x === "string") : [],
+    version: typeof row.version === "number" && row.version >= 1 ? row.version : 1,
+  };
+}
+
 export function entityFromRow(row: EntityRow): ContinuityEntity | null {
   if (!(ENTITY_KINDS as readonly string[]).includes(row.kind)) return null;
   return {
@@ -102,6 +124,7 @@ export function entityFromRow(row: EntityRow): ContinuityEntity | null {
     approvedAssetId: row.approved_asset_id ?? null,
     referenceAssetIds: Array.isArray(row.reference_asset_ids) ? row.reference_asset_ids.filter((x) => typeof x === "string") : [],
     cast: castFactsFromRow(row),
+    outfit: outfitFactsFromRow(row),
     archived: row.archived === true,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -270,6 +293,7 @@ export function referencePrompt(e: Pick<ContinuityEntity, "kind" | "name" | "des
   if (!words) throw new Error(`${e.name} has no description to draw from — write one first.`);
   if (e.kind === "location") return `An empty set, photographed with nobody in it: no people, no figures, no faces. ${words} A wide, level establishing view that shows the whole place.`;
   if (e.kind === "prop") return `${words} The object alone, whole and in focus, on a plain dark surface, nothing else in the picture, no hands, no people.`;
+  if (e.kind === "outfit") throw new Error("An outfit's pictures are the garments themselves (the wardrobe) — it is not drawn.");
   // an invented likeness, drawn once so every shot they are in is held to the same face and build; a real person's
   // likeness is never drawn from words (the controller refuses a preserved character before this is reached)
   // the description says who the person is AND where they appear in the video; the picture is the person only.
@@ -286,6 +310,7 @@ export function referencePrompt(e: Pick<ContinuityEntity, "kind" | "name" | "des
  */
 export function entityPictureRefusal(e: Pick<ContinuityEntity, "kind" | "name" | "cast">): string | null {
   if (e.kind === "lighting") return "A lighting state is a description shots are lit by — it has no picture of its own.";
+  if (e.kind === "outfit") return "An outfit's pictures are its garments, photographed in the wardrobe — it is not drawn.";
   if (e.kind !== "character") return null;
   if (e.cast?.artistId) return `${e.name} is linked to the artist record — their likeness comes from the artist's own photographs, not a drawing.`;
   if (e.cast?.identityMode === "preserve") return `${e.name} keeps a real person's identity — that comes from real photographs, not a drawing. Link the artist, or set them to recurring to draw an invented likeness.`;
@@ -296,6 +321,8 @@ export function entityPictureRefusal(e: Pick<ContinuityEntity, "kind" | "name" |
 export type EntityPatch = Partial<Pick<ContinuityEntity, "name" | "description" | "constraints" | "approvedAssetId" | "referenceAssetIds" | "archived">> & {
   /** Character only. Changing a cast member's role or identity mode is an edit like any other. */
   cast?: Partial<CastFacts>;
+  /** Outfit only: the exact pieces, in order. The version is the database's and is never written from here. */
+  outfit?: { garmentFeatureIds: string[] };
 };
 
 /** The entity's reference pictures with one more, without doubles; the first picture an entity gets is approved. */

@@ -151,37 +151,7 @@ export function ShotProductionEditor({ box }: { box: StoryboardBox }) {
         </div>
       </div>
 
-      {sb.wardrobe.length > 0 && (
-        <div className="space-y-1">
-          <span className="flex items-center gap-1 text-[10px] uppercase tracking-wide text-foreground/50">
-            <Shirt className="h-3 w-3" /> Exact garments (sent as pictures — the model reproduces them; check the result)
-          </span>
-          <div className="flex flex-wrap gap-1">
-            {sb.wardrobe.map((w) => {
-              const on = garments.has(w.id);
-              return (
-                <button
-                  key={w.id}
-                  type="button"
-                  disabled={busy}
-                  className={cn(chip, "cursor-pointer", on && "border-emerald-400/50 bg-emerald-400/10 text-emerald-100")}
-                  onClick={() => void sb.saveContinuity(box, { garments: on ? [...garments].filter((g) => g !== w.id) : [...garments, w.id] })}
-                  data-testid="shot-garment"
-                  data-selected={on}
-                >
-                  {w.label}
-                </button>
-              );
-            })}
-          </div>
-          {garments.size === 0 && box.spec.wardrobe.source === "treatment" && (
-            <p className="text-[11px] text-amber-200/90" data-testid="shot-garment-gap">
-              The treatment dresses him in “{box.spec.wardrobe.description || "a named garment"}” here and no garment on file is chosen: it can only be interpreted from words, never held exactly.
-            </p>
-          )}
-        </div>
-      )}
-
+      {/* the pieces he wears are the outfit's (Outfits.tsx ShotOutfitEditor, above); this shot's own pieces are set there too */}
       <div className="space-y-1" data-testid="shot-references">
         <span className="text-[10px] uppercase tracking-wide text-foreground/50">Pictures its image is drawn with (up to {refs.cap})</span>
         {!refs.delivered && refs.sent.length > 0 && (
