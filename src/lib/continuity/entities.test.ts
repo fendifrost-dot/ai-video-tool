@@ -293,7 +293,10 @@ describe("an entity's own reference picture", () => {
 
   it("draws an invented cast member as one person, whole, upright", () => {
     const rider = { kind: "character" as const, name: "The rider", description: "A woman in a dark riding coat, hair tied back", constraints: "" };
-    expect(referencePrompt(rider)).toContain("A character reference picture of one person.");
+    expect(referencePrompt(rider)).toContain("A casting reference picture of one person, standing alone");
+    // the description's scenes say who she is, not what to draw: the picture is the person only
+    expect(referencePrompt(rider)).toContain("that says who they are, not what to draw");
+    expect(referencePrompt(rider)).toContain("no place, vehicle, animal, screen, monitor, fire, crowd or event from the description");
     expect(referencePrompt(rider)).toContain(canonicalWords(rider));
     expect(referencePrompt(rider)).toContain("nobody else in the picture");
     expect(entityShot({ ...SEDAN, kind: "character", key: "THE_RIDER", description: rider.description }).aspect).toBe("3:4");

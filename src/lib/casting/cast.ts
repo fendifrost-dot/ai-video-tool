@@ -282,8 +282,13 @@ export type CastSource = {
  *
  * `open` and `none` are stated too. A model told nothing about people invents them; a model told
  * "no people" has been given a direction.
+ *
+ * `wears` is what the shot dresses the artist in (its wardrobe look, in words — generate.ts wardrobeWords). It goes
+ * on the primary artist's line, because the clothes are the shot's, not the person's: the same man is in a denim
+ * look in one scene and a coat in the next. Seen live (8 Oct 2026): the writer wrote "exact YSL denim look" on
+ * every room shot and the pictures came back with him in whatever the model chose, because nothing carried it.
  */
-export function castSource(cast: ShotCast): CastSource {
+export function castSource(cast: ShotCast, opts: { wears?: string | null } = {}): CastSource {
   const lines: string[] = [];
   const referenceAssetIds: string[] = [];
   const artistIds: string[] = [];
@@ -303,6 +308,7 @@ export function castSource(cast: ShotCast): CastSource {
     if (ref.action.trim()) parts.push(`Action: ${sentence(ref.action)}`);
     if (ref.placement.trim()) parts.push(`Placement: ${sentence(ref.placement)}`);
     if (ref.framing.trim()) parts.push(`Framing: ${sentence(ref.framing)}`);
+    if (entity.cast.role === "primary_artist" && opts.wears?.trim()) parts.push(`Wears: ${sentence(opts.wears)}`);
     parts.push(`Identity: ${MODE_CLAUSE[mode]}.`);
     lines.push(parts.join(" "));
 

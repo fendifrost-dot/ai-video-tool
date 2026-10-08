@@ -223,6 +223,16 @@ describe("what the request carries", () => {
     expect(line).toContain("do not substitute or idealise");
   });
 
+  it("the shot's wardrobe goes on the artist's line, not on anyone else's", () => {
+    const c = resolveCast(spec([ref({ key: "FENDI" }), ref({ key: "DRIVER" })]), index);
+    const lines = castSource(c, { wears: "his exact YSL denim look" }).lines;
+    expect(lines[0]).toContain("Wears: his exact YSL denim look.");
+    expect(lines[0].indexOf("Wears:")).toBeLessThan(lines[0].indexOf("Identity:"));
+    expect(lines[1]).not.toContain("Wears:");
+    expect(castSource(c).lines[0]).not.toContain("Wears:");
+    expect(castSource(c, { wears: "  " }).lines[0]).not.toContain("Wears:");
+  });
+
   it("collects references and artist ids only for people who must be matched", () => {
     const c = resolveCast(
       spec([ref({ key: "FENDI" }), ref({ key: "DRIVER" }), ref({ key: "EXTRA" })]),
