@@ -7,8 +7,14 @@
 export const BATCH_ACTIONS = ["session", "enroll", "list", "revoke"] as const;
 export type BatchAction = (typeof BATCH_ACTIONS)[number];
 
-/** Mints allowed per credential per window. Generous for a runner, finite for a leak. */
-export const RATE_LIMIT_MINTS = 12;
+/**
+ * Mints allowed per credential per window. Finite for a leak, and sized for the credential's heaviest honest
+ * caller: avt-mcp mints once per edge isolate, and an AI conversation lands on a fresh isolate on most calls (seen
+ * live 8 Oct 2026: 12 mints in 43 minutes, then every call refused for the rest of the hour). A leaked secret gets
+ * a whole session on its first mint, so the cap bounds how many sessions an hour, not what one can do; the audit row
+ * per mint (batch_credential_mints) is what shows a leak.
+ */
+export const RATE_LIMIT_MINTS = 120;
 export const RATE_LIMIT_WINDOW_SECONDS = 3600;
 
 /** Secrets are issued at this length; shorter ones are rejected outright. */
