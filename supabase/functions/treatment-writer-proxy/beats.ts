@@ -319,7 +319,9 @@ export function allocateBeats(beats: readonly Beat[], grid: readonly GridShot[],
       if (at < 0) continue;
       const key = grid[at].key;
       const holder = byShot[key];
-      if (!holder || holder === u.beat || byBeat[holder].length < 2) continue;
+      // never from a beat left with nothing, and never a shot that is already another beat's flash (two cues sung in
+      // one shot: the first keeps it; the second is reported as not placed on its words)
+      if (!holder || holder === u.beat || byBeat[holder].length < 2 || inserts.some((i) => i.shot === key)) continue;
       byBeat[holder] = byBeat[holder].filter((k) => k !== key);
       byShot[key] = u.beat;
       byBeat[u.beat] = [key, ...byBeat[u.beat]];

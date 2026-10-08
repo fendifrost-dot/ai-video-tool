@@ -314,6 +314,16 @@ describe("a cue sung long before its beat's turn is a flash, not a pin — seen 
     expect(allocateBeats(noSwitchCue, late).anchors).toEqual([{ beat: "crew", shot: "c017", cue: "more cameras in the whip than a camera crew" }]);
   });
 
+  it("two cues sung in one shot: the first beat's flash keeps the shot, the second is not placed on its words — a flash is never taken from a flash (candidate 5)", () => {
+    // the crew's and the geese's words are both sung at shot 6
+    const twoCues = song.map((g, i) => (i === 5 ? { ...g, lyrics: "more cameras in the whip than a camera crew / all this ice around me need a canada goose" } : g));
+    const withGeese = [...beats.slice(0, 7), beat({ id: "geese", weight: 1, lyricCue: "all this ice around me need a canada goose" }), beats[7]];
+    const a = allocateBeats(withGeese, twoCues);
+    expect(a.inserts.map((i) => `${i.beat}@${i.shot}`)).toEqual(["crew@c006", "entrance@c007"]);
+    expect(a.unanchored.find((u) => u.beat === "geese")).toEqual({ beat: "geese", cue: "all this ice around me need a canada goose", sung: "earlier" });
+    expect(a.byShot.c006).toBe("crew");
+  });
+
   it("a beat holding more than half the board is reported as lumped, and a reading with too few beats is told apart", () => {
     const few = [beat({ id: "show", weight: 1 }), beat({ id: "viewer", weight: 1 }), beat({ id: "rest", weight: 5 })];
     const a = allocateBeats(few, song);
