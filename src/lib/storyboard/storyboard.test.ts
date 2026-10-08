@@ -628,6 +628,11 @@ describe("a wardrobe the footage cannot deliver", () => {
     expect(wardrobeGap(dressed("narrative", "treatment", "his YSL denim look"))).toContain("No picture of him or of that garment is handed to the image model");
   });
 
+  it("is not said on a shot whose outfit sends its pieces as pictures; a performance shot is still his take", () => {
+    expect(wardrobeGap(dressed("narrative", "treatment", "his YSL denim look"), null, 2)).toBeNull();
+    expect(wardrobeGap(dressed("performance", "treatment"), null, 2)).toContain("cannot be made as the treatment asks");
+  });
+
   it("is not said when he wears the footage, when nobody said, or when he is not in the shot", () => {
     expect(wardrobeGap(dressed("performance", "footage"))).toBeNull();
     expect(wardrobeGap(dressed("performance", ""))).toBeNull();

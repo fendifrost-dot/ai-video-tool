@@ -530,9 +530,10 @@ export function boxIsStale(box: Pick<StoryboardBox, "generated" | "override">, t
  * Why it is said rather than solved: a performance shot is his real take, and a restaging keeps the clothes he was
  * filmed in. If the treatment puts him in something else, no route here makes that shot from the footage on file —
  * and writing the footage's clothes into the scene instead would be changing the treatment without telling anyone.
- * A shot that is not his take draws him from words alone: no picture of him or of the garment reaches the image model.
+ * A shot that is not his take draws him from words alone: no picture of him or of the garment reaches the image model —
+ * unless it wears an outfit whose pieces go as pictures (`garmentPicturesSent`), in which case there is nothing to tell here.
  */
-export function wardrobeGap(spec: Pick<ShotSpec, "shotType" | "wardrobe">, footageShows?: string | null): string | null {
+export function wardrobeGap(spec: Pick<ShotSpec, "shotType" | "wardrobe">, footageShows?: string | null, garmentPicturesSent = 0): string | null {
   if (spec.wardrobe.source !== "treatment") return null;
   const asked = spec.wardrobe.description.trim().replace(/[.\s]+$/, "");
   if (!asked || /^none$/i.test(asked)) return null;
@@ -540,6 +541,8 @@ export function wardrobeGap(spec: Pick<ShotSpec, "shotType" | "wardrobe">, foota
     const filmed = footageShows?.trim().replace(/[.\s]+$/, "");
     return `The treatment dresses him in: ${asked}. ${filmed ? `Your footage shows him in ${filmed}.` : "That is not what your footage shows."} A restaging keeps the clothes he was filmed in, so this shot cannot be made as the treatment asks from the footage on file — it needs footage of him in that look, or a wardrobe change made another way.`;
   }
+  // a shot that wears an outfit (src/lib/wardrobe/outfits.ts) sends its pieces as pictures; the shot's wardrobe editor says which
+  if (garmentPicturesSent > 0) return null;
   return `He is in this shot wearing: ${asked}. No picture of him or of that garment is handed to the image model here — it draws both from the words alone, so neither will be the real one.`;
 }
 
