@@ -76,7 +76,7 @@ not yet audited.
   that is **two shots edited by hand** on candidate 2; the coverage block now says how many shots were edited since
   the write, so the writer's output and the repaired board are told apart.
 
-## 5. Regression coverage added (all pass; 2,414 tests)
+## 5. Regression coverage added (all pass; 2,426 tests after PR #200)
 
 | case | test |
 |---|---|
@@ -105,3 +105,40 @@ This session's browser tool refuses clicks it classifies as real-world transacti
 Fendi presses the generate buttons himself in the app; or a session whose browser tool is not under that guard runs
 §3 of `IB_TEST_AGENT_2026-10-07.md`. Nothing paid beyond the two writer runs ($0.0263 + the first run, cents) has
 happened from this session.
+
+## 8. Runs 3 and 4 (evening, 2026-10-08 UTC) — what each one taught, and what was fixed
+
+Fendi's direction at 21:34 CT: proceed on my own judgment inside the structure. The choice that keeps the saved
+treatment unchanged and never trades lyric synchronisation for order silently is **option A** (flash-forwards on the
+words), which is what the repaired writer does by default — so the writer was run again into a candidate.
+
+| run | candidate | outcome | cost (actual) | what it exposed |
+|---|---|---|---|---|
+| 3 · `9d3d66e1` | candidate 3 (archived, 0 shots) | **succeeded at the server in 156 s**; the gateway's 150 s idle limit answered the page with a **504**, nothing written | $0.0287 (86,304 / 22,852 tokens) | transport (one response after all model calls); cue matching across cuts; THE_RIDER "missing" where he is on the CRT |
+| 4 · `b2b2e001` | **candidate 4** (`43/43` shots, kept) | succeeded in 101 s; lyric section **passes** (all three cues anchored: switch c005 0:15.7, crew c007 0:23.5, janitor c008 0:27.5); relationships pass (3/3 ties typed, directed, targeted, linked); production pass | $0.0215 | beats reader returned **6 beats** (18 on run 2, 8 on run 3); pinning the 0:23–0:29 cues crushed the opening into 7 shots; "The clean entrance" held 36 shots (84%); viewer's CRT showed the models (c002), so THE_RIDER rightly missing in the viewer beat |
+
+Fixed, in the reusable pipeline (PR #199 `02c287e`, PR #200 `2f45956`):
+
+- **Transport** — `treatment-writer-proxy` answers as a **stream** once the request is accepted (`stream.ts`): a byte
+  every 10 s while the model calls run, then the JSON; 200 from the first byte, a later failure is `ok:false` with its
+  would-be status in the body. The entrypoint gate reads the streamed body.
+- **Recovery** — a call lost in transit (`recoverWriterRun`) waits up to 6 min for that variation's `writer_runs` row
+  and returns it in the reply's shape, or reports the run's own failure. Paid work is not thrown away for a lost reply.
+- **Cues across cuts** — a shot's lyrics are cut at its boundary word by word (c006 ends "…No minors / More", c007
+  begins "cameras in the whip / Than a camera crew…"), so a cue straddling a cut was never found. `cueMatches` reads
+  the grid's word stream and pins the shot singing most of the cue.
+- **Pins vs flashes** — a cue sung several times pins the singing nearest the beat's turn by weight (the hook no longer
+  pins to its first singing). A singing before half-way to that turn is `early`: the beat keeps its order and gets a
+  flash on its words (as `earlier` cues did). With inserts off, an early cue fails the lyric section.
+- **Second reading** — `fewestBeats` = ¼ of the treatment's paragraphs (3..12; 32 → 8). A reading below it is asked
+  for once more with what it folded stated; the longer reading is kept; both counts are recorded.
+- **Lumped** — a beat holding more than half the board is reported (structural at least "gaps").
+- **On a screen** — a beat's person shown via a `screen_shows` link to a shot that casts them is `onScreenIn`, not missing.
+
+State now: Paris Black Runway untouched (48 shots); Interrupted Broadcast active (43 defective shots, Fendi's 8/9
+edits); candidate 2 (narrative order, lyric gaps, two hand edits); **candidate 4 (lyric order, compressed narrative)**;
+candidates 1 and 3 archived empty. Together candidates 2 and 4 are the two sides of the documented conflict (§1–2), in
+reviewable boards. The edge function is deployed at `02c287e` (streaming, cues across cuts); `2f45956` (pins vs
+flashes, second reading, lumped) awaits the Lovable deploy once the workspace's credits renew at midnight CT — Lovable's
+chat refused for credits at 22:12 CT; the publish tool alone does not redeploy a function. Next run (≈ $0.02–0.03)
+goes into a new candidate after that deploy.
