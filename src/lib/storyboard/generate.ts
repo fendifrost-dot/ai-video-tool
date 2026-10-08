@@ -141,7 +141,7 @@ export function boxShot(
   // A performance shot's picture is the PLACE, drawn empty, for his real footage to be put into —
   // so the cast does not go into it. Putting people in a plate would contradict PLATE_LINE and give
   // the compositor a frame with someone already standing in it.
-  const cast = !isPerformance && opts.cast ? castSource(opts.cast) : null;
+  const cast = !isPerformance && opts.cast ? castSource(opts.cast, { wears: wardrobeWords(box.spec, opts.continuity?.look ?? null) }) : null;
   const canonicalPlace =
     isPerformance && opts.continuity?.location ? canonicalWords(opts.continuity.location) : "";
   // the compiler writes world shots for boxes that are not real performance; a performance box asks for its place,
@@ -208,6 +208,21 @@ export function boxShot(
   for (const line of [NO_MARKS, FULL_BLEED])
     if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
   return shot;
+}
+
+/**
+ * What the shot dresses the artist in, in words: the Look record it points at when it has one, else what the writer
+ * wrote on the shot (`wardrobe.description`, the treatment's own words — "his exact YSL denim look"). A writer's
+ * "none" is nobody dressed him, not a garment. The exact pieces (`wardrobe.garments`) travel as pictures
+ * (references.ts); these words are what the model is told either way.
+ */
+export function wardrobeWords(spec: Pick<StoryboardBox["spec"], "wardrobe">, look: { name: string; description: string | null } | null): string {
+  const fromLook = look ? [look.name, look.description ?? ""].map((s) => s.trim()).filter(Boolean).join(": ") : "";
+  if (fromLook) return fromLook;
+  const name = (spec.wardrobe?.name ?? "").trim();
+  const description = (spec.wardrobe?.description ?? "").trim();
+  if (!description || /^(none|n\/a|-)$/i.test(description)) return name;
+  return name ? `${name}: ${description}` : description;
 }
 
 export type BoxShotOptions = {

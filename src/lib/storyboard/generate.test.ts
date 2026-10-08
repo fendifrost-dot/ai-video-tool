@@ -6,7 +6,7 @@ vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 
 import { parseShotSpec } from "@/lib/treatment/shotSpec";
 import { boxFromRow, boxWrite, type BoxRow } from "./boxes";
-import { boxShot, FULL_BLEED, madeFromBox, NO_MARKS } from "./generate";
+import { boxShot, FULL_BLEED, madeFromBox, NO_MARKS, wardrobeWords } from "./generate";
 
 function box(shotType: "b_roll" | "performance") {
   const spec = parseShotSpec({ id: "c001", purpose: "a ring on a marble console under one hard light", shotType, kind: shotType === "performance" ? "performance" : "broll", timeline: { start: 0, end: 4 } });
@@ -73,3 +73,19 @@ describe("what a job remembers of the shot it was made from", () => {
   });
 });
 
+
+describe("what the shot dresses the artist in", () => {
+  const wardrobe = (description: string, name = "") => ({ wardrobe: { name, description, lookId: null, references: [], source: "treatment" as const, garments: [] } });
+  it("is the writer's words when the shot points at no Look record", () => {
+    expect(wardrobeWords(wardrobe("exact YSL denim look"), null)).toBe("exact YSL denim look");
+    expect(wardrobeWords(wardrobe("exact YSL denim look", "Look A"), null)).toBe("Look A: exact YSL denim look");
+  });
+  it("is nothing when the writer dressed him in nothing", () => {
+    expect(wardrobeWords(wardrobe("none"), null)).toBe("");
+    expect(wardrobeWords(wardrobe(""), null)).toBe("");
+  });
+  it("is the Look record's words when the shot points at one", () => {
+    expect(wardrobeWords(wardrobe("exact YSL denim look"), { name: "Denim look", description: "black denim trucker jacket over black jeans" })).toBe("Denim look: black denim trucker jacket over black jeans");
+    expect(wardrobeWords(wardrobe("exact YSL denim look"), { name: "Denim look", description: null })).toBe("Denim look");
+  });
+});

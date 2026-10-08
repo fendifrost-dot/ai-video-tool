@@ -272,7 +272,11 @@ export function referencePrompt(e: Pick<ContinuityEntity, "kind" | "name" | "des
   if (e.kind === "prop") return `${words} The object alone, whole and in focus, on a plain dark surface, nothing else in the picture, no hands, no people.`;
   // an invented likeness, drawn once so every shot they are in is held to the same face and build; a real person's
   // likeness is never drawn from words (the controller refuses a preserved character before this is reached)
-  if (e.kind === "character") return `A character reference picture of one person. ${words} The whole figure in view, face clearly visible, even soft light, a plain uncluttered background, nobody else in the picture.`;
+  // the description says who the person is AND where they appear in the video; the picture is the person only.
+  // Seen live (THE_RIDER, 8 Oct 2026): fed the whole description, the model drew her scenes — fire, a security
+  // monitor, on-screen camera labels — and the reference then carries those into every shot she is cast in.
+  if (e.kind === "character")
+    return `A casting reference picture of one person, standing alone and facing the camera, the whole figure in view, face clearly visible, even soft studio light, a plain uncluttered background. The person is described here; where the description tells what they do or where they appear in the video, that says who they are, not what to draw: ${words} Draw only the person: no place, vehicle, animal, screen, monitor, fire, crowd or event from the description, nobody else in the picture, no inset pictures, no on-screen text, labels or timestamps.`;
   throw new Error("A lighting state is a description shots are lit by — it has no picture of its own.");
 }
 
