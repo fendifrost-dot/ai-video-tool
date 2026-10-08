@@ -17,6 +17,8 @@ export type MachineCredentialsPanelProps = {
   onCreate: (label: string) => Promise<EnrolledCredential>;
   onRevoke: (credentialId: string) => Promise<void>;
   now?: Date;
+  /** The AVT MCP server's URL: when given, the issued secret is also shown as a ready MCP URL for AI apps. */
+  mcpUrl?: string;
 };
 
 function day(iso: string | null): string {
@@ -31,6 +33,7 @@ export function MachineCredentialsPanel({
   onCreate,
   onRevoke,
   now,
+  mcpUrl,
 }: MachineCredentialsPanelProps) {
   const [label, setLabel] = useState("");
   const [issued, setIssued] = useState<EnrolledCredential | null>(null);
@@ -90,10 +93,23 @@ export function MachineCredentialsPanel({
           <code className="mt-2 block break-all rounded-md bg-background/60 px-3 py-2 text-xs" data-testid="issued-env-line">
             {envLine}
           </code>
+          {mcpUrl && (
+            <>
+              <p className="mt-3 text-xs text-foreground/60">For an AI app (Claude, ChatGPT, Grok) — the MCP URL with this secret in it:</p>
+              <code className="mt-1 block break-all rounded-md bg-background/60 px-3 py-2 text-xs" data-testid="issued-mcp-url">
+                {`${mcpUrl}/${issued.secret}`}
+              </code>
+            </>
+          )}
           <div className="mt-3 flex gap-2">
             <Button size="sm" onClick={() => copy(envLine)} data-testid="copy-secret">
               {copied ? "Copied" : "Copy"}
             </Button>
+            {mcpUrl && (
+              <Button size="sm" variant="outline" onClick={() => copy(`${mcpUrl}/${issued.secret}`)} data-testid="copy-mcp-url">
+                Copy MCP URL
+              </Button>
+            )}
             <Button size="sm" variant="outline" onClick={() => setIssued(null)} data-testid="dismiss-secret">
               I have stored it
             </Button>

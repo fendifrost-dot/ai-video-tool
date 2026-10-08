@@ -270,7 +270,22 @@ export function referencePrompt(e: Pick<ContinuityEntity, "kind" | "name" | "des
   if (!words) throw new Error(`${e.name} has no description to draw from — write one first.`);
   if (e.kind === "location") return `An empty set, photographed with nobody in it: no people, no figures, no faces. ${words} A wide, level establishing view that shows the whole place.`;
   if (e.kind === "prop") return `${words} The object alone, whole and in focus, on a plain dark surface, nothing else in the picture, no hands, no people.`;
+  // an invented likeness, drawn once so every shot they are in is held to the same face and build; a real person's
+  // likeness is never drawn from words (the controller refuses a preserved character before this is reached)
+  if (e.kind === "character") return `A character reference picture of one person. ${words} The whole figure in view, face clearly visible, even soft light, a plain uncluttered background, nobody else in the picture.`;
   throw new Error("A lighting state is a description shots are lit by — it has no picture of its own.");
+}
+
+/**
+ * Why an entity's reference picture may not be drawn from its words, or null when it may. A real person's likeness
+ * (the artist, or anyone set to keep their real identity) comes from their own photographs, never from a generator.
+ */
+export function entityPictureRefusal(e: Pick<ContinuityEntity, "kind" | "name" | "cast">): string | null {
+  if (e.kind === "lighting") return "A lighting state is a description shots are lit by — it has no picture of its own.";
+  if (e.kind !== "character") return null;
+  if (e.cast?.artistId) return `${e.name} is linked to the artist record — their likeness comes from the artist's own photographs, not a drawing.`;
+  if (e.cast?.identityMode === "preserve") return `${e.name} keeps a real person's identity — that comes from real photographs, not a drawing. Link the artist, or set them to recurring to draw an invented likeness.`;
+  return null;
 }
 
 /** What an edit to an entity may change. The key is not here: shots point at it. */

@@ -23,6 +23,7 @@ import {
   entityKey,
   entityUsage,
   indexEntities,
+  entityPictureRefusal,
   referencePrompt,
   resolveContinuity,
   uniqueKey,
@@ -288,6 +289,28 @@ describe("an entity's own reference picture", () => {
     expect(shot).toMatchObject({ id: "ent_BLACK_RUNWAY", aspect: "16:9", stills: 2 });
     expect(shot.prompt).toContain(NO_MARKS);
     expect(entityShot(SEDAN).aspect).toBe("1:1");
+  });
+
+  it("draws an invented cast member as one person, whole, upright", () => {
+    const rider = { kind: "character" as const, name: "The rider", description: "A woman in a dark riding coat, hair tied back", constraints: "" };
+    expect(referencePrompt(rider)).toContain("A character reference picture of one person.");
+    expect(referencePrompt(rider)).toContain(canonicalWords(rider));
+    expect(referencePrompt(rider)).toContain("nobody else in the picture");
+    expect(entityShot({ ...SEDAN, kind: "character", key: "THE_RIDER", description: rider.description }).aspect).toBe("3:4");
+  });
+
+  it("is never drawn for a real person's likeness", () => {
+    const cast = (identityMode: "preserve" | "recurring" | "invent", artistId: string | null = null) => ({
+      kind: "character" as const,
+      name: "X",
+      cast: { role: "recurring" as const, identityMode, artistId },
+    });
+    expect(entityPictureRefusal(cast("preserve"))).toMatch(/real photographs/);
+    expect(entityPictureRefusal(cast("recurring", "artist-1"))).toMatch(/artist record/);
+    expect(entityPictureRefusal(cast("recurring"))).toBeNull();
+    expect(entityPictureRefusal(cast("invent"))).toBeNull();
+    expect(entityPictureRefusal(SEDAN)).toBeNull();
+    expect(entityPictureRefusal(ICE)).toMatch(/no picture of its own/);
   });
 
   it("cannot be drawn from nothing, and a lighting state has none", () => {
