@@ -381,14 +381,6 @@ export function useStoryboardController(projectId: string): StoryboardController
     return out;
   }, [boxes, assignments, media.byId, syncs]);
 
-  const wardrobeGapOf = useCallback(
-    (box: StoryboardBox) => {
-      // the real take under this shot says what he was filmed in
-      const take = (mediaByBox.get(box.id) ?? EMPTY_MEDIA).items.find((i) => i.base || (i.role === "performance" && !i.asset.derivedFrom));
-      return wardrobeGap(box.spec, take?.asset.shows ?? null);
-    },
-    [mediaByBox],
-  );
 
   // --- continuity: the entities, and what each shot's references resolve to -----------------------------------------
   const entities = useMemo(() => entitiesQuery.data ?? [], [entitiesQuery.data]);
@@ -402,6 +394,14 @@ export function useStoryboardController(projectId: string): StoryboardController
   const scenes = useMemo<Scene[]>(() => scenesQuery.data ?? [], [scenesQuery.data]);
   const outfits = useMemo<Outfit[]>(() => entities.filter(isOutfit).filter((o) => !o.archived), [entities]);
   const outfitOf = useCallback((box: StoryboardBox) => resolveOutfit(box.spec, { start: box.start }, scenes, entityIndex), [scenes, entityIndex]);
+  const wardrobeGapOf = useCallback(
+    (box: StoryboardBox) => {
+      // the real take under this shot says what he was filmed in
+      const take = (mediaByBox.get(box.id) ?? EMPTY_MEDIA).items.find((i) => i.base || (i.role === "performance" && !i.asset.derivedFrom));
+      return wardrobeGap(box.spec, take?.asset.shows ?? null, effectiveGarments(box.spec, outfitOf(box)).ids.length);
+    },
+    [mediaByBox, outfitOf],
+  );
   const proposedScenes = useMemo(() => scenesFromWriter(boxes, outfits), [boxes, outfits]);
 
   // --- cast: who is in each shot ------------------------------------------------------------------------------------
