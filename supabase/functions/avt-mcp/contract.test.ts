@@ -2,7 +2,7 @@
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { FUNCTION_DOCS, KNOWN_TABLES } from "./catalog.generated";
+import { FUNCTION_DOCS, KNOWN_TABLES } from "./catalog.generated.ts";
 import {
   TOOLS,
   credentialFrom,
@@ -14,7 +14,7 @@ import {
   tableAccess,
   validColumn,
   validSelect,
-} from "./contract";
+} from "./contract.ts";
 
 const SECRET = "a".repeat(64);
 const req = (url: string, headers: Record<string, string> = {}) => ({ url, headers: new Headers(headers) });
