@@ -832,6 +832,126 @@ export type Database = {
           },
         ]
       }
+      mcp_budgets: {
+        Row: {
+          approved_at: string | null
+          approved_usd: number
+          closed_at: string | null
+          created_at: string
+          id: string
+          label: string
+          note: string | null
+          owner_user_id: string
+          project_id: string | null
+          requested_by_credential: string | null
+          status: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_usd: number
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          note?: string | null
+          owner_user_id: string
+          project_id?: string | null
+          requested_by_credential?: string | null
+          status?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_usd?: number
+          closed_at?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          note?: string | null
+          owner_user_id?: string
+          project_id?: string | null
+          requested_by_credential?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_budgets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "video_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_budgets_requested_by_credential_fkey"
+            columns: ["requested_by_credential"]
+            isOneToOne: false
+            referencedRelation: "batch_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mcp_spend: {
+        Row: {
+          actual_usd: number | null
+          budget_id: string
+          created_at: string
+          credential_id: string | null
+          function_name: string
+          http_status: number | null
+          id: string
+          owner_user_id: string
+          request_excerpt: Json | null
+          reserved_usd: number
+          response_excerpt: Json | null
+          settled_at: string | null
+          status: string
+        }
+        Insert: {
+          actual_usd?: number | null
+          budget_id: string
+          created_at?: string
+          credential_id?: string | null
+          function_name: string
+          http_status?: number | null
+          id?: string
+          owner_user_id: string
+          request_excerpt?: Json | null
+          reserved_usd: number
+          response_excerpt?: Json | null
+          settled_at?: string | null
+          status?: string
+        }
+        Update: {
+          actual_usd?: number | null
+          budget_id?: string
+          created_at?: string
+          credential_id?: string | null
+          function_name?: string
+          http_status?: number | null
+          id?: string
+          owner_user_id?: string
+          request_excerpt?: Json | null
+          reserved_usd?: number
+          response_excerpt?: Json | null
+          settled_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mcp_spend_budget_id_fkey"
+            columns: ["budget_id"]
+            isOneToOne: false
+            referencedRelation: "mcp_budgets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mcp_spend_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: false
+            referencedRelation: "batch_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       performance_syncs: {
         Row: {
           confidence_json: Json
@@ -2839,6 +2959,30 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      mcp_budget_committed: { Args: { p_budget_id: string }; Returns: number }
+      mcp_reserve: {
+        Args: {
+          p_budget_id: string
+          p_credential: string
+          p_daily_cap: number
+          p_function: string
+          p_owner: string
+          p_project: string
+          p_request: Json
+          p_usd: number
+        }
+        Returns: Json
+      }
+      mcp_settle: {
+        Args: {
+          p_actual: number
+          p_http: number
+          p_response: Json
+          p_spend_id: string
+          p_status: string
+        }
+        Returns: undefined
       }
       reap_stale_jacket_inpaints: { Args: never; Returns: Json }
       treatment_text_of: { Args: { j: Json }; Returns: string }
