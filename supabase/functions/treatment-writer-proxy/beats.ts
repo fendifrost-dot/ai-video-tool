@@ -74,7 +74,7 @@ export const BEATS_SCHEMA = {
 export function beatsSystemPrompt(people: readonly WriterEntity[], hasPerformanceFootage: boolean): string {
   const list = people.filter((p) => p.kind === "character");
   return [
-    "You read a music-video treatment and list its beats: every scene or moment it describes, in the order it describes them, each with what the camera must show there. You invent nothing and leave nothing out: a beat the treatment describes — a place, an arrival, a reveal, a cut to somewhere else, an animal, a crew, a screen showing something — is a beat even when it is one sentence. A beat is one place and one continuous stretch of action; a new place or a cut the treatment describes starts a new beat.",
+    "You read a music-video treatment and list its beats: every scene or moment it describes, in the order it describes them, each with what the camera must show there. You invent nothing and leave nothing out: a beat the treatment describes — a place, an arrival, a reveal, a cut to somewhere else, an animal, a crew, a screen showing something — is a beat even when it is one sentence. A beat is one place and one continuous stretch of action; a new place or a cut the treatment describes starts a new beat. Never fold several scenes into one beat: a treatment of many paragraphs has many beats, and a beat that would need many sentences of `action` is several beats.",
     "Keep the treatment's own words for `scene`, `action` and `wardrobe`. Where the treatment says certain words of the song are sung at a beat, copy those words verbatim into `lyric_cue`. Where it cuts from one beat to another by a device, say so in `ties` on the LATER beat, with the kind that names the device: `screen_shows` when a television, monitor, screen or reflection in this beat shows the earlier beat's picture (a pull-back from an image playing on a set is this); `match_position` when a person or thing keeps the earlier beat's place in the frame while the world around changes; `reveals` when this beat shows what the earlier beat was inside of or opening onto (a door, a vehicle); `continues` when the same action carries on across the cut. One tie per device; a beat may have none.",
     list.length
       ? ["People (the project's record of who can be in a shot, by key). Put a beat's people in 'people' by these keys; a person the treatment describes who is not here is 'unnamed_people':", ...list.map((p) => `- ${p.key} — ${p.name}${p.description ? `: ${p.description}` : ""}`)].join("\n")
@@ -179,21 +179,20 @@ function wordStream(grid: readonly GridShot[]): { w: string; shot: number }[] {
 }
 
 /**
- * The shot that sings the cue — the one singing most of its words when the cue straddles a cut (a shot's lyrics are
- * cut at its boundary word by word, so a line sung across two shots is in neither one's text whole) — or, failing the
- * whole cue, its first four words (a treatment quotes a line, a shot may hold only part of it). Only shots from `from`
- * onward count; -1 when the song never sings it there.
+ * Every shot that sings the cue, in order — the shot singing most of its words when the cue straddles a cut (a shot's
+ * lyrics are cut at its boundary word by word, so a line sung across two shots is in neither one's text whole) — or,
+ * when the whole cue is sung nowhere, the shots singing its first four words (a treatment quotes a line, a shot may
+ * hold only part of it).
  */
-export function cueIndex(grid: readonly GridShot[], cue: string, from = 0): number {
+export function cueMatches(grid: readonly GridShot[], cue: string): number[] {
   const words = norm(cue).split(" ").filter(Boolean);
-  if (words.length === 0) return -1;
+  if (words.length === 0) return [];
   const stream = wordStream(grid);
-  const floor = Math.max(0, from);
   const needles = [words];
   if (words.length > 4) needles.push(words.slice(0, 4));
   for (const needle of needles) {
+    const found = new Set<number>();
     for (let s = 0; s + needle.length <= stream.length; s++) {
-      if (stream[s + needle.length - 1].shot < floor) continue;
       let k = 0;
       while (k < needle.length && stream[s + k].w === needle[k]) k++;
       if (k < needle.length) continue;
@@ -202,10 +201,16 @@ export function cueIndex(grid: readonly GridShot[], cue: string, from = 0): numb
       let best = -1;
       let most = 0;
       for (const [shot, n] of count) if (n > most || (n === most && shot < best)) { best = shot; most = n; }
-      if (best >= floor) return best;
+      found.add(best);
     }
+    if (found.size) return [...found].sort((a, b) => a - b);
   }
-  return -1;
+  return [];
+}
+
+/** The first shot from `from` onward that sings the cue (see cueMatches); -1 when the song never sings it there. */
+export function cueIndex(grid: readonly GridShot[], cue: string, from = 0): number {
+  return cueMatches(grid, cue).find((i) => i >= Math.max(0, from)) ?? -1;
 }
 
 export type Allocation = {
@@ -217,8 +222,12 @@ export type Allocation = {
   uncovered: string[];
   /** Beats whose lyric cue was found on the song, with the shot it anchors to. */
   anchors: { beat: string; shot: string; cue: string }[];
-  /** Beats whose cue the song never sings after the beat before it — and whether it is sung earlier, or never. */
-  unanchored: { beat: string; cue: string; sung: "earlier" | "never" }[];
+  /**
+   * Beats not pinned to their cue: the song sings it only before the beat before it (`earlier`), never (`never`), or
+   * only long before this beat's turn by the beats' weights (`early` — pinning there would crush the beats before it;
+   * `shot` is where it is sung). An `earlier` or `early` cue gets a flash shot on its words instead (inserts).
+   */
+  unanchored: { beat: string; cue: string; sung: "earlier" | "never" | "early"; shot?: string }[];
   /**
    * A beat whose cue is sung only BEFORE its turn gets one shot there — a flash of it on its words — and continues in
    * full where the treatment's order puts it. Lyric synchronisation is kept without reordering the narrative; the
@@ -242,15 +251,27 @@ export function allocateBeats(beats: readonly Beat[], grid: readonly GridShot[],
   const lyricInserts = options.lyricInserts !== false;
   if (beats.length === 0 || grid.length === 0) return { byShot, byBeat, uncovered: beats.map((b) => b.id), anchors, unanchored, inserts };
 
-  // 1. pins: the earliest shot singing each cue, strictly increasing in beat order, never before the beat's own rank
+  // 1. pins: for each cue, the singing of it nearest the beat's turn by weight, strictly increasing in beat order and
+  //    never before the beat's own rank. A singing long before that turn (before half-way to it) is not a pin — a pin
+  //    there would leave the beats before it a handful of shots — but a flash of the beat on its words (step 3).
   const pin: (number | null)[] = beats.map(() => null);
+  const totalWeight = beats.reduce((n, b) => n + b.weight, 0) || beats.length;
   let floor = -1;
+  let weightBefore = 0;
   beats.forEach((b, i) => {
+    const expected = Math.floor((grid.length * weightBefore) / totalWeight);
+    weightBefore += b.weight;
     if (!b.lyricCue) return;
+    const all = cueMatches(grid, b.lyricCue);
     // strictly after the pin before it: two beats never share a shot
-    const at = cueIndex(grid, b.lyricCue, Math.max(floor + 1, i));
-    if (at < 0) {
-      unanchored.push({ beat: b.id, cue: b.lyricCue, sung: cueIndex(grid, b.lyricCue, 0) >= 0 ? "earlier" : "never" });
+    const hits = all.filter((x) => x >= Math.max(floor + 1, i));
+    if (hits.length === 0) {
+      unanchored.push({ beat: b.id, cue: b.lyricCue, sung: all.length ? "earlier" : "never" });
+      return;
+    }
+    const at = hits.reduce((best, x) => (Math.abs(x - expected) < Math.abs(best - expected) ? x : best));
+    if (at < Math.floor(expected / 2)) {
+      unanchored.push({ beat: b.id, cue: b.lyricCue, sung: "early", shot: grid[at].key });
       return;
     }
     pin[i] = at;
@@ -293,8 +314,8 @@ export function allocateBeats(beats: readonly Beat[], grid: readonly GridShot[],
   //    that holds it — unless that would leave the holder with nothing
   if (lyricInserts) {
     for (const u of unanchored) {
-      if (u.sung !== "earlier") continue;
-      const at = cueIndex(grid, u.cue, 0);
+      if (u.sung === "never") continue;
+      const at = u.shot ? grid.findIndex((g) => g.key === u.shot) : cueIndex(grid, u.cue, 0);
       if (at < 0) continue;
       const key = grid[at].key;
       const holder = byShot[key];
@@ -413,8 +434,21 @@ export type TreatmentAudit = { ok: boolean; paragraphs: number; uncovered: { ind
  * A paragraph no beat answers is a part of the treatment the beats left out — and complete coverage of an
  * incomplete beat list is not coverage of the treatment.
  */
+/** The treatment's paragraphs of at least eight words — the units a reading is held against. */
+export function paragraphsOf(treatment: string): string[] {
+  return treatment.split(/\n\s*\n/).map((p) => p.replace(/\s+/g, " ").trim()).filter((p) => p.split(" ").length >= 8);
+}
+
+/**
+ * The fewest beats a reading of the treatment may return without having folded scenes together: a quarter of its
+ * paragraphs, at least three, at most twelve. Fewer, and the treatment is read again with that said.
+ */
+export function fewestBeats(treatment: string): number {
+  return Math.min(12, Math.max(3, Math.ceil(paragraphsOf(treatment).length / 4)));
+}
+
 export function auditBeatsAgainstTreatment(treatment: string, beats: readonly Beat[]): TreatmentAudit {
-  const paragraphs = treatment.split(/\n\s*\n/).map((p) => p.replace(/\s+/g, " ").trim()).filter((p) => p.split(" ").length >= 8);
+  const paragraphs = paragraphsOf(treatment);
   const beatText = beats.map((b) => `${b.title}. ${b.scene} ${b.action}`).join("\n");
   const have = shingles(beatText);
   const uncovered: TreatmentAudit["uncovered"] = [];
@@ -439,6 +473,10 @@ export type Coverage = {
     beats: { id: string; title: string; shots: string[]; people: { key: string; castIn: string[]; onScreenIn: string[] }[]; emptied: string[] }[];
     uncoveredBeats: string[];
     missingPeople: { beat: string; key: string }[];
+    /** Beats holding more than half the board (the reader folded several scenes into one). */
+    lumped: { beat: string; shots: number; share: number }[];
+    /** How many beats each reading of the treatment returned (a second reading is asked for when the first is too few). */
+    readings: number[];
   };
   lyrics: {
     verdict: Verdict;
@@ -477,7 +515,7 @@ export function coverageOf(
   beats: readonly Beat[],
   allocation: Allocation,
   clips: readonly Record<string, unknown>[],
-  extra: { treatment?: string; tieCorrections?: TieCorrection[]; productionCorrections?: ProductionCorrection[] } = {},
+  extra: { treatment?: string; tieCorrections?: TieCorrection[]; productionCorrections?: ProductionCorrection[]; beatReadings?: number[] } = {},
 ): Coverage {
   const byKey = new Map(clips.map((c) => [String(c.key ?? ""), c]));
   const inserted = new Set(allocation.inserts.map((i) => i.shot));
@@ -519,8 +557,10 @@ export function coverageOf(
     });
     return { id: b.id, title: b.title, shots, people, emptied, ties: beatTies };
   });
-  const structuralVerdict: Verdict = allocation.uncovered.length || missingPeople.length || rows.some((r) => r.emptied.length) ? "fail" : "pass";
-  const lyricsVerdict: Verdict = allocation.unanchored.some((u) => u.sung === "earlier" && !allocation.inserts.some((i) => i.beat === u.beat)) ? "fail" : allocation.unanchored.length || allocation.inserts.length ? "gaps" : "pass";
+  // a beat holding more than half the board while the treatment has several: the reader folded scenes into it
+  const lumped = beats.length >= 3 ? rows.filter((r) => r.shots.length * 2 > clips.length).map((r) => ({ beat: r.id, shots: r.shots.length, share: Math.round((100 * r.shots.length) / Math.max(1, clips.length)) })) : [];
+  const structuralVerdict: Verdict = allocation.uncovered.length || missingPeople.length || rows.some((r) => r.emptied.length) ? "fail" : lumped.length ? "gaps" : "pass";
+  const lyricsVerdict: Verdict = allocation.unanchored.some((u) => u.sung !== "never" && !allocation.inserts.some((i) => i.beat === u.beat)) ? "fail" : allocation.unanchored.length || allocation.inserts.length ? "gaps" : "pass";
   const relationshipsVerdict: Verdict = missingLinks.length || mistyped.length || ties.some((t) => !t.directionOk) ? "fail" : (extra.tieCorrections?.length ?? 0) ? "gaps" : "pass";
   const productionVerdict: Verdict = (extra.productionCorrections?.length ?? 0) ? "gaps" : "pass";
   const audit = extra.treatment ? auditBeatsAgainstTreatment(extra.treatment, beats) : { ok: true, paragraphs: 0, uncovered: [] };
@@ -529,7 +569,7 @@ export function coverageOf(
   return {
     ok: verdict === "pass",
     verdict,
-    structural: { verdict: structuralVerdict, beats: rows.map(({ ties: _t, ...r }) => r), uncoveredBeats: allocation.uncovered, missingPeople },
+    structural: { verdict: structuralVerdict, beats: rows.map(({ ties: _t, ...r }) => r), uncoveredBeats: allocation.uncovered, missingPeople, lumped, readings: extra.beatReadings ?? [beats.length] },
     lyrics: { verdict: lyricsVerdict, anchors: allocation.anchors, inserts: allocation.inserts, unanchored: allocation.unanchored },
     relationships: { verdict: relationshipsVerdict, ties, corrected: extra.tieCorrections ?? [], missing: missingLinks, mistyped },
     production: { verdict: productionVerdict, corrected: extra.productionCorrections ?? [] },
