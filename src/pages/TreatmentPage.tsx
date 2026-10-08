@@ -657,7 +657,7 @@ function CoverageBlock({ coverage, run, boxes, writtenAt }: { coverage: BeatCove
               <li key={b.id} className="flex flex-wrap gap-x-2" data-beat={b.id}>
                 <span className="font-medium text-foreground/90">{b.title}</span>
                 <span>{b.shots.length ? `shots ${b.shots.map(number).join(", ")}` : "no shot"}</span>
-                {b.people.length > 0 && <span>· {b.people.map((p) => `${p.key}${p.castIn.length ? "" : " (not cast)"}`).join(", ")}</span>}
+                {b.people.length > 0 && <span>· {b.people.map((p) => `${p.key}${p.castIn.length ? "" : p.onScreenIn.length ? " (on a screen)" : " (not cast)"}`).join(", ")}</span>}
                 {b.ties.map((t, i) => (
                   <span key={i} className={t.present ? "" : "text-amber-200"}>
                     · {t.kind.replace("_", " ")} → {coverage.beats.find((x) => x.id === t.to)?.title ?? t.to}

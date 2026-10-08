@@ -219,14 +219,72 @@ function contextBody(input: TreatmentContext): Record<string, unknown> {
 async function callTreatmentWriter(body: Record<string, unknown>): Promise<Record<string, unknown>> {
   const { data: userData } = await supabase.auth.getUser();
   if (!userData.user) throw new ProviderCallError("UNAUTHORISED", "Not signed in.");
+  const startedAt = new Date();
   const { data, error } = await supabase.functions.invoke<{ ok: boolean } & Record<string, unknown>>("treatment-writer-proxy", { body });
   if (error) {
     // the reply says why (the writer is not deployed, the model refused, …): say that, not "non-2xx"
     const failure = await functionFailure(error, data);
-    throw new ProviderCallError("INTERNAL", `The treatment writer failed${failure.status ? ` (${failure.status})` : ""}: ${failure.reason}`);
+    const reason = `The treatment writer failed${failure.status ? ` (${failure.status})` : ""}: ${failure.reason}`;
+    // the call failed, not necessarily the run: it goes on at the server and leaves its result in writer_runs
+    const recovered = await recoverWriterRun(body, startedAt, reason);
+    if (recovered) return recovered;
+    throw new ProviderCallError("INTERNAL", reason);
   }
   if (!data || data.ok === false) throw new ProviderCallError(String(data?.errorCode ?? "PROVIDER_API_ERROR"), String(data?.errorMessage ?? "The treatment writer returned nothing"));
   return data;
+}
+
+/** How long a run whose call was lost is waited for, and how often its row is read. */
+export const RECOVER_WRITER_RUN = { waitMs: 6 * 60_000, everyMs: 5_000 };
+
+/**
+ * The run of a call that was lost in transit (a gateway timeout, a dropped connection) is still running or already
+ * finished at the server, and every run leaves its result in writer_runs. When the call carried the variation it
+ * was for and the director's own treatment text (so nothing in the answer lived only in the reply), that row is
+ * waited for and read back in the reply's shape — paid work is never thrown away for the loss of a response.
+ * Null when there is nothing to recover: no variation, text written by the writer, no row, or the run failed.
+ */
+export async function recoverWriterRun(
+  body: Record<string, unknown>,
+  since: Date,
+  reason: string,
+  timing: { waitMs: number; everyMs: number } = RECOVER_WRITER_RUN,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+): Promise<Record<string, unknown> | null> {
+  const variationId = typeof body.avt_variation_id === "string" ? body.avt_variation_id : null;
+  if (!variationId || body.write_text === true) return null;
+  const notBefore = new Date(since.getTime() - 60_000).toISOString();
+  const deadline = Date.now() + timing.waitMs;
+  for (;;) {
+    const { data: row } = await supabase
+      .from("writer_runs")
+      .select("id, status, model, error_text, clips_json, beats_json, allocation_json, coverage_json, missing_json, usage_json, actual_cost_usd, estimated_cost_usd")
+      .eq("variation_id", variationId)
+      .gte("created_at", notBefore)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!row) return null;
+    if (row.status === "succeeded") {
+      return {
+        ok: true,
+        recovered: reason,
+        model: row.model ?? "",
+        treatment: { concept: String(body.concept ?? ""), narrative: "", sections: [], clips: Array.isArray(row.clips_json) ? row.clips_json : [] },
+        beats: row.beats_json ?? [],
+        allocation: row.allocation_json ?? null,
+        coverage: row.coverage_json ?? null,
+        runId: row.id,
+        missing: row.missing_json ?? [],
+        usage: row.usage_json ?? null,
+        actualCostUsd: row.actual_cost_usd === null ? null : Number(row.actual_cost_usd),
+        estimatedCostUsd: row.estimated_cost_usd === null ? null : Number(row.estimated_cost_usd),
+      };
+    }
+    if (row.status === "failed") throw new ProviderCallError("PROVIDER_API_ERROR", `${reason} — the run then failed: ${row.error_text ?? "no reason recorded"}`);
+    if (Date.now() >= deadline) return null;
+    await sleep(timing.everyMs);
+  }
 }
 
 async function callTreatmentEndpoint(

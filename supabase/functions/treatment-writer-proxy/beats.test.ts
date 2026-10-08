@@ -59,6 +59,27 @@ describe("the shots are allotted to the beats, in the treatment's order", () => 
     expect(cueIndex(grid, "")).toBe(-1);
   });
 
+  it("finds a cue sung across a cut — a shot's lyrics are cut at its boundary word by word — and pins the shot singing most of it", () => {
+    // the words of one line fall across three shots: "You don’t gotta" | "cut the lights on / This ice on / YSL" | "I wear em"
+    const cut: GridShot[] = [
+      { key: "c001", start: 0, end: 4, lyrics: "" },
+      { key: "c002", start: 4, end: 8, lyrics: "You don’t gotta" },
+      { key: "c003", start: 8, end: 12, lyrics: "cut the lights on / This ice on / YSL" },
+      { key: "c004", start: 12, end: 16, lyrics: "I wear em / No minors / More" },
+      { key: "c005", start: 16, end: 20, lyrics: "cameras in the whip / Than a camera crew" },
+      { key: "c006", start: 20, end: 24, lyrics: "You don’t gotta cut the lights on, this ice on" },
+    ];
+    // the whole cue is in no single shot; the shot that sings most of it is pinned
+    expect(cueIndex(cut, "you don't gotta cut the lights on, this ice on")).toBe(2);
+    expect(cueIndex(cut, "More cameras in the whip than a camera crew")).toBe(4);
+    // a cue spanning two lyric lines is found across the " / " between them
+    expect(cueIndex(cut, "than a camera crew you don't gotta")).toBe(4);
+    // from a later point, only the later singing counts
+    expect(cueIndex(cut, "you don't gotta cut the lights on, this ice on", 3)).toBe(5);
+    // a near-quote still finds its first words
+    expect(cueIndex(cut, "more cameras in the whip than the camera crews")).toBe(4);
+  });
+
   it("shares shots by weight, one each at least, the rest by largest remainder", () => {
     expect(share([1, 1, 1], 3)).toEqual([1, 1, 1]);
     expect(share([3, 1], 8)).toEqual([6, 2]);
@@ -149,7 +170,7 @@ describe("each shot is briefed with its beat, and the board is checked against t
     ];
     const c = coverageOf(beats, a, clips);
     expect(c.ok).toBe(false);
-    expect(c.beats[0].people).toEqual([{ key: "RIDER", castIn: ["c001"] }]);
+    expect(c.beats[0].people).toEqual([{ key: "RIDER", castIn: ["c001"], onScreenIn: [] }]);
     expect(c.beats[0].emptied).toEqual(["c002"]);
     expect(c.missingPeople).toEqual([]);
     expect(c.beats[1].emptied).toEqual(["c003"]);
@@ -170,6 +191,21 @@ describe("each shot is briefed with its beat, and the board is checked against t
     expect(c.uncoveredBeats).toEqual(["two"]);
     expect(c.missingPeople).toEqual([{ beat: "one", key: "ARTIST" }]);
     expect(c.ok).toBe(false);
+  });
+
+  it("a person seen on a screen — a shot of the beat whose screen shows a shot that casts them — is not missing", () => {
+    const b2 = [beat({ id: "ride", people: ["RIDER"] }), beat({ id: "viewer", people: ["ARTIST", "RIDER"], ties: [{ kind: "screen_shows", to: "ride", note: "the CRT", words: "" }] })];
+    const a2 = allocateBeats(b2, grid.slice(0, 2));
+    const clips = [
+      { key: "c001", cast: { members: [{ key: "RIDER" }], none: false }, continuity: { links: [] } },
+      { key: "c002", cast: { members: [{ key: "ARTIST" }], none: false }, continuity: { links: [{ kind: "screen_shows", shot: "c001" }] } },
+    ];
+    const c = coverageOf(b2, a2, clips);
+    expect(c.missingPeople).toEqual([]);
+    expect(c.structural.beats[1].people).toEqual([{ key: "ARTIST", castIn: ["c002"], onScreenIn: [] }, { key: "RIDER", castIn: [], onScreenIn: ["c002"] }]);
+    // a link of another kind does not carry them
+    const c2 = coverageOf(b2, a2, [clips[0], { ...clips[1], continuity: { links: [{ kind: "match_position", shot: "c001" }] } }]);
+    expect(c2.missingPeople).toEqual([{ beat: "viewer", key: "RIDER" }]);
   });
 });
 

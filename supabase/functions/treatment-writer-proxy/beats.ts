@@ -169,19 +169,40 @@ const norm = (s: string) =>
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 
+/** The grid's sung words in order, each with the index of the shot that sings it. */
+function wordStream(grid: readonly GridShot[]): { w: string; shot: number }[] {
+  const out: { w: string; shot: number }[] = [];
+  grid.forEach((g, shot) => {
+    for (const w of norm(g.lyrics ?? "").split(" ")) if (w) out.push({ w, shot });
+  });
+  return out;
+}
+
 /**
- * The first shot of the grid whose words contain the cue (or the cue's first four words — a treatment quotes a line,
- * a shot may hold only part of it), looking from `from` onward. -1 when the song never sings it after that point.
+ * The shot that sings the cue — the one singing most of its words when the cue straddles a cut (a shot's lyrics are
+ * cut at its boundary word by word, so a line sung across two shots is in neither one's text whole) — or, failing the
+ * whole cue, its first four words (a treatment quotes a line, a shot may hold only part of it). Only shots from `from`
+ * onward count; -1 when the song never sings it there.
  */
 export function cueIndex(grid: readonly GridShot[], cue: string, from = 0): number {
-  const c = norm(cue);
-  if (!c) return -1;
-  const head = c.split(" ").slice(0, 4).join(" ");
-  for (const needle of [c, head]) {
-    if (needle.split(" ").length < 2 && needle !== c) continue;
-    for (let i = Math.max(0, from); i < grid.length; i++) {
-      const words = norm(grid[i].lyrics ?? "");
-      if (words && words.includes(needle)) return i;
+  const words = norm(cue).split(" ").filter(Boolean);
+  if (words.length === 0) return -1;
+  const stream = wordStream(grid);
+  const floor = Math.max(0, from);
+  const needles = [words];
+  if (words.length > 4) needles.push(words.slice(0, 4));
+  for (const needle of needles) {
+    for (let s = 0; s + needle.length <= stream.length; s++) {
+      if (stream[s + needle.length - 1].shot < floor) continue;
+      let k = 0;
+      while (k < needle.length && stream[s + k].w === needle[k]) k++;
+      if (k < needle.length) continue;
+      const count = new Map<number, number>();
+      for (let m = 0; m < needle.length; m++) count.set(stream[s + m].shot, (count.get(stream[s + m].shot) ?? 0) + 1);
+      let best = -1;
+      let most = 0;
+      for (const [shot, n] of count) if (n > most || (n === most && shot < best)) { best = shot; most = n; }
+      if (best >= floor) return best;
     }
   }
   return -1;
@@ -415,7 +436,7 @@ export type Coverage = {
   verdict: Verdict;
   structural: {
     verdict: Verdict;
-    beats: { id: string; title: string; shots: string[]; people: { key: string; castIn: string[] }[]; emptied: string[] }[];
+    beats: { id: string; title: string; shots: string[]; people: { key: string; castIn: string[]; onScreenIn: string[] }[]; emptied: string[] }[];
     uncoveredBeats: string[];
     missingPeople: { beat: string; key: string }[];
   };
@@ -435,7 +456,7 @@ export type Coverage = {
   production: { verdict: Verdict; corrected: ProductionCorrection[] };
   treatment: TreatmentAudit & { verdict: Verdict };
   // the flat fields earlier readers use (same facts, one level up)
-  beats: { id: string; title: string; shots: string[]; people: { key: string; castIn: string[] }[]; emptied: string[]; ties: { kind: BeatTieKind; to: string; fromShot: string | null; toShot: string | null; present: boolean }[] }[];
+  beats: { id: string; title: string; shots: string[]; people: { key: string; castIn: string[]; onScreenIn: string[] }[]; emptied: string[]; ties: { kind: BeatTieKind; to: string; fromShot: string | null; toShot: string | null; present: boolean }[] }[];
   uncoveredBeats: string[];
   missingPeople: { beat: string; key: string }[];
   missingLinks: { beat: string; kind: BeatTieKind; to: string }[];
@@ -447,7 +468,7 @@ const worst = (...vs: Verdict[]): Verdict => (vs.includes("fail") ? "fail" : vs.
 
 /**
  * Whether the written shots carry the treatment, said in five parts so a board with a known failure never reads as
- * an unqualified pass: structural (every beat has shots, every named person is cast, no peopled beat emptied), lyric
+ * an unqualified pass: structural (every beat has shots, every named person is cast or shown on a screen, no peopled beat emptied), lyric
  * alignment (cues anchored, inserted, or not sung where the beat is), relationships (each tie's kind against its own
  * words, its direction, its target shot, and the link's presence), production feasibility (what was re-routed), and
  * the beats against the treatment's paragraphs.
@@ -475,8 +496,10 @@ export function coverageOf(
     const run = shots.filter((k) => !inserted.has(k));
     const people = b.people.map((key) => {
       const castIn = shots.filter((s) => castOf(s).members.has(key));
-      if (shots.length > 0 && castIn.length === 0) missingPeople.push({ beat: b.id, key });
-      return { key, castIn };
+      // seen on a screen instead: a shot of this beat whose screen shows a shot that casts them
+      const onScreenIn = shots.filter((s) => linksOf(s).some((l) => l.kind === "screen_shows" && castOf(l.shot).members.has(key)));
+      if (shots.length > 0 && castIn.length === 0 && onScreenIn.length === 0) missingPeople.push({ beat: b.id, key });
+      return { key, castIn, onScreenIn };
     });
     const emptied = b.people.length > 0 || b.unnamedPeople ? shots.filter((s) => byKey.has(s) && castOf(s).none) : [];
     const beatTies = b.ties.map((t) => {
