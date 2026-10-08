@@ -20,7 +20,7 @@ ledgered), `avt_click(testid)` (free steps only — `clickRefusal` blocks confir
 Sign-in: `node server.mjs login` opens a headed window; the magic link is pasted into that window. No JWT copied out of
 any browser, no service role.
 
-## Finding to check first (OBSERVED in code, not checked live)
+## Finding — FIXED in this PR (see docs/handoffs/IB_RIDER_PICTURE_FIX_2026-10-08.md)
 No button draws a **character's** picture any more: #183 (`1a5783f`) removed characters from the Continuity panel
 (`SET_KINDS` excludes `character`) and the Cast rows (`src/components/storyboard/Cast.tsx`) have no
 "Draw reference pictures". So IB §3 step 1 (the rider's picture, $0.14) cannot be pressed by anyone, and shot 8 stays

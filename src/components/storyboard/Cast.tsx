@@ -12,7 +12,16 @@
  * Nothing here suggests an appearance, a demographic or a default person. An undescribed character
  * is shown as undescribed.
  */
-import { AlertTriangle, ChevronDown, CircleHelp, Link2, Plus, UserRound, X } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  CircleHelp,
+  ImagePlus,
+  Link2,
+  Plus,
+  UserRound,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import {
@@ -24,9 +33,10 @@ import {
   type CastProblem,
   type CastRole,
 } from "@/lib/casting/cast";
-import type { ContinuityEntity } from "@/lib/continuity/entities";
+import { entityPictureRefusal, type ContinuityEntity } from "@/lib/continuity/entities";
 import type { CastRef } from "@/lib/treatment/shotSpec";
 import type { StoryboardBox } from "@/lib/storyboard/boxes";
+import { EntityPictures } from "./Continuity";
 import { useStoryboard } from "./useStoryboardController";
 
 const field =
@@ -436,6 +446,27 @@ function CastMemberRow({ entity }: { entity: ContinuityEntity }) {
           {entity.name} must match a person, but has no approved picture. Approve one, or set them
           to invent.
         </p>
+      )}
+
+      {/* An invented likeness is drawn and approved here; a real person's comes from their photographs. */}
+      {!entityPictureRefusal(entity) && (
+        <>
+          <EntityPictures entity={entity} />
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-foreground/80 hover:text-foreground disabled:opacity-50"
+            disabled={!!busy || !entity.description.trim()}
+            title={
+              entity.description.trim()
+                ? undefined
+                : "Describe them first — the picture is drawn from these words"
+            }
+            onClick={() => sb.generateEntityPicture(entity)}
+            data-testid="entity-generate-picture"
+          >
+            <ImagePlus className="h-3 w-3" /> Draw reference pictures
+          </button>
+        </>
       )}
     </div>
   );

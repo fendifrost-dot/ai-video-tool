@@ -10,7 +10,7 @@ import { boxFromRow, boxWrite, type BoxRow, type StoryboardBox } from "@/lib/sto
 import { castProblems, resolveCast } from "@/lib/casting/cast";
 import { entityFromRow, indexEntities, type EntityRow } from "@/lib/continuity/entities";
 import type { CastOverride } from "@/lib/treatment/overrides";
-import { CastChips, CastReadiness, ShotCastEditor } from "./Cast";
+import { CastChips, CastPanel, CastReadiness, ShotCastEditor } from "./Cast";
 import { StoryboardProvider, type StoryboardController } from "./useStoryboardController";
 
 const AT = "2026-10-07T12:00:00.000Z";
@@ -101,6 +101,9 @@ function controller(
     saveCast,
     createEntity: vi.fn(async () => null),
     saveEntity: vi.fn(async () => undefined),
+    picturesOf: () => [],
+    urlFor: () => null,
+    generateEntityPicture: vi.fn(),
   } as unknown as StoryboardController;
 }
 
@@ -225,5 +228,51 @@ describe("casting a shot", () => {
   it("shows the readiness notes right there in the editor", () => {
     show(<ShotCastEditor box={box({ cast: { members: [{ key: "GUEST" }] } })} />);
     expect(document.querySelector('[data-problem-level="blocking"]')).not.toBeNull();
+  });
+});
+
+describe("a cast member's own reference picture", () => {
+  const RIDER = entityFromRow(
+    row({
+      key: "THE_RIDER",
+      name: "The rider",
+      description: "A woman in a dark riding coat.",
+      cast_role: "recurring",
+      identity_mode: "recurring",
+    }),
+  )!;
+  const rowOf = (key: string) =>
+    document.querySelector(`[data-cast-member="${key}"]`) as HTMLElement;
+
+  it("can be drawn for an invented likeness, from the words written here", () => {
+    const c = controller([FENDI, RIDER, GUEST]);
+    show(<CastPanel />, c);
+    fireEvent.click(screen.getByTestId("cast-toggle"));
+    const draw = rowOf("THE_RIDER").querySelector(
+      '[data-testid="entity-generate-picture"]',
+    ) as HTMLButtonElement;
+    expect(draw).not.toBeNull();
+    fireEvent.click(draw);
+    expect(c.generateEntityPicture).toHaveBeenCalledWith(RIDER);
+    expect(rowOf("THE_RIDER").querySelector('[data-testid="entity-no-picture"]')).not.toBeNull();
+  });
+
+  it("is never drawn for the artist or anyone kept as a real person", () => {
+    show(<CastPanel />, controller([FENDI, RIDER, GUEST]));
+    fireEvent.click(screen.getByTestId("cast-toggle"));
+    expect(rowOf("FENDI").querySelector('[data-testid="entity-generate-picture"]')).toBeNull();
+    expect(rowOf("GUEST").querySelector('[data-testid="entity-generate-picture"]')).toBeNull();
+  });
+
+  it("cannot be drawn before there are words to draw from", () => {
+    const blank = entityFromRow(
+      row({ key: "EXTRA", cast_role: "recurring", identity_mode: "invent" }),
+    )!;
+    show(<CastPanel />, controller([blank]));
+    fireEvent.click(screen.getByTestId("cast-toggle"));
+    expect(
+      (rowOf("EXTRA").querySelector('[data-testid="entity-generate-picture"]') as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
   });
 });

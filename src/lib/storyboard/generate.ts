@@ -534,12 +534,12 @@ export function entityShot(
   aspect: ProjectAspect = DEFAULT_PROJECT_ASPECT,
 ): BatchShot {
   const prompt = [referencePrompt(entity), NO_MARKS, FULL_BLEED].join(" ");
-  // a place is drawn in the project's frame; an object is drawn square, whole
+  // a place is drawn in the project's frame; a person upright, whole; an object square, whole
   return BatchShotSchema.parse({
     id: `ent_${entity.key}`,
     kind: entity.kind === "location" ? "plate" : "world",
     route: CLIP_ROUTE,
-    aspect: entity.kind === "location" ? stillRequestAspect(aspect).aspect : "1:1",
+    aspect: entity.kind === "location" ? stillRequestAspect(aspect).aspect : entity.kind === "character" ? "3:4" : "1:1",
     prompt,
     motion: "",
     stills: 2,

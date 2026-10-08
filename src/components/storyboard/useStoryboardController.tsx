@@ -32,6 +32,7 @@ import { useContinuityEntities, useContinuityMutations } from "@/lib/queries/con
 import {
   canonicalWords,
   continuitySource,
+  entityPictureRefusal,
   entityUsage as usageOfEntities,
   indexEntities,
   resolveContinuity,
@@ -1199,6 +1200,11 @@ export function useStoryboardController(projectId: string): StoryboardController
 
   const generateEntityPicture = useCallback(
     (entity: ContinuityEntity) => {
+      const refusal = entityPictureRefusal(entity);
+      if (refusal) {
+        toast.info(refusal);
+        return;
+      }
       let estimate = 0;
       try {
         estimate = imageEstimateUsd(entityShot(entity, aspect));
@@ -1210,9 +1216,13 @@ export function useStoryboardController(projectId: string): StoryboardController
       setConfirm({
         title: `Draw reference pictures of ${entity.name}?`,
         body:
-          `About ${usd(estimate)} at list price. ${entity.kind === "location" ? "The place is drawn empty, from its description here" : "The object is drawn alone, from its description here"}, and the pictures are kept with ${entity.name}. ` +
+          `About ${usd(estimate)} at list price. ${entity.kind === "location" ? "The place is drawn empty, from its description here" : entity.kind === "character" ? "The person is drawn alone, from the description here" : "The object is drawn alone, from its description here"}, and the pictures are kept with ${entity.name}. ` +
           `Nothing is approved for you: choose the one that is right.` +
-          (entity.kind === "location" ? ` The approved picture is the place every performance shot set in ${entity.name} is restaged into${used ? ` (${used} shot${used === 1 ? "" : "s"} now)` : ""}.` : " The image model reads a prop's description, not its picture: the picture is the reference for your eye."),
+          (entity.kind === "location"
+            ? ` The approved picture is the place every performance shot set in ${entity.name} is restaged into${used ? ` (${used} shot${used === 1 ? "" : "s"} now)` : ""}.`
+            : entity.kind === "character"
+              ? ` The approved picture is sent with every shot ${entity.name} is cast in${used ? ` (${used} shot${used === 1 ? "" : "s"} now)` : ""}, so they look the same in each.`
+              : " The image model reads a prop's description, not its picture: the picture is the reference for your eye."),
         confirmLabel: `Draw pictures · ${usd(estimate)}`,
         testId: "confirm-entity-picture",
         onConfirm: () =>
