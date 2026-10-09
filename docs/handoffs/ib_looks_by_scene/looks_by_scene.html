@@ -96,7 +96,7 @@ pre { background:var(--card); border:1px solid var(--line); padding:12px; font-f
   const q = s => document.querySelector(s), qa = s => [...document.querySelectorAll(s)];
   // state: { grid: {scene: {pieceId: 0|1|2}}, notes, savedAt }
   let state = { grid: JSON.parse(JSON.stringify(SEED)), described: {}, notes: "" };
-  let db = null, docRef = null, mcp = null, avtLive = null, applyingRemote = false, writeTimer = null, canWrite = true;
+  let db = null, docRef = null, mcp = null, avtLive = null, writeTimer = null, canWrite = true, loaded = false, dirty = false, lastWrittenAt = null;
 
   function render() {
     for (const b of qa('tbody .cell')) {
@@ -134,10 +134,18 @@ pre { background:var(--card); border:1px solid var(--line); padding:12px; font-f
   function edited() {
     render();
     if (!docRef || !canWrite) return;
+    dirty = true;
     clearTimeout(writeTimer);
     writeTimer = setTimeout(async () => {
+      writeTimer = null;
+      const savedAt = new Date().toISOString();
+      const snapshot = JSON.parse(JSON.stringify(state));
       try {
-        await docRef.set({ ...state, savedAt: new Date().toISOString(), variationId: VARIATION });
+        lastWrittenAt = savedAt;
+        await docRef.set({ ...snapshot, savedAt, variationId: VARIATION });
+        // edits made while the write was in flight stay local and get their own write
+        if (JSON.stringify(state) === JSON.stringify(snapshot)) dirty = false;
+        else edited();
         q('#st-draft').textContent = 'saved ' + new Date().toLocaleTimeString();
       } catch (e) {
         if (e && e.code === 'invalid_argument') { canWrite = false; q('#st-draft').textContent = 'read-only for you'; }
@@ -173,12 +181,14 @@ pre { background:var(--card); border:1px solid var(--line); padding:12px; font-f
     if (db) {
       docRef = db.doc('choices/current');
       docRef.onSnapshot((snap) => {
-        if (!snap.exists) { q('#st-draft').textContent = 'nothing saved yet (showing what AVT holds)'; return; }
+        if (!snap.exists) { loaded = true; q('#st-draft').textContent = 'nothing saved yet (showing what AVT holds)'; return; }
         const d = snap.data();
         if (snap.metadata.hasPendingWrites) return;
-        applyingRemote = true;
+        // the record only ever replaces what is on screen when it is NEWER than our own work: first load, or another
+        // device's save while nothing here is unsaved. Our own echo, or a snapshot that lands mid-edit, never wins.
+        if (loaded && (dirty || writeTimer || d.savedAt === lastWrittenAt)) return;
+        loaded = true;
         state = { grid: d.grid || {}, described: d.described || {}, notes: d.notes || '' };
-        applyingRemote = false;
         q('#st-draft').textContent = 'saved ' + (d.savedAt ? new Date(d.savedAt).toLocaleString() : '');
         render();
       }, (e) => { q('#st-draft').textContent = 'record unavailable (' + e.code + ')'; });
