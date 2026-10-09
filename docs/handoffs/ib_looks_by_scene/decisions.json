@@ -1,0 +1,157 @@
+{
+ "decision": "all pieces in, all exact; agent assembles looks",
+ "rules": [
+  "Every piece below is in the video and is exact: its photo is sent and the result is checked against it.",
+  "Prioritise jackets and hats. Every look includes a hat.",
+  "Under the Mastic track jacket and the bubbled lambskin coat: formal \u2014 a button-up shirt and tie (generic, described in words, not a particular garment).",
+  "Under the other jackets: a t-shirt is fine (generic, described).",
+  "The confetti viscose shirt is not used in the first half of the video; use it in the second half.",
+  "The agent assembles the looks per scene from these pieces. If Fendi does not like a look, he tells the agent."
+ ],
+ "pieces": [
+  {
+   "id": "f6455042-faec-4a07-b6a2-cb0525a69c65",
+   "label": "Trucker Jacket \u2014 French Black Denim",
+   "group": "jacket",
+   "inWardrobe": true,
+   "exact": true,
+   "note": "t-shirt underneath"
+  },
+  {
+   "id": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+   "label": "Track Jacket \u2014 Mastic Cotton Navy Stripe",
+   "group": "jacket",
+   "inWardrobe": true,
+   "exact": true,
+   "note": "formal underneath: button-up and tie"
+  },
+  {
+   "id": "0eba994e-eece-4910-b9b6-af7d3581c69f",
+   "label": "Cotton jacket (full-length bomber/chore)",
+   "group": "jacket",
+   "inWardrobe": true,
+   "exact": true,
+   "note": "t-shirt underneath"
+  },
+  {
+   "id": "new-coat",
+   "label": "Coat in Bubbled Lambskin \u2014 Noir (the leather puffer)",
+   "group": "jacket",
+   "inWardrobe": false,
+   "exact": true,
+   "note": "formal underneath: button-up and tie"
+  },
+  {
+   "id": "new-cap-cassandre",
+   "label": "Cassandre Cap in Cotton Denim Twill \u2014 Khaki",
+   "group": "hat",
+   "inWardrobe": false,
+   "exact": true,
+   "note": ""
+  },
+  {
+   "id": "new-cap-yvarsity",
+   "label": "Y Varsity Cap in Gabardine \u2014 Black and Ivory",
+   "group": "hat",
+   "inWardrobe": false,
+   "exact": true,
+   "note": ""
+  },
+  {
+   "id": "new-cap-sl",
+   "label": "Saint Laurent Cap in Cotton Gabardine \u2014 Beige and Ivory",
+   "group": "hat",
+   "inWardrobe": false,
+   "exact": true,
+   "note": ""
+  },
+  {
+   "id": "eb813927-329c-4adc-8cb6-484e42adf59c",
+   "label": "Nylon bucket hat",
+   "group": "hat",
+   "inWardrobe": true,
+   "exact": true,
+   "note": ""
+  },
+  {
+   "id": "ca61e35c-036f-4584-a781-935beb0f3201",
+   "label": "Cassandre Overshirt \u2014 Trouville Beach Blue Denim",
+   "group": "top",
+   "inWardrobe": true,
+   "exact": true,
+   "note": ""
+  },
+  {
+   "id": "ebb696d4-d730-4b87-9702-d9d2e58ec1ed",
+   "label": "Cassandre Overshirt \u2014 Black Cotton Linen Gabardine",
+   "group": "top",
+   "inWardrobe": true,
+   "exact": true,
+   "note": ""
+  },
+  {
+   "id": "b06dfb03-efd4-416d-bc10-fd3eb6fb0912",
+   "label": "Confetti viscose shirt",
+   "group": "top",
+   "inWardrobe": true,
+   "exact": true,
+   "note": "second half of the video only"
+  },
+  {
+   "id": "df104591-5015-4b1f-98a7-7842c5001037",
+   "label": "Mick Long Jeans \u2014 Westwood Black Denim",
+   "group": "bottom",
+   "inWardrobe": true,
+   "exact": true,
+   "note": ""
+  },
+  {
+   "id": "d7666d88-9dff-4256-8606-320b335af671",
+   "label": "Slim low-rise jeans",
+   "group": "bottom",
+   "inWardrobe": true,
+   "exact": true,
+   "note": ""
+  },
+  {
+   "id": "6badada3-23cb-4801-a291-b7bc1b405c89",
+   "label": "SL look trousers (IMG_5541)",
+   "group": "bottom",
+   "inWardrobe": true,
+   "exact": true,
+   "note": ""
+  },
+  {
+   "id": "2ce65953-37d3-4965-9db8-448720888a6c",
+   "label": "Cassandre smooth leather belt",
+   "group": "accessory",
+   "inWardrobe": true,
+   "exact": true,
+   "note": ""
+  },
+  {
+   "id": "18b648a5-cfe0-46e4-b756-7a03693065f8",
+   "label": "Cazal MOD octagonal glasses",
+   "group": "accessory",
+   "inWardrobe": true,
+   "exact": true,
+   "note": ""
+  },
+  {
+   "id": "991a79d4-2f15-444f-ac2d-9f92e778fac1",
+   "label": "Lewis grained leather sneakers",
+   "group": "footwear",
+   "inWardrobe": true,
+   "exact": true,
+   "note": ""
+  }
+ ],
+ "priority": [
+  "jacket",
+  "hat"
+ ],
+ "decidedBy": "Fendi",
+ "decidedAt": "2026-10-09T01:4xZ",
+ "variationId": "882ec381-0fa0-4a76-b23b-b83ebc157372",
+ "supersedes": "the per-scene grid (versions 2\u20138)"
+}

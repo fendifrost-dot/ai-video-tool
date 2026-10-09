@@ -1,40 +1,36 @@
-# Looks by Scene — the director's outfit decisions for Interrupted Broadcast (candidate 5) · 9 Oct 2026
+# The wardrobe, decided — Interrupted Broadcast (candidate 5) · Fendi, 9 Oct 2026 ~01:45 UTC
 
-Fendi decides who wears what, where, on a private claude.ai page: https://claude.ai/artifact/Uvf3uuA1DsePRueMfd1z3q
-(`looks_by_scene.html` here is that page's source, kept for the record; opened as a file it has no save path).
+Fendi's decision, in his words (9 Oct): "include all of the pictures as pieces for the video prioritizing jackets and
+hats … check everything because these are all pieces that need to be included. The shirt will not be used for the
+first half of the video … include in the second half. Under the mastic jacket and bubble [coat] formal wear button up
+ties and include a hat with each look. Under the jackets a t shirt is fine. Let's not over complicate this. And if I
+don't like a look I'll tell the agent."
 
-## Where the decisions live
+The grid is gone. `decisions.json` is the record (also written to the page's artifact db, `choices/current`, same
+content); `looks_by_scene.html` is the page that states it (https://claude.ai/artifact/Uvf3uuA1DsePRueMfd1z3q).
 
-| | |
-|---|---|
-| The page's own record (every tick, as he makes it) | artifact database, document `choices/current` — read it with the ArtifactData tool (`get`, collection `choices`, doc `current`) on the URL above. Shape: `{grid: {viewer|chicago|cold|entrance: {<character_features.id or new-*>: 1}}, described: {<col>: "plain button-up and tie under the jacket, slacks"}, notes, savedAt, variationId}` — **every ticked piece is exact** (Fendi, 9 Oct: "ALL of the pieces need to be exact, that's the purpose of the tool"). Older records may carry a `2`; read any non-zero value as exact. |
-| AVT, what generation reads | `continuity_entities` kind=`outfit` on variation `882ec381-0fa0-4a76-b23b-b83ebc157372` (`garment_feature_ids` = the ★ pieces, in order; `description` = all worn pieces in words) and `variation_scenes.outfit_key` |
+## Rules for the agent assembling looks
 
-Scene columns ↔ AVT rows:
+1. **All 17 pieces are in the video, all exact** — every one is a reference picture, never "described".
+2. **Jackets and hats first.** Every look has a hat.
+3. Under the **Mastic track jacket** (`0feb028f-dc4d-45dc-82ac-e4bbd16054b0`) and the **bubbled lambskin coat**
+   (not yet a Wardrobe row): formal — a button-up shirt and tie, generic, in words.
+4. Under the **other jackets** (trucker `f6455042-…`, cotton jacket `0eba994e-…`): a t-shirt, generic, in words.
+5. The **confetti viscose shirt** (`b06dfb03-…`): second half of the video only.
+6. The agent assembles the per-scene looks from these; Fendi corrects a look he does not like by telling the agent.
 
-| column | variation_scenes ids | outfit key / entity |
-|---|---|---|
-| viewer | `327761de-ea68-4276-a77b-63ce3d37fb7a`, `e57f8cb6-8e95-4bd8-82bc-db3a16888403` | `YSL_DENIM_LOOK` / `57b10a61-b137-4f3b-bfaa-8743c4cd43aa` |
-| chicago | `557e9d81-2a15-4965-a707-cef622b61322` | `YSL_LEATHER_COAT` / `0d18f174-bf33-406a-951b-fe1ae45a8a23` |
-| cold | `09591369-1bea-42b1-a6eb-e029ddfcce73` | `YSL_JACKET` / `e12c51bf-9020-4902-afe0-bd05867a65db` |
-| entrance | `aa3fa72c-dedc-4df3-8c72-17450c359d01` | `CLEAN_ENTRANCE_LOOK` — no row yet; insert when he ticks something |
+## What this means in AVT
 
-## Mirroring the record into AVT (any agent with the AVT connector)
+- Outfits (`continuity_entities` kind=outfit on variation `882ec381-…`): `garment_feature_ids` carry every Wardrobe piece
+  the look wears; `description` carries the generic underlayer ("button-up and tie" / "t-shirt") and the hat if it is not
+  yet a row. Scenes (`variation_scenes.outfit_key`) point at them. The three existing outfits (`YSL_DENIM_LOOK`,
+  `YSL_LEATHER_COAT`, `YSL_JACKET`) are the agent's to revise under these rules; `CLEAN_ENTRANCE_LOOK` is still to create.
+- A look with more exact pieces than the plain still route carries (3 photos incl. face, 1 more taken by the CRT in
+  the viewer) **blocks that route** (planner: required-reference overflow is blocking) and needs a multi-picture method.
+  Never trim the pieces to fit; the method is the thing to change.
+- Four pieces are in Fendi's pictures but not in the Wardrobe: the lambskin coat and the Cassandre khaki, Y Varsity
+  black/ivory and Saint Laurent beige/ivory caps. They are included and exact like the rest; the generator can only
+  send a Wardrobe row, so add them (coat → Outerwear, each cap → Accessory; the crops sent to Fendi on 7 Oct are the
+  files) before drawing a shot that wears them. Until then such a shot is blocked, by design.
 
-The page has a **Save to AVT** button that does this itself through the viewer's AVT connector — it is live only when the
-page is published with the `mcp` capability (that publish needs Fendi's permission in the authoring session; until then
-the button says AVT is not reachable). Mirroring by hand:
-
-1. `ArtifactData get choices/current`. Every ticked piece that is `onFile` (a `character_features` id, not `new-*`) goes
-   into `garment_feature_ids`, in row order (outerwear, top, bottom, hat, accessory, footwear). `described[<col>]` is what he wears that is NOT a Wardrobe piece (generic button-up, tie, slacks): words in the outfit `description`, never a `garment_feature_ids` entry. A ticked Wardrobe piece is never demoted to words.
-2. The plain still route carries 3 photos (face + screen take slots): a scene with more exact pieces than it can send
-   BLOCKS that route (planner: required-reference overflow is blocking) and needs a multi-picture method. Never trim
-   the list to fit; report the count and the method question to Fendi.
-3. `avt_update continuity_entities` by id with `garment_feature_ids` and `description` ("Worn: …; …") — the trigger bumps
-   `version`; `avt_update variation_scenes` by id with `outfit_key`. For `entrance`, `avt_insert` the outfit row first
-   (`kind: outfit, key: CLEAN_ENTRANCE_LOOK, version: 1, constraints: "", reference_asset_ids: []`).
-4. `new-coat`, `new-cap-*` are not Wardrobe rows yet (coat → Outerwear, caps → Accessory; photos in this folder's sibling
-   files were sent to Fendi on 7 Oct). They go in the description as words until uploaded; a scene that marks them ★ is blocked by the page.
-
-Nothing here spends. Verify after a mirror: `avt_select continuity_entities` kind=outfit on the variation shows the new
-`version` and ids; `avt_select variation_scenes` shows the keys.
+Nothing here spends.
