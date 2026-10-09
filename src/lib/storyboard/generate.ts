@@ -36,7 +36,7 @@ import {
   type ShotContinuity,
 } from "@/lib/continuity/entities";
 import { castSource, type ShotCast } from "@/lib/casting/cast";
-import { effectiveGarments, jobOutfitRecord, outfitWords, type ShotOutfit } from "@/lib/wardrobe/outfits";
+import { effectiveGarments, jobOutfitRecord, outfitWords, type OutfitRecord, type ShotOutfit } from "@/lib/wardrobe/outfits";
 import { writtenFrom, type StoryboardBox } from "./boxes";
 import { activeVariationIdOf } from "@/lib/queries/variations";
 import { resolveEvents, type EventClock } from "./events";
@@ -339,11 +339,13 @@ export function madeFromBox(box: StoryboardBox): MadeFrom {
   return { treatment: w.treatment, sceneWrittenAt: w.at, shotUpdatedAt: box.updatedAt || null };
 }
 
-function runContext(projectId: string, box: StoryboardBox, lookPresetId: string | undefined, references?: StillReferencesOnJob | null, outfit?: ShotOutfit | null) {
+export function runContext(projectId: string, box: StoryboardBox, lookPresetId: string | undefined, references?: StillReferencesOnJob | null, outfit?: ShotOutfit | null, recorded?: { outfit: OutfitRecord | null }) {
   const { id, look } = resolveLookPreset(lookPresetId ?? DEFAULT_BOX_LOOK);
   // the pieces the job is dressed with are the ones sent as garment pictures (the plan), else the outfit's own
   const pieces = references ? references.sent.filter((r) => r.role === "garment").map((r) => r.id) : outfit ? effectiveGarments(box.spec, outfit).ids : [];
-  const record = outfit ? jobOutfitRecord(outfit, pieces) : null;
+  // `recorded`: what the job's picture actually wears is known from elsewhere (a clip animated from an existing
+  // picture wears that picture's clothes) — that record, or none when it is unknown, never the outfit asked for now
+  const record = recorded ? recorded.outfit : outfit ? jobOutfitRecord(outfit, pieces) : null;
   return {
     projectId,
     variationId: box.variationId,
@@ -527,6 +529,11 @@ export async function generateBoxClip(input: {
   linkLines?: string[];
   /** What the shot wears (wardrobe/outfits.ts). */
   outfit?: ShotOutfit | null;
+  /**
+   * The outfit the existing picture at `stillPath` was recorded wearing (its own job's record), or null when that
+   * is not known. The clip is recorded wearing THIS, not the outfit asked for now. Ignored when no picture is given.
+   */
+  stillOutfit?: OutfitRecord | null;
 }): Promise<SubmitResult> {
   const deps = await browserRunnerDeps();
   const shot = clipShot(input.box, input.lyricLines, {
@@ -541,7 +548,7 @@ export async function generateBoxClip(input: {
   });
   const result = await submitShot(
     shot,
-    runContext(input.projectId, input.box, input.lookPresetId, null, input.outfit),
+    runContext(input.projectId, input.box, input.lookPresetId, null, input.outfit, input.stillPath ? { outfit: input.stillOutfit ?? null } : undefined),
     deps,
   );
   // an image drawn on the way to the clip belongs to the box too (as a version; the clip will be what shows)
