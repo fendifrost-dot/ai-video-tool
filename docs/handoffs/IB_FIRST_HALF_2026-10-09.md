@@ -23,6 +23,15 @@ after: `c005` has `override_json: null` and no shot-level garments.
 The baseline duplicate, made minutes earlier, is what made the recovery exact. Every subsequent write looked the
 id up by `spec_key` first.
 
+> **SUPERSEDED — do not act on the paragraph above as a current state.** At 07:33 UTC Fendi wrote an
+> **intentional ground-fire correction override** onto `c005` himself: it removes the YSL monogram wording from
+> the ground-level shot ("No visible YSL letters, monogram geometry, or logo-shaped cleared paths") and sets
+> `manual: ["direction","frame","continuity"]`. That is current creative work.
+>
+> **`c005.override_json` must NOT be restored to `null`.** The restore described above was correct at 06:54 and
+> is finished history; anything later is his. The same applies to the other ground shots he corrected through
+> the canonical resolver — c003, c004, c006, c008, c009, c010 — and their locks.
+
 ## 1 · Confirmed board facts — VERIFIED
 
 Active variation is candidate 5. Board runs **0 → 201.87 s**, 43 shots; the half-way point **100.94 s** falls
