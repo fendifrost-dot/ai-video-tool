@@ -26,7 +26,7 @@ import { DEFAULT_STILL_REFERENCE_CAP, useStillReferenceSupport } from "@/lib/que
 import { linkPictureNeeds, linkPromptLines, linksOfBox, type ResolvedLink } from "@/lib/storyboard/links";
 import { planStillReferences, referenceSummary, undeliveredProblem, type ReferenceProblem, type StillReference } from "@/lib/storyboard/references";
 import { useCharacterFeatures } from "@/lib/queries/characterFeatures";
-import { actionIsPerforming, productionRoute, routeLine, type ProductionRoute } from "@/lib/storyboard/route";
+import { actionIsPerforming, productionRoute, routeLine, type ProductionRoute, unmetRequirement, type UnmetRequirement } from "@/lib/storyboard/route";
 import type { StillReferencesOnJob } from "@/lib/worldBatch/runner";
 import { useContinuityEntities, useContinuityMutations } from "@/lib/queries/continuity";
 import { useSceneMutations, useScenes, type SceneWrite } from "@/lib/queries/scenes";
@@ -250,6 +250,11 @@ export type StoryboardController = {
   piecesOf: (box: StoryboardBox) => { id: string; label: string | null; from: "shot" | "outfit" | "none" }[];
   /** What stands between a shot and being dressed as the treatment asks (missing selection, contradiction, missing piece). */
   outfitFlagsOf: (box: StoryboardBox) => OutfitFlag[];
+  /**
+   * The gap between what the shot PLAYS and what it REQUIRES — null when there is none. A performance shot whose
+   * scene redresses him, playing the inherited take, is reported here rather than reading as finished.
+   */
+  unmetOf: (box: StoryboardBox) => UnmetRequirement | null;
   /** Why the shot's selected image no longer matches what it wears (the outfit changed since), or null. */
   outfitOutdatedOf: (box: StoryboardBox) => string | null;
   /** The scenes the writer's own wardrobe words imply, resolved against the outfits — for the director to adopt. */
@@ -446,6 +451,8 @@ export function useStoryboardController(projectId: string): StoryboardController
   );
   const wardrobe = useMemo(() => (wardrobeQuery.data ?? []).map((w) => ({ id: w.id, label: w.label, featureType: w.feature_type })), [wardrobeQuery.data]);
   const wardrobeIds = useMemo(() => new Set(wardrobe.map((w) => w.id)), [wardrobe]);
+  // so a dropped piece is named in the flag ("leaves out Glasses — Cazal MOD octagonal"), not shown as a uuid
+  const wardrobeLabels = useMemo(() => new Map(wardrobe.map((w) => [w.id, w.label])), [wardrobe]);
   const piecesOf = useCallback(
     (box: StoryboardBox) => {
       const g = effectiveGarments(box.spec, outfitOf(box));
@@ -456,8 +463,8 @@ export function useStoryboardController(projectId: string): StoryboardController
   );
   const outfitFlagsOf = useCallback(
     // while the wardrobe is still loading, no piece is reported missing
-    (box: StoryboardBox) => outfitFlags(box.spec, outfitOf(box), wardrobeQuery.data === undefined ? new Set(effectiveGarments(box.spec, outfitOf(box)).ids) : wardrobeIds, outfits),
-    [outfitOf, wardrobeIds, wardrobeQuery.data, outfits],
+    (box: StoryboardBox) => outfitFlags(box.spec, outfitOf(box), wardrobeQuery.data === undefined ? new Set(effectiveGarments(box.spec, outfitOf(box)).ids) : wardrobeIds, outfits, wardrobeLabels),
+    [outfitOf, wardrobeIds, wardrobeQuery.data, outfits, wardrobeLabels],
   );
   const sceneRun = useCallback(async (work: () => Promise<unknown>) => {
     try {
@@ -484,6 +491,14 @@ export function useStoryboardController(projectId: string): StoryboardController
       return productionRoute(box.spec, { hasTake: restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs).ok, links: linksOf(box), artist });
     },
     [mediaByBox, syncs, linksOf, castOf],
+  );
+
+  const unmetOf = useCallback(
+    (box: StoryboardBox) => {
+      const m = mediaByBox.get(box.id) ?? EMPTY_MEDIA;
+      return unmetRequirement(routeOf(box), { onBaseTake: m.showing?.base === true, empty: !m.showing });
+    },
+    [mediaByBox, routeOf],
   );
   const entityUsage = useMemo(() => usageOfEntities(boxes.map((b, i) => ({ number: i + 1, spec: b.spec }))), [boxes]);
   const picturesOf = useCallback(
@@ -1447,6 +1462,7 @@ export function useStoryboardController(projectId: string): StoryboardController
     outfitOf,
     piecesOf,
     outfitFlagsOf,
+    unmetOf,
     outfitOutdatedOf,
     proposedScenes,
     createOutfit,

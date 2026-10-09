@@ -147,12 +147,22 @@ describe("what a shot wears", () => {
 describe("the pieces and the words generation receives", () => {
   it("are the outfit's pieces unless the shot names its own", () => {
     const r = resolveOutfit(spec(), { start: 43.14 }, scenes, index);
-    expect(effectiveGarments(spec(), r)).toEqual({ ids: ["jacket", "jeans"], from: "outfit" });
+    expect(effectiveGarments(spec(), r)).toEqual({
+      ids: ["jacket", "jeans"],
+      from: "outfit",
+      dropped: [],
+    });
+    // a shot that names its own pieces still wears exactly those — and now says what that cost
     expect(effectiveGarments(spec({}, { garments: ["track"] }), r)).toEqual({
       ids: ["track"],
       from: "shot",
+      dropped: ["jacket", "jeans"],
     });
-    expect(effectiveGarments(spec(), { outfit: null })).toEqual({ ids: [], from: "none" });
+    expect(effectiveGarments(spec(), { outfit: null })).toEqual({
+      ids: [],
+      from: "none",
+      dropped: [],
+    });
   });
   it("words: the name, then the description and constraints", () => {
     expect(outfitWords(DENIM)).toBe(
@@ -192,6 +202,38 @@ describe("the treatment's words against the outfits", () => {
     const r2 = resolveOutfit(spec(), { start: 43.14 }, scenes, bare);
     expect(outfitFlags(spec(), r2, onFile, [DENIM]).map((x) => x.level)).toEqual(["info"]);
   });
+  it("a shot exception that drops the outfit's pieces NAMES them, and warns rather than noting it", () => {
+    // The real defect, 9 Oct 2026: c012/c013/c015 of Interrupted Broadcast named a jacket and a cap out of a
+    // six-piece look and silently lost Fendi's glasses with the rest. "This shot names its own pieces" was an
+    // `info` that told nobody what had gone.
+    const r = resolveOutfit(spec(), { start: 43.14 }, scenes, index);
+    const exception = spec({}, { garments: ["jacket"] });
+    const f = outfitFlags(
+      exception,
+      r,
+      onFile,
+      [DENIM],
+      new Map([["jeans", "YSL Mick Long Jeans"]]),
+    );
+    const drop = f.find((x) => x.text.includes("leaves out"))!;
+    expect(drop.level).toBe("warning");
+    expect(drop.text).toContain("YSL Mick Long Jeans");
+    expect(drop.fix).toContain("on purpose");
+  });
+
+  it("names the piece by id when no label was supplied, rather than saying nothing", () => {
+    const r = resolveOutfit(spec(), { start: 43.14 }, scenes, index);
+    const f = outfitFlags(spec({}, { garments: ["jacket"] }), r, onFile, [DENIM]);
+    expect(f.find((x) => x.text.includes("leaves out"))!.text).toContain("jeans");
+  });
+
+  it("an exception that leaves nothing out is still only an `info`", () => {
+    const r = resolveOutfit(spec(), { start: 43.14 }, scenes, index);
+    const f = outfitFlags(spec({}, { garments: ["jacket", "jeans"] }), r, onFile, [DENIM]);
+    expect(f.map((x) => x.level)).toEqual(["info"]);
+    expect(f[0].text).toContain("leaves none of them out");
+  });
+
   it("a performance shot is his footage: no outfit flags", () => {
     const r = resolveOutfit(spec({ shotType: "performance" }), { start: 200 }, scenes, index);
     expect(outfitFlags(spec({ shotType: "performance" }), r, onFile, [DENIM])).toEqual([]);

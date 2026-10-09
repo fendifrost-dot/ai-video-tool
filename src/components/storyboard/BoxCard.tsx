@@ -43,6 +43,7 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
   const busy = sb.busyOf(box.id);
   const est = sb.estimatesOf(box);
   const blocked = sb.rewriteBlockedReason(box);
+  const unmet = sb.unmetOf(box);
   const working = !!busy || job?.state === "working" || job?.state === "saving";
 
   return (
@@ -120,6 +121,17 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
             {sb.wardrobeGapOf(box) && (
               <p className="mt-1 rounded border border-amber-500/30 bg-amber-500/5 px-2 py-1 text-[11px] leading-snug text-amber-200" data-testid="box-wardrobe-gap">
                 {sb.wardrobeGapOf(box)}
+              </p>
+            )}
+            {/* The take standing in for work not done. Red, not amber: an unfinished shot that LOOKS finished is the
+                failure this card exists to prevent — a draft is watchable, but it must never read as done. */}
+            {unmet && (
+              <p
+                className="mt-1 rounded border border-red-500/40 bg-red-500/10 px-2 py-1 text-[11px] leading-snug text-red-200"
+                data-testid="box-unmet"
+                data-unmet-kind={unmet.kind}
+              >
+                {unmet.text} <span className="text-red-200/70">{unmet.fix}</span>
               </p>
             )}
             <p className="mt-1 line-clamp-4 text-sm leading-snug text-foreground/85" data-testid="box-scene">

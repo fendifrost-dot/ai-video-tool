@@ -110,6 +110,7 @@ function controller(over: Partial<StoryboardController> = {}): StoryboardControl
     scenes: [],
     outfitOf: () => ({ outfit: null, source: "none", mode: "inherit", scene: null, missingKey: null }),
     piecesOf: () => [],
+    unmetOf: () => null,
     outfitFlagsOf: () => [],
     outfitOutdatedOf: () => null,
     proposedScenes: [],
