@@ -13,17 +13,53 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { boxFromRow, boxesFromRows, type BoxRow } from "@/lib/storyboard/boxes";
-import { entityFromRow, indexEntities, resolveContinuity, type ContinuityEntity, type LookRef } from "@/lib/continuity/entities";
+import {
+  entityFromRow,
+  indexEntities,
+  resolveContinuity,
+  type ContinuityEntity,
+  type LookRef,
+} from "@/lib/continuity/entities";
 import { resolveCast, castProblems } from "@/lib/casting/cast";
 import { linksOfBox, linkPictureNeeds, linkPromptLines } from "@/lib/storyboard/links";
 import { planStillReferences, type StillReference } from "@/lib/storyboard/references";
-import { boxShot, clipShot, clipTemporalPlan, entityShot, madeFromBox, DEFAULT_BOX_LOOK, STORYBOARD_RUN, ENTITY_RUN } from "@/lib/storyboard/generate";
+import {
+  boxShot,
+  clipShot,
+  clipTemporalPlan,
+  entityShot,
+  madeFromBox,
+  DEFAULT_BOX_LOOK,
+  STORYBOARD_RUN,
+  ENTITY_RUN,
+} from "@/lib/storyboard/generate";
 import { eventClock } from "@/lib/storyboard/events";
 import { resolveLookPreset } from "@/lib/shotCompiler/lookPresets";
 import { WARDROBE_FEATURE_TYPES } from "@/lib/queries/wardrobe";
-import { submitShot, submitStills, type RunnerDeps, type StillReferencesOnJob } from "@/lib/worldBatch/runner";
+import {
+  effectiveGarments,
+  jobOutfitRecord,
+  resolveOutfit,
+  sceneFromRow,
+  type OutfitRecord,
+  type Scene,
+  type SceneRow,
+  type ShotOutfit,
+} from "@/lib/wardrobe/outfits";
+import {
+  submitShot,
+  submitStills,
+  type RunnerDeps,
+  type StillReferencesOnJob,
+} from "@/lib/worldBatch/runner";
 import { stillFailure } from "@/lib/worldBatch/requests";
-import { boxMedia, imageForClip, planAssign, type Assignment, type MediaAsset } from "@/lib/storyboard/media";
+import {
+  boxMedia,
+  imageForClip,
+  planAssign,
+  type Assignment,
+  type MediaAsset,
+} from "@/lib/storyboard/media";
 import { mediaAssetOf } from "@/lib/queries/storyboard";
 import { lyricLineFromRow } from "@/lib/lyrics/lyricsForShot";
 import { aspectOfProject } from "@/lib/project/aspect";
@@ -34,7 +70,10 @@ import { readSupport, DEFAULT_STILL_REFERENCE_CAP } from "@/lib/queries/stillRef
 /** Effects the app's flow performs, each answered by the AI through one MCP tool call; answers are kept on disk. */
 class Effects {
   private n = 0;
-  constructor(private dir: string, private scope: string) {
+  constructor(
+    private dir: string,
+    private scope: string,
+  ) {
     mkdirSync(join(dir, "answers"), { recursive: true });
   }
   /**
@@ -43,8 +82,13 @@ class Effects {
    * would never find its answer and would ask the same update again on every run.
    */
   ask<T>(tool: string, args: unknown): T {
-    const stable = JSON.parse(JSON.stringify(args, (key, value) => (key === "updated_at" ? undefined : value)));
-    const digest = createHash("sha256").update(JSON.stringify({ scope: this.scope, n: this.n, tool, args: stable })).digest("hex").slice(0, 12);
+    const stable = JSON.parse(
+      JSON.stringify(args, (key, value) => (key === "updated_at" ? undefined : value)),
+    );
+    const digest = createHash("sha256")
+      .update(JSON.stringify({ scope: this.scope, n: this.n, tool, args: stable }))
+      .digest("hex")
+      .slice(0, 12);
     const id = `${this.scope}-${String(this.n).padStart(2, "0")}-${tool}-${digest}`;
     this.n += 1;
     const file = join(this.dir, "answers", `${id}.json`);
@@ -72,12 +116,25 @@ type Bundle = {
   lyricLines: Record<string, unknown>[];
   characterFeatures: Record<string, unknown>[];
   looks: LookRef[];
+  /** The video's scenes (variation_scenes): which stretch wears which outfit. Absent = no scenes fetched: no shot inherits an outfit. */
+  scenes: Record<string, unknown>[];
   support: Record<string, unknown> | null;
   /** The song analysis row (song_analyses), when fetched: its beat map is the clock timed events resolve on. */
   analysis: Record<string, unknown> | null;
 };
 
-const BUNDLE_FILES = ["project", "shots", "entities", "assets", "assignments", "lyric_lines", "character_features", "looks", "support"] as const;
+const BUNDLE_FILES = [
+  "project",
+  "shots",
+  "entities",
+  "assets",
+  "assignments",
+  "lyric_lines",
+  "character_features",
+  "looks",
+  "scenes",
+  "support",
+] as const;
 
 function readBundle(dir: string): Bundle {
   const b = (name: string) => JSON.parse(readFileSync(join(dir, "bundle", `${name}.json`), "utf8"));
@@ -93,8 +150,11 @@ function readBundle(dir: string): Bundle {
     lyricLines: b("lyric_lines"),
     characterFeatures: b("character_features"),
     looks: existsSync(join(dir, "bundle", "looks.json")) ? b("looks") : [],
+    scenes: existsSync(join(dir, "bundle", "scenes.json")) ? b("scenes") : [],
     support: existsSync(join(dir, "bundle", "support.json")) ? b("support") : null,
-    analysis: existsSync(join(dir, "bundle", "analysis.json")) ? ((b("analysis") as Record<string, unknown>[])[0] ?? null) : null,
+    analysis: existsSync(join(dir, "bundle", "analysis.json"))
+      ? ((b("analysis") as Record<string, unknown>[])[0] ?? null)
+      : null,
   };
 }
 
@@ -132,35 +192,59 @@ function mcpDeps(fx: Effects, userId: string): RunnerDeps {
     inspectStill: undefined,
     generateStills: async (body) => {
       // avt_call answers { function, http_status, answer }
-      const r = fx.ask<{ http_status?: number; answer?: Record<string, unknown> }>("avt_call", { function: "world-still-proxy", method: "POST", body });
+      const r = fx.ask<{ http_status?: number; answer?: Record<string, unknown> }>("avt_call", {
+        function: "world-still-proxy",
+        method: "POST",
+        body,
+      });
       const data = r.answer ?? (r as unknown as Record<string, unknown>);
-      if (r.http_status && r.http_status >= 400) return { ok: false, error: `${r.http_status} ${JSON.stringify(data).slice(0, 300)}` };
+      if (r.http_status && r.http_status >= 400)
+        return { ok: false, error: `${r.http_status} ${JSON.stringify(data).slice(0, 300)}` };
       if (data.ok === false) return { ...(data as object), ok: false, error: stillFailure(data) };
-      for (const st of (data.stills as { path?: string; assetId?: string }[] | undefined) ?? []) if (st.path && st.assetId) filedAssets.set(st.path, st.assetId);
+      for (const st of (data.stills as { path?: string; assetId?: string }[] | undefined) ?? [])
+        if (st.path && st.assetId) filedAssets.set(st.path, st.assetId);
       return data as Awaited<ReturnType<RunnerDeps["generateStills"]>>;
     },
     insertJob: async (row) => {
-      const r = fx.ask<{ rows?: { id: string }[] } | { id: string }[]>("avt_insert", { table: "provider_jobs", rows: [{ user_id: userId, ...row }] });
-      const rows = Array.isArray(r) ? r : r.rows ?? [];
+      const r = fx.ask<{ rows?: { id: string }[] } | { id: string }[]>("avt_insert", {
+        table: "provider_jobs",
+        rows: [{ user_id: userId, ...row }],
+      });
+      const rows = Array.isArray(r) ? r : (r.rows ?? []);
       const id = rows[0]?.id;
       if (!id) throw new Error("the job row came back without an id");
       return id;
     },
     updateJob: async (id, patch) => {
-      fx.ask("avt_update", { table: "provider_jobs", filters: [{ column: "id", op: "eq", value: id }], values: patch });
+      fx.ask("avt_update", {
+        table: "provider_jobs",
+        filters: [{ column: "id", op: "eq", value: id }],
+        values: patch,
+      });
     },
     // the page's browserDeps: proxy-provider-call carries the Control Center call; a reply with ok:false is a failure
     callProxy: async (endpoint, body) => {
-      const r = fx.ask<{ http_status?: number; answer?: Record<string, unknown> }>("avt_call", { function: "proxy-provider-call", method: "POST", body: { endpoint, method: "POST", body } });
+      const r = fx.ask<{ http_status?: number; answer?: Record<string, unknown> }>("avt_call", {
+        function: "proxy-provider-call",
+        method: "POST",
+        body: { endpoint, method: "POST", body },
+      });
       const data = r.answer ?? (r as unknown as Record<string, unknown>);
-      if ((r.http_status && r.http_status >= 400) || data.ok === false) throw new Error(`proxy-provider-call ${r.http_status ?? ""}: ${JSON.stringify(data).slice(0, 400)}`);
+      if ((r.http_status && r.http_status >= 400) || data.ok === false)
+        throw new Error(
+          `proxy-provider-call ${r.http_status ?? ""}: ${JSON.stringify(data).slice(0, 400)}`,
+        );
       return data;
     },
   };
 }
 
 /** The asset id of each filed still: from the generator's answer when it said, else looked up by path. */
-function assetsByPath(fx: Effects, projectId: string, paths: readonly string[]): Map<string, string> {
+function assetsByPath(
+  fx: Effects,
+  projectId: string,
+  paths: readonly string[],
+): Map<string, string> {
   const out = new Map<string, string>();
   const missing: string[] = [];
   for (const p of paths) {
@@ -169,8 +253,19 @@ function assetsByPath(fx: Effects, projectId: string, paths: readonly string[]):
     else missing.push(p);
   }
   if (missing.length) {
-    const found = fx.ask<Record<string, unknown>[] | { rows: Record<string, unknown>[] }>("avt_select", { table: "project_assets", columns: "id, file_url", filters: [{ column: "project_id", op: "eq", value: projectId }, { column: "file_url", op: "in", value: missing }] });
-    for (const r of Array.isArray(found) ? found : found.rows) out.set(String(r.file_url), String(r.id));
+    const found = fx.ask<Record<string, unknown>[] | { rows: Record<string, unknown>[] }>(
+      "avt_select",
+      {
+        table: "project_assets",
+        columns: "id, file_url",
+        filters: [
+          { column: "project_id", op: "eq", value: projectId },
+          { column: "file_url", op: "in", value: missing },
+        ],
+      },
+    );
+    for (const r of Array.isArray(found) ? found : found.rows)
+      out.set(String(r.file_url), String(r.id));
   }
   return out;
 }
@@ -180,17 +275,111 @@ function assetsByPath(fx: Effects, projectId: string, paths: readonly string[]):
 function cmdBundle(projectId: string, variationId: string, artistId: string | null) {
   // what the AI fetches with avt_select, one file each, in this order
   const reads = [
-    { file: "project", tool: "avt_select", args: { table: "video_projects", filters: [{ column: "id", op: "eq", value: projectId }] } },
-    { file: "shots", tool: "avt_select", args: { table: "shots", filters: [{ column: "variation_id", op: "eq", value: variationId }], order: { column: "shot_number", ascending: true }, limit: 500 } },
-    { file: "entities", tool: "avt_select", args: { table: "continuity_entities", filters: [{ column: "variation_id", op: "eq", value: variationId }, { column: "archived", op: "eq", value: false }], limit: 500 } },
-    { file: "assets", tool: "avt_select", args: { table: "project_assets", filters: [{ column: "project_id", op: "eq", value: projectId }], limit: 500 } },
-    { file: "assignments", tool: "avt_select", args: { table: "shot_asset_assignments", filters: [{ column: "variation_id", op: "eq", value: variationId }], limit: 500 } },
-    { file: "lyric_lines", tool: "avt_select", args: { table: "lyric_lines", columns: "line_index, section, text, start_seconds, end_seconds, confidence, words_json", filters: [{ column: "project_id", op: "eq", value: projectId }], order: { column: "line_index", ascending: true }, limit: 500 } },
-    { file: "character_features", tool: "avt_select", args: { table: "character_features", filters: artistId ? [{ column: "artist_id", op: "eq", value: artistId }] : [], limit: 500 } },
-    { file: "analysis", tool: "avt_select", args: { table: "song_analyses", columns: "id, beat_map_json", filters: [{ column: "project_id", op: "eq", value: projectId }], limit: 1 } },
-    { file: "support", tool: "avt_call", args: { function: "world-still-proxy", method: "POST", body: { projectId, prompt: "capability probe", dryRun: true, references: [] } } },
+    {
+      file: "project",
+      tool: "avt_select",
+      args: { table: "video_projects", filters: [{ column: "id", op: "eq", value: projectId }] },
+    },
+    {
+      file: "shots",
+      tool: "avt_select",
+      args: {
+        table: "shots",
+        filters: [{ column: "variation_id", op: "eq", value: variationId }],
+        order: { column: "shot_number", ascending: true },
+        limit: 500,
+      },
+    },
+    {
+      file: "entities",
+      tool: "avt_select",
+      args: {
+        table: "continuity_entities",
+        filters: [
+          { column: "variation_id", op: "eq", value: variationId },
+          { column: "archived", op: "eq", value: false },
+        ],
+        limit: 500,
+      },
+    },
+    {
+      file: "assets",
+      tool: "avt_select",
+      args: {
+        table: "project_assets",
+        filters: [{ column: "project_id", op: "eq", value: projectId }],
+        limit: 500,
+      },
+    },
+    {
+      file: "assignments",
+      tool: "avt_select",
+      args: {
+        table: "shot_asset_assignments",
+        filters: [{ column: "variation_id", op: "eq", value: variationId }],
+        limit: 500,
+      },
+    },
+    {
+      file: "lyric_lines",
+      tool: "avt_select",
+      args: {
+        table: "lyric_lines",
+        columns: "line_index, section, text, start_seconds, end_seconds, confidence, words_json",
+        filters: [{ column: "project_id", op: "eq", value: projectId }],
+        order: { column: "line_index", ascending: true },
+        limit: 500,
+      },
+    },
+    {
+      file: "scenes",
+      tool: "avt_select",
+      args: {
+        table: "variation_scenes",
+        filters: [{ column: "variation_id", op: "eq", value: variationId }],
+        order: { column: "start_seconds", ascending: true },
+        limit: 200,
+      },
+    },
+    {
+      file: "character_features",
+      tool: "avt_select",
+      args: {
+        table: "character_features",
+        filters: artistId ? [{ column: "artist_id", op: "eq", value: artistId }] : [],
+        limit: 500,
+      },
+    },
+    {
+      file: "analysis",
+      tool: "avt_select",
+      args: {
+        table: "song_analyses",
+        columns: "id, beat_map_json",
+        filters: [{ column: "project_id", op: "eq", value: projectId }],
+        limit: 1,
+      },
+    },
+    {
+      file: "support",
+      tool: "avt_call",
+      args: {
+        function: "world-still-proxy",
+        method: "POST",
+        body: { projectId, prompt: "capability probe", dryRun: true, references: [] },
+      },
+    },
   ];
-  console.log(JSON.stringify({ reads, note: "save each result as <workdir>/bundle/<file>.json (the rows array; for support, the call's body)" }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        reads,
+        note: "save each result as <workdir>/bundle/<file>.json (the rows array; for support, the call's body)",
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 function loadWorld(dir: string) {
@@ -201,25 +390,67 @@ function loadWorld(dir: string) {
   const aspect = aspectOfProject(project);
   const boxes = boxesFromRows(bundle.shots);
   const board = boxes.map((b, i) => ({ ...b, shotNumber: i + 1 }));
-  const entities = bundle.entities.map((r) => entityFromRow(r as never)).filter((e): e is ContinuityEntity => !!e);
+  const entities = bundle.entities
+    .map((r) => entityFromRow(r as never))
+    .filter((e): e is ContinuityEntity => !!e);
   const entityIndex = indexEntities(entities);
-  const assets = new Map<string, MediaAsset>(bundle.assets.map((a) => [String(a.id), mediaAssetOf(a as never)]));
+  const assets = new Map<string, MediaAsset>(
+    bundle.assets.map((a) => [String(a.id), mediaAssetOf(a as never)]),
+  );
   const assignments = bundle.assignments.map(assignmentFromRow);
   const lyricLines = bundle.lyricLines.map((r) => lyricLineFromRow(r as never));
-  const features = bundle.characterFeatures as { id: string; feature_type: string; label: string; is_primary?: boolean; storage_path?: string | null }[];
+  const features = bundle.characterFeatures as {
+    id: string;
+    feature_type: string;
+    label: string;
+    is_primary?: boolean;
+    storage_path?: string | null;
+  }[];
   const faces = features.filter((f) => f.feature_type === "face" && !!f.storage_path);
-  const face = faces.find((f) => f.label === "neutral" && f.is_primary) ?? faces.find((f) => f.is_primary) ?? faces[0] ?? null;
+  const face =
+    faces.find((f) => f.label === "neutral" && f.is_primary) ??
+    faces.find((f) => f.is_primary) ??
+    faces[0] ??
+    null;
   const artistId = (project.artist_id as string | null) ?? null;
   const artistFace = face && artistId ? { id: face.id, artistId } : null;
-  const wardrobe = features.filter((f) => (WARDROBE_FEATURE_TYPES as readonly string[]).includes(f.feature_type)).map((f) => ({ id: f.id, label: f.label }));
-  const support = bundle.support ? readSupport(bundle.support) : { accepted: false, max: DEFAULT_STILL_REFERENCE_CAP, model: null };
+  const wardrobe = features
+    .filter((f) => (WARDROBE_FEATURE_TYPES as readonly string[]).includes(f.feature_type))
+    .map((f) => ({ id: f.id, label: f.label }));
+  const support = bundle.support
+    ? readSupport(bundle.support)
+    : { accepted: false, max: DEFAULT_STILL_REFERENCE_CAP, model: null };
+  const scenes: Scene[] = bundle.scenes.map((r) => sceneFromRow(r as SceneRow));
+  // what a box wears, as the page resolves it: the shot's own record, else its scene's outfit (wardrobe/outfits.ts)
+  const outfitOf = (box: StoryboardBox): ShotOutfit =>
+    resolveOutfit(box.spec, { start: box.start }, scenes, entityIndex);
   const selectedStill = (boxId: string): MediaAsset | null => {
     const box = boxes.find((b) => b.id === boxId);
     if (!box) return null;
     const pick = imageForClip(boxMedia({ box, assignments, assets, syncs: [] }).items);
     return pick && pick.asset.bucket === "project-references" ? pick.asset : null;
   };
-  return { bundle, project, projectId, userId, aspect, boxes, board, entities, entityIndex, assets, assignments, lyricLines, artistFace, wardrobe, support, looks: bundle.looks, selectedStill };
+  return {
+    bundle,
+    project,
+    projectId,
+    userId,
+    aspect,
+    boxes,
+    board,
+    entities,
+    entityIndex,
+    assets,
+    assignments,
+    lyricLines,
+    artistFace,
+    wardrobe,
+    support,
+    looks: bundle.looks,
+    scenes,
+    outfitOf,
+    selectedStill,
+  };
 }
 
 /** The still of one box, exactly as the page's "Generate image" would ask for it. */
@@ -232,7 +463,8 @@ async function cmdShot(dir: string, key: string) {
   // as the page does: a blocking cast problem stops the shot; a warning or an unsaid cast is said, not stopped
   const problems = castProblems(cast);
   const blockingCast = problems.filter((p) => p.level === "blocking");
-  if (blockingCast.length) throw new Error(`${key}: cast problems — ${blockingCast.map((p) => p.text).join("; ")}`);
+  if (blockingCast.length)
+    throw new Error(`${key}: cast problems — ${blockingCast.map((p) => p.text).join("; ")}`);
   for (const p of problems) console.error(`NOTE ${key}: ${p.text}`);
   const links = linksOfBox(box, w.board);
   const linkLines = linkPromptLines(links);
@@ -246,56 +478,170 @@ async function cmdShot(dir: string, key: string) {
     if (m.mode === "invent") continue;
     const own = m.entity.approvedAssetId ?? m.entity.referenceAssetIds[0] ?? null;
     if (own) extra.push({ source: "project_asset", id: own, role: "cast", label: m.entity.name });
-    else if (m.entity.cast?.role === "primary_artist" && m.entity.cast.artistId && w.artistFace && m.entity.cast.artistId === w.artistFace.artistId)
-      extra.push({ source: "character_feature", id: w.artistFace.id, role: "cast", label: m.entity.name });
+    else if (
+      m.entity.cast?.role === "primary_artist" &&
+      m.entity.cast.artistId &&
+      w.artistFace &&
+      m.entity.cast.artistId === w.artistFace.artistId
+    )
+      extra.push({
+        source: "character_feature",
+        id: w.artistFace.id,
+        role: "cast",
+        label: m.entity.name,
+      });
   }
   const onFile = new Map(w.wardrobe.map((g) => [g.id, g]));
+  const outfit = w.outfitOf(box);
+  if (outfit.missingKey)
+    throw new Error(
+      `${key}: wears outfit ${outfit.missingKey}, which this video has no outfit for`,
+    );
+  // the exact pieces: the shot's own, else the outfit's (the page's effectiveGarments)
+  const pieces = effectiveGarments(box.spec, outfit).ids;
   const plan = planStillReferences({
     isPerformance: box.spec.shotType === "performance",
     continuity,
     linkNeeds: needs,
-    garments: box.spec.wardrobe.garments.map((id) => ({ id, onFile: onFile.has(id) ? { id, label: onFile.get(id)!.label } : null })),
+    garments: pieces.map((id) => ({
+      id,
+      onFile: onFile.has(id) ? { id, label: onFile.get(id)!.label } : null,
+    })),
     extra,
     cap: w.support.max,
   });
   const blocking = plan.problems.filter((p) => p.level === "blocking");
-  if (blocking.length) throw new Error(`${key}: blocked before spend — ${blocking.map((p) => `${p.text} (${p.fix})`).join("; ")}`);
-  const references: StillReferencesOnJob = { sent: plan.sent, notSent: plan.notSent, legend: plan.legend, delivered: w.support.accepted };
-  const shot = boxShot(box, w.lyricLines, { aspect: w.aspect, continuity, cast, linkLines });
+  if (blocking.length)
+    throw new Error(
+      `${key}: blocked before spend — ${blocking.map((p) => `${p.text} (${p.fix})`).join("; ")}`,
+    );
+  const references: StillReferencesOnJob = {
+    sent: plan.sent,
+    notSent: plan.notSent,
+    legend: plan.legend,
+    delivered: w.support.accepted,
+  };
+  const shot = boxShot(box, w.lyricLines, {
+    aspect: w.aspect,
+    continuity,
+    cast,
+    linkLines,
+    outfit,
+  });
   const { id: lookPresetId, look } = resolveLookPreset(DEFAULT_BOX_LOOK);
   const fx = new Effects(dir, `shot-${key}`);
   const deps = mcpDeps(fx, w.userId);
   const select = box.spec.shotType !== "performance";
+  // the job keeps the outfit it was dressed with: the pieces actually sent as pictures (the page's runContext)
+  const outfitRecord: OutfitRecord | null = outfit.outfit
+    ? jobOutfitRecord(
+        outfit,
+        plan.sent.filter((r) => r.role === "garment").map((r) => r.id),
+      )
+    : null;
   const res = await submitStills(
     shot,
-    { projectId: w.projectId, variationId: box.variationId, runId: STORYBOARD_RUN, lookPresetId, look, shotIds: { [box.key]: box.id }, madeFrom: { [box.key]: madeFromBox(box) }, stillReferences: { [box.key]: references }, selectStill: select },
+    {
+      projectId: w.projectId,
+      variationId: box.variationId,
+      runId: STORYBOARD_RUN,
+      lookPresetId,
+      look,
+      shotIds: { [box.key]: box.id },
+      madeFrom: { [box.key]: madeFromBox(box) },
+      ...(outfitRecord ? { outfits: { [box.key]: outfitRecord } } : {}),
+      stillReferences: { [box.key]: references },
+      selectStill: select,
+    },
     deps,
   );
   // attach: the filed pictures → this box (project_assets.shot_id) and an assignment, the picked one selected
   const byPath = assetsByPath(fx, w.projectId, res.whole);
-  const ordered = [...res.whole].sort((a, b) => Number(b === res.picked) - Number(a === res.picked));
+  const ordered = [...res.whole].sort(
+    (a, b) => Number(b === res.picked) - Number(a === res.picked),
+  );
   let assignments = w.assignments;
   const assetIds: string[] = [];
   for (const path of ordered) {
     const assetId = byPath.get(path);
     if (!assetId) continue;
     assetIds.push(assetId);
-    fx.ask("avt_update", { table: "project_assets", filters: [{ column: "id", op: "eq", value: assetId }], values: { shot_id: box.id } });
-    const ops = planAssign({ assignments, shotId: box.id, assetId, role: "generated_image", select: select && path === res.picked });
+    fx.ask("avt_update", {
+      table: "project_assets",
+      filters: [{ column: "id", op: "eq", value: assetId }],
+      values: { shot_id: box.id },
+    });
+    const ops = planAssign({
+      assignments,
+      shotId: box.id,
+      assetId,
+      role: "generated_image",
+      select: select && path === res.picked,
+    });
     const now = new Date().toISOString();
     // unselects first, so the box never shows two selected items mid-way (queries/storyboard.ts applyAssignmentOps)
-    for (const o of ops) if (o.op === "update" && o.patch.is_primary === false) fx.ask("avt_update", { table: "shot_asset_assignments", filters: [{ column: "id", op: "eq", value: o.id }], values: { ...o.patch, updated_at: now } });
+    for (const o of ops)
+      if (o.op === "update" && o.patch.is_primary === false)
+        fx.ask("avt_update", {
+          table: "shot_asset_assignments",
+          filters: [{ column: "id", op: "eq", value: o.id }],
+          values: { ...o.patch, updated_at: now },
+        });
     for (const o of ops) {
-      if (o.op === "update" && o.patch.is_primary !== false) fx.ask("avt_update", { table: "shot_asset_assignments", filters: [{ column: "id", op: "eq", value: o.id }], values: { ...o.patch, updated_at: now } });
+      if (o.op === "update" && o.patch.is_primary !== false)
+        fx.ask("avt_update", {
+          table: "shot_asset_assignments",
+          filters: [{ column: "id", op: "eq", value: o.id }],
+          values: { ...o.patch, updated_at: now },
+        });
       if (o.op === "insert") {
-        const inserted = fx.ask<Record<string, unknown>[] | { rows: Record<string, unknown>[] }>("avt_insert", { table: "shot_asset_assignments", rows: [{ project_id: w.projectId, variation_id: box.variationId, shot_id: o.shotId, asset_id: o.assetId, role: o.role, is_primary: o.isPrimary, source_in_seconds: o.sourceIn, source_out_seconds: o.sourceOut, sort_order: o.sortOrder }] });
+        const inserted = fx.ask<Record<string, unknown>[] | { rows: Record<string, unknown>[] }>(
+          "avt_insert",
+          {
+            table: "shot_asset_assignments",
+            rows: [
+              {
+                project_id: w.projectId,
+                variation_id: box.variationId,
+                shot_id: o.shotId,
+                asset_id: o.assetId,
+                role: o.role,
+                is_primary: o.isPrimary,
+                source_in_seconds: o.sourceIn,
+                source_out_seconds: o.sourceOut,
+                sort_order: o.sortOrder,
+              },
+            ],
+          },
+        );
         const row = (Array.isArray(inserted) ? inserted : inserted.rows)[0];
         assignments = [...assignments, assignmentFromRow(row)];
       }
     }
   }
-  if (assetIds[0]) fx.ask("avt_update", { table: "provider_jobs", filters: [{ column: "id", op: "eq", value: res.rowId }], values: { result_asset_id: assetIds[0] } });
-  console.log("DONE " + JSON.stringify({ key, jobRowId: res.rowId, picked: res.picked, candidates: res.candidates.length, assetIds, costUsd: res.costUsd, referencesSent: references.delivered ? references.sent.length : 0, references: references.sent.map((r) => `${r.role}:${r.label}`), prompt: res.prompt }));
+  if (assetIds[0])
+    fx.ask("avt_update", {
+      table: "provider_jobs",
+      filters: [{ column: "id", op: "eq", value: res.rowId }],
+      values: { result_asset_id: assetIds[0] },
+    });
+  console.log(
+    "DONE " +
+      JSON.stringify({
+        key,
+        jobRowId: res.rowId,
+        picked: res.picked,
+        candidates: res.candidates.length,
+        assetIds,
+        costUsd: res.costUsd,
+        outfit: outfitRecord
+          ? `${outfitRecord.name} v${outfitRecord.version} (${outfitRecord.pieces.length} pieces sent)`
+          : null,
+        referencesSent: references.delivered ? references.sent.length : 0,
+        references: references.sent.map((r) => `${r.role}:${r.label}`),
+        prompt: res.prompt,
+      }),
+  );
 }
 
 /**
@@ -304,36 +650,112 @@ async function cmdShot(dir: string, key: string) {
  * the clip and puts it on the shot. A performance box is restaged from its take in the browser (the take is cut and
  * uploaded there), which this driver cannot do: it refuses one.
  */
-async function cmdClip(dir: string, key: string, opts: { ordered?: boolean; dryRun?: boolean } = {}) {
+async function cmdClip(
+  dir: string,
+  key: string,
+  opts: { ordered?: boolean; dryRun?: boolean } = {},
+) {
   const w = loadWorld(dir);
   const box = w.boxes.find((b) => b.key === key);
   if (!box) throw new Error(`no box ${key} on the board`);
-  if (box.spec.shotType === "performance") throw new Error(`${key} is a performance shot: its clip is a restaging of the take, cut in the browser — not made here`);
+  if (box.spec.shotType === "performance")
+    throw new Error(
+      `${key} is a performance shot: its clip is a restaging of the take, cut in the browser — not made here`,
+    );
   const still = w.selectedStill(box.id);
-  if (!still) throw new Error(`${key} has no selected image — generate and choose one first (shot ${key})`);
+  if (!still)
+    throw new Error(`${key} has no selected image — generate and choose one first (shot ${key})`);
   const continuity = resolveContinuity(box.spec, w.entityIndex, w.looks);
   const cast = resolveCast(box.spec, w.entityIndex);
   const blockingCast = castProblems(cast).filter((p) => p.level === "blocking");
-  if (blockingCast.length) throw new Error(`${key}: cast problems — ${blockingCast.map((p) => p.text).join("; ")}`);
+  if (blockingCast.length)
+    throw new Error(`${key}: cast problems — ${blockingCast.map((p) => p.text).join("; ")}`);
   const linkLines = linkPromptLines(linksOfBox(box, w.board));
   // the clock the page resolves timed events on: lyric timing, the song's beats (bundle/analysis.json when fetched), lighting states
-  const beats = w.bundle.analysis ? ((w.bundle.analysis as { beat_map_json?: { t: number }[] }).beat_map_json ?? null) : null;
-  const clock = eventClock(w.lyricLines, beats, w.entities.map((e) => ({ key: e.key, kind: e.kind, description: e.description, constraints: e.constraints })));
+  const beats = w.bundle.analysis
+    ? ((w.bundle.analysis as { beat_map_json?: { t: number }[] }).beat_map_json ?? null)
+    : null;
+  const clock = eventClock(
+    w.lyricLines,
+    beats,
+    w.entities.map((e) => ({
+      key: e.key,
+      kind: e.kind,
+      description: e.description,
+      constraints: e.constraints,
+    })),
+  );
   let plan = clipTemporalPlan(box, clock);
   if (plan.mode === "refused") {
-    if (!opts.ordered || plan.alternatives.length === 0) throw new Error(`${key}: ${plan.reason} (alternatives: ${plan.alternatives.join(", ") || "none"}; "clip ${key},ordered" asks for the beats in order)`);
+    if (!opts.ordered || plan.alternatives.length === 0)
+      throw new Error(
+        `${key}: ${plan.reason} (alternatives: ${plan.alternatives.join(", ") || "none"}; "clip ${key},ordered" asks for the beats in order)`,
+      );
     plan = clipTemporalPlan(box, clock, { allowOrdered: true });
   }
   const { id: lookPresetId, look } = resolveLookPreset(DEFAULT_BOX_LOOK);
-  const shot = clipShot(box, w.lyricLines, { aspect: w.aspect, continuity, cast, linkLines, stillPath: still.path, lookPresetId, temporal: plan });
+  const outfit = w.outfitOf(box);
+  if (outfit.missingKey)
+    throw new Error(
+      `${key}: wears outfit ${outfit.missingKey}, which this video has no outfit for`,
+    );
+  const shot = clipShot(box, w.lyricLines, {
+    aspect: w.aspect,
+    continuity,
+    cast,
+    linkLines,
+    stillPath: still.path,
+    lookPresetId,
+    temporal: plan,
+    outfit,
+  });
   if (opts.dryRun) {
-    console.log("DONE " + JSON.stringify({ key, dryRun: true, route: shot.route, seconds: shot.seconds, stillPath: still.path, temporal: plan.mode, motion: shot.motion, prompt: shot.prompt }));
+    console.log(
+      "DONE " +
+        JSON.stringify({
+          key,
+          dryRun: true,
+          route: shot.route,
+          seconds: shot.seconds,
+          stillPath: still.path,
+          temporal: plan.mode,
+          motion: shot.motion,
+          prompt: shot.prompt,
+        }),
+    );
     return;
   }
   const fx = new Effects(dir, `clip-${key}`);
   const deps = mcpDeps(fx, w.userId);
-  const res = await submitShot(shot, { projectId: w.projectId, variationId: box.variationId, runId: STORYBOARD_RUN, lookPresetId, look, shotIds: { [box.key]: box.id }, madeFrom: { [box.key]: madeFromBox(box) } }, deps);
-  console.log("DONE " + JSON.stringify({ key, jobRowId: res.rowId, providerJobId: res.providerJobId, stillPath: res.stillPath, temporal: plan.mode, prompt: res.prompt }));
+  // the clip keeps the outfit of the image it moves (the page's generateBoxClip): the outfit's pieces, as words carry them here
+  const outfitRecord: OutfitRecord | null = outfit.outfit
+    ? jobOutfitRecord(outfit, effectiveGarments(box.spec, outfit).ids)
+    : null;
+  const res = await submitShot(
+    shot,
+    {
+      projectId: w.projectId,
+      variationId: box.variationId,
+      runId: STORYBOARD_RUN,
+      lookPresetId,
+      look,
+      shotIds: { [box.key]: box.id },
+      madeFrom: { [box.key]: madeFromBox(box) },
+      ...(outfitRecord ? { outfits: { [box.key]: outfitRecord } } : {}),
+    },
+    deps,
+  );
+  console.log(
+    "DONE " +
+      JSON.stringify({
+        key,
+        jobRowId: res.rowId,
+        providerJobId: res.providerJobId,
+        stillPath: res.stillPath,
+        temporal: plan.mode,
+        prompt: res.prompt,
+      }),
+  );
 }
 
 /** Reference pictures of a continuity entity from its canonical words — nothing is approved here. */
@@ -345,31 +767,70 @@ async function cmdEntity(dir: string, key: string) {
   const { id: lookPresetId, look } = resolveLookPreset(DEFAULT_BOX_LOOK);
   const fx = new Effects(dir, `entity-${key}`);
   const deps = mcpDeps(fx, w.userId);
-  const res = await submitStills(shot, { projectId: w.projectId, variationId: entity.variationId, runId: ENTITY_RUN, lookPresetId, look, shotIds: {}, selectStill: false, entityId: entity.id }, deps);
+  const res = await submitStills(
+    shot,
+    {
+      projectId: w.projectId,
+      variationId: entity.variationId,
+      runId: ENTITY_RUN,
+      lookPresetId,
+      look,
+      shotIds: {},
+      selectStill: false,
+      entityId: entity.id,
+    },
+    deps,
+  );
   const byPath = assetsByPath(fx, w.projectId, res.whole);
   const assetIds = res.whole.map((p) => byPath.get(p)).filter((x): x is string => !!x);
-  if (assetIds[0]) fx.ask("avt_update", { table: "provider_jobs", filters: [{ column: "id", op: "eq", value: res.rowId }], values: { result_asset_id: assetIds[0] } });
+  if (assetIds[0])
+    fx.ask("avt_update", {
+      table: "provider_jobs",
+      filters: [{ column: "id", op: "eq", value: res.rowId }],
+      values: { result_asset_id: assetIds[0] },
+    });
   // the entity keeps them as its reference pictures (the app's "Draw a picture" does the same; approval is a person's)
-  fx.ask("avt_update", { table: "continuity_entities", filters: [{ column: "id", op: "eq", value: entity.id }], values: { reference_asset_ids: [...entity.referenceAssetIds, ...assetIds] } });
-  console.log("DONE " + JSON.stringify({ key, entityId: entity.id, jobRowId: res.rowId, assetIds, candidates: res.candidates, costUsd: res.costUsd, prompt: res.prompt }));
+  fx.ask("avt_update", {
+    table: "continuity_entities",
+    filters: [{ column: "id", op: "eq", value: entity.id }],
+    values: { reference_asset_ids: [...entity.referenceAssetIds, ...assetIds] },
+  });
+  console.log(
+    "DONE " +
+      JSON.stringify({
+        key,
+        entityId: entity.id,
+        jobRowId: res.rowId,
+        assetIds,
+        candidates: res.candidates,
+        costUsd: res.costUsd,
+        prompt: res.prompt,
+      }),
+  );
 }
 
 // ------------------------------------------------------------------------------------------------ main
 
 async function main() {
   const [dir, cmd, arg] = process.argv.slice(2);
-  if (!dir || !cmd) throw new Error("usage: still.ts <workdir> bundle|entity <KEY>|shot <c0NN>|clip <c0NN>[,ordered][,dry]");
+  if (!dir || !cmd)
+    throw new Error(
+      "usage: still.ts <workdir> bundle|entity <KEY>|shot <c0NN>|clip <c0NN>[,ordered][,dry]",
+    );
   try {
     if (cmd === "bundle") {
       const [projectId, variationId, artistId] = (arg ?? "").split(",");
-      if (!projectId || !variationId) throw new Error("bundle <projectId>,<variationId>[,<artistId>]");
+      if (!projectId || !variationId)
+        throw new Error("bundle <projectId>,<variationId>[,<artistId>]");
       cmdBundle(projectId, variationId, artistId || null);
     } else if (cmd === "shot") await cmdShot(dir, arg);
     else if (cmd === "clip") {
       const [key, ...flags] = (arg ?? "").split(",");
-      await cmdClip(dir, key, { ordered: flags.includes("ordered"), dryRun: flags.includes("dry") });
-    }
-    else if (cmd === "entity") await cmdEntity(dir, arg);
+      await cmdClip(dir, key, {
+        ordered: flags.includes("ordered"),
+        dryRun: flags.includes("dry"),
+      });
+    } else if (cmd === "entity") await cmdEntity(dir, arg);
     else throw new Error(`unknown command ${cmd}`);
   } catch (e) {
     throw e;
