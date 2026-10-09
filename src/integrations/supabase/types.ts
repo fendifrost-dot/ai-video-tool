@@ -1640,6 +1640,7 @@ export type Database = {
         Row: {
           asset_id: string
           created_at: string
+          excluded: boolean
           id: string
           is_primary: boolean
           notes: string | null
@@ -1649,6 +1650,8 @@ export type Database = {
           sort_order: number
           source_in_seconds: number | null
           source_out_seconds: number | null
+          trim_head_seconds: number
+          trim_tail_seconds: number
           updated_at: string
           user_id: string
           variation_id: string | null
@@ -1656,6 +1659,7 @@ export type Database = {
         Insert: {
           asset_id: string
           created_at?: string
+          excluded?: boolean
           id?: string
           is_primary?: boolean
           notes?: string | null
@@ -1665,6 +1669,8 @@ export type Database = {
           sort_order?: number
           source_in_seconds?: number | null
           source_out_seconds?: number | null
+          trim_head_seconds?: number
+          trim_tail_seconds?: number
           updated_at?: string
           user_id?: string
           variation_id?: string | null
@@ -1672,6 +1678,7 @@ export type Database = {
         Update: {
           asset_id?: string
           created_at?: string
+          excluded?: boolean
           id?: string
           is_primary?: boolean
           notes?: string | null
@@ -1681,6 +1688,8 @@ export type Database = {
           sort_order?: number
           source_in_seconds?: number | null
           source_out_seconds?: number | null
+          trim_head_seconds?: number
+          trim_tail_seconds?: number
           updated_at?: string
           user_id?: string
           variation_id?: string | null
