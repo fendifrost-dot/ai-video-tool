@@ -1,0 +1,82 @@
+{
+ "run": "run18 (build box)",
+ "environment": "agent-operated harness on a build box \u2014 NOT AVT, and not evidence of unattended production",
+ "technical": {
+  "timing": {
+   "expectedFrames": 118,
+   "sourceCutFrames": 118,
+   "outputFrames": 118,
+   "framesMatch": true,
+   "fpsMatch": true,
+   "spanInTake": 3.9039,
+   "spanInOutput": 3.9039,
+   "note": "the composite is frame for frame with the cut it was made from: nothing was retimed or dropped",
+   "sourceCutFramesDecoded": 118,
+   "outputFramesDecoded": 118,
+   "verdict": "frame for frame with the cut"
+  },
+  "performanceUntouched": {
+   "method": "least-squares fit of output = gain x source + offset over the eroded matte core",
+   "gain": 0.998,
+   "offset": -1.07,
+   "residual255": 1.28,
+   "verdict": "his pixels are the take's pixels"
+  },
+  "colour": {
+   "method": "the output decoded as BT.709 limited range, against the blended frames; `saturated` is over pixels whose channels differ by more than 40",
+   "fileSays": "bt709",
+   "meanAbs255": 1.21,
+   "saturatedMeanAbs255": 1.89,
+   "verdict": "a player sees the colours that were blended"
+  },
+  "matteLeaks": {
+   "framesAffected": 5,
+   "ofFrames": 118,
+   "worstPx": 9519,
+   "worstShareOfBody": 0.016,
+   "frames": [
+    {
+     "frame": 38,
+     "seconds": 1.268,
+     "detachedPx": 4308,
+     "largestPx": 4308
+    },
+    {
+     "frame": 39,
+     "seconds": 1.301,
+     "detachedPx": 9519,
+     "largestPx": 9519
+    },
+    {
+     "frame": 82,
+     "seconds": 2.736,
+     "detachedPx": 5594,
+     "largestPx": 5594
+    },
+    {
+     "frame": 83,
+     "seconds": 2.769,
+     "detachedPx": 6342,
+     "largestPx": 6342
+    },
+    {
+     "frame": 84,
+     "seconds": 2.803,
+     "detachedPx": 7504,
+     "largestPx": 7504
+    }
+   ]
+  },
+  "temporalStability": {
+   "medianAreaJump": 0.0071,
+   "maxAreaJump": 0.068,
+   "framesOver2pct": 7,
+   "note": "the matted area, frame to frame. Large jumps are limbs the matter gains or drops, which read as flicker"
+  }
+ },
+ "notChecked": [
+  "lip sync \u2014 a comparison against the performance, not a property of one file; and this take carries no audio track",
+  "whether the background's perspective and light are plausible for this room",
+  "whether any of it looks right: edge quality, halos and spill are judged by eye, from the diagnostic render"
+ ]
+}

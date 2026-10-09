@@ -7,12 +7,7 @@ import {
   substitute,
   tidy,
 } from "./compiler";
-import type {
-  Artist,
-  PromptTemplate,
-  Shot,
-  VideoProject,
-} from "@/integrations/supabase/aliases";
+import type { Artist, PromptTemplate, Shot, VideoProject } from "@/integrations/supabase/aliases";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -20,6 +15,7 @@ import type {
 function makeProject(overrides: Partial<VideoProject> = {}): VideoProject {
   return {
     id: "p1",
+    active_variation_id: "v1",
     user_id: "u1",
     artist_id: "a1",
     title: "Midnight Roses",
@@ -29,6 +25,8 @@ function makeProject(overrides: Partial<VideoProject> = {}): VideoProject {
     mood: "grimy",
     visual_style: "35mm film grain",
     color_palette: ["#1a1a1a", "#ff3355"],
+    creative_exemplars: [],
+    aspect_ratio: "9:16",
     wardrobe_notes: null,
     lyrics: null,
     song_structure_json: {},
@@ -72,7 +70,15 @@ function makeShot(overrides: Partial<Shot> = {}): Shot {
     id: "s1",
     user_id: "u1",
     project_id: "p1",
+    variation_id: "v1",
     shot_number: 1,
+    spec_key: null,
+    generated_json: null,
+    override_json: null,
+    spec_json: null,
+    locked: false,
+    box_origin: null,
+    history_json: [],
     song_section: "hook",
     timestamp_start: 32,
     timestamp_end: 40,
@@ -128,10 +134,7 @@ describe("substitute", () => {
       project: { mood: "grimy" },
       shot: {},
     };
-    const { text, unfilled } = substitute(
-      "{{artist.name}} is {{project.mood}}",
-      vars,
-    );
+    const { text, unfilled } = substitute("{{artist.name}} is {{project.mood}}", vars);
     expect(text).toBe("Iris is grimy");
     expect(unfilled).toEqual([]);
   });
@@ -168,9 +171,7 @@ describe("mergeNegative", () => {
   });
 
   it("handles null inputs", () => {
-    expect(
-      mergeNegative({ templateNegative: null, artistForbidden: null, extra: null }),
-    ).toBe("");
+    expect(mergeNegative({ templateNegative: null, artistForbidden: null, extra: null })).toBe("");
     expect(
       mergeNegative({
         templateNegative: "blurry",
@@ -213,15 +214,11 @@ describe("tidy", () => {
     );
     expect(tidy("FPS: fps. Camera: dolly in.")).toBe("Camera: dolly in.");
     expect(tidy("Tempo: bpm.")).toBe("");
-    expect(tidy("intro shot, Duration: s, mood: grimy.")).toBe(
-      "intro shot, mood: grimy.",
-    );
+    expect(tidy("intro shot, Duration: s, mood: grimy.")).toBe("intro shot, mood: grimy.");
   });
 
   it("does NOT touch valid labels that include real numeric values", () => {
-    expect(tidy("Duration: 5s. Continuity: rule.")).toBe(
-      "Duration: 5s. Continuity: rule.",
-    );
+    expect(tidy("Duration: 5s. Continuity: rule.")).toBe("Duration: 5s. Continuity: rule.");
     expect(tidy("Tempo: 142 bpm.")).toBe("Tempo: 142 bpm.");
     expect(tidy("Lighting: warm key.")).toBe("Lighting: warm key.");
   });
@@ -277,9 +274,9 @@ describe("pickReferencePaths", () => {
   });
 
   it("returns just the legacy locked asset when no character features exist", () => {
-    expect(
-      pickReferencePaths({ ...base, lockedReferenceAssetPath: "u/a/legacy.png" }),
-    ).toEqual(["u/a/legacy.png"]);
+    expect(pickReferencePaths({ ...base, lockedReferenceAssetPath: "u/a/legacy.png" })).toEqual([
+      "u/a/legacy.png",
+    ]);
   });
 
   it("returns character feature paths in priority order, dropping duplicates", () => {
@@ -293,11 +290,7 @@ describe("pickReferencePaths", () => {
           "u/a/jewelry_chain.png",
         ],
       }),
-    ).toEqual([
-      "u/a/face_neutral.png",
-      "u/a/hands_left.png",
-      "u/a/jewelry_chain.png",
-    ]);
+    ).toEqual(["u/a/face_neutral.png", "u/a/hands_left.png", "u/a/jewelry_chain.png"]);
   });
 
   it("appends legacy locked asset after character features, de-duped", () => {
@@ -393,8 +386,7 @@ describe("compilePrompt", () => {
   it("applies overrides over shot values", () => {
     const result = compilePrompt({
       template: makeTemplate({
-        template_body:
-          "lighting={{shot.lighting}}; environment={{shot.environment}}",
+        template_body: "lighting={{shot.lighting}}; environment={{shot.environment}}",
       }),
       project: makeProject(),
       artist: makeArtist(),
@@ -535,5 +527,54 @@ describe("compilePrompt", () => {
     });
     expect(result.referenceImagePaths).toEqual(["u1/a1/face.png"]);
     expect(result.referenceImagePath).toBe("u1/a1/face.png");
+  });
+});
+
+describe("realism is optional and off by default", () => {
+  const input = () => ({
+    template: makeTemplate(),
+    project: makeProject(),
+    artist: makeArtist(),
+    shot: makeShot(),
+  });
+
+  it("changes nothing at all when it is not asked for", () => {
+    const result = compilePrompt(input());
+    expect(result.realism).toBeNull();
+    // The guarantee every existing caller relies on. Asserted against the compiled
+    // values themselves, since comparing the object to a copy of itself would pass
+    // whatever the compiler did.
+    expect(result.promptText).toBe(compilePrompt(input()).promptText);
+    expect(result.promptText).not.toContain("exactly as photographed");
+    expect(result.promptText).not.toContain("real surface texture");
+    expect(result.negativePrompt).not.toContain("plastic skin");
+    expect(result.negativePrompt).not.toContain("identity drift between frames");
+    // and the template's own negatives still arrive untouched
+    expect(result.negativePrompt).toContain("distorted face");
+  });
+
+  it("appends to the compiled body rather than replacing it when asked for", () => {
+    const plain = compilePrompt(input());
+    const withRealism = compilePrompt({ ...input(), realism: { identity: "preserve" } });
+
+    expect(withRealism.promptText).toContain(plain.promptText.replace(/[.,;]+$/, ""));
+    expect(withRealism.promptText).toContain("exactly as photographed");
+    expect(withRealism.negativePrompt).toContain("plastic skin");
+    // Everything the modifier must not touch.
+    expect(withRealism.settings).toEqual(plain.settings);
+    expect(withRealism.referenceImagePaths).toEqual(plain.referenceImagePaths);
+    expect(withRealism.unfilledPlaceholders).toEqual(plain.unfilledPlaceholders);
+  });
+
+  it("carries its own caveats on the compiled prompt", () => {
+    const result = compilePrompt({ ...input(), realism: { identity: "preserve" } });
+    expect(result.realism?.status).toBe("experimental");
+    expect(result.realism?.requires.some((r) => r.verification === "unverified")).toBe(true);
+  });
+
+  it("keeps the artist's forbidden_inaccuracies ahead of the realism negatives", () => {
+    const result = compilePrompt({ ...input(), realism: { identity: "preserve" } });
+    const terms = result.negativePrompt.split(", ");
+    expect(terms.indexOf("plastic skin")).toBeGreaterThan(0);
   });
 });

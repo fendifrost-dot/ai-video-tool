@@ -3,7 +3,8 @@
  * "a per-box generate-a-new-storyboard-prompt specifically matching details from the
  * lyrics"; "we have the ability to bring every lyric to life so we should do so").
  *
- * The call goes to `lyric-visualizer-proxy` in `mode: "literal"` — every noun the line
+ * The call goes to `lyric-visualizer-proxy` in the mode the card's role asks for (`modeForSpec`): `performance` for a
+ * performance card (the line staged behind the real take), otherwise `mode: "literal"` — every noun the line
  * says becomes a physical thing in frame — with the box's window so the beats fit the
  * clock, and with a prompt template (motion_story_v1) so the motion contract drives the
  * generator rather than merely describing what it should do.
@@ -27,6 +28,8 @@ import {
   type TransitionType,
 } from "./shotSpec";
 import { lyricsForShot, type LyricLine } from "@/lib/lyrics/lyricsForShot";
+import { eventsFromWritten } from "@/lib/storyboard/writtenBeats";
+import type { ShotEvent } from "./shotSpec";
 
 /** The default template: the Opus 5.5 motion-design guide, seeded as a prompt template. */
 export const DEFAULT_MOTION_TEMPLATE = "motion_story_v1";
@@ -44,11 +47,15 @@ export type MotionScene = {
   realism_risk?: string;
   risk_reason?: string;
   render_prompt?: string;
+  /** Change inside the shot, as the writer returns it (supabase/functions/_shared/timedBeats.ts). */
+  timed_beats?: unknown;
 };
 
 /** What the card drops into its (unsaved) override fields. */
 export type RegeneratedShot = {
   direction: string;
+  /** The scene as ONE picture (the generator's `visual`): what the still shows when the shot opens. */
+  frame: string;
   cameraMotion: { type: CameraMotion | null; description: string };
   framing: Framing | null;
   cameraAngle: CameraAngle | null;
@@ -57,6 +64,8 @@ export type RegeneratedShot = {
   renderPrompt: string;
   realismRisk: string | null;
   scene: MotionScene;
+  /** The shot's timed events as written (empty = the shot is one state). */
+  events: ShotEvent[];
 };
 
 // ---------------------------------------------------------------------------
@@ -113,15 +122,22 @@ export function motionSentence(motion: MotionScene["motion"]): string {
 }
 
 /** Scene → the override fields. Pure, so the mapping is tested without a network. */
-export function sceneToOverride(scene: MotionScene): RegeneratedShot {
-  const move = moveToCard(scene.camera?.move);
+export function sceneToOverride(scene: MotionScene, shot: { seconds: number; sung?: string } = { seconds: 0 }): RegeneratedShot {
+  // A generated "static" is not a decision: the generator falls back to it, and written into the override it would pin
+  // the card still against the coverage plan (measured live 2026-10-02: a performance card came back "static · 24mm"
+  // with the standing rule "the camera moves" in the request). Leave the move unset so the coverage plan keeps the
+  // card moving; a director who wants a locked frame sets it by hand.
+  const rawMove = scene.camera?.move?.trim();
+  const isStatic = (rawMove ?? "").toLowerCase() === "static";
+  const move = isStatic ? null : moveToCard(rawMove);
   const descParts = [
-    scene.camera?.move?.trim(),
+    isStatic ? "" : rawMove,
     scene.camera?.lens?.trim(),
     scene.transition?.object?.trim() ? `into: ${scene.transition.object.trim()}` : "",
   ].filter(Boolean);
   return {
     direction: motionSentence(scene.motion) || (scene.purpose ?? "").trim(),
+    frame: (scene.visual ?? "").trim(),
     cameraMotion: { type: move, description: descParts.join(" · ") },
     framing: framingToCard(scene.camera?.framing),
     cameraAngle: angleToCard(scene.camera?.angle),
@@ -133,6 +149,7 @@ export function sceneToOverride(scene: MotionScene): RegeneratedShot {
     renderPrompt: (scene.render_prompt ?? "").trim(),
     realismRisk: scene.realism_risk ?? null,
     scene,
+    events: eventsFromWritten(scene.timed_beats, shot.seconds, shot.sung ?? ""),
   };
 }
 
@@ -159,9 +176,78 @@ export type RegenerateInput = {
   lockedRules?: string[];
   rendererLimits?: string[];
   exemplars?: string[];
+  /** Which reading of the line to ask for. Defaults by the card's role — see `modeForSpec`. */
+  mode?: RegenerateMode;
   section?: string | null;
   dryRun?: boolean;
+  /**
+   * The project's one treatment. With it, the rewrite serves the treatment (no exemplars are sent), and a box with
+   * no lyrics in it can still be rewritten — from the treatment and its place in the song.
+   */
+  treatment?: string | null;
+  /** One line each about the boxes before and after this one. */
+  neighbours?: { before: string | null; after: string | null } | null;
+  /** Locked facts about the box, as data (see boxes.ts `machineContext`). Never prose. */
+  projectState?: Record<string, unknown> | null;
+  /**
+   * The framing and camera the DIRECTOR fixed on this box. When given (even empty) it replaces the "is this card an
+   * override" guess of `shotContext`: only what he set is stated as already chosen, never what a rewrite wrote.
+   */
+  directorFixed?: { framing?: string | null; cameraMotion?: string | null } | null;
 };
+
+/** What an instrumental box is rewritten from: there are no words, so the request says so in place of a lyric. */
+export const INSTRUMENTAL_LINE = "(instrumental — no words are sung in this window; stage the treatment for this part of the song)";
+
+export type RegenerateMode = "literal" | "surreal" | "performance";
+
+/**
+ * The reading a card asks for by default. A PERFORMANCE card is the artist's real take: the line has to be staged in
+ * the world around and behind him (the proxy's `performance` mode), not written as a new scene he would have to be
+ * re-shot or re-dressed for. Every other card is cut between his takes: the line made physically real (`literal`).
+ */
+export function modeForSpec(spec: Pick<ShotSpec, "shotType">): RegenerateMode {
+  return spec.shotType === "performance" ? "performance" : "literal";
+}
+
+/**
+ * The production rules every regenerate carries, by the card's role. They are facts about how this tool makes a video
+ * (performance is real footage; inserts are cut between takes; the camera moves), not about any one project.
+ */
+export function standingRules(spec: Pick<ShotSpec, "shotType">): string[] {
+  const camera =
+    "The camera moves — push, pull, truck, orbit, crane or handheld — unless the line itself asks for stillness.";
+  return spec.shotType === "performance"
+    ? [
+        "The artist is real footage that already exists: keep his wardrobe, hair and props exactly as filmed, and never seat or place him somewhere he was not shot.",
+        "Stage the line in the world around and behind him — people, vehicles, set dressing, weather — with real depth; leave the centre foreground clear for him.",
+        camera,
+      ]
+    : [
+        "The artist does not appear in this shot: it is cut between his performance takes. Build the line with other people, objects and places.",
+        camera,
+      ];
+}
+
+/**
+ * What the request says about the box it is writing for. The window and the section always go. The framing and the
+ * camera go ONLY when the director set them (an overridden card): the proxy states them as "already chosen", and a
+ * GENERATED close-up handed back as a constraint keeps every regenerate inside the scene it is meant to replace
+ * (measured live 2026-10-02: "rims 21 don't ride no minors" came back as a macro of a rim in both readings, because
+ * the card it was replacing was a "50mm macro, slight push-in" close-up).
+ */
+export function shotContext(
+  spec: Pick<ShotSpec, "timeline" | "framing" | "cameraMotion" | "origin">,
+  section: string | null,
+) {
+  const base = { start: spec.timeline.start, end: spec.timeline.end, section };
+  if (spec.origin !== "override") return base;
+  return {
+    ...base,
+    framing: spec.framing,
+    cameraMotion: spec.cameraMotion.description || spec.cameraMotion.type,
+  };
+}
 
 export class NoLyricsInWindowError extends Error {
   constructor() {
@@ -178,14 +264,16 @@ export function linesForSpec(spec: ShotSpec, lyricLines: LyricLine[] | undefined
 
 export async function regenerateShotFromLyrics(input: RegenerateInput): Promise<RegeneratedShot> {
   const lines = linesForSpec(input.spec, input.lyricLines);
-  if (lines.length === 0) throw new NoLyricsInWindowError();
+  const treatment = input.treatment?.trim() ?? "";
+  // Without a treatment the lyric is all there is to write from; with one, an instrumental box has its brief.
+  if (lines.length === 0 && !treatment) throw new NoLyricsInWindowError();
 
   const { data, error } = await supabase.functions.invoke<Record<string, unknown>>(
     "lyric-visualizer-proxy",
     {
       body: {
         projectId: input.projectId,
-        mode: "literal",
+        mode: input.mode ?? modeForSpec(input.spec),
         template: input.template === null ? undefined : (input.template ?? DEFAULT_MOTION_TEMPLATE),
         templateContext: input.templateContext,
         // One box, one call: the whole window's words as a single line, so the scene is
@@ -193,24 +281,30 @@ export async function regenerateShotFromLyrics(input: RegenerateInput): Promise<
         lines: [
           {
             ref: input.spec.id,
-            text: lines.map((l) => l.text).join(" "),
+            text: lines.length > 0 ? lines.map((l) => l.text).join(" ") : INSTRUMENTAL_LINE,
             section: input.section ?? lines[0]?.section,
             seconds: Math.max(0, input.spec.timeline.end - input.spec.timeline.start),
           },
         ],
-        shot: {
-          start: input.spec.timeline.start,
-          end: input.spec.timeline.end,
-          section: input.section ?? lines[0]?.section ?? null,
-          framing: input.spec.framing,
-          cameraMotion: input.spec.cameraMotion.description || input.spec.cameraMotion.type,
-        },
+        shot: input.directorFixed
+          ? {
+              start: input.spec.timeline.start,
+              end: input.spec.timeline.end,
+              section: input.section ?? lines[0]?.section ?? null,
+              ...(input.directorFixed.framing ? { framing: input.directorFixed.framing } : {}),
+              ...(input.directorFixed.cameraMotion ? { cameraMotion: input.directorFixed.cameraMotion } : {}),
+            }
+          : shotContext(input.spec, input.section ?? lines[0]?.section ?? null),
         heroDescription: input.heroDescription,
         environment: input.environment,
         style: input.style ?? undefined,
-        lockedRules: input.lockedRules,
+        lockedRules: [...standingRules(input.spec), ...(input.lockedRules ?? [])],
         rendererLimits: input.rendererLimits,
-        exemplars: input.exemplars,
+        // one creative brief: when the treatment is sent, exemplars are not
+        exemplars: treatment ? undefined : input.exemplars,
+        treatment: treatment || undefined,
+        neighbours: treatment && (input.neighbours?.before || input.neighbours?.after) ? input.neighbours : undefined,
+        projectState: input.projectState ?? undefined,
         clipSeconds: Math.max(
           4,
           Math.min(15, Math.round(input.spec.timeline.end - input.spec.timeline.start)),
@@ -226,7 +320,7 @@ export async function regenerateShotFromLyrics(input: RegenerateInput): Promise<
   }
   const scene = extractScene(data);
   if (!scene) throw new Error("The visualiser returned no scene");
-  return sceneToOverride(scene);
+  return sceneToOverride(scene, { seconds: Math.max(0, input.spec.timeline.end - input.spec.timeline.start), sung: lines.map((l) => l.text).join(" ") });
 }
 
 /** Pull the one scene out of the proxy envelope. Exported for the mapping tests. */

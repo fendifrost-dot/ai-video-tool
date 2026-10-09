@@ -4,6 +4,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
+import { useProject } from "./projects";
 import type {
   Shot,
   ShotPriority,
@@ -19,20 +20,24 @@ export const shotsKeys = {
   detail: (id: string) => [...shotsKeys.all, "detail", id] as const,
 };
 
+/** Every shot row of the project's ACTIVE video variation (the storyboard's boxes and legacy shot-list rows alike). */
 export function useProjectShots(projectId: string | undefined) {
+  const project = useProject(projectId);
+  const variationId = project.data?.active_variation_id ?? null;
   return useQuery<Shot[]>({
-    queryKey: projectId ? shotsKeys.forProject(projectId) : [...shotsKeys.all, "project", "_none_"],
+    queryKey: projectId ? [...shotsKeys.forProject(projectId), variationId ?? "_none_"] : [...shotsKeys.all, "project", "_none_"],
     queryFn: async () => {
-      if (!projectId) return [];
+      if (!projectId || !variationId) return [];
       const { data, error } = await supabase
         .from("shots")
         .select("*")
         .eq("project_id", projectId)
+        .eq("variation_id", variationId)
         .order("shot_number", { ascending: true });
       if (error) throw error;
       return data ?? [];
     },
-    enabled: !!projectId,
+    enabled: !!projectId && !!variationId,
   });
 }
 

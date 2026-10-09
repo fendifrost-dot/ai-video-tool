@@ -1,0 +1,28 @@
+{
+ "source": "docs/handoffs/round_2026-10-02/S06c_low_hero_src.mp4",
+ "result": "cowork-sandbox:ysl/round/angles/S06c_low_hero.mp4",
+ "fps_sampled": 30.0,
+ "frames_src": 96,
+ "frames_res": 97,
+ "camera_change": {
+  "picture": 0.093,
+  "face_visible_share": 1.0,
+  "face_size_ratio": 0.986,
+  "face_centre_shift": 0.025,
+  "face_turn_change": 0.014,
+  "score": 0.093
+ },
+ "identity_src_vs_result": 0.016,
+ "identity_per_frame_p95": 0.272,
+ "lip": {
+  "best_fit": {
+   "corr": 0.72,
+   "retime": 0.95,
+   "offset_s": 0.05,
+   "n": 96
+  },
+  "corr_on_source_clock": 0.636,
+  "mouth_open_src_mean": 0.163,
+  "mouth_open_res_mean": 0.189
+ }
+}

@@ -34,7 +34,7 @@ The look preset's preamble leads every prompt and its shot suffix closes it (con
 Each shot's clip is persisted to project-clips/<user>/<project>/worlds/<run>/<id>.mp4 and gated by
 scripts/qa/realism_gate.py with the look axis; the manifest records cost estimates, verdicts and distances.
 """
-import argparse, json, os, subprocess, sys, time, urllib.request
+import argparse, json, math, os, subprocess, sys, time, urllib.request
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "_lib")); from jobs import job  # resource governor + registry (scripts/_lib/jobs.py)
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(ROOT, "scripts", "qa"))
@@ -44,8 +44,32 @@ from auth import Session  # noqa: E402
 CAPS = json.load(open(os.path.join(ROOT, "config", "provider_caps.json")))
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36"
 PROXY = f"{SUPA}/functions/v1/proxy-provider-call"
-RUNWAY_RATE = {"gen4_turbo": 0.05, "gen4.5": 0.15}; KLING_RATE = 0.07; STILL_RATE = 0.07
-SEEDANCE_RATE = {"480p": 0.2468, "720p": 0.4622, "1080p": 1.1372}   # per second, input + output (Higgsfield catalogue, 2026-10)
+# rates are data: config/provider_rates.json (the app's in-browser runner reads the same numbers)
+RATES = json.load(open(os.path.join(ROOT, "config", "provider_rates.json")))
+RUNWAY_RATE = RATES["runway"]; KLING_RATE = RATES["kling_usd_per_s"]; STILL_RATE = RATES["still_usd_each"]; DOP_RATE = RATES["dop_usd_per_s"]
+SEEDANCE_RATE = RATES["seedance_usd_per_s"]   # the provider's per-second figure for a job WITHOUT a video input (16:9); a restage is priced by seedance_estimate
+SEEDANCE_TOKENS = RATES["seedance_tokens"]   # the provider's published token rule (provider_rates.json -> _seedance_tokens)
+
+
+def seedance_estimate(resolution, output_seconds, input_seconds=None):
+    """Seedance 2.5 by the provider's token rule (the same arithmetic as src/lib/worldBatch/estimate.ts seedanceUsd):
+    tokens = ceil(pixels x (input + output seconds) x 24 / 1024); rate per 1,000 tokens x 0.6 when there is a video input."""
+    t = SEEDANCE_TOKENS
+    input_seconds = output_seconds if input_seconds is None else input_seconds
+    if resolution not in t["pixels"] or resolution not in t["usd_per_1000_tokens"]:
+        # a size with no published rate cannot be priced, so it cannot be authorized
+        raise SystemExit(f"Seedance at {resolution} cannot be priced: no published rate is on file for that size, so it is not submitted")
+    tokens = math.ceil(t["pixels"][resolution] * (input_seconds + output_seconds) * t["frames_per_second"] / t["divisor"])
+    return tokens / 1000 * t["usd_per_1000_tokens"][resolution] * (t["video_input_factor"] if input_seconds > 0 else 1)
+
+
+# The same sentence as src/lib/shotCompiler/prompts.ts PLACE_LIGHT (a test there reads this file): the light is said
+# both ways — what the place has, and what must not be added — and his edge and texture are named.
+PLACE_LIGHT = (
+    "Place him inside the environment of @Image1, lit only by the light that environment has: where @Image1 is dark he is dark, "
+    "and nothing adds a key light, a fill light or a glow on him that the place does not have. "
+    "He has no bright outline, halo or cut-out edge against the background, and he has the same focus and grain as the place. "
+    "The environment is still, only he and the camera move.")
 
 
 def angle_prompt(shot, look, with_image):
@@ -54,7 +78,7 @@ def angle_prompt(shot, look, with_image):
     keep = ", ".join(shot.get("keep", [])) or "his face, hair, skin and every piece of wardrobe"
     parts = [f"@Video1 is the performer, rapping to camera. Re-shoot the exact same performance from a second camera: {shot['angle']}",
              f"Keep everything identical to @Video1 — {keep} — and most of all the same mouth movements at the same moments, word for word, in sync with @Video1 from the first frame to the last."]
-    if with_image: parts.append(f"Place him inside the environment of @Image1, lit by that environment's light sources; the environment is still, only he and the camera move.")
+    if with_image: parts.append(PLACE_LIGHT)
     else: parts.append("The same room, the same light.")
     if look and look.get("shot_suffix"): parts.append(look["shot_suffix"])
     return " ".join(parts)
@@ -95,11 +119,14 @@ def motion_submit(api, user, project, shot, prompt, still_url=None):
         b = {"promptText": prompt, "mode": "reference_to_video", "modelVariant": "seedance-2.5-reference", "referenceVideoUrls": [shot["_source_url"]],
              "referenceImageUrls": [still_url] if still_url else [], "duration": sec, "resolution": res, "aspectRatio": aspect, "generate_audio": False, **audit}
         r = api.post(PROXY, {"endpoint": "video-providers-higgsfield-model", "method": "POST", "body": b}, timeout=170); r["_provider"] = "higgsfield"; r["_rate"] = SEEDANCE_RATE[res]
-        r["_list_usd"] = round(SEEDANCE_RATE[res] * (sec + source_seconds(shot)), 3)   # the catalogue estimate counts output only
+        # what the manifest records is the same figure the budget was checked against: the token rule, both durations,
+        # the video-input rate (this line used the no-video-input rate x combined seconds: $3.70 for the $2.22 restage)
+        r["_list_usd"] = round(seedance_estimate(res, sec, source_seconds(shot)), 3)
+        r["_price_basis"] = "charged" if res in SEEDANCE_TOKENS.get("charged", []) else "published rule, never charged at this size"
         return r
     if route == "still_dop":
         b = {"promptText": prompt, "mode": "image_to_video", "referenceImageUrl": still_url, "modelVariant": shot.get("model", "dop-turbo"), **audit}
-        r = api.post(PROXY, {"endpoint": "video-providers-higgsfield-generate", "method": "POST", "body": b}, timeout=170); r["_provider"] = "higgsfield"; r["_rate"] = 0.083
+        r = api.post(PROXY, {"endpoint": "video-providers-higgsfield-generate", "method": "POST", "body": b}, timeout=170); r["_provider"] = "higgsfield"; r["_rate"] = DOP_RATE
         return r
     if route in ("still_runway", "still_runway45", "runway_t2v"):
         model = "gen4_turbo" if route == "still_runway" else "gen4.5"
@@ -137,6 +164,43 @@ def look_of(path, bank):
     return score(path, bank)
 
 
+PANEL_SEAM_FRAC_MIN = 0.6; PANEL_SEAM_STRAIGHT_MIN = 0.5; PANEL_SEAM_JUMP = 18.0
+def panel_seam(path, jump=PANEL_SEAM_JUMP):
+    """Is this still two pictures? An image model asked for "the stoop in the upper half, the car in the lower half"
+    returns two photographs stacked. Two measurements (same numbers as src/lib/worldBatch/stillCheck.ts):
+      frac      at a small size (block-averaged to ~320), the share of one row/column across which the luma jumps —
+                0.92 on the diptych's seam, but 0.70–0.90 for a kerb shot square-on: a real edge can span the frame;
+      straight  at full size, the share of columns whose strongest jump is on the SAME single row — a panel seam is
+                ruler-straight and one pixel thick (0.75), a real edge wanders and has thickness (kerb 0.15, and
+                ≤ 0.13 across 24 ordinary world stills)."""
+    import numpy as np
+    from PIL import Image
+    L = np.asarray(Image.open(path).convert("L")).astype(np.float32); h, w = L.shape
+    k = max(1, int(np.ceil(max(w, h) / 320.0))); sh, sw = h // k, w // k
+    S = L[:sh * k, :sw * k].reshape(sh, k, sw, k).mean(axis=(1, 3))
+    # first pass, small: the jump over TWO small rows (a seam rarely falls on a block boundary); skip the outer 8 %
+    cands = []
+    rows = (np.abs(S[2:] - S[:-2]) > jump).mean(axis=1); cols = (np.abs(S[:, 2:] - S[:, :-2]) > jump).mean(axis=0)
+    for axis, fr, n in (("row", rows, sh), ("column", cols, sw)):
+        lo, hi = int(np.ceil(n * 0.08)), int(np.floor(n * 0.92)) - 2
+        order = sorted(range(lo, hi), key=lambda t: -fr[t])[:6]
+        cands += [(axis, t, float(fr[t]), n) for t in order]
+    # second pass, full size, on the most complete lines: is it ruler-straight?
+    best = None
+    for axis, line, frac, n in cands:
+        A = L if axis == "row" else L.T; a = line * k; b = min(A.shape[0] - 1, a + 3 * k); straight = 0.0
+        if b - a >= 2:
+            g = np.abs(np.diff(A[a:b + 1], axis=0)); arg = g.argmax(axis=0); strong = g.max(axis=0) > 12
+            if strong.any():
+                mode = np.bincount(arg[strong]).argmax(); straight = float(((arg == mode) & strong).mean())
+        seam = {"frac": round(frac, 3), "straight": round(straight, 3), "at": round((line + 1.5) / n, 3), "axis": axis}
+        rank = lambda x: (1 + x["straight"]) if x["frac"] >= PANEL_SEAM_FRAC_MIN else x["frac"]
+        if best is None or rank(seam) > rank(best): best = seam
+    return best or {"frac": 0.0, "straight": 0.0, "at": 0.0, "axis": "row"}
+
+def stacked_panels(seam): return seam["frac"] >= PANEL_SEAM_FRAC_MIN and seam["straight"] >= PANEL_SEAM_STRAIGHT_MIN
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--shots", required=True); ap.add_argument("--out", required=True); ap.add_argument("--project", required=True); ap.add_argument("--user", required=True)
@@ -152,8 +216,8 @@ def main():
     est = 0.0
     for s in shots:
         sec = 10 if int(s.get("seconds", 5)) > 5 else 5; r = s["route"]
-        if r == "seedance_ref": est += SEEDANCE_RATE[s.get("resolution", "720p")] * 2 * source_seconds(s); continue
-        est += (STILL_RATE * int(s.get("stills", 2)) if r.startswith("still") and not s.get("still_path") else 0) + sec * (RUNWAY_RATE["gen4_turbo"] if r == "still_runway" else RUNWAY_RATE["gen4.5"] if r in ("runway_t2v", "still_runway45") else 0.083 if r == "still_dop" else KLING_RATE)
+        if r == "seedance_ref": est += seedance_estimate(s.get("resolution", "720p"), source_seconds(s)); continue
+        est += (STILL_RATE * int(s.get("stills", 2)) if r.startswith("still") and not s.get("still_path") else 0) + sec * (RUNWAY_RATE["gen4_turbo"] if r == "still_runway" else RUNWAY_RATE["gen4.5"] if r in ("runway_t2v", "still_runway45") else DOP_RATE if r == "still_dop" else KLING_RATE)
     print(f"estimate ${est:.2f} for {len(shots)} shots (gate judge extra ≈ ${0.08 * len(shots):.2f})")
     if est > a.max_usd: raise SystemExit(f"estimate exceeds --max-usd {a.max_usd}")
     if a.dry_run: return
@@ -180,8 +244,13 @@ def main():
                 if not r.get("ok"): st["still_error"] = r; print(s["id"], "still failed", json.dumps(r)[:300]); json.dump(man, open(mpath, "w"), indent=1); continue
                 cands = []
                 for i, im in enumerate(r["stills"]):
-                    p = os.path.join(a.out, f"{s['id']}_still{i + 1}.png"); fetch(im["previewUrl"], p); d = look_of(p, bank)["look_distance"] if bank else 0.0; cands.append({"path": im["path"], "local": p, "look_distance": d})
-                best = min(cands, key=lambda c: c["look_distance"]); st["still"] = {"candidates": cands, "picked": best["path"], "cost_usd": r.get("actualCostUsd")}
+                    p = os.path.join(a.out, f"{s['id']}_still{i + 1}.png"); fetch(im["previewUrl"], p); d = look_of(p, bank)["look_distance"] if bank else 0.0; cands.append({"path": im["path"], "local": p, "look_distance": d, "panel_seam": panel_seam(p)})
+                # a still that came back as two pictures stacked never reaches the motion model (src/lib/worldBatch/stillCheck.ts)
+                whole = cands if s.get("panel_check") is False else [c for c in cands if not stacked_panels(c["panel_seam"])]
+                if not whole:
+                    st["still_error"] = {"error": "stacked_panels", "candidates": cands, "cost_usd": r.get("actualCostUsd")}
+                    print(s["id"], "every still came back as stacked panels", [c["panel_seam"] for c in cands], "— describe the scene by depth, not by halves of the frame"); json.dump(man, open(mpath, "w"), indent=1); continue
+                best = min(whole, key=lambda c: c["look_distance"]); st["still"] = {"candidates": cands, "picked": best["path"], "cost_usd": r.get("actualCostUsd")}
                 print(s["id"], "stills", [round(c["look_distance"], 2) for c in cands], "→", os.path.basename(best["local"]))
             still_url = api.sign("project-references", st["still"]["picked"], ttl=86400)
         if s["route"] == "seedance_ref":

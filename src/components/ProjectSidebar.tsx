@@ -15,9 +15,14 @@ import {
   Shirt,
   Navigation,
   SlidersHorizontal,
+  ListVideo,
+  LayoutGrid,
+  Download,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useProject } from "@/lib/queries/projects";
+import { VariationSwitcher } from "@/components/VariationSwitcher";
 import { useProjectRail } from "@/lib/projectRail";
 import { useEngineeringMode } from "@/lib/ux/engineeringMode";
 import { EngineeringModeToggle } from "@/components/ux/EngineeringModeToggle";
@@ -36,17 +41,25 @@ type NavItem = {
   key: string;
 };
 
-/** Primary creative funnel — always visible. */
+/**
+ * The creative workflow — always visible: Setup → Treatment → Storyboard → Review → Export.
+ * The storyboard is the production workspace; everything a shot needs is reached from its box.
+ */
 export const primaryItems: readonly NavItem[] = [
+  { to: "/projects/$id/setup", label: "Setup", icon: Upload, key: "setup" },
   { to: "/projects/$id/treatment", label: "Treatment", icon: FileText, key: "treatment" },
-  { to: "/projects/$id/assets", label: "Assets", icon: ImageIcon, key: "assets" },
-  { to: "/projects/$id/video", label: "Produce Video", icon: Video, key: "video" },
+  { to: "/projects/$id/storyboard", label: "Storyboard", icon: LayoutGrid, key: "storyboard" },
   { to: "/projects/$id/review", label: "Review", icon: Eye, key: "review" },
-  { to: "/projects/$id/export", label: "Export", icon: Upload, key: "export" },
+  { to: "/projects/$id/export", label: "Export", icon: Download, key: "export" },
 ] as const;
 
-/** Engineering destinations — revealed in engineering mode (Lane G store). */
+/**
+ * Engineering destinations — revealed in engineering mode (Lane G store). Nothing was removed when the workflow was
+ * simplified: the library, the look-driven composer, the clip scorecards and the specialist studios all live here.
+ */
 export const advancedItems: readonly NavItem[] = [
+  { to: "/projects/$id/assets", label: "Assets", icon: ImageIcon, key: "assets" },
+  { to: "/projects/$id/video", label: "Produce Video", icon: Video, key: "video" },
   { to: "/projects/$id/shots", label: "Shot List", icon: Clapperboard, key: "shots" },
   {
     to: "/projects/$id/cover-flight",
@@ -58,6 +71,8 @@ export const advancedItems: readonly NavItem[] = [
   { to: "/projects/$id/prompt", label: "Prompt Lab", icon: Wand2, key: "prompt" },
   { to: "/projects/$id/timeline", label: "Music Video Editor", icon: Film, key: "timeline" },
   { to: "/projects/$id/continuity", label: "Continuity", icon: Lock, key: "continuity" },
+  { to: "/projects/$id/scorecards", label: "Clip Scorecards", icon: ClipboardCheck, key: "scorecards" },
+  { to: "/projects/$id/runs", label: "Runs", icon: ListVideo, key: "runs" },
 ] as const;
 
 export function ProjectSidebar({ projectId }: { projectId: string }) {
@@ -158,6 +173,7 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                 >
                   {projectTitle}
                 </p>
+                <VariationSwitcher projectId={projectId} />
               </div>
             )}
             <Button
@@ -234,7 +250,24 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
 
       <nav className="md:hidden relative z-20 px-4">
         <div className="glass rounded-2xl p-1.5">
-          <div className="flex gap-1 overflow-x-auto scrollbar-none">
+          {/*
+            Faded right edge: five steps plus Advanced cannot fit a phone even with the switcher capped, so this
+            row always scrolls. `scrollbar-none` plus iOS's overlay scrollbars meant it scrolled with nothing on
+            screen saying so. The fade is the affordance.
+          */}
+          <div className="flex gap-1 overflow-x-auto scrollbar-none [mask-image:linear-gradient(to_right,black_calc(100%-1.25rem),transparent)]">
+            {/*
+              CAPPED, and the cap is load-bearing on a phone. This row is the ONLY project navigation under
+              `md`, and the switcher sits in front of the steps. Its button is `w-full` with an inner `truncate`,
+              so without a cap `w-full` resolves to the full natural width of the variation's name — and a name
+              like "Interrupted Broadcast · candidate 5" then takes most of a phone screen, leaving just "Setup"
+              visible and pushing Treatment, Storyboard, Review and Export off the right edge. The row does
+              scroll, but `scrollbar-none` means nothing says so, so the steps simply look missing (reported
+              9 Oct 2026). The cap makes the name clip instead of the navigation.
+            */}
+            <div className="min-w-0 max-w-[38vw] shrink-0 sm:max-w-[16rem] md:max-w-none">
+              <VariationSwitcher projectId={projectId} compact />
+            </div>
             {primaryItems.map((item) => renderLink(item, "chip"))}
             <button
               type="button"

@@ -1,3 +1,5 @@
+import type { CastSource, ShotCast } from "@/lib/casting/cast";
+import type { RealismOptions, RealismResult } from "./realism";
 import type {
   Artist,
   ArtistIdentityProfile,
@@ -46,6 +48,23 @@ export type CompileInput = {
    * Stored as a path inside the `look-composites` bucket.
    */
   lockedLookImagePath?: string | null;
+  /**
+   * Who is in this shot, already resolved against the variation's characters
+   * (`resolveCast`). When given, the cast's lines are carried in the prompt and their
+   * approved references are added to `referenceImagePaths`. Omitted means the shot says
+   * nothing about people — which is not the same as saying there are none; see
+   * `src/lib/casting/cast.ts`.
+   */
+  cast?: ShotCast;
+  /**
+   * Optional photographic-realism modifier. Omitted means the compiler behaves exactly as
+   * it did before this existed — same prompt text, same negatives, byte for byte.
+   *
+   * `identity` is required when present because realism may only describe a face when the
+   * person is invented; guessing it either flattens a real likeness or leaves an invented
+   * extra undescribed. See `src/lib/prompts/realism.ts`.
+   */
+  realism?: RealismOptions;
 };
 
 export type PromptOverrides = {
@@ -97,6 +116,20 @@ export type CompiledPrompt = {
    * entry to a signed URL.
    */
   referenceImagePaths: string[];
+
+  /**
+   * The cast half of the request: the lines carried, the identity references collected, and
+   * what could not be carried. Null when the shot named no cast. Kept on the compiled prompt
+   * so a stored request still says who it was for and what was missing.
+   */
+  cast: CastSource | null;
+
+  /**
+   * What the realism modifier added, withheld and could not verify. Null when realism was
+   * not asked for. Carried on the compiled prompt so a stored prompt keeps its own caveats
+   * rather than reading as a plain instruction.
+   */
+  realism: RealismResult | null;
 
   /** Bookkeeping so the UI can store result back to the prompts table. */
   context: {

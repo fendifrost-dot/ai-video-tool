@@ -1,0 +1,93 @@
+{
+ "verdict": "PASS",
+ "performance_cuts": 15,
+ "moving_share": 0.892,
+ "static_share": 0.108,
+ "static_share_max": 0.12,
+ "longest_static_run_s": 3.93,
+ "max_static_run_s": 4.0,
+ "mean_cut_bars": 1.23,
+ "cut_cadence_bars_by_section": {
+  "verse": 1.62,
+  "hook": 1.09
+ },
+ "repeated_moves": [],
+ "repeated_framings": [],
+ "moves": [
+  [
+   "S01a",
+   "static",
+   "medium"
+  ],
+  [
+   "S03a",
+   "push",
+   "close_up"
+  ],
+  [
+   "S03b",
+   "pull",
+   "wide"
+  ],
+  [
+   "S04a",
+   "truck",
+   "medium_close"
+  ],
+  [
+   "S06a",
+   "dolly_zoom",
+   "medium"
+  ],
+  [
+   "S06b",
+   "push",
+   "close_up"
+  ],
+  [
+   "S06c",
+   "snap_zoom",
+   "wide"
+  ],
+  [
+   "S08a",
+   "truck",
+   "medium_close"
+  ],
+  [
+   "S08b",
+   "orbit",
+   "medium"
+  ],
+  [
+   "S08c",
+   "truck",
+   "close_up"
+  ],
+  [
+   "S09a",
+   "orbit",
+   "wide"
+  ],
+  [
+   "S11a",
+   "zoom",
+   "extreme_wide"
+  ],
+  [
+   "S11c",
+   "orbit",
+   "close_up"
+  ],
+  [
+   "S12a",
+   "dolly_zoom",
+   "wide"
+  ],
+  [
+   "S12b",
+   "truck",
+   "medium_close"
+  ]
+ ]
+}

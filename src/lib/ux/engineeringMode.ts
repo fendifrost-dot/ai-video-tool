@@ -36,14 +36,22 @@ export const DEFAULT_ENGINEERING_MODE: EngineeringMode = "creative";
  * - `prompt`        — Prompt Lab (prompt engineering)
  * - `timeline`      — music-video editor / timeline
  * - `continuity`    — temporal continuity locking
+ * - `runs`          — batch runs: a shot list submitted to the providers from the app
  */
 export const ADVANCED_DESTINATION_KEYS = [
+  // 2026-10-03: the creative workflow is Setup → Treatment → Storyboard → Review → Export. The library, the
+  // look-driven composer and the per-clip scorecards are reached from the storyboard's boxes in normal use and are
+  // kept here for specialist work.
+  "assets",
+  "video",
+  "scorecards",
   "shots",
   "cover-flight",
   "hero-frame",
   "prompt",
   "timeline",
   "continuity",
+  "runs",
 ] as const;
 
 export type AdvancedDestinationKey = (typeof ADVANCED_DESTINATION_KEYS)[number];

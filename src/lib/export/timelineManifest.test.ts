@@ -7,6 +7,7 @@ import type { TimelineItem } from "@/lib/timeline/types";
 function project(): VideoProject {
   return {
     id: "p1",
+    active_variation_id: "v1",
     user_id: "u1",
     artist_id: null,
     title: "Test MV",
@@ -16,6 +17,8 @@ function project(): VideoProject {
     mood: null,
     visual_style: "noir",
     color_palette: [],
+    creative_exemplars: [],
+    aspect_ratio: "9:16",
     wardrobe_notes: null,
     lyrics: null,
     song_structure_json: [],

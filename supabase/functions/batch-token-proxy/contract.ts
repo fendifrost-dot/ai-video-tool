@@ -7,9 +7,83 @@
 export const BATCH_ACTIONS = ["session", "enroll", "list", "revoke"] as const;
 export type BatchAction = (typeof BATCH_ACTIONS)[number];
 
-/** Mints allowed per credential per window. Generous for a runner, finite for a leak. */
-export const RATE_LIMIT_MINTS = 12;
-export const RATE_LIMIT_WINDOW_SECONDS = 3600;
+/**
+ * NO FIXED MINT CAP. There used to be one — 12 per hour, then 120 — and it was the wrong control.
+ *
+ * WHY IT WAS REMOVED (9 Oct 2026, the owner's call, during an authorized video review)
+ *   It never bounded what a leak could do. A mint hands back a whole session, so one mint is already everything;
+ *   the cap only limited HOW MANY sessions an hour, which an attacker does not need. Meanwhile it reliably broke
+ *   honest work, because the mint rate tracked EDGE ISOLATE CHURN rather than request count: avt-mcp cached its
+ *   session in isolate memory, and a cold isolate — most calls in an AI conversation — had no token to reuse and
+ *   no refresh token to renew, so it minted. Raising the number moved the wall and nothing else.
+ *
+ * WHAT BOUNDS A LEAK INSTEAD, all of it stronger than a counter:
+ *   revocation, which now deletes the stored session and signs it out, so it ends access rather than only
+ *   stopping future mints; `expires_at` on the credential; one audit row per use in `batch_credential_mints`,
+ *   which is what actually shows a leak; and the session-age bound below, so reuse cannot make one session
+ *   immortal.
+ *
+ * Provider spend is NOT a concern of this file and never was. It is controlled on the provider accounts
+ * themselves (see avt-mcp/index.ts) — a token limit here would be a confusing proxy for it and is not one.
+ */
+
+/**
+ * How long before an access token expires we stop handing it out. A caller must have time to finish the
+ * request it is about to make with it.
+ */
+export const BATCH_SESSION_MIN_REMAINING_SECONDS = 120;
+
+/**
+ * How long a single minted session may be kept alive by refreshing before the proxy mints a fresh one. Bounds
+ * the refresh chain: reuse must not turn one mint into permanent access. Twelve hours costs honest work two
+ * mints a day and gives a leaked secret a session with an end.
+ */
+export const BATCH_SESSION_MAX_AGE_SECONDS = 12 * 3600;
+
+/** The stored session row, as the proxy reads it. */
+export type StoredSession = {
+  credential_id: string;
+  owner_user_id: string;
+  access_token: string;
+  refresh_token: string;
+  expires_at: string;
+  minted_at: string;
+  /** Statistics, not limits: how often reuse and refresh have saved a mint. */
+  reuse_count?: number;
+  refresh_count?: number;
+};
+
+/**
+ * What to do with a stored session: hand it back, renew it, or mint a new one.
+ *
+ *   reuse    the access token has comfortable life left — no network call at all
+ *   refresh  it is expiring but the session is still inside its age bound
+ *   mint     there is nothing stored, it belongs to a different owner, or the session is too old to renew
+ *
+ * The owner check is not paranoia about a race: if a credential were ever re-bound, a stored session for the
+ * PREVIOUS owner must never be handed to the new one. It is cheaper to compare than to reason about.
+ */
+export type SessionPlan = { use: "reuse" | "refresh" | "mint"; reason: string };
+
+export function planSession(
+  stored: StoredSession | null | undefined,
+  ownerUserId: string,
+  now: Date,
+): SessionPlan {
+  if (!stored) return { use: "mint", reason: "no stored session" };
+  if (stored.owner_user_id !== ownerUserId) return { use: "mint", reason: "stored session belongs to another owner" };
+
+  const nowMs = now.getTime();
+  const ageSeconds = (nowMs - new Date(stored.minted_at).getTime()) / 1000;
+  if (!Number.isFinite(ageSeconds) || ageSeconds >= BATCH_SESSION_MAX_AGE_SECONDS) {
+    return { use: "mint", reason: "session older than the refresh bound" };
+  }
+
+  const remaining = (new Date(stored.expires_at).getTime() - nowMs) / 1000;
+  if (!Number.isFinite(remaining)) return { use: "mint", reason: "stored session has no usable expiry" };
+  if (remaining > BATCH_SESSION_MIN_REMAINING_SECONDS) return { use: "reuse", reason: "stored access token still valid" };
+  return { use: "refresh", reason: "stored access token expiring" };
+}
 
 /** Secrets are issued at this length; shorter ones are rejected outright. */
 export const SECRET_BYTES = 32;
@@ -33,6 +107,8 @@ export function parseRequest(body: unknown): ParsedRequest {
   if (typeof action !== "string" || !(BATCH_ACTIONS as readonly string[]).includes(action)) {
     return { ok: false, error: `action must be one of ${BATCH_ACTIONS.join(", ")}` };
   }
+  // `.includes` on a widened string[] does not narrow, so assert once here.
+  const act = action as BatchAction;
 
   // Guard against a caller trying to steer whose session is minted. These keys are
   // meaningless to this function; their presence means the caller misunderstands the
@@ -46,7 +122,7 @@ export function parseRequest(body: unknown): ParsedRequest {
     }
   }
 
-  if (action === "enroll") {
+  if (act === "enroll") {
     const label = typeof b.label === "string" ? b.label.trim() : "";
     if (!label || label.length > 80)
       return { ok: false, error: "enroll needs a label of 1–80 characters" };
@@ -57,17 +133,17 @@ export function parseRequest(body: unknown): ParsedRequest {
         return { ok: false, error: "expiresInDays must be 1–3650" };
       expiresInDays = Math.floor(d);
     }
-    return { ok: true, action, label, expiresInDays };
+    return { ok: true, action: act, label, expiresInDays };
   }
 
-  if (action === "revoke") {
+  if (act === "revoke") {
     const credentialId = typeof b.credentialId === "string" ? b.credentialId.trim() : "";
     if (!/^[0-9a-f-]{36}$/i.test(credentialId))
       return { ok: false, error: "revoke needs a credentialId (uuid)" };
-    return { ok: true, action, credentialId };
+    return { ok: true, action: act, credentialId };
   }
 
-  return { ok: true, action };
+  return { ok: true, action: act };
 }
 
 /** The runner's secret travels in its own header, never in the body or a query string. */
@@ -128,11 +204,7 @@ export function checkCredential(row: CredentialRow | null, now: Date): Credentia
   return { ok: true, ownerUserId: row.owner_user_id, credentialId: row.id };
 }
 
-/** Fixed window over the mint audit — no separate counter to drift. */
-export function rateLimited(mintsInWindow: number): boolean {
-  return mintsInWindow >= RATE_LIMIT_MINTS;
-}
-
-export function windowStart(now: Date): string {
-  return new Date(now.getTime() - RATE_LIMIT_WINDOW_SECONDS * 1000).toISOString();
-}
+/**
+ * `rateLimited` and `windowStart` were here. They are gone rather than kept at a higher number: a dead knob with
+ * a plausible name is the thing a future change turns back on without reading why it was off.
+ */

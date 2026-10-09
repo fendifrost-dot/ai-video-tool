@@ -1,0 +1,97 @@
+[
+ {
+  "id": "S06c_low_hero",
+  "kind": "angle",
+  "route": "seedance_ref",
+  "aspect": "9:16",
+  "resolution": "720p",
+  "source_local": "docs/handoffs/round_2026-10-02/S06c_low_hero_src.mp4",
+  "source_window": [
+   66.885,
+   68.853
+  ],
+  "source_trim": [
+   0.0,
+   4.0
+  ],
+  "masterStart": 63.9987,
+  "angle": "a low hero angle from knee height looking up, 28mm, fast push-in",
+  "keep": [
+   "clear-lens glasses, not tinted",
+   "cream Saint Laurent track jacket, zipped, stand collar, one narrow navy chest stripe"
+  ],
+  "prompt": "(angle shot)"
+ },
+ {
+  "id": "S08a_side_tight",
+  "kind": "angle",
+  "route": "seedance_ref",
+  "aspect": "9:16",
+  "resolution": "720p",
+  "source_local": "docs/handoffs/round_2026-10-02/S08a_side_tight_src.mp4",
+  "source_window": [
+   70.82,
+   72.787
+  ],
+  "source_trim": [
+   0.0,
+   4.0
+  ],
+  "masterStart": 69.466,
+  "angle": "a tighter angle from his right side, chest-up, 50mm, handheld",
+  "keep": [
+   "clear-lens glasses, not tinted",
+   "navy cap",
+   "camo shirt with the flag patch"
+  ],
+  "prompt": "(angle shot)"
+ },
+ {
+  "id": "S11c_low_hero",
+  "kind": "angle",
+  "route": "seedance_ref",
+  "aspect": "9:16",
+  "resolution": "720p",
+  "source_local": "docs/handoffs/round_2026-10-02/S11c_low_hero_src.mp4",
+  "source_window": [
+   84.59,
+   86.557
+  ],
+  "source_trim": [
+   0.0,
+   4.0
+  ],
+  "masterStart": 81.7036,
+  "angle": "a low hero angle from knee height looking up, 28mm, fast push-in",
+  "keep": [
+   "clear-lens glasses, not tinted",
+   "navy cap",
+   "camo shirt with the flag patch"
+  ],
+  "prompt": "(angle shot)"
+ },
+ {
+  "id": "S12b_side_tight",
+  "kind": "angle",
+  "route": "seedance_ref",
+  "aspect": "9:16",
+  "resolution": "720p",
+  "source_local": "docs/handoffs/round_2026-10-02/S12b_side_tight_src.mp4",
+  "source_window": [
+   88.525,
+   90.492
+  ],
+  "source_trim": [
+   0.0,
+   4.0
+  ],
+  "masterStart": 85.638,
+  "angle": "a tighter angle from his right side, chest-up, 50mm, handheld",
+  "keep": [
+   "clear-lens glasses, not tinted",
+   "navy cap",
+   "camo shirt with the flag patch"
+  ],
+  "prompt": "(angle shot)"
+ }
+]

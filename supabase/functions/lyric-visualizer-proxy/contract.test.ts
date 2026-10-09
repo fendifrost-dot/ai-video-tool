@@ -6,6 +6,9 @@ import {
   buildSystemPrompt,
   isLyricMode,
   LYRIC_MODES,
+  neighboursInstruction,
+  projectStateInstruction,
+  LOOK_IS_NOT_PLACE,
   renderTemplate,
   scenesInstruction,
   scenesPerLine,
@@ -13,8 +16,8 @@ import {
   shotInstruction,
   templateMatches,
   templateSlots,
-} from "./contract";
-import { legacySystemPrompt } from "./legacyPrompt.golden";
+} from "./contract.ts";
+import { legacySystemPrompt } from "./legacyPrompt.golden.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const indexSource = readFileSync(resolve(here, "./index.ts"), "utf8");
@@ -232,5 +235,81 @@ describe("the dry run reports the template it would have used", () => {
 describe("the cost gate stays honest about the mode", () => {
   it("estimates one scene per line outside 'all'", () => {
     expect(flat).toContain("body.lines.length * scenesPerLine(mode) * 450");
+  });
+});
+
+describe("the treatment is the one creative brief (2026-10-03)", () => {
+  const base = { ...ARGS, mode: "literal" as const };
+
+  it("present, it outranks the standing notes and may ask for a mark or a crowd", () => {
+    const p = buildSystemPrompt({ ...base, treatment: "A monogram burns in the forest; models cross in formation.", projectState: { constraints: ["PLACES (reuse these, do not invent others): the runway"] } });
+    expect(p).toContain("except a mark the treatment itself calls for");
+    expect(p).toContain("a crowd, a formation or a group the treatment asks for is what the beat needs");
+    expect(p).toContain("The one exception is `constraints`, the director's standing notes");
+    expect(p).toContain("the treatment is the later decision and wins");
+    // the project's standing look rides in the request as `currentEnvironment`: it is a look, not the map
+    expect(p).toContain(LOOK_IS_NOT_PLACE);
+    expect(p.indexOf(LOOK_IS_NOT_PLACE)).toBeGreaterThan(p.indexOf("The treatment (every scene serves it"));
+    // no notes sent: nothing is said about them
+    expect(buildSystemPrompt({ ...base, treatment: "T", projectState: { window: [0, 4] } })).not.toContain("The one exception is `constraints`");
+  });
+
+  it("absent, the prompt is exactly what it was", () => {
+    expect(buildSystemPrompt({ ...base, treatment: null, neighbours: null, projectState: null, hasExemplars: true })).toBe(buildSystemPrompt(base));
+    expect(buildSystemPrompt({ ...base, treatment: "   " })).toBe(buildSystemPrompt(base));
+    expect(buildSystemPrompt({ ...ARGS, mode: "all", treatment: "" })).toBe(
+      legacySystemPrompt(ARGS.clipSeconds, ARGS.exemplars, ARGS.rules, ARGS.limits),
+    );
+  });
+
+  it("present, it replaces the exemplars as the brief", () => {
+    const p = buildSystemPrompt({ ...base, exemplars: "- (none supplied)", treatment: "A winter palace of ice.", hasExemplars: false });
+    expect(p).toContain("The treatment (every scene serves it; none contradicts it):\nA winter palace of ice.");
+    expect(p).toContain("inside the treatment below, which is the one creative brief for this video");
+    expect(p).not.toContain("exemplars");
+  });
+
+  it("exemplars go in beside a treatment only when some were really supplied", () => {
+    const p = buildSystemPrompt({ ...base, treatment: "A winter palace of ice.", hasExemplars: true });
+    expect(p).toContain("The artist's exemplars (this is the bar):");
+  });
+
+  it("neighbours are stated only with a treatment, and only the ones that exist", () => {
+    expect(neighboursInstruction(null)).toBeNull();
+    expect(neighboursInstruction({ before: " ", after: null })).toBeNull();
+    expect(neighboursInstruction({ before: "insert: a Bentley at the kerb", after: null })).toMatch(/Before: insert: a Bentley at the kerb$/);
+    const p = buildSystemPrompt({ ...base, treatment: "T", neighbours: { before: "performance: he raps", after: "insert: the rim" } });
+    expect(p).toContain("Before: performance: he raps\nAfter: insert: the rim");
+    expect(buildSystemPrompt({ ...base, neighbours: { before: "x", after: "y" } })).toBe(buildSystemPrompt(base));
+  });
+
+  it("project state is carried as data, after the rules, and says it is not direction", () => {
+    expect(projectStateInstruction(null)).toBeNull();
+    expect(projectStateInstruction({})).toBeNull();
+    const state = { song_window_seconds: [32, 36.2], performance_source: { take: "Take 1", source_range_seconds: [31.15, 35.35] } };
+    const p = buildSystemPrompt({ ...base, treatment: "T", projectState: state });
+    expect(p.endsWith(JSON.stringify(state))).toBe(true);
+    expect(p).toContain("locked facts, given as data. This is not creative direction");
+    expect(p.indexOf("Locked rules")).toBeLessThan(p.indexOf("Project state"));
+  });
+
+  it("a box that plays the real take is written as the place he performs in, in what he wears", () => {
+    // no take: the instruction is what it always was
+    expect(projectStateInstruction({ song_window_seconds: [0, 4], performance_source: null })).not.toContain("real performance");
+    const bare = projectStateInstruction({ performance_source: { take: "Take 1", source_range_seconds: [31.15, 35.35] } })!;
+    expect(bare).toContain("Write this box's scene as the PLACE he performs in");
+    expect(bare).toContain("do not describe other clothes on him");
+    const told = projectStateInstruction({ performance_source: { take: "Take 1", source_range_seconds: [31.15, 35.35], he_wears: "a camouflage shirt and a navy cap", filmed_in: "a walk-in closet" } })!;
+    expect(told).toContain("exactly what he_wears says — never dress him in anything else");
+    expect(told).toContain("the place it was filmed in (filmed_in) is replaced by yours, not described");
+    // still data after the instruction
+    expect(told.endsWith('"filmed_in":"a walk-in closet"}}')).toBe(true);
+  });
+
+  it("the function passes the three fields through and caps the treatment", () => {
+    expect(flat).toContain("treatment: typeof body.treatment === \"string\" ? body.treatment.slice(0, MAX_TREATMENT_CHARS) : null");
+    expect(flat).toContain("neighbours: body.neighbours ?? null");
+    expect(flat).toContain("projectState: body.projectState ?? null");
+    expect(flat).toContain("hasExemplars: (body.exemplars ?? []).length > 0");
   });
 });

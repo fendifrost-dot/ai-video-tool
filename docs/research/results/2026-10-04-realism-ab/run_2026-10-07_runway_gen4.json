@@ -1,0 +1,47 @@
+{
+ "n": {
+  "control": 6,
+  "treatment": 6
+ },
+ "endpoints": {
+  "detail_mf_norm": {
+   "role": "PRIMARY",
+   "control_mean": 694.8972419395935,
+   "treatment_mean": 602.4210657868535,
+   "relative_change": -0.1330789224238218,
+   "t": -0.16815108861393602,
+   "p": 0.8664644185874459
+  },
+  "noise_hf": {
+   "role": "secondary",
+   "control_mean": 2.785088360309601,
+   "treatment_mean": 3.2805300652980804,
+   "relative_change": 0.1778908388944305,
+   "t": 0.41834724657477823,
+   "p": 0.6756932505647777
+  },
+  "sat_mean": {
+   "role": "GUARD",
+   "control_mean": 111.67232893766455,
+   "treatment_mean": 107.84277294845826,
+   "relative_change": -0.03429279236497027,
+   "t": -0.3765768465826671,
+   "p": 0.7064880969279412
+  }
+ },
+ "verdict": "NO MEASURED EFFECT at this sample size",
+ "droppedNoFace": 0,
+ "droppedNoFaceByArm": {
+  "control": 0,
+  "treatment": 0
+ },
+ "route": {
+  "endpoint": "Runway MCP generate_image",
+  "model": "gen-4",
+  "seedLocked": false
+ },
+ "notMeasured": [
+  "whether a viewer prefers either arm \u2014 this counts texture, it does not judge a picture",
+  "skin_sheen: floored at 0.000 on every still in calibration, so it is not an endpoint"
+ ]
+}

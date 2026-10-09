@@ -1,0 +1,28 @@
+{
+ "move": {
+  "type": "pull",
+  "amount": 1.6,
+  "ease": "in_out",
+  "start": 0.12,
+  "end": 0.9,
+  "about": [
+   0.44,
+   0.5
+  ],
+  "parallax": 0
+ },
+ "lens": "clean_50",
+ "handheld": 0.15,
+ "place": {
+  "scale": 0.15,
+  "at": [
+   0.44,
+   0.56
+  ],
+  "plane": 0.36
+ },
+ "occlude": {
+  "margin": 0.04,
+  "soft": 0.03
+ }
+}

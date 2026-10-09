@@ -27,11 +27,71 @@ import {
   type TransitionType,
 } from "./shotSpec";
 import { DEFAULT_TRANSITION_PRESETS, transitionInFromPreset } from "./transitions";
+import { sanitizeEvents } from "@/lib/storyboard/events";
+import type { CastRef, ShotEvent } from "./shotSpec";
+import { PRODUCTION_METHODS, SHOT_LINK_KINDS, type ShotLink } from "./shotSpec";
+
+/**
+ * The continuity entities a director pointed a shot at. A key that is ABSENT was not touched; an empty string (or an
+ * empty list) says "none" on purpose — it takes away a reference the generator made.
+ */
+export type ContinuityOverride = {
+  /** continuity_entities.key of the place. */
+  location?: string;
+  /** continuity_entities.key of each prop. */
+  props?: string[];
+  /** continuity_entities.key of the lighting state the shot opens in. */
+  lighting?: string;
+  /** The wardrobe look: an existing Look record (artist_looks.id). Applied to the shot's wardrobe.lookId — looks are not duplicated as entities. */
+  look?: string;
+  /** The shot's links to other shots of the board. A list — even an empty one — is exactly the shot's links. */
+  links?: { kind: string; shot: string; note?: string }[];
+  /** The exact garments (character_features ids). A list — even an empty one — is exactly the shot's garments. */
+  garments?: string[];
+  /** Which outfit the shot wears (shotSpec wardrobe.outfitMode / outfitKey): inherit its scene's, an exception, or none. */
+  outfit?: { mode?: string; key?: string | null };
+  /** How the shot is made (shotSpec PRODUCTION_METHODS; "" = not said). */
+  production?: { method?: string; note?: string };
+};
+
+function statesContinuity(c: ContinuityOverride | null | undefined): boolean {
+  return (
+    !!c &&
+    (typeof c.location === "string" || Array.isArray(c.props) || typeof c.lighting === "string" || typeof c.look === "string" || Array.isArray(c.links) || Array.isArray(c.garments) || !!c.outfit || !!c.production)
+  );
+}
+
+/**
+ * A cast override states something when it names a list or either flag. An ABSENT cast is "not
+ * touched"; a cast with an empty `members` list IS a statement — the director removed everyone —
+ * and must not be mistaken for silence, which is why this tests for the key, not for length.
+ */
+function statesCast(c: CastOverride | null | undefined): boolean {
+  return (
+    !!c && (Array.isArray(c.members) || typeof c.open === "boolean" || typeof c.none === "boolean")
+  );
+}
+
+/**
+ * Who the director put in a shot. Mirrors ContinuityOverride: an absent key was not touched.
+ * `members` are full CastRefs rather than bare keys, because each one carries this shot's own
+ * direction (action, placement, framing) which belongs to the shot, not to the character.
+ */
+export type CastOverride = {
+  members?: CastRef[];
+  open?: boolean;
+  none?: boolean;
+};
 
 /** One row of `shot_overrides`, in app shape. Null = not overridden. */
 export type ShotOverride = {
   specId: string;
   direction: string | null;
+  /**
+   * What the picture shows when the shot opens — place, people, objects, light. The still is drawn from this;
+   * `direction` is what then happens. Optional so rows written before the column existed read as "not set".
+   */
+  frame?: string | null;
   cameraMotion: { type?: string | null; description?: string | null } | null;
   framing: string | null;
   transitionIn: {
@@ -42,17 +102,29 @@ export type ShotOverride = {
   } | null;
   requiredElements: string[] | null;
   notes: string | null;
+  /**
+   * The timed events inside the shot. Absent or null = not changed (the generated events stand); a list — even an
+   * empty one — is exactly the shot's events.
+   */
+  events?: ShotEvent[] | null;
+  /** The continuity entities the shot points at. Absent or null = not changed. */
+  continuity?: ContinuityOverride | null;
+  /** Who is in the shot. Absent or null = not changed; an empty members list = nobody is cast. */
+  cast?: CastOverride | null;
   updatedAt?: string;
 };
 
 /** The fields a director can override, in the order the card shows them. */
 export const OVERRIDABLE_FIELDS = [
   "direction",
+  "frame",
   "cameraMotion",
   "framing",
   "transitionIn",
   "requiredElements",
   "notes",
+  "events",
+  "continuity",
 ] as const;
 export type OverridableField = (typeof OVERRIDABLE_FIELDS)[number];
 
@@ -105,6 +177,7 @@ export function isEmptyOverride(o: ShotOverride | null | undefined): boolean {
   const transition = o.transitionIn;
   return (
     !o.direction?.trim() &&
+    !o.frame?.trim() &&
     !motion?.type &&
     !motion?.description?.trim() &&
     !o.framing &&
@@ -112,7 +185,10 @@ export function isEmptyOverride(o: ShotOverride | null | undefined): boolean {
     !transition?.preset &&
     transition?.durationSeconds == null &&
     !(o.requiredElements && o.requiredElements.length > 0) &&
-    !o.notes?.trim()
+    !o.notes?.trim() &&
+    !Array.isArray(o.events) &&
+    !statesContinuity(o.continuity) &&
+    !statesCast(o.cast)
   );
 }
 
@@ -133,6 +209,17 @@ export function applyShotOverride(
     touched = true;
   }
 
+  if (override.frame?.trim()) {
+    // The frame replaces the generated environment's description: it IS the scene now, and everything that reads
+    // "where are we and what is in the picture" (the card, the compiler) reads it from there.
+    next = {
+      ...next,
+      openingFrame: override.frame.trim(),
+      environment: { ...next.environment, description: override.frame.trim() },
+    };
+    touched = true;
+  }
+
   const motionType = asCameraMotion(override.cameraMotion?.type);
   const motionDesc = override.cameraMotion?.description?.trim();
   if (motionType || motionDesc) {
@@ -145,7 +232,8 @@ export function applyShotOverride(
         // The coverage planner reads the PROSE first (the generators write cameras as text), so a type stated
         // without a description must not keep the generated prose — that prose names the generated move and
         // would win. The type's own phrase goes in instead; it classifies back to the same move.
-        description: motionDesc ?? (motionType ? TYPE_PHRASE[motionType] : next.cameraMotion.description),
+        description:
+          motionDesc ?? (motionType ? TYPE_PHRASE[motionType] : next.cameraMotion.description),
       },
     };
     touched = true;
@@ -195,7 +283,75 @@ export function applyShotOverride(
     touched = true;
   }
 
+  if (Array.isArray(override.events)) {
+    // the director's list IS the shot's events (an empty list = the shot is one state again)
+    next = {
+      ...next,
+      events: sanitizeEvents(override.events, Math.max(0, next.timeline.end - next.timeline.start)),
+    };
+    touched = true;
+  }
+
+  if (statesCast(override.cast)) {
+    const c = override.cast!;
+    next = {
+      ...next,
+      cast: {
+        members: Array.isArray(c.members) ? c.members : next.cast.members,
+        open: typeof c.open === "boolean" ? c.open : next.cast.open,
+        none: typeof c.none === "boolean" ? c.none : next.cast.none,
+      },
+    };
+    touched = true;
+  }
+
+  if (statesContinuity(override.continuity)) {
+    const c = override.continuity!;
+    next = {
+      ...next,
+      continuity: {
+        location: typeof c.location === "string" ? c.location.trim() || null : next.continuity.location,
+        props: Array.isArray(c.props) ? c.props.filter((x) => typeof x === "string" && x.trim()) : next.continuity.props,
+        lighting: typeof c.lighting === "string" ? c.lighting.trim() || null : next.continuity.lighting,
+        links: Array.isArray(c.links) ? overrideLinks(c.links, next.id) : next.continuity.links,
+      },
+      // the look is the existing Look record the shot's wardrobe already points at; the garments are its exact pieces
+      wardrobe: {
+        ...next.wardrobe,
+        ...(typeof c.look === "string" ? { lookId: c.look.trim() || null } : {}),
+        ...(Array.isArray(c.garments) ? { garments: [...new Set(c.garments.filter((g) => typeof g === "string" && g.trim()).map((g) => g.trim()))] } : {}),
+        ...(c.outfit ? outfitChoice(c.outfit, next.wardrobe) : {}),
+      },
+      ...(c.production ? { production: overrideProduction(c.production, next.production) } : {}),
+    };
+    touched = true;
+  }
+
   return touched ? { ...next, origin: "override" } : spec;
+}
+
+/** The director's outfit choice on a shot, cleaned: a known mode; a key only with `exception` (an inherited or absent outfit names none). */
+function outfitChoice(o: { mode?: string; key?: string | null }, was: ShotSpec["wardrobe"]): Pick<ShotSpec["wardrobe"], "outfitMode" | "outfitKey"> {
+  const mode = o.mode === "inherit" || o.mode === "exception" || o.mode === "none" ? o.mode : was.outfitMode;
+  const key = typeof o.key === "string" && o.key.trim() ? o.key.trim() : null;
+  return { outfitMode: mode, outfitKey: mode === "exception" ? (key ?? was.outfitKey) : null };
+}
+
+/** A director's links, cleaned: known kinds, another shot's key, at most one link of a kind to a shot. */
+function overrideLinks(raw: readonly { kind: string; shot: string; note?: string }[], self: string): ShotLink[] {
+  const out: ShotLink[] = [];
+  for (const l of raw) {
+    const kind = SHOT_LINK_KINDS.find((k) => k === l?.kind);
+    const shot = typeof l?.shot === "string" ? l.shot.trim() : "";
+    if (!kind || !shot || shot === self || out.some((o) => o.kind === kind && o.shot === shot)) continue;
+    out.push({ kind, shot, note: typeof l.note === "string" ? l.note.trim().slice(0, 240) : "" });
+  }
+  return out;
+}
+
+function overrideProduction(raw: { method?: string; note?: string }, current: ShotSpec["production"]): ShotSpec["production"] {
+  const method = typeof raw.method === "string" ? (raw.method === "" ? "" : PRODUCTION_METHODS.find((m) => m === raw.method)) : current.method;
+  return { method: method ?? current.method, note: typeof raw.note === "string" ? raw.note.trim().slice(0, 400) : current.note };
 }
 
 /** Apply a whole map of overrides (keyed by spec id) to a list of specs. */

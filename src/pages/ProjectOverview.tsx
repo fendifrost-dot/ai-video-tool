@@ -323,10 +323,11 @@ function SongStructureCard({ structureJson }: { structureJson: unknown }) {
 function NextStepsCard() {
   return (
     <div className="rounded-md border border-dashed border-border p-4 text-sm text-muted-foreground">
-      Next: open <strong className="text-foreground">Treatment</strong>,{" "}
-      <strong className="text-foreground">Assets</strong>, or{" "}
-      <strong className="text-foreground">Produce Video</strong> from the project sidebar.
-      Engineering stages (shot list, cover flight, continuity) live under{" "}
+      The video is made in five steps from the project sidebar:{" "}
+      <strong className="text-foreground">Setup</strong> (the song, the lyrics and all your real footage),{" "}
+      <strong className="text-foreground">Treatment</strong>, <strong className="text-foreground">Storyboard</strong>{" "}
+      (where every shot is written, generated and filled), <strong className="text-foreground">Review</strong> and{" "}
+      <strong className="text-foreground">Export</strong>. The library and the specialist studios live under{" "}
       <strong className="text-foreground">Advanced</strong>.
     </div>
   );

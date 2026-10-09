@@ -1,0 +1,234 @@
+{
+  "decision": "all pieces in, all exact; agent assembles looks",
+  "rules": [
+    "Every piece below is in the video and is exact: its photo is sent and the result is checked against it.",
+    "Prioritise jackets and hats. Every look includes a hat.",
+    "Under the Mastic track jacket and the bubbled lambskin coat: formal — a button-up shirt and tie (generic, described in words, not a particular garment).",
+    "Under the other jackets: a t-shirt is fine (generic, described).",
+    "The confetti viscose shirt is not used in the first half of the video; use it in the second half.",
+    "The agent assembles the looks per scene from these pieces. If Fendi does not like a look, he tells the agent."
+  ],
+  "pieces": [
+    {
+      "id": "f6455042-faec-4a07-b6a2-cb0525a69c65",
+      "label": "Trucker Jacket — French Black Denim",
+      "group": "jacket",
+      "inWardrobe": true,
+      "exact": true,
+      "note": "t-shirt underneath"
+    },
+    {
+      "id": "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+      "label": "Track Jacket — Mastic Cotton Navy Stripe",
+      "group": "jacket",
+      "inWardrobe": true,
+      "exact": true,
+      "note": "formal underneath: button-up and tie"
+    },
+    {
+      "id": "0eba994e-eece-4910-b9b6-af7d3581c69f",
+      "label": "Cotton jacket (full-length bomber/chore)",
+      "group": "jacket",
+      "inWardrobe": true,
+      "exact": true,
+      "note": "t-shirt underneath"
+    },
+    {
+      "id": "new-coat",
+      "label": "Coat in Bubbled Lambskin — Noir (the leather puffer)",
+      "group": "jacket",
+      "inWardrobe": false,
+      "exact": true,
+      "note": "formal underneath: button-up and tie"
+    },
+    {
+      "id": "new-cap-cassandre",
+      "label": "Cassandre Cap in Cotton Denim Twill — Khaki",
+      "group": "hat",
+      "inWardrobe": false,
+      "exact": true,
+      "note": ""
+    },
+    {
+      "id": "new-cap-yvarsity",
+      "label": "Y Varsity Cap in Gabardine — Black and Ivory",
+      "group": "hat",
+      "inWardrobe": false,
+      "exact": true,
+      "note": ""
+    },
+    {
+      "id": "new-cap-sl",
+      "label": "Saint Laurent Cap in Cotton Gabardine — Beige and Ivory",
+      "group": "hat",
+      "inWardrobe": false,
+      "exact": true,
+      "note": ""
+    },
+    {
+      "id": "eb813927-329c-4adc-8cb6-484e42adf59c",
+      "label": "Nylon bucket hat",
+      "group": "hat",
+      "inWardrobe": true,
+      "exact": true,
+      "note": ""
+    },
+    {
+      "id": "ca61e35c-036f-4584-a781-935beb0f3201",
+      "label": "Cassandre Overshirt — Trouville Beach Blue Denim",
+      "group": "top",
+      "inWardrobe": true,
+      "exact": true,
+      "note": ""
+    },
+    {
+      "id": "ebb696d4-d730-4b87-9702-d9d2e58ec1ed",
+      "label": "Cassandre Overshirt — Black Cotton Linen Gabardine",
+      "group": "top",
+      "inWardrobe": true,
+      "exact": true,
+      "note": ""
+    },
+    {
+      "id": "b06dfb03-efd4-416d-bc10-fd3eb6fb0912",
+      "label": "Confetti viscose shirt",
+      "group": "top",
+      "inWardrobe": true,
+      "exact": true,
+      "note": "second half of the video only"
+    },
+    {
+      "id": "df104591-5015-4b1f-98a7-7842c5001037",
+      "label": "Mick Long Jeans — Westwood Black Denim",
+      "group": "bottom",
+      "inWardrobe": true,
+      "exact": true,
+      "note": ""
+    },
+    {
+      "id": "d7666d88-9dff-4256-8606-320b335af671",
+      "label": "Slim low-rise jeans",
+      "group": "bottom",
+      "inWardrobe": true,
+      "exact": true,
+      "note": ""
+    },
+    {
+      "id": "6badada3-23cb-4801-a291-b7bc1b405c89",
+      "label": "SL look trousers (IMG_5541)",
+      "group": "bottom",
+      "inWardrobe": true,
+      "exact": true,
+      "note": ""
+    },
+    {
+      "id": "2ce65953-37d3-4965-9db8-448720888a6c",
+      "label": "Cassandre smooth leather belt",
+      "group": "accessory",
+      "inWardrobe": true,
+      "exact": true,
+      "note": ""
+    },
+    {
+      "id": "18b648a5-cfe0-46e4-b756-7a03693065f8",
+      "label": "Cazal MOD octagonal glasses",
+      "group": "accessory",
+      "inWardrobe": true,
+      "exact": true,
+      "note": ""
+    },
+    {
+      "id": "991a79d4-2f15-444f-ac2d-9f92e778fac1",
+      "label": "Lewis grained leather sneakers",
+      "group": "footwear",
+      "inWardrobe": true,
+      "exact": true,
+      "note": ""
+    }
+  ],
+  "priority": [
+    "jacket",
+    "hat"
+  ],
+  "decidedBy": "Fendi",
+  "decidedAt": "2026-10-09T01:4xZ",
+  "variationId": "882ec381-0fa0-4a76-b23b-b83ebc157372",
+  "supersedes": "the per-scene grid (versions 2–8)",
+  "assembled": {
+    "at": "2026-10-09T03:05Z",
+    "by": "integration agent, through the app's Wardrobe panel on candidate 5",
+    "wardrobeRowsAdded": {
+      "coat": "fb82c0d2-958b-4cfa-a335-d06977b1c963",
+      "capCassandreKhaki": "c4f87504-ddbc-4a8e-b474-e090b88fa97a",
+      "capYVarsity": "f1dc9486-22db-47d8-8554-46966d442c55",
+      "capSaintLaurentBeige": "07e6dcbe-5c56-4e2d-862e-3b22aca8d93d",
+      "wardrobeRowsAfter": 21,
+      "note": "front photos imported from this folder's raw GitHub URLs through the Wardrobe 'Paste URL' import; the back/side angles are not attached yet (the multi-angle import takes files from the owner's computer)"
+    },
+    "looks": [
+      {
+        "outfitKey": "YSL_DENIM_LOOK",
+        "scenes": [
+          "The viewer 43.14-50.98",
+          "The viewer, after the screen 54.9-58.82"
+        ],
+        "pieces": [
+          "Trucker Jacket - French Black Denim",
+          "Mick Long Jeans - Westwood Black Denim",
+          "Y Varsity Cap - Black and Ivory",
+          "Cassandre smooth leather belt",
+          "Lewis grained leather sneakers",
+          "Cazal MOD octagonal glasses"
+        ],
+        "words": "plain t-shirt under the trucker jacket"
+      },
+      {
+        "outfitKey": "YSL_LEATHER_COAT",
+        "scenes": [
+          "Chicago, the switch 62.75-96.08"
+        ],
+        "pieces": [
+          "Coat in Bubbled Lambskin - Noir",
+          "SL look trousers (IMG_5541)",
+          "Saint Laurent Cap - Beige and Ivory",
+          "Cazal MOD octagonal glasses"
+        ],
+        "words": "a button-up shirt and tie under the coat"
+      },
+      {
+        "outfitKey": "YSL_JACKET",
+        "scenes": [
+          "The cold front 96.08-123.53 (all performance shots: his footage, generation does not dress him there)"
+        ],
+        "pieces": [
+          "Track Jacket - Mastic Cotton Navy Stripe",
+          "Cassandre Cap - Khaki",
+          "Slim low-rise jeans",
+          "Lewis grained leather sneakers"
+        ],
+        "words": "a button-up shirt and tie under the track jacket"
+      },
+      {
+        "outfitKey": "THE_CLEAN_ENTRANCE_LOOK",
+        "scenes": [
+          "The clean entrance 174.51-188.24 (second half)"
+        ],
+        "pieces": [
+          "Cotton jacket",
+          "Confetti viscose shirt",
+          "Nylon bucket hat",
+          "Mick Long Jeans - Westwood Black Denim",
+          "Cassandre smooth leather belt",
+          "Lewis grained leather sneakers"
+        ],
+        "words": "the confetti shirt under the cotton jacket"
+      }
+    ],
+    "undecided": [
+      "The two Cassandre overshirts (Trouville blue denim; black gabardine) have no scene: every scene he is in already has its jacket. Options: layer one under the trucker (viewer) and one under the cotton jacket (clean entrance), or give the clean entrance's three shots two looks.",
+      "Picture cap: the plain still route sends 3 pictures including his face (the CRT takes one more in the viewer). Every look above has 4-6 exact pieces, so every dressed shot is BLOCKED in that route as it stands, with the pieces that do not fit named on the shot. Routes: a shot declares the pieces in frame ('This shot's own pieces'), the look is split across shots (multi_shot), or a provider that takes more reference pictures (an architecture change; not made).",
+      "The coat's back angle and the caps' side/three-quarter angles are in uploads/ but not attached to the rows."
+    ],
+    "corrections": []
+  }
+}

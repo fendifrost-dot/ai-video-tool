@@ -46,7 +46,29 @@ export function motionContractToSentence(m: MotionContract): string {
   return [m.entrance, m.primary, m.secondary, m.exit].filter((s) => s?.trim()).join(" ");
 }
 
-/** Camera move object → compact motion clause (for world / broll prompts). */
+/**
+ * Camera move object → what the camera does, in words a video model reads (for world / broll prompts).
+ *
+ * This used to emit the 2.5D engine's own parameters — "truck 0.16, ease in_out, anamorphic_35, handheld 0.25". They
+ * mean something to scripts/edit/camera_engine.py and nothing to an image-to-video model, which received them as the
+ * tail of its prompt on the first storyboard → Runs test (2026-10-02). The amount becomes a pace, the handheld number
+ * becomes the word, and the lens preset name is dropped (the look preset already carries the lens).
+ */
+const CAMERA_WORDS: Record<string, (d?: string) => string> = {
+  push: () => "pushes in",
+  pull: () => "pulls back",
+  truck: (d) => `trucks ${d === "left" ? "right to left" : "left to right"}`,
+  pan: (d) => `pans ${d === "left" ? "left" : "right"}`,
+  pedestal: (d) => `rises ${d === "down" ? "down" : "up"}`.replace("rises down", "lowers"),
+  crane: (d) => (d === "up" ? "cranes up" : "cranes down"),
+  orbit: (d) => `arcs ${d === "left" ? "left" : "right"} around the subject`,
+  whip_pan: (d) => `whips ${d === "left" ? "left" : "right"}`,
+  snap_zoom: () => "snaps in",
+  dolly_zoom: () => "holds the subject while the background rushes (dolly zoom)",
+  handheld: () => "is handheld, breathing with the action",
+  static: () => "is locked off",
+};
+
 export function cameraMoveToSentence(move: {
   type: string;
   amount: number;
@@ -55,25 +77,48 @@ export function cameraMoveToSentence(move: {
   lens?: string;
   direction?: string;
 }): string {
-  const bits = [
-    `${move.type} ${move.amount}`,
-    move.ease ? `ease ${move.ease}` : "",
-    move.direction ? move.direction : "",
-    move.lens ? move.lens : "",
-    move.handheld != null ? `handheld ${move.handheld}` : "",
-  ].filter(Boolean);
-  return bits.join(", ");
+  const words = CAMERA_WORDS[move.type];
+  if (!words) return "";
+  const still = move.type === "static" || move.type === "handheld" || move.type === "dolly_zoom";
+  const pace = still ? "" : move.type === "whip_pan" || move.type === "snap_zoom" ? "" : move.amount >= 0.2 ? " fast" : " slowly";
+  const hand = move.type !== "handheld" && (move.handheld ?? 0) >= 0.3 ? ", handheld" : "";
+  return `The camera ${words(move.direction)}${pace}${hand}.`;
 }
+
+/**
+ * How he is put into the place. Told only "lit by that environment's light sources", the model keeps the take's own
+ * even light on him whatever the place looks like: in a blacked-out place he came back front-lit, and against a dark
+ * one with a pale fringe round him — a cut-out, not a man standing there. So the light is said both ways (what the
+ * place has, and what must not be added) and the edge and the texture are named.
+ */
+export const PLACE_LIGHT =
+  "Place him inside the environment of @Image1, lit only by the light that environment has: where @Image1 is dark he is dark, " +
+  "and nothing adds a key light, a fill light or a glow on him that the place does not have. " +
+  "He has no bright outline, halo or cut-out edge against the background, and he has the same focus and grain as the place. " +
+  "The environment is still, only he and the camera move.";
+
+const STILL_PLACE = "The environment is still, only he and the camera move.";
+/**
+ * The same, for a shot whose request carries timed changes of the place or its light. "The environment is still"
+ * beside "from 4.7 s the pool of light dies" is one request saying two things: the first restaging asked for with a
+ * timed script would have been told both.
+ */
+export const PLACE_LIGHT_CHANGING = PLACE_LIGHT.replace(
+  STILL_PLACE,
+  "The environment changes only as the timed changes say, at the seconds they say; until then and apart from them it is still, and only he and the camera move.",
+);
 
 /**
  * Seedance angle prompt — mirror run_world_batch.py angle_prompt().
  * @Video1 = real take (identity from the clip). keep[] wardrobe constants required.
+ * `opts.timedChanges` = the angle sentence carries a script of changes inside the shot (storyboard/temporal.ts).
  */
 export function seedanceAnglePrompt(
   angle: string,
   keep: string[],
   look: LookPreset | null | undefined,
   withImage: boolean,
+  opts: { timedChanges?: boolean } = {},
 ): string {
   const keepStr = keep.filter(Boolean).join(", ") || "his face, hair, skin and every piece of wardrobe";
   const parts = [
@@ -81,9 +126,7 @@ export function seedanceAnglePrompt(
     `Keep everything identical to @Video1 — ${keepStr} — and most of all the same mouth movements at the same moments, word for word, in sync with @Video1 from the first frame to the last.`,
   ];
   if (withImage) {
-    parts.push(
-      "Place him inside the environment of @Image1, lit by that environment's light sources; the environment is still, only he and the camera move.",
-    );
+    parts.push(opts.timedChanges ? PLACE_LIGHT_CHANGING : PLACE_LIGHT);
   } else {
     parts.push("The same room, the same light.");
   }

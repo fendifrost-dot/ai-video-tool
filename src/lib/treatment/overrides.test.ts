@@ -274,3 +274,30 @@ describe("TYPE_PHRASE round-trips through the coverage planner's prose classifie
     }
   });
 });
+
+describe("the frame — the picture the shot opens on", () => {
+  const generatedScene = (): ShotSpec => {
+    const base = spec();
+    return { ...base, environment: { ...base.environment, description: "Black background" } };
+  };
+
+  it("is an override on its own, and lands where the scene is read from", () => {
+    const o = override({ frame: "  Overcast street, a wheel-less sedan at the curb, four boys crouched at its corners.  " });
+    expect(isEmptyOverride(o)).toBe(false);
+    const out = applyShotOverride(generatedScene(), o);
+    expect(out.origin).toBe("override");
+    expect(out.openingFrame).toBe("Overcast street, a wheel-less sedan at the curb, four boys crouched at its corners.");
+    expect(out.environment.description).toBe(out.openingFrame);
+    // nothing else moved
+    expect(out.performanceDirection).toBe("Generated: steady delivery, eyes to lens");
+    expect(out.cameraMotion.type).toBe("dolly");
+  });
+
+  it("a generated card has no opening frame, and a row written before the column existed reads as not set", () => {
+    expect(spec().openingFrame).toBe("");
+    const { frame: _frame, ...legacy } = override({ direction: "He turns away" });
+    const out = applyShotOverride(generatedScene(), legacy as ShotOverride);
+    expect(out.openingFrame).toBe("");
+    expect(out.environment.description).toBe("Black background");
+  });
+});

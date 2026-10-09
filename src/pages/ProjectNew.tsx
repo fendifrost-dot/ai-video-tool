@@ -150,7 +150,8 @@ export default function ProjectNew() {
       }
 
       toast.success("Project created");
-      navigate({ to: "/projects/$id", params: { id: project.id } });
+      // a new project starts where the workflow does: the real footage goes in first
+      navigate({ to: "/projects/$id/setup", params: { id: project.id } });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Create failed");
     } finally {

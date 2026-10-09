@@ -9,6 +9,9 @@ import {
   presetToTransitionType,
   sceneToOverride,
   type MotionScene,
+  modeForSpec,
+  shotContext,
+  standingRules,
 } from "./regenerateFromLyrics";
 import { applyShotOverride, type ShotOverride } from "./overrides";
 import { parseShotSpec } from "./shotSpec";
@@ -116,6 +119,14 @@ describe("scene → override fields", () => {
 
   it("puts the motion sentence in the direction", () => {
     expect(out.direction).toContain("the gator boots snap at the air");
+  });
+
+  it("a generated 'static' does not pin the camera: the move stays unset and the word stays out of the description", () => {
+    const r = sceneToOverride({ camera: { move: "static", lens: "24mm" }, transition: { object: "a rolling wheel", preset: "cut" } });
+    expect(r.cameraMotion.type).toBeNull();
+    expect(r.cameraMotion.description).toBe("24mm · into: a rolling wheel");
+    // a real move is still carried, word and type
+    expect(sceneToOverride({ camera: { move: "push", lens: "50mm" } }).cameraMotion).toEqual({ type: "dolly", description: "push · 50mm" });
   });
 
   it("falls back to the purpose when the scene has no motion beats", () => {
@@ -227,5 +238,47 @@ describe("extractScene", () => {
     expect(extractScene({ ok: true, result: { lines: [] } })).toBeNull();
     expect(extractScene({ ok: true, result: { lines: [{ ref: "a", scenes: [] }] } })).toBeNull();
     expect(extractScene(null)).toBeNull();
+  });
+});
+
+describe("the card's role decides the reading and the standing rules", () => {
+  const perf = parseShotSpec({ id: "p", purpose: "p", shotType: "performance", timeline: { start: 0, end: 4 } });
+  const broll = parseShotSpec({ id: "b", purpose: "b", shotType: "b_roll", kind: "broll", timeline: { start: 4, end: 8 } });
+
+  it("a performance card stages the line behind the real take; every other card makes the line literal", () => {
+    expect(modeForSpec(perf)).toBe("performance");
+    expect(modeForSpec(broll)).toBe("literal");
+  });
+
+  it("a performance card never re-dresses or re-seats the artist; an insert never shows him; the camera moves", () => {
+    const p = standingRules(perf).join(" ");
+    expect(p).toContain("real footage that already exists");
+    expect(p).toContain("never seat or place him somewhere he was not shot");
+    expect(p).toContain("around and behind him");
+    const b = standingRules(broll).join(" ");
+    expect(b).toContain("The artist does not appear in this shot");
+    for (const rules of [standingRules(perf), standingRules(broll)]) expect(rules.at(-1)).toContain("The camera moves");
+  });
+});
+
+describe("what the request says about the box it replaces", () => {
+  const card = {
+    timeline: { start: 19.2, end: 23.1 },
+    framing: "close_up" as const,
+    cameraMotion: { type: "dolly" as const, description: "50mm macro, slight push-in" },
+  };
+
+  it("a generated card's framing and camera are NOT handed back as constraints", () => {
+    expect(shotContext({ ...card, origin: "generated" }, "verse")).toEqual({ start: 19.2, end: 23.1, section: "verse" });
+  });
+
+  it("the director's own framing and camera are", () => {
+    expect(shotContext({ ...card, origin: "override" }, "verse")).toEqual({
+      start: 19.2,
+      end: 23.1,
+      section: "verse",
+      framing: "close_up",
+      cameraMotion: "50mm macro, slight push-in",
+    });
   });
 });

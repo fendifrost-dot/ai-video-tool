@@ -7,6 +7,10 @@
  * markdown + show provenance.
  */
 
+import { parseBeatCoverage, parseWriterRun, type BeatCoverage, type WriterRunRecord } from "./beatCoverage";
+import { eventsFromWritten } from "@/lib/storyboard/writtenBeats";
+import type { ShotEvent } from "./shotSpec";
+import { functionFailure } from "@/lib/functionsError";
 import { supabase } from "@/lib/supabase";
 import { ProviderCallError } from "@/lib/providerJobs/api";
 
@@ -136,11 +140,24 @@ export type TreatmentClip = {
   camera_direction: string;
   lighting: string;
   wardrobe: string;
+  /**
+   * Where the wardrobe comes from, as the writer said: "treatment" = the treatment dresses him in it for this shot
+   * (which the footage may not show), "footage" = what he was filmed in. Absent on a clip written before this was asked.
+   */
+  wardrobe_from?: "footage" | "treatment" | "";
   environment: string;
   recommended_tool: string;
   lyric_ref: string | null;
   priority: string;
   dependencies: TreatmentDependency[];
+  /** Change inside the shot, as the writer wrote it and already read into the shot's own events. Absent = one state. */
+  events?: ShotEvent[];
+  /** The project's continuity entities the writer pointed this shot at, by key (only keys the project has) — and its links to other shots of the board. */
+  continuity?: { location: string | null; props: string[]; lighting: string | null; links?: ShotLink[] };
+  /** How the writer says the shot gets made. Absent on a clip written before this was asked. */
+  production?: { method: ProductionMethod | ""; note: string };
+  /** Who the writer put in the shot, by character key (only keys the variation has). Absent on a clip written before this was asked. */
+  cast?: { members: CastRef[]; open: boolean; none: boolean };
 };
 
 export type StructuredTreatment = {
@@ -154,10 +171,15 @@ export type StructuredTreatment = {
   generated_at: string;
   /** Readable summary so legacy prose renderers still show something. */
   text: string;
+  /** From a writer that read the treatment's beats: the check of the board against them, and the run's evidence. */
+  coverage?: BeatCoverage | null;
+  run?: WriterRunRecord | null;
 };
 
 export type TreatmentContext = {
   projectId: string;
+  /** The video variation the board belongs to — kept with the writer run's evidence. */
+  variationId?: string | null;
   projectType: ProjectType;
   songTitle?: string | null;
   lyrics?: string | null;
@@ -167,6 +189,10 @@ export type TreatmentContext = {
   additionalNotes?: string | null;
   analysisSummary?: Record<string, unknown> | null;
   looks?: { name: string; description?: string | null }[];
+  /** The project has real performance footage in sync with the song: the artist is that footage, not a drawn one. */
+  hasPerformanceFootage?: boolean;
+  /** The project's continuity entities — what a shot may point at by key instead of describing again. */
+  entities?: { key: string; kind: "location" | "prop" | "lighting" | "character"; name: string; description?: string | null }[];
 };
 
 function contextBody(input: TreatmentContext): Record<string, unknown> {
@@ -181,7 +207,84 @@ function contextBody(input: TreatmentContext): Record<string, unknown> {
     additional_notes: input.additionalNotes ?? null,
     analysis: input.analysisSummary ?? null,
     looks: (input.looks ?? []).map((l) => ({ name: l.name, description: l.description ?? null })),
+    has_performance_footage: input.hasPerformanceFootage === true,
+    continuity_entities: (input.entities ?? []).map((e) => ({ key: e.key, kind: e.kind, name: e.name, description: e.description ?? null })),
   };
+}
+
+/**
+ * The treatment writer: AVT's own edge function (treatment-writer-proxy). It writes the treatment text when asked
+ * to, and one scene for every shot of the grid it is handed.
+ */
+async function callTreatmentWriter(body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const { data: userData } = await supabase.auth.getUser();
+  if (!userData.user) throw new ProviderCallError("UNAUTHORISED", "Not signed in.");
+  const startedAt = new Date();
+  const { data, error } = await supabase.functions.invoke<{ ok: boolean } & Record<string, unknown>>("treatment-writer-proxy", { body });
+  if (error) {
+    // the reply says why (the writer is not deployed, the model refused, …): say that, not "non-2xx"
+    const failure = await functionFailure(error, data);
+    const reason = `The treatment writer failed${failure.status ? ` (${failure.status})` : ""}: ${failure.reason}`;
+    // the call failed, not necessarily the run: it goes on at the server and leaves its result in writer_runs
+    const recovered = await recoverWriterRun(body, startedAt, reason);
+    if (recovered) return recovered;
+    throw new ProviderCallError("INTERNAL", reason);
+  }
+  if (!data || data.ok === false) throw new ProviderCallError(String(data?.errorCode ?? "PROVIDER_API_ERROR"), String(data?.errorMessage ?? "The treatment writer returned nothing"));
+  return data;
+}
+
+/** How long a run whose call was lost is waited for, and how often its row is read. */
+export const RECOVER_WRITER_RUN = { waitMs: 6 * 60_000, everyMs: 5_000 };
+
+/**
+ * The run of a call that was lost in transit (a gateway timeout, a dropped connection) is still running or already
+ * finished at the server, and every run leaves its result in writer_runs. When the call carried the variation it
+ * was for and the director's own treatment text (so nothing in the answer lived only in the reply), that row is
+ * waited for and read back in the reply's shape — paid work is never thrown away for the loss of a response.
+ * Null when there is nothing to recover: no variation, text written by the writer, no row, or the run failed.
+ */
+export async function recoverWriterRun(
+  body: Record<string, unknown>,
+  since: Date,
+  reason: string,
+  timing: { waitMs: number; everyMs: number } = RECOVER_WRITER_RUN,
+  sleep: (ms: number) => Promise<void> = (ms) => new Promise((r) => setTimeout(r, ms)),
+): Promise<Record<string, unknown> | null> {
+  const variationId = typeof body.avt_variation_id === "string" ? body.avt_variation_id : null;
+  if (!variationId || body.write_text === true) return null;
+  const notBefore = new Date(since.getTime() - 60_000).toISOString();
+  const deadline = Date.now() + timing.waitMs;
+  for (;;) {
+    const { data: row } = await supabase
+      .from("writer_runs")
+      .select("id, status, model, error_text, clips_json, beats_json, allocation_json, coverage_json, missing_json, usage_json, actual_cost_usd, estimated_cost_usd")
+      .eq("variation_id", variationId)
+      .gte("created_at", notBefore)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!row) return null;
+    if (row.status === "succeeded") {
+      return {
+        ok: true,
+        recovered: reason,
+        model: row.model ?? "",
+        treatment: { concept: String(body.concept ?? ""), narrative: "", sections: [], clips: Array.isArray(row.clips_json) ? row.clips_json : [] },
+        beats: row.beats_json ?? [],
+        allocation: row.allocation_json ?? null,
+        coverage: row.coverage_json ?? null,
+        runId: row.id,
+        missing: row.missing_json ?? [],
+        usage: row.usage_json ?? null,
+        actualCostUsd: row.actual_cost_usd === null ? null : Number(row.actual_cost_usd),
+        estimatedCostUsd: row.estimated_cost_usd === null ? null : Number(row.estimated_cost_usd),
+      };
+    }
+    if (row.status === "failed") throw new ProviderCallError("PROVIDER_API_ERROR", `${reason} — the run then failed: ${row.error_text ?? "no reason recorded"}`);
+    if (Date.now() >= deadline) return null;
+    await sleep(timing.everyMs);
+  }
 }
 
 async function callTreatmentEndpoint(
@@ -193,7 +296,11 @@ async function callTreatmentEndpoint(
   const { data, error } = await supabase.functions.invoke<
     { ok: boolean } & Record<string, unknown>
   >("proxy-provider-call", { body: { endpoint: "ai-draft-treatment", method: "POST", body } });
-  if (error) throw new ProviderCallError("INTERNAL", error.message || "proxy failed");
+  if (error) {
+    // the reply says why (the writer is not reachable, the provider refused, …): say that, not "non-2xx"
+    const failure = await functionFailure(error, data);
+    throw new ProviderCallError("INTERNAL", `The treatment writer could not be reached${failure.status ? ` (${failure.status})` : ""}: ${failure.reason}`);
+  }
   if (!data || data.ok === false) {
     throw new ProviderCallError(
       String(data?.errorCode ?? "PROVIDER_API_ERROR"),
@@ -232,14 +339,28 @@ const TOOLS = new Set(["runway", "veo", "gemini", "grok", "higgsfield", "pika", 
 const PRIORITIES = new Set(["low", "normal", "high", "hero"]);
 const DEP_KINDS = new Set(["look_composite", "faceswap_still", "reference_image", "other"]);
 
-export async function draftFullTreatment(
-  input: TreatmentContext & { concept: string; grid: GridClip[] },
+/**
+ * Ask the treatment model for a clip-by-clip plan over a given grid and return it WITHOUT saving anything. The grid
+ * owns timing and keys: handed the storyboard's own boxes it writes for exactly those boxes, so the result maps onto
+ * the permanent records one to one (src/lib/storyboard/build.ts decides which records it may rewrite).
+ */
+export async function draftTreatmentClips(
+  input: TreatmentContext & {
+    concept: string;
+    grid: GridClip[];
+    /** true = the writer writes the treatment text too; false = `concept` is the director's text, kept as written. */
+    writeText?: boolean;
+    /** The words sung inside each shot, by its key — so each scene answers its own words. */
+    clipLyrics?: Readonly<Record<string, string>>;
+  },
 ): Promise<StructuredTreatment> {
-  const data = await callTreatmentEndpoint({
+  const data = await callTreatmentWriter({
     mode: "full_treatment",
+    avt_variation_id: input.variationId ?? null,
     ...contextBody(input),
     concept: input.concept,
-    clip_grid: input.grid,
+    write_text: input.writeText === true,
+    clip_grid: input.grid.map((g) => ({ ...g, lyrics: input.clipLyrics?.[g.key] ?? "" })),
   });
 
   const t = (data.treatment ?? {}) as Record<string, unknown>;
@@ -249,6 +370,8 @@ export async function draftFullTreatment(
     if (key) modelClips.set(key, c);
   }
 
+  const known = knownKeys(input.entities);
+  const boardKeys = new Set(input.grid.map((g) => g.key));
   // Merge: grid owns timing; model owns creative fields. Missing clips get
   // a safe placeholder rather than dropping timeline coverage.
   const clips: TreatmentClip[] = input.grid.map((g) => {
@@ -279,15 +402,20 @@ export async function draftFullTreatment(
       camera_direction: String(m.camera_direction ?? "").trim(),
       lighting: String(m.lighting ?? "").trim(),
       wardrobe: String(m.wardrobe ?? "").trim(),
+      wardrobe_from: m.wardrobe_from === "treatment" || m.wardrobe_from === "footage" ? m.wardrobe_from : "",
       environment: String(m.environment ?? "").trim(),
       recommended_tool: TOOLS.has(tool) ? tool : "manual",
-      lyric_ref: m.lyric_ref ? String(m.lyric_ref) : null,
+      lyric_ref: m.lyric_ref && String(m.lyric_ref).trim() ? String(m.lyric_ref).trim() : null,
       priority: PRIORITIES.has(priority) ? priority : "normal",
       dependencies: deps,
+      events: eventsFromWritten(m.timed_beats, g.end - g.start, input.clipLyrics?.[g.key] ?? "", known.lighting),
+      continuity: { ...pointedAt(m.continuity, known), links: linksOf(m.continuity, boardKeys, g.key) },
+      production: productionOf(m.production),
+      cast: castOf(m.cast, known.character),
     };
   });
 
-  const concept = String(t.concept ?? input.concept).trim();
+  const concept = String(t.concept || input.concept).trim();
   const narrative = String(t.narrative ?? "").trim();
   const sections = Array.isArray(t.sections)
     ? (t.sections as Array<Record<string, unknown>>).map((s) => ({
@@ -306,7 +434,17 @@ export async function draftFullTreatment(
     model: String(data.model ?? ""),
     generated_at: new Date().toISOString(),
     text: [concept, narrative].filter(Boolean).join("\n\n"),
+    coverage: parseBeatCoverage(data.coverage),
+    run: parseWriterRun({ id: data.runId ?? null, model: data.model ?? null, actualCostUsd: data.actualCostUsd ?? null, estimatedCostUsd: data.estimatedCostUsd ?? null }),
   };
+  return structured;
+}
+
+/** The old builder's one-step generate-and-save. Kept for callers that still store a structured treatment whole. */
+export async function draftFullTreatment(
+  input: TreatmentContext & { concept: string; grid: GridClip[] },
+): Promise<StructuredTreatment> {
+  const structured = await draftTreatmentClips(input);
 
   const { error: updateError } = await supabase
     .from("video_projects")
@@ -337,7 +475,12 @@ export function parseSavedStructuredTreatment(value: unknown): StructuredTreatme
 
 import {
   parseShotSpec,
+  PRODUCTION_METHODS,
   RENDER_ENGINES,
+  SHOT_LINK_KINDS,
+  type CastRef,
+  type ProductionMethod,
+  type ShotLink,
   SHOT_PRIORITIES,
   SHOT_TYPES as SPEC_SHOT_TYPES,
   type RenderEngine,
@@ -346,6 +489,63 @@ import {
   type ShotSpec,
   type ShotTypeLiteral,
 } from "@/lib/treatment/shotSpec";
+
+type KnownKeys = { location: Set<string>; prop: Set<string>; lighting: Set<string>; character: Set<string> };
+
+function knownKeys(entities: TreatmentContext["entities"]): KnownKeys {
+  const of = (kind: string) => new Set((entities ?? []).filter((e) => e.kind === kind).map((e) => e.key));
+  return { location: of("location"), prop: of("prop"), lighting: of("lighting"), character: of("character") };
+}
+
+/** The people a written shot casts — only characters the variation has; what each does here is this shot's own. */
+export function castOf(raw: unknown, people: ReadonlySet<string>): { members: CastRef[]; open: boolean; none: boolean } {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const phrase = (v: unknown) => (typeof v === "string" ? v.trim().slice(0, 240) : "");
+  const members: CastRef[] = [];
+  if (Array.isArray(r.members)) {
+    for (const m of r.members) {
+      const o = (m ?? {}) as Record<string, unknown>;
+      const key = typeof o.key === "string" ? o.key.trim() : "";
+      if (!key || !people.has(key) || members.some((x) => x.key === key)) continue;
+      members.push({ key, action: phrase(o.action), placement: phrase(o.placement), framing: phrase(o.framing), identityMode: null });
+    }
+  }
+  const none = r.none === true && members.length === 0;
+  return { members, open: r.open === true && !none, none };
+}
+
+/** The entities a written shot points at — only keys the project has, of the right kind. */
+export function pointedAt(raw: unknown, known: KnownKeys): { location: string | null; props: string[]; lighting: string | null } {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const one = (v: unknown, set: Set<string>) => (typeof v === "string" && set.has(v.trim()) ? v.trim() : null);
+  return {
+    location: one(r.location, known.location),
+    props: Array.isArray(r.props) ? [...new Set(r.props.map((p) => one(p, known.prop)).filter((x): x is string => !!x))] : [],
+    lighting: one(r.lighting, known.lighting),
+  };
+}
+
+/** The links a written shot carries — only to ANOTHER shot of this board, of a known kind. */
+export function linksOf(raw: unknown, board: ReadonlySet<string>, self: string): ShotLink[] {
+  const list = ((raw ?? {}) as { links?: unknown }).links;
+  if (!Array.isArray(list)) return [];
+  const out: ShotLink[] = [];
+  for (const l of list) {
+    const r = (l ?? {}) as Record<string, unknown>;
+    const kind = SHOT_LINK_KINDS.find((k) => k === r.kind);
+    const shot = typeof r.shot === "string" ? r.shot.trim() : "";
+    if (!kind || !shot || shot === self || !board.has(shot) || out.some((o) => o.kind === kind && o.shot === shot)) continue;
+    out.push({ kind, shot, note: typeof r.note === "string" ? r.note.trim().slice(0, 240) : "" });
+  }
+  return out;
+}
+
+/** The production method a writer gave, when it is a known one. */
+export function productionOf(raw: unknown): { method: ProductionMethod | ""; note: string } {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const method = PRODUCTION_METHODS.find((m) => m === r.method) ?? "";
+  return { method, note: method && typeof r.note === "string" ? r.note.trim().slice(0, 400) : "" };
+}
 
 function specKindFromShotType(shotType: string): ShotKind {
   if (shotType === "performance") return "performance";
@@ -361,7 +561,7 @@ function specKindFromShotType(shotType: string): ShotKind {
  */
 export function treatmentClipToShotSpec(
   clip: TreatmentClip,
-  provenance?: { model?: string; generatedAt?: string },
+  provenance?: { model?: string; generatedAt?: string; treatment?: string },
 ): ShotSpec {
   const shotType: ShotTypeLiteral = SPEC_SHOT_TYPES.includes(clip.shot_type as ShotTypeLiteral)
     ? (clip.shot_type as ShotTypeLiteral)
@@ -382,12 +582,16 @@ export function treatmentClipToShotSpec(
     shotType,
     priority,
     timeline: { start: clip.start, end: clip.end },
-    wardrobe: { description: clip.wardrobe },
+    wardrobe: { description: clip.wardrobe, source: clip.wardrobe_from ?? "" },
     environment: { description: clip.environment },
     lighting: { description: clip.lighting },
     cameraMotion: { description: clip.camera_direction },
     fx: shotType === "vfx" ? [{ type: "vfx", description: clip.scene_description }] : [],
     references: clip.lyric_ref ? [{ kind: "note", note: `lyric: ${clip.lyric_ref}` }] : [],
+    events: clip.events ?? [],
+    continuity: clip.continuity ?? {},
+    production: clip.production ?? {},
+    cast: clip.cast ?? {},
     generation: {
       required: !!engine && engine !== "manual",
       engine,
@@ -397,13 +601,14 @@ export function treatmentClipToShotSpec(
       source: "ai",
       createdAt: provenance?.generatedAt ?? "",
       model: provenance?.model ?? null,
+      treatment: provenance?.treatment ?? "",
     },
   });
 }
 
 /** Convert every clip of a StructuredTreatment into Shot Specs. */
-export function structuredTreatmentToShotSpecs(treatment: StructuredTreatment): ShotSpec[] {
+export function structuredTreatmentToShotSpecs(treatment: StructuredTreatment, writtenFrom?: string): ShotSpec[] {
   return treatment.clips.map((c) =>
-    treatmentClipToShotSpec(c, { model: treatment.model, generatedAt: treatment.generated_at }),
+    treatmentClipToShotSpec(c, { model: treatment.model, generatedAt: treatment.generated_at, treatment: writtenFrom }),
   );
 }

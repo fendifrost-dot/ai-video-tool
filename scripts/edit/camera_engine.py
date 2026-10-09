@@ -26,6 +26,19 @@ Model (nothing here knows a shot, a Look or a project):
     keystone/roll; the LENS post stack (presets in lens_presets.json) adds depth-of-field on the
     plate, perspective compression, barrel distortion, anamorphic flares, halation, chromatic
     aberration, vignette, grain, and motion blur proportional to the camera's own velocity.
+  * Placement (spec `place`, 2026-10-02): the performer can stand IN the plate instead of filling the
+    frame — `{"scale": 0.12, "at": [x, y], "plane": 0.36 | "plane_at": [x, y]}`. `at` is where the
+    bottom-centre of the take lands (fractions of the frame at zoom 1); he is anchored to the WORLD, so
+    a push or pull moves him with the plate point he stands on. His plane is the plate depth at the
+    anchor unless `plane` (a depth) or `plane_at` (a visible plate point at his distance) says
+    otherwise — needed when he stands BEHIND something and his anchor shows that thing, not his ground.
+  * `move.about: [x, y]` zooms about that point instead of the frame centre; `move.parallax` (1 = a camera
+    that moves, 0 = a lens that zooms) scales the depth parallax. Behind an occluder the zoom keeps him and the
+    thing in front of him in the relation they were placed in; the engine reports any frame where his cut edge shows.
+  * Occlusion (spec `occlude`): plate pixels nearer than his plane by `margin` are drawn in front of
+    him. This is what lets a waist-up take live in a wide world: the car at the curb hides the cut edge.
+    For a video plate, --plate-depth-every N re-measures the depth every N plate frames (aligned to the
+    first frame's scale on the pixels that did not change), so an occluder that MOVES keeps occluding.
   * Output: the video, the per-frame camera path (JSON, for provenance and for a UI to draw), a
     contact sheet.
 """
@@ -38,12 +51,14 @@ DEPTH_URL = "https://huggingface.co/onnx-community/depth-anything-v2-small/resol
 
 
 # ----------------------------------------------------------------------------- depth
+_DEPTH_SESSION = {}
 def plate_depth(img, size=518):
     """relative inverse depth (bigger = nearer), normalised to [0, 1], from Depth-Anything-v2 small (ONNX, CPU)."""
     import onnxruntime as ort
     if not os.path.exists(DEPTH_MODEL):
         os.makedirs(os.path.dirname(DEPTH_MODEL), exist_ok=True); subprocess.run(["curl", "-sSL", "-o", DEPTH_MODEL, DEPTH_URL], check=True)
-    s = ort.InferenceSession(DEPTH_MODEL, providers=["CPUExecutionProvider"])
+    if "s" not in _DEPTH_SESSION: _DEPTH_SESSION["s"] = ort.InferenceSession(DEPTH_MODEL, providers=["CPUExecutionProvider"])   # one session per process: a tracked occluder asks for depth on many plate frames
+    s = _DEPTH_SESSION["s"]
     h, w = img.shape[:2]
     nh, nw = (size, int(round(size * w / h / 14)) * 14) if h >= w else (int(round(size * h / w / 14)) * 14, size)
     x = cv2.cvtColor(cv2.resize(img, (nw, nh)), cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
@@ -52,6 +67,18 @@ def plate_depth(img, size=518):
     d = cv2.resize(d, (w, h), interpolation=cv2.INTER_CUBIC)
     lo, hi = np.percentile(d, 1), np.percentile(d, 99)
     return np.clip((d - lo) / max(1e-6, hi - lo), 0, 1).astype(np.float32)
+
+
+def align_depth(d, img, d_ref, img_ref, tol=30):
+    """Depth-Anything's output is relative: each frame is normalised on its own, so two frames of one plate do
+    not share a scale. Fit gain + offset on the pixels whose PICTURE did not change between the two frames (the
+    static world) and express d in d_ref's scale. Falls back to d when too little of the frame is static."""
+    static = np.abs(img.astype(np.int16) - img_ref.astype(np.int16)).sum(axis=2) < tol
+    if static.mean() < 0.05: return d
+    x = d[static][::17].astype(np.float64); y = d_ref[static][::17].astype(np.float64)
+    if len(x) < 100 or x.std() < 1e-4: return d
+    g, o = np.polyfit(x, y, 1)
+    return np.clip(g * d + o, 0, 1).astype(np.float32)
 
 
 # ----------------------------------------------------------------------------- easing / path
@@ -92,10 +119,22 @@ def camera_path(move, n, fps, handheld=0.0):
         elif kind == "whip_pan": px[i] = sx * amt * (u - 1.0)                                # arrives on the frame: starts offset, lands centred
         elif kind == "snap_zoom": zoom[i] = 1 + amt * ease((i / max(1, n - 1) - t0) / max(1e-6, (t1 - t0)), "snap")
         elif kind == "dolly_zoom": plate_zoom[i] = 1 + amt * u                                # performer stays, the world rushes
+    about = move.get("about")
+    if about is not None:
+        # zoom ABOUT a point (fractions of the frame at zoom 1) instead of the frame centre: the pan that keeps that point
+        # where it is while the zoom changes. A pull that starts tight on a performer standing off-centre ends on the wide frame.
+        # (the pan is in PLATE terms — the picture shifts by zoom × pan on screen — so the pan that holds a point is
+        # (1/zoom − 1) × its offset from the centre)
+        ax, ay = float(about[0]) - 0.5, float(about[1]) - 0.5
+        px = px + (1 / (zoom * plate_zoom) - 1) * ax; py = py + (1 / (zoom * plate_zoom) - 1) * ay
     if handheld > 0:
         hh = handheld_noise(n, fps, handheld)
         px = px + hh["px"]; py = py + hh["py"]; roll = roll + hh["roll"]; zoom = zoom * (1 + hh["zoom"])
-    return {"zoom": zoom, "px": px, "py": py, "roll": roll, "plate_zoom": plate_zoom, "orbit": orbit, "kind": kind}
+    # parallax 1 = a camera that MOVES (near things grow faster than far ones); 0 = a lens that ZOOMS (the plate scales as
+    # one plane). With parallax the occluder and the performer scale by different amounts, so a hood that just covers his
+    # cut edge at one end of the move may not at the other (measured on the stoop plate, 2026-10-02: the edge showed for
+    # the first 28 frames of a 2.6x pull). A zoom keeps the two in the relation they were placed in.
+    return {"zoom": zoom, "px": px, "py": py, "roll": roll, "plate_zoom": plate_zoom, "orbit": orbit, "kind": kind, "parallax": float(np.clip(move.get("parallax", 1.0), 0.0, 1.0))}
 
 
 # ----------------------------------------------------------------------------- image ops
@@ -188,11 +227,11 @@ def lens_post(frame, lens, vel_px, grain_rng, vignette_map):
 # ----------------------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--matte-dir", required=True, help="alpha_%05d.png + fg_%05d.png from composite_environment.py --export-matte")
+    ap.add_argument("--matte-dir", required=True, help="alpha_%%05d.png + fg_%%05d.png from composite_environment.py --export-matte")
     ap.add_argument("--plate", required=True, help="a still, or a VIDEO (living plate): decoded at --fps and read frame-for-frame; depth is measured on its first frame (plate cameras in our worlds move slowly — the parallax field holds)")
     ap.add_argument("--plate-depth", default=None, help="16-bit PNG, bigger = nearer; computed with Depth-Anything-v2 if absent")
     ap.add_argument("--plate-offset", type=float, default=0.0, help="video plate: start this many seconds into the plate"); ap.add_argument("--plate-loop", action="store_true", help="video plate: loop when shorter than the matte (default: hold the last frame)")
-    ap.add_argument("--plate-depth-every", type=int, default=0, help="video plate: recompute depth every N plate frames (0 = first frame only)")
+    ap.add_argument("--plate-depth-every", type=int, default=0, help="video plate, with spec `occlude`: re-measure the OCCLUSION depth every N plate frames (0 = first frame only). The parallax and focus fields stay on the first frame's depth")
     ap.add_argument("--spec", required=True, help="JSON (inline or path): move, lens, angle, framing, handheld, focus")
     ap.add_argument("--out", required=True); ap.add_argument("--audio", default=None, help="clip whose audio track is copied onto the output")
     ap.add_argument("--fps", type=int, default=24); ap.add_argument("--size", default="1080x1920"); ap.add_argument("--crf", type=int, default=16)
@@ -202,6 +241,7 @@ def main():
     ap.add_argument("--dof-max-px", type=float, default=14.0, help="plate blur (px at 1080 wide) one full depth unit away from focus, at dof = 1")
     ap.add_argument("--overscan", type=float, default=None, help="plate overscan factor; auto from the move when absent")
     ap.add_argument("--max-overscan", type=float, default=2.2, help="cap for the auto overscan (whip pans beyond it rely on the reflect border)")
+    ap.add_argument("--max-plate-res", type=float, default=2.5, help="cap on the plate's internal resolution, in plate pixels per output pixel at zoom 1 (a zoom-in keeps up to this much of the plate's own detail; memory and time grow with its square)")
     ap.add_argument("--sheet", default=None, help="contact sheet path (default next to --out)")
     ap.add_argument("--range", default=None, help="a:b frame range of the matte to render (default all)")
     ap.add_argument("--label", default=None, help="burn a small label into the output (for contact videos)")
@@ -213,6 +253,10 @@ def main():
     if isinstance(lens_spec, dict): lens.update({k: v for k, v in lens_spec.items() if k != "preset"})
     move = spec.get("move", {"type": "static"}); angle = spec.get("angle", {}); framing = spec.get("framing", {})
     handheld = float(spec.get("handheld", lens.get("handheld_default", 0.0))); focus = spec.get("focus", "performer")
+    place = spec.get("place") or None
+    occl = spec.get("occlude") or None
+    if occl is True: occl = {}
+    occ_margin = float(occl.get("margin", 0.04)) if occl is not None else 0.0; occ_soft = float(occl.get("soft", 0.03)) if occl is not None else 0.0
 
     alphas = sorted(f for f in os.listdir(a.matte_dir) if f.startswith("alpha_"))
     if a.range:
@@ -242,11 +286,21 @@ def main():
     else:
         depth0 = plate_depth(plate0)
         if a.plate_depth: cv2.imwrite(a.plate_depth, (depth0 * 65535).astype(np.uint16))
-    max_pan = float(max(np.abs(path["px"]).max(), np.abs(path["py"]).max(), np.abs(path["orbit"]).max() * a.near_weight))
-    min_zoom = float(min(path["zoom"].min(), 1.0)); kst = abs(float(angle.get("keystone", 0.0)))
-    over = a.overscan or min(a.max_overscan, 1.0 + 2 * max_pan * a.near_weight + (1 / min_zoom - 1) + kst + 0.08)   # beyond the cap the reflect border carries a whip; upscaling a plate 4x buys nothing
+    # How much plate the move needs, frame by frame: the widest thing a frame can see is the far plate when the camera is
+    # zoomed in (it magnifies least) or the near plate when zoomed out, plus the pan at the nearest plate's parallax.
+    # (Was a sum of the worst zoom and the worst pan wherever they occurred — a zoom about an off-centre point pans
+    # only while it is zoomed IN, where no extra plate is needed, and the sum cropped the plate for nothing.)
+    Zs = path["zoom"] * path["plate_zoom"]; kst = abs(float(angle.get("keystone", 0.0)))
+    pan_i = np.maximum(np.maximum(np.abs(path["px"]), np.abs(path["py"])), np.abs(path["orbit"]) * a.near_weight)
+    par = path["parallax"]; near_w = 1 + (a.near_weight - 1) * par; far_w = 1 + (a.far_weight - 1) * par
+    extent = 1.0 / (1.0 + (Zs - 1.0) * np.where(Zs >= 1.0, far_w, near_w)) + 2 * pan_i * near_w
+    over = a.overscan or min(a.max_overscan, max(1.0, float(extent.max())) + kst + 0.08)   # beyond the cap the reflect border carries a whip; upscaling a plate 4x buys nothing
     comp = float(lens["compression"])
-    PW, PH = int(round(W * over)), int(round(H * over))
+    # Plate resolution: a zoom-in magnifies the plate, so keep as many of the plate's OWN pixels as the move will look at
+    # (never more than it has, never more than --max-plate-res). S = plate pixels per output pixel at zoom 1.
+    native = min(plate0.shape[1] / (W * over), plate0.shape[0] / (H * over)) / max(1e-6, comp)
+    S = float(np.clip(min(float(Zs.max()), native, a.max_plate_res), 1.0, None))
+    PW, PH = int(round(W * over * S)), int(round(H * over * S))
     plate = cover_fit(plate0, PW, PH, scale=comp).astype(np.float32)
     depth = cover_fit((depth0 * 65535).astype(np.uint16), PW, PH, scale=comp).astype(np.float32) / 65535.0
     def plate_frame(i):
@@ -264,14 +318,40 @@ def main():
     feet_y = int(np.median(feet)) if feet else int(H * 0.9)
     fs = float(framing.get("scale", 1.0)); fx_, fy_ = float(framing.get("x", 0.0)), float(framing.get("y", 0.0))
     # where the feet land on the plate (base placement), in plate coordinates
-    ox, oy = (PW - W) / 2, (PH - H) / 2
-    feet_plate_y = int(np.clip(oy + H / 2 + (feet_y - H / 2) * fs + fy_ * H, 0, PH - 1))
-    dn_p = float(np.median(depth[max(0, feet_plate_y - 8):feet_plate_y + 8, int(PW * 0.3):int(PW * 0.7)]))
+    ox, oy = (PW - W * S) / 2, (PH - H * S) / 2          # plate pixel under the output frame's top-left corner at zoom 1
+    def depth_near(fx, fy, r=8):
+        """median plate depth around a point given in fractions of the frame at zoom 1"""
+        r = int(round(r * S)); px_, py_ = int(np.clip(ox + fx * W * S, 0, PW - 1)), int(np.clip(oy + fy * H * S, 0, PH - 1))
+        return float(np.median(depth[max(0, py_ - r):py_ + r, max(0, px_ - r):px_ + r]))
+    if place:
+        # a performer standing IN the plate: his plane is the plate under his anchor, unless the spec names it
+        # (behind an occluder the anchor shows the occluder, so the spec gives a depth or a visible point at his distance)
+        ps = float(place.get("scale", 1.0)); pax, pay = (float(v) for v in place.get("at", [0.5, 1.0]))
+        if place.get("plane") is not None: dn_p = float(place["plane"])
+        elif place.get("plane_at") is not None: dn_p = depth_near(*(float(v) for v in place["plane_at"]))
+        else: dn_p = depth_near(pax, pay)
+        feet_plate_y = int(np.clip(oy + pay * H * S, 0, PH - 1))
+    else:
+        feet_plate_y = int(np.clip(oy + (H / 2 + (feet_y - H / 2) * fs + fy_ * H) * S, 0, PH - 1))
+        dn_p = float(np.median(depth[max(0, feet_plate_y - int(8 * S)):feet_plate_y + int(8 * S), int(PW * 0.3):int(PW * 0.7)]))
     if not np.isfinite(dn_p): raise SystemExit(f"performer plane depth undefined (feet_plate_y={feet_plate_y}, depth shape {depth.shape}, plate {PW}x{PH})")
-    print(f"performer plane: feet row {feet_y}, plate depth {dn_p:.3f}; overscan {over:.3f}; lens {lens_spec}; move {move}", flush=True)
+    print(f"performer plane: feet row {feet_y}, plate depth {dn_p:.3f}; overscan {over:.3f}; plate res {S:.2f}x; lens {lens_spec}; move {move}", flush=True)
     # parallax weight relative to the performer: 1 at his plane, near_weight at dn=1, far_weight at dn=0
     w_par = np.where(depth >= dn_p, 1 + (a.near_weight - 1) * (depth - dn_p) / max(1e-3, 1 - dn_p), a.far_weight + (1 - a.far_weight) * depth / max(1e-3, dn_p)).astype(np.float32)
+    w_par = (1 + (w_par - 1) * par).astype(np.float32)
     w_orb = (depth - dn_p).astype(np.float32)                                              # orbit: sign flips at his plane
+
+    # ---- occlusion depth: the first frame's, or re-measured every N plate frames for a living plate whose occluder moves
+    depth_occ = depth; _occ_k = [0]
+    def occlusion_depth(i):
+        nonlocal depth_occ
+        if occl is None or plate_frames is None or a.plate_depth_every <= 0: return depth_occ
+        k = (i % len(plate_frames)) if a.plate_loop else min(i, len(plate_frames) - 1)
+        kk = (k // a.plate_depth_every) * a.plate_depth_every
+        if kk != _occ_k[0]:
+            img_k = cv2.imread(plate_frames[kk]); d_k = align_depth(plate_depth(img_k), img_k, depth0, plate0)
+            depth_occ = cover_fit((d_k * 65535).astype(np.uint16), PW, PH, scale=comp).astype(np.float32) / 65535.0; _occ_k[0] = kk
+        return depth_occ
 
     # ---- depth of field on the plate (precomputed levels; focus on the performer's plane or the plate's near/far)
     focus_dn = dn_p if focus == "performer" else (float(focus) if not isinstance(focus, str) else 0.5)
@@ -281,11 +361,11 @@ def main():
     def plate_with_dof(pl, fast=False):
         if lens["dof"] <= 0: return pl
         if not fast:
-            lv = dof_levels(pl, a.dof_max_px * (W / 1080.0), lens["bokeh_aspect"], levels=4); out = blend_levels(lv, dof_amt); del lv; return out
+            lv = dof_levels(pl, a.dof_max_px * (W / 1080.0) * S, lens["bokeh_aspect"], levels=4); out = blend_levels(lv, dof_amt); del lv; return out
         # video plates, per frame: the blur pyramid at half resolution (a defocus is low-frequency), blended back
         # under the sharp full-res plate where the focus map says sharp — ~4× cheaper, same picture
         half = cv2.resize(pl, (PW // 2, PH // 2), interpolation=cv2.INTER_AREA)
-        lv = dof_levels(half, a.dof_max_px * (W / 1080.0) / 2.0, lens["bokeh_aspect"], levels=4); bl = blend_levels(lv, dof_amt_half); del lv
+        lv = dof_levels(half, a.dof_max_px * (W / 1080.0) * S / 2.0, lens["bokeh_aspect"], levels=4); bl = blend_levels(lv, dof_amt_half); del lv
         up = cv2.resize(bl, (PW, PH), interpolation=cv2.INTER_LINEAR)
         return pl * (1 - dof_mix) + up * dof_mix
     plate_dof = plate_with_dof(plate)
@@ -301,18 +381,28 @@ def main():
         # destination pixel (x,y) in the output frame → plate coordinates
         dx = xs - cx; dy = ys - cy
         # depth at the destination: look up the plate depth under the un-zoomed position (first-order)
-        mx0 = (ox + cx + dx / (Z * PZ)).astype(np.float32); my0 = (oy + cy + dy / (Z * PZ)).astype(np.float32)
+        mx0 = (ox + (cx + dx / (Z * PZ)) * S).astype(np.float32); my0 = (oy + (cy + dy / (Z * PZ)) * S).astype(np.float32)
         d_dst = cv2.remap(depth, mx0, my0, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
         wp = cv2.remap(w_par, mx0, my0, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE); wo = cv2.remap(w_orb, mx0, my0, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
         zpix = 1 + (Z - 1) * wp; zpix = zpix * (1 + (PZ - 1) * wp)
-        mx = ox + cx + dx / zpix - (px * W) * wp - orb * W * wo
-        my = oy + cy + dy / zpix - (py * H) * wp
+        mx = ox + (cx + dx / zpix - (px * W) * wp - orb * W * wo) * S
+        my = oy + (cy + dy / zpix - (py * H) * wp) * S
         if plate_frames is not None and i > 0: plate_dof = plate_with_dof(plate_frame(i), fast=True)   # living plate: this frame's picture through the same depth field
         bg = cv2.remap(plate_dof, mx.astype(np.float32), my.astype(np.float32), cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
         # --- performer: rigid layer at weight 1 (framing first, then the camera)
         al = cv2.imread(os.path.join(a.matte_dir, alphas[i]), cv2.IMREAD_GRAYSCALE).astype(np.float32) / 255.0
         fg = cv2.imread(os.path.join(a.matte_dir, alphas[i].replace("alpha_", "fg_"))).astype(np.float32)
-        s_p = fs * Z; tx = cx - cx * s_p + (fx_ + px) * W + fx_ * 0; ty = cy - cy * s_p + (fy_ + py) * H
+        if place:
+            # world-anchored: the take's bottom-centre sits on a plate point, so it moves with that point under the camera
+            # (scale 1 = the take as tall as the frame, whatever resolution the matte was exported at)
+            Zw = Z * PZ; s_p = ps * Zw * (H / al.shape[0])
+            # the pan reaches the screen multiplied by the zoom, exactly as it does for the plate point he stands on
+            tx = cx + Zw * (pax * W - cx + px * W) - s_p * (al.shape[1] / 2); ty = cy + Zw * (pay * H - cy + py * H) - s_p * al.shape[0]
+        else:
+            # (the pan is multiplied by the zoom here too: the plate under his feet moves by zoom × pan on screen, and at
+            # px·W he slid against it whenever the camera panned while zoomed — invisible on a 1 % handheld drift,
+            # obvious on a zoom about an off-centre point)
+            s_p = fs * Z; tx = cx - cx * s_p + fx_ * W + Z * PZ * px * W; ty = cy - cy * s_p + fy_ * H + Z * PZ * py * H
         M = np.array([[s_p, 0, tx], [0, s_p, ty]], np.float32)
         fg_w = cv2.warpAffine(fg, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=(0, 0, 0))
         al_w = cv2.warpAffine(al, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0)[..., None]
@@ -328,6 +418,11 @@ def main():
         else:
             cool = float(grade.get("cool", 0.0)); fg_w = fg_w * np.array([1 - cool, 1 - cool * 0.4, 1 + cool * 0.6], np.float32)
             fg_w = np.clip((fg_w - 128) * float(grade.get("contrast", 1.0)) + 124, 0, 255)
+        al_full = al_w
+        if occl is not None:
+            # the plate in front of him: depth read through the SAME map as the picture, so the mask is registered to bg
+            d_at = cv2.remap(occlusion_depth(i), mx.astype(np.float32), my.astype(np.float32), cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+            t = np.clip((d_at - (dn_p + occ_margin)) / max(1e-4, occ_soft), 0, 1); al_w = al_w * (1 - t * t * (3 - 2 * t))[..., None]
         frame = fg_w * al_w + bg * (1 - al_w)
         # --- angle: keystone (+ = looking up, bottom wider) and roll, as one perspective warp of the whole frame
         k = float(angle.get("keystone", 0.0)); rd = roll + float(angle.get("roll_deg", 0.0))
@@ -344,8 +439,10 @@ def main():
         if a.label: cv2.putText(out, a.label, (24, H - 36), cv2.FONT_HERSHEY_SIMPLEX, 1.1, (0, 0, 0), 6); cv2.putText(out, a.label, (24, H - 36), cv2.FONT_HERSHEY_SIMPLEX, 1.1, (255, 255, 255), 2)
         cv2.imwrite(os.path.join(tmp, f"c_{i:05d}.png"), out)
         # edge reveal: a performer the source frame cuts (hips at the bottom edge) must never lift off that edge
-        bottom_rows = np.where((al_w[..., 0] > 0.5).any(axis=1))[0]; src_rows = np.where((al > 0.5).any(axis=1))[0]
-        reveal = bool(len(src_rows) and src_rows.max() >= al.shape[0] - 2 and len(bottom_rows) and bottom_rows.max() < H - 2)
+        # (an occluder may hide it: the cut edge counts only where the performer is still visible on its row)
+        bottom_rows = np.where((al_full[..., 0] > 0.5).any(axis=1))[0]; src_rows = np.where((al > 0.5).any(axis=1))[0]
+        reveal = bool(len(src_rows) and src_rows.max() >= al.shape[0] - 2 and len(bottom_rows) and bottom_rows.max() < H - 2
+                      and (al_w[max(0, bottom_rows.max() - 2):bottom_rows.max() + 1, :, 0] > 0.5).any())
         cam_log.append({"frame": i, "zoom": round(Z, 5), "plate_zoom": round(PZ, 5), "pan": [round(px, 5), round(py, 5)], "orbit": round(orb, 5), "roll": round(roll, 3), "vel_px": [round(v, 2) for v in vel], "edge_reveal": reveal})
         if i % 48 == 0: print(f"camera {i + 1}/{n}", flush=True)
 
@@ -358,7 +455,7 @@ def main():
     base = os.path.splitext(a.out)[0]
     reveals = [c["frame"] for c in cam_log if c["edge_reveal"]]
     if reveals: print(f"WARNING: the move lifts the performer's cut edge off the frame bottom on {len(reveals)} frames (first {reveals[0]}) — reduce the vertical pan / zoom-out or use a source with more headroom", flush=True)
-    json.dump({"spec": spec, "lens": lens, "size": [W, H], "fps": a.fps, "frames": n, "performer_plane_depth": dn_p, "overscan": over, "edge_reveal_frames": reveals, "path": cam_log}, open(base + "_camera.json", "w"), indent=1)
+    json.dump({"spec": spec, "lens": lens, "size": [W, H], "fps": a.fps, "frames": n, "performer_plane_depth": dn_p, "plate_res": round(S, 4), "place": place, "occlude": ({"margin": occ_margin, "soft": occ_soft} if occl is not None else None), "overscan": over, "edge_reveal_frames": reveals, "path": cam_log}, open(base + "_camera.json", "w"), indent=1)
     idx = [int(n * f) for f in (0.0, 0.33, 0.66, 0.98)]; tiles = [cv2.resize(cv2.imread(os.path.join(tmp, f"c_{i:05d}.png")), (W // 3, H // 3)) for i in idx]
     cv2.imwrite(a.sheet or (base + "_sheet.jpg"), np.hstack(tiles), [cv2.IMWRITE_JPEG_QUALITY, 86])
     for f in os.listdir(tmp): os.remove(os.path.join(tmp, f))

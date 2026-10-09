@@ -79,6 +79,42 @@ def section_of(t0, t1, lyric_lines):
     return max(tally, key=tally.get) if tally else None
 
 
+# ----------------------------------------------------------------------------- the angle gate
+def angle_gate(angle_file, gate, window, sung):
+    """Whether a returned angle may be cut in, from its fidelity report (scripts/qa/reference_fidelity.py writes
+    <angle>_fidelity.json beside the file). A generated angle re-draws the performer: it goes on a SUNG line only when
+    the face is still his (identity ≤ identity_max) and the mouth follows the take (lip best-fit ≥ lip_best_fit_min);
+    off the mic the face alone decides. It is not cut in at all when the camera did not move (camera_change below
+    camera_change_min): that is a low-resolution copy of a shot the take already gives. An angle that does not show
+    his face has nothing to sync and passes on the camera change alone (allow_face_hidden). An angle with no report has not been looked at and is not cut onto a sung line.
+    The report's fit (result_t = retime · source_t + offset) is also where the angle's lips sit against the take's
+    clock; `clock_shift_s` is the mean of that drift over the window actually used, and the caller moves the angle's
+    masterStart by it so the picture lands under the words.
+    `window` = the sub-slot inside the 4 s trim, in trim seconds."""
+    out = {"use": False, "reason": "not returned yet", "clock_shift_s": 0.0, "sung": bool(sung)}
+    if not os.path.exists(angle_file): return out
+    rep_path = os.path.splitext(angle_file)[0] + "_fidelity.json"
+    if not os.path.exists(rep_path):
+        out.update({"use": not sung, "reason": "no fidelity report — " + ("off the mic, cut in" if not sung else "not cut onto a sung line")}); return out
+    d = json.load(open(rep_path)); ident = d.get("identity_src_vs_result"); lip = d.get("lip") or {}
+    if isinstance(lip, str): lip = json.loads(lip)
+    fit = lip.get("best_fit") or {}
+    cc = d.get("camera_change") or {}
+    out.update({"identity": ident, "lip_best_fit": fit.get("corr"), "lip_on_source_clock": lip.get("corr_on_source_clock"), "camera_change": cc.get("score")})
+    id_max = float(gate.get("identity_max", 0.25)); lip_min = float(gate.get("lip_best_fit_min", 0.6)); cc_min = float(gate.get("camera_change_min", 0.0))
+    # an "angle" that came back as the source's own framing is a 720p copy of a shot the take already gives at full size
+    if cc.get("score") is not None and cc["score"] < cc_min: out["reason"] = f"camera change {cc['score']} below {cc_min} — the angle is the source's own framing"; return out
+    if ident is None:
+        # his face is not in the angle (over the shoulder, from behind): no identity to drift and no mouth to be out of sync
+        if gate.get("allow_face_hidden", True) and cc.get("score") is not None: out.update({"use": True, "reason": "face not in frame — nothing to sync"}); return out
+        out["reason"] = "identity not measured"; return out
+    if ident > id_max: out["reason"] = f"identity {ident} above {id_max}"; return out
+    if sung and (fit.get("corr") is None or fit["corr"] < lip_min): out["reason"] = f"lip best-fit {fit.get('corr')} below {lip_min} on a sung line"; return out
+    if fit.get("corr") is not None and fit["corr"] >= lip_min:
+        mid = 0.5 * (window[0] + window[1]); out["clock_shift_s"] = round(float(fit.get("retime", 1.0)) * mid + float(fit.get("offset_s", 0.0)) - mid, 4)
+    out.update({"use": True, "reason": "passed"}); return out
+
+
 # ----------------------------------------------------------------------------- plan
 # The treatment writes the camera as prose ("50mm macro, slight push-in", "24mm wide shot, locked frame"); the same
 # patterns as src/lib/treatment/coverage.ts MOTION_WORDS read it into the engine's move vocabulary. The director's
@@ -183,12 +219,17 @@ def plan(a):
                 # trim starts at — the angle file lands on the assembler's clock without a second guess.
                 sync = spec.get("sync") or {}; off = float(sync.get("offsetSeconds", 0.0)); drift = 1 + float(sync.get("driftPpm", 0.0)) / 1e6
                 f_u0 = (u0 - off) / drift - float(r.get("masterStart", 0.0)); f_u1 = (u1 - off) / drift - float(r.get("masterStart", 0.0))
-                need = max(4.0, f_u1 - f_u0); t1 = f_u1; t0 = max(0.0, t1 - need)
-                if t0 == 0.0: t1 = min(probe(r["file"])[3], t0 + need)      # a window at the head of the take: the trim runs forward instead
+                # (tr0/tr1 are the TRIM's file seconds. They were written into t0/t1 — the slot's song window — so every
+                # sub-slot after an angle got a move window like 18.2–18.7 and the slot's own window was lost. 2026-10-02.)
+                need = max(4.0, f_u1 - f_u0); tr1 = f_u1; tr0 = max(0.0, tr1 - need)
+                if tr0 == 0.0: tr1 = min(probe(r["file"])[3], tr0 + need)      # a window at the head of the take: the trim runs forward instead
                 angle_reqs.append({"id": f"{sub_id}_{ang['name']}", "kind": "angle", "route": "seedance_ref", "aspect": "9:16", "resolution": "720p", "source_path": r.get("source_path"), "source_local": r["file"],
-                                   "source_window": [round(u0, 3), round(u1, 3)], "source_trim": [round(t0, 3), round(t1, 3)], "masterStart": round(float(r.get("masterStart", 0.0)) + t0, 4),
+                                   "source_window": [round(u0, 3), round(u1, 3)], "source_trim": [round(tr0, 3), round(tr1, 3)], "masterStart": round(float(r.get("masterStart", 0.0)) + tr0, 4),
                                    "angle": ang["sentence"], "keep": r.get("keep", []), "prompt": "(angle shot)"})
-                entry["angle_masterStart"] = round(float(r.get("masterStart", 0.0)) + t0, 4)
+                entry["angle_masterStart"] = round(float(r.get("masterStart", 0.0)) + tr0, 4)
+                # the returned angle is only cut in when its fidelity report says so (see angle_gate)
+                sung = lines is None or any(min(l["end"], u1) - max(l["start"], u0) > 0 and not l.get("suspect") for l in lines)
+                entry["angle_gate"] = angle_gate(entry["angle_file"], rules.get("angle_gate") or {}, (f_u0 - tr0, f_u1 - tr0), sung)
             subs.append(entry); prev_move = move["type"]
             if move["type"] in ("push", "pull"): prev_zoom_dir = move["type"]
             on_the_1 = abs(((u0 - sec0) / bar) - round((u0 - sec0) / bar)) < 0.05 and (round((u0 - sec0) / bar) % 4 == 0)
@@ -196,10 +237,11 @@ def plan(a):
             shot = dict(s); shot["id"] = sub_id; shot["timeline"] = {"start": u0, "end": u1}
             shot["cameraMotion"] = {"type": cam["type"], "description": f"{cam['type']} {cam['amount']:.2f} ({move.get('lens', '')}, handheld {move.get('handheld', 0)})"}
             shot["framing"] = framing; shot["transitionIn"] = {"preset": tr} if i > 0 or tr != "cut" else {"type": "cut"}
-            shot["coverage"] = {"source": entry["source"], "section": section, "angle": entry.get("angle")}
+            use_angle = entry["source"] == "angle" and bool(entry.get("angle_gate", {}).get("use"))
+            shot["coverage"] = {"source": entry["source"], "section": section, "angle": entry.get("angle"), "angle_used": use_angle}
             out_shots.append(shot)
-            use_angle = entry["source"] == "angle" and os.path.exists(entry.get("angle_file", ""))
-            out_renders[sub_id] = {"file": entry["angle_file"] if use_angle else entry["variant"], "masterStart": entry["angle_masterStart"] if use_angle else r.get("masterStart"), "_fallback": entry["variant"]}
+            out_renders[sub_id] = {"file": entry["angle_file"] if use_angle else entry["variant"],
+                                   "masterStart": round(entry["angle_masterStart"] - entry["angle_gate"]["clock_shift_s"], 4) if use_angle else r.get("masterStart"), "_fallback": entry["variant"]}
         plan_slots.append({"slot": sid, "section": section, "song": [t0, t1], "source": r["file"], "masterStart": r.get("masterStart"), "matte_dir": r.get("matte_dir"), "plate": r.get("plate"), "plate_loop": bool(r.get("plate_loop")), "subs": subs})
     cov = {"bpm": a.bpm, "presets": a.presets, "seed": a.seed, "section_song": [sec0, shots[-1]["timeline"]["end"]], "slots": plan_slots,
            "stats": {"performance_slots": len(plan_slots), "cuts": sum(len(p["subs"]) for p in plan_slots), "generated_angles": len(angle_reqs), "static_share": round(static_total / max(1e-6, total), 3), "directors_cameras_honoured": honoured}}

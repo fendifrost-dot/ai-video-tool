@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { parseShotSpec } from "@/lib/treatment/shotSpec";
 import type { LyricLine } from "@/lib/lyrics/lyricsForShot";
 import {
+  cameraMoveToSentence,
   compileToWorldBatch,
   compositorArgs,
   phrasesFromCoveragePlan,
@@ -18,6 +19,7 @@ import {
   snapSeedance,
   wrapPrompt,
   seedanceAnglePrompt,
+  PLACE_LIGHT,
   LOOK_PRESETS,
   DEFAULT_LOOK_PRESET_ID,
   type CompilerPhrase,
@@ -87,6 +89,21 @@ describe("prompt wrap + seedance angle", () => {
   it("seedance with world still references @Image1", () => {
     const p = seedanceAnglePrompt("side tight", KEEP, null, true);
     expect(p).toContain("@Image1");
+  });
+
+  it("a restaged performer takes the place's light and nothing more — said both ways, with his edge named", () => {
+    const p = seedanceAnglePrompt("side tight", KEEP, null, true);
+    expect(p).toContain(PLACE_LIGHT);
+    expect(PLACE_LIGHT).toMatch(/where @Image1 is dark he is dark/);
+    expect(PLACE_LIGHT).toMatch(/nothing adds a key light, a fill light or a glow/);
+    expect(PLACE_LIGHT).toMatch(/no bright outline, halo or cut-out edge/);
+    expect(seedanceAnglePrompt("side tight", KEEP, null, false)).not.toContain("@Image1");
+  });
+
+  it("the script's angle prompt says the same sentence", () => {
+    const py = readFileSync(resolve(process.cwd(), "scripts/broll/run_world_batch.py"), "utf8");
+    const said = [...py.matchAll(/^\s+"([^"]+)"\)?$/gm)].map((m) => m[1]).join("");
+    expect(said).toContain(PLACE_LIGHT);
   });
 });
 
@@ -240,7 +257,9 @@ describe("compileToWorldBatch", () => {
     expect(s.route).toBe("still_kling");
     expect(s.seconds).toBe(5);
     expect(s.motion).toContain("door opens");
-    expect(s.motion).toContain("push 0.16");
+    // the camera is said in words; the 2.5D engine's own parameters mean nothing to a video model
+    expect(s.motion).toContain("The camera pushes in slowly.");
+    expect(s.motion).not.toMatch(/push 0\.16|ease in_out|anamorphic_35|handheld 0\.25/);
     // the dialect's prompt is THE SCENE: run_world_batch.py wraps it in the look preset itself, so the compiler
     // must not pre-wrap (the preamble and suffix used to be sent twice)
     expect(s.prompt).toBe("arctic room, one subject, door in the far wall");
@@ -469,10 +488,48 @@ describe("phrases come from the planner and the storyboard (A2)", () => {
     expect(w.prompt).toContain("Paris atelier");
     expect(w.prompt).toContain("Must include: the tape measure.");
     expect(w.camera).toEqual({ type: "push", amount: 0.16, ease: "in_out", handheld: 0.25, lens: "anamorphic_35" });
-    expect(w.motion.entrance).toBe("arrives on a whip left");
+    // the transition belongs to the edit, not to the clip: nothing about it reaches the motion sentence
+    expect(w.motion.entrance).toBe("");
+    expect(compileToWorldBatch({ phrases }).shots[0].motion).not.toMatch(/arrives on|whip left/);
     expect(w.motion.secondary).toBe("dust in the window light");
     const shot = compileToWorldBatch({ phrases }).shots[0];
     expect(shot.kind).toBe("world");
     expect(shot.prompt).toBe(w.prompt);
+  });
+
+  it("an overridden card compiles from the director's direction, not from the scene it replaced", () => {
+    const card = parseShotSpec({
+      id: "clip-06", purpose: "Close-up of white YSL logo on black jacket fabric", kind: "broll", shotType: "b_roll",
+      timeline: { start: 19, end: 23 }, environment: { description: "Black background" },
+      performanceDirection: "Four boys shoulder a wheel-less sedan off the curb; the Bentley idles past; they walk it out of frame.",
+      requiredElements: ["a wheel-less sedan carried on shoulders"], origin: "override",
+    });
+    const w = phrasesFromShotSpecs([card], [])[0] as Extract<CompilerPhrase, { kind: "world" }>;
+    // no frame was written: the still gets the FIRST beat only — every beat in one still comes back as stacked panels
+    expect(w.prompt).toBe("Four boys shoulder a wheel-less sedan off the curb. In the picture: a wheel-less sedan carried on shoulders.");
+    expect(w.prompt).not.toContain("YSL logo");
+    expect(w.prompt).not.toContain("Black background");
+    expect(w.prompt).not.toContain("Bentley idles past");
+    // the whole direction is the MOTION
+    expect(w.motion.primary).toBe("Four boys shoulder a wheel-less sedan off the curb; the Bentley idles past; they walk it out of frame.");
+    // with a frame, the still is the frame and nothing else
+    const framed = phrasesFromShotSpecs([{ ...card, openingFrame: "Overcast street, a wheel-less beige sedan at the curb, four boys crouched at its corners." }], [])[0] as Extract<CompilerPhrase, { kind: "world" }>;
+    expect(framed.prompt).toBe("Overcast street, a wheel-less beige sedan at the curb, four boys crouched at its corners.");
+    // a generated card (no override) is unchanged
+    const gen = phrasesFromShotSpecs([{ ...card, origin: "generated" }], [])[0] as Extract<CompilerPhrase, { kind: "world" }>;
+    expect(gen.prompt.startsWith("Black background Close-up of white YSL logo")).toBe(true);
+  });
+});
+
+describe("the camera in words", () => {
+  const m = (type: string, over: Record<string, unknown> = {}) => cameraMoveToSentence({ type, amount: 0.16, ease: "in_out", handheld: 0.25, lens: "anamorphic_35", ...over });
+  it("says what the camera does, at a pace, without the engine's parameters", () => {
+    expect(m("push")).toBe("The camera pushes in slowly.");
+    expect(m("pull", { amount: 0.24 })).toBe("The camera pulls back fast.");
+    expect(m("truck", { direction: "left", handheld: 0.4 })).toBe("The camera trucks right to left slowly, handheld.");
+    expect(m("static", { amount: 0 })).toBe("The camera is locked off.");
+    expect(m("orbit", { direction: "right" })).toBe("The camera arcs right around the subject slowly.");
+    expect(m("whip_pan", { direction: "left" })).toBe("The camera whips left.");
+    expect(m("unknown_move")).toBe("");
   });
 });

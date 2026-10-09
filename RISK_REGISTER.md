@@ -47,6 +47,13 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
   open** until Part B policy — copy+checksum and `artist_looks` ref-switch
   already done.) ·
   **Owner:** Platform / Products (AVT)
+- **Measured 2026-10-03 (read-only triage of the Lovable scan, 61 entries):** the open
+  surface is wider than the five tables and one bucket described here — `*_open_test`
+  is live on **30 tables** (incl. `video_projects`, `shots`, `project_assets`,
+  `provider_jobs`), `single_tenant_all` on 22 of them, open/anonymous policies on
+  **all 12 buckets**, and the app signs every visitor in anonymously. No foreign rows
+  found. Nothing was changed. Evidence, classes and a fix order:
+  [`docs/security/SECURITY_TRIAGE_2026-10-03.md`](docs/security/SECURITY_TRIAGE_2026-10-03.md).
 - **Summary:** Any anonymous (`anon`) caller can read, write, and delete real user
   data across several core tables and the `look-composites` storage bucket.
 - **Root cause:** Migration `supabase/migrations/20260523171003_541284ed-e697-4b53-9f4a-3b39b5a76fb9.sql`
@@ -384,3 +391,27 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **Pointer:** [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md`](docs/reconstruct/PLAYABLE_EXPORT_LIVE_PASS_2026-09-16.md); [`docs/reconstruct/PLAYABLE_BROWSER_DECODE.md`](docs/reconstruct/PLAYABLE_BROWSER_DECODE.md); [`docs/reconstruct/PLAYABLE_DECODE.md`](docs/reconstruct/PLAYABLE_DECODE.md); [`docs/reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md`](docs/reconstruct/PLAYABLE_EXPORT_LIVE_INCOMPLETE_2026-09-16.md); [`docs/reconstruct/PLAYABLE_ARTIFACT.md`](docs/reconstruct/PLAYABLE_ARTIFACT.md); [`docs/reconstruct/PLAYABLE_PORTABILITY.md`](docs/reconstruct/PLAYABLE_PORTABILITY.md); `src/lib/reconstruct/playable/`; issue [#111](https://github.com/fendifrost-dot/ai-video-tool/issues/111); related [#128](https://github.com/fendifrost-dot/ai-video-tool/issues/128) / [PR #129](https://github.com/fendifrost-dot/ai-video-tool/pull/129); browser decode [PR #133](https://github.com/fendifrost-dot/ai-video-tool/pull/133); sprint stretch [#102](https://github.com/fendifrost-dot/ai-video-tool/issues/102).
 - **DoD (target):** playable MP4 + claims + E2 hook + `video-qa.json` committed; `npm run reconstruct:playable`; parent Publishes frontend only. **Live 8-frame click after #133 Publish:** PASS 3/9 `fail=0` `frames=8` `mp4=produced` `browserDecode=webcodecs` liveSample of the 72-frame gate (2026-09-16 ~2:05 AM CT). **Code default now 72** with abort/OOM/timeout fallback; live click of `frames=72` needs Publish of that change (not claimed here). **In-lib decode:** E2 `frames>0` off committed MP4 bytes (node/ffmpeg or injected rasters). **Not claimed:** live 241-frame/1080 ingest of master `76fe7438` (row is 1080×1920 HDR); live SAM-3 fetch; 2nd-clip live Export; raising edge `maxFrames`; CLEARED real-media gate. **2nd-clip stretch:** in-lib catalog bind for `ysl-ice-on-v2-edited-clip` / `f31bd0f2` — live Hero Frame Export on that clip is **NOT CLEARED**.
 - **Mitigations:** reusable `PlayableClipSpec` + `catalogBind.ts`; fail-closed SAM-3; `paidCalls=false`; no eval/temporal-QA/pipeline/paint edits; `maxFrames=24` unchanged.
+
+---
+
+## REF-1 — Reference pictures signed and sent to an image provider (storyboard stills)
+
+- **Severity:** High · **Confidence:** Confirmed · **Status:** Open (mitigated in code; depends on RISK-001) · **Owner:** Platform (AVT) · **Opened:** 2026-10-07 (PR #185)
+- **Summary:** `world-still-proxy` can now sign a caller's private files (wardrobe, identity, project images — by record id, never by path) for 600 s and send them to xAI `images/edits`. The file leaves the tenant boundary by design; what must hold is that it is the caller's. The record checks (project ownership, artist ownership, file inside the project's / artist's folder, image only, one bucket per kind) are bypassable while the `*_open_test` RLS policies stand (SEC-4): a caller can re-own a row and the checks pass on the victim's files.
+- **Mitigation in code (PR #185):** files are signed **as the caller** (storage RLS decides, not a client-writable row) and **anonymous JWTs are refused** — today the only durable account is the director's, so no anonymous visitor can spend on or sign through this route. Under restored RLS, files under legacy anonymous uid prefixes (STOR-2…4) stop signing for the director too, exactly as in-app reads do: the storage re-key is the fix, not a looser check.
+- **DoD:** SEC-4 closed (the `_open_test` policies removed and owner-scoped policies restored) and an RLS integration test that signs a `<otherUid>/…` reference as a durable user and expects a refusal; the edits-route price verified against one billed run (`cost_basis` recorded on the job until then).
+
+## SEC-4 — `*_open_test` policies on every table and every bucket (RISK-001, wider than documented)
+
+- **Severity:** P0 / Critical · **Confidence:** Confirmed (live `pg_policies`, 2026-10-07) · **Status:** OPEN · **Owner:** Platform (AVT)
+- **Summary:** `SECURITY.md` §6 describes RISK-001 as five tables and the `look-composites` bucket. Live, the database carries `<table>_open_test` `FOR ALL TO anon, authenticated USING (true) WITH CHECK (true)` on **30+ tables** — `video_projects`, `shots`, `project_assets`, `provider_jobs`, `timeline_*`, `products`, `prompts`… — and `<bucket>_open_test` `FOR ALL TO anon, authenticated` on **every bucket**, private ones included (`wardrobe-refs`, `artist-assets`, `project-references`, `project-clips`). Anonymous sign-in is live (`src/routes/__root.tsx:140`; 1,376 anonymous users, the latest created today). Any visitor can read, change or delete any row and any file, and can call the paid proxies with an anonymous JWT.
+- **Why it is not fixed here:** removing the policies is the RISK-001 remediation and is gated on the identity consolidation + storage re-key (RISK-002, STOR-1…4): restoring owner-scoped policies today would make the director's own legacy-prefixed files unreadable in-app. Class C, its own PR, with the RLS integration test the review doc requires.
+- **What holds meanwhile:** each paid proxy must refuse anonymous JWTs and must not trust a row's owner column as proof of anything. `lyric-align-proxy` and (from #185) `world-still-proxy` do; the rest do not (see `docs/security/SECURITY_TRIAGE_2026-10-07.md`).
+- **DoD:** the `_open_test` policies and the anon bucket policies are gone; `anon` can read and write nothing (the RISK-001 DoD); the RLS integration test category is no longer empty.
+
+## STOR-5 — `grok-image-look-composite` signs caller-supplied storage paths (no folder check, URL pass-through)
+
+- **Severity:** High · **Confidence:** Confirmed (code read `index.ts:98-110, 148-186`, 2026-10-07) · **Status:** OPEN · **Owner:** Platform (AVT)
+- **Summary:** `identityPaths` (and `garmentPath`) arrive from the client as raw storage paths; `signStoragePath` signs them with the **service role** across four buckets in turn with no check that the path is inside the caller's folder, and passes any `http(s)` string through untouched to xAI. After the artist-ownership check (`artists.user_id`, itself re-ownable under SEC-4) any object in `project-references`, `look-composites`, `wardrobe-refs` or `product-assets` whose path is known can be signed and sent to the provider; with SEC-4, paths are readable by anyone. Pre-existing; found by the #185 security review; not on the storyboard generation path (Hero Frame Studio lane).
+- **Fix (proposed, separate Class C PR):** resolve pictures by record id with `_shared/stillReferences.ts` `resolveReferences` + `inFolderOf`, sign as the caller, refuse anonymous JWTs, drop the `http(s)` pass-through (or allow only the project's own signed URLs).
+- **DoD:** no caller-supplied path is signed; a `<otherUid>/…` path is refused; test in `_shared`.

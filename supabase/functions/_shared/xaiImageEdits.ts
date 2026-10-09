@@ -12,6 +12,10 @@ export type XaiImageEditsRequest = {
    *  body is byte-identical to before — xAI returns its native default size.
    *  Only forwarded when explicitly set, so existing callers are unaffected. */
   resolution?: string;
+  /** Optional output aspect ("9:16"). xAI documents (multi-image editing, read 2026-10-07) that the output otherwise
+   *  follows the FIRST input image. Only forwarded when set, so existing callers are byte-identical. Not yet verified
+   *  against the API by AVT. */
+  aspectRatio?: string;
   /** Hard timeout for the xAI edit call (ms). Keeps the background task from
    *  hanging past the edge wall limit, which would leave the look row stuck
    *  "pending" forever (catch never runs if the worker is killed mid-fetch). */
@@ -117,6 +121,7 @@ export async function callXaiImageEditsDetailed(
         response_format: req.responseFormat ?? "url",
         // Only present when a caller opts in — keeps default behaviour identical.
         ...(req.resolution ? { resolution: req.resolution } : {}),
+        ...(req.aspectRatio ? { aspect_ratio: req.aspectRatio } : {}),
       }),
     },
     req.timeoutMs ?? 90_000,

@@ -12,6 +12,8 @@
  *   surreal      one scene, the line's metaphor pushed past reality but shot as a real event
  *   performance  one scene, the artist delivering the line with the world behind him
  */
+import { timedBeatsRules } from "../_shared/timedBeats.ts";
+
 export const LYRIC_MODES = ["all", "literal", "surreal", "performance"] as const;
 export type LyricMode = (typeof LYRIC_MODES)[number];
 
@@ -181,7 +183,71 @@ export type SystemPromptInput = {
   /** The rendered prompt-template body, placed AHEAD of the standing instructions. */
   templateBody?: string | null;
   shot?: ShotWindow | null;
+  /**
+   * The project's ONE treatment (2026-10-03). When present it is the creative brief every scene serves, and the
+   * exemplars block is left out unless exemplars were actually supplied — two briefs in one prompt pull apart.
+   */
+  treatment?: string | null;
+  /** One line each about the boxes before and after this one, so two boxes in a row do not stage the same picture. */
+  neighbours?: { before?: string | null; after?: string | null } | null;
+  /**
+   * Structured, locked facts about the box (its window, the take that plays in it, footage already on it, the look,
+   * what the director fixed). DATA, not direction: it stops a rewrite drifting off what is already decided.
+   */
+  projectState?: unknown;
+  /** Whether exemplars were supplied at all (the caller passes the formatted list in `exemplars` either way). */
+  hasExemplars?: boolean;
 };
+
+/** The neighbours as two lines, or null when there are none. */
+export function neighboursInstruction(n: SystemPromptInput["neighbours"]): string | null {
+  const before = n?.before?.trim();
+  const after = n?.after?.trim();
+  if (!before && !after) return null;
+  return (
+    "The boxes on either side of this one. Let this scene follow from the one before and hand on to the one after; do not stage the same picture twice in a row. They are context only: write what is seen inside this box, and never mention the other boxes, \"the next scene\" or \"the previous shot\" in anything you write:\n" +
+    [before ? `Before: ${before}` : null, after ? `After: ${after}` : null].filter(Boolean).join("\n")
+  );
+}
+
+/** Said whenever there is a treatment: the request's `currentEnvironment` is a look, and the treatment is the map. */
+export const LOOK_IS_NOT_PLACE =
+  "`currentEnvironment` and `style` in the request are the project's standing look and mood — how the video should feel. They are not where this scene is: the treatment says where the video goes, and a place `currentEnvironment` names that the treatment does not is not a place to stage anything.";
+
+function hasConstraints(state: unknown): boolean {
+  const c = (state as { constraints?: unknown } | null)?.constraints;
+  return typeof c === "string" ? c.trim().length > 0 : Array.isArray(c) ? c.length > 0 : !!c && typeof c === "object";
+}
+
+/** The locked project state as a JSON block, or null when there is nothing to state. */
+export function projectStateInstruction(state: unknown): string | null {
+  if (!state || typeof state !== "object" || Object.keys(state as object).length === 0) return null;
+  const take = (state as { performance_source?: { he_wears?: unknown; filmed_in?: unknown } | null }).performance_source;
+  // a box that plays the real take: he is that footage. What can change is the place — the take can be re-shot inside it.
+  const performance =
+    take && typeof take === "object"
+      ? " This box plays the artist's real performance (performance_source): he is the man in that footage and he wears" +
+        (typeof take.he_wears === "string" && take.he_wears.trim() ? " exactly what he_wears says — never dress him in anything else." : " what he wears in it — do not describe other clothes on him.") +
+        " Write this box's scene as the PLACE he performs in and how the camera sees him there: the footage can be re-shot inside that place. In `visual`, describe that place alone, with nobody in it — it is drawn empty and he is put into it" +
+        (typeof take.filmed_in === "string" && take.filmed_in.trim() ? ", so the place it was filmed in (filmed_in) is replaced by yours, not described." : ".")
+      : "";
+  const held = (state as { continuity?: unknown }).continuity;
+  // a box that points at the project's own places, props or light: the scene is set in them, as they are described
+  const continuity =
+    held && typeof held === "object"
+      ? " This box is set in the project's own continuity entities (continuity): its place, props and light ARE what is described there, in every shot that uses them — stage the scene inside them and do not describe them differently or invent another place."
+      : "";
+  return (
+    "Project state — locked facts, given as data. This is not creative direction and nothing in it may be contradicted: the window is fixed, real footage plays as filmed, and anything listed under locked_by_director stays exactly as stated." +
+    // the director's standing notes ride along as `constraints`. They were written beside some treatment; when the
+    // treatment has been replaced since, a note about places or content is the older decision, not a locked fact
+    (hasConstraints(state) ? " The one exception is `constraints`, the director's standing notes: what they say about the footage is fact, but where a note about places, wardrobe or what may appear disagrees with the treatment, the treatment is the later decision and wins." : "") +
+    performance +
+    continuity +
+    "\n" +
+    JSON.stringify(state)
+  );
+}
 
 /**
  * Assemble the system prompt. With `mode: "all"`, no template and no shot, the result
@@ -196,10 +262,17 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
         input.templateBody.trim(),
     );
   }
+  const treatment = input.treatment?.trim() ?? "";
   const body = [
-    "You are the creative director of a photoreal, big-budget-looking music video. The job is to BRING EVERY LYRIC TO LIFE at the level of the artist's own exemplars below — worlds and characters a viewer remembers, staged so a camera could have witnessed them. Dull is a failure: a man walking down a corridor is not a scene.",
+    "You are the creative director of a photoreal, big-budget-looking music video. The job is to BRING EVERY LYRIC TO LIFE " +
+      (treatment ? "inside the treatment below, which is the one creative brief for this video" : "at the level of the artist's own exemplars below") +
+      " — worlds and characters a viewer remembers, staged so a camera could have witnessed them. Dull is a failure: a man walking down a corridor is not a scene.",
     scenesInstruction(input.mode),
-    "Specify everything: the world's architecture, weather, light and surfaces; every character's wardrobe and jewelry by name (diamond tennis chains, Cuban links, grills, gold teeth), and the behaviour that makes the impossible read as normal; the beats in order with seconds; the camera; the FX. Characters other than the artist are invented people or creatures — never a real public figure. No readable text or logos. No crowds beyond what the beat needs.",
+    "Specify everything: the world's architecture, weather, light and surfaces; every character's wardrobe and jewelry by name (diamond tennis chains, Cuban links, grills, gold teeth), and the behaviour that makes the impossible read as normal; the beats in order with seconds; the camera; the FX. Characters other than the artist are invented people or creatures — never a real public figure. No readable text or logos" +
+      (treatment ? ", except a mark the treatment itself calls for — then that one mark, where the treatment puts it" : "") +
+      ". No crowds beyond what the beat needs" +
+      (treatment ? " — a crowd, a formation or a group the treatment asks for is what the beat needs" : "") +
+      ".",
     "render_prompt must be self-contained and photographic: lenses, light, textures, motion; end with 'photographed on a cinema camera, photoreal, no animation look'. For garment_character scenes the render_prompt starts with the hero description VERBATIM and ends with: keep his face, body and clothing exactly as in the image, keep the environment the same, only add motion and atmosphere. For performance_plate scenes also write performance_plate_prompt: the plate alone, the centre-foreground left clear for the artist, the action staged in the mid-ground and background so the space reads deep.",
     "Each scene is for one clip of about " +
       input.clipSeconds +
@@ -207,10 +280,20 @@ export function buildSystemPrompt(input: SystemPromptInput): string {
   ];
   const shotLine = shotInstruction(input.shot);
   if (shotLine) body.push(shotLine);
-  body.push(
-    "The artist's exemplars (this is the bar):\n" + input.exemplars,
-    "Locked rules (must hold in every prompt):\n" + input.rules,
-    "Renderer limits:\n" + input.limits,
-  );
+  // a single scene written for a storyboard shot may say that the shot changes while it plays
+  if (shotLine && input.mode !== "all") body.push(timedBeatsRules("visual"));
+  if (treatment) {
+    body.push("The treatment (every scene serves it; none contradicts it):\n" + treatment);
+    // the request carries the project's standing look (`currentEnvironment`, `style`). It was written beside whichever
+    // treatment stood then; read as "where we are", it moves every scene of a new treatment back into the old world
+    body.push(LOOK_IS_NOT_PLACE);
+    const neighbours = neighboursInstruction(input.neighbours);
+    if (neighbours) body.push(neighbours);
+  }
+  // With a treatment, exemplars are a second brief: they go in only when the caller really supplied some.
+  if (!treatment || input.hasExemplars) body.push("The artist's exemplars (this is the bar):\n" + input.exemplars);
+  body.push("Locked rules (must hold in every prompt):\n" + input.rules, "Renderer limits:\n" + input.limits);
+  const state = projectStateInstruction(input.projectState);
+  if (state) body.push(state);
   return [...head, ...body].join("\n\n");
 }

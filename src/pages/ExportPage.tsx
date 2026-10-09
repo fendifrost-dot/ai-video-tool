@@ -1,8 +1,14 @@
+import { useActiveVariation } from "@/lib/queries/variations";
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ArrowLeft, Download, Package } from "lucide-react";
 import { PageHeader } from "@/components/AppShell";
+import { useAssignments, useProjectMedia, useStoryboardBoxes, useTakeSyncs } from "@/lib/queries/storyboard";
+import { aspectOfProject } from "@/lib/project/aspect";
+import { buildTimeline } from "@/lib/storyboard/media";
+import { renderContract, renderReadiness } from "@/lib/storyboard/renderContract";
+import { useEventClock } from "@/lib/queries/eventClock";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -10,6 +16,7 @@ import { Progress } from "@/components/ui/progress";
 import { useProject, useProjectAudio } from "@/lib/queries/projects";
 import { useArtist } from "@/lib/queries/artists";
 import { useProjectShots } from "@/lib/queries/shots";
+import { storyboardShotRows } from "@/lib/storyboard/boxes";
 import { useProjectPrompts } from "@/lib/queries/prompts";
 import { useProjectAssets } from "@/lib/queries/projectAssets";
 import { usePromptTemplates } from "@/lib/queries/promptTemplates";
@@ -47,15 +54,27 @@ const DEFAULT_TARGETS: Record<TimelineRenderTarget, boolean> = {
 };
 
 export default function ExportPage({ projectId }: { projectId: string }) {
+  const variation = useActiveVariation(projectId);
   const projectQuery = useProject(projectId);
   const artistQuery = useArtist(projectQuery.data?.artist_id ?? undefined);
-  const shotsQuery = useProjectShots(projectId);
+  const allShotRowsQuery = useProjectShots(projectId);
+  // the storyboard is the shot list: one count here, on the storyboard and in the package (a leftover row of the old
+  // hand-made shot list made this page say one shot more than the storyboard and the render contract beside it)
+  const shotRows = useMemo(() => (allShotRowsQuery.data ? storyboardShotRows(allShotRowsQuery.data) : undefined), [allShotRowsQuery.data]);
+  const shotsQuery = { data: shotRows, isLoading: allShotRowsQuery.isLoading };
   const promptsQuery = useProjectPrompts(projectId);
   const assetsQuery = useProjectAssets(projectId);
   const audioQuery = useProjectAudio(projectId);
   const templatesQuery = usePromptTemplates();
   const manifestsQuery = useProjectTimelineManifests(projectId);
+  // the storyboard's own timeline: one segment per shot record with the media selected on it
+  const boxesQuery = useStoryboardBoxes(projectId);
+  const assignmentsQuery = useAssignments(projectId);
+  const syncsQuery = useTakeSyncs(projectId);
+  const storyboardMedia = useProjectMedia(projectId);
   const songQuery = useSongAnalysis(projectId);
+  // the same clock Review reads the storyboard's timed events against
+  const clock = useEventClock(projectId);
   const storyboardQuery = useProjectStoryboard(projectId);
   const [manifestId, setManifestId] = useState<string | null>(null);
   const manifestQuery = useTimelineManifest(manifestId ?? undefined);
@@ -66,6 +85,20 @@ export default function ExportPage({ projectId }: { projectId: string }) {
   const [options, setOptions] = useState<ExportOptions>(DEFAULT_OPTIONS);
   const [progress, setProgress] = useState<ExportProgress | null>(null);
   const [building, setBuilding] = useState(false);
+
+  // The render contract: made from the SAME timeline Review plays, by the player's own functions. It is what the
+  // package carries as storyboard_timeline.json and what a render worker executes — there is no second edit.
+  const contract = useMemo(() => {
+    const boxes = boxesQuery.data ?? [];
+    if (boxes.length === 0) return null;
+    return renderContract({
+      timeline: buildTimeline({ boxes, assignments: assignmentsQuery.data ?? [], assets: storyboardMedia.byId, syncs: syncsQuery.data ?? [], clock }),
+      assets: storyboardMedia.byId,
+      song: storyboardMedia.song ? { assetId: storyboardMedia.song.id, bucket: "project-audio", path: storyboardMedia.song.file_url } : null,
+      aspect: aspectOfProject(projectQuery.data),
+    });
+  }, [boxesQuery.data, assignmentsQuery.data, storyboardMedia.byId, storyboardMedia.song, syncsQuery.data, clock, projectQuery.data]);
+  const readiness = useMemo(() => (contract ? renderReadiness(contract) : null), [contract]);
 
   const totals = useMemo(() => {
     const assets = assetsQuery.data ?? [];
@@ -167,6 +200,10 @@ export default function ExportPage({ projectId }: { projectId: string }) {
         audioAsset: audioQuery.data ?? null,
         options,
         timeline: timelineBundle,
+        storyboardPlan:
+          (boxesQuery.data ?? []).length > 0
+            ? (contract ?? undefined)
+            : undefined,
         onProgress: setProgress,
       });
       toast.success("Package downloaded");
@@ -218,7 +255,8 @@ export default function ExportPage({ projectId }: { projectId: string }) {
     <>
       <PageHeader
         title="Export"
-        subtitle="Build a zip with manifest, shot list, prompt log, and (optionally) the actual files for Premiere / After Effects import."
+        context={variation?.name ?? null}
+        subtitle="Build a zip with the manifest, the shot list, the storyboard's timeline, the prompt log and (optionally) the files, for Premiere / After Effects. A finished render is not made in the app yet."
       />
       <div className="space-y-6 px-8 py-6">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -229,6 +267,34 @@ export default function ExportPage({ projectId }: { projectId: string }) {
           <TotalCard label="References" value={totals.references} />
           <TotalCard label="Audio file" value={totals.audio ? "yes" : "no"} />
         </div>
+
+        {contract && readiness && (
+          <section className="rounded-md border border-border bg-card/30 p-4" data-testid="render-contract" data-ready={readiness.ready}>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">The cut, as a renderer is handed it</h2>
+            <p className="mt-1 text-xs text-muted-foreground" data-testid="render-contract-summary">
+              {contract.segments.length} shots · {contract.duration_seconds.toFixed(2)} s · {contract.frames} frames at {contract.fps} fps · {contract.frame.width}×{contract.frame.height} ({contract.frame.aspect}). This is exactly what Review plays, written down frame by frame; it
+              goes in the package as storyboard_timeline.json.
+            </p>
+            {readiness.blockers.length > 0 && (
+              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-amber-200" data-testid="render-contract-blockers">
+                {readiness.blockers.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+            )}
+            {readiness.notes.length > 0 && (
+              <ul className="mt-2 list-disc space-y-0.5 pl-4 text-xs text-muted-foreground" data-testid="render-contract-notes">
+                {readiness.notes.map((n) => (
+                  <li key={n}>{n}</li>
+                ))}
+              </ul>
+            )}
+            <p className="mt-2 text-xs text-muted-foreground" data-testid="render-contract-boundary">
+              The app does not make the finished video file yet: the renderer that executes this contract exists and is tested (scripts/render), but it needs a machine that can run ffmpeg, which this app's servers cannot. Until that worker is connected, the
+              contract and the files are what leave the app.
+            </p>
+          </section>
+        )}
 
         <section className="rounded-md border border-border bg-card/30 p-4">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

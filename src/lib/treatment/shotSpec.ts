@@ -190,8 +190,31 @@ export const LookSchema = z.object({
   /** Optional pointer to a managed look/wardrobe asset (e.g. artist_looks.id). */
   lookId: z.string().nullable().default(null),
   references: z.array(ReferenceSchema).default([]),
+  /**
+   * Where this wardrobe comes from, when a writer said: "treatment" = the treatment dresses the artist in it for this
+   * shot; "footage" = it is what he was filmed in. Empty = nobody said. A performance shot whose wardrobe is the
+   * treatment's is one the footage on file may not be able to deliver — the storyboard says so rather than restaging
+   * him in the footage's clothes and calling it the shot.
+   */
+  source: z.enum(["", "footage", "treatment"]).default(""),
+  /**
+   * The exact garments this shot is dressed in: ids of the artist's wardrobe pictures (character_features rows of a
+   * wardrobe_* type). Each is sent to a generator that takes reference images, as a picture — never as a summary.
+   * Empty = no garment is held exactly (the words above are then an interpretation, and the storyboard says so).
+   */
+  garments: z.array(z.string()).default([]),
+  /**
+   * Which outfit of this video the shot wears (continuity_entities of kind `outfit`, by key — src/lib/wardrobe/outfits.ts):
+   *   inherit    the outfit of the scene the shot falls in (the default: a shot wears what its scene wears)
+   *   exception  this shot wears `outfitKey` whatever its scene says — a deliberate exception
+   *   none       this shot wears no outfit on purpose (nobody dressed, or he is not in it)
+   * The outfit's pieces are the garment pictures sent; `garments` above, when set, are this shot's own pieces instead.
+   */
+  outfitMode: z.enum(["inherit", "exception", "none"]).default("inherit"),
+  outfitKey: z.string().nullable().default(null),
 });
 export type Look = z.infer<typeof LookSchema>;
+export type OutfitMode = Look["outfitMode"];
 
 export const EnvironmentSchema = z.object({
   description: z.string().default(""),
@@ -247,6 +270,156 @@ export const PrevisSchema = z.object({
 });
 export type Previs = z.infer<typeof PrevisSchema>;
 
+// ============================================================================
+// Change inside a shot — timed events (Fendi, 2026-10-03)
+//
+// A shot's base fields describe ONE state. Directing needs change within the shot: the lights die on a word, the
+// camera starts to push a beat later. An event is one moment inside the shot and what changes at it. It is small on
+// purpose: a time, what the time hangs on, and at most one short phrase per kind of change — never a paragraph.
+// Nothing here knows a project.
+// ============================================================================
+
+/** What an event's time hangs on. "time" = the offset as typed; "lyric" = the moment these words are sung; "beat" = the nth beat inside the shot. */
+export const SHOT_EVENT_TRIGGERS = ["time", "lyric", "beat"] as const;
+export type ShotEventTrigger = (typeof SHOT_EVENT_TRIGGERS)[number];
+
+/**
+ * An effect is a change the EDIT makes to the picture, exactly and on the clock, whatever footage the shot shows:
+ * Review plays it and a render applies the same arithmetic (src/lib/storyboard/events.ts `pictureAt`). The other
+ * kinds of change (visual, camera, lighting, action) have to be IN the footage.
+ */
+export const SHOT_EVENT_EFFECTS = ["dim", "blackout", "lights_up", "flash", "fade_out"] as const;
+export type ShotEventEffectType = (typeof SHOT_EVENT_EFFECTS)[number];
+
+/** The longest a single phrase of an event may be: a beat is a few words, not a scene. */
+export const SHOT_EVENT_PHRASE_MAX = 140;
+export const SHOT_EVENTS_MAX = 12;
+
+export const ShotEventSchema = z.object({
+  /** Stable inside the shot ("e1"): names the event to people and to a provider's reply. */
+  id: z.string().min(1),
+  /** Seconds from the shot's own start. For a lyric or beat trigger this is the fallback when it cannot be found. */
+  at: z.number().min(0),
+  trigger: z
+    .object({
+      kind: z.enum(SHOT_EVENT_TRIGGERS).default("time"),
+      /** The words (lyric) or the beat number (beat). Empty for "time". */
+      ref: z.string().default(""),
+    })
+    .default({}),
+  /** What changes in the picture. */
+  visual: z.string().max(SHOT_EVENT_PHRASE_MAX).default(""),
+  /** What the camera starts doing. */
+  camera: z.string().max(SHOT_EVENT_PHRASE_MAX).default(""),
+  /** What the light does. */
+  lighting: z.string().max(SHOT_EVENT_PHRASE_MAX).default(""),
+  /** What the subject does. */
+  action: z.string().max(SHOT_EVENT_PHRASE_MAX).default(""),
+  /** A lighting state the project keeps as a continuity entity, switched to at this moment (its key). */
+  lightingState: z.string().nullable().default(null),
+  effect: z
+    .object({
+      type: z.enum(SHOT_EVENT_EFFECTS),
+      /** How long the change takes, seconds. Null = the effect's own default. */
+      seconds: z.number().positive().max(10).nullable().default(null),
+      /** How much light is left, 0–1 (dim). Null = the effect's own default. */
+      level: z.number().min(0).max(1).nullable().default(null),
+    })
+    .nullable()
+    .default(null),
+});
+export type ShotEvent = z.infer<typeof ShotEventSchema>;
+
+// ============================================================================
+// Links between shots (2026-10-07)
+//
+// A treatment ties shots together: a picture seen on a screen IS another shot's picture; a cut keeps the subject in
+// the same place of the frame in a new place; a door opens onto what the next shot reveals. Written once, by key, on
+// the shot that owes the relationship. The board reads every link from BOTH ends (storyboard/links.ts), so the other
+// shot never has to repeat it. Nothing here knows a project.
+// ============================================================================
+
+/**
+ * screen_shows   — a screen/monitor/reflection in THIS shot shows the picture of `shot`.
+ * match_position — the subject holds the frame position and pose it had in `shot`; the place around it changes.
+ * reveals        — THIS shot reveals what `shot` was hiding or opening onto (an interior → its exterior).
+ * continues      — THIS shot continues the action of `shot` across the cut (same people, same move).
+ */
+export const SHOT_LINK_KINDS = ["screen_shows", "match_position", "reveals", "continues"] as const;
+export type ShotLinkKind = (typeof SHOT_LINK_KINDS)[number];
+
+export const ShotLinkSchema = z.object({
+  kind: z.enum(SHOT_LINK_KINDS),
+  /** The other shot's key (spec id / spec_key) on the same board. */
+  shot: z.string().min(1),
+  /** What the relationship is, in the writer's or director's words ("the monitor on the left"). */
+  note: z.string().max(240).default(""),
+});
+export type ShotLink = z.infer<typeof ShotLinkSchema>;
+
+/**
+ * How a shot gets made — the production method, chosen per shot (storyboard/route.ts decides whether the app can do
+ * it). `""` = nobody said; the route is then read from the shot type as it always was.
+ */
+export const PRODUCTION_METHODS = ["footage", "restage", "generate", "edit_footage", "composite", "multi_shot"] as const;
+export type ProductionMethod = (typeof PRODUCTION_METHODS)[number];
+
+export const ProductionSchema = z.object({
+  method: z.enum(["", ...PRODUCTION_METHODS]).default(""),
+  /** Why — the effect or the constraint that decides it ("the grill rotates inside his real mouth"). */
+  note: z.string().max(400).default(""),
+});
+export type Production = z.infer<typeof ProductionSchema>;
+
+/**
+ * What a shot points at instead of describing again: the project's continuity entities (a place, the props, a
+ * lighting state) by their key (continuity_entities.key). The wardrobe look is `wardrobe.lookId`, as it always was.
+ * Keys only — the canonical description and reference picture live on the entity, once.
+ */
+export const ContinuityRefsSchema = z.object({
+  location: z.string().nullable().default(null),
+  props: z.array(z.string()).default([]),
+  lighting: z.string().nullable().default(null),
+  /** What this shot owes another shot of the same board (see SHOT_LINK_KINDS). */
+  links: z.array(z.lazy(() => ShotLinkSchema)).default([]),
+});
+export type ContinuityRefs = z.infer<typeof ContinuityRefsSchema>;
+
+/**
+ * One person in this shot. `key` names a `character` continuity entity; everything else is this
+ * shot's direction and is deliberately NOT stored on the entity — the same character stands
+ * differently in every shot, and a description that moved to the entity would follow them
+ * everywhere.
+ */
+export const CastRefSchema = z.object({
+  key: z.string().min(1),
+  /** What they are doing. */
+  action: z.string().default(""),
+  /** Where they are in the frame or the scene. */
+  placement: z.string().default(""),
+  /** How this shot frames them specifically (a wide shot can hold a close cast member). */
+  framing: z.string().default(""),
+  /** Overrides the character's own identity mode for this shot only. Null = use theirs. */
+  identityMode: z.enum(["preserve", "recurring", "invent"]).nullable().default(null),
+});
+export type CastRef = z.infer<typeof CastRefSchema>;
+
+/**
+ * Who is in this shot.
+ *
+ * `open` and `none` exist so that SILENCE IS NEVER AMBIGUOUS. An empty `members` with neither flag
+ * set means nobody has decided yet, and the app says so; `open` means the director chose to let the
+ * model cast it; `none` means there are no people. Those are three different things and were one
+ * before this existed. The default is all-empty and all-false: nothing is auto-cast, and in
+ * particular the artist is never added to a shot on their behalf.
+ */
+export const CastSchema = z.object({
+  members: z.array(CastRefSchema).default([]),
+  open: z.boolean().default(false),
+  none: z.boolean().default(false),
+});
+export type CastRefs = z.infer<typeof CastSchema>;
+
 /**
  * Generation requirements — what a generative engine needs to author this shot.
  * `required: false` means the shot is captured/stock and does not need genAI.
@@ -298,6 +471,12 @@ export const ProvenanceSchema = z.object({
   /** Model id when source is "ai" / "derived". */
   model: z.string().nullable().default(null),
   notes: z.string().default(""),
+  /**
+   * The fingerprint of the treatment text this spec was written from (treatmentDoc.fingerprint). Empty on a spec
+   * written before this was kept, and on one nobody wrote from a treatment. It is what lets a shot say "I am from an
+   * earlier treatment" on its own, whatever the rest of the board has been through since.
+   */
+  treatment: z.string().default(""),
 });
 export type Provenance = z.infer<typeof ProvenanceSchema>;
 
@@ -372,6 +551,24 @@ export const ShotSpecSchema = z.object({
    * shotSpecToShotRow. `origin` is the same idea under a free name.
    */
   origin: z.enum(["generated", "override"]).default("generated"),
+  /**
+   * The picture the shot opens on, when an override states it (shot_overrides.frame). Empty on a generated card. The
+   * compiler draws the still from this and keeps the direction for the motion; it is a separate field from
+   * environment.description because a generated card has one of those too, and that one describes the old scene.
+   */
+  openingFrame: z.string().default(""),
+
+  /**
+   * Change inside the shot: timed events, in order. Empty = the shot is one state. The base fields above are the
+   * state the shot OPENS in; each event says what changes from its moment on.
+   */
+  events: z.array(ShotEventSchema).max(SHOT_EVENTS_MAX).default([]),
+  /** The continuity entities this shot points at (place, props, lighting state), by key — and its links to other shots. */
+  continuity: ContinuityRefsSchema.default({}),
+  /** Who is in this shot, by character key, with this shot's direction for each. */
+  cast: CastSchema.default({}),
+  /** How this shot is made (storyboard/route.ts). */
+  production: ProductionSchema.default({}),
 });
 export type ShotSpec = z.infer<typeof ShotSpecSchema>;
 
@@ -427,6 +624,11 @@ export const ROW_UNMAPPED_FIELDS = [
   "qa",
   "source.range (partially → trim_in/out)",
   "wardrobe.references / environment.references / lighting.references",
+  "events",
+  "continuity",
+  "cast",
+  "production",
+  "wardrobe.garments",
 ] as const;
 
 const SPEC_STATUS_TO_ROW: Record<ShotStatusLiteral, Shot["status"]> = {

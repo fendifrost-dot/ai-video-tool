@@ -1,0 +1,28 @@
+{
+ "source": "docs/handoffs/round_2026-10-02/S12b_side_tight_src.mp4",
+ "result": "cowork-sandbox:ysl/round/angles/S12b_side_tight.mp4",
+ "fps_sampled": 30.0,
+ "frames_src": 86,
+ "frames_res": 85,
+ "camera_change": {
+  "picture": 0.786,
+  "face_visible_share": 0.876,
+  "face_size_ratio": 1.89,
+  "face_centre_shift": 0.188,
+  "face_turn_change": 0.3,
+  "score": 0.786
+ },
+ "identity_src_vs_result": 0.078,
+ "identity_per_frame_p95": 0.268,
+ "lip": {
+  "best_fit": {
+   "corr": 0.649,
+   "retime": 1.03,
+   "offset_s": -0.15,
+   "n": 81
+  },
+  "corr_on_source_clock": 0.491,
+  "mouth_open_src_mean": 0.2608,
+  "mouth_open_res_mean": 0.2503
+ }
+}

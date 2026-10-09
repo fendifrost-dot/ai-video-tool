@@ -394,11 +394,19 @@ export function PageHeader({
   title,
   subtitle,
   variant = "default",
+  context,
 }: {
   title: string;
   subtitle?: string;
   variant?: "default" | "compact";
+  /** What the page is of — the video variation being worked in. Shown as a chip beside the title. */
+  context?: string | null;
 }) {
+  const chip = context ? (
+    <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary" data-testid="page-context">
+      {context}
+    </span>
+  ) : null;
   if (variant === "compact") {
     return (
       <header className="border-b border-border px-4 py-2 md:px-8">
@@ -406,6 +414,7 @@ export function PageHeader({
           <h1 className="font-display text-lg font-semibold tracking-tight text-foreground">
             {title}
           </h1>
+          {chip}
           {subtitle && (
             <p className="text-sm text-foreground/60">{subtitle}</p>
           )}
@@ -417,9 +426,12 @@ export function PageHeader({
   return (
     <header className="px-4 pt-4 pb-6 md:px-8 md:pt-8">
       <div className="glass-float rounded-2xl px-5 py-5 md:px-7 md:py-6">
-        <h1 className="font-display text-2xl font-semibold tracking-tight md:text-3xl text-gradient-aurora">
-          {title}
-        </h1>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="font-display text-2xl font-semibold tracking-tight md:text-3xl text-gradient-aurora">
+            {title}
+          </h1>
+          {chip}
+        </div>
         {subtitle && (
           <p className="mt-1.5 text-sm text-foreground/60 md:text-base">{subtitle}</p>
         )}

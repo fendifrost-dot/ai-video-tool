@@ -291,6 +291,16 @@ describe("TreatmentClip → ShotSpec bridge", () => {
     dependencies: [],
   };
 
+  it("carries where the wardrobe comes from, and the treatment the clip was written from", () => {
+    const spec = treatmentClipToShotSpec({ ...clip, wardrobe: "his YSL leather coat", wardrobe_from: "treatment" }, { model: "m", generatedAt: "2026-10-07T03:00:00Z", treatment: "57:abc123" });
+    expect(spec.wardrobe).toMatchObject({ description: "his YSL leather coat", source: "treatment" });
+    expect(spec.provenance.treatment).toBe("57:abc123");
+    // a clip written before either was kept says nothing, rather than guessing
+    const old = treatmentClipToShotSpec(clip);
+    expect(old.wardrobe.source).toBe("");
+    expect(old.provenance.treatment).toBe("");
+  });
+
   it("maps a treatment clip into a valid ShotSpec", () => {
     const spec = treatmentClipToShotSpec(clip, {
       model: "grok-4",
