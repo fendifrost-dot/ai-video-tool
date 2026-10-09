@@ -9,7 +9,10 @@
 import { outfitOutdated, outfitRecordOf, type ShotOutfit } from "@/lib/wardrobe/outfits";
 import { isOriginalTake, type MediaAsset } from "./media";
 
-export type ProvenanceJob = { result_asset_id: string | null; request_payload_json: unknown };
+export type ProvenanceJob = {
+  result_asset_id: string | null;
+  request_payload_json: unknown;
+};
 
 /** Pictures drawn for a continuity entity carry no shot's wardrobe (generate.ts ENTITY_RUN). */
 const ENTITY_RUN = "continuity";
@@ -30,11 +33,17 @@ export function displayedOutfitOutdated(input: {
   if (!showing) return null;
   // his take as filmed is not a generated picture; whether its clothes meet the shot is the unmet-requirement check
   if (isOriginalTake(showing)) return null;
+  // A shot can request exact pieces without naming an outfit. The current job record cannot certify those
+  // pieces when no outfit is recorded; absence of a named outfit is not absence of a wardrobe requirement.
+  const piecesUnknown =
+    !resolved.outfit && pieces.length > 0
+      ? "the shot's requested pieces are not recorded in this media's wardrobe provenance"
+      : null;
   const job = jobs.find((j) => j.result_asset_id === showing.id);
   const s = job ? settings(job) : null;
   if (!job || !s)
-    return resolved.outfit ? `made before the shot wore “${resolved.outfit.name}”` : null;
-  const own = outfitOutdated(resolved, outfitRecordOf(s), pieces);
+    return resolved.outfit ? `made before the shot wore “${resolved.outfit.name}”` : piecesUnknown;
+  const own = outfitOutdated(resolved, outfitRecordOf(s), pieces) ?? piecesUnknown;
   const stillPath = typeof s.stillPath === "string" ? s.stillPath : null;
   // a still job, or a clip that drew its own picture in the same job: that job's record is the picture's record
   const drewItsOwn =
@@ -51,6 +60,6 @@ export function displayedOutfitOutdated(input: {
     return resolved.outfit
       ? `made from a picture whose outfit is not recorded; the shot wears “${resolved.outfit.name}”`
       : own;
-  const fromStill = outfitOutdated(resolved, outfitRecordOf(ss), pieces);
+  const fromStill = outfitOutdated(resolved, outfitRecordOf(ss), pieces) ?? piecesUnknown;
   return fromStill ? `made from a picture ${fromStill}` : own;
 }

@@ -481,7 +481,13 @@ export async function generateBoxImage(input: {
     linkLines: input.linkLines,
     outfit: input.outfit,
   });
-  const ctx = runContext(input.projectId, input.box, input.lookPresetId, input.references, input.outfit);
+  const ctx = runContext(
+    input.projectId,
+    input.box,
+    input.lookPresetId,
+    input.references,
+    input.outfit,
+  );
   const res = await submitStills(
     shot,
     {
@@ -552,7 +558,14 @@ export async function generateBoxClip(input: {
   });
   const result = await submitShot(
     shot,
-    runContext(input.projectId, input.box, input.lookPresetId, null, input.outfit, input.stillPath ? { outfit: input.stillOutfit ?? null } : undefined),
+    runContext(
+      input.projectId,
+      input.box,
+      input.lookPresetId,
+      null,
+      input.outfit,
+      input.stillPath ? { outfit: input.stillOutfit ?? null } : undefined,
+    ),
     deps,
   );
   // an image drawn on the way to the clip belongs to the box too (as a version; the clip will be what shows)
