@@ -31,15 +31,13 @@ import {
   checkCredential,
   newSecret,
   parseRequest,
-  RATE_LIMIT_MINTS,
-  RATE_LIMIT_WINDOW_SECONDS,
-  rateLimited,
+  planSession,
   readSecret,
   sha256Hex,
   SECRET_HEADER,
   timingSafeEqual,
-  windowStart,
   type CredentialRow,
+  type StoredSession,
 } from "./contract.ts";
 
 const corsHeaders = {
@@ -118,7 +116,10 @@ async function handleRequest(req: Request): Promise<Response> {
     // reads as a credential check rather than a database join that happens to be one.
     const matched = row && timingSafeEqual(row.secret_sha256, secretHash) ? row : null;
 
-    const audit = async (outcome: "minted" | "denied", reason: string | null) => {
+    // Every use of a credential is still exactly one row — that is the leak signal, and it did not change when
+    // the rate limit went away. What changed is that there are now four outcomes instead of two, so a reused
+    // session is neither filed as a mint nor invisible.
+    const audit = async (outcome: "minted" | "denied" | "reused" | "refreshed", reason: string | null) => {
       await admin.from("batch_credential_mints").insert({
         credential_id: matched?.id ?? null,
         owner_user_id: matched?.owner_user_id ?? null,
@@ -135,19 +136,81 @@ async function handleRequest(req: Request): Promise<Response> {
       return json(401, { error: "credential_rejected", detail: check.reason });
     }
 
-    const { count, error: countErr } = await admin
-      .from("batch_credential_mints")
-      .select("id", { count: "exact", head: true })
+    // ---- reuse before minting -------------------------------------------------------------
+    // The fix for "120 mints per 3600s": a cold edge isolate has no session of its own, but the credential's
+    // session is here, so it is handed back or renewed instead of minted. See the migration's note on why the
+    // in-isolate cache could never do this on its own.
+    const { data: storedRow } = await admin
+      .from("batch_credential_sessions")
+      .select("credential_id, owner_user_id, access_token, refresh_token, expires_at, minted_at, reuse_count, refresh_count")
       .eq("credential_id", check.credentialId)
-      .eq("outcome", "minted")
-      .gte("at", windowStart(now));
-    if (countErr) return json(500, { error: "rate_check_failed", detail: countErr.message });
-    if (rateLimited(count ?? 0)) {
-      await audit("denied", "rate_limited");
-      return json(429, {
-        error: "rate_limited",
-        detail: `${RATE_LIMIT_MINTS} mints per ${RATE_LIMIT_WINDOW_SECONDS}s per credential`,
+      .maybeSingle();
+    const stored = (storedRow ?? null) as StoredSession | null;
+    const plan = planSession(stored, check.ownerUserId, now);
+
+    const touch = async () => {
+      await admin
+        .from("batch_credentials")
+        .update({ last_used_at: now.toISOString() })
+        .eq("id", check.credentialId);
+    };
+
+    if (plan.use === "reuse" && stored) {
+      // The count is for reading the fix's effect off the database, not for limiting anything. A lost increment
+      // under concurrency costs a statistic, so it is written from the row already read rather than through a
+      // function added for atomicity nothing here needs.
+      await admin
+        .from("batch_credential_sessions")
+        .update({ reuse_count: (stored.reuse_count ?? 0) + 1 })
+        .eq("credential_id", check.credentialId);
+      await touch();
+      await audit("reused", plan.reason);
+      return json(200, {
+        ok: true,
+        accessToken: stored.access_token,
+        refreshToken: stored.refresh_token,
+        expiresAt: Math.floor(new Date(stored.expires_at).getTime() / 1000),
+        expiresIn: Math.max(0, Math.floor((new Date(stored.expires_at).getTime() - now.getTime()) / 1000)),
+        userId: check.ownerUserId,
+        credentialId: check.credentialId,
+        source: "reused",
       });
+    }
+
+    if (plan.use === "refresh" && stored) {
+      const anonForRefresh = createClient(supabaseUrl, anonKey, { auth: { persistSession: false } });
+      const { data: refreshed } = await anonForRefresh.auth.refreshSession({
+        refresh_token: stored.refresh_token,
+      });
+      const rs = refreshed?.session ?? null;
+      if (rs) {
+        // Supabase rotates the refresh token, so the new one MUST be stored or the next renewal fails. minted_at
+        // is deliberately left alone: it dates the session, not this renewal, and it is what bounds the chain.
+        await admin
+          .from("batch_credential_sessions")
+          .update({
+            access_token: rs.access_token,
+            refresh_token: rs.refresh_token,
+            expires_at: new Date((rs.expires_at ?? Math.floor(now.getTime() / 1000) + 3600) * 1000).toISOString(),
+            refreshed_at: now.toISOString(),
+            refresh_count: (stored.refresh_count ?? 0) + 1,
+          })
+          .eq("credential_id", check.credentialId);
+        await touch();
+        await audit("refreshed", plan.reason);
+        return json(200, {
+          ok: true,
+          accessToken: rs.access_token,
+          refreshToken: rs.refresh_token,
+          expiresAt: rs.expires_at,
+          expiresIn: rs.expires_in,
+          userId: check.ownerUserId,
+          credentialId: check.credentialId,
+          source: "refreshed",
+        });
+      }
+      // A refresh can legitimately fail — the token was rotated by a racing isolate, or the session was signed
+      // out. That is not an error to report; it is a reason to mint. Falling through is the whole handling.
     }
 
     // Resolve the owner's email server-side from the bound id. The caller never names it.
@@ -191,11 +254,25 @@ async function handleRequest(req: Request): Promise<Response> {
       });
     }
 
-    await admin
-      .from("batch_credentials")
-      .update({ last_used_at: now.toISOString() })
-      .eq("id", check.credentialId);
-    await audit("minted", null);
+    // Store it so the NEXT cold isolate reuses this session instead of minting its own. upsert, not insert: one
+    // row per credential, replacing whatever was too old or too stale to use above.
+    await admin.from("batch_credential_sessions").upsert(
+      {
+        credential_id: check.credentialId,
+        owner_user_id: check.ownerUserId,
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        expires_at: new Date((session.expires_at ?? Math.floor(now.getTime() / 1000) + 3600) * 1000).toISOString(),
+        minted_at: now.toISOString(),
+        refreshed_at: null,
+        reuse_count: 0,
+        refresh_count: 0,
+      },
+      { onConflict: "credential_id" },
+    );
+
+    await touch();
+    await audit("minted", plan.reason);
 
     return json(200, {
       ok: true,
@@ -205,6 +282,7 @@ async function handleRequest(req: Request): Promise<Response> {
       expiresIn: session.expires_in,
       userId: check.ownerUserId,
       credentialId: check.credentialId,
+      source: "minted",
     });
   }
 
@@ -269,7 +347,42 @@ async function handleRequest(req: Request): Promise<Response> {
   if (error) return json(500, { error: "revoke_failed", detail: error.message });
   if (!data || data.length === 0)
     return json(404, { error: "not_found", detail: "no active credential of yours with that id" });
-  return json(200, { ok: true, credential: data[0] });
+
+  // Revocation has to END access, not just stop future mints — that was true before reuse existed (an already
+  // minted token lived out its hour) and reuse would have made it worse, since a stored refresh token renews.
+  // So: sign the stored session out at the auth server, THEN delete the row. Both, in that order: deleting
+  // first would leave a live session nobody holds a record of.
+  const { data: live } = await admin
+    .from("batch_credential_sessions")
+    .select("access_token")
+    .eq("credential_id", parsed.credentialId!)
+    .maybeSingle();
+  let signedOut = false;
+  if (live?.access_token) {
+    // scope "local" kills THIS session only. Never "global": the owner's browser logins are not this
+    // credential's to end, and revoking a machine credential must not log a person out of the app.
+    const { error: outErr } = await admin.auth.admin.signOut(live.access_token, "local");
+    signedOut = !outErr;
+    if (outErr) console.error("batch-token-proxy revoke_signout_failed", outErr.message);
+  }
+  await admin.from("batch_credential_sessions").delete().eq("credential_id", parsed.credentialId!);
+  await admin.from("batch_credential_mints").insert({
+    credential_id: parsed.credentialId!,
+    owner_user_id: user.id,
+    outcome: "denied",
+    reason: live?.access_token
+      ? signedOut
+        ? "revoked: stored session signed out and deleted"
+        : "revoked: stored session deleted, sign-out failed — token valid until it expires"
+      : "revoked: no stored session",
+  });
+
+  // Said out loud, because "revoked" meaning two different things is exactly the ambiguity to avoid.
+  return json(200, {
+    ok: true,
+    credential: data[0],
+    storedSession: live?.access_token ? (signedOut ? "signed_out_and_deleted" : "deleted_but_sign_out_failed") : "none",
+  });
 }
 
 serve(async (req) => {

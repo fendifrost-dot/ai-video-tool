@@ -52,7 +52,11 @@ function json(status: number, body: unknown) {
 }
 
 type Session = { accessToken: string; refreshToken: string; expiresAt: number; userId: string; credentialId: string };
-// one isolate serves many requests: keep the minted session so a conversation does not mint one per call
+// First-level cache only: one isolate serves several requests, and a valid token here saves even the proxy
+// round trip. It is NOT the fix for minting — it cannot be. A Supabase isolate is recycled constantly, so a
+// conversation lands on a cold one with an empty Map on most calls, which is what produced the mint storm
+// ("120 mints per 3600s per credential", 9 Oct 2026). The session that survives an isolate lives in
+// batch_credential_sessions, and batch-token-proxy is the one thing that reuses, refreshes and mints it.
 const sessions = new Map<string, Session>();
 
 async function sha256Hex(s: string): Promise<string> {
@@ -76,15 +80,11 @@ async function sessionFor(secret: string, url: string, anonKey: string): Promise
   const now = Date.now() / 1000;
   const cached = sessions.get(key);
   if (cached && cached.expiresAt - now > 60) return cached;
-  if (cached) {
-    const anon = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
-    const { data } = await anon.auth.refreshSession({ refresh_token: cached.refreshToken });
-    if (data?.session) {
-      const next = { ...cached, accessToken: data.session.access_token, refreshToken: data.session.refresh_token, expiresAt: data.session.expires_at ?? now + 3000 };
-      sessions.set(key, next);
-      return next;
-    }
-  }
+  // Deliberately NOT refreshing here. Supabase rotates the refresh token, so a refresh from this isolate would
+  // invalidate the one stored in batch_credential_sessions and force the proxy to mint on the next cold start —
+  // two places renewing one session, each breaking the other. Asking the proxy instead costs one local call and
+  // keeps the session's lifecycle in exactly one place; it answers `reused`, `refreshed` or `minted`.
+  sessions.delete(key);
   const res = await fetch(`${url}/functions/v1/batch-token-proxy`, {
     method: "POST",
     headers: { "Content-Type": "application/json", apikey: anonKey, Authorization: `Bearer ${anonKey}`, "x-batch-secret": secret },

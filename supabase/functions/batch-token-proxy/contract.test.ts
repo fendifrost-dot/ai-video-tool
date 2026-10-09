@@ -14,13 +14,14 @@ import {
   checkCredential,
   newSecret,
   parseRequest,
-  RATE_LIMIT_MINTS,
-  rateLimited,
+  BATCH_SESSION_MAX_AGE_SECONDS,
+  BATCH_SESSION_MIN_REMAINING_SECONDS,
+  planSession,
   readSecret,
   SECRET_HEADER,
   sha256Hex,
   timingSafeEqual,
-  windowStart,
+  type StoredSession,
 } from "./contract.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -179,22 +180,135 @@ describe("request parsing", () => {
   });
 });
 
-describe("rate limit", () => {
-  it("allows up to the ceiling and blocks at it", () => {
-    expect(rateLimited(0)).toBe(false);
-    expect(rateLimited(RATE_LIMIT_MINTS - 1)).toBe(false);
-    expect(rateLimited(RATE_LIMIT_MINTS)).toBe(true);
+describe("reusing a session instead of minting one", () => {
+  // The bug this replaces: avt-mcp cached its session in isolate memory, a cold isolate had nothing to reuse,
+  // and so every cold isolate minted. The mint rate tracked isolate churn, not requests — which is why raising
+  // the cap from 12 to 120 moved the wall instead of removing it.
+  const AT = new Date("2026-10-09T12:00:00Z");
+  const stored = (over: Partial<StoredSession> = {}): StoredSession => ({
+    credential_id: "cred-1",
+    owner_user_id: "owner-1",
+    access_token: "at",
+    refresh_token: "rt",
+    expires_at: new Date(AT.getTime() + 3600_000).toISOString(),
+    minted_at: new Date(AT.getTime() - 600_000).toISOString(),
+    ...over,
   });
 
-  it("counts a fixed window ending now", () => {
-    const now = new Date("2026-10-02T12:00:00Z");
-    expect(windowStart(now)).toBe("2026-10-02T11:00:00.000Z");
+  it("hands back a token with life left, making no network call at all", () => {
+    expect(planSession(stored(), "owner-1", AT)).toEqual({
+      use: "reuse",
+      reason: "stored access token still valid",
+    });
   });
 
-  it("counts only successful mints, so a brute force cannot lock the owner out", () => {
-    // A denied attempt is audited but must not consume the owner's quota — otherwise
-    // anyone who learns the credential id can deny service by failing repeatedly.
-    expect(flat).toContain('.eq("outcome", "minted")');
+  it("renews one that is expiring rather than minting a second session", () => {
+    const expiring = stored({
+      expires_at: new Date(AT.getTime() + (BATCH_SESSION_MIN_REMAINING_SECONDS - 10) * 1000).toISOString(),
+    });
+    expect(planSession(expiring, "owner-1", AT).use).toBe("refresh");
+  });
+
+  it("will not hand out a token too close to expiry for the caller to use it", () => {
+    const edge = stored({
+      expires_at: new Date(AT.getTime() + BATCH_SESSION_MIN_REMAINING_SECONDS * 1000).toISOString(),
+    });
+    expect(planSession(edge, "owner-1", AT).use).toBe("refresh");
+  });
+
+  it("mints when there is nothing stored — the cold-start case, now once per session not once per isolate", () => {
+    expect(planSession(null, "owner-1", AT).use).toBe("mint");
+    expect(planSession(undefined, "owner-1", AT).use).toBe("mint");
+  });
+
+  it("stops refreshing past the age bound, so reuse cannot make one mint permanent", () => {
+    const old = stored({ minted_at: new Date(AT.getTime() - (BATCH_SESSION_MAX_AGE_SECONDS + 1) * 1000).toISOString() });
+    expect(planSession(old, "owner-1", AT)).toEqual({
+      use: "mint",
+      reason: "session older than the refresh bound",
+    });
+    // exactly at the bound counts as too old: the comparison is >=, so there is no off-by-one window
+    const atBound = stored({ minted_at: new Date(AT.getTime() - BATCH_SESSION_MAX_AGE_SECONDS * 1000).toISOString() });
+    expect(planSession(atBound, "owner-1", AT).use).toBe("mint");
+  });
+
+  it("NEVER hands another owner's stored session to this credential's owner", () => {
+    // owner isolation is the one property that makes a machine credential safe to leave on disk; a stored
+    // session must not become a way around it
+    expect(planSession(stored({ owner_user_id: "someone-else" }), "owner-1", AT)).toEqual({
+      use: "mint",
+      reason: "stored session belongs to another owner",
+    });
+  });
+
+  it("mints rather than trusting an unreadable date", () => {
+    expect(planSession(stored({ expires_at: "not a date" }), "owner-1", AT).use).toBe("mint");
+    expect(planSession(stored({ minted_at: "not a date" }), "owner-1", AT).use).toBe("mint");
+  });
+});
+
+describe("the fixed mint cap is gone, not hidden", () => {
+  it("exports no rate-limit knob a later change could turn back on", () => {
+    const contract = readFileSync(resolve(here, "./contract.ts"), "utf8");
+    expect(contract).not.toMatch(/export const RATE_LIMIT/);
+    expect(contract).not.toMatch(/export function rateLimited/);
+  });
+
+  it("no longer refuses a session with the error the owner hit", () => {
+    // the prose above quotes that error on purpose, so assert on what is RETURNED, not on the phrase
+    expect(flat).not.toContain('error: "rate_limited"');
+    expect(flat).not.toContain("RATE_LIMIT_MINTS");
+    expect(flat).not.toContain("return json(429");
+  });
+
+  it("still audits every use of a credential, which is what shows a leak", () => {
+    // the cap is gone; the audit row is not, and now distinguishes the three ways a session is served
+    expect(flat).toContain('audit("minted"');
+    expect(flat).toContain('audit("reused"');
+    expect(flat).toContain('audit("refreshed"');
+    expect(flat).toContain('audit("denied"');
+  });
+
+  it("keeps spend out of it: no budget or credit logic lives in this function", () => {
+    expect(flat).not.toMatch(/budget|spend_cap|credits_remaining/i);
+  });
+});
+
+describe("the function can actually boot", () => {
+  // supabase/functions/** is OUTSIDE tsconfig.json's `include`, so NOTHING typechecks these files: a stale
+  // import survives tsc, every unit test that does not import index.ts, and lands as a Deno module-resolution
+  // error at deploy — the connector simply stops answering. This test is the only thing standing there.
+  // It caught `rateLimited` and `windowStart` still being imported after the rate limit was deleted.
+  it("imports from contract.ts only what contract.ts exports", () => {
+    const contract = readFileSync(resolve(here, "./contract.ts"), "utf8");
+    // [^}]* so the match cannot start at an earlier import block and run across into this one
+    const block = indexSource.match(/import\s*\{([^}]*)\}\s*from\s*"\.\/contract\.ts"/);
+    expect(block, "index.ts should import from ./contract.ts").not.toBeNull();
+    const imported = block![1]
+      .split(",")
+      .map((x) => x.replace(/\btype\b/, "").trim())
+      .filter(Boolean);
+    expect(imported.length).toBeGreaterThan(3);
+    const missing = imported.filter(
+      (name) => !new RegExp(`export\\s+(async\\s+)?(const|function|type|class)\\s+${name}\\b`).test(contract),
+    );
+    expect(missing, `imported from contract.ts but not exported by it: ${missing.join(", ")}`).toEqual([]);
+  });
+});
+
+describe("revocation ends access, it does not only stop future mints", () => {
+  it("signs the stored session out at the auth server and deletes the row", () => {
+    expect(flat).toContain("auth.admin.signOut");
+    expect(flat).toContain('.from("batch_credential_sessions").delete()');
+  });
+
+  it("signs out THIS session only — never the owner's browser logins", () => {
+    expect(flat).toContain('"local"');
+    expect(flat).not.toMatch(/signOut\([^)]*"global"/);
+  });
+
+  it("reports which of the two happened instead of saying 'revoked' and leaving it ambiguous", () => {
+    expect(flat).toContain("deleted_but_sign_out_failed");
   });
 });
 
