@@ -250,8 +250,22 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
 
       <nav className="md:hidden relative z-20 px-4">
         <div className="glass rounded-2xl p-1.5">
-          <div className="flex gap-1 overflow-x-auto scrollbar-none">
-            <div className="shrink-0">
+          {/*
+            Faded right edge: five steps plus Advanced cannot fit a phone even with the switcher capped, so this
+            row always scrolls. `scrollbar-none` plus iOS's overlay scrollbars meant it scrolled with nothing on
+            screen saying so. The fade is the affordance.
+          */}
+          <div className="flex gap-1 overflow-x-auto scrollbar-none [mask-image:linear-gradient(to_right,black_calc(100%-1.25rem),transparent)]">
+            {/*
+              CAPPED, and the cap is load-bearing on a phone. This row is the ONLY project navigation under
+              `md`, and the switcher sits in front of the steps. Its button is `w-full` with an inner `truncate`,
+              so without a cap `w-full` resolves to the full natural width of the variation's name — and a name
+              like "Interrupted Broadcast · candidate 5" then takes most of a phone screen, leaving just "Setup"
+              visible and pushing Treatment, Storyboard, Review and Export off the right edge. The row does
+              scroll, but `scrollbar-none` means nothing says so, so the steps simply look missing (reported
+              9 Oct 2026). The cap makes the name clip instead of the navigation.
+            */}
+            <div className="min-w-0 max-w-[38vw] shrink-0 sm:max-w-[16rem] md:max-w-none">
               <VariationSwitcher projectId={projectId} compact />
             </div>
             {primaryItems.map((item) => renderLink(item, "chip"))}
