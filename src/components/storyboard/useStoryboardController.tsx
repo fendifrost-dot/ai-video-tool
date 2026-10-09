@@ -30,7 +30,7 @@ import { actionIsPerforming, productionRoute, routeLine, type ProductionRoute, u
 import type { StillReferencesOnJob } from "@/lib/worldBatch/runner";
 import { useContinuityEntities, useContinuityMutations } from "@/lib/queries/continuity";
 import { useSceneMutations, useScenes, type SceneWrite } from "@/lib/queries/scenes";
-import { effectiveGarments, isOutfit, jobOutfitRecord, outfitFlags, outfitOutdated, outfitRecordOf, resolveOutfit, scenesFromWriter, type Outfit, type OutfitFlag, type OutfitRecord, type ProposedScene, type Scene, type ShotOutfit } from "@/lib/wardrobe/outfits";
+import { effectiveGarments, isOutfit, jobOutfitRecord, outfitFlags, outfitRecordOf, resolveOutfit, scenesFromWriter, type Outfit, type OutfitFlag, type OutfitRecord, type ProposedScene, type Scene, type ShotOutfit } from "@/lib/wardrobe/outfits";
 import {
   canonicalWords,
   continuitySource,
