@@ -1,6 +1,8 @@
 // @vitest-environment node
 import { execFileSync } from "node:child_process";
-import { resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { FUNCTION_DOCS, KNOWN_TABLES } from "./catalog.generated.ts";
 import {
@@ -102,5 +104,36 @@ describe("functions", () => {
 describe("the generated catalog", () => {
   it("is up to date with the functions and tables in the repo", () => {
     expect(() => execFileSync("node", [resolve(__dirname, "../../../scripts/mcp/build-catalog.mjs"), "--check"], { stdio: "pipe" })).not.toThrow();
+  });
+});
+
+describe("the function can actually boot", () => {
+  // supabase/functions/** is outside tsconfig.json's `include`, so nothing typechecks these files and a stale
+  // import lands as a Deno module-resolution error at deploy — the connector stops answering with no local
+  // signal. The same guard lives in batch-token-proxy/contract.test.ts, where it caught two dead imports left
+  // behind when the mint rate limit was deleted (9 Oct 2026).
+  const here = dirname(fileURLToPath(import.meta.url));
+  it("imports from contract.ts only what contract.ts exports", () => {
+    const indexSource = readFileSync(resolve(here, "./index.ts"), "utf8");
+    const contract = readFileSync(resolve(here, "./contract.ts"), "utf8");
+    const block = indexSource.match(/import\s*\{([^}]*)\}\s*from\s*"\.\/contract\.ts"/);
+    expect(block, "index.ts should import from ./contract.ts").not.toBeNull();
+    const imported = block![1]
+      .split(",")
+      .map((x) => x.replace(/\btype\b/, "").trim())
+      .filter(Boolean);
+    const missing = imported.filter(
+      (name) => !new RegExp(`export\\s+(async\\s+)?(const|function|type|class)\\s+${name}\\b`).test(contract),
+    );
+    expect(missing, `imported from contract.ts but not exported by it: ${missing.join(", ")}`).toEqual([]);
+  });
+
+  it("renews its session through the proxy, never on its own", () => {
+    // Two places refreshing one session rotate the refresh token out from under each other: a local refresh
+    // here would invalidate the one stored in batch_credential_sessions and force a mint on the next cold
+    // start — reintroducing the storm this was meant to end.
+    const indexSource = readFileSync(resolve(here, "./index.ts"), "utf8");
+    expect(indexSource).not.toContain("refreshSession");
+    expect(indexSource).toContain("batch-token-proxy");
   });
 });
