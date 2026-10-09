@@ -26,6 +26,11 @@ Answers are matched on the effect's content with `updated_at` stamps left out, s
 (the app stamps `updated_at: now` on it) finds its answer instead of asking again. `bundle` after an edit to a shot,
 an entity or the board's pictures: the driver reads only its bundle, so a stale one builds a stale request.
 
+What a shot wears is resolved as the page does (src/lib/wardrobe/outfits.ts): the shot's own pieces, else its scene's
+outfit (`bundle/scenes.json`, from `variation_scenes`), whose words go on his line and whose record (key, version,
+the pieces actually sent) is kept on the job as `settings.outfit`. A scene naming an outfit this video lacks stops
+the shot. Re-`bundle` after changing an outfit, a scene or a shot's pieces.
+
 Seen on the first board run through it (IB candidate 5, 8 Oct 2026): the server finalizer (`provider-jobs-tick`)
 attaches a still job's pictures itself, unselected, two minutes after the generator recorded them — when the AI is
 slower than that between the generator's answer and the attach effects, the driver's inserts collide with the
