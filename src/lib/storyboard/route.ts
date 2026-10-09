@@ -155,3 +155,72 @@ export function routeLine(r: ProductionRoute): string {
   if (r.verdict === "elsewhere") return `${head} — not made on the storyboard: ${r.where}. ${r.limits.join(" ")}`.trim();
   return `${head} — cannot be made as written: ${r.limits.join(" ")}`;
 }
+
+// --- what the cut is actually showing against what the shot requires ---------------------------------------------
+
+/**
+ * Whether what a shot PLAYS right now satisfies what it REQUIRES — and if not, in words a director can act on.
+ *
+ * THE FAILURE THIS EXISTS TO STOP (9 Oct 2026)
+ *   `boxMedia` resolves a shot to `selected ?? base` (media.ts), so a shot with no chosen replacement falls back to
+ *   the synced original take. That fallback is right: it is how an inherited take reaches every variation, and how a
+ *   board is watchable before anything is generated. What was wrong is that it is INDISTINGUISHABLE from a finished
+ *   shot. The first half of Interrupted Broadcast played Fendi's unchanged camo-shirt footage on performance shots
+ *   19–24, whose scenes dress him in the leather coat and the Mastic jacket, and the cut looked complete.
+ *
+ *   `productionRoute` already knew: it returns verdict "elsewhere" for a restaging the treatment redresses, naming
+ *   the garment lane. Nothing joined that verdict to what the shot was playing. This does.
+ *
+ * It reports, never repairs: a draft may still be watched with the take underneath. What it may not do is read as
+ * done. Keep this pure — it is the same answer in the Storyboard, in Review, and in an export's own check.
+ */
+export type ShowingState = {
+  /** True when the shot plays the inherited take rather than anything made for it. */
+  onBaseTake: boolean;
+  /** True when the shot plays nothing at all. */
+  empty: boolean;
+};
+
+export type UnmetRequirement = {
+  /** "fallback": the take is standing in for work not done. "none": nothing is playing. */
+  kind: "fallback" | "none";
+  /** Said for the director, naming the route that would satisfy it. */
+  text: string;
+  fix: string;
+  /** Where the work happens, when it is not the storyboard. */
+  where: string | null;
+};
+
+/**
+ * The gap between what plays and what the shot requires. Null when there is none — including the honest case of a
+ * performance shot that is MEANT to play the take as filmed (`footage`, nothing redressing him), which is finished
+ * precisely because the take is what it shows.
+ */
+export function unmetRequirement(route: ProductionRoute, showing: ShowingState): UnmetRequirement | null {
+  if (showing.empty) {
+    return {
+      kind: "none",
+      text: "Nothing plays on this shot.",
+      fix: route.verdict === "storyboard" ? `Generate it here (${route.path}).` : `It is made outside the storyboard: ${route.where ?? route.path}.`,
+      where: route.where,
+    };
+  }
+  if (!showing.onBaseTake) return null;
+  // the take as filmed IS the deliverable here, and nothing is asking for it to change
+  if (route.method === "footage" && route.verdict === "storyboard") return null;
+  if (route.verdict === "storyboard") {
+    return {
+      kind: "fallback",
+      text: `This shot is playing your original take, not the ${route.method === "restage" ? "restaging" : "clip"} it asks for. The take is standing in for work that has not been done.`,
+      fix: `Make it on the storyboard (${route.path}).`,
+      where: null,
+    };
+  }
+  // "elsewhere" or "unsupported": the take is standing in for work the storyboard cannot even submit
+  return {
+    kind: "fallback",
+    text: `This shot is playing your original take as filmed${route.limits.length ? ` — ${route.limits[0]}` : ""} The take is standing in for work that has not been done, so this shot is not finished.`,
+    fix: route.where ? `It is made outside the storyboard: ${route.where}.` : "Nothing in the tool makes this shot as written yet.",
+    where: route.where,
+  };
+}

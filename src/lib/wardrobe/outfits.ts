@@ -133,15 +133,32 @@ export function outfitWords(outfit: Pick<Outfit, "name" | "description" | "const
 /**
  * The exact pieces a shot is dressed in: its own `wardrobe.garments` when it names any (the shot's own choice, an
  * exception at the piece level), else its outfit's pieces, else none.
+ *
+ * `dropped` is what that precedence COSTS: the outfit's pieces the shot's own list leaves out. The precedence is
+ * unchanged — a shot that names pieces still wears exactly those — but the omission is no longer invisible.
+ *
+ * WHY THIS IS REPORTED AT ALL (9 Oct 2026). A shot list replaces the outfit list rather than extending it, so a
+ * two-piece exception written against a four-piece outfit silently removes the other two. Five first-half shots of
+ * Interrupted Broadcast did exactly that — c012/c013/c015 named a jacket and a cap out of a six-piece look,
+ * c017/c018 named the coat alone out of four — and what went missing each time included Fendi's glasses. Nothing
+ * downstream could report it: `references.ts` blocks a piece it cannot send a picture of, but it only ever saw the
+ * two that survived this function. The drop happened here, before anything could object.
  */
 export function effectiveGarments(
   spec: Pick<ShotSpec, "wardrobe">,
   resolved: Pick<ShotOutfit, "outfit">,
-): { ids: string[]; from: "shot" | "outfit" | "none" } {
-  if (spec.wardrobe.garments.length > 0) return { ids: [...spec.wardrobe.garments], from: "shot" };
-  if (resolved.outfit)
-    return { ids: [...resolved.outfit.outfit.garmentFeatureIds], from: "outfit" };
-  return { ids: [], from: "none" };
+): { ids: string[]; from: "shot" | "outfit" | "none"; dropped: string[] } {
+  const outfitIds = resolved.outfit ? resolved.outfit.outfit.garmentFeatureIds : [];
+  if (spec.wardrobe.garments.length > 0) {
+    const worn = new Set(spec.wardrobe.garments);
+    return {
+      ids: [...spec.wardrobe.garments],
+      from: "shot",
+      dropped: outfitIds.filter((id) => !worn.has(id)),
+    };
+  }
+  if (resolved.outfit) return { ids: [...outfitIds], from: "outfit", dropped: [] };
+  return { ids: [], from: "none", dropped: [] };
 }
 
 // --- the treatment's words against the scenes ---------------------------------------------------------------------
@@ -215,6 +232,11 @@ export function outfitFlags(
   resolved: ShotOutfit,
   wardrobeOnFile: ReadonlySet<string>,
   outfits: readonly Outfit[],
+  /**
+   * Piece id → its wardrobe label, so a dropped piece is named rather than printed as a uuid. Optional: a caller
+   * without it still gets the flag, just less readable. `wardrobeOnFile` is only a set of ids and cannot say.
+   */
+  labels: ReadonlyMap<string, string> = new Map(),
 ): OutfitFlag[] {
   const flags: OutfitFlag[] = [];
   if (spec.shotType === "performance") return flags;
@@ -270,12 +292,25 @@ export function outfitFlags(
       text: `“${o.name}” has no pieces: he is described in words only, nothing is held exactly.`,
       fix: "Add its pieces from the wardrobe (upload them there first if they are not photographed yet).",
     });
-  if (pieces.from === "shot")
-    flags.push({
-      level: "info",
-      text: `This shot names its own pieces instead of “${o.name}”'s.`,
-      fix: "Clear the shot's garments to wear the outfit's pieces.",
-    });
+  if (pieces.from === "shot") {
+    if (pieces.dropped.length === 0) {
+      flags.push({
+        level: "info",
+        text: `This shot names its own pieces instead of “${o.name}”'s, and leaves none of them out.`,
+        fix: "Clear the shot's garments to wear the outfit's pieces.",
+      });
+    } else {
+      // WARNING, not info: the documented meaning of warning in this file is "your decision is missing or
+      // contradicted", and a shot list that drops pieces its outfit carries contradicts the outfit decision.
+      // Naming the pieces is the point — "names its own pieces" never told anyone the glasses had gone.
+      const names = pieces.dropped.map((id) => labels.get(id) ?? id);
+      flags.push({
+        level: "warning",
+        text: `This shot names its own pieces, which leaves out ${pieces.dropped.length} that “${o.name}” wears: ${names.join(", ")}.`,
+        fix: `Clear the shot's garments to wear all of “${o.name}”, or add the pieces you meant to keep. Leaving them out is a decision — make it on purpose.`,
+      });
+    }
+  }
   return flags;
 }
 
