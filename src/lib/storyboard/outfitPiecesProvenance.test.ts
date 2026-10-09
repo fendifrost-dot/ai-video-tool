@@ -1,10 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { MediaAsset } from "./media";
 import type { ShotOutfit } from "@/lib/wardrobe/outfits";
-import {
-  displayedOutfitOutdated,
-  type ProvenanceJob,
-} from "./outfitProvenance";
+import { displayedOutfitOutdated, type ProvenanceJob } from "./outfitProvenance";
 
 const resolved: ShotOutfit = {
   outfit: null,
@@ -30,11 +27,7 @@ const job = (id: string, settings: Record<string, unknown>): ProvenanceJob => ({
   result_asset_id: id,
   request_payload_json: { settings },
 });
-const check = (
-  showing = clip,
-  jobs: ProvenanceJob[] = [],
-  pieces = ["jacket"],
-) =>
+const check = (showing = clip, jobs: ProvenanceJob[] = [], pieces = ["jacket"]) =>
   displayedOutfitOutdated({
     showing,
     resolved,
@@ -54,18 +47,14 @@ describe("piece-only wardrobe provenance", () => {
     expect(check(clip, [job(clip.id, {})])).toMatch(/pieces.*not recorded/);
   });
   it("does not certify an existing source still with missing provenance", () => {
-    expect(check(clip, [job(clip.id, { stillPath: still.path })])).toMatch(
+    expect(check(clip, [job(clip.id, { stillPath: still.path })])).toMatch(/pieces.*not recorded/);
+    expect(check(clip, [job(clip.id, { stillPath: still.path }), job(still.id, {})])).toMatch(
       /pieces.*not recorded/,
     );
-    expect(
-      check(clip, [job(clip.id, { stillPath: still.path }), job(still.id, {})]),
-    ).toMatch(/pieces.*not recorded/);
   });
   it("does not require wardrobe provenance when no outfit or pieces are requested", () => {
     expect(check(clip, [], [])).toBeNull();
-    expect(
-      check(clip, [job(clip.id, { stillPath: still.path })], []),
-    ).toBeNull();
+    expect(check(clip, [job(clip.id, { stillPath: still.path })], [])).toBeNull();
   });
   it("keeps the original-take exception", () => {
     expect(check({ ...clip, footageRole: "performance" })).toBeNull();
