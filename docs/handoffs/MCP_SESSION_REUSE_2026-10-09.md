@@ -97,10 +97,52 @@ guard is what found those two, and it is the only thing standing in that gap.
 | Postgres | all 63 migrations apply on a throwaway; five DB tests pass |
 | edge sources | all three parse under esbuild. **There is no `deno` in this container, so that is a parse check, not a Deno typecheck** — which is exactly why §5's test exists |
 
+## 6b · Verified live, through the actual MCP connector — VERIFIED
+
+Deployed by Lovable at ~05:00 UTC: migration applied verbatim, then `batch-token-proxy` and `avt-mcp`
+redeployed, in that order.
+
+Then, through the AVT MCP connector (credential `c5508662`, label "Claude"): `avt_whoami` ×2, `avt_select` ×4
+(sustained reads), `avt_signed_url` on `hero_clip_hd_1080.mp4` (**media-link retrieval** — a signed URL came
+back), and `avt_update` writing `video_variations.notes` then restoring it to `null` (**authorized edit**, on the
+already-archived empty candidate 1, the least consequential field I could find; both the write and the restore
+returned the row).
+
+**No 429 and no "mints per 3600s" at any point.** But "no error" alone would not prove the fix — it could equally
+mean eight mints under a cap that no longer exists. So the audit was read (`batch_credential_mints`, last 30
+minutes):
+
+| outcome | n | first | last |
+|---|---|---|---|
+| `minted` | 5 | 04:41:24 | **05:00:52** |
+| `reused` | 6 | 05:01:21 | 05:02:18 |
+
+and the session row itself:
+
+| credential | minted_at | refreshed_at | reuse_count | refresh_count | access token valid |
+|---|---|---|---|---|---|
+| `c5508662` | 05:00:50 | null | **6** | 0 | true, to 06:00:51 |
+
+**The last mint was 05:00:52. Every call after it reused the stored session — six of them, zero mints.** The five
+mints before it are the old behaviour: churn-driven, 04:41 through the deploy. Under the old code those six
+calls would have been up to six more mints.
+
+`refresh_count` is 0 because the access token had not yet neared expiry, so the refresh branch is **not**
+exercised by this evidence — it is covered by unit tests only. **HYPOTHESIS, named:** that renewal across the
+one-hour access-token boundary works live. The test is to read `refresh_count` after a session runs past
+`expires_at`.
+
 ## 7 · Deployment
 
-1. Lovable SQL editor: `supabase/migrations/20261009090000_batch_credential_sessions.sql` (idempotent).
-2. Lovable → Edge Functions → redeploy **`batch-token-proxy`** and **`avt-mcp`**. Publish is not a redeploy.
+**Done, 9 Oct ~05:00 UTC.** Migration applied verbatim, then `batch-token-proxy` and `avt-mcp` redeployed, in
+that order. No frontend publish (none involved).
+
+**Found during the deploy, and worth knowing:** two migrations that had been sitting on `main` since 8 Oct —
+`20261008140000_footage_edits.sql` and `20261008230000_duplicate_variation_carries_footage_edits.sql` — had
+**never been applied to the live database**. The regenerated types no longer matched the app code, which broke
+the preview typecheck. Lovable applied both verbatim, in order, and the typecheck went clean. So the footage
+feature's columns are only live as of today, not yesterday; `trim_head_seconds`, `trim_tail_seconds` and
+`excluded` now read back through the MCP, confirmed.
 
 **Order is load-bearing.** The proxy reads `batch_credential_sessions` and writes the two new audit outcomes, so
 redeploying before the migration makes every session request fail. No frontend change is involved.
