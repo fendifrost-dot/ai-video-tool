@@ -1593,9 +1593,6 @@ export type Database = {
         Row: {
           asset_id: string
           created_at: string
-          excluded: boolean
-          trim_head_seconds: number
-          trim_tail_seconds: number
           id: string
           is_primary: boolean
           notes: string | null
@@ -1612,9 +1609,6 @@ export type Database = {
         Insert: {
           asset_id: string
           created_at?: string
-          excluded?: boolean
-          trim_head_seconds?: number
-          trim_tail_seconds?: number
           id?: string
           is_primary?: boolean
           notes?: string | null
@@ -1631,9 +1625,6 @@ export type Database = {
         Update: {
           asset_id?: string
           created_at?: string
-          excluded?: boolean
-          trim_head_seconds?: number
-          trim_tail_seconds?: number
           id?: string
           is_primary?: boolean
           notes?: string | null
