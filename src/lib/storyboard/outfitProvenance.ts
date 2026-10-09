@@ -32,18 +32,25 @@ export function displayedOutfitOutdated(input: {
   if (isOriginalTake(showing)) return null;
   const job = jobs.find((j) => j.result_asset_id === showing.id);
   const s = job ? settings(job) : null;
-  if (!job || !s) return resolved.outfit ? `made before the shot wore “${resolved.outfit.name}”` : null;
+  if (!job || !s)
+    return resolved.outfit ? `made before the shot wore “${resolved.outfit.name}”` : null;
   const own = outfitOutdated(resolved, outfitRecordOf(s), pieces);
   const stillPath = typeof s.stillPath === "string" ? s.stillPath : null;
   // a still job, or a clip that drew its own picture in the same job: that job's record is the picture's record
-  const drewItsOwn = s.mode === "still_only" || (job.request_payload_json as { mode?: unknown } | null)?.mode === "still_only" || (Array.isArray(s.stillCandidates) && !!stillPath && s.stillCandidates.includes(stillPath));
+  const drewItsOwn =
+    s.mode === "still_only" ||
+    (job.request_payload_json as { mode?: unknown } | null)?.mode === "still_only" ||
+    (Array.isArray(s.stillCandidates) && !!stillPath && s.stillCandidates.includes(stillPath));
   if (!stillPath || drewItsOwn || !showing.isVideo) return own;
   // a clip animated from an existing picture: that picture's own record decides what it wears
   const still = assets.find((a) => a.path === stillPath && a.id !== showing.id);
   const stillJob = still ? jobs.find((j) => j.result_asset_id === still.id) : undefined;
   const ss = stillJob ? settings(stillJob) : null;
   if (ss?.batchRun === ENTITY_RUN) return own;
-  if (!ss) return resolved.outfit ? `made from a picture whose outfit is not recorded; the shot wears “${resolved.outfit.name}”` : own;
+  if (!ss)
+    return resolved.outfit
+      ? `made from a picture whose outfit is not recorded; the shot wears “${resolved.outfit.name}”`
+      : own;
   const fromStill = outfitOutdated(resolved, outfitRecordOf(ss), pieces);
   return fromStill ? `made from a picture ${fromStill}` : own;
 }
