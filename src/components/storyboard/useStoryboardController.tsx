@@ -30,7 +30,7 @@ import { actionIsPerforming, productionRoute, routeLine, type ProductionRoute, u
 import type { StillReferencesOnJob } from "@/lib/worldBatch/runner";
 import { useContinuityEntities, useContinuityMutations } from "@/lib/queries/continuity";
 import { useSceneMutations, useScenes, type SceneWrite } from "@/lib/queries/scenes";
-import { effectiveGarments, isOutfit, jobOutfitRecord, outfitFlags, outfitOutdated, outfitRecordOf, resolveOutfit, scenesFromWriter, type Outfit, type OutfitFlag, type ProposedScene, type Scene, type ShotOutfit } from "@/lib/wardrobe/outfits";
+import { effectiveGarments, isOutfit, jobOutfitRecord, outfitFlags, outfitOutdated, outfitRecordOf, resolveOutfit, scenesFromWriter, type Outfit, type OutfitFlag, type OutfitRecord, type ProposedScene, type Scene, type ShotOutfit } from "@/lib/wardrobe/outfits";
 import {
   canonicalWords,
   continuitySource,
@@ -102,7 +102,9 @@ import {
   type BoxMedia,
   type BoxMediaItem,
   type MediaAsset,
+  showsOriginalTake,
 } from "@/lib/storyboard/media";
+import { displayedOutfitOutdated } from "@/lib/storyboard/outfitProvenance";
 import { energyForWindow } from "@/lib/storyboard/rewrite";
 import { buildClipGrid, type ClipEnergy } from "@/lib/treatment/grid";
 import { DEFAULT_MOTION_TEMPLATE, regenerateShotFromLyrics, type RegenerateMode } from "@/lib/treatment/regenerateFromLyrics";
@@ -832,6 +834,14 @@ export function useStoryboardController(projectId: string): StoryboardController
     },
     [mediaByBox],
   );
+  /** The outfit a picture's own job recorded it wearing; null when it has no such record (unknown, or none). */
+  const stillOutfitOf = useCallback(
+    (asset: MediaAsset): OutfitRecord | null => {
+      const job = jobs.jobs.find((j) => j.result_asset_id === asset.id);
+      return job ? outfitRecordOf(settingsOf(job) as Record<string, unknown> | null) : null;
+    },
+    [jobs.jobs],
+  );
   const selectedStillPath = useCallback((box: StoryboardBox): string | null => selectedStill(box)?.path ?? null, [selectedStill]);
   /**
    * The place a performance shot is restaged into. A shot set in one of the project's locations uses THAT location's
@@ -1062,13 +1072,16 @@ export function useStoryboardController(projectId: string): StoryboardController
           // The image is its own job with its own record (not a step hidden inside the clip's submit): if this page
           // closes while it is drawn, the picture is still filed on the shot by the server.
           let stillPath = still;
+          // the clip wears what its picture wears: an existing picture's own record (null when unknown), a fresh one's as drawn
+          let stillOutfit = stillAsset ? stillOutfitOf(stillAsset) : null;
           if (!stillPath) {
             const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity, cast: castOf(box), linkLines, references, outfit: outfitOf(box) });
             afterGeneration();
             stillPath = img.picked;
+            stillOutfit = img.outfit;
             setBusyFor(box.id, "sending the clip to render…");
           }
-          await generateBoxClip({ projectId, box, lyricLines, stillPath, aspect, temporal, continuity, cast: castOf(box), linkLines, outfit: outfitOf(box), stillOutfit: stillOutfitOf(stillPath) });
+          await generateBoxClip({ projectId, box, lyricLines, stillPath, aspect, temporal, continuity, cast: castOf(box), linkLines, outfit: outfitOf(box), stillOutfit });
           afterGeneration();
           toast.success(temporal.mode === "ordered" ? "Clip is rendering with the beats in order — its timing is the model's own" : "Clip is rendering — it will appear on this shot when it is done");
         }).finally(afterGeneration);
@@ -1108,7 +1121,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         onConfirm: () => submitClip(clipPlan),
       });
     },
-    [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats, staleNote, wardrobeGapOf, routeOf, generationNotes, linkLinesOf, referencesOf],
+    [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats, staleNote, wardrobeGapOf, routeOf, generationNotes, linkLinesOf, referencesOf, stillOutfitOf],
   );
 
   // --- is what the shot shows still what it wears? (the outfit may have changed since the picture was made) ---------

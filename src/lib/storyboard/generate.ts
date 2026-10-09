@@ -447,6 +447,8 @@ export type BoxImageResult = {
   candidates: number;
   rejected: number;
   costUsd: number | null;
+  /** The outfit the job recorded the picture wearing (what a clip made from it then wears). */
+  outfit: OutfitRecord | null;
 };
 
 /** "Generate image": draw the box's scene, check it, and put it on the box as the selected media. */
@@ -479,10 +481,11 @@ export async function generateBoxImage(input: {
     linkLines: input.linkLines,
     outfit: input.outfit,
   });
+  const ctx = runContext(input.projectId, input.box, input.lookPresetId, input.references, input.outfit);
   const res = await submitStills(
     shot,
     {
-      ...runContext(input.projectId, input.box, input.lookPresetId, input.references, input.outfit),
+      ...ctx,
       selectStill: input.select ?? true,
     },
     deps,
@@ -503,6 +506,7 @@ export async function generateBoxImage(input: {
     candidates: res.candidates.length,
     rejected: res.candidates.length - res.whole.length,
     costUsd: res.costUsd,
+    outfit: ctx.outfits?.[input.box.key] ?? null,
   };
 }
 
