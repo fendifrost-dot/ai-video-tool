@@ -1,0 +1,53 @@
+# The check that would have caught the broken lockfile.
+#
+# WHY THIS EXISTS (9 Oct 2026)
+#   `npm ci` was impossible on main: package.json declared drizzle-kit, drizzle-orm, postgres and the
+#   @tanstack/devtools family that package-lock.json had never heard of, plus four packages pinned below the
+#   range package.json asked for. The cause is visible in the history — the last three commits to touch
+#   package.json are all `gpt-engineer-app[bot]` "Work in progress", and none of them touched the lockfile. So
+#   every Lovable change that adds a dependency desyncs the lock, and nothing noticed until someone tried a
+#   clean install.
+#
+#   `npm ci` IS the reproducibility check. It refuses to run when package.json and the lockfile disagree, which
+#   is precisely the failure. Deliberately NOT used: regenerating the lock and asserting no diff. That looks
+#   stricter but goes red whenever an upstream package publishes a patch inside an existing range — a false
+#   failure with nothing for anyone to fix.
+#
+# Lint is deliberately absent: the repo carries known prettier/lint debt, and a gate that is red on arrival
+# teaches people to ignore it. Add it when the debt is paid, not before.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      # The gate. A package.json change merged without regenerating the lockfile fails HERE, with npm naming
+      # every package that is missing or out of range.
+      - name: Clean install from the lockfile (reproducibility gate)
+        run: npm ci --no-audit --no-fund
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+
+      - name: Tests
+        run: npm test
