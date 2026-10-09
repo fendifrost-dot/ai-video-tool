@@ -116,6 +116,14 @@ export function sourceOfDerived(
   return { assetId, window: [w[0], w[1]] };
 }
 
+/**
+ * Whether what a box shows is his take AS FILMED — the inherited base layer, or the same original take assigned to
+ * the box by hand. A clip made from a take (derivedFrom set) is a replacement, never the original.
+ */
+export function showsOriginalTake(showing: Pick<BoxMediaItem, "base" | "asset"> | null): boolean {
+  return !!showing && (showing.base || isOriginalTake(showing.asset));
+}
+
 export function isOriginalTake(a: Pick<MediaAsset, "footageRole" | "isVideo" | "derivedFrom">): boolean {
   return a.footageRole === "performance" && a.isVideo && !a.derivedFrom;
 }

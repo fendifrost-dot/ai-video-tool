@@ -496,7 +496,7 @@ export function useStoryboardController(projectId: string): StoryboardController
   const unmetOf = useCallback(
     (box: StoryboardBox) => {
       const m = mediaByBox.get(box.id) ?? EMPTY_MEDIA;
-      return unmetRequirement(routeOf(box), { onBaseTake: m.showing?.base === true, empty: !m.showing });
+      return unmetRequirement(routeOf(box), { onBaseTake: showsOriginalTake(m.showing), empty: !m.showing });
     },
     [mediaByBox, routeOf],
   );
@@ -1068,7 +1068,7 @@ export function useStoryboardController(projectId: string): StoryboardController
             stillPath = img.picked;
             setBusyFor(box.id, "sending the clip to render…");
           }
-          await generateBoxClip({ projectId, box, lyricLines, stillPath, aspect, temporal, continuity, cast: castOf(box), linkLines, outfit: outfitOf(box) });
+          await generateBoxClip({ projectId, box, lyricLines, stillPath, aspect, temporal, continuity, cast: castOf(box), linkLines, outfit: outfitOf(box), stillOutfit: stillOutfitOf(stillPath) });
           afterGeneration();
           toast.success(temporal.mode === "ordered" ? "Clip is rendering with the beats in order — its timing is the model's own" : "Clip is rendering — it will appear on this shot when it is done");
         }).finally(afterGeneration);
@@ -1114,15 +1114,12 @@ export function useStoryboardController(projectId: string): StoryboardController
   // --- is what the shot shows still what it wears? (the outfit may have changed since the picture was made) ---------
   const outfitOutdatedOf = useCallback(
     (box: StoryboardBox) => {
-      const still = selectedStill(box);
-      if (!still) return null;
-      const job = jobs.jobs.find((j) => j.result_asset_id === still.id);
+      // what the box actually shows — a clip as much as a picture — judged by its own record and the picture it came from
       const resolved = outfitOf(box);
-      // a picture with no job (uploaded, or from before jobs recorded outfits) is not accused when the shot wears nothing
-      if (!job) return resolved.outfit ? `made before the shot wore “${resolved.outfit.name}”` : null;
-      return outfitOutdated(resolved, outfitRecordOf(settingsOf(job) as Record<string, unknown> | null), effectiveGarments(box.spec, resolved).ids);
+      const showing = (mediaByBox.get(box.id) ?? EMPTY_MEDIA).showing;
+      return displayedOutfitOutdated({ showing: showing?.asset ?? null, resolved, pieces: effectiveGarments(box.spec, resolved).ids, jobs: jobs.jobs, assets: media.list });
     },
-    [selectedStill, jobs.jobs, outfitOf],
+    [mediaByBox, jobs.jobs, outfitOf, media.list],
   );
 
   // --- what a clip was asked for, and whether it did it --------------------------------------------------------------
