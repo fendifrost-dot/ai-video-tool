@@ -225,6 +225,53 @@ export type Database = {
           },
         ]
       }
+      batch_credential_sessions: {
+        Row: {
+          access_token: string
+          credential_id: string
+          expires_at: string
+          minted_at: string
+          owner_user_id: string
+          refresh_count: number
+          refresh_token: string
+          refreshed_at: string | null
+          reuse_count: number
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          credential_id: string
+          expires_at: string
+          minted_at?: string
+          owner_user_id: string
+          refresh_count?: number
+          refresh_token: string
+          refreshed_at?: string | null
+          reuse_count?: number
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          credential_id?: string
+          expires_at?: string
+          minted_at?: string
+          owner_user_id?: string
+          refresh_count?: number
+          refresh_token?: string
+          refreshed_at?: string | null
+          reuse_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_credential_sessions_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: true
+            referencedRelation: "batch_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batch_credentials: {
         Row: {
           created_at: string
