@@ -7,7 +7,7 @@ Fendi decides who wears what, where, on a private claude.ai page: https://claude
 
 | | |
 |---|---|
-| The page's own record (every tick, as he makes it) | artifact database, document `choices/current` — read it with the ArtifactData tool (`get`, collection `choices`, doc `current`) on the URL above. Shape: `{grid: {viewer|chicago|cold|entrance: {<character_features.id or new-*>: 1 (worn, words) | 2 (worn, picture sent = exact)}}, notes, savedAt, variationId}` |
+| The page's own record (every tick, as he makes it) | artifact database, document `choices/current` — read it with the ArtifactData tool (`get`, collection `choices`, doc `current`) on the URL above. Shape: `{grid: {viewer|chicago|cold|entrance: {<character_features.id or new-*>: 1}}, notes, savedAt, variationId}` — **every ticked piece is exact** (Fendi, 9 Oct: "ALL of the pieces need to be exact, that's the purpose of the tool"). Older records may carry a `2`; read any non-zero value as exact. |
 | AVT, what generation reads | `continuity_entities` kind=`outfit` on variation `882ec381-0fa0-4a76-b23b-b83ebc157372` (`garment_feature_ids` = the ★ pieces, in order; `description` = all worn pieces in words) and `variation_scenes.outfit_key` |
 
 Scene columns ↔ AVT rows:
@@ -25,9 +25,11 @@ The page has a **Save to AVT** button that does this itself through the viewer's
 page is published with the `mcp` capability (that publish needs Fendi's permission in the authoring session; until then
 the button says AVT is not reachable). Mirroring by hand:
 
-1. `ArtifactData get choices/current`. Pieces marked 2 that are `onFile` (a `character_features` id, not `new-*`) are the
-   exact pieces → `garment_feature_ids`, in row order (outerwear, top, bottom, hat, accessory). Footwear is never a picture.
-2. Cap: viewer ≤ 1 picture, other scenes ≤ 2. More than that is a finding to put back to Fendi, not a thing to trim.
+1. `ArtifactData get choices/current`. Every ticked piece that is `onFile` (a `character_features` id, not `new-*`) goes
+   into `garment_feature_ids`, in row order (outerwear, top, bottom, hat, accessory, footwear). Nothing is demoted to words.
+2. The plain still route carries 3 photos (face + screen take slots): a scene with more exact pieces than it can send
+   BLOCKS that route (planner: required-reference overflow is blocking) and needs a multi-picture method. Never trim
+   the list to fit; report the count and the method question to Fendi.
 3. `avt_update continuity_entities` by id with `garment_feature_ids` and `description` ("Worn: …; …") — the trigger bumps
    `version`; `avt_update variation_scenes` by id with `outfit_key`. For `entrance`, `avt_insert` the outfit row first
    (`kind: outfit, key: CLEAN_ENTRANCE_LOOK, version: 1, constraints: "", reference_asset_ids: []`).
