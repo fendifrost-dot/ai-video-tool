@@ -225,6 +225,53 @@ export type Database = {
           },
         ]
       }
+      batch_credential_sessions: {
+        Row: {
+          access_token: string
+          credential_id: string
+          expires_at: string
+          minted_at: string
+          owner_user_id: string
+          refresh_count: number
+          refresh_token: string
+          refreshed_at: string | null
+          reuse_count: number
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          credential_id: string
+          expires_at: string
+          minted_at?: string
+          owner_user_id: string
+          refresh_count?: number
+          refresh_token: string
+          refreshed_at?: string | null
+          reuse_count?: number
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          credential_id?: string
+          expires_at?: string
+          minted_at?: string
+          owner_user_id?: string
+          refresh_count?: number
+          refresh_token?: string
+          refreshed_at?: string | null
+          reuse_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "batch_credential_sessions_credential_id_fkey"
+            columns: ["credential_id"]
+            isOneToOne: true
+            referencedRelation: "batch_credentials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       batch_credentials: {
         Row: {
           created_at: string
@@ -1594,8 +1641,6 @@ export type Database = {
           asset_id: string
           created_at: string
           excluded: boolean
-          trim_head_seconds: number
-          trim_tail_seconds: number
           id: string
           is_primary: boolean
           notes: string | null
@@ -1605,6 +1650,8 @@ export type Database = {
           sort_order: number
           source_in_seconds: number | null
           source_out_seconds: number | null
+          trim_head_seconds: number
+          trim_tail_seconds: number
           updated_at: string
           user_id: string
           variation_id: string | null
@@ -1613,8 +1660,6 @@ export type Database = {
           asset_id: string
           created_at?: string
           excluded?: boolean
-          trim_head_seconds?: number
-          trim_tail_seconds?: number
           id?: string
           is_primary?: boolean
           notes?: string | null
@@ -1624,6 +1669,8 @@ export type Database = {
           sort_order?: number
           source_in_seconds?: number | null
           source_out_seconds?: number | null
+          trim_head_seconds?: number
+          trim_tail_seconds?: number
           updated_at?: string
           user_id?: string
           variation_id?: string | null
@@ -1632,8 +1679,6 @@ export type Database = {
           asset_id?: string
           created_at?: string
           excluded?: boolean
-          trim_head_seconds?: number
-          trim_tail_seconds?: number
           id?: string
           is_primary?: boolean
           notes?: string | null
@@ -1643,6 +1688,8 @@ export type Database = {
           sort_order?: number
           source_in_seconds?: number | null
           source_out_seconds?: number | null
+          trim_head_seconds?: number
+          trim_tail_seconds?: number
           updated_at?: string
           user_id?: string
           variation_id?: string | null
