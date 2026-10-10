@@ -308,5 +308,5 @@ input, and Control Center's allowlist has no Soul model. No motion test has been
 choice. Record and answer key: project doc `claude/avt-realism-comparison-2026-10-10.md`. Spend: ledger section D.
 
 The working machine was recycled at about 00:58 CT. The three switch-timing previews and the three-way performance
-videos were rebuilt from the selected clips, the song and the delivered side-by-sides, and sent to him at 01:10 and
+videos were rebuilt from the selected clips, the song and the delivered side-by-sides, and sent to him at about 01:21 and
 01:27 CT. The local merge of main into #227's branch was lost and has to be redone when that rework starts.
