@@ -34,7 +34,7 @@ Under the jackets a t shirt is fine. Let's not over complicate this. And if I do
    piece the look wears, `description` = the generic underlayer in words) and point `variation_scenes.outfit_key` at
    them. The existing `YSL_DENIM_LOOK`, `YSL_LEATHER_COAT`, `YSL_JACKET` are yours to revise; create one for the
    clean entrance.
-3. **Picture cap:** a look with more exact pieces than the plain still route carries (3 photos incl. his face; the CRT
+3. **Picture cap** (superseded 10 Oct 2026 by PR #222 — up to 5 photos once the larger edit model is deployed; see `docs/reviews/PR222_CLASS_C_REVIEWS_2026-10-10.md`): a look with more exact pieces than the plain still route carries (3 photos incl. his face; the CRT
    takes one more in the viewer) blocks that route — the planner reports it as blocking (PR #190). Choose a
    multi-picture method for that shot; never drop a piece to fit.
 4. Show Fendi the looks (a contact sheet or the shot cards). He corrects by telling you. Record what he says in

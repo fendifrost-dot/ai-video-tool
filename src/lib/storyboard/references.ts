@@ -7,8 +7,9 @@
  * not fit is reported (`notSent`), never quietly dropped; what the shot needs and does not have is a problem
  * (`problems`), said before any money moves.
  *
- * Order, most decisive first — the endpoint takes few (xAI images/edits: 3 on grok-imagine-image-quality), and xAI
- * edits the FIRST picture, so the picture a screen must show stays <IMAGE_0>:
+ * Order, most decisive first — the endpoint takes few (xAI images/edits: 3 on the usual model, 5 on the larger one
+ * the generator lists; the generator says, queries/stillReferences.ts), and xAI edits the FIRST picture, so the
+ * picture a screen must show stays <IMAGE_0>:
  *   1. the picture another shot's screen must show / the position a cut must hold (links.ts)
  *   2. the people in it (the cast's identity pictures — casting/cast.ts decides who): a wrong face is unusable, a
  *      wrong second garment is a retry
@@ -70,15 +71,24 @@ export type ReferenceInput = {
   garments: readonly { id: string; onFile: GarmentOnFile }[];
   /** References another module adds (the cast's identity pictures). Sent after garments, before props. */
   extra?: readonly StillReference[];
-  /** The endpoint's reference limit (providerCapabilities). */
+  /** The most pictures any image model the generator lists takes (providerCapabilities, as the generator reports it). */
   cap: number;
+  /**
+   * How many the USUAL model takes, when the generator lists more than one (queries/stillReferences.ts baseCapOf).
+   * A still that fits it is drawn on it; a larger one moves to another model. Only a picture the shot cannot be made
+   * without may take a place past it — a place or a prop never moves a shot to another model. Absent = `cap`.
+   */
+  baseCap?: number;
 };
 
 const ROLE_SENTENCE: Record<ReferenceRole, (label: string) => string> = {
   screen: (l) => `is the exact picture the screen shows (${l}) — put this picture on the screen, as it is`,
   position: (l) => `is ${l}: keep the subject in the same place in the frame and the same pose; everything around it changes as described`,
   place: (l) => `is the place, ${l}: this is that place — the same architecture, surfaces and light`,
-  garment: (l) => `is a garment worn in this shot, ${l}: reproduce it exactly — cut, colour, fabric, seams, hardware and any mark on it — and do not redesign it`,
+  // The last clause: asked to reproduce "any mark on it", a model turns the piece until the mark shows — a cap seen
+  // from behind came out worn backwards so its letter could be read (10 Oct 2026). It yields to the shot's own words:
+  // a cap the scene says is worn backwards, a jacket tied at the waist, is the director's, not this sentence's.
+  garment: (l) => `is a garment worn in this shot, ${l}: reproduce it exactly — cut, colour, fabric, seams, hardware and any mark on it — and do not redesign it; unless this shot says it is worn another way, its front is worn to the front of the body, so from behind only its back is seen — it is not turned round to show a mark`,
   cast: (l) => `is ${l}: the same person`,
   prop: (l) => `is ${l}: the same object`,
 };
@@ -87,6 +97,33 @@ const ROLE_SENTENCE: Record<ReferenceRole, (label: string) => string> = {
 export function referenceLegend(sent: readonly StillReference[]): string {
   if (sent.length === 0) return "";
   return `Reference pictures: ${sent.map((r, i) => `<IMAGE_${i}> ${ROLE_SENTENCE[r.role](r.label)}`).join("; ")}.`;
+}
+
+/**
+ * The shots whose picture goes with the request as what a screen shows — by key, for links.ts `linkPromptLines`, which
+ * then leaves that shot's words out. Empty unless the pictures are actually delivered: a picture that is planned but
+ * not taken by the generator leaves the words as all the screen has.
+ */
+export function screensPictured(
+  linkNeeds: readonly (Pick<LinkNeed, "role"> & { link: { otherKey: string }; still: { assetId: string } | null })[],
+  sent: readonly StillReference[],
+  delivered: boolean,
+): Set<string> {
+  const out = new Set<string>();
+  if (!delivered) return out;
+  // one sent picture is one shot's: it is sent once and named once in the legend (the first link that asked for it),
+  // so a second screen that happens to show the same file keeps its words
+  const taken = new Set<string>();
+  for (const n of linkNeeds) {
+    if (n.role !== "screen" || !n.still) continue;
+    const id = n.still.assetId;
+    if (taken.has(id)) continue;
+    if (sent.some((r) => r.role === "screen" && r.source === "project_asset" && r.id === id)) {
+      taken.add(id);
+      out.add(n.link.otherKey);
+    }
+  }
+  return out;
 }
 
 /** The roles a still cannot do without: a picture of these that is not actually delivered means the shot is not generated. */
@@ -145,14 +182,21 @@ export function planStillReferences(input: ReferenceInput): ReferencePlan {
   // to the rest, in order. A position, a place or a prop is carried by its words when it does not fit — a screen, a
   // person or an exact garment is not, so a position to hold must never be what pushes an exact garment out and
   // blocks the shot. The sent pictures keep the order they were listed in.
+  const baseCap = Math.min(cap, Math.max(0, Math.floor(input.baseCap ?? cap)));
   const kept = new Set<StillReference>();
   for (const r of unique) if (kept.size < cap && REQUIRED_ROLES.has(r.role)) kept.add(r);
-  for (const r of unique) if (kept.size < cap && !REQUIRED_ROLES.has(r.role)) kept.add(r);
+  // the rest fill what the usual model still has room for, never the larger model's extra places
+  for (const r of unique) if (kept.size < baseCap && !REQUIRED_ROLES.has(r.role)) kept.add(r);
   const sent = unique.filter((r) => kept.has(r));
   const takes = `the image endpoint takes ${cap} reference picture${cap === 1 ? "" : "s"}`;
   for (const r of unique) {
     if (kept.has(r)) continue;
-    notSent.push({ ref: r, why: REQUIRED_ROLES.has(r.role) ? `${takes}; the ones before it are more decisive` : `${takes}, and the pictures this shot cannot be made without come first; this one is asked for in words` });
+    const why = REQUIRED_ROLES.has(r.role)
+      ? `${takes}; the ones before it are more decisive`
+      : sent.length < cap
+        ? `sending it would move this still to another image model, which only a picture the shot cannot be made without does; this one is asked for in words`
+        : `${takes}, and the pictures this shot cannot be made without come first; this one is asked for in words`;
+    notSent.push({ ref: r, why });
   }
   for (const n of notSent) {
     if (input.isPerformance) continue;

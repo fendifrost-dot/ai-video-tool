@@ -159,6 +159,11 @@ export function ShotProductionEditor({ box }: { box: StoryboardBox }) {
             The image generator does not take reference pictures yet. A shot that needs a screen picture, an exact garment or an identity is not generated until it does; the rest are described in words only, and the job records that they were not sent.
           </p>
         )}
+        {refs.model && (
+          <p className="text-[11px] text-amber-200/80" data-testid="shot-references-model">
+            {refs.sent.length} pictures are more than the usual image model takes ({refs.baseCap}), so this still is drawn on {refs.model} — a different model from your stills with up to {refs.baseCap} pictures. How exactly it reproduces a garment is not yet verified: check each piece against its photo.
+          </p>
+        )}
         {refs.sent.length === 0 && refs.notSent.length === 0 && <p className="text-[11px] text-foreground/45">None — drawn from words.</p>}
         <ul className="space-y-0.5 text-[11px] text-foreground/75">
           {refs.sent.map((r, i) => (

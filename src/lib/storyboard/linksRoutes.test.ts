@@ -9,8 +9,8 @@ import type { ContinuityEntity, ShotContinuity } from "@/lib/continuity/entities
 import { NO_CONTINUITY } from "@/lib/continuity/entities";
 import { applyOverride, BLANK_OVERRIDE, boxFromRow, boxWrite, editedOverride, type BoxRow, type StoryboardBox } from "./boxes";
 import { boxShot, previewStillRequest } from "./generate";
-import { danglingLinks, linkPictureNeeds, linkPromptLines, linksOfBox } from "./links";
-import { planStillReferences, referenceLegend, undeliveredProblem } from "./references";
+import { danglingLinks, linkPictureNeeds, linkPromptLines, linksOfBox, SCREEN_PICTURE_SENT } from "./links";
+import { planStillReferences, referenceLegend, screensPictured, undeliveredProblem } from "./references";
 import { actionIsPerforming, productionRoute } from "./route";
 
 // A board shaped like a treatment that ties shots together (an opening show seen later on a monitor, a control room
@@ -102,6 +102,58 @@ describe("links written by the writer survive to the saved shot, and are read fr
   });
 });
 
+describe("a screen whose picture goes with the request is not also described in words", () => {
+  // the linked shot's words about its own picture ("the whole picture is black and white") coloured the room around
+  // the screen even behind the fence; with the picture itself sent, the words add nothing the model needs
+  const room = () => byKey.get("c030")!;
+  const needs = (assetId: string | null) => linkPictureNeeds(linksOfBox(room(), numbered)).map((n) => ({ ...n, still: assetId ? { assetId } : null }));
+
+  it("with the picture sent and delivered, the screen line names the shot and leaves its words out", () => {
+    const n = needs("asset-c001-still");
+    const plan = planStillReferences({ isPerformance: false, continuity: NO_CONTINUITY, linkNeeds: n, garments: [], cap: 3 });
+    const pictured = screensPictured(n, plan.sent, true);
+    expect([...pictured]).toEqual(["c001"]);
+    const prompt = boxShot(room(), [], { linkLines: linkPromptLines(linksOfBox(room(), numbered), { pictured }) }).prompt;
+    expect(prompt).toContain(`The screen in this picture (the monitor on the right) shows the picture of shot 1. ${SCREEN_PICTURE_SENT}`);
+    expect(prompt).not.toContain("A rider crosses a cleared route");
+    // the other end of the room's other link is untouched
+    expect(prompt).toContain("is revealed by shot 6");
+  });
+
+  it("keeps the words when the generator takes no pictures, when the source has no image, and when the picture did not fit", () => {
+    const n = needs("asset-c001-still");
+    const plan = planStillReferences({ isPerformance: false, continuity: NO_CONTINUITY, linkNeeds: n, garments: [], cap: 3 });
+    expect(screensPictured(n, plan.sent, false).size).toBe(0);
+    expect(screensPictured(needs(null), [], true).size).toBe(0);
+    expect(screensPictured(n, [], true).size).toBe(0);
+    // and a picture sent in another role is not the screen's
+    expect(screensPictured(n, [{ source: "project_asset", id: "asset-c001-still", role: "position", label: "shot 1" }], true).size).toBe(0);
+    const words = linkPromptLines(linksOfBox(room(), numbered), { pictured: new Set() }).join(" ");
+    expect(words).toContain("What follows describes only what is on that screen");
+    expect(words).toContain("A rider crosses a cleared route");
+  });
+
+  it("two screens that show the same file: the picture is one shot's, the other keeps its words", () => {
+    const need = (otherKey: string) => ({ role: "screen" as const, link: { otherKey }, still: { assetId: "one-file" } });
+    const sent = [{ source: "project_asset" as const, id: "one-file", role: "screen" as const, label: "shot 1" }];
+    expect([...screensPictured([need("c001"), need("c002")], sent, true)]).toEqual(["c001"]);
+  });
+
+  it("a performance plate keeps its screen line in the short form too", () => {
+    const plate = { ...room(), spec: { ...room().spec, shotType: "performance" as const } };
+    const prompt = boxShot(plate, [], { linkLines: linkPromptLines(linksOfBox(room(), numbered), { pictured: new Set(["c001"]) }) }).prompt;
+    expect(prompt).toContain(SCREEN_PICTURE_SENT);
+    // what a plate drops is the sentence about people, not the screen's
+    expect(prompt).not.toContain("is revealed by shot 6");
+  });
+
+  it("only a screen is affected: a reveal or a held position named in the set keeps its sentence", () => {
+    const outside = byKey.get("c031")!;
+    const all = new Set(grid);
+    expect(linkPromptLines(linksOfBox(outside, numbered), { pictured: all })).toEqual(linkPromptLines(linksOfBox(outside, numbered)));
+  });
+});
+
 describe("references: the linked shot's picture, the place, exact garments — sent, capped, or said", () => {
   const place: ContinuityEntity = { id: "e1", projectId: "p1", variationId: "v-ib", kind: "location", key: "CORNER", name: "the Chicago corner", description: "a corner by the train", constraints: "", approvedAssetId: "asset-corner", referenceAssetIds: [], archived: false, createdAt: AT, updatedAt: AT, cast: null, outfit: null };
   const continuity = (location: ContinuityEntity | null): ShotContinuity => ({ ...NO_CONTINUITY, location });
@@ -124,6 +176,9 @@ describe("references: the linked shot's picture, the place, exact garments — s
     expect(plan.legend).toBe(referenceLegend(plan.sent));
     expect(plan.legend).toMatch(/^Reference pictures: <IMAGE_0> is the exact picture the screen shows \(shot 1\) — put this picture on the screen, as it is; <IMAGE_1> is a garment worn in this shot, black leather coat: reproduce it exactly/);
     expect(plan.legend).toContain("<IMAGE_2> is the place, the Chicago corner");
+    // a garment is worn the way it is made to be worn: asked for "any mark on it", a cap seen from behind was turned
+    // round so its front could be read
+    expect(plan.legend).toContain("black leather coat: reproduce it exactly — cut, colour, fabric, seams, hardware and any mark on it — and do not redesign it; unless this shot says it is worn another way, its front is worn to the front of the body, so from behind only its back is seen — it is not turned round to show a mark; <IMAGE_2>");
   });
 
   it("over the endpoint's limit the rest are NOT dropped silently: each is listed with why, and a garment left out is a warning", () => {
@@ -312,6 +367,29 @@ describe("a picture the shot cannot do without is never a quiet demotion", () =>
     const roomy = planStillReferences({ isPerformance: false, continuity: NO_CONTINUITY, linkNeeds: [position], garments: [{ id: "coat", onFile: { id: "coat", label: "coat" } }], extra: [fendi, woman], cap: 5 });
     expect(roomy.sent.map((r) => r.role)).toEqual(["position", "cast", "cast", "garment"]);
     expect(roomy.legend).toContain("<IMAGE_0> is shot 13: keep the subject in the same place in the frame");
+  });
+
+  it("when the generator lists a larger model, only a picture the shot cannot be made without takes a place past the usual model's limit", () => {
+    const place = { ...NO_CONTINUITY, location: { name: "The room", approvedAssetId: "asset-room" }, props: [{ name: "The CRT", approvedAssetId: "asset-crt" }] } as never;
+    const woman = { source: "project_asset" as const, id: "asset-woman", role: "cast" as const, label: "The woman" };
+    const garments = (ids: string[]) => ids.map((id) => ({ id, onFile: { id, label: id } }));
+    // two people and a coat fit the usual model: the place takes no fourth picture, so the shot stays on that model
+    const three = planStillReferences({ isPerformance: false, continuity: place, linkNeeds: [], garments: garments(["coat"]), extra: [fendi, woman], cap: 5, baseCap: 3 });
+    expect(three.sent.map((r) => r.role)).toEqual(["cast", "cast", "garment"]);
+    expect(three.notSent.map((n) => [n.ref.role, n.why])).toEqual([["place", expect.stringContaining("would move this still to another image model")], ["prop", expect.stringContaining("would move this still to another image model")]]);
+    expect(three.problems).toEqual([]);
+    // with one person, the place fills what the usual model still has room for — and stops there
+    const roomy = planStillReferences({ isPerformance: false, continuity: place, linkNeeds: [], garments: garments(["coat"]), extra: [fendi], cap: 5, baseCap: 3 });
+    expect(roomy.sent.map((r) => r.role)).toEqual(["cast", "garment", "place"]);
+    // five required pictures go, on the larger model; a sixth still blocks
+    const five = planStillReferences({ isPerformance: false, continuity: place, linkNeeds: [], garments: garments(["coat", "cap", "glasses"]), extra: [fendi, woman], cap: 5, baseCap: 3 });
+    expect(five.sent.map((r) => r.id)).toEqual(["face-1", "asset-woman", "coat", "cap", "glasses"]);
+    expect(five.problems).toEqual([]);
+    const six = planStillReferences({ isPerformance: false, continuity: place, linkNeeds: [], garments: garments(["coat", "cap", "glasses", "trousers"]), extra: [fendi, woman], cap: 5, baseCap: 3 });
+    expect(six.problems).toEqual([expect.objectContaining({ level: "blocking", text: expect.stringContaining("trousers is marked exact and does not fit in this request (5 pictures)") })]);
+    // a generator with one model: the old behaviour, optional pictures fill to its limit
+    const one = planStillReferences({ isPerformance: false, continuity: place, linkNeeds: [], garments: garments(["coat"]), extra: [fendi], cap: 3 });
+    expect(one.sent.map((r) => r.role)).toEqual(["cast", "garment", "place"]);
   });
 
   it("an identity that does not fit the cap BLOCKS the shot (the still would draw a stranger)", () => {

@@ -25,7 +25,7 @@ content); `looks_by_scene.html` is the page that states it (https://claude.ai/ar
   the look wears; `description` carries the generic underlayer ("button-up and tie" / "t-shirt") and the hat if it is not
   yet a row. Scenes (`variation_scenes.outfit_key`) point at them. The three existing outfits (`YSL_DENIM_LOOK`,
   `YSL_LEATHER_COAT`, `YSL_JACKET`) are the agent's to revise under these rules; `CLEAN_ENTRANCE_LOOK` is still to create.
-- A look with more exact pieces than the plain still route carries (3 photos incl. face, 1 more taken by the CRT in
+- (Superseded 10 Oct 2026 by PR #222: the still route takes up to 5 photos when the larger edit model is deployed; see `docs/reviews/PR222_CLASS_C_REVIEWS_2026-10-10.md`.) A look with more exact pieces than the plain still route carries (3 photos incl. face, 1 more taken by the CRT in
   the viewer) **blocks that route** (planner: required-reference overflow is blocking) and needs a multi-picture method.
   Never trim the pieces to fit; the method is the thing to change.
 - Four pieces are in Fendi's pictures but not in the Wardrobe: the lambskin coat and the Cassandre khaki, Y Varsity

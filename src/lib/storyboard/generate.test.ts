@@ -6,7 +6,7 @@ vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 
 import { parseShotSpec } from "@/lib/treatment/shotSpec";
 import { boxFromRow, boxWrite, type BoxRow } from "./boxes";
-import { boxPromptConflicts, boxShot, FULL_BLEED, madeFromBox, NO_MARKS, wardrobeWords } from "./generate";
+import { boxPromptConflicts, boxShot, FULL_BLEED, imageEstimateUsd, madeFromBox, NO_MARKS, wardrobeWords } from "./generate";
 import { indexEntities, type ContinuityEntity } from "@/lib/continuity/entities";
 import { resolveCast } from "@/lib/casting/cast";
 
@@ -84,6 +84,21 @@ describe("a correction on the shot that the words appended to its prompt would u
     expect(boxPromptConflicts(ground("People in the show's looks.", "walk past an ACME banner").b, { cast: ground("People in the show's looks.", "walk past an ACME banner").cast })).toEqual([]);
     const { b, cast } = ground("People in the show's looks, moving in deliberate, intersecting formations.");
     expect(boxPromptConflicts(b, { cast })).toEqual([]);
+  });
+});
+
+describe("the estimate of a still follows the model that takes its pictures", () => {
+  const support = { accepted: true, max: 5, model: null, tiers: [{ model: "model-a", max: 3, usdPerImage: { "2k": 0.07 }, usdPerInputImage: 0 }, { model: "model-b", max: 5, usdPerImage: { "2k": 0.08 }, usdPerInputImage: 0.01 }] };
+  it("is the plain rate without pictures and on the usual model, and the larger model's own rate past its limit", () => {
+    const shot = boxShot(box("b_roll"), []);
+    expect(shot.stills).toBe(2);
+    expect(imageEstimateUsd(shot)).toBe(0.14);
+    expect(imageEstimateUsd(shot, { pictures: 0, support })).toBe(0.14);
+    expect(imageEstimateUsd(shot, { pictures: 3, support })).toBe(0.14);
+    expect(imageEstimateUsd(shot, { pictures: 4, support })).toBe(0.24);
+    expect(imageEstimateUsd(shot, { pictures: 5, support })).toBe(0.26);
+    // a generator that does not take pictures draws from words at the plain rate
+    expect(imageEstimateUsd(shot, { pictures: 5, support: { ...support, accepted: false } })).toBe(0.14);
   });
 });
 

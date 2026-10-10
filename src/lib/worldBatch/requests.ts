@@ -119,6 +119,10 @@ export function stillFailure(data: Record<string, unknown>): string {
                 ? detail._raw
                 : ""
         : "";
+  // the image model took fewer pictures than the generator lists for it: nothing was drawn and nothing is billed, and
+  // every still of this size will be refused the same way until the limit is lowered — say that, not the raw answer
+  const fewer = /at most (\d+) input image/i.exec(said);
+  if (fewer) return `the image model took at most ${fewer[1]} reference pictures, fewer than the generator lists for it — nothing was drawn. Until the limit is corrected, send no more than ${fewer[1]} pictures with a still`;
   const status = typeof data.httpStatus === "number" ? ` (${data.httpStatus})` : "";
   const who = code === "xai_error" ? "the image model refused" : code;
   return said.trim() ? `${who}${status}: ${said.trim().slice(0, 300)}` : `${who}${status}`;

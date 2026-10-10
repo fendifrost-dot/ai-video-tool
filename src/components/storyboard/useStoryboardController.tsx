@@ -22,9 +22,9 @@ import {
 } from "@/lib/queries/storyboard";
 import { useTreatmentInputs } from "@/lib/queries/treatmentInputs";
 import { useWardrobe } from "@/lib/queries/wardrobe";
-import { DEFAULT_STILL_REFERENCE_CAP, useStillReferenceSupport } from "@/lib/queries/stillReferences";
+import { baseCapOf, NO_STILL_REFERENCE_SUPPORT, stillCostNote, stillTierFor, useStillReferenceSupport } from "@/lib/queries/stillReferences";
 import { linkPictureNeeds, linkPromptLines, linksOfBox, type ResolvedLink } from "@/lib/storyboard/links";
-import { planStillReferences, referenceSummary, undeliveredProblem, type ReferenceProblem, type StillReference } from "@/lib/storyboard/references";
+import { planStillReferences, referenceSummary, screensPictured, undeliveredProblem, type ReferenceProblem, type StillReference } from "@/lib/storyboard/references";
 import { useCharacterFeatures } from "@/lib/queries/characterFeatures";
 import { actionIsPerforming, productionRoute, routeLine, type ProductionRoute, unmetRequirement, type UnmetRequirement } from "@/lib/storyboard/route";
 import type { StillReferencesOnJob } from "@/lib/worldBatch/runner";
@@ -280,7 +280,12 @@ export type StoryboardController = {
   /** How this shot gets made, and whether the storyboard can make it (route.ts). */
   routeOf: (box: StoryboardBox) => ProductionRoute;
   /** The reference pictures its still is drawn with, what does not fit, and what is missing (references.ts). */
-  referencesOf: (box: StoryboardBox) => StillReferencesOnJob & { problems: ReferenceProblem[]; cap: number };
+  /**
+   * The pictures a shot's still is drawn with. `baseCap`: how many the usual image model takes; `model`: the model
+   * THIS still is drawn on when it goes with more than that (null when it is the usual one, or nothing is sent).
+   * `pictured`: the keys of the linked shots whose picture goes with the request as what a screen shows.
+   */
+  referencesOf: (box: StoryboardBox) => StillReferencesOnJob & { problems: ReferenceProblem[]; cap: number; baseCap: number; model: string | null; pictured: ReadonlySet<string> };
   /** The exact still request this shot would send — built, not sent. */
   stillRequestOf: (box: StoryboardBox) => ReturnType<typeof previewStillRequest> | null;
   toggleLock: (box: StoryboardBox) => Promise<void>;
@@ -485,7 +490,7 @@ export function useStoryboardController(projectId: string): StoryboardController
     [sceneRun, sceneMutations.createMany],
   );
   const supportData = useStillReferenceSupport(projectId).data;
-  const referenceSupport = useMemo(() => supportData ?? { accepted: false, max: DEFAULT_STILL_REFERENCE_CAP, model: null }, [supportData]);
+  const referenceSupport = useMemo(() => supportData ?? NO_STILL_REFERENCE_SUPPORT, [supportData]);
   const routeOf = useCallback(
     (box: StoryboardBox) => {
       // the artist in this shot with his real identity, and what he does here: a take-based route can only show him performing
@@ -878,25 +883,37 @@ export function useStoryboardController(projectId: string): StoryboardController
         garments: pieces.map((id) => ({ id, onFile: onFile.has(id) ? { id, label: onFile.get(id)!.label } : loaded ? null : { id, label: id } })),
         extra: castReferencesOf(box),
         cap: referenceSupport.max,
+        baseCap: baseCapOf(referenceSupport),
       });
-      return { sent: plan.sent, notSent: plan.notSent, legend: plan.legend, delivered: referenceSupport.accepted, problems: plan.problems, cap: plan.cap };
+      const baseCap = baseCapOf(referenceSupport);
+      const tier = referenceSupport.accepted && plan.sent.length > baseCap ? stillTierFor(referenceSupport, plan.sent.length) : null;
+      // the screens whose picture itself goes with the request: the still's prompt leaves those shots' words out
+      const pictured = screensPictured(needs, plan.sent, referenceSupport.accepted);
+      return { sent: plan.sent, notSent: plan.notSent, legend: plan.legend, delivered: referenceSupport.accepted, problems: plan.problems, cap: plan.cap, baseCap, model: tier?.model ?? null, pictured };
     },
     [linksOf, boxes, selectedStill, wardrobe, wardrobeQuery.data, continuityOf, referenceSupport, castReferencesOf, outfitOf],
   );
   const linkLinesOf = useCallback((box: StoryboardBox) => linkPromptLines(linksOf(box)), [linksOf]);
+  /** The link sentences of the IMAGE's prompt: a screen whose picture goes with the request is not also described in words. */
+  // made from the SAME references the request is sent with, so the words and the pictures cannot disagree
+  const stillLinkLinesOf = useCallback(
+    (box: StoryboardBox, references: { pictured: ReadonlySet<string> }) => linkPromptLines(linksOf(box), { pictured: references.pictured }),
+    [linksOf],
+  );
   const stillRequestOf = useCallback(
     (box: StoryboardBox) => {
       try {
-        return previewStillRequest(box, lyricLines, { aspect, continuity: continuityOf(box), cast: castOf(box), linkLines: linkLinesOf(box), references: referencesOf(box), outfit: outfitOf(box) });
+        const references = referencesOf(box);
+        return previewStillRequest(box, lyricLines, { aspect, continuity: continuityOf(box), cast: castOf(box), linkLines: stillLinkLinesOf(box, references), references, outfit: outfitOf(box) });
       } catch {
         return null;
       }
     },
-    [lyricLines, aspect, continuityOf, castOf, linkLinesOf, referencesOf, outfitOf],
+    [lyricLines, aspect, continuityOf, castOf, stillLinkLinesOf, referencesOf, outfitOf],
   );
   /** What the confirmation says about the shot's route, links and pictures — and whether it may go at all. */
   const generationNotes = useCallback(
-    (box: StoryboardBox): { text: string; blocked: string | null } => {
+    (box: StoryboardBox): { text: string; blocked: string | null; conflicts: string } => {
       const r = referencesOf(box);
       const o = outfitFlagsOf(box);
       // a shot that needs a screen picture, an exact garment or an identity is not drawn from words when the pictures cannot go;
@@ -907,9 +924,11 @@ export function useStoryboardController(projectId: string): StoryboardController
       const wears = worn.outfit ? ` He wears “${worn.outfit.name}” v${worn.outfit.outfit.version} (${worn.source === "scene" ? `the scene “${worn.scene?.name}”` : "set on this shot"}).` : "";
       // a name this shot's own words refuse, asked for by a place, a person or the outfit it is drawn with: said here,
       // before the spend, for the director to decide (promptAudit.ts)
-      const conflicts = boxPromptConflicts(box, { continuity: continuityOf(box), cast: castOf(box), outfit: worn }).map(conflictNote);
-      const warnings = [...r.problems.filter((p) => p.level === "warning").map((p) => p.text), ...o.filter((f) => f.level === "warning").map((f) => f.text), ...conflicts].map((t) => ` NOTE: ${t}`).join("");
-      return { text: ` ${routeLine(routeOf(box))}${wears}${pictures}${warnings}`, blocked: blocking ? `${blocking.text} ${blocking.fix}` : null };
+      const conflicts = boxPromptConflicts(box, { continuity: continuityOf(box), cast: castOf(box), outfit: worn }).map(conflictNote).map((t) => ` NOTE: ${t}`).join("");
+      const warnings = [...r.problems.filter((p) => p.level === "warning").map((p) => p.text), ...o.filter((f) => f.level === "warning").map((f) => f.text)].map((t) => ` NOTE: ${t}`).join("");
+      // `conflicts` is also given apart: a clip that draws the shot's image first pays for the same prompt, and its
+      // confirmation says so too
+      return { text: ` ${routeLine(routeOf(box))}${wears}${pictures}${warnings}${conflicts}`, blocked: blocking ? `${blocking.text} ${blocking.fix}` : null, conflicts };
     },
     [referencesOf, routeOf, outfitFlagsOf, outfitOf, continuityOf, castOf],
   );
@@ -921,7 +940,14 @@ export function useStoryboardController(projectId: string): StoryboardController
         const cast = castOf(box);
         const isPerformance = box.spec.shotType === "performance";
         const still = isPerformance ? (placeStill(box)?.asset.path ?? null) : selectedStillPath(box);
-        const image = imageEstimateUsd(boxShot(box, lyricLines, { aspect, continuity, cast }));
+        // a still that goes with pictures is priced by the model that takes them (the generator's own numbers): past
+        // the usual model's limit it is another model at another rate
+        const refs = referencesOf(box);
+        const pictures = refs.delivered ? refs.sent.length : 0;
+        const shot = boxShot(box, lyricLines, { aspect, continuity, cast });
+        const image = imageEstimateUsd(shot, { pictures, support: referenceSupport });
+        // what the clip estimate (which prices a still it draws at the plain rate) must add when it draws this one
+        const imageOver = image - imageEstimateUsd(shot);
         // a performance shot with a take in sync: the clip is the take, restaged in this shot's scene
         if (box.spec.shotType === "performance") {
           const src = restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs);
@@ -932,12 +958,12 @@ export function useStoryboardController(projectId: string): StoryboardController
             return { image, clip: restageEstimateUsd(seconds) + (still ? 0 : image), clipDrawsImage: !still, restage };
           }
         }
-        return { image, clip: clipEstimateUsd(boxShot(box, lyricLines, { stillPath: still, aspect, continuity, cast })), clipDrawsImage: !still };
+        return { image, clip: clipEstimateUsd(boxShot(box, lyricLines, { stillPath: still, aspect, continuity, cast })) + (still ? 0 : imageOver), clipDrawsImage: !still };
       } catch {
         return null;
       }
     },
-    [selectedStillPath, placeStill, continuityOf, lyricLines, aspect, mediaByBox, syncs],
+    [selectedStillPath, placeStill, continuityOf, lyricLines, aspect, mediaByBox, syncs, referencesOf, referenceSupport],
   );
 
   // where the image model has no picture of the project's shape, say what is asked for instead, before the spend
@@ -964,8 +990,8 @@ export function useStoryboardController(projectId: string): StoryboardController
       }
       const imagePlan = imageTemporalPlan(box, clock);
       const continuity = continuityOf(box);
-      const linkLines = linkLinesOf(box);
       const references = referencesOf(box);
+      const linkLines = stillLinkLinesOf(box, references);
       const source = continuitySource(continuity, { forPlate: !!est.restage });
       const held = source.lines.length
         ? ` It is drawn from the project's own description of ${[continuity.location?.name, ...continuity.props.map((p) => p.name), continuity.lighting?.name].filter(Boolean).join(", ")} — the same words every shot that points there is drawn from.${source.notes.length ? ` ${source.notes.join(" ")}` : ""}`
@@ -975,8 +1001,8 @@ export function useStoryboardController(projectId: string): StoryboardController
       setConfirm({
         title: `Generate an image for shot ${numberById.get(box.id) ?? ""}?`,
         body: est.restage
-          ? `About ${usd(est.image)} at list price${references.delivered && references.sent.length ? " (the edits route is assumed to cost the same as a plain still; unverified)" : ""}. This is a performance shot: the image is the PLACE from this shot's scene, drawn empty — your take keeps showing, and "Restage" puts your real performance in this place.${held}${opening}${shapeNote}${old}${notes.text}`
-          : `About ${usd(est.image)} at list price${references.delivered && references.sent.length ? " (the edits route is assumed to cost the same as a plain still; unverified)" : ""}. The image is drawn from this shot's scene and put on this shot only.${held}${opening}${shapeNote}${old}${notes.text}`,
+          ? `About ${usd(est.image)} at list price${stillCostNote(referenceSupport, references.delivered ? references.sent.length : 0)}. This is a performance shot: the image is the PLACE from this shot's scene, drawn empty — your take keeps showing, and "Restage" puts your real performance in this place.${held}${opening}${shapeNote}${old}${notes.text}`
+          : `About ${usd(est.image)} at list price${stillCostNote(referenceSupport, references.delivered ? references.sent.length : 0)}. The image is drawn from this shot's scene and put on this shot only.${held}${opening}${shapeNote}${old}${notes.text}`,
         confirmLabel: `Generate image · ${usd(est.image)}`,
         testId: "confirm-generate-image",
         onConfirm: () =>
@@ -987,7 +1013,7 @@ export function useStoryboardController(projectId: string): StoryboardController
           }).finally(afterGeneration),
       });
     },
-    [estimatesOf, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, clock, continuityOf, staleNote, generationNotes, linkLinesOf, referencesOf],
+    [estimatesOf, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, clock, continuityOf, staleNote, generationNotes, stillLinkLinesOf, referencesOf, referenceSupport],
   );
 
   const clipPlanOf = useCallback(
@@ -1023,6 +1049,7 @@ export function useStoryboardController(projectId: string): StoryboardController
       const continuity = continuityOf(box);
       const linkLines = linkLinesOf(box);
       const references = referencesOf(box);
+      const stillLinkLines = stillLinkLinesOf(box, references);
       // a performance shot set in one of the project's locations is restaged into that location's approved picture
       const place = est.restage ? placeStill(box) : null;
       const stillAsset = est.restage ? (place?.asset ?? null) : selectedStill(box);
@@ -1051,7 +1078,8 @@ export function useStoryboardController(projectId: string): StoryboardController
             timed +
             (est.clipDrawsImage ? shapeNote : "") +
             staleNote(box) +
-            (wardrobeGapOf(box) ? ` NOTE: ${wardrobeGapOf(box)}` : ""),
+            (wardrobeGapOf(box) ? ` NOTE: ${wardrobeGapOf(box)}` : "") +
+            (est.clipDrawsImage ? `${stillCostNote(referenceSupport, references.delivered ? references.sent.length : 0)}${notes.conflicts}` : ""),
           confirmLabel: `Restage take · ${usd(est.clip)}`,
           testId: "confirm-generate-clip",
           picture: picture("The place he is put in"),
@@ -1060,7 +1088,7 @@ export function useStoryboardController(projectId: string): StoryboardController
               let stillPath = still;
               if (!stillPath) {
                 setBusyFor(box.id, "drawing the place first…");
-                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false, continuity, cast: castOf(box), linkLines, references, outfit: outfitOf(box) });
+                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false, continuity, cast: castOf(box), linkLines: stillLinkLines, references, outfit: outfitOf(box) });
                 afterGeneration();
                 stillPath = img.picked;
               }
@@ -1079,7 +1107,7 @@ export function useStoryboardController(projectId: string): StoryboardController
           // the clip wears what its picture wears: an existing picture's own record (null when unknown), a fresh one's as drawn
           let stillOutfit = stillAsset ? stillOutfitOf(stillAsset) : null;
           if (!stillPath) {
-            const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity, cast: castOf(box), linkLines, references, outfit: outfitOf(box) });
+            const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity, cast: castOf(box), linkLines: stillLinkLines, references, outfit: outfitOf(box) });
             afterGeneration();
             stillPath = img.picked;
             stillOutfit = img.outfit;
@@ -1102,7 +1130,8 @@ export function useStoryboardController(projectId: string): StoryboardController
           body:
             `${clipPlan.reason} So a clip of the whole shot is not generated. What can be done instead: ` +
             clipPlan.alternatives.map((a) => ALTERNATIVE_LABEL[a]).join(". ") +
-            `. (An effect is set on the beat itself, under Timed beats.) "In order" costs about ${usd(est.clip)} at list price and makes no promise about when each beat happens.`,
+            `. (An effect is set on the beat itself, under Timed beats.) "In order" costs about ${usd(est.clip)} at list price and makes no promise about when each beat happens.` +
+            (est.clipDrawsImage ? `${stillCostNote(referenceSupport, references.delivered ? references.sent.length : 0)}${notes.conflicts}` : ""),
           confirmLabel: "Split at the beats",
           testId: "confirm-split-beats",
           onConfirm: () => splitAtBeats(box),
@@ -1118,14 +1147,15 @@ export function useStoryboardController(projectId: string): StoryboardController
           " The clip takes a few minutes and lands on this shot only." +
           (clipPlan.mode === "single" && clipPlan.effects > 0 ? ` Its ${clipPlan.effects === 1 ? "effect is" : `${clipPlan.effects} effects are`} made by the edit when the shot plays, not drawn into the clip.` : "") +
           (est.clipDrawsImage ? shapeNote : "") +
-          staleNote(box),
+          staleNote(box) +
+          (est.clipDrawsImage ? `${stillCostNote(referenceSupport, references.delivered ? references.sent.length : 0)}${notes.conflicts}` : ""),
         confirmLabel: `Generate clip · ${usd(est.clip)}`,
         testId: "confirm-generate-clip",
         picture: picture("The clip is made from this image"),
         onConfirm: () => submitClip(clipPlan),
       });
     },
-    [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats, staleNote, wardrobeGapOf, routeOf, generationNotes, linkLinesOf, referencesOf, stillOutfitOf],
+    [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats, staleNote, wardrobeGapOf, routeOf, generationNotes, linkLinesOf, stillLinkLinesOf, referencesOf, stillOutfitOf],
   );
 
   // --- is what the shot shows still what it wears? (the outfit may have changed since the picture was made) ---------
