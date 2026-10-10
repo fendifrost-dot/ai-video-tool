@@ -310,3 +310,63 @@ choice. Record and answer key: project doc `claude/avt-realism-comparison-2026-1
 The working machine was recycled at about 00:58 CT. The three switch-timing previews and the three-way performance
 videos were rebuilt from the selected clips, the song and the delivered side-by-sides, and sent to him at about 01:21 and
 01:27 CT. The local merge of main into #227's branch was lost and has to be redone when that rework starts.
+
+### 9c · The realism mandate (10 Oct 02:44 CT) and its addition (03:05 CT)
+
+The director replaced per-request approval with a bounded mandate: find a repeatable workflow that reaches the
+photographic credibility of his references while holding treatment, identity, wardrobe and continuity; up to $5.00
+more at estimate plus the Higgsfield starter credits; experiments unselected; independent review arranged by the
+agent. At 03:05 CT he added: compare Kling against a verified Grok video route from the same still; allow
+photographic softness, selective focus, motion blur and restrained bloom; keep image-model and video-model findings
+apart; treat Grok's own claims about itself as hypotheses.
+
+**Result: nothing meets the target. One workflow is clearly better than the current one and is reported as the
+strongest result, not as a finished shot.** Record with every text and setting: project doc
+`claude/avt-realism-mandate-2026-10-10.md`. Spend: ledger section E ($3.69 of the $5.00; 2.48 credits).
+
+Image-model findings (shot c009, all stills filed unselected):
+
+- OBSERVED: the short consistent text on the verified xAI route gives a darker, less decorated still but keeps the
+  polished look; the same text on `grok-imagine-image-2.0` named explicitly came out painterly.
+- OBSERVED: a picture edit on the Higgsfield API route (Control Center `grok-image-2`) keeps the photography of the
+  picture it is given in proportion to how little it is asked to change. Rider only: the source survives. Rider plus
+  place in one edit: glossy skin and decorative flames return.
+- OBSERVED: Soul Cinema from text alone is the most photographic source of the scene, but one request in three was a
+  usable plate (the other two brought a riding helmet and a badge, or a near-black frame with a small fire).
+- The strongest still (`gk_p3b`, asset `3eafad33`) is three steps: a text-only Soul Cinema plate, an edit that changes
+  only the rider and wardrobe with the approved rider picture as second reference, and a second small edit that puts
+  back the saddle and stirrup the first edit removed. Open defects: two rein straps hang from the bit attached to
+  nothing; a small emblem on the boot top; soft light on her face with no source in frame; she faces frame left (the
+  board fixes no direction).
+- VERIFIED: the plate step exists only on Higgsfield's web app through the Claude connector. Control Center's
+  allowlist has no Soul model. The rider has one approved picture; a trained Higgsfield character needs 5 to 20 and
+  the session's permissions refused both the upload and the training call.
+
+Video-model findings (same still, same action text, 5 s, 9:16; two pairs):
+
+- Grok Imagine Video 1.5 from `gk_p3b` at 1080p (clip `01489f66`) is the strongest clip: the face stays the same
+  person for all 121 frames (identity distance to the first frame at most 0.15, against 0.97 for Kling from the same
+  still), wardrobe and tack hold, exposure is steady. It still fails the board: the camera travels with the horse
+  where the board asks for a static shot; the picture gets sharper and the coat glossier as it runs; the flames are
+  pale and put no flicker on her.
+- Kling 2.5 Turbo Pro from the same still (clip `d9d9db49`): the face becomes a different-looking woman by the last
+  second, the background is replaced, a smoke puff appears from nowhere, the picture darkens. It softens where Grok
+  sharpens.
+- The second pair, from the darker still `gk_p1`, repeats the pattern with new faults: Kling changed the blazer and
+  boot and greyed the hair; Grok at 720p pulled back to a wide shot and gave the horse a white sock.
+- Neither model held a locked-off camera in any of the four clips.
+- The current shot 9 clip (`164227f8`) was reviewed beside them: it is the only static one, and the horse carries a
+  white star and a white foot, the scene is dusk, the shot is wide and the rider leaves frame before four seconds.
+
+Independent review: a reviewer with no knowledge of the route was given the five clips under letters, the approved
+rider picture, the board text and the director's reference frames, and inspected 60 to 90 frames a clip. It ranked
+the Grok video clip from `gk_p3b` first and the current shot 9 clip last, and found no clip acceptable as it stands.
+Playback at speed was not available to the agent or the reviewer; every frame was read instead.
+
+RECOMMENDATION: do not adopt the workflow for production yet and do not replace shot 9. Adopt its two findings: put
+the scene and the photography in a text-only plate and keep the rider edit small; prefer Grok Imagine Video 1.5 to
+Kling where a face must hold. Next materially different options, in order: (1) for a static board shot, ask for a
+standing or barely moving horse instead of a walk, since a walking horse and a fixed medium frame cannot both hold
+for four seconds; (2) a second approved rider picture in profile, so the edit stops inferring her profile from a
+frontal picture; (3) the Soul Cinema plate step on the owner's own API key, which is a Control Center change and
+outside this mandate.
