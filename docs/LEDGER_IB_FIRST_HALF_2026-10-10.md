@@ -13,25 +13,25 @@ without a job row carries its own cost on the asset). Labels: VERIFIED / OBSERVE
 | kind | what it is | total in this budget |
 |---|---|---|
 | **Confirmed charge** | an amount read off a provider's own bill or balance | **$0.00 — none is readable by an agent** |
-| **Estimate** | list price × what was asked for, as the tool recorded it before or at the call | **$18.19** (see the range below) |
+| **Estimate** | list price × what was asked for, as the tool recorded it before or at the call | **$18.47** (see the range below) |
 | **Unknown** | what each provider actually billed | every row |
 
 Why nothing is confirmed (VERIFIED): the job-status envelope Control Center returns carries no final cost
 (`costFinalCents` is null or absent on every finished job); the xAI, Higgsfield-API and Runway bills are in the
-owner's consoles; the Higgsfield connector on this Claude account is a different, free account (balance 10 credits,
-one transaction — the registration grant) and shows none of these jobs. The figure the stills function records as
+owner's consoles; the Higgsfield connector on this Claude account is a different, free account (balance 10 credits
+before section D, one transaction — the registration grant) and shows none of these jobs. The figure the stills function records as
 `actualCostUsd` is its rate × the pictures drawn, not a bill.
 
 **Range of the estimate:** two rows have two estimates on file. The Seedance tests are $2.22 each by the repo's token
 rule and $1.85 each by Control Center's own estimate; the Runway edit is $0.60 by the repo and $0.50 by Control
-Center. With the lower figures the total is $17.35.
+Center. With the lower figures the total is $17.63.
 
 **Budget line (DECISION — the rule used):** counted against the $50 is everything from the previous agent's 9 Oct
 work onward, because that is the work it reported "against a $50 authorization". The 8 Oct batch (the first draft of
 candidate 5) was reported by the integration agent under a separate "$30 test" in the project's status note of 8 Oct
 22:45 CT and is listed in the last section, not counted here.
 
-**Used: $18.19 at estimate (sections A + B + C). Left: $31.81 at estimate. Confirmed: $0.00.** No job in this ledger was submitted twice:
+**Used: $18.47 at estimate (sections A + B + C + D). Left: $31.53 at estimate. Confirmed: $0.00.** No job in this ledger was submitted twice:
 every provider id below is distinct. Where a shot has more than one request, the later one was sent with a changed
 request; the exact text of each is on its job row (`request_payload_json`).
 
@@ -128,9 +128,27 @@ Sum of B: 1.82 + 1.56 + 5.60 + 5.36 = **$14.34**.
 |---|---|---|---|---|---|
 | 00:36 | reference picture of a new place record, "79th and Lafayette, by the Red Line" (usual image model, 2 candidates, no reference pictures) | `b5846919` | 0.14 | unknown | two pictures filed with the place record (`1ea5541a`, `0770ce61`); **neither approved, nothing selected** |
 
-The director paused all new paid generation at 00:38 CT. Nothing was submitted after that. No job was running at a
+The director paused all new paid generation at 00:38 CT. Nothing was submitted after that until he authorized the
+bounded comparison of section D at 01:09 CT. No job was running at a
 provider at the pause: this one had already drawn its pictures, and the server's finalizer closed its row as
 succeeded at 00:40 CT. There are no automatic retries anywhere in this work.
+
+## D · This agent — 10 Oct, 01:13–01:18 CT — the realism comparison on shot 9 — $0.28, and 0.48 Higgsfield web credits
+
+Authorized by the director at 01:09 CT: at most $1.00 plus two existing Higgsfield credits, the Higgsfield connector
+allowed for this experiment only, outputs filed unselected. Record with the full text, settings and the answer key to
+the anonymous sheet: the project doc `claude/avt-realism-comparison-2026-10-10.md`.
+
+| time (CT) | what | job | estimate | billed | outcome |
+|---|---|---|---|---|---|
+| 01:13 | xAI, usual image model, 2 candidates, the approved rider picture as the one reference | `5b8f607d` | 0.14 | unknown | test stills `21df3c7d`, `caf76384`; not on any shot |
+| 01:15 | the same request again | `e3fa9fc0` | 0.14 | unknown | test stills `aa47a277`, `1611926a`; not on any shot |
+| 01:14–01:17 | Higgsfield web app through the Claude connector (free plan), `soul_cinema_studio`, four single stills | Higgsfield jobs `791649d2`, `b39d4591`, `536c83d7`, `71b4ec3b` | 0.12 credits each, quoted before each request | **0.48 credits — VERIFIED from the balance: 10.00 before, 9.52 after** | filed in AVT as test stills `7f1d96e9`, `49a59662`, `9921cb9b`, `5f75380e`; not on any shot |
+
+The Higgsfield credits are the free account's registration grant; no money was charged and nothing was bought. One
+further Higgsfield request was refused by a rate limit before it started and one request for two pictures returned
+and charged one. No motion test has been run: the two clips ($0.35 each at list) wait for the director's choice of
+stills.
 
 ## What would turn "unknown" into "confirmed"
 
