@@ -148,10 +148,12 @@ him in the place and dresses him. It does not cleanly pass the kill criterion as
 exact; lettering only in close-up), and it regenerates the garments, which `CLAUDE.md` hard rule 2 forbids as written.
 Nothing was selected; c019–c024 still play the raw take.
 
-**The tool change is written and NOT merged:** PR "restage: a performance shot that wears an outfit is dressed from
-its garment pictures" (branch `feat/restage-dresses-from-outfit`, draft). Three Class C reviews were run on it:
-architecture REQUEST CHANGES, product REQUEST CHANGES, security APPROVE WITH CHANGES — their findings are in the PR's
-review record. It stays a draft until the decisions below are made.
+**The tool change is written and NOT merged:** draft PR #227, "restage: a performance shot that wears an outfit is
+dressed from its garment pictures" (branch `feat/restage-dresses-from-outfit`). Three Class C reviews were run on it:
+architecture REQUEST CHANGES, product REQUEST CHANGES, security APPROVE WITH CHANGES — their findings are in
+`docs/reviews/RESTAGE_DRESS_CLASS_C_REVIEWS_2026-10-10.md` on that branch. As written it would refuse on these very
+shots: the leather-coat outfit has four pieces, two garment pictures is all a request has been seen to take, and the
+app has no control for narrowing a performance shot's pieces. It stays a draft until the decisions below are made.
 
 **DECISIONS NEEDED (director's):**
 1. Is route 3 the way c019, c020 and c024 are made — yes, no, or yes for medium/wide only? RECOMMENDATION: medium
