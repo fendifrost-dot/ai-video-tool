@@ -264,6 +264,9 @@ def main():
                     st["source_upload"] = {"path": sp, "local": trim, "trim": [t0, t1]}; json.dump(man, open(mpath, "w"), indent=1)
                 s["source_path"] = st["source_upload"]["path"]; s["source_local"] = st["source_upload"]["local"]
             if not s.get("source_path"): st["skipped"] = "seedance_ref needs source_path or source_local + source_trim"; print(s["id"], st["skipped"]); continue
+            # a shot that DRESSES him (dialect `dress`: garment pictures sent after the place) is the app's restaging;
+            # this runner sends no garment picture and would keep the take's clothes with nothing said — it is refused
+            if s.get("dress"): st["skipped"] = "this shot dresses him from garment pictures (dress[]): restage it from the storyboard — this runner would leave him in the take's clothes"; print(s["id"], st["skipped"]); continue
             s["_source_url"] = api.sign("project-clips", s["source_path"], ttl=86400)
             if s.get("still_path"): still_url = api.sign("project-references", s["still_path"], ttl=86400); st["still"] = {"candidates": [], "picked": s["still_path"], "cost_usd": 0.0}
             mprompt = angle_prompt(s, look, bool(still_url))

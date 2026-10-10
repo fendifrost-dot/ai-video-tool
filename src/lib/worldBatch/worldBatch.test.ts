@@ -268,6 +268,39 @@ describe("submitShot — write-ahead", () => {
     expect(row.request_payload_json.settings).toMatchObject({ batchRun: "r1", batchShotId: "S06c_low_hero", route: "seedance_ref", estimateUsd: 2.219, sourcePath: "u/p/seedance/S06c_src.mp4", sourceWindow: [66.885, 68.853], masterStart: 63.9987 });
     expect((d.updateJob as ReturnType<typeof vi.fn>).mock.calls[0][1]).toMatchObject({ external_job_id: "job-abc", status: "queued" });
   });
+  it("a dressed restaging reads each garment picture as the caller, sends it after the place, and records what it was given", async () => {
+    const dressed = shot({
+      ...ANGLE, id: "c019", still_path: "u/p/worlds/place.png", keep: ["his face, skin, hair and build"],
+      dress: [
+        { id: "g-coat", label: "Coat in Bubbled Lambskin - Noir", bucket: "wardrobe-refs", path: "u/a/coat.jpg" },
+        { id: "g-cap", label: "Saint Laurent Cap", bucket: "wardrobe-refs", path: "u/a/cap.jpg" },
+      ],
+      dress_words: "a button-up shirt and tie under the coat",
+    });
+    const d = deps();
+    await submitShot(dressed, CTX, d);
+    expect(d.calls).toEqual(["sign:project-references", "sign:project-clips", "sign:wardrobe-refs", "sign:wardrobe-refs", "insert", "proxy", "update:queued"]);
+    const body = (d.callProxy as ReturnType<typeof vi.fn>).mock.calls[0][1];
+    expect(body.referenceImageUrls).toEqual(["https://signed/project-references/u/p/worlds/place.png", "https://signed/wardrobe-refs/u/a/coat.jpg", "https://signed/wardrobe-refs/u/a/cap.jpg"]);
+    expect(body.promptText).toContain("the garment of @Image2 (Coat in Bubbled Lambskin - Noir) and the garment of @Image3 (Saint Laurent Cap)");
+    const row = (d.insertJob as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(row.request_payload_json.settings.dress).toEqual({ pieces: [{ id: "g-coat", label: "Coat in Bubbled Lambskin - Noir" }, { id: "g-cap", label: "Saint Laurent Cap" }], words: "a button-up shirt and tie under the coat" });
+    // a restaging that is not dressed records no dress
+    const plain = deps();
+    await submitShot(ANGLE, CTX, plain);
+    expect((plain.insertJob as ReturnType<typeof vi.fn>).mock.calls[0][0].request_payload_json.settings.dress).toBeUndefined();
+  });
+  it("a garment picture that cannot be read as the caller stops the restaging before the job row and the provider", async () => {
+    const dressed = shot({ ...ANGLE, id: "c019", dress: [{ id: "g", label: "the coat", bucket: "wardrobe-refs", path: "someone-else/a/coat.jpg" }] });
+    const d = deps({ sign: vi.fn(async (bucket: string) => { if (bucket === "wardrobe-refs") throw new Error("Object not found"); return "https://signed/x"; }) as RunnerDeps["sign"] });
+    await expect(submitShot(dressed, CTX, d)).rejects.toThrow(/Object not found/);
+    expect(d.insertJob).not.toHaveBeenCalled();
+    expect(d.callProxy).not.toHaveBeenCalled();
+  });
+  it("only the wardrobe's own bucket is read for a garment", () => {
+    expect(BatchShotSchema.safeParse({ id: "x", route: "seedance_ref", dress: [{ id: "g", label: "coat", bucket: "project-clips", path: "a.jpg" }] }).success).toBe(false);
+    expect(BatchShotSchema.safeParse({ id: "x", route: "seedance_ref", dress: [{ id: "g", label: "coat", bucket: "wardrobe-refs", path: "a.jpg" }] }).success).toBe(true);
+  });
   it("a refused call is recorded on the row and rethrown with the shot's name", async () => {
     const d = deps({ callProxy: vi.fn(async () => { throw new Error("insufficient balance"); }) });
     await expect(submitShot(ANGLE, CTX, d)).rejects.toThrow("S06c_low_hero: insufficient balance");

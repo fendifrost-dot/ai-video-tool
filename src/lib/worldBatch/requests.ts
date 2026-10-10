@@ -26,7 +26,16 @@ export function stillPrompt(shot: BatchShot, look: LookPreset | null): string {
 /** The prompt the motion model receives (run_world_batch.py main loop, step 1). */
 export function motionPrompt(shot: BatchShot, look: LookPreset | null, hasStill: boolean): string {
   // a shot asked for with timed changes is not also told that its place never changes
-  if (shot.route === "seedance_ref") return seedanceAnglePrompt(shot.angle ?? "", shot.keep, look, hasStill, { timedChanges: !!shot.temporal });
+  if (shot.route === "seedance_ref") {
+    const dress = shot.dress.length > 0 ? { pieces: shot.dress.map((d) => d.label), words: shot.dress_words } : null;
+    const prompt = seedanceAnglePrompt(shot.angle ?? "", shot.keep, look, hasStill, { timedChanges: !!shot.temporal, dress });
+    // A dressed restaging says more, and the provider takes only so much: a prompt cut short would lose the place's
+    // light or the look — or, worse, be cut by someone else, mid-garment. It is refused here, before any money moves.
+    if (dress && prompt.length > PROMPT_CAPS.higgsfield) {
+      throw new Error(`${shot.id}: the request that dresses him is ${prompt.length} characters and the video model takes ${PROMPT_CAPS.higgsfield} — shorten the outfit's words or take a piece off the shot. Nothing was sent.`);
+    }
+    return prompt;
+  }
   const cap = PROMPT_CAPS[providerOfRoute(shot.route)];
   // image-to-video: the still already carries the look — the prompt is the motion sentence plus the suffix
   return hasStill
@@ -36,12 +45,26 @@ export function motionPrompt(shot: BatchShot, look: LookPreset | null, hasStill:
 
 export function buildMotionRequest(
   shot: BatchShot,
-  ctx: { prompt: string; stillUrl?: string | null; sourceUrl?: string | null; userId: string; projectId: string },
+  ctx: {
+    prompt: string;
+    stillUrl?: string | null;
+    sourceUrl?: string | null;
+    /** One link per garment of `shot.dress`, in its order (seedance_ref). */
+    dressUrls?: readonly string[];
+    userId: string;
+    projectId: string;
+  },
 ): MotionRequest {
   const audit = { avt_user_id: ctx.userId, avt_project_id: ctx.projectId };
   const stillUrl = ctx.stillUrl ?? null;
   if (shot.route === "seedance_ref") {
     if (!ctx.sourceUrl) throw new Error(`${shot.id}: seedance_ref needs the source clip's URL`);
+    // The prompt names each garment by the position of its picture: one that is missing would shift every name after
+    // it onto the wrong picture, and one that is dropped would leave him in the take's clothes with nothing said.
+    const dressUrls = ctx.dressUrls ?? [];
+    if (dressUrls.length !== shot.dress.length || dressUrls.some((u) => !u)) {
+      throw new Error(`${shot.id}: the shot dresses him in ${shot.dress.length} garment picture${shot.dress.length === 1 ? "" : "s"} and ${dressUrls.filter(Boolean).length} could be read — nothing was sent`);
+    }
     const sec = Math.max(4, Math.min(30, Math.round(sourceSeconds(shot))));
     return {
       endpoint: "video-providers-higgsfield-model",
@@ -52,7 +75,8 @@ export function buildMotionRequest(
         mode: "reference_to_video",
         modelVariant: "seedance-2.5-reference",
         referenceVideoUrls: [ctx.sourceUrl],
-        referenceImageUrls: stillUrl ? [stillUrl] : [],
+        // the place first (@Image1), then the garments in the order the prompt names them
+        referenceImageUrls: [...(stillUrl ? [stillUrl] : []), ...dressUrls],
         duration: sec,
         resolution: shot.resolution,
         aspectRatio: shot.aspect,
