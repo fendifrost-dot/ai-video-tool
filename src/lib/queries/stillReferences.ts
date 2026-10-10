@@ -68,9 +68,12 @@ export function stillTierFor(support: Pick<StillReferenceSupport, "tiers">, pict
 
 /** How many pictures the usual model takes: a still that fits it is drawn on it, and no picture a shot can do without goes past it. */
 export function baseCapOf(support: Pick<StillReferenceSupport, "tiers" | "max">): number {
-  // the first listed model that takes any picture at all (one set to 0 by an override draws no still with pictures)
-  const usual = support.tiers.find((t) => t.max > 0);
-  return Math.min(support.max, usual?.max ?? support.max);
+  return Math.min(support.max, usualTier(support)?.max ?? support.max);
+}
+
+/** The usual model: the first listed that takes any picture at all (one set to 0 by an override draws no still with pictures). */
+function usualTier(support: Pick<StillReferenceSupport, "tiers">): StillReferenceTier | null {
+  return support.tiers.find((t) => t.max > 0) ?? null;
 }
 
 /** The estimate of ONE candidate picture drawn with `pictures` reference pictures on `tier` (2K, as stills are asked for). */
@@ -88,8 +91,8 @@ export function stillRateUsd(tier: StillReferenceTier, pictures: number, resolut
 export function stillCostNote(support: StillReferenceSupport, pictures: number): string {
   if (!support.accepted || pictures <= 0) return "";
   const tier = stillTierFor(support, pictures);
-  const base = support.tiers[0];
-  if (!tier || tier === base) return " (the edits route is assumed to cost the same as a plain still; unverified)";
+  const base = usualTier(support);
+  if (!tier || !base || tier === base) return " (the edits route is assumed to cost the same as a plain still; unverified)";
   return ` (an estimate from the list price of ${tier.model}: ${pictures} pictures are more than ${base.model ?? "the usual image model"} takes (${base.max}), so this still is drawn on a different model from your stills with up to ${base.max} pictures. What it bills, and how exactly it reproduces a garment, are not yet verified — check each piece against its photo)`;
 }
 

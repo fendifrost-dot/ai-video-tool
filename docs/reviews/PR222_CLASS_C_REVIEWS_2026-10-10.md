@@ -137,3 +137,10 @@ anonymous-to-email conversion are off.
 Either order is safe. The function is redeployed from Lovable (Publish does not redeploy an edge function); the app
 is published from Lovable. After both: one dry run (the answer lists `referenceModels`), then one supervised
 four-picture, one-candidate request before any board work relies on it.
+
+## Final verdicts (at `f2eea84`)
+
+Architecture: **APPROVE** (R1 closed; both deploy orders verified safe from the code). Product: **APPROVE** (B1
+closed). Security: **APPROVE** (at `dd8f1ba`; the later delta touches no check it reviewed). The product reviewer's
+last nit — the note in the clip dialogs names the usual model by the same rule `baseCapOf` uses — is applied in the
+merge commit's parent; its other nit (the note sits at the end of the clip dialog, away from the figure) is open.
