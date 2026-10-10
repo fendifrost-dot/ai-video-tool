@@ -20,6 +20,36 @@ const ROLES = new Set(["screen", "position", "place", "garment", "cast", "prop"]
 /** A request carrying more than this is malformed whatever the provider's limit (the cap check comes after). */
 const MAX_LISTED = 12;
 
+/**
+ * The edit models a still with reference pictures can be drawn on, the one in use first.
+ *
+ * A request is drawn on the FIRST model that takes all its pictures, so a request the first model takes is drawn
+ * exactly as it was before a second model was listed — a larger limit never moves a shot that did not need it. The
+ * limit of each is its provider capability (providerCapabilities "xai:images/edits:<model>"), not a number kept here.
+ *
+ * `usd`: what one output picture costs at each resolution, and what each input picture adds — the estimate the cost
+ * gate holds a request to. `basis` says where those numbers come from; it is recorded with every picture.
+ */
+export type ReferenceModel = { model: string; usdPerImage: Record<string, number>; usdPerInputImage: number; basis: string };
+export const REFERENCE_MODELS: readonly ReferenceModel[] = [
+  { model: "grok-imagine-image-quality", usdPerImage: { "1k": 0.07, "2k": 0.07 }, usdPerInputImage: 0, basis: "generations list rate; edits rate unverified" },
+  // docs.x.ai model page, read 10 Oct 2026: medium quality $0.06 (1K) / $0.08 (2K) per picture, $0.01 per input picture.
+  // The request leaves `quality` to the provider's default (auto), so the estimate is the medium rate, not a bill.
+  { model: "grok-imagine-image-2.0", usdPerImage: { "1k": 0.06, "2k": 0.08 }, usdPerInputImage: 0.01, basis: "docs.x.ai list rate at medium quality plus $0.01 per input picture; quality is the provider's default, billed amount unverified" },
+];
+
+/** The first listed model that takes `count` pictures (null when none does), and the most any of them takes. */
+export function pickReferenceModel(count: number, capOf: (model: string) => number, models: readonly ReferenceModel[] = REFERENCE_MODELS): { pick: (ReferenceModel & { cap: number }) | null; most: number } {
+  const caps = models.map((m) => ({ ...m, cap: Math.max(0, Math.floor(Number(capOf(m.model)) || 0)) }));
+  return { pick: caps.find((m) => m.cap >= count) ?? null, most: caps.reduce((a, m) => Math.max(a, m.cap), 0) };
+}
+
+/** What one candidate picture of a request with `inputs` reference pictures costs on `m`; an unlisted resolution prices at the dearest. */
+export function referenceRateUsd(m: ReferenceModel, resolution: string, inputs: number): number {
+  const out = m.usdPerImage[resolution.toLowerCase()] ?? Math.max(...Object.values(m.usdPerImage));
+  return Number((out + m.usdPerInputImage * Math.max(0, inputs)).toFixed(4));
+}
+
 export function parseReferenceRequest(raw: unknown): { refs: ReferenceRequest[]; error: string | null } {
   if (raw === undefined || raw === null) return { refs: [], error: null };
   if (!Array.isArray(raw)) return { refs: [], error: "references must be a list" };

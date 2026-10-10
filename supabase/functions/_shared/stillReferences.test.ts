@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { boundedInt, inFolderOf, parseReferenceRequest, redactSigned, resolveReferences } from "./stillReferences.ts";
+import { boundedInt, inFolderOf, parseReferenceRequest, pickReferenceModel, redactSigned, REFERENCE_MODELS, referenceRateUsd, resolveReferences } from "./stillReferences.ts";
+import { getProviderCapability } from "./providerCapabilities.ts";
 
 const P = "11111111-1111-4111-8111-111111111111";
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -148,5 +149,34 @@ describe("a still request's reference pictures are held to the caller before any
     });
     expect(r.resolved.map((x) => [x.ref.label, x.path])).toEqual([["old row", "u/a1/coat.jpg"]]);
     expect(r.refused.map((x) => x.why)).toEqual(["its file is not in its artist's folder"]);
+  });
+});
+
+describe("the edit model of a still is the first that takes all its pictures", () => {
+  const capOf = (m: string) => getProviderCapability("xai:images/edits", { get: () => undefined }, m).maxReferenceImages;
+
+  it("a request the model in use takes is drawn on it, exactly as before; only a larger one moves", () => {
+    for (const count of [0, 1, 2, 3]) expect(pickReferenceModel(count, capOf).pick?.model).toBe("grok-imagine-image-quality");
+    for (const count of [4, 5]) expect(pickReferenceModel(count, capOf).pick?.model).toBe("grok-imagine-image-2.0");
+  });
+
+  it("what the app is told it may send is the most any listed model takes; one picture more than that is refused, not trimmed", () => {
+    expect(pickReferenceModel(0, capOf).most).toBe(5);
+    expect(pickReferenceModel(6, capOf)).toEqual({ pick: null, most: 5 });
+  });
+
+  it("the limit is the provider capability at request time, so an override that lowers a model sends the request elsewhere or nowhere", () => {
+    const lowered = (m: string) => (m === "grok-imagine-image-2.0" ? 3 : capOf(m));
+    expect(pickReferenceModel(3, lowered).pick?.model).toBe("grok-imagine-image-quality");
+    expect(pickReferenceModel(4, lowered)).toEqual({ pick: null, most: 3 });
+    expect(pickReferenceModel(1, () => Number.NaN)).toEqual({ pick: null, most: 0 });
+  });
+
+  it("the estimate counts the input pictures where the provider charges for them, and an unlisted resolution prices at the dearest", () => {
+    const [quality, two] = REFERENCE_MODELS;
+    expect(referenceRateUsd(quality, "2k", 3)).toBe(0.07);
+    expect(referenceRateUsd(two, "2k", 5)).toBe(0.13);
+    expect(referenceRateUsd(two, "1K", 4)).toBe(0.1);
+    expect(referenceRateUsd(two, "4k", 0)).toBe(0.08);
   });
 });

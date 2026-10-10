@@ -26,7 +26,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 import { getProviderCapability } from "../_shared/providerCapabilities.ts";
 import { callXaiImageEditsDetailed } from "../_shared/xaiImageEdits.ts";
-import { boundedInt, parseReferenceRequest, redactSigned, resolveReferences, type ResolvedReference } from "../_shared/stillReferences.ts";
+import { boundedInt, parseReferenceRequest, pickReferenceModel, redactSigned, referenceRateUsd, resolveReferences, type ResolvedReference } from "../_shared/stillReferences.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,8 +35,6 @@ const corsHeaders = {
 };
 const XAI_URL = "https://api.x.ai/v1/images/generations";
 const DEFAULT_MODEL = "grok-imagine-image-quality";
-/** The edit model a request with reference pictures is drawn on (its limit: providerCapabilities xai:images/edits). */
-const REFERENCE_MODEL = "grok-imagine-image-quality";
 // xAI list price per generated image (2026-09); unknown models price at the dearest known rate so the gate fails safe
 const PRICE_USD_PER_IMAGE: Record<string, number> = { "grok-imagine-image-quality": 0.07, "grok-imagine-image": 0.02, "grok-imagine-image-2.0": 0.07 };
 const DEFAULT_MAX_COST_USD = 0.5;
@@ -125,23 +123,26 @@ serve(async (req) => {
 
   const parsedRefs = parseReferenceRequest(body.references);
   if (parsedRefs.error) return json(400, { error: "invalid_references", detail: parsedRefs.error });
-  const refCap = getProviderCapability("xai:images/edits", Deno.env, REFERENCE_MODEL).maxReferenceImages;
+  // the edit model is the first that takes all the pictures of THIS request (stillReferences.ts REFERENCE_MODELS); what
+  // the app is told it may send is the most any of them takes
+  const { pick: referenceModel, most: refCap } = pickReferenceModel(parsedRefs.refs.length, (m) => getProviderCapability("xai:images/edits", Deno.env, m).maxReferenceImages);
   const withRefs = parsedRefs.refs.length > 0;
-  if (parsedRefs.refs.length > refCap) {
-    return json(400, { error: "references_over_capability", detail: `${parsedRefs.refs.length} reference pictures were sent; ${REFERENCE_MODEL} takes ${refCap}. Nothing was generated.`, maxReferences: refCap });
+  if (!referenceModel) {
+    return json(400, { error: "references_over_capability", detail: `${parsedRefs.refs.length} reference pictures were sent; the image models take at most ${refCap}. Nothing was generated.`, maxReferences: refCap });
   }
-  const model = withRefs ? REFERENCE_MODEL : (body.model ?? DEFAULT_MODEL); const n = boundedInt(body.n, 1, 1, MAX_N);
+  const model = withRefs ? referenceModel.model : (body.model ?? DEFAULT_MODEL); const n = boundedInt(body.n, 1, 1, MAX_N);
   const aspect = body.aspectRatio ?? "9:16"; const resolution = body.resolution ?? "2k";
-  const rate = PRICE_USD_PER_IMAGE[model] ?? Math.max(...Object.values(PRICE_USD_PER_IMAGE));
+  const costBasis = referenceModel.basis;
+  const rate = withRefs ? referenceRateUsd(referenceModel, resolution, parsedRefs.refs.length) : (PRICE_USD_PER_IMAGE[model] ?? Math.max(...Object.values(PRICE_USD_PER_IMAGE)));
   const estimatedCostUsd = Number((rate * n).toFixed(4)); const maxCostUsd = Number.isFinite(Number(body.maxCostUsd)) ? Number(body.maxCostUsd) : DEFAULT_MAX_COST_USD;
   const plan = {
     model, n, aspectRatio: aspect, resolution, estimatedCostUsd, maxCostUsd, promptChars: body.prompt.length, promptVersion: body.promptVersion ?? null,
     // what the app asks before it sends any picture
-    referencesAccepted: true, maxReferences: refCap, referenceModel: REFERENCE_MODEL,
+    referencesAccepted: true, maxReferences: refCap, referenceModel: referenceModel.model,
     // a caller's model is set aside when pictures go: the edit model is the one whose limit was checked
-    ...(withRefs && body.model && body.model !== REFERENCE_MODEL ? { modelOverridden: true } : {}),
-    // the edits route is priced at the generations list rate until a billed run verifies it (handoff)
-    ...(withRefs ? { costBasis: "generations list rate; edits rate unverified" } : {}),
+    ...(withRefs && body.model && body.model !== referenceModel.model ? { modelOverridden: true } : {}),
+    // where the estimate of a request with pictures comes from; no billed run has verified an edits rate (handoff)
+    ...(withRefs ? { costBasis } : {}),
   };
   if (estimatedCostUsd > maxCostUsd) return json(200, { ok: false, error: "cost_gate", ...plan });
 
@@ -209,7 +210,7 @@ serve(async (req) => {
       }
       drawn++;
       const bytes = res.value.bytes;
-      const filed = await fileStill(admin, { userId, projectId: body.projectId, bytes, index: i, stamp, shotLabel: body.shotLabel, sceneTitle: body.sceneTitle, promptVersion: body.promptVersion, model, resolution, aspect, rate, extraMeta: { route: "images/edits", references: sentRefs, cost_basis: "generations list rate; edits rate unverified" } });
+      const filed = await fileStill(admin, { userId, projectId: body.projectId, bytes, index: i, stamp, shotLabel: body.shotLabel, sceneTitle: body.sceneTitle, promptVersion: body.promptVersion, model, resolution, aspect, rate, extraMeta: { route: "images/edits", references: sentRefs, cost_basis: costBasis } });
       if ("error" in filed) { failures.push(`storage_upload: ${filed.error}`); continue; }
       stills.push(filed);
     }

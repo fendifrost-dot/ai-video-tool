@@ -78,7 +78,7 @@ const DEFAULTS: Record<string, ProviderCapability> = {
     firstFrameConditioning: true,
     maxPromptChars: null,
     source:
-      "docs.x.ai release notes 2026-08-28: 'Image editing now accepts up to 5 source images per request (was 3)'; not yet verified against the API by AVT",
+      "docs.x.ai release notes 2026-08-28: 'Image editing now accepts up to 5 source images per request (was 3)'; docs.x.ai image guide, read 2026-10-10: 'Multi-image editing supports up to 5 source images in a single request' (example model grok-imagine-image-2.0); not yet verified against the API by AVT",
   },
   "xai:videos/edits": {
     maxReferenceImages: 8,
