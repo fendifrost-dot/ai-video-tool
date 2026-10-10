@@ -118,7 +118,55 @@ benchmark. The garment lane was parked by the director on 1 Oct; the takeover br
 - **Not run:** the keyframe route (a Grok still of one frame of this take in the coat, then propagation — Runway
   `aleph2` takes keyframes). It needs a keyframe the director has approved first.
 
-**DECISION NEEDED (director's):** (a) stop here and leave c019–c024 as his take for now; or (b) approve one
+### 5b · The director's correction, and route 3 (added later on 10 Oct)
+
+The director, 9 Oct 23:04 (America/Chicago), on seeing the above:
+
+> "The performance shot was never meant to be a stand alone shot. That footage is supposed to be incorporated in some
+> of the AI footage and the clothing swap is to be utilized when inputting me in the AI footage."
+
+So routes 1 and 2 tested the wrong thing: a swap on the closet footage, to be played as a shot of its own. What he
+describes is his performance put INTO the generated scene, dressed on the way in. The board already says so
+(c019–c024 are `production.method: "restage"`, "Treatment wardrobe replaces the filmed clothes."), and scenes already
+give those shots their outfits ("Chicago, the switch" 62.75–96.08 s → `YSL_LEATHER_COAT`; "The cold front" from
+96.08 s → `YSL_JACKET`). The tool is what stops it: Restage keeps the take's clothes by construction and `route.ts`
+sends a dressed performance shot to the parked garment lane.
+
+**Route 3 — Seedance reference with the garment photographs beside the place**, two 4 s requests built by hand in
+Restage's own shape through `proxy-provider-call`. Full record, prompts, ids, frames and measurements:
+[`docs/research/results/2026-10-10-dressed-restage/DRESSED_RESTAGE_TEST_2026-10-10.md`](../research/results/2026-10-10-dressed-restage/DRESSED_RESTAGE_TEST_2026-10-10.md).
+
+| | asset | identity (gate ≤ 0.25) | lip best fit (gate ≥ 0.6) | seen |
+|---|---|---|---|---|
+| test 1 — medium | `10382e39` | 0.159 | 0.749 (on the take's clock 0.457; about ¼ s early) | performance, place and light held; coat close; cap lettering unreadable at this size; face redrawn |
+| test 2 — close-up | `90947ee2` | 0.133 | 0.675 (on the take's clock 0.586) | cap reads SAINT LAURENT, glasses kept; **the take's head turn is not followed**; no tie; face redrawn, filling the frame |
+
+The same script on routes 1 and 2: identity 0.252 / 0.140, lip best fit 0.877 / 0.580.
+
+**Reading (OBSERVED, mine — not a verdict):** route 3 is the only one of the three that keeps his performance, puts
+him in the place and dresses him. It does not cleanly pass the kill criterion as written (construction close, not
+exact; lettering only in close-up), and it regenerates the garments, which `CLAUDE.md` hard rule 2 forbids as written.
+Nothing was selected; c019–c024 still play the raw take.
+
+**The tool change is written and NOT merged:** draft PR #227, "restage: a performance shot that wears an outfit is
+dressed from its garment pictures" (branch `feat/restage-dresses-from-outfit`). Three Class C reviews were run on it:
+architecture REQUEST CHANGES, product REQUEST CHANGES, security APPROVE WITH CHANGES — their findings are in
+`docs/reviews/RESTAGE_DRESS_CLASS_C_REVIEWS_2026-10-10.md` on that branch. As written it would refuse on these very
+shots: the leather-coat outfit has four pieces, two garment pictures is all a request has been seen to take, and the
+app has no control for narrowing a performance shot's pieces. It stays a draft until the decisions below are made.
+
+**DECISIONS NEEDED (director's):**
+1. Is route 3 the way c019, c020 and c024 are made — yes, no, or yes for medium/wide only? RECOMMENDATION: medium
+   and wide only (c019), coat and cap as the two pictures, his own glasses left to the take; the close-ups (c020,
+   c024) need a second look after he has seen test 2, and the mouth shots (c021–c023, the diamond-grill effect) are a
+   different problem — an effect inside his real mouth, which no restaging keeps.
+2. If yes, a dated line from him that a restaged performance may be dressed by the video model from garment
+   photographs: `CLAUDE.md` hard rule 2 ("No AI-regeneration of garment imagery; pixel preservation is mandatory")
+   and the LOCKED garment-swap architecture say otherwise today, and `docs/VIDEO_SWAP_ARCHITECTURE.md` requires that
+   to be changed "explicit and dated in this file — never by a silent drift in runtime code".
+3. If no: option (b) below is what remains.
+
+**Still open from before the correction** — (a) stop here and leave c019–c024 as his take for now; or (b) approve one
 Look-on-artist keyframe of this take in the coat and cap (an agent prepares candidates through the app's Look
 composite or still route; he picks), attach the coat's back and side angles that are already on his computer, and
 re-run route 1 with that anchor and route 3 (`aleph2` + keyframe) on the same 4 s; or (c) change the plan for these
@@ -158,10 +206,12 @@ pictures cannot go.
 | clip, Kling 2.5 turbo 10 s — c017 + c018 | 1 | 0.70 |
 | wardrobe test — Grok video edit (billed figure from the function) | 1 | 0.32 |
 | wardrobe test — Runway video edit (estimate; Control Center's own estimate is 0.50) | 1 | 0.60 |
-| **this session** | | **≈ 9.90** |
+| wardrobe test, route 3 — Seedance reference, 4 s from 4 s at 720p (the repo's token rule; Control Center's own estimate is 1.85 each; billed amount not readable) | 2 | 4.44 |
+| **this session** | | **≈ 14.34** |
 
-Against the $50 authorised: about $40 left counting this session alone; about $29 if the previous agent's 9 Oct
-spend on this variation (≈ $10.71) counts too. Lovable: one deploy-only chat message (0.6 credits) and two publishes.
+Against the $50 authorised: about $35.7 left counting this session alone; about $24.9 if the previous agent's 9 Oct
+spend on this variation (≈ $10.71) counts too. Restaging c019, c020 and c024 by the same rule would be $3.33 each
+(6 s from 6 s); all six of c019–c024, $17.75. Lovable: one deploy-only chat message (0.6 credits) and two publishes.
 
 ## 8 · Deploy state and what is open
 
@@ -176,5 +226,9 @@ spend on this variation (≈ $10.71) counts too. Lovable: one deploy-only chat m
 - Follow-ups accepted in review and not built: `reveals` / `continues` links still carry the linked shot's words
   unfenced; the capability `source` string for 2.0 still reads as at merge; an explicit `quality`; a board-level
   one-model setting; flagging pieces left off earlier that now fit; words for outfit pieces whose pictures cannot go.
-- Records left on the project: the draft Look `974cb01c`, the test source asset `cc76f6a3`, two test clips
-  (`813577a6`, `e2a57572`), and 30-odd unselected stills and clips with notes.
+- Records left on the project: the draft Look `974cb01c`, the test source asset `cc76f6a3`, four test clips
+  (`813577a6`, `e2a57572`, `10382e39`, `90947ee2` — each with its reading in its notes, none selected), and 30-odd
+  unselected stills and clips with notes.
+- The delivered cut: a 1080×1920 render (75 MB) was made and could not be handed over in the session (30 MiB
+  limit); the director has the 720p copy of the same render. In the app the same cut plays at
+  `/projects/764a63d2-93cd-44f3-905f-292f14ab2f51/review`.
