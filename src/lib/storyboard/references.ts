@@ -144,7 +144,7 @@ export function planStillReferences(input: ReferenceInput): ReferencePlan {
   // Under the cap, the pictures the shot cannot be made without take their places first, in order; what is left goes
   // to the rest, in order. A position, a place or a prop is carried by its words when it does not fit — a screen, a
   // person or an exact garment is not, so a position to hold must never be what pushes an exact garment out and
-  // blocks the shot (IB c017, 10 Oct 2026). The sent pictures keep the order above: a screen stays <IMAGE_0>.
+  // blocks the shot. The sent pictures keep the order they were listed in.
   const kept = new Set<StillReference>();
   for (const r of unique) if (kept.size < cap && REQUIRED_ROLES.has(r.role)) kept.add(r);
   for (const r of unique) if (kept.size < cap && !REQUIRED_ROLES.has(r.role)) kept.add(r);
@@ -152,7 +152,7 @@ export function planStillReferences(input: ReferenceInput): ReferencePlan {
   const takes = `the image endpoint takes ${cap} reference picture${cap === 1 ? "" : "s"}`;
   for (const r of unique) {
     if (kept.has(r)) continue;
-    notSent.push({ ref: r, why: REQUIRED_ROLES.has(r.role) ? `${takes}; the ones before it are more decisive` : `${takes}, and the people, screens and exact garments of the shot need them; this one is asked for in words` });
+    notSent.push({ ref: r, why: REQUIRED_ROLES.has(r.role) ? `${takes}; the ones before it are more decisive` : `${takes}, and the pictures this shot cannot be made without come first; this one is asked for in words` });
   }
   for (const n of notSent) {
     if (input.isPerformance) continue;

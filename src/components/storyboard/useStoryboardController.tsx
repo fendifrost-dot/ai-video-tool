@@ -83,7 +83,8 @@ import {
 import { settingsOf } from "@/lib/worldBatch";
 import { ensureStoryboardMaterialized, type MaterializeResult } from "@/lib/storyboard/build";
 import { aspectOfProject, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
-import { boxShot, clipEstimateUsd, clipTemporalPlan, entityShot, generateBoxClip, generateBoxImage, generateEntityReference, imageEstimateUsd, imageTemporalPlan, previewStillRequest } from "@/lib/storyboard/generate";
+import { boxPromptConflicts, boxShot, clipEstimateUsd, clipTemporalPlan, entityShot, generateBoxClip, generateBoxImage, generateEntityReference, imageEstimateUsd, imageTemporalPlan, previewStillRequest } from "@/lib/storyboard/generate";
+import { conflictNote } from "@/lib/storyboard/promptAudit";
 import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
 import { planFootageEdit, type FootageEditAction } from "@/lib/storyboard/footageEdit";
 import {
@@ -904,10 +905,13 @@ export function useStoryboardController(projectId: string): StoryboardController
       const pictures = r.sent.length || r.notSent.length ? ` ${referenceSummary({ sent: r.delivered ? r.sent : [], notSent: r.delivered ? r.notSent : [...r.notSent, ...r.sent.map((ref) => ({ ref, why: "the image generator does not take reference pictures yet" }))] })}` : "";
       const worn = outfitOf(box);
       const wears = worn.outfit ? ` He wears “${worn.outfit.name}” v${worn.outfit.outfit.version} (${worn.source === "scene" ? `the scene “${worn.scene?.name}”` : "set on this shot"}).` : "";
-      const warnings = [...r.problems.filter((p) => p.level === "warning").map((p) => p.text), ...o.filter((f) => f.level === "warning").map((f) => f.text)].map((t) => ` NOTE: ${t}`).join("");
+      // a name this shot's own words refuse, asked for by a place, a person or the outfit it is drawn with: said here,
+      // before the spend, for the director to decide (promptAudit.ts)
+      const conflicts = boxPromptConflicts(box, { continuity: continuityOf(box), cast: castOf(box), outfit: worn }).map(conflictNote);
+      const warnings = [...r.problems.filter((p) => p.level === "warning").map((p) => p.text), ...o.filter((f) => f.level === "warning").map((f) => f.text), ...conflicts].map((t) => ` NOTE: ${t}`).join("");
       return { text: ` ${routeLine(routeOf(box))}${wears}${pictures}${warnings}`, blocked: blocking ? `${blocking.text} ${blocking.fix}` : null };
     },
-    [referencesOf, routeOf, outfitFlagsOf, outfitOf],
+    [referencesOf, routeOf, outfitFlagsOf, outfitOf, continuityOf, castOf],
   );
 
   const estimatesOf = useCallback(

@@ -6,7 +6,7 @@ vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 
 import { parseShotSpec } from "@/lib/treatment/shotSpec";
 import { boxFromRow, boxWrite, type BoxRow } from "./boxes";
-import { boxShot, FULL_BLEED, madeFromBox, NO_MARKS, previewStillRequest, wardrobeWords } from "./generate";
+import { boxPromptConflicts, boxShot, FULL_BLEED, madeFromBox, NO_MARKS, wardrobeWords } from "./generate";
 import { indexEntities, type ContinuityEntity } from "@/lib/continuity/entities";
 import { resolveCast } from "@/lib/casting/cast";
 
@@ -64,24 +64,26 @@ describe("every picture the storyboard draws", () => {
   });
 });
 
-describe("a correction on the shot is not undone by the words appended to its prompt", () => {
-  const models = (description: string): ContinuityEntity => ({ id: "e1", projectId: "p1", variationId: "v1", kind: "character", key: "THE_WALKERS", name: "The walkers", description, constraints: "", approvedAssetId: null, referenceAssetIds: [], cast: { role: "fictional", identityMode: "invent", artistId: null }, outfit: null, archived: false, createdAt: "t", updatedAt: "t" });
-  function ground(description: string) {
-    const spec = parseShotSpec({ id: "c003", purpose: "At eye level, walkers pass close to the lens among burning trees. No visible ACME letters, emblem geometry, or logo-shaped cleared paths.", shotType: "b_roll", kind: "broll", timeline: { start: 8, end: 12 }, cast: { members: [{ key: "THE_WALKERS", action: "cross paths", placement: "among the trees", framing: "medium", identityMode: null }], open: false, none: false } });
+describe("a correction on the shot that the words appended to its prompt would undo is said before the spend", () => {
+  const walkers = (description: string): ContinuityEntity => ({ id: "e1", projectId: "p1", variationId: "v1", kind: "character", key: "THE_WALKERS", name: "The walkers", description, constraints: "", approvedAssetId: null, referenceAssetIds: [], cast: { role: "fictional", identityMode: "invent", artistId: null }, outfit: null, archived: false, createdAt: "t", updatedAt: "t" });
+  function ground(description: string, action = "cross paths") {
+    const spec = parseShotSpec({ id: "c003", purpose: "At eye level, walkers pass close to the lens among burning trees. No visible ACME letters, emblem geometry, or logo-shaped cleared paths.", shotType: "b_roll", kind: "broll", timeline: { start: 8, end: 12 }, cast: { members: [{ key: "THE_WALKERS", action, placement: "among the trees", framing: "medium", identityMode: null }], open: false, none: false } });
     const w = boxWrite({ key: "c003", start: 8, end: 12, section: "intro", generated: spec, override: null, locked: false, origin: "treatment", history: [] });
     const b = boxFromRow({ id: "r3", project_id: "p1", shot_number: 3, ...w, updated_at: "2026-10-09T00:00:00Z" } as BoxRow)!;
-    return { b, cast: resolveCast(b.spec, indexEntities([models(description)])) };
+    return { b, cast: resolveCast(b.spec, indexEntities([walkers(description)])) };
   }
 
-  it("a character whose own words ask for the name the shot forbids stops the request, where every caller builds it", () => {
+  it("a character whose own description asks for the name the shot refuses is reported, with whose words they are", () => {
     const { b, cast } = ground("People walking the cleared strokes of the ACME emblem cut into the forest floor.");
-    expect(() => boxShot(b, [], { cast })).toThrow(/this shot says “No visible ACME letters.*The walkers says “.*ACME emblem.*Nothing was generated\./);
-    expect(() => previewStillRequest(b, [], { cast })).toThrow(/Nothing was generated\./);
+    expect(boxPromptConflicts(b, { cast })).toEqual([expect.objectContaining({ name: "ACME", from: "The walkers", askedBy: expect.stringContaining("ACME emblem") })]);
+    // the request is still built — the note is for a person to read in the confirmation and in the driver's output
+    expect(boxShot(b, [], { cast }).prompt).toContain("ACME emblem");
   });
 
-  it("once the character's description agrees with the shot, the same request is built", () => {
+  it("the description is read, not what this shot says the character does; once it agrees with the shot there is nothing to say", () => {
+    expect(boxPromptConflicts(ground("People in the show's looks.", "walk past an ACME banner").b, { cast: ground("People in the show's looks.", "walk past an ACME banner").cast })).toEqual([]);
     const { b, cast } = ground("People in the show's looks, moving in deliberate, intersecting formations.");
-    expect(boxShot(b, [], { cast }).prompt).toContain("The walkers — People in the show's looks");
+    expect(boxPromptConflicts(b, { cast })).toEqual([]);
   });
 });
 

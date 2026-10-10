@@ -32,13 +32,17 @@ export const MOTION_WORDS: ReadonlyArray<{ move: string; pattern: RegExp }> = [
   { move: "orbit", pattern: /\b(orbit|arc(ing)?|circl(e|ing)|360)\b/i },
   { move: "crane", pattern: /\b(crane|jib|boom|rise[s]? (up|over)|descend(s|ing)?|lift(s|ing)? (up|over))\b/i },
   { move: "pedestal", pattern: /\b(pedestal|tilt(s|ing)? (up|down))\b/i },
-  // "advance", "fly forward / over", "glide in", "tighten on" are how the writer says a forward move on an aerial or a
-  // slow approach; unread, the prose named no move and the clip was told "the camera is locked off" (IB c001/c002).
-  { move: "push", pattern: /\b(push(es|ing)?[- ]?in|push|dolly[- ]?in|track(s|ing)? in|move(s|ing)? (in|closer)|creep(s|ing)? in|advanc(e|es|ing)|fl(y|ies|ying) (forward|in|over|toward(s)?)|glid(e|es|ing) (forward|in|over|toward(s)?)|tighten(s|ing)?( in| on)?|approach(es|ing)?)\b/i },
+  { move: "push", pattern: /\b(push(es|ing)?[- ]?in|push|dolly[- ]?in|track(s|ing)? in|move(s|ing)? (in|closer)|creep(s|ing)? in)\b/i },
   { move: "pull", pattern: /\b(pull(s|ing)?[- ]?(out|back)|dolly[- ]?(out|back)|track(s|ing)? (out|back)|move(s|ing)? (out|back|away)|widen(s|ing)?)\b/i },
   { move: "truck", pattern: /\b(truck(s|ing)?|lateral|slide(s|ing)?|track(s|ing)? (left|right|along|with)|crab)\b/i },
   { move: "pan", pattern: /\b(pan(s|ning)?)\b/i },
   { move: "handheld", pattern: /\b(hand[- ]?held|drift(s|ing)?|breath(es|ing)?|sway)\b/i },
+  // How a writer says a forward move without the word "push": "slow forward aerial advance", "the drone glides
+  // forward", "tightening on the sign". Unread, such prose named no move and the clip was told "the camera is locked
+  // off". These come LAST and need the camera in them — "forward", "tighten on", or the camera/drone as the one that
+  // advances — because "as the group advances" and "as the car approaches" are what the SUBJECT does, in shots whose
+  // camera pulls back, pans or holds.
+  { move: "push", pattern: /\b(forward\b[^.;]{0,24}\b(advance|move(ment)?|glide|flight|track)|(advanc|glid|mov)\w*\b[^.;]{0,12}\bforward|fl(y|ies|ying)\b[^.;]{0,12}\bforward|tighten(s|ing)? (in|on)|(camera|drone|aerial|helicopter)\b[^.;]{0,30}\b(advanc\w*|approach\w*|glid\w*|fl(y|ies|ying)))\b/i },
 ];
 
 /** Engine move named by a card's typed field + prose; "" when the prose names no camera at all. */

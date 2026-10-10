@@ -160,7 +160,7 @@ export async function removeMergedBox(projectId: string, removedId: string, surv
 // Assignments
 // ---------------------------------------------------------------------------
 
-export type AssignmentRow = {
+type AssignmentRow = {
   id: string;
   project_id: string;
   shot_id: string;
@@ -179,8 +179,7 @@ export type AssignmentRow = {
   excluded?: boolean | null;
 };
 
-/** One `shot_asset_assignments` row as the storyboard reads it. Exported for the MCP drivers, which read the same rows outside the browser. */
-export function assignmentFromRow(r: AssignmentRow): Assignment {
+function assignmentFromRow(r: AssignmentRow): Assignment {
   return {
     id: r.id,
     projectId: r.project_id,
@@ -273,7 +272,7 @@ export function useApplyAssignmentOps(projectId: string) {
 // Take syncs
 // ---------------------------------------------------------------------------
 
-export type SyncRow = {
+type SyncRow = {
   id: string;
   project_id: string;
   song_asset_id: string | null;
@@ -287,8 +286,7 @@ export type SyncRow = {
   updated_at: string;
 };
 
-/** One `performance_syncs` row as the storyboard reads it (null when it names no take). Exported for the MCP drivers. */
-export function syncFromRow(r: SyncRow): TakeSync | null {
+function syncFromRow(r: SyncRow): TakeSync | null {
   if (!r.performance_asset_id) return null;
   return {
     id: r.id,
