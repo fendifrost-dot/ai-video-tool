@@ -24,7 +24,7 @@ import { useTreatmentInputs } from "@/lib/queries/treatmentInputs";
 import { useWardrobe } from "@/lib/queries/wardrobe";
 import { baseCapOf, NO_STILL_REFERENCE_SUPPORT, stillCostNote, stillTierFor, useStillReferenceSupport } from "@/lib/queries/stillReferences";
 import { linkPictureNeeds, linkPromptLines, linksOfBox, type ResolvedLink } from "@/lib/storyboard/links";
-import { planStillReferences, referenceSummary, undeliveredProblem, type ReferenceProblem, type StillReference } from "@/lib/storyboard/references";
+import { planStillReferences, referenceSummary, screensPictured, undeliveredProblem, type ReferenceProblem, type StillReference } from "@/lib/storyboard/references";
 import { useCharacterFeatures } from "@/lib/queries/characterFeatures";
 import { actionIsPerforming, productionRoute, routeLine, type ProductionRoute, unmetRequirement, type UnmetRequirement } from "@/lib/storyboard/route";
 import type { StillReferencesOnJob } from "@/lib/worldBatch/runner";
@@ -886,20 +886,24 @@ export function useStoryboardController(projectId: string): StoryboardController
       });
       const baseCap = baseCapOf(referenceSupport);
       const tier = referenceSupport.accepted && plan.sent.length > baseCap ? stillTierFor(referenceSupport, plan.sent.length) : null;
-      return { sent: plan.sent, notSent: plan.notSent, legend: plan.legend, delivered: referenceSupport.accepted, problems: plan.problems, cap: plan.cap, baseCap, model: tier?.model ?? null };
+      // the screens whose picture itself goes with the request: the still's prompt leaves those shots' words out
+      const pictured = screensPictured(needs, plan.sent, referenceSupport.accepted);
+      return { sent: plan.sent, notSent: plan.notSent, legend: plan.legend, delivered: referenceSupport.accepted, problems: plan.problems, cap: plan.cap, baseCap, model: tier?.model ?? null, pictured };
     },
     [linksOf, boxes, selectedStill, wardrobe, wardrobeQuery.data, continuityOf, referenceSupport, castReferencesOf, outfitOf],
   );
   const linkLinesOf = useCallback((box: StoryboardBox) => linkPromptLines(linksOf(box)), [linksOf]);
+  /** The link sentences of the IMAGE's prompt: a screen whose picture goes with the request is not also described in words. */
+  const stillLinkLinesOf = useCallback((box: StoryboardBox) => linkPromptLines(linksOf(box), { pictured: referencesOf(box).pictured }), [linksOf, referencesOf]);
   const stillRequestOf = useCallback(
     (box: StoryboardBox) => {
       try {
-        return previewStillRequest(box, lyricLines, { aspect, continuity: continuityOf(box), cast: castOf(box), linkLines: linkLinesOf(box), references: referencesOf(box), outfit: outfitOf(box) });
+        return previewStillRequest(box, lyricLines, { aspect, continuity: continuityOf(box), cast: castOf(box), linkLines: stillLinkLinesOf(box), references: referencesOf(box), outfit: outfitOf(box) });
       } catch {
         return null;
       }
     },
-    [lyricLines, aspect, continuityOf, castOf, linkLinesOf, referencesOf, outfitOf],
+    [lyricLines, aspect, continuityOf, castOf, stillLinkLinesOf, referencesOf, outfitOf],
   );
   /** What the confirmation says about the shot's route, links and pictures — and whether it may go at all. */
   const generationNotes = useCallback(
@@ -980,7 +984,7 @@ export function useStoryboardController(projectId: string): StoryboardController
       }
       const imagePlan = imageTemporalPlan(box, clock);
       const continuity = continuityOf(box);
-      const linkLines = linkLinesOf(box);
+      const linkLines = stillLinkLinesOf(box);
       const references = referencesOf(box);
       const source = continuitySource(continuity, { forPlate: !!est.restage });
       const held = source.lines.length
@@ -1003,7 +1007,7 @@ export function useStoryboardController(projectId: string): StoryboardController
           }).finally(afterGeneration),
       });
     },
-    [estimatesOf, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, clock, continuityOf, staleNote, generationNotes, linkLinesOf, referencesOf, referenceSupport],
+    [estimatesOf, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, clock, continuityOf, staleNote, generationNotes, stillLinkLinesOf, referencesOf, referenceSupport],
   );
 
   const clipPlanOf = useCallback(
@@ -1038,6 +1042,7 @@ export function useStoryboardController(projectId: string): StoryboardController
       }
       const continuity = continuityOf(box);
       const linkLines = linkLinesOf(box);
+      const stillLinkLines = stillLinkLinesOf(box);
       const references = referencesOf(box);
       // a performance shot set in one of the project's locations is restaged into that location's approved picture
       const place = est.restage ? placeStill(box) : null;
@@ -1077,7 +1082,7 @@ export function useStoryboardController(projectId: string): StoryboardController
               let stillPath = still;
               if (!stillPath) {
                 setBusyFor(box.id, "drawing the place first…");
-                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false, continuity, cast: castOf(box), linkLines, references, outfit: outfitOf(box) });
+                const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: false, continuity, cast: castOf(box), linkLines: stillLinkLines, references, outfit: outfitOf(box) });
                 afterGeneration();
                 stillPath = img.picked;
               }
@@ -1096,7 +1101,7 @@ export function useStoryboardController(projectId: string): StoryboardController
           // the clip wears what its picture wears: an existing picture's own record (null when unknown), a fresh one's as drawn
           let stillOutfit = stillAsset ? stillOutfitOf(stillAsset) : null;
           if (!stillPath) {
-            const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity, cast: castOf(box), linkLines, references, outfit: outfitOf(box) });
+            const img = await generateBoxImage({ projectId, box, lyricLines, aspect, select: true, continuity, cast: castOf(box), linkLines: stillLinkLines, references, outfit: outfitOf(box) });
             afterGeneration();
             stillPath = img.picked;
             stillOutfit = img.outfit;
@@ -1144,7 +1149,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         onConfirm: () => submitClip(clipPlan),
       });
     },
-    [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats, staleNote, wardrobeGapOf, routeOf, generationNotes, linkLinesOf, referencesOf, stillOutfitOf],
+    [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats, staleNote, wardrobeGapOf, routeOf, generationNotes, linkLinesOf, stillLinkLinesOf, referencesOf, stillOutfitOf],
   );
 
   // --- is what the shot shows still what it wears? (the outfit may have changed since the picture was made) ---------
