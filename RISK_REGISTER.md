@@ -419,6 +419,14 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **What holds meanwhile:** each paid proxy must refuse anonymous JWTs and must not trust a row's owner column as proof of anything. `lyric-align-proxy` and (from #185) `world-still-proxy` do; the rest do not (see `docs/security/SECURITY_TRIAGE_2026-10-07.md`).
 - **DoD:** the `_open_test` policies and the anon bucket policies are gone; `anon` can read and write nothing (the RISK-001 DoD); the RLS integration test category is no longer empty.
 
+## SEC-5 — Sign-up is on at the auth server; the app's sign-in form only hides it
+
+- **Severity:** High (with SEC-4 open) · **Confidence:** Confirmed (the project's public auth settings endpoint, `GET /auth/v1/settings` with the publishable key, read 2026-10-10: `disable_signup: false`, `external.email: true`, `external.anonymous_users: true`, `mailer_autoconfirm: false`) · **Status:** OPEN · **Owner:** the director (a setting in Lovable Cloud → auth; no agent has that access) · **Opened:** 2026-10-10
+- **Summary:** `src/components/SignInForm.tsx` asks for a sign-in code with `shouldCreateUser: false`, which is a request option the browser sends, not a server rule. Anyone holding the publishable key (it ships in the page) can call the auth server directly and create a durable email account. A durable account passes every "anonymous callers are refused" check on the paid functions, and while the `*_open_test` policies stand (SEC-4) it can read and write every table and bucket. The condition recorded in the #222 security review — "confirm sign-up is off" — is therefore **not met**.
+- **What holds meanwhile:** email confirmation is required (`mailer_autoconfirm: false`), so an account needs a working mailbox; the paid functions check project and artist ownership by record (bypassable under SEC-4, see REF-1).
+- **Not known (HYPOTHESIS, test: turn sign-up off on a preview and load the app signed out):** whether turning sign-up off also stops the app's `signInAnonymously` bootstrap in `src/routes/__root.tsx`, and whether the app degrades cleanly when it does (the call is caught).
+- **DoD:** sign-up for new users is off at the auth server (or restricted to an allow-list), read back from the same endpoint as `disable_signup: true`; the signed-out app still loads its sign-in form; this entry and the #222 review condition are updated with the reading.
+
 ## STOR-5 — `grok-image-look-composite` signs caller-supplied storage paths (no folder check, URL pass-through)
 
 - **Severity:** High · **Confidence:** Confirmed (code read `index.ts:98-110, 148-186`, 2026-10-07) · **Status:** OPEN · **Owner:** Platform (AVT)

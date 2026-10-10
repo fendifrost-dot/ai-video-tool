@@ -63,7 +63,7 @@ identical in all three. c015 plays its clip from 1.3 s so the white point meets 
 | 19.61–27.45 | c006, c007 | not touched. c007 is the writer's geese insert under "Need a Canada goose" (26.24 s) |
 | 27.45–31.37 | c008 | she vaults up; boot-in-stirrup is not shown |
 | 39.22–43.14 | c011 | its television has a silver housing and the room is grey-green; in c012–c015 the housing is black and the room is warm and dim |
-| 43.14–47.06 | c012 | he is already seated: the walk into the room (his camera note) is not shown |
+| 43.14–47.06 | c012 | ~~he is already seated: the walk into the room is not shown~~ **Not a defect — see §9.** The treatment has him seated; the walk-in is only in a camera note on the shot |
 | 43.14–58.82 | c012, c013, c015 | jeans, belt and sneakers were not sent as pictures (five is the limit: screen, face, jacket, cap, glasses) |
 | 54.9–58.82 | c015 | the lamp never goes out in the clip; the darkness is the blackout effect. A small white object appears in his hand |
 | 58.82–62.75 | c016 | a medium close-up of the woman, not the extreme close-up of a hand |
@@ -232,3 +232,65 @@ spend on this variation (≈ $10.71) counts too. Restaging c019, c020 and c024 b
 - The delivered cut: a 1080×1920 render (75 MB) was made and could not be handed over in the session (30 MiB
   limit); the director has the 720p copy of the same render. In the app the same cut plays at
   `/projects/764a63d2-93cd-44f3-905f-292f14ab2f51/review`.
+
+## 9 · After the director's directive of 10 Oct 00:18 CT, and the pause at 00:38 CT
+
+**State of the cut: partially repaired.** Not "repaired through shot 18". Unfinished windows, exactly:
+
+| time (s) | shots | state |
+|---|---|---|
+| 3.92–7.84 | c002 | aerial monogram is tens of metres across, not forest-scale. Words changed and a place record added; **no new picture drawn (paused)** |
+| 39.22–43.14 | c011 | television housing and room do not match c012–c015. **Paused** |
+| 54.9–58.82 | c015 | unwanted white object in his hand; the lamp never goes out in the clip. **Paused** |
+| 58.82–62.75 | c016 | a medium close-up of the woman with her face, not a hand at a wall switch flipping it. **Paused** |
+| 62.75–70.59 | c017, c018 | a downtown street with invented lettering, not 79th and Lafayette. Place record made, two candidate pictures drawn, **neither approved, no shot touched (paused)** |
+| 70.59–101.96 | c019–c024 | his raw take in the closet. Both tests of putting him in the scene **failed** (below) |
+| 11.76–15.69, 19.61–27.45 | c004, c006, c007 | never worked on in this takeover; not reviewed at playback speed |
+
+**The two performance tests: failed for production acceptance (the director's verdict).** Both assets are marked
+rejected with the verdict in their notes; neither is selected. Against his five tests:
+
+| | test 1 (medium, `10382e39`) | test 2 (close-up, `90947ee2`) |
+|---|---|---|
+| identity | redrawn face (0.159 from the take; inside the tool's 0.25 gate, and still not his face as filmed) — **fail** | redrawn face (0.133) — **fail** |
+| glasses | kept from the take; no picture of them was sent | kept from the take |
+| original movement | poses, arm crosses and head turn followed | **fail** — the head turn between 0.9 s and 2.4 s is not followed (measured about 0 throughout) |
+| lip sync | **fail** — mouth open from the first frame; two to five times wider than his at 2.9–3.5 s; 0.457 on the take's clock | 0.586 on the clock, under the 0.6 gate; not judged by ear |
+| wardrobe | coat close but hip length and the lapel shifts; cap lettering unreadable; trousers not sent | cap reads SAINT LAURENT; collar leather; no tie |
+
+Lip sync by ear is UNVERIFIED for both: no agent can hear. Three-way videos with the song (real speed and half
+speed) were prepared for the director.
+
+**Treatment check (VERIFIED, treatment version 2 of 8 Oct).** "Fendi sits in his exact YSL denim look, watching."
+There is no walk-in in the treatment. It exists only in c012's camera note, labelled "Director (8 Oct)". Starting
+seated is therefore not a defect; whether that note is his is a question for him. Also verified there: "A close-up
+reveals another woman's hand at a wall switch. She flips it." and "Fendi occupies the same position in the frame,
+now standing at 79th and Lafayette by the Red Line".
+
+**Board changes made before the pause (all reversible; originals in the session's `ORIGINALS.md`):**
+
+- Three place records on candidate 5: `THE_FOREST_FROM_THE_AIR` (`e148b99f`, approved picture = c001's keyframe),
+  `THE_VIEWING_ROOM` (`535ea025`, approved picture = c012's keyframe), `SEVENTY_NINTH_AND_LAFAYETTE` (`dd265ca9`,
+  **no approved picture**; two candidates filed with it).
+- c002: place set to `THE_FOREST_FROM_THE_AIR` and the frame words rewritten for scale. Its selected picture and clip
+  are unchanged; the previous words are in the shot's history.
+- 79th and Lafayette is described from published facts (chicago-l.org, Wikipedia): the station sits in the median of
+  the Dan Ryan Expressway with an island platform; the station house is on the south side of 79th Street — white
+  steel frame, floor-to-ceiling glass, red bands, an eyebrow canopy; there is **no elevated structure** at this
+  corner. The earlier c019 plates show an El overhead, which is wrong for this place. No photograph of the real
+  corner was used; one from the director would make it exact.
+
+**The realism reference (the director's screen recording, 10 Oct 00:33).** Two posts, 49.5 s, 28 cuts, median shot
+1.5 s. OBSERVED from frames at 2 per second, not at playback speed and without sound: 4:3 frame inside a fisheye
+vignette; soft, low-resolution tape/telecine texture with grain, halation and star flares; warm late-sun and
+tungsten light with blown windows and dust haze; handheld, wide and close to faces, with motion blur. Ordinary
+places and ordinary-looking people, with one impossible thing per shot staged as if it were practical, and one clear
+physical action per shot. Which model made it is not shown. AVT's look words ask for the opposite ("Arri Alexa 65…
+high dynamic range… rich micro-contrast", sharp 2K, 9:16), which is what makes the forest and Chicago shots read as
+rendered. HYPOTHESIS, to be tested by the comparison: the look words and the short, single-action shot matter at
+least as much as which image model draws the still.
+
+**Switch timing.** Three 12-second previews with the song and a burned-in clock were prepared: the cut on the first
+vocal (14.68 s), on the hook's word (63.16 s), and as the board is now (62.75 s). Nothing was moved.
+
+**Paused by the director at 00:38 CT:** all new paid generation. Spend and jobs: `docs/LEDGER_IB_FIRST_HALF_2026-10-10.md`.

@@ -1,8 +1,17 @@
 # Dressed restaging — his take put into the generated place and dressed in one request · 10 October 2026
 
-**Status: PROVISIONAL. No verdict.** An agent ran and read these; the director has not judged them. By
-`docs/REPRODUCIBLE_BENCHMARK_SYSTEM.md` an agent may not approve its own benchmark, and by the takeover brief of 9 Oct
-nothing is scaled before a pass. Nothing here is selected on any shot.
+**Status: FAILED for production acceptance (the director, 10 Oct 2026).** "Treat the two reported performance tests
+as unsuccessful for production acceptance: one redraws my face and leads the lips by approximately a quarter second;
+the other fails to follow my head turn." Neither is selected, neither is scaled; both assets are marked rejected with
+this verdict in their notes. The method stays an experimental option only (draft PR #227, unmerged).
+
+Measured on every frame after the verdict (`scripts/qa/reference_fidelity.py` scan, 60 fps on the take, 24 fps on the
+results): in test 2 his head turn reads about 0 for the whole clip while the take turns away from 0.9 s to 2.4 s
+(VERIFIED — the movement is not followed); in test 1 the mouth is open from the first frame while his opens at 0.1 s,
+and between 2.9 s and 3.5 s it is two to five times wider open than his (OBSERVED — not only a lead; the mouth does
+not track). Lip sync has not been judged by ear by anyone: it is UNVERIFIED by ear and failed by measurement.
+
+What follows is the record as written before the verdict.
 
 Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 
