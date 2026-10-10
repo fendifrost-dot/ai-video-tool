@@ -7,8 +7,9 @@
  * not fit is reported (`notSent`), never quietly dropped; what the shot needs and does not have is a problem
  * (`problems`), said before any money moves.
  *
- * Order, most decisive first — the endpoint takes few (xAI images/edits: 3 on grok-imagine-image-quality), and xAI
- * edits the FIRST picture, so the picture a screen must show stays <IMAGE_0>:
+ * Order, most decisive first — the endpoint takes few (xAI images/edits: 3 on the usual model, 5 on the larger one
+ * the generator lists; the generator says, queries/stillReferences.ts), and xAI edits the FIRST picture, so the
+ * picture a screen must show stays <IMAGE_0>:
  *   1. the picture another shot's screen must show / the position a cut must hold (links.ts)
  *   2. the people in it (the cast's identity pictures — casting/cast.ts decides who): a wrong face is unusable, a
  *      wrong second garment is a retry
@@ -70,8 +71,14 @@ export type ReferenceInput = {
   garments: readonly { id: string; onFile: GarmentOnFile }[];
   /** References another module adds (the cast's identity pictures). Sent after garments, before props. */
   extra?: readonly StillReference[];
-  /** The endpoint's reference limit (providerCapabilities). */
+  /** The most pictures any image model the generator lists takes (providerCapabilities, as the generator reports it). */
   cap: number;
+  /**
+   * How many the USUAL model takes, when the generator lists more than one (queries/stillReferences.ts baseCapOf).
+   * A still that fits it is drawn on it; a larger one moves to another model. Only a picture the shot cannot be made
+   * without may take a place past it — a place or a prop never moves a shot to another model. Absent = `cap`.
+   */
+  baseCap?: number;
 };
 
 const ROLE_SENTENCE: Record<ReferenceRole, (label: string) => string> = {
@@ -145,14 +152,21 @@ export function planStillReferences(input: ReferenceInput): ReferencePlan {
   // to the rest, in order. A position, a place or a prop is carried by its words when it does not fit — a screen, a
   // person or an exact garment is not, so a position to hold must never be what pushes an exact garment out and
   // blocks the shot. The sent pictures keep the order they were listed in.
+  const baseCap = Math.min(cap, Math.max(0, Math.floor(input.baseCap ?? cap)));
   const kept = new Set<StillReference>();
   for (const r of unique) if (kept.size < cap && REQUIRED_ROLES.has(r.role)) kept.add(r);
-  for (const r of unique) if (kept.size < cap && !REQUIRED_ROLES.has(r.role)) kept.add(r);
+  // the rest fill what the usual model still has room for, never the larger model's extra places
+  for (const r of unique) if (kept.size < baseCap && !REQUIRED_ROLES.has(r.role)) kept.add(r);
   const sent = unique.filter((r) => kept.has(r));
   const takes = `the image endpoint takes ${cap} reference picture${cap === 1 ? "" : "s"}`;
   for (const r of unique) {
     if (kept.has(r)) continue;
-    notSent.push({ ref: r, why: REQUIRED_ROLES.has(r.role) ? `${takes}; the ones before it are more decisive` : `${takes}, and the pictures this shot cannot be made without come first; this one is asked for in words` });
+    const why = REQUIRED_ROLES.has(r.role)
+      ? `${takes}; the ones before it are more decisive`
+      : sent.length < cap
+        ? `sending it would move this still to another image model, which only a picture the shot cannot be made without does; this one is asked for in words`
+        : `${takes}, and the pictures this shot cannot be made without come first; this one is asked for in words`;
+    notSent.push({ ref: r, why });
   }
   for (const n of notSent) {
     if (input.isPerformance) continue;

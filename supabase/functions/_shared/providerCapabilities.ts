@@ -73,12 +73,17 @@ const DEFAULTS: Record<string, ProviderCapability> = {
     source:
       "VERIFIED 2026-09-21: rejects >3 input images ('This model supports at most 3 input image(s)'). Retired 2026-11-02 — requests are then served by grok-imagine-image-2.0 (docs.x.ai migration note, 2026-09-02)",
   },
+  // world-still-proxy picks the edit model of a still by how many pictures each takes (stillReferences.ts
+  // pickReferenceModel), so an override for it MUST use a model key: an endpoint-level override ("xai:images/edits")
+  // lifts the quality slug too, and a request is then sent to a model that rejects it (unbilled, but nothing is drawn).
+  // The way back without a redeploy: {"xai:images/edits:grok-imagine-image-2.0": {"maxReferenceImages": 3}} — every
+  // request over three is then refused before spend, as it was before the second model was listed.
   "xai:images/edits:grok-imagine-image-2.0": {
     maxReferenceImages: 5,
     firstFrameConditioning: true,
     maxPromptChars: null,
     source:
-      "docs.x.ai release notes 2026-08-28: 'Image editing now accepts up to 5 source images per request (was 3)'; not yet verified against the API by AVT",
+      "docs.x.ai release notes 2026-08-28: 'Image editing now accepts up to 5 source images per request (was 3)'; docs.x.ai image guide, read 2026-10-10: 'Multi-image editing supports up to 5 source images in a single request' (example model grok-imagine-image-2.0); not yet verified against the API by AVT",
   },
   "xai:videos/edits": {
     maxReferenceImages: 8,

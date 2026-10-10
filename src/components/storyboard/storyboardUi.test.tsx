@@ -126,7 +126,7 @@ function controller(over: Partial<StoryboardController> = {}): StoryboardControl
     wardrobe: [],
     linksOf: () => [],
     routeOf: () => ({ method: "generate", inferred: true, verdict: "storyboard", path: "", where: null, limits: [] }),
-    referencesOf: () => ({ sent: [], notSent: [], legend: "", delivered: false, problems: [], cap: 3 }),
+    referencesOf: () => ({ sent: [], notSent: [], legend: "", delivered: false, problems: [], cap: 3, baseCap: 3, model: null }),
     stillRequestOf: () => null,
     toggleLock: fn(),
     split: fn(),

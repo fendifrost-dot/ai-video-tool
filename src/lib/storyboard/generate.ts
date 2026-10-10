@@ -43,6 +43,7 @@ import { resolveEvents, type EventClock } from "./events";
 import { planAssign } from "./media";
 import { assertPlanCovers, temporalPlan, type TemporalPlan } from "./temporal";
 import { promptConflicts, type PromptConflict } from "./promptAudit";
+import { stillRateUsd, stillTierFor, type StillReferenceSupport } from "@/lib/queries/stillReferences";
 
 /** Every job the storyboard starts carries this run id, so the box jobs can be told apart from a Runs-page batch. */
 export const STORYBOARD_RUN = "storyboard";
@@ -348,9 +349,15 @@ export function clipShot(
   return shot;
 }
 
-/** List price of "Generate image" for a box (the candidates the generator draws). */
-export function imageEstimateUsd(shot: BatchShot): number {
-  return PROVIDER_RATES.still_usd_each * shot.stills;
+/**
+ * The estimate of "Generate image" for a box (the candidates the generator draws). A still that goes with reference
+ * pictures is priced by the model that takes them, with the generator's own numbers (`pricing`): a larger request is
+ * drawn on another model at another rate, and the confirmation must say the figure the server will estimate.
+ */
+export function imageEstimateUsd(shot: BatchShot, pricing?: { pictures: number; support: StillReferenceSupport } | null): number {
+  const tier = pricing && pricing.support.accepted && pricing.pictures > 0 ? stillTierFor(pricing.support, pricing.pictures) : null;
+  const each = tier ? stillRateUsd(tier, pricing!.pictures) : PROVIDER_RATES.still_usd_each;
+  return Number((each * shot.stills).toFixed(4));
 }
 
 /** List price of "Generate clip": the motion, plus the image when the box has none yet. */
