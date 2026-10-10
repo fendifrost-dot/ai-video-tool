@@ -95,7 +95,7 @@ describe("links written by the writer survive to the saved shot, and are read fr
 
   it("each end's prompt says what it owes: the screen shows that shot's picture; the interior agrees with its exterior", () => {
     const room = boxShot(byKey.get("c030")!, [], { linkLines: linkPromptLines(linksOfBox(byKey.get("c030")!, numbered)) }).prompt;
-    expect(room).toContain("The screen in this picture (the monitor on the right) shows the picture of shot 1: A rider crosses a cleared route");
+    expect(room).toContain("The screen in this picture (the monitor on the right) shows the picture of shot 1. What follows describes only what is on that screen, not the place, light or colour around it: A rider crosses a cleared route");
     expect(room).toContain("What this shot is inside of or opening onto is revealed by shot 6 (the control room is inside the SUV): Outside: the door opens from a luxury SUV");
     const outside = boxShot(byKey.get("c031")!, [], { linkLines: linkPromptLines(linksOfBox(byKey.get("c031")!, numbered)) }).prompt;
     expect(outside).toContain("This shot reveals what shot 5 was inside of or opening onto (the control room is inside the SUV) — that shot: A cramped broadcast control room");
@@ -298,6 +298,20 @@ describe("a picture the shot cannot do without is never a quiet demotion", () =>
     expect(full.sent.map((r) => r.role)).toEqual(["screen", "cast", "garment"]);
     expect(full.problems.map((p) => p.level)).toEqual(["blocking"]);
     expect(full.problems[0].text).toContain("jeans is marked exact");
+  });
+
+  it("a position to hold gives its place to a person or an exact garment, and is said in words — it never pushes one out and blocks the shot", () => {
+    const position = { link: { kind: "match_position" as const, direction: "out" as const, otherKey: "c013", other: { id: "r13", key: "c013", shotNumber: 13, spec: {} as never }, note: "" }, role: "position" as const, level: "warning" as const, still: { assetId: "p13" } };
+    const woman = { source: "project_asset" as const, id: "asset-woman", role: "cast" as const, label: "The woman" };
+    const plan = planStillReferences({ isPerformance: false, continuity: NO_CONTINUITY, linkNeeds: [position], garments: [{ id: "coat", onFile: { id: "coat", label: "coat" } }], extra: [fendi, woman], cap: 3 });
+    // without the rule the position took <IMAGE_0> and the coat, marked exact, blocked the shot
+    expect(plan.sent.map((r) => [r.role, r.id])).toEqual([["cast", "face-1"], ["cast", "asset-woman"], ["garment", "coat"]]);
+    expect(plan.notSent).toEqual([{ ref: expect.objectContaining({ role: "position", id: "p13" }), why: expect.stringContaining("asked for in words") }]);
+    expect(plan.problems).toEqual([]);
+    // with room for it, the position still leads: the sent order is the decisive order
+    const roomy = planStillReferences({ isPerformance: false, continuity: NO_CONTINUITY, linkNeeds: [position], garments: [{ id: "coat", onFile: { id: "coat", label: "coat" } }], extra: [fendi, woman], cap: 5 });
+    expect(roomy.sent.map((r) => r.role)).toEqual(["position", "cast", "cast", "garment"]);
+    expect(roomy.legend).toContain("<IMAGE_0> is shot 13: keep the subject in the same place in the frame");
   });
 
   it("an identity that does not fit the cap BLOCKS the shot (the still would draw a stranger)", () => {

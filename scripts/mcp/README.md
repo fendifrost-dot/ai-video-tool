@@ -16,6 +16,8 @@ prompt or a table write of its own: the app's code decides, the AI only carries.
 npx tsx scripts/mcp/still.ts <workdir> bundle      # what to fetch (tables, filters) → fetch with avt_select into <workdir>/bundle/*.json
 npx tsx scripts/mcp/still.ts <workdir> entity <KEY>  # reference pictures of a continuity entity
 npx tsx scripts/mcp/still.ts <workdir> shot <c0NN>   # the still of a storyboard box
+npx tsx scripts/mcp/still.ts <workdir> clip <c0NN>   # the clip of a storyboard box, from its selected image
+npx tsx scripts/mcp/edit.ts <workdir> <c0NN> <patch.json>   # a director's edit of one box: the one avt_update to perform
 ```
 
 Each run prints either `DONE {...}` or `PENDING {id, tool, args}`; the AI performs the tool call and writes the answer
@@ -36,3 +38,30 @@ attaches a still job's pictures itself, unselected, two minutes after the genera
 slower than that between the generator's answer and the attach effects, the driver's inserts collide with the
 finalizer's rows (`shot_id, asset_id, role` is unique). Apply the attach effects as upserts (insert where missing,
 else set `is_primary`), the way the finalizer does.
+
+## Editing a box (`edit.ts`)
+
+A box's row holds what the writer wrote (`generated_json`), what the director changed (`override_json`) and what
+every reader uses (`spec_json`, derived from the two, with the legacy text columns beside it). An `avt_update` that
+writes `override_json` alone leaves the other columns saying the old thing — it happened by hand on 9 Oct 2026.
+`edit.ts` computes the write with the app's own `editedOverride` and `applyOverride`, so an edit carried over the MCP
+is the write the page would make: a field the patch changes becomes the director's, and inside `continuity` (place,
+props, links, garments, outfit, production) and `cast` the patch sets the keys it names and keeps the rest. It prints
+only the columns that change and updates the bundle's row; copy the row's new `updated_at` from the answer into
+`bundle/shots.json` before generating, because a job records the `updated_at` of the shot it was made from. The
+update is filtered on the row's `updated_at` as the bundle read it, so an edit made on the page since is never
+overwritten: when the update matches no row, fetch the bundle again. A hand-written scene is stamped with the
+fingerprint of the treatment that stands now (`bundle/direction.json`), as the page stamps it.
+
+`applyOverride` locks an edited box, as the page does. A box the director had deliberately left unlocked stays that
+way only if `locked` is left out of the update — say which you did.
+
+## What every request is checked for
+
+`boxShot` (src/lib/storyboard/generate.ts) composes the prompt for the page, the request preview and this driver
+alike, and `boxPromptConflicts` reads the same parts: a name the shot's own words refuse ("No visible ACME
+lettering.") that a place's, a character's or the outfit's own description then asks for. The entity's words are the
+same in every shot, so they cannot bend to one shot's correction. The page says it in the confirmation before the
+spend; this driver prints `CHECK <shot>: …` before the first paid call. It is a note, not a block — words cannot tell
+"No TV glow on his face" from "No ACME logo on the wall" — so read it and decide, and read the prompt the driver
+prints before the first paid call of a board all the same.

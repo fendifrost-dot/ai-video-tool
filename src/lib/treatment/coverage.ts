@@ -37,6 +37,12 @@ export const MOTION_WORDS: ReadonlyArray<{ move: string; pattern: RegExp }> = [
   { move: "truck", pattern: /\b(truck(s|ing)?|lateral|slide(s|ing)?|track(s|ing)? (left|right|along|with)|crab)\b/i },
   { move: "pan", pattern: /\b(pan(s|ning)?)\b/i },
   { move: "handheld", pattern: /\b(hand[- ]?held|drift(s|ing)?|breath(es|ing)?|sway)\b/i },
+  // How a writer says a forward move without the word "push": "slow forward aerial advance", "the drone glides
+  // forward", "tightening on the sign". Unread, such prose named no move and the clip was told "the camera is locked
+  // off". These come LAST and need the camera in them — "forward", "tighten on", or the camera/drone as the one that
+  // advances — because "as the group advances" and "as the car approaches" are what the SUBJECT does, in shots whose
+  // camera pulls back, pans or holds.
+  { move: "push", pattern: /\b(forward\b[^.;]{0,24}\b(advance|move(ment)?|glide|flight|track)|(advanc|glid|mov)\w*\b[^.;]{0,12}\bforward|fl(y|ies|ying)\b[^.;]{0,12}\bforward|tighten(s|ing)? (in|on)|(camera|drone|aerial|helicopter)\b[^.;]{0,30}\b(advanc\w*|approach\w*|glid\w*|fl(y|ies|ying)))\b/i },
 ];
 
 /** Engine move named by a card's typed field + prose; "" when the prose names no camera at all. */
