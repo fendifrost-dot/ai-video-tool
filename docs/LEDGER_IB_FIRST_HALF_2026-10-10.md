@@ -12,11 +12,11 @@ without a job row carries its own cost on the asset). Labels: VERIFIED / OBSERVE
 
 | kind | what it is | total in this budget |
 |---|---|---|
-| **Confirmed charge** | an amount read off a provider's own bill or balance | **$0.00 — none is readable by an agent** |
-| **Estimate** | list price × what was asked for, as the tool recorded it before or at the call | **$18.47** (see the range below) |
-| **Unknown** | what each provider actually billed | every row |
+| **Confirmed charge** | an amount read off a provider's own bill, balance or per-request usage record | **$1.97** — the two Grok video tests of section E, as xAI's own usage record for each request reports it. Nothing else is readable by an agent |
+| **Estimate** | list price × what was asked for, as the tool recorded it before or at the call | **$22.16** (see the range below; it includes the $1.97 above) |
+| **Unknown** | what each provider actually billed | every other row |
 
-Why nothing is confirmed (VERIFIED): the job-status envelope Control Center returns carries no final cost
+Why almost nothing is confirmed (VERIFIED): the job-status envelope Control Center returns carries no final cost
 (`costFinalCents` is null or absent on every finished job); the xAI, Higgsfield-API and Runway bills are in the
 owner's consoles; the Higgsfield connector on this Claude account is a different, free account (balance 10 credits
 before section D, one transaction — the registration grant) and shows none of these jobs. The figure the stills function records as
@@ -24,14 +24,14 @@ before section D, one transaction — the registration grant) and shows none of 
 
 **Range of the estimate:** two rows have two estimates on file. The Seedance tests are $2.22 each by the repo's token
 rule and $1.85 each by Control Center's own estimate; the Runway edit is $0.60 by the repo and $0.50 by Control
-Center. With the lower figures the total is $17.63.
+Center. With the lower figures the total is $21.32.
 
 **Budget line (DECISION — the rule used):** counted against the $50 is everything from the previous agent's 9 Oct
 work onward, because that is the work it reported "against a $50 authorization". The 8 Oct batch (the first draft of
 candidate 5) was reported by the integration agent under a separate "$30 test" in the project's status note of 8 Oct
 22:45 CT and is listed in the last section, not counted here.
 
-**Used: $18.47 at estimate (sections A + B + C + D). Left: $31.53 at estimate. Confirmed: $0.00.** No job in this ledger was submitted twice:
+**Used: $22.16 at estimate (sections A + B + C + D + E). Left: $27.84 at estimate. Confirmed: $1.97.** No job in this ledger was submitted twice:
 every provider id below is distinct. Where a shot has more than one request, the later one was sent with a changed
 request; the exact text of each is on its job row (`request_payload_json`).
 
@@ -149,6 +149,38 @@ The Higgsfield credits are the free account's registration grant; no money was c
 further Higgsfield request was refused by a rate limit before it started and one request for two pictures returned
 and charged one. No motion test has been run: the two clips ($0.35 each at list) wait for the director's choice of
 stills.
+
+## E · This agent — 10 Oct, 02:46–03:14 CT — the realism mandate on shot 9 — $3.69, and 2.48 Higgsfield web credits
+
+Authorized by the director's execution mandate of 02:44 CT: up to $5.00 more at estimate from this budget, plus the
+remaining Higgsfield starter credits; no purchases; experiments unselected. Used: **$3.69 of the $5.00** ($1.31 of
+the allowance left). Every output is filed in AVT on no shot. VERIFIED after the last job: shot 9's primary clip is
+still `164227f8`, no `shot_asset_assignments` row was created and no `timeline_items` row changed in this window.
+
+| time (CT) | what | job | estimate | billed | outcome |
+|---|---|---|---|---|---|
+| 02:47 | xAI, usual image model, 2 candidates, the approved rider picture as the one reference, the short text (prompt v2) | `05231c84` | 0.14 | unknown | test stills `db0055b2`, `78a21aba` |
+| 02:47 | the same text with `grok-imagine-image-2.0` named, 2 candidates | `3fa3e6df` | 0.18 | unknown | test stills `055cf450`, `f25b7bd1`; painterly, rejected |
+| 02:53 | picture edit on the Higgsfield API route (Control Center `grok-image-2`, 2k): benchmark still B, rider only | provider id `eb32dc6c` | 0.14 | unknown | `gk_B`, asset `9a781c5d` |
+| 02:55 | the same route: B with rider, profile and a burning forest in one edit | `8eefacaf` | 0.14 | unknown | `gk_B2`, asset `517a080a` |
+| 03:02 | the same route: plate p1, rider only | `a941f9f7` | 0.14 | unknown | `gk_p1`, asset `1b5c0b51` |
+| 03:05 | the same route: plate p3, rider and wardrobe | `a0ef4685` | 0.14 | unknown | `gk_p3`, asset `2d14a5d1`; lost the saddle |
+| 03:08 | the same route: `gk_p3`, saddle and stirrup restored | `b5a2a728` | 0.14 | unknown | `gk_p3b`, asset `3eafad33`; the starting still of the video comparison |
+| 03:05 | Kling 2.5 Turbo Pro, 5 s, from `gk_p1` | `f58d568d` | 0.35 | unknown | clip `eda5463c` |
+| 03:09 | Kling 2.5 Turbo Pro, 5 s, from `gk_p3b` | `a2758d36` | 0.35 | unknown | clip `d9d9db49` |
+| 03:09 | Grok Imagine Video 1.5, 5 s, 1080p, from `gk_p3b` (the tool's own `grok-broll-proxy`) | xAI request `52db67f5` | 1.26 | **$1.26 — VERIFIED, xAI usage record on the finished request** | clip `01489f66` |
+| 03:13 | Grok Imagine Video 1.5, 5 s, 720p, from `gk_p1` | xAI request `9bec0d58` | 0.71 | **$0.71 — VERIFIED, the same way** | clip `56c9474e` |
+| 02:48–03:03 | Higgsfield web app through the Claude connector (free plan): `soul_cinema_studio` four times (`ab0efce3`, `bd9dcf2c`, `0fc724b7`, `1ae6d189`) and one picture edit the job status reports as `nano_banana_2` (`eeb182ec`) | Higgsfield jobs | 0.12 credits × 4, 2 credits × 1 | **2.48 credits — VERIFIED from the balance: 9.52 before, 7.04 after** | filed as test stills `956a4bec`, `23f8c6a9`, `3b2c5e31`, `fb1b432a`, `d099f948` |
+
+Two things this section VERIFIED about the tool's own prices:
+
+- `grok-broll-proxy` prices `grok-imagine-video-1.5` at $0.08 a second at every resolution. xAI's model page lists
+  $0.08 at 480p, $0.14 at 720p and $0.25 at 1080p, and the two requests above were billed at exactly those rates plus
+  $0.01 for the input picture. The function's cost ceiling therefore understates a 1080p request by a factor of three
+  (it estimated $0.40 for the request billed at $1.26). RECOMMENDATION: price by resolution in that function.
+- The server's finalizer files a picture result of the Higgsfield API route as a `generated_clip` with an `.mp4`
+  name (it did so for `gk_B`). The row was re-typed by hand and pointed at a correctly named copy; the misnamed file
+  is still in storage. RECOMMENDATION: have the finalizer type and name a result by what the provider returned.
 
 ## What would turn "unknown" into "confirmed"
 
