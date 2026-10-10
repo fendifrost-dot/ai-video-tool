@@ -58,19 +58,32 @@ const noteOf = (l: ResolvedLink) => (l.note.trim() ? ` (${l.note.trim().replace(
 const sentence = (s: string) => s.trim().replace(/[.;]*$/, ".");
 /** Fences a linked shot's words to the screen that shows it; the place around the screen stays this shot's own. */
 export const SCREEN_ONLY = "What follows describes only what is on that screen, not the place, light or colour around it:";
+/** Said in place of the linked shot's words when its picture itself goes with the request. */
+export const SCREEN_PICTURE_SENT = "That picture is sent with this request and belongs on the screen only: the place around the screen keeps this shot's own light and colour.";
+
+export type LinkPromptOptions = {
+  /**
+   * The keys of the shots whose PICTURE goes with this request as the screen's picture (references.ts
+   * `screensPictured`). For those the screen's content is the picture, so the other shot's words are left out: said as
+   * well, a sentence about that whole picture ("the whole picture is black and white") still coloured the room around
+   * the screen, fence or no fence (10 Oct 2026). Without the picture the words are all the screen has, and stay.
+   */
+  pictured?: ReadonlySet<string>;
+};
 
 /**
  * What each link adds to this box's prompt. Empty for a link that asks nothing of this end (the shot whose picture is
  * shown on another shot's screen is drawn as itself).
  */
-export function linkPromptLines(links: readonly ResolvedLink[]): string[] {
+export function linkPromptLines(links: readonly ResolvedLink[], opts: LinkPromptOptions = {}): string[] {
   const lines: string[] = [];
   for (const l of links) {
     const scene = l.other ? sceneOf(l.other) : "";
     if (l.direction === "out") {
       // the other shot's words are fenced to the screen: said bare, a sentence about that whole picture ("the whole
       // picture is black and white", "at night") was read as this shot's own, and the room around the screen took it on
-      if (l.kind === "screen_shows") lines.push(`The screen in this picture${noteOf(l)} shows the picture of ${shotName(l)}.${scene ? ` ${SCREEN_ONLY} ${sentence(scene)}` : ""}`);
+      if (l.kind === "screen_shows" && opts.pictured?.has(l.otherKey)) lines.push(`The screen in this picture${noteOf(l)} shows the picture of ${shotName(l)}. ${SCREEN_PICTURE_SENT}`);
+      else if (l.kind === "screen_shows") lines.push(`The screen in this picture${noteOf(l)} shows the picture of ${shotName(l)}.${scene ? ` ${SCREEN_ONLY} ${sentence(scene)}` : ""}`);
       else if (l.kind === "match_position") lines.push(`The subject holds the same place in the frame and the same pose as in ${shotName(l)}${noteOf(l)}; only the place around changes.`);
       else if (l.kind === "reveals") lines.push(`This shot reveals what ${shotName(l)} was inside of or opening onto${noteOf(l)}${scene ? ` — that shot: ${sentence(scene)}` : "."}`);
       else if (l.kind === "continues") lines.push(`This shot continues the action of ${shotName(l)} across the cut${noteOf(l)}${scene ? ` — that shot: ${sentence(scene)}` : "."}`);

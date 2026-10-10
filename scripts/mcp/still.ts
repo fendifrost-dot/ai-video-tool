@@ -22,7 +22,11 @@ import {
 } from "@/lib/continuity/entities";
 import { resolveCast, castProblems } from "@/lib/casting/cast";
 import { linksOfBox, linkPictureNeeds, linkPromptLines } from "@/lib/storyboard/links";
-import { planStillReferences, type StillReference } from "@/lib/storyboard/references";
+import {
+  planStillReferences,
+  screensPictured,
+  type StillReference,
+} from "@/lib/storyboard/references";
 import {
   boxPromptConflicts,
   boxShot,
@@ -507,7 +511,6 @@ async function cmdShot(dir: string, key: string) {
     throw new Error(`${key}: cast problems — ${blockingCast.map((p) => p.text).join("; ")}`);
   for (const p of problems) console.error(`NOTE ${key}: ${p.text}`);
   const links = linksOfBox(box, w.board);
-  const linkLines = linkPromptLines(links);
   const needs = linkPictureNeeds(links).map((n) => {
     const other = n.link.other ? w.boxes.find((b) => b.key === n.link.otherKey) : null;
     const still = other ? w.selectedStill(other.id) : null;
@@ -573,6 +576,10 @@ async function cmdShot(dir: string, key: string) {
     legend: plan.legend,
     delivered: w.support.accepted,
   };
+  // as the page does: a screen whose picture goes with the request is not also described in words
+  const linkLines = linkPromptLines(links, {
+    pictured: screensPictured(needs, plan.sent, w.support.accepted),
+  });
   const shot = boxShot(box, w.lyricLines, {
     aspect: w.aspect,
     continuity,
