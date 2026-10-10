@@ -322,7 +322,7 @@ apart; treat Grok's own claims about itself as hypotheses.
 
 **Result: nothing meets the target. One workflow is clearly better than the current one and is reported as the
 strongest result, not as a finished shot.** Record with every text and setting: project doc
-`claude/avt-realism-comparison-2026-10-10.md`. Spend: ledger section E ($3.69 of the $5.00; 2.48 credits).
+`claude/avt-realism-mandate-2026-10-10.md`. Spend: ledger section E ($3.69 of the $5.00; 2.48 credits).
 
 Image-model findings (shot c009, all stills filed unselected):
 
