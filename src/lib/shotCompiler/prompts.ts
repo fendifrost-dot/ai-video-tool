@@ -116,7 +116,9 @@ export type DressWords = { pieces: readonly string[]; words?: string };
  * the coat of @Image2" beside a take in a camouflage shirt, the model has two answers for what is on his body. Each
  * garment is named by the position of its own picture (the place, when there is one, is @Image1, so the garments
  * follow it). What the pictures do not replace is the take's: his glasses and jewellery are his, and a restaging that
- * dropped them would be a different man. The shape is the one the shot-19 test of 10 Oct 2026 was asked with.
+ * dropped them would be a different man. The shape is the one the shot-19 tests of 10 Oct 2026 were asked with
+ * (docs/research/results/2026-10-10-dressed-restage) — the shape, not the words: those tests named each garment's
+ * construction by hand, and this names it by its wardrobe label. This wording has not been sent to the model yet.
  */
 export function dressSentences(dress: DressWords, firstImage: number): string {
   const names = dress.pieces.map((label, i) => `the garment of @Image${firstImage + i} (${label.replace(/\s+/g, " ").trim()})`);

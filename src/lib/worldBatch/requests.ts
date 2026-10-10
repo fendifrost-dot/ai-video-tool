@@ -30,7 +30,8 @@ export function motionPrompt(shot: BatchShot, look: LookPreset | null, hasStill:
     const dress = shot.dress.length > 0 ? { pieces: shot.dress.map((d) => d.label), words: shot.dress_words } : null;
     const prompt = seedanceAnglePrompt(shot.angle ?? "", shot.keep, look, hasStill, { timedChanges: !!shot.temporal, dress });
     // A dressed restaging says more, and the provider takes only so much: a prompt cut short would lose the place's
-    // light or the look — or, worse, be cut by someone else, mid-garment. It is refused here, before any money moves.
+    // light or the look — or, worse, be cut by someone else, mid-garment. It is refused here, before the job row and
+    // the provider. (A place picture drawn first for this shot has been paid for by then: review finding A4 / S2.)
     if (dress && prompt.length > PROMPT_CAPS.higgsfield) {
       throw new Error(`${shot.id}: the request that dresses him is ${prompt.length} characters and the video model takes ${PROMPT_CAPS.higgsfield} — shorten the outfit's words or take a piece off the shot. Nothing was sent.`);
     }

@@ -89,9 +89,9 @@ export function restageKeep(take: Pick<MediaAsset, "shows">, dressed = false): s
 
 /**
  * How many reference pictures one restaging request has been SEEN to take beside the take: the place and two
- * garments (10 Oct 2026, two requests through this provider, both accepted and both drawn from all three). It is
- * what was seen, not the model's documented limit — nobody has sent four. Raise it only after a request with more
- * has come back with every garment in it.
+ * garments (10 Oct 2026, provider jobs bb645697 and 78f876e4 — both accepted, both came back with the place, the coat
+ * and the cap; docs/research/results/2026-10-10-dressed-restage). It is what was seen, not the model's documented
+ * limit — nobody has sent four. Raise it only after a request with more has come back with every garment in it.
  */
 export const RESTAGE_MAX_PICTURES = 3;
 /** The bucket the artist's garment photographs are in (supabase/functions/_shared/stillReferences.ts WARDROBE_BUCKET). */
