@@ -104,7 +104,7 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
           aria-current={active ? "step" : undefined}
           data-workflow-active={active ? "true" : undefined}
           className={cn(
-            "flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all",
+            step ? "flex min-w-0 flex-col items-center gap-1 rounded-lg px-0.5 py-2 text-[10px] font-medium transition-colors" : "flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all",
             active ? "glass-raised text-foreground" : "text-foreground/60",
           )}
         >
@@ -254,25 +254,11 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
 
       <nav className="md:hidden relative z-20 px-4">
         <div className="glass rounded-2xl p-1.5">
-          {/*
-            Faded right edge: five steps plus Advanced cannot fit a phone even with the switcher capped, so this
-            row always scrolls. `scrollbar-none` plus iOS's overlay scrollbars meant it scrolled with nothing on
-            screen saying so. The fade is the affordance.
-          */}
-          <div className="flex gap-1 overflow-x-auto scrollbar-none [mask-image:linear-gradient(to_right,black_calc(100%-1.25rem),transparent)]">
-            {/*
-              CAPPED, and the cap is load-bearing on a phone. This row is the ONLY project navigation under
-              `md`, and the switcher sits in front of the steps. Its button is `w-full` with an inner `truncate`,
-              so without a cap `w-full` resolves to the full natural width of the variation's name — and a name
-              like "Interrupted Broadcast · candidate 5" then takes most of a phone screen, leaving just "Setup"
-              visible and pushing Treatment, Storyboard, Review and Export off the right edge. The row does
-              scroll, but `scrollbar-none` means nothing says so, so the steps simply look missing (reported
-              9 Oct 2026). The cap makes the name clip instead of the navigation.
-            */}
+          {/* Keep the variation separate so all five workflow steps fit on a phone. */}
+          <div className="flex items-center justify-between gap-2 border-b border-border/60 pb-1.5">
             <div className="min-w-0 max-w-[38vw] shrink-0 sm:max-w-[16rem] md:max-w-none">
               <VariationSwitcher projectId={projectId} compact />
             </div>
-            {primaryItems.map((item) => renderLink(item, "chip"))}
             <button
               type="button"
               onClick={() => setMode(isEngineering ? "creative" : "engineering")}
@@ -288,11 +274,18 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                 className={cn("h-3 w-3 transition-transform", showAdvanced && "rotate-180")}
               />
             </button>
-            {showAdvanced && advancedItems.map((item) => renderLink(item, "chip"))}
             <div className="ml-auto shrink-0 pl-1">
               <EngineeringModeToggle collapsed />
             </div>
           </div>
+          <div className="grid grid-cols-5 gap-0.5 pt-1" data-testid="mobile-workflow-steps">
+            {primaryItems.map((item) => renderLink(item, "chip"))}
+          </div>
+          {showAdvanced && (
+            <div className="mt-1 flex gap-1 overflow-x-auto border-t border-border/60 pt-1">
+              {advancedItems.map((item) => renderLink(item, "chip"))}
+            </div>
+          )}
         </div>
       </nav>
     </>

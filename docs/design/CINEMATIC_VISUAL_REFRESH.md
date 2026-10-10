@@ -16,4 +16,13 @@ Frontend publication must be coordinated with the active video-production agent.
 
 ## Verification
 
-Clean npm install, TypeScript, production build and existing automated suite checked. Browser evidence uses the repository's isolated fake backend and synthetic test media, not Fendi's real project and not a media-quality benchmark. Detailed results and screenshots follow in this record after browser verification.
+Clean npm install, TypeScript, production build and existing automated suite checked. Browser evidence uses the repository's isolated fake backend and synthetic test media, not Fendi's real project and not a media-quality benchmark. 
+
+VERIFIED (local): the full existing browser workflow reports PASS, zero errors, and zero sampled playback offsets above 0.1 s. It exercises shot navigation, full-screen/swipe, media assignment, playback, generation confirmations (mocked), timed events, continuity, treatment versions, variations, and export contract. After the final phone-navigation layout adjustment, focused sidebar/shot-card tests pass and all five stages were captured again at 1440×1000 and 390×844. All five phone navigation links fit simultaneously; no document overflow on any stage or the 844×390 landscape shot view. See `cinematic-refresh/layout-checks.json`.
+
+The ordinary automated suite covers unit and mocked integrations only; provider-live and real-media benchmark tests were not run, and no production media quality is claimed. The build and TypeScript checks pass. Screenshots use visibly synthetic colour-bar footage; production continues to display the project's real selected assets.
+
+Representative captures: `cinematic-refresh/desktop-storyboard.webp`, `cinematic-refresh/mobile-storyboard.webp`, and `cinematic-refresh/landscape-shot.webp`. Other stage captures are retained locally for review.
+
+Mobile navigation now has a separate variation/advanced row and five always-visible stage links. No workflow destination was removed. Keyboard focus is gold; existing small desktop buttons acquire a 44px minimum height on coarse pointers. Browser verification covers emulated phone layouts, not physical iPhone Safari.
+
