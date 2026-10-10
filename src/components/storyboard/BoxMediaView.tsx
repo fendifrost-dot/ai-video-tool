@@ -100,7 +100,7 @@ export function BoxMediaView({ box, mode }: { box: StoryboardBox; mode: "card" |
   }
   return (
     <div
-      className={cn("relative w-full overflow-hidden bg-black", mode === "card" ? "aspect-video rounded-t-xl" : "h-full min-h-[40vh] rounded-xl")}
+      className={cn("relative w-full overflow-hidden bg-black", mode === "card" ? "aspect-[4/3] rounded-t-xl sm:aspect-video" : "h-full min-h-[40vh] rounded-xl")}
       data-testid="box-media"
       data-media-role={item.role}
       data-media-base={item.base ? "true" : "false"}

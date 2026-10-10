@@ -1,0 +1,202 @@
+[
+  {
+    "stepsVisible": [],
+    "viewport": "desktop",
+    "stage": "setup",
+    "overflow": false,
+    "heading": [
+      "Setup"
+    ]
+  },
+  {
+    "stepsVisible": [],
+    "viewport": "desktop",
+    "stage": "treatment",
+    "overflow": false,
+    "heading": [
+      "Treatment"
+    ]
+  },
+  {
+    "stepsVisible": [],
+    "viewport": "desktop",
+    "stage": "storyboard",
+    "overflow": false,
+    "heading": [
+      "Storyboard"
+    ]
+  },
+  {
+    "stepsVisible": [],
+    "viewport": "desktop",
+    "stage": "review",
+    "overflow": false,
+    "heading": [
+      "Review"
+    ]
+  },
+  {
+    "stepsVisible": [],
+    "viewport": "desktop",
+    "stage": "export",
+    "overflow": false,
+    "heading": [
+      "Export"
+    ]
+  },
+  {
+    "stepsVisible": [
+      {
+        "label": "1Setup",
+        "visible": true
+      },
+      {
+        "label": "2Treatment",
+        "visible": true
+      },
+      {
+        "label": "3Storyboard",
+        "visible": true
+      },
+      {
+        "label": "4Review",
+        "visible": true
+      },
+      {
+        "label": "5Export",
+        "visible": true
+      }
+    ],
+    "viewport": "mobile",
+    "stage": "setup",
+    "overflow": false,
+    "heading": [
+      "Setup"
+    ]
+  },
+  {
+    "stepsVisible": [
+      {
+        "label": "1Setup",
+        "visible": true
+      },
+      {
+        "label": "2Treatment",
+        "visible": true
+      },
+      {
+        "label": "3Storyboard",
+        "visible": true
+      },
+      {
+        "label": "4Review",
+        "visible": true
+      },
+      {
+        "label": "5Export",
+        "visible": true
+      }
+    ],
+    "viewport": "mobile",
+    "stage": "treatment",
+    "overflow": false,
+    "heading": [
+      "Treatment"
+    ]
+  },
+  {
+    "stepsVisible": [
+      {
+        "label": "1Setup",
+        "visible": true
+      },
+      {
+        "label": "2Treatment",
+        "visible": true
+      },
+      {
+        "label": "3Storyboard",
+        "visible": true
+      },
+      {
+        "label": "4Review",
+        "visible": true
+      },
+      {
+        "label": "5Export",
+        "visible": true
+      }
+    ],
+    "viewport": "mobile",
+    "stage": "storyboard",
+    "overflow": false,
+    "heading": [
+      "Storyboard"
+    ]
+  },
+  {
+    "stepsVisible": [
+      {
+        "label": "1Setup",
+        "visible": true
+      },
+      {
+        "label": "2Treatment",
+        "visible": true
+      },
+      {
+        "label": "3Storyboard",
+        "visible": true
+      },
+      {
+        "label": "4Review",
+        "visible": true
+      },
+      {
+        "label": "5Export",
+        "visible": true
+      }
+    ],
+    "viewport": "mobile",
+    "stage": "review",
+    "overflow": false,
+    "heading": [
+      "Review"
+    ]
+  },
+  {
+    "stepsVisible": [
+      {
+        "label": "1Setup",
+        "visible": true
+      },
+      {
+        "label": "2Treatment",
+        "visible": true
+      },
+      {
+        "label": "3Storyboard",
+        "visible": true
+      },
+      {
+        "label": "4Review",
+        "visible": true
+      },
+      {
+        "label": "5Export",
+        "visible": true
+      }
+    ],
+    "viewport": "mobile",
+    "stage": "export",
+    "overflow": false,
+    "heading": [
+      "Export"
+    ]
+  },
+  {
+    "viewport": "landscape",
+    "overflow": false,
+    "focus": true
+  }
+]

@@ -197,7 +197,7 @@ export function FocusView() {
           {/* Side: actions, then tabs ------------------------------------------ */}
           <div className="space-y-3">
             <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-1">
-              <Button disabled={!!busy} onClick={() => (blocked ? toast.info(blocked) : void sb.rewrite(box))} title={blocked ?? undefined} data-testid="focus-rewrite">
+              <Button variant="generation" disabled={!!busy} onClick={() => (blocked ? toast.info(blocked) : void sb.rewrite(box))} title={blocked ?? undefined} data-testid="focus-rewrite">
                 <Wand2 className="mr-2 h-4 w-4" /> Regenerate scene
               </Button>
               <Button variant="outline" disabled={!!busy} onClick={() => sb.generateImage(box)} data-testid="focus-generate-image">

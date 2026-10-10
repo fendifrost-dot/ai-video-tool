@@ -122,7 +122,7 @@ export default function StoryboardPage({ projectId }: { projectId: string }) {
             )}
 
             {view === "cards" ? (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" data-testid="storyboard-grid">
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 2xl:grid-cols-3" data-testid="storyboard-grid">
                 {sb.boxes.map((box) => (
                   <BoxCard key={box.id} box={box} coverageFlag={coverage.flaggedShotIds[box.key]} />
                 ))}

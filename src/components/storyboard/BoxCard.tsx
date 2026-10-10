@@ -48,7 +48,7 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
 
   return (
     <Card
-      className={cn("overflow-hidden transition-shadow", dropping && "ring-2 ring-primary")}
+      className={cn("studio-shot overflow-hidden transition-[border-color,box-shadow]", dropping && "ring-2 ring-primary")}
       data-testid="box-card"
       data-box-key={box.key}
       data-box-id={box.id}
@@ -75,7 +75,7 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
           type="button"
           onClick={() => sb.openFocus(box.id)}
           aria-label={`Open shot ${number}`}
-          className="absolute right-2 top-2 rounded-md bg-black/55 p-1.5 text-white/90 backdrop-blur transition-colors hover:bg-black/75"
+          className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-md border border-white/20 bg-black/70 p-1.5 text-white/90 backdrop-blur transition-colors hover:bg-black/75"
           data-testid="box-open"
         >
           <Maximize2 className="h-3.5 w-3.5" />
@@ -85,7 +85,7 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
       <div className="space-y-3 p-4">
         {/* Slate ---------------------------------------------------------------- */}
         <div className="flex items-start gap-3">
-          <span className="mt-0.5 shrink-0 font-mono text-lg font-semibold tabular-nums text-foreground/30">{String(number).padStart(2, "0")}</span>
+          <span className="mt-0.5 flex h-10 min-w-10 shrink-0 items-center justify-center rounded-lg border border-primary/30 bg-background px-1.5 font-mono text-lg font-semibold tabular-nums text-primary">{String(number).padStart(2, "0")}</span>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="font-mono text-xs text-foreground/60">
@@ -224,6 +224,7 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
             disabled={!!busy}
             onClick={() => (blocked ? toast.info(blocked) : void sb.rewrite(box))}
             title={blocked ?? "Rewrite this shot's scene from the treatment and the words sung in it. Its footage is not touched."}
+            variant="generation"
             data-testid="box-rewrite"
           >
             <Wand2 className="mr-1.5 h-3.5 w-3.5" /> Regenerate scene
