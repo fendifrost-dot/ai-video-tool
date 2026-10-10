@@ -16,6 +16,9 @@
  *   4. the place, when the shot is set in an approved location (its words are in the prompt anyway)
  *   5. props with an approved picture
  *
+ * Under the cap the pictures a shot cannot do without (a screen, a person, an exact garment) take their places before
+ * the ones its words can carry (a position, a place, a prop); the order of what is sent does not change.
+ *
  * A picture that does NOT fit is never a quiet demotion: a screen picture, an exact garment or an identity left out
  * BLOCKS the shot before spend. The cap is the route's limit, not a reason to weaken what the shot requires — the
  * director takes a reference off, splits the shot, or relaxes a piece on purpose (unticks it).
@@ -138,8 +141,19 @@ export function planStillReferences(input: ReferenceInput): ReferencePlan {
   const seen = new Set<string>();
   const unique = wanted.filter((r) => (seen.has(`${r.source}:${r.id}`) ? false : (seen.add(`${r.source}:${r.id}`), true)));
   const cap = Math.max(0, Math.floor(input.cap));
-  const sent = unique.slice(0, cap);
-  for (const r of unique.slice(cap)) notSent.push({ ref: r, why: `the image endpoint takes ${cap} reference picture${cap === 1 ? "" : "s"}; the ones before it are more decisive` });
+  // Under the cap, the pictures the shot cannot be made without take their places first, in order; what is left goes
+  // to the rest, in order. A position, a place or a prop is carried by its words when it does not fit — a screen, a
+  // person or an exact garment is not, so a position to hold must never be what pushes an exact garment out and
+  // blocks the shot (IB c017, 10 Oct 2026). The sent pictures keep the order above: a screen stays <IMAGE_0>.
+  const kept = new Set<StillReference>();
+  for (const r of unique) if (kept.size < cap && REQUIRED_ROLES.has(r.role)) kept.add(r);
+  for (const r of unique) if (kept.size < cap && !REQUIRED_ROLES.has(r.role)) kept.add(r);
+  const sent = unique.filter((r) => kept.has(r));
+  const takes = `the image endpoint takes ${cap} reference picture${cap === 1 ? "" : "s"}`;
+  for (const r of unique) {
+    if (kept.has(r)) continue;
+    notSent.push({ ref: r, why: REQUIRED_ROLES.has(r.role) ? `${takes}; the ones before it are more decisive` : `${takes}, and the people, screens and exact garments of the shot need them; this one is asked for in words` });
+  }
   for (const n of notSent) {
     if (input.isPerformance) continue;
     if (!REQUIRED_ROLES.has(n.ref.role)) continue;

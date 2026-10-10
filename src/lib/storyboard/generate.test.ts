@@ -6,7 +6,9 @@ vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 
 import { parseShotSpec } from "@/lib/treatment/shotSpec";
 import { boxFromRow, boxWrite, type BoxRow } from "./boxes";
-import { boxShot, FULL_BLEED, madeFromBox, NO_MARKS, wardrobeWords } from "./generate";
+import { boxShot, FULL_BLEED, madeFromBox, NO_MARKS, previewStillRequest, wardrobeWords } from "./generate";
+import { indexEntities, type ContinuityEntity } from "@/lib/continuity/entities";
+import { resolveCast } from "@/lib/casting/cast";
 
 function box(shotType: "b_roll" | "performance") {
   const spec = parseShotSpec({ id: "c001", purpose: "a ring on a marble console under one hard light", shotType, kind: shotType === "performance" ? "performance" : "broll", timeline: { start: 0, end: 4 } });
@@ -59,6 +61,27 @@ describe("every picture the storyboard draws", () => {
     expect(FULL_BLEED).toMatch(/not a scan of a film frame/);
     expect(FULL_BLEED).toMatch(/no light leak at the edges/);
     expect(FULL_BLEED).toMatch(/no scratches, dust or hair/);
+  });
+});
+
+describe("a correction on the shot is not undone by the words appended to its prompt", () => {
+  const models = (description: string): ContinuityEntity => ({ id: "e1", projectId: "p1", variationId: "v1", kind: "character", key: "THE_WALKERS", name: "The walkers", description, constraints: "", approvedAssetId: null, referenceAssetIds: [], cast: { role: "fictional", identityMode: "invent", artistId: null }, outfit: null, archived: false, createdAt: "t", updatedAt: "t" });
+  function ground(description: string) {
+    const spec = parseShotSpec({ id: "c003", purpose: "At eye level, walkers pass close to the lens among burning trees. No visible ACME letters, emblem geometry, or logo-shaped cleared paths.", shotType: "b_roll", kind: "broll", timeline: { start: 8, end: 12 }, cast: { members: [{ key: "THE_WALKERS", action: "cross paths", placement: "among the trees", framing: "medium", identityMode: null }], open: false, none: false } });
+    const w = boxWrite({ key: "c003", start: 8, end: 12, section: "intro", generated: spec, override: null, locked: false, origin: "treatment", history: [] });
+    const b = boxFromRow({ id: "r3", project_id: "p1", shot_number: 3, ...w, updated_at: "2026-10-09T00:00:00Z" } as BoxRow)!;
+    return { b, cast: resolveCast(b.spec, indexEntities([models(description)])) };
+  }
+
+  it("a character whose own words ask for the name the shot forbids stops the request, where every caller builds it", () => {
+    const { b, cast } = ground("People walking the cleared strokes of the ACME emblem cut into the forest floor.");
+    expect(() => boxShot(b, [], { cast })).toThrow(/this shot says “No visible ACME letters.*The walkers says “.*ACME emblem.*Nothing was generated\./);
+    expect(() => previewStillRequest(b, [], { cast })).toThrow(/Nothing was generated\./);
+  });
+
+  it("once the character's description agrees with the shot, the same request is built", () => {
+    const { b, cast } = ground("People in the show's looks, moving in deliberate, intersecting formations.");
+    expect(boxShot(b, [], { cast }).prompt).toContain("The walkers — People in the show's looks");
   });
 });
 

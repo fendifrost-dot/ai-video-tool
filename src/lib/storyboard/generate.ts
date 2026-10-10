@@ -42,6 +42,7 @@ import { activeVariationIdOf } from "@/lib/queries/variations";
 import { resolveEvents, type EventClock } from "./events";
 import { planAssign } from "./media";
 import { assertPlanCovers, temporalPlan, type TemporalPlan } from "./temporal";
+import { conflictMessage, promptConflicts } from "./promptAudit";
 
 /** Every job the storyboard starts carries this run id, so the box jobs can be told apart from a Runs-page batch. */
 export const STORYBOARD_RUN = "storyboard";
@@ -208,6 +209,13 @@ export function boxShot(
   }
   for (const line of [NO_MARKS, FULL_BLEED])
     if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
+  // The entities' words are the same in every shot, so they cannot bend to one shot's correction: a name this shot's
+  // own words forbid, asked for by a place or a person appended above, stops the request here — before the preview,
+  // the page and the driver, which all build from this function (promptAudit.ts).
+  const s = box.spec;
+  const own = [s.openingFrame, s.purpose, s.performanceDirection, s.environment?.description, ...(s.requiredElements ?? [])].filter(Boolean).join(" ");
+  const conflicts = promptConflicts(own, [...(source?.lines ?? []), ...(cast?.lines ?? [])].map((text) => ({ from: text.includes(" — ") ? text.split(" — ")[0].trim() : "the project's continuity", text })));
+  if (conflicts.length) throw new Error(conflictMessage(conflicts));
   return shot;
 }
 
