@@ -294,3 +294,19 @@ least as much as which image model draws the still.
 vocal (14.68 s), on the hook's word (63.16 s), and as the board is now (62.75 s). Nothing was moved.
 
 **Paused by the director at 00:38 CT:** all new paid generation. Spend and jobs: `docs/LEDGER_IB_FIRST_HALF_2026-10-10.md`.
+
+
+### 9b · The bounded comparison the director then authorized (10 Oct 01:09 CT)
+
+One shot (c009, rider in profile), one shared scene text, eight stills: four from xAI through `world-still-proxy`
+with the approved rider picture, four from Higgsfield's web app through the Claude connector (`soul_cinema_studio`;
+an exception he granted for this experiment only). All eight were shown to him anonymously as A–H and are filed in
+AVT as unselected tests. OBSERVED: with the rider picture attached the Higgsfield model returned a studio portrait
+twice (no horse, forest or fire); from text alone it drew the scene with a different woman. VERIFIED from
+Higgsfield's docs: the key-based API runs Soul Cinema as text plus an optional trained character id, with no picture
+input, and Control Center's allowlist has no Soul model. No motion test has been run — the two clips wait for his
+choice. Record and answer key: project doc `claude/avt-realism-comparison-2026-10-10.md`. Spend: ledger section D.
+
+The working machine was recycled at about 00:58 CT. The three switch-timing previews and the three-way performance
+videos were rebuilt from the selected clips, the song and the delivered side-by-sides, and sent to him at 01:10 and
+01:27 CT. The local merge of main into #227's branch was lost and has to be redone when that rework starts.
