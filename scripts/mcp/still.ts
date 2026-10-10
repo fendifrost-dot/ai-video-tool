@@ -710,6 +710,8 @@ async function cmdClip(
   const blockingCast = castProblems(cast).filter((p) => p.level === "blocking");
   if (blockingCast.length)
     throw new Error(`${key}: cast problems — ${blockingCast.map((p) => p.text).join("; ")}`);
+  for (const c of boxPromptConflicts(box, { continuity, cast, outfit: w.outfitOf(box) }))
+    console.log(`CHECK ${key}: ${conflictNote(c)}`);
   const linkLines = linkPromptLines(linksOfBox(box, w.board));
   // the clock the page resolves timed events on: lyric timing, the song's beats (bundle/analysis.json when fetched), lighting states
   const beats = w.bundle.analysis

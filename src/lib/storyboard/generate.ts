@@ -228,7 +228,10 @@ export function boxPromptConflicts(box: StoryboardBox, opts: Pick<BoxShotOptions
   const added = [...(c?.location ? [c.location] : []), ...(c?.props ?? []), ...(c?.lighting ? [c.lighting] : [])].map((e) => ({ from: e.name, text: words(e) }));
   if (!isPerformance) {
     for (const m of opts.cast?.members ?? []) added.push({ from: m.entity.name, text: words(m.entity) });
-    if (opts.outfit?.outfit) added.push({ from: `the outfit “${opts.outfit.outfit.name}”`, text: outfitWords(opts.outfit.outfit) });
+    // the outfit's words are written on the primary artist's line (castSource `wears`): in a shot he is not in they
+    // do not reach the prompt, whatever the scene wears
+    const artistIsCast = (opts.cast?.members ?? []).some((m) => m.entity.cast?.role === "primary_artist");
+    if (opts.outfit?.outfit && artistIsCast) added.push({ from: `the outfit “${opts.outfit.outfit.name}”`, text: outfitWords(opts.outfit.outfit) });
   }
   return promptConflicts(own, added);
 }

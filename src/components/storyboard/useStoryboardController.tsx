@@ -896,7 +896,7 @@ export function useStoryboardController(projectId: string): StoryboardController
   );
   /** What the confirmation says about the shot's route, links and pictures — and whether it may go at all. */
   const generationNotes = useCallback(
-    (box: StoryboardBox): { text: string; blocked: string | null } => {
+    (box: StoryboardBox): { text: string; blocked: string | null; conflicts: string } => {
       const r = referencesOf(box);
       const o = outfitFlagsOf(box);
       // a shot that needs a screen picture, an exact garment or an identity is not drawn from words when the pictures cannot go;
@@ -907,9 +907,11 @@ export function useStoryboardController(projectId: string): StoryboardController
       const wears = worn.outfit ? ` He wears “${worn.outfit.name}” v${worn.outfit.outfit.version} (${worn.source === "scene" ? `the scene “${worn.scene?.name}”` : "set on this shot"}).` : "";
       // a name this shot's own words refuse, asked for by a place, a person or the outfit it is drawn with: said here,
       // before the spend, for the director to decide (promptAudit.ts)
-      const conflicts = boxPromptConflicts(box, { continuity: continuityOf(box), cast: castOf(box), outfit: worn }).map(conflictNote);
-      const warnings = [...r.problems.filter((p) => p.level === "warning").map((p) => p.text), ...o.filter((f) => f.level === "warning").map((f) => f.text), ...conflicts].map((t) => ` NOTE: ${t}`).join("");
-      return { text: ` ${routeLine(routeOf(box))}${wears}${pictures}${warnings}`, blocked: blocking ? `${blocking.text} ${blocking.fix}` : null };
+      const conflicts = boxPromptConflicts(box, { continuity: continuityOf(box), cast: castOf(box), outfit: worn }).map(conflictNote).map((t) => ` NOTE: ${t}`).join("");
+      const warnings = [...r.problems.filter((p) => p.level === "warning").map((p) => p.text), ...o.filter((f) => f.level === "warning").map((f) => f.text)].map((t) => ` NOTE: ${t}`).join("");
+      // `conflicts` is also given apart: a clip that draws the shot's image first pays for the same prompt, and its
+      // confirmation says so too
+      return { text: ` ${routeLine(routeOf(box))}${wears}${pictures}${warnings}${conflicts}`, blocked: blocking ? `${blocking.text} ${blocking.fix}` : null, conflicts };
     },
     [referencesOf, routeOf, outfitFlagsOf, outfitOf, continuityOf, castOf],
   );
@@ -1051,7 +1053,8 @@ export function useStoryboardController(projectId: string): StoryboardController
             timed +
             (est.clipDrawsImage ? shapeNote : "") +
             staleNote(box) +
-            (wardrobeGapOf(box) ? ` NOTE: ${wardrobeGapOf(box)}` : ""),
+            (wardrobeGapOf(box) ? ` NOTE: ${wardrobeGapOf(box)}` : "") +
+            (est.clipDrawsImage ? notes.conflicts : ""),
           confirmLabel: `Restage take · ${usd(est.clip)}`,
           testId: "confirm-generate-clip",
           picture: picture("The place he is put in"),
@@ -1102,7 +1105,8 @@ export function useStoryboardController(projectId: string): StoryboardController
           body:
             `${clipPlan.reason} So a clip of the whole shot is not generated. What can be done instead: ` +
             clipPlan.alternatives.map((a) => ALTERNATIVE_LABEL[a]).join(". ") +
-            `. (An effect is set on the beat itself, under Timed beats.) "In order" costs about ${usd(est.clip)} at list price and makes no promise about when each beat happens.`,
+            `. (An effect is set on the beat itself, under Timed beats.) "In order" costs about ${usd(est.clip)} at list price and makes no promise about when each beat happens.` +
+            (est.clipDrawsImage ? notes.conflicts : ""),
           confirmLabel: "Split at the beats",
           testId: "confirm-split-beats",
           onConfirm: () => splitAtBeats(box),
@@ -1118,7 +1122,8 @@ export function useStoryboardController(projectId: string): StoryboardController
           " The clip takes a few minutes and lands on this shot only." +
           (clipPlan.mode === "single" && clipPlan.effects > 0 ? ` Its ${clipPlan.effects === 1 ? "effect is" : `${clipPlan.effects} effects are`} made by the edit when the shot plays, not drawn into the clip.` : "") +
           (est.clipDrawsImage ? shapeNote : "") +
-          staleNote(box),
+          staleNote(box) +
+          (est.clipDrawsImage ? notes.conflicts : ""),
         confirmLabel: `Generate clip · ${usd(est.clip)}`,
         testId: "confirm-generate-clip",
         picture: picture("The clip is made from this image"),
