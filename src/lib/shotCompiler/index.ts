@@ -34,10 +34,12 @@ export {
   motionContractToSentence,
   negativePromptLocks,
   seedanceAnglePrompt,
+  dressSentences,
   PLACE_LIGHT,
   PLACE_LIGHT_CHANGING,
   wrapPrompt,
 } from "./prompts";
+export type { DressWords } from "./prompts";
 
 export { compileToWorldBatch, compositorArgs, toCoveragePlan, toShotsJson, toStubsJson, variantPath } from "./compile";
 export type { CoveragePlan, CoveragePlanSlot, CoveragePlanSub } from "./compile";

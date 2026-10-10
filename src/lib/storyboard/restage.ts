@@ -6,6 +6,12 @@
  * holds his face and wardrobe). What goes to the model is only the part of the take this shot plays, cut out of the
  * master in the browser, to the frame (media/mp4Cut.ts).
  *
+ * A shot that wears an outfit is DRESSED on the way in: the outfit's garment pictures go with the place, and the
+ * request says he wears those and not the take's clothes (planRestageDress). That is the director's own description
+ * of these shots (9 Oct 2026): "That footage is supposed to be incorporated in some of the AI footage and the
+ * clothing swap is to be utilized when inputting me in the AI footage." The model draws him again in the garments —
+ * it does not copy them — so the confirmation says so and the job records what it was given.
+ *
  * The result keeps the take's place on the song. It is filed as a take of its own with a sync of its own — its first
  * frame sits at the song time the cut began — so the storyboard, Review and "Check this cut" address it by the song
  * clock exactly as they address the master: never by a stored range, never stretched. It is never offered as the
@@ -29,6 +35,7 @@ import { madeFromBox, pointsAtEntities, DEFAULT_BOX_LOOK, STORYBOARD_RUN } from 
 import { assertPlanCovers, scriptOf, temporalPlan, type TemporalPlan } from "./temporal";
 import type { BoxMediaItem, MediaAsset, TakeSync } from "./media";
 import { resolveLookPreset } from "@/lib/shotCompiler";
+import type { OutfitRecord } from "@/lib/wardrobe/outfits";
 
 /** What the model accepts as a source, seconds. */
 export const RESTAGE_MIN_SECONDS = 4;
@@ -67,10 +74,92 @@ export function restageEstimateUsd(seconds: number): number {
   return seedanceUsd(RESTAGE_RESOLUTION, seconds);
 }
 
-/** What is kept of him, word for word — the take's own description when Setup has one. */
-export function restageKeep(take: Pick<MediaAsset, "shows">): string[] {
+/**
+ * What is kept of him, word for word — the take's own description when Setup has one. A restaging that DRESSES him
+ * keeps the man and not the clothes: the take's wardrobe words are left out, or the request would ask for the
+ * camouflage shirt and the coat at once.
+ */
+export function restageKeep(take: Pick<MediaAsset, "shows">, dressed = false): string[] {
+  if (dressed) return ["his face, skin, hair and build"];
   const shows = take.shows?.trim();
   return shows ? [`his face, skin and build`, shows] : ["his face, skin and build", "every piece of his wardrobe and everything he wears, exactly as in @Video1"];
+}
+
+// --- dressing him: the shot's outfit, from its garment pictures ------------------------------------------------------
+
+/**
+ * How many reference pictures one restaging request has been SEEN to take beside the take: the place and two
+ * garments (10 Oct 2026, provider jobs bb645697 and 78f876e4 — both accepted, both came back with the place, the coat
+ * and the cap; docs/research/results/2026-10-10-dressed-restage). It is what was seen, not the model's documented
+ * limit — nobody has sent four. Raise it only after a request with more has come back with every garment in it.
+ */
+export const RESTAGE_MAX_PICTURES = 3;
+/** The bucket the artist's garment photographs are in (supabase/functions/_shared/stillReferences.ts WARDROBE_BUCKET). */
+export const DRESS_BUCKET = "wardrobe-refs" as const;
+
+export type DressPiece = { id: string; label: string; bucket: typeof DRESS_BUCKET; path: string };
+/** What a restaging dresses him in: the pieces whose pictures go, in order, and the outfit's own words. */
+export type RestageDress = { pieces: DressPiece[]; words: string; outfitName: string | null };
+/** A garment as the artist's wardrobe holds it: what it is called and where its picture is (null = no picture on file). */
+export type GarmentPicture = { label: string; path: string | null };
+
+export type DressPlan = {
+  /** Null = the shot wears nothing exact: he keeps what the take shows. */
+  dress: RestageDress | null;
+  /** Why the shot cannot be dressed as it asks. Any entry stops the restaging before spend. */
+  problems: string[];
+  /** True while the wardrobe is still being read: nothing is known yet — not dressed, not refused, and not sent. */
+  pending: boolean;
+};
+
+/**
+ * The garments a restaging dresses him in — every exact piece the shot wears (its outfit's, or its own list), each
+ * with its picture, or a reason nothing is sent. A piece is never left out to make the rest fit: a look with more
+ * pieces than the request takes is the director's to narrow (the shot's own garments), on purpose, by name.
+ *
+ * Pure. `room` = how many garment pictures the request takes beside the place.
+ */
+export function planRestageDress(input: {
+  /** The exact pieces the shot wears (wardrobe/outfits.ts effectiveGarments). */
+  ids: readonly string[];
+  /** The artist's wardrobe, by record id. */
+  onFile: ReadonlyMap<string, GarmentPicture>;
+  /** False while the wardrobe is still being read: nothing is called missing yet, and nothing is sent. */
+  loaded: boolean;
+  words: string;
+  outfitName: string | null;
+  room: number;
+}): DressPlan {
+  if (input.ids.length === 0) return { dress: null, problems: [], pending: false };
+  if (!input.loaded) return { dress: null, problems: [], pending: true };
+  const of = input.outfitName ? `“${input.outfitName}”` : "this shot";
+  const problems: string[] = [];
+  const pieces: DressPiece[] = [];
+  for (const id of input.ids) {
+    const g = input.onFile.get(id);
+    if (!g) problems.push(`A piece ${input.outfitName ? `of ${of}` : "this shot wears"} (${id}) is no longer in the wardrobe: it cannot be sent as a picture. Choose it again, or take it off.`);
+    else if (!g.path?.trim()) problems.push(`${g.label} has no photograph on file: he cannot be dressed in it from a picture. Add its photograph in the wardrobe, or take it off.`);
+    else pieces.push({ id, label: g.label, bucket: DRESS_BUCKET, path: g.path.trim() });
+  }
+  const room = Math.max(0, Math.floor(input.room));
+  if (input.ids.length > room) {
+    const names = input.ids.map((id) => input.onFile.get(id)?.label ?? id).join(", ");
+    problems.push(
+      `${of === "this shot" ? "This shot wears" : `${of} has`} ${input.ids.length} pieces (${names}) and a restaging takes ${room} garment picture${room === 1 ? "" : "s"} beside the place. ` +
+        `None is left out quietly: name on this shot the ${room === 1 ? "piece" : `${room} pieces`} that must be exact (its own garments) — whatever a picture does not replace stays as your take shows it.`,
+    );
+  }
+  if (problems.length) return { dress: null, problems, pending: false };
+  return { dress: { pieces, words: input.words.trim(), outfitName: input.outfitName }, problems: [], pending: false };
+}
+
+/** What the confirmation says about a restaging that dresses him — before the press, in the director's words. */
+export function dressNote(dress: RestageDress): string {
+  const names = dress.pieces.map((p) => p.label).join(", ");
+  return (
+    `He is DRESSED here, not left in what he was filmed in: ${dress.outfitName ? `“${dress.outfitName}” — ` : ""}${names} ${dress.pieces.length === 1 ? "goes" : "go"} to the video model as ${dress.pieces.length === 1 ? "a picture" : "pictures"}, ` +
+    `and it draws him again wearing ${dress.pieces.length === 1 ? "it" : "them"}. His face and the garments are redrawn from the take and the pictures, not copied: check each piece against its photograph, lettering and small marks first.`
+  );
 }
 
 /**
@@ -167,9 +256,16 @@ export function restageShot(input: {
   temporal: TemporalPlan;
   /** What the shot's continuity references resolve to. Required when it has any (generate.ts pointsAtEntities). */
   continuity?: ShotContinuity;
+  /** The garments he is dressed in instead of the take's clothes (planRestageDress). Absent = he keeps what the take shows. */
+  dress?: RestageDress | null;
 }): RestageRequest {
   const seconds = Math.round(input.cut.seconds);
   const plan = input.temporal;
+  const dressed = !!input.dress && input.dress.pieces.length > 0;
+  // the place is one picture; the garments are the rest — a request the model was never seen to take is not sent
+  if (dressed && input.dress!.pieces.length > RESTAGE_MAX_PICTURES - 1) {
+    throw new Error(`A restaging takes ${RESTAGE_MAX_PICTURES - 1} garment pictures beside the place and this one was given ${input.dress!.pieces.length}. Nothing was generated.`);
+  }
   if (pointsAtEntities(input.box.spec) && !input.continuity) {
     throw new Error("This shot points at the project's continuity entities and the restaging was built without them. Nothing was generated.");
   }
@@ -197,7 +293,8 @@ export function restageShot(input: {
     masterStart: songStart,
     angle: [restageAngle(input.box), light, script].filter(Boolean).join(" "),
     ...(plan.mode === "timed_script" ? { temporal: { mode: "timed_script" as const, beats: plan.beats, measured: plan.measured, asked } } : {}),
-    keep: restageKeep(input.source.take),
+    keep: restageKeep(input.source.take, dressed),
+    ...(dressed ? { dress: input.dress!.pieces, dress_words: input.dress!.words } : {}),
     resolution: RESTAGE_RESOLUTION,
     still_path: input.stillPath,
   });
@@ -224,6 +321,10 @@ export async function restageBox(input: {
   temporal: TemporalPlan;
   /** What the shot's continuity references resolve to. */
   continuity?: ShotContinuity;
+  /** The garments he is dressed in instead of the take's clothes (planRestageDress). */
+  dress?: RestageDress | null;
+  /** The outfit the shot wore when this was asked for, kept on the job (wardrobe/outfits.ts jobOutfitRecord). */
+  outfit?: OutfitRecord | null;
   onStage?: (text: string) => void;
 }): Promise<RestageResult> {
   const say = input.onStage ?? (() => undefined);
@@ -261,10 +362,10 @@ export async function restageBox(input: {
   say("uploading the cut…");
   const sourcePath = buildStoragePath(deps.userId, input.projectId, "seedance", `${STORYBOARD_RUN}_${input.box.key}_${Date.now()}_src.mp4`);
   await uploadBytesToBucket("project-clips", sourcePath, cut.bytes, "video/mp4", { upsert: true });
-  const req = restageShot({ box: input.box, lyricLines: input.lyricLines, source: input.source, sourcePath, stillPath: input.stillPath, cut: { start: cut.start, seconds: cut.seconds }, aspect: input.aspect, temporal: input.temporal, continuity: input.continuity });
+  const req = restageShot({ box: input.box, lyricLines: input.lyricLines, source: input.source, sourcePath, stillPath: input.stillPath, cut: { start: cut.start, seconds: cut.seconds }, aspect: input.aspect, temporal: input.temporal, continuity: input.continuity, dress: input.dress });
   say("sending it to render…");
   const { id, look } = resolveLookPreset(DEFAULT_BOX_LOOK);
-  const result = await submitShot(req.shot, { projectId: input.projectId, variationId: input.box.variationId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [input.box.key]: input.box.id }, madeFrom: { [input.box.key]: madeFromBox(input.box) } }, deps);
+  const result = await submitShot(req.shot, { projectId: input.projectId, variationId: input.box.variationId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [input.box.key]: input.box.id }, madeFrom: { [input.box.key]: madeFromBox(input.box) }, ...(input.outfit ? { outfits: { [input.box.key]: input.outfit } } : {}) }, deps);
   return { ...result, songStart: req.songStart, seconds: req.seconds, estimateUsd: restageEstimateUsd(req.seconds) };
 }
 

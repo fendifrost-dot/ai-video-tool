@@ -108,23 +108,58 @@ export const PLACE_LIGHT_CHANGING = PLACE_LIGHT.replace(
   "The environment changes only as the timed changes say, at the seconds they say; until then and apart from them it is still, and only he and the camera move.",
 );
 
+/** What a restaging dresses him in: each garment by what it is called, in the order its picture is sent, and the outfit's own words. */
+export type DressWords = { pieces: readonly string[]; words?: string };
+
+/**
+ * The sentences that dress him from pictures. The take's clothes are refused by name first — told only "he wears
+ * the coat of @Image2" beside a take in a camouflage shirt, the model has two answers for what is on his body. Each
+ * garment is named by the position of its own picture (the place, when there is one, is @Image1, so the garments
+ * follow it). What the pictures do not replace is the take's: his glasses and jewellery are his, and a restaging that
+ * dropped them would be a different man. The shape is the one the shot-19 tests of 10 Oct 2026 were asked with
+ * (docs/research/results/2026-10-10-dressed-restage) — the shape, not the words: those tests named each garment's
+ * construction by hand, and this names it by its wardrobe label. This wording has not been sent to the model yet.
+ */
+export function dressSentences(dress: DressWords, firstImage: number): string {
+  const names = dress.pieces.map((label, i) => `the garment of @Image${firstImage + i} (${label.replace(/\s+/g, " ").trim()})`);
+  const list = names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+  const one = dress.pieces.length === 1;
+  const words = (dress.words ?? "").replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "");
+  return [
+    "He does NOT wear the clothes of @Video1.",
+    `He wears ${list}.`,
+    words ? `As the outfit is worn: ${words}.` : "",
+    `Reproduce ${one ? "it" : "each"} exactly as its picture shows it — cut, colour, fabric, seams, hardware and any mark on it — and do not redesign it; its front is worn to the front of his body.`,
+    `${one ? "It replaces" : "Each replaces"} what he wears in its place in @Video1; anything else he has on in @Video1 — his glasses, his jewellery — stays exactly as it is there.`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 /**
  * Seedance angle prompt — mirror run_world_batch.py angle_prompt().
  * @Video1 = real take (identity from the clip). keep[] wardrobe constants required.
  * `opts.timedChanges` = the angle sentence carries a script of changes inside the shot (storyboard/temporal.ts).
+ * `opts.dress` = he is dressed from garment pictures instead of keeping the take's clothes (storyboard/restage.ts);
+ * the Python runner has no such thing and refuses a shot that carries one.
  */
 export function seedanceAnglePrompt(
   angle: string,
   keep: string[],
   look: LookPreset | null | undefined,
   withImage: boolean,
-  opts: { timedChanges?: boolean } = {},
+  opts: { timedChanges?: boolean; dress?: DressWords | null } = {},
 ): string {
   const keepStr = keep.filter(Boolean).join(", ") || "his face, hair, skin and every piece of wardrobe";
+  const dress = opts.dress && opts.dress.pieces.length > 0 ? opts.dress : null;
   const parts = [
     `@Video1 is the performer, rapping to camera. Re-shoot the exact same performance from a second camera: ${angle}`,
-    `Keep everything identical to @Video1 — ${keepStr} — and most of all the same mouth movements at the same moments, word for word, in sync with @Video1 from the first frame to the last.`,
+    // "everything identical" beside "he does not wear the clothes of @Video1" is one request saying two things
+    dress
+      ? `Keep ${keepStr} identical to @Video1 — and most of all the same mouth movements at the same moments, word for word, in sync with @Video1 from the first frame to the last.`
+      : `Keep everything identical to @Video1 — ${keepStr} — and most of all the same mouth movements at the same moments, word for word, in sync with @Video1 from the first frame to the last.`,
   ];
+  if (dress) parts.push(dressSentences(dress, withImage ? 2 : 1));
   if (withImage) {
     parts.push(opts.timedChanges ? PLACE_LIGHT_CHANGING : PLACE_LIGHT);
   } else {

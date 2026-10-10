@@ -13,7 +13,10 @@ import { verifyCut } from "./verify";
 import { clipLyrics } from "./build";
 import { footageSummary, setupStatus } from "./setup";
 import { boxShot, placePrompt } from "./generate";
-import { NEVER_WIDER, OPENS_WIDEST, TAKE_FRAMING, restageAngle, restageEstimateUsd, restageKeep, restageSeconds, restageShot, restageSource, restageTemporalPlan, RESTAGE_MAX_SECONDS } from "./restage";
+import { DRESS_BUCKET, NEVER_WIDER, OPENS_WIDEST, RESTAGE_MAX_PICTURES, TAKE_FRAMING, dressNote, planRestageDress, restageAngle, restageEstimateUsd, restageKeep, restageSeconds, restageShot, restageSource, restageTemporalPlan, RESTAGE_MAX_SECONDS, type GarmentPicture } from "./restage";
+import { motionPrompt } from "@/lib/worldBatch/requests";
+import { PROMPT_CAPS } from "@/lib/worldBatch/rates";
+import { LOOK_PRESETS } from "@/lib/shotCompiler";
 
 const AT = "2026-10-03T00:00:00Z";
 function asset(id: string, over: Partial<MediaAsset> = {}): MediaAsset {
@@ -283,5 +286,129 @@ describe("the image a clip is made from", () => {
   it("is the one the director chose, whenever he chose one", () => {
     expect(imageForClip([image("old1", "2026-10-03T10:39:00Z", true), image("new1", "2026-10-03T11:20:00Z")])?.asset.id).toBe("old1");
     expect(imageForClip([])).toBeNull();
+  });
+});
+
+/**
+ * A performance shot that wears an outfit is DRESSED on the way into its place. The director, 9 Oct 2026: "That
+ * footage is supposed to be incorporated in some of the AI footage and the clothing swap is to be utilized when
+ * inputting me in the AI footage." Before this a restaging kept the take's clothes by construction, so the coat scene
+ * could only play him in the camouflage shirt he was filmed in.
+ */
+describe("a restaging dresses him in the outfit the shot wears, from its garment pictures", () => {
+  const COAT = "g-coat";
+  const CAP = "g-cap";
+  const TROUSERS = "g-trousers";
+  const GLASSES = "g-glasses";
+  const onFile = new Map<string, GarmentPicture>([
+    [COAT, { label: "Coat in Bubbled Lambskin - Noir", path: "u/a/coat.jpg" }],
+    [CAP, { label: "Saint Laurent Cap in Cotton Gabardine - Beige and Ivory", path: "u/a/cap.jpg" }],
+    [TROUSERS, { label: "SL look — trousers", path: "u/a/trousers.png" }],
+    [GLASSES, { label: "Glasses — Cazal MOD octagonal", path: "u/a/glasses.jpeg" }],
+  ]);
+  const room = RESTAGE_MAX_PICTURES - 1;
+  const plan = (ids: string[], over: Partial<Parameters<typeof planRestageDress>[0]> = {}) => planRestageDress({ ids, onFile, loaded: true, words: "a button-up shirt and tie under the coat", outfitName: "YSL leather coat", room, ...over });
+  const b = box(70.59, 74.51);
+  const base = { box: b, lyricLines: [], source: { take, sync: sync(), takeIn: 69.7362, takeOut: 73.6562 }, sourcePath: "u/p/seedance/c013_src.mp4", stillPath: "u/p/stills/c013.png", cut: { start: 69.7362, seconds: 4 }, temporal: restageTemporalPlan(b) };
+
+  it("a shot that wears nothing exact is not dressed: he keeps what the take shows, as before", () => {
+    expect(plan([])).toEqual({ dress: null, problems: [], pending: false });
+    const req = restageShot(base);
+    expect(req.shot.dress).toEqual([]);
+    expect(req.shot.keep).toEqual(["his face, skin and build", "a camouflage shirt, dark cap and sunglasses"]);
+    const p = motionPrompt(req.shot, null, true);
+    expect(p).toContain("Keep everything identical to @Video1 — his face, skin and build, a camouflage shirt, dark cap and sunglasses —");
+    expect(p).not.toContain("NOT wear");
+  });
+
+  it("sends each piece's own picture, in the outfit's order, from the wardrobe's bucket only", () => {
+    const r = plan([COAT, CAP]);
+    expect(r.problems).toEqual([]);
+    expect(r.dress).toEqual({
+      pieces: [
+        { id: COAT, label: "Coat in Bubbled Lambskin - Noir", bucket: DRESS_BUCKET, path: "u/a/coat.jpg" },
+        { id: CAP, label: "Saint Laurent Cap in Cotton Gabardine - Beige and Ivory", bucket: DRESS_BUCKET, path: "u/a/cap.jpg" },
+      ],
+      words: "a button-up shirt and tie under the coat",
+      outfitName: "YSL leather coat",
+    });
+    expect(DRESS_BUCKET).toBe("wardrobe-refs");
+  });
+
+  it("never leaves a piece out to make the rest fit: a look with more pieces than the request takes is refused, by name", () => {
+    const r = plan([COAT, TROUSERS, CAP, GLASSES]);
+    expect(r.dress).toBeNull();
+    expect(r.problems).toHaveLength(1);
+    expect(r.problems[0]).toContain("“YSL leather coat” has 4 pieces");
+    expect(r.problems[0]).toContain("Glasses — Cazal MOD octagonal");
+    expect(r.problems[0]).toContain(`takes ${room} garment pictures beside the place`);
+    expect(r.problems[0]).toContain("None is left out quietly");
+  });
+
+  it("refuses a piece the wardrobe no longer has, or one with no photograph — it is not dressed from words", () => {
+    expect(plan([COAT, "gone"]).problems[0]).toContain("no longer in the wardrobe");
+    const noPicture = plan([COAT, CAP], { onFile: new Map([...onFile, [CAP, { label: "the cap", path: null }]]) });
+    expect(noPicture.dress).toBeNull();
+    expect(noPicture.problems[0]).toContain("the cap has no photograph on file");
+  });
+
+  it("while the wardrobe is still being read nothing is known: not dressed, not refused, not sent", () => {
+    expect(plan([COAT, CAP], { loaded: false, onFile: new Map() })).toEqual({ dress: null, problems: [], pending: true });
+  });
+
+  it("the request keeps the man and not the clothes, and names each garment by the place of its own picture", () => {
+    const dress = plan([COAT, CAP]).dress!;
+    const req = restageShot({ ...base, dress });
+    // the take's wardrobe words are not kept: the request would ask for the camouflage shirt and the coat at once
+    expect(restageKeep(take, true)).toEqual(["his face, skin, hair and build"]);
+    expect(req.shot.keep).toEqual(["his face, skin, hair and build"]);
+    expect(req.shot.dress).toEqual(dress.pieces);
+    expect(req.shot.dress_words).toBe("a button-up shirt and tie under the coat");
+    const p = motionPrompt(req.shot, LOOK_PRESETS.film_bar_v1, true);
+    expect(p).toContain("Keep his face, skin, hair and build identical to @Video1 — and most of all the same mouth movements");
+    expect(p).not.toContain("Keep everything identical");
+    expect(p).not.toContain("camouflage");
+    expect(p).toContain("He does NOT wear the clothes of @Video1.");
+    // the place is @Image1: the garments follow it
+    expect(p).toContain("He wears the garment of @Image2 (Coat in Bubbled Lambskin - Noir) and the garment of @Image3 (Saint Laurent Cap in Cotton Gabardine - Beige and Ivory).");
+    expect(p).toContain("As the outfit is worn: a button-up shirt and tie under the coat.");
+    expect(p).toContain("Reproduce each exactly as its picture shows it");
+    expect(p).toContain("anything else he has on in @Video1 — his glasses, his jewellery — stays exactly as it is there");
+    expect(p).toContain("Place him inside the environment of @Image1");
+    // dressed before placed: the order the 10 Oct test was asked in
+    expect(p.indexOf("He does NOT wear")).toBeLessThan(p.indexOf("Place him inside"));
+    expect(p.length).toBeLessThanOrEqual(PROMPT_CAPS.higgsfield);
+    // without a place picture the garments are the first pictures
+    expect(motionPrompt(req.shot, null, false)).toContain("the garment of @Image1 (Coat in Bubbled Lambskin - Noir)");
+  });
+
+  it("the pictures go with the request after the place, one link each, in the order the prompt names them", () => {
+    const req = restageShot({ ...base, dress: plan([COAT, CAP]).dress });
+    const ctx = { prompt: "x", stillUrl: "https://s/still", sourceUrl: "https://s/src", userId: "u", projectId: "p" };
+    const motion = buildMotionRequest(req.shot, { ...ctx, dressUrls: ["https://s/coat", "https://s/cap"] });
+    expect(motion.body).toMatchObject({ referenceVideoUrls: ["https://s/src"], referenceImageUrls: ["https://s/still", "https://s/coat", "https://s/cap"] });
+    // a picture that could not be read is never a shorter list: every name after it would point at the wrong picture
+    expect(() => buildMotionRequest(req.shot, { ...ctx, dressUrls: ["https://s/coat"] })).toThrow(/2 garment pictures and 1 could be read — nothing was sent/);
+    expect(() => buildMotionRequest(req.shot, ctx)).toThrow(/nothing was sent/);
+    expect(() => buildMotionRequest(req.shot, { ...ctx, dressUrls: ["https://s/coat", ""] })).toThrow(/nothing was sent/);
+  });
+
+  it("is not sent with more garment pictures than a request was ever seen to take", () => {
+    const three = { pieces: [COAT, CAP, GLASSES].map((id) => ({ id, label: onFile.get(id)!.label, bucket: DRESS_BUCKET, path: onFile.get(id)!.path! })), words: "", outfitName: null };
+    expect(() => restageShot({ ...base, dress: three })).toThrow(/takes 2 garment pictures beside the place and this one was given 3/);
+  });
+
+  it("a request too long for the video model is refused, never cut short", () => {
+    const dress = { ...plan([COAT, CAP]).dress!, words: "worn open ".repeat(200) };
+    const req = restageShot({ ...base, dress });
+    expect(() => motionPrompt(req.shot, LOOK_PRESETS.film_bar_v1, true)).toThrow(/Nothing was sent/);
+  });
+
+  it("says before the press that he is drawn again in the garments, not copied into them", () => {
+    const note = dressNote(plan([COAT, CAP]).dress!);
+    expect(note).toContain("He is DRESSED here");
+    expect(note).toContain("“YSL leather coat” — Coat in Bubbled Lambskin - Noir, Saint Laurent Cap in Cotton Gabardine - Beige and Ivory go to the video model as pictures");
+    expect(note).toContain("redrawn from the take and the pictures, not copied");
+    expect(note).toContain("check each piece against its photograph");
   });
 });

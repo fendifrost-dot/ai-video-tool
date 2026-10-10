@@ -25,7 +25,8 @@
  * director takes a reference off, splits the shot, or relaxes a piece on purpose (unticks it).
  *
  * A performance still is the empty PLACE his take is restaged into: nobody is drawn, so garments and people are not
- * sent with it (they would put a stranger in the plate).
+ * sent with it (they would put a stranger in the plate). The garments go with the RESTAGING instead, which dresses
+ * him on the way in (restage.ts planRestageDress).
  *
  * Pure: no react, no supabase.
  */
@@ -158,7 +159,7 @@ export function planStillReferences(input: ReferenceInput): ReferencePlan {
     // the plate is the place, drawn empty: the place picture leads and nobody is sent with it
     if (placeRef) wanted.push(placeRef);
     // the plate is drawn empty: a garment or a person sent with it would put somebody in it
-    for (const g of input.garments) if (g.onFile) notSent.push({ ref: { source: "character_feature", id: g.id, role: "garment", label: g.onFile.label }, why: "a performance still is the empty place; he is his take" });
+    for (const g of input.garments) if (g.onFile) notSent.push({ ref: { source: "character_feature", id: g.id, role: "garment", label: g.onFile.label }, why: "a performance still is the empty place; he is his take, and what he wears goes with the restaging of it" });
     for (const r of input.extra ?? []) notSent.push({ ref: r, why: "a performance still is the empty place; nobody is drawn in it" });
   } else {
     wanted.push(...(input.extra ?? []));
