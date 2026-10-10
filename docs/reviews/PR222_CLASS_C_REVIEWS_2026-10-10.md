@@ -112,3 +112,28 @@ Labels follow the repo taxonomy: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / R
   agent).
 - That it reproduces a garment as exactly as the model in use, and addresses its inputs as `<IMAGE_n>` with the first
   as the edited frame (HYPOTHESIS; test: the paired comparison in REF-2).
+
+## Second pass (at `dd8f1ba`)
+
+| review | verdict | remaining | disposition |
+|---|---|---|---|
+| Architecture | APPROVE WITH CHANGES | R1 (blocking): an app published before the models were listed reads only `maxReferences`; told 5, it would fill optional pictures to 5 and quote the usual rate — so redeploying the function before Publish, or a tab holding the old bundle, reproduced A1 and A2 | **applied** — the proxy answers `maxReferences` as the USUAL model's limit; an app that reads `referenceModels` takes the most from there. Both deploy orders are safe. |
+| Security | APPROVE | two nits: REF-1's wording about three pictures; an empty `model` forwarded on the no-picture route | **applied** |
+| Product | APPROVE WITH CHANGES | B1 (blocking): "Generate clip" on a shot with no image draws the same still without the disclosure | **applied** — the three clip confirmations carry `stillCostNote` when the clip draws the image |
+
+Also applied from the second pass: an optional picture held back at the usual model's limit is said to be held back
+because sending it would move the still to another model (not "the endpoint takes 5"); the usual model is the first
+listed that takes any picture (one set to 0 by an override is passed over); REF-2 states both list tiers.
+
+Accepted as follow-ups by the reviewers, and open: the paired comparison and the 4- and 5-picture live requests
+(REF-2); an explicit `quality`; a board-level one-model setting in the app; automatic fallback of the planning cap
+after an "at most N" rejection; flagging pieces left off earlier that now fit; the order of remedies in the block
+message; `stillCostNote`'s wording after 2 Nov; a server ceiling on `maxCostUsd` and a per-user rate limit
+(pre-existing); renaming `actualCostUsd`; the owner confirming in Lovable's auth settings that sign-up and
+anonymous-to-email conversion are off.
+
+## Deploy
+
+Either order is safe. The function is redeployed from Lovable (Publish does not redeploy an edge function); the app
+is published from Lovable. After both: one dry run (the answer lists `referenceModels`), then one supervised
+four-picture, one-candidate request before any board work relies on it.

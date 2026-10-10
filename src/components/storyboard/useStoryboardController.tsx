@@ -1068,7 +1068,7 @@ export function useStoryboardController(projectId: string): StoryboardController
             (est.clipDrawsImage ? shapeNote : "") +
             staleNote(box) +
             (wardrobeGapOf(box) ? ` NOTE: ${wardrobeGapOf(box)}` : "") +
-            (est.clipDrawsImage ? notes.conflicts : ""),
+            (est.clipDrawsImage ? `${stillCostNote(referenceSupport, references.delivered ? references.sent.length : 0)}${notes.conflicts}` : ""),
           confirmLabel: `Restage take · ${usd(est.clip)}`,
           testId: "confirm-generate-clip",
           picture: picture("The place he is put in"),
@@ -1120,7 +1120,7 @@ export function useStoryboardController(projectId: string): StoryboardController
             `${clipPlan.reason} So a clip of the whole shot is not generated. What can be done instead: ` +
             clipPlan.alternatives.map((a) => ALTERNATIVE_LABEL[a]).join(". ") +
             `. (An effect is set on the beat itself, under Timed beats.) "In order" costs about ${usd(est.clip)} at list price and makes no promise about when each beat happens.` +
-            (est.clipDrawsImage ? notes.conflicts : ""),
+            (est.clipDrawsImage ? `${stillCostNote(referenceSupport, references.delivered ? references.sent.length : 0)}${notes.conflicts}` : ""),
           confirmLabel: "Split at the beats",
           testId: "confirm-split-beats",
           onConfirm: () => splitAtBeats(box),
@@ -1137,7 +1137,7 @@ export function useStoryboardController(projectId: string): StoryboardController
           (clipPlan.mode === "single" && clipPlan.effects > 0 ? ` Its ${clipPlan.effects === 1 ? "effect is" : `${clipPlan.effects} effects are`} made by the edit when the shot plays, not drawn into the clip.` : "") +
           (est.clipDrawsImage ? shapeNote : "") +
           staleNote(box) +
-          (est.clipDrawsImage ? notes.conflicts : ""),
+          (est.clipDrawsImage ? `${stillCostNote(referenceSupport, references.delivered ? references.sent.length : 0)}${notes.conflicts}` : ""),
         confirmLabel: `Generate clip · ${usd(est.clip)}`,
         testId: "confirm-generate-clip",
         picture: picture("The clip is made from this image"),

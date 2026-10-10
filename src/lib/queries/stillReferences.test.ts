@@ -10,7 +10,8 @@ const PROBE = {
   ok: true,
   dryRun: true,
   referencesAccepted: true,
-  maxReferences: 5,
+  // the usual model's limit: what an app published before the list existed reads, and all it reads
+  maxReferences: 3,
   referenceModels: [
     { model: "model-a", maxReferences: 3, usdPerImage: { "1k": 0.07, "2k": 0.07 }, usdPerInputImage: 0, basis: "x" },
     { model: "model-b", maxReferences: 5, usdPerImage: { "1k": 0.06, "2k": 0.08 }, usdPerInputImage: 0.01, basis: "y" },
@@ -31,6 +32,12 @@ describe("what the app knows about the pictures a still can go with is what the 
     expect(baseCapOf(s)).toBe(3);
     expect(readSupport(null)).toEqual(NO_STILL_REFERENCE_SUPPORT);
     expect(readSupport({ referencesAccepted: false, maxReferences: 9, referenceModels: PROBE.referenceModels })).toMatchObject({ accepted: false, max: 3, tiers: [{ max: 3 }] });
+  });
+
+  it("the usual model is the first that takes any picture: one set to nothing by an override is passed over", () => {
+    const s = readSupport({ ...PROBE, referenceModels: [{ ...PROBE.referenceModels[0], maxReferences: 0 }, PROBE.referenceModels[1]] });
+    expect(baseCapOf(s)).toBe(5);
+    expect(stillTierFor(s, 2)?.model).toBe("model-b");
   });
 
   it("a malformed entry in the list is left out, never trusted", () => {

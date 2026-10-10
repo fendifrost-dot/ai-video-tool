@@ -122,7 +122,7 @@ export function planStillRequest(input: {
   const { pick, most } = pickReferenceModel(input.pictures, input.capOf, models, input.askedModel ?? null);
   if (!pick) return { ok: false, error: "references_over_capability", detail: `${input.pictures} reference pictures were sent; the image models take at most ${most}. Nothing was generated.`, maxReferences: most };
   const withRefs = input.pictures > 0;
-  const model = withRefs ? pick.model : (input.askedModel ?? input.defaultModel);
+  const model = withRefs ? pick.model : (input.askedModel || input.defaultModel);
   const rate = withRefs ? referenceRateUsd(pick, input.resolution, input.pictures) : input.generationRateOf(model);
   const estimatedCostUsd = Number((rate * input.n).toFixed(4));
   return {

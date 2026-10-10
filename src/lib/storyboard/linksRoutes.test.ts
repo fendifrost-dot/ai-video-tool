@@ -321,7 +321,7 @@ describe("a picture the shot cannot do without is never a quiet demotion", () =>
     // two people and a coat fit the usual model: the place takes no fourth picture, so the shot stays on that model
     const three = planStillReferences({ isPerformance: false, continuity: place, linkNeeds: [], garments: garments(["coat"]), extra: [fendi, woman], cap: 5, baseCap: 3 });
     expect(three.sent.map((r) => r.role)).toEqual(["cast", "cast", "garment"]);
-    expect(three.notSent.map((n) => n.ref.role)).toEqual(["place", "prop"]);
+    expect(three.notSent.map((n) => [n.ref.role, n.why])).toEqual([["place", expect.stringContaining("would move this still to another image model")], ["prop", expect.stringContaining("would move this still to another image model")]]);
     expect(three.problems).toEqual([]);
     // with one person, the place fills what the usual model still has room for — and stops there
     const roomy = planStillReferences({ isPerformance: false, continuity: place, linkNeeds: [], garments: garments(["coat"]), extra: [fendi], cap: 5, baseCap: 3 });

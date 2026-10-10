@@ -161,7 +161,12 @@ export function planStillReferences(input: ReferenceInput): ReferencePlan {
   const takes = `the image endpoint takes ${cap} reference picture${cap === 1 ? "" : "s"}`;
   for (const r of unique) {
     if (kept.has(r)) continue;
-    notSent.push({ ref: r, why: REQUIRED_ROLES.has(r.role) ? `${takes}; the ones before it are more decisive` : `${takes}, and the pictures this shot cannot be made without come first; this one is asked for in words` });
+    const why = REQUIRED_ROLES.has(r.role)
+      ? `${takes}; the ones before it are more decisive`
+      : sent.length < cap
+        ? `sending it would move this still to another image model, which only a picture the shot cannot be made without does; this one is asked for in words`
+        : `${takes}, and the pictures this shot cannot be made without come first; this one is asked for in words`;
+    notSent.push({ ref: r, why });
   }
   for (const n of notSent) {
     if (input.isPerformance) continue;

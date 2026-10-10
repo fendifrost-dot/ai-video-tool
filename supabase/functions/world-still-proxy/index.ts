@@ -151,9 +151,12 @@ serve(async (req) => {
   const refCap = decided.maxReferences;
   const plan = {
     model, n, aspectRatio: aspect, resolution, estimatedCostUsd, maxCostUsd, promptChars: body.prompt.length, promptVersion: body.promptVersion ?? null,
-    // what the app asks before it sends any picture: whether pictures go, the most any listed model takes, and each
-    // listed model with its own limit and estimate — the app plans and prices with these, not with numbers of its own
-    referencesAccepted: true, maxReferences: refCap, referenceModels: decided.referenceModels,
+    // what the app asks before it sends any picture: whether pictures go, and each listed model with its own limit
+    // and estimate — the app plans and prices with these, not with numbers of its own. `maxReferences` stays the
+    // USUAL model's limit: an app published before the models were listed reads only that number, fills every kind of
+    // picture up to it and quotes the usual rate, so it must never be told the larger model's limit. An app that
+    // reads `referenceModels` takes the most from there.
+    referencesAccepted: true, maxReferences: decided.referenceModels[0]?.maxReferences ?? refCap, referenceModels: decided.referenceModels,
     // the edit model THIS request's pictures are drawn on (absent on a request without pictures)
     ...(decided.referenceModel ? { referenceModel: decided.referenceModel } : {}),
     // a caller's model is set aside when pictures go and it is not a listed model that takes them

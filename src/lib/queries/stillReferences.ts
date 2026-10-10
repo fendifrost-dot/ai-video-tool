@@ -51,11 +51,14 @@ function readTiers(raw: unknown): StillReferenceTier[] {
 export function readSupport(data: Record<string, unknown> | null | undefined): StillReferenceSupport {
   const accepted = data?.referencesAccepted === true;
   const stated = Number(data?.maxReferences);
-  const max = accepted && Number.isFinite(stated) && stated >= 0 ? stated : DEFAULT_STILL_REFERENCE_CAP;
+  const one = accepted && Number.isFinite(stated) && stated >= 0 ? stated : DEFAULT_STILL_REFERENCE_CAP;
   const model = typeof data?.referenceModel === "string" ? data.referenceModel : null;
-  // a generator deployed before it listed its models answers one limit and at most one model: that is its one tier
+  // a generator that lists its models: the most is the largest of them (its `maxReferences` stays the usual model's
+  // limit, for an app published before the list existed). One deployed before the list answers one limit and at most
+  // one model: that is its one tier.
   const listed = accepted ? readTiers(data?.referenceModels) : [];
-  return { accepted, max, model, tiers: listed.length ? listed : [oneTier(model, max)] };
+  if (listed.length) return { accepted, max: listed.reduce((a, t) => Math.max(a, t.max), 0), model, tiers: listed };
+  return { accepted, max: one, model, tiers: [oneTier(model, one)] };
 }
 
 /** The model a still with `pictures` reference pictures is drawn on: the first listed that takes them all. Null when none does. */
@@ -65,7 +68,9 @@ export function stillTierFor(support: Pick<StillReferenceSupport, "tiers">, pict
 
 /** How many pictures the usual model takes: a still that fits it is drawn on it, and no picture a shot can do without goes past it. */
 export function baseCapOf(support: Pick<StillReferenceSupport, "tiers" | "max">): number {
-  return Math.min(support.max, support.tiers[0]?.max ?? support.max);
+  // the first listed model that takes any picture at all (one set to 0 by an override draws no still with pictures)
+  const usual = support.tiers.find((t) => t.max > 0);
+  return Math.min(support.max, usual?.max ?? support.max);
 }
 
 /** The estimate of ONE candidate picture drawn with `pictures` reference pictures on `tier` (2K, as stills are asked for). */

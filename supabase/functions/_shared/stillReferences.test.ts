@@ -213,6 +213,8 @@ describe("what a still request is drawn on and estimated at is decided in one pl
     // a listed model too small for the request, and a model that is not listed, are set aside and said
     expect(plan({ pictures: 4, askedModel: "grok-imagine-image-quality" })).toMatchObject({ ok: true, model: "grok-imagine-image-2.0", modelOverridden: true });
     expect(plan({ pictures: 2, askedModel: "grok-imagine-image" })).toMatchObject({ ok: true, model: "grok-imagine-image-quality", modelOverridden: true });
+    // an empty name is no name
+    expect(plan({ askedModel: "" })).toMatchObject({ ok: true, model: "grok-imagine-image-quality" });
   });
 
   it("lowering the larger model by its own key is the way back without a redeploy: over three is refused before spend again", () => {
