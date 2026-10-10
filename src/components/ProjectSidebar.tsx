@@ -93,18 +93,22 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
   const renderLink = (item: NavItem, layout: "rail" | "chip") => {
     const active = isActive(item);
     const Icon = item.icon;
+    const step = primaryItems.findIndex((entry) => entry.key === item.key) + 1;
     if (layout === "chip") {
       return (
         <Link
           key={item.key}
           to={item.to}
           params={{ id: projectId }}
+          aria-label={item.label}
+          aria-current={active ? "step" : undefined}
+          data-workflow-active={active ? "true" : undefined}
           className={cn(
             "flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium transition-all",
             active ? "glass-raised text-foreground" : "text-foreground/60",
           )}
         >
-          <Icon className={cn("h-3.5 w-3.5", active && "text-primary")} />
+          {step ? <span className="workflow-step" aria-hidden="true">{step}</span> : <Icon className={cn("h-3.5 w-3.5", active && "text-primary")} />}
           {item.label}
         </Link>
       );
@@ -115,6 +119,9 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
         key={item.key}
         to={item.to}
         params={{ id: projectId }}
+        aria-label={item.label}
+          aria-current={active ? "step" : undefined}
+          data-workflow-active={active ? "true" : undefined}
         className={cn(
           "group flex items-center rounded-xl text-sm font-medium transition-all",
           collapsed ? "justify-center px-2 py-2.5" : "gap-3 px-3 py-2.5",
@@ -123,12 +130,9 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
             : "text-foreground/60 hover:bg-white/5 hover:text-foreground",
         )}
       >
-        <Icon
-          className={cn(
-            "h-4 w-4 shrink-0 transition-transform group-hover:scale-110",
-            active && "text-primary",
-          )}
-        />
+        {step ? <span className="workflow-step" aria-hidden="true">{step}</span> : (
+          <Icon className={cn("h-4 w-4 shrink-0", active && "text-primary")} />
+        )}
         {!collapsed && (
           <span className="flex min-w-0 flex-1 items-center gap-2">
             <span className="truncate">{item.label}</span>
