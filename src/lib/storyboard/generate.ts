@@ -42,6 +42,7 @@ import { activeVariationIdOf } from "@/lib/queries/variations";
 import { resolveEvents, type EventClock } from "./events";
 import { planAssign } from "./media";
 import { assertPlanCovers, temporalPlan, type TemporalPlan } from "./temporal";
+import { promptConflicts, type PromptConflict } from "./promptAudit";
 
 /** Every job the storyboard starts carries this run id, so the box jobs can be told apart from a Runs-page batch. */
 export const STORYBOARD_RUN = "storyboard";
@@ -209,6 +210,30 @@ export function boxShot(
   for (const line of [NO_MARKS, FULL_BLEED])
     if (!shot.prompt.includes(line)) shot.prompt = `${shot.prompt.trim()} ${line}`;
   return shot;
+}
+
+/**
+ * What this shot's own words refuse that the project's entities then ask for (promptAudit.ts) — read from the same
+ * things `boxShot` composes the prompt from, so it is true of the request the page, the preview and the MCP driver
+ * send. Each of the shot's passages is read on its own; each entity is read in its OWN words (its description and
+ * constraints, not what this shot says it does), and the outfit under its own name. A performance shot's picture is
+ * the empty place, so only the place, props and lighting are appended to it and only they are read.
+ */
+export function boxPromptConflicts(box: StoryboardBox, opts: Pick<BoxShotOptions, "cast" | "continuity" | "outfit"> = {}): PromptConflict[] {
+  const s = box.spec;
+  const isPerformance = s.shotType === "performance";
+  const own = [s.openingFrame, s.purpose, s.performanceDirection, s.environment?.description ?? ""];
+  const words = (e: { description: string; constraints: string }) => [e.description, e.constraints].filter(Boolean).join(" ");
+  const c = opts.continuity;
+  const added = [...(c?.location ? [c.location] : []), ...(c?.props ?? []), ...(c?.lighting ? [c.lighting] : [])].map((e) => ({ from: e.name, text: words(e) }));
+  if (!isPerformance) {
+    for (const m of opts.cast?.members ?? []) added.push({ from: m.entity.name, text: words(m.entity) });
+    // the outfit's words are written on the primary artist's line (castSource `wears`): in a shot he is not in they
+    // do not reach the prompt, whatever the scene wears
+    const artistIsCast = (opts.cast?.members ?? []).some((m) => m.entity.cast?.role === "primary_artist");
+    if (opts.outfit?.outfit && artistIsCast) added.push({ from: `the outfit “${opts.outfit.outfit.name}”`, text: outfitWords(opts.outfit.outfit) });
+  }
+  return promptConflicts(own, added);
 }
 
 /**

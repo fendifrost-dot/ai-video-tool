@@ -24,6 +24,7 @@ import { resolveCast, castProblems } from "@/lib/casting/cast";
 import { linksOfBox, linkPictureNeeds, linkPromptLines } from "@/lib/storyboard/links";
 import { planStillReferences, type StillReference } from "@/lib/storyboard/references";
 import {
+  boxPromptConflicts,
   boxShot,
   clipShot,
   clipTemporalPlan,
@@ -34,6 +35,7 @@ import {
   ENTITY_RUN,
 } from "@/lib/storyboard/generate";
 import { eventClock } from "@/lib/storyboard/events";
+import { conflictNote } from "@/lib/storyboard/promptAudit";
 import { resolveLookPreset } from "@/lib/shotCompiler/lookPresets";
 import { WARDROBE_FEATURE_TYPES } from "@/lib/queries/wardrobe";
 import {
@@ -360,6 +362,40 @@ function cmdBundle(projectId: string, variationId: string, artistId: string | nu
         limit: 1,
       },
     },
+    // the reads the other drivers need: the active video's treatment (edit.ts stamps a hand-written scene with its
+    // fingerprint, as the page does), the takes' syncs and the song (the cut the board plays)
+    {
+      file: "direction",
+      tool: "avt_select",
+      args: {
+        table: "video_variations",
+        columns: "id, treatment_json",
+        filters: [{ column: "id", op: "eq", value: variationId }],
+        limit: 1,
+      },
+    },
+    {
+      file: "syncs",
+      tool: "avt_select",
+      args: {
+        table: "performance_syncs",
+        filters: [{ column: "project_id", op: "eq", value: projectId }],
+        limit: 500,
+      },
+    },
+    {
+      file: "song",
+      tool: "avt_select",
+      args: {
+        table: "project_assets",
+        filters: [
+          { column: "project_id", op: "eq", value: projectId },
+          { column: "asset_type", op: "eq", value: "audio" },
+        ],
+        order: { column: "created_at", ascending: false },
+        limit: 1,
+      },
+    },
     {
       file: "support",
       tool: "avt_call",
@@ -497,6 +533,10 @@ async function cmdShot(dir: string, key: string) {
     throw new Error(
       `${key}: wears outfit ${outfit.missingKey}, which this video has no outfit for`,
     );
+  // a name the shot's own words refuse, asked for by a place, a person or the outfit: said before the first paid call,
+  // as the page says it in its confirmation (promptAudit.ts). It is a note — read it and decide.
+  for (const c of boxPromptConflicts(box, { continuity, cast, outfit }))
+    console.log(`CHECK ${key}: ${conflictNote(c)}`);
   // the exact pieces: the shot's own, else the outfit's (the page's effectiveGarments)
   const pieces = effectiveGarments(box.spec, outfit).ids;
   const plan = planStillReferences({
@@ -670,6 +710,8 @@ async function cmdClip(
   const blockingCast = castProblems(cast).filter((p) => p.level === "blocking");
   if (blockingCast.length)
     throw new Error(`${key}: cast problems — ${blockingCast.map((p) => p.text).join("; ")}`);
+  for (const c of boxPromptConflicts(box, { continuity, cast, outfit: w.outfitOf(box) }))
+    console.log(`CHECK ${key}: ${conflictNote(c)}`);
   const linkLines = linkPromptLines(linksOfBox(box, w.board));
   // the clock the page resolves timed events on: lyric timing, the song's beats (bundle/analysis.json when fetched), lighting states
   const beats = w.bundle.analysis

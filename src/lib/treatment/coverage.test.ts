@@ -28,6 +28,20 @@ describe("applyCoverageDefaults", () => {
     expect(classifyMotion({ type: "static", description: "crash zoom on the chain" })).toBe("snap_zoom");
     expect(classifyMotion({ type: "static", description: "harsh light, polished floor" })).toBe("");
     expect(classifyMotion({ type: "orbit", description: "" })).toBe("orbit");
+    // a forward move said the way the writer says it on an aerial or an approach is a push, not "no move named"
+    expect(classifyMotion({ type: "static", description: "Slow forward aerial advance from high altitude." })).toBe("push");
+    expect(classifyMotion({ type: "static", description: "Slow forward aerial advance tightening on the monogram." })).toBe("push");
+    expect(classifyMotion({ type: "static", description: "the drone glides forward over the rooftops" })).toBe("push");
+    expect(classifyMotion({ type: "static", description: "the drone flies over the tree line" })).toBe("push");
+    expect(classifyMotion({ type: "static", description: "the sign fills the frame, tightening on its lettering" })).toBe("push");
+    // an explicit static still wins over an incidental forward word
+    expect(classifyMotion({ type: "static", description: "locked frame as the car approaches" })).toBe("static");
+    // what the SUBJECT does is not the camera: these shots pull back, pan, or name no move at all
+    expect(classifyMotion({ type: "static", description: "slow pull back as the crowd advances" })).toBe("pull");
+    expect(classifyMotion({ type: "static", description: "pan left as the car approaches" })).toBe("pan");
+    expect(classifyMotion({ type: "static", description: "Medium tracking shot moving backward as the group advances." })).toBe("");
+    expect(classifyMotion({ type: "static", description: "low angle on the floor and sign area as the group advances" })).toBe("");
+    expect(classifyMotion({ type: "static", description: "birds flying over the tree line" })).toBe("");
     const [a, b] = applyCoverageDefaults([
       perf("a", 0, 4, { cameraMotion: { type: "static", description: "50mm macro, slight push-in" } }),
       perf("b", 4, 8, { cameraMotion: { type: "static", description: "harsh light, polished floor" } }),

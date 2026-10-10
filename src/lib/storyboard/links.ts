@@ -56,6 +56,8 @@ export function sceneOf(box: Pick<StoryboardBox, "spec">): string {
 const shotName = (l: ResolvedLink) => (l.other ? `shot ${l.other.shotNumber}` : `shot ${l.otherKey}`);
 const noteOf = (l: ResolvedLink) => (l.note.trim() ? ` (${l.note.trim().replace(/[.;]+$/, "")})` : "");
 const sentence = (s: string) => s.trim().replace(/[.;]*$/, ".");
+/** Fences a linked shot's words to the screen that shows it; the place around the screen stays this shot's own. */
+export const SCREEN_ONLY = "What follows describes only what is on that screen, not the place, light or colour around it:";
 
 /**
  * What each link adds to this box's prompt. Empty for a link that asks nothing of this end (the shot whose picture is
@@ -66,7 +68,9 @@ export function linkPromptLines(links: readonly ResolvedLink[]): string[] {
   for (const l of links) {
     const scene = l.other ? sceneOf(l.other) : "";
     if (l.direction === "out") {
-      if (l.kind === "screen_shows") lines.push(`The screen in this picture${noteOf(l)} shows the picture of ${shotName(l)}${scene ? `: ${sentence(scene)}` : "."}`);
+      // the other shot's words are fenced to the screen: said bare, a sentence about that whole picture ("the whole
+      // picture is black and white", "at night") was read as this shot's own, and the room around the screen took it on
+      if (l.kind === "screen_shows") lines.push(`The screen in this picture${noteOf(l)} shows the picture of ${shotName(l)}.${scene ? ` ${SCREEN_ONLY} ${sentence(scene)}` : ""}`);
       else if (l.kind === "match_position") lines.push(`The subject holds the same place in the frame and the same pose as in ${shotName(l)}${noteOf(l)}; only the place around changes.`);
       else if (l.kind === "reveals") lines.push(`This shot reveals what ${shotName(l)} was inside of or opening onto${noteOf(l)}${scene ? ` — that shot: ${sentence(scene)}` : "."}`);
       else if (l.kind === "continues") lines.push(`This shot continues the action of ${shotName(l)} across the cut${noteOf(l)}${scene ? ` — that shot: ${sentence(scene)}` : "."}`);

@@ -6,7 +6,9 @@ vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 
 import { parseShotSpec } from "@/lib/treatment/shotSpec";
 import { boxFromRow, boxWrite, type BoxRow } from "./boxes";
-import { boxShot, FULL_BLEED, madeFromBox, NO_MARKS, wardrobeWords } from "./generate";
+import { boxPromptConflicts, boxShot, FULL_BLEED, madeFromBox, NO_MARKS, wardrobeWords } from "./generate";
+import { indexEntities, type ContinuityEntity } from "@/lib/continuity/entities";
+import { resolveCast } from "@/lib/casting/cast";
 
 function box(shotType: "b_roll" | "performance") {
   const spec = parseShotSpec({ id: "c001", purpose: "a ring on a marble console under one hard light", shotType, kind: shotType === "performance" ? "performance" : "broll", timeline: { start: 0, end: 4 } });
@@ -59,6 +61,29 @@ describe("every picture the storyboard draws", () => {
     expect(FULL_BLEED).toMatch(/not a scan of a film frame/);
     expect(FULL_BLEED).toMatch(/no light leak at the edges/);
     expect(FULL_BLEED).toMatch(/no scratches, dust or hair/);
+  });
+});
+
+describe("a correction on the shot that the words appended to its prompt would undo is said before the spend", () => {
+  const walkers = (description: string): ContinuityEntity => ({ id: "e1", projectId: "p1", variationId: "v1", kind: "character", key: "THE_WALKERS", name: "The walkers", description, constraints: "", approvedAssetId: null, referenceAssetIds: [], cast: { role: "fictional", identityMode: "invent", artistId: null }, outfit: null, archived: false, createdAt: "t", updatedAt: "t" });
+  function ground(description: string, action = "cross paths") {
+    const spec = parseShotSpec({ id: "c003", purpose: "At eye level, walkers pass close to the lens among burning trees. No visible ACME letters, emblem geometry, or logo-shaped cleared paths.", shotType: "b_roll", kind: "broll", timeline: { start: 8, end: 12 }, cast: { members: [{ key: "THE_WALKERS", action, placement: "among the trees", framing: "medium", identityMode: null }], open: false, none: false } });
+    const w = boxWrite({ key: "c003", start: 8, end: 12, section: "intro", generated: spec, override: null, locked: false, origin: "treatment", history: [] });
+    const b = boxFromRow({ id: "r3", project_id: "p1", shot_number: 3, ...w, updated_at: "2026-10-09T00:00:00Z" } as BoxRow)!;
+    return { b, cast: resolveCast(b.spec, indexEntities([walkers(description)])) };
+  }
+
+  it("a character whose own description asks for the name the shot refuses is reported, with whose words they are", () => {
+    const { b, cast } = ground("People walking the cleared strokes of the ACME emblem cut into the forest floor.");
+    expect(boxPromptConflicts(b, { cast })).toEqual([expect.objectContaining({ name: "ACME", from: "The walkers", askedBy: expect.stringContaining("ACME emblem") })]);
+    // the request is still built — the note is for a person to read in the confirmation and in the driver's output
+    expect(boxShot(b, [], { cast }).prompt).toContain("ACME emblem");
+  });
+
+  it("the description is read, not what this shot says the character does; once it agrees with the shot there is nothing to say", () => {
+    expect(boxPromptConflicts(ground("People in the show's looks.", "walk past an ACME banner").b, { cast: ground("People in the show's looks.", "walk past an ACME banner").cast })).toEqual([]);
+    const { b, cast } = ground("People in the show's looks, moving in deliberate, intersecting formations.");
+    expect(boxPromptConflicts(b, { cast })).toEqual([]);
   });
 });
 
