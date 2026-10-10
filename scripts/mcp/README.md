@@ -18,6 +18,7 @@ npx tsx scripts/mcp/still.ts <workdir> entity <KEY>  # reference pictures of a c
 npx tsx scripts/mcp/still.ts <workdir> shot <c0NN>   # the still of a storyboard box
 npx tsx scripts/mcp/still.ts <workdir> clip <c0NN>   # the clip of a storyboard box, from its selected image
 npx tsx scripts/mcp/edit.ts <workdir> <c0NN> <patch.json>   # a director's edit of one box: the one avt_update to perform
+npx tsx scripts/mcp/contract.ts <workdir> [<songIn> <songOut>]   # the render contract of the board, for scripts/render
 ```
 
 Each run prints either `DONE {...}` or `PENDING {id, tool, args}`; the AI performs the tool call and writes the answer
@@ -55,6 +56,14 @@ fingerprint of the treatment that stands now (`bundle/direction.json`), as the p
 
 `applyOverride` locks an edited box, as the page does. A box the director had deliberately left unlocked stays that
 way only if `locked` is left out of the update — say which you did.
+
+## The cut the board plays (`contract.ts`)
+
+`contract.ts` runs `buildTimeline` and `renderContract` — the two functions the Export page runs — over the bundle and
+writes `storyboard_timeline.json`, the file `scripts/render/render_contract.py` turns into an MP4. It reads the
+bundle `still.ts bundle` lists, including `syncs.json` and `song.json`. `media.need.json` lists every file the contract names; fill each with a
+local path or a signed URL and pass it as `--media`. A shot with nothing selected shows what the storyboard shows
+there (the synced take, or nothing): the driver reports it, it does not choose for it.
 
 ## What every request is checked for
 

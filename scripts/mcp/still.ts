@@ -363,7 +363,7 @@ function cmdBundle(projectId: string, variationId: string, artistId: string | nu
       },
     },
     // the reads the other drivers need: the active video's treatment (edit.ts stamps a hand-written scene with its
-    // fingerprint, as the page does), the takes' syncs and the song (the cut the board plays)
+    // fingerprint, as the page does), the takes' syncs and the song (contract.ts builds the cut the board plays)
     {
       file: "direction",
       tool: "avt_select",
