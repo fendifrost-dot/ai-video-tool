@@ -19,6 +19,13 @@
 // `referencesAccepted: true` and the limit, which is how the app knows it may send pictures at all. The answer says
 // how many pictures went with the request (`referencesSent`).
 //
+// THE EDIT MODEL (2026-10-10): a request with pictures is drawn on the first listed edit model that takes them all
+// (_shared/stillReferences.ts REFERENCE_MODELS — today three pictures on the model in use, five on the larger one),
+// or on the listed model the request names (`model`) when it takes them. A dry run also answers `referenceModels`:
+// each listed model with its limit and its estimate, which the app plans and prices with. `estimatedCostUsd` and
+// `actualCostUsd` are estimates from list rates (`costBasis`, `costIsEstimate`): no edits rate is verified by a bill.
+// `resolution` is "1k" or "2k"; anything else is refused.
+//
 // Required secrets: XAI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
@@ -26,7 +33,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 import { getProviderCapability } from "../_shared/providerCapabilities.ts";
 import { callXaiImageEditsDetailed } from "../_shared/xaiImageEdits.ts";
-import { boundedInt, parseReferenceRequest, pickReferenceModel, redactSigned, referenceRateUsd, resolveReferences, type ResolvedReference } from "../_shared/stillReferences.ts";
+import { boundedInt, normalizeResolution, parseReferenceRequest, planStillRequest, redactSigned, resolveReferences, STILL_RESOLUTIONS, type ResolvedReference } from "../_shared/stillReferences.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -36,7 +43,9 @@ const corsHeaders = {
 const XAI_URL = "https://api.x.ai/v1/images/generations";
 const DEFAULT_MODEL = "grok-imagine-image-quality";
 // xAI list price per generated image (2026-09); unknown models price at the dearest known rate so the gate fails safe
-const PRICE_USD_PER_IMAGE: Record<string, number> = { "grok-imagine-image-quality": 0.07, "grok-imagine-image": 0.02, "grok-imagine-image-2.0": 0.07 };
+// (a request WITHOUT reference pictures; one with pictures is priced by stillReferences.ts REFERENCE_MODELS, whose 2.0
+// rate at 2K this table repeats so the two never disagree about the model)
+const PRICE_USD_PER_IMAGE: Record<string, number> = { "grok-imagine-image-quality": 0.07, "grok-imagine-image": 0.02, "grok-imagine-image-2.0": 0.08 };
 const DEFAULT_MAX_COST_USD = 0.5;
 const MAX_N = 4;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -48,7 +57,7 @@ type Body = {
   model?: string;
   n?: number;
   aspectRatio?: string;      // "9:16" default
-  resolution?: string;       // "1k" | "2k" (default "2k")
+  resolution?: string;       // "1k" | "2k" (default "2k"); anything else is refused
   shotLabel?: string;
   sceneTitle?: string;
   promptVersion?: string;
@@ -123,28 +132,37 @@ serve(async (req) => {
 
   const parsedRefs = parseReferenceRequest(body.references);
   if (parsedRefs.error) return json(400, { error: "invalid_references", detail: parsedRefs.error });
-  // the edit model is the first that takes all the pictures of THIS request (stillReferences.ts REFERENCE_MODELS); what
-  // the app is told it may send is the most any of them takes
-  const { pick: referenceModel, most: refCap } = pickReferenceModel(parsedRefs.refs.length, (m) => getProviderCapability("xai:images/edits", Deno.env, m).maxReferenceImages);
+  const resolution = normalizeResolution(body.resolution);
+  if (!resolution) return json(400, { error: "invalid_resolution", detail: `resolution must be one of ${STILL_RESOLUTIONS.join(", ")}. Nothing was generated.` });
   const withRefs = parsedRefs.refs.length > 0;
-  if (!referenceModel) {
-    return json(400, { error: "references_over_capability", detail: `${parsedRefs.refs.length} reference pictures were sent; the image models take at most ${refCap}. Nothing was generated.`, maxReferences: refCap });
-  }
-  const model = withRefs ? referenceModel.model : (body.model ?? DEFAULT_MODEL); const n = boundedInt(body.n, 1, 1, MAX_N);
-  const aspect = body.aspectRatio ?? "9:16"; const resolution = body.resolution ?? "2k";
-  const costBasis = referenceModel.basis;
-  const rate = withRefs ? referenceRateUsd(referenceModel, resolution, parsedRefs.refs.length) : (PRICE_USD_PER_IMAGE[model] ?? Math.max(...Object.values(PRICE_USD_PER_IMAGE)));
-  const estimatedCostUsd = Number((rate * n).toFixed(4)); const maxCostUsd = Number.isFinite(Number(body.maxCostUsd)) ? Number(body.maxCostUsd) : DEFAULT_MAX_COST_USD;
+  const n = boundedInt(body.n, 1, 1, MAX_N);
+  const aspect = body.aspectRatio ?? "9:16";
+  const maxCostUsd = Number.isFinite(Number(body.maxCostUsd)) ? Number(body.maxCostUsd) : DEFAULT_MAX_COST_USD;
+  // which model draws it and what it is estimated to cost — decided before any file or the provider is touched
+  // (stillReferences.ts planStillRequest): the first listed edit model that takes all the pictures of THIS request, or
+  // the listed one the caller names when it takes them; what the app is told it may send is the most any of them takes
+  const decided = planStillRequest({
+    pictures: parsedRefs.refs.length, n, resolution, askedModel: typeof body.model === "string" ? body.model : null, defaultModel: DEFAULT_MODEL, maxCostUsd,
+    capOf: (m) => getProviderCapability("xai:images/edits", Deno.env, m).maxReferenceImages,
+    generationRateOf: (m) => (Object.hasOwn(PRICE_USD_PER_IMAGE, m) ? PRICE_USD_PER_IMAGE[m] : Math.max(...Object.values(PRICE_USD_PER_IMAGE))),
+  });
+  if (!decided.ok) return json(400, { error: decided.error, detail: decided.detail, maxReferences: decided.maxReferences });
+  const { model, rate, estimatedCostUsd, costBasis } = decided;
+  const refCap = decided.maxReferences;
   const plan = {
     model, n, aspectRatio: aspect, resolution, estimatedCostUsd, maxCostUsd, promptChars: body.prompt.length, promptVersion: body.promptVersion ?? null,
-    // what the app asks before it sends any picture
-    referencesAccepted: true, maxReferences: refCap, referenceModel: referenceModel.model,
-    // a caller's model is set aside when pictures go: the edit model is the one whose limit was checked
-    ...(withRefs && body.model && body.model !== referenceModel.model ? { modelOverridden: true } : {}),
+    // what the app asks before it sends any picture: whether pictures go, the most any listed model takes, and each
+    // listed model with its own limit and estimate — the app plans and prices with these, not with numbers of its own
+    referencesAccepted: true, maxReferences: refCap, referenceModels: decided.referenceModels,
+    // the edit model THIS request's pictures are drawn on (absent on a request without pictures)
+    ...(decided.referenceModel ? { referenceModel: decided.referenceModel } : {}),
+    // a caller's model is set aside when pictures go and it is not a listed model that takes them
+    ...(decided.modelOverridden ? { modelOverridden: true } : {}),
     // where the estimate of a request with pictures comes from; no billed run has verified an edits rate (handoff)
-    ...(withRefs ? { costBasis } : {}),
+    ...(costBasis ? { costBasis, costIsEstimate: true } : {}),
   };
-  if (estimatedCostUsd > maxCostUsd) return json(200, { ok: false, error: "cost_gate", ...plan });
+  // a NaN estimate never opens the gate
+  if (decided.overGate) return json(200, { ok: false, error: "cost_gate", ...plan });
 
   // every reference is held to the caller before anything is signed — and before a dry run says yes
   let resolvedRefs: ResolvedReference[] = [];
@@ -218,7 +236,9 @@ serve(async (req) => {
     if (body.jobRowId && UUID_RE.test(body.jobRowId) && (drawn > 0 || unknown > 0 || failures.length > 0)) {
       await admin
         .from("provider_jobs")
-        .update({ response_payload_json: { stills: stills.map((x) => ({ path: x.path, assetId: x.assetId })), actualCostUsd, possiblyBilled: unknown > 0, references: sentRefs, failures, recordedAt: new Date().toISOString() } })
+        // `actualCostUsd` is the estimate times what was drawn — no edits rate has been verified against a bill — so
+        // the job says which model drew it and where the figure comes from
+        .update({ response_payload_json: { stills: stills.map((x) => ({ path: x.path, assetId: x.assetId })), model, actualCostUsd, costBasis, costIsEstimate: true, possiblyBilled: unknown > 0, references: sentRefs, failures, recordedAt: new Date().toISOString() } })
         .eq("id", body.jobRowId)
         .eq("user_id", userId)
         .eq("project_id", body.projectId)

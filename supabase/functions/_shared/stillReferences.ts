@@ -24,30 +24,119 @@ const MAX_LISTED = 12;
  * The edit models a still with reference pictures can be drawn on, the one in use first.
  *
  * A request is drawn on the FIRST model that takes all its pictures, so a request the first model takes is drawn
- * exactly as it was before a second model was listed — a larger limit never moves a shot that did not need it. The
- * limit of each is its provider capability (providerCapabilities "xai:images/edits:<model>"), not a number kept here.
+ * exactly as it was before a second model was listed. (That a larger limit moves no shot that did not need it also
+ * depends on the planner: it fills the pictures a shot can do without only up to the FIRST model's limit — see
+ * src/lib/storyboard/references.ts `baseCap`.) A caller may name a listed model instead (`model`), and gets it when it
+ * takes the request's pictures: that is how a board is kept on one model, and how one shot is drawn on both to compare.
+ * The limit of each is its provider capability (providerCapabilities "xai:images/edits:<model>"), not a number here.
  *
- * `usd`: what one output picture costs at each resolution, and what each input picture adds — the estimate the cost
- * gate holds a request to. `basis` says where those numbers come from; it is recorded with every picture.
+ * `usdPerImage`: what one output picture costs at each resolution; `usdPerInputImage`: what each input picture adds.
+ * Together they are the estimate the cost gate holds a request to — an ESTIMATE: no billed run has verified either
+ * model's edits rate. `basis` says where the numbers come from and is recorded with every picture and on the job.
  */
 export type ReferenceModel = { model: string; usdPerImage: Record<string, number>; usdPerInputImage: number; basis: string };
 export const REFERENCE_MODELS: readonly ReferenceModel[] = [
   { model: "grok-imagine-image-quality", usdPerImage: { "1k": 0.07, "2k": 0.07 }, usdPerInputImage: 0, basis: "generations list rate; edits rate unverified" },
-  // docs.x.ai model page, read 10 Oct 2026: medium quality $0.06 (1K) / $0.08 (2K) per picture, $0.01 per input picture.
-  // The request leaves `quality` to the provider's default (auto), so the estimate is the medium rate, not a bill.
-  { model: "grok-imagine-image-2.0", usdPerImage: { "1k": 0.06, "2k": 0.08 }, usdPerInputImage: 0.01, basis: "docs.x.ai list rate at medium quality plus $0.01 per input picture; quality is the provider's default, billed amount unverified" },
+  // docs.x.ai model page, read 10 Oct 2026: medium quality $0.06 (1K) / $0.08 (2K) per picture — the dearest tier the
+  // page lists — and $0.01 per input picture. The request leaves `quality` to the provider's default, so pricing at
+  // the dearest listed tier keeps the gate on the safe side; it is still an estimate, not a bill.
+  { model: "grok-imagine-image-2.0", usdPerImage: { "1k": 0.06, "2k": 0.08 }, usdPerInputImage: 0.01, basis: "docs.x.ai list rate at medium quality (the dearest listed) plus $0.01 per input picture; quality is the provider's default, billed amount unverified" },
 ];
 
-/** The first listed model that takes `count` pictures (null when none does), and the most any of them takes. */
-export function pickReferenceModel(count: number, capOf: (model: string) => number, models: readonly ReferenceModel[] = REFERENCE_MODELS): { pick: (ReferenceModel & { cap: number }) | null; most: number } {
-  const caps = models.map((m) => ({ ...m, cap: Math.max(0, Math.floor(Number(capOf(m.model)) || 0)) }));
-  return { pick: caps.find((m) => m.cap >= count) ?? null, most: caps.reduce((a, m) => Math.max(a, m.cap), 0) };
+/** The resolutions a still is asked for at. Anything else is refused: the value is the caller's and it prices the request. */
+export const STILL_RESOLUTIONS = ["1k", "2k"] as const;
+export function normalizeResolution(raw: unknown): (typeof STILL_RESOLUTIONS)[number] | null {
+  if (raw === undefined || raw === null) return "2k";
+  const v = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  return (STILL_RESOLUTIONS as readonly string[]).includes(v) ? (v as (typeof STILL_RESOLUTIONS)[number]) : null;
+}
+
+/** One listed model as the app is told about it: its limit and its estimate, so the app plans and prices with the server's own numbers. */
+export type ReferenceTier = { model: string; maxReferences: number; usdPerImage: Record<string, number>; usdPerInputImage: number; basis: string };
+
+/** The listed models with their limits at request time, in listed order. */
+export function referenceTiers(capOf: (model: string) => number, models: readonly ReferenceModel[] = REFERENCE_MODELS): ReferenceTier[] {
+  return models.map((m) => ({ model: m.model, maxReferences: Math.max(0, Math.floor(Number(capOf(m.model)) || 0)), usdPerImage: { ...m.usdPerImage }, usdPerInputImage: m.usdPerInputImage, basis: m.basis }));
+}
+
+/**
+ * The model a request of `count` pictures is drawn on (null when none takes them), and the most any listed model
+ * takes. `asked` — a listed model the caller names — is the one, when it takes the count; a name that is not listed,
+ * or a listed model too small for the request, is set aside and the first that fits is used.
+ */
+export function pickReferenceModel(count: number, capOf: (model: string) => number, models: readonly ReferenceModel[] = REFERENCE_MODELS, asked?: string | null): { pick: ReferenceTier | null; most: number } {
+  const tiers = referenceTiers(capOf, models);
+  const most = tiers.reduce((a, m) => Math.max(a, m.maxReferences), 0);
+  const named = asked ? tiers.find((m) => m.model === asked && m.maxReferences >= count) : undefined;
+  return { pick: named ?? tiers.find((m) => m.maxReferences >= count) ?? null, most };
 }
 
 /** What one candidate picture of a request with `inputs` reference pictures costs on `m`; an unlisted resolution prices at the dearest. */
-export function referenceRateUsd(m: ReferenceModel, resolution: string, inputs: number): number {
-  const out = m.usdPerImage[resolution.toLowerCase()] ?? Math.max(...Object.values(m.usdPerImage));
-  return Number((out + m.usdPerInputImage * Math.max(0, inputs)).toFixed(4));
+export function referenceRateUsd(m: Pick<ReferenceModel, "usdPerImage" | "usdPerInputImage">, resolution: string, inputs: number): number {
+  const key = String(resolution).toLowerCase();
+  const out = Object.hasOwn(m.usdPerImage, key) ? m.usdPerImage[key] : Math.max(...Object.values(m.usdPerImage));
+  const n = Number.isFinite(inputs) && inputs > 0 ? inputs : 0;
+  return Number((out + m.usdPerInputImage * n).toFixed(4));
+}
+
+/**
+ * What a still request will be drawn on and what it is estimated to cost — everything world-still-proxy decides
+ * before it touches a file or the provider, as one pure function so it can be tested.
+ *
+ * `pictures` reference pictures, `n` candidates. Without pictures the request goes to the generations route on the
+ * caller's model (or the default) at `generationRateOf(model)`; with pictures it goes to the edits route on the model
+ * `pickReferenceModel` picks. `overGate` is true unless the estimate is a number no greater than `maxCostUsd` — a NaN
+ * never opens the gate.
+ */
+export type StillRequestPlan =
+  | { ok: false; error: "references_over_capability"; detail: string; maxReferences: number }
+  | {
+      ok: true;
+      model: string;
+      /** The edit model picked for this request's pictures; null when it has none. */
+      referenceModel: string | null;
+      maxReferences: number;
+      referenceModels: ReferenceTier[];
+      rate: number;
+      estimatedCostUsd: number;
+      overGate: boolean;
+      /** The caller named a model and pictures are drawn on another. */
+      modelOverridden: boolean;
+      /** Where the estimate of a request with pictures comes from; null without pictures. */
+      costBasis: string | null;
+    };
+
+export function planStillRequest(input: {
+  pictures: number;
+  n: number;
+  resolution: string;
+  askedModel?: string | null;
+  defaultModel: string;
+  maxCostUsd: number;
+  capOf: (model: string) => number;
+  generationRateOf: (model: string) => number;
+  models?: readonly ReferenceModel[];
+}): StillRequestPlan {
+  const models = input.models ?? REFERENCE_MODELS;
+  const tiers = referenceTiers(input.capOf, models);
+  const { pick, most } = pickReferenceModel(input.pictures, input.capOf, models, input.askedModel ?? null);
+  if (!pick) return { ok: false, error: "references_over_capability", detail: `${input.pictures} reference pictures were sent; the image models take at most ${most}. Nothing was generated.`, maxReferences: most };
+  const withRefs = input.pictures > 0;
+  const model = withRefs ? pick.model : (input.askedModel ?? input.defaultModel);
+  const rate = withRefs ? referenceRateUsd(pick, input.resolution, input.pictures) : input.generationRateOf(model);
+  const estimatedCostUsd = Number((rate * input.n).toFixed(4));
+  return {
+    ok: true,
+    model,
+    referenceModel: withRefs ? pick.model : null,
+    maxReferences: most,
+    referenceModels: tiers,
+    rate,
+    estimatedCostUsd,
+    overGate: !(estimatedCostUsd <= input.maxCostUsd),
+    modelOverridden: withRefs && !!input.askedModel && input.askedModel !== pick.model,
+    costBasis: withRefs ? pick.basis : null,
+  };
 }
 
 export function parseReferenceRequest(raw: unknown): { refs: ReferenceRequest[]; error: string | null } {

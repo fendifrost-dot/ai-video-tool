@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { boundedInt, inFolderOf, parseReferenceRequest, pickReferenceModel, redactSigned, REFERENCE_MODELS, referenceRateUsd, resolveReferences } from "./stillReferences.ts";
+import { boundedInt, inFolderOf, normalizeResolution, parseReferenceRequest, pickReferenceModel, planStillRequest, redactSigned, REFERENCE_MODELS, referenceRateUsd, referenceTiers, resolveReferences } from "./stillReferences.ts";
 import { getProviderCapability } from "./providerCapabilities.ts";
 
 const P = "11111111-1111-4111-8111-111111111111";
@@ -178,5 +178,61 @@ describe("the edit model of a still is the first that takes all its pictures", (
     expect(referenceRateUsd(two, "2k", 5)).toBe(0.13);
     expect(referenceRateUsd(two, "1K", 4)).toBe(0.1);
     expect(referenceRateUsd(two, "4k", 0)).toBe(0.08);
+  });
+});
+
+describe("what a still request is drawn on and estimated at is decided in one place, before any file or the provider is touched", () => {
+  const capOf = (m: string) => getProviderCapability("xai:images/edits", { get: () => undefined }, m).maxReferenceImages;
+  const generationRateOf = (m: string) => ({ "grok-imagine-image-quality": 0.07, "grok-imagine-image": 0.02, "grok-imagine-image-2.0": 0.08 })[m] ?? 0.08;
+  const plan = (over: Partial<Parameters<typeof planStillRequest>[0]>) => planStillRequest({ pictures: 0, n: 2, resolution: "2k", defaultModel: "grok-imagine-image-quality", maxCostUsd: 0.5, capOf, generationRateOf, ...over });
+
+  it("no pictures: the generations route, the caller's model honoured, the generations price, and no reference model named", () => {
+    expect(plan({})).toMatchObject({ ok: true, model: "grok-imagine-image-quality", referenceModel: null, rate: 0.07, estimatedCostUsd: 0.14, overGate: false, modelOverridden: false, costBasis: null, maxReferences: 5 });
+    expect(plan({ askedModel: "grok-imagine-image" })).toMatchObject({ ok: true, model: "grok-imagine-image", rate: 0.02, estimatedCostUsd: 0.04 });
+  });
+
+  it("up to three pictures: the model in use at its rate, exactly as before a second model was listed", () => {
+    expect(plan({ pictures: 3 })).toMatchObject({ ok: true, model: "grok-imagine-image-quality", referenceModel: "grok-imagine-image-quality", rate: 0.07, estimatedCostUsd: 0.14, modelOverridden: false, costBasis: "generations list rate; edits rate unverified" });
+    expect(plan({ pictures: 3, askedModel: "grok-imagine-image-quality" })).toMatchObject({ ok: true, modelOverridden: false });
+  });
+
+  it("four or five pictures: the larger model, priced with its input pictures, the basis of the estimate said", () => {
+    expect(plan({ pictures: 4 })).toMatchObject({ ok: true, model: "grok-imagine-image-2.0", referenceModel: "grok-imagine-image-2.0", rate: 0.12, estimatedCostUsd: 0.24, overGate: false });
+    const five = plan({ pictures: 5 });
+    expect(five).toMatchObject({ ok: true, rate: 0.13, estimatedCostUsd: 0.26 });
+    expect(five.ok && five.costBasis).toMatch(/list rate at medium quality.*billed amount unverified/);
+  });
+
+  it("six pictures are refused, never trimmed; five at four candidates is over the default gate", () => {
+    expect(plan({ pictures: 6 })).toEqual({ ok: false, error: "references_over_capability", detail: expect.stringContaining("at most 5"), maxReferences: 5 });
+    expect(plan({ pictures: 5, n: 4 })).toMatchObject({ ok: true, estimatedCostUsd: 0.52, overGate: true });
+  });
+
+  it("a listed model the caller names is the one when it takes the pictures — a board kept on one model, one shot drawn on both", () => {
+    expect(plan({ pictures: 3, askedModel: "grok-imagine-image-2.0" })).toMatchObject({ ok: true, model: "grok-imagine-image-2.0", rate: 0.11, modelOverridden: false });
+    // a listed model too small for the request, and a model that is not listed, are set aside and said
+    expect(plan({ pictures: 4, askedModel: "grok-imagine-image-quality" })).toMatchObject({ ok: true, model: "grok-imagine-image-2.0", modelOverridden: true });
+    expect(plan({ pictures: 2, askedModel: "grok-imagine-image" })).toMatchObject({ ok: true, model: "grok-imagine-image-quality", modelOverridden: true });
+  });
+
+  it("lowering the larger model by its own key is the way back without a redeploy: over three is refused before spend again", () => {
+    const back = (m: string) => getProviderCapability("xai:images/edits", { get: () => JSON.stringify({ "xai:images/edits:grok-imagine-image-2.0": { maxReferenceImages: 3 } }) }, m).maxReferenceImages;
+    expect(referenceTiers(back).map((t) => t.maxReferences)).toEqual([3, 3]);
+    expect(plan({ pictures: 4, capOf: back })).toMatchObject({ ok: false, maxReferences: 3 });
+    expect(plan({ pictures: 3, capOf: back })).toMatchObject({ ok: true, model: "grok-imagine-image-quality" });
+  });
+
+  it("a gate never opens on an estimate that is not a number, and the app is told each model with its own limit and rate", () => {
+    expect(plan({ pictures: 2, generationRateOf: () => Number.NaN, capOf: () => 5, models: [{ model: "m", usdPerImage: { "2k": Number.NaN }, usdPerInputImage: 0, basis: "" }] })).toMatchObject({ ok: true, overGate: true });
+    const p = plan({});
+    expect(p.ok && p.referenceModels.map((t) => [t.model, t.maxReferences, t.usdPerImage["2k"], t.usdPerInputImage])).toEqual([["grok-imagine-image-quality", 3, 0.07, 0], ["grok-imagine-image-2.0", 5, 0.08, 0.01]]);
+  });
+
+  it("the resolution is the caller's and it prices the request: only the two a still is asked for at are taken", () => {
+    expect(normalizeResolution(undefined)).toBe("2k");
+    expect(normalizeResolution("2K")).toBe("2k");
+    expect(normalizeResolution("1k")).toBe("1k");
+    for (const bad of ["4k", "", 2, {}, "constructor", "__proto__"]) expect(normalizeResolution(bad)).toBeNull();
+    expect(referenceRateUsd(REFERENCE_MODELS[1], "constructor", Number.NaN)).toBe(0.08);
   });
 });

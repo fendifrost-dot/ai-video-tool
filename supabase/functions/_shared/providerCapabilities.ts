@@ -73,6 +73,11 @@ const DEFAULTS: Record<string, ProviderCapability> = {
     source:
       "VERIFIED 2026-09-21: rejects >3 input images ('This model supports at most 3 input image(s)'). Retired 2026-11-02 — requests are then served by grok-imagine-image-2.0 (docs.x.ai migration note, 2026-09-02)",
   },
+  // world-still-proxy picks the edit model of a still by how many pictures each takes (stillReferences.ts
+  // pickReferenceModel), so an override for it MUST use a model key: an endpoint-level override ("xai:images/edits")
+  // lifts the quality slug too, and a request is then sent to a model that rejects it (unbilled, but nothing is drawn).
+  // The way back without a redeploy: {"xai:images/edits:grok-imagine-image-2.0": {"maxReferenceImages": 3}} — every
+  // request over three is then refused before spend, as it was before the second model was listed.
   "xai:images/edits:grok-imagine-image-2.0": {
     maxReferenceImages: 5,
     firstFrameConditioning: true,

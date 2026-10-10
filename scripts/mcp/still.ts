@@ -65,7 +65,13 @@ import {
 import { mediaAssetOf } from "@/lib/queries/storyboard";
 import { lyricLineFromRow } from "@/lib/lyrics/lyricsForShot";
 import { aspectOfProject } from "@/lib/project/aspect";
-import { readSupport, DEFAULT_STILL_REFERENCE_CAP } from "@/lib/queries/stillReferences";
+import {
+  baseCapOf,
+  NO_STILL_REFERENCE_SUPPORT,
+  readSupport,
+  stillRateUsd,
+  stillTierFor,
+} from "@/lib/queries/stillReferences";
 
 // ------------------------------------------------------------------------------------------------ the effect channel
 
@@ -453,9 +459,7 @@ function loadWorld(dir: string) {
   const wardrobe = features
     .filter((f) => (WARDROBE_FEATURE_TYPES as readonly string[]).includes(f.feature_type))
     .map((f) => ({ id: f.id, label: f.label }));
-  const support = bundle.support
-    ? readSupport(bundle.support)
-    : { accepted: false, max: DEFAULT_STILL_REFERENCE_CAP, model: null };
+  const support = bundle.support ? readSupport(bundle.support) : NO_STILL_REFERENCE_SUPPORT;
   const scenes: Scene[] = bundle.scenes.map((r) => sceneFromRow(r as SceneRow));
   // what a box wears, as the page resolves it: the shot's own record, else its scene's outfit (wardrobe/outfits.ts)
   const outfitOf = (box: StoryboardBox): ShotOutfit =>
@@ -549,7 +553,15 @@ async function cmdShot(dir: string, key: string) {
     })),
     extra,
     cap: w.support.max,
+    baseCap: baseCapOf(w.support),
   });
+  // past the usual model's limit the still is drawn on another model at another rate: said before the paid call, as
+  // the page says it in its confirmation
+  const tier = stillTierFor(w.support, plan.sent.length);
+  if (w.support.accepted && tier && plan.sent.length > baseCapOf(w.support))
+    console.log(
+      `CHECK ${key}: ${plan.sent.length} pictures are more than the usual image model takes (${baseCapOf(w.support)}), so this still is drawn on ${tier.model} at about $${stillRateUsd(tier, plan.sent.length).toFixed(2)} a candidate (an estimate from its list price). What it bills and how exactly it reproduces a garment are not yet verified — check each piece against its photo.`,
+    );
   const blocking = plan.problems.filter((p) => p.level === "blocking");
   if (blocking.length)
     throw new Error(

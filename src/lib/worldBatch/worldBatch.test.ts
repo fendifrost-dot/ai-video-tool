@@ -471,6 +471,8 @@ describe("why the still generator did not draw", () => {
   it("says what the image model itself said, not only a code", () => {
     expect(stillFailure({ ok: false, error: "xai_error", httpStatus: 400, detail: { error: "Generated image rejected by content moderation." } })).toBe("the image model refused (400): Generated image rejected by content moderation.");
     expect(stillFailure({ ok: false, error: "xai_error", httpStatus: 429, detail: { error: { message: "Rate limit reached" } } })).toBe("the image model refused (429): Rate limit reached");
+    // the model took fewer pictures than the generator lists for it: plain words, the limit to keep to, nothing drawn
+    expect(stillFailure({ ok: false, error: "xai_error", detail: "xai_edits_failed: 400 {\"error\":\"This model supports at most 3 input image(s)\"}" })).toBe("the image model took at most 3 reference pictures, fewer than the generator lists for it — nothing was drawn. Until the limit is corrected, send no more than 3 pictures with a still");
     expect(stillFailure({ ok: false, error: "xai_error", httpStatus: 502, detail: { _raw: "<html>Bad gateway</html>" } })).toBe("the image model refused (502): <html>Bad gateway</html>");
     // nothing said: the code and the status are all there is
     expect(stillFailure({ ok: false, error: "xai_error", httpStatus: 500, detail: {} })).toBe("the image model refused (500)");

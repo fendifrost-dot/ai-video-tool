@@ -314,6 +314,29 @@ describe("a picture the shot cannot do without is never a quiet demotion", () =>
     expect(roomy.legend).toContain("<IMAGE_0> is shot 13: keep the subject in the same place in the frame");
   });
 
+  it("when the generator lists a larger model, only a picture the shot cannot be made without takes a place past the usual model's limit", () => {
+    const place = { ...NO_CONTINUITY, location: { name: "The room", approvedAssetId: "asset-room" }, props: [{ name: "The CRT", approvedAssetId: "asset-crt" }] } as never;
+    const woman = { source: "project_asset" as const, id: "asset-woman", role: "cast" as const, label: "The woman" };
+    const garments = (ids: string[]) => ids.map((id) => ({ id, onFile: { id, label: id } }));
+    // two people and a coat fit the usual model: the place takes no fourth picture, so the shot stays on that model
+    const three = planStillReferences({ isPerformance: false, continuity: place, linkNeeds: [], garments: garments(["coat"]), extra: [fendi, woman], cap: 5, baseCap: 3 });
+    expect(three.sent.map((r) => r.role)).toEqual(["cast", "cast", "garment"]);
+    expect(three.notSent.map((n) => n.ref.role)).toEqual(["place", "prop"]);
+    expect(three.problems).toEqual([]);
+    // with one person, the place fills what the usual model still has room for — and stops there
+    const roomy = planStillReferences({ isPerformance: false, continuity: place, linkNeeds: [], garments: garments(["coat"]), extra: [fendi], cap: 5, baseCap: 3 });
+    expect(roomy.sent.map((r) => r.role)).toEqual(["cast", "garment", "place"]);
+    // five required pictures go, on the larger model; a sixth still blocks
+    const five = planStillReferences({ isPerformance: false, continuity: place, linkNeeds: [], garments: garments(["coat", "cap", "glasses"]), extra: [fendi, woman], cap: 5, baseCap: 3 });
+    expect(five.sent.map((r) => r.id)).toEqual(["face-1", "asset-woman", "coat", "cap", "glasses"]);
+    expect(five.problems).toEqual([]);
+    const six = planStillReferences({ isPerformance: false, continuity: place, linkNeeds: [], garments: garments(["coat", "cap", "glasses", "trousers"]), extra: [fendi, woman], cap: 5, baseCap: 3 });
+    expect(six.problems).toEqual([expect.objectContaining({ level: "blocking", text: expect.stringContaining("trousers is marked exact and does not fit in this request (5 pictures)") })]);
+    // a generator with one model: the old behaviour, optional pictures fill to its limit
+    const one = planStillReferences({ isPerformance: false, continuity: place, linkNeeds: [], garments: garments(["coat"]), extra: [fendi], cap: 3 });
+    expect(one.sent.map((r) => r.role)).toEqual(["cast", "garment", "place"]);
+  });
+
   it("an identity that does not fit the cap BLOCKS the shot (the still would draw a stranger)", () => {
     const plan = planStillReferences({
       isPerformance: false,
