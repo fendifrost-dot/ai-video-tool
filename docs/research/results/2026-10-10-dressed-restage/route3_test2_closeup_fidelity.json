@@ -1,0 +1,28 @@
+{
+ "source": "the 4.0 s cut of the take (project asset cc76f6a3-5489-4e6f-98d2-8cf7efcdf03b)",
+ "result": "route3_test2_closeup",
+ "fps_sampled": 24.0,
+ "frames_src": 60,
+ "frames_res": 90,
+ "camera_change": {
+  "picture": 0.901,
+  "face_visible_share": 0.928,
+  "face_size_ratio": 4.267,
+  "face_centre_shift": 0.033,
+  "face_turn_change": 0.067,
+  "score": 1.0
+ },
+ "identity_src_vs_result": 0.133,
+ "identity_per_frame_p95": 0.297,
+ "lip": {
+  "best_fit": {
+   "corr": 0.675,
+   "retime": 1.27,
+   "offset_s": 0.8,
+   "n": 28
+  },
+  "corr_on_source_clock": 0.586,
+  "mouth_open_src_mean": 0.1153,
+  "mouth_open_res_mean": 0.2116
+ }
+}
