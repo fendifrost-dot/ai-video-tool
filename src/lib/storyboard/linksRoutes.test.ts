@@ -133,6 +133,20 @@ describe("a screen whose picture goes with the request is not also described in 
     expect(words).toContain("A rider crosses a cleared route");
   });
 
+  it("two screens that show the same file: the picture is one shot's, the other keeps its words", () => {
+    const need = (otherKey: string) => ({ role: "screen" as const, link: { otherKey }, still: { assetId: "one-file" } });
+    const sent = [{ source: "project_asset" as const, id: "one-file", role: "screen" as const, label: "shot 1" }];
+    expect([...screensPictured([need("c001"), need("c002")], sent, true)]).toEqual(["c001"]);
+  });
+
+  it("a performance plate keeps its screen line in the short form too", () => {
+    const plate = { ...room(), spec: { ...room().spec, shotType: "performance" as const } };
+    const prompt = boxShot(plate, [], { linkLines: linkPromptLines(linksOfBox(room(), numbered), { pictured: new Set(["c001"]) }) }).prompt;
+    expect(prompt).toContain(SCREEN_PICTURE_SENT);
+    // what a plate drops is the sentence about people, not the screen's
+    expect(prompt).not.toContain("is revealed by shot 6");
+  });
+
   it("only a screen is affected: a reveal or a held position named in the set keeps its sentence", () => {
     const outside = byKey.get("c031")!;
     const all = new Set(grid);
@@ -164,7 +178,7 @@ describe("references: the linked shot's picture, the place, exact garments — s
     expect(plan.legend).toContain("<IMAGE_2> is the place, the Chicago corner");
     // a garment is worn the way it is made to be worn: asked for "any mark on it", a cap seen from behind was turned
     // round so its front could be read
-    expect(plan.legend).toContain("black leather coat: reproduce it exactly — cut, colour, fabric, seams, hardware and any mark on it — and do not redesign it; its front is worn to the front of the body, so from behind only its back is seen — it is never turned round to show a mark; <IMAGE_2>");
+    expect(plan.legend).toContain("black leather coat: reproduce it exactly — cut, colour, fabric, seams, hardware and any mark on it — and do not redesign it; unless this shot says it is worn another way, its front is worn to the front of the body, so from behind only its back is seen — it is not turned round to show a mark; <IMAGE_2>");
   });
 
   it("over the endpoint's limit the rest are NOT dropped silently: each is listed with why, and a garment left out is a warning", () => {

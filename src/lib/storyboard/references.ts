@@ -85,9 +85,10 @@ const ROLE_SENTENCE: Record<ReferenceRole, (label: string) => string> = {
   screen: (l) => `is the exact picture the screen shows (${l}) — put this picture on the screen, as it is`,
   position: (l) => `is ${l}: keep the subject in the same place in the frame and the same pose; everything around it changes as described`,
   place: (l) => `is the place, ${l}: this is that place — the same architecture, surfaces and light`,
-  // "worn the usual way round": asked to reproduce "any mark on it", a model turns the piece until the mark shows — a
-  // cap seen from behind came out worn backwards so its front could be read (10 Oct 2026)
-  garment: (l) => `is a garment worn in this shot, ${l}: reproduce it exactly — cut, colour, fabric, seams, hardware and any mark on it — and do not redesign it; its front is worn to the front of the body, so from behind only its back is seen — it is never turned round to show a mark`,
+  // The last clause: asked to reproduce "any mark on it", a model turns the piece until the mark shows — a cap seen
+  // from behind came out worn backwards so its letter could be read (10 Oct 2026). It yields to the shot's own words:
+  // a cap the scene says is worn backwards, a jacket tied at the waist, is the director's, not this sentence's.
+  garment: (l) => `is a garment worn in this shot, ${l}: reproduce it exactly — cut, colour, fabric, seams, hardware and any mark on it — and do not redesign it; unless this shot says it is worn another way, its front is worn to the front of the body, so from behind only its back is seen — it is not turned round to show a mark`,
   cast: (l) => `is ${l}: the same person`,
   prop: (l) => `is ${l}: the same object`,
 };
@@ -110,9 +111,17 @@ export function screensPictured(
 ): Set<string> {
   const out = new Set<string>();
   if (!delivered) return out;
+  // one sent picture is one shot's: it is sent once and named once in the legend (the first link that asked for it),
+  // so a second screen that happens to show the same file keeps its words
+  const taken = new Set<string>();
   for (const n of linkNeeds) {
     if (n.role !== "screen" || !n.still) continue;
-    if (sent.some((r) => r.role === "screen" && r.source === "project_asset" && r.id === n.still!.assetId)) out.add(n.link.otherKey);
+    const id = n.still.assetId;
+    if (taken.has(id)) continue;
+    if (sent.some((r) => r.role === "screen" && r.source === "project_asset" && r.id === id)) {
+      taken.add(id);
+      out.add(n.link.otherKey);
+    }
   }
   return out;
 }

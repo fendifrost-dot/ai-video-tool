@@ -283,8 +283,9 @@ export type StoryboardController = {
   /**
    * The pictures a shot's still is drawn with. `baseCap`: how many the usual image model takes; `model`: the model
    * THIS still is drawn on when it goes with more than that (null when it is the usual one, or nothing is sent).
+   * `pictured`: the keys of the linked shots whose picture goes with the request as what a screen shows.
    */
-  referencesOf: (box: StoryboardBox) => StillReferencesOnJob & { problems: ReferenceProblem[]; cap: number; baseCap: number; model: string | null };
+  referencesOf: (box: StoryboardBox) => StillReferencesOnJob & { problems: ReferenceProblem[]; cap: number; baseCap: number; model: string | null; pictured: ReadonlySet<string> };
   /** The exact still request this shot would send — built, not sent. */
   stillRequestOf: (box: StoryboardBox) => ReturnType<typeof previewStillRequest> | null;
   toggleLock: (box: StoryboardBox) => Promise<void>;
@@ -894,11 +895,16 @@ export function useStoryboardController(projectId: string): StoryboardController
   );
   const linkLinesOf = useCallback((box: StoryboardBox) => linkPromptLines(linksOf(box)), [linksOf]);
   /** The link sentences of the IMAGE's prompt: a screen whose picture goes with the request is not also described in words. */
-  const stillLinkLinesOf = useCallback((box: StoryboardBox) => linkPromptLines(linksOf(box), { pictured: referencesOf(box).pictured }), [linksOf, referencesOf]);
+  // made from the SAME references the request is sent with, so the words and the pictures cannot disagree
+  const stillLinkLinesOf = useCallback(
+    (box: StoryboardBox, references: { pictured: ReadonlySet<string> }) => linkPromptLines(linksOf(box), { pictured: references.pictured }),
+    [linksOf],
+  );
   const stillRequestOf = useCallback(
     (box: StoryboardBox) => {
       try {
-        return previewStillRequest(box, lyricLines, { aspect, continuity: continuityOf(box), cast: castOf(box), linkLines: stillLinkLinesOf(box), references: referencesOf(box), outfit: outfitOf(box) });
+        const references = referencesOf(box);
+        return previewStillRequest(box, lyricLines, { aspect, continuity: continuityOf(box), cast: castOf(box), linkLines: stillLinkLinesOf(box, references), references, outfit: outfitOf(box) });
       } catch {
         return null;
       }
@@ -984,8 +990,8 @@ export function useStoryboardController(projectId: string): StoryboardController
       }
       const imagePlan = imageTemporalPlan(box, clock);
       const continuity = continuityOf(box);
-      const linkLines = stillLinkLinesOf(box);
       const references = referencesOf(box);
+      const linkLines = stillLinkLinesOf(box, references);
       const source = continuitySource(continuity, { forPlate: !!est.restage });
       const held = source.lines.length
         ? ` It is drawn from the project's own description of ${[continuity.location?.name, ...continuity.props.map((p) => p.name), continuity.lighting?.name].filter(Boolean).join(", ")} — the same words every shot that points there is drawn from.${source.notes.length ? ` ${source.notes.join(" ")}` : ""}`
@@ -1042,8 +1048,8 @@ export function useStoryboardController(projectId: string): StoryboardController
       }
       const continuity = continuityOf(box);
       const linkLines = linkLinesOf(box);
-      const stillLinkLines = stillLinkLinesOf(box);
       const references = referencesOf(box);
+      const stillLinkLines = stillLinkLinesOf(box, references);
       // a performance shot set in one of the project's locations is restaged into that location's approved picture
       const place = est.restage ? placeStill(box) : null;
       const stillAsset = est.restage ? (place?.asset ?? null) : selectedStill(box);
