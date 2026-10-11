@@ -10,7 +10,7 @@
 export type ReferenceRequest = { source: "project_asset" | "character_feature"; id: string; role: string; label: string };
 
 /** Where an asset's or a picture's file may be signed from. Nothing else is reachable through this route. */
-export const ASSET_BUCKETS = ["project-references", "project-clips"] as const;
+export const ASSET_BUCKETS = ["project-references", "project-clips", "prop-refs"] as const;
 /** Where the artist's pictures live, by kind: wardrobe in wardrobe-refs, everything else (face, hair, Character DNA) in artist-assets. */
 export const WARDROBE_BUCKET = "wardrobe-refs";
 export const ARTIST_BUCKET = "artist-assets";
@@ -18,7 +18,7 @@ export const ARTIST_BUCKET = "artist-assets";
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const ROLES = new Set(["screen", "position", "place", "garment", "cast", "prop"]);
 /** A request carrying more than this is malformed whatever the provider's limit (the cap check comes after). */
-const MAX_LISTED = 12;
+const MAX_LISTED = 14;
 
 /**
  * The edit models a still with reference pictures can be drawn on, the one in use first.
@@ -181,7 +181,7 @@ const IMAGE_EXT = /\.(png|jpe?g|webp)$/i;
  */
 export function resolveReferences(
   refs: readonly ReferenceRequest[],
-  input: { projectId: string; assets: readonly AssetRow[]; features: readonly FeatureRow[]; ownArtists: ReadonlySet<string> },
+  input: { projectId: string; userId?: string; assets: readonly AssetRow[]; features: readonly FeatureRow[]; ownArtists: ReadonlySet<string> },
 ): { resolved: ResolvedReference[]; refused: { ref: ReferenceRequest; why: string }[] } {
   const assets = new Map(input.assets.map((a) => [a.id, a]));
   const features = new Map(input.features.map((f) => [f.id, f]));
@@ -208,7 +208,14 @@ export function resolveReferences(
         refused.push({ ref, why: "it has no stored file this route can sign" });
         continue;
       }
-      if (!inFolderOf(path, input.projectId)) {
+      // Imported pictures use <uid>/<filename> in prop-refs. A project association
+      // alone cannot authorise a client-writable path: require the caller's folder.
+      const imported = bucket === "prop-refs";
+      if (imported && (!input.userId || !UUID_RE.test(input.userId) || path.split("/").length !== 2 || path.split("/")[0] !== input.userId || /[%\\]/.test(path))) {
+        refused.push({ ref, why: "its imported file is not in your folder" });
+        continue;
+      }
+      if (!imported && !inFolderOf(path, input.projectId)) {
         refused.push({ ref, why: "its file is not in this project's folder" });
         continue;
       }

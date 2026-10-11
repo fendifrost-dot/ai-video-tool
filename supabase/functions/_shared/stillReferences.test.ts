@@ -5,6 +5,22 @@ import { getProviderCapability } from "./providerCapabilities.ts";
 const P = "11111111-1111-4111-8111-111111111111";
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
+describe("unit: imported project references", () => {
+  const ref = { source: "project_asset" as const, id: id(1), role: "cast", label: "Imported portrait" };
+  const asset = { id: id(1), project_id: P, file_url: `${id(2)}/portrait.png`, asset_type: "reference_image", metadata_json: { bucket: "prop-refs", mime_type: "image/png" } };
+  const input = { userId: id(2), projectId: P, assets: [asset], features: [], ownArtists: new Set<string>() };
+  it("accepts the caller's imported file only when its row belongs to this project", () => {
+    expect(resolveReferences([ref], input).resolved).toEqual([{ ref, path: asset.file_url, buckets: ["prop-refs"] }]);
+    expect(resolveReferences([ref], { ...input, projectId: id(3) }).resolved).toHaveLength(0);
+  });
+  it("rejects missing owner, forged owner path, URLs and encoded traversal", () => {
+    expect(resolveReferences([ref], { ...input, userId: undefined }).refused).toHaveLength(1);
+    for (const path of [`${id(3)}/portrait.png`, `${id(2)}/../x.png`, `${id(2)}/%2e%2e.png`, `${id(2)}/a/x.png`, `https://evil/x.png`]) {
+      expect(resolveReferences([ref], { ...input, assets: [{ ...asset, file_url: path }] }).refused).toHaveLength(1);
+    }
+  });
+});
+
 describe("a still request's reference pictures are held to the caller before anything is signed", () => {
   it("parses records by id; refuses paths, URLs, unknown roles and duplicates", () => {
     expect(parseReferenceRequest(undefined)).toEqual({ refs: [], error: null });
