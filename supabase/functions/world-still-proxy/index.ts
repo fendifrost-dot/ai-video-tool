@@ -26,7 +26,13 @@
 // `actualCostUsd` are estimates from list rates (`costBasis`, `costIsEstimate`): no edits rate is verified by a bill.
 // `resolution` is "1k" or "2k"; anything else is refused.
 //
-// Required secrets: XAI_API_KEY, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+// EXPLICIT GEMINI ROUTE: model="gemini-nano-banana-2.1" uses Control Center's
+// image-providers-gemini-generate (Google billing, NOT Higgsfield/Runway credits).
+// n=1, 1k/2k, up to 14 references, queued provider=gemini jobRowId required for
+// generation. dryRun requires no job and submits no provider generation. This
+// route files unselected assets; it never switches an existing shot's model.
+// Required secrets: XAI_API_KEY (Grok only), CONTROL_CENTER_URL + AVT_PROXY_KEY
+// (Gemini only), SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
@@ -34,6 +40,7 @@ import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts"
 import { getProviderCapability } from "../_shared/providerCapabilities.ts";
 import { callXaiImageEditsDetailed } from "../_shared/xaiImageEdits.ts";
 import { boundedInt, normalizeResolution, parseReferenceRequest, planStillRequest, redactSigned, resolveReferences, STILL_RESOLUTIONS, type ResolvedReference } from "../_shared/stillReferences.ts";
+import { GEMINI_MODEL, geminiPlan, geminiStill, unsupportedNanoAlias, validateGeminiRequest } from "./gemini.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -84,15 +91,18 @@ type Filed = { path: string; previewUrl: string | null; bytes: number; assetId: 
  * the record of a still is the same whichever endpoint drew it; `extraMeta` says what differs (route, references).
  */
 // deno-lint-ignore no-explicit-any
-async function fileStill(admin: any, input: { userId: string; projectId: string; bytes: Uint8Array; index: number; stamp: string; shotLabel?: string; sceneTitle?: string; promptVersion?: string; model: string; resolution: string; aspect: string; rate: number; extraMeta: Record<string, unknown> }): Promise<Filed | { error: string }> {
-  const path = `${input.userId}/${input.projectId}/worlds/${(input.shotLabel ?? "scene").replace(/[^A-Za-z0-9_-]/g, "_")}_${input.stamp}_${input.index + 1}.png`;
-  const { error: upErr } = await admin.storage.from("project-references").upload(path, input.bytes, { contentType: "image/png", upsert: true });
+async function fileStill(admin: any, input: { userId: string; projectId: string; bytes: Uint8Array; index: number; stamp: string; shotLabel?: string; sceneTitle?: string; promptVersion?: string; model: string; resolution: string; aspect: string; rate: number; provider?: "grok" | "gemini"; mime?: string; extraMeta: Record<string, unknown> }): Promise<Filed | { error: string }> {
+  const mime = input.mime ?? "image/png";
+  const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
+  const path = `${input.userId}/${input.projectId}/worlds/${(input.shotLabel ?? "scene").replace(/[^A-Za-z0-9_-]/g, "_")}_${input.stamp}_${input.index + 1}.${ext}`;
+  const { error: upErr } = await admin.storage.from("project-references").upload(path, input.bytes, { contentType: mime, upsert: true });
   if (upErr) return { error: String(upErr.message ?? upErr) };
   const { data: signed } = await admin.storage.from("project-references").createSignedUrl(path, SIGN_TTL);
-  const { data: filed } = await admin.from("project_assets").insert({
-    user_id: input.userId, project_id: input.projectId, asset_type: "reference_image", file_url: path, source_tool: "grok", approval_status: "pending", notes: input.sceneTitle ?? input.shotLabel ?? null,
-    metadata_json: { bucket: "project-references", mime_type: "image/png", file_size_bytes: input.bytes.length, lane: "world_still", model: input.model, resolution: input.resolution, aspect_ratio: input.aspect, prompt_version: input.promptVersion ?? null, shot_label: input.shotLabel ?? null, scene_title: input.sceneTitle ?? null, actual_cost_usd: input.rate, ...input.extraMeta },
+  const { data: filed, error: assetError } = await admin.from("project_assets").insert({
+    user_id: input.userId, project_id: input.projectId, asset_type: "reference_image", file_url: path, source_tool: input.provider ?? "grok", approval_status: "pending", notes: input.sceneTitle ?? input.shotLabel ?? null,
+    metadata_json: { bucket: "project-references", mime_type: mime, file_size_bytes: input.bytes.length, lane: "world_still", model: input.model, resolution: input.resolution, aspect_ratio: input.aspect, prompt_version: input.promptVersion ?? null, shot_label: input.shotLabel ?? null, scene_title: input.sceneTitle ?? null, actual_cost_usd: input.rate, ...input.extraMeta },
   }).select("id").maybeSingle();
+  if (assetError || !filed?.id) return { error: "asset_record_failed" };
   return { path, previewUrl: signed?.signedUrl ?? null, bytes: input.bytes.length, assetId: (filed?.id as string | undefined) ?? null };
 }
 
@@ -108,7 +118,6 @@ serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
   const xaiKey = resolveXaiApiKey();
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? ""; const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? ""; const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!xaiKey) return json(500, { error: "xai_api_key_missing", detail: xaiKeyMissingMessage() });
   if (!supabaseUrl || !anonKey || !serviceRoleKey) return json(500, { error: "server_misconfigured" });
   const authHeader = req.headers.get("authorization") ?? "";
   if (!authHeader.toLowerCase().startsWith("bearer ")) return json(401, { error: "missing_bearer" });
@@ -123,8 +132,15 @@ serve(async (req) => {
 
   let body: Body;
   try { body = await req.json(); } catch { return json(400, { error: "invalid_json" }); }
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json(400, { error: "invalid_body" });
   if (!body.projectId || !UUID_RE.test(body.projectId)) return json(400, { error: "missing_project_id" });
-  if (!(body.prompt ?? "").trim()) return json(400, { error: "prompt_required" });
+  if (typeof body.prompt !== "string" || !body.prompt.trim()) return json(400, { error: "prompt_required" });
+  const isGemini = body.model === GEMINI_MODEL;
+  if (unsupportedNanoAlias(body.model)) return json(400, { error: "unsupported_nano_banana_route", detail: `Use ${GEMINI_MODEL} for direct Gemini. Runway/Higgsfield model aliases are not interchangeable.`, billed: false });
+  if (isGemini) {
+    const why = validateGeminiRequest(body);
+    if (why) return json(400, { error: why, billed: false });
+  } else if (!xaiKey) return json(500, { error: "xai_api_key_missing", detail: xaiKeyMissingMessage() });
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
   const { data: project, error: pErr } = await admin.from("video_projects").select("id, user_id").eq("id", body.projectId).maybeSingle();
   if (pErr) return json(500, { error: "project_query_failed", detail: pErr.message });
@@ -141,7 +157,7 @@ serve(async (req) => {
   // which model draws it and what it is estimated to cost — decided before any file or the provider is touched
   // (stillReferences.ts planStillRequest): the first listed edit model that takes all the pictures of THIS request, or
   // the listed one the caller names when it takes them; what the app is told it may send is the most any of them takes
-  const decided = planStillRequest({
+  const decided = isGemini ? geminiPlan(parsedRefs.refs.length, resolution, maxCostUsd) : planStillRequest({
     pictures: parsedRefs.refs.length, n, resolution, askedModel: typeof body.model === "string" ? body.model : null, defaultModel: DEFAULT_MODEL, maxCostUsd,
     capOf: (m) => getProviderCapability("xai:images/edits", Deno.env, m).maxReferenceImages,
     generationRateOf: (m) => (Object.hasOwn(PRICE_USD_PER_IMAGE, m) ? PRICE_USD_PER_IMAGE[m] : Math.max(...Object.values(PRICE_USD_PER_IMAGE))),
@@ -181,6 +197,7 @@ serve(async (req) => {
     if (lookupErr) return json(500, { error: "reference_lookup_failed" });
     const r = resolveReferences(parsedRefs.refs, {
       projectId: body.projectId,
+      userId,
       assets: (assetsRes.data ?? []) as never,
       features: (featuresRes.data ?? []) as never,
       ownArtists: new Set(((artistsRes.data ?? []) as { id: string }[]).map((a) => a.id)),
@@ -190,6 +207,13 @@ serve(async (req) => {
       return json(403, { error: "reference_refused", detail: `${refused.map((x) => `${x.label || x.id}: ${x.why}`).join("; ")}. Nothing was generated.`, refused });
     }
     resolvedRefs = r.resolved;
+  }
+  if (isGemini) {
+    const result = await geminiStill({ userId, projectId: body.projectId, prompt: body.prompt, resolution, aspectRatio: aspect, maxCostUsd, dryRun: body.dryRun, jobRowId: body.jobRowId, references: resolvedRefs }, {
+      admin, userClient,
+      file: ({ bytes, mime, extraMeta }) => fileStill(admin, { userId, projectId: body.projectId, bytes, mime, index: 0, stamp: body.jobRowId!, shotLabel: body.shotLabel, sceneTitle: body.sceneTitle, promptVersion: body.promptVersion, model, resolution, aspect, rate, provider: "gemini", extraMeta }),
+    });
+    return json(200, { ...plan, provider: "gemini", billingAccount: "Google Gemini API", ...result });
   }
   if (body.dryRun) return json(200, { ok: true, dryRun: true, billed: false, ...plan, referencesSent: 0, referencesChecked: resolvedRefs.length });
 
@@ -209,7 +233,7 @@ serve(async (req) => {
     }
     // one edit call per candidate (the edits endpoint answers one picture); they run side by side
     const results = await Promise.allSettled(
-      Array.from({ length: n }, () => callXaiImageEditsDetailed({ apiKey: xaiKey, model, prompt: body.prompt, images, resolution, aspectRatio: aspect, timeoutMs: 100_000 })),
+      Array.from({ length: n }, () => callXaiImageEditsDetailed({ apiKey: xaiKey!, model, prompt: body.prompt, images, resolution, aspectRatio: aspect, timeoutMs: 100_000 })),
     );
     const sentRefs = resolvedRefs.map((r) => ({ source: r.ref.source, id: r.ref.id, role: r.ref.role, label: r.ref.label }));
     const stills: Array<{ path: string; previewUrl: string | null; bytes: number; assetId: string | null }> = [];

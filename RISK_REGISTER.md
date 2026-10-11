@@ -36,6 +36,16 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 
 ---
 
+## GEMINI-STILL-1 — direct Google image billing and imported references
+
+- **Severity:** High · **Confidence:** Confirmed design boundary · **Status:** In-remediation, draft code only (2026-10-11).
+- **Owner:** AVT / Control Center. Requires architecture, product and security review before merge.
+- Explicit `gemini-nano-banana-2.1` route calls CC's `image-providers-gemini-generate`; Google billing is independent of Higgsfield and Runway app/API credits. No fallback or automatic model substitution. Google key remains in CC as `Frost_Gemini`.
+- AVT verifies project ownership, rejects anonymous callers, resolves reference IDs, and signs as the caller. Imported `prop-refs` files additionally require `<caller uid>/<filename>` with no nested or encoded paths. CC independently permits only the fixed AVT signed-storage host, allowed buckets, owner prefix and matching project folder; redirects and arbitrary remote URLs are refused. No signed links or image payloads enter logs.
+- A queued, owned `provider=gemini` job is atomically claimed before submission. One candidate, no automatic retry, token/byte limits and a conservative list-rate cost gate. Timeout or lost response is possibly billed; invoice amount stays null. This is not a durable Google-side idempotency guarantee: a crash requires manual reconciliation, and an explicitly new job is a new spend decision.
+- Unit and mocked-integration tests cover ownership, reference scope, replay and failure handling. `scripts/qa/gemini_storage_rls.mjs` accompanies the change for real two-owner/anonymous storage checks. **Not run:** requires existing disposable test identities/objects. Existing RISK-001 is not declared fixed, and this PR does not change RLS policies. Do not promote the route before the security reviewer resolves the live/storage test result.
+- Provider-live, real-media fidelity, model access, billing and deployment smoke remain unverified. See `docs/handoffs/GEMINI_STILLS_2026-10-11.md` for exact verification steps.
+
 ## RISK-001 — Anonymous RLS / bucket exposure
 
 - **Severity:** Critical · **Confidence:** Confirmed · **Status:** In-remediation
