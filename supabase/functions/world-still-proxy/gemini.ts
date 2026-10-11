@@ -71,7 +71,7 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
     submitted = true; // CC might receive it even when its response is lost.
     const response = await call(cc, { endpoint: "image-providers-gemini-generate", body: { ...request, references }, timeoutMs: 175_000 });
     const { images, ...evidence } = response.payload;
-    result = { ...evidence, ok: response.httpStatus === 200 && evidence.ok === true, actualCostUsd: null, references: sentRefs };
+    result = { ...evidence, ok: response.httpStatus === 200 && evidence.ok === true, billed: evidence.billed ?? "unknown", possiblyBilled: typeof evidence.possiblyBilled === "boolean" ? evidence.possiblyBilled : evidence.billed !== false, actualCostUsd: null, references: sentRefs };
     if (result.ok) {
       if (!Array.isArray(images) || images.length !== 1) throw new Error("invalid_gemini_result");
       const image = images[0] as { data?: string; mimeType?: string };
