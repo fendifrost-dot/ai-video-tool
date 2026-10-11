@@ -97,4 +97,9 @@ describe("mocked integration: Gemini job ownership and result filing", () => {
     expect(await geminiStill(input, d)).toMatchObject({ ok: false, billed: false, actualCostUsd: null });
     expect(d.file).not.toHaveBeenCalled(); expect(d.row.status).toBe("failed");
   });
+  it("a gateway error without billing evidence remains possibly billed", async () => {
+    const d = deps(); d.call.mockResolvedValueOnce({ httpStatus: 503, payload: { error: "worker unavailable" } } as never);
+    expect(await geminiStill(input, d)).toMatchObject({ ok: false, billed: "unknown", possiblyBilled: true, actualCostUsd: null });
+    expect(d.file).not.toHaveBeenCalled(); expect(d.call).toHaveBeenCalledTimes(1);
+  });
 });
