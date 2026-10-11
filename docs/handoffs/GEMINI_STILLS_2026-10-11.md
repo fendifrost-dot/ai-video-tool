@@ -19,7 +19,7 @@ This implements the user's request for a Gemini Nano Banana route through Contro
 ## Local evidence
 
 - Clean npm ci, app typecheck, production build and full existing unit/mocked-integration suite passed; existing skip remains. Final signed-preview persistence fix separately passed the focused Gemini suite.
-- New AVT coverage: **4 unit, 7 mocked integration, 0 provider-live, 0 real-media benchmark, 0 deployment smoke**. Existing reference suite also passed. Checks cover default Grok preservation, imported reference ownership, dry-run, private signing, owned job claim, duplicate calls, transport ambiguity, CC refusal, persistent provenance and no signed tokens in job records.
+- New AVT coverage: **4 unit, 8 mocked integration, 0 provider-live, 0 real-media benchmark, 0 deployment smoke**. Existing reference suite also passed. Checks cover default Grok preservation, imported reference ownership, dry-run, private signing, owned job claim, duplicate calls, transport/gateway ambiguity, CC refusal, persistent provenance and no signed tokens in job records. A follow-up on the PR explicitly marks a gateway failure without billing evidence as possibly billed; focused tests passed after that correction.
 - Edge entry bundled with esbuild and local graph typechecked with ambient Deno/CDN declarations. Not a live Deno boot. `node scripts/mcp/build-catalog.mjs --check` passed.
 - RLS integration script accompanies the change: `scripts/qa/gemini_storage_rls.mjs`. **Not run**: two existing disposable identities/objects are needed. Run this before deployment approval; an RLS-001 failure remains a blocker, not a passing unit test.
 - Spend $0. No provider media requests, uploads to Google or production database edits were performed in this implementation task.
