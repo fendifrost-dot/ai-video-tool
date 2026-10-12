@@ -6,6 +6,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { callerMayReadAny } from "../_shared/storageAccess.ts";
 import { pickGrokVideoEditReferencePaths, pickGrokGarmentReferencePaths } from "../_shared/garmentReference.ts";
 import { composeConstraintsFirst, lookSpecificationText, orderLookReferences, resolveReferencePolicy, type ReferencePolicy } from "../_shared/lookReferences.ts";
 import { getProviderCapability } from "../_shared/providerCapabilities.ts";
@@ -252,12 +253,21 @@ serve(async (req) => {
   if (!videoAsset.file_url) return json(404, { error: "video_asset_not_resolvable" });
 
   const videoPath = videoAsset.file_url as string;
+  const videoBuckets = [bucketForAssetType(String(videoAsset.asset_type ?? "")), ...VIDEO_BUCKETS];
+  if (!videoPath.startsWith("https://")) {
+    const videoAccess = await callerMayReadAny(admin, userId, videoBuckets, videoPath);
+    if (!videoAccess.ok) {
+      if (videoAccess.reason === "invalid_path") return json(400, { error: "invalid_storage_path" });
+      if (videoAccess.reason === "lookup_failed") return json(500, { error: "storage_access_lookup_failed" });
+      return json(403, { error: "storage_path_forbidden" });
+    }
+  }
   const videoUrl = videoPath.startsWith("https://")
     ? videoPath
     : await signStorage(
         admin,
         videoPath,
-        [bucketForAssetType(String(videoAsset.asset_type ?? "")), ...VIDEO_BUCKETS],
+        videoBuckets,
       );
   if (!videoUrl) return json(404, { error: "video_asset_not_resolvable" });
 

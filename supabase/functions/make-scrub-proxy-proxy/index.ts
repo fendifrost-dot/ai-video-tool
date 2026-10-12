@@ -43,6 +43,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { callerMayRead, callerMayWrite } from "../_shared/storageAccess.ts";
 import {
   type CcEndpoints,
   type FalCallContext,
@@ -239,6 +240,14 @@ serve(async (req) => {
   const proxyPath = `${fileUrl}.proxy.mp4`;
 
   // Sign the master so Fal (via CC) can pull it. Read-only.
+  const masterAccess = await callerMayRead(admin, userId, masterBucket, fileUrl);
+  if (!masterAccess.ok) {
+    if (masterAccess.reason === "invalid_path") return json(400, { error: "invalid_storage_path" });
+    if (masterAccess.reason === "lookup_failed") return json(500, { error: "storage_access_lookup_failed" });
+    return json(403, { error: "storage_path_forbidden" });
+  }
+  // The proxy is written next to the master: only inside the caller's own folder (a legacy read grant is not a write grant).
+  if (!callerMayWrite(userId, proxyPath)) return json(403, { error: "storage_path_forbidden" });
   const { data: masterSigned, error: signErr } = await admin.storage
     .from(masterBucket)
     .createSignedUrl(fileUrl, SIGN_TTL);

@@ -30,6 +30,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { callerMayReadAny } from "../_shared/storageAccess.ts";
 import { composeConstraintsFirst, lookSpecificationText, orderLookReferences, resolveReferencePolicy, type ReferencePolicy } from "../_shared/lookReferences.ts";
 import { getProviderCapability } from "../_shared/providerCapabilities.ts";
 import { callControlCenter, controlCenterConfig, type ControlCenterConfig } from "../_shared/controlCenterClient.ts";
@@ -277,6 +278,14 @@ async function handleRequest(req: Request): Promise<Response> {
   if (vErr) return json(500, { error: "video_asset_query_failed", detail: vErr.message });
   if (!videoAsset || videoAsset.user_id !== userId || videoAsset.project_id !== body.projectId) return json(403, { error: "not_owner" });
   const videoPath = String(videoAsset.file_url ?? "");
+  if (!videoPath.startsWith("https://")) {
+    const videoAccess = await callerMayReadAny(admin, userId, VIDEO_BUCKETS, videoPath);
+    if (!videoAccess.ok) {
+      if (videoAccess.reason === "invalid_path") return json(400, { error: "invalid_storage_path" });
+      if (videoAccess.reason === "lookup_failed") return json(500, { error: "storage_access_lookup_failed" });
+      return json(403, { error: "storage_path_forbidden" });
+    }
+  }
   const videoUrl = videoPath.startsWith("https://") ? videoPath : await signStorage(admin, videoPath, VIDEO_BUCKETS);
   if (!videoUrl) return json(404, { error: "video_asset_not_resolvable" });
 
@@ -329,7 +338,11 @@ async function handleRequest(req: Request): Promise<Response> {
   const keyframes: Array<{ uri: string; seconds: number }> = [];
   for (const k of (body.keyframes ?? []).slice(0, spec.maxKeyframes)) {
     if (typeof k.seconds !== "number" || k.seconds < 0) continue;
-    const u = await signStorage(admin, k.path, k.bucket ? [k.bucket, ...IMAGE_BUCKETS] : IMAGE_BUCKETS);
+    const keyframeBuckets = k.bucket ? [k.bucket, ...IMAGE_BUCKETS] : IMAGE_BUCKETS;
+    // Service role bypasses bucket RLS: caller-supplied keyframe paths are signed only inside the caller's own access.
+    const access = await callerMayReadAny(admin, userId, keyframeBuckets, k.path);
+    if (!access.ok) return json(access.reason === "not_owner" ? 403 : 400, { error: access.reason === "not_owner" ? "storage_path_forbidden" : "invalid_storage_path" });
+    const u = await signStorage(admin, k.path, keyframeBuckets);
     if (u) keyframes.push({ uri: u, seconds: k.seconds });
   }
   if (spec.contract === "aleph2" && keyframes.length === 0 && (body.keyframes ?? []).length > 0) return json(404, { error: "keyframes_not_resolvable" });

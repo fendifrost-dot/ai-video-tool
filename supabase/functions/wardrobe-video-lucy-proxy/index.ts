@@ -38,6 +38,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { callerMayRead } from "../_shared/storageAccess.ts";
 import { vtonCategoryForFeatureType } from "../_shared/garmentReference.ts";
 import {
   buildGarmentEditPrompt,
@@ -243,6 +244,13 @@ serve(async (req) => {
     srcBucket = body.sourceBucket;
     srcPath = body.sourcePath;
     sourceMode = "trimmed_clip";
+  } else {
+    const masterAccess = await callerMayRead(admin, userId, masterBucket, fileUrl);
+    if (!masterAccess.ok) {
+      if (masterAccess.reason === "invalid_path") return json(400, { error: "invalid_storage_path" });
+      if (masterAccess.reason === "lookup_failed") return json(500, { error: "storage_access_lookup_failed" });
+      return json(403, { error: "storage_path_forbidden" });
+    }
   }
   const { data: signed, error: signErr } = await admin.storage
     .from(srcBucket)

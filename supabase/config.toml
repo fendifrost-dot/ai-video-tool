@@ -66,6 +66,10 @@ verify_jwt = true
 verify_jwt = true
 
 # SAM-3 masking only (CC switchx-restyle segment-image). User JWT required.
+# Cuts a labelled crop out of one of the caller's own image assets (free; no provider). Session required.
+[functions.asset-derivative]
+verify_jwt = true
+
 [functions.sam3-segment-proxy]
 verify_jwt = true
 

@@ -16,6 +16,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { callerMayReadAny } from "../_shared/storageAccess.ts";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 import { callXaiImageEditsDetailed } from "../_shared/xaiImageEdits.ts";
 import { validateLookCompositeInput } from "../_shared/lookCompositePrompt.ts";
@@ -180,6 +181,9 @@ serve(async (req) => {
 
   const identityUrls: string[] = [];
   for (const p of identityPaths) {
+    // Service role bypasses bucket RLS: caller-supplied paths are signed only inside the caller's own access.
+    const access = await callerMayReadAny(admin, userId, identityBuckets, p);
+    if (!access.ok) return json(access.reason === "not_owner" ? 403 : 400, { error: access.reason === "not_owner" ? "storage_path_forbidden" : "invalid_storage_path" });
     const url = await signStoragePath(admin, p, identityBuckets);
     if (url) identityUrls.push(url);
   }

@@ -40,7 +40,7 @@ import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts"
 import { getProviderCapability } from "../_shared/providerCapabilities.ts";
 import { callXaiImageEditsDetailed } from "../_shared/xaiImageEdits.ts";
 import { boundedInt, normalizeResolution, parseReferenceRequest, planStillRequest, redactSigned, resolveReferences, STILL_RESOLUTIONS, type ResolvedReference } from "../_shared/stillReferences.ts";
-import { GEMINI_MODEL, geminiPlan, geminiStill, unsupportedNanoAlias, validateGeminiRequest } from "./gemini.ts";
+import { GEMINI_MODEL, geminiPlan, geminiStill, recoverGeminiJob, unsupportedNanoAlias, validateGeminiRequest } from "./gemini.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -76,6 +76,8 @@ type Body = {
    * gone before the answer arrives, and the server can finish the job (provider-jobs-tick).
    */
   jobRowId?: string;
+  /** Gemini only: file an already-stored image of a failed job (asset_filing_failed) without regenerating. */
+  recoverJobRowId?: string;
   /** Reference pictures, by record (see the header). Absent or empty = drawn from the prompt alone, as before. */
   references?: unknown;
 };
@@ -95,15 +97,28 @@ async function fileStill(admin: any, input: { userId: string; projectId: string;
   const mime = input.mime ?? "image/png";
   const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
   const path = `${input.userId}/${input.projectId}/worlds/${(input.shotLabel ?? "scene").replace(/[^A-Za-z0-9_-]/g, "_")}_${input.stamp}_${input.index + 1}.${ext}`;
-  const { error: upErr } = await admin.storage.from("project-references").upload(path, input.bytes, { contentType: mime, upsert: true });
+  // The bytes exist only in this worker until the upload lands: one retry before a paid image is declared lost.
+  let upErr: { message?: string } | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    ({ error: upErr } = await admin.storage.from("project-references").upload(path, input.bytes, { contentType: mime, upsert: true }));
+    if (!upErr) break;
+  }
   if (upErr) return { error: String(upErr.message ?? upErr) };
   const { data: signed } = await admin.storage.from("project-references").createSignedUrl(path, SIGN_TTL);
+  const row = await recordStillRow(admin, { userId: input.userId, projectId: input.projectId, path, provider: input.provider, notes: input.sceneTitle ?? input.shotLabel ?? null, metadata: { bucket: "project-references", mime_type: mime, file_size_bytes: input.bytes.length, lane: "world_still", model: input.model, resolution: input.resolution, aspect_ratio: input.aspect, prompt_version: input.promptVersion ?? null, shot_label: input.shotLabel ?? null, scene_title: input.sceneTitle ?? null, actual_cost_usd: input.rate, ...input.extraMeta } });
+  if ("error" in row) return { error: "asset_record_failed", path }; // stored, not recorded: recoverable
+  return { path, previewUrl: signed?.signedUrl ?? null, bytes: input.bytes.length, assetId: row.assetId };
+}
+
+/** The project_assets row for a still that is already in project-references (first filing, or a later recovery). */
+// deno-lint-ignore no-explicit-any
+async function recordStillRow(admin: any, input: { userId: string; projectId: string; path: string; provider?: "grok" | "gemini"; notes: string | null; metadata: Record<string, unknown> }): Promise<{ assetId: string } | { error: string }> {
   const { data: filed, error: assetError } = await admin.from("project_assets").insert({
-    user_id: input.userId, project_id: input.projectId, asset_type: "reference_image", file_url: path, source_tool: input.provider ?? "grok", approval_status: "pending", notes: input.sceneTitle ?? input.shotLabel ?? null,
-    metadata_json: { bucket: "project-references", mime_type: mime, file_size_bytes: input.bytes.length, lane: "world_still", model: input.model, resolution: input.resolution, aspect_ratio: input.aspect, prompt_version: input.promptVersion ?? null, shot_label: input.shotLabel ?? null, scene_title: input.sceneTitle ?? null, actual_cost_usd: input.rate, ...input.extraMeta },
+    user_id: input.userId, project_id: input.projectId, asset_type: "reference_image", file_url: input.path, source_tool: input.provider ?? "grok", approval_status: "pending", notes: input.notes,
+    metadata_json: input.metadata,
   }).select("id").maybeSingle();
-  if (assetError || !filed?.id) return { error: "asset_record_failed", path }; // stored, not recorded: recoverable
-  return { path, previewUrl: signed?.signedUrl ?? null, bytes: input.bytes.length, assetId: (filed?.id as string | undefined) ?? null };
+  if (assetError || !filed?.id) return { error: String(assetError?.message ?? "asset_record_failed") };
+  return { assetId: filed.id as string };
 }
 
 function b64ToBytes(b64: string): Uint8Array {
@@ -207,6 +222,17 @@ serve(async (req) => {
       return json(403, { error: "reference_refused", detail: `${refused.map((x) => `${x.label || x.id}: ${x.why}`).join("; ")}. Nothing was generated.`, refused });
     }
     resolvedRefs = r.resolved;
+  }
+  if (isGemini && typeof body.recoverJobRowId === "string") {
+    // Recovery files an image that was already generated and stored; it never calls the provider.
+    const result = await recoverGeminiJob({ userId, projectId: body.projectId, jobRowId: body.recoverJobRowId }, {
+      admin,
+      record: async ({ path, extraMeta }) => {
+        const row = await recordStillRow(admin, { userId, projectId: body.projectId, path, provider: "gemini", notes: body.sceneTitle ?? body.shotLabel ?? "recovered Gemini still", metadata: { bucket: "project-references", lane: "world_still", model, resolution, aspect_ratio: aspect, actual_cost_usd: null, recovered: true, ...extraMeta } });
+        return "error" in row ? { error: row.error, path } : { path, previewUrl: null, bytes: 0, assetId: row.assetId };
+      },
+    });
+    return json(result.ok ? 200 : 409, { ...plan, provider: "gemini", billingAccount: "Google Gemini API", billed: false, recovery: true, ...result });
   }
   if (isGemini) {
     const result = await geminiStill({ userId, projectId: body.projectId, prompt: body.prompt, resolution, aspectRatio: aspect, maxCostUsd, dryRun: body.dryRun, jobRowId: body.jobRowId, references: resolvedRefs }, {
