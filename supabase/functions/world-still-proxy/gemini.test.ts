@@ -108,4 +108,47 @@ describe("mocked integration: Gemini job ownership and result filing", () => {
     expect(await geminiStill(input, d)).toMatchObject({ ok: false, billed: "unknown", possiblyBilled: true, actualCostUsd: null });
     expect(d.file).not.toHaveBeenCalled(); expect(d.call).toHaveBeenCalledTimes(1);
   });
+  it("a Control Center worker crash after submission is recorded with its platform code, never as plain failure", async () => {
+    // Shape observed live: the platform, not CC, answers when the worker exceeds its memory.
+    const d = deps(); d.call.mockResolvedValueOnce({ httpStatus: 546, payload: { code: "WORKER_RESOURCE_LIMIT", message: "Function failed due to not having enough compute resources" } } as never);
+    const result = await geminiStill(input, d);
+    expect(result).toMatchObject({ ok: false, error: "control_center_failed_after_submit", ccHttpStatus: 546, ccPlatformCode: "WORKER_RESOURCE_LIMIT", billed: "unknown", possiblyBilled: true, jobRecordSaved: true });
+    expect(d.row).toMatchObject({ status: "failed", error_text: "control_center_failed_after_submit; WORKER_RESOURCE_LIMIT", response_payload_json: { possiblyBilled: true, ccHttpStatus: 546 } });
+    expect(String((d.row.response_payload_json as Record<string, unknown>).reconcile)).toContain("jobRowId");
+    expect(d.file).not.toHaveBeenCalled();
+    expect(await geminiStill(input, d)).toMatchObject({ error: "gemini_job_not_claimable" });
+    expect(d.call).toHaveBeenCalledTimes(1);
+  });
+  it("Control Center's own refusals before calling Google are not billed", async () => {
+    for (const errorCode of ["INVALID_REQUEST", "PROVIDER_KEY_NOT_CONFIGURED", "AUDIT_UNAVAILABLE", "UNAUTHORISED"]) {
+      const d = deps(); d.call.mockResolvedValueOnce({ httpStatus: errorCode === "INVALID_REQUEST" ? 400 : 503, payload: { ok: false, errorCode, retryable: false } } as never);
+      expect(await geminiStill(input, d), errorCode).toMatchObject({ ok: false, billed: false, possiblyBilled: false, errorCode });
+    }
+  });
+  it("a refusal code that still claims submission stays possibly billed; odd platform codes are not recorded", async () => {
+    const d = deps(); d.call.mockResolvedValueOnce({ httpStatus: 503, payload: { ok: false, errorCode: "AUDIT_UNAVAILABLE", possiblyBilled: true } } as never);
+    expect(await geminiStill(input, d)).toMatchObject({ billed: "unknown", possiblyBilled: true });
+    const e = deps(); e.call.mockResolvedValueOnce({ httpStatus: 502, payload: { code: "x".repeat(5000) } } as never);
+    expect(await geminiStill(input, e)).toMatchObject({ error: "control_center_failed_after_submit", ccPlatformCode: null });
+  });
+  it("an unknown CC error code on a non-200 stays possibly billed", async () => {
+    const d = deps(); d.call.mockResolvedValueOnce({ httpStatus: 500, payload: { ok: false, errorCode: "SOMETHING_NEW" } } as never);
+    expect(await geminiStill(input, d)).toMatchObject({ ok: false, billed: "unknown", possiblyBilled: true });
+  });
+  it("an image stored without its asset row stays recoverable: path recorded, job failed, no retry", async () => {
+    const d = deps(); const stored = `${user}/${project}/worlds/scene_1.png`;
+    d.file.mockResolvedValueOnce({ error: "asset_record_failed", path: stored } as never);
+    const result = await geminiStill(input, d);
+    expect(result).toMatchObject({ ok: false, error: "asset_filing_failed", filingError: "asset_record_failed", recoverableImagePath: stored, billed: "unknown", possiblyBilled: true });
+    expect(d.row).toMatchObject({ status: "failed", result_asset_id: null, error_text: `asset_filing_failed; image stored at ${stored}`, response_payload_json: { recoverableImagePath: stored } });
+    expect(await geminiStill(input, d)).toMatchObject({ error: "gemini_job_not_claimable" });
+    expect(d.call).toHaveBeenCalledTimes(1);
+  });
+  it("an upload failure (nothing stored) is a failure with no recoverable path, never success", async () => {
+    const d = deps(); d.file.mockResolvedValueOnce({ error: "bucket unavailable" } as never);
+    const result = await geminiStill(input, d);
+    expect(result).toMatchObject({ ok: false, error: "asset_filing_failed", recoverableImagePath: null });
+    expect(d.row).toMatchObject({ status: "failed", error_text: "asset_filing_failed; image lost: upload failed" });
+    expect(JSON.stringify(d.row)).not.toContain("iVBOR");
+  });
 });

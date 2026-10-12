@@ -14,8 +14,7 @@
 // viewed. It creates NO artist_looks row, sends no email, and touches no product
 // table — the uploaded file is inert and safe to delete.
 //
-// Auth: verify_jwt = false; the caller must present either the anon/publishable
-// key or the service-role key as the bearer token. No user JWT involved.
+// Auth: verify_jwt = false; the service-role key only (SEC-4, 12 Oct 2026).
 //
 // Required secrets (AVT project qoyxgnkvjukovkrvdaiq):
 //   XAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
@@ -187,19 +186,12 @@ serve(async (req) => {
     return json(500, { error: "xai_api_key_missing", detail: xaiKeyMissingMessage() });
   }
 
-  // verify_jwt = false so this runs without a browser session. It accepts the
-  // anon/publishable key as well as the service-role key, because the operator
-  // running the verification cannot handle a service-role key.
-  //
-  // The anon key is public (it ships in the frontend bundle), so this endpoint
-  // is effectively open to anyone who knows the URL — and each call spends real
-  // xAI credit. Two guardrails below: a hard cap of 2 edits per request, and
-  // the fact that the function writes nothing. DELETE THIS FUNCTION once the
-  // resolution question is answered; it is not meant to live in production.
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  // Service role only (SEC-4, 12 Oct 2026). It used to accept the public anon key, which let anyone sign any
+  // caller-chosen storage path with the service role, past the bucket policies, and spend xAI credit.
+  // DELETE THIS FUNCTION once the resolution question is answered; it is not meant to live in production.
   const bearer = (req.headers.get("authorization") ?? "").replace(/^[Bb]earer\s+/, "").trim();
-  if (!bearer || (bearer !== serviceRoleKey && bearer !== anonKey)) {
-    return json(401, { error: "anon_or_service_role_key_required" });
+  if (!bearer || bearer !== serviceRoleKey) {
+    return json(401, { error: "service_role_required" });
   }
 
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });

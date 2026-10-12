@@ -19,7 +19,10 @@ export function validateGeminiRequest(body: { n?: unknown; prompt: unknown; aspe
   if (body.dryRun !== true && (typeof body.jobRowId !== "string" || !UUID.test(body.jobRowId))) return "gemini_job_required";
   return null;
 }
+const CC_REFUSED_BEFORE_GOOGLE = new Set(["INVALID_REQUEST", "PROVIDER_KEY_NOT_CONFIGURED", "AUDIT_UNAVAILABLE", "UNAUTHORISED", "METHOD_NOT_ALLOWED"]);
 export type FiledImage = { path: string; previewUrl: string | null; bytes: number; assetId: string | null };
+/** A filing failure: `path` is set when the image itself was stored, so the paid output stays recoverable. */
+export type FilingFailure = { error: string; path?: string };
 type Input = {
   userId: string; projectId: string; prompt: string; resolution: string; aspectRatio: string;
   maxCostUsd: number; dryRun?: boolean; jobRowId?: string; references: ResolvedReference[];
@@ -32,7 +35,7 @@ type Dependencies = {
   userClient: any;
   config?: ControlCenterConfig | null;
   call?: (config: ControlCenterConfig, call: Parameters<typeof callControlCenter>[1]) => Promise<ControlCenterResult>;
-  file: (image: { bytes: Uint8Array; mime: string; extraMeta: Record<string, unknown> }) => Promise<FiledImage | { error: string }>;
+  file: (image: { bytes: Uint8Array; mime: string; extraMeta: Record<string, unknown> }) => Promise<FiledImage | FilingFailure>;
 };
 export async function geminiStill(input: Input, deps: Dependencies): Promise<Record<string, unknown>> {
   const cc = deps.config === undefined ? controlCenterConfig() : deps.config;
@@ -71,25 +74,40 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
     submitted = true; // CC might receive it even when its response is lost.
     const response = await call(cc, { endpoint: "image-providers-gemini-generate", body: { ...request, references }, timeoutMs: 175_000 });
     const { images, ...evidence } = response.payload;
-    result = { ...evidence, ok: response.httpStatus === 200 && evidence.ok === true, billed: evidence.billed ?? "unknown", possiblyBilled: typeof evidence.possiblyBilled === "boolean" ? evidence.possiblyBilled : evidence.billed !== false, actualCostUsd: null, references: sentRefs };
+    // Control Center died or answered with something that is not its own envelope (e.g. the platform's
+    // WORKER_RESOURCE_LIMIT, 12 Oct 2026): Google may already have billed. Record what is known for reconciliation
+    // against CC's audit row (same jobRowId); never retry automatically.
+    if (typeof evidence.ok !== "boolean") {
+      result = { ok: false, error: "control_center_failed_after_submit", ccHttpStatus: response.httpStatus, ccPlatformCode: typeof evidence.code === "string" && /^[A-Z0-9_]{1,64}$/.test(evidence.code) ? evidence.code : null, billed: "unknown", possiblyBilled: true, actualCostUsd: null, references: sentRefs, reconcile: "Look up Control Center tool_execution_logs where args->>'jobRowId' = this job; an 'attempted' row with no completion means the answer was lost after submission. A gateway refusal (no CC row at all) means Google was never called." };
+      throw new Error("control_center_failed_after_submit");
+    }
+    // Control Center's own refusals before it calls Google (bad input, no key, no audit row, auth) spend nothing.
+    // CC sends these codes only before run(); any sign of submission still wins.
+    const refusedBeforeGoogle = response.httpStatus !== 200 && CC_REFUSED_BEFORE_GOOGLE.has(String(evidence.errorCode)) && evidence.possiblyBilled !== true && evidence.billed !== true && evidence.billed !== "unknown";
+    result = { ...evidence, ok: response.httpStatus === 200 && evidence.ok === true, ccHttpStatus: response.httpStatus, billed: refusedBeforeGoogle ? false : evidence.billed ?? "unknown", possiblyBilled: refusedBeforeGoogle ? false : typeof evidence.possiblyBilled === "boolean" ? evidence.possiblyBilled : evidence.billed !== false, actualCostUsd: null, references: sentRefs };
     if (result.ok) {
       if (!Array.isArray(images) || images.length !== 1) throw new Error("invalid_gemini_result");
       const image = images[0] as { data?: string; mimeType?: string };
       if (typeof image.data !== "string" || image.data.length > 12 * 1024 * 1024 || !["image/png", "image/jpeg", "image/webp"].includes(image.mimeType ?? "")) throw new Error("invalid_gemini_result");
       const binary = atob(image.data); const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
       const filed = await deps.file({ bytes, mime: image.mimeType!, extraMeta: { ...evidence, prompt: input.prompt, actual_cost_usd: null, references: sentRefs, job_id: job.id, variation_id: job.variation_id ?? null, route: "gemini:generateContent" } });
-      if ("error" in filed) throw new Error("asset_filing_failed");
+      if ("error" in filed) {
+        // A paid image that was stored but not recorded is still recoverable from its path.
+        result.recoverableImagePath = filed.path ?? null;
+        result.filingError = filed.error;
+        throw new Error("asset_filing_failed");
+      }
       result.stills = [filed];
     }
   } catch (e) {
     const why = e instanceof Error ? e.message : "";
-    result = { ...result, ok: false, error: ["reference_sign_failed", "invalid_gemini_result", "asset_filing_failed"].includes(why) ? why : "gemini_request_failed", billed: submitted ? "unknown" : false, possiblyBilled: submitted, actualCostUsd: null };
+    result = { ...result, ok: false, error: ["reference_sign_failed", "invalid_gemini_result", "asset_filing_failed", "control_center_failed_after_submit"].includes(why) ? why : "gemini_request_failed", billed: submitted ? "unknown" : false, possiblyBilled: submitted, actualCostUsd: null };
   }
   const first = (result.stills as FiledImage[] | undefined)?.[0];
   const { stills: previews, ...recorded } = result;
   // Signed previews are response-only; persist paths/ids, never access tokens.
   if (Array.isArray(previews)) recorded.stills = (previews as FiledImage[]).map(({ path, assetId, bytes }) => ({ path, assetId, bytes }));
-  const { error: finishError } = await deps.admin.from("provider_jobs").update({ status: result.ok ? "succeeded" : "failed", response_payload_json: recorded, result_asset_id: first?.assetId ?? null, finalized_at: new Date().toISOString(), error_text: result.ok ? null : String(result.error ?? result.errorCode ?? "Gemini failed") }).eq("id", job.id).eq("user_id", input.userId).eq("project_id", input.projectId);
+  const { error: finishError } = await deps.admin.from("provider_jobs").update({ status: result.ok ? "succeeded" : "failed", response_payload_json: recorded, result_asset_id: first?.assetId ?? null, finalized_at: new Date().toISOString(), error_text: result.ok ? null : [result.error ?? result.errorCode ?? "gemini_failed", result.ccPlatformCode, result.recoverableImagePath ? `image stored at ${result.recoverableImagePath}` : result.error === "asset_filing_failed" ? "image lost: upload failed" : null].filter(Boolean).join("; ") }).eq("id", job.id).eq("user_id", input.userId).eq("project_id", input.projectId);
   if (finishError) return { ...result, jobRecordSaved: false, warning: "Paid result may exist; reconcile this job. Do not resubmit automatically." };
   return { ...result, jobRecordSaved: true, jobRowId: job.id };
 }

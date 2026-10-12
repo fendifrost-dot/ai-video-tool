@@ -429,6 +429,12 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **Why it is not fixed here:** removing the policies is the RISK-001 remediation and is gated on the identity consolidation + storage re-key (RISK-002, STOR-1…4): restoring owner-scoped policies today would make the director's own legacy-prefixed files unreadable in-app. Class C, its own PR, with the RLS integration test the review doc requires.
 - **What holds meanwhile:** each paid proxy must refuse anonymous JWTs and must not trust a row's owner column as proof of anything. `lyric-align-proxy` and (from #185) `world-still-proxy` do; the rest do not (see `docs/security/SECURITY_TRIAGE_2026-10-07.md`).
 - **DoD:** the `_open_test` policies and the anon bucket policies are gone; `anon` can read and write nothing (the RISK-001 DoD); the RLS integration test category is no longer empty.
+- **2026-10-12, partial — `prop-refs` and `project-references` closed** (migration `20261012210000_sec4_scope_reference_buckets.sql`, applied via Lovable SQL; evidence `docs/evidence/SEC4_STORAGE_2026-10-12.md`). Both buckets are now owner-only. The owner keeps read and delete on the 7 legacy anonymous-session folders through a locked grants table. Verified through the real storage API with test identities: another user and the anon key are denied list, download, sign, upload, overwrite and delete; the owner's own and legacy files still sign (206). `grok-video-research-proxy` and `grok-resolution-test` are now service-role only, because they had let the anon key sign any path with the service role. **Still open:**
+  - the other 9 buckets;
+  - every table;
+  - authenticated service-role functions that sign caller paths without an ownership check (REF-1 family);
+  - legacy anonymous sessions still match `*_own` on their own folders;
+  - the CDN keeps serving a requester's copy cached during the open period until `max-age` (≤1 h) expires.
 
 ## SEC-5 — Sign-up is on at the auth server; the app's sign-in form only hides it
 

@@ -91,7 +91,7 @@ type Filed = { path: string; previewUrl: string | null; bytes: number; assetId: 
  * the record of a still is the same whichever endpoint drew it; `extraMeta` says what differs (route, references).
  */
 // deno-lint-ignore no-explicit-any
-async function fileStill(admin: any, input: { userId: string; projectId: string; bytes: Uint8Array; index: number; stamp: string; shotLabel?: string; sceneTitle?: string; promptVersion?: string; model: string; resolution: string; aspect: string; rate: number; provider?: "grok" | "gemini"; mime?: string; extraMeta: Record<string, unknown> }): Promise<Filed | { error: string }> {
+async function fileStill(admin: any, input: { userId: string; projectId: string; bytes: Uint8Array; index: number; stamp: string; shotLabel?: string; sceneTitle?: string; promptVersion?: string; model: string; resolution: string; aspect: string; rate: number; provider?: "grok" | "gemini"; mime?: string; extraMeta: Record<string, unknown> }): Promise<Filed | { error: string; path?: string }> {
   const mime = input.mime ?? "image/png";
   const ext = mime === "image/jpeg" ? "jpg" : mime === "image/webp" ? "webp" : "png";
   const path = `${input.userId}/${input.projectId}/worlds/${(input.shotLabel ?? "scene").replace(/[^A-Za-z0-9_-]/g, "_")}_${input.stamp}_${input.index + 1}.${ext}`;
@@ -102,7 +102,7 @@ async function fileStill(admin: any, input: { userId: string; projectId: string;
     user_id: input.userId, project_id: input.projectId, asset_type: "reference_image", file_url: path, source_tool: input.provider ?? "grok", approval_status: "pending", notes: input.sceneTitle ?? input.shotLabel ?? null,
     metadata_json: { bucket: "project-references", mime_type: mime, file_size_bytes: input.bytes.length, lane: "world_still", model: input.model, resolution: input.resolution, aspect_ratio: input.aspect, prompt_version: input.promptVersion ?? null, shot_label: input.shotLabel ?? null, scene_title: input.sceneTitle ?? null, actual_cost_usd: input.rate, ...input.extraMeta },
   }).select("id").maybeSingle();
-  if (assetError || !filed?.id) return { error: "asset_record_failed" };
+  if (assetError || !filed?.id) return { error: "asset_record_failed", path }; // stored, not recorded: recoverable
   return { path, previewUrl: signed?.signedUrl ?? null, bytes: input.bytes.length, assetId: (filed?.id as string | undefined) ?? null };
 }
 
