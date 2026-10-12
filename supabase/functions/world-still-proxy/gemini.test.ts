@@ -79,6 +79,7 @@ describe("mocked integration: Gemini job ownership and result filing", () => {
     d.call.mockImplementationOnce(async () => { seenAtCall = JSON.parse(JSON.stringify(d.row.response_payload_json)); return { httpStatus: 200, payload: { ok: true, model: GEMINI_MODEL, actualCostUsd: null, usage: { promptTokenCount: 0 }, images: [{ data: "iVBORw0KGgoAAAAAAQ==", mimeType: "image/png" }] } }; });
     expect(await geminiStill(input, d)).toMatchObject({ ok: true, stages: { generation: "succeeded", upload: "succeeded", filing: "succeeded", finalize: "succeeded" }, finalized: true });
     expect(seenAtCall).toMatchObject({ phase: "submitted", submitted: true, possiblyBilled: true, billed: "unknown" });
+    expect(d.row.response_payload_json).toMatchObject({ submittedAt: (seenAtCall as { submittedAt: string }).submittedAt, stages: { finalize: "succeeded" } }); // stored row keeps the intent time and says finalize succeeded
     const e = deps(); let updates = 0;
     const realFrom = e.admin.from; e.admin.from = vi.fn(() => { const q = realFrom(); const u = q.update; q.update = (p: Record<string, unknown>) => { if (++updates === 3) { const r = u(p); r.eq = (() => ({ eq: async () => ({ data: null, error: { message: "db down" } }) })) as never; return r; } return u(p); }; return q; }) as never;
     expect(await geminiStill(input, e)).toMatchObject({ ok: false, error: "job_submission_record_failed", billed: false, possiblyBilled: false });
