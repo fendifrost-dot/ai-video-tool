@@ -1973,6 +1973,33 @@ export type Database = {
           },
         ]
       }
+      storage_legacy_folder_grants: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          folder_uid: string
+          project_id: string
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          folder_uid: string
+          project_id: string
+          reason: string
+          user_id: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          folder_uid?: string
+          project_id?: string
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       storyboard_nodes: {
         Row: {
           camera_motion: string | null
@@ -2960,6 +2987,10 @@ export type Database = {
         }
       }
       reap_stale_jacket_inpaints: { Args: never; Returns: Json }
+      storage_legacy_folder_access: {
+        Args: { bucket: string; object_name: string }
+        Returns: boolean
+      }
       treatment_text_of: { Args: { j: Json }; Returns: string }
     }
     Enums: {
