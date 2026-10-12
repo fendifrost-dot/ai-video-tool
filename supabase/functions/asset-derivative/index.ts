@@ -81,8 +81,10 @@ serve(async (req) => {
   const path = `${userId}/${source.project_id}/derivatives/${source.id}_${label}_${stamp}.jpg`;
   const { error: upErr } = await admin.storage.from(bucket).upload(path, out, { contentType: "image/jpeg", upsert: false });
   if (upErr) return json(502, { error: "derivative_upload_failed", detail: upErr.message });
-  const metadata = { bucket, mime_type: "image/jpeg", file_size_bytes: out.byteLength, lane: "derivative", derivative_of: source.id, derivative_box: px, derivative_box_fraction: body.box, source_pixels: { width: image.width, height: image.height }, label, note: typeof body.note === "string" ? body.note.slice(0, 500) : null };
-  const { data: filed, error: insErr } = await admin.from("project_assets").insert({ user_id: userId, project_id: source.project_id, asset_type: "reference_image", file_url: path, source_tool: "asset-derivative", approval_status: "pending", notes: `DERIVATIVE (${label}) of ${source.id}`, metadata_json: metadata }).select("id").maybeSingle();
-  if (insErr || !filed?.id) return json(500, { error: "asset_record_failed", path }); // stored, not recorded: recoverable
+  const metadata = { bucket, mime_type: "image/jpeg", file_size_bytes: out.byteLength, lane: "derivative", tool: "asset-derivative", derivative_of: source.id, derivative_box: px, derivative_box_fraction: body.box, source_pixels: { width: image.width, height: image.height }, label, note: typeof body.note === "string" ? body.note.slice(0, 500) : null };
+  const { data: filed, error: insErr } = await admin.from("project_assets").insert({ user_id: userId, project_id: source.project_id, asset_type: "reference_image", file_url: path, source_tool: "manual", approval_status: "pending", notes: `DERIVATIVE (${label}) of ${source.id}`, metadata_json: metadata }).select("id").maybeSingle();
+  // Stored but not recorded: the object stays in the caller's folder for a later filing; the DB code says why (12 Oct: an
+  // enum value outside provider_name refused the row and the object was orphaned).
+  if (insErr || !filed?.id) return json(500, { error: "asset_record_failed", path, detail: insErr ? `${insErr.code ?? ""} ${insErr.message ?? ""}`.trim().slice(0, 200) : "no row returned" });
   return json(200, { ok: true, assetId: filed.id, path, bucket, bytes: out.byteLength, pixels: { width: px.w, height: px.h }, derivativeOf: source.id });
 });
