@@ -11,7 +11,7 @@ Earlier run: [`GEMINI_VALIDATION_2026-10-12.md`](GEMINI_VALIDATION_2026-10-12.md
 | CC reference cap sized to Google's 20 MB limit (#56, `f49c78d`) | merged · deployed · live-verified (run 2, 3 references, 13.4 MB) |
 | CC output cap 8,192 tokens (#57, `d8955b2`) | merged · deployed · live: 2 runs OK; the root-cause hypothesis is not yet proven |
 | AVT recoverable failures, SEC-4 migration, research tools service-role only (#235, `0d88d03`) | merged · migration applied via Lovable SQL · 4 functions deployed · verified |
-| AVT exact Gemini cost bound and catalog (#236, `50c6553`) | merged · redeploy of `world-still-proxy` and `avt-mcp` requested in Lovable (see §6) |
+| AVT exact Gemini cost bound and catalog (#236, `50c6553`) | merged · `world-still-proxy` and `avt-mcp` deployed · verified: a dry-run at `maxCostUsd: 0.2703` answers `cost_gate` |
 | Frontend publish | not needed; no frontend change |
 
 ## 1. Root causes (Observation → Hypothesis → Test → Result → Conclusion)
@@ -133,10 +133,6 @@ Contact sheet: [`../evidence/gemini_live_2026-10-12b_contact_sheet.jpg`](../evid
 
 ## 6. Remaining steps
 
-- **AVT redeploy of `world-still-proxy` and `avt-mcp` from `50c6553`.** Requested via Lovable at 21:18 UTC.
-  - Verify: `gemini.ts` contains `8_192 * 30`.
-  - A Gemini dry-run through `world-still-proxy` with `maxCostUsd: 0.2703` must answer `cost_gate`. Before the redeploy it passes AVT.
-  - Until then the deployed AVT still mirrors $0.147456. Callers must pass `maxCostUsd ≥ 0.28` or CC refuses before submitting, which is safe.
 - **Billing reconciliation** (see §5).
 - **RECOMMENDATION, creative.** Before more paid runs:
   1. Stop attaching generated images as guides for stages where the face is visible. Pass only the original portrait plus non-face guides: crop guides to the outfit, horse or tack.
