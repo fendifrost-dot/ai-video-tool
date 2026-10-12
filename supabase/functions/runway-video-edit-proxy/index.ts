@@ -30,7 +30,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { callerMayReadAny } from "../_shared/storageAccess.ts";
+import { callerMayReadAny, refusalResponse } from "../_shared/storageAccess.ts";
 import { composeConstraintsFirst, lookSpecificationText, orderLookReferences, resolveReferencePolicy, type ReferencePolicy } from "../_shared/lookReferences.ts";
 import { getProviderCapability } from "../_shared/providerCapabilities.ts";
 import { callControlCenter, controlCenterConfig, type ControlCenterConfig } from "../_shared/controlCenterClient.ts";
@@ -341,7 +341,7 @@ async function handleRequest(req: Request): Promise<Response> {
     const keyframeBuckets = k.bucket ? [k.bucket, ...IMAGE_BUCKETS] : IMAGE_BUCKETS;
     // Service role bypasses bucket RLS: caller-supplied keyframe paths are signed only inside the caller's own access.
     const access = await callerMayReadAny(admin, userId, keyframeBuckets, k.path);
-    if (!access.ok) return json(access.reason === "not_owner" ? 403 : 400, { error: access.reason === "not_owner" ? "storage_path_forbidden" : "invalid_storage_path" });
+    if (!access.ok) { const r = refusalResponse(access); return json(r.status, { error: r.error }); }
     const u = await signStorage(admin, k.path, keyframeBuckets);
     if (u) keyframes.push({ uri: u, seconds: k.seconds });
   }

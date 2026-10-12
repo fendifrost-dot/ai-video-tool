@@ -1,3 +1,4 @@
+import { wellFormedObjectPath } from "../_shared/storageAccess.ts";
 import { callControlCenter, controlCenterConfig, type ControlCenterConfig, type ControlCenterResult } from "../_shared/controlCenterClient.ts";
 import { planStillRequest, type ResolvedReference } from "../_shared/stillReferences.ts";
 
@@ -153,14 +154,20 @@ export async function recoverGeminiJob(input: { userId: string; projectId: strin
   if (job.result_asset_id) return { ok: true, alreadyRecovered: true, assetId: job.result_asset_id };
   const path = typeof payload.recoverableImagePath === "string" ? payload.recoverableImagePath : null;
   if (!path || job.status !== "failed") return { ok: false, error: "nothing_recoverable", detail: "Only a failed job whose image was stored (recoverableImagePath) can be recovered without regenerating." };
-  if (!path.startsWith(`${input.userId}/`)) return { ok: false, error: "recoverable_path_forbidden" };
+  // The owner can edit their own provider_jobs row, so the recorded path is caller-influenced: it must be well formed
+  // and inside this project's own folder (userId/projectId/...), never just the caller's folder.
+  if (!wellFormedObjectPath(path) || !path.startsWith(`${input.userId}/${input.projectId}/`)) return { ok: false, error: "recoverable_path_forbidden" };
   const dir = path.slice(0, path.lastIndexOf("/")), name = path.slice(path.lastIndexOf("/") + 1);
   const { data: listed, error: listError } = await deps.admin.storage.from("project-references").list(dir, { search: name });
   if (listError || !Array.isArray(listed) || !listed.some((o: { name: string }) => o.name === name)) return { ok: false, error: "recoverable_object_missing" };
   const { stages: _s, stills: _st, recoverableImagePath: _r, filingError: _f, ...evidence } = payload;
   const filed = await deps.record({ path, extraMeta: { ...evidence, recovered_from_job: job.id, variation_id: job.variation_id ?? null, prompt: (job.request_payload_json as Record<string, unknown> | null)?.prompt ?? null, route: "gemini:generateContent" } });
   if ("error" in filed) return { ok: false, error: "asset_record_failed", detail: filed.error };
-  const { error: finalizeError } = await deps.admin.from("provider_jobs").update({ status: "succeeded", result_asset_id: filed.assetId, error_text: null, finalized_at: new Date().toISOString(), response_payload_json: { ...payload, ok: true, recoveredAt: new Date().toISOString(), stages: { ...(payload.stages as Record<string, string> ?? {}), filing: "recovered", finalize: "succeeded" } } }).eq("id", job.id).eq("user_id", input.userId);
+  // Finalize only if nobody else did meanwhile (result_asset_id still null): two concurrent recoveries otherwise file
+  // two asset rows for one paid image. The loser's row is reported so it can be removed, never silently kept.
+  const { data: finalized, error: finalizeError } = await deps.admin.from("provider_jobs").update({ status: "succeeded", result_asset_id: filed.assetId, error_text: null, finalized_at: new Date().toISOString(), response_payload_json: { ...payload, ok: true, recoveredAt: new Date().toISOString(), stages: { ...(payload.stages as Record<string, string> ?? {}), filing: "recovered", finalize: "succeeded" } } }).eq("id", job.id).eq("user_id", input.userId).is("result_asset_id", null).select("id");
   if (finalizeError) return { ok: true, assetId: filed.assetId, finalized: false, warning: "Asset recorded but the job row could not be finalized." };
+  const finalizedRows = Array.isArray(finalized) ? finalized : finalized ? [finalized] : [];
+  if (finalizedRows.length === 0) return { ok: true, assetId: filed.assetId, finalized: false, duplicate: true, warning: "Another recovery finalized this job first; this asset row is a duplicate of the same image." };
   return { ok: true, assetId: filed.assetId, path, finalized: true };
 }

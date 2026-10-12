@@ -12,7 +12,7 @@ function deps(overrides: Record<string, unknown> = {}) {
   const admin = { from: vi.fn(() => {
     let patch: Record<string, unknown> = {}; const filters: [string, unknown][] = [];
     const execute = () => {
-      if (filters.some(([key, value]) => row[key] !== value)) return { data: null, error: null };
+      if (filters.some(([key, value]) => (row[key] ?? null) !== (value ?? null))) return { data: null, error: null };
       Object.assign(row, patch); return { data: { ...row }, error: null };
     };
     const q = {
@@ -149,7 +149,18 @@ describe("mocked integration: Gemini job ownership and result filing", () => {
     const c = deps({ status: "failed", response_payload_json: { recoverableImagePath: `${user}/${project}/worlds/gone.png` } }); c.list.mockResolvedValueOnce({ data: [], error: null } as never);
     expect(await recoverGeminiJob({ userId: user, projectId: project, jobRowId: jobId }, { admin: c.admin, record })).toMatchObject({ ok: false, error: "recoverable_object_missing" });
     expect(await recoverGeminiJob({ userId: project, projectId: project, jobRowId: jobId }, { admin: c.admin, record })).toMatchObject({ ok: false, error: "gemini_job_not_found" });
+    // The owner can edit their own job row: a path in the caller's folder but another project, or a malformed one, is refused.
+    const d = deps({ status: "failed", response_payload_json: { recoverableImagePath: `${user}/11111111-1111-4111-8111-111111111111/worlds/x.png` } });
+    expect(await recoverGeminiJob({ userId: user, projectId: project, jobRowId: jobId }, { admin: d.admin, record })).toMatchObject({ ok: false, error: "recoverable_path_forbidden" });
+    const e = deps({ status: "failed", response_payload_json: { recoverableImagePath: `${user}/${project}/../x.png` } });
+    expect(await recoverGeminiJob({ userId: user, projectId: project, jobRowId: jobId }, { admin: e.admin, record })).toMatchObject({ ok: false, error: "recoverable_path_forbidden" });
     expect(record).not.toHaveBeenCalled();
+  });
+  it("a recovery that loses the race to finalize reports its asset row as a duplicate, never as success", async () => {
+    const f = deps({ status: "failed", response_payload_json: { recoverableImagePath: filed.path } });
+    const record = vi.fn(async () => { f.row.result_asset_id = "someone-else"; return { assetId: "mine", path: filed.path }; }); // another recovery finalized meanwhile
+    expect(await recoverGeminiJob({ userId: user, projectId: project, jobRowId: jobId }, { admin: f.admin, record })).toMatchObject({ ok: true, assetId: "mine", finalized: false, duplicate: true });
+    expect(f.row.result_asset_id).toBe("someone-else");
   });
   it("a Control Center worker crash after submission is recorded with its platform code, never as plain failure", async () => {
     // Shape observed live: the platform, not CC, answers when the worker exceeds its memory.

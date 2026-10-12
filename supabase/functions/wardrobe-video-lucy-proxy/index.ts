@@ -38,7 +38,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { callerMayRead } from "../_shared/storageAccess.ts";
+import { callerMayRead, callerOwnsArtist, refusalResponse } from "../_shared/storageAccess.ts";
 import { vtonCategoryForFeatureType } from "../_shared/garmentReference.ts";
 import {
   buildGarmentEditPrompt,
@@ -200,6 +200,9 @@ serve(async (req) => {
   if (!body?.artistId || !body?.wardrobeFeatureId) {
     return json(400, { error: "missing_artist_or_wardrobe" });
   }
+  // Caller must own the artist: row.artist_id === body.artistId alone ties nothing to the caller (SEC review).
+  const artistAccess = await callerOwnsArtist(admin, userId, body.artistId);
+  if (!artistAccess.ok) { const r = refusalResponse(artistAccess); return json(r.status, { error: r.error }); }
 
   const { data: asset, error: aErr } = await admin
     .from("project_assets")
@@ -238,19 +241,15 @@ serve(async (req) => {
   let srcPath = fileUrl;
   let sourceMode: "trimmed_clip" | "whole_master" = "whole_master";
   if (body.sourcePath && body.sourceBucket) {
-    if (!body.sourcePath.startsWith(`${userId}/`)) {
-      return json(403, { error: "source_path_not_owned" });
-    }
+    // callerMayRead also validates the caller-supplied bucket name.
+    const sourceAccess = await callerMayRead(admin, userId, body.sourceBucket, body.sourcePath);
+    if (!sourceAccess.ok) { const r = refusalResponse(sourceAccess); return json(r.status, { error: r.error }); }
     srcBucket = body.sourceBucket;
     srcPath = body.sourcePath;
     sourceMode = "trimmed_clip";
   } else {
     const masterAccess = await callerMayRead(admin, userId, masterBucket, fileUrl);
-    if (!masterAccess.ok) {
-      if (masterAccess.reason === "invalid_path") return json(400, { error: "invalid_storage_path" });
-      if (masterAccess.reason === "lookup_failed") return json(500, { error: "storage_access_lookup_failed" });
-      return json(403, { error: "storage_path_forbidden" });
-    }
+    if (!masterAccess.ok) { const r = refusalResponse(masterAccess); return json(r.status, { error: r.error }); }
   }
   const { data: signed, error: signErr } = await admin.storage
     .from(srcBucket)

@@ -18,7 +18,7 @@ const json = (status: number, body: unknown) => new Response(JSON.stringify(body
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_SOURCE_BYTES = 12 * 1024 * 1024;
 
-import { cleanLabel, pixelBox } from "./lib.ts";
+import { cleanLabel, headerDimensions, MAX_SOURCE_PIXELS, pixelBox } from "./lib.ts";
 
 type Body = {
   assetId: string;                                   // a project_assets row the caller owns (an image)
@@ -54,10 +54,21 @@ serve(async (req) => {
   const access = await callerMayRead(admin, userId, bucket, source.file_url);
   if (!access.ok) return json(access.reason === "not_owner" ? 403 : 400, { error: access.reason === "not_owner" ? "storage_path_forbidden" : "invalid_storage_path" });
 
+  // Size from object metadata before any download, dimensions from the header before any decode: a service-role
+  // worker has 256 MB, and imagescript expands a decoded image to 4 bytes a pixel.
+  const dir = source.file_url.slice(0, source.file_url.lastIndexOf("/")), name = source.file_url.slice(source.file_url.lastIndexOf("/") + 1);
+  const { data: listed, error: listErr } = await admin.storage.from(bucket).list(dir, { search: name });
+  const meta = Array.isArray(listed) ? listed.find((o: { name: string }) => o.name === name) : null;
+  if (listErr || !meta) return json(404, { error: "source_object_not_found" });
+  const declared = Number(meta.metadata?.size ?? meta.metadata?.contentLength ?? NaN);
+  if (Number.isFinite(declared) && declared > MAX_SOURCE_BYTES) return json(413, { error: "source_too_large", bytes: declared });
   const { data: blob, error: dlErr } = await admin.storage.from(bucket).download(source.file_url);
   if (dlErr || !blob) return json(404, { error: "source_download_failed" });
-  if (blob.size > MAX_SOURCE_BYTES) return json(413, { error: "source_too_large" });
+  if (blob.size > MAX_SOURCE_BYTES) return json(413, { error: "source_too_large", bytes: blob.size });
   const bytes = new Uint8Array(await blob.arrayBuffer());
+  const dims = headerDimensions(bytes);
+  if (!dims) return json(415, { error: "source_not_a_still_image" });
+  if (dims.width * dims.height > MAX_SOURCE_PIXELS) return json(413, { error: "source_too_many_pixels", width: dims.width, height: dims.height, maxPixels: MAX_SOURCE_PIXELS });
   let image: Image;
   try { const decoded = await decodeImage(bytes); if (!(decoded instanceof Image)) return json(415, { error: "source_not_a_still_image" }); image = decoded; }
   catch { return json(415, { error: "source_not_decodable" }); }

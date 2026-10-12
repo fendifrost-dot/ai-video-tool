@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { callerMayRead, callerMayWrite, signForCaller, wellFormedObjectPath } from "./storageAccess.ts";
+import { callerMayRead, callerMayWrite, callerOwnsArtist, signForCaller, wellFormedObjectPath } from "./storageAccess.ts";
 
 const me = "3ca10935-8c3d-4479-9a0c-8bfe8050840c", other = "832fa0bc-1f7e-4586-ab8b-2ac323698ede", project = "764a63d2-93cd-44f3-905f-292f14ab2f51";
 function admin(grants: Array<[string, string, string, string]> = [], signError: string | null = null) {
@@ -42,5 +42,24 @@ describe("unit: caller-scoped storage access", () => {
     expect(a.createSignedUrl).not.toHaveBeenCalled();
     expect(await signForCaller(a, me, "prop-refs", `${me}/x.png`, 60)).toMatchObject({ ok: true, via: "owner" });
     expect(await signForCaller(admin([], "Object not found"), me, "prop-refs", `${me}/x.png`, 60)).toEqual({ ok: false, status: 404, error: "storage_object_not_found" });
+  });
+});
+
+describe("callerOwnsArtist / two-segment legacy keys", () => {
+  const adminWith = (rows: Record<string, unknown>[], error: unknown = null) => ({
+    from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: rows[0] ?? null, error }), eq: () => ({ eq: () => ({ eq: () => ({ limit: async () => ({ data: rows, error }) }) }) }) }) }) }),
+  });
+  it("owner of the artist row passes; another user's artist is refused; a lookup error refuses", async () => {
+    const me = "3ca10935-8c3d-4479-9a0c-8bfe8050840c", artist = "11111111-1111-4111-8111-111111111111";
+    expect((await callerOwnsArtist(adminWith([{ user_id: me }]), me, artist)).ok).toBe(true);
+    expect(await callerOwnsArtist(adminWith([{ user_id: "other" }]), me, artist)).toEqual({ ok: false, reason: "not_owner" });
+    expect(await callerOwnsArtist(adminWith([], { message: "down" }), me, artist)).toEqual({ ok: false, reason: "lookup_failed" });
+    expect(await callerOwnsArtist(adminWith([{ user_id: me }]), me, "not-a-uuid")).toEqual({ ok: false, reason: "invalid_path" });
+  });
+  it("a legacy grant never covers a two-segment key (matches storage.foldername(name)[2] being NULL)", async () => {
+    const me = "3ca10935-8c3d-4479-9a0c-8bfe8050840c", folder = "22222222-2222-4222-8222-222222222222", project = "33333333-3333-4333-8333-333333333333";
+    const admin = adminWith([{ user_id: me }]);
+    expect(await callerMayRead(admin, me, "project-references", `${folder}/${project}`)).toEqual({ ok: false, reason: "not_owner" });
+    expect((await callerMayRead(admin, me, "project-references", `${folder}/${project}/x.png`)).ok).toBe(true);
   });
 });

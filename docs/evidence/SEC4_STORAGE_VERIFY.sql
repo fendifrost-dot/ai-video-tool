@@ -27,10 +27,25 @@ begin
     from pg_policies where schemaname='storage' and tablename='objects'
      and (coalesce(qual,'') || coalesce(with_check,'')) ~ '(prop-refs|project-references)';
   if actual <> expected then bad := bad || format(' policy set differs: actual=%s;', actual); end if;
-  -- 2. No storage.objects policy may lack a bucket_id filter.
+  -- 2. Every OTHER storage.objects policy must pin bucket_id to a literal bucket name or a literal array
+  --    (bucket_id = 'x' / bucket_id = ANY (ARRAY['x', ...])) that does not name these two buckets. A policy written
+  --    as bucket_id is not null, bucket_id <> 'x', bucket_id like 'pro%' or a subquery would fail this.
   select count(*) into unfiltered from pg_policies where schemaname='storage' and tablename='objects'
-     and coalesce(qual,'') not ilike '%bucket_id%' and coalesce(with_check,'') not ilike '%bucket_id%';
-  if unfiltered <> 0 then bad := bad || format(' %s unfiltered storage policies;', unfiltered); end if;
+     and policyname not like 'prop-refs\_%' and policyname not like 'project-references\_%'
+     and not (
+       coalesce(qual, with_check, '') ~ '^\(?\(?bucket_id = ''[a-z0-9-]+''::text\)?'
+       or coalesce(qual, with_check, '') ~ '^\(?\(?bucket_id = ANY \(ARRAY\[(''[a-z0-9-]+''::text(, )?)+\]\)\)?'
+     );
+  if unfiltered <> 0 then bad := bad || format(' %s storage policies without a literal bucket pin: %s;', unfiltered,
+     (select string_agg(policyname, ',') from pg_policies where schemaname='storage' and tablename='objects' and policyname not like 'prop-refs\_%' and policyname not like 'project-references\_%'
+        and not (coalesce(qual, with_check, '') ~ '^\(?\(?bucket_id = ''[a-z0-9-]+''::text\)?' or coalesce(qual, with_check, '') ~ '^\(?\(?bucket_id = ANY \(ARRAY\[(''[a-z0-9-]+''::text(, )?)+\]\)\)?'))); end if;
+  -- 2b. storage.prefixes (newer storage-api lists through it): no policy at all may exist there, or none naming these buckets.
+  if exists (select 1 from pg_policies where schemaname='storage' and tablename='prefixes'
+             and (coalesce(qual,'') || coalesce(with_check,'')) !~ 'bucket_id = ''[a-z0-9-]+''::text|bucket_id = ANY') then
+    bad := bad || ' a storage.prefixes policy without a literal bucket pin;'; end if;
+  if exists (select 1 from pg_policies where schemaname='storage' and tablename='prefixes'
+             and (coalesce(qual,'') || coalesce(with_check,'')) ~ '(prop-refs|project-references)') then
+    bad := bad || ' a storage.prefixes policy names prop-refs/project-references;'; end if;
   -- 3. single_tenant_storage names exactly the nine remaining buckets.
   select qual into st_qual from pg_policies where schemaname='storage' and tablename='objects' and policyname='single_tenant_storage';
   if st_qual is distinct from '(bucket_id = ANY (ARRAY[''artist-assets''::text, ''project-audio''::text, ''project-clips''::text, ''project-exports''::text, ''wardrobe-refs''::text, ''location-refs''::text, ''look-composites''::text, ''style-references''::text, ''training-zips''::text]))'
@@ -41,8 +56,8 @@ begin
   select relrowsecurity into rls from pg_class where oid='public.storage_legacy_folder_grants'::regclass;
   if not rls then bad := bad || ' grants table RLS off;'; end if;
   if exists (select 1 from pg_policies where schemaname='public' and tablename='storage_legacy_folder_grants') then bad := bad || ' grants table has policies;'; end if;
-  select has_table_privilege('authenticated','public.storage_legacy_folder_grants','select') into auth_grants;
-  if auth_grants then bad := bad || ' authenticated can read grants;'; end if;
+  select has_table_privilege('authenticated','public.storage_legacy_folder_grants','select') or has_table_privilege('anon','public.storage_legacy_folder_grants','select') into auth_grants;
+  if auth_grants then bad := bad || ' authenticated or anon can read grants;'; end if;
   select has_function_privilege('anon','public.storage_legacy_folder_access(text,text)','execute'), has_function_privilege('authenticated','public.storage_legacy_folder_access(text,text)','execute') into anon_exec, auth_exec;
   if anon_exec or not auth_exec then bad := bad || format(' predicate privileges anon=%s auth=%s;', anon_exec, auth_exec); end if;
   -- 5. Both buckets private.
