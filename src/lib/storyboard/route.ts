@@ -45,6 +45,12 @@ export type RouteFacts = {
   links: readonly ResolvedLink[];
   /** The longest piece of take one restaging can carry (restage.ts), seconds. */
   maxRestageSeconds?: number;
+  /**
+   * What a restaging of this shot would dress him in (restage.ts planRestageDress): how many garment pictures go with
+   * the request, and what stands in the way when the shot's pieces cannot all go. Null or absent = the shot wears
+   * nothing exact, so a restaging has only the take's clothes to keep.
+   */
+  dress?: { pieces: number; outfitName: string | null; problem: string | null } | null;
 };
 
 export const METHOD_LABEL: Record<ProductionMethod, string> = {
@@ -58,6 +64,8 @@ export const METHOD_LABEL: Record<ProductionMethod, string> = {
 
 const STILL_TO_CLIP = "Grok still → Kling 2.5 turbo image-to-video";
 const RESTAGE = "his take + the place's picture → Seedance 2.5 reference-to-video";
+/** The same route with the outfit's garment pictures beside the place: he is drawn again wearing them. */
+export const RESTAGE_DRESSED = "his take + the place's picture + the outfit's garment pictures → Seedance 2.5 reference-to-video, which draws him again in the outfit";
 
 /** The methods that cut from his real take: his body and his action are the take's. */
 export const TAKE_METHODS: ReadonlySet<ProductionMethod> = new Set<ProductionMethod>(["footage", "restage", "edit_footage", "composite"]);
@@ -105,9 +113,20 @@ export function productionRoute(spec: Pick<ShotSpec, "production" | "shotType" |
       if (!facts.hasTake) limits.push("No take of his performance is in sync with this shot, so there is nothing to restage.");
       const seconds = spec.timeline.end - spec.timeline.start;
       if (facts.maxRestageSeconds && seconds > facts.maxRestageSeconds) limits.push(`${seconds.toFixed(1)} s is longer than one restaging carries (${facts.maxRestageSeconds} s): split the shot first.`);
+      const dress = facts.dress ?? null;
+      // The shot wears exact pieces and a restaging can take their pictures: he is dressed on the way into the place.
+      // That holds whether the treatment or the director dressed him — what decides it is that the pieces are there.
+      if (dress && dress.pieces > 0 && !dress.problem) {
+        return { ...base, verdict: limits.length ? "unsupported" : "storyboard", path: RESTAGE_DRESSED, where: null, limits };
+      }
+      // He wears exact pieces and they cannot all go as pictures: said as it is, never restaged in the take's clothes instead.
+      if (dress?.problem) {
+        limits.push(dress.problem);
+        return { ...base, verdict: "unsupported", path: RESTAGE_DRESSED, where: null, limits };
+      }
       if (treatmentDresses) {
-        // a restaging keeps the take's clothes by construction — the coat cannot come from here
-        limits.push(`A restaging keeps the clothes of the take. The treatment dresses him in ${spec.wardrobe.description || "a named garment"} here: that needs the garment lane (keyframe + propagation), not a restaging.`);
+        // with no garment picture to dress him from, a restaging keeps the take's clothes — the coat cannot come from here
+        limits.push(`A restaging keeps the clothes of the take unless the shot wears an outfit whose garment pictures go with it, and this shot wears none. The treatment dresses him in ${spec.wardrobe.description || "a named garment"} here: give that outfit its pieces and assign it to this stretch of the song, or make the change in the garment lane (keyframe + propagation).`);
         return { ...base, verdict: "elsewhere", path: RESTAGE, where: "Garment lane — Hero Frame Studio (approved keyframe, then propagation onto the take)", limits };
       }
       return { ...base, verdict: limits.length ? "unsupported" : "storyboard", path: RESTAGE, where: null, limits };

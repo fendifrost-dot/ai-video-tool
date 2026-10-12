@@ -122,3 +122,46 @@ describe("the shape the UI depends on", () => {
     }
   });
 });
+
+/**
+ * The same shot once its outfit's pieces can go with the restaging (restage.ts planRestageDress): the storyboard
+ * makes it — he is dressed on the way into the place — and the take underneath is then work not done HERE, not
+ * work the storyboard cannot do.
+ */
+describe("a performance shot whose outfit can be sent with its restaging", () => {
+  const dressed = productionRoute(redressedPerformance, { ...FACTS, dress: { pieces: 2, outfitName: "YSL leather coat", problem: null } });
+
+  it("is made on the storyboard, by the route that says he is drawn again in the outfit", () => {
+    expect(dressed).toMatchObject({ method: "restage", verdict: "storyboard", where: null, limits: [] });
+    expect(dressed.path).toContain("the outfit's garment pictures");
+    expect(dressed.path).toContain("draws him again in the outfit");
+  });
+
+  it("still reads as unfinished while the unchanged take plays, and says where to make it", () => {
+    const unmet = unmetRequirement(dressed, ON_TAKE)!;
+    expect(unmet.kind).toBe("fallback");
+    expect(unmet.text).toMatch(/playing your original take, not the restaging it asks for/);
+    expect(unmet.fix).toMatch(/Make it on the storyboard/);
+    expect(unmetRequirement(dressed, ON_OWN)).toBeNull();
+  });
+
+  it("is refused, not restaged in the take's clothes, when its pieces cannot all go as pictures", () => {
+    const blocked = productionRoute(redressedPerformance, { ...FACTS, dress: { pieces: 0, outfitName: "YSL leather coat", problem: "“YSL leather coat” has 4 pieces and a restaging takes 2 garment pictures beside the place." } });
+    expect(blocked.verdict).toBe("unsupported");
+    expect(blocked.limits.join(" ")).toContain("has 4 pieces");
+    expect(unmetRequirement(blocked, ON_TAKE)!.text).toMatch(/not finished/);
+  });
+
+  it("with no pieces to send it is what it was: the take's clothes, and the garment lane named", () => {
+    const none = productionRoute(redressedPerformance, { ...FACTS, dress: null });
+    expect(none.verdict).toBe("elsewhere");
+    expect(none.limits.join(" ")).toContain("this shot wears none");
+    expect(none.where).toMatch(/Garment lane/);
+  });
+
+  it("a shot the director dressed himself (no treatment words) is dressed the same way", () => {
+    const own = { ...redressedPerformance, wardrobe: { source: "none", description: "", garments: ["g1"] } } as unknown as typeof redressedPerformance;
+    expect(productionRoute(own, { ...FACTS, dress: { pieces: 1, outfitName: null, problem: null } })).toMatchObject({ verdict: "storyboard" });
+    expect(productionRoute(own, FACTS).path).not.toContain("garment pictures");
+  });
+});

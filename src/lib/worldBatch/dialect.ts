@@ -40,6 +40,15 @@ export const BatchShotSchema = z
     masterStart: z.number().nullish(),
     angle: z.string().nullish(),
     keep: z.array(z.string()).default([]),
+    /**
+     * seedance_ref only: what he is dressed in INSTEAD of the take's clothes — one entry per garment, each the
+     * wardrobe record it is, what it is called, and where its picture is. The pictures go with the request after the
+     * place picture, in this order, and the prompt names each by its position. Empty = he keeps what the take shows
+     * (keep[]). Only the artist's wardrobe pictures are read: no other bucket is signed for a garment.
+     */
+    dress: z.array(z.object({ id: z.string().min(1), label: z.string().min(1), bucket: z.literal("wardrobe-refs"), path: z.string().min(1) })).default([]),
+    /** The outfit's own words, said beside its pictures ("a button-up shirt and tie under the coat"). */
+    dress_words: z.string().default(""),
     resolution: z.enum(["480p", "720p", "1080p"]).default("720p"),
     /** How this shot's timed events were put into its prompt (storyboard/temporal.ts). Recorded on the job. */
     temporal: z

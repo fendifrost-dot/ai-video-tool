@@ -44,6 +44,12 @@ export type BatchJobSettings = {
    * whether anything has checked.
    */
   temporal?: { mode: "timed_script" | "ordered"; beats: number; measured: boolean; asked?: { id: string; offset: number; kinds: string[]; says: string }[] } | null;
+  /**
+   * A restaged take that was DRESSED: the garments whose pictures went with the request (wardrobe records, in the
+   * order sent after the place) and the outfit's words. Absent = he kept what the take shows. The garments are drawn
+   * again by the video model from their pictures — this records what it was given, not that it reproduced them.
+   */
+  dress?: { pieces: { id: string; label: string }[]; words: string } | null;
   /** An image job: whether the picked picture becomes what the shot shows (false on a performance shot — it is the place). */
   selectStill?: boolean;
   /**
@@ -87,7 +93,7 @@ export type BatchJobRow = {
 
 export type RunnerDeps = {
   userId: string;
-  sign(bucket: "project-clips" | "project-references", path: string): Promise<string>;
+  sign(bucket: "project-clips" | "project-references" | "wardrobe-refs", path: string): Promise<string>;
   generateStills(body: Record<string, unknown>): Promise<{
     ok: boolean;
     stills?: { path: string; previewUrl?: string }[];
@@ -294,8 +300,10 @@ export async function submitShot(
   }
   const stillUrl = stillPath ? await deps.sign("project-references", stillPath) : null;
   const sourceUrl = shot.route === "seedance_ref" ? await deps.sign("project-clips", shot.source_path!) : null;
+  // the garments a restaging dresses him in: each picture read as the caller, in the order the prompt names them
+  const dressUrls = shot.route === "seedance_ref" ? await Promise.all(shot.dress.map((d) => deps.sign(d.bucket, d.path))) : [];
   const prompt = motionPrompt(shot, ctx.look, !!stillUrl);
-  const req = buildMotionRequest(shot, { prompt, stillUrl, sourceUrl, userId: deps.userId, projectId: ctx.projectId });
+  const req = buildMotionRequest(shot, { prompt, stillUrl, sourceUrl, dressUrls, userId: deps.userId, projectId: ctx.projectId });
 
   const settings: BatchJobSettings = {
     batchRun: ctx.runId,
@@ -312,6 +320,7 @@ export async function submitShot(
     masterStart: shot.masterStart ?? null,
     ...(shot.source_asset_id ? { sourceAssetId: shot.source_asset_id, sourceSeconds: shot.source_seconds ?? null } : {}),
     ...(shot.temporal ? { temporal: shot.temporal } : {}),
+    ...(shot.route === "seedance_ref" && shot.dress.length > 0 ? { dress: { pieces: shot.dress.map((d) => ({ id: d.id, label: d.label })), words: shot.dress_words } } : {}),
     ...madeFromOf(ctx, shot),
   };
   // WRITE-AHEAD: the record exists before the money moves.

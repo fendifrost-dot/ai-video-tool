@@ -532,12 +532,16 @@ export function boxIsStale(box: Pick<StoryboardBox, "generated" | "override">, t
  * and writing the footage's clothes into the scene instead would be changing the treatment without telling anyone.
  * A shot that is not his take draws him from words alone: no picture of him or of the garment reaches the image model —
  * unless it wears an outfit whose pieces go as pictures (`garmentPicturesSent`), in which case there is nothing to tell here.
+ *
+ * `restageDresses`: the performance shot wears an outfit whose garment pictures go with its restaging
+ * (restage.ts planRestageDress) — he is dressed on the way into the place, so the footage's clothes are not the gap.
  */
-export function wardrobeGap(spec: Pick<ShotSpec, "shotType" | "wardrobe">, footageShows?: string | null, garmentPicturesSent = 0): string | null {
+export function wardrobeGap(spec: Pick<ShotSpec, "shotType" | "wardrobe">, footageShows?: string | null, garmentPicturesSent = 0, restageDresses = false): string | null {
   if (spec.wardrobe.source !== "treatment") return null;
   const asked = spec.wardrobe.description.trim().replace(/[.\s]+$/, "");
   if (!asked || /^none$/i.test(asked)) return null;
   if (spec.shotType === "performance") {
+    if (restageDresses) return null;
     const filmed = footageShows?.trim().replace(/[.\s]+$/, "");
     return `The treatment dresses him in: ${asked}. ${filmed ? `Your footage shows him in ${filmed}.` : "That is not what your footage shows."} A restaging keeps the clothes he was filmed in, so this shot cannot be made as the treatment asks from the footage on file — it needs footage of him in that look, or a wardrobe change made another way.`;
   }

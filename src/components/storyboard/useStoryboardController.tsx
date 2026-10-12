@@ -85,7 +85,7 @@ import { ensureStoryboardMaterialized, type MaterializeResult } from "@/lib/stor
 import { aspectOfProject, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
 import { boxPromptConflicts, boxShot, clipEstimateUsd, clipTemporalPlan, entityShot, generateBoxClip, generateBoxImage, generateEntityReference, imageEstimateUsd, imageTemporalPlan, previewStillRequest } from "@/lib/storyboard/generate";
 import { conflictNote } from "@/lib/storyboard/promptAudit";
-import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
+import { RESTAGE_MAX_PICTURES, dressNote, planRestageDress, restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan, type DressPlan } from "@/lib/storyboard/restage";
 import { planFootageEdit, type FootageEditAction } from "@/lib/storyboard/footageEdit";
 import {
   boxMedia,
@@ -332,6 +332,8 @@ export function useStoryboard(): StoryboardController {
 const usd = (n: number) => `$${n.toFixed(2)}`;
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 const EMPTY_MEDIA: BoxMedia = { items: [], showing: null };
+/** A shot that is not restaged is not dressed by a restaging. */
+const NOT_DRESSED: DressPlan = { dress: null, problems: [], pending: false };
 
 export function useStoryboardController(projectId: string): StoryboardController {
   const qc = useQueryClient();
@@ -416,14 +418,6 @@ export function useStoryboardController(projectId: string): StoryboardController
   const scenes = useMemo<Scene[]>(() => scenesQuery.data ?? [], [scenesQuery.data]);
   const outfits = useMemo<Outfit[]>(() => entities.filter(isOutfit).filter((o) => !o.archived), [entities]);
   const outfitOf = useCallback((box: StoryboardBox) => resolveOutfit(box.spec, { start: box.start }, scenes, entityIndex), [scenes, entityIndex]);
-  const wardrobeGapOf = useCallback(
-    (box: StoryboardBox) => {
-      // the real take under this shot says what he was filmed in
-      const take = (mediaByBox.get(box.id) ?? EMPTY_MEDIA).items.find((i) => i.base || (i.role === "performance" && !i.asset.derivedFrom));
-      return wardrobeGap(box.spec, take?.asset.shows ?? null, effectiveGarments(box.spec, outfitOf(box)).ids.length);
-    },
-    [mediaByBox, outfitOf],
-  );
   const proposedScenes = useMemo(() => scenesFromWriter(boxes, outfits), [boxes, outfits]);
 
   // --- cast: who is in each shot ------------------------------------------------------------------------------------
@@ -458,6 +452,30 @@ export function useStoryboardController(projectId: string): StoryboardController
     [castOf, artistFace],
   );
   const wardrobe = useMemo(() => (wardrobeQuery.data ?? []).map((w) => ({ id: w.id, label: w.label, featureType: w.feature_type })), [wardrobeQuery.data]);
+  // each garment's own photograph: what a restaging dresses him from (rows from before the multi-angle column carry the file in file_url only)
+  const wardrobePictures = useMemo(() => new Map((wardrobeQuery.data ?? []).map((w) => [w.id, { label: w.label, path: (w.storage_path ?? w.file_url ?? "").trim() || null }])), [wardrobeQuery.data]);
+  /**
+   * What a restaging of this shot dresses him in: every exact piece it wears (its outfit's, or its own list), each
+   * with its picture — or why not. Only a performance shot is restaged; any other shot is drawn with its pieces.
+   */
+  const dressOf = useCallback(
+    (box: StoryboardBox): DressPlan => {
+      if (box.spec.shotType !== "performance") return NOT_DRESSED;
+      const worn = outfitOf(box);
+      const words = worn.outfit ? [worn.outfit.description, worn.outfit.constraints].map((t) => t.replace(/\s+/g, " ").trim().replace(/[.\s]+$/, "")).filter(Boolean).join(". ") : "";
+      return planRestageDress({ ids: effectiveGarments(box.spec, worn).ids, onFile: wardrobePictures, loaded: wardrobeQuery.data !== undefined, words, outfitName: worn.outfit?.name ?? null, room: RESTAGE_MAX_PICTURES - 1 });
+    },
+    [outfitOf, wardrobePictures, wardrobeQuery.data],
+  );
+  const wardrobeGapOf = useCallback(
+    (box: StoryboardBox) => {
+      // the real take under this shot says what he was filmed in
+      const take = (mediaByBox.get(box.id) ?? EMPTY_MEDIA).items.find((i) => i.base || (i.role === "performance" && !i.asset.derivedFrom));
+      const dress = dressOf(box);
+      return wardrobeGap(box.spec, take?.asset.shows ?? null, effectiveGarments(box.spec, outfitOf(box)).ids.length, !!dress.dress || dress.pending);
+    },
+    [mediaByBox, outfitOf, dressOf],
+  );
   const wardrobeIds = useMemo(() => new Set(wardrobe.map((w) => w.id)), [wardrobe]);
   // so a dropped piece is named in the flag ("leaves out Glasses — Cazal MOD octagonal"), not shown as a uuid
   const wardrobeLabels = useMemo(() => new Map(wardrobe.map((w) => [w.id, w.label])), [wardrobe]);
@@ -496,9 +514,20 @@ export function useStoryboardController(projectId: string): StoryboardController
       // the artist in this shot with his real identity, and what he does here: a take-based route can only show him performing
       const him = castOf(box).members.find((m) => m.mode === "preserve");
       const artist = him ? { performs: box.spec.shotType === "performance" || actionIsPerforming(him.ref.action), action: him.ref.action } : null;
-      return productionRoute(box.spec, { hasTake: restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs).ok, links: linksOf(box), artist });
+      // what a restaging would dress him in: its pieces, or what stands in their way (while the wardrobe is still
+      // being read nothing is refused — the pieces are counted as they are named)
+      const d = dressOf(box);
+      const named = effectiveGarments(box.spec, outfitOf(box)).ids.length;
+      const dress = d.dress
+        ? { pieces: d.dress.pieces.length, outfitName: d.dress.outfitName, problem: null }
+        : d.pending
+          ? { pieces: named, outfitName: outfitOf(box).outfit?.name ?? null, problem: null }
+          : d.problems.length
+            ? { pieces: 0, outfitName: outfitOf(box).outfit?.name ?? null, problem: d.problems.join(" ") }
+            : null;
+      return productionRoute(box.spec, { hasTake: restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs).ok, links: linksOf(box), artist, dress });
     },
-    [mediaByBox, syncs, linksOf, castOf],
+    [mediaByBox, syncs, linksOf, castOf, dressOf, outfitOf],
   );
 
   const unmetOf = useCallback(
@@ -1063,6 +1092,17 @@ export function useStoryboardController(projectId: string): StoryboardController
           toast.info(src.why);
           return;
         }
+        // what he is dressed in on the way into the place — or why the shot cannot be dressed as it asks (never restaged in the take's clothes instead)
+        const dressPlan = dressOf(box);
+        if (dressPlan.pending) {
+          toast.info("The wardrobe is still being read — try again in a moment");
+          return;
+        }
+        if (dressPlan.problems.length) {
+          toast.info(dressPlan.problems.join(" "));
+          return;
+        }
+        const dress = dressPlan.dress;
         const restagePlan = restageTemporalPlan(box, clock);
         const timed =
           restagePlan.mode === "timed_script"
@@ -1074,7 +1114,8 @@ export function useStoryboardController(projectId: string): StoryboardController
             `About ${usd(est.clip)} by the provider's own pricing rule. Your real performance from ${r.takeName} (${mmss(r.takeIn)}–${mmss(r.takeOut)} of the take) is re-shot inside this shot's scene: ` +
             `${r.seconds} s of the take go to the video model with ${place?.of ? `the approved picture of ${place.of.name} as the place — the same picture every shot set there is restaged into` : "this shot's image as the place"}` +
             (est.clipDrawsImage ? " (the shot has no image yet, so one is drawn first)" : "") +
-            ". He keeps his face and what he wears in the take. The result stays on the song clock and lands on this shot only; it takes several minutes." +
+            (dress ? `. ${dressNote(dress)}` : ". He keeps his face and what he wears in the take.") +
+            " The result stays on the song clock and lands on this shot only; it takes several minutes." +
             timed +
             (est.clipDrawsImage ? shapeNote : "") +
             staleNote(box) +
@@ -1092,7 +1133,13 @@ export function useStoryboardController(projectId: string): StoryboardController
                 afterGeneration();
                 stillPath = img.picked;
               }
-              await restageBox({ projectId, box, lyricLines, source: src.source, stillPath, maxSeconds: r.seconds, aspect, temporal: restagePlan, continuity, onStage: (t) => setBusyFor(box.id, t) });
+              await restageBox({
+                projectId, box, lyricLines, source: src.source, stillPath, maxSeconds: r.seconds, aspect, temporal: restagePlan, continuity,
+                dress,
+                // the job keeps the outfit it was given, so a clip made before the outfit changed is seen as outdated
+                outfit: dress ? jobOutfitRecord(outfitOf(box), dress.pieces.map((p) => p.id)) : null,
+                onStage: (t) => setBusyFor(box.id, t),
+              });
               afterGeneration();
               toast.success("The take is being restaged — it will appear on this shot when it is done");
             }).finally(afterGeneration),
@@ -1155,7 +1202,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         onConfirm: () => submitClip(clipPlan),
       });
     },
-    [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats, staleNote, wardrobeGapOf, routeOf, generationNotes, linkLinesOf, stillLinkLinesOf, referencesOf, stillOutfitOf],
+    [estimatesOf, selectedStill, placeStill, continuityOf, urlFor, numberById, run, projectId, lyricLines, afterGeneration, aspect, shapeNote, mediaByBox, syncs, setBusyFor, clock, splitAtBeats, staleNote, wardrobeGapOf, routeOf, generationNotes, linkLinesOf, stillLinkLinesOf, referencesOf, stillOutfitOf, dressOf, outfitOf],
   );
 
   // --- is what the shot shows still what it wears? (the outfit may have changed since the picture was made) ---------
