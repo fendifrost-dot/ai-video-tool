@@ -42,10 +42,13 @@ Key files:
 
 ## Images
 
-The original portrait and every generated image show a real person. They are **not committed** here, because this repository is public.
-- They are shared privately; ask the repo owner for access.
-- Match the files you receive against the SHA-256 values in [`IMAGE_MANIFEST.md`](IMAGE_MANIFEST.md).
-- In AVT they live in the private `project-references` / `prop-refs` buckets under the asset ids listed in the manifest.
+All the images are in [`images/`](images/). They were committed with the owner's approval, and the repo is public.
+- `ORIGINAL_portrait_3fce9cb5.png` is the approved identity portrait. It is an input, not generated.
+- `first_pass/` holds A1–D-retry and a contact sheet.
+- `second_pass/` holds R1–R5 and a contact sheet.
+- `review_crops/` holds the full-resolution crops of faces, hands, tack and legs that the independent visual reviewer used.
+
+[`IMAGE_MANIFEST.md`](IMAGE_MANIFEST.md) maps every file to its AVT asset id, SHA-256 and verdict.
 
 ## Questions worth a second opinion
 
