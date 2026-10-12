@@ -16,11 +16,25 @@
 
 begin;
 
--- Refuse to run against a database that differs from the one reviewed.
+-- Refuse to run against a database that differs from the one reviewed: the full policy state for these two buckets
+-- must be either the reviewed BEFORE state or the AFTER state this migration produces (re-run). Anything else is a
+-- finding, not something to edit around. docs/evidence/SEC4_STORAGE_VERIFY.sql checks the AFTER state in full.
 do $$
+declare
+  st record; names text[];
 begin
-  if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'single_tenant_storage' and cmd = 'ALL' and roles = '{authenticated}') then
-    raise exception 'SEC-4: single_tenant_storage is not ALL to {authenticated}; live policies differ from the reviewed snapshot';
+  select cmd, roles::text, qual into st from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'single_tenant_storage';
+  if st is null or st.cmd <> 'ALL' or st.roles <> '{authenticated}' then
+    raise exception 'SEC-4: single_tenant_storage is missing or not ALL to {authenticated}; live policies differ from the reviewed snapshot';
+  end if;
+  select coalesce(array_agg(policyname order by policyname), '{}') into names from pg_policies where schemaname = 'storage' and tablename = 'objects'
+    and (coalesce(qual,'') || coalesce(with_check,'')) ~ '(prop-refs|project-references)';
+  if names <> array['project-references_delete_own','project-references_insert_own','project-references_open_test','project-references_select_own','project-references_update_own','prop-refs_delete_own','prop-refs_insert_own','prop-refs_open_test','prop-refs_select_own','prop-refs_update_own']
+     and names <> array['project-references_delete_legacy_grant','project-references_delete_own','project-references_insert_own','project-references_select_legacy_grant','project-references_select_own','project-references_update_own','prop-refs_delete_own','prop-refs_insert_own','prop-refs_select_own','prop-refs_update_own'] then
+    raise exception 'SEC-4: the policies naming prop-refs/project-references are neither the reviewed before-state nor this migration''s after-state: %', names;
+  end if;
+  if exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and coalesce(qual,'') not ilike '%bucket_id%' and coalesce(with_check,'') not ilike '%bucket_id%') then
+    raise exception 'SEC-4: a storage.objects policy has no bucket_id filter; it would keep these buckets open';
   end if;
 end $$;
 

@@ -14,6 +14,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { callerMayRead, callerMayReadAny, callerOwnsArtist, refusalResponse } from "../_shared/storageAccess.ts";
 import {
   pickFullLookGarmentPath,
   pickVtonGarmentPath,
@@ -283,6 +284,9 @@ serve(async (req) => {
   if (!body?.artistId || !body?.wardrobeFeatureId) {
     return json(400, { error: "missing_artist_or_wardrobe" });
   }
+  // Caller must own the artist: row.artist_id === body.artistId alone ties nothing to the caller (SEC review).
+  const artistAccess = await callerOwnsArtist(admin, userId, body.artistId);
+  if (!artistAccess.ok) { const r = refusalResponse(artistAccess); return json(r.status, { error: r.error }); }
 
   const { data: wardrobe, error: wErr } = await admin
     .from("character_features")
@@ -326,6 +330,9 @@ serve(async (req) => {
 
   if (!humanUrl && body.scenePath) {
     const bucket = body.sceneBucket || "project-references";
+    // Service role bypasses bucket RLS: sign only what the caller may read (own folder or a legacy grant).
+    const sceneAccess = await callerMayRead(admin, userId, bucket, body.scenePath);
+    if (!sceneAccess.ok) { const r = refusalResponse(sceneAccess); return json(r.status, { error: r.error }); }
     const { data: sceneSigned, error: sceneErr } = await admin.storage
       .from(bucket)
       .createSignedUrl(body.scenePath, SIGN_TTL);

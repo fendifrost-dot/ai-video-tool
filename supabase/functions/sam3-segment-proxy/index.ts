@@ -8,6 +8,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { signForCaller } from "../_shared/storageAccess.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -77,12 +78,9 @@ serve(async (req) => {
   const sceneBucket = body.sceneBucket ?? "project-references";
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false } });
 
-  const { data: signed, error: signErr } = await admin.storage
-    .from(sceneBucket)
-    .createSignedUrl(body.scenePath, SIGN_TTL);
-  if (signErr || !signed?.signedUrl) {
-    return json(400, { error: "scene_sign_failed", detail: signErr?.message });
-  }
+  // The service role bypasses bucket RLS: only the caller's own folder (or a legacy grant) may be signed here.
+  const signed = await signForCaller(admin, userId, sceneBucket, body.scenePath, SIGN_TTL);
+  if (!signed.ok) return json(signed.status, { error: signed.error === "storage_object_not_found" ? "scene_sign_failed" : signed.error });
 
   const switchxUrl = ccSwitchxUrl(composeCcUrl);
   const segResp = await fetch(switchxUrl, {
@@ -93,7 +91,7 @@ serve(async (req) => {
     },
     body: JSON.stringify({
       action: "segment-image",
-      image_url: signed.signedUrl,
+      image_url: signed.url,
       prompt,
     }),
   });

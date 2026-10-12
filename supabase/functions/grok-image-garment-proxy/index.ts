@@ -11,6 +11,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { callerMayRead, callerMayReadAny, callerOwnsArtist, refusalResponse } from "../_shared/storageAccess.ts";
 import { pickGrokGarmentReferencePaths } from "../_shared/garmentReference.ts";
 import { composeConstraintsFirst, lookSpecificationText, orderLookReferences, resolveReferencePolicy, type ReferencePolicy } from "../_shared/lookReferences.ts";
 import { getProviderCapability } from "../_shared/providerCapabilities.ts";
@@ -155,6 +156,9 @@ serve(async (req) => {
   if (!body?.artistId || !body?.wardrobeFeatureId || !body?.scenePath) {
     return json(400, { error: "missing_required_fields" });
   }
+  // Caller must own the artist: row.artist_id === body.artistId alone ties nothing to the caller (SEC review).
+  const artistAccess = await callerOwnsArtist(admin, userId, body.artistId);
+  if (!artistAccess.ok) { const r = refusalResponse(artistAccess); return json(r.status, { error: r.error }); }
 
   const { data: wardrobe, error: wErr } = await admin
     .from("character_features")
@@ -220,6 +224,9 @@ serve(async (req) => {
   }
 
   const sceneBucket = body.sceneBucket || "project-references";
+  // Service role bypasses bucket RLS: caller-supplied paths are signed only inside the caller's own access.
+  const sceneAccess = await callerMayRead(admin, userId, sceneBucket, body.scenePath);
+  if (!sceneAccess.ok) { const r = refusalResponse(sceneAccess); return json(r.status, { error: r.error }); }
   const heroUrl = await signStoragePath(admin, body.scenePath, [sceneBucket]);
   if (!heroUrl) return json(500, { error: "scene_sign_failed" });
 
@@ -234,7 +241,10 @@ serve(async (req) => {
 
   let anchorUrl: string | null = null;
   if (anchorPath) {
-    anchorUrl = await signStoragePath(admin, anchorPath, [body.anchorBucket || "project-references", "look-composites", "project-exports"]);
+    const anchorBuckets = [body.anchorBucket || "project-references", "look-composites", "project-exports"];
+    const anchorAccess = await callerMayReadAny(admin, userId, anchorBuckets, anchorPath);
+    if (!anchorAccess.ok) { const r = refusalResponse(anchorAccess); return json(r.status, { error: r.error }); }
+    anchorUrl = await signStoragePath(admin, anchorPath, anchorBuckets);
     if (!anchorUrl) return json(500, { error: "anchor_sign_failed" });
   }
   const imageInputs = [

@@ -19,6 +19,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { callerMayReadAny } from "../_shared/storageAccess.ts";
 import { resolveXaiApiKey, xaiKeyMissingMessage } from "../_shared/xaiApiKey.ts";
 
 const corsHeaders = {
@@ -196,8 +197,14 @@ serve(async (req) => {
   // ------------------------------------------------------------------ submit
   let imageUrl: string | null = body.imageUrl ?? null; let imageBucket: string | null = null;
   if (!imageUrl && body.imagePath) {
-    // the still must be the user's own: every image bucket is owner-foldered by user id
-    if (!body.imagePath.startsWith(`${userId}/`) && !body.imagePath.includes(`/${userId}/`)) return json(403, { error: "image_not_owned" });
+    // the still must be the caller's own (owner folder) or covered by a legacy folder grant, in the buckets signImage tries
+    const imageBuckets = body.imageBucket ? [body.imageBucket, ...IMAGE_BUCKETS.filter((b) => b !== body.imageBucket)] : IMAGE_BUCKETS;
+    const imageAccess = await callerMayReadAny(admin, userId, imageBuckets, body.imagePath);
+    if (!imageAccess.ok) {
+      if (imageAccess.reason === "invalid_path") return json(400, { error: "invalid_storage_path" });
+      if (imageAccess.reason === "lookup_failed") return json(500, { error: "storage_access_lookup_failed" });
+      return json(403, { error: "storage_path_forbidden" });
+    }
     const signed = await signImage(admin, body.imagePath, body.imageBucket);
     if (!signed) return json(404, { error: "image_not_resolvable", imagePath: body.imagePath });
     imageUrl = signed.url; imageBucket = signed.bucket;

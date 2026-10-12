@@ -8,6 +8,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { callerMayRead, callerOwnsArtist, refusalResponse } from "../_shared/storageAccess.ts";
 import { pickVtonGarmentPath } from "../_shared/garmentReference.ts";
 import { buildMaskedGarmentPrompts } from "../_shared/maskedGarmentPrompt.ts";
 import {
@@ -229,6 +230,9 @@ serve(async (req) => {
   if (!body?.artistId || !body?.wardrobeFeatureId) {
     return json(400, { error: "missing_artist_or_wardrobe" });
   }
+  // Caller must own the artist: row.artist_id === body.artistId alone ties nothing to the caller (SEC review).
+  const artistAccess = await callerOwnsArtist(admin, userId, body.artistId);
+  if (!artistAccess.ok) { const r = refusalResponse(artistAccess); return json(r.status, { error: r.error }); }
   if (!body?.scenePath && !isHttpsUrl(body?.humanImageUrl)) {
     return json(400, { error: "missing_scene", detail: "Provide scenePath or humanImageUrl." });
   }
@@ -305,6 +309,13 @@ serve(async (req) => {
   const lookId = crypto.randomUUID();
   const sceneBucket = body.sceneBucket ?? "project-references";
   const scenePath = body.scenePath!;
+  // Service role bypasses bucket RLS: the pipeline signs these caller-supplied paths, so check them here first.
+  const sceneAccess = await callerMayRead(admin, userId, sceneBucket, scenePath);
+  if (!sceneAccess.ok) { const r = refusalResponse(sceneAccess); return json(r.status, { error: r.error }); }
+  if (body.ipAdapterImagePath) {
+    const ipAccess = await callerMayRead(admin, userId, body.ipAdapterImageBucket ?? "look-composites", body.ipAdapterImagePath);
+    if (!ipAccess.ok) { const r = refusalResponse(ipAccess); return json(r.status, { error: r.error }); }
+  }
 
   const pipelineState = initialState({
     lookId,
