@@ -5,7 +5,7 @@ import { planStillRequest, REFERENCE_MODELS } from "../_shared/stillReferences.t
 const user = "00000000-0000-4000-8000-000000000001";
 const project = "00000000-0000-4000-8000-000000000002";
 const jobId = "00000000-0000-4000-8000-000000000003";
-const input = { userId: user, projectId: project, jobRowId: jobId, prompt: "Photograph of the same rider", resolution: "2k", aspectRatio: "9:16", maxCostUsd: .15, references: [{ ref: { source: "project_asset" as const, id: jobId, role: "cast", label: "The rider" }, path: `${user}/rider.png`, buckets: ["prop-refs"] }] };
+const input = { userId: user, projectId: project, jobRowId: jobId, prompt: "Photograph of the same rider", resolution: "2k", aspectRatio: "9:16", maxCostUsd: .28, references: [{ ref: { source: "project_asset" as const, id: jobId, role: "cast", label: "The rider" }, path: `${user}/rider.png`, buckets: ["prop-refs"] }] };
 const filed = { path: `${user}/${project}/worlds/portrait.png`, previewUrl: "https://example.invalid/preview?token=private", assetId: jobId, bytes: 13 };
 function deps(overrides: Record<string, unknown> = {}) {
   const row: Record<string, unknown> = { id: jobId, user_id: user, project_id: project, provider: "gemini", status: "queued", external_job_id: null, finalized_at: null, request_payload_json: { variation_id: "retained", treatmentRevisionId: "retained" }, ...overrides };
@@ -36,12 +36,12 @@ describe("unit: explicit Gemini still planning", () => {
     expect(unsupportedNanoAlias("gemini_image3.1_flash")).toBe(true);
     expect(unsupportedNanoAlias("nano_banana_2_1")).toBe(true);
     expect(unsupportedNanoAlias(GEMINI_MODEL)).toBe(false);
-    expect(geminiPlan(14, "2k", .15)).toMatchObject({ ok: true, model: GEMINI_MODEL, overGate: false, maxReferences: 14 });
-    expect(geminiPlan(15, "2k", .15)).toMatchObject({ ok: false, error: "references_over_capability" });
-    expect(geminiPlan(1, "2k", .1)).toMatchObject({ ok: true, overGate: true });
+    expect(geminiPlan(14, "2k", .28)).toMatchObject({ ok: true, model: GEMINI_MODEL, overGate: false, maxReferences: 14 });
+    expect(geminiPlan(15, "2k", .28)).toMatchObject({ ok: false, error: "references_over_capability" });
+    expect(geminiPlan(1, "2k", .15)).toMatchObject({ ok: true, overGate: true });
     expect(REFERENCE_MODELS.some((m) => m.model === GEMINI_MODEL)).toBe(false);
     expect(planStillRequest({ pictures: 1, n: 1, resolution: "2k", defaultModel: "grok-imagine-image-quality", maxCostUsd: .5, capOf: () => 3, generationRateOf: () => .07 })).toMatchObject({ model: "grok-imagine-image-quality" });
-    expect(GEMINI_COST_BOUND).toBeCloseTo(.147456);
+    expect(GEMINI_COST_BOUND).toBeCloseTo(.270336);
   });
   it("requires one candidate, real booleans/numeric cap and a job before spend", () => {
     expect(validateGeminiRequest({ ...input, n: 1 })).toBeNull();
