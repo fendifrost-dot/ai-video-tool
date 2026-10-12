@@ -72,6 +72,7 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
   let submitted = false;
   // Which step each outcome belongs to; a failure after generation never reads as "nothing was generated".
   const stages: Record<string, string> = { generation: "not_started", upload: "not_started", filing: "not_started", finalize: "not_started" };
+  let submittedAt: string | null = null;
   try {
     const references: { url: string; label: string; role: string }[] = [];
     for (const r of input.references) {
@@ -81,7 +82,7 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
     }
     // Submission intent is on the row BEFORE the billable call: a worker killed mid-call leaves a job that says
     // "submitted, billing unknown", not a silent "running". If this write fails, nothing is sent.
-    const submittedAt = new Date().toISOString();
+    submittedAt = new Date().toISOString();
     const { error: intentError } = await deps.admin.from("provider_jobs").update({ response_payload_json: { phase: "submitted", submittedAt, submitted: true, billed: "unknown", possiblyBilled: true, reconcile: RECONCILE_NOTE }, progress_note: `gemini submitted ${submittedAt}; billing unknown until finalized` }).eq("id", job.id).eq("user_id", input.userId);
     if (intentError) throw new Error("job_submission_record_failed");
     submitted = true; // CC might receive it even when its response is lost.
@@ -127,7 +128,10 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
   const { stills: previews, ...recorded } = result;
   // Signed previews are response-only; persist paths/ids, never access tokens.
   if (Array.isArray(previews)) recorded.stills = (previews as FiledImage[]).map(({ path, assetId, bytes }) => ({ path, assetId, bytes }));
-  recorded.stages = stages;
+  // The stored row can only exist if this write succeeded, so it records finalize as succeeded; the submission time
+  // from the intent marker is kept for provenance (the result payload otherwise replaces it).
+  recorded.stages = { ...stages, finalize: "succeeded" };
+  if (submittedAt) recorded.submittedAt = submittedAt;
   const finalRow = { status: result.ok ? "succeeded" : "failed", response_payload_json: recorded, result_asset_id: first?.assetId ?? null, finalized_at: new Date().toISOString(), progress_note: null, error_text: result.ok ? null : [result.error ?? result.errorCode ?? "gemini_failed", result.ccPlatformCode, result.recoverableImagePath ? `image stored at ${result.recoverableImagePath}` : result.error === "asset_filing_failed" ? "image lost: upload failed" : null].filter(Boolean).join("; ") };
   // Finalization is retried once; a job left "running" after a filed image is the worst outcome short of loss.
   let finishError: unknown = null;
