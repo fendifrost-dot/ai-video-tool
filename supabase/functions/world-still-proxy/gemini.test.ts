@@ -125,6 +125,12 @@ describe("mocked integration: Gemini job ownership and result filing", () => {
       expect(await geminiStill(input, d), errorCode).toMatchObject({ ok: false, billed: false, possiblyBilled: false, errorCode });
     }
   });
+  it("a refusal code that still claims submission stays possibly billed; odd platform codes are not recorded", async () => {
+    const d = deps(); d.call.mockResolvedValueOnce({ httpStatus: 503, payload: { ok: false, errorCode: "AUDIT_UNAVAILABLE", possiblyBilled: true } } as never);
+    expect(await geminiStill(input, d)).toMatchObject({ billed: "unknown", possiblyBilled: true });
+    const e = deps(); e.call.mockResolvedValueOnce({ httpStatus: 502, payload: { code: "x".repeat(5000) } } as never);
+    expect(await geminiStill(input, e)).toMatchObject({ error: "control_center_failed_after_submit", ccPlatformCode: null });
+  });
   it("an unknown CC error code on a non-200 stays possibly billed", async () => {
     const d = deps(); d.call.mockResolvedValueOnce({ httpStatus: 500, payload: { ok: false, errorCode: "SOMETHING_NEW" } } as never);
     expect(await geminiStill(input, d)).toMatchObject({ ok: false, billed: "unknown", possiblyBilled: true });
@@ -142,7 +148,7 @@ describe("mocked integration: Gemini job ownership and result filing", () => {
     const d = deps(); d.file.mockResolvedValueOnce({ error: "bucket unavailable" } as never);
     const result = await geminiStill(input, d);
     expect(result).toMatchObject({ ok: false, error: "asset_filing_failed", recoverableImagePath: null });
-    expect(d.row.status).toBe("failed");
+    expect(d.row).toMatchObject({ status: "failed", error_text: "asset_filing_failed; image lost: upload failed" });
     expect(JSON.stringify(d.row)).not.toContain("iVBOR");
   });
 });

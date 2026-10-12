@@ -78,11 +78,12 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
     // WORKER_RESOURCE_LIMIT, 12 Oct 2026): Google may already have billed. Record what is known for reconciliation
     // against CC's audit row (same jobRowId); never retry automatically.
     if (typeof evidence.ok !== "boolean") {
-      result = { ok: false, error: "control_center_failed_after_submit", ccHttpStatus: response.httpStatus, ccPlatformCode: typeof evidence.code === "string" ? evidence.code : null, billed: "unknown", possiblyBilled: true, actualCostUsd: null, references: sentRefs, reconcile: "Look up Control Center tool_execution_logs where args->>'jobRowId' = this job; an 'attempted' row with no completion means the answer was lost after submission." };
+      result = { ok: false, error: "control_center_failed_after_submit", ccHttpStatus: response.httpStatus, ccPlatformCode: typeof evidence.code === "string" && /^[A-Z0-9_]{1,64}$/.test(evidence.code) ? evidence.code : null, billed: "unknown", possiblyBilled: true, actualCostUsd: null, references: sentRefs, reconcile: "Look up Control Center tool_execution_logs where args->>'jobRowId' = this job; an 'attempted' row with no completion means the answer was lost after submission. A gateway refusal (no CC row at all) means Google was never called." };
       throw new Error("control_center_failed_after_submit");
     }
     // Control Center's own refusals before it calls Google (bad input, no key, no audit row, auth) spend nothing.
-    const refusedBeforeGoogle = response.httpStatus !== 200 && CC_REFUSED_BEFORE_GOOGLE.has(String(evidence.errorCode));
+    // CC sends these codes only before run(); any sign of submission still wins.
+    const refusedBeforeGoogle = response.httpStatus !== 200 && CC_REFUSED_BEFORE_GOOGLE.has(String(evidence.errorCode)) && evidence.possiblyBilled !== true && evidence.billed !== true && evidence.billed !== "unknown";
     result = { ...evidence, ok: response.httpStatus === 200 && evidence.ok === true, ccHttpStatus: response.httpStatus, billed: refusedBeforeGoogle ? false : evidence.billed ?? "unknown", possiblyBilled: refusedBeforeGoogle ? false : typeof evidence.possiblyBilled === "boolean" ? evidence.possiblyBilled : evidence.billed !== false, actualCostUsd: null, references: sentRefs };
     if (result.ok) {
       if (!Array.isArray(images) || images.length !== 1) throw new Error("invalid_gemini_result");
@@ -106,7 +107,7 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
   const { stills: previews, ...recorded } = result;
   // Signed previews are response-only; persist paths/ids, never access tokens.
   if (Array.isArray(previews)) recorded.stills = (previews as FiledImage[]).map(({ path, assetId, bytes }) => ({ path, assetId, bytes }));
-  const { error: finishError } = await deps.admin.from("provider_jobs").update({ status: result.ok ? "succeeded" : "failed", response_payload_json: recorded, result_asset_id: first?.assetId ?? null, finalized_at: new Date().toISOString(), error_text: result.ok ? null : [result.error ?? result.errorCode ?? "gemini_failed", result.ccPlatformCode, result.recoverableImagePath ? `image stored at ${result.recoverableImagePath}` : null].filter(Boolean).join("; ") }).eq("id", job.id).eq("user_id", input.userId).eq("project_id", input.projectId);
+  const { error: finishError } = await deps.admin.from("provider_jobs").update({ status: result.ok ? "succeeded" : "failed", response_payload_json: recorded, result_asset_id: first?.assetId ?? null, finalized_at: new Date().toISOString(), error_text: result.ok ? null : [result.error ?? result.errorCode ?? "gemini_failed", result.ccPlatformCode, result.recoverableImagePath ? `image stored at ${result.recoverableImagePath}` : result.error === "asset_filing_failed" ? "image lost: upload failed" : null].filter(Boolean).join("; ") }).eq("id", job.id).eq("user_id", input.userId).eq("project_id", input.projectId);
   if (finishError) return { ...result, jobRecordSaved: false, warning: "Paid result may exist; reconcile this job. Do not resubmit automatically." };
   return { ...result, jobRecordSaved: true, jobRowId: job.id };
 }
