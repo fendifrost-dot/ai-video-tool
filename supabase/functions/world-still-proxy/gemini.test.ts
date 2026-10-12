@@ -39,6 +39,8 @@ describe("unit: explicit Gemini still planning", () => {
     expect(geminiPlan(14, "2k", .28)).toMatchObject({ ok: true, model: GEMINI_MODEL, overGate: false, maxReferences: 14 });
     expect(geminiPlan(15, "2k", .28)).toMatchObject({ ok: false, error: "references_over_capability" });
     expect(geminiPlan(1, "2k", .15)).toMatchObject({ ok: true, overGate: true });
+    expect(geminiPlan(1, "2k", .2703)).toMatchObject({ ok: true, overGate: true }); // between the rounded and exact bound
+    expect(geminiPlan(1, "2k", GEMINI_COST_BOUND)).toMatchObject({ ok: true, overGate: false });
     expect(REFERENCE_MODELS.some((m) => m.model === GEMINI_MODEL)).toBe(false);
     expect(planStillRequest({ pictures: 1, n: 1, resolution: "2k", defaultModel: "grok-imagine-image-quality", maxCostUsd: .5, capOf: () => 3, generationRateOf: () => .07 })).toMatchObject({ model: "grok-imagine-image-quality" });
     expect(GEMINI_COST_BOUND).toBeCloseTo(.270336);
