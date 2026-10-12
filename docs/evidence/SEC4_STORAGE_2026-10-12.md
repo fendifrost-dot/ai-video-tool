@@ -19,7 +19,7 @@ The owner-scoped policies `<bucket>_{select,insert,update,delete}_own` (to `publ
 ### Inventory (VERIFIED)
 
 - `prop-refs`: 20 objects, all under the owner `3ca10935-8c3d…`.
-- `project-references`: 309 objects under the owner, plus 45 under 7 anonymous-session uids. The 45 are at `<anonUid>/<projectId>/…`, all in projects owned by `3ca10935-8c3d…`.
+- `project-references`: 309 objects under the owner when first counted (310 once a world still was filed during this session), plus 45 under 7 anonymous-session uids. The 45 are at `<anonUid>/<projectId>/…`, all in projects owned by `3ca10935-8c3d…`.
 
 ## Change
 
@@ -71,7 +71,7 @@ Correction to the first baseline run: it reported "delete denied" because it che
 
 Not tested as the owner: writing into a legacy folder, which is intentionally not granted, and deleting a real legacy file, which is destructive. DELETE uses the same predicate as SELECT.
 
-## Residual: CDN copy cached during the open period (VERIFIED)
+## Residual exposure from the open period
 
 **Observation.** After the migration, B could still download `fixture.png`, the file B had downloaded while the bucket was open. B could not sign or list it, and B got 400 on any path it first requested after the migration.
 
@@ -84,14 +84,20 @@ Not tested as the owner: writing into a legacy folder, which is intentionally no
 
 Deleting the object purged it: B got 400 with `BYPASS` once the fixture was removed.
 
-**Conclusion.**
-- The authenticated download path is cached per requester for the object's `cacheControl` (`public, max-age=3600` by default).
-- Anyone who fetched an object while it was open can re-fetch **that same copy** until it expires, at most 1 hour for default-cached uploads.
-- No new access is possible.
-- RLS cannot shorten this window. Deleting an object, or waiting it out, ends it.
+**Conclusion (OBSERVED on one fixture with the default `cacheControl`).**
+- The authenticated download path appears to be cached per requester for the object's `cacheControl`. The default is `public, max-age=3600`; objects uploaded with a longer `cacheControl` would stay cached longer.
+- Anyone who fetched an object while it was open can re-fetch that cached copy until it expires.
+- Deleting the object ended it in our test.
 - Expiry check: see the handoff.
 
-## Service-role bypass of these buckets (fixed in this PR)
+**Signed URLs minted while the buckets were open (HYPOTHESIS, open).**
+- A signed URL is checked only against its token signature, never against RLS.
+- Anyone who called `createSignedUrl` on an object while the buckets were open could choose a long expiry. The app itself uses up to 7 days.
+- Such URLs keep working after this migration.
+- RLS cannot revoke them. The remedies are moving or re-keying the object to a new path, or rotating the project's signing secret.
+- Not tested, because it would mean minting long-lived links to real content.
+
+## Service-role bypass of these buckets (CODED; LIVE only after redeploy + an anon-key probe returns 401 `service_role_required`)
 
 `grok-video-research-proxy` and `grok-resolution-test` accepted the **public anon key**, and the research proxy also accepted any user session. Both sign caller-chosen paths in these buckets with the **service role**, which bypasses RLS, and send the file to xAI for billing.
 

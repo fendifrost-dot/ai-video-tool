@@ -43,8 +43,8 @@ verify_jwt = false
 
 # Grok 2026 Capability Re-Benchmark harness (RESEARCH ONLY, not a product lane).
 # Referenced by nothing; exists because no AVT/CC path can POST /v1/videos/edits.
-# Same posture as grok-resolution-test: no browser session, anon or service-role
-# key as bearer. Delete once the re-benchmark verdict is recorded.
+# Same posture as grok-resolution-test: no browser session, service-role key only (SEC-4, 12 Oct 2026).
+# Delete once the re-benchmark verdict is recorded.
 # See docs/research/GROK_RECAP_2026-08_PHASE0_PHASE1.md.
 [functions.grok-video-research-proxy]
 verify_jwt = false
