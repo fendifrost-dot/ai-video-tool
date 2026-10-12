@@ -11,7 +11,7 @@ Evidence labels follow `CLAUDE.md`: VERIFIED / OBSERVED / HYPOTHESIS / DECISION 
 | Reliability | **BROKEN for production**: 4 of 11 paid submissions killed by CC worker memory limit after Google answered (VERIFIED) |
 | Storage isolation (`gemini_storage_rls`) | **FAIL** — SEC-4 still open (VERIFIED, §4) |
 | Creative pipeline | Identity strong at stage A, drifts through chained references (OBSERVED, §5) |
-| Spend | ≈ **$0.69** estimated, upper bound **$1.03**; invoice not verified (§6) |
+| Spend | ≈ **$0.69** estimated, upper bound **$1.02**; invoice not verified (§6) |
 
 Code merged + deployed during this run (all via Lovable, edge redeploy only, no SQL, no Publish):
 
@@ -103,7 +103,7 @@ The returned model id was `gemini-nano-banana-2.1` every time; this is **not** a
 | ae760fb6 D2 | image | $0.0627 |
 | 76c688f6 D retry | worker crash after answer | ~$0.06 (≤ $0.1475) |
 | 60b15318 D retry | image | $0.0606 |
-| **Total** | 7 images, 4 lost | **≈ $0.69** (upper bound $1.03) |
+| **Total** | 7 images, 4 lost | **≈ $0.69** (upper bound $1.02) |
 
 Verified billing: **none** — read the AI Studio / Cloud billing usage for 12 Oct to replace these estimates.
 
