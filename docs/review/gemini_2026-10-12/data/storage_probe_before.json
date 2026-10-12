@@ -1,0 +1,274 @@
+{
+ "phase": "before",
+ "at": "2026-10-12T20:28:50.077Z",
+ "A": "c158e779",
+ "B": "4e26292d",
+ "results": [
+  {
+   "bucket": "prop-refs",
+   "who": "A-owner",
+   "op": "upload(own)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "A-owner",
+   "op": "list(own)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "A-owner",
+   "op": "download(own)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "A-owner",
+   "op": "sign(own)+fetch",
+   "allowed": true,
+   "detail": "fetch=200"
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "A-owner",
+   "op": "update(own)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "B-other",
+   "op": "list(A folder)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "B-other",
+   "op": "list(bucket root)",
+   "allowed": true,
+   "detail": "entries=2"
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "B-other",
+   "op": "download(A file)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "B-other",
+   "op": "sign(A file)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "B-other",
+   "op": "upload(into A folder)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "B-other",
+   "op": "overwrite(A file)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "B-other",
+   "op": "delete(A file)",
+   "allowed": false,
+   "detail": "remove returned 1 rows"
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "anon",
+   "op": "list(A folder)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "anon",
+   "op": "list(bucket root)",
+   "allowed": true,
+   "detail": "entries=2"
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "anon",
+   "op": "download(A file)",
+   "allowed": false,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "anon",
+   "op": "sign(A file)",
+   "allowed": false,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "anon",
+   "op": "upload(into A folder)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "anon",
+   "op": "overwrite(A file)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "prop-refs",
+   "who": "anon",
+   "op": "delete(A file)",
+   "allowed": false,
+   "detail": "remove returned 1 rows"
+  },
+  {
+   "bucket": "project-references",
+   "who": "A-owner",
+   "op": "upload(own)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "A-owner",
+   "op": "list(own)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "A-owner",
+   "op": "download(own)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "A-owner",
+   "op": "sign(own)+fetch",
+   "allowed": true,
+   "detail": "fetch=200"
+  },
+  {
+   "bucket": "project-references",
+   "who": "A-owner",
+   "op": "update(own)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "B-other",
+   "op": "list(A folder)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "B-other",
+   "op": "list(bucket root)",
+   "allowed": true,
+   "detail": "entries=9"
+  },
+  {
+   "bucket": "project-references",
+   "who": "B-other",
+   "op": "download(A file)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "B-other",
+   "op": "sign(A file)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "B-other",
+   "op": "upload(into A folder)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "B-other",
+   "op": "overwrite(A file)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "B-other",
+   "op": "delete(A file)",
+   "allowed": false,
+   "detail": "remove returned 1 rows"
+  },
+  {
+   "bucket": "project-references",
+   "who": "anon",
+   "op": "list(A folder)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "anon",
+   "op": "list(bucket root)",
+   "allowed": true,
+   "detail": "entries=9"
+  },
+  {
+   "bucket": "project-references",
+   "who": "anon",
+   "op": "download(A file)",
+   "allowed": false,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "anon",
+   "op": "sign(A file)",
+   "allowed": false,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "anon",
+   "op": "upload(into A folder)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "anon",
+   "op": "overwrite(A file)",
+   "allowed": true,
+   "detail": ""
+  },
+  {
+   "bucket": "project-references",
+   "who": "anon",
+   "op": "delete(A file)",
+   "allowed": false,
+   "detail": "remove returned 1 rows"
+  }
+ ]
+}
