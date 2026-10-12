@@ -23,11 +23,10 @@
 // cost ceiling (`maxCostUsd`, default $0.50), and a duration clamp. Sequential
 // execution and the overall $6.00 experiment ceiling are the caller's discipline.
 //
-// Auth: verify_jwt = false; caller presents the anon/publishable key or the
-// service-role key as bearer. Same posture as grok-resolution-test.
+// Auth: verify_jwt = false; the service-role key only (SEC-4, 12 Oct 2026).
 //
 // Required secrets (AVT project qoyxgnkvjukovkrvdaiq):
-//   XAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY
+//   XAI_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 //
 // DELETE THIS FUNCTION once the re-benchmark verdict is recorded.
 
@@ -285,30 +284,15 @@ serve(async (req) => {
   const xaiKey = resolveXaiApiKey();
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
   if (!supabaseUrl || !serviceRoleKey) return json(500, { error: "server_misconfigured" });
 
+  // Service role only (SEC-4, 12 Oct 2026). This research tool signs caller-chosen storage paths with the service
+  // role and sends them to xAI; with the public anon key or any user session accepted, anyone could pull another
+  // user's private files past the bucket policies (and bill xAI). Nothing in the app calls it.
   const bearer = (req.headers.get("authorization") ?? "").replace(/^[Bb]earer\s+/, "").trim();
-  if (!bearer || (bearer !== serviceRoleKey && bearer !== anonKey)) {
-    // Platform API-key migration: the live app's client key may no longer equal
-    // the env value, so also accept a valid logged-in user session JWT.
-    let userOk = false;
-    if (bearer) {
-      try {
-        const authClient = createClient(supabaseUrl, serviceRoleKey, {
-          auth: { persistSession: false },
-        });
-        const { data, error } = await authClient.auth.getUser(bearer);
-        userOk = !error && !!data?.user;
-      } catch {
-        userOk = false;
-      }
-    }
-    if (!userOk) {
-      return json(401, { error: "anon_service_role_or_user_jwt_required" });
-    }
+  if (!bearer || bearer !== serviceRoleKey) {
+    return json(401, { error: "service_role_required", detail: "Research tool: signs arbitrary storage paths, so only the service role may call it." });
   }
-
 
   if (!xaiKey) {
     return json(500, { error: "xai_api_key_missing", detail: xaiKeyMissingMessage() });
