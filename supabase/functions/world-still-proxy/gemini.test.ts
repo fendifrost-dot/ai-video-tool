@@ -57,6 +57,12 @@ describe("mocked integration: Gemini job ownership and result filing", () => {
     expect(d.sign).not.toHaveBeenCalled(); expect(d.admin.from).not.toHaveBeenCalled(); expect(d.file).not.toHaveBeenCalled();
     expect(d.call.mock.calls[0][1].body).toMatchObject({ dryRun: true, references: [] });
   });
+  it("a failed dry-run keeps Google's refusal visible and never falls back", async () => {
+    const d = deps(); const googleError = { httpStatus: 403, status: "PERMISSION_DENIED", reason: "BILLING_DISABLED" };
+    d.call.mockResolvedValueOnce({ httpStatus: 200, payload: { ok: false, errorCode: "model_access_failed", modelAccessVerified: false, googleError } } as never);
+    expect(await geminiStill({ ...input, jobRowId: undefined, dryRun: true }, d)).toEqual({ ok: false, billed: false, error: "gemini_not_ready", detail: "model_access_failed", modelAccessVerified: false, googleError });
+    expect(d.sign).not.toHaveBeenCalled(); expect(d.file).not.toHaveBeenCalled();
+  });
   it("won't claim foreign, wrong-provider, running or finalized jobs", async () => {
     for (const change of [{ user_id: project }, { project_id: user }, { provider: "grok" }, { status: "running" }, { finalized_at: "yesterday" }, { external_job_id: "already-submitted" }]) {
       const d = deps(change);

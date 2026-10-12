@@ -43,7 +43,7 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
   if (input.dryRun) {
     try {
       const checked = await call(cc, { endpoint: "image-providers-gemini-generate", body: { ...request, dryRun: true, references: [] }, timeoutMs: 20_000 });
-      if (checked.httpStatus !== 200 || checked.payload.ok !== true) return { ok: false, billed: false, error: "gemini_not_ready", detail: checked.payload.errorCode ?? "Control Center probe failed" };
+      if (checked.httpStatus !== 200 || checked.payload.ok !== true) return { ok: false, billed: false, error: "gemini_not_ready", detail: checked.payload.errorCode ?? "Control Center probe failed", modelAccessVerified: checked.payload.modelAccessVerified ?? false, googleError: checked.payload.googleError ?? null };
       return { ...checked.payload, dryRun: true, referencesSent: 0, referencesChecked: input.references.length };
     } catch { return { ok: false, billed: false, error: "control_center_unreachable" }; }
   }
