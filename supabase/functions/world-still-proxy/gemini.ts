@@ -2,13 +2,17 @@ import { callControlCenter, controlCenterConfig, type ControlCenterConfig, type 
 import { planStillRequest, type ResolvedReference } from "../_shared/stillReferences.ts";
 
 export const GEMINI_MODEL = "gemini-nano-banana-2.1";
-export const GEMINI_COST_BOUND = (16_384 * 1.5 + 4_096 * 30) / 1e6;
+// Mirrors Control Center: 16,384 input tokens at $1.50/M + 8,192 output tokens (final image, thinking, interim images) at $30/M.
+export const GEMINI_COST_BOUND = (16_384 * 1.5 + 8_192 * 30) / 1e6;
 export function unsupportedNanoAlias(model: unknown): boolean {
   return typeof model === "string" && /^(gemini|nano[_-]?banana)/i.test(model) && model !== GEMINI_MODEL;
 }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export function geminiPlan(pictures: number, resolution: string, maxCostUsd: number) {
-  return planStillRequest({ pictures, n: 1, resolution, askedModel: GEMINI_MODEL, defaultModel: GEMINI_MODEL, maxCostUsd, capOf: () => 14, generationRateOf: () => GEMINI_COST_BOUND, models: [{ model: GEMINI_MODEL, usdPerImage: { "1k": GEMINI_COST_BOUND, "2k": GEMINI_COST_BOUND }, usdPerInputImage: 0, basis: "Google token-budget upper estimate; actual invoice unknown" }] });
+  const plan = planStillRequest({ pictures, n: 1, resolution, askedModel: GEMINI_MODEL, defaultModel: GEMINI_MODEL, maxCostUsd, capOf: () => 14, generationRateOf: () => GEMINI_COST_BOUND, models: [{ model: GEMINI_MODEL, usdPerImage: { "1k": GEMINI_COST_BOUND, "2k": GEMINI_COST_BOUND }, usdPerInputImage: 0, basis: "Google token-budget upper estimate; actual invoice unknown" }] });
+  // The shared plan rounds the estimate to 4 dp (0.270336 -> 0.2703); Control Center gates on the exact bound, so
+  // gate here on the exact bound too, or a cap in between would pass AVT and be refused by CC.
+  return plan.ok ? { ...plan, overGate: plan.overGate || maxCostUsd < GEMINI_COST_BOUND } : plan;
 }
 export function validateGeminiRequest(body: { n?: unknown; prompt: unknown; aspectRatio?: unknown; maxCostUsd?: unknown; dryRun?: unknown; jobRowId?: unknown }): string | null {
   if (body.n !== undefined && body.n !== 1) return "gemini_one_candidate_per_request";
