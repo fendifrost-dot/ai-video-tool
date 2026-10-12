@@ -76,11 +76,11 @@ describe("mocked integration: Gemini job ownership and result filing", () => {
   });
   it("records submission intent on the row before the billable call, and a failed intent write sends nothing", async () => {
     const d = deps(); let seenAtCall: unknown = null;
-    d.call.mockImplementationOnce(async () => { seenAtCall = JSON.parse(JSON.stringify(d.row.response_payload_json)); return { httpStatus: 200, payload: { ok: true, model: GEMINI_MODEL, actualCostUsd: null, usage: {}, images: [{ data: "iVBORw0KGgoAAAAAAQ==", mimeType: "image/png" }] } }; });
+    d.call.mockImplementationOnce(async () => { seenAtCall = JSON.parse(JSON.stringify(d.row.response_payload_json)); return { httpStatus: 200, payload: { ok: true, model: GEMINI_MODEL, actualCostUsd: null, usage: { promptTokenCount: 0 }, images: [{ data: "iVBORw0KGgoAAAAAAQ==", mimeType: "image/png" }] } }; });
     expect(await geminiStill(input, d)).toMatchObject({ ok: true, stages: { generation: "succeeded", upload: "succeeded", filing: "succeeded", finalize: "succeeded" }, finalized: true });
     expect(seenAtCall).toMatchObject({ phase: "submitted", submitted: true, possiblyBilled: true, billed: "unknown" });
     const e = deps(); let updates = 0;
-    const realFrom = e.admin.from; e.admin.from = vi.fn((t: string) => { const q = realFrom(t); const u = q.update; q.update = (p: Record<string, unknown>) => { if (++updates === 3) { const r = u(p); r.eq = () => ({ eq: async () => ({ data: null, error: { message: "db down" } }) }); return r; } return u(p); }; return q; }) as never;
+    const realFrom = e.admin.from; e.admin.from = vi.fn(() => { const q = realFrom(); const u = q.update; q.update = (p: Record<string, unknown>) => { if (++updates === 3) { const r = u(p); r.eq = (() => ({ eq: async () => ({ data: null, error: { message: "db down" } }) })) as never; return r; } return u(p); }; return q; }) as never;
     expect(await geminiStill(input, e)).toMatchObject({ ok: false, error: "job_submission_record_failed", billed: false, possiblyBilled: false });
     expect(e.call).not.toHaveBeenCalled();
   });
@@ -124,7 +124,7 @@ describe("mocked integration: Gemini job ownership and result filing", () => {
   });
   it("a finalize failure after a filed image is reported as unfinalized, not as a successful record", async () => {
     const d = deps(); let updates = 0;
-    const realFrom = d.admin.from; d.admin.from = vi.fn((t: string) => { const q = realFrom(t); const u = q.update; q.update = (p: Record<string, unknown>) => { if (p.finalized_at !== undefined) { updates++; return { eq: () => ({ eq: () => ({ eq: async () => ({ data: null, error: { message: "db down" } }) }) }) }; } return u(p); }; return q; }) as never;
+    const realFrom = d.admin.from; d.admin.from = vi.fn(() => { const q = realFrom(); const u = q.update; q.update = (p: Record<string, unknown>) => { if (p.finalized_at !== undefined) { updates++; return { eq: () => ({ eq: () => ({ eq: async () => ({ data: null, error: { message: "db down" } }) }) }) } as never; } return u(p); }; return q; }) as never;
     const result = await geminiStill(input, d);
     expect(result).toMatchObject({ ok: true, jobRecordSaved: false, finalized: false, stages: { filing: "succeeded", finalize: "failed" } });
     expect(updates).toBe(2); // one retry
@@ -133,7 +133,7 @@ describe("mocked integration: Gemini job ownership and result filing", () => {
   it("recovery files a stored-but-unrecorded image without calling the provider", async () => {
     const stored = `${user}/${project}/worlds/scene_1.png`;
     const d = deps({ status: "failed", response_payload_json: { ok: false, error: "asset_filing_failed", recoverableImagePath: stored, possiblyBilled: true, usage: { promptTokenCount: 5 } } });
-    const record = vi.fn(async ({ path }: { path: string }) => ({ path, previewUrl: null, bytes: 0, assetId: "aaaaaaaa-0000-4000-8000-000000000009" }));
+    const record = vi.fn(async ({ path }: { path: string; extraMeta: Record<string, unknown> }) => ({ path, previewUrl: null, bytes: 0, assetId: "aaaaaaaa-0000-4000-8000-000000000009" }));
     expect(await recoverGeminiJob({ userId: user, projectId: project, jobRowId: jobId }, { admin: d.admin, record })).toMatchObject({ ok: true, finalized: true, assetId: "aaaaaaaa-0000-4000-8000-000000000009" });
     expect(d.row).toMatchObject({ status: "succeeded", result_asset_id: "aaaaaaaa-0000-4000-8000-000000000009", error_text: null });
     expect(record.mock.calls[0][0].extraMeta).toMatchObject({ recovered_from_job: jobId, usage: { promptTokenCount: 5 } });
@@ -158,7 +158,7 @@ describe("mocked integration: Gemini job ownership and result filing", () => {
   });
   it("a recovery that loses the race to finalize reports its asset row as a duplicate, never as success", async () => {
     const f = deps({ status: "failed", response_payload_json: { recoverableImagePath: filed.path } });
-    const record = vi.fn(async () => { f.row.result_asset_id = "someone-else"; return { assetId: "mine", path: filed.path }; }); // another recovery finalized meanwhile
+    const record = vi.fn(async () => { f.row.result_asset_id = "someone-else"; return { assetId: "mine", path: filed.path, previewUrl: null, bytes: 0 }; }); // another recovery finalized meanwhile
     expect(await recoverGeminiJob({ userId: user, projectId: project, jobRowId: jobId }, { admin: f.admin, record })).toMatchObject({ ok: true, assetId: "mine", finalized: false, duplicate: true });
     expect(f.row.result_asset_id).toBe("someone-else");
   });
