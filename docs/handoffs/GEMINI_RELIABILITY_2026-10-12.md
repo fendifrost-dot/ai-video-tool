@@ -100,7 +100,7 @@ Every run used the original approved portrait `3fce9cb5` as `<IMAGE_0>`. "Est." 
 ## 4. Continuity: independent visual review
 
 The reviewer viewed every image at full resolution against the original portrait.
-Contact sheet: [`../evidence/gemini_live_2026-10-12b_contact_sheet.jpg`](../evidence/gemini_live_2026-10-12b_contact_sheet.jpg).
+Images are shared privately, not in this public repo; checksums are in [`../review/gemini_2026-10-12/IMAGE_MANIFEST.md`](../review/gemini_2026-10-12/IMAGE_MANIFEST.md).
 
 | | Realism | Identity | Wardrobe | Anatomy | Lighting | Treatment | Verdict |
 |---|---|---|---|---|---|---|---|
