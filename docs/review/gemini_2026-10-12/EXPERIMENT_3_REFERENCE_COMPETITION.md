@@ -79,4 +79,34 @@ refuted if the reverse; **inconclusive** otherwise (and that is a valid, reporta
 
 ## Results
 
-_(none yet)_
+Status: **RUN COMPLETE** (4 paid runs, 0 technical failures, no extra run used). Order as planned: A1, B1, A2, B2.
+Raw record: [`data/experiment_3_jobs.json`](data/experiment_3_jobs.json). Images: [`images/experiment_3/`](images/experiment_3/)
+([contact sheet](images/experiment_3/contact_sheet_experiment_3.jpg), [face strip ORIGINAL·A1·A2·B1·B2](images/experiment_3/faces_ORIGINAL_A1_A2_B1_B2.jpg)).
+
+| Run | Arm | Job | Asset | `<IMAGE_1>` | `<IMAGE_2>` | finish | thoughts tokens | answer bytes |
+|---|---|---|---|---|---|---|---|---|
+| A1 | A | `953fcfbe` | `afa5f5d6` | R1 full `3eee45de` | C2 full `a1b2ced9` | STOP | 1,054 | 12,647,573 |
+| B1 | B | `f0692310` | `b7f704ea` | outfit_faceless `51f1ca23` | horse_tack_faceless `635123bb` | STOP | 47 | 10,769,451 |
+| A2 | A | `dc4e16be` | `9bce6056` | R1 full | C2 full | STOP | 0 | 11,102,109 |
+| B2 | B | `7f06d241` | `41f3298d` | outfit_faceless | horse_tack_faceless | STOP | 319 | 10,731,752 |
+
+Identical for all four: `<IMAGE_0>` ORIGINAL `3fce9cb5` (cast), prompt `exp3-v1` (text above, 1,930 chars, 488 text
+tokens), 3 references = 3,360 image tokens, 1,262 counted input tokens before the call, 2K 4:5, `maxCostUsd 0.28`.
+Both derivatives were made with `asset-derivative` from the caller's own assets (boxes in the table above); R1, C2
+and the ORIGINAL are unchanged and no production selection, wardrobe lock, treatment, timeline, export or footage was
+touched. All four results are `approval_status: pending`, scene titles start with "TEST ONLY".
+
+**Spend:** 4 × $0.270336 conditional estimate = **$1.081344**; remaining authorization after the experiment
+**$0.788656** (of $1.87). Verified charges: unknown (no invoice access); every row says `billed: "unknown"`.
+
+**Durability, live (OBSERVED):** B1, A2 and B2 ran on the `5a04c33` deploy: their job rows carry `submittedAt`
+(intent written before the call) and `stages` all `succeeded`. A1 ran on `42eb608`: `finalized_at` set but the
+stored `stages.finalize` reads `not_started` (the wart fixed in #241).
+
+**Reviewer's own first look (OBSERVED, not the verdict):** faces are small in frame in all four (knee-height camera,
+5 m); B2's face reads closest to the portrait's width; A1, A2 and B1 read narrower.
+
+### Blind independent review
+
+_(pending: the reviewer saw the ORIGINAL and the four candidates under shuffled neutral names with full-resolution
+face / torso / horse crops, and did not see the prompts, arms or this file)_
