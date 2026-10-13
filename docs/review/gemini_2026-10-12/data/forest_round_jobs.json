@@ -69,6 +69,32 @@
    "stages": "all succeeded",
    "billed": "unknown",
    "usd_usage_based": 0.121168
+  },
+  {
+   "run": "F4",
+   "job": "e19696e8-fbb3-4f31-a27f-57a93da3c938",
+   "asset": "5cea3af9-27f0-4487-9269-f80b4911249b",
+   "file": "images/forest/F4_5cea3af9.jpg",
+   "sha256_16": "7a038275bdbf9030",
+   "bytes": 2648916,
+   "prompt_version": "forest-v3",
+   "usage": {
+    "prompt": 2895,
+    "candidates": 2261,
+    "thoughts": 246
+   },
+   "responseBytes": 9477180,
+   "finishReason": "STOP",
+   "stages": "all succeeded",
+   "billed": "unknown",
+   "usd_usage_based": 0.079552
   }
- ]
+ ],
+ "spend": {
+  "runs": 4,
+  "failures": 0,
+  "conditional_estimate_total_usd": 1.081344,
+  "usage_based_total_usd": 0.418946,
+  "verified_charges": "unknown"
+ }
 }
