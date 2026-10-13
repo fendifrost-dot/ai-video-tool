@@ -1,0 +1,148 @@
+{
+ "test": "experiment_4_medium_shot_2026-10-13",
+ "prompt_version": "exp4-v1",
+ "model": "gemini-nano-banana-2.1",
+ "settings": {
+  "resolution": "2k",
+  "aspectRatio": "4:5",
+  "n": 1,
+  "maxCostUsd": 0.28,
+  "conditionalEstimateUsdPerRun": 0.270336,
+  "promptTextTokens": 482,
+  "referenceImageTokens": 3360,
+  "countedInputTokens": 1256
+ },
+ "arms": {
+  "A": [
+   "3fce9cb5-012f-4158-aecb-6615343eb2f3 cast ORIGINAL",
+   "3eee45de-5655-4afb-9468-c54dd72192c5 garment R1 full",
+   "a1b2ced9-8bc8-4203-a64a-f63d56391ef6 prop C2 full"
+  ],
+  "B": [
+   "3fce9cb5-012f-4158-aecb-6615343eb2f3 cast ORIGINAL",
+   "51f1ca23-9ddf-4a44-bb14-eec795ec0657 garment outfit_faceless",
+   "635123bb-ab8b-4cc6-96bf-716548596a6c prop horse_tack_faceless"
+  ]
+ },
+ "runs": [
+  {
+   "run": "A1",
+   "arm": "A",
+   "job": "9976224d-151c-401d-b2c8-30eff65e82c5",
+   "asset": "9db78236-09e9-421a-b02f-10ed6ca8c327",
+   "file": "images/experiment_4/A1_9db78236.jpg",
+   "sha256_16": "58c8876c9de66bb2",
+   "bytes": 2651459,
+   "finishReason": "STOP",
+   "thoughtsTokens": 881,
+   "responseBytes": 11314408,
+   "stages": "all four succeeded",
+   "billed": "unknown"
+  },
+  {
+   "run": "B1",
+   "arm": "B",
+   "job": "cf0d79a5-ba1f-4738-b04d-3abd748f382e",
+   "asset": "7ed58453-332d-4f52-9006-473d26c52ae3",
+   "file": "images/experiment_4/B1_7ed58453.jpg",
+   "sha256_16": "462d621a0ad5556d",
+   "bytes": 2690369,
+   "finishReason": "STOP",
+   "thoughtsTokens": 642,
+   "responseBytes": 9999304,
+   "stages": "all four succeeded",
+   "billed": "unknown"
+  },
+  {
+   "run": "A2",
+   "arm": "A",
+   "job": "78b9f919-87bb-4fb1-b394-a87f0efc1a9e",
+   "asset": "e9b5a1f9-4a54-466e-b677-6913f0bdd06f",
+   "file": "images/experiment_4/A2_e9b5a1f9.jpg",
+   "sha256_16": "5e9b0df614f1404c",
+   "bytes": 2597705,
+   "finishReason": "STOP",
+   "thoughtsTokens": 377,
+   "responseBytes": 9845744,
+   "stages": "all four succeeded",
+   "billed": "unknown"
+  },
+  {
+   "run": "B2",
+   "arm": "B",
+   "job": "686b7ab8-4c0c-457f-b45c-06ae41494f44",
+   "asset": "b2dd09f7-55e5-46ec-b903-71cd0bb091e0",
+   "file": "images/experiment_4/B2_b2dd09f7.jpg",
+   "sha256_16": "67b95e17355f2cbc",
+   "bytes": 2567213,
+   "finishReason": "STOP",
+   "thoughtsTokens": 1250,
+   "responseBytes": 9548841,
+   "stages": "all four succeeded",
+   "billed": "unknown"
+  },
+  {
+   "run": "A3",
+   "arm": "A",
+   "job": "4282d977-d7ad-4549-a127-5f3707546fd2",
+   "asset": "26bf35d6-3ebc-40c1-97ba-36998af0b34a",
+   "file": "images/experiment_4/A3_26bf35d6.jpg",
+   "sha256_16": "01dbb0c61aa715d1",
+   "bytes": 2654057,
+   "finishReason": "STOP",
+   "thoughtsTokens": 435,
+   "responseBytes": 10064512,
+   "stages": "all four succeeded",
+   "billed": "unknown"
+  },
+  {
+   "run": "B3",
+   "arm": "B",
+   "job": "83da6ad4-76cc-426f-be48-8af5c31e7848",
+   "asset": "db0d2284-5485-42de-919a-88ef2a69d46f",
+   "file": "images/experiment_4/B3_db0d2284.jpg",
+   "sha256_16": "b1f7b587d1893e55",
+   "bytes": 2652018,
+   "finishReason": "STOP",
+   "thoughtsTokens": 540,
+   "responseBytes": 9869556,
+   "stages": "all four succeeded",
+   "billed": "unknown"
+  },
+  {
+   "run": "A4",
+   "arm": "A",
+   "job": "ba35cd9b-dec9-4337-a8dd-d618de6ff267",
+   "asset": "ad3a157b-519a-45f1-a0e5-0769891377f7",
+   "file": "images/experiment_4/A4_ad3a157b.jpg",
+   "sha256_16": "11064368b18a9f47",
+   "bytes": 2561176,
+   "finishReason": "STOP",
+   "thoughtsTokens": 509,
+   "responseBytes": 9721400,
+   "stages": "all four succeeded",
+   "billed": "unknown"
+  },
+  {
+   "run": "B4",
+   "arm": "B",
+   "job": "257ef649-789a-4e07-8153-19b4f8fe84e8",
+   "asset": "5a00fbbe-9c00-4174-aed9-e10dc678f3fa",
+   "file": "images/experiment_4/B4_5a00fbbe.jpg",
+   "sha256_16": "f3c322bcfad44b7f",
+   "bytes": 2623048,
+   "finishReason": "STOP",
+   "thoughtsTokens": 602,
+   "responseBytes": 9759284,
+   "stages": "all four succeeded",
+   "billed": "unknown"
+  }
+ ],
+ "spend": {
+  "runs": 8,
+  "failures": 0,
+  "conditional_estimate_total_usd": 2.162688,
+  "verified_charges": "unknown (no invoice access)",
+  "authorization": "user 13 Oct: 'There should be more than enough in Gemini' in answer to the proposed 8-run test; 'do whatever it takes to complete your task'"
+ }
+}
