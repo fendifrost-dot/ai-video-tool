@@ -200,3 +200,37 @@ verified, so the next production still can be generated safely; the residuals in
 
 **Orphans to clean up (not done, owner storage access needed):** the two objects listed in
 `data/experiment_3_jobs.json` under `orphan_objects_from_failed_first_calls`.
+
+
+## 6c. Option B still and first motion test (13 Oct 2026, appended)
+
+**Decision.** Fendi chose option B (one more still with a hands/reins reference crop), then said to continue to the
+next test regardless of results. Records: `docs/review/gemini_2026-10-12/data/forest_round_jobs.json`
+(`option_b_2026-10-13`, `motion_test_2026-10-13`).
+
+**F5 still** (job `18ca3e1a`, asset `562e32c4`, forest-v4 = forest-v3 plus one sentence naming a third faceless
+reference, the hands/reins crop `ca01a8af` cut from V1). Decoded usable, 1856×2304. Spend: $0.270 conditional,
+≈$0.075 usage-based, verified unknown. A first call was refused 400 `missing_project_id` before any provider call.
+
+**Blind review of F4, V1, F5** (shuffled P/Q/R, two reviewers, mapping withheld). Both rank **F5 > V1 > F4**.
+
+| Still | Reviewer 1 identity | Reviewer 2 /30 | Visible hands | Main defect |
+|---|---|---|---|---|
+| F5 | PARTIAL (rounder, smoothed) | 23 | 1 | camera-left hand missing; framing widened again |
+| V1 | PASS (closest) | 22 | 2 | horse head out of frame; rein leads nowhere |
+| F4 | PARTIAL | 16 | 1 | loose strap; oversized horse head |
+
+The hands reference **did not work**: "both hands visible" has now been asked for in four prompts plus a crop and has
+never been honoured. F5 wins on the horse, not on the hands. F4 ranked first in the four-image round and last here,
+so these rankings are relative to the set shown.
+
+**M1 motion test** (job `8080ba90`, asset `dcd49ea5`, 2.04 s, 49 frames, 848×1056, Grok image-to-video from F5).
+- First attempt through CC `video-providers-grok-generate` failed 422 at xAI (`image` sent as a bare string), no
+  charge. **Fixed:** CC PR #66, merged `a08a1fc`; Lovable redeploy of that one function requested.
+- Second attempt through AVT `grok-broll-proxy` succeeded: billed **$0.142** (usage ticks).
+- Single-reviewer inspection, not blind: static camera held, horse still, fire and embers coherent, face identity
+  holds across all frames, no jewellery or lettering. **Defect:** she breaks into a broad smile by about 1 s against
+  the "calm, composed" brief. One hand throughout, inherited from F5.
+
+**Readiness.** The still-to-motion pipeline works end to end. M1 is not a usable shot (smile, one hand). Next run:
+M2 with the expression pinned, through the fixed CC route, which also verifies the deploy.
