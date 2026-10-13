@@ -190,3 +190,53 @@ Two cheap, single-variable follow-ups, in order: (1) **n = 4 per arm** of the sa
 ranking stabilises (8 runs, conditional estimate $2.16); (2) a **jewellery/age negative control**: arm B with the
 explicit negative "no earrings, no piercings, no jewellery of any kind" and the ORIGINAL duplicated as `<IMAGE_0>`
 and `<IMAGE_3>` (identity weight), to test whether the earring is a reference effect or a prompt effect.
+
+---
+
+## Experiment 4: medium-shot framing, A vs B at n = 4 (protocol written before any paid run, 13 Oct 2026)
+
+Authorization: user, 13 Oct ("full authority to execute any tests and follow up runs"; "there should be more than
+enough in Gemini"). Planned spend: 8 runs × $0.270336 conditional estimate = **$2.162688**. Stop rule: max 8 paid
+runs plus 1 only for a technical failure; stop early if two consecutive technical failures.
+
+**Why:** experiment 3's blind reviewers disagreed on identity at knee-height framing (face ≈ 2 % of frame). This
+test changes the framing so identity can be judged, and keeps everything that demonstrably helped.
+
+| Fixed in both arms | Value |
+|---|---|
+| Framing | medium shot: saddle to just above her head, face large; horse's neck and head in the lower frame |
+| Camera | chest height, 2.5 m, 85 mm; three-quarter front; 2K, 4:5, n = 1 |
+| Prompt | `exp4-v1` (below): `exp3-v2` jewellery clause; explicit "true black breeches (not grey, not charcoal)"; "plain smooth thin black leather gloves"; "no loose or dangling straps"; no invented age, no verbal face description; camera-left key |
+| Identity authority | ORIGINAL `3fce9cb5…` as `<IMAGE_0>`, unchanged |
+| Varies | **Arm A**: `<IMAGE_1>` R1 full `3eee45de`, `<IMAGE_2>` C2 full `a1b2ced9` · **Arm B**: `<IMAGE_1>` outfit_faceless `51f1ca23`, `<IMAGE_2>` horse_tack_faceless `635123bb` |
+| Order | A1 B1 A2 B2 A3 B3 A4 B4 |
+
+Prompt `exp4-v1`:
+
+> A real photograph, a medium shot. The woman in <IMAGE_0> sits on a black horse that is standing still, seen from a
+> three-quarter front angle. Framing: from the top of the saddle to just above her head, so her face is large and
+> clearly visible, with the horse's neck and head in the lower part of the frame. Keep her face, head shape, skin
+> tone, age, proportions, hair and makeup exactly as in <IMAGE_0>; do not add, remove or change any of them. She
+> wears no jewellery of any kind: no earrings, no ear studs, no piercings, no necklace, no rings; her ears are bare
+> exactly as in <IMAGE_0>. Her hair is in the same sleek jet-black high ponytail as in <IMAGE_0>. She wears exactly
+> the riding outfit shown in <IMAGE_1>: tailored single-breasted black wool riding blazer, crisp white shirt with
+> collar, true black breeches (not grey, not charcoal), plain smooth thin black leather gloves with no texture,
+> ribbing or padding, and tall polished black leather riding boots; no emblem, badge or monogram anywhere. The
+> horse and its tack follow <IMAGE_2>: a real black horse with a glossy coat, a plain black leather bridle with a
+> simple snaffle bit, a plain black leather English saddle; a single pair of plain black reins running unbroken
+> from the bit to her gloved hands, with no loose or dangling straps anywhere. She sits upright and looks toward
+> the camera with a calm, composed expression. Gravel stable yard with brick buildings behind, softly out of
+> focus. Soft overcast daylight; the main light comes from the camera's left, so the left side of her face
+> (camera-left) is slightly brighter than the right. Camera at her chest height, 2.5 metres away, 85mm lens,
+> true-to-life colour. Real skin texture, real horse coat. Correct human and horse anatomy; two hands with five
+> fingers each. Plain unbranded tack and clothing. One rider, one horse. No text, lettering, logo or watermark.
+
+**Evaluation:** two independent blind reviewers, each seeing the ORIGINAL and all eight under shuffled neutral
+names with face crops; identity verdict and ranking; ear jewellery literal reading; treatment (breeches colour,
+gloves); inter-rater agreement reported. H1 supported if arm B's images rank above arm A's by both reviewers
+(e.g. mean rank), refuted if the reverse by both, otherwise inconclusive. Nothing is selected for production from
+this test.
+
+### Results
+
+_(none yet)_
