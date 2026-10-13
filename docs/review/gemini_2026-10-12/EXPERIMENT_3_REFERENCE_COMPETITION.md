@@ -302,7 +302,27 @@ No hoops; no confirmed stud.
 - **Nothing selected.** The ORIGINAL stays the only identity authority; no production selection, lock, treatment,
   timeline, export or footage was touched.
 
-### Recommendation
+### Correction (13 Oct 2026, appended; the text above is kept as written)
+
+The verdict above overstated two things and understated one; this correction supersedes it where they differ.
+
+1. **The prespecified criterion was met.** The protocol said H1 is supported "if arm B's images rank above arm A's
+   by both reviewers (e.g. mean rank)". Both did: reviewer 1 B 3.50 vs A 5.50; reviewer 2 B 4.25 vs A 4.75 (lower is
+   better). The individual-image disagreement (ρ = −0.31) limits confidence but does not erase the agreement on arm
+   averages. The defensible statement is **preliminary support for the sole-face arrangement, with substantial
+   uncertainty**: not proof of superiority, and not evidence that references do not matter. "Not supported at a
+   level that justifies a change" and "the reference arrangement is not the dominant variable" were stronger than
+   the evidence; the forest round therefore uses the sole-face arrangement (see below) rather than arm A.
+2. **"Framing moved identity more than references did" was a confound, not a finding.** Between experiment 3 and
+   experiment 4 the framing, camera height (knee → chest), distance (5 m → 2.5 m), lens (50 → 85 mm) and the prompt
+   (jewellery clause, breeches, gloves, straps) all changed together, so the identity improvement cannot be
+   attributed to any one of them. What experiment 4 did establish is improved **visibility for evaluation** (faces
+   large enough to judge); whether identity *generation* improved, and why, is untested.
+3. **"No identity FAIL" was wrong as stated.** Reviewer 1 recorded A1 as "PARTIAL/FAIL: face wider and rounder,
+   noticeably younger"; the table above records it. The accurate statement: no image was an outright FAIL for both
+   reviewers; one (A1) was borderline for reviewer 1.
+
+### Recommendation (original; see the correction above for the arrangement decision)
 
 Stop testing reference arrangement; keep the current one (arm A) in production and spend further effort on the
 things that moved the result: medium or closer framing for identity-critical stills; the `exp4-v1` prompt

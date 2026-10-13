@@ -1,0 +1,74 @@
+{
+ "test": "forest_round_2026-10-13",
+ "model": "gemini-nano-banana-2.1",
+ "settings": {
+  "resolution": "2k",
+  "aspectRatio": "4:5",
+  "n": 1,
+  "maxCostUsd": 0.28,
+  "conditionalEstimateUsdPerRun": 0.270336
+ },
+ "references": {
+  "IMAGE_0": "3fce9cb5-012f-4158-aecb-6615343eb2f3 cast ORIGINAL (identity authority)",
+  "IMAGE_1": "6ab0db92-c556-4341-9c1e-3827e1a2f11f garment: experiment 4 B1 cropped below the chin (derivative of 7ed58453), pose/wardrobe/horse guide, no face"
+ },
+ "runs": [
+  {
+   "run": "F1",
+   "job": "b027644a-f6bd-45bd-8782-4d5e3df4dd48",
+   "asset": "b09123d1-cde2-4ed5-979d-11c7fc907d94",
+   "file": "images/forest/F1_b09123d1.jpg",
+   "sha256_16": "12c5bdbd2798ae88",
+   "bytes": 2509163,
+   "prompt_version": "forest-v1",
+   "usage": {
+    "prompt": 2792,
+    "candidates": 2712,
+    "thoughts": 713
+   },
+   "responseBytes": 10457520,
+   "finishReason": "STOP",
+   "stages": "all succeeded",
+   "billed": "unknown",
+   "usd_usage_based": 0.106938
+  },
+  {
+   "run": "F2",
+   "job": "fd7717dd-dd52-460a-aed5-29a551926eed",
+   "asset": "a61c1cec-9ff9-4055-8762-fd1b8336cfff",
+   "file": "images/forest/F2_a61c1cec.jpg",
+   "sha256_16": "711ef6215ddb3158",
+   "bytes": 2657908,
+   "prompt_version": "forest-v1",
+   "usage": {
+    "prompt": 2792,
+    "candidates": 2720,
+    "thoughts": 850
+   },
+   "responseBytes": 10926516,
+   "finishReason": "STOP",
+   "stages": "all succeeded",
+   "billed": "unknown",
+   "usd_usage_based": 0.111288
+  },
+  {
+   "run": "F3",
+   "job": "27f5bdcd-b993-43c9-943d-1ceb1dc0a8b6",
+   "asset": "18589938-447f-42e4-90f7-729a5553e75e",
+   "file": "images/forest/F3_18589938.jpg",
+   "sha256_16": "38e38c4bf5304eed",
+   "bytes": 2841503,
+   "prompt_version": "forest-v2",
+   "usage": {
+    "prompt": 2859,
+    "candidates": 2867,
+    "thoughts": 1029
+   },
+   "responseBytes": 11648045,
+   "finishReason": "STOP",
+   "stages": "all succeeded",
+   "billed": "unknown",
+   "usd_usage_based": 0.121168
+  }
+ ]
+}
