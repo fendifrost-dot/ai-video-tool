@@ -165,6 +165,12 @@ dimensions. The MCP client timed out at 60 s while the function ran 97 s end to 
 throughout and finalized itself, which is the durability design behaving as intended. The not-usable branch was
 exercised only in tests (a fabricated or truncated file cannot be requested from Google on purpose).
 
+Quick single-reviewer inspection of V1 (not blind, not ranked, not a selection): identity reads as ORIGINAL;
+both gloved hands visible on the reins; black horse, bridle and reins coherent; burning tree in frame camera-right
+with warm light on the camera-right side of the face and jacket; no jewellery, no lettering or logo-shaped clearing.
+It is the only forest sample with both hands visible, so if a hands/reins correction still is run it should be compared
+against V1 under the blind protocol rather than treated as unseen.
+
 ## 6b. Forest round (13 Oct 2026, appended)
 
 Protocol, prompts (forest-v1/v2/v3), ordered references, settings, both blind reviews, the verdict and the motion
