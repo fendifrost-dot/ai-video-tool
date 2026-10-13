@@ -108,5 +108,40 @@ stored `stages.finalize` reads `not_started` (the wart fixed in #241).
 
 ### Blind independent review
 
-_(pending: the reviewer saw the ORIGINAL and the four candidates under shuffled neutral names with full-resolution
-face / torso / horse crops, and did not see the prompts, arms or this file)_
+The reviewer saw the ORIGINAL and the four candidates under shuffled neutral names (`candidate_1..4`) with
+full-resolution face / torso / horse crops, and did not see the prompts, arms or this file. Mapping (kept from the
+reviewer until after the report): candidate_1 = **A2**, candidate_2 = **B1**, candidate_3 = **A1**, candidate_4 = **B2**.
+
+| Run | Identity | Treatment | Horse & tack | Lighting | Anatomy |
+|---|---|---|---|---|---|
+| A1 (cand. 3) | **PARTIAL (close)**: oval face, nose, lips, brow arch close; complexion slightly lighter/cooler; serious expression; jaw a touch narrower; no jewellery | PARTIAL: breeches charcoal not black; gloves plain leather but a small stitched mark on the back (flag) | PASS; strap hanging under saddle | camera-left, consistent with yard | right hand hidden; OK |
+| B1 (cand. 2) | **PARTIAL**: face longer and reads **older**; heavier eye makeup; fuller lips; wider cheekbones; **stud earring added** | PARTIAL: breeches charcoal; gloves perforated sport style | PASS; stray strap | camera-left; mild compositing suspicion (face crisper than yard) | right hand a dark blob |
+| A2 (cand. 1) | **PARTIAL**: fuller/rounder cheeks and jaw, reads a few years **younger**, pout instead of slight smile; possible faint dot at left ear, unconfirmed | PARTIAL: breeches charcoal; gloves ribbed knit cuff | PASS; stray strap | camera-left; face marginally flatter, no hard edge | right hand hidden |
+| B2 (cand. 4) | **PARTIAL (closest)**: face shape, cheekbones, brows, nose and slight smile match best; complexion matches; **stud earring added**; chin marginally sharper | PARTIAL: breeches charcoal; gloves textured/mesh back | PASS; long stray strap | camera-left, consistent | left thumb slightly odd |
+
+Reviewer's identity ranking, closest to furthest: **B2 > A1 > A2 > B1**. No two candidates indistinguishable.
+Common to all four: charcoal rather than black breeches; no plain thin leather glove; a stray strap at the saddle
+front; **no badge, monogram, logo or lettering on any blazer, saddle, pad or bridle** (the R1 emblem did not recur).
+Camera-left key light held in all four (the camera-relative convention worked).
+
+### Verdict on H1 (reference competition)
+
+**INCONCLUSIVE** (per the rule above). Pairwise: B2 beat A2, but A1 beat B1. Within-arm spread (B2 best, B1 worst)
+is larger than any between-arm difference, so at n = 2 per arm the reference arrangement is **not shown** to be the
+dominant variable. Two observations cut against the hypothesis as stated: both arm-B images **added a stud earring**
+that the portrait does not have, while neither arm-A image clearly did; and the "older" drift appeared in B1 and the
+"younger" drift in A2, so the age drift is not tied to face-bearing guide references. One observation favours it:
+the single best structural match (B2) came from the sole-face arrangement.
+
+What the prompt change did deliver, in all four: no emblem/monogram (the second-pass R1 treatment failure did not
+recur), key light on the stated side, horse anatomy and rider scale PASS. Jewellery drift and age drift persisted
+despite "keep her … age … and jewellery exactly as in <IMAGE_0>", so the verbal instruction alone does not pin them.
+
+**Not a replacement for anything.** The ORIGINAL stays the only identity authority; none of the four is selected.
+
+### Recommended next test (RECOMMENDATION, not run; needs new authorization)
+
+Two cheap, single-variable follow-ups, in order: (1) **n = 4 per arm** of the same two arms to see whether the arm
+ranking stabilises (8 runs, conditional estimate $2.16); (2) a **jewellery/age negative control**: arm B with the
+explicit negative "no earrings, no piercings, no jewellery of any kind" and the ORIGINAL duplicated as `<IMAGE_0>`
+and `<IMAGE_3>` (identity weight), to test whether the earring is a reference effect or a prompt effect.

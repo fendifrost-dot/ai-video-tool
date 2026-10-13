@@ -20,7 +20,7 @@ fixed what reproduced, had the fixes reviewed independently, merged, redeployed 
 | `decodeImage` accepting a 12-byte fake JPEG | **FIXED, LIVE**: 512-byte floor (`image_too_small`), magic vs MIME, trailer reported | tests |
 | Cost claim ($0.270336) | **RE-LABELLED, LIVE**: conditional estimate, not a ceiling (`costIsUpperBound:false`, `costBoundConditional:true`) in CC code, AVT basis string, and this doc | dry run §4 |
 | Memory benchmark reproducibility | **FIXED**: `scripts/bench/gemini-memory/run.sh <rev> <refs> <mode>` from pinned git revisions | §4 |
-| `asset-derivative` (new) | coded, deployed; first live calls refused the row (enum) → fix in AVT #241 (pending merge + redeploy) | §4 |
+| `asset-derivative` (new) | **FIXED, LIVE** (AVT #241 `5a04c33`, redeployed): first live calls refused the row (enum), two derivatives filed after the fix | §4, §5 |
 | MAX_TOKENS root cause (interim image) | **UNRESOLVED / HYPOTHESIS**: one run only, never reproduced; the 8,192 cap is a mitigation, not a proof | as before |
 | Google invoice reconciliation | **UNRESOLVED**: no API to read the invoice; all paid rows carry `billed: "unknown"` | — |
 | `compose-look-proxy` row-derived prop/product paths; `_shared/logoComposite.ts`; ten buckets still open (`single_tenant_storage` + `*_open_test`, incl. `product-assets`); provider-side fetch of caller-supplied URLs; table-level SEC-4; SEC-5 | **UNRESOLVED, explicit residuals** | reviewer INFO 8; live policy listing |
@@ -50,7 +50,7 @@ fixed what reproduced, had the fixes reviewed independently, merged, redeployed 
 |---|---|---|---|---|
 | CC | #59 | `88bfb65` | `image-providers-gemini-generate` source_sha256 `a0ff6c46…` (23:34 UTC) | dry run through AVT returns `costBoundConditional:true`, new `costBasis` string |
 | AVT | #240 | `42eb608` | 17 functions (list in PR), all succeeded (23:35 UTC) | live probe §4 |
-| AVT | #241 | pending | `asset-derivative` to redeploy after merge | §4 |
+| AVT | #241 | `5a04c33` | `asset-derivative` source_sha256 `dbdd97a4…`, `world-still-proxy` `731072ef…` (23:54 UTC) | two derivatives filed; B1/A2/B2 rows carry `submittedAt` + `finalize: succeeded` |
 
 Lovable auto-commits on both mains after the deploys (not mine): AVT `e2b1d04`/`f1df4c2` retyped `gemini.test.ts` (adopted on the branch); CC `adc68cc`/`8f24689` regenerated `src/integrations/supabase/types.ts`.
 
@@ -67,8 +67,26 @@ Lovable auto-commits on both mains after the deploys (not mine): AVT `e2b1d04`/`
 
 ## 5. Character comparison (experiment 3)
 
-Protocol (written before any paid run): [`EXPERIMENT_3_REFERENCE_COMPETITION.md`](../review/gemini_2026-10-12/EXPERIMENT_3_REFERENCE_COMPETITION.md).
-Results: _pending (filled after the runs)_. Production selections, treatments, wardrobe locks, timelines, exports and footage: **unchanged**; the ORIGINAL portrait `3fce9cb5…` remains `approved` and the only identity authority.
+Protocol, prompts, ordered reference IDs, settings, outputs, costs, the blind review and the verdict are all in
+[`EXPERIMENT_3_REFERENCE_COMPETITION.md`](../review/gemini_2026-10-12/EXPERIMENT_3_REFERENCE_COMPETITION.md) (raw:
+[`data/experiment_3_jobs.json`](../review/gemini_2026-10-12/data/experiment_3_jobs.json); images:
+[`images/experiment_3/`](../review/gemini_2026-10-12/images/experiment_3/)).
+
+- Arms: **A** = ORIGINAL + R1 full frame + C2 full frame (current arrangement); **B** = ORIGINAL as the only
+  face-bearing reference + faceless outfit crop + faceless horse/tack crop. Same prompt (`exp3-v1`: no invented age,
+  no verbal face description, camera-left key), same scene, framing and settings. Two runs per arm, order A1 B1 A2 B2.
+- **Blind review** (reviewer saw shuffled neutral names only): identity ranking **B2 > A1 > A2 > B1**, all four
+  PARTIAL; both B images added a stud earring; A2 read younger, B1 older; no emblem/logo anywhere; horse PASS ×4;
+  camera-left key held ×4; charcoal breeches ×4.
+- **Verdict: INCONCLUSIVE.** One pair each way; within-arm spread exceeds between-arm difference at n = 2. The
+  hypothesis "face-bearing guide references cause the drift" is neither supported nor refuted; jewellery and age
+  drift persisted under both arrangements despite the explicit instruction.
+- Review findings re-examined: R1's monogram-like emblem **did not recur** under "no emblem, badge or monogram
+  anywhere"; the camera-relative lighting convention **worked**; the generous first-pass passes are moot (none of
+  the four is better than PARTIAL on identity).
+- **Unchanged:** the ORIGINAL `3fce9cb5…` stays `approved` and the only identity authority; every experiment result
+  and derivative is `pending` with a "TEST ONLY" / "DERIVATIVE" title; no selection, treatment, wardrobe lock,
+  timeline, export or footage was touched.
 
 ## 6. Spend
 
@@ -77,10 +95,21 @@ Results: _pending (filled after the runs)_. Production selections, treatments, w
 | Authorized for the second brief | $3.00 | — |
 | Committed before this round (upper bound) | $1.13 | unknown (no invoice access) |
 | Remaining before experiment 3 | $1.87 | — |
-| Experiment 3 | _pending_ | unknown |
+| Experiment 3 (4 runs, 0 failures, no extra run) | $1.081344 | unknown (`billed: "unknown"` on all four rows) |
+| **Remaining authorization** | **$0.788656** | — |
 
 No top-ups, no subscription changes. Gmail: no Google billing or reload mail (checked earlier this session).
 
 ## 7. Recommended next production step
 
-_pending experiment 3 verdict._
+**Do not change the production reference arrangement on this evidence.** Keep the ORIGINAL as the sole approved
+identity, keep using the `exp3-v1` prompt conventions that demonstrably helped (no invented age or verbal face
+description; explicit "no emblem, badge or monogram"; camera-relative light direction), and treat identity drift as
+still open. Before any production still is selected from Gemini, run the two follow-ups in the protocol's last
+section under **new** authorization (n = 4 per arm, then the jewellery/age negative control); they are the cheapest
+way to turn "inconclusive" into a decision. Operationally: the storage, durability and streaming fixes are live and
+verified, so the next production still can be generated safely; the residuals in §1 (ten open buckets,
+`compose-look-proxy`, invoice reconciliation) are the next security/finance items, not blockers for a still.
+
+**Orphans to clean up (not done, owner storage access needed):** the two objects listed in
+`data/experiment_3_jobs.json` under `orphan_objects_from_failed_first_calls`.
