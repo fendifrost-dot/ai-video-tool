@@ -11,7 +11,7 @@ Labels follow CLAUDE.md: **VERIFIED** / **OBSERVED** / **HYPOTHESIS** / **DECISI
 | | State |
 |---|---|
 | M5 `fed968b9` | **APPROVED by Fendi, 13 Oct.** Now selected on `c008_2`, its first placement. VERIFIED from the assignment row `de8e2b99`. |
-| 7 new rider clips (K1, K3–K8) | **Selected on the board, PENDING director review.** Not approved, and `approval_status` is `pending` on every asset. |
+| 7 new rider clips (K1, K3–K8) | **APPROVED by Fendi, 13 Oct** (chat: "Everything else is amazing."), after he watched the clips and the 24–57 s cut. `approval_status = approved` on all seven; the primary assignment notes quote him. His one rejection is the generated likeness of himself in the viewer's room: see [`IB_FENDI_PLATES_SHOTLIST_2026-10-13.md`](IB_FENDI_PLATES_SHOTLIST_2026-10-13.md). |
 | The 4 clips they replaced | **Kept as unselected versions** on the same shots, each with a dated note saying why. Nothing was deleted. |
 | Shots c008, c009, c010, c014 | **Each split into two halves of about 1.96 s.** The second halves are new rows: `c008_2`, `c009_2`, `c010_2`, `c014_2`. |
 | First-half render | Built from the board through the app's own `buildTimeline` → `renderContract`, then `render_contract.py`. Covers 0–70.6 s at 1080×1920 and 30 fps, with the song. sha256 prefix `e82663b9d009154d`. **Not stored in AVT.** The file is in the session scratchpad, and a 720p copy was sent to Fendi in chat. |
@@ -150,6 +150,8 @@ reconciled since 10-01, and the Gemini invoice is unknown. No purchases or top-u
   read at its limit. Fetch the assigned asset ids separately, then keep only the assigned rows.
 
 ## Next concrete task
+
+> **Superseded 13 Oct (later):** step 1 is done (all seven approved). The next task is Fendi's own shots, re-shot for real: [`IB_FENDI_PLATES_SHOTLIST_2026-10-13.md`](IB_FENDI_PLATES_SHOTLIST_2026-10-13.md).
 
 1. **Fendi watches the 720p rider excerpt, 24–57 s** (sent in chat), and approves or rejects each of K1 and K3–K8 by
    name. Record each verdict in the asset's `approval_status` and `notes`. Do not mark anything approved before that.
