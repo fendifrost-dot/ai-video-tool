@@ -62,6 +62,10 @@ try. But the director has already named realism as the problem, and a real plate
 - **Audio:** play the song while shooting the walk so the pace sits on the beat (122 BPM). There is no lip sync in these shots.
 
 
+## Update, 13 Oct (latest): the Red Line shots are approved; only the room shots need redoing
+
+**Fendi:** "Me in the long jacket and khaki YSL hat is solid." The clip c017 and c018 play, `0000c19a`, is `approval_status = approved`. Its note records the defects accepted with it: the garbled second line on the sign, and the towers. **Do not regenerate c017 or c018.** That leaves **c012, c013 and c015**, the viewer's room, to regenerate from photo P1 (seated, from behind) and the face photos P3/P4. P2 (the walk) is no longer needed.
+
 ## Update, 13 Oct (later): regenerate from a positioned photo of him (supersedes the "shoot it for real" recommendation)
 
 **Fendi:** "The wardrobe still has to be swapped so maybe regeneration is the best solution but regeneration may be
