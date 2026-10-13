@@ -79,6 +79,7 @@ describe("mocked integration: Gemini job ownership and result filing", () => {
     const result = await geminiStill(input, d);
     expect(result).toMatchObject({ ok: true, imageUsable: false, stages: { filing: "succeeded", decode: "not_usable", finalize: "succeeded" } });
     expect(d.file.mock.calls[0][0].extraMeta).toMatchObject({ imageUsable: false, imageDecodeReason: "decode_failed" });
+    expect(d.row).toMatchObject({ status: "succeeded", error_text: expect.stringContaining("image_not_usable (decode_failed)"), progress_note: expect.stringContaining("image_not_usable") });
     const e = deps(); expect(await geminiStill(input, e)).toMatchObject({ stages: { decode: "unknown" } }); // older CC without the verdict
   });
   it("records submission intent on the row before the billable call, and a failed intent write sends nothing", async () => {
