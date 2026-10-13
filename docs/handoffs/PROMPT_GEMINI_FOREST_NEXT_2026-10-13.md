@@ -45,8 +45,16 @@ same request as F4) is the only sample with both gloved hands on the reins, but 
 
 Ask Fendi which of these he wants, then do only that:
 
-- **(a) Accept the single-hand pose and run one bounded 2 s motion test on F4.** Record model, prompt,
-  seed, cost estimate and result in `docs/review/gemini_2026-10-12/data/`. Do not animate any other still.
+- **(a) Accept the single-hand pose and run one bounded 2 s motion test on F4.** Route checked 13 Oct
+  04:30 UTC: AVT `proxy-provider-call` with `endpoint: "video-providers-grok-generate"` reaches CC
+  `video-providers-grok-generate`, which sends `mode: image_to_video`, `image: <signed URL of F4>`, and
+  clamps `duration` to 1 to 15 s, so `duration: 2` is honoured, not rounded up. The only other
+  image-to-video routes (Kling 2.5 via `video-providers-higgsfield-model`) offer 5 or 10 s only; do not
+  use them for this test. CC's cost figure for Grok video is a placeholder of 60 cents per generation,
+  not a price; report it as such. F4 object: `worlds/GEMINI_FOREST_F4_medium_night_halflit_e19696e8-…_1.jpg`
+  under the owner/project prefix in `project-references`. Record model, exact prompt, seed (Grok exposes
+  none; write "unavailable"), estimated cost, job and asset ids and the result in
+  `docs/review/gemini_2026-10-12/data/`. Do not animate any other still.
 - **(b) One more still correction with a hands/reins reference crop.** Make the crop through the
   `asset-derivative` edge function (`source_tool: "manual"`, tool name in `metadata.tool`; the
   `provider_name` enum rejects anything else), then run it under the blind protocol in
@@ -58,17 +66,23 @@ Ask Fendi which of these he wants, then do only that:
 Spending: each 2K Gemini still is estimated at $0.270 conditional (not a ceiling). Verified charges are
 unknown for every run so far; say so in any spend figure you report. Do not top up or buy anything.
 
-## Small cleanup you may do without asking
+## Orphan cleanup: condition established, deletion blocked
 
-Two orphan storage objects from failed first `asset-derivative` calls have no `project_assets` row:
+Two storage objects from failed first `asset-derivative` calls have no `project_assets` row. The locator
+column is `file_url` (there is no `storage_path` or `bucket` column; a select on either errors). Checked
+13 Oct 04:30 UTC: `avt_select project_assets` with `file_url ilike '%derivatives/%'` returns exactly three
+rows (`51f1ca23`, `635123bb`, `6ab0db92`), whose paths carry later timestamps than the orphans. Both
+orphan objects still exist (signed download returned 200: 458,534 and 824,230 bytes).
 
 ```
 3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/derivatives/3eee45de-5655-4afb-9468-c54dd72192c5_outfit_faceless_1791848531180.jpg
 3ca10935-8c3d-4479-9a0c-8bfe8050840c/764a63d2-93cd-44f3-905f-292f14ab2f51/derivatives/a1b2ced9-8bc8-4203-a64a-f63d56391ef6_horse_tack_faceless_1791848534551.jpg
 ```
 
-Before deleting, confirm with `avt_select` on `project_assets` (filter `storage_path` equal to each path)
-that zero rows reference them. Expected: 0 rows each. If any row references one, leave it.
+The AVT MCP has no storage-object delete (`avt_delete` removes table rows only), so the cleanup needs
+either the Lovable SQL editor (`delete from storage.objects where bucket_id = 'project-references' and
+name in (...)`, expected: 2 rows) or a session with browser tools. Re-run the `file_url ilike` check
+immediately before deleting; a query error is not evidence of zero references.
 
 ## Do not
 
