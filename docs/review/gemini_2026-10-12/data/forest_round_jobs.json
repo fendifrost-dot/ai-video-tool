@@ -134,5 +134,324 @@
   },
   "note": "MCP client timed out at 60 s while the function ran 97 s end to end; the job row carried the submitted marker throughout and finalized itself. Not part of the bounded correction cycle; not a candidate selection; a fifth forest sample for the record.",
   "usd_conditional": 0.270336
+ },
+ "option_b_2026-10-13": {
+  "decision": "Fendi chose option B (one more still with a hands/reins reference crop) on 13 Oct 2026 in chat; option A (2 s motion test on F4) not run.",
+  "hands_reference": {
+   "asset": "ca01a8af-e249-4928-b728-2ea9200cb848",
+   "label": "hands_reins_faceless",
+   "of": "65494df1-a980-4bfb-b4e5-179830176201 (V1)",
+   "box_fraction": {
+    "x": 0.05,
+    "y": 0.58,
+    "w": 0.58,
+    "h": 0.3
+   },
+   "pixels": "1076x691",
+   "bytes": 201338,
+   "file": "images/forest/DERIV_hands_reins_faceless_ca01a8af.jpg",
+   "contains_face": false,
+   "usd": 0
+  },
+  "runs": [
+   {
+    "run": "F5",
+    "job": "18ca3e1a-45ec-4473-a21d-c7358e1214f4",
+    "asset": "562e32c4-8526-482b-ba56-ab040ca998e0",
+    "file": "images/forest/F5_562e32c4.jpg",
+    "sha256_16": "687c71da4878ac9b",
+    "bytes": 2789647,
+    "prompt_version": "forest-v4 = forest-v3 + one added sentence naming <IMAGE_2> for both hands on the reins; all other text, references, settings identical to F4",
+    "references": {
+     "IMAGE_0": "3fce9cb5 ORIGINAL (cast, identity authority)",
+     "IMAGE_1": "6ab0db92 pose_scene_faceless (garment)",
+     "IMAGE_2": "ca01a8af hands_reins_faceless (prop)"
+    },
+    "settings": {
+     "model": "gemini-nano-banana-2.1",
+     "resolution": "2k",
+     "aspectRatio": "4:5",
+     "n": 1,
+     "maxCostUsd": 0.28,
+     "seed": "not exposed by the route"
+    },
+    "first_call": "400 missing_project_id before any provider call (field name was projectId); no charge",
+    "usage": {
+     "prompt": 4103,
+     "candidates": 2288,
+     "thoughts": 0
+    },
+    "responseBytes": 10400281,
+    "finishReason": "STOP",
+    "stages": {
+     "generation": "succeeded",
+     "upload": "succeeded",
+     "filing": "succeeded",
+     "decode": "usable",
+     "finalize": "succeeded"
+    },
+    "imageUsable": true,
+    "imageWidth": 1856,
+    "imageHeight": 2304,
+    "imageDecodeMs": 1028,
+    "finalizedAt": "2026-10-13T05:26:19.87Z",
+    "usd_conditional": 0.270336,
+    "usd_usage_based": 0.074795,
+    "billed": "unknown"
+   }
+  ],
+  "spend": {
+   "runs": 1,
+   "failures": 0,
+   "conditional_estimate_usd": 0.270336,
+   "usage_based_usd": 0.074795,
+   "verified_charges": "unknown"
+  },
+  "blind_review": {
+   "set": "F4, V1, F5 shuffled as P, Q, R (seed 20261013); mapping withheld from reviewers: P=F4, Q=V1, R=F5; each with full (half-res), face crop (x 0.25-0.75, y 0.05-0.45), hands crop (x 0-0.75, y 0.5-0.9); ORIGINAL portrait given as the identity authority",
+   "reviewer_1_free_verdicts": {
+    "F4 (P)": {
+     "identity": "PARTIAL",
+     "firelight": "PARTLY",
+     "hands": "1 visible; rein tangle, dangling strap",
+     "horse": "head oversized, neck attachment wrong",
+     "wardrobe": "clean, no jewellery",
+     "logo_shapes": "none",
+     "framing": "wide, face ~4-5% of height",
+     "realism": "stage-lit, sparks overlaid"
+    },
+    "V1 (Q)": {
+     "identity": "PASS (closest)",
+     "firelight": "PARTLY (key from camera-left, fire camera-right)",
+     "hands": "2 visible, both on reins; single rein, no bit visible",
+     "horse": "head cropped out; body incoherent",
+     "wardrobe": "clean",
+     "logo_shapes": "none",
+     "framing": "tight medium, face ~12-15% (largest)",
+     "realism": "most photographic"
+    },
+    "F5 (R)": {
+     "identity": "PARTIAL (rounder, fuller lips, smoothed skin)",
+     "firelight": "PARTLY (two sources, key still soft)",
+     "hands": "1 visible; near-side rein bit-to-hand correct; off-side rein absent",
+     "horse": "best: full head, correct proportion, coherent bridle",
+     "wardrobe": "clean",
+     "logo_shapes": "none",
+     "framing": "medium-wide, face ~7%",
+     "realism": "good, face over-smoothed"
+    },
+    "ranking": "F5 > V1 > F4",
+    "send_to_motion": "F5 with caveat identity PARTIAL; V1 only for a face-only beat; never F4"
+   },
+   "reviewer_2_scores_of_30": {
+    "F4 (P)": {
+     "identity": 3,
+     "firelight": 3,
+     "hands": 1,
+     "horse": 3,
+     "wardrobe": 4,
+     "framing_realism": 2,
+     "total": 16,
+     "worst": "one hand on a rein whose free end hangs loose; rider small and seated too far back on an oversized horse"
+    },
+    "V1 (Q)": {
+     "identity": 5,
+     "firelight": 3,
+     "hands": 3,
+     "horse": 2,
+     "wardrobe": 5,
+     "framing_realism": 4,
+     "total": 22,
+     "worst": "reins connect to nothing; horse head out of frame; second hand an undersized stub"
+    },
+    "F5 (R)": {
+     "identity": 4,
+     "firelight": 3,
+     "hands": 2,
+     "horse": 5,
+     "wardrobe": 5,
+     "framing_realism": 4,
+     "total": 23,
+     "worst": "second (camera-left) hand missing entirely"
+    },
+    "ranking": "F5 > V1 > F4",
+    "verdict": "F5 best but not ready as a 2 s motion source until the missing hand is fixed; both ears bare where visible; no lettering or logo-like shapes in any"
+   },
+   "agreement": "both reviewers rank F5 > V1 > F4 (identical order; n=3 so weak evidence)",
+   "outcome_of_the_hands_reference": "did not work: F5 still shows one hand (camera-left hand hidden); 'both hands visible' is now in the prompt three times (v2, v3, v4) plus an explicit hands crop, and the model has not honoured it in any of F2-F5. Side effects of the single change: framing widened to full horse head and boot (the v3 tight framing was lost) and the face key went frontal/soft again.",
+   "note_on_reviewer_variance": "F4 scored 25/30 and ranked first in the 4-image round and 16/30 and last here; blind rankings are relative to the set shown and single-reviewer scores move by up to 9 points between sessions."
+  }
+ },
+ "motion_test_2026-10-13": {
+  "decision": "Fendi, 13 Oct: continue to the next test regardless of the still results. First motion test run from F5, the still both blind reviewers ranked first.",
+  "runs": [
+   {
+    "run": "M1",
+    "job": "8080ba90-5964-4370-9be0-66b2933c26db",
+    "xai_request_id": "784efd95-82e9-98ef-b1de-5545e676ac02",
+    "asset": "dcd49ea5-5519-42cc-b848-ac3ea4ddd594",
+    "file": "images/forest/M1_motion2s_dcd49ea5.mp4",
+    "sha256_16": "9aef5f77e19997f4",
+    "bytes": 1689440,
+    "source_still": "F5 562e32c4 (not a selection; identity authority remains ORIGINAL 3fce9cb5)",
+    "model": "grok-imagine-video",
+    "mode": "image_to_video",
+    "duration_requested_s": 2,
+    "duration_delivered_s": 2.0417,
+    "frames": 49,
+    "fps": 24,
+    "pixels": "848x1056",
+    "aspectRatio": "3:4 (the still is 4:5; Grok offers no 4:5)",
+    "resolution": "720p",
+    "seed": "not exposed",
+    "prompt_version": "motion-v1 (static camera, pose held, fire flicker and ember drift only)",
+    "attempt_1": {
+     "route": "proxy-provider-call -> CC video-providers-grok-generate",
+     "result": "xAI 422 'image: invalid type: string' at submit; no generation, no charge",
+     "defect": "CC sends image as a bare URL string; xAI's video API takes an ImageUrl struct {url}. AVT's own grok-broll-proxy already sends {url} and comments that a bare string is a 422. Fix: CC commit e683c76 (branch claude/determined-faraday-4rzanq), PR pending"
+    },
+    "attempt_2": {
+     "route": "grok-broll-proxy submit + poll (AVT-side XAI_API_KEY)",
+     "estimatedCostUsd": 0.1406,
+     "actualCostUsd_from_usage_ticks": 0.142,
+     "billed": true,
+     "stored": "project-clips/.../grok-broll/784efd95-82e9-98ef-b1de-5545e676ac02.mp4",
+     "wall_time_s": "about 75 from submit to done"
+    },
+    "inspection_single_reviewer_not_blind": {
+     "camera": "static as asked",
+     "horse": "still, ears forward, no drift",
+     "fire_embers_smoke": "flames flicker, embers drift: coherent",
+     "identity": "face holds the F5 face across all 49 frames; no morphing",
+     "expression_drift": "DEFECT: she goes from the composed look at frame 0 to a broad smile by about 1 s and holds it to the end; the prompt asked for a calm, composed expression held",
+     "hands": "one hand throughout (inherited from F5); no new anatomy errors",
+     "wardrobe": "no jewellery appears; blazer, shirt, gloves unchanged",
+     "lettering_logo": "none",
+     "other": "slight global brightening of the face over the clip; 4:5 to 3:4 crop lost nothing important"
+    },
+    "verdict": "The pipeline works end to end (still -> Grok I2V -> project-clips asset with cost) through the AVT route; the CC route is broken until the fix is deployed. The clip is not usable as a production shot: the smile contradicts the brief and the single hand is inherited. Identity and scene hold over 2 s, which is what this test was meant to measure."
+   },
+   {
+    "run": "M2",
+    "job": "ad07a93d-1d13-4ea0-bbb5-1cb93951191b",
+    "xai_request_id": "9801b4b4-eb3c-92b1-843d-6e43d179d87f",
+    "asset": "6684495c-8b6b-4376-b55d-55cdac2c8aab",
+    "file": "images/forest/M2_motion2s_exprlock_6684495c.mp4",
+    "sha256_16": "e4b9561bf234618a",
+    "bytes": 1659245,
+    "source_still": "F5 562e32c4",
+    "model": "grok-imagine-video",
+    "duration_delivered_s": 2.0417,
+    "frames": 49,
+    "pixels": "848x1056",
+    "route": "grok-broll-proxy (CC redeploy was still queued)",
+    "prompt_version": "motion-v2 = motion-v1 + one sentence pinning the expression (lips closed, no smile, no teeth, no talking, one blink)",
+    "actualCostUsd": 0.142,
+    "inspection_single_reviewer_not_blind": {
+     "expression": "FIXED: composed expression held across all 49 frames; one blink near 1 s; no smile, no mouth movement",
+     "identity": "holds; no morphing",
+     "camera": "static",
+     "horse": "still",
+     "fire": "flicker and embers coherent",
+     "hands": "one (inherited from F5)",
+     "wardrobe_jewellery_lettering": "unchanged / none / none"
+    },
+    "verdict": "The expression pin works. M2 is the first clip that meets the motion brief; its remaining defect is the single visible hand from the source still."
+   },
+   {
+    "run": "M3",
+    "job": "9ef4c9c0-a2e0-4ac8-beb6-3295c802d2b4",
+    "xai_request_id": "f190a0c2-be31-952a-bb26-13ddcc144742",
+    "cc_log_job": "aaccad95-fdb6-4019-92c6-261a977ec040",
+    "asset": "40ebdd47-be47-4e3b-a0f2-56b37510b7d1",
+    "file": "images/forest/M3_motion2s_pushin_40ebdd47.mp4",
+    "sha256_16": "e775b13312ec9416",
+    "bytes": 1853355,
+    "source_still": "F5 562e32c4",
+    "route": "proxy-provider-call -> CC video-providers-grok-generate (deployed source_sha256 2d59c809..., 05:40:33Z) -> video-providers-job-status -> ingest-provider-job",
+    "prompt_version": "motion-v3 = motion-v2 with a slow push-in",
+    "duration_delivered_s": 2.0417,
+    "frames": 49,
+    "pixels": "848x1056",
+    "actualCostUsd": 0.142,
+    "cost_basis": "xAI usage cost_in_usd_ticks 1420000000",
+    "cc_cost_estimate": "60 cents placeholder (overstates by ~4x)",
+    "deploy_verification": "CC PR #66 verified live: the same route that returned 422 for M1 accepted M3 after the redeploy",
+    "inspection_single_reviewer_not_blind": {
+     "camera": "smooth push-in from medium to tight medium, no shake",
+     "expression": "held, one blink",
+     "identity": "holds across the move",
+     "horse": "still",
+     "fire": "flicker and embers coherent",
+     "hands": "one (inherited from F5)",
+     "wardrobe_jewellery_lettering": "unchanged / none / none"
+    },
+    "pipeline_gaps_observed": [
+     "ingest-provider-job files the clip with no notes, no cost, no prompt or source-still in metadata, and leaves provider_jobs.finalized_at null (set by hand here); grok-broll-proxy records all of these",
+     "CC's Grok cost estimate is a fixed 60-cent placeholder; the real 2 s cost is $0.142"
+    ],
+    "verdict": "First clip with a production-style camera move that meets the motion brief apart from the inherited single hand."
+   },
+   {
+    "run": "M4",
+    "job": "fcb57fd0-5db3-43cb-800e-51ea919841ea",
+    "xai_request_id": "e8e4fbca-c53b-9308-9e9e-bf8b398dcd67",
+    "cc_log_job": "659d62f7-178a-47a6-9b18-31d6f0588d22",
+    "asset": "70a1a9ea-30ea-4a29-8f20-0027842b250f",
+    "file": "images/forest/M4_motion2s_pushin_V1_70a1a9ea.mp4",
+    "sha256_16": "643ff811b65bb236",
+    "bytes": 1765761,
+    "source_still": "V1 65494df1 (two hands; identity PASS from both blind reviewers; horse head out of frame)",
+    "route": "CC route + ingest-provider-job",
+    "prompt_version": "motion-v3 (unchanged from M3; only the source still changed)",
+    "duration_delivered_s": 2.0417,
+    "frames": 49,
+    "actualCostUsd": 0.142,
+    "inspection_single_reviewer_not_blind": {
+     "hands": "TWO gloved hands on the reins throughout",
+     "identity": "closest to ORIGINAL of any clip; holds through the push-in",
+     "expression": "held, no smile",
+     "camera": "smooth push-in",
+     "firelight": "fire camera-right, warm light on the camera-right side of her face and jacket: coherent",
+     "horse": "neck and mane only (inherited from V1); no head visible",
+     "new_defect": "from about 1 s a glowing orange ember settles on her left lapel and stays to the end, reading as a pin or brooch (wardrobe-drift risk)",
+     "lettering_logo": "none"
+    },
+    "verdict": "Best clip so far: meets identity, hands, expression and camera brief; one new defect (ember on lapel)."
+   },
+   {
+    "run": "M5",
+    "job": "a078b4b7-6475-4271-8aec-11487159aefb",
+    "xai_request_id": "3d6765b1-a8eb-9e4b-a275-11ae6212ecca",
+    "cc_log_job": "0d4235d8-867b-4486-b79b-78243e665668",
+    "asset": "fed968b9-f95e-482f-a7b4-e713690583a3",
+    "file": "images/forest/M5_motion2s_pushin_V1_noember_fed968b9.mp4",
+    "sha256_16": "62e1e5e6d6204a98",
+    "bytes": 1724748,
+    "source_still": "V1 65494df1",
+    "route": "CC route + ingest-provider-job",
+    "prompt_version": "motion-v4 = motion-v3 + embers never land on her clothes",
+    "duration_delivered_s": 2.0417,
+    "frames": 49,
+    "actualCostUsd": 0.142,
+    "inspection_single_reviewer_not_blind": {
+     "wardrobe": "FIXED: lapel stays clean; no glowing spot, pin or badge in any frame",
+     "hands": "two gloved hands on the reins throughout",
+     "identity": "holds through the push-in; close to ORIGINAL",
+     "expression": "composed; around 1.5 s a blink with a faint closed-lip smile, then back; minor",
+     "camera": "smooth push-in",
+     "firelight": "coherent, fire camera-right",
+     "horse": "neck and mane only; head never in frame (inherited from V1)",
+     "lettering_logo": "none"
+    },
+    "verdict": "Best clip of the session and the first that meets every motion requirement tested today. Remaining defects: the horse's head is never in frame (a property of V1), and a faint smile at the blink. Candidate for Fendi's review; not selected."
+   }
+  ],
+  "spend": {
+   "runs": 5,
+   "failed_attempts_unbilled": 1,
+   "billed_usd": 0.71,
+   "basis": "xAI usage ticks, $0.142 per 2 s clip"
+  }
  }
 }
