@@ -17,7 +17,7 @@ fixed what reproduced, had the fixes reviewed independently, merged, redeployed 
 | Paid result durability: intent before call, staged outcomes, recovery without regeneration | **FIXED, LIVE** (`world-still-proxy`) | mocked failure tests; live intent marker checked in §4 |
 | CC `finishLog` ignoring DB-update errors | **FIXED, LIVE** (CC #59 `88bfb65`, deployed) | `auditFinalized` in the response |
 | Streaming parser: invalid escapes / control chars in discarded strings; `\u` escapes in image base64; `__proto__`; depth; quadratic escape scan; invalid UTF-8 in discarded strings | **FIXED, LIVE** | 96 CC tests incl. a 2 MB escape-run timing test |
-| `decodeImage` accepting a 12-byte fake JPEG | **FIXED, LIVE**: 512-byte floor (`image_too_small`), magic vs MIME, trailer reported | tests |
+| `decodeImage` accepting a 12-byte fake JPEG | **SUPERSEDED 13 Oct**: the floor also passed a 512-byte SOI/EOI file; now a real bounded pixel decode (CC #63, live, V1 verified): `imageUsable` distinguishes received-and-stored from decoded-and-usable | §3a, §6a |
 | Cost claim ($0.270336) | **RE-LABELLED, LIVE**: conditional estimate, not a ceiling (`costIsUpperBound:false`, `costBoundConditional:true`) in CC code, AVT basis string, and this doc | dry run §4 |
 | Memory benchmark reproducibility | **FIXED**: `scripts/bench/gemini-memory/run.sh <rev> <refs> <mode>` from pinned git revisions | §4 |
 | `asset-derivative` (new) | **FIXED, LIVE** (AVT #241 `5a04c33`, redeployed): first live calls refused the row (enum), two derivatives filed after the fix | §4, §5 |
@@ -150,6 +150,26 @@ file of a JPEG SOI/EOI pair (reproduced 13 Oct, `bytes 512, trailerOk true`). Fi
 pixel decode (`imageDecode.ts`), with the paid bytes still returned and the result saying **received-and-stored vs
 decoded-and-usable** (`imageUsable`, `imageDecodeReason`); AVT files a not-usable still with a `NOT USABLE` note,
 `metadata.usable: false`, `stages.decode: not_usable`. Live state after deploy is recorded in §3.
+
+## 3a. Deployments and live verification, 13 Oct (appended)
+
+| Repo | PR | Merge | Deployed by Lovable | Verified live |
+|---|---|---|---|---|
+| CC | #63 | `a729093` | `image-providers-gemini-generate` source_sha256 `1588588b…` (03:22 UTC) | V1 below |
+| AVT | #245 | `4ad8a29` | `world-still-proxy` source_sha256 `e6ca32aa…` (03:24 UTC) | V1 below |
+
+**V1 (job `2054a5cd`, asset `65494df1`)**, one paid run with the forest-v3 request through the deployed path:
+response and job row carry `imageUsable: true`, `imageDecodeReason: ok`, `imageWidth 1856`, `imageHeight 2304`,
+`imageDecodeMs 615`, `stages.decode: usable`; the filed asset row carries `metadata.usable: true` and the same
+dimensions. The MCP client timed out at 60 s while the function ran 97 s end to end; the row showed `submittedAt`
+throughout and finalized itself, which is the durability design behaving as intended. The not-usable branch was
+exercised only in tests (a fabricated or truncated file cannot be requested from Google on purpose).
+
+Quick single-reviewer inspection of V1 (not blind, not ranked, not a selection): identity reads as ORIGINAL;
+both gloved hands visible on the reins; black horse, bridle and reins coherent; burning tree in frame camera-right
+with warm light on the camera-right side of the face and jacket; no jewellery, no lettering or logo-shaped clearing.
+It is the only forest sample with both hands visible, so if a hands/reins correction still is run it should be compared
+against V1 under the blind protocol rather than treated as unseen.
 
 ## 6b. Forest round (13 Oct 2026, appended)
 

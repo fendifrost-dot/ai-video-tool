@@ -91,10 +91,48 @@
   }
  ],
  "spend": {
-  "runs": 4,
+  "runs": 5,
   "failures": 0,
-  "conditional_estimate_total_usd": 1.081344,
-  "usage_based_total_usd": 0.418946,
+  "conditional_estimate_total_usd": 1.35168,
+  "usage_based_total_usd_4_runs": 0.418946,
   "verified_charges": "unknown"
+ },
+ "deploy_verification": {
+  "run": "V1",
+  "job": "2054a5cd-e3f6-4931-a5b2-6b49274d4542",
+  "asset": "65494df1-a980-4bfb-b4e5-179830176201",
+  "file": "images/forest/V1_deployverify_65494df1.jpg",
+  "sha256_16": "01dc5015d9aff59c",
+  "bytes": 2732207,
+  "prompt_version": "forest-v3 (same request as F4)",
+  "deployed": {
+   "cc": "a729093 image-providers-gemini-generate source_sha256 1588588b\u2026",
+   "avt": "4ad8a29 world-still-proxy source_sha256 e6ca32aa\u2026"
+  },
+  "result": {
+   "imageUsable": true,
+   "imageDecodeReason": "ok",
+   "imageWidth": 1856,
+   "imageHeight": 2304,
+   "imageDecodeMs": 615,
+   "stages": {
+    "generation": "succeeded",
+    "upload": "succeeded",
+    "filing": "succeeded",
+    "decode": "usable",
+    "finalize": "succeeded"
+   },
+   "submittedAt": "2026-10-13T03:28:14.797Z",
+   "finalizedAt": "2026-10-13T03:29:51.187Z",
+   "asset_metadata": {
+    "usable": true,
+    "imageUsable": true,
+    "imageWidth": 1856,
+    "imageHeight": 2304,
+    "imageDecodeReason": "ok"
+   }
+  },
+  "note": "MCP client timed out at 60 s while the function ran 97 s end to end; the job row carried the submitted marker throughout and finalized itself. Not part of the bounded correction cycle; not a candidate selection; a fifth forest sample for the record.",
+  "usd_conditional": 0.270336
  }
 }
