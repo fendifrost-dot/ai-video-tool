@@ -310,3 +310,62 @@ conventions; and, for the lines that verbal prompts could not pin (gloves, strap
 that show exactly those details (a plain-glove crop, a clean-tack crop) rather than more words. Any future
 identity ranking should use ≥ 2 blind reviewers and report their agreement, since a single reviewer's ranking at
 this image count is not reliable.
+
+---
+
+## Forest round: ground-level burning-forest still (protocol written before any paid run, 13 Oct 2026)
+
+Authorization: user, 13 Oct (existing spending authorization; "finish the remaining validation gap … advance toward
+the actual forest scene"). Bounded: 2 candidates, then at most 2 correction runs for a specific defect with a
+plausible remedy; ≤ 4 runs ≈ $1.08 conditional estimate. No animation. Nothing selected.
+
+**Reference arrangement (DECISION, from evidence):** the sole-face arrangement. Experiment 4 met its prespecified
+criterion (both reviewers' mean rank favoured arm B) with substantial uncertainty (ρ = −0.31 on individual images);
+it is the arrangement with the only image both blind reviewers passed on identity (experiment 4 B1). So:
+`<IMAGE_0>` = ORIGINAL `3fce9cb5…` (cast; the only face-bearing reference; the identity authority, unchanged);
+`<IMAGE_1>` = experiment 4 B1 cropped **below the chin** (derivative asset `6ab0db92…`, label `pose_scene_faceless`,
+1856×1843) as the pose / seat / hands / wardrobe / horse-and-tack guide. B1's face is deliberately excluded so B1
+cannot become a second identity anchor.
+
+**Framing:** medium shot as in experiment 4 (the framing under which identity was judgeable), ground level, horse's
+neck and head in frame, flames and burning trunks around: the treatment's forest shot, not a crop that hides the
+horse or the fire.
+
+**Lighting (camera-relative):** the only light is fire. Main fire behind her to camera-right: camera-right side of
+face, shoulder and horse's flank lit warm orange; camera-left in deep shadow with a faint orange rim; no daylight,
+no blue sky.
+
+**Negative list:** no jewellery (bare ears); no emblem, badge, monogram, logo; no lettering; no path or clearing
+shaped like letters or a logo; no loose straps.
+
+Prompt `forest-v1`:
+
+> A real photograph, a medium shot at night at ground level. The woman in <IMAGE_0> sits upright on a black horse
+> that is standing still among tall burning pine trees, seen from a three-quarter front angle. Framing: from the top
+> of the saddle to just above her head, so her face is large and clearly visible, with the horse's neck and head in
+> the lower part of the frame and flames and burning trunks behind and to the sides. Keep her face, head shape,
+> skin tone, age, proportions, hair and makeup exactly as in <IMAGE_0>; do not add, remove or change any of them.
+> She wears no jewellery of any kind: no earrings, no ear studs, no piercings, no necklace, no rings; her ears are
+> bare exactly as in <IMAGE_0>. Her hair is in the same sleek jet-black high ponytail as in <IMAGE_0>. Her seat,
+> posture, hands on the reins, riding outfit and the horse's tack follow <IMAGE_1>: tailored single-breasted black
+> wool riding blazer, crisp white shirt with collar, black breeches, plain thin black leather gloves, a plain black
+> leather bridle with a simple snaffle bit, a plain black leather English saddle, a single pair of plain black reins
+> running unbroken from the bit to her gloved hands, with no loose or dangling straps anywhere; no emblem, badge or
+> monogram. Lighting: the only light is the fire. The main fire is behind her to the camera's right, so the right
+> side of her face, her right shoulder and the horse's right flank (camera-right) are lit warm orange and the
+> camera-left side falls into deep shadow with only a faint orange rim; firelight flickers on the horse's glossy
+> coat; embers and thin smoke drift through the air; the sky is black. No daylight, no blue sky, no studio light.
+> The forest floor is bare earth and ash with scattered embers; no path, no clearing, no shape resembling letters
+> or a logo. Camera at her chest height, 2.5 metres away, 85mm lens, true-to-life colour. Real skin texture, real
+> horse coat, real fire. Correct human and horse anatomy; two hands with five fingers each. One rider, one horse;
+> she looks toward the camera with a calm, composed expression; the horse is alert with its ears forward. No text,
+> lettering, logo or watermark.
+
+Settings: `gemini-nano-banana-2.1`, 2K, 4:5, n = 1, `maxCostUsd 0.28`. Evaluation: my own full-resolution inspection
+against the requirements, then two blind reviewers on all candidates (identity vs ORIGINAL; jewellery; wardrobe;
+horse/tack/hands/posture; firelight direction and physical coherence; lettering/logo shapes; composition), then a
+recommendation on readiness for a 1.5–2 s motion shot.
+
+### Results
+
+_(none yet)_

@@ -1,0 +1,122 @@
+{
+ "A": "fd0aad63",
+ "results": [
+  {
+   "fn": "sam3-segment-proxy",
+   "who": "A",
+   "what": "own folder, missing object",
+   "status": 404,
+   "error": "scene_sign_failed",
+   "expect": {
+    "status": 404,
+    "error": "scene_sign_failed"
+   },
+   "pass": true
+  },
+  {
+   "fn": "sam3-segment-proxy",
+   "who": "A",
+   "what": "owner's real object",
+   "status": 403,
+   "error": "storage_path_forbidden",
+   "expect": {
+    "status": 403,
+    "error": "storage_path_forbidden"
+   },
+   "pass": true
+  },
+  {
+   "fn": "sam3-segment-proxy",
+   "who": "A",
+   "what": "traversal path",
+   "status": 400,
+   "error": "invalid_storage_path",
+   "expect": {
+    "status": 400,
+    "error": "invalid_storage_path"
+   },
+   "pass": true
+  },
+  {
+   "fn": "sam3-segment-proxy",
+   "who": "A",
+   "what": "other bucket, owner's object",
+   "status": 403,
+   "error": "storage_path_forbidden",
+   "expect": {
+    "status": 403,
+    "error": "storage_path_forbidden"
+   },
+   "pass": true
+  },
+  {
+   "fn": "sam3-segment-proxy",
+   "who": "bare key",
+   "what": "owner's real object",
+   "status": 401,
+   "error": "UNAUTHORIZED_NO_AUTH_HEADER",
+   "expect": {
+    "status": 401
+   },
+   "pass": true
+  },
+  {
+   "fn": "sam3-segment-proxy",
+   "who": "bare key as bearer",
+   "what": "owner's real object",
+   "status": 401,
+   "error": "unauthenticated",
+   "expect": {
+    "status": 401
+   },
+   "pass": true
+  },
+  {
+   "fn": "asset-derivative",
+   "who": "A (anonymous session)",
+   "what": "any",
+   "status": 403,
+   "error": "anonymous_forbidden",
+   "expect": {
+    "status": 403
+   },
+   "pass": true
+  },
+  {
+   "fn": "faceswap-proxy",
+   "who": "A",
+   "what": "owner's object as scene",
+   "status": 403,
+   "error": "storage_path_forbidden",
+   "expect": {
+    "status": 403
+   },
+   "pass": true
+  },
+  {
+   "fn": "grok-image-garment-proxy",
+   "who": "A",
+   "what": "foreign artistId",
+   "status": 403,
+   "error": "storage_path_forbidden",
+   "expect": {
+    "status": 403
+   },
+   "pass": true
+  },
+  {
+   "fn": "storage",
+   "who": "A",
+   "what": "download owner's object",
+   "status": "denied",
+   "pass": true
+  },
+  {
+   "fn": "storage",
+   "who": "A",
+   "what": "list owner's project folder",
+   "status": "0 entries",
+   "pass": true
+  }
+ ]
+}

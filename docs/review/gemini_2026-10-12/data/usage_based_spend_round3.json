@@ -1,0 +1,91 @@
+{
+ "method": "prompt tokens x $1.50/M + (candidates + thoughts) tokens x $30/M, from the usage block Google returned per run; an estimate, not billing (how Google prices thinking tokens for this model is not verified)",
+ "runs": [
+  {
+   "run": "A1",
+   "promptTokens": 3848,
+   "outputTokens": 3670,
+   "usd": 0.115872
+  },
+  {
+   "run": "B1",
+   "promptTokens": 3848,
+   "outputTokens": 2368,
+   "usd": 0.076812
+  },
+  {
+   "run": "A2",
+   "promptTokens": 3848,
+   "outputTokens": 2140,
+   "usd": 0.069972
+  },
+  {
+   "run": "B2",
+   "promptTokens": 3848,
+   "outputTokens": 2511,
+   "usd": 0.081102
+  },
+  {
+   "run": "C1",
+   "promptTokens": 3882,
+   "outputTokens": 2967,
+   "usd": 0.094833
+  },
+  {
+   "run": "C2",
+   "promptTokens": 3882,
+   "outputTokens": 2782,
+   "usd": 0.089283
+  },
+  {
+   "run": "E4-A1",
+   "promptTokens": 3842,
+   "outputTokens": 3606,
+   "usd": 0.113943
+  },
+  {
+   "run": "E4-B1",
+   "promptTokens": 3842,
+   "outputTokens": 2908,
+   "usd": 0.093003
+  },
+  {
+   "run": "E4-A2",
+   "promptTokens": 3842,
+   "outputTokens": 2543,
+   "usd": 0.082053
+  },
+  {
+   "run": "E4-B2",
+   "promptTokens": 3842,
+   "outputTokens": 3410,
+   "usd": 0.108063
+  },
+  {
+   "run": "E4-A3",
+   "promptTokens": 3842,
+   "outputTokens": 2628,
+   "usd": 0.084603
+  },
+  {
+   "run": "E4-B3",
+   "promptTokens": 3842,
+   "outputTokens": 2813,
+   "usd": 0.090153
+  },
+  {
+   "run": "E4-A4",
+   "promptTokens": 3842,
+   "outputTokens": 2645,
+   "usd": 0.085113
+  },
+  {
+   "run": "E4-B4",
+   "promptTokens": 3842,
+   "outputTokens": 2766,
+   "usd": 0.088743
+  }
+ ],
+ "total_usd": 1.273548,
+ "conditional_estimate_total_usd": 3.784704
+}
