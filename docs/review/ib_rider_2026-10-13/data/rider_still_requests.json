@@ -1,0 +1,150 @@
+{
+ "S1_c008a": {
+  "prompt": "A real photograph, vertical frame, at night at ground level in a forest of tall burning pine trees. The woman in <IMAGE_0> stands on the forest floor at the left shoulder of her black horse; the saddle is empty and nobody is on the horse. Her right gloved hand rests flat on the horse's neck and her face is turned in three-quarter view toward the camera with a calm, composed expression. Framing: medium-wide, her whole figure from the top of her head to her boots, with the horse's head, neck, shoulder and the front of the saddle beside her. In the smoky background two women models in plain black dresses walk past, small and softly out of focus. Keep her face, head shape, skin tone, age, proportions, hair and makeup exactly as in <IMAGE_0>; do not add, remove or change any of them. She wears no jewellery of any kind: no earrings, no ear studs, no piercings, no necklace, no rings; her ears are bare exactly as in <IMAGE_0>. Her hair is in the same sleek jet-black high ponytail as in <IMAGE_0>. Her riding outfit and the horse follow <IMAGE_1>: tailored single-breasted black wool riding blazer, crisp white shirt with collar, black breeches, tall black riding boots, plain thin black leather gloves; a glossy black horse with a plain black leather bridle and simple snaffle bit, a plain black leather English saddle, one pair of plain black reins, no loose or dangling straps; no emblem, badge or monogram anywhere. It is night and the only light is fire: warm orange firelight flickers on her and on the horse's glossy coat, embers and thin smoke drift through the air, the sky is black; no daylight, no blue sky, no studio light. The forest floor is bare earth and ash with scattered embers; the flames burn in irregular, natural, ragged clumps on burning trunks and fallen branches; no path, no clearing, and no flame, smoke or shape that resembles letters, symbols or a logo. Camera at her chest height, 4 metres away, 35mm lens, true-to-life colour. Real skin texture, real horse coat, real fire. Correct human and horse anatomy; any visible hand has five fingers. One rider, one horse. No text, lettering, logo or watermark.",
+  "references": [
+   {
+    "id": "3fce9cb5-012f-4158-aecb-6615343eb2f3",
+    "role": "cast",
+    "label": "The woman, approved original portrait (the only source of her face)",
+    "source": "project_asset"
+   },
+   {
+    "id": "45f98b56-042e-41f7-9aee-23ed5945cb20",
+    "role": "garment",
+    "label": "Riding outfit, gloves, horse and tack guide only (no face)",
+    "source": "project_asset"
+   }
+  ],
+  "promptVersion": "ib-rider-v1",
+  "aspectRatio": "9:16",
+  "resolution": "2k",
+  "chars": 2140,
+  "sha256_16": "302f1a7c8e677b36"
+ },
+ "S3_c009a": {
+  "prompt": "A real photograph, vertical frame, at night at ground level among tall burning pine trees. A side view: the woman in <IMAGE_0> rides her black horse at a walk from the left of the frame toward the right, the whole horse and rider in profile in the lower half of the frame, burning trunks rising tall behind them. She sits upright in the saddle, both gloved hands on the reins, looking ahead along her direction of travel, her face in clear profile. Keep her face, head shape, skin tone, age, proportions, hair and makeup exactly as in <IMAGE_0>; do not add, remove or change any of them. She wears no jewellery of any kind: no earrings, no ear studs, no piercings, no necklace, no rings; her ears are bare exactly as in <IMAGE_0>. Her hair is in the same sleek jet-black high ponytail as in <IMAGE_0>. Her riding outfit and the horse follow <IMAGE_1>: tailored single-breasted black wool riding blazer, crisp white shirt with collar, black breeches, tall black riding boots, plain thin black leather gloves; a glossy black horse with a plain black leather bridle and simple snaffle bit, a plain black leather English saddle, one pair of plain black reins, no loose or dangling straps; no emblem, badge or monogram anywhere. It is night and the only light is fire: warm orange firelight flickers on her and on the horse's glossy coat, embers and thin smoke drift through the air, the sky is black; no daylight, no blue sky, no studio light. The forest floor is bare earth and ash with scattered embers; the flames burn in irregular, natural, ragged clumps on burning trunks and fallen branches; no path, no clearing, and no flame, smoke or shape that resembles letters, symbols or a logo. Camera at the horse's shoulder height, 7 metres away, 35mm lens, true-to-life colour. Real skin texture, real horse coat, real fire. Correct human and horse anatomy; any visible hand has five fingers. One rider, one horse. No text, lettering, logo or watermark.",
+  "references": [
+   {
+    "id": "3fce9cb5-012f-4158-aecb-6615343eb2f3",
+    "role": "cast",
+    "label": "The woman, approved original portrait (the only source of her face)",
+    "source": "project_asset"
+   },
+   {
+    "id": "45f98b56-042e-41f7-9aee-23ed5945cb20",
+    "role": "garment",
+    "label": "Riding outfit, gloves, horse and tack guide only (no face)",
+    "source": "project_asset"
+   }
+  ],
+  "promptVersion": "ib-rider-v1",
+  "aspectRatio": "9:16",
+  "resolution": "2k",
+  "chars": 1949,
+  "sha256_16": "81e8d8ef4b59f995"
+ },
+ "S4_c009b": {
+  "prompt": "The entire photograph is black and white, a true monochrome image with no colour at all: deep blacks, bright white flames, grey smoke. A real photograph, vertical frame, at night at ground level among burning pine trees. A side view, closer: the woman in <IMAGE_0> rides her black horse at a walk toward the right of the frame; framing from the horse's withers and saddle up to just above her head, the horse's head and neck at the right of the frame, burning trunks behind her. She sits upright, gloved hands on the reins, looking ahead, her face in clear profile. Keep her face, head shape, skin tone, age, proportions, hair and makeup exactly as in <IMAGE_0>; do not add, remove or change any of them. She wears no jewellery of any kind: no earrings, no ear studs, no piercings, no necklace, no rings; her ears are bare exactly as in <IMAGE_0>. Her hair is in the same sleek jet-black high ponytail as in <IMAGE_0>. Her riding outfit and the horse follow <IMAGE_1>: tailored single-breasted black wool riding blazer, crisp white shirt with collar, black breeches, tall black riding boots, plain thin black leather gloves; a glossy black horse with a plain black leather bridle and simple snaffle bit, a plain black leather English saddle, one pair of plain black reins, no loose or dangling straps; no emblem, badge or monogram anywhere. It is night and the only light is fire: bright flickering firelight plays on her and on the horse's glossy coat, embers and thin smoke drift through the air, the sky is black; no daylight, no blue sky, no studio light. The forest floor is bare earth and ash with scattered embers; the flames burn in irregular, natural, ragged clumps on burning trunks and fallen branches; no path, no clearing, and no flame, smoke or shape that resembles letters, symbols or a logo. Camera at her waist height, 3 metres away, 50mm lens. Real skin texture, real horse coat, real fire. Correct human and horse anatomy; any visible hand has five fingers. One rider, one horse. No text, lettering, logo or watermark.",
+  "references": [
+   {
+    "id": "3fce9cb5-012f-4158-aecb-6615343eb2f3",
+    "role": "cast",
+    "label": "The woman, approved original portrait (the only source of her face)",
+    "source": "project_asset"
+   },
+   {
+    "id": "45f98b56-042e-41f7-9aee-23ed5945cb20",
+    "role": "garment",
+    "label": "Riding outfit, gloves, horse and tack guide only (no face)",
+    "source": "project_asset"
+   }
+  ],
+  "promptVersion": "ib-rider-v1",
+  "aspectRatio": "9:16",
+  "resolution": "2k",
+  "chars": 2037,
+  "sha256_16": "60e8adfa76dbef1c"
+ },
+ "S5_c010a": {
+  "prompt": "The entire photograph is black and white, a true monochrome image with no colour at all: deep blacks, bright white flames, grey smoke. A real photograph, vertical frame, at night, the camera low at ground level among burning pine trees. A side view of the black horse's legs and hooves walking toward the right through ash and scattered embers, a tall black riding boot of the rider in the stirrup and the lower edge of the saddle at the top of the frame; nobody's face is in the frame. Behind the legs, flames burn in irregular clumps on fallen branches and trunks. Her riding outfit and the horse follow <IMAGE_0>: tailored single-breasted black wool riding blazer, crisp white shirt with collar, black breeches, tall black riding boots, plain thin black leather gloves; a glossy black horse with a plain black leather bridle and simple snaffle bit, a plain black leather English saddle, one pair of plain black reins, no loose or dangling straps; no emblem, badge or monogram anywhere. It is night and the only light is fire: bright flickering firelight plays on her and on the horse's glossy coat, embers and thin smoke drift through the air, the sky is black; no daylight, no blue sky, no studio light. The forest floor is bare earth and ash with scattered embers; the flames burn in irregular, natural, ragged clumps on burning trunks and fallen branches; no path, no clearing, and no flame, smoke or shape that resembles letters, symbols or a logo. Camera 40 centimetres above the ground, 2 metres away, 35mm lens. Real skin texture, real horse coat, real fire. Correct human and horse anatomy; any visible hand has five fingers. One rider, one horse. No text, lettering, logo or watermark.",
+  "references": [
+   {
+    "id": "45f98b56-042e-41f7-9aee-23ed5945cb20",
+    "role": "garment",
+    "label": "Riding outfit, gloves, horse and tack guide only (no face)",
+    "source": "project_asset"
+   }
+  ],
+  "promptVersion": "ib-rider-v1",
+  "aspectRatio": "9:16",
+  "resolution": "2k",
+  "chars": 1697,
+  "sha256_16": "f3b3b59288c8b81d"
+ },
+ "S6_c010b": {
+  "prompt": "The entire photograph is black and white, a true monochrome image with no colour at all: deep blacks, bright white flames, grey smoke. A real photograph, vertical frame, at night among burning pine trees. A close side view of the woman in <IMAGE_0> riding: her head, shoulders and upper body in profile facing the right of the frame, the top of the horse's neck and its ears at the lower right, out-of-focus flames and burning trunks behind her. She looks straight ahead with a calm, composed expression, lips closed. Keep her face, head shape, skin tone, age, proportions, hair and makeup exactly as in <IMAGE_0>; do not add, remove or change any of them. She wears no jewellery of any kind: no earrings, no ear studs, no piercings, no necklace, no rings; her ears are bare exactly as in <IMAGE_0>. Her hair is in the same sleek jet-black high ponytail as in <IMAGE_0>. Her riding outfit and the horse follow <IMAGE_1>: tailored single-breasted black wool riding blazer, crisp white shirt with collar, black breeches, tall black riding boots, plain thin black leather gloves; a glossy black horse with a plain black leather bridle and simple snaffle bit, a plain black leather English saddle, one pair of plain black reins, no loose or dangling straps; no emblem, badge or monogram anywhere. It is night and the only light is fire: bright flickering firelight plays on her and on the horse's glossy coat, embers and thin smoke drift through the air, the sky is black; no daylight, no blue sky, no studio light. Camera at her eye height, 2 metres away, 85mm lens. Real skin texture, real horse coat, real fire. Correct human and horse anatomy; any visible hand has five fingers. One rider, one horse. No text, lettering, logo or watermark.",
+  "references": [
+   {
+    "id": "3fce9cb5-012f-4158-aecb-6615343eb2f3",
+    "role": "cast",
+    "label": "The woman, approved original portrait (the only source of her face)",
+    "source": "project_asset"
+   },
+   {
+    "id": "45f98b56-042e-41f7-9aee-23ed5945cb20",
+    "role": "garment",
+    "label": "Riding outfit, gloves, horse and tack guide only (no face)",
+    "source": "project_asset"
+   }
+  ],
+  "promptVersion": "ib-rider-v1",
+  "aspectRatio": "9:16",
+  "resolution": "2k",
+  "chars": 1739,
+  "sha256_16": "0fa86182f1d1c996"
+ },
+ "S7_c014a": {
+  "prompt": "The entire photograph is black and white, a true monochrome image with no colour at all: deep blacks, bright white flames, grey smoke. A real photograph, vertical frame, at night at ground level among tall burning pine trees. A front view: the woman in <IMAGE_0> rides her black horse at a walk straight toward the camera across the bare forest floor, horse and rider whole in frame, burning trunks and flames on both sides behind them. She sits upright, gloved hands on the reins, looking ahead past the camera with a calm, composed expression. Keep her face, head shape, skin tone, age, proportions, hair and makeup exactly as in <IMAGE_0>; do not add, remove or change any of them. She wears no jewellery of any kind: no earrings, no ear studs, no piercings, no necklace, no rings; her ears are bare exactly as in <IMAGE_0>. Her hair is in the same sleek jet-black high ponytail as in <IMAGE_0>. Her riding outfit and the horse follow <IMAGE_1>: tailored single-breasted black wool riding blazer, crisp white shirt with collar, black breeches, tall black riding boots, plain thin black leather gloves; a glossy black horse with a plain black leather bridle and simple snaffle bit, a plain black leather English saddle, one pair of plain black reins, no loose or dangling straps; no emblem, badge or monogram anywhere. It is night and the only light is fire: bright flickering firelight plays on her and on the horse's glossy coat, embers and thin smoke drift through the air, the sky is black; no daylight, no blue sky, no studio light. The forest floor is bare earth and ash with scattered embers; the flames burn in irregular, natural, ragged clumps on burning trunks and fallen branches; no path, no clearing, and no flame, smoke or shape that resembles letters, symbols or a logo. Camera at the horse's chest height, 8 metres away, 50mm lens. Real skin texture, real horse coat, real fire. Correct human and horse anatomy; any visible hand has five fingers. One rider, one horse. No text, lettering, logo or watermark.",
+  "references": [
+   {
+    "id": "3fce9cb5-012f-4158-aecb-6615343eb2f3",
+    "role": "cast",
+    "label": "The woman, approved original portrait (the only source of her face)",
+    "source": "project_asset"
+   },
+   {
+    "id": "45f98b56-042e-41f7-9aee-23ed5945cb20",
+    "role": "garment",
+    "label": "Riding outfit, gloves, horse and tack guide only (no face)",
+    "source": "project_asset"
+   }
+  ],
+  "promptVersion": "ib-rider-v1",
+  "aspectRatio": "9:16",
+  "resolution": "2k",
+  "chars": 2025,
+  "sha256_16": "0c4f1cc932668add"
+ },
+ "S8_c014b": {
+  "prompt": "The entire photograph is black and white, a true monochrome image with no colour at all: deep blacks, bright white flames, grey smoke. A real photograph, vertical frame, at night among burning pine trees. A front view, medium close-up: the woman in <IMAGE_0> on her black horse, framed from the top of the horse's head and ears at the bottom of the frame to just above her head, her face large and clearly visible, out-of-focus flames behind her. She looks straight into the camera with a calm, composed, unsmiling expression, lips closed. Keep her face, head shape, skin tone, age, proportions, hair and makeup exactly as in <IMAGE_0>; do not add, remove or change any of them. She wears no jewellery of any kind: no earrings, no ear studs, no piercings, no necklace, no rings; her ears are bare exactly as in <IMAGE_0>. Her hair is in the same sleek jet-black high ponytail as in <IMAGE_0>. Her riding outfit and the horse follow <IMAGE_1>: tailored single-breasted black wool riding blazer, crisp white shirt with collar, black breeches, tall black riding boots, plain thin black leather gloves; a glossy black horse with a plain black leather bridle and simple snaffle bit, a plain black leather English saddle, one pair of plain black reins, no loose or dangling straps; no emblem, badge or monogram anywhere. It is night and the only light is fire: bright flickering firelight plays on her and on the horse's glossy coat, embers and thin smoke drift through the air, the sky is black; no daylight, no blue sky, no studio light. Camera at her eye height, 2.5 metres away, 85mm lens. Real skin texture, real horse coat, real fire. Correct human and horse anatomy; any visible hand has five fingers. One rider, one horse. No text, lettering, logo or watermark.",
+  "references": [
+   {
+    "id": "3fce9cb5-012f-4158-aecb-6615343eb2f3",
+    "role": "cast",
+    "label": "The woman, approved original portrait (the only source of her face)",
+    "source": "project_asset"
+   },
+   {
+    "id": "45f98b56-042e-41f7-9aee-23ed5945cb20",
+    "role": "garment",
+    "label": "Riding outfit, gloves, horse and tack guide only (no face)",
+    "source": "project_asset"
+   }
+  ],
+  "promptVersion": "ib-rider-v1",
+  "aspectRatio": "9:16",
+  "resolution": "2k",
+  "chars": 1763,
+  "sha256_16": "9d4934ee773cb5ab"
+ }
+}

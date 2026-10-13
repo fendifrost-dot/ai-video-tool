@@ -63,3 +63,12 @@ The historical OpenAI spend above (scope 0 ≈ $24.00; rows 4, 5, 7, 9, 10, 14, 
 - Failed, unbilled provider calls ($0) are listed for provenance and never counted.
 - Where a billed amount is unverified, the higher of the estimate and the computed figure is carried.
 - Every future paid call appends a row here in the same commit as its result.
+
+## IB rider sequence — 13 Oct 2026 (outside the $50 scope above)
+
+Authority: Fendi 2026-10-02 "Disregard the $50 limit for testing … Only stop on code red", read conservatively as the IB lane the 10-10 handoff counted (≈ $24 left before this pass). Gemini runs fall under "more than enough in Gemini" (Google billing). Detail: [`handoffs/IB_RIDER_SEQUENCE_2026-10-13.md`](handoffs/IB_RIDER_SEQUENCE_2026-10-13.md).
+
+| Date | Provider | Call / purpose | Billed | Lane left |
+|---|---|---|---|---|
+| 10-13 | Google | 7 Gemini stills (`gemini-nano-banana-2.1`, 2k; jobs `f1df460f`, `0ba94eb7`, `9ac641d6`, `f8c61e7d`, `6cba6c02`, `3848b5af`, `105af67d`) | $1.89 conditional (≈ $0.53 usage); invoice unknown | Google, not the IB lane |
+| 10-13 | xAI | 7 Grok image-to-video clips, 2 s 720p (K1, K3–K8) | $0.994 (usage ticks) | ≈ $23 (UNCERTAIN until reconciled) |
