@@ -61,7 +61,43 @@ try. But the director has already named realism as the problem, and a real plate
   - **The walk:** camera at about chest height, moving backward ahead of him, or locked off while he walks in. Knees-up framing. Shoot one take at a steady walk and one slightly slower.
 - **Audio:** play the song while shooting the walk so the pace sits on the beat (122 BPM). There is no lip sync in these shots.
 
-## What happens when the footage arrives (next agent)
+
+## Update, 13 Oct (later): regenerate from a positioned photo of him (supersedes the "shoot it for real" recommendation)
+
+**Fendi:** "The wardrobe still has to be swapped so maybe regeneration is the best solution but regeneration may be
+easier if I'm positioned correctly in a photo."
+
+**DECISION (his):** practical footage is out, because his own clothes would still need an AI garment swap, and that route
+failed on this project (the 10-10 dressed-restage tests). Instead the shots are **regenerated with the rider recipe**,
+with a real photo of him, posed for each setup, as the reference.
+
+**What he provides (stills, not video):**
+
+| Photo | Pose and angle | Used for |
+|---|---|---|
+| P1 | Seated in an armchair, shot from behind and to his left at seated head height, over his left shoulder, head turned slightly right toward a screen | c012, c013, c015 |
+| P2 | Mid-stride walking toward the camera, chest-height camera, knees-up framing | c017, c018 |
+| P3 | Face, front-on, even light, wearing the Cazal glasses | identity reference for every shot |
+| P4 | Face at three-quarter, same light and glasses | identity reference |
+
+Wear plain, dark, fitted clothes so the silhouette reads. A cap like the one in the scene helps with head shape. Nothing in the photo needs to be YSL.
+
+**Per shot (same route as the approved rider clips):**
+
+1. **Gemini still** through `world-still-proxy` (`gemini-nano-banana-2.1`, 2k):
+   - references: the pose photo as `cast`, P3 and P4 as `cast`, and the outfit's garment references;
+   - for the room shots, the approved viewer's-room keyframe `5d175ab3` as the location;
+   - for c012, c013 and c015, the TV shows K6's frame (the approved profile close-up).
+2. **Blind check:** 2 reviewers against P3/P4 before anything is placed. Show Fendi the still before paying for motion.
+3. **Grok image-to-video** from the approved still: 2 s, 9:16, using the `ib-motion-v1` style prompt. Then place it as the selected clip; the old generated clip stays as an unselected version.
+
+**Garments:** they come out as AI renderings of the reference photos, not pixel-exact. That is acceptable for shots this dark or this wide only with Fendi's sign-off, given the pixel-preservation rule in CLAUDE.md. Raise it with him at the still check.
+
+**Cost:** about $0.27 per still and $0.14 per 2 s clip. Five shots with one retry each comes to about $4.
+
+**Edit length:** the 3.9 s shots can be split into one-bar halves, as the rider shots were (`scripts/mcp/split.ts`), which needs two clips per shot. Or one 4 s clip each. Ask Fendi which pace he wants for the room shots.
+
+## What happens when the footage arrives (next agent) — the practical route, superseded by the update above
 
 1. Upload each take to the project through AVT (`project_assets`, footage). **Never** process it locally, per the hard rule in CLAUDE.md.
 2. Put each take on its shot as the **selected** clip, with `source_in_seconds` set to the chosen 3.9 s window.
