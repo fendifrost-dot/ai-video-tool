@@ -91,6 +91,14 @@ Protocol, prompts, ordered reference IDs, settings, outputs, costs, the blind re
   negative list worked where "keep her jewellery exactly as in <IMAGE_0>" did not. The two blind reviewers
   **disagreed on B1 vs B2 identity**, so at this framing identity verdicts are not reliable enough to rank arms;
   the next test needs a medium shot (face ≥ 15 % of frame) before any further A-vs-B comparison.
+- **Experiment 4 (13 Oct, user-authorized, 8 runs, medium-shot framing, A vs B at n = 4, `exp4-v1` prompt):** two
+  blind reviewers, Spearman ρ = **−0.31** between their rankings; mean ranks lean to arm B (3.5 vs 5.5; 4.25 vs
+  4.75) but the between-reviewer disagreement exceeds the between-arm difference. **H1 not supported at a level
+  that justifies a change; keep the current arrangement.** The medium framing produced recognisably the same woman
+  in all eight (no identity FAIL; 2–3 PASS per reviewer), where knee-height framing never exceeded PARTIAL: face
+  size moved identity more than references did. Prompt lines that worked: no emblem, camera-left key, explicit
+  no-jewellery (no confirmed stud in 8). Lines that failed in all eight: plain smooth gloves, no loose straps,
+  jet-black ponytail base. Full tables in the protocol's "Experiment 4" section.
 - **Unchanged:** the ORIGINAL `3fce9cb5…` stays `approved` and the only identity authority; every experiment result
   and derivative is `pending` with a "TEST ONLY" / "DERIVATIVE" title; no selection, treatment, wardrobe lock,
   timeline, export or footage was touched.
@@ -104,20 +112,23 @@ Protocol, prompts, ordered reference IDs, settings, outputs, costs, the blind re
 | Remaining before experiment 3 | $1.87 | — |
 | Experiment 3 arms A/B (4 runs, 0 failures, no extra run) | $1.081344 | unknown (`billed: "unknown"` on all rows) |
 | Experiment 3 arm C follow-up (2 runs, 0 failures; 13 Oct, user-authorized follow-up) | $0.540672 | unknown |
-| **Remaining authorization** | **$0.247984** | — |
+| Experiment 4 (8 runs, 0 failures; 13 Oct, user-authorized: "more than enough in Gemini") | $2.162688 | unknown |
+| **Total this session at the conditional estimate** | **$4.915344** ($1.13 prior rounds upper bound + $3.785 this round) | unknown |
 
 No top-ups, no subscription changes. Gmail: no Google billing or reload mail (checked earlier this session).
 
 ## 7. Recommended next production step
 
-**Do not change the production reference arrangement on this evidence.** Keep the ORIGINAL as the sole approved
-identity and adopt the prompt conventions that demonstrably helped: no invented age or verbal face description;
-explicit "no emblem, badge or monogram"; camera-relative light direction; and (new) the **explicit no-jewellery /
-bare-ears clause** from `exp3-v2`, which is the one change this round that measurably moved a recurring defect.
-Treat identity drift as still open. Before any production still is selected from Gemini, run the next test in the
-protocol under **new** authorization: a medium-shot framing where the face is large enough for reliable blind
-verdicts, then A vs B at n = 4 per arm with the jewellery clause in both, plus explicit "true black breeches" and
-"plain smooth thin leather gloves" in the treatment text (both drifted in all six images). Operationally: the storage, durability and streaming fixes are live and
+**Keep the current reference arrangement (arm A) and stop testing it**: 14 paid comparisons across experiments 3
+and 4 did not show the sole-face arrangement to be better at a level two blind reviewers agree on. What did move
+identity was **framing**: medium or closer shots for identity-critical stills. For production Gemini stills:
+keep the ORIGINAL as the sole approved identity; use the `exp4-v1` prompt conventions (no invented age or verbal
+face description; explicit "no emblem, badge or monogram"; camera-relative light direction; explicit
+no-jewellery / bare-ears clause); and for details that verbal prompts could not pin in 8/8 images (plain gloves,
+no loose straps, jet-black ponytail base) supply reference crops showing exactly those details instead of more
+words. Any future identity ranking needs at least two blind reviewers with their agreement reported. The backend
+fixes are live and verified, so the next production still can be generated safely; the residuals in §1 remain
+the next security and finance items. Operationally: the storage, durability and streaming fixes are live and
 verified, so the next production still can be generated safely; the residuals in §1 (ten open buckets,
 `compose-look-proxy`, invoice reconciliation) are the next security/finance items, not blockers for a still.
 
