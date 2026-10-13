@@ -71,7 +71,7 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
   let result: Record<string, unknown> = { ok: false, billed: false };
   let submitted = false;
   // Which step each outcome belongs to; a failure after generation never reads as "nothing was generated".
-  const stages: Record<string, string> = { generation: "not_started", upload: "not_started", filing: "not_started", finalize: "not_started" };
+  const stages: Record<string, string> = { generation: "not_started", upload: "not_started", filing: "not_started", decode: "unknown", finalize: "not_started" };
   let submittedAt: string | null = null;
   try {
     const references: { url: string; label: string; role: string }[] = [];
@@ -117,6 +117,10 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
         throw new Error("asset_filing_failed");
       }
       stages.upload = "succeeded"; stages.filing = "succeeded";
+      // CC's real decode verdict (imageUsable) rides along in `evidence`; name it as a stage so a stored-but-unusable
+      // still is never read as a success at a glance.
+      stages.decode = evidence.imageUsable === true ? "usable" : evidence.imageUsable === false ? "not_usable" : "unknown";
+      result.imageUsable = evidence.imageUsable ?? null;
       result.stills = [filed];
     }
   } catch (e) {

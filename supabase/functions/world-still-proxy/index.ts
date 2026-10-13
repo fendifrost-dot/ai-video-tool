@@ -105,7 +105,12 @@ async function fileStill(admin: any, input: { userId: string; projectId: string;
   }
   if (upErr) return { error: String(upErr.message ?? upErr) };
   const { data: signed } = await admin.storage.from("project-references").createSignedUrl(path, SIGN_TTL);
-  const row = await recordStillRow(admin, { userId: input.userId, projectId: input.projectId, path, provider: input.provider, notes: input.sceneTitle ?? input.shotLabel ?? null, metadata: { bucket: "project-references", mime_type: mime, file_size_bytes: input.bytes.length, lane: "world_still", model: input.model, resolution: input.resolution, aspect_ratio: input.aspect, prompt_version: input.promptVersion ?? null, shot_label: input.shotLabel ?? null, scene_title: input.sceneTitle ?? null, actual_cost_usd: input.rate, ...input.extraMeta } });
+  // RECEIVED AND STORED is not DECODED AND USABLE: Control Center decodes the pixels (imageUsable); a still that
+  // failed that check is still filed (it may have been paid for) but its row says so in the notes and metadata.
+  const notUsable = input.extraMeta.imageUsable === false;
+  const baseNotes = input.sceneTitle ?? input.shotLabel ?? null;
+  const notes = notUsable ? `NOT USABLE (received, failed decode: ${String(input.extraMeta.imageDecodeReason ?? "unknown")}) ${baseNotes ?? ""}`.trim() : baseNotes;
+  const row = await recordStillRow(admin, { userId: input.userId, projectId: input.projectId, path, provider: input.provider, notes, metadata: { usable: !notUsable, bucket: "project-references", mime_type: mime, file_size_bytes: input.bytes.length, lane: "world_still", model: input.model, resolution: input.resolution, aspect_ratio: input.aspect, prompt_version: input.promptVersion ?? null, shot_label: input.shotLabel ?? null, scene_title: input.sceneTitle ?? null, actual_cost_usd: input.rate, ...input.extraMeta } });
   if ("error" in row) return { error: "asset_record_failed", path }; // stored, not recorded: recoverable
   return { path, previewUrl: signed?.signedUrl ?? null, bytes: input.bytes.length, assetId: row.assetId };
 }
