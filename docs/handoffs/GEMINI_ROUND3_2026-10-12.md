@@ -151,6 +151,18 @@ pixel decode (`imageDecode.ts`), with the paid bytes still returned and the resu
 decoded-and-usable** (`imageUsable`, `imageDecodeReason`); AVT files a not-usable still with a `NOT USABLE` note,
 `metadata.usable: false`, `stages.decode: not_usable`. Live state after deploy is recorded in §3.
 
+## 6b. Forest round (13 Oct 2026, appended)
+
+Protocol, prompts (forest-v1/v2/v3), ordered references, settings, both blind reviews, the verdict and the motion
+recommendation are in the protocol file's "Forest round" section. Summary: 4 runs, 0 failures ($1.08 conditional,
+≈ $0.37 usage-based, verified unknown). Reference arrangement: ORIGINAL as the only face-bearing reference +
+experiment 4 B1 cropped **below the chin** (asset `6ab0db92…`) as the pose/wardrobe/horse guide, chosen on experiment
+4's preliminary support; B1's face was never sent. **F4** (asset `5cea3af9…`) is ranked first by both blind reviewers
+(identity PASS, firelight coherent, clean wardrobe, bare ear, no logo-shaped ground). Unresolved in F4: one visible
+hand, a loose stirrup leather, horse-head proportion, one ear hidden. **Not ready for a usable motion shot**; a
+bounded 2 s motion *test* is defensible only if the single-hand pose is accepted; otherwise one more still correction
+with a hands/reins reference crop first. Nothing selected or animated.
+
 ## 7. Recommended next production step
 
 **Keep the current reference arrangement (arm A) and stop testing it**: 14 paid comparisons across experiments 3

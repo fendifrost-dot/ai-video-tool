@@ -388,4 +388,58 @@ recommendation on readiness for a 1.5–2 s motion shot.
 
 ### Results
 
-_(none yet)_
+**RUN COMPLETE**: 2 candidates + 2 bounded corrections = 4 paid runs, 0 technical failures; the correction cycle is
+exhausted. Record: [`data/forest_round_jobs.json`](data/forest_round_jobs.json). Images: [`images/forest/`](images/forest/)
+([contact sheet](images/forest/contact_sheet_forest.jpg), [face strip](images/forest/faces_ORIGINAL_F1-F4.jpg)).
+
+| Run | Prompt | Job | Asset | Change from the previous run | My full-resolution inspection |
+|---|---|---|---|---|---|
+| F1 | forest-v1 | `b027644a` | `b09123d1` | — | identity close; ears bare; plain gloves; no lettering; horse muzzle cropped at the right edge; face lit frontally, not from the camera-right fire |
+| F2 | forest-v1 | `fd7717dd` | `a61c1cec` | second sample | identity close; full horse head; face brighter on camera-LEFT (wrong side); one hand visible |
+| F3 | forest-v2 | `27f5bdcd` | `18589938` | fire placed in frame at the camera-right edge | fire now in frame right; face still frontal; framing drifted to the full horse and boots |
+| F4 | forest-v3 | `e19696e8` | `5cea3af9` | the face itself described as half-lit; saddle-to-head framing restated | tight medium frame as specified; visible warm/dark split across the face; ears bare; one hand hidden behind the horse's neck |
+
+Spend: 4 × $0.270336 = **$1.081344** conditional estimate; usage-based ≈ **$0.37**; verified: unknown.
+
+**Two blind reviewers** (shuffled names A–D with face and hands/tack crops; mapping withheld: A = F1, B = F2, C = F4,
+D = F3). Reviewer 1: free verdicts and a usability ranking. Reviewer 2 ("demanding cinematographer"): six scores /30.
+
+| Run | Reviewer 1 identity · firelight · notes | Reviewer 2 /30 · main defect | Ears (R1 / R2) | Logo-like shapes |
+|---|---|---|---|---|
+| F1 (A) | PARTIAL (wider, flatter, lighter) · PARTLY (frontal fill) · muzzle cropped, reins routed under the flap, **two hands** | 23 · muzzle and bit cropped off the right edge | bare / bare (one ear hidden) | none |
+| F2 (B) | PASS minor (nose a touch broader) · PARTLY (strong frontal fill) · one hand; loose stirrup leather, no iron | 22 · face evenly front-filled and cooler than the surroundings | bare / bare | none |
+| F3 (D) | PARTIAL (face small, rounder) · partly-to-coherent · one hand; extra strap loops | 21 · full-length framing, face small; empty far stirrup; long loose strap | hidden / hidden (unclear) | none |
+| F4 (C) | **PASS** (closest: face length, cheekbones, brow line, eyes, lips, expression) · **COHERENT** (face brighter on the fire side, minimal fill) · one hand; loose stirrup leather with buckle | **25** · only one hand visible; horse head oversized and turned to camera; rider seated far back | bare / bare (other ear hidden) | none |
+
+Rankings: reviewer 1 **F4 > F2 > F3 > F1**; reviewer 2 **F4 > F1 > F2 > F3**. Both put F4 first and both call it the
+only candidate for a motion test; they disagree on F1 (last vs second). Both report no emblem, lettering, logo-like
+clearing or path in any image, bare ears wherever an ear is visible (one ear hidden by hair in every image, so the
+other side is unverified), no daylight or blue, photographic realism acceptable (reviewer 1: fire layers in F1
+read slightly composited).
+
+### Verdict
+
+- **F4 is the forest-scene candidate**: both blind reviewers independently rank it first, pass its identity against
+  the ORIGINAL, and call its firelight physically coherent (fire in frame camera-right; camera-right half of the face
+  brighter). Wardrobe and tack are clean; no jewellery on the visible ear; no logo-shaped ground feature.
+- **Unresolved defects in F4, stated plainly:** only one hand is visible (the camera-left hand is hidden behind the
+  horse's neck; both reviewers flag it; F1 is the only image with two hands); a loose stirrup leather with a buckle
+  (reviewer 1); horse head oversized and the rider seated far back (reviewer 2); one ear unverifiable. "Both hands
+  visible" was in the prompt twice (v2, v3) and was not honoured, so a verbal fix is unlikely to work; a hands/reins
+  reference crop is the plausible remedy.
+- **Lighting lesson:** placing the light source (v1, v2) did not light the face; describing the face's own
+  light/shadow split (v3) did. Record for future prompts.
+- The reference arrangement (ORIGINAL as the only face-bearing reference + B1 cropped faceless as the pose guide)
+  held identity in all four at this framing; B1 did not become an identity anchor (its face was never sent).
+- **Nothing is selected; nothing is animated.** All four are `pending`, "TEST ONLY". The ORIGINAL remains the only
+  approved identity.
+
+### Readiness for a 1.5–2 s motion shot (RECOMMENDATION)
+
+**Not ready for a usable motion shot; ready for a bounded motion *test* only if the single-hand pose is accepted.**
+Motion will expose exactly the defects a still can hide: the missing camera-left hand must appear or stay
+plausibly hidden through the move, the loose stirrup leather will swing, and the horse-head proportion will read
+in parallax. The cheaper next step is one more still correction under new authorization with a hands/reins
+reference crop (both hands on the reins) and the same forest-v3 lighting language, then a 2 s test from that frame.
+If the hand pose is accepted as a creative choice, a 2 s test from F4 (camera static or a slow push-in, fire flicker
+only, no rider or horse displacement) is the lowest-risk first motion.
