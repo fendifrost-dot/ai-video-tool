@@ -84,6 +84,13 @@ Protocol, prompts, ordered reference IDs, settings, outputs, costs, the blind re
 - Review findings re-examined: R1's monogram-like emblem **did not recur** under "no emblem, badge or monogram
   anywhere"; the camera-relative lighting convention **worked**; the generous first-pass passes are moot (none of
   the four is better than PARTIAL on identity).
+- **Follow-up (13 Oct, under the user's "full authority to execute tests and follow-up runs", within the remaining
+  authorization): arm C = arm B references + an explicit no-jewellery / bare-ears clause (`exp3-v2`), two runs.
+  Second blind reviewer (fresh, new shuffled names, 2× head crops): C1 **bare**, C2 unclear (faint dot), B1 and B2
+  **stud**. Jewellery drift is therefore at least partly a **prompt effect** (weakly supported, n = 2): the explicit
+  negative list worked where "keep her jewellery exactly as in <IMAGE_0>" did not. The two blind reviewers
+  **disagreed on B1 vs B2 identity**, so at this framing identity verdicts are not reliable enough to rank arms;
+  the next test needs a medium shot (face ≥ 15 % of frame) before any further A-vs-B comparison.
 - **Unchanged:** the ORIGINAL `3fce9cb5…` stays `approved` and the only identity authority; every experiment result
   and derivative is `pending` with a "TEST ONLY" / "DERIVATIVE" title; no selection, treatment, wardrobe lock,
   timeline, export or footage was touched.
@@ -95,19 +102,22 @@ Protocol, prompts, ordered reference IDs, settings, outputs, costs, the blind re
 | Authorized for the second brief | $3.00 | — |
 | Committed before this round (upper bound) | $1.13 | unknown (no invoice access) |
 | Remaining before experiment 3 | $1.87 | — |
-| Experiment 3 (4 runs, 0 failures, no extra run) | $1.081344 | unknown (`billed: "unknown"` on all four rows) |
-| **Remaining authorization** | **$0.788656** | — |
+| Experiment 3 arms A/B (4 runs, 0 failures, no extra run) | $1.081344 | unknown (`billed: "unknown"` on all rows) |
+| Experiment 3 arm C follow-up (2 runs, 0 failures; 13 Oct, user-authorized follow-up) | $0.540672 | unknown |
+| **Remaining authorization** | **$0.247984** | — |
 
 No top-ups, no subscription changes. Gmail: no Google billing or reload mail (checked earlier this session).
 
 ## 7. Recommended next production step
 
 **Do not change the production reference arrangement on this evidence.** Keep the ORIGINAL as the sole approved
-identity, keep using the `exp3-v1` prompt conventions that demonstrably helped (no invented age or verbal face
-description; explicit "no emblem, badge or monogram"; camera-relative light direction), and treat identity drift as
-still open. Before any production still is selected from Gemini, run the two follow-ups in the protocol's last
-section under **new** authorization (n = 4 per arm, then the jewellery/age negative control); they are the cheapest
-way to turn "inconclusive" into a decision. Operationally: the storage, durability and streaming fixes are live and
+identity and adopt the prompt conventions that demonstrably helped: no invented age or verbal face description;
+explicit "no emblem, badge or monogram"; camera-relative light direction; and (new) the **explicit no-jewellery /
+bare-ears clause** from `exp3-v2`, which is the one change this round that measurably moved a recurring defect.
+Treat identity drift as still open. Before any production still is selected from Gemini, run the next test in the
+protocol under **new** authorization: a medium-shot framing where the face is large enough for reliable blind
+verdicts, then A vs B at n = 4 per arm with the jewellery clause in both, plus explicit "true black breeches" and
+"plain smooth thin leather gloves" in the treatment text (both drifted in all six images). Operationally: the storage, durability and streaming fixes are live and
 verified, so the next production still can be generated safely; the residuals in §1 (ten open buckets,
 `compose-look-proxy`, invoice reconciliation) are the next security/finance items, not blockers for a still.
 

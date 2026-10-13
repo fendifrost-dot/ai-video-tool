@@ -139,7 +139,52 @@ despite "keep her … age … and jewellery exactly as in <IMAGE_0>", so the ver
 
 **Not a replacement for anything.** The ORIGINAL stays the only identity authority; none of the four is selected.
 
+### Arm C: jewellery negative control (run 13 Oct 2026 under the follow-up authorization)
+
+One variable changed from arm B: prompt `exp3-v2` = `exp3-v1` with jewellery removed from the keep-list and an explicit
+clause added: "She wears no jewellery of any kind: no earrings, no ear studs, no piercings, no necklace, no rings;
+her ears are bare exactly as in <IMAGE_0>." Same arm-B references, same settings. Two runs, 0 failures.
+
+| Run | Job | Asset | thoughts tokens | answer bytes |
+|---|---|---|---|---|
+| C1 | `05a0129b` | `5b0b5fe2` | 745 | 10,849,400 |
+| C2 | `5d28e3b0` | `e87c9468` | 596 | 10,814,804 |
+
+**Second blind review** (a fresh reviewer; B1, B2, C1, C2 under new shuffled names K–N with 2× head crops; mapping
+kept back: K = C1, L = B1, M = B2, N = C2). Face strip: [`faces_ORIGINAL_B1_B2_C1_C2.jpg`](images/experiment_3/faces_ORIGINAL_B1_B2_C1_C2.jpg).
+
+| Run | Ear jewellery (2× crop) | Identity | Treatment / horse / light |
+|---|---|---|---|
+| B1 (L) | **stud** | PASS (narrow oval close to portrait; slightly younger; neutral) | charcoal breeches; textured gloves; no emblem; horse PASS with stray straps; camera-left |
+| B2 (M) | **stud** | PARTIAL (rounder, softer face; faint smile closest to portrait) | same |
+| C1 (K) | **bare** | PARTIAL (face wider/fuller, heavier jaw, broader nose) | same |
+| C2 (N) | **unclear** (faint dot, too small to call) | PASS (narrow oval; brow, eye shape, chin closest) | same |
+
+Second reviewer's identity ranking: **C2 > B1 > B2 > C1**. Common to all four: charcoal breeches, textured gloves,
+a grey/silver sheen on the slicked crown absent from the portrait, a dangling strap under the horse's chin, no
+emblem or lettering anywhere.
+
+### Verdicts
+
+- **Jewellery (H2: the earring is a prompt effect, not a reference effect): SUPPORTED, weakly.** With the explicit
+  clause, C1 is bare and C2 is at worst a faint dot; without it, B1 and B2 both carry a stud. n = 2 per arm; the
+  "unclear" on C2 keeps this short of proven. The verbal "keep her jewellery exactly as in <IMAGE_0>" (exp3-v1)
+  did not work; the explicit negative list did.
+- **Reference competition (H1): still INCONCLUSIVE**, and now with a measured caveat on the method itself: the two
+  blind reviewers **disagreed on B1 vs B2** (first: B2 best of four, B1 worst; second: B1 PASS above B2). At this
+  framing (knee-height camera, 5 m, face about 2 % of the frame) identity verdicts are not reliable enough to rank
+  arms at n = 2. Both reviewers agreed on the stable things: no emblem, camera-left key, horse anatomy, charcoal
+  breeches, non-plain gloves.
+- **Nothing selected; nothing replaced.** The ORIGINAL stays the only identity authority.
+
 ### Recommended next test (RECOMMENDATION, not run; needs new authorization)
+
+Before any further arm comparison, change the test framing: a **medium shot (waist up, face ≥ 15 % of frame)** in
+the same yard, so identity can be judged; then repeat A vs B at n = 4 per arm with the `exp3-v2` jewellery clause
+in both. Separately, add "true black breeches (not charcoal)" and "plain, smooth, unlined thin leather gloves" to
+the treatment text; both drifted in all six images.
+
+_(superseded text below kept for the record)_
 
 Two cheap, single-variable follow-ups, in order: (1) **n = 4 per arm** of the same two arms to see whether the arm
 ranking stabilises (8 runs, conditional estimate $2.16); (2) a **jewellery/age negative control**: arm B with the
