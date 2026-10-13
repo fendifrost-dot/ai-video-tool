@@ -254,3 +254,8 @@ M2 with the expression pinned, through the fixed CC route, which also verifies t
 **Recommendation.** M5 is the candidate 2 s forest shot for Fendi to review; it stays `pending`. To get the horse's
 head in frame, the next still must keep V1's two-hand pose with a wider frame. Five prompt attempts show Gemini does not
 honour "both hands visible" reliably, so generate two or three stills per attempt and choose by looking.
+
+**Director decision, 13 Oct 2026.** Fendi in chat: "M5 looks good to me ... that could definitely work in a chopped
+up clip alongside other clips that tell the whole story." Asset `fed968b9` is now `approval_status = approved`, with
+his words in its notes. It is not placed on any shot or timeline; that placement is the next step. Every other test
+asset stays `pending`.
