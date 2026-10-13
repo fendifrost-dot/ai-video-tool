@@ -302,7 +302,27 @@ No hoops; no confirmed stud.
 - **Nothing selected.** The ORIGINAL stays the only identity authority; no production selection, lock, treatment,
   timeline, export or footage was touched.
 
-### Recommendation
+### Correction (13 Oct 2026, appended; the text above is kept as written)
+
+The verdict above overstated two things and understated one; this correction supersedes it where they differ.
+
+1. **The prespecified criterion was met.** The protocol said H1 is supported "if arm B's images rank above arm A's
+   by both reviewers (e.g. mean rank)". Both did: reviewer 1 B 3.50 vs A 5.50; reviewer 2 B 4.25 vs A 4.75 (lower is
+   better). The individual-image disagreement (ρ = −0.31) limits confidence but does not erase the agreement on arm
+   averages. The defensible statement is **preliminary support for the sole-face arrangement, with substantial
+   uncertainty**: not proof of superiority, and not evidence that references do not matter. "Not supported at a
+   level that justifies a change" and "the reference arrangement is not the dominant variable" were stronger than
+   the evidence; the forest round therefore uses the sole-face arrangement (see below) rather than arm A.
+2. **"Framing moved identity more than references did" was a confound, not a finding.** Between experiment 3 and
+   experiment 4 the framing, camera height (knee → chest), distance (5 m → 2.5 m), lens (50 → 85 mm) and the prompt
+   (jewellery clause, breeches, gloves, straps) all changed together, so the identity improvement cannot be
+   attributed to any one of them. What experiment 4 did establish is improved **visibility for evaluation** (faces
+   large enough to judge); whether identity *generation* improved, and why, is untested.
+3. **"No identity FAIL" was wrong as stated.** Reviewer 1 recorded A1 as "PARTIAL/FAIL: face wider and rounder,
+   noticeably younger"; the table above records it. The accurate statement: no image was an outright FAIL for both
+   reviewers; one (A1) was borderline for reviewer 1.
+
+### Recommendation (original; see the correction above for the arrangement decision)
 
 Stop testing reference arrangement; keep the current one (arm A) in production and spend further effort on the
 things that moved the result: medium or closer framing for identity-critical stills; the `exp4-v1` prompt
@@ -310,3 +330,116 @@ conventions; and, for the lines that verbal prompts could not pin (gloves, strap
 that show exactly those details (a plain-glove crop, a clean-tack crop) rather than more words. Any future
 identity ranking should use ≥ 2 blind reviewers and report their agreement, since a single reviewer's ranking at
 this image count is not reliable.
+
+---
+
+## Forest round: ground-level burning-forest still (protocol written before any paid run, 13 Oct 2026)
+
+Authorization: user, 13 Oct (existing spending authorization; "finish the remaining validation gap … advance toward
+the actual forest scene"). Bounded: 2 candidates, then at most 2 correction runs for a specific defect with a
+plausible remedy; ≤ 4 runs ≈ $1.08 conditional estimate. No animation. Nothing selected.
+
+**Reference arrangement (DECISION, from evidence):** the sole-face arrangement. Experiment 4 met its prespecified
+criterion (both reviewers' mean rank favoured arm B) with substantial uncertainty (ρ = −0.31 on individual images);
+it is the arrangement with the only image both blind reviewers passed on identity (experiment 4 B1). So:
+`<IMAGE_0>` = ORIGINAL `3fce9cb5…` (cast; the only face-bearing reference; the identity authority, unchanged);
+`<IMAGE_1>` = experiment 4 B1 cropped **below the chin** (derivative asset `6ab0db92…`, label `pose_scene_faceless`,
+1856×1843) as the pose / seat / hands / wardrobe / horse-and-tack guide. B1's face is deliberately excluded so B1
+cannot become a second identity anchor.
+
+**Framing:** medium shot as in experiment 4 (the framing under which identity was judgeable), ground level, horse's
+neck and head in frame, flames and burning trunks around: the treatment's forest shot, not a crop that hides the
+horse or the fire.
+
+**Lighting (camera-relative):** the only light is fire. Main fire behind her to camera-right: camera-right side of
+face, shoulder and horse's flank lit warm orange; camera-left in deep shadow with a faint orange rim; no daylight,
+no blue sky.
+
+**Negative list:** no jewellery (bare ears); no emblem, badge, monogram, logo; no lettering; no path or clearing
+shaped like letters or a logo; no loose straps.
+
+Prompt `forest-v1`:
+
+> A real photograph, a medium shot at night at ground level. The woman in <IMAGE_0> sits upright on a black horse
+> that is standing still among tall burning pine trees, seen from a three-quarter front angle. Framing: from the top
+> of the saddle to just above her head, so her face is large and clearly visible, with the horse's neck and head in
+> the lower part of the frame and flames and burning trunks behind and to the sides. Keep her face, head shape,
+> skin tone, age, proportions, hair and makeup exactly as in <IMAGE_0>; do not add, remove or change any of them.
+> She wears no jewellery of any kind: no earrings, no ear studs, no piercings, no necklace, no rings; her ears are
+> bare exactly as in <IMAGE_0>. Her hair is in the same sleek jet-black high ponytail as in <IMAGE_0>. Her seat,
+> posture, hands on the reins, riding outfit and the horse's tack follow <IMAGE_1>: tailored single-breasted black
+> wool riding blazer, crisp white shirt with collar, black breeches, plain thin black leather gloves, a plain black
+> leather bridle with a simple snaffle bit, a plain black leather English saddle, a single pair of plain black reins
+> running unbroken from the bit to her gloved hands, with no loose or dangling straps anywhere; no emblem, badge or
+> monogram. Lighting: the only light is the fire. The main fire is behind her to the camera's right, so the right
+> side of her face, her right shoulder and the horse's right flank (camera-right) are lit warm orange and the
+> camera-left side falls into deep shadow with only a faint orange rim; firelight flickers on the horse's glossy
+> coat; embers and thin smoke drift through the air; the sky is black. No daylight, no blue sky, no studio light.
+> The forest floor is bare earth and ash with scattered embers; no path, no clearing, no shape resembling letters
+> or a logo. Camera at her chest height, 2.5 metres away, 85mm lens, true-to-life colour. Real skin texture, real
+> horse coat, real fire. Correct human and horse anatomy; two hands with five fingers each. One rider, one horse;
+> she looks toward the camera with a calm, composed expression; the horse is alert with its ears forward. No text,
+> lettering, logo or watermark.
+
+Settings: `gemini-nano-banana-2.1`, 2K, 4:5, n = 1, `maxCostUsd 0.28`. Evaluation: my own full-resolution inspection
+against the requirements, then two blind reviewers on all candidates (identity vs ORIGINAL; jewellery; wardrobe;
+horse/tack/hands/posture; firelight direction and physical coherence; lettering/logo shapes; composition), then a
+recommendation on readiness for a 1.5–2 s motion shot.
+
+### Results
+
+**RUN COMPLETE**: 2 candidates + 2 bounded corrections = 4 paid runs, 0 technical failures; the correction cycle is
+exhausted. Record: [`data/forest_round_jobs.json`](data/forest_round_jobs.json). Images: [`images/forest/`](images/forest/)
+([contact sheet](images/forest/contact_sheet_forest.jpg), [face strip](images/forest/faces_ORIGINAL_F1-F4.jpg)).
+
+| Run | Prompt | Job | Asset | Change from the previous run | My full-resolution inspection |
+|---|---|---|---|---|---|
+| F1 | forest-v1 | `b027644a` | `b09123d1` | — | identity close; ears bare; plain gloves; no lettering; horse muzzle cropped at the right edge; face lit frontally, not from the camera-right fire |
+| F2 | forest-v1 | `fd7717dd` | `a61c1cec` | second sample | identity close; full horse head; face brighter on camera-LEFT (wrong side); one hand visible |
+| F3 | forest-v2 | `27f5bdcd` | `18589938` | fire placed in frame at the camera-right edge | fire now in frame right; face still frontal; framing drifted to the full horse and boots |
+| F4 | forest-v3 | `e19696e8` | `5cea3af9` | the face itself described as half-lit; saddle-to-head framing restated | tight medium frame as specified; visible warm/dark split across the face; ears bare; one hand hidden behind the horse's neck |
+
+Spend: 4 × $0.270336 = **$1.081344** conditional estimate; usage-based ≈ **$0.37**; verified: unknown.
+
+**Two blind reviewers** (shuffled names A–D with face and hands/tack crops; mapping withheld: A = F1, B = F2, C = F4,
+D = F3). Reviewer 1: free verdicts and a usability ranking. Reviewer 2 ("demanding cinematographer"): six scores /30.
+
+| Run | Reviewer 1 identity · firelight · notes | Reviewer 2 /30 · main defect | Ears (R1 / R2) | Logo-like shapes |
+|---|---|---|---|---|
+| F1 (A) | PARTIAL (wider, flatter, lighter) · PARTLY (frontal fill) · muzzle cropped, reins routed under the flap, **two hands** | 23 · muzzle and bit cropped off the right edge | bare / bare (one ear hidden) | none |
+| F2 (B) | PASS minor (nose a touch broader) · PARTLY (strong frontal fill) · one hand; loose stirrup leather, no iron | 22 · face evenly front-filled and cooler than the surroundings | bare / bare | none |
+| F3 (D) | PARTIAL (face small, rounder) · partly-to-coherent · one hand; extra strap loops | 21 · full-length framing, face small; empty far stirrup; long loose strap | hidden / hidden (unclear) | none |
+| F4 (C) | **PASS** (closest: face length, cheekbones, brow line, eyes, lips, expression) · **COHERENT** (face brighter on the fire side, minimal fill) · one hand; loose stirrup leather with buckle | **25** · only one hand visible; horse head oversized and turned to camera; rider seated far back | bare / bare (other ear hidden) | none |
+
+Rankings: reviewer 1 **F4 > F2 > F3 > F1**; reviewer 2 **F4 > F1 > F2 > F3**. Both put F4 first and both call it the
+only candidate for a motion test; they disagree on F1 (last vs second). Both report no emblem, lettering, logo-like
+clearing or path in any image, bare ears wherever an ear is visible (one ear hidden by hair in every image, so the
+other side is unverified), no daylight or blue, photographic realism acceptable (reviewer 1: fire layers in F1
+read slightly composited).
+
+### Verdict
+
+- **F4 is the forest-scene candidate**: both blind reviewers independently rank it first, pass its identity against
+  the ORIGINAL, and call its firelight physically coherent (fire in frame camera-right; camera-right half of the face
+  brighter). Wardrobe and tack are clean; no jewellery on the visible ear; no logo-shaped ground feature.
+- **Unresolved defects in F4, stated plainly:** only one hand is visible (the camera-left hand is hidden behind the
+  horse's neck; both reviewers flag it; F1 is the only image with two hands); a loose stirrup leather with a buckle
+  (reviewer 1); horse head oversized and the rider seated far back (reviewer 2); one ear unverifiable. "Both hands
+  visible" was in the prompt twice (v2, v3) and was not honoured, so a verbal fix is unlikely to work; a hands/reins
+  reference crop is the plausible remedy.
+- **Lighting lesson:** placing the light source (v1, v2) did not light the face; describing the face's own
+  light/shadow split (v3) did. Record for future prompts.
+- The reference arrangement (ORIGINAL as the only face-bearing reference + B1 cropped faceless as the pose guide)
+  held identity in all four at this framing; B1 did not become an identity anchor (its face was never sent).
+- **Nothing is selected; nothing is animated.** All four are `pending`, "TEST ONLY". The ORIGINAL remains the only
+  approved identity.
+
+### Readiness for a 1.5–2 s motion shot (RECOMMENDATION)
+
+**Not ready for a usable motion shot; ready for a bounded motion *test* only if the single-hand pose is accepted.**
+Motion will expose exactly the defects a still can hide: the missing camera-left hand must appear or stay
+plausibly hidden through the move, the loose stirrup leather will swing, and the horse-head proportion will read
+in parallax. The cheaper next step is one more still correction under new authorization with a hands/reins
+reference crop (both hands on the reins) and the same forest-v3 lighting language, then a 2 s test from that frame.
+If the hand pose is accepted as a creative choice, a 2 s test from F4 (camera static or a slow push-in, fire flicker
+only, no rider or horse displacement) is the lowest-risk first motion.

@@ -117,6 +117,52 @@ Protocol, prompts, ordered reference IDs, settings, outputs, costs, the blind re
 
 No top-ups, no subscription changes. Gmail: no Google billing or reload mail (checked earlier this session).
 
+## 6a. Corrections and reconciliation (13 Oct 2026, appended; the sections above are kept as written)
+
+**Probe claim.** §4 said the live proxy probe was "11/11 expected"; the committed file
+`data/proxy_probe_2026-10-12.json` has one `pass: false`. Cause: an **expectation mismatch in the script**, not a
+functional defect. The sam3 route maps a missing object to its historic code `scene_sign_failed` (404), while the
+script expected `storage_object_not_found`; the ownership gate had passed in both cases (own folder) and no provider
+call was made. The script was corrected after that run but the JSON was not regenerated. Re-run 13 Oct with the
+corrected expectation against the same deployed functions: `data/proxy_probe_2026-10-13.json`, **11/11**. The
+12 Oct file is kept as the record of the mismatch.
+
+**Spend, three distinct figures (none is verified billing):**
+
+| Figure | USD | Basis |
+|---|---|---|
+| Conditional estimate, the 14 runs of this round (experiments 3, 3C, 4) | **3.785** | 14 × $0.270336, holds only if billed output ≤ 8,192 tokens per run |
+| Conditional estimate incl. the earlier rounds' committed upper bound ($1.13) | **4.915** | as above, plus prior rounds |
+| **Usage-based estimate**, the same 14 runs | **1.274** | prompt tokens × $1.50/M + (candidates + thoughts) × $30/M from Google's returned usage; how Google prices thinking tokens for this model is unverified ([`data/usage_based_spend_round3.json`](../review/gemini_2026-10-12/data/usage_based_spend_round3.json)) |
+| Verified charges | **unknown** | no invoice access; every row says `billed: "unknown"` |
+
+The forest round (13 Oct) adds up to 4 runs on top of these; its figures are in `data/forest_round_jobs.json`.
+
+**Experiment 4 interpretation** corrected in the protocol ("Correction (13 Oct 2026)"): the prespecified criterion
+was met by both reviewers' mean ranks (B 3.50 vs A 5.50; B 4.25 vs A 4.75), so the defensible description is
+**preliminary support for the sole-face arrangement with substantial uncertainty**, not "not supported"; the
+identity improvement between experiments 3 and 4 cannot be attributed to framing alone (camera height, distance,
+lens and prompt changed together; what improved for certain is evaluability); and reviewer 1 recorded A1 as
+PARTIAL/FAIL, so "no identity FAIL" is corrected to "no image failed for both reviewers".
+
+**Image validation gap (§1 row "decodeImage").** The 512-byte floor plus magic/trailer checks accepted a 512-byte
+file of a JPEG SOI/EOI pair (reproduced 13 Oct, `bytes 512, trailerOk true`). Fixed in CC #63: a real, bounded
+pixel decode (`imageDecode.ts`), with the paid bytes still returned and the result saying **received-and-stored vs
+decoded-and-usable** (`imageUsable`, `imageDecodeReason`); AVT files a not-usable still with a `NOT USABLE` note,
+`metadata.usable: false`, `stages.decode: not_usable`. Live state after deploy is recorded in §3.
+
+## 6b. Forest round (13 Oct 2026, appended)
+
+Protocol, prompts (forest-v1/v2/v3), ordered references, settings, both blind reviews, the verdict and the motion
+recommendation are in the protocol file's "Forest round" section. Summary: 4 runs, 0 failures ($1.08 conditional,
+≈ $0.37 usage-based, verified unknown). Reference arrangement: ORIGINAL as the only face-bearing reference +
+experiment 4 B1 cropped **below the chin** (asset `6ab0db92…`) as the pose/wardrobe/horse guide, chosen on experiment
+4's preliminary support; B1's face was never sent. **F4** (asset `5cea3af9…`) is ranked first by both blind reviewers
+(identity PASS, firelight coherent, clean wardrobe, bare ear, no logo-shaped ground). Unresolved in F4: one visible
+hand, a loose stirrup leather, horse-head proportion, one ear hidden. **Not ready for a usable motion shot**; a
+bounded 2 s motion *test* is defensible only if the single-hand pose is accepted; otherwise one more still correction
+with a hands/reins reference crop first. Nothing selected or animated.
+
 ## 7. Recommended next production step
 
 **Keep the current reference arrangement (arm A) and stop testing it**: 14 paid comparisons across experiments 3

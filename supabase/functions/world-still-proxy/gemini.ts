@@ -71,7 +71,7 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
   let result: Record<string, unknown> = { ok: false, billed: false };
   let submitted = false;
   // Which step each outcome belongs to; a failure after generation never reads as "nothing was generated".
-  const stages: Record<string, string> = { generation: "not_started", upload: "not_started", filing: "not_started", finalize: "not_started" };
+  const stages: Record<string, string> = { generation: "not_started", upload: "not_started", filing: "not_started", decode: "unknown", finalize: "not_started" };
   let submittedAt: string | null = null;
   try {
     const references: { url: string; label: string; role: string }[] = [];
@@ -105,7 +105,12 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
       if (!Array.isArray(images) || images.length !== 1) throw new Error("invalid_gemini_result");
       const image = images[0] as { data?: string; mimeType?: string };
       if (typeof image.data !== "string" || image.data.length > 12 * 1024 * 1024 || !["image/png", "image/jpeg", "image/webp"].includes(image.mimeType ?? "")) throw new Error("invalid_gemini_result");
-      const binary = atob(image.data); const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+      // Not Uint8Array.from(str, mapFn): that form materialises every character (+256 MB measured at 8 MB of image).
+      // deno-lint-ignore no-explicit-any
+      const native = (Uint8Array as any).fromBase64 as ((s: string) => Uint8Array) | undefined;
+      let bytes: Uint8Array;
+      if (typeof native === "function") bytes = native.call(Uint8Array, image.data);
+      else { const binary = atob(image.data); bytes = new Uint8Array(binary.length); for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i); }
       const filed = await deps.file({ bytes, mime: image.mimeType!, extraMeta: { ...evidence, prompt: input.prompt, actual_cost_usd: null, references: sentRefs, job_id: job.id, variation_id: job.variation_id ?? null, route: "gemini:generateContent" } });
       if ("error" in filed) {
         // Stored but not recorded is recoverable from its path (see recoverGeminiJob); not stored is lost.
@@ -117,6 +122,10 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
         throw new Error("asset_filing_failed");
       }
       stages.upload = "succeeded"; stages.filing = "succeeded";
+      // CC's real decode verdict (imageUsable) rides along in `evidence`; name it as a stage so a stored-but-unusable
+      // still is never read as a success at a glance.
+      stages.decode = evidence.imageUsable === true ? "usable" : evidence.imageUsable === false ? "not_usable" : "unknown";
+      result.imageUsable = evidence.imageUsable ?? null;
       result.stills = [filed];
     }
   } catch (e) {
@@ -132,7 +141,9 @@ export async function geminiStill(input: Input, deps: Dependencies): Promise<Rec
   // from the intent marker is kept for provenance (the result payload otherwise replaces it).
   recorded.stages = { ...stages, finalize: "succeeded" };
   if (submittedAt) recorded.submittedAt = submittedAt;
-  const finalRow = { status: result.ok ? "succeeded" : "failed", response_payload_json: recorded, result_asset_id: first?.assetId ?? null, finalized_at: new Date().toISOString(), progress_note: null, error_text: result.ok ? null : [result.error ?? result.errorCode ?? "gemini_failed", result.ccPlatformCode, result.recoverableImagePath ? `image stored at ${result.recoverableImagePath}` : result.error === "asset_filing_failed" ? "image lost: upload failed" : null].filter(Boolean).join("; ") };
+  // A stored-but-unusable still keeps status succeeded (the paid result exists) but says so where job lists look.
+  const notUsableNote = result.ok && result.imageUsable === false ? `image_not_usable (${String((result as Record<string, unknown>).imageDecodeReason ?? "decode failed")}): stored, not decodable; review before use` : null;
+  const finalRow = { status: result.ok ? "succeeded" : "failed", response_payload_json: recorded, result_asset_id: first?.assetId ?? null, finalized_at: new Date().toISOString(), progress_note: notUsableNote, error_text: result.ok ? notUsableNote : [result.error ?? result.errorCode ?? "gemini_failed", result.ccPlatformCode, result.recoverableImagePath ? `image stored at ${result.recoverableImagePath}` : result.error === "asset_filing_failed" ? "image lost: upload failed" : null].filter(Boolean).join("; ") };
   // Finalization is retried once; a job left "running" after a filed image is the worst outcome short of loss.
   let finishError: unknown = null;
   for (let attempt = 0; attempt < 2; attempt++) {

@@ -74,6 +74,14 @@ describe("mocked integration: Gemini job ownership and result filing", () => {
       expect(d.call).not.toHaveBeenCalled(); expect(d.sign).not.toHaveBeenCalled();
     }
   });
+  it("a still Control Center could not decode is filed (it may be paid for) but marked not usable, never a plain success", async () => {
+    const d = deps(); d.call.mockResolvedValueOnce({ httpStatus: 200, payload: { ok: true, model: GEMINI_MODEL, actualCostUsd: null, usage: { promptTokenCount: 1 }, imageUsable: false, imageDecoded: false, imageDecodeReason: "decode_failed", images: [{ data: "iVBORw0KGgoAAAAAAQ==", mimeType: "image/png" }] } } as never);
+    const result = await geminiStill(input, d);
+    expect(result).toMatchObject({ ok: true, imageUsable: false, stages: { filing: "succeeded", decode: "not_usable", finalize: "succeeded" } });
+    expect(d.file.mock.calls[0][0].extraMeta).toMatchObject({ imageUsable: false, imageDecodeReason: "decode_failed" });
+    expect(d.row).toMatchObject({ status: "succeeded", error_text: expect.stringContaining("image_not_usable (decode_failed)"), progress_note: expect.stringContaining("image_not_usable") });
+    const e = deps(); expect(await geminiStill(input, e)).toMatchObject({ stages: { decode: "unknown" } }); // older CC without the verdict
+  });
   it("records submission intent on the row before the billable call, and a failed intent write sends nothing", async () => {
     const d = deps(); let seenAtCall: unknown = null;
     d.call.mockImplementationOnce(async () => { seenAtCall = JSON.parse(JSON.stringify(d.row.response_payload_json)); return { httpStatus: 200, payload: { ok: true, model: GEMINI_MODEL, actualCostUsd: null, usage: { promptTokenCount: 0 }, images: [{ data: "iVBORw0KGgoAAAAAAQ==", mimeType: "image/png" }] } }; });
