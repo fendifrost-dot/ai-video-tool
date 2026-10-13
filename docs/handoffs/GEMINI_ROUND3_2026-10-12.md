@@ -234,3 +234,23 @@ so these rankings are relative to the set shown.
 
 **Readiness.** The still-to-motion pipeline works end to end. M1 is not a usable shot (smile, one hand). Next run:
 M2 with the expression pinned, through the fixed CC route, which also verifies the deploy.
+
+**Follow-up runs, same morning (appended after the paragraph above).**
+
+| Clip | Source still | Change from the previous clip | Result |
+|---|---|---|---|
+| M2 `6684495c` | F5 | expression pinned | smile gone; one hand (from F5) |
+| M3 `40ebdd47` | F5 | slow push-in; **CC route after the PR #66 redeploy** | smooth push-in; CC route verified live; one hand |
+| M4 `70a1a9ea` | V1 | source still only | **two hands**, best identity; a glowing ember settles on the lapel and stays |
+| M5 `fed968b9` | V1 | embers kept off the clothes | **lapel clean**; meets every requirement tested; horse head never in frame; faint smile at the blink |
+
+- CC `video-providers-grok-generate` redeployed by Lovable at 05:40:33 UTC (source_sha256 `2d59c809…`). M3 to M5 went
+  through it and through `ingest-provider-job`.
+- Each clip billed $0.142 by xAI usage ticks; five clips total **$0.71**. CC's 60-cent figure is a placeholder.
+- **Pipeline gap:** `ingest-provider-job` files clips with no cost, prompt or source still in metadata, and leaves
+  `provider_jobs.finalized_at` null. Notes and `finalized_at` were set by hand here. `grok-broll-proxy` records all of it.
+- Repeatable recipe: `docs/handoffs/FOREST_STILL_TO_MOTION_RECIPE_2026-10-13.md`.
+
+**Recommendation.** M5 is the candidate 2 s forest shot for Fendi to review; it stays `pending`. To get the horse's
+head in frame, the next still must keep V1's two-hand pose with a wider frame. Five prompt attempts show Gemini does not
+honour "both hands visible" reliably, so generate two or three stills per attempt and choose by looking.
