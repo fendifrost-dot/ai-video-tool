@@ -190,3 +190,123 @@ Two cheap, single-variable follow-ups, in order: (1) **n = 4 per arm** of the sa
 ranking stabilises (8 runs, conditional estimate $2.16); (2) a **jewellery/age negative control**: arm B with the
 explicit negative "no earrings, no piercings, no jewellery of any kind" and the ORIGINAL duplicated as `<IMAGE_0>`
 and `<IMAGE_3>` (identity weight), to test whether the earring is a reference effect or a prompt effect.
+
+---
+
+## Experiment 4: medium-shot framing, A vs B at n = 4 (protocol written before any paid run, 13 Oct 2026)
+
+Authorization: user, 13 Oct ("full authority to execute any tests and follow up runs"; "there should be more than
+enough in Gemini"). Planned spend: 8 runs × $0.270336 conditional estimate = **$2.162688**. Stop rule: max 8 paid
+runs plus 1 only for a technical failure; stop early if two consecutive technical failures.
+
+**Why:** experiment 3's blind reviewers disagreed on identity at knee-height framing (face ≈ 2 % of frame). This
+test changes the framing so identity can be judged, and keeps everything that demonstrably helped.
+
+| Fixed in both arms | Value |
+|---|---|
+| Framing | medium shot: saddle to just above her head, face large; horse's neck and head in the lower frame |
+| Camera | chest height, 2.5 m, 85 mm; three-quarter front; 2K, 4:5, n = 1 |
+| Prompt | `exp4-v1` (below): `exp3-v2` jewellery clause; explicit "true black breeches (not grey, not charcoal)"; "plain smooth thin black leather gloves"; "no loose or dangling straps"; no invented age, no verbal face description; camera-left key |
+| Identity authority | ORIGINAL `3fce9cb5…` as `<IMAGE_0>`, unchanged |
+| Varies | **Arm A**: `<IMAGE_1>` R1 full `3eee45de`, `<IMAGE_2>` C2 full `a1b2ced9` · **Arm B**: `<IMAGE_1>` outfit_faceless `51f1ca23`, `<IMAGE_2>` horse_tack_faceless `635123bb` |
+| Order | A1 B1 A2 B2 A3 B3 A4 B4 |
+
+Prompt `exp4-v1`:
+
+> A real photograph, a medium shot. The woman in <IMAGE_0> sits on a black horse that is standing still, seen from a
+> three-quarter front angle. Framing: from the top of the saddle to just above her head, so her face is large and
+> clearly visible, with the horse's neck and head in the lower part of the frame. Keep her face, head shape, skin
+> tone, age, proportions, hair and makeup exactly as in <IMAGE_0>; do not add, remove or change any of them. She
+> wears no jewellery of any kind: no earrings, no ear studs, no piercings, no necklace, no rings; her ears are bare
+> exactly as in <IMAGE_0>. Her hair is in the same sleek jet-black high ponytail as in <IMAGE_0>. She wears exactly
+> the riding outfit shown in <IMAGE_1>: tailored single-breasted black wool riding blazer, crisp white shirt with
+> collar, true black breeches (not grey, not charcoal), plain smooth thin black leather gloves with no texture,
+> ribbing or padding, and tall polished black leather riding boots; no emblem, badge or monogram anywhere. The
+> horse and its tack follow <IMAGE_2>: a real black horse with a glossy coat, a plain black leather bridle with a
+> simple snaffle bit, a plain black leather English saddle; a single pair of plain black reins running unbroken
+> from the bit to her gloved hands, with no loose or dangling straps anywhere. She sits upright and looks toward
+> the camera with a calm, composed expression. Gravel stable yard with brick buildings behind, softly out of
+> focus. Soft overcast daylight; the main light comes from the camera's left, so the left side of her face
+> (camera-left) is slightly brighter than the right. Camera at her chest height, 2.5 metres away, 85mm lens,
+> true-to-life colour. Real skin texture, real horse coat. Correct human and horse anatomy; two hands with five
+> fingers each. Plain unbranded tack and clothing. One rider, one horse. No text, lettering, logo or watermark.
+
+**Evaluation:** two independent blind reviewers, each seeing the ORIGINAL and all eight under shuffled neutral
+names with face crops; identity verdict and ranking; ear jewellery literal reading; treatment (breeches colour,
+gloves); inter-rater agreement reported. H1 supported if arm B's images rank above arm A's by both reviewers
+(e.g. mean rank), refuted if the reverse by both, otherwise inconclusive. Nothing is selected for production from
+this test.
+
+### Results
+
+**RUN COMPLETE**: 8 paid runs, 0 technical failures, no extra run. Raw record:
+[`data/experiment_4_jobs.json`](data/experiment_4_jobs.json). Images: [`images/experiment_4/`](images/experiment_4/)
+([contact sheet](images/experiment_4/contact_sheet_experiment_4.jpg), [face strip](images/experiment_4/faces_ORIGINAL_A1-4_B1-4.jpg)).
+Framing came out as specified (face ≈ 15–20 % of frame). Spend: 8 × $0.270336 = **$2.162688** (conditional estimate;
+verified charges unknown). All eight `pending`, "TEST ONLY"; nothing selected.
+
+| Run | Job | Asset | thoughts | answer bytes | | Run | Job | Asset | thoughts | answer bytes |
+|---|---|---|---|---|---|---|---|---|---|---|
+| A1 | `9976224d` | `9db78236` | 881 | 11.3 MB | | B1 | `cf0d79a5` | `7ed58453` | 642 | 10.0 MB |
+| A2 | `78b9f919` | `e9b5a1f9` | 377 | 9.8 MB | | B2 | `686b7ab8` | `b2dd09f7` | 1,250 | 9.5 MB |
+| A3 | `4282d977` | `26bf35d6` | 435 | 10.1 MB | | B3 | `83da6ad4` | `db0d2284` | 540 | 9.9 MB |
+| A4 | `ba35cd9b` | `ad3a157b` | 509 | 9.7 MB | | B4 | `257ef649` | `5a00fbbe` | 602 | 9.8 MB |
+
+**Two blind reviewers**, each given the ORIGINAL and the eight under shuffled names P–W with face and torso crops
+(mapping withheld: P=A2, Q=A3, R=A4, S=A1, T=B1, U=B3, V=B4, W=B2). Reviewer 1 used free verdicts and a ranking;
+reviewer 2 scored five sub-scales out of 25 in reverse order.
+
+| Run | Reviewer 1 identity | R1 rank | Reviewer 2 identity (/25) | R2 rank | Ears (R1 / R2) | Breeches (R1 / R2) |
+|---|---|---|---|---|---|---|
+| A1 | PARTIAL/FAIL: wider, rounder, younger | 8 | PARTIAL 20 | 5 | bare / unclear+bare | charcoal / true black |
+| A2 | PARTIAL: narrower, younger, flatter eyes | 6 | PARTIAL 20 | 7 | unclear+bare / possible stud+bare | charcoal / true black |
+| A3 | PARTIAL: broad forehead, close-set eyes, harder | 7 | **PASS 21**, closest jaw/cheekbones | 1 | bare / possible stud+bare | charcoal / charcoal |
+| A4 | **PASS**: closest geometry, lips, brows, expression | 1 | PARTIAL 20 | 6 | unclear+bare / possible stud+unclear | charcoal / true black |
+| B1 | **PASS**: jaw, lips, smile close | 3 | **PASS 21** | 2 | bare / unclear+bare | charcoal / charcoal |
+| B2 | PARTIAL: rounder, wider; **button emblems → FAIL** | 4 | PARTIAL 20; buttons "faint, unclear" | 3 | bare / bare | near-black / true black |
+| B3 | PARTIAL: rounder, younger | 5 | PARTIAL 20 | 4 | bare / bare+possible stud | charcoal / true black |
+| B4 | **PASS**: eyes, nose closest | 2 | PARTIAL 19: longer, cooler | 8 | unclear / possible stud+bare | charcoal / true black |
+
+Agreement and arm means:
+
+| | Reviewer 1 | Reviewer 2 |
+|---|---|---|
+| Mean rank, arm A | 5.50 | 4.75 |
+| Mean rank, arm B | 3.50 | 4.25 |
+| PASS verdicts | A4, B1, B4 | A3, B1 |
+| Spearman ρ between reviewers' rankings | **−0.31** (no agreement) | |
+| Average rank across both | B1 2.5 · A4 3.5 · B2 3.5 · A3 4.0 · B3 4.5 · B4 5.0 · A1 6.5 · A2 6.5 | |
+
+Common to all eight by both reviewers: textured/quilted gloves (the "plain smooth thin leather" line failed 8/8);
+a loose or dangling strap or stirrup leather (the "no loose or dangling straps" line failed 8/8); a grey/silver sheen
+at the ponytail base (the "jet-black" line failed in most); camera-left key held 8/8; no readable logo or lettering
+(B2's embossed buttons: FAIL for reviewer 1, "unclear" for reviewer 2). Breeches colour: the reviewers disagree
+(charcoal 7/8 vs true black 6/8), so that line is unresolved. Ear jewellery with the explicit clause in both arms:
+reviewer 1 clearly bare 5/8, unclear 3/8; reviewer 2 free 3/8, "possible stud" 5/8 flagged as unconfirmable dots.
+No hoops; no confirmed stud.
+
+### Verdict
+
+- **H1 (sole-face references beat the current arrangement): NOT SUPPORTED at a level that justifies a change.**
+  Both reviewers' mean ranks lean toward arm B (3.5 vs 5.5; 4.25 vs 4.75), but the two rankings have ρ = −0.31:
+  reviewer 1's best image (A4) is reviewer 2's sixth, reviewer 2's best (A3) is reviewer 1's seventh, and B4 is 2nd
+  vs 8th. The between-arm difference is smaller than the between-reviewer disagreement, so the lean is not a
+  finding. Combined with experiment 3, the reference arrangement is **not the dominant variable** at this scale.
+- **What the medium framing did establish (both reviewers independently):** all eight read as the same woman
+  (no identity FAIL from either reviewer; 2–3 PASS each), where the knee-height framing produced none better than
+  PARTIAL. Framing and face size move identity more than reference arrangement does.
+- **Prompt lines that worked:** no emblem/monogram (7/8 clean; B2's buttons disputed), camera-left key (8/8),
+  explicit no-jewellery clause (no confirmed stud in 8; residual ambiguous dots).
+- **Prompt lines that did not work** (verbal instruction insufficient): plain smooth gloves (0/8), no loose straps
+  (0/8), jet-black ponytail base (grey sheen in most), and possibly true-black breeches (disputed).
+- **Nothing selected.** The ORIGINAL stays the only identity authority; no production selection, lock, treatment,
+  timeline, export or footage was touched.
+
+### Recommendation
+
+Stop testing reference arrangement; keep the current one (arm A) in production and spend further effort on the
+things that moved the result: medium or closer framing for identity-critical stills; the `exp4-v1` prompt
+conventions; and, for the lines that verbal prompts could not pin (gloves, straps, hair sheen), reference images
+that show exactly those details (a plain-glove crop, a clean-tack crop) rather than more words. Any future
+identity ranking should use ≥ 2 blind reviewers and report their agreement, since a single reviewer's ranking at
+this image count is not reliable.
