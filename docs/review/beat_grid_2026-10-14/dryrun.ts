@@ -1,6 +1,7 @@
+// Usage (from the repo root): npx tsx docs/review/beat_grid_2026-10-14/dryrun.ts <dir with song/mono48k.f32 and song/analysis_row_v1.json>
 import { readFileSync, writeFileSync } from "node:fs";
-import { analyzeBeatGrid, projectBeats } from "/home/user/ai-video-tool/src/lib/songAnalysis/analyzer";
-import { buildClipGrid } from "/home/user/ai-video-tool/src/lib/treatment/grid";
+import { analyzeBeatGrid, projectBeats } from "../../../src/lib/songAnalysis/analyzer";
+import { buildClipGrid } from "../../../src/lib/treatment/grid";
 const S = process.argv[2];
 const buf = readFileSync(`${S}/song/mono48k.f32`);
 const mono = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);

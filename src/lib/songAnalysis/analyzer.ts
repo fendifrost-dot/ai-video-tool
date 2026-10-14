@@ -348,6 +348,7 @@ export function projectBeats(
   firstBeat: number = 0,
   _downbeat: number = 0,
 ): BeatMarker[] {
+  if (!(bpm >= 30 && bpm <= 300) || !Number.isFinite(durationSeconds) || !Number.isFinite(firstBeat) || firstBeat < 0) return [];
   const period = 60 / bpm;
   const out: BeatMarker[] = [];
   // pickup beats before the first downbeat
