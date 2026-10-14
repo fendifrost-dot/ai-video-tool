@@ -181,10 +181,10 @@ function trustedLineStarts(lyrics: readonly GridLyricLine[] | null | undefined):
 export function buildClipGrid(opts: BuildGridOptions): GridClip[] {
   if ((opts.pace ?? DEFAULT_PACE) === "cinematic") return buildCinematicGrid(opts);
   const fast = buildFastGrid(opts);
-  // a song too long to cut fast inside the writer's shot ceiling (over ~5 min) is cut at the cinematic pace rather
-  // than left uncovered at the end
+  // a song too long to cut fast inside the writer's shot ceiling (over ~5 min) is cut at the cinematic pace, which
+  // covers up to ~10 min (past that, as before this pace existed, the cut stops at the ceiling)
   const duration = opts.analysis?.duration_seconds ?? opts.durationSeconds ?? 0;
-  if (fast.length > 0 && fast[fast.length - 1].end < duration) return buildCinematicGrid(opts);
+  if (fast.length > 0 && fast[fast.length - 1].end < round2(duration)) return buildCinematicGrid(opts);
   return fast;
 }
 
@@ -199,7 +199,7 @@ function buildFastGrid({ analysis, durationSeconds, lyrics }: BuildGridOptions):
   const bpm = analysis?.bpm ?? null;
   const energyAt = makeEnergyLookup(analysis);
   const { lo, hi } = energyThresholds(analysis);
-  const drops = analysis?.drops_json ?? [];
+  const drops = Array.isArray(analysis?.drops_json) ? analysis!.drops_json : [];
   const lattice = bpm && bpm > 0 ? beatLattice(analysis, bpm, duration) : null;
   const downbeatTimes = lattice ? lattice.downbeats.map((i) => lattice.beats[i]) : [];
   const lineStarts = lattice ? trustedLineStarts(lyrics) : [];
@@ -264,7 +264,7 @@ function buildCinematicGrid({ analysis, durationSeconds, lyrics }: BuildGridOpti
   const bpm = analysis?.bpm ?? null;
   const energyAt = makeEnergyLookup(analysis);
   const { lo, hi } = energyThresholds(analysis);
-  const drops = analysis?.drops_json ?? [];
+  const drops = Array.isArray(analysis?.drops_json) ? analysis!.drops_json : [];
   // a tempo outside 30–300 BPM gets no lattice and falls back to fixed-seconds clips (v1 did the same above 300)
   const lattice = bpm && bpm > 0 ? beatLattice(analysis, bpm, duration) : null;
   const barSec = lattice ? lattice.beatSec * 4 : null; // assume 4/4

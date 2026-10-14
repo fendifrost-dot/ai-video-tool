@@ -223,6 +223,13 @@ describe("buildClipGrid — fast pace (the default)", () => {
     expect(Math.abs(moved!.end - lineStart)).toBeLessThanOrEqual(beatSec / 2 + 0.01);
   });
 
+  it("stays fast on a real song length (not a whole number of hundredths)", () => {
+    const a = analysis({ bpm: 121.998, duration_seconds: 201.8743125, beat_map_json: projectBeats(121.998, 201.8743125, 0.029) });
+    const g = buildClipGrid({ analysis: a });
+    expect(g.length).toBeGreaterThan(80);
+    expect(g[g.length - 1].end).toBe(201.87);
+  });
+
   it("falls back to seconds without a beat, and stays under the writer's shot ceiling", () => {
     const g = buildClipGrid({ durationSeconds: 30 });
     expect(g.length).toBeGreaterThan(8);
