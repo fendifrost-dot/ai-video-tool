@@ -64,6 +64,32 @@ describe("planConformToBeats", () => {
     }
   });
 
+  it("is idempotent after a rebase even with a pickup beat at 0:00 and a kept edge", () => {
+    const pickupMap = measuredBeatMap({ analysis_provider: "web-audio-builtin-v2", beat_map_json: projectBeats(121.998, DURATION, 0.492) })!;
+    expect(pickupMap.firstDownbeat).toBe(1);
+    const spec = parseShotSpec({ id: "c005", purpose: "x", shotType: "b_roll", kind: "broll", timeline: { start: board[4].start, end: board[4].end }, events: [{ id: "e1", at: 1, action: "flash", trigger: { kind: "beat", ref: "2" } }] });
+    const w = boxWrite({ key: "c005", start: board[4].start, end: board[4].end, section: "verse", generated: spec, override: null, locked: false, origin: "treatment", history: [] });
+    const withBeat = board.map((b, i) => (i === 4 ? boxFromRow({ id: b.id, project_id: "p1", shot_number: 5, ...w, updated_at: AT } as BoxRow)! : b));
+    const run1 = planConformToBeats(withBeat, pickupMap, DURATION, AT);
+    const after = new Map(run1.updates.map((u) => [u.id, u]));
+    const conformed = withBeat.map((b) => {
+      const u = after.get(b.id);
+      if (!u) return b;
+      const sp = parseShotSpec({ ...b.generated, timeline: { start: u.start, end: u.end } });
+      const ww = boxWrite({ key: b.key, start: u.start, end: u.end, section: b.section, generated: sp, override: null, locked: false, origin: b.origin, history: u.history });
+      return boxFromRow({ id: b.id, project_id: "p1", shot_number: 1, ...ww, updated_at: AT } as BoxRow)!;
+    });
+    expect(planConformToBeats(conformed, pickupMap, DURATION, AT).updates).toEqual([]);
+  });
+
+  it("a hand board on round seconds takes the nearest beat for every edge (no half-rebased board)", () => {
+    const secs = [0, 4, 8, 12, 16, 20, 25, 30, 36, 40, 46, 52, 58, 64, 70, 76, 82, 90, 98, 106, 114, DURATION];
+    const hand = secs.slice(0, -1).map((s0, i) => box(`h${i}`, s0, secs[i + 1]));
+    const p = planConformToBeats(hand, measured, DURATION, AT);
+    expect(p.method).toBe("nearest");
+    for (const mv of p.moved) for (const [a, b] of [[mv.from.start, mv.to.start], [mv.from.end, mv.to.end]]) expect(Math.abs(a - b)).toBeLessThanOrEqual(0.6 * (60 / 121.998) + 0.006);
+  });
+
   it("infers the grid a board was cut on, and none for a hand-cut board", () => {
     const inner = board.slice(0, -1).map((b) => b.end);
     expect(60 / inferBoardGrid(inner, 60 / 121.998)!.beatSec).toBeCloseTo(122.4, 1);

@@ -12,8 +12,9 @@
  *   • REBASE (the board was cut on a regular grid): the grid is inferred from the board's own edges. An edge that
  *     sits on that grid's beat n moves to measured beat n counted from the first measured downbeat, so every shot
  *     keeps its exact length in beats and bars and every bar-line cut lands on a measured downbeat — the same cuts a
- *     new board of the song gets. Moves grow with the old drift (YSL: up to 0.62 s at 3:00); a move over 1.5 beats
- *     falls back to the nearest beat.
+ *     new board of the song gets. Moves grow with the old drift (YSL: up to 0.67 s at 3:00). All or nothing: if any
+ *     edge would move over 1.5 beats the board is not on this song's old grid and the whole board takes NEAREST.
+ *     A board already mostly on measured beats (≥ 80% of edges) is not rebased again (idempotent).
  *   • NEAREST (no regular grid, e.g. hand-cut edges): the nearest measured beat, at most 0.6 of a beat away.
  *
  * Always: a shared edge moves once (neighbours stay back to back); 0:00 and the song end stay; a shot is never made
@@ -65,7 +66,7 @@ function nearest(sorted: readonly number[], t: number): number {
 }
 
 /**
- * The regular beat grid (counted from 0:00) a board was cut on, inferred from its inner edges: the tempo within ±3%
+ * The regular beat grid (counted from 0:00) a board was cut on, inferred from its inner edges: the tempo within ±1.5%
  * of the measured one whose beats hold the most edges (within 15 ms; edges are stored to 0.01 s), when that is at least
  * 80% of them (and at least 4). Null for a hand-cut board, or one already on the measured beat.
  */
@@ -73,7 +74,8 @@ export function inferBoardGrid(innerEdges: readonly number[], measuredBeatSec: n
   if (innerEdges.length < 4) return null;
   const bpm0 = 60 / measuredBeatSec;
   let best: { beatSec: number; count: number; err: number } | null = null;
-  for (let bpm = bpm0 * 0.97; bpm <= bpm0 * 1.03; bpm += 0.01) {
+  // ±1.5%: the v1 tempo was a whole-frame lag, off by about ±1% at these tempos
+  for (let bpm = bpm0 * 0.985; bpm <= bpm0 * 1.015; bpm += 0.01) {
     const b = 60 / bpm;
     let count = 0;
     let err = 0;
@@ -125,10 +127,24 @@ export function planConformToBeats(boxes: readonly StoryboardBox[], measured: Me
   }
   const fixed = (t: number) => t <= EDGE_EPS || (end !== null && Math.abs(t - end) <= 0.05);
   const inner = [...edges].filter((t) => !fixed(t)).sort((a, b) => a - b);
-  const grid = inferBoardGrid(inner, beatSec);
-  // already on the measured beat? then there is nothing to rebase
+  // already conformed (most edges on measured beats, a few kept)? then rebasing again would push it a beat further
   const onMeasured = inner.filter((t) => Math.abs(nearest(beats, t) - t) <= ON_GRID).length;
-  const rebase = grid && onMeasured < inner.length ? grid : null;
+  const alreadyOnBeat = inner.length > 0 && onMeasured >= 0.8 * inner.length;
+  let rebase = alreadyOnBeat ? null : inferBoardGrid(inner, beatSec);
+  // a grid at the measured tempo is the measured grid (a conformed board), not an old one
+  if (rebase && Math.abs(rebase.beatSec - beatSec) < 0.0005) rebase = null;
+  // all or nothing: if any on-grid edge would move further than 1.5 beats, the grid is not this song's old grid
+  // (e.g. a hand board on round seconds) — the whole board takes the nearest beat instead of splitting in two
+  if (rebase) {
+    const g = rebase;
+    const tooFar = inner.some((t) => {
+      const n = Math.round(t / g.beatSec);
+      if (Math.abs(t - n * g.beatSec) > ON_GRID) return false;
+      const idx = m.firstDownbeat + n;
+      return idx < 0 || idx >= beats.length || Math.abs(beats[idx] - t) > 1.5 * beatSec;
+    });
+    if (tooFar) rebase = null;
+  }
 
   const pinned = new Set<number>();
   for (const b of boxes) if (hasBeatTrigger(b)) pinned.add(round2(b.start));
