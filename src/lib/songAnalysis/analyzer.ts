@@ -17,9 +17,13 @@ import type {
  *  4. Compute RMS energy in fixed windows -> energyCurve.
  *  5. Detect BPM by autocorrelating the low-pass-filtered onset envelope and
  *     picking the strongest periodicity in the 60–200 BPM range.
- *  6. Project beats forward from t=0 at the detected BPM (good enough to feed
- *     the storyboard snap-points; lacks phase alignment which we can iterate
- *     on later).
+ *  6. Refine the tempo and find the beat phase (v2, 2026-10-14): the coarse
+ *     autocorrelation lag is a whole 10 ms frame, which on "YSL Ice On" gave
+ *     122.4 BPM where the song is 121.72 — a grid that slides about a third
+ *     of a second per minute. The tempo and the time of the first beat are
+ *     searched together for the grid whose beats land on the most onsets;
+ *     the downbeat is the beat of the bar with the strongest onsets.
+ *     Beats are then projected from that first beat.
  *  7. Drops = energy samples whose value exceeds (rollingMean + 1.5σ) for
  *     >=1s.
  *
@@ -33,6 +37,13 @@ const BPM_MAX = 200;
 const DROP_THRESHOLD_SIGMA = 1.5;
 const DROP_MIN_SUSTAIN_SECONDS = 1.0;
 const ROLLING_MEAN_WINDOW = 16; // ~4s at 250ms windows
+/** A refined grid is "measured" only when its beats beat the average phase by this much (click track ~16×, a
+ *  produced song ~3.5×, white noise ~1.25×, silence 1×). Below it the v1 tempo and map are kept. */
+export const MIN_BEAT_CONTRAST = 1.5;
+/** A downbeat other than the first beat must lead it by this factor. */
+const DOWNBEAT_MIN_LEAD = 1.03;
+/** Below this lead over the runner-up the downbeat is reported as uncertain (bar lines may be half a bar off). */
+export const DOWNBEAT_CONFIDENT_MARGIN = 0.1;
 
 export type AnalysisResult = Pick<
   SongAnalysis,
@@ -53,8 +64,11 @@ export async function analyzeAudioUrl(url: string): Promise<AnalysisResult> {
   const duration = buffer.duration;
 
   const energyCurve = computeEnergyCurve(mono, sampleRate);
-  const bpm = detectBpm(mono, sampleRate);
-  const beatMap = bpm ? projectBeats(bpm, duration) : [];
+  const grid = analyzeBeatGrid(mono, sampleRate, duration);
+  // no measured grid (no clear beat): the v1 tempo and a map counted from 0:00, labelled v1
+  const v1Bpm = grid ? null : detectBpm(mono, sampleRate);
+  const bpm = grid?.bpm ?? v1Bpm;
+  const beatMap = grid ? projectBeats(grid.bpm, duration, grid.firstBeat) : v1Bpm ? projectBeats(v1Bpm, duration) : [];
   const drops = detectDrops(energyCurve);
 
   return {
@@ -66,7 +80,9 @@ export async function analyzeAudioUrl(url: string): Promise<AnalysisResult> {
     // Sections + hooks need ML or manual labelling — left empty in Phase A.
     sections_json: [],
     hooks_json: [],
-    analysis_provider: "web-audio-builtin",
+    // the provider says what the map is: v2 = measured beats and downbeat; "-downbeat-uncertain" = measured beats,
+    // bar lines a best guess (two beat positions nearly tie)
+    analysis_provider: grid ? (grid.downbeatConfident ? "web-audio-builtin-v2" : "web-audio-builtin-v2-downbeat-uncertain") : "web-audio-builtin",
   };
 }
 
@@ -144,31 +160,48 @@ export function detectBpm(
   sampleRate: number,
 ): number | null {
   if (mono.length < sampleRate * 4) return null; // need at least 4s
+  const { env, fps } = onsetEnvelope(mono, sampleRate);
+  return coarseBpmFromEnvelope(env, fps);
+}
 
-  // Build the envelope at a low frame rate to keep autocorrelation cheap.
-  const frameSize = Math.floor(sampleRate / 100); // ~100 Hz frames
-  const env: number[] = [];
+/**
+ * Onset envelope at ~100 Hz: half-wave-rectified frame-to-frame rise in RMS.
+ * Shared by tempo detection, beat phase and downbeat.
+ */
+export function onsetEnvelope(
+  mono: Float32Array,
+  sampleRate: number,
+): { env: Float32Array; fps: number } {
+  const frameSize = Math.max(1, Math.floor(sampleRate / 100)); // ~100 Hz frames
+  const n = Math.ceil(mono.length / frameSize);
+  const env = new Float32Array(n);
   let prev = 0;
-  for (let i = 0; i < mono.length; i += frameSize) {
+  for (let f = 0; f < n; f++) {
+    const i = f * frameSize;
     const end = Math.min(mono.length, i + frameSize);
     let sumSq = 0;
     for (let j = i; j < end; j++) {
       const v = mono[j];
       sumSq += v * v;
     }
-    const rms = Math.sqrt(sumSq / (end - i));
-    const flux = Math.max(0, rms - prev); // half-wave rectified
-    env.push(flux);
+    const rms = Math.sqrt(sumSq / Math.max(1, end - i));
+    env[f] = Math.max(0, rms - prev); // half-wave rectified
     prev = rms;
   }
+  return { env, fps: sampleRate / frameSize };
+}
 
+/** Whole-frame autocorrelation peak in BPM_MIN..BPM_MAX (the v1 tempo; coarse by up to ~0.7 BPM). */
+function coarseBpmFromEnvelope(env: Float32Array, fps: number): number | null {
   // Subtract mean so autocorrelation focuses on rhythm, not DC level.
-  const mean = env.reduce((a, b) => a + b, 0) / env.length;
-  const centered = env.map((v) => v - mean);
+  let mean = 0;
+  for (let i = 0; i < env.length; i++) mean += env[i];
+  mean /= Math.max(1, env.length);
+  const centered = new Float32Array(env.length);
+  for (let i = 0; i < env.length; i++) centered[i] = env[i] - mean;
 
-  const framesPerSecond = sampleRate / frameSize;
-  const minLag = Math.floor(framesPerSecond * (60 / BPM_MAX));
-  const maxLag = Math.ceil(framesPerSecond * (60 / BPM_MIN));
+  const minLag = Math.floor(fps * (60 / BPM_MAX));
+  const maxLag = Math.ceil(fps * (60 / BPM_MIN));
 
   let bestLag = -1;
   let bestScore = -Infinity;
@@ -182,18 +215,177 @@ export function detectBpm(
       bestLag = lag;
     }
   }
-  if (bestLag <= 0) return null;
-  const bpm = 60 / (bestLag / framesPerSecond);
+  if (bestLag <= 0 || !(bestScore > 0)) return null; // silence / no periodicity: no tempo (v1 returned ~199 BPM)
+  const bpm = 60 / (bestLag / fps);
   // Round to one decimal — hand-entered BPMs are integers; this gives an
   // approximate confidence indicator.
   return Math.round(bpm * 10) / 10;
 }
 
-function projectBeats(bpm: number, durationSeconds: number): BeatMarker[] {
+/**
+ * How well a constant-tempo grid (bpm, first beat at `phase` seconds) sits on the onsets: the mean envelope peak
+ * within one frame of each beat. Higher is better; it is only compared between grids on the same envelope.
+ */
+export function beatAlignmentScore(env: Float32Array, fps: number, bpm: number, phase: number): number {
+  const period = 60 / bpm;
+  const durationSeconds = env.length / fps;
+  let sum = 0;
+  let count = 0;
+  for (let t = phase; t < durationSeconds; t += period) {
+    const i = Math.round(t * fps);
+    if (i <= 0 || i >= env.length - 1) continue;
+    sum += Math.max(env[i - 1], env[i], env[i + 1]);
+    count++;
+  }
+  return count > 0 ? sum / count : 0;
+}
+
+/**
+ * Like `beatAlignmentScore`, but reads the envelope at each beat's exact (fractional) frame by linear
+ * interpolation, with no ±1-frame tolerance — a peaked score for the fine search, where the tolerant score is flat
+ * across a whole 10 ms frame and would leave the tempo anywhere on that plateau.
+ */
+export function beatAlignmentScoreExact(env: Float32Array, fps: number, bpm: number, phase: number): number {
+  const period = 60 / bpm;
+  const durationSeconds = env.length / fps;
+  let sum = 0;
+  let count = 0;
+  for (let t = phase; t < durationSeconds; t += period) {
+    const x = t * fps;
+    const i = Math.floor(x);
+    if (i <= 0 || i >= env.length - 1) continue;
+    const f = x - i;
+    sum += env[i] * (1 - f) + env[i + 1] * f;
+    count++;
+  }
+  return count > 0 ? sum / count : 0;
+}
+
+export type BeatGridFit = {
+  bpm: number;
+  /** Seconds of the first beat (0 <= phase < one beat). */
+  phase: number;
+  /** Best score divided by the mean score over all phases at that tempo; ~1 means no beat was found. */
+  contrast: number;
+};
+
+function bestOver(
+  env: Float32Array,
+  fps: number,
+  bpmLo: number,
+  bpmHi: number,
+  bpmStep: number,
+  phaseStep: number,
+  score: (env: Float32Array, fps: number, bpm: number, phase: number) => number = beatAlignmentScore,
+  phaseLo = 0,
+  phaseHi?: number,
+): { bpm: number; phase: number; score: number } {
+  let best = { bpm: bpmLo, phase: 0, score: -Infinity };
+  for (let bpm = bpmLo; bpm <= bpmHi + 1e-9; bpm += bpmStep) {
+    const period = 60 / bpm;
+    for (let phase = phaseLo; phase < (phaseHi ?? period); phase += phaseStep) {
+      const scoreNow = score(env, fps, bpm, phase);
+      if (scoreNow > best.score) best = { bpm, phase, score: scoreNow };
+    }
+  }
+  return best;
+}
+
+/**
+ * Refine a coarse tempo and find the beat phase together: the (bpm, first beat) whose beats land on the strongest
+ * onsets, searched within ±1 BPM of the coarse tempo (so the tempo octave is kept), first at 0.02 BPM / 10 ms,
+ * then at 0.002 BPM / 2.5 ms around the winner.
+ */
+export function refineBeatGrid(env: Float32Array, fps: number, coarseBpm: number): BeatGridFit {
+  const coarse = bestOver(env, fps, coarseBpm - 1, coarseBpm + 1, 0.02, 0.01);
+  // fine: exact (interpolated) score, phase within ±20 ms of the coarse winner
+  // (the window may start below 0: a phase just under one period is the same grid one beat earlier)
+  const fine0 = bestOver(env, fps, coarse.bpm - 0.03, coarse.bpm + 0.03, 0.002, 0.001, beatAlignmentScoreExact, coarse.phase - 0.02, coarse.phase + 0.02);
+  const period0 = 60 / fine0.bpm;
+  const wrapped = ((fine0.phase % period0) + period0) % period0;
+  const fine = { ...fine0, phase: wrapped, score: beatAlignmentScore(env, fps, fine0.bpm, wrapped) };
+  const period = 60 / fine.bpm;
+  let total = 0;
+  let n = 0;
+  for (let phase = 0; phase < period; phase += 0.01) {
+    total += beatAlignmentScore(env, fps, fine.bpm, phase);
+    n++;
+  }
+  const meanScore = n > 0 ? total / n : 0;
+  return {
+    bpm: Math.round(fine.bpm * 1000) / 1000,
+    phase: Math.round((fine.phase % period) * 10000) / 10000,
+    contrast: meanScore > 0 ? fine.score / meanScore : 1,
+  };
+}
+
+/**
+ * Which of the four beats starts the bar: the beat position whose every-fourth beats carry the strongest onsets.
+ * Returns 0 (the first beat) unless another position is ahead by more than 3% — kick-on-1-and-3 songs make
+ * positions 0 and 2 close, and a tie is not evidence.
+ */
+export function detectDownbeat(env: Float32Array, fps: number, bpm: number, phase: number): { downbeat: number; margin: number } {
+  const period = 60 / bpm;
+  const scores = [0, 1, 2, 3].map((j) => beatAlignmentScore(env, fps, bpm / 4, phase + j * period));
+  const sorted = [...scores].sort((a, b) => b - a);
+  // how far the winner leads the runner-up, as a fraction of the winner (0 = a tie)
+  const margin = sorted[0] > 0 ? (sorted[0] - sorted[1]) / sorted[0] : 0;
+  const best = scores.indexOf(sorted[0]);
+  if (best === 0) return { downbeat: 0, margin };
+  return scores[best] > scores[0] * DOWNBEAT_MIN_LEAD ? { downbeat: best, margin } : { downbeat: 0, margin };
+}
+
+export type BeatGrid = BeatGridFit & {
+  /** Seconds of the first beat of the first bar. */
+  firstBeat: number;
+  /** Beats between `phase` and the first downbeat (0..3). */
+  downbeat: number;
+  /** Lead of the chosen downbeat over the runner-up (0 = tie). */
+  downbeatMargin: number;
+  /** False when the margin is under DOWNBEAT_CONFIDENT_MARGIN: beats are measured, bar lines are a best guess. */
+  downbeatConfident: boolean;
+};
+
+/** Tempo, beat phase and downbeat for a decoded mono signal; null when there is no usable tempo. */
+export function analyzeBeatGrid(mono: Float32Array, sampleRate: number, durationSeconds: number): BeatGrid | null {
+  if (mono.length < sampleRate * 4) return null;
+  const { env, fps } = onsetEnvelope(mono, sampleRate);
+  const coarse = coarseBpmFromEnvelope(env, fps);
+  if (!coarse) return null;
+  const fit = refineBeatGrid(env, fps, coarse);
+  if (!(fit.contrast >= MIN_BEAT_CONTRAST)) return null; // no clear beat: not a measured grid
+  const { downbeat, margin } = detectDownbeat(env, fps, fit.bpm, fit.phase);
+  const firstBeat = fit.phase + downbeat * (60 / fit.bpm);
+  if (!(firstBeat < durationSeconds)) return null;
+  return {
+    ...fit,
+    downbeat,
+    downbeatMargin: Math.round(margin * 1000) / 1000,
+    downbeatConfident: margin >= DOWNBEAT_CONFIDENT_MARGIN,
+    firstBeat: Math.round(firstBeat * 10000) / 10000,
+  };
+}
+
+/**
+ * Beats at a constant tempo. `firstBeat` is the first downbeat (bar 1, beat 1); the beats before it, if any, are
+ * the pickup and are numbered as bar 0 so that every bar line in the map is a real downbeat.
+ */
+export function projectBeats(
+  bpm: number,
+  durationSeconds: number,
+  firstBeat: number = 0,
+): BeatMarker[] {
+  if (!(bpm >= 30 && bpm <= 300) || !Number.isFinite(durationSeconds) || !Number.isFinite(firstBeat) || firstBeat < 0) return [];
   const period = 60 / bpm;
   const out: BeatMarker[] = [];
+  // pickup beats before the first downbeat
+  const pickup = Math.floor(firstBeat / period + 1e-9);
+  for (let k = pickup; k >= 1; k--) {
+    const t = firstBeat - k * period;
+    out.push({ t: Math.round(t * 1000) / 1000, beat: 4 - ((k - 1) % 4), bar: 0 });
+  }
   let beatIdx = 1;
-  for (let t = 0; t < durationSeconds; t += period) {
+  for (let t = firstBeat; t < durationSeconds; t += period) {
     const bar = Math.floor((beatIdx - 1) / 4) + 1;
     const beat = ((beatIdx - 1) % 4) + 1;
     out.push({ t: Math.round(t * 1000) / 1000, beat, bar });
