@@ -177,13 +177,13 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
    * One writer run: the treatment text (when the AI writes it) and the scene of every shot it may write. With
    * `asCandidate` the shots go into a new variation and this board is left exactly as it is.
    */
-  const write = async (aiWritesText: boolean, asCandidate = false) => {
+  const write = async (aiWritesText: boolean, asCandidate = false, recut = false) => {
     if (!project) return;
-    setWorking(aiWritesText ? "Writing the treatment and the shots — this takes a minute or two…" : asCandidate ? "Reading the treatment's beats and writing a candidate board — this takes a minute or two…" : "Writing the shots from the treatment — this takes a minute or two…");
+    setWorking(aiWritesText ? "Writing the treatment and the shots — this takes a minute or two…" : recut ? "Re-cutting the song fast and writing a candidate board — this takes a few minutes…" : asCandidate ? "Reading the treatment's beats and writing a candidate board — this takes a minute or two…" : "Writing the shots from the treatment — this takes a minute or two…");
     try {
       await saveNotes();
       if (!project.active_variation_id) throw new Error("this project has no video variation");
-      const candidate = asCandidate ? candidateName() : null;
+      const candidate = asCandidate || recut ? candidateName() : null;
       const res = await writeStoryboardFromTreatment({
         projectId,
         variationId: project.active_variation_id,
@@ -202,7 +202,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
         lyricLines,
         // the notes live on the project; nothing is kept a second time with the treatment
         notes: "",
-        candidate: candidate ? { name: candidate } : null,
+        candidate: candidate ? { name: candidate, recut } : null,
       });
       await refresh();
       await qc.invalidateQueries({ queryKey: variationsKeys.forProject(projectId) });
@@ -221,9 +221,19 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
     }
   };
 
-  const askWrite = (aiWritesText: boolean, asCandidate = false) => {
+  const askWrite = (aiWritesText: boolean, asCandidate = false, recut = false) => {
     if (!setup.ready) {
       toast.info(`Setup is not finished — ${setup.blockedBy}`);
+      return;
+    }
+    if (recut) {
+      setConfirm({
+        title: "Re-cut the song fast-paced into a candidate board?",
+        body: `The song is cut again on its beat at the fast pace — shots of about 1.5 s where the energy is high, 2 s in the middle and 3 s where it is low, changing on the beat and on lyric line starts — and every shot is written from this treatment. The shots go into a NEW variation, “${candidateName()}”; this board and its footage stay exactly as they are. Nothing is made active; switch to the candidate under the project title to review it.`,
+        confirmLabel: "Re-cut into a candidate",
+        testId: "confirm-recut-candidate",
+        onConfirm: () => write(false, true, true),
+      });
       return;
     }
     if (asCandidate) {
@@ -579,6 +589,12 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
               <Button size="sm" variant="outline" onClick={() => askWrite(false, true)} disabled={busy} data-testid="treatment-write-candidate">
                 <Wand2 className="mr-1.5 h-3.5 w-3.5" />
                 Write a candidate board…
+              </Button>
+            )}
+            {exists && boxes.length > 0 && (
+              <Button size="sm" variant="outline" onClick={() => askWrite(false, true, true)} disabled={busy} data-testid="treatment-recut-fast">
+                <Wand2 className="mr-1.5 h-3.5 w-3.5" />
+                Re-cut fast-paced (candidate)…
               </Button>
             )}
             {exists && staleKept > 0 && (

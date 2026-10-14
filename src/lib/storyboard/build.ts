@@ -161,7 +161,7 @@ export type WriteStoryboardInput = {
    * recoverable revision, and the corrected breakdown is reviewed beside it. The candidate copies this variation's
    * direction and treatment text and starts with no director edits; it is not made active.
    */
-  candidate?: { name: string } | null;
+  candidate?: { name: string; recut?: boolean } | null;
 };
 
 export type WriteStoryboardResult = {
@@ -179,14 +179,15 @@ export type WriteStoryboardResult = {
 /** One treatment-model call: (optionally) the treatment text, and the scene of every box it may rewrite. */
 export async function writeStoryboardFromTreatment(input: WriteStoryboardInput): Promise<WriteStoryboardResult> {
   const beatGrid = buildClipGrid({ analysis: input.analysis, durationSeconds: input.durationSeconds ?? null, lyrics: input.lyricLines ?? null });
-  const grid = input.boxes.length > 0 ? gridFromBoxes(input.boxes, beatGrid) : beatGrid;
+  // a re-cut candidate takes a fresh cut of the song (the default pace) instead of this board's windows
+  const grid = input.boxes.length > 0 && !input.candidate?.recut ? gridFromBoxes(input.boxes, beatGrid) : beatGrid;
   if (grid.length === 0) throw new Error("The song has not been analysed yet — Setup needs its length and beat before boxes can be cut.");
   // when the writer writes the text, `concept` is only a hint from the director (empty = none)
   const concept = input.aiWritesText ? (input.conceptHint?.trim() ?? "") : input.treatmentText.trim();
   if (!input.aiWritesText && !concept) throw new Error("Write the treatment first, or let the AI write it.");
 
   // a candidate is a new variation: the writer is told the candidate's id (its run is the candidate's evidence), the
-  // grid is this board's cut (so the candidate's shots are this board's windows, one to one), and nothing here changes
+  // grid is this board's cut (so the candidate's shots are this board's windows, one to one) unless it is a re-cut, and nothing here changes
   const text0 = input.aiWritesText ? "" : input.treatmentText;
   let targetVariationId = input.variationId;
   let candidateVariationId: string | null = null;
