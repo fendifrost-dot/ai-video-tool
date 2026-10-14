@@ -18,6 +18,8 @@ import { shotsKeys } from "@/lib/queries/shots";
 import { resolveScrubSource } from "@/lib/video/scrubProxy";
 import { parseFootageAnalyses } from "@/lib/queries/footageAnalysis";
 import { boxesFromRows, type BoxRow, type BoxWrite, type StoryboardBox } from "@/lib/storyboard/boxes";
+import { measuredBeats, planConformToBeats } from "@/lib/storyboard/conform";
+import type { SongAnalysis } from "@/lib/songAnalysis/types";
 import {
   isImagePath,
   isVideoPath,
@@ -69,6 +71,43 @@ export async function fetchBoxes(projectId: string, variationId: string): Promis
     .order("timestamp_start", { ascending: true });
   if (error) throw error;
   return boxesFromRows((data ?? []) as unknown as BoxRow[]);
+}
+
+/**
+ * Move every board of the project onto its song's measured beat (see `lib/storyboard/conform.ts`). Every variation
+ * is conformed, not only the active one: a board is the song's, whichever cut of it is being looked at. Returns what
+ * moved; nothing is written when the analysis has no measured beat map.
+ */
+export async function conformProjectBoardsToBeats(
+  projectId: string,
+  analysis: Pick<SongAnalysis, "analysis_provider" | "beat_map_json" | "duration_seconds">,
+): Promise<{ boards: number; moved: number; maxShift: number; edgesKept: number }> {
+  const beats = measuredBeats(analysis);
+  if (!beats) return { boards: 0, moved: 0, maxShift: 0, edgesKept: 0 };
+  const { data, error } = await supabase.from("shots").select(BOX_COLUMNS).eq("project_id", projectId).not("spec_key", "is", null);
+  if (error) throw error;
+  const byVariation = new Map<string, BoxRow[]>();
+  for (const r of (data ?? []) as unknown as BoxRow[]) {
+    if (!r.variation_id) continue;
+    const list = byVariation.get(r.variation_id) ?? [];
+    list.push(r);
+    byVariation.set(r.variation_id, list);
+  }
+  const at = new Date().toISOString();
+  let boards = 0;
+  let moved = 0;
+  let maxShift = 0;
+  let edgesKept = 0;
+  for (const [variationId, rows] of byVariation) {
+    const plan = planConformToBeats(boxesFromRows(rows), beats, analysis.duration_seconds ?? null, at);
+    edgesKept += plan.edgesKept;
+    if (plan.updates.length === 0) continue;
+    await writeBoxes(projectId, { updates: plan.updates }, variationId);
+    boards++;
+    moved += plan.moved.length;
+    maxShift = Math.max(maxShift, plan.maxShift);
+  }
+  return { boards, moved, maxShift, edgesKept };
 }
 
 /** The storyboard: every box record of the project's ACTIVE variation, in song order. */

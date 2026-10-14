@@ -56,7 +56,7 @@ export type OverrideField = (typeof OVERRIDE_FIELDS)[number];
 export type BoxHistoryEntry = {
   at: string;
   /** What produced the entry: a regenerate from the treatment, a per-box rewrite, a split, a merge, a reset. */
-  event: "treatment" | "rewrite" | "edit" | "reset" | "split" | "merge" | "migrated";
+  event: "treatment" | "rewrite" | "edit" | "reset" | "split" | "merge" | "migrated" | "conform";
   /** The resolved scene before the change, so an earlier version can be read back. */
   purpose?: string;
   direction?: string;
