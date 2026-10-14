@@ -136,3 +136,24 @@ describe("buildClipGrid — lyric line starts", () => {
     expect(grid.every((c) => !c.cutOnLyric)).toBe(true);
   });
 });
+
+describe("buildClipGrid — malformed data", () => {
+  it("terminates with forward clips for absurd tempos and broken beat maps", () => {
+    const cases: Partial<SongAnalysis>[] = [
+      { bpm: 1e9 },
+      { bpm: 0.001 },
+      { bpm: Number.NaN },
+      { bpm: 122, beat_map_json: Array.from({ length: 50 }, () => ({ t: 3, beat: 1, bar: 1 })) },
+      { bpm: 122, beat_map_json: Array.from({ length: 50 }, (_, k) => ({ t: k * 1e-6, beat: 1, bar: k })) },
+      { bpm: 122, beat_map_json: [{ t: Number.NaN, beat: 1, bar: 1 }, ...projectBeats(122, DURATION)] },
+      { bpm: 122, beat_map_json: projectBeats(122, DURATION).reverse() },
+    ];
+    for (const over of cases) {
+      const grid = buildClipGrid({ analysis: analysis(over), lyrics: [{ start: 10, end: 11, confidence: 1 }] });
+      expect(grid.length).toBeGreaterThan(0);
+      expect(grid.length).toBeLessThanOrEqual(120);
+      for (const c of grid) expect(c.end).toBeGreaterThan(c.start);
+      expect(grid[grid.length - 1].end).toBe(DURATION);
+    }
+  });
+});

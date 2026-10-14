@@ -97,6 +97,12 @@ export type BuildGridOptions = {
   lyrics?: readonly GridLyricLine[] | null;
 };
 
+/** A beat between 0.2 s and 2 s (30–300 BPM); anything else in the data is not a tempo the grid can cut on. */
+const MIN_BEAT_SEC = 0.2;
+const MAX_BEAT_SEC = 2;
+/** No song needs more beats than this (300 BPM for 40 minutes); a map beyond it is not read. */
+const MAX_BEATS = 12_000;
+
 /** Beat times and the indices of the downbeats among them. */
 type BeatLattice = { beats: number[]; downbeats: number[]; beatSec: number };
 
@@ -104,21 +110,25 @@ type BeatLattice = { beats: number[]; downbeats: number[]; beatSec: number };
  * The beats the grid cuts on: the measured beat map when there is one (bar lines where `beat === 1`), otherwise
  * beats projected from 0:00 at the BPM (the v1 behaviour).
  */
-function beatLattice(analysis: SongAnalysis | null | undefined, bpm: number, duration: number): BeatLattice {
+function beatLattice(analysis: SongAnalysis | null | undefined, bpm: number, duration: number): BeatLattice | null {
   const beatSec = 60 / bpm;
-  const map = (analysis?.beat_map_json ?? []).filter((b) => Number.isFinite(b?.t) && b.t >= 0 && b.t <= duration + beatSec);
-  if (map.length >= 8) {
-    const sorted = [...map].sort((a, b) => a.t - b.t);
+  if (!(beatSec >= MIN_BEAT_SEC && beatSec <= MAX_BEAT_SEC) || !Number.isFinite(duration)) return null;
+  const raw = Array.isArray(analysis?.beat_map_json) ? analysis!.beat_map_json : [];
+  if (raw.length >= 8 && raw.length <= MAX_BEATS) {
+    const sorted = raw
+      .filter((b) => b && Number.isFinite(b.t) && b.t >= 0 && b.t <= duration + beatSec)
+      .sort((a, b) => a.t - b.t);
     const beats = sorted.map((b) => b.t);
     const downbeats = sorted.map((b, i) => (b.beat === 1 ? i : -1)).filter((i) => i >= 0);
-    if (downbeats.length >= 2) {
-      // measured spacing (the map may be at a refined tempo the rounded `bpm` column does not carry)
-      const span = beats[beats.length - 1] - beats[0];
-      return { beats, downbeats, beatSec: span > 0 ? span / (beats.length - 1) : beatSec };
+    // measured spacing (the map may be at a refined tempo the rounded `bpm` column does not carry)
+    const measured = beats.length >= 8 ? (beats[beats.length - 1] - beats[0]) / (beats.length - 1) : 0;
+    if (downbeats.length >= 2 && measured >= MIN_BEAT_SEC && measured <= MAX_BEAT_SEC) {
+      return { beats, downbeats, beatSec: measured };
     }
   }
+  const count = Math.min(MAX_BEATS, Math.ceil((duration + beatSec) / beatSec));
   const beats: number[] = [];
-  for (let t = 0; t < duration + beatSec; t += beatSec) beats.push(t);
+  for (let k = 0; k < count; k++) beats.push(k * beatSec);
   const downbeats = beats.map((_, i) => i).filter((i) => i % 4 === 0);
   return { beats, downbeats, beatSec };
 }
@@ -152,6 +162,7 @@ export function buildClipGrid({ analysis, durationSeconds, lyrics }: BuildGridOp
   const energyAt = makeEnergyLookup(analysis);
   const { lo, hi } = energyThresholds(analysis);
   const drops = analysis?.drops_json ?? [];
+  // a tempo outside 30–300 BPM gets no lattice and falls back to fixed-seconds clips (v1 did the same above 300)
   const lattice = bpm && bpm > 0 ? beatLattice(analysis, bpm, duration) : null;
   const barSec = lattice ? lattice.beatSec * 4 : null; // assume 4/4
   const downbeatTimes = lattice ? lattice.downbeats.map((i) => lattice.beats[i]) : [];
@@ -176,7 +187,7 @@ export function buildClipGrid({ analysis, durationSeconds, lyrics }: BuildGridOp
       // land on the nearest measured downbeat (the same time when the map is the v1 one counted from 0:00)
       if (downbeatTimes.length > 0) {
         const d = downbeatTimes[nearestIndex(downbeatTimes, end)];
-        if (Math.abs(d - end) <= barSec / 2 && d - t >= MIN_CLIP - lattice.beatSec) end = d;
+        if (Math.abs(d - end) <= barSec / 2 && d - t >= Math.max(0.5, MIN_CLIP - lattice.beatSec)) end = d;
       }
       // a trusted lyric line starting within one beat of the cut takes the cut, on its nearest beat
       if (lineStarts.length > 0) {
@@ -184,7 +195,7 @@ export function buildClipGrid({ analysis, durationSeconds, lyrics }: BuildGridOp
         if (Math.abs(s0 - end) <= lattice.beatSec) {
           const onBeat = lattice.beats[nearestIndex(lattice.beats, s0)];
           const len = onBeat - t;
-          if (Math.abs(onBeat - end) > 1e-6 && len >= MIN_CLIP - lattice.beatSec && len <= MAX_CLIP + lattice.beatSec && onBeat < duration) {
+          if (Math.abs(onBeat - end) > 1e-6 && len >= Math.max(0.5, MIN_CLIP - lattice.beatSec) && len <= MAX_CLIP + lattice.beatSec && onBeat < duration) {
             end = onBeat;
             cutOnLyric = true;
           }
@@ -193,6 +204,7 @@ export function buildClipGrid({ analysis, durationSeconds, lyrics }: BuildGridOp
     } else {
       end = t + target;
     }
+    if (!(end > t)) end = t + target; // never a backwards or empty clip, whatever the data
     end = Math.min(end, duration);
     if (duration - end < MIN_CLIP) end = duration; // absorb tiny tail
     if (end === duration) cutOnLyric = false;
