@@ -64,6 +64,8 @@ export type BoxHistoryEntry = {
   /** The shot's timed events at that moment (absent on entries written before events existed, and on a one-state shot). */
   events?: ShotEvent[];
   note?: string;
+  /** "conform" only: the window before the shot was first moved onto the beat (restorable). */
+  from?: { start: number; end: number };
 };
 
 /** The columns of a `shots` row this module reads. */

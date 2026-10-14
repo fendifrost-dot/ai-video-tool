@@ -13,12 +13,15 @@
  *   • a move is at most half a beat, so every shot keeps its place in the story and its selected clip;
  *   • where an old grid had drifted past half a beat, one shot gains or loses a beat (the drift has to be absorbed
  *     somewhere; nearest-beat puts it in one place with the smallest moves).
- *   • each moved shot gets a "conform" history entry saying where its edges were.
+ *   • a locked shot is the director's: its edges stay, and so do its neighbours' edges it shares;
+ *   • a shot already shorter than MIN_BOX_SECONDS is never collapsed;
+ *   • each moved shot gets one "conform" history entry holding the window it had before it was first conformed
+ *     (`from`, restorable); a later conform replaces that entry instead of stacking another.
  *
  * Running it twice changes nothing the second time.
  */
 import type { SongAnalysis } from "@/lib/songAnalysis/types";
-import { MIN_BOX_SECONDS, withHistory, writeOf, type BoxWrite, type StoryboardBox } from "./boxes";
+import { MIN_BOX_SECONDS, withHistory, type BoxHistoryEntry, type StoryboardBox } from "./boxes";
 
 const EDGE_EPS = 0.005;
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -50,8 +53,12 @@ function nearest(sorted: readonly number[], t: number): number {
 
 export type ConformMove = { key: string; from: { start: number; end: number }; to: { start: number; end: number } };
 
+/** A narrow write: the window and the history, nothing else about the shot (the row's other columns are not read
+ *  back and rewritten, so an edit made elsewhere in the meantime is not overwritten). */
+export type ConformUpdate = { id: string; start: number; end: number; history: BoxHistoryEntry[] };
+
 export type ConformPlan = {
-  updates: { id: string; write: BoxWrite }[];
+  updates: ConformUpdate[];
   moved: ConformMove[];
   /** Largest edge move, seconds. */
   maxShift: number;
@@ -74,7 +81,20 @@ export function planConformToBeats(boxes: readonly StoryboardBox[], beats: reado
   const fixed = (t: number) => t <= EDGE_EPS || (end !== null && Math.abs(t - end) <= 0.05);
   const target = new Map<number, number>();
   let edgesKept = 0;
+  // a locked shot keeps both edges (its neighbours on those edges therefore keep them too)
+  const pinned = new Set<number>();
+  for (const b of boxes) {
+    if (b.locked) {
+      pinned.add(round2(b.start));
+      pinned.add(round2(b.end));
+    }
+  }
   for (const t of [...edges].sort((a, b) => a - b)) {
+    if (pinned.has(t)) {
+      target.set(t, t);
+      if (!fixed(t)) edgesKept++;
+      continue;
+    }
     if (fixed(t)) {
       target.set(t, t);
       continue;
@@ -95,7 +115,8 @@ export function planConformToBeats(boxes: readonly StoryboardBox[], beats: reado
       const e = round2(b.end);
       const ns = target.get(s)!;
       const ne = target.get(e)!;
-      if (ne - ns < MIN_BOX_SECONDS && e - s >= MIN_BOX_SECONDS) {
+      // never squash a shot under the minimum, and never shorten one that is already under it
+      if (ne - ns < Math.min(MIN_BOX_SECONDS, e - s) || ne <= ns) {
         if (ns !== s) {
           target.set(s, s);
           edgesKept++;
@@ -119,8 +140,13 @@ export function planConformToBeats(boxes: readonly StoryboardBox[], beats: reado
     const ne = target.get(e)!;
     if (Math.abs(ns - s) <= EDGE_EPS && Math.abs(ne - e) <= EDGE_EPS) continue;
     plan.maxShift = Math.max(plan.maxShift, Math.abs(ns - s), Math.abs(ne - e));
-    const note = `edges moved onto the measured beat: ${s.toFixed(2)}–${e.toFixed(2)} s → ${ns.toFixed(2)}–${ne.toFixed(2)} s`;
-    plan.updates.push({ id: b.id, write: writeOf(b, { start: ns, end: ne, history: withHistory(b.history, { at, event: "conform", note }) }) });
+    // one conform entry per shot: a later conform replaces it and keeps the window from before the first one
+    const last = b.history[b.history.length - 1];
+    const prior = last?.event === "conform" ? last : null;
+    const from = prior?.from ?? { start: s, end: e };
+    const note = `edges moved onto the measured beat: ${from.start.toFixed(2)}–${from.end.toFixed(2)} s → ${ns.toFixed(2)}–${ne.toFixed(2)} s`;
+    const base = prior ? b.history.slice(0, -1) : b.history;
+    plan.updates.push({ id: b.id, start: ns, end: ne, history: withHistory(base, { at, event: "conform", note, from }) });
     plan.moved.push({ key: b.key, from: { start: s, end: e }, to: { start: ns, end: ne } });
   }
   plan.maxShift = round2(plan.maxShift);

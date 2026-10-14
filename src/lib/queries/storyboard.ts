@@ -102,9 +102,19 @@ export async function conformProjectBoardsToBeats(
     const plan = planConformToBeats(boxesFromRows(rows), beats, analysis.duration_seconds ?? null, at);
     edgesKept += plan.edgesKept;
     if (plan.updates.length === 0) continue;
-    await writeBoxes(projectId, { updates: plan.updates }, variationId);
+    // narrow writes: the window and the history only (the row's spec JSON keeps its own timeline, which the board
+    // always overrides from these two columns), pinned to the project
+    for (const u of plan.updates) {
+      const { error: uErr } = await supabase
+        .from("shots")
+        .update({ timestamp_start: u.start, timestamp_end: u.end, history_json: u.history as unknown as Json, updated_at: new Date().toISOString() })
+        .eq("id", u.id)
+        .eq("project_id", projectId)
+        .eq("variation_id", variationId);
+      if (uErr) throw new Error(`moved ${moved} shot(s), then could not move the next one: ${uErr.message}. Press "Snap boards to the beat" to finish.`);
+      moved++;
+    }
     boards++;
-    moved += plan.moved.length;
     maxShift = Math.max(maxShift, plan.maxShift);
   }
   return { boards, moved, maxShift, edgesKept };
@@ -148,7 +158,7 @@ export async function writeBoxes(
 ): Promise<{ updated: number; inserted: string[] }> {
   let updated = 0;
   for (const u of plan.updates ?? []) {
-    const { error } = await supabase.from("shots").update(toUpdate(u.write)).eq("id", u.id);
+    const { error } = await supabase.from("shots").update(toUpdate(u.write)).eq("id", u.id).eq("project_id", projectId);
     if (error) throw new Error(`could not save box ${u.write.spec_key}: ${error.message}`);
     updated++;
   }

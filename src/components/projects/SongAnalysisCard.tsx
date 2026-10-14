@@ -80,8 +80,16 @@ export function SongAnalysisCard({ projectId }: { projectId: string }) {
         project_id: projectId,
         ...result,
       });
-      // a measured beat moves every board of this song onto it, automatically
-      const conformed = measuredBeats(result) ? await conformBoards(result) : null;
+      // a measured beat moves every board of this song onto it, automatically; the analysis is saved either way
+      let conformed: Awaited<ReturnType<typeof conformBoards>> | null = null;
+      if (measuredBeats(result)) {
+        try {
+          conformed = await conformBoards(result);
+        } catch (err) {
+          console.error(err);
+          toast.error(`Analysis saved, but the boards were not all moved onto the beat: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
       toast.success(
         [
           result.bpm ? `Analysis complete — ${Math.round(result.bpm * 10) / 10} BPM` : "Analysis complete",

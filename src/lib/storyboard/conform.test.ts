@@ -7,9 +7,9 @@ import { measuredBeats, planConformToBeats } from "./conform";
 const AT = "2026-10-14T12:00:00Z";
 const DURATION = 120;
 
-function box(key: string, start: number, end: number, id = `r-${key}`): StoryboardBox {
+function box(key: string, start: number, end: number, id = `r-${key}`, opts: { locked?: boolean; history?: StoryboardBox["history"] } = {}): StoryboardBox {
   const spec = parseShotSpec({ id: key, purpose: "a rider in a burning forest", shotType: "b_roll", kind: "broll", timeline: { start, end } });
-  const w = boxWrite({ key, start, end, section: "verse", generated: spec, override: null, locked: false, origin: "treatment", history: [] });
+  const w = boxWrite({ key, start, end, section: "verse", generated: spec, override: null, locked: opts.locked ?? false, origin: "treatment", history: opts.history ?? [] });
   return boxFromRow({ id, project_id: "p1", shot_number: 1, ...w, updated_at: AT } as BoxRow)!;
 }
 
@@ -68,12 +68,36 @@ describe("planConformToBeats", () => {
     for (const w of windows) expect(w.end).toBeGreaterThan(w.start);
   });
 
-  it("writes the new window and a conform history entry, and nothing else about the shot", () => {
+  it("writes only the new window and one restorable conform entry", () => {
     const u = plan.updates[1];
     const b = board.find((x) => x.id === u.id)!;
-    expect(u.write.history_json.at(-1)).toMatchObject({ event: "conform", at: AT });
-    expect(u.write.generated_json.purpose).toBe(b.generated.purpose);
-    expect(u.write.generated_json.timeline).toEqual({ start: u.write.timestamp_start, end: u.write.timestamp_end });
+    expect(Object.keys(u).sort()).toEqual(["end", "history", "id", "start"]);
+    expect(u.history.at(-1)).toMatchObject({ event: "conform", at: AT, from: { start: b.start, end: b.end } });
+    expect(u.history.length).toBe(b.history.length + 1);
+  });
+
+  it("a second conform replaces the first entry and keeps the original window", () => {
+    const first = { at: "2026-10-01T00:00:00Z", event: "conform" as const, note: "earlier", from: { start: 3.5, end: 7.5 } };
+    const b = box("q", 3.6, 7.7, "r-q", { history: [first] });
+    const p = planConformToBeats([box("p", 0, 3.6), b, box("r", 7.7, 12)], measured, null, AT);
+    const u = p.updates.find((x) => x.id === "r-q")!;
+    expect(u.history.filter((h) => h.event === "conform")).toHaveLength(1);
+    expect(u.history.at(-1)).toMatchObject({ at: AT, from: { start: 3.5, end: 7.5 } });
+  });
+
+  it("leaves a locked shot's edges, and its neighbours' shared edges, where they are", () => {
+    const p = planConformToBeats([box("a", 0, 3.92), box("b", 3.92, 7.84, "r-b", { locked: true }), box("c", 7.84, 11.76)], measured, null, AT);
+    const moved = new Map(p.moved.map((m) => [m.key, m.to]));
+    expect(moved.has("b")).toBe(false);
+    expect(moved.get("a")?.end ?? 3.92).toBe(3.92);
+    expect(moved.get("c")?.start ?? 7.84).toBe(7.84);
+  });
+
+  it("never collapses a shot that is already under the minimum", () => {
+    const p = planConformToBeats([box("a", 0, 10.05), box("tiny", 10.05, 10.2), box("c", 10.2, 16)], measured, null, AT);
+    for (const m of p.moved) expect(m.to.end).toBeGreaterThan(m.to.start);
+    const t = p.moved.find((m) => m.key === "tiny");
+    if (t) expect(t.to.end - t.to.start).toBeGreaterThanOrEqual(0.149);
   });
 
   it("is idempotent", () => {
