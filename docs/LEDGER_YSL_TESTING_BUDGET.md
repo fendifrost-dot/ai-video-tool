@@ -72,3 +72,4 @@ Authority: Fendi 2026-10-02 "Disregard the $50 limit for testing … Only stop o
 |---|---|---|---|---|
 | 10-13 | Google | 7 Gemini stills (`gemini-nano-banana-2.1`, 2k; jobs `f1df460f`, `0ba94eb7`, `9ac641d6`, `f8c61e7d`, `6cba6c02`, `3848b5af`, `105af67d`) | $1.89 conditional (≈ $0.53 usage); invoice unknown | Google, not the IB lane |
 | 10-13 | xAI | 7 Grok image-to-video clips, 2 s 720p (K1, K3–K8) | $0.994 (usage ticks) | ≈ $23 (UNCERTAIN until reconciled) |
+| 10-14 | xAI | 2 Grok stills, viewer's room rebuilt from Fendi's real photos (`grok-imagine-image-2.0`, assets `fb2a15d6`, `edf08642`); two Gemini attempts before it refused unbilled (`2ff61257`, `c873f8b2`) | $0.26 | ≈ $22.7 (UNCERTAIN until reconciled) |

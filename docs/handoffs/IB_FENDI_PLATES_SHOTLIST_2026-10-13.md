@@ -114,3 +114,27 @@ Wear plain, dark, fitted clothes so the silhouette reads. A cap like the one in 
 
 - M5 plays letterboxed: renderer `cover` fit (Class C), or a 9:16 outpaint of M5. Fendi's call.
 - The TV picture in c011, c012, c013 and c015 shows the old rider. **Shooting the room practically with the approved sequence on the TV fixes this for c012, c013 and c015 at no cost.** c011 (the empty room and TV, no Fendi) still needs its screen re-filmed or re-generated.
+
+## Update, 14 Oct 00:03 UTC: chair stills regenerated from his real photos, waiting on his pick
+
+He pointed out that AVT already holds about 30 real photos of him, including the back and sides of his head. He also said
+not to describe the jacket in words, and that Gemini is finicky with real people. So the room still was made **with Grok**,
+the model behind the approved Red Line clip.
+
+- **Gemini attempts:** both refused before submission, so **neither was billed**.
+  - Job `2ff61257`: `reference_forbidden`. CC's Gemini route only signs files in the owner's own folder, and the trucker jacket `f6455042` sits in the legacy folder `65cf99cb`.
+  - Job `c873f8b2`: `references_too_large`. The room PNG plus the iPhone photos came to more than 14 MB.
+- **Jacket copy:** the photo was copied byte-for-byte into the owner's folder through AVT `fetch-reference-image` (wardrobe-refs). It is filed as character feature `53da459f` ("owner-folder copy"), so the Gemini route can use it later.
+- **Grok stills** (`grok-imagine-image-2.0`, n=2, $0.26 billed, `ib-room-grok-v1`, shotLabel c013). The 5 references:
+  - room `5d175ab3` (place)
+  - back of head `88085812` (cast)
+  - left profile `d74c1f3b` (cast)
+  - jacket `f6455042` (garment)
+  - varsity cap `f1dc9486` (garment)
+
+  Results: **A** `fb2a15d6`, **B** `edf08642`. Both unselected and `pending`.
+- **OBSERVED, single reviewer:** both read leaner than the rejected shot, with a shorter beard, the stud earring, and the Cazal glasses with the gold accent (clearest in B).
+  - The cap's ivory Y does not read; it looks like a plain black cap.
+  - The TV shows Grok's own rider rather than K6.
+  - **RECOMMENDATION:** B.
+- **Next:** his pick, then a 2 s Grok image-to-video (about $0.14) from it, placed as the selected clip on c012, c013 and c015, with the old clips kept as versions. He also chooses one 4 s hold or two 2 s cuts per shot.
