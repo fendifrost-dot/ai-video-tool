@@ -3,7 +3,7 @@ import { Scissors } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { SongAnalysis } from "@/lib/songAnalysis/types";
-import { buildClipGrid, gridSummary, type GridLyricLine } from "@/lib/treatment/grid";
+import { buildClipGrid, fastCutFits, gridSummary, type GridLyricLine } from "@/lib/treatment/grid";
 import { DEFAULT_CUT, gridPaceOptions, parseCutSettings, type CutSettings } from "@/lib/treatment/cutSettings";
 
 type Props = {
@@ -29,11 +29,15 @@ export function CutSettingsCard({ treatmentJson, analysis, lyricLines, busy, onS
   const [cut, setCut] = useState<CutSettings>(saved);
   useEffect(() => setCut(saved), [saved]);
   const dirty = JSON.stringify(cut) !== JSON.stringify(saved);
+  const invalid = FIELDS.filter((f) => !(cut.targets[f.key] >= 0.5 && cut.targets[f.key] <= 8));
   const preview = useMemo(() => {
-    if (!analysis) return null;
-    const g = buildClipGrid({ analysis, lyrics: lyricLines ?? null, ...gridPaceOptions(cut) });
-    return g.length ? gridSummary(g) : null;
-  }, [analysis, lyricLines, cut]);
+    if (!analysis || (cut.pace === "fast" && invalid.length > 0)) return null;
+    const opts = { analysis, lyrics: lyricLines ?? null, ...gridPaceOptions(cut) };
+    const g = buildClipGrid(opts);
+    if (!g.length) return null;
+    const tooLong = cut.pace === "fast" && !fastCutFits(opts);
+    return `${gridSummary(g)}${tooLong ? " — these lengths need more than 160 shots for this song, so it would be cut at the cinematic pace instead; lengthen the shots to keep a fast cut" : ""}`;
+  }, [analysis, lyricLines, cut, invalid.length]);
 
   const setTarget = (k: "high" | "mid" | "low", raw: string) => {
     const v = Number(raw);
@@ -78,7 +82,12 @@ export function CutSettingsCard({ treatmentJson, analysis, lyricLines, busy, onS
       <p className="text-xs text-muted-foreground">
         Every cut lands on the song's beat. {preview ? `This song would be cut into ${preview}.` : "Analyse the song to see how it would be cut."} Saving changes how new boards and re-cuts are cut; shots already on this board stay where they are.
       </p>
-      <Button size="sm" onClick={() => onSave(parseCutSettings({ cut }))} disabled={!dirty || busy} data-testid="cut-save">
+      {cut.pace === "fast" && invalid.length > 0 && (
+        <p className="text-xs text-destructive" data-testid="cut-invalid">
+          {invalid.map((f) => f.label).join(", ")}: enter a length between 0.5 and 8 seconds.
+        </p>
+      )}
+      <Button size="sm" onClick={() => onSave(parseCutSettings({ cut }))} disabled={!dirty || busy || (cut.pace === "fast" && invalid.length > 0)} data-testid="cut-save">
         Save pace
       </Button>
     </div>

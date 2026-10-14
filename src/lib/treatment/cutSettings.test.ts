@@ -42,6 +42,15 @@ describe("cut settings", () => {
     expect(buildClipGrid({ analysis: a, ...gridPaceOptions({ ...DEFAULT_CUT, pace: "cinematic" }) })).toEqual(buildClipGrid({ analysis: a, pace: "cinematic" }));
   });
 
+  it("very short lengths still cover the song to its end (no uncovered tail)", () => {
+    for (const dur of [30.3, 30.4, 30.45, 44.12, 59.97]) {
+      const a = analysis({ duration_seconds: dur, beat_map_json: projectBeats(121.998, dur, 0.029) });
+      const g = buildClipGrid({ analysis: a, ...gridPaceOptions({ pace: "fast", targets: { high: 0.5, drop: 0.5, mid: 0.5, low: 0.5 } }) });
+      expect(g[g.length - 1].end).toBe(Math.round(dur * 100) / 100);
+      expect(lens(g).every((l) => l > 0.3)).toBe(true);
+    }
+  });
+
   it("no shot shorter than the minimum when the beat map ends before the song does", () => {
     const short = projectBeats(121.998, 50, 0.029); // map covers 50 s of a 90 s song
     const g = buildClipGrid({ analysis: analysis({ beat_map_json: short }) });

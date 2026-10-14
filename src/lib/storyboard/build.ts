@@ -188,7 +188,7 @@ export type WriteStoryboardResult = {
 export async function writeStoryboardFromTreatment(input: WriteStoryboardInput): Promise<WriteStoryboardResult> {
   // the board's own cut settings (pace and shot lengths, Treatment page) decide a fresh cut
   const beatGrid = buildClipGrid({ analysis: input.analysis, durationSeconds: input.durationSeconds ?? null, lyrics: input.lyricLines ?? null, ...gridPaceOptions(parseCutSettings(input.treatmentJson)) });
-  // a re-cut candidate takes a fresh cut of the song (the default pace) instead of this board's windows
+  // a re-cut candidate takes a fresh cut of the song (at the board's saved pace and lengths) instead of this board's windows
   const grid = input.boxes.length > 0 && !input.candidate?.recut ? gridFromBoxes(input.boxes, beatGrid) : beatGrid;
   if (grid.length === 0) throw new Error("The song has not been analysed yet — Setup needs its length and beat before boxes can be cut.");
   // when the writer writes the text, `concept` is only a hint from the director (empty = none)

@@ -190,6 +190,13 @@ function trustedLineStarts(lyrics: readonly GridLyricLine[] | null | undefined):
   return starts.filter((t, i) => i === 0 || t - starts[i - 1] > 0.05);
 }
 
+/** Whether the fast cut fits the song inside the writer's shot ceiling (when not, the cut falls back to cinematic). */
+export function fastCutFits(opts: BuildGridOptions): boolean {
+  const fast = buildFastGrid(opts);
+  const duration = opts.analysis?.duration_seconds ?? opts.durationSeconds ?? 0;
+  return !(fast.length > 0 && fast[fast.length - 1].end < round2(duration));
+}
+
 export function buildClipGrid(opts: BuildGridOptions): GridClip[] {
   if ((opts.pace ?? DEFAULT_PACE) === "cinematic") return buildCinematicGrid(opts);
   const fast = buildFastGrid(opts);
@@ -256,7 +263,7 @@ function buildFastGrid({ analysis, durationSeconds, lyrics, fastTargets }: Build
     }
     if (!(end > t)) end = t + target;
     end = Math.min(end, duration);
-    if (duration - end < fastMin) end = duration; // absorb a tail too short to be a shot
+    if (duration - end < Math.max(fastMin, 0.5)) end = duration; // absorb a tail too short to be a shot (the loop stops 0.5 s from the end)
     if (end === duration) cutOnLyric = false;
     if (drops.some((d) => d.t >= t && d.t < end)) label = "drop";
     clips.push({
