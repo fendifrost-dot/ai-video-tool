@@ -18,6 +18,8 @@ import { shotsKeys } from "@/lib/queries/shots";
 import { resolveScrubSource } from "@/lib/video/scrubProxy";
 import { parseFootageAnalyses } from "@/lib/queries/footageAnalysis";
 import { boxesFromRows, type BoxRow, type BoxWrite, type StoryboardBox } from "@/lib/storyboard/boxes";
+import { measuredBeatMap, planConformToBeats } from "@/lib/storyboard/conform";
+import type { SongAnalysis } from "@/lib/songAnalysis/types";
 import {
   isImagePath,
   isVideoPath,
@@ -71,6 +73,47 @@ export async function fetchBoxes(projectId: string, variationId: string): Promis
   return boxesFromRows((data ?? []) as unknown as BoxRow[]);
 }
 
+/**
+ * Move every board of the project onto its song's measured beat (see `lib/storyboard/conform.ts`). Every variation
+ * is conformed, not only the active one: a board is the song's, whichever cut of it is being looked at. Returns what
+ * moved; nothing is written when the analysis has no measured beat map.
+ */
+export async function conformProjectBoardsToBeats(
+  projectId: string,
+  analysis: Pick<SongAnalysis, "analysis_provider" | "beat_map_json" | "duration_seconds">,
+): Promise<{ boards: number; moved: number; maxShift: number; edgesKept: number }> {
+  const measured = measuredBeatMap(analysis);
+  if (!measured) return { boards: 0, moved: 0, maxShift: 0, edgesKept: 0 };
+  // one board at a time (a project-wide select would be cut at the API's row limit and tear a board apart)
+  const { data: variations, error: vErr } = await supabase.from("video_variations").select("id").eq("project_id", projectId);
+  if (vErr) throw vErr;
+  const at = new Date().toISOString();
+  let boards = 0;
+  let moved = 0;
+  let maxShift = 0;
+  let edgesKept = 0;
+  for (const { id: variationId } of variations ?? []) {
+    const plan = planConformToBeats(await fetchBoxes(projectId, variationId), measured, analysis.duration_seconds ?? null, at);
+    edgesKept += plan.edgesKept;
+    if (plan.updates.length === 0) continue;
+    // narrow writes: the window and the history only (the board always reads a shot's window from these columns),
+    // pinned to the project and the board
+    for (const u of plan.updates) {
+      const { error: uErr } = await supabase
+        .from("shots")
+        .update({ timestamp_start: u.start, timestamp_end: u.end, history_json: u.history as unknown as Json, updated_at: new Date().toISOString() })
+        .eq("id", u.id)
+        .eq("project_id", projectId)
+        .eq("variation_id", variationId);
+      if (uErr) throw new Error(`moved ${moved} shot(s), then could not move the next one: ${uErr.message}. Press "Snap boards to the beat" to finish.`);
+      moved++;
+    }
+    boards++;
+    maxShift = Math.max(maxShift, plan.maxShift);
+  }
+  return { boards, moved, maxShift, edgesKept };
+}
+
 /** The storyboard: every box record of the project's ACTIVE variation, in song order. */
 export function useStoryboardBoxes(projectId: string | undefined) {
   const variationId = useActiveVariationId(projectId);
@@ -109,7 +152,7 @@ export async function writeBoxes(
 ): Promise<{ updated: number; inserted: string[] }> {
   let updated = 0;
   for (const u of plan.updates ?? []) {
-    const { error } = await supabase.from("shots").update(toUpdate(u.write)).eq("id", u.id);
+    const { error } = await supabase.from("shots").update(toUpdate(u.write)).eq("id", u.id).eq("project_id", projectId);
     if (error) throw new Error(`could not save box ${u.write.spec_key}: ${error.message}`);
     updated++;
   }

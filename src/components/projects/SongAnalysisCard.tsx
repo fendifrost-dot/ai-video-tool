@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Activity, RefreshCw, Zap } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { Activity, Magnet, RefreshCw, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { signedUrl } from "@/lib/storage";
@@ -9,6 +10,10 @@ import {
   useUpsertSongAnalysis,
 } from "@/lib/queries/songAnalyses";
 import { analyzeAudioUrl } from "@/lib/songAnalysis/analyzer";
+import { conformProjectBoardsToBeats, storyboardKeys } from "@/lib/queries/storyboard";
+import { shotsKeys } from "@/lib/queries/shots";
+import { measuredBeats } from "@/lib/storyboard/conform";
+import type { SongAnalysis } from "@/lib/songAnalysis/types";
 
 /**
  * Project overview card for the Phase A Song Intelligence engine.
@@ -25,7 +30,39 @@ export function SongAnalysisCard({ projectId }: { projectId: string }) {
   const audioQuery = useProjectAudio(projectId);
   const analysisQuery = useSongAnalysis(projectId);
   const upsert = useUpsertSongAnalysis();
+  const qc = useQueryClient();
   const [running, setRunning] = useState(false);
+  const [snapping, setSnapping] = useState(false);
+
+  /** Every board of the project onto the song's measured beat (Fendi, 14 Oct: each song's boards conform to its beat). */
+  async function conformBoards(analysis: Pick<SongAnalysis, "analysis_provider" | "beat_map_json" | "duration_seconds">) {
+    try {
+      return await conformProjectBoardsToBeats(projectId, analysis);
+    } finally {
+      // refresh even after a partial run, so the boards show what was actually moved
+      void qc.invalidateQueries({ queryKey: storyboardKeys.boxes(projectId) });
+      void qc.invalidateQueries({ queryKey: shotsKeys.forProject(projectId) });
+    }
+  }
+
+  async function snapBoards() {
+    if (!analysisQuery.data) return;
+    setSnapping(true);
+    try {
+      const r = await conformBoards(analysisQuery.data);
+      const kept = r.edgesKept ? ` · ${r.edgesKept} edge${r.edgesKept === 1 ? "" : "s"} left where they were (see shot history)` : "";
+      toast.success(
+        r.moved
+          ? `${r.moved} shot${r.moved === 1 ? "" : "s"} moved onto the beat (largest move ${r.maxShift.toFixed(2)} s)${kept}`
+          : `Every board already sits on the beat${kept}`,
+      );
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Could not move the boards onto the beat");
+    } finally {
+      setSnapping(false);
+    }
+  }
 
   const hasAudio = !!audioQuery.data;
   const hasAnalysis = !!analysisQuery.data;
@@ -47,10 +84,24 @@ export function SongAnalysisCard({ projectId }: { projectId: string }) {
         project_id: projectId,
         ...result,
       });
+      // a measured beat moves every board of this song onto it, automatically; the analysis is saved either way
+      let conformed: Awaited<ReturnType<typeof conformBoards>> | null = null;
+      if (measuredBeats(result)) {
+        try {
+          conformed = await conformBoards(result);
+        } catch (err) {
+          console.error(err);
+          toast.error(`Analysis saved, but the boards were not all moved onto the beat: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
       toast.success(
-        result.bpm
-          ? `Analysis complete — ${result.bpm} BPM`
-          : "Analysis complete",
+        [
+          result.bpm ? `Analysis complete — ${Math.round(result.bpm * 10) / 10} BPM` : "Analysis complete",
+          conformed?.moved ? `${conformed.moved} shot${conformed.moved === 1 ? "" : "s"} moved onto the beat` : null,
+          conformed?.edgesKept ? `${conformed.edgesKept} edge${conformed.edgesKept === 1 ? "" : "s"} left where they were` : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
       );
     } catch (err) {
       console.error(err);
@@ -72,16 +123,31 @@ export function SongAnalysisCard({ projectId }: { projectId: string }) {
           </h2>
         </div>
         {hasAnalysis && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={runAnalysis}
-            disabled={running || !hasAudio}
-          >
-            <RefreshCw className={`mr-1.5 h-3 w-3 ${running ? "animate-spin" : ""}`} />
-            {running ? "Re-analyzing…" : "Re-analyze"}
-          </Button>
+          <div className="flex items-center gap-2">
+            {measuredBeats(analysisQuery.data) && (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={snapBoards}
+                disabled={snapping || running}
+                title="Move every shot edge on this song's boards to the nearest measured beat"
+              >
+                <Magnet className={`mr-1.5 h-3 w-3 ${snapping ? "animate-pulse" : ""}`} />
+                {snapping ? "Snapping…" : "Snap boards to the beat"}
+              </Button>
+            )}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={runAnalysis}
+              disabled={running || !hasAudio}
+            >
+              <RefreshCw className={`mr-1.5 h-3 w-3 ${running ? "animate-spin" : ""}`} />
+              {running ? "Re-analyzing…" : "Re-analyze"}
+            </Button>
+          </div>
         )}
       </div>
 

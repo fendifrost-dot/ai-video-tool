@@ -7,7 +7,8 @@
  *
  *   generated_json   what the generator last wrote for the box (a ShotSpec)
  *   override_json    only what the director changed (a ShotOverride, plus the box's type)
- *   spec_json        the two resolved — the one thing every downstream consumer reads
+ *   spec_json        the two resolved — what downstream consumers read; its timeline is the window as of its last
+ *                    full write (a conform-to-beat moves only timestamp_start/end), so read the window from the row
  *
  * and its window on the SONG clock (timestamp_start / timestamp_end). The window is the authority for time: the
  * resolved spec's timeline is always read from the row, never from inside the JSON.
@@ -56,7 +57,7 @@ export type OverrideField = (typeof OVERRIDE_FIELDS)[number];
 export type BoxHistoryEntry = {
   at: string;
   /** What produced the entry: a regenerate from the treatment, a per-box rewrite, a split, a merge, a reset. */
-  event: "treatment" | "rewrite" | "edit" | "reset" | "split" | "merge" | "migrated";
+  event: "treatment" | "rewrite" | "edit" | "reset" | "split" | "merge" | "migrated" | "conform";
   /** The resolved scene before the change, so an earlier version can be read back. */
   purpose?: string;
   direction?: string;
@@ -64,6 +65,8 @@ export type BoxHistoryEntry = {
   /** The shot's timed events at that moment (absent on entries written before events existed, and on a one-state shot). */
   events?: ShotEvent[];
   note?: string;
+  /** "conform" only: the window before the shot was first moved onto the beat (restorable). */
+  from?: { start: number; end: number };
 };
 
 /** The columns of a `shots` row this module reads. */

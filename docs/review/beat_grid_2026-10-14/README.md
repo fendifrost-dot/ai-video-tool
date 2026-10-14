@@ -63,3 +63,23 @@ before the millisecond fix (checked) and passes after. Full suite: see the PR.
   true and tested across tempos), the beat-contrast gate, the downbeat margin, and the statement above on what
   re-analysis changes.
 - Product: Fendi's request in chat, 14 Oct.
+
+## Conform every board to its song's beat (PR #255, 14 Oct)
+
+DECISION (Fendi, 14 Oct): "the board should be cut to the real beat of EACH song … for each new song the tool should
+conform." Every board of a song is conformed automatically when the song is analysed, and from "Snap boards to the
+beat" on the song card.
+
+- Rule: the board's own old grid is inferred from its edges; an edge on old beat n moves to measured beat n from the
+  first measured downbeat (REBASE), so shots keep their exact beats and bars and cuts land on measured downbeats — the
+  cuts a new board gets. Edges not on a regular grid take the nearest beat (≤ 0.6 beat). A move over 1.5 beats falls
+  back to nearest.
+- Kept: 0:00, the song end, starts of shots with beat-triggered events, any shot that would get too short. Locked
+  shots conform (a content lock, not a timing lock). Each moved shot gets one restorable `conform` history entry.
+- Dry run on this board (`conform_dryrun_ysl_board.txt`): 47/47 shots move, largest move 0.67 s (late in the song,
+  where the old grid had drifted most); all 46 inner cuts on a measured downbeat; every shot keeps its beat count
+  except the last, which ends at the song end.
+- Reviews: security APPROVE WITH FIXES (narrow project-pinned writes, restorable history, error toast, song clips
+  removed from git — applied; its "respect locked" was overruled by the DECISION above and the architecture finding
+  that `locked` is a content lock); architecture APPROVE WITH FIXES (bar-phase flip → rebase; per-board fetch;
+  kept-edge reporting; beat-trigger starts; refresh in finally — applied).
