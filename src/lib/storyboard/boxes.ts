@@ -7,7 +7,8 @@
  *
  *   generated_json   what the generator last wrote for the box (a ShotSpec)
  *   override_json    only what the director changed (a ShotOverride, plus the box's type)
- *   spec_json        the two resolved — the one thing every downstream consumer reads
+ *   spec_json        the two resolved — what downstream consumers read; its timeline is the window as of its last
+ *                    full write (a conform-to-beat moves only timestamp_start/end), so read the window from the row
  *
  * and its window on the SONG clock (timestamp_start / timestamp_end). The window is the authority for time: the
  * resolved spec's timeline is always read from the row, never from inside the JSON.

@@ -18,7 +18,7 @@ import { shotsKeys } from "@/lib/queries/shots";
 import { resolveScrubSource } from "@/lib/video/scrubProxy";
 import { parseFootageAnalyses } from "@/lib/queries/footageAnalysis";
 import { boxesFromRows, type BoxRow, type BoxWrite, type StoryboardBox } from "@/lib/storyboard/boxes";
-import { measuredBeats, planConformToBeats } from "@/lib/storyboard/conform";
+import { measuredBeatMap, planConformToBeats } from "@/lib/storyboard/conform";
 import type { SongAnalysis } from "@/lib/songAnalysis/types";
 import {
   isImagePath,
@@ -82,28 +82,22 @@ export async function conformProjectBoardsToBeats(
   projectId: string,
   analysis: Pick<SongAnalysis, "analysis_provider" | "beat_map_json" | "duration_seconds">,
 ): Promise<{ boards: number; moved: number; maxShift: number; edgesKept: number }> {
-  const beats = measuredBeats(analysis);
-  if (!beats) return { boards: 0, moved: 0, maxShift: 0, edgesKept: 0 };
-  const { data, error } = await supabase.from("shots").select(BOX_COLUMNS).eq("project_id", projectId).not("spec_key", "is", null);
-  if (error) throw error;
-  const byVariation = new Map<string, BoxRow[]>();
-  for (const r of (data ?? []) as unknown as BoxRow[]) {
-    if (!r.variation_id) continue;
-    const list = byVariation.get(r.variation_id) ?? [];
-    list.push(r);
-    byVariation.set(r.variation_id, list);
-  }
+  const measured = measuredBeatMap(analysis);
+  if (!measured) return { boards: 0, moved: 0, maxShift: 0, edgesKept: 0 };
+  // one board at a time (a project-wide select would be cut at the API's row limit and tear a board apart)
+  const { data: variations, error: vErr } = await supabase.from("video_variations").select("id").eq("project_id", projectId);
+  if (vErr) throw vErr;
   const at = new Date().toISOString();
   let boards = 0;
   let moved = 0;
   let maxShift = 0;
   let edgesKept = 0;
-  for (const [variationId, rows] of byVariation) {
-    const plan = planConformToBeats(boxesFromRows(rows), beats, analysis.duration_seconds ?? null, at);
+  for (const { id: variationId } of variations ?? []) {
+    const plan = planConformToBeats(await fetchBoxes(projectId, variationId), measured, analysis.duration_seconds ?? null, at);
     edgesKept += plan.edgesKept;
     if (plan.updates.length === 0) continue;
-    // narrow writes: the window and the history only (the row's spec JSON keeps its own timeline, which the board
-    // always overrides from these two columns), pinned to the project
+    // narrow writes: the window and the history only (the board always reads a shot's window from these columns),
+    // pinned to the project and the board
     for (const u of plan.updates) {
       const { error: uErr } = await supabase
         .from("shots")

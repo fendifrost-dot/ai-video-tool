@@ -36,10 +36,13 @@ export function SongAnalysisCard({ projectId }: { projectId: string }) {
 
   /** Every board of the project onto the song's measured beat (Fendi, 14 Oct: each song's boards conform to its beat). */
   async function conformBoards(analysis: Pick<SongAnalysis, "analysis_provider" | "beat_map_json" | "duration_seconds">) {
-    const r = await conformProjectBoardsToBeats(projectId, analysis);
-    void qc.invalidateQueries({ queryKey: storyboardKeys.boxes(projectId) });
-    void qc.invalidateQueries({ queryKey: shotsKeys.forProject(projectId) });
-    return r;
+    try {
+      return await conformProjectBoardsToBeats(projectId, analysis);
+    } finally {
+      // refresh even after a partial run, so the boards show what was actually moved
+      void qc.invalidateQueries({ queryKey: storyboardKeys.boxes(projectId) });
+      void qc.invalidateQueries({ queryKey: shotsKeys.forProject(projectId) });
+    }
   }
 
   async function snapBoards() {
@@ -47,10 +50,11 @@ export function SongAnalysisCard({ projectId }: { projectId: string }) {
     setSnapping(true);
     try {
       const r = await conformBoards(analysisQuery.data);
+      const kept = r.edgesKept ? ` · ${r.edgesKept} edge${r.edgesKept === 1 ? "" : "s"} left where they were (see shot history)` : "";
       toast.success(
         r.moved
-          ? `${r.moved} shot${r.moved === 1 ? "" : "s"} moved onto the beat (largest move ${r.maxShift.toFixed(2)} s)`
-          : "Every board already sits on the beat",
+          ? `${r.moved} shot${r.moved === 1 ? "" : "s"} moved onto the beat (largest move ${r.maxShift.toFixed(2)} s)${kept}`
+          : `Every board already sits on the beat${kept}`,
       );
     } catch (err) {
       console.error(err);
@@ -94,6 +98,7 @@ export function SongAnalysisCard({ projectId }: { projectId: string }) {
         [
           result.bpm ? `Analysis complete — ${Math.round(result.bpm * 10) / 10} BPM` : "Analysis complete",
           conformed?.moved ? `${conformed.moved} shot${conformed.moved === 1 ? "" : "s"} moved onto the beat` : null,
+          conformed?.edgesKept ? `${conformed.edgesKept} edge${conformed.edgesKept === 1 ? "" : "s"} left where they were` : null,
         ]
           .filter(Boolean)
           .join(" · "),
