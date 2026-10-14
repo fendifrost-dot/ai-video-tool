@@ -20,7 +20,9 @@ import { applyAssignmentOps, storyboardKeys, useAssignments, useProjectMedia, us
 import { planRelease } from "@/lib/storyboard/rewrite";
 import { useTreatmentInputs } from "@/lib/queries/treatmentInputs";
 import { boxIsStale, unlockedForGeneration, type StoryboardBox } from "@/lib/storyboard/boxes";
-import { deleteTreatment, saveTreatment, writeStoryboardFromTreatment } from "@/lib/storyboard/build";
+import { deleteTreatment, saveCutSettings, saveTreatment, writeStoryboardFromTreatment } from "@/lib/storyboard/build";
+import { CutSettingsCard } from "@/components/treatment/CutSettingsCard";
+import type { CutSettings } from "@/lib/treatment/cutSettings";
 import { isOriginalTake, isUsableSync } from "@/lib/storyboard/media";
 import { footageSummary, setupStatus } from "@/lib/storyboard/setup";
 import { directorNotes, hasTreatment, parseTreatmentDoc, storyboardIsStale, type TreatmentDoc } from "@/lib/treatment/treatmentDoc";
@@ -228,8 +230,8 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
     }
     if (recut) {
       setConfirm({
-        title: "Re-cut the song fast-paced into a candidate board?",
-        body: `The song is cut again on its beat at the fast pace — shots of about 1.5 s where the energy is high, 2 s in the middle and 3 s where it is low, changing on the beat and on lyric line starts — and every shot is written from this treatment. The shots go into a NEW variation, “${candidateName()}”; this board and its footage stay exactly as they are. Nothing is made active; switch to the candidate under the project title to review it.`,
+        title: "Re-cut the song into a candidate board at this pace?",
+        body: `The song is cut again on its beat at the pace set above (fast cut by default: about 1.5 s where the energy is high, 2 s in the middle, 3 s where it is low, changing on the beat and on lyric line starts) and every shot is written from this treatment. About twice as many shots as a cinematic board means about twice the generation spend when they are filled. The shots go into a NEW variation, “${candidateName()}”; this board and its footage stay exactly as they are. Nothing is made active; switch to the candidate under the project title to review it.`,
         confirmLabel: "Re-cut into a candidate",
         testId: "confirm-recut-candidate",
         onConfirm: () => write(false, true, true),
@@ -577,6 +579,24 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
               )}
             </p>
           )}
+          {exists && (
+            <CutSettingsCard
+              treatmentJson={project?.treatment_json}
+              analysis={analysis}
+              lyricLines={lyricLines}
+              busy={busy}
+              onSave={async (cut: CutSettings) => {
+                if (!project) return;
+                try {
+                  await saveCutSettings(projectId, project.treatment_json, cut, project.active_variation_id);
+                  await refresh();
+                  toast.success(`Pace saved — ${cut.pace === "fast" ? `fast cut, ${cut.targets.high}/${cut.targets.mid}/${cut.targets.low} s` : "cinematic"}. Re-cut the board to apply it.`);
+                } catch (e) {
+                  toast.error(message(e));
+                }
+              }}
+            />
+          )}
           {boxes.length > 0 && doc.storyboard?.coverage && <CoverageBlock coverage={doc.storyboard.coverage} run={doc.storyboard.run ?? null} boxes={boxes} writtenAt={doc.storyboard.at} />}
           <div className="flex flex-wrap items-center gap-2">
             {exists && (boxes.length === 0 || staleOpen > 0 || (storyboardIsStale(doc) && open > 0)) && (
@@ -594,7 +614,7 @@ export default function TreatmentPage({ projectId }: { projectId: string }) {
             {exists && boxes.length > 0 && (
               <Button size="sm" variant="outline" onClick={() => askWrite(false, true, true)} disabled={busy} data-testid="treatment-recut-fast">
                 <Wand2 className="mr-1.5 h-3.5 w-3.5" />
-                Re-cut fast-paced (candidate)…
+                Re-cut at this pace (candidate)…
               </Button>
             )}
             {exists && staleKept > 0 && (

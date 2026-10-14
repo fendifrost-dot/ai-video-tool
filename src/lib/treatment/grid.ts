@@ -119,7 +119,19 @@ export type BuildGridOptions = {
   lyrics?: readonly GridLyricLine[] | null;
   /** How fast the cut is (default `DEFAULT_PACE`). */
   pace?: GridPace;
+  /** Fast pace: the director's shot lengths by energy, in seconds (each 0.5–8; unset ones keep the defaults). */
+  fastTargets?: Partial<Record<ClipEnergy, number>> | null;
 };
+
+/** The fast-pace shot lengths actually used: the defaults, with the director's valid values over them. */
+export function fastTargetsOf(over?: Partial<Record<ClipEnergy, number>> | null): Record<ClipEnergy, number> {
+  const out = { ...FAST_TARGET };
+  for (const k of Object.keys(out) as ClipEnergy[]) {
+    const v = over?.[k];
+    if (typeof v === "number" && Number.isFinite(v) && v >= 0.5 && v <= 8) out[k] = v;
+  }
+  return out;
+}
 
 /** A beat between 0.2 s and 2 s (30–300 BPM); anything else in the data is not a tempo the grid can cut on. */
 const MIN_BEAT_SEC = 0.2;
@@ -193,7 +205,7 @@ export function buildClipGrid(opts: BuildGridOptions): GridClip[] {
  * nearest that length, then on a downbeat when one is within a beat (and the shot stays 1–3.5 s), then on a trusted
  * lyric line start within one beat. Shots of a drop are high-energy. Without a usable beat it cuts in seconds.
  */
-function buildFastGrid({ analysis, durationSeconds, lyrics }: BuildGridOptions): GridClip[] {
+function buildFastGrid({ analysis, durationSeconds, lyrics, fastTargets }: BuildGridOptions): GridClip[] {
   const duration = analysis?.duration_seconds ?? durationSeconds ?? 0;
   if (!duration || duration <= 0) return [];
   const bpm = analysis?.bpm ?? null;
@@ -203,24 +215,28 @@ function buildFastGrid({ analysis, durationSeconds, lyrics }: BuildGridOptions):
   const lattice = bpm && bpm > 0 ? beatLattice(analysis, bpm, duration) : null;
   const downbeatTimes = lattice ? lattice.downbeats.map((i) => lattice.beats[i]) : [];
   const lineStarts = lattice ? trustedLineStarts(lyrics) : [];
-  const fits = (len: number) => len >= FAST_MIN && len <= FAST_MAX;
+  const targets = fastTargetsOf(fastTargets);
+  // the bounds a shot stays within follow the director's lengths (the defaults give 1–3.5 s)
+  const fastMin = Math.min(FAST_MIN, Math.min(...Object.values(targets)) * 0.67);
+  const fastMax = Math.max(FAST_MAX, Math.max(...Object.values(targets)) * 1.2);
+  const fits = (len: number) => len >= fastMin && len <= fastMax;
 
   const clips: GridClip[] = [];
   let t = 0;
   let i = 0;
   while (t < duration - 0.5 && clips.length < MAX_CLIPS) {
     const e = energyAt(t + 0.5);
-    const dropHere = drops.some((d) => d.t >= t && d.t < t + FAST_TARGET.high);
+    const dropHere = drops.some((d) => d.t >= t && d.t < t + targets.drop);
     let label: ClipEnergy = dropHere ? "drop" : e >= hi ? "high" : e >= lo ? "mid" : "low";
-    const target = FAST_TARGET[label];
+    const target = targets[label];
     let end = t + target;
     let cutOnLyric = false;
     if (lattice) {
       const b = lattice.beatSec;
       // the beat nearest the target length, at least one beat and FAST_MIN long
       let k = nearestIndex(lattice.beats, t + target);
-      while (k < lattice.beats.length - 1 && lattice.beats[k] - t < Math.max(FAST_MIN, b) - 1e-6) k++;
-      end = lattice.beats[k] > t ? lattice.beats[k] : t + target;
+      while (k < lattice.beats.length - 1 && lattice.beats[k] - t < Math.max(fastMin, b) - 1e-6) k++;
+      end = lattice.beats[k] - t >= fastMin - 1e-6 ? lattice.beats[k] : t + target; // past the end of the map: seconds
       // a downbeat within a beat takes the cut (the shot changes on the "1")
       if (downbeatTimes.length > 0) {
         const d = downbeatTimes[nearestIndex(downbeatTimes, end)];
@@ -240,7 +256,7 @@ function buildFastGrid({ analysis, durationSeconds, lyrics }: BuildGridOptions):
     }
     if (!(end > t)) end = t + target;
     end = Math.min(end, duration);
-    if (duration - end < FAST_MIN) end = duration; // absorb a tail too short to be a shot
+    if (duration - end < fastMin) end = duration; // absorb a tail too short to be a shot
     if (end === duration) cutOnLyric = false;
     if (drops.some((d) => d.t >= t && d.t < end)) label = "drop";
     clips.push({

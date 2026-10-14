@@ -18,6 +18,8 @@ export function energyForWindow(window: { start: number; end: number }, beatGrid
   let most = 0;
   for (const g of beatGrid) {
     const overlap = Math.min(window.end, g.end) - Math.max(window.start, g.start);
+    // a drop anywhere in the window makes the window a drop (a short fast-cut drop shot must not be outvoted)
+    if (overlap > 0 && g.energy === "drop") return "drop";
     if (overlap > most) {
       most = overlap;
       best = g.energy;
