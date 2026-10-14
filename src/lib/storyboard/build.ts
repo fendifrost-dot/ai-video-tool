@@ -178,7 +178,7 @@ export type WriteStoryboardResult = {
 
 /** One treatment-model call: (optionally) the treatment text, and the scene of every box it may rewrite. */
 export async function writeStoryboardFromTreatment(input: WriteStoryboardInput): Promise<WriteStoryboardResult> {
-  const beatGrid = buildClipGrid({ analysis: input.analysis, durationSeconds: input.durationSeconds ?? null });
+  const beatGrid = buildClipGrid({ analysis: input.analysis, durationSeconds: input.durationSeconds ?? null, lyrics: input.lyricLines ?? null });
   const grid = input.boxes.length > 0 ? gridFromBoxes(input.boxes, beatGrid) : beatGrid;
   if (grid.length === 0) throw new Error("The song has not been analysed yet — Setup needs its length and beat before boxes can be cut.");
   // when the writer writes the text, `concept` is only a hint from the director (empty = none)
