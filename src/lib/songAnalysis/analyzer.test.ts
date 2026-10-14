@@ -28,12 +28,28 @@ describe("analyzeBeatGrid", () => {
     expect(g.downbeat).toBe(2);
     expect(Math.abs(g.firstBeat - (0.31 + 2 * (60 / 121.996)))).toBeLessThan(0.015);
     expect(g.contrast).toBeGreaterThan(2);
+    expect(g.downbeatConfident).toBe(true);
   });
 
   it("the v1 coarse tempo is off by a whole frame lag on the same track (why v2 exists)", () => {
     const mono = clickTrack({ bpm: 121.996, firstBeat: 0.31, downbeat: 0, seconds: 90, sampleRate });
     const coarse = detectBpm(mono, sampleRate)!;
     expect(Math.abs(coarse - 121.996)).toBeGreaterThan(0.2);
+  });
+
+  it("returns no measured grid for silence or beatless noise (v1 tempo is kept by the caller)", () => {
+    expect(analyzeBeatGrid(new Float32Array(sampleRate * 30), sampleRate, 30)).toBeNull();
+    expect(detectBpm(new Float32Array(sampleRate * 30), sampleRate)).toBeNull();
+    let seed = 3;
+    const noise = Float32Array.from({ length: sampleRate * 30 }, () => ((seed = (seed * 16807) % 2147483647) / 2147483647) * 2 - 1);
+    expect(analyzeBeatGrid(noise, sampleRate, 30)).toBeNull();
+  });
+
+  it("reports an uncertain downbeat when two beat positions are equally strong", () => {
+    // downbeat beyond the track: every click at the same level, so no beat position leads
+    const flat = clickTrack({ bpm: 120, firstBeat: 0.2, downbeat: 10_000, seconds: 40, sampleRate });
+    const g = analyzeBeatGrid(flat, sampleRate, 40)!;
+    expect(g.downbeatConfident).toBe(false);
   });
 
   it("returns null on audio too short to have a tempo", () => {

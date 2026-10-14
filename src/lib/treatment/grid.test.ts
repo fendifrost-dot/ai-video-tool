@@ -58,6 +58,19 @@ describe("buildClipGrid — bar lines", () => {
     expect(ends(buildClipGrid({ analysis: a }))).toEqual(v1Cuts(a));
   });
 
+  it("cuts the same with a v1 beat map as with none, across tempos and tie-prone energy curves", () => {
+    let seed = 11;
+    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (const [bpm, dur] of [[81.7, 61.3], [179.2, 187.77], [122.4, 241.05], [96.3, 187.77], [140, 61.3]] as const) {
+      const energy = Array.from({ length: Math.ceil(dur * 4) }, (_, k) => ({ t: k / 4, energy: rnd() }));
+      const base = analysis({ bpm, duration_seconds: dur, energy_curve_json: energy });
+      const none = ends(buildClipGrid({ analysis: base }));
+      const mapped = ends(buildClipGrid({ analysis: { ...base, beat_map_json: projectBeats(bpm, dur) } }));
+      expect(mapped.length).toBe(none.length);
+      mapped.forEach((t, k) => expect(Math.abs(t - none[k])).toBeLessThanOrEqual(0.011));
+    }
+  });
+
   it("matches the v1 cuts (to 0.01 s) with a v1 beat map counted from 0:00", () => {
     const a = analysis({ beat_map_json: projectBeats(122.4, DURATION) });
     const got = ends(buildClipGrid({ analysis: a }));

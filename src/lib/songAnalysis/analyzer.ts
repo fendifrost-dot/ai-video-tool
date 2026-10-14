@@ -37,6 +37,13 @@ const BPM_MAX = 200;
 const DROP_THRESHOLD_SIGMA = 1.5;
 const DROP_MIN_SUSTAIN_SECONDS = 1.0;
 const ROLLING_MEAN_WINDOW = 16; // ~4s at 250ms windows
+/** A refined grid is "measured" only when its beats beat the average phase by this much (click track ~16×, a
+ *  produced song ~3.5×, white noise ~1.25×, silence 1×). Below it the v1 tempo and map are kept. */
+export const MIN_BEAT_CONTRAST = 1.5;
+/** A downbeat other than the first beat must lead it by this factor. */
+const DOWNBEAT_MIN_LEAD = 1.03;
+/** Below this lead over the runner-up the downbeat is reported as uncertain (bar lines may be half a bar off). */
+export const DOWNBEAT_CONFIDENT_MARGIN = 0.1;
 
 export type AnalysisResult = Pick<
   SongAnalysis,
@@ -58,8 +65,10 @@ export async function analyzeAudioUrl(url: string): Promise<AnalysisResult> {
 
   const energyCurve = computeEnergyCurve(mono, sampleRate);
   const grid = analyzeBeatGrid(mono, sampleRate, duration);
-  const bpm = grid?.bpm ?? null;
-  const beatMap = grid ? projectBeats(grid.bpm, duration, grid.firstBeat, grid.downbeat) : [];
+  // no measured grid (no clear beat): the v1 tempo and a map counted from 0:00, labelled v1
+  const v1Bpm = grid ? null : detectBpm(mono, sampleRate);
+  const bpm = grid?.bpm ?? v1Bpm;
+  const beatMap = grid ? projectBeats(grid.bpm, duration, grid.firstBeat) : v1Bpm ? projectBeats(v1Bpm, duration) : [];
   const drops = detectDrops(energyCurve);
 
   return {
@@ -71,7 +80,9 @@ export async function analyzeAudioUrl(url: string): Promise<AnalysisResult> {
     // Sections + hooks need ML or manual labelling — left empty in Phase A.
     sections_json: [],
     hooks_json: [],
-    analysis_provider: grid ? "web-audio-builtin-v2" : "web-audio-builtin",
+    // the provider says what the map is: v2 = measured beats and downbeat; "-downbeat-uncertain" = measured beats,
+    // bar lines a best guess (two beat positions nearly tie)
+    analysis_provider: grid ? (grid.downbeatConfident ? "web-audio-builtin-v2" : "web-audio-builtin-v2-downbeat-uncertain") : "web-audio-builtin",
   };
 }
 
@@ -204,7 +215,7 @@ function coarseBpmFromEnvelope(env: Float32Array, fps: number): number | null {
       bestLag = lag;
     }
   }
-  if (bestLag <= 0) return null;
+  if (bestLag <= 0 || !(bestScore > 0)) return null; // silence / no periodicity: no tempo (v1 returned ~199 BPM)
   const bpm = 60 / (bestLag / fps);
   // Round to one decimal — hand-entered BPMs are integers; this gives an
   // approximate confidence indicator.
@@ -288,8 +299,11 @@ function bestOver(
 export function refineBeatGrid(env: Float32Array, fps: number, coarseBpm: number): BeatGridFit {
   const coarse = bestOver(env, fps, coarseBpm - 1, coarseBpm + 1, 0.02, 0.01);
   // fine: exact (interpolated) score, phase within ±20 ms of the coarse winner
-  const fine0 = bestOver(env, fps, coarse.bpm - 0.03, coarse.bpm + 0.03, 0.002, 0.001, beatAlignmentScoreExact, Math.max(0, coarse.phase - 0.02), coarse.phase + 0.02);
-  const fine = { ...fine0, score: beatAlignmentScore(env, fps, fine0.bpm, fine0.phase) };
+  // (the window may start below 0: a phase just under one period is the same grid one beat earlier)
+  const fine0 = bestOver(env, fps, coarse.bpm - 0.03, coarse.bpm + 0.03, 0.002, 0.001, beatAlignmentScoreExact, coarse.phase - 0.02, coarse.phase + 0.02);
+  const period0 = 60 / fine0.bpm;
+  const wrapped = ((fine0.phase % period0) + period0) % period0;
+  const fine = { ...fine0, phase: wrapped, score: beatAlignmentScore(env, fps, fine0.bpm, wrapped) };
   const period = 60 / fine.bpm;
   let total = 0;
   let n = 0;
@@ -310,12 +324,15 @@ export function refineBeatGrid(env: Float32Array, fps: number, coarseBpm: number
  * Returns 0 (the first beat) unless another position is ahead by more than 3% — kick-on-1-and-3 songs make
  * positions 0 and 2 close, and a tie is not evidence.
  */
-export function detectDownbeat(env: Float32Array, fps: number, bpm: number, phase: number): number {
+export function detectDownbeat(env: Float32Array, fps: number, bpm: number, phase: number): { downbeat: number; margin: number } {
   const period = 60 / bpm;
   const scores = [0, 1, 2, 3].map((j) => beatAlignmentScore(env, fps, bpm / 4, phase + j * period));
-  const best = scores.indexOf(Math.max(...scores));
-  if (best === 0) return 0;
-  return scores[best] > scores[0] * 1.03 ? best : 0;
+  const sorted = [...scores].sort((a, b) => b - a);
+  // how far the winner leads the runner-up, as a fraction of the winner (0 = a tie)
+  const margin = sorted[0] > 0 ? (sorted[0] - sorted[1]) / sorted[0] : 0;
+  const best = scores.indexOf(sorted[0]);
+  if (best === 0) return { downbeat: 0, margin };
+  return scores[best] > scores[0] * DOWNBEAT_MIN_LEAD ? { downbeat: best, margin } : { downbeat: 0, margin };
 }
 
 export type BeatGrid = BeatGridFit & {
@@ -323,6 +340,10 @@ export type BeatGrid = BeatGridFit & {
   firstBeat: number;
   /** Beats between `phase` and the first downbeat (0..3). */
   downbeat: number;
+  /** Lead of the chosen downbeat over the runner-up (0 = tie). */
+  downbeatMargin: number;
+  /** False when the margin is under DOWNBEAT_CONFIDENT_MARGIN: beats are measured, bar lines are a best guess. */
+  downbeatConfident: boolean;
 };
 
 /** Tempo, beat phase and downbeat for a decoded mono signal; null when there is no usable tempo. */
@@ -332,10 +353,17 @@ export function analyzeBeatGrid(mono: Float32Array, sampleRate: number, duration
   const coarse = coarseBpmFromEnvelope(env, fps);
   if (!coarse) return null;
   const fit = refineBeatGrid(env, fps, coarse);
-  const downbeat = detectDownbeat(env, fps, fit.bpm, fit.phase);
+  if (!(fit.contrast >= MIN_BEAT_CONTRAST)) return null; // no clear beat: not a measured grid
+  const { downbeat, margin } = detectDownbeat(env, fps, fit.bpm, fit.phase);
   const firstBeat = fit.phase + downbeat * (60 / fit.bpm);
   if (!(firstBeat < durationSeconds)) return null;
-  return { ...fit, downbeat, firstBeat: Math.round(firstBeat * 10000) / 10000 };
+  return {
+    ...fit,
+    downbeat,
+    downbeatMargin: Math.round(margin * 1000) / 1000,
+    downbeatConfident: margin >= DOWNBEAT_CONFIDENT_MARGIN,
+    firstBeat: Math.round(firstBeat * 10000) / 10000,
+  };
 }
 
 /**
@@ -346,7 +374,6 @@ export function projectBeats(
   bpm: number,
   durationSeconds: number,
   firstBeat: number = 0,
-  _downbeat: number = 0,
 ): BeatMarker[] {
   if (!(bpm >= 30 && bpm <= 300) || !Number.isFinite(durationSeconds) || !Number.isFinite(firstBeat) || firstBeat < 0) return [];
   const period = 60 / bpm;

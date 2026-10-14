@@ -9,14 +9,19 @@
  * Bar lines (2026-10-14): when the analysis carries a measured beat map
  * (`beat_map_json`, analyzer v2: refined tempo + beat phase + downbeat), cuts
  * fall on its downbeats rather than on bars counted from 0:00 at the rounded
- * BPM. With the v1 map (beats from 0:00) the bar lines are the same as before.
+ * BPM. With the v1 map (beats from 0:00), or none, the bar lines are the v1 ones;
+ * the energy lookup reads at the millisecond, so a time sitting exactly between
+ * two energy samples can take the other sample than the v1 loop did (and change
+ * that clip's length class).
  *
  * Lyric starts (2026-10-14): when timed lyric lines are given, a cut that
  * falls within one beat of a confidently timed line start moves to the beat
  * nearest that start, so a shot change lands with the line instead of just
- * before or after it. Clip length bounds still hold.
+ * before or after it. A moved cut can make a clip up to one beat shorter than
+ * the 2.5 s minimum or longer than the 6 s maximum.
  */
 
+import { MAX_LINE_SECONDS } from "@/lib/lyrics/lyricsForShot";
 import type { SongAnalysis } from "@/lib/songAnalysis/types";
 
 export type ClipEnergy = "low" | "mid" | "high" | "drop";
@@ -37,7 +42,7 @@ export type GridLyricLine = { start: number; end: number; confidence: number };
 /** A line start moves a cut only when its timing is trusted and the line is a sung line, not an aligner bridge. */
 const LYRIC_MIN_CONFIDENCE = 0.5;
 const LYRIC_MIN_SECONDS = 0.15;
-const LYRIC_MAX_SECONDS = 10;
+const LYRIC_MAX_SECONDS = MAX_LINE_SECONDS;
 
 const MIN_CLIP = 2.5;
 const MAX_CLIP = 6;
@@ -51,7 +56,10 @@ function round2(n: number): number {
 function makeEnergyLookup(analysis: SongAnalysis | null | undefined) {
   const curve = analysis?.energy_curve_json ?? [];
   if (curve.length === 0) return () => 0.5;
-  return (t: number): number => {
+  return (t0: number): number => {
+    // read at the millisecond, so a cut stored to the ms (a beat map) and the same cut computed exactly find the
+    // same sample — a time exactly between two samples otherwise breaks its tie differently and flips the label
+    const t = Math.round(t0 * 1000) / 1000;
     // Samples are ~0.25s apart and sorted; binary search not needed at this scale.
     let best = curve[0];
     let bestDist = Math.abs(curve[0].t - t);
