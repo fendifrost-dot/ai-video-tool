@@ -1,0 +1,13 @@
+{
+ "route": "AVT grok-broll-proxy (xAI grok-imagine-video image-to-video), duration 2, 9:16, 720p, maxCostUsd 0.2, promptVersion ib-motion-v1",
+ "submitted_utc": "2026-10-13T22:06Z",
+ "runs": {
+  "S1_c008a": {"still_asset": "760960aa-e1b8-49c4-8492-9ef264eb0503", "still_job": "f1df460f-fdef-4cac-bc15-d68cedcccc22", "requestId": "543285e4-fc1b-9b5c-8602-76412510f1fc"},
+  "S3_c009a": {"still_asset": "b46a337b-cc08-498a-a9c0-9a7a8b7aa650", "still_job": "0ba94eb7-e83b-47a5-ace5-1a4382173c34", "requestId": "f4d679b1-8be3-912c-9ae1-660fef0a7330"},
+  "S4_c009b": {"still_asset": "6f7b7825-0c1d-4b85-b910-4c536621f022", "still_job": "9ac641d6-87f3-4ba3-aa3e-e281902e3ddb", "requestId": "53b01665-26f3-9a8e-9ce1-ec366850822d"},
+  "S5_c010a": {"still_asset": "f3275069-7e7b-4ab9-a8ca-8531b710f51b", "still_job": "f8c61e7d-2cf1-4aba-a695-1cedd95e681c", "requestId": "da8bee50-69eb-929a-a74f-1511f6d00db7"},
+  "S6_c010b": {"still_asset": "7fea80be-9b10-42d4-afe3-b58b0978afa8", "still_job": "6cba6c02-6945-4156-990b-30b2c4494aa2", "requestId": "042754ef-9819-98a8-9793-a7d990a9721c"},
+  "S7_c014a": {"still_asset": "90be262b-4043-4ea7-9529-7446438ee6ce", "still_job": "3848b5af-af4a-4593-a38f-1692e22443c6", "requestId": "78388681-f359-9475-b6d7-d1240ed55df7"},
+  "S8_c014b": {"still_asset": "1f674cda-9fe4-4d4e-99d6-3a8c15644e11", "still_job": "105af67d-6913-469d-9417-f50861b07de8", "requestId": "ef8c3b9a-f906-9163-97fc-fe3075159155"}
+ }
+}

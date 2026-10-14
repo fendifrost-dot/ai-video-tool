@@ -18,6 +18,7 @@ npx tsx scripts/mcp/still.ts <workdir> entity <KEY>  # reference pictures of a c
 npx tsx scripts/mcp/still.ts <workdir> shot <c0NN>   # the still of a storyboard box
 npx tsx scripts/mcp/still.ts <workdir> clip <c0NN>   # the clip of a storyboard box, from its selected image
 npx tsx scripts/mcp/edit.ts <workdir> <c0NN> <patch.json>   # a director's edit of one box: the one avt_update to perform
+npx tsx scripts/mcp/split.ts <rows.json> <c0NN> <atSeconds> <userId>   # split one box in two, as the page's "Split shot here"
 ```
 
 Each run prints either `DONE {...}` or `PENDING {id, tool, args}`; the AI performs the tool call and writes the answer
@@ -55,6 +56,15 @@ fingerprint of the treatment that stands now (`bundle/direction.json`), as the p
 
 `applyOverride` locks an edited box, as the page does. A box the director had deliberately left unlocked stays that
 way only if `locked` is left out of the update — say which you did.
+
+## Splitting a box (`split.ts`)
+
+A shot plays one selected clip, so shorter edits inside one beat mean splitting the box. `split.ts` runs the page's own
+`planSplit`: the first half keeps the row (id, key, footage), the second half is a new row (`<key>_2`, `box_origin:
+"split"`, same lock, `shot_number` = max + 1). It prints one `avt_update` (filtered on the row's `updated_at`, so a page
+edit made since matches nothing) and one `avt_insert`. Put clips on the halves afterwards with `shot_asset_assignments`.
+A box with timed events is refused: split it on the page, which divides them on the song clock. First used on IB
+candidate 5, 13 Oct 2026 (c008–c010, c014; `docs/handoffs/IB_RIDER_SEQUENCE_2026-10-13.md`).
 
 ## What every request is checked for
 
