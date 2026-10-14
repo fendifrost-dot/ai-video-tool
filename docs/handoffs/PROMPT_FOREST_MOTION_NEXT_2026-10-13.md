@@ -22,6 +22,12 @@ repos. Lovable is the only SQL and deploy path; no Supabase CLI or dashboard; ne
 Spend on 13 Oct after the round-3 handoff: two Gemini stills, about $0.54 conditional estimate (invoice
 unknown), and five Grok clips at $0.142 each by xAI usage ticks, $0.71 in total.
 
+## Standing rule from Fendi (14 Oct 2026)
+
+**Post every generated clip and still into the chat with Fendi as soon as it exists** (the session's file-sending
+tool, displayed inline), not only as a repo path or asset id. He reviews by watching them there. Send failed or
+rejected outputs too, labelled, so he can see what was tried.
+
 ## Verify first (cheap)
 
 1. `avt_select project_assets id in (3fce9cb5-…, fed968b9-…)`: both `approval_status` = `approved`. Otherwise stop

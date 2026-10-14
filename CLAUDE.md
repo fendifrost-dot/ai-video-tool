@@ -119,6 +119,8 @@ Confirm T7: `df -h /Volumes/T7`. If missing → **stop and ask**. Never fall bac
 
 ---
 
+**Show every output (Fendi, 14 Oct 2026):** post each generated clip and still into the chat as soon as it exists (inline file), not just a path or asset id.
+
 ## Hard product rules (wardrobe)
 
 1. Asset processing runs through AVT / its edge functions — no ad-hoc local image pipelines in the agent sandbox.

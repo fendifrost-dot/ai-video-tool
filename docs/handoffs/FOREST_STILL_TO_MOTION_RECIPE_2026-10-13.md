@@ -49,3 +49,9 @@ Lock these in every motion prompt; each line fixed a defect seen in a test clip:
 Extract frames 0, 12, 24, 36, 48 and the last frame; check expression, hands, identity against ORIGINAL, anything
 newly appearing on the wardrobe, and lettering. A clip is a candidate only after a blind review against ORIGINAL,
 and it stays `pending` until Fendi selects it.
+
+## Standing rule from Fendi (14 Oct 2026)
+
+**Post every generated clip and still into the chat with Fendi as soon as it exists** (the session's file-sending
+tool, displayed inline), not only as a repo path or asset id. He reviews by watching them there. Send failed or
+rejected outputs too, labelled, so he can see what was tried.
