@@ -19,6 +19,7 @@ import { resolveScrubSource } from "@/lib/video/scrubProxy";
 import { parseFootageAnalyses } from "@/lib/queries/footageAnalysis";
 import { boxesFromRows, type BoxRow, type BoxWrite, type StoryboardBox } from "@/lib/storyboard/boxes";
 import { measuredBeatMap, planConformToBeats } from "@/lib/storyboard/conform";
+import { dressRecordOf } from "@/lib/storyboard/dress";
 import type { SongAnalysis } from "@/lib/songAnalysis/types";
 import {
   isImagePath,
@@ -454,12 +455,13 @@ function textOf(meta: unknown, key: string): string | null {
 }
 
 function derivedOf(meta: unknown): MediaAsset["derivedFrom"] {
-  const d = (meta as { derived_from?: { asset_id?: unknown; song_start?: unknown; source_window?: unknown; method?: unknown } } | null)?.derived_from;
+  const d = (meta as { derived_from?: { asset_id?: unknown; song_start?: unknown; source_window?: unknown; method?: unknown; dress?: unknown } } | null)?.derived_from;
   if (!d || typeof d.asset_id !== "string") return null;
   const w = d.source_window;
   const sourceWindow: [number, number] | null = Array.isArray(w) && w.length === 2 && typeof w[0] === "number" && typeof w[1] === "number" && w[1] > w[0] ? [w[0], w[1]] : null;
   // a record written before the method was kept is a restaging: that was the only way a take was made from a take
-  return { assetId: d.asset_id, songStart: typeof d.song_start === "number" ? d.song_start : null, sourceWindow, method: d.method === "composite" ? "composite" : "restaged" };
+  const method = d.method === "composite" ? "composite" : d.method === "dressed" ? "dressed" : "restaged";
+  return { assetId: d.asset_id, songStart: typeof d.song_start === "number" ? d.song_start : null, sourceWindow, method, ...(method === "dressed" ? { dress: dressRecordOf(d.dress) } : {}) };
 }
 
 /** Say what a piece of footage shows: what he wears, and where it was filmed. Kept on the asset; the file is not touched. */

@@ -448,6 +448,7 @@ describe("the name a piece of media goes by", () => {
     expect(mediaLabel({ role: "performance", base: false, asset: { derivedFrom: { assetId: "t", songStart: 0 } } })).toBe("Your take · restaged");
     expect(mediaLabel({ role: "performance", base: false, asset: { derivedFrom: { assetId: "t", songStart: 0, method: "restaged" } } })).toBe("Your take · restaged");
     expect(mediaLabel({ role: "performance", base: false, asset: { derivedFrom: { assetId: "t", songStart: 0, method: "composite" } } })).toBe("Your take · new background");
+    expect(mediaLabel({ role: "performance", base: false, asset: { derivedFrom: { assetId: "t", songStart: 0, method: "dressed" } } })).toBe("Your take · dressed");
   });
 });
 
