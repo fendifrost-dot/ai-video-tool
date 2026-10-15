@@ -73,7 +73,13 @@ export function boxJobStatus(job: JobRow, now: number): BoxJobStatus {
     return { kind, state: "failed", message: "the submit never reported back — check Runs before generating again", at };
   }
   const restaged = !!restagedFrom(job);
-  return { kind, state: "working", message: kind === "image" ? "drawing the image…" : restaged ? "restaging the take — several minutes" : "rendering the clip — a few minutes", at };
+  const dressing = settingsOf(job as BatchJobRow)?.route === ("genjutsu_swap" as string);
+  return {
+    kind,
+    state: "working",
+    message: kind === "image" ? "drawing the image…" : restaged ? "restaging the take — several minutes" : dressing ? "dressing the take — several minutes; it lands on this shot as an alternate" : "rendering the clip — a few minutes",
+    at,
+  };
 }
 
 /** The storyboard's jobs, newest first per box key. */

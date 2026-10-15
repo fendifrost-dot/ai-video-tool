@@ -28,6 +28,7 @@ import {
   type DressRecord,
 } from "./dress";
 import { dressedSongStart } from "./dress";
+import { boxJobStatus } from "@/lib/queries/boxJobs";
 
 const T0 = Date.parse("2026-10-15T12:00:00.000Z");
 
@@ -357,5 +358,12 @@ describe("the server's own checks", () => {
       audio_dropped: 0,
     });
     expect(out.meta.output_duration).toBeCloseTo(3.7083, 4);
+  });
+});
+
+describe("the shot says what is happening", () => {
+  it("a dress in progress is named as one", () => {
+    const job = { ...importedJob(), status: "running", progress_note: null } as never;
+    expect(boxJobStatus(job, T0).message).toMatch(/^dressing the take/);
   });
 });
