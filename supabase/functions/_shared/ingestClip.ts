@@ -11,6 +11,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { decodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
 import { DRESSED_ROUTE } from "./jobProgress.ts";
+import { acceptDownloadHeaders, DOWNLOAD_MAX_BYTES, readBounded } from "./dressConform.ts";
 
 export type IngestRow = {
   id: string;
@@ -158,23 +159,38 @@ export async function ingestOne(
       if (!dl.ok) {
         throw new Error(`direct download from ${row.provider} CDN returned ${dl.status}`);
       }
-      const buf = await dl.arrayBuffer();
-      bytes = new Uint8Array(buf);
+      // bounded: a declared length over the cap is refused unread, the body is counted as it streams and dropped
+      // past the cap, and a dressed result (fetched from a row-carried URL) must be served as a video
+      const headers = acceptDownloadHeaders({ contentLength: dl.headers.get("content-length"), contentType: dl.headers.get("content-type"), strictType: !!(opts.resultUrl || opts.transform) });
+      if (!headers.ok) {
+        dlCtrl.abort();
+        throw new Error(`download from ${row.provider} refused: ${headers.why}`);
+      }
+      if (!dl.body) throw new Error(`download from ${row.provider} had no body`);
+      bytes = await readBounded(dl.body, DOWNLOAD_MAX_BYTES, () => dlCtrl.abort());
       contentType = dl.headers.get("content-type") ?? contentType;
     } finally { clearTimeout(dlTimer); }
   }
 
-  // 4a. The caller's own step on the bytes (a dressed take is conformed to its source's length here).
+  // 4a. The caller's own step on the bytes (a dressed take is conformed to its source's length here). When it
+  //     refuses, the RAW bytes are stored anyway with the reason — a paid result is never stranded on a CDN — and
+  //     the reason stops the take from being placed on the song (jobProgress fileDressedClip).
   let transformed: Record<string, unknown> = {};
   if (opts.transform) {
-    const t = opts.transform(bytes);
-    bytes = t.bytes;
-    transformed = t.meta;
-    contentType = "video/mp4";
+    try {
+      const t = opts.transform(bytes);
+      bytes = t.bytes;
+      transformed = t.meta;
+      contentType = "video/mp4";
+    } catch (e) {
+      transformed = { conform_error: (e instanceof Error ? e.message : String(e)).slice(0, 500) };
+    }
   }
 
-  // 4b. Upload to project-clips.
-  const filename = `generated_${row.provider}_${row.external_job_id.slice(0, 12)}.mp4`;
+  // 4b. Upload to project-clips. The provider's id is made safe for a storage key (a dressed job's id was already
+  //     held to plain characters before the download; other providers' ids may carry slashes).
+  const safeId = row.external_job_id.replace(/[^A-Za-z0-9_-]/g, "_").slice(0, 12) || "job";
+  const filename = `generated_${row.provider}_${safeId}.mp4`;
   const path = `${row.user_id}/${row.project_id}/${row.id}/${filename}`;
 
   const { error: uploadErr } = await (admin as any).storage

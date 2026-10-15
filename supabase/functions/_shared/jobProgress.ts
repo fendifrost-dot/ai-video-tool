@@ -11,6 +11,8 @@
 //
 // Pure: no Deno, no network, no project knowledge.
 
+import { CONFORM_TOLERANCE, retimeRatioPlausible } from "./dressConform.ts";
+
 export type ProgressJob = {
   id: string;
   user_id: string;
@@ -53,6 +55,11 @@ export type ProgressDeps = {
   /** Keep pictures drawn for a continuity entity with that entity (nothing is approved). Absent = not supported here. */
   addEntityPictures?: (job: ProgressJob, entityId: string, assetIds: string[]) => Promise<void>;
   insertSync: (row: { user_id: string; project_id: string; song_asset_id: string | null; performance_asset_id: string; offset_seconds: number; drift_ppm: number; method: string; status: string; notes: string }) => Promise<void>;
+  /**
+   * Why a dressed job may not be filed — every record it names read back and held against its user and project
+   * (dressOwnership.ts). Empty = its own. Runs before anything is downloaded.
+   */
+  dressOwnership: (job: ProgressJob, dressed: DressedFrom, shotId: string | null) => Promise<string[]>;
 };
 
 /** A submit that has not reported a provider job id after this long never will. */
@@ -110,6 +117,11 @@ export function restagedFrom(job: ProgressJob): { sourceAssetId: string; songSta
 
 /** The route a dressed job records (src/lib/storyboard/dress.ts DRESS_ROUTE). */
 export const DRESSED_ROUTE = "genjutsu_swap";
+/** What a provider request id may look like before it is used in a storage key (src/lib/storyboard/dress.ts DRESS_ID_RE). */
+export const DRESSED_ID_RE = /^[A-Za-z0-9_-]+$/;
+
+/** A dressed job refused for good: failed with the reason, never retried, never filed. */
+export class DressRefused extends Error {}
 
 export type DressedFrom = {
   sourceAssetId: string;
@@ -216,10 +228,35 @@ export async function advanceJob(input: ProgressJob, deps: ProgressDeps): Promis
     if (isStillJob(job)) return await finish(); // an image job the page itself finished
 
     // 2. the clip is rendered: save it
+    const dressedEarly = dressedFrom(job);
     if (!job.result_asset_id) {
       if (!job.external_job_id) return await finish("rendered, but there is no provider job id to fetch it by");
+      if (dressedEarly) {
+        // a dressed job's row was written by the browser: what it names is checked before a byte is fetched
+        if (!DRESSED_ID_RE.test(job.external_job_id)) {
+          await set({ status: "failed", error_text: "the provider request id is not a plain id — the dressed clip was not fetched", progress_note: "refused: request id" });
+          return await finish();
+        }
+        const why = await deps.dressOwnership(job, dressedEarly, shotIdOf(job));
+        if (why.length) {
+          const note = `refused: ${why.join("; ")}`;
+          await set({ status: "failed", error_text: `this dressed job names records that are not its own — nothing was fetched or filed (${why[0]})`.slice(0, 500), progress_note: note });
+          did.push("refused: ownership");
+          return await finish();
+        }
+        // the attempt is counted BEFORE the download, so a worker killed mid-download (memory, time) still counts
+        // and a poisoned row cannot be claimed for ever; a download that returns takes the count back
+        const attempts = (job.progress_failures ?? 0) + 1;
+        if (attempts >= MAX_FAILURES) {
+          await set({ status: "failed", error_text: `the dressed clip could not be downloaded in ${attempts} attempts`.slice(0, 500), progress_note: "given up: download attempts" });
+          did.push("given up: download attempts");
+          return await finish();
+        }
+        await set({ progress_failures: attempts, progress_note: `download attempt ${attempts}` });
+      }
       const assetId = await deps.saveClip(job);
       job = { ...job, result_asset_id: assetId };
+      if (dressedEarly) await set({ progress_failures: Math.max(0, (job.progress_failures ?? 1) - 1), progress_note: null });
       did.push("saved");
     }
 
@@ -238,7 +275,15 @@ export async function advanceJob(input: ProgressJob, deps: ProgressDeps): Promis
       did.push("filed as a take in sync");
     }
     if (dressed) {
-      await fileDressedClip(job, dressed, deps);
+      try {
+        await fileDressedClip(job, dressed, deps);
+      } catch (e) {
+        if (!(e instanceof DressRefused)) throw e;
+        // paid for and saved, but not fit to place on the song: failed with the reason, kept in the library
+        await set({ status: "failed", error_text: e.message.slice(0, 500), progress_note: `refused: ${e.message}`.slice(0, 500) });
+        did.push("refused: not filed");
+        return await finish();
+      }
       did.push("filed as a dressed take in sync");
     }
     // a dressed take is an ALTERNATE: it goes on its shot unselected, so nothing the director chose is replaced
@@ -349,9 +394,17 @@ export async function fileDressedClip(job: ProgressJob, dressed: DressedFrom, de
   const assetId = job.result_asset_id!;
   const meta = await deps.assetMeta(assetId);
   if (!meta) throw new Error("could not read the dressed clip");
+  // the invariant: nothing is placed on the song that was not conformed to the cut it came from
+  if (typeof meta.conform_error === "string" && meta.conform_error) {
+    throw new DressRefused(`the dressed clip is saved raw in the project's library and not placed on the song: ${meta.conform_error}`);
+  }
   const conformed = Number(meta.conformed_duration);
-  if (!(conformed > 0) || Math.abs(conformed - dressed.sourceSeconds) > 0.01) {
+  if (!(conformed > 0) || Math.abs(conformed - dressed.sourceSeconds) > CONFORM_TOLERANCE) {
     throw new Error(`the dressed clip was saved without being conformed to its ${dressed.sourceSeconds.toFixed(3)} s source — it is not filed in sync`);
+  }
+  const ratio = Number(meta.retime_ratio);
+  if (!retimeRatioPlausible(ratio)) {
+    throw new DressRefused(`the dressed clip needed a retime of ${Number.isFinite(ratio) ? ratio.toFixed(3) : "unknown"} (expected about 1.08): the provider may have trimmed or dropped frames — it is saved, not placed on the song`);
   }
   const next: Record<string, unknown> = {
     ...meta,
@@ -362,7 +415,7 @@ export async function fileDressedClip(job: ProgressJob, dressed: DressedFrom, de
       song_start: dressed.songStart,
       method: "dressed",
       job_id: job.id,
-      retime_ratio: typeof meta.retime_ratio === "number" ? meta.retime_ratio : null,
+      retime_ratio: ratio,
       dress: dressed.record,
     },
   };

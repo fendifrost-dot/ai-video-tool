@@ -81,7 +81,16 @@ const APPROVED = {
   batchRun: "storyboard",
 };
 
-function world(job: ProgressJob, opts: { conform?: boolean } = {}) {
+function world(
+  job: ProgressJob,
+  opts: {
+    conform?: boolean;
+    ownership?: string[];
+    conformError?: string;
+    conformedMeta?: Record<string, unknown>;
+    saveThrows?: number;
+  } = {},
+) {
   let seq = 0;
   const assets = new Map<
     string,
@@ -126,9 +135,14 @@ function world(job: ProgressJob, opts: { conform?: boolean } = {}) {
       const url = dressResultUrl(j.response_payload_json);
       if (!url) throw new Error("no safe URL");
       fetched.push(url);
+      if (opts.saveThrows && fetched.length <= opts.saveThrows)
+        throw new Error("direct download from higgsfield CDN returned 503");
       const d = dressedFrom(j)!;
       const meta: Record<string, unknown> = { bucket: "project-clips", provider_job_id: j.id };
-      if (opts.conform !== false)
+      // the ingest's own behaviour: a refused conform stores the raw bytes with the reason
+      if (opts.conformError) meta.conform_error = opts.conformError;
+      else if (opts.conformedMeta) Object.assign(meta, opts.conformedMeta);
+      else if (opts.conform !== false)
         Object.assign(meta, conformDressedClip(swapOutput(), d.sourceSeconds).meta);
       const id = `asset_${++seq}`;
       assets.set(id, { metadata_json: meta, footage_role: null });
@@ -161,6 +175,7 @@ function world(job: ProgressJob, opts: { conform?: boolean } = {}) {
     syncOf: async (p, a) =>
       syncs.find((s) => s.project_id === p && s.performance_asset_id === a) ?? null,
     insertSync: async (row) => void syncs.push({ ...row }),
+    dressOwnership: async () => opts.ownership ?? [],
   };
   return { deps, assets, assignments, syncs, fetched, jobs };
 }
@@ -365,5 +380,131 @@ describe("the shot says what is happening", () => {
   it("a dress in progress is named as one", () => {
     const job = { ...importedJob(), status: "running", progress_note: null } as never;
     expect(boxJobStatus(job, T0).message).toMatch(/^dressing the take/);
+  });
+});
+
+describe("the server checks a dressed job before it fetches anything", () => {
+  it("a job naming records that are not its own is failed with the reason and never fetched or filed", async () => {
+    const job = importedJob();
+    const w = world(job, { ownership: ["the parent take belongs to another project"] });
+    const report = await advanceJob(job, w.deps);
+    expect(report).toMatchObject({ state: "finished", did: ["refused: ownership", "finished"] });
+    expect(w.fetched).toEqual([]);
+    expect(w.jobs.get(job.id)).toMatchObject({
+      status: "failed",
+      progress_note: "refused: the parent take belongs to another project",
+    });
+    expect(w.jobs.get(job.id)!.error_text).toMatch(/names records that are not its own/);
+    expect(w.syncs.some((s) => s.performance_asset_id !== "master_take")).toBe(false);
+    expect(w.assignments).toHaveLength(1);
+  });
+
+  it("a request id that is not a plain id is refused (it would go into a storage key)", async () => {
+    const job = { ...importedJob(), external_job_id: "../../etc/passwd" };
+    const w = world(job);
+    const report = await advanceJob(job, w.deps);
+    expect(report.state).toBe("finished");
+    expect(w.fetched).toEqual([]);
+    expect(w.jobs.get(job.id)).toMatchObject({
+      status: "failed",
+      progress_note: "refused: request id",
+    });
+  });
+
+  it("the server and the app hold request ids to the same rule", async () => {
+    const { DRESSED_ID_RE } = await import("../../../supabase/functions/_shared/jobProgress");
+    const { DRESS_ID_RE } = await import("./dress");
+    expect(DRESSED_ID_RE.source).toBe(DRESS_ID_RE.source);
+    expect(DRESSED_ID_RE.test(APPROVED.requestId)).toBe(true);
+  });
+
+  it("counts a download attempt BEFORE it starts, so a worker killed mid-download still counts, and takes it back on return", async () => {
+    const job = importedJob();
+    const w = world(job);
+    const seen: (number | undefined)[] = [];
+    const inner = w.deps.updateJob;
+    w.deps.updateJob = async (id, patch) => {
+      if ("progress_failures" in patch) seen.push(patch.progress_failures);
+      await inner(id, patch);
+    };
+    await advanceJob(job, w.deps);
+    expect(seen).toEqual([1, 0]);
+    expect(w.jobs.get(job.id)!.progress_failures).toBe(0);
+  });
+
+  it("a download that keeps dying is given up on after the ceiling, not claimed for ever", async () => {
+    const job = importedJob();
+    // what a killed worker leaves behind: the attempt counted, nothing taken back
+    const w = world(job, { saveThrows: 99 });
+    let last = await advanceJob(job, w.deps);
+    for (let i = 0; i < 10 && last.state !== "finished"; i++)
+      last = await advanceJob({ ...w.jobs.get(job.id)!, finalized_at: null }, w.deps);
+    expect(last.state).toBe("finished");
+    const j = w.jobs.get(job.id)!;
+    expect(j.finalized_at).toBeTruthy();
+    expect(j.result_asset_id).toBeNull();
+    expect(j.error_text).toMatch(
+      /could not be downloaded in \d+ attempts|not finished after \d+ tries/,
+    );
+    expect(j.progress_failures).toBeGreaterThanOrEqual(6);
+    expect(w.fetched.length).toBeLessThanOrEqual(6);
+  });
+});
+
+describe("a paid result is never stranded, and never placed unconformed", () => {
+  it("a conform that refused: the raw bytes are saved and linked, the job fails with the reason, nothing goes on the song", async () => {
+    const job = importedJob();
+    const w = world(job, { conformError: "the result is not an MP4 (no ftyp box): refused" });
+    const report = await advanceJob(job, w.deps);
+    expect(report).toMatchObject({
+      state: "finished",
+      did: ["saved", "refused: not filed", "finished"],
+    });
+    const j = w.jobs.get(job.id)!;
+    expect(j.result_asset_id).toBeTruthy();
+    expect(j.status).toBe("failed");
+    expect(j.error_text).toMatch(
+      /saved raw in the project's library and not placed on the song: the result is not an MP4/,
+    );
+    const asset = w.assets.get(j.result_asset_id!)!;
+    expect(asset.footage_role).toBeNull();
+    expect(asset.metadata_json.derived_from).toBeUndefined();
+    expect(w.syncs.some((s) => s.performance_asset_id === j.result_asset_id)).toBe(false);
+    expect(w.assignments.some((a) => a.asset_id === j.result_asset_id)).toBe(false);
+  });
+
+  it("a clip conformed but with a retime the swap is not known to need is saved, not placed", async () => {
+    const job = importedJob();
+    const w = world(job, {
+      conformedMeta: { conformed_duration: 4.004, output_duration: 2.5, retime_ratio: 1.6 },
+    });
+    const report = await advanceJob(job, w.deps);
+    expect(report.did).toContain("refused: not filed");
+    expect(w.jobs.get(job.id)!.error_text).toMatch(/retime of 1\.600 \(expected about 1\.08\)/);
+    expect(w.syncs.some((s) => s.performance_asset_id === job.result_asset_id)).toBe(false);
+  });
+
+  it("the 0.01 s tolerance: 9 ms off is filed, 11 ms off is not", async () => {
+    const inside = importedJob();
+    const wi = world(inside, {
+      conformedMeta: {
+        conformed_duration: 4.004 + 0.009,
+        output_duration: 3.71,
+        retime_ratio: 1.08,
+      },
+    });
+    expect((await advanceJob(inside, wi.deps)).did).toContain("filed as a dressed take in sync");
+    const outside = importedJob();
+    const wo = world(outside, {
+      conformedMeta: {
+        conformed_duration: 4.004 - 0.011,
+        output_duration: 3.71,
+        retime_ratio: 1.08,
+      },
+    });
+    const r = await advanceJob(outside, wo.deps);
+    expect(r.state).toBe("retry");
+    expect(r.note).toMatch(/without being conformed/);
+    expect(wo.syncs.some((s) => s.performance_asset_id === outside.result_asset_id)).toBe(false);
   });
 });

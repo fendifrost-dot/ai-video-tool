@@ -25,6 +25,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { callControlCenter, controlCenterConfig } from "../_shared/controlCenterClient.ts";
 import { ingestOne } from "../_shared/ingestClip.ts";
 import { conformDressedClip, dressResultUrl } from "../_shared/dressConform.ts";
+import { checkDressOwnership, dressOwnershipFacts } from "../_shared/dressOwnership.ts";
 import { advanceJobs, dressedFrom, type AssignmentOp, type ProgressDeps, type ProgressJob } from "../_shared/jobProgress.ts";
 
 const corsHeaders = {
@@ -166,6 +167,7 @@ Deno.serve(async (req) => {
       const { error } = await (admin as any).from("performance_syncs").insert(row);
       if (error) throw new Error(`could not place the clip on the song: ${error.message}`);
     },
+    dressOwnership: async (job, dressed, shotId) => checkDressOwnership(job, dressed, shotId, await dressOwnershipFacts(admin as any, job, dressed, shotId)),
   };
 
   const release = async (job: ProgressJob) => {

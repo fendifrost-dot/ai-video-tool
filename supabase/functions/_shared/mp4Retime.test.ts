@@ -253,3 +253,59 @@ describe("hostile bytes — refused cleanly, nothing read or written outside its
     expect(Math.abs(r.after - 4.004)).toBeLessThan(5e-4);
   });
 });
+
+describe("shapes a real provider file may take", () => {
+  it("a moov written with a 64-bit (size = 1) header is read and retimed", () => {
+    const src = providerLikeClip();
+    const [ms, me] = topBoxes(src).get("moov")!;
+    const moovBody = src.subarray(ms + 8, me);
+    const [ds, de] = topBoxes(src).get("mdat")!;
+    const ftyp = src.subarray(0, ms);
+    const head = new Uint8Array(16);
+    const hv = new DataView(head.buffer);
+    hv.setUint32(0, 1);
+    head.set([0x6d, 0x6f, 0x6f, 0x76], 4); // moov
+    hv.setUint32(8, 0);
+    hv.setUint32(12, 16 + moovBody.byteLength);
+    const wide = new Uint8Array([...ftyp, ...head, ...moovBody, ...src.subarray(ds, de)]);
+    expect(mp4Durations(wide).videoSeconds).toBeCloseTo(89 / 24, 6);
+    const r = retimeMp4(wide, 4.004);
+    expect(Math.abs(r.after - 4.004)).toBeLessThan(5e-4);
+    expect(r.bytes.byteLength).toBe(wide.byteLength);
+  });
+
+  it("an edit list that starts the picture inside the track (non-zero media_time) is scaled with it", () => {
+    const frames = 48;
+    const src = writeMp4({
+      timescale: 12288,
+      width: 720,
+      height: 1280,
+      stsd: avcSampleDescription(720, 1280, new Uint8Array([1, 0x64, 0, 0x1f, 0xff, 0xe1, 0, 0])),
+      deltas: Array(frames).fill(512),
+      // the first frame is shown 2 frames after it decodes: the writer's elst then opens on media_time 1024
+      offsets: Array.from({ length: frames }, (_, i) => (i === 0 ? 1024 : i % 2 ? 512 : 0)),
+      syncs: Array.from({ length: frames }, (_, i) => i === 0),
+      sizes: Array(frames).fill(12),
+      payload: new Uint8Array(12 * frames),
+    });
+    const before = readBack(src).tracks[0];
+    expect(before.startOffset).toBeCloseTo(1024 / 12288, 6);
+    const r = retimeMp4(src, 3);
+    expect(Math.abs(r.after - 3)).toBeLessThan(5e-4);
+    const after = readBack(r.bytes).tracks[0];
+    // media_time is in track units, untouched; on the new timescale it is the same number of frames, longer in seconds
+    expect(after.startOffset).toBeCloseTo((1024 / 12288) * r.ratio, 5);
+    expect(after.compositionOffset(0)).toBe(1024);
+    expect(readBack(r.bytes).duration).toBeCloseTo(3, 3);
+  });
+
+  it("a fragmented file (moof) is refused: its times are not in the moov", () => {
+    const src = providerLikeClip();
+    const moof = new Uint8Array(8);
+    new DataView(moof.buffer).setUint32(0, 8);
+    moof.set([0x6d, 0x6f, 0x6f, 0x66], 4);
+    const frag = new Uint8Array([...src, ...moof]);
+    expect(() => retimeMp4(frag, 4)).toThrow(/fragmented \(moof\)/);
+    expect(() => mp4Durations(frag)).toThrow(/fragmented/);
+  });
+});
