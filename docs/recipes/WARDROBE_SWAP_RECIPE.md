@@ -79,7 +79,7 @@ Test at 1080p ($1.632 per source second) before scaling, to see whether the soft
 
 ## Full look, 15 Oct (Fendi: "complete the full look swapping the Ralph Lauren hat for a YSL hat")
 
-- **Hat:** the Cassandre Cap in Cotton Denim Twill, Khaki (`c4f87504-ddbc-4a8e-b474-e090b88fa97a`). This is the 9 Oct pairing for the Mastic jacket (`docs/handoffs/ib_looks_by_scene/decisions.json`, look `YSL_JACKET`).
+- **Hat:** first run used the Cassandre khaki cap (`c4f87504-…`, the 9 Oct pairing). Fendi's final choice is the Saint Laurent beige/ivory cap (`07e6dcbe-5c56-4e2d-862e-3b22aca8d93d`); see "Hat pairings" below.
 - **Reference flaw, fixed 15 Oct:** every earlier YSL cap photo was cut off through the crown, so the brim was missing. That included the Wardrobe rows, `ib_looks_by_scene/uploads/` and the "Looks Decided" artifact (`claude.ai/artifact/Uvf3uuA1DsePRueMfd1z3q`). Fendi sent the full ysl.com product shots. `uploads/cap_*` now hold the whole cap: front, side or 3/4, and a stitch detail, 1170×780 (detail 1170×1170). The artifact (version 10) and the Wardrobe rows were updated to match. Run `678a62a8` used the old cut-off photos.
 - **Run:** Genjutsu, 720p, refs = [jacket product photo, cap front (Wardrobe), cap side (repo uploads, raw GitHub URL)], with the run-C wording plus a cap sentence. Higgsfield request `678a62a8-84e5-49bf-beec-75e2d45f4ae1`.
 - **Result of `678a62a8` (OBSERVED by the agent; Fendi has not judged it):**
@@ -88,9 +88,13 @@ Test at 1080p ($1.632 per source second) before scaling, to see whether the soft
   - The tone-on-tone YSL monogram is not readable at 720p.
   - The face softens on fast motion near the end, as in run C.
   - It was posted to Fendi as take | run C | this run, retimed to 4.00 s.
-- **Hat pairings (DECISION, Fendi, 15 Oct):** "The khaki hat looks better with the mastic jacket and the black and ivory looks better with the black long jacket."
-  - The khaki Cassandre cap goes with the Mastic track jacket.
-  - The Y Varsity black/ivory cap goes with the Bubbled Lambskin coat.
-  - The trucker look then had no hat. The agent gave it the Saint Laurent beige/ivory cap; Fendi has not confirmed that.
-  - Recorded in `ib_looks_by_scene/decisions.json` (`hatPairings`) and in the artifact (version 11).
-- **Next run:** use the new Wardrobe cap photos (front, side, detail) in place of the cut-off ones.
+- **Hat pairings (DECISION, Fendi, 15 Oct; corrected the same evening):**
+  - He first said "The khaki hats looks better with the mastic jacket and the black and ivory looks better with the black long jacket". He then said "I was wrong … I meant to use the beige".
+  - Final: the Saint Laurent beige/ivory cap goes with the Mastic track jacket, and the Y Varsity black/ivory cap goes with the Bubbled Lambskin coat.
+  - The trucker look takes the khaki Cassandre cap. That is the agent's choice; Fendi has not confirmed it.
+  - Recorded in `ib_looks_by_scene/decisions.json` (`hatPairings`) and in the artifact (version 12).
+  - Run `678a62a8` (khaki) is therefore the wrong hat. Keep it for provenance only.
+- **Run with the beige cap:**
+  - Genjutsu at 720p, CC job `cdd3142c-fcf5-42bf-ab4f-65297d514ad1`, Higgsfield request `71ff19f4-0944-43fa-8371-677c5f9557e8`.
+  - References: the jacket product photo, then the new Wardrobe beige cap photos (front, side, detail).
+  - The cap sentence names a light beige gabardine cap with the ivory SAINT LAURENT wordmark.
