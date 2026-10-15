@@ -57,6 +57,19 @@ The test runs on take shot 19, asset `cc76f6a3`: 4.0 s, 1080×1920, 59.94 fps.
   - Fendi gives the verdict.
   - Status is polled with `proxy-provider-call` → `video-providers-job-status {provider: higgsfield, id: 2fa69e06-…}`. CC's own job id answers 404 there; use the Higgsfield request id.
 
+## CORRECTION (Fendi, 15 Oct): the target garment is the Mastic YSL track jacket
+
+"The main swap for the performance shot was the mastic YSL jacket."
+
+- **Garment:** `character_features` `0feb028f-dc4d-45dc-82ac-e4bbd16054b0`, "Saint Laurent Track Jacket - Mastic Cotton Navy Stripe".
+  - Product photo: `wardrobe-refs/65cf99cb…/2a14a72b….jpg`.
+  - On-body photo, which the proxy adds itself: `onmodel_img5541_1782258480.png`.
+- **The first round was the wrong garment.** The coat keyframe `3bb1dafd` and Genjutsu `2fa69e06` both used the IB project's Bubbled Lambskin coat. They are a valid pipeline test only.
+- **Mastic keyframe:** look `5ef1bfe8-da47-480a-8d99-33a801f7c568`, $0.12, `look-composites/…/5ef1bfe8….jpg`.
+  - OBSERVED: chest stripe, SAINT LAURENT lettering, sleeve stripes, stand collar and zip all match the product photo.
+  - OBSERVED: the arm positions shifted slightly from the real frame, so it is not pose-locked.
+- **Mastic Genjutsu:** CC job `4e556675-bc44-435b-aaa5-507d0b7eaab2`, Higgsfield request `b21e4da6-0a6e-4170-aeed-aa18ef03b288`, 720p, jacket only (his own navy cap kept).
+
 ## Verify first (cheap)
 
 1. **Published bundle:** crawl `https://aivideotool.lovable.app` chunks (`Accept-Encoding: identity`) and grep for `Pace and clip lengths`. Absent means the frontend is not live; call `deploy_project` again.
