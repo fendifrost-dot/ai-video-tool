@@ -24,8 +24,11 @@ still goes in `docs/LEDGER_YSL_TESTING_BUDGET.md` with its basis.
 ## Verify first (cheap)
 
 1. **Live build:** crawl `https://aivideotool.lovable.app/projects` chunks (keep the `projects._id.` prefix in chunk
-   names — a crawler that strips it fetches 404 pages) and grep for `Dress this shot` (storyboard chunk) and
-   `Pace and clip lengths` (treatment chunk). Both present on 15 Oct 04:35 UTC.
+   names — a crawler that strips it fetches 404 pages; fetch with `Accept-Encoding: identity` and grep with `-a`) and
+   grep for `Dress this shot` (storyboard chunk) and `Pace and clip lengths` (treatment chunk). Both present on 15 Oct
+   04:35 UTC. **The 4 s floor (PR #262, merged `412b11d`, published 06:30 UTC):** the shared chunk
+   `storyboard-ysnm7tJT.js` (named from `index-lzvqS7ss.js`) contains `Math.max(Ke,` once in the window planner and the
+   cutter's `Math.max(1,b-_)` tail; an older build has `Ke-` guards there instead. No edge function changed in #262.
 2. **Tick live:** unauthenticated POST to `/functions/v1/provider-jobs-tick` → 401.
 3. **The filed swap:** `avt_select project_assets id=6eea726d-a243-478a-8f4e-09f5b5665b77` → `metadata_json.conformed_duration`
    = 4.0039, `derived_from.method = dressed`; `shot_asset_assignments` on shot `928ff526…` has it with `is_primary = false`.
