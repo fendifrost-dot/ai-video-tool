@@ -147,3 +147,51 @@ Two findings, both VERIFIED from the provider's own answers:
    `4f433e99`, `2d4a6aa6`, `e9f0aacc`), were resubmitted as new rows and all ran within six minutes (ledger row 35).
 
 All five Chicago windows are now dressed and filed as unselected alternates. Fendi judges them; the agent does not.
+
+## Production: cold front and clean entrance, grouped windows (15 Oct, night)
+
+Under Fendi's standing rule of 07:45 UTC ("no more passing off to me for judgement — you can build freely") the agent
+dressed the two remaining performance stretches and judged the results itself against the kill criterion (identity,
+garment construction, cap/logo, no flicker or morph). Two looks, two prompts, same route as Chicago (write-ahead
+`provider_jobs` row → CC `video-providers-higgsfield-model` → the deployed tick files the asset, its derived sync and
+an unselected assignment on the window's first shot; the agent then adds unselected assignments for the other covered
+shots).
+
+**Grouping (DECISION, agent):** one Genjutsu run covers 3–5 adjacent 1.5–3 s shots instead of one run per shot. Fewer
+runs, fewer seams, and the model holds a garment better over one continuous 8–11 s source than over five separate
+4 s minimums. The row's `shotId` is the first shot; `settings.dress.coveredShots[]` lists all of them. Sources were cut
+from the hero take `70304981` (sync `28dbe292`, offset 0.8538 s) with 0.5–0.75 s handles, planned by `dressWindow`.
+
+| Window | Shots | Song start | Source | Billed | Row | Request | Asset | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| coldW1 | c055–c058 | 99.46 | 7.958 s | 8 | `1d85966a` | `68659ffd` | `e09b1a3a` (conformed 7.9583, ratio 1.032432) | **REJECTED** — coat right and stable, navy cap never replaced |
+| coldW2 | c059–c061 | 105.355 | 8.959 s | 9 | `bb22ab6f` | `7d3a3807` | `0e995b73` (8.9591, 1.028801) | **REJECTED** — cap plain navy for ~4 s then morphs into the Y cap; a round patch appears on the left sleeve |
+| coldW3 | c062–c066 | 112.225 | 10.961 s | 11 | `7991930d` | `fe70e1de` | `1a83a167` (10.9608, 1.023574) | **PASS** — coat and Y cap on every frame, face/glasses intact |
+| entrW1 | c085–c087 | 162.9 | 7.958 s | 8 | `0d2c193a` | `b24be21b` | `011a1323` (7.9583, 1.032432) | **PASS** — trench open over the confetti shirt, bucket hat, glasses showing |
+| entrW2 | c088–c090 | 169.035 | 9.960 s | 10 | `d085e5c7` | `92263bb5` | `ed28aba0` (9.9596, 1.025881) | **PASS** — same, steady over 10 s |
+| entrW3 | c092–c093 | 177.185 | 5.956 s | 6 | `fe39bff4` | `05f69f84` | `51c1156c` (5.956, 1.04339) | **PASS** — same; the shirt print reads clearly |
+
+Coat look `0b4ae771` (`recipe-coat-v1-2026-10-15`): coat `90e177d5` (product front) + Y Varsity cap `40588200` (front),
+`ba3cb919` (three-quarter), `f0450201` (side). Trench look `d17c59f3` (`recipe-trench-v1-2026-10-15`): trench `b802304a`
+(front), `cb8f8a28` (on model), confetti shirt `3faf5d0f`, bucket hat `6ea8416d`. The prompts are in each row's
+`settings.dress.prompt`.
+
+Findings (OBSERVED from the filed clips, dense 2 fps frame sheets):
+
+1. **The trench recipe ran 3 for 3; the coat recipe 1 for 3.** In both coat failures the *coat* was right and the *cap*
+   was the problem — a small object described second in the prompt. Chicago's cap (described second as well) held
+   5 for 5, so this is the Y Varsity cap specifically: a black cap replacing a navy cap is a low-contrast swap the model
+   can skip.
+2. **Longer sources speed up less:** output/source ratio 1.023–1.043 for 6–11 s sources against 1.0797 for every 4 s
+   source. The tick's container-timescale conform absorbs either.
+3. **Re-run (ledger row 37):** coldW1 and coldW2 resubmitted as new rows `cde54409` (request `b9460576`) and `501f3dc1`
+   (request `48b0d51e`) with `recipe-coat-v2-capfirst-2026-10-15` — the cap clause first, "from the very first frame to
+   the last", and "no patch, badge or logo anywhere on the coat". The rejected assets stay filed (`approval_status
+   rejected`, reason in `notes`) as provenance; nothing was overwritten. **Both re-runs were refused at intake** —
+   "Your credit balance is too low" — the Higgsfield balance behind Control Center's key ran out again after row 36's
+   $35.42. The tick finalized both rows `failed` ($0). They need a top-up and two new rows; the prompt is in each
+   failed row's `settings.dress.prompt` and the sources are still in Higgsfield's media store (coldW1 `970e3fda`,
+   coldW2 `32f9f06b`).
+
+Covered-shot assignments added for the four passing windows (all `role performance`, `is_primary false`, variation
+`358363e6`): coldW3 → c063, c064, c065, c066; entrW1 → c086, c087; entrW2 → c089, c090; entrW3 → c093.
