@@ -13,6 +13,7 @@ import {
   DRESS_BILLING_GUARD,
   DRESS_HEAD_HANDLE,
   DRESS_MAX_REFERENCES,
+  DRESS_MIN_SOURCE_SECONDS,
   DRESS_PROMPT_VERSION,
   DRESS_TAIL_HANDLE,
   type DressPiece,
@@ -55,11 +56,11 @@ const glasses: DressPiece = {
 };
 
 describe("the dress window — handles, the 4 s minimum, billed seconds", () => {
-  it("a fast-cut 1.75 s shot: minimum handles, then grown to fill the 4 billed seconds, a guard under", () => {
+  it("a fast-cut 1.75 s shot: minimum handles, then grown to exactly the 4 s minimum the provider accepts", () => {
     const r = dressWindow({ shotIn: 72.0, shotOut: 73.75, takeSeconds: 200 });
     if (!r.ok) throw new Error(r.why);
     const w = r.window;
-    expect(w.seconds).toBeCloseTo(4 - DRESS_BILLING_GUARD, 4);
+    expect(w.seconds).toBe(4);
     expect(w.billedSeconds).toBe(4);
     expect(w.head).toBeGreaterThanOrEqual(DRESS_HEAD_HANDLE);
     expect(w.tail).toBeGreaterThanOrEqual(DRESS_TAIL_HANDLE);
@@ -70,11 +71,30 @@ describe("the dress window — handles, the 4 s minimum, billed seconds", () => 
     expect(w.notes).toEqual([]);
   });
 
-  it("a 3.3 s shot needs 4.55 s with handles: 5 billed seconds, filled to 4.95", () => {
+  it("a 3.3 s shot needs 4.55 s with handles: 5 billed seconds, filled to 4.95 (the guard applies over the minimum)", () => {
     const r = dressWindow({ shotIn: 10, shotOut: 13.3, takeSeconds: 100 });
     if (!r.ok) throw new Error(r.why);
     expect(r.window.billedSeconds).toBe(5);
-    expect(r.window.seconds).toBeCloseTo(4.95, 4);
+    expect(r.window.seconds).toBeCloseTo(5 - DRESS_BILLING_GUARD, 4);
+  });
+
+  it("never plans under the provider's 4 s floor: Higgsfield refused the 3.954 s cuts of 15 Oct 2026 at intake", () => {
+    // every shot short enough to fit the minimum gets exactly 4 s, never 4 s minus the guard
+    for (const [shotIn, shotOut] of [
+      [20, 21.5],
+      [20, 22],
+      [20, 22.7],
+      [0.1, 1.6],
+    ]) {
+      const r = dressWindow({ shotIn, shotOut, takeSeconds: 100 });
+      if (!r.ok) throw new Error(r.why);
+      expect(r.window.seconds).toBeGreaterThanOrEqual(DRESS_MIN_SOURCE_SECONDS);
+      expect(r.window.seconds).toBe(4);
+      expect(r.window.billedSeconds).toBe(4);
+    }
+    // a take exactly 4 s long is enough; one under is refused
+    expect(dressWindow({ shotIn: 1, shotOut: 2.5, takeSeconds: 4 })).toMatchObject({ ok: true, window: { start: 0, end: 4, seconds: 4 } });
+    expect(dressWindow({ shotIn: 1, shotOut: 2.5, takeSeconds: 3.99 })).toMatchObject({ ok: false });
   });
 
   it("clamps to the take's start and gives the head's share to the tail", () => {
@@ -82,7 +102,7 @@ describe("the dress window — handles, the 4 s minimum, billed seconds", () => 
     if (!r.ok) throw new Error(r.why);
     expect(r.window.start).toBe(0);
     expect(r.window.head).toBeCloseTo(0.2, 4);
-    expect(r.window.seconds).toBeCloseTo(3.95, 4);
+    expect(r.window.seconds).toBe(4);
     expect(r.window.notes[0]).toMatch(/head handle is short/);
   });
 
@@ -91,7 +111,7 @@ describe("the dress window — handles, the 4 s minimum, billed seconds", () => 
     if (!r.ok) throw new Error(r.why);
     expect(r.window.end).toBe(60);
     expect(r.window.tail).toBeCloseTo(0.2, 4);
-    expect(r.window.seconds).toBeCloseTo(3.95, 4);
+    expect(r.window.seconds).toBe(4);
     expect(r.window.notes.join(" ")).toMatch(/soft last half-second/);
   });
 
@@ -106,8 +126,8 @@ describe("the dress window — handles, the 4 s minimum, billed seconds", () => 
 
   it("an unknown take length clamps nothing at the end", () => {
     const r = dressWindow({ shotIn: 5, shotOut: 7, takeSeconds: null });
-    // 2 s + the minimum handles = 3.25 s; the 0.7 s left of the billed 3.95 s is split 0.35 / 0.35
-    expect(r.ok && r.window.end).toBeCloseTo(7 + 0.75 + 0.35, 4);
+    // 2 s + the minimum handles = 3.25 s; the 0.75 s left of the 4 s minimum is split 0.375 / 0.375
+    expect(r.ok && r.window.end).toBeCloseTo(7 + 0.75 + 0.375, 4);
   });
 });
 

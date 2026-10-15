@@ -341,7 +341,7 @@ describe("what the submit keeps and refuses", () => {
   it("without a frame-exact encoder the copied trim is sent when it bills the same, and refused when it bills more", async () => {
     exact = false;
     const plan = input().plan;
-    // the sync frame half a second before the window: still under the 4 billed seconds? 3.95 + 0.5 → 4.45 s → 5 s: refused
+    // the sync frame half a second before the window: 4 + 0.5 → 4.5 s → 5 billed seconds: refused
     trimPlan = { start: plan.window.start - 0.5, seconds: plan.window.seconds + 0.5 };
     const { deps, rows, proxied } = fakeDeps();
     await expect(dressBox(input(), deps, lookups)).rejects.toThrow(
@@ -351,14 +351,19 @@ describe("what the submit keeps and refuses", () => {
     expect(uploads).toEqual([]);
     expect(rows).toEqual({});
     expect(proxied).toEqual([]);
-    // a sync frame 30 ms early: 3.98 s, still 4 billed seconds — sent, and the record says where the cut really starts
+    // a sync frame 30 ms early: the window is exactly the 4 s minimum, so 4.03 s is a fifth billed second — refused too
+    // (a copied trim at the minimum can only be sent when the sync frame sits on the window's start)
     cutCalls.length = 0;
     trimPlan = { start: plan.window.start - 0.03, seconds: plan.window.seconds + 0.03 };
+    await expect(dressBox(input(), fakeDeps().deps, lookups)).rejects.toThrow(/5 billed seconds, more than the 4 agreed/);
+    // the sync frame on the window's start: 4.00 s, 4 billed seconds — sent, and the record says where the cut starts
+    cutCalls.length = 0;
+    trimPlan = { start: plan.window.start, seconds: plan.window.seconds };
     const again = fakeDeps();
     const r = await dressBox(input(), again.deps, lookups);
     if (r.dryRun) throw new Error("expected a submit");
-    expect(r.record.window[0]).toBeCloseTo(plan.window.start - 0.03, 4);
-    expect(r.record.sourceSeconds).toBeCloseTo(plan.window.seconds + 0.03, 4);
+    expect(r.record.window[0]).toBeCloseTo(plan.window.start, 4);
+    expect(r.record.sourceSeconds).toBeCloseTo(plan.window.seconds, 4);
     expect(r.record.billedSeconds).toBe(4);
     expect(uploads).toHaveLength(1);
   });

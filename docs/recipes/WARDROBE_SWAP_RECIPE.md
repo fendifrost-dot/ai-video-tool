@@ -114,3 +114,33 @@ Test at 1080p ($1.632 per source second) before scaling, to see whether the soft
   - The ivory SAINT LAURENT wordmark on the cap front is not visible.
   - The face softens on fast motion at the end, as before.
   - Posted to Fendi as take | this run, retimed to 4.00 s.
+
+## Production: the Chicago windows of candidate 6 (15 Oct, evening)
+
+The first production use of the approved look: five performance windows at 79th & Lafayette (c041, c044, c045, c046,
+c047 of variation `358363e6`), cut from the master take `70304981` with handles, the approved prompt and the four
+approved references (`promptVersion recipe-71ff19f4`), each with a write-ahead `provider_jobs` row the deployed tick
+files. The cuts went up through Higgsfield's own media store because the MCP cannot put raw bytes into AVT.
+
+| Shot | Song start | Cut | Request | Outcome |
+|---|---|---|---|---|
+| c047 | 82.025 | 4.955 s | `4c549907` | **ran**: filed as asset `f540b6be` (`derived_from.method dressed`, output 4.7083 s, conformed 4.9551 s, ratio 1.052415, song_start 82.025), an unselected alternate on the shot |
+| c041 | 71.215 | 3.954 s, then 4.004 s | `1600b766`, then `682398db` | refused twice (below) |
+| c044 | 75.885 | same | `aa1e363f`, then `7f75961b` | refused twice |
+| c045 | 77.855 | same | `70c23600`, then `1212bdf5` | refused twice |
+| c046 | 79.82 | same | `07a0deb9`, then `3bd0f9c8` | refused twice |
+
+Two findings, both VERIFIED from the provider's own answers:
+
+1. **Higgsfield refuses a source under 4.0 s at intake** — "Your video is too short. Please upload a video that is at
+   least 4 seconds long." The planner's billing guard had put every minimum window at 3.95 s, so all four 4-second
+   windows were refused while the 4.955 s one ran. Fixed the same evening in `src/lib/storyboard/dress.ts` (the window
+   is never under 4 s) and `src/lib/media/mp4Cut.ts` (the file ends at the length asked for). The failed submits were
+   refused at intake and should be unbilled; confirm on the invoice.
+2. **The Higgsfield organisation balance behind Control Center's key ran out** after c047. The four 4.004 s re-runs were
+   refused with "Your credit balance is too low to complete this request. Please top up your balance and try again."
+   The four cuts are in Higgsfield's media store (`08c08157`, `4f433e99`, `2d4a6aa6`, `e9f0aacc`, 24 h upload links;
+   the CDN copies stay) and the refused rows carry the full request, so the re-run after a top-up is a resubmit, not a
+   re-plan: ≈ $13.62 at 5 started seconds each.
+
+The c047 result was posted to Fendi as take | dressed. He judges it; the agent does not.

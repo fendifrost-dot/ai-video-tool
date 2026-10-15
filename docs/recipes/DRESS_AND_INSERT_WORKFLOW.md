@@ -86,10 +86,16 @@ The defaults are 0.5 s head and 0.75 s tail, minimum. They are set in one place,
   handle keeps that half-second outside the part of the cut the shot plays.
 - **Pacing.** Most final cuts are 1.5–2 s. The swap takes at least **4 s** of source and bills **every started
   second**. After the minimum handles, the window therefore grows to fill the seconds that are billed anyway, split
-  between head and tail and clamped to the take. That extra costs nothing. A 1.75 s shot gets ≈0.98 s head and ≈1.23 s
-  tail in a 3.95 s cut.
-- The cut is planned **0.05 s under** the whole second (`DRESS_BILLING_GUARD`), so a frame of rounding never starts
-  another billed second.
+  between head and tail and clamped to the take. That extra costs nothing. A 1.75 s shot gets ≈1.0 s head and ≈1.25 s
+  tail in a 4.00 s cut.
+- **The cut is never shorter than 4.0 s.** VERIFIED 15 Oct 2026: Higgsfield refuses a source under 4 s at intake
+  ("Your video is too short. Please upload a video that is at least 4 seconds long.") — the four 3.954 s Chicago cuts
+  (requests `1600b766`, `aa1e363f`, `70c23600`, `07a0deb9`) were refused; the 4.955 s one (`4c549907`) ran. Until that
+  day the planner put every minimum window at 3.95 s. Fixed the same day: the window is exactly 4 s at the minimum,
+  and the frame-exact cutter ends the file at the length asked for (a 4 s plan is a 4.000 s file, not 4 s plus a
+  frame).
+- Over the minimum, the cut is planned **0.05 s under** the whole second (`DRESS_BILLING_GUARD`), so a frame of
+  rounding never starts another billed second.
 - Where the take ends close to the shot, the handle is short, and the confirmation says so.
 
 ### Retime (speed conform)
@@ -152,8 +158,11 @@ counts the stale ones.
 | 1080p (not wired; recipe RECOMMENDATION to test once) | $1.632 per source second | — |
 | Conform, filing, staleness, checklist | free | — |
 
-HYPOTHESIS: whether the provider bills a 4.004 s source as 4 s or as 5 s. The tool avoids the question by cutting
-0.05 s under a whole second. The billed amount is the provider's invoice. No run has been checked against it.
+HYPOTHESIS: whether the provider bills a 4.004 s source as 4 s or as 5 s. The tool avoids the question above the
+minimum by cutting 0.05 s under a whole second, and at the minimum by cutting a 4.000 s file. The four Chicago re-runs
+of 15 Oct (`682398db`, `7f75961b`, `1212bdf5`, `3bd0f9c8`) were 4.004 s ffmpeg cuts made outside the app and are
+carried in the ledger at 5 s each until the invoice says otherwise. The billed amount is the provider's invoice. No run
+has been checked against it.
 
 ## Filing a swap that already finished (no spend)
 
