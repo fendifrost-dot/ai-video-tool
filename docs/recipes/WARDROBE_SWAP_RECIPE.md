@@ -3,7 +3,7 @@
 Any agent or person putting Fendi into a garment on real performance footage starts **here**. The page records what
 was run, on what, with which inputs, and what came out. It is updated after every test.
 
-**APPROVED route (DECISION, Fendi, 15 Oct 2026: "Yes that passes"): Higgsfield Genjutsu object-swap, run C below.**
+**APPROVED route (DECISION, Fendi, 15 Oct 2026: "Yes that passes"): Higgsfield Genjutsu object-swap, run C below. APPROVED full look ("Ok perfect"): Mastic jacket + Saint Laurent beige/ivory cap, Higgsfield request `71ff19f4`, see the end of this page.**
 Fendi judges every new result; an agent never passes its own test (the kill criterion in `CLAUDE.md`).
 
 Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
@@ -98,7 +98,7 @@ Test at 1080p ($1.632 per source second) before scaling, to see whether the soft
   - Genjutsu at 720p, CC job `cdd3142c-fcf5-42bf-ab4f-65297d514ad1`, Higgsfield request `71ff19f4-0944-43fa-8371-677c5f9557e8`.
   - References: the jacket product photo, then the new Wardrobe beige cap photos (front, side, detail).
   - The cap sentence names a light beige gabardine cap with the ivory SAINT LAURENT wordmark.
-- **Result of `71ff19f4` (OBSERVED by the agent; Fendi has not judged it):**
+- **Result of `71ff19f4` — APPROVED (DECISION, Fendi, 15 Oct: "Ok perfect"). This is the full look for the Mastic performance shots:**
   - Output: `https://d3u0tzju9qaucj.cloudfront.net/45ee058b-986d-49f2-adc9-280bbafe42a2/88283b9f-4545-4c68-9d40-1f4f63d557f7.mp4`, 720×1280, 24 fps, 3.71 s. Not filed in AVT.
   - The cap is light beige with a soft crown and a curved brim, worn forwards, on every frame. The jacket held as in run C.
   - The ivory SAINT LAURENT wordmark on the cap front is not visible.
