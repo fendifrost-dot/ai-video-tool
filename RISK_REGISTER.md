@@ -33,6 +33,7 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 | [TEMPORAL-3](#temporal-3--chunked-proxy-windows-without-raising-maxframes) | Chunked ≤24-frame proxy QA without raising `maxFrames` (Lane C2 / #124) | Low | Confirmed | **Monitoring** (stationary stitch GREEN; translating seams YELLOW) | Products (AVT) / Lane C2 |
 | [RECONSTRUCT-1](#reconstruct-1--gate-4-wiring-without-live-sam-3--new-edge) | Gate 4 wiring without live SAM-3 / new edge; E2E $0 click PASS 9/9 (`frames=5`); **D2 unique-RGB 720×1280 PASS 15/15** | Medium | Confirmed | **In-remediation** (720×1280 unique-RGB claimed; live `76fe7438` camera / SAM-3 / MP4 not claimed) | Products (AVT) / Lane D |
 | [PLAYABLE-1](#playable-1--7201280-reconstructed-mp4-without-paid-generation) | First playable Architecture C reconstructed MP4 at 720×1280 | Medium | Confirmed | **In-remediation** | Products (AVT) / Lane H |
+| [DRESS-1](#dress-1--dress-this-shot-paid-swap-server-fetch-of-a-row-carried-url-retimed-files) | "Dress this shot": paid swap per click, server fetch of a row-carried URL, retimed files on the song clock | Medium | Confirmed (design) | Open (new, Class C review pending) | Products (AVT) |
 
 ---
 
@@ -450,3 +451,20 @@ Last reviewed: **2026-09-16** (Lane D2 reconstruct video QA PASS 15/15 on 720×1
 - **Summary:** `identityPaths` (and `garmentPath`) arrive from the client as raw storage paths; `signStoragePath` signs them with the **service role** across four buckets in turn with no check that the path is inside the caller's folder, and passes any `http(s)` string through untouched to xAI. After the artist-ownership check (`artists.user_id`, itself re-ownable under SEC-4) any object in `project-references`, `look-composites`, `wardrobe-refs` or `product-assets` whose path is known can be signed and sent to the provider; with SEC-4, paths are readable by anyone. Pre-existing; found by the #185 security review; not on the storyboard generation path (Hero Frame Studio lane).
 - **Fix (proposed, separate Class C PR):** resolve pictures by record id with `_shared/stillReferences.ts` `resolveReferences` + `inFolderOf`, sign as the caller, refuse anonymous JWTs, drop the `http(s)` pass-through (or allow only the project's own signed URLs).
 - **DoD:** no caller-supplied path is signed; a `<otherUid>/…` path is refused; test in `_shared`.
+
+## DRESS-1 — "Dress this shot": paid swap per click, server fetch of a row-carried URL, retimed files
+
+- **Severity:** Medium · **Confidence:** Confirmed (design) · **Status:** Open — Class C review pending · **Owner:** Products (AVT) · **Opened:** 2026-10-15
+- **Spend.** One confirm submits a Higgsfield object-swap through Control Center, priced at $0.681 per started source second at 720p, 4 s minimum.
+  - Mitigations: the exact cost is shown first; the job row is written before the call; a cut that would bill more than was agreed is refused before upload; there is a dry run.
+  - HYPOTHESIS: whether a 4.004 s source bills 4 s or 5 s. The tool cuts 0.05 s under the whole second to avoid it. Not yet held against an invoice.
+- **Server fetch.** `provider-jobs-tick` downloads a dressed result from `response_payload_json.resultUrl`, a field the browser can write (an imported swap, or a forged row).
+  - Mitigation (`_shared/dressConform.ts` `dressResultUrl`): https only; public hosts only (`urlValidator`); `*.cloudfront.net` and `*.higgsfield.ai` only; no redirects.
+  - Residual: any CloudFront-hosted file can be fetched into the caller's own project. It is the caller's own spend of storage, not a read of another tenant's data.
+- **Files.** Wardrobe photos are signed for 24 h and sent to the provider, as the recipe already did by hand (REF-1 family; SEC-4 still open).
+- **Timeline integrity.** A dressed take is retimed in the container, not re-encoded.
+  - VERIFIED: with the app's own MP4 reader and with `ffprobe`/`ffmpeg` on an ffmpeg-made clip.
+  - NOT verified: browser playback of a real swap output.
+  - A clip that does not conform within 0.01 s is never filed in sync. A dressed take is filed unselected, so nothing the director chose is replaced.
+- **DoD:** the first import (request `71ff19f4`) filed and checked as in `docs/recipes/DRESS_AND_INSERT_WORKFLOW.md` "How to verify"; one in-app dress billed and held against the invoice; Class C sign-offs recorded.
+
