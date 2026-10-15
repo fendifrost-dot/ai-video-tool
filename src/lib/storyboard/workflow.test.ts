@@ -130,3 +130,66 @@ describe("a dressed take on its shot, against the state now", () => {
     ).toBe("stale");
   });
 });
+
+describe("a dressed take held against what a dress would send now", () => {
+  const record = {
+    outfit: { id: "o1", key: "mastic", name: "Mastic", version: 2 },
+    window: [71.5, 75.45],
+    sync: { offsetSeconds: 0.853, driftPpm: 0 },
+    syncId: "s1",
+    promptVersion: DRESS_PROMPT_VERSION,
+    sourceAssetId: "take_1",
+    references: [{ pieceId: "j", path: "a/jacket.jpg", angle: "front" }],
+    prompt: "the words",
+  } as unknown as DressRecord;
+  const sync = { id: "s1", offsetSeconds: 0.853, driftPpm: 0, status: "confirmed" };
+  const box = { start: 72.853, end: 74.603 };
+
+  it("current when the take, the pictures and the words are the same", () => {
+    expect(
+      dressedTakeState({
+        record,
+        box,
+        outfit: record.outfit,
+        parentSync: sync,
+        parentSeconds: 200,
+        now: {
+          sourceAssetId: "take_1",
+          references: [{ path: "a/jacket.jpg" }],
+          prompt: "the words",
+        },
+      }).state,
+    ).toBe("current");
+  });
+
+  it("flags a replaced picture, other words, or another take", () => {
+    const codes = (now: {
+      sourceAssetId: string | null;
+      references?: { path: string }[];
+      prompt?: string;
+    }) =>
+      dressedTakeState({
+        record,
+        box,
+        outfit: record.outfit,
+        parentSync: sync,
+        parentSeconds: 200,
+        now,
+      }).reasons.map((r) => r.code);
+    expect(
+      codes({
+        sourceAssetId: "take_1",
+        references: [{ path: "a/jacket_new.jpg" }],
+        prompt: "the words",
+      }),
+    ).toEqual(["references_changed"]);
+    expect(
+      codes({
+        sourceAssetId: "take_1",
+        references: [{ path: "a/jacket.jpg" }],
+        prompt: "other words",
+      }),
+    ).toEqual(["prompt_changed"]);
+    expect(codes({ sourceAssetId: "take_2" })).toEqual(["take_changed"]);
+  });
+});

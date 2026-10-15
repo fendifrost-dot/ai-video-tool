@@ -134,6 +134,8 @@ export function dressedTakeState(input: {
   outfit: { id: string; key: string; name: string; version: number } | null;
   parentSync: { id: string; offsetSeconds: number; driftPpm: number; status?: string } | null;
   parentSeconds: number | null;
+  /** What a dress of the shot would use NOW (null take = none; absent = not checked): the chain's downstream links. */
+  now?: { sourceAssetId: string | null; references?: readonly { path: string }[]; prompt?: string };
 }): DressStaleness {
   if (!input.record)
     return {
@@ -160,6 +162,13 @@ export function dressedTakeState(input: {
       )
     : null;
   return dressStaleness(input.record, {
+    ...(input.now
+      ? {
+          sourceAssetId: input.now.sourceAssetId,
+          references: input.now.references,
+          prompt: input.now.prompt,
+        }
+      : {}),
     outfit: input.outfit,
     sync: usable
       ? { id: usable.id, offsetSeconds: usable.offsetSeconds, driftPpm: usable.driftPpm }

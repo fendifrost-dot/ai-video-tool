@@ -208,8 +208,14 @@ export function FocusView() {
                 <Film className="mr-2 h-4 w-4" /> {est?.restage ? "Restage the take" : "Generate clip"}{est && !est.clipBlocked ? ` · ${usd(est.clip)}` : ""}
               </Button>
               {(dress.needed || dress.dressed.length > 0) && (
-                <Button variant="outline" disabled={!!busy || !dress.plan} onClick={() => sb.dressShot(box)} title={dress.why ?? undefined} data-testid="focus-dress-shot">
-                  <Shirt className="mr-2 h-4 w-4" /> Dress this shot{dress.plan ? ` · $${dress.plan.cost.usd.toFixed(3)}` : ""}
+                <Button
+                  variant="outline"
+                  disabled={!!busy || !dress.plan || dress.inFlight}
+                  onClick={() => sb.dressShot(box)}
+                  title={dress.inFlight ? "a dress of this shot is running — one at a time" : (dress.why ?? undefined)}
+                  data-testid="focus-dress-shot"
+                >
+                  <Shirt className="mr-2 h-4 w-4" /> {dress.inFlight ? "Dressing…" : "Dress this shot"}{dress.plan && !dress.inFlight ? ` · $${dress.plan.cost.usd.toFixed(3)}` : ""}
                 </Button>
               )}
             </div>

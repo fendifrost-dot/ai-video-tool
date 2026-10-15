@@ -329,3 +329,187 @@ describe("current or stale — it only flags", () => {
     expect(dressRecordOf(null)).toBeNull();
   });
 });
+
+describe("what is kept of a provider's answer", () => {
+  it("drops every link and every echoed input, keeps the rest", async () => {
+    const { scrubEnvelope } = await import("./dress");
+    const env = {
+      ok: true,
+      jobId: "cc_1",
+      providerJobId: "hf_1",
+      status: "queued",
+      resultUrl: null,
+      costEstimateCents: 272,
+      providerMetadata: {
+        status: "queued",
+        request_id: "hf_1",
+        status_url: "https://platform.higgsfield.ai/requests/hf_1/status",
+        input: {
+          video_url: "https://signed/project-clips/u/p/dress/src.mp4?token=abc",
+          image_urls: ["https://signed/wardrobe-refs/a.jpg?token=def"],
+        },
+        inputs: [{ url: "https://x/y" }],
+        nested: { deep: ["https://a/b", "plain", 3] },
+      },
+    };
+    expect(scrubEnvelope(env)).toEqual({
+      ok: true,
+      jobId: "cc_1",
+      providerJobId: "hf_1",
+      status: "queued",
+      resultUrl: null,
+      costEstimateCents: 272,
+      providerMetadata: { status: "queued", request_id: "hf_1", nested: { deep: ["plain", 3] } },
+    });
+    expect(JSON.stringify(scrubEnvelope(env))).not.toMatch(/https?:/);
+    expect(scrubEnvelope(null)).toBeNull();
+    expect(scrubEnvelope("https://x")).toBeUndefined();
+  });
+});
+
+describe("a plain request id", () => {
+  it("is required by the import (it ends up in a storage key)", async () => {
+    const { planDressImport, DRESS_ID_RE } = await import("./dress");
+    const base = {
+      projectId: "p",
+      variationId: null,
+      userId: "u",
+      shot: { id: "s", key: "c1" },
+      parentTakeId: "t",
+      parentSync: { id: "sy", offsetSeconds: 0, driftPpm: 0 },
+      window: [1, 5] as [number, number],
+      requestId: "71ff19f4-0944-43fa-8371-677c5f9557e8",
+      resultUrl: "https://d.cloudfront.net/x.mp4",
+      outfit: null,
+      references: [],
+      prompt: "p",
+      promptVersion: "v",
+      batchRun: "storyboard",
+    };
+    expect(() => planDressImport(base)).not.toThrow();
+    for (const bad of ["../x", "a/b", "a b", "", "id;drop"])
+      expect(() => planDressImport({ ...base, requestId: bad })).toThrow(/plain id/);
+    expect(DRESS_ID_RE.test("abc_DEF-123")).toBe(true);
+  });
+});
+
+describe("one dress at a time", () => {
+  const row = (over: Record<string, unknown> = {}, settings: Record<string, unknown> = {}) => ({
+    id: "j1",
+    status: "running",
+    finalized_at: null,
+    request_payload_json: {
+      shotId: "shot_19",
+      settings: {
+        route: "genjutsu_swap",
+        batchShotId: "c019",
+        dress: {
+          sourceAssetId: "t",
+          window: [71.5, 75.45],
+          songStart: 1,
+          sourceSeconds: 3.95,
+          promptVersion: "dress-v1",
+        },
+        ...settings,
+      },
+    },
+    ...over,
+  });
+
+  it("finds a queued or running dress of the shot, and of the same window when one is given", async () => {
+    const { findLiveDressJob } = await import("./dress");
+    expect(findLiveDressJob([row()], { shotId: "shot_19" })?.id).toBe("j1");
+    expect(findLiveDressJob([row()], { shotKey: "c019" })?.id).toBe("j1");
+    expect(findLiveDressJob([row()], { shotId: "shot_19", window: [71.5, 75.45] })?.id).toBe("j1");
+    expect(findLiveDressJob([row()], { shotId: "shot_19", window: [71.51, 75.44] })?.id).toBe("j1");
+    expect(findLiveDressJob([row()], { shotId: "shot_19", window: [70, 74] })).toBeNull();
+    expect(findLiveDressJob([row()], { shotId: "shot_20" })).toBeNull();
+  });
+
+  it("ignores finished, failed and other kinds of job", async () => {
+    const { findLiveDressJob } = await import("./dress");
+    expect(findLiveDressJob([row({ status: "succeeded" })], { shotId: "shot_19" })).toBeNull();
+    expect(findLiveDressJob([row({ status: "failed" })], { shotId: "shot_19" })).toBeNull();
+    expect(
+      findLiveDressJob([row({ finalized_at: "2026-10-15T00:00:00Z" })], { shotId: "shot_19" }),
+    ).toBeNull();
+    expect(
+      findLiveDressJob([row({}, { route: "seedance_ref" })], { shotId: "shot_19" }),
+    ).toBeNull();
+  });
+});
+
+describe("staleness — the whole chain, not only the outfit's version", () => {
+  const record = {
+    outfit: { id: "o1", key: "mastic", name: "Mastic look", version: 3 },
+    window: [71.5, 75.45] as [number, number],
+    sync: { offsetSeconds: 0.853, driftPpm: 0 },
+    syncId: "s1",
+    promptVersion: DRESS_PROMPT_VERSION,
+    sourceAssetId: "take_1",
+    references: [{ path: "a/jacket.jpg" }, { path: "a/cap_front.jpg" }],
+    prompt: "Replace ONLY the man's jacket and cap …",
+  };
+  const now = {
+    outfit: { id: "o1", key: "mastic", name: "Mastic look", version: 3 },
+    sync: { id: "s1", offsetSeconds: 0.853, driftPpm: 0 },
+    shotRange: { start: 72, end: 73.75 },
+    sourceAssetId: "take_1",
+    references: [{ path: "a/jacket.jpg" }, { path: "a/cap_front.jpg" }],
+    prompt: "Replace ONLY the man's jacket and cap …",
+  };
+  const codes = (n: Partial<Parameters<typeof dressStaleness>[1]>) =>
+    dressStaleness(record, { ...now, ...n }).reasons.map((r) => r.code);
+
+  it("is current when every link holds", () => {
+    expect(dressStaleness(record, now).state).toBe("current");
+  });
+
+  it("a replaced garment photo, an added or removed piece, flags STALE", () => {
+    expect(
+      codes({ references: [{ path: "a/jacket_v2.jpg" }, { path: "a/cap_front.jpg" }] }),
+    ).toEqual(["references_changed"]);
+    expect(codes({ references: [{ path: "a/jacket.jpg" }] })).toEqual(["references_changed"]);
+    expect(codes({ references: [{ path: "a/cap_front.jpg" }, { path: "a/jacket.jpg" }] })).toEqual([
+      "references_changed",
+    ]);
+  });
+
+  it("an edited description changes the words: STALE", () => {
+    expect(codes({ prompt: "Replace ONLY the man's jacket and cap … with a navy collar" })).toEqual(
+      ["prompt_changed"],
+    );
+  });
+
+  it("a shot now dressed from another take, or none: STALE", () => {
+    expect(codes({ sourceAssetId: "take_2" })).toEqual(["take_changed"]);
+    expect(codes({ sourceAssetId: null })).toEqual(["take_changed"]);
+  });
+
+  it("an outfit rolled BACK to an older version is as stale as one moved forward", () => {
+    expect(codes({ outfit: { ...now.outfit, version: 2 } })).toEqual(["outfit_version_changed"]);
+    expect(codes({ outfit: { ...now.outfit, version: 4 } })).toEqual(["outfit_version_changed"]);
+  });
+
+  it("an imported, approved swap is not aged by the tool's own words, but its pictures still count", () => {
+    const imported = {
+      ...record,
+      imported: { requestId: "r", resultUrl: "https://x" },
+      promptVersion: "recipe-71ff19f4",
+      prompt: "the recipe's words",
+    };
+    expect(dressStaleness(imported, now).state).toBe("current");
+    expect(
+      dressStaleness(imported, { ...now, references: [{ path: "a/jacket_v2.jpg" }] }).reasons.map(
+        (r) => r.code,
+      ),
+    ).toEqual(["references_changed"]);
+  });
+
+  it("a caller that does not know the downstream links is not told they changed", () => {
+    expect(
+      dressStaleness(record, { outfit: now.outfit, sync: now.sync, shotRange: now.shotRange })
+        .state,
+    ).toBe("current");
+  });
+});

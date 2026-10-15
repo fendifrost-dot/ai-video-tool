@@ -96,6 +96,12 @@ The defaults are 0.5 s head and 0.75 s tail, minimum. They are set in one place,
 
 - Why (OBSERVED on 1 Oct and on runs C, `678a62a8` and `71ff19f4`): the swap returns its clip about **7 % fast**, 3.71 s
   at 24 fps for a 4.00 s source at 59.94 fps.
+- VERIFIED (15 Oct, frame comparison on `71ff19f4` against its 4.004 s source): the speed-up is **uniform**, not a trim
+  at either end — the output's frame at 3.62 s matches the source at 3.92 s, and the output at 1.85 s matches the source
+  at 2.00 s (both ≈1.08×). The 1 Oct run measured 1.0005× after conform (`scripts/edit/match_grade.py`). A uniform
+  container retime is therefore the right correction.
+- The measured ratio is recorded on the asset and must fall in **0.9–1.2**; outside that the clip is saved but not placed
+  on the song, with a note, because the provider did something other than run fast.
 - Nothing downstream stretches a clip:
   - the render contract plays each file at its own rate and holds the last frame;
   - Review only nudges the playback rate for a few hundredths of drift.
@@ -109,6 +115,9 @@ The defaults are 0.5 s head and 0.75 s tail, minimum. They are set in one place,
 - The asset records `output_duration`, `conformed_duration`, `conformed_to` and `retime_ratio`.
 - A clip that does not measure within 0.01 s of its source after the retime is **never filed in sync**. The job retries,
   then gives up with the reason.
+- A conform that refuses (not an MP4, a bad ratio, hostile bytes) still **stores the raw bytes**, linked to the job with
+  `conform_error`, so a paid result is never stranded on the CDN. The job is failed with the reason and the raw clip
+  stays in the project's library, never placed on the song.
 - VERIFIED (15 Oct, in the agent sandbox, on an ffmpeg-made 720×1280 H.264 + AAC clip of 89 frames at 24 fps, 3.708 s,
   with B-frames, `ctts` and an edit list), after `retimeMp4(…, 4.004)`:
   - `ffprobe` reads one video stream, 89 frames and 4.0039 s;
@@ -148,7 +157,8 @@ HYPOTHESIS: whether the provider bills a 4.004 s source as 4 s or as 5 s. The to
 
 ## Filing a swap that already finished (no spend)
 
-`planDressImport` (pure) and `importFinishedDress` (browser) write a `provider_jobs` row that is already `succeeded`. It
+`planDressImport` (pure) and `importFinishedDress` (browser) write a `provider_jobs` row that is already `succeeded`.
+Filing the same request id twice in a project returns the first row (`existed: true`) and inserts nothing. It
 carries the provider's request id, the result URL and a whole dress record. The server then files it exactly like a
 swap the tool submitted: it downloads, conforms, files, syncs and adds the take as an alternate. No provider is asked to
 make anything.

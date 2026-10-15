@@ -141,7 +141,7 @@ function controller(over: Partial<StoryboardController> = {}): StoryboardControl
     moveTo: fn(),
     generateImage: vi.fn(),
     generateClip: vi.fn(),
-    dressOf: () => ({ needed: false, plan: null, why: "only a performance shot is dressed", dressed: [] }),
+    dressOf: () => ({ needed: false, plan: null, why: "only a performance shot is dressed", dressed: [], inFlight: false }),
     dressShot: vi.fn(),
     workflow: [],
     focusId: null,
@@ -489,6 +489,7 @@ describe("dress this shot (step 5)", () => {
         plan,
         why: null,
         dressed: [{ asset: take, staleness: { state: "stale", reasons: [{ code: "outfit_version_changed", text: "dressed in “Mastic” v1; it is now v2" }] } }],
+        inFlight: false,
       }),
     });
     render(
@@ -510,5 +511,30 @@ describe("dress this shot (step 5)", () => {
       </StoryboardProvider>,
     );
     expect(screen.queryByTestId("focus-dress-shot")).toBeNull();
+  });
+});
+
+describe("one dress at a time", () => {
+  it("while a dress of the shot runs, the button is disabled and says so", () => {
+    const sb = controller({
+      focusId: "r2",
+      dressOf: () => ({
+        needed: true,
+        plan: { window: { start: 71.5, end: 75.45, seconds: 3.95, shotIn: 72, shotOut: 73.75, head: 0.5, tail: 1.7, billedSeconds: 4, notes: [] }, references: [], notSent: [], prompt: "x", cost: { billedSeconds: 4, usd: 2.724, text: "4 s × $0.681 = $2.724" } },
+        why: null,
+        dressed: [],
+        inFlight: true,
+      }),
+    });
+    render(
+      <StoryboardProvider value={sb}>
+        <FocusView />
+      </StoryboardProvider>,
+    );
+    const button = screen.getByTestId("focus-dress-shot") as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    expect(button.textContent).toContain("Dressing…");
+    expect(button.textContent).not.toContain("$");
+    expect(button.title).toMatch(/one at a time/);
   });
 });

@@ -44,6 +44,8 @@ export const DRESS_ROUTE = "genjutsu_swap" as const;
 export const DRESS_MAX_REFERENCES = 4;
 /** Bump when the words of buildDressPrompt change: a dressed take made with older words is then flagged stale. */
 export const DRESS_PROMPT_VERSION = "dress-v1";
+/** What a provider request id may look like: it ends up in a storage key (the server holds it to the same rule). */
+export const DRESS_ID_RE = /^[A-Za-z0-9_-]+$/;
 
 // --- the window --------------------------------------------------------------------------------------------------------
 
@@ -411,11 +413,38 @@ export function dressRecordOf(v: unknown): DressRecord | null {
 
 // --- current or stale -------------------------------------------------------------------------------------------------
 
+/**
+ * A provider's answer, with every link taken out before it is kept on the job: signed source and reference links,
+ * CDN links, and whatever the provider echoes of its inputs. The row is read by the whole project; a link that lets
+ * anyone fetch a private file does not belong in it. Pure.
+ */
+export function scrubEnvelope(env: unknown): unknown {
+  const isUrl = (v: unknown) => typeof v === "string" && /^https?:\/\//i.test(v.trim());
+  const walk = (v: unknown): unknown => {
+    if (isUrl(v)) return undefined;
+    if (Array.isArray(v)) return v.map(walk).filter((x) => x !== undefined);
+    if (v && typeof v === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
+        if (/^input/i.test(k)) continue; // whatever the provider echoes of what it was given
+        const w = walk(x);
+        if (w !== undefined) out[k] = w;
+      }
+      return out;
+    }
+    return v;
+  };
+  return walk(env);
+}
+
 export type DressStaleCode =
   | "outfit_reassigned"
   | "outfit_version_changed"
   | "window_outside"
   | "sync_changed"
+  | "take_changed"
+  | "references_changed"
+  | "prompt_changed"
   | "prompt_version_changed";
 export type DressStaleness = {
   state: "current" | "stale";
@@ -434,6 +463,9 @@ export const DRESS_WINDOW_SLACK = 0.02;
 export function dressStaleness(
   record: Pick<DressRecord, "outfit" | "window" | "sync" | "syncId" | "promptVersion"> & {
     imported?: DressRecord["imported"];
+    sourceAssetId?: string;
+    references?: readonly { path: string }[];
+    prompt?: string;
   },
   now: {
     outfit: { id: string; key: string; name: string; version: number } | null;
@@ -441,6 +473,11 @@ export function dressStaleness(
     /** The shot's stretch of the parent take now (null = the take no longer covers the shot). */
     shotRange: { start: number; end: number } | null;
     promptVersion?: string;
+    /** The take the shot would be dressed from now (absent = not checked). */
+    sourceAssetId?: string | null;
+    /** The pictures a dress would send now, in order, and the words — what the pieces resolve to today. */
+    references?: readonly { path: string }[];
+    prompt?: string;
   },
 ): DressStaleness {
   const reasons: DressStaleness["reasons"] = [];
@@ -457,7 +494,7 @@ export function dressStaleness(
       code: "outfit_reassigned",
       text: `dressed in “${made?.name ?? "an unrecorded outfit"}”; the shot now wears “${now.outfit.name}”`,
     });
-  else if (now.outfit.version > made.version)
+  else if (now.outfit.version !== made.version)
     reasons.push({
       code: "outfit_version_changed",
       text: `dressed in “${made.name}” v${made.version}; it is now v${now.outfit.version}`,
@@ -483,12 +520,43 @@ export function dressStaleness(
       code: "sync_changed",
       text: "the take's match to the song changed since it was dressed",
     });
+  if (
+    now.sourceAssetId !== undefined &&
+    record.sourceAssetId &&
+    now.sourceAssetId !== record.sourceAssetId
+  )
+    reasons.push({
+      code: "take_changed",
+      text: now.sourceAssetId
+        ? "the shot is now dressed from another take"
+        : "the shot no longer has a take to dress",
+    });
+  // a replaced garment photo, or a piece added or taken off, changes what would be sent
+  if (now.references && record.references) {
+    const then = record.references.map((r) => r.path);
+    const paths = now.references.map((r) => r.path);
+    if (then.length !== paths.length || then.some((p, i) => p !== paths[i]))
+      reasons.push({
+        code: "references_changed",
+        text: "the outfit's pictures changed since it was dressed",
+      });
+  }
   // a finished swap filed from outside was approved by eye with its own words: the tool's words moving on does not age it
   const current = now.promptVersion ?? DRESS_PROMPT_VERSION;
   if (!record.imported && record.promptVersion !== current)
     reasons.push({
       code: "prompt_version_changed",
       text: `dressed with words ${record.promptVersion}; the tool now uses ${current}`,
+    });
+  else if (
+    !record.imported &&
+    now.prompt !== undefined &&
+    record.prompt !== undefined &&
+    now.prompt !== record.prompt
+  )
+    reasons.push({
+      code: "prompt_changed",
+      text: "the outfit's description changed since it was dressed, so the words would differ",
     });
   return { state: reasons.length ? "stale" : "current", reasons };
 }
@@ -631,7 +699,8 @@ export function planDressImport(input: DressImport): Record<string, unknown> {
   const [start, end] = input.window;
   if (!(end > start)) throw new Error("the swapped window is empty");
   if (!/^https:\/\//.test(input.resultUrl)) throw new Error("the result URL must be https");
-  if (!input.requestId.trim()) throw new Error("the provider's request id is required");
+  if (!DRESS_ID_RE.test(input.requestId))
+    throw new Error("the provider's request id must be a plain id (letters, digits, _ -)");
   const sourceSeconds = input.sourceSeconds ?? r4(end - start);
   const shotWindow = input.shotWindow ?? input.window;
   const billedSeconds = dressBilledSeconds(sourceSeconds);
@@ -688,4 +757,44 @@ export function planDressImport(input: DressImport): Record<string, unknown> {
       imported: true,
     },
   };
+}
+
+// --- one dress at a time per shot ------------------------------------------------------------------------------------
+
+export type LiveJobRow = {
+  id: string;
+  status: string;
+  finalized_at?: string | null;
+  request_payload_json: unknown;
+};
+
+/**
+ * A dress of this shot that is still running (queued or running, not finished by the server) — and, when a window
+ * is given, of the same stretch of take. The storyboard disables the button on it; the submit refuses on it. Pure.
+ */
+export function findLiveDressJob(
+  rows: readonly LiveJobRow[],
+  shot: { shotId?: string; shotKey?: string; window?: [number, number] },
+): LiveJobRow | null {
+  for (const r of rows) {
+    if (!(r.status === "queued" || r.status === "running") || r.finalized_at) continue;
+    const payload = (r.request_payload_json ?? {}) as {
+      shotId?: unknown;
+      settings?: { route?: unknown; batchShotId?: unknown; dress?: unknown };
+    };
+    if (payload.settings?.route !== DRESS_ROUTE) continue;
+    if (shot.shotId && payload.shotId !== shot.shotId) continue;
+    if (shot.shotKey && payload.settings?.batchShotId !== shot.shotKey) continue;
+    if (shot.window) {
+      const rec = dressRecordOf(payload.settings?.dress);
+      if (
+        !rec ||
+        Math.abs(rec.window[0] - shot.window[0]) > DRESS_WINDOW_SLACK ||
+        Math.abs(rec.window[1] - shot.window[1]) > DRESS_WINDOW_SLACK
+      )
+        continue;
+    }
+    return r;
+  }
+  return null;
 }

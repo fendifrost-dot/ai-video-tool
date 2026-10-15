@@ -17,6 +17,9 @@ import type { RunnerDeps } from "@/lib/worldBatch";
 import {
   composeDressRequest,
   dressBilledSeconds,
+  findLiveDressJob,
+  scrubEnvelope,
+  type LiveJobRow,
   dressedSongStart,
   dressJobSettings,
   planDressImport,
@@ -61,9 +64,38 @@ export function dressPieceOf(item: {
   };
 }
 
-/** A wardrobe picture as a link the provider can fetch (a legacy row may hold a full URL instead of a path). */
-async function referenceUrl(path: string): Promise<string> {
-  return /^https?:\/\//.test(path) ? path : signedUrl("wardrobe-refs", path, 86400);
+/** A wardrobe picture as a link the provider can fetch (a legacy row may hold a full URL instead of a path). https only. */
+export async function referenceUrl(
+  path: string,
+  sign: (path: string) => Promise<string> = (p) => signedUrl("wardrobe-refs", p, 86400),
+): Promise<string> {
+  if (/^https:\/\//i.test(path)) return path;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(path))
+    throw new Error(
+      `a reference picture must be a storage path or an https link, not "${path.slice(0, 40)}"`,
+    );
+  return sign(path);
+}
+
+/** What the submit asks of the jobs table beyond the runner's own deps: the dresses of this shot still running. */
+export type DressLookups = {
+  liveDressRows: (projectId: string, shotId: string) => Promise<LiveJobRow[]>;
+};
+
+async function browserDressLookups(): Promise<DressLookups> {
+  return {
+    liveDressRows: async (projectId, shotId) => {
+      const { data, error } = await supabase
+        .from("provider_jobs")
+        .select("id, status, finalized_at, request_payload_json")
+        .eq("project_id", projectId)
+        .in("status", ["queued", "running"])
+        .is("finalized_at", null)
+        .eq("request_payload_json->>shotId", shotId);
+      if (error) throw new Error(`could not check for a running dress: ${error.message}`);
+      return (data ?? []) as LiveJobRow[];
+    },
+  };
 }
 
 export type DressInput = {
@@ -139,7 +171,11 @@ export function dressRecord(input: {
 }
 
 /** Cut, upload, record, submit — or, with dryRun, only build what would be sent. */
-export async function dressBox(input: DressInput, depsIn?: RunnerDeps): Promise<DressResult> {
+export async function dressBox(
+  input: DressInput,
+  depsIn?: RunnerDeps,
+  lookupsIn?: DressLookups,
+): Promise<DressResult> {
   const say = input.onStage ?? (() => undefined);
   const { plan } = input;
   if (input.dryRun) {
@@ -170,6 +206,16 @@ export async function dressBox(input: DressInput, depsIn?: RunnerDeps): Promise<
   }
 
   const deps = depsIn ?? (await browserRunnerDeps());
+  const lookups = lookupsIn ?? (await browserDressLookups());
+  // one paid dress of this stretch at a time: a second press while the first runs is refused, not billed twice
+  const live = findLiveDressJob(await lookups.liveDressRows(input.projectId, input.shot.id), {
+    shotId: input.shot.id,
+    window: [plan.window.start, plan.window.end],
+  });
+  if (live)
+    throw new Error(
+      "this shot is already being dressed (a swap of the same stretch is running) — nothing was sent",
+    );
   const take = input.take;
   say("reading the take…");
   const url = await signedUrl(take.bucket as never, take.path, 3600);
@@ -261,15 +307,16 @@ export async function dressBox(input: DressInput, depsIn?: RunnerDeps): Promise<
     await deps.updateJob(rowId, {
       status: "failed",
       error_text: "the provider answered without a request id",
-      response_payload_json: env,
+      response_payload_json: scrubEnvelope(env),
     });
     throw new Error("the provider answered without a request id");
   }
   try {
+    // the provider's answer is kept without its links (the signed source and pictures, anything it echoes of its inputs)
     await deps.updateJob(rowId, {
       external_job_id: providerJobId,
       status: env.status === "running" ? "running" : "queued",
-      response_payload_json: env,
+      response_payload_json: scrubEnvelope(env),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
@@ -285,19 +332,55 @@ export async function dressBox(input: DressInput, depsIn?: RunnerDeps): Promise<
  * File a swap that already finished (planDressImport): insert its job row as succeeded and ask the server to move it
  * now. No provider is asked to make anything, so nothing is spent. Returns the job row's id.
  */
+export type ImportDeps = {
+  userId: () => Promise<string>;
+  /** The job row already recorded for this provider request in this project, if any. */
+  findJob: (projectId: string, requestId: string) => Promise<{ id: string } | null>;
+  insertJob: (row: Record<string, unknown>) => Promise<string>;
+};
+
+async function browserImportDeps(): Promise<ImportDeps> {
+  return {
+    userId: async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error("Not signed in");
+      return auth.user.id;
+    },
+    findJob: async (projectId, requestId) => {
+      const { data, error } = await supabase
+        .from("provider_jobs")
+        .select("id")
+        .eq("project_id", projectId)
+        .eq("external_job_id", requestId)
+        .limit(1);
+      if (error) throw new Error(`could not look for the finished swap: ${error.message}`);
+      return data && data.length ? { id: (data[0] as { id: string }).id } : null;
+    },
+    insertJob: async (row) => {
+      const { data, error } = await supabase
+        .from("provider_jobs")
+        .insert(row as never)
+        .select("id")
+        .single();
+      if (error || !data)
+        throw new Error(
+          `could not record the finished swap: ${error?.message ?? "no row returned"}`,
+        );
+      return (data as { id: string }).id;
+    },
+  };
+}
+
 export async function importFinishedDress(
   input: Omit<DressImport, "userId" | "batchRun">,
-): Promise<string> {
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) throw new Error("Not signed in");
-  const row = planDressImport({ ...input, userId: auth.user.id, batchRun: STORYBOARD_RUN });
-  const { data, error } = await supabase
-    .from("provider_jobs")
-    .insert(row as never)
-    .select("id")
-    .single();
-  if (error || !data)
-    throw new Error(`could not record the finished swap: ${error?.message ?? "no row returned"}`);
+  depsIn?: ImportDeps,
+): Promise<{ id: string; existed: boolean }> {
+  const deps = depsIn ?? (await browserImportDeps());
+  // the same finished swap filed twice is one row: the first import's
+  const existing = await deps.findJob(input.projectId, input.requestId);
+  if (existing) return { id: existing.id, existed: true };
+  const row = planDressImport({ ...input, userId: await deps.userId(), batchRun: STORYBOARD_RUN });
+  const id = await deps.insertJob(row);
   void nudgeJobProgress();
-  return (data as { id: string }).id;
+  return { id, existed: false };
 }
