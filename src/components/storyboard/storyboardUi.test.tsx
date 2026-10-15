@@ -141,6 +141,9 @@ function controller(over: Partial<StoryboardController> = {}): StoryboardControl
     moveTo: fn(),
     generateImage: vi.fn(),
     generateClip: vi.fn(),
+    dressOf: () => ({ needed: false, plan: null, why: "only a performance shot is dressed", dressed: [] }),
+    dressShot: vi.fn(),
+    workflow: [],
     focusId: null,
     openFocus: vi.fn(),
     pickerFor: null,
@@ -468,3 +471,44 @@ describe("a shot the treatment has moved on from", () => {
   });
 });
 
+
+describe("dress this shot (step 5)", () => {
+  const plan = {
+    window: { start: 71.5, end: 75.45, seconds: 3.95, shotIn: 72, shotOut: 73.75, head: 0.5, tail: 1.7, billedSeconds: 4, notes: [] },
+    references: [{ pieceId: "j", label: "Track Jacket", path: "a/j.jpg", angle: "front", role: "product" as const }],
+    notSent: [],
+    prompt: "Replace ONLY …",
+    cost: { billedSeconds: 4, usd: 2.724, text: "4 s × $0.681 = $2.724" },
+  };
+
+  it("offers the swap with its exact cost where the scene's outfit needs it, and says when a dressed take is stale", () => {
+    const sb = controller({
+      focusId: "r2",
+      dressOf: () => ({
+        needed: true,
+        plan,
+        why: null,
+        dressed: [{ asset: take, staleness: { state: "stale", reasons: [{ code: "outfit_version_changed", text: "dressed in “Mastic” v1; it is now v2" }] } }],
+      }),
+    });
+    render(
+      <StoryboardProvider value={sb}>
+        <FocusView />
+      </StoryboardProvider>,
+    );
+    const button = screen.getByTestId("focus-dress-shot");
+    expect(button.textContent).toContain("Dress this shot · $2.724");
+    fireEvent.click(button);
+    expect(sb.dressShot).toHaveBeenCalledWith(sb.boxes[1]);
+    expect(screen.getByTestId("focus-dress-state").textContent).toContain("STALE — dressed in “Mastic” v1; it is now v2");
+  });
+
+  it("is not offered on a shot whose scene asks for no swap", () => {
+    render(
+      <StoryboardProvider value={controller({ focusId: "r2" })}>
+        <FocusView />
+      </StoryboardProvider>,
+    );
+    expect(screen.queryByTestId("focus-dress-shot")).toBeNull();
+  });
+});

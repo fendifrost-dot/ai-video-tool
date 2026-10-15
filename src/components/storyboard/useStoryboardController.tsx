@@ -83,7 +83,10 @@ import {
 import { settingsOf } from "@/lib/worldBatch";
 import { ensureStoryboardMaterialized, type MaterializeResult } from "@/lib/storyboard/build";
 import { aspectOfProject, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
-import { boxPromptConflicts, boxShot, clipEstimateUsd, clipTemporalPlan, entityShot, generateBoxClip, generateBoxImage, generateEntityReference, imageEstimateUsd, imageTemporalPlan, previewStillRequest } from "@/lib/storyboard/generate";
+import { boxPromptConflicts, boxShot, clipEstimateUsd, clipTemporalPlan, entityShot, generateBoxClip, generateBoxImage, generateEntityReference, imageEstimateUsd, imageTemporalPlan, madeFromBox, previewStillRequest } from "@/lib/storyboard/generate";
+import { planDress, type DressPlan, type DressStaleness } from "@/lib/storyboard/dress";
+import { dressBox, dressPieceOf } from "@/lib/storyboard/dressSubmit";
+import { dressedTakeState, workflowStatus, type WorkflowStep } from "@/lib/storyboard/workflow";
 import { conflictNote } from "@/lib/storyboard/promptAudit";
 import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
 import { planFootageEdit, type FootageEditAction } from "@/lib/storyboard/footageEdit";
@@ -141,6 +144,17 @@ export type BoxEstimates = {
   /** Why this shot's clip cannot be made right now (a performance shot too long to restage). */
   clipBlocked?: string | null;
 } | null;
+
+/** Step 5 on one shot: whether its scene's outfit asks for a swap, what a dress would send, and the dressed takes on it. */
+export type DressState = {
+  /** A performance shot with a take in sync whose scene's outfit has pieces to put on him. */
+  needed: boolean;
+  /** What "Dress this shot" would send (window with handles, pictures, words, exact cost), or null with `why`. */
+  plan: DressPlan | null;
+  why: string | null;
+  /** The dressed takes on this shot, each current or stale (it only flags: nothing is redone by itself). */
+  dressed: { asset: MediaAsset; staleness: DressStaleness }[];
+};
 
 export type StoryboardController = {
   projectId: string;
@@ -304,6 +318,12 @@ export type StoryboardController = {
   moveTo: (item: BoxMediaItem, toBoxId: string) => Promise<void>;
   generateImage: (box: StoryboardBox) => void;
   generateClip: (box: StoryboardBox) => void;
+  /** Step 5 on this shot (dress.ts). */
+  dressOf: (box: StoryboardBox) => DressState;
+  /** Swap the scene's outfit onto the shot's window of the take (asks first: it costs money). */
+  dressShot: (box: StoryboardBox) => void;
+  /** The six workflow steps of this video, counted (workflow.ts). Read-only. */
+  workflow: WorkflowStep[];
 
   focusId: string | null;
   openFocus: (boxId: string | null) => void;
@@ -1442,6 +1462,123 @@ export function useStoryboardController(projectId: string): StoryboardController
     [run, writeBoxes],
   );
 
+  // --- step 5: the scene's outfit on his real take, for the shot's window only (dress.ts) -----------------------------
+  const wardrobePieces = useMemo(() => new Map((wardrobeQuery.data ?? []).map((w) => [w.id, dressPieceOf(w)])), [wardrobeQuery.data]);
+  const outfitNow = useCallback((box: StoryboardBox) => {
+    const o = outfitOf(box).outfit;
+    return o ? { id: o.id, key: o.key, name: o.name, version: o.outfit.version } : null;
+  }, [outfitOf]);
+  const dressOf = useCallback(
+    (box: StoryboardBox): DressState => {
+      const items = (mediaByBox.get(box.id) ?? EMPTY_MEDIA).items;
+      const now = outfitNow(box);
+      const dressed = items
+        .filter((i) => i.role === "performance" && i.asset.derivedFrom?.method === "dressed")
+        .map((i) => {
+          const parentId = i.asset.derivedFrom!.assetId;
+          return {
+            asset: i.asset,
+            staleness: dressedTakeState({ record: i.asset.derivedFrom!.dress, box, outfit: now, parentSync: syncs.find((s) => s.performanceAssetId === parentId) ?? null, parentSeconds: media.byId.get(parentId)?.durationSeconds ?? null }),
+          };
+        });
+      const hasTake = items.some((i) => i.role === "performance" && i.kind === "video" && !i.asset.derivedFrom && i.sourceIn != null);
+      const ids = effectiveGarments(box.spec, outfitOf(box)).ids;
+      const needed = box.spec.shotType === "performance" && hasTake && !!now && ids.length > 0;
+      const no = (why: string): DressState => ({ needed, plan: null, why, dressed });
+      if (box.spec.shotType !== "performance") return no("only a performance shot is dressed: it is his real take");
+      if (!now) return no("this shot's scene wears no outfit");
+      if (ids.length === 0) return no(`“${now.name}” has no pieces to put on him`);
+      const src = restageSource(items, syncs);
+      if (!src.ok) return no(src.why);
+      if (wardrobeQuery.data === undefined) return no("the wardrobe is still loading");
+      const pieces = ids.map((id) => wardrobePieces.get(id)).filter((p): p is NonNullable<typeof p> => !!p);
+      const p = planDress({ shotIn: src.source.takeIn, shotOut: src.source.takeOut, takeSeconds: src.source.take.durationSeconds, pieces });
+      if (!p.ok) return no(p.why);
+      const missing = ids.filter((id) => !wardrobePieces.has(id)).map((id) => ({ pieceId: id, label: id, why: "it is no longer in the wardrobe" }));
+      return { needed, plan: { ...p.plan, notSent: [...p.plan.notSent, ...missing] }, why: null, dressed };
+    },
+    [mediaByBox, outfitNow, syncs, media.byId, outfitOf, wardrobeQuery.data, wardrobePieces],
+  );
+  const dressShot = useCallback(
+    (box: StoryboardBox) => {
+      const state = dressOf(box);
+      const plan = state.plan;
+      if (!plan) {
+        toast.info(state.why ?? "this shot cannot be dressed");
+        return;
+      }
+      const src = restageSource((mediaByBox.get(box.id) ?? EMPTY_MEDIA).items, syncs);
+      const outfit = outfitNow(box);
+      if (!src.ok || !outfit) return;
+      const resolved = outfitOf(box);
+      const w = plan.window;
+      const input = {
+        projectId,
+        variationId: box.variationId ?? null,
+        shot: { id: box.id, key: box.key },
+        take: src.source.take,
+        sync: src.source.sync,
+        plan,
+        outfit,
+        sceneId: resolved.scene?.id ?? null,
+        maxBilledSeconds: plan.cost.billedSeconds,
+        madeFrom: madeFromBox(box),
+      };
+      const pictures = [...new Set(plan.references.map((r) => r.label))].join(", ");
+      const stale = state.dressed.filter((d) => d.staleness.state === "stale");
+      setConfirm({
+        title: `Dress shot ${numberById.get(box.id) ?? ""} in “${outfit.name}”?`,
+        body:
+          `${plan.cost.text} at list price — the swap bills every started second of the source, at least ${4} s. ` +
+          `Only ${w.seconds.toFixed(2)} s of ${src.source.take.name} go: the shot (${mmss(w.shotIn)}–${mmss(w.shotOut)} of the take) with ${w.head.toFixed(2)} s before it and ${w.tail.toFixed(2)} s after, so the swap's soft last half-second falls outside the shot. ` +
+          `Pictures, in order: ${plan.references.length} of ${pictures}.` +
+          (plan.notSent.length ? ` Not sent: ${plan.notSent.map((n) => `${n.label} (${n.why})`).join("; ")}.` : "") +
+          (w.notes.length ? ` NOTE: ${w.notes.join("; ")}.` : "") +
+          " The result is put back to the cut's exact length and lands on this shot as an alternate — what the shot shows does not change until you select it. It takes several minutes and finishes even if you close this page." +
+          (stale.length ? ` This shot already has ${stale.length} stale dressed take${stale.length === 1 ? "" : "s"} (${stale[0].staleness.reasons[0]?.text ?? "stale"}).` : ""),
+        confirmLabel: `Dress shot · $${plan.cost.usd.toFixed(3)}`,
+        testId: "confirm-dress-shot",
+        onConfirm: () =>
+          run(box, "dressing the take…", async () => {
+            await dressBox({ ...input, onStage: (t) => setBusyFor(box.id, t) });
+            afterGeneration();
+            toast.success("The take is being dressed — it lands on this shot as an alternate when it is done");
+          }).finally(afterGeneration),
+        secondary: {
+          label: "Dry run (sends nothing)",
+          testId: "confirm-dress-dryrun",
+          onConfirm: async () => {
+            const r = await dressBox({ ...input, dryRun: true });
+            console.info("Dress dry run — nothing was cut, uploaded, recorded or sent:", r);
+            toast.success("Dry run: the exact request is in the browser console. Nothing was sent.");
+          },
+        },
+      });
+    },
+    [dressOf, mediaByBox, syncs, outfitNow, outfitOf, projectId, numberById, run, setBusyFor, afterGeneration],
+  );
+  const workflow = useMemo(
+    () =>
+      workflowStatus({
+        hasTreatment: hasTreatment(doc),
+        outfits: outfits.length,
+        scenes: scenes.map((s) => ({ assigned: !!s.outfitKey && outfits.some((o) => o.key === s.outfitKey) })),
+        shots: boxes.map((b) => {
+          const m = mediaByBox.get(b.id) ?? EMPTY_MEDIA;
+          const d = dressOf(b);
+          return {
+            performance: b.spec.shotType === "performance",
+            hasTake: m.items.some((i) => i.role === "performance" && i.kind === "video" && !i.asset.derivedFrom && i.sourceIn != null),
+            hasSelectedClip: !!m.showing && !m.showing.base && m.showing.kind === "video",
+            needsDress: d.needed,
+            dressed: d.dressed.map((x) => ({ stale: x.staleness.state === "stale" })),
+            composited: m.items.some((i) => i.asset.derivedFrom?.method === "composite"),
+          };
+        }),
+      }),
+    [doc, outfits, scenes, boxes, mediaByBox, dressOf],
+  );
+
   const loading = boxesQuery.isLoading || inputs.projectQuery.isLoading;
   const error = boxesQuery.error ? message(boxesQuery.error) : null;
 
@@ -1539,6 +1676,9 @@ export function useStoryboardController(projectId: string): StoryboardController
     moveTo,
     generateImage,
     generateClip,
+    dressOf,
+    dressShot,
+    workflow,
     focusId,
     openFocus: setFocusId,
     pickerFor,

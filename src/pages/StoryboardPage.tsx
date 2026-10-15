@@ -10,6 +10,7 @@ import { ConfirmHost } from "@/components/storyboard/ConfirmHost";
 import { CastPanel } from "@/components/storyboard/Cast";
 import { ContinuityPanel } from "@/components/storyboard/Continuity";
 import { WardrobePanel } from "@/components/storyboard/Outfits";
+import { WorkflowChecklist } from "@/components/storyboard/WorkflowChecklist";
 import { FocusView } from "@/components/storyboard/FocusView";
 import { MediaPicker } from "@/components/storyboard/MediaPicker";
 import { StoryboardProvider, useStoryboardController } from "@/components/storyboard/useStoryboardController";
@@ -77,6 +78,8 @@ export default function StoryboardPage({ projectId }: { projectId: string }) {
                 </Button>
               </div>
             </div>
+
+            <WorkflowChecklist steps={sb.workflow} />
 
             <ContinuityPanel />
 

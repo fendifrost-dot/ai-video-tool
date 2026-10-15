@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Film, Image as ImageIcon, LayoutGrid, Loader2, Lock, Maximize, Minimize, Plus, Quote, Wand2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Film, Image as ImageIcon, LayoutGrid, Loader2, Lock, Maximize, Minimize, Plus, Quote, Shirt, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -94,6 +94,7 @@ export function FocusView() {
   const job = sb.jobOf(box);
   const est = sb.estimatesOf(box);
   const blocked = sb.rewriteBlockedReason(box);
+  const dress = sb.dressOf(box);
 
   return (
     <Overlay>
@@ -206,7 +207,21 @@ export function FocusView() {
               <Button variant="outline" disabled={!!busy} onClick={() => sb.generateClip(box)} data-testid="focus-generate-clip">
                 <Film className="mr-2 h-4 w-4" /> {est?.restage ? "Restage the take" : "Generate clip"}{est && !est.clipBlocked ? ` · ${usd(est.clip)}` : ""}
               </Button>
+              {(dress.needed || dress.dressed.length > 0) && (
+                <Button variant="outline" disabled={!!busy || !dress.plan} onClick={() => sb.dressShot(box)} title={dress.why ?? undefined} data-testid="focus-dress-shot">
+                  <Shirt className="mr-2 h-4 w-4" /> Dress this shot{dress.plan ? ` · $${dress.plan.cost.usd.toFixed(3)}` : ""}
+                </Button>
+              )}
             </div>
+            {dress.dressed.length > 0 && (
+              <ul className="space-y-0.5 text-[11px]" data-testid="focus-dress-state">
+                {dress.dressed.map((d) => (
+                  <li key={d.asset.id} className={d.staleness.state === "stale" ? "text-amber-200" : "text-emerald-300/80"}>
+                    Dressed take {d.staleness.state === "stale" ? `is STALE — ${d.staleness.reasons.map((r) => r.text).join("; ")}` : "is current"}
+                  </li>
+                ))}
+              </ul>
+            )}
             {(busy || (job && job.state !== "done")) && (
               <p className={cn("flex items-center gap-1.5 text-[11px]", job?.state === "failed" && !busy ? "text-rose-300" : "text-foreground/60")} data-testid="focus-status">
                 {(busy || job?.state === "working" || job?.state === "saving") && <Loader2 className="h-3 w-3 animate-spin" />}
