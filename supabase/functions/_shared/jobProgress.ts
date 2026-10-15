@@ -108,6 +108,32 @@ export function restagedFrom(job: ProgressJob): { sourceAssetId: string; songSta
   return { sourceAssetId: s.sourceAssetId, songStart: s.masterStart, sourceWindow: s.sourceWindow ?? null, seconds: typeof s.sourceSeconds === "number" ? s.sourceSeconds : null };
 }
 
+/** The route a dressed job records (src/lib/storyboard/dress.ts DRESS_ROUTE). */
+export const DRESSED_ROUTE = "genjutsu_swap";
+
+export type DressedFrom = {
+  sourceAssetId: string;
+  songStart: number;
+  window: [number, number];
+  sourceSeconds: number;
+  /** The whole dress record, kept on the dressed take as its upstream inputs. */
+  record: Record<string, unknown>;
+};
+
+/**
+ * A dressed take: the job was given a cut of a take (with handles) and the scene's outfit, and its clip keeps that
+ * cut's place on the song. Null for any other job, or a dress record that is not whole.
+ */
+export function dressedFrom(job: ProgressJob): DressedFrom | null {
+  const s = settingsOf(job);
+  const d = s.dress as Record<string, unknown> | undefined;
+  if (s.route !== DRESSED_ROUTE || !d || typeof d !== "object") return null;
+  const w = d.window;
+  if (typeof d.sourceAssetId !== "string" || !d.sourceAssetId || typeof d.songStart !== "number" || typeof d.sourceSeconds !== "number" || !(d.sourceSeconds > 0)) return null;
+  if (!Array.isArray(w) || w.length !== 2 || typeof w[0] !== "number" || typeof w[1] !== "number" || !(w[1] > w[0])) return null;
+  return { sourceAssetId: d.sourceAssetId, songStart: d.songStart, window: [w[0], w[1]], sourceSeconds: d.sourceSeconds, record: d };
+}
+
 const PLAYABLE = new Set(["performance", "b_roll", "generated_clip", "generated_image"]);
 
 /**
@@ -206,13 +232,19 @@ export async function advanceJob(input: ProgressJob, deps: ProgressDeps): Promis
       return await finish("the shot this was made for no longer exists — the clip is in the project's library");
     }
     const restaged = restagedFrom(job);
+    const dressed = restaged ? null : dressedFrom(job);
     if (restaged) {
       await fileRestagedClip(job, restaged, deps);
       did.push("filed as a take in sync");
     }
-    const ops = assignPlan({ assignments: await deps.assignmentsOf(shotId), shotId, assetId: job.result_asset_id!, role: restaged ? "performance" : "generated_clip", select: true });
+    if (dressed) {
+      await fileDressedClip(job, dressed, deps);
+      did.push("filed as a dressed take in sync");
+    }
+    // a dressed take is an ALTERNATE: it goes on its shot unselected, so nothing the director chose is replaced
+    const ops = assignPlan({ assignments: await deps.assignmentsOf(shotId), shotId, assetId: job.result_asset_id!, role: restaged || dressed ? "performance" : "generated_clip", select: !dressed });
     await deps.applyAssignments(job, ops);
-    did.push("on its shot");
+    did.push(dressed ? "on its shot, unselected" : "on its shot");
     await set({ request_payload_json: { ...payloadOf(job), settings: { ...settings, attachedAt: deps.now().toISOString(), attachedBy: "server" } } });
     return await finish();
   } catch (e) {
@@ -304,6 +336,50 @@ export async function fileRestagedClip(job: ProgressJob, restaged: NonNullable<R
     method: DERIVED_SYNC_METHOD,
     status: "confirmed",
     notes: "restaged from the take: its first frame sits where the cut began on the song",
+  });
+}
+
+/**
+ * A finished dress becomes a take of its own: performance footage made from its parent take, conformed to the cut it
+ * was made from (the server's saveClip did that before storing it, and wrote the measurements on the asset), with a
+ * sync whose offset is the song time of the cut's first frame — so it maps onto the song exactly like the parent over
+ * that window. Idempotent. A clip that was not conformed is never filed as in sync.
+ */
+export async function fileDressedClip(job: ProgressJob, dressed: DressedFrom, deps: ProgressDeps): Promise<void> {
+  const assetId = job.result_asset_id!;
+  const meta = await deps.assetMeta(assetId);
+  if (!meta) throw new Error("could not read the dressed clip");
+  const conformed = Number(meta.conformed_duration);
+  if (!(conformed > 0) || Math.abs(conformed - dressed.sourceSeconds) > 0.01) {
+    throw new Error(`the dressed clip was saved without being conformed to its ${dressed.sourceSeconds.toFixed(3)} s source — it is not filed in sync`);
+  }
+  const next: Record<string, unknown> = {
+    ...meta,
+    duration_seconds: conformed,
+    derived_from: {
+      asset_id: dressed.sourceAssetId,
+      source_window: dressed.window,
+      song_start: dressed.songStart,
+      method: "dressed",
+      job_id: job.id,
+      retime_ratio: typeof meta.retime_ratio === "number" ? meta.retime_ratio : null,
+      dress: dressed.record,
+    },
+  };
+  await deps.updateAsset(assetId, { footage_role: "performance", metadata_json: next });
+  if (await deps.syncOf(job.project_id, assetId)) return;
+  const source = await deps.syncOf(job.project_id, dressed.sourceAssetId);
+  const usable = source && (source.status === "confirmed" || source.status === "manual") ? source : null;
+  await deps.insertSync({
+    user_id: job.user_id,
+    project_id: job.project_id,
+    song_asset_id: usable?.song_asset_id ?? null,
+    performance_asset_id: assetId,
+    offset_seconds: dressed.songStart,
+    drift_ppm: usable?.drift_ppm ?? 0,
+    method: DERIVED_SYNC_METHOD,
+    status: "confirmed",
+    notes: "dressed from the take: its first frame sits where the cut (with handles) began on the song",
   });
 }
 

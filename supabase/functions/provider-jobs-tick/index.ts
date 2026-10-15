@@ -2,7 +2,8 @@
 //
 // Moves submitted provider jobs to their end on the SERVER, so a job finishes whether or not any page is open:
 // ask the provider where it stands → save the finished clip → put it on its shot (a restaged take is filed as a take
-// in sync first) → finished. What one job needs next is decided in _shared/jobProgress.ts; this file only gives that
+// in sync first; a dressed take is conformed to its source's length, filed in sync and put on its shot unselected)
+// → finished. What one job needs next is decided in _shared/jobProgress.ts; this file only gives that
 // code the real provider, storage and tables.
 //
 // Who calls it:
@@ -23,7 +24,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { callControlCenter, controlCenterConfig } from "../_shared/controlCenterClient.ts";
 import { ingestOne } from "../_shared/ingestClip.ts";
-import { advanceJobs, type AssignmentOp, type ProgressDeps, type ProgressJob } from "../_shared/jobProgress.ts";
+import { conformDressedClip, dressResultUrl } from "../_shared/dressConform.ts";
+import { advanceJobs, dressedFrom, type AssignmentOp, type ProgressDeps, type ProgressJob } from "../_shared/jobProgress.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -90,11 +92,16 @@ Deno.serve(async (req) => {
       return r.payload;
     },
     saveClip: async (job) => {
+      // a dressed take is conformed to the length of the cut it was made from before it is stored (the swap runs ~7 % fast)
+      const dressed = dressedFrom(job);
       const out = await ingestOne(
         { id: job.id, user_id: job.user_id, project_id: job.project_id, prompt_id: (job as any).prompt_id ?? null, provider: job.provider, external_job_id: job.external_job_id, request_payload_json: job.request_payload_json, result_asset_id: job.result_asset_id },
         cc.url,
         cc.key,
         admin as any,
+        dressed
+          ? { resultUrl: dressResultUrl(job.response_payload_json), transform: (bytes) => conformDressedClip(bytes, dressed.sourceSeconds) }
+          : {},
       );
       return out.assetId;
     },

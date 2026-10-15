@@ -10,6 +10,7 @@
 // deno-lint-ignore-file no-explicit-any
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { decodeBase64 } from "https://deno.land/std@0.224.0/encoding/base64.ts";
+import { DRESSED_ROUTE } from "./jobProgress.ts";
 
 export type IngestRow = {
   id: string;
@@ -22,11 +23,22 @@ export type IngestRow = {
   result_asset_id: string | null;
 };
 
+/**
+ * Optional handling for one kind of job (a dressed take): where its result is (a URL its own row carries, already
+ * checked by the caller — Control Center is not asked then), and what is done to the bytes before they are stored,
+ * with what it measured written on the asset.
+ */
+export type IngestOptions = {
+  resultUrl?: string | null;
+  transform?: (bytes: Uint8Array) => { bytes: Uint8Array; meta: Record<string, unknown> };
+};
+
 export async function ingestOne(
   row: IngestRow,
   ccUrl: string,
   ccKey: string,
   admin: ReturnType<typeof createClient>,
+  opts: IngestOptions = {},
 ): Promise<{ jobId: string; assetId: string; sizeBytes: number }> {
   // 1. Already ingested? Bail idempotently.
   if (row.result_asset_id) {
@@ -34,6 +46,12 @@ export async function ingestOne(
   }
   if (!row.external_job_id) {
     throw new Error("no external_job_id on row — nothing to fetch upstream");
+  }
+  // A dressed take must be conformed to its source's length before it is stored; only provider-jobs-tick does that.
+  // Any other caller (a backfill sweep, a manual trigger) leaves it alone rather than store a clip that drifts.
+  const settings = (row.request_payload_json?.settings ?? null) as Record<string, unknown> | null;
+  if (settings?.route === DRESSED_ROUTE && !opts.transform) {
+    throw new Error("a dressed take is saved by provider-jobs-tick, which conforms it to its source first");
   }
 
   // 1b. Stored by an earlier attempt that never linked it? Link that asset; do not download a second copy.
@@ -70,10 +88,12 @@ export async function ingestOne(
     urlParams.set("modelPath", modelVariant);
   }
 
-  // 3. Fetch resultUrl (small JSON envelope, never hits the size ceiling).
+  // 3. Fetch resultUrl (small JSON envelope, never hits the size ceiling) — unless the caller already has it.
+  let resultUrl: string;
+  if (opts.resultUrl) resultUrl = opts.resultUrl;
+  else {
   const ctrlMeta = new AbortController();
   const metaTimer = setTimeout(() => ctrlMeta.abort(), 30_000);
-  let resultUrl: string;
   try {
     const metaResp = await fetch(
       `${ccUrl.replace(/\/$/, "")}/functions/v1/video-providers-job-result?${urlParams.toString()}`,
@@ -88,6 +108,7 @@ export async function ingestOne(
     }
     resultUrl = metaBody.resultUrl;
   } finally { clearTimeout(metaTimer); }
+  }
 
   // 4. Stream bytes. Most providers serve unauthenticated CDN URLs
   //    (Runway → CloudFront, Fal → fal.media, Higgsfield → higgsfield CDN,
@@ -132,7 +153,8 @@ export async function ingestOne(
     const dlCtrl = new AbortController();
     const dlTimer = setTimeout(() => dlCtrl.abort(), 90_000);
     try {
-      const dl = await fetch(resultUrl, { signal: dlCtrl.signal });
+      // a URL handed in by the caller came from the job's own row: it is fetched as checked, never redirected elsewhere
+      const dl = await fetch(resultUrl, { signal: dlCtrl.signal, ...(opts.resultUrl ? { redirect: "error" as const } : {}) });
       if (!dl.ok) {
         throw new Error(`direct download from ${row.provider} CDN returned ${dl.status}`);
       }
@@ -140,6 +162,15 @@ export async function ingestOne(
       bytes = new Uint8Array(buf);
       contentType = dl.headers.get("content-type") ?? contentType;
     } finally { clearTimeout(dlTimer); }
+  }
+
+  // 4a. The caller's own step on the bytes (a dressed take is conformed to its source's length here).
+  let transformed: Record<string, unknown> = {};
+  if (opts.transform) {
+    const t = opts.transform(bytes);
+    bytes = t.bytes;
+    transformed = t.meta;
+    contentType = "video/mp4";
   }
 
   // 4b. Upload to project-clips.
@@ -172,6 +203,7 @@ export async function ingestOne(
         provider_job_id: row.id,
         external_job_id: row.external_job_id,
         ingested_by: "ingest-provider-job",
+        ...transformed,
       },
     })
     .select("id")
