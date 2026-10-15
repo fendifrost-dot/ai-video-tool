@@ -39,11 +39,12 @@ still goes in `docs/LEDGER_YSL_TESTING_BUDGET.md` with its basis.
 6. **Higgsfield balance:** submit nothing paid to Higgsfield until a `video-providers-job-status` poll of a fresh request no
    longer answers "Your credit balance is too low". The cheapest probe is to resubmit ONE of the four refused rows (below).
 
-## BLOCKER — Higgsfield balance (Fendi's to lift)
+## Higgsfield balance — LIFTED 07:27 UTC (Fendi: "I topped up higgsfield")
 
-Every Higgsfield call through Control Center (Genjutsu dress runs, Kling clips) is refused until the organisation balance
-behind CC's `HIGGSFIELD` key is topped up. Fendi tops it up on the Higgsfield API billing page for that organisation (the
-agent never sees or asks for the key). After the top-up, the four Chicago windows are a **resubmit, not a re-plan**:
+The four Chicago windows were resubmitted at once (rows `b81e43f8` c041, `532743b8` c044, `c97c854b` c045, `23196396`
+c046; requests `6b1e6ea8`, `b7babd92`, `9b9feb5f`, `9407b44b`; ledger row 35). Their results are recorded in
+`WARDROBE_SWAP_RECIPE.md` "Production: the Chicago windows" once the tick files them. If the balance ever runs dry
+again, the procedure below is the resubmit (the earlier refused rows are `eb1d35ee`, `5465390e`, `2593a6fb`, `459e6977`):
 
 - the 4.004 s cuts are already in Higgsfield's media store — CDN URLs
   `https://d2ol7oe51mr4n9.cloudfront.net/user_3DpOSQeJ4qh1p66uOWhK1Za6ihs/<id>.mp4` with ids `08c08157-7fd6-4d3f-8a61-c446e8c44b5d`
