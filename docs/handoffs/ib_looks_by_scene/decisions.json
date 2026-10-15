@@ -185,7 +185,7 @@
       {
         "outfitKey": "YSL_LEATHER_COAT",
         "scenes": [
-          "Chicago, the switch 62.75-96.08"
+          "The cold front 96.42-123.97 (candidate 5, window on measured downbeats; candidate 6 the same window)"
         ],
         "pieces": [
           "Coat in Bubbled Lambskin - Noir",
@@ -198,7 +198,7 @@
       {
         "outfitKey": "YSL_JACKET",
         "scenes": [
-          "The cold front 96.08-123.53 (all performance shots: his footage, generation does not dress him there)"
+          "Chicago, the switch 62.98-96.42 (candidate 5; candidate 6: 61.01-96.42, from the downbeat of the vocal entrance)"
         ],
         "pieces": [
           "Track Jacket - Mastic Cotton Navy Stripe",
@@ -229,7 +229,15 @@
       "Picture cap: the plain still route sends 3 pictures including his face (the CRT takes one more in the viewer). Every look above has 4-6 exact pieces, so every dressed shot is BLOCKED in that route as it stands, with the pieces that do not fit named on the shot. Routes: a shot declares the pieces in frame ('This shot's own pieces'), the look is split across shots (multi_shot), or a provider that takes more reference pictures (an architecture change; not made).",
       "The coat's back angle and the caps' side/three-quarter angles are in uploads/ but not attached to the rows."
     ],
-    "corrections": []
+    "corrections": [
+      {
+        "at": "2026-10-15",
+        "by": "production agent (Phase 1), applying the director's decisions relayed by the parent agent",
+        "what": "Scene outfits swapped: the approved Mastic swap clip is cut from take 72.673-76.677 s (song 73.5-77.5 s), inside Chicago, the switch, so YSL_JACKET (Mastic track jacket + Saint Laurent beige/ivory cap) is worn in Chicago and YSL_LEATHER_COAT (Bubbled Lambskin coat + Y Varsity black/ivory cap) moves to The cold front. The hat pairings of 15 Oct are now the outfit rows' pieces: YSL_JACKET e12c51bf v7 (khaki Cassandre cap -> beige Saint Laurent cap), YSL_LEATHER_COAT 0d18f174 v8 (beige Saint Laurent cap -> Y Varsity cap). variation_scenes 557e9d81 -> YSL_JACKET, 09591369 -> YSL_LEATHER_COAT; all five candidate-5 scene windows snapped to measured downbeats. The clean entrance scene note and the specs of c039-c041 corrected to THE_CLEAN_ENTRANCE_LOOK (they said 'exact YSL leather coat').",
+        "openForFendi": "YSL_DENIM_LOOK still wears the Y Varsity cap (v8), the same cap the coat now wears; the khaki Cassandre cap is on no look. The agent follow-on (denim -> khaki) was NOT applied: it would bump the denim outfit version and mark the three locked viewer boxes (c012, c013, c015) outdated. Fendi decides.",
+        "alsoNote": "The approved Red Line clip 0000c19a (c017-c018, 62.98-70.85 s) shows the long coat and a khaki cap; it now sits in a YSL_JACKET scene. It stays selected (approvals are never un-selected); the outfit flag on those shots is the honest record."
+      }
+    ]
   },
   "hatPairings": {
     "decidedBy": "Fendi",
@@ -243,6 +251,13 @@
       "Track Jacket - Mastic Cotton Navy Stripe": "Saint Laurent Cap - Beige and Ivory",
       "Coat in Bubbled Lambskin - Noir": "Y Varsity Cap - Black and Ivory"
     },
-    "agentFollowOn": "YSL_DENIM_LOOK (trucker jacket) takes the khaki Cassandre cap so every look keeps a hat. That is the agent's choice; Fendi has not ruled on it."
+    "agentFollowOn": "YSL_DENIM_LOOK (trucker jacket) takes the khaki Cassandre cap so every look keeps a hat. That is the agent's choice; Fendi has not ruled on it.",
+    "applied": {
+      "at": "2026-10-15",
+      "rows": {
+        "YSL_JACKET": "e12c51bf v7: 0feb028f (Mastic) + 07e6dcbe (SL beige cap) + d7666d88 + 991a79d4 + 18b648a5",
+        "YSL_LEATHER_COAT": "0d18f174 v8: fb82c0d2 (coat) + 6badada3 + f1dc9486 (Y Varsity) + 18b648a5"
+      }
+    }
   }
 }
