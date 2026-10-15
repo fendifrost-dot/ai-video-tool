@@ -11,6 +11,7 @@ import { pickGrokVideoEditReferencePaths, pickGrokGarmentReferencePaths } from "
 import { composeConstraintsFirst, lookSpecificationText, orderLookReferences, resolveReferencePolicy, type ReferencePolicy } from "../_shared/lookReferences.ts";
 import { getProviderCapability } from "../_shared/providerCapabilities.ts";
 import {
+  resolveGrokEditPrompt,
   buildGrokVideoEditAssetInsert,
   buildGrokVideoEditXaiBody,
   redactSignedUrls,
@@ -212,16 +213,17 @@ serve(async (req) => {
 
   const admin = makeAdmin(supabaseUrl, serviceRoleKey);
   const model = body.model ?? DEFAULT_MODEL;
-  const prompt = body.prompt?.trim() ?? "";
+  const requestPrompt = body.prompt?.trim() ?? "";
   const maxCostUsd = body.maxCostUsd ?? DEFAULT_MAX_COST_USD;
-  if (!prompt && !body.dryRun) {
+  // A request with no prompt and no Look is refused before any lookup; with a Look, the Look's own tuned
+  // prompt (composition_recipe_json.base_prompt) is used — checked once the Look is loaded below.
+  if (!requestPrompt && !body.dryRun && !(body.lookId && body.lookId.trim())) {
     return json(400, {
       error: "prompt_required",
       detail:
-        "Grok video edit prompt is not configured. Await Fendi confirmation of the frozen benchmark prompt before billed runs.",
+        "Grok video edit prompt is not configured. Pass a Look whose recipe carries a tuned base_prompt, or a prompt.",
     });
   }
-  const effectivePrompt = prompt || "(dry-run — prompt not configured)";
 
   const { data: project, error: pErr } = await admin
     .from("video_projects")
@@ -287,6 +289,8 @@ serve(async (req) => {
   let lookPieces: Array<{ featureId: string; label: string; featureType: string; path: string | null }> = [];
   let lookSpec = "";
   let lookConstraints: string[] = [];
+  let lookBasePrompt = "";
+  let lookPromptVersion = "";
   let policyUsed: Required<ReferencePolicy>;
   const lookId = body.lookId?.trim() || null;
   if (lookId) {
@@ -303,7 +307,12 @@ serve(async (req) => {
     const recipe = (look.composition_recipe_json ?? {}) as {
       wardrobe_feature_ids?: unknown; hero_feature_id?: unknown; outfit_sheet_path?: unknown;
       reference_policy?: ReferencePolicy; constraints?: unknown; spec?: unknown;
+      base_prompt?: unknown; prompt_version?: unknown;
     };
+    // the Look's tuned prompt (2026-10-15): the recipe that won is data on the Look, so every caller — the app, an
+    // agent, a script — runs the same prompt by passing only the Look
+    if (typeof recipe.base_prompt === "string" && recipe.base_prompt.trim()) lookBasePrompt = recipe.base_prompt.trim();
+    if (typeof recipe.prompt_version === "string" && recipe.prompt_version.trim()) lookPromptVersion = recipe.prompt_version.trim();
     policyUsed = resolveReferencePolicy(capability.maxReferenceImages, artistPolicy, projectPolicy, recipe.reference_policy, body.referencePolicy);
     const featureIds = Array.isArray(recipe.wardrobe_feature_ids)
       ? recipe.wardrobe_feature_ids.filter((x): x is string => typeof x === "string" && UUID_RE.test(x))
@@ -340,6 +349,16 @@ serve(async (req) => {
       : pickGrokVideoEditReferencePaths(refImages, fallback, 1);
     referencePlan = garmentPaths.map((p) => ({ role: "primary_piece", featureId: body.wardrobeFeatureId, file: p.split("/").pop() ?? p }));
   }
+  // the request's prompt wins; otherwise the Look's tuned prompt; a billed run never goes out with neither
+  const resolved = resolveGrokEditPrompt({ requestPrompt, lookBasePrompt, dryRun: body.dryRun, requestVersion: body.promptVersion, lookVersion: lookPromptVersion });
+  if (!resolved.ok) {
+    return json(400, {
+      error: "prompt_required",
+      detail: "This Look has no tuned base_prompt in its recipe and the request carries no prompt.",
+    });
+  }
+  const promptSource = resolved.source;
+  const effectivePrompt = resolved.prompt;
   // Prompt composition: the Look's hard construction constraints go FIRST (the mechanism that
   // took the hook hit rate from 1/5 to 4/4 on 2026-09-21), the structured Look specification
   // LAST. Both are Look data; the client's prompt is the body in between.
@@ -373,7 +392,7 @@ serve(async (req) => {
     referenceUrls,
   });
 
-  const promptVersion = body.promptVersion?.trim() || "unspecified";
+  const promptVersion = resolved.version;
   const plan = {
     lane: "architecture_c_grok_video_edit",
     model,
@@ -392,6 +411,7 @@ serve(async (req) => {
     estimatedCostUsd: estimateCostUsd(model, 4.5),
     maxCostUsd,
     promptVersion,
+    promptSource,
     prompt: composedPrompt,
     referenceCount: referenceUrls.length,
     xaiRequestBody: redactSignedUrls(xaiBody),
@@ -471,6 +491,9 @@ serve(async (req) => {
           promptVersion,
           referenceMode,
           lookId,
+          promptSource,
+          composedPrompt,
+          referenceFiles: garmentPaths.map((p) => p.split("/").pop() ?? p),
         });
         const { data: assetRow, error: assetErr } = await admin
           .from("project_assets")

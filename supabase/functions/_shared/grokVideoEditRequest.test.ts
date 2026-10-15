@@ -3,7 +3,9 @@ import { pickGrokVideoEditReferencePaths } from "./garmentReference.ts";
 import {
   buildGrokVideoEditAssetInsert,
   buildGrokVideoEditXaiBody,
+  DRY_RUN_PROMPT_PLACEHOLDER,
   redactSignedUrls,
+  resolveGrokEditPrompt,
 } from "./grokVideoEditRequest.ts";
 
 describe("buildGrokVideoEditXaiBody", () => {
@@ -92,5 +94,40 @@ describe("redactSignedUrls", () => {
     expect(redacted.video.url).toBe("https://storage.example/source.mp4?<signed>");
     expect(redacted.reference_images[0].url).toBe("https://storage.example/flat.jpg?<signed>");
     expect(JSON.stringify(redacted)).not.toContain("token=secret");
+  });
+});
+
+describe("resolveGrokEditPrompt (the billing gate)", () => {
+  it("the request's prompt wins, with the request's version", () => {
+    expect(resolveGrokEditPrompt({ requestPrompt: " P ", lookBasePrompt: "L", requestVersion: "v2", lookVersion: "v5" })).toEqual({ ok: true, prompt: "P", source: "request", version: "v2" });
+  });
+  it("uses the Look's prompt and the Look's version when the request has none", () => {
+    expect(resolveGrokEditPrompt({ requestPrompt: "", lookBasePrompt: " L ", requestVersion: "v2", lookVersion: "v5" })).toEqual({ ok: true, prompt: "L", source: "look", version: "v5" });
+  });
+  it("a whitespace-only prompt counts as missing", () => {
+    expect(resolveGrokEditPrompt({ requestPrompt: "   ", lookBasePrompt: "L" })).toMatchObject({ ok: true, source: "look" });
+    expect(resolveGrokEditPrompt({ requestPrompt: "   ", lookBasePrompt: "  " })).toEqual({ ok: false, error: "prompt_required" });
+  });
+  it("refuses a billed run with neither prompt", () => {
+    expect(resolveGrokEditPrompt({})).toEqual({ ok: false, error: "prompt_required" });
+  });
+  it("a dry run with neither prompt gets the placeholder, never a billed call", () => {
+    expect(resolveGrokEditPrompt({ dryRun: true })).toEqual({ ok: true, prompt: DRY_RUN_PROMPT_PLACEHOLDER, source: "none", version: "unspecified" });
+  });
+});
+
+describe("buildGrokVideoEditAssetInsert — reproducibility fields", () => {
+  const base = { userId: "u", projectId: "p", videoAssetId: "v", wardrobeFeatureId: "w", storedPath: "s.mp4", requestId: "r", model: "m", actualCostUsd: 0.32, finalStatus: "done", byteLength: 1, promptVersion: "v5" };
+  it("records the prompt source, the exact prompt and the reference files", () => {
+    const row = buildGrokVideoEditAssetInsert({ ...base, promptSource: "look", composedPrompt: "THE JACKET IS ZIPPED.", referenceFiles: ["a.png", "b.png"] });
+    expect(row.metadata_json.prompt_source).toBe("look");
+    expect(row.metadata_json.prompt).toBe("THE JACKET IS ZIPPED.");
+    expect(row.metadata_json.reference_files).toEqual(["a.png", "b.png"]);
+  });
+  it("leaves today's row shape unchanged when they are not given", () => {
+    const row = buildGrokVideoEditAssetInsert(base);
+    expect("prompt_source" in row.metadata_json).toBe(false);
+    expect("prompt" in row.metadata_json).toBe(false);
+    expect("reference_files" in row.metadata_json).toBe(false);
   });
 });
