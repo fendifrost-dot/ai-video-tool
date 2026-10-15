@@ -224,3 +224,21 @@ If step 1 ends with a `progress_note`, that note is the finding. Do not edit the
 - **The brand layer and face restore** (recipe steps 3–4) are not wired into the dress lane.
 - **A UI for the import.** It is a function, for the parent or an operator.
 - **A per-shot override of the handles.** The constants are in one place, and the function takes overrides.
+
+## Live verification of the import path (15 Oct 2026, 04:47–04:48 UTC) — VERIFIED from real rows
+
+The approved swap (Higgsfield request `71ff19f4`, Mastic jacket + beige/ivory cap) was filed through
+`planDressImport` → `avt_insert` into `provider_jobs` (row `c07c8dc6-4c3d-4afe-b1f7-2747e4c68c77`, candidate 6,
+shot c042 `928ff526…`). The deployed `provider-jobs-tick` claimed it at 04:48:00.8 and finalized at 04:48:03.5:
+
+| check | expected | read back |
+|---|---|---|
+| job | `finalized_at` set, `progress_note` null | 04:48:03.507, null |
+| asset `6eea726d-a243-478a-8f4e-09f5b5665b77` | `footage_role = performance`, `derived_from.method = dressed` | yes, yes |
+| durations | `output_duration ≈ 3.71`, `conformed_duration = 4.004 ± 0.01`, ratio ≈ 1.08 | 3.7083, 4.0039, 1.079694 (`conform_method: container_timescale`, `audio_dropped: 0`) |
+| `performance_syncs` | one row, `derived`, `confirmed`, offset = 0.8538 + 72.673 | `f1c0b628…`, derived, confirmed, 73.5268 |
+| assignment on c042 | `role = performance`, `is_primary = false` | `f9d7b45d…`, performance, false |
+| stored file (ffprobe) | one video stream, ≈ 4.004 s, no audio, decodes | h264, 89 frames, 4.003866 s, no audio stream, decodes clean |
+
+Nothing was selected or overwritten; the clip sits on c042 as an alternate and, being in sync, is the base layer for
+every shot its window covers (c042, c043 fully; c041, c044 in part).
