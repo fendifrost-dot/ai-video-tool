@@ -22,6 +22,7 @@ import type { BeatCheck } from "./beatCheck";
 import type { TakeCheck } from "./takeCheck";
 import type { StoredFootageAnalysis } from "./footageRecord";
 import type { AcceptanceRecord } from "./acceptance";
+import type { DressRecord } from "./dress";
 
 export const ASSIGNMENT_ROLES = ["performance", "b_roll", "generated_image", "generated_clip", "reference"] as const;
 export type AssignmentRole = (typeof ASSIGNMENT_ROLES)[number];
@@ -76,7 +77,7 @@ export type MediaAsset = {
    * take it was made from (on the take's own clock), and HOW it was made. It is a version of one moment — never the
    * base layer of other shots, never counted as a take.
    */
-  derivedFrom?: { assetId: string; songStart: number | null; sourceWindow?: [number, number] | null; method?: DerivedMethod } | null;
+  derivedFrom?: { assetId: string; songStart: number | null; sourceWindow?: [number, number] | null; method?: DerivedMethod; dress?: DressRecord | null } | null;
   /**
    * What the footage shows, in the director's words (Setup). `shows` is what he WEARS — the thing a restaged shot
    * keeps; `filmedIn` is the place it was shot — the thing a restaged shot replaces. Both are told to the writer.
@@ -97,9 +98,11 @@ export type MediaAsset = {
 /**
  * How a take made from another take was made. `restaged`: a video model re-shot the performance — every pixel of him
  * is the model's. `composite`: he was cut out of the take and put over another background — every pixel of him is
- * the camera's. They are told apart wherever a clip is named, because what can go wrong with each is different.
+ * the camera's. `dressed`: the same stretch of take with the scene's outfit swapped onto him (dress.ts) — his
+ * performance, the garment the model's; conformed to the cut's length, with handles either side of the shot. They are
+ * told apart wherever a clip is named, because what can go wrong with each is different.
  */
-export type DerivedMethod = "restaged" | "composite";
+export type DerivedMethod = "restaged" | "composite" | "dressed";
 
 /**
  * Which take a clip was made from, and which stretch of it (on the take's own clock). The job that made the clip

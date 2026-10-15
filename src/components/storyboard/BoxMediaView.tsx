@@ -27,7 +27,10 @@ export const ROLE_STYLE: Record<AssignmentRole, string> = {
 
 export function mediaLabel(item: Pick<BoxMediaItem, "role" | "base"> & { asset?: Pick<BoxMediaItem["asset"], "derivedFrom"> }): string {
   if (item.base) return "Your take · base layer";
-  if (item.role === "performance" && item.asset?.derivedFrom) return item.asset.derivedFrom.method === "composite" ? "Your take · new background" : "Your take · restaged";
+  if (item.role === "performance" && item.asset?.derivedFrom) {
+    const m = item.asset.derivedFrom.method;
+    return m === "composite" ? "Your take · new background" : m === "dressed" ? "Your take · dressed" : "Your take · restaged";
+  }
   return ROLE_LABEL[item.role];
 }
 

@@ -63,3 +63,7 @@ The historical OpenAI spend above (scope 0 ≈ $24.00; rows 4, 5, 7, 9, 10, 14, 
 - Failed, unbilled provider calls ($0) are listed for provenance and never counted.
 - Where a billed amount is unverified, the higher of the estimate and the computed figure is carried.
 - Every future paid call appends a row here in the same commit as its result.
+
+| 22 | 10-15 | xAI | Plate tests for c019 through `world-still-proxy`: `plate-v1` (2 stills, $0.14 reported `actualCostUsd`) + `plate-real-v2` (2 stills, $0.14) | $0.28 | — | — |
+| 23 | 10-15 | Google (via CC) | Plate test for c019, `gemini-nano-banana-2.1`, job `80e33de0` | — | $0.270336 conditional estimate, invoice unknown | — |
+| 24 | 10-15 | Runway (MCP connector account, not CC) | `remove_video_background` on the 4 s dressed clip, task `f1c58d20` | 4 credits (connector balance 6 → 2) | — | — |

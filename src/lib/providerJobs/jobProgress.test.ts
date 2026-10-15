@@ -122,6 +122,7 @@ function world() {
     addEntityPictures: async (_job, entityId, assetIds) => {
       entities.set(entityId, [...new Set([...(entities.get(entityId) ?? []), ...assetIds])]);
     },
+    dressOwnership: async () => [],
   };
 
   /** One run of the scheduler: every unfinished job is handed to the server's code, as claim_provider_jobs does. */

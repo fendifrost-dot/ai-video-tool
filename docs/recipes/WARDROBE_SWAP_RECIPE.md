@@ -64,11 +64,21 @@ Test at 1080p ($1.632 per source second) before scaling, to see whether the soft
 
 ## How to run it (today, through AVT)
 
-- **Genjutsu:** `proxy-provider-call` with:
+- **In the app (the production path, from 15 Oct):** Storyboard → open the performance shot → **Dress this shot**.
+  - It sends only the shot's window of the take, with handles (0.5 s head / 0.75 s tail minimum, grown to the billed
+    seconds).
+  - It sends the scene's outfit pieces, in the order above (jacket product photo, then the cap with its angles, at most
+    4), with the recipe's words built from the pieces.
+  - It shows the exact cost before sending, and has a dry run.
+  - The server conforms the ~7 % fast result to the cut's length (lossless), files it as a dressed take in sync, and
+    puts it on the shot as an alternate.
+  - A finished swap made outside the app is filed with `importFinishedDress`, at no spend.
+  - See [`DRESS_AND_INSERT_WORKFLOW.md`](DRESS_AND_INSERT_WORKFLOW.md) for the rules, the costs and the checks.
+- **By hand (research only), Genjutsu:** `proxy-provider-call` with:
   - `endpoint: "video-providers-higgsfield-model"`;
   - body `{mode: "video_to_video", modelVariant: "genjutsu-object-swap", referenceVideoUrl, referenceImageUrls: [product photo], resolution: "720p", promptText, avt_project_id}`.
 
-  Poll status with `video-providers-job-status {provider: "higgsfield", id: <Higgsfield request id>}`; CC's own job id answers 404 there. Gap: the result is not filed in AVT `project_assets`, so it stays on Higgsfield's CDN.
+  Poll status with `video-providers-job-status {provider: "higgsfield", id: <Higgsfield request id>}`; CC's own job id answers 404 there. By hand the result is not filed in AVT; file it with `importFinishedDress` (above).
 - **xAI edit with a Look:** `grok-video-edit-proxy {lookId, referenceMode: "full_look", …}`. Once the proxy change in this branch is deployed, the Look's own `base_prompt` is used and every result row records the exact prompt and reference files it was made with.
 
 ## Do not
