@@ -56,6 +56,10 @@ export function buildGrokVideoEditAssetInsert(input: {
   promptVersion: string;
   referenceMode?: "flat" | "full_look";
   lookId?: string | null;
+  /** Where the prompt came from ("request" | "look"), the exact composed prompt sent, and the reference files in order. */
+  promptSource?: string;
+  composedPrompt?: string;
+  referenceFiles?: string[];
 }): {
   user_id: string;
   project_id: string;
@@ -88,6 +92,10 @@ export function buildGrokVideoEditAssetInsert(input: {
       prompt_version: input.promptVersion,
       reference_mode: input.referenceMode ?? "flat",
       look_id: input.lookId ?? null,
+      // the exact request, so any result can be reproduced from its own row
+      ...(input.promptSource ? { prompt_source: input.promptSource } : {}),
+      ...(input.composedPrompt ? { prompt: input.composedPrompt } : {}),
+      ...(input.referenceFiles ? { reference_files: input.referenceFiles } : {}),
     },
   };
 }
