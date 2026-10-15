@@ -9,6 +9,14 @@ You are continuing AVT (repo `fendifrost-dot/ai-video-tool`, Lovable Supabase `q
 generated clip and still into the chat as soon as it exists. Spend: Fendi said "No cap" on 15 Oct, but every paid call
 still goes in `docs/LEDGER_YSL_TESTING_BUDGET.md` with its basis.
 
+## Standing rule from 15 Oct 07:45 UTC (DECISION, Fendi)
+
+"All pass" on the five Chicago dressed windows and the composite integration test; then: **"I'm confident in the
+capabilities — no more passing off to me for judgement. You can build freely."** From here the agent judges results
+itself against the kill criterion (identity, garment construction, cap/logo, no flicker or morph), keeps posting every
+output, and does not gate work on a verdict. Spend stays recorded in the ledger at its basis; alternates only, never
+overwriting a selection.
+
 ## Fendi's production order (15 Oct) and where each step stands
 
 | # | Step | State | Evidence |
