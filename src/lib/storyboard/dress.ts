@@ -335,7 +335,7 @@ export const DRESS_WINDOW_SLACK = 0.02;
  * the dress words have a newer version.
  */
 export function dressStaleness(
-  record: Pick<DressRecord, "outfit" | "window" | "sync" | "syncId" | "promptVersion">,
+  record: Pick<DressRecord, "outfit" | "window" | "sync" | "syncId" | "promptVersion"> & { imported?: DressRecord["imported"] },
   now: {
     outfit: { id: string; key: string; name: string; version: number } | null;
     sync: { id: string; offsetSeconds: number; driftPpm: number } | null;
@@ -355,8 +355,9 @@ export function dressStaleness(
   if (!now.sync) reasons.push({ code: "sync_changed", text: "the take is no longer matched to the song" });
   else if ((record.syncId && record.syncId !== now.sync.id) || Math.abs(now.sync.offsetSeconds - record.sync.offsetSeconds) > 1e-3 || Math.abs(now.sync.driftPpm - record.sync.driftPpm) > 0.5)
     reasons.push({ code: "sync_changed", text: "the take's match to the song changed since it was dressed" });
+  // a finished swap filed from outside was approved by eye with its own words: the tool's words moving on does not age it
   const current = now.promptVersion ?? DRESS_PROMPT_VERSION;
-  if (record.promptVersion !== current) reasons.push({ code: "prompt_version_changed", text: `dressed with words ${record.promptVersion}; the tool now uses ${current}` });
+  if (!record.imported && record.promptVersion !== current) reasons.push({ code: "prompt_version_changed", text: `dressed with words ${record.promptVersion}; the tool now uses ${current}` });
   return { state: reasons.length ? "stale" : "current", reasons };
 }
 
@@ -382,5 +383,134 @@ export function composeDressRequest(input: { prompt: string; sourceUrl: string; 
       duration: input.billedSeconds,
       avt_project_id: input.projectId,
     },
+  };
+}
+
+// --- one shot, planned -------------------------------------------------------------------------------------------------
+
+export type DressPlan = {
+  window: DressWindow;
+  references: DressReference[];
+  notSent: { pieceId: string; label: string; why: string }[];
+  prompt: string;
+  cost: ReturnType<typeof dressCost>;
+};
+
+/**
+ * Everything a dress of one shot will send, decided before anything is cut or paid for: the window with its handles,
+ * the pictures, the words and the exact cost. Refused with the reason when the shot cannot be dressed.
+ */
+export function planDress(input: { shotIn: number; shotOut: number; takeSeconds: number | null; pieces: readonly DressPiece[]; head?: number; tail?: number }): { ok: true; plan: DressPlan } | { ok: false; why: string } {
+  if (input.pieces.length === 0) return { ok: false, why: "the scene's outfit has no pieces to dress him in" };
+  const w = dressWindow(input);
+  if (!w.ok) return w;
+  const { sent, notSent } = dressReferences(input.pieces);
+  if (sent.length === 0) return { ok: false, why: "no piece of the outfit has a photograph on file" };
+  return { ok: true, plan: { window: w.window, references: sent, notSent, prompt: buildDressPrompt(input.pieces, sent), cost: dressCost(w.window.seconds) } };
+}
+
+/** The settings a dress job carries (provider_jobs.request_payload_json.settings): the storyboard's run, this shot, the record. */
+export function dressJobSettings(input: { batchRun: string; shotKey: string; record: DressRecord; madeFrom?: unknown }): Record<string, unknown> {
+  const r = input.record;
+  return {
+    batchRun: input.batchRun,
+    batchShotId: input.shotKey,
+    route: DRESS_ROUTE,
+    kind: "angle",
+    estimateUsd: r.estimateUsd,
+    lookPreset: "none",
+    sourcePath: r.sourcePath,
+    sourceWindow: r.window,
+    sourceAssetId: r.sourceAssetId,
+    sourceSeconds: r.sourceSeconds,
+    dress: r,
+    ...(input.madeFrom ? { madeFrom: input.madeFrom } : {}),
+  };
+}
+
+export type DressImport = {
+  projectId: string;
+  variationId: string | null;
+  userId: string;
+  shot: { id: string; key: string };
+  /** The take the swapped cut came from, and its sync to the song now. */
+  parentTakeId: string;
+  parentSync: { id: string; offsetSeconds: number; driftPpm: number };
+  /** The cut that was swapped, on the parent take's clock. */
+  window: [number, number];
+  /** The cut's own measured length (what the result is conformed to). Defaults to the window's length. */
+  sourceSeconds?: number;
+  /** The shot's stretch of the parent take when it was swapped (defaults to the window: no handles). */
+  shotWindow?: [number, number];
+  /** The cut as it was registered in the project, when it was (an asset of its own). */
+  cutAssetId?: string | null;
+  requestId: string;
+  resultUrl: string;
+  outfit: DressRecord["outfit"];
+  sceneId?: string | null;
+  references: DressRecord["references"];
+  prompt: string;
+  promptVersion: string;
+  batchRun: string;
+};
+
+/**
+ * File a swap that already finished (no money moves here): the provider_jobs row that hands it to the server exactly
+ * as if the tool had submitted it and the provider had just answered — status succeeded, the provider's request id,
+ * its result URL — so provider-jobs-tick downloads it, conforms it to the cut's length, files it as a dressed take in
+ * sync and puts it on its shot unselected. Pure: the caller inserts the row.
+ */
+export function planDressImport(input: DressImport): Record<string, unknown> {
+  const [start, end] = input.window;
+  if (!(end > start)) throw new Error("the swapped window is empty");
+  if (!/^https:\/\//.test(input.resultUrl)) throw new Error("the result URL must be https");
+  if (!input.requestId.trim()) throw new Error("the provider's request id is required");
+  const sourceSeconds = input.sourceSeconds ?? r4(end - start);
+  const shotWindow = input.shotWindow ?? input.window;
+  const billedSeconds = dressBilledSeconds(sourceSeconds);
+  const record: DressRecord = {
+    version: 1,
+    provider: DRESS_PROVIDER,
+    modelVariant: DRESS_MODEL_VARIANT,
+    resolution: DRESS_RESOLUTION,
+    promptVersion: input.promptVersion,
+    prompt: input.prompt,
+    references: input.references,
+    sourceAssetId: input.parentTakeId,
+    syncId: input.parentSync.id,
+    sync: { offsetSeconds: input.parentSync.offsetSeconds, driftPpm: input.parentSync.driftPpm },
+    window: [r4(start), r4(start + sourceSeconds)],
+    shotWindow: [r4(shotWindow[0]), r4(shotWindow[1])],
+    handles: { head: r4(Math.max(0, shotWindow[0] - start)), tail: r4(Math.max(0, start + sourceSeconds - shotWindow[1])) },
+    songStart: dressedSongStart(start, input.parentSync),
+    sourceSeconds: r4(sourceSeconds),
+    sourcePath: null,
+    cutAssetId: input.cutAssetId ?? null,
+    outfit: input.outfit,
+    sceneId: input.sceneId ?? null,
+    shotId: input.shot.id,
+    shotKey: input.shot.key,
+    billedSeconds,
+    estimateUsd: (billedSeconds * DRESS_MILLS_PER_SECOND) / 1000,
+    imported: { requestId: input.requestId, resultUrl: input.resultUrl },
+  };
+  return {
+    user_id: input.userId,
+    project_id: input.projectId,
+    ...(input.variationId ? { variation_id: input.variationId } : {}),
+    provider: DRESS_PROVIDER,
+    status: "succeeded",
+    external_job_id: input.requestId,
+    request_payload_json: {
+      promptText: input.prompt,
+      mode: "video_to_video",
+      modelVariant: DRESS_MODEL_VARIANT,
+      resolution: DRESS_RESOLUTION,
+      shotId: input.shot.id,
+      referenceImagePaths: input.references.map((r) => r.path),
+      imported: true,
+      settings: dressJobSettings({ batchRun: input.batchRun, shotKey: input.shot.key, record }),
+    },
+    response_payload_json: { status: "succeeded", resultUrl: input.resultUrl, providerJobId: input.requestId, imported: true },
   };
 }
