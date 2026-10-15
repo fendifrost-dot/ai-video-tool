@@ -9,6 +9,14 @@ You are continuing AVT (repo `fendifrost-dot/ai-video-tool`, Lovable Supabase `q
 generated clip and still into the chat as soon as it exists. Spend: Fendi said "No cap" on 15 Oct, but every paid call
 still goes in `docs/LEDGER_YSL_TESTING_BUDGET.md` with its basis.
 
+## Standing rule from 15 Oct 07:45 UTC (DECISION, Fendi)
+
+"All pass" on the five Chicago dressed windows and the composite integration test; then: **"I'm confident in the
+capabilities — no more passing off to me for judgement. You can build freely."** From here the agent judges results
+itself against the kill criterion (identity, garment construction, cap/logo, no flicker or morph), keeps posting every
+output, and does not gate work on a verdict. Spend stays recorded in the ledger at its basis; alternates only, never
+overwriting a selection.
+
 ## Fendi's production order (15 Oct) and where each step stands
 
 | # | Step | State | Evidence |
@@ -17,7 +25,7 @@ still goes in `docs/LEDGER_YSL_TESTING_BUDGET.md` with its basis.
 | 2 | Cast and outfits | DONE as data: Mastic jacket + beige/ivory cap for "Chicago, the switch" (70.85–100.36); lambskin coat + Y Varsity cap for "The cold front" (100.36–121.99); trench + confetti shirt + bucket hat for "The clean entrance" (163.31–182.98) | `variation_scenes` for candidate 6; `ib_looks_by_scene/decisions.json` |
 | 3 | Shot plan and performance selection | Candidate 6 marks performance shots c041–c047 (Chicago), c048–c054 (grill ECUs), c055–c066 (cold front), c085–c093 (clean entrance). 22 clips carried from candidate 5 (0–70.85 s). | same report, §C |
 | 4 | Generate scene assets | PHASE 2 DONE for the empty non-performance shots: realism plates for the three performance locations (unselected, under `worlds/`), 34 stills + 34 Kling clips selected on c019–c021, c024, c027, c036, c038, c040, c067–c084, c091, c094–c100. Plate prompt recipe: `docs/recipes/PLATE_REALISM_PROMPT.md` (Fendi: "they need to look real"). | `docs/review/production_2026-10-15/PHASE2_PLATES_STILLS_DRESS.md`; ledger rows 30–32 |
-| 5 | Process only selected performance segments | TOOL LIVE ("Dress this shot", PR #260; 4 s floor fix PR #262). **Chicago fully dressed as unselected alternates:** c042 (`6eea726d`), c047 (`f540b6be`, conformed 4.9551), and after the top-up c041 (`2f55f4fa`), c044 (`6d8043a2`), c045 (`e6788d22`), c046 (`92c15951`), each conformed 4.0039 s, ratio 1.079694, with a derived sync at its song start and `is_primary = false`. Fendi has the side-by-sides; no verdict yet. Cold front (c055–c066, coat) and clean entrance (c085–c093, trench) not dressed. | ledger rows 33–35; `WARDROBE_SWAP_RECIPE.md` "Production: the Chicago windows" |
+| 5 | Process only selected performance segments | TOOL LIVE ("Dress this shot", PR #260; 4 s floor fix PR #262). **Cold front and clean entrance dressed in grouped windows (15 Oct night, ledger rows 36–37; recipe doc last section):** coldW3 `1a83a167` (c062–c066), entrW1 `011a1323` (c085–c087), entrW2 `ed28aba0` (c088–c090), entrW3 `51c1156c` (c092–c093) PASS and filed unselected with covered-shot assignments; coldW1 `e09b1a3a` and coldW2 `0e995b73` REJECTED (cap not swapped / cap morph + sleeve patch) and re-run cap-first as rows `cde54409`, `501f3dc1` — both re-runs REFUSED at intake (balance exhausted again), see "Cold-front re-runs — BLOCKED" below. **Chicago fully dressed as unselected alternates:** c042 (`6eea726d`), c047 (`f540b6be`, conformed 4.9551), and after the top-up c041 (`2f55f4fa`), c044 (`6d8043a2`), c045 (`e6788d22`), c046 (`92c15951`), each conformed 4.0039 s, ratio 1.079694, with a derived sync at its song start and `is_primary = false`. Fendi has the side-by-sides; no verdict yet. Cold front (c055–c066, coat) and clean entrance (c085–c093, trench) not dressed. | ledger rows 33–35; `WARDROBE_SWAP_RECIPE.md` "Production: the Chicago windows" |
 | 6 | Integrate and finish | METHOD VALIDATED ON ONE CLIP, NOT YET IN THE TOOL: Runway `remove_video_background` matte + ffmpeg composite over a realism plate (key gradient, inner-edge light wrap, plate defocus, grain). Posted to Fendi 15 Oct; no verdict yet. Restage is NOT an approved production method. | `PLATE_REALISM_PROMPT.md` last section; scratch recipe in this session only |
 | 7 | Review the assembled sequence | NOT STARTED. No timeline rows for candidate 6. | — |
 
@@ -39,7 +47,11 @@ still goes in `docs/LEDGER_YSL_TESTING_BUDGET.md` with its basis.
 6. **Higgsfield balance:** submit nothing paid to Higgsfield until a `video-providers-job-status` poll of a fresh request no
    longer answers "Your credit balance is too low". The cheapest probe is to resubmit ONE of the four refused rows (below).
 
-## Higgsfield balance — LIFTED 07:27 UTC (Fendi: "I topped up higgsfield")
+## Higgsfield balance — EXHAUSTED AGAIN 23:43 UTC (was lifted 07:27 UTC: "I topped up higgsfield")
+
+**Current state:** the 07:27 top-up covered the four Chicago re-runs ($13.62) and the six grouped windows ($35.42,
+row 36) and then ran out; the two cap-first re-runs (row 37) were refused at intake. The "Cold-front re-runs — BLOCKED"
+section above has the resubmit. History of the morning top-up follows.
 
 The four Chicago windows were resubmitted at once (rows `b81e43f8` c041, `532743b8` c044, `c97c854b` c045, `23196396`
 c046; requests `6b1e6ea8`, `b7babd92`, `9b9feb5f`, `9407b44b`; ledger row 35). Their results are recorded in
@@ -58,6 +70,29 @@ again, the procedure below is the resubmit (the earlier refused rows are `eb1d35
 - expected: `status queued` on submit, `succeeded` with a `resultUrl` within ~5 min, the tick files an asset with
   `conformed_duration` 4.004 ± 0.01 and a derived sync at 71.215 / 75.885 / 77.855 / 79.82. Cost ≈ $3.405 each at 5 started
   seconds (ledger row 34).
+
+## Cold-front re-runs — BLOCKED on a Higgsfield top-up (23:43 UTC 15 Oct)
+
+The balance behind Control Center's Higgsfield key ran out again after the six grouped windows (ledger row 36, $35.42).
+The two cap-first re-runs (ledger row 37) were accepted by CC and refused by Higgsfield at intake: rows `cde54409`
+(coldW1, c055–c058) and `501f3dc1` (coldW2, c059–c061) are `failed` with "Your credit balance is too low". Nothing
+was billed.
+
+When Fendi says he has topped up:
+
+1. Insert two NEW `provider_jobs` rows copying `request_payload_json` from `cde54409` and `501f3dc1` (do not reuse the
+   failed rows — the tick has finalized them). Keep `promptVersion recipe-coat-v2-capfirst-2026-10-15`.
+2. Sign the four coat references on `wardrobe-refs` (`90e177d5`, `40588200`, `ba3cb919`, `f0450201`, 1 h) and submit
+   through `proxy-provider-call` → `video-providers-higgsfield-model` with `referenceVideoUrl` = Higgsfield media
+   `https://d2ol7oe51mr4n9.cloudfront.net/user_3DpOSQeJ4qh1p66uOWhK1Za6ihs/970e3fda-3009-4340-b417-96facfa81bb8.mp4`
+   (coldW1, duration 8) and `.../32f9f06b-9e8c-4f8f-828f-f14389368fc8.mp4` (coldW2, duration 9). Record
+   `external_job_id` on each new row.
+3. Expected: `running` within a minute; the tick files assets with `conformed_duration` 7.958 / 8.959 and derived syncs
+   at 99.46 / 105.355, unselected. Judge on a 2 fps dense frame sheet: the Y cap must be on the FIRST frame and every
+   frame after, no patch on the coat. Then add unselected assignments for c056–c058 and c060–c061.
+4. Ledger: new row at $11.58 list (17 billed source seconds), running total $117.03.
+
+If a cap-first prompt fails the same way, the next lever is reference order (cap images first) — not more words.
 
 ## Open decisions (Fendi's; defaults the agent will use if he says nothing)
 
