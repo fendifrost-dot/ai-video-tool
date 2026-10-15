@@ -3,8 +3,8 @@
 Any agent or person putting Fendi into a garment on real performance footage starts **here**. The page records what
 was run, on what, with which inputs, and what came out. It is updated after every test.
 
-**There is no approved production recipe yet.** Fendi judges every result. An agent never passes its own test (the
-kill criterion in `CLAUDE.md`).
+**APPROVED route (DECISION, Fendi, 15 Oct 2026: "Yes that passes"): Higgsfield Genjutsu object-swap, run C below.**
+Fendi judges every new result; an agent never passes its own test (the kill criterion in `CLAUDE.md`).
 
 Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 
@@ -52,9 +52,9 @@ Side-by-sides were posted to Fendi in chat. They are not in the repo: they show 
 - 1 Oct, rev 45: Genjutsu stage 1 KEEP on S06. Identity median 0.178 against 0.43–0.59 for the Grok edit lane; all four construction points held. Stages 2–3 were never run.
 - No note records a pause "until a newer Grok". The lane was parked "until models mature (~6 months)".
 
-## RECOMMENDATION (pending Fendi's verdict)
+## The recipe (approved 15 Oct; steps 2–4 are the open finishing work)
 
-If Fendi passes C on the four kill-criterion points, the recipe becomes:
+Fendi passed C. The recipe is:
 1. Higgsfield Genjutsu object-swap, 720p, the product photo only, a prompt naming the construction points above, his own cap.
 2. Correct the speed: retime the output to the source length. It runs ≈7 % fast every time, so it lands at 3.71 s against 4.00 s.
 3. Run the deterministic brand layer on the logo if it reads wrong.
@@ -76,3 +76,9 @@ Test at 1080p ($1.632 per source second) before scaling, to see whether the soft
 - Do not use Look `ce7f6350` as a product reference: its anchor is wrong. Keep it for provenance only.
 - Do not judge a raw generator wordmark as final.
 - Do not scale any route before Fendi passes it.
+
+## Full look, 15 Oct (Fendi: "complete the full look swapping the Ralph Lauren hat for a YSL hat")
+
+- **Hat:** the Cassandre Cap in Cotton Denim Twill, Khaki (`c4f87504-ddbc-4a8e-b474-e090b88fa97a`). This is the 9 Oct pairing for the Mastic jacket (`docs/handoffs/ib_looks_by_scene/decisions.json`, look `YSL_JACKET`).
+- **Reference flaw (OBSERVED):** every YSL cap photo, both the Wardrobe rows and `ib_looks_by_scene/uploads/`, is cropped through the crown, so the brim is missing. The brim is described in words. Better full-cap photos would remove this risk.
+- **Run:** Genjutsu, 720p, refs = [jacket product photo, cap front (Wardrobe), cap side (repo uploads, raw GitHub URL)], with the run-C wording plus a cap sentence. Higgsfield request `678a62a8-84e5-49bf-beec-75e2d45f4ae1`.
