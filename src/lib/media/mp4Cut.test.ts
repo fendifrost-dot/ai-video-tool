@@ -17,6 +17,21 @@ describe("the size a cut is written at", () => {
 });
 
 describe("laying encoded frames into a file", () => {
+  it("ends the file exactly where the last frame ends: two half-unit roundings never add a unit", async () => {
+    const source = bytesOf("tiny_h264_faststart.mp4");
+    const track = (await probeVideo(reader(source))).video!;
+    const s0 = track.sample(0)!;
+    const s1 = track.sample(1)!;
+    // 16 650 µs is 1498.5 units at 90 kHz; the end at 33 300 µs is exactly 2997 units. Rounding each on its own
+    // gives 1499 + 1499 = 2998 — a 4 s file would be 4.000011 s, one unit over the length asked for
+    const samples: EncodedSample[] = [
+      { data: source.subarray(s0.offset, s0.offset + s0.size), timestamp: 0, key: true },
+      { data: source.subarray(s1.offset, s1.offset + s1.size), timestamp: 16650, key: false },
+    ];
+    const out = (await probeVideo(reader(muxAvc(samples, track.description!, track.width!, track.height!, 16650)))).video!;
+    expect(Math.round(out.duration * 90000)).toBe(2997);
+  });
+
   it("writes an MP4 this reader opens, with every frame where it was put", async () => {
     const source = bytesOf("tiny_h264_faststart.mp4");
     const track = (await probeVideo(reader(source))).video!;

@@ -66,7 +66,10 @@ export function muxAvc(samples: readonly EncodedSample[], avcC: Uint8Array, widt
   const shown = samples.map((s) => units(s.timestamp));
   // decode times are the presentation times in order: with no reordering the two are the same list
   const decode = [...shown].sort((a, b) => a - b);
-  const deltas = decode.map((t, i) => (i + 1 < decode.length ? decode[i + 1] - t : Math.max(1, units(frameUs))));
+  // the last delta is measured to the file's end, not rounded on its own, so the deltas sum to exactly the end
+  // (two half-unit roundings could otherwise add one unit and make a 4 s file 4.000011 s)
+  const endUs = Math.max(...samples.map((s) => s.timestamp)) + frameUs;
+  const deltas = decode.map((t, i) => (i + 1 < decode.length ? decode[i + 1] - t : Math.max(1, units(endUs) - t)));
   const raw = shown.map((t, i) => t - decode[i]);
   const shift = Math.max(0, -Math.min(...raw));
   const total = samples.reduce((n, s) => n + s.data.byteLength, 0);
