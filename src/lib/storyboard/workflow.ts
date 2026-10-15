@@ -51,7 +51,8 @@ export type WorkflowStep = {
   stale?: number;
 };
 
-const ratio = (done: number, total: number): WorkflowState => (total === 0 ? "none" : done >= total ? "done" : done === 0 ? "todo" : "partial");
+const ratio = (done: number, total: number): WorkflowState =>
+  total === 0 ? "none" : done >= total ? "done" : done === 0 ? "todo" : "partial";
 
 export function workflowStatus(input: WorkflowInput): WorkflowStep[] {
   const ai = input.shots.filter((s) => !s.performance);
@@ -59,7 +60,9 @@ export function workflowStatus(input: WorkflowInput): WorkflowStep[] {
   const assigned = input.scenes.filter((s) => s.assigned).length;
   const needDress = perf.filter((s) => s.needsDress);
   const dressedCurrent = needDress.filter((s) => s.dressed.some((d) => !d.stale)).length;
-  const dressedStale = needDress.filter((s) => s.dressed.length > 0 && s.dressed.every((d) => d.stale)).length;
+  const dressedStale = needDress.filter(
+    (s) => s.dressed.length > 0 && s.dressed.every((d) => d.stale),
+  ).length;
   const withTake = perf.filter((s) => s.hasTake).length;
   const composited = perf.filter((s) => s.composited).length;
   return [
@@ -73,7 +76,10 @@ export function workflowStatus(input: WorkflowInput): WorkflowStep[] {
     {
       id: "outfits",
       label: "Outfits",
-      state: input.outfits === 0 || input.scenes.length === 0 ? "todo" : ratio(assigned, input.scenes.length),
+      state:
+        input.outfits === 0 || input.scenes.length === 0
+          ? "todo"
+          : ratio(assigned, input.scenes.length),
       count: `${assigned}/${input.scenes.length}`,
       detail: `${input.outfits} outfit${input.outfits === 1 ? "" : "s"} · scenes assigned`,
     },
@@ -94,9 +100,17 @@ export function workflowStatus(input: WorkflowInput): WorkflowStep[] {
     {
       id: "dress",
       label: "Dress",
-      state: needDress.length === 0 ? "none" : dressedStale > 0 && dressedCurrent < needDress.length ? "partial" : ratio(dressedCurrent, needDress.length),
+      state:
+        needDress.length === 0
+          ? "none"
+          : dressedStale > 0 && dressedCurrent < needDress.length
+            ? "partial"
+            : ratio(dressedCurrent, needDress.length),
       count: `${dressedCurrent}/${needDress.length}`,
-      detail: needDress.length === 0 ? "no shot needs a swap" : `dressed / needing the scene's outfit${dressedStale ? ` · ${dressedStale} stale` : ""}`,
+      detail:
+        needDress.length === 0
+          ? "no shot needs a swap"
+          : `dressed / needing the scene's outfit${dressedStale ? ` · ${dressedStale} stale` : ""}`,
       stale: dressedStale,
     },
     {
@@ -121,12 +135,35 @@ export function dressedTakeState(input: {
   parentSync: { id: string; offsetSeconds: number; driftPpm: number; status?: string } | null;
   parentSeconds: number | null;
 }): DressStaleness {
-  if (!input.record) return { state: "stale", reasons: [{ code: "sync_changed", text: "the dressed take carries no record of what it was made from" }] };
-  const usable = input.parentSync && (input.parentSync.status === undefined || input.parentSync.status === "confirmed" || input.parentSync.status === "manual") ? input.parentSync : null;
-  const range = usable ? takeRangeForBox(input.box, usable, input.parentSeconds) : null;
+  if (!input.record)
+    return {
+      state: "stale",
+      reasons: [
+        {
+          code: "sync_changed",
+          text: "the dressed take carries no record of what it was made from",
+        },
+      ],
+    };
+  const usable =
+    input.parentSync &&
+    (input.parentSync.status === undefined ||
+      input.parentSync.status === "confirmed" ||
+      input.parentSync.status === "manual")
+      ? input.parentSync
+      : null;
+  const range = usable
+    ? takeRangeForBox(
+        input.box,
+        { offsetSeconds: usable.offsetSeconds, driftPpm: usable.driftPpm },
+        input.parentSeconds,
+      )
+    : null;
   return dressStaleness(input.record, {
     outfit: input.outfit,
-    sync: usable ? { id: usable.id, offsetSeconds: usable.offsetSeconds, driftPpm: usable.driftPpm } : null,
+    sync: usable
+      ? { id: usable.id, offsetSeconds: usable.offsetSeconds, driftPpm: usable.driftPpm }
+      : null,
     shotRange: range && range.coverage === "full" ? { start: range.start, end: range.end } : null,
   });
 }

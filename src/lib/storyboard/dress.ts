@@ -72,10 +72,18 @@ export function dressBilledSeconds(sourceSeconds: number): number {
 }
 
 /** What a dress of this source length costs, exactly, at the list price. */
-export function dressCost(sourceSeconds: number): { billedSeconds: number; usd: number; text: string } {
+export function dressCost(sourceSeconds: number): {
+  billedSeconds: number;
+  usd: number;
+  text: string;
+} {
   const billedSeconds = dressBilledSeconds(sourceSeconds);
   const usd = (billedSeconds * DRESS_MILLS_PER_SECOND) / 1000;
-  return { billedSeconds, usd, text: `${billedSeconds} s × $${(DRESS_MILLS_PER_SECOND / 1000).toFixed(3)} = $${usd.toFixed(3)}` };
+  return {
+    billedSeconds,
+    usd,
+    text: `${billedSeconds} s × $${(DRESS_MILLS_PER_SECOND / 1000).toFixed(3)} = $${usd.toFixed(3)}`,
+  };
 }
 
 /**
@@ -93,18 +101,33 @@ export function dressWindow(input: {
   const head = input.head ?? DRESS_HEAD_HANDLE;
   const tail = input.tail ?? DRESS_TAIL_HANDLE;
   const { shotIn, shotOut } = input;
-  if (!(shotOut > shotIn)) return { ok: false, why: "the shot has no stretch of the take to dress" };
+  if (!(shotOut > shotIn))
+    return { ok: false, why: "the shot has no stretch of the take to dress" };
   const takeEnd = input.takeSeconds != null && input.takeSeconds > 0 ? input.takeSeconds : Infinity;
-  if (takeEnd < DRESS_MIN_SOURCE_SECONDS - DRESS_BILLING_GUARD) return { ok: false, why: `the take is ${takeEnd.toFixed(2)} s long; the swap needs at least ${DRESS_MIN_SOURCE_SECONDS} s of it` };
+  if (takeEnd < DRESS_MIN_SOURCE_SECONDS - DRESS_BILLING_GUARD)
+    return {
+      ok: false,
+      why: `the take is ${takeEnd.toFixed(2)} s long; the swap needs at least ${DRESS_MIN_SOURCE_SECONDS} s of it`,
+    };
   // the minimum handles, clamped to the take
   let start = Math.max(0, shotIn - head);
   let end = Math.min(takeEnd, shotOut + tail);
   const notes: string[] = [];
-  if (shotIn - start < head - 1e-6) notes.push(`the take starts ${(shotIn - start).toFixed(2)} s before the shot, so the head handle is short`);
-  if (end - shotOut < tail - 1e-6) notes.push(`the take ends ${(end - shotOut).toFixed(2)} s after the shot, so the tail handle is short — the swap's soft last half-second may show`);
+  if (shotIn - start < head - 1e-6)
+    notes.push(
+      `the take starts ${(shotIn - start).toFixed(2)} s before the shot, so the head handle is short`,
+    );
+  if (end - shotOut < tail - 1e-6)
+    notes.push(
+      `the take ends ${(end - shotOut).toFixed(2)} s after the shot, so the tail handle is short — the swap's soft last half-second may show`,
+    );
   // fill the seconds that are billed anyway, a guard under the whole second
   const billed = dressBilledSeconds(end - start + DRESS_BILLING_GUARD);
-  if (billed > DRESS_MAX_SOURCE_SECONDS) return { ok: false, why: `${(shotOut - shotIn).toFixed(1)} s plus handles is longer than one swap carries (${DRESS_MAX_SOURCE_SECONDS} s): split the shot first` };
+  if (billed > DRESS_MAX_SOURCE_SECONDS)
+    return {
+      ok: false,
+      why: `${(shotOut - shotIn).toFixed(1)} s plus handles is longer than one swap carries (${DRESS_MAX_SOURCE_SECONDS} s): split the shot first`,
+    };
   const target = Math.min(billed - DRESS_BILLING_GUARD, takeEnd);
   const extra = target - (end - start);
   if (extra > 0) {
@@ -116,7 +139,11 @@ export function dressWindow(input: {
     end += after;
   }
   const seconds = end - start;
-  if (seconds < DRESS_MIN_SOURCE_SECONDS - DRESS_BILLING_GUARD - 1e-6) return { ok: false, why: `only ${seconds.toFixed(2)} s of take is available around this shot; the swap needs ${DRESS_MIN_SOURCE_SECONDS} s` };
+  if (seconds < DRESS_MIN_SOURCE_SECONDS - DRESS_BILLING_GUARD - 1e-6)
+    return {
+      ok: false,
+      why: `only ${seconds.toFixed(2)} s of take is available around this shot; the swap needs ${DRESS_MIN_SOURCE_SECONDS} s`,
+    };
   return {
     ok: true,
     window: {
@@ -134,7 +161,10 @@ export function dressWindow(input: {
 }
 
 /** Where the dressed clip's first frame sits on the song: the cut's start, through the parent take's sync. */
-export function dressedSongStart(cutStart: number, sync: Pick<PerformanceSync, "offsetSeconds" | "driftPpm">): number {
+export function dressedSongStart(
+  cutStart: number,
+  sync: Pick<PerformanceSync, "offsetSeconds" | "driftPpm">,
+): number {
   return r4(performanceToSong(cutStart, sync as PerformanceSync));
 }
 
@@ -152,11 +182,18 @@ export type DressPiece = {
   construction: string | null;
 };
 
-export type DressReference = { pieceId: string; label: string; path: string; angle: string | null; role: "product" | "angle" };
+export type DressReference = {
+  pieceId: string;
+  label: string;
+  path: string;
+  angle: string | null;
+  role: "product" | "angle";
+};
 
 export type PieceKind = "outerwear" | "hat" | "eyewear" | "other";
 
-const OUTERWEAR = /\b(jacket|coat|trench|blazer|parka|bomber|overshirt|anorak|windbreaker|outerwear|puffer|gilet|cardigan)\b/i;
+const OUTERWEAR =
+  /\b(jacket|coat|trench|blazer|parka|bomber|overshirt|anorak|windbreaker|outerwear|puffer|gilet|cardigan)\b/i;
 const HAT = /\b(cap|hat|beanie|beret|bucket|snapback|visor|durag|du-rag|headwear)\b/i;
 const EYEWEAR = /\b(glasses|sunglasses|eyewear|shades|spectacles)\b/i;
 
@@ -182,7 +219,10 @@ const angleRank = (a: string | null | undefined) => {
  * A garment goes with its product photo ONLY: the extra crops of the v1 jacket (website arrows, a lighter on-model
  * jacket) made the edit copy the wrong garment. At most DRESS_MAX_REFERENCES pictures.
  */
-export function dressReferences(pieces: readonly DressPiece[], cap = DRESS_MAX_REFERENCES): { sent: DressReference[]; notSent: { pieceId: string; label: string; why: string }[] } {
+export function dressReferences(
+  pieces: readonly DressPiece[],
+  cap = DRESS_MAX_REFERENCES,
+): { sent: DressReference[]; notSent: { pieceId: string; label: string; why: string }[] } {
   const ordered = pieces
     .map((p, i) => ({ p, i, kind: pieceKind(p) }))
     .sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.i - b.i);
@@ -195,11 +235,18 @@ export function dressReferences(pieces: readonly DressPiece[], cap = DRESS_MAX_R
       continue;
     }
     if (primaries.length >= cap) {
-      notSent.push({ pieceId: p.id, label: p.label, why: `the swap is given at most ${cap} pictures` });
+      notSent.push({
+        pieceId: p.id,
+        label: p.label,
+        why: `the swap is given at most ${cap} pictures`,
+      });
       continue;
     }
     const angle = p.images.find((x) => x.storagePath === path)?.angle ?? null;
-    primaries.push({ pieceId: p.id, ref: { pieceId: p.id, label: p.label, path, angle, role: "product" } });
+    primaries.push({
+      pieceId: p.id,
+      ref: { pieceId: p.id, label: p.label, path, angle, role: "product" },
+    });
   }
   const extras = new Map<string, DressReference[]>();
   let room = cap - primaries.length;
@@ -208,12 +255,21 @@ export function dressReferences(pieces: readonly DressPiece[], cap = DRESS_MAX_R
     const primary = primaries.find((x) => x.pieceId === p.id)!.ref.path;
     const seen = new Set([primary]);
     const more = p.images
-      .filter((x): x is { storagePath: string; angle?: string | null } => !!x.storagePath && !seen.has(x.storagePath))
+      .filter(
+        (x): x is { storagePath: string; angle?: string | null } =>
+          !!x.storagePath && !seen.has(x.storagePath),
+      )
       .map((x, i) => ({ x, i }))
       .sort((a, b) => angleRank(a.x.angle) - angleRank(b.x.angle) || a.i - b.i)
       .filter(({ x }) => (seen.has(x.storagePath) ? false : (seen.add(x.storagePath), true)))
       .slice(0, room)
-      .map(({ x }) => ({ pieceId: p.id, label: p.label, path: x.storagePath, angle: x.angle ?? null, role: "angle" as const }));
+      .map(({ x }) => ({
+        pieceId: p.id,
+        label: p.label,
+        path: x.storagePath,
+        angle: x.angle ?? null,
+        role: "angle" as const,
+      }));
     room -= more.length;
     extras.set(p.id, more);
   }
@@ -224,7 +280,8 @@ export function dressReferences(pieces: readonly DressPiece[], cap = DRESS_MAX_R
 // --- the words -------------------------------------------------------------------------------------------------------
 
 const REGION: Record<PieceKind, (label: string) => string> = {
-  outerwear: (l) => (/\bcoat\b/i.test(l) ? "coat" : /\btrench\b/i.test(l) ? "trench coat" : "jacket"),
+  outerwear: (l) =>
+    /\bcoat\b/i.test(l) ? "coat" : /\btrench\b/i.test(l) ? "trench coat" : "jacket",
   hat: (l) => (/\bcap\b/i.test(l) ? "cap" : "hat"),
   eyewear: () => "glasses",
   other: (l) => l.trim().toLowerCase(),
@@ -245,13 +302,22 @@ function imageList(nums: number[]): string {
  * construction of each piece, and "Keep everything else exactly as in the source video …". Same pieces in, same words
  * out. Versioned by DRESS_PROMPT_VERSION.
  */
-export function buildDressPrompt(pieces: readonly DressPiece[], references: readonly DressReference[]): string {
+export function buildDressPrompt(
+  pieces: readonly DressPiece[],
+  references: readonly DressReference[],
+): string {
   const sentIds = [...new Set(references.map((r) => r.pieceId))];
-  const worn = sentIds.map((id) => pieces.find((p) => p.id === id)).filter((p): p is DressPiece => !!p);
-  if (worn.length === 0) throw new Error("no piece of the outfit has a photograph to send — nothing to dress him in");
+  const worn = sentIds
+    .map((id) => pieces.find((p) => p.id === id))
+    .filter((p): p is DressPiece => !!p);
+  if (worn.length === 0)
+    throw new Error("no piece of the outfit has a photograph to send — nothing to dress him in");
   const kinds = worn.map((p) => pieceKind(p));
   const regions = [...new Set(worn.map((p, i) => REGION[kinds[i]](p.label)))];
-  const regionWords = regions.length === 1 ? regions[0] : `${regions.slice(0, -1).join(", ")} and ${regions[regions.length - 1]}`;
+  const regionWords =
+    regions.length === 1
+      ? regions[0]
+      : `${regions.slice(0, -1).join(", ")} and ${regions[regions.length - 1]}`;
   const which = worn.map((p) => {
     const nums = references.map((r, i) => (r.pieceId === p.id ? i + 1 : 0)).filter(Boolean);
     return `the ${p.label.trim()} (${imageList(nums)})`;
@@ -260,7 +326,18 @@ export function buildDressPrompt(pieces: readonly DressPiece[], references: read
     const words = p.construction?.trim();
     return `${p.label.trim()}: ${words ? sentence(words) : "exactly as in its reference pictures — colour, fabric, stripes, logo and its placement."}`;
   });
-  const keep = ["his face", "hair", ...(kinds.includes("eyewear") ? [] : ["glasses"]), "skin", "hands", "the rest of his clothes", "the room", "the lighting", "the camera move", "his performance timing"];
+  const keep = [
+    "his face",
+    "hair",
+    ...(kinds.includes("eyewear") ? [] : ["glasses"]),
+    "skin",
+    "hands",
+    "the rest of his clothes",
+    "the room",
+    "the lighting",
+    "the camera move",
+    "his performance timing",
+  ];
   return [
     `Replace ONLY the man's ${regionWords} with the exact ${worn.length === 1 ? "piece" : "pieces"} shown in the reference images: ${which.join("; ")}.`,
     `Garment truth — ${truth.join(" ")}`,
@@ -315,15 +392,35 @@ export type DressRecord = {
 export function dressRecordOf(v: unknown): DressRecord | null {
   const r = v as Partial<DressRecord> | null | undefined;
   if (!r || typeof r !== "object") return null;
-  const pair = (w: unknown): w is [number, number] => Array.isArray(w) && w.length === 2 && typeof w[0] === "number" && typeof w[1] === "number" && w[1] > w[0];
-  if (typeof r.sourceAssetId !== "string" || !pair(r.window) || typeof r.songStart !== "number" || typeof r.sourceSeconds !== "number" || typeof r.promptVersion !== "string") return null;
+  const pair = (w: unknown): w is [number, number] =>
+    Array.isArray(w) &&
+    w.length === 2 &&
+    typeof w[0] === "number" &&
+    typeof w[1] === "number" &&
+    w[1] > w[0];
+  if (
+    typeof r.sourceAssetId !== "string" ||
+    !pair(r.window) ||
+    typeof r.songStart !== "number" ||
+    typeof r.sourceSeconds !== "number" ||
+    typeof r.promptVersion !== "string"
+  )
+    return null;
   return r as DressRecord;
 }
 
 // --- current or stale -------------------------------------------------------------------------------------------------
 
-export type DressStaleCode = "outfit_reassigned" | "outfit_version_changed" | "window_outside" | "sync_changed" | "prompt_version_changed";
-export type DressStaleness = { state: "current" | "stale"; reasons: { code: DressStaleCode; text: string }[] };
+export type DressStaleCode =
+  | "outfit_reassigned"
+  | "outfit_version_changed"
+  | "window_outside"
+  | "sync_changed"
+  | "prompt_version_changed";
+export type DressStaleness = {
+  state: "current" | "stale";
+  reasons: { code: DressStaleCode; text: string }[];
+};
 
 /** How far a shot may sit past the dressed range before it counts as outside (about a frame). */
 export const DRESS_WINDOW_SLACK = 0.02;
@@ -335,7 +432,9 @@ export const DRESS_WINDOW_SLACK = 0.02;
  * the dress words have a newer version.
  */
 export function dressStaleness(
-  record: Pick<DressRecord, "outfit" | "window" | "sync" | "syncId" | "promptVersion"> & { imported?: DressRecord["imported"] },
+  record: Pick<DressRecord, "outfit" | "window" | "sync" | "syncId" | "promptVersion"> & {
+    imported?: DressRecord["imported"];
+  },
   now: {
     outfit: { id: string; key: string; name: string; version: number } | null;
     sync: { id: string; offsetSeconds: number; driftPpm: number } | null;
@@ -346,28 +445,73 @@ export function dressStaleness(
 ): DressStaleness {
   const reasons: DressStaleness["reasons"] = [];
   const made = record.outfit;
-  if (!now.outfit) reasons.push({ code: "outfit_reassigned", text: made ? `dressed in “${made.name}”; the shot now wears no outfit` : "dressed with no outfit recorded" });
-  else if (!made || made.id !== now.outfit.id || made.key !== now.outfit.key) reasons.push({ code: "outfit_reassigned", text: `dressed in “${made?.name ?? "an unrecorded outfit"}”; the shot now wears “${now.outfit.name}”` });
-  else if (now.outfit.version > made.version) reasons.push({ code: "outfit_version_changed", text: `dressed in “${made.name}” v${made.version}; it is now v${now.outfit.version}` });
-  if (!now.shotRange) reasons.push({ code: "window_outside", text: "the take no longer covers this shot" });
-  else if (now.shotRange.start < record.window[0] - DRESS_WINDOW_SLACK || now.shotRange.end > record.window[1] + DRESS_WINDOW_SLACK)
-    reasons.push({ code: "window_outside", text: `the shot now plays ${now.shotRange.start.toFixed(2)}–${now.shotRange.end.toFixed(2)} s of the take; the dressed cut is ${record.window[0].toFixed(2)}–${record.window[1].toFixed(2)} s` });
-  if (!now.sync) reasons.push({ code: "sync_changed", text: "the take is no longer matched to the song" });
-  else if ((record.syncId && record.syncId !== now.sync.id) || Math.abs(now.sync.offsetSeconds - record.sync.offsetSeconds) > 1e-3 || Math.abs(now.sync.driftPpm - record.sync.driftPpm) > 0.5)
-    reasons.push({ code: "sync_changed", text: "the take's match to the song changed since it was dressed" });
+  if (!now.outfit)
+    reasons.push({
+      code: "outfit_reassigned",
+      text: made
+        ? `dressed in “${made.name}”; the shot now wears no outfit`
+        : "dressed with no outfit recorded",
+    });
+  else if (!made || made.id !== now.outfit.id || made.key !== now.outfit.key)
+    reasons.push({
+      code: "outfit_reassigned",
+      text: `dressed in “${made?.name ?? "an unrecorded outfit"}”; the shot now wears “${now.outfit.name}”`,
+    });
+  else if (now.outfit.version > made.version)
+    reasons.push({
+      code: "outfit_version_changed",
+      text: `dressed in “${made.name}” v${made.version}; it is now v${now.outfit.version}`,
+    });
+  if (!now.shotRange)
+    reasons.push({ code: "window_outside", text: "the take no longer covers this shot" });
+  else if (
+    now.shotRange.start < record.window[0] - DRESS_WINDOW_SLACK ||
+    now.shotRange.end > record.window[1] + DRESS_WINDOW_SLACK
+  )
+    reasons.push({
+      code: "window_outside",
+      text: `the shot now plays ${now.shotRange.start.toFixed(2)}–${now.shotRange.end.toFixed(2)} s of the take; the dressed cut is ${record.window[0].toFixed(2)}–${record.window[1].toFixed(2)} s`,
+    });
+  if (!now.sync)
+    reasons.push({ code: "sync_changed", text: "the take is no longer matched to the song" });
+  else if (
+    (record.syncId && record.syncId !== now.sync.id) ||
+    Math.abs(now.sync.offsetSeconds - record.sync.offsetSeconds) > 1e-3 ||
+    Math.abs(now.sync.driftPpm - record.sync.driftPpm) > 0.5
+  )
+    reasons.push({
+      code: "sync_changed",
+      text: "the take's match to the song changed since it was dressed",
+    });
   // a finished swap filed from outside was approved by eye with its own words: the tool's words moving on does not age it
   const current = now.promptVersion ?? DRESS_PROMPT_VERSION;
-  if (!record.imported && record.promptVersion !== current) reasons.push({ code: "prompt_version_changed", text: `dressed with words ${record.promptVersion}; the tool now uses ${current}` });
+  if (!record.imported && record.promptVersion !== current)
+    reasons.push({
+      code: "prompt_version_changed",
+      text: `dressed with words ${record.promptVersion}; the tool now uses ${current}`,
+    });
   return { state: reasons.length ? "stale" : "current", reasons };
 }
 
 // --- the request ------------------------------------------------------------------------------------------------------
 
-export type DressRequest = { endpoint: typeof DRESS_ENDPOINT; provider: typeof DRESS_PROVIDER; modelVariant: string; body: Record<string, unknown> };
+export type DressRequest = {
+  endpoint: typeof DRESS_ENDPOINT;
+  provider: typeof DRESS_PROVIDER;
+  modelVariant: string;
+  body: Record<string, unknown>;
+};
 
 /** The provider request for one dress — what goes through proxy-provider-call. Pure. */
-export function composeDressRequest(input: { prompt: string; sourceUrl: string; referenceUrls: readonly string[]; billedSeconds: number; projectId: string }): DressRequest {
-  if (input.referenceUrls.length === 0) throw new Error("the swap needs at least one reference picture");
+export function composeDressRequest(input: {
+  prompt: string;
+  sourceUrl: string;
+  referenceUrls: readonly string[];
+  billedSeconds: number;
+  projectId: string;
+}): DressRequest {
+  if (input.referenceUrls.length === 0)
+    throw new Error("the swap needs at least one reference picture");
   return {
     endpoint: DRESS_ENDPOINT,
     provider: DRESS_PROVIDER,
@@ -400,17 +544,40 @@ export type DressPlan = {
  * Everything a dress of one shot will send, decided before anything is cut or paid for: the window with its handles,
  * the pictures, the words and the exact cost. Refused with the reason when the shot cannot be dressed.
  */
-export function planDress(input: { shotIn: number; shotOut: number; takeSeconds: number | null; pieces: readonly DressPiece[]; head?: number; tail?: number }): { ok: true; plan: DressPlan } | { ok: false; why: string } {
-  if (input.pieces.length === 0) return { ok: false, why: "the scene's outfit has no pieces to dress him in" };
+export function planDress(input: {
+  shotIn: number;
+  shotOut: number;
+  takeSeconds: number | null;
+  pieces: readonly DressPiece[];
+  head?: number;
+  tail?: number;
+}): { ok: true; plan: DressPlan } | { ok: false; why: string } {
+  if (input.pieces.length === 0)
+    return { ok: false, why: "the scene's outfit has no pieces to dress him in" };
   const w = dressWindow(input);
   if (!w.ok) return w;
   const { sent, notSent } = dressReferences(input.pieces);
-  if (sent.length === 0) return { ok: false, why: "no piece of the outfit has a photograph on file" };
-  return { ok: true, plan: { window: w.window, references: sent, notSent, prompt: buildDressPrompt(input.pieces, sent), cost: dressCost(w.window.seconds) } };
+  if (sent.length === 0)
+    return { ok: false, why: "no piece of the outfit has a photograph on file" };
+  return {
+    ok: true,
+    plan: {
+      window: w.window,
+      references: sent,
+      notSent,
+      prompt: buildDressPrompt(input.pieces, sent),
+      cost: dressCost(w.window.seconds),
+    },
+  };
 }
 
 /** The settings a dress job carries (provider_jobs.request_payload_json.settings): the storyboard's run, this shot, the record. */
-export function dressJobSettings(input: { batchRun: string; shotKey: string; record: DressRecord; madeFrom?: unknown }): Record<string, unknown> {
+export function dressJobSettings(input: {
+  batchRun: string;
+  shotKey: string;
+  record: DressRecord;
+  madeFrom?: unknown;
+}): Record<string, unknown> {
   const r = input.record;
   return {
     batchRun: input.batchRun,
@@ -481,7 +648,10 @@ export function planDressImport(input: DressImport): Record<string, unknown> {
     sync: { offsetSeconds: input.parentSync.offsetSeconds, driftPpm: input.parentSync.driftPpm },
     window: [r4(start), r4(start + sourceSeconds)],
     shotWindow: [r4(shotWindow[0]), r4(shotWindow[1])],
-    handles: { head: r4(Math.max(0, shotWindow[0] - start)), tail: r4(Math.max(0, start + sourceSeconds - shotWindow[1])) },
+    handles: {
+      head: r4(Math.max(0, shotWindow[0] - start)),
+      tail: r4(Math.max(0, start + sourceSeconds - shotWindow[1])),
+    },
     songStart: dressedSongStart(start, input.parentSync),
     sourceSeconds: r4(sourceSeconds),
     sourcePath: null,
@@ -511,6 +681,11 @@ export function planDressImport(input: DressImport): Record<string, unknown> {
       imported: true,
       settings: dressJobSettings({ batchRun: input.batchRun, shotKey: input.shot.key, record }),
     },
-    response_payload_json: { status: "succeeded", resultUrl: input.resultUrl, providerJobId: input.requestId, imported: true },
+    response_payload_json: {
+      status: "succeeded",
+      resultUrl: input.resultUrl,
+      providerJobId: input.requestId,
+      imported: true,
+    },
   };
 }

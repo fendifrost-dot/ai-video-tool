@@ -39,10 +39,15 @@ export type ConformRecord = {
  * Conform a dressed clip's bytes to the length of the cut it was made from. Throws — so the job is tried again and,
  * failing that, given up with the reason — rather than file a clip that would drift off the song.
  */
-export function conformDressedClip(bytes: Uint8Array, sourceSeconds: number): { bytes: Uint8Array; meta: ConformRecord } {
+export function conformDressedClip(
+  bytes: Uint8Array,
+  sourceSeconds: number,
+): { bytes: Uint8Array; meta: ConformRecord } {
   const r = retimeMp4(bytes, sourceSeconds, { dropAudio: true });
   if (Math.abs(r.after - sourceSeconds) > CONFORM_TOLERANCE) {
-    throw new Error(`the dressed clip could not be conformed: it measures ${r.after.toFixed(3)} s after the retime, the source is ${sourceSeconds.toFixed(3)} s`);
+    throw new Error(
+      `the dressed clip could not be conformed: it measures ${r.after.toFixed(3)} s after the retime, the source is ${sourceSeconds.toFixed(3)} s`,
+    );
   }
   const r4 = (n: number) => Math.round(n * 1e4) / 1e4;
   return {

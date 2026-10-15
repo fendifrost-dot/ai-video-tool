@@ -2,7 +2,15 @@ import { describe, expect, it } from "vitest";
 import { DRESS_PROMPT_VERSION, type DressRecord } from "./dress";
 import { dressedTakeState, workflowStatus, type WorkflowShot } from "./workflow";
 
-const shot = (over: Partial<WorkflowShot> = {}): WorkflowShot => ({ performance: false, hasTake: false, hasSelectedClip: false, needsDress: false, dressed: [], composited: false, ...over });
+const shot = (over: Partial<WorkflowShot> = {}): WorkflowShot => ({
+  performance: false,
+  hasTake: false,
+  hasSelectedClip: false,
+  needsDress: false,
+  dressed: [],
+  composited: false,
+  ...over,
+});
 
 describe("the workflow checklist", () => {
   it("an empty project: nothing done, the swap and composite steps say why", () => {
@@ -15,7 +23,10 @@ describe("the workflow checklist", () => {
       ["dress", "none", "0/0"],
       ["integrate", "manual", "0/0"],
     ]);
-    expect(steps[5]).toMatchObject({ label: "Integrate (composite)", detail: expect.stringMatching(/not automated yet/) });
+    expect(steps[5]).toMatchObject({
+      label: "Integrate (composite)",
+      detail: expect.stringMatching(/not automated yet/),
+    });
   });
 
   it("counts each step from the shots", () => {
@@ -35,16 +46,37 @@ describe("the workflow checklist", () => {
     });
     const by = Object.fromEntries(steps.map((s) => [s.id, s]));
     expect(by.treatment).toMatchObject({ state: "done", count: "1/1" });
-    expect(by.outfits).toMatchObject({ state: "partial", count: "2/3", detail: "2 outfits · scenes assigned" });
+    expect(by.outfits).toMatchObject({
+      state: "partial",
+      count: "2/3",
+      detail: "2 outfits · scenes assigned",
+    });
     expect(by.ai_shots).toMatchObject({ state: "partial", count: "1/2" });
     expect(by.performance).toMatchObject({ state: "partial", count: "4/5" });
-    expect(by.dress).toMatchObject({ state: "partial", count: "1/3", stale: 1, detail: expect.stringContaining("1 stale") });
+    expect(by.dress).toMatchObject({
+      state: "partial",
+      count: "1/3",
+      stale: 1,
+      detail: expect.stringContaining("1 stale"),
+    });
     expect(by.integrate).toMatchObject({ state: "manual", count: "1/4" });
   });
 
   it("a shot with one current and one stale dressed take counts as dressed", () => {
     const by = Object.fromEntries(
-      workflowStatus({ hasTreatment: true, outfits: 1, scenes: [{ assigned: true }], shots: [shot({ performance: true, hasTake: true, needsDress: true, dressed: [{ stale: true }, { stale: false }] })] }).map((s) => [s.id, s]),
+      workflowStatus({
+        hasTreatment: true,
+        outfits: 1,
+        scenes: [{ assigned: true }],
+        shots: [
+          shot({
+            performance: true,
+            hasTake: true,
+            needsDress: true,
+            dressed: [{ stale: true }, { stale: false }],
+          }),
+        ],
+      }).map((s) => [s.id, s]),
     );
     expect(by.dress).toMatchObject({ state: "done", count: "1/1", stale: 0 });
     expect(by.outfits.state).toBe("done");
@@ -64,15 +96,37 @@ describe("a dressed take on its shot, against the state now", () => {
   const box = { start: 72.853, end: 74.603 };
 
   it("current when the shot still sits inside the dressed cut", () => {
-    expect(dressedTakeState({ record, box, outfit: record.outfit, parentSync: sync, parentSeconds: 200 }).state).toBe("current");
+    expect(
+      dressedTakeState({ record, box, outfit: record.outfit, parentSync: sync, parentSeconds: 200 })
+        .state,
+    ).toBe("current");
   });
 
   it("stale when the shot moved past the handles, or the take lost its sync", () => {
-    expect(dressedTakeState({ record, box: { start: 76, end: 77.5 }, outfit: record.outfit, parentSync: sync, parentSeconds: 200 }).reasons.map((r) => r.code)).toEqual(["window_outside"]);
-    expect(dressedTakeState({ record, box, outfit: record.outfit, parentSync: { ...sync, status: "rejected" }, parentSeconds: 200 }).reasons.map((r) => r.code)).toEqual(["window_outside", "sync_changed"]);
+    expect(
+      dressedTakeState({
+        record,
+        box: { start: 76, end: 77.5 },
+        outfit: record.outfit,
+        parentSync: sync,
+        parentSeconds: 200,
+      }).reasons.map((r) => r.code),
+    ).toEqual(["window_outside"]);
+    expect(
+      dressedTakeState({
+        record,
+        box,
+        outfit: record.outfit,
+        parentSync: { ...sync, status: "rejected" },
+        parentSeconds: 200,
+      }).reasons.map((r) => r.code),
+    ).toEqual(["window_outside", "sync_changed"]);
   });
 
   it("stale when it carries no record", () => {
-    expect(dressedTakeState({ record: null, box, outfit: null, parentSync: sync, parentSeconds: 200 }).state).toBe("stale");
+    expect(
+      dressedTakeState({ record: null, box, outfit: null, parentSync: sync, parentSeconds: 200 })
+        .state,
+    ).toBe("stale");
   });
 });

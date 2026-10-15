@@ -7,7 +7,8 @@ import { avcSampleDescription, writeMp4 } from "../../../src/lib/media/mp4Trim";
 import { mp4Durations, retimeMp4 } from "./mp4Retime";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const fixture = (name: string) => new Uint8Array(readFileSync(join(here, "../../../src/lib/media/__fixtures__", name)));
+const fixture = (name: string) =>
+  new Uint8Array(readFileSync(join(here, "../../../src/lib/media/__fixtures__", name)));
 
 /** The top-level boxes of a file: type → [start, end). */
 function topBoxes(bytes: Uint8Array): Map<string, [number, number]> {
@@ -55,7 +56,9 @@ describe("mp4Durations", () => {
     const d = mp4Durations(providerLikeClip());
     expect(d.videoSeconds).toBeCloseTo(89 / 24, 6);
     expect(d.movieSeconds).toBeCloseTo(89 / 24, 3);
-    expect(d.tracks).toEqual([{ kind: "video", timescale: 12288, seconds: expect.closeTo(89 / 24, 6) }]);
+    expect(d.tracks).toEqual([
+      { kind: "video", timescale: 12288, seconds: expect.closeTo(89 / 24, 6) },
+    ]);
   });
 
   it("agrees with the app's own reader on a file ffmpeg wrote", () => {
@@ -67,7 +70,9 @@ describe("mp4Durations", () => {
   });
 
   it("refuses what is not an MP4", () => {
-    expect(() => mp4Durations(new TextEncoder().encode("not a video, just some text here"))).toThrow(/no moov/);
+    expect(() =>
+      mp4Durations(new TextEncoder().encode("not a video, just some text here")),
+    ).toThrow(/no moov/);
   });
 });
 
@@ -82,7 +87,9 @@ describe("retimeMp4 — the object-swap's ~7 % fast output, conformed to its sou
     // same size, same picture data, same sample tables: only header numbers changed
     expect(r.bytes.byteLength).toBe(src.byteLength);
     const [ms, me] = topBoxes(src).get("mdat")!;
-    expect(Buffer.from(r.bytes.subarray(ms, me)).equals(Buffer.from(src.subarray(ms, me)))).toBe(true);
+    expect(Buffer.from(r.bytes.subarray(ms, me)).equals(Buffer.from(src.subarray(ms, me)))).toBe(
+      true,
+    );
     // an independent reader sees the new length, every frame, and the frame times stretched by the same factor
     const v = readBack(r.bytes).tracks[0];
     expect(v.duration).toBeCloseTo(4.004, 3);

@@ -28,7 +28,8 @@ const jacket: DressPiece = {
     { storagePath: "65cf99cb/2a14a72b.jpg", angle: "front" },
     { storagePath: "65cf99cb/collar_crop.jpg", angle: "detail" },
   ],
-  construction: "smooth woven mastic cotton, boxy, cropped; zipped; stand collar with navy lining; one narrow navy chest stripe interrupted by the zip; small gold SAINT LAURENT script on the wearer's left chest; a navy stripe down the underside of each sleeve",
+  construction:
+    "smooth woven mastic cotton, boxy, cropped; zipped; stand collar with navy lining; one narrow navy chest stripe interrupted by the zip; small gold SAINT LAURENT script on the wearer's left chest; a navy stripe down the underside of each sleeve",
 };
 const cap: DressPiece = {
   id: "07e6dcbe",
@@ -41,9 +42,17 @@ const cap: DressPiece = {
     { storagePath: "caps/side.jpg", angle: "side" },
     { storagePath: "caps/back.jpg", angle: "back" },
   ],
-  construction: "light beige gabardine cap, soft crown, curved brim, ivory SAINT LAURENT wordmark on the front",
+  construction:
+    "light beige gabardine cap, soft crown, curved brim, ivory SAINT LAURENT wordmark on the front",
 };
-const glasses: DressPiece = { id: "g1", label: "Glasses — Cazal MOD octagonal", featureType: "wardrobe_accessory", storagePath: "g/front.jpg", images: [{ storagePath: "g/front.jpg", angle: "front" }], construction: null };
+const glasses: DressPiece = {
+  id: "g1",
+  label: "Glasses — Cazal MOD octagonal",
+  featureType: "wardrobe_accessory",
+  storagePath: "g/front.jpg",
+  images: [{ storagePath: "g/front.jpg", angle: "front" }],
+  construction: null,
+};
 
 describe("the dress window — handles, the 4 s minimum, billed seconds", () => {
   it("a fast-cut 1.75 s shot: minimum handles, then grown to fill the 4 billed seconds, a guard under", () => {
@@ -88,7 +97,10 @@ describe("the dress window — handles, the 4 s minimum, billed seconds", () => 
 
   it("refuses a take too short for the swap, and a shot too long for one", () => {
     expect(dressWindow({ shotIn: 0.5, shotOut: 2, takeSeconds: 3.2 })).toMatchObject({ ok: false });
-    expect(dressWindow({ shotIn: 1, shotOut: 31, takeSeconds: 100 })).toMatchObject({ ok: false, why: expect.stringMatching(/split the shot/) });
+    expect(dressWindow({ shotIn: 1, shotOut: 31, takeSeconds: 100 })).toMatchObject({
+      ok: false,
+      why: expect.stringMatching(/split the shot/),
+    });
     expect(dressWindow({ shotIn: 2, shotOut: 2, takeSeconds: 100 })).toMatchObject({ ok: false });
   });
 
@@ -107,7 +119,11 @@ describe("the cost, exactly", () => {
     expect(dressBilledSeconds(1.2)).toBe(4);
   });
   it("states the arithmetic", () => {
-    expect(dressCost(3.95)).toEqual({ billedSeconds: 4, usd: 2.724, text: "4 s × $0.681 = $2.724" });
+    expect(dressCost(3.95)).toEqual({
+      billedSeconds: 4,
+      usd: 2.724,
+      text: "4 s × $0.681 = $2.724",
+    });
     expect(dressCost(4.95).usd).toBeCloseTo(3.405, 6);
   });
 });
@@ -115,21 +131,34 @@ describe("the cost, exactly", () => {
 describe("the dressed take on the song clock", () => {
   it("its first frame sits where the cut began, through the parent's sync (drift included)", () => {
     expect(dressedSongStart(72.673, { offsetSeconds: 0.853, driftPpm: 0 })).toBeCloseTo(73.526, 4);
-    expect(dressedSongStart(100, { offsetSeconds: 2, driftPpm: 50 })).toBeCloseTo(100 * 1.00005 + 2, 4);
+    expect(dressedSongStart(100, { offsetSeconds: 2, driftPpm: 50 })).toBeCloseTo(
+      100 * 1.00005 + 2,
+      4,
+    );
   });
 });
 
 describe("reference pictures — jacket product photo first, then the hat, then the rest", () => {
   it("reproduces the approved full look: jacket product photo, cap front, side, detail", () => {
     const { sent, notSent } = dressReferences([cap, jacket]);
-    expect(sent.map((r) => r.path)).toEqual(["65cf99cb/2a14a72b.jpg", "caps/front.jpg", "caps/side.jpg", "caps/detail.jpg"]);
+    expect(sent.map((r) => r.path)).toEqual([
+      "65cf99cb/2a14a72b.jpg",
+      "caps/front.jpg",
+      "caps/side.jpg",
+      "caps/detail.jpg",
+    ]);
     expect(sent.map((r) => r.role)).toEqual(["product", "product", "angle", "angle"]);
     expect(notSent).toEqual([]);
   });
 
   it("every piece gets its product photo before any extra angle; the cap is the limit", () => {
     const { sent } = dressReferences([glasses, cap, jacket]);
-    expect(sent.map((r) => r.path)).toEqual(["65cf99cb/2a14a72b.jpg", "caps/front.jpg", "caps/side.jpg", "g/front.jpg"]);
+    expect(sent.map((r) => r.path)).toEqual([
+      "65cf99cb/2a14a72b.jpg",
+      "caps/front.jpg",
+      "caps/side.jpg",
+      "g/front.jpg",
+    ]);
     expect(sent).toHaveLength(DRESS_MAX_REFERENCES);
   });
 
@@ -139,7 +168,14 @@ describe("reference pictures — jacket product photo first, then the hat, then 
 
   it("says which pieces could not go, and why", () => {
     const naked = { ...glasses, id: "x", label: "Belt", storagePath: null, images: [] };
-    const many = [jacket, cap, glasses, { ...glasses, id: "g2", label: "Chain" }, { ...glasses, id: "g3", label: "Ring" }, naked];
+    const many = [
+      jacket,
+      cap,
+      glasses,
+      { ...glasses, id: "g2", label: "Chain" },
+      { ...glasses, id: "g3", label: "Ring" },
+      naked,
+    ];
     const { sent, notSent } = dressReferences(many);
     expect(sent).toHaveLength(4);
     expect(notSent).toEqual([
@@ -153,7 +189,9 @@ describe("reference pictures — jacket product photo first, then the hat, then 
     expect(pieceKind(jacket)).toBe("outerwear");
     expect(pieceKind(cap)).toBe("hat");
     expect(pieceKind(glasses)).toBe("eyewear");
-    expect(pieceKind({ label: "Coat in Bubbled Lambskin - Noir", featureType: "wardrobe_top" })).toBe("outerwear");
+    expect(
+      pieceKind({ label: "Coat in Bubbled Lambskin - Noir", featureType: "wardrobe_top" }),
+    ).toBe("outerwear");
   });
 });
 
@@ -162,12 +200,20 @@ describe("the dress prompt", () => {
   const prompt = buildDressPrompt([jacket, cap], refs);
 
   it("follows the recipe: Replace ONLY …, the construction of each piece, Keep everything else …", () => {
-    expect(prompt).toMatch(/^Replace ONLY the man's jacket and cap with the exact pieces shown in the reference images: /);
-    expect(prompt).toContain("the Saint Laurent Track Jacket, Mastic Cotton Navy Stripe (reference image 1)");
-    expect(prompt).toContain("the Saint Laurent Cap in Cotton Gabardine - Beige and Ivory (reference images 2–4)");
+    expect(prompt).toMatch(
+      /^Replace ONLY the man's jacket and cap with the exact pieces shown in the reference images: /,
+    );
+    expect(prompt).toContain(
+      "the Saint Laurent Track Jacket, Mastic Cotton Navy Stripe (reference image 1)",
+    );
+    expect(prompt).toContain(
+      "the Saint Laurent Cap in Cotton Gabardine - Beige and Ivory (reference images 2–4)",
+    );
     expect(prompt).toContain("one narrow navy chest stripe interrupted by the zip");
     expect(prompt).toContain("ivory SAINT LAURENT wordmark on the front.");
-    expect(prompt).toContain("Keep everything else exactly as in the source video: his face, hair, glasses, skin, hands, the rest of his clothes, the room, the lighting, the camera move and his performance timing.");
+    expect(prompt).toContain(
+      "Keep everything else exactly as in the source video: his face, hair, glasses, skin, hands, the rest of his clothes, the room, the lighting, the camera move and his performance timing.",
+    );
     expect(prompt).toMatch(/no other change\.$/);
   });
 
@@ -190,14 +236,37 @@ describe("the dress prompt", () => {
 
 describe("the request", () => {
   it("is the approved object-swap body, through Control Center", () => {
-    const req = composeDressRequest({ prompt: "Replace ONLY …", sourceUrl: "https://x/src.mp4", referenceUrls: ["https://x/a.jpg"], billedSeconds: 4, projectId: "p1" });
+    const req = composeDressRequest({
+      prompt: "Replace ONLY …",
+      sourceUrl: "https://x/src.mp4",
+      referenceUrls: ["https://x/a.jpg"],
+      billedSeconds: 4,
+      projectId: "p1",
+    });
     expect(req).toEqual({
       endpoint: "video-providers-higgsfield-model",
       provider: "higgsfield",
       modelVariant: "genjutsu-object-swap",
-      body: { mode: "video_to_video", modelVariant: "genjutsu-object-swap", referenceVideoUrl: "https://x/src.mp4", referenceImageUrls: ["https://x/a.jpg"], resolution: "720p", promptText: "Replace ONLY …", duration: 4, avt_project_id: "p1" },
+      body: {
+        mode: "video_to_video",
+        modelVariant: "genjutsu-object-swap",
+        referenceVideoUrl: "https://x/src.mp4",
+        referenceImageUrls: ["https://x/a.jpg"],
+        resolution: "720p",
+        promptText: "Replace ONLY …",
+        duration: 4,
+        avt_project_id: "p1",
+      },
     });
-    expect(() => composeDressRequest({ prompt: "x", sourceUrl: "https://x", referenceUrls: [], billedSeconds: 4, projectId: "p" })).toThrow();
+    expect(() =>
+      composeDressRequest({
+        prompt: "x",
+        sourceUrl: "https://x",
+        referenceUrls: [],
+        billedSeconds: 4,
+        projectId: "p",
+      }),
+    ).toThrow();
   });
 });
 
@@ -209,31 +278,52 @@ describe("current or stale — it only flags", () => {
     syncId: "s1",
     promptVersion: DRESS_PROMPT_VERSION,
   };
-  const now = { outfit: { id: "o1", key: "mastic", name: "Mastic look", version: 3 }, sync: { id: "s1", offsetSeconds: 0.853, driftPpm: 0 }, shotRange: { start: 72, end: 73.75 } };
+  type Now = Parameters<typeof dressStaleness>[1];
+  const outfitNow = { id: "o1", key: "mastic", name: "Mastic look", version: 3 };
+  const now: Now = {
+    outfit: outfitNow,
+    sync: { id: "s1", offsetSeconds: 0.853, driftPpm: 0 },
+    shotRange: { start: 72, end: 73.75 },
+  };
 
   it("is current when nothing upstream moved", () => {
     expect(dressStaleness(record, now)).toEqual({ state: "current", reasons: [] });
   });
 
   it("names each upstream change", () => {
-    const codes = (n: Partial<typeof now> & { promptVersion?: string }) => dressStaleness(record, { ...now, ...n }).reasons.map((r) => r.code);
-    expect(codes({ outfit: { ...now.outfit, version: 4 } })).toEqual(["outfit_version_changed"]);
-    expect(codes({ outfit: { id: "o2", key: "coat", name: "Coat look", version: 1 } })).toEqual(["outfit_reassigned"]);
+    const codes = (n: Partial<Now>) =>
+      dressStaleness(record, { ...now, ...n }).reasons.map((r) => r.code);
+    expect(codes({ outfit: { ...outfitNow, version: 4 } })).toEqual(["outfit_version_changed"]);
+    expect(codes({ outfit: { id: "o2", key: "coat", name: "Coat look", version: 1 } })).toEqual([
+      "outfit_reassigned",
+    ]);
     expect(codes({ outfit: null })).toEqual(["outfit_reassigned"]);
     expect(codes({ shotRange: { start: 74.5, end: 76 } })).toEqual(["window_outside"]);
     expect(codes({ shotRange: null })).toEqual(["window_outside"]);
-    expect(codes({ sync: { id: "s1", offsetSeconds: 0.9, driftPpm: 0 } })).toEqual(["sync_changed"]);
-    expect(codes({ sync: { id: "s2", offsetSeconds: 0.853, driftPpm: 0 } })).toEqual(["sync_changed"]);
+    expect(codes({ sync: { id: "s1", offsetSeconds: 0.9, driftPpm: 0 } })).toEqual([
+      "sync_changed",
+    ]);
+    expect(codes({ sync: { id: "s2", offsetSeconds: 0.853, driftPpm: 0 } })).toEqual([
+      "sync_changed",
+    ]);
     expect(codes({ sync: null })).toEqual(["sync_changed"]);
     expect(codes({ promptVersion: "dress-v2" })).toEqual(["prompt_version_changed"]);
   });
 
   it("a shot inside the handles is still covered; a frame's slack is allowed", () => {
-    expect(dressStaleness(record, { ...now, shotRange: { start: 71.5, end: 75.46 } }).state).toBe("current");
+    expect(dressStaleness(record, { ...now, shotRange: { start: 71.5, end: 75.46 } }).state).toBe(
+      "current",
+    );
   });
 
   it("reads a record back, and refuses a malformed one", () => {
-    const full = { ...record, version: 1, sourceAssetId: "t1", songStart: 72.353, sourceSeconds: 3.95 };
+    const full = {
+      ...record,
+      version: 1,
+      sourceAssetId: "t1",
+      songStart: 72.353,
+      sourceSeconds: 3.95,
+    };
     expect(dressRecordOf(full)).toEqual(full);
     expect(dressRecordOf({ ...full, window: [2, 1] })).toBeNull();
     expect(dressRecordOf(null)).toBeNull();

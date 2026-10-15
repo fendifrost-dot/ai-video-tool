@@ -7,11 +7,26 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/supabase", () => ({ supabase: {} }));
 
-import { advanceJob, dressedFrom, type AssignmentRow, type ProgressDeps, type ProgressJob } from "../../../supabase/functions/_shared/jobProgress";
-import { conformDressedClip, dressResultUrl } from "../../../supabase/functions/_shared/dressConform";
+import {
+  advanceJob,
+  dressedFrom,
+  type AssignmentRow,
+  type ProgressDeps,
+  type ProgressJob,
+} from "../../../supabase/functions/_shared/jobProgress";
+import {
+  conformDressedClip,
+  dressResultUrl,
+} from "../../../supabase/functions/_shared/dressConform";
 import { mp4Durations } from "../../../supabase/functions/_shared/mp4Retime";
 import { avcSampleDescription, writeMp4 } from "@/lib/media/mp4Trim";
-import { dressJobSettings, dressRecordOf, planDressImport, DRESS_ROUTE, type DressRecord } from "./dress";
+import {
+  dressJobSettings,
+  dressRecordOf,
+  planDressImport,
+  DRESS_ROUTE,
+  type DressRecord,
+} from "./dress";
 import { dressedSongStart } from "./dress";
 
 const T0 = Date.parse("2026-10-15T12:00:00.000Z");
@@ -44,12 +59,21 @@ const APPROVED = {
   sourceSeconds: 4.004,
   cutAssetId: "cc76f6a3-5489-4e6f-98d2-8cf7efcdf03b",
   requestId: "71ff19f4-0944-43fa-8371-677c5f9557e8",
-  resultUrl: "https://d3u0tzju9qaucj.cloudfront.net/45ee058b-986d-49f2-adc9-280bbafe42a2/88283b9f-4545-4c68-9d40-1f4f63d557f7.mp4",
+  resultUrl:
+    "https://d3u0tzju9qaucj.cloudfront.net/45ee058b-986d-49f2-adc9-280bbafe42a2/88283b9f-4545-4c68-9d40-1f4f63d557f7.mp4",
   outfit: { id: "outfit_mastic", key: "mastic-beige-cap", name: "Mastic + beige cap", version: 2 },
   sceneId: "scene_3",
   references: [
-    { pieceId: "0feb028f-dc4d-45dc-82ac-e4bbd16054b0", path: "65cf99cb/2a14a72b-e7de-4ecb-9c24-4142b672d175.jpg", angle: "front" },
-    { pieceId: "07e6dcbe-5c56-4e2d-862e-3b22aca8d93d", path: "65cf99cb/cap_front.jpg", angle: "front" },
+    {
+      pieceId: "0feb028f-dc4d-45dc-82ac-e4bbd16054b0",
+      path: "65cf99cb/2a14a72b-e7de-4ecb-9c24-4142b672d175.jpg",
+      angle: "front",
+    },
+    {
+      pieceId: "07e6dcbe-5c56-4e2d-862e-3b22aca8d93d",
+      path: "65cf99cb/cap_front.jpg",
+      angle: "front",
+    },
   ],
   prompt: "Replace only the man's jacket and cap …",
   promptVersion: "recipe-71ff19f4",
@@ -58,10 +82,38 @@ const APPROVED = {
 
 function world(job: ProgressJob, opts: { conform?: boolean } = {}) {
   let seq = 0;
-  const assets = new Map<string, { metadata_json: Record<string, unknown>; footage_role: string | null }>();
-  const assignments: AssignmentRow[] = [{ id: "asg_sel", shot_id: "shot_19", asset_id: "chosen_clip", role: "generated_clip", is_primary: true, sort_order: 1 }];
-  const syncs: { project_id: string; performance_asset_id: string; offset_seconds: number; drift_ppm: number; status: string; song_asset_id: string | null; method: string }[] = [
-    { project_id: job.project_id, performance_asset_id: "master_take", offset_seconds: 0.853, drift_ppm: 0, status: "confirmed", song_asset_id: "song", method: "auto" },
+  const assets = new Map<
+    string,
+    { metadata_json: Record<string, unknown>; footage_role: string | null }
+  >();
+  const assignments: AssignmentRow[] = [
+    {
+      id: "asg_sel",
+      shot_id: "shot_19",
+      asset_id: "chosen_clip",
+      role: "generated_clip",
+      is_primary: true,
+      sort_order: 1,
+    },
+  ];
+  const syncs: {
+    project_id: string;
+    performance_asset_id: string;
+    offset_seconds: number;
+    drift_ppm: number;
+    status: string;
+    song_asset_id: string | null;
+    method: string;
+  }[] = [
+    {
+      project_id: job.project_id,
+      performance_asset_id: "master_take",
+      offset_seconds: 0.853,
+      drift_ppm: 0,
+      status: "confirmed",
+      song_asset_id: "song",
+      method: "auto",
+    },
   ];
   const fetched: string[] = [];
   const jobs = new Map([[job.id, job]]);
@@ -75,7 +127,8 @@ function world(job: ProgressJob, opts: { conform?: boolean } = {}) {
       fetched.push(url);
       const d = dressedFrom(j)!;
       const meta: Record<string, unknown> = { bucket: "project-clips", provider_job_id: j.id };
-      if (opts.conform !== false) Object.assign(meta, conformDressedClip(swapOutput(), d.sourceSeconds).meta);
+      if (opts.conform !== false)
+        Object.assign(meta, conformDressedClip(swapOutput(), d.sourceSeconds).meta);
       const id = `asset_${++seq}`;
       assets.set(id, { metadata_json: meta, footage_role: null });
       jobs.get(j.id)!.result_asset_id = id;
@@ -87,7 +140,15 @@ function world(job: ProgressJob, opts: { conform?: boolean } = {}) {
     applyAssignments: async (_j, ops) => {
       for (const o of ops) {
         if (o.op === "update") assignments.find((a) => a.id === o.id)!.is_primary = o.is_primary;
-        else assignments.push({ id: `asg_${++seq}`, shot_id: o.shot_id, asset_id: o.asset_id, role: o.role, is_primary: o.is_primary, sort_order: o.sort_order });
+        else
+          assignments.push({
+            id: `asg_${++seq}`,
+            shot_id: o.shot_id,
+            asset_id: o.asset_id,
+            role: o.role,
+            is_primary: o.is_primary,
+            sort_order: o.sort_order,
+          });
       }
     },
     assetMeta: async (id) => assets.get(id)?.metadata_json ?? null,
@@ -96,7 +157,8 @@ function world(job: ProgressJob, opts: { conform?: boolean } = {}) {
       if (patch.footage_role) a.footage_role = patch.footage_role;
       if (patch.metadata_json) a.metadata_json = patch.metadata_json;
     },
-    syncOf: async (p, a) => syncs.find((s) => s.project_id === p && s.performance_asset_id === a) ?? null,
+    syncOf: async (p, a) =>
+      syncs.find((s) => s.project_id === p && s.performance_asset_id === a) ?? null,
     insertSync: async (row) => void syncs.push({ ...row }),
   };
   return { deps, assets, assignments, syncs, fetched, jobs };
@@ -125,9 +187,20 @@ function importedJob(): ProgressJob {
 describe("importing the approved swap — no provider call, no spend", () => {
   it("plans a job row the server will pick up: succeeded, the request id, the result URL, the storyboard's run", () => {
     const row = planDressImport(APPROVED);
-    expect(row).toMatchObject({ provider: "higgsfield", status: "succeeded", external_job_id: APPROVED.requestId, project_id: APPROVED.projectId, variation_id: "var_1" });
+    expect(row).toMatchObject({
+      provider: "higgsfield",
+      status: "succeeded",
+      external_job_id: APPROVED.requestId,
+      project_id: APPROVED.projectId,
+      variation_id: "var_1",
+    });
     const settings = (row.request_payload_json as { settings: Record<string, unknown> }).settings;
-    expect(settings).toMatchObject({ batchRun: "storyboard", batchShotId: "c019", route: DRESS_ROUTE, sourceAssetId: "master_take" });
+    expect(settings).toMatchObject({
+      batchRun: "storyboard",
+      batchShotId: "c019",
+      route: DRESS_ROUTE,
+      sourceAssetId: "master_take",
+    });
     const rec = dressRecordOf(settings.dress)!;
     expect(rec.window).toEqual([72.673, 76.677]);
     expect(rec.sourceSeconds).toBe(4.004);
@@ -148,7 +221,12 @@ describe("importing the approved swap — no provider call, no spend", () => {
     const w = world(job);
     const report = await advanceJob(job, w.deps);
     expect(report.state).toBe("finished");
-    expect(report.did).toEqual(["saved", "filed as a dressed take in sync", "on its shot, unselected", "finished"]);
+    expect(report.did).toEqual([
+      "saved",
+      "filed as a dressed take in sync",
+      "on its shot, unselected",
+      "finished",
+    ]);
     expect(w.fetched).toEqual([APPROVED.resultUrl]);
     const asset = w.assets.get(job.result_asset_id!)!;
     expect(asset.footage_role).toBe("performance");
@@ -157,15 +235,28 @@ describe("importing the approved swap — no provider call, no spend", () => {
     expect(meta.conformed_duration).toBeCloseTo(4.004, 3);
     expect(meta.duration_seconds).toBeCloseTo(4.004, 3);
     expect(meta.retime_ratio).toBeCloseTo(4.004 / (89 / 24), 4);
-    expect(meta.derived_from).toMatchObject({ asset_id: "master_take", source_window: [72.673, 76.677], method: "dressed", job_id: "job_import" });
+    expect(meta.derived_from).toMatchObject({
+      asset_id: "master_take",
+      source_window: [72.673, 76.677],
+      method: "dressed",
+      job_id: "job_import",
+    });
     expect((meta.derived_from as { song_start: number }).song_start).toBeCloseTo(73.526, 4);
     // the sync maps the dressed take onto the song exactly like its parent over the window
     const sync = w.syncs.find((s) => s.performance_asset_id === job.result_asset_id)!;
-    expect(sync).toMatchObject({ method: "derived", status: "confirmed", song_asset_id: "song", drift_ppm: 0 });
+    expect(sync).toMatchObject({
+      method: "derived",
+      status: "confirmed",
+      song_asset_id: "song",
+      drift_ppm: 0,
+    });
     expect(sync.offset_seconds).toBeCloseTo(0.853 + 72.673, 4);
     // the director's chosen clip is still the one shown
     expect(w.assignments.find((a) => a.id === "asg_sel")!.is_primary).toBe(true);
-    expect(w.assignments.find((a) => a.asset_id === job.result_asset_id)).toMatchObject({ role: "performance", is_primary: false });
+    expect(w.assignments.find((a) => a.asset_id === job.result_asset_id)).toMatchObject({
+      role: "performance",
+      is_primary: false,
+    });
   });
 
   it("is safe to run again: nothing is filed or synced twice", async () => {
@@ -191,13 +282,25 @@ describe("importing the approved swap — no provider call, no spend", () => {
 describe("a dress the tool submitted moves the same way", () => {
   it("queued → the provider finishes → conformed, filed and on the shot unselected", async () => {
     const record: DressRecord = {
-      ...(dressRecordOf((planDressImport(APPROVED).request_payload_json as { settings: { dress: unknown } }).settings.dress) as DressRecord),
+      ...(dressRecordOf(
+        (planDressImport(APPROVED).request_payload_json as { settings: { dress: unknown } })
+          .settings.dress,
+      ) as DressRecord),
       imported: null,
       window: [71.5, 75.45],
       sourceSeconds: 3.95,
       songStart: dressedSongStart(71.5, APPROVED.parentSync),
     };
-    const job: ProgressJob = { ...importedJob(), id: "job_sub", status: "queued", request_payload_json: { shotId: "shot_19", settings: dressJobSettings({ batchRun: "storyboard", shotKey: "c019", record }) }, response_payload_json: null };
+    const job: ProgressJob = {
+      ...importedJob(),
+      id: "job_sub",
+      status: "queued",
+      request_payload_json: {
+        shotId: "shot_19",
+        settings: dressJobSettings({ batchRun: "storyboard", shotKey: "c019", record }),
+      },
+      response_payload_json: null,
+    };
     const w = world(job);
     w.deps.providerStatus = async () => ({ status: "succeeded", resultUrl: APPROVED.resultUrl });
     const report = await advanceJob(job, w.deps);
@@ -205,22 +308,39 @@ describe("a dress the tool submitted moves the same way", () => {
     expect(report.state).toBe("finished");
     const meta = w.assets.get(job.result_asset_id!)!.metadata_json;
     expect(meta.conformed_duration).toBeCloseTo(3.95, 3);
-    expect(w.syncs.find((s) => s.performance_asset_id === job.result_asset_id)!.offset_seconds).toBeCloseTo(72.353, 4);
+    expect(
+      w.syncs.find((s) => s.performance_asset_id === job.result_asset_id)!.offset_seconds,
+    ).toBeCloseTo(72.353, 4);
   });
 
   it("dressedFrom reads only a whole dress record on the dress route", () => {
     const job = importedJob();
-    expect(dressedFrom(job)).toMatchObject({ sourceAssetId: "master_take", window: [72.673, 76.677], sourceSeconds: 4.004 });
+    expect(dressedFrom(job)).toMatchObject({
+      sourceAssetId: "master_take",
+      window: [72.673, 76.677],
+      sourceSeconds: 4.004,
+    });
     const s = (job.request_payload_json as { settings: Record<string, unknown> }).settings;
-    expect(dressedFrom({ ...job, request_payload_json: { settings: { ...s, route: "seedance_ref" } } })).toBeNull();
-    expect(dressedFrom({ ...job, request_payload_json: { settings: { ...s, dress: { ...(s.dress as object), window: [3, 1] } } } })).toBeNull();
+    expect(
+      dressedFrom({ ...job, request_payload_json: { settings: { ...s, route: "seedance_ref" } } }),
+    ).toBeNull();
+    expect(
+      dressedFrom({
+        ...job,
+        request_payload_json: {
+          settings: { ...s, dress: { ...(s.dress as object), window: [3, 1] } },
+        },
+      }),
+    ).toBeNull();
   });
 });
 
 describe("the server's own checks", () => {
   it("fetches a dressed result only from the provider's CDN, over https, never a private host", () => {
     expect(dressResultUrl({ resultUrl: APPROVED.resultUrl })).toBe(APPROVED.resultUrl);
-    expect(dressResultUrl({ resultUrl: "https://cdn.higgsfield.ai/x.mp4" })).toBe("https://cdn.higgsfield.ai/x.mp4");
+    expect(dressResultUrl({ resultUrl: "https://cdn.higgsfield.ai/x.mp4" })).toBe(
+      "https://cdn.higgsfield.ai/x.mp4",
+    );
     expect(dressResultUrl({ resultUrl: "http://d3u0tzju9qaucj.cloudfront.net/x.mp4" })).toBeNull();
     expect(dressResultUrl({ resultUrl: "https://evil.example.com/x.mp4" })).toBeNull();
     expect(dressResultUrl({ resultUrl: "https://169.254.169.254/latest" })).toBeNull();
@@ -231,7 +351,11 @@ describe("the server's own checks", () => {
   it("conforms to the source length and records what it measured", () => {
     const out = conformDressedClip(swapOutput(), 4.0);
     expect(mp4Durations(out.bytes).videoSeconds).toBeCloseTo(4.0, 3);
-    expect(out.meta).toMatchObject({ conform_method: "container_timescale", conformed_to: 4, audio_dropped: 0 });
+    expect(out.meta).toMatchObject({
+      conform_method: "container_timescale",
+      conformed_to: 4,
+      audio_dropped: 0,
+    });
     expect(out.meta.output_duration).toBeCloseTo(3.7083, 4);
   });
 });

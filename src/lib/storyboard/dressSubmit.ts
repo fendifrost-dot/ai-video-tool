@@ -43,13 +43,20 @@ export function dressPieceOf(item: {
   reference_images?: { storage_path: string | null; angle?: string | null }[] | null;
   dimensions_description?: string | null;
 }): DressPiece {
-  const images = (item.reference_images ?? []).map((r) => ({ storagePath: r.storage_path ?? null, angle: r.angle ?? null }));
+  const images = (item.reference_images ?? []).map((r) => ({
+    storagePath: r.storage_path ?? null,
+    angle: r.angle ?? null,
+  }));
   return {
     id: item.id,
     label: item.label,
     featureType: item.feature_type,
     storagePath: item.storage_path ?? images[0]?.storagePath ?? null,
-    images: images.length ? images : item.storage_path ? [{ storagePath: item.storage_path, angle: "front" }] : [],
+    images: images.length
+      ? images
+      : item.storage_path
+        ? [{ storagePath: item.storage_path, angle: "front" }]
+        : [],
     construction: item.dimensions_description ?? null,
   };
 }
@@ -78,7 +85,13 @@ export type DressInput = {
 
 export type DressResult =
   | { dryRun: true; request: DressRequest; record: DressRecord; settings: Record<string, unknown> }
-  | { dryRun: false; rowId: string; providerJobId: string; record: DressRecord; estimateUsd: number };
+  | {
+      dryRun: false;
+      rowId: string;
+      providerJobId: string;
+      record: DressRecord;
+      estimateUsd: number;
+    };
 
 /** The record of one dress, from the plan and the cut as it was really made. Pure. */
 export function dressRecord(input: {
@@ -107,7 +120,10 @@ export function dressRecord(input: {
     sync: { offsetSeconds: input.sync.offsetSeconds, driftPpm: input.sync.driftPpm },
     window: [r4(cut.start), r4(cut.start + cut.seconds)],
     shotWindow: [plan.window.shotIn, plan.window.shotOut],
-    handles: { head: r4(plan.window.shotIn - cut.start), tail: r4(cut.start + cut.seconds - plan.window.shotOut) },
+    handles: {
+      head: r4(plan.window.shotIn - cut.start),
+      tail: r4(cut.start + cut.seconds - plan.window.shotOut),
+    },
     songStart: dressedSongStart(cut.start, input.sync),
     sourceSeconds: r4(cut.seconds),
     sourcePath: input.sourcePath,
@@ -128,7 +144,11 @@ export async function dressBox(input: DressInput, depsIn?: RunnerDeps): Promise<
   const { plan } = input;
   if (input.dryRun) {
     // nothing leaves the browser: the links are named, not signed
-    const record = dressRecord({ ...input, cut: { start: plan.window.start, seconds: plan.window.seconds }, sourcePath: null });
+    const record = dressRecord({
+      ...input,
+      cut: { start: plan.window.start, seconds: plan.window.seconds },
+      sourcePath: null,
+    });
     const request = composeDressRequest({
       prompt: plan.prompt,
       sourceUrl: `<signed project-clips/…/dress/${STORYBOARD_RUN}_${input.shot.key}_src.mp4>`,
@@ -136,7 +156,17 @@ export async function dressBox(input: DressInput, depsIn?: RunnerDeps): Promise<
       billedSeconds: record.billedSeconds,
       projectId: input.projectId,
     });
-    return { dryRun: true, request, record, settings: dressJobSettings({ batchRun: STORYBOARD_RUN, shotKey: input.shot.key, record, madeFrom: input.madeFrom }) };
+    return {
+      dryRun: true,
+      request,
+      record,
+      settings: dressJobSettings({
+        batchRun: STORYBOARD_RUN,
+        shotKey: input.shot.key,
+        record,
+        madeFrom: input.madeFrom,
+      }),
+    };
   }
 
   const deps = depsIn ?? (await browserRunnerDeps());
@@ -144,7 +174,11 @@ export async function dressBox(input: DressInput, depsIn?: RunnerDeps): Promise<
   say("reading the take…");
   const url = await signedUrl(take.bucket as never, take.path, 3600);
   const { read, probe } = await openVideo(`${take.bucket}:${take.path}`, url);
-  if (!probe.video) throw new Error(probe.note ?? "the take could not be read (it has to be an MP4 or MOV to be cut in the browser)");
+  if (!probe.video)
+    throw new Error(
+      probe.note ??
+        "the take could not be read (it has to be an MP4 or MOV to be cut in the browser)",
+    );
   const track = probe.video;
   say("cutting the shot and its handles out of the take…");
   let cut: { bytes: Uint8Array; start: number; seconds: number };
@@ -157,18 +191,38 @@ export async function dressBox(input: DressInput, depsIn?: RunnerDeps): Promise<
   }
   const billed = dressBilledSeconds(cut.seconds);
   if (billed > input.maxBilledSeconds) {
-    throw new Error(`the cut came out ${cut.seconds.toFixed(2)} s long — ${billed} billed seconds, more than the ${input.maxBilledSeconds} agreed. Nothing was sent. Open the project in Chrome to cut to the frame.`);
+    throw new Error(
+      `the cut came out ${cut.seconds.toFixed(2)} s long — ${billed} billed seconds, more than the ${input.maxBilledSeconds} agreed. Nothing was sent. Open the project in Chrome to cut to the frame.`,
+    );
   }
-  if (cut.start > plan.window.shotIn + 0.02 || cut.start + cut.seconds < plan.window.shotOut - 0.02) {
+  if (
+    cut.start > plan.window.shotIn + 0.02 ||
+    cut.start + cut.seconds < plan.window.shotOut - 0.02
+  ) {
     throw new Error("the cut does not cover the whole shot — nothing was sent");
   }
   say("uploading the cut…");
-  const sourcePath = buildStoragePath(deps.userId, input.projectId, "dress", `${STORYBOARD_RUN}_${input.shot.key}_${Date.now()}_src.mp4`);
+  const sourcePath = buildStoragePath(
+    deps.userId,
+    input.projectId,
+    "dress",
+    `${STORYBOARD_RUN}_${input.shot.key}_${Date.now()}_src.mp4`,
+  );
   await uploadBytesToBucket("project-clips", sourcePath, cut.bytes, "video/mp4", { upsert: true });
-  const record = dressRecord({ ...input, cut: { start: cut.start, seconds: cut.seconds }, sourcePath });
+  const record = dressRecord({
+    ...input,
+    cut: { start: cut.start, seconds: cut.seconds },
+    sourcePath,
+  });
   const sourceUrl = await deps.sign("project-clips", sourcePath);
   const referenceUrls = await Promise.all(plan.references.map((r) => referenceUrl(r.path)));
-  const req = composeDressRequest({ prompt: plan.prompt, sourceUrl, referenceUrls, billedSeconds: record.billedSeconds, projectId: input.projectId });
+  const req = composeDressRequest({
+    prompt: plan.prompt,
+    sourceUrl,
+    referenceUrls,
+    billedSeconds: record.billedSeconds,
+    projectId: input.projectId,
+  });
 
   // WRITE-AHEAD: the record exists before the money moves, so a submit that dies mid-flight is visible
   say("sending it to the swap…");
@@ -185,7 +239,12 @@ export async function dressBox(input: DressInput, depsIn?: RunnerDeps): Promise<
       duration: record.billedSeconds,
       shotId: input.shot.id,
       referenceImagePaths: plan.references.map((r) => r.path),
-      settings: dressJobSettings({ batchRun: STORYBOARD_RUN, shotKey: input.shot.key, record, madeFrom: input.madeFrom }),
+      settings: dressJobSettings({
+        batchRun: STORYBOARD_RUN,
+        shotKey: input.shot.key,
+        record,
+        madeFrom: input.madeFrom,
+      }),
     },
   });
   let env: Record<string, unknown>;
@@ -199,14 +258,24 @@ export async function dressBox(input: DressInput, depsIn?: RunnerDeps): Promise<
   // the provider's own request id: Control Center's job id is not answered by the status endpoint
   const providerJobId = String(env.providerJobId ?? "");
   if (!providerJobId) {
-    await deps.updateJob(rowId, { status: "failed", error_text: "the provider answered without a request id", response_payload_json: env });
+    await deps.updateJob(rowId, {
+      status: "failed",
+      error_text: "the provider answered without a request id",
+      response_payload_json: env,
+    });
     throw new Error("the provider answered without a request id");
   }
   try {
-    await deps.updateJob(rowId, { external_job_id: providerJobId, status: env.status === "running" ? "running" : "queued", response_payload_json: env });
+    await deps.updateJob(rowId, {
+      external_job_id: providerJobId,
+      status: env.status === "running" ? "running" : "queued",
+      response_payload_json: env,
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    throw new Error(`accepted by the provider as ${providerJobId}, but its record could not be updated — ${message}`);
+    throw new Error(
+      `accepted by the provider as ${providerJobId}, but its record could not be updated — ${message}`,
+    );
   }
   void nudgeJobProgress();
   return { dryRun: false, rowId, providerJobId, record, estimateUsd: record.estimateUsd };
@@ -216,12 +285,19 @@ export async function dressBox(input: DressInput, depsIn?: RunnerDeps): Promise<
  * File a swap that already finished (planDressImport): insert its job row as succeeded and ask the server to move it
  * now. No provider is asked to make anything, so nothing is spent. Returns the job row's id.
  */
-export async function importFinishedDress(input: Omit<DressImport, "userId" | "batchRun">): Promise<string> {
+export async function importFinishedDress(
+  input: Omit<DressImport, "userId" | "batchRun">,
+): Promise<string> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) throw new Error("Not signed in");
   const row = planDressImport({ ...input, userId: auth.user.id, batchRun: STORYBOARD_RUN });
-  const { data, error } = await supabase.from("provider_jobs").insert(row as never).select("id").single();
-  if (error || !data) throw new Error(`could not record the finished swap: ${error?.message ?? "no row returned"}`);
+  const { data, error } = await supabase
+    .from("provider_jobs")
+    .insert(row as never)
+    .select("id")
+    .single();
+  if (error || !data)
+    throw new Error(`could not record the finished swap: ${error?.message ?? "no row returned"}`);
   void nudgeJobProgress();
   return (data as { id: string }).id;
 }
