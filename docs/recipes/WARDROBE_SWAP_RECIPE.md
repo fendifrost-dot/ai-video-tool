@@ -82,3 +82,15 @@ Test at 1080p ($1.632 per source second) before scaling, to see whether the soft
 - **Hat:** the Cassandre Cap in Cotton Denim Twill, Khaki (`c4f87504-ddbc-4a8e-b474-e090b88fa97a`). This is the 9 Oct pairing for the Mastic jacket (`docs/handoffs/ib_looks_by_scene/decisions.json`, look `YSL_JACKET`).
 - **Reference flaw, fixed 15 Oct:** every earlier YSL cap photo was cut off through the crown, so the brim was missing. That included the Wardrobe rows, `ib_looks_by_scene/uploads/` and the "Looks Decided" artifact (`claude.ai/artifact/Uvf3uuA1DsePRueMfd1z3q`). Fendi sent the full ysl.com product shots. `uploads/cap_*` now hold the whole cap: front, side or 3/4, and a stitch detail, 1170×780 (detail 1170×1170). The artifact (version 10) and the Wardrobe rows were updated to match. Run `678a62a8` used the old cut-off photos.
 - **Run:** Genjutsu, 720p, refs = [jacket product photo, cap front (Wardrobe), cap side (repo uploads, raw GitHub URL)], with the run-C wording plus a cap sentence. Higgsfield request `678a62a8-84e5-49bf-beec-75e2d45f4ae1`.
+- **Result of `678a62a8` (OBSERVED by the agent; Fendi has not judged it):**
+  - Output: `https://d3u0tzju9qaucj.cloudfront.net/45ee058b-986d-49f2-adc9-280bbafe42a2/d0b4cf42-0436-4ebf-ad66-70513d1dc4fe.mp4`, 720×1280, 24 fps, 3.71 s. Not filed in AVT.
+  - The navy cap became an olive-khaki cap with a curved brim, worn forwards, on every frame. The jacket held as in run C.
+  - The tone-on-tone YSL monogram is not readable at 720p.
+  - The face softens on fast motion near the end, as in run C.
+  - It was posted to Fendi as take | run C | this run, retimed to 4.00 s.
+- **Hat pairings (DECISION, Fendi, 15 Oct):** "The khaki hat looks better with the mastic jacket and the black and ivory looks better with the black long jacket."
+  - The khaki Cassandre cap goes with the Mastic track jacket.
+  - The Y Varsity black/ivory cap goes with the Bubbled Lambskin coat.
+  - The trucker look then had no hat. The agent gave it the Saint Laurent beige/ivory cap; Fendi has not confirmed that.
+  - Recorded in `ib_looks_by_scene/decisions.json` (`hatPairings`) and in the artifact (version 11).
+- **Next run:** use the new Wardrobe cap photos (front, side, detail) in place of the cut-off ones.

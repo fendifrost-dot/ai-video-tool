@@ -175,7 +175,7 @@
         "pieces": [
           "Trucker Jacket - French Black Denim",
           "Mick Long Jeans - Westwood Black Denim",
-          "Y Varsity Cap - Black and Ivory",
+          "Saint Laurent Cap - Beige and Ivory",
           "Cassandre smooth leather belt",
           "Lewis grained leather sneakers",
           "Cazal MOD octagonal glasses"
@@ -190,7 +190,7 @@
         "pieces": [
           "Coat in Bubbled Lambskin - Noir",
           "SL look trousers (IMG_5541)",
-          "Saint Laurent Cap - Beige and Ivory",
+          "Y Varsity Cap - Black and Ivory",
           "Cazal MOD octagonal glasses"
         ],
         "words": "a button-up shirt and tie under the coat"
@@ -230,5 +230,15 @@
       "The coat's back angle and the caps' side/three-quarter angles are in uploads/ but not attached to the rows."
     ],
     "corrections": []
+  },
+  "hatPairings": {
+    "decidedBy": "Fendi",
+    "decidedAt": "2026-10-15",
+    "words": "The khaki hat looks better with the mastic jacket and the black and ivory looks better with the black long jacket",
+    "pairs": {
+      "Track Jacket - Mastic Cotton Navy Stripe": "Cassandre Cap - Khaki",
+      "Coat in Bubbled Lambskin - Noir": "Y Varsity Cap - Black and Ivory"
+    },
+    "agentFollowOn": "YSL_DENIM_LOOK (trucker jacket) lost the Y Varsity cap to the coat; the agent gave it the Saint Laurent beige/ivory cap so every look keeps a hat. Fendi has not ruled on that one."
   }
 }
