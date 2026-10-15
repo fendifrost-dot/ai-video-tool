@@ -62,6 +62,28 @@ function setU64(v: DataView, o: number, n: number): void {
   v.setUint32(o + 4, n % 4294967296);
 }
 
+/** A box must hold at least `n` bytes past `at`, or the file is lying about itself: refused, never read past the box. */
+function need(box: Box, at: number, n: number, what: string): void {
+  if (at < box.body || at + n > box.end)
+    throw new Error(`the ${what} box is truncated: it cannot be read safely`);
+}
+
+/** Entry count of a table box, refused when more entries are claimed than the box can hold. */
+function entryCount(
+  v: DataView,
+  box: Box,
+  countAt: number,
+  entrySize: number,
+  what: string,
+): number {
+  need(box, countAt, 4, what);
+  const n = v.getUint32(countAt);
+  const room = Math.floor((box.end - (countAt + 4)) / entrySize);
+  if (n > room)
+    throw new Error(`the ${what} box claims ${n} entries but has room for ${room}: refused`);
+  return n;
+}
+
 function boxesIn(b: Uint8Array, from: number, to: number): Box[] {
   const v = view(b);
   const out: Box[] = [];
@@ -115,13 +137,17 @@ function tracksOf(b: Uint8Array, moov: Box): TrackBoxes[] {
     const minf = childOf(b, mdia, "minf");
     const stbl = minf && childOf(b, minf, "stbl");
     const edts = childOf(b, trak, "edts");
+    need(hdlr, hdlr.body + 8, 4, "hdlr");
+    const stts = stbl ? childOf(b, stbl, "stts") : null;
+    // every table that may be read is measured once here, so a lying count is refused before anything else happens
+    if (stts) entryCount(view(b), stts, stts.body + 4, 8, "stts");
     out.push({
       trak,
       tkhd: childOf(b, trak, "tkhd"),
       elst: edts && childOf(b, edts, "elst"),
       mdhd,
       handler: fourcc(b, hdlr.body + 8),
-      stts: stbl ? childOf(b, stbl, "stts") : null,
+      stts,
     });
   }
   return out;
@@ -133,9 +159,11 @@ function mdhdFields(
   mdhd: Box,
 ): { version: number; tsAt: number; durAt: number; timescale: number; units: number } {
   const v = view(b);
+  need(mdhd, mdhd.body, 1, "mdhd");
   const version = b[mdhd.body];
   const tsAt = mdhd.body + (version === 1 ? 20 : 12);
   const durAt = tsAt + 4;
+  need(mdhd, tsAt, version === 1 ? 12 : 8, "mdhd");
   return {
     version,
     tsAt,
@@ -149,7 +177,7 @@ function mdhdFields(
 function sttsUnits(b: Uint8Array, stts: Box | null): number {
   if (!stts) return 0;
   const v = view(b);
-  const n = v.getUint32(stts.body + 4);
+  const n = entryCount(v, stts, stts.body + 4, 8, "stts");
   let total = 0;
   for (let i = 0; i < n; i++)
     total += v.getUint32(stts.body + 8 + i * 8) * v.getUint32(stts.body + 12 + i * 8);
@@ -171,7 +199,9 @@ export function mp4Durations(bytes: Uint8Array): Mp4Durations {
   const mvhd = childOf(bytes, moov, "mvhd");
   let movieSeconds = 0;
   if (mvhd) {
+    need(mvhd, mvhd.body, 1, "mvhd");
     const version = bytes[mvhd.body];
+    need(mvhd, mvhd.body + (version === 1 ? 20 : 12), version === 1 ? 12 : 8, "mvhd");
     const ts = v.getUint32(mvhd.body + (version === 1 ? 20 : 12));
     const units = version === 1 ? u64(v, mvhd.body + 24) : v.getUint32(mvhd.body + 16);
     movieSeconds = ts ? units / ts : 0;
@@ -195,18 +225,23 @@ export function mp4Durations(bytes: Uint8Array): Mp4Durations {
 export function retimeMp4(
   input: Uint8Array,
   targetSeconds: number,
-  opts: { dropAudio?: boolean } = {},
+  opts: { dropAudio?: boolean; inPlace?: boolean } = {},
 ): RetimeResult {
   if (!(targetSeconds > 0) || !Number.isFinite(targetSeconds))
     throw new Error(`cannot retime to ${targetSeconds} s`);
   const dropAudio = opts.dropAudio ?? true;
-  const b = input.slice();
+  // `inPlace`: the caller owns the bytes and wants no second copy (a 200 MB download in an edge function). Every
+  // check below runs BEFORE the first write, so a refused file is left exactly as it came either way.
+  const b = opts.inPlace ? input : input.slice();
   const v = view(b);
   const moov = moovOf(b);
   const mvhd = childOf(b, moov, "mvhd");
   if (!mvhd) throw new Error("the file has no movie header (mvhd)");
+  need(mvhd, mvhd.body, 1, "mvhd");
   const mvVersion = b[mvhd.body];
-  const movieTs = v.getUint32(mvhd.body + (mvVersion === 1 ? 20 : 12));
+  const mvTsAt = mvhd.body + (mvVersion === 1 ? 20 : 12);
+  need(mvhd, mvTsAt, mvVersion === 1 ? 12 : 8, "mvhd");
+  const movieTs = v.getUint32(mvTsAt);
   if (!movieTs) throw new Error("the movie header has no timescale");
 
   const tracks = tracksOf(b, moov);
@@ -218,13 +253,20 @@ export function retimeMp4(
   const before = videoUnits / vm.timescale;
   const factor = targetSeconds / before; // > 1: every frame is shown longer
 
-  let droppedAudio = 0;
-  let longestMovieUnits = 0;
+  // --- pass 1: read and check every number that will be written; nothing is written yet ---------------------------
+  type Plan = {
+    t: TrackBoxes;
+    drop: boolean;
+    tsAt: number;
+    newTs: number;
+    movieUnits: number;
+    tkhd: { at: number; wide: boolean } | null;
+    elst: { entries: { at: number; wide: boolean; scaled: number }[] } | null;
+  };
+  const plans: Plan[] = [];
   for (const t of tracks) {
     if (t.handler === "soun" && dropAudio) {
-      // the same bytes in the same place under another name: players skip a `free` box, and no offset moves
-      b.set([0x66, 0x72, 0x65, 0x65], t.trak.start + 4);
-      droppedAudio += 1;
+      plans.push({ t, drop: true, tsAt: 0, newTs: 0, movieUnits: 0, tkhd: null, elst: null });
       continue;
     }
     const m = mdhdFields(b, t.mdhd);
@@ -235,34 +277,65 @@ export function retimeMp4(
       t === video
         ? Math.max(1, Math.round(units / targetSeconds))
         : Math.max(1, Math.round(m.timescale / factor));
-    v.setUint32(m.tsAt, newTs);
-    const seconds = units / newTs;
-    const movieUnits = Math.round(seconds * movieTs);
-    longestMovieUnits = Math.max(longestMovieUnits, movieUnits);
+    const movieUnits = Math.round((units / newTs) * movieTs);
+    let tkhd: Plan["tkhd"] = null;
     if (t.tkhd) {
-      const tv = b[t.tkhd.body];
-      const at = t.tkhd.body + (tv === 1 ? 28 : 20);
-      if (tv === 1) setU64(v, at, movieUnits);
-      else v.setUint32(at, movieUnits);
+      need(t.tkhd, t.tkhd.body, 1, "tkhd");
+      const wide = b[t.tkhd.body] === 1;
+      const at = t.tkhd.body + (wide ? 28 : 20);
+      need(t.tkhd, at, wide ? 8 : 4, "tkhd");
+      tkhd = { at, wide };
     }
+    let elst: Plan["elst"] = null;
     if (t.elst) {
       // segment lengths are in the movie's units: they scale; media times are in the track's units, which already did
-      const ev = b[t.elst.body];
-      const n = v.getUint32(t.elst.body + 4);
+      need(t.elst, t.elst.body, 1, "elst");
+      const wide = b[t.elst.body] === 1;
+      const n = entryCount(v, t.elst, t.elst.body + 4, wide ? 20 : 12, "elst");
+      const entries: { at: number; wide: boolean; scaled: number }[] = [];
       let o = t.elst.body + 8;
       for (let i = 0; i < n; i++) {
-        const seg = ev === 1 ? u64(v, o) : v.getUint32(o);
-        const scaled = Math.round(seg * factor);
-        if (ev === 1) setU64(v, o, scaled);
-        else v.setUint32(o, scaled);
-        o += ev === 1 ? 20 : 12;
+        const seg = wide ? u64(v, o) : v.getUint32(o);
+        entries.push({ at: o, wide, scaled: Math.round(seg * factor) });
+        o += wide ? 20 : 12;
       }
+      elst = { entries };
     }
+    plans.push({ t, drop: false, tsAt: m.tsAt, newTs, movieUnits, tkhd, elst });
   }
   const durAt = mvhd.body + (mvVersion === 1 ? 24 : 16);
+
+  // --- pass 2: write, inside the boxes pass 1 measured ---------------------------------------------------------------
+  let droppedAudio = 0;
+  let longestMovieUnits = 0;
+  for (const p of plans) {
+    if (p.drop) {
+      // the same bytes in the same place under another name: players skip a `free` box, and no offset moves
+      b.set([0x66, 0x72, 0x65, 0x65], p.t.trak.start + 4);
+      droppedAudio += 1;
+      continue;
+    }
+    v.setUint32(p.tsAt, p.newTs);
+    longestMovieUnits = Math.max(longestMovieUnits, p.movieUnits);
+    if (p.tkhd) {
+      if (p.tkhd.wide) setU64(v, p.tkhd.at, p.movieUnits);
+      else v.setUint32(p.tkhd.at, p.movieUnits);
+    }
+    for (const e of p.elst?.entries ?? []) {
+      if (e.wide) setU64(v, e.at, e.scaled);
+      else v.setUint32(e.at, e.scaled);
+    }
+  }
   if (mvVersion === 1) setU64(v, durAt, longestMovieUnits);
   else v.setUint32(durAt, longestMovieUnits);
 
   const after = mp4Durations(b).videoSeconds ?? 0;
   return { bytes: b, before, after, ratio: after / before, droppedAudio };
+}
+
+/** Whether the bytes open as an ISO base media file: an `ftyp` box first (what every provider's MP4 carries). */
+export function isIsoBmff(bytes: Uint8Array): boolean {
+  if (bytes.byteLength < 12) return false;
+  const size = view(bytes).getUint32(0);
+  return fourcc(bytes, 4) === "ftyp" && size >= 8 && size <= bytes.byteLength;
 }

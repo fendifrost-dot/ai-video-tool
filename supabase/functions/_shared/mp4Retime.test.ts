@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { parseMoov, readBoxHeader } from "../../../src/lib/media/mp4";
 import { avcSampleDescription, writeMp4 } from "../../../src/lib/media/mp4Trim";
-import { mp4Durations, retimeMp4 } from "./mp4Retime";
+import { isIsoBmff, mp4Durations, retimeMp4 } from "./mp4Retime";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixture = (name: string) =>
@@ -144,5 +144,112 @@ describe("retimeMp4 — the object-swap's ~7 % fast output, conformed to its sou
     const src = providerLikeClip();
     expect(() => retimeMp4(src, 0)).toThrow();
     expect(() => retimeMp4(src, Number.NaN)).toThrow();
+  });
+});
+
+describe("hostile bytes — refused cleanly, nothing read or written outside its box", () => {
+  /** The first box of a given type, walking the file's own sizes: [start, end). */
+  function find(bytes: Uint8Array, path: string[]): [number, number] {
+    let from = 0;
+    let to = bytes.byteLength;
+    for (const type of path) {
+      let o = from;
+      let hit: [number, number] | null = null;
+      while (o + 8 <= to) {
+        const h = readBoxHeader(bytes, o)!;
+        if (h.type === type) {
+          hit = [o + h.headerSize, o + h.size];
+          break;
+        }
+        o += h.size;
+      }
+      if (!hit) throw new Error(`no ${type}`);
+      [from, to] = hit;
+    }
+    return [from, to];
+  }
+  const u32 = (bytes: Uint8Array, at: number, n: number) =>
+    new DataView(bytes.buffer, bytes.byteOffset).setUint32(at, n);
+  /** The retime must throw and leave the input byte-for-byte as it was, in both modes. */
+  function refuses(bytes: Uint8Array, why: RegExp) {
+    const before = bytes.slice();
+    expect(() => retimeMp4(bytes, 4)).toThrow(why);
+    expect(Buffer.from(bytes).equals(Buffer.from(before))).toBe(true);
+    expect(() => mp4Durations(bytes)).toThrow(why);
+  }
+
+  it("an stts that claims more entries than it holds", () => {
+    const bytes = providerLikeClip();
+    const [body] = find(bytes, ["moov", "trak", "mdia", "minf", "stbl", "stts"]);
+    u32(bytes, body + 4, 0xffffffff);
+    refuses(bytes, /stts box claims 4294967295 entries/);
+    u32(bytes, body + 4, 2); // one more than the single run the file has: still past the box
+    refuses(bytes, /stts box claims 2 entries but has room for 1/);
+  });
+
+  it("an elst that claims more entries than it holds", () => {
+    const bytes = providerLikeClip();
+    const [body] = find(bytes, ["moov", "trak", "edts", "elst"]);
+    u32(bytes, body + 4, 1_000_000);
+    const before = bytes.slice();
+    expect(() => retimeMp4(bytes, 4, { inPlace: true })).toThrow(/elst box claims 1000000 entries/);
+    // in place and refused: not one byte was written
+    expect(Buffer.from(bytes).equals(Buffer.from(before))).toBe(true);
+  });
+
+  it("a header box whose version says it is longer than it is (reads would run into the next box)", () => {
+    // mdhd version 1 puts the timescale at +20 and a 64-bit duration after it: 32 bytes the 24-byte v0 body has not got
+    const bytes = providerLikeClip();
+    const [body] = find(bytes, ["moov", "trak", "mdia", "mdhd"]);
+    bytes[body] = 1;
+    refuses(bytes, /mdhd box is truncated/);
+  });
+
+  it("header boxes cut short by their own size field", () => {
+    for (const path of [
+      ["moov", "trak", "mdia", "mdhd"],
+      ["moov", "mvhd"],
+      ["moov", "trak", "tkhd"],
+      ["moov", "trak", "mdia", "hdlr"],
+    ]) {
+      const bytes = providerLikeClip();
+      const [body] = find(bytes, path);
+      u32(bytes, body - 8, 12); // the box now ends 4 bytes into its body; what follows is read as boxes, not as its fields
+      const before = bytes.slice();
+      expect(() => retimeMp4(bytes, 4)).toThrow();
+      expect(Buffer.from(bytes).equals(Buffer.from(before))).toBe(true);
+    }
+  });
+
+  it("a size-0 box and a size-1 (64-bit) box whose large size is cut off", () => {
+    const zero = providerLikeClip();
+    const [body] = find(zero, ["moov"]);
+    u32(zero, body - 8, 0); // "to the end of the file": the mdat is swallowed, the moov is still parsed inside its bytes
+    const r = retimeMp4(zero, 4);
+    expect(Math.abs(r.after - 4)).toBeLessThan(5e-4);
+
+    const wide = providerLikeClip();
+    u32(wide, find(wide, ["moov"])[0] - 8, 1); // declares a 64-bit size, but the next 8 bytes are the mvhd header, not a size
+    refuses(wide, /no moov|truncated|fragmented/);
+  });
+
+  it("a moov cut off mid-way, and random bytes", () => {
+    const bytes = providerLikeClip();
+    const [, end] = find(bytes, ["moov"]);
+    const cut = bytes.subarray(0, end - 40);
+    expect(() => retimeMp4(cut, 4)).toThrow();
+    const noise = new Uint8Array(4096);
+    for (let i = 0; i < noise.length; i++) noise[i] = (i * 7919) & 0xff;
+    expect(() => retimeMp4(noise, 4)).toThrow(/no moov/);
+    expect(isIsoBmff(noise)).toBe(false);
+    expect(isIsoBmff(providerLikeClip())).toBe(true);
+    expect(isIsoBmff(new Uint8Array([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70]))).toBe(false); // claims 24 bytes, has 8
+  });
+
+  it("in place: the caller's own buffer is retimed with no second copy", () => {
+    const bytes = providerLikeClip();
+    const r = retimeMp4(bytes, 4.004, { inPlace: true });
+    expect(r.bytes).toBe(bytes);
+    expect(Math.abs(r.after - 4.004)).toBeLessThan(5e-4);
   });
 });
