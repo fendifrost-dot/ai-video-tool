@@ -153,6 +153,34 @@ describe("cutting to the frame", () => {
     }
   });
 
+  it("a length off the frame grid ends the file exactly there — not on the next frame, not half a millisecond short", async () => {
+    const source = bytesOf("tiny_h264_faststart.mp4");
+    const read = reader(source);
+    const track = (await probeVideo(read)).video!;
+    const g = globalThis as unknown as { VideoFrame?: unknown };
+    const had = g.VideoFrame;
+    g.VideoFrame = class {
+      timestamp: number;
+      constructor(_src: unknown, init: { timestamp: number }) {
+        this.timestamp = init.timestamp;
+      }
+      close() {}
+    };
+    try {
+      // 1.03 s at 24 fps is 24.72 frames: 25 frames are kept (the last comes on at 1.000 s) and the file ends at 1.030 s,
+      // not at the 25th frame's natural end (1.0417 s) — the case a 4 s plan on a 59.94 fps take hits (4.004 s before)
+      const cut = await cutVideoExact(read, track, 0.7, 1.03, codecs({ encoded: [], keyRequests: [] }));
+      expect(cut.frames).toBe(25);
+      expect(cut.seconds).toBe(1.03);
+      const out = (await probeVideo(reader(cut.bytes))).video!;
+      expect(out.sampleCount).toBe(25);
+      expect(out.duration).toBeGreaterThanOrEqual(1.03);
+      expect(out.duration).toBeCloseTo(1.03, 5);
+    } finally {
+      g.VideoFrame = had;
+    }
+  });
+
   it("refuses plainly where the browser has no encoder", async () => {
     const source = bytesOf("tiny_h264_faststart.mp4");
     const track = (await probeVideo(reader(source))).video!;

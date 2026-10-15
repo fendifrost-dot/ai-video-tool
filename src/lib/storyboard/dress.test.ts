@@ -92,6 +92,11 @@ describe("the dress window — handles, the 4 s minimum, billed seconds", () => 
       expect(r.window.seconds).toBe(4);
       expect(r.window.billedSeconds).toBe(4);
     }
+    // a shot whose handles already fill (3.95, 4] s is the minimum, not a fifth second (10 → 12.73 is 3.98 s with handles)
+    const near = dressWindow({ shotIn: 10, shotOut: 12.73, takeSeconds: 100 });
+    if (!near.ok) throw new Error(near.why);
+    expect(near.window.seconds).toBe(4);
+    expect(near.window.billedSeconds).toBe(4);
     // a take exactly 4 s long is enough; one under is refused
     expect(dressWindow({ shotIn: 1, shotOut: 2.5, takeSeconds: 4 })).toMatchObject({ ok: true, window: { start: 0, end: 4, seconds: 4 } });
     expect(dressWindow({ shotIn: 1, shotOut: 2.5, takeSeconds: 3.99 })).toMatchObject({ ok: false });

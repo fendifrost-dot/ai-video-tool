@@ -125,8 +125,10 @@ export function dressWindow(input: {
     notes.push(
       `the take ends ${(end - shotOut).toFixed(2)} s after the shot, so the tail handle is short — the swap's soft last half-second may show`,
     );
-  // fill the seconds that are billed anyway, a guard under the whole second
-  const billed = dressBilledSeconds(end - start + DRESS_BILLING_GUARD);
+  // fill the seconds that are billed anyway, a guard under the whole second; a window that already fits the minimum
+  // is the minimum (3.98 s with handles is a 4 s cut, not a 4.95 s one)
+  const natural = end - start;
+  const billed = natural <= DRESS_MIN_SOURCE_SECONDS ? DRESS_MIN_SOURCE_SECONDS : dressBilledSeconds(natural + DRESS_BILLING_GUARD);
   if (billed > DRESS_MAX_SOURCE_SECONDS)
     return {
       ok: false,
