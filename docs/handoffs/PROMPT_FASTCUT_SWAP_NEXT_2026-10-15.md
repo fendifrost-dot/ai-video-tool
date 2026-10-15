@@ -25,8 +25,8 @@ You are continuing AVT (repo `fendifrost-dot/ai-video-tool`, Lovable Supabase `q
 |---|---|---|
 | Fast-cut pace (default), director-set lengths, "Re-cut at this pace (candidate)" | merged `200681b` (PR #257) | architecture APPROVE (3 rounds) and security APPROVE (2 rounds), recorded in the PR; 2,686 tests; CI green |
 | Treatment page card "Pace and clip lengths" | in #257 | Fast / Cinematic choice; seconds for high, mid and low energy; live shot count; warns when the lengths force a cinematic cut |
-| Frontend publish | `deploy_project` called ~00:04 UTC 15 Oct | VERIFY (see below) |
-| `treatment-writer-proxy` redeploy (its new short-shot rule) | requested through Lovable chat, message `umsg_01m4ye103rfe9stybychrgmbsh` | VERIFY: read that message's reply |
+| Frontend publish | live (OBSERVED ~00:12 UTC 15 Oct, second `deploy_project`; the first ran before Lovable synced the merge) | `projects._id.treatment-CAkpvDun.js` contains "Pace and clip lengths" and "Re-cut at this pace" |
+| `treatment-writer-proxy` redeploy (its new short-shot rule) | deployed from `200681b` (Lovable reply to `umsg_01m4ye103rfe9stybychrgmbsh`) | source_sha256 `4d338298…`; unauthenticated POST answers 401 |
 | Pacing preview, 0:00–1:11 of YSL, 39 shots | posted in chat | existing clips re-cut into the fast slots; not new scenes; not in the repo (it contains the song) |
 | Swap keyframe (Grok garment edit, coat only) on take shot 19, frame 0 | look `3bb1dafd-891b-48aa-b06a-720d52fd6e41`, $0.12 | `look-composites/…/3bb1dafd….jpg`; pose, face and room kept, coat construction right (OBSERVED by the agent; Fendi has not judged it) |
 
