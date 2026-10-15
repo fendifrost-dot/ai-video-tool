@@ -16,6 +16,7 @@ import {
 import { coverageGaps } from "@/lib/treatment/beatCoverage";
 import { applyCoverageDefaults, DEFAULT_COVERAGE_PRESETS } from "@/lib/treatment/coverage";
 import { buildClipGrid } from "@/lib/treatment/grid";
+import { gridPaceOptions, parseCutSettings, withCutSettings, type CutSettings } from "@/lib/treatment/cutSettings";
 import type { ShotOverride } from "@/lib/treatment/overrides";
 import { clearTreatment, fingerprint, parseTreatmentDoc, withTreatmentDoc, type TreatmentDoc, type TreatmentMode } from "@/lib/treatment/treatmentDoc";
 import { copyContinuityEntities } from "@/lib/queries/continuity";
@@ -38,6 +39,13 @@ async function saveTreatmentJson(projectId: string, value: Record<string, unknow
 export async function saveTreatment(projectId: string, existing: unknown, doc: TreatmentDoc, variationId?: string | null): Promise<Record<string, unknown>> {
   // the text that is replaced is kept by the database (treatment_versions); this says what replaced it
   const next = withTreatmentDoc(existing, doc, { what: "edit", at: new Date().toISOString() });
+  await saveTreatmentJson(projectId, next, variationId);
+  return next;
+}
+
+/** Save the board's cut settings (pace and shot lengths). Shots already on the board are not moved. */
+export async function saveCutSettings(projectId: string, existing: unknown, cut: CutSettings, variationId?: string | null): Promise<Record<string, unknown>> {
+  const next = withCutSettings(existing, cut);
   await saveTreatmentJson(projectId, next, variationId);
   return next;
 }
@@ -161,7 +169,7 @@ export type WriteStoryboardInput = {
    * recoverable revision, and the corrected breakdown is reviewed beside it. The candidate copies this variation's
    * direction and treatment text and starts with no director edits; it is not made active.
    */
-  candidate?: { name: string } | null;
+  candidate?: { name: string; recut?: boolean } | null;
 };
 
 export type WriteStoryboardResult = {
@@ -178,15 +186,17 @@ export type WriteStoryboardResult = {
 
 /** One treatment-model call: (optionally) the treatment text, and the scene of every box it may rewrite. */
 export async function writeStoryboardFromTreatment(input: WriteStoryboardInput): Promise<WriteStoryboardResult> {
-  const beatGrid = buildClipGrid({ analysis: input.analysis, durationSeconds: input.durationSeconds ?? null, lyrics: input.lyricLines ?? null });
-  const grid = input.boxes.length > 0 ? gridFromBoxes(input.boxes, beatGrid) : beatGrid;
+  // the board's own cut settings (pace and shot lengths, Treatment page) decide a fresh cut
+  const beatGrid = buildClipGrid({ analysis: input.analysis, durationSeconds: input.durationSeconds ?? null, lyrics: input.lyricLines ?? null, ...gridPaceOptions(parseCutSettings(input.treatmentJson)) });
+  // a re-cut candidate takes a fresh cut of the song (at the board's saved pace and lengths) instead of this board's windows
+  const grid = input.boxes.length > 0 && !input.candidate?.recut ? gridFromBoxes(input.boxes, beatGrid) : beatGrid;
   if (grid.length === 0) throw new Error("The song has not been analysed yet — Setup needs its length and beat before boxes can be cut.");
   // when the writer writes the text, `concept` is only a hint from the director (empty = none)
   const concept = input.aiWritesText ? (input.conceptHint?.trim() ?? "") : input.treatmentText.trim();
   if (!input.aiWritesText && !concept) throw new Error("Write the treatment first, or let the AI write it.");
 
   // a candidate is a new variation: the writer is told the candidate's id (its run is the candidate's evidence), the
-  // grid is this board's cut (so the candidate's shots are this board's windows, one to one), and nothing here changes
+  // grid is this board's cut (so the candidate's shots are this board's windows, one to one) unless it is a re-cut, and nothing here changes
   const text0 = input.aiWritesText ? "" : input.treatmentText;
   let targetVariationId = input.variationId;
   let candidateVariationId: string | null = null;
@@ -259,6 +269,8 @@ export async function writeStoryboardFromTreatment(input: WriteStoryboardInput):
     clips: draft.clips,
     model: draft.model,
     generated_at: at,
+    // the cut settings the shots were cut with go with them (a candidate is cut, and re-cut, the same way)
+    cut: withCutSettings(null, parseCutSettings(input.treatmentJson)).cut,
   };
   // a new text replaces the old one: the old one is kept as a version, labelled as replaced by this generation
   await saveTreatmentJson(input.projectId, input.aiWritesText ? withTreatmentDoc(record, doc, { what: "generate", at }) : withTreatmentDoc(record, doc), targetVariationId);

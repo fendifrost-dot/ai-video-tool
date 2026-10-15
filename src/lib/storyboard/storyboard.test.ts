@@ -656,6 +656,16 @@ describe("writing the storyboard from the treatment", () => {
     expect(energyForWindow({ start: 100, end: 104 }, beat)).toBe("mid");
   });
 
+  it("a drop inside a window makes the window a drop, even when a short fast-cut drop shot overlaps it least", () => {
+    const grid = [
+      { key: "c1", start: 0, end: 3, section: "verse", energy: "mid" as const },
+      { key: "c2", start: 3, end: 4.5, section: "hook", energy: "drop" as const },
+      { key: "c3", start: 4.5, end: 8, section: "hook", energy: "high" as const },
+    ];
+    expect(energyForWindow({ start: 0, end: 8 }, grid)).toBe("drop");
+    expect(energyForWindow({ start: 4.5, end: 8 }, grid)).toBe("high");
+  });
+
   it("with no boxes, every drafted clip becomes a box", () => {
     const plan = planRewrite({ boxes: [], boxIdsWithMedia: new Set(), drafted: [spec("c001", 0, 4), spec("c002", 4, 8)], sections: { c001: "intro" }, existingRows: [], lyricLines: undefined, at: AT });
     expect(plan.inserts.map((w) => [w.spec_key, w.song_section])).toEqual([
