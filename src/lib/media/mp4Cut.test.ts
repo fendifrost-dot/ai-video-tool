@@ -17,6 +17,21 @@ describe("the size a cut is written at", () => {
 });
 
 describe("laying encoded frames into a file", () => {
+  it("ends the file exactly where the last frame ends: two half-unit roundings never add a unit", async () => {
+    const source = bytesOf("tiny_h264_faststart.mp4");
+    const track = (await probeVideo(reader(source))).video!;
+    const s0 = track.sample(0)!;
+    const s1 = track.sample(1)!;
+    // 16 650 µs is 1498.5 units at 90 kHz; the end at 33 300 µs is exactly 2997 units. Rounding each on its own
+    // gives 1499 + 1499 = 2998 — a 4 s file would be 4.000011 s, one unit over the length asked for
+    const samples: EncodedSample[] = [
+      { data: source.subarray(s0.offset, s0.offset + s0.size), timestamp: 0, key: true },
+      { data: source.subarray(s1.offset, s1.offset + s1.size), timestamp: 16650, key: false },
+    ];
+    const out = (await probeVideo(reader(muxAvc(samples, track.description!, track.width!, track.height!, 16650)))).video!;
+    expect(Math.round(out.duration * 90000)).toBe(2997);
+  });
+
   it("writes an MP4 this reader opens, with every frame where it was put", async () => {
     const source = bytesOf("tiny_h264_faststart.mp4");
     const track = (await probeVideo(reader(source))).video!;
@@ -133,6 +148,34 @@ describe("cutting to the frame", () => {
       const out = (await probeVideo(reader(cut.bytes))).video!;
       expect(out.sampleCount).toBe(24);
       expect(out.duration).toBeCloseTo(1, 2);
+    } finally {
+      g.VideoFrame = had;
+    }
+  });
+
+  it("a length off the frame grid ends the file exactly there — not on the next frame, not half a millisecond short", async () => {
+    const source = bytesOf("tiny_h264_faststart.mp4");
+    const read = reader(source);
+    const track = (await probeVideo(read)).video!;
+    const g = globalThis as unknown as { VideoFrame?: unknown };
+    const had = g.VideoFrame;
+    g.VideoFrame = class {
+      timestamp: number;
+      constructor(_src: unknown, init: { timestamp: number }) {
+        this.timestamp = init.timestamp;
+      }
+      close() {}
+    };
+    try {
+      // 1.03 s at 24 fps is 24.72 frames: 25 frames are kept (the last comes on at 1.000 s) and the file ends at 1.030 s,
+      // not at the 25th frame's natural end (1.0417 s) — the case a 4 s plan on a 59.94 fps take hits (4.004 s before)
+      const cut = await cutVideoExact(read, track, 0.7, 1.03, codecs({ encoded: [], keyRequests: [] }));
+      expect(cut.frames).toBe(25);
+      expect(cut.seconds).toBe(1.03);
+      const out = (await probeVideo(reader(cut.bytes))).video!;
+      expect(out.sampleCount).toBe(25);
+      expect(out.duration).toBeGreaterThanOrEqual(1.03);
+      expect(out.duration).toBeCloseTo(1.03, 5);
     } finally {
       g.VideoFrame = had;
     }

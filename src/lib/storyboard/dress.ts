@@ -14,8 +14,10 @@
  *
  * Pacing: most final cuts are 1.5–2 s, and the swap takes at least 4 s of source and bills every started second. So
  * the handles below are MINIMUMS; the window then grows to fill the seconds that are billed anyway (it costs nothing
- * more), split between head and tail, clamped to the take. A cut stays a hair under a whole second (BILLING_GUARD) so
- * a frame of rounding never starts another billed second.
+ * more), split between head and tail, clamped to the take. Over the minimum, a cut stays a hair under a whole second
+ * (BILLING_GUARD) so a frame of rounding never starts another billed second. At the minimum it is exactly 4 s: the
+ * provider refuses anything shorter at intake (3.954 s cuts were refused on 15 Oct 2026), and the frame-exact cutter
+ * ends the file at the length asked for, so the file is 4.000 s, not 4 s plus a frame.
  *
  * Pure: no React, no Supabase. The browser side is dressSubmit.ts; the server side is _shared/jobProgress.ts.
  */
@@ -106,7 +108,7 @@ export function dressWindow(input: {
   if (!(shotOut > shotIn))
     return { ok: false, why: "the shot has no stretch of the take to dress" };
   const takeEnd = input.takeSeconds != null && input.takeSeconds > 0 ? input.takeSeconds : Infinity;
-  if (takeEnd < DRESS_MIN_SOURCE_SECONDS - DRESS_BILLING_GUARD)
+  if (takeEnd < DRESS_MIN_SOURCE_SECONDS)
     return {
       ok: false,
       why: `the take is ${takeEnd.toFixed(2)} s long; the swap needs at least ${DRESS_MIN_SOURCE_SECONDS} s of it`,
@@ -123,14 +125,18 @@ export function dressWindow(input: {
     notes.push(
       `the take ends ${(end - shotOut).toFixed(2)} s after the shot, so the tail handle is short — the swap's soft last half-second may show`,
     );
-  // fill the seconds that are billed anyway, a guard under the whole second
-  const billed = dressBilledSeconds(end - start + DRESS_BILLING_GUARD);
+  // fill the seconds that are billed anyway, a guard under the whole second; a window that already fits the minimum
+  // is the minimum (3.98 s with handles is a 4 s cut, not a 4.95 s one)
+  const natural = end - start;
+  const billed = natural <= DRESS_MIN_SOURCE_SECONDS ? DRESS_MIN_SOURCE_SECONDS : dressBilledSeconds(natural + DRESS_BILLING_GUARD);
   if (billed > DRESS_MAX_SOURCE_SECONDS)
     return {
       ok: false,
       why: `${(shotOut - shotIn).toFixed(1)} s plus handles is longer than one swap carries (${DRESS_MAX_SOURCE_SECONDS} s): split the shot first`,
     };
-  const target = Math.min(billed - DRESS_BILLING_GUARD, takeEnd);
+  // never under the provider's minimum: Higgsfield refuses a source under 4.0 s at intake (it refused 3.954 s cuts
+  // on 15 Oct 2026), so the guard only ever trims a window that is over the minimum
+  const target = Math.min(Math.max(DRESS_MIN_SOURCE_SECONDS, billed - DRESS_BILLING_GUARD), takeEnd);
   const extra = target - (end - start);
   if (extra > 0) {
     // half before, half after; what one side cannot take (the take ends) goes to the other
@@ -141,7 +147,7 @@ export function dressWindow(input: {
     end += after;
   }
   const seconds = end - start;
-  if (seconds < DRESS_MIN_SOURCE_SECONDS - DRESS_BILLING_GUARD - 1e-6)
+  if (seconds < DRESS_MIN_SOURCE_SECONDS - 1e-6)
     return {
       ok: false,
       why: `only ${seconds.toFixed(2)} s of take is available around this shot; the swap needs ${DRESS_MIN_SOURCE_SECONDS} s`,

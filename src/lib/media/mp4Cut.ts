@@ -66,7 +66,10 @@ export function muxAvc(samples: readonly EncodedSample[], avcC: Uint8Array, widt
   const shown = samples.map((s) => units(s.timestamp));
   // decode times are the presentation times in order: with no reordering the two are the same list
   const decode = [...shown].sort((a, b) => a - b);
-  const deltas = decode.map((t, i) => (i + 1 < decode.length ? decode[i + 1] - t : Math.max(1, units(frameUs))));
+  // the last delta is measured to the file's end, not rounded on its own, so the deltas sum to exactly the end
+  // (two half-unit roundings could otherwise add one unit and make a 4 s file 4.000011 s)
+  const endUs = Math.max(...samples.map((s) => s.timestamp)) + frameUs;
+  const deltas = decode.map((t, i) => (i + 1 < decode.length ? decode[i + 1] - t : Math.max(1, units(endUs) - t)));
   const raw = shown.map((t, i) => t - decode[i]);
   const shift = Math.max(0, -Math.min(...raw));
   const total = samples.reduce((n, s) => n + s.data.byteLength, 0);
@@ -222,9 +225,13 @@ export async function cutVideoExact(read: RangeRead, track: Mp4Track, start: num
   if (failure) throw failure;
   if (!avcC) throw new Error("the encoder gave no stream description");
   if (out.length === 0 || firstUs == null) throw new Error("no frames came out of that stretch of the file");
-  const bytes = muxAvc(out, avcC, size.width, size.height, Math.round(frameSeconds * 1e6));
+  // the last frame runs to the length asked for, no further and no shorter: a 4 s cut is a 4.000 s file, not 4 s
+  // plus a frame (a provider that bills every started source second would bill the frame as a whole second) and not
+  // 4 s minus the half-millisecond band the frame filter leaves (a provider with a 4 s floor would refuse it)
   const lastUs = Math.max(...out.map((s) => s.timestamp));
-  return { bytes, start: firstUs / 1e6, seconds: (lastUs + frameSeconds * 1e6) / 1e6, frames: out.length, method: "exact", width: size.width, height: size.height };
+  const tailUs = Math.max(1, lengthUs - lastUs);
+  const bytes = muxAvc(out, avcC, size.width, size.height, tailUs);
+  return { bytes, start: firstUs / 1e6, seconds: (lastUs + tailUs) / 1e6, frames: out.length, method: "exact", width: size.width, height: size.height };
 }
 
 /**
