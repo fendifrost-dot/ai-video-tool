@@ -99,3 +99,26 @@ export function buildGrokVideoEditAssetInsert(input: {
     },
   };
 }
+
+/**
+ * Which prompt a Grok video edit sends — the billing gate (2026-10-15). The request's prompt wins; otherwise the
+ * Look's tuned base_prompt; a billed run with neither is refused; a dry run with neither shows a placeholder.
+ * The version always describes the prompt actually sent (the Look's version when the Look's prompt is used).
+ */
+export const DRY_RUN_PROMPT_PLACEHOLDER = "(dry-run — prompt not configured)";
+export function resolveGrokEditPrompt(input: {
+  requestPrompt?: string | null;
+  lookBasePrompt?: string | null;
+  dryRun?: boolean;
+  requestVersion?: string | null;
+  lookVersion?: string | null;
+}): { ok: true; prompt: string; source: "request" | "look" | "none"; version: string } | { ok: false; error: "prompt_required" } {
+  const req = (input.requestPrompt ?? "").trim();
+  const look = (input.lookBasePrompt ?? "").trim();
+  const reqVersion = (input.requestVersion ?? "").trim();
+  const lookVersion = (input.lookVersion ?? "").trim();
+  if (req) return { ok: true, prompt: req, source: "request", version: reqVersion || "unspecified" };
+  if (look) return { ok: true, prompt: look, source: "look", version: lookVersion || reqVersion || "unspecified" };
+  if (!input.dryRun) return { ok: false, error: "prompt_required" };
+  return { ok: true, prompt: DRY_RUN_PROMPT_PLACEHOLDER, source: "none", version: reqVersion || "unspecified" };
+}

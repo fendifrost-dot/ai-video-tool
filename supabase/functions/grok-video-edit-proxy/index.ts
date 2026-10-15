@@ -11,6 +11,7 @@ import { pickGrokVideoEditReferencePaths, pickGrokGarmentReferencePaths } from "
 import { composeConstraintsFirst, lookSpecificationText, orderLookReferences, resolveReferencePolicy, type ReferencePolicy } from "../_shared/lookReferences.ts";
 import { getProviderCapability } from "../_shared/providerCapabilities.ts";
 import {
+  resolveGrokEditPrompt,
   buildGrokVideoEditAssetInsert,
   buildGrokVideoEditXaiBody,
   redactSignedUrls,
@@ -349,14 +350,15 @@ serve(async (req) => {
     referencePlan = garmentPaths.map((p) => ({ role: "primary_piece", featureId: body.wardrobeFeatureId, file: p.split("/").pop() ?? p }));
   }
   // the request's prompt wins; otherwise the Look's tuned prompt; a billed run never goes out with neither
-  const promptSource: "request" | "look" | "none" = requestPrompt ? "request" : lookBasePrompt ? "look" : "none";
-  if (promptSource === "none" && !body.dryRun) {
+  const resolved = resolveGrokEditPrompt({ requestPrompt, lookBasePrompt, dryRun: body.dryRun, requestVersion: body.promptVersion, lookVersion: lookPromptVersion });
+  if (!resolved.ok) {
     return json(400, {
       error: "prompt_required",
       detail: "This Look has no tuned base_prompt in its recipe and the request carries no prompt.",
     });
   }
-  const effectivePrompt = requestPrompt || lookBasePrompt || "(dry-run — prompt not configured)";
+  const promptSource = resolved.source;
+  const effectivePrompt = resolved.prompt;
   // Prompt composition: the Look's hard construction constraints go FIRST (the mechanism that
   // took the hook hit rate from 1/5 to 4/4 on 2026-09-21), the structured Look specification
   // LAST. Both are Look data; the client's prompt is the body in between.
@@ -390,7 +392,7 @@ serve(async (req) => {
     referenceUrls,
   });
 
-  const promptVersion = body.promptVersion?.trim() || (promptSource === "look" ? lookPromptVersion : "") || "unspecified";
+  const promptVersion = resolved.version;
   const plan = {
     lane: "architecture_c_grok_video_edit",
     model,
