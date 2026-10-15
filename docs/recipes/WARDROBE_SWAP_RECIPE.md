@@ -125,10 +125,14 @@ files. The cuts went up through Higgsfield's own media store because the MCP can
 | Shot | Song start | Cut | Request | Outcome |
 |---|---|---|---|---|
 | c047 | 82.025 | 4.955 s | `4c549907` | **ran**: filed as asset `f540b6be` (`derived_from.method dressed`, output 4.7083 s, conformed 4.9551 s, ratio 1.052415, song_start 82.025), an unselected alternate on the shot |
-| c041 | 71.215 | 3.954 s, then 4.004 s | `1600b766`, then `682398db` | refused twice (below) |
-| c044 | 75.885 | same | `aa1e363f`, then `7f75961b` | refused twice |
-| c045 | 77.855 | same | `70c23600`, then `1212bdf5` | refused twice |
-| c046 | 79.82 | same | `07a0deb9`, then `3bd0f9c8` | refused twice |
+| c041 | 71.215 | 3.954 s, then 4.004 s | `1600b766`, then `682398db`, then **`6b1e6ea8`** | refused twice (below), then **ran after the top-up**: asset `2f55f4fa` (output 3.7083 s, conformed 4.0039 s, ratio 1.079694), sync at 71.215, assignment `912e6c7a` unselected |
+| c044 | 75.885 | same | `aa1e363f`, then `7f75961b`, then **`b7babd92`** | refused twice, then ran: asset `6d8043a2` (same numbers), sync at 75.885, assignment `f49996d8` unselected |
+| c045 | 77.855 | same | `70c23600`, then `1212bdf5`, then **`9b9feb5f`** | refused twice, then ran: asset `e6788d22`, sync at 77.855, assignment `7b1816da` unselected |
+| c046 | 79.82 | same | `07a0deb9`, then `3bd0f9c8`, then **`9407b44b`** | refused twice, then ran: asset `92c15951`, sync at 79.82, assignment `c2f3b2d9` unselected |
+
+All four 4.004 s sources came back 3.7083 s (ratio 1.079694, the same ~8 % speed-up as every run before); the tick
+conformed each to 4.0039 s by container timescale with no audio dropped. Side-by-sides (take | dressed) and a stills
+sheet were posted to Fendi at 07:36 UTC; he judges them.
 
 Two findings, both VERIFIED from the provider's own answers:
 
@@ -139,8 +143,7 @@ Two findings, both VERIFIED from the provider's own answers:
    refused at intake and should be unbilled; confirm on the invoice.
 2. **The Higgsfield organisation balance behind Control Center's key ran out** after c047. The four 4.004 s re-runs were
    refused with "Your credit balance is too low to complete this request. Please top up your balance and try again."
-   The four cuts are in Higgsfield's media store (`08c08157`, `4f433e99`, `2d4a6aa6`, `e9f0aacc`, 24 h upload links;
-   the CDN copies stay) and the refused rows carry the full request, so the re-run after a top-up is a resubmit, not a
-   re-plan: ≈ $13.62 at 5 started seconds each.
+   Fendi topped the balance up (07:27 UTC) and the same four cuts, still in Higgsfield's media store (`08c08157`,
+   `4f433e99`, `2d4a6aa6`, `e9f0aacc`), were resubmitted as new rows and all ran within six minutes (ledger row 35).
 
-The c047 result was posted to Fendi as take | dressed. He judges it; the agent does not.
+All five Chicago windows are now dressed and filed as unselected alternates. Fendi judges them; the agent does not.
