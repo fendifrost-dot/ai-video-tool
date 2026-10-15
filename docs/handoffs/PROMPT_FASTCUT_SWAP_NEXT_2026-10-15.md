@@ -43,8 +43,19 @@ The test runs on take shot 19, asset `cc76f6a3`: 4.0 s, 1080×1920, 59.94 fps.
 - **Arm B — Higgsfield Genjutsu object-swap, 720p, coat + cap: submitted.**
   - CC job `a7bb6a7e-5578-4b64-8692-242870bb541b`, Higgsfield request `2fa69e06-b097-4946-b2b3-b1aa81894662`.
   - Expected cost $0.681 per source second, rounded up: $2.72 for 4 s, or $3.41 if 4.004 s rounds to 5 s. CC's estimate field said 68 ¢, which is one second only.
-  - Result: see the swap section of the session report or the job status. Status is polled with `proxy-provider-call` → `video-providers-job-status {provider: higgsfield, id: 2fa69e06-…}`.
-  - Note: CC's job id answers 404 there. Use the Higgsfield request id.
+  - **Result: completed.**
+    - Output: `https://d3u0tzju9qaucj.cloudfront.net/45ee058b-986d-49f2-adc9-280bbafe42a2/bf7c24d0-2847-48d8-9c23-25daf20cbdfc.mp4` (Higgsfield CDN).
+    - It is **not filed in AVT**: the CC `video_to_video` route leaves no provider_jobs row. Note this ingest gap.
+    - Posted to Fendi side by side with the take, with the take's audio.
+  - **OBSERVED by the agent, not a verdict:**
+    - Coat and beige cap are swapped on every frame.
+    - Head turns and arm movements are followed.
+    - Output is 720×1280 at 24 fps and **3.71 s against the take's 4.00 s**, the same ~7 % speed-up seen on 1 Oct. Mouth and gesture timing therefore drift ahead of the take toward the end.
+    - No SAINT LAURENT lettering is readable on the cap.
+    - It is softer than the 1080p take.
+    - The glasses frames look heavier in the last second.
+  - Fendi gives the verdict.
+  - Status is polled with `proxy-provider-call` → `video-providers-job-status {provider: higgsfield, id: 2fa69e06-…}`. CC's own job id answers 404 there; use the Higgsfield request id.
 
 ## Verify first (cheap)
 
