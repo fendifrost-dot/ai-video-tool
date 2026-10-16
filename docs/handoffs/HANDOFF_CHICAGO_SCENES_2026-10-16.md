@@ -57,9 +57,11 @@ montages on c041/c044/c045/c046 are still filed as alternates too.
 | The dressed take wears the new outfit | `avt_select provider_jobs` filter `id = 390e3e88…` | `request_payload_json.settings.dress.outfit.key = YSL_BUBBLE_BUCKET`, `status succeeded` |
 | Live code (after Lovable Publish of this PR's merge) | crawl `https://aivideotool.lovable.app/projects` → `index-*.js` → `projects._id.storyboard-*.js` → its `Acceptance-*.js` | `plate-motion-v4-2026-10-16` present, `plate-motion-v3-2026-10-16` absent |
 
+**LIVE (VERIFIED 14:29 UTC):** PR #283 squash `0d4e663`; Lovable `latest_commit_sha` matched; Publish (deployment `2cd5f0ff`); live `index-BZ3qMxY2.js` → `projects._id.storyboard-B7F2CON2.js` → `Acceptance-CF9ywUNR.js` carries `plate-motion-v4-2026-10-16` (1) and v3 (0). No edge function touched.
+
 ## What is NOT done (in order)
 
-1. **Publish v4** (Lovable Publish from this PR's merge SHA), then re-animate the runway still `435ff4dd` and the
+1. ~~Publish v4~~ DONE 14:29 UTC (above); then re-animate the runway still `435ff4dd` and the
    walrus still `d783e85a` (`avt-press.mjs animate-plate … --shot c044` / `--shot c045`, with their events), judge on
    frames 0/40/80/119 (the camera must stay on the platform; no bus), then `composite` c044 and re-`composite` c045.
 2. **c041 composite** and **c045 montage**: pending at hand-off time; results in the ledger when they land.
