@@ -184,14 +184,26 @@ Findings (OBSERVED from the filed clips, dense 2 fps frame sheets):
    can skip.
 2. **Longer sources speed up less:** output/source ratio 1.023–1.043 for 6–11 s sources against 1.0797 for every 4 s
    source. The tick's container-timescale conform absorbs either.
-3. **Re-run (ledger row 37):** coldW1 and coldW2 resubmitted as new rows `cde54409` (request `b9460576`) and `501f3dc1`
-   (request `48b0d51e`) with `recipe-coat-v2-capfirst-2026-10-15` — the cap clause first, "from the very first frame to
-   the last", and "no patch, badge or logo anywhere on the coat". The rejected assets stay filed (`approval_status
-   rejected`, reason in `notes`) as provenance; nothing was overwritten. **Both re-runs were refused at intake** —
-   "Your credit balance is too low" — the Higgsfield balance behind Control Center's key ran out again after row 36's
-   $35.42. The tick finalized both rows `failed` ($0). They need a top-up and two new rows; the prompt is in each
-   failed row's `settings.dress.prompt` and the sources are still in Higgsfield's media store (coldW1 `970e3fda`,
-   coldW2 `32f9f06b`).
+3. **Re-runs (ledger rows 37–39).** coldW1 and coldW2 were resubmitted with `recipe-coat-v2-capfirst-2026-10-15` — the cap
+   clause first, "from the very first frame to the last", "no patch, badge or logo anywhere on the coat". The first pair
+   (rows `cde54409`, `501f3dc1`) was refused at intake ("Your credit balance is too low", $0, row 37). After Fendi's
+   16 Oct top-up the same requests went again as new rows (row 38, $11.58):
 
-Covered-shot assignments added for the four passing windows (all `role performance`, `is_primary false`, variation
-`358363e6`): coldW3 → c063, c064, c065, c066; entrW1 → c086, c087; entrW2 → c089, c090; entrW3 → c093.
+   | Window | Row | Request | Asset | Verdict (agent, 2 fps dense sheet + cap crops) |
+   |---|---|---|---|---|
+   | coldW2 | `c2c869b3` | `420c9d91` | `82e04339` (8.9591, 1.028801) | **PASS** — Y cap from frame 0 (faint and oblique in the first second while he faces three-quarter away, clear whenever the front faces camera), coat right, no sleeve patch, face/glasses/beard intact. Assignments on c059 (tick), c060, c061 (agent). |
+   | coldW1 | `486a6d06` | `580d3b05` | `0de457ac` (7.9583, 1.032432) | **REJECTED** — the cap is black from the first frame now (the wording fixed the colour swap) but carries no ivory Y on any frame; coat right. |
+
+   So cap-first wording took the coat recipe from 1/3 to 2/4 on these windows; the failure mode moved from "cap not
+   swapped" to "cap swapped without its mark". The next lever, per the plan, is reference order: coldW1 went a third
+   time as row `81cc8a5e` (request `7c3b60c5`, `recipe-coat-v3-caprefs-first-2026-10-16`: the three cap images first,
+   the coat fourth, prompt text unchanged except the image numbers; row 39, $5.45). Verdict: asset `514901e3` **REJECTED** — coat right; the cap is black from frame 0 but its ivory mark sits at the APEX
+   of the crown, undersized, and only becomes a proper front-panel Y in the last ~1.5 s (a morph). Three rejections on
+   this one source: in coldW1 he faces three-quarter away with the camera low for the first seconds, so the front panels
+   are rarely square to the lens — the model never gets a clean look at where the Y goes. coldW2 and coldW3 (front-on
+   openings) passed. Next lever for coldW1: two 4 s windows (the 4 s Chicago sources held the cap 5/5), not more words.
+   All rejected assets stay filed (`approval_status rejected`, reason in `notes`) as provenance; nothing was overwritten.
+
+Covered-shot assignments added for the passing windows (all `role performance`, `is_primary false`, variation
+`358363e6`): coldW3 → c063, c064, c065, c066; entrW1 → c086, c087; entrW2 → c089, c090; entrW3 → c093; coldW2
+(`82e04339`) → c060, c061.

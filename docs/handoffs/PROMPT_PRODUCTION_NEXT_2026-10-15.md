@@ -25,7 +25,7 @@ overwriting a selection.
 | 2 | Cast and outfits | DONE as data: Mastic jacket + beige/ivory cap for "Chicago, the switch" (70.85–100.36); lambskin coat + Y Varsity cap for "The cold front" (100.36–121.99); trench + confetti shirt + bucket hat for "The clean entrance" (163.31–182.98) | `variation_scenes` for candidate 6; `ib_looks_by_scene/decisions.json` |
 | 3 | Shot plan and performance selection | Candidate 6 marks performance shots c041–c047 (Chicago), c048–c054 (grill ECUs), c055–c066 (cold front), c085–c093 (clean entrance). 22 clips carried from candidate 5 (0–70.85 s). | same report, §C |
 | 4 | Generate scene assets | PHASE 2 DONE for the empty non-performance shots: realism plates for the three performance locations (unselected, under `worlds/`), 34 stills + 34 Kling clips selected on c019–c021, c024, c027, c036, c038, c040, c067–c084, c091, c094–c100. Plate prompt recipe: `docs/recipes/PLATE_REALISM_PROMPT.md` (Fendi: "they need to look real"). | `docs/review/production_2026-10-15/PHASE2_PLATES_STILLS_DRESS.md`; ledger rows 30–32 |
-| 5 | Process only selected performance segments | TOOL LIVE ("Dress this shot", PR #260; 4 s floor fix PR #262). **Cold front and clean entrance dressed in grouped windows (15 Oct night, ledger rows 36–37; recipe doc last section):** coldW3 `1a83a167` (c062–c066), entrW1 `011a1323` (c085–c087), entrW2 `ed28aba0` (c088–c090), entrW3 `51c1156c` (c092–c093) PASS and filed unselected with covered-shot assignments; coldW1 `e09b1a3a` and coldW2 `0e995b73` REJECTED (cap not swapped / cap morph + sleeve patch) and re-run cap-first as rows `cde54409`, `501f3dc1` — both re-runs REFUSED at intake (balance exhausted again), see "Cold-front re-runs — BLOCKED" below. **Chicago fully dressed as unselected alternates:** c042 (`6eea726d`), c047 (`f540b6be`, conformed 4.9551), and after the top-up c041 (`2f55f4fa`), c044 (`6d8043a2`), c045 (`e6788d22`), c046 (`92c15951`), each conformed 4.0039 s, ratio 1.079694, with a derived sync at its song start and `is_primary = false`. Fendi has the side-by-sides; no verdict yet. Cold front (c055–c066, coat) and clean entrance (c085–c093, trench) not dressed. | ledger rows 33–35; `WARDROBE_SWAP_RECIPE.md` "Production: the Chicago windows" |
+| 5 | Process only selected performance segments | TOOL LIVE ("Dress this shot", PR #260; 4 s floor fix PR #262). **Cold front and clean entrance dressed in grouped windows (15 Oct night, ledger rows 36–37; recipe doc last section):** coldW3 `1a83a167` (c062–c066), entrW1 `011a1323` (c085–c087), entrW2 `ed28aba0` (c088–c090), entrW3 `51c1156c` (c092–c093) PASS and filed unselected with covered-shot assignments; coldW1 `e09b1a3a` and coldW2 `0e995b73` REJECTED (cap not swapped / cap morph + sleeve patch); re-run cap-first after the 16 Oct top-up (ledger row 38): **coldW2 `82e04339` PASS** (assignments c059–c061), coldW1 `0de457ac` REJECTED (black cap, no Y); coldW1 went a third time with the cap references first (row `81cc8a5e`, ledger row 39) — see "Cold-front re-runs" below. **Chicago fully dressed as unselected alternates:** c042 (`6eea726d`), c047 (`f540b6be`, conformed 4.9551), and after the top-up c041 (`2f55f4fa`), c044 (`6d8043a2`), c045 (`e6788d22`), c046 (`92c15951`), each conformed 4.0039 s, ratio 1.079694, with a derived sync at its song start and `is_primary = false`. Fendi has the side-by-sides; no verdict yet. Cold front (c055–c066, coat) and clean entrance (c085–c093, trench) not dressed. | ledger rows 33–35; `WARDROBE_SWAP_RECIPE.md` "Production: the Chicago windows" |
 | 6 | Integrate and finish | **LANE LIVE 16 Oct 00:52 UTC ("Composite over plate"; PR #266 + CC #69, redeployed and published, verified from this session — see "Composite lane: LIVE" below). First production run not yet made (needs a browser press).** Fendi passed the composite test 15 Oct ("All pass"). The 15 Oct recipe (variant D) is `src/lib/composite/pixels.ts`; the matte is Fal `veed/video-background-removal` via CC (the Runway connector has 2 credits). Restage is NOT an approved production method. | `docs/recipes/DRESS_AND_INSERT_WORKFLOW.md` step 6; `PLATE_REALISM_PROMPT.md` last section |
 | 7 | Review the assembled sequence | NOT STARTED. No timeline rows for candidate 6. | — |
 
@@ -71,28 +71,25 @@ again, the procedure below is the resubmit (the earlier refused rows are `eb1d35
   `conformed_duration` 4.004 ± 0.01 and a derived sync at 71.215 / 75.885 / 77.855 / 79.82. Cost ≈ $3.405 each at 5 started
   seconds (ledger row 34).
 
-## Cold-front re-runs — BLOCKED on a Higgsfield top-up (23:43 UTC 15 Oct)
+## Cold-front re-runs — DONE for coldW2, coldW1 on its third try (16 Oct 01:21–01:45 UTC)
 
-The balance behind Control Center's Higgsfield key ran out again after the six grouped windows (ledger row 36, $35.42).
-The two cap-first re-runs (ledger row 37) were accepted by CC and refused by Higgsfield at intake: rows `cde54409`
-(coldW1, c055–c058) and `501f3dc1` (coldW2, c059–c061) are `failed` with "Your credit balance is too low". Nothing
-was billed.
+Fendi topped up at ≈ 01:15 UTC ("Topped up"). The resubmit went exactly as written in the previous version of this
+section: two NEW rows copying the cap-first request, references re-signed, Higgsfield-store sources, both `running`
+within three minutes, filed by the tick within 12–16 minutes.
 
-When Fendi says he has topped up:
+| Window | Row / request | Asset | Verdict |
+|---|---|---|---|
+| coldW2 c059–c061 | `c2c869b3` / `420c9d91` | `82e04339` (conformed 8.9591, sync 105.355, unselected) | **PASS** — assignments on c059 (tick), c060, c061 (agent) |
+| coldW1 c055–c058 | `486a6d06` / `580d3b05` | `0de457ac` (7.9583, sync 99.46, `rejected`) | REJECTED — black cap, no Y |
+| coldW1 third try | `81cc8a5e` / `7c3b60c5` (`recipe-coat-v3-caprefs-first-2026-10-16`, cap images first) | `514901e3` (7.9583, sync 99.46, `rejected`) | REJECTED — ivory mark at the crown apex, front Y only in the last ~1.5 s |
 
-1. Insert two NEW `provider_jobs` rows copying `request_payload_json` from `cde54409` and `501f3dc1` (do not reuse the
-   failed rows — the tick has finalized them). Keep `promptVersion recipe-coat-v2-capfirst-2026-10-15`.
-2. Sign the four coat references on `wardrobe-refs` (`90e177d5`, `40588200`, `ba3cb919`, `f0450201`, 1 h) and submit
-   through `proxy-provider-call` → `video-providers-higgsfield-model` with `referenceVideoUrl` = Higgsfield media
-   `https://d2ol7oe51mr4n9.cloudfront.net/user_3DpOSQeJ4qh1p66uOWhK1Za6ihs/970e3fda-3009-4340-b417-96facfa81bb8.mp4`
-   (coldW1, duration 8) and `.../32f9f06b-9e8c-4f8f-828f-f14389368fc8.mp4` (coldW2, duration 9). Record
-   `external_job_id` on each new row.
-3. Expected: `running` within a minute; the tick files assets with `conformed_duration` 7.958 / 8.959 and derived syncs
-   at 99.46 / 105.355, unselected. Judge on a 2 fps dense frame sheet: the Y cap must be on the FIRST frame and every
-   frame after, no patch on the coat. Then add unselected assignments for c056–c058 and c060–c061.
-4. Ledger: new row at $11.58 list (17 billed source seconds), running total $117.03.
+Verify (cheap): `avt_select project_assets id=82e04339…` → `approval_status pending`, `metadata_json.conformed_duration 8.9591`;
+`avt_select shot_asset_assignments asset_id=82e04339…` → 3 rows (c059, c060, c061), all `is_primary false`.
 
-If a cap-first prompt fails the same way, the next lever is reference order (cap images first) — not more words.
+Ledger rows 38–39; the recipe doc's "Re-runs" paragraph has the per-frame findings. The reference-order try also failed on the Y, so coldW1 (c055–c058) is still undressed: three rejections on one
+source whose opening faces three-quarter away from a low camera. Next lever: split it into two 4 s windows cut from the
+hero take (`98.6062–102.61` and `102.41–106.5642`, 0.2 s overlap; each billed 5 s at ≈ $3.41) with the cap-first prompt
+— the 4 s Chicago sources held the cap 5/5. Not more prompt words.
 
 ## Composite lane: LIVE since 16 Oct 00:52 UTC (VERIFIED from real output)
 
