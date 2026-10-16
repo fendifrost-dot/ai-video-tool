@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import { Buffer } from "node:buffer";
 import {
   BATCH_ACTIONS,
   BROWSER_SESSION_MIN_REMAINING_SECONDS,
