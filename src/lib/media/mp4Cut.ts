@@ -11,7 +11,8 @@
  * says so: that cut starts early and is longer.
  */
 import type { Mp4Sample, Mp4Track } from "./mp4";
-import { avcSampleDescription, trimVideo, writeMp4 } from "./mp4Trim";
+import { avcSampleDescription, trimVideo, writeMp4, type ColrTag } from "./mp4Trim";
+export type { ColrTag } from "./mp4Trim";
 import type { RangeRead } from "./probe";
 
 export type CutResult = {
@@ -60,7 +61,7 @@ export type EncodedSample = { data: Uint8Array; timestamp: number; key: boolean 
  * Lay encoded samples (decode order, presentation timestamps in microseconds from zero) into an MP4. `frameUs` is the
  * length of the last frame.
  */
-export function muxAvc(samples: readonly EncodedSample[], avcC: Uint8Array, width: number, height: number, frameUs: number, opts: { colr?: "bt709" } = {}): Uint8Array {
+export function muxAvc(samples: readonly EncodedSample[], avcC: Uint8Array, width: number, height: number, frameUs: number, opts: { colr?: ColrTag } = {}): Uint8Array {
   if (samples.length === 0) throw new Error("nothing was encoded");
   const units = (us: number) => Math.round((us * TIMESCALE) / 1e6);
   const shown = samples.map((s) => units(s.timestamp));

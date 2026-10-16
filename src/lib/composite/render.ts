@@ -1,14 +1,23 @@
 /**
  * The composite rendered in the browser: the dressed take and its alpha video are read frame by frame side by side,
  * each frame goes through pixels.ts over the plate, and the result is encoded as H.264 at the take's own size and
- * frame times and written as a self-contained MP4 — tagged BT.709, so no player reads it as 601 and shifts it.
+ * frame times and written as a self-contained MP4 — tagged with the colour the encoder says it wrote (BT.709 or
+ * BT.601), so no player guesses and shifts it.
  *
  * Timing is the take's: every frame keeps its presentation time, so the composite is exactly as long as the dressed
- * take and in sync by construction. The alpha video is paired by index (the model keeps the frame count); when its
- * count differs, its frames are spread over the take's.
+ * take and in sync by construction. The alpha video is paired by TIME (each take frame takes the alpha frame nearest
+ * to it on its own clock, both clocks normalised to their files' lengths), so a frame the model dropped or doubled
+ * costs one frame, not a drift across the window.
  */
 import type { Mp4Track } from "@/lib/media/mp4";
-import { cutSize, dequeued, encoderConfig, muxAvc, type EncodedSample } from "@/lib/media/mp4Cut";
+import {
+  cutSize,
+  dequeued,
+  encoderConfig,
+  muxAvc,
+  type ColrTag,
+  type EncodedSample,
+} from "@/lib/media/mp4Cut";
 import type { RangeRead } from "@/lib/media/probe";
 import { readFrames, type DecodedFrame } from "./frameReader";
 import {
@@ -45,13 +54,20 @@ export type RenderResult = {
   width: number;
   height: number;
   fps: number;
+  /** The colour the file is tagged with — what the encoder reported it wrote; null when it said nothing. */
+  colr: ColrTag | null;
   recipe: typeof RECIPE;
   seed: number;
 };
 
-/** The take's size as the composite is written: its own, inside a 1080p frame, even numbers. */
-export function renderSize(track: Mp4Track): { width: number; height: number } {
+/** The take's size as the composite is written: its own, inside a 1080p frame, even numbers. An upright take only. */
+export function renderSize(track: Pick<Mp4Track, "width" | "height" | "rotation">): {
+  width: number;
+  height: number;
+} {
   if (!track.width || !track.height) throw new Error("the take's size is not known");
+  if (track.rotation % 360 !== 0)
+    throw new Error("the take is stored turned; the composite reads upright takes only");
   return cutSize(track.width, track.height);
 }
 
@@ -125,14 +141,44 @@ function resampleRgba(
   return out;
 }
 
-/** Which alpha frame goes with take frame `i`: the same index, or spread when the counts differ. */
-export function alphaIndexFor(i: number, takeFrames: number, alphaFrames: number): number {
-  if (alphaFrames <= 1 || takeFrames <= 1) return 0;
-  if (alphaFrames === takeFrames) return i;
-  return Math.min(alphaFrames - 1, Math.round((i * (alphaFrames - 1)) / (takeFrames - 1)));
+/**
+ * Whether the NEXT alpha frame is the better match for a take frame at `target` (both on a 0–1 clock: a frame's time
+ * over its file's length). The alpha reader is sequential, so the pairing advances while the next frame is at least
+ * as close as the current one.
+ */
+export function alphaShouldAdvance(target: number, current: number, next: number): boolean {
+  return Math.abs(next - target) <= Math.abs(current - target);
 }
 
-const yieldToUi = () => new Promise<void>((r) => setTimeout(r, 0));
+/** A frame's place on its file's clock, 0 at the first frame and 1 at the end. */
+export function normalizedTime(t: number, first: number, duration: number): number {
+  const span = duration - first;
+  return span > 0 ? (t - first) / span : 0;
+}
+
+/** The colour tag for what the encoder reported it wrote, or null when it said nothing this reader knows. */
+export function colrOf(
+  colorSpace:
+    | { matrix?: string | null; primaries?: string | null; transfer?: string | null }
+    | null
+    | undefined,
+): ColrTag | null {
+  if (!colorSpace) return null;
+  if (colorSpace.matrix === "bt709" || colorSpace.primaries === "bt709") return "bt709";
+  if (colorSpace.matrix === "smpte170m" || colorSpace.matrix === "bt470bg") return "bt601";
+  return null;
+}
+
+/** A yield the browser does not throttle in a background tab (a timer would wait a second, then a minute). */
+const channel = typeof MessageChannel !== "undefined" ? new MessageChannel() : null;
+function yieldToUi(): Promise<void> {
+  if (!channel) return new Promise<void>((r) => setTimeout(r, 0));
+  return new Promise<void>((r) => {
+    channel.port1.onmessage = () => r();
+    channel.port2.postMessage(null);
+  });
+}
+const YIELD_EVERY = 4;
 
 export async function renderComposite(input: RenderInput): Promise<RenderResult> {
   if (typeof VideoEncoder === "undefined") throw new Error("this browser has no video encoder");
@@ -156,11 +202,12 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
 
   const out: EncodedSample[] = [];
   let avcC: Uint8Array | null = null;
+  let colr: ColrTag | null = null;
   let failure: Error | null = null;
   const encoder = new VideoEncoder({
     output: (chunk, meta) => {
       const d = meta?.decoderConfig?.description;
-      if (d && !avcC)
+      if (d && !avcC) {
         avcC =
           d instanceof ArrayBuffer
             ? new Uint8Array(d.slice(0))
@@ -170,6 +217,8 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
                   (d as ArrayBufferView).byteOffset + (d as ArrayBufferView).byteLength,
                 ),
               );
+        colr = colrOf(meta?.decoderConfig?.colorSpace as Parameters<typeof colrOf>[0]);
+      }
       const data = new Uint8Array(chunk.byteLength);
       chunk.copyTo(data);
       out.push({ data, timestamp: chunk.timestamp, key: chunk.type === "key" });
@@ -179,16 +228,33 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
     },
   });
 
+  // the alpha reader runs one frame ahead so each take frame can take the nearer of the current and the next
   const alphaIt = readFrames(alpha.read, alpha.track);
   let alphaCur: DecodedFrame | null = null;
-  let alphaDone = false;
-  const alphaAt = async (j: number): Promise<DecodedFrame> => {
-    while (!alphaDone && (!alphaCur || alphaCur.index < j)) {
-      const n = await alphaIt.next();
-      if (n.done) alphaDone = true;
-      else alphaCur = n.value;
+  let alphaNext: DecodedFrame | null = null;
+  let alphaFirst = 0;
+  const pullAlpha = async (): Promise<DecodedFrame | null> => {
+    const n = await alphaIt.next();
+    return n.done ? null : n.value;
+  };
+  const alphaFor = async (target: number): Promise<DecodedFrame> => {
+    if (!alphaCur) {
+      alphaCur = await pullAlpha();
+      if (!alphaCur) throw new Error("the matte gave no frames");
+      alphaFirst = alphaCur.t;
+      alphaNext = await pullAlpha();
     }
-    if (!alphaCur) throw new Error("the matte gave no frames");
+    while (
+      alphaNext &&
+      alphaShouldAdvance(
+        target,
+        normalizedTime(alphaCur.t, alphaFirst, alpha.track.duration),
+        normalizedTime(alphaNext.t, alphaFirst, alpha.track.duration),
+      )
+    ) {
+      alphaCur = alphaNext;
+      alphaNext = await pullAlpha();
+    }
     return alphaCur;
   };
 
@@ -202,7 +268,7 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
       if (input.signal?.aborted) throw new Error("stopped");
       if (failure) throw failure;
       if (t0 == null) t0 = f.t;
-      const a = await alphaAt(alphaIndexFor(f.index, takeFrames, alphaFrames));
+      const a = await alphaFor(normalizedTime(f.t, t0, fg.track.duration));
       const fgRgba = resampleRgba(f.rgba, f.width, f.height, w, h);
       const alphaGray = resampleGray(grayFromRgba(a.rgba), a.width, a.height, w, h);
       const { a1, edge } = prepareAlpha(alphaGray, w, h, scratch);
@@ -225,7 +291,7 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
       lastUs = timestamp;
       while (!failure && encoder.encodeQueueSize > 4) await dequeued(encoder);
       input.onProgress?.(kept, takeFrames);
-      await yieldToUi();
+      if (kept % YIELD_EVERY === 0) await yieldToUi();
     }
     if (!failure) await encoder.flush();
   } finally {
@@ -242,7 +308,7 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
   // the file is as long as the take: its last frame runs to the take's end
   const lengthUs = Math.round((fg.track.duration - t0) * 1e6);
   const tailUs = Math.max(1, lengthUs - lastUs);
-  const bytes = muxAvc(out, avcC, w, h, tailUs, { colr: "bt709" });
+  const bytes = muxAvc(out, avcC, w, h, tailUs, colr ? { colr } : {});
   return {
     bytes,
     frames: out.length,
@@ -251,6 +317,7 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
     width: w,
     height: h,
     fps,
+    colr,
     recipe: RECIPE,
     seed,
   };

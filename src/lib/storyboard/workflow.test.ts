@@ -59,8 +59,9 @@ describe("the workflow checklist", () => {
       stale: 1,
       detail: expect.stringContaining("1 stale"),
     });
-    // the lane composites a dressed take: two shots have one, one shot (with no dressed take) was composited from outside
-    expect(by.integrate).toMatchObject({ state: "partial", count: "1/2", detail: expect.stringContaining("dressed take") });
+    // the lane composites a dressed take: two shots have one, neither is composited; the composite on an undressed
+    // shot (filed from outside) is not counted against them
+    expect(by.integrate).toMatchObject({ state: "todo", count: "0/2", detail: expect.stringContaining("dressed take") });
   });
 
   it("a shot with one current and one stale dressed take counts as dressed", () => {

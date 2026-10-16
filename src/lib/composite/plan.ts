@@ -24,7 +24,7 @@ export type CompositePlan = {
   /** The paid part: the matte. The composite itself is made in the browser for nothing. */
   cost: { usd: number; upper: number; text: string };
   /** The song time of the dressed take's first frame — the composite's own, since it keeps every frame. */
-  songStart: number | null;
+  songStart: number;
   recipe: typeof RECIPE;
 };
 
@@ -84,6 +84,12 @@ export function planComposite(
   const check = matteSourceCheck({ seconds: dressed.durationSeconds, isVideo: dressed.isVideo });
   if (!check.ok) return { ok: false, why: check.why };
   const seconds = dressed.durationSeconds!;
+  const songStart = dressed.derivedFrom?.songStart ?? null;
+  if (songStart == null)
+    return {
+      ok: false,
+      why: "the dressed take has no place on the song (no song start on its record) — it cannot be filed in sync",
+    };
   const plates = platesOfScene(f.assets, f.sceneName);
   let plate = plates[0] ?? null;
   let plateFrom: CompositePlan["plateFrom"] = "scene";
@@ -112,7 +118,7 @@ export function planComposite(
       seconds,
       frames,
       cost: matteEstimateUsd(frames),
-      songStart: dressed.derivedFrom?.songStart ?? null,
+      songStart,
       recipe: RECIPE,
     },
   };

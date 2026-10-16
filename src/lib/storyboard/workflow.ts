@@ -65,9 +65,9 @@ export function workflowStatus(input: WorkflowInput): WorkflowStep[] {
     (s) => s.dressed.length > 0 && s.dressed.every((d) => d.stale),
   ).length;
   const withTake = perf.filter((s) => s.hasTake).length;
-  const composited = perf.filter((s) => s.composited).length;
-  // the composite lane works from a dressed take: those shots are the ones it can integrate
+  // the composite lane works from a dressed take: those shots are the ones it can integrate, and the ones counted
   const dressedShots = perf.filter((s) => s.dressed.length > 0).length;
+  const composited = perf.filter((s) => s.dressed.length > 0 && s.composited).length;
   return [
     {
       id: "treatment",

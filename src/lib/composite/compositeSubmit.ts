@@ -17,7 +17,7 @@ import {
   finishMatteJob,
   matteRequestId,
   pickAlphaFile,
-  requestMatte,
+  obtainMatte,
   waitForMatte,
   type MatteHandle,
 } from "./matte";
@@ -71,7 +71,8 @@ export async function compositeBox(
   const userId = await requireUserId();
 
   say("asking for the matte…");
-  const handle: MatteHandle = await requestMatte(plan.dressed.id);
+  const handle: MatteHandle = await obtainMatte(plan.dressed.id);
+  if (handle.resumed) say("picking up the matte an earlier press asked for…");
   try {
     const mmss = (ms: number) =>
       `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, "0")}`;
@@ -108,26 +109,35 @@ export async function compositeBox(
     });
 
     say("uploading and filing…");
-    const filed = await fileComposite({
-      projectId: input.projectId,
-      variationId: input.variationId,
-      userId,
-      name: `${STORYBOARD_RUN}_${input.shot.key}_composite`,
-      shotId: input.shot.id,
-      dressed: plan.dressed,
-      plate: plan.plate,
-      plateFrom: plan.plateFrom,
-      matte: {
-        model: handle.model,
-        requestId: matteRequestId(handle),
-        bytes: alpha.bytes,
-        frames: alpha.frames,
-        estimateUsd: handle.estimate?.usd ?? plan.cost.usd,
-        url: alpha.url,
-      },
-      render,
-      songStart: plan.songStart,
-    });
+    const file = () =>
+      fileComposite({
+        projectId: input.projectId,
+        variationId: input.variationId,
+        userId,
+        name: `${STORYBOARD_RUN}_${input.shot.key}_composite`,
+        shotId: input.shot.id,
+        dressed: plan.dressed,
+        plate: plan.plate,
+        plateFrom: plan.plateFrom,
+        matte: {
+          model: handle.model,
+          requestId: matteRequestId(handle),
+          bytes: alpha.bytes,
+          frames: alpha.frames,
+          estimateUsd: handle.estimate?.usd ?? plan.cost.usd,
+          url: alpha.url,
+        },
+        render,
+        songStart: plan.songStart,
+      });
+    let filed: FiledComposite;
+    try {
+      filed = await file();
+    } catch (first) {
+      // the files and rows are written to be found again: one more try finishes a filing cut short by the network
+      say(`filing again (${first instanceof Error ? first.message : String(first)})…`);
+      filed = await file();
+    }
     await finishMatteJob(handle.jobId, {
       ok: true,
       resultAssetId: filed.assetId,

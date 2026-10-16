@@ -129,6 +129,19 @@ describe("planComposite", () => {
       ok: false,
       why: expect.stringContaining("dress it first"),
     });
+    expect(
+      planComposite(
+        facts({
+          items: [
+            item(
+              dressed("nosync", {
+                derivedFrom: { assetId: "take", songStart: null, method: "dressed" },
+              }),
+            ),
+          ],
+        }),
+      ),
+    ).toMatchObject({ ok: false, why: expect.stringContaining("no place on the song") });
     expect(planComposite(facts({ assets: [] }))).toMatchObject({
       ok: false,
       why: expect.stringContaining("no plate yet"),

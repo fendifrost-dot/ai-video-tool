@@ -1660,7 +1660,7 @@ export function useStoryboardController(projectId: string): StoryboardController
             hasSelectedClip: !!m.showing && !m.showing.base && m.showing.kind === "video",
             needsDress: d.needed,
             dressed: d.dressed.map((x) => ({ stale: x.staleness.state === "stale" })),
-            composited: m.items.some((i) => i.asset.derivedFrom?.method === "composite"),
+            composited: m.items.some((i) => i.role === "performance" && i.asset.derivedFrom?.method === "composite"),
           };
         }),
       }),
