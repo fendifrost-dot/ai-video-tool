@@ -277,3 +277,25 @@ carries "rapping straight to camera, a medium shot from the waist up, the place 
 redeployed from `751d766` (`montagePrompt.ts` sha256 `666df0ff…`); a dry run through the MCP on c047 returns the four
 new prefill scenes (place with the polar bear, he is not in it · him in profile with a hand on something · tight on
 the bear · low angle, him leaning). Nothing sent.
+
+## His shoes — Prada America's Cup (16 Oct, evening)
+
+Fendi: the montages invented shoes he would not wear (the takes are cut at the waist, so the low angles and
+cutaways show feet the footage never had). "For all of the shoes … America's Cup Pradas — with the black jacket a
+black pair, maybe patent leather; with the Mastic jacket a cream pair."
+
+DONE (data, VERIFIED by the rows returned):
+- Two `wardrobe_footwear` pictures filed (`character_features`), photos from prada.com uploaded to `wardrobe-refs`
+  under the owner's folder (the server importer `fetch-reference-image` is refused by Prada's CDN — http2 stream
+  error from the edge worker — so the files were downloaded here and uploaded through the storage API as the owner):
+  black patent `a4eaa2da` (Prada `4E3400 ASZ F0002`, "Black Patent Leather And Technical Fabric"), cream
+  `5a78f069` (Prada `4E6500 3LLJ F0242`, "Raw White … Soft Rubber And Bike Fabric" — the only cream America's Cup
+  on prada.com; "Pearl/silver" is grey). Each carries front + back three-quarter `reference_images`.
+- All 13 outfits in the three variations: YSL Lewis sneakers `991a79d4` swapped out. Black → YSL_LEATHER_COAT,
+  YSL_BUBBLE_BUCKET, YSL_DENIM_LOOK (French black denim trucker). Cream → YSL_JACKET (Mastic), THE_CLEAN_ENTRANCE_LOOK
+  (DECISION: the light cotton jacket; Fendi named only the black and Mastic jackets — swap it to black in one update
+  if he wants).
+
+CODED (PR #296): the footwear picture among the pieces he wears in the shot goes to the model as @Image2 after the
+plate, with one sentence naming the pair — storyboard Montage button and `montage-shot` (MCP). Status after merge
+and deploy is below.

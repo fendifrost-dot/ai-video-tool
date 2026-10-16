@@ -15,6 +15,10 @@ export const WORLD_BATCH_ROUTES = [
 ] as const;
 export type BatchRoute = (typeof WORLD_BATCH_ROUTES)[number];
 
+/** Where a picture sent after the place may live: the wardrobe (his shoes) or the project's references. */
+export const EXTRA_IMAGE_BUCKETS = ["wardrobe-refs", "project-references"] as const;
+export type ExtraImageBucket = (typeof EXTRA_IMAGE_BUCKETS)[number];
+
 export const BatchShotSchema = z
   .object({
     id: z.string().min(1).max(80).regex(/^[A-Za-z0-9_.-]+$/, "id: letters, digits, _ . - only (it names files)"),
@@ -44,6 +48,11 @@ export const BatchShotSchema = z
     alternate: z.boolean().optional(),
     /** What the alternate was asked for (storyboard/montage.ts montageRecord), for the record. */
     variant: z.record(z.unknown()).nullish(),
+    /** seedance_ref: pictures sent after the place (@Image2, @Image3…), e.g. his shoes on a montage. Only with a still. */
+    extra_images: z
+      .array(z.object({ bucket: z.enum(EXTRA_IMAGE_BUCKETS), path: z.string().min(1) }))
+      .max(4)
+      .optional(),
     resolution: z.enum(["480p", "720p", "1080p"]).default("720p"),
     /** How this shot's timed events were put into its prompt (storyboard/temporal.ts). Recorded on the job. */
     temporal: z

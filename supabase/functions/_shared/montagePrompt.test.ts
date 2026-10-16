@@ -101,6 +101,56 @@ describe("the Deno copy of the montage's words is the app's, word for word", () 
     );
   });
 
+  it("his shoes: the footwear picture among the pieces he wears, and its sentence", () => {
+    const items = [
+      {
+        id: "coat",
+        feature_type: "wardrobe_outerwear",
+        label: "Coat",
+        storage_path: "u/a/coat.jpg",
+      },
+      { id: "nopic", feature_type: "wardrobe_footwear", label: "No picture", storage_path: null },
+      {
+        id: "prada",
+        feature_type: "wardrobe_footwear",
+        label: " Prada America's Cup Sneakers - Black Patent Leather ",
+        storage_path: "u/a/prada.jpg",
+        dimensions_description: "black patent leather, red tab. ",
+      },
+      {
+        id: "lewis",
+        feature_type: "wardrobe_footwear",
+        label: "Lewis",
+        storage_path: "u/a/lewis.jpg",
+      },
+    ];
+    for (const ids of [["coat", "nopic", "prada", "lewis"], ["coat"], [], ["lewis", "prada"]])
+      expect(edge.montageFootwear(ids, items)).toEqual(app.montageFootwear(ids, items));
+    const shoes = app.montageFootwear(["coat", "nopic", "prada", "lewis"], items);
+    expect(shoes).toEqual({
+      id: "prada",
+      bucket: "wardrobe-refs",
+      path: "u/a/prada.jpg",
+      label: "Prada America's Cup Sneakers - Black Patent Leather",
+      words: "black patent leather, red tab.",
+    });
+    expect(app.footwearLine(shoes)).toBe(
+      "His shoes are the pair in @Image2 (Prada America's Cup Sneakers - Black Patent Leather: black patent leather, red tab); whenever his feet are in a frame he wears exactly that pair, never any other shoes.",
+    );
+    for (const f of [shoes, null, { label: "Lewis", words: null }])
+      expect(edge.footwearLine(f)).toBe(app.footwearLine(f));
+    const planned = app.planMontageScenes(LINES, 4);
+    if (!planned.ok) throw new Error(planned.why);
+    expect(edge.montageRecord(planned.scenes, null, shoes)).toEqual(
+      app.montageRecord(planned.scenes, null, shoes),
+    );
+    expect(app.montageRecord(planned.scenes, null, shoes).footwear).toEqual({
+      id: "prada",
+      label: "Prada America's Cup Sneakers - Black Patent Leather",
+    });
+    expect(app.montageRecord(planned.scenes, null)).not.toHaveProperty("footwear");
+  });
+
   it("the price rule", () => {
     for (const s of [4, 5, 6, 12])
       expect(edge.seedanceUsd("720p", s)).toBeCloseTo(seedanceUsd("720p", s), 10);

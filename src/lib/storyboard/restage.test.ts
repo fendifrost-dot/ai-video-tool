@@ -160,6 +160,11 @@ describe("what a restaging asks for and costs", () => {
     const plain = restageShot(base);
     expect(plain.shot.id).toBe("c013");
     expect(plain.shot.alternate).toBeUndefined();
+    expect(plain.shot.extra_images).toBeUndefined();
+    expect(req.shot.extra_images).toBeUndefined();
+    // a montage's shoes go to the runner as a picture after the place
+    const shod = restageShot({ ...base, variant: { angle: "x", idSuffix: "montage", alternate: true, extraImages: [{ bucket: "wardrobe-refs", path: "u/a/prada.jpg" }] } });
+    expect(shod.shot.extra_images).toEqual([{ bucket: "wardrobe-refs", path: "u/a/prada.jpg" }]);
     expect(() => restageShot({ ...base, variant: { angle: "x", idSuffix: "bad suffix!", alternate: true } })).toThrow(/suffix/);
   });
 

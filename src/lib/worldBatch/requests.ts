@@ -36,7 +36,7 @@ export function motionPrompt(shot: BatchShot, look: LookPreset | null, hasStill:
 
 export function buildMotionRequest(
   shot: BatchShot,
-  ctx: { prompt: string; stillUrl?: string | null; sourceUrl?: string | null; userId: string; projectId: string },
+  ctx: { prompt: string; stillUrl?: string | null; sourceUrl?: string | null; extraImageUrls?: readonly string[]; userId: string; projectId: string },
 ): MotionRequest {
   const audit = { avt_user_id: ctx.userId, avt_project_id: ctx.projectId };
   const stillUrl = ctx.stillUrl ?? null;
@@ -52,7 +52,8 @@ export function buildMotionRequest(
         mode: "reference_to_video",
         modelVariant: "seedance-2.5-reference",
         referenceVideoUrls: [ctx.sourceUrl],
-        referenceImageUrls: stillUrl ? [stillUrl] : [],
+        // the place is @Image1; extras follow it (with no place they would take its tag, so they are not sent)
+        referenceImageUrls: stillUrl ? [stillUrl, ...(ctx.extraImageUrls ?? [])] : [],
         duration: sec,
         resolution: shot.resolution,
         aspectRatio: shot.aspect,
