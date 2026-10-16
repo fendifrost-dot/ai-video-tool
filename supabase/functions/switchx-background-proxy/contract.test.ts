@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   beebleEstimateUsd,
+  isBeebleAnswerUrl,
   defaultBackgroundPrompt,
   normalizePrompt,
   readBeebleStatus,
@@ -50,5 +51,13 @@ describe("the SwitchX background request", () => {
     expect(readBeebleStatus({ status: "completed" })).toMatchObject({ state: "failed", error: expect.stringMatching(/without a render/) });
     expect(readBeebleStatus({ status: "completed", result: { render: "http://plain/r.mp4" } })).toMatchObject({ state: "failed" });
     expect(readBeebleStatus(null)).toMatchObject({ state: "running" });
+    // CC's own terminal words, and a render on a host Beeble does not serve from
+    expect(readBeebleStatus({ status: "errored", error: { message: "x" } })).toMatchObject({ state: "failed", error: "x" });
+    expect(readBeebleStatus({ status: "complete", result: { render: "https://x.cloudfront.net/r.mp4" } })).toMatchObject({ state: "succeeded" });
+    expect(readBeebleStatus({ status: "complete", result: { render: "https://evil.example/r.mp4" } })).toMatchObject({ state: "failed", error: expect.stringMatching(/unexpected host \(evil\.example\)/) });
+    expect(isBeebleAnswerUrl("https://cdn.beeble.ai/a.mp4")).toBe(true);
+    expect(isBeebleAnswerUrl("https://bucket.s3.amazonaws.com/a.mp4")).toBe(true);
+    expect(isBeebleAnswerUrl("https://beeble.ai.evil.example/a.mp4")).toBe(false);
+    expect(isBeebleAnswerUrl("https://cdn.beeble.ai/" + "x".repeat(2100))).toBe(false);
   });
 });

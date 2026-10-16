@@ -117,6 +117,10 @@ serve(async (req) => {
     const payload = (job.request_payload_json ?? {}) as Record<string, unknown>;
     if (payload.lane !== SWITCHX_BG_LANE) return json(400, { error: "not_a_switchx_job" });
     if (!job.external_job_id) return json(409, { error: "job_has_no_provider_id" });
+    // The row is the caller's to edit (update_own): the id asked about must be the one CC answered at submit time,
+    // kept in the response record this function wrote — not whatever the row carries now.
+    const answered = ((job.response_payload_json ?? {}) as Record<string, unknown>).beeble_job_id;
+    if (typeof answered !== "string" || answered !== job.external_job_id) return json(409, { error: "job_id_mismatch" });
     const estimate = payload.estimate ?? null;
     if (job.status === "succeeded" || job.status === "failed") {
       const prior = (job.response_payload_json ?? {}) as Record<string, unknown>;
@@ -154,7 +158,7 @@ serve(async (req) => {
     const frames = read.frames ?? (typeof (payload.source as { frames?: unknown })?.frames === "number" ? ((payload.source as { frames: number }).frames) : null);
     const resolution = (read.resolution === "1080p" ? "1080p" : SWITCHX_BG_RESOLUTION) as "720p" | "1080p";
     const finalEstimate = frames != null ? beebleEstimateUsd(frames, resolution) : estimate;
-    await admin
+    const { error: writeErr } = await admin
       .from("provider_jobs")
       .update({
         status: read.state,
@@ -162,6 +166,7 @@ serve(async (req) => {
         finalized_at: new Date().toISOString(),
         response_payload_json: {
           status: read.status,
+          beeble_job_id: job.external_job_id,
           render_url: read.renderUrl,
           frames,
           resolution,
@@ -170,6 +175,7 @@ serve(async (req) => {
         },
       })
       .eq("id", job.id);
+    if (writeErr) return json(500, { error: "job_record_failed" });
     return json(200, { ok: true, state: read.state, render_url: read.renderUrl, frames, resolution, estimate: finalEstimate, error: read.error });
   }
 

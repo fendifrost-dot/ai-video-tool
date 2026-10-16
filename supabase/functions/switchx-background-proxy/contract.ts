@@ -29,6 +29,24 @@ export const SWITCHX_BG_MAX_BYTES = 200 * 1024 * 1024;
 export const SWITCHX_BG_DEFAULT_FPS = 24;
 /** The longest prompt forwarded. */
 export const SWITCHX_BG_PROMPT_MAX = 1500;
+/**
+ * Where Beeble may serve a render from; a link anywhere else is not handed on (the matte lane pins fal.media the same
+ * way). Beeble's own domain and the object stores a render CDN sits on; the first real answer confirms which, and an
+ * unexpected host fails the job with the host named, never a download from it.
+ */
+export const BEEBLE_ANSWER_HOSTS: readonly RegExp[] = [/(^|\.)beeble\.ai$/i, /(^|\.)amazonaws\.com$/i, /(^|\.)cloudfront\.net$/i, /(^|\.)googleapis\.com$/i, /(^|\.)storage\.googleapis\.com$/i];
+export const BEEBLE_ANSWER_URL_MAX = 2048;
+
+/** Whether a render link is one this lane will hand on: https, bounded, on a host Beeble serves from. */
+export function isBeebleAnswerUrl(url: unknown): url is string {
+  if (typeof url !== "string" || url.length > BEEBLE_ANSWER_URL_MAX) return false;
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" && BEEBLE_ANSWER_HOSTS.some((h) => h.test(u.hostname));
+  } catch {
+    return false;
+  }
+}
 
 /** How many frames Beeble will see: the source's length at its frame rate, whole frames, at least one. */
 export function switchxFrames(seconds: number, fps: number | null): number {
@@ -110,16 +128,28 @@ export function readBeebleStatus(json: unknown): BeebleRead {
   const j = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
   const status = typeof j.status === "string" ? j.status.toLowerCase() : null;
   const result = (j.result && typeof j.result === "object" ? j.result : {}) as Record<string, unknown>;
-  const renderUrl = typeof result.render === "string" && /^https:\/\//.test(result.render) ? result.render : null;
+  const rawRender = typeof result.render === "string" ? result.render : null;
+  const renderUrl = isBeebleAnswerUrl(rawRender) ? rawRender : null;
   const frames = typeof result.frames_processed === "number" && result.frames_processed >= 0 ? result.frames_processed : null;
   const resolution = typeof result.resolution === "string" ? result.resolution.toLowerCase() : null;
   const err = (j.error && typeof j.error === "object" ? j.error : {}) as Record<string, unknown>;
   const error = typeof err.message === "string" ? err.message.slice(0, 500) : typeof j.error === "string" ? j.error.slice(0, 500) : null;
-  if (status === "failed" || status === "error" || status === "cancelled" || status === "canceled")
+  // CC's own poller treats "complete" and "errored" as terminal too (switchx-restyle pollBeebleUntilDone)
+  if (status === "failed" || status === "error" || status === "errored" || status === "cancelled" || status === "canceled")
     return { state: "failed", renderUrl: null, frames, resolution, error: error ?? `beeble ${status}`, status };
-  if (renderUrl || status === "completed" || status === "succeeded" || status === "done")
-    return renderUrl
-      ? { state: "succeeded", renderUrl, frames, resolution, error: null, status }
-      : { state: "failed", renderUrl: null, frames, resolution, error: "beeble finished without a render link", status };
+  if (renderUrl || rawRender || status === "completed" || status === "complete" || status === "succeeded" || status === "done") {
+    if (renderUrl) return { state: "succeeded", renderUrl, frames, resolution, error: null, status };
+    let why = "beeble finished without a render link";
+    if (rawRender) {
+      let host = "?";
+      try {
+        host = new URL(rawRender).hostname;
+      } catch {
+        /* not a URL */
+      }
+      why = `beeble's render link is on an unexpected host (${host}) — not handed on`;
+    }
+    return { state: "failed", renderUrl: null, frames, resolution, error: why, status };
+  }
   return { state: "running", renderUrl: null, frames, resolution, error: null, status };
 }
