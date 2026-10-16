@@ -368,7 +368,7 @@ async function advanceStill(
 /** The route a moving-plate job records (src/lib/composite/plateMotion.ts PLATE_MOTION_ROUTE). */
 export const PLATE_MOTION_ROUTE = "plate_motion";
 /** What filing a moving plate needs of its job: the still it animates and the scene that still is the place of. */
-export type PlateMotionFrom = { stillAssetId: string; stillPath: string | null; sceneTitle: string | null; shotLabel: string | null; model: string | null; seconds: number | null; prompt: string | null; version: string | null };
+export type PlateMotionFrom = { stillAssetId: string; stillPath: string | null; sceneTitle: string | null; shotLabel: string | null; model: string | null; seconds: number | null; prompt: string | null; version: string | null; event: string | null };
 
 /** A moving-plate job (the plate still animated into a clip of the place). Null for any other job or a record that names no still. */
 export function plateMotionFrom(job: ProgressJob): PlateMotionFrom | null {
@@ -388,6 +388,7 @@ export function plateMotionFrom(job: ProgressJob): PlateMotionFrom | null {
     seconds: typeof s.seconds === "number" && s.seconds > 0 && s.seconds <= 600 ? s.seconds : null,
     prompt: str(s.prompt, 4000),
     version: str(s.version, 120),
+    event: str(s.event, 400),
   };
 }
 
@@ -413,6 +414,7 @@ export async function filePlateVideo(job: ProgressJob, plate: PlateMotionFrom, d
       model: plate.model,
       seconds: plate.seconds,
       prompt: plate.prompt,
+      event: plate.event,
       provider_job_id: job.id,
     },
   };

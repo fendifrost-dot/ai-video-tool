@@ -83,6 +83,7 @@ describe("plateMotionFrom", () => {
       seconds: 5,
       prompt: "P",
       version: "plate-motion-v1-2026-10-16",
+      event: null,
     });
     expect(plateMotionFrom(job({ request_payload_json: { settings: { route: "dressed" } } }))).toBeNull();
     expect(plateMotionFrom(job({ request_payload_json: { settings: { route: "plate_motion", plate: {} } } }))).toBeNull();
@@ -95,9 +96,11 @@ describe("plateMotionFrom", () => {
     expect(withSeconds(-5)).toBeNull();
     expect(withSeconds(1e9)).toBeNull();
     expect(withSeconds(10)).toBe(10);
-    const long = plateMotionFrom(job({ request_payload_json: { settings: { ...base, prompt: "x".repeat(10_000), plate: { ...(base.plate as object), scene_title: "y".repeat(1000) } } } }))!;
+    const long = plateMotionFrom(job({ request_payload_json: { settings: { ...base, prompt: "x".repeat(10_000), event: "e".repeat(1000), plate: { ...(base.plate as object), scene_title: "y".repeat(1000) } } } }))!;
     expect(long.prompt!.length).toBe(4000);
     expect(long.sceneTitle!.length).toBe(400);
+    expect(long.event!.length).toBe(400);
+    expect(plateMotionFrom(job({ request_payload_json: { settings: { ...base, event: 42 } } }))!.event).toBeNull();
   });
 });
 

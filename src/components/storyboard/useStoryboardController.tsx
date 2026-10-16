@@ -91,7 +91,7 @@ import { conflictNote } from "@/lib/storyboard/promptAudit";
 import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
 import { compositeBox } from "@/lib/composite/compositeSubmit";
 import { compositesOn, planComposite, platesOfScene, type CompositePlan } from "@/lib/composite/plan";
-import { animatePlate as submitPlateMotion, findLivePlateJob, planPlateMotion, type PlateMotionPlan } from "@/lib/composite/plateMotion";
+import { animatePlate as submitPlateMotion, findLivePlateJob, planPlateMotion, PLATE_EVENT_MAX, type PlateMotionPlan } from "@/lib/composite/plateMotion";
 import { planFootageEdit, type FootageEditAction } from "@/lib/storyboard/footageEdit";
 import {
   boxMedia,
@@ -126,7 +126,8 @@ export type ConfirmRequest = {
   body: string;
   confirmLabel: string;
   testId: string;
-  onConfirm: () => void | Promise<void>;
+  /** Pressed: with what the director typed into `input`, when the dialog has one. */
+  onConfirm: (typed?: string) => void | Promise<void>;
   /**
    * The picture the paid work is made from, shown before the press. A shot can hold several images (and one put on
    * it from another shot): "this shot's image" in words does not say which — the first live section restaged a take
@@ -134,7 +135,9 @@ export type ConfirmRequest = {
    */
   picture?: { url?: string; caption: string };
   /** A second thing the director can choose instead (its own button, beside the first). */
-  secondary?: { label: string; testId: string; onConfirm: () => void | Promise<void> };
+  secondary?: { label: string; testId: string; onConfirm: (typed?: string) => void | Promise<void> };
+  /** A line the director may write before the press (what happens in the place); handed to onConfirm. */
+  input?: { label: string; placeholder?: string; initial?: string; maxLength?: number; testId: string };
 };
 
 export type ClipRequest = { mode: "timed_script" | "ordered" | "single"; asked: AskedChange[]; prompt: string; route: string | null; submittedAt: string };
@@ -1631,12 +1634,23 @@ export function useStoryboardController(projectId: string): StoryboardController
         toast.info(state.why ?? "this shot's plate cannot be animated");
         return;
       }
-      const input = { projectId, variationId: box.variationId ?? null, plan };
+      // the plan is remade at the press with what the director typed: the event is part of the prompt and the record
+      const withEvent = (typed?: string) => {
+        const again = planPlateMotion({ still: plan.still, assets: media.list, event: typed ?? null });
+        return again.ok ? again.plan : plan;
+      };
+      const input = { projectId, variationId: box.variationId ?? null };
       void signedUrl(plan.still.bucket as never, plan.still.path, 600)
         .catch(() => undefined)
         .then((url) =>
           setConfirm({
             title: `Animate the plate of shot ${numberById.get(box.id) ?? ""}?`,
+            input: {
+              label: "Something absurd that happens in the place (optional — one eye-catching thing in the street or the distance; the centre stays yours)",
+              placeholder: "e.g. a riderless white horse gallops down the expressway between the cars",
+              maxLength: PLATE_EVENT_MAX,
+              testId: "confirm-animate-plate-event",
+            },
             body:
               `${plan.cost.text}. The plate still (${plan.still.name}) is sent to the video model with a locked-off camera: the street's traffic, lights and passers-by move, the framing does not. ` +
               `The ${plan.seconds} s clip is filed as a moving plate of the scene — every composite of this scene made after it goes over it instead of the still (a take longer than the clip holds its last frame). ` +
@@ -1645,17 +1659,17 @@ export function useStoryboardController(projectId: string): StoryboardController
             picture: { url, caption: `The plate to animate: ${plan.still.name}` },
             confirmLabel: `Animate the plate · $${plan.cost.usd.toFixed(3)}`,
             testId: "confirm-animate-plate",
-            onConfirm: () =>
+            onConfirm: (typed) =>
               run(box, "animating the plate…", async () => {
-                await submitPlateMotion({ ...input, onStage: (t) => setBusyFor(box.id, t) });
+                await submitPlateMotion({ ...input, plan: withEvent(typed), onStage: (t) => setBusyFor(box.id, t) });
                 afterGeneration();
                 toast.success("The plate is being animated — composites of this scene use it when it is done");
               }).finally(afterGeneration),
             secondary: {
               label: "Dry run (sends nothing)",
               testId: "confirm-animate-plate-dryrun",
-              onConfirm: async () => {
-                const r = await submitPlateMotion({ ...input, dryRun: true });
+              onConfirm: async (typed) => {
+                const r = await submitPlateMotion({ ...input, plan: withEvent(typed), dryRun: true });
                 console.info("Animate-plate dry run — nothing was sent, spent or written:", r);
                 toast.success("Dry run: the exact request is in the browser console. Nothing was sent.");
               },

@@ -73,12 +73,13 @@ const PRESSES = {
     dryRun: "confirm-animate-plate-dryrun",
     done: /plate is being animated|Dry run: the exact request/i,
     missing: "the shot offers no Animate the plate (no plate of its scene) — generate the place first",
+    input: "confirm-animate-plate-event",
   },
 };
 const PRESS = PRESSES[command];
 if (!PRESS || !a.session || !a.project || !a.shot) {
   console.error(
-    "usage: avt-press.mjs <composite|animate-plate> --session <agent-browser-session.json> --project <id> --shot <key> [--variation <id>] [--keep-variation] [--dry-run] [--chrome <path>] [--app <url>] [--allow-any-host] [--out <dir>] [--timeout-min 25]",
+    "usage: avt-press.mjs <composite|animate-plate> --session <agent-browser-session.json> --project <id> --shot <key> [--variation <id>] [--keep-variation] [--dry-run] [--event <text>] [--chrome <path>] [--app <url>] [--allow-any-host] [--out <dir>] [--timeout-min 25]",
   );
   process.exit(2);
 }
@@ -148,7 +149,7 @@ page.on("console", async (m) => {
   const line = `${m.type()} ${m.text()}`;
   consoleLines.push(line);
   if (m.type() === "error") log("console:", line.slice(0, 400));
-  if (/Composite dry run/.test(m.text())) {
+  if (/dry run — nothing was/i.test(m.text())) {
     // the request is a logged object: text() prints JSHandle@object, the args hold the value
     try {
       const vals = await Promise.all(m.args().map((x) => x.jsonValue().catch(() => null)));
@@ -283,6 +284,15 @@ try {
   await button.click();
   const confirm = page.locator(`[data-testid="${DRY ? PRESS.dryRun : PRESS.confirm}"]`);
   await confirm.waitFor({ state: "visible", timeout: 30_000 });
+  // a press that takes words (animate-plate: the event) gets them typed into the dialog's own field
+  if (a.event !== undefined) {
+    if (typeof a.event !== "string" || !a.event.trim()) throw new Error("--event needs text");
+    if (!PRESS.input) throw new Error(`${command} takes no --event`);
+    const field = page.locator(`[data-testid="${PRESS.input}"]`);
+    await field.waitFor({ state: "visible", timeout: 10_000 });
+    await field.fill(String(a.event));
+    log("typed the event:", String(a.event).slice(0, 200));
+  }
   const dialogText = (
     await page
       .locator("[role=dialog], [role=alertdialog]")
