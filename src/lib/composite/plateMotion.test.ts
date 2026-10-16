@@ -124,14 +124,17 @@ describe("the absurd event", () => {
     // the record and the prompt say the same thing, whatever the whitespace typed
     const messy = planPlateMotion({ still, assets: [], event: "a   horse\n\n gallops   " + "z".repeat(500) });
     expect(messy.ok && messy.plan.event!.startsWith("a horse gallops z")).toBe(true);
-    expect(messy.ok && messy.plan.prompt.includes(`holds it: ${messy.plan.event}`)).toBe(true);
+    expect(messy.ok && messy.plan.prompt.startsWith(`${messy.plan.event} — this is the one thing`)).toBe(true);
     expect(r.plan.prompt).toContain("Locked-off camera");
-    expect(r.plan.prompt).toContain("catches the eye and holds it: a riderless white horse gallops down the expressway between the cars.");
+    // the event leads, and the base no longer forbids "added objects" when one is asked for (v3)
+    expect(r.plan.prompt.startsWith("a riderless white horse gallops down the expressway between the cars — this is the one thing")).toBe(true);
     expect(r.plan.prompt).toContain("never in the centre foreground");
+    expect(r.plan.prompt).not.toContain("no added objects");
+    expect(plateMotionPrompt(null)).toContain("no added objects");
     const long = planPlateMotion({ still, assets: [], event: "x".repeat(1000) });
     expect(long.ok && long.plan.event!.length).toBe(PLATE_EVENT_MAX);
     const s = plateMotionSettings({ still, seconds: 5, prompt: r.plan.prompt, event: r.plan.event });
     expect(s.event).toBe(r.plan.event);
-    expect(s.version).toBe("plate-motion-v2-2026-10-16");
+    expect(s.version).toBe("plate-motion-v3-2026-10-16");
   });
 });

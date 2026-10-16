@@ -26,7 +26,7 @@ export const PLATE_MOTION_PROVIDER = "higgsfield" as const;
 export const PLATE_MOTION_MODEL = "kling-2.5-turbo-pro-i2v";
 /** Kling bills whole clips of 5 or 10 s; the windows are under 5 s, and a longer take holds the plate's last frame. */
 export const PLATE_MOTION_SECONDS = 5;
-export const PLATE_MOTION_VERSION = "plate-motion-v2-2026-10-16";
+export const PLATE_MOTION_VERSION = "plate-motion-v3-2026-10-16";
 /** The longest event the director may ask for, in characters. */
 export const PLATE_EVENT_MAX = 400;
 
@@ -34,12 +34,13 @@ export const PLATE_EVENT_MAX = 400;
  * The motion asked for. The camera is told to stay put twice (a moving camera under a static matte would tear him
  * off the place); the life is in the street, never in the centre foreground where he stands.
  */
-export const PLATE_MOTION_PROMPT =
+const PLATE_MOTION_BASE =
   "Locked-off camera on a tripod: no camera movement, no pan, no zoom, no push-in; the framing stays exactly as in the picture. " +
   "The place comes alive at its own pace: cars and buses pass along the street with their headlights and tail lights, " +
   "traffic signals change, a pedestrian walks by in the distance, signs and windows flicker softly, a light breeze moves " +
   "what can move. The centre foreground stays empty: nothing and nobody enters it. Photoreal, the same time of day, " +
-  "the same light and weather as the picture; no text, no captions, no added objects.";
+  "the same light and weather as the picture; no text, no captions";
+export const PLATE_MOTION_PROMPT = `${PLATE_MOTION_BASE}, no added objects.`;
 
 /**
  * The prompt for one plate: the locked-off base, plus — when the director asks for one — the EVENT: one absurd,
@@ -56,11 +57,12 @@ export function normalizeEvent(event: string | null | undefined): string | null 
 export function plateMotionPrompt(event: string | null | undefined): string {
   const e = normalizeEvent(event);
   if (!e) return PLATE_MOTION_PROMPT;
+  // The event LEADS (v3): with it last, after a base that forbade "added objects", the model made plain traffic and
+  // no horse (plate 614055fc, 16 Oct 05:31 UTC). Now it is the first sentence, and the base no longer forbids it.
   return (
-    `${PLATE_MOTION_PROMPT} ` +
-    `And one thing happens that catches the eye and holds it: ${e.replace(/[.!?]+$/, "")}. ` +
-    "It plays out fully inside these five seconds, in the street, on the far side or in the middle distance — clearly visible, " +
-    "in the same light and weather, real as if filmed — but never in the centre foreground, which stays empty."
+    `${e.replace(/[.!?]+$/, "")} — this is the one thing in the shot that catches the eye and holds it: it plays out fully ` +
+    "inside these five seconds, large and clearly visible, in the street, on the far side or in the middle distance, real as " +
+    `if filmed, never in the centre foreground. ${PLATE_MOTION_BASE}.`
   );
 }
 

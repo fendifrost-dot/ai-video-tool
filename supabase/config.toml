@@ -75,6 +75,9 @@ verify_jwt = true
 [functions.matte-video-proxy]
 verify_jwt = true
 
+[functions.switchx-background-proxy]
+verify_jwt = true
+
 # Scrub-proxy transcode dispatcher. The browser calls it after a video upload
 # with the session token; it routes the ~720p H.264 transcode through Control
 # Center via X-Proxy-Secret (same secrets as wardrobe-vton-proxy) and writes the
