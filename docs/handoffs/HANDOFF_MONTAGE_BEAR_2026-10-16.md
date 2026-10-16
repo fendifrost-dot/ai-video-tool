@@ -33,7 +33,7 @@ Branch `claude/determined-faraday-4rzanq`, PR **#276** (draft → merge per Fend
    - `switchx-background-proxy` (the enum fix). Verify: `python3 -I <scratchpad>/tools/switchx_bg.py submit f540b6be-5e1d-40b5-861e-6c5c08e03a96 b58cab47-b055-4bdd-846a-d288870de312` → **`200 {"status":"queued", …}`** (was `500 job_record_failed`). A `409 switchx_in_flight` means a row already exists — read it, do not resubmit.
 3. **Lovable Publish** for the frontend, only after `get_project.latest_commit_sha` equals the squash SHA. Verify in the live bundle (`curl --compressed`, follow `index-*.js` → `projects._id.storyboard-*.js` → its `./x.js` imports): the string `focus-montage` is present, and `montage-v1-2026-10-16`.
 
-## The montage run (after deploy)
+## The montage run — DONE once on c047 (06:50 UTC), judged in ledger row 59; the recipe below is how to run the next one
 
 Dry run first, then the real press, c047 first:
 
@@ -47,7 +47,7 @@ The dry run's console record must show `source.dressed: true`, `source.take: f54
 
 Then the other four (c041, c044, c045, c046) the same way, each with its own plate (their scene is the same: the bear plate serves all five). Ledger rows for each; post every result.
 
-## Beeble SwitchX benchmark (after the proxy redeploy)
+## Beeble SwitchX benchmark — DONE (ledger rows 55 and 58): the composite lane stays; Beeble changed the wardrobe. The proxy's reader fix (`e380fdf`, reads `output.render`/`output.alpha`) is in PR #277 and needs `switchx-background-proxy` redeployed after it merges
 
 `switchx_bg.py submit <c047 dressed f540b6be…> <plate b58cab47…>` → `status <jobId>` until `succeeded` → download the render → side by side with the v2 composite `93b9b968` (same take, same place) → post both → ledger row (Beeble 720p: 119 frames × $0.10/30 ≈ $0.40 list). Judge: identity, the jacket, the edge, the relighting, and the cost against the composite's $0.089 matte.
 
