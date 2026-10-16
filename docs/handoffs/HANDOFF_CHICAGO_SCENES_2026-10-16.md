@@ -243,3 +243,32 @@ it` (1) and `Previous version` (1); its `Acceptance-BGprR3aC.js` chunk carries `
 401 `missing_credentials`). Where the clips are, for Fendi: the STORYBOARD page (not the treatment page); on each
 shot's card the "N versions" line and the named pills, the ‹ › arrows on the picture; c042 has Your take · Dressed ·
 New background 1–2 · Montage; c047 has the bear composite showing and Montage 1–4 beside it.
+
+### 19:50 UTC — "only the bear and orca montages were executed correctly … the others were made with Kling"
+
+Fendi: the other montages "look like I'm pasted on another video", and he believes they were made with Kling.
+VERIFIED from `provider_jobs` (every succeeded `*_montage` job): ALL eleven montages were `seedance-2.5-reference`
+through Higgsfield — none was Kling. Kling made only the MOVING PLATES (`world_plate_video`), and the clips that put
+him over those plates are the COMPOSITES ("New background" on the board) — those are the pasted ones. What separates
+the montages he likes from the ones he does not is the SCENE LIST: the four from 07:13–07:16 (c041/c044/c045/c046)
+were the bear list with "him rapping straight to camera, a medium shot from the waist up" FIRST and "HARD CUT back to
+him … to the last frame" LAST — Seedance re-stages him flat in front of the place and it reads as pasted; the 14:10
+c044/c045 lists opened the same way. The orca list never puts him centre-front: the place alone first, then him in
+profile anchored to something in the place (hand on the pole), a tight cutaway, then a low angle with him leaning on
+something. The bear montage he approved (`4efc8c42`) is the exception that proves it: its "him" beats were cut OUT by
+the edit (the five-cut preview used the composite for him and the montage only for the cutaways).
+
+RULE (from this): a montage scene list opens on the place WITHOUT him, puts him only in profile / three-quarter /
+low angle anchored to something in the place, never "straight to camera, medium shot" — that line is the paste-in.
+`defaultMontageLines` (montage.ts) still carries the old shape; see "Next".
+
+Done 19:52 UTC — the four redone the orca way through the MCP lane (`avt_call montage-shot`, the first real use, no
+browser): c041 job `3b41dd27` (dice/penguin, bubble coat), c044 `88fdf461` (runway), c045 `e436c68d` (walrus), c046
+`16197c48` (inside the train). Ledger rows 93–96 ($2.219 list each, ≈ $1.55 real). All four filed by 19:57 UTC
+(five minutes), each with `derived_from.method = "montage"` from the redeployed runner (VERIFIED): c041 `8b58017d`,
+c044 `60cd0232`, c045 `81cecb2a`, c046 `f5edfee0` — unselected on their shots, beside the earlier versions. All four
+PASS the rule above (he is never centre-front; anchored to a pillar, a door frame, a pole); the runway one is the
+strongest. Posted. The old centre-front montages stay filed as earlier versions; the board names them Montage 1….
+
+Next: make the orca shape the dialog's PREFILL (`defaultMontageLines` in montage.ts and its Deno copy) so a montage
+pressed without lines opens on the place without him — a small PR with its test.
