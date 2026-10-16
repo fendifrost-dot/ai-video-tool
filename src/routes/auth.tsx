@@ -55,7 +55,7 @@ function AuthPage() {
   }, []);
 
   async function signOut() {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: "local" });
     window.location.replace("/auth");
   }
 

@@ -4,7 +4,8 @@
 // in AVT Settings → Machine credentials (batch_credentials). This function exchanges it for an ORDINARY user session
 // through batch-token-proxy (rate limit + audit there) and then does everything as that user: table reads and writes
 // through PostgREST (row-level security holds), files through Storage, generation through AVT's own edge functions.
-// Nothing downstream learns this function exists, and the session never leaves it.
+// Nothing downstream learns this function exists. The session leaves it in exactly one way: avt_browser_session
+// hands the ACCESS token (never the refresh token) to a headless browser that presses the app — see browserSession.
 //
 // Money: no budgets or caps here, by the owner's decision (8 Oct 2026) — spend is controlled on the provider
 // accounts themselves. Every call is still the owner's own session, audited by batch_credential_mints.
@@ -129,13 +130,18 @@ async function browserSession(ctx: Ctx) {
   if (!res.ok || !body?.accessToken) throw new ToolError(`no browser session: ${body?.detail ?? body?.error ?? `HTTP ${res.status}`}`);
   const { data: who } = await ctx.user.auth.getUser(body.accessToken);
   if (!who?.user || who.user.id !== ctx.session.userId) throw new ToolError("the session does not belong to this credential's owner");
+  const expiresAt = typeof body.expiresAt === "number" && Number.isFinite(body.expiresAt) ? body.expiresAt : null;
+  if (!expiresAt) throw new ToolError("the session came back without an expiry");
   const ref = new URL(ctx.url).hostname.split(".")[0];
+  // only what supabase-js needs to boot the app signed in — the rest of the record would sit in the AI vendor's
+  // transcript for nothing
+  const u = who.user;
   return {
     access_token: body.accessToken,
     token_type: "bearer",
-    expires_at: body.expiresAt,
-    expires_in: Math.max(0, Math.floor(body.expiresAt - Date.now() / 1000)),
-    user: who.user,
+    expires_at: expiresAt,
+    expires_in: Math.max(0, Math.floor(expiresAt - Date.now() / 1000)),
+    user: { id: u.id, aud: u.aud, role: u.role, email: u.email ?? null, is_anonymous: u.is_anonymous ?? false },
     supabase_url: ctx.url,
     storage_key: `sb-${ref}-auth-token`,
     source: body.source ?? null,

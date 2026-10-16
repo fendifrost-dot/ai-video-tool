@@ -3,7 +3,7 @@
 // is unit-tested (contract.test.ts); index.ts does the I/O.
 
 export const SERVER_NAME = "avt";
-export const SERVER_VERSION = "1.0.0";
+export const SERVER_VERSION = "1.1.0";
 export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 export const INSTRUCTIONS = [

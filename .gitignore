@@ -40,3 +40,8 @@ _avt_outputs/
 # Python bytecode from the pipeline scripts
 __pycache__/
 *.pyc
+
+# agent-browser: a one-hour sign-in and the screenshots of a headless press, never committed
+_avt_outputs/
+agent-browser-out-*/
+agent-browser-session*.json

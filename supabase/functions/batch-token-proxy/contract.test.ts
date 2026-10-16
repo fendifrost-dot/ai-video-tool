@@ -11,7 +11,10 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import {
   BATCH_ACTIONS,
+  BROWSER_SESSION_MIN_REMAINING_SECONDS,
   checkCredential,
+  isMachineSession,
+  jwtSessionId,
   newSecret,
   parseRequest,
   BATCH_SESSION_MAX_AGE_SECONDS,
@@ -138,6 +141,58 @@ describe("secrets", () => {
   it("stores only the hash — the plaintext is returned once and never read back", () => {
     expect(flat).toContain("secret_sha256: await sha256Hex(secret)");
     expect(flat).not.toMatch(/select\([^)]*\bsecret\b(?!_sha256)/);
+  });
+});
+
+function fakeJwt(claims: Record<string, unknown>): string {
+  const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+  return `${b64({ alg: "HS256", typ: "JWT" })}.${b64(claims)}.sig`;
+}
+
+describe("a machine-minted session cannot manage credentials", () => {
+  it("reads the session id off a token and nothing off garbage", () => {
+    expect(jwtSessionId(fakeJwt({ sub: "u", session_id: "s-1" }))).toBe("s-1");
+    expect(jwtSessionId(fakeJwt({ sub: "u" }))).toBeNull();
+    expect(jwtSessionId("not.a.jwt.at.all")).toBeNull();
+    expect(jwtSessionId("")).toBeNull();
+  });
+  it("matches the bearer against the sessions the proxy minted, by session id only", () => {
+    const minted = fakeJwt({ sub: "u", session_id: "s-machine", exp: 1 });
+    const later = fakeJwt({ sub: "u", session_id: "s-machine", exp: 2 }); // the same session, refreshed
+    const human = fakeJwt({ sub: "u", session_id: "s-human" });
+    expect(isMachineSession(later, [minted])).toBe(true);
+    expect(isMachineSession(human, [minted])).toBe(false);
+    expect(isMachineSession(human, [])).toBe(false);
+    expect(isMachineSession("garbage", [minted])).toBe(false);
+  });
+  it("the proxy asks that question before any credential action (source-level)", () => {
+    const userBranch = flat.slice(flat.indexOf("enroll / list / revoke (user JWT)"));
+    expect(userBranch.indexOf("isMachineSession(")).toBeGreaterThan(0);
+    expect(userBranch.indexOf("isMachineSession(")).toBeLessThan(userBranch.indexOf('parsed.action === "enroll"'));
+    expect(userBranch).toContain("machine session cannot");
+  });
+});
+
+describe("a browser hand-out gets a fresh hour", () => {
+  const at = new Date("2026-10-16T02:00:00Z");
+  const stored = (remainingSeconds: number): StoredSession => ({
+    credential_id: "c",
+    owner_user_id: "u",
+    access_token: "a",
+    refresh_token: "r",
+    expires_at: new Date(at.getTime() + remainingSeconds * 1000).toISOString(),
+    minted_at: new Date(at.getTime() - 600_000).toISOString(),
+    reuse_count: 0,
+    refresh_count: 0,
+  });
+  it("refreshes for a browser when under 35 minutes remain, reuses for a runner", () => {
+    expect(BROWSER_SESSION_MIN_REMAINING_SECONDS).toBe(35 * 60);
+    expect(planSession(stored(20 * 60), "u", at).use).toBe("reuse");
+    expect(planSession(stored(20 * 60), "u", at, BROWSER_SESSION_MIN_REMAINING_SECONDS).use).toBe("refresh");
+    expect(planSession(stored(50 * 60), "u", at, BROWSER_SESSION_MIN_REMAINING_SECONDS).use).toBe("reuse");
+  });
+  it("the proxy passes the browser bound only for purpose browser (source-level)", () => {
+    expect(flat).toContain('purpose === "browser" ? BROWSER_SESSION_MIN_REMAINING_SECONDS : undefined');
   });
 });
 

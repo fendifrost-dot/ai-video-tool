@@ -42,9 +42,13 @@ App menus move; if a step above does not match, the app needs: an MCP server URL
 - Not reachable: credentials (`batch_credentials*`), `batch-token-proxy`, server callbacks, research harnesses.
 - The minted session leaves the function in exactly one way: `avt_browser_session` hands the ACCESS token (never the
   refresh token) to a headless browser so the AI can press what only runs in a browser (the composite lane's
-  WebCodecs render). It is the same owner session this server acts with, it ends with the hour, and each hand-out is
-  a `[browser]` row in `batch_credential_mints`. Sessions are minted through `batch-token-proxy` (all audited); a busy
-  AI may briefly see `429` — wait and retry.
+  WebCodecs render). It is the same owner session this server acts with, refreshed first so a full hour remains, and
+  each hand-out through the MCP is a `[browser]` row in `batch_credential_mints`. Revoking the credential ends the
+  stored session, but an access token already handed out stays valid until its `exp` (an hour at most) — that hour is
+  the exposure, and it sits in the AI vendor's transcript. A machine-minted session cannot enrol, list or revoke
+  credentials (`batch-token-proxy` refuses it, audited), so a one-hour hand-out cannot make itself permanent or cut
+  off a sibling AI. Sessions are minted through `batch-token-proxy` (all audited); a busy AI may briefly see `429` —
+  wait and retry.
 - What it cannot do that the app does: the storyboard's browser-side request building (continuity words, which
   pictures to send, the blocking checks) is not on the server. Through `avt_call` an AI writes the request itself —
   read `avt_functions` for the shape and prefer `dryRun` first.

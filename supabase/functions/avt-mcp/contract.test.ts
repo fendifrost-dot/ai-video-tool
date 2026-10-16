@@ -106,6 +106,16 @@ describe("functions", () => {
     expect(t.description).toMatch(/\[browser\]/);
     expect(TOOLS.find((t) => t.name === "avt_whoami")!.inputSchema.properties).toEqual({ browser_session: { type: "boolean" } });
   });
+  it("the hand-out code never touches the refresh token (source-level)", () => {
+    const src = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
+    const start = src.indexOf("async function browserSession(");
+    expect(start).toBeGreaterThan(0);
+    const body = src.slice(start, src.indexOf("\n}\n", start));
+    expect(body).not.toMatch(/refresh_token|refreshToken/);
+    expect(body).toMatch(/purpose: "browser"/);
+    expect(body).toMatch(/is_anonymous/);
+    expect(body).not.toMatch(/identities|phone|user_metadata/);
+  });
 });
 
 describe("the generated catalog", () => {
