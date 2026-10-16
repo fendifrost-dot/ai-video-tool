@@ -21,9 +21,11 @@ Branch `claude/determined-faraday-4rzanq`, PR **#276** (draft → merge per Fend
 | **Montage press** (code) | **CODED, pushed** `a1f4833` — **not LIVE** | `src/lib/storyboard/montage.ts` (+test 7), `restage.ts` variant + `preferDressed` (+2 tests), `worldBatch/dialect.ts` + `runner.ts` (`alternate`, `variant`), `_shared/jobProgress.ts` alternate → unselected (+1 test), controller `montageShot`, FocusView **Montage** button (`focus-montage`, `confirm-montage`, `confirm-montage-dryrun`, `confirm-montage-scenes`), driver press `montage`, README. `tsc` clean. |
 | `switchx-background-proxy` enum fix (Beeble benchmark) | **CODED, pushed** `657cba0` + `6b4a536` — **not LIVE** | VERIFIED cause of `job_record_failed`: `provider_jobs.provider` is the `provider_name` enum; "beeble" is not in it. Row now `other` + `vendor: "beeble"`. Test pins the value to the enum. |
 | PR #276 reviews | **Self-review posted** (security + architecture, both APPROVE) | The independent reviewer agent was stopped by a session interruption before it posted; the review comment on the PR says so. A later session may add an independent review; nothing in the code waits on it. |
-| PR #276 merge | **NOT DONE at the time of writing** | CI `verify` was green on `6b4a536`; it runs again on `0836fdb`. Merge = un-draft, squash, then the deploy steps below. |
+| PR #276 merge | **MERGED** — squash `ce06cef` (06:42 UTC) | CI `verify` green on head `c332c5b`; branch resynced (`ebd3d4a`). |
+| `provider-jobs-tick` + `switchx-background-proxy` redeployed through Lovable | **LIVE (VERIFIED)** | Lovable agent, DEPLOY ONLY from `ce06cef`: `_shared/jobProgress.ts` sha256 `e9d343e0…7aac8` and `switchx-background-proxy/index.ts` sha256 `b2ebccc4…a9651` — both equal `sha256sum` of the files at `ce06cef` in this checkout. Unsigned `POST {}` to the tick → `401`. The benchmark submit through the proxy → `200 {"ok":true, jobId cb9b503c…, beeble_job_id swx_iIawxiSLvr3mUhQQFqxHN}` (was `500 job_record_failed`). |
+| Frontend published | **LIVE (VERIFIED)** | `deploy_project` after `latest_commit_sha = ce06cef`; live `index-BbxhaNDb.js` → `projects._id.storyboard-IlqbLUrG.js` carries `focus-montage`; `Acceptance-Bz8fgMeN.js` carries `montage-v1-2026-10-16`. |
 
-## Deploy — what makes it live (none of it done yet)
+## Deploy — what made it live (all done, see the state table; kept for the next time)
 
 1. **Merge PR #276** (squash). Note the squash SHA.
 2. **Lovable → Edge Functions → redeploy** on AVT (project `bd21b544-c7b8-4780-bdde-391ac9d4bfa8`), **DEPLOY ONLY**, from the squash SHA:
