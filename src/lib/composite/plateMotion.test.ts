@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { MediaAsset } from "@/lib/storyboard/media";
 import {
+  PLATE_EVENT_MAX,
   PLATE_MOTION_MODEL,
   PLATE_MOTION_ROUTE,
+  plateMotionPrompt,
   animatePlate,
   composePlateMotionRequest,
   findLivePlateJob,
@@ -106,5 +108,26 @@ describe("animatePlate", () => {
     const lookups = { livePlateRows: async () => [{ id: "1", status: "queued", finalized_at: null, request_payload_json: { settings: { route: PLATE_MOTION_ROUTE, plate: { still_asset_id: "still-1" } } } }] };
     await expect(animatePlate({ projectId: "proj", variationId: null, plan: plan() }, deps, lookups)).rejects.toThrow(/already being animated/);
     expect(calls).toEqual([]);
+  });
+});
+
+describe("the absurd event", () => {
+  it("is added to the prompt in the street, never the centre, bounded, and recorded on the plan and the job", () => {
+    const still = asset({ id: "still-1" });
+    const plain = planPlateMotion({ still, assets: [] });
+    expect(plain.ok && plain.plan.event).toBeNull();
+    expect(plain.ok && plain.plan.prompt).toBe(plateMotionPrompt(null));
+    const r = planPlateMotion({ still, assets: [], event: "  a riderless white horse gallops down the expressway between the cars.  " });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.plan.event).toBe("a riderless white horse gallops down the expressway between the cars.");
+    expect(r.plan.prompt).toContain("Locked-off camera");
+    expect(r.plan.prompt).toContain("catches the eye and holds it: a riderless white horse gallops down the expressway between the cars.");
+    expect(r.plan.prompt).toContain("never in the centre foreground");
+    const long = planPlateMotion({ still, assets: [], event: "x".repeat(1000) });
+    expect(long.ok && long.plan.event!.length).toBe(PLATE_EVENT_MAX);
+    const s = plateMotionSettings({ still, seconds: 5, prompt: r.plan.prompt, event: r.plan.event });
+    expect(s.event).toBe(r.plan.event);
+    expect(s.version).toBe("plate-motion-v2-2026-10-16");
   });
 });

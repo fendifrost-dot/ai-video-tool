@@ -78,7 +78,7 @@ const PRESSES = {
 const PRESS = PRESSES[command];
 if (!PRESS || !a.session || !a.project || !a.shot) {
   console.error(
-    "usage: avt-press.mjs <composite|animate-plate> --session <agent-browser-session.json> --project <id> --shot <key> [--variation <id>] [--keep-variation] [--dry-run] [--chrome <path>] [--app <url>] [--allow-any-host] [--out <dir>] [--timeout-min 25]",
+    "usage: avt-press.mjs <composite|animate-plate> --session <agent-browser-session.json> --project <id> --shot <key> [--variation <id>] [--keep-variation] [--dry-run] [--event <text>] [--chrome <path>] [--app <url>] [--allow-any-host] [--out <dir>] [--timeout-min 25]",
   );
   process.exit(2);
 }
@@ -283,6 +283,13 @@ try {
   await button.click();
   const confirm = page.locator(`[data-testid="${DRY ? PRESS.dryRun : PRESS.confirm}"]`);
   await confirm.waitFor({ state: "visible", timeout: 30_000 });
+  // a press that takes words (animate-plate: the event) gets them typed into the dialog's own field
+  if (a.event) {
+    const field = page.locator('[data-testid="confirm-animate-plate-event"]');
+    await field.waitFor({ state: "visible", timeout: 10_000 });
+    await field.fill(String(a.event));
+    log("typed the event:", String(a.event).slice(0, 200));
+  }
   const dialogText = (
     await page
       .locator("[role=dialog], [role=alertdialog]")

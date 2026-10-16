@@ -18,7 +18,33 @@ becomes white… pasted in."
 
 ## Run results (fill from real output only)
 
-RUN_RESULTS_PLACEHOLDER
+Pressed headlessly in sequence, 04:37–04:49 UTC (dry run on c047 first: the dialog said "and it moves: he goes over
+its moving plate"; the dry run's `plateVideo` was `7cc8e934`). Every row below read back from `project_assets`:
+
+| Shot | Dressed take | Composite (v2) | Frames / plate frames | Matte request | Pairing | Sync | Assignment |
+|---|---|---|---|---|---|---|---|
+| c047 | `f540b6be` | `93b9b968` (4.955 s) | 113 / 120 | `01a14300` | index | derived, 82.025 | unselected, candidate 6 |
+| c041 | `2f55f4fa` | `6982ff6a` (4.004 s) | 89 / 97 | `01a14303` | index | 71.215 | unselected |
+| c044 | `6d8043a2` | `73f5db17` (4.004 s) | 89 / 97 | `01a14305` | index | 75.885 | unselected |
+| c045 | `e6788d22` | `6c2d1185` (4.004 s) | 89 / 97 | `01a14307` | index | 77.855 | unselected |
+| c046 | `92c15951` | `72dd7783` (4.004 s) | 89 / 97 | `01a14309` | index | 79.82 | unselected |
+
+All five: `recipe plate-composite-v2-2026-10-16`, `camera handheld-v1-2026-10-16`, over `7cc8e934`; files named
+`…_<dressed8>_b58cab47m7cc8e934_<seed>.mp4`. c044's tail checked by eye at frames 20/60/76/84/88: no white outline
+(the v1 fault), cars moving behind him. Posted to Fendi 04:53 UTC. Ledger rows 43–44 (running total $130.38).
+
+**Fendi on the moving plate (04:50 UTC):** "That's much better. That background scenery with the cars going down
+the E-way. But I think we need something absurd happening that catches people's attention and isn't boring." →
+the event field (below).
+
+## The absurd event (16 Oct, after the run)
+
+"Animate the plate" now has a text field — *Something absurd that happens in the place* — handed into the prompt as
+one eye-catching thing in the street or the distance, never the centre foreground (`plateMotionPrompt`,
+`plate-motion-v2-2026-10-16`); it is recorded on the job (`settings.event`) and, by the tick, on the plate asset
+(`plate_motion.event`). The driver types it: `avt-press.mjs animate-plate … --event "<text>"`. Several moving
+plates of one still may now exist; the composite takes the NEWEST usable one, so when the director picks one, mark
+the others `usable: false` (metadata) rather than deleting them.
 
 ## Verify from real output — never from a claim
 

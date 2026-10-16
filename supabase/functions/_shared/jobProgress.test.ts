@@ -83,6 +83,7 @@ describe("plateMotionFrom", () => {
       seconds: 5,
       prompt: "P",
       version: "plate-motion-v1-2026-10-16",
+      event: null,
     });
     expect(plateMotionFrom(job({ request_payload_json: { settings: { route: "dressed" } } }))).toBeNull();
     expect(plateMotionFrom(job({ request_payload_json: { settings: { route: "plate_motion", plate: {} } } }))).toBeNull();

@@ -98,5 +98,11 @@ correctly paired frame, has no rim.
 | A handheld camera: a seeded sum of three sines (0.19/0.43/1.07 Hz) per axis — ±1.2 % of the short side of drift, ±0.45° of roll, ±0.6 % breathing — applied to the FINISHED frame, so he and the place move together; overscan computed from the amplitudes so no edge shows | `camera.ts`, applied in `render.ts` | "completely still… unnatural" |
 | A MOVING plate: **Animate the plate** sends the scene's plate still to Kling 2.5 (image-to-video, 5 s, locked-off camera, traffic/lights/passers-by, centre foreground kept empty; ≈ $0.35) through the existing Higgsfield lane; the server files the clip as a plate of the scene (`lane world_plate_video`, naming its still); every composite of the scene made after it goes over its frames, by time from the take's first frame, holding the last frame if the take is longer | `plateMotion.ts`, `_shared/jobProgress.ts` `filePlateVideo`, `plan.ts` `videoPlatesOf`, `render.ts` video plate | "some activity needs to be happening within these shots" — the place has its own life, and the camera's move reads against it |
 
+**The absurd event (Fendi, 04:50 UTC, on the first moving plate: "That's much better… but I think we need something
+absurd happening that catches people's attention and isn't boring"):** the Animate dialog takes one line — what
+happens in the place — and `plateMotionPrompt` puts it after the locked-camera base as "one thing happens that
+catches the eye and holds it: …", placed in the street, on the far side or in the middle distance, never the centre
+foreground (`plate-motion-v2-2026-10-16`). The line is kept on the job and on the plate asset.
+
 The grade, the key gradient, the wrap and the grain are v1's. A composite over a moving plate is named with both
 plate ids (`…_<still8>m<video8>_<seed>.mp4`); the moving plate itself goes on no shot and selects nothing.

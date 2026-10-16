@@ -26,7 +26,9 @@ export const PLATE_MOTION_PROVIDER = "higgsfield" as const;
 export const PLATE_MOTION_MODEL = "kling-2.5-turbo-pro-i2v";
 /** Kling bills whole clips of 5 or 10 s; the windows are under 5 s, and a longer take holds the plate's last frame. */
 export const PLATE_MOTION_SECONDS = 5;
-export const PLATE_MOTION_VERSION = "plate-motion-v1-2026-10-16";
+export const PLATE_MOTION_VERSION = "plate-motion-v2-2026-10-16";
+/** The longest event the director may ask for, in characters. */
+export const PLATE_EVENT_MAX = 400;
 
 /**
  * The motion asked for. The camera is told to stay put twice (a moving camera under a static matte would tear him
@@ -39,6 +41,23 @@ export const PLATE_MOTION_PROMPT =
   "what can move. The centre foreground stays empty: nothing and nobody enters it. Photoreal, the same time of day, " +
   "the same light and weather as the picture; no text, no captions, no added objects.";
 
+/**
+ * The prompt for one plate: the locked-off base, plus — when the director asks for one — the EVENT: one absurd,
+ * eye-catching thing that happens in the place while he performs (Fendi, 16 Oct: "we need something absurd happening
+ * that catches people's attention and isn't boring"). The event is placed in the street or on the far side; the
+ * centre foreground stays his.
+ */
+export function plateMotionPrompt(event: string | null | undefined): string {
+  const e = (event ?? "").trim().replace(/\s+/g, " ").slice(0, PLATE_EVENT_MAX);
+  if (!e) return PLATE_MOTION_PROMPT;
+  return (
+    `${PLATE_MOTION_PROMPT} ` +
+    `And one thing happens that catches the eye and holds it: ${e.replace(/[.!?]+$/, "")}. ` +
+    "It plays out fully inside these five seconds, in the street, on the far side or in the middle distance — clearly visible, " +
+    "in the same light and weather, real as if filmed — but never in the centre foreground, which stays empty."
+  );
+}
+
 export type PlateMotionPlan = {
   /** The still to animate: the plate the composite would use. */
   still: MediaAsset;
@@ -46,6 +65,8 @@ export type PlateMotionPlan = {
   existing: MediaAsset[];
   seconds: number;
   model: string;
+  /** The absurd thing asked for, or null. */
+  event: string | null;
   prompt: string;
   cost: { usd: number; text: string };
 };
@@ -58,6 +79,8 @@ export function plateMotionEstimateUsd(seconds: number): number {
 export function planPlateMotion(f: {
   still: MediaAsset | null;
   assets: readonly MediaAsset[];
+  /** What happens in the place, in the director's words — or nothing: the street's ordinary life. */
+  event?: string | null;
 }): { ok: true; plan: PlateMotionPlan } | { ok: false; why: string } {
   const still = f.still;
   if (!still) return { ok: false, why: "this shot has no plate to animate — generate the place first" };
@@ -71,7 +94,8 @@ export function planPlateMotion(f: {
       existing: videoPlatesOf(f.assets, still.id),
       seconds: PLATE_MOTION_SECONDS,
       model: PLATE_MOTION_MODEL,
-      prompt: PLATE_MOTION_PROMPT,
+      event: (f.event ?? "").trim().slice(0, PLATE_EVENT_MAX) || null,
+      prompt: plateMotionPrompt(f.event),
       cost: {
         usd,
         text: `About $${usd.toFixed(3)} by the provider's own pricing rule (${PLATE_MOTION_SECONDS} s of ${PLATE_MOTION_MODEL} at $${PROVIDER_RATES.kling_usd_per_s}/s)`,
@@ -110,10 +134,11 @@ export function composePlateMotionRequest(input: {
 }
 
 /** The job's settings: how the server knows to file the clip as a moving plate of the scene, and of which still. */
-export function plateMotionSettings(input: { still: MediaAsset; seconds: number; prompt: string }): Record<string, unknown> {
+export function plateMotionSettings(input: { still: MediaAsset; seconds: number; prompt: string; event?: string | null }): Record<string, unknown> {
   return {
     route: PLATE_MOTION_ROUTE,
     version: PLATE_MOTION_VERSION,
+    event: input.event ?? null,
     batchRun: STORYBOARD_RUN,
     // a plate is the scene's, not a shot's: no box claims this job (latestBoxJobs keys by batchShotId)
     batchShotId: null,
@@ -182,7 +207,7 @@ export async function animatePlate(
 ): Promise<PlateMotionResult> {
   const say = input.onStage ?? (() => undefined);
   const { plan } = input;
-  const settings = plateMotionSettings({ still: plan.still, seconds: plan.seconds, prompt: plan.prompt });
+  const settings = plateMotionSettings({ still: plan.still, seconds: plan.seconds, prompt: plan.prompt, event: plan.event });
   if (input.dryRun) {
     return {
       dryRun: true,
