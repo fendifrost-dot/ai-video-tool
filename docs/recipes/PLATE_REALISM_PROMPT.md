@@ -106,3 +106,12 @@ foreground (`plate-motion-v2-2026-10-16`). The line is kept on the job and on th
 
 The grade, the key gradient, the wrap and the grain are v1's. A composite over a moving plate is named with both
 plate ids (`…_<still8>m<video8>_<seed>.mp4`); the moving plate itself goes on no shot and selects nothing.
+
+### plate-motion-v4 (16 Oct 2026): the life is only what belongs to the place
+
+v3's base said "cars and buses pass along the street" for every plate. On the first platform plates (the runway
+`d7a2c523`, the walrus `341cbcfb`) the model obliged: the camera rose off the platform and a bus arrived where the
+train had been. v4 names the life per kind of place (street: traffic and signals; platform: the train stays or pulls
+in, passengers walk; room or train car: people shift, lights flicker) and forbids anything the picture does not hold
+("no vehicle where there is no road, no new building, nobody new in the foreground"), and adds "no rise" to the
+camera lock. Recorded on every moving plate as `plate_motion.version`.
