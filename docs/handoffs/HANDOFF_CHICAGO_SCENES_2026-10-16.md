@@ -28,8 +28,8 @@ Scene A = the fashion show on the platform (c044). Scene B = the walrus off the 
 |---|---|---|---|---|---|
 | Chicago, the dice | 70.85–73.8 | c040 (no Fendi), c041 | `YSL_BUBBLE_BUCKET` | `47a904a4` (dice game + penguin) | `22e1a0b1` PASS |
 | Chicago, the corner | 73.8–76.75 | c042, c043 | `YSL_JACKET` | none yet | — |
-| Chicago, the runway | 76.75–78.72 | c044 | `YSL_JACKET` | `435ff4dd` (models walking to camera) | `d7a2c523` FAIL, `e397ad60` FAIL (both v3; camera leaves the platform) → re-animate under v4 |
-| Chicago, the train | 78.72–80.69 | c045 | `YSL_JACKET` | `d783e85a` (walrus at the open door) | `341cbcfb` PARTIAL (walrus good; the train becomes a bus after ~2.5 s) → re-animate under v4 |
+| Chicago, the runway | 76.75–78.72 | c044 | `YSL_JACKET` | `435ff4dd` (models walking to camera) | `d7a2c523` FAIL, `e397ad60` FAIL (v3; camera leaves the platform); **`22fabc2c` v4 — holds ~3 s, then a push-in and a bus at the right** (the plate now) |
+| Chicago, the train | 78.72–80.69 | c045 | `YSL_JACKET` | `d783e85a` (walrus at the open door) | `341cbcfb` PARTIAL (v3); **`6155e245` v4 — holds ~3 s, then a road and a bus at the right** (the plate now) |
 | Chicago, inside the train | 80.69–82.65 | c046 | `YSL_JACKET` | `0d025e03` (the car, doors open) | `b21bc60f` PASS |
 | Chicago, the switch | 82.65–100.36 | c047–c054 | `YSL_JACKET` | `fd53bf3f` (the bear) | `1323b9c8` (unchanged; c047 approved) |
 
@@ -75,3 +75,16 @@ montages on c041/c044/c045/c046 are still filed as alternates too.
 - A plate that fails is marked `usable:false` with `unusable_why`, never deleted: the newest usable one wins.
 - The `director_reference` assets are Fendi's pictures: never a plate themselves (landscape), never selected.
 - Never commit the session file, `pubkey.txt`, the output folders or any clip of Fendi (public repo).
+
+## Higgsfield: "$50 for one clip" (Fendi, 14:33 UTC) — and a HOLD
+
+Checked from primary sources (ledger row 81): the Higgsfield account connected to this chat is the consumer app (free,
+no spend since 11 Oct) — not the API credits Control Center spends; no receipt in Gmail; CC records list-price
+estimates only (`costFinalCents` is always null), so the API's real charge per request is unread anywhere. No single
+call is $50 at list; the dearest in 24 h is an 11 s object swap at $7.49. The volume is the story: 41 API calls since
+15 Oct 14:00 UTC ≈ $92 list (12 object swaps $61.97, 11 Seedance $24.41, 16 Kling $5.60), so a $50 API credit pack
+drains in under a day.
+
+**HOLD:** no further Higgsfield calls (dress, montage, animate-plate) until Fendi has read the API dashboard and said
+what the $50 line is. Open question for the next build: read the real charge back per request (balance before/after
+or a per-request cost field) and write it on the job, so the ledger stops saying "invoice unknown".
