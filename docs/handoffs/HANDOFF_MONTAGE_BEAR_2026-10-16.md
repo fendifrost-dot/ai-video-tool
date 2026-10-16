@@ -116,3 +116,7 @@ return scene; `MONTAGE_TAIL_TRIM_SECONDS = 0.12` names the tail the edit never u
 from the pixel-exact composite (recipe E), not the montage's. When the timeline step lays recipe E inside a shot's
 window, it trims every montage segment's last 0.12 s. The filed montages (v2/v3 wording) stay as they are — their
 cutaway windows are what the edit uses; only their tails are skipped. No spend.
+
+**LIVE (VERIFIED 13:00 UTC):** PR #280 squash `9e554ad5`; Lovable `latest_commit_sha` matched, Publish (deployment
+`3f655f7f`); live `index-CDsN0tD5.js` → `projects._id.storyboard-BXeznL1Z.js` → `Acceptance-D4x7fSoE.js` carries
+`HARD CUT to his profile` (1) and `snap back to him` (0). No edge function touched, nothing redeployed.
