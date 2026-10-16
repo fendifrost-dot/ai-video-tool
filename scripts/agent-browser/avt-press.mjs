@@ -75,6 +75,14 @@ const PRESSES = {
     missing: "the shot offers no Animate the plate (no plate of its scene) — generate the place first",
     input: "confirm-animate-plate-event",
   },
+  // the shot's stretch of the take dressed in its scene's outfit (Higgsfield object-swap, ~$0.68 per billed source second)
+  dress: {
+    button: "focus-dress-shot",
+    confirm: "confirm-dress-shot",
+    dryRun: "confirm-dress-dryrun",
+    done: /take is being dressed|Dry run: the exact request/i,
+    missing: "the shot offers no Dress (no take in sync, or its scene has no outfit)",
+  },
   // the take re-shot as a fast-cut montage (one Seedance call); --event is the scene list, one scene per line
   montage: {
     button: "focus-montage",
@@ -88,7 +96,7 @@ const PRESSES = {
 const PRESS = PRESSES[command];
 if (!PRESS || !a.session || !a.project || !a.shot) {
   console.error(
-    "usage: avt-press.mjs <composite|animate-plate|montage> --session <agent-browser-session.json> --project <id> --shot <key> [--variation <id>] [--keep-variation] [--dry-run] [--event <text>] [--chrome <path>] [--app <url>] [--allow-any-host] [--out <dir>] [--timeout-min 25]",
+    "usage: avt-press.mjs <composite|animate-plate|dress|montage> --session <agent-browser-session.json> --project <id> --shot <key> [--variation <id>] [--keep-variation] [--dry-run] [--event <text>] [--chrome <path>] [--app <url>] [--allow-any-host] [--out <dir>] [--timeout-min 25]",
   );
   process.exit(2);
 }
