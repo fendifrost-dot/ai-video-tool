@@ -37,6 +37,7 @@ import {
   gradeForeground,
   grayFromRgba,
   keyGradient,
+  plateScratchFor,
   prepareAlpha,
   preparePlate,
   RECIPE,
@@ -264,9 +265,11 @@ function yieldToUi(): Promise<void> {
 }
 const YIELD_EVERY = 4;
 
-/** A sequential frame reader with one frame of look-ahead, so a caller can take the nearer of current and next. */
-function pairedReader(read: RangeRead, track: Mp4Track, what: string) {
-  const it = readFrames(read, track);
+/**
+ * A sequential frame reader with one frame of look-ahead, so a caller can take the nearer of current and next, or
+ * step one frame at a time. Over any async iterable of frames (readFrames in the browser; a list in a test).
+ */
+export function pairedReader(it: AsyncGenerator<DecodedFrame, void, void> | AsyncIterator<DecodedFrame>, what: string) {
   let cur: DecodedFrame | null = null;
   let next: DecodedFrame | null = null;
   let first = 0;
@@ -305,7 +308,7 @@ function pairedReader(read: RangeRead, track: Mp4Track, what: string) {
     get frames() {
       return frames;
     },
-    close: () => it.return(),
+    close: () => it.return?.(),
   };
 }
 
@@ -355,6 +358,7 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
 
   const grad = keyGradient(w, h);
   const scratch = alphaScratch(w, h);
+  const plateScratch = input.plate.kind === "video" ? plateScratchFor(w, h) : undefined;
   const fgg = new Float32Array(w * h * 3);
   const outRgba = new Uint8ClampedArray(w * h * 4);
 
@@ -370,7 +374,7 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
     plateWide = p.wide;
   } else {
     if (input.plate.track.sampleCount === 0) throw new Error("the moving plate has no frames");
-    plateReader = pairedReader(input.plate.read, input.plate.track, "the moving plate");
+    plateReader = pairedReader(readFrames(input.plate.read, input.plate.track), "the moving plate");
     plateSoft = new Float32Array(0);
     plateWide = new Float32Array(0);
   }
@@ -381,7 +385,7 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
     if (f === plateCur) return;
     plateCur = f;
     coverRgba(f.rgba, f.width, f.height, w, h, plateFit);
-    const p = preparePlate(plateFit, w, h);
+    const p = preparePlate(plateFit, w, h, plateScratch);
     plateSoft = p.soft;
     plateWide = p.wide;
   };
@@ -414,7 +418,7 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
     },
   });
 
-  const alphaReader = pairedReader(alpha.read, alpha.track, "the matte");
+  const alphaReader = pairedReader(readFrames(alpha.read, alpha.track), "the matte");
   const alphaFor = async (takeTime: number, t0: number): Promise<DecodedFrame> => {
     if (pairing === "index") return alphaReader.step();
     const target = normalizedTime(takeTime, t0, takeLast);
@@ -438,7 +442,7 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
       const alphaGray = resampleGray(grayFromRgba(a.rgba), a.width, a.height, w, h);
       const { a1, edge } = prepareAlpha(alphaGray, w, h, scratch);
       gradeForeground(fgRgba, grad, w, h, fgg);
-      cleanEdges(fgg, a1, w, h, scratch);
+      cleanEdges(fgg, a1, alphaGray, w, h, scratch);
       compositeFrame({ fgg, a1, edge, soft: plateSoft, wide: plateWide, w, h, random }, outRgba);
       const timestamp = Math.max(0, Math.round(seconds * 1e6));
       const frame = stage
@@ -477,6 +481,10 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
   if (failure) throw failure;
   if (!avcC) throw new Error("the encoder gave no stream description");
   if (out.length === 0 || t0 == null) throw new Error("no frames came out of the take");
+  // frame by frame means exactly one matte per take frame: a matte the decoder cut short would have held its last
+  // frame over the rest of him without a word — the very drift this pairing exists to end
+  if (pairing === "index" && alphaReader.frames !== kept)
+    throw new Error(`the matte gave ${alphaReader.frames} frames for ${kept} take frames — the files do not pair frame by frame`);
   // the file is as long as the take: its last frame runs to the take's end
   const lengthUs = Math.round((fg.track.duration - t0) * 1e6);
   const tailUs = Math.max(1, lengthUs - lastUs);
@@ -484,7 +492,7 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
   return {
     bytes,
     frames: out.length,
-    alphaFrames,
+    alphaFrames: alphaReader.frames,
     pairing,
     plateFrames: plateReader ? plateReader.frames : null,
     seconds: (lastUs + tailUs) / 1e6,

@@ -236,11 +236,14 @@ export function FocusView() {
                 </Button>
               )}
             </div>
-            {comp.plan && (
-              <p className={cn("text-[11px]", comp.plan.plateVideo ? "text-emerald-300/80" : "text-foreground/50")} data-testid="focus-plate-state" data-moving={comp.plan.plateVideo ? "yes" : "no"}>
-                {comp.plan.plateVideo ? `Moving plate ready: ${comp.plan.plateVideo.name}` : "The plate is a still — animate it for traffic and lights that move"}
-              </p>
-            )}
+            {(comp.plan || comp.plateMotion.plan) && (() => {
+              const moving = comp.plan?.plateVideo ?? comp.plateMotion.plan?.existing[0] ?? null;
+              return (
+                <p className={cn("text-[11px]", moving ? "text-emerald-300/80" : "text-foreground/50")} data-testid="focus-plate-state" data-moving={moving ? "yes" : "no"}>
+                  {moving ? `Moving plate ready: ${moving.name}` : "The plate is a still — animate it for traffic and lights that move"}
+                </p>
+              );
+            })()}
             {dress.dressed.length > 0 && (
               <ul className="space-y-0.5 text-[11px]" data-testid="focus-dress-state">
                 {dress.dressed.map((d) => (

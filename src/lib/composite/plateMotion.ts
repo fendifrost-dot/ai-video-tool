@@ -115,6 +115,8 @@ export function plateMotionSettings(input: { still: MediaAsset; seconds: number;
     route: PLATE_MOTION_ROUTE,
     version: PLATE_MOTION_VERSION,
     batchRun: STORYBOARD_RUN,
+    // a plate is the scene's, not a shot's: no box claims this job (latestBoxJobs keys by batchShotId)
+    batchShotId: null,
     plate: {
       still_asset_id: input.still.id,
       still_path: input.still.path,

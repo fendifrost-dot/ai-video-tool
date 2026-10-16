@@ -7,8 +7,9 @@
  *   1. the matte is eroded a pixel and feathered (σ 1.0) — a1;
  *   2. an INNER edge band is cut from it: a1 minus a1 eroded four pixels and blurred (σ 5), kept only where a1 is
  *      the larger (one-sided), blurred again (σ 1.5) and multiplied by a1 so none of it lies outside him — edge;
- *   2b. his outline is cleaned of the take's own background (v2, 16 Oct): the colour a few pixels inside him is
- *      pulled outward over the feather, so a white wall behind him in the take never rims him on the plate;
+ *   2b. his outline is cleaned of the take's own background (v2, 16 Oct): the feather stops at the raw matte, and
+ *      the background seen just outside him is unmixed out of every feather pixel by the matte's own alpha, so a
+ *      white wall behind him in the take never rims him on the plate;
  *   3. his pixels are multiplied by a key gradient (brighter on the key side) and graded to the plate: luma down a
  *      touch, contrast up a touch, colour a touch less, shadows warmed, highlights warmed, blues pulled;
  *   4. the plate is defocused slightly (σ 1.2) and, separately, blurred wide (σ 30) to light him;
@@ -66,8 +67,12 @@ export const RECIPE = {
   matte: { erode: 1, featherSigma: 1.0 },
   /** `confined`: the band is one-sided and multiplied by a1 — v1's band reached outside him and rimmed him white. */
   edge: { erode: 4, insideSigma: 5, bandSigma: 1.5, confined: true },
-  /** His outline takes the colour from `erode` pixels inside him, spread over σ — never the take's own background. */
-  decontaminate: { erode: 2, sigma: 4 },
+  /**
+   * The feather never reaches past the raw matte (a1 is scaled to 0 where the matte is under `minAlpha`), and every
+   * feather pixel has the take's background — estimated from the pixels just outside him, blurred σ
+   * `backgroundSigma` — unmixed out of it by the matte's own alpha.
+   */
+  decontaminate: { minAlpha: 0.08, backgroundSigma: 8 },
   plate: { softSigma: 1.2, wrapSigma: 30 },
   wrap: { mode: "screen", opacity: 0.5 },
   grain: 7,
@@ -224,6 +229,10 @@ export function prepareAlpha(
 ): { a1: Gray; edge: Gray } {
   erode(alpha, w, h, RECIPE.matte.erode, s.a, s.c);
   gaussianBlur(s.a, w, h, RECIPE.matte.featherSigma, s.a, s.c); // a1
+  // the feather is of the matte, not beyond it: where the matte itself says "not him" the take's pixel is pure
+  // background and must not be let in at all
+  const lo = RECIPE.decontaminate.minAlpha;
+  for (let i = 0; i < w * h; i++) if (alpha[i] < lo) s.a[i] *= alpha[i] / lo;
   erode(s.a, w, h, RECIPE.edge.erode, s.b, s.c);
   gaussianBlur(s.b, w, h, RECIPE.edge.insideSigma, s.b, s.c); // the matte pulled inside him
   // one-sided: where the pulled-in matte is the larger (outside his feathered outline) there is no band at all
@@ -237,24 +246,31 @@ export function prepareAlpha(
 /**
  * His outline, cleaned of the take's background. A matte's soft edge covers pixels that are part him, part whatever
  * stood behind him when he was filmed (a white wall in the 15 Oct takes); laid over a dark plate through the feather,
- * that mix is a pale rim. So the colour `decontaminate.erode` pixels inside him is spread outward (a normalised
- * blur of σ `decontaminate.sigma`) and takes over wherever the eroded core is not full. In place on `fgg` (0–1 rgb);
- * `s.c`–`s.f` are scratch, `a1` is read only.
+ * that mix is a pale rim. Each feather pixel is f = α·him + (1 − α)·background, with α the matte's own value, so
+ * him = (f − (1 − α)·background) / α: the background is estimated from the take's pixels where the matte is empty
+ * (weighted by 1 − α, blurred σ `backgroundSigma`), and the unmix runs where the matte is partial. Where the matte is
+ * full his pixel is his — a stripe or a logo at a sleeve's edge is never touched, and a thin limb the matte holds
+ * keeps its colour. In place on `fgg` (0–1 rgb); `raw` is the matte as read, `a1` the feathered one; `s.c`–`s.f`
+ * are scratch.
  */
-export function cleanEdges(fgg: Rgb, a1: Gray, w: number, h: number, s: AlphaScratch): Rgb {
+export function cleanEdges(fgg: Rgb, a1: Gray, raw: Gray, w: number, h: number, s: AlphaScratch): Rgb {
   const n = w * h;
-  const core = erode(a1, w, h, RECIPE.decontaminate.erode, s.e, s.c);
-  const weight = gaussianBlur(core, w, h, RECIPE.decontaminate.sigma, s.f, s.c);
+  const sigma = RECIPE.decontaminate.backgroundSigma;
+  const lo = RECIPE.decontaminate.minAlpha;
+  for (let i = 0; i < n; i++) s.e[i] = 1 - raw[i]; // how much of each take pixel is background
+  const weight = gaussianBlur(s.e, w, h, sigma, s.f, s.c);
   for (let c = 0; c < 3; c++) {
-    for (let i = 0; i < n; i++) s.d[i] = fgg[i * 3 + c] * core[i];
-    gaussianBlur(s.d, w, h, RECIPE.decontaminate.sigma, s.d, s.c);
+    for (let i = 0; i < n; i++) s.d[i] = fgg[i * 3 + c] * s.e[i];
+    gaussianBlur(s.d, w, h, sigma, s.d, s.c);
     for (let i = 0; i < n; i++) {
-      const k = core[i];
-      if (k >= 1) continue; // deep inside him: his own pixel
+      const alpha = raw[i];
+      if (alpha >= 0.999 || alpha < lo) continue; // wholly him, or not him at all (a1 is 0 there)
+      if (a1[i] <= 0) continue;
       const den = weight[i];
-      if (den < 1e-4) continue; // nowhere near him: the plate shows here anyway
-      const inside = s.d[i] / den;
-      fgg[i * 3 + c] = fgg[i * 3 + c] * k + inside * (1 - k);
+      if (den < 1e-4) continue; // no background anywhere near: nothing to take out
+      const bg = s.d[i] / den;
+      const him = (fgg[i * 3 + c] - (1 - alpha) * bg) / alpha;
+      fgg[i * 3 + c] = him < 0 ? 0 : him > 1 ? 1 : him;
     }
   }
   return fgg;
@@ -313,17 +329,21 @@ export function gradeForeground(
 }
 
 /** The plate as the composite uses it: slightly defocused (what he stands in front of) and blurred wide (what lights his edge). */
+/** Scratch space for preparing a plate, allocated once: a moving plate is prepared frame by frame. */
+export type PlateScratch = { soft: Rgb; wide: Rgb; ch: Gray; o: Gray; t: Gray };
+export function plateScratchFor(w: number, h: number): PlateScratch {
+  const n = w * h;
+  return { soft: new Float32Array(n * 3), wide: new Float32Array(n * 3), ch: new Float32Array(n), o: new Float32Array(n), t: new Float32Array(n) };
+}
+
 export function preparePlate(
   plate: Uint8ClampedArray | Uint8Array,
   w: number,
   h: number,
+  s: PlateScratch = plateScratchFor(w, h),
 ): { soft: Rgb; wide: Rgb } {
   const n = w * h;
-  const soft = new Float32Array(n * 3);
-  const wide = new Float32Array(n * 3);
-  const ch = new Float32Array(n);
-  const o = new Float32Array(n);
-  const t = new Float32Array(n);
+  const { soft, wide, ch, o, t } = s;
   for (let c = 0; c < 3; c++) {
     for (let i = 0; i < n; i++) ch[i] = plate[i * 4 + c] / 255;
     gaussianBlur(ch, w, h, RECIPE.plate.softSigma, o, t);

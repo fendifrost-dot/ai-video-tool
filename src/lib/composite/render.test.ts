@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { alphaShouldAdvance, colrOf, coverRgba, normalizedTime, pairingFor, renderSize, resampleGray } from "./render";
+import { alphaShouldAdvance, colrOf, coverRgba, normalizedTime, pairedReader, pairingFor, renderSize, resampleGray } from "./render";
+import type { DecodedFrame } from "./frameReader";
 
 describe("pairing the alpha with the take by time", () => {
   it("a frame's place on its clock runs 0 to 1 over the file", () => {
@@ -118,5 +119,40 @@ describe("coverRgba", () => {
     expect(out[5]).toBeGreaterThan(100); // green-ish
     expect(out[3]).toBe(255);
     expect(out[7]).toBe(255);
+  });
+});
+
+describe("pairedReader", () => {
+  const frame = (index: number, t: number): DecodedFrame => ({ index, t, width: 1, height: 1, rgba: new Uint8ClampedArray(4) });
+  async function* frames(times: number[]) {
+    for (let i = 0; i < times.length; i++) yield frame(i, times[i]);
+  }
+
+  it("steps one frame per call and holds the last once they run out, counting only what it read", async () => {
+    const r = pairedReader(frames([0, 0.1, 0.2]), "the matte");
+    expect((await r.step()).index).toBe(0);
+    expect((await r.step()).index).toBe(1);
+    expect((await r.step()).index).toBe(2);
+    expect((await r.step()).index).toBe(2); // held
+    expect(r.frames).toBe(3);
+    await r.close();
+  });
+
+  it("by time, takes the nearer of current and next, never goes back, and holds the last frame", async () => {
+    const r = pairedReader(frames([1, 1.5, 2, 2.5]), "the moving plate");
+    const clock = (t: number) => t - r.first;
+    expect((await r.at(0, clock)).index).toBe(0);
+    expect(r.first).toBe(1);
+    expect((await r.at(0.2, clock)).index).toBe(0);
+    expect((await r.at(0.3, clock)).index).toBe(1); // a tie goes forward
+    expect((await r.at(1.0, clock)).index).toBe(2);
+    expect((await r.at(0.1, clock)).index).toBe(2); // never back
+    expect((await r.at(9, clock)).index).toBe(3); // held past the end
+    expect(r.frames).toBe(4);
+  });
+
+  it("says when there are no frames at all", async () => {
+    const r = pairedReader(frames([]), "the matte");
+    await expect(r.step()).rejects.toThrow(/the matte gave no frames/);
   });
 });
