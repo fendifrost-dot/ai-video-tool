@@ -62,7 +62,7 @@ export const GRADE: Grade = {
 };
 
 export const RECIPE = {
-  version: "plate-composite-v2-2026-10-16",
+  version: "plate-composite-v3-2026-10-16",
   keyGradient: "clip(120 + 140·x/w − 35·y/h, 0, 255) / 255, multiplied",
   matte: { erode: 1, featherSigma: 1.0 },
   /** `confined`: the band is one-sided and multiplied by a1 — v1's band reached outside him and rimmed him white. */
@@ -73,7 +73,13 @@ export const RECIPE = {
    * `backgroundSigma` — unmixed out of it by the matte's own alpha.
    */
   decontaminate: { minAlpha: 0.08, backgroundSigma: 8 },
-  plate: { softSigma: 1.2, wrapSigma: 30 },
+  /**
+   * `startsAtShotIn` (v3): a moving plate's first frame is paired with the SHOT's first frame, not the cut's. The
+   * dressed cut carries a head handle (~1.1 s of take before the shot, never shown); v2 spent the plate's first,
+   * cleanest second under it, and the shot met the plate's late drift (16 Oct: Kling's push-in and traffic from
+   * ~3 s on both platform plates). Under the head handle the plate holds its first frame.
+   */
+  plate: { softSigma: 1.2, wrapSigma: 30, startsAtShotIn: true },
   wrap: { mode: "screen", opacity: 0.5 },
   grain: 7,
   grade: GRADE,

@@ -28,8 +28,8 @@ Scene A = the fashion show on the platform (c044). Scene B = the walrus off the 
 |---|---|---|---|---|---|
 | Chicago, the dice | 70.85–73.8 | c040 (no Fendi), c041 | `YSL_BUBBLE_BUCKET` | `47a904a4` (dice game + penguin) | `22e1a0b1` PASS |
 | Chicago, the corner | 73.8–76.75 | c042, c043 | `YSL_JACKET` | none yet | — |
-| Chicago, the runway | 76.75–78.72 | c044 | `YSL_JACKET` | `435ff4dd` (models walking to camera) | `d7a2c523` FAIL, `e397ad60` FAIL (both v3; camera leaves the platform) → re-animate under v4 |
-| Chicago, the train | 78.72–80.69 | c045 | `YSL_JACKET` | `d783e85a` (walrus at the open door) | `341cbcfb` PARTIAL (walrus good; the train becomes a bus after ~2.5 s) → re-animate under v4 |
+| Chicago, the runway | 76.75–78.72 | c044 | `YSL_JACKET` | `435ff4dd` (models walking to camera) | `d7a2c523` FAIL, `e397ad60` FAIL (v3; camera leaves the platform); **`22fabc2c` v4 — holds ~3 s, then a push-in and a bus at the right** (the plate now) |
+| Chicago, the train | 78.72–80.69 | c045 | `YSL_JACKET` | `d783e85a` (walrus at the open door) | `341cbcfb` PARTIAL (v3); **`6155e245` v4 — holds ~3 s, then a road and a bus at the right** (the plate now) |
 | Chicago, inside the train | 80.69–82.65 | c046 | `YSL_JACKET` | `0d025e03` (the car, doors open) | `b21bc60f` PASS |
 | Chicago, the switch | 82.65–100.36 | c047–c054 | `YSL_JACKET` | `fd53bf3f` (the bear) | `1323b9c8` (unchanged; c047 approved) |
 
@@ -40,8 +40,8 @@ Scene A = the fashion show on the platform (c044). Scene B = the walrus off the 
 | c041 | dressed take, bubble coat + bucket hat (job `390e3e88`, $2.72) | `0f649563` (4.000 s) | VERIFIED on frames 5/30/55/80: the glossy bubbled lambskin coat and the black nylon bucket hat on him, glasses kept |
 | c041 | composite over the dice plate | `1aab6283` (4.000 s) | PASS: the coat and the bucket hat pixel-exact, the dice players and the penguin behind him, the plate holds (ledger row 78) |
 | c044 | montage, scene A (job `b9e2bc52`, $2.22) | `bda9ead2` (4.04 s) | OBSERVED every eighth frame: him on the platform with the models behind · HARD CUT aerial of the train sliding into the station · HARD CUT low angle, the models' legs passing in front of him. All three scenes, in order. |
-| c044 | composite | *not pressed — no usable moving plate yet (v4 re-animation first)* | |
-| c045 | composite over the walrus plate | `f0706d72` (4.004 s) | OBSERVED: he is pixel-exact, the walrus heaves off the train behind him; the plate's drift (train → bus) shows in the shot's last ~0.5 s. Re-composite after the v4 plate. |
+| c044 | composite over the runway v4 plate | `7e022326` (4.004 s) | OBSERVED: pixel-exact, the models walk past behind him; the plate's push-in shows at the end of the shot window (ledger row 82) |
+| c045 | composites over the walrus plates | `f0706d72` (v3 plate), `69c9f4b4` (v4 plate) | OBSERVED: pixel-exact, the walrus heaves off the train behind him; on both the plate's drift (train → road and bus) reaches the end of the shot window (ledger rows 76, 83) |
 | c045 | montage, scene B (job `4fa88370`, $2.22) | `53771ac0` (4.0 s) | OBSERVED: the walrus off the train (wide) · HARD CUT the open door · HARD CUT him rapping inside the car; the walrus's back in the foreground of the last two cuts (ledger row 79) |
 | c046 | composite inside the train car | `fea93ac6` (4.004 s) | PASS: pixel-exact in the aisle, doors open, platform behind, passengers, a train passing outside |
 
@@ -64,7 +64,7 @@ montages on c041/c044/c045/c046 are still filed as alternates too.
 1. ~~Publish v4~~ DONE 14:29 UTC (above); then re-animate the runway still `435ff4dd` and the
    walrus still `d783e85a` (`avt-press.mjs animate-plate … --shot c044` / `--shot c045`, with their events), judge on
    frames 0/40/80/119 (the camera must stay on the platform; no bus), then `composite` c044 and re-`composite` c045.
-2. **c041 composite** and **c045 montage**: pending at hand-off time; results in the ledger when they land.
+2. **Composite recipe v3 — the plate starts at the shot's first frame** (no spend): today the plate's frame 0 is paired with the CUT's frame 0, so the shot (which starts ~1.1 s into the cut, after the head handle) plays plate frames ~26–75 and meets Kling's late drift. Pair plate frame 0 with the shot's in-point and hold frame 0 under the head handle (never shown) → the shot uses the plate's first, cleanest 2 s. Then re-composite c044 and c045 ($0.14 at Fal). Class B; `plan.ts`/`render.ts` + tests; version the recipe.
 3. **The timeline step** (unchanged from `HANDOFF_MONTAGE_BEAR_2026-10-16.md`): lay composite + montage cutaways
    inside each shot's window, trimming `MONTAGE_TAIL_TRIM_SECONDS` off every montage segment.
 4. c042/c043 ("Chicago, the corner") have no plate: Fendi has not said what goes there.
@@ -75,3 +75,38 @@ montages on c041/c044/c045/c046 are still filed as alternates too.
 - A plate that fails is marked `usable:false` with `unusable_why`, never deleted: the newest usable one wins.
 - The `director_reference` assets are Fendi's pictures: never a plate themselves (landscape), never selected.
 - Never commit the session file, `pubkey.txt`, the output folders or any clip of Fendi (public repo).
+
+## Higgsfield: "$50 for one clip" (Fendi, 14:33 UTC) — and a HOLD
+
+Checked from primary sources (ledger row 81): the Higgsfield account connected to this chat is the consumer app (free,
+no spend since 11 Oct) — not the API credits Control Center spends; no receipt in Gmail; CC records list-price
+estimates only (`costFinalCents` is always null), so the API's real charge per request is unread anywhere. No single
+call is $50 at list; the dearest in 24 h is an 11 s object swap at $7.49. The volume is the story: 41 API calls since
+15 Oct 14:00 UTC ≈ $92 list (12 object swaps $61.97, 11 Seedance $24.41, 16 Kling $5.60), so a $50 API credit pack
+drains in under a day.
+
+**HOLD:** no further Higgsfield calls (dress, montage, animate-plate) until Fendi has read the API dashboard and said
+what the $50 line is. Open question for the next build: read the real charge back per request (balance before/after
+or a per-request cost field) and write it on the job, so the ledger stops saying "invoice unknown".
+
+## Fendi: "Why are we using Kling when we know Higgsfield works best" (14:45 UTC)
+
+Facts: every video call here goes through Higgsfield's API; Kling 2.5 turbo pro is one model in that catalogue, the
+cheapest image-to-video it offers ($0.18 real for 5 s), and "Animate the plate" chose it for that: a locked-off clip
+of a still. The models that have held up best for Fendi are Seedance 2.5 reference-to-video (the montages: hard cuts,
+no drift, the platform kept; $1.55 real for 4 s) and the Genjutsu object swap (the dressing). Seedance 2.5 has never
+been tried AS A PLATE ANIMATOR. Control Center's catalogue has no Higgsfield-own image-to-video model; the
+alternatives for a still are Kling 2.5 (turbo pro / standard) and Hailuo 2.3.
+
+RECOMMENDATION (one call, ≈ $1.55 real, when the hold lifts): animate the runway still `435ff4dd` with
+`seedance-2.5-reference` (@Image1 the still, "locked-off camera, the models walk toward the camera and out of frame,
+the train stays, nobody enters the centre foreground") and judge it on frames 0/30/60/90/119 against Kling's
+`22fabc2c`. If it holds, `PLATE_MOTION_MODEL` becomes a per-press choice (Kling cheap / Seedance faithful), not a
+constant. With composite v3 the shot uses only the plate's first ~2 s, so Kling's late drift may already be out of
+frame — judge the v3 composites of c044/c045 first.
+
+## Real Higgsfield charges (ledger row 84)
+
+Read from Fendi's API transaction list: Kling 5 s $0.18, Seedance 4 s $1.55, object swap 4 s $1.70 — ≈ 51–70 % of the
+list rates CC estimates with. The "$50" was an Add-funds, auto top-up is OFF, balance $19.69. Next: carry the observed
+rates in CC's `video-providers-higgsfield-model` table as the estimate (list kept as the cap).

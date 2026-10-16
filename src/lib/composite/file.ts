@@ -87,6 +87,8 @@ export function compositeMetadata(
       plate_video_asset_id: input.plateVideo?.id ?? null,
       plate_video_path: input.plateVideo?.path ?? null,
       plate_frames: input.render.plateFrames,
+      // v3: the moving plate's first frame sits this many seconds into the take — at the shot's first frame
+      plate_offset_seconds: input.render.plateOffsetSeconds,
       camera: input.render.camera,
       alpha_pairing: input.render.pairing,
       frames: input.render.frames,

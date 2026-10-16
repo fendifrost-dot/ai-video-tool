@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alphaShouldAdvance, colrOf, coverRgba, normalizedTime, pairedReader, pairingFor, renderSize, resampleGray } from "./render";
+import { alphaShouldAdvance, colrOf, coverRgba, normalizedTime, pairedReader, pairingFor, renderSize, resampleGray, plateOffsetOf, plateTime } from "./render";
 import type { DecodedFrame } from "./frameReader";
 
 describe("pairing the alpha with the take by time", () => {
@@ -119,6 +119,23 @@ describe("coverRgba", () => {
     expect(out[5]).toBeGreaterThan(100); // green-ish
     expect(out[3]).toBe(255);
     expect(out[7]).toBe(255);
+  });
+});
+
+describe("the moving plate's clock (v3)", () => {
+  it("starts the plate at the shot's first frame and holds its first frame under the head handle", () => {
+    expect(plateOffsetOf(1.156)).toBe(1.156);
+    expect(plateOffsetOf(0)).toBe(0);
+    expect(plateOffsetOf(-1)).toBe(0);
+    expect(plateOffsetOf(Number.NaN)).toBe(0);
+    expect(plateOffsetOf(undefined)).toBe(0);
+    // under the handle: plate time 0 (its first frame); from the shot's first frame on: the plate plays
+    expect(plateTime(0, 1.156)).toBe(0);
+    expect(plateTime(1.0, 1.156)).toBe(0);
+    expect(plateTime(1.156, 1.156)).toBe(0);
+    expect(plateTime(2.156, 1.156)).toBeCloseTo(1.0, 9);
+    // v2 (no offset): the plate's first second went under the handle, never shown
+    expect(plateTime(1.0, 0)).toBe(1.0);
   });
 });
 

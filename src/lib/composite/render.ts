@@ -56,6 +56,11 @@ export type RenderInput = {
   fg: { read: RangeRead; track: Mp4Track };
   alpha: { read: RangeRead; track: Mp4Track };
   plate: PlateInput;
+  /**
+   * Seconds of take before the shot's first frame (the dressed cut's head handle). A moving plate starts at the
+   * shot's first frame and holds its first frame under the handle (RECIPE.plate.startsAtShotIn). 0 = the cut's start.
+   */
+  plateOffsetSeconds?: number;
   width: number;
   height: number;
   /** The grain's and the camera's seed: the same seed gives the same file. */
@@ -76,6 +81,8 @@ export type RenderResult = {
   pairing: "index" | "time";
   /** The moving plate's frames read, or null over a still. */
   plateFrames: number | null;
+  /** Where the moving plate's first frame was put: this many seconds into the take (the shot's first frame). */
+  plateOffsetSeconds: number;
   seconds: number;
   width: number;
   height: number;
@@ -269,6 +276,16 @@ const YIELD_EVERY = 4;
  * A sequential frame reader with one frame of look-ahead, so a caller can take the nearer of current and next, or
  * step one frame at a time. Over any async iterable of frames (readFrames in the browser; a list in a test).
  */
+/** The head handle as the plate's offset: a finite, non-negative number of seconds; anything else is 0. */
+export function plateOffsetOf(seconds: number | null | undefined): number {
+  return typeof seconds === "number" && Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+}
+
+/** The moving plate's own time for a take time: the plate starts at `offset` and holds its first frame before it. */
+export function plateTime(takeSeconds: number, offset: number): number {
+  return Math.max(0, takeSeconds - offset);
+}
+
 export function pairedReader(it: AsyncGenerator<DecodedFrame, void, void> | AsyncIterator<DecodedFrame>, what: string) {
   let cur: DecodedFrame | null = null;
   let next: DecodedFrame | null = null;
@@ -378,10 +395,12 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
     plateSoft = new Float32Array(0);
     plateWide = new Float32Array(0);
   }
+  const plateOffset = plateOffsetOf(input.plateOffsetSeconds);
   const plateAt = async (seconds: number): Promise<void> => {
     if (!plateReader || !plateFit) return;
-    // the plate plays from the take's first frame at its own speed and holds its last frame
-    const f = await plateReader.at(seconds, (t) => t - plateReader!.first);
+    // the plate plays from the SHOT's first frame at its own speed, holds its first frame under the head handle
+    // before it, and holds its last frame once it runs out
+    const f = await plateReader.at(plateTime(seconds, plateOffset), (t) => t - plateReader!.first);
     if (f === plateCur) return;
     plateCur = f;
     coverRgba(f.rgba, f.width, f.height, w, h, plateFit);
@@ -495,6 +514,7 @@ export async function renderComposite(input: RenderInput): Promise<RenderResult>
     alphaFrames: alphaReader.frames,
     pairing,
     plateFrames: plateReader ? plateReader.frames : null,
+    plateOffsetSeconds: plateReader ? plateOffset : 0,
     seconds: (lastUs + tailUs) / 1e6,
     width: w,
     height: h,

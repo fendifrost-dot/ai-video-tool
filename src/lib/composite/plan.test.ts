@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BoxMediaItem, MediaAsset } from "@/lib/storyboard/media";
-import { compositableTakes, compositesOn, planComposite, platesOfScene } from "./plan";
+import { compositableTakes, compositesOn, planComposite, plateOffsetSeconds, platesOfScene } from "./plan";
 
 function asset(over: Partial<MediaAsset> & { id: string }): MediaAsset {
   return {
@@ -92,7 +92,8 @@ describe("planComposite", () => {
     expect(r.plan.frames).toBe(191);
     expect(r.plan.cost.usd).toBeCloseTo(0.1433, 3);
     expect(r.plan.songStart).toBe(99.46);
-    expect(r.plan.recipe.version).toBe("plate-composite-v2-2026-10-16");
+    expect(r.plan.recipe.version).toBe("plate-composite-v3-2026-10-16");
+    expect(r.plan.recipe.plate.startsAtShotIn).toBe(true);
   });
 
   it("goes over the newest usable moving plate of the chosen still when one exists, else the still, and carries the camera", () => {
@@ -195,5 +196,27 @@ describe("planComposite", () => {
       },
     });
     expect(compositesOn([item(dressed("d1")), item(c)]).map((a) => a.id)).toEqual(["c"]);
+  });
+});
+
+describe("where the moving plate starts (v3)", () => {
+  const withDress = (dress: Record<string, unknown>) =>
+    dressed("d", { derivedFrom: { assetId: "take", songStart: 99.46, sourceWindow: [98.6, 102.6], method: "dressed", dress: dress as never } });
+
+  it("is the dressed cut's head handle: the shot's first frame, not the cut's", () => {
+    expect(plateOffsetSeconds(withDress({ handles: { head: 1.156, tail: 1.374 } }))).toBe(1.156);
+  });
+
+  it("falls back to the shot window against the cut window, and to 0 when the record says nothing", () => {
+    expect(plateOffsetSeconds(withDress({ window: [70.32, 74.32], shotWindow: [71.4762, 72.9462] }))).toBeCloseTo(1.1562, 4);
+    expect(plateOffsetSeconds(withDress({ handles: { head: 0, tail: 0 }, window: [70, 74], shotWindow: [70, 72] }))).toBe(0);
+    expect(plateOffsetSeconds(withDress({}))).toBe(0);
+    expect(plateOffsetSeconds(dressed("d"))).toBe(0);
+    expect(plateOffsetSeconds(withDress({ handles: { head: Number.NaN, tail: 1 } }))).toBe(0);
+  });
+
+  it("is on the plan", () => {
+    const r = planComposite({ items: [item(withDress({ handles: { head: 0.5, tail: 0.75 } }))], assets: [plate("p", "Scene")], sceneName: "Scene", placeAssetId: null, performance: true });
+    expect(r.ok && r.plan.plateOffsetSeconds).toBe(0.5);
   });
 });
