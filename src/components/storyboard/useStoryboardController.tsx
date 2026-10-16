@@ -89,6 +89,7 @@ import { dressBox, dressPieceOf } from "@/lib/storyboard/dressSubmit";
 import { dressedTakeState, workflowStatus, type WorkflowStep } from "@/lib/storyboard/workflow";
 import { conflictNote } from "@/lib/storyboard/promptAudit";
 import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
+import { MONTAGE_LINES_MAX, defaultMontageLines, montagePrompt, montageRecord, planMontageScenes } from "@/lib/storyboard/montage";
 import { compositeBox } from "@/lib/composite/compositeSubmit";
 import { compositesOn, planComposite, platesOfScene, type CompositePlan } from "@/lib/composite/plan";
 import { animatePlate as submitPlateMotion, findLivePlateJob, planPlateMotion, PLATE_EVENT_MAX, type PlateMotionPlan } from "@/lib/composite/plateMotion";
@@ -350,6 +351,11 @@ export type StoryboardController = {
   compositeOf: (box: StoryboardBox) => CompositeState;
   /** "Animate the plate": the scene's plate still into a short moving plate every composite of the scene then uses. */
   animatePlate: (box: StoryboardBox) => void;
+  /**
+   * The performance shot re-shot as a fast-cut montage of angles and cutaways in the place of its plate — ONE
+   * reference-to-video call, the dressed take as the performer, filed on the shot unselected (storyboard/montage.ts).
+   */
+  montageShot: (box: StoryboardBox) => void;
   /** Cut the dressed take out and lay it over the scene's plate, in this browser (asks first: the matte costs money). */
   compositeShot: (box: StoryboardBox) => void;
   /** The six workflow steps of this video, counted (workflow.ts). Read-only. */
@@ -1602,6 +1608,87 @@ export function useStoryboardController(projectId: string): StoryboardController
     },
     [dressOf, mediaByBox, syncs, outfitNow, outfitOf, projectId, numberById, run, setBusyFor, afterGeneration],
   );
+  // --- a performance shot as a fast-cut montage, in one call (storyboard/montage.ts) --------------------------------
+  const montageShot = useCallback(
+    (box: StoryboardBox) => {
+      const est = estimatesOf(box);
+      if (!est?.restage) {
+        toast.info("Only a performance shot with a take in sync is shot as a montage");
+        return;
+      }
+      if (est.clipBlocked) {
+        toast.info(est.clipBlocked);
+        return;
+      }
+      const r = est.restage;
+      const items = (mediaByBox.get(box.id) ?? EMPTY_MEDIA).items;
+      // the DRESSED take when there is one: the montage wears what the video wears
+      const src = restageSource(items, syncs, { preferDressed: true });
+      if (!src.ok) {
+        toast.info(src.why);
+        return;
+      }
+      // the place is the scene's plate (the still every composite of the scene goes over — with the event in it when
+      // one was drawn in), else the place a restaging is put in
+      const scene = outfitOf(box).scene;
+      const plate = platesOfScene(media.list, scene?.name ?? null)[0] ?? null;
+      const place = plate ? { asset: plate, of: scene ? { key: scene.id, name: scene.name } : null } : placeStill(box);
+      if (!place) {
+        toast.info("this shot has no plate or place picture to shoot the montage in — generate the place first");
+        return;
+      }
+      const thing = plate?.plate?.shotLabel?.replace(/^plate_/, "").replace(/_/g, " ") ?? null;
+      const continuity = continuityOf(box);
+      const restagePlan = restageTemporalPlan(box, clock);
+      const dressed = !!src.source.take.derivedFrom;
+      const plan = (typed?: string) => {
+        const lines = (typed ?? defaultMontageLines(thing && /bear|horse|rex|dog|cat|tiger|lion|child/i.test(thing) ? `the ${thing.split(" ").slice(-1)[0]}` : null)).slice(0, MONTAGE_LINES_MAX);
+        const scenes = planMontageScenes(lines, r.seconds);
+        if (!scenes.ok) throw new Error(`${scenes.why}. Nothing was generated.`);
+        return { lines, scenes: scenes.scenes, variant: { angle: montagePrompt(scenes.scenes), idSuffix: "montage", alternate: true as const, record: montageRecord(scenes.scenes, thing) } };
+      };
+      const picture = { url: urlFor(place.asset), caption: `The place the montage is shot in: ${place.asset.name}` };
+      setConfirm({
+        title: `Shoot shot ${numberById.get(box.id) ?? ""} as a montage?`,
+        input: {
+          label: "The scenes, in order, one per line — a second or so each; a line may carry its own seconds (\"2.0-2.7 s: …\")",
+          initial: defaultMontageLines(thing && /bear|horse|rex|dog|cat|tiger|lion|child/i.test(thing) ? `the ${thing.split(" ").slice(-1)[0]}` : null),
+          maxLength: MONTAGE_LINES_MAX,
+          testId: "confirm-montage-scenes",
+        },
+        body:
+          `About ${usd(est.clip)} by the provider's own pricing rule — one reference-to-video call for the whole sequence. ` +
+          `${r.seconds} s of ${dressed ? "the DRESSED take" : "your take"} (${r.takeName}, ${mmss(r.takeIn)}–${mmss(r.takeOut)}) go to the model as the performer, with ${plate ? "the scene's plate" : "the place picture"} as where it happens. ` +
+          "The model is asked for Thuggpapi's shape: one style line (shaky handheld, quick optical zooms, 35 mm grain, fast cuts, deadpan), then the scenes in order with their seconds, your mouth in sync with the take whenever you are on screen. " +
+          "The result lands on this shot UNSELECTED, beside what is there. It takes several minutes and finishes even if you close this page." +
+          staleNote(box),
+        picture,
+        confirmLabel: `Shoot the montage · ${usd(est.clip)}`,
+        testId: "confirm-montage",
+        onConfirm: (typed) =>
+          run(box, "shooting the montage…", async () => {
+            const p = plan(typed);
+            await restageBox({ projectId, box, lyricLines, source: src.source, stillPath: place.asset.path, maxSeconds: r.seconds, aspect, temporal: restagePlan, continuity, variant: p.variant, onStage: (t) => setBusyFor(box.id, t) });
+            afterGeneration();
+            toast.success("The montage is being shot — it lands on this shot unselected when it is done");
+          }).finally(afterGeneration),
+        secondary: {
+          label: "Dry run (sends nothing)",
+          testId: "confirm-montage-dryrun",
+          onConfirm: async (typed) => {
+            try {
+              const p = plan(typed);
+              console.info("Montage dry run — nothing was sent, spent or written:", { source: { take: src.source.take.id, dressed, takeIn: src.source.takeIn, takeOut: src.source.takeOut }, place: place.asset.path, seconds: r.seconds, lines: p.lines, scenes: p.scenes, angle: p.variant.angle, record: p.variant.record });
+              toast.success("Dry run: the exact request is in the browser console. Nothing was sent.");
+            } catch (e) {
+              toast.error(message(e));
+            }
+          },
+        },
+      });
+    },
+    [estimatesOf, mediaByBox, syncs, outfitOf, media.list, placeStill, continuityOf, clock, numberById, urlFor, projectId, lyricLines, aspect, run, setBusyFor, afterGeneration],
+  );
   // --- step 6: the dressed take over the scene's plate, made in this browser (composite/) --------------------------
   const compositeOf = useCallback(
     (box: StoryboardBox): CompositeState => {
@@ -1848,6 +1935,7 @@ export function useStoryboardController(projectId: string): StoryboardController
     compositeOf,
     compositeShot,
     animatePlate,
+    montageShot,
     workflow,
     focusId,
     openFocus: setFocusId,

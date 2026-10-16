@@ -54,11 +54,20 @@ scratchpad, never in the repo.
 |---|---|---|---|
 | `composite` | `focus-composite-shot` | `confirm-composite-shot` (`-dryrun`) | "The composite is on this shot as an alternate" |
 | `animate-plate` | `focus-animate-plate` | `confirm-animate-plate` (`-dryrun`) | "The plate is being animated — composites of this scene use it when it is done" |
+| `montage` | `focus-montage` | `confirm-montage` (`-dryrun`) | "The montage is being shot — it lands on this shot unselected when it is done" |
 
 `animate-plate` sends one 5 s image-to-video of the scene's plate still (~$0.35) and returns as soon as the provider
 has it; the server files the clip minutes later as a moving plate of the scene (`avt_select project_assets` with
 `metadata_json->>lane = world_plate_video`). A `composite` pressed after that goes over the moving plate; the focus
 view says which with `focus-plate-state[data-moving]`.
+
+`montage` re-shoots the performance shot's DRESSED take (its real take when none is dressed) as a fast-cut sequence of
+angles and cutaways in the place of the scene's plate, in ONE Seedance 2.5 reference-to-video call (~$2.36 for 5 s
+at 720p), filed on the shot as an unselected alternate. `--event` is the scene list, one scene per line, each
+optionally with its own window ("2.0-2.7 s: a quick optical zoom onto the polar bear"); without it the dialog's
+prefilled five scenes are sent. The prompt shape is Thuggpapi's
+(`docs/research/references/THUGGPAPI_SEEDANCE_MONTAGE_PROMPTS_2026-10.md`): one style line, "Show in order", one dash
+per scene, deadpan.
 
 ## Adding a press
 

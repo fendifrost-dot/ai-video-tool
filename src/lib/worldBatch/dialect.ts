@@ -40,6 +40,10 @@ export const BatchShotSchema = z
     masterStart: z.number().nullish(),
     angle: z.string().nullish(),
     keep: z.array(z.string()).default([]),
+    /** An ALTERNATE of its shot: filed on the shot unselected, so nothing the director chose is replaced (a montage or an extra angle of a restaging). */
+    alternate: z.boolean().optional(),
+    /** What the alternate was asked for (storyboard/montage.ts montageRecord), for the record. */
+    variant: z.record(z.unknown()).nullish(),
     resolution: z.enum(["480p", "720p", "1080p"]).default("720p"),
     /** How this shot's timed events were put into its prompt (storyboard/temporal.ts). Recorded on the job. */
     temporal: z

@@ -40,10 +40,22 @@ export const DERIVED_SYNC_METHOD = "derived";
 
 export type RestageSource = { take: MediaAsset; sync: TakeSync; takeIn: number; takeOut: number };
 
-/** The take a performance shot plays: the one showing (when it is a real take), else the base layer. */
-export function restageSource(items: readonly BoxMediaItem[], syncs: readonly TakeSync[]): { ok: true; source: RestageSource } | { ok: false; why: string } {
+/**
+ * The take a performance shot plays: the one showing (when it is a real take), else the base layer.
+ *
+ * `preferDressed`: the DRESSED take on the shot (dress.ts — the same stretch of take with the scene's outfit swapped
+ * onto him) when there is one, so what the model is given to keep is the wardrobe the video wears, not the take's
+ * own. A dressed take has a sync of its own (its first frame on the song), so it is cut and placed like the master.
+ * A restaging or a composite is never a source: those are versions of one moment, not footage.
+ */
+export function restageSource(
+  items: readonly BoxMediaItem[],
+  syncs: readonly TakeSync[],
+  opts: { preferDressed?: boolean } = {},
+): { ok: true; source: RestageSource } | { ok: false; why: string } {
   const real = items.filter((i) => i.role === "performance" && i.kind === "video" && !i.asset.derivedFrom);
-  const item = real.find((i) => i.selected) ?? real.find((i) => i.base) ?? real[0];
+  const dressed = opts.preferDressed ? items.filter((i) => i.role === "performance" && i.kind === "video" && i.asset.derivedFrom?.method === "dressed") : [];
+  const item = dressed.find((i) => i.selected) ?? dressed[0] ?? real.find((i) => i.selected) ?? real.find((i) => i.base) ?? real[0];
   if (!item) return { ok: false, why: "this shot has no take in sync with the song — match a take in Setup first" };
   if (item.sourceIn == null || item.sourceOut == null) return { ok: false, why: item.note ?? "the take has no footage for this part of the song" };
   if (item.leadIn > 0.05 || (item.note ?? "").includes("only part")) return { ok: false, why: "the take covers only part of this shot — it cannot be restaged whole" };
@@ -148,6 +160,14 @@ export function restageTemporalPlan(box: StoryboardBox, clock: EventClock = {}):
 
 export type RestageRequest = { shot: BatchShot; songStart: number; takeStart: number; seconds: number };
 
+/**
+ * What a restaging may be asked for instead of the shot's own camera sentence (montage.ts): the whole camera/scene
+ * sentence, a suffix for the shot id (it names files, so a montage and a plain restaging of one shot do not
+ * collide), and whether the result is filed as an ALTERNATE — on the shot, unselected, so nothing the director
+ * chose is replaced (jobProgress.ts reads `alternate` off the job's settings).
+ */
+export type RestageVariant = { angle: string; idSuffix: string; alternate: true; record?: Record<string, unknown> };
+
 /** The frame the clip is asked for in: the project's own where the model has it. */
 function clipAspect(aspect: ProjectAspect | undefined): BatchShot["aspect"] {
   const a = aspect ?? DEFAULT_PROJECT_ASPECT;
@@ -167,6 +187,8 @@ export function restageShot(input: {
   temporal: TemporalPlan;
   /** What the shot's continuity references resolve to. Required when it has any (generate.ts pointsAtEntities). */
   continuity?: ShotContinuity;
+  /** A montage or an extra angle in place of the shot's own camera sentence, filed as an alternate. */
+  variant?: RestageVariant;
 }): RestageRequest {
   const seconds = Math.round(input.cut.seconds);
   const plan = input.temporal;
@@ -184,8 +206,10 @@ export function restageShot(input: {
   const asked = plan.mode === "timed_script" ? plan.asked.map((b) => ({ ...b, offset: Math.round((b.offset + shift) * 1000) / 1000 })) : [];
   const script = plan.mode === "timed_script" ? scriptOf(asked) : "";
   const songStart = Math.round(performanceToSong(input.cut.start, input.source.sync) * 1000) / 1000;
+  const v = input.variant;
+  if (v && !/^[A-Za-z0-9_.-]{1,20}$/.test(v.idSuffix)) throw new Error("a restage variant needs a short id suffix (letters, digits, _ . -)");
   const shot = BatchShotSchema.parse({
-    id: input.box.key,
+    id: v ? `${input.box.key}_${v.idSuffix}` : input.box.key,
     kind: "angle",
     route: "seedance_ref",
     aspect: clipAspect(input.aspect),
@@ -195,7 +219,8 @@ export function restageShot(input: {
     source_window: [Math.round(input.cut.start * 1000) / 1000, Math.round((input.cut.start + input.cut.seconds) * 1000) / 1000],
     source_asset_id: input.source.take.id,
     masterStart: songStart,
-    angle: [restageAngle(input.box), light, script].filter(Boolean).join(" "),
+    angle: [v ? v.angle : restageAngle(input.box), light, script].filter(Boolean).join(" "),
+    ...(v ? { alternate: true, variant: v.record ?? null } : {}),
     ...(plan.mode === "timed_script" ? { temporal: { mode: "timed_script" as const, beats: plan.beats, measured: plan.measured, asked } } : {}),
     keep: restageKeep(input.source.take),
     resolution: RESTAGE_RESOLUTION,
@@ -224,6 +249,8 @@ export async function restageBox(input: {
   temporal: TemporalPlan;
   /** What the shot's continuity references resolve to. */
   continuity?: ShotContinuity;
+  /** A montage or an extra angle in place of the shot's own camera sentence, filed as an alternate. */
+  variant?: RestageVariant;
   onStage?: (text: string) => void;
 }): Promise<RestageResult> {
   const say = input.onStage ?? (() => undefined);
@@ -261,10 +288,11 @@ export async function restageBox(input: {
   say("uploading the cut…");
   const sourcePath = buildStoragePath(deps.userId, input.projectId, "seedance", `${STORYBOARD_RUN}_${input.box.key}_${Date.now()}_src.mp4`);
   await uploadBytesToBucket("project-clips", sourcePath, cut.bytes, "video/mp4", { upsert: true });
-  const req = restageShot({ box: input.box, lyricLines: input.lyricLines, source: input.source, sourcePath, stillPath: input.stillPath, cut: { start: cut.start, seconds: cut.seconds }, aspect: input.aspect, temporal: input.temporal, continuity: input.continuity });
+  const req = restageShot({ box: input.box, lyricLines: input.lyricLines, source: input.source, sourcePath, stillPath: input.stillPath, cut: { start: cut.start, seconds: cut.seconds }, aspect: input.aspect, temporal: input.temporal, continuity: input.continuity, variant: input.variant });
   say("sending it to render…");
   const { id, look } = resolveLookPreset(DEFAULT_BOX_LOOK);
-  const result = await submitShot(req.shot, { projectId: input.projectId, variationId: input.box.variationId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [input.box.key]: input.box.id }, madeFrom: { [input.box.key]: madeFromBox(input.box) } }, deps);
+  // the runner maps the shot's id (the box key, or key_suffix for a variant) to the box it lands on
+  const result = await submitShot(req.shot, { projectId: input.projectId, variationId: input.box.variationId, runId: STORYBOARD_RUN, lookPresetId: id, look, shotIds: { [req.shot.id]: input.box.id }, madeFrom: { [req.shot.id]: madeFromBox(input.box) } }, deps);
   return { ...result, songStart: req.songStart, seconds: req.seconds, estimateUsd: restageEstimateUsd(req.seconds) };
 }
 
