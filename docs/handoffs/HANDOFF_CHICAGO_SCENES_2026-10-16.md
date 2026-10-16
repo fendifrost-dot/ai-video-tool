@@ -110,3 +110,20 @@ frame — judge the v3 composites of c044/c045 first.
 Read from Fendi's API transaction list: Kling 5 s $0.18, Seedance 4 s $1.55, object swap 4 s $1.70 — ≈ 51–70 % of the
 list rates CC estimates with. The "$50" was an Add-funds, auto top-up is OFF, balance $19.69. Next: carry the observed
 rates in CC's `video-providers-higgsfield-model` table as the estimate (list kept as the cap).
+
+## c047 over the orcas (Fendi, 16:00 UTC: "This can be for C047")
+
+His fourth Gemini picture: inside the Red Line car, passengers pointing at two orcas surfacing in the flooded Dan Ryan
+beside the traffic. Filed `0a4c1feb` (`director_reference`); portrait plate `0fe81de8` (pick) / `b77085fe` (unusable),
+scene "Chicago, the switch" — so it is now that scene's newest usable still and c047's composites go over it; the bear
+plates and the approved bear composite `616c881b` stay as they were. Under the Higgsfield HOLD the plate is a STILL:
+the composite of c047 over it (Fal, $0.07) is filed as an alternate; "Animate the plate" (Kling, $0.18 real) with an
+event such as "the orcas surface and roll, the passengers point, the train stands at the platform" runs when Fendi
+lifts the hold, and then one more composite ($0.07) puts him over the moving orcas. Ledger rows 87–88.
+
+DONE 16:05 UTC: c047 over the orca STILL — composite `bdf66a28` (dressed `f540b6be` over `0fe81de8`, 113 frames,
+recipe v3, `plate_video_asset_id null`), filed as an alternate on c047, posted. OBSERVED: pixel-exact in the aisle,
+the orcas in the window beside him, the passengers pointing; the plate moves only with the handheld camera.
+Verify: `project_assets` `bdf66a28` exists with `metadata_json.composite.plate_asset_id = 0fe81de8` and
+`is_primary` false on c047; the bear composite `616c881b` still selected. NOT DONE (held): the Kling animation of
+`0fe81de8` and the composite over it; the c047 orca montage.
