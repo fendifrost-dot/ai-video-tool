@@ -112,7 +112,9 @@ Made live through Lovable and verified from this session, not from the agents' c
 **First production run DONE, by the agent itself (16 Oct 02:47 UTC).** The press that needed a person became a
 capability: `avt_browser_session` + `scripts/agent-browser/avt-press.mjs` (PRs #270, #271; handoff
 `HANDOFF_AGENT_BROWSER_2026-10-16.md`). c047 composited over the 79th/Lafayette plate: asset `ccb146c9`, matte
-`01a1429b` ($0.089, ledger row 41), sync 82.025, unselected on c047 — PASS. The composite is made in the BROWSER
+`01a1429b` ($0.089, ledger row 41), sync 82.025, unselected on c047 — PASS. Then c041, c044, c045, c046 the same way
+(ledger row 42, $0.288; assets `3af40f10`, `9664d14e`, `4951842d`, `cb7e75ea`, all PASS): **every Chicago shot now
+has a composite filed unselected in candidate 6**; selecting them is the director's call. The composite is made in the BROWSER
 (WebCodecs) — now a headless Chrome for Testing this session drives; the only paid part is the matte
 (≈ $0.09 for c047). After it, judge the clip against the kill criterion as for the dressed windows and record a
 ledger row with the request id from the asset's `composite.matte`.

@@ -68,3 +68,12 @@ filing…` → toast `The composite is on this shot as an alternate`; `RESULT {"
 
 The verification table filled from real output, the first press's `RESULT` line, the filed asset id, and the ledger
 row for the matte.
+
+## Done after the first press (16 Oct 02:51–02:57 UTC)
+
+The same command on c041, c044, c045 and c046 in sequence (one `for` loop, ~100 s a shot: matte 15–20 s, 89 frames in
+~35 s, upload and filing ~5 s): four `RESULT {"ok":true}`, four `edited_clip` rows (`3af40f10`, `9664d14e`, `4951842d`,
+`cb7e75ea`), four derived syncs, four unselected assignments — ledger row 42. All five Chicago shots now carry a
+composite; nothing was selected. The session token had 25 minutes left at the end; a sixth press would have needed a
+fresh hand-out.
+
