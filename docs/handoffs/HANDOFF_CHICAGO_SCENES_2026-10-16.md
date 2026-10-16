@@ -42,7 +42,7 @@ Scene A = the fashion show on the platform (c044). Scene B = the walrus off the 
 | c044 | montage, scene A (job `b9e2bc52`, $2.22) | `bda9ead2` (4.04 s) | OBSERVED every eighth frame: him on the platform with the models behind · HARD CUT aerial of the train sliding into the station · HARD CUT low angle, the models' legs passing in front of him. All three scenes, in order. |
 | c044 | composite | *not pressed — no usable moving plate yet (v4 re-animation first)* | |
 | c045 | composite over the walrus plate | `f0706d72` (4.004 s) | OBSERVED: he is pixel-exact, the walrus heaves off the train behind him; the plate's drift (train → bus) shows in the shot's last ~0.5 s. Re-composite after the v4 plate. |
-| c045 | montage, scene B (job `4fa88370`, $2.22) | *pending at hand-off time* | |
+| c045 | montage, scene B (job `4fa88370`, $2.22) | `53771ac0` (4.0 s) | OBSERVED: the walrus off the train (wide) · HARD CUT the open door · HARD CUT him rapping inside the car; the walrus's back in the foreground of the last two cuts (ledger row 79) |
 | c046 | composite inside the train car | `fea93ac6` (4.004 s) | PASS: pixel-exact in the aisle, doors open, platform behind, passengers, a train passing outside |
 
 Nothing was selected: every row above is `is_primary false` on its shot. The earlier bear-plate composites and
@@ -57,9 +57,11 @@ montages on c041/c044/c045/c046 are still filed as alternates too.
 | The dressed take wears the new outfit | `avt_select provider_jobs` filter `id = 390e3e88…` | `request_payload_json.settings.dress.outfit.key = YSL_BUBBLE_BUCKET`, `status succeeded` |
 | Live code (after Lovable Publish of this PR's merge) | crawl `https://aivideotool.lovable.app/projects` → `index-*.js` → `projects._id.storyboard-*.js` → its `Acceptance-*.js` | `plate-motion-v4-2026-10-16` present, `plate-motion-v3-2026-10-16` absent |
 
+**LIVE (VERIFIED 14:29 UTC):** PR #283 squash `0d4e663`; Lovable `latest_commit_sha` matched; Publish (deployment `2cd5f0ff`); live `index-BZ3qMxY2.js` → `projects._id.storyboard-B7F2CON2.js` → `Acceptance-CF9ywUNR.js` carries `plate-motion-v4-2026-10-16` (1) and v3 (0). No edge function touched.
+
 ## What is NOT done (in order)
 
-1. **Publish v4** (Lovable Publish from this PR's merge SHA), then re-animate the runway still `435ff4dd` and the
+1. ~~Publish v4~~ DONE 14:29 UTC (above); then re-animate the runway still `435ff4dd` and the
    walrus still `d783e85a` (`avt-press.mjs animate-plate … --shot c044` / `--shot c045`, with their events), judge on
    frames 0/40/80/119 (the camera must stay on the platform; no bus), then `composite` c044 and re-`composite` c045.
 2. **c041 composite** and **c045 montage**: pending at hand-off time; results in the ledger when they land.
