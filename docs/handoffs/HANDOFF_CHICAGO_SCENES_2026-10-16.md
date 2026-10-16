@@ -42,7 +42,7 @@ Scene A = the fashion show on the platform (c044). Scene B = the walrus off the 
 | c044 | montage, scene A (job `b9e2bc52`, $2.22) | `bda9ead2` (4.04 s) | OBSERVED every eighth frame: him on the platform with the models behind · HARD CUT aerial of the train sliding into the station · HARD CUT low angle, the models' legs passing in front of him. All three scenes, in order. |
 | c044 | composite | *not pressed — no usable moving plate yet (v4 re-animation first)* | |
 | c045 | composite over the walrus plate | `f0706d72` (4.004 s) | OBSERVED: he is pixel-exact, the walrus heaves off the train behind him; the plate's drift (train → bus) shows in the shot's last ~0.5 s. Re-composite after the v4 plate. |
-| c045 | montage, scene B (job `4fa88370`, $2.22) | *pending at hand-off time* | |
+| c045 | montage, scene B (job `4fa88370`, $2.22) | `53771ac0` (4.0 s) | OBSERVED: the walrus off the train (wide) · HARD CUT the open door · HARD CUT him rapping inside the car; the walrus's back in the foreground of the last two cuts (ledger row 79) |
 | c046 | composite inside the train car | `fea93ac6` (4.004 s) | PASS: pixel-exact in the aisle, doors open, platform behind, passengers, a train passing outside |
 
 Nothing was selected: every row above is `is_primary false` on its shot. The earlier bear-plate composites and
