@@ -1,20 +1,31 @@
 /**
  * The matte, from the browser's side: ask the edge function to send the dressed take to the segmentation model (it
  * signs the file and goes through Control Center), wait on the queue through fal-queue-poll-proxy, download the
- * answer and keep the ALPHA video — the grey one of the two the model returns.
+ * answer and keep the ALPHA video — the grey one of the two the model returns. The edge function writes the spend
+ * record (a provider_jobs row); the browser finishes it with what it filed, or with the failure.
  */
 import { supabase } from "@/lib/supabase";
 import { probeVideo } from "@/lib/media/probe";
 import type { Mp4Track } from "@/lib/media/mp4";
+import type { Json } from "@/integrations/supabase/types";
 import { bytesRead, readFrames } from "./frameReader";
-import { matteResultUrls } from "./matteRequest";
+import { isMatteAnswerUrl, MATTE_MAX_ANSWER_BYTES, matteResultUrls } from "./matteRequest";
 import { isGrayscale } from "./pixels";
 
 export type MatteHandle = {
+  /** The provider_jobs row the edge function wrote for this spend. */
+  jobId: string;
   model: string;
   status_url: string;
   response_url: string;
-  source: { assetId: string; seconds: number; frames: number; bucket: string; path: string };
+  source: {
+    assetId: string;
+    seconds: number;
+    frames: number;
+    bytes: number;
+    bucket: string;
+    path: string;
+  };
   estimate: { usd: number; upper: number; text: string };
 };
 
@@ -41,9 +52,11 @@ async function detailOf(error: unknown, data: unknown): Promise<string> {
 export async function requestMatte(assetId: string): Promise<MatteHandle> {
   const { data, error } = await supabase.functions.invoke<MatteHandle & { ok?: boolean }>(
     "matte-video-proxy",
-    { body: { assetId } },
+    {
+      body: { assetId },
+    },
   );
-  if (error || !data || data.ok === false || !data.status_url || !data.response_url)
+  if (error || !data || data.ok === false || !data.status_url || !data.response_url || !data.jobId)
     throw new Error(await detailOf(error, data));
   return data;
 }
@@ -52,6 +65,30 @@ export async function requestMatte(assetId: string): Promise<MatteHandle> {
 export function matteRequestId(handle: Pick<MatteHandle, "status_url">): string | null {
   const m = /\/requests\/([^/]+)\//.exec(handle.status_url);
   return m ? m[1] : null;
+}
+
+/** Close the spend record: what was filed from it, or why nothing was. */
+export async function finishMatteJob(
+  jobId: string,
+  outcome: { ok: true; resultAssetId: string; mattePath: string } | { ok: false; error: string },
+): Promise<void> {
+  const patch = outcome.ok
+    ? {
+        status: "succeeded",
+        result_asset_id: outcome.resultAssetId,
+        response_payload_json: { status: "COMPLETED", matte_path: outcome.mattePath } as Json,
+        finalized_at: new Date().toISOString(),
+      }
+    : {
+        status: "failed",
+        error_text: outcome.error.slice(0, 500),
+        finalized_at: new Date().toISOString(),
+      };
+  const { error } = await supabase
+    .from("provider_jobs")
+    .update(patch as never)
+    .eq("id", jobId);
+  if (error) console.warn(`the matte's record could not be closed: ${error.message}`);
 }
 
 export type MatteWait = {
@@ -89,7 +126,8 @@ export async function waitForMatte(
     opts.onTick?.(status, Date.now() - began);
     if (status === "COMPLETED") {
       const urls = matteResultUrls(data.result);
-      if (urls.length === 0) throw new Error("the matte finished but answered with no video");
+      if (urls.length === 0)
+        throw new Error("the matte finished but answered with no video from Fal");
       return { urls, result: data.result };
     }
     if (Date.now() - began > timeout) throw new Error("the matte did not finish in time");
@@ -97,11 +135,17 @@ export async function waitForMatte(
   }
 }
 
-/** Download one answer file and index it. */
+/** Download one answer file (Fal's own link, under the byte cap) and index it. */
 export async function downloadMatteFile(url: string): Promise<MatteFile> {
+  if (!isMatteAnswerUrl(url)) throw new Error("the matte's link is not one of Fal's");
   const res = await fetch(url);
   if (!res.ok) throw new Error(`the matte could not be downloaded (${res.status})`);
+  const declared = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > MATTE_MAX_ANSWER_BYTES)
+    throw new Error("the matte file is too large to read here");
   const bytes = new Uint8Array(await res.arrayBuffer());
+  if (bytes.byteLength > MATTE_MAX_ANSWER_BYTES)
+    throw new Error("the matte file is too large to read here");
   const probe = await probeVideo(bytesRead(bytes, res.headers.get("content-type")));
   if (!probe.video) throw new Error(probe.note ?? "the matte is not a video this browser can read");
   return { url, bytes, track: probe.video, frames: probe.video.sampleCount };

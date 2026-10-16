@@ -48,20 +48,29 @@ describe("matteRequest", () => {
     });
   });
 
-  it("pulls the https links out of the model's answer in the order given, and nothing else", () => {
+  it("pulls Fal's own https links out of the model's answer in the order given, and nothing else", () => {
     expect(
       matteResultUrls({
         video: [
-          { url: "https://a/rgb.mp4" },
-          { url: "https://a/alpha.mp4", content_type: "video/mp4" },
+          { url: "https://v3b.fal.media/files/b/rgb.mp4" },
+          { url: "https://fal.media/files/alpha.mp4", content_type: "video/mp4" },
         ],
       }),
-    ).toEqual(["https://a/rgb.mp4", "https://a/alpha.mp4"]);
-    expect(matteResultUrls({ video: { url: "https://a/one.webm" } })).toEqual([
-      "https://a/one.webm",
+    ).toEqual(["https://v3b.fal.media/files/b/rgb.mp4", "https://fal.media/files/alpha.mp4"]);
+    expect(matteResultUrls({ video: { url: "https://v3.fal.media/one.webm" } })).toEqual([
+      "https://v3.fal.media/one.webm",
     ]);
     expect(
-      matteResultUrls({ video: [{ url: "http://insecure/x.mp4" }, { url: 5 }, null] }),
+      matteResultUrls({
+        video: [
+          { url: "http://v3b.fal.media/x.mp4" },
+          { url: "https://a/alpha.mp4" },
+          { url: "https://fal.media.evil.example/x.mp4" },
+          { url: "https://evil.example/fal.media/x.mp4" },
+          { url: 5 },
+          null,
+        ],
+      }),
     ).toEqual([]);
     expect(matteResultUrls(null)).toEqual([]);
     expect(matteResultUrls({})).toEqual([]);

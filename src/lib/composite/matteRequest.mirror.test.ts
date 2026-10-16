@@ -22,7 +22,8 @@ describe("matteRequest mirrors", () => {
     expect(browser.buildMatteInput("https://x/y.mp4")).toEqual(
       edge.buildMatteInput("https://x/y.mp4"),
     );
-    const answer = { video: [{ url: "https://a/1.mp4" }, { url: "https://a/2.mp4" }] };
+    const answer = { video: [{ url: "https://v3b.fal.media/1.mp4" }, { url: "https://a/2.mp4" }] };
+    expect(browser.matteResultUrls(answer)).toEqual(["https://v3b.fal.media/1.mp4"]);
     expect(browser.matteResultUrls(answer)).toEqual(edge.matteResultUrls(answer));
     expect(browser.matteSourceCheck({ seconds: 61, isVideo: true })).toEqual(
       edge.matteSourceCheck({ seconds: 61, isVideo: true }),
