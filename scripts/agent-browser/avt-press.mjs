@@ -177,13 +177,17 @@ try {
 
   // the board shows the project's ACTIVE variation (video_projects.active_variation_id). --variation presses the
   // app's own switcher to the one asked for and, unless --keep-variation, presses it back at the end.
-  const switcher = page.locator('[data-testid="variation-switcher"]');
+  // the shell renders the switcher twice (desktop and mobile nav): read the first, press the first trigger
+  const switcher = page.locator('[data-testid="variation-switcher"]').first();
   const activeVariation = async () =>
     (await switcher.getAttribute("data-active-variation").catch(() => null)) || null;
   const switchVariation = async (id) => {
     if ((await activeVariation()) === id) return;
-    await page.locator('[data-testid="variation-switcher-trigger"]').click();
-    await page.locator(`[data-testid="variation-option"][data-variation-id="${id}"]`).click();
+    await page.locator('[data-testid="variation-switcher-trigger"]').first().click();
+    await page
+      .locator(`[data-testid="variation-option"][data-variation-id="${id}"]`)
+      .first()
+      .click();
     for (let i = 0; i < 30 && (await activeVariation()) !== id; i++)
       await page.waitForTimeout(1000);
     if ((await activeVariation()) !== id)
@@ -192,8 +196,12 @@ try {
   };
   let previousVariation = null;
   if (a.variation) {
-    await switcher.waitFor({ state: "visible", timeout: 120_000 });
+    // "Loading…" first: the active id arrives with the project query
+    for (let i = 0; i < 120 && !(await activeVariation()); i++) await page.waitForTimeout(1000);
     previousVariation = await activeVariation();
+    if (!previousVariation)
+      throw new Error("the board never reported its active variation (not signed in?)");
+    log("variation was", previousVariation);
     await switchVariation(a.variation);
   }
   const restoreVariation = async () => {
