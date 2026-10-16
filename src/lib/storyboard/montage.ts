@@ -151,6 +151,45 @@ export function montagePrompt(scenes: readonly MontageScene[]): string {
 }
 
 /** What is recorded on the job beside the prompt, so a result can be judged against what was asked. */
-export function montageRecord(scenes: readonly MontageScene[], thing: string | null): { version: string; scenes: MontageScene[]; thing: string | null } {
-  return { version: MONTAGE_VERSION, scenes: scenes.map((s) => ({ ...s })), thing: thing?.trim() || null };
+export function montageRecord(
+  scenes: readonly MontageScene[],
+  thing: string | null,
+  footwear: MontageFootwear | null = null,
+): { version: string; scenes: MontageScene[]; thing: string | null; footwear?: { id: string; label: string } } {
+  return {
+    version: MONTAGE_VERSION,
+    scenes: scenes.map((s) => ({ ...s })),
+    thing: thing?.trim() || null,
+    ...(footwear ? { footwear: { id: footwear.id, label: footwear.label } } : {}),
+  };
+}
+
+/**
+ * His shoes. The takes are cut at the waist, so a montage's low angles and cutaways show feet the footage never had,
+ * and the model made up shoes he would not wear (Fendi, 16 Oct 2026: "the tool created shoes for me … shoes that I
+ * would not wear" — America's Cup Pradas, black patent with the black jackets, cream with the Mastic). The outfit's
+ * footwear picture goes to the model as the second image, after the place, and this sentence names it.
+ */
+export const FOOTWEAR_BUCKET = "wardrobe-refs" as const;
+export type MontageFootwear = { id: string; bucket: typeof FOOTWEAR_BUCKET; path: string; label: string; words: string | null };
+
+/** The first footwear picture among the pieces he wears in the shot, in the outfit's order; null when none is on file. */
+export function montageFootwear(
+  garmentIds: readonly string[],
+  items: readonly { id: string; feature_type: string; label: string; storage_path: string | null; dimensions_description?: string | null }[],
+): MontageFootwear | null {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  for (const id of garmentIds) {
+    const i = byId.get(id);
+    if (i && i.feature_type === "wardrobe_footwear" && i.storage_path)
+      return { id: i.id, bucket: FOOTWEAR_BUCKET, path: i.storage_path, label: i.label.trim(), words: i.dimensions_description?.trim() || null };
+  }
+  return null;
+}
+
+/** The sentence that goes with the shoe picture (@Image2: the place is @Image1). Empty when there is no picture. */
+export function footwearLine(footwear: Pick<MontageFootwear, "label" | "words"> | null): string {
+  if (!footwear) return "";
+  const what = [footwear.label.trim(), footwear.words?.trim().replace(/[.\s]+$/, "")].filter(Boolean).join(": ");
+  return `His shoes are the pair in @Image2 (${what}); whenever his feet are in a frame he wears exactly that pair, never any other shoes.`;
 }

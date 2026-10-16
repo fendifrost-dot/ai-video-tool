@@ -33,7 +33,7 @@ App menus move; if a step above does not match, the app needs: an MCP server URL
 | `avt_rpc` | `duplicate_variation`, `lyric_lines_in_window` |
 | `avt_functions` | every AVT edge function: callable / blocked, its notes and request type (generated from the code) |
 | `avt_call` | call one as you |
-| `avt_montage` | the storyboard's Montage button as a server call (`montage-shot`): a performance shot's DRESSED take re-shot as a fast-cut montage in its scene's plate, one Seedance call, filed on the shot unselected; `lines` = the scenes one per line, `dry_run` first |
+| `avt_montage` | the storyboard's Montage button as a server call (`montage-shot`): a performance shot's DRESSED take re-shot as a fast-cut montage in its scene's plate, one Seedance call, filed on the shot unselected; his shoes (the outfit's footwear picture) go as @Image2 so the model never invents a pair (the dry run's `shoes` names them); `lines` = the scenes one per line, `dry_run` first |
 | `avt_signed_url`, `avt_list_files` | look at stored files |
 | `avt_browser_session` | a one-hour sign-in (access token only) for a headless browser that presses the app itself — `scripts/agent-browser/README.md`; for an older tool list, `avt_functions {name: "avt_browser_session"}` performs it (a declared argument, which every client forwards; `avt_whoami {browser_session: true}` works only where the client forwards undeclared ones) |
 

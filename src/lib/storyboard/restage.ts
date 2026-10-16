@@ -21,7 +21,7 @@ import { trimVideo } from "@/lib/media/mp4Trim";
 import { DEFAULT_PROJECT_ASPECT, stillRequestAspect, type ProjectAspect } from "@/lib/project/aspect";
 import { buildStoragePath, signedUrl, uploadBytesToBucket } from "@/lib/storage";
 import { performanceToSong } from "@/lib/sync/performanceSync";
-import { BatchShotSchema, seedanceUsd, submitShot, type BatchShot, type SubmitResult } from "@/lib/worldBatch";
+import { BatchShotSchema, seedanceUsd, submitShot, type BatchShot, type ExtraImageBucket, type SubmitResult } from "@/lib/worldBatch";
 import { browserRunnerDeps } from "@/lib/worldBatch/browserDeps";
 import type { StoryboardBox } from "./boxes";
 import { resolveEvents, type EventClock } from "./events";
@@ -166,7 +166,14 @@ export type RestageRequest = { shot: BatchShot; songStart: number; takeStart: nu
  * collide), and whether the result is filed as an ALTERNATE — on the shot, unselected, so nothing the director
  * chose is replaced (jobProgress.ts reads `alternate` off the job's settings).
  */
-export type RestageVariant = { angle: string; idSuffix: string; alternate: true; record?: Record<string, unknown> };
+export type RestageVariant = {
+  angle: string;
+  idSuffix: string;
+  alternate: true;
+  record?: Record<string, unknown>;
+  /** Pictures sent after the place (@Image2…) — a montage's shoes. */
+  extraImages?: { bucket: ExtraImageBucket; path: string }[];
+};
 
 /** The frame the clip is asked for in: the project's own where the model has it. */
 function clipAspect(aspect: ProjectAspect | undefined): BatchShot["aspect"] {
@@ -221,6 +228,7 @@ export function restageShot(input: {
     masterStart: songStart,
     angle: [v ? v.angle : restageAngle(input.box), light, script].filter(Boolean).join(" "),
     ...(v ? { alternate: true, variant: v.record ?? null } : {}),
+    ...(v?.extraImages?.length ? { extra_images: v.extraImages } : {}),
     ...(plan.mode === "timed_script" ? { temporal: { mode: "timed_script" as const, beats: plan.beats, measured: plan.measured, asked } } : {}),
     keep: restageKeep(input.source.take),
     resolution: RESTAGE_RESOLUTION,

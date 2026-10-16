@@ -16,7 +16,7 @@
  */
 import type { LookPreset } from "@/lib/shotCompiler";
 import type { OutfitRecord } from "@/lib/wardrobe/outfits";
-import { missingInput, type BatchShot } from "./dialect";
+import { missingInput, type BatchShot, type ExtraImageBucket } from "./dialect";
 import { estimateBatchUsd, estimateShotUsd } from "./estimate";
 import { buildMotionRequest, motionPrompt, providerOfRoute, stillPrompt } from "./requests";
 import { describeSeam, isStackedPanels, type PanelSeam } from "./stillCheck";
@@ -32,6 +32,8 @@ export type BatchJobSettings = {
   stillPath?: string | null;
   stillCandidates?: string[];
   stillCostUsd?: number | null;
+  /** Pictures sent after the place (@Image2…), e.g. his shoes on a montage. */
+  extraImages?: { bucket: ExtraImageBucket; path: string }[];
   sourceWindow?: [number, number] | null;
   masterStart?: number | null;
   /** The asset the source clip was cut from, and how many seconds were asked for (a restaged take). */
@@ -90,7 +92,7 @@ export type BatchJobRow = {
 
 export type RunnerDeps = {
   userId: string;
-  sign(bucket: "project-clips" | "project-references", path: string): Promise<string>;
+  sign(bucket: "project-clips" | "project-references" | "wardrobe-refs", path: string): Promise<string>;
   generateStills(body: Record<string, unknown>): Promise<{
     ok: boolean;
     stills?: { path: string; previewUrl?: string }[];
@@ -297,8 +299,10 @@ export async function submitShot(
   }
   const stillUrl = stillPath ? await deps.sign("project-references", stillPath) : null;
   const sourceUrl = shot.route === "seedance_ref" ? await deps.sign("project-clips", shot.source_path!) : null;
+  const extraImages = shot.route === "seedance_ref" && stillUrl ? (shot.extra_images ?? []) : [];
+  const extraImageUrls = await Promise.all(extraImages.map((x) => deps.sign(x.bucket, x.path)));
   const prompt = motionPrompt(shot, ctx.look, !!stillUrl);
-  const req = buildMotionRequest(shot, { prompt, stillUrl, sourceUrl, userId: deps.userId, projectId: ctx.projectId });
+  const req = buildMotionRequest(shot, { prompt, stillUrl, sourceUrl, extraImageUrls, userId: deps.userId, projectId: ctx.projectId });
 
   const settings: BatchJobSettings = {
     batchRun: ctx.runId,
@@ -311,6 +315,7 @@ export async function submitShot(
     stillPath,
     stillCandidates,
     stillCostUsd,
+    ...(extraImages.length ? { extraImages } : {}),
     sourceWindow: shot.source_window ?? null,
     masterStart: shot.masterStart ?? null,
     ...(shot.source_asset_id ? { sourceAssetId: shot.source_asset_id, sourceSeconds: shot.source_seconds ?? null } : {}),

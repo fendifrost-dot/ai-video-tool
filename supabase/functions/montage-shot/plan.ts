@@ -11,6 +11,7 @@ import {
   RESTAGE_MIN_SECONDS,
   RESTAGE_RESOLUTION,
   defaultMontageLines,
+  footwearLine,
   montagePrompt,
   montageRecord,
   planMontageScenes,
@@ -19,6 +20,7 @@ import {
   seedanceAnglePrompt,
   seedanceUsd,
   thingOfLabel,
+  type MontageFootwear,
   type MontageScene,
 } from "../_shared/montagePrompt.ts";
 
@@ -83,6 +85,8 @@ export type MontageInput = {
   lines?: string | null;
   /** The light the shot opens in, in the continuity entity's words, when the shot points at one. */
   light?: string | null;
+  /** His shoes: the outfit's footwear picture (montageFootwear), sent as @Image2 after the place. */
+  footwear?: MontageFootwear | null;
 };
 
 export type MontagePlan = {
@@ -93,9 +97,10 @@ export type MontagePlan = {
   lead: number;
   scenes: MontageScene[];
   thing: string | null;
+  footwear: MontageFootwear | null;
   prompt: string;
   estimateUsd: number;
-  /** The provider request, less the two signed URLs (the I/O half signs and adds them). */
+  /** The provider request, less the signed URLs (the I/O half signs and adds them: the take, the plate, the shoes). */
   body: Record<string, unknown>;
   /** request_payload_json of the provider_jobs row: what jobProgress.ts reads to file the clip on its shot, unselected. */
   payload: Record<string, unknown>;
@@ -188,7 +193,11 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
   const lead = Math.max(0, takeIn);
   const songStart = r3(performanceToSong(0, take.sync));
   const light = input.light?.trim() ? `The light: ${input.light.trim()}` : "";
-  const angle = [montagePrompt(planned.scenes), light].filter(Boolean).join(" ");
+  const footwear = input.footwear ?? null;
+  // the app's order: the montage and its shoes are the variant's sentence, the light follows it (restage.ts restageShot)
+  const angle = [montagePrompt(planned.scenes), footwearLine(footwear), light]
+    .filter(Boolean)
+    .join(" ");
   const prompt = seedanceAnglePrompt(angle, restageKeep({ shows: take.shows }));
   const estimateUsd = Number(seedanceUsd(RESTAGE_RESOLUTION, seconds).toFixed(3));
   const aspect = clipAspect(input.aspect);
@@ -214,12 +223,13 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
     lookPreset: DEFAULT_LOOK_PRESET_ID,
     sourcePath: take.path,
     stillPath: plate.path,
+    ...(footwear ? { extraImages: [{ bucket: footwear.bucket, path: footwear.path }] } : {}),
     sourceWindow,
     masterStart: songStart,
     sourceAssetId: take.id,
     sourceSeconds: seconds,
     alternate: true as const,
-    variant: montageRecord(planned.scenes, thing),
+    variant: montageRecord(planned.scenes, thing, footwear),
     ...(shot.madeFrom ? { madeFrom: shot.madeFrom } : {}),
     submittedBy: "montage-shot",
     lead: r3(lead),
@@ -242,10 +252,32 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
       lead: r3(lead),
       scenes: planned.scenes,
       thing,
+      footwear,
       prompt,
       estimateUsd,
       body,
       payload,
     },
   };
+}
+
+/**
+ * Which outfit's pieces he wears in the shot (wardrobe/outfits.ts resolveOutfit + effectiveGarments): the shot's own
+ * garments when it names any; else, by the shot's outfit mode, none / its exception outfit / its scene's outfit.
+ * Answers the pieces when they are already known, else the outfit key to look up.
+ */
+export function wornPieces(
+  spec: Record<string, unknown>,
+  sceneOutfitKey: string | null,
+): { ids: string[] } | { outfitKey: string } | { none: true } {
+  const w = (spec.wardrobe ?? {}) as Record<string, unknown>;
+  const own = Array.isArray(w.garments)
+    ? w.garments.filter((g): g is string => typeof g === "string")
+    : [];
+  if (own.length > 0) return { ids: own };
+  const mode = typeof w.outfitMode === "string" ? w.outfitMode : "inherit";
+  if (mode === "none") return { none: true };
+  const key =
+    mode === "exception" ? (typeof w.outfitKey === "string" ? w.outfitKey : null) : sceneOutfitKey;
+  return key ? { outfitKey: key } : { none: true };
 }

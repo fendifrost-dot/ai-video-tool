@@ -233,6 +233,13 @@ describe("requests — the bodies motion_submit() sends", () => {
     expect(buildMotionRequest({ ...ANGLE, source_seconds: 44 }, { prompt, sourceUrl: "s", userId: "u", projectId: "p" }).body.duration).toBe(30);
     expect(() => buildMotionRequest(ANGLE, { prompt, userId: "u", projectId: "p" })).toThrow(/source clip/);
   });
+  it("seedance_ref: extra pictures (a montage's shoes) follow the place as @Image2…, and never go without it", () => {
+    const prompt = motionPrompt(ANGLE, LOOK, true);
+    const ctx = { prompt, sourceUrl: "https://signed/src.mp4", extraImageUrls: ["https://signed/shoes.jpg"], userId: "u", projectId: "p" };
+    expect(buildMotionRequest(ANGLE, { ...ctx, stillUrl: "https://signed/plate.png" }).body.referenceImageUrls).toEqual(["https://signed/plate.png", "https://signed/shoes.jpg"]);
+    expect(buildMotionRequest(ANGLE, ctx).body.referenceImageUrls).toEqual([]);
+    expect(BatchShotSchema.parse({ ...ANGLE, extra_images: [{ bucket: "wardrobe-refs", path: "u/a/s.jpg" }] }).extra_images).toEqual([{ bucket: "wardrobe-refs", path: "u/a/s.jpg" }]);
+  });
   it("still_kling: image-to-video on the catalogue with the motion sentence + suffix, no preamble", () => {
     const prompt = motionPrompt(WORLD, LOOK, true);
     expect(prompt).toBe(`slow push-in, dust in the window light ${LOOK.shot_suffix}`);

@@ -161,12 +161,62 @@ export function montagePrompt(scenes: readonly MontageScene[]): string {
 export function montageRecord(
   scenes: readonly MontageScene[],
   thing: string | null,
-): { version: string; scenes: MontageScene[]; thing: string | null } {
+  footwear: MontageFootwear | null = null,
+): {
+  version: string;
+  scenes: MontageScene[];
+  thing: string | null;
+  footwear?: { id: string; label: string };
+} {
   return {
     version: MONTAGE_VERSION,
     scenes: scenes.map((s) => ({ ...s })),
     thing: thing?.trim() || null,
+    ...(footwear ? { footwear: { id: footwear.id, label: footwear.label } } : {}),
   };
+}
+
+/** His shoes: the outfit's footwear picture, sent as @Image2 after the place (montage.ts montageFootwear / footwearLine). */
+export type MontageFootwear = {
+  id: string;
+  bucket: string;
+  path: string;
+  label: string;
+  words: string | null;
+};
+export const FOOTWEAR_BUCKET = "wardrobe-refs";
+
+export function montageFootwear(
+  garmentIds: readonly string[],
+  items: readonly {
+    id: string;
+    feature_type: string;
+    label: string;
+    storage_path: string | null;
+    dimensions_description?: string | null;
+  }[],
+): MontageFootwear | null {
+  const byId = new Map(items.map((i) => [i.id, i]));
+  for (const id of garmentIds) {
+    const i = byId.get(id);
+    if (i && i.feature_type === "wardrobe_footwear" && i.storage_path)
+      return {
+        id: i.id,
+        bucket: FOOTWEAR_BUCKET,
+        path: i.storage_path,
+        label: i.label.trim(),
+        words: i.dimensions_description?.trim() || null,
+      };
+  }
+  return null;
+}
+
+export function footwearLine(footwear: Pick<MontageFootwear, "label" | "words"> | null): string {
+  if (!footwear) return "";
+  const what = [footwear.label.trim(), footwear.words?.trim().replace(/[.\s]+$/, "")]
+    .filter(Boolean)
+    .join(": ");
+  return `His shoes are the pair in @Image2 (${what}); whenever his feet are in a frame he wears exactly that pair, never any other shoes.`;
 }
 
 /** What is kept of him, word for word — the take's own description when Setup has one (restage.ts restageKeep). */

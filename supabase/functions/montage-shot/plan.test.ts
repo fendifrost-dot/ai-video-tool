@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { clipAspect, planMontage, type MontageInput } from "./plan.ts";
+import { clipAspect, planMontage, wornPieces, type MontageInput } from "./plan.ts";
 import {
   montagePrompt,
   planMontageScenes,
   seedanceAnglePrompt,
   restageKeep,
   montageRecord,
+  footwearLine,
 } from "../_shared/montagePrompt.ts";
 
 /** c042 on 16 Oct 2026: the Mastic corner shot (73.8–75.28 s) and its dressed take (first frame at 73.5268 s, 4.004 s long). */
@@ -120,6 +121,59 @@ describe("the montage request from the database's facts", () => {
     const r = planMontage(c042({ lines: LINES, light: "sodium streetlight, cold and orange" }));
     if (!r.ok) throw new Error(r.detail);
     expect(r.plan.prompt).toContain("The light: sodium streetlight, cold and orange");
+  });
+
+  it("his shoes go after the place: named in the prompt before the light, recorded, and their picture listed for the I/O half", () => {
+    const shoes = {
+      id: "5a78f069-ca44-4e51-9320-9dedfeabc6dc",
+      bucket: "wardrobe-refs",
+      path: "u/a/prada_cream.jpg",
+      label: "Prada America's Cup Sneakers - Cream (Raw White)",
+      words: "cream soft rubber and silver-grey bike mesh",
+    };
+    const r = planMontage(c042({ lines: LINES, light: "sodium streetlight", footwear: shoes }));
+    if (!r.ok) throw new Error(r.detail);
+    const scenes = planMontageScenes(LINES, 4);
+    if (!scenes.ok) throw new Error(scenes.why);
+    expect(r.plan.prompt).toBe(
+      seedanceAnglePrompt(
+        [montagePrompt(scenes.scenes), footwearLine(shoes), "The light: sodium streetlight"].join(
+          " ",
+        ),
+        restageKeep({ shows: null }),
+      ),
+    );
+    expect(r.plan.footwear).toEqual(shoes);
+    const s = r.plan.payload.settings as Record<string, unknown>;
+    expect(s.extraImages).toEqual([{ bucket: "wardrobe-refs", path: "u/a/prada_cream.jpg" }]);
+    expect(s.variant).toEqual(montageRecord(scenes.scenes, null, shoes));
+    expect(r.plan.body).not.toHaveProperty("referenceImageUrls");
+    const none = planMontage(c042({ lines: LINES }));
+    if (!none.ok) throw new Error(none.detail);
+    expect(none.plan.footwear).toBeNull();
+    expect(none.plan.prompt).not.toContain("@Image2");
+    expect(none.plan.payload.settings as Record<string, unknown>).not.toHaveProperty("extraImages");
+  });
+
+  it("the pieces he wears: the shot's own, else by its outfit mode", () => {
+    expect(wornPieces({ wardrobe: { garments: ["a", "b"] } }, "YSL_JACKET")).toEqual({
+      ids: ["a", "b"],
+    });
+    expect(wornPieces({ wardrobe: { garments: [] } }, "YSL_JACKET")).toEqual({
+      outfitKey: "YSL_JACKET",
+    });
+    expect(wornPieces({}, "YSL_JACKET")).toEqual({ outfitKey: "YSL_JACKET" });
+    expect(wornPieces({ wardrobe: { outfitMode: "none" } }, "YSL_JACKET")).toEqual({ none: true });
+    expect(
+      wornPieces(
+        { wardrobe: { outfitMode: "exception", outfitKey: "YSL_BUBBLE_BUCKET" } },
+        "YSL_JACKET",
+      ),
+    ).toEqual({ outfitKey: "YSL_BUBBLE_BUCKET" });
+    expect(wornPieces({ wardrobe: { outfitMode: "exception" } }, "YSL_JACKET")).toEqual({
+      none: true,
+    });
+    expect(wornPieces({}, null)).toEqual({ none: true });
   });
 
   it("refuses what the browser refuses, before any money moves", () => {

@@ -15,7 +15,8 @@
 //      wears. A shot with no dressed take is refused: dress it first (the browser's fallback to cutting the raw
 //      take needs an encoder this function does not have);
 //   3. the place: the newest usable plate still (metadata lane world_still) of the scene the shot falls in
-//      (variation_scenes by its start), else refused — generate the place first;
+//      (variation_scenes by its start), else refused — generate the place first; and his shoes: the footwear
+//      picture among the pieces he wears in the shot (its own garments, else its outfit), sent as @Image2;
 //   4. the scenes (the director's lines, one per line, each optionally timed "2.0-2.7 s: …"; absent = the dialog's
 //      prefill), the prompt, the estimate;
 //   5. the provider_jobs row FIRST (write-ahead, status queued), then proxy-provider-call → CC
@@ -32,7 +33,14 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { planMontage, type PlateFacts, type ShotFacts, type TakeFacts } from "./plan.ts";
+import {
+  planMontage,
+  wornPieces,
+  type PlateFacts,
+  type ShotFacts,
+  type TakeFacts,
+} from "./plan.ts";
+import { montageFootwear, type MontageFootwear } from "../_shared/montagePrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -159,7 +167,9 @@ serve(async (req) => {
   }
   if (!shotRow) return json(404, { ok: false, error: "shot_not_found" });
   // the spec the board works from (override_json holds only the director's partial edits, never a whole spec)
-  const spec = ((shotRow.spec_json as Row | null) ?? (shotRow.generated_json as Row | null) ?? {}) as Row;
+  const spec = ((shotRow.spec_json as Row | null) ??
+    (shotRow.generated_json as Row | null) ??
+    {}) as Row;
   const specEvents = Array.isArray((shotRow.spec_json as Row | null)?.events)
     ? ((shotRow.spec_json as Row).events as unknown[])
     : [];
@@ -297,6 +307,47 @@ serve(async (req) => {
     sceneTitle: str(plateMeta.scene_title),
   };
 
+  // his shoes: the footwear picture among the pieces he wears in the shot (the montage's low angles show feet the
+  // waist-up takes never had; without a picture the model makes up a pair)
+  let footwear: MontageFootwear | null = null;
+  const worn = wornPieces(spec, str(scene.outfit_key));
+  let pieceIds: string[] = "ids" in worn ? worn.ids : [];
+  if ("outfitKey" in worn) {
+    const outfitQuery = user
+      .from("continuity_entities")
+      .select("garment_feature_ids")
+      .eq("project_id", projectId)
+      .eq("kind", "outfit")
+      .eq("key", worn.outfitKey)
+      .eq("archived", false)
+      .limit(1);
+    const { data: outfitRows, error: outfitErr } = await (shot.variationId
+      ? outfitQuery.eq("variation_id", shot.variationId)
+      : outfitQuery);
+    if (outfitErr)
+      return json(500, { ok: false, error: "outfit_lookup_failed", detail: outfitErr.message });
+    const ids = (outfitRows?.[0] as Row | undefined)?.garment_feature_ids;
+    pieceIds = Array.isArray(ids) ? ids.map(String) : [];
+  }
+  if (pieceIds.length > 0) {
+    const { data: pieces, error: piecesErr } = await user
+      .from("character_features")
+      .select("id, feature_type, label, storage_path, dimensions_description")
+      .in("id", pieceIds);
+    if (piecesErr)
+      return json(500, { ok: false, error: "wardrobe_lookup_failed", detail: piecesErr.message });
+    footwear = montageFootwear(
+      pieceIds,
+      ((pieces ?? []) as Row[]).map((p) => ({
+        id: String(p.id),
+        feature_type: String(p.feature_type),
+        label: String(p.label ?? ""),
+        storage_path: str(p.storage_path),
+        dimensions_description: str(p.dimensions_description),
+      })),
+    );
+  }
+
   // the light the shot opens in, when it points at a lighting entity (the place itself is the picture)
   let light: string | null = null;
   const lightingKey = str((spec.continuity as Row | null)?.lighting);
@@ -326,6 +377,7 @@ serve(async (req) => {
     plate,
     lines,
     light,
+    footwear,
   });
   if (!planned.ok)
     return json(planned.status, { ok: false, error: planned.error, detail: planned.detail });
@@ -340,6 +392,7 @@ serve(async (req) => {
     },
     scene: { id: String(scene.id), name: String(scene.name) },
     plate: { id: plate.id, path: plate.path },
+    shoes: footwear ? { id: footwear.id, label: footwear.label, path: footwear.path } : null,
     seconds: plan.seconds,
     songStart: plan.songStart,
     lead: plan.lead,
@@ -358,19 +411,26 @@ serve(async (req) => {
       note: "nothing was sent, spent or written",
     });
 
-  // 5. sign the two files as the caller, record the job, then spend
-  const [srcSigned, stillSigned] = await Promise.all([
+  // 5. sign the files as the caller, record the job, then spend
+  const [srcSigned, stillSigned, shoesSigned] = await Promise.all([
     user.storage.from(take.bucket).createSignedUrl(take.path, SIGN_TTL),
     user.storage.from(plate.bucket).createSignedUrl(plate.path, SIGN_TTL),
+    footwear ? user.storage.from(footwear.bucket).createSignedUrl(footwear.path, SIGN_TTL) : null,
   ]);
   if (srcSigned.error || !srcSigned.data?.signedUrl)
     return json(500, { ok: false, error: "source_sign_failed", detail: srcSigned.error?.message });
   if (stillSigned.error || !stillSigned.data?.signedUrl)
     return json(500, { ok: false, error: "plate_sign_failed", detail: stillSigned.error?.message });
+  if (shoesSigned && (shoesSigned.error || !shoesSigned.data?.signedUrl))
+    return json(500, { ok: false, error: "shoes_sign_failed", detail: shoesSigned.error?.message });
   const requestBody = {
     ...plan.body,
     referenceVideoUrls: [srcSigned.data.signedUrl],
-    referenceImageUrls: [stillSigned.data.signedUrl],
+    // @Image1 the place, @Image2 his shoes (the prompt names them in that order)
+    referenceImageUrls: [
+      stillSigned.data.signedUrl,
+      ...(shoesSigned ? [shoesSigned.data!.signedUrl] : []),
+    ],
   };
 
   const { data: job, error: jobErr } = await user
