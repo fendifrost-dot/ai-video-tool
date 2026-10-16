@@ -97,7 +97,24 @@ describe("functions", () => {
   it("offers no budget, cap or ledger tool", () => {
     expect(TOOLS.map((t) => t.name).filter((n) => /budget|spend|cap/.test(n))).toEqual([]);
     expect(TOOLS.find((t) => t.name === "avt_call")!.inputSchema.properties).not.toHaveProperty("budget_id");
-    expect(TOOLS).toHaveLength(11);
+    expect(TOOLS).toHaveLength(12);
+  });
+  it("hands a browser an access token only, never a refresh token or a user of the caller's choosing", () => {
+    const t = TOOLS.find((t) => t.name === "avt_browser_session")!;
+    expect(t.inputSchema.properties).toEqual({});
+    expect(t.description).toMatch(/No refresh token/);
+    expect(t.description).toMatch(/\[browser\]/);
+    expect(TOOLS.find((t) => t.name === "avt_whoami")!.inputSchema.properties).toEqual({ browser_session: { type: "boolean" } });
+  });
+  it("the hand-out code never touches the refresh token (source-level)", () => {
+    const src = readFileSync(new URL("./index.ts", import.meta.url), "utf8");
+    const start = src.indexOf("async function browserSession(");
+    expect(start).toBeGreaterThan(0);
+    const body = src.slice(start, src.indexOf("\n}\n", start));
+    expect(body).not.toMatch(/refresh_token|refreshToken/);
+    expect(body).toMatch(/purpose: "browser"/);
+    expect(body).toMatch(/is_anonymous/);
+    expect(body).not.toMatch(/identities|phone|user_metadata/);
   });
 });
 

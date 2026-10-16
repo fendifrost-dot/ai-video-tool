@@ -28,7 +28,9 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
+  BROWSER_SESSION_MIN_REMAINING_SECONDS,
   checkCredential,
+  isMachineSession,
   newSecret,
   parseRequest,
   planSession,
@@ -119,12 +121,15 @@ async function handleRequest(req: Request): Promise<Response> {
     // Every use of a credential is still exactly one row — that is the leak signal, and it did not change when
     // the rate limit went away. What changed is that there are now four outcomes instead of two, so a reused
     // session is neither filed as a mint nor invisible.
+    // A session for a headless browser (avt-mcp's avt_browser_session) is audited as such: same owner, same
+    // session, but it leaves the server, so the row says so.
+    const purpose = parsed.purpose ?? null;
     const audit = async (outcome: "minted" | "denied" | "reused" | "refreshed", reason: string | null) => {
       await admin.from("batch_credential_mints").insert({
         credential_id: matched?.id ?? null,
         owner_user_id: matched?.owner_user_id ?? null,
         outcome,
-        reason,
+        reason: purpose ? `${reason ?? outcome} [${purpose}]` : reason,
         ip_hash: ipHash,
         user_agent: userAgent,
       });
@@ -146,7 +151,12 @@ async function handleRequest(req: Request): Promise<Response> {
       .eq("credential_id", check.credentialId)
       .maybeSingle();
     const stored = (storedRow ?? null) as StoredSession | null;
-    const plan = planSession(stored, check.ownerUserId, now);
+    const plan = planSession(
+      stored,
+      check.ownerUserId,
+      now,
+      purpose === "browser" ? BROWSER_SESSION_MIN_REMAINING_SECONDS : undefined,
+    );
 
     const touch = async () => {
       await admin
@@ -297,6 +307,28 @@ async function handleRequest(req: Request): Promise<Response> {
   const { data: userData, error: userErr } = await userClient.auth.getUser();
   const user = userData?.user ?? null;
   if (userErr || !user) return json(401, { error: "unauthenticated" });
+
+  // A session this proxy minted for a machine credential (and may have handed to a headless browser) acts as the
+  // owner everywhere else, but not here: it must not enrol a credential of its own, list the others or revoke them.
+  const { data: machineRows } = await admin
+    .from("batch_credential_sessions")
+    .select("access_token")
+    .eq("owner_user_id", user.id);
+  const machineTokens = ((machineRows ?? []) as { access_token: string }[]).map((r) => r.access_token);
+  if (isMachineSession(authHeader.slice(7).trim(), machineTokens)) {
+    await admin.from("batch_credential_mints").insert({
+      credential_id: null,
+      owner_user_id: user.id,
+      outcome: "denied",
+      reason: `machine session cannot ${parsed.action} credentials`,
+      ip_hash: await hashIp(req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null),
+      user_agent: req.headers.get("user-agent")?.slice(0, 200) ?? null,
+    });
+    return json(403, {
+      error: "forbidden",
+      detail: "a machine-minted session cannot manage credentials — sign in as yourself",
+    });
+  }
 
   if (parsed.action === "enroll") {
     const secret = newSecret();

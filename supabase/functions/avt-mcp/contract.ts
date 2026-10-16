@@ -3,7 +3,7 @@
 // is unit-tested (contract.test.ts); index.ts does the I/O.
 
 export const SERVER_NAME = "avt";
-export const SERVER_VERSION = "1.0.0";
+export const SERVER_VERSION = "1.1.0";
 export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 export const INSTRUCTIONS = [
@@ -173,7 +173,14 @@ const filtersSchema = {
 export const TOOLS = [
   {
     name: "avt_whoami",
-    description: "Who this server acts as and which credential is in use. Start here.",
+    description:
+      "Who this server acts as and which credential is in use. Start here. With browser_session: true it also answers what avt_browser_session answers (for a client whose tool list predates that tool).",
+    inputSchema: { type: "object", properties: { browser_session: { type: "boolean" } } },
+  },
+  {
+    name: "avt_browser_session",
+    description:
+      "A short-lived sign-in for a headless browser that drives the app itself (scripts/agent-browser): the owner's access token, when it expires, the user record and the app's auth storage key. No refresh token — it ends with the hour. Audited in batch_credential_mints as [browser].",
     inputSchema: { type: "object", properties: {} },
   },
   {

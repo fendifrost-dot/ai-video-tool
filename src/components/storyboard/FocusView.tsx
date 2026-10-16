@@ -219,7 +219,7 @@ export function FocusView() {
                   <Shirt className="mr-2 h-4 w-4" /> {dress.inFlight ? "Dressing…" : "Dress this shot"}{dress.plan && !dress.inFlight ? ` · $${dress.plan.cost.usd.toFixed(3)}` : ""}
                 </Button>
               )}
-              {(comp.plan || comp.composited.length > 0) && (
+              {(comp.plan || comp.composited.length > 0 || dress.dressed.length > 0) && (
                 <Button variant="outline" disabled={!!busy || !comp.plan} onClick={() => sb.compositeShot(box)} title={comp.why ?? undefined} data-testid="focus-composite-shot">
                   <Layers className="mr-2 h-4 w-4" /> Composite over plate{comp.plan ? ` · $${comp.plan.cost.usd.toFixed(3)}` : ""}
                 </Button>
@@ -235,7 +235,7 @@ export function FocusView() {
               </ul>
             )}
             {(busy || (job && job.state !== "done")) && (
-              <p className={cn("flex items-center gap-1.5 text-[11px]", job?.state === "failed" && !busy ? "text-rose-300" : "text-foreground/60")} data-testid="focus-status">
+              <p className={cn("flex items-center gap-1.5 text-[11px]", job?.state === "failed" && !busy ? "text-rose-300" : "text-foreground/60")} data-testid="focus-status" data-state={busy ? "busy" : (job?.state ?? "")}>
                 {(busy || job?.state === "working" || job?.state === "saving") && <Loader2 className="h-3 w-3 animate-spin" />}
                 {busy ?? job?.message}
               </p>

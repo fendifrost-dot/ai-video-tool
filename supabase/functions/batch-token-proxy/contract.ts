@@ -65,10 +65,18 @@ export type StoredSession = {
  */
 export type SessionPlan = { use: "reuse" | "refresh" | "mint"; reason: string };
 
+/**
+ * A session handed to a headless browser has to outlive the render it is for (a long composite window is tens of
+ * minutes), so for that purpose the proxy refreshes early instead of handing out the tail of the MCP's hour. The
+ * proxy is the only refresher, so an early refresh rotates nothing out from under anyone.
+ */
+export const BROWSER_SESSION_MIN_REMAINING_SECONDS = 35 * 60;
+
 export function planSession(
   stored: StoredSession | null | undefined,
   ownerUserId: string,
   now: Date,
+  minRemainingSeconds: number = BATCH_SESSION_MIN_REMAINING_SECONDS,
 ): SessionPlan {
   if (!stored) return { use: "mint", reason: "no stored session" };
   if (stored.owner_user_id !== ownerUserId) return { use: "mint", reason: "stored session belongs to another owner" };
@@ -81,15 +89,52 @@ export function planSession(
 
   const remaining = (new Date(stored.expires_at).getTime() - nowMs) / 1000;
   if (!Number.isFinite(remaining)) return { use: "mint", reason: "stored session has no usable expiry" };
-  if (remaining > BATCH_SESSION_MIN_REMAINING_SECONDS) return { use: "reuse", reason: "stored access token still valid" };
+  if (remaining > minRemainingSeconds) return { use: "reuse", reason: "stored access token still valid" };
   return { use: "refresh", reason: "stored access token expiring" };
+}
+
+/** The `session_id` claim of a Supabase access token, or null when the token does not parse. No verification here:
+ *  the caller has already had the token verified by Auth; this only reads which session it belongs to. */
+export function jwtSessionId(token: string): string | null {
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const json = atob(b64 + "=".repeat((4 - (b64.length % 4)) % 4));
+    const claims = JSON.parse(json) as { session_id?: unknown };
+    return typeof claims.session_id === "string" && claims.session_id ? claims.session_id : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether a bearer token belongs to a session this proxy minted for a machine credential. Such a session may act as
+ * the owner everywhere else, but it must not enrol, list or revoke credentials: a one-hour hand-out would otherwise
+ * turn itself into indefinite access, or cut off its sibling AIs.
+ */
+export function isMachineSession(bearerToken: string, storedAccessTokens: readonly string[]): boolean {
+  const id = jwtSessionId(bearerToken);
+  if (!id) return false;
+  return storedAccessTokens.some((t) => jwtSessionId(t) === id);
 }
 
 /** Secrets are issued at this length; shorter ones are rejected outright. */
 export const SECRET_BYTES = 32;
 
+/** What a `session` is for. `browser` marks a session handed to a headless browser that drives the app itself. */
+export const SESSION_PURPOSES = ["runner", "browser"] as const;
+export type SessionPurpose = (typeof SESSION_PURPOSES)[number];
+
 export type ParsedRequest =
-  | { ok: true; action: BatchAction; label?: string; credentialId?: string; expiresInDays?: number }
+  | {
+      ok: true;
+      action: BatchAction;
+      label?: string;
+      credentialId?: string;
+      expiresInDays?: number;
+      purpose?: SessionPurpose;
+    }
   | { ok: false; error: string };
 
 /**
@@ -141,6 +186,15 @@ export function parseRequest(body: unknown): ParsedRequest {
     if (!/^[0-9a-f-]{36}$/i.test(credentialId))
       return { ok: false, error: "revoke needs a credentialId (uuid)" };
     return { ok: true, action: act, credentialId };
+  }
+
+  if (act === "session" && b.purpose !== undefined) {
+    if (
+      typeof b.purpose !== "string" ||
+      !(SESSION_PURPOSES as readonly string[]).includes(b.purpose)
+    )
+      return { ok: false, error: `purpose must be one of ${SESSION_PURPOSES.join(", ")}` };
+    return { ok: true, action: act, purpose: b.purpose as SessionPurpose };
   }
 
   return { ok: true, action: act };

@@ -243,7 +243,7 @@ export function AppShell() {
               variant="ghost"
               size="sm"
               className="w-full justify-start gap-2 rounded-xl text-foreground/60 hover:bg-white/5 hover:text-foreground"
-              onClick={() => supabase.auth.signOut()}
+              onClick={() => supabase.auth.signOut({ scope: "local" })}
             >
               <LogOut className="h-4 w-4" />
               Sign out
@@ -277,7 +277,7 @@ export function AppShell() {
             variant="ghost"
             size="icon"
             className="h-9 w-9 rounded-xl text-foreground/70 hover:bg-white/5 hover:text-foreground"
-            onClick={() => supabase.auth.signOut()}
+            onClick={() => supabase.auth.signOut({ scope: "local" })}
             aria-label="Sign out"
           >
             <LogOut className="h-4 w-4" />
