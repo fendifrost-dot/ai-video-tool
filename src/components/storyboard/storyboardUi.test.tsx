@@ -143,6 +143,8 @@ function controller(over: Partial<StoryboardController> = {}): StoryboardControl
     generateClip: vi.fn(),
     dressOf: () => ({ needed: false, plan: null, why: "only a performance shot is dressed", dressed: [], inFlight: false }),
     dressShot: vi.fn(),
+    compositeOf: () => ({ plan: null, why: "only a performance shot is composited", composited: [] }),
+    compositeShot: vi.fn(),
     workflow: [],
     focusId: null,
     openFocus: vi.fn(),

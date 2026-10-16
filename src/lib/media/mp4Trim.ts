@@ -176,8 +176,14 @@ export function writeMp4(input: Mp4Write): Uint8Array {
   return new Writer().bytes(ftyp).bytes(moov).bytes(mdat).done();
 }
 
-/** The `stsd` box of an H.264 track, from its decoder configuration record (`avcC`). */
-export function avcSampleDescription(width: number, height: number, avcC: Uint8Array): Uint8Array {
+/**
+ * The `stsd` box of an H.264 track, from its decoder configuration record (`avcC`). `colr: "bt709"` tags the colour
+ * (nclx, primaries 1, transfer 1, matrix 1, video range) — a composite drawn in the browser is written tagged, so no
+ * player reads it as untagged 601 and shifts its colour (COMPOSITE_IN_REVIEW_2026-10-06); a cut copies its source and
+ * is left untagged as before.
+ */
+export function avcSampleDescription(width: number, height: number, avcC: Uint8Array, opts: { colr?: "bt709" } = {}): Uint8Array {
+  const colr = opts.colr === "bt709" ? box("colr", new Writer().str("nclx").u16(1).u16(1).u16(1).u8(0).done()) : null;
   const entry = new Writer()
     .u8(0, 0, 0, 0, 0, 0).u16(1) // reserved, data reference 1
     .u16(0).u16(0).u32(0, 0, 0) // pre-defined
@@ -187,6 +193,7 @@ export function avcSampleDescription(width: number, height: number, avcC: Uint8A
     .bytes(new Uint8Array(32)) // compressor name
     .u16(0x18).u16(0xffff)
     .bytes(box("avcC", avcC))
+    .bytes(colr ?? new Uint8Array(0))
     .done();
   return full("stsd", 0, 0, new Writer().u32(1).bytes(box("avc1", entry)).done());
 }

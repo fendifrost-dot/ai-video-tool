@@ -29,8 +29,10 @@ describe("the workflow checklist", () => {
     expect(screen.getByTestId("workflow-step-integrate").textContent).toContain(
       "Integrate (composite)",
     );
-    expect(screen.getByTestId("workflow-step-integrate").getAttribute("data-state")).toBe("manual");
-    expect(screen.getByTestId("workflow-step-integrate").textContent).toMatch(/not automated yet/);
+    // one shot has a dressed take (stale or not), none is composited yet: the lane has work to do
+    expect(screen.getByTestId("workflow-step-integrate").getAttribute("data-state")).toBe("todo");
+    expect(screen.getByTestId("workflow-step-integrate").textContent).toContain("0/1");
+    expect(screen.getByTestId("workflow-step-integrate").textContent).toMatch(/dressed take/);
   });
 
   it("renders nothing without steps", () => {

@@ -26,7 +26,7 @@ overwriting a selection.
 | 3 | Shot plan and performance selection | Candidate 6 marks performance shots c041–c047 (Chicago), c048–c054 (grill ECUs), c055–c066 (cold front), c085–c093 (clean entrance). 22 clips carried from candidate 5 (0–70.85 s). | same report, §C |
 | 4 | Generate scene assets | PHASE 2 DONE for the empty non-performance shots: realism plates for the three performance locations (unselected, under `worlds/`), 34 stills + 34 Kling clips selected on c019–c021, c024, c027, c036, c038, c040, c067–c084, c091, c094–c100. Plate prompt recipe: `docs/recipes/PLATE_REALISM_PROMPT.md` (Fendi: "they need to look real"). | `docs/review/production_2026-10-15/PHASE2_PLATES_STILLS_DRESS.md`; ledger rows 30–32 |
 | 5 | Process only selected performance segments | TOOL LIVE ("Dress this shot", PR #260; 4 s floor fix PR #262). **Cold front and clean entrance dressed in grouped windows (15 Oct night, ledger rows 36–37; recipe doc last section):** coldW3 `1a83a167` (c062–c066), entrW1 `011a1323` (c085–c087), entrW2 `ed28aba0` (c088–c090), entrW3 `51c1156c` (c092–c093) PASS and filed unselected with covered-shot assignments; coldW1 `e09b1a3a` and coldW2 `0e995b73` REJECTED (cap not swapped / cap morph + sleeve patch) and re-run cap-first as rows `cde54409`, `501f3dc1` — both re-runs REFUSED at intake (balance exhausted again), see "Cold-front re-runs — BLOCKED" below. **Chicago fully dressed as unselected alternates:** c042 (`6eea726d`), c047 (`f540b6be`, conformed 4.9551), and after the top-up c041 (`2f55f4fa`), c044 (`6d8043a2`), c045 (`e6788d22`), c046 (`92c15951`), each conformed 4.0039 s, ratio 1.079694, with a derived sync at its song start and `is_primary = false`. Fendi has the side-by-sides; no verdict yet. Cold front (c055–c066, coat) and clean entrance (c085–c093, trench) not dressed. | ledger rows 33–35; `WARDROBE_SWAP_RECIPE.md` "Production: the Chicago windows" |
-| 6 | Integrate and finish | METHOD VALIDATED ON ONE CLIP, NOT YET IN THE TOOL: Runway `remove_video_background` matte + ffmpeg composite over a realism plate (key gradient, inner-edge light wrap, plate defocus, grain). Posted to Fendi 15 Oct; no verdict yet. Restage is NOT an approved production method. | `PLATE_REALISM_PROMPT.md` last section; scratch recipe in this session only |
+| 6 | Integrate and finish | **LANE CODED 16 Oct ("Composite over plate"), NOT LIVE until Publish + redeploys — see "Composite lane: deploy and verify" below.** Fendi passed the composite test 15 Oct ("All pass"). The 15 Oct recipe (variant D) is `src/lib/composite/pixels.ts`; the matte is Fal `veed/video-background-removal` via CC (the Runway connector has 2 credits). Restage is NOT an approved production method. | `docs/recipes/DRESS_AND_INSERT_WORKFLOW.md` step 6; `PLATE_REALISM_PROMPT.md` last section |
 | 7 | Review the assembled sequence | NOT STARTED. No timeline rows for candidate 6. | — |
 
 ## Verify first (cheap)
@@ -94,6 +94,29 @@ When Fendi says he has topped up:
 
 If a cap-first prompt fails the same way, the next lever is reference order (cap images first) — not more words.
 
+## Composite lane: deploy and verify (16 Oct — CODED, not LIVE)
+
+Code: AVT PR (this branch) + CC PR (`switchx-restyle` allowlist). Nothing is live until, through Lovable:
+
+1. **CC** (`7fce9fc6-fd96-4a31-8a89-649f00298c51`): **Edge Functions → redeploy `switchx-restyle`** (the fal-run
+   allowlist). Expected: unchanged behaviour for every other caller; the function answers `400 model_not_allowed` for
+   a model outside the list and a queue handle for `veed/video-background-removal`.
+2. **AVT** (`bd21b544-c7b8-4780-bdde-391ac9d4bfa8`): **Edge Functions → redeploy `matte-video-proxy`** (new) — it needs
+   the same secrets `sam3-segment-proxy` has (`COMPOSE_LOOK_CC_URL`, `SWITCHX_PROXY_SECRET` or
+   `COMPOSE_LOOK_PROXY_SECRET`); then **Publish** the frontend (the button, the dialog, the browser pipeline).
+3. **Verify, cheaply:** `curl -s -o /dev/null -w '%{http_code}' -X POST https://qoyxgnkvjukovkrvdaiq.supabase.co/functions/v1/matte-video-proxy -H 'content-type: application/json' -d '{}'`
+   → **401** = deployed and refusing an anonymous call; **404** = not deployed. The live bundle check in "Verify first"
+   must find `focus-composite-shot` in the storyboard chunk after Publish.
+4. **First run:** open c047 (the 4.955 s Chicago window, dressed asset `f540b6be`) full screen → "Composite over plate"
+   → the dialog shows the Chicago plate and ≈ $0.089 → Dry run first (console shows the request, nothing sent) → then
+   Composite. Expected: the matte returns in 1–3 min; frames composite in the page in under a minute; a new unselected
+   alternate appears on c047 labelled "Your take · new background" with `derived_from.method composite`, a derived
+   sync at 82.025, and `composite.matte.request_id` set. Post the clip. Ledger row at the matte's list price.
+5. **Guardrails:** the lane never selects what it files; it never touches `provider_jobs`; a rejected dressed take is
+   never used; a source over 60 s is refused before spend. If the matte comes back with one file only, it is taken as
+   the alpha (VP9 path) and will fail to decode — that is a finding (the model ignored `output_codec`), not a reason to
+   patch the picker.
+
 ## Open decisions (Fendi's; defaults the agent will use if he says nothing)
 
 1. **The switch timing.** The treatment puts the lights-back-on at the vocal entrance (61.01 s); the writer put it at
@@ -113,16 +136,18 @@ If a cap-first prompt fails the same way, the next lever is reference order (cap
    then cold front (coat outfit `0b4ae771`, c055–c066) and clean entrance (trench `d17c59f3`, c085–c093) with the in-app
    action (or the MCP path: plan with `dressWindow`, cut with ffmpeg at ≥ 4.0 s — never 3.95 — upload to Higgsfield media,
    write-ahead row, submit). Group adjacent 1.5–2 s shots so one 4 s run covers 2–3 shots.
-3. **Composite** each dressed window over its plate (matte + ffmpeg as in the recipe); file as `edited_clip` with
-   `derived_from.method = composite` and a derived sync (see `scripts/qa/composite_register.py` for the row shape); put it
-   on the shot as an alternate. Build this into the tool as a lane only after Fendi passes the first two.
+3. **Composite** each dressed window over its plate with the lane (step 6, "Composite over plate" in the shot's
+   full-screen view) once it is live — Chicago first (c041, c044–c047 over `50fa1ce3`/`b58cab47`, the newest Chicago
+   plates; `adaee8ab` is the earlier one), then coldW3 and the three entrance windows. Each run bills ≈ $0.07–0.19 for
+   the matte (Fal, list); append a ledger row per run with the request id from the asset's `composite.matte`.
 4. **AI B-roll** for the non-performance shots 70.85–201.87 s: still-first (realism recipe) then image-to-video through the
    app's `generateBoxClip` route.
 5. **Assemble** candidate 6 into a timeline and post a playable sequence (the song audio) to Fendi.
 
 ## Do not
 
-- Do not scale a route Fendi has not passed on a short clip (composite is pending his verdict).
+- Do not scale a route Fendi has not passed on a short clip (he passed the composite test on 15 Oct; the lane is the
+  scale-up, one shot at a time, each confirmed with its cost).
 - Do not restage (not approved). Do not overwrite or unselect a chosen clip; alternates only.
 - Do not edit a migration or a job row to make a check pass; a failing check is the finding.
 - Do not commit media showing Fendi or the song; the repo is public.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Film, Image as ImageIcon, LayoutGrid, Loader2, Lock, Maximize, Minimize, Plus, Quote, Shirt, Wand2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Film, Image as ImageIcon, LayoutGrid, Layers, Loader2, Lock, Maximize, Minimize, Plus, Quote, Shirt, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -95,6 +95,7 @@ export function FocusView() {
   const est = sb.estimatesOf(box);
   const blocked = sb.rewriteBlockedReason(box);
   const dress = sb.dressOf(box);
+  const comp = sb.compositeOf(box);
 
   return (
     <Overlay>
@@ -216,6 +217,11 @@ export function FocusView() {
                   data-testid="focus-dress-shot"
                 >
                   <Shirt className="mr-2 h-4 w-4" /> {dress.inFlight ? "Dressing…" : "Dress this shot"}{dress.plan && !dress.inFlight ? ` · $${dress.plan.cost.usd.toFixed(3)}` : ""}
+                </Button>
+              )}
+              {(comp.plan || comp.composited.length > 0) && (
+                <Button variant="outline" disabled={!!busy || !comp.plan} onClick={() => sb.compositeShot(box)} title={comp.why ?? undefined} data-testid="focus-composite-shot">
+                  <Layers className="mr-2 h-4 w-4" /> Composite over plate{comp.plan ? ` · $${comp.plan.cost.usd.toFixed(3)}` : ""}
                 </Button>
               )}
             </div>
