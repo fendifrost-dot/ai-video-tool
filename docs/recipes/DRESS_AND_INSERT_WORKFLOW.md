@@ -18,19 +18,44 @@ Labels: VERIFIED / OBSERVED / HYPOTHESIS / DECISION / RECOMMENDATION.
 | 3 | AI shots generated | Storyboard → Generate image / clip | yes, per shot, after a confirm with the cost |
 | 4 | Performance shot selected per scene | Setup (sync) + Storyboard | the synced take is the base layer of every shot it covers |
 | 5 | Clothing swap on that performance shot, **only if needed** | Storyboard → shot → **Dress this shot** | yes: cut, swap, conform, file; the director confirms the cost and picks the result |
-| 6 | Insert the performance into the AI location, **only if needed** | offline composite | **no** — see below |
+| 6 | Insert the performance into the AI location, **only if needed** | Storyboard → shot → **Composite over plate** | yes: the dressed take is matted (Fal, via CC), composited over the scene's plate in the browser, filed as an alternate |
 
 The storyboard page shows these steps as a read-only **Workflow** checklist with counts (`src/lib/storyboard/workflow.ts`).
-Step 5 shows `dressed / needed` and how many dressed shots are **stale**. Step 6 reads **Integrate (composite)** and is
-marked *not automated yet*.
+Step 5 shows `dressed / needed` and how many dressed shots are **stale**. Step 6 reads **Integrate (composite)** and
+counts `composited / shots with a dressed take` — the shots the lane can work on.
 
-### Step 6 is not automated (DECISION, Fendi, 15 Oct 2026)
+### Step 6: what "Composite over plate" does (CODED 16 Oct 2026; live only after Publish + redeploy)
 
 - **Restage is not approved for production.** In his words: "The failed restaging tests are not approved production
   methods." The tool does not present restaging as the way to put a performance into an AI location. A dressed take is
   not fed into a restage.
-- **Composite (matte over plate) is under validation.** It stays offline (`scripts/qa/composite_take.py`). A composite
-  filed on a shot is counted in the checklist and plays in Review. Nothing in the storyboard submits one.
+- **Composite = his real pixels over a plate.** The recipe that passed the 15 Oct integration test (variant D of the
+  ffmpeg chain, `docs/recipes/PLATE_REALISM_PROMPT.md`) is written out in `src/lib/composite/pixels.ts`
+  (`plate-composite-v1-2026-10-15`) and runs in the browser; Fendi's standing rule of 15 Oct 07:45 UTC ("you can build
+  freely") is the product decision to build it as a lane.
+
+The button appears in a shot's full-screen view when the shot is a **performance** shot with a **dressed take** on it
+(not rejected) and its scene has a **plate** — the newest usable realism still filed under `worlds/plate_*` with the
+scene's title (world-still-proxy), or, failing that, the location's approved picture. It asks first, with the plate
+shown and the cost. What it does, in order (`src/lib/composite/compositeSubmit.ts`):
+
+1. **Matte** (the one paid step): `matte-video-proxy` signs the dressed take for an hour and sends it through Control
+   Center's `switchx-restyle` `fal-run` to `veed/video-background-removal` with `output_codec: "h264"` — the answer is
+   an RGB video and a separate **alpha** video (the browser reads MP4/H.264, not WebM). $0.0225 per 30 frames, list,
+   refined edges on; a source over 60 s is refused before anything is sent. The browser polls `fal-queue-poll-proxy`,
+   downloads both files from Fal's CDN and keeps the grey one.
+2. **Composite**, frame by frame in the page (`render.ts`, `frameReader.ts`, `pixels.ts`): the matte eroded a pixel and
+   feathered; him multiplied by the key gradient and graded to the plate; the plate defocused; the wide-blurred plate
+   screened onto his **inner** edge band only; grain. His pixels and his frame times are the dressed take's own, so
+   identity and mouth timing are exact by construction and the file is exactly as long as the dressed take.
+3. **Encode and file** (`file.ts`): H.264 at the take's size, tagged BT.709; uploaded to `project-clips/…/composites/`
+   with the alpha beside it under `…/mattes/`; a `project_assets` row of type `edited_clip`, `footage_role performance`,
+   `parent_asset_id` = the dressed take, `metadata_json.derived_from.method = "composite"` and a `composite` record
+   (recipe, seed, plate, matte request id, frames); a derived sync at the dressed take's song start; an **unselected**
+   assignment on every shot the dressed take covers. Nothing selected changes.
+
+Keep the page open: after the matte returns, the frames are made in the browser. The **dry run** on the dialog logs the
+exact matte request and sends nothing.
 
 ## Step 5: what "Dress this shot" does
 

@@ -7,8 +7,9 @@
  *   3. AI shots generated (a clip selected on each).
  *   4. A performance take under each performance shot.
  *   5. Clothing swap on the performance shot, only where the scene's outfit needs it (dress.ts) — current or STALE.
- *   6. Integrate the performance into the AI location (composite). NOT automated yet: compositing is under
- *      validation, and restaging is not an approved production method (DECISION, Fendi, 15 Oct). Counted, not run.
+ *   6. Integrate the performance into the AI location: the dressed take cut out and laid over the scene's plate
+ *      (composite/ — "Composite over plate"). Restaging is not an approved production method (DECISION, Fendi,
+ *      15 Oct). Counted against the shots with a dressed take, which are the ones the lane can composite.
  *
  * Pure: it is handed facts the storyboard already holds and counts them.
  */
@@ -26,7 +27,7 @@ export type WorkflowShot = {
   needsDress: boolean;
   /** The dressed takes on this shot, and whether each is stale. */
   dressed: { stale: boolean }[];
-  /** A take composited over a place is on this shot (made outside the storyboard). */
+  /** A take composited over a place is on this shot (the composite lane, or filed from outside). */
   composited: boolean;
 };
 
@@ -64,7 +65,9 @@ export function workflowStatus(input: WorkflowInput): WorkflowStep[] {
     (s) => s.dressed.length > 0 && s.dressed.every((d) => d.stale),
   ).length;
   const withTake = perf.filter((s) => s.hasTake).length;
-  const composited = perf.filter((s) => s.composited).length;
+  // the composite lane works from a dressed take: those shots are the ones it can integrate, and the ones counted
+  const dressedShots = perf.filter((s) => s.dressed.length > 0).length;
+  const composited = perf.filter((s) => s.dressed.length > 0 && s.composited).length;
   return [
     {
       id: "treatment",
@@ -116,9 +119,12 @@ export function workflowStatus(input: WorkflowInput): WorkflowStep[] {
     {
       id: "integrate",
       label: "Integrate (composite)",
-      state: "manual",
-      count: `${composited}/${withTake}`,
-      detail: "not automated yet — compositing is under validation",
+      state: dressedShots === 0 ? "none" : ratio(composited, dressedShots),
+      count: `${composited}/${dressedShots}`,
+      detail:
+        dressedShots === 0
+          ? "no shot has a dressed take to composite yet"
+          : "composited over the scene's plate / with a dressed take",
     },
   ];
 }

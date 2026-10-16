@@ -21,11 +21,11 @@ describe("the workflow checklist", () => {
       ["ai_shots", "none", "0/0"],
       ["performance", "none", "0/0"],
       ["dress", "none", "0/0"],
-      ["integrate", "manual", "0/0"],
+      ["integrate", "none", "0/0"],
     ]);
     expect(steps[5]).toMatchObject({
       label: "Integrate (composite)",
-      detail: expect.stringMatching(/not automated yet/),
+      detail: expect.stringMatching(/no shot has a dressed take/),
     });
   });
 
@@ -59,7 +59,9 @@ describe("the workflow checklist", () => {
       stale: 1,
       detail: expect.stringContaining("1 stale"),
     });
-    expect(by.integrate).toMatchObject({ state: "manual", count: "1/4" });
+    // the lane composites a dressed take: two shots have one, neither is composited; the composite on an undressed
+    // shot (filed from outside) is not counted against them
+    expect(by.integrate).toMatchObject({ state: "todo", count: "0/2", detail: expect.stringContaining("dressed take") });
   });
 
   it("a shot with one current and one stale dressed take counts as dressed", () => {

@@ -89,6 +89,8 @@ import { dressBox, dressPieceOf } from "@/lib/storyboard/dressSubmit";
 import { dressedTakeState, workflowStatus, type WorkflowStep } from "@/lib/storyboard/workflow";
 import { conflictNote } from "@/lib/storyboard/promptAudit";
 import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
+import { compositeBox } from "@/lib/composite/compositeSubmit";
+import { compositesOn, planComposite, type CompositePlan } from "@/lib/composite/plan";
 import { planFootageEdit, type FootageEditAction } from "@/lib/storyboard/footageEdit";
 import {
   boxMedia,
@@ -114,6 +116,7 @@ import { buildClipGrid, type ClipEnergy } from "@/lib/treatment/grid";
 import { DEFAULT_MOTION_TEMPLATE, regenerateShotFromLyrics, type RegenerateMode } from "@/lib/treatment/regenerateFromLyrics";
 import { directorNotes, fingerprint, hasTreatment, parseTreatmentDoc } from "@/lib/treatment/treatmentDoc";
 import { mediaRefKey, playbackRef, useSignedRefs } from "./signedUrls";
+import { signedUrl } from "@/lib/storage";
 
 const mmss = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`;
 
@@ -156,6 +159,14 @@ export type DressState = {
   dressed: { asset: MediaAsset; staleness: DressStaleness }[];
   /** A dress of this shot is running now: a second one is not offered (one paid swap at a time). */
   inFlight: boolean;
+};
+
+/** Step 6 on one shot: what "Composite over plate" would do (the dressed take, the plate, the matte's cost), and the composites on it. */
+export type CompositeState = {
+  plan: CompositePlan | null;
+  why: string | null;
+  /** The composites already on this shot, newest first. */
+  composited: MediaAsset[];
 };
 
 export type StoryboardController = {
@@ -324,6 +335,10 @@ export type StoryboardController = {
   dressOf: (box: StoryboardBox) => DressState;
   /** Swap the scene's outfit onto the shot's window of the take (asks first: it costs money). */
   dressShot: (box: StoryboardBox) => void;
+  /** Step 6 on this shot (composite/plan.ts). */
+  compositeOf: (box: StoryboardBox) => CompositeState;
+  /** Cut the dressed take out and lay it over the scene's plate, in this browser (asks first: the matte costs money). */
+  compositeShot: (box: StoryboardBox) => void;
   /** The six workflow steps of this video, counted (workflow.ts). Read-only. */
   workflow: WorkflowStep[];
 
@@ -1574,6 +1589,62 @@ export function useStoryboardController(projectId: string): StoryboardController
     },
     [dressOf, mediaByBox, syncs, outfitNow, outfitOf, projectId, numberById, run, setBusyFor, afterGeneration],
   );
+  // --- step 6: the dressed take over the scene's plate, made in this browser (composite/) --------------------------
+  const compositeOf = useCallback(
+    (box: StoryboardBox): CompositeState => {
+      const items = (mediaByBox.get(box.id) ?? EMPTY_MEDIA).items;
+      const composited = compositesOn(items);
+      const scene = outfitOf(box).scene;
+      const place = continuitySource(continuityOf(box), { forPlate: true }).placeAssetId;
+      const planned = planComposite({ items, assets: media.list, sceneName: scene?.name ?? null, placeAssetId: place, performance: box.spec.shotType === "performance" });
+      return planned.ok ? { plan: planned.plan, why: null, composited } : { plan: null, why: planned.why, composited };
+    },
+    [mediaByBox, outfitOf, continuityOf, media.list],
+  );
+  const compositeShot = useCallback(
+    (box: StoryboardBox) => {
+      const state = compositeOf(box);
+      const plan = state.plan;
+      if (!plan) {
+        toast.info(state.why ?? "this shot cannot be composited");
+        return;
+      }
+      const input = { projectId, variationId: box.variationId ?? null, shot: { id: box.id, key: box.key }, plan };
+      void signedUrl(plan.plate.bucket as never, plan.plate.path, 600)
+        .catch(() => undefined)
+        .then((url) =>
+          setConfirm({
+            title: `Composite shot ${numberById.get(box.id) ?? ""} over the plate?`,
+            body:
+              `${plan.cost.text}. The matte is the only paid step; the composite itself is made in this browser and costs nothing. ` +
+              `His pixels are the dressed take's own (${plan.dressed.name}, ${plan.seconds.toFixed(2)} s): he is cut out, lit to the plate and laid over it with the 15 Oct recipe (${plan.recipe.version}). ` +
+              `The plate is ${plan.plateFrom === "scene" ? "the scene's newest realism plate" : "the location's approved picture"} (${plan.plate.name})${plan.otherPlates.length ? `; ${plan.otherPlates.length} older plate${plan.otherPlates.length === 1 ? "" : "s"} of the scene exist` : ""}. ` +
+              "It lands on this shot — and on every shot the dressed take covers — as an unselected alternate; what the shot shows does not change until you select it. " +
+              "Keep this page open: after the matte comes back (a minute or two) the frames are composited here, which takes a little while for a long window." +
+              (state.composited.length ? ` This shot already has ${state.composited.length} composite${state.composited.length === 1 ? "" : "s"}.` : ""),
+            picture: { url, caption: `The plate: ${plan.plate.name}` },
+            confirmLabel: `Composite · $${plan.cost.usd.toFixed(3)}`,
+            testId: "confirm-composite-shot",
+            onConfirm: () =>
+              run(box, "asking for the matte…", async () => {
+                await compositeBox({ ...input, onStage: (t) => setBusyFor(box.id, t) });
+                afterGeneration();
+                toast.success("The composite is on this shot as an alternate");
+              }).finally(afterGeneration),
+            secondary: {
+              label: "Dry run (sends nothing)",
+              testId: "confirm-composite-dryrun",
+              onConfirm: async () => {
+                const r = await compositeBox({ ...input, dryRun: true });
+                console.info("Composite dry run — nothing was sent, spent or written:", r);
+                toast.success("Dry run: the exact request is in the browser console. Nothing was sent.");
+              },
+            },
+          }),
+        );
+    },
+    [compositeOf, projectId, numberById, run, setBusyFor, afterGeneration],
+  );
   const workflow = useMemo(
     () =>
       workflowStatus({
@@ -1589,7 +1660,7 @@ export function useStoryboardController(projectId: string): StoryboardController
             hasSelectedClip: !!m.showing && !m.showing.base && m.showing.kind === "video",
             needsDress: d.needed,
             dressed: d.dressed.map((x) => ({ stale: x.staleness.state === "stale" })),
-            composited: m.items.some((i) => i.asset.derivedFrom?.method === "composite"),
+            composited: m.items.some((i) => i.role === "performance" && i.asset.derivedFrom?.method === "composite"),
           };
         }),
       }),
@@ -1695,6 +1766,8 @@ export function useStoryboardController(projectId: string): StoryboardController
     generateClip,
     dressOf,
     dressShot,
+    compositeOf,
+    compositeShot,
     workflow,
     focusId,
     openFocus: setFocusId,

@@ -72,6 +72,10 @@ export type MediaAsset = {
   sourceTool: string | null;
   providerJobId: string | null;
   createdAt: string;
+  /** The row's approval_status ("pending", "approved", "rejected"…); a rejected take is never built on. */
+  approvalStatus?: string | null;
+  /** Set on a realism plate (world-still-proxy, filed under worlds/plate_*): which scene it is the place of. */
+  plate?: { sceneTitle: string | null; shotLabel: string | null; usable: boolean } | null;
   /**
    * Set on a take that was made FROM another take: which take, the song time of its first frame, the stretch of the
    * take it was made from (on the take's own clock), and HOW it was made. It is a version of one moment — never the

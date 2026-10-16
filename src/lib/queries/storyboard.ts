@@ -439,6 +439,8 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
     sourceTool: a.source_tool,
     providerJobId: meta.provider_job_id ?? null,
     createdAt: a.created_at,
+    approvalStatus: (a as { approval_status?: string | null }).approval_status ?? null,
+    plate: plateOf(a.file_url, a.metadata_json),
     derivedFrom: derivedOf(a.metadata_json),
     shows: textOf(a.metadata_json, "shows"),
     filmedIn: textOf(a.metadata_json, "filmed_in"),
@@ -447,6 +449,13 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
     footageAnalyses: parseFootageAnalyses((a.metadata_json as { footage_analysis?: unknown } | null)?.footage_analysis),
     acceptance: parseAcceptance((a.metadata_json as { acceptance?: unknown } | null)?.acceptance),
   };
+}
+
+/** A realism plate's facts: a world still filed under worlds/plate_* carries the scene it is the place of. */
+function plateOf(path: string, meta: unknown): MediaAsset["plate"] {
+  const m = meta as { lane?: unknown; scene_title?: unknown; shot_label?: unknown; usable?: unknown } | null;
+  if (!m || m.lane !== "world_still" || !/\/worlds\/plate_/.test(path)) return null;
+  return { sceneTitle: typeof m.scene_title === "string" ? m.scene_title : null, shotLabel: typeof m.shot_label === "string" ? m.shot_label : null, usable: m.usable !== false && m.usable !== "false" };
 }
 
 function textOf(meta: unknown, key: string): string | null {

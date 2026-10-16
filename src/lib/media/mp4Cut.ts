@@ -11,7 +11,8 @@
  * says so: that cut starts early and is longer.
  */
 import type { Mp4Sample, Mp4Track } from "./mp4";
-import { avcSampleDescription, trimVideo, writeMp4 } from "./mp4Trim";
+import { avcSampleDescription, trimVideo, writeMp4, type ColrTag } from "./mp4Trim";
+export type { ColrTag } from "./mp4Trim";
 import type { RangeRead } from "./probe";
 
 export type CutResult = {
@@ -60,7 +61,7 @@ export type EncodedSample = { data: Uint8Array; timestamp: number; key: boolean 
  * Lay encoded samples (decode order, presentation timestamps in microseconds from zero) into an MP4. `frameUs` is the
  * length of the last frame.
  */
-export function muxAvc(samples: readonly EncodedSample[], avcC: Uint8Array, width: number, height: number, frameUs: number): Uint8Array {
+export function muxAvc(samples: readonly EncodedSample[], avcC: Uint8Array, width: number, height: number, frameUs: number, opts: { colr?: ColrTag } = {}): Uint8Array {
   if (samples.length === 0) throw new Error("nothing was encoded");
   const units = (us: number) => Math.round((us * TIMESCALE) / 1e6);
   const shown = samples.map((s) => units(s.timestamp));
@@ -83,7 +84,7 @@ export function muxAvc(samples: readonly EncodedSample[], avcC: Uint8Array, widt
     timescale: TIMESCALE,
     width,
     height,
-    stsd: avcSampleDescription(width, height, avcC),
+    stsd: avcSampleDescription(width, height, avcC, opts),
     deltas,
     offsets: raw.map((r) => r + shift),
     syncs: samples.map((s) => s.key),
@@ -94,7 +95,8 @@ export function muxAvc(samples: readonly EncodedSample[], avcC: Uint8Array, widt
 
 const H264_CODECS = ["avc1.640028", "avc1.64002a", "avc1.640033", "avc1.4d0028", "avc1.42e028"];
 
-async function encoderConfig(Encoder: typeof VideoEncoder, width: number, height: number, framerate: number): Promise<VideoEncoderConfig | null> {
+/** An H.264 encoder configuration this browser supports at this size and rate, or null when it has none. */
+export async function encoderConfig(Encoder: typeof VideoEncoder, width: number, height: number, framerate: number): Promise<VideoEncoderConfig | null> {
   // enough bits that the cut is not visibly softer than the take it came from
   const bitrate = Math.round(Math.max(4_000_000, Math.min(16_000_000, width * height * framerate * 0.16)));
   for (const codec of H264_CODECS) {
@@ -110,7 +112,7 @@ async function encoderConfig(Encoder: typeof VideoEncoder, width: number, height
 }
 
 /** Resolves the next time the codec takes something off its queue (event-driven: timers stall in a hidden window). */
-function dequeued(codec: { addEventListener: (type: "dequeue", fn: () => void, opts?: { once: boolean }) => void }): Promise<void> {
+export function dequeued(codec: { addEventListener: (type: "dequeue", fn: () => void, opts?: { once: boolean }) => void }): Promise<void> {
   return new Promise((resolve) => codec.addEventListener("dequeue", () => resolve(), { once: true }));
 }
 
