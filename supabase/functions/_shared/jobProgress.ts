@@ -263,6 +263,15 @@ export async function advanceJob(input: ProgressJob, deps: ProgressDeps): Promis
     // 3. put it on its shot, once
     const shotId = shotIdOf(job);
     const settings = settingsOf(job);
+    // a moving plate belongs to its scene, not to a shot: filed as a plate of the still it was made from, never assigned
+    const plateMotion = plateMotionFrom(job);
+    if (plateMotion) {
+      if (settings.attachedAt) return await finish();
+      await filePlateVideo(job, plateMotion, deps);
+      did.push("filed as a moving plate of the scene");
+      await set({ request_payload_json: { ...payloadOf(job), settings: { ...settings, attachedAt: deps.now().toISOString(), attachedBy: "server" } } });
+      return await finish();
+    }
     if (!shotId) return await finish(); // a Runs batch: saved to the library is the end
     if (settings.attachedAt) return await finish();
     if (!(await deps.shotExists(job.project_id, shotId))) {
@@ -354,6 +363,61 @@ async function advanceStill(
     },
   });
   return await finish("the pictures were not checked for stacked panels — the check runs when the storyboard is opened");
+}
+
+/** The route a moving-plate job records (src/lib/composite/plateMotion.ts PLATE_MOTION_ROUTE). */
+export const PLATE_MOTION_ROUTE = "plate_motion";
+/** What filing a moving plate needs of its job: the still it animates and the scene that still is the place of. */
+export type PlateMotionFrom = { stillAssetId: string; stillPath: string | null; sceneTitle: string | null; shotLabel: string | null; model: string | null; seconds: number | null; prompt: string | null; version: string | null };
+
+/** A moving-plate job (the plate still animated into a clip of the place). Null for any other job or a record that names no still. */
+export function plateMotionFrom(job: ProgressJob): PlateMotionFrom | null {
+  const s = settingsOf(job);
+  if (s.route !== PLATE_MOTION_ROUTE) return null;
+  const p = s.plate as Record<string, unknown> | undefined;
+  if (!p || typeof p.still_asset_id !== "string" || !p.still_asset_id) return null;
+  // the settings are the browser's own words: strings are bounded before they are copied onto the asset's record,
+  // and a length is a length (a clip is seconds long, not negative, not a day)
+  const str = (v: unknown, max = 400) => (typeof v === "string" && v ? v.slice(0, max) : null);
+  return {
+    stillAssetId: p.still_asset_id.slice(0, 64),
+    stillPath: str(p.still_path, 1024),
+    sceneTitle: str(p.scene_title),
+    shotLabel: str(p.shot_label),
+    model: str(s.model, 120),
+    seconds: typeof s.seconds === "number" && s.seconds > 0 && s.seconds <= 600 ? s.seconds : null,
+    prompt: str(s.prompt, 4000),
+    version: str(s.version, 120),
+  };
+}
+
+/**
+ * A finished moving plate is a plate of its scene: its asset carries the lane the storyboard reads plates by
+ * (world_plate_video), the scene it is the place of, and the still it was made from. It gets no footage role, no
+ * sync and no shot: a composite (src/lib/composite/plan.ts) takes it by the still's id. Idempotent.
+ */
+export async function filePlateVideo(job: ProgressJob, plate: PlateMotionFrom, deps: ProgressDeps): Promise<void> {
+  const assetId = job.result_asset_id!;
+  const meta = await deps.assetMeta(assetId);
+  if (!meta) throw new Error("could not read the moving plate's record");
+  const next: Record<string, unknown> = {
+    ...meta,
+    lane: "world_plate_video",
+    usable: true,
+    scene_title: plate.sceneTitle,
+    shot_label: plate.shotLabel,
+    plate_motion: {
+      version: plate.version,
+      still_asset_id: plate.stillAssetId,
+      still_path: plate.stillPath,
+      model: plate.model,
+      seconds: plate.seconds,
+      prompt: plate.prompt,
+      provider_job_id: job.id,
+    },
+  };
+  if (!(Number(next.duration_seconds) > 0) && plate.seconds) next.duration_seconds = plate.seconds;
+  await deps.updateAsset(assetId, { metadata_json: next });
 }
 
 /**

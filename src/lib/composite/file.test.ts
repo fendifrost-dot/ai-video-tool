@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MediaAsset } from "@/lib/storyboard/media";
+import { CAMERA } from "./camera";
 import { RECIPE } from "./pixels";
 import { compositeMetadata, compositePaths } from "./file";
 import type { RenderResult } from "./render";
@@ -32,6 +33,9 @@ const render: RenderResult = {
   fps: 24,
   colr: "bt709",
   recipe: RECIPE,
+  pairing: "index",
+  plateFrames: null,
+  camera: { version: CAMERA.version, settings: CAMERA, seed: 7 },
   seed: 7,
 };
 
@@ -78,7 +82,7 @@ describe("filing a composite", () => {
         method: "composite",
       },
       composite: {
-        version: 1,
+        version: 2,
         seed: 7,
         dressed_asset_id: dressed.id,
         take_asset_id: "take",
@@ -93,8 +97,17 @@ describe("filing a composite", () => {
       },
     });
     expect((meta.composite as { recipe: { version: string } }).recipe.version).toBe(
-      "plate-composite-v1-2026-10-15",
+      "plate-composite-v2-2026-10-16",
     );
+  });
+
+  it("a composite over a moving plate is another file than one over the still", () => {
+    const base = { userId: "u", projectId: "p", name: "storyboard_c044_composite", dressedId: "d".repeat(36), plateId: "p".repeat(36), seed: 7 };
+    const still = compositePaths(base);
+    const moving = compositePaths({ ...base, plateVideoId: "v".repeat(36) });
+    expect(still.path).not.toBe(moving.path);
+    expect(moving.path).toContain("_ppppppppmvvvvvvvv_7.mp4");
+    expect(moving.mattePath).toContain("_ppppppppmvvvvvvvv_7_alpha.mp4");
   });
 
   it("names one render's files the same every time, under the caller's own folder", () => {

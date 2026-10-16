@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // The agent's hands on the app: a headless Chrome signed in as the owner (avt_browser_session) that opens a
-// storyboard shot and presses the buttons that only work in a browser — today "Composite over plate", whose render
-// is WebCodecs. Nothing here decides anything: the app's own code builds the request, spends, renders and files;
-// this script only presses what a person would press and reports what the page said.
+// storyboard shot and presses the buttons that only work in a browser — "Composite over plate", whose render is
+// WebCodecs, and "Animate the plate", whose confirm spends. Nothing here decides anything: the app's own code builds
+// the request, spends, renders and files; this script only presses what a person would press and reports what the
+// page said.
 //
-//   node scripts/agent-browser/avt-press.mjs composite --session <agent-browser-session.json> --project <id> \
+//   node scripts/agent-browser/avt-press.mjs <composite|animate-plate> --session <agent-browser-session.json> --project <id> \
 //        --shot c047 [--variation <id>] [--keep-variation] [--dry-run] [--chrome <path>] \
 //        [--app https://aivideotool.lovable.app] [--allow-any-host] [--out <dir>] [--timeout-min 25]
 //
@@ -57,9 +58,27 @@ function fail(msg) {
 
 const a = parseArgs(process.argv.slice(2));
 const command = a._[0];
-if (command !== "composite" || !a.session || !a.project || !a.shot) {
+// every press is: open the shot, click a button, confirm, wait for the app's own toast
+const PRESSES = {
+  composite: {
+    button: "focus-composite-shot",
+    confirm: "confirm-composite-shot",
+    dryRun: "confirm-composite-dryrun",
+    done: /composite is on this shot|Dry run: the exact request/i,
+    missing: "the shot offers no Composite over plate (no dressed take on it) — dress it first",
+  },
+  "animate-plate": {
+    button: "focus-animate-plate",
+    confirm: "confirm-animate-plate",
+    dryRun: "confirm-animate-plate-dryrun",
+    done: /plate is being animated|Dry run: the exact request/i,
+    missing: "the shot offers no Animate the plate (no plate of its scene) — generate the place first",
+  },
+};
+const PRESS = PRESSES[command];
+if (!PRESS || !a.session || !a.project || !a.shot) {
   console.error(
-    "usage: avt-press.mjs composite --session <agent-browser-session.json> --project <id> --shot <key> [--variation <id>] [--keep-variation] [--dry-run] [--chrome <path>] [--app <url>] [--allow-any-host] [--out <dir>] [--timeout-min 25]",
+    "usage: avt-press.mjs <composite|animate-plate> --session <agent-browser-session.json> --project <id> --shot <key> [--variation <id>] [--keep-variation] [--dry-run] [--chrome <path>] [--app <url>] [--allow-any-host] [--out <dir>] [--timeout-min 25]",
   );
   process.exit(2);
 }
@@ -246,27 +265,23 @@ try {
   );
   await snap("focus");
 
-  const button = page.locator('[data-testid="focus-composite-shot"]');
+  const button = page.locator(`[data-testid="${PRESS.button}"]`);
   try {
     await button.waitFor({ state: "visible", timeout: 30_000 });
   } catch {
     await snap("no-button");
-    throw new Error(
-      "the shot offers no Composite over plate (no dressed take on it) — dress it first",
-    );
+    throw new Error(PRESS.missing);
   }
   // the plan is computed from the board's queries; give them a moment to settle before reading the button
   for (let i = 0; i < 20 && (await button.isDisabled()); i++) await page.waitForTimeout(1000);
   if (await button.isDisabled()) {
     await snap("cannot");
     throw new Error(
-      `Composite over plate is disabled: ${(await button.getAttribute("title")) ?? "(no reason on the button)"}`,
+      `${command} is disabled: ${(await button.getAttribute("title")) ?? "(no reason on the button)"}`,
     );
   }
   await button.click();
-  const confirm = page.locator(
-    `[data-testid="${DRY ? "confirm-composite-dryrun" : "confirm-composite-shot"}"]`,
-  );
+  const confirm = page.locator(`[data-testid="${DRY ? PRESS.dryRun : PRESS.confirm}"]`);
   await confirm.waitFor({ state: "visible", timeout: 30_000 });
   const dialogText = (
     await page
@@ -279,7 +294,7 @@ try {
   await snap("confirm");
   writeFileSync(join(OUT, "dialog.txt"), dialogText);
   await confirm.click();
-  log(DRY ? "pressed: dry run" : "pressed: composite");
+  log(DRY ? "pressed: dry run" : `pressed: ${command}`);
 
   // progress: the status line under the buttons (data-state busy|working|saving|failed); the end: the app's toast
   const status = page.locator('[data-testid="focus-status"]');
@@ -292,7 +307,7 @@ try {
       .allInnerTexts()
       .catch(() => []);
     const t = toasts.map((x) => x.replace(/\s+/g, " ").trim()).filter(Boolean);
-    const done = t.find((x) => /composite is on this shot|Dry run: the exact request/i.test(x));
+    const done = t.find((x) => PRESS.done.test(x));
     if (done) {
       result = { ok: true, toast: done, lastStage: last };
       break;

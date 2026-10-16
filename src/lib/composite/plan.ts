@@ -5,8 +5,11 @@
  * The take is a DRESSED take on the shot (dress.ts): the composite is of the shot's window with the scene's outfit on
  * him, not of the whole recording. The plate is a realism still of the scene's place (world-still-proxy, filed
  * under worlds/plate_*) — the newest usable one of that scene — or, failing that, the location's approved picture.
+ * When that still has been animated (plateMotion.ts: a short clip of the place with its traffic and lights moving),
+ * the newest usable moving plate of it is what he goes over, and the camera is handheld either way (camera.ts).
  */
 import type { BoxMediaItem, MediaAsset } from "@/lib/storyboard/media";
+import { CAMERA } from "./camera";
 import { matteEstimateUsd, matteFrames, matteSourceCheck } from "./matteRequest";
 import { RECIPE } from "./pixels";
 
@@ -15,6 +18,8 @@ export type CompositePlan = {
   dressed: MediaAsset;
   /** The picture he goes over. */
   plate: MediaAsset;
+  /** The moving plate made from that picture, when one exists — then its frames are the background, not the still. */
+  plateVideo: MediaAsset | null;
   /** The other plates of the scene this could have used (newest first), for the record. */
   otherPlates: MediaAsset[];
   /** How the plate was chosen. */
@@ -26,6 +31,7 @@ export type CompositePlan = {
   /** The song time of the dressed take's first frame — the composite's own, since it keeps every frame. */
   songStart: number;
   recipe: typeof RECIPE;
+  camera: typeof CAMERA;
 };
 
 export type CompositeFacts = {
@@ -65,7 +71,21 @@ export function platesOfScene(
   sceneName: string | null,
 ): MediaAsset[] {
   return assets
-    .filter((a) => a.isImage && a.plate && a.plate.usable && same(a.plate.sceneTitle, sceneName))
+    .filter((a) => a.isImage && a.plate && a.plate.kind === "still" && a.plate.usable && same(a.plate.sceneTitle, sceneName))
+    .sort(newestFirst);
+}
+
+/** The moving plates made from one still, newest first — usable ones only. */
+export function videoPlatesOf(assets: readonly MediaAsset[], stillId: string): MediaAsset[] {
+  return assets
+    .filter(
+      (a) =>
+        a.isVideo &&
+        a.plate?.kind === "video" &&
+        a.plate.usable &&
+        a.plate.stillAssetId === stillId &&
+        a.approvalStatus !== "rejected",
+    )
     .sort(newestFirst);
 }
 
@@ -113,6 +133,7 @@ export function planComposite(
     plan: {
       dressed,
       plate,
+      plateVideo: videoPlatesOf(f.assets, plate.id)[0] ?? null,
       otherPlates: plates.slice(1),
       plateFrom,
       seconds,
@@ -120,6 +141,7 @@ export function planComposite(
       cost: matteEstimateUsd(frames),
       songStart,
       recipe: RECIPE,
+      camera: CAMERA,
     },
   };
 }

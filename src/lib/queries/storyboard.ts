@@ -451,11 +451,20 @@ export function mediaAssetOf(a: ProjectAsset): MediaAsset {
   };
 }
 
-/** A realism plate's facts: a world still filed under worlds/plate_* carries the scene it is the place of. */
+/**
+ * A plate's facts: a world still filed under worlds/plate_* carries the scene it is the place of; a moving plate
+ * (lane world_plate_video, filed by the server from a plate_motion job) carries the same and the still it was made from.
+ */
 function plateOf(path: string, meta: unknown): MediaAsset["plate"] {
-  const m = meta as { lane?: unknown; scene_title?: unknown; shot_label?: unknown; usable?: unknown } | null;
-  if (!m || m.lane !== "world_still" || !/\/worlds\/plate_/.test(path)) return null;
-  return { sceneTitle: typeof m.scene_title === "string" ? m.scene_title : null, shotLabel: typeof m.shot_label === "string" ? m.shot_label : null, usable: m.usable !== false && m.usable !== "false" };
+  const m = meta as { lane?: unknown; scene_title?: unknown; shot_label?: unknown; usable?: unknown; plate_motion?: { still_asset_id?: unknown } | null } | null;
+  if (!m) return null;
+  const facts = { sceneTitle: typeof m.scene_title === "string" ? m.scene_title : null, shotLabel: typeof m.shot_label === "string" ? m.shot_label : null, usable: m.usable !== false && m.usable !== "false" };
+  if (m.lane === "world_plate_video") {
+    const still = m.plate_motion?.still_asset_id;
+    return { kind: "video", ...facts, stillAssetId: typeof still === "string" ? still : null };
+  }
+  if (m.lane !== "world_still" || !/\/worlds\/plate_/.test(path)) return null;
+  return { kind: "still", ...facts, stillAssetId: null };
 }
 
 function textOf(meta: unknown, key: string): string | null {

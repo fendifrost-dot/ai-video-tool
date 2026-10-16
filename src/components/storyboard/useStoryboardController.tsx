@@ -90,7 +90,8 @@ import { dressedTakeState, workflowStatus, type WorkflowStep } from "@/lib/story
 import { conflictNote } from "@/lib/storyboard/promptAudit";
 import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
 import { compositeBox } from "@/lib/composite/compositeSubmit";
-import { compositesOn, planComposite, type CompositePlan } from "@/lib/composite/plan";
+import { compositesOn, planComposite, platesOfScene, type CompositePlan } from "@/lib/composite/plan";
+import { animatePlate as submitPlateMotion, findLivePlateJob, planPlateMotion, type PlateMotionPlan } from "@/lib/composite/plateMotion";
 import { planFootageEdit, type FootageEditAction } from "@/lib/storyboard/footageEdit";
 import {
   boxMedia,
@@ -167,6 +168,13 @@ export type CompositeState = {
   why: string | null;
   /** The composites already on this shot, newest first. */
   composited: MediaAsset[];
+  /** "Animate the plate": the still the composite would use turned into a moving plate (plateMotion.ts). */
+  plateMotion: {
+    plan: PlateMotionPlan | null;
+    why: string | null;
+    /** The still is being animated now: a second animation is not offered (one paid clip at a time). */
+    inFlight: boolean;
+  };
 };
 
 export type StoryboardController = {
@@ -337,6 +345,8 @@ export type StoryboardController = {
   dressShot: (box: StoryboardBox) => void;
   /** Step 6 on this shot (composite/plan.ts). */
   compositeOf: (box: StoryboardBox) => CompositeState;
+  /** "Animate the plate": the scene's plate still into a short moving plate every composite of the scene then uses. */
+  animatePlate: (box: StoryboardBox) => void;
   /** Cut the dressed take out and lay it over the scene's plate, in this browser (asks first: the matte costs money). */
   compositeShot: (box: StoryboardBox) => void;
   /** The six workflow steps of this video, counted (workflow.ts). Read-only. */
@@ -1597,9 +1607,63 @@ export function useStoryboardController(projectId: string): StoryboardController
       const scene = outfitOf(box).scene;
       const place = continuitySource(continuityOf(box), { forPlate: true }).placeAssetId;
       const planned = planComposite({ items, assets: media.list, sceneName: scene?.name ?? null, placeAssetId: place, performance: box.spec.shotType === "performance" });
-      return planned.ok ? { plan: planned.plan, why: null, composited } : { plan: null, why: planned.why, composited };
+      // the still to animate is the composite's plate — or, before there is a dressed take, the scene's newest plate
+      const still = planned.ok ? planned.plan.plate : (platesOfScene(media.list, scene?.name ?? null)[0] ?? null);
+      const motion = planPlateMotion({ still, assets: media.list });
+      const plateMotion = {
+        plan: motion.ok ? motion.plan : null,
+        why: motion.ok ? null : motion.why,
+        inFlight: !!still && !!findLivePlateJob(jobs.jobs, still.id),
+      };
+      return planned.ok ? { plan: planned.plan, why: null, composited, plateMotion } : { plan: null, why: planned.why, composited, plateMotion };
     },
-    [mediaByBox, outfitOf, continuityOf, media.list],
+    [mediaByBox, outfitOf, continuityOf, media.list, jobs.jobs],
+  );
+  const animatePlate = useCallback(
+    (box: StoryboardBox) => {
+      const state = compositeOf(box).plateMotion;
+      if (state.inFlight) {
+        toast.info("this plate is already being animated — the moving plate lands on the scene when it is done. A second clip is not sent.");
+        return;
+      }
+      const plan = state.plan;
+      if (!plan) {
+        toast.info(state.why ?? "this shot's plate cannot be animated");
+        return;
+      }
+      const input = { projectId, variationId: box.variationId ?? null, plan };
+      void signedUrl(plan.still.bucket as never, plan.still.path, 600)
+        .catch(() => undefined)
+        .then((url) =>
+          setConfirm({
+            title: `Animate the plate of shot ${numberById.get(box.id) ?? ""}?`,
+            body:
+              `${plan.cost.text}. The plate still (${plan.still.name}) is sent to the video model with a locked-off camera: the street's traffic, lights and passers-by move, the framing does not. ` +
+              `The ${plan.seconds} s clip is filed as a moving plate of the scene — every composite of this scene made after it goes over it instead of the still (a take longer than the clip holds its last frame). ` +
+              "It lands on no shot and selects nothing. It takes a few minutes and finishes even if you close this page." +
+              (plan.existing.length ? ` This plate already has ${plan.existing.length} moving plate${plan.existing.length === 1 ? "" : "s"}; the newest is used.` : ""),
+            picture: { url, caption: `The plate to animate: ${plan.still.name}` },
+            confirmLabel: `Animate the plate · $${plan.cost.usd.toFixed(3)}`,
+            testId: "confirm-animate-plate",
+            onConfirm: () =>
+              run(box, "animating the plate…", async () => {
+                await submitPlateMotion({ ...input, onStage: (t) => setBusyFor(box.id, t) });
+                afterGeneration();
+                toast.success("The plate is being animated — composites of this scene use it when it is done");
+              }).finally(afterGeneration),
+            secondary: {
+              label: "Dry run (sends nothing)",
+              testId: "confirm-animate-plate-dryrun",
+              onConfirm: async () => {
+                const r = await submitPlateMotion({ ...input, dryRun: true });
+                console.info("Animate-plate dry run — nothing was sent, spent or written:", r);
+                toast.success("Dry run: the exact request is in the browser console. Nothing was sent.");
+              },
+            },
+          }),
+        );
+    },
+    [compositeOf, projectId, numberById, run, setBusyFor, afterGeneration],
   );
   const compositeShot = useCallback(
     (box: StoryboardBox) => {
@@ -1617,8 +1681,9 @@ export function useStoryboardController(projectId: string): StoryboardController
             title: `Composite shot ${numberById.get(box.id) ?? ""} over the plate?`,
             body:
               `${plan.cost.text}. The matte is the only paid step; the composite itself is made in this browser and costs nothing. ` +
-              `His pixels are the dressed take's own (${plan.dressed.name}, ${plan.seconds.toFixed(2)} s): he is cut out, lit to the plate and laid over it with the 15 Oct recipe (${plan.recipe.version}). ` +
-              `The plate is ${plan.plateFrom === "scene" ? "the scene's newest realism plate" : "the location's approved picture"} (${plan.plate.name})${plan.otherPlates.length ? `; ${plan.otherPlates.length} older plate${plan.otherPlates.length === 1 ? "" : "s"} of the scene exist` : ""}. ` +
+              `His pixels are the dressed take's own (${plan.dressed.name}, ${plan.seconds.toFixed(2)} s): he is cut out, lit to the plate and laid over it with the recipe ${plan.recipe.version}, under a handheld camera (${plan.camera.version}) that moves him and the place together. ` +
+              `The plate is ${plan.plateFrom === "scene" ? "the scene's newest realism plate" : "the location's approved picture"} (${plan.plate.name})${plan.otherPlates.length ? `; ${plan.otherPlates.length} older plate${plan.otherPlates.length === 1 ? "" : "s"} of the scene exist` : ""}` +
+              (plan.plateVideo ? ` — and it moves: he goes over its moving plate (${plan.plateVideo.name}). ` : ". The plate is a still: nothing in the place moves until it is animated (Animate the plate). ") +
               "It lands on this shot — and on every shot the dressed take covers — as an unselected alternate; what the shot shows does not change until you select it. " +
               "Keep this page open: after the matte comes back (a minute or two) the frames are composited here, which takes a little while for a long window." +
               (state.composited.length ? ` This shot already has ${state.composited.length} composite${state.composited.length === 1 ? "" : "s"}.` : ""),
@@ -1768,6 +1833,7 @@ export function useStoryboardController(projectId: string): StoryboardController
     dressShot,
     compositeOf,
     compositeShot,
+    animatePlate,
     workflow,
     focusId,
     openFocus: setFocusId,

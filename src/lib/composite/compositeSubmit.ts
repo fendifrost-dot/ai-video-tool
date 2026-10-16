@@ -1,6 +1,7 @@
 /**
  * "Composite over plate" in the browser, end to end: the matte is asked for (the one paid step), waited on and
- * downloaded; the dressed take, the alpha and the plate are read; the frames are composited and encoded here; the
+ * downloaded; the dressed take, the alpha and the plate (the still, or the moving plate made from it) are read; the
+ * frames are composited, moved by the handheld camera and encoded here; the
  * file is uploaded and filed as an unselected alternate on the shot. The page has to stay open — nothing of this
  * runs on the server after the matte — and it says so before the press.
  *
@@ -23,7 +24,7 @@ import {
 } from "./matte";
 import { buildMatteInput, MATTE_MODEL } from "./matteRequest";
 import type { CompositePlan } from "./plan";
-import { plateAtSize, renderComposite, renderSize } from "./render";
+import { plateAtSize, renderComposite, renderSize, type PlateInput } from "./render";
 
 export type CompositeInput = {
   projectId: string;
@@ -46,7 +47,10 @@ export type CompositeDryRun = {
     estimate: CompositePlan["cost"];
   };
   plate: { id: string; path: string; from: CompositePlan["plateFrom"] };
+  /** The moving plate the frames would come from, or null: the still's pixels. */
+  plateVideo: { id: string; path: string } | null;
   recipe: CompositePlan["recipe"];
+  camera: CompositePlan["camera"];
 };
 
 export async function compositeBox(
@@ -65,7 +69,9 @@ export async function compositeBox(
         estimate: plan.cost,
       },
       plate: { id: plan.plate.id, path: plan.plate.path, from: plan.plateFrom },
+      plateVideo: plan.plateVideo ? { id: plan.plateVideo.id, path: plan.plateVideo.path } : null,
       recipe: plan.recipe,
+      camera: plan.camera,
     };
   }
   const userId = await requireUserId();
@@ -85,18 +91,27 @@ export async function compositeBox(
     say("downloading the matte…");
     const { alpha } = await pickAlphaFile(urls);
 
-    say("reading the take and the plate…");
+    say(plan.plateVideo ? "reading the take and the moving plate…" : "reading the take and the plate…");
     const takeUrl = await signedUrl(plan.dressed.bucket as never, plan.dressed.path, 3600);
     const take = await openVideo(`${plan.dressed.bucket}/${plan.dressed.path}`, takeUrl);
     if (!take.probe.video)
       throw new Error(take.probe.note ?? "the dressed take could not be opened");
     const size = renderSize(take.probe.video);
-    const plateUrl = await signedUrl(plan.plate.bucket as never, plan.plate.path, 600);
-    const plateRes = await fetch(plateUrl);
-    if (!plateRes.ok) throw new Error(`the plate could not be downloaded (${plateRes.status})`);
-    const bitmap = await createImageBitmap(await plateRes.blob());
-    const plate = plateAtSize(bitmap, size.width, size.height);
-    bitmap.close();
+    let plate: PlateInput;
+    if (plan.plateVideo) {
+      const url = await signedUrl(plan.plateVideo.bucket as never, plan.plateVideo.path, 3600);
+      const moving = await openVideo(`${plan.plateVideo.bucket}/${plan.plateVideo.path}`, url);
+      if (!moving.probe.video)
+        throw new Error(moving.probe.note ?? "the moving plate could not be opened");
+      plate = { kind: "video", read: moving.read, track: moving.probe.video };
+    } else {
+      const plateUrl = await signedUrl(plan.plate.bucket as never, plan.plate.path, 600);
+      const plateRes = await fetch(plateUrl);
+      if (!plateRes.ok) throw new Error(`the plate could not be downloaded (${plateRes.status})`);
+      const bitmap = await createImageBitmap(await plateRes.blob());
+      plate = { kind: "still", rgba: plateAtSize(bitmap, size.width, size.height) };
+      bitmap.close();
+    }
 
     const render = await renderComposite({
       fg: { read: take.read, track: take.probe.video },
@@ -118,6 +133,7 @@ export async function compositeBox(
         shotId: input.shot.id,
         dressed: plan.dressed,
         plate: plan.plate,
+        plateVideo: plan.plateVideo,
         plateFrom: plan.plateFrom,
         matte: {
           model: handle.model,

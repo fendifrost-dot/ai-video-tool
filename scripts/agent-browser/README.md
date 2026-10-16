@@ -1,7 +1,7 @@
 # agent-browser — the AI presses the app itself
 
 Some of the storyboard only runs in a browser: the composite lane renders with WebCodecs, the confirm dialogs
-decide what is spent. An AI working through the MCP could write every request but not press those. This folder
+decide what is spent (a press is `composite` or `animate-plate`; see Presses). An AI working through the MCP could write every request but not press those. This folder
 closes that gap: a headless Chrome, signed in as the owner for one hour, opens the shot and presses the button; the
 app's own code does everything else and the script reports what the page said.
 
@@ -47,6 +47,18 @@ The owner is bound to the credential; nothing in the request names a user. Revok
 token already handed out stays valid until it expires. A machine-minted session cannot enrol, list or revoke
 credentials (the proxy refuses it). Treat the session file as a secret for the hour it lives: keep it in the
 scratchpad, never in the repo.
+
+## Presses
+
+| Command | Button | Confirms | Ends with the toast |
+|---|---|---|---|
+| `composite` | `focus-composite-shot` | `confirm-composite-shot` (`-dryrun`) | "The composite is on this shot as an alternate" |
+| `animate-plate` | `focus-animate-plate` | `confirm-animate-plate` (`-dryrun`) | "The plate is being animated — composites of this scene use it when it is done" |
+
+`animate-plate` sends one 5 s image-to-video of the scene's plate still (~$0.35) and returns as soon as the provider
+has it; the server files the clip minutes later as a moving plate of the scene (`avt_select project_assets` with
+`metadata_json->>lane = world_plate_video`). A `composite` pressed after that goes over the moving plate; the focus
+view says which with `focus-plate-state[data-moving]`.
 
 ## Adding a press
 

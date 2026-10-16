@@ -42,7 +42,7 @@ const plate = (id: string, sceneTitle: string, over: Partial<MediaAsset> = {}) =
     isVideo: false,
     isImage: true,
     durationSeconds: null,
-    plate: { sceneTitle, shotLabel: "plate_x", usable: true },
+    plate: { kind: "still", sceneTitle, shotLabel: "plate_x", usable: true },
     ...over,
   });
 const item = (a: MediaAsset, over: Partial<BoxMediaItem> = {}): BoxMediaItem => ({
@@ -78,7 +78,7 @@ describe("planComposite", () => {
           plate("new", "the cold front ", { createdAt: "2026-10-15T05:04:00Z" }),
           plate("other", "Chicago, the switch"),
           plate("bad", "The cold front", {
-            plate: { sceneTitle: "The cold front", shotLabel: null, usable: false },
+            plate: { kind: "still", sceneTitle: "The cold front", shotLabel: null, usable: false },
           }),
         ],
       }),
@@ -92,7 +92,39 @@ describe("planComposite", () => {
     expect(r.plan.frames).toBe(191);
     expect(r.plan.cost.usd).toBeCloseTo(0.1433, 3);
     expect(r.plan.songStart).toBe(99.46);
-    expect(r.plan.recipe.version).toBe("plate-composite-v1-2026-10-15");
+    expect(r.plan.recipe.version).toBe("plate-composite-v2-2026-10-16");
+  });
+
+  it("goes over the newest usable moving plate of the chosen still when one exists, else the still, and carries the camera", () => {
+    const sceneTitle = "The cold front";
+    const d = dressed("d1");
+    const p1 = plate("50fa1ce3-0000-4000-8000-000000000000", sceneTitle, { createdAt: "2026-10-15T10:00:00Z" });
+    const video = (id: string, over: Partial<MediaAsset> = {}) =>
+      asset({
+        id,
+        assetType: "generated_clip",
+        footageRole: null,
+        bucket: "project-clips",
+        path: `u/p/${id}/generated_higgsfield_x.mp4`,
+        isVideo: true,
+        isImage: false,
+        durationSeconds: 5.04,
+        derivedFrom: null,
+        plate: { kind: "video", sceneTitle, shotLabel: "plate_x", usable: true, stillAssetId: p1.id },
+        ...over,
+      });
+    const older = video("v-old", { createdAt: "2026-10-16T01:00:00Z" });
+    const newer = video("v-new", { createdAt: "2026-10-16T02:00:00Z" });
+    const rejected = video("v-rej", { createdAt: "2026-10-16T03:00:00Z", approvalStatus: "rejected" });
+    const otherStill = video("v-other", { createdAt: "2026-10-16T04:00:00Z", plate: { kind: "video", sceneTitle, shotLabel: "plate_x", usable: true, stillAssetId: "another" } });
+    const r = planComposite({ items: [item(d)], assets: [d, p1, older, newer, rejected, otherStill], sceneName: sceneTitle, placeAssetId: null, performance: true });
+    expect(r.ok && r.plan.plate.id).toBe(p1.id);
+    expect(r.ok && r.plan.plateVideo?.id).toBe("v-new");
+    expect(r.ok && r.plan.camera.version).toBe("handheld-v1-2026-10-16");
+    // a moving plate is never mistaken for a still plate of the scene
+    expect(platesOfScene([p1, newer], sceneTitle).map((a) => a.id)).toEqual([p1.id]);
+    const none = planComposite({ items: [item(d)], assets: [d, p1], sceneName: sceneTitle, placeAssetId: null, performance: true });
+    expect(none.ok && none.plan.plateVideo).toBeNull();
   });
 
   it("prefers the selected dressed take, then the newest, and never a rejected one", () => {
