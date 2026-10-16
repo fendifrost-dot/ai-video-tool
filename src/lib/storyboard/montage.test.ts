@@ -6,9 +6,19 @@ vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 vi.mock("@/lib/queries/storyboard", () => ({}));
 
 import { NEVER_WIDER } from "./restage";
-import { MONTAGE_MIN_SCENE_SECONDS, MONTAGE_STYLE, MONTAGE_SYNC, MONTAGE_VERSION, defaultMontageLines, montagePrompt, montageRecord, montageScript, planMontageScenes } from "./montage";
+import { MONTAGE_MIN_SCENE_SECONDS, MONTAGE_STYLE, MONTAGE_SYNC, MONTAGE_VERSION, defaultMontageLines, montagePrompt, montageRecord, montageScript, planMontageScenes, thingOfLabel } from "./montage";
 
 describe("the montage's scenes", () => {
+  it("names the unusual thing from the plate's label, never the label's last word", () => {
+    // the first live dry run asked for "a quick optical zoom onto the edge" — the label was plate_79th_lafayette_bear_edge
+    expect(thingOfLabel("plate_79th_lafayette_bear_edge")).toBe("the polar bear");
+    expect(thingOfLabel("plate_79th_lafayette_bear")).toBe("the polar bear");
+    expect(thingOfLabel("plate_79th_lafayette_trex")).toBe("the T-rex");
+    expect(thingOfLabel("plate_79th_lafayette_horse_b")).toBe("the horse");
+    expect(thingOfLabel("plate_79th_lafayette_b")).toBeNull();
+    expect(thingOfLabel(null)).toBeNull();
+  });
+
   it("prefills Fendi's five: him to camera, his profile, a zoom to the thing, a child petting it, back to him", () => {
     const lines = defaultMontageLines("the polar bear standing on the walkway behind him").split("\n");
     expect(lines).toHaveLength(5);

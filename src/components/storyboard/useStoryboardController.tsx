@@ -89,7 +89,7 @@ import { dressBox, dressPieceOf } from "@/lib/storyboard/dressSubmit";
 import { dressedTakeState, workflowStatus, type WorkflowStep } from "@/lib/storyboard/workflow";
 import { conflictNote } from "@/lib/storyboard/promptAudit";
 import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
-import { MONTAGE_LINES_MAX, defaultMontageLines, montagePrompt, montageRecord, planMontageScenes } from "@/lib/storyboard/montage";
+import { MONTAGE_LINES_MAX, defaultMontageLines, montagePrompt, montageRecord, planMontageScenes, thingOfLabel } from "@/lib/storyboard/montage";
 import { compositeBox } from "@/lib/composite/compositeSubmit";
 import { compositesOn, planComposite, platesOfScene, type CompositePlan } from "@/lib/composite/plan";
 import { animatePlate as submitPlateMotion, findLivePlateJob, planPlateMotion, PLATE_EVENT_MAX, type PlateMotionPlan } from "@/lib/composite/plateMotion";
@@ -1637,12 +1637,12 @@ export function useStoryboardController(projectId: string): StoryboardController
         toast.info("this shot has no plate or place picture to shoot the montage in — generate the place first");
         return;
       }
-      const thing = plate?.plate?.shotLabel?.replace(/^plate_/, "").replace(/_/g, " ") ?? null;
+      const thing = thingOfLabel(plate?.plate?.shotLabel);
       const continuity = continuityOf(box);
       const restagePlan = restageTemporalPlan(box, clock);
       const dressed = !!src.source.take.derivedFrom;
       const plan = (typed?: string) => {
-        const lines = (typed ?? defaultMontageLines(thing && /bear|horse|rex|dog|cat|tiger|lion|child/i.test(thing) ? `the ${thing.split(" ").slice(-1)[0]}` : null)).slice(0, MONTAGE_LINES_MAX);
+        const lines = (typed ?? defaultMontageLines(thing)).slice(0, MONTAGE_LINES_MAX);
         const scenes = planMontageScenes(lines, r.seconds);
         if (!scenes.ok) throw new Error(`${scenes.why}. Nothing was generated.`);
         return { lines, scenes: scenes.scenes, variant: { angle: montagePrompt(scenes.scenes), idSuffix: "montage", alternate: true as const, record: montageRecord(scenes.scenes, thing) } };
@@ -1652,7 +1652,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         title: `Shoot shot ${numberById.get(box.id) ?? ""} as a montage?`,
         input: {
           label: "The scenes, in order, one per line — a second or so each; a line may carry its own seconds (\"2.0-2.7 s: …\")",
-          initial: defaultMontageLines(thing && /bear|horse|rex|dog|cat|tiger|lion|child/i.test(thing) ? `the ${thing.split(" ").slice(-1)[0]}` : null),
+          initial: defaultMontageLines(thing),
           maxLength: MONTAGE_LINES_MAX,
           testId: "confirm-montage-scenes",
         },
