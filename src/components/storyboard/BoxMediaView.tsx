@@ -5,6 +5,7 @@ import { PrevisFrame } from "@/components/treatment/PrevisFrame";
 import type { StoryboardBox } from "@/lib/storyboard/boxes";
 import { pictureAt, type Picture } from "@/lib/storyboard/events";
 import type { AssignmentRole, BoxMediaItem } from "@/lib/storyboard/media";
+import { versionName } from "@/lib/storyboard/versions";
 import { RangeVideo } from "./RangeVideo";
 import { mediaRefKey, playbackRef } from "./signedUrls";
 import { useStoryboard } from "./useStoryboardController";
@@ -29,7 +30,7 @@ export function mediaLabel(item: Pick<BoxMediaItem, "role" | "base"> & { asset?:
   if (item.base) return "Your take · base layer";
   if (item.role === "performance" && item.asset?.derivedFrom) {
     const m = item.asset.derivedFrom.method;
-    return m === "composite" ? "Your take · new background" : m === "dressed" ? "Your take · dressed" : "Your take · restaged";
+    return m === "composite" ? "Your take · new background" : m === "dressed" ? "Your take · dressed" : m === "montage" ? "Your take · montage" : "Your take · restaged";
   }
   return ROLE_LABEL[item.role];
 }
@@ -90,7 +91,8 @@ export function MediaItemView({
 /** What a box shows: its selected media, else the synced take underneath, else the drawn placeholder. */
 export function BoxMediaView({ box, mode }: { box: StoryboardBox; mode: "card" | "focus" }) {
   const sb = useStoryboard();
-  const item = sb.mediaOf(box.id).showing;
+  const media = sb.mediaOf(box.id);
+  const item = media.showing;
   const resolved = sb.eventsOf(box);
   const hasEffects = resolved.some((e) => e.effect);
   const picture = hasEffects ? (s: number) => pictureAt(resolved, s) : undefined;
@@ -116,8 +118,13 @@ export function BoxMediaView({ box, mode }: { box: StoryboardBox; mode: "card" |
       ) : (
         <MediaItemView item={item} url={sb.urlFor(item.asset)} mode={mode} testId="box-media-player" picture={picture} />
       )}
-      <span className={cn("pointer-events-none absolute left-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-medium backdrop-blur", ROLE_STYLE[item.role])}>
-        {mediaLabel(item)}
+      <span
+        className={cn("pointer-events-none absolute left-2 top-2 rounded px-1.5 py-0.5 text-[10px] font-medium backdrop-blur", ROLE_STYLE[item.role])}
+        title={mediaLabel(item)}
+        data-testid="box-media-version"
+      >
+        {versionName(item, media.items)}
+        {media.items.length > 1 && <span className="ml-1 opacity-70">{media.items.indexOf(item) + 1}/{media.items.length}</span>}
       </span>
       {item.note && (
         <span className="pointer-events-none absolute bottom-2 left-2 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-amber-200 backdrop-blur" data-testid="box-media-note">

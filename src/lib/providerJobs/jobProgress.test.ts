@@ -232,7 +232,8 @@ describe("a clip job finishes with the page closed", () => {
     const job = w.only();
     const asset = w.assets.get(job.result_asset_id!)!;
     expect(asset.footage_role).toBe("performance");
-    expect(asset.metadata_json.derived_from).toEqual({ asset_id: "take_1", source_window: [46.2, 50.2], song_start: 47.054 });
+    // how it was made is kept, so the board can name it (a montage says "montage"; a plain restaging "restaged")
+    expect(asset.metadata_json.derived_from).toEqual({ asset_id: "take_1", source_window: [46.2, 50.2], song_start: 47.054, method: "restaged" });
     expect(asset.metadata_json.duration_seconds).toBe(4);
     // its first frame sits where the cut began on the song; the drift is the source take's
     expect(w.syncs[1]).toMatchObject({ performance_asset_id: job.result_asset_id, song_asset_id: "song_1", offset_seconds: 47.054, drift_ppm: 12, method: "derived", status: "confirmed" });

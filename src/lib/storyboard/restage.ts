@@ -307,13 +307,15 @@ export async function fileRestagedClip(input: {
   songStart: number;
   sourceWindow: [number, number] | null;
   seconds: number | null;
+  /** How it was made: "montage" when it was asked for as one, else a plain restaging. */
+  method?: "restaged" | "montage";
 }): Promise<void> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) throw new Error("Not signed in");
   const { data: asset, error } = await supabase.from("project_assets").select("id, metadata_json").eq("id", input.assetId).single();
   if (error || !asset) throw new Error(`could not read the restaged clip: ${error?.message ?? "not found"}`);
   const meta = { ...((asset.metadata_json ?? {}) as Record<string, unknown>) };
-  meta.derived_from = { asset_id: input.sourceAssetId, source_window: input.sourceWindow, song_start: input.songStart };
+  meta.derived_from = { asset_id: input.sourceAssetId, source_window: input.sourceWindow, song_start: input.songStart, method: input.method ?? "restaged" };
   if (!(Number(meta.duration_seconds) > 0) && input.seconds) meta.duration_seconds = input.seconds;
   const { error: upErr } = await supabase
     .from("project_assets")

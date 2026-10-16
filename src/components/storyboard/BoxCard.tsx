@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Clapperboard, Film, Image as ImageIcon, Loader2, Lock, Maximize2, MoreHorizontal, Plus, Quote, Wand2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clapperboard, Film, Image as ImageIcon, Loader2, Lock, Maximize2, MoreHorizontal, Plus, Quote, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatDuration, formatTimecode, shotTypeLabel } from "@/components/treatment/shotLabels";
 import type { StoryboardBox } from "@/lib/storyboard/boxes";
+import type { BoxMediaItem } from "@/lib/storyboard/media";
+import { neighbourVersion, versionsOf } from "@/lib/storyboard/versions";
 import { BoxMediaView, ROLE_STYLE, mediaLabel } from "./BoxMediaView";
 import { BeatStrip } from "./TimedBeats";
 import { CastChips } from "./Cast";
@@ -45,6 +47,13 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
   const blocked = sb.rewriteBlockedReason(box);
   const unmet = sb.unmetOf(box);
   const working = !!busy || job?.state === "working" || job?.state === "saving";
+  const versions = versionsOf(media.items);
+  /** Show another version of this shot: the base layer has no row, so it is shown by taking the selection off. */
+  const show = (item: BoxMediaItem) => (item.base ? sb.showBaseLayer(box) : sb.select(item, box));
+  const flip = (step: 1 | -1) => {
+    const next = media.showing ? neighbourVersion(media.showing, media.items, step) : null;
+    if (next) void show(next);
+  };
 
   return (
     <Card
@@ -71,6 +80,30 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
     >
       <div className="relative">
         <BoxMediaView box={box} mode="card" />
+        {media.items.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={() => flip(-1)}
+              disabled={!!busy}
+              aria-label="Previous version"
+              className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full bg-black/55 p-1 text-white/90 backdrop-blur transition-colors hover:bg-black/75 disabled:opacity-40"
+              data-testid="box-version-prev"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => flip(1)}
+              disabled={!!busy}
+              aria-label="Next version"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/55 p-1 text-white/90 backdrop-blur transition-colors hover:bg-black/75 disabled:opacity-40"
+              data-testid="box-version-next"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </>
+        )}
         <button
           type="button"
           onClick={() => sb.openFocus(box.id)}
@@ -167,9 +200,14 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
 
         {coverageFlag && <p className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-200">{coverageFlag}</p>}
 
-        {/* Footage on this shot ------------------------------------------------- */}
+        {/* Versions of this shot: every clip on it, named, the one showing lit --------- */}
+        {versions.length > 1 && (
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-foreground/40" data-testid="box-versions-count">
+            {versions.length} versions · click one to show it
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-1.5" data-testid="box-media-strip">
-          {media.items.map((item) => {
+          {versions.map(({ item, name, title }) => {
             const showing = media.showing === item;
             return (
               <button
@@ -181,8 +219,8 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
                   e.dataTransfer.setData("application/x-avt-assignment", item.assignmentId);
                   e.dataTransfer.effectAllowed = "move";
                 }}
-                onClick={() => (showing ? sb.openFocus(box.id) : void sb.select(item, box))}
-                title={`${mediaLabel(item)} · ${item.asset.name}${showing ? " (showing)" : " — click to show this"}`}
+                onClick={() => (showing ? sb.openFocus(box.id) : void show(item))}
+                title={`${title} · ${mediaLabel(item)} · ${item.asset.name}${showing ? " (showing — click to open)" : " — click to show this"}`}
                 className={cn(
                   "max-w-[11rem] truncate rounded-full px-2 py-0.5 text-[10px] font-medium transition-all",
                   ROLE_STYLE[item.role],
@@ -191,8 +229,9 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
                 data-testid="box-media-chip"
                 data-role={item.role}
                 data-showing={showing ? "true" : "false"}
+                data-version={name}
               >
-                {mediaLabel(item)}
+                {name}
               </button>
             );
           })}

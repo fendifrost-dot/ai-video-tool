@@ -478,7 +478,7 @@ function derivedOf(meta: unknown): MediaAsset["derivedFrom"] {
   const w = d.source_window;
   const sourceWindow: [number, number] | null = Array.isArray(w) && w.length === 2 && typeof w[0] === "number" && typeof w[1] === "number" && w[1] > w[0] ? [w[0], w[1]] : null;
   // a record written before the method was kept is a restaging: that was the only way a take was made from a take
-  const method = d.method === "composite" ? "composite" : d.method === "dressed" ? "dressed" : "restaged";
+  const method = d.method === "composite" ? "composite" : d.method === "dressed" ? "dressed" : d.method === "montage" ? "montage" : "restaged";
   return { assetId: d.asset_id, songStart: typeof d.song_start === "number" ? d.song_start : null, sourceWindow, method, ...(method === "dressed" ? { dress: dressRecordOf(d.dress) } : {}) };
 }
 

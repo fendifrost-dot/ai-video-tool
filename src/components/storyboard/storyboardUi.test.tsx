@@ -191,7 +191,9 @@ describe("a box on the board", () => {
     const media = screen.getByTestId("box-media");
     expect(media.getAttribute("data-media-role")).toBe("performance");
     expect(media.getAttribute("data-media-base")).toBe("true");
-    expect(media.textContent).toContain("Your take · base layer");
+    // the player names the version in plain words; the longer label is its tooltip
+    expect(screen.getByTestId("box-media-version").textContent).toBe("Your take");
+    expect(screen.getByTestId("box-media-version").getAttribute("title")).toBe("Your take · base layer");
   });
 
   it("each action acts on this box only", () => {
@@ -225,8 +227,10 @@ describe("a box on the board", () => {
       ["generated_clip", "true"],
       ["performance", "false"],
     ]);
+    // the take underneath has no row: showing it means taking the selection off, not selecting a row
     fireEvent.click(chips[1]);
-    expect(sb.select).toHaveBeenCalled();
+    expect(sb.showBaseLayer).toHaveBeenCalled();
+    expect(sb.select).not.toHaveBeenCalled();
   });
 
   it("a box the director edited says so, and offers the way back", () => {
@@ -456,6 +460,69 @@ describe("the name a piece of media goes by", () => {
     expect(mediaLabel({ role: "performance", base: false, asset: { derivedFrom: { assetId: "t", songStart: 0, method: "restaged" } } })).toBe("Your take · restaged");
     expect(mediaLabel({ role: "performance", base: false, asset: { derivedFrom: { assetId: "t", songStart: 0, method: "composite" } } })).toBe("Your take · new background");
     expect(mediaLabel({ role: "performance", base: false, asset: { derivedFrom: { assetId: "t", songStart: 0, method: "dressed" } } })).toBe("Your take · dressed");
+    expect(mediaLabel({ role: "performance", base: false, asset: { derivedFrom: { assetId: "t", songStart: 0, method: "montage" } } })).toBe("Your take · montage");
+  });
+});
+
+describe("the versions of a shot on its card", () => {
+  const dressedTake = asset("dressed1", { footageRole: "performance", name: "generated_higgsfield_dressed.mp4", durationSeconds: 4, createdAt: "2026-10-15T04:48:00Z", derivedFrom: { assetId: "take1", songStart: 3.5, method: "dressed" } });
+  const montageA = asset("mont1", { footageRole: "performance", name: "generated_higgsfield_m1.mp4", durationSeconds: 4, createdAt: "2026-10-16T07:07:00Z", derivedFrom: { assetId: "dressed1", songStart: 3.8, method: "montage" } });
+  const montageB = asset("mont2", { footageRole: "performance", name: "generated_higgsfield_m2.mp4", durationSeconds: 4, createdAt: "2026-10-16T17:27:00Z", derivedFrom: { assetId: "dressed1", songStart: 3.8, method: "montage" } });
+  const montageSync = (id: string, offset: number): TakeSync => ({ id: `s-${id}`, projectId: "p1", songAssetId: "song", performanceAssetId: id, offsetSeconds: offset, driftPpm: 0, method: "derived", status: "confirmed" });
+  function withVersions(): StoryboardController {
+    const base = controller();
+    const assets = new Map([take, dressedTake, montageA, montageB].map((a) => [a.id, a]));
+    const row = (id: string, assetId: string, primary: boolean, createdAt: string): Assignment => ({ id, projectId: "p1", shotId: "r1", assetId, role: "performance", sourceIn: null, sourceOut: null, isPrimary: primary, sortOrder: 1, notes: null, createdAt, updatedAt: createdAt });
+    const assignments = [row("v1", "dressed1", false, "2026-10-15T04:48:00Z"), row("v2", "mont1", false, "2026-10-16T07:07:00Z"), row("v3", "mont2", true, "2026-10-16T17:27:00Z")];
+    const syncs = [sync, montageSync("dressed1", 3.5), montageSync("mont1", 3.8), montageSync("mont2", 3.8)];
+    return { ...base, mediaOf: (id) => boxMedia({ box: base.boxes.find((b) => b.id === id)!, assignments, assets, syncs }) };
+  }
+
+  it("names every clip on the shot, numbers the ones of a kind, and says which is showing", () => {
+    const sb = withVersions();
+    render(
+      <StoryboardProvider value={sb}>
+        <BoxCard box={sb.boxes[0]} />
+      </StoryboardProvider>,
+    );
+    expect(screen.getByTestId("box-versions-count").textContent).toMatch(/^4 versions/);
+    const chips = screen.getAllByTestId("box-media-chip");
+    // the board lists the one showing first, then the newest; the NUMBERS follow when each was made
+    expect(chips.map((c) => [c.getAttribute("data-version"), c.getAttribute("data-showing")])).toEqual([
+      ["Montage 2", "true"],
+      ["Montage 1", "false"],
+      ["Dressed", "false"],
+      ["Your take", "false"],
+    ]);
+    expect(screen.getByTestId("box-media-version").textContent).toBe("Montage 21/4");
+  });
+
+  it("flips to the next and previous version from the card, and shows the base layer by taking the selection off", () => {
+    const sb = withVersions();
+    render(
+      <StoryboardProvider value={sb}>
+        <BoxCard box={sb.boxes[0]} />
+      </StoryboardProvider>,
+    );
+    fireEvent.click(screen.getByTestId("box-version-next"));
+    expect(sb.select).toHaveBeenCalledTimes(1);
+    expect((sb.select as ReturnType<typeof vi.fn>).mock.calls[0][0].asset.id).toBe("mont1");
+    fireEvent.click(screen.getByTestId("box-version-prev"));
+    // the one before the first is the last: the base layer, which has no row to select
+    expect(sb.showBaseLayer).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getAllByTestId("box-media-chip")[3]);
+    expect(sb.showBaseLayer).toHaveBeenCalledTimes(2);
+  });
+
+  it("is quiet on a shot with one clip: no count, no arrows", () => {
+    const sb = controller();
+    render(
+      <StoryboardProvider value={sb}>
+        <BoxCard box={sb.boxes[2]} />
+      </StoryboardProvider>,
+    );
+    expect(screen.queryByTestId("box-versions-count")).toBeNull();
+    expect(screen.queryByTestId("box-version-next")).toBeNull();
   });
 });
 
