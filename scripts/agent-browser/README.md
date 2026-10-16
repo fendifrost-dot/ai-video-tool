@@ -69,8 +69,10 @@ scene's (`variation_scenes.outfit_key`), so to dress one shot differently give i
 angles and cutaways in the place of the scene's plate, in ONE Seedance 2.5 reference-to-video call (~$2.36 for 5 s
 at 720p), filed on the shot as an unselected alternate. `--event` is the scene list, one scene per line, each
 optionally with its own window ("2.0-2.7 s: a quick optical zoom onto the polar bear"); without it the dialog's
-prefilled four scenes are sent (him to camera · HARD CUT profile · HARD CUT tight on the thing · HARD CUT a child pets
-it). There is no "snap back to him" scene: asked for one, the model spends its last frames on it — a two-frame flash
+prefilled four scenes are sent — the orca shape: the place WITHOUT him · HARD CUT him in profile, a hand on something
+in the place · HARD CUT tight on the thing · HARD CUT low angle, him leaning on something. Never "straight to camera":
+that line made the montages Fendi called pasted (16 Oct 2026). The same shot is `avt_montage` / `montage-shot` on the
+MCP, without a browser. There is no "snap back to him" scene: asked for one, the model spends its last frames on it — a two-frame flash
 of him (c047 v2) or a frozen half second (the other four) that reads as an inserted still; the montage supplies the
 cutaways, the edit cuts back to the pixel-exact composite, and the montage's last `MONTAGE_TAIL_TRIM_SECONDS` are
 never used. The prompt shape is Thuggpapi's

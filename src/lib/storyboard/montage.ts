@@ -40,22 +40,22 @@ export const MONTAGE_SYNC =
 export type MontageScene = { from: number; to: number; text: string };
 
 /**
- * The scenes Fendi described, as the dialog's prefill. `thing` is the one unusual thing in the place — the cutaways
- * look at it; a plate without one gets a street cutaway instead.
- *
- * Four scenes, ending on the cutaway, with "HARD CUT" on every cut line (the wording that gets cuts — without it the
- * first live run was one continuous camera move). There is NO "snap back to him" scene: asked for one, the model
- * spends its last frames on it — a two-frame flash of him at the end of c047's v2, a near-frozen half second on
- * the others — which reads as an inserted still (Fendi, 16 Oct 2026: "so fast it looks ridiculous"). The cut back
- * to him is the edit's job, from the pixel-exact composite, not the montage's.
+ * The scenes as the dialog's prefill — the ORCA shape (Fendi, 16 Oct 2026: "the only montages that were executed
+ * correctly was the bear and orca montages … the others look like I'm pasted on another video"). The place opens
+ * WITHOUT him; he appears only in profile / three-quarter / from a low angle, anchored to something in the place (a
+ * rail, a pole, a pillar, a door frame), never "straight to camera, a medium shot" — that line is the paste-in: the
+ * model re-stages him flat in front of the place. `thing` is the one unusual thing in the place; the cutaways look at
+ * it. "HARD CUT" on every cut line (without it the first live run was one continuous camera move). No "snap back to
+ * him" closing scene: asked for one, the model spends its last frames on it as a flash or a freeze (16 Oct 2026); the
+ * edit owns the cut back.
  */
 export function defaultMontageLines(thing: string | null): string {
   const it = thing?.trim() || null;
   return [
-    "him rapping straight to camera, a medium shot from the waist up, the place behind him",
-    "HARD CUT to his profile from the side, a different camera, still rapping",
-    it ? `HARD CUT to a tight shot of ${it}, a quick optical zoom in on its face; it does not react` : "HARD CUT to a quick optical zoom past him down the street, traffic and lights",
-    it ? `HARD CUT: a small child walks up to ${it} and pets it; it stays calm; nobody reacts` : "HARD CUT: a passer-by walks through behind him without a glance",
+    it ? `the place: a wide shot with ${it} in it, the people around going about their business; he is not in it` : "the place: a wide shot of it, the people in it going about their business; he is not in it",
+    "HARD CUT to him in profile from the side, a three-quarter angle: standing with a hand on something in the place (a rail, a pole, a pillar, a door frame), rapping; he belongs in the place, not pasted in front of it",
+    it ? `HARD CUT to a tight shot of ${it}, a quick optical zoom in on its face; it does not react` : "HARD CUT to a tight shot of a detail of the place, a quick optical zoom in; nobody reacts",
+    it ? `HARD CUT to a low angle from below: him leaning on something in the place, rapping, ${it} behind his shoulder; nobody looks at him` : "HARD CUT to a low angle from below: him leaning on something in the place, rapping, the place behind his shoulder; nobody looks at him",
   ].join("\n");
 }
 

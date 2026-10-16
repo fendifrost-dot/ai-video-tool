@@ -43,14 +43,10 @@ export type MontageScene = { from: number; to: number; text: string };
 export function defaultMontageLines(thing: string | null): string {
   const it = thing?.trim() || null;
   return [
-    "him rapping straight to camera, a medium shot from the waist up, the place behind him",
-    "HARD CUT to his profile from the side, a different camera, still rapping",
-    it
-      ? `HARD CUT to a tight shot of ${it}, a quick optical zoom in on its face; it does not react`
-      : "HARD CUT to a quick optical zoom past him down the street, traffic and lights",
-    it
-      ? `HARD CUT: a small child walks up to ${it} and pets it; it stays calm; nobody reacts`
-      : "HARD CUT: a passer-by walks through behind him without a glance",
+    it ? `the place: a wide shot with ${it} in it, the people around going about their business; he is not in it` : "the place: a wide shot of it, the people in it going about their business; he is not in it",
+    "HARD CUT to him in profile from the side, a three-quarter angle: standing with a hand on something in the place (a rail, a pole, a pillar, a door frame), rapping; he belongs in the place, not pasted in front of it",
+    it ? `HARD CUT to a tight shot of ${it}, a quick optical zoom in on its face; it does not react` : "HARD CUT to a tight shot of a detail of the place, a quick optical zoom in; nobody reacts",
+    it ? `HARD CUT to a low angle from below: him leaning on something in the place, rapping, ${it} behind his shoulder; nobody looks at him` : "HARD CUT to a low angle from below: him leaning on something in the place, rapping, the place behind his shoulder; nobody looks at him",
   ].join("\n");
 }
 
