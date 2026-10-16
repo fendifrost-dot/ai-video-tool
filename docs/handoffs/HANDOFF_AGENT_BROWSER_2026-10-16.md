@@ -5,15 +5,16 @@ need to build the capability." The composite lane (step 6) renders in the browse
 AI could write every request but not press it. This change lets a headless Chrome, signed in as the owner for one
 hour, press the app's own button. The script presses; the app decides.
 
-**State at hand-off (label every line as it stands):**
+**State at hand-off (label every line as it stands) — everything below was made live and verified from this session on 16 Oct 02:30–02:50 UTC:**
 
 | What | State | Evidence |
 |---|---|---|
 | Code: `avt-mcp` tool `avt_browser_session` (+ `avt_whoami {browser_session:true}`), `batch-token-proxy` purpose + machine-session guard + browser refresh bound, `FocusView` button/status, local sign-out, driver, docs | CODED — PR #270 | `vitest` 2853 passed, `tsc --noEmit` clean, `npm ci --dry-run` clean (the lockfile sync for main's red CI rides this PR) |
 | Reviews (Class C, auth) | DONE — security and architecture, both "approve with fixes", every fix applied | comments on PR #270 |
-| `avt-mcp` + `batch-token-proxy` redeployed through Lovable | SEE BELOW | — |
-| Frontend published (new `data-state` on `focus-status`, button visible with its reason, local sign-out) | SEE BELOW | — |
-| First real press (composite on c047) | SEE BELOW | — |
+| `avt-mcp` + `batch-token-proxy` redeployed through Lovable | **LIVE** (VERIFIED) | proxy: `{"action":"session","purpose":"admin"}` with no credential → `400 purpose must be one of runner, browser` (new code answers before asking for a secret); MCP: `avt_functions {name:"avt-mcp"}` returns the new header text; then PR #271's bridge redeployed, source_sha256 `9f7f5cd0…` |
+| Frontend published (new `data-state` on `focus-status`, button visible with its reason, local sign-out) | **LIVE** (VERIFIED) | live chunk `projects._id.storyboard-55Hx7xDU.js` contains `focus-status","data-state":` |
+| The hand-out | **WORKS** (VERIFIED) | `avt_functions {name:"avt_browser_session"}` → access token, `expires_in` 2902, `user` = `{id, aud, role, email, is_anonymous}`, `storage_key sb-qoyxgnkvjukovkrvdaiq-auth-token`, no `refresh_token` key; this session's client drops undeclared arguments, so `avt_whoami {browser_session:true}` answered without it (why PR #271 exists) |
+| First real press (composite on c047) | **DONE** (VERIFIED from the database) | dry run `RESULT ok` with the exact request; real press `RESULT {"ok":true,"toast":"The composite is on this shot as an alternate"}` after 71 s (matte 18 s, 113 frames composited in 35 s); asset `ccb146c9` filed, sync `804ccb9b` at 82.025, assignment `32a3834b` unselected, spend row `e2b1e9e8`; verdict PASS; ledger row 41 |
 
 ## Make it live (Lovable, never a standalone Supabase)
 
@@ -67,3 +68,12 @@ filing…` → toast `The composite is on this shot as an alternate`; `RESULT {"
 
 The verification table filled from real output, the first press's `RESULT` line, the filed asset id, and the ledger
 row for the matte.
+
+## Done after the first press (16 Oct 02:51–02:57 UTC)
+
+The same command on c041, c044, c045 and c046 in sequence (one `for` loop, ~100 s a shot: matte 15–20 s, 89 frames in
+~35 s, upload and filing ~5 s): four `RESULT {"ok":true}`, four `edited_clip` rows (`3af40f10`, `9664d14e`, `4951842d`,
+`cb7e75ea`), four derived syncs, four unselected assignments — ledger row 42. All five Chicago shots now carry a
+composite; nothing was selected. The session token had 25 minutes left at the end; a sixth press would have needed a
+fresh hand-out.
+
