@@ -40,8 +40,8 @@ Scene A = the fashion show on the platform (c044). Scene B = the walrus off the 
 | c041 | dressed take, bubble coat + bucket hat (job `390e3e88`, $2.72) | `0f649563` (4.000 s) | VERIFIED on frames 5/30/55/80: the glossy bubbled lambskin coat and the black nylon bucket hat on him, glasses kept |
 | c041 | composite over the dice plate | `1aab6283` (4.000 s) | PASS: the coat and the bucket hat pixel-exact, the dice players and the penguin behind him, the plate holds (ledger row 78) |
 | c044 | montage, scene A (job `b9e2bc52`, $2.22) | `bda9ead2` (4.04 s) | OBSERVED every eighth frame: him on the platform with the models behind · HARD CUT aerial of the train sliding into the station · HARD CUT low angle, the models' legs passing in front of him. All three scenes, in order. |
-| c044 | composite | *not pressed — no usable moving plate yet (v4 re-animation first)* | |
-| c045 | composite over the walrus plate | `f0706d72` (4.004 s) | OBSERVED: he is pixel-exact, the walrus heaves off the train behind him; the plate's drift (train → bus) shows in the shot's last ~0.5 s. Re-composite after the v4 plate. |
+| c044 | composite over the runway v4 plate | `7e022326` (4.004 s) | OBSERVED: pixel-exact, the models walk past behind him; the plate's push-in shows at the end of the shot window (ledger row 82) |
+| c045 | composites over the walrus plates | `f0706d72` (v3 plate), `69c9f4b4` (v4 plate) | OBSERVED: pixel-exact, the walrus heaves off the train behind him; on both the plate's drift (train → road and bus) reaches the end of the shot window (ledger rows 76, 83) |
 | c045 | montage, scene B (job `4fa88370`, $2.22) | `53771ac0` (4.0 s) | OBSERVED: the walrus off the train (wide) · HARD CUT the open door · HARD CUT him rapping inside the car; the walrus's back in the foreground of the last two cuts (ledger row 79) |
 | c046 | composite inside the train car | `fea93ac6` (4.004 s) | PASS: pixel-exact in the aisle, doors open, platform behind, passengers, a train passing outside |
 
@@ -64,7 +64,7 @@ montages on c041/c044/c045/c046 are still filed as alternates too.
 1. ~~Publish v4~~ DONE 14:29 UTC (above); then re-animate the runway still `435ff4dd` and the
    walrus still `d783e85a` (`avt-press.mjs animate-plate … --shot c044` / `--shot c045`, with their events), judge on
    frames 0/40/80/119 (the camera must stay on the platform; no bus), then `composite` c044 and re-`composite` c045.
-2. **c041 composite** and **c045 montage**: pending at hand-off time; results in the ledger when they land.
+2. **Composite recipe v3 — the plate starts at the shot's first frame** (no spend): today the plate's frame 0 is paired with the CUT's frame 0, so the shot (which starts ~1.1 s into the cut, after the head handle) plays plate frames ~26–75 and meets Kling's late drift. Pair plate frame 0 with the shot's in-point and hold frame 0 under the head handle (never shown) → the shot uses the plate's first, cleanest 2 s. Then re-composite c044 and c045 ($0.14 at Fal). Class B; `plan.ts`/`render.ts` + tests; version the recipe.
 3. **The timeline step** (unchanged from `HANDOFF_MONTAGE_BEAR_2026-10-16.md`): lay composite + montage cutaways
    inside each shot's window, trimming `MONTAGE_TAIL_TRIM_SECONDS` off every montage segment.
 4. c042/c043 ("Chicago, the corner") have no plate: Fendi has not said what goes there.
