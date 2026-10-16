@@ -8,7 +8,7 @@ import {
   switchxBackgroundRequest,
   switchxFrames,
   switchxSourceCheck,
-} from "./contract";
+} from "./contract.ts";
 
 describe("the SwitchX background request", () => {
   it("prices Beeble's 720p list rate per 30 frames, exact and at whole blocks", () => {
