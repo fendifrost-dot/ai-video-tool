@@ -97,7 +97,7 @@ describe("functions", () => {
   it("offers no budget, cap or ledger tool", () => {
     expect(TOOLS.map((t) => t.name).filter((n) => /budget|spend|cap/.test(n))).toEqual([]);
     expect(TOOLS.find((t) => t.name === "avt_call")!.inputSchema.properties).not.toHaveProperty("budget_id");
-    expect(TOOLS).toHaveLength(12);
+    expect(TOOLS).toHaveLength(13);
   });
   it("hands a browser an access token only, never a refresh token or a user of the caller's choosing", () => {
     const t = TOOLS.find((t) => t.name === "avt_browser_session")!;
