@@ -96,14 +96,18 @@ If a cap-first prompt fails the same way, the next lever is reference order (cap
 
 ## Composite lane: deploy and verify (16 Oct — CODED, not LIVE)
 
-Code: AVT PR (this branch) + CC PR (`switchx-restyle` allowlist). Nothing is live until, through Lovable:
+Code: AVT PR #266 (this branch; security + architecture reviews recorded on it) + CC PR #69 (merged: the
+`switchx-restyle` allowlist and the `fal-queue-poll` link check). Nothing is live until, through Lovable:
 
-1. **CC** (`7fce9fc6-fd96-4a31-8a89-649f00298c51`): **Edge Functions → redeploy `switchx-restyle`** (the fal-run
-   allowlist). Expected: unchanged behaviour for every other caller; the function answers `400 model_not_allowed` for
-   a model outside the list and a queue handle for `veed/video-background-removal`.
-2. **AVT** (`bd21b544-c7b8-4780-bdde-391ac9d4bfa8`): **Edge Functions → redeploy `matte-video-proxy`** (new) — it needs
-   the same secrets `sam3-segment-proxy` has (`COMPOSE_LOOK_CC_URL`, `SWITCHX_PROXY_SECRET` or
-   `COMPOSE_LOOK_PROXY_SECRET`); then **Publish** the frontend (the button, the dialog, the browser pipeline).
+1. **CC** (`7fce9fc6-fd96-4a31-8a89-649f00298c51`): **Edge Functions → redeploy `switchx-restyle` AND `fal-queue-poll`**.
+   Expected: unchanged behaviour for every other caller; `switchx-restyle` answers `400 model_not_allowed` for a model
+   outside the list and a queue handle for `veed/video-background-removal`; `fal-queue-poll` answers
+   `400 invalid_queue_url` for a status link that is not on `queue.fal.run` (it used to poll it with the Fal key —
+   a HIGH the security review found; this redeploy closes it for every AVT lane).
+2. **AVT** (`bd21b544-c7b8-4780-bdde-391ac9d4bfa8`): **Edge Functions → redeploy `matte-video-proxy`** (new; it needs
+   the same secrets `sam3-segment-proxy` has: `COMPOSE_LOOK_CC_URL`, `SWITCHX_PROXY_SECRET` or
+   `COMPOSE_LOOK_PROXY_SECRET`) **and `fal-queue-poll-proxy`** (the same link check); then **Publish** the frontend
+   (the button, the dialog, the browser pipeline).
 3. **Verify, cheaply:** `curl -s -o /dev/null -w '%{http_code}' -X POST https://qoyxgnkvjukovkrvdaiq.supabase.co/functions/v1/matte-video-proxy -H 'content-type: application/json' -d '{}'`
    → **401** = deployed and refusing an anonymous call; **404** = not deployed. The live bundle check in "Verify first"
    must find `focus-composite-shot` in the storyboard chunk after Publish.
@@ -112,8 +116,10 @@ Code: AVT PR (this branch) + CC PR (`switchx-restyle` allowlist). Nothing is liv
    Composite. Expected: the matte returns in 1–3 min; frames composite in the page in under a minute; a new unselected
    alternate appears on c047 labelled "Your take · new background" with `derived_from.method composite`, a derived
    sync at 82.025, and `composite.matte.request_id` set. Post the clip. Ledger row at the matte's list price.
-5. **Guardrails:** the lane never selects what it files; it never touches `provider_jobs`; a rejected dressed take is
-   never used; a source over 60 s is refused before spend. If the matte comes back with one file only, it is taken as
+5. **Guardrails:** the lane never selects what it files; the only `provider_jobs` row it writes is the matte's spend
+   record (provider `fal`, lane `matte`, no `batchRun` — the tick ignores it; the browser closes it); a rejected
+   dressed take is never used; a source over 60 s or 200 MB is refused before spend; one matte per asset at a time;
+   a matte left running by a closed tab is picked up on the next press, not paid for again. If the matte comes back with one file only, it is taken as
    the alpha (VP9 path) and will fail to decode — that is a finding (the model ignored `output_codec`), not a reason to
    patch the picker.
 
