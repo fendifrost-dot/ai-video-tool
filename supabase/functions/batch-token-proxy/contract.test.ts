@@ -150,6 +150,14 @@ describe("request parsing", () => {
     expect(parseRequest("session").ok).toBe(false);
   });
 
+  it("takes a declared purpose on session and nothing else", () => {
+    expect(parseRequest({ action: "session", purpose: "browser" })).toMatchObject({ ok: true, action: "session", purpose: "browser" });
+    expect(parseRequest({ action: "session", purpose: "runner" })).toMatchObject({ ok: true, purpose: "runner" });
+    expect(parseRequest({ action: "session" })).toEqual({ ok: true, action: "session" });
+    expect(parseRequest({ action: "session", purpose: "admin" }).ok).toBe(false);
+    expect(parseRequest({ action: "session", purpose: 1 }).ok).toBe(false);
+  });
+
   it("requires a usable label on enroll", () => {
     expect(parseRequest({ action: "enroll", label: "broll runner" })).toMatchObject({
       ok: true,

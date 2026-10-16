@@ -1,0 +1,271 @@
+#!/usr/bin/env node
+// The agent's hands on the app: a headless Chrome signed in as the owner (avt_browser_session) that opens a
+// storyboard shot and presses the buttons that only work in a browser — today "Composite over plate", whose render
+// is WebCodecs. Nothing here decides anything: the app's own code builds the request, spends, renders and files;
+// this script only presses what a person would press and reports what the page said.
+//
+//   node scripts/agent-browser/avt-press.mjs composite --session <session.json> --project <id> --shot c047 \
+//        [--dry-run] [--chrome <path>] [--app https://aivideotool.lovable.app] [--out <dir>] [--timeout-min 25]
+//
+// session.json is the answer of the MCP tool avt_browser_session (or avt_whoami {browser_session: true}), saved as
+// is. It holds an access token only, so the sign-in ends when that token does — run within the hour it was issued.
+//
+// Chrome must decode and encode H.264 (the lane's takes and output): Chrome for Testing or Google Chrome, not the
+// open-source Chromium Playwright ships, which has no H.264 (verified 16 Oct 2026: VideoEncoder.isConfigSupported
+// avc1.* false there, true in Chrome for Testing 141). Pass its binary with --chrome or AVT_CHROME.
+//
+// Playwright is resolved from the repo when it has one, else from the global install.
+import { createRequire } from "node:module";
+import { execSync } from "node:child_process";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
+function playwright() {
+  const req = createRequire(import.meta.url);
+  try {
+    return req("playwright");
+  } catch {
+    const root = execSync("npm root -g", { encoding: "utf8" }).trim();
+    return createRequire(join(root, "x"))("playwright");
+  }
+}
+
+function parseArgs(argv) {
+  const out = { _: [] };
+  for (let i = 0; i < argv.length; i++) {
+    const a = argv[i];
+    if (a.startsWith("--")) {
+      const k = a.slice(2);
+      const v = argv[i + 1];
+      if (v === undefined || v.startsWith("--")) out[k] = true;
+      else {
+        out[k] = v;
+        i++;
+      }
+    } else out._.push(a);
+  }
+  return out;
+}
+
+const log = (...x) => console.log(new Date().toISOString().slice(11, 19), ...x);
+function fail(msg) {
+  console.error(`FAIL ${msg}`);
+  process.exit(1);
+}
+
+const a = parseArgs(process.argv.slice(2));
+const command = a._[0];
+if (command !== "composite" || !a.session || !a.project || !a.shot) {
+  console.error(
+    "usage: avt-press.mjs composite --session <session.json> --project <id> --shot <key> [--variation <id>] [--keep-variation] [--dry-run] [--chrome <path>] [--app <url>] [--out <dir>] [--timeout-min 25]",
+  );
+  process.exit(2);
+}
+const APP = (a.app ?? process.env.AVT_APP_URL ?? "https://aivideotool.lovable.app").replace(
+  /\/$/,
+  "",
+);
+const CHROME = a.chrome ?? process.env.AVT_CHROME ?? null;
+const OUT = a.out ?? `agent-browser-out-${Date.now()}`;
+const TIMEOUT_MS = Number(a["timeout-min"] ?? 25) * 60_000;
+mkdirSync(OUT, { recursive: true });
+
+// the MCP's answer, as saved; avt_whoami nests it under browser_session
+const answer = JSON.parse(readFileSync(a.session, "utf8"));
+const s = answer.browser_session ?? answer;
+for (const k of ["access_token", "expires_at", "user", "storage_key"])
+  if (!s[k]) fail(`session.json lacks ${k} — save the answer of avt_browser_session as is`);
+const ttl = s.expires_at - Date.now() / 1000;
+if (ttl < 120)
+  fail(`the session expires in ${Math.floor(ttl)} s — ask avt_browser_session for a fresh one`);
+
+// what supabase-js reads back from its storage on boot: access + refresh + expires_at + user. The refresh token is
+// empty on purpose (see the MCP tool): the client uses the access token until it expires, then signs out.
+const stored = {
+  access_token: s.access_token,
+  refresh_token: "",
+  token_type: "bearer",
+  expires_at: s.expires_at,
+  expires_in: Math.floor(ttl),
+  user: s.user,
+};
+
+const { chromium } = playwright();
+const browser = await chromium.launch({
+  headless: true,
+  ...(CHROME ? { executablePath: CHROME } : {}),
+});
+const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
+const consoleLines = [];
+page.on("console", (m) => {
+  const line = `${m.type()} ${m.text()}`;
+  consoleLines.push(line);
+  if (m.type() === "error" || /dry run|composite/i.test(m.text()))
+    log("console:", line.slice(0, 400));
+});
+page.on("pageerror", (e) => consoleLines.push(`pageerror ${e.message}`));
+let shots = 0;
+const snap = async (name) => {
+  const file = join(OUT, `${String(++shots).padStart(2, "0")}-${name}.png`);
+  await page.screenshot({ path: file, fullPage: false }).catch(() => {});
+  return file;
+};
+
+// sign in before the app boots: the key supabase-js reads on load
+await page.addInitScript(
+  ({ key, value }) => {
+    try {
+      if (!localStorage.getItem(key)) localStorage.setItem(key, value);
+    } catch {
+      /* storage blocked: the app will show its sign-in form and the run fails below */
+    }
+  },
+  { key: s.storage_key, value: JSON.stringify(stored) },
+);
+
+const url = `${APP}/projects/${a.project}/storyboard`;
+log("open", url);
+await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90_000 });
+
+// the board shows the project's ACTIVE variation (video_projects.active_variation_id). --variation presses the
+// app's own switcher to the one asked for and, unless --keep-variation, presses it back at the end.
+const switcher = page.locator('[data-testid="variation-switcher"]');
+const activeVariation = async () =>
+  (await switcher.getAttribute("data-active-variation").catch(() => null)) || null;
+const switchVariation = async (id) => {
+  if ((await activeVariation()) === id) return;
+  await page.locator('[data-testid="variation-switcher-trigger"]').click();
+  await page.locator(`[data-testid="variation-option"][data-variation-id="${id}"]`).click();
+  for (let i = 0; i < 30 && (await activeVariation()) !== id; i++) await page.waitForTimeout(1000);
+  if ((await activeVariation()) !== id) fail(`could not switch the board to variation ${id}`);
+  log("variation now", id);
+};
+let previousVariation = null;
+if (a.variation) {
+  await switcher.waitFor({ state: "visible", timeout: 120_000 });
+  previousVariation = await activeVariation();
+  await switchVariation(a.variation);
+}
+const restoreVariation = async () => {
+  if (
+    !a.variation ||
+    a["keep-variation"] ||
+    !previousVariation ||
+    previousVariation === a.variation
+  )
+    return;
+  await page
+    .locator('[data-testid="focus-close"]')
+    .click()
+    .catch(() => {});
+  await switchVariation(previousVariation).catch((e) => log("variation not restored:", e.message));
+};
+
+const card = page.locator(`[data-testid="box-card"][data-box-key="${a.shot}"]`).first();
+try {
+  await card.waitFor({ state: "visible", timeout: 120_000 });
+} catch {
+  await snap("no-board");
+  const loginish = (await page.locator("input[type=password], input[type=email]").count()) > 0;
+  fail(
+    loginish
+      ? "the app showed a sign-in form: the session was not accepted"
+      : `no box ${a.shot} on the board (wrong project, variation or key?)`,
+  );
+}
+await snap("board");
+await card.scrollIntoViewIfNeeded();
+await card.locator('[data-testid="box-open"]').first().click();
+const focus = page.locator('[data-testid="focus-view"]');
+await focus.waitFor({ state: "visible", timeout: 30_000 });
+log(
+  "focus on",
+  await focus.getAttribute("data-box-key"),
+  "shot",
+  await focus.getAttribute("data-box-number"),
+);
+await snap("focus");
+
+const button = page.locator('[data-testid="focus-composite-shot"]');
+await button.waitFor({ state: "visible", timeout: 30_000 });
+// the plan is computed from the board's queries; give them a moment to settle before reading the button
+for (let i = 0; i < 20 && (await button.isDisabled()); i++) await page.waitForTimeout(1000);
+if (await button.isDisabled()) {
+  await snap("cannot");
+  fail(
+    `Composite over plate is disabled: ${(await button.getAttribute("title")) ?? "(no reason on the button)"}`,
+  );
+}
+await button.click();
+const confirm = page.locator(
+  `[data-testid="${a["dry-run"] ? "confirm-composite-dryrun" : "confirm-composite-shot"}"]`,
+);
+await confirm.waitFor({ state: "visible", timeout: 30_000 });
+const dialogText = (
+  await page
+    .locator("[role=dialog], [role=alertdialog]")
+    .first()
+    .innerText()
+    .catch(() => "")
+).replace(/\s+/g, " ");
+log("dialog:", dialogText.slice(0, 1200));
+await snap("confirm");
+writeFileSync(join(OUT, "dialog.txt"), dialogText);
+await confirm.click();
+log(a["dry-run"] ? "pressed: dry run" : "pressed: composite");
+
+// progress: the status line under the buttons; the end: the app's own toast
+const status = page.locator('[data-testid="focus-status"]');
+const started = Date.now();
+let last = "";
+let result = null;
+while (Date.now() - started < TIMEOUT_MS) {
+  const toasts = await page
+    .locator("[data-sonner-toast]")
+    .allInnerTexts()
+    .catch(() => []);
+  const t = toasts.map((x) => x.replace(/\s+/g, " ").trim()).filter(Boolean);
+  const done = t.find((x) => /composite is on this shot|Dry run: the exact request/i.test(x));
+  const bad = t.find(
+    (x) =>
+      /could not|failed|error|refused|cannot|no video/i.test(x) &&
+      !/composite is on this shot/i.test(x),
+  );
+  if (done) {
+    result = { ok: true, toast: done };
+    break;
+  }
+  if (bad) {
+    result = { ok: false, toast: bad };
+    break;
+  }
+  const now = (await status.innerText().catch(() => "")).replace(/\s+/g, " ").trim();
+  if (now && now !== last) {
+    log("stage:", now);
+    last = now;
+    if (/frame 1 of|uploading|downloading|reading the take/i.test(now)) await snap("stage");
+  }
+  await page.waitForTimeout(2000);
+}
+await snap(result?.ok ? "done" : "end");
+await restoreVariation();
+writeFileSync(join(OUT, "console.log"), consoleLines.join("\n"));
+if (!result)
+  result = {
+    ok: false,
+    toast: null,
+    note: `no toast within ${TIMEOUT_MS / 60000} min; last stage: ${last}`,
+  };
+const dry = consoleLines.find((l) => /Composite dry run/.test(l)) ?? null;
+console.log(
+  "RESULT " +
+    JSON.stringify({
+      ...result,
+      dryRun: !!a["dry-run"],
+      dryRunLog: dry,
+      out: OUT,
+      lastStage: last,
+    }),
+);
+await browser.close();
+process.exit(result.ok ? 0 : 1);

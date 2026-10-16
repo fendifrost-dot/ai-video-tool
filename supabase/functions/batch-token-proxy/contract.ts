@@ -88,8 +88,19 @@ export function planSession(
 /** Secrets are issued at this length; shorter ones are rejected outright. */
 export const SECRET_BYTES = 32;
 
+/** What a `session` is for. `browser` marks a session handed to a headless browser that drives the app itself. */
+export const SESSION_PURPOSES = ["runner", "browser"] as const;
+export type SessionPurpose = (typeof SESSION_PURPOSES)[number];
+
 export type ParsedRequest =
-  | { ok: true; action: BatchAction; label?: string; credentialId?: string; expiresInDays?: number }
+  | {
+      ok: true;
+      action: BatchAction;
+      label?: string;
+      credentialId?: string;
+      expiresInDays?: number;
+      purpose?: SessionPurpose;
+    }
   | { ok: false; error: string };
 
 /**
@@ -141,6 +152,15 @@ export function parseRequest(body: unknown): ParsedRequest {
     if (!/^[0-9a-f-]{36}$/i.test(credentialId))
       return { ok: false, error: "revoke needs a credentialId (uuid)" };
     return { ok: true, action: act, credentialId };
+  }
+
+  if (act === "session" && b.purpose !== undefined) {
+    if (
+      typeof b.purpose !== "string" ||
+      !(SESSION_PURPOSES as readonly string[]).includes(b.purpose)
+    )
+      return { ok: false, error: `purpose must be one of ${SESSION_PURPOSES.join(", ")}` };
+    return { ok: true, action: act, purpose: b.purpose as SessionPurpose };
   }
 
   return { ok: true, action: act };

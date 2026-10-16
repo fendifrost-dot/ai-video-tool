@@ -108,6 +108,41 @@ class AuthError extends Error {
 
 // ------------------------------------------------------------------------------------------------------ tools
 
+/**
+ * A sign-in for a headless browser that drives the app (scripts/agent-browser/avt-press.mjs): the parts of the
+ * storyboard that only run in a browser (the composite lane's WebCodecs render, the dialogs) become pressable by the
+ * AI without a person at the keyboard.
+ *
+ * What leaves here is the owner's ACCESS token only — the same session this server already acts with — never the
+ * refresh token: a browser holding the refresh token would rotate it and race batch-token-proxy for the one stored
+ * session, and without it the sign-in simply ends when the token expires (an hour at most). The proxy audits the
+ * hand-out as `[browser]` in batch_credential_mints. The owner is the credential's, as everywhere: nothing in the
+ * request names a user.
+ */
+async function browserSession(ctx: Ctx) {
+  const res = await fetch(`${ctx.url}/functions/v1/batch-token-proxy`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: ctx.anonKey, Authorization: `Bearer ${ctx.anonKey}`, "x-batch-secret": ctx.secret },
+    body: JSON.stringify({ action: "session", purpose: "browser" }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body?.accessToken) throw new ToolError(`no browser session: ${body?.detail ?? body?.error ?? `HTTP ${res.status}`}`);
+  const { data: who } = await ctx.user.auth.getUser(body.accessToken);
+  if (!who?.user || who.user.id !== ctx.session.userId) throw new ToolError("the session does not belong to this credential's owner");
+  const ref = new URL(ctx.url).hostname.split(".")[0];
+  return {
+    access_token: body.accessToken,
+    token_type: "bearer",
+    expires_at: body.expiresAt,
+    expires_in: Math.max(0, Math.floor(body.expiresAt - Date.now() / 1000)),
+    user: who.user,
+    supabase_url: ctx.url,
+    storage_key: `sb-${ref}-auth-token`,
+    source: body.source ?? null,
+    note: "access token only: the sign-in ends when it expires; no refresh token is issued",
+  };
+}
+
 function arg<T>(args: Record<string, unknown>, k: string): T {
   return args[k] as T;
 }
@@ -180,8 +215,12 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
     case "avt_whoami": {
       const { data: cred } = await ctx.user.from("batch_credentials").select("id, label, created_at, expires_at").eq("id", ctx.session.credentialId).maybeSingle();
       const { data: who } = await ctx.user.auth.getUser(ctx.session.accessToken);
-      return toolText({ user_id: ctx.session.userId, email: who?.user?.email ?? null, credential: cred });
+      const base = { user_id: ctx.session.userId, email: who?.user?.email ?? null, credential: cred };
+      if (args.browser_session === true) return toolText({ ...base, browser_session: await browserSession(ctx) });
+      return toolText(base);
     }
+    case "avt_browser_session":
+      return toolText(await browserSession(ctx));
     case "avt_tables":
       return toolText(
         KNOWN_TABLES.map((t) => ({ table: t, access: tableAccess(t, KNOWN_TABLES), about: TABLE_NOTES[t] ?? null })).filter((t) => t.access),

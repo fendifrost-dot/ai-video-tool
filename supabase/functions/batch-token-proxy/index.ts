@@ -119,12 +119,15 @@ async function handleRequest(req: Request): Promise<Response> {
     // Every use of a credential is still exactly one row — that is the leak signal, and it did not change when
     // the rate limit went away. What changed is that there are now four outcomes instead of two, so a reused
     // session is neither filed as a mint nor invisible.
+    // A session for a headless browser (avt-mcp's avt_browser_session) is audited as such: same owner, same
+    // session, but it leaves the server, so the row says so.
+    const purpose = parsed.purpose ?? null;
     const audit = async (outcome: "minted" | "denied" | "reused" | "refreshed", reason: string | null) => {
       await admin.from("batch_credential_mints").insert({
         credential_id: matched?.id ?? null,
         owner_user_id: matched?.owner_user_id ?? null,
         outcome,
-        reason,
+        reason: purpose ? `${reason ?? outcome} [${purpose}]` : reason,
         ip_hash: ipHash,
         user_agent: userAgent,
       });
