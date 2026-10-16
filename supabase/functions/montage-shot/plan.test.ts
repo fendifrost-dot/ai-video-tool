@@ -110,8 +110,10 @@ describe("the montage request from the database's facts", () => {
     if (!r.ok) throw new Error(r.detail);
     expect(r.plan.thing).toBe("the polar bear");
     expect(r.plan.scenes).toHaveLength(4);
-    expect(r.plan.scenes[3].text).toMatch(/child walks up to the polar bear/);
-    expect(r.plan.prompt).toMatch(/HARD CUT to his profile/);
+    expect(r.plan.scenes[0].text).toMatch(/^the place: a wide shot with the polar bear in it/);
+    expect(r.plan.scenes[3].text).toMatch(/the polar bear behind his shoulder/);
+    expect(r.plan.prompt).toMatch(/HARD CUT to him in profile/);
+    expect(r.plan.prompt).not.toMatch(/rapping straight to camera/);
   });
 
   it("the light goes in when the shot points at one", () => {

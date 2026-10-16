@@ -20,18 +20,20 @@ describe("the montage's scenes", () => {
   });
 
   it("prefills four scenes ending on the cutaway — him to camera, his profile, a zoom to the thing, a child petting it — with HARD CUT on every cut, and no snap back", () => {
-    const lines = defaultMontageLines("the polar bear standing on the walkway behind him").split("\n");
+    const lines = defaultMontageLines("the polar bear").split("\n");
     expect(lines).toHaveLength(4);
-    expect(lines[0]).toMatch(/rapping straight to camera/);
-    expect(lines[1]).toMatch(/^HARD CUT to his profile/);
+    // the orca shape: the place opens WITHOUT him, and he is never "straight to camera" — that line is the paste-in
+    expect(lines[0]).toMatch(/^the place: a wide shot with the polar bear in it.*he is not in it$/);
+    expect(lines[1]).toMatch(/^HARD CUT to him in profile.*a hand on something in the place.*not pasted in front of it$/);
     expect(lines[2]).toMatch(/^HARD CUT to a tight shot of the polar bear.*does not react/);
-    expect(lines[3]).toMatch(/^HARD CUT: a small child walks up to the polar bear.*and pets it/);
+    expect(lines[3]).toMatch(/^HARD CUT to a low angle from below: him leaning on something in the place.*the polar bear behind his shoulder/);
+    expect(defaultMontageLines("the polar bear")).not.toMatch(/straight to camera|medium shot/);
     // the model's closing beat comes out as a flash or a freeze (c047 v2: two frames of him); the cut back is the edit's
     expect(defaultMontageLines("the bear")).not.toMatch(/back to him/);
     expect(MONTAGE_TAIL_TRIM_SECONDS).toBeGreaterThan(0.08);
-    // a plate with nothing unusual in it gets street cutaways, never a bear that is not there
+    // a plate with nothing unusual in it names no animal that is not there
     expect(defaultMontageLines(null)).not.toMatch(/polar bear/);
-    expect(defaultMontageLines("  ")).toMatch(/passer-by/);
+    expect(defaultMontageLines("  ")).toMatch(/^the place: a wide shot of it/);
   });
 
   it("shares the seconds equally among untimed lines, in order, covering the whole clip", () => {
