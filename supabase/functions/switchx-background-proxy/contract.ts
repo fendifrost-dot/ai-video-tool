@@ -14,7 +14,14 @@
  */
 
 export const SWITCHX_BG_LANE = "switchx_background";
-export const SWITCHX_BG_PROVIDER = "beeble";
+/**
+ * The `provider_jobs.provider` column is the `provider_name` enum (runway, veo, …, fal, …, manual, other) — there is no
+ * "beeble" in it, and a row inserted with one is refused (the first submit on 16 Oct 2026 failed with job_record_failed
+ * for exactly that). The row is filed under the enum's `other`; the vendor is named in the payload (`vendor`) and the
+ * lane says what it is. Adding an enum value would be a live schema change for one benchmark lane.
+ */
+export const SWITCHX_BG_PROVIDER = "other";
+export const SWITCHX_BG_VENDOR = "beeble";
 export const SWITCHX_BG_MODE = "background";
 /** Beeble's list price per 30 frames of the source, by output resolution (CC's note: verified 14 Jun 2026). */
 export const BEEBLE_USD_PER_30_FRAMES: Record<"720p" | "1080p", number> = { "720p": 0.1, "1080p": 0.3 };

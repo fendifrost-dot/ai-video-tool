@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  SWITCHX_BG_PROVIDER,
+  SWITCHX_BG_VENDOR,
   beebleEstimateUsd,
   isBeebleAnswerUrl,
   defaultBackgroundPrompt,
@@ -11,6 +13,12 @@ import {
 } from "./contract.ts";
 
 describe("the SwitchX background request", () => {
+  it("files the row under a value the provider enum has, naming the vendor beside it", () => {
+    // provider_jobs.provider is the provider_name enum: runway, veo, gemini, grok, higgsfield, pika, fal, openai, firefly, frame_io, manual, other
+    expect(["runway", "veo", "gemini", "grok", "higgsfield", "pika", "fal", "openai", "firefly", "frame_io", "manual", "other"]).toContain(SWITCHX_BG_PROVIDER);
+    expect(SWITCHX_BG_VENDOR).toBe("beeble");
+  });
+
   it("prices Beeble's 720p list rate per 30 frames, exact and at whole blocks", () => {
     const e = beebleEstimateUsd(113);
     expect(e.usd).toBeCloseTo(0.377, 3);

@@ -8,7 +8,7 @@
 //
 //   { action: "submit", assetId, referenceAssetId?, prompt? }
 //       -> { ok, jobId, beeble_job_id, estimate, source, reference, prompt }
-//          A `provider_jobs` row (provider "beeble", lane "switchx_background", no batchRun so provider-jobs-tick
+//          A `provider_jobs` row (provider "other" — the enum has no beeble — vendor "beeble", lane "switchx_background", no batchRun so provider-jobs-tick
 //          leaves it alone) is written BEFORE the call, as the record of the spend. CC queues the job and answers
 //          Beeble's id at once.
 //   { action: "status", jobId }
@@ -35,6 +35,7 @@ import {
   SWITCHX_BG_MAX_BYTES,
   SWITCHX_BG_MODE,
   SWITCHX_BG_PROVIDER,
+  SWITCHX_BG_VENDOR,
   SWITCHX_BG_RESOLUTION,
   switchxBackgroundRequest,
   switchxFrames,
@@ -274,6 +275,7 @@ serve(async (req) => {
       status: "running",
       request_payload_json: {
         lane: SWITCHX_BG_LANE,
+        vendor: SWITCHX_BG_VENDOR,
         assetId,
         referenceAssetId: reference?.id ?? null,
         mode: SWITCHX_BG_MODE,
