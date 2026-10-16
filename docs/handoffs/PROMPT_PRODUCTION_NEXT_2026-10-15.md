@@ -26,7 +26,7 @@ overwriting a selection.
 | 3 | Shot plan and performance selection | Candidate 6 marks performance shots c041–c047 (Chicago), c048–c054 (grill ECUs), c055–c066 (cold front), c085–c093 (clean entrance). 22 clips carried from candidate 5 (0–70.85 s). | same report, §C |
 | 4 | Generate scene assets | PHASE 2 DONE for the empty non-performance shots: realism plates for the three performance locations (unselected, under `worlds/`), 34 stills + 34 Kling clips selected on c019–c021, c024, c027, c036, c038, c040, c067–c084, c091, c094–c100. Plate prompt recipe: `docs/recipes/PLATE_REALISM_PROMPT.md` (Fendi: "they need to look real"). | `docs/review/production_2026-10-15/PHASE2_PLATES_STILLS_DRESS.md`; ledger rows 30–32 |
 | 5 | Process only selected performance segments | TOOL LIVE ("Dress this shot", PR #260; 4 s floor fix PR #262). **Cold front and clean entrance dressed in grouped windows (15 Oct night, ledger rows 36–37; recipe doc last section):** coldW3 `1a83a167` (c062–c066), entrW1 `011a1323` (c085–c087), entrW2 `ed28aba0` (c088–c090), entrW3 `51c1156c` (c092–c093) PASS and filed unselected with covered-shot assignments; coldW1 `e09b1a3a` and coldW2 `0e995b73` REJECTED (cap not swapped / cap morph + sleeve patch) and re-run cap-first as rows `cde54409`, `501f3dc1` — both re-runs REFUSED at intake (balance exhausted again), see "Cold-front re-runs — BLOCKED" below. **Chicago fully dressed as unselected alternates:** c042 (`6eea726d`), c047 (`f540b6be`, conformed 4.9551), and after the top-up c041 (`2f55f4fa`), c044 (`6d8043a2`), c045 (`e6788d22`), c046 (`92c15951`), each conformed 4.0039 s, ratio 1.079694, with a derived sync at its song start and `is_primary = false`. Fendi has the side-by-sides; no verdict yet. Cold front (c055–c066, coat) and clean entrance (c085–c093, trench) not dressed. | ledger rows 33–35; `WARDROBE_SWAP_RECIPE.md` "Production: the Chicago windows" |
-| 6 | Integrate and finish | **LANE CODED 16 Oct ("Composite over plate"), NOT LIVE until Publish + redeploys — see "Composite lane: deploy and verify" below.** Fendi passed the composite test 15 Oct ("All pass"). The 15 Oct recipe (variant D) is `src/lib/composite/pixels.ts`; the matte is Fal `veed/video-background-removal` via CC (the Runway connector has 2 credits). Restage is NOT an approved production method. | `docs/recipes/DRESS_AND_INSERT_WORKFLOW.md` step 6; `PLATE_REALISM_PROMPT.md` last section |
+| 6 | Integrate and finish | **LANE LIVE 16 Oct 00:52 UTC ("Composite over plate"; PR #266 + CC #69, redeployed and published, verified from this session — see "Composite lane: LIVE" below). First production run not yet made (needs a browser press).** Fendi passed the composite test 15 Oct ("All pass"). The 15 Oct recipe (variant D) is `src/lib/composite/pixels.ts`; the matte is Fal `veed/video-background-removal` via CC (the Runway connector has 2 credits). Restage is NOT an approved production method. | `docs/recipes/DRESS_AND_INSERT_WORKFLOW.md` step 6; `PLATE_REALISM_PROMPT.md` last section |
 | 7 | Review the assembled sequence | NOT STARTED. No timeline rows for candidate 6. | — |
 
 ## Verify first (cheap)
@@ -94,10 +94,24 @@ When Fendi says he has topped up:
 
 If a cap-first prompt fails the same way, the next lever is reference order (cap images first) — not more words.
 
-## Composite lane: deploy and verify (16 Oct — CODED, not LIVE)
+## Composite lane: LIVE since 16 Oct 00:52 UTC (VERIFIED from real output)
 
-Code: AVT PR #266 (this branch; security + architecture reviews recorded on it) + CC PR #69 (merged: the
-`switchx-restyle` allowlist and the `fal-queue-poll` link check). Nothing is live until, through Lovable:
+Code: AVT PR #266 (merged `0e8fabad`; security + architecture reviews recorded on it) + CC PR #69 (merged `43fe8a09`).
+Made live through Lovable and verified from this session, not from the agents' claims:
+
+| What | Evidence |
+|---|---|
+| CC `switchx-restyle` + `fal-queue-poll` redeployed from `43fe8a09` | source_sha256 `e0c1537c…`, `aef2837e…`; anonymous POST → 401 from each (curl from this session) |
+| AVT `matte-video-proxy` (new) + `fal-queue-poll-proxy` redeployed from `0e8fabad` | source_sha256 `03ed3b4a…`, `6e1f115c…`; secrets present (`COMPOSE_LOOK_CC_URL`, `COMPOSE_LOOK_PROXY_SECRET`); anonymous POST → 401 from each |
+| AVT frontend published (deployment `bb649000-…`) | live entry `/assets/index-BdbvCC2Q.js`; chunk `projects._id.storyboard-B-_Z2s10.js` contains `focus-composite-shot` |
+
+**Not yet done: the first production run.** The composite is made in the BROWSER (WebCodecs); this session has no
+signed-in browser, and the MCP cannot put raw bytes into AVT storage, so a composite made here with ffmpeg could not
+be filed. The first run is one press in the app — see "First run" below — and the only paid part is the matte
+(≈ $0.09 for c047). After it, judge the clip against the kill criterion as for the dressed windows and record a
+ledger row with the request id from the asset's `composite.matte`.
+
+The deploy steps, kept for a redeploy:
 
 1. **CC** (`7fce9fc6-fd96-4a31-8a89-649f00298c51`): **Edge Functions → redeploy `switchx-restyle` AND `fal-queue-poll`**.
    Expected: unchanged behaviour for every other caller; `switchx-restyle` answers `400 model_not_allowed` for a model
