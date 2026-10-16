@@ -186,6 +186,13 @@ Done:
   that `supabase/config.toml` had no `verify_jwt` block for `montage-shot` — added (`verify_jwt = true`, like the
   other paid lanes); it takes effect on the NEXT redeploy of `montage-shot` (the function refuses anonymous callers
   itself either way).
+  Redeployed from `5c08e8c` 17:36 UTC (bundle `355903f7…`): unsigned POST now → 401 `UNAUTHORIZED_NO_AUTH_HEADER`
+  from the platform, anon key → 401 `unauthenticated` from the function. VERIFIED a second dry run through the MCP
+  on c047: scene "Chicago, the switch" resolves the BEAR plate `fd53bf3f` (the orca re-filing held), take `f540b6be`,
+  5 s, `lead 0.625`, `$2.773`, the prefill names "the polar bear". Nothing sent.
+  NOTE: Lovable's agent, on its own, then committed a test-only change to main — `717b629` / `21fe21b` ("Changes",
+  "Deployed montage-shot JWT gate"): `plan.test.ts` imports with `.ts` extensions (its preview build runs `deno check`
+  on test files). Reviewed: two import lines, nothing else; vitest still 5/5. The branch was resynced onto it.
 
 Verify (after the redeploy):
 - `avt_call montage-shot {projectId 764a63d2…, shotKey "c042", dryRun true}` → HTTP 200, `ok true`, `dryRun true`,
