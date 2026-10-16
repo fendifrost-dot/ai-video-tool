@@ -147,5 +147,47 @@ Done:
   `--chrome <scratchpad>/cft/chrome-linux64/chrome`** (Chrome for Testing; the Playwright Chromium has no H.264).
   `animate-plate`, `dress` and `montage` do not decode video and run without it.
 
-Not done: a c042 montage over the orcas (Seedance, ~$1.55 real) — not asked; c043 (same scene) needs a dress
-first if it is to be composited.
+Not done then: a c042 montage over the orcas; c043 (same scene) needs a dress first.
+
+### 16:44–17:30 UTC — the montage is the lane; the montage goes into the MCP
+
+Fendi on the c042 composite: "You can't just put me in the front of the frame and expect it to be good. It looks
+terrible, me in front. I look out of place and pasted into the shot. The angle should be cut to a position where it
+looks natural for me to be standing … I don't necessarily need to be in that cut. The same way we did the polar bear
+shot with the child petting the polar bear, I wasn't in that frame. It cut back to me." Then: "**The montage is the
+go-to for all performance shots.** It's the only way it will look natural. Also, you do not need the browser.
+Whatever you need the browser for, build it into the MCP."
+
+DECISION (Fendi): every performance shot is shot as a MONTAGE — cutaways without him, him only at an angle that belongs
+in the place (profile by the window, low from the seats), never pasted centre-front. The composite stays what it was
+on c047: the pixel-exact "cut back to him" the edit uses between cutaways, not the look of the shot.
+
+Done:
+- **c042 orca montage** pressed 17:06 UTC (the last browser press): job `db161f95`, provider `48f610cb`, scene list
+  in `scratchpad/montage/c042_orcas_scenes.txt` (orcas alone · HARD CUT him in profile by the window · tight orca eye ·
+  low angle from the seats). Ledger row 92. Filed 17:27 UTC as `e240af21` (Seedance took 20 min this time).
+  OBSERVED: scene 1 the orcas alone, scene 2 him in profile by the window (hand on the pole), scene 3 the orca's eye,
+  scene 4 the low angle from the seats — he is never centre-front. PASS. Posted.
+- **Montage in the MCP** — PR #289 (`4c69cbb`): edge function `montage-shot` + `avt_montage` on `avt-mcp` 1.2.0.
+  Server-side it resolves the shot (id or spec key), its dressed take + sync, the scene's newest usable plate, the
+  director's lines (or the dialog's prefill), builds the storyboard's own prompt (Deno copy
+  `_shared/montagePrompt.ts`, held to the app's modules by `montagePrompt.test.ts`), writes the `provider_jobs` row
+  first, calls `proxy-provider-call` → CC `video-providers-higgsfield-model`, and the tick runner files the clip on
+  the shot unselected as a take in sync. The source is the WHOLE dressed take (no encoder server-side), so the clip
+  opens on the dressed take's first frame (its head handle before the shot) — the browser's own no-encoder branch.
+  Refused with the reason before any money moves: no dressed take, timed events, a take that covers only part of the
+  shot, bad scene lines. `dryRun: true` answers with the exact prompt/request/settings and sends nothing.
+- Deploy: Lovable "DEPLOY ONLY" for `montage-shot` + `avt-mcp` from `4c69cbb` (see the verify lines below).
+
+Verify (after the redeploy):
+- `avt_call montage-shot {projectId 764a63d2…, shotKey "c042", dryRun true}` → HTTP 200, `ok true`, `dryRun true`,
+  `settings.batchShotId "c042_montage"`, `songStart 73.527`, `lead 0.273`, `estimateUsd 2.219`, `prompt` opening
+  "@Video1 is the performer". A 404 = not deployed; `no_dressed_take` on a shot that has one = wrong shot/variation.
+- `avt_functions {name: "montage-shot"}` → callable. The `avt_montage` tool shows once the client refreshes its tool
+  list; until then `avt_call` with `function: "montage-shot"` is the same call.
+- A real call: `provider_jobs` row with `request_payload_json.settings.submittedBy = "montage-shot"`, status
+  queued → running → succeeded, then `project_assets` on the shot with `derived_from.song_start` = the dressed take's
+  `song_start`, unselected.
+
+Still browser-only (not asked, noted): dress, animate the plate, composite. The composite's render is pixel work in
+WebCodecs — moving it server-side is a different job (ffmpeg on CC or a worker), not a request port.
