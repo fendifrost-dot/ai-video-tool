@@ -120,3 +120,20 @@ cutaway windows are what the edit uses; only their tails are skipped. No spend.
 **LIVE (VERIFIED 13:00 UTC):** PR #280 squash `9e554ad5`; Lovable `latest_commit_sha` matched, Publish (deployment
 `3f655f7f`); live `index-CDsN0tD5.js` → `projects._id.storyboard-BXeznL1Z.js` → `Acceptance-D4x7fSoE.js` carries
 `HARD CUT to his profile` (1) and `snap back to him` (0). No edge function touched, nothing redeployed.
+
+## Fendi's verdict on c047 (16 Oct ~13:10 UTC) — APPROVED LOOK
+
+"c047 is exactly the results we have been searching for we have nailed it … We finally have knocked it out the park."
+
+DECISION: the c047 recipe is the approved look for the Chicago performance shots — composite v2 of him over the bear
+plate (`616c881b`, plate `1323b9c8` of still `fd53bf3f`) for every "him" beat, the montage's cutaways (`4efc8c42`:
+profile · bear face · child pets it) cut in between, the cut back to him always the composite, every montage tail
+trimmed (`MONTAGE_TAIL_TRIM_SECONDS`). Reference cut: the five-cut preview v2 (local, posted; not filed). Nothing was
+selected in the tool — the composite and montage stay filed as alternates on c047 until the timeline step lays the cut
+inside the shot's window.
+
+Next, in order: (1) the timeline step in the tool that lays this recipe inside a shot's window from its composite +
+montage (no new generation); (2) carry it to c041/c044/c045/c046, which already have composites and montages over the
+same plate; (3) Fendi's earlier note — not every shot the same bear or background — via per-shot plate choice once he
+says which shots change.
+
