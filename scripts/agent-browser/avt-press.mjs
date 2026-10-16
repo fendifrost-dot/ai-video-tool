@@ -75,11 +75,20 @@ const PRESSES = {
     missing: "the shot offers no Animate the plate (no plate of its scene) — generate the place first",
     input: "confirm-animate-plate-event",
   },
+  // the take re-shot as a fast-cut montage (one Seedance call); --event is the scene list, one scene per line
+  montage: {
+    button: "focus-montage",
+    confirm: "confirm-montage",
+    dryRun: "confirm-montage-dryrun",
+    done: /montage is being shot|Dry run: the exact request/i,
+    missing: "the shot offers no Montage (not a performance shot with a take in sync, or too long to restage)",
+    input: "confirm-montage-scenes",
+  },
 };
 const PRESS = PRESSES[command];
 if (!PRESS || !a.session || !a.project || !a.shot) {
   console.error(
-    "usage: avt-press.mjs <composite|animate-plate> --session <agent-browser-session.json> --project <id> --shot <key> [--variation <id>] [--keep-variation] [--dry-run] [--event <text>] [--chrome <path>] [--app <url>] [--allow-any-host] [--out <dir>] [--timeout-min 25]",
+    "usage: avt-press.mjs <composite|animate-plate|montage> --session <agent-browser-session.json> --project <id> --shot <key> [--variation <id>] [--keep-variation] [--dry-run] [--event <text>] [--chrome <path>] [--app <url>] [--allow-any-host] [--out <dir>] [--timeout-min 25]",
   );
   process.exit(2);
 }

@@ -49,6 +49,25 @@ describe("which take a performance shot restages", () => {
     if (!r.ok) expect(r.why).toMatch(/only part/);
   });
 
+  it("restages the DRESSED take when asked to (the montage wears what the video wears), never a restaging or a composite", () => {
+    const dressed = asset("dr1", { footageRole: "performance", durationSeconds: 4, derivedFrom: { assetId: "take1", songStart: 47.06, method: "dressed" } });
+    const restaged = asset("re1", { footageRole: "performance", durationSeconds: 4, derivedFrom: { assetId: "take1", songStart: 47.06, method: "restaged" } });
+    const syncs = [sync(), sync({ id: "s2", performanceAssetId: "dr1", offsetSeconds: 47.06, method: "derived" }), sync({ id: "s3", performanceAssetId: "re1", offsetSeconds: 47.06, method: "derived" })];
+    const assets = new Map([[take.id, take], [dressed.id, dressed], [restaged.id, restaged]]);
+    const m = boxMedia({ box: b, assignments: [assign("a1", "dr1", "performance", { isPrimary: true }), assign("a2", "re1", "performance")], assets, syncs });
+    // by default the take as filmed; asked for the dressed one, the dressed one, cut at the shot's place in it
+    expect(restageSource(m.items, syncs).ok && (restageSource(m.items, syncs) as { ok: true; source: { take: { id: string } } }).source.take.id).toBe("take1");
+    const d = restageSource(m.items, syncs, { preferDressed: true });
+    expect(d.ok).toBe(true);
+    if (!d.ok) return;
+    expect(d.source.take.id).toBe("dr1");
+    expect(d.source.sync.id).toBe("s2");
+    expect(d.source.takeIn).toBeCloseTo(0, 2);
+    // a restaging is never the source, even when it is all there is
+    const only = boxMedia({ box: b, assignments: [assign("a2", "re1", "performance", { isPrimary: true })], assets: new Map([[restaged.id, restaged]]), syncs: [syncs[2]] });
+    expect(restageSource(only.items, [syncs[2]], { preferDressed: true })).toMatchObject({ ok: false });
+  });
+
   it("never restages a restaging: the source is always the take as filmed", () => {
     const derived = asset("re1", { footageRole: "performance", durationSeconds: 4, derivedFrom: { assetId: "take1", songStart: 47.06 } });
     const syncs = [sync(), sync({ id: "s2", performanceAssetId: "re1", offsetSeconds: 47.06, method: "derived" })];
@@ -126,6 +145,22 @@ describe("what a restaging asks for and costs", () => {
     expect(estimateShotUsd(req.shot)).toBeCloseTo(restageEstimateUsd(4), 4);
     const motion = buildMotionRequest(req.shot, { prompt: "x", stillUrl: "https://s/still", sourceUrl: "https://s/src", userId: "u", projectId: "p" });
     expect(motion.body).toMatchObject({ mode: "reference_to_video", referenceVideoUrls: ["https://s/src"], referenceImageUrls: ["https://s/still"], duration: 4, generate_audio: false });
+  });
+
+  it("a variant (a montage) replaces the camera sentence, names its own files and is filed as an alternate", () => {
+    const b = box(47.06, 50.98);
+    const base = { box: b, lyricLines: [], source: { take, sync: sync(), takeIn: 46.2062, takeOut: 50.1262 }, sourcePath: "u/p/seedance/x_src.mp4", stillPath: "u/p/worlds/plate_bear.png", cut: { start: 46.2, seconds: 4 }, temporal: restageTemporalPlan(b) };
+    const req = restageShot({ ...base, variant: { angle: "a fast-cut montage in the place of @Image1, deadpan. Show in order: — 0.0–2.0 s: him. — 2.0–4.0 s: the bear.", idSuffix: "montage", alternate: true, record: { version: "montage-v1", scenes: [] } } });
+    expect(req.shot.id).toBe("c013_montage");
+    expect(req.shot.alternate).toBe(true);
+    expect(req.shot.variant).toEqual({ version: "montage-v1", scenes: [] });
+    expect(req.shot.angle).toMatch(/^a fast-cut montage in the place of @Image1/);
+    expect(req.shot.angle).not.toContain("a medium shot from the waist up");
+    // the plain restaging is unchanged: the shot's own camera sentence, the box's own id, never an alternate
+    const plain = restageShot(base);
+    expect(plain.shot.id).toBe("c013");
+    expect(plain.shot.alternate).toBeUndefined();
+    expect(() => restageShot({ ...base, variant: { angle: "x", idSuffix: "bad suffix!", alternate: true } })).toThrow(/suffix/);
   });
 
   it("asks for the project's frame", () => {

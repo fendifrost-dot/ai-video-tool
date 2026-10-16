@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Clapperboard, Film, Image as ImageIcon, LayoutGrid, Layers, Loader2, Lock, Maximize, Minimize, Plus, Quote, Shirt, Wand2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clapperboard, Film, Image as ImageIcon, LayoutGrid, Layers, Loader2, Lock, Maximize, Minimize, Plus, Quote, Scissors, Shirt, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -208,6 +208,11 @@ export function FocusView() {
               <Button variant="outline" disabled={!!busy} onClick={() => sb.generateClip(box)} data-testid="focus-generate-clip">
                 <Film className="mr-2 h-4 w-4" /> {est?.restage ? "Restage the take" : "Generate clip"}{est && !est.clipBlocked ? ` · ${usd(est.clip)}` : ""}
               </Button>
+              {est?.restage && !est.clipBlocked && (
+                <Button variant="outline" disabled={!!busy} onClick={() => sb.montageShot(box)} title="the take re-shot as a fast-cut montage of angles and cutaways, in one call, filed as an alternate" data-testid="focus-montage">
+                  <Scissors className="mr-2 h-4 w-4" /> Montage · {usd(est.clip)}
+                </Button>
+              )}
               {(dress.needed || dress.dressed.length > 0) && (
                 <Button
                   variant="outline"

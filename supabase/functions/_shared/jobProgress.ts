@@ -295,10 +295,12 @@ export async function advanceJob(input: ProgressJob, deps: ProgressDeps): Promis
       }
       did.push("filed as a dressed take in sync");
     }
-    // a dressed take is an ALTERNATE: it goes on its shot unselected, so nothing the director chose is replaced
-    const ops = assignPlan({ assignments: await deps.assignmentsOf(shotId), shotId, assetId: job.result_asset_id!, role: restaged || dressed ? "performance" : "generated_clip", select: !dressed });
+    // a dressed take is an ALTERNATE: it goes on its shot unselected, so nothing the director chose is replaced —
+    // as is a restaging that asked to be one (settings.alternate: a montage or an extra angle, src/lib/storyboard/montage.ts)
+    const alternate = !!dressed || settings.alternate === true;
+    const ops = assignPlan({ assignments: await deps.assignmentsOf(shotId), shotId, assetId: job.result_asset_id!, role: restaged || dressed ? "performance" : "generated_clip", select: !alternate });
     await deps.applyAssignments(job, ops);
-    did.push(dressed ? "on its shot, unselected" : "on its shot");
+    did.push(alternate ? "on its shot, unselected" : "on its shot");
     await set({ request_payload_json: { ...payloadOf(job), settings: { ...settings, attachedAt: deps.now().toISOString(), attachedBy: "server" } } });
     return await finish();
   } catch (e) {

@@ -146,6 +146,7 @@ function controller(over: Partial<StoryboardController> = {}): StoryboardControl
     compositeOf: () => ({ plan: null, why: "only a performance shot is composited", composited: [], plateMotion: { plan: null, why: "this shot has no plate to animate", inFlight: false } }),
     compositeShot: vi.fn(),
     animatePlate: vi.fn(),
+    montageShot: vi.fn(),
     workflow: [],
     focusId: null,
     openFocus: vi.fn(),

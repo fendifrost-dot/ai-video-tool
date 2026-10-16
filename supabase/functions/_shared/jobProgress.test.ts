@@ -72,6 +72,36 @@ function deps(over: Partial<ProgressDeps> = {}) {
   return { d, calls, patches, assets };
 }
 
+describe("a restaging filed as an ALTERNATE (a montage or an extra angle)", () => {
+  const restagedJob = (alternate: boolean) =>
+    job({
+      result_asset_id: null,
+      request_payload_json: {
+        promptText: "P",
+        shotId: "shot-1",
+        settings: { route: "seedance_ref", sourceAssetId: "take-1", masterStart: 82.025, sourceWindow: [1, 5], sourceSeconds: 4, ...(alternate ? { alternate: true, variant: { version: "montage-v1-2026-10-16" } } : {}) },
+      },
+    });
+
+  it("lands on its shot UNSELECTED when the job says alternate, selected when it does not", async () => {
+    for (const alternate of [true, false]) {
+      const ops: unknown[] = [];
+      const { d, calls } = deps({
+        applyAssignments: async (_job, planned) => {
+          ops.push(...planned);
+        },
+        assetMeta: async () => ({ bucket: "project-clips", duration_seconds: 4 }),
+      });
+      const r = await advanceJob(restagedJob(alternate), d);
+      expect(r.state).toBe("finished");
+      expect(calls).toContain("saveClip");
+      expect(ops).toHaveLength(1);
+      expect(ops[0]).toMatchObject({ op: "insert", shot_id: "shot-1", asset_id: "asset-1", role: "performance", is_primary: !alternate });
+      expect(r.did).toContain(alternate ? "on its shot, unselected" : "on its shot");
+    }
+  });
+});
+
 describe("plateMotionFrom", () => {
   it("reads a moving-plate job and nothing else", () => {
     expect(plateMotionFrom(job())).toEqual({

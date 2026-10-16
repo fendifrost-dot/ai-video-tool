@@ -37,6 +37,9 @@ export type BatchJobSettings = {
   /** The asset the source clip was cut from, and how many seconds were asked for (a restaged take). */
   sourceAssetId?: string | null;
   sourceSeconds?: number | null;
+  /** An alternate of its shot (a montage or an extra angle): filed on the shot unselected. */
+  alternate?: true;
+  variant?: Record<string, unknown> | null;
   /**
    * How the shot's timed events were handed to the model, when it has any that must be drawn: "timed_script" (a
    * script with times, to a model that takes one) or "ordered" (the beats in order, asked for by name — the timing
@@ -312,6 +315,8 @@ export async function submitShot(
     masterStart: shot.masterStart ?? null,
     ...(shot.source_asset_id ? { sourceAssetId: shot.source_asset_id, sourceSeconds: shot.source_seconds ?? null } : {}),
     ...(shot.temporal ? { temporal: shot.temporal } : {}),
+    // an alternate lands on its shot unselected (supabase/functions/_shared/jobProgress.ts reads this)
+    ...(shot.alternate ? { alternate: true, ...(shot.variant ? { variant: shot.variant } : {}) } : {}),
     ...madeFromOf(ctx, shot),
   };
   // WRITE-AHEAD: the record exists before the money moves.

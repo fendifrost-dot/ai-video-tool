@@ -1,0 +1,132 @@
+/**
+ * "Montage" — a performance shot re-shot as a fast-cut sequence of angles and cutaways, in ONE reference-to-video
+ * call, in the place of its plate.
+ *
+ * Why one call and this shape (Fendi, 16 Oct 2026): "on every shot we need to be utilizing multiple creative camera
+ * angles per performance shot … me rapping into the camera, a quick shot to the side, a zoom in of the polar bear,
+ * all on the same platform … a child walking up to the polar bear and petting it … Quick, very quick." The reference
+ * is Thuggpapi's Seedance 2.5 montages (docs/research/references/THUGGPAPI_SEEDANCE_MONTAGE_PROMPTS_2026-10.md): one
+ * prompt, one global style line, then "Show in order:" with one dash per scene, every scene a second or less, and
+ * "everyone treats the impossible like another normal day". That is a prompt shape on the model the restage lane
+ * already uses (Seedance 2.5 reference-to-video: @Video1 the take, @Image1 the place), not a new provider — so a
+ * montage costs one restage, not one restage per angle.
+ *
+ * What this module decides is pure: the scenes (the director's lines, each given its seconds), the prompt, and
+ * what is recorded. The cut, the upload and the submit are the restage lane's (restage.ts restageBox with the
+ * montage as the camera sentence, filed as an ALTERNATE so nothing the director chose is replaced).
+ */
+import { NEVER_WIDER } from "./restage";
+
+export const MONTAGE_VERSION = "montage-v1-2026-10-16";
+/** The longest scene list the dialog takes. */
+export const MONTAGE_LINES_MAX = 1200;
+/** Scenes shorter than this are not asked for: the model cannot cut faster than it renders. */
+export const MONTAGE_MIN_SCENE_SECONDS = 0.4;
+export const MONTAGE_MAX_SCENES = 8;
+
+/**
+ * The style every scene obeys — Thuggpapi's line, with the night and the sync rule added. "Deadpan" is the realism
+ * trick: nobody in the place reacts to the impossible thing, so it reads as filmed, not staged.
+ */
+export const MONTAGE_STYLE =
+  "shot like news footage: shaky handheld camerawork, quick optical zooms, 35mm film grain, muted warm night colours, fast cuts. " +
+  "Deadpan: nobody and nothing in the place reacts to anything unusual.";
+
+/** The sync rule: the performance never pauses for a cutaway; whenever he is on screen his mouth is the take's at that second. */
+export const MONTAGE_SYNC =
+  "Whenever he is on screen his mouth movements are exactly @Video1's at that same second, word for word, in sync from the first frame to the last; " +
+  "a cutaway does not pause, repeat or shift the performance — it continues underneath and is where @Video1 is when the picture comes back to him.";
+
+export type MontageScene = { from: number; to: number; text: string };
+
+/**
+ * The five scenes Fendi described, as the dialog's prefill. `thing` is the one unusual thing in the place — the
+ * cutaways look at it; a plate without one gets a street cutaway instead.
+ */
+export function defaultMontageLines(thing: string | null): string {
+  const it = thing?.trim() || null;
+  return [
+    "him rapping straight to camera, a medium shot from the waist up, the place behind him",
+    "quick cut to his profile from the side, still rapping",
+    it ? `a quick optical zoom onto ${it}; it does not react` : "a quick optical zoom past him down the street, traffic and lights",
+    it ? `a small child walks up to ${it} and pets it; it stays calm; nobody reacts` : "a passer-by walks through behind him without a glance",
+    "snap back to him, closer, rapping to camera to the end",
+  ].join("\n");
+}
+
+const TIME_RE = /^\s*(\d+(?:\.\d+)?)\s*(?:[-–—]|to)\s*(\d+(?:\.\d+)?)\s*s?\s*[:：]?\s*(.*)$/i;
+
+/**
+ * The director's lines as scenes with seconds. A line may say its own window ("2.0-2.7 s: …"); the lines between
+ * two timed ones (or before the first, or after the last) share the gap equally, in order. The result covers
+ * [0, seconds] exactly, in order, no gaps, no overlaps.
+ */
+export function planMontageScenes(lines: string, seconds: number): { ok: true; scenes: MontageScene[] } | { ok: false; why: string } {
+  if (!(seconds > 0)) return { ok: false, why: "the montage has no length" };
+  const raw = lines
+    .split("\n")
+    .map((l) => l.replace(/^\s*[—–\-•*]\s*/, "").trim())
+    .filter(Boolean);
+  if (raw.length === 0) return { ok: false, why: "write at least one scene, one per line" };
+  if (raw.length > MONTAGE_MAX_SCENES) return { ok: false, why: `at most ${MONTAGE_MAX_SCENES} scenes — the model cannot cut faster than that in ${seconds} s` };
+  const parsed = raw.map((line) => {
+    const m = TIME_RE.exec(line);
+    if (m && m[3].trim()) return { from: Number(m[1]) as number | null, to: Number(m[2]) as number | null, text: m[3].trim() };
+    return { from: null as number | null, to: null as number | null, text: line };
+  });
+  const r1 = (n: number) => Math.round(n * 10) / 10;
+  const scenes: MontageScene[] = [];
+  let at = 0;
+  let i = 0;
+  while (i < parsed.length) {
+    const p = parsed[i];
+    if (p.from != null && p.to != null) {
+      if (!(p.to > p.from) || p.to > seconds + 1e-6) return { ok: false, why: `"${p.text.slice(0, 40)}" has a window outside 0–${seconds} s` };
+      if (p.from < at - 1e-6) return { ok: false, why: `"${p.text.slice(0, 40)}" starts at ${p.from} s, before the scene ahead of it ends (${r1(at)} s)` };
+      if (p.from > at + 1e-6 && scenes.length === 0 && i > 0) return { ok: false, why: "the first scene has to start at 0 s" };
+      scenes.push({ from: r1(p.from), to: r1(p.to), text: p.text });
+      at = p.to;
+      i++;
+      continue;
+    }
+    // a run of untimed lines up to the next timed one (or the end) shares that gap equally
+    let j = i;
+    while (j < parsed.length && parsed[j].from == null) j++;
+    const gapEnd = j < parsed.length ? (parsed[j].from as number) : seconds;
+    const count = j - i;
+    const each = (gapEnd - at) / count;
+    if (each < MONTAGE_MIN_SCENE_SECONDS - 1e-6)
+      return { ok: false, why: `${count} scene${count === 1 ? "" : "s"} in ${r1(gapEnd - at)} s leaves ${each.toFixed(2)} s each — fewer scenes, or give the quick ones their own seconds (at least ${MONTAGE_MIN_SCENE_SECONDS} s)` };
+    for (let k = i; k < j; k++) {
+      const to = k === j - 1 ? gapEnd : at + each;
+      scenes.push({ from: r1(at), to: r1(to), text: parsed[k].text });
+      at = to;
+    }
+    i = j;
+  }
+  if (Math.abs(at - seconds) > 1e-6) return { ok: false, why: `the scenes end at ${r1(at)} s; the montage is ${seconds} s — the last scene has to reach the end` };
+  for (let k = 0; k < scenes.length; k++) {
+    const s = scenes[k];
+    if (s.to - s.from < MONTAGE_MIN_SCENE_SECONDS - 1e-6) return { ok: false, why: `scene ${k + 1} ("${s.text.slice(0, 40)}") is ${(s.to - s.from).toFixed(1)} s — at least ${MONTAGE_MIN_SCENE_SECONDS} s` };
+  }
+  return { ok: true, scenes };
+}
+
+/** The "Show in order" block: one dash per scene, with its seconds from the first frame. */
+export function montageScript(scenes: readonly MontageScene[]): string {
+  return ["Show in order, in seconds from the first frame:", ...scenes.map((s) => `— ${s.from.toFixed(1)}–${s.to.toFixed(1)} s: ${s.text}`)].join("\n");
+}
+
+/**
+ * The camera sentence the restage lane sends for a montage (its `angle`): the style, the scenes, the sync rule and
+ * the never-wider rule. The restage prompt (shotCompiler/prompts.ts seedanceAnglePrompt) wraps it with "@Video1 is
+ * the performer… Re-shoot the exact same performance from a second camera: <this>", the keep list and the place.
+ */
+export function montagePrompt(scenes: readonly MontageScene[]): string {
+  return [`a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`, montageScript(scenes), MONTAGE_SYNC, NEVER_WIDER].join(" ");
+}
+
+/** What is recorded on the job beside the prompt, so a result can be judged against what was asked. */
+export function montageRecord(scenes: readonly MontageScene[], thing: string | null): { version: string; scenes: MontageScene[]; thing: string | null } {
+  return { version: MONTAGE_VERSION, scenes: scenes.map((s) => ({ ...s })), thing: thing?.trim() || null };
+}
