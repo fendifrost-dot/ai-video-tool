@@ -206,3 +206,32 @@ Verify (after the redeploy):
 
 Still browser-only (not asked, noted): dress, animate the plate, composite. The composite's render is pixel work in
 WebCodecs — moving it server-side is a different job (ffmpeg on CC or a worker), not a request port.
+
+### 17:50 UTC — "I'm not seeing where the new clips would live" → versions on the board
+
+Fendi, on the treatment board: the new clips are not visible; everything done outside the tool has to be in the tool;
+each shot should offer its edited footage and ALL its versions. Facts: a montage / composite / dressed take is filed on
+its shot as an unselected row, so the card's picture stays on the original take; the only sign was a row of faint
+pills under the scene text ("Your take · restaged", "Your take · new background" …) — the montage pill said
+"restaged" because its record carried no method. The treatment page (`/projects/<id>/treatment`) shows no footage at
+all; clips live on the Storyboard page.
+
+Done (PR, "Versions on the board"):
+- `DerivedMethod` gains `montage`: the parser reads it, `jobProgress.fileRestagedClip` writes it from the job's
+  variant (server), `restage.ts fileRestagedClip` takes it (client), `mediaLabel` says "Your take · montage".
+  BACKFILLED (avt_update, 17:52 UTC) the 11 montage assets that predate it: c047 `f79cdd9f` `4efc8c42` `46b09db6`
+  `41d5c1da`, c041 `82cd07bf`, c044 `d593a56a` `bda9ead2`, c045 `c684ff12` `53771ac0`, c046 `a828c578`, c042
+  `e240af21` — `metadata_json.derived_from.method = "montage"`, nothing else touched.
+- `src/lib/storyboard/versions.ts` (+ test): every clip on a shot named in plain words — Your take · Dressed ·
+  Montage · New background · Restaged · AI clip — numbered by creation time when there is more than one of a kind
+  ("Montage 2"), with when it was made and its length.
+- The card: "N versions · click one to show it" above the pills, each pill its version name (tooltip: the long label
+  and the file name); ‹ › arrows on the player flip to the previous / next version (the base layer by taking the
+  selection off); the player's chip reads "Montage 2 1/4". The full-screen Media tab names each item the same way.
+- Nothing about selection changed: showing a version = selecting it, as before; Review plays what is selected.
+
+Verify after Publish: bundle crawl → the storyboard chunk's Acceptance/BoxCard chunk carries
+`versions · click one to show it` and `Your take · montage`; on c042's card: 4+ pills (Your take, Dressed, New
+background 1–2, Montage), the arrows present; on c047: the bear composite still showing, montages named Montage 1–4.
+Edge: `provider-jobs-tick` carries `_shared/jobProgress.ts` → redeploy it so NEW montages are filed with
+`method: "montage"` (until then they read "Restaged" and are renamed by a backfill).

@@ -107,9 +107,11 @@ export type MediaAsset = {
  * is the model's. `composite`: he was cut out of the take and put over another background — every pixel of him is
  * the camera's. `dressed`: the same stretch of take with the scene's outfit swapped onto him (dress.ts) — his
  * performance, the garment the model's; conformed to the cut's length, with handles either side of the shot. They are
- * told apart wherever a clip is named, because what can go wrong with each is different.
+ * told apart wherever a clip is named, because what can go wrong with each is different. `montage`: a restaging
+ * asked for as a fast-cut sequence of angles and cutaways (montage.ts) — the lane every performance shot is shot in
+ * (Fendi, 16 Oct 2026); a restaged clip whose record predates the name reads as `restaged`.
  */
-export type DerivedMethod = "restaged" | "composite" | "dressed";
+export type DerivedMethod = "restaged" | "composite" | "dressed" | "montage";
 
 /**
  * Which take a clip was made from, and which stretch of it (on the take's own clock). The job that made the clip

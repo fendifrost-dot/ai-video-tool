@@ -8,6 +8,7 @@ import type { StoryboardBox } from "@/lib/storyboard/boxes";
 import type { BoxMediaItem } from "@/lib/storyboard/media";
 import { sceneText } from "./BoxCard";
 import { BoxEditor } from "./BoxEditor";
+import { versionsOf } from "@/lib/storyboard/versions";
 import { BoxMediaView, ROLE_STYLE, mediaLabel } from "./BoxMediaView";
 import { frameBoxStyle } from "@/lib/project/aspect";
 import { FrameStrip } from "./FrameStrip";
@@ -313,7 +314,10 @@ function MediaList({ box, items, showing }: { box: StoryboardBox; items: BoxMedi
           >
             <div className="flex items-center gap-2">
               <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium", ROLE_STYLE[item.role])}>{mediaLabel(item)}</span>
-              <span className="min-w-0 flex-1 truncate text-xs text-foreground/80">{item.asset.name}</span>
+              <span className="min-w-0 flex-1 truncate text-xs text-foreground/80" title={item.asset.name} data-testid="focus-media-version">
+                <span className="font-medium text-foreground/90">{versionsOf(items).find((v) => v.item === item)?.title ?? item.asset.name}</span>
+                <span className="ml-1.5 text-[10px] text-foreground/40">{item.asset.name}</span>
+              </span>
               {accepted && <AcceptanceChip verdict={accepted.verdict} />}
               {isShowing && <span className="text-[10px] font-medium text-primary">showing</span>}
             </div>
