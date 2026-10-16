@@ -120,3 +120,10 @@ plates and the approved bear composite `616c881b` stay as they were. Under the H
 the composite of c047 over it (Fal, $0.07) is filed as an alternate; "Animate the plate" (Kling, $0.18 real) with an
 event such as "the orcas surface and roll, the passengers point, the train stands at the platform" runs when Fendi
 lifts the hold, and then one more composite ($0.07) puts him over the moving orcas. Ledger rows 87–88.
+
+DONE 16:05 UTC: c047 over the orca STILL — composite `bdf66a28` (dressed `f540b6be` over `0fe81de8`, 113 frames,
+recipe v3, `plate_video_asset_id null`), filed as an alternate on c047, posted. OBSERVED: pixel-exact in the aisle,
+the orcas in the window beside him, the passengers pointing; the plate moves only with the handheld camera.
+Verify: `project_assets` `bdf66a28` exists with `metadata_json.composite.plate_asset_id = 0fe81de8` and
+`is_primary` false on c047; the bear composite `616c881b` still selected. NOT DONE (held): the Kling animation of
+`0fe81de8` and the composite over it; the c047 orca montage.
