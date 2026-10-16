@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { clipAspect, planMontage, type MontageInput } from "./plan";
+import { clipAspect, planMontage, type MontageInput } from "./plan.ts";
 import {
   montagePrompt,
   planMontageScenes,
   seedanceAnglePrompt,
   restageKeep,
   montageRecord,
-} from "../_shared/montagePrompt";
+} from "../_shared/montagePrompt.ts";
 
 /** c042 on 16 Oct 2026: the Mastic corner shot (73.8–75.28 s) and its dressed take (first frame at 73.5268 s, 4.004 s long). */
 function c042(over: Partial<MontageInput> = {}): MontageInput {
