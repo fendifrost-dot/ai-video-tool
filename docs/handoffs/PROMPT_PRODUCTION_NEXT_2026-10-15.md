@@ -109,9 +109,11 @@ Made live through Lovable and verified from this session, not from the agents' c
 | AVT `matte-video-proxy` (new) + `fal-queue-poll-proxy` redeployed from `0e8fabad` | source_sha256 `03ed3b4a…`, `6e1f115c…`; secrets present (`COMPOSE_LOOK_CC_URL`, `COMPOSE_LOOK_PROXY_SECRET`); anonymous POST → 401 from each |
 | AVT frontend published (deployment `bb649000-…`) | live entry `/assets/index-BdbvCC2Q.js`; chunk `projects._id.storyboard-B-_Z2s10.js` contains `focus-composite-shot` |
 
-**Not yet done: the first production run.** The composite is made in the BROWSER (WebCodecs); this session has no
-signed-in browser, and the MCP cannot put raw bytes into AVT storage, so a composite made here with ffmpeg could not
-be filed. The first run is one press in the app — see "First run" below — and the only paid part is the matte
+**First production run DONE, by the agent itself (16 Oct 02:47 UTC).** The press that needed a person became a
+capability: `avt_browser_session` + `scripts/agent-browser/avt-press.mjs` (PRs #270, #271; handoff
+`HANDOFF_AGENT_BROWSER_2026-10-16.md`). c047 composited over the 79th/Lafayette plate: asset `ccb146c9`, matte
+`01a1429b` ($0.089, ledger row 41), sync 82.025, unselected on c047 — PASS. The composite is made in the BROWSER
+(WebCodecs) — now a headless Chrome for Testing this session drives; the only paid part is the matte
 (≈ $0.09 for c047). After it, judge the clip against the kill criterion as for the dressed windows and record a
 ledger row with the request id from the asset's `composite.matte`.
 
