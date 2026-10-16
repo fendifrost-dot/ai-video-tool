@@ -117,6 +117,7 @@ export async function compositeBox(
       fg: { read: take.read, track: take.probe.video },
       alpha: { read: bytesRead(alpha.bytes), track: alpha.track },
       plate,
+      plateOffsetSeconds: plan.plateOffsetSeconds,
       width: size.width,
       height: size.height,
       signal: input.signal,

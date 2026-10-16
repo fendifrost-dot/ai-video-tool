@@ -115,3 +115,11 @@ train had been. v4 names the life per kind of place (street: traffic and signals
 in, passengers walk; room or train car: people shift, lights flicker) and forbids anything the picture does not hold
 ("no vehicle where there is no road, no new building, nobody new in the foreground"), and adds "no rise" to the
 camera lock. Recorded on every moving plate as `plate_motion.version`.
+
+### plate-composite-v3 (16 Oct 2026): the moving plate starts at the shot's first frame
+
+v2 paired the plate's frame 0 with the dressed CUT's frame 0. The cut carries a head handle (~1.1 s of take before
+the shot, never shown), so the shot played plate frames ~26–75 and met the animator's late drift (Kling: a push-in
+and traffic from ~3 s on both platform plates). v3 pairs plate frame 0 with the SHOT's first frame (the dress record's
+head handle, `plateOffsetSeconds` on the plan) and holds frame 0 under the handle. Recorded on every composite as
+`composite.plate_offset_seconds`; `RECIPE.plate.startsAtShotIn = true`. Nothing else in the recipe changed.

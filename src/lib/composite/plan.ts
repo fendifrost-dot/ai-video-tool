@@ -26,6 +26,11 @@ export type CompositePlan = {
   plateFrom: "scene" | "location";
   seconds: number;
   frames: number;
+  /**
+   * Seconds of take before the shot's first frame (the dressed cut's head handle): where a moving plate's first
+   * frame goes (RECIPE.plate.startsAtShotIn). 0 when the dressed record does not say.
+   */
+  plateOffsetSeconds: number;
   /** The paid part: the matte. The composite itself is made in the browser for nothing. */
   cost: { usd: number; upper: number; text: string };
   /** The song time of the dressed take's first frame — the composite's own, since it keeps every frame. */
@@ -132,6 +137,7 @@ export function planComposite(
     ok: true,
     plan: {
       dressed,
+      plateOffsetSeconds: plateOffsetSeconds(dressed),
       plate,
       plateVideo: videoPlatesOf(f.assets, plate.id)[0] ?? null,
       otherPlates: plates.slice(1),
@@ -144,6 +150,20 @@ export function planComposite(
       camera: CAMERA,
     },
   };
+}
+
+/**
+ * Where the shot starts inside the dressed cut: the dress record's head handle, or the shot window against the cut
+ * window when the handle is not on the record; 0 when neither is (an older dressed take, or a take that is the shot).
+ */
+export function plateOffsetSeconds(dressed: Pick<MediaAsset, "derivedFrom">): number {
+  const d = dressed.derivedFrom?.dress ?? null;
+  const head = d?.handles?.head;
+  if (typeof head === "number" && Number.isFinite(head) && head > 0) return head;
+  const w = d?.window;
+  const sw = d?.shotWindow;
+  if (w && sw && Number.isFinite(w[0]) && Number.isFinite(sw[0]) && sw[0] > w[0]) return sw[0] - w[0];
+  return 0;
 }
 
 /** The composites already on a shot, newest first. */

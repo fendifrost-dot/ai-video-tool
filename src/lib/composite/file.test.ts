@@ -32,6 +32,7 @@ const render: RenderResult = {
   height: 1280,
   fps: 24,
   colr: "bt709",
+  plateOffsetSeconds: 0,
   recipe: RECIPE,
   pairing: "index",
   plateFrames: null,
@@ -97,7 +98,7 @@ describe("filing a composite", () => {
       },
     });
     expect((meta.composite as { recipe: { version: string } }).recipe.version).toBe(
-      "plate-composite-v2-2026-10-16",
+      "plate-composite-v3-2026-10-16",
     );
   });
 

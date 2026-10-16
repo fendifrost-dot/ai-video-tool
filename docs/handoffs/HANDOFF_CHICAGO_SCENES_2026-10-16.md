@@ -88,3 +88,25 @@ drains in under a day.
 **HOLD:** no further Higgsfield calls (dress, montage, animate-plate) until Fendi has read the API dashboard and said
 what the $50 line is. Open question for the next build: read the real charge back per request (balance before/after
 or a per-request cost field) and write it on the job, so the ledger stops saying "invoice unknown".
+
+## Fendi: "Why are we using Kling when we know Higgsfield works best" (14:45 UTC)
+
+Facts: every video call here goes through Higgsfield's API; Kling 2.5 turbo pro is one model in that catalogue, the
+cheapest image-to-video it offers ($0.18 real for 5 s), and "Animate the plate" chose it for that: a locked-off clip
+of a still. The models that have held up best for Fendi are Seedance 2.5 reference-to-video (the montages: hard cuts,
+no drift, the platform kept; $1.55 real for 4 s) and the Genjutsu object swap (the dressing). Seedance 2.5 has never
+been tried AS A PLATE ANIMATOR. Control Center's catalogue has no Higgsfield-own image-to-video model; the
+alternatives for a still are Kling 2.5 (turbo pro / standard) and Hailuo 2.3.
+
+RECOMMENDATION (one call, ≈ $1.55 real, when the hold lifts): animate the runway still `435ff4dd` with
+`seedance-2.5-reference` (@Image1 the still, "locked-off camera, the models walk toward the camera and out of frame,
+the train stays, nobody enters the centre foreground") and judge it on frames 0/30/60/90/119 against Kling's
+`22fabc2c`. If it holds, `PLATE_MOTION_MODEL` becomes a per-press choice (Kling cheap / Seedance faithful), not a
+constant. With composite v3 the shot uses only the plate's first ~2 s, so Kling's late drift may already be out of
+frame — judge the v3 composites of c044/c045 first.
+
+## Real Higgsfield charges (ledger row 84)
+
+Read from Fendi's API transaction list: Kling 5 s $0.18, Seedance 4 s $1.55, object swap 4 s $1.70 — ≈ 51–70 % of the
+list rates CC estimates with. The "$50" was an Add-funds, auto top-up is OFF, balance $19.69. Next: carry the observed
+rates in CC's `video-providers-higgsfield-model` table as the estimate (list kept as the cap).
