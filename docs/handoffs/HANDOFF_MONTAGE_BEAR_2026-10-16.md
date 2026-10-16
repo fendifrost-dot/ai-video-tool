@@ -54,6 +54,41 @@ Then the other four (c041, c044, c045, c046) the same way, each with its own pla
 
 `switchx_bg.py submit <c047 dressed f540b6be…> <plate b58cab47…>` → `status <jobId>` until `succeeded` → download the render → side by side with the v2 composite `93b9b968` (same take, same place) → post both → ledger row (Beeble 720p: 119 frames × $0.10/30 ≈ $0.40 list). Judge: identity, the jacket, the edge, the relighting, and the cost against the composite's $0.089 matte.
 
+## The c047 variant test (Fendi: "run it all and let's see what works the best") — ledger rows 65–68
+
+| Variant | Realism | Wardrobe | Bear | Cuts | Cost | Verdict |
+|---|---|---|---|---|---|---|
+| A composite v2 over the bear plate | photo plate, flat light on him | pixel-exact | every frame | one angle | $0.09 | the "him" layer |
+| B montage v1 (no cut words) | high | holds | yes | none (one move) | $2.22 | superseded by C |
+| C montage v2/v3 (HARD CUT lines) | high | holds | face close-up | profile · bear · child; return to him 3 of 5 | $2.22 | the cutaway source |
+| D+J split into two calls | high | holds | yes | part 2 never returns to him | $4.44 | dropped |
+| E five-cut edit (A him + C cutaways) | best of both | pixel-exact on him | yes | 5 | free | **the recipe**; needs the timeline step |
+| F punch-in on the plate | real but soft | n/a | yes | 1 | free | 0.5 s filler |
+| G/H Beeble SwitchX (plain / bear ref) | best integration (relit) | colour drift (jacket paler, denim bluer) | H keeps it | one angle | $0.40 | the alternative look |
+| I Kling cutaway (child hugs the bear) | real, same plate camera | n/a | yes | 1 | $0.35 | wide alternative to C's child |
+
+Posted to Fendi with the sheet. Next build when he picks: the timeline step that lays E down inside each window
+(the fast re-cut in the treatment grid already exists for ordering; this is per-shot micro-cuts from alternates).
+
+## Fendi's note on the five (16 Oct, 07:45 UTC) — the next build
+
+"I don't think all 5 of the performance shots should have the same bear effect or same background for that matter
+but we'll go with it for now and change it later after we gauge the results."
+
+Why they share it today: the composite and the montage take the NEWEST usable plate still of the shot's SCENE
+(`platesOfScene` in `src/lib/composite/plan.ts`), and all five Chicago shots sit in one scene ("Chicago, the
+switch"), so one plate — and one bear — serves all five by construction. Two ways to vary it, both small:
+
+1. **Per-shot plate pick** — a `plate_asset_id` override on the shot (shot_overrides or the box spec) that
+   `planComposite`/`montageShot` honour before falling back to the scene's newest; the FocusView picker lists the
+   scene's usable stills. One plate still + one moving plate per shot, each with its own event (bear on one, a
+   different absurd thing or none on another).
+2. **Split the window into scenes** — `variation_scenes` rows for 1:21–1:23 / 1:23–1:26 etc., each with its own
+   `scene_title` and its own `worlds/plate_*` still. No code; the existing lanes already key by scene.
+
+Do not change the five until Fendi has gauged the results; when he does, (1) is the tool build, (2) is the no-code
+route for a first try.
+
 ## Guardrails
 
 - Never mark anything above verified from an agent's claim; `401` vs `404`, the bundle string, the `200 queued` are the proofs.
