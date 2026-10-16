@@ -71,7 +71,7 @@ again, the procedure below is the resubmit (the earlier refused rows are `eb1d35
   `conformed_duration` 4.004 ± 0.01 and a derived sync at 71.215 / 75.885 / 77.855 / 79.82. Cost ≈ $3.405 each at 5 started
   seconds (ledger row 34).
 
-## Cold-front re-runs — DONE for coldW2, coldW1 on its third try (16 Oct 01:21–01:45 UTC)
+## Cold-front re-runs — DONE: coldW2 PASS, coldW1 CLOSED after five cap failures (16 Oct 01:21–02:00 UTC)
 
 Fendi topped up at ≈ 01:15 UTC ("Topped up"). The resubmit went exactly as written in the previous version of this
 section: two NEW rows copying the cap-first request, references re-signed, Higgsfield-store sources, both `running`
@@ -86,10 +86,17 @@ within three minutes, filed by the tick within 12–16 minutes.
 Verify (cheap): `avt_select project_assets id=82e04339…` → `approval_status pending`, `metadata_json.conformed_duration 8.9591`;
 `avt_select shot_asset_assignments asset_id=82e04339…` → 3 rows (c059, c060, c061), all `is_primary false`.
 
-Ledger rows 38–39; the recipe doc's "Re-runs" paragraph has the per-frame findings. The reference-order try also failed on the Y, so coldW1 (c055–c058) is still undressed: three rejections on one
-source whose opening faces three-quarter away from a low camera. Next lever: split it into two 4 s windows cut from the
-hero take (`98.6062–102.61` and `102.41–106.5642`, 0.2 s overlap; each billed 5 s at ≈ $3.41) with the cap-first prompt
-— the 4 s Chicago sources held the cap 5/5. Not more prompt words.
+Ledger rows 38–39; the recipe doc's "Re-runs" paragraph has the per-frame findings. The reference-order try failed on the Y too, and so did the split into two 4 s windows (ledger row 40: A `d51e37e3`
+plain black cap, B `2e45bf14` cap untouched; coat right in both). **coldW1 (c055–c058) stays undressed and is CLOSED
+for Genjutsu re-runs** — five runs, five cap failures on one eight-second stretch where he faces three-quarter away
+from a low camera; the same recipe held the cap on every front-facing window. The recipe doc's "Re-runs" paragraph
+records the decision and the two ways forward (a deterministic cap-logo composite on the coat-right take, or
+re-covering the beats from a front-facing stretch). Do not resubmit coldW1 with another prompt.
+
+| Window | Row / request | Asset | Verdict |
+|---|---|---|---|
+| coldW1 A c055–c056 (4.004 s) | `b2fa6986` / `fe9258ae` | `d51e37e3` (4.0039, sync 99.46, `rejected`) | REJECTED — plain black cap, no Y |
+| coldW1 B c057–c058 (4.154 s) | `f6475ae0` / `a1a34737` | `2e45bf14` (4.1539, sync 103.264, `rejected`) | REJECTED — cap not replaced |
 
 ## Composite lane: LIVE since 16 Oct 00:52 UTC (VERIFIED from real output)
 

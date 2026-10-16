@@ -201,7 +201,24 @@ Findings (OBSERVED from the filed clips, dense 2 fps frame sheets):
    of the crown, undersized, and only becomes a proper front-panel Y in the last ~1.5 s (a morph). Three rejections on
    this one source: in coldW1 he faces three-quarter away with the camera low for the first seconds, so the front panels
    are rarely square to the lens — the model never gets a clean look at where the Y goes. coldW2 and coldW3 (front-on
-   openings) passed. Next lever for coldW1: two 4 s windows (the 4 s Chicago sources held the cap 5/5), not more words.
+   openings) passed. Next lever tried: two 4 s windows (the 4 s Chicago sources held the cap 5/5) — ledger row 40, $6.81. A (take
+   98.6062–102.6102, c055–c056, row `b2fa6986`, asset `d51e37e3`): **REJECTED**, plain black cap, no Y. B (take
+   102.4102–106.5642, c057–c058, row `f6475ae0`, asset `2e45bf14`): **REJECTED**, cap not replaced at all. Coat right in
+   both.
+
+   **DECISION (agent, 16 Oct 02:00 UTC): no more Genjutsu re-runs on coldW1.** Five runs on this eight-second stretch of
+   the hero take (full window ×3, halves ×2; three prompt/reference variants) and the cap failed every time while the
+   same recipe held the cap on coldW2, coldW3 and all five Chicago windows. The variable is the source, not the prompt:
+   from 98.6 s to 106.6 s he faces three-quarter away from a low camera and tilts his head, so the front panels are
+   never square to the lens and the model has nowhere to put the Y. The kill criterion says redesign, not scale. Two
+   ways to cover c055–c058 with the right cap, in order of preference:
+   1. **Deterministic cap-logo composite** — the LOCKED architecture already keeps "the deterministic brand/logo
+      composite for stripe/logo": track the cap's front panel on the coat-right take `d51e37e3` / `0de457ac` (black cap,
+      no mark — the cleanest base) and composite the ivory Y from the product reference, with the plate composite lane
+      after it. Not built yet; it is a tool build, not a prompt.
+   2. **Re-cover the beats from a front-facing stretch** — the lyric beats at 100.36–106.26 can be re-cut from a
+      different take or from coldW2's PASS (`82e04339`, song 105.355→) where it overlaps; a timeline decision, not a
+      dressing one.
    All rejected assets stay filed (`approval_status rejected`, reason in `notes`) as provenance; nothing was overwritten.
 
 Covered-shot assignments added for the passing windows (all `role performance`, `is_primary false`, variation
