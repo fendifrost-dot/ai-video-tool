@@ -43,6 +43,8 @@ export const SWITCHX_BG_PROMPT_MAX = 1500;
  */
 export const BEEBLE_ANSWER_HOSTS: readonly RegExp[] = [/(^|\.)beeble\.ai$/i, /(^|\.)amazonaws\.com$/i, /(^|\.)cloudfront\.net$/i, /(^|\.)googleapis\.com$/i, /(^|\.)storage\.googleapis\.com$/i];
 export const BEEBLE_ANSWER_URL_MAX = 2048;
+/** The failure the first live job was given when the reader looked under `result`: a job failed with it is asked again. */
+export const NO_RENDER_LINK = "beeble finished without a render link";
 
 /** Whether a render link is one this lane will hand on: https, bounded, on a host Beeble serves from. */
 export function isBeebleAnswerUrl(url: unknown): url is string {
@@ -119,6 +121,8 @@ export function switchxBackgroundRequest(input: { sourceVideoUrl: string; refere
 export type BeebleRead = {
   state: "running" | "succeeded" | "failed";
   renderUrl: string | null;
+  /** Beeble's alpha (the matte it cut him with) when it hands one back beside the render — a second matte source. */
+  alphaUrl: string | null;
   frames: number | null;
   resolution: string | null;
   error: string | null;
@@ -134,19 +138,25 @@ export type BeebleRead = {
 export function readBeebleStatus(json: unknown): BeebleRead {
   const j = (json && typeof json === "object" ? json : {}) as Record<string, unknown>;
   const status = typeof j.status === "string" ? j.status.toLowerCase() : null;
-  const result = (j.result && typeof j.result === "object" ? j.result : {}) as Record<string, unknown>;
+  // Beeble's real answer (VERIFIED 16 Oct 2026, job swx_iIawxiSLvr3mUhQQFqxHN) carries the links under `output`
+  // ({render, source, alpha}); CC's poller spoke of `result`. Both are read — the first live job was marked failed
+  // ("finished without a render link") while its render sat under `output.render`.
+  const result = ((j.output && typeof j.output === "object" ? j.output : null) ?? (j.result && typeof j.result === "object" ? j.result : {})) as Record<string, unknown>;
   const rawRender = typeof result.render === "string" ? result.render : null;
   const renderUrl = isBeebleAnswerUrl(rawRender) ? rawRender : null;
-  const frames = typeof result.frames_processed === "number" && result.frames_processed >= 0 ? result.frames_processed : null;
-  const resolution = typeof result.resolution === "string" ? result.resolution.toLowerCase() : null;
+  const framesRaw = [result.frames_processed, j.frames_processed].find((v) => typeof v === "number");
+  const frames = typeof framesRaw === "number" && framesRaw >= 0 ? framesRaw : null;
+  const resRaw = [result.resolution, j.resolution].find((v) => typeof v === "string");
+  const resolution = typeof resRaw === "string" ? resRaw.toLowerCase() : null;
   const err = (j.error && typeof j.error === "object" ? j.error : {}) as Record<string, unknown>;
   const error = typeof err.message === "string" ? err.message.slice(0, 500) : typeof j.error === "string" ? j.error.slice(0, 500) : null;
   // CC's own poller treats "complete" and "errored" as terminal too (switchx-restyle pollBeebleUntilDone)
   if (status === "failed" || status === "error" || status === "errored" || status === "cancelled" || status === "canceled")
-    return { state: "failed", renderUrl: null, frames, resolution, error: error ?? `beeble ${status}`, status };
+    return { state: "failed", renderUrl: null, alphaUrl: null, frames, resolution, error: error ?? `beeble ${status}`, status };
   if (renderUrl || rawRender || status === "completed" || status === "complete" || status === "succeeded" || status === "done") {
-    if (renderUrl) return { state: "succeeded", renderUrl, frames, resolution, error: null, status };
-    let why = "beeble finished without a render link";
+    const rawAlpha = typeof result.alpha === "string" ? result.alpha : null;
+    if (renderUrl) return { state: "succeeded", renderUrl, alphaUrl: isBeebleAnswerUrl(rawAlpha) ? rawAlpha : null, frames, resolution, error: null, status };
+    let why: string = NO_RENDER_LINK;
     if (rawRender) {
       let host = "?";
       try {
@@ -156,7 +166,7 @@ export function readBeebleStatus(json: unknown): BeebleRead {
       }
       why = `beeble's render link is on an unexpected host (${host}) — not handed on`;
     }
-    return { state: "failed", renderUrl: null, frames, resolution, error: why, status };
+    return { state: "failed", renderUrl: null, alphaUrl: null, frames, resolution, error: why, status };
   }
-  return { state: "running", renderUrl: null, frames, resolution, error: null, status };
+  return { state: "running", renderUrl: null, alphaUrl: null, frames, resolution, error: null, status };
 }

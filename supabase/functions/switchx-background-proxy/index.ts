@@ -36,6 +36,7 @@ import {
   SWITCHX_BG_MODE,
   SWITCHX_BG_PROVIDER,
   SWITCHX_BG_VENDOR,
+  NO_RENDER_LINK,
   SWITCHX_BG_RESOLUTION,
   switchxBackgroundRequest,
   switchxFrames,
@@ -123,8 +124,11 @@ serve(async (req) => {
     const answered = ((job.response_payload_json ?? {}) as Record<string, unknown>).beeble_job_id;
     if (typeof answered !== "string" || answered !== job.external_job_id) return json(409, { error: "job_id_mismatch" });
     const estimate = payload.estimate ?? null;
-    if (job.status === "succeeded" || job.status === "failed") {
-      const prior = (job.response_payload_json ?? {}) as Record<string, unknown>;
+    const prior0 = (job.response_payload_json ?? {}) as Record<string, unknown>;
+    // a job this function itself failed for "no render link" is asked again: that was the reader's fault, not Beeble's
+    const askAgain = job.status === "failed" && prior0.error === NO_RENDER_LINK;
+    if ((job.status === "succeeded" || job.status === "failed") && !askAgain) {
+      const prior = prior0;
       return json(200, {
         ok: true,
         state: job.status,
@@ -169,6 +173,7 @@ serve(async (req) => {
           status: read.status,
           beeble_job_id: job.external_job_id,
           render_url: read.renderUrl,
+          alpha_url: read.alphaUrl,
           frames,
           resolution,
           estimate: finalEstimate,
@@ -177,7 +182,7 @@ serve(async (req) => {
       })
       .eq("id", job.id);
     if (writeErr) return json(500, { error: "job_record_failed" });
-    return json(200, { ok: true, state: read.state, render_url: read.renderUrl, frames, resolution, estimate: finalEstimate, error: read.error });
+    return json(200, { ok: true, state: read.state, render_url: read.renderUrl, alpha_url: read.alphaUrl, frames, resolution, estimate: finalEstimate, error: read.error });
   }
 
   if (action !== "submit") return json(400, { error: "unknown_action" });

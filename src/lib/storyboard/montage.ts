@@ -54,6 +54,22 @@ export function defaultMontageLines(thing: string | null): string {
   ].join("\n");
 }
 
+/**
+ * The one unusual thing in a plate, from the plate's label (`plate_79th_lafayette_bear_edge` → "the polar bear"):
+ * the cutaways look at it. A label naming nothing unusual gives null, and the montage uses street cutaways.
+ * (The first dry run read the label's LAST word and asked for "a quick optical zoom onto the edge".)
+ */
+export function thingOfLabel(label: string | null | undefined): string | null {
+  // labels are snake_case: an underscore is a word character to a regex, so the words are split first
+  const l = (label ?? "").toLowerCase().replace(/[_-]+/g, " ").trim();
+  if (!l) return null;
+  if (/\bbear\b/.test(l)) return "the polar bear";
+  if (/\b(t ?rex|dino(saur)?)\b/.test(l)) return "the T-rex";
+  if (/\bhorse\b/.test(l)) return "the horse";
+  const m = /\b(tiger|lion|elephant|giraffe|dog|cat|deer|moose|gorilla|penguin|camel|cow|goat)\b/.exec(l);
+  return m ? `the ${m[1]}` : null;
+}
+
 const TIME_RE = /^\s*(\d+(?:\.\d+)?)\s*(?:[-–—]|to)\s*(\d+(?:\.\d+)?)\s*s?\s*[:：]?\s*(.*)$/i;
 
 /**

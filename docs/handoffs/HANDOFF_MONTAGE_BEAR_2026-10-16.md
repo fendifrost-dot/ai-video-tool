@@ -21,9 +21,11 @@ Branch `claude/determined-faraday-4rzanq`, PR **#276** (draft → merge per Fend
 | **Montage press** (code) | **CODED, pushed** `a1f4833` — **not LIVE** | `src/lib/storyboard/montage.ts` (+test 7), `restage.ts` variant + `preferDressed` (+2 tests), `worldBatch/dialect.ts` + `runner.ts` (`alternate`, `variant`), `_shared/jobProgress.ts` alternate → unselected (+1 test), controller `montageShot`, FocusView **Montage** button (`focus-montage`, `confirm-montage`, `confirm-montage-dryrun`, `confirm-montage-scenes`), driver press `montage`, README. `tsc` clean. |
 | `switchx-background-proxy` enum fix (Beeble benchmark) | **CODED, pushed** `657cba0` + `6b4a536` — **not LIVE** | VERIFIED cause of `job_record_failed`: `provider_jobs.provider` is the `provider_name` enum; "beeble" is not in it. Row now `other` + `vendor: "beeble"`. Test pins the value to the enum. |
 | PR #276 reviews | **Self-review posted** (security + architecture, both APPROVE) | The independent reviewer agent was stopped by a session interruption before it posted; the review comment on the PR says so. A later session may add an independent review; nothing in the code waits on it. |
-| PR #276 merge | **NOT DONE at the time of writing** | CI `verify` was green on `6b4a536`; it runs again on `0836fdb`. Merge = un-draft, squash, then the deploy steps below. |
+| PR #276 merge | **MERGED** — squash `ce06cef` (06:42 UTC) | CI `verify` green on head `c332c5b`; branch resynced (`ebd3d4a`). |
+| `provider-jobs-tick` + `switchx-background-proxy` redeployed through Lovable | **LIVE (VERIFIED)** | Lovable agent, DEPLOY ONLY from `ce06cef`: `_shared/jobProgress.ts` sha256 `e9d343e0…7aac8` and `switchx-background-proxy/index.ts` sha256 `b2ebccc4…a9651` — both equal `sha256sum` of the files at `ce06cef` in this checkout. Unsigned `POST {}` to the tick → `401`. The benchmark submit through the proxy → `200 {"ok":true, jobId cb9b503c…, beeble_job_id swx_iIawxiSLvr3mUhQQFqxHN}` (was `500 job_record_failed`). |
+| Frontend published | **LIVE (VERIFIED)** | `deploy_project` after `latest_commit_sha = ce06cef`; live `index-BbxhaNDb.js` → `projects._id.storyboard-IlqbLUrG.js` carries `focus-montage`; `Acceptance-Bz8fgMeN.js` carries `montage-v1-2026-10-16`. |
 
-## Deploy — what makes it live (none of it done yet)
+## Deploy — what made it live (all done, see the state table; kept for the next time)
 
 1. **Merge PR #276** (squash). Note the squash SHA.
 2. **Lovable → Edge Functions → redeploy** on AVT (project `bd21b544-c7b8-4780-bdde-391ac9d4bfa8`), **DEPLOY ONLY**, from the squash SHA:
@@ -31,7 +33,7 @@ Branch `claude/determined-faraday-4rzanq`, PR **#276** (draft → merge per Fend
    - `switchx-background-proxy` (the enum fix). Verify: `python3 -I <scratchpad>/tools/switchx_bg.py submit f540b6be-5e1d-40b5-861e-6c5c08e03a96 b58cab47-b055-4bdd-846a-d288870de312` → **`200 {"status":"queued", …}`** (was `500 job_record_failed`). A `409 switchx_in_flight` means a row already exists — read it, do not resubmit.
 3. **Lovable Publish** for the frontend, only after `get_project.latest_commit_sha` equals the squash SHA. Verify in the live bundle (`curl --compressed`, follow `index-*.js` → `projects._id.storyboard-*.js` → its `./x.js` imports): the string `focus-montage` is present, and `montage-v1-2026-10-16`.
 
-## The montage run (after deploy)
+## The montage run — DONE once on c047 (06:50 UTC), judged in ledger row 59; the recipe below is how to run the next one
 
 Dry run first, then the real press, c047 first:
 
@@ -45,7 +47,7 @@ The dry run's console record must show `source.dressed: true`, `source.take: f54
 
 Then the other four (c041, c044, c045, c046) the same way, each with its own plate (their scene is the same: the bear plate serves all five). Ledger rows for each; post every result.
 
-## Beeble SwitchX benchmark (after the proxy redeploy)
+## Beeble SwitchX benchmark — DONE (ledger rows 55 and 58): the composite lane stays; Beeble changed the wardrobe. The proxy's reader fix (`e380fdf`, reads `output.render`/`output.alpha`) is in PR #277 and needs `switchx-background-proxy` redeployed after it merges
 
 `switchx_bg.py submit <c047 dressed f540b6be…> <plate b58cab47…>` → `status <jobId>` until `succeeded` → download the render → side by side with the v2 composite `93b9b968` (same take, same place) → post both → ledger row (Beeble 720p: 119 frames × $0.10/30 ≈ $0.40 list). Judge: identity, the jacket, the edge, the relighting, and the cost against the composite's $0.089 matte.
 
