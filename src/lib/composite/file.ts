@@ -26,6 +26,8 @@ export type FileCompositeInput = {
   shotId: string;
   dressed: MediaAsset;
   plate: MediaAsset;
+  /** The moving plate used instead of the still's pixels, when one was. */
+  plateVideo?: MediaAsset | null;
   plateFrom: "scene" | "location";
   matte: {
     model: string;
@@ -71,7 +73,7 @@ export function compositeMetadata(
       method: "composite",
     },
     composite: {
-      version: 1,
+      version: 2,
       recipe: input.render.recipe,
       seed: input.render.seed,
       made_in: "browser",
@@ -81,6 +83,12 @@ export function compositeMetadata(
       plate_asset_id: input.plate.id,
       plate_path: input.plate.path,
       plate_from: input.plateFrom,
+      // the moving plate he went over, when there was one (its frames, not the still's pixels)
+      plate_video_asset_id: input.plateVideo?.id ?? null,
+      plate_video_path: input.plateVideo?.path ?? null,
+      plate_frames: input.render.plateFrames,
+      camera: input.render.camera,
+      alpha_pairing: input.render.pairing,
       frames: input.render.frames,
       matte: {
         model: input.matte.model,
@@ -100,10 +108,13 @@ export function compositePaths(
   input: Pick<FileCompositeInput, "userId" | "projectId" | "name"> & {
     dressedId: string;
     plateId: string;
+    /** The moving plate's id, when one was used: a composite over it is another file than one over the still. */
+    plateVideoId?: string | null;
     seed: number;
   },
 ): { path: string; mattePath: string } {
-  const base = `${input.name}_${input.dressedId.slice(0, 8)}_${input.plateId.slice(0, 8)}_${input.seed}`;
+  const plate = input.plateVideoId ? `${input.plateId.slice(0, 8)}m${input.plateVideoId.slice(0, 8)}` : input.plateId.slice(0, 8);
+  const base = `${input.name}_${input.dressedId.slice(0, 8)}_${plate}_${input.seed}`;
   return {
     path: buildStoragePath(input.userId, input.projectId, "composites", `${base}.mp4`),
     mattePath: buildStoragePath(input.userId, input.projectId, "mattes", `${base}_alpha.mp4`),
@@ -117,6 +128,7 @@ export async function fileComposite(input: FileCompositeInput): Promise<FiledCom
     name: input.name,
     dressedId: input.dressed.id,
     plateId: input.plate.id,
+    plateVideoId: input.plateVideo?.id ?? null,
     seed: input.render.seed,
   });
   await uploadBytesToBucket("project-clips", mattePath, input.matte.bytes, "video/mp4", {
@@ -149,7 +161,7 @@ export async function fileComposite(input: FileCompositeInput): Promise<FiledCom
         approval_status: "pending",
         parent_asset_id: input.dressed.id,
         footage_role: "performance",
-        notes: `composite of ${input.dressed.name} over ${input.plate.name}`,
+        notes: `composite of ${input.dressed.name} over ${input.plateVideo ? `${input.plateVideo.name} (moving plate of ${input.plate.name})` : input.plate.name}`,
         metadata_json: metadata as unknown as Json,
       } as never)
       .select("id")

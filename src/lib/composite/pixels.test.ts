@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   GRADE,
+  alphaScratch,
+  cleanEdges,
   boxesForGauss,
   compositeFrame,
   erode,
@@ -92,6 +94,62 @@ describe("prepareAlpha", () => {
     expect(edge[32 * w + 32]).toBeLessThan(0.02); // no wrap deep inside
     expect(edge[1 * w + 32]).toBeLessThan(0.02); // no wrap outside — an outer band would be a halo
     expect(edge[11 * w + 32]).toBeGreaterThan(0.1); // the band sits just inside his outline
+    // v2: nothing of the band lies where the matte is empty — in v1 the pixels just outside his outline took up to
+    // a tenth of the band, and with a white wall behind him in the take that was a white rim on the plate
+    for (let y = 0; y < 8; y++) expect(edge[y * w + 32]).toBeLessThanOrEqual(a1[y * w + 32] * 0.5);
+    expect(edge[6 * w + 32]).toBe(0);
+  });
+});
+
+describe("cleanEdges", () => {
+  it("replaces the take's background in his outline with the colour just inside him", () => {
+    const w = 64;
+    const h = 64;
+    const m = gray(w, h, 0);
+    for (let y = 8; y < 56; y++) for (let x = 8; x < 56; x++) m[y * w + x] = 1;
+    const { a1 } = prepareAlpha(m, w, h, alphaScratch(w, h));
+    // him: dark red; the room behind him: white, and the matte's soft edge covers pixels that are half each
+    const fgg = new Float32Array(w * h * 3);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const inside = y >= 10 && y < 54 && x >= 10 && x < 54;
+        const i = (y * w + x) * 3;
+        fgg[i] = inside ? 0.4 : 1;
+        fgg[i + 1] = inside ? 0.05 : 1;
+        fgg[i + 2] = inside ? 0.05 : 1;
+      }
+    cleanEdges(fgg, a1, w, h, alphaScratch(w, h));
+    const at = (x: number, y: number) => [...fgg.slice((y * w + x) * 3, (y * w + x) * 3 + 3)];
+    const deep = at(32, 32); // deep inside: untouched
+    expect(deep[0]).toBeCloseTo(0.4, 5);
+    expect(deep[1]).toBeCloseTo(0.05, 5);
+    // on the outline (where a1 is partial) the white is gone: it is his red, not pink
+    const edge = at(32, 9);
+    expect(a1[9 * w + 32]).toBeGreaterThan(0.05);
+    expect(a1[9 * w + 32]).toBeLessThan(0.95);
+    expect(edge[1]).toBeLessThan(0.12);
+    expect(edge[0]).toBeGreaterThan(0.3);
+  });
+
+  it("a white wall behind him never rims him on a dark plate (the c044 failure)", () => {
+    const w = 48;
+    const h = 48;
+    const m = gray(w, h, 0);
+    for (let y = 10; y < 38; y++) for (let x = 10; x < 38; x++) m[y * w + x] = 1;
+    const s = alphaScratch(w, h);
+    const { a1, edge } = prepareAlpha(m, w, h, s);
+    const fg = rgba(w, h, 255, 255, 255); // the take: a white room…
+    for (let y = 12; y < 36; y++) for (let x = 12; x < 36; x++) fg.set([60, 40, 30, 255], (y * w + x) * 4); // …and him
+    const fgg = gradeForeground(fg, gray(w, h, 1), w, h, undefined, { ...GRADE, brightness: 0, contrast: 1, saturation: 1 });
+    cleanEdges(fgg, a1, w, h, s);
+    const { soft, wide } = preparePlate(rgba(w, h, 20, 20, 25), w, h); // a night plate
+    const out = compositeFrame({ fgg, a1, edge, soft, wide, w, h, grain: 0, random: () => 0.5 });
+    // every pixel where the matte is empty is the plate — not a pale rim of the wall
+    let brightest = 0;
+    for (let i = 0; i < w * h; i++) if (a1[i] === 0) brightest = Math.max(brightest, out[i * 4], out[i * 4 + 1], out[i * 4 + 2]);
+    expect(brightest).toBeLessThanOrEqual(26);
+    // and along his outline nothing is brighter than he is plus the wrap and the warm grade (a white rim would be far above)
+    for (let i = 0; i < w * h; i++) if (a1[i] > 0) expect(Math.max(out[i * 4], out[i * 4 + 1], out[i * 4 + 2])).toBeLessThanOrEqual(80);
   });
 });
 

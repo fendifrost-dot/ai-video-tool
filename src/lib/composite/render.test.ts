@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alphaShouldAdvance, colrOf, normalizedTime, renderSize, resampleGray } from "./render";
+import { alphaShouldAdvance, colrOf, coverRgba, normalizedTime, pairingFor, renderSize, resampleGray } from "./render";
 
 describe("pairing the alpha with the take by time", () => {
   it("a frame's place on its clock runs 0 to 1 over the file", () => {
@@ -66,5 +66,57 @@ describe("colrOf", () => {
     expect(colrOf({ matrix: "rgb" })).toBeNull();
     expect(colrOf(null)).toBeNull();
     expect(colrOf(undefined)).toBeNull();
+  });
+});
+
+describe("pairing the matte frame by frame (v2)", () => {
+  it("a matte with one frame per take frame is paired by index, any other count by time", () => {
+    expect(pairingFor(89, 89)).toBe("index");
+    expect(pairingFor(89, 90)).toBe("time");
+    expect(pairingFor(120, 60)).toBe("time");
+  });
+
+  it("the c044 failure: the matte's header said it was a frame longer than the take, and v1 ran a frame ahead", () => {
+    // both files: 89 frames at 11381/512 fps, identical frame times; the matte's mdhd length 4.0489 s, the take's
+    // 4.0039 s (replayed with the app's parser on 16 Oct). v1 normalised each clock to its header length.
+    const n = 89;
+    const d = 512 / 11381;
+    const times = Array.from({ length: n }, (_, i) => i * d);
+    const v1 = (takeLen: number, alphaLen: number) => {
+      let cur = 0;
+      const picks: number[] = [];
+      for (let k = 0; k < n; k++) {
+        const target = times[k] / takeLen;
+        while (cur + 1 < n && alphaShouldAdvance(target, times[cur] / alphaLen, times[cur + 1] / alphaLen)) cur++;
+        picks.push(cur);
+      }
+      return picks;
+    };
+    const old = v1(4.003866, 4.048853);
+    expect(old[84]).toBe(85); // the matte of the next frame on his fast-moving head: the white wall along his outline
+    expect(old.filter((a, k) => a !== k).length).toBeGreaterThan(40);
+    // v2: the same count means frame by frame — and even by time, the clocks end at the LAST FRAME, not the header
+    expect(pairingFor(n, n)).toBe("index");
+    const last = times[n - 1];
+    let cur = 0;
+    for (let k = 0; k < n; k++) {
+      const target = normalizedTime(times[k], 0, last);
+      while (cur + 1 < n && alphaShouldAdvance(target, normalizedTime(times[cur], 0, last), normalizedTime(times[cur + 1], 0, last))) cur++;
+      expect(cur).toBe(k);
+    }
+  });
+});
+
+describe("coverRgba", () => {
+  it("copies a plate of the same size and centre-crops a wider one", () => {
+    const same = new Uint8ClampedArray([1, 2, 3, 255, 4, 5, 6, 255]);
+    expect([...coverRgba(same, 2, 1, 2, 1)]).toEqual([...same]);
+    // a 4×1 plate (black, red, green, blue) onto 2×1: the middle two pixels
+    const wide = new Uint8ClampedArray([0, 0, 0, 255, 255, 0, 0, 255, 0, 255, 0, 255, 0, 0, 255, 255]);
+    const out = coverRgba(wide, 4, 1, 2, 1);
+    expect(out[0]).toBeGreaterThan(100); // red-ish
+    expect(out[5]).toBeGreaterThan(100); // green-ish
+    expect(out[3]).toBe(255);
+    expect(out[7]).toBe(255);
   });
 });

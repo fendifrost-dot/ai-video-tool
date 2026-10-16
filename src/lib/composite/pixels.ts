@@ -5,7 +5,10 @@
  *
  * The chain, for one frame of him (RGBA from the dressed take) and his matte (one grey channel from the alpha video):
  *   1. the matte is eroded a pixel and feathered (σ 1.0) — a1;
- *   2. an INNER edge band is cut from it: a1 minus a1 eroded four pixels and blurred (σ 5), blurred again (σ 1.5) — edge;
+ *   2. an INNER edge band is cut from it: a1 minus a1 eroded four pixels and blurred (σ 5), kept only where a1 is
+ *      the larger (one-sided), blurred again (σ 1.5) and multiplied by a1 so none of it lies outside him — edge;
+ *   2b. his outline is cleaned of the take's own background (v2, 16 Oct): the colour a few pixels inside him is
+ *      pulled outward over the feather, so a white wall behind him in the take never rims him on the plate;
  *   3. his pixels are multiplied by a key gradient (brighter on the key side) and graded to the plate: luma down a
  *      touch, contrast up a touch, colour a touch less, shadows warmed, highlights warmed, blues pulled;
  *   4. the plate is defocused slightly (σ 1.2) and, separately, blurred wide (σ 30) to light him;
@@ -58,10 +61,13 @@ export const GRADE: Grade = {
 };
 
 export const RECIPE = {
-  version: "plate-composite-v1-2026-10-15",
+  version: "plate-composite-v2-2026-10-16",
   keyGradient: "clip(120 + 140·x/w − 35·y/h, 0, 255) / 255, multiplied",
   matte: { erode: 1, featherSigma: 1.0 },
-  edge: { erode: 4, insideSigma: 5, bandSigma: 1.5 },
+  /** `confined`: the band is one-sided and multiplied by a1 — v1's band reached outside him and rimmed him white. */
+  edge: { erode: 4, insideSigma: 5, bandSigma: 1.5, confined: true },
+  /** His outline takes the colour from `erode` pixels inside him, spread over σ — never the take's own background. */
+  decontaminate: { erode: 2, sigma: 4 },
   plate: { softSigma: 1.2, wrapSigma: 30 },
   wrap: { mode: "screen", opacity: 0.5 },
   grain: 7,
@@ -197,13 +203,15 @@ export function erode(
 }
 
 /** Scratch space one frame's alpha work needs, allocated once. */
-export type AlphaScratch = { a: Gray; b: Gray; c: Gray; d: Gray };
+export type AlphaScratch = { a: Gray; b: Gray; c: Gray; d: Gray; e: Gray; f: Gray };
 export function alphaScratch(w: number, h: number): AlphaScratch {
   return {
     a: new Float32Array(w * h),
     b: new Float32Array(w * h),
     c: new Float32Array(w * h),
     d: new Float32Array(w * h),
+    e: new Float32Array(w * h),
+    f: new Float32Array(w * h),
   };
 }
 
@@ -218,9 +226,38 @@ export function prepareAlpha(
   gaussianBlur(s.a, w, h, RECIPE.matte.featherSigma, s.a, s.c); // a1
   erode(s.a, w, h, RECIPE.edge.erode, s.b, s.c);
   gaussianBlur(s.b, w, h, RECIPE.edge.insideSigma, s.b, s.c); // the matte pulled inside him
-  for (let i = 0; i < w * h; i++) s.d[i] = Math.abs(s.a[i] - s.b[i]);
+  // one-sided: where the pulled-in matte is the larger (outside his feathered outline) there is no band at all
+  for (let i = 0; i < w * h; i++) s.d[i] = Math.max(0, s.a[i] - s.b[i]);
   gaussianBlur(s.d, w, h, RECIPE.edge.bandSigma, s.b, s.c); // edge
+  // and nothing the blur spread past his outline survives: the band lights him, never the plate beside him
+  for (let i = 0; i < w * h; i++) s.b[i] *= s.a[i];
   return { a1: s.a, edge: s.b };
+}
+
+/**
+ * His outline, cleaned of the take's background. A matte's soft edge covers pixels that are part him, part whatever
+ * stood behind him when he was filmed (a white wall in the 15 Oct takes); laid over a dark plate through the feather,
+ * that mix is a pale rim. So the colour `decontaminate.erode` pixels inside him is spread outward (a normalised
+ * blur of σ `decontaminate.sigma`) and takes over wherever the eroded core is not full. In place on `fgg` (0–1 rgb);
+ * `s.c`–`s.f` are scratch, `a1` is read only.
+ */
+export function cleanEdges(fgg: Rgb, a1: Gray, w: number, h: number, s: AlphaScratch): Rgb {
+  const n = w * h;
+  const core = erode(a1, w, h, RECIPE.decontaminate.erode, s.e, s.c);
+  const weight = gaussianBlur(core, w, h, RECIPE.decontaminate.sigma, s.f, s.c);
+  for (let c = 0; c < 3; c++) {
+    for (let i = 0; i < n; i++) s.d[i] = fgg[i * 3 + c] * core[i];
+    gaussianBlur(s.d, w, h, RECIPE.decontaminate.sigma, s.d, s.c);
+    for (let i = 0; i < n; i++) {
+      const k = core[i];
+      if (k >= 1) continue; // deep inside him: his own pixel
+      const den = weight[i];
+      if (den < 1e-4) continue; // nowhere near him: the plate shows here anyway
+      const inside = s.d[i] / den;
+      fgg[i * 3 + c] = fgg[i * 3 + c] * k + inside * (1 - k);
+    }
+  }
+  return fgg;
 }
 
 /** ffmpeg colorbalance's weights: how much of a shadow, midtone and highlight adjustment a pixel of lightness l takes. */

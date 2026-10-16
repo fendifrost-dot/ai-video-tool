@@ -71,3 +71,32 @@ The same chain, written out as pure pixel code in `src/lib/composite/pixels.ts` 
 The matte comes from Fal `veed/video-background-removal` (through Control Center) instead of Runway: the Runway
 connector is a free plan with 2 credits, and CC holds the Fal key. Its h264 output is an RGB video plus a separate
 alpha video; the browser keeps the alpha and his pixels stay the dressed take's own.
+
+### v2 (16 Oct): the director's notes on the first five, and what changed
+
+Fendi on the five Chicago composites (c041, c044, c045, c046, c047 over the still plate `b58cab47`): c041, c046,
+c047 good but "completely still… unnatural — some activity needs to be happening within these shots, aside from me
+rapping"; c045 "okay, still no movement"; c044 "no good — the end of the shot… drift… the outline of me becomes
+white… pasted in."
+
+**c044, the cause (VERIFIED, 16 Oct 03:50 UTC).** Replaying v1's alpha pairing on the two files with the app's own
+MP4 parser: the take and the matte both have 89 frames at identical times, but the matte's header length is
+4.0489 s against the take's 4.0039 s (one frame of difference a muxer is free to write). v1 paired by time with each
+clock normalised to its header length, so from frame 45 on the matte ran ONE FRAME AHEAD of him (43 of 89 frames
+mispaired, frame 84 took matte 85). On his fast-moving head at the end of the shot the previous frame's matte leaves
+a strip of the take's white wall inside his outline — the white edge. Measured on the filed frame 84: the box left
+of his cap holds 192 white-wall pixels under matte 86 and 0 under matte 84. The recipe itself, run offline on the
+correctly paired frame, has no rim.
+
+**What v2 does** (`RECIPE.version plate-composite-v2-2026-10-16`, `CAMERA.version handheld-v1-2026-10-16`):
+
+| Change | Where | Why |
+|---|---|---|
+| The matte is paired FRAME BY FRAME when it has as many frames as the take (always, with this matte model); by time only otherwise, and then each clock ends at its LAST FRAME, never the header | `render.ts` `pairingFor`, `lastShownAt` | the c044 cause; `composite.alpha_pairing` on every filed row says which |
+| The edge band is one-sided (a1 − inner, clipped at 0) and multiplied by a1: nothing of it lies outside him | `pixels.ts` `prepareAlpha` (`edge.confined`) | v1's band reached up to a tenth of its strength outside the outline — a faint rim of the take's own background on any plate |
+| His outline is cleaned of the take's background: the colour 2 px inside him is spread (σ 4) over the feather | `pixels.ts` `cleanEdges` (`decontaminate`) | a white room behind him in every dressed take; the feather blended it into his edge |
+| A handheld camera: a seeded sum of three sines (0.19/0.43/1.07 Hz) per axis — ±1.2 % of the short side of drift, ±0.45° of roll, ±0.6 % breathing — applied to the FINISHED frame, so he and the place move together; overscan computed from the amplitudes so no edge shows | `camera.ts`, applied in `render.ts` | "completely still… unnatural" |
+| A MOVING plate: **Animate the plate** sends the scene's plate still to Kling 2.5 (image-to-video, 5 s, locked-off camera, traffic/lights/passers-by, centre foreground kept empty; ≈ $0.35) through the existing Higgsfield lane; the server files the clip as a plate of the scene (`lane world_plate_video`, naming its still); every composite of the scene made after it goes over its frames, by time from the take's first frame, holding the last frame if the take is longer | `plateMotion.ts`, `_shared/jobProgress.ts` `filePlateVideo`, `plan.ts` `videoPlatesOf`, `render.ts` video plate | "some activity needs to be happening within these shots" — the place has its own life, and the camera's move reads against it |
+
+The grade, the key gradient, the wrap and the grain are v1's. A composite over a moving plate is named with both
+plate ids (`…_<still8>m<video8>_<seed>.mp4`); the moving plate itself goes on no shot and selects nothing.

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Film, Image as ImageIcon, LayoutGrid, Layers, Loader2, Lock, Maximize, Minimize, Plus, Quote, Shirt, Wand2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Clapperboard, Film, Image as ImageIcon, LayoutGrid, Layers, Loader2, Lock, Maximize, Minimize, Plus, Quote, Shirt, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -224,7 +224,23 @@ export function FocusView() {
                   <Layers className="mr-2 h-4 w-4" /> Composite over plate{comp.plan ? ` · $${comp.plan.cost.usd.toFixed(3)}` : ""}
                 </Button>
               )}
+              {(comp.plateMotion.plan || comp.plan) && (
+                <Button
+                  variant="outline"
+                  disabled={!!busy || !comp.plateMotion.plan || comp.plateMotion.inFlight}
+                  onClick={() => sb.animatePlate(box)}
+                  title={comp.plateMotion.inFlight ? "this plate is being animated — one clip at a time" : (comp.plateMotion.why ?? undefined)}
+                  data-testid="focus-animate-plate"
+                >
+                  <Clapperboard className="mr-2 h-4 w-4" /> {comp.plateMotion.inFlight ? "Animating the plate…" : "Animate the plate"}{comp.plateMotion.plan && !comp.plateMotion.inFlight ? ` · $${comp.plateMotion.plan.cost.usd.toFixed(3)}` : ""}
+                </Button>
+              )}
             </div>
+            {comp.plan && (
+              <p className={cn("text-[11px]", comp.plan.plateVideo ? "text-emerald-300/80" : "text-foreground/50")} data-testid="focus-plate-state" data-moving={comp.plan.plateVideo ? "yes" : "no"}>
+                {comp.plan.plateVideo ? `Moving plate ready: ${comp.plan.plateVideo.name}` : "The plate is a still — animate it for traffic and lights that move"}
+              </p>
+            )}
             {dress.dressed.length > 0 && (
               <ul className="space-y-0.5 text-[11px]" data-testid="focus-dress-state">
                 {dress.dressed.map((d) => (
