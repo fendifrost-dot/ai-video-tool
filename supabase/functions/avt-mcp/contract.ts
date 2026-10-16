@@ -3,7 +3,7 @@
 // is unit-tested (contract.test.ts); index.ts does the I/O.
 
 export const SERVER_NAME = "avt";
-export const SERVER_VERSION = "1.1.0";
+export const SERVER_VERSION = "1.2.0";
 export const PROTOCOL_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"] as const;
 
 export const INSTRUCTIONS = [
@@ -252,6 +252,23 @@ export const TOOLS = [
         method: { type: "string", enum: ["POST", "GET"], description: "default POST" },
       },
       required: ["function"],
+    },
+  },
+  {
+    name: "avt_montage",
+    description:
+      "Shoot a performance shot as a fast-cut montage (the storyboard's Montage button, without a browser): its DRESSED take re-shot in the place of its scene's plate in one Seedance 2.5 call, filed on the shot unselected when done. lines = the scenes, one per line, each optionally timed (\"2.0-2.7 s: …\"); absent = the dialog's prefill. About $2.22 list for 4 s. dry_run answers with the exact prompt and request and sends nothing.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project_id: { type: "string" },
+        shot_id: { type: "string", description: "shots.id — or give shot_key" },
+        shot_key: { type: "string", description: "the shot's spec key, e.g. c042, on the project's active variation (or variation_id)" },
+        variation_id: { type: "string" },
+        lines: { type: "string" },
+        dry_run: { type: "boolean" },
+      },
+      required: ["project_id"],
     },
   },
   {

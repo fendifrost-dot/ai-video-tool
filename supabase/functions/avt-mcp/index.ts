@@ -286,6 +286,16 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
     }
     case "avt_call":
       return await callFunction(ctx, args);
+    case "avt_montage": {
+      // the storyboard's Montage button as a server call (montage-shot); the same policy and answer as avt_call
+      const body: Record<string, unknown> = { projectId: args.project_id };
+      if (typeof args.shot_id === "string") body.shotId = args.shot_id;
+      if (typeof args.shot_key === "string") body.shotKey = args.shot_key;
+      if (typeof args.variation_id === "string") body.variationId = args.variation_id;
+      if (typeof args.lines === "string") body.lines = args.lines;
+      if (args.dry_run === true) body.dryRun = true;
+      return await callFunction(ctx, { function: "montage-shot", body });
+    }
     case "avt_signed_url": {
       const expires = Math.min(Math.max(Number(args.expires_in ?? 3600) || 3600, 60), 86400);
       const { data, error } = await ctx.user.storage.from(String(args.bucket)).createSignedUrl(String(args.path), expires);

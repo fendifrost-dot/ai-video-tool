@@ -33,6 +33,7 @@ App menus move; if a step above does not match, the app needs: an MCP server URL
 | `avt_rpc` | `duplicate_variation`, `lyric_lines_in_window` |
 | `avt_functions` | every AVT edge function: callable / blocked, its notes and request type (generated from the code) |
 | `avt_call` | call one as you |
+| `avt_montage` | the storyboard's Montage button as a server call (`montage-shot`): a performance shot's DRESSED take re-shot as a fast-cut montage in its scene's plate, one Seedance call, filed on the shot unselected; `lines` = the scenes one per line, `dry_run` first |
 | `avt_signed_url`, `avt_list_files` | look at stored files |
 | `avt_browser_session` | a one-hour sign-in (access token only) for a headless browser that presses the app itself — `scripts/agent-browser/README.md`; for an older tool list, `avt_functions {name: "avt_browser_session"}` performs it (a declared argument, which every client forwards; `avt_whoami {browser_session: true}` works only where the client forwards undeclared ones) |
 
@@ -49,6 +50,8 @@ App menus move; if a step above does not match, the app needs: an MCP server URL
   credentials (`batch-token-proxy` refuses it, audited), so a one-hour hand-out cannot make itself permanent or cut
   off a sibling AI. Sessions are minted through `batch-token-proxy` (all audited); a busy AI may briefly see `429` —
   wait and retry.
-- What it cannot do that the app does: the storyboard's browser-side request building (continuity words, which
-  pictures to send, the blocking checks) is not on the server. Through `avt_call` an AI writes the request itself —
-  read `avt_functions` for the shape and prefer `dryRun` first.
+- What it cannot do that the app does: most of the storyboard's browser-side request building (continuity words,
+  which pictures to send, the blocking checks) is not on the server. Through `avt_call` an AI writes the request
+  itself — read `avt_functions` for the shape and prefer `dryRun` first. The montage is the exception: `avt_montage`
+  builds the storyboard's own request on the server (16 Oct 2026, Fendi: "whatever you need the browser for, build it
+  into the MCP"); the other presses (dress, animate the plate, composite) still need the browser driver.
