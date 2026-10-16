@@ -178,6 +178,14 @@ Done:
   Refused with the reason before any money moves: no dressed take, timed events, a take that covers only part of the
   shot, bad scene lines. `dryRun: true` answers with the exact prompt/request/settings and sends nothing.
 - Deploy: Lovable "DEPLOY ONLY" for `montage-shot` + `avt-mcp` from `4c69cbb` (see the verify lines below).
+  DONE 17:28 UTC (Lovable agent, twice, same bundle hashes): `montage-shot` bundle `81adf2bb…`, `avt-mcp` bundle
+  `0131844b…`, `montage-shot/index.ts` sha256 `0c1ceb67…`, `avt-mcp/contract.ts` `10653ec5…`; unsigned POST → 401
+  `missing_bearer`, anon key → 401 `unauthenticated`. VERIFIED 17:30 UTC through the MCP: `avt_call montage-shot
+  {shotKey c042, dryRun true}` → 200, `batchShotId c042_montage`, `songStart 73.527`, `lead 0.273`, `estimateUsd
+  2.219`, the dialog's four prefill scenes, the prompt opening "@Video1 is the performer". Lovable's agent flagged
+  that `supabase/config.toml` had no `verify_jwt` block for `montage-shot` — added (`verify_jwt = true`, like the
+  other paid lanes); it takes effect on the NEXT redeploy of `montage-shot` (the function refuses anonymous callers
+  itself either way).
 
 Verify (after the redeploy):
 - `avt_call montage-shot {projectId 764a63d2…, shotKey "c042", dryRun true}` → HTTP 200, `ok true`, `dryRun true`,
