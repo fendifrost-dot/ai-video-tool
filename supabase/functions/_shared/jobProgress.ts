@@ -376,16 +376,18 @@ export function plateMotionFrom(job: ProgressJob): PlateMotionFrom | null {
   if (s.route !== PLATE_MOTION_ROUTE) return null;
   const p = s.plate as Record<string, unknown> | undefined;
   if (!p || typeof p.still_asset_id !== "string" || !p.still_asset_id) return null;
-  const str = (v: unknown) => (typeof v === "string" && v ? v : null);
+  // the settings are the browser's own words: strings are bounded before they are copied onto the asset's record,
+  // and a length is a length (a clip is seconds long, not negative, not a day)
+  const str = (v: unknown, max = 400) => (typeof v === "string" && v ? v.slice(0, max) : null);
   return {
-    stillAssetId: p.still_asset_id,
-    stillPath: str(p.still_path),
+    stillAssetId: p.still_asset_id.slice(0, 64),
+    stillPath: str(p.still_path, 1024),
     sceneTitle: str(p.scene_title),
     shotLabel: str(p.shot_label),
-    model: str(s.model),
-    seconds: typeof s.seconds === "number" ? s.seconds : null,
-    prompt: str(s.prompt),
-    version: str(s.version),
+    model: str(s.model, 120),
+    seconds: typeof s.seconds === "number" && s.seconds > 0 && s.seconds <= 600 ? s.seconds : null,
+    prompt: str(s.prompt, 4000),
+    version: str(s.version, 120),
   };
 }
 

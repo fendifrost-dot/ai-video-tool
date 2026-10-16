@@ -88,6 +88,17 @@ describe("plateMotionFrom", () => {
     expect(plateMotionFrom(job({ request_payload_json: { settings: { route: "plate_motion", plate: {} } } }))).toBeNull();
     expect(plateMotionFrom(job({ request_payload_json: { settings: { route: "plate_motion", plate: { still_asset_id: 7 } } } }))).toBeNull();
   });
+
+  it("bounds what the browser wrote: a length is positive and under ten minutes, strings are cut short", () => {
+    const base = job().request_payload_json!.settings as Record<string, unknown>;
+    const withSeconds = (seconds: unknown) => plateMotionFrom(job({ request_payload_json: { settings: { ...base, seconds } } }))!.seconds;
+    expect(withSeconds(-5)).toBeNull();
+    expect(withSeconds(1e9)).toBeNull();
+    expect(withSeconds(10)).toBe(10);
+    const long = plateMotionFrom(job({ request_payload_json: { settings: { ...base, prompt: "x".repeat(10_000), plate: { ...(base.plate as object), scene_title: "y".repeat(1000) } } } }))!;
+    expect(long.prompt!.length).toBe(4000);
+    expect(long.sceneTitle!.length).toBe(400);
+  });
 });
 
 describe("a finished moving plate", () => {
