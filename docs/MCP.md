@@ -34,7 +34,7 @@ App menus move; if a step above does not match, the app needs: an MCP server URL
 | `avt_functions` | every AVT edge function: callable / blocked, its notes and request type (generated from the code) |
 | `avt_call` | call one as you |
 | `avt_signed_url`, `avt_list_files` | look at stored files |
-| `avt_browser_session` | a one-hour sign-in (access token only) for a headless browser that presses the app itself — `scripts/agent-browser/README.md`; `avt_whoami {browser_session: true}` answers the same for an older tool list |
+| `avt_browser_session` | a one-hour sign-in (access token only) for a headless browser that presses the app itself — `scripts/agent-browser/README.md`; for an older tool list, `avt_functions {name: "avt_browser_session"}` performs it (a declared argument, which every client forwards; `avt_whoami {browser_session: true}` works only where the client forwards undeclared ones) |
 
 ## Limits, by design
 - No budget, cap or ledger: a call runs as you and is billed to your provider accounts at list price. Each AI has its

@@ -36,7 +36,8 @@ hour, press the app's own button. The script presses; the app decides.
 ## Run it
 
 ```
-# 1. session: MCP avt_browser_session → save the answer verbatim as <scratchpad>/agent-browser-session.json
+# 1. session: MCP avt_browser_session (stale tool list: avt_functions {name:"avt_browser_session"}) → save the answer
+#    verbatim as <scratchpad>/agent-browser-session.json
 # 2. Chrome with H.264 (Playwright's Chromium has none): Chrome for Testing 141.0.7390.37 linux64 unzipped in the scratchpad
 # 3. dry run (free; the exact request lands in <out>/dry-run-request.json), then the press
 node scripts/agent-browser/avt-press.mjs composite --session <scratchpad>/agent-browser-session.json \

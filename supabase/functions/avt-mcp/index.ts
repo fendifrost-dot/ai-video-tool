@@ -271,6 +271,10 @@ async function runTool(ctx: Ctx, name: string, args: Record<string, unknown>) {
     }
     case "avt_functions": {
       const names = FUNCTION_DOCS.map((f) => f.name);
+      // A client whose tool list predates avt_browser_session cannot call it, and some clients drop arguments
+      // their cached schema does not declare (so avt_whoami's flag never arrives). `name` is declared here and
+      // always forwarded: asking this catalogue for the tool by name performs it. Verified 16 Oct 2026.
+      if (args.name === "avt_browser_session") return toolText(await browserSession(ctx));
       if (typeof args.name === "string") {
         const doc = FUNCTION_DOCS.find((f) => f.name === args.name);
         if (!doc) throw new ToolError(`no function "${args.name}"`);
