@@ -299,3 +299,15 @@ DONE (data, VERIFIED by the rows returned):
 CODED (PR #296): the footwear picture among the pieces he wears in the shot goes to the model as @Image2 after the
 plate, with one sentence naming the pair — storyboard Montage button and `montage-shot` (MCP). Status after merge
 and deploy is below.
+
+LIVE (VERIFIED, 23:30 UTC): PR #296 squash `268bdca`. `montage-shot` redeployed (bundle `85f13c31…`); a dry run on
+c042 now returns `shoes` = the cream pair, the prompt carries "His shoes are the pair in @Image2 (…)", and settings
+carry `extraImages`; c041 resolves the black pair. `avt-mcp` redeployed (catalogue). Publish `9c020182`: the live
+`Acceptance-C1r2FG1A.js` carries "His shoes are the pair in @Image2" (the storyboard's Montage button).
+
+Shoe tests (ledger 97–98), both PASS on the shoes: c041 `afed6a70` (black patent, penguin platform) and c042
+`ab96fc5f` (cream, orca train), each with one cutaway onto his shoes. Posted to Fendi, filed unselected.
+
+Next: none owed on the shoes. Treatment: Fendi is gathering a picture per new location; ideas sent in chat
+(non-typical runway locations, one cold animal per scene, a last-cutaway reveal). Do NOT cut the original treatment;
+a fresh board variation holds the new one when he sends pictures.
