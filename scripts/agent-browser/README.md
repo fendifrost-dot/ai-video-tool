@@ -61,6 +61,10 @@ has it; the server files the clip minutes later as a moving plate of the scene (
 `metadata_json->>lane = world_plate_video`). A `composite` pressed after that goes over the moving plate; the focus
 view says which with `focus-plate-state[data-moving]`.
 
+`dress` puts the scene's outfit on the shot's stretch of the take (the Higgsfield object-swap, every started source
+second billed, at least 4 s ≈ $2.72); the result lands on the shot as an unselected alternate. The outfit is the
+scene's (`variation_scenes.outfit_key`), so to dress one shot differently give it its own scene.
+
 `montage` re-shoots the performance shot's DRESSED take (its real take when none is dressed) as a fast-cut sequence of
 angles and cutaways in the place of the scene's plate, in ONE Seedance 2.5 reference-to-video call (~$2.36 for 5 s
 at 720p), filed on the shot as an unselected alternate. `--event` is the scene list, one scene per line, each

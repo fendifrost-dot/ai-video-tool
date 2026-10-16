@@ -135,6 +135,10 @@ describe("the absurd event", () => {
     expect(long.ok && long.plan.event!.length).toBe(PLATE_EVENT_MAX);
     const s = plateMotionSettings({ still, seconds: 5, prompt: r.plan.prompt, event: r.plan.event });
     expect(s.event).toBe(r.plan.event);
-    expect(s.version).toBe("plate-motion-v3-2026-10-16");
+    expect(s.version).toBe("plate-motion-v4-2026-10-16");
+    // v4: the life is only what belongs to the place — v3's "cars and buses pass along the street" put a bus on a platform
+    expect(r.plan.prompt).toContain("only what belongs to it");
+    expect(r.plan.prompt).toContain("no vehicle where there is no road");
+    expect(r.plan.prompt).not.toContain("pass along the street");
   });
 });

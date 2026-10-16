@@ -26,20 +26,27 @@ export const PLATE_MOTION_PROVIDER = "higgsfield" as const;
 export const PLATE_MOTION_MODEL = "kling-2.5-turbo-pro-i2v";
 /** Kling bills whole clips of 5 or 10 s; the windows are under 5 s, and a longer take holds the plate's last frame. */
 export const PLATE_MOTION_SECONDS = 5;
-export const PLATE_MOTION_VERSION = "plate-motion-v3-2026-10-16";
+export const PLATE_MOTION_VERSION = "plate-motion-v4-2026-10-16";
 /** The longest event the director may ask for, in characters. */
 export const PLATE_EVENT_MAX = 400;
 
 /**
  * The motion asked for. The camera is told to stay put twice (a moving camera under a static matte would tear him
- * off the place); the life is in the street, never in the centre foreground where he stands.
+ * off the place); the life is in the place, never in the centre foreground where he stands.
+ *
+ * v4 (16 Oct 2026): the life is "only what belongs to the place". v3 said "cars and buses pass along the street" for
+ * every plate, and on the first two PLATFORM plates (the runway `d7a2c523`, the walrus `341cbcfb`) the model obliged:
+ * the camera rose off the platform and a bus arrived where the train had been. A plate is a street, a platform, a
+ * train car, a room — the base now names each with its own life and forbids anything the picture does not hold.
  */
 const PLATE_MOTION_BASE =
-  "Locked-off camera on a tripod: no camera movement, no pan, no zoom, no push-in; the framing stays exactly as in the picture. " +
-  "The place comes alive at its own pace: cars and buses pass along the street with their headlights and tail lights, " +
-  "traffic signals change, a pedestrian walks by in the distance, signs and windows flicker softly, a light breeze moves " +
-  "what can move. The centre foreground stays empty: nothing and nobody enters it. Photoreal, the same time of day, " +
-  "the same light and weather as the picture; no text, no captions";
+  "Locked-off camera on a tripod: no camera movement, no pan, no zoom, no push-in, no rise; the framing stays exactly as in the picture. " +
+  "The place comes alive at its own pace, with only what belongs to it: on a street, cars and buses pass with their headlights " +
+  "and tail lights and traffic signals change; on a station platform, the train stays where it is or pulls in along its track " +
+  "and passengers walk; in a room or a train car, the people there shift and the lights flicker softly; a pedestrian walks by " +
+  "in the distance, a light breeze moves what can move. Nothing that is not in the picture appears: no vehicle where there is " +
+  "no road, no new building, nobody new in the foreground. The centre foreground stays empty: nothing and nobody enters it. " +
+  "Photoreal, the same time of day, the same light and weather as the picture; no text, no captions";
 export const PLATE_MOTION_PROMPT = `${PLATE_MOTION_BASE}, no added objects.`;
 
 /**
