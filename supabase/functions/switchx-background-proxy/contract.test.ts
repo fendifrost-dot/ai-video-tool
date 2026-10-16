@@ -50,11 +50,17 @@ describe("the SwitchX background request", () => {
     expect(readBeebleStatus({ status: "completed", result: { render: "https://cdn.beeble.ai/r.mp4", frames_processed: 119, resolution: "720p" } })).toEqual({
       state: "succeeded",
       renderUrl: "https://cdn.beeble.ai/r.mp4",
+      alphaUrl: null,
       frames: 119,
       resolution: "720p",
       error: null,
       status: "completed",
     });
+    // Beeble's real shape (job swx_iIawxiSLvr3mUhQQFqxHN, 16 Oct 2026): the links under `output`, an alpha beside the render
+    expect(
+      readBeebleStatus({ status: "completed", progress: 100, output: { render: "https://cdn.beeble.ai/switchx/u/j/output/render.mp4?x=1", source: "https://cdn.beeble.ai/s.mp4", alpha: "https://cdn.beeble.ai/switchx/u/j/output/alpha.mp4?x=1" } }),
+    ).toMatchObject({ state: "succeeded", renderUrl: "https://cdn.beeble.ai/switchx/u/j/output/render.mp4?x=1", alphaUrl: "https://cdn.beeble.ai/switchx/u/j/output/alpha.mp4?x=1", frames: null });
+    expect(readBeebleStatus({ status: "completed", output: { render: "https://cdn.beeble.ai/r.mp4", alpha: "https://evil.example/a.mp4" } })).toMatchObject({ state: "succeeded", alphaUrl: null });
     expect(readBeebleStatus({ status: "failed", error: { message: "bad input" } })).toMatchObject({ state: "failed", error: "bad input" });
     expect(readBeebleStatus({ status: "completed" })).toMatchObject({ state: "failed", error: expect.stringMatching(/without a render/) });
     expect(readBeebleStatus({ status: "completed", result: { render: "http://plain/r.mp4" } })).toMatchObject({ state: "failed" });
