@@ -40,8 +40,8 @@ Scene A = the fashion show on the platform (c044). Scene B = the walrus off the 
 | c041 | dressed take, bubble coat + bucket hat (job `390e3e88`, $2.72) | `0f649563` (4.000 s) | VERIFIED on frames 5/30/55/80: the glossy bubbled lambskin coat and the black nylon bucket hat on him, glasses kept |
 | c041 | composite over the dice plate | `1aab6283` (4.000 s) | PASS: the coat and the bucket hat pixel-exact, the dice players and the penguin behind him, the plate holds (ledger row 78) |
 | c044 | montage, scene A (job `b9e2bc52`, $2.22) | `bda9ead2` (4.04 s) | OBSERVED every eighth frame: him on the platform with the models behind · HARD CUT aerial of the train sliding into the station · HARD CUT low angle, the models' legs passing in front of him. All three scenes, in order. |
-| c044 | composite over the runway v4 plate | `7e022326` (4.004 s) | OBSERVED: pixel-exact, the models walk past behind him; the plate's push-in shows at the end of the shot window (ledger row 82) |
-| c045 | composites over the walrus plates | `f0706d72` (v3 plate), `69c9f4b4` (v4 plate) | OBSERVED: pixel-exact, the walrus heaves off the train behind him; on both the plate's drift (train → road and bus) reaches the end of the shot window (ledger rows 76, 83) |
+| c044 | composites over the runway v4 plate | `7e022326` (v2 recipe), **`1048e4da` (v3 recipe, the plate starts at the shot: PASS, no push-in or bus in the window)** | ledger rows 82, 85 |
+| c045 | composites over the walrus plates | `f0706d72` (v3 plate, v2 recipe), `69c9f4b4` (v4 plate, v2 recipe), **`96174ef4` (v4 plate, v3 recipe: PASS, the train intact through the window)** | ledger rows 76, 83, 86 |
 | c045 | montage, scene B (job `4fa88370`, $2.22) | `53771ac0` (4.0 s) | OBSERVED: the walrus off the train (wide) · HARD CUT the open door · HARD CUT him rapping inside the car; the walrus's back in the foreground of the last two cuts (ledger row 79) |
 | c046 | composite inside the train car | `fea93ac6` (4.004 s) | PASS: pixel-exact in the aisle, doors open, platform behind, passengers, a train passing outside |
 
