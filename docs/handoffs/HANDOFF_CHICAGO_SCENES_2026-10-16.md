@@ -127,3 +127,25 @@ the orcas in the window beside him, the passengers pointing; the plate moves onl
 Verify: `project_assets` `bdf66a28` exists with `metadata_json.composite.plate_asset_id = 0fe81de8` and
 `is_primary` false on c047; the bear composite `616c881b` still selected. NOT DONE (held): the Kling animation of
 `0fe81de8` and the composite over it; the c047 orca montage.
+
+### CORRECTION 16:18–16:35 UTC — the orcas are c042's, c047 stays as approved; the Higgsfield hold is lifted
+
+Fendi: the still-plate composite was "antithetical" to the working lane (picture → portrait plate → Kling animates
+it → he is composited over the MOVING plate); the hold on Higgsfield was mine, built on a wrong reading of the
+spend, and is **lifted** ("Higgsfield is the tool that works"). And c047 — the approved bear clip — is **not to be
+redone**; the orcas go to a leftover shot.
+
+Done:
+- Orca plate animated: `f61be12d` (Kling via CC, `plate-motion-v4`, still `0fe81de8`). Ledger row 89.
+- Re-filed to scene **"Chicago, the corner"** (c042/c043, 73.8–76.75 s): `0fe81de8`, `b77085fe`, `f61be12d`,
+  reference `0a4c1feb` (`metadata_json.scene_title`; each carries a `refiled` note). The still-plate composite on
+  c047 `bdf66a28` is `approval_status rejected`. c047's approved composite `616c881b` untouched (VERIFY: still
+  selected on c047; "Chicago, the switch" lists only the bear plates again).
+- **c042 composited over the moving orcas**: `cf43987a` (dressed `6eea726d` over `f61be12d`, recipe v3, offset
+  0.2732 s), filed unselected on c042, posted. Ledger row 91. c043 has no dressed take (none to composite).
+- Two mattes wasted (row 90): the `composite` press was run without `--chrome`. **Every composite press takes
+  `--chrome <scratchpad>/cft/chrome-linux64/chrome`** (Chrome for Testing; the Playwright Chromium has no H.264).
+  `animate-plate`, `dress` and `montage` do not decode video and run without it.
+
+Not done: a c042 montage over the orcas (Seedance, ~$1.55 real) — not asked; c043 (same scene) needs a dress
+first if it is to be composited.
