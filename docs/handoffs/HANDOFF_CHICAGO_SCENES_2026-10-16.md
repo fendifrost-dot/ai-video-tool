@@ -235,3 +235,11 @@ Verify after Publish: bundle crawl → the storyboard chunk's Acceptance/BoxCard
 background 1–2, Montage), the arrows present; on c047: the bear composite still showing, montages named Montage 1–4.
 Edge: `provider-jobs-tick` carries `_shared/jobProgress.ts` → redeploy it so NEW montages are filed with
 `method: "montage"` (until then they read "Restaged" and are renamed by a backfill).
+
+LIVE (VERIFIED 19:40 UTC): PR #292 squash `0d71988`; Lovable `latest_commit_sha` matched; Publish (deployment
+`3247e1c5`); live `index-C6hXC7jw.js` → `projects._id.storyboard-DNjOIxwz.js` carries `versions · click one to show
+it` (1) and `Previous version` (1); its `Acceptance-BGprR3aC.js` chunk carries `Your take · montage`. Edge:
+`provider-jobs-tick` redeployed from `0d71988` (Lovable agent; `jobProgress.ts` sha256 `5c22cfdc…`, unsigned POST →
+401 `missing_credentials`). Where the clips are, for Fendi: the STORYBOARD page (not the treatment page); on each
+shot's card the "N versions" line and the named pills, the ‹ › arrows on the picture; c042 has Your take · Dressed ·
+New background 1–2 · Montage; c047 has the bear composite showing and Montage 1–4 beside it.
