@@ -9,7 +9,9 @@ app's own code does everything else and the script reports what the page said.
 
 ```
 # 1. the sign-in: ask the MCP and save its answer as is
-#    avt_browser_session            → agent-browser-session.json   (or avt_whoami {browser_session: true})
+#    avt_browser_session            → agent-browser-session.json
+#    (stale tool list: avt_functions {name: "avt_browser_session"} performs it; avt_whoami {browser_session: true}
+#     only where the client forwards undeclared arguments)
 #    (that name and agent-browser-out-*/ are gitignored; keep them in the scratchpad anyway)
 # 2. press
 node scripts/agent-browser/avt-press.mjs composite --session agent-browser-session.json \

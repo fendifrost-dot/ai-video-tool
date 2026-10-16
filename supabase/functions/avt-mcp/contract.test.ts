@@ -115,6 +115,10 @@ describe("functions", () => {
     expect(body).toMatch(/purpose: "browser"/);
     expect(body).toMatch(/is_anonymous/);
     expect(body).not.toMatch(/identities|phone|user_metadata/);
+    // the stale-client bridges: both reach the same function, through a declared argument where needed
+    expect(src).toMatch(/args\.name === "avt_browser_session"\) return toolText\(await browserSession\(ctx\)\)/);
+    expect(src).toMatch(/args\.browser_session === true\) return toolText\(\{ \.\.\.base, browser_session: await browserSession\(ctx\) \}\)/);
+    expect(TOOLS.find((t) => t.name === "avt_functions")!.description).toMatch(/avt_browser_session/);
   });
 });
 

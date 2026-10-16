@@ -237,7 +237,8 @@ export const TOOLS = [
   },
   {
     name: "avt_functions",
-    description: "AVT's edge functions (image/video generation, edits, uploads, polling): whether each is callable, what it does, and the request body it takes. Pass name for one function's full notes.",
+    description:
+      "Every AVT edge function this server can call, or one by name: callable or blocked, its notes and request type. name: \"avt_browser_session\" performs that tool instead (for a client whose tool list predates it or drops undeclared arguments).",
     inputSchema: { type: "object", properties: { name: { type: "string" } } },
   },
   {
