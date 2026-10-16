@@ -40,19 +40,27 @@ export const MONTAGE_SYNC =
 export type MontageScene = { from: number; to: number; text: string };
 
 /**
- * The five scenes Fendi described, as the dialog's prefill. `thing` is the one unusual thing in the place — the
- * cutaways look at it; a plate without one gets a street cutaway instead.
+ * The scenes Fendi described, as the dialog's prefill. `thing` is the one unusual thing in the place — the cutaways
+ * look at it; a plate without one gets a street cutaway instead.
+ *
+ * Four scenes, ending on the cutaway, with "HARD CUT" on every cut line (the wording that gets cuts — without it the
+ * first live run was one continuous camera move). There is NO "snap back to him" scene: asked for one, the model
+ * spends its last frames on it — a two-frame flash of him at the end of c047's v2, a near-frozen half second on
+ * the others — which reads as an inserted still (Fendi, 16 Oct 2026: "so fast it looks ridiculous"). The cut back
+ * to him is the edit's job, from the pixel-exact composite, not the montage's.
  */
 export function defaultMontageLines(thing: string | null): string {
   const it = thing?.trim() || null;
   return [
     "him rapping straight to camera, a medium shot from the waist up, the place behind him",
-    "quick cut to his profile from the side, still rapping",
-    it ? `a quick optical zoom onto ${it}; it does not react` : "a quick optical zoom past him down the street, traffic and lights",
-    it ? `a small child walks up to ${it} and pets it; it stays calm; nobody reacts` : "a passer-by walks through behind him without a glance",
-    "snap back to him, closer, rapping to camera to the end",
+    "HARD CUT to his profile from the side, a different camera, still rapping",
+    it ? `HARD CUT to a tight shot of ${it}, a quick optical zoom in on its face; it does not react` : "HARD CUT to a quick optical zoom past him down the street, traffic and lights",
+    it ? `HARD CUT: a small child walks up to ${it} and pets it; it stays calm; nobody reacts` : "HARD CUT: a passer-by walks through behind him without a glance",
   ].join("\n");
 }
+
+/** How much of a montage's tail the edit never uses: the model's last frames are a frozen or flashed closing beat. */
+export const MONTAGE_TAIL_TRIM_SECONDS = 0.12;
 
 /**
  * The one unusual thing in a plate, from the plate's label (`plate_79th_lafayette_bear_edge` → "the polar bear"):

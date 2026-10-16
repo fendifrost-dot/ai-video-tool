@@ -46,7 +46,7 @@ node scripts/agent-browser/avt-press.mjs montage --dry-run --session <scratchpad
   --variation 358363e6-33ba-48e0-bd88-e80b57ac6b3c --shot c047
 ```
 
-The dry run's console record must show `source.dressed: true`, `source.take: f540b6be…`, `place: …/worlds/plate_79th_lafayette_bear_mvakt7g9_1.png`, `seconds: 5`, five scenes covering 0–5 s, and an `angle` beginning "a fast-cut montage in the place of @Image1, shot like news footage: shaky handheld camerawork, quick optical zooms, 35mm film grain…" followed by "Show in order, in seconds from the first frame:" and five dashes. Then the real press (~$2.36 at 720p, 5 s). The result is filed as a performance take **unselected** on c047 (`provider_jobs.request_payload_json.settings.alternate = true`, batchShotId `c047_montage`). Judge: his face, the YSL jacket and the lip sync on the him-on-screen windows; the bear the same animal as the plate; the cutaways real. Fallback (no code): the same scenes as two presses with explicit windows, cut together in the edit.
+The dry run's console record must show `source.dressed: true`, `source.take: f540b6be…`, `place: …/worlds/plate_79th_lafayette_bear_mvakt7g9_1.png`, `seconds: 5`, four scenes covering 0–5 s (from PR #280; five before it), and an `angle` beginning "a fast-cut montage in the place of @Image1, shot like news footage: shaky handheld camerawork, quick optical zooms, 35mm film grain…" followed by "Show in order, in seconds from the first frame:" and one dash per scene. Then the real press (~$2.36 at 720p, 5 s). The result is filed as a performance take **unselected** on c047 (`provider_jobs.request_payload_json.settings.alternate = true`, batchShotId `c047_montage`). Judge: his face, the YSL jacket and the lip sync on the him-on-screen windows; the bear the same animal as the plate; the cutaways real. Fallback (no code): the same scenes as two presses with explicit windows, cut together in the edit.
 
 Then the other four (c041, c044, c045, c046) the same way, each with its own plate (their scene is the same: the bear plate serves all five). Ledger rows for each; post every result.
 
@@ -99,3 +99,20 @@ route for a first try.
 ## What to report back
 
 The squash SHA; the two `source_sha256` values from the Lovable agent and whether they match; the `401`/`200` proofs; the bundle string check; the montage dry-run record; the montage job id, asset id and the judged result with frames; the Beeble job id and side-by-side; ledger rows added.
+
+## The flash at the cut back (Fendi, 16 Oct ~08:30 UTC) — the montage's "return to him" is dropped
+
+Fendi on the five-cut preview: "after the child pets the bear a quick still shot is input and then the video cuts back
+to the performance shot … it's so fast it looks ridiculous."
+
+**VERIFIED** (frame tiles `tails.jpg`, frames 78–97 of montage v2 `4efc8c42`, c041 `82cd07bf`, c046 `a828c578` and the
+preview): the "snap back to him" scene asked for at the end of every montage comes out as the model's closing beat —
+on c047 v2 it is the LAST TWO FRAMES (95–96) of him; on c041/c046 it is ~17 near-static frames. The five-cut preview
+v1 carried v2's two flash frames before its cut to the composite: that is the "still" Fendi saw. The preview was re-cut
+(`c047_fivecut_preview_v2.mp4`, child segment trimmed to 3.92 s) and posted with the frame tile across the cut.
+
+DECISION (PR #280): `defaultMontageLines` is four scenes ending on the cutaway, "HARD CUT" baked into every cut line, no
+return scene; `MONTAGE_TAIL_TRIM_SECONDS = 0.12` names the tail the edit never uses. The cut back to him is the edit's,
+from the pixel-exact composite (recipe E), not the montage's. When the timeline step lays recipe E inside a shot's
+window, it trims every montage segment's last 0.12 s. The filed montages (v2/v3 wording) stay as they are — their
+cutaway windows are what the edit uses; only their tails are skipped. No spend.

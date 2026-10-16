@@ -65,7 +65,11 @@ view says which with `focus-plate-state[data-moving]`.
 angles and cutaways in the place of the scene's plate, in ONE Seedance 2.5 reference-to-video call (~$2.36 for 5 s
 at 720p), filed on the shot as an unselected alternate. `--event` is the scene list, one scene per line, each
 optionally with its own window ("2.0-2.7 s: a quick optical zoom onto the polar bear"); without it the dialog's
-prefilled five scenes are sent. The prompt shape is Thuggpapi's
+prefilled four scenes are sent (him to camera · HARD CUT profile · HARD CUT tight on the thing · HARD CUT a child pets
+it). There is no "snap back to him" scene: asked for one, the model spends its last frames on it — a two-frame flash
+of him (c047 v2) or a frozen half second (the other four) that reads as an inserted still; the montage supplies the
+cutaways, the edit cuts back to the pixel-exact composite, and the montage's last `MONTAGE_TAIL_TRIM_SECONDS` are
+never used. The prompt shape is Thuggpapi's
 (`docs/research/references/THUGGPAPI_SEEDANCE_MONTAGE_PROMPTS_2026-10.md`): one style line, "Show in order", one dash
 per scene, deadpan.
 

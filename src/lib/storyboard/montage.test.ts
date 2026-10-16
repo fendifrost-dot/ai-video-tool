@@ -6,7 +6,7 @@ vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 vi.mock("@/lib/queries/storyboard", () => ({}));
 
 import { NEVER_WIDER } from "./restage";
-import { MONTAGE_MIN_SCENE_SECONDS, MONTAGE_STYLE, MONTAGE_SYNC, MONTAGE_VERSION, defaultMontageLines, montagePrompt, montageRecord, montageScript, planMontageScenes, thingOfLabel } from "./montage";
+import { MONTAGE_MIN_SCENE_SECONDS, MONTAGE_STYLE, MONTAGE_SYNC, MONTAGE_TAIL_TRIM_SECONDS, MONTAGE_VERSION, defaultMontageLines, montagePrompt, montageRecord, montageScript, planMontageScenes, thingOfLabel } from "./montage";
 
 describe("the montage's scenes", () => {
   it("names the unusual thing from the plate's label, never the label's last word", () => {
@@ -19,14 +19,16 @@ describe("the montage's scenes", () => {
     expect(thingOfLabel(null)).toBeNull();
   });
 
-  it("prefills Fendi's five: him to camera, his profile, a zoom to the thing, a child petting it, back to him", () => {
+  it("prefills four scenes ending on the cutaway — him to camera, his profile, a zoom to the thing, a child petting it — with HARD CUT on every cut, and no snap back", () => {
     const lines = defaultMontageLines("the polar bear standing on the walkway behind him").split("\n");
-    expect(lines).toHaveLength(5);
+    expect(lines).toHaveLength(4);
     expect(lines[0]).toMatch(/rapping straight to camera/);
-    expect(lines[1]).toMatch(/profile/);
-    expect(lines[2]).toMatch(/quick optical zoom onto the polar bear.*does not react/);
-    expect(lines[3]).toMatch(/child walks up to the polar bear.*and pets it/);
-    expect(lines[4]).toMatch(/back to him, closer/);
+    expect(lines[1]).toMatch(/^HARD CUT to his profile/);
+    expect(lines[2]).toMatch(/^HARD CUT to a tight shot of the polar bear.*does not react/);
+    expect(lines[3]).toMatch(/^HARD CUT: a small child walks up to the polar bear.*and pets it/);
+    // the model's closing beat comes out as a flash or a freeze (c047 v2: two frames of him); the cut back is the edit's
+    expect(defaultMontageLines("the bear")).not.toMatch(/back to him/);
+    expect(MONTAGE_TAIL_TRIM_SECONDS).toBeGreaterThan(0.08);
     // a plate with nothing unusual in it gets street cutaways, never a bear that is not there
     expect(defaultMontageLines(null)).not.toMatch(/polar bear/);
     expect(defaultMontageLines("  ")).toMatch(/passer-by/);
@@ -37,11 +39,10 @@ describe("the montage's scenes", () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.scenes.map((s) => [s.from, s.to])).toEqual([
-      [0, 1],
-      [1, 2],
-      [2, 3],
-      [3, 4],
-      [4, 5],
+      [0, 1.3],
+      [1.3, 2.5],
+      [2.5, 3.8],
+      [3.8, 5],
     ]);
   });
 
@@ -81,8 +82,8 @@ describe("the montage prompt", () => {
     expect(MONTAGE_STYLE).toMatch(/shaky handheld camerawork, quick optical zooms, 35mm film grain/);
     expect(MONTAGE_STYLE).toMatch(/Deadpan/);
     expect(p).toContain("Show in order, in seconds from the first frame:");
-    expect(p.match(/\n— \d\.\d–\d\.\d s: /g)).toHaveLength(5);
-    expect(montageScript(scenes)).toContain("— 2.0–3.0 s: a quick optical zoom onto the polar bear; it does not react");
+    expect(p.match(/\n— \d\.\d–\d\.\d s: /g)).toHaveLength(4);
+    expect(montageScript(scenes)).toContain("— 2.5–3.8 s: HARD CUT to a tight shot of the polar bear, a quick optical zoom in on its face; it does not react");
   });
 
   it("keeps the performance in sync through the cutaways and never shows more of him than the take", () => {
