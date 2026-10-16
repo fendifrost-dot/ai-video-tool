@@ -270,5 +270,10 @@ c044 `60cd0232`, c045 `81cecb2a`, c046 `f5edfee0` — unselected on their shots,
 PASS the rule above (he is never centre-front; anchored to a pillar, a door frame, a pole); the runway one is the
 strongest. Posted. The old centre-front montages stay filed as earlier versions; the board names them Montage 1….
 
-Next: make the orca shape the dialog's PREFILL (`defaultMontageLines` in montage.ts and its Deno copy) so a montage
-pressed without lines opens on the place without him — a small PR with its test.
+DONE 20:15 UTC — the orca shape is the PREFILL: PR #294 squash `751d766` (`defaultMontageLines` in montage.ts and
+its Deno copy; tests). LIVE (VERIFIED): Publish (deployment `d7d73a98`); live `index-Cf28ZNWw.js` →
+`projects._id.storyboard-Cy3jLSPc.js` → `Acceptance-g_JQqlR-.js` carries "the place: a wide shot with" and no longer
+carries "rapping straight to camera, a medium shot from the waist up, the place behind him". `montage-shot`
+redeployed from `751d766` (`montagePrompt.ts` sha256 `666df0ff…`); a dry run through the MCP on c047 returns the four
+new prefill scenes (place with the polar bear, he is not in it · him in profile with a hand on something · tight on
+the bear · low angle, him leaning). Nothing sent.
