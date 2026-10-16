@@ -159,5 +159,10 @@ verify_jwt = false
 # Supabase JWT, so the platform must let the request through; the function exchanges the credential for an ordinary
 # user session via batch-token-proxy and refuses anything without one. No budgets or caps (owner's decision, 8 Oct
 # 2026): spend is controlled on the provider accounts.
+# The storyboard's Montage button as a server call (the MCP's avt_montage): a signed-in caller only, like the
+# other paid lanes; the function also refuses anonymous sessions itself.
+[functions.montage-shot]
+verify_jwt = true
+
 [functions.avt-mcp]
 verify_jwt = false
