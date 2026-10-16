@@ -73,6 +73,7 @@ const PRESSES = {
     dryRun: "confirm-animate-plate-dryrun",
     done: /plate is being animated|Dry run: the exact request/i,
     missing: "the shot offers no Animate the plate (no plate of its scene) — generate the place first",
+    input: "confirm-animate-plate-event",
   },
 };
 const PRESS = PRESSES[command];
@@ -284,8 +285,10 @@ try {
   const confirm = page.locator(`[data-testid="${DRY ? PRESS.dryRun : PRESS.confirm}"]`);
   await confirm.waitFor({ state: "visible", timeout: 30_000 });
   // a press that takes words (animate-plate: the event) gets them typed into the dialog's own field
-  if (a.event) {
-    const field = page.locator('[data-testid="confirm-animate-plate-event"]');
+  if (a.event !== undefined) {
+    if (typeof a.event !== "string" || !a.event.trim()) throw new Error("--event needs text");
+    if (!PRESS.input) throw new Error(`${command} takes no --event`);
+    const field = page.locator(`[data-testid="${PRESS.input}"]`);
     await field.waitFor({ state: "visible", timeout: 10_000 });
     await field.fill(String(a.event));
     log("typed the event:", String(a.event).slice(0, 200));

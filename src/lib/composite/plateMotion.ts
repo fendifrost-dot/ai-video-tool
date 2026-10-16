@@ -47,8 +47,14 @@ export const PLATE_MOTION_PROMPT =
  * that catches people's attention and isn't boring"). The event is placed in the street or on the far side; the
  * centre foreground stays his.
  */
+/** The event as it is kept and as it is said: one line, single spaces, at most PLATE_EVENT_MAX characters. */
+export function normalizeEvent(event: string | null | undefined): string | null {
+  const e = (event ?? "").trim().replace(/\s+/g, " ").slice(0, PLATE_EVENT_MAX).trim();
+  return e || null;
+}
+
 export function plateMotionPrompt(event: string | null | undefined): string {
-  const e = (event ?? "").trim().replace(/\s+/g, " ").slice(0, PLATE_EVENT_MAX);
+  const e = normalizeEvent(event);
   if (!e) return PLATE_MOTION_PROMPT;
   return (
     `${PLATE_MOTION_PROMPT} ` +
@@ -94,7 +100,7 @@ export function planPlateMotion(f: {
       existing: videoPlatesOf(f.assets, still.id),
       seconds: PLATE_MOTION_SECONDS,
       model: PLATE_MOTION_MODEL,
-      event: (f.event ?? "").trim().slice(0, PLATE_EVENT_MAX) || null,
+      event: normalizeEvent(f.event),
       prompt: plateMotionPrompt(f.event),
       cost: {
         usd,

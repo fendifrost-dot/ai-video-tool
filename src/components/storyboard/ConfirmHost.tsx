@@ -10,6 +10,13 @@ import type { ConfirmRequest } from "./useStoryboardController";
  */
 export function ConfirmHost({ request, onClose }: { request: ConfirmRequest | null; onClose: () => void }) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // one field per request: a dialog that replaces another must not hand the first one's words to the second
+  const last = useRef<ConfirmRequest | null>(null);
+  const seq = useRef(0);
+  if (request !== last.current) {
+    last.current = request;
+    seq.current += 1;
+  }
   if (!request) return null;
   const typed = () => (request.input ? (inputRef.current?.value ?? request.input.initial ?? "") : undefined);
   return (
@@ -28,6 +35,7 @@ export function ConfirmHost({ request, onClose }: { request: ConfirmRequest | nu
           <label className="block space-y-1 text-[11px] text-foreground/70">
             <span>{request.input.label}</span>
             <textarea
+              key={seq.current}
               ref={inputRef}
               defaultValue={request.input.initial ?? ""}
               placeholder={request.input.placeholder}

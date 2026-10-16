@@ -55,3 +55,48 @@ describe("paid work shows the picture it is made from", () => {
     expect(screen.queryByTestId("confirm-picture")).toBeNull();
   });
 });
+
+describe("a line the director writes before the press", () => {
+  const req = (onConfirm: (typed?: string) => void, secondary?: (typed?: string) => void) => ({
+    title: "Animate the plate of shot 47?",
+    body: "About $0.350",
+    confirmLabel: "Animate the plate",
+    testId: "confirm-animate-plate",
+    onConfirm,
+    input: { label: "Something absurd that happens", testId: "confirm-animate-plate-event", maxLength: 400 },
+    ...(secondary ? { secondary: { label: "Dry run", testId: "confirm-animate-plate-dryrun", onConfirm: secondary } } : {}),
+  });
+
+  it("hands what was typed to the press, and to the dry run", async () => {
+    const onConfirm = vi.fn();
+    const dry = vi.fn();
+    render(<ConfirmHost request={req(onConfirm, dry)} onClose={() => undefined} />);
+    fireEvent.change(screen.getByTestId("confirm-animate-plate-event"), { target: { value: "a horse on the expressway" } });
+    fireEvent.click(screen.getByTestId("confirm-animate-plate-dryrun"));
+    fireEvent.click(screen.getByTestId("confirm-animate-plate"));
+    await Promise.resolve();
+    expect(dry).toHaveBeenCalledWith("a horse on the expressway");
+    expect(onConfirm).toHaveBeenCalledWith("a horse on the expressway");
+  });
+
+  it("a dialog that replaces another starts with an empty field: the first one's words never reach the second", async () => {
+    const first = vi.fn();
+    const second = vi.fn();
+    const { rerender } = render(<ConfirmHost request={req(first)} onClose={() => undefined} />);
+    fireEvent.change(screen.getByTestId("confirm-animate-plate-event"), { target: { value: "shot 3's event" } });
+    rerender(<ConfirmHost request={req(second)} onClose={() => undefined} />);
+    expect((screen.getByTestId("confirm-animate-plate-event") as HTMLTextAreaElement).value).toBe("");
+    fireEvent.click(screen.getByTestId("confirm-animate-plate"));
+    await Promise.resolve();
+    expect(second).toHaveBeenCalledWith("");
+    expect(first).not.toHaveBeenCalled();
+  });
+
+  it("a dialog without a field hands nothing", async () => {
+    const onConfirm = vi.fn();
+    render(<ConfirmHost request={{ title: "t", body: "b", confirmLabel: "Go", testId: "confirm-go", onConfirm }} onClose={() => undefined} />);
+    fireEvent.click(screen.getByTestId("confirm-go"));
+    await Promise.resolve();
+    expect(onConfirm).toHaveBeenCalledWith(undefined);
+  });
+});

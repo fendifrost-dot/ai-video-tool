@@ -121,6 +121,10 @@ describe("the absurd event", () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.plan.event).toBe("a riderless white horse gallops down the expressway between the cars.");
+    // the record and the prompt say the same thing, whatever the whitespace typed
+    const messy = planPlateMotion({ still, assets: [], event: "a   horse\n\n gallops   " + "z".repeat(500) });
+    expect(messy.ok && messy.plan.event!.startsWith("a horse gallops z")).toBe(true);
+    expect(messy.ok && messy.plan.prompt.includes(`holds it: ${messy.plan.event}`)).toBe(true);
     expect(r.plan.prompt).toContain("Locked-off camera");
     expect(r.plan.prompt).toContain("catches the eye and holds it: a riderless white horse gallops down the expressway between the cars.");
     expect(r.plan.prompt).toContain("never in the centre foreground");
