@@ -148,7 +148,7 @@ page.on("console", async (m) => {
   const line = `${m.type()} ${m.text()}`;
   consoleLines.push(line);
   if (m.type() === "error") log("console:", line.slice(0, 400));
-  if (/Composite dry run/.test(m.text())) {
+  if (/dry run — nothing was/i.test(m.text())) {
     // the request is a logged object: text() prints JSHandle@object, the args hold the value
     try {
       const vals = await Promise.all(m.args().map((x) => x.jsonValue().catch(() => null)));
