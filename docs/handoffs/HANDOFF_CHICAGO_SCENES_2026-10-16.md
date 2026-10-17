@@ -330,8 +330,9 @@ sneakers by the walrus); c046 `f5edfee0` (white sneakers in the aisle). c042 nev
 
 Results (ledger 99–103): c046 PASS `daa1644a` (posted). c044 and c045 REJECTED — the swap left the sneakers (his feet
 are a few dozen pixels in a wide frame). c041 first try REJECTED (bystanders' boots changed); second try with the
-wearer wording still queued at Higgsfield at 01:06 UTC (job `35b3308f`).
+wearer wording `046d1d2f`: his own boots changed to the black patent pair, but one bystander's boot in the dice cut
+changed too — MIXED, posted for Fendi, unselected.
 
-FINDING (OBSERVED, 2 of 2): the object swap does not change shoes that are small in the frame. Next, as a general lane
-change rather than a per-video fix: swap a CROP around him (upscaled to the model's size) and composite it back over
+FINDING (OBSERVED, 2 of 2): the object swap does not change shoes that are small in the frame. The model also still bleeds onto
+bystanders (c041). Next, as a general lane change rather than a per-video fix: swap a CROP around him (upscaled to the model's size) and composite it back over
 the original — HYPOTHESIS, test on c044 first.
