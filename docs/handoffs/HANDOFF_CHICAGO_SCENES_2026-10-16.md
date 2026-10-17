@@ -903,3 +903,16 @@ The block below is kept for the record.
 
 Until then, every continuous take generated is filed as 4 s. Correct it with the measured length, as was done above.
 
+### E1 approved (17 Oct, 23:40 UTC)
+- Fendi on E1 v3 (`ce365795`): "It's good". `approval_status` is set to `approved`.
+- Shot c033's selection is unchanged: it is still an alternate, and Fendi picks it in the edit.
+- He lines up the mouth himself with Lyric sync or in Premiere.
+
+The ending brief now stands as:
+- **E1:** `ce365795`, approved.
+- **E2:** `ad2faff9`, wardrobe right; Fendi judges the mouth.
+- **E3:** `a64bfbb6`.
+- **E4:** `5aa6f01c`, with the 0–7 s insert.
+
+Nothing in this section remains to be done.
+
