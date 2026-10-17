@@ -450,3 +450,9 @@ On the board: c008 (13.80–15.28) / c009 (15.28–16.75) / c010 (16.75–18.72)
 
 Verse 1 (14–31 s) is now four of Fendi's pictures in a row — lights off (0ae59bc2) → follow designers (f44a2c32) →
 cameras in the whip (9d4e2253) → Canada Goose (9ad2b670) — then the janitor hallway (still mine, no picture yet).
+
+03:05 UTC — Fendi: "Cut to me (in same scene different angle) rapping YSL I wear em like they white ones." Added to the
+treatment right after the lights-off beat: on 17.5–19.5 s, cut to him in the same dark lounge from a different angle
+(low, to the side of the couch), rapping to camera, lit only by his own ice. Saved 03:05:13 UTC; VERIFIED. This is a
+performance beat: it can come from his own footage placed into the lounge (the montage lane), not a generated
+stand-in. On the board: c010 (16.75–18.72) / c011 (18.72–20.69).
