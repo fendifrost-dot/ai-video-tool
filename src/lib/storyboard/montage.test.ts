@@ -26,7 +26,7 @@ describe("the montage's scenes", () => {
     expect(lines[0]).toMatch(/^the place: a wide shot with the polar bear in it.*he is not in it$/);
     expect(lines[1]).toMatch(/^HARD CUT to him in profile.*a hand on something in the place.*not pasted in front of it$/);
     expect(lines[2]).toMatch(/^HARD CUT to a tight shot of the polar bear.*does not react/);
-    expect(lines[3]).toMatch(/^HARD CUT to a low angle from below: him leaning on something in the place.*the polar bear behind his shoulder/);
+    expect(lines[3]).toMatch(/^HARD CUT to a medium close-up from chest height: him leaning on something in the place.*the polar bear behind his shoulder/);
     expect(defaultMontageLines("the polar bear")).not.toMatch(/straight to camera|medium shot/);
     // the model's closing beat comes out as a flash or a freeze (c047 v2: two frames of him); the cut back is the edit's
     expect(defaultMontageLines("the bear")).not.toMatch(/back to him/);
