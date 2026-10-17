@@ -30,7 +30,6 @@ import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supa
 import {
   buildLipsyncInput,
   buildStemInput,
-  buildWav,
   isFalOutputUrl,
   LIPSYNC_MAX_SECONDS,
   LIPSYNC_MODEL,
@@ -41,8 +40,8 @@ import {
   STEM_MODEL,
   vocalsUrlOf,
   wavSeconds,
-  wavSliceRange,
 } from "../_shared/lipsync.ts";
+import { sliceVocals } from "../_shared/vocalSlice.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -325,19 +324,9 @@ serve(async (req) => {
   const stemSigned = await user.storage.from(stemBucket).createSignedUrl(String(stem.file_url), 600);
   if (stemSigned.error || !stemSigned.data?.signedUrl) return json(500, { ok: false, error: "vocals_sign_failed", detail: stemSigned.error?.message });
   const fileBytes = num((stem.metadata_json as Row | null)?.size_bytes);
-  const headResp = await fetch(stemSigned.data.signedUrl, { headers: { Range: "bytes=0-65535" } });
-  if (!headResp.ok) return json(502, { ok: false, error: "vocals_read_failed", detail: `HTTP ${headResp.status}` });
-  const total = fileBytes ?? Number(/\/(\d+)$/.exec(headResp.headers.get("content-range") ?? "")?.[1] ?? NaN);
-  if (!Number.isFinite(total)) return json(500, { ok: false, error: "vocals_size_unknown" });
-  let layout;
-  try { layout = parseWavHead(new Uint8Array(await headResp.arrayBuffer()), total); } catch (e) {
-    return json(500, { ok: false, error: "vocals_not_wav", detail: e instanceof Error ? e.message : String(e) });
-  }
-  const range = wavSliceRange(layout, window[0], window[1] - window[0]);
-  if (range.to <= range.from) return json(400, { ok: false, error: "clip_past_the_song", ...facts });
-  const pcmResp = await fetch(stemSigned.data.signedUrl, { headers: { Range: `bytes=${range.from}-${range.to - 1}` } });
-  if (!pcmResp.ok) return json(502, { ok: false, error: "vocals_read_failed", detail: `HTTP ${pcmResp.status}` });
-  const slice = buildWav(layout.fmtChunk, new Uint8Array(await pcmResp.arrayBuffer()), range.padHeadBytes);
+  const sliced = await sliceVocals(stemSigned.data.signedUrl, fileBytes, window);
+  if (!sliced.ok) return json(sliced.status, { ok: false, error: sliced.error, detail: sliced.detail, ...facts });
+  const slice = sliced.wav;
   const audioPath = `${userId}/${projectId}/lipsync/${key}_${Date.now()}.wav`;
   const up = await user.storage.from("project-audio").upload(audioPath, slice, { contentType: "audio/wav", upsert: false });
   if (up.error) return json(500, { ok: false, error: "slice_store_failed", detail: up.error.message });
