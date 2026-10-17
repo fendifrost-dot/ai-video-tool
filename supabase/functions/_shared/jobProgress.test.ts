@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceJob, filePlateVideo, plateMotionFrom, type ProgressDeps, type ProgressJob } from "./jobProgress";
+import { advanceJob, filePlateVideo, plateMotionFrom, restagedFrom, type ProgressDeps, type ProgressJob } from "./jobProgress";
 
 const job = (over: Partial<ProgressJob> = {}): ProgressJob => ({
   id: "job-1",
@@ -181,5 +181,18 @@ describe("a finished moving plate", () => {
     await filePlateVideo(job({ result_asset_id: "asset-2" }), plate, d);
     expect(assets["asset-2"].duration_seconds).toBe(5);
     await expect(filePlateVideo(job({ result_asset_id: "gone" }), plate, d)).rejects.toThrow(/record/);
+  });
+});
+
+describe("a restaged clip is filed at the length it was asked for", () => {
+  const job = (payload: Record<string, unknown>) =>
+    ({ id: "j", user_id: "u", project_id: "p", provider: "higgsfield", status: "completed", external_job_id: null, error_text: null, result_asset_id: "a", response_payload_json: null, created_at: "", finalized_at: null, request_payload_json: payload }) as unknown as Parameters<typeof restagedFrom>[0];
+  it("a 10 s continuous take made from a 4 s take is 10 s, not 4 s", () => {
+    const r = restagedFrom(job({ duration: 10, settings: { route: "seedance_ref", sourceAssetId: "t", masterStart: 53.8, sourceSeconds: 4 } }));
+    expect(r?.seconds).toBe(10);
+  });
+  it("a lip-sync keeps its clip's own length; no asked length falls back to the source's", () => {
+    expect(restagedFrom(job({ settings: { route: "lipsync", sourceAssetId: "c", masterStart: 58, sourceSeconds: 4.04 } }))?.seconds).toBe(4.04);
+    expect(restagedFrom(job({ settings: { route: "seedance_ref", sourceAssetId: "t", masterStart: 58, sourceSeconds: 4 } }))?.seconds).toBe(4);
   });
 });

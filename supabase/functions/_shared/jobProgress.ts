@@ -113,7 +113,11 @@ export function restagedFrom(job: ProgressJob): { sourceAssetId: string; songSta
   const s = settingsOf(job);
   // a lip-sync re-take (lipsync-shot) keeps its clip's place on the song exactly as a restaging does
   if ((s.route !== "seedance_ref" && s.route !== "lipsync") || typeof s.sourceAssetId !== "string" || !s.sourceAssetId || typeof s.masterStart !== "number") return null;
-  return { sourceAssetId: s.sourceAssetId, songStart: s.masterStart, sourceWindow: s.sourceWindow ?? null, seconds: typeof s.sourceSeconds === "number" ? s.sourceSeconds : null };
+  // the clip's own length is what was ASKED FOR (payload.duration), not the source's: a continuous take is 10 s made
+  // from a 4 s take, and filing it as 4 s told the board it ran out 6 s early. A lip-sync keeps its clip's length.
+  const asked = (job.request_payload_json as { duration?: unknown } | null | undefined)?.duration;
+  const seconds = s.route === "seedance_ref" && typeof asked === "number" && asked > 0 ? asked : typeof s.sourceSeconds === "number" ? s.sourceSeconds : null;
+  return { sourceAssetId: s.sourceAssetId, songStart: s.masterStart, sourceWindow: s.sourceWindow ?? null, seconds };
 }
 
 /** A dress of a region of its clip (dress-clip with a crop): the box and where it goes back. Null for a whole clip. */
