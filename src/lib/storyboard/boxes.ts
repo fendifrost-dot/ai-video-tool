@@ -148,6 +148,13 @@ export function isEmptyBoxOverride(o: BoxOverride | null | undefined): boolean {
   return isEmptyOverride({ ...o, specId: "" } as ShotOverride) && !asShotType(o.shotType) && !parseReframe(o.reframe);
 }
 
+/** The box holds an edit of its scene — anything but a reframe of its footage, which is not a scene edit. */
+export function isSceneEdited(o: BoxOverride | null | undefined): boolean {
+  if (!o) return false;
+  const { reframe: _framed, treatment: _stamp, ...rest } = o;
+  return !isEmptyBoxOverride(rest as BoxOverride);
+}
+
 /** Who the director put in the shot, as stored: each key is kept only when it was stated (absent = not touched). */
 function parseCast(value: unknown): CastOverride | null {
   if (!value || typeof value !== "object") return null;
@@ -477,7 +484,7 @@ export function applyGenerated(box: StoryboardBox, generated: ShotSpec, at: stri
 
 /** The boxes a whole-board generation may rewrite: not locked, not edited, and holding no footage. */
 export function unlockedForGeneration(boxes: readonly StoryboardBox[], boxIdsWithMedia: ReadonlySet<string>): StoryboardBox[] {
-  return boxes.filter((b) => !b.locked && !b.override && !boxIdsWithMedia.has(b.id));
+  return boxes.filter((b) => !b.locked && !isSceneEdited(b.override) && !boxIdsWithMedia.has(b.id));
 }
 
 // --- the director's edit ------------------------------------------------------

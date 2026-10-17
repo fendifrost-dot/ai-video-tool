@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatDuration, formatTimecode, shotTypeLabel } from "@/components/treatment/shotLabels";
-import type { StoryboardBox } from "@/lib/storyboard/boxes";
+import { isSceneEdited, type StoryboardBox } from "@/lib/storyboard/boxes";
 import type { BoxMediaItem } from "@/lib/storyboard/media";
 import { neighbourVersion, versionsOf } from "@/lib/storyboard/versions";
 import { BoxMediaView, ROLE_STYLE, mediaLabel } from "./BoxMediaView";
@@ -131,7 +131,7 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
                 {shotTypeLabel(box.spec.shotType)}
               </span>
               {energy && <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", ENERGY_STYLES[energy])}>{energy}</span>}
-              {box.override && (
+              {isSceneEdited(box.override) && (
                 <span className="rounded-full bg-fuchsia-500/15 px-2 py-0.5 text-[10px] font-medium text-fuchsia-300" data-testid="box-edited-tag">
                   edited
                 </span>
@@ -295,7 +295,7 @@ export function BoxCard({ box, coverageFlag }: { box: StoryboardBox; coverageFla
                     ["Split shot", () => sb.openFocus(box.id), "box-menu-split"],
                     ["Merge with next", () => sb.mergeWithNext(box), "box-menu-merge"],
                     [box.locked ? "Unlock (let the board rewrite it)" : "Lock (keep it as it is)", () => void sb.toggleLock(box), "box-menu-lock"],
-                    ...(box.override ? ([["Reset to the generated scene", () => void sb.resetBox(box), "box-menu-reset"]] as const) : []),
+                    ...(isSceneEdited(box.override) ? ([["Reset to the generated scene", () => void sb.resetBox(box), "box-menu-reset"]] as const) : []),
                   ] as ReadonlyArray<readonly [string, () => void, string]>
                 ).map(([label, fn, testId]) => (
                   <button

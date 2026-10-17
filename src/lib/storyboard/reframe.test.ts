@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BLANK_OVERRIDE, isSceneEdited, unlockedForGeneration, type BoxOverride, type StoryboardBox } from "./boxes";
 import { IDENTITY_REFRAME, isIdentityReframe, normalizeReframe, parseReframe, reframeRect, reframeStyle } from "./reframe";
 
 const FRAME_9_16 = { width: 1080, height: 1920 };
@@ -71,5 +72,22 @@ describe("a shot's reframe", () => {
     const leftOfRect = s.left + ((320 * k) / 1080) * 100;
     expect(leftOfRect).toBeCloseTo(0, 9);
     expect(reframeStyle(0, 0, { scale: 2 }, FRAME_9_16)).toBeNull();
+  });
+});
+
+describe("a reframe is not a scene edit", () => {
+  const framed = { ...BLANK_OVERRIDE, updatedAt: "t", reframe: { scale: 1.4, x: 0.5, y: 0.3 } } as BoxOverride;
+  it("a reframe alone does not count as an edit of the scene", () => {
+    expect(isSceneEdited(framed)).toBe(false);
+    expect(isSceneEdited(null)).toBe(false);
+  });
+  it("an edit of the scene still counts, with or without a reframe", () => {
+    expect(isSceneEdited({ ...framed, direction: "him at the pillar" })).toBe(true);
+    expect(isSceneEdited({ ...BLANK_OVERRIDE, notes: "keep" })).toBe(true);
+  });
+  it("whole-board generation still reaches a box that is only reframed", () => {
+    const box = (id: string, override: BoxOverride | null) => ({ id, locked: false, override }) as unknown as StoryboardBox;
+    const ids = unlockedForGeneration([box("a", framed), box("b", { ...framed, direction: "x" }), box("c", null)], new Set()).map((b) => b.id);
+    expect(ids).toEqual(["a", "c"]);
   });
 });
