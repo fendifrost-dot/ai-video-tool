@@ -17,7 +17,7 @@
  */
 import { NEVER_WIDER } from "./restage";
 
-export const MONTAGE_VERSION = "montage-v2-2026-10-17";
+export const MONTAGE_VERSION = "montage-v3-2026-10-17";
 /** The longest scene list the dialog takes. */
 export const MONTAGE_LINES_MAX = 1200;
 /** Scenes shorter than this are not asked for: the model cannot cut faster than it renders. */
@@ -174,11 +174,15 @@ export function castLine(image: number): string {
  */
 export const BROLL_PLACE =
   "Everything happens in the place of @Image1, in its light and its weather; the people in it and the camera move, nothing is pasted in.";
+/** No shoe shots of anyone (Fendi, 17 Oct 2026: "no more shoe shots" — a b-roll montage opened on running boots). */
+export const BROLL_NO_FEET =
+  "No scene is a close-up of anyone's shoes or feet: never a cutaway or a tilt down to them.";
 export function brollMontagePrompt(scenes: readonly MontageScene[], castImage: number | null = null): string {
   return [
     `a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`,
     montageScript(scenes),
     BROLL_PLACE,
+    BROLL_NO_FEET,
     castImage != null ? castLine(castImage) : "",
   ]
     .filter(Boolean)

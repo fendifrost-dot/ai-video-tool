@@ -6,7 +6,7 @@ vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 vi.mock("@/lib/queries/storyboard", () => ({}));
 
 import { NEVER_WIDER } from "./restage";
-import { BROLL_PLACE, MONTAGE_MIN_SCENE_SECONDS, MONTAGE_STYLE, MONTAGE_SYNC, MONTAGE_TAIL_TRIM_SECONDS, MONTAGE_VERSION, NO_FEET, brollMontagePrompt, castLine, defaultMontageLines, montagePrompt, montageRecord, montageScript, planMontageScenes, planShotMontageScenes, thingOfLabel } from "./montage";
+import { BROLL_NO_FEET, BROLL_PLACE, MONTAGE_MIN_SCENE_SECONDS, MONTAGE_STYLE, MONTAGE_SYNC, MONTAGE_TAIL_TRIM_SECONDS, MONTAGE_VERSION, NO_FEET, brollMontagePrompt, castLine, defaultMontageLines, montagePrompt, montageRecord, montageScript, planMontageScenes, planShotMontageScenes, thingOfLabel } from "./montage";
 
 describe("the montage's scenes", () => {
   it("names the unusual thing from the plate's label, never the label's last word", () => {
@@ -123,6 +123,7 @@ describe("a montage of a shot he is not in, and the people of its scene", () => 
     const p = brollMontagePrompt(planned.scenes, 1);
     expect(p).toContain(`a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`);
     expect(p).toContain(BROLL_PLACE);
+    expect(p).toContain(BROLL_NO_FEET);
     expect(p).toContain(castLine(1));
     expect(p).not.toMatch(/@Video1/);
     expect(brollMontagePrompt(planned.scenes)).not.toMatch(/people in @Image/);
