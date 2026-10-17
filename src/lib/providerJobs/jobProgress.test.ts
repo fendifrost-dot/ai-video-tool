@@ -242,6 +242,41 @@ describe("a clip job finishes with the page closed", () => {
     expect(w.syncs).toHaveLength(2);
   });
 
+  it("a lip-synced montage keeps its source's place on the song, stays a montage, and lands on its shot unselected", async () => {
+    const w = world();
+    w.syncs.push({ project_id: "p1", performance_asset_id: "montage_1", song_asset_id: "song_1", offset_seconds: 63.066, drift_ppm: 0, method: "derived", status: "confirmed" });
+    const jobId = await w.client.insertJob({
+      project_id: "p1",
+      provider: "fal",
+      status: "queued",
+      request_payload_json: {
+        modelVariant: "fal-ai/sync-lipsync/v2",
+        shotId: "shot_15",
+        settings: {
+          batchRun: "storyboard",
+          batchShotId: "c037_lipsync",
+          route: "lipsync",
+          kind: "angle",
+          sourceAssetId: "montage_1",
+          masterStart: 63.066,
+          sourceWindow: [0, 4.042],
+          sourceSeconds: 4.042,
+          alternate: true,
+          lipsync: { model: "fal-ai/sync-lipsync/v2", vocalsAssetId: "vocals_1", songWindow: [63.066, 67.608], sourceMethod: "montage" },
+        },
+      },
+    } as never);
+    await w.client.updateJob(jobId, { external_job_id: "req_1", status: "running" } as never);
+    w.provider.set("req_1", { resultUrl: "https://v3.fal.media/lipsynced.mp4" });
+    const [report] = await w.tick();
+    expect(report.did).toEqual(["provider: succeeded", "saved", "filed as a take in sync", "on its shot, unselected", "finished"]);
+    const asset = w.assets.get(w.jobs.get(jobId)!.result_asset_id!)!;
+    expect(asset.metadata_json.derived_from).toMatchObject({ asset_id: "montage_1", song_start: 63.066, method: "montage", lipsync: { vocalsAssetId: "vocals_1" } });
+    expect(w.syncs[1]).toMatchObject({ performance_asset_id: asset.id, offset_seconds: 63.066, status: "confirmed" });
+    expect(String((w.syncs[1] as { notes?: string }).notes)).toMatch(/lip-synced/);
+    expect(w.assignments[0]).toMatchObject({ shot_id: "shot_15", role: "performance", is_primary: false });
+  });
+
   it("a failed render is recorded as failed, with the provider's reason, and finished", async () => {
     const w = world();
     const s = await submitShot(clipShot, ctx(), w.client);

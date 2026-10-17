@@ -164,6 +164,9 @@ verify_jwt = false
 [functions.montage-shot]
 verify_jwt = true
 
+[functions.lipsync-shot]
+verify_jwt = true
+
 [functions.avt-mcp]
 verify_jwt = false
 

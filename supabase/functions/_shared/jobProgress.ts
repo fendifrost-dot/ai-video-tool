@@ -111,7 +111,8 @@ export function failureReason(env: Record<string, unknown> | null | undefined): 
 /** A restaged take: the job was given a cut of a take, and its clip keeps that take's place on the song. */
 export function restagedFrom(job: ProgressJob): { sourceAssetId: string; songStart: number; sourceWindow: unknown; seconds: number | null } | null {
   const s = settingsOf(job);
-  if (s.route !== "seedance_ref" || typeof s.sourceAssetId !== "string" || !s.sourceAssetId || typeof s.masterStart !== "number") return null;
+  // a lip-sync re-take (lipsync-shot) keeps its clip's place on the song exactly as a restaging does
+  if ((s.route !== "seedance_ref" && s.route !== "lipsync") || typeof s.sourceAssetId !== "string" || !s.sourceAssetId || typeof s.masterStart !== "number") return null;
   return { sourceAssetId: s.sourceAssetId, songStart: s.masterStart, sourceWindow: s.sourceWindow ?? null, seconds: typeof s.sourceSeconds === "number" ? s.sourceSeconds : null };
 }
 
@@ -460,8 +461,12 @@ export async function fileRestagedClip(job: ProgressJob, restaged: NonNullable<R
   if (!meta) throw new Error("could not read the restaged clip");
   // how it was made, so the board can name it: a montage (settings.variant from montage.ts) or a plain restaging
   const variant = settingsOf(job).variant as { version?: unknown } | null | undefined;
-  const method = typeof variant?.version === "string" && variant.version.startsWith("montage") ? "montage" : "restaged";
-  const next: Record<string, unknown> = { ...meta, derived_from: { asset_id: restaged.sourceAssetId, source_window: restaged.sourceWindow, song_start: restaged.songStart, method } };
+  // a lip-synced clip is still what it was made from on the board (a montage stays a montage), with what was done
+  const lipsync = settingsOf(job).lipsync as { sourceMethod?: unknown } | null | undefined;
+  const method = lipsync && typeof lipsync === "object"
+    ? (lipsync.sourceMethod === "montage" ? "montage" : "restaged")
+    : typeof variant?.version === "string" && variant.version.startsWith("montage") ? "montage" : "restaged";
+  const next: Record<string, unknown> = { ...meta, derived_from: { asset_id: restaged.sourceAssetId, source_window: restaged.sourceWindow, song_start: restaged.songStart, method, ...(lipsync && typeof lipsync === "object" ? { lipsync } : {}) } };
   if (!(Number(next.duration_seconds) > 0) && restaged.seconds) next.duration_seconds = restaged.seconds;
   await deps.updateAsset(assetId, { footage_role: "performance", metadata_json: next });
   if (await deps.syncOf(job.project_id, assetId)) return;
@@ -476,7 +481,9 @@ export async function fileRestagedClip(job: ProgressJob, restaged: NonNullable<R
     drift_ppm: usable?.drift_ppm ?? 0,
     method: DERIVED_SYNC_METHOD,
     status: "confirmed",
-    notes: "restaged from the take: its first frame sits where the cut began on the song",
+    notes: lipsync && typeof lipsync === "object"
+      ? "lip-synced to the song's vocals: every frame kept, so its first frame sits where its source's does on the song"
+      : "restaged from the take: its first frame sits where the cut began on the song",
   });
 }
 
