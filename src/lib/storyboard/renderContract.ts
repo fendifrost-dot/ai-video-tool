@@ -10,6 +10,7 @@
  *   • the original file to read and where its picture starts      media.path, media.frames.source_first
  *   • how many frames hold the first picture, play, hold the last media.frames.lead / play / tail
  *   • what the edit does to the picture, frame run by frame run   picture_runs (brightness, contrast, flash)
+ *   • the punch-in the edit puts on the shot's media              reframe (scale, x, y — reframe.ts reframeRect)
  *
  * and the song, where it starts, and the frame it all goes into. Everything editorial (which shot, which media,
  * which range, which effect, when) is decided upstream, on the shot records; nothing is decided by a renderer.
@@ -27,8 +28,10 @@
 import { DEFAULT_FRAME_FIT, DEFAULT_PROJECT_ASPECT, frameSize, type FrameFit, type ProjectAspect } from "@/lib/project/aspect";
 import { effectKeys, isDirected, pictureAt, type Picture } from "./events";
 import { segmentAt, videoStateAt, type AssignmentRole, type MediaAsset, type TimelineSegment } from "./media";
+import { IDENTITY_REFRAME, normalizeReframe, type ShotReframe } from "./reframe";
 
-export const RENDER_CONTRACT_VERSION = 2;
+/** 3: every segment carries its `reframe` (version 2 had none — every shot of a version-2 contract is as filmed). */
+export const RENDER_CONTRACT_VERSION = 3;
 /** The frame rate a render is made at when none is asked for. A render setting — the cut itself is in seconds on the song. */
 export const DEFAULT_RENDER_FPS = 30;
 
@@ -77,6 +80,11 @@ export type ContractSegment = {
   direction: { song_time: number; offset: number; lighting: string; camera: string; action: string; visual: string; lighting_state: string | null }[];
   /** The transition the shot record declares, and what plays: a cut. */
   transition_in: { declared: string | null; realized: "cut" };
+  /**
+   * The punch-in on the shot's media. The rect of the source a zoom of `scale` about (x, y) keeps — reframe.ts
+   * reframeRect, clamped inside the source — is what is fitted whole into the frame. Scale 1 = as filmed.
+   */
+  reframe: ShotReframe;
 };
 
 export type RenderContract = {
@@ -103,6 +111,7 @@ export type FrameReading = {
   source_time: number | null;
   hold: "lead_in" | "ran_out" | null;
   picture: Picture;
+  reframe: ShotReframe;
 };
 
 const round4 = (n: number) => Math.round(n * 10_000) / 10_000;
@@ -111,12 +120,13 @@ const AS_FILMED: Picture = { brightness: 1, contrast: 1, flash: 0 };
 /** What Review shows at song time `t` — read from the player's own functions. */
 export function reviewFrameAt(timeline: readonly TimelineSegment[], assets: ReadonlyMap<string, Pick<MediaAsset, "id" | "durationSeconds">>, t: number): FrameReading {
   const seg = segmentAt(timeline, t);
-  if (!seg) return { shot_id: null, kind: "none", asset_id: null, source_time: null, hold: null, picture: AS_FILMED };
+  if (!seg) return { shot_id: null, kind: "none", asset_id: null, source_time: null, hold: null, picture: AS_FILMED, reframe: IDENTITY_REFRAME };
   const picture = seg.events?.length ? pictureAt(seg.events, t - seg.start) : AS_FILMED;
-  if (seg.media.kind === "none") return { shot_id: seg.shotId, kind: "none", asset_id: null, source_time: null, hold: null, picture };
-  if (seg.media.kind === "image") return { shot_id: seg.shotId, kind: "image", asset_id: seg.media.assetId, source_time: null, hold: null, picture };
+  const reframe = normalizeReframe(seg.reframe);
+  if (seg.media.kind === "none") return { shot_id: seg.shotId, kind: "none", asset_id: null, source_time: null, hold: null, picture, reframe };
+  if (seg.media.kind === "image") return { shot_id: seg.shotId, kind: "image", asset_id: seg.media.assetId, source_time: null, hold: null, picture, reframe };
   const state = videoStateAt(seg, t, assets.get(seg.media.assetId)?.durationSeconds ?? null);
-  return { shot_id: seg.shotId, kind: "video", asset_id: seg.media.assetId, source_time: state ? round4(state.at) : null, hold: state?.hold ?? null, picture };
+  return { shot_id: seg.shotId, kind: "video", asset_id: seg.media.assetId, source_time: state ? round4(state.at) : null, hold: state?.hold ?? null, picture, reframe };
 }
 
 /**
@@ -218,13 +228,15 @@ export function renderContract(input: {
         // a change of light that carries an effect is the edit's (it is in picture_runs), not direction for the footage
         .map((e) => ({ song_time: e.songTime, offset: e.offset, lighting: e.effect ? "" : e.lighting, camera: e.camera, action: e.action, visual: e.visual, lighting_state: e.effect ? null : e.lightingState })),
       transition_in: { declared: seg.transitionIn?.preset ?? seg.transitionIn?.type ?? null, realized: "cut" },
+      reframe: normalizeReframe(seg.reframe),
     });
   });
 
   return {
     version: RENDER_CONTRACT_VERSION,
     clock: "song",
-    // the frame every shot is rendered into; media of another shape is fitted whole (never cropped)
+    // the frame every shot is rendered into; media of another shape is fitted whole (never cropped) — the one crop
+    // is a shot's own reframe, an edit decision, carried on its segment
     frame: { aspect, ...frameSize(aspect), fit: DEFAULT_FRAME_FIT, background: "#000000" },
     fps,
     range: { song_in: songIn, song_out: songOut },
@@ -238,19 +250,20 @@ export function renderContract(input: {
 /** What the CONTRACT says is on screen at output frame `n` — read from the contract alone, as a renderer would. */
 export function contractFrameAt(contract: RenderContract, n: number): FrameReading {
   const seg = contract.segments.find((s) => n >= s.frame_in && n < s.frame_out);
-  if (!seg) return { shot_id: null, kind: "none", asset_id: null, source_time: null, hold: null, picture: AS_FILMED };
+  if (!seg) return { shot_id: null, kind: "none", asset_id: null, source_time: null, hold: null, picture: AS_FILMED, reframe: IDENTITY_REFRAME };
   const run = seg.picture_runs.find((r) => n >= r.frame_in && n < r.frame_out);
   const picture: Picture = run ? { brightness: run.brightness, contrast: run.contrast, flash: run.flash } : AS_FILMED;
-  if (seg.media.kind === "none") return { shot_id: seg.shot_id, kind: "none", asset_id: null, source_time: null, hold: null, picture };
-  if (seg.media.kind === "image") return { shot_id: seg.shot_id, kind: "image", asset_id: seg.media.asset_id, source_time: null, hold: null, picture };
+  const reframe = seg.reframe ?? IDENTITY_REFRAME;
+  if (seg.media.kind === "none") return { shot_id: seg.shot_id, kind: "none", asset_id: null, source_time: null, hold: null, picture, reframe };
+  if (seg.media.kind === "image") return { shot_id: seg.shot_id, kind: "image", asset_id: seg.media.asset_id, source_time: null, hold: null, picture, reframe };
   const f = seg.media.frames;
   const k = n - seg.frame_in;
   // inside the lead-in the first picture of the shot's range holds
-  if (k < f.lead) return { shot_id: seg.shot_id, kind: "video", asset_id: seg.media.asset_id, source_time: round4(seg.media.source_in), hold: "lead_in", picture };
+  if (k < f.lead) return { shot_id: seg.shot_id, kind: "video", asset_id: seg.media.asset_id, source_time: round4(seg.media.source_in), hold: "lead_in", picture, reframe };
   // then the file runs at its own rate; it never reads past its out-point or its end, and the last picture reached holds
   const played = Math.min(k - f.lead, Math.max(0, f.play - 1));
   const at = Math.min(f.source_first + played / contract.fps, seg.media.source_out ?? Infinity, seg.media.source_seconds != null && seg.media.source_seconds > 0 ? Math.max(0, seg.media.source_seconds - 0.05) : Infinity);
-  return { shot_id: seg.shot_id, kind: "video", asset_id: seg.media.asset_id, source_time: round4(at), hold: k - f.lead >= f.play ? "ran_out" : null, picture };
+  return { shot_id: seg.shot_id, kind: "video", asset_id: seg.media.asset_id, source_time: round4(at), hold: k - f.lead >= f.play ? "ran_out" : null, picture, reframe };
 }
 
 export type RenderReadiness = {
@@ -278,6 +291,8 @@ export function renderReadiness(contract: RenderContract): RenderReadiness {
   if (held.length) notes.push(`${held.length === 1 ? "shot" : "shots"} ${held.map((s) => s.index).join(", ")} ${held.length === 1 ? "holds" : "hold"} a frame where ${held.length === 1 ? "its" : "their"} footage does not cover the whole shot`);
   const fx = contract.segments.filter((s) => s.picture_runs.length > 0);
   if (fx.length) notes.push(`the edit's effects are applied on ${fx.length === 1 ? "shot" : "shots"} ${fx.map((s) => s.index).join(", ")}`);
+  const reframed = contract.segments.filter((s) => s.media.kind !== "none" && s.reframe.scale > 1);
+  if (reframed.length) notes.push(`${reframed.length === 1 ? "shot" : "shots"} ${reframed.map((s) => s.index).join(", ")} ${reframed.length === 1 ? "is" : "are"} reframed — pushed in on ${reframed.length === 1 ? "its" : "their"} footage`);
   const declared = contract.segments.filter((s) => s.transition_in.declared && s.transition_in.declared !== "cut");
   if (declared.length) notes.push(`${declared.length} shot${declared.length === 1 ? " declares" : "s declare"} a transition; every one plays — and renders — as a cut`);
   const directed = contract.segments.filter((s) => s.direction.length > 0);

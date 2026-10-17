@@ -1,6 +1,6 @@
 # scripts/render — the renderer that executes a render contract
 
-`render_contract.py` turns `storyboard_timeline.json` (render contract version 2, written by the app's Export from
+`render_contract.py` turns `storyboard_timeline.json` (render contract version 3, written by the app's Export from
 the same timeline Review plays) into one MP4, with ffmpeg. It decides nothing editorial: the contract says, per shot
 and in output frames, which file, where its picture starts, how long it holds and plays, and what the edit does to
 the picture.

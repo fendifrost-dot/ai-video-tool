@@ -82,6 +82,7 @@ function controller(over: Partial<StoryboardController> = {}): StoryboardControl
     eventsOf: (b) => resolveEvents(b.spec.events, { start: b.start, end: b.end }, CLOCK),
     clock: CLOCK,
     saveEvents: fn(),
+    saveReframe: fn(),
     splitAtBeats: fn(),
     clipPlanOf: (b) => temporalPlan({ route: "still_kling", resolved: resolveEvents(b.spec.events, { start: b.start, end: b.end }, CLOCK), shotSeconds: b.end - b.start }),
     requestOf: () => null,
@@ -288,6 +289,8 @@ describe("the full-screen shot view", () => {
     expect(view.getAttribute("data-box-key")).toBe("c002");
     expect(screen.getByTestId("focus-position").textContent).toBe("02 / 03");
     expect(screen.getByTestId("focus-scene").textContent).toBe("scene c002");
+    // the shot shows a clip: its Frame can be set here, in the edit
+    expect(screen.getByTestId("reframe").getAttribute("data-scale")).toBe("1");
     fireEvent.click(screen.getByTestId("focus-next"));
     expect(sb.openFocus).toHaveBeenLastCalledWith("r3");
     fireEvent.click(screen.getByTestId("focus-prev"));

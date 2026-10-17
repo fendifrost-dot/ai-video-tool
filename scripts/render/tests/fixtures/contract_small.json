@@ -1,5 +1,5 @@
 {
- "version": 2,
+ "version": 3,
  "clock": "song",
  "frame": {
   "aspect": "9:16",
@@ -56,6 +56,11 @@
    "transition_in": {
     "declared": "cut",
     "realized": "cut"
+   },
+   "reframe": {
+    "scale": 1,
+    "x": 0.5,
+    "y": 0.5
    }
   },
   {
@@ -171,6 +176,11 @@
    "transition_in": {
     "declared": "crossfade_1",
     "realized": "cut"
+   },
+   "reframe": {
+    "scale": 1,
+    "x": 0.5,
+    "y": 0.5
    }
   },
   {
@@ -249,6 +259,11 @@
    "transition_in": {
     "declared": "cut",
     "realized": "cut"
+   },
+   "reframe": {
+    "scale": 1,
+    "x": 0.5,
+    "y": 0.5
    }
   },
   {
@@ -285,6 +300,11 @@
    "transition_in": {
     "declared": "cut",
     "realized": "cut"
+   },
+   "reframe": {
+    "scale": 1,
+    "x": 0.5,
+    "y": 0.5
    }
   },
   {
@@ -306,6 +326,11 @@
    "transition_in": {
     "declared": "cut",
     "realized": "cut"
+   },
+   "reframe": {
+    "scale": 1,
+    "x": 0.5,
+    "y": 0.5
    }
   }
  ]

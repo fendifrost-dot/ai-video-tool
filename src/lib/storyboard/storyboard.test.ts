@@ -475,7 +475,7 @@ describe("the timeline Review plays", () => {
     // the frame a renderer draws into: the project's, 9:16 when it has never been set, media fitted whole
     expect(plan.frame).toEqual({ aspect: "9:16", width: 1080, height: 1920, fit: "contain", background: "#000000" });
     expect(renderContract({ timeline, assets: withCopy, song: null, aspect: "16:9" }).frame).toMatchObject({ aspect: "16:9", width: 1920, height: 1080, fit: "contain" });
-    expect(plan).toMatchObject({ version: 2, clock: "song", duration_seconds: 12, audio: { asset_id: "song", path: "u/p/song.wav", song_in: 0 } });
+    expect(plan).toMatchObject({ version: 3, clock: "song", duration_seconds: 12, audio: { asset_id: "song", path: "u/p/song.wav", song_in: 0 } });
     expect(plan.segments.map((s) => [s.shot_id, s.key, s.song_in, s.song_out, s.media.kind])).toEqual([
       ["r1", "c001", 0, 4, "video"],
       ["r2", "c002", 4, 8, "video"],
