@@ -28,7 +28,7 @@ import {
   type MontageFootwear,
   type MontageScene,
 } from "../_shared/montagePrompt.ts";
-import { CONTINUOUS_VERSION, continuousPrompt, continuousSeconds, continuousSongStart, type TakeLyric } from "../_shared/continuousPrompt.ts";
+import { CONTINUOUS_LINE_MAX, CONTINUOUS_VERSION, continuousPrompt, continuousSeconds, continuousSongStart, type TakeLyric } from "../_shared/continuousPrompt.ts";
 
 /** The run every storyboard button files under (src/lib/storyboard/generate.ts STORYBOARD_RUN). */
 export const STORYBOARD_RUN = "storyboard";
@@ -470,6 +470,9 @@ export function planContinuous(input: ContinuousInput): { ok: true; plan: Montag
   const withHim = !!take;
   for (const [name, v] of [["camera", input.camera], ["action", input.action], ["endMotion", input.endMotion]] as const)
     if (typeof v !== "string" || !v.trim()) return refuse(400, `missing_${name}`, `say the ${name === "endMotion" ? "motion it ends on" : name} in words`);
+  for (const [name, v] of [["camera", input.camera], ["action", input.action], ["endMotion", input.endMotion], ...(input.images ?? []).map((im, k) => [`picture ${k + 2}`, im.as] as const)] as const)
+    if (String(v).replace(/\s+/g, " ").trim().length > CONTINUOUS_LINE_MAX)
+      return refuse(400, "line_too_long", `the ${name} is longer than ${CONTINUOUS_LINE_MAX} characters — say it shorter (it is never cut)`);
   if (!(shot.end - shot.start > 0)) return refuse(422, "shot_has_no_length", "the shot's window on the song is empty");
   if (take && take.seconds > RESTAGE_MAX_SECONDS)
     return refuse(422, "take_too_long", `the dressed take is ${take.seconds.toFixed(2)} s; at most ${RESTAGE_MAX_SECONDS} s go to the model as a reference`);

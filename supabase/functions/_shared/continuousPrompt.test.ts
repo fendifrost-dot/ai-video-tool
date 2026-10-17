@@ -100,4 +100,19 @@ describe("one continuous take", () => {
     expect(b.plan.prompt).not.toContain("On the highway");
     expect((b.plan.payload.settings as { variant: Record<string, unknown> }).variant.lyrics).toBeUndefined();
   });
+
+  it("keeps his hands low and away from his face — never 'below his chin', which read as hands at the collar", () => {
+    expect(FACE_TO_CAMERA).not.toMatch(/below his chin/);
+    expect(FACE_TO_CAMERA).toMatch(/hands low and relaxed, away from his face and collar/);
+  });
+
+  it("never cuts a long direction: one past the limit is refused, one under it goes in whole", () => {
+    const long = `He stands relaxed at the island ${"and keeps rapping ".repeat(40)}and the penguin stands still by the wall`;
+    expect(long.length).toBeGreaterThan(600);
+    const ok = planContinuous({ projectId: "pr", userId: "u", aspect: "9:16", shot, take, plate, camera: "a slow push-in", action: long, endMotion: "right" });
+    if (!ok.ok) throw new Error(ok.detail);
+    expect(ok.plan.prompt).toContain("and the penguin stands still by the wall.");
+    const tooLong = planContinuous({ projectId: "pr", userId: "u", aspect: "9:16", shot, take, plate, camera: "a slow push-in", action: "x".repeat(1201), endMotion: "right" });
+    expect(tooLong).toMatchObject({ ok: false, error: "line_too_long" });
+  });
 });

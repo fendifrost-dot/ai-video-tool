@@ -20,15 +20,21 @@ export const CONTINUOUS_VERSION = "continuous-v2-2026-10-17";
 export const CONTINUOUS_MIN_SECONDS = 5;
 export const CONTINUOUS_MAX_SECONDS = 15;
 export const CONTINUOUS_DEFAULT_SECONDS = 10;
-/** The longest line of the director's that goes into the prompt (camera, action, end motion). */
-export const CONTINUOUS_LINE_MAX = 600;
+/**
+ * The longest line of the director's that goes into the prompt (camera, action, end motion, a picture's words). A
+ * longer one is REFUSED (planContinuous), never cut: a cut line loses its last words without anyone being told
+ * (17 Oct 2026: an E1 direction lost "and the penguin stands still by the wall" mid-word).
+ */
+export const CONTINUOUS_LINE_MAX = 1200;
 
 export const ONE_TAKE = (seconds: number) =>
   `One continuous take, ${seconds} seconds: a single unbroken shot — no cuts, no edits, no scene change, no fade, no flash, no second angle, from the first frame to the last.`;
 export const ALREADY_MOVING =
   "Everything is already moving on the first frame — the camera is mid-move and he is mid-movement: no still opening, no settling frames, no slowing to a stop, no freeze or hold at the end.";
+// "his hands below his chin" read as "hands up at his chin": E1 v2 came back with his fists balled at his collar
+// (Fendi, 17 Oct 2026: "the way my hands are positioned and fists balled up, it doesn't look good")
 export const FACE_TO_CAMERA =
-  "He faces the camera and raps, his mouth clearly visible and unobstructed for the whole take: no hand, microphone, collar or object in front of his face, his hands below his chin.";
+  "He faces the camera and raps, his mouth clearly visible and unobstructed for the whole take: no hand, microphone, collar or object in front of his face, his hands low and relaxed, away from his face and collar.";
 export const NOBODY_PERFORMS =
   "Nobody performs to camera and no face fills the frame; he appears only where this says so.";
 /** The same hour in every clip of the ending and the hook (Fendi: "cold, winter, consistent with the cold-runway board"). */
