@@ -39,7 +39,8 @@ don't have to guess for the next song").
    Genjutsu swap of his real take, ~$2.72 for 4 s. Check one frame before shooting the montage.
 7. **Montage every shot** (`montage-shot` / `avt_montage`, or the storyboard's Montage button for performance shots):
    - performance: his dressed take re-shot in the place, mouth in sync; never wider than the take; never a shot of
-     his shoes or feet (~$2.22 for 4 s);
+     his shoes or feet; never a full-body shot of him — waist up or closer (Fendi, 17 Oct: "Stop the full body
+     shots") (~$2.22 for 4 s);
    - b-roll: the place and its people only, lines required, no close-up of anyone's shoes or feet (~$1.85 for 4 s).
    Lines: 2–4 per shot (one scene per beat or two), "HARD CUT to …", the place's unusual thing in a cutaway, him
    anchored to something in the place, never centre-front. Untimed — the tool puts the cuts on the beats.

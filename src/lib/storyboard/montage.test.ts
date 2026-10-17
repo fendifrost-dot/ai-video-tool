@@ -6,7 +6,7 @@ vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 vi.mock("@/lib/queries/storyboard", () => ({}));
 
 import { NEVER_WIDER } from "./restage";
-import { BROLL_NO_FEET, BROLL_PLACE, MONTAGE_MIN_SCENE_SECONDS, MONTAGE_STYLE, MONTAGE_SYNC, MONTAGE_TAIL_TRIM_SECONDS, MONTAGE_VERSION, NO_FEET, brollMontagePrompt, castLine, defaultMontageLines, planBeatLockedScenes, montagePrompt, montageRecord, montageScript, planMontageScenes, planShotMontageScenes, thingOfLabel } from "./montage";
+import { BROLL_NO_FEET, BROLL_PLACE, MONTAGE_MIN_SCENE_SECONDS, MONTAGE_STYLE, MONTAGE_SYNC, MONTAGE_TAIL_TRIM_SECONDS, MONTAGE_VERSION, NO_FEET, WAIST_UP, brollMontagePrompt, castLine, defaultMontageLines, planBeatLockedScenes, montagePrompt, montageRecord, montageScript, planMontageScenes, planShotMontageScenes, thingOfLabel } from "./montage";
 
 describe("the montage's scenes", () => {
   it("names the unusual thing from the plate's label, never the label's last word", () => {
@@ -104,6 +104,9 @@ describe("the montage prompt", () => {
   it("never makes his shoes or feet a shot of their own (Fendi, 17 Oct 2026: no more shoe shots)", () => {
     expect(montagePrompt(scenes)).toContain(NO_FEET);
     expect(NO_FEET).toMatch(/never a close-up of them, never a cutaway or a tilt down to them/);
+    // "Stop the full body shots": every shot of him is waist-up or closer
+    expect(montagePrompt(scenes)).toContain(WAIST_UP);
+    expect(WAIST_UP).toMatch(/never a full-body or wide shot of him/);
   });
 
   it("records the cast and a b-roll montage when there is one", () => {

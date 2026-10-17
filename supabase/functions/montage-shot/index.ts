@@ -15,8 +15,8 @@
 //      wears. A shot with no dressed take is refused: dress it first (the browser's fallback to cutting the raw
 //      take needs an encoder this function does not have);
 //   3. the place: the newest usable plate still (metadata lane world_still) of the scene the shot falls in
-//      (variation_scenes by its start), else refused — generate the place first; and his shoes: the footwear
-//      picture among the pieces he wears in the shot (its own garments, else its outfit), sent as @Image2;
+//      (variation_scenes by its start), else refused — generate the place first. No shoe picture is sent: every
+//      shot of him is waist-up (Fendi, 17 Oct 2026);
 //   4. the scenes (the director's lines, one per line, each optionally timed "2.0-2.7 s: …"; absent = the dialog's
 //      prefill), the prompt, the estimate;
 //   5. the provider_jobs row FIRST (write-ahead, status queued), then proxy-provider-call → CC
@@ -36,13 +36,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   planBrollMontage,
   planMontage,
-  wornPieces,
   type CastFacts,
   type PlateFacts,
   type ShotFacts,
   type TakeFacts,
 } from "./plan.ts";
-import { montageFootwear, type MontageFootwear } from "../_shared/montagePrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -267,46 +265,9 @@ serve(async (req) => {
       }
     : null;
 
-  // his shoes: the footwear picture among the pieces he wears in the shot (the montage's low angles show feet the
-  // waist-up takes never had; without a picture the model makes up a pair)
-  let footwear: MontageFootwear | null = null;
-  const worn = wornPieces(spec, str(scene.outfit_key));
-  let pieceIds: string[] = "ids" in worn && !broll ? worn.ids : [];
-  if ("outfitKey" in worn && !broll) {
-    const outfitQuery = user
-      .from("continuity_entities")
-      .select("garment_feature_ids")
-      .eq("project_id", projectId)
-      .eq("kind", "outfit")
-      .eq("key", worn.outfitKey)
-      .eq("archived", false)
-      .limit(1);
-    const { data: outfitRows, error: outfitErr } = await (shot.variationId
-      ? outfitQuery.eq("variation_id", shot.variationId)
-      : outfitQuery);
-    if (outfitErr)
-      return json(500, { ok: false, error: "outfit_lookup_failed", detail: outfitErr.message });
-    const ids = (outfitRows?.[0] as Row | undefined)?.garment_feature_ids;
-    pieceIds = Array.isArray(ids) ? ids.map(String) : [];
-  }
-  if (pieceIds.length > 0) {
-    const { data: pieces, error: piecesErr } = await user
-      .from("character_features")
-      .select("id, feature_type, label, storage_path, dimensions_description")
-      .in("id", pieceIds);
-    if (piecesErr)
-      return json(500, { ok: false, error: "wardrobe_lookup_failed", detail: piecesErr.message });
-    footwear = montageFootwear(
-      pieceIds,
-      ((pieces ?? []) as Row[]).map((p) => ({
-        id: String(p.id),
-        feature_type: String(p.feature_type),
-        label: String(p.label ?? ""),
-        storage_path: str(p.storage_path),
-        dimensions_description: str(p.dimensions_description),
-      })),
-    );
-  }
+  // no shoe picture is sent (Fendi, 17 Oct 2026: "Stop the full body shots … the shoes are an issue … they look huge
+  // and not recreated correctly"): every shot of him is waist-up (WAIST_UP), and a shoe picture beside the place made
+  // the model frame his feet. Shoes that matter are fixed on the footage itself (region swap).
 
   // the light the shot opens in, when it points at a lighting entity (the place itself is the picture)
   let light: string | null = null;
@@ -350,7 +311,7 @@ serve(async (req) => {
         plate,
         lines,
         light,
-        footwear,
+        footwear: null,
         cast,
         beats,
       })
@@ -381,7 +342,7 @@ serve(async (req) => {
     broll,
     scene: { id: String(scene.id), name: String(scene.name) },
     plate: { id: plate.id, path: plate.path },
-    shoes: footwear ? { id: footwear.id, label: footwear.label, path: footwear.path } : null,
+    shoes: null,
     cast: plan.cast ? { id: plan.cast.id, path: plan.cast.path, isPlace: plan.cast.id === plate.id } : null,
     seconds: plan.seconds,
     songStart: plan.songStart,

@@ -91,7 +91,7 @@ import { dressBox, dressPieceOf } from "@/lib/storyboard/dressSubmit";
 import { dressedTakeState, workflowStatus, type WorkflowStep } from "@/lib/storyboard/workflow";
 import { conflictNote } from "@/lib/storyboard/promptAudit";
 import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
-import { MONTAGE_LINES_MAX, castLine, defaultMontageLines, footwearLine, montageFootwear, montagePrompt, montageRecord, planMontageScenes, thingOfLabel } from "@/lib/storyboard/montage";
+import { MONTAGE_LINES_MAX, castLine, defaultMontageLines, montagePrompt, montageRecord, planMontageScenes, thingOfLabel } from "@/lib/storyboard/montage";
 import { compositeBox } from "@/lib/composite/compositeSubmit";
 import { compositesOn, planComposite, platesOfScene, stillsOfScene, type CompositePlan } from "@/lib/composite/plan";
 import { animatePlate as submitPlateMotion, findLivePlateJob, planPlateMotion, PLATE_EVENT_MAX, type PlateMotionPlan } from "@/lib/composite/plateMotion";
@@ -1659,25 +1659,21 @@ export function useStoryboardController(projectId: string): StoryboardController
       const continuity = continuityOf(box);
       const restagePlan = restageTemporalPlan(box, clock);
       const dressed = !!src.source.take.derivedFrom;
-      // his shoes: the outfit's footwear picture goes after the place (@Image2), so the model does not make up a pair
-      const footwear = montageFootwear(effectiveGarments(box.spec, outfitOf(box)).ids, wardrobeQuery.data ?? []);
       const plan = (typed?: string) => {
         const lines = (typed ?? defaultMontageLines(thing)).slice(0, MONTAGE_LINES_MAX);
         const scenes = planMontageScenes(lines, r.seconds);
         if (!scenes.ok) throw new Error(`${scenes.why}. Nothing was generated.`);
-        // after the place (@Image1): his shoes, then the scene's people — not sent twice when they are the place
+        // after the place (@Image1): the scene's people — not sent twice when they are the place. No shoe picture: every
+        // shot of him is waist-up (WAIST_UP; Fendi, 17 Oct 2026: the shoes "look huge and not recreated correctly")
         const castIsPlace = !!cast && cast.id === place.asset.id;
         const castApart = cast && !castIsPlace && cast.bucket === "project-references" ? cast : null;
-        const extraImages = [
-          ...(footwear ? [{ bucket: footwear.bucket, path: footwear.path }] : []),
-          ...(castApart ? [{ bucket: "project-references" as const, path: castApart.path }] : []),
-        ];
+        const extraImages = castApart ? [{ bucket: "project-references" as const, path: castApart.path }] : [];
         const castImage = castApart ? 1 + extraImages.length : 1;
-        const angle = [montagePrompt(scenes.scenes), footwearLine(footwear), castApart || castIsPlace ? castLine(castImage) : ""].filter(Boolean).join(" ");
+        const angle = [montagePrompt(scenes.scenes), castApart || castIsPlace ? castLine(castImage) : ""].filter(Boolean).join(" ");
         return {
           lines,
           scenes: scenes.scenes,
-          variant: { angle, idSuffix: "montage", alternate: true as const, record: montageRecord(scenes.scenes, thing, footwear, { cast: castApart || castIsPlace ? cast : null }), ...(extraImages.length ? { extraImages } : {}) },
+          variant: { angle, idSuffix: "montage", alternate: true as const, record: montageRecord(scenes.scenes, thing, null, { cast: castApart || castIsPlace ? cast : null }), ...(extraImages.length ? { extraImages } : {}) },
         };
       };
       const picture = { url: urlFor(place.asset), caption: `The place the montage is shot in: ${place.asset.name}` };
@@ -1692,7 +1688,7 @@ export function useStoryboardController(projectId: string): StoryboardController
         body:
           `About ${usd(est.clip)} by the provider's own pricing rule — one reference-to-video call for the whole sequence. ` +
           `${r.seconds} s of ${dressed ? "the DRESSED take" : "your take"} (${r.takeName}, ${mmss(r.takeIn)}–${mmss(r.takeOut)}) go to the model as the performer, with ${plate ? "the scene's plate" : "the place picture"} as where it happens` +
-          (footwear ? ` and ${footwear.label} as his shoes. ` : " (no shoes are on file for this outfit — the model will pick a pair if his feet show). ") +
+          " — no shoe picture: every shot of him is framed from the waist up. " +
           "The model is asked for Thuggpapi's shape: one style line (shaky handheld, quick optical zooms, 35 mm grain, fast cuts, deadpan), then the scenes in order with their seconds, your mouth in sync with the take whenever you are on screen. " +
           "The result lands on this shot UNSELECTED, beside what is there. It takes several minutes and finishes even if you close this page." +
           staleNote(box),
@@ -1712,7 +1708,7 @@ export function useStoryboardController(projectId: string): StoryboardController
           onConfirm: async (typed) => {
             try {
               const p = plan(typed);
-              console.info("Montage dry run — nothing was sent, spent or written:", { source: { take: src.source.take.id, dressed, takeIn: src.source.takeIn, takeOut: src.source.takeOut }, place: place.asset.path, shoes: footwear, seconds: r.seconds, lines: p.lines, scenes: p.scenes, angle: p.variant.angle, record: p.variant.record });
+              console.info("Montage dry run — nothing was sent, spent or written:", { source: { take: src.source.take.id, dressed, takeIn: src.source.takeIn, takeOut: src.source.takeOut }, place: place.asset.path, shoes: null, seconds: r.seconds, lines: p.lines, scenes: p.scenes, angle: p.variant.angle, record: p.variant.record });
               toast.success("Dry run: the exact request is in the browser console. Nothing was sent.");
             } catch (e) {
               toast.error(message(e));

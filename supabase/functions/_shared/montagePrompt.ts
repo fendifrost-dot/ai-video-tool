@@ -5,7 +5,7 @@
 // holds the two copies together word for word, so a montage shot from the MCP (montage-shot) is the montage the
 // storyboard's own button shoots.
 
-export const MONTAGE_VERSION = "montage-v4-2026-10-17";
+export const MONTAGE_VERSION = "montage-v5-2026-10-17";
 export const MONTAGE_LINES_MAX = 1200;
 export const MONTAGE_MIN_SCENE_SECONDS = 0.4;
 export const MONTAGE_MAX_SCENES = 8;
@@ -40,7 +40,11 @@ export const FRAME_ALLOWANCE = 0.042;
 
 /** Never a shot of his shoes (montage.ts NO_FEET; Fendi, 17 Oct 2026: "no more shoe shots"). */
 export const NO_FEET =
-  "No scene is a shot of his shoes or his feet: never a close-up of them, never a cutaway or a tilt down to them; his shoes are only ever seen in passing in a wider frame.";
+  "No scene is a shot of his shoes or his feet: never a close-up of them, never a cutaway or a tilt down to them.";
+
+/** Never a full-body shot of him (montage.ts WAIST_UP; Fendi, 17 Oct 2026: "Stop the full body shots"). */
+export const WAIST_UP =
+  "Every shot of him is from the waist up or closer — a medium shot, a medium close-up or a close-up; never a full-body or wide shot of him, his legs and shoes out of the frame.";
 
 export type MontageScene = { from: number; to: number; text: string };
 
@@ -160,6 +164,7 @@ export function montagePrompt(scenes: readonly MontageScene[]): string {
     MONTAGE_SYNC,
     NEVER_WIDER,
     NO_FEET,
+    WAIST_UP,
   ].join(" ");
 }
 
