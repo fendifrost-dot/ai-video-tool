@@ -47,3 +47,32 @@ don't have to guess for the next song").
    misses `usable:false` with the reason, reshoot only those shots. Filed results are always UNSELECTED; selecting is
    the director's.
 9. **Record** every paid call in the ledger and the handoff in the same session.
+
+## Paying for it: the Higgsfield API, not a plan (assessed 17 Oct 2026)
+
+Fendi asked, before buying more credit, whether a Higgsfield subscription beats the API at this rate of production.
+
+- **VERIFIED — the tool can only spend the API wallet.** Montages and dresses go AVT → Control Center →
+  `platform.higgsfield.ai` with CC's API keys, billed in dollars at list (CC's price table,
+  `video-providers-higgsfield-model`: Seedance 2.5 reference 720p $0.462/s, Genjutsu 720p $0.681 per source second).
+  A higgsfield.ai plan is a different wallet: its credits are spent on the website, through the Higgsfield MCP
+  connector or its CLI, never by an API key ("Plan credits and API balance do not mix", Higgsfield's own blog). The
+  connector's account is a free plan with 0.68 credits and none of the tool's spend in its transactions.
+- **Plan prices (live, 17 Oct):** Plus $49/mo = 1,000 credits (4.9¢ each); Ultra $129/mo = 3,000 (4.3¢), $99/mo billed
+  annually (3.3¢); credit packs 18 credits per $ (5.6¢), expiring after 90 days. The "unlimited" models are website-only
+  and none of them is Seedance 2.5 or Genjutsu.
+- **OBSERVED, not checked in the generator:** Seedance 2.5 at 720p ≈ 6.5 credits/s on a plan (Higgsfield: 8 s = 52
+  credits), so a 4 s montage ≈ 26 credits ≈ $1.27 (Plus) / $1.12 (Ultra) / $0.86 (Ultra annual) against $1.85–2.22 on
+  the API. Genjutsu's plan price was not found.
+- **One song at this format:** ~100 shots → ~100 montages + ~50 dresses + ~25 % redone ≈ **$420 at API list**; the
+  montages alone would be ~2,600 plan credits, about one Ultra month.
+- **DECISION: stay on the API and top it up.** A plan could save roughly a third to a half on the Seedance part
+  (HYPOTHESIS), but only by generating outside the tool — by hand on the website or by the agent through the connector,
+  then filing results back — which breaks "everything done outside the tool must be implemented inside the tool" and
+  loses the tool's job records, prompts and ledger trail. The tool's edge functions cannot hold a logged-in CLI, and
+  keeping Fendi's connector login on a server is not a supported integration.
+- **The bigger lever is waste, not the plan:** every rejected clip is a full-price clip. Check one frame per outfit
+  before montaging, dry-run first, and redo only marked misses.
+- **Revisit if** production passes about two songs a month, or Higgsfield lets API keys spend plan credits / sells API
+  volume pricing. Then measure the real plan price of one Seedance reference montage and one Genjutsu dress in the
+  generator before deciding.
