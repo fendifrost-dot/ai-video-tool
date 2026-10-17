@@ -92,4 +92,21 @@ describe("the Deno copy of the dress words is the app's, word for word", () => {
       "Keep everything else exactly as in the source video: his face, hair, glasses, skin, hands, the rest of his clothes, the room, the lighting, the camera move and his performance timing.",
     );
   });
+
+  it("among other people: he is named by what he keeps on, and nobody else changes", () => {
+    const { sent } = edge.dressReferences([PIECES[2]]);
+    const prompt = edge.buildDressPrompt([PIECES[2]], sent, {
+      wearer: "Saint Laurent Track Jacket - Mastic Cotton Navy Stripe",
+    });
+    expect(prompt).toMatch(
+      /^Replace ONLY the shoes of the man wearing the Saint Laurent Track Jacket - Mastic Cotton Navy Stripe with the exact piece/,
+    );
+    expect(prompt).toMatch(
+      /Only he changes: every other person in the frame keeps their own clothes and shoes exactly as in the source video\.$/,
+    );
+    // without a wearer the words are what every dress so far was sent
+    expect(edge.buildDressPrompt([PIECES[2]], sent, { wearer: " " })).toBe(
+      edge.buildDressPrompt([PIECES[2]], sent),
+    );
+  });
 });

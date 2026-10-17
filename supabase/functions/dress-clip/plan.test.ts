@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pieceOf, planDressClip, type DressClipInput } from "./plan.ts";
+import { pieceOf, planDressClip, wearerOf, type DressClipInput } from "./plan.ts";
 import { buildDressPrompt, dressReferences } from "../_shared/dressWords.ts";
 
 const SHOES = pieceOf({
@@ -98,5 +98,30 @@ describe("swapping pieces on a clip already on the board", () => {
       images: [{ storagePath: "u/a/l.jpg", angle: "front" }],
       construction: null,
     });
+  });
+
+  it("names him by the coat he keeps on, so a bystander's shoes are not the ones changed", () => {
+    const coat = pieceOf({
+      id: "coat",
+      label: "Coat in Bubbled Lambskin - Noir",
+      feature_type: "wardrobe_outerwear",
+      storage_path: "u/a/coat.jpg",
+    });
+    const hat = pieceOf({
+      id: "hat",
+      label: "YSL nylon bucket hat",
+      feature_type: "wardrobe_accessory",
+      storage_path: "u/a/hat.jpg",
+    });
+    expect(wearerOf([hat, coat, SHOES], [SHOES])).toBe("Coat in Bubbled Lambskin - Noir");
+    expect(wearerOf([hat, SHOES], [SHOES])).toBe("YSL nylon bucket hat");
+    expect(wearerOf([SHOES], [SHOES])).toBeNull();
+    const r = planDressClip(c041({ worn: [coat, hat, SHOES] }));
+    if (!r.ok) throw new Error(r.detail);
+    expect(r.plan.prompt).toMatch(
+      /^Replace ONLY the shoes of the man wearing the Coat in Bubbled Lambskin - Noir/,
+    );
+    expect(r.plan.prompt).toContain("Only he changes");
+    expect(r.plan.record.wearer).toBe("Coat in Bubbled Lambskin - Noir");
   });
 });

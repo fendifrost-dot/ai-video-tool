@@ -9,8 +9,8 @@
 // it by a test):
 //   1. the clip (project_assets, the caller's), its shot, and its place on the song (performance_syncs);
 //   2. its real length, read from the file's bytes (the result is conformed to it);
-//   3. the pieces: pieceIds when given, else the FOOTWEAR among what he wears in the shot (its own garments, else its
-//      outfit — the scene's or its exception);
+//   3. what he wears in the shot (its own garments, else its outfit — the scene's or its exception), which names him
+//      among other people in the frame; the pieces: pieceIds when given, else the FOOTWEAR among what he wears;
 //   4. the request and the dress record (dryRun: true answers with them and sends nothing);
 //   5. the provider_jobs row FIRST (write-ahead), then proxy-provider-call → CC video-providers-higgsfield-model; the
 //      tick runner downloads the result, conforms it to the clip's length and files it on the shot UNSELECTED, in sync
@@ -190,72 +190,66 @@ serve(async (req) => {
     sync: { id: str(syncRow?.id), offsetSeconds: offset, driftPpm: num(syncRow?.drift_ppm) ?? 0 },
   };
 
-  // 3. the pieces: the ones asked for, else the shoes he wears in the shot
-  let pieceIds: string[] = askedPieces ?? [];
+  // 3. what he wears in the shot (its own garments, else its outfit) — it names him among other people — and the
+  //    pieces to swap: the ones asked for, else the shoes among what he wears
   let outfit: { id: string; key: string; name: string; version: number } | null = null;
-  let sceneId: string | null = null;
-  if (!askedPieces) {
-    const start = num((shotRow as Row).timestamp_start);
-    const sceneQuery = user
-      .from("variation_scenes")
-      .select("id, name, outfit_key")
+  const start = num((shotRow as Row).timestamp_start);
+  const sceneQuery = user
+    .from("variation_scenes")
+    .select("id, name, outfit_key")
+    .eq("project_id", projectId)
+    .lte("start_seconds", start ?? 0)
+    .gt("end_seconds", start ?? 0)
+    .order("updated_at", { ascending: false });
+  const { data: sceneRows, error: sceneErr } = await (shot.variationId
+    ? sceneQuery.eq("variation_id", shot.variationId)
+    : sceneQuery);
+  if (sceneErr)
+    return json(500, { ok: false, error: "scene_lookup_failed", detail: sceneErr.message });
+  const scene = (sceneRows?.[0] as Row | undefined) ?? null;
+  const sceneId = scene ? String(scene.id) : null;
+  const spec = (((shotRow as Row).spec_json as Row | null) ??
+    ((shotRow as Row).generated_json as Row | null) ??
+    {}) as Row;
+  const worn = wornPieces(spec, str(scene?.outfit_key));
+  let wornIds: string[] = "ids" in worn ? worn.ids : [];
+  if ("outfitKey" in worn) {
+    const outfitQuery = user
+      .from("continuity_entities")
+      .select("id, key, name, version, garment_feature_ids")
       .eq("project_id", projectId)
-      .lte("start_seconds", start ?? 0)
-      .gt("end_seconds", start ?? 0)
-      .order("updated_at", { ascending: false });
-    const { data: sceneRows, error: sceneErr } = await (shot.variationId
-      ? sceneQuery.eq("variation_id", shot.variationId)
-      : sceneQuery);
-    if (sceneErr)
-      return json(500, { ok: false, error: "scene_lookup_failed", detail: sceneErr.message });
-    const scene = (sceneRows?.[0] as Row | undefined) ?? null;
-    sceneId = scene ? String(scene.id) : null;
-    const spec = (((shotRow as Row).spec_json as Row | null) ??
-      ((shotRow as Row).generated_json as Row | null) ??
-      {}) as Row;
-    const worn = wornPieces(spec, str(scene?.outfit_key));
-    let ids: string[] = "ids" in worn ? worn.ids : [];
-    if ("outfitKey" in worn) {
-      const outfitQuery = user
-        .from("continuity_entities")
-        .select("id, key, name, version, garment_feature_ids")
-        .eq("project_id", projectId)
-        .eq("kind", "outfit")
-        .eq("key", worn.outfitKey)
-        .eq("archived", false)
-        .limit(1);
-      const { data: outfitRows, error: outfitErr } = await (shot.variationId
-        ? outfitQuery.eq("variation_id", shot.variationId)
-        : outfitQuery);
-      if (outfitErr)
-        return json(500, { ok: false, error: "outfit_lookup_failed", detail: outfitErr.message });
-      const o = (outfitRows?.[0] as Row | undefined) ?? null;
-      if (o) {
-        outfit = {
-          id: String(o.id),
-          key: String(o.key),
-          name: String(o.name),
-          version: num(o.version) ?? 1,
-        };
-        ids = Array.isArray(o.garment_feature_ids) ? o.garment_feature_ids.map(String) : [];
-      }
+      .eq("kind", "outfit")
+      .eq("key", worn.outfitKey)
+      .eq("archived", false)
+      .limit(1);
+    const { data: outfitRows, error: outfitErr } = await (shot.variationId
+      ? outfitQuery.eq("variation_id", shot.variationId)
+      : outfitQuery);
+    if (outfitErr)
+      return json(500, { ok: false, error: "outfit_lookup_failed", detail: outfitErr.message });
+    const o = (outfitRows?.[0] as Row | undefined) ?? null;
+    if (o) {
+      outfit = {
+        id: String(o.id),
+        key: String(o.key),
+        name: String(o.name),
+        version: num(o.version) ?? 1,
+      };
+      wornIds = Array.isArray(o.garment_feature_ids) ? o.garment_feature_ids.map(String) : [];
     }
-    pieceIds = ids;
   }
-  let pieces: ReturnType<typeof pieceOf>[] = [];
-  if (pieceIds.length > 0) {
+  const lookupIds = [...new Set([...wornIds, ...(askedPieces ?? [])])];
+  const byId = new Map<string, ReturnType<typeof pieceOf>>();
+  if (lookupIds.length > 0) {
     const { data: rows, error: piecesErr } = await user
       .from("character_features")
       .select("id, label, feature_type, storage_path, dimensions_description, reference_images")
-      .in("id", pieceIds);
+      .in("id", lookupIds);
     if (piecesErr)
       return json(500, { ok: false, error: "wardrobe_lookup_failed", detail: piecesErr.message });
-    const byId = new Map(((rows ?? []) as Row[]).map((r) => [String(r.id), r]));
-    pieces = pieceIds
-      .map((id) => byId.get(id))
-      .filter((r): r is Row => !!r)
-      .filter((r) => askedPieces || r.feature_type === "wardrobe_footwear")
-      .map((r) =>
+    for (const r of (rows ?? []) as Row[])
+      byId.set(
+        String(r.id),
         pieceOf({
           id: String(r.id),
           label: str(r.label),
@@ -266,9 +260,23 @@ serve(async (req) => {
         }),
       );
   }
+  const wornPiecesNow = wornIds
+    .map((id) => byId.get(id))
+    .filter((p): p is ReturnType<typeof pieceOf> => !!p);
+  const pieces = askedPieces
+    ? askedPieces.map((id) => byId.get(id)).filter((p): p is ReturnType<typeof pieceOf> => !!p)
+    : wornPiecesNow.filter((p) => p.featureType === "wardrobe_footwear");
 
   // 4. the request
-  const planned = planDressClip({ projectId, clip, shot, pieces, sceneId, outfit });
+  const planned = planDressClip({
+    projectId,
+    clip,
+    shot,
+    pieces,
+    worn: wornPiecesNow,
+    sceneId,
+    outfit,
+  });
   if (!planned.ok)
     return json(planned.status, { ok: false, error: planned.error, detail: planned.detail });
   const plan = planned.plan;
