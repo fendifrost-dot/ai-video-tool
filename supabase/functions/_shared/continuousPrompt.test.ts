@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { continuousPrompt, continuousSeconds, continuousSongStart, FACE_TO_CAMERA, NOBODY_PERFORMS, COLD_HOUR } from "./continuousPrompt";
+import { continuousPrompt, continuousSeconds, continuousSongStart, lyricsInTake, FACE_TO_CAMERA, NOBODY_PERFORMS, COLD_HOUR } from "./continuousPrompt";
 import { NO_FEET, WAIST_UP } from "./montagePrompt";
 import { planContinuous } from "../montage-shot/plan";
 
@@ -45,7 +45,7 @@ describe("one continuous take", () => {
     const s = withHim.plan.payload.settings as Record<string, unknown>;
     expect(withHim.plan.body).toMatchObject({ duration: 10, mode: "reference_to_video", aspectRatio: "9:16" });
     expect(s).toMatchObject({ route: "seedance_ref", kind: "angle", sourceAssetId: "t1", masterStart: 53.8, alternate: true, batchShotId: "c033_continuous" });
-    expect((s.variant as { version: string }).version).toMatch(/^continuous-v1/);
+    expect((s.variant as { version: string }).version).toMatch(/^continuous-v2/);
     expect(withHim.plan.scenes).toEqual([]);
     const without = planContinuous({ projectId: "pr", userId: "u", aspect: "9:16", shot, take: null, plate, camera: "a macro push-in", action: "Ice catching light", endMotion: "light sweeping left", seconds: 8, images: [{ bucket: "wardrobe-refs", path: "j.jpg", as: "the jacket" }] });
     expect(without.ok).toBe(true);
@@ -60,5 +60,44 @@ describe("one continuous take", () => {
   it("refuses a take without words for its move, action or end", () => {
     const r = planContinuous({ projectId: "pr", userId: "u", aspect: "9:16", shot, take, plate, camera: " ", action: "x", endMotion: "y" });
     expect(r).toMatchObject({ ok: false, error: "missing_camera" });
+  });
+
+  it("takes the lyric lines that fall in the take, timed from its first frame", () => {
+    const lines = [
+      { start_seconds: 53.08, end_seconds: 54.2, text: "Drive like a getaway driver" },
+      { start_seconds: 52, end_seconds: 53, text: "before the take" },
+      { start_seconds: 56.82, end_seconds: 58, text: "Listen   what they rap bout" },
+      { start_seconds: 54.26, end_seconds: 54.8, text: "On the highway" },
+      { start_seconds: 63.8, end_seconds: 64.5, text: "after the take" },
+    ];
+    expect(lyricsInTake(lines, 53.8, 10)).toEqual([
+      { at: 0, text: "Drive like a getaway driver" },
+      { at: 0.5, text: "On the highway" },
+      { at: 3, text: "Listen what they rap bout" },
+    ]);
+  });
+
+  it("with him he raps the exact words over @Audio1 — nothing says his mouth is fixed afterwards", () => {
+    const p = continuousPrompt({ seconds: 10, camera: "a slow push-in", action: "He raps at the island", endMotion: "drifting right", withHim: true, audio: true, lyrics: [{ at: 0.5, text: "On the highway" }, { at: 3, text: 'Listen "what" they rap bout' }] });
+    expect(p).toContain("@Audio1 is the song's vocals under this take: he raps along to it, in time with it");
+    expect(p).toContain(`these are the exact words, from the first frame: at 0.5 s "On the highway", at 3.0 s "Listen 'what' they rap bout".`);
+    expect(p).not.toMatch(/afterwards/);
+    const silent = continuousPrompt({ seconds: 10, camera: "a slow push-in", action: "x", endMotion: "y", withHim: true });
+    expect(silent).not.toContain("@Audio1");
+    expect(silent).toContain("actually rapping on camera");
+    const place = continuousPrompt({ seconds: 8, camera: "a whip pan", action: "x", endMotion: "y", withHim: false, audio: true, lyrics: [{ at: 1, text: "On the highway" }] });
+    expect(place).not.toMatch(/@Audio1|rapping/);
+  });
+
+  it("a planned take with him records its lyrics and the vocals reference; one without him carries neither", () => {
+    const lyrics = [{ at: 0.5, text: "On the highway" }];
+    const r = planContinuous({ projectId: "pr", userId: "u", aspect: "9:16", shot, take, plate, camera: "a slow push-in", action: "He raps", endMotion: "right", lyrics, audio: true });
+    if (!r.ok) throw new Error("refused");
+    expect(r.plan.prompt).toContain('at 0.5 s "On the highway"');
+    expect((r.plan.payload.settings as { variant: Record<string, unknown> }).variant).toMatchObject({ lyrics, audio: true });
+    const b = planContinuous({ projectId: "pr", userId: "u", aspect: "9:16", shot, take: null, plate, camera: "a whip pan", action: "x", endMotion: "y", lyrics, audio: true });
+    if (!b.ok) throw new Error("refused");
+    expect(b.plan.prompt).not.toContain("On the highway");
+    expect((b.plan.payload.settings as { variant: Record<string, unknown> }).variant.lyrics).toBeUndefined();
   });
 });

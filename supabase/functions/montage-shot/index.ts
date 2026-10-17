@@ -42,6 +42,8 @@ import {
   type ShotFacts,
   type TakeFacts,
 } from "./plan.ts";
+import { continuousSeconds, continuousSongStart, lyricsInTake, type TakeLyric } from "../_shared/continuousPrompt.ts";
+import { sliceVocals } from "../_shared/vocalSlice.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -333,6 +335,40 @@ serve(async (req) => {
     } else return json(400, { ok: false, error: "bad_image", detail: "each picture is { assetId } or { featureId }, with as" });
   }
   if (contImages.length > 8) return json(400, { ok: false, error: "too_many_images", detail: "at most 8 pictures after the place" });
+  // a continuous take with him: he raps the lyric lines that fall in it, over the song's vocals (@Audio1) — Fendi, 17 Oct
+  // 2026: "Skip AI lip sync completely … him actually rapping the lyrics on camera … say the actual lyric line"
+  let takeLyrics: TakeLyric[] = [];
+  let vocals: { id: string; bucket: string; path: string; bytes: number | null } | null = null;
+  let songWindow: [number, number] | null = null;
+  if (continuous && take) {
+    const secs = continuousSeconds(continuous.seconds);
+    const at = continuousSongStart(shot.start, shot.end, secs);
+    songWindow = [at, Math.round((at + secs) * 1000) / 1000];
+    const { data: lyricRows, error: lyricErr } = await user
+      .from("lyric_lines")
+      .select("start_seconds, end_seconds, text")
+      .eq("project_id", projectId)
+      .lt("start_seconds", songWindow[1])
+      .gt("end_seconds", songWindow[0])
+      .order("start_seconds", { ascending: true })
+      .limit(40);
+    if (lyricErr) return json(500, { ok: false, error: "lyrics_lookup_failed", detail: lyricErr.message });
+    takeLyrics = lyricsInTake((lyricRows ?? []) as Row[] as { start_seconds: unknown; end_seconds: unknown; text: unknown }[], at, secs);
+    // the newest vocals stem of the project (lipsync-shot separates it once per song)
+    const { data: stems } = await user
+      .from("project_assets")
+      .select("id, file_url, metadata_json")
+      .eq("project_id", projectId)
+      .eq("asset_type", "other")
+      .eq("metadata_json->>stem", "vocals")
+      .order("created_at", { ascending: false })
+      .limit(1);
+    const stem = (stems?.[0] as Row | undefined) ?? null;
+    if (stem) {
+      const meta = (stem.metadata_json ?? {}) as Row;
+      vocals = { id: String(stem.id), bucket: str(meta.bucket) ?? "project-audio", path: String(stem.file_url), bytes: num(meta.size_bytes) };
+    }
+  }
   const planned = continuous
     ? planContinuous({
         projectId,
@@ -347,6 +383,8 @@ serve(async (req) => {
         seconds: continuous.seconds,
         images: contImages,
         light,
+        lyrics: takeLyrics,
+        audio: !!vocals,
       })
     : take
     ? planMontage({
@@ -379,6 +417,7 @@ serve(async (req) => {
   const facts = {
     mode: continuous ? "continuous" : "montage",
     ...(continuous ? { pictures: contImages.map((i) => ({ path: i.path, as: i.as })) } : {}),
+    ...(continuous && take ? { lyrics: takeLyrics, vocals: vocals ? { assetId: vocals.id, songWindow } : null } : {}),
     shot: { id: shot.id, key: shot.key, start: shot.start, end: shot.end },
     take: take
       ? {
@@ -427,9 +466,27 @@ serve(async (req) => {
   const badExtra = extraSigned.find((x) => !x || x.error || !x.data?.signedUrl);
   if (badExtra !== undefined)
     return json(500, { ok: false, error: "picture_sign_failed", detail: badExtra?.error?.message });
+  // the slice of the vocals under the take, stored next to the project's audio and sent as @Audio1
+  let audioSignedUrl: string | null = null;
+  if (vocals && songWindow) {
+    const stemSigned = await user.storage.from(vocals.bucket).createSignedUrl(vocals.path, 600);
+    if (stemSigned.error || !stemSigned.data?.signedUrl)
+      return json(500, { ok: false, error: "vocals_sign_failed", detail: stemSigned.error?.message });
+    const sliced = await sliceVocals(stemSigned.data.signedUrl, vocals.bytes, songWindow);
+    if (!sliced.ok) return json(sliced.status, { ok: false, error: sliced.error, detail: sliced.detail });
+    const audioPath = `${userId}/${projectId}/continuous/${shot.key}_${Date.now()}.wav`;
+    const up = await user.storage.from("project-audio").upload(audioPath, sliced.wav, { contentType: "audio/wav", upsert: false });
+    if (up.error) return json(500, { ok: false, error: "slice_store_failed", detail: up.error.message });
+    const audioSigned = await user.storage.from("project-audio").createSignedUrl(audioPath, SIGN_TTL);
+    if (audioSigned.error || !audioSigned.data?.signedUrl)
+      return json(500, { ok: false, error: "slice_sign_failed", detail: audioSigned.error?.message });
+    audioSignedUrl = audioSigned.data.signedUrl;
+    (plan.payload.settings as Row).vocals = { assetId: vocals.id, audioPath, songWindow };
+  }
   const requestBody = {
     ...plan.body,
     ...(srcSigned ? { referenceVideoUrls: [srcSigned.data!.signedUrl] } : {}),
+    ...(audioSignedUrl ? { referenceAudioUrls: [audioSignedUrl] } : {}),
     referenceImageUrls: [stillSigned.data.signedUrl, ...extraSigned.map((x) => x!.data!.signedUrl)],
   };
 

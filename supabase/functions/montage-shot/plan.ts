@@ -28,7 +28,7 @@ import {
   type MontageFootwear,
   type MontageScene,
 } from "../_shared/montagePrompt.ts";
-import { CONTINUOUS_VERSION, continuousPrompt, continuousSeconds, continuousSongStart } from "../_shared/continuousPrompt.ts";
+import { CONTINUOUS_VERSION, continuousPrompt, continuousSeconds, continuousSongStart, type TakeLyric } from "../_shared/continuousPrompt.ts";
 
 /** The run every storyboard button files under (src/lib/storyboard/generate.ts STORYBOARD_RUN). */
 export const STORYBOARD_RUN = "storyboard";
@@ -452,12 +452,17 @@ export type ContinuousInput = {
   /** The pictures after the place (@Image2 …), signed by the I/O half, and what each is. */
   images?: { bucket: string; path: string; as: string }[];
   light?: string | null;
+  /** The lyric lines he raps, seconds from the take's first frame (continuousPrompt lyricsInTake). */
+  lyrics?: TakeLyric[];
+  /** The slice of the song's vocals under the take goes as @Audio1 (the I/O half cuts, stores and signs it). */
+  audio?: boolean;
 };
 
 /**
  * One continuous take on a shot (montage-shot's `continuous` mode; _shared/continuousPrompt.ts says why): one Seedance
  * call, as long as the lane allows, no scenes and no beat cuts. With him, his dressed take is @Video1 and the clip is
- * filed as a take in sync (its mouth is put on the song afterwards by lipsync-shot); without him it is filed as a clip.
+ * filed as a take in sync — he raps the lyric lines over the song's vocals (@Audio1) and the editor lines the mouth up by hand,
+ * nothing repaints it afterwards; without him it is filed as a clip.
  * Its first frame is placed on the song so the shot's window sits in the middle of it — handles both sides.
  */
 export function planContinuous(input: ContinuousInput): { ok: true; plan: MontagePlan } | Refusal {
@@ -480,6 +485,8 @@ export function planContinuous(input: ContinuousInput): { ok: true; plan: Montag
     keep: take ? restageKeep({ shows: take.shows }) : undefined,
     images: images.map((i) => ({ as: i.as })),
     light: input.light ?? null,
+    lyrics: withHim ? input.lyrics ?? [] : [],
+    audio: withHim && !!input.audio,
   });
   const estimateUsd = Number(seedanceUsd(RESTAGE_RESOLUTION, seconds, take ? Math.round(take.seconds) : 0).toFixed(3));
   const aspect = clipAspect(input.aspect);
@@ -502,6 +509,7 @@ export function planContinuous(input: ContinuousInput): { ok: true; plan: Montag
     endMotion: input.endMotion.trim(),
     withHim,
     images: images.map((i) => ({ path: i.path, as: i.as })),
+    ...(withHim ? { lyrics: input.lyrics ?? [], audio: !!input.audio } : {}),
   };
   const settings = {
     batchRun: STORYBOARD_RUN,
