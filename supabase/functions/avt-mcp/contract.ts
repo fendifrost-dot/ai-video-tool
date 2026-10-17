@@ -257,7 +257,7 @@ export const TOOLS = [
   {
     name: "avt_montage",
     description:
-      "Shoot a performance shot as a fast-cut montage (the storyboard's Montage button, without a browser): its DRESSED take re-shot in the place of its scene's plate in one Seedance 2.5 call, filed on the shot unselected when done. lines = the scenes, one per line, each optionally timed (\"2.0-2.7 s: …\"); absent = the dialog's prefill. About $2.22 list for 4 s. A shot he is NOT in (b-roll) is shot as a montage too: the scene's place and its people (a cast still, worlds/scene_*), no take, lines required, the lines sharing the shot's own seconds (about $1.85 for the 4 s minimum). Never a shot of his shoes or feet. dry_run answers with the exact prompt and request and sends nothing.",
+      "Shoot a performance shot as a fast-cut montage (the storyboard's Montage button, without a browser): its DRESSED take re-shot in the place of its scene's plate in one Seedance 2.5 call, filed on the shot unselected when done. lines = the scenes, one per line, each optionally timed (\"2.0-2.7 s: …\"); absent = the dialog's prefill. About $2.22 list for 4 s. A shot he is NOT in (b-roll) is shot as a montage too: the scene's place and its people (a cast still, worlds/scene_*), no take, lines required, the lines sharing the shot's own seconds (about $1.85 for the 4 s minimum). Never a shot of his shoes or feet. Untimed lines are cut on the song's beats inside the part of the clip the shot plays (one render per shot; docs/recipes/MONTAGE_MUSIC_VIDEO_WORKFLOW.md). dry_run answers with the exact prompt and request and sends nothing.",
     inputSchema: {
       type: "object",
       properties: {

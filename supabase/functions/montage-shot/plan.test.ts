@@ -11,6 +11,7 @@ import {
   castLine,
   brollMontagePrompt,
   planShotMontageScenes,
+  planBeatLockedScenes,
   DEFAULT_LOOK_SUFFIX,
 } from "../_shared/montagePrompt.ts";
 
@@ -281,8 +282,8 @@ describe("a montage of a shot he is not in (b-roll)", () => {
     expect(p.seconds).toBe(4);
     expect(p.songStart).toBe(1.5);
     expect(p.lead).toBe(0);
-    const scenes = planShotMontageScenes(BOOSTERS, 1.48, 4);
-    if (!scenes.ok) throw new Error(scenes.why);
+    const scenes = planBeatLockedScenes(BOOSTERS, { renderSeconds: 4, shotIn: 0, shotOut: 1.48, beats: [] });
+    if (!scenes || !scenes.ok) throw new Error("not planned");
     expect(p.scenes).toEqual(scenes.scenes);
     expect(p.prompt).toBe(`${brollMontagePrompt(scenes.scenes, 1)} ${DEFAULT_LOOK_SUFFIX}`);
     expect(p.prompt).not.toMatch(/@Video1/);
@@ -294,7 +295,9 @@ describe("a montage of a shot he is not in (b-roll)", () => {
     expect(settings.alternate).toBe(true);
     expect(settings.masterStart).toBe(1.5);
     expect(settings).not.toHaveProperty("extraImages");
-    expect(settings.variant).toEqual(montageRecord(scenes.scenes, null, null, { cast: CAST, broll: true }));
+    expect(settings.variant).toEqual(
+      montageRecord(scenes.scenes, null, null, { cast: CAST, broll: true, cutOn: { beats: 0, cuts: 2 } }),
+    );
   });
 
   it("refuses with no lines (there is no prefill for a place without him) and refuses timed events", () => {
@@ -305,3 +308,30 @@ describe("a montage of a shot he is not in (b-roll)", () => {
     expect(!timed.ok && timed.error).toBe("shot_has_timed_events");
   });
 });
+
+describe("cut to the song: the montage's lines are cut on the song's beats", () => {
+  it("a performance montage: the beats move onto the dressed take's clock and the cuts fall inside the shot", () => {
+    // c042 plays 0.273–1.753 s of its dressed take (first frame at song 73.5268); 122 BPM beats on the song clock
+    const beats = Array.from({ length: 12 }, (_, k) => 73.0 + k * 0.4918);
+    const r = planMontage(c042({ lines: "the orcas\nhim in profile\nthe orca's eye", beats }));
+    if (!r.ok) throw new Error(r.detail);
+    const s = r.plan.scenes;
+    expect(s[0].from).toBe(0);
+    expect(s[2].to).toBe(4);
+    expect(s[1].from).toBeGreaterThan(0.273);
+    expect(s[2].from).toBeLessThan(1.753);
+    const settings = r.plan.payload.settings as Record<string, unknown>;
+    const cutOn = (settings.variant as Record<string, unknown>).cutOn as { beats: number; cuts: number };
+    expect(cutOn.cuts).toBe(2);
+    expect(cutOn.beats).toBeGreaterThanOrEqual(1);
+  });
+
+  it("lines with their own seconds are kept as written", () => {
+    const r = planMontage(c042({ lines: LINES, beats: [73.6, 74.1] }));
+    if (!r.ok) throw new Error(r.detail);
+    const scenes = planMontageScenes(LINES, 4);
+    if (!scenes.ok) throw new Error(scenes.why);
+    expect(r.plan.scenes).toEqual(scenes.scenes);
+  });
+});
+

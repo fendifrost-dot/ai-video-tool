@@ -327,6 +327,18 @@ serve(async (req) => {
     light = words || null;
   }
 
+  // the song's beats (the newest analysis): untimed lines are cut on them
+  const { data: analysisRows } = await user
+    .from("song_analyses")
+    .select("beat_map_json, analyzed_at")
+    .eq("project_id", projectId)
+    .order("analyzed_at", { ascending: false })
+    .limit(1);
+  const beatMap = (analysisRows?.[0] as Row | undefined)?.beat_map_json;
+  const beats = Array.isArray(beatMap)
+    ? (beatMap as Row[]).map((b) => num(b?.t)).filter((t): t is number => t != null)
+    : [];
+
   // 4. the request
   const planned = take
     ? planMontage({
@@ -340,6 +352,7 @@ serve(async (req) => {
         light,
         footwear,
         cast,
+        beats,
       })
     : planBrollMontage({
         projectId,
@@ -350,6 +363,7 @@ serve(async (req) => {
         cast,
         lines,
         light,
+        beats,
       });
   if (!planned.ok)
     return json(planned.status, { ok: false, error: planned.error, detail: planned.detail });
@@ -373,6 +387,7 @@ serve(async (req) => {
     songStart: plan.songStart,
     lead: plan.lead,
     scenes: plan.scenes,
+    cutOnBeats: ((plan.payload.settings as Row).variant as Row | undefined)?.cutOn ?? null,
     thing: plan.thing,
     estimateUsd: plan.estimateUsd,
     prompt: plan.prompt,

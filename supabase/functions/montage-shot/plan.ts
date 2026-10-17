@@ -17,6 +17,7 @@ import {
   footwearLine,
   montagePrompt,
   montageRecord,
+  planBeatLockedScenes,
   planMontageScenes,
   planShotMontageScenes,
   restageKeep,
@@ -100,6 +101,8 @@ export type MontageInput = {
   footwear?: MontageFootwear | null;
   /** The people of the scene: a still with them in it, sent after the place and the shoes (or the place itself). */
   cast?: CastFacts | null;
+  /** The song's beats, song seconds (song_analyses.beat_map_json): untimed lines are cut on them. */
+  beats?: readonly number[] | null;
 };
 
 export type MontagePlan = {
@@ -202,10 +205,19 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
     0,
     MONTAGE_LINES_MAX,
   );
-  const planned = planMontageScenes(lines, seconds);
-  if (!planned.ok) return refuse(422, "scenes_refused", `${planned.why}. Nothing was generated.`);
   const lead = Math.max(0, takeIn);
   const songStart = r3(performanceToSong(0, take.sync));
+  // the lines share the part of the clip the edit plays, cut on the song's beats (montagePrompt.ts planBeatLockedScenes)
+  const clipZero = performanceToSong(0, take.sync);
+  const locked = planBeatLockedScenes(lines, {
+    renderSeconds: seconds,
+    shotIn: lead,
+    shotOut: lead + shotSeconds,
+    beats: (input.beats ?? []).map((t) => t - clipZero),
+  });
+  const planned = locked ?? planMontageScenes(lines, seconds);
+  if (!planned.ok) return refuse(422, "scenes_refused", `${planned.why}. Nothing was generated.`);
+  const cutOn = locked && locked.ok ? { beats: locked.locked, cuts: locked.scenes.length - 1 } : null;
   const light = input.light?.trim() ? `The light: ${input.light.trim()}` : "";
   const footwear = input.footwear ?? null;
   const cast = input.cast ?? null;
@@ -251,7 +263,7 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
     sourceAssetId: take.id,
     sourceSeconds: seconds,
     alternate: true as const,
-    variant: montageRecord(planned.scenes, thing, footwear, { cast }),
+    variant: montageRecord(planned.scenes, thing, footwear, { cast, cutOn }),
     ...(shot.madeFrom ? { madeFrom: shot.madeFrom } : {}),
     submittedBy: "montage-shot",
     lead: r3(lead),
@@ -309,6 +321,8 @@ export type BrollInput = {
   cast?: CastFacts | null;
   lines?: string | null;
   light?: string | null;
+  /** The song's beats, song seconds: the lines are cut on them. */
+  beats?: readonly number[] | null;
 };
 
 /**
@@ -343,8 +357,15 @@ export function planBrollMontage(input: BrollInput): { ok: true; plan: MontagePl
       "a shot he is not in has no prefill: write its scenes, one per line (what the place and its people do, cut by cut)",
     );
   const lines = input.lines.slice(0, MONTAGE_LINES_MAX);
-  const planned = planShotMontageScenes(lines, shotSeconds, seconds);
+  const locked = planBeatLockedScenes(lines, {
+    renderSeconds: seconds,
+    shotIn: 0,
+    shotOut: shotSeconds,
+    beats: (input.beats ?? []).map((t) => t - shot.start),
+  });
+  const planned = locked ?? planShotMontageScenes(lines, shotSeconds, seconds);
   if (!planned.ok) return refuse(422, "scenes_refused", `${planned.why}. Nothing was generated.`);
+  const cutOn = locked && locked.ok ? { beats: locked.locked, cuts: locked.scenes.length - 1 } : null;
   const cast = input.cast ?? null;
   const pictures = picturesAfterPlace(plate, null, cast);
   const light = input.light?.trim() ? `The light: ${input.light.trim()}` : "";
@@ -379,7 +400,7 @@ export function planBrollMontage(input: BrollInput): { ok: true; plan: MontagePl
     ...(pictures.extra.length > 0 ? { extraImages: pictures.extra } : {}),
     masterStart: r3(shot.start),
     alternate: true as const,
-    variant: montageRecord(planned.scenes, thing, null, { cast, broll: true }),
+    variant: montageRecord(planned.scenes, thing, null, { cast, broll: true, cutOn }),
     ...(shot.madeFrom ? { madeFrom: shot.madeFrom } : {}),
     submittedBy: "montage-shot",
     lead: 0,
