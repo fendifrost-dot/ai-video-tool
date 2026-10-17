@@ -124,4 +124,33 @@ describe("swapping pieces on a clip already on the board", () => {
     expect(r.plan.prompt).toContain("Only he changes");
     expect(r.plan.record.wearer).toBe("Coat in Bubbled Lambskin - Noir");
   });
+
+  it("a region only: the browser's enlarged crop is the source, the box and the window are recorded", () => {
+    const crop = {
+      path: "u/p/swap-crops/c044_crop.mp4",
+      seconds: 4.0417,
+      rect: { x: 0.3, y: 0.45, w: 0.4, h: 0.4 },
+      window: [3.3, 4.04] as [number, number],
+    };
+    const r = planDressClip(c041({ crop }));
+    if (!r.ok) throw new Error(r.detail);
+    const s = r.plan.payload.settings as Record<string, unknown>;
+    expect(s.sourcePath).toBe("u/p/swap-crops/c044_crop.mp4");
+    expect(s.batchShotId).toBe("c041_swap_crop");
+    expect(r.plan.record).toMatchObject({
+      sourceAssetId: "8b58017d-8ff4-4a05-9dbf-dedb480378a0",
+      sourcePath: "u/p/swap-crops/c044_crop.mp4",
+      crop: {
+        path: crop.path,
+        rect: crop.rect,
+        window: [3.3, 4.04],
+        clipPath: "u/p/3b41dd27/generated_higgsfield_b0322850-7c8.mp4",
+      },
+    });
+    const short = planDressClip(c041({ crop: { ...crop, seconds: 3.5 } }));
+    expect(short.ok).toBe(false);
+    if (!short.ok) expect(short.error).toBe("crop_length_differs");
+    const out = planDressClip(c041({ crop: { ...crop, rect: { x: 0.8, y: 0, w: 0.4, h: 0.5 } } }));
+    expect(out.ok).toBe(false);
+  });
 });

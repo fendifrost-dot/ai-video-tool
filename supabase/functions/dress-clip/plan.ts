@@ -41,11 +41,30 @@ export type ClipFacts = {
 
 export type ShotFacts = { id: string; key: string; variationId: string | null };
 
+/**
+ * A region of the clip, swapped on its own: the browser cut it out of the clip and enlarged it to the clip's frame
+ * (src/lib/regionSwap), so a piece that is small in a wide shot — shoes at the far end of a platform — fills the
+ * picture the model sees, and nobody outside the box can be changed. The swapped crop is put back over the clip in
+ * the browser afterwards; the job runner only saves it.
+ */
+export type CropFacts = {
+  /** The enlarged crop's file (project-clips, the caller's own folder). */
+  path: string;
+  /** Its length, measured from its bytes: the clip's. */
+  seconds: number;
+  /** The box on the clip's frame, 0–1 of its width and height. */
+  rect: { x: number; y: number; w: number; h: number };
+  /** Where in the clip the swap is put back, seconds; null = the whole clip. */
+  window: [number, number] | null;
+};
+
 export type DressClipInput = {
   projectId: string;
   clip: ClipFacts;
   shot: ShotFacts;
   pieces: readonly DressPiece[];
+  /** Swap a region only (the browser's enlarged crop is the source). */
+  crop?: CropFacts | null;
   /** Everything he wears in the shot: the piece he is NOT changing out of names him among other people (wearerOf). */
   worn?: readonly DressPiece[];
   sceneId?: string | null;
@@ -105,6 +124,19 @@ export function planDressClip(input: DressClipInput): { ok: true; plan: DressCli
     );
   const wearer = wearerOf(input.worn ?? [], input.pieces);
   const prompt = buildDressPrompt(input.pieces, sent, { wearer });
+  const crop = input.crop ?? null;
+  if (crop) {
+    if (Math.abs(crop.seconds - clip.seconds) > 0.05)
+      return refuse(
+        422,
+        "crop_length_differs",
+        `the crop is ${crop.seconds.toFixed(3)} s and the clip ${clip.seconds.toFixed(3)} s — it has to be the whole clip`,
+      );
+    const { x, y, w, h } = crop.rect;
+    if (!(w > 0 && h > 0 && x >= 0 && y >= 0 && x + w <= 1.0001 && y + h <= 1.0001))
+      return refuse(422, "bad_crop_box", "the box has to lie inside the frame");
+  }
+  const sourcePath = crop ? crop.path : clip.path;
   const seconds = r4(clip.seconds);
   const billedSeconds = dressBilledSeconds(seconds);
   const estimateUsd = (billedSeconds * DRESS_MILLS_PER_SECOND) / 1000;
@@ -126,7 +158,7 @@ export function planDressClip(input: DressClipInput): { ok: true; plan: DressCli
     handles: { head: 0, tail: 0 },
     songStart,
     sourceSeconds: seconds,
-    sourcePath: clip.path,
+    sourcePath,
     cutAssetId: null,
     outfit: input.outfit ?? null,
     sceneId: input.sceneId ?? null,
@@ -138,6 +170,16 @@ export function planDressClip(input: DressClipInput): { ok: true; plan: DressCli
     // what the clip was before its pieces changed: the board keeps naming it that (a montage stays a montage)
     sourceMethod: clip.method,
     wearer,
+    ...(crop
+      ? {
+          crop: {
+            path: crop.path,
+            rect: crop.rect,
+            window: crop.window,
+            clipPath: clip.path,
+          },
+        }
+      : {}),
     swapped: sent.map((r) => r.pieceId).filter((id, i, a) => a.indexOf(id) === i),
     submittedBy: "dress-clip",
   };
@@ -151,12 +193,12 @@ export function planDressClip(input: DressClipInput): { ok: true; plan: DressCli
   };
   const settings = {
     batchRun: STORYBOARD_RUN,
-    batchShotId: `${shot.key}_swap`,
+    batchShotId: crop ? `${shot.key}_swap_crop` : `${shot.key}_swap`,
     route: DRESS_ROUTE,
     kind: "angle",
     estimateUsd,
     lookPreset: "none",
-    sourcePath: clip.path,
+    sourcePath,
     sourceWindow: [0, seconds],
     sourceAssetId: clip.id,
     sourceSeconds: seconds,

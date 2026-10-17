@@ -115,6 +115,19 @@ export function restagedFrom(job: ProgressJob): { sourceAssetId: string; songSta
   return { sourceAssetId: s.sourceAssetId, songStart: s.masterStart, sourceWindow: s.sourceWindow ?? null, seconds: typeof s.sourceSeconds === "number" ? s.sourceSeconds : null };
 }
 
+/** A dress of a region of its clip (dress-clip with a crop): the box and where it goes back. Null for a whole clip. */
+export function cropSwapOf(dressed: DressedFrom): { path: string; clip_path: string | null; rect: { x: number; y: number; w: number; h: number }; window: [number, number] | null } | null {
+  const c = dressed.record.crop as Record<string, unknown> | undefined;
+  if (!c || typeof c !== "object" || typeof c.path !== "string") return null;
+  const r = c.rect as Record<string, unknown> | undefined;
+  const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : null);
+  const rect = r ? { x: n(r.x), y: n(r.y), w: n(r.w), h: n(r.h) } : null;
+  if (!rect || rect.x == null || rect.y == null || rect.w == null || rect.h == null) return null;
+  const w = c.window;
+  const window = Array.isArray(w) && w.length === 2 && n(w[0]) != null && n(w[1]) != null ? ([w[0], w[1]] as [number, number]) : null;
+  return { path: c.path, clip_path: typeof c.clipPath === "string" ? c.clipPath : null, rect: { x: rect.x, y: rect.y, w: rect.w, h: rect.h }, window };
+}
+
 /** The route a dressed job records (src/lib/storyboard/dress.ts DRESS_ROUTE). */
 export const DRESSED_ROUTE = "genjutsu_swap";
 /** What a provider request id may look like before it is used in a storage key (src/lib/storyboard/dress.ts DRESS_ID_RE). */
@@ -279,6 +292,18 @@ export async function advanceJob(input: ProgressJob, deps: ProgressDeps): Promis
     }
     const restaged = restagedFrom(job);
     const dressed = restaged ? null : dressedFrom(job);
+    // a swapped REGION (dress-clip with a crop): the enlarged crop, not a clip of the shot — saved to the library
+    // and marked, for the browser to put back over the clip it was cut from (src/lib/regionSwap); never placed
+    const crop = dressed ? cropSwapOf(dressed) : null;
+    if (dressed && crop) {
+      const meta = (await deps.assetMeta(job.result_asset_id!)) ?? {};
+      await deps.updateAsset(job.result_asset_id!, {
+        metadata_json: { ...meta, crop_swap: { ...crop, of_asset_id: dressed.sourceAssetId, song_start: dressed.songStart, job_id: job.id } },
+      });
+      did.push("saved as a swapped region, not placed — put it back over its clip in the browser");
+      await set({ request_payload_json: { ...payloadOf(job), settings: { ...settings, attachedAt: deps.now().toISOString(), attachedBy: "server" } } });
+      return await finish("a swapped region: put it back over its clip on the Swap page");
+    }
     if (restaged) {
       await fileRestagedClip(job, restaged, deps);
       did.push("filed as a take in sync");
