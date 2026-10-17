@@ -393,3 +393,18 @@ NOT DONE (needs Fendi's read of the treatment first): the board's shots outside 
 treatment (forest, viewing room) and will show "earlier treatment". Next = rewrite those shots from this treatment on
 the copy (writer call, cents) while keeping hook 1's shots and footage; then plates per new location. Do not press
 "Release N shots to be rewritten" without checking it leaves hook 1's footage on its shots.
+
+### 02:19 UTC — "Follow designers": the cashmere goats (Fendi's picture)
+
+Fendi sent a Gemini picture (him at a sewing machine in a mountain pasture, a line of white cashmere goats watching)
+and: the fleece winds off a goat as he sews, then cut to that goat in a cashmere sweater and gold chains — "where I
+say don't follow brands follow designers".
+
+DONE ($0): the picture is filed as a director's reference, `project_assets` **`f44a2c32-4bd9-4fcf-851c-5d9f4115db3d`**
+(`project-references/…/references/director_cashmere_goats.jpg`, 1024×572 — the copy the share page serves; the chat
+upload was 512 px). The treatment on `c067efb9…` now carries the scene on "I don't follow brands, follow designers"
+(19.5–21.3 s) with the shorn goat in the sweater on "the rims 21 don't ride" (21.3–22.7 s); it replaces the
+currency-exchange line. Saved through the Treatment page 02:19:32 UTC; VERIFIED only `c067efb9` has it.
+
+NOT DONE: the shots. On the board this is c011 (18.72–20.69) and c012 (20.69–22.65). Open question for Fendi: him
+or "the man" at the machine. Not shot yet; no spend authorised for it.
