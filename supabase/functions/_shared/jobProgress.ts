@@ -484,7 +484,8 @@ export async function fileDressedClip(job: ProgressJob, dressed: DressedFrom, de
       asset_id: dressed.sourceAssetId,
       source_window: dressed.window,
       song_start: dressed.songStart,
-      method: "dressed",
+      // a montage whose pieces were swapped (dress-clip) is still the montage on the board
+      method: dressed.record.sourceMethod === "montage" ? "montage" : "dressed",
       job_id: job.id,
       retime_ratio: ratio,
       dress: dressed.record,

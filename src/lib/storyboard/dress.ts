@@ -198,21 +198,23 @@ export type DressReference = {
   role: "product" | "angle";
 };
 
-export type PieceKind = "outerwear" | "hat" | "eyewear" | "other";
+export type PieceKind = "outerwear" | "hat" | "eyewear" | "footwear" | "other";
 
 const OUTERWEAR =
   /\b(jacket|coat|trench|blazer|parka|bomber|overshirt|anorak|windbreaker|outerwear|puffer|gilet|cardigan)\b/i;
 const HAT = /\b(cap|hat|beanie|beret|bucket|snapback|visor|durag|du-rag|headwear)\b/i;
 const EYEWEAR = /\b(glasses|sunglasses|eyewear|shades|spectacles)\b/i;
+const FOOTWEAR = /\b(sneakers?|shoes?|boots?|loafers?|trainers?|slides?|sandals?)\b/i;
 
 export function pieceKind(p: Pick<DressPiece, "label" | "featureType">): PieceKind {
   if (HAT.test(p.label)) return "hat";
   if (EYEWEAR.test(p.label)) return "eyewear";
+  if (p.featureType === "wardrobe_footwear" || FOOTWEAR.test(p.label)) return "footwear";
   if (p.featureType === "wardrobe_outerwear" || OUTERWEAR.test(p.label)) return "outerwear";
   return "other";
 }
 
-const KIND_ORDER: Record<PieceKind, number> = { outerwear: 0, hat: 1, eyewear: 2, other: 2 };
+const KIND_ORDER: Record<PieceKind, number> = { outerwear: 0, hat: 1, eyewear: 2, other: 2, footwear: 3 };
 const ANGLE_ORDER = ["front", "three-quarter", "side", "detail", "back", "other"];
 const angleRank = (a: string | null | undefined) => {
   const i = ANGLE_ORDER.indexOf(a ?? "other");
@@ -223,7 +225,8 @@ const angleRank = (a: string | null | undefined) => {
  * The pictures the swap is given, in order, and the pieces that could not go. Deterministic:
  *   1. the outerwear's product photo first (the jacket or coat is the main swap), then the hat, then the other
  *      pieces — each piece's product photo, in the outfit's own order within a kind;
- *   2. then, while there is room, the hat's other angles (the approved full look sent its front, side and detail).
+ *   2. then, while there is room, the hat's and the shoes' other angles (the approved full look sent its front, side
+ *      and detail).
  * A garment goes with its product photo ONLY: the extra crops of the v1 jacket (website arrows, a lighter on-model
  * jacket) made the edit copy the wrong garment. At most DRESS_MAX_REFERENCES pictures.
  */
@@ -259,7 +262,8 @@ export function dressReferences(
   const extras = new Map<string, DressReference[]>();
   let room = cap - primaries.length;
   for (const { p, kind } of ordered) {
-    if (kind !== "hat" || room <= 0 || !primaries.some((x) => x.pieceId === p.id)) continue;
+    // the hat's other angles (and a pair of shoes': a shoe reads differently from the side and the back)
+    if ((kind !== "hat" && kind !== "footwear") || room <= 0 || !primaries.some((x) => x.pieceId === p.id)) continue;
     const primary = primaries.find((x) => x.pieceId === p.id)!.ref.path;
     const seen = new Set([primary]);
     const more = p.images
@@ -292,6 +296,7 @@ const REGION: Record<PieceKind, (label: string) => string> = {
     /\bcoat\b/i.test(l) ? "coat" : /\btrench\b/i.test(l) ? "trench coat" : "jacket",
   hat: (l) => (/\bcap\b/i.test(l) ? "cap" : "hat"),
   eyewear: () => "glasses",
+  footwear: () => "shoes",
   other: (l) => l.trim().toLowerCase(),
 };
 

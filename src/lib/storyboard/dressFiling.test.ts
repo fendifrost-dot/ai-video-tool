@@ -29,6 +29,7 @@ import {
 } from "./dress";
 import { dressedSongStart } from "./dress";
 import { boxJobStatus } from "@/lib/queries/boxJobs";
+import { planDressClip } from "../../../supabase/functions/dress-clip/plan";
 
 const T0 = Date.parse("2026-10-15T12:00:00.000Z");
 
@@ -506,5 +507,47 @@ describe("a paid result is never stranded, and never placed unconformed", () => 
     expect(r.state).toBe("retry");
     expect(r.note).toMatch(/without being conformed/);
     expect(wo.syncs.some((s) => s.performance_asset_id === outside.result_asset_id)).toBe(false);
+  });
+
+  it("a montage whose shoes were swapped (dress-clip) is filed as the montage still: in sync where it was, unselected", async () => {
+    const planned = planDressClip({
+      projectId: APPROVED.projectId,
+      clip: {
+        id: "montage_c041",
+        bucket: "project-clips",
+        path: "u/p/3b41dd27/generated_higgsfield_b0322850-7c8.mp4",
+        seconds: 4.004,
+        method: "montage",
+        sync: { id: "sync_montage", offsetSeconds: 71.174, driftPpm: 0 },
+      },
+      shot: { id: "shot_19", key: "c019", variationId: "var_1" },
+      pieces: [
+        {
+          id: "prada_black",
+          label: "Prada America's Cup Sneakers - Black Patent Leather",
+          featureType: "wardrobe_footwear",
+          storagePath: "u/a/prada_front.jpg",
+          images: [{ storagePath: "u/a/prada_front.jpg", angle: "front" }],
+          construction: "black patent leather",
+        },
+      ],
+    });
+    if (!planned.ok) throw new Error(planned.detail);
+    const job: ProgressJob = {
+      ...importedJob(),
+      id: "job_swap",
+      external_job_id: "a1b2c3d4-0000-4000-8000-000000000001",
+      request_payload_json: planned.plan.payload,
+      response_payload_json: { status: "succeeded", resultUrl: APPROVED.resultUrl, providerJobId: "a1b2c3d4-0000-4000-8000-000000000001" },
+    };
+    expect(dressedFrom(job)).toMatchObject({ sourceAssetId: "montage_c041", songStart: 71.174, sourceSeconds: 4.004, window: [0, 4.004] });
+    const w = world(job);
+    w.syncs.push({ project_id: job.project_id, performance_asset_id: "montage_c041", offset_seconds: 71.174, drift_ppm: 0, status: "confirmed", song_asset_id: "song", method: "derived" });
+    const report = await advanceJob(job, w.deps);
+    expect(report.state).toBe("finished");
+    const meta = w.assets.get(job.result_asset_id!)!.metadata_json;
+    expect(meta.derived_from).toMatchObject({ asset_id: "montage_c041", method: "montage", source_window: [0, 4.004], song_start: 71.174 });
+    expect(w.syncs.find((s) => s.performance_asset_id === job.result_asset_id)!.offset_seconds).toBeCloseTo(71.174, 4);
+    expect(w.assignments.find((a) => a.asset_id === job.result_asset_id)).toMatchObject({ role: "performance", is_primary: false });
   });
 });

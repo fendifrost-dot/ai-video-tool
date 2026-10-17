@@ -166,3 +166,6 @@ verify_jwt = true
 
 [functions.avt-mcp]
 verify_jwt = false
+
+[functions.dress-clip]
+verify_jwt = true
