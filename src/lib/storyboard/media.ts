@@ -48,6 +48,8 @@ export type Assignment = {
   trimHead?: number | null;
   trimTail?: number | null;
   excluded?: boolean | null;
+  /** THIS VARIATION'S hand alignment of the take on this box: seconds later than the sync (footageEdit.ts). */
+  slip?: number | null;
   isPrimary: boolean;
   sortOrder: number;
   notes: string | null;
@@ -318,8 +320,8 @@ export function boxMedia(input: {
 // ---------------------------------------------------------------------------
 
 export type AssignmentOp =
-  | { op: "insert"; shotId: string; assetId: string; role: AssignmentRole; isPrimary: boolean; sourceIn: number | null; sourceOut: number | null; sortOrder: number; trim_head_seconds?: number; trim_tail_seconds?: number; excluded?: boolean }
-  | { op: "update"; id: string; patch: Partial<{ shot_id: string; is_primary: boolean; source_in_seconds: number | null; source_out_seconds: number | null; sort_order: number; trim_head_seconds: number; trim_tail_seconds: number; excluded: boolean }> }
+  | { op: "insert"; shotId: string; assetId: string; role: AssignmentRole; isPrimary: boolean; sourceIn: number | null; sourceOut: number | null; sortOrder: number; trim_head_seconds?: number; trim_tail_seconds?: number; excluded?: boolean; slip_seconds?: number }
+  | { op: "update"; id: string; patch: Partial<{ shot_id: string; is_primary: boolean; source_in_seconds: number | null; source_out_seconds: number | null; sort_order: number; trim_head_seconds: number; trim_tail_seconds: number; excluded: boolean; slip_seconds: number }> }
   | { op: "delete"; id: string };
 
 /** Put an asset on a box (selected by default: the director put it there to see it). Idempotent per (box, asset, role). */
@@ -425,7 +427,7 @@ export type TimelineSegment = {
   end: number;
   section: string | null;
   media:
-    | { kind: "video"; assetId: string; role: AssignmentRole; sourceIn: number; sourceOut: number | null; leadIn: number; base: boolean }
+    | { kind: "video"; assetId: string; role: AssignmentRole; sourceIn: number; sourceOut: number | null; leadIn: number; base: boolean; slip?: number }
     | { kind: "image"; assetId: string; role: AssignmentRole; base: false }
     | { kind: "none" };
   /** What the box says happens — shown when there is no media, and carried for the renderer's log. */
@@ -462,7 +464,7 @@ export function buildTimeline(input: {
       ? { kind: "none" }
       : showing.kind === "image"
         ? { kind: "image", assetId: showing.asset.id, role: showing.role, base: false }
-        : { kind: "video", assetId: showing.asset.id, role: showing.role, sourceIn: showing.sourceIn ?? 0, sourceOut: showing.sourceOut, leadIn: showing.leadIn, base: showing.base };
+        : { kind: "video", assetId: showing.asset.id, role: showing.role, sourceIn: showing.sourceIn ?? 0, sourceOut: showing.sourceOut, leadIn: showing.leadIn, base: showing.base, ...(showing.edit?.slip ? { slip: showing.edit.slip } : {}) };
     const events = box.spec.events.length ? resolveEvents(box.spec.events, { start: box.start, end: box.end }, input.clock ?? {}) : [];
     const transitionIn = { type: box.spec.transitionIn?.type ?? null, preset: box.spec.transitionIn?.preset ?? null };
     const reframe = parseReframe(box.override?.reframe);

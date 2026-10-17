@@ -165,7 +165,7 @@ describe("2 · a trim is a narrowing, never a slide", () => {
       box: B,
       sync: SYNC,
       takeDurationSeconds: HERO.durationSeconds,
-      edit: { head: 0.5, tail: 0, excluded: false },
+      edit: { head: 0.5, tail: 0, excluded: false, slip: 0 },
     });
     // the picture starts half a second later IN THE FILE TOO — the same moment of the performance, not an earlier one
     expect(trimmed.sourceIn).toBeCloseTo(whole.sourceIn! + 0.5, 4);
@@ -179,7 +179,7 @@ describe("2 · a trim is a narrowing, never a slide", () => {
       box: B,
       sync: SYNC,
       takeDurationSeconds: HERO.durationSeconds,
-      edit: { head: 0.25, tail: 0.75, excluded: false },
+      edit: { head: 0.25, tail: 0.75, excluded: false, slip: 0 },
     });
     expect(c.sourceOut! - c.sourceIn!).toBeCloseTo(3.92 - 1.0, 4);
     expect(c.leadIn).toBeCloseTo(0.25, 4);
@@ -193,13 +193,13 @@ describe("2 · a trim is a narrowing, never a slide", () => {
       box: B,
       sync: SYNC,
       takeDurationSeconds: HERO.durationSeconds,
-      edit: { head: 0.5, tail: 0, excluded: false },
+      edit: { head: 0.5, tail: 0, excluded: false, slip: 0 },
     });
     const after = takeCoverage({
       box: B,
       sync: corrected,
       takeDurationSeconds: HERO.durationSeconds,
-      edit: { head: 0.5, tail: 0, excluded: false },
+      edit: { head: 0.5, tail: 0, excluded: false, slip: 0 },
     });
     // the trim is still half a second of the shot; the file position moved with the sync, as it must
     expect(after.leadIn).toBeCloseTo(before.leadIn, 6);
@@ -211,7 +211,7 @@ describe("2 · a trim is a narrowing, never a slide", () => {
       box: B,
       sync: SYNC,
       takeDurationSeconds: HERO.durationSeconds,
-      edit: { head: 2, tail: 2, excluded: false },
+      edit: { head: 2, tail: 2, excluded: false, slip: 0 },
     });
     expect(c.from).toBe("emptied");
     expect(c.sourceIn).toBeNull();
