@@ -311,3 +311,28 @@ Shoe tests (ledger 97–98), both PASS on the shoes: c041 `afed6a70` (black pate
 Next: none owed on the shoes. Treatment: Fendi is gathering a picture per new location; ideas sent in chat
 (non-typical runway locations, one cold animal per scene, a last-cutaway reveal). Do NOT cut the original treatment;
 a fresh board variation holds the new one when he sends pictures.
+
+## Shoes swapped on the ORIGINAL montages (17 Oct) — `dress-clip`
+
+Fendi on the re-shot shoe tests (c041 `afed6a70`, c042 `ab96fc5f`, both now REJECTED): the shoes looked huge and
+boot-like, the jeans changed — "I didn't really want the footage changed. I just wanted the swap on the shoes … use
+the tool specifically to swap clothes within Higgsfield." And: "We want broad coding decisions, not fixes for a
+video."
+
+DONE (LIVE, VERIFIED by dry runs): `dress-clip` (PR #298 `dc6a965`, #299 `a4b670e`) — swap any wardrobe piece on any
+clip already on a shot with Genjutsu object swap, the whole clip as the source, nothing re-shot; default = the shoes
+he wears in the shot; named by the outerwear he keeps on with "Only he changes"; filed unselected, in sync, a montage
+still named Montage. Redeployed: dress-clip, provider-jobs-tick, montage-shot, avt-mcp; Publish `1cfb57a0`.
+
+Which originals show his feet (Fendi corrected me twice — I had missed both): c041 `8b58017d` at 3.25–4.0 s (he leans
+over the penguin in tan boots); c044 `60cd0232` at 3.4–4.0 s (Nike AF1s at the pillar); c045 `81cecb2a` (white
+sneakers by the walrus); c046 `f5edfee0` (white sneakers in the aisle). c042 never shows them: keep the original.
+
+Results (ledger 99–103): c046 PASS `daa1644a` (posted). c044 and c045 REJECTED — the swap left the sneakers (his feet
+are a few dozen pixels in a wide frame). c041 first try REJECTED (bystanders' boots changed); second try with the
+wearer wording `046d1d2f`: his own boots changed to the black patent pair, but one bystander's boot in the dice cut
+changed too — posted; Fendi: "C041 is fine" → APPROVED, unselected.
+
+FINDING (OBSERVED, 2 of 2): the object swap does not change shoes that are small in the frame. The model also still bleeds onto
+bystanders (c041). Next, as a general lane change rather than a per-video fix: swap a CROP around him (upscaled to the model's size) and composite it back over
+the original — HYPOTHESIS, test on c044 first.
