@@ -356,7 +356,7 @@ DONE (CODED + LIVE, VERIFIED):
 - Driver: `avt-press.mjs region-swap --asset --box [--window] [--pieces] [--dry-run]` and
   `region-putback --asset --job`.
 
-Results (ledger 104–105, both posted to Fendi, both unselected — Fendi chooses):
+Results (ledger 104–105, both posted to Fendi). Fendi, 02:05 UTC: "Both pass and are solid!" → **APPROVED**, still unselected (selection is Fendi's):
 - c044 → `03794fcc`: the Nikes at the pillar are now white/grey Prada-style sneakers from 3.3 s. OBSERVED: brighter
   white than the cream "Raw White"; the side panel darker than the silver mesh.
 - c045 → `ccbb3ee7`: the cream America's Cups with the grey mesh beside the walrus (1.96–2.29 s).
