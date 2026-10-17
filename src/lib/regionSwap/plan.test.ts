@@ -31,7 +31,12 @@ describe("the box that is cut and enlarged", () => {
   });
 
   it("a box bigger than the frame is the frame", () => {
-    expect(cropRect({ x: 0, y: 0, w: 1, h: 1 }, 720, 1280)).toEqual({ x: 0, y: 0, w: 720, h: 1280 });
+    expect(cropRect({ x: 0, y: 0, w: 1, h: 1 }, 720, 1280)).toEqual({
+      x: 0,
+      y: 0,
+      w: 720,
+      h: 1280,
+    });
   });
 
   it("refuses an empty box or an unknown frame", () => {
@@ -40,7 +45,12 @@ describe("the box that is cut and enlarged", () => {
   });
 
   it("boxOf is the rectangle back in 0–1", () => {
-    expect(boxOf({ x: 180, y: 640, w: 360, h: 640 }, 720, 1280)).toEqual({ x: 0.25, y: 0.5, w: 0.5, h: 0.5 });
+    expect(boxOf({ x: 180, y: 640, w: 360, h: 640 }, 720, 1280)).toEqual({
+      x: 0.25,
+      y: 0.5,
+      w: 0.5,
+      h: 0.5,
+    });
   });
 });
 
@@ -55,6 +65,19 @@ describe("putting the swapped picture back", () => {
     const mid = edgeWeight(100 + f / 2, 378, rect, f);
     expect(mid).toBeGreaterThan(0.3);
     expect(mid).toBeLessThan(0.7);
+  });
+
+  it("does not fade a side that lies on the frame's border (c045: his shoes run out of the bottom of the frame)", () => {
+    const frame = { width: 720, height: 1280 };
+    const low = { x: 288, y: 768, w: 288, h: 512 }; // the box ends at the frame's bottom
+    const f = featherFor(low);
+    expect(edgeWeight(432, 1279, low, f, frame)).toBe(1); // bottom row: the swap, not the original
+    expect(edgeWeight(432, 1279, low, f)).toBe(0); // without the frame every side fades
+    expect(edgeWeight(288, 1279, low, f, frame)).toBe(0); // the inner sides still fade to the original
+    expect(edgeWeight(432, 768, low, f, frame)).toBe(0);
+    expect(edgeWeight(432, 1280, low, f, frame)).toBe(0); // and nothing outside the box
+    const whole = { x: 0, y: 0, w: 720, h: 1280 };
+    expect(edgeWeight(0, 0, whole, featherFor(whole), frame)).toBe(1);
   });
 
   it("shows only inside its window, fading at the ends", () => {

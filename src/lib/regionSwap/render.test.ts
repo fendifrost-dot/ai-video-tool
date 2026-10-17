@@ -5,7 +5,6 @@ import { blendBox, weightMap } from "./render";
 import { rectOfBox } from "./submit";
 import { boxOf, cropRect, featherFor } from "./plan";
 
-
 describe("the swapped picture goes back into its box only", () => {
   it("pixels outside the box are the original's; the centre of the box is the swap's; the edge is between", () => {
     const W = 40;
@@ -23,6 +22,25 @@ describe("the swapped picture goes back into its box only", () => {
     const edge = at(11, 20);
     expect(edge).toBeGreaterThan(10);
     expect(edge).toBeLessThan(250);
+  });
+
+  it("a box on the frame's border puts the swap right up to that border", () => {
+    const W = 40;
+    const H = 40;
+    const frame = new Uint8ClampedArray(W * H * 4).fill(10);
+    const rect = { x: 10, y: 20, w: 20, h: 20 };
+    blendBox(
+      frame,
+      W,
+      new Uint8ClampedArray(20 * 20 * 4).fill(250),
+      rect,
+      weightMap(rect, featherFor(rect), { width: W, height: H }),
+      1,
+    );
+    const at = (x: number, y: number) => frame[(y * W + x) * 4];
+    expect(at(20, 39)).toBe(250); // the bottom row is the swap's
+    expect(at(10, 39)).toBe(10); // the inner left side still meets the original
+    expect(at(20, 20)).toBe(10); // and so does the top
   });
 
   it("outside its window nothing changes", () => {
