@@ -796,3 +796,21 @@ NOT DONE:
   (≈ $0.20 a clip + the vocals once).
 - Decide with Fendi whether the original take's sync becomes 0.7038 (his eye) or stays 0.8538 (the audio). It only
   matters for clips that show the take's own mouth (dressed takes, region swaps); lip-synced clips follow the vocals.
+
+### Lip-sync lane — first live run (17 Oct, 16:08–16:45 UTC; ledger 136–137)
+- LIVE (VERIFIED): Lovable redeployed lipsync-shot, provider-jobs-tick and avt-mcp from `b2405b8` (401s to
+  unauthenticated calls). The c036 dryRun answered 200 with songWindow [61.348, 65.848]. Demucs made the vocals in
+  ~1 min: asset `50f8e58d`, filed as `other` with `stem: vocals`.
+- Both kill-test clips completed at Fal (VERIFIED, fal-queue-poll: COMPLETED with video.url). Before/after previews
+  with the song under them were posted to Fendi: `clips/minute/LIPSYNC_c036_before_after.mp4` and `…c047…`. c047
+  shows almost none of him; c036 is the one to judge. OBSERVED from frame sheets: cutaways are untouched, his face
+  holds.
+- BUG found and fixed: Control Center's `video-providers-job-status` returned `succeeded` with no `resultUrl` for a
+  finished Fal job (Fal's status answer has no output). provider-jobs-tick needs the link, so it waited for ever.
+  fendifrost-dot/fendi-control-center#71 (`29d5145`) reads the request's response on completion. Its redeploy was
+  sent at 16:39 UTC — NOT verified. Check: a manual `provider-jobs-tick` call must report the two jobs as
+  "provider: succeeded" → "saved" → "filed as a take in sync" → "on its shot, unselected". If it still says
+  "provider: running", the redeploy has not landed.
+- NOT DONE: Fendi's verdict on c036. If it passes, run lipsync-shot on every performance shot of the 86 s cut
+  (≈ 20 × $0.20) and rebuild the preview from the lip-synced clips. Fendi is reworking the intro; no spend on it.
+  The c007 close-up at ~13.7 s mouths with no vocals under it: the free fix is to end c007 before the close-up.
