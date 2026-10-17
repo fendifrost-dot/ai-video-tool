@@ -814,3 +814,56 @@ NOT DONE:
 - NOT DONE: Fendi's verdict on c036. If it passes, run lipsync-shot on every performance shot of the 86 s cut
   (≈ 20 × $0.20) and rebuild the preview from the lip-synced clips. Fendi is reworking the intro; no spend on it.
   The c007 close-up at ~13.7 s mouths with no vocals under it: the free fix is to end c007 before the close-up.
+
+## Lip-sync lane REJECTED → the ending brief E1–E4 + Lyric sync (17 Oct, 19:00–20:30 UTC; ledger 138–141)
+
+**DECISION (Fendi):** "a lot of the lip sync footage alters my face and looks crazy". All 21 lip-synced clips are `usable:false`. Nothing repaints his mouth any more. A performance shot is generated with him rapping the actual lines, and the mouth is lined up by hand.
+
+### What shipped (all merged and live)
+| PR | What | Live |
+|--|--|--|
+| fendi-control-center#72 (`18eba42`) | `video-providers-higgsfield-model`: `referenceAudioUrls` → Seedance 2.5 `audio_urls` (≤10) | VERIFIED: redeployed by Lovable; unauthenticated probe returns 401 |
+| ai-video-tool#326 (`1ae1797`) | `montage-shot` continuous v2: a take with him names the lyric lines in it, timed from frame 1, and sends the vocals slice under it as @Audio1 (`_shared/vocalSlice.ts`, also used by `lipsync-shot`) | VERIFIED: `montage-shot`, `lipsync-shot` and `avt-mcp` redeployed; E1/E2 job rows carry `settings.vocals.audioPath` |
+| ai-video-tool#327 | Lyric sync: a per-shot slip, the lyric-window flag, and the Premiere EDL/CSV export | see "NOT done" below |
+
+### The ending brief (song ~52–61 s): delivered as files E1–E4, each with its prompt
+Every take is 10 s, 9:16, 720p, one continuous take, and was dry-run first.
+
+| | Shot | Asset | Song at frame 1 | Cost | Judgement |
+|--|--|--|--|--|--|
+| E1 push-in, island | c033 | `998f6690` | 53.8 | $3.883 | **OBSERVED miss, marked `usable:false`.** The jacket's stripe and wordmark are smeared, and the glasses are missing until ~6 s. The mouth tracks the vocals ~0.1 s early (r 0.51). |
+| E2 90° orbit | c034 | `ad2faff9` | 55.275 | $3.883 | OBSERVED: wardrobe right. HYPOTHESIS: the mouth follows weakly (r 0.18). Fendi's ears decide. |
+| E3 whip pan → Red Line | c035 | `a64bfbb6` | 56.75 | $4.622 | OBSERVED: matches the brief. The platform reads as overcast daylight, not dusk. |
+| E4 macro ice | c034 | `5aa6f01c` | 55.275 | $4.622 | OBSERVED: 0–7 s is a clean frost macro; after that it pulls back to the showroom. |
+
+All four are filed on their shots as unselected alternates. E1 and E2 are `role=performance`, each with its own confirmed sync, so the Lyric sync panel works on them. Pending: Fendi's call on re-rolling E1 ($3.88).
+
+### Lyric sync (#327): how it works
+- **Slip:** `shot_asset_assignments.slip_seconds`. It is owned by the variation, bounded to ±30 s, and added to the sync inside `takeCoverage`. The in-point is still derived, and `performance_syncs` is never written.
+- **Panel** (shot view → each performance clip):
+  - Play the shot with the song.
+  - Scrub to where he starts a line, then press that line to align it.
+  - Nudge ±1 frame / 0.1 / 0.5 s.
+  - Read back the clip in-point and the song position.
+  - Flag: `ok` / `extend_shot` / `needs_clip`.
+- **Export page:** `board_cut.edl` (CMX3600, record TC = song time, so put the song on A1 at 00:00:00:00) and `board_cut.csv`, with the flagged shots listed.
+
+### NOT done — the next agent does these in Lovable
+1. **Migration** `supabase/migrations/20261017210000_footage_slip.sql`. Apply it in the Lovable SQL editor (send it to the AVT Lovable agent as "apply this migration file as written"). **Do not edit it to make it run.** If it errors, the live table differs, and that is the finding to report.
+   - Verify:
+     `select column_name, data_type, column_default from information_schema.columns where table_name='shot_asset_assignments' and column_name='slip_seconds';`
+     → exactly **1 row**: `double precision`, default `0`.
+   - Also verify:
+     `select count(*) from pg_constraint where conname='shot_asset_assignments_slip_check';`
+     → **1**.
+   - And:
+     `select pg_get_functiondef('public.duplicate_variation(uuid,text)'::regprocedure) like '%a.slip_seconds%';`
+     → **true**.
+2. **Publish** the frontend (`mcp__Lovable__deploy_project`). No edge function changed in #327.
+   - Verify: the live bundle contains the string `lyric-sync-play`.
+     `curl -s https://aivideotool.lovable.app/ | grep -o 'assets/index-[^"]*\.js'`, then grep that JS for `lyric-sync-play` → found.
+3. **Live check of a slip.** Open c033 → E1 → Lyric sync, nudge +1f, and confirm the row:
+   `select slip_seconds from shot_asset_assignments where id='bf01a2cb-683e-4caf-b258-925928b5e139'` → `0.0417`.
+   Before the migration this write fails with an unknown-column error (the expected pre-migration outcome, not a bug). Put it back on the sync afterwards: `slip_seconds` → 0.
+
+Report back: the three query results verbatim, the bundle hash, and the slip round-trip.
