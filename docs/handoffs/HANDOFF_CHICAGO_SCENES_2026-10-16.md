@@ -512,3 +512,72 @@ file a cast clip on the shot it was pressed from (today it is filed on the scene
 row) — RECOMMENDATION; the shots' scene text still describes the old forest (rewrite blocked until the variation has a
 visual direction). Fendi has not judged the redone clips yet.
 Also noted from Fendi: the "YSL I wear em like they white ones" lounge beat is in the **denim look** (in the treatment).
+
+## The intro REBUILT as a full fast-cut montage (17 Oct, 04:20–05:30 UTC; ledger 112–121)
+
+Fendi: "These all need to be montage shots so a continuous running out of the store is unacceptable. Also no more shoe
+shots and underneath the pea coat. The cotton jacket should be dressy button up and tie if possible … do not ask for
+more approval until you have completed the full montage". Built end to end without asking.
+
+CODE — what changed in the tool (both LIVE unless marked):
+- PR #311 squash `2d941b5` (+ Lovable's one-line type fix `b96908b`, merge `67c16ed`): **montage v2**.
+  - `NO_FEET` in every performance montage: never a close-up/cutaway/tilt to his shoes or feet.
+  - The scene's people: a `worlds/scene_*` still is the montage's cast (`castLine`), sent after the place and shoes,
+    or IS the place when the scene has no usable empty plate. `montage-shot` now prefers an empty plate.
+  - **b-roll montage**: a shot he is not in is shot as fast cuts of the place and its people, no take, lines required,
+    the lines share the shot's own seconds and the last holds to the end of the 4 s render (`planBrollMontage`,
+    `planShotMontageScenes`). $1.849 list for 4 s. Filed on the shot unselected as a generated clip.
+  - Storyboard Montage button sends the cast too; `avt_montage` description updated.
+  - VERIFIED live: Lovable redeployed `montage-shot` + `avt-mcp`; dry run on c002 answered `broll:true`,
+    `montage-v2-2026-10-17`. Publish `e2ea87b2` sent for the frontend.
+- PR #312 squash `4aa6130`: **montage v3** — `BROLL_NO_FEET` ("No scene is a close-up of anyone's shoes or feet") in
+  the b-roll prompt (the first c005 opened on running boots). VERIFIED live: Lovable redeployed `montage-shot`; a
+  dry run on c005 answered `montage-v3-2026-10-17` with the sentence in the prompt. Publish `48e5f65a` sent at
+  `4aa6130` for the storyboard copy of the words (bundle not re-crawled — check `montage-v3` in the storyboard chunk).
+- Lovable, asked "DEPLOY ONLY", also changed one type annotation in `montage-shot/index.ts` (`dressedTakeOf`'s client
+  parameter → `SupabaseClient`; its build rejected `ReturnType<typeof createClient>`). Type only; kept. Lesson: the
+  repo has no Deno type check for edge functions — esbuild bundling does not catch type errors.
+
+DATA:
+- Wardrobe piece **`ff1375dd`** "Saint Laurent striped dress shirt and silk tie" — an UNALTERED crop (box 440,268–760,600)
+  of the Saint Laurent look IMG_5541 already on file (`6badada3`'s on-model picture: the shirt and tie under the Mastic
+  track jacket). ysl.com / Mr Porter / Farfetch / Saks refuse this container (bot walls), so no new product photo was
+  fetched. No pixel generated.
+- Outfit **`OAK_STREET_DRESSY`** `2eb179c4` (c067): cotton jacket, shirt + tie, Cazal glasses, Mick black jeans,
+  belt, cream Pradas; no hat. Both Oak Street scenes now point at it (was THE_CLEAN_ENTRANCE_LOOK, which stays for the
+  clean-entrance scene at 163 s).
+- Window plate **`0a6254c2`** (dusk, matches the boosters picture's light; `5fefea0f` unused). Supersedes `bcba5663`
+  by being newest.
+
+RESULTS (all filed UNSELECTED; nothing selected was changed):
+| Shot | Asset | What it is | Verdict |
+|---|---|---|---|
+| c001 | `251c89e1` | frosted YSL sign → doors burst open, hoodie booster with the camel coat on its hanger → guard at the door → the crew runs | OBSERVED good; first ~1.2 s is the sign |
+| c002 | `bc9cb467` | wide: the four boosters coming at camera from the doors → bandana close-up with the monogram duffel → hanger in the gutter | OBSERVED good, same cast |
+| c003 | `56c4e578` | varsity booster sliding between cars → guard goes down on the ice → guard's face → bag spilling sweaters | OBSERVED good; the guard's face drifts from the still |
+| c004 | `0db8f045` | telephoto down Oak St → vault over a snowed-in car → hand grabs an empty coat → footprints from above → bandana looks back | OBSERVED good |
+| c005 | `bd080e8b` | running boots close-up → guard (uniform, a different man) on the radio → lamp post → dropped bag → guard winded | NOT USED: a shoe shot; redone (row 121) |
+| c005 | **`5266eab6`** (v3) | over the varsity booster's shoulder → the same guard in the black suit on his radio → duffel past a lamp post → dropped Saint Laurent bag → guard winded | OBSERVED good, no feet; the varsity jacket's back reads as a YSL medallion |
+| c006 | `ba9e6af9` | the crew vanishing into the whiteout → the empty doorway | OBSERVED good |
+| c007 | dressed `9fc49bed` → montage **`85101246`** | penguin window → him on the wall in profile → tight low angle (shirt + tie) → wide from across the street | OBSERVED good; no feet; his own navy cap from the take stays |
+
+Marked `usable:false` with the reason (nothing selected changed): `0dae4f6c` (the continuous Kling chase — "a continuous
+running out of the store is unacceptable"), `ee666a9b` (c007 montage with the Prada cutaway + confetti shirt),
+`bd080e8b` (c005 boots). `6ee55225` (confetti dressed take) left as is — the montage lane takes the newest dressed take.
+
+The whole intro, as cut for review: c001 0–1.5 · c002 0–1.48 · c003 0–1.97 · c004 0–2.95 · c005 `5266eab6` 0–2.95 ·
+c006 0–1.47 · c007 1.139–2.619 (its lead) = 13.8 s, silent (the take has no sound). A review render in the
+scratchpad only; NOT a production asset and never committed (Fendi's likeness, public repo).
+
+NOT DONE / for the next agent:
+- Fendi has not judged the rebuilt intro. Nothing is selected: on the board each c001–c007 has its montage as an
+  unselected version; selecting is his.
+- A b-roll montage is filed as a generated clip, so the board's version name reads as a clip, not "montage"
+  (`derivedOf` needs `derived_from.asset_id`) — RECOMMENDATION: name it from `settings.variant.broll`.
+- The storyboard Montage button still refuses a b-roll shot (`est.restage` gate); b-roll montages go through
+  `montage-shot` / `avt_montage` only — RECOMMENDATION: a b-roll branch in the dialog.
+- `MONTAGE_STYLE` says "muted warm night colours"; the boosters' picture is grey dusk. The clips held the picture's
+  light (BROLL_PLACE), but a light-aware style line is a RECOMMENDATION.
+- Verse 1 onwards on the copy variation (lights-off lounge with the spotlight-vs-grill A/B in the denim look, goats,
+  camera car, geese) — not started.
+
