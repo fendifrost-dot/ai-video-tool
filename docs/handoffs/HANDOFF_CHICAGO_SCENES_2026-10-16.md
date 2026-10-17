@@ -581,3 +581,48 @@ NOT DONE / for the next agent:
 - Verse 1 onwards on the copy variation (lights-off lounge with the spotlight-vs-grill A/B in the denim look, goats,
   camera car, geese) — not started.
 
+## The whole video in the montage format (17 Oct, 06:00–06:50 UTC; ledger 122–126) — BLOCKED on Higgsfield credit
+
+Fendi: "The intro is perfect don't keep stopping after every one please let's knock it all out using the same montage
+format … are we going to keep doing 4 second clips or cut to the exact song … write that workflow into the tool".
+
+DECISION + CODE (LIVE): **cut to the song.** PR #314 squash `c45fbd1` — montage v4: the board stays on the song's beat
+grid; inside each shot untimed lines are cut on the song's beats (`planBeatLockedScenes`, both copies, `variant.cutOn`);
+one render per shot at the model's length. Workflow for every song: `docs/recipes/MONTAGE_MUSIC_VIDEO_WORKFLOW.md`.
+VERIFIED: Lovable redeployed `montage-shot` + `avt-mcp` from `c45fbd1` (checksums `42437ed0…`, `066e583d…`); every
+dry run since reports `cutOn.beats == cutOn.cuts`.
+
+DATA on the cold-runway board `c067efb9` (all VERIFIED by the rows returned):
+- Scenes for 13.8–201.87 s: Lounge, lights off · Pasture, the goats · The camera car · Michigan Avenue, the geese ·
+  School hallway, the janitor · Michigan Avenue, the polar bear · Midway, the carousel (was "The viewer") · Lower
+  Wacker · The showroom · Red Line, the penguins · (Chicago dice/corner/runway/train/inside/switch unchanged) · 14
+  "Chops — <place>" scenes, one per shot c055–c068 (the first was "The cold front"), leather coat · The empty street ·
+  The roller rink (was "The clean entrance") · Red Line, every animal · Red Line, lights out. Outfits per the treatment.
+- Places: 12 new stills (row 122) + 16 copy rows pointing at the picked stills for the chops and two Red Line scenes.
+- 46 shots made performance shots (shot_type + override) with his take `70304981` assigned in sync (c009 c010 c011 c013
+  c016 c017 c023 c025 c027 c028 c030 c031 c033 c034 c036 c037 c039 c048 c055–c068 c070 c072 c074 c076 c078 c080 c082
+  c084 c086 c088 c090 c092 c094 c096). His take ends at song 190.9 s, so c097–c100 are without him (the outro: he is gone).
+- Old timed events cleared on c024 and c048 (old-treatment effects; montage-shot refuses shots with events).
+- c041–c047 untouched (their montages exist from 16 Oct).
+
+RESULTS: 12 b-roll montages filed unselected (row 123). 3 blocked by content safety (row 124), reworded. 25 refused
+for credit (row 125). c009's dress in flight (row 126).
+
+BLOCKER: the Higgsfield account Control Center bills through is at **0.68 credits (free plan)** (`balance` on the
+Higgsfield connector; the API answers "Your credit balance is too low"). Fendi has to top it up — about **$280 list**
+covers the rest: 45 dresses ($123), 47 performance montages ($104), 28 b-roll retries ($52).
+
+TO RESUME (agent, after the top-up; every step is the tool's own lane):
+1. Dry run one montage (`avt_montage` dry_run) to confirm, then shoot the 28 b-roll retries — lines in the session
+   scratchpad `prod/broll_retry.json` (the three reworded: c021, c026, c029).
+2. Dress the 45 remaining performance shots (Storyboard → Dress, or `scripts/agent-browser/avt-press.mjs dress`), one at
+   a time; check one frame per outfit.
+3. Montage each performance shot once its dressed take is filed (lines `prod/perf.json`; c010 twice — pendant spotlight
+   and glowing grill `prod/perf_c010b.json`).
+4. Review per section (contact sheets), mark misses `usable:false` with a reason, reshoot only those; ledger; handoff.
+Note: the scratchpad does not survive the session — the lines are also the treatment's beats, one HARD CUT per beat.
+
+RECOMMENDATIONS: (a) `montage-shot` finds dressed takes only by `shot_id`; a duplicated board's shots carry theirs by
+assignment — look them up through `shot_asset_assignments` too. (b) The storyboard Montage button has no b-roll branch.
+(c) The every-animal platform still's station sign reads "KEDZIE" on a London-style roundel — regenerate if it shows.
+
