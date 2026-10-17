@@ -261,23 +261,5 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
   };
 }
 
-/**
- * Which outfit's pieces he wears in the shot (wardrobe/outfits.ts resolveOutfit + effectiveGarments): the shot's own
- * garments when it names any; else, by the shot's outfit mode, none / its exception outfit / its scene's outfit.
- * Answers the pieces when they are already known, else the outfit key to look up.
- */
-export function wornPieces(
-  spec: Record<string, unknown>,
-  sceneOutfitKey: string | null,
-): { ids: string[] } | { outfitKey: string } | { none: true } {
-  const w = (spec.wardrobe ?? {}) as Record<string, unknown>;
-  const own = Array.isArray(w.garments)
-    ? w.garments.filter((g): g is string => typeof g === "string")
-    : [];
-  if (own.length > 0) return { ids: own };
-  const mode = typeof w.outfitMode === "string" ? w.outfitMode : "inherit";
-  if (mode === "none") return { none: true };
-  const key =
-    mode === "exception" ? (typeof w.outfitKey === "string" ? w.outfitKey : null) : sceneOutfitKey;
-  return key ? { outfitKey: key } : { none: true };
-}
+// which pieces a shot wears lives with the dress words (dress-clip uses it too)
+export { wornPieces } from "../_shared/dressWords.ts";
