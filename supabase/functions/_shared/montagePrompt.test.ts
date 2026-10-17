@@ -74,6 +74,32 @@ describe("the Deno copy of the montage's words is the app's, word for word", () 
     );
   });
 
+  it("no shots of his feet, the cast, the b-roll montage and its scenes over the shot's own seconds", () => {
+    expect(edge.NO_FEET).toBe(app.NO_FEET);
+    expect(edge.BROLL_PLACE).toBe(app.BROLL_PLACE);
+    for (const n of [1, 2, 3]) expect(edge.castLine(n)).toBe(app.castLine(n));
+    for (const [lines, shot, render] of [
+      ["one\ntwo\nthree", 1.48, 4],
+      [LINES, 4, 4],
+      ["0-0.5 s: a\n0.5-1.5 s: b", 1.5, 4],
+      ["0-3 s: too long for the shot", 1.5, 4],
+      ["a\nb\nc\nd\ne", 1.47, 4],
+    ] as const) {
+      expect(edge.planShotMontageScenes(lines, shot, render)).toEqual(
+        app.planShotMontageScenes(lines, shot, render),
+      );
+    }
+    const planned = app.planShotMontageScenes("one\ntwo\nthree", 1.48, 4);
+    if (!planned.ok) throw new Error(planned.why);
+    for (const cast of [null, 1, 2])
+      expect(edge.brollMontagePrompt(planned.scenes, cast)).toBe(
+        app.brollMontagePrompt(planned.scenes, cast),
+      );
+    expect(edge.montageRecord(planned.scenes, null, null, { cast: { id: "c" }, broll: true })).toEqual(
+      app.montageRecord(planned.scenes, null, null, { cast: { id: "c" }, broll: true }),
+    );
+  });
+
   it("the keep list, the restage seconds and the whole prompt around the montage", () => {
     expect(edge.restageKeep({ shows: null })).toEqual(restageKeep({ shows: null }));
     expect(edge.restageKeep({ shows: " the Mastic track jacket " })).toEqual(

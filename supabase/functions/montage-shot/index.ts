@@ -34,8 +34,10 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
+  planBrollMontage,
   planMontage,
   wornPieces,
+  type CastFacts,
   type PlateFacts,
   type ShotFacts,
   type TakeFacts,
@@ -177,12 +179,8 @@ serve(async (req) => {
   const end = num(shotRow.timestamp_end);
   if (start == null || end == null) return json(422, { ok: false, error: "shot_has_no_window" });
   const shotType = str(shotRow.shot_type) ?? str(spec.shotType);
-  if (shotType && shotType !== "performance")
-    return json(422, {
-      ok: false,
-      error: "not_a_performance_shot",
-      detail: "only a performance shot is shot as a montage: it is his real take re-shot",
-    });
+  // a shot he is not in is a montage of the place and its people, with no take (plan.ts planBrollMontage)
+  const broll = !!shotType && shotType !== "performance";
   const provenance = ((shotRow.generated_json as Row | null)?.provenance as Row | null) ?? null;
   const shot: ShotFacts = {
     id: String(shotRow.id),
@@ -198,66 +196,13 @@ serve(async (req) => {
     },
   };
 
-  // 2. the dressed take on the shot, the selected one first, else the newest; and its place on the song
-  const { data: dressedRows, error: dressedErr } = await user
-    .from("project_assets")
-    .select("id, file_url, approval_status, created_at, metadata_json")
-    .eq("shot_id", shot.id)
-    .eq("metadata_json->derived_from->>method", "dressed")
-    .neq("approval_status", "rejected")
-    .order("created_at", { ascending: false })
-    .limit(20);
-  if (dressedErr)
-    return json(500, { ok: false, error: "take_lookup_failed", detail: dressedErr.message });
-  const dressed = (dressedRows ?? []) as Row[];
-  if (dressed.length === 0)
-    return json(422, {
-      ok: false,
-      error: "no_dressed_take",
-      detail:
-        "this shot has no dressed take to re-shoot — dress it first (the montage wears what the video wears)",
-    });
-  const { data: assignments } = await user
-    .from("shot_asset_assignments")
-    .select("asset_id, is_primary")
-    .eq("shot_id", shot.id)
-    .eq("is_primary", true);
-  const primary = new Set(((assignments ?? []) as Row[]).map((a) => String(a.asset_id)));
-  const takeRow = dressed.find((d) => primary.has(String(d.id))) ?? dressed[0];
-  const takeMeta = (takeRow.metadata_json ?? {}) as Row;
-  const takeSeconds = num(takeMeta.duration_seconds);
-  if (takeSeconds == null)
-    return json(422, {
-      ok: false,
-      error: "take_length_unknown",
-      detail: "the dressed take's length is not on its record",
-    });
-  const { data: syncRows, error: syncErr } = await user
-    .from("performance_syncs")
-    .select("offset_seconds, drift_ppm, status")
-    .eq("project_id", projectId)
-    .eq("performance_asset_id", String(takeRow.id))
-    .in("status", ["confirmed", "manual"])
-    .order("updated_at", { ascending: false })
-    .limit(1);
-  if (syncErr)
-    return json(500, { ok: false, error: "sync_lookup_failed", detail: syncErr.message });
-  const sync = (syncRows?.[0] as Row | undefined) ?? null;
-  const offset = sync ? num(sync.offset_seconds) : null;
-  if (offset == null)
-    return json(422, {
-      ok: false,
-      error: "take_not_in_sync",
-      detail: "the dressed take's match to the song could not be found",
-    });
-  const take: TakeFacts = {
-    id: String(takeRow.id),
-    bucket: str(takeMeta.bucket) ?? "project-clips",
-    path: String(takeRow.file_url),
-    seconds: takeSeconds,
-    shows: str(takeMeta.shows),
-    sync: { offsetSeconds: offset, driftPpm: num(sync?.drift_ppm) ?? 0 },
-  };
+  // 2. the dressed take on the shot (a performance shot only)
+  let take: TakeFacts | null = null;
+  if (!broll) {
+    const found = await dressedTakeOf(user, projectId, shot.id);
+    if (!found.ok) return json(found.status, found.body);
+    take = found.take;
+  }
 
   // 3. the scene the shot falls in, and the newest usable plate still filed for it
   const sceneQuery = user
@@ -289,8 +234,16 @@ serve(async (req) => {
     .limit(20);
   if (plateErr)
     return json(500, { ok: false, error: "plate_lookup_failed", detail: plateErr.message });
+  // the place is an EMPTY plate (worlds/plate_*); a still with the scene's own people in it (worlds/scene_*) is its
+  // cast — and the place too when the scene has no usable empty plate (its people are then @Image1's)
+  const usable = ((plateRows ?? []) as Row[]).filter(
+    (p) => ((p.metadata_json ?? {}) as Row).usable !== false,
+  );
+  const castRow = usable.find((p) => /\/worlds\/scene_/.test(String(p.file_url))) ?? null;
   const plateRow =
-    ((plateRows ?? []) as Row[]).find((p) => ((p.metadata_json ?? {}) as Row).usable !== false) ??
+    usable.find((p) => /\/worlds\/plate_/.test(String(p.file_url))) ??
+    castRow ??
+    usable.find((p) => !/\.(mp4|mov|webm)$/i.test(String(p.file_url))) ??
     null;
   if (!plateRow)
     return json(422, {
@@ -306,13 +259,20 @@ serve(async (req) => {
     shotLabel: str(plateMeta.shot_label),
     sceneTitle: str(plateMeta.scene_title),
   };
+  const cast: CastFacts | null = castRow
+    ? {
+        id: String(castRow.id),
+        bucket: str(((castRow.metadata_json ?? {}) as Row).bucket) ?? "project-references",
+        path: String(castRow.file_url),
+      }
+    : null;
 
   // his shoes: the footwear picture among the pieces he wears in the shot (the montage's low angles show feet the
   // waist-up takes never had; without a picture the model makes up a pair)
   let footwear: MontageFootwear | null = null;
   const worn = wornPieces(spec, str(scene.outfit_key));
-  let pieceIds: string[] = "ids" in worn ? worn.ids : [];
-  if ("outfitKey" in worn) {
+  let pieceIds: string[] = "ids" in worn && !broll ? worn.ids : [];
+  if ("outfitKey" in worn && !broll) {
     const outfitQuery = user
       .from("continuity_entities")
       .select("garment_feature_ids")
@@ -368,31 +328,47 @@ serve(async (req) => {
   }
 
   // 4. the request
-  const planned = planMontage({
-    projectId,
-    userId,
-    aspect: project.aspect_ratio,
-    shot,
-    take,
-    plate,
-    lines,
-    light,
-    footwear,
-  });
+  const planned = take
+    ? planMontage({
+        projectId,
+        userId,
+        aspect: project.aspect_ratio,
+        shot,
+        take,
+        plate,
+        lines,
+        light,
+        footwear,
+        cast,
+      })
+    : planBrollMontage({
+        projectId,
+        userId,
+        aspect: project.aspect_ratio,
+        shot,
+        plate,
+        cast,
+        lines,
+        light,
+      });
   if (!planned.ok)
     return json(planned.status, { ok: false, error: planned.error, detail: planned.detail });
   const plan = planned.plan;
   const facts = {
     shot: { id: shot.id, key: shot.key, start: shot.start, end: shot.end },
-    take: {
-      id: take.id,
-      path: take.path,
-      seconds: take.seconds,
-      songStart: take.sync.offsetSeconds,
-    },
+    take: take
+      ? {
+          id: take.id,
+          path: take.path,
+          seconds: take.seconds,
+          songStart: take.sync.offsetSeconds,
+        }
+      : null,
+    broll,
     scene: { id: String(scene.id), name: String(scene.name) },
     plate: { id: plate.id, path: plate.path },
     shoes: footwear ? { id: footwear.id, label: footwear.label, path: footwear.path } : null,
+    cast: plan.cast ? { id: plan.cast.id, path: plan.cast.path, isPlace: plan.cast.id === plate.id } : null,
     seconds: plan.seconds,
     songStart: plan.songStart,
     lead: plan.lead,
@@ -412,25 +388,24 @@ serve(async (req) => {
     });
 
   // 5. sign the files as the caller, record the job, then spend
-  const [srcSigned, stillSigned, shoesSigned] = await Promise.all([
-    user.storage.from(take.bucket).createSignedUrl(take.path, SIGN_TTL),
+  // @Image1 the place, then the pictures after it in the order the prompt names them (his shoes, the scene's people)
+  const extra = ((plan.payload.settings as Row).extraImages ?? []) as { bucket: string; path: string }[];
+  const [srcSigned, stillSigned, ...extraSigned] = await Promise.all([
+    take ? user.storage.from(take.bucket).createSignedUrl(take.path, SIGN_TTL) : null,
     user.storage.from(plate.bucket).createSignedUrl(plate.path, SIGN_TTL),
-    footwear ? user.storage.from(footwear.bucket).createSignedUrl(footwear.path, SIGN_TTL) : null,
+    ...extra.map((x) => user.storage.from(x.bucket).createSignedUrl(x.path, SIGN_TTL)),
   ]);
-  if (srcSigned.error || !srcSigned.data?.signedUrl)
+  if (srcSigned && (srcSigned.error || !srcSigned.data?.signedUrl))
     return json(500, { ok: false, error: "source_sign_failed", detail: srcSigned.error?.message });
-  if (stillSigned.error || !stillSigned.data?.signedUrl)
-    return json(500, { ok: false, error: "plate_sign_failed", detail: stillSigned.error?.message });
-  if (shoesSigned && (shoesSigned.error || !shoesSigned.data?.signedUrl))
-    return json(500, { ok: false, error: "shoes_sign_failed", detail: shoesSigned.error?.message });
+  if (!stillSigned || stillSigned.error || !stillSigned.data?.signedUrl)
+    return json(500, { ok: false, error: "plate_sign_failed", detail: stillSigned?.error?.message });
+  const badExtra = extraSigned.find((x) => !x || x.error || !x.data?.signedUrl);
+  if (badExtra !== undefined)
+    return json(500, { ok: false, error: "picture_sign_failed", detail: badExtra?.error?.message });
   const requestBody = {
     ...plan.body,
-    referenceVideoUrls: [srcSigned.data.signedUrl],
-    // @Image1 the place, @Image2 his shoes (the prompt names them in that order)
-    referenceImageUrls: [
-      stillSigned.data.signedUrl,
-      ...(shoesSigned ? [shoesSigned.data!.signedUrl] : []),
-    ],
+    ...(srcSigned ? { referenceVideoUrls: [srcSigned.data!.signedUrl] } : {}),
+    referenceImageUrls: [stillSigned.data.signedUrl, ...extraSigned.map((x) => x!.data!.signedUrl)],
   };
 
   const { data: job, error: jobErr } = await user
@@ -518,3 +493,77 @@ serve(async (req) => {
     filedAs: "an alternate on the shot, unselected, once provider-jobs-tick finishes it (minutes)",
   });
 });
+
+type Found =
+  | { ok: true; take: TakeFacts }
+  | { ok: false; status: number; body: Record<string, unknown> };
+
+/** The dressed take on the shot, the selected one first, else the newest; and its place on the song. */
+async function dressedTakeOf(
+  user: ReturnType<typeof createClient>,
+  projectId: string,
+  shotId: string,
+): Promise<Found> {
+  const fail = (status: number, body: Record<string, unknown>): Found => ({
+    ok: false,
+    status,
+    body: { ok: false, ...body },
+  });
+  const { data: dressedRows, error: dressedErr } = await user
+    .from("project_assets")
+    .select("id, file_url, approval_status, created_at, metadata_json")
+    .eq("shot_id", shotId)
+    .eq("metadata_json->derived_from->>method", "dressed")
+    .neq("approval_status", "rejected")
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (dressedErr) return fail(500, { error: "take_lookup_failed", detail: dressedErr.message });
+  const dressed = (dressedRows ?? []) as Row[];
+  if (dressed.length === 0)
+    return fail(422, {
+      error: "no_dressed_take",
+      detail:
+        "this shot has no dressed take to re-shoot — dress it first (the montage wears what the video wears)",
+    });
+  const { data: assignments } = await user
+    .from("shot_asset_assignments")
+    .select("asset_id, is_primary")
+    .eq("shot_id", shotId)
+    .eq("is_primary", true);
+  const primary = new Set(((assignments ?? []) as Row[]).map((a) => String(a.asset_id)));
+  const takeRow = dressed.find((d) => primary.has(String(d.id))) ?? dressed[0];
+  const takeMeta = (takeRow.metadata_json ?? {}) as Row;
+  const takeSeconds = num(takeMeta.duration_seconds);
+  if (takeSeconds == null)
+    return fail(422, {
+      error: "take_length_unknown",
+      detail: "the dressed take's length is not on its record",
+    });
+  const { data: syncRows, error: syncErr } = await user
+    .from("performance_syncs")
+    .select("offset_seconds, drift_ppm, status")
+    .eq("project_id", projectId)
+    .eq("performance_asset_id", String(takeRow.id))
+    .in("status", ["confirmed", "manual"])
+    .order("updated_at", { ascending: false })
+    .limit(1);
+  if (syncErr) return fail(500, { error: "sync_lookup_failed", detail: syncErr.message });
+  const sync = (syncRows?.[0] as Row | undefined) ?? null;
+  const offset = sync ? num(sync.offset_seconds) : null;
+  if (offset == null)
+    return fail(422, {
+      error: "take_not_in_sync",
+      detail: "the dressed take's match to the song could not be found",
+    });
+  return {
+    ok: true,
+    take: {
+      id: String(takeRow.id),
+      bucket: str(takeMeta.bucket) ?? "project-clips",
+      path: String(takeRow.file_url),
+      seconds: takeSeconds,
+      shows: str(takeMeta.shows),
+      sync: { offsetSeconds: offset, driftPpm: num(sync?.drift_ppm) ?? 0 },
+    },
+  };
+}

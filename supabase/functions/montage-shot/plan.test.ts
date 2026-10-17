@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clipAspect, planMontage, wornPieces, type MontageInput } from "./plan.ts";
+import { clipAspect, planBrollMontage, planMontage, picturesAfterPlace, wornPieces, type MontageInput } from "./plan.ts";
 import {
   montagePrompt,
   planMontageScenes,
@@ -7,6 +7,11 @@ import {
   restageKeep,
   montageRecord,
   footwearLine,
+  NO_FEET,
+  castLine,
+  brollMontagePrompt,
+  planShotMontageScenes,
+  DEFAULT_LOOK_SUFFIX,
 } from "../_shared/montagePrompt.ts";
 
 /** c042 on 16 Oct 2026: the Mastic corner shot (73.8–75.28 s) and its dressed take (first frame at 73.5268 s, 4.004 s long). */
@@ -208,5 +213,95 @@ describe("the montage request from the database's facts", () => {
     expect(clipAspect("1:1")).toBe("1:1");
     expect(clipAspect("4:5")).toBe("3:4");
     expect(clipAspect(null)).toBe("9:16");
+  });
+});
+
+const SHOES = {
+  id: "prada",
+  bucket: "wardrobe-refs",
+  path: "u/a/prada.jpg",
+  label: "Prada America's Cup Sneakers - Cream (Raw White)",
+  words: null,
+};
+const CAST = { id: "17ac4e3a", bucket: "project-references", path: "u/p/worlds/scene_oak_street_boosters_2.png" };
+
+describe("the people of the scene, and no shots of his feet (17 Oct 2026)", () => {
+  it("every montage asks for no shot of his shoes or feet", () => {
+    const r = planMontage(c042({ lines: LINES }));
+    if (!r.ok) throw new Error(r.detail);
+    expect(r.plan.prompt).toContain(NO_FEET);
+  });
+
+  it("the cast still goes after the place and the shoes, named by its number, and is recorded", () => {
+    const r = planMontage(c042({ lines: LINES, footwear: SHOES, cast: CAST }));
+    if (!r.ok) throw new Error(r.detail);
+    expect(r.plan.prompt).toContain(castLine(3));
+    expect(r.plan.prompt.indexOf(footwearLine(SHOES))).toBeLessThan(r.plan.prompt.indexOf(castLine(3)));
+    const settings = r.plan.payload.settings as Record<string, unknown>;
+    expect(settings.extraImages).toEqual([
+      { bucket: "wardrobe-refs", path: "u/a/prada.jpg" },
+      { bucket: "project-references", path: CAST.path },
+    ]);
+    expect((settings.variant as Record<string, unknown>).cast).toEqual({ id: CAST.id });
+  });
+
+  it("a cast still that is the place is not sent twice: its people are @Image1's", () => {
+    expect(picturesAfterPlace({ id: CAST.id }, null, CAST)).toEqual({ extra: [], castImage: 1 });
+    expect(picturesAfterPlace({ id: "plate" }, null, CAST)).toEqual({
+      extra: [{ bucket: "project-references", path: CAST.path }],
+      castImage: 2,
+    });
+  });
+});
+
+describe("a montage of a shot he is not in (b-roll)", () => {
+  const c002 = () => {
+    const base = c042();
+    return {
+      projectId: base.projectId,
+      userId: base.userId,
+      aspect: "9:16",
+      shot: { ...base.shot, key: "c002", start: 1.5, end: 2.98 },
+      plate: {
+        id: CAST.id,
+        bucket: "project-references",
+        path: CAST.path,
+        shotLabel: "scene_oak_street_boosters",
+        sceneTitle: "Oak Street, the chase",
+      },
+      cast: CAST,
+    };
+  };
+  const BOOSTERS = "the doors burst open\nHARD CUT to a guard slipping\nHARD CUT to a hanger in the gutter";
+
+  it("sends no take: the place and its people only, 4 s rendered, the lines in the shot's own seconds", () => {
+    const r = planBrollMontage({ ...c002(), lines: BOOSTERS });
+    if (!r.ok) throw new Error(r.detail);
+    const p = r.plan;
+    expect(p.seconds).toBe(4);
+    expect(p.songStart).toBe(1.5);
+    expect(p.lead).toBe(0);
+    const scenes = planShotMontageScenes(BOOSTERS, 1.48, 4);
+    if (!scenes.ok) throw new Error(scenes.why);
+    expect(p.scenes).toEqual(scenes.scenes);
+    expect(p.prompt).toBe(`${brollMontagePrompt(scenes.scenes, 1)} ${DEFAULT_LOOK_SUFFIX}`);
+    expect(p.prompt).not.toMatch(/@Video1/);
+    expect(p.estimateUsd).toBe(1.849);
+    expect(p.body).not.toHaveProperty("referenceVideoUrls");
+    const settings = p.payload.settings as Record<string, unknown>;
+    // never a take in sync: filed as a clip of the shot, unselected, at the shot's start
+    expect(settings).not.toHaveProperty("sourceAssetId");
+    expect(settings.alternate).toBe(true);
+    expect(settings.masterStart).toBe(1.5);
+    expect(settings).not.toHaveProperty("extraImages");
+    expect(settings.variant).toEqual(montageRecord(scenes.scenes, null, null, { cast: CAST, broll: true }));
+  });
+
+  it("refuses with no lines (there is no prefill for a place without him) and refuses timed events", () => {
+    const none = planBrollMontage({ ...c002(), lines: " " });
+    expect(none.ok).toBe(false);
+    if (!none.ok) expect(none.error).toBe("lines_required");
+    const timed = planBrollMontage({ ...c002(), lines: BOOSTERS, shot: { ...c002().shot, events: [{}] } });
+    expect(!timed.ok && timed.error).toBe("shot_has_timed_events");
   });
 });

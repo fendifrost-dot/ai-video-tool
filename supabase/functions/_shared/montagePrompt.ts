@@ -5,7 +5,7 @@
 // holds the two copies together word for word, so a montage shot from the MCP (montage-shot) is the montage the
 // storyboard's own button shoots.
 
-export const MONTAGE_VERSION = "montage-v1-2026-10-16";
+export const MONTAGE_VERSION = "montage-v2-2026-10-17";
 export const MONTAGE_LINES_MAX = 1200;
 export const MONTAGE_MIN_SCENE_SECONDS = 0.4;
 export const MONTAGE_MAX_SCENES = 8;
@@ -37,6 +37,10 @@ export const RESTAGE_MIN_SECONDS = 4;
 export const RESTAGE_MAX_SECONDS = 12;
 export const RESTAGE_RESOLUTION = "720p" as const;
 export const FRAME_ALLOWANCE = 0.042;
+
+/** Never a shot of his shoes (montage.ts NO_FEET; Fendi, 17 Oct 2026: "no more shoe shots"). */
+export const NO_FEET =
+  "No scene is a shot of his shoes or his feet: never a close-up of them, never a cutaway or a tilt down to them; his shoes are only ever seen in passing in a wider frame.";
 
 export type MontageScene = { from: number; to: number; text: string };
 
@@ -155,24 +159,66 @@ export function montagePrompt(scenes: readonly MontageScene[]): string {
     montageScript(scenes),
     MONTAGE_SYNC,
     NEVER_WIDER,
+    NO_FEET,
   ].join(" ");
+}
+
+/** The people of a scene still with its own people in it (montage.ts castLine). */
+export function castLine(image: number): string {
+  return `The people in this place are the people in @Image${image}: the same faces, the same clothes, the same things in their hands, in every shot they are in; nobody new takes their place.`;
+}
+
+/** A montage of a shot he is not in (montage.ts brollMontagePrompt): the place, its people and the camera only. */
+export const BROLL_PLACE =
+  "Everything happens in the place of @Image1, in its light and its weather; the people in it and the camera move, nothing is pasted in.";
+export function brollMontagePrompt(
+  scenes: readonly MontageScene[],
+  castImage: number | null = null,
+): string {
+  return [
+    `a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`,
+    montageScript(scenes),
+    BROLL_PLACE,
+    castImage != null ? castLine(castImage) : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/** The lines share the shot's seconds; the last scene holds to the end of the render (montage.ts planShotMontageScenes). */
+export function planShotMontageScenes(
+  lines: string,
+  shotSeconds: number,
+  renderSeconds: number,
+): { ok: true; scenes: MontageScene[] } | { ok: false; why: string } {
+  const own = Math.round(Math.min(shotSeconds, renderSeconds) * 10) / 10;
+  const planned = planMontageScenes(lines, own);
+  if (!planned.ok) return planned;
+  const scenes = planned.scenes.map((s) => ({ ...s }));
+  scenes[scenes.length - 1].to = Math.round(renderSeconds * 10) / 10;
+  return { ok: true, scenes };
 }
 
 export function montageRecord(
   scenes: readonly MontageScene[],
   thing: string | null,
   footwear: MontageFootwear | null = null,
+  more: { cast?: { id: string } | null; broll?: boolean } = {},
 ): {
   version: string;
   scenes: MontageScene[];
   thing: string | null;
   footwear?: { id: string; label: string };
+  cast?: { id: string };
+  broll?: true;
 } {
   return {
     version: MONTAGE_VERSION,
     scenes: scenes.map((s) => ({ ...s })),
     thing: thing?.trim() || null,
     ...(footwear ? { footwear: { id: footwear.id, label: footwear.label } } : {}),
+    ...(more.cast ? { cast: { id: more.cast.id } } : {}),
+    ...(more.broll ? { broll: true as const } : {}),
   };
 }
 
