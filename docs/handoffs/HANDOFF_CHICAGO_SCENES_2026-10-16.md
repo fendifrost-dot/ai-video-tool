@@ -370,3 +370,26 @@ let the fade stop at a cut instead of crossing it.
 
 Verify (cheap): `avt_select shot_asset_assignments asset_id in (03794fcc…, ccbb3ee7…)` → 2 rows, `is_primary=false`,
 shots `ebf8f826…` (c044) and `8df8cc79…` (c045). Not selected by design; never select them without Fendi.
+
+## Treatment adjusted — "Freezin Every Season · cold runway" (17 Oct, 02:13 UTC)
+
+Fendi: "simple runway aesthetics in untraditional environments with cold weather animals popping up where they
+shouldn't be."
+
+DONE (in the published app, VERIFIED from the database): candidate 6 (`358363e6…`) duplicated with the switcher's
+**Duplicate** → new variation **`c067efb9-90af-418e-aa6d-58834f6e19de`** "Freezin Every Season · cold runway (from
+candidate 6)", now the project's active variation; treatment saved on its Treatment page (manual, 5,557 chars,
+02:13:39 UTC). The copy is exact: 100 shots, 169 clips on shots (56 selected), 152 assets, 14 entities, 9 scenes — the
+same counts as candidate 6; the approved c044/c045 region swaps are on it, unselected. Candidate 6's treatment is
+untouched (still 15 Oct 03:50). $0 spent.
+
+The treatment, in short: a plain Saint Laurent runway walked through everyday Chicago places (CTA platform, currency
+exchange, car wash, laundromat, school hallway, Midway baggage carousel, Lower Wacker, a furniture showroom, a roller
+rink); one cold animal per place that nobody reacts to; every scene opens on the place, then finds Fendi leaning in
+it; frost grows through the song; hook 1 = the Red Line scenes already on the board; outro = lights out, a penguin
+where he stood. No TV, fire or control room.
+
+NOT DONE (needs Fendi's read of the treatment first): the board's shots outside hook 1 still describe the old
+treatment (forest, viewing room) and will show "earlier treatment". Next = rewrite those shots from this treatment on
+the copy (writer call, cents) while keeping hook 1's shots and footage; then plates per new location. Do not press
+"Release N shots to be rewritten" without checking it leaves hook 1's footage on its shots.
