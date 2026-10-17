@@ -730,9 +730,13 @@ NOT DONE:
 - montage-shot + avt-mcp from `6ca7c39` LIVE (VERIFIED 14:40 UTC): Lovable redeployed both. Unauthenticated calls get
   401. A montage-shot dryRun on c037 returned version `montage-v5-2026-10-17`, `shoes: null`, and the waist-up line
   in the prompt. Frontend Publish sent (deployment `29704d11`); not yet watched in a browser.
-- Follow-up in the next PR: the montage prefill's last line no longer asks for "a low angle from below" (it is now "a
-  medium close-up from chest height"). The treatment writer's framing list drops "wide" and "low angle" and says waist
-  up or closer. These are CODED; they need a redeploy of montage-shot + treatment-writer-proxy and a Publish.
+- PR fendifrost-dot/ai-video-tool#321 (merged `1311cac`): the montage prefill's last line no longer asks for "a low
+  angle from below" (it is now "a medium close-up from chest height"). The treatment writer's framing list drops
+  "wide" and "low angle" and says waist up or closer. LIVE (VERIFIED 14:59 UTC):
+  - Lovable redeployed montage-shot + treatment-writer-proxy from `1311cac`; both answer 401 to unauthenticated calls.
+  - A montage-shot dryRun on c037 returned the new last line, `shoes: null`, version `montage-v5-2026-10-17`, and
+    spent nothing.
+  - Frontend Publish sent (deployment `717194f9`); not yet watched in a browser.
 - **Superseded check** (kept for the follow-up redeploy). Verify montage-shot + avt-mcp:
   - Both must answer 401 to an unauthenticated POST. A 404 means not deployed.
   - A montage-shot dryRun on a performance shot must return a prompt containing "from the waist up or closer" and
