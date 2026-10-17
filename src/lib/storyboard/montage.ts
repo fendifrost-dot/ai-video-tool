@@ -17,7 +17,7 @@
  */
 import { NEVER_WIDER } from "./restage";
 
-export const MONTAGE_VERSION = "montage-v1-2026-10-16";
+export const MONTAGE_VERSION = "montage-v2-2026-10-17";
 /** The longest scene list the dialog takes. */
 export const MONTAGE_LINES_MAX = 1200;
 /** Scenes shorter than this are not asked for: the model cannot cut faster than it renders. */
@@ -36,6 +36,14 @@ export const MONTAGE_STYLE =
 export const MONTAGE_SYNC =
   "Whenever he is on screen his mouth movements are exactly @Video1's at that same second, word for word, in sync from the first frame to the last; " +
   "a cutaway does not pause, repeat or shift the performance — it continues underneath and is where @Video1 is when the picture comes back to him.";
+
+/**
+ * Never a shot of his shoes (Fendi, 17 Oct 2026: "no more shoe shots"). With his shoe picture beside the place, the
+ * model made the shoes a subject — a cutaway to his Pradas on the Oak Street window montage. The picture stays (a
+ * wide frame that shows his feet still has to show that pair); the shoes are never a scene of their own.
+ */
+export const NO_FEET =
+  "No scene is a shot of his shoes or his feet: never a close-up of them, never a cutaway or a tilt down to them; his shoes are only ever seen in passing in a wider frame.";
 
 export type MontageScene = { from: number; to: number; text: string };
 
@@ -147,7 +155,52 @@ export function montageScript(scenes: readonly MontageScene[]): string {
  * the performer… Re-shoot the exact same performance from a second camera: <this>", the keep list and the place.
  */
 export function montagePrompt(scenes: readonly MontageScene[]): string {
-  return [`a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`, montageScript(scenes), MONTAGE_SYNC, NEVER_WIDER].join(" ");
+  return [`a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`, montageScript(scenes), MONTAGE_SYNC, NEVER_WIDER, NO_FEET].join(" ");
+}
+
+/**
+ * The people of a scene (Fendi, 17 Oct 2026, of the first Oak Street chase: "It doesn't have the same characters from
+ * the Gemini image"). A scene still with its own people in it (worlds/scene_*, plateMotion v5) goes to the model as a
+ * picture, and this sentence makes them the cast: the same people, never stand-ins the model invents.
+ */
+export function castLine(image: number): string {
+  return `The people in this place are the people in @Image${image}: the same faces, the same clothes, the same things in their hands, in every shot they are in; nobody new takes their place.`;
+}
+
+/**
+ * A montage of a shot he is not in (Fendi, 17 Oct 2026: "These all need to be montage shots so a continuous running
+ * out of the store is unacceptable"). No take goes to the model: the place, its people and the camera only, in the
+ * same fast cuts. The whole prompt, less the look's suffix.
+ */
+export const BROLL_PLACE =
+  "Everything happens in the place of @Image1, in its light and its weather; the people in it and the camera move, nothing is pasted in.";
+export function brollMontagePrompt(scenes: readonly MontageScene[], castImage: number | null = null): string {
+  return [
+    `a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`,
+    montageScript(scenes),
+    BROLL_PLACE,
+    castImage != null ? castLine(castImage) : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+/**
+ * The scenes of a montage that renders longer than its shot (a b-roll shot of 1.5 s still renders the model's 4 s
+ * minimum): the lines share the SHOT's seconds, and the last scene holds to the end of the render, which the edit
+ * never plays.
+ */
+export function planShotMontageScenes(
+  lines: string,
+  shotSeconds: number,
+  renderSeconds: number,
+): { ok: true; scenes: MontageScene[] } | { ok: false; why: string } {
+  const own = Math.round(Math.min(shotSeconds, renderSeconds) * 10) / 10;
+  const planned = planMontageScenes(lines, own);
+  if (!planned.ok) return planned;
+  const scenes = planned.scenes.map((s) => ({ ...s }));
+  scenes[scenes.length - 1].to = Math.round(renderSeconds * 10) / 10;
+  return { ok: true, scenes };
 }
 
 /** What is recorded on the job beside the prompt, so a result can be judged against what was asked. */
@@ -155,12 +208,15 @@ export function montageRecord(
   scenes: readonly MontageScene[],
   thing: string | null,
   footwear: MontageFootwear | null = null,
-): { version: string; scenes: MontageScene[]; thing: string | null; footwear?: { id: string; label: string } } {
+  more: { cast?: { id: string } | null; broll?: boolean } = {},
+): { version: string; scenes: MontageScene[]; thing: string | null; footwear?: { id: string; label: string }; cast?: { id: string }; broll?: true } {
   return {
     version: MONTAGE_VERSION,
     scenes: scenes.map((s) => ({ ...s })),
     thing: thing?.trim() || null,
     ...(footwear ? { footwear: { id: footwear.id, label: footwear.label } } : {}),
+    ...(more.cast ? { cast: { id: more.cast.id } } : {}),
+    ...(more.broll ? { broll: true as const } : {}),
   };
 }
 

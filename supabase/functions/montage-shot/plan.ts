@@ -10,11 +10,15 @@ import {
   RESTAGE_MAX_SECONDS,
   RESTAGE_MIN_SECONDS,
   RESTAGE_RESOLUTION,
+  DEFAULT_LOOK_SUFFIX,
+  brollMontagePrompt,
+  castLine,
   defaultMontageLines,
   footwearLine,
   montagePrompt,
   montageRecord,
   planMontageScenes,
+  planShotMontageScenes,
   restageKeep,
   restageSeconds,
   seedanceAnglePrompt,
@@ -74,6 +78,13 @@ export type PlateFacts = {
   sceneTitle: string | null;
 };
 
+/** A scene still with the scene's own people in it (worlds/scene_*): the montage's cast. May be the place itself. */
+export type CastFacts = {
+  id: string;
+  bucket: string;
+  path: string;
+};
+
 export type MontageInput = {
   projectId: string;
   userId: string;
@@ -87,6 +98,8 @@ export type MontageInput = {
   light?: string | null;
   /** His shoes: the outfit's footwear picture (montageFootwear), sent as @Image2 after the place. */
   footwear?: MontageFootwear | null;
+  /** The people of the scene: a still with them in it, sent after the place and the shoes (or the place itself). */
+  cast?: CastFacts | null;
 };
 
 export type MontagePlan = {
@@ -98,6 +111,7 @@ export type MontagePlan = {
   scenes: MontageScene[];
   thing: string | null;
   footwear: MontageFootwear | null;
+  cast: CastFacts | null;
   prompt: string;
   estimateUsd: number;
   /** The provider request, less the signed URLs (the I/O half signs and adds them: the take, the plate, the shoes). */
@@ -194,8 +208,16 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
   const songStart = r3(performanceToSong(0, take.sync));
   const light = input.light?.trim() ? `The light: ${input.light.trim()}` : "";
   const footwear = input.footwear ?? null;
-  // the app's order: the montage and its shoes are the variant's sentence, the light follows it (restage.ts restageShot)
-  const angle = [montagePrompt(planned.scenes), footwearLine(footwear), light]
+  const cast = input.cast ?? null;
+  const pictures = picturesAfterPlace(plate, footwear, cast);
+  // the app's order: the montage, its shoes and its people are the variant's sentence, the light follows it
+  // (restage.ts restageShot)
+  const angle = [
+    montagePrompt(planned.scenes),
+    footwearLine(footwear),
+    cast ? castLine(pictures.castImage) : "",
+    light,
+  ]
     .filter(Boolean)
     .join(" ");
   const prompt = seedanceAnglePrompt(angle, restageKeep({ shows: take.shows }));
@@ -223,13 +245,13 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
     lookPreset: DEFAULT_LOOK_PRESET_ID,
     sourcePath: take.path,
     stillPath: plate.path,
-    ...(footwear ? { extraImages: [{ bucket: footwear.bucket, path: footwear.path }] } : {}),
+    ...(pictures.extra.length > 0 ? { extraImages: pictures.extra } : {}),
     sourceWindow,
     masterStart: songStart,
     sourceAssetId: take.id,
     sourceSeconds: seconds,
     alternate: true as const,
-    variant: montageRecord(planned.scenes, thing, footwear),
+    variant: montageRecord(planned.scenes, thing, footwear, { cast }),
     ...(shot.madeFrom ? { madeFrom: shot.madeFrom } : {}),
     submittedBy: "montage-shot",
     lead: r3(lead),
@@ -253,6 +275,135 @@ export function planMontage(input: MontageInput): { ok: true; plan: MontagePlan 
       scenes: planned.scenes,
       thing,
       footwear,
+      cast,
+      prompt,
+      estimateUsd,
+      body,
+      payload,
+    },
+  };
+}
+
+/**
+ * The pictures sent after the place, in order — his shoes (@Image2), then the scene's people — and the number the
+ * prompt calls the people by. A cast still that IS the place is not sent twice: its people are @Image1's.
+ */
+export function picturesAfterPlace(
+  plate: Pick<PlateFacts, "id">,
+  footwear: MontageFootwear | null,
+  cast: CastFacts | null,
+): { extra: { bucket: string; path: string }[]; castImage: number } {
+  const extra: { bucket: string; path: string }[] = [];
+  if (footwear) extra.push({ bucket: footwear.bucket, path: footwear.path });
+  if (!cast || cast.id === plate.id) return { extra, castImage: 1 };
+  extra.push({ bucket: cast.bucket, path: cast.path });
+  return { extra, castImage: 1 + extra.length };
+}
+
+export type BrollInput = {
+  projectId: string;
+  userId: string;
+  aspect: unknown;
+  shot: ShotFacts;
+  plate: PlateFacts;
+  cast?: CastFacts | null;
+  lines?: string | null;
+  light?: string | null;
+};
+
+/**
+ * A montage of a shot he is not in (b-roll): the same fast cuts from the place and its people, with no take — Fendi,
+ * 17 Oct 2026: "These all need to be montage shots so a continuous running out of the store is unacceptable". The
+ * model renders whole seconds, at least 4: the lines share the shot's own seconds and the last holds to the end of
+ * the render. Filed on the shot unselected, its first frame at the shot's start.
+ */
+export function planBrollMontage(input: BrollInput): { ok: true; plan: MontagePlan } | Refusal {
+  const { shot, plate } = input;
+  if (shot.events.length > 0)
+    return refuse(
+      422,
+      "shot_has_timed_events",
+      "this shot has timed events, which the montage lane hands to the model as a timed script built in the app — shoot its montage from the storyboard for now",
+    );
+  const shotSeconds = shot.end - shot.start;
+  if (!(shotSeconds > 0))
+    return refuse(422, "shot_has_no_length", "the shot's window on the song is empty");
+  const seconds = restageSeconds(shotSeconds, 0);
+  if (!seconds)
+    return refuse(
+      422,
+      "shot_too_long",
+      `a shot of ${shotSeconds.toFixed(1)} s is too long to shoot in one piece — split it first`,
+    );
+  const thing = thingOfLabel(plate.shotLabel);
+  if (!input.lines?.trim())
+    return refuse(
+      422,
+      "lines_required",
+      "a shot he is not in has no prefill: write its scenes, one per line (what the place and its people do, cut by cut)",
+    );
+  const lines = input.lines.slice(0, MONTAGE_LINES_MAX);
+  const planned = planShotMontageScenes(lines, shotSeconds, seconds);
+  if (!planned.ok) return refuse(422, "scenes_refused", `${planned.why}. Nothing was generated.`);
+  const cast = input.cast ?? null;
+  const pictures = picturesAfterPlace(plate, null, cast);
+  const light = input.light?.trim() ? `The light: ${input.light.trim()}` : "";
+  const prompt = [
+    brollMontagePrompt(planned.scenes, cast ? pictures.castImage : null),
+    light,
+    DEFAULT_LOOK_SUFFIX,
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const estimateUsd = Number(seedanceUsd(RESTAGE_RESOLUTION, seconds, 0).toFixed(3));
+  const aspect = clipAspect(input.aspect);
+  const body = {
+    promptText: prompt,
+    mode: "reference_to_video",
+    modelVariant: SEEDANCE_MODEL,
+    duration: seconds,
+    resolution: RESTAGE_RESOLUTION,
+    aspectRatio: aspect,
+    generate_audio: false,
+    avt_user_id: input.userId,
+    avt_project_id: input.projectId,
+  };
+  const settings = {
+    batchRun: STORYBOARD_RUN,
+    batchShotId: `${shot.key}_${MONTAGE_ID_SUFFIX}`,
+    route: "seedance_ref",
+    kind: "world",
+    estimateUsd,
+    lookPreset: DEFAULT_LOOK_PRESET_ID,
+    stillPath: plate.path,
+    ...(pictures.extra.length > 0 ? { extraImages: pictures.extra } : {}),
+    masterStart: r3(shot.start),
+    alternate: true as const,
+    variant: montageRecord(planned.scenes, thing, null, { cast, broll: true }),
+    ...(shot.madeFrom ? { madeFrom: shot.madeFrom } : {}),
+    submittedBy: "montage-shot",
+    lead: 0,
+  };
+  const payload = {
+    promptText: prompt,
+    mode: "reference_to_video",
+    modelVariant: SEEDANCE_MODEL,
+    duration: seconds,
+    aspectRatio: aspect,
+    referenceImagePath: plate.path,
+    shotId: shot.id,
+    settings,
+  };
+  return {
+    ok: true,
+    plan: {
+      seconds,
+      songStart: r3(shot.start),
+      lead: 0,
+      scenes: planned.scenes,
+      thing,
+      footwear: null,
+      cast,
       prompt,
       estimateUsd,
       body,

@@ -6,7 +6,7 @@ vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 vi.mock("@/lib/queries/storyboard", () => ({}));
 
 import { NEVER_WIDER } from "./restage";
-import { MONTAGE_MIN_SCENE_SECONDS, MONTAGE_STYLE, MONTAGE_SYNC, MONTAGE_TAIL_TRIM_SECONDS, MONTAGE_VERSION, defaultMontageLines, montagePrompt, montageRecord, montageScript, planMontageScenes, thingOfLabel } from "./montage";
+import { BROLL_PLACE, MONTAGE_MIN_SCENE_SECONDS, MONTAGE_STYLE, MONTAGE_SYNC, MONTAGE_TAIL_TRIM_SECONDS, MONTAGE_VERSION, NO_FEET, brollMontagePrompt, castLine, defaultMontageLines, montagePrompt, montageRecord, montageScript, planMontageScenes, planShotMontageScenes, thingOfLabel } from "./montage";
 
 describe("the montage's scenes", () => {
   it("names the unusual thing from the plate's label, never the label's last word", () => {
@@ -99,5 +99,47 @@ describe("the montage prompt", () => {
   it("records what was asked, versioned", () => {
     expect(montageRecord(scenes, " the polar bear ")).toEqual({ version: MONTAGE_VERSION, scenes, thing: "the polar bear" });
     expect(montageRecord(scenes, null).thing).toBeNull();
+  });
+
+  it("never makes his shoes or feet a shot of their own (Fendi, 17 Oct 2026: no more shoe shots)", () => {
+    expect(montagePrompt(scenes)).toContain(NO_FEET);
+    expect(NO_FEET).toMatch(/never a close-up of them, never a cutaway or a tilt down to them/);
+  });
+
+  it("records the cast and a b-roll montage when there is one", () => {
+    expect(montageRecord(scenes, null, null, { cast: { id: "cast-1" }, broll: true })).toEqual({ version: MONTAGE_VERSION, scenes, thing: null, cast: { id: "cast-1" }, broll: true });
+    expect(montageRecord(scenes, null, null, { cast: null, broll: false })).toEqual({ version: MONTAGE_VERSION, scenes, thing: null });
+  });
+});
+
+describe("a montage of a shot he is not in, and the people of its scene", () => {
+  it("makes the people of the scene still the cast, by their picture's number", () => {
+    expect(castLine(3)).toBe("The people in this place are the people in @Image3: the same faces, the same clothes, the same things in their hands, in every shot they are in; nobody new takes their place.");
+  });
+
+  it("is the same fast cuts with no performer: no @Video1, no sync rule, the place's own light", () => {
+    const planned = planShotMontageScenes("a\nb\nc", 1.5, 4);
+    if (!planned.ok) throw new Error(planned.why);
+    const p = brollMontagePrompt(planned.scenes, 1);
+    expect(p).toContain(`a fast-cut montage in the place of @Image1, ${MONTAGE_STYLE}`);
+    expect(p).toContain(BROLL_PLACE);
+    expect(p).toContain(castLine(1));
+    expect(p).not.toMatch(/@Video1/);
+    expect(brollMontagePrompt(planned.scenes)).not.toMatch(/people in @Image/);
+  });
+
+  it("shares the SHOT's seconds among the lines and lets the last one hold to the end of the render", () => {
+    expect(planShotMontageScenes("a\nb\nc", 1.48, 4)).toEqual({
+      ok: true,
+      scenes: [
+        { from: 0, to: 0.5, text: "a" },
+        { from: 0.5, to: 1, text: "b" },
+        { from: 1, to: 4, text: "c" },
+      ],
+    });
+    expect(planShotMontageScenes("0-3 s: past the shot", 1.5, 4).ok).toBe(false);
+    // a shot as long as the render: nothing to hold
+    const whole = planShotMontageScenes("a\nb", 4, 4);
+    expect(whole.ok && whole.scenes[1]).toEqual({ from: 2, to: 4, text: "b" });
   });
 });

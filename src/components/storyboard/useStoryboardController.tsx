@@ -89,7 +89,7 @@ import { dressBox, dressPieceOf } from "@/lib/storyboard/dressSubmit";
 import { dressedTakeState, workflowStatus, type WorkflowStep } from "@/lib/storyboard/workflow";
 import { conflictNote } from "@/lib/storyboard/promptAudit";
 import { restageBox, restageEstimateUsd, restageSeconds, restageSource, restageTemporalPlan } from "@/lib/storyboard/restage";
-import { MONTAGE_LINES_MAX, defaultMontageLines, footwearLine, montageFootwear, montagePrompt, montageRecord, planMontageScenes, thingOfLabel } from "@/lib/storyboard/montage";
+import { MONTAGE_LINES_MAX, castLine, defaultMontageLines, footwearLine, montageFootwear, montagePrompt, montageRecord, planMontageScenes, thingOfLabel } from "@/lib/storyboard/montage";
 import { compositeBox } from "@/lib/composite/compositeSubmit";
 import { compositesOn, planComposite, platesOfScene, stillsOfScene, type CompositePlan } from "@/lib/composite/plan";
 import { animatePlate as submitPlateMotion, findLivePlateJob, planPlateMotion, PLATE_EVENT_MAX, type PlateMotionPlan } from "@/lib/composite/plateMotion";
@@ -1631,7 +1631,10 @@ export function useStoryboardController(projectId: string): StoryboardController
       // the place is the scene's plate (the still every composite of the scene goes over — with the event in it when
       // one was drawn in), else the place a restaging is put in
       const scene = outfitOf(box).scene;
-      const plate = platesOfScene(media.list, scene?.name ?? null)[0] ?? null;
+      // the scene's people: a still with them in it (worlds/scene_*) is the montage's cast — and its place when the
+      // scene has no empty plate (Fendi, 17 Oct 2026: "It doesn't have the same characters from the Gemini image")
+      const cast = stillsOfScene(media.list, scene?.name ?? null).find((a) => a.plate?.cast) ?? null;
+      const plate = platesOfScene(media.list, scene?.name ?? null)[0] ?? cast;
       const place = plate ? { asset: plate, of: scene ? { key: scene.id, name: scene.name } : null } : placeStill(box);
       if (!place) {
         toast.info("this shot has no plate or place picture to shoot the montage in — generate the place first");
@@ -1647,11 +1650,19 @@ export function useStoryboardController(projectId: string): StoryboardController
         const lines = (typed ?? defaultMontageLines(thing)).slice(0, MONTAGE_LINES_MAX);
         const scenes = planMontageScenes(lines, r.seconds);
         if (!scenes.ok) throw new Error(`${scenes.why}. Nothing was generated.`);
-        const angle = [montagePrompt(scenes.scenes), footwearLine(footwear)].filter(Boolean).join(" ");
+        // after the place (@Image1): his shoes, then the scene's people — not sent twice when they are the place
+        const castIsPlace = !!cast && cast.id === place.asset.id;
+        const castApart = cast && !castIsPlace && cast.bucket === "project-references" ? cast : null;
+        const extraImages = [
+          ...(footwear ? [{ bucket: footwear.bucket, path: footwear.path }] : []),
+          ...(castApart ? [{ bucket: "project-references" as const, path: castApart.path }] : []),
+        ];
+        const castImage = castApart ? 1 + extraImages.length : 1;
+        const angle = [montagePrompt(scenes.scenes), footwearLine(footwear), castApart || castIsPlace ? castLine(castImage) : ""].filter(Boolean).join(" ");
         return {
           lines,
           scenes: scenes.scenes,
-          variant: { angle, idSuffix: "montage", alternate: true as const, record: montageRecord(scenes.scenes, thing, footwear), ...(footwear ? { extraImages: [{ bucket: footwear.bucket, path: footwear.path }] } : {}) },
+          variant: { angle, idSuffix: "montage", alternate: true as const, record: montageRecord(scenes.scenes, thing, footwear, { cast: castApart || castIsPlace ? cast : null }), ...(extraImages.length ? { extraImages } : {}) },
         };
       };
       const picture = { url: urlFor(place.asset), caption: `The place the montage is shot in: ${place.asset.name}` };
