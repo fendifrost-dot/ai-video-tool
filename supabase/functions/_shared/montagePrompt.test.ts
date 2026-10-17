@@ -101,6 +101,18 @@ describe("the Deno copy of the montage's words is the app's, word for word", () 
     );
   });
 
+  it("the beat-locked scenes", () => {
+    const beats = Array.from({ length: 20 }, (_, k) => k * 0.4918);
+    for (const [lines, opts] of [
+      ["a\nb\nc", { renderSeconds: 4, shotIn: 0, shotOut: 1.48, beats }],
+      ["a\nb\nc", { renderSeconds: 4, shotIn: 1.139, shotOut: 2.619, beats }],
+      ["a\nb", { renderSeconds: 4, shotIn: 0, shotOut: 2, beats: [] }],
+      ["0-1 s: a\nb", { renderSeconds: 4, shotIn: 0, shotOut: 2, beats }],
+      ["a\nb\nc\nd", { renderSeconds: 4, shotIn: 0, shotOut: 1.48, beats }],
+    ] as const)
+      expect(edge.planBeatLockedScenes(lines, opts)).toEqual(app.planBeatLockedScenes(lines, opts));
+  });
+
   it("the keep list, the restage seconds and the whole prompt around the montage", () => {
     expect(edge.restageKeep({ shows: null })).toEqual(restageKeep({ shows: null }));
     expect(edge.restageKeep({ shows: " the Mastic track jacket " })).toEqual(

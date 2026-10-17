@@ -6,7 +6,7 @@ vi.mock("@/lib/worldBatch/browserDeps", () => ({ browserRunnerDeps: vi.fn() }));
 vi.mock("@/lib/queries/storyboard", () => ({}));
 
 import { NEVER_WIDER } from "./restage";
-import { BROLL_NO_FEET, BROLL_PLACE, MONTAGE_MIN_SCENE_SECONDS, MONTAGE_STYLE, MONTAGE_SYNC, MONTAGE_TAIL_TRIM_SECONDS, MONTAGE_VERSION, NO_FEET, brollMontagePrompt, castLine, defaultMontageLines, montagePrompt, montageRecord, montageScript, planMontageScenes, planShotMontageScenes, thingOfLabel } from "./montage";
+import { BROLL_NO_FEET, BROLL_PLACE, MONTAGE_MIN_SCENE_SECONDS, MONTAGE_STYLE, MONTAGE_SYNC, MONTAGE_TAIL_TRIM_SECONDS, MONTAGE_VERSION, NO_FEET, brollMontagePrompt, castLine, defaultMontageLines, planBeatLockedScenes, montagePrompt, montageRecord, montageScript, planMontageScenes, planShotMontageScenes, thingOfLabel } from "./montage";
 
 describe("the montage's scenes", () => {
   it("names the unusual thing from the plate's label, never the label's last word", () => {
@@ -144,3 +144,41 @@ describe("a montage of a shot he is not in, and the people of its scene", () => 
     expect(whole.ok && whole.scenes[1]).toEqual({ from: 2, to: 4, text: "b" });
   });
 });
+
+describe("cut to the song: the lines share the shot's beats (Fendi, 17 Oct 2026)", () => {
+  // 122 BPM: a beat every 0.4918 s
+  const beats = Array.from({ length: 20 }, (_, k) => Number((k * 0.4918).toFixed(4)));
+
+  it("cuts on the beats inside the part the edit plays, the last scene holding to the end of the render", () => {
+    const r = planBeatLockedScenes("a\nb\nc", { renderSeconds: 4, shotIn: 0, shotOut: 1.48, beats });
+    expect(r).toEqual({
+      ok: true,
+      locked: 2,
+      scenes: [
+        { from: 0, to: 0.49, text: "a" },
+        { from: 0.49, to: 0.98, text: "b" },
+        { from: 0.98, to: 4, text: "c" },
+      ],
+    });
+  });
+
+  it("a head handle before the shot belongs to the first scene; the cuts fall inside the shot", () => {
+    // c007: the shot plays 1.139–2.619 of the dressed take; beats on the song clock moved onto the clip's
+    const r = planBeatLockedScenes("place\nhim\nface", { renderSeconds: 4, shotIn: 1.139, shotOut: 2.619, beats: beats.map((t) => t + 0.1) });
+    if (!r || !r.ok) throw new Error("not planned");
+    expect(r.scenes[0].from).toBe(0);
+    expect(r.scenes[1].from).toBeGreaterThanOrEqual(1.139 + 0.4 - 1e-6);
+    expect(r.scenes[2].from).toBeLessThanOrEqual(2.619 - 0.4 + 1e-6);
+    expect(r.scenes[2].to).toBe(4);
+    // a 1.48 s shot with three scenes of 0.4 s or more leaves room for one cut on a beat here, not both
+    expect(r.locked).toBeGreaterThanOrEqual(1);
+  });
+
+  it("with no beat near a cut it keeps the even share; timed lines and shots too short for the lines are the caller's", () => {
+    const even = planBeatLockedScenes("a\nb", { renderSeconds: 4, shotIn: 0, shotOut: 2, beats: [] });
+    expect(even).toEqual({ ok: true, locked: 0, scenes: [{ from: 0, to: 1, text: "a" }, { from: 1, to: 4, text: "b" }] });
+    expect(planBeatLockedScenes("0-1 s: a\nb", { renderSeconds: 4, shotIn: 0, shotOut: 2, beats })).toBeNull();
+    expect(planBeatLockedScenes("a\nb\nc\nd", { renderSeconds: 4, shotIn: 0, shotOut: 1.48, beats })).toBeNull();
+  });
+});
+

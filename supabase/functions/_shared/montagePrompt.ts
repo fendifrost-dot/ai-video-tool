@@ -5,7 +5,7 @@
 // holds the two copies together word for word, so a montage shot from the MCP (montage-shot) is the montage the
 // storyboard's own button shoots.
 
-export const MONTAGE_VERSION = "montage-v3-2026-10-17";
+export const MONTAGE_VERSION = "montage-v4-2026-10-17";
 export const MONTAGE_LINES_MAX = 1200;
 export const MONTAGE_MIN_SCENE_SECONDS = 0.4;
 export const MONTAGE_MAX_SCENES = 8;
@@ -203,11 +203,71 @@ export function planShotMontageScenes(
   return { ok: true, scenes };
 }
 
+/**
+ * Beat-locked scenes — the house rule for cutting a montage to the song (Fendi, 17 Oct 2026: "are we going to keep
+ * doing 4 second clips or cut to the exact song taking into account transitions and beats … write that workflow into
+ * the tool"). The edit already cuts every shot on the song's beat grid (treatment/grid.ts: beats, downbeats, lyric
+ * line starts, section changes). Inside a shot, untimed lines are cut on the song's beats too: the lines share the
+ * part of the clip the edit plays (shotIn–shotOut, clip seconds), each cut moved onto the nearest beat that keeps
+ * every scene at least MONTAGE_MIN_SCENE_SECONDS; the first scene starts at the clip's first frame (a head handle
+ * before the shot belongs to it) and the last holds to the end of the render. A cut with no usable beat near it stays
+ * on its even share. Lines that carry their own seconds are the director's and are kept as written (`null` here — the
+ * caller plans them with planMontageScenes, as it does lines the shot has no room for). One render per shot, never one render across shots: the model's cuts
+ * drift a few frames, and a clip shared by two shots would leak one scene across the edit's cut.
+ */
+export function planBeatLockedScenes(
+  lines: string,
+  opts: { renderSeconds: number; shotIn: number; shotOut: number; beats: readonly number[] },
+): { ok: true; scenes: MontageScene[]; locked: number } | { ok: false; why: string } | null {
+  const raw = lines
+    .split("\n")
+    .map((l) => l.replace(/^\s*[—–\-•*]\s*/, "").trim())
+    .filter(Boolean);
+  if (raw.length === 0) return { ok: false, why: "write at least one scene, one per line" };
+  if (raw.some((l) => { const m = TIME_RE.exec(l); return !!m && !!m[3].trim(); })) return null;
+  if (raw.length > MONTAGE_MAX_SCENES)
+    return { ok: false, why: `at most ${MONTAGE_MAX_SCENES} scenes — the model cannot cut faster than that` };
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  const end = opts.renderSeconds;
+  const a = Math.max(0, Math.min(opts.shotIn, end));
+  const b = Math.max(a, Math.min(opts.shotOut, end));
+  const n = raw.length;
+  const min = MONTAGE_MIN_SCENE_SECONDS;
+  // more lines than the part the edit plays has room for: they share the whole render, as before (the caller's plan)
+  if (n * min > b - a + 1e-6) return null;
+  const beats = [...opts.beats].filter((t) => Number.isFinite(t)).sort((x, y) => x - y);
+  const cuts: number[] = [];
+  let locked = 0;
+  let prev = 0;
+  for (let k = 1; k < n; k++) {
+    const target = a + ((b - a) * k) / n;
+    // every scene the edit shows keeps at least `min` inside the window: the ones before this cut and the ones after it
+    const lo = Math.max(prev, a) + min;
+    const hi = b - min * (n - k);
+    let best: number | null = null;
+    for (const t of beats) {
+      if (t < lo - 1e-6 || t > hi + 1e-6 || t <= a + 1e-6 || t >= b - 1e-6) continue;
+      if (best == null || Math.abs(t - target) < Math.abs(best - target)) best = t;
+    }
+    const nearEnough = best != null && Math.abs(best - target) <= (b - a) / n / 2 + 1e-6;
+    const cut = nearEnough ? best! : Math.min(Math.max(target, lo), hi);
+    if (nearEnough) locked++;
+    cuts.push(cut);
+    prev = cut;
+  }
+  const edges = [0, ...cuts, end];
+  const scenes = raw.map((text, i) => ({ from: r2(edges[i]), to: r2(edges[i + 1]), text }));
+  for (let k = 0; k < scenes.length; k++)
+    if (scenes[k].to - scenes[k].from < min - 1e-6)
+      return { ok: false, why: `scene ${k + 1} would be ${(scenes[k].to - scenes[k].from).toFixed(2)} s — fewer scenes` };
+  return { ok: true, scenes, locked };
+}
+
 export function montageRecord(
   scenes: readonly MontageScene[],
   thing: string | null,
   footwear: MontageFootwear | null = null,
-  more: { cast?: { id: string } | null; broll?: boolean } = {},
+  more: { cast?: { id: string } | null; broll?: boolean; cutOn?: { beats: number; cuts: number } | null } = {},
 ): {
   version: string;
   scenes: MontageScene[];
@@ -215,6 +275,7 @@ export function montageRecord(
   footwear?: { id: string; label: string };
   cast?: { id: string };
   broll?: true;
+  cutOn?: { beats: number; cuts: number };
 } {
   return {
     version: MONTAGE_VERSION,
@@ -223,6 +284,7 @@ export function montageRecord(
     ...(footwear ? { footwear: { id: footwear.id, label: footwear.label } } : {}),
     ...(more.cast ? { cast: { id: more.cast.id } } : {}),
     ...(more.broll ? { broll: true as const } : {}),
+    ...(more.cutOn ? { cutOn: { ...more.cutOn } } : {}),
   };
 }
 
