@@ -131,8 +131,10 @@ export function boardCutEdl(
 }
 
 const csvCell = (v: unknown) => {
-  const s = v == null ? "" : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  const raw = v == null ? "" : String(v);
+  // a text cell a spreadsheet would read as a formula is kept text (a negative number is left a number)
+  const s = typeof v === "string" && /^[=+\-@]/.test(raw) ? `'${raw}` : raw;
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 
 export function boardCutCsv(rows: readonly BoardCutRow[], opts: { fps?: number } = {}): string {

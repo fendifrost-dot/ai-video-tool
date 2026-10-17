@@ -116,7 +116,17 @@ end $$;
 do $$
 declare v_dup uuid; r record; n int;
 begin
+  -- a hand alignment (20261017210000_footage_slip.sql) is a variation's cut too: bounded, and carried by a duplicate
+  begin
+    update public.shot_asset_assignments set slip_seconds = 31 where variation_id = 'f1000000-0000-0000-0000-000000000001';
+    raise exception 'a slip past 30 s was accepted';
+  exception when check_violation then null;
+  end;
+  update public.shot_asset_assignments set slip_seconds = -0.125 where variation_id = 'f1000000-0000-0000-0000-000000000001';
+
   v_dup := public.duplicate_variation('f1000000-0000-0000-0000-000000000001', 'Duplicated');
+  select slip_seconds into r from public.shot_asset_assignments where variation_id = v_dup;
+  if r.slip_seconds <> -0.125 then raise exception 'the duplicate lost the slip: %', r.slip_seconds; end if;
 
   select trim_head_seconds, trim_tail_seconds, excluded into r
     from public.shot_asset_assignments where variation_id = v_dup;

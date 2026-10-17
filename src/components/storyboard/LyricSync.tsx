@@ -57,15 +57,25 @@ export function LyricSyncPanel({ item, box }: { item: BoxMediaItem; box: Storybo
   const [at, setAt] = useState(item.sourceIn ?? 0);
   const [typed, setTyped] = useState(String(slip));
   const [playing, setPlaying] = useState(false);
-  useEffect(() => setTyped(String(slip)), [slip]);
+  // the slip asked for and not yet read back: quick nudges add up instead of each starting from the saved one
+  const pending = useRef<number | null>(null);
+  useEffect(() => {
+    setTyped(String(slip));
+    pending.current = null;
+  }, [slip]);
 
   const songRefs = useMemo(() => (sb.song ? [sb.song] : []), [sb.song]);
   const signed = useSignedRefs(songRefs);
   const songUrl = sb.song ? signed[mediaRefKey(sb.song)] : undefined;
   const clipUrl = sb.urlFor(item.asset);
 
+  // a take left out of this shot has nothing to line up (a nudge would put it back without saying so)
   const usable =
-    item.kind === "video" && item.role === "performance" && !!sync && isUsableSync(sync);
+    item.kind === "video" &&
+    item.role === "performance" &&
+    item.edit?.from !== "excluded" &&
+    !!sync &&
+    isUsableSync(sync);
   const lines = useMemo(() => linesOfShot(sb.songLines ?? [], box), [sb.songLines, box]);
   const fit = useMemo(
     () =>
@@ -97,7 +107,7 @@ export function LyricSyncPanel({ item, box }: { item: BoxMediaItem; box: Storybo
         const take = (a.currentTime - sync.offsetSeconds - slip) / k;
         if (Math.abs(v.currentTime - take) > 0.06) v.currentTime = Math.max(0, take);
         setAt(v.currentTime);
-        if (a.currentTime >= box.end + POST_ROLL) {
+        if (a.currentTime >= box.end + POST_ROLL || a.ended) {
           a.pause();
           v.pause();
           setPlaying(false);
@@ -112,8 +122,11 @@ export function LyricSyncPanel({ item, box }: { item: BoxMediaItem; box: Storybo
 
   if (!usable || !sync) return null;
 
-  const setSlip = (s: number) =>
-    void sb.editFootage(box, item.asset.id, { do: "slip", seconds: slipSeconds(s) });
+  const setSlip = (s: number) => {
+    pending.current = slipSeconds(s);
+    void sb.editFootage(box, item.asset.id, { do: "slip", seconds: pending.current });
+  };
+  const nudge = (d: number) => setSlip((pending.current ?? slip) + d);
   const play = () => {
     const a = audio.current;
     const v = video.current;
@@ -167,6 +180,11 @@ export function LyricSyncPanel({ item, box }: { item: BoxMediaItem; box: Storybo
         <video
           ref={video}
           src={clipUrl}
+          // on the shot's own first frame, so the frame on screen is the one a line press aligns
+          onLoadedMetadata={(e) => {
+            e.currentTarget.currentTime = item.sourceIn ?? 0;
+            setAt(item.sourceIn ?? 0);
+          }}
           muted
           playsInline
           preload="auto"
@@ -236,7 +254,7 @@ export function LyricSyncPanel({ item, box }: { item: BoxMediaItem; box: Storybo
             size="sm"
             variant="ghost"
             className="h-6 px-1.5 font-mono text-[10px]"
-            onClick={() => setSlip(slip + d)}
+            onClick={() => nudge(d)}
             data-testid="lyric-sync-nudge"
           >
             {d < 0 ? "−" : "+"}
@@ -252,7 +270,12 @@ export function LyricSyncPanel({ item, box }: { item: BoxMediaItem; box: Storybo
             max={MAX_SLIP_SECONDS}
             value={typed}
             onChange={(e) => setTyped(e.target.value)}
-            onBlur={(e) => Number(e.target.value) !== slip && setSlip(Number(e.target.value))}
+            onBlur={(e) => {
+              // an emptied field is not a request for 0: it goes back to what is saved
+              const v = e.target.value.trim();
+              if (v === "" || !Number.isFinite(Number(v))) return setTyped(String(slip));
+              if (Number(v) !== slip) setSlip(Number(v));
+            }}
             className="h-6 w-20 rounded border border-border bg-background/60 px-1 font-mono text-[10px]"
             aria-label="Seconds this take plays later on this shot than its sync"
             data-testid="lyric-sync-slip"

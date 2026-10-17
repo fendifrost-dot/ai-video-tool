@@ -29,12 +29,6 @@ alter table public.shot_asset_assignments
 comment on column public.shot_asset_assignments.slip_seconds is
   'This variation only: seconds this take plays LATER on this shot than performance_syncs puts it (negative: earlier) — a hand alignment of the mouth to the lyrics. The source in-point stays derived (sync + slip + the shot window) on every read.';
 
-create or replace function public.duplicate_variation' -- supabase/migrations` finds that file.
---   `supabase/tests/footage_edits_test.sql` §4 and `cast_members_test.sql` §3 both assert their own columns
---   survive a duplicate, so a body written from the wrong ancestor fails on a throwaway before it can ship.
---
--- Idempotent: safe to re-run.
-
 create or replace function public.duplicate_variation(p_source uuid, p_name text)
 returns uuid
 language plpgsql

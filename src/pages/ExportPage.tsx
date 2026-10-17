@@ -322,7 +322,7 @@ export default function ExportPage({ projectId }: { projectId: string }) {
           <section className="rounded-md border border-border bg-card/30 p-4" data-testid="board-cut">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">The board's cut, for Premiere</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Every shot with the clip it shows, where in that clip it starts (after any lyric-sync slip) and where it sits on the song. Record timecode is song time, so the song on A1 at 00:00:00:00 lines up. Import the EDL in Premiere and relink each clip by its file name.
+              Every shot with the clip it shows, where in that clip it starts (after any lyric-sync slip) and where it sits on the song. Record timecode is song time, so the song on A1 at 00:00:00:00 lines up. Import the EDL in Premiere and relink each clip by its file name. Source timecode counts from the clip's first frame (00:00:00:00): a camera file with its own embedded timecode needs its start set to zero, or it relinks off.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button size="sm" variant="outline" onClick={() => download("board_cut.edl", boardCutEdl(boardCut, { title }), "text/plain")} data-testid="board-cut-edl">

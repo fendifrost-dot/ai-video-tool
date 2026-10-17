@@ -95,7 +95,7 @@ import { MONTAGE_LINES_MAX, castLine, defaultMontageLines, montagePrompt, montag
 import { compositeBox } from "@/lib/composite/compositeSubmit";
 import { compositesOn, planComposite, platesOfScene, stillsOfScene, type CompositePlan } from "@/lib/composite/plan";
 import { animatePlate as submitPlateMotion, findLivePlateJob, planPlateMotion, PLATE_EVENT_MAX, type PlateMotionPlan } from "@/lib/composite/plateMotion";
-import { planFootageEdit, type FootageEditAction } from "@/lib/storyboard/footageEdit";
+import { planFootageEdit, slippedSync, type FootageEditAction } from "@/lib/storyboard/footageEdit";
 import {
   boxMedia,
   imageForClip,
@@ -1550,7 +1550,11 @@ export function useStoryboardController(projectId: string): StoryboardController
               record: i.asset.derivedFrom!.dress,
               box,
               outfit: now,
-              parentSync: syncs.find((s) => s.performanceAssetId === parentId) ?? null,
+              // held against the parent as THIS shot plays it: its sync, shifted by any hand slip (restageSource does the same)
+              parentSync: (() => {
+                const s = syncs.find((x) => x.performanceAssetId === parentId) ?? null;
+                return s ? slippedSync(s, items.find((x) => x.asset.id === parentId)?.edit?.slip ?? 0) : null;
+              })(),
               parentSeconds: media.byId.get(parentId)?.durationSeconds ?? null,
               now: { sourceAssetId: src.ok ? src.source.take.id : null, ...(plan ? { references: plan.references, prompt: plan.prompt } : {}) },
             }),
