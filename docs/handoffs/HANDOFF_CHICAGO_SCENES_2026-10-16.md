@@ -664,3 +664,88 @@ NOT DONE:
 - Put the preview's edit decisions on the board (c009 end / c011 start / c010, c031 slip) once Fendi approves v1.
 - The SL trousers need a real picture of the trousers (their only reference is a track-jacket outfit shot).
 - Region swap of the Y onto c009's cap, if Fendi wants it.
+
+## The 86-second cut (0:00–1:26) and the new intro (17 Oct, 13:30–14:45 UTC; ledger 131–135)
+
+Fendi's rules this run, in the tool now or noted where not:
+- "Run 0:00 to 1:26", keeping the 16 Oct montages on board `358363e6`: c041 penguin dice `046d1d2f`, c042 orca
+  `e240af21`, c044 runway + train `03794fcc`, c045 walrus `ccbb3ee7`, c046 train interior `daa1644a`, c047 child
+  and polar bear `41d5c1da`.
+- "Stop the full body shots" and "the shoes are an issue … they look huge and not recreated correctly". Shoes are
+  approved only on the two region-swap fixes, c044 and c045. "Knees are fine."
+- Fix it in the edit before regenerating: Frame (punch-in) on the shot.
+
+DONE:
+- **Montage v5** (PR fendifrost-dot/ai-video-tool#320, merged `6ca7c39`):
+  - Adds the `WAIST_UP` prompt line, and `NO_FEET` now also forbids a cutaway or tilt to his feet.
+  - montage-shot and the storyboard's Montage button no longer send the footwear picture (@Image2).
+  - The avt-mcp contract, the catalog and the recipe say the same.
+  - Tests 2987 passed, tsc clean.
+  - CODED. The Lovable redeploy of montage-shot + avt-mcp was sent at 14:36 UTC; LIVE is not verified (see below).
+- **Clips for c035–c040 checked and in the cut:**
+
+  | Shot | Asset | Kind |
+  |---|---|---|
+  | c035 | `e37b5c4f` | |
+  | c036 | `b77ef700` | |
+  | c037 | `941148e8` | |
+  | c038 | `c8e50b98` | |
+  | c039 | `65465c7a` | |
+  | c040 | `a172ae9b` | b-roll |
+
+  - c043's montage was refused for credit (row 134). In the cut, c042's orca montage runs 73.8–76.75 s and covers it.
+- **Punch-ins saved on board c067** (`shots.override_json.reframe`), so shoes and full-body framing are out of frame:
+
+  | Shot | Scale | x | y |
+  |---|---|---|---|
+  | c007 | 1.8 | .45 | .60 |
+  | c016 | 1.8 | .40 | .42 |
+  | c017 | 1.8 | .35 | .35 |
+  | c025 | 1.8 | .50 | .28 |
+  | c027 | 1.8 | .55 | .28 |
+  | c033 | 1.8 | .55 | .40 |
+  | c034 | 2.2 | .48 | .31 |
+  | c037 | 1.8 | .40 | .35 |
+  | c039 | 1.8 | .45 | .32 |
+  | c044 | 1.8 | .45 | .50 |
+  | c045 | 1.8 | .60 | .42 |
+  | c046 | 1.8 | .60 | .48 |
+
+  - Preview `YSL_cut86_v2.mp4` (85.8 s) posted. OBSERVED from frame sheets: no shoes of him outside c044/c045.
+- **New intro** (Fendi: wolves in shearling first, then the boosters out of the store, then the police chase with
+  pigs, then back to him; "you can cut further").
+  - Fendi made the wolves / boosters / pigs clip himself in Grok (10 s, 16:9). No tool wallet was billed (row 135).
+  - Cut on the song's beat grid (0.492 s; c007 lands on the beat at 12.324 s): 21 cuts of 1–2 beats from 0 to 12.32 s.
+    - Grok pieces for the wolves, the store exit and the pig chase.
+    - Kept intro pieces: the logo, the store exit, the YSL jacket, the run into the snow.
+    - **The security guard is cut entirely** — slip, face-down on the ice, phone call. Fendi: "The added footage was
+      so you can cut out the security guard slipping on ice … that scene is terrible it looks comedic". Do not put
+      `56c4e578` (the slip) back in the intro.
+    - The Grok pieces are 16:9 cropped to 9:16 (zoom 3.2 about x). Cut list (22 cuts): session scratchpad
+      `prod/intro_v3_cuts.json`; full 86 s plan `prod/cut86_v3.json`.
+  - Previews `YSL_intro_v2.mp4` (with the guard; superseded) and `YSL_intro_v3.mp4` (without him) posted.
+  - Scratchpad only. Not in the repo: the clips carry Fendi and the song, and the repo is public.
+
+NOT DONE:
+- montage-shot + avt-mcp from `6ca7c39` LIVE (VERIFIED 14:40 UTC): Lovable redeployed both. Unauthenticated calls get
+  401. A montage-shot dryRun on c037 returned version `montage-v5-2026-10-17`, `shoes: null`, and the waist-up line
+  in the prompt. Frontend Publish sent (deployment `29704d11`); not yet watched in a browser.
+- Follow-up in the next PR: the montage prefill's last line no longer asks for "a low angle from below" (it is now "a
+  medium close-up from chest height"). The treatment writer's framing list drops "wide" and "low angle" and says waist
+  up or closer. These are CODED; they need a redeploy of montage-shot + treatment-writer-proxy and a Publish.
+- **Superseded check** (kept for the follow-up redeploy). Verify montage-shot + avt-mcp:
+  - Both must answer 401 to an unauthenticated POST. A 404 means not deployed.
+  - A montage-shot dryRun on a performance shot must return a prompt containing "from the waist up or closer" and
+    `facts.shoes: null`. If the prompt lacks that line, the old code is still live.
+- **Frontend Publish** for the browser Montage button change. Publish ≠ edge redeploy.
+- **Fendi is remaking the Grok shots in 9:16.** When they arrive:
+  - Upload them in Setup as B-roll and put each piece on the board with its in-point (`source_in_seconds`) in place
+    of the cuts in `prod/intro_v3_cuts.json`.
+  - Drop the 3.2 zoom; it was only for the 16:9 crop.
+  - Tool gap if 16:9 is ever kept: the Frame zoom stops at 3× (the card at 2×), and a 16:9 source needs about 3.16×
+    to fill a 9:16 frame. Not built, because Fendi chose 9:16 sources.
+- **The board does not yet carry the cut.** Still to do: the intro's 21 cuts, c010 dropped, the c031 slip, and the
+  16 Oct c041–c047 clips placed on board c067.
+- **Higgsfield API balance is out again** (row 134). It blocks c043's own montage (optional, covered) and any
+  further montage or dress.
+- Earlier asks to Fendi, still open: a real SL trousers picture; whether to region-swap the Y onto c009's cap.

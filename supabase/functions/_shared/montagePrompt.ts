@@ -54,7 +54,7 @@ export function defaultMontageLines(thing: string | null): string {
     it ? `the place: a wide shot with ${it} in it, the people around going about their business; he is not in it` : "the place: a wide shot of it, the people in it going about their business; he is not in it",
     "HARD CUT to him in profile from the side, a three-quarter angle: standing with a hand on something in the place (a rail, a pole, a pillar, a door frame), rapping; he belongs in the place, not pasted in front of it",
     it ? `HARD CUT to a tight shot of ${it}, a quick optical zoom in on its face; it does not react` : "HARD CUT to a tight shot of a detail of the place, a quick optical zoom in; nobody reacts",
-    it ? `HARD CUT to a low angle from below: him leaning on something in the place, rapping, ${it} behind his shoulder; nobody looks at him` : "HARD CUT to a low angle from below: him leaning on something in the place, rapping, the place behind his shoulder; nobody looks at him",
+    it ? `HARD CUT to a medium close-up from chest height: him leaning on something in the place, rapping, ${it} behind his shoulder; nobody looks at him` : "HARD CUT to a medium close-up from chest height: him leaning on something in the place, rapping, the place behind his shoulder; nobody looks at him",
   ].join("\n");
 }
 

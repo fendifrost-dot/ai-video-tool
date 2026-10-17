@@ -251,7 +251,7 @@ const FOOTAGE_RULES = [
   "- He appears in performance shots. Every other shot shows the world around him — places, objects, details, other people — and not his face, unless the treatment stages him in a scene of its own (watching, arriving, walking in): that shot is `narrative` and says what he does.",
   "- Cut it like a real music video: his performance carries the song, and the picture keeps leaving him and coming back. Of every three shots about two are performance and one is a cutaway. Never four performance shots in a row; never more than two cutaways in a row — except where the treatment lays out its own run of scenes (an opening before he appears, a sequence that stays with other people): there the treatment's order is the cut.",
   "- A cutaway goes where the words name something that can be shown — an object, a place, a move: show THAT thing, in the treatment's world. Where there are no words, a cutaway carries the section's mood.",
-  "- Performance shots that follow each other may stay in one place, but each is a different frame of him — wide, medium, close on the face, low angle, profile, a slow push, a slow orbit — and you say which.",
+  "- Performance shots that follow each other may stay in one place, but each is a different frame of him — medium, medium close-up, close on the face, profile, over a shoulder, a slow push, a slow orbit — and you say which. Never a full-body or wide frame of him and never a low angle from below: he is framed from the waist up or closer, his shoes out of the frame.",
   TREATMENT_DECIDES,
 ].join("\n");
 const NO_FOOTAGE_RULES =
