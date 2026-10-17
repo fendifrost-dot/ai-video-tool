@@ -336,3 +336,37 @@ changed too — posted; Fendi: "C041 is fine" → APPROVED, unselected.
 FINDING (OBSERVED, 2 of 2): the object swap does not change shoes that are small in the frame. The model also still bleeds onto
 bystanders (c041). Next, as a general lane change rather than a per-video fix: swap a CROP around him (upscaled to the model's size) and composite it back over
 the original — HYPOTHESIS, test on c044 first.
+
+## Swap in a box — the region-swap lane (17 Oct, 01:35–02:05 UTC)
+
+Fendi on the crop-and-composite idea: "Your your solution" → built as a general lane, not a fix for one clip.
+
+DONE (CODED + LIVE, VERIFIED):
+- PR #301 squash `d3641ab`: `dress-clip` takes a `crop` (a box cut out of the clip in the browser, enlarged to the
+  clip's size, uploaded under `project-clips/<user>/<project>/swap-crops/`). The job runner files the result as a
+  `crop_swap` asset that is never placed on a shot. Page `/projects/<id>/swap?asset=…&box=x,y,w,h&window=a,b`
+  ("Swap in a box…" on a performance clip in Focus view) draws the box, dry-runs, sends, and has **Put it back**:
+  the swapped crop goes back into the box over the ORIGINAL with a smoothstep feather, only inside the window, and the
+  result is filed on the clip's shots unselected, in sync, with its method (montage) kept.
+  Lovable redeployed **dress-clip, provider-jobs-tick, avt-mcp** (deployed hashes `981e24ad…`, `bea29d40…`,
+  `14eb7d7a…`; probes 401 as expected). Published; the live `projects._id.swap-*.js` chunk carries the page.
+- PR #302 squash `0465e86`: a side of the box on the frame's own border is not feathered (otherwise the original comes
+  back exactly where the piece runs out of frame — c045's shoes). Recipe `region-swap-v2-2026-10-17`. Published;
+  live `index-DmZvM2vs.js` → `projects._id.swap-C6k5Fks7.js` carries `region-swap-v2`, VERIFIED 02:00 UTC.
+- Driver: `avt-press.mjs region-swap --asset --box [--window] [--pieces] [--dry-run]` and
+  `region-putback --asset --job`.
+
+Results (ledger 104–105, both posted to Fendi). Fendi, 02:05 UTC: "Both pass and are solid!" → **APPROVED**, still unselected (selection is Fendi's):
+- c044 → `03794fcc`: the Nikes at the pillar are now white/grey Prada-style sneakers from 3.3 s. OBSERVED: brighter
+  white than the cream "Raw White"; the side panel darker than the silver mesh.
+- c045 → `ccbb3ee7`: the cream America's Cups with the grey mesh beside the walrus (1.96–2.29 s).
+
+FINDING (OBSERVED, 2 of 2): cropping round his feet makes the object swap take where the whole-frame swap did not
+(ledger 101–102, both rejected). HYPOTHESIS: this holds for any small piece (hat, glasses, a bag) — not yet tested.
+
+RECOMMENDATION (not built): the window is fixed when the swap is sent. c045's window ran 2 frames past a hard cut
+(harmless here, at noise level). Let **Put it back** take a tighter window than the one sent — no new spend — and
+let the fade stop at a cut instead of crossing it.
+
+Verify (cheap): `avt_select shot_asset_assignments asset_id in (03794fcc…, ccbb3ee7…)` → 2 rows, `is_primary=false`,
+shots `ebf8f826…` (c044) and `8df8cc79…` (c045). Not selected by design; never select them without Fendi.
