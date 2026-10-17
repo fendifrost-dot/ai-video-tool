@@ -139,25 +139,8 @@ export function AppShell() {
 
   return (
     <div className="relative flex min-h-[100dvh] text-foreground">
-      {/* Aurora orbs (decorative depth) */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed -top-32 -left-20 h-[420px] w-[420px] rounded-full opacity-60 blur-3xl"
-        style={{ background: "radial-gradient(circle, var(--aurora-1), transparent 70%)" }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none fixed top-1/3 -right-32 h-[520px] w-[520px] rounded-full opacity-50 blur-3xl"
-        style={{ background: "radial-gradient(circle, var(--aurora-2), transparent 70%)" }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none fixed -bottom-40 left-1/3 h-[460px] w-[460px] rounded-full opacity-40 blur-3xl"
-        style={{ background: "radial-gradient(circle, var(--aurora-3), transparent 70%)" }}
-      />
-
       {/* Desktop sidebar — floating glass slab */}
-      <aside className="relative z-10 hidden md:flex md:w-64 md:shrink-0 md:flex-col md:p-4">
+      <aside className="relative z-10 hidden md:flex md:w-52 xl:w-56 md:shrink-0 md:flex-col md:p-4">
         <div className="glass-float sticky top-4 flex h-[calc(100dvh-2rem)] flex-col rounded-2xl">
           <div className="flex h-16 items-center gap-2 px-5">
             <div
@@ -409,9 +392,9 @@ export function PageHeader({
   ) : null;
   if (variant === "compact") {
     return (
-      <header className="border-b border-border px-4 py-2 md:px-8">
+      <header className="border-b border-border/70 px-4 py-5 md:px-8 md:py-6">
         <div className="flex min-h-10 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          <h1 className="font-display text-lg font-semibold tracking-tight text-foreground">
+          <h1 className="font-display text-xl font-semibold tracking-tight text-foreground md:text-2xl">
             {title}
           </h1>
           {chip}
