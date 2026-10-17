@@ -150,6 +150,7 @@ function imageList(nums: number[]): string {
 export function buildDressPrompt(
   pieces: readonly DressPiece[],
   references: readonly DressReference[],
+  opts: { wearer?: string | null } = {},
 ): string {
   const sentIds = [...new Set(references.map((r) => r.pieceId))];
   const worn = sentIds
@@ -183,11 +184,21 @@ export function buildDressPrompt(
     "the camera move",
     "his performance timing",
   ];
+  // other people in the frame (a montage's crowd): he is named by what he keeps on, and nobody else changes
+  const wearer = opts.wearer?.trim() || null;
+  const whose = wearer
+    ? `the ${regionWords} of the man wearing the ${wearer}`
+    : `the man's ${regionWords}`;
   return [
-    `Replace ONLY the man's ${regionWords} with the exact ${worn.length === 1 ? "piece" : "pieces"} shown in the reference images: ${which.join("; ")}.`,
+    `Replace ONLY ${whose} with the exact ${worn.length === 1 ? "piece" : "pieces"} shown in the reference images: ${which.join("; ")}.`,
     `Garment truth — ${truth.join(" ")}`,
     `Keep everything else exactly as in the source video: ${keep.slice(0, -1).join(", ")} and ${keep[keep.length - 1]}.`,
     `Each new piece must follow his body motion and the original folds and shadows; no other change.`,
+    ...(wearer
+      ? [
+          `Only he changes: every other person in the frame keeps their own clothes and shoes exactly as in the source video.`,
+        ]
+      : []),
   ].join(" ");
 }
 

@@ -8,6 +8,7 @@
 // the named pieces are swapped. The result goes on the same shot UNSELECTED, beside the clip it was made from.
 
 import {
+  pieceKind,
   DRESS_ENDPOINT,
   DRESS_MAX_SOURCE_SECONDS,
   DRESS_MILLS_PER_SECOND,
@@ -45,6 +46,8 @@ export type DressClipInput = {
   clip: ClipFacts;
   shot: ShotFacts;
   pieces: readonly DressPiece[];
+  /** Everything he wears in the shot: the piece he is NOT changing out of names him among other people (wearerOf). */
+  worn?: readonly DressPiece[];
   sceneId?: string | null;
   outfit?: { id: string; key: string; name: string; version: number } | null;
 };
@@ -100,7 +103,8 @@ export function planDressClip(input: DressClipInput): { ok: true; plan: DressCli
       "no_pictures",
       `none of the pieces has a photograph on file (${notSent.map((n) => n.label).join(", ")})`,
     );
-  const prompt = buildDressPrompt(input.pieces, sent);
+  const wearer = wearerOf(input.worn ?? [], input.pieces);
+  const prompt = buildDressPrompt(input.pieces, sent, { wearer });
   const seconds = r4(clip.seconds);
   const billedSeconds = dressBilledSeconds(seconds);
   const estimateUsd = (billedSeconds * DRESS_MILLS_PER_SECOND) / 1000;
@@ -133,6 +137,7 @@ export function planDressClip(input: DressClipInput): { ok: true; plan: DressCli
     imported: null,
     // what the clip was before its pieces changed: the board keeps naming it that (a montage stays a montage)
     sourceMethod: clip.method,
+    wearer,
     swapped: sent.map((r) => r.pieceId).filter((id, i, a) => a.indexOf(id) === i),
     submittedBy: "dress-clip",
   };
@@ -203,4 +208,22 @@ export function pieceOf(row: {
         : [],
     construction: row.dimensions_description?.trim() || null,
   };
+}
+
+/**
+ * How he is told apart from everyone else in the frame: the outerwear (else any other piece) he keeps on while the
+ * swap changes something else. A montage puts other people in the place — dice players, passengers — and "the man's
+ * shoes" put his Pradas on a bystander's feet (c041, 17 Oct 2026). Null when nothing he wears is left to name him.
+ */
+export function wearerOf(
+  worn: readonly DressPiece[],
+  swapping: readonly DressPiece[],
+): string | null {
+  const changing = new Set(swapping.map((p) => p.id));
+  const kept = worn.filter((p) => !changing.has(p.id) && p.label.trim());
+  const pick =
+    kept.find((p) => pieceKind(p) === "outerwear") ??
+    kept.find((p) => pieceKind(p) === "hat") ??
+    kept.find((p) => pieceKind(p) === "other");
+  return pick ? pick.label.trim() : null;
 }
