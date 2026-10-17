@@ -408,3 +408,15 @@ currency-exchange line. Saved through the Treatment page 02:19:32 UTC; VERIFIED 
 
 NOT DONE: the shots. On the board this is c011 (18.72–20.69) and c012 (20.69–22.65). Open question for Fendi: him
 or "the man" at the machine. Not shot yet; no spend authorised for it.
+
+### 02:22 UTC — "More cameras in the whip": the camera car (Fendi's picture)
+
+Fendi's picture: inside an SUV under the L tracks, packed with men in black beanies and leather, camcorders and
+monitors mounted everywhere, two filming out of the windows, a penguin in a fur coat in the centre console. "This fits
+when I say More cameras in the whip than a camera crew."
+
+DONE ($0): filed as a director's reference, `project_assets` **`9d4e2253-826a-4f1e-aeab-9052dade08ef`**
+(`project-references/…/references/director_cameras_in_the_whip.jpg`, 1376×768). The treatment on `c067efb9…` carries
+the scene on 23.4–25.1 s (replaces the car-wash line): him and the crew in the car, the models walking the sidewalk
+outside the windows the camcorders film, the penguin in the fur coat riding shotgun. Saved 02:22:32 UTC; VERIFIED.
+On the board: c012 (20.69–22.65) / c013 (22.65–25.11). Not shot; no spend authorised.
