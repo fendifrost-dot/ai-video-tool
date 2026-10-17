@@ -476,3 +476,39 @@ now: the chase down Oak Street through the whiteout, shot like news footage; the
 Fendi posted on the wall beside it in the black leather coat, watching; a penguin among the mannequins in the window
 (my addition, the one cold animal; drop it if Fendi says so); cut to the lounge switch on his first line. Replaces the
 Red Line platform intro. Saved 03:21:37 UTC; VERIFIED. On the board: c001–c007. Not shot; no spend authorised.
+
+## The intro BUILT — Oak Street (17 Oct, 03:26–04:05 UTC; ledger 106–111, $6.53)
+
+Fendi: "You can build now", then "Have me in the cotton jacket for the intro", then — on the first chase clip — "I
+don't like the intro. It doesn't have the same characters from the Gemini image."
+
+Data (cold-runway variation `c067efb9`):
+- Scenes: **"Oak Street, the chase"** `5ba1d919` 0–12.32 s (c001–c006) and **"Oak Street, the window"** `c29dd859`
+  12.32–13.80 s (c007), both outfit `THE_CLEAN_ENTRANCE_LOOK` (the cotton jacket). Split because the tool takes one
+  plate per scene (by scene name).
+- Stills (all under `project-references/…/worlds/`): window plate **`bcba5663`** (PICK; `2d6cbcfe` unused), doors plate
+  `5936ad79` / `57cd1a3c` (both unused now), cast scene still **`17ac4e3a`** (`scene_oak_street_boosters_…_2`, PICK;
+  `6af62aa6` unused).
+- c007 made a performance shot (`override_json.shotType = performance`) with his take `70304981` on it (take clock
+  11.4662–12.9462 = song 12.32–13.80, before his first line) — assignment `4e0be88c`.
+
+CODE — LIVE (VERIFIED): PR #309 squash `5910628`, Publish `7d7f2067`; live `index-O0uuvKux.js` → storyboard →
+`Acceptance-Bs24WrW4.js` carries `plate-motion-v5-2026-10-17`. A still under `worlds/scene_*` is the director's picture
+WITH its people (`plate.cast`): "Animate the scene" keeps them (same faces, clothes, what they carry, nobody new) and
+lets the camera follow like a news camera; empty `worlds/plate_*` plates keep v4 exactly. `platesOfScene` (composite,
+montage) skips cast stills; `stillsOfScene` (the Animate press) includes them. No edge function touched.
+
+Results (all unselected; nothing selected was changed):
+| Shot | Asset | Verdict |
+|---|---|---|
+| c002 | `1ee3c336` (empty plate, v4) | REJECTED by Fendi — invented cast |
+| c004 | `603cdd8a` (empty plate, v4) | not used — same flaw (sent before his note) |
+| c002 | **`0dae4f6c`** (cast still, v5) | OBSERVED: his boosters (camel coat on a hanger, hoodies, bags) sprint out toward and past the camera, the guard chasing. Posted. On c002 as assignment `5aec0881` (filed by hand: a moving plate lands on the scene, not a shot) |
+| c007 | `6ee55225` dressed take | OBSERVED: belted beige cotton trench + bucket hat |
+| c007 | **`ee666a9b`** montage | OBSERVED: him on the wall beside the YSL window, the penguin among the mannequins, a cutaway to the cream Pradas. Posted. |
+
+NOT DONE: c001, c003–c006 (the rest of the chase: more beats from the cast still, e.g. the guard slipping); a press to
+file a cast clip on the shot it was pressed from (today it is filed on the scene and was put on c002 by an assignment
+row) — RECOMMENDATION; the shots' scene text still describes the old forest (rewrite blocked until the variation has a
+visual direction). Fendi has not judged the redone clips yet.
+Also noted from Fendi: the "YSL I wear em like they white ones" lounge beat is in the **denim look** (in the treatment).
