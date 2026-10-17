@@ -883,7 +883,18 @@ Nothing in this section remains to be done.
 - **Root cause, in the tool:** a restaged or continuous clip was filed at its SOURCE's length (4 s) instead of the 10 s it was asked for. `restagedFrom` now uses `payload.duration`.
   - The board rows for E1 `998f6690`, E2 `ad2faff9`, E1 v2 `699a7b63` and E1 v3 `ce365795` were corrected to 10.041667 s (ffprobe; each was 4).
 
-**NOT live: Lovable workspace out of credits.** `send_message` answered "Your workspace is out of credits". Once credits are added, the next agent runs:
+**UPDATE (17 Oct, 23:30 UTC): redeployed and VERIFIED.**
+- Credits were added. Lovable redeployed from `bcdf329`:
+  - `montage-shot` (`123e84ed…`)
+  - `provider-jobs-tick` (`fbeaa624…`)
+  - `lipsync-shot` (`4ce1f2ef…`)
+- **Hand rule:** a c033 dry-run prompt contains "his hands low and relaxed, away from his face and collar" and no longer contains "below his chin".
+- **Line limit:** an action of exactly 1250 characters returned `400 line_too_long`.
+- **Filed length:** this is checked on the next paid continuous take, whose `duration_seconds` should read 10, not 4. It remains HYPOTHESIS until that take exists.
+
+The block below is kept for the record.
+
+~~NOT live: Lovable workspace out of credits.~~ `send_message` answered "Your workspace is out of credits". Once credits are added, the next agent runs:
 1. **DEPLOY ONLY on AVT** (`bd21b544-…`): redeploy `montage-shot`, `provider-jobs-tick` and `lipsync-shot` from main.
    - All three bundle `_shared/jobProgress.ts`, and `montage-shot` also carries #329.
 2. **Verify the hand rule:** dry-run `montage-shot` continuous on c033. The `prompt` must contain `hands low and relaxed, away from his face and collar` and must NOT contain `below his chin`.
