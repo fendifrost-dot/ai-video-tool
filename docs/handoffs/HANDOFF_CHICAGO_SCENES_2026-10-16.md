@@ -608,9 +608,13 @@ DATA on the cold-runway board `c067efb9` (all VERIFIED by the rows returned):
 RESULTS: 12 b-roll montages filed unselected (row 123). 3 blocked by content safety (row 124), reworded. 25 refused
 for credit (row 125). c009's dress in flight (row 126).
 
-BLOCKER: the Higgsfield account Control Center bills through is at **0.68 credits (free plan)** (`balance` on the
-Higgsfield connector; the API answers "Your credit balance is too low"). Fendi has to top it up — about **$280 list**
-covers the rest: 45 dresses ($123), 47 performance montages ($104), 28 b-roll retries ($52).
+BLOCKER: Control Center's Higgsfield **API** balance is exhausted (`platform.higgsfield.ai`, keys
+`HIGGSFIELD_API_KEY_ID`/`_SECRET` in CC; the API answers "Your credit balance is too low"). Fendi has to top up that API
+balance — about **$280 list** covers the rest: 45 dresses ($123), 47 performance montages ($104), 28 b-roll retries ($52).
+CORRECTION (17 Oct, VERIFIED): the "0.68 credits (free plan)" first written here is the Higgsfield **connector's**
+account (higgsfield.ai web/MCP plan credits: 10 registration credits, spent 10–11 Oct on Soul / Nano Banana — no
+Control Center spend in its `transactions`). Plan credits and the API's dollar balance are separate wallets; buying
+plan credits or a subscription does NOT unblock the tool. Plan-vs-API assessment: `docs/recipes/MONTAGE_MUSIC_VIDEO_WORKFLOW.md`.
 
 TO RESUME (agent, after the top-up; every step is the tool's own lane):
 1. Dry run one montage (`avt_montage` dry_run) to confirm, then shoot the 28 b-roll retries — lines in the session
