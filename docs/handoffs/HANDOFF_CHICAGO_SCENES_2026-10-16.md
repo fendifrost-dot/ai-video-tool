@@ -753,3 +753,64 @@ NOT DONE:
 - **Higgsfield API balance is out again** (row 134). It blocks c043's own montage (optional, covered) and any
   further montage or dress.
 - Earlier asks to Fendi, still open: a real SL trousers picture; whether to region-swap the Y onto c009's cap.
+
+## Lip sync — why the cut is off and the lane that fixes it (17 Oct, 15:00–16:05 UTC)
+
+Fendi: "we have a MAJOR issue … the lip sync doesn't line up with music", then, after the no-cost A–E offset test on
+the original footage, "A is correct", then "it's right on the lipsync_fine_test but not in the implementation of the
+video".
+
+Findings (evidence label on each):
+- The take on the board, `hero_clip_hd_1080.mp4` (`70304981`), has **no audio track** (VERIFIED, ffprobe). Its sync
+  0.8538 s was measured by GCC-PHAT on the audio of `IMG_5633.mov` (`55bdc383`, the 4K original with sound,
+  `src/lib/sync/performanceSync.ts`) and re-measured today: 0.8538 s again (VERIFIED,
+  `scripts/sync/align_song_performance.py`). The two encodes are frame-identical in timing (VERIFIED, picture match,
+  0 ms residual).
+- Fendi judged the original footage in sync at **0.7038 s** (A, 0.15 s earlier) in the A–E test (OBSERVED, his eye).
+  The fine test sent after it was "right" to him too. Not yet applied to the database (see NOT DONE).
+- Dressed takes keep the take's timing: c037's dressed frames map to the original at the expected times within
+  ~20 ms (VERIFIED, picture match).
+- **Montage clips do not.** Each montage's mouth, against the original performance at its recorded place, best matches
+  at a different lag: −0.8 s … +0.8 s across 15 measurable shots, 7 with too little visible face to measure (OBSERVED,
+  MediaPipe jawOpen correlation, ≤ 77 face frames a clip). No single offset can fix the cut — the montage model draws
+  a new mouth on every clip. This is why the raw-footage test looks right and the video does not.
+
+DONE (CODED, merged):
+- fendifrost-dot/fendi-control-center#70 (`80100e4`): `switchx-restyle` `fal-run` allows `fal-ai/demucs` and
+  `fal-ai/sync-lipsync/v2`. LIVE (VERIFIED by Lovable's redeploy report: source contains both entries; 401 to a call
+  without the proxy secret).
+- fendifrost-dot/ai-video-tool#323 (`b2405b8`): the lip-sync lane — `lipsync-shot` (vocals once via Demucs, filed as
+  an `other` asset with `stem: vocals` so it is never taken for the song; the slice under the clip from its
+  performance sync; Sync Lipsync 2.0; dryRun), `provider-jobs-tick` files a `lipsync` job like a restaging (same place
+  on the song, unselected on its shot, a montage stays a montage with a `lipsync` record), avt-mcp catalog.
+  Redeploy of lipsync-shot + provider-jobs-tick + avt-mcp sent to Lovable at 15:59 UTC — NOT yet verified.
+
+NOT DONE:
+- Verify the AVT redeploy: `avt_call lipsync-shot` with `dryRun: true` on c036 (variation `c067efb9`, asset
+  `b77ef700`) must answer 200 with `songWindow` [61.348, 65.89] and say the vocals are not made yet; a 404/"no
+  function" means avt-mcp was not redeployed.
+- Kill test (Fendi's call before scaling): lip-sync c036 and c047 (variation `358363e6`, asset `41d5c1da`), post
+  both beside the originals. If the mouth does not land on the words, or the model breaks his face / the cutaways,
+  STOP — do not run the other 20.
+- If it passes: run every performance shot of the 86 s cut, put the lip-synced clips in the preview, ledger the spend
+  (≈ $0.20 a clip + the vocals once).
+- Decide with Fendi whether the original take's sync becomes 0.7038 (his eye) or stays 0.8538 (the audio). It only
+  matters for clips that show the take's own mouth (dressed takes, region swaps); lip-synced clips follow the vocals.
+
+### Lip-sync lane — first live run (17 Oct, 16:08–16:45 UTC; ledger 136–137)
+- LIVE (VERIFIED): Lovable redeployed lipsync-shot, provider-jobs-tick and avt-mcp from `b2405b8` (401s to
+  unauthenticated calls). The c036 dryRun answered 200 with songWindow [61.348, 65.848]. Demucs made the vocals in
+  ~1 min: asset `50f8e58d`, filed as `other` with `stem: vocals`.
+- Both kill-test clips completed at Fal (VERIFIED, fal-queue-poll: COMPLETED with video.url). Before/after previews
+  with the song under them were posted to Fendi: `clips/minute/LIPSYNC_c036_before_after.mp4` and `…c047…`. c047
+  shows almost none of him; c036 is the one to judge. OBSERVED from frame sheets: cutaways are untouched, his face
+  holds.
+- BUG found and fixed: Control Center's `video-providers-job-status` returned `succeeded` with no `resultUrl` for a
+  finished Fal job (Fal's status answer has no output). provider-jobs-tick needs the link, so it waited for ever.
+  fendifrost-dot/fendi-control-center#71 (`29d5145`) reads the request's response on completion. LIVE (VERIFIED
+  16:50 UTC): both jobs finished at 16:41. c036 became asset `510a6ffe` with sync 61.348, and c047 became `da99618e`
+  with sync 82.639. Both syncs are confirmed, with the lip-sync note. Both are on their shots as performance,
+  `is_primary: false`.
+- NOT DONE: Fendi's verdict on c036. If it passes, run lipsync-shot on every performance shot of the 86 s cut
+  (≈ 20 × $0.20) and rebuild the preview from the lip-synced clips. Fendi is reworking the intro; no spend on it.
+  The c007 close-up at ~13.7 s mouths with no vocals under it: the free fix is to end c007 before the close-up.
