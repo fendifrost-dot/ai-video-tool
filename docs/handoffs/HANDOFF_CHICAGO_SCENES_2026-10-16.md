@@ -807,10 +807,10 @@ NOT DONE:
   holds.
 - BUG found and fixed: Control Center's `video-providers-job-status` returned `succeeded` with no `resultUrl` for a
   finished Fal job (Fal's status answer has no output). provider-jobs-tick needs the link, so it waited for ever.
-  fendifrost-dot/fendi-control-center#71 (`29d5145`) reads the request's response on completion. Its redeploy was
-  sent at 16:39 UTC — NOT verified. Check: a manual `provider-jobs-tick` call must report the two jobs as
-  "provider: succeeded" → "saved" → "filed as a take in sync" → "on its shot, unselected". If it still says
-  "provider: running", the redeploy has not landed.
+  fendifrost-dot/fendi-control-center#71 (`29d5145`) reads the request's response on completion. LIVE (VERIFIED
+  16:50 UTC): both jobs finished at 16:41. c036 became asset `510a6ffe` with sync 61.348, and c047 became `da99618e`
+  with sync 82.639. Both syncs are confirmed, with the lip-sync note. Both are on their shots as performance,
+  `is_primary: false`.
 - NOT DONE: Fendi's verdict on c036. If it passes, run lipsync-shot on every performance shot of the 86 s cut
   (≈ 20 × $0.20) and rebuild the preview from the lip-synced clips. Fendi is reworking the intro; no spend on it.
   The c007 close-up at ~13.7 s mouths with no vocals under it: the free fix is to end c007 before the close-up.
